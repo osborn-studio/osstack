@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+"""
+ds-verify — Project consistency verification (PRD ↔ architecture ↔ sprint ↔ implementation).
+
+Part of the OSBORN Capability Layer (~/.osborn/capabilities/deepseek).
+Two-layer verification:
+  Layer 1: deterministic local checks (presence, emptiness, sprint state, tests).
+  Layer 2: DeepSeek-reasoner reasoning over docs + diff + Layer 1 findings.
+
+NOT a code-review tool. See ds-review for that.
+
+Stdlib only. Adapted from concepts in github/spec-kit, Fission-AI/OpenSpec,
+and hustcer/deepseek-review (see upstream/verify-upstreams.md).
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+from pathlib import Path
+
+DEFAULT_MODEL = "deepseek-reasoner"
+DEFAULT_BASE_URL = "https://api.deepseek.com"
+DEFAULT_TEMPERATURE = 0.3
+DEFAULT_TIMEOUT = 600
+DEFAULT_MAX_DOC_CHARS = 4000
+DEFAULT_MAX_DIFF_CHARS = 30000
+
+HERE = Path(__file__).resolve().parent
+CAPABILITY_ROOT = HERE.parent
+LIB_DIR = CAPABILITY_ROOT / "lib"
+DEFAULT_PROMPT_PATH = CAPABILITY_ROOT / "prompts" / "verify.md"
+
+# Make lib importable when invoked through any symlink.
+sys.path.insert(0, str(LIB_DIR))
+
+import verify_engine  # noqa: E402
+from api import DeepSeekError  # noqa: E402
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        prog="ds-verify",
+        description="Verify implementation ↔ PRD/architecture/sprint/acceptance alignment.",
+    )
+    parser.add_argument("--strict", action="store_true",
+                        help="Apply stricter judgment (fails on missing tests, undocumented arch changes, unchecked sprint tasks).")
+    parser.add_argument("--output", "-o",
+                        help="Write report to file in addition to stdout.")
+    parser.add_argument("--model", "-m",
+                        default=os.environ.get("DEEPSEEK_MODEL", DEFAULT_MODEL),
+                        help=f"Model name (default: {DEFAULT_MODEL}, or $DEEPSEEK_MODEL).")
+    parser.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE,
+                        help=f"Sampling temperature (default: {DEFAULT_TEMPERATURE}).")
+    parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT,
+                        help=f"HTTP timeout in seconds (default: {DEFAULT_TIMEOUT}).")
+    parser.add_argument("--max-doc-chars", type=int, default=DEFAULT_MAX_DOC_CHARS,
+                        help=f"Per-document char cap before truncation (default: {DEFAULT_MAX_DOC_CHARS}).")
+    parser.add_argument("--max-diff-chars", type=int, default=DEFAULT_MAX_DIFF_CHARS,
+                        help=f"Git diff char cap before truncation (default: {DEFAULT_MAX_DIFF_CHARS}).")
+    parser.add_argument("--prompt", default=str(DEFAULT_PROMPT_PATH),
+                        help="Path to system prompt file.")
+    args = parser.parse_args(argv)
+
+    api_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+    if not api_key:
+        print("ERROR: DEEPSEEK_API_KEY is not set.", file=sys.stderr)
+        return 2
+
+    base_url = os.environ.get("DEEPSEEK_BASE_URL", DEFAULT_BASE_URL).strip() or DEFAULT_BASE_URL
+    project_root = Path.cwd()
+
+    try:
+        report, findings = verify_engine.run(
+            project_root=project_root,
+            api_key=api_key,
+            base_url=base_url,
+            model=args.model,
+            prompt_path=args.prompt,
+            strict=args.strict,
+            temperature=args.temperature,
+            timeout=args.timeout,
+            max_doc_chars=args.max_doc_chars,
+            max_diff_chars=args.max_diff_chars,
+        )
+    except DeepSeekError as e:
+        print(f"ds-verify: {e}", file=sys.stderr)
+        return 3
+    except Exception as e:
+        print(f"ds-verify: unexpected error: {e}", file=sys.stderr)
+        return 4
+
+    # Always print to stdout
+    sys.stdout.write(report)
+    if not report.endswith("\n"):
+        sys.stdout.write("\n")
+
+    # Optionally write to file
+    if args.output:
+        out_path = Path(args.output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(report, encoding="utf-8")
+        print(
+            f"\nds-verify: wrote {out_path} ({len(report)} bytes; "
+            f"model={args.model}{'; strict' if args.strict else ''}; "
+            f"findings={len(findings)})",
+            file=sys.stderr,
+        )
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# osbstack — Umbrella dispatcher for the OSBStack capability package.
+#
+# Long form:    osbstack <subcommand> [args...]
+# Short forms:  osb-init, osb-context, ds-review, ds-verify, osb-runtime,
+#               osb-loop, osb-agent-brief, osb-task, osb-run,
+#               osb-architecture-sync, osb-release-check
+# Both forms invoke the same underlying scripts. This dispatcher just maps
+# subcommand → script path so users don't have to remember 11 binary names.
+
+set -u
+
+OSBSTACK_VERSION="0.7.0-p11"
+CAP_ROOT="$HOME/.osborn/capabilities"
+
+usage() {
+  cat <<EOF
+Usage: osbstack <subcommand> [args...]
+
+Subcommands:
+  init                 Initialize OSBORN project skeleton (osb-init).
+  context              Refresh .agent/PROJECT_CONTEXT.md (osb-context).
+  task <args>          Structured task management (osb-task).
+  review               DeepSeek code review (ds-review).
+  verify               DeepSeek alignment verification (ds-verify).
+  runtime              Launch / attach Zellij runtime (osb-runtime).
+  loop                 Run review/verify loop (osb-loop).
+  brief                Generate agent handoff brief (osb-agent-brief).
+  run                  Pre/post-execution helper (osb-run).
+  architecture sync    Verify diagrams ↔ docs sync (osb-architecture-sync).
+  release-check        Pre-release gate (osb-release-check).
+
+  list                 List all OSBStack subcommands and resolved paths.
+  version              Print OSBStack version.
+  help                 Show this message.
+
+All subcommand args are forwarded verbatim. Examples:
+  osbstack init --type webapp --complexity standard
+  osbstack task add "Implement login page"
+  osbstack loop --strict --output reports/osb-loop/latest.md
+  osbstack brief --for ccb --write
+EOF
+}
+
+print_list() {
+  cat <<EOF
+OSBStack subcommands and underlying scripts:
+
+  init                 → $CAP_ROOT/osb-project/bin/osb-init
+  context              → $CAP_ROOT/osb-project/bin/osb-context
+  task                 → $CAP_ROOT/task/bin/osb-task
+  review               → $CAP_ROOT/deepseek/bin/ds-review
+  verify               → $CAP_ROOT/deepseek/bin/ds-verify
+  runtime              → $CAP_ROOT/runtime/bin/osb-runtime
+  loop                 → $CAP_ROOT/runtime/bin/osb-loop
+  brief                → $CAP_ROOT/runtime/bin/osb-agent-brief
+  run                  → $CAP_ROOT/workflow/bin/osb-run
+  architecture sync    → $CAP_ROOT/workflow/bin/osb-architecture-sync
+  release-check        → $CAP_ROOT/workflow/bin/osb-release-check
+EOF
+}
+
+dispatch() {
+  local target="$1"; shift
+  if [[ ! -x "$target" ]]; then
+    echo "osbstack: target not found or not executable: $target" >&2
+    exit 3
+  fi
+  exec "$target" "$@"
+}
+
+if [[ $# -eq 0 ]]; then
+  usage
+  exit 0
+fi
+
+cmd="$1"; shift || true
+
+case "$cmd" in
+  -h|--help|help)
+    usage; exit 0 ;;
+  -V|--version|version)
+    echo "osbstack $OSBSTACK_VERSION"; exit 0 ;;
+  list)
+    print_list; exit 0 ;;
+
+  init)             dispatch "$CAP_ROOT/osb-project/bin/osb-init" "$@" ;;
+  context)          dispatch "$CAP_ROOT/osb-project/bin/osb-context" "$@" ;;
+  task)             dispatch "$CAP_ROOT/task/bin/osb-task" "$@" ;;
+  review)           dispatch "$CAP_ROOT/deepseek/bin/ds-review" "$@" ;;
+  verify)           dispatch "$CAP_ROOT/deepseek/bin/ds-verify" "$@" ;;
+  runtime)          dispatch "$CAP_ROOT/runtime/bin/osb-runtime" "$@" ;;
+  loop)             dispatch "$CAP_ROOT/runtime/bin/osb-loop" "$@" ;;
+  brief)            dispatch "$CAP_ROOT/runtime/bin/osb-agent-brief" "$@" ;;
+  run)              dispatch "$CAP_ROOT/workflow/bin/osb-run" "$@" ;;
+  release-check)    dispatch "$CAP_ROOT/workflow/bin/osb-release-check" "$@" ;;
+
+  architecture)
+    sub="${1:-}"
+    if [[ "$sub" == "sync" ]]; then
+      shift
+      dispatch "$CAP_ROOT/workflow/bin/osb-architecture-sync" "$@"
+    else
+      echo "osbstack: 'architecture' requires a subcommand (only 'sync' is implemented)" >&2
+      exit 2
+    fi ;;
+
+  *)
+    echo "osbstack: unknown subcommand: $cmd" >&2
+    echo "Try: osbstack help" >&2
+    exit 2 ;;
+esac

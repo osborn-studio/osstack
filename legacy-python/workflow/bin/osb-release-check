@@ -1,0 +1,305 @@
+#!/usr/bin/env python3
+"""
+osb-release-check — Pre-release gate.
+
+Deterministic, no LLM. Inspects the project for the minimum signals
+needed before shipping:
+  - tests present (heuristic)
+  - build script present
+  - changelog has real entries
+  - reviews/ds-review/latest.md exists and PASS
+  - reviews/ds-verify/latest.md exists and PASS
+  - acceptance criteria not TODO-only
+  - risk register exists, not TODO-only
+  - deployment doc exists, not TODO-only
+  - rollback plan mentioned somewhere
+  - working tree clean (or only allowed paths dirty)
+
+Emits a GO / NO-GO Markdown report. Exit 0 only when GO.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+CHANGELOG_REL    = "docs/15_CHANGELOG.md"
+ACCEPTANCE_REL   = "docs/16_ACCEPTANCE_CRITERIA.md"
+DEPLOYMENT_REL   = "docs/17_DEPLOYMENT_AND_RELEASE.md"
+RISK_REL         = "docs/19_RISK_REGISTER.md"
+
+REVIEW_OUT  = "reviews/ds-review/latest.md"
+VERIFY_OUT  = "reviews/ds-verify/latest.md"
+
+
+def read_text(p):
+    try:
+        return p.read_text(encoding="utf-8", errors="replace") if p.is_file() else None
+    except Exception:
+        return None
+
+
+def is_todo_only(text):
+    if not text:
+        return True
+    for raw in text.splitlines():
+        s = raw.strip()
+        if not s or s.startswith("#") or s.startswith("<!--"):
+            continue
+        if s.upper() == "TODO":
+            continue
+        return False
+    return True
+
+
+def detect_tests(root):
+    if any(root.glob("**/test_*.py")):  return True
+    if any(root.glob("**/*_test.py")):  return True
+    if any(root.glob("**/*.test.ts")):  return True
+    if any(root.glob("**/*.test.js")):  return True
+    if any(root.glob("**/*.spec.ts")):  return True
+    if any(root.glob("**/*.spec.js")):  return True
+    if (root / "tests").is_dir():       return True
+    if (root / "test").is_dir():        return True
+    return False
+
+
+def detect_build_script(root):
+    """Heuristic: package.json has scripts.build, or Makefile has 'build:', etc."""
+    pkg = root / "package.json"
+    if pkg.is_file():
+        text = read_text(pkg) or ""
+        if re.search(r'"build"\s*:', text):
+            return "package.json scripts.build"
+    pyproj = root / "pyproject.toml"
+    if pyproj.is_file():
+        return "pyproject.toml present"
+    cargo = root / "Cargo.toml"
+    if cargo.is_file():
+        return "Cargo.toml present"
+    mk = root / "Makefile"
+    if mk.is_file():
+        text = read_text(mk) or ""
+        if re.search(r"^build\s*:", text, re.M):
+            return "Makefile build target"
+    gomod = root / "go.mod"
+    if gomod.is_file():
+        return "go.mod present"
+    return None
+
+
+def changelog_has_real_entries(text):
+    if not text:
+        return False
+    for raw in text.splitlines():
+        s = raw.strip()
+        if s.startswith("-") and "Initialized project structure" not in s and s.strip() != "- TODO":
+            return True
+    return False
+
+
+def review_passed(text):
+    """A review file 'passes' if its `## Pass / Fail` section says PASS."""
+    if not text:
+        return False
+    in_section = False
+    for raw in text.splitlines():
+        s = raw.strip()
+        if s.lower().startswith("## pass"):
+            in_section = True
+            continue
+        if in_section:
+            if s.startswith("#"):
+                break
+            if s.upper() == "PASS":
+                return True
+            if s.upper() == "FAIL":
+                return False
+    return False
+
+
+def git_clean_or_only_allowed_dirty(root, allowed_prefixes):
+    try:
+        r = subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            cwd=str(root), capture_output=True, text=True, timeout=5,
+        )
+        if r.returncode != 0:
+            return None, "not a git repository"
+    except Exception:
+        return None, "git unavailable"
+    try:
+        r = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=str(root), capture_output=True, text=True, timeout=5,
+        )
+        if r.returncode != 0:
+            return None, "git status failed"
+    except Exception as e:
+        return None, f"git status error: {e}"
+    lines = [ln.rstrip() for ln in r.stdout.splitlines() if ln.strip()]
+    if not lines:
+        return True, "clean"
+    bad = []
+    for ln in lines:
+        path = ln[3:] if len(ln) > 3 else ln
+        if not any(path.startswith(p) for p in allowed_prefixes):
+            bad.append(ln)
+    if not bad:
+        return True, f"only allowed paths dirty ({len(lines)} entries)"
+    return False, f"{len(bad)} unexpected dirty path(s); first: {bad[0]!r}"
+
+
+def mentions_rollback(root):
+    candidates = [root / "tasks" / "CURRENT_SPRINT.md", root / DEPLOYMENT_REL, root / RISK_REL]
+    for p in candidates:
+        text = read_text(p)
+        if text and re.search(r"rollback", text, re.I):
+            return str(p.relative_to(root))
+    return None
+
+
+def check_all(root):
+    findings = []  # list of (status, label, detail) where status in PASS/WARN/FAIL
+
+    # Tests
+    if detect_tests(root):
+        findings.append(("PASS", "tests present", "test files detected"))
+    else:
+        findings.append(("FAIL", "tests present", "no test files detected"))
+
+    # Build
+    bs = detect_build_script(root)
+    findings.append(("PASS" if bs else "WARN", "build target",
+                     bs or "no recognizable build configuration"))
+
+    # Changelog
+    cl_text = read_text(root / CHANGELOG_REL)
+    if not cl_text:
+        findings.append(("FAIL", "changelog", f"missing: {CHANGELOG_REL}"))
+    elif not changelog_has_real_entries(cl_text):
+        findings.append(("FAIL", "changelog",
+                         "only contains the auto-init placeholder — no real entries"))
+    else:
+        findings.append(("PASS", "changelog", "has real entries"))
+
+    # Review
+    rv_text = read_text(root / REVIEW_OUT)
+    if rv_text is None:
+        findings.append(("FAIL", "ds-review run", f"missing: {REVIEW_OUT} (run `osb-loop` or `ds-review`)"))
+    elif review_passed(rv_text):
+        findings.append(("PASS", "ds-review verdict", f"PASS in {REVIEW_OUT}"))
+    else:
+        findings.append(("FAIL", "ds-review verdict", f"FAIL or unparseable in {REVIEW_OUT}"))
+
+    # Verify
+    vf_text = read_text(root / VERIFY_OUT)
+    if vf_text is None:
+        findings.append(("FAIL", "ds-verify run", f"missing: {VERIFY_OUT} (run `osb-loop` or `ds-verify`)"))
+    elif review_passed(vf_text):
+        findings.append(("PASS", "ds-verify verdict", f"PASS in {VERIFY_OUT}"))
+    else:
+        findings.append(("FAIL", "ds-verify verdict", f"FAIL or unparseable in {VERIFY_OUT}"))
+
+    # Acceptance Criteria
+    ac_text = read_text(root / ACCEPTANCE_REL)
+    if ac_text is None:
+        findings.append(("FAIL", "acceptance criteria", f"missing: {ACCEPTANCE_REL}"))
+    elif is_todo_only(ac_text):
+        findings.append(("FAIL", "acceptance criteria", "TODO-only stub"))
+    else:
+        findings.append(("PASS", "acceptance criteria", "has real content"))
+
+    # Risk register
+    rr_text = read_text(root / RISK_REL)
+    if rr_text is None:
+        findings.append(("WARN", "risk register", f"missing: {RISK_REL}"))
+    elif is_todo_only(rr_text):
+        findings.append(("WARN", "risk register", "TODO-only stub"))
+    else:
+        findings.append(("PASS", "risk register", "has real content"))
+
+    # Deployment doc
+    dd_text = read_text(root / DEPLOYMENT_REL)
+    if dd_text is None:
+        findings.append(("FAIL", "deployment doc", f"missing: {DEPLOYMENT_REL}"))
+    elif is_todo_only(dd_text):
+        findings.append(("FAIL", "deployment doc", "TODO-only stub"))
+    else:
+        findings.append(("PASS", "deployment doc", "has real content"))
+
+    # Rollback mention
+    rb = mentions_rollback(root)
+    if rb:
+        findings.append(("PASS", "rollback plan", f"mentioned in {rb}"))
+    else:
+        findings.append(("FAIL", "rollback plan",
+                         "no 'rollback' keyword in CURRENT_SPRINT/deployment/risk docs"))
+
+    # Git working tree
+    allowed = ("reviews/", "reports/", ".agent/PROJECT_CONTEXT.md", ".agent/AGENT_BRIEF.md", "docs/15_CHANGELOG.md")
+    ok, detail = git_clean_or_only_allowed_dirty(root, allowed)
+    if ok is None:
+        findings.append(("WARN", "git working tree", detail))
+    elif ok:
+        findings.append(("PASS", "git working tree", detail))
+    else:
+        findings.append(("FAIL", "git working tree", detail))
+
+    return findings
+
+
+def render(findings):
+    n_fail = sum(1 for s, *_ in findings if s == "FAIL")
+    n_warn = sum(1 for s, *_ in findings if s == "WARN")
+    verdict = "GO" if n_fail == 0 else "NO-GO"
+
+    out = ["# Release Check Report", ""]
+    out.append("## Verdict")
+    out.append(f"- **{verdict}**  ({n_fail} FAIL, {n_warn} WARN)")
+    out.append("")
+    out.append("## Checks")
+    out.append("| Status | Check | Detail |")
+    out.append("|---|---|---|")
+    for status, label, detail in findings:
+        out.append(f"| {status} | {label} | {detail} |")
+    out.append("")
+    out.append("## Human Gate")
+    out.append("Even with GO, the following still require explicit human sign-off:")
+    out.append("- deployment approval")
+    out.append("- final acceptance")
+    out.append("- major trade-off acceptance")
+    return "\n".join(out).rstrip() + "\n", verdict
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        prog="osb-release-check",
+        description="Pre-release gate (deterministic). Exit 0 only when GO.",
+    )
+    parser.add_argument("--output", "-o", help="Also write the report to PATH.")
+    args = parser.parse_args(argv)
+
+    root = Path.cwd()
+    try:
+        findings = check_all(root)
+        report, verdict = render(findings)
+    except Exception as e:
+        print(f"osb-release-check: unexpected error: {e}", file=sys.stderr)
+        return 1
+
+    sys.stdout.write(report)
+    if args.output:
+        target = Path(args.output)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(report, encoding="utf-8")
+        print(f"\n(report also written to {target})", file=sys.stderr)
+
+    return 0 if verdict == "GO" else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

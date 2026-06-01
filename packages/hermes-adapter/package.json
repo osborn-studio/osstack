@@ -1,0 +1,24 @@
+{
+  "name": "@osstack/hermes-adapter",
+  "version": "0.0.0",
+  "description": "Hermes Run Adapter Contract implementation \u2014 13 event families, 7 control types, 11 status FSM, Last-Event-ID replay.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@osstack/core": "workspace:*",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0"
+  }
+}

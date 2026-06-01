@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ai.osstack.daemon — launchd plist template.
+  Rendered by launchd/install.sh; do not load this template directly.
+
+  Placeholders (substituted at install time):
+    {{NODE_BIN}}    absolute path to the Node 20+ binary
+    {{OSSTACK_JS}}  absolute path to @osstack/cli's dist/bin.js
+    {{OSSTACK_HOME}} default ~/.osstack
+    {{HERMES_HOME}}  default ~/.hermes
+    {{PATH}}         PATH the daemon should inherit
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ai.osstack.daemon</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>{{NODE_BIN}}</string>
+    <string>{{OSSTACK_JS}}</string>
+    <string>serve</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>OSSTACK_HOME</key>
+    <string>{{OSSTACK_HOME}}</string>
+    <key>HERMES_HOME</key>
+    <string>{{HERMES_HOME}}</string>
+    <key>PATH</key>
+    <string>{{PATH}}</string>
+  </dict>
+
+  <key>WorkingDirectory</key>
+  <string>{{OSSTACK_HOME}}</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <!-- Restart on crash (non-zero exit). Don't restart after a clean SIGTERM. -->
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+
+  <!-- Avoid tight respawn loops if the daemon keeps crashing on start. -->
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+
+  <key>StandardOutPath</key>
+  <string>{{OSSTACK_HOME}}/logs/daemon.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>{{OSSTACK_HOME}}/logs/daemon.error.log</string>
+</dict>
+</plist>

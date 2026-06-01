@@ -1,0 +1,41 @@
+// OSBORN aimate — Zellij runtime layout
+// Five tabs covering the OSBORN dev → review → verify → build → monitor loop.
+// Each tab prints a banner, then drops into the user's interactive shell.
+// No agents are auto-launched. No deploys are auto-run.
+
+layout {
+    tab name="1-dev" focus=true {
+        pane {
+            command "bash"
+            args "-c" "echo '── DEV TAB ──'; echo 'Run CCB / coding agent here.'; echo 'Useful: osb-context, osb-init.'; echo; exec \"${SHELL:-/bin/zsh}\" -i"
+        }
+    }
+
+    tab name="2-review" {
+        pane {
+            command "bash"
+            args "-c" "echo '── REVIEW TAB ──'; echo 'Pipeline: git diff | ds-review'; echo 'Or: ds-review --file diff.patch --output reviews/ds-review/latest.md'; echo; exec \"${SHELL:-/bin/zsh}\" -i"
+        }
+    }
+
+    tab name="3-verify" {
+        pane {
+            command "bash"
+            args "-c" "echo '── VERIFY TAB ──'; echo 'Run: ds-verify  (alignment of PRD/architecture/sprint vs implementation)'; echo 'Or: ds-verify --strict --output reviews/ds-verify/latest.md'; echo; exec \"${SHELL:-/bin/zsh}\" -i"
+        }
+    }
+
+    tab name="4-test-build-deploy" {
+        pane {
+            command "bash"
+            args "-c" "echo '── TEST/BUILD/DEPLOY TAB ──'; echo 'Use npm test / pytest / cargo test, npm run build, deploy commands here.'; echo 'Nothing is auto-run — run deploys deliberately.'; echo; exec \"${SHELL:-/bin/zsh}\" -i"
+        }
+    }
+
+    tab name="5-monitor" {
+        pane {
+            command "bash"
+            args "-c" "echo '── MONITOR TAB ──'; (git status 2>/dev/null || echo '(not a git repo)'); echo; echo 'Suggested: git status, tail -f <log>, btop (if installed), htop'; if command -v btop >/dev/null 2>&1; then echo 'btop is available.'; else echo 'btop not installed. Install with: brew install btop'; fi; echo; exec \"${SHELL:-/bin/zsh}\" -i"
+        }
+    }
+}

@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# osb-runtime — Launch or attach to the OSBORN aimate Zellij session.
+# Part of the OSBORN Capability Layer (~/.osborn/capabilities/runtime).
+#
+# Zellij is the persistent runtime workspace, NOT an agent.
+# This script does no AI work, no patching, no deploys.
+
+set -euo pipefail
+
+DEFAULT_SESSION="aimate"
+DEFAULT_LAYOUT="$HOME/.osborn/capabilities/runtime/layouts/aimate.kdl"
+
+SESSION="$DEFAULT_SESSION"
+LAYOUT="$DEFAULT_LAYOUT"
+
+usage() {
+  cat <<EOF
+Usage: osb-runtime [--session NAME] [--layout PATH] [--help]
+
+Launches or attaches to a persistent Zellij session for OSBORN-style work.
+The default session 'aimate' has 5 tabs:
+
+  1-dev                 CCB / coding agent
+  2-review              git diff | ds-review
+  3-verify              ds-verify alignment check
+  4-test-build-deploy   npm test / build / deploy (no auto-run)
+  5-monitor             git status / logs / btop
+
+Options:
+  --session NAME        Zellij session name (default: $DEFAULT_SESSION)
+  --layout PATH         Layout file path (default: $DEFAULT_LAYOUT)
+  -h, --help            Show this help
+
+Behavior:
+  * If '<session>' already exists, attach to it.
+  * Otherwise, create it with the layout.
+
+Detach with Ctrl+o then d. Kill the session with: zellij kill-session <name>.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --session)
+      [[ $# -ge 2 ]] || { echo "osb-runtime: --session requires a value" >&2; exit 2; }
+      SESSION="$2"; shift 2 ;;
+    --layout)
+      [[ $# -ge 2 ]] || { echo "osb-runtime: --layout requires a value" >&2; exit 2; }
+      LAYOUT="$2"; shift 2 ;;
+    -h|--help)
+      usage; exit 0 ;;
+    *)
+      echo "osb-runtime: unknown argument: $1" >&2
+      usage >&2
+      exit 2 ;;
+  esac
+done
+
+# 1. Verify Zellij is installed.
+if ! command -v zellij >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+ERROR: zellij is not installed.
+
+Install with Homebrew:
+  brew install zellij
+
+Or see https://zellij.dev/documentation/installation for other methods.
+
+Then re-run:
+  osb-runtime
+EOF
+  exit 127
+fi
+
+# 2. Verify layout file is present.
+if [[ ! -f "$LAYOUT" ]]; then
+  echo "osb-runtime: layout file not found: $LAYOUT" >&2
+  echo "  expected at the default location, or pass --layout PATH" >&2
+  exit 2
+fi
+
+# 3. Check whether the session already exists.
+#    Some zellij versions decorate output with ANSI; strip with sed before matching.
+existing="$(zellij list-sessions -s 2>/dev/null || true)"
+existing="$(printf '%s\n' "$existing" | sed -E 's/\x1B\[[0-9;]*[A-Za-z]//g')"
+
+if printf '%s\n' "$existing" | grep -qFx "$SESSION"; then
+  echo "osb-runtime: attaching to existing session '$SESSION'…"
+  exec zellij attach "$SESSION"
+fi
+
+echo "osb-runtime: creating session '$SESSION' with layout $LAYOUT"
+exec zellij --session "$SESSION" --layout "$LAYOUT"

@@ -1,0 +1,41 @@
+// @osstack/agents — sub-agent adapter library.
+//
+// S1.5 ships claude-code (via @anthropic-ai/claude-agent-sdk).
+// S2 adds codex-cli (via headless `codex exec --json` subprocess).
+// + AutoResearchAdapter (karpathy/autoresearch single-GPU ML loop).
+// + ClaudeDesignAdapter / GoogleStitchAdapter (Osstack "design" role).
+
+import type { AgentAdapter } from "./base.js";
+import { ClaudeCodeAdapter } from "./adapters/claude-code.js";
+import { CodexCliAdapter } from "./adapters/codex-cli.js";
+import { AutoResearchAdapter } from "./adapters/autoresearch.js";
+import { ClaudeDesignAdapter } from "./adapters/claude-design.js";
+import { GoogleStitchAdapter } from "./adapters/google-stitch.js";
+
+export * from "./base.js";
+export { ClaudeCodeAdapter } from "./adapters/claude-code.js";
+export { CodexCliAdapter } from "./adapters/codex-cli.js";
+export { ClaudeDesignAdapter } from "./adapters/claude-design.js";
+export { GoogleStitchAdapter } from "./adapters/google-stitch.js";
+export {
+  AutoResearchAdapter, parseTrainLog,
+  type AutoResearchConfig, type TrainResult,
+  type ProposeContext, type ProposeResult, type ProposeFn, type TrainFn, type GitFn,
+} from "./adapters/autoresearch.js";
+
+/**
+ * The default adapter registry shared by the daemon and the `osstack config` CLI.
+ * Single source of truth for "which agents exist". Each adapter's
+ * isAvailable() decides whether it's actually usable on this machine.
+ */
+export function defaultAdapters(): AgentAdapter[] {
+  return [
+    new ClaudeCodeAdapter(),
+    new CodexCliAdapter(),
+    new AutoResearchAdapter(),
+    new ClaudeDesignAdapter(),
+    new GoogleStitchAdapter(),
+  ];
+}
+
+export const AGENTS_VERSION = "0.0.0";

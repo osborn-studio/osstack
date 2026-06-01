@@ -1,0 +1,284 @@
+#!/usr/bin/env python3
+"""
+ds-review — DeepSeek code review for git diffs.
+
+Part of the OSBORN Capability Layer (~/.osborn/capabilities/deepseek).
+Adapted from concepts in hustcer/deepseek-review (Nushell upstream).
+Stdlib only.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+# ----------------------------------------------------------------------
+# Defaults
+# ----------------------------------------------------------------------
+DEFAULT_MODEL = "deepseek-reasoner"
+DEFAULT_BASE_URL = "https://api.deepseek.com"
+DEFAULT_TEMPERATURE = 0.3
+DEFAULT_MAX_INPUT_CHARS = 80_000
+DEFAULT_TIMEOUT = 600  # reasoner can take a while
+
+HERE = Path(__file__).resolve().parent
+CAPABILITY_ROOT = HERE.parent
+DEFAULT_PROMPT_PATH = CAPABILITY_ROOT / "prompts" / "review.md"
+
+STRICT_APPEND = (
+    "\n\n--- ADDITIONAL CONSTRAINT (strict mode) ---\n"
+    "Use a stricter standard. Mark FAIL if there are missing tests, "
+    "risky architecture changes, or unexplained behavior changes."
+)
+
+REQUIRED_HEADINGS = (
+    "# DS Review Report",
+    "## Summary",
+    "## Findings",
+    "## Pass / Fail",
+)
+
+# ----------------------------------------------------------------------
+# Helpers
+# ----------------------------------------------------------------------
+
+def err(msg, code=2):
+    print(msg, file=sys.stderr)
+    sys.exit(code)
+
+
+def read_stdin_if_piped():
+    if sys.stdin.isatty():
+        return ""
+    try:
+        return sys.stdin.read()
+    except Exception:
+        return ""
+
+
+def fallback_git_diff():
+    try:
+        r = subprocess.run(
+            ["git", "diff"],
+            capture_output=True, text=True, timeout=20,
+        )
+        if r.returncode == 0:
+            return r.stdout
+    except Exception:
+        pass
+    return ""
+
+
+def load_system_prompt(strict, prompt_path):
+    try:
+        prompt = prompt_path.read_text(encoding="utf-8")
+    except Exception:
+        prompt = (
+            "You are a strict senior code reviewer. Review the provided git diff. "
+            "Return structured Markdown using the OSBORN DS Review Report format:\n"
+            "# DS Review Report\n## Summary\n## Severity\n## Findings\n"
+            "## Recommended Actions\n## Pass / Fail\n"
+        )
+    if strict:
+        prompt = prompt.rstrip() + STRICT_APPEND
+    return prompt
+
+
+def call_deepseek(api_key, base_url, model, system_prompt, user_content, temperature, timeout):
+    url = base_url.rstrip("/") + "/chat/completions"
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ],
+        "temperature": temperature,
+        "stream": False,
+    }
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "User-Agent": "ds-review/1.0 (osborn-capability)",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        body_text = ""
+        try:
+            body_text = e.read().decode("utf-8", errors="replace")
+        except Exception:
+            pass
+        err(f"ds-review: HTTP {e.code} from {url}\n{body_text[:1000]}", code=3)
+    except urllib.error.URLError as e:
+        err(f"ds-review: network error contacting {url}: {e.reason}", code=3)
+    except Exception as e:
+        err(f"ds-review: unexpected request error: {e}", code=3)
+
+    try:
+        parsed = json.loads(data)
+    except json.JSONDecodeError:
+        err(f"ds-review: non-JSON response from API:\n{data[:500]}", code=3)
+
+    try:
+        content = parsed["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError):
+        err(f"ds-review: unexpected API response shape:\n{data[:500]}", code=3)
+
+    if not isinstance(content, str) or not content.strip():
+        err("ds-review: empty content in API response", code=3)
+    return content
+
+
+def normalize_output(content):
+    """If model returned the right headings, pass through. Otherwise wrap raw."""
+    if all(h in content for h in REQUIRED_HEADINGS):
+        return content.rstrip() + "\n"
+    return (
+        "# DS Review Report\n"
+        "## Summary\n"
+        "_Upstream model did not return the expected OSBORN format. "
+        "Original review preserved below._\n\n"
+        "## Severity\n"
+        "- Critical:\n- High:\n- Medium:\n- Low:\n\n"
+        "## Findings\n"
+        "_(see Raw Upstream Review)_\n\n"
+        "## Recommended Actions\n"
+        "1. Manually review the upstream output below.\n\n"
+        "## Pass / Fail\n"
+        "FAIL\n\n"
+        "## Raw Upstream Review\n"
+        + content.rstrip() + "\n"
+    )
+
+
+# ----------------------------------------------------------------------
+# Main
+# ----------------------------------------------------------------------
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        prog="ds-review",
+        description="DeepSeek code review for git diffs (OSBORN capability).",
+    )
+    parser.add_argument("--file", "-f", help="Read diff from file instead of stdin/git diff.")
+    parser.add_argument("--strict", action="store_true", help="Apply stricter judgment.")
+    parser.add_argument("--output", "-o", help="Write report to file instead of stdout.")
+    parser.add_argument("--model", "-m",
+                        default=os.environ.get("DEEPSEEK_MODEL", DEFAULT_MODEL),
+                        help=f"Model name (default: {DEFAULT_MODEL}, or $DEEPSEEK_MODEL).")
+    parser.add_argument("--max-length", type=int, default=DEFAULT_MAX_INPUT_CHARS,
+                        help=f"Max input characters before truncation (default: {DEFAULT_MAX_INPUT_CHARS}; 0 = no limit).")
+    parser.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE,
+                        help=f"Sampling temperature (default: {DEFAULT_TEMPERATURE}).")
+    parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT,
+                        help=f"HTTP timeout in seconds (default: {DEFAULT_TIMEOUT}).")
+    parser.add_argument("--prompt", default=str(DEFAULT_PROMPT_PATH),
+                        help="Path to system prompt file.")
+    args = parser.parse_args(argv)
+
+    # 1. Resolve diff input  (priority: --file > stdin > git diff)
+    diff_text = ""
+    source = ""
+    if args.file:
+        try:
+            diff_text = Path(args.file).read_text(encoding="utf-8", errors="replace")
+            source = f"--file {args.file}"
+        except Exception as e:
+            err(f"ds-review: could not read --file {args.file}: {e}", code=2)
+    else:
+        diff_text = read_stdin_if_piped()
+        if diff_text.strip():
+            source = "stdin"
+        else:
+            diff_text = fallback_git_diff()
+            source = "git diff" if diff_text.strip() else ""
+
+    if not diff_text.strip():
+        print("No diff provided and git diff is empty.")
+        return 0
+
+    # 2. Truncate if needed
+    truncated = False
+    original_len = len(diff_text)
+    if args.max_length > 0 and original_len > args.max_length:
+        diff_text = diff_text[: args.max_length]
+        truncated = True
+
+    # 3. Validate API key (after diff resolution so empty-input case exits 0)
+    api_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+    if not api_key:
+        print("ERROR: DEEPSEEK_API_KEY is not set.", file=sys.stderr)
+        return 2
+
+    base_url = os.environ.get("DEEPSEEK_BASE_URL", DEFAULT_BASE_URL).strip() or DEFAULT_BASE_URL
+
+    # 4. Build prompt
+    system_prompt = load_system_prompt(strict=args.strict, prompt_path=Path(args.prompt))
+
+    user_prefix = ""
+    if truncated:
+        user_prefix = (
+            f"> WARNING: Input diff was truncated due to size limit "
+            f"(kept {args.max_length} of {original_len} chars).\n\n"
+        )
+
+    user_content = (
+        user_prefix
+        + "Please review the following git diff. Respond using EXACTLY the OSBORN "
+          "format from the system prompt.\n\n"
+        + "```diff\n"
+        + diff_text
+        + "\n```\n"
+    )
+
+    # 5. Call API
+    content = call_deepseek(
+        api_key=api_key,
+        base_url=base_url,
+        model=args.model,
+        system_prompt=system_prompt,
+        user_content=user_content,
+        temperature=args.temperature,
+        timeout=args.timeout,
+    )
+
+    # 6. Normalize output
+    output = normalize_output(content)
+    if truncated:
+        output = output.rstrip() + (
+            f"\n\n---\n_Note: input diff was truncated to {args.max_length} chars "
+            f"(original: {original_len}). Re-run on a smaller hunk for full coverage._\n"
+        )
+
+    # 7. Write
+    if args.output:
+        out_path = Path(args.output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(output, encoding="utf-8")
+        print(
+            f"ds-review: wrote {out_path} ({len(output)} bytes; "
+            f"source={source}; model={args.model}{'; strict' if args.strict else ''})"
+        )
+    else:
+        sys.stdout.write(output)
+        if not output.endswith("\n"):
+            sys.stdout.write("\n")
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

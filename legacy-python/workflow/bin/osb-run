@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# osb-run — Semi-automatic execution helper.
+# Pre-flight: refresh context, generate agent brief, print readiness summary.
+# Post-flight (--post): run osb-loop after a manual agent step.
+#
+# Does NOT auto-launch any agent. Reduces setup friction only.
+
+set -u
+
+PERSONA=""
+DO_POST=false
+WRITE_BRIEF=true
+QUIET=false
+
+usage() {
+  cat <<EOF
+Usage: osb-run [--for ccb|codex] [--post] [--no-brief] [--quiet] [-h]
+
+Pre-flight runs:
+  1. osb-context  → refresh .agent/PROJECT_CONTEXT.md
+  2. osb-agent-brief --write [--for PERSONA]  → write .agent/AGENT_BRIEF.md
+  3. Print a one-screen readiness summary; exit so the human can launch
+     their agent (CCB / Codex / Claude Code) deliberately.
+
+Post-flight (--post):
+  Runs osb-loop instead. Use after the agent has finished its turn.
+
+Options:
+  --for ccb|codex    Persona for the brief.
+  --post             Run osb-loop instead of pre-flight.
+  --no-brief         Skip the brief generation (still runs osb-context).
+  --quiet            Suppress the readiness summary.
+  -h, --help         Show this help.
+
+osb-run never launches an agent and never modifies source code.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --for)
+      [[ $# -ge 2 ]] || { echo "osb-run: --for requires a value" >&2; exit 2; }
+      PERSONA="$2"; shift 2 ;;
+    --post)     DO_POST=true; shift ;;
+    --no-brief) WRITE_BRIEF=false; shift ;;
+    --quiet)    QUIET=true; shift ;;
+    -h|--help)  usage; exit 0 ;;
+    *) echo "osb-run: unknown argument: $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+
+resolve() {
+  local name="$1" fallback="$2"
+  if command -v "$name" >/dev/null 2>&1; then
+    command -v "$name"
+  elif [[ -x "$fallback" ]]; then
+    echo "$fallback"
+  else
+    echo ""
+  fi
+}
+
+OSB_CONTEXT="$(resolve osb-context        "$HOME/.osborn/capabilities/osb-project/bin/osb-context")"
+OSB_BRIEF="$(resolve   osb-agent-brief    "$HOME/.osborn/capabilities/runtime/bin/osb-agent-brief")"
+OSB_LOOP="$(resolve    osb-loop           "$HOME/.osborn/capabilities/runtime/bin/osb-loop")"
+
+# ---------------- POST mode ----------------
+if $DO_POST; then
+  if [[ -z "$OSB_LOOP" ]]; then
+    echo "osb-run: osb-loop not found." >&2
+    exit 3
+  fi
+  exec "$OSB_LOOP"
+fi
+
+# ---------------- PRE-FLIGHT ----------------
+ctx_status="SKIPPED"
+brief_status="SKIPPED"
+brief_path=""
+
+if [[ -n "$OSB_CONTEXT" ]]; then
+  if "$OSB_CONTEXT" >/dev/null 2>&1; then
+    ctx_status="PASS"
+  else
+    ctx_status="FAIL"
+  fi
+fi
+
+if $WRITE_BRIEF && [[ -n "$OSB_BRIEF" ]]; then
+  brief_args=(--write)
+  if [[ -n "$PERSONA" ]]; then
+    brief_args+=(--for "$PERSONA")
+  fi
+  if "$OSB_BRIEF" "${brief_args[@]}" >/dev/null 2>&1; then
+    brief_status="PASS"
+    brief_path=".agent/AGENT_BRIEF.md"
+  else
+    brief_status="FAIL"
+  fi
+fi
+
+if ! $QUIET; then
+  cat <<EOF
+# osb-run readiness
+- context: $ctx_status
+- brief:   $brief_status${PERSONA:+ (for $PERSONA)}
+${brief_path:+- brief file: \`$brief_path\`}
+
+Now launch your agent (CCB, Codex, Claude Code, …) deliberately.
+When the agent has finished, run:
+
+    osb-run --post
+
+…or invoke \`osb-loop\` directly. osb-run never starts agents on your behalf.
+EOF
+fi
+
+# Exit non-zero only if both helpers failed (so automation can detect a
+# real problem) — graceful otherwise.
+if [[ "$ctx_status" == "FAIL" && "$brief_status" == "FAIL" ]]; then
+  exit 1
+fi
+exit 0

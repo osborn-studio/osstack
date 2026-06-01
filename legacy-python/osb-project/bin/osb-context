@@ -1,0 +1,557 @@
+#!/usr/bin/env python3
+"""
+osb-context — Generate or refresh .agent/PROJECT_CONTEXT.md from project docs.
+
+Part of the OSBORN Capability Layer (~/.osborn/capabilities/osb-project).
+Local, deterministic, no external API calls. Stdlib only.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+
+# ----------------------------------------------------------------------
+# Configuration
+# ----------------------------------------------------------------------
+
+SOURCES = {
+    "vision":     "docs/01_VISION.md",
+    "prd":        "docs/02_PRD.md",
+    "arch":       "docs/04_SYSTEM_ARCHITECTURE.md",
+    "tasks_doc":  "docs/10_TASK_BREAKDOWN.md",
+    "changelog":  "docs/15_CHANGELOG.md",
+    "acceptance": "docs/16_ACCEPTANCE_CRITERIA.md",
+    "tasks":      "tasks/TASKS.md",
+    "milestones": "tasks/MILESTONES.md",
+    "sprint":     "tasks/CURRENT_SPRINT.md",
+    "agents":     "AGENTS.md",
+    "ccb":        ".agent/CCB_PROTOCOL.md",
+}
+
+ISSUE_TERMS = ("TODO", "FIXME", "BLOCKER", "RISK", "BUG", "ISSUE")
+ISSUE_RE = re.compile(r"\b(" + "|".join(ISSUE_TERMS) + r")\b", re.IGNORECASE)
+
+OUTPUT_REL = ".agent/PROJECT_CONTEXT.md"
+
+
+# ----------------------------------------------------------------------
+# I/O helpers
+# ----------------------------------------------------------------------
+
+def read_file(path: Path):
+    try:
+        if path.is_file():
+            return path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return None
+    return None
+
+
+def lines_of(text):
+    return text.splitlines() if text else []
+
+
+# ----------------------------------------------------------------------
+# Markdown helpers
+# ----------------------------------------------------------------------
+
+HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
+
+
+def parse_heading(line):
+    m = HEADING_RE.match(line.strip())
+    if not m:
+        return None
+    return len(m.group(1)), m.group(2).strip()
+
+
+def section_summary(text, max_lines):
+    """First N non-empty content lines, skipping the H1 title."""
+    if not text:
+        return []
+    out, seen_h1 = [], False
+    for raw in lines_of(text):
+        s = raw.rstrip()
+        h = parse_heading(s)
+        if h and h[0] == 1 and not seen_h1:
+            seen_h1 = True
+            continue
+        if not s.strip():
+            continue
+        out.append(s)
+        if len(out) >= max_lines:
+            break
+    return out
+
+
+def extract_section(text, heading_title):
+    """Lines under '## <heading_title>' until the next ## or higher-level heading."""
+    if not text:
+        return []
+    out, in_section, target_level = [], False, None
+    target = heading_title.lower()
+    for raw in lines_of(text):
+        h = parse_heading(raw)
+        if h:
+            level, title = h
+            if not in_section:
+                if title.lower() == target:
+                    in_section = True
+                    target_level = level
+                    continue
+            else:
+                if level <= target_level:
+                    break
+                # deeper subheading — keep walking but include it
+                out.append(raw.rstrip())
+                continue
+        if in_section and raw.strip():
+            out.append(raw.rstrip())
+    return out
+
+
+def unchecked_items(text):
+    """Lines like '- [ ] something' (excluding placeholder 'TODO')."""
+    if not text:
+        return []
+    out = []
+    for raw in lines_of(text):
+        s = raw.strip()
+        m = re.match(r"-\s*\[\s*\]\s+(.*)$", s)
+        if m:
+            content = m.group(1).strip()
+            if content and content.upper() != "TODO":
+                out.append(content)
+    return out
+
+
+def has_real_todos(text, threshold):
+    """Count standalone TODO placeholder lines (osb-init template markers)."""
+    if not text:
+        return False
+    n = 0
+    for raw in lines_of(text):
+        s = raw.strip()
+        if s == "TODO":
+            n += 1
+            if n >= threshold:
+                return True
+    return False
+
+
+# ----------------------------------------------------------------------
+# Project scanning
+# ----------------------------------------------------------------------
+
+def find_issues(root, max_lines):
+    """Scan docs/ and tasks/ for TODO/FIXME/BLOCKER/RISK/BUG/ISSUE.
+    Skips bare 'TODO' placeholder lines (too noisy from osb-init templates)."""
+    out = []
+    for sub in ("docs", "tasks"):
+        d = root / sub
+        if not d.is_dir():
+            continue
+        for f in sorted(d.glob("*.md")):
+            try:
+                text = f.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                continue
+            for i, raw in enumerate(text.splitlines(), start=1):
+                s = raw.strip()
+                if not s or s.upper() == "TODO":
+                    continue
+                if ISSUE_RE.search(s):
+                    rel = f.relative_to(root)
+                    out.append(f"- `{rel}:{i}` — {s}")
+                    if len(out) >= max_lines:
+                        return out
+    return out
+
+
+def git_info(root):
+    """Returns (is_repo, branch, status_short_text)."""
+    try:
+        r = subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            cwd=str(root), capture_output=True, text=True, timeout=5,
+        )
+        if r.returncode != 0:
+            return False, "", ""
+    except Exception:
+        return False, "", ""
+
+    branch = ""
+    try:
+        b = subprocess.run(
+            ["git", "branch", "--show-current"],
+            cwd=str(root), capture_output=True, text=True, timeout=5,
+        )
+        if b.returncode == 0:
+            branch = b.stdout.strip()
+    except Exception:
+        pass
+
+    status = ""
+    try:
+        s = subprocess.run(
+            ["git", "status", "--short"],
+            cwd=str(root), capture_output=True, text=True, timeout=5,
+        )
+        if s.returncode == 0:
+            status = s.stdout.rstrip()
+    except Exception:
+        pass
+
+    return True, branch, status
+
+
+def infer_phase(sources, root):
+    sprint = sources.get("sprint") or ""
+    prd = sources.get("prd") or ""
+    arch = sources.get("arch") or ""
+
+    if unchecked_items(sprint):
+        return "implementation"
+    if has_real_todos(prd, 3) or has_real_todos(arch, 3):
+        return "planning"
+    has_pkg = (root / "package.json").exists() or (root / "pyproject.toml").exists()
+    has_tests = any(root.glob("**/test_*.py")) or any(root.glob("**/*.test.*")) or any(root.glob("**/tests/**/*.py"))
+    if has_pkg or has_tests:
+        return "testing"
+    return "planning"
+
+
+# ----------------------------------------------------------------------
+# Section renderers
+# ----------------------------------------------------------------------
+
+def render_block(items, fallback="_(empty)_"):
+    if not items:
+        return fallback
+    return "\n".join(items)
+
+
+def section_project_goal(sources, max_lines):
+    out = []
+    vision = sources.get("vision")
+    prd = sources.get("prd")
+
+    if vision:
+        vs = section_summary(vision, max_lines)
+        if vs:
+            out.append("From `docs/01_VISION.md`:")
+            out.append("")
+            out.extend(vs)
+    else:
+        out.append("TODO / missing source file: docs/01_VISION.md")
+
+    if prd:
+        problem = extract_section(prd, "Problem")
+        if problem:
+            if out:
+                out.append("")
+            out.append("Problem (from `docs/02_PRD.md`):")
+            out.append("")
+            out.extend(problem[:max_lines])
+    else:
+        if out:
+            out.append("")
+        out.append("TODO / missing source file: docs/02_PRD.md")
+
+    return render_block(out)
+
+
+def section_active_sprint(sources, max_lines):
+    sprint = sources.get("sprint")
+    if not sprint:
+        return "TODO / missing source file: tasks/CURRENT_SPRINT.md"
+
+    out = []
+    goal = extract_section(sprint, "Sprint Goal")
+    if goal:
+        out.append("**Sprint Goal:**")
+        out.extend(goal[:max_lines])
+
+    active = unchecked_items(sprint)
+    if active:
+        if out:
+            out.append("")
+        out.append("**Open tasks in sprint:**")
+        for item in active[:max_lines]:
+            out.append(f"- [ ] {item}")
+
+    accept = extract_section(sprint, "Acceptance Criteria")
+    if accept:
+        if out:
+            out.append("")
+        out.append("**Acceptance Criteria:**")
+        out.extend(accept[: max(3, max_lines // 2)])
+
+    return render_block(out, fallback="_(no sprint content yet)_")
+
+
+def section_architecture(sources, max_lines):
+    arch = sources.get("arch")
+    if not arch:
+        return "TODO / missing source file: docs/04_SYSTEM_ARCHITECTURE.md"
+    summary = section_summary(arch, max_lines)
+    if not summary:
+        return "_(architecture doc is empty)_"
+    return "\n".join(summary)
+
+
+def section_task_snapshot(sources, max_lines):
+    out = []
+    tasks_doc = sources.get("tasks_doc")
+    tasks = sources.get("tasks")
+
+    if tasks_doc:
+        s = section_summary(tasks_doc, max_lines)
+        if s:
+            out.append("From `docs/10_TASK_BREAKDOWN.md`:")
+            out.append("")
+            out.extend(s)
+    else:
+        out.append("TODO / missing source file: docs/10_TASK_BREAKDOWN.md")
+
+    if tasks:
+        backlog = extract_section(tasks, "Backlog")
+        in_progress = extract_section(tasks, "In Progress")
+        if backlog or in_progress:
+            if out:
+                out.append("")
+            out.append("From `tasks/TASKS.md`:")
+            if in_progress:
+                out.append("")
+                out.append("**In Progress:**")
+                out.extend(in_progress[: max_lines // 2 or 3])
+            if backlog:
+                out.append("")
+                out.append("**Backlog:**")
+                out.extend(backlog[: max_lines // 2 or 3])
+    else:
+        if out:
+            out.append("")
+        out.append("TODO / missing source file: tasks/TASKS.md")
+
+    return render_block(out)
+
+
+def section_acceptance(sources, max_lines):
+    a = sources.get("acceptance")
+    if not a:
+        return "TODO / missing source file: docs/16_ACCEPTANCE_CRITERIA.md"
+    summary = section_summary(a, max_lines)
+    return "\n".join(summary) if summary else "_(acceptance doc is empty)_"
+
+
+def section_key_files(root, sources):
+    out = []
+    for key, rel in SOURCES.items():
+        path = root / rel
+        marker = "OK " if sources.get(key) else "-- "
+        out.append(f"- {marker}`{rel}`")
+    return "\n".join(out)
+
+
+def section_constraints(sources, max_lines):
+    out = []
+    agents = sources.get("agents")
+    ccb = sources.get("ccb")
+
+    if agents:
+        for hd in ("Project Agent Entry Rules", "Human Gate", "Execution Principle"):
+            sec = extract_section(agents, hd)
+            if sec:
+                out.append(f"**AGENTS.md — {hd}:**")
+                out.extend(sec[:max_lines])
+                out.append("")
+    else:
+        out.append("TODO / missing source file: AGENTS.md")
+        out.append("")
+
+    if ccb:
+        for hd in ("Execution Rules", "Human Interruption Rules"):
+            sec = extract_section(ccb, hd)
+            if sec:
+                out.append(f"**CCB_PROTOCOL.md — {hd}:**")
+                out.extend(sec[:max_lines])
+                out.append("")
+    else:
+        out.append("TODO / missing source file: .agent/CCB_PROTOCOL.md")
+
+    while out and not out[-1].strip():
+        out.pop()
+    return render_block(out)
+
+
+def section_recent_changes(sources, root, max_lines):
+    out = []
+    changelog = sources.get("changelog")
+    if changelog:
+        unreleased = extract_section(changelog, "Unreleased")
+        if unreleased:
+            out.append("**Changelog (Unreleased):**")
+            out.extend(unreleased[:max_lines])
+        else:
+            cs = section_summary(changelog, max_lines)
+            if cs:
+                out.append("**Changelog:**")
+                out.extend(cs)
+    else:
+        out.append("TODO / missing source file: docs/15_CHANGELOG.md")
+
+    is_repo, branch, status = git_info(root)
+    if out:
+        out.append("")
+    if not is_repo:
+        out.append("**Git:** Not a git repository.")
+    else:
+        out.append(f"**Git branch:** `{branch or '(detached)'}`")
+        if status.strip():
+            out.append("")
+            out.append("**`git status --short`:**")
+            out.append("```")
+            for line in status.splitlines()[:max_lines]:
+                out.append(line)
+            out.append("```")
+        else:
+            out.append("**Working tree:** clean")
+
+    return render_block(out)
+
+
+def section_known_issues(root, max_lines):
+    issues = find_issues(root, max_lines)
+    if not issues:
+        return "_(no TODO/FIXME/BLOCKER/RISK/BUG/ISSUE markers found in docs/ or tasks/)_"
+    return "\n".join(issues)
+
+
+def section_next_action(sources, root):
+    sprint = sources.get("sprint") or ""
+    prd = sources.get("prd") or ""
+    arch = sources.get("arch") or ""
+
+    active = unchecked_items(sprint)
+    if active:
+        return f"Work the first unchecked sprint task: **{active[0]}**"
+
+    if has_real_todos(prd, 3) or has_real_todos(arch, 3):
+        return "Complete planning docs: fill out `docs/02_PRD.md` and `docs/04_SYSTEM_ARCHITECTURE.md`."
+
+    is_repo, _, status = git_info(root)
+    if is_repo and status.strip():
+        return "Working tree has uncommitted changes — run tests/build, run `ds-review` on the diff, then commit."
+
+    return "Define the next sprint in `tasks/CURRENT_SPRINT.md` (sprint goal, active tasks, acceptance criteria)."
+
+
+def section_verification_checklist():
+    return "\n".join([
+        "- [ ] Read `.agent/PROJECT_CONTEXT.md`",
+        "- [ ] Confirm current sprint goal",
+        "- [ ] Confirm acceptance criteria",
+        "- [ ] Run available tests/build",
+        "- [ ] Update `docs/15_CHANGELOG.md`",
+        "- [ ] Inspect `git diff`",
+        "- [ ] Run `ds-review` if available",
+        "- [ ] Run `ds-verify` if available",
+        "- [ ] Report blockers only",
+    ])
+
+
+# ----------------------------------------------------------------------
+# Driver
+# ----------------------------------------------------------------------
+
+def build_context(root, brief):
+    sources = {key: read_file(root / path) for key, path in SOURCES.items()}
+
+    section_lines = 5 if brief else 15
+    issue_limit = 5 if brief else 20
+
+    phase = infer_phase(sources, root)
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    mode = "brief" if brief else "standard"
+
+    blocks = [
+        "# PROJECT_CONTEXT.md",
+        f"<!-- Generated by osb-context on {timestamp} (mode: {mode}) -->",
+        "",
+        "## 1. Project Goal",
+        section_project_goal(sources, section_lines),
+        "",
+        "## 2. Current Phase",
+        phase,
+        "",
+        "## 3. Active Sprint",
+        section_active_sprint(sources, section_lines),
+        "",
+        "## 4. Architecture Snapshot",
+        section_architecture(sources, section_lines),
+        "",
+        "## 5. Task Snapshot",
+        section_task_snapshot(sources, section_lines),
+        "",
+        "## 6. Acceptance Criteria Snapshot",
+        section_acceptance(sources, section_lines),
+        "",
+        "## 7. Key Files",
+        section_key_files(root, sources),
+        "",
+        "## 8. Constraints",
+        section_constraints(sources, section_lines),
+        "",
+        "## 9. Recent Changes",
+        section_recent_changes(sources, root, section_lines),
+        "",
+        "## 10. Known Issues / Blockers",
+        section_known_issues(root, issue_limit),
+        "",
+        "## 11. Next Recommended Action",
+        section_next_action(sources, root),
+        "",
+        "## 12. Verification Checklist",
+        section_verification_checklist(),
+        "",
+    ]
+
+    return "\n".join(blocks)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        prog="osb-context",
+        description="Generate or refresh .agent/PROJECT_CONTEXT.md from project docs.",
+    )
+    parser.add_argument("--brief", action="store_true",
+                        help="Generate a shorter context.")
+    parser.add_argument("--refresh", action="store_true",
+                        help="Explicitly overwrite .agent/PROJECT_CONTEXT.md (default already overwrites).")
+    args = parser.parse_args(argv)
+
+    root = Path.cwd()
+    out_path = root / OUTPUT_REL
+
+    try:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        content = build_context(root, brief=args.brief)
+        out_path.write_text(content, encoding="utf-8")
+    except Exception as e:
+        print(f"osb-context: error: {e}", file=sys.stderr)
+        return 1
+
+    mode = "brief" if args.brief else "standard"
+    action = "refreshed" if args.refresh else "wrote"
+    print(f"osb-context: {action} {out_path.relative_to(root)} ({mode}, {len(content)} bytes)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

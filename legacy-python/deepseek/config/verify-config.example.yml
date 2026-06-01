@@ -1,0 +1,46 @@
+# ds-verify reference config (example only — ds-verify reads no config file in P4)
+#
+# This file documents future config keys. Real configuration in P4 is via
+# environment variables and CLI flags:
+#
+#   DEEPSEEK_API_KEY         (required)
+#   DEEPSEEK_BASE_URL        (default: https://api.deepseek.com)
+#   DEEPSEEK_MODEL           (default: deepseek-reasoner)
+#   --strict, --output, --max-length, --temperature, --timeout
+
+settings:
+  model: deepseek-reasoner
+  temperature: 0.3
+  # Per-document character cap before truncation
+  max_doc_chars: 4000
+  # git diff character cap before truncation
+  max_diff_chars: 30000
+  # total prompt character cap (sum of system + user, soft)
+  max_total_chars: 80000
+  # Strict mode default (overridden by --strict)
+  strict: false
+
+# Documents that ds-verify reads. Missing files emit `WARN missing source: <path>`
+# in the verification context but do not abort.
+sources:
+  required:
+    - docs/02_PRD.md
+    - docs/04_SYSTEM_ARCHITECTURE.md
+    - docs/16_ACCEPTANCE_CRITERIA.md
+    - tasks/CURRENT_SPRINT.md
+  optional:
+    - docs/10_TASK_BREAKDOWN.md
+    - docs/15_CHANGELOG.md
+    - .agent/PROJECT_CONTEXT.md
+    - AGENTS.md
+
+# Areas reported in the Alignment table. The deterministic-check layer
+# emits findings keyed by these area names, which the LLM then merges
+# into its own table when filling out the report.
+alignment_areas:
+  - PRD
+  - Architecture
+  - Current Sprint
+  - Acceptance Criteria
+  - Changelog
+  - Tests

@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+"""
+osb-architecture-sync — Verify diagrams/ and architecture docs are in sync.
+
+Does NOT generate diagrams. It only:
+  - lists files under diagrams/
+  - lists references to diagrams/ from architecture-related docs
+  - reports orphan diagrams (in diagrams/ but never referenced)
+  - reports broken references (referenced but missing on disk)
+  - flags TODO-only / empty architecture docs
+
+Stdlib only. No LLM, no network.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+from pathlib import Path
+
+ARCH_DOCS = (
+    "docs/04_SYSTEM_ARCHITECTURE.md",
+    "docs/07_STORAGE_AND_FILE_STRUCTURE.md",
+    "docs/09_IMPLEMENTATION_PLAN.md",
+    "docs/10_TASK_BREAKDOWN.md",
+)
+
+DIAGRAM_EXTS = (".png", ".jpg", ".jpeg", ".svg", ".pdf", ".mmd", ".puml", ".drawio", ".excalidraw")
+
+REF_RE = re.compile(r"diagrams/([A-Za-z0-9._/\-]+)")
+
+
+def read_text(p):
+    try:
+        return p.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return None
+
+
+def is_todo_only(text):
+    if not text:
+        return True
+    for raw in text.splitlines():
+        s = raw.strip()
+        if not s or s.startswith("#") or s.startswith("<!--"):
+            continue
+        if s.upper() == "TODO":
+            continue
+        return False
+    return True
+
+
+def list_diagrams(root):
+    d = root / "diagrams"
+    if not d.is_dir():
+        return [], False
+    out = []
+    for f in d.rglob("*"):
+        if f.is_file():
+            if f.name.lower() == "readme.md":
+                continue
+            if f.suffix.lower() in DIAGRAM_EXTS:
+                out.append(f.relative_to(root).as_posix())
+    return sorted(out), True
+
+
+def collect_references(root):
+    """Return dict {referenced_path: [doc_path, ...]} for all docs/*.md."""
+    refs = {}
+    docs_dir = root / "docs"
+    if not docs_dir.is_dir():
+        return refs
+    for doc in sorted(docs_dir.rglob("*.md")):
+        text = read_text(doc) or ""
+        for m in REF_RE.finditer(text):
+            target = "diagrams/" + m.group(1).rstrip(")>'\"`* ")
+            refs.setdefault(target, []).append(doc.relative_to(root).as_posix())
+    # Also check AGENTS.md and tasks/ if present
+    for extra in (root / "AGENTS.md", root / "tasks"):
+        if extra.is_file():
+            files = [extra]
+        elif extra.is_dir():
+            files = list(extra.rglob("*.md"))
+        else:
+            files = []
+        for f in files:
+            text = read_text(f) or ""
+            for m in REF_RE.finditer(text):
+                target = "diagrams/" + m.group(1).rstrip(")>'\"`* ")
+                refs.setdefault(target, []).append(f.relative_to(root).as_posix())
+    return refs
+
+
+def sync_check(root):
+    diagrams, has_diagrams_dir = list_diagrams(root)
+    refs = collect_references(root)
+    referenced = set(refs.keys())
+    on_disk = set(diagrams)
+
+    orphans = sorted(on_disk - referenced)
+    broken  = sorted(referenced - on_disk)
+
+    arch_doc_status = []
+    for rel in ARCH_DOCS:
+        p = root / rel
+        if not p.is_file():
+            arch_doc_status.append((rel, "MISSING"))
+        else:
+            text = read_text(p)
+            if not text or not text.strip():
+                arch_doc_status.append((rel, "EMPTY"))
+            elif is_todo_only(text):
+                arch_doc_status.append((rel, "TODO-ONLY"))
+            else:
+                # check whether it mentions diagrams/ at all
+                refs_in_doc = bool(REF_RE.search(text))
+                arch_doc_status.append(
+                    (rel, "OK with refs" if refs_in_doc else "OK no diagram refs")
+                )
+
+    return {
+        "has_diagrams_dir": has_diagrams_dir,
+        "diagrams_on_disk": diagrams,
+        "references":       refs,
+        "orphans":          orphans,
+        "broken":           broken,
+        "arch_doc_status":  arch_doc_status,
+    }
+
+
+def render(result):
+    out = ["# Architecture Sync Report", ""]
+
+    out.append("## Architecture Docs")
+    for rel, st in result["arch_doc_status"]:
+        out.append(f"- `{rel}` — {st}")
+    out.append("")
+
+    out.append("## Diagrams Directory")
+    if not result["has_diagrams_dir"]:
+        out.append("- diagrams/ directory does not exist")
+    else:
+        out.append(f"- {len(result['diagrams_on_disk'])} file(s) under `diagrams/`:")
+        for d in result["diagrams_on_disk"][:30]:
+            out.append(f"  - `{d}`")
+        extra = len(result["diagrams_on_disk"]) - 30
+        if extra > 0:
+            out.append(f"  - … (+{extra} more)")
+    out.append("")
+
+    out.append("## References From Docs")
+    if not result["references"]:
+        out.append("- no `diagrams/...` references found in docs")
+    else:
+        for ref, sources in sorted(result["references"].items()):
+            out.append(f"- `{ref}` ← " + ", ".join(f"`{s}`" for s in sources))
+    out.append("")
+
+    out.append("## Orphan Diagrams (on disk, not referenced)")
+    if result["orphans"]:
+        for d in result["orphans"]:
+            out.append(f"- WARN `{d}`")
+    else:
+        out.append("- none")
+    out.append("")
+
+    out.append("## Broken References (referenced but missing on disk)")
+    if result["broken"]:
+        for d in result["broken"]:
+            out.append(f"- FAIL `{d}`")
+    else:
+        out.append("- none")
+    out.append("")
+
+    out.append("## Verdict")
+    fails = len(result["broken"])
+    warns = len(result["orphans"])
+    arch_problems = sum(1 for _, s in result["arch_doc_status"] if s in ("MISSING", "EMPTY", "TODO-ONLY"))
+    if fails == 0 and arch_problems == 0:
+        verdict = "PASS"
+    elif fails > 0:
+        verdict = "FAIL"
+    else:
+        verdict = "PARTIAL"
+    out.append(f"- Verdict: **{verdict}**")
+    out.append(f"- broken refs: {fails}, orphan diagrams: {warns}, arch-doc problems: {arch_problems}")
+
+    return "\n".join(out).rstrip() + "\n", verdict
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        prog="osb-architecture-sync",
+        description="Verify diagrams/ and architecture docs are in sync (deterministic).",
+    )
+    parser.add_argument("--output", "-o", help="Also write the report to PATH.")
+    args = parser.parse_args(argv)
+
+    root = Path.cwd()
+    try:
+        result = sync_check(root)
+        report, verdict = render(result)
+    except Exception as e:
+        print(f"osb-architecture-sync: unexpected error: {e}", file=sys.stderr)
+        return 1
+
+    sys.stdout.write(report)
+    if args.output:
+        target = Path(args.output)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(report, encoding="utf-8")
+        print(f"\n(report also written to {target})", file=sys.stderr)
+
+    return 0 if verdict == "PASS" else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

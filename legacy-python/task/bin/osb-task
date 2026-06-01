@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""
+osb-task — Structured task management for OSBORN-style projects.
+
+Tasks are Markdown files under tasks/items/<id>-<slug>.md with YAML-ish
+frontmatter (id, title, status, priority, created) and structured H2
+sections (Linked Docs / Files Involved / Acceptance Criteria / Do Not
+Change / Test Plan / Rollback Plan / Dependencies / Notes).
+
+Inspired by Taskmaster's PRD→tasks workflow, but simpler and offline.
+
+Subcommands:
+  add <title>            create a new task (auto-id)
+  list                   list all tasks (table)
+  show <id>              print full task file
+  done <id>              mark task as done
+  status <id> <state>    set status: backlog | in_progress | blocked | done
+  sprint                 list current sprint (in_progress + P1 backlog + blocked)
+  remove <id>            delete a task file
+
+Stdlib only. No LLM, no network.
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+LIB_DIR = HERE.parent / "lib"
+sys.path.insert(0, str(LIB_DIR))
+import task_engine  # noqa: E402
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        prog="osb-task",
+        description="Structured task management for OSBORN projects.",
+    )
+    sub = parser.add_subparsers(dest="cmd", metavar="<cmd>")
+
+    p_add = sub.add_parser("add", help="create a new task")
+    p_add.add_argument("title", help="task title")
+    p_add.add_argument("--priority", default=task_engine.DEFAULT_PRIORITY,
+                       choices=task_engine.VALID_PRIORITIES)
+
+    p_list = sub.add_parser("list", help="list tasks")
+    p_list.add_argument("--status", choices=task_engine.VALID_STATUSES)
+    p_list.add_argument("--priority", choices=task_engine.VALID_PRIORITIES)
+
+    p_show = sub.add_parser("show", help="print full task file")
+    p_show.add_argument("id")
+
+    p_done = sub.add_parser("done", help="mark task as done")
+    p_done.add_argument("id")
+
+    p_status = sub.add_parser("status", help="set task status")
+    p_status.add_argument("id")
+    p_status.add_argument("state", choices=task_engine.VALID_STATUSES)
+
+    sub.add_parser("sprint", help="list current sprint tasks")
+
+    p_rm = sub.add_parser("remove", help="delete a task file")
+    p_rm.add_argument("id")
+
+    args = parser.parse_args(argv)
+    root = Path.cwd()
+
+    if not args.cmd:
+        parser.print_help()
+        return 0
+
+    try:
+        if args.cmd == "add":
+            t = task_engine.cmd_add(root, args.title, priority=args.priority)
+            print(f"CREATE {t.id}  ({t.priority})  {t.title}")
+            print(f"   file: {Path(t.path).relative_to(root)}")
+            return 0
+
+        if args.cmd == "list":
+            print(task_engine.cmd_list(root,
+                                       status_filter=args.status,
+                                       priority_filter=args.priority))
+            return 0
+
+        if args.cmd == "show":
+            text = task_engine.cmd_show(root, args.id)
+            if text is None:
+                print(f"osb-task: could not read task {args.id}", file=sys.stderr)
+                return 2
+            sys.stdout.write(text)
+            return 0
+
+        if args.cmd == "done":
+            t = task_engine.cmd_done(root, args.id)
+            print(f"DONE {t.id}  {t.title}")
+            return 0
+
+        if args.cmd == "status":
+            t = task_engine.cmd_set_status(root, args.id, args.state)
+            print(f"STATUS {t.id} → {t.status}  ({t.title})")
+            return 0
+
+        if args.cmd == "sprint":
+            print(task_engine.cmd_sprint(root))
+            return 0
+
+        if args.cmd == "remove":
+            t = task_engine.cmd_remove(root, args.id)
+            print(f"REMOVE {t.id}  {t.title}")
+            return 0
+
+    except KeyError as e:
+        print(f"osb-task: {e}", file=sys.stderr)
+        return 2
+    except ValueError as e:
+        print(f"osb-task: {e}", file=sys.stderr)
+        return 2
+    except Exception as e:
+        print(f"osb-task: unexpected error: {e}", file=sys.stderr)
+        return 1
+
+    parser.print_help()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

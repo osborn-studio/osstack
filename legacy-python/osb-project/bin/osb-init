@@ -1,0 +1,400 @@
+#!/usr/bin/env bash
+# osb-init — Initialize an OSBORN-style project skeleton
+# Part of the OSBORN Capability Layer (~/.osborn/capabilities/osb-project)
+
+set -euo pipefail
+
+PROJECT_TYPE="webapp"
+COMPLEXITY="standard"
+FORCE=false
+
+usage() {
+  cat <<'USAGE'
+Usage: osb-init [--type TYPE] [--complexity LEVEL] [--force]
+
+Options:
+  --type TYPE              Project type (default: webapp)
+  --complexity LEVEL       Complexity level (default: standard)
+  --force                  Overwrite existing files
+  -h, --help               Show this help
+
+Generates the standard OSBORN project skeleton:
+  docs/ tasks/ reviews/ diagrams/ .agent/ AGENTS.md
+
+Loop:
+  docs -> architecture -> tasks -> code -> review -> verify -> test/build/deploy -> changelog
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --type)
+      [[ $# -ge 2 ]] || { echo "osb-init: --type requires a value" >&2; exit 2; }
+      PROJECT_TYPE="$2"; shift 2 ;;
+    --complexity)
+      [[ $# -ge 2 ]] || { echo "osb-init: --complexity requires a value" >&2; exit 2; }
+      COMPLEXITY="$2"; shift 2 ;;
+    --force)
+      FORCE=true; shift ;;
+    -h|--help)
+      usage; exit 0 ;;
+    *)
+      echo "osb-init: unknown argument: $1" >&2
+      usage >&2
+      exit 2 ;;
+  esac
+done
+
+PROJECT_ROOT="$(pwd)"
+
+echo "osb-init"
+echo "  type=$PROJECT_TYPE  complexity=$COMPLEXITY  force=$FORCE"
+echo "  root=$PROJECT_ROOT"
+echo
+
+create_dir() {
+  local d="$1"
+  if [[ -d "$d" ]]; then
+    echo "SKIP existing dir: $d"
+  else
+    mkdir -p "$d"
+    echo "CREATE dir: $d"
+  fi
+}
+
+# write_file <path> <<'EOF' ... EOF
+# - SKIPs existing files unless --force is set (still consumes stdin so the
+#   caller's heredoc is harmless).
+write_file() {
+  local f="$1"
+  local dir
+  dir="$(dirname "$f")"
+  [[ -d "$dir" ]] || mkdir -p "$dir"
+
+  if [[ -e "$f" && "$FORCE" != "true" ]]; then
+    cat >/dev/null   # discard heredoc body
+    echo "SKIP existing file: $f"
+    return 0
+  fi
+
+  if [[ -e "$f" && "$FORCE" == "true" ]]; then
+    cat > "$f"
+    echo "FORCE overwrite file: $f"
+  else
+    cat > "$f"
+    echo "CREATE file: $f"
+  fi
+}
+
+# write_generic <path> <title>
+write_generic() {
+  local f="$1" title="$2"
+  local dir
+  dir="$(dirname "$f")"
+  [[ -d "$dir" ]] || mkdir -p "$dir"
+
+  if [[ -e "$f" && "$FORCE" != "true" ]]; then
+    echo "SKIP existing file: $f"
+    return 0
+  fi
+
+  cat > "$f" <<EOF
+# ${title}
+## Purpose
+TODO
+## Key Questions
+TODO
+## Notes
+TODO
+EOF
+
+  if [[ "$FORCE" == "true" ]]; then
+    echo "FORCE overwrite file: $f"
+  else
+    echo "CREATE file: $f"
+  fi
+}
+
+# ------------------------------------------------------------------
+# Directories
+# ------------------------------------------------------------------
+create_dir "docs"
+create_dir "tasks"
+create_dir "reviews"
+create_dir "reviews/ds-review"
+create_dir "reviews/ds-verify"
+create_dir "diagrams"
+create_dir ".agent"
+
+# ------------------------------------------------------------------
+# docs/ — specific templates
+# ------------------------------------------------------------------
+write_file "docs/01_VISION.md" <<'EOF'
+# Vision
+## One-Line Vision
+TODO
+## Why This Project Exists
+TODO
+## Target Users
+TODO
+## Success Definition
+TODO
+EOF
+
+write_file "docs/02_PRD.md" <<'EOF'
+# Product Requirements Document
+## Problem
+TODO
+## Users
+TODO
+## Core Use Cases
+TODO
+## Functional Requirements
+TODO
+## Non-Functional Requirements
+TODO
+## Out of Scope
+TODO
+EOF
+
+write_file "docs/04_SYSTEM_ARCHITECTURE.md" <<'EOF'
+# System Architecture
+## Architecture Summary
+TODO
+## System Components
+TODO
+## Data Flow
+TODO
+## External Services
+TODO
+## Deployment Model
+TODO
+## Architecture Decisions
+TODO
+EOF
+
+write_file "docs/10_TASK_BREAKDOWN.md" <<'EOF'
+# Task Breakdown
+## Milestones
+TODO
+## Tasks
+TODO
+## Dependencies
+TODO
+## Risks
+TODO
+EOF
+
+write_file "docs/15_CHANGELOG.md" <<'EOF'
+# Changelog
+## Unreleased
+- Initialized project structure.
+EOF
+
+write_file "docs/16_ACCEPTANCE_CRITERIA.md" <<'EOF'
+# Acceptance Criteria
+## Project-Level Acceptance Criteria
+TODO
+## Feature-Level Acceptance Criteria
+TODO
+## Test Expectations
+TODO
+## Human Gate Criteria
+TODO
+EOF
+
+# ------------------------------------------------------------------
+# docs/ — generic templates
+# ------------------------------------------------------------------
+write_generic "docs/03_USER_JOURNEY_AND_USE_CASES.md"      "User Journey and Use Cases"
+write_generic "docs/05_DATA_MODEL_AND_KNOWLEDGE_SCHEMA.md" "Data Model and Knowledge Schema"
+write_generic "docs/06_API_AND_MCP_CONTRACTS.md"           "API and MCP Contracts"
+write_generic "docs/07_STORAGE_AND_FILE_STRUCTURE.md"      "Storage and File Structure"
+write_generic "docs/08_SECURITY_AND_PERMISSIONS.md"        "Security and Permissions"
+write_generic "docs/09_IMPLEMENTATION_PLAN.md"             "Implementation Plan"
+write_generic "docs/11_TEST_AND_EVAL_PLAN.md"              "Test and Eval Plan"
+write_generic "docs/12_AGENTS_AND_SKILLS.md"               "Agents and Skills"
+write_generic "docs/13_RUNBOOK.md"                          "Runbook"
+write_generic "docs/14_DECISIONS.md"                        "Decisions"
+write_generic "docs/17_DEPLOYMENT_AND_RELEASE.md"           "Deployment and Release"
+write_generic "docs/18_OBSERVABILITY.md"                    "Observability"
+write_generic "docs/19_RISK_REGISTER.md"                    "Risk Register"
+write_generic "docs/20_ROADMAP.md"                          "Roadmap"
+
+# ------------------------------------------------------------------
+# tasks/
+# ------------------------------------------------------------------
+write_file "tasks/TASKS.md" <<'EOF'
+# Tasks
+## Backlog
+- [ ] TODO
+## In Progress
+## Done
+EOF
+
+write_file "tasks/MILESTONES.md" <<'EOF'
+# Milestones
+## M1 — Foundation
+TODO
+## M2 — MVP
+TODO
+## M3 — Release
+TODO
+EOF
+
+write_file "tasks/CURRENT_SPRINT.md" <<'EOF'
+# Current Sprint
+## Sprint Goal
+TODO
+## Active Tasks
+- [ ] TODO
+## Acceptance Criteria
+TODO
+## Do Not Change
+TODO
+## Test Plan
+TODO
+## Rollback Plan
+TODO
+EOF
+
+# ------------------------------------------------------------------
+# diagrams/
+# ------------------------------------------------------------------
+write_file "diagrams/README.md" <<'EOF'
+# Diagrams
+Place architecture, sequence, data-flow, and deployment diagrams here.
+Prefer source-controllable formats (Mermaid, PlantUML, SVG).
+EOF
+
+# ------------------------------------------------------------------
+# .agent/
+# ------------------------------------------------------------------
+write_file ".agent/CCB_PROTOCOL.md" <<'EOF'
+# CCB_PROTOCOL.md
+## Role
+CCB is the main execution agent for this project.
+It should implement tasks based on project docs, current sprint, and acceptance criteria.
+## Required Read Order
+Before execution, read:
+1. `.agent/PROJECT_CONTEXT.md`
+2. `docs/02_PRD.md`
+3. `docs/04_SYSTEM_ARCHITECTURE.md`
+4. `tasks/CURRENT_SPRINT.md`
+5. `docs/16_ACCEPTANCE_CRITERIA.md`
+## Execution Rules
+- Prefer minimal, correct changes.
+- Do not rewrite large modules unless required.
+- Do not change architecture without updating architecture docs.
+- Do not change database schema without updating data model docs and migration notes.
+- Do not silently skip tests.
+- Do not remove existing functionality unless explicitly required.
+## Completion Rules
+After implementation:
+1. Run relevant tests.
+2. Run build if available.
+3. Update `docs/15_CHANGELOG.md`.
+4. Produce `git diff`.
+5. Run `git diff | ds-review` if `ds-review` exists.
+6. Fix high-severity issues.
+7. Run `ds-verify` if `ds-verify` exists.
+8. Summarize:
+   - What changed
+   - Files changed
+   - Tests run
+   - Review result
+   - Verify result
+   - Remaining blockers
+## Human Interruption Rules
+Only ask the human when:
+- Product direction changes
+- Architecture boundary changes
+- Security-sensitive decisions arise
+- Deployment approval is needed
+- Major trade-offs are unavoidable
+- Final acceptance is required
+EOF
+
+write_file ".agent/PROJECT_CONTEXT.md" <<'EOF'
+# PROJECT_CONTEXT.md
+## Project Goal
+TODO
+## Current Phase
+planning
+## Active Sprint
+TODO
+## Architecture Snapshot
+TODO
+## Key Files
+TODO
+## Constraints
+TODO
+## Recent Changes
+TODO
+## Known Issues / Blockers
+TODO
+## Next Recommended Action
+TODO
+## Verification Checklist
+TODO
+EOF
+
+write_file ".agent/EXECUTION_CHECKLIST.md" <<'EOF'
+# EXECUTION_CHECKLIST.md
+## Before Execution
+- [ ] Read `.agent/PROJECT_CONTEXT.md`
+- [ ] Read `docs/02_PRD.md`
+- [ ] Read `docs/04_SYSTEM_ARCHITECTURE.md`
+- [ ] Read `tasks/CURRENT_SPRINT.md`
+- [ ] Confirm current task and acceptance criteria
+## During Execution
+- [ ] Make minimal changes
+- [ ] Preserve existing behavior
+- [ ] Update docs if architecture or behavior changes
+## After Execution
+- [ ] Run tests
+- [ ] Run build
+- [ ] Update changelog
+- [ ] Inspect git diff
+- [ ] Run ds-review if available
+- [ ] Run ds-verify if available
+- [ ] Summarize result and blockers
+EOF
+
+# ------------------------------------------------------------------
+# AGENTS.md (project root)
+# ------------------------------------------------------------------
+write_file "AGENTS.md" <<'EOF'
+# AGENTS.md
+## Project Agent Entry Rules
+Before making any code changes, always read:
+1. `.agent/CCB_PROTOCOL.md`
+2. `.agent/PROJECT_CONTEXT.md`
+3. `docs/02_PRD.md`
+4. `docs/04_SYSTEM_ARCHITECTURE.md`
+5. `tasks/CURRENT_SPRINT.md`
+After making changes, always:
+1. Run available tests/build commands.
+2. Update `docs/15_CHANGELOG.md`.
+3. Generate and inspect `git diff`.
+4. Run `ds-review` on the diff when available.
+5. Fix high-severity review issues.
+6. Run `ds-verify` when available.
+7. Report unresolved blockers only.
+## Human Gate
+Only interrupt the human for:
+- Product direction changes
+- Architecture boundary changes
+- Security-sensitive decisions
+- Deployment approval
+- Major trade-offs
+- Final acceptance
+## Execution Principle
+Prefer a closed loop:
+```text
+read context → implement → test/build → changelog → review → verify → summarize
+```
+EOF
+
+echo
+echo "osb-init: done."

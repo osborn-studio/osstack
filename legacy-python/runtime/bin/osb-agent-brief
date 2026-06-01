@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+"""
+osb-agent-brief — Concise handoff brief for CCB / Claude Code / Codex.
+
+Part of the OSBORN Capability Layer (~/.osborn/capabilities/runtime).
+Reads project docs and emits a short Markdown brief telling the agent:
+  - what the project is
+  - what to read before changing code
+  - the current objective
+  - what NOT to change
+  - how to verify completion
+  - the human-gate boundary
+
+Local, deterministic, stdlib only. No LLM, no API calls.
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+CAPABILITY_ROOT = HERE.parent
+LIB_DIR = CAPABILITY_ROOT / "lib"
+
+sys.path.insert(0, str(LIB_DIR))
+import agent_brief  # noqa: E402
+
+DEFAULT_WRITE_PATH = ".agent/AGENT_BRIEF.md"
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        prog="osb-agent-brief",
+        description="Generate a concise handoff brief for CCB / Codex / Claude Code.",
+    )
+    parser.add_argument("--write", action="store_true",
+                        help=f"Also write to {DEFAULT_WRITE_PATH}.")
+    parser.add_argument("--output", "-o",
+                        help="Also write to this path (overrides --write).")
+    parser.add_argument("--brief", action="store_true",
+                        help="Shorter brief: only Current Objective, Required Reading, Do Not Change, Completion Checklist.")
+    parser.add_argument("--for", dest="persona", choices=["ccb", "codex"],
+                        help="Append a persona-specific instruction section.")
+    args = parser.parse_args(argv)
+
+    root = Path.cwd()
+
+    try:
+        brief_text = agent_brief.build_brief(
+            root,
+            brief=args.brief,
+            persona=args.persona,
+        )
+    except Exception as e:
+        print(f"osb-agent-brief: unexpected error: {e}", file=sys.stderr)
+        return 1
+
+    # Always print to stdout (consistent with osb-loop, ds-verify).
+    sys.stdout.write(brief_text)
+    if not brief_text.endswith("\n"):
+        sys.stdout.write("\n")
+
+    out_path = args.output or (DEFAULT_WRITE_PATH if args.write else None)
+    if out_path:
+        target = Path(out_path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(brief_text, encoding="utf-8")
+        print(f"\n(brief also written to {target})", file=sys.stderr)
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

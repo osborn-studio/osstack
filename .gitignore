@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+*.tsbuildinfo
+.tsup/
+
+# Test / coverage
+coverage/
+.vitest-cache/
+
+# Runtime data (osstack daemon writes to ~/.osstack/, not here, but local dev may)
+*.db
+*.db-shm
+*.db-wal
+*.sock
+
+# Logs
+logs/
+*.log
+
+# Python (Hermes skill wrapper + legacy V1)
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# macOS / editors
+.DS_Store
+._*
+.idea/
+.vscode/
+*.swp
+*~
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# Legacy V1 generated user data (templates only, not in this repo)
+legacy-python/.agent/AGENT_BRIEF.md
+legacy-python/reviews/
+legacy-python/reports/
+legacy-python/sources/

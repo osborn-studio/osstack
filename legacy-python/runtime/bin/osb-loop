@@ -1,0 +1,263 @@
+#!/usr/bin/env bash
+# osb-loop — Run the OSBORN post-execution review/verify loop.
+# Part of the OSBORN Capability Layer (~/.osborn/capabilities/runtime).
+#
+# Loop:
+#   osb-context  →  git diff  →  ds-review  →  ds-verify  →  summary
+#
+# This script does NOT modify source code, commit, push, or deploy.
+# It only reads the project, calls the OSBORN tools, and writes:
+#   .agent/PROJECT_CONTEXT.md     (via osb-context)
+#   reviews/ds-review/latest.md   (via ds-review, when there's a diff)
+#   reviews/ds-verify/latest.md   (via ds-verify)
+#   <PATH>                        (via --output, optional)
+
+# Note: -e is intentionally NOT used. We want each step's failure captured
+# in the final report rather than aborting mid-loop.
+set -u
+
+DO_REVIEW=true
+DO_VERIFY=true
+STRICT=false
+OUTPUT=""
+
+usage() {
+  cat <<EOF
+Usage: osb-loop [--no-review] [--no-verify] [--strict] [--output PATH] [-h]
+
+Runs the standard OSBORN post-execution loop in the current directory:
+
+  osb-context  →  git diff  →  ds-review  →  ds-verify  →  summary
+
+Options:
+  --no-review     Skip ds-review.
+  --no-verify     Skip ds-verify.
+  --strict        Pass --strict to ds-review and ds-verify.
+  --output PATH   Also write the loop summary to PATH.
+  -h, --help      Show this help.
+
+Writes (and only writes):
+  .agent/PROJECT_CONTEXT.md       — via osb-context
+  reviews/ds-review/latest.md     — via ds-review (only if a diff exists)
+  reviews/ds-verify/latest.md     — via ds-verify
+  <PATH>                          — via --output (optional)
+
+Never patches, commits, pushes, or deploys.
+
+Exit codes:
+  0  loop completed; no FAIL statuses (or only user-requested SKIPs).
+  1  at least one attempted step ended in FAIL.
+  2  argument parse error.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --no-review) DO_REVIEW=false; shift ;;
+    --no-verify) DO_VERIFY=false; shift ;;
+    --strict)    STRICT=true; shift ;;
+    --output)
+      [[ $# -ge 2 ]] || { echo "osb-loop: --output requires a value" >&2; exit 2; }
+      OUTPUT="$2"; shift 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *)
+      echo "osb-loop: unknown argument: $1" >&2
+      usage >&2
+      exit 2 ;;
+  esac
+done
+
+# ---- Resolve tools (PATH first, then known capability paths) ----
+resolve_tool() {
+  local name="$1"
+  local fallback="$2"
+  if command -v "$name" >/dev/null 2>&1; then
+    command -v "$name"
+  elif [[ -x "$fallback" ]]; then
+    echo "$fallback"
+  else
+    echo ""
+  fi
+}
+
+OSB_CONTEXT="$(resolve_tool osb-context "$HOME/.osborn/capabilities/osb-project/bin/osb-context")"
+DS_REVIEW="$(resolve_tool   ds-review   "$HOME/.osborn/capabilities/deepseek/bin/ds-review")"
+DS_VERIFY="$(resolve_tool   ds-verify   "$HOME/.osborn/capabilities/deepseek/bin/ds-verify")"
+
+mkdir -p reviews/ds-review reviews/ds-verify 2>/dev/null || true
+
+# ---------- Step 1: osb-context ----------
+context_status="SKIPPED"
+context_note=""
+if [[ -n "$OSB_CONTEXT" ]]; then
+  ctx_err="$(mktemp -t osb-loop-ctx.XXXXXX)"
+  if "$OSB_CONTEXT" >/dev/null 2>"$ctx_err"; then
+    context_status="PASS"
+  else
+    context_status="FAIL"
+    context_note="$(head -2 "$ctx_err" 2>/dev/null | tr '\n' ' ' | sed 's/  */ /g')"
+  fi
+  rm -f "$ctx_err"
+else
+  context_note="osb-context not found"
+fi
+
+# ---------- Step 2: git state ----------
+is_repo=false
+git_branch=""
+git_status_short=""
+git_diff_lines=0
+git_has_diff=false
+
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  is_repo=true
+  git_branch="$(git branch --show-current 2>/dev/null || true)"
+  git_status_short="$(git status --short 2>/dev/null || true)"
+  git_diff_lines="$(git diff 2>/dev/null | wc -l | tr -d ' ')"
+  [[ "${git_diff_lines:-0}" -gt 0 ]] && git_has_diff=true
+fi
+
+# ---------- Step 3: ds-review ----------
+review_status="SKIPPED"
+review_note=""
+review_output="reviews/ds-review/latest.md"
+
+strict_flag=""
+$STRICT && strict_flag="--strict"
+
+if ! $DO_REVIEW; then
+  review_note="--no-review"
+elif [[ -z "$DS_REVIEW" ]]; then
+  review_note="ds-review not found"
+elif ! $is_repo; then
+  review_note="not a git repository"
+elif ! $git_has_diff; then
+  review_note="no git diff detected"
+else
+  rv_err="$(mktemp -t osb-loop-rv.XXXXXX)"
+  # ds-review reads stdin and writes the report file; suppress its stdout.
+  if git diff | "$DS_REVIEW" --output "$review_output" $strict_flag >/dev/null 2>"$rv_err"; then
+    review_status="PASS"
+  else
+    review_status="FAIL"
+    review_note="$(head -2 "$rv_err" 2>/dev/null | tr '\n' ' ' | sed 's/  */ /g')"
+  fi
+  rm -f "$rv_err"
+fi
+
+# ---------- Step 4: ds-verify ----------
+verify_status="SKIPPED"
+verify_note=""
+verify_output="reviews/ds-verify/latest.md"
+
+if ! $DO_VERIFY; then
+  verify_note="--no-verify"
+elif [[ -z "$DS_VERIFY" ]]; then
+  verify_note="ds-verify not found"
+else
+  vf_err="$(mktemp -t osb-loop-vf.XXXXXX)"
+  # ds-verify always also prints to stdout; redirect it.
+  if "$DS_VERIFY" --output "$verify_output" $strict_flag >/dev/null 2>"$vf_err"; then
+    verify_status="PASS"
+  else
+    verify_status="FAIL"
+    verify_note="$(head -2 "$vf_err" 2>/dev/null | tr '\n' ' ' | sed 's/  */ /g')"
+  fi
+  rm -f "$vf_err"
+fi
+
+# ---------- Step 5: Recommended next action (deterministic) ----------
+recommend_next() {
+  # If failures came from a missing API key, surface that first — the report
+  # files won't have useful content because the tools exited before calling
+  # the API.
+  if [[ "$verify_status" == "FAIL" || "$review_status" == "FAIL" ]] && \
+     echo "${review_note}${verify_note}" | grep -q "DEEPSEEK_API_KEY"; then
+    echo "Set \`DEEPSEEK_API_KEY\` and re-run \`osb-loop\` (review/verify failed due to missing key)."
+    return
+  fi
+  if [[ "$verify_status" == "FAIL" ]]; then
+    echo "Read \`$verify_output\` and address Alignment / Gaps before merging."
+  elif [[ "$review_status" == "FAIL" ]]; then
+    echo "Read \`$review_output\` and address review findings."
+  elif [[ "$verify_status" == "PASS" && "$review_status" == "PASS" ]]; then
+    echo "Update \`docs/15_CHANGELOG.md\` and consider committing."
+  elif [[ "$verify_status" == "PASS" && "$review_status" == "SKIPPED" ]]; then
+    if [[ "$review_note" == "no git diff detected" ]]; then
+      echo "Verify passed and there's no diff to review — nothing to do."
+    else
+      echo "Verify passed; review was skipped ($review_note)."
+    fi
+  elif [[ "$review_status" == "PASS" && "$verify_status" == "SKIPPED" ]]; then
+    echo "Review passed; verify was skipped ($verify_note)."
+  elif [[ "$review_status" == "SKIPPED" && "$verify_status" == "SKIPPED" ]]; then
+    if [[ -z "${DEEPSEEK_API_KEY:-}" ]]; then
+      echo "Set \`DEEPSEEK_API_KEY\` and re-run \`osb-loop\` to get review and verify."
+    else
+      echo "Nothing ran — check tool availability or flags."
+    fi
+  else
+    echo "Re-run individual tools to inspect failures."
+  fi
+}
+
+# ---------- Step 6: Compose report ----------
+build_report() {
+  echo "# OSB Loop Report"
+  echo
+  echo "## Context"
+  echo "- osb-context: $context_status"
+  [[ -n "$context_note" ]] && echo "- note: $context_note"
+  echo
+  echo "## Git Status"
+  if $is_repo; then
+    echo "- branch: \`${git_branch:-(detached)}\`"
+    echo "- diff lines: $git_diff_lines"
+    if [[ -n "$git_status_short" ]]; then
+      echo "- working tree:"
+      echo '```'
+      echo "$git_status_short"
+      echo '```'
+    else
+      echo "- working tree: clean"
+    fi
+  else
+    echo "- not a git repository"
+  fi
+  echo
+  echo "## Review"
+  echo "- ds-review: $review_status"
+  echo "- output: $review_output"
+  [[ -n "$review_note" ]] && echo "- note: $review_note"
+  echo
+  echo "## Verify"
+  echo "- ds-verify: $verify_status"
+  echo "- output: $verify_output"
+  [[ -n "$verify_note" ]] && echo "- note: $verify_note"
+  echo
+  echo "## Recommended Next Action"
+  recommend_next
+}
+
+report_file="$(mktemp -t osb-loop-report.XXXXXX)"
+build_report > "$report_file"
+
+cat "$report_file"
+
+if [[ -n "$OUTPUT" ]]; then
+  out_dir="$(dirname "$OUTPUT")"
+  mkdir -p "$out_dir" 2>/dev/null || true
+  cp "$report_file" "$OUTPUT"
+  echo
+  echo "(loop summary also written to $OUTPUT)"
+fi
+
+rm -f "$report_file"
+
+# ---------- Exit code ----------
+# 0 = success or only user-requested skips
+# 1 = at least one attempted step FAILED
+if [[ "$context_status" == "FAIL" || "$review_status" == "FAIL" || "$verify_status" == "FAIL" ]]; then
+  exit 1
+fi
+exit 0
