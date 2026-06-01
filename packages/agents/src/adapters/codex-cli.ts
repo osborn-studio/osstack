@@ -46,6 +46,20 @@ const CAPABILITIES: readonly Capability[] = [
     description: "Refactor existing code with Codex sandboxed execution.",
     cost_tier: "mid",
   }),
+  CapabilitySchema.parse({
+    id: "codex-cli.code.test",
+    kind: "code.test",
+    agent_id: "codex-cli",
+    description: "Write and run tests with Codex sandboxed execution; verify a build/test suite passes.",
+    cost_tier: "mid",
+  }),
+  CapabilitySchema.parse({
+    id: "codex-cli.code.review",
+    kind: "code.review",
+    agent_id: "codex-cli",
+    description: "Review a diff or codebase for correctness, bugs, and quality with Codex.",
+    cost_tier: "mid",
+  }),
 ];
 
 function now(): number { return Date.now() / 1000; }
