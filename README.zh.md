@@ -54,7 +54,7 @@ osstack 在产品上是 **Hermes 的"软件开发生命周期"专项 skill**—�
 │   你写的 Python/Go/Bash 程序        ai.osstack.daemon.plist                  │
 └─────────────────────────────────────────────────────────────────────────────┘
                                   ↓
-                  Unix socket  /tmp/osstack.sock
+                  Unix socket  ~/.osstack/daemon.sock
                   length-prefixed JSON 协议（与 LSP / MCP 同款）
                                   ↓
    ┌──────────────────────────────────────────────────────────────────┐
@@ -126,7 +126,7 @@ osstack 的 Unix socket 协议是公开的（length-prefixed JSON，4-byte big-e
 
 ```python
 import socket, struct, json
-s = socket.socket(socket.AF_UNIX); s.connect('/tmp/osstack.sock')
+s = socket.socket(socket.AF_UNIX); s.connect('~/.osstack/daemon.sock')
 body = json.dumps({'id': 1, 'method': 'task.submit',
                    'params': {'prompt': '...'}}).encode()
 s.sendall(struct.pack('>I', len(body)) + body)
@@ -226,7 +226,7 @@ osstack killswitch
 
 | 命令 | 作用 |
 |---|---|
-| `osstack serve` | 启动 daemon（Unix socket 在 `/tmp/osstack.sock`） |
+| `osstack serve` | 启动 daemon（Unix socket 在 `~/.osstack/daemon.sock`） |
 | `osstack health` | daemon 健康快照（含 otel / hermes / gbrain 开关状态） |
 | `osstack stats` | per-(agent, capability) 指标表 |
 | `osstack killswitch` | F4 杀手开关：30 天内 policy 是否被有效使用 |
@@ -282,7 +282,7 @@ osstack 完全用环境变量配置——**没有传统配置文件**（除 `~/.
 | 变量 | 默认值 | 作用 |
 |---|---|---|
 | `OSSTACK_HOME` | `~/.osstack` | 数据根目录（SQLite、日志） |
-| `OSSTACK_SOCKET` | `/tmp/osstack.sock` | daemon Unix socket 路径 |
+| `OSSTACK_SOCKET` | `~/.osstack/daemon.sock` | daemon Unix socket 路径 |
 | `OSSTACK_CODEX_BIN` | `codex` | codex 二进制路径 |
 
 ### Hermes 集成（默认全关）
@@ -383,7 +383,7 @@ osstack stats     # per-agent 成功率一目了然
 - **PII 脱敏（G2）**：所有 prompt 入库前过 `PIIRedactor`，7 个默认 pattern（email / phone / SSN / IPv4 / Anthropic key / OpenAI key / AWS key），**ReDoS 防护 100ms 预算**。模式集合手编审核避免回溯爆炸。
 - **静态加密**：依赖 macOS FileVault（v1.0）；SQLCipher 留作 v1.x 可选项。
 - **API key 管理**：复用 Hermes auth pooled credentials（D17），osstack 不自己存 key。
-- **Socket 权限**：`/tmp/osstack.sock` 强制 `0600`，只有本用户能连。
+- **Socket 权限**：`~/.osstack/daemon.sock` 强制 `0600`，只有本用户能连。
 - **磁盘满兜底（G1）**：每次写库前 preflight，剩余空间 < 100 MiB 直接拒写 + 抛 `DiskFullError`——**永不静默丢任务**。
 - **沙箱**：Codex CLI adapter 默认 `--sandbox read-only`，要写文件得显式提权。
 

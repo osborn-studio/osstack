@@ -25,7 +25,7 @@ It is **not** a standalone product. Hermes owns messaging, cron, dashboard, kanb
 │   ↓ import                                                        │
 │ ~/.hermes/skills/software-development/osstack/scripts/             │
 │   osstack_bridge.py  ←  thin Python wrapper                       │
-│   ↓ Unix socket (/tmp/osstack.sock, length-prefixed JSON)         │
+│   ↓ Unix socket (~/.osstack/daemon.sock, length-prefixed JSON)         │
 │ osstack daemon  (Node.js, TypeScript, launchctl-managed)           │
 │   ↓                                                                │
 │ @osstack/agents → @anthropic-ai/claude-agent-sdk → Claude Code     │

@@ -54,7 +54,7 @@ python3 ~/.hermes/skills/software-development/osstack/scripts/osstack_bridge.py 
 python3 ~/.hermes/skills/software-development/osstack/scripts/osstack_bridge.py version
 ```
 
-Both commands run the `osstack` binary directly via subprocess. Once S1 ships, the bridge will connect to a long-running daemon via Unix socket at `/tmp/osstack.sock`.
+Both commands run the `osstack` binary directly via subprocess. Once S1 ships, the bridge will connect to a long-running daemon via Unix socket at `~/.osstack/daemon.sock`.
 
 ## How It Works (S0)
 
@@ -120,7 +120,7 @@ which osstack || echo "osstack binary not on PATH — install with: pnpm -g add 
 
 # Optional Sprint-1+:
 launchctl list | grep ai.osstack.daemon
-ls /tmp/osstack.sock
+ls ~/.osstack/daemon.sock
 ```
 
 ## References

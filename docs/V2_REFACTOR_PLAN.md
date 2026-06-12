@@ -283,7 +283,7 @@ Discover → Design → Architecture → Plan → Code → Review → Test → B
 Hermes session
     ↓ (Python import)
 ~/.hermes/skills/software-development/osstack/scripts/osstack_bridge.py
-    ↓ (Unix socket: /tmp/osstack.sock)
+    ↓ (Unix socket: ~/.osstack/daemon.sock)
 osstack daemon (TS, launchctl-managed)
     ↓ (in-process)
 core/orchestrator → agents/claude-code → @anthropic-ai/claude-agent-sdk

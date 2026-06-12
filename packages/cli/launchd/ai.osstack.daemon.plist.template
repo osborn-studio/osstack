@@ -9,6 +9,7 @@
     {{OSSTACK_JS}}  absolute path to @osstack/cli's dist/bin.js
     {{OSSTACK_HOME}} default ~/.osstack
     {{HERMES_HOME}}  default ~/.hermes
+    {{HERMES_AGENT_HOME}} hermes-agent repo root (for the kanban bridge binary)
     {{PATH}}         PATH the daemon should inherit
 -->
 <plist version="1.0">
@@ -29,6 +30,8 @@
     <string>{{OSSTACK_HOME}}</string>
     <key>HERMES_HOME</key>
     <string>{{HERMES_HOME}}</string>
+    <key>HERMES_AGENT_HOME</key>
+    <string>{{HERMES_AGENT_HOME}}</string>
     <key>PATH</key>
     <string>{{PATH}}</string>
   </dict>

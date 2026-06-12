@@ -8,13 +8,14 @@ import {
   addSource, checkAll, defaultManifestPath, readManifest,
   removeSource, writeManifest,
 } from "@osstack/skill-registry";
-import { startDaemon, DEFAULT_SOCKET_PATH } from "./daemon.js";
+import { startDaemon } from "./daemon.js";
 import { handleConfigCommand } from "./config.js";
-
-const VERSION = "0.0.0";
+import { resolveSocketPath } from "./paths.js";
+import { PROTOCOL_VERSION, VERSION } from "./version.js";
+import { handleUpgradeCommand } from "./upgrade.js";
 
 function socketPath(): string {
-  return process.env["OSSTACK_SOCKET"] ?? DEFAULT_SOCKET_PATH;
+  return resolveSocketPath();
 }
 
 async function rpc(method: string, params?: unknown, timeoutMs = 10_000): Promise<unknown> {
@@ -64,11 +65,18 @@ Usage:
   osstack <command> [args]
 
 Daemon commands:
-  serve               Start the daemon (Unix socket at ${DEFAULT_SOCKET_PATH})
+  serve               Start the daemon (Unix socket at ${socketPath()})
   health              Show daemon health (requires running daemon)
+  status              CLI/daemon version handshake + update availability
   stats               Show per-agent metrics (requires running daemon)
   killswitch          Check if the policy layer is earning its keep (F4)
   agent list          List registered sub-agents and their capabilities
+
+Self-update:
+  upgrade [--channel latest|canary] [--dry-run] [--auto]
+                      Backup state.db, drain + stop the daemon, install the
+                      newest @osstack/cli from npm, restart, health-check,
+                      and roll back automatically on failure.
 
 Project commands:
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
@@ -117,7 +125,8 @@ Local:
 
 Environment:
   OSSTACK_HOME        Storage root (default ~/.osstack)
-  OSSTACK_SOCKET      Daemon socket path (default ${DEFAULT_SOCKET_PATH})
+  OSSTACK_SOCKET      Daemon socket path (default $OSSTACK_HOME/daemon.sock)
+  OSSTACK_UPDATE_CHECK  Set 0 to disable the daemon's daily update probe
 
 See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 `);
@@ -136,6 +145,45 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     const out = await rpc("health");
     console.log(JSON.stringify(out, null, 2));
     return 0;
+  }
+
+  if (cmd === "status") {
+    // Version handshake: compare this CLI binary against the live daemon and
+    // surface update availability from the daemon's cached registry probe.
+    console.log(`cli_version:      ${VERSION}`);
+    console.log(`protocol_version: ${PROTOCOL_VERSION}`);
+    let daemon: { version?: string; protocol_version?: number } | null = null;
+    try {
+      const resp = (await rpc("version", undefined, 3_000)) as RpcResp;
+      if (resp.ok) daemon = resp.result as { version?: string; protocol_version?: number };
+    } catch { /* not running */ }
+    if (daemon === null) {
+      console.log("daemon:           not running");
+      return 0;
+    }
+    console.log(`daemon_version:   ${daemon.version ?? "?"}`);
+    if (daemon.version !== undefined && daemon.version !== VERSION) {
+      console.log(`⚠ version mismatch — restart the daemon to pick up ${VERSION} (osstack upgrade handles this automatically)`);
+    }
+    if (daemon.protocol_version !== undefined && daemon.protocol_version !== PROTOCOL_VERSION) {
+      console.log(`⚠ protocol mismatch (cli=${PROTOCOL_VERSION} daemon=${daemon.protocol_version}) — upgrade both sides`);
+    }
+    try {
+      const u = (await rpc("update.status", undefined, 3_000)) as RpcResp;
+      const cache = (u.result as { cache?: { latest?: string | null; update_available?: boolean; checked_at?: number } })?.cache;
+      if (cache?.update_available && typeof cache.latest === "string") {
+        console.log(`update available: ${cache.latest} (run: osstack upgrade)`);
+      } else if (cache?.latest != null) {
+        console.log(`registry latest:  ${cache.latest} (up to date)`);
+      } else {
+        console.log("registry latest:  unknown (no successful probe yet)");
+      }
+    } catch { /* older daemon without update.status */ }
+    return 0;
+  }
+
+  if (cmd === "upgrade") {
+    return await handleUpgradeCommand(args.slice(1), rpc);
   }
 
   if (cmd === "stats") {

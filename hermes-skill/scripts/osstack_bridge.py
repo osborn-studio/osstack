@@ -23,8 +23,14 @@ from typing import Any
 
 OSSTACK_BIN_ENV = "OSSTACK_BIN"
 OSSTACK_SOCKET_ENV = "OSSTACK_SOCKET"
+OSSTACK_HOME_ENV = "OSSTACK_HOME"
 DEFAULT_BIN = "osstack"
-DEFAULT_SOCKET_PATH = "/tmp/osstack.sock"
+
+
+def default_socket_path() -> str:
+    """Mirror @osstack/cli paths.ts: $OSSTACK_HOME/daemon.sock, default ~/.osstack."""
+    home = os.environ.get(OSSTACK_HOME_ENV) or os.path.expanduser("~/.osstack")
+    return os.path.join(home, "daemon.sock")
 
 MAX_FRAME_BYTES = 16 * 1024 * 1024
 SOCKET_CONNECT_TIMEOUT_S = 2.0
@@ -76,7 +82,7 @@ def _exec(args: list[str]) -> dict[str, Any]:
 # ── socket transport ──────────────────────────────────────────────────
 
 def _socket_path() -> str:
-    return os.environ.get(OSSTACK_SOCKET_ENV) or DEFAULT_SOCKET_PATH
+    return os.environ.get(OSSTACK_SOCKET_ENV) or default_socket_path()
 
 
 def _send_frame(sock: socket.socket, payload: dict[str, Any]) -> None:

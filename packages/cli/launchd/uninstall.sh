@@ -13,6 +13,6 @@ else
   echo "no plist at $PLIST_PATH — nothing to do"
 fi
 
-SOCK="${OSSTACK_SOCKET:-/tmp/osstack.sock}"
+SOCK="${OSSTACK_SOCKET:-${OSSTACK_HOME:-${HOME}/.osstack}/daemon.sock}"
 [ -S "$SOCK" ] && rm -f "$SOCK"
 echo "Daemon stopped. (Data at ~/.osstack and ~/.hermes is untouched.)"

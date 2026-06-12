@@ -7,6 +7,7 @@
 # Env overrides:
 #   OSSTACK_HOME (default ~/.osstack)
 #   HERMES_HOME  (default ~/.hermes)
+#   HERMES_AGENT_HOME (hermes-agent repo root, default ~/hermes-agent)
 #   NODE_BIN     (default `which node`)
 
 set -euo pipefail
@@ -17,6 +18,7 @@ TEMPLATE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ai.osstack.daemon.plist.
 
 OSSTACK_HOME="${OSSTACK_HOME:-${HOME}/.osstack}"
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
+HERMES_AGENT_HOME="${HERMES_AGENT_HOME:-${HOME}/hermes-agent}"
 NODE_BIN="${NODE_BIN:-$(command -v node || true)}"
 if [ -z "$NODE_BIN" ] || [ ! -x "$NODE_BIN" ]; then
   echo "ERROR: node not found on PATH. Set NODE_BIN=/abs/path/to/node." >&2
@@ -53,6 +55,7 @@ sed \
   -e "s|{{OSSTACK_JS}}|${OSSTACK_JS}|g" \
   -e "s|{{OSSTACK_HOME}}|${OSSTACK_HOME}|g" \
   -e "s|{{HERMES_HOME}}|${HERMES_HOME}|g" \
+  -e "s|{{HERMES_AGENT_HOME}}|${HERMES_AGENT_HOME}|g" \
   -e "s|{{PATH}}|${DAEMON_PATH}|g" \
   "$TEMPLATE" > "$PLIST_PATH"
 
@@ -66,7 +69,7 @@ echo "Loading ${LABEL} from ${PLIST_PATH}..."
 launchctl load "$PLIST_PATH"
 
 # Brief readiness probe.
-SOCK="${OSSTACK_SOCKET:-/tmp/osstack.sock}"
+SOCK="${OSSTACK_SOCKET:-${OSSTACK_HOME:-${HOME}/.osstack}/daemon.sock}"
 for _ in 1 2 3 4 5 6 7 8 9 10; do
   [ -S "$SOCK" ] && break
   sleep 0.3

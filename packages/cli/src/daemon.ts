@@ -27,14 +27,13 @@ import {
 import type Database from "better-sqlite3";
 import { defaultAdapters, type AgentAdapter, type AgentTask } from "@osstack/agents";
 import { appendEvent, finalizeRun, insertRun, insertTask } from "./store.js";
+import { osstackHome, pidFilePath, resolveSocketPath } from "./paths.js";
+import { PROTOCOL_VERSION, VERSION } from "./version.js";
+import { readUpdateCache, startUpdateChecker } from "./update-check.js";
+import { acquireDaemonLock } from "./daemon-lock.js";
 
-export const DEFAULT_SOCKET_PATH = "/tmp/osstack.sock";
-const DAEMON_VERSION = "0.0.0";
+const DAEMON_VERSION = VERSION;
 const DAEMON_PHASE = "S1.5-controls";
-
-function osstackHome(): string {
-  return process.env["OSSTACK_HOME"] ?? join(process.env["HOME"] ?? "", ".osstack");
-}
 
 interface DaemonRequest {
   id: string | number;
@@ -63,6 +62,10 @@ interface DaemonContext {
   activeRuns: Map<string, AbortController>;
   /** Kanban task_ids per osstack run_id, set when bridge create succeeds. */
   hermesKanbanByRun: Map<string, string>;
+  /** When true (set by daemon.drain), new task.submit calls are rejected. */
+  draining: boolean;
+  /** Graceful shutdown trigger, wired up by startDaemon once the server is live. */
+  requestShutdown: () => void;
 }
 
 function singleOk(id: DaemonRequest["id"], result: unknown): SingleResponse {
@@ -79,22 +82,64 @@ function singleErr(id: DaemonRequest["id"], code: string, message: string): Sing
 async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<SingleResponse | null> {
   switch (req.method) {
     case "version":
-      return singleOk(req.id, { version: DAEMON_VERSION, phase: DAEMON_PHASE });
-
-    case "health":
       return singleOk(req.id, {
         version: DAEMON_VERSION,
         phase: DAEMON_PHASE,
+        protocol_version: PROTOCOL_VERSION,
+      });
+
+    case "health": {
+      const update = readUpdateCache();
+      return singleOk(req.id, {
+        version: DAEMON_VERSION,
+        phase: DAEMON_PHASE,
+        protocol_version: PROTOCOL_VERSION,
         pid: process.pid,
         uptime_s: Math.round(process.uptime()),
         memory_rss_mb: Math.round(process.memoryUsage.rss() / 1024 / 1024),
         db_path: ctx.dbPath,
         adapters: Array.from(ctx.adapters.keys()),
         active_runs: ctx.activeRuns.size,
+        draining: ctx.draining,
         otel_enabled: otelEnabled(),
         hermes_enabled: ctx.hermes.enabled,
         gbrain_enabled: ctx.gbrain.enabled,
+        update_available: update?.update_available ?? false,
+        latest_version: update?.latest ?? null,
       });
+    }
+
+    case "update.status":
+      return singleOk(req.id, {
+        current: DAEMON_VERSION,
+        cache: readUpdateCache(),
+      });
+
+    case "daemon.drain": {
+      // Stop accepting new tasks, then wait (bounded) for active runs to end.
+      // Used by `osstack upgrade` so a release never kills work mid-flight.
+      const p = (req.params ?? {}) as { timeout_ms?: number };
+      const timeoutMs = Math.min(Math.max(p.timeout_ms ?? 30_000, 0), 300_000);
+      ctx.draining = true;
+      const deadline = Date.now() + timeoutMs;
+      while (ctx.activeRuns.size > 0 && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      return singleOk(req.id, {
+        draining: true,
+        drained: ctx.activeRuns.size === 0,
+        active_runs: ctx.activeRuns.size,
+      });
+    }
+
+    case "daemon.resume":
+      ctx.draining = false;
+      return singleOk(req.id, { draining: false });
+
+    case "daemon.shutdown":
+      // Respond first, then exit on the next tick so the frame gets flushed.
+      setTimeout(() => ctx.requestShutdown(), 50);
+      return singleOk(req.id, { shutting_down: true, pid: process.pid });
 
     case "agent.list":
       return singleOk(
@@ -423,6 +468,10 @@ async function handleTaskSubmit(
   const params = (req.params ?? {}) as TaskSubmitParams;
   if (typeof params.prompt !== "string" || params.prompt.length === 0) {
     sock.write(encodeFrame(singleErr(req.id, "bad_request", "params.prompt (non-empty string) required")));
+    return;
+  }
+  if (ctx.draining) {
+    sock.write(encodeFrame(singleErr(req.id, "draining", "daemon is draining for shutdown/upgrade; retry after restart")));
     return;
   }
 
@@ -803,6 +852,8 @@ function buildContext(): DaemonContext {
     dbPath, db, redactor, adapters, policy, hermes, gbrain, kanban,
     activeRuns: new Map(),
     hermesKanbanByRun: new Map(),
+    draining: false,
+    requestShutdown: () => { /* wired up in startDaemon */ },
   };
 }
 
@@ -812,12 +863,16 @@ export interface DaemonHandles {
   dbPath: string;
 }
 
-export function startDaemon(opts: { socketPath?: string } = {}): Promise<DaemonHandles> {
-  const socketPath = opts.socketPath ?? process.env["OSSTACK_SOCKET"] ?? DEFAULT_SOCKET_PATH;
+export async function startDaemon(opts: { socketPath?: string } = {}): Promise<DaemonHandles> {
+  const socketPath = opts.socketPath ?? resolveSocketPath();
+  // Refuse to start when another daemon already owns the pidfile — two
+  // daemons would race for the socket and share the SQLite writer.
+  const releaseLock = acquireDaemonLock(pidFilePath());
   cleanupStaleSocket(socketPath);
   // Bring up OTel before the daemon context so spans capture everything.
   initOtel({ serviceVersion: DAEMON_VERSION });
   const ctx = buildContext();
+  const stopUpdateChecker = startUpdateChecker();
 
   const server = createServer((sock: Socket) => {
     const decoder = new FrameDecoder();
@@ -875,16 +930,19 @@ export function startDaemon(opts: { socketPath?: string } = {}): Promise<DaemonH
       try { chmodSync(socketPath, 0o600); } catch { /* best effort */ }
 
       const shutdown = async (): Promise<void> => {
+        stopUpdateChecker();
         // Abort any active runs so adapters get a chance to clean up.
         for (const ac of ctx.activeRuns.values()) ac.abort();
         await new Promise<void>((resolveClose) => server.close(() => resolveClose()));
         try { ctx.db.close(); } catch { /* swallow */ }
         try { cleanupStaleSocket(socketPath); } catch { /* swallow */ }
+        try { releaseLock(); } catch { /* swallow */ }
         await shutdownOtel();
       };
       const onSig = (): void => { void shutdown().then(() => process.exit(0)); };
       process.once("SIGTERM", onSig);
       process.once("SIGINT", onSig);
+      ctx.requestShutdown = onSig;
 
       resolve({ close: shutdown, socketPath, dbPath: ctx.dbPath });
     });
