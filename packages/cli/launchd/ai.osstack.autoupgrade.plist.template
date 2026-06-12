@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ai.osstack.autoupgrade — scheduled self-update.
+  Rendered by launchd/install-autoupgrade.sh; do not load this template directly.
+
+  Runs `osstack upgrade --auto` every Saturday 09:00 local time. The upgrade
+  command itself is a no-op when the registry has nothing newer than the
+  installed version, so a weekly trigger naturally follows whatever cadence
+  the release train publishes (weekly or bi-weekly).
+
+  Safety: upgrade --auto drains the daemon, snapshots state.db, health-checks
+  the new version and rolls back automatically on failure. Logs go to
+  {{OSSTACK_HOME}}/logs/upgrade.log.
+
+  Placeholders:
+    {{NODE_BIN}}     absolute path to the Node 20+ binary
+    {{OSSTACK_JS}}   absolute path to @osstack/cli's dist/bin.js
+    {{OSSTACK_HOME}} default ~/.osstack
+    {{PATH}}         PATH for npm/launchctl
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ai.osstack.autoupgrade</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>{{NODE_BIN}}</string>
+    <string>{{OSSTACK_JS}}</string>
+    <string>upgrade</string>
+    <string>--auto</string>
+    <string>--channel</string>
+    <string>latest</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>OSSTACK_HOME</key>
+    <string>{{OSSTACK_HOME}}</string>
+    <key>PATH</key>
+    <string>{{PATH}}</string>
+  </dict>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key>
+    <integer>6</integer>
+    <key>Hour</key>
+    <integer>9</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+
+  <key>StandardOutPath</key>
+  <string>{{OSSTACK_HOME}}/logs/upgrade.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>{{OSSTACK_HOME}}/logs/upgrade.log</string>
+</dict>
+</plist>
