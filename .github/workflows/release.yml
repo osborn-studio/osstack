@@ -1,0 +1,70 @@
+name: Release
+
+# Release train: changesets accumulate on main; this workflow maintains a
+# "Version Packages" PR. Merging that PR on a train day (every other Friday,
+# see RELEASING.md) versions + publishes every changed package to npm and
+# tags the release.
+#
+# Publishing requires the NPM_TOKEN secret (npm automation token with publish
+# rights to the @osstack scope). Until that secret is configured the publish
+# step is skipped and the workflow only manages the Version PR.
+
+on:
+  push:
+    branches: [main]
+
+concurrency: release-${{ github.ref }}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm -r build
+
+      - name: Test
+        run: pnpm -r test
+
+      - name: Detect npm token
+        id: npm-token
+        run: |
+          if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "NPM_TOKEN not configured — will manage the Version PR but skip publish." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Version PR / Publish
+        uses: changesets/action@v1
+        with:
+          version: pnpm changeset version
+          publish: pnpm changeset publish
+          commit: "chore(release): version packages"
+          title: "chore(release): version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ steps.npm-token.outputs.present == 'true' && secrets.NPM_TOKEN || '' }}
+          NODE_AUTH_TOKEN: ${{ steps.npm-token.outputs.present == 'true' && secrets.NPM_TOKEN || '' }}
