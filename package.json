@@ -2,7 +2,7 @@
   "name": "@osstack/monorepo",
   "version": "0.0.0",
   "private": true,
-  "description": "OSBORN stack (osstack) — Hermes-resident project manager agent for software development lifecycle. TypeScript daemon + Python Hermes skill wrapper.",
+  "description": "OSBORN stack (osstack) \u2014 Hermes-resident project manager agent for software development lifecycle. TypeScript daemon + Python Hermes skill wrapper.",
   "repository": "https://github.com/gilosbornhello/osstack",
   "license": "MIT",
   "packageManager": "pnpm@11.1.2",
@@ -13,12 +13,14 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint",
+    "lint": "biome check .",
     "dev": "pnpm --filter @osstack/cli dev"
   },
   "devDependencies": {
-    "typescript": "^5.6.3",
+    "@biomejs/biome": "^2.4.16",
+    "@changesets/cli": "^2.31.0",
     "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
     "vitest": "^2.1.5",
     "zod": "^3.23.8"
   }

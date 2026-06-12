@@ -338,10 +338,11 @@ export class CodexCliAdapter extends BaseAgentAdapter {
 
     proc.stdout.on("data", (chunk: Buffer) => {
       buf += chunk.toString("utf8");
-      let nl: number;
-      while ((nl = buf.indexOf("\n")) >= 0) {
+      let nl = buf.indexOf("\n");
+      while (nl >= 0) {
         const line = buf.slice(0, nl).trim();
         buf = buf.slice(nl + 1);
+        nl = buf.indexOf("\n");
         if (line.length === 0) continue;
         try {
           const codexEvent = JSON.parse(line) as Record<string, unknown>;

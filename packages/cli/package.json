@@ -1,7 +1,7 @@
 {
   "name": "@osstack/cli",
   "version": "0.0.0",
-  "description": "OSBORN stack CLI binary — orchestrates dev sub-agents under Hermes.",
+  "description": "OSBORN stack CLI binary \u2014 orchestrates dev sub-agents under Hermes.",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -13,7 +13,7 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

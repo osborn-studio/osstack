@@ -1,7 +1,7 @@
 {
   "name": "@osstack/config",
   "version": "0.0.0",
-  "description": "Osstack agent configuration — role-based agent selection (coding / test-verify / design) with per-machine profiles, availability probing, and fallback resolution.",
+  "description": "Osstack agent configuration \u2014 role-based agent selection (coding / test-verify / design) with per-machine profiles, availability probing, and fallback resolution.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "build": "tsc -p .",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
