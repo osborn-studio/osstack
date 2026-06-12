@@ -11,7 +11,11 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 export interface HermesBridgeOptions {
-  /** Override the `hermes` binary path. Default: $HERMES_BIN, then `hermes` on PATH. */
+  /**
+   * Override the `hermes` binary path. Default resolution order:
+   * $HERMES_BIN → $HERMES_AGENT_HOME/.venv/bin/hermes → common checkout
+   * locations under $HOME → `hermes` on PATH.
+   */
   bin?: string;
   /** Kanban board slug. Default: $HERMES_KANBAN_BOARD, then "default". */
   board?: string;
@@ -29,16 +33,26 @@ export interface BridgeResult {
   reason?: string;
 }
 
-const DEFAULT_BIN_FALLBACKS = [
-  "/Volumes/AIMATE_WORK/projects/hermes-agent/.venv/bin/hermes",
-  join(process.env["HOME"] ?? "", "hermes-agent/.venv/bin/hermes"),
-];
+function defaultBinFallbacks(): string[] {
+  const home = process.env["HOME"] ?? "";
+  const candidates: string[] = [];
+  // Machine-specific checkout location goes in HERMES_AGENT_HOME (the
+  // hermes-agent repo root), never hardcoded here.
+  const agentHome = process.env["HERMES_AGENT_HOME"];
+  if (agentHome && agentHome.length > 0) candidates.push(join(agentHome, ".venv/bin/hermes"));
+  candidates.push(
+    join(home, "hermes-agent/.venv/bin/hermes"),
+    join(home, "projects/hermes-agent/.venv/bin/hermes"),
+    join(home, "Developer/hermes-agent/.venv/bin/hermes"),
+  );
+  return candidates;
+}
 
 function resolveBin(opt?: string): string {
   if (opt) return opt;
   const env = process.env["HERMES_BIN"];
   if (env && env.length > 0) return env;
-  for (const candidate of DEFAULT_BIN_FALLBACKS) {
+  for (const candidate of defaultBinFallbacks()) {
     if (existsSync(candidate)) return candidate;
   }
   return "hermes"; // fall through to PATH
