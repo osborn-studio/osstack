@@ -104,6 +104,7 @@ export type IterationOutcome = z.infer<typeof IterationOutcome>;
 
 export const CompletedTask = z.object({
   task_id: z.string(),
+  capability: z.string().optional(),
   outcome: z.enum(["success", "failed", "escalated"]),
   iterations: z.number(),
   agent_id: z.string(),
@@ -187,6 +188,13 @@ export const LoopEventType = z.enum([
   "loop.execute.done",
   "loop.verify.done",
   "loop.iterate.done",
+  "loop.escalated",
+  "loop.worktree.created",
+  "loop.worktree.merged",
+  "loop.worktree.cleaned",
+  "loop.worktree.orphans_cleaned",
+  "loop.goal.checked",
+  "loop.queue.archived",
   "loop.state.written",
   "loop.cycle.completed",
   "loop.stopped",

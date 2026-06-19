@@ -12,9 +12,23 @@
 
 import { createServer, type Socket } from "node:net";
 import { existsSync, unlinkSync, statSync, chmodSync, mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { randomUUID } from "node:crypto";
+import { readFile, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, join } from "node:path";
+import { createHash, randomUUID } from "node:crypto";
+import { setTimeout as sleep } from "node:timers/promises";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
+import {
+  LoopEngine,
+  nextCronDelayMs,
+  validateCronExpression,
+  readLoopState,
+  renderLoopStateMarkdown,
+  type LoopRunCyclesOptions,
+  type LoopRunCyclesResult,
+  type LoopRunOptions,
+  type LoopRunResult,
+  type CompletedTask,
+} from "@osstack/loop";
 import {
   openDb, PIIRedactor, routeCapability,
   PolicyEngine, DEFAULT_RULES, sqliteHistory,
@@ -25,12 +39,18 @@ import {
   type CardStatus, type OutboundMessage,
 } from "@osstack/core";
 import type Database from "better-sqlite3";
-import { defaultAdapters, type AgentAdapter, type AgentTask } from "@osstack/agents";
+import {
+  cleanupOrphanedWorktrees,
+  defaultAdapters,
+  type AgentAdapter,
+  type AgentTask,
+} from "@osstack/agents";
 import { appendEvent, finalizeRun, insertRun, insertTask } from "./store.js";
 
 export const DEFAULT_SOCKET_PATH = "/tmp/osstack.sock";
 const DAEMON_VERSION = "0.0.0";
 const DAEMON_PHASE = "S1.5-controls";
+const LOOP_FAILURE_STREAK_THRESHOLD = 3;
 
 function osstackHome(): string {
   return process.env["OSSTACK_HOME"] ?? join(process.env["HOME"] ?? "", ".osstack");
@@ -51,6 +71,7 @@ interface SingleResponse {
 
 interface DaemonContext {
   dbPath: string;
+  loopSessionsPath: string;
   db: Database.Database;
   redactor: PIIRedactor;
   adapters: Map<string, AgentAdapter>;
@@ -61,8 +82,84 @@ interface DaemonContext {
   kanban: KanbanRepository;
   /** Active runs by run_id → AbortController for cancellation. */
   activeRuns: Map<string, AbortController>;
+  /** Daemon-managed polling loop sessions, keyed by loop_session_id. */
+  loopSessions: Map<string, LoopSession>;
   /** Kanban task_ids per osstack run_id, set when bridge create succeeds. */
   hermesKanbanByRun: Map<string, string>;
+}
+
+type LoopSessionStatus = "running" | "stopping" | "stopped" | "failed";
+
+interface LoopSession {
+  loopSessionId: string;
+  workspacePath: string;
+  stateFilePath: string;
+  intervalMs: number;
+  stopWhenIdle: boolean;
+  status: LoopSessionStatus;
+  startedAt: number;
+  updatedAt: number;
+  cycleCount: number;
+  discoveredTaskCount: number;
+  executedTaskCount: number;
+  skippedTaskCount: number;
+  successfulTaskCount: number;
+  failedTaskCount: number;
+  escalatedTaskCount: number;
+  tokensConsumed: number;
+  totalCycleDurationMs: number;
+  failureStreaks: Record<string, LoopFailureStreak>;
+  abort: AbortController;
+  maxCycles?: number;
+  lastCycleDurationMs?: number;
+  lastJsonPath?: string;
+  lastMarkdownPath?: string;
+  lastError?: string;
+  stopReason?: string;
+  runOptions: LoopRunOptions;
+  scheduleExpression?: string;
+  shutdownRequested?: boolean;
+  done?: Promise<void>;
+}
+
+interface LoopFailureStreak {
+  capability: string;
+  count: number;
+  lastTaskId: string;
+  updatedAt: number;
+  lastEscalatedAtCount?: number;
+}
+
+interface PersistedLoopSessionsFile {
+  version: 1;
+  sessions: PersistedLoopSession[];
+}
+
+interface PersistedLoopSession {
+  loopSessionId: string;
+  status: LoopSessionStatus;
+  runOptions: LoopRunOptions;
+  intervalMs: number;
+  stopWhenIdle: boolean;
+  scheduleExpression?: string;
+  startedAt: number;
+  updatedAt: number;
+  cycleCount: number;
+  discoveredTaskCount: number;
+  executedTaskCount: number;
+  skippedTaskCount: number;
+  successfulTaskCount?: number;
+  failedTaskCount?: number;
+  escalatedTaskCount?: number;
+  tokensConsumed?: number;
+  totalCycleDurationMs?: number;
+  failureStreaks?: Record<string, LoopFailureStreak>;
+  maxCycles?: number;
+  lastCycleDurationMs?: number;
+  lastJsonPath?: string;
+  lastMarkdownPath?: string;
+  lastError?: string;
+  stopReason?: string;
 }
 
 function singleOk(id: DaemonRequest["id"], result: unknown): SingleResponse {
@@ -91,6 +188,7 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
         db_path: ctx.dbPath,
         adapters: Array.from(ctx.adapters.keys()),
         active_runs: ctx.activeRuns.size,
+        active_loops: activeLoopCount(ctx),
         otel_enabled: otelEnabled(),
         hermes_enabled: ctx.hermes.enabled,
         gbrain_enabled: ctx.gbrain.enabled,
@@ -136,7 +234,66 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
     }
 
     case "stats":
-      return singleOk(req.id, computeStats(ctx.db));
+      return singleOk(req.id, computeStats(ctx.db, ctx.loopSessions));
+
+    case "loop.run": {
+      const parsed = parseLoopRunParams(req.params);
+      if (parsed instanceof Error) return singleErr(req.id, "bad_request", parsed.message);
+      const engine = new LoopEngine(withLoopAdapters(ctx, parsed.runOptions));
+      const result = parsed.cyclesOptions === undefined
+        ? loopRunSummary(await engine.runOnce())
+        : loopRunCyclesSummary(await engine.runCycles(parsed.cyclesOptions));
+      return singleOk(req.id, result);
+    }
+
+    case "loop.start": {
+      const parsed = parseLoopStartParams(req.params);
+      if (parsed instanceof Error) return singleErr(req.id, "bad_request", parsed.message);
+      return singleOk(req.id, await startLoopSession(ctx, parsed.runOptions, parsed.schedule));
+    }
+
+    case "loop.list":
+      return singleOk(req.id, {
+        loops: Array.from(ctx.loopSessions.values()).map(loopSessionSummary),
+      });
+
+    case "loop.stop": {
+      const p = objectParams(req.params);
+      if (p instanceof Error) return singleErr(req.id, "bad_request", p.message);
+      const loopSessionId = optionalString(p, "loopSessionId");
+      if (loopSessionId === undefined) return singleErr(req.id, "bad_request", "params.loopSessionId required");
+      const session = ctx.loopSessions.get(loopSessionId);
+      if (session === undefined) return singleErr(req.id, "not_found", `no loop session with id=${loopSessionId}`);
+      stopLoopSession(session, "stopped by request");
+      await persistLoopSessions(ctx);
+      return singleOk(req.id, loopSessionSummary(session));
+    }
+
+    case "loop.status": {
+      const parsed = parseLoopStatusParams(req.params);
+      if (parsed instanceof Error) return singleErr(req.id, "bad_request", parsed.message);
+      const state = await readLoopState(parsed.stateFilePath);
+      if (state !== null) {
+        return singleOk(req.id, {
+          state,
+          state_json: parsed.stateFilePath,
+          markdown: renderLoopStateMarkdown(state),
+        });
+      }
+      const markdownPath = parsed.stateFilePath.endsWith(".json")
+        ? parsed.stateFilePath.replace(/[^/]+$/, "STATE.md")
+        : join(parsed.workspacePath, "STATE.md");
+      try {
+        return singleOk(req.id, {
+          state: null,
+          state_json: parsed.stateFilePath,
+          state_markdown: markdownPath,
+          markdown: await readFile(markdownPath, "utf-8"),
+        });
+      } catch {
+        return singleErr(req.id, "not_found", `no loop state found at ${parsed.stateFilePath}`);
+      }
+    }
 
     case "hermes.health":
       return singleOk(req.id, {
@@ -375,10 +532,51 @@ interface DaemonStats {
   total_runs: number;
   total_events: number;
   per_agent: AgentStat[];
+  loops: LoopStats;
   generated_at: number;
 }
 
-function computeStats(db: Database.Database): DaemonStats {
+interface LoopStats {
+  total_sessions: number;
+  running: number;
+  stopping: number;
+  stopped: number;
+  failed: number;
+  total_cycles: number;
+  total_discovered: number;
+  total_executed: number;
+  total_skipped: number;
+  total_successful: number;
+  total_failed: number;
+  total_escalated: number;
+  total_tokens_consumed: number;
+  total_cycle_duration_ms: number;
+  avg_cycle_duration_ms: number | null;
+  per_loop: LoopStat[];
+}
+
+interface LoopStat {
+  loop_session_id: string;
+  status: LoopSessionStatus;
+  workspace_path: string;
+  cycle_count: number;
+  discovered_task_count: number;
+  executed_task_count: number;
+  skipped_task_count: number;
+  successful_task_count: number;
+  failed_task_count: number;
+  escalated_task_count: number;
+  tokens_consumed: number;
+  total_cycle_duration_ms: number;
+  avg_cycle_duration_ms: number | null;
+  failure_streaks: LoopFailureStreak[];
+  last_cycle_duration_ms?: number;
+  schedule?: string;
+  stop_reason?: string;
+  last_error?: string;
+}
+
+function computeStats(db: Database.Database, loopSessions: Map<string, LoopSession>): DaemonStats {
   const total_runs = (db.prepare("SELECT COUNT(*) AS c FROM runs").get() as { c: number }).c;
   const total_events = (db.prepare("SELECT COUNT(*) AS c FROM events").get() as { c: number }).c;
   const rows = db.prepare(
@@ -396,7 +594,690 @@ function computeStats(db: Database.Database): DaemonStats {
      GROUP BY agent_id, capability_id
      ORDER BY agent_id, capability_id`,
   ).all() as AgentStat[];
-  return { total_runs, total_events, per_agent: rows, generated_at: Date.now() / 1000 };
+  return {
+    total_runs,
+    total_events,
+    per_agent: rows,
+    loops: computeLoopStats(loopSessions),
+    generated_at: Date.now() / 1000,
+  };
+}
+
+function computeLoopStats(loopSessions: Map<string, LoopSession>): LoopStats {
+  const perLoop = Array.from(loopSessions.values()).map(loopStat);
+  const totalCycles = perLoop.reduce((sum, loop) => sum + loop.cycle_count, 0);
+  const totalCycleDurationMs = perLoop.reduce((sum, loop) => sum + loop.total_cycle_duration_ms, 0);
+  return {
+    total_sessions: perLoop.length,
+    running: perLoop.filter((loop) => loop.status === "running").length,
+    stopping: perLoop.filter((loop) => loop.status === "stopping").length,
+    stopped: perLoop.filter((loop) => loop.status === "stopped").length,
+    failed: perLoop.filter((loop) => loop.status === "failed").length,
+    total_cycles: totalCycles,
+    total_discovered: perLoop.reduce((sum, loop) => sum + loop.discovered_task_count, 0),
+    total_executed: perLoop.reduce((sum, loop) => sum + loop.executed_task_count, 0),
+    total_skipped: perLoop.reduce((sum, loop) => sum + loop.skipped_task_count, 0),
+    total_successful: perLoop.reduce((sum, loop) => sum + loop.successful_task_count, 0),
+    total_failed: perLoop.reduce((sum, loop) => sum + loop.failed_task_count, 0),
+    total_escalated: perLoop.reduce((sum, loop) => sum + loop.escalated_task_count, 0),
+    total_tokens_consumed: perLoop.reduce((sum, loop) => sum + loop.tokens_consumed, 0),
+    total_cycle_duration_ms: totalCycleDurationMs,
+    avg_cycle_duration_ms: totalCycles === 0 ? null : totalCycleDurationMs / totalCycles,
+    per_loop: perLoop,
+  };
+}
+
+function loopStat(session: LoopSession): LoopStat {
+  return {
+    loop_session_id: session.loopSessionId,
+    status: session.status,
+    workspace_path: session.workspacePath,
+    cycle_count: session.cycleCount,
+    discovered_task_count: session.discoveredTaskCount,
+    executed_task_count: session.executedTaskCount,
+    skipped_task_count: session.skippedTaskCount,
+    successful_task_count: session.successfulTaskCount,
+    failed_task_count: session.failedTaskCount,
+    escalated_task_count: session.escalatedTaskCount,
+    tokens_consumed: session.tokensConsumed,
+    total_cycle_duration_ms: session.totalCycleDurationMs,
+    avg_cycle_duration_ms: session.cycleCount === 0 ? null : session.totalCycleDurationMs / session.cycleCount,
+    failure_streaks: Object.values(session.failureStreaks),
+    ...(session.lastCycleDurationMs !== undefined ? { last_cycle_duration_ms: session.lastCycleDurationMs } : {}),
+    ...(session.scheduleExpression !== undefined ? { schedule: session.scheduleExpression } : {}),
+    ...(session.stopReason !== undefined ? { stop_reason: session.stopReason } : {}),
+    ...(session.lastError !== undefined ? { last_error: session.lastError } : {}),
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// loop.run / loop.status
+// ──────────────────────────────────────────────────────────────────────
+
+function loopRunSummary(result: LoopRunResult): Record<string, unknown> {
+  return {
+    loop_id: result.loop_id,
+    json_path: result.jsonPath,
+    markdown_path: result.markdownPath,
+    completed_tasks: result.state.completed_tasks,
+    metrics: result.state.key_metrics,
+    events: result.events,
+    state: result.state,
+    ...(result.goal !== undefined ? { goal: result.goal } : {}),
+  };
+}
+
+function loopRunCyclesSummary(result: LoopRunCyclesResult): Record<string, unknown> {
+  return {
+    loop_id: result.loop_id,
+    json_path: result.jsonPath,
+    markdown_path: result.markdownPath,
+    completed_tasks: result.state.completed_tasks,
+    metrics: result.state.key_metrics,
+    events: result.events,
+    state: result.state,
+    ...(result.cycles.at(-1)?.goal !== undefined ? { goal: result.cycles.at(-1)?.goal } : {}),
+    cycles: result.cycles.map((cycle) => ({
+      discovered_task_count: cycle.discoveredTaskCount,
+      executed_task_count: cycle.executedTaskCount,
+      skipped_task_count: cycle.skippedTaskCount,
+      ...(cycle.goal !== undefined ? { goal: cycle.goal } : {}),
+    })),
+  };
+}
+
+interface LoopStartSchedule {
+  intervalMs: number;
+  stopWhenIdle: boolean;
+  cycles?: number;
+  scheduleExpression?: string;
+}
+
+async function startLoopSession(
+  ctx: DaemonContext,
+  runOptions: LoopRunOptions,
+  schedule: LoopStartSchedule,
+): Promise<Record<string, unknown>> {
+  const workspacePath = runOptions.workspacePath ?? process.cwd();
+  const stateFilePath = resolveDaemonLoopPath(runOptions.stateFilePath ?? "LOOP-STATE.json", workspacePath);
+  const normalizedRunOptions: LoopRunOptions = {
+    ...withoutRuntimeAdapters(runOptions),
+    workspacePath,
+    stateFilePath,
+  };
+  const now = Date.now();
+  const session: LoopSession = {
+    loopSessionId: `loop_session_${randomUUID().slice(0, 8)}`,
+    workspacePath,
+    stateFilePath,
+    intervalMs: schedule.intervalMs,
+    stopWhenIdle: schedule.stopWhenIdle,
+    status: "running",
+    startedAt: now,
+    updatedAt: now,
+    cycleCount: 0,
+    discoveredTaskCount: 0,
+    executedTaskCount: 0,
+    skippedTaskCount: 0,
+    successfulTaskCount: 0,
+    failedTaskCount: 0,
+    escalatedTaskCount: 0,
+    tokensConsumed: 0,
+    totalCycleDurationMs: 0,
+    failureStreaks: {},
+    abort: new AbortController(),
+    runOptions: normalizedRunOptions,
+    ...(schedule.cycles !== undefined ? { maxCycles: schedule.cycles } : {}),
+    ...(schedule.scheduleExpression !== undefined ? { scheduleExpression: schedule.scheduleExpression } : {}),
+  };
+  ctx.loopSessions.set(session.loopSessionId, session);
+  await persistLoopSessions(ctx);
+  session.done = runLoopSession(ctx, session);
+  return loopSessionSummary(session);
+}
+
+async function runLoopSession(ctx: DaemonContext, session: LoopSession): Promise<void> {
+  try {
+    while (!session.abort.signal.aborted) {
+      if (session.maxCycles !== undefined && session.cycleCount >= session.maxCycles) {
+        await markLoopSessionStopped(ctx, session, "max cycles reached");
+        return;
+      }
+
+      if (session.scheduleExpression !== undefined) {
+        const delayMs = nextCronDelayMs(session.scheduleExpression, new Date(), {
+          includeCurrentMinute: session.cycleCount === 0,
+        });
+        if (delayMs instanceof Error) throw delayMs;
+        if (delayMs > 0) await sleep(delayMs, undefined, { signal: session.abort.signal });
+      }
+
+      const cycleStartedAt = Date.now();
+      const result = await new LoopEngine(withLoopAdapters(ctx, session.runOptions)).runOnce();
+      const cycleDurationMs = Date.now() - cycleStartedAt;
+      session.cycleCount += 1;
+      session.discoveredTaskCount += result.discoveredTaskCount;
+      session.executedTaskCount += result.executedTaskCount;
+      session.skippedTaskCount += result.skippedTaskCount;
+      for (const completedTask of result.completedTasks) {
+        if (completedTask.outcome === "success") session.successfulTaskCount += 1;
+        else if (completedTask.outcome === "failed") session.failedTaskCount += 1;
+        else {
+          session.escalatedTaskCount += 1;
+          notifyLoopEscalation(ctx, session, result, completedTask);
+        }
+        const streak = updateLoopFailureStreak(session, completedTask);
+        if (streak !== undefined) notifyLoopFailureStreak(ctx, session, streak);
+      }
+      session.tokensConsumed = result.state.key_metrics?.tokens_consumed ?? session.tokensConsumed;
+      session.totalCycleDurationMs += cycleDurationMs;
+      session.lastCycleDurationMs = cycleDurationMs;
+      session.lastJsonPath = result.jsonPath;
+      session.lastMarkdownPath = result.markdownPath;
+      session.updatedAt = Date.now();
+      await persistLoopSessions(ctx);
+
+      if (result.goal?.pass === true) {
+        await markLoopSessionStopped(ctx, session, "goal command passed");
+        return;
+      }
+      if (session.stopWhenIdle && result.executedTaskCount === 0) {
+        await markLoopSessionStopped(ctx, session, "idle cycle completed");
+        return;
+      }
+      if (session.maxCycles !== undefined && session.cycleCount >= session.maxCycles) {
+        await markLoopSessionStopped(ctx, session, "max cycles reached");
+        return;
+      }
+
+      if (session.scheduleExpression === undefined) {
+        await sleep(session.intervalMs, undefined, { signal: session.abort.signal });
+      }
+    }
+    if (!session.shutdownRequested) await markLoopSessionStopped(ctx, session, session.stopReason ?? "stopped by request");
+  } catch (err) {
+    if (session.abort.signal.aborted || (err as Error).name === "AbortError") {
+      if (!session.shutdownRequested) await markLoopSessionStopped(ctx, session, session.stopReason ?? "stopped by request");
+      return;
+    }
+    session.status = "failed";
+    session.lastError = err instanceof Error ? err.message : String(err);
+    session.updatedAt = Date.now();
+    await persistLoopSessions(ctx);
+  }
+}
+
+function stopLoopSession(session: LoopSession, reason: string): void {
+  if (session.status === "running") session.status = "stopping";
+  session.stopReason = reason;
+  session.updatedAt = Date.now();
+  session.abort.abort();
+}
+
+function notifyLoopEscalation(
+  ctx: DaemonContext,
+  session: LoopSession,
+  result: LoopRunResult,
+  completedTask: CompletedTask,
+): void {
+  const payload = result.events.find((event) => (
+    event.type === "loop.escalated"
+    && (event.payload as { task_id?: unknown } | undefined)?.task_id === completedTask.task_id
+  ))?.payload as {
+    reason?: unknown;
+    iteration?: unknown;
+    max_iterations?: unknown;
+    escalate_to?: unknown;
+    agent_id?: unknown;
+  } | undefined;
+  const reason = typeof payload?.reason === "string"
+    ? payload.reason
+    : `Loop task ${completedTask.task_id} escalated after ${completedTask.iterations} iteration(s).`;
+  const cardId = loopEscalationCardId(session.loopSessionId, completedTask.task_id);
+  const body = [
+    `Workspace: ${session.workspacePath}`,
+    `Loop session: ${session.loopSessionId}`,
+    `Loop id: ${result.loop_id}`,
+    `Task: ${completedTask.task_id}`,
+    `Iterations: ${completedTask.iterations}`,
+    `Escalate to: ${typeof payload?.escalate_to === "string" ? payload.escalate_to : "hermes"}`,
+    `Reason: ${reason}`,
+  ].join("\n");
+
+  try {
+    const existing = ctx.kanban.getCard(cardId);
+    if (existing === undefined) {
+      ctx.kanban.createCard({
+        card_id: cardId,
+        task_id: `loop:${session.loopSessionId}:${completedTask.task_id}`,
+        title: `Loop escalation: ${completedTask.task_id}`,
+        body,
+        status: "triage",
+        priority: 90,
+        assignee: "osstack-loop",
+      });
+      ctx.kanban.moveCard(cardId, "blocked", {
+        actor: "osstack-loop",
+        blocked_reason: reason,
+      });
+    } else {
+      ctx.kanban.patchCard(cardId, {
+        body,
+        priority: 90,
+        assignee: "osstack-loop",
+      });
+      ctx.kanban.addComment(cardId, "osstack-loop", reason);
+      if (existing.status !== "blocked") {
+        ctx.kanban.moveCard(cardId, "blocked", {
+          actor: "osstack-loop",
+          blocked_reason: reason,
+        });
+      }
+    }
+  } catch (err) {
+    process.stderr.write(`osstack: loop escalation kanban notification failed: ${(err as Error).message}\n`);
+  }
+}
+
+function loopEscalationCardId(loopSessionId: string, taskId: string): string {
+  const stable = createHash("sha1").update(`${loopSessionId}:${taskId}`).digest("hex").slice(0, 12);
+  return `card_loop_${stable}`;
+}
+
+function updateLoopFailureStreak(session: LoopSession, completedTask: CompletedTask): LoopFailureStreak | undefined {
+  const capability = completedTask.capability;
+  if (capability === undefined || capability.trim() === "") return undefined;
+
+  if (completedTask.outcome === "success") {
+    delete session.failureStreaks[capability];
+    return undefined;
+  }
+
+  const previous = session.failureStreaks[capability];
+  const next: LoopFailureStreak = {
+    capability,
+    count: (previous?.count ?? 0) + 1,
+    lastTaskId: completedTask.task_id,
+    updatedAt: Date.now(),
+    ...(previous?.lastEscalatedAtCount !== undefined ? { lastEscalatedAtCount: previous.lastEscalatedAtCount } : {}),
+  };
+  const shouldEscalate = next.count >= LOOP_FAILURE_STREAK_THRESHOLD
+    && next.count % LOOP_FAILURE_STREAK_THRESHOLD === 0
+    && next.lastEscalatedAtCount !== next.count;
+  if (shouldEscalate) next.lastEscalatedAtCount = next.count;
+  session.failureStreaks[capability] = next;
+  return shouldEscalate ? next : undefined;
+}
+
+function notifyLoopFailureStreak(ctx: DaemonContext, session: LoopSession, streak: LoopFailureStreak): void {
+  const cardId = loopFailureStreakCardId(session.loopSessionId, streak.capability);
+  const reason = `${streak.count} consecutive ${streak.capability} loop task failures; latest task ${streak.lastTaskId}.`;
+  const body = [
+    `Workspace: ${session.workspacePath}`,
+    `Loop session: ${session.loopSessionId}`,
+    `Capability: ${streak.capability}`,
+    `Consecutive failures: ${streak.count}`,
+    `Latest task: ${streak.lastTaskId}`,
+    `Reason: ${reason}`,
+  ].join("\n");
+
+  try {
+    const existing = ctx.kanban.getCard(cardId);
+    if (existing === undefined) {
+      ctx.kanban.createCard({
+        card_id: cardId,
+        task_id: `loop-streak:${session.loopSessionId}:${streak.capability}`,
+        title: `Loop failure streak: ${streak.capability}`,
+        body,
+        status: "triage",
+        priority: 95,
+        assignee: "osstack-loop",
+      });
+      ctx.kanban.moveCard(cardId, "blocked", {
+        actor: "osstack-loop",
+        blocked_reason: reason,
+      });
+    } else {
+      ctx.kanban.patchCard(cardId, {
+        body,
+        priority: 95,
+        assignee: "osstack-loop",
+      });
+      ctx.kanban.addComment(cardId, "osstack-loop", reason);
+      if (existing.status !== "blocked") {
+        ctx.kanban.moveCard(cardId, "blocked", {
+          actor: "osstack-loop",
+          blocked_reason: reason,
+        });
+      }
+    }
+  } catch (err) {
+    process.stderr.write(`osstack: loop failure streak kanban notification failed: ${(err as Error).message}\n`);
+  }
+}
+
+function loopFailureStreakCardId(loopSessionId: string, capability: string): string {
+  const stable = createHash("sha1").update(`${loopSessionId}:${capability}`).digest("hex").slice(0, 12);
+  return `card_loop_streak_${stable}`;
+}
+
+async function markLoopSessionStopped(ctx: DaemonContext, session: LoopSession, reason: string): Promise<void> {
+  session.status = "stopped";
+  session.stopReason = reason;
+  session.updatedAt = Date.now();
+  await persistLoopSessions(ctx);
+}
+
+function activeLoopCount(ctx: DaemonContext): number {
+  return Array.from(ctx.loopSessions.values())
+    .filter((session) => session.status === "running" || session.status === "stopping")
+    .length;
+}
+
+function loopSessionSummary(session: LoopSession): Record<string, unknown> {
+  return {
+    loop_session_id: session.loopSessionId,
+    workspace_path: session.workspacePath,
+    state_json: session.stateFilePath,
+    status: session.status,
+    interval_ms: session.intervalMs,
+    stop_when_idle: session.stopWhenIdle,
+    ...(session.scheduleExpression !== undefined ? { schedule: session.scheduleExpression } : {}),
+    started_at: session.startedAt,
+    updated_at: session.updatedAt,
+    cycle_count: session.cycleCount,
+    discovered_task_count: session.discoveredTaskCount,
+    executed_task_count: session.executedTaskCount,
+    skipped_task_count: session.skippedTaskCount,
+    successful_task_count: session.successfulTaskCount,
+    failed_task_count: session.failedTaskCount,
+    escalated_task_count: session.escalatedTaskCount,
+    tokens_consumed: session.tokensConsumed,
+    total_cycle_duration_ms: session.totalCycleDurationMs,
+    avg_cycle_duration_ms: session.cycleCount === 0 ? null : session.totalCycleDurationMs / session.cycleCount,
+    failure_streaks: Object.values(session.failureStreaks),
+    ...(session.lastCycleDurationMs !== undefined ? { last_cycle_duration_ms: session.lastCycleDurationMs } : {}),
+    ...(session.maxCycles !== undefined ? { max_cycles: session.maxCycles } : {}),
+    ...(session.lastJsonPath !== undefined ? { last_json_path: session.lastJsonPath } : {}),
+    ...(session.lastMarkdownPath !== undefined ? { last_markdown_path: session.lastMarkdownPath } : {}),
+    ...(session.stopReason !== undefined ? { stop_reason: session.stopReason } : {}),
+    ...(session.lastError !== undefined ? { last_error: session.lastError } : {}),
+  };
+}
+
+async function persistLoopSessions(ctx: DaemonContext): Promise<void> {
+  const payload: PersistedLoopSessionsFile = {
+    version: 1,
+    sessions: Array.from(ctx.loopSessions.values()).map((session) => ({
+      loopSessionId: session.loopSessionId,
+      status: session.status,
+      runOptions: withoutRuntimeAdapters(session.runOptions),
+      intervalMs: session.intervalMs,
+      stopWhenIdle: session.stopWhenIdle,
+      ...(session.scheduleExpression !== undefined ? { scheduleExpression: session.scheduleExpression } : {}),
+      startedAt: session.startedAt,
+      updatedAt: session.updatedAt,
+      cycleCount: session.cycleCount,
+      discoveredTaskCount: session.discoveredTaskCount,
+      executedTaskCount: session.executedTaskCount,
+      skippedTaskCount: session.skippedTaskCount,
+      successfulTaskCount: session.successfulTaskCount,
+      failedTaskCount: session.failedTaskCount,
+      escalatedTaskCount: session.escalatedTaskCount,
+      tokensConsumed: session.tokensConsumed,
+      totalCycleDurationMs: session.totalCycleDurationMs,
+      failureStreaks: session.failureStreaks,
+      ...(session.maxCycles !== undefined ? { maxCycles: session.maxCycles } : {}),
+      ...(session.lastCycleDurationMs !== undefined ? { lastCycleDurationMs: session.lastCycleDurationMs } : {}),
+      ...(session.lastJsonPath !== undefined ? { lastJsonPath: session.lastJsonPath } : {}),
+      ...(session.lastMarkdownPath !== undefined ? { lastMarkdownPath: session.lastMarkdownPath } : {}),
+      ...(session.lastError !== undefined ? { lastError: session.lastError } : {}),
+      ...(session.stopReason !== undefined ? { stopReason: session.stopReason } : {}),
+    })),
+  };
+  await writeFile(ctx.loopSessionsPath, `${JSON.stringify(payload, null, 2)}\n`, "utf-8");
+}
+
+async function restoreLoopSessions(ctx: DaemonContext): Promise<void> {
+  let parsed: PersistedLoopSessionsFile;
+  try {
+    parsed = JSON.parse(await readFile(ctx.loopSessionsPath, "utf-8")) as PersistedLoopSessionsFile;
+  } catch {
+    return;
+  }
+  if (parsed.version !== 1 || !Array.isArray(parsed.sessions)) return;
+
+  for (const saved of parsed.sessions) {
+    const workspacePath = saved.runOptions.workspacePath ?? process.cwd();
+    const stateFilePath = resolveDaemonLoopPath(saved.runOptions.stateFilePath ?? "LOOP-STATE.json", workspacePath);
+    const restoredRunOptions: LoopRunOptions = {
+      ...withoutRuntimeAdapters(saved.runOptions),
+      workspacePath,
+      stateFilePath,
+    };
+    if (restoredRunOptions.useWorktree === true) {
+      try {
+        await cleanupOrphanedWorktrees(workspacePath, {
+          ...(restoredRunOptions.worktreeRoot !== undefined ? { rootPath: restoredRunOptions.worktreeRoot } : {}),
+        });
+      } catch (err) {
+        process.stderr.write(`osstack: loop orphaned worktree cleanup failed: ${(err as Error).message}\n`);
+      }
+    }
+    const session: LoopSession = {
+      loopSessionId: saved.loopSessionId,
+      workspacePath,
+      stateFilePath,
+      intervalMs: saved.intervalMs,
+      stopWhenIdle: saved.stopWhenIdle,
+      status: saved.status === "running" ? "running" : saved.status === "stopping" ? "stopped" : saved.status,
+      startedAt: saved.startedAt,
+      updatedAt: Date.now(),
+      cycleCount: saved.cycleCount,
+      discoveredTaskCount: saved.discoveredTaskCount,
+      executedTaskCount: saved.executedTaskCount,
+      skippedTaskCount: saved.skippedTaskCount,
+      successfulTaskCount: saved.successfulTaskCount ?? 0,
+      failedTaskCount: saved.failedTaskCount ?? 0,
+      escalatedTaskCount: saved.escalatedTaskCount ?? 0,
+      tokensConsumed: saved.tokensConsumed ?? 0,
+      totalCycleDurationMs: saved.totalCycleDurationMs ?? 0,
+      failureStreaks: saved.failureStreaks ?? {},
+      abort: new AbortController(),
+      runOptions: restoredRunOptions,
+      ...(saved.maxCycles !== undefined ? { maxCycles: saved.maxCycles } : {}),
+      ...(saved.lastCycleDurationMs !== undefined ? { lastCycleDurationMs: saved.lastCycleDurationMs } : {}),
+      ...(saved.scheduleExpression !== undefined ? { scheduleExpression: saved.scheduleExpression } : {}),
+      ...(saved.lastJsonPath !== undefined ? { lastJsonPath: saved.lastJsonPath } : {}),
+      ...(saved.lastMarkdownPath !== undefined ? { lastMarkdownPath: saved.lastMarkdownPath } : {}),
+      ...(saved.lastError !== undefined ? { lastError: saved.lastError } : {}),
+      ...(saved.stopReason !== undefined && saved.status !== "running" ? { stopReason: saved.stopReason } : {}),
+    };
+    ctx.loopSessions.set(session.loopSessionId, session);
+    if (session.status === "running") session.done = runLoopSession(ctx, session);
+  }
+  await persistLoopSessions(ctx);
+}
+
+function parseLoopRunParams(
+  params: unknown,
+): { runOptions: LoopRunOptions; cyclesOptions?: LoopRunCyclesOptions } | Error {
+  const p = objectParams(params);
+  if (p instanceof Error) return p;
+
+  const workspacePath = optionalString(p, "workspacePath") ?? process.cwd();
+  const stateFilePath = optionalString(p, "stateFilePath") ?? "LOOP-STATE.json";
+  const markdownPath = optionalString(p, "markdownPath");
+  const loopId = optionalString(p, "loopId");
+  const executeCommand = optionalString(p, "executeCommand");
+  const agentId = optionalString(p, "agentId");
+  const goalCommand = optionalString(p, "goalCommand");
+  const worktreeRoot = optionalString(p, "worktreeRoot");
+  const archiveCompletedTasks = optionalBoolean(p, "archiveCompletedTasks");
+  if (archiveCompletedTasks instanceof Error) return archiveCompletedTasks;
+  const autoAgent = optionalBoolean(p, "autoAgent");
+  if (autoAgent instanceof Error) return autoAgent;
+  const useWorktree = optionalBoolean(p, "useWorktree");
+  if (useWorktree instanceof Error) return useWorktree;
+  const sources = optionalStringArray(p, "sources");
+  if (sources instanceof Error) return sources;
+  const verifyCommands = optionalStringArray(p, "verifyCommands");
+  if (verifyCommands instanceof Error) return verifyCommands;
+  const verifierAgentIds = optionalStringArray(p, "verifierAgentIds");
+  if (verifierAgentIds instanceof Error) return verifierAgentIds;
+  const maxIterations = optionalPositiveInteger(p, "maxIterations");
+  if (maxIterations instanceof Error) return maxIterations;
+  const commandTimeoutMs = optionalPositiveInteger(p, "commandTimeoutMs");
+  if (commandTimeoutMs instanceof Error) return commandTimeoutMs;
+  const outputLimit = optionalPositiveInteger(p, "outputLimit");
+  if (outputLimit instanceof Error) return outputLimit;
+  const cycles = optionalPositiveInteger(p, "cycles");
+  if (cycles instanceof Error) return cycles;
+  const intervalMs = optionalNonNegativeInteger(p, "intervalMs");
+  if (intervalMs instanceof Error) return intervalMs;
+  const stopWhenIdle = optionalBoolean(p, "stopWhenIdle");
+  if (stopWhenIdle instanceof Error) return stopWhenIdle;
+
+  const runOptions: LoopRunOptions = {
+    workspacePath,
+    stateFilePath,
+    ...(markdownPath !== undefined ? { markdownPath } : {}),
+    ...(loopId !== undefined ? { loopId } : {}),
+    ...(executeCommand !== undefined ? { executeCommand } : {}),
+    ...(agentId !== undefined ? { agentId } : {}),
+    ...(autoAgent !== undefined ? { autoAgent } : {}),
+    ...(goalCommand !== undefined ? { goalCommand } : {}),
+    ...(archiveCompletedTasks !== undefined ? { archiveCompletedTasks } : {}),
+    ...(useWorktree !== undefined ? { useWorktree } : {}),
+    ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
+    ...(sources !== undefined ? { sources } : {}),
+    ...(verifyCommands !== undefined ? { verifyCommands } : {}),
+    ...(verifierAgentIds !== undefined ? { verifierAgentIds } : {}),
+    ...(maxIterations !== undefined ? { maxIterations } : {}),
+    ...(commandTimeoutMs !== undefined ? { commandTimeoutMs } : {}),
+    ...(outputLimit !== undefined ? { outputLimit } : {}),
+  };
+  const cyclesOptions = cycles !== undefined || intervalMs !== undefined || stopWhenIdle !== undefined
+    ? {
+        ...(cycles !== undefined ? { cycles } : {}),
+        ...(intervalMs !== undefined ? { intervalMs } : {}),
+        ...(stopWhenIdle !== undefined ? { stopWhenIdle } : {}),
+      }
+    : undefined;
+
+  return {
+    runOptions,
+    ...(cyclesOptions !== undefined ? { cyclesOptions } : {}),
+  };
+}
+
+function withLoopAdapters(ctx: DaemonContext, runOptions: LoopRunOptions): LoopRunOptions {
+  if (
+    runOptions.agentId === undefined
+    && runOptions.autoAgent !== true
+    && (runOptions.verifierAgentIds?.length ?? 0) === 0
+  ) {
+    return runOptions;
+  }
+  return {
+    ...runOptions,
+    adapters: Array.from(ctx.adapters.values()),
+    policyEngine: ctx.policy,
+    policyHistory: sqliteHistory(ctx.db),
+  };
+}
+
+function withoutRuntimeAdapters(runOptions: LoopRunOptions): LoopRunOptions {
+  const copy: LoopRunOptions = { ...runOptions };
+  delete copy.adapters;
+  delete copy.policyEngine;
+  delete copy.policyHistory;
+  return copy;
+}
+
+function parseLoopStartParams(
+  params: unknown,
+): { runOptions: LoopRunOptions; schedule: LoopStartSchedule } | Error {
+  const parsed = parseLoopRunParams(params);
+  if (parsed instanceof Error) return parsed;
+  const p = objectParams(params);
+  if (p instanceof Error) return p;
+  const intervalMs = optionalNonNegativeInteger(p, "intervalMs");
+  if (intervalMs instanceof Error) return intervalMs;
+  const scheduleExpression = optionalString(p, "schedule");
+  if (scheduleExpression !== undefined) {
+    const invalid = validateCronExpression(scheduleExpression);
+    if (invalid !== undefined) return new Error(`params.schedule ${invalid.message}`);
+  }
+  const schedule: LoopStartSchedule = {
+    intervalMs: intervalMs ?? 5_000,
+    stopWhenIdle: parsed.cyclesOptions?.stopWhenIdle === true,
+    ...(parsed.cyclesOptions?.cycles !== undefined ? { cycles: parsed.cyclesOptions.cycles } : {}),
+    ...(scheduleExpression !== undefined ? { scheduleExpression } : {}),
+  };
+  return { runOptions: parsed.runOptions, schedule };
+}
+
+function parseLoopStatusParams(params: unknown): { workspacePath: string; stateFilePath: string } | Error {
+  const p = objectParams(params);
+  if (p instanceof Error) return p;
+  const workspacePath = optionalString(p, "workspacePath") ?? process.cwd();
+  const stateFilePath = optionalString(p, "stateFilePath") ?? "LOOP-STATE.json";
+  return {
+    workspacePath,
+    stateFilePath: resolveDaemonLoopPath(stateFilePath, workspacePath),
+  };
+}
+
+function resolveDaemonLoopPath(path: string, cwd: string): string {
+  return isAbsolute(path) ? path : join(cwd, path);
+}
+
+function objectParams(params: unknown): Record<string, unknown> | Error {
+  if (params === undefined || params === null) return {};
+  if (typeof params !== "object" || Array.isArray(params)) {
+    return new Error("params must be an object");
+  }
+  return params as Record<string, unknown>;
+}
+
+function optionalString(params: Record<string, unknown>, key: string): string | undefined {
+  const value = params[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+function optionalStringArray(params: Record<string, unknown>, key: string): string[] | undefined | Error {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
+    return new Error(`params.${key} must be an array of strings`);
+  }
+  return value;
+}
+
+function optionalPositiveInteger(params: Record<string, unknown>, key: string): number | undefined | Error {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  if (!Number.isInteger(value) || typeof value !== "number" || value < 1) {
+    return new Error(`params.${key} must be a positive integer`);
+  }
+  return value;
+}
+
+function optionalNonNegativeInteger(params: Record<string, unknown>, key: string): number | undefined | Error {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  if (!Number.isInteger(value) || typeof value !== "number" || value < 0) {
+    return new Error(`params.${key} must be a non-negative integer`);
+  }
+  return value;
+}
+
+function optionalBoolean(params: Record<string, unknown>, key: string): boolean | undefined | Error {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  if (typeof value !== "boolean") return new Error(`params.${key} must be a boolean`);
+  return value;
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -782,6 +1663,7 @@ function buildContext(): DaemonContext {
   const home = osstackHome();
   if (!existsSync(home)) mkdirSync(home, { recursive: true });
   const dbPath = join(home, "state.db");
+  const loopSessionsPath = join(home, "loop-sessions.json");
   if (!existsSync(dirname(dbPath))) mkdirSync(dirname(dbPath), { recursive: true });
   const db = openDb({ path: dbPath });
   const redactor = new PIIRedactor();
@@ -800,8 +1682,9 @@ function buildContext(): DaemonContext {
   const gbrain = new GBrainAdapter();  // disabled unless OSSTACK_GBRAIN=1
   const kanban = new KanbanRepository(db, dbPath);
   return {
-    dbPath, db, redactor, adapters, policy, hermes, gbrain, kanban,
+    dbPath, loopSessionsPath, db, redactor, adapters, policy, hermes, gbrain, kanban,
     activeRuns: new Map(),
+    loopSessions: new Map(),
     hermesKanbanByRun: new Map(),
   };
 }
@@ -871,22 +1754,39 @@ export function startDaemon(opts: { socketPath?: string } = {}): Promise<DaemonH
 
   return new Promise((resolve, reject) => {
     server.once("error", reject);
-    server.listen(socketPath, () => {
+    void restoreLoopSessions(ctx).then(() => {
+      server.listen(socketPath, () => {
       try { chmodSync(socketPath, 0o600); } catch { /* best effort */ }
 
+      let shutdownPromise: Promise<void> | undefined;
       const shutdown = async (): Promise<void> => {
-        // Abort any active runs so adapters get a chance to clean up.
-        for (const ac of ctx.activeRuns.values()) ac.abort();
-        await new Promise<void>((resolveClose) => server.close(() => resolveClose()));
-        try { ctx.db.close(); } catch { /* swallow */ }
-        try { cleanupStaleSocket(socketPath); } catch { /* swallow */ }
-        await shutdownOtel();
+        if (shutdownPromise !== undefined) return await shutdownPromise;
+        process.off("SIGTERM", onSig);
+        process.off("SIGINT", onSig);
+        shutdownPromise = (async () => {
+          // Abort any active runs so adapters get a chance to clean up.
+          for (const ac of ctx.activeRuns.values()) ac.abort();
+          for (const session of ctx.loopSessions.values()) {
+            session.shutdownRequested = true;
+            session.abort.abort();
+          }
+          const loopCompletions = Array.from(ctx.loopSessions.values())
+            .map((session) => session.done)
+            .filter((done): done is Promise<void> => done !== undefined);
+          await Promise.allSettled(loopCompletions);
+          await new Promise<void>((resolveClose) => server.close(() => resolveClose()));
+          try { ctx.db.close(); } catch { /* swallow */ }
+          try { cleanupStaleSocket(socketPath); } catch { /* swallow */ }
+          await shutdownOtel();
+        })();
+        return await shutdownPromise;
       };
       const onSig = (): void => { void shutdown().then(() => process.exit(0)); };
       process.once("SIGTERM", onSig);
       process.once("SIGINT", onSig);
 
       resolve({ close: shutdown, socketPath, dbPath: ctx.dbPath });
-    });
+      });
+    }).catch(reject);
   });
 }

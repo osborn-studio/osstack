@@ -95,7 +95,7 @@ export class Scheduler {
       // MVP: poll every 30s and check if current time matches cron
       while (!this.stopped) {
         const now = new Date();
-        if (cronMatches(cronExpr, now)) {
+        if (cronExpressionMatches(cronExpr, now)) {
           // Avoid firing multiple times in the same minute
           const lastMinute = this.lastFireAt > 0
             ? new Date(this.lastFireAt).getMinutes()
@@ -144,22 +144,56 @@ function sleep(ms: number): Promise<void> {
  * Only handles exact numbers, "*", and comma-separated values for MVP.
  * Full cron support (ranges, steps, named months) can come later via a library.
  */
-function cronMatches(expr: string, date: Date): boolean {
+export function cronExpressionMatches(expr: string, date: Date): boolean {
   const fields = expr.trim().split(/\s+/);
   if (fields.length !== 5) return false;
 
-  const values = [
-    date.getMinutes(),    // minute
-    date.getHours(),      // hour
-    date.getDate(),       // day of month
-    date.getMonth() + 1,  // month
-    date.getDay(),        // day of week
-  ];
+  return fieldMatches(fields[0]!, date.getMinutes())
+    && fieldMatches(fields[1]!, date.getHours())
+    && fieldMatches(fields[2]!, date.getDate())
+    && fieldMatches(fields[3]!, date.getMonth() + 1)
+    && dayOfWeekMatches(fields[4]!, date.getDay());
+}
 
-  for (let i = 0; i < 5; i++) {
-    if (!fieldMatches(fields[i]!, values[i]!)) return false;
+export function validateCronExpression(expr: string): Error | undefined {
+  const fields = expr.trim().split(/\s+/);
+  if (fields.length !== 5) return new Error("cron expression must have 5 fields");
+  const ranges = [
+    [0, 59],
+    [0, 23],
+    [1, 31],
+    [1, 12],
+    [0, 7],
+  ] as const;
+  for (let i = 0; i < fields.length; i++) {
+    const invalid = validateCronField(fields[i]!, ranges[i]![0], ranges[i]![1]);
+    if (invalid !== undefined) return new Error(`invalid cron field ${i + 1}: ${invalid}`);
   }
-  return true;
+  return undefined;
+}
+
+export function nextCronDelayMs(
+  expr: string,
+  from = new Date(),
+  options: { includeCurrentMinute?: boolean } = {},
+): number | Error {
+  const invalid = validateCronExpression(expr);
+  if (invalid !== undefined) return invalid;
+
+  const start = new Date(from);
+  start.setSeconds(0, 0);
+  if (options.includeCurrentMinute !== true) {
+    start.setMinutes(start.getMinutes() + 1);
+  }
+
+  const maxMinutes = 366 * 24 * 60;
+  for (let offset = 0; offset <= maxMinutes; offset++) {
+    const candidate = new Date(start.getTime() + offset * 60_000);
+    if (cronExpressionMatches(expr, candidate)) {
+      return Math.max(0, candidate.getTime() - from.getTime());
+    }
+  }
+  return new Error("cron expression did not match within 366 days");
 }
 
 function fieldMatches(field: string, value: number): boolean {
@@ -170,4 +204,18 @@ function fieldMatches(field: string, value: number): boolean {
     if (trimmed === String(value)) return true;
   }
   return false;
+}
+
+function dayOfWeekMatches(field: string, day: number): boolean {
+  return fieldMatches(field, day) || (day === 0 && fieldMatches(field, 7));
+}
+
+function validateCronField(field: string, min: number, max: number): string | undefined {
+  if (field === "*") return undefined;
+  for (const part of field.split(",")) {
+    const value = Number(part.trim());
+    if (!Number.isInteger(value)) return `${part} is not an integer`;
+    if (value < min || value > max) return `${value} is outside ${min}-${max}`;
+  }
+  return undefined;
 }

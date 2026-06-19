@@ -12,6 +12,7 @@
   "scripts": {
     "build": "tsc -p .",
     "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
