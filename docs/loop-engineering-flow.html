@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Loop Engineering Skill Execution Flow</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --ink: #17202a;
+      --muted: #596577;
+      --line: #c9d1dc;
+      --blue: #2563eb;
+      --green: #15803d;
+      --amber: #b45309;
+      --red: #b91c1c;
+      --violet: #6d28d9;
+      --cyan: #0e7490;
+      --shadow: 0 10px 28px rgba(23, 32, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    header {
+      background: #101827;
+      color: #fff;
+      padding: 38px 28px 34px;
+    }
+
+    .wrap {
+      width: min(1180px, calc(100% - 36px));
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(28px, 4vw, 48px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 0 0 18px;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    .subtitle {
+      max-width: 860px;
+      color: #d9e1ee;
+      font-size: 17px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .pill {
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 999px;
+      padding: 7px 12px;
+      color: #edf3ff;
+      font-size: 13px;
+    }
+
+    main {
+      padding: 28px 0 48px;
+    }
+
+    section {
+      margin-top: 22px;
+      background: var(--panel);
+      border: 1px solid #e3e8ef;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(130px, 1fr));
+      gap: 10px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex: 0 0 auto;
+    }
+
+    .blue { background: var(--blue); }
+    .green { background: var(--green); }
+    .amber { background: var(--amber); }
+    .red { background: var(--red); }
+    .violet { background: var(--violet); }
+    .cyan { background: var(--cyan); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: minmax(190px, 1fr) 34px minmax(190px, 1fr) 34px minmax(190px, 1fr) 34px minmax(190px, 1fr);
+      gap: 8px;
+      align-items: stretch;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .lane {
+      min-width: 190px;
+      border: 1px solid #dce3ec;
+      border-radius: 8px;
+      background: #fbfcfe;
+      padding: 14px;
+    }
+
+    .lane strong {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .lane ul,
+    .card ul {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+
+    .lane li,
+    .card li {
+      margin: 5px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .arrow {
+      align-self: center;
+      color: #79869a;
+      font-size: 24px;
+      text-align: center;
+      min-width: 34px;
+    }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(145px, 1fr));
+      gap: 10px;
+    }
+
+    .step {
+      position: relative;
+      min-height: 154px;
+      border: 1px solid #dce3ec;
+      border-top: 5px solid var(--blue);
+      border-radius: 8px;
+      background: #fbfcfe;
+      padding: 14px;
+    }
+
+    .step:nth-child(2) { border-top-color: var(--violet); }
+    .step:nth-child(3) { border-top-color: var(--amber); }
+    .step:nth-child(4) { border-top-color: var(--cyan); }
+    .step:nth-child(5) { border-top-color: var(--green); }
+    .step:nth-child(6) { border-top-color: #475569; }
+
+    .step-number {
+      display: inline-grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #e9eef7;
+      color: #17202a;
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    .branch-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid #dce3ec;
+      border-radius: 8px;
+      background: #fbfcfe;
+      padding: 16px;
+    }
+
+    .card h3 {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .tag {
+      display: inline-block;
+      border-radius: 6px;
+      padding: 2px 8px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    code {
+      background: #eef2f7;
+      border: 1px solid #dbe3ee;
+      border-radius: 5px;
+      padding: 1px 5px;
+      color: #1f2937;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 12px 0 0;
+      overflow-x: auto;
+      border-radius: 8px;
+      background: #101827;
+      color: #edf3ff;
+      padding: 14px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    pre code {
+      background: transparent;
+      border: 0;
+      color: inherit;
+      padding: 0;
+    }
+
+    .io-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .status-table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 8px;
+    }
+
+    .status-table th,
+    .status-table td {
+      border-bottom: 1px solid #e3e8ef;
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    .status-table th {
+      background: #eef2f7;
+      color: #334155;
+    }
+
+    .status-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .note {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-left: 4px solid var(--blue);
+      background: #eff6ff;
+      color: #334155;
+      border-radius: 0 8px 8px 0;
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .legend,
+      .pipeline,
+      .branch-grid,
+      .io-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .arrow {
+        transform: rotate(90deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Loop Engineering Skill 完整执行流程图</h1>
+      <p class="subtitle">
+        这份审核页展示 `loop-engineering` Skill 如何把外部系统、Codex、CI 或人工命令接入 osstack Loop runtime，并完成任务发现、执行、验证、状态记录与后台托管。
+      </p>
+      <div class="meta">
+        <span class="pill">Skill: loop-engineering</span>
+        <span class="pill">Runtime: osstack loop</span>
+        <span class="pill">State: LOOP-STATE.json / STATE.md</span>
+        <span class="pill">Modes: local / daemon / worktree / agent</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section>
+      <h2>颜色图例</h2>
+      <div class="legend">
+        <div class="legend-item"><span class="dot blue"></span>入口与发现</div>
+        <div class="legend-item"><span class="dot violet"></span>规划与路由</div>
+        <div class="legend-item"><span class="dot amber"></span>执行与修改</div>
+        <div class="legend-item"><span class="dot cyan"></span>验证与审查</div>
+        <div class="legend-item"><span class="dot green"></span>状态与结果</div>
+        <div class="legend-item"><span class="dot red"></span>失败与升级</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>一、外部系统到 Loop Runtime 的调用链</h2>
+      <div class="flow" aria-label="调用链流程图">
+        <div class="lane">
+          <strong class="blue">调用方</strong>
+          <h3>人 / Codex / CI / 平台</h3>
+          <ul>
+            <li>提出任务或触发自动流程</li>
+            <li>选择本地一次性运行或 daemon session</li>
+            <li>提供 workspace、verify、execute、agent 等参数</li>
+          </ul>
+        </div>
+        <div class="arrow">→</div>
+        <div class="lane">
+          <strong class="violet">Skill 包装层</strong>
+          <h3>loop-engineering/</h3>
+          <ul>
+            <li><code>SKILL.md</code> 提供使用规则</li>
+            <li><code>scripts/*.sh</code> 提供稳定入口</li>
+            <li><code>references/</code> 提供 schema 与集成说明</li>
+          </ul>
+        </div>
+        <div class="arrow">→</div>
+        <div class="lane">
+          <strong class="amber">CLI 解析层</strong>
+          <h3>osstack loop</h3>
+          <ul>
+            <li>优先使用当前仓库构建产物</li>
+            <li>支持 <code>OSSTACK_REPO</code></li>
+            <li>支持 <code>OSSTACK_CLI</code> 或全局 <code>osstack</code></li>
+          </ul>
+        </div>
+        <div class="arrow">→</div>
+        <div class="lane">
+          <strong class="green">Loop Runtime</strong>
+          <h3>@osstack/loop</h3>
+          <ul>
+            <li>发现任务并执行循环</li>
+            <li>调用 local command 或 agent adapter</li>
+            <li>写入状态并返回退出码</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>二、核心循环：Discover → Plan → Execute → Verify → Iterate → State</h2>
+      <div class="pipeline" aria-label="核心循环流程图">
+        <div class="step">
+          <span class="step-number">1</span>
+          <h3>Discover</h3>
+          <p>从 <code>tasks/*.json</code> 或 <code>git_diff</code> 发现工作项。</p>
+          <ul>
+            <li><code>loop enqueue</code></li>
+            <li><code>--source task_queue</code></li>
+            <li><code>--source git_diff</code></li>
+          </ul>
+        </div>
+        <div class="step">
+          <span class="step-number">2</span>
+          <h3>Plan</h3>
+          <p>生成执行计划，决定执行者、迭代次数、停止条件和隔离方式。</p>
+          <ul>
+            <li><code>--max-iter</code></li>
+            <li><code>--goal</code></li>
+            <li><code>--worktree</code></li>
+          </ul>
+        </div>
+        <div class="step">
+          <span class="step-number">3</span>
+          <h3>Execute</h3>
+          <p>执行修复、生成代码、运行脚本，或调用 agent adapter。</p>
+          <ul>
+            <li><code>--execute "cmd"</code></li>
+            <li><code>--agent codex-cli</code></li>
+            <li><code>--auto-agent</code></li>
+          </ul>
+        </div>
+        <div class="step">
+          <span class="step-number">4</span>
+          <h3>Verify</h3>
+          <p>运行测试、类型检查、审查器或 checker，产生 pass/fail verdict。</p>
+          <ul>
+            <li><code>--verify "pnpm test"</code></li>
+            <li><code>--reviewer ds-review</code></li>
+            <li><code>--checker ds-verify</code></li>
+          </ul>
+        </div>
+        <div class="step">
+          <span class="step-number">5</span>
+          <h3>Iterate</h3>
+          <p>根据验证结果决定停止、继续下一轮，或升级给人类/Hermes。</p>
+          <ul>
+            <li>success: stop</li>
+            <li>failure: continue / escalate</li>
+            <li>idle: optional stop</li>
+          </ul>
+        </div>
+        <div class="step">
+          <span class="step-number">6</span>
+          <h3>State</h3>
+          <p>写出机器和人工都能读取的状态文件，并返回退出码。</p>
+          <ul>
+            <li><code>LOOP-STATE.json</code></li>
+            <li><code>STATE.md</code></li>
+            <li><code>0 / 1 / 2</code></li>
+          </ul>
+        </div>
+      </div>
+      <div class="note">审核重点：Skill 不复制 Loop 引擎，只负责把调用方稳定地接到 <code>osstack loop</code>。真实执行、状态机和验证逻辑仍由 TypeScript runtime 负责。</div>
+    </section>
+
+    <section>
+      <h2>三、三种典型运行模式</h2>
+      <div class="branch-grid">
+        <div class="card">
+          <h3><span class="tag blue">Local</span> 本地一次性循环</h3>
+          <p>适合开发者、本地脚本、CI job。命令执行结束后返回退出码。</p>
+          <pre><code>loop-engineering/scripts/loop-doctor.sh
+LOOP_WORKTREE=0 \
+LOOP_EXECUTE="node fix.mjs" \
+LOOP_VERIFY="node test.mjs" \
+loop-engineering/scripts/loop-run.sh</code></pre>
+          <ul>
+            <li>默认 source: <code>task_queue</code></li>
+            <li>默认 verifier: <code>pnpm test</code></li>
+            <li>默认启用 <code>--worktree</code></li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3><span class="tag violet">Daemon</span> 后台托管循环</h3>
+          <p>适合平台、dashboard、长期轮询、定时任务。session 可 list/status/stop。</p>
+          <pre><code>node packages/cli/dist/bin.js serve
+LOOP_GOAL="pnpm test" \
+loop-engineering/scripts/loop-daemon-start.sh
+loop-engineering/scripts/osstack-loop.sh list
+loop-engineering/scripts/osstack-loop.sh stop loop_session_xxx</code></pre>
+          <ul>
+            <li>支持 <code>--interval-ms</code></li>
+            <li>支持 <code>--schedule "0 6 * * *"</code></li>
+            <li>支持 daemon RPC status</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3><span class="tag amber">Agent</span> Agent / Reviewer 模式</h3>
+          <p>适合需要模型写代码、审查 diff 或做独立验证的任务。</p>
+          <pre><code>loop-engineering/scripts/osstack-loop.sh run \
+  --source task_queue \
+  --agent codex-cli \
+  --verify "pnpm test"
+
+loop-engineering/scripts/osstack-loop.sh run \
+  --source task_queue \
+  --execute "node fix.js" \
+  --reviewer ds-review</code></pre>
+          <ul>
+            <li><code>--auto-agent</code> 让 runtime 自动路由</li>
+            <li><code>--checker</code> 是 reviewer/verifier 别名</li>
+            <li>外部 adapter 可接入同一循环</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>四、输入、输出与状态边界</h2>
+      <div class="io-grid">
+        <div class="card">
+          <h3>输入</h3>
+          <ul>
+            <li>workspace: <code>LOOP_WORKSPACE</code> 或 <code>--workspace</code></li>
+            <li>任务队列: <code>tasks/*.json</code></li>
+            <li>执行命令: <code>LOOP_EXECUTE</code> 或 <code>--execute</code></li>
+            <li>验证命令: <code>LOOP_VERIFY</code> 或 <code>--verify</code></li>
+            <li>隔离策略: <code>LOOP_WORKTREE=1</code> 或 <code>--worktree</code></li>
+            <li>agent/reviewer/checker adapter ID</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>输出</h3>
+          <ul>
+            <li><code>LOOP-STATE.json</code>: 机器可读状态</li>
+            <li><code>STATE.md</code>: 人类审核摘要</li>
+            <li><code>tasks/archive/</code>: 可选归档成功任务</li>
+            <li>stdout: loop summary 或 JSON summary</li>
+            <li>退出码: 用于 CI 和平台判断结果</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 20px;">退出码语义</h3>
+      <table class="status-table">
+        <thead>
+          <tr>
+            <th>退出码</th>
+            <th>含义</th>
+            <th>平台建议</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>0</code></td>
+            <td>任务完成且验证通过。</td>
+            <td>标记成功，展示 <code>STATE.md</code>。</td>
+          </tr>
+          <tr>
+            <td><code>1</code></td>
+            <td>命令、配置、daemon 或环境错误。</td>
+            <td>作为运行错误处理，提示 doctor 或配置修复。</td>
+          </tr>
+          <tr>
+            <td><code>2</code></td>
+            <td>任务失败、验证失败或被升级。</td>
+            <td>作为工程任务失败处理，保留状态和日志供人工接手。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>五、刚验证过的端到端测试路径</h2>
+      <div class="flow" aria-label="实际验证路径">
+        <div class="lane">
+          <strong class="blue">Fixture</strong>
+          <h3>临时 Node 项目</h3>
+          <ul>
+            <li><code>add(a,b)</code> 初始错误实现为减法</li>
+            <li><code>test.mjs</code> 断言结果必须等于 5</li>
+          </ul>
+        </div>
+        <div class="arrow">→</div>
+        <div class="lane">
+          <strong class="violet">Enqueue</strong>
+          <h3>写入任务队列</h3>
+          <ul>
+            <li><code>osstack-loop.sh enqueue</code></li>
+            <li>生成 <code>tasks/task_*.json</code></li>
+          </ul>
+        </div>
+        <div class="arrow">→</div>
+        <div class="lane">
+          <strong class="amber">Run</strong>
+          <h3>执行修复</h3>
+          <ul>
+            <li><code>LOOP_EXECUTE="node fix.mjs"</code></li>
+            <li><code>LOOP_WORKTREE=0</code></li>
+          </ul>
+        </div>
+        <div class="arrow">→</div>
+        <div class="lane">
+          <strong class="green">Verified</strong>
+          <h3>验证通过</h3>
+          <ul>
+            <li><code>LOOP_VERIFY="node test.mjs"</code></li>
+            <li><code>success_rate=100%</code></li>
+            <li><code>STATE.md</code> 写出决策记录</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>六、审核清单</h2>
+      <table class="status-table">
+        <thead>
+          <tr>
+            <th>检查项</th>
+            <th>期望</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Skill schema</td>
+            <td><code>quick_validate.py loop-engineering</code> 返回 <code>Skill is valid!</code></td>
+          </tr>
+          <tr>
+            <td>脚本语法</td>
+            <td><code>bash -n loop-engineering/scripts/*.sh</code> 全部通过</td>
+          </tr>
+          <tr>
+            <td>CLI 解析</td>
+            <td><code>osstack-loop.sh</code> 可解析 repo CLI、<code>OSSTACK_REPO</code>、<code>OSSTACK_CLI</code> 或全局 <code>osstack</code></td>
+          </tr>
+          <tr>
+            <td>本地运行</td>
+            <td><code>loop-run.sh</code> 能执行任务、验证、写状态，并按结果返回退出码</td>
+          </tr>
+          <tr>
+            <td>平台集成</td>
+            <td>外部系统只需要管理 workspace、任务 JSON、命令参数、状态文件和退出码</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

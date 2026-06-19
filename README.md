@@ -182,6 +182,22 @@ Use `osstack stats` while the daemon is running to inspect per-agent run metrics
 
 The V1 `legacy-python/runtime/bin/osb-loop` entry point remains usable. It starts or reuses an osstack daemon, forwards the current `git diff` to `osstack loop start --once --source git_diff`, waits for completion, prints daemon loop status, and returns exit code `2` if any completed task failed or escalated.
 
+## Reusable Loop Engineering Skill
+
+The Loop runtime is also packaged as a repository-local Codex skill in [`loop-engineering/`](loop-engineering/). Use it when another agent or platform needs a stable wrapper around `osstack loop` instead of calling the TypeScript CLI directly.
+
+```bash
+loop-engineering/scripts/loop-doctor.sh
+LOOP_VERIFY="pnpm test" loop-engineering/scripts/loop-run.sh
+LOOP_GOAL="pnpm test" loop-engineering/scripts/loop-daemon-start.sh
+```
+
+The skill keeps the executable surface small:
+
+- `SKILL.md` explains the Discover → Plan → Execute → Verify → Iterate workflow.
+- `scripts/osstack-loop.sh` resolves the built repo CLI, `OSSTACK_REPO`, `OSSTACK_CLI`, or a global `osstack` binary.
+- `references/` documents CLI flags, task queue JSON, and CI/platform integration patterns.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
