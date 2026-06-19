@@ -365,6 +365,22 @@ osstack stats     # per-agent 成功率一目了然
 - MacBook Pro 通过 SSH tunnel 或 Hermes WebUI 远程调
 - 不需要 osstack 在两台机器都装——daemon 只跑在一台
 
+### 9.6 Loop Engineering 独立 Skill 集成
+
+仓库内提供了一个可复用 Codex Skill：[`loop-engineering/`](loop-engineering/)。它不是复制 Loop 引擎，而是把 `osstack loop` 封装成稳定的 skill 入口，方便其他 agent、CI 或内部平台整体调用。
+
+```bash
+loop-engineering/scripts/loop-doctor.sh
+LOOP_VERIFY="pnpm test" loop-engineering/scripts/loop-run.sh
+LOOP_GOAL="pnpm test" loop-engineering/scripts/loop-daemon-start.sh
+```
+
+常用方式：
+
+- 本地一次性循环：`loop-run.sh`，默认 `task_queue + worktree + pnpm test`。
+- 后台托管循环：先启动 `osstack serve`，再用 `loop-daemon-start.sh` 创建 session。
+- 平台集成：通过 `loop-engineering/references/` 查看 CLI 参数、任务 JSON schema、CI/daemon 接入方式。
+
 ---
 
 ## 十、可观测性与运维
@@ -433,6 +449,10 @@ osbstack/
 │   └── scripts/
 │       ├── osstack_bridge.py           # Python ↔ daemon Unix socket 桥
 │       └── osstack_install.sh          # 软链安装器
+├── loop-engineering/                   # 独立 Loop Engineering Codex Skill
+│   ├── SKILL.md
+│   ├── scripts/                        # osstack loop 包装脚本
+│   └── references/                     # CLI / task schema / 集成说明
 └── README.zh.md                        # 你正在读的这份
 ```
 

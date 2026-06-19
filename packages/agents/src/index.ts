@@ -10,13 +10,29 @@ import { ClaudeCodeAdapter } from "./adapters/claude-code.js";
 import { CodexCliAdapter } from "./adapters/codex-cli.js";
 import { AutoResearchAdapter } from "./adapters/autoresearch.js";
 import { ClaudeDesignAdapter } from "./adapters/claude-design.js";
+import { DeepSeekReviewAdapter } from "./adapters/ds-review.js";
+import { DeepSeekVerifyAdapter } from "./adapters/ds-verify.js";
 import { GoogleStitchAdapter } from "./adapters/google-stitch.js";
 
 export * from "./base.js";
 export { ClaudeCodeAdapter } from "./adapters/claude-code.js";
 export { CodexCliAdapter } from "./adapters/codex-cli.js";
 export { ClaudeDesignAdapter } from "./adapters/claude-design.js";
+export { DeepSeekReviewAdapter } from "./adapters/ds-review.js";
+export { DeepSeekVerifyAdapter } from "./adapters/ds-verify.js";
 export { GoogleStitchAdapter } from "./adapters/google-stitch.js";
+export {
+  cleanupOrphanedWorktrees,
+  cleanupWorktree,
+  commitWorktreeChanges,
+  createWorktree,
+  mergeWorktree,
+  type CleanupOrphanedWorktreesResult,
+  type CleanupWorktreeOptions,
+  type CommitWorktreeResult,
+  type CreateWorktreeOptions,
+  type WorktreeHandle,
+} from "./worktree.js";
 export {
   AutoResearchAdapter, parseTrainLog,
   type AutoResearchConfig, type TrainResult,
@@ -32,6 +48,8 @@ export function defaultAdapters(): AgentAdapter[] {
   return [
     new ClaudeCodeAdapter(),
     new CodexCliAdapter(),
+    new DeepSeekReviewAdapter(),
+    new DeepSeekVerifyAdapter(),
     new AutoResearchAdapter(),
     new ClaudeDesignAdapter(),
     new GoogleStitchAdapter(),

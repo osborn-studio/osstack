@@ -20,6 +20,7 @@ export const CapabilityKind = z.enum([
   // ── Software lifecycle ─────────────────────────────────────────────
   "code.write",
   "code.review",
+  "review.code",
   "code.refactor",
   "code.test",
   "code.debug",
@@ -50,6 +51,7 @@ export const CapabilityKind = z.enum([
   // Risk + verification (Turing's domain).
   "risk.check",          // run industry risk rules over an artifact
   "verify.acceptance",   // check artifact against acceptance criteria
+  "verify.alignment",    // check implementation against PRD/architecture/sprint intent
   // Artifact / approval lifecycle.
   "artifact.create",     // Jobs / Linus: produce a draft document
   "artifact.revise",     // produce a revised draft given user feedback

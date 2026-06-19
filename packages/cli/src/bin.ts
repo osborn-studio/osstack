@@ -1,8 +1,15 @@
 // osstack CLI entry. Talks to the running daemon via Unix socket when needed.
 // (shebang is injected by tsup banner)
 
+import { execFile } from "node:child_process";
 import { connect, type Socket } from "node:net";
+import { readdir, readFile, stat } from "node:fs/promises";
+import { isAbsolute, join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
+import { defaultAdapters } from "@osstack/agents";
+import { LoopEngine, enqueueTask, readLoopState, renderLoopStateMarkdown } from "@osstack/loop";
 import { initProject } from "@osstack/skills";
 import {
   addSource, checkAll, defaultManifestPath, readManifest,
@@ -13,6 +20,8 @@ import { handleConfigCommand } from "./config.js";
 import { resolveSocketPath } from "./paths.js";
 import { PROTOCOL_VERSION, VERSION } from "./version.js";
 import { handleUpgradeCommand } from "./upgrade.js";
+
+const execFileAsync = promisify(execFile);
 
 function socketPath(): string {
   return resolveSocketPath();
@@ -49,8 +58,7 @@ async function rpc(method: string, params?: unknown, timeoutMs = 10_000): Promis
   });
 }
 
-async function main(): Promise<number> {
-  const args = process.argv.slice(2);
+export async function main(args = process.argv.slice(2)): Promise<number> {
   const cmd = args[0];
 
   if (cmd === "--version" || cmd === "-v" || cmd === "version") {
@@ -68,7 +76,7 @@ Daemon commands:
   serve               Start the daemon (Unix socket at ${socketPath()})
   health              Show daemon health (requires running daemon)
   status              CLI/daemon version handshake + update availability
-  stats               Show per-agent metrics (requires running daemon)
+  stats               Show per-agent and loop metrics (requires running daemon)
   killswitch          Check if the policy layer is earning its keep (F4)
   agent list          List registered sub-agents and their capabilities
 
@@ -107,6 +115,24 @@ Kanban board (osstack's own; subscribable from Telegram via Hermes):
   kanban comment <card_id> <text>
   kanban subscribe <card_id> <platform> <chat_id> [thread_id]
   kanban events [--since N]      Drain pending card events (for relays)
+
+Loop engineering (local, testable hot-loop MVP):
+  loop run [--workspace P] [--source S] [--execute CMD] [--verify CMD]
+           [--reviewer ID] [--checker ID] [--goal CMD] [--max-iter N] [--cycles N] [--interval-ms N]
+           [--state P] [--markdown P] [--worktree] [--json] [--daemon]
+                                 Run one discover→execute→verify→iterate cycle
+  loop start [--workspace P] [--source S] [--execute CMD] [--verify CMD]
+             [--reviewer ID] [--checker ID] [--goal CMD] [--schedule CRON] [--interval-ms N] [--cycles N]
+             [--stop-when-idle] [--once] [--worktree]
+                                 Start a daemon-managed polling loop
+  loop enqueue <prompt> [--workspace P] [--capability C] [--priority N]
+                                 Add a JSON task to tasks/
+  loop doctor [--workspace P] [--daemon] [--json]
+                                 Check workspace, queue, git, and optional daemon readiness
+  loop list [--json]             List daemon-managed polling loops
+  loop stop <loop_session_id>     Stop a daemon-managed polling loop
+  loop status [--workspace P] [--state P] [--daemon]
+                                 Render LOOP-STATE.json as STATE.md
 
 Hermes integration:
   hermes health                  Show kanban-sync bridge state
@@ -216,6 +242,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "kanban") {
     return await handleKanbanCommand(args.slice(1));
+  }
+
+  if (cmd === "loop") {
+    return await handleLoopCommand(args.slice(1));
   }
 
   if (cmd === "hermes") {
@@ -372,6 +402,849 @@ type RpcResp = { ok: boolean; result?: unknown; error?: { message: string } };
 function flagValue(args: string[], name: string): string | undefined {
   const i = args.indexOf(name);
   return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined;
+}
+
+function flagValues(args: string[], name: string): string[] {
+  const values: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === name && i + 1 < args.length) {
+      values.push(args[i + 1]!);
+      i++;
+    }
+  }
+  return values;
+}
+
+function positionalValues(args: string[], flagsWithValues: Set<string>): string[] {
+  const values: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!;
+    if (flagsWithValues.has(arg)) {
+      i++;
+      continue;
+    }
+    if (arg.startsWith("--")) continue;
+    values.push(arg);
+  }
+  return values;
+}
+
+function parseContextJson(value: string | undefined): Record<string, unknown> | undefined | Error {
+  if (value === undefined) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value) as unknown;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return new Error(`--context-json must be valid JSON: ${message}`);
+  }
+  if (parsed === null || Array.isArray(parsed) || typeof parsed !== "object") {
+    return new Error("--context-json must be a JSON object");
+  }
+  return parsed as Record<string, unknown>;
+}
+
+async function handleLoopCommand(args: string[]): Promise<number> {
+  const sub = args[0];
+
+  if (sub === "start") {
+    const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+    const stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
+    const markdownPath = flagValue(args, "--markdown");
+    const executeCommand = flagValue(args, "--execute");
+    const agentId = flagValue(args, "--agent");
+    const goalCommand = flagValue(args, "--goal");
+    const schedule = flagValue(args, "--schedule");
+    const worktreeRoot = flagValue(args, "--worktree-root");
+    const verifyCommands = flagValues(args, "--verify");
+    const verifierAgentIds = [...flagValues(args, "--reviewer"), ...flagValues(args, "--checker")];
+    const sources = flagValues(args, "--source");
+    const maxIterRaw = flagValue(args, "--max-iter");
+    const cyclesRaw = flagValue(args, "--cycles");
+    const intervalRaw = flagValue(args, "--interval-ms");
+    const archiveCompletedTasks = args.includes("--archive-completed");
+    const once = args.includes("--once");
+    const autoAgent = args.includes("--auto-agent");
+    const maxIterations = parsePositiveIntegerFlag(maxIterRaw, "--max-iter");
+    if (maxIterations instanceof Error) {
+      console.error(`osstack: ${maxIterations.message}`);
+      return 1;
+    }
+    const cycles = parsePositiveIntegerFlag(cyclesRaw, "--cycles");
+    if (cycles instanceof Error) {
+      console.error(`osstack: ${cycles.message}`);
+      return 1;
+    }
+    const intervalMs = parseNonNegativeIntegerFlag(intervalRaw, "--interval-ms");
+    if (intervalMs instanceof Error) {
+      console.error(`osstack: ${intervalMs.message}`);
+      return 1;
+    }
+    if (once && cycles !== undefined && cycles !== 1) {
+      console.error("osstack: --once cannot be combined with --cycles other than 1");
+      return 1;
+    }
+    const effectiveCycles = once ? 1 : cycles;
+    const stopWhenIdle = args.includes("--stop-when-idle") || once;
+
+    const resp = await rpc("loop.start", {
+      workspacePath,
+      stateFilePath,
+      ...(markdownPath !== undefined ? { markdownPath } : {}),
+      ...(executeCommand !== undefined ? { executeCommand } : {}),
+      ...(agentId !== undefined ? { agentId } : {}),
+      ...(autoAgent ? { autoAgent } : {}),
+      ...(goalCommand !== undefined ? { goalCommand } : {}),
+      ...(schedule !== undefined ? { schedule } : {}),
+      ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
+      ...(verifierAgentIds.length > 0 ? { verifierAgentIds } : {}),
+      ...(sources.length > 0 ? { sources } : {}),
+      ...(maxIterations !== undefined ? { maxIterations } : {}),
+      ...(effectiveCycles !== undefined ? { cycles: effectiveCycles } : {}),
+      ...(intervalMs !== undefined ? { intervalMs } : {}),
+      ...(archiveCompletedTasks ? { archiveCompletedTasks } : {}),
+      ...(stopWhenIdle ? { stopWhenIdle: true } : {}),
+      ...(args.includes("--worktree") ? { useWorktree: true } : {}),
+      ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
+    }) as RpcResp;
+    if (!resp.ok) {
+      console.error("osstack:", resp.error?.message ?? "loop.start failed");
+      return 1;
+    }
+    printLoopSession(resp.result as LoopSessionSummary, args.includes("--json"));
+    return 0;
+  }
+
+  if (sub === "list") {
+    const resp = await rpc("loop.list") as RpcResp;
+    if (!resp.ok) {
+      console.error("osstack:", resp.error?.message ?? "loop.list failed");
+      return 1;
+    }
+    const result = resp.result as { loops: LoopSessionSummary[] };
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(result, null, 2));
+      return 0;
+    }
+    printLoopSessionList(result.loops);
+    return 0;
+  }
+
+  if (sub === "stop") {
+    const loopSessionId = args[1];
+    if (loopSessionId === undefined || loopSessionId.startsWith("--")) {
+      console.error("osstack: loop stop requires a loop_session_id");
+      return 1;
+    }
+    const resp = await rpc("loop.stop", { loopSessionId }) as RpcResp;
+    if (!resp.ok) {
+      console.error("osstack:", resp.error?.message ?? "loop.stop failed");
+      return 1;
+    }
+    printLoopSession(resp.result as LoopSessionSummary, args.includes("--json"));
+    return 0;
+  }
+
+  if (sub === "run") {
+    const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+    const stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
+    const markdownPath = flagValue(args, "--markdown");
+    const executeCommand = flagValue(args, "--execute");
+    const agentId = flagValue(args, "--agent");
+    const goalCommand = flagValue(args, "--goal");
+    const worktreeRoot = flagValue(args, "--worktree-root");
+    const verifyCommands = flagValues(args, "--verify");
+    const verifierAgentIds = [...flagValues(args, "--reviewer"), ...flagValues(args, "--checker")];
+    const sources = flagValues(args, "--source");
+    const maxIterRaw = flagValue(args, "--max-iter");
+    const cyclesRaw = flagValue(args, "--cycles");
+    const intervalRaw = flagValue(args, "--interval-ms");
+    const json = args.includes("--json");
+    const useDaemon = args.includes("--daemon");
+    const stopWhenIdle = args.includes("--stop-when-idle");
+    const archiveCompletedTasks = args.includes("--archive-completed");
+    const autoAgent = args.includes("--auto-agent");
+    const maxIterations = parsePositiveIntegerFlag(maxIterRaw, "--max-iter");
+    if (maxIterations instanceof Error) {
+      console.error(`osstack: ${maxIterations.message}`);
+      return 1;
+    }
+    const cycles = parsePositiveIntegerFlag(cyclesRaw, "--cycles");
+    if (cycles instanceof Error) {
+      console.error(`osstack: ${cycles.message}`);
+      return 1;
+    }
+    const intervalMs = parseNonNegativeIntegerFlag(intervalRaw, "--interval-ms");
+    if (intervalMs instanceof Error) {
+      console.error(`osstack: ${intervalMs.message}`);
+      return 1;
+    }
+    const runCycles = cycles !== undefined || intervalMs !== undefined || stopWhenIdle;
+
+    if (useDaemon) {
+      const resp = await rpc("loop.run", {
+        workspacePath,
+        stateFilePath,
+        ...(markdownPath !== undefined ? { markdownPath } : {}),
+        ...(executeCommand !== undefined ? { executeCommand } : {}),
+        ...(agentId !== undefined ? { agentId } : {}),
+        ...(autoAgent ? { autoAgent } : {}),
+        ...(goalCommand !== undefined ? { goalCommand } : {}),
+        ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
+        ...(verifierAgentIds.length > 0 ? { verifierAgentIds } : {}),
+        ...(sources.length > 0 ? { sources } : {}),
+        ...(maxIterations !== undefined ? { maxIterations } : {}),
+        ...(cycles !== undefined ? { cycles } : {}),
+        ...(intervalMs !== undefined ? { intervalMs } : {}),
+        ...(archiveCompletedTasks ? { archiveCompletedTasks } : {}),
+        ...(stopWhenIdle ? { stopWhenIdle } : {}),
+        ...(args.includes("--worktree") ? { useWorktree: true } : {}),
+        ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
+      }) as RpcResp;
+      if (!resp.ok) {
+        console.error("osstack:", resp.error?.message ?? "loop.run failed");
+        return 1;
+      }
+      const result = resp.result as LoopRunSummary;
+      printLoopRun(result, json);
+      return result.completed_tasks.some((task) => task.outcome !== "success") ? 2 : 0;
+    }
+
+    const adapters = agentId !== undefined || verifierAgentIds.length > 0 || autoAgent
+      ? defaultAdapters()
+      : undefined;
+    const engine = new LoopEngine({
+      workspacePath,
+      stateFilePath,
+      ...(markdownPath !== undefined ? { markdownPath } : {}),
+      ...(executeCommand !== undefined ? { executeCommand } : {}),
+      ...(agentId !== undefined ? { agentId } : {}),
+      ...(autoAgent ? { autoAgent } : {}),
+      ...(adapters !== undefined ? { adapters } : {}),
+      ...(verifierAgentIds.length > 0 ? { verifierAgentIds } : {}),
+      ...(goalCommand !== undefined ? { goalCommand } : {}),
+      ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
+      ...(sources.length > 0 ? { sources } : {}),
+      ...(maxIterations !== undefined ? { maxIterations } : {}),
+      ...(archiveCompletedTasks ? { archiveCompletedTasks } : {}),
+      ...(args.includes("--worktree") ? { useWorktree: true } : {}),
+      ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
+    });
+    const result = runCycles
+      ? await engine.runCycles({
+          ...(cycles !== undefined ? { cycles } : {}),
+          ...(intervalMs !== undefined ? { intervalMs } : {}),
+          ...(stopWhenIdle ? { stopWhenIdle } : {}),
+        })
+      : await engine.runOnce();
+    const goal = "goal" in result
+      ? result.goal
+      : "cycles" in result
+        ? result.cycles.at(-1)?.goal
+        : undefined;
+
+    printLoopRun({
+      loop_id: result.loop_id,
+      json_path: result.jsonPath,
+      markdown_path: result.markdownPath,
+      completed_tasks: result.state.completed_tasks,
+      events: result.events,
+      ...(goal !== undefined ? { goal } : {}),
+      ...(result.state.key_metrics !== undefined ? { metrics: result.state.key_metrics } : {}),
+      ...("cycles" in result ? { cycles: result.cycles.map((cycle) => ({
+        discovered_task_count: cycle.discoveredTaskCount,
+        executed_task_count: cycle.executedTaskCount,
+        skipped_task_count: cycle.skippedTaskCount,
+        ...(cycle.goal !== undefined ? { goal: cycle.goal } : {}),
+      })) } : {}),
+    }, json);
+    return result.state.completed_tasks.some((task) => task.outcome !== "success") ? 2 : 0;
+  }
+
+  if (sub === "enqueue") {
+    const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+    const capability = flagValue(args, "--capability");
+    const taskId = flagValue(args, "--id");
+    const priority = parsePositiveIntegerFlag(flagValue(args, "--priority"), "--priority");
+    if (priority instanceof Error) {
+      console.error(`osstack: ${priority.message}`);
+      return 1;
+    }
+    if (priority !== undefined && priority > 100) {
+      console.error("osstack: --priority must be between 1 and 100");
+      return 1;
+    }
+    const context = parseContextJson(flagValue(args, "--context-json"));
+    if (context instanceof Error) {
+      console.error(`osstack: ${context.message}`);
+      return 1;
+    }
+    const prompt = positionalValues(args.slice(1), new Set([
+      "--workspace",
+      "--capability",
+      "--id",
+      "--priority",
+      "--context-json",
+    ])).join(" ").trim();
+    if (prompt === "") {
+      console.error("osstack: loop enqueue requires a prompt");
+      return 1;
+    }
+    const result = await enqueueTask({
+      workspacePath,
+      prompt,
+      ...(capability !== undefined ? { capability } : {}),
+      ...(taskId !== undefined ? { taskId } : {}),
+      ...(priority !== undefined ? { priority } : {}),
+      ...(context !== undefined ? { context } : {}),
+    });
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({
+        task: result.task,
+        path: result.path,
+      }, null, 2));
+    } else {
+      console.log(`task_id=${result.task.task_id}`);
+      console.log(`path=${result.path}`);
+    }
+    return 0;
+  }
+
+  if (sub === "doctor") {
+    const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+    const stateFilePath = resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+    const result = await loopDoctor({
+      workspacePath,
+      stateFilePath,
+      checkDaemon: args.includes("--daemon"),
+    });
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printLoopDoctor(result);
+    }
+    return result.ok ? 0 : 1;
+  }
+
+  if (sub === "status" || sub === undefined) {
+    const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+    const stateFilePath = resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+    if (args.includes("--daemon")) {
+      const resp = await rpc("loop.status", {
+        workspacePath,
+        stateFilePath,
+      }) as RpcResp;
+      if (!resp.ok) {
+        console.error("osstack:", resp.error?.message ?? "loop.status failed");
+        return 1;
+      }
+      const result = resp.result as { markdown?: string };
+      console.log(result.markdown ?? "");
+      return 0;
+    }
+    const state = await readLoopState(stateFilePath);
+    if (state === null) {
+      const markdownPath = stateFilePath.endsWith(".json")
+        ? stateFilePath.replace(/[^/]+$/, "STATE.md")
+        : "STATE.md";
+      try {
+        console.log(await readFile(markdownPath, "utf-8"));
+        return 0;
+      } catch {
+        console.error(`osstack: no loop state found at ${stateFilePath}`);
+        return 1;
+      }
+    }
+    console.log(renderLoopStateMarkdown(state));
+    return 0;
+  }
+
+  if (sub === "help") {
+    console.log(`osstack loop — local Loop Engineering runner
+
+  osstack loop run [options]       Run one discover→execute→verify→iterate cycle
+  osstack loop start [options]     Start a daemon-managed polling loop
+  osstack loop enqueue <prompt>    Add a task_queue JSON file
+  osstack loop doctor [options]    Check workspace, queue, git, and daemon readiness
+  osstack loop list [--json]       List daemon-managed polling loops
+  osstack loop stop <id> [--json]  Stop a daemon-managed polling loop
+  osstack loop status [options]    Print current loop state
+
+Options:
+  --workspace P       Workspace to scan and run commands in (default: cwd)
+  --source S          Discovery source; repeatable. git_diff | task_queue
+  --agent ID          Run tasks through a registered adapter (for example codex-cli)
+  --auto-agent        Let router + policy choose an available adapter by capability
+  --execute CMD       Shell command to run for each task
+  --verify CMD        Shell verifier; repeatable. Non-zero exit marks failure
+  --reviewer ID       Adapter verifier to run after execution; repeatable
+  --checker ID        Alias for --reviewer for checker/verifier agents
+  --goal CMD          Global shell command; loop stops when it exits 0
+  --schedule CRON     Cron schedule for daemon-managed loop start
+  --archive-completed Move successful single-task queue files into tasks/archive/
+  --worktree         Run each task in an isolated git worktree, merge success back
+  --worktree-root P  Directory for temporary isolated worktrees
+  --max-iter N        Iterations before escalation (default: 1)
+  --cycles N          Run multiple cycles before exiting, or cap loop start
+  --once              Alias for loop start --cycles 1 --stop-when-idle
+  --interval-ms N     Delay between cycles in milliseconds (loop start default: 5000)
+  --stop-when-idle    Stop after the first cycle that executes no tasks
+  --state P           JSON state path (default: LOOP-STATE.json)
+  --markdown P        Markdown state path (default: STATE.md beside JSON)
+  --json              Emit machine-readable summary
+  --daemon            Run through the osstack daemon RPC socket
+
+Example:
+  mkdir -p tasks
+  printf '{"prompt":"Run local checks","capability":"code.test"}' > tasks/check.json
+  osstack loop run --source task_queue --verify "pnpm test"
+`);
+    return 0;
+  }
+
+  console.error(`osstack: unknown loop subcommand "${sub}"`);
+  return 1;
+}
+
+function resolveLoopPath(path: string, cwd: string): string {
+  return isAbsolute(path) ? path : join(cwd, path);
+}
+
+function parsePositiveIntegerFlag(value: string | undefined, name: string): number | undefined | Error {
+  if (value === undefined) return undefined;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return new Error(`${name} must be a positive integer`);
+  }
+  return parsed;
+}
+
+function parseNonNegativeIntegerFlag(value: string | undefined, name: string): number | undefined | Error {
+  if (value === undefined) return undefined;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    return new Error(`${name} must be a non-negative integer`);
+  }
+  return parsed;
+}
+
+interface LoopRunSummary {
+  loop_id: string;
+  json_path: string;
+  markdown_path: string;
+  completed_tasks: Array<{
+    task_id: string;
+    outcome: "success" | "failed" | "escalated";
+    iterations: number;
+    agent_id: string;
+    duration_ms: number;
+  }>;
+  metrics?: {
+    success_rate: number;
+  };
+  goal?: {
+    command: string;
+    pass: boolean;
+    exitCode: number;
+    durationMs: number;
+    summary: string;
+  };
+  events?: unknown[];
+  cycles?: Array<{
+    discovered_task_count: number;
+    executed_task_count: number;
+    skipped_task_count: number;
+    goal?: {
+      command: string;
+      pass: boolean;
+      exitCode: number;
+      durationMs: number;
+      summary: string;
+    };
+  }>;
+}
+
+interface LoopSessionSummary {
+  loop_session_id: string;
+  workspace_path: string;
+  state_json: string;
+  status: "running" | "stopping" | "stopped" | "failed";
+  interval_ms: number;
+  stop_when_idle: boolean;
+  schedule?: string;
+  started_at: number;
+  updated_at: number;
+  cycle_count: number;
+  discovered_task_count: number;
+  executed_task_count: number;
+  skipped_task_count: number;
+  successful_task_count: number;
+  failed_task_count: number;
+  escalated_task_count: number;
+  tokens_consumed: number;
+  total_cycle_duration_ms: number;
+  avg_cycle_duration_ms: number | null;
+  last_cycle_duration_ms?: number;
+  max_cycles?: number;
+  stop_reason?: string;
+  last_error?: string;
+}
+
+interface LoopDoctorResult {
+  ok: boolean;
+  workspace_path: string;
+  state_json: string;
+  daemon_checked: boolean;
+  socket_path: string;
+  checks: LoopDoctorCheck[];
+}
+
+interface LoopDoctorCheck {
+  id: string;
+  status: "ok" | "warn" | "error";
+  summary: string;
+  details?: Record<string, unknown>;
+}
+
+interface StatsResult {
+  total_runs: number;
+  total_events: number;
+  per_agent: AgentStatsRow[];
+  loops?: LoopStatsSummary;
+}
+
+interface AgentStatsRow {
+  agent_id: string;
+  capability_id: string;
+  runs: number;
+  completed: number;
+  failed: number;
+  cancelled: number;
+  in_flight: number;
+  avg_duration_ms: number | null;
+  total_tokens_in: number;
+  total_tokens_out: number;
+  total_pii_redacted: number;
+}
+
+interface LoopStatsSummary {
+  total_sessions: number;
+  running: number;
+  stopping: number;
+  stopped: number;
+  failed: number;
+  total_cycles: number;
+  total_discovered: number;
+  total_executed: number;
+  total_skipped: number;
+  total_successful: number;
+  total_failed: number;
+  total_escalated: number;
+  total_tokens_consumed: number;
+  total_cycle_duration_ms: number;
+  avg_cycle_duration_ms: number | null;
+  per_loop: LoopStatsRow[];
+}
+
+interface LoopStatsRow {
+  loop_session_id: string;
+  status: string;
+  workspace_path: string;
+  cycle_count: number;
+  discovered_task_count: number;
+  executed_task_count: number;
+  skipped_task_count: number;
+  successful_task_count: number;
+  failed_task_count: number;
+  escalated_task_count: number;
+  tokens_consumed: number;
+  total_cycle_duration_ms: number;
+  avg_cycle_duration_ms: number | null;
+  last_cycle_duration_ms?: number;
+  schedule?: string;
+  stop_reason?: string;
+  last_error?: string;
+}
+
+function printLoopRun(result: LoopRunSummary, json: boolean): void {
+  if (json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  console.log(`loop_id=${result.loop_id}`);
+  console.log(`state_json=${result.json_path}`);
+  console.log(`state_markdown=${result.markdown_path}`);
+  console.log(`tasks=${result.completed_tasks.length} success_rate=${Math.round((result.metrics?.success_rate ?? 1) * 100)}%`);
+  if (result.goal !== undefined) {
+    console.log(`goal=${result.goal.pass ? "passed" : "not_met"} exit_code=${result.goal.exitCode}`);
+  }
+  if (result.cycles !== undefined) {
+    console.log(`cycles=${result.cycles.length}`);
+    result.cycles.forEach((cycle, index) => {
+      const goal = cycle.goal === undefined
+        ? ""
+        : ` goal=${cycle.goal.pass ? "passed" : "not_met"}`;
+      console.log(`  cycle ${index + 1}: discovered=${cycle.discovered_task_count} executed=${cycle.executed_task_count} skipped=${cycle.skipped_task_count}${goal}`);
+    });
+  }
+  for (const task of result.completed_tasks) {
+    console.log(`  ${task.task_id}: ${task.outcome} (${task.iterations} iteration${task.iterations === 1 ? "" : "s"})`);
+  }
+}
+
+function printLoopSession(result: LoopSessionSummary, json: boolean): void {
+  if (json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  console.log(`loop_session_id=${result.loop_session_id}`);
+  console.log(`status=${result.status}`);
+  console.log(`workspace=${result.workspace_path}`);
+  console.log(`state_json=${result.state_json}`);
+  console.log(`interval_ms=${result.interval_ms}`);
+  if (result.schedule !== undefined) console.log(`schedule=${result.schedule}`);
+  console.log(`cycles=${result.cycle_count} discovered=${result.discovered_task_count} executed=${result.executed_task_count} skipped=${result.skipped_task_count}`);
+  console.log(`tasks_ok=${result.successful_task_count} failed=${result.failed_task_count} escalated=${result.escalated_task_count} tokens=${result.tokens_consumed}`);
+  if (result.cycle_count > 0) {
+    const avg = result.avg_cycle_duration_ms === null ? "-" : result.avg_cycle_duration_ms.toFixed(0);
+    console.log(`cycle_duration_ms_total=${result.total_cycle_duration_ms} avg=${avg}`);
+  }
+  if (result.max_cycles !== undefined) console.log(`max_cycles=${result.max_cycles}`);
+  if (result.stop_reason !== undefined) console.log(`stop_reason=${result.stop_reason}`);
+  if (result.last_error !== undefined) console.log(`last_error=${result.last_error}`);
+}
+
+function printLoopSessionList(loops: LoopSessionSummary[]): void {
+  if (loops.length === 0) {
+    console.log("No loop sessions.");
+    return;
+  }
+  for (const loop of loops) {
+    console.log(`${loop.loop_session_id}  ${loop.status}  cycles=${loop.cycle_count} executed=${loop.executed_task_count}  ${loop.workspace_path}`);
+  }
+}
+
+async function loopDoctor(input: {
+  workspacePath: string;
+  stateFilePath: string;
+  checkDaemon: boolean;
+}): Promise<LoopDoctorResult> {
+  const checks: LoopDoctorCheck[] = [];
+  const add = (
+    id: string,
+    status: LoopDoctorCheck["status"],
+    summary: string,
+    details?: Record<string, unknown>,
+  ) => {
+    const check: LoopDoctorCheck = { id, status, summary };
+    if (details !== undefined) check.details = details;
+    checks.push(check);
+  };
+
+  let workspaceReady = false;
+  try {
+    const workspace = await stat(input.workspacePath);
+    if (workspace.isDirectory()) {
+      workspaceReady = true;
+      add("workspace", "ok", "workspace directory exists");
+    } else {
+      add("workspace", "error", "workspace path is not a directory");
+    }
+  } catch (error) {
+    add("workspace", "error", "workspace directory is not accessible", { error: errorMessage(error) });
+  }
+
+  if (workspaceReady) {
+    await checkTaskQueue(input.workspacePath, add);
+    await checkLoopState(input.stateFilePath, add);
+    await checkGit(input.workspacePath, add);
+  }
+
+  if (input.checkDaemon) {
+    await checkLoopDaemon(add);
+  }
+
+  return {
+    ok: !checks.some((check) => check.status === "error"),
+    workspace_path: input.workspacePath,
+    state_json: input.stateFilePath,
+    daemon_checked: input.checkDaemon,
+    socket_path: socketPath(),
+    checks,
+  };
+}
+
+async function checkTaskQueue(
+  workspacePath: string,
+  add: (id: string, status: LoopDoctorCheck["status"], summary: string, details?: Record<string, unknown>) => void,
+): Promise<void> {
+  const taskDir = join(workspacePath, "tasks");
+  let entries: string[];
+  try {
+    entries = await readdir(taskDir);
+  } catch (error) {
+    add("task_queue", "warn", "tasks/ directory is missing; loop enqueue will create it", {
+      path: taskDir,
+      error: errorMessage(error),
+    });
+    return;
+  }
+
+  const jsonFiles = entries.filter((entry) => entry.endsWith(".json")).sort();
+  let validTasks = 0;
+  const invalidFiles: string[] = [];
+  for (const file of jsonFiles) {
+    const path = join(taskDir, file);
+    try {
+      validTasks += countQueueTasks(JSON.parse(await readFile(path, "utf-8")) as unknown);
+    } catch {
+      invalidFiles.push(file);
+    }
+  }
+
+  if (invalidFiles.length > 0) {
+    add("task_queue", "error", "task queue contains invalid JSON task files", {
+      path: taskDir,
+      json_files: jsonFiles.length,
+      valid_tasks: validTasks,
+      invalid_files: invalidFiles,
+    });
+    return;
+  }
+
+  add("task_queue", "ok", "task queue is readable", {
+    path: taskDir,
+    json_files: jsonFiles.length,
+    valid_tasks: validTasks,
+  });
+}
+
+async function checkLoopState(
+  stateFilePath: string,
+  add: (id: string, status: LoopDoctorCheck["status"], summary: string, details?: Record<string, unknown>) => void,
+): Promise<void> {
+  try {
+    const stateFile = await stat(stateFilePath);
+    if (stateFile.isFile()) {
+      add("state_file", "ok", "loop state file exists", { path: stateFilePath });
+    } else {
+      add("state_file", "warn", "loop state path exists but is not a file", { path: stateFilePath });
+    }
+  } catch {
+    add("state_file", "warn", "loop state file will be created after the first run", { path: stateFilePath });
+  }
+}
+
+async function checkGit(
+  workspacePath: string,
+  add: (id: string, status: LoopDoctorCheck["status"], summary: string, details?: Record<string, unknown>) => void,
+): Promise<void> {
+  try {
+    await execFileAsync("git", ["--version"], { timeout: 5_000 });
+  } catch (error) {
+    add("git", "warn", "git is not available; git_diff and --worktree modes will not work", {
+      error: errorMessage(error),
+    });
+    return;
+  }
+
+  try {
+    await execFileAsync("git", ["rev-parse", "--is-inside-work-tree"], {
+      cwd: workspacePath,
+      timeout: 5_000,
+    });
+  } catch {
+    add("git", "warn", "workspace is not a git worktree; task_queue mode still works", {
+      workspace: workspacePath,
+    });
+    return;
+  }
+
+  try {
+    const status = await execFileAsync("git", ["status", "--short"], {
+      cwd: workspacePath,
+      timeout: 5_000,
+    });
+    const changedFiles = String(status.stdout).split("\n").filter((line) => line.trim() !== "").length;
+    add("git", "ok", changedFiles === 0 ? "git worktree is clean" : "git worktree is usable with local changes", {
+      changed_files: changedFiles,
+    });
+  } catch (error) {
+    add("git", "warn", "git status failed in workspace", { error: errorMessage(error) });
+  }
+}
+
+async function checkLoopDaemon(
+  add: (id: string, status: LoopDoctorCheck["status"], summary: string, details?: Record<string, unknown>) => void,
+): Promise<void> {
+  try {
+    const response = await rpc("health", undefined, 1_000) as RpcResp;
+    if (response.ok) {
+      add("daemon", "ok", "daemon RPC is reachable", {
+        socket: socketPath(),
+        health: response.result,
+      });
+    } else {
+      add("daemon", "error", "daemon RPC returned an error", {
+        socket: socketPath(),
+        error: response.error?.message ?? "unknown error",
+      });
+    }
+  } catch (error) {
+    add("daemon", "error", "daemon RPC is not reachable", {
+      socket: socketPath(),
+      error: errorMessage(error),
+    });
+  }
+}
+
+function countQueueTasks(value: unknown): number {
+  const items = Array.isArray(value) ? value : [value];
+  if (items.length === 0) throw new Error("task queue file cannot be empty");
+  let count = 0;
+  for (const item of items) {
+    if (item === null || Array.isArray(item) || typeof item !== "object") {
+      throw new Error("task queue item must be an object");
+    }
+    const prompt = (item as Record<string, unknown>)["prompt"];
+    if (typeof prompt !== "string" || prompt.trim() === "") {
+      throw new Error("task queue item requires a non-empty prompt");
+    }
+    count++;
+  }
+  return count;
+}
+
+function printLoopDoctor(result: LoopDoctorResult): void {
+  console.log(`Loop doctor: ${result.ok ? "ok" : "attention needed"}`);
+  console.log(`workspace=${result.workspace_path}`);
+  console.log(`state_json=${result.state_json}`);
+  if (result.daemon_checked) console.log(`socket=${result.socket_path}`);
+  for (const check of result.checks) {
+    console.log(`  [${check.status}] ${check.summary}`);
+    if (check.details !== undefined) {
+      console.log(`      ${formatDoctorDetails(check.details)}`);
+    }
+  }
+}
+
+function formatDoctorDetails(details: Record<string, unknown>): string {
+  return Object.entries(details)
+    .map(([key, value]) => `${key}=${formatDoctorValue(value)}`)
+    .join(" ");
+}
+
+function formatDoctorValue(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(formatDoctorValue).join(",")}]`;
+  if (value === null) return "null";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 async function handleKanbanCommand(args: string[]): Promise<number> {
@@ -645,24 +1518,39 @@ function streamTaskObserve(run_id: string, after_seq?: number): Promise<number> 
 }
 
 function printStats(result: unknown): void {
-  const s = result as { total_runs: number; total_events: number; per_agent: Array<{
-    agent_id: string; capability_id: string; runs: number;
-    completed: number; failed: number; cancelled: number; in_flight: number;
-    avg_duration_ms: number | null; total_tokens_in: number; total_tokens_out: number;
-    total_pii_redacted: number;
-  }> };
+  const s = result as StatsResult;
   console.log(`total_runs=${s.total_runs}  total_events=${s.total_events}`);
   if (s.per_agent.length === 0) {
     console.log("(no runs recorded yet — submit a task with `osstack task submit \"...\"`)");
-    return;
+  } else {
+    console.log();
+    console.log("agent_id           capability_id                  runs ok  fail cncl iflt   avg_dur_ms    tok_in    tok_out  pii_red");
+    console.log("-".repeat(120));
+    for (const r of s.per_agent) {
+      const avg = r.avg_duration_ms === null ? "—" : r.avg_duration_ms.toFixed(0);
+      console.log(
+        `${pad(r.agent_id, 18)} ${pad(r.capability_id, 30)} ${num(r.runs, 4)} ${num(r.completed, 3)} ${num(r.failed, 4)} ${num(r.cancelled, 4)} ${num(r.in_flight, 4)} ${pad(avg, 12)} ${num(r.total_tokens_in, 9)} ${num(r.total_tokens_out, 10)} ${num(r.total_pii_redacted, 8)}`,
+      );
+    }
   }
+
+  if (s.loops === undefined) return;
   console.log();
-  console.log("agent_id           capability_id                  runs ok  fail cncl iflt   avg_dur_ms    tok_in    tok_out  pii_red");
-  console.log("-".repeat(120));
-  for (const r of s.per_agent) {
-    const avg = r.avg_duration_ms === null ? "—" : r.avg_duration_ms.toFixed(0);
+  const loopAvg = s.loops.avg_cycle_duration_ms === null ? "—" : s.loops.avg_cycle_duration_ms.toFixed(0);
+  console.log(
+    `loop_sessions=${s.loops.total_sessions} running=${s.loops.running} stopping=${s.loops.stopping} stopped=${s.loops.stopped} failed=${s.loops.failed}`,
+  );
+  console.log(
+    `loop_cycles=${s.loops.total_cycles} discovered=${s.loops.total_discovered} executed=${s.loops.total_executed} skipped=${s.loops.total_skipped} ok=${s.loops.total_successful} failed=${s.loops.total_failed} escalated=${s.loops.total_escalated} tokens=${s.loops.total_tokens_consumed} avg_cycle_ms=${loopAvg}`,
+  );
+  if (s.loops.per_loop.length === 0) return;
+  console.log();
+  console.log("loop_session_id      status    cycles exec ok fail escl avg_cycle_ms  tokens workspace");
+  console.log("-".repeat(124));
+  for (const loop of s.loops.per_loop) {
+    const avg = loop.avg_cycle_duration_ms === null ? "—" : loop.avg_cycle_duration_ms.toFixed(0);
     console.log(
-      `${pad(r.agent_id, 18)} ${pad(r.capability_id, 30)} ${num(r.runs, 4)} ${num(r.completed, 3)} ${num(r.failed, 4)} ${num(r.cancelled, 4)} ${num(r.in_flight, 4)} ${pad(avg, 12)} ${num(r.total_tokens_in, 9)} ${num(r.total_tokens_out, 10)} ${num(r.total_pii_redacted, 8)}`,
+      `${pad(loop.loop_session_id, 20)} ${pad(loop.status, 9)} ${num(loop.cycle_count, 6)} ${num(loop.executed_task_count, 4)} ${num(loop.successful_task_count, 2)} ${num(loop.failed_task_count, 4)} ${num(loop.escalated_task_count, 4)} ${pad(avg, 13)} ${num(loop.tokens_consumed, 6)} ${loop.workspace_path}`,
     );
   }
 }
@@ -673,10 +1561,12 @@ function num(n: number, w: number): string {
   return s.length >= w ? s : `${" ".repeat(w - s.length)}${s}`;
 }
 
-main().then(
-  (code) => process.exit(code),
-  (err) => {
-    console.error("osstack:", err instanceof Error ? err.message : err);
-    process.exit(1);
-  },
-);
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().then(
+    (code) => process.exit(code),
+    (err) => {
+      console.error("osstack:", err instanceof Error ? err.message : err);
+      process.exit(1);
+    },
+  );
+}

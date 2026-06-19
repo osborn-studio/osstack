@@ -1,0 +1,27 @@
+{
+  "name": "@osstack/loop",
+  "version": "0.0.0",
+  "description": "osstack Loop Engineering layer — scheduler, discover, planner, verifier, iterator: the daemon hot loop that turns osstack from a passive task dispatcher into a self-running Loop Engineering system.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@osstack/agents": "workspace:*",
+    "@osstack/core": "workspace:*",
+    "@osstack/hermes-adapter": "workspace:*",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19"
+  }
+}

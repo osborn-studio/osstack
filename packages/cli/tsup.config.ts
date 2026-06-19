@@ -15,6 +15,7 @@ export default defineConfig({
     "@osstack/agents",
     "@osstack/config",
     "@osstack/hermes-adapter",
+    "@osstack/loop",
     "@osstack/skill-registry",
     "@osstack/skills",
     "better-sqlite3",
