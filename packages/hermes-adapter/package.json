@@ -1,7 +1,7 @@
 {
   "name": "@osstack/hermes-adapter",
-  "version": "0.0.0",
-  "description": "Hermes Run Adapter Contract implementation \u2014 13 event families, 7 control types, 11 status FSM, Last-Event-ID replay.",
+  "version": "0.1.0",
+  "description": "Hermes Run Adapter Contract implementation — 13 event families, 7 control types, 11 status FSM, Last-Event-ID replay.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
