@@ -14,11 +14,16 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
-    "dev": "pnpm --filter @osstack/cli dev"
+    "dev": "pnpm --filter @osstack/cli dev",
+    "coverage:loop": "pnpm --filter @osstack/loop test:coverage",
+    "demo:loop": "pnpm build && node scripts/demo-loop.mjs",
+    "demo:loop:daemon": "pnpm build && node scripts/demo-loop-daemon.mjs",
+    "smoke:loop": "pnpm build && node scripts/smoke-loop.mjs"
   },
   "devDependencies": {
-    "typescript": "^5.6.3",
+    "@vitest/coverage-v8": "2.1.9",
     "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
     "vitest": "^2.1.5",
     "zod": "^3.23.8"
   }

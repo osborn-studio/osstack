@@ -498,7 +498,7 @@ daemon hot loop
 | 不支持多 agent 协作 | 每个 task 独立 worktree + maker/checker 分离 |
 | `osbstack loop` 命令调用 | `osstack loop start` 启动 daemon 循环模式 |
 
-**向后兼容承诺**：`osstack loop` CLI 命令保留，行为从「跑一次 V1 循环」升级为「启动 daemon 循环模式」。
+**向后兼容承诺**：`osstack loop` CLI 命令保留；V1 的 `osb-loop` 入口继续可用，并转发到 `osstack loop start --once --source git_diff`。
 
 ---
 
@@ -537,16 +537,34 @@ daemon hot loop
 
 ## 13. 验收标准（L6 完成时）
 
-1. [ ] `osstack loop start --schedule "0 6 * * *"` 启动 daemon，按 cron 表达式自动触发循环
-2. [ ] `osstack loop start --goal "pnpm test 全绿"` 持续循环直到 vitest 全部通过
-3. [ ] 每次循环自动：`git diff` 扫描 → `policy/engine` 选 agent → 独立 worktree 执行 → `ds-review` 审查 → 决定继续/停止
-4. [ ] 循环过程中 `osstack loop status` 实时展示 STATE.md 内容
-5. [ ] 连续 3 次同类任务失败后自动 escalation → Hermes 通知
-6. [ ] `kill -9` daemon 后，重启能从 checkpoint 续跑（复用现有 step-level checkpoint）
-7. [ ] 孤儿 worktree 自动清理（daemon 启动时和每次循环后）
-8. [ ] `osstack stats` 增加 per-loop 指标（成功/失败/耗时/token 消耗）
-9. [ ] V1 的 `osb-loop` 作为 shim 继续可用（转发到 `osstack loop start --once`）
-10. [ ] 整个 `packages/loop/` 测试覆盖率 ≥ 80%
+1. [x] `osstack loop start --schedule "0 6 * * *"` 启动 daemon，按 cron 表达式自动触发循环
+2. [x] `osstack loop start --goal "pnpm test 全绿"` 持续循环直到 vitest 全部通过
+3. [x] 每次循环自动：`git diff` 扫描 → `policy/engine` 选 agent → 独立 worktree 执行 → `ds-review` 审查 → 决定继续/停止
+4. [x] 循环过程中 `osstack loop status` 实时展示 STATE.md 内容
+5. [x] 连续 3 次同类任务失败后自动 escalation → Hermes 通知
+6. [x] `kill -9` daemon 后，重启能从 checkpoint 续跑（复用现有 step-level checkpoint）
+7. [x] 孤儿 worktree 自动清理（daemon 启动时和每次循环后）
+8. [x] `osstack stats` 增加 per-loop 指标（成功/失败/耗时/token 消耗）
+9. [x] V1 的 `osb-loop` 作为 shim 继续可用（转发到 `osstack loop start --once`）
+10. [x] 整个 `packages/loop/` 测试覆盖率 ≥ 80%
+
+当前实现备注：
+
+- `osstack loop run/start --agent <id>` 已接入真实 `AgentAdapter.invoke()` 路径；LoopEngine 会把 `repo_path` 注入任务 context，统计 adapter 事件数，并把 terminal `done/error` 映射为 loop 执行结果。
+- `--auto-agent` 已接入自动 maker 选择：LoopEngine 在未显式指定 `--agent` / `--execute` 时，可用 `routeCapability` 找候选 adapter，再复用 `policy/engine`（daemon 下使用 SQLite history，本地 fallback 到 loop state history）按 capability/cost/历史表现择优；`loop.plan.done` 会记录 `routing_reason` 和 policy 摘要。
+- `ds-review` / `ds-verify` 已作为 adapter 注册：新增 capability `review.code` / `verify.alignment`，router 可按 dotted capability 后缀匹配；命令路径可用 `OSSTACK_DS_REVIEW_BIN` / `OSSTACK_DS_VERIFY_BIN` 覆盖。
+- `--reviewer <id>` / `--checker <id>` 已接入 Verify 阶段，可在 maker/executor 完成后自动运行 adapter verifier；local CLI、daemon RPC 和 built CLI smoke 均覆盖 `ds-review` post-execution review。
+- `scripts/smoke-loop.mjs` 已用 built CLI 覆盖 `--reviewer ds-review`：在临时 git workspace 中由 execute 阶段制造 diff，经 adapter stdin 传给 fake `ds-review`，并断言 `reviews/ds-review/latest.md` 包含新增行。
+- 未注册的非本地 agent 会失败并进入验证/迭代流程，不会被当成 `local-noop` 成功。
+- `--worktree` 已支持每个 task 在独立 git worktree 内执行；成功任务会提交并 `--ff-only` 合并回主工作区，失败/升级任务会清理临时 worktree。
+- 如果成功任务已提交但主工作区无法 fast-forward 合并，Loop 会清理临时 worktree 但保留 `osstack/loop/...` 分支，避免丢失可人工处理的成果。
+- daemon 启动恢复 session 时会清理已持久化 worktree loop 的孤儿 worktree；启用 `--worktree` 的循环会在每个 cycle 前后清理当前 loop 前缀下的残留 worktree，并发 loop 之间通过 `osstack/loop/<loop_id>/...` 分支前缀隔离。
+- `legacy-python/runtime/bin/osb-loop` 已改为兼容 shim：自动复用或临时启动 daemon，调用 `loop start --once --source git_diff`，轮询 session 完成，并用 `LOOP-STATE.json` 中的 completed task outcome 决定退出码。
+- `pnpm demo:loop:daemon` 已提供可人工验收的 daemon 级演示：脚本启动隔离 `osstack serve`，入队一个真实失败测试修复任务，通过 `loop start --once` 跑完，断言 `loop status --daemon` / `osstack stats`，并留下 workspace 与 daemon home 供检查。
+- `osstack loop doctor` 已提供开跑前诊断：检查 workspace、`tasks/*.json`、`LOOP-STATE.json`、git/worktree 可用性，并在 `--daemon` 下验证 RPC socket；`--json` 输出可直接进入脚本化测试。
+- `scripts/smoke-loop.mjs` 现在用 built CLI 覆盖本地 run、`loop doctor`、worktree merge、DeepSeek review adapter、daemon `start --once`、daemon goal stop、daemon cron schedule、进程级 `SIGKILL` 后 daemon 重启恢复、`osstack stats` loop 指标和 legacy `osb-loop` shim。
+- `pnpm coverage:loop` 现在强制 `packages/loop` 的 lines/functions/branches/statements 全部 ≥ 80%；当前覆盖率为 statements/lines 94.63%、functions 95.29%、branches 81.79%。
+- 第 6 条已补进程级 `kill -9` smoke：在真实 daemon 进程中持久化 running session，`SIGKILL` 后重启同一 `OSSTACK_HOME`，确认原 session 继续处理新入队 task。
 
 ---
 

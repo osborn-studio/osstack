@@ -48,4 +48,28 @@ describe("discover scanners", () => {
     expect(createScanner("task_queue", repo)).toBeInstanceOf(TaskQueueScanner);
     await expect(createScanner("manual", repo).scan()).resolves.toEqual([]);
   });
+
+  it("TaskQueueScanner should load JSON task queue entries", async () => {
+    const repo = mkdtempSync(join(tmpdir(), "osstack-loop-"));
+    mkdirSync(join(repo, "tasks"));
+    writeFileSync(join(repo, "tasks", "task.json"), JSON.stringify({
+      task_id: "task-queue-1",
+      capability: "code.test",
+      prompt: "Run the test suite",
+      priority: 90,
+      context: { package: "@osstack/loop" },
+    }));
+
+    const tasks = await new TaskQueueScanner(repo).scan();
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]).toMatchObject({
+      task_id: "task-queue-1",
+      capability: "code.test",
+      prompt: "Run the test suite",
+      priority: 90,
+      source: "task_queue",
+    });
+    expect(tasks[0]!.context?.["task_file"]).toBe(join(repo, "tasks", "task.json"));
+  });
 });

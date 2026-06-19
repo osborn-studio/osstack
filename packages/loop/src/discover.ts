@@ -10,7 +10,10 @@
 
 import { execSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import type { Task, DiscoverSource, DiscoverScanner } from "./types.js";
+import { readdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { z } from "zod";
+import { Task, type DiscoverSource, type DiscoverScanner } from "./types.js";
 
 // ── Factory ─────────────────────────────────────────────────────────────
 
@@ -81,13 +84,56 @@ export class GitDiffScanner implements DiscoverScanner {
 export class TaskQueueScanner implements DiscoverScanner {
   readonly source: DiscoverSource = "task_queue";
 
-  constructor(_workspacePath: string) {}
+  constructor(private workspacePath: string) {}
 
   async scan(): Promise<Task[]> {
-    // MVP: no-op. Future: read tasks/**/*.yaml or tasks/**/*.md
-    return [];
+    const taskDir = join(this.workspacePath, "tasks");
+    let entries: string[];
+    try {
+      entries = await readdir(taskDir);
+    } catch {
+      return [];
+    }
+
+    const tasks: Task[] = [];
+    for (const entry of entries.sort()) {
+      if (!entry.endsWith(".json")) continue;
+      const path = join(taskDir, entry);
+      try {
+        const raw = JSON.parse(await readFile(path, "utf-8")) as unknown;
+        const parsed = TaskQueueFile.parse(raw);
+        const items = Array.isArray(parsed) ? parsed : [parsed];
+        for (const item of items) {
+          tasks.push(Task.parse({
+            task_id: item.task_id ?? randomUUID(),
+            capability: item.capability ?? "code.write",
+            prompt: item.prompt,
+            priority: item.priority ?? 50,
+            source: "task_queue",
+            context: {
+              ...(item.context ?? {}),
+              task_file: path,
+            },
+          }));
+        }
+      } catch {
+        // Ignore malformed queue entries; future versions should surface these
+        // as loop.error events without stopping discovery from other files.
+      }
+    }
+
+    return tasks.sort((a, b) => b.priority - a.priority);
   }
 }
+
+const TaskQueueItem = z.object({
+  task_id: z.string().optional(),
+  capability: z.string().optional(),
+  prompt: z.string().min(1),
+  priority: z.number().min(0).max(100).optional(),
+  context: z.record(z.unknown()).optional(),
+});
+const TaskQueueFile = z.union([TaskQueueItem, z.array(TaskQueueItem)]);
 
 // ── NoopScanner ─────────────────────────────────────────────────────────
 

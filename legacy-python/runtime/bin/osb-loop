@@ -1,19 +1,10 @@
 #!/usr/bin/env bash
-# osb-loop — Run the OSBORN post-execution review/verify loop.
-# Part of the OSBORN Capability Layer (~/.osborn/capabilities/runtime).
+# osb-loop — V1-compatible shim for the TypeScript osstack LoopEngine.
 #
-# Loop:
-#   osb-context  →  git diff  →  ds-review  →  ds-verify  →  summary
-#
-# This script does NOT modify source code, commit, push, or deploy.
-# It only reads the project, calls the OSBORN tools, and writes:
-#   .agent/PROJECT_CONTEXT.md     (via osb-context)
-#   reviews/ds-review/latest.md   (via ds-review, when there's a diff)
-#   reviews/ds-verify/latest.md   (via ds-verify)
-#   <PATH>                        (via --output, optional)
+# The old implementation hand-ran osb-context -> git diff -> ds-review ->
+# ds-verify. The canonical loop now lives behind `osstack loop`; this wrapper
+# preserves the legacy entry point and translates the common V1 flags.
 
-# Note: -e is intentionally NOT used. We want each step's failure captured
-# in the final report rather than aborting mid-loop.
 set -u
 
 DO_REVIEW=true
@@ -25,29 +16,20 @@ usage() {
   cat <<EOF
 Usage: osb-loop [--no-review] [--no-verify] [--strict] [--output PATH] [-h]
 
-Runs the standard OSBORN post-execution loop in the current directory:
+Compatibility shim for the osstack LoopEngine. It scans the current git diff,
+starts or reuses an osstack daemon, and forwards work to:
 
-  osb-context  →  git diff  →  ds-review  →  ds-verify  →  summary
+  osstack loop start --once --source git_diff
 
 Options:
-  --no-review     Skip ds-review.
-  --no-verify     Skip ds-verify.
-  --strict        Pass --strict to ds-review and ds-verify.
-  --output PATH   Also write the loop summary to PATH.
+  --no-review     Do not run ds-review as a verifier command.
+  --no-verify     Do not run ds-verify as a verifier command.
+  --strict        Pass --strict to ds-review and ds-verify when present.
+  --output PATH   Write the loop markdown state to PATH.
   -h, --help      Show this help.
 
-Writes (and only writes):
-  .agent/PROJECT_CONTEXT.md       — via osb-context
-  reviews/ds-review/latest.md     — via ds-review (only if a diff exists)
-  reviews/ds-verify/latest.md     — via ds-verify
-  <PATH>                          — via --output (optional)
-
-Never patches, commits, pushes, or deploys.
-
-Exit codes:
-  0  loop completed; no FAIL statuses (or only user-requested SKIPs).
-  1  at least one attempted step ended in FAIL.
-  2  argument parse error.
+Exit code 0 means all completed loop tasks succeeded; exit code 2 means at
+least one completed task failed or escalated.
 EOF
 }
 
@@ -55,7 +37,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --no-review) DO_REVIEW=false; shift ;;
     --no-verify) DO_VERIFY=false; shift ;;
-    --strict)    STRICT=true; shift ;;
+    --strict) STRICT=true; shift ;;
     --output)
       [[ $# -ge 2 ]] || { echo "osb-loop: --output requires a value" >&2; exit 2; }
       OUTPUT="$2"; shift 2 ;;
@@ -67,197 +49,181 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# ---- Resolve tools (PATH first, then known capability paths) ----
-resolve_tool() {
-  local name="$1"
-  local fallback="$2"
-  if command -v "$name" >/dev/null 2>&1; then
-    command -v "$name"
-  elif [[ -x "$fallback" ]]; then
-    echo "$fallback"
-  else
-    echo ""
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+OSSTACK_CMD=()
+if [[ -f "$REPO_ROOT/packages/cli/dist/bin.js" ]]; then
+  OSSTACK_CMD=(node "$REPO_ROOT/packages/cli/dist/bin.js")
+elif command -v osstack >/dev/null 2>&1; then
+  OSSTACK_CMD=(osstack)
+else
+  echo "osb-loop: osstack CLI not found. Run 'pnpm --filter @osstack/cli build' or install osstack on PATH." >&2
+  exit 127
+fi
+
+STRICT_FLAG=""
+$STRICT && STRICT_FLAG=" --strict"
+
+STARTED_DAEMON=false
+DAEMON_PID=""
+TMP_DIR=""
+
+cleanup() {
+  local code=$?
+  if [[ "$STARTED_DAEMON" == true && -n "$DAEMON_PID" ]]; then
+    kill "$DAEMON_PID" >/dev/null 2>&1 || true
+    wait "$DAEMON_PID" >/dev/null 2>&1 || true
   fi
+  if [[ -n "$TMP_DIR" ]]; then
+    rm -rf "$TMP_DIR" >/dev/null 2>&1 || true
+  fi
+  exit "$code"
+}
+trap cleanup EXIT INT TERM
+
+daemon_healthy() {
+  "${OSSTACK_CMD[@]}" health >/dev/null 2>&1
 }
 
-OSB_CONTEXT="$(resolve_tool osb-context "$HOME/.osborn/capabilities/osb-project/bin/osb-context")"
-DS_REVIEW="$(resolve_tool   ds-review   "$HOME/.osborn/capabilities/deepseek/bin/ds-review")"
-DS_VERIFY="$(resolve_tool   ds-verify   "$HOME/.osborn/capabilities/deepseek/bin/ds-verify")"
-
-mkdir -p reviews/ds-review reviews/ds-verify 2>/dev/null || true
-
-# ---------- Step 1: osb-context ----------
-context_status="SKIPPED"
-context_note=""
-if [[ -n "$OSB_CONTEXT" ]]; then
-  ctx_err="$(mktemp -t osb-loop-ctx.XXXXXX)"
-  if "$OSB_CONTEXT" >/dev/null 2>"$ctx_err"; then
-    context_status="PASS"
-  else
-    context_status="FAIL"
-    context_note="$(head -2 "$ctx_err" 2>/dev/null | tr '\n' ' ' | sed 's/  */ /g')"
+if ! daemon_healthy; then
+  TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/osb-loop.XXXXXX")"
+  export OSSTACK_SOCKET="$TMP_DIR/osstack.sock"
+  if [[ -z "${OSSTACK_HOME-}" ]]; then
+    export OSSTACK_HOME="$TMP_DIR/home"
   fi
-  rm -f "$ctx_err"
-else
-  context_note="osb-context not found"
-fi
+  "${OSSTACK_CMD[@]}" serve >"$TMP_DIR/daemon.log" 2>&1 &
+  DAEMON_PID="$!"
+  STARTED_DAEMON=true
 
-# ---------- Step 2: git state ----------
-is_repo=false
-git_branch=""
-git_status_short=""
-git_diff_lines=0
-git_has_diff=false
-
-if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  is_repo=true
-  git_branch="$(git branch --show-current 2>/dev/null || true)"
-  git_status_short="$(git status --short 2>/dev/null || true)"
-  git_diff_lines="$(git diff 2>/dev/null | wc -l | tr -d ' ')"
-  [[ "${git_diff_lines:-0}" -gt 0 ]] && git_has_diff=true
-fi
-
-# ---------- Step 3: ds-review ----------
-review_status="SKIPPED"
-review_note=""
-review_output="reviews/ds-review/latest.md"
-
-strict_flag=""
-$STRICT && strict_flag="--strict"
-
-if ! $DO_REVIEW; then
-  review_note="--no-review"
-elif [[ -z "$DS_REVIEW" ]]; then
-  review_note="ds-review not found"
-elif ! $is_repo; then
-  review_note="not a git repository"
-elif ! $git_has_diff; then
-  review_note="no git diff detected"
-else
-  rv_err="$(mktemp -t osb-loop-rv.XXXXXX)"
-  # ds-review reads stdin and writes the report file; suppress its stdout.
-  if git diff | "$DS_REVIEW" --output "$review_output" $strict_flag >/dev/null 2>"$rv_err"; then
-    review_status="PASS"
-  else
-    review_status="FAIL"
-    review_note="$(head -2 "$rv_err" 2>/dev/null | tr '\n' ' ' | sed 's/  */ /g')"
-  fi
-  rm -f "$rv_err"
-fi
-
-# ---------- Step 4: ds-verify ----------
-verify_status="SKIPPED"
-verify_note=""
-verify_output="reviews/ds-verify/latest.md"
-
-if ! $DO_VERIFY; then
-  verify_note="--no-verify"
-elif [[ -z "$DS_VERIFY" ]]; then
-  verify_note="ds-verify not found"
-else
-  vf_err="$(mktemp -t osb-loop-vf.XXXXXX)"
-  # ds-verify always also prints to stdout; redirect it.
-  if "$DS_VERIFY" --output "$verify_output" $strict_flag >/dev/null 2>"$vf_err"; then
-    verify_status="PASS"
-  else
-    verify_status="FAIL"
-    verify_note="$(head -2 "$vf_err" 2>/dev/null | tr '\n' ' ' | sed 's/  */ /g')"
-  fi
-  rm -f "$vf_err"
-fi
-
-# ---------- Step 5: Recommended next action (deterministic) ----------
-recommend_next() {
-  # If failures came from a missing API key, surface that first — the report
-  # files won't have useful content because the tools exited before calling
-  # the API.
-  if [[ "$verify_status" == "FAIL" || "$review_status" == "FAIL" ]] && \
-     echo "${review_note}${verify_note}" | grep -q "DEEPSEEK_API_KEY"; then
-    echo "Set \`DEEPSEEK_API_KEY\` and re-run \`osb-loop\` (review/verify failed due to missing key)."
-    return
-  fi
-  if [[ "$verify_status" == "FAIL" ]]; then
-    echo "Read \`$verify_output\` and address Alignment / Gaps before merging."
-  elif [[ "$review_status" == "FAIL" ]]; then
-    echo "Read \`$review_output\` and address review findings."
-  elif [[ "$verify_status" == "PASS" && "$review_status" == "PASS" ]]; then
-    echo "Update \`docs/15_CHANGELOG.md\` and consider committing."
-  elif [[ "$verify_status" == "PASS" && "$review_status" == "SKIPPED" ]]; then
-    if [[ "$review_note" == "no git diff detected" ]]; then
-      echo "Verify passed and there's no diff to review — nothing to do."
-    else
-      echo "Verify passed; review was skipped ($review_note)."
+  for _ in $(seq 1 100); do
+    if daemon_healthy; then
+      break
     fi
-  elif [[ "$review_status" == "PASS" && "$verify_status" == "SKIPPED" ]]; then
-    echo "Review passed; verify was skipped ($verify_note)."
-  elif [[ "$review_status" == "SKIPPED" && "$verify_status" == "SKIPPED" ]]; then
-    if [[ -z "${DEEPSEEK_API_KEY:-}" ]]; then
-      echo "Set \`DEEPSEEK_API_KEY\` and re-run \`osb-loop\` to get review and verify."
-    else
-      echo "Nothing ran — check tool availability or flags."
+    if ! kill -0 "$DAEMON_PID" >/dev/null 2>&1; then
+      echo "osb-loop: osstack daemon exited before becoming ready" >&2
+      cat "$TMP_DIR/daemon.log" >&2 2>/dev/null || true
+      exit 1
     fi
-  else
-    echo "Re-run individual tools to inspect failures."
+    sleep 0.05
+  done
+
+  if ! daemon_healthy; then
+    echo "osb-loop: osstack daemon did not become ready" >&2
+    cat "$TMP_DIR/daemon.log" >&2 2>/dev/null || true
+    exit 1
   fi
-}
-
-# ---------- Step 6: Compose report ----------
-build_report() {
-  echo "# OSB Loop Report"
-  echo
-  echo "## Context"
-  echo "- osb-context: $context_status"
-  [[ -n "$context_note" ]] && echo "- note: $context_note"
-  echo
-  echo "## Git Status"
-  if $is_repo; then
-    echo "- branch: \`${git_branch:-(detached)}\`"
-    echo "- diff lines: $git_diff_lines"
-    if [[ -n "$git_status_short" ]]; then
-      echo "- working tree:"
-      echo '```'
-      echo "$git_status_short"
-      echo '```'
-    else
-      echo "- working tree: clean"
-    fi
-  else
-    echo "- not a git repository"
-  fi
-  echo
-  echo "## Review"
-  echo "- ds-review: $review_status"
-  echo "- output: $review_output"
-  [[ -n "$review_note" ]] && echo "- note: $review_note"
-  echo
-  echo "## Verify"
-  echo "- ds-verify: $verify_status"
-  echo "- output: $verify_output"
-  [[ -n "$verify_note" ]] && echo "- note: $verify_note"
-  echo
-  echo "## Recommended Next Action"
-  recommend_next
-}
-
-report_file="$(mktemp -t osb-loop-report.XXXXXX)"
-build_report > "$report_file"
-
-cat "$report_file"
-
-if [[ -n "$OUTPUT" ]]; then
-  out_dir="$(dirname "$OUTPUT")"
-  mkdir -p "$out_dir" 2>/dev/null || true
-  cp "$report_file" "$OUTPUT"
-  echo
-  echo "(loop summary also written to $OUTPUT)"
 fi
 
-rm -f "$report_file"
+CMD=("${OSSTACK_CMD[@]}" loop start --workspace "$PWD" --source git_diff --max-iter 1 --once --interval-ms 250 --json)
+[[ -n "$OUTPUT" ]] && CMD+=(--markdown "$OUTPUT")
 
-# ---------- Exit code ----------
-# 0 = success or only user-requested skips
-# 1 = at least one attempted step FAILED
-if [[ "$context_status" == "FAIL" || "$review_status" == "FAIL" || "$verify_status" == "FAIL" ]]; then
+if $DO_REVIEW; then
+  if command -v ds-review >/dev/null 2>&1; then
+    mkdir -p reviews/ds-review 2>/dev/null || true
+    CMD+=(--verify "mkdir -p reviews/ds-review && (git diff --quiet || git diff | ds-review --output reviews/ds-review/latest.md${STRICT_FLAG})")
+  else
+    echo "osb-loop: ds-review not found; review verifier skipped" >&2
+  fi
+fi
+
+if $DO_VERIFY; then
+  if command -v ds-verify >/dev/null 2>&1; then
+    mkdir -p reviews/ds-verify 2>/dev/null || true
+    CMD+=(--verify "mkdir -p reviews/ds-verify && ds-verify --output reviews/ds-verify/latest.md${STRICT_FLAG}")
+  else
+    echo "osb-loop: ds-verify not found; verify verifier skipped" >&2
+  fi
+fi
+
+START_OUTPUT="$("${CMD[@]}")"
+START_CODE=$?
+if [[ $START_CODE -ne 0 ]]; then
+  printf '%s\n' "$START_OUTPUT"
+  exit "$START_CODE"
+fi
+
+LOOP_SESSION_ID="$(
+  printf '%s' "$START_OUTPUT" | node -e '
+let raw = "";
+process.stdin.on("data", (chunk) => raw += chunk);
+process.stdin.on("end", () => {
+  const parsed = JSON.parse(raw);
+  if (typeof parsed.loop_session_id !== "string") process.exit(1);
+  console.log(parsed.loop_session_id);
+});
+'
+)"
+
+if [[ -z "$LOOP_SESSION_ID" ]]; then
+  echo "osb-loop: loop start did not return loop_session_id" >&2
+  printf '%s\n' "$START_OUTPUT" >&2
   exit 1
 fi
-exit 0
+
+WAIT_TIMEOUT_SECONDS="${OSB_LOOP_WAIT_TIMEOUT_SECONDS:-3600}"
+DEADLINE=$((SECONDS + WAIT_TIMEOUT_SECONDS))
+LAST_SESSION=""
+
+while [[ $SECONDS -lt $DEADLINE ]]; do
+  LIST_OUTPUT="$("${OSSTACK_CMD[@]}" loop list --json 2>/dev/null || true)"
+  LAST_SESSION="$(
+    printf '%s' "$LIST_OUTPUT" | LOOP_SESSION_ID="$LOOP_SESSION_ID" node -e '
+let raw = "";
+process.stdin.on("data", (chunk) => raw += chunk);
+process.stdin.on("end", () => {
+  try {
+    const parsed = JSON.parse(raw);
+    const session = Array.isArray(parsed.loops)
+      ? parsed.loops.find((loop) => loop.loop_session_id === process.env.LOOP_SESSION_ID)
+      : undefined;
+    if (session) console.log(JSON.stringify(session));
+  } catch {
+    process.exit(0);
+  }
+});
+'
+  )"
+  if [[ -n "$LAST_SESSION" ]]; then
+    SESSION_STATUS="$(
+      printf '%s' "$LAST_SESSION" | node -e '
+let raw = "";
+process.stdin.on("data", (chunk) => raw += chunk);
+process.stdin.on("end", () => console.log(JSON.parse(raw).status ?? ""));
+'
+    )"
+    if [[ "$SESSION_STATUS" == "stopped" || "$SESSION_STATUS" == "failed" ]]; then
+      break
+    fi
+  fi
+  sleep 1
+done
+
+if [[ -z "$LAST_SESSION" ]]; then
+  echo "osb-loop: loop session was not found: $LOOP_SESSION_ID" >&2
+  exit 1
+fi
+
+SESSION_STATUS="$(
+  printf '%s' "$LAST_SESSION" | node -e '
+let raw = "";
+process.stdin.on("data", (chunk) => raw += chunk);
+process.stdin.on("end", () => console.log(JSON.parse(raw).status ?? ""));
+'
+)"
+if [[ "$SESSION_STATUS" != "stopped" && "$SESSION_STATUS" != "failed" ]]; then
+  echo "osb-loop: loop session timed out waiting for completion: $LOOP_SESSION_ID" >&2
+  printf '%s\n' "$LAST_SESSION" >&2
+  exit 1
+fi
+
+"${OSSTACK_CMD[@]}" loop status --daemon --workspace "$PWD"
+
+node -e '
+const fs = require("fs");
+const path = require("path");
+const statePath = path.join(process.cwd(), "LOOP-STATE.json");
+const state = JSON.parse(fs.readFileSync(statePath, "utf8"));
+const failed = (state.completed_tasks ?? []).some((task) => task.outcome !== "success");
+process.exit(failed ? 2 : 0);
+'

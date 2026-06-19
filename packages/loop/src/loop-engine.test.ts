@@ -1,0 +1,590 @@
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { mkdtempSync } from "node:fs";
+import { CapabilitySchema, type Capability, type CostTier } from "@osstack/core";
+import type { AgentAdapter, AgentAvailability, AgentTask } from "@osstack/agents";
+import type { HermesEvent } from "@osstack/hermes-adapter";
+import { describe, expect, it } from "vitest";
+import { LoopEngine } from "./loop-engine.js";
+
+async function makeQueuedWorkspace(): Promise<string> {
+  const workspace = mkdtempSync(join(tmpdir(), "osstack-loop-engine-"));
+  await mkdir(join(workspace, "tasks"));
+  await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
+    task_id: "task-1",
+    capability: "code.test",
+    prompt: "Exercise the local loop engine",
+    priority: 80,
+  }));
+  return workspace;
+}
+
+describe("LoopEngine", () => {
+  it("runs a real local command loop and writes state files", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const result = await new LoopEngine({
+      loopId: "loop-test",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      stateFilePath: "LOOP-STATE.json",
+      executeCommand: "node -e \"require('fs').writeFileSync('loop-output.txt', 'ok')\"",
+      verifyCommands: ["node -e \"process.exit(require('fs').existsSync('loop-output.txt') ? 0 : 1)\""],
+      maxIterations: 1,
+    }).runOnce();
+
+    expect(result.state.completed_tasks).toEqual([
+      expect.objectContaining({
+        task_id: "task-1",
+        outcome: "success",
+        iterations: 1,
+        agent_id: "local-command",
+      }),
+    ]);
+    expect(result.events.map((event) => event.type)).toContain("loop.verify.done");
+    await expect(readFile(join(workspace, "STATE.md"), "utf-8")).resolves.toContain("task-1 - success");
+    await expect(readFile(join(workspace, "LOOP-STATE.json"), "utf-8")).resolves.toContain('"loop_id": "loop-test"');
+  });
+
+  it("can execute a queued task through a real AgentAdapter invocation", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const adapter = new FakeLoopAdapter();
+    const result = await new LoopEngine({
+      loopId: "loop-agent",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      agentId: adapter.id,
+      adapters: [adapter],
+      verifyCommands: ["node -e \"process.exit(require('fs').existsSync('agent-output.txt') ? 0 : 1)\""],
+    }).runOnce();
+
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      task_id: "task-1",
+      outcome: "success",
+      agent_id: "fake-loop-agent",
+    });
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.execute.done",
+      payload: expect.objectContaining({
+        agent_id: "fake-loop-agent",
+        adapter_event_count: 2,
+      }),
+    }));
+    await expect(readFile(join(workspace, "agent-output.txt"), "utf-8"))
+      .resolves.toBe("adapter wrote: Exercise the local loop engine\n");
+  });
+
+  it("automatically routes queued tasks through the policy-selected adapter", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const highCost = new FakeLoopAdapter({ id: "high-cost-agent", costTier: "high", outputFile: "high-output.txt" });
+    const lowCost = new FakeLoopAdapter({ id: "low-cost-agent", costTier: "low", outputFile: "low-output.txt" });
+    const result = await new LoopEngine({
+      loopId: "loop-policy-route",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      adapters: [highCost, lowCost],
+    }).runOnce();
+
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      task_id: "task-1",
+      outcome: "success",
+      agent_id: "low-cost-agent",
+    });
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.plan.done",
+      payload: expect.objectContaining({
+        agent_id: "low-cost-agent",
+        routing_reason: expect.stringContaining("policy["),
+        policy: expect.objectContaining({ winner_agent_id: "low-cost-agent" }),
+      }),
+    }));
+    await expect(readFile(join(workspace, "low-output.txt"), "utf-8"))
+      .resolves.toBe("adapter wrote: Exercise the local loop engine\n");
+    await expect(readFile(join(workspace, "high-output.txt"), "utf-8")).rejects.toThrow();
+  });
+
+  it("runs reviewer adapters after execution and treats them as verification gates", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const reviewer = new FakeReviewAdapter();
+    const result = await new LoopEngine({
+      loopId: "loop-reviewer",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('maker-output.txt', 'ok')\"",
+      verifierAgentIds: [reviewer.id],
+      adapters: [reviewer],
+    }).runOnce();
+
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      task_id: "task-1",
+      outcome: "success",
+      agent_id: "local-command",
+    });
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.verify.done",
+      payload: expect.objectContaining({
+        pass: true,
+        reviewer_agent_id: "fake-reviewer",
+      }),
+    }));
+    await expect(readFile(join(workspace, "review-output.txt"), "utf-8"))
+      .resolves.toContain("reviewed run_plan_");
+  });
+
+  it("escalates after repeated failed verification", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const result = await new LoopEngine({
+      loopId: "loop-fail",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      verifyCommands: ["node -e \"process.exit(1)\""],
+      maxIterations: 2,
+    }).runOnce();
+
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      task_id: "task-1",
+      outcome: "escalated",
+      iterations: 2,
+    });
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.escalated",
+      payload: expect.objectContaining({
+        task_id: "task-1",
+        iteration: 2,
+        max_iterations: 2,
+        escalate_to: "hermes",
+      }),
+    }));
+    expect(result.state.decisions?.at(-1)).toContain("escalate after iteration 2");
+  });
+
+  it("reuses the persisted loop id when running against an existing state file", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const first = await new LoopEngine({
+      loopId: "loop-stable",
+      workspacePath: workspace,
+      sources: ["manual"],
+    }).runOnce();
+    const second = await new LoopEngine({
+      workspacePath: workspace,
+      sources: ["manual"],
+    }).runOnce();
+
+    expect(first.loop_id).toBe("loop-stable");
+    expect(second.loop_id).toBe("loop-stable");
+    expect(second.state.loop_id).toBe("loop-stable");
+    expect(second.events.every((event) => event.loop_id === "loop-stable")).toBe(true);
+  });
+
+  it("skips task queue items that already completed in the persisted state", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const command = "node -e \"const fs=require('fs'); const n=fs.existsSync('count.txt') ? Number(fs.readFileSync('count.txt','utf8')) : 0; fs.writeFileSync('count.txt', String(n + 1))\"";
+    const first = await new LoopEngine({
+      loopId: "loop-repeat-safe",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: command,
+      maxIterations: 1,
+    }).runOnce();
+    const second = await new LoopEngine({
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: command,
+      maxIterations: 1,
+    }).runOnce();
+
+    expect(first.executedTaskCount).toBe(1);
+    expect(second.discoveredTaskCount).toBe(1);
+    expect(second.executedTaskCount).toBe(0);
+    expect(second.skippedTaskCount).toBe(1);
+    await expect(readFile(join(workspace, "count.txt"), "utf-8")).resolves.toBe("1");
+  });
+
+  it("can run multiple cycles and pick up tasks that appear later", async () => {
+    const workspace = mkdtempSync(join(tmpdir(), "osstack-loop-engine-watch-"));
+    await mkdir(join(workspace, "tasks"));
+    setTimeout(() => {
+      void writeFile(join(workspace, "tasks", "late.json"), JSON.stringify({
+        task_id: "late-task",
+        capability: "code.test",
+        prompt: "Exercise a later cycle",
+      }));
+    }, 5);
+
+    const result = await new LoopEngine({
+      loopId: "loop-cycles",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('late-done.txt', 'ok')\"",
+    }).runCycles({ cycles: 2, intervalMs: 25 });
+
+    expect(result.cycles).toHaveLength(2);
+    expect(result.cycles[0]!.executedTaskCount).toBe(0);
+    expect(result.cycles[1]!.executedTaskCount).toBe(1);
+    expect(result.events
+      .filter((event) => event.type === "loop.cycle.started")
+      .map((event) => (event.payload as { cycle: number }).cycle)).toEqual([1, 2]);
+    expect(result.events.map((event) => event.seq)).toEqual(
+      result.events.map((_, index) => index + 1),
+    );
+    expect(result.events.at(-1)?.type).toBe("loop.stopped");
+    expect(result.state.completed_tasks.at(-1)).toMatchObject({
+      task_id: "late-task",
+      outcome: "success",
+    });
+    await expect(readFile(join(workspace, "late-done.txt"), "utf-8")).resolves.toBe("ok");
+  });
+
+  it("stops multi-cycle runs early when the goal command passes", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const result = await new LoopEngine({
+      loopId: "loop-goal",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('goal-done.txt', 'ok')\"",
+      goalCommand: "node -e \"process.exit(require('fs').existsSync('goal-done.txt') ? 0 : 1)\"",
+    }).runCycles({ cycles: 5, intervalMs: 10 });
+
+    expect(result.cycles).toHaveLength(1);
+    expect(result.cycles[0]!.goal).toMatchObject({
+      pass: true,
+      exitCode: 0,
+    });
+    expect(result.events.map((event) => event.type)).toContain("loop.goal.checked");
+    expect(result.events.at(-1)).toMatchObject({
+      type: "loop.stopped",
+      payload: expect.objectContaining({ reason: "goal command passed" }),
+    });
+    expect(result.state.decisions?.at(-1)).toContain("goal: passed");
+  });
+
+  it("archives successful single-task queue files when requested", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const result = await new LoopEngine({
+      loopId: "loop-archive",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('archive-done.txt', 'ok')\"",
+      archiveCompletedTasks: true,
+    }).runOnce();
+
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      task_id: "task-1",
+      outcome: "success",
+    });
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.queue.archived",
+      payload: expect.objectContaining({
+        task_id: "task-1",
+        archived: true,
+      }),
+    }));
+    await expect(readFile(join(workspace, "tasks", "task.json"), "utf-8")).rejects.toThrow();
+    const archiveRoot = join(workspace, "tasks", "archive");
+    const days = await readdir(archiveRoot);
+    expect(days).toHaveLength(1);
+    await expect(readFile(join(archiveRoot, days[0]!, "task.json"), "utf-8")).resolves.toContain('"task_id":"task-1"');
+  });
+
+  it("keeps escalated task queue files visible when archiving is enabled", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const result = await new LoopEngine({
+      loopId: "loop-archive-failed",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      verifyCommands: ["node -e \"process.exit(1)\""],
+      maxIterations: 1,
+      archiveCompletedTasks: true,
+    }).runOnce();
+
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      task_id: "task-1",
+      outcome: "escalated",
+    });
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.queue.archived",
+      payload: expect.objectContaining({
+        task_id: "task-1",
+        archived: false,
+        reason: "task did not succeed",
+      }),
+    }));
+    await expect(readFile(join(workspace, "tasks", "task.json"), "utf-8")).resolves.toContain('"task_id":"task-1"');
+  });
+
+  it("can execute a successful task in an isolated git worktree and merge it back", async () => {
+    const workspace = await makeGitQueuedWorkspace("initial\n");
+    const worktreeRoot = join(workspace, "..", "isolated-worktrees");
+    const result = await new LoopEngine({
+      loopId: "loop-worktree",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('app.txt', 'changed in worktree\\n')\"",
+      verifyCommands: ["node -e \"process.exit(require('fs').readFileSync('app.txt','utf8').includes('changed') ? 0 : 1)\""],
+      useWorktree: true,
+      worktreeRoot,
+    }).runOnce();
+
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      task_id: "task-1",
+      outcome: "success",
+    });
+    expect(result.events.map((event) => event.type)).toEqual(expect.arrayContaining([
+      "loop.worktree.created",
+      "loop.worktree.merged",
+      "loop.worktree.cleaned",
+    ]));
+    await expect(readFile(join(workspace, "app.txt"), "utf-8")).resolves.toBe("changed in worktree\n");
+    expect(await git(workspace, ["worktree", "list", "--porcelain"])).not.toContain("osstack/loop/");
+  });
+
+  it("cleans a failed isolated worktree without merging its changes", async () => {
+    const workspace = await makeGitQueuedWorkspace("stable\n");
+    const result = await new LoopEngine({
+      loopId: "loop-worktree-fail",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('app.txt', 'bad change\\n')\"",
+      verifyCommands: ["node -e \"process.exit(1)\""],
+      maxIterations: 1,
+      useWorktree: true,
+      worktreeRoot: join(workspace, "..", "failed-worktrees"),
+    }).runOnce();
+
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      task_id: "task-1",
+      outcome: "escalated",
+    });
+    expect(result.events.map((event) => event.type)).toContain("loop.worktree.cleaned");
+    expect(result.events.map((event) => event.type)).not.toContain("loop.worktree.merged");
+    await expect(readFile(join(workspace, "app.txt"), "utf-8")).resolves.toBe("stable\n");
+    expect(await git(workspace, ["worktree", "list", "--porcelain"])).not.toContain("osstack/loop/");
+  });
+
+  it("cleans loop-scoped orphaned worktrees after each cycle", async () => {
+    const workspace = await makeGitQueuedWorkspace("base\n");
+    const loopId = "loop-orphan-cycle";
+    const worktreeRoot = join(workspace, "..", "orphan-cycle-worktrees");
+    const orphanPath = join(worktreeRoot, "manual-orphan");
+    const command = [
+      "const fs=require('fs')",
+      "const cp=require('child_process')",
+      "fs.writeFileSync('app.txt','cycle change\\n')",
+      `cp.execFileSync('git',['-C',${JSON.stringify(workspace)},'worktree','add','-b','osstack/loop/${loopId}/manual-orphan',${JSON.stringify(orphanPath)},'HEAD'])`,
+    ].join(";");
+
+    const result = await new LoopEngine({
+      loopId,
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: `node -e ${JSON.stringify(command)}`,
+      verifyCommands: ["node -e \"process.exit(require('fs').readFileSync('app.txt','utf8') === 'cycle change\\n' ? 0 : 1)\""],
+      useWorktree: true,
+      worktreeRoot,
+    }).runOnce();
+
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.worktree.orphans_cleaned",
+      payload: expect.objectContaining({
+        phase: "after_cycle",
+        removed_count: 1,
+        branches: ["osstack/loop/loop-orphan-cycle/manual-orphan"],
+      }),
+    }));
+    expect(await git(workspace, ["worktree", "list", "--porcelain"])).not.toContain(orphanPath);
+    await expect(git(workspace, ["rev-parse", "--verify", "osstack/loop/loop-orphan-cycle/manual-orphan"])).rejects.toThrow();
+  });
+
+  it("preserves the isolated branch when a successful task cannot fast-forward merge", async () => {
+    const workspace = await makeGitQueuedWorkspace("base\n");
+    const worktreeRoot = join(workspace, "..", "merge-conflict-worktrees");
+    const command = [
+      "const fs=require('fs')",
+      "const cp=require('child_process')",
+      "fs.writeFileSync('app.txt','worktree change\\n')",
+      `fs.writeFileSync(${JSON.stringify(join(workspace, "app.txt"))},'main change\\n')`,
+      `cp.execFileSync('git',['-C',${JSON.stringify(workspace)},'add','app.txt'])`,
+      `cp.execFileSync('git',['-C',${JSON.stringify(workspace)},'-c','user.name=test','-c','user.email=test@example.invalid','commit','-m','advance main'])`,
+    ].join(";");
+
+    await expect(new LoopEngine({
+      loopId: "loop-worktree-merge-conflict",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: `node -e ${JSON.stringify(command)}`,
+      verifyCommands: ["node -e \"process.exit(require('fs').readFileSync('app.txt','utf8') === 'worktree change\\n' ? 0 : 1)\""],
+      useWorktree: true,
+      worktreeRoot,
+    }).runOnce()).rejects.toThrow(/merge --ff-only/);
+
+    expect(await git(workspace, ["branch", "--list", "osstack/loop/*"])).toContain("osstack/loop/");
+    expect(await git(workspace, ["worktree", "list", "--porcelain"])).not.toContain(worktreeRoot);
+    await expect(readFile(join(workspace, "app.txt"), "utf-8")).resolves.toBe("main change\n");
+  });
+});
+
+async function makeGitQueuedWorkspace(appContents: string): Promise<string> {
+  const workspace = await makeQueuedWorkspace();
+  await git(workspace, ["init", "-b", "main"]);
+  await writeFile(join(workspace, "app.txt"), appContents);
+  await git(workspace, ["add", "app.txt"]);
+  await git(workspace, [
+    "-c",
+    "user.name=test",
+    "-c",
+    "user.email=test@example.invalid",
+    "commit",
+    "-m",
+    "initial",
+  ]);
+  return workspace;
+}
+
+async function git(cwd: string, args: string[]): Promise<string> {
+  const { spawn } = await import("node:child_process");
+  return await new Promise((resolve, reject) => {
+    const child = spawn("git", args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf-8");
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf-8");
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) resolve(stdout.trim());
+      else reject(new Error(`git ${args.join(" ")} failed: ${stderr.trim() || stdout.trim()}`));
+    });
+  });
+}
+
+class FakeLoopAdapter implements AgentAdapter {
+  readonly id: string;
+  readonly display_name = "Fake Loop Agent";
+  readonly cost_tier: CostTier;
+  private readonly outputFile: string;
+
+  constructor(options: { id?: string; costTier?: CostTier; outputFile?: string } = {}) {
+    this.id = options.id ?? "fake-loop-agent";
+    this.cost_tier = options.costTier ?? "low";
+    this.outputFile = options.outputFile ?? "agent-output.txt";
+  }
+
+  capabilities(): readonly Capability[] {
+    return [
+      CapabilitySchema.parse({
+        id: `${this.id}.code.test`,
+        kind: "code.test",
+        agent_id: this.id,
+        description: "Fake loop adapter for tests",
+        cost_tier: this.cost_tier,
+      }),
+    ];
+  }
+
+  async isAvailable(): Promise<AgentAvailability> {
+    return { available: true, last_checked_at: Math.floor(Date.now() / 1000) };
+  }
+
+  async *invoke(task: AgentTask, signal: AbortSignal): AsyncIterable<HermesEvent> {
+    yield fakeEvent(task, 0, "run.started", {
+      status: "running",
+      controls: {
+        cancel: true,
+        approval_pending: false,
+        clarify_pending: false,
+        queue: false,
+        goal: false,
+      },
+    });
+
+    if (signal.aborted) {
+      yield fakeEvent(task, 1, "done", {
+        status: "cancelled",
+        last_seq: 0,
+        result_summary: "cancelled before writing",
+      }, true);
+      return;
+    }
+
+    const repoPath = typeof task.context?.["repo_path"] === "string" ? task.context["repo_path"] : undefined;
+    if (repoPath === undefined) {
+      yield fakeEvent(task, 1, "error", {
+        code: "missing_repo_path",
+        message: "repo_path context is required",
+        terminal: true,
+      }, true);
+      return;
+    }
+
+    await writeFile(join(repoPath, this.outputFile), `adapter wrote: ${task.prompt}\n`);
+    yield fakeEvent(task, 1, "done", {
+      status: "completed",
+      last_seq: 0,
+      result_summary: "fake adapter completed",
+    }, true);
+  }
+}
+
+class FakeReviewAdapter implements AgentAdapter {
+  readonly id = "fake-reviewer";
+  readonly display_name = "Fake Reviewer";
+  readonly cost_tier: CostTier = "low";
+
+  capabilities(): readonly Capability[] {
+    return [
+      CapabilitySchema.parse({
+        id: "fake-reviewer.review.code",
+        kind: "review.code",
+        agent_id: this.id,
+        description: "Fake reviewer adapter for tests",
+        cost_tier: this.cost_tier,
+      }),
+    ];
+  }
+
+  async isAvailable(): Promise<AgentAvailability> {
+    return { available: true, last_checked_at: Math.floor(Date.now() / 1000) };
+  }
+
+  async *invoke(task: AgentTask): AsyncIterable<HermesEvent> {
+    const repoPath = typeof task.context?.["repo_path"] === "string" ? task.context["repo_path"] : undefined;
+    const subjectRunId = typeof task.context?.["subject_run_id"] === "string" ? task.context["subject_run_id"] : "missing";
+    if (repoPath === undefined) {
+      yield fakeEvent(task, 1, "error", {
+        code: "missing_repo_path",
+        message: "repo_path context is required",
+        terminal: true,
+      }, true);
+      return;
+    }
+
+    await writeFile(join(repoPath, "review-output.txt"), `reviewed ${subjectRunId}\n`);
+    yield fakeEvent(task, 1, "done", {
+      status: "completed",
+      last_seq: 0,
+      result_summary: "fake review passed",
+    }, true);
+  }
+}
+
+function fakeEvent(
+  task: AgentTask,
+  seq: number,
+  type: "run.started" | "done" | "error",
+  payload: unknown,
+  terminal = false,
+): HermesEvent {
+  return {
+    event_id: `${task.run_id}:${seq}`,
+    seq,
+    run_id: task.run_id,
+    session_id: task.session_id,
+    created_at: Date.now() / 1000,
+    terminal,
+    type,
+    payload,
+  } as HermesEvent;
+}

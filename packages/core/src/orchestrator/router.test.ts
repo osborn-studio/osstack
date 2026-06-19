@@ -85,4 +85,22 @@ describe("routeCapability", () => {
     // No exact id match, but kind inference picks lowest-cost
     expect(d?.adapter.id).toBe("codex-cli");
   });
+
+  it("recognizes review and verifier loop capability ids", async () => {
+    const dsReview = makeAdapter({
+      id: "ds-review",
+      cost_tier: "low",
+      caps: [{ kind: "review.code", suffix: "review.code" }],
+    });
+    const dsVerify = makeAdapter({
+      id: "ds-verify",
+      cost_tier: "low",
+      caps: [{ kind: "verify.alignment", suffix: "verify.alignment" }],
+    });
+
+    await expect(routeCapability({ capability_id: "missing.review.code" }, [dsReview]))
+      .resolves.toMatchObject({ adapter: { id: "ds-review" } });
+    await expect(routeCapability({ capability_id: "missing.verify.alignment" }, [dsVerify]))
+      .resolves.toMatchObject({ adapter: { id: "ds-verify" } });
+  });
 });
