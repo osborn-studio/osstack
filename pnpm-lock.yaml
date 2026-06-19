@@ -134,7 +134,7 @@ importers:
         specifier: ^25.8.0
         version: 25.8.0
 
-  packages/partneros-agents:
+  packages/loop:
     dependencies:
       '@osstack/agents':
         specifier: workspace:*
@@ -145,117 +145,13 @@ importers:
       '@osstack/hermes-adapter':
         specifier: workspace:*
         version: link:../hermes-adapter
-      '@osstack/partneros-core':
-        specifier: workspace:*
-        version: link:../partneros-core
       zod:
         specifier: ^3.25.76
         version: 3.25.76
     devDependencies:
       '@types/node':
-        specifier: ^25.8.0
-        version: 25.8.0
-      vitest:
-        specifier: ^2.1.9
-        version: 2.1.9(@types/node@25.8.0)
-
-  packages/partneros-approval-desk:
-    dependencies:
-      '@osstack/partneros-core':
-        specifier: workspace:*
-        version: link:../partneros-core
-      '@osstack/partneros-engine':
-        specifier: workspace:*
-        version: link:../partneros-engine
-    devDependencies:
-      '@types/node':
-        specifier: ^25.8.0
-        version: 25.8.0
-      vitest:
-        specifier: ^2.1.9
-        version: 2.1.9(@types/node@25.8.0)
-
-  packages/partneros-core:
-    dependencies:
-      '@osstack/core':
-        specifier: workspace:*
-        version: link:../core
-      '@osstack/hermes-adapter':
-        specifier: workspace:*
-        version: link:../hermes-adapter
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@types/node':
-        specifier: ^25.8.0
-        version: 25.8.0
-      vitest:
-        specifier: ^2.1.9
-        version: 2.1.9(@types/node@25.8.0)
-
-  packages/partneros-engine:
-    dependencies:
-      '@osstack/core':
-        specifier: workspace:*
-        version: link:../core
-      '@osstack/partneros-agents':
-        specifier: workspace:*
-        version: link:../partneros-agents
-      '@osstack/partneros-core':
-        specifier: workspace:*
-        version: link:../partneros-core
-      '@osstack/partneros-templates':
-        specifier: workspace:*
-        version: link:../partneros-templates
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@types/node':
-        specifier: ^25.8.0
-        version: 25.8.0
-      vitest:
-        specifier: ^2.1.9
-        version: 2.1.9(@types/node@25.8.0)
-
-  packages/partneros-hermes-skill:
-    dependencies:
-      '@osstack/partneros-agents':
-        specifier: workspace:*
-        version: link:../partneros-agents
-      '@osstack/partneros-core':
-        specifier: workspace:*
-        version: link:../partneros-core
-      '@osstack/partneros-engine':
-        specifier: workspace:*
-        version: link:../partneros-engine
-      '@osstack/partneros-templates':
-        specifier: workspace:*
-        version: link:../partneros-templates
-    devDependencies:
-      vitest:
-        specifier: ^2.1.9
-        version: 2.1.9(@types/node@25.8.0)
-
-  packages/partneros-templates:
-    dependencies:
-      '@osstack/partneros-core':
-        specifier: workspace:*
-        version: link:../partneros-core
-      yaml:
-        specifier: ^2.6.0
-        version: 2.9.0
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@types/node':
-        specifier: ^25.8.0
-        version: 25.8.0
-      vitest:
-        specifier: ^2.1.9
-        version: 2.1.9(@types/node@25.8.0)
+        specifier: ^22.19.19
+        version: 22.19.19
 
   packages/plugins:
     dependencies:
