@@ -178,6 +178,16 @@ def cmd_daemon_health() -> dict[str, Any]:
     return _daemon_call("health")
 
 
+def cmd_dashboard_url() -> dict[str, Any]:
+    """Return the local dashboard URL that chat bridges can send back."""
+    return _daemon_call("dashboard.url")
+
+
+def cmd_dashboard_snapshot() -> dict[str, Any]:
+    """Return the JSON backing the local development dashboard."""
+    return _daemon_call("dashboard.snapshot")
+
+
 # ── kanban commands (the Telegram-facing surface) ─────────────────────
 #
 # These are what Hermes invokes when a Telegram user asks about the osstack
@@ -287,6 +297,8 @@ COMMANDS = {
     "health": cmd_health,
     "daemon-version": cmd_daemon_version,
     "daemon-health": cmd_daemon_health,
+    "dashboard-url": cmd_dashboard_url,
+    "dashboard-snapshot": cmd_dashboard_snapshot,
     "kanban-board": cmd_kanban_board,
     "kanban-create": cmd_kanban_create,
     "kanban-move": cmd_kanban_move,

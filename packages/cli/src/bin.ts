@@ -2,6 +2,7 @@
 // (shebang is injected by tsup banner)
 
 import { execFile } from "node:child_process";
+import { realpathSync } from "node:fs";
 import { connect, type Socket } from "node:net";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
@@ -76,6 +77,8 @@ Daemon commands:
   serve               Start the daemon (Unix socket at ${socketPath()})
   health              Show daemon health (requires running daemon)
   status              CLI/daemon version handshake + update availability
+  dashboard url       Print the local development dashboard URL
+  dashboard open      Open the local development dashboard in a browser
   stats               Show per-agent and loop metrics (requires running daemon)
   killswitch          Check if the policy layer is earning its keep (F4)
   agent list          List registered sub-agents and their capabilities
@@ -220,6 +223,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     }
     printStats(resp.result);
     return 0;
+  }
+
+  if (cmd === "dashboard") {
+    return await handleDashboardCommand(args.slice(1));
   }
 
   if (cmd === "agent" && args[1] === "list") {
@@ -1335,6 +1342,65 @@ async function handleKanbanCommand(args: string[]): Promise<number> {
   return 1;
 }
 
+async function handleDashboardCommand(args: string[]): Promise<number> {
+  const sub = args[0] ?? "url";
+
+  if (sub === "url") {
+    const resp = (await rpc("dashboard.url")) as { ok: boolean; result?: { url?: string | null; available?: boolean }; error?: { message: string } };
+    if (!resp.ok) {
+      console.error("osstack:", resp.error?.message ?? "dashboard.url failed");
+      return 1;
+    }
+    const url = resp.result?.url;
+    if (!url) {
+      console.error("osstack: dashboard URL is not available yet; check `osstack health`");
+      return 1;
+    }
+    console.log(url);
+    return 0;
+  }
+
+  if (sub === "open") {
+    const resp = (await rpc("dashboard.url")) as { ok: boolean; result?: { url?: string | null }; error?: { message: string } };
+    if (!resp.ok || !resp.result?.url) {
+      console.error("osstack:", resp.error?.message ?? "dashboard URL is not available");
+      return 1;
+    }
+    const { spawn } = await import("node:child_process");
+    spawn("open", [resp.result.url], { detached: true, stdio: "ignore" }).unref();
+    console.log(resp.result.url);
+    return 0;
+  }
+
+  if (sub === "snapshot") {
+    const resp = (await rpc("dashboard.snapshot")) as { ok: boolean; result?: unknown; error?: { message: string } };
+    if (!resp.ok) {
+      console.error("osstack:", resp.error?.message ?? "dashboard.snapshot failed");
+      return 1;
+    }
+    console.log(JSON.stringify(resp.result, null, 2));
+    return 0;
+  }
+
+  if (sub === "help") {
+    console.log(`osstack dashboard — local development cockpit
+
+  osstack dashboard url       Print the URL for chat bots to return
+  osstack dashboard open      Open the dashboard locally
+  osstack dashboard snapshot  Print the JSON backing the dashboard
+
+Env:
+  OSSTACK_DASHBOARD_PORT      Port for the HTTP dashboard (default 8799)
+  OSSTACK_DASHBOARD_HOST      Bind host (default 127.0.0.1)
+  OSSTACK_DASHBOARD_URL_HOST  Host shown in returned URLs (default localhost)
+`);
+    return 0;
+  }
+
+  console.error(`osstack: unknown dashboard subcommand "${sub}"`);
+  return 1;
+}
+
 async function handleHermesCommand(args: string[]): Promise<number> {
   const sub = args[0];
 
@@ -1561,7 +1627,13 @@ function num(n: number, w: number): string {
   return s.length >= w ? s : `${" ".repeat(w - s.length)}${s}`;
 }
 
-if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+function isDirectCliEntrypoint(): boolean {
+  if (process.argv[1] === undefined) return false;
+  const invoked = pathToFileURL(realpathSync(process.argv[1])).href;
+  return import.meta.url === invoked;
+}
+
+if (isDirectCliEntrypoint()) {
   main().then(
     (code) => process.exit(code),
     (err) => {
