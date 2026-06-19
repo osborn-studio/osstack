@@ -1,0 +1,4 @@
+interface:
+  display_name: "Loop Engineering"
+  short_description: "Run iterative engineering loops from task queues"
+  default_prompt: "Use $loop-engineering to run, diagnose, or integrate an automated task execution and verification loop."

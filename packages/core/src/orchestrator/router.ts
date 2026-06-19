@@ -124,7 +124,7 @@ function pickCapability(adapter: RoutableAdapter, request: RoutingRequest): Capa
 // add it here too. The router test exercises the round-trip.
 const KIND_SET = new Set<string>([
   // Software lifecycle
-  "code.write", "code.review", "code.refactor", "code.test", "code.debug",
+  "code.write", "code.review", "review.code", "code.refactor", "code.test", "code.debug",
   "design.prd", "design.architecture", "design.review",
   "doc.write", "doc.summarize",
   "plan.decompose", "plan.estimate",
@@ -135,7 +135,7 @@ const KIND_SET = new Set<string>([
   "intent.draft", "intent.clarify", "intent.assign",
   "client.followup", "client.summarize",
   "matter.summarize", "matter.checklist",
-  "risk.check", "verify.acceptance",
+  "risk.check", "verify.acceptance", "verify.alignment",
   "artifact.create", "artifact.revise", "approval.request",
   "memory.write", "memory.read",
   // Autonomous ML research (karpathy/autoresearch)
