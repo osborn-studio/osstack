@@ -14,6 +14,7 @@ export default defineConfig({
     "@osstack/core",
     "@osstack/agents",
     "@osstack/config",
+    "@osstack/github",
     "@osstack/hermes-adapter",
     "@osstack/loop",
     "@osstack/skill-registry",

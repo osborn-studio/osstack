@@ -10,6 +10,11 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import { defaultAdapters } from "@osstack/agents";
+import {
+  renderBranchStewardReport,
+  scanBranchStewardCandidates,
+  type BranchStewardConfig,
+} from "@osstack/github";
 import { LoopEngine, enqueueTask, readLoopState, renderLoopStateMarkdown } from "@osstack/loop";
 import { initProject } from "@osstack/skills";
 import {
@@ -137,6 +142,9 @@ Loop engineering (local, testable hot-loop MVP):
   loop status [--workspace P] [--state P] [--daemon]
                                  Render LOOP-STATE.json as STATE.md
 
+Branch Steward:
+  steward scan [--repo O/R] [--base B] [--remote R] [--workspace P] [--json]
+
 Hermes integration:
   hermes health                  Show kanban-sync bridge state
   hermes dashboard               Open the Hermes WebUI in a browser
@@ -255,6 +263,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     return await handleLoopCommand(args.slice(1));
   }
 
+  if (cmd === "steward") {
+    return await handleStewardCommand(args.slice(1));
+  }
+
   if (cmd === "hermes") {
     return await handleHermesCommand(args.slice(1));
   }
@@ -294,6 +306,115 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   console.error(`osstack: unknown command "${args.join(" ")}" — see "osstack help"`);
   return 1;
+}
+
+function printStewardHelp(): void {
+  console.log(`osstack steward — Branch Steward dry-run reports
+
+  osstack steward scan [--repo O/R] [--base B] [--remote R] [--workspace P] [--json]
+  osstack steward help
+`);
+}
+
+async function handleStewardCommand(args: string[]): Promise<number> {
+  const sub = args[0];
+
+  if (sub === undefined || sub === "help" || sub === "--help" || sub === "-h") {
+    printStewardHelp();
+    return 0;
+  }
+
+  if (sub !== "scan") {
+    console.error(`osstack: unknown steward subcommand "${sub}"`);
+    return 1;
+  }
+
+  const workspacePathValue = stewardFlagValue(args, "--workspace");
+  const repoValue = stewardFlagValue(args, "--repo");
+  const baseValue = stewardFlagValue(args, "--base");
+  const remoteValue = stewardFlagValue(args, "--remote");
+  if (workspacePathValue instanceof Error) {
+    console.error(`osstack: ${workspacePathValue.message}`);
+    return 1;
+  }
+  if (repoValue instanceof Error) {
+    console.error(`osstack: ${repoValue.message}`);
+    return 1;
+  }
+  if (baseValue instanceof Error) {
+    console.error(`osstack: ${baseValue.message}`);
+    return 1;
+  }
+  if (remoteValue instanceof Error) {
+    console.error(`osstack: ${remoteValue.message}`);
+    return 1;
+  }
+
+  const workspacePath = workspacePathValue ?? process.cwd();
+  const remote = remoteValue ?? "origin";
+  const repo = repoValue ?? await inferGitHubRepoSlug(workspacePath, remote);
+  if (repo === undefined) {
+    console.error(`osstack: unable to infer GitHub repo from ${remote} remote; pass --repo owner/repo`);
+    return 1;
+  }
+
+  const config: BranchStewardConfig = {
+    repo,
+    base: baseValue ?? "main",
+    remote,
+    branchPrefixAllowlist: ["feat/", "feature/", "codex/"],
+    sensitivePathGlobs: [".github/workflows/", "package.json", "pnpm-lock.yaml"],
+    maxChangedFiles: 80,
+    maxBehindBy: 25,
+    prThreshold: 80,
+    autoMergeThreshold: 90,
+  };
+
+  let report: Awaited<ReturnType<typeof scanBranchStewardCandidates>>;
+  try {
+    report = await scanBranchStewardCandidates(config, undefined, { cwd: workspacePath });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`osstack: steward scan failed: ${message}`);
+    return 1;
+  }
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(report, null, 2));
+  } else {
+    console.log(renderBranchStewardReport(report));
+  }
+  return 0;
+}
+
+async function inferGitHubRepoSlug(workspacePath: string, remote: string): Promise<string | undefined> {
+  try {
+    const { stdout } = await execFileAsync("git", ["remote", "get-url", remote], {
+      cwd: workspacePath,
+      encoding: "utf-8",
+      timeout: 10_000,
+    });
+    return parseGitHubRepoSlug(String(stdout).trim());
+  } catch {
+    return undefined;
+  }
+}
+
+function stewardFlagValue(args: string[], name: string): string | undefined | Error {
+  const i = args.indexOf(name);
+  if (i < 0) return undefined;
+  const value = args[i + 1];
+  if (value === undefined || value.startsWith("--")) {
+    return new Error(`${name} requires a value`);
+  }
+  return value;
+}
+
+function parseGitHubRepoSlug(remoteUrl: string): string | undefined {
+  const match = remoteUrl.match(
+    /^(?:https:\/\/github\.com\/|git@github\.com:|ssh:\/\/git@github\.com\/)([^/\s:]+)\/([^/\s]+?)(?:\.git)?\/?$/,
+  );
+  if (match === null) return undefined;
+  return `${match[1]}/${match[2]}`;
 }
 
 async function handleSkillsCommand(args: string[]): Promise<number> {

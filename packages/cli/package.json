@@ -20,6 +20,7 @@
     "@osstack/agents": "workspace:*",
     "@osstack/config": "workspace:*",
     "@osstack/core": "workspace:*",
+    "@osstack/github": "workspace:*",
     "@osstack/hermes-adapter": "workspace:*",
     "@osstack/loop": "workspace:*",
     "@osstack/skill-registry": "workspace:*",

@@ -60,6 +60,9 @@ importers:
       '@osstack/core':
         specifier: workspace:*
         version: link:../core
+      '@osstack/github':
+        specifier: workspace:*
+        version: link:../github
       '@osstack/hermes-adapter':
         specifier: workspace:*
         version: link:../hermes-adapter
