@@ -1,0 +1,10 @@
+{
+  "task_id": "task_8e1479d6",
+  "capability": "release.verify",
+  "prompt": "Implement Branch Steward report mode from docs/superpowers/plans/2026-06-20-branch-steward.md",
+  "priority": 90,
+  "context": {
+    "plan": "docs/superpowers/plans/2026-06-20-branch-steward.md",
+    "mode": "report"
+  }
+}
