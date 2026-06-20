@@ -133,6 +133,16 @@ importers:
         specifier: ^22.19.19
         version: 22.19.19
 
+  packages/github:
+    dependencies:
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
+
   packages/hermes-adapter:
     dependencies:
       '@osstack/core':
@@ -154,6 +164,9 @@ importers:
       '@osstack/core':
         specifier: workspace:*
         version: link:../core
+      '@osstack/github':
+        specifier: workspace:*
+        version: link:../github
       '@osstack/hermes-adapter':
         specifier: workspace:*
         version: link:../hermes-adapter

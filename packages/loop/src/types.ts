@@ -13,6 +13,7 @@ import { z } from "zod";
 export const DiscoverSource = z.enum([
   "git_diff",
   "gh_issue",
+  "github_branch",
   "ci_log",
   "task_queue",
   "manual",

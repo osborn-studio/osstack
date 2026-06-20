@@ -779,7 +779,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
 
 Options:
   --workspace P       Workspace to scan and run commands in (default: cwd)
-  --source S          Discovery source; repeatable. git_diff | task_queue
+  --source S          Discovery source; repeatable. git_diff | task_queue | github_branch
   --agent ID          Run tasks through a registered adapter (for example codex-cli)
   --auto-agent        Let router + policy choose an available adapter by capability
   --execute CMD       Shell command to run for each task
