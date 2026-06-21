@@ -39,6 +39,10 @@ describe("LoopEngine", () => {
         outcome: "success",
         iterations: 1,
         agent_id: "local-command",
+        verifier_agent_id: "local-verifier",
+        verify_issue_count: 0,
+        verify_summary: expect.stringContaining("passed"),
+        execution_commands: [expect.objectContaining({ exit_code: 0 })],
       }),
     ]);
     expect(result.events.map((event) => event.type)).toContain("loop.verify.done");
@@ -145,6 +149,9 @@ describe("LoopEngine", () => {
       task_id: "task-1",
       outcome: "escalated",
       iterations: 2,
+      verify_issue_count: 1,
+      error_summary: expect.stringContaining("failed"),
+      verify_issues: [expect.objectContaining({ rule: "verify.command_failed" })],
     });
     expect(result.events).toContainEqual(expect.objectContaining({
       type: "loop.escalated",
@@ -328,6 +335,9 @@ describe("LoopEngine", () => {
     expect(result.state.completed_tasks[0]).toMatchObject({
       task_id: "task-1",
       outcome: "success",
+      worktree_branch: expect.stringContaining("osstack/loop/loop-worktree/"),
+      worktree_commit: expect.any(String),
+      worktree_branch_preserved: false,
     });
     expect(result.events.map((event) => event.type)).toEqual(expect.arrayContaining([
       "loop.worktree.created",

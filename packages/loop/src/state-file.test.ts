@@ -37,6 +37,16 @@ describe("loop state file", () => {
         iterations: 1,
         agent_id: "codex-cli",
         duration_ms: 1200,
+        run_id: "run-1",
+        verify_summary: "1 verifier command passed.",
+        verify_issue_count: 0,
+        execution_commands: [{
+          command: "pnpm test",
+          exit_code: 0,
+          duration_ms: 500,
+        }],
+        worktree_branch: "osstack/loop/loop-test/task-1",
+        worktree_commit: "abc123",
       }],
       pending: [{
         task_id: "task-2",
@@ -59,7 +69,12 @@ describe("loop state file", () => {
 
     await expect(readLoopState(paths.jsonPath)).resolves.toEqual(state);
     await expect(readFile(paths.markdownPath, "utf-8")).resolves.toContain("## Completed");
-    await expect(readFile(paths.markdownPath, "utf-8")).resolves.toContain("task-1 - success via codex-cli");
+    const markdown = await readFile(paths.markdownPath, "utf-8");
+    expect(markdown).toContain("task-1 - success via codex-cli");
+    expect(markdown).toContain("Run: run-1");
+    expect(markdown).toContain("Verification: 1 verifier command passed.");
+    expect(markdown).toContain("Commands: pnpm test -> 0");
+    expect(markdown).toContain("Worktree: osstack/loop/loop-test/task-1, commit abc123");
   });
 
   it("renders empty sections explicitly", () => {

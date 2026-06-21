@@ -119,6 +119,18 @@ node packages/cli/dist/bin.js loop doctor --workspace "$PWD"
 node packages/cli/dist/bin.js loop doctor --workspace "$PWD" --daemon --json
 ```
 
+The Loop layer can also be used independently through the `@osstack/loop` package's `osstack-loop` binary. This path does not require the `@osstack/cli` package, the osstack daemon, Hermes, or daemon RPC; it only uses the local task queue, shell commands, state files, and optional git worktrees:
+
+```bash
+pnpm --filter @osstack/loop build
+pnpm --filter @osstack/loop exec osstack-loop enqueue "Run local checks" --capability code.test
+pnpm --filter @osstack/loop exec osstack-loop run --source task_queue --execute "pnpm build" --verify "pnpm test"
+pnpm --filter @osstack/loop exec osstack-loop status
+pnpm --filter @osstack/loop exec osstack-loop doctor
+```
+
+The standalone loop writes machine-readable state to `LOOP-STATE.json` and human-readable status to `STATE.md`. It supports the same local safety primitives as `osstack loop run`: verifier commands, finite cycles, `--stop-when-idle`, `--archive-completed`, and `--worktree` isolation. Agent adapter selection, daemon-managed background sessions, and Hermes integration remain on the full `osstack loop` command.
+
 Use `--agent <id>` to execute each task through a registered adapter such as `codex-cli` or `claude-code`. The adapter receives the task prompt plus `repo_path` in its context and streams Hermes run events back into the loop result:
 
 ```bash
