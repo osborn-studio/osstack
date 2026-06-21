@@ -1,6 +1,6 @@
 {
   "name": "@osstack/runtime",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Optional Zellij 5-tab workspace launcher (preserved from V1 osb-runtime). Not required by daemon.",
   "license": "MIT",
   "type": "module",
