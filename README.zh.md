@@ -1,463 +1,601 @@
-# OSBORN stack (osstack) — 中文 README
+# osstack
 
-> 一个跑在你 Mac 上的「**本地项目经理 Agent**」。
-> TypeScript daemon + 多种入口（终端 / Hermes / 自定义客户端 / launchd），调度 Claude Code 和 Codex 等子 agent CLI，覆盖软件开发的全生命周期。
+**面向软件开发生命周期的命令行项目经理 Agent。**
+
+osstack 是一个 TypeScript CLI + 后台 daemon，它运行一套迭代式的 **Loop Engineering（循环工程）**
+运行时、一块内置的 **Kanban（看板）**，以及一个能力 **路由 + 策略引擎**——后者负责决定每个任务
+该交给哪个编码子 Agent（Claude Code、Codex CLI……），并从结果中持续学习。
+
+它既可以在你的机器上完全独立运行，也可以作为软件开发技能挂接到
+[Hermes](https://github.com/gilosbornhello) Agent 上。
+
+**English：[README.md](README.md)** · 路线图：[docs/V2_REFACTOR_PLAN.md](docs/V2_REFACTOR_PLAN.md)
+
+> 状态：**v0.1.0** —— 10 个 package，GA 骨架（S0–S6）+ Loop Engineering 运行时，测试全绿。
 
 ---
 
 ## 目录
 
-- [一、它是什么](#一它是什么)
-- [二、定位与架构](#二定位与架构)
-- [三、osstack 调度哪些子 agent CLI](#三osstack-调度哪些子-agent-cli)
-- [四、osstack 怎么被驱动（4 个入口）](#四osstack-怎么被驱动4-个入口)
-- [五、安装](#五安装)
-- [六、快速开始](#六快速开始)
-- [七、命令参考](#七命令参考)
-- [八、配置（环境变量）](#八配置环境变量)
-- [九、几种典型工作流](#九几种典型工作流)
-- [十、可观测性与运维](#十可观测性与运维)
-- [十一、安全与隐私](#十一安全与隐私)
-- [十二、当前状态与下一步](#十二当前状态与下一步)
-- [十三、仓库结构](#十三仓库结构)
+- [为什么用 osstack](#为什么用-osstack)
+- [安装](#安装)
+- [快速上手](#快速上手)
+- [核心概念](#核心概念)
+- [Loop Engineering（循环工程）](#loop-engineering循环工程) ← 旗舰功能
+- [Kanban 看板](#kanban-看板)
+- [任务编排与项目管理](#任务编排与项目管理)
+- [Agent 适配器](#agent-适配器)
+- [配置](#配置)
+- [Daemon 生命周期与自动升级](#daemon-生命周期与自动升级)
+- [Hermes 集成](#hermes-集成)
+- [外部技能注册表](#外部技能注册表)
+- [环境变量](#环境变量)
+- [Monorepo 结构](#monorepo-结构)
+- [开发](#开发)
+- [许可证](#许可证)
 
 ---
 
-## 一、它是什么
+## 为什么用 osstack
 
-osstack 是一个**跑在你自己机器上的本地项目经理 Agent**。
+如今越来越多的编码工作由 *Agent*（Claude Code、Codex……）完成，但**围绕它们的生命周期**
+却无人负责：这个任务该派给谁、结果到底有没有通过、该重试还是升级、以及下次能学到什么。
+osstack 就是这一层：
 
-它**不是**对话式 AI（不是 ChatGPT），也**不是**写代码的 AI（不是 Claude Code），而是**调度多个写代码 AI、做出选择、跟踪历史、暴露指标**的那一层。
+- **Loop Engineering** —— 一个 `发现 → 执行 → 验证 → 迭代` 的热循环，持续处理任务队列
+  （或一份 `git diff`）直到测试通过；可选 git worktree 隔离，让失败的尝试永不污染你的工作区。
+- **Kanban 看板** —— 一块本地看板，跟踪每一次运行，并可（经 Hermes）从 Telegram/Slack 订阅，
+  让你在手机上观察 Agent 进度。
+- **路由 + 策略引擎** —— 选出最便宜且胜任的 Agent，并依据真实的成功/失败历史重新排序；
+  当某个 Agent 不再称职时触发熔断。
+- **Daemon + 自动升级** —— 一个常驻本地 daemon，配合干净的 `osstack upgrade` 流程
+  （备份 → 排空 → 安装 → 健康检查 → 失败自动回滚）。
 
-osstack 专门做四件 Hermes 不擅长的事：
-
-1. **判断该用哪个子 agent**：基于历史成功率、成本、最近失败、能力匹配给出打分。
-2. **跨任务记忆**：每个 run 的 task_id / agent_id / capability / duration / tokens / outcome 落到本地 SQLite。
-3. **失败学习 / 杀手开关**：累积失败率超阈值触发 handoff，要求人工介入；30 天内 policy 没被有效使用就报 TRIPPED。
-4. **外部 skill 生态吸收**：监控 GStack、Everything Claude Code、Anthropic Skills 等 TS 生态，normalize 为 Hermes 兼容的 SKILL.md。
-
----
-
-## 二、定位与架构
-
-osstack 在产品上是 **Hermes 的"软件开发生命周期"专项 skill**——借力 Hermes 的 cron / messaging / memory / dashboard / kanban，自己只专心做调度层。
-
-技术上是**双形态**：TypeScript daemon 主体 + Python 薄包装（Hermes skill）。
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  入口 1：Hermes session           入口 2：直接终端                            │
-│   $ hermes chat                      $ osstack task submit "..."            │
-│     (skill 调用)                                                            │
-│                                                                              │
-│  入口 3：自定义客户端              入口 4：launchd 自启动                    │
-│   你写的 Python/Go/Bash 程序        ai.osstack.daemon.plist                  │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                  ↓
-                  Unix socket  ~/.osstack/daemon.sock
-                  length-prefixed JSON 协议（与 LSP / MCP 同款）
-                                  ↓
-   ┌──────────────────────────────────────────────────────────────────┐
-   │  osstack daemon（Node.js，常驻进程）                                │
-   │                                                                    │
-   │  PII redactor → orchestrator → policy engine → AgentAdapter        │
-   │                                                       ↓             │
-   │                                          ├─ claude-code (SDK)       │
-   │                                          └─ codex-cli (headless)    │
-   │                                                                    │
-   │  写入：SQLite (~/.osstack/state.db, WAL mode)                      │
-   │  支撑：Hermes bridge / GBrain adapter / OTel exporter（均可选）      │
-   └──────────────────────────────────────────────────────────────────┘
-```
+一切以本地优先：状态保存在 `~/.osstack/` 下的单个 SQLite 文件中，daemon 监听 Unix socket，
+除非你接入会外呼的 Agent，否则数据不出本机。
 
 ---
 
-## 三、osstack 调度哪些子 agent CLI
+## 安装
 
-**已实现（S1-S2，真活验证）**：
+### 环境要求
 
-| Adapter ID | 显示名 | 调用方式 | 默认能力 | 成本档 |
-|---|---|---|---|---|
-| `claude-code` | Claude Code (Anthropic Agent SDK) | npm 包 `@anthropic-ai/claude-agent-sdk`，daemon **直接 SDK 调用**（不 spawn 子进程） | code.write / code.refactor / code.test / code.debug | high |
-| `codex-cli` | OpenAI Codex CLI（headless） | spawn `codex exec --json --skip-git-repo-check -s read-only <prompt>` 子进程，逐行解析 JSONL | code.write / code.refactor | mid |
+- **Node.js ≥ 20**（corepack 管理 pnpm）
+- 由 launchd 托管 daemon 需要 **macOS**（Linux/systemd 在计划中）。CLI 与循环运行时本身跨平台。
+- *（可选）* 一份 Hermes Agent 检出，用于 Telegram/看板桥接。
 
-**计划中（按需添加，避免给 0 个真活用户写 adapter）**：
-
-| Adapter | 何时添加 |
-|---|---|
-| DeepSeek TUI | 当你真用 DeepSeek 跑 review/verify 时 |
-| DeepCode CLI | 当 DeepCode 进入你的真实工作流时 |
-| MiniMax CLI | 同上 |
-| Kimi CLI | 同上 |
-
-**怎么加新 adapter**：实现 `AgentAdapter` 接口（`packages/agents/src/base.ts`），声明 capabilities，提供 `isAvailable()` 和 `invoke(task, signal)` 流式生成器。注册到 daemon 即可。整个新 adapter 通常 100-200 行 TS。
-
----
-
-## 四、osstack 怎么被驱动（4 个入口）
-
-**重要：osstack 不是只能被 Hermes 控制。** 它是一个本地常驻 daemon，**4 种入口任选**：
-
-### 入口 1：Hermes Agent（主路径）
-
-Hermes session 加载 `~/.hermes/skills/software-development/osstack/` 这个 skill，通过 `osstack_bridge.py` 调用 daemon。
-
-```python
-# Hermes session 内部
-from osstack_bridge import _daemon_call
-result = _daemon_call("task.submit", {"prompt": "写个 fib(n) TS 函数"})
-```
-
-**适用**：你已经在用 Hermes，想让它把 dev 任务委派给 osstack。
-
-### 入口 2：直接终端 CLI（不依赖 Hermes）
+### 通过 npm（发布后）
 
 ```bash
-osstack task submit "写一个 React 组件"
-osstack stats
-osstack task observe run_abc123
+npm install -g @osstack/cli
+osstack --version
 ```
 
-**适用**：Hermes 离线、脚本化 CI、shell 用户。osstack 完全独立运转。
-
-### 入口 3：任意自定义客户端
-
-osstack 的 Unix socket 协议是公开的（length-prefixed JSON，4-byte big-endian 长度头 + JSON payload，与 LSP/MCP 同款）。任何能讲这个协议的程序都能驱动：
-
-```python
-import socket, struct, json
-s = socket.socket(socket.AF_UNIX); s.connect('~/.osstack/daemon.sock')
-body = json.dumps({'id': 1, 'method': 'task.submit',
-                   'params': {'prompt': '...'}}).encode()
-s.sendall(struct.pack('>I', len(body)) + body)
-# 之后读取多个 length-prefixed response 帧直到 terminal=true
-```
-
-**适用**：自写的 GUI 客户端、Telegram bot 派单、CI pipeline 触发、跨语言集成。
-
-### 入口 4：launchd 自启动
+### 从源码（当前规范方式）
 
 ```bash
-bash ~/Developer/osbstack/packages/cli/launchd/install.sh
-```
-
-之后 `ai.osstack.daemon` 作为系统服务自启，崩溃 10 秒后自动拉起（`KeepAlive = SuccessfulExit: false`）。配合上面 3 种入口任意使用。
-
-**适用**：Mac mini 7×24 运行场景。
-
----
-
-**简言之**：Hermes 是**最自然**的入口（已配 skill），**绝不是唯一**的入口。所有能力都暴露在 Unix socket 协议层。如果 Hermes 哪天挂了，`osstack task submit "..."` 在终端照常工作。
-
----
-
-## 五、安装
-
-### 前置
-
-- macOS（其他 Unix 应该可用，未验证）
-- Node.js ≥ 20（用 corepack 自动管理 pnpm，**不需要预装 pnpm**）
-- 至少装上 Claude Code 或 Codex CLI 之一，否则 daemon 起得来但没法干活
-
-可选依赖：
-- Hermes Agent（如果你想走入口 1）
-- OpenTelemetry collector（想要 OTel trace 导出）
-- GBrain（想 KG 同步）
-
-### 步骤
-
-```bash
-# 1. 克隆代码
-git clone https://github.com/gilosbornhello/osbstack.git ~/Developer/osbstack
-cd ~/Developer/osbstack
-git checkout v2/typescript
-
-# 2. 装依赖 + 构建
+git clone https://github.com/gilosbornhello/osstack.git ~/Developer/osstack
+cd ~/Developer/osstack
 corepack enable pnpm
 pnpm install
 pnpm build
-pnpm test               # 应该看到 55/55 passing
+pnpm test          # 可选：验证
 
-# 3. 把 Hermes skill 软链到 ~/.hermes（如果用 Hermes）
-bash hermes-skill/scripts/osstack_install.sh
-
-# 4. 把 daemon 装成 launchd 服务（推荐）
-bash packages/cli/launchd/install.sh
-
-# 5. 验证
-osstack health
+# 通过一个小 wrapper 把 CLI 暴露到 PATH：
+cat > /opt/homebrew/bin/osstack <<'EOF'
+#!/usr/bin/env bash
+exec node "$HOME/Developer/osstack/packages/cli/dist/bin.js" "$@"
+EOF
+chmod +x /opt/homebrew/bin/osstack
+osstack --version    # → osstack 0.1.0
 ```
 
 ---
 
-## 六、快速开始
+## 快速上手
 
 ```bash
-# 如果没走 launchd，手动启动 daemon
+# 1. 启动后台 daemon（Unix socket 位于 ~/.osstack/daemon.sock）
 osstack serve &
 
-# 提交一个 dev 任务
-osstack task submit "在当前目录写一个 fib.ts，含 vitest 测试"
+# 2. 确认健康，并查看 CLI/daemon 版本握手
+osstack status
 
-# 观察实时事件流（submit 时已经在流式输出；这里是事后重放）
-osstack task observe run_xxxxxxxx
+# 3. 查看本机可用的编码 Agent
+osstack agent list
 
-# 看汇总指标
-osstack stats
+# 4. 入队一个编码任务，并运行一个循环周期直到测试通过
+mkdir -p tasks
+osstack loop enqueue "修复失败的 auth 测试" --capability code.test --priority 80
+osstack loop run --source task_queue --execute "npm run fix" --verify "npm test"
 
-# 任意时刻看运行状态
-osstack task status run_xxxxxxxx
-
-# 取消一个正在跑的任务
-osstack task cancel run_xxxxxxxx
-
-# daemon 健康
-osstack health
-
-# F4 杀手开关检查：policy 是不是在赚它的工资
-osstack killswitch
+# 5. 在看板上观察
+osstack kanban board
 ```
 
 ---
 
-## 七、命令参考
+## 核心概念
 
-### Daemon / 健康
-
-| 命令 | 作用 |
+| 概念 | 含义 |
 |---|---|
-| `osstack serve` | 启动 daemon（Unix socket 在 `~/.osstack/daemon.sock`） |
-| `osstack health` | daemon 健康快照（含 otel / hermes / gbrain 开关状态） |
-| `osstack stats` | per-(agent, capability) 指标表 |
-| `osstack killswitch` | F4 杀手开关：30 天内 policy 是否被有效使用 |
-| `osstack agent list` | 列出所有注册的子 agent + 能力 |
+| **Daemon** | 常驻本地进程（`osstack serve`）。持有 SQLite 状态、运行任务、承载循环会话、通过 Unix socket 暴露 JSON-RPC。 |
+| **Task / run（任务/运行）** | 一个工作单元（`task submit` 或队列中的 `tasks/*.json`）。每次执行是一个带 `run_id`、流式事件与最终结果记录的 *run*。 |
+| **Capability（能力）** | Agent 声明的类型化技能（`code.write`、`code.test`、`code.review`、`design.prd`、`research.ml`……）。路由按能力匹配任务。 |
+| **Adapter（适配器）** | 与某个具体 Agent 的集成（`claude-code`、`codex-cli`、`ds-review`……），声明能力、成本档位与可用性探测。 |
+| **Loop session（循环会话）** | 由 daemon 托管的轮询循环，按间隔或 cron 计划反复发现并处理任务。 |
+| **Board / card（看板/卡片）** | 内置看板。每次运行都可镜像为一张卡片；卡片可从聊天工具订阅。 |
 
-### 任务管理
+状态位于 `~/.osstack/`（可用 `OSSTACK_HOME` 覆盖）：
 
-| 命令 | 作用 |
-|---|---|
-| `osstack task submit <prompt>` | 提交任务，流式打印事件直到 terminal |
-| `osstack task status <run_id>` | 任意时刻看任务现状 |
-| `osstack task cancel <run_id>` | 取消运行中的任务（发 AbortSignal） |
-| `osstack task observe <run_id> [seq]` | 从指定 cursor 重放事件 |
-
-### 项目脚手架
-
-| 命令 | 作用 |
-|---|---|
-| `osstack init [dir]` | 铺 OSBORN 项目骨架：`.agent/PROJECT_CONTEXT.md`、`docs/{PRD,ARCHITECTURE,SPRINTS}.md`、`AGENTS.md`、`tasks/`（V1 osb-init 的 V2 等价） |
-
-### Hermes 集成
-
-| 命令 | 作用 |
-|---|---|
-| `osstack hermes health` | Hermes 桥配置 + 可达性检查 |
-| `osstack hermes dashboard` | 浏览器打开 Hermes WebUI（默认 `http://127.0.0.1:8787`） |
-| `osstack hermes register-cron` | 打印 `hermes cron add` 配方供你复制 |
-
-### 外部 skill 注册表
-
-| 命令 | 作用 |
-|---|---|
-| `osstack skills list` | 列出跟踪的外部 skill 仓库 |
-| `osstack skills add <id> <origin> [ref]` | 增加新源 |
-| `osstack skills remove <id>` | 移除源 |
-| `osstack skills check` | git ls-remote 对比 blessed_sha 是否漂移（exit 2 = 有漂移） |
-| `osstack skills bless <id>` | 把当前 origin HEAD 锁为可信版本 |
-
-### V1 兼容
-
-| 命令 | 作用 |
-|---|---|
-| `bash legacy-python/install-v1-shims.sh` | 安装 11 个 V1 命令的 shim 到 `~/bin/`（osb-init 等会路由到 V2，其余仍走 V1 Python） |
+```
+~/.osstack/
+  state.db              SQLite：runs、events、tasks、kanban、approvals
+  daemon.sock           Unix socket（可用 OSSTACK_SOCKET 覆盖）
+  daemon.pid            重复实例守护
+  config.yaml           基于角色的 Agent 配置
+  loop-sessions.json    持久化的 daemon 循环会话（重启后恢复）
+  backups/              每次升级前的 state.db 快照
+  logs/                 daemon 与升级日志
+```
 
 ---
 
-## 八、配置（环境变量）
+## Loop Engineering（循环工程）
 
-osstack 完全用环境变量配置——**没有传统配置文件**（除 `~/.osstack/skills.config.yaml` 是 skill 注册表，可手编辑）。
+旗舰运行时。一个 **Loop** 反复运行以下周期：
 
-### 路径
+```
+发现 ──▶ 执行 ──▶ 验证 ──▶ 迭代
+ │        │        │        │
+找工作   跑命令   跑测试   依据判定结果
+（队列   或编码   或评审   继续 / 停止 / 升级
+ 或diff） Agent    Agent
+```
 
-| 变量 | 默认值 | 作用 |
+有两种运行方式：**一次性/本地**（`loop run`，无需 daemon）与
+**daemon 托管**（`loop start`，后台轮询会话）。
+
+### 发现 —— 工作从哪来
+
+| 来源（`--source`） | 行为 |
+|---|---|
+| `task_queue` | 读取工作区里的 `tasks/*.json`，每个文件是一个任务（或数组）。 |
+| `git_diff` | 依据 `git diff --stat`，为每个改动文件生成一个 `code.review` 任务。 |
+
+**`tasks/*.json` 结构：**
+
+```json
+{
+  "task_id": "fix-auth",          // 可选，省略则自动生成
+  "capability": "code.test",      // 默认 "code.write"
+  "prompt": "修复失败的 auth 测试",
+  "priority": 80,                  // 0–100，越高越先；默认 50
+  "context": { "file": "src/auth.ts" }   // 可选的结构化上下文
+}
+```
+
+可手写，也可用 `loop enqueue`（见下）。已完成的 `task_id` 在后续周期会被跳过，
+因此队列文件可以一直留在 `tasks/` 里而不会被重复执行。
+
+### 执行 —— 谁来做
+
+| 执行器 | 参数 | 行为 |
 |---|---|---|
-| `OSSTACK_HOME` | `~/.osstack` | 数据根目录（SQLite、日志） |
-| `OSSTACK_SOCKET` | `~/.osstack/daemon.sock` | daemon Unix socket 路径 |
-| `OSSTACK_CODEX_BIN` | `codex` | codex 二进制路径 |
+| Shell 命令 | `--execute "<cmd>"` | 在验证前运行一条命令（如修复脚本）。 |
+| 指定 Agent | `--agent <id>` | 让每个任务都经由某个适配器（`codex-cli`、`claude-code`……）；适配器收到 prompt + `repo_path`。 |
+| 自动选 Agent | `--auto-agent` | 路由找出声明该能力的适配器，策略引擎按成本、能力精确匹配与成功历史排序。 |
 
-### Hermes 集成（默认全关）
+### 验证 —— 有没有通过
 
-| 变量 | 默认值 | 作用 |
+| 验证器 | 参数 | 行为 |
 |---|---|---|
-| `HERMES_HOME` | `~/.hermes` | Hermes 数据根目录 |
-| `HERMES_BIN` | 自动探测 | hermes 二进制路径 |
-| `HERMES_KANBAN_BOARD` | **未设** | **设了**就启用 kanban sync（默认关，避免污染你的 board） |
-| `HERMES_WEBUI_HOST`/`HERMES_WEBUI_PORT` | `127.0.0.1` / `8787` | dashboard 命令打开的 URL |
+| Shell 门禁 | `--verify "<cmd>"`（可重复） | 任何非零退出 = 失败，所有门禁都须通过。 |
+| 评审 Agent | `--reviewer <id>` | 如 `ds-review` 读取 `git diff` 并写入 `reviews/ds-review/latest.md`。 |
+| 检查 Agent | `--checker <id>` | 如 `ds-verify` 在工作区运行并写入 `reviews/ds-verify/latest.md`。 |
 
-### GBrain 知识图谱（默认关）
+### 迭代 —— 继续、停止还是升级
 
-| 变量 | 默认值 | 作用 |
+- `--goal "<cmd>"` —— 一旦该命令退出 0 就提前停止（“循环到测试变绿为止”）。
+- `--cycles <n>` + `--interval-ms <ms>` —— 有限轮询循环。
+- `--stop-when-idle` —— 某一周期没发现任务后停止。
+- `--max-iter <n>` —— 单任务失败 N 次后升级，而不是无限循环。
+
+### `loop run` —— 一次性 / 本地周期
+
+本地运行一个（或 `--cycles N` 个）完整周期，**无需 daemon**。
+
+| 参数 | 默认 | 含义 |
 |---|---|---|
-| `OSSTACK_GBRAIN` | `0` | 设 `1` 启用每 run 写 gbrain page |
-| `OSSTACK_GBRAIN_BIN` | `gbrain` | gbrain 二进制路径 |
+| `--workspace <path>` | 当前目录 | 要扫描/操作的目录。 |
+| `--source <src>` | — | `task_queue` 或 `git_diff`（可重复）。 |
+| `--execute <cmd>` | — | 验证前运行的 shell 命令。 |
+| `--agent <id>` | — | 指定执行器适配器。 |
+| `--auto-agent` | 关 | 让路由+策略选择执行器。 |
+| `--verify <cmd>` | — | 验证命令（可重复；非零=失败）。 |
+| `--reviewer <id>` | — | 执行后运行的评审 Agent（可重复）。 |
+| `--checker <id>` | — | 执行后运行的检查 Agent（可重复）。 |
+| `--goal <cmd>` | — | 该命令退出 0 时提前停止。 |
+| `--max-iter <n>` | — | 单任务升级前的尝试上限。 |
+| `--cycles <n>` | 1 | 运行的周期数。 |
+| `--interval-ms <ms>` | 0 | 周期间延时（启用多周期模式）。 |
+| `--once` | — | 单次、空闲即停的周期简写。 |
+| `--stop-when-idle` | 关 | 某周期无任务即停止。 |
+| `--archive-completed` | 关 | 把成功的单任务队列文件移动到 `tasks/archive/YYYY-MM-DD/`。 |
+| `--worktree` | 关 | 在隔离 git worktree 中运行每个任务（见下）。 |
+| `--state <path>` | `LOOP-STATE.json` | 机器可读状态文件。 |
+| `--markdown <path>` | `STATE.md` | 人类可读状态文件。 |
+| `--json` | 关 | 向 stdout 输出机器可读摘要。 |
+| `--daemon` | 关 | 经由运行中的 daemon RPC 执行，而非进程内执行。 |
 
-### OpenTelemetry（默认关）
-
-| 变量 | 默认值 | 作用 |
-|---|---|---|
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | **未设** | 设了就启用 OTel/HTTP trace 导出，每个 RPC 一个 span |
-
-### Claude / Codex 认证
-
-| 变量 | 默认值 | 作用 |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | — | Claude SDK 直连 key；不设则尝试用 Hermes auth |
-
-**重要约定**：所有跨产品集成（Hermes kanban / GBrain / OTel）**默认都是关的**，环境变量设了才打开。这是为了避免新用户莫名其妙踩到副作用。
-
----
-
-## 九、几种典型工作流
-
-### 9.1 个人开发：终端直接跑 Claude Code
+**示例：**
 
 ```bash
-osstack task submit "重构 src/auth.ts，把回调改成 async/await，加 vitest 测试"
-# → policy 自动挑 claude-code（test 任务它强）
-# → 流式输出 token.delta / tool.started / tool.done / done
-# → SQLite 记录 run + tokens + duration
-osstack stats     # 看刚才那次任务的指标
+# 队列驱动：先修复，再用测试验证
+osstack loop run --source task_queue --execute "node scripts/fix.js" --verify "pnpm test"
+
+# 持续循环（最多 10 周期）直到 build+测试 通过
+osstack loop run --source task_queue --execute "pnpm build" --goal "pnpm test" \
+  --cycles 10 --interval-ms 2000
+
+# 让 osstack 自动选择编码 Agent
+osstack loop run --source task_queue --auto-agent --verify "pnpm test"
+
+# 用 DeepSeek 评审器审查工作区 diff
+osstack loop run --source git_diff --reviewer ds-review
 ```
 
-### 9.2 通过 Hermes 派单（手机 / 任意 surface）
+**退出码：** `0` 一切正常 · `1` 配置/命令错误 · `2` 有任务失败、升级或未通过验证。
 
-Telegram → Hermes bot：「osstack 跑一下：升级我的 ESLint 配置」
-→ Hermes session 加载 osstack skill
-→ 远程调你 Mac mini 的 daemon
-→ Claude Code 或 Codex 执行
-→ 结果通过 Hermes 通知系统回 Telegram
+### 独立运行器（`osstack-loop`，无需 daemon、无需 CLI）
 
-### 9.3 自动定期跑
-
-通过 Hermes cron：
-```bash
-hermes cron add --schedule "0 9 * * 1" --name weekly-pr-review -- \
-  osstack task submit "审查我所有 PR 队列里的代码"
-```
-
-或纯系统 crontab：
-```cron
-0 9 * * 1  /usr/local/bin/osstack task submit "审查 PR"
-```
-
-### 9.4 多 agent 路由 + 学习
+循环层也可经由 `@osstack/loop` 自带的 `osstack-loop` 二进制独立运行。这条路径
+既不需要 `@osstack/cli`、daemon、Hermes，也不需要 daemon RPC——只用到本地任务队列、
+shell 命令、状态文件与可选 git worktree：
 
 ```bash
-osstack task submit "..." --kind code.refactor
-# policy 在 claude-code 和 codex-cli 之间选
-# 累积几十个 run 后，policy 自动学到哪个 adapter 在 refactor 上更稳
-osstack stats     # per-agent 成功率一目了然
+pnpm --filter @osstack/loop build
+pnpm --filter @osstack/loop exec osstack-loop enqueue "Run local checks" --capability code.test
+pnpm --filter @osstack/loop exec osstack-loop run --source task_queue --execute "pnpm build" --verify "pnpm test"
+pnpm --filter @osstack/loop exec osstack-loop status
+pnpm --filter @osstack/loop exec osstack-loop doctor
 ```
 
-### 9.5 跨设备协同（Mac mini ↔ MacBook Pro）
+它写出与 `osstack loop run` 相同的 `LOOP-STATE.json` / `STATE.md`，并支持相同的本地
+安全原语（验证命令、有限周期、`--stop-when-idle`、`--archive-completed`、`--worktree`）。
+Agent 适配器选择、daemon 托管的后台会话与 Hermes 集成仍保留在完整的 `osstack loop` 命令上。
 
-- osstack daemon 跑在 Mac mini（永远开机）
-- MacBook Pro 通过 SSH tunnel 或 Hermes WebUI 远程调
-- 不需要 osstack 在两台机器都装——daemon 只跑在一台
+### Worktree 隔离（`--worktree`）
 
-### 9.6 Loop Engineering 独立 Skill 集成
+当执行器会改动代码时，`--worktree` 会在一个 `osstack/loop/<loop_id>/...` 分支的
+临时 worktree 中运行每个任务：
 
-仓库内提供了一个可复用 Codex Skill：[`loop-engineering/`](loop-engineering/)。它不是复制 Loop 引擎，而是把 `osstack loop` 封装成稳定的 skill 入口，方便其他 agent、CI 或内部平台整体调用。
+1. 从当前 `HEAD` 创建 worktree。
+2. 在其中运行执行器。
+3. **通过** → 提交并快进合并回工作区。
+4. **失败 / 升级** → 丢弃 worktree，不做任何合并。
+
+每个周期前后都会清理该循环分支前缀下的孤立 worktree，崩溃也不会把你的仓库弄脏。
+
+```bash
+osstack loop run --source task_queue --worktree \
+  --execute "node scripts/fix-failing-test.js" --verify "pnpm test"
+```
+
+### `loop enqueue` —— 入队一个任务
+
+```bash
+osstack loop enqueue "<prompt>" [--capability <kind>] [--priority <n>] \
+  [--context-json '{"file":"src/app.ts"}'] [--workspace <path>]
+```
+
+向 `tasks/` 写入一个单任务 JSON 文件。`--capability` 默认 `code.write`，`--priority` 默认 `50`。
+
+### `loop doctor` —— 工作区预检
+
+检查工作区是否存在、队列 JSON 是否合法、git/worktree 支持是否就绪，
+以及（加 `--daemon` 时）daemon socket 是否可达。
+
+```bash
+osstack loop doctor --workspace "$PWD"
+osstack loop doctor --workspace "$PWD" --daemon --json
+```
+
+### `loop status` —— 渲染当前状态
+
+```bash
+osstack loop status                       # 把本地 LOOP-STATE.json 渲染为 STATE.md
+osstack loop status --daemon --workspace "$PWD"
+```
+
+`LOOP-STATE.json` 保存持久的机器状态（loop id、完成任务及其结果/迭代数/Agent/耗时、指标）；
+`STATE.md` 是据此生成的人类可读表格。
+
+### Daemon 托管的循环 —— `loop start` / `loop list` / `loop stop`
+
+需要一个持续扫描 `tasks/*.json` 的后台轮询循环时：
+
+```bash
+osstack serve &                                            # daemon 须在运行
+
+# 每 5 秒轮询一次，测试通过即停止
+osstack loop start --workspace "$PWD" --source task_queue --goal "pnpm test" --interval-ms 5000
+
+# 或按 cron 计划运行（每天 06:00）
+osstack loop start --workspace "$PWD" --source task_queue --schedule "0 6 * * *"
+
+osstack loop list                          # 列出运行中的会话
+osstack loop stop loop_session_abc12345    # 停止某个会话
+```
+
+`loop start` 接受与 `loop run` 相同的执行器/验证器/worktree 参数，外加
+`--schedule <cron>`、`--interval-ms <ms>`、`--cycles <n>`、`--once`、`--stop-when-idle`。
+会话持久化在 `~/.osstack/loop-sessions.json` 中，并在 **daemon 重启后恢复**
+（此前已停止的会话保持停止）。
+
+daemon 运行时用 `osstack stats` 可查看每个循环的周期总数、成功/失败/升级计数、
+token 总量与平均周期耗时。
+
+### 可复用的 Loop Engineering 技能
+
+该运行时也被打包为 [`loop-engineering/`](loop-engineering/) 下的仓库内技能，
+供其他 Agent/平台用稳定的 wrapper 调用，而无需直接调 TS CLI：
 
 ```bash
 loop-engineering/scripts/loop-doctor.sh
 LOOP_VERIFY="pnpm test" loop-engineering/scripts/loop-run.sh
-LOOP_GOAL="pnpm test" loop-engineering/scripts/loop-daemon-start.sh
+LOOP_GOAL="pnpm test"   loop-engineering/scripts/loop-daemon-start.sh
 ```
 
-常用方式：
-
-- 本地一次性循环：`loop-run.sh`，默认 `task_queue + worktree + pnpm test`。
-- 后台托管循环：先启动 `osstack serve`，再用 `loop-daemon-start.sh` 创建 session。
-- 平台集成：通过 `loop-engineering/references/` 查看 CLI 参数、任务 JSON schema、CI/daemon 接入方式。
-
----
-
-## 十、可观测性与运维
-
-- **日志**：daemon stderr 写 `~/.osstack/logs/daemon.error.log`（launchd 配置）。Pino 结构化 JSON。
-- **指标**：`osstack stats` 现成；OTel 导出可加（设 `OTEL_EXPORTER_OTLP_ENDPOINT`）。
-- **任务历史**：直接 `sqlite3 ~/.osstack/state.db`；表结构见 [`packages/core/src/state/migrations.ts`](packages/core/src/state/migrations.ts)。
-- **杀手开关**：30 天内 policy 触发 < 30 次时 `osstack killswitch` 返回 exit 2，可挂监控。
-- **崩溃恢复**：launchd KeepAlive 自动拉起；socket 启动时清理 stale；任务 step-level checkpoint 在 `runs.last_step` 字段。
-- **优雅停机**：SIGTERM → 终止所有 active run（发 AbortSignal）→ 关闭 SQLite → 删 socket → 退出。
+`scripts/osstack-loop.sh` 会从 `OSSTACK_REPO`、`OSSTACK_CLI` 或全局 `osstack`
+二进制中解析 CLI。`references/` 记录了参数、任务队列 JSON 与 CI 集成模式。
+该技能同样可安装进 Claude Code（`~/.claude/skills/loop-engineering`）
+与 Codex（`~/.codex/skills/loop-engineering`）。
 
 ---
 
-## 十一、安全与隐私
+## Kanban 看板
 
-- **PII 脱敏（G2）**：所有 prompt 入库前过 `PIIRedactor`，7 个默认 pattern（email / phone / SSN / IPv4 / Anthropic key / OpenAI key / AWS key），**ReDoS 防护 100ms 预算**。模式集合手编审核避免回溯爆炸。
-- **静态加密**：依赖 macOS FileVault（v1.0）；SQLCipher 留作 v1.x 可选项。
-- **API key 管理**：复用 Hermes auth pooled credentials（D17），osstack 不自己存 key。
-- **Socket 权限**：`~/.osstack/daemon.sock` 强制 `0600`，只有本用户能连。
-- **磁盘满兜底（G1）**：每次写库前 preflight，剩余空间 < 100 MiB 直接拒写 + 抛 `DiskFullError`——**永不静默丢任务**。
-- **沙箱**：Codex CLI adapter 默认 `--sandbox read-only`，要写文件得显式提权。
+osstack 自带一块由 SQLite 支撑的看板。每次运行都可镜像为一张卡片，
+卡片还可（经 Hermes 中继）**从 Telegram/Slack 订阅**，让你在手机上观察 Agent 工作。
 
----
+**列（从左到右）：** `triage → todo → ready → running → blocked → done → archived`
 
-## 十二、当前状态与下一步
+| 命令 | 说明 |
+|---|---|
+| `osstack kanban board [--archived]` | 显示各列与卡片（`--archived` 含归档列）。 |
+| `osstack kanban create <title> [--priority N] [--assignee A]` | 创建卡片（始于 `triage`）。 |
+| `osstack kanban move <card_id> <status> [reason]` | 移动卡片；移到 `blocked` 时 `reason` 成为阻塞原因。 |
+| `osstack kanban comment <card_id> <text>` | 添加评论。 |
+| `osstack kanban subscribe <card_id> <platform> <chat_id> [thread_id]` | 把某聊天频道订阅到卡片事件。 |
+| `osstack kanban events [--since N]` | 排空 id 大于 `N` 的待发事件（供 Hermes → Telegram 中继）。 |
 
-### 已交付（v2/typescript 分支，2026 年 5 月）
-
-- ✅ Sprint S0-S6 全部完成
-- ✅ 13 commits 推到 `origin/v2/typescript`
-- ✅ 55/55 tests 通过
-- ✅ 端到端 live 在 Mac mini 验证：Claude SDK、Codex CLI、Hermes kanban、GBrain page render、git ls-remote、policy 决策、cancel、observe replay
-
-### 设计上明确推迟
-
-- skill-registry 的 LLM ingester / PR proposer / npm batcher——等有真外部 skill 要消化再做
-- approval / clarify 主动暂停-恢复流——持久化已就位，等 adapter 真发起 approval 再活化
-- 失败学习自动调权——攒几周真数据再改 policy
-- 中文生态 4 个 adapter（DeepSeek / MiniMax / Kimi / DeepCode）——按真实需求加
-
-### 你下一步应该做的
-
-1. `bash packages/cli/launchd/install.sh` 把 daemon 装为 launchd 服务（自启 + 崩溃自拉起）
-2. 在一个真项目里挂 osstack 用一周，让 policy 攒数据
-3. 一周后看 `osstack stats` + `osstack killswitch`，验证项目经理 Agent 在你工作流里值不值这碗饭
-
----
-
-## 十三、仓库结构
-
-```
-osbstack/
-├── docs/V2_REFACTOR_PLAN.md           # CEO + Eng Review 双 cleared 计划（18 决策）
-├── legacy-python/                      # V1 全部代码 + 安装脚本归档
-├── packages/
-│   ├── cli/                            # osstack 二进制：daemon + RPC + CLI 子命令
-│   ├── core/                           # 调度引擎：state/policy/privacy/observability/kg/hermes
-│   ├── agents/                         # AgentAdapter 接口 + claude-code + codex-cli
-│   ├── hermes-adapter/                 # Hermes Run Adapter Contract（13 事件 + 7 控制 + 10-status FSM + framing）
-│   ├── skills/                         # 生命周期 skill 模板（osstack init 等）
-│   ├── plugins/                        # 7 槽位插件（runtime/agent/workspace/tracker/notifier/reviewer/verifier）
-│   ├── skill-registry/                 # 外部 skill ingestion（S6 manifest + watcher）
-│   └── runtime/                        # Zellij 5-tab workspace（V1 osb-runtime 保留）
-├── hermes-skill/                       # Hermes skill 源，符号链到 ~/.hermes
-│   ├── SKILL.md
-│   └── scripts/
-│       ├── osstack_bridge.py           # Python ↔ daemon Unix socket 桥
-│       └── osstack_install.sh          # 软链安装器
-├── loop-engineering/                   # 独立 Loop Engineering Codex Skill
-│   ├── SKILL.md
-│   ├── scripts/                        # osstack loop 包装脚本
-│   └── references/                     # CLI / task schema / 集成说明
-└── README.zh.md                        # 你正在读的这份
+```bash
+osstack kanban create "发布 v0.2" --priority 90 --assignee claude-code
+osstack kanban move card_ab12cd34 running
+osstack kanban subscribe card_ab12cd34 telegram 123456789
+osstack kanban events --since 0          # 中继排空新事件
 ```
 
+卡片携带 `title`、`priority`、`assignee`、`blocked_reason`、时间戳，以及可选的
+回链到运行的 `task_id`。仅当设置了 `HERMES_KANBAN_BOARD` 时才启用到 Hermes 的看板同步。
+
 ---
 
-## 许可
+## 任务编排与项目管理
 
-MIT — 见 [LICENSE](LICENSE)。
+把一次性的编码任务直接提交给 daemon；路由 + 策略引擎选择 Agent，运行结果以事件流回传。
+
+| 命令 | 说明 |
+|---|---|
+| `osstack task submit <prompt> [flags]` | 提交任务；流式输出 `HermesEvent` JSON 帧。 |
+| `osstack task status <run_id>` | 某次运行的当前状态。 |
+| `osstack task cancel <run_id>` | 中止运行中的任务。 |
+| `osstack task observe <run_id> [seq]` | 从日志中 `seq` 之后重放事件。 |
+
+**`task submit` 参数：** `--kind <K>`（能力路由提示，如 `research.ml`）、
+`--agent <id>`（指定适配器）、`--tag <T>`、`--max-iter <N>`、`--repo <path>`
+（后三者经 `context` 喂给 autoresearch 循环）。
+
+```bash
+osstack task submit "重构 payload 解析器以提升可读性" --kind code.refactor
+osstack task submit "运行 Karpathy autoresearch 循环" --kind research.ml --agent autoresearch --max-iter 50
+osstack task observe run_9f8c2a11
+```
+
+### 路由 + 策略引擎
+
+当任务按 *kind* 路由（而非指定具体 Agent）时，策略引擎为每个声明该能力的可用适配器打分：
+
+| 规则 | 效果 |
+|---|---|
+| **成功率** | 该能力上完成率高，最多 **+50** |
+| **近期失败** | 过去 24h 每次失败 **−15**（上限 −45） |
+| **成本偏好** | 低成本档 **+15**、中 **+5**、高 **0**（用于打破平局） |
+| **能力精确匹配** | 适配器能力 id 与 kind 精确匹配时 **+10** |
+| **冷启动** | 无历史运行的适配器 **+5**（冷启动微调） |
+
+一个 **handoff 熔断**会标记近期失败率超阈值的 Agent 以便降级。`osstack killswitch`
+报告策略层是否触发得足够频繁、值不值得保留。任何 prompt 在抵达适配器前都会做 PII 脱敏，
+每次运行的结果都会被记录，使排序随时间改进。
+
+---
+
+## Agent 适配器
+
+`osstack agent list` 列出已注册适配器、它们的能力，以及在本机是否可用
+（`isAvailable()` 会探测底层 SDK/二进制）。
+
+| 适配器 | 能力 | 备注 |
+|---|---|---|
+| `claude-code` | `code.write`、`code.refactor`、`code.test`、`code.debug` | 经 `@anthropic-ai/claude-agent-sdk`。 |
+| `codex-cli` | `code.write`、`code.test`、`code.review` | 无头 `codex exec --json` 子进程。 |
+| `autoresearch` | `research.ml` | 单 GPU 训练循环（Karpathy autoresearch 变体）。 |
+| `ds-review` | `review.code` | DeepSeek 评审器；读取 `git diff`，写 `reviews/ds-review/latest.md`。 |
+| `ds-verify` | `code.review` | DeepSeek 检查器；在工作区运行，写 `reviews/ds-verify/latest.md`。 |
+| `claude-design` | `design.prd`、`design.architecture`、`design.review` | 设计角色适配器。 |
+| `google-stitch` | `design.*` | Stitch 设计集成。 |
+
+每个适配器都声明一个 **成本档位**（`low`/`mid`/`high`），喂给策略引擎的成本偏好。
+
+---
+
+## 配置
+
+基于角色的配置把三个生命周期 **角色** 映射到具体 Agent，并支持按机器划分的 **profile**，无需 daemon。
+
+**角色：** `coding`（编码）· `test-verify`（测试验证）· `design`（设计）
+
+| 命令 | 说明 |
+|---|---|
+| `osstack config [show]` | 显示活动 profile，以及每个角色如何解析。 |
+| `osstack config doctor` | 探测哪些 Agent 已安装/可用。 |
+| `osstack config pick` | 交互式为每个角色选择主 Agent。 |
+| `osstack config init` | 写入默认配置到 `~/.osstack/config.yaml`。 |
+| `osstack config use <profile\|auto>` | 设置活动 profile（`auto` = 按主机名匹配）。 |
+| `osstack config bind <profile>` | 把本机主机名绑到某个 profile。 |
+| `osstack config get [path]` | 打印配置或某个点路径。 |
+| `osstack config set <profile>.<role>.<primary\|fallback> <value…>` | 设置某个值。 |
+
+```bash
+osstack config init
+osstack config set mac-mini.coding.primary claude-code
+osstack config set mac-mini.coding.fallback codex-cli
+osstack config get mac-mini.coding.primary      # → claude-code
+osstack config show
+```
+
+`config.yaml` 含 `profiles`（每个带主机名 `match` 规则与每角色的 `primary`/`fallback`）
+以及无匹配时使用的 `defaults` 块。
+
+---
+
+## Daemon 生命周期与自动升级
+
+| 命令 | 说明 |
+|---|---|
+| `osstack serve` | 启动 daemon（Unix socket；直到 SIGTERM/SIGINT 才退出）。 |
+| `osstack health` | daemon 健康：版本、运行时长、内存、适配器、活动运行数。 |
+| `osstack status` | CLI ↔ daemon 版本握手 + 升级可用性。 |
+| `osstack stats` | 每 Agent 运行指标 + 每循环会话指标。 |
+| `osstack killswitch` | 检查策略层是否称职（F4）。 |
+| `osstack upgrade [flags]` | 带备份 + 自动回滚的自更新。 |
+
+daemon 通过 pidfile 防止重复实例，最多每 24h 探测一次 npm registry
+（设 `OSSTACK_UPDATE_CHECK=0` 可禁用），并在 `health` 中透出 `update_available`。
+CLI 与 daemon 在连接时交换 `protocol_version`，不匹配时 `osstack status` 会告警。
+
+### `osstack upgrade`
+
+```bash
+osstack upgrade --dry-run                 # 显示将发生什么
+osstack upgrade                           # latest 通道
+osstack upgrade --channel canary          # 尝鲜通道
+osstack upgrade --auto                    # 无人值守（供 cron/launchd）
+```
+
+升级是事务性的：**解析目标版本 → 备份 `state.db`（保留最近 5 份）→ 排空并停止 daemon →
+`npm i -g @osstack/cli@<target>` → 重启 → 健康检查 → 失败自动回滚到上一版本。**
+launchd 模板（`packages/cli/launchd/`）可每周运行 `osstack upgrade --auto`。
+
+---
+
+## Hermes 集成
+
+osstack 可独立运行，也可作为 Hermes 的软件开发技能。一个薄薄的 Python wrapper
+（`osstack_bridge.py`）通过 Unix socket 与 daemon 通信，并把事件流回 Hermes 会话。
+
+| 命令 | 说明 |
+|---|---|
+| `osstack hermes health` | 显示看板同步桥接状态。 |
+| `osstack hermes dashboard` | 在浏览器中打开 Hermes WebUI。 |
+| `osstack hermes register-cron` | 打印示例 `hermes cron` 配方。 |
+
+相关环境变量：`HERMES_BIN`（二进制路径）、`HERMES_AGENT_HOME`（Hermes 仓库根，用于定位桥接二进制）、
+`HERMES_KANBAN_BOARD`（看板 slug；未设则不同步）、`HERMES_WEBUI_HOST`/`HERMES_WEBUI_PORT`
+（默认 `127.0.0.1:8787`）。
+
+---
+
+## 外部技能注册表
+
+跟踪外部技能生态（GStack、Everything Claude、Anthropic Skills……），并检测它们何时偏离已认可（blessed）提交。
+
+| 命令 | 说明 |
+|---|---|
+| `osstack skills list` | 列出已跟踪源及其 blessed SHA。 |
+| `osstack skills check` | 把各 `blessed_sha` 与 origin `HEAD` 对比（漂移时退出 2）。 |
+| `osstack skills add <id> <origin> [ref]` | 跟踪新源（ref 默认 `main`）。 |
+| `osstack skills bless <id>` | 把当前 origin `HEAD` 钉为 blessed。 |
+
+---
+
+## 环境变量
+
+| 变量 | 用途 | 默认 |
+|---|---|---|
+| `OSSTACK_HOME` | 存储根目录 | `~/.osstack` |
+| `OSSTACK_SOCKET` | daemon socket 路径 | `$OSSTACK_HOME/daemon.sock` |
+| `OSSTACK_UPDATE_CHECK` | 设 `0` 禁用每日升级探测 | 启用 |
+| `HERMES_BIN` | Hermes 二进制路径 | 自动探测 |
+| `HERMES_AGENT_HOME` | Hermes 仓库根（看板桥接二进制） | `~/.hermes` |
+| `HERMES_KANBAN_BOARD` | 看板同步 slug（未设则不同步） | — |
+| `HERMES_WEBUI_HOST` / `HERMES_WEBUI_PORT` | Hermes WebUI 地址 | `127.0.0.1` / `8787` |
+| `OSSTACK_DS_REVIEW_BIN` / `OSSTACK_DS_VERIFY_BIN` | 覆盖 DeepSeek 评审/检查二进制 | 自动 |
+| `LOOP_VERIFY` / `LOOP_GOAL` / `LOOP_WORKTREE` | `loop-engineering/` 脚本的默认值 | — |
+| `OSSTACK_REPO` / `OSSTACK_CLI` | `loop-engineering/` 脚本的 CLI 解析 | — |
+
+---
+
+## Monorepo 结构
+
+| Package | 角色 |
+|---|---|
+| [`@osstack/cli`](packages/cli) | `osstack` 二进制（daemon、全部命令、循环运行器、升级）。 |
+| [`@osstack/loop`](packages/loop) | Loop Engineering 运行时：发现 → 执行 → 验证 → 迭代。 |
+| [`@osstack/core`](packages/core) | 编排器、路由、策略引擎、看板、记忆、隐私、可观测性、SQLite 状态。 |
+| [`@osstack/agents`](packages/agents) | 子 Agent 适配器（claude-code、codex-cli、ds-review/verify……）+ worktree 工具。 |
+| [`@osstack/config`](packages/config) | 基于角色的 Agent 配置 + profile。 |
+| [`@osstack/hermes-adapter`](packages/hermes-adapter) | Hermes Run-Adapter 契约：事件、状态 FSM、socket 分帧。 |
+| [`@osstack/skill-registry`](packages/skill-registry) | 外部技能摄取 + blessed-SHA 漂移检测。 |
+| [`@osstack/skills`](packages/skills) | 生命周期技能模板 + `osstack init` 脚手架。 |
+| [`@osstack/plugins`](packages/plugins) | 插件槽位定义（runtime/agent/workspace/tracker/notifier/reviewer/verifier）。 |
+| [`@osstack/runtime`](packages/runtime) | 可选 Zellij/终端工作区管理器。 |
+
+专业服务 Agent 垂直（Elon/Jobs/Linus/Turing/Bezos/Qian 人格、intent 引擎、审批台）
+位于 **独立仓库** [partner-os](https://github.com/gilosbornhello/partner-os)，
+它构建在这些 `@osstack/*` package 之上。
+
+---
+
+## 开发
+
+```bash
+git clone https://github.com/gilosbornhello/osstack.git ~/Developer/osstack
+cd ~/Developer/osstack
+corepack enable pnpm
+pnpm install
+pnpm build          # 构建所有 package（CLI 用 tsup，库用 tsc）
+pnpm test           # 跨所有 package 的 vitest
+pnpm typecheck      # tsc --noEmit
+pnpm lint           # Biome
+```
+
+**循环演示与冒烟测试：**
+
+```bash
+pnpm demo:loop          # 用 loop run 修复一个坏掉的 add()，并打印工作区
+pnpm demo:loop:daemon   # 同样的修复，经由真实的 osstack serve + daemon RPC
+pnpm smoke:loop         # 端到端：队列、worktree、评审器、cron、重启恢复
+pnpm coverage:loop      # 对 @osstack/loop 强制 ≥80% 覆盖率门槛
+```
+
+**发布** 用 [changesets](https://github.com/changesets/changesets) 管理：
+用 `pnpm changeset` 添加 changeset，发布工作流会打开一个 "Version Packages" PR，
+合并后发布到 npm。双周发布列车流程见 [RELEASING.md](RELEASING.md)。
+
+---
+
+## 许可证
+
+MIT。见 [LICENSE](LICENSE)。
