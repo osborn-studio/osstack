@@ -20,7 +20,7 @@ import {
   type RoutableAdapter,
 } from "@osstack/core";
 import { createScanner } from "./discover.js";
-import { executePlan, runShellCommand, type AgentRun } from "./executor.js";
+import { executePlan, runShellCommand, type AgentRun, type CommandResult } from "./executor.js";
 import { evaluateIteration } from "./iterator.js";
 import { planTask } from "./planner.js";
 import {
@@ -34,7 +34,8 @@ import { verifyRun } from "./verifier.js";
 import {
   DiscoverSource,
   LoopState,
-  type CompletedTask,
+  CompletedTask,
+  type Issue,
   type LoopEvent,
   type Task,
   type Verdict,
@@ -345,6 +346,7 @@ export class LoopEngine {
     let runWorkspacePath = workspacePath;
     let worktree: WorktreeHandle | undefined;
     let preserveWorktreeBranch = false;
+    let worktreeCommit: string | undefined;
 
     if (this.options.useWorktree === true) {
       worktree = await createWorktree({
@@ -462,6 +464,7 @@ export class LoopEngine {
         if (commit.committed) {
           preserveWorktreeBranch = true;
           await mergeWorktree(worktree);
+          worktreeCommit = commit.commit;
           preserveWorktreeBranch = false;
         }
         this.emit(loopId, "loop.worktree.merged", {
@@ -489,14 +492,34 @@ export class LoopEngine {
     }
 
     return {
-      completedTask: {
+      completedTask: CompletedTask.parse({
         task_id: task.task_id,
         capability: task.capability,
         outcome,
         iterations,
         agent_id: finalRun?.agent_id ?? "local-noop",
         duration_ms: Date.now() - started,
-      },
+        ...(finalRun !== null ? {
+          run_id: finalRun.run_id,
+          started_at: finalRun.started_at,
+          completed_at: finalRun.completed_at,
+          ...(finalRun.summary !== undefined ? { execution_summary: finalRun.summary } : {}),
+          ...(finalRun.command_results.length > 0 ? { execution_commands: finalRun.command_results.map(commandAudit) } : {}),
+        } : {}),
+        ...(finalVerdict !== null ? {
+          verifier_agent_id: finalVerdict.reviewer_agent_id,
+          verify_summary: finalVerdict.summary,
+          verify_issue_count: finalVerdict.issues.length,
+          ...(finalVerdict.issues.length > 0 ? { verify_issues: finalVerdict.issues.map(issueAudit) } : {}),
+        } : {}),
+        ...(outcome !== "success" ? { error_summary: completionErrorSummary(finalRun, finalVerdict) } : {}),
+        ...(worktree !== undefined ? {
+          worktree_path: worktree.worktreePath,
+          worktree_branch: worktree.branch,
+          worktree_branch_preserved: preserveWorktreeBranch,
+          ...(worktreeCommit !== undefined ? { worktree_commit: worktreeCommit } : {}),
+        } : {}),
+      }),
       decisions,
     };
   }
@@ -634,6 +657,38 @@ function policyEventPayload(decision: PolicyDecision): Record<string, unknown> {
 
 function resolvePath(path: string, cwd: string): string {
   return isAbsolute(path) ? path : join(cwd, path);
+}
+
+function commandAudit(result: CommandResult): NonNullable<CompletedTask["execution_commands"]>[number] {
+  const summary = singleLine(result.stderr.trim() || result.stdout.trim());
+  return {
+    command: result.command,
+    exit_code: result.exitCode,
+    duration_ms: result.durationMs,
+    ...(summary !== "" ? { summary } : {}),
+  };
+}
+
+function issueAudit(issue: Issue): NonNullable<CompletedTask["verify_issues"]>[number] {
+  return {
+    severity: issue.severity,
+    message: issue.message,
+    ...(issue.file !== undefined ? { file: issue.file } : {}),
+    ...(issue.line !== undefined ? { line: issue.line } : {}),
+    ...(issue.rule !== undefined ? { rule: issue.rule } : {}),
+  };
+}
+
+function completionErrorSummary(run: AgentRun | null, verdict: Verdict | null): string {
+  const firstIssue = verdict?.issues[0];
+  if (firstIssue !== undefined) return singleLine(firstIssue.message);
+  if (run?.summary !== undefined) return singleLine(run.summary);
+  if (run !== null && run.outcome !== "completed") return `execution ${run.outcome}`;
+  return "task did not reach a passing verdict";
+}
+
+function singleLine(value: string): string {
+  return value.replace(/\s+/g, " " ).trim().slice(0, 240);
 }
 
 function summarizeGoalResult(exitCode: number, stdout: string, stderr: string): string {
