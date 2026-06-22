@@ -69,6 +69,9 @@ osstack release plan --json
 ```
 
 The plan is safe to execute only when `safe_to_execute` is `true`.
+If GitHub Actions cannot start jobs because account billing or spending limits
+are blocked, `release doctor` reports `github_actions` as an error and the
+plan keeps publish/deploy commands unsafe.
 
 If GitHub marks the Version Packages PR CI as `action_required`, rerun the
 latest workflow before merging:

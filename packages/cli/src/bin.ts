@@ -788,6 +788,7 @@ async function handleReleaseCommand(args: string[]): Promise<number> {
 
 Checks:
   - GitHub CLI authentication for repository operations
+  - GitHub Actions runner availability for release/deploy workflows
   - repository secrets NPM_TOKEN and FLY_API_TOKEN
   - local npm login for manual publishing
   - local flyctl login for manual Knowledge Cloud deploy debugging
@@ -872,6 +873,8 @@ async function releaseDoctor(target: ReleaseDoctorResult["target"]): Promise<Rel
     errorMessage: "GitHub CLI is not authenticated; run gh auth login or gh auth refresh -h github.com -s workflow.",
   });
   checks.push(githubAuth);
+  const githubActions = await releaseGitHubActionsCheck();
+  checks.push(githubActions);
 
   const requiredSecrets = target === "npm" ? ["NPM_TOKEN"]
     : target === "knowledge-cloud" ? ["FLY_API_TOKEN"]
@@ -907,8 +910,9 @@ async function releaseDoctor(target: ReleaseDoctorResult["target"]): Promise<Rel
 
   const versionPackagesPrReady = checks.find((check) => check.id === "version_packages_pr")?.status !== "warn";
   const knowledgeWorkflowReady = checks.find((check) => check.id === "knowledge_cloud_workflow")?.status !== "error";
-  const npmPublish = hasSecret(secrets, "NPM_TOKEN") && versionPackagesPrReady;
-  const knowledgeCloudDeploy = hasSecret(secrets, "FLY_API_TOKEN") && knowledgeWorkflowReady;
+  const actionsReady = githubActions.status !== "error";
+  const npmPublish = actionsReady && hasSecret(secrets, "NPM_TOKEN") && versionPackagesPrReady;
+  const knowledgeCloudDeploy = actionsReady && hasSecret(secrets, "FLY_API_TOKEN") && knowledgeWorkflowReady;
   const ok = target === "npm" ? npmPublish
     : target === "knowledge-cloud" ? knowledgeCloudDeploy
       : npmPublish && knowledgeCloudDeploy;
@@ -1160,6 +1164,144 @@ function releaseKnowledgeCloudWorkflowOverride(value: string): ReleaseDoctorChec
   };
 }
 
+async function releaseGitHubActionsCheck(): Promise<ReleaseDoctorCheck> {
+  const override = process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"];
+  if (override !== undefined) return releaseGitHubActionsOverride(override);
+  try {
+    const { stdout } = await execFileAsync("gh", [
+      "run",
+      "list",
+      "--limit",
+      "1",
+      "--json",
+      "databaseId,status,conclusion,workflowName,displayTitle,url",
+    ], { timeout: 10_000 });
+    const runs = JSON.parse(stdout) as Array<{
+      databaseId?: number;
+      status?: string;
+      conclusion?: string;
+      workflowName?: string;
+      displayTitle?: string;
+      url?: string;
+    }>;
+    const latest = runs[0];
+    if (latest === undefined) {
+      return {
+        id: "github_actions",
+        status: "warn",
+        message: "No recent GitHub Actions runs were found; trigger CI before publishing or deploying.",
+      };
+    }
+    const billingFailure = latest.databaseId === undefined
+      ? undefined
+      : await releaseGitHubActionsBillingFailure(latest.databaseId);
+    if (billingFailure !== undefined) {
+      return {
+        id: "github_actions",
+        status: "error",
+        message: "GitHub Actions runner is blocked by account billing or spending limits.",
+        details: {
+          run_id: latest.databaseId,
+          status: latest.status,
+          conclusion: latest.conclusion,
+          workflow: latest.workflowName,
+          title: latest.displayTitle,
+          url: latest.url,
+          annotation: billingFailure,
+        },
+      };
+    }
+    return {
+      id: "github_actions",
+      status: "ok",
+      message: `GitHub Actions is reachable; latest run ${latest.databaseId ?? "unknown"} is inspectable.`,
+      details: {
+        run_id: latest.databaseId,
+        status: latest.status,
+        conclusion: latest.conclusion,
+        workflow: latest.workflowName,
+        title: latest.displayTitle,
+        url: latest.url,
+      },
+    };
+  } catch (error) {
+    return {
+      id: "github_actions",
+      status: "warn",
+      message: "Could not inspect GitHub Actions runs with gh.",
+      details: { error: releaseErrorMessage(error) },
+    };
+  }
+}
+
+async function releaseGitHubActionsBillingFailure(runId: number): Promise<string | undefined> {
+  try {
+    const { stdout: jobsOutput } = await execFileAsync("gh", [
+      "api",
+      `repos/gilosbornhello/osstack/actions/runs/${runId}/jobs`,
+    ], { timeout: 10_000 });
+    const jobs = JSON.parse(jobsOutput) as {
+      jobs?: Array<{
+        id?: number;
+        conclusion?: string;
+        steps?: unknown[];
+      }>;
+    };
+    const failedJob = jobs.jobs?.find((job) =>
+      job.id !== undefined
+      && job.conclusion === "failure"
+      && Array.isArray(job.steps)
+      && job.steps.length === 0
+    );
+    if (failedJob?.id === undefined) return undefined;
+    const { stdout: annotationsOutput } = await execFileAsync("gh", [
+      "api",
+      `repos/gilosbornhello/osstack/check-runs/${failedJob.id}/annotations`,
+    ], { timeout: 10_000 });
+    const annotations = JSON.parse(annotationsOutput) as Array<{ message?: string }>;
+    const annotation = annotations.find((item) =>
+      typeof item.message === "string"
+      && /payments have failed|spending limit/i.test(item.message)
+    );
+    return annotation?.message;
+  } catch {
+    return undefined;
+  }
+}
+
+function releaseGitHubActionsOverride(value: string): ReleaseDoctorCheck {
+  if (value === "ok") {
+    return {
+      id: "github_actions",
+      status: "ok",
+      message: "GitHub Actions is reachable.",
+    };
+  }
+  if (value === "billing") {
+    return {
+      id: "github_actions",
+      status: "error",
+      message: "GitHub Actions runner is blocked by account billing or spending limits.",
+      details: {
+        annotation: "The job was not started because recent account payments have failed or your spending limit needs to be increased.",
+      },
+    };
+  }
+  if (value === "warn" || value === "error") {
+    return {
+      id: "github_actions",
+      status: value,
+      message: "GitHub Actions needs attention before publishing or deploying.",
+    };
+  }
+  return {
+    id: "github_actions",
+    status: "warn",
+    message: "Could not parse OSSTACK_TEST_RELEASE_GITHUB_ACTIONS.",
+    details: { value },
+  };
+}
+
 async function releaseSecretsCheck(requiredSecrets: string[]): Promise<ReleaseDoctorCheck> {
   const override = process.env["OSSTACK_TEST_RELEASE_SECRETS"];
   let present: string[];
@@ -1241,6 +1383,12 @@ function releaseDoctorNextSteps(options: {
   const steps: string[] = [];
   if (options.githubAuth.status === "error") {
     steps.push("Refresh GitHub auth: gh auth refresh -h github.com -s workflow");
+  }
+  const githubActions = options.checks.find((check) => check.id === "github_actions");
+  if (githubActions?.status === "error") {
+    steps.push("Fix GitHub Actions billing or spending limit before publishing or deploying.");
+  } else if (githubActions?.status === "warn") {
+    steps.push("Confirm GitHub Actions can start workflow jobs before publishing or deploying.");
   }
   const missing = options.secrets.details?.["missing"];
   if (Array.isArray(missing) && missing.includes("NPM_TOKEN")) {
@@ -1343,6 +1491,7 @@ function releaseActionPlan(result: ReleaseDoctorResult): ReleaseActionPlan {
   const blockers = result.next_steps.filter((step) =>
     step.startsWith("Add repository secret")
     || step.startsWith("Refresh GitHub auth")
+    || step.startsWith("Fix GitHub Actions")
     || step.startsWith("Restore the Knowledge Cloud Deploy workflow")
     || step.startsWith("Review Version Packages PR")
   );
@@ -1364,6 +1513,9 @@ function releaseActionPlan(result: ReleaseDoctorResult): ReleaseActionPlan {
         "Open the latest Version Packages PR CI run and approve or rerun it if GitHub requires manual action.",
         ...(latestVersionPrCiUrl === undefined ? [] : [latestVersionPrCiUrl]),
       ]
+      : []),
+    ...(result.checks.find((check) => check.id === "github_actions")?.status === "error"
+      ? ["Open GitHub Billing & plans and fix failed payments or increase the Actions spending limit."]
       : []),
   ];
   const validationCommands = [

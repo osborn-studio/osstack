@@ -16,7 +16,7 @@
 
 仍未完成的部分集中在外部发布和产品深化：
 
-- GitHub push/PR 已恢复，Version Packages PR #5 当前为 `CLEAN / MERGEABLE`，但 GitHub Actions 在账户层被 billing/spending-limit 阻塞，runner 尚不能启动。
+- GitHub push/PR 已恢复，Version Packages PR #5 当前为 `CLEAN / MERGEABLE`，但 GitHub Actions 在账户层被 billing/spending-limit 阻塞，runner 尚不能启动；`release doctor` 已新增 `github_actions` 检查并能把该阻塞写入 `release plan`。
 - npm publish 仍需要仓库 secret `NPM_TOKEN`；Knowledge Cloud `deploy=true` 仍需要仓库 secret `FLY_API_TOKEN`。
 - 日常 PR CI 已拆到 `ubuntu-latest`，macOS single-binary release-candidate smoke 已拆到独立 `.github/workflows/macos-release-candidate.yml`，正式 release workflow 仍保留 macOS archive candidate artifact。
 - `npm install -g @osstack/cli` 还没有从真实 npm registry 验证，只验证了本地 tarball 安装。
@@ -365,7 +365,7 @@
 
 | 优先级 | 项目 | 原因 | 完成证据 |
 |---:|---|---|---|
-| P0 | 修复 GitHub Actions billing/spending limit | 当前 runner 在账户层启动前失败，PR #26 无法变绿 | PR #26 CI rerun 后 runner 正常启动并通过 |
+| P0 | 修复 GitHub Actions billing/spending limit | 当前 runner 在账户层启动前失败，PR #26 无法变绿；`release doctor` 已能自动识别该 blocker | PR #26 CI rerun 后 runner 正常启动并通过 |
 | P0 | 配置 `NPM_TOKEN` | 没有 npm publish secret 不能合并 Version Packages PR | `osstack release doctor --target npm --json` ready |
 | P0 | 配置 `FLY_API_TOKEN` | 没有 Fly deploy secret 不能运行 Knowledge Cloud `deploy=true` | `osstack release doctor --target knowledge-cloud --json` ready |
 | P0 | 部署 Knowledge Cloud 到真实云端 | Phase 6 需要“上线”而非本地 smoke | 生产 URL + `/healthz` + search smoke |
@@ -387,6 +387,7 @@ GitHub push、PR、release workflow 定义已恢复。当前阻塞点是账户�
 - npm registry publish 需要仓库 secret `NPM_TOKEN`。
 - Knowledge Cloud `deploy=true` 需要仓库 secret `FLY_API_TOKEN`。
 - 本地人工排障可继续配置 `npm login` 与 `flyctl auth login`。
+- `osstack release doctor --json` 当前会输出 `github_actions` error，并让 `release plan` 保持 `safe_to_execute=false`。
 
 发布前检查：
 

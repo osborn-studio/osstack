@@ -17,7 +17,7 @@
 尚未完成的部分不是代码验证，而是外部发布链路：
 
 - GitHub push/PR 已恢复，Version Packages PR #5 当前为 `CLEAN / MERGEABLE`。
-- GitHub Actions 当前被账户 billing/spending-limit 卡住，runner 在执行任何 step 前失败；PR #26 已记录本地验证证据，修复 billing 后需要 rerun CI。
+- GitHub Actions 当前被账户 billing/spending-limit 卡住，runner 在执行任何 step 前失败；PR #26 已记录本地验证证据，修复 billing 后需要 rerun CI；`release doctor` 已能自动识别该 blocker。
 - npm 发布仍需要仓库 secret `NPM_TOKEN`。
 - Knowledge Cloud `deploy=true` 仍需要仓库 secret `FLY_API_TOKEN`。
 
@@ -176,6 +176,7 @@ GitHub push、PR、workflow 定义已恢复。当前发布阻塞不是代码问�
 - npm publish 需要仓库 secret `NPM_TOKEN`。
 - Knowledge Cloud `deploy=true` 需要仓库 secret `FLY_API_TOKEN`。
 - 本机人工发布/排障还需要 `npm login` 与 `flyctl auth login`。
+- `release doctor` 会输出 `github_actions` error；`release plan` 会把修复 Billing / spending limit 放入 blockers 和 operator commands。
 
 发布前执行：
 
