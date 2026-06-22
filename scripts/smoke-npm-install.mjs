@@ -137,6 +137,17 @@ try {
     throw new Error(`official knowledge retrieval eval did not pass 30/30: ${knowledgeEval.stdout}`);
   }
 
+  const knowledgeValidate = run(osstackBin, ["knowledge", "validate", "--official", "--json"], { cwd: root, capture: true });
+  const knowledgeValidateParsed = JSON.parse(knowledgeValidate.stdout);
+  if (
+    knowledgeValidateParsed.ok !== true
+    || !Array.isArray(knowledgeValidateParsed.packs)
+    || knowledgeValidateParsed.packs.length !== 6
+    || !knowledgeValidateParsed.packs.every((pack) => pack.ok === true)
+  ) {
+    throw new Error(`official knowledge publish gate did not pass: ${knowledgeValidate.stdout}`);
+  }
+
   const knowledgeSources = run(osstackBin, ["knowledge", "sources", "--internal", "--official", "--json"], { cwd: root, capture: true });
   const knowledgeSourcesParsed = JSON.parse(knowledgeSources.stdout);
   if (

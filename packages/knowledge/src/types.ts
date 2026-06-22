@@ -121,6 +121,16 @@ export interface KnowledgePackIndex {
   packs: KnowledgePackIndexEntry[];
 }
 
+export interface KnowledgePublishGateIssue {
+  code: string;
+  message: string;
+}
+
+export interface KnowledgePublishGateReport {
+  ok: boolean;
+  issues: KnowledgePublishGateIssue[];
+}
+
 export type KnowledgeSearchEvidence =
   | {
     mode: "off";

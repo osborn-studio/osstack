@@ -76,6 +76,68 @@ export function validateKnowledgePackManifest(value) {
         chunks,
     };
 }
+export function validateKnowledgePublishGate(manifest, options = {}) {
+    const issues = [];
+    const official = options.requireOfficial === true || manifest.scope === "official";
+    const external = manifest.source_kind === "processed_mit" || manifest.source_kind === "curated_external";
+    if (official && manifest.source_kind === "internal") {
+        issues.push({
+            code: "official_internal_source_kind",
+            message: "official knowledge packs cannot use source_kind=internal",
+        });
+    }
+    if (official && manifest.quality_score < 80) {
+        issues.push({
+            code: "official_low_quality_score",
+            message: "official knowledge packs require quality_score >= 80",
+        });
+    }
+    if (official && (manifest.taxonomy ?? []).length === 0) {
+        issues.push({
+            code: "official_missing_taxonomy",
+            message: "official knowledge packs require at least one Osstack taxonomy entry",
+        });
+    }
+    if (official && (manifest.last_reviewed_at ?? "").trim().length === 0) {
+        issues.push({
+            code: "official_missing_review",
+            message: "official knowledge packs require last_reviewed_at",
+        });
+    }
+    if ((official || external) && (manifest.source_attribution ?? []).length === 0) {
+        issues.push({
+            code: "missing_source_attribution",
+            message: "official or externally processed knowledge requires source_attribution",
+        });
+    }
+    if ((official || external) && (manifest.source_provenance ?? []).length === 0) {
+        issues.push({
+            code: "missing_source_provenance",
+            message: "official or externally processed knowledge requires source_provenance",
+        });
+    }
+    if (official && manifest.chunks.length === 0) {
+        issues.push({
+            code: "official_empty_chunks",
+            message: "official knowledge packs require at least one chunk",
+        });
+    }
+    for (const [index, chunk] of manifest.chunks.entries()) {
+        if (official && !/\bosstack\b/i.test(chunk.body)) {
+            issues.push({
+                code: "chunk_missing_osstack_voice",
+                message: `chunk ${index} must be rewritten in Osstack-native voice`,
+            });
+        }
+        if ((official || external) && (chunk.source_refs ?? []).length === 0) {
+            issues.push({
+                code: "chunk_missing_source_refs",
+                message: `chunk ${index} requires source_refs for provenance tracing`,
+            });
+        }
+    }
+    return { ok: issues.length === 0, issues };
+}
 export async function loadKnowledgePackIndex(path) {
     const raw = await readFile(path, "utf-8");
     return validateKnowledgePackIndex(JSON.parse(raw));
@@ -153,7 +215,7 @@ export async function importKnowledgeSource(options) {
         });
         index++;
     }
-    return validateKnowledgePackManifest({
+    const manifest = validateKnowledgePackManifest({
         id: options.id,
         version: options.version ?? generatedAt.slice(0, 10).replaceAll("-", "."),
         name: options.name,
@@ -168,6 +230,11 @@ export async function importKnowledgeSource(options) {
         source_provenance: sourceProvenance,
         chunks,
     });
+    const gate = validateKnowledgePublishGate(manifest);
+    if (!gate.ok) {
+        throw new Error(`knowledge publish gate failed: ${gate.issues.map((issue) => issue.code).join(", ")}`);
+    }
+    return manifest;
 }
 export async function ingestKnowledgeSource(options) {
     const generatedAt = options.generatedAt ?? new Date().toISOString();
@@ -201,7 +268,7 @@ export async function ingestKnowledgeSource(options) {
     }
     const sourceKind = options.sourceKind
         ?? (options.scope === "official" ? "osstack_native" : "internal");
-    return validateKnowledgePackManifest({
+    const manifest = validateKnowledgePackManifest({
         id: options.id,
         version: options.version ?? generatedAt.slice(0, 10).replaceAll("-", "."),
         name: options.name,
@@ -216,6 +283,11 @@ export async function ingestKnowledgeSource(options) {
         source_provenance: sourceProvenance,
         chunks,
     });
+    const gate = validateKnowledgePublishGate(manifest);
+    if (!gate.ok) {
+        throw new Error(`knowledge publish gate failed: ${gate.issues.map((issue) => issue.code).join(", ")}`);
+    }
+    return manifest;
 }
 export async function syncKnowledgeCache(options) {
     try {
