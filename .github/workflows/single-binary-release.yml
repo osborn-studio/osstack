@@ -51,6 +51,37 @@ jobs:
           pnpm sbom:single-binary -- --manifest "$MANIFEST" --json
           pnpm package:single-binary -- --manifest "$MANIFEST" --json
 
+      - name: Notarize single binary for public release
+        if: ${{ github.event_name != 'workflow_dispatch' || !inputs.dry_run }}
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          DEVELOPER_ID_APPLICATION: ${{ secrets.DEVELOPER_ID_APPLICATION }}
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          if [ -z "$APPLE_ID" ] || [ -z "$APPLE_TEAM_ID" ] || [ -z "$APPLE_APP_SPECIFIC_PASSWORD" ] || [ -z "$DEVELOPER_ID_APPLICATION" ] || [ -z "$MACOS_CERTIFICATE_P12" ] || [ -z "$MACOS_CERTIFICATE_PASSWORD" ]; then
+            echo "Public single-binary release requires APPLE_ID, APPLE_TEAM_ID, APPLE_APP_SPECIFIC_PASSWORD, DEVELOPER_ID_APPLICATION, MACOS_CERTIFICATE_P12, and MACOS_CERTIFICATE_PASSWORD secrets." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          CERTIFICATE_PATH="$RUNNER_TEMP/developer-id-application.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/osstack-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+          echo "$MACOS_CERTIFICATE_P12" | base64 --decode > "$CERTIFICATE_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -P "$MACOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          OUT="dist/single-binary/darwin-arm64"
+          MANIFEST="$(ls "$OUT"/osstack-*-darwin-arm64.manifest.json | head -n 1)"
+          pnpm sign:single-binary -- --manifest "$MANIFEST" --identity "$DEVELOPER_ID_APPLICATION" --json
+          pnpm notarize:single-binary -- --manifest "$MANIFEST" --json
+          pnpm sbom:single-binary -- --manifest "$MANIFEST" --json
+          pnpm package:single-binary -- --manifest "$MANIFEST" --json
+
       - name: Smoke release archive
         run: pnpm smoke:single-binary-release-pack
 

@@ -783,6 +783,15 @@ interface ReleaseDoctorResult {
   output?: string;
 }
 
+const SINGLE_BINARY_RELEASE_SECRETS = [
+  "APPLE_ID",
+  "APPLE_TEAM_ID",
+  "APPLE_APP_SPECIFIC_PASSWORD",
+  "DEVELOPER_ID_APPLICATION",
+  "MACOS_CERTIFICATE_P12",
+  "MACOS_CERTIFICATE_PASSWORD",
+];
+
 async function handleReleaseCommand(args: string[]): Promise<number> {
   const sub = args[0];
   if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
@@ -795,6 +804,7 @@ Checks:
   - GitHub CLI authentication for repository operations
   - GitHub Actions runner availability for release/deploy workflows
   - repository secrets NPM_TOKEN and FLY_API_TOKEN
+  - Apple notarization and Developer ID secrets for single-binary release
   - optional proof-core evidence validation with --proof-dir
   - local npm login for manual publishing
   - local flyctl login for manual Knowledge Cloud deploy debugging
@@ -891,8 +901,8 @@ async function releaseDoctor(
 
   const requiredSecrets = target === "npm" ? ["NPM_TOKEN"]
     : target === "knowledge-cloud" ? ["FLY_API_TOKEN"]
-      : target === "single-binary" ? []
-      : ["NPM_TOKEN", "FLY_API_TOKEN"];
+      : target === "single-binary" ? SINGLE_BINARY_RELEASE_SECRETS
+      : ["NPM_TOKEN", "FLY_API_TOKEN", ...SINGLE_BINARY_RELEASE_SECRETS];
   const secrets = await releaseSecretsCheck(requiredSecrets);
   checks.push(secrets);
 
@@ -942,7 +952,10 @@ async function releaseDoctor(
   const actionsReady = githubActions.status !== "error";
   const npmPublish = actionsReady && hasSecret(secrets, "NPM_TOKEN") && npmPublishAssetsReady && versionPackagesPrReady;
   const knowledgeCloudDeploy = actionsReady && hasSecret(secrets, "FLY_API_TOKEN") && knowledgeDeployAssetsReady && knowledgeWorkflowReady;
-  const singleBinaryRelease = actionsReady && singleBinaryAssetsReady && singleBinaryWorkflowReady;
+  const singleBinaryRelease = actionsReady
+    && SINGLE_BINARY_RELEASE_SECRETS.every((secret) => hasSecret(secrets, secret))
+    && singleBinaryAssetsReady
+    && singleBinaryWorkflowReady;
   const ok = target === "npm" ? npmPublish
     : target === "knowledge-cloud" ? knowledgeCloudDeploy
       : target === "single-binary" ? singleBinaryRelease
@@ -1097,6 +1110,7 @@ async function releaseSingleBinaryReleaseAssetsCheck(workspacePath: string): Pro
   const requiredAssets = [
     "scripts/build-single-binary.mjs",
     "scripts/sign-single-binary.mjs",
+    "scripts/notarize-single-binary.mjs",
     "scripts/generate-single-binary-sbom.mjs",
     "scripts/package-single-binary.mjs",
     "scripts/publish-single-binary-release.mjs",
@@ -1115,9 +1129,10 @@ async function releaseSingleBinaryReleaseAssetsCheck(workspacePath: string): Pro
     }
   };
   const publishScript = await readAsset("scripts/publish-single-binary-release.mjs");
+  const notarizeScript = await readAsset("scripts/notarize-single-binary.mjs");
   const publishSmoke = await readAsset("scripts/smoke-single-binary-release-publish.mjs");
   const workflow = await readAsset(".github/workflows/single-binary-release.yml");
-  for (const asset of requiredAssets.slice(0, 6)) await readAsset(asset);
+  for (const asset of requiredAssets.slice(0, 7)) await readAsset(asset);
   const expectAsset = (text: string, needle: string, message: string): void => {
     if (text !== "" && !text.includes(needle)) violations.push(message);
   };
@@ -1125,6 +1140,10 @@ async function releaseSingleBinaryReleaseAssetsCheck(workspacePath: string): Pro
   expectAsset(publishScript, "archive sha256 mismatch", "Single-binary publish script must verify archive SHA-256.");
   expectAsset(publishScript, "gh\", [\"release\", \"upload\"", "Single-binary publish script must upload assets through gh release upload.");
   expectAsset(publishScript, "github_release_uploaded: true", "Single-binary publish script must mark successful GitHub upload.");
+  expectAsset(notarizeScript, "xcrun\", [", "Single-binary notarization script must use xcrun for notarytool.");
+  expectAsset(notarizeScript, "notarytool", "Single-binary notarization script must submit assets to Apple notarytool.");
+  expectAsset(notarizeScript, "ditto", "Single-binary notarization script must submit a zipped command-line tool payload.");
+  expectAsset(notarizeScript, "spctl", "Single-binary notarization script must assess the notarized executable.");
   expectAsset(publishSmoke, "--dry-run", "Single-binary release publish smoke must exercise dry-run upload.");
   expectAsset(publishSmoke, "publish.assets.length !== 4", "Single-binary release publish smoke must require four release assets.");
   expectAsset(workflow, "push:", "Single-binary release workflow must run for release tags.");
@@ -1132,6 +1151,11 @@ async function releaseSingleBinaryReleaseAssetsCheck(workspacePath: string): Pro
   expectAsset(workflow, "workflow_dispatch:", "Single-binary release workflow must be manually triggerable.");
   expectAsset(workflow, "pnpm smoke:single-binary-release-pack", "Single-binary release workflow must smoke release archives.");
   expectAsset(workflow, "pnpm publish:single-binary", "Single-binary release workflow must call the publish script.");
+  expectAsset(workflow, "pnpm notarize:single-binary", "Single-binary release workflow must notarize public release assets.");
+  expectAsset(workflow, "APPLE_APP_SPECIFIC_PASSWORD", "Single-binary release workflow must gate notarization on Apple notary credentials.");
+  expectAsset(workflow, "DEVELOPER_ID_APPLICATION", "Single-binary release workflow must use a Developer ID identity for public release assets.");
+  expectAsset(workflow, "MACOS_CERTIFICATE_P12", "Single-binary release workflow must import a Developer ID certificate.");
+  expectAsset(workflow, "security import", "Single-binary release workflow must install the Developer ID certificate in a temporary keychain.");
   expectAsset(workflow, "GH_TOKEN:", "Single-binary release workflow must pass GH_TOKEN for upload.");
   expectAsset(workflow, "github.token", "Single-binary release workflow must use the workflow GitHub token.");
   expectAsset(workflow, "actions/upload-artifact@v4", "Single-binary release workflow must retain workflow artifact copies.");
@@ -1782,6 +1806,9 @@ function releaseDoctorNextSteps(options: {
   if (Array.isArray(missing) && missing.includes("FLY_API_TOKEN")) {
     steps.push("Add repository secret FLY_API_TOKEN before running Knowledge Cloud deploy=true.");
   }
+  if (Array.isArray(missing) && SINGLE_BINARY_RELEASE_SECRETS.some((secret) => missing.includes(secret))) {
+    steps.push("Add Apple notarization and Developer ID repository secrets before running Single Binary Release dry_run=false.");
+  }
   const versionPr = options.checks.find((check) => check.id === "version_packages_pr");
   if ((options.target === "all" || options.target === "npm") && versionPr?.status === "warn") {
     const number = typeof versionPr.details?.["number"] === "number" ? ` #${versionPr.details["number"]}` : "";
@@ -1904,6 +1931,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     step.startsWith("Add repository secret")
     || step.startsWith("Refresh GitHub auth")
     || step.startsWith("Fix GitHub Actions")
+    || step.startsWith("Add Apple notarization")
     || step.startsWith("Fix missing or malformed proof evidence")
     || step.startsWith("Restore NPM publish assets")
     || step.startsWith("Restore Knowledge Cloud deploy assets")
@@ -1924,6 +1952,11 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
       : []),
     ...(Array.isArray(missingSecrets) && missingSecrets.includes("FLY_API_TOKEN")
       ? ["gh secret set FLY_API_TOKEN --repo gilosbornhello/osstack --body \"$FLY_API_TOKEN\""]
+      : []),
+    ...(Array.isArray(missingSecrets)
+      ? SINGLE_BINARY_RELEASE_SECRETS
+        .filter((secret) => missingSecrets.includes(secret))
+        .map((secret) => `gh secret set ${secret} --repo gilosbornhello/osstack --body "$${secret}"`)
       : []),
     ...(latestVersionPrCiConclusion === "action_required"
       ? [

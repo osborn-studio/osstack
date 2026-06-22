@@ -18,6 +18,7 @@
     "coverage:loop": "pnpm --filter @osstack/loop test:coverage",
     "build:single-binary": "node scripts/build-single-binary.mjs",
     "sign:single-binary": "node scripts/sign-single-binary.mjs",
+    "notarize:single-binary": "node scripts/notarize-single-binary.mjs",
     "sbom:single-binary": "node scripts/generate-single-binary-sbom.mjs",
     "package:single-binary": "node scripts/package-single-binary.mjs",
     "publish:single-binary": "node scripts/publish-single-binary-release.mjs",

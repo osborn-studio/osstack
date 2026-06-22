@@ -117,13 +117,14 @@
 - `pnpm smoke:single-binary-signing` 会对 release candidate 做 ad-hoc codesign，运行 `codesign --verify`，并更新 manifest/checksum。
 - `pnpm smoke:single-binary-release-pack` 会把 binary、manifest、checksum、SPDX SBOM 打成 `.tar.gz`，校验 archive SHA-256，解包后运行 `osstack --version`。
 - `pnpm smoke:single-binary-release-publish` 会 dry-run 验证正式 GitHub Release 上传所需资产，不访问 GitHub、不修改 manifest upload 状态。
-- `.github/workflows/single-binary-release.yml` 已支持 tag `v*` 和手动触发；手动 dry-run 只校验资产，非 dry-run 使用 `gh release upload`。
-- `release doctor --target single-binary` 可单独检查 single-binary release 资产与 workflow 状态；`--target all` 也会包含该检查。覆盖 build/sign/SBOM/package/publish 脚本、release pack/publish smoke、tag/manual workflow、dry-run upload、`GH_TOKEN`、workflow artifact 留存，以及 `Single Binary Release` workflow 是否 active/最近 validation 是否成功。
+- `scripts/notarize-single-binary.mjs` 已新增，会把 Developer ID 签名后的命令行工具打成临时 zip，用 `xcrun notarytool submit --wait` 送交 Apple 公证，再用 `spctl --assess` 校验，并把 manifest 更新为 `notarized=true`。
+- `.github/workflows/single-binary-release.yml` 已支持 tag `v*` 和手动触发；手动 dry-run 只校验资产，非 dry-run 会要求 Apple notarization 与 Developer ID 证书相关 secrets，导入临时 keychain 后重新签名、公证、重打包，再使用 `gh release upload`。
+- `release doctor --target single-binary` 可单独检查 single-binary release 资产、Apple signing secrets 与 workflow 状态；`--target all` 也会包含该检查。覆盖 build/sign/notarize/SBOM/package/publish 脚本、release pack/publish smoke、tag/manual workflow、dry-run upload、`GH_TOKEN`、workflow artifact 留存，以及 `Single Binary Release` workflow 是否 active/最近 validation 是否成功。
 
 当前产物是本地 release candidate，还不是可公开发布资产。上线前仍需要：
 
 - 固定目标平台矩阵，先以 macOS arm64 为主。
-- 使用 Developer ID 做正式 macOS codesign/notarization。
+- 配置 `APPLE_ID`、`APPLE_TEAM_ID`、`APPLE_APP_SPECIFIC_PASSWORD`、`DEVELOPER_ID_APPLICATION`、`MACOS_CERTIFICATE_P12`、`MACOS_CERTIFICATE_PASSWORD` repository secrets，并在远端 workflow 真实跑通 Developer ID codesign/notarization。
 - 在干净机器上验证 `--version`、`doctor`、`serve --install --no-load`、`loop doctor`。
 - 在远端执行 single-binary release workflow 并确认 GitHub Release assets 真实可下载；当前本地和 workflow artifact 只是候选包留存。
 
@@ -195,7 +196,7 @@ osstack release doctor --json
 - `version_packages_pr`：识别 `changeset-release/main` 的 Version Packages PR，输出 PR number、URL、draft 状态和 `merge_state`。当前真实状态为 PR #5 `CLEAN / MERGEABLE`，CI run `27957659115` 已成功；仍需等 `NPM_TOKEN` 配好后再合并。
 - `knowledge_cloud_deploy_assets`：检查 Knowledge Cloud Dockerfile、Fly/Render 配置和 GitHub Actions deploy workflow 的关键部署约束，失败时会阻止 `knowledge_cloud_deploy` ready。
 - `knowledge_cloud_workflow`：识别 `Knowledge Cloud Deploy` workflow 是否存在、是否 active，以及最近一次验证 run 的状态。当前最近一次 validation run 为 success，但 `deploy=true` 仍需要 `FLY_API_TOKEN`。
-- `single_binary_release_assets`：在 `--target single-binary` 或 `--target all` 时检查单文件 GitHub Release 资产链路，失败时会阻止对应发布行动计划。
+- `single_binary_release_assets`：在 `--target single-binary` 或 `--target all` 时检查单文件 GitHub Release 资产链路，包括公证脚本和 workflow 的 Apple/Developer ID gate，失败时会阻止对应发布行动计划。
 - `single_binary_workflow`：识别 `Single Binary Release` workflow 是否存在、是否 active，以及最近一次 dry-run / release run 的状态。
 
 也可以输出 Markdown handoff artifact：

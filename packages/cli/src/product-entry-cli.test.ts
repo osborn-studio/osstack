@@ -9,6 +9,16 @@ let tmp: string;
 let logs: string[];
 let errors: string[];
 
+const SINGLE_BINARY_RELEASE_SECRETS = [
+  "APPLE_ID",
+  "APPLE_TEAM_ID",
+  "APPLE_APP_SPECIFIC_PASSWORD",
+  "DEVELOPER_ID_APPLICATION",
+  "MACOS_CERTIFICATE_P12",
+  "MACOS_CERTIFICATE_PASSWORD",
+].join(",");
+const ALL_RELEASE_SECRETS = `NPM_TOKEN,FLY_API_TOKEN,${SINGLE_BINARY_RELEASE_SECRETS}`;
+
 beforeEach(() => {
   tmp = mkdtempSync(join(tmpdir(), "osstack-product-entry-"));
   logs = [];
@@ -114,7 +124,7 @@ describe("product entry commands", () => {
 
   it("checks release publish and deploy prerequisites", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
     process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
@@ -157,7 +167,7 @@ describe("product entry commands", () => {
 
   it("can include proof-core validation in release doctor readiness", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
     process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
@@ -182,7 +192,7 @@ describe("product entry commands", () => {
 
   it("auto-detects the latest proof directory for release doctor readiness", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
     process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
@@ -209,7 +219,7 @@ describe("product entry commands", () => {
 
   it("blocks release doctor when supplied proof-core evidence is malformed", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
     process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
@@ -299,7 +309,7 @@ describe("product entry commands", () => {
   it("blocks release readiness when GitHub Actions cannot start runners", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "billing";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
     process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
@@ -325,7 +335,7 @@ describe("product entry commands", () => {
 
   it("includes auto-detected proof validation blockers in release plans", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
     process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
@@ -349,7 +359,7 @@ describe("product entry commands", () => {
 
   it("lets release plans validate an explicitly supplied proof directory", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
     process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
@@ -503,7 +513,7 @@ describe("product entry commands", () => {
   it("checks single-binary release assets as an independent release target", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = SINGLE_BINARY_RELEASE_SECRETS;
 
     const exitCode = await main(["release", "doctor", "--target", "single-binary", "--json"]);
 
@@ -525,10 +535,52 @@ describe("product entry commands", () => {
     ]));
   });
 
-  it("writes a single-binary release action plan", async () => {
+  it("requires notarization readiness for single-binary release assets", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = SINGLE_BINARY_RELEASE_SECRETS;
+
+    const exitCode = await main(["release", "doctor", "--target", "single-binary", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      checks: Array<{ id: string; status: string; details?: { checked?: string[]; violations?: string[] } }>;
+    };
+    const assetCheck = result.checks.find((check) => check.id === "single_binary_release_assets");
+    expect(assetCheck).toEqual(expect.objectContaining({ status: "ok" }));
+    expect(assetCheck?.details?.checked).toContain("scripts/notarize-single-binary.mjs");
+    expect(assetCheck?.details?.violations ?? []).toEqual([]);
+  });
+
+  it("blocks public single-binary release when Apple signing secrets are missing", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "";
+
+    const exitCode = await main(["release", "plan", "--target", "single-binary", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ready: boolean;
+      safe_to_execute: boolean;
+      blockers: string[];
+      operator_commands: string[];
+    };
+    expect(result.ready).toBe(false);
+    expect(result.safe_to_execute).toBe(false);
+    expect(result.blockers).toContain(
+      "Add Apple notarization and Developer ID repository secrets before running Single Binary Release dry_run=false.",
+    );
+    expect(result.operator_commands).toContain("gh secret set APPLE_ID --repo gilosbornhello/osstack --body \"$APPLE_ID\"");
+    expect(result.operator_commands).toContain(
+      "gh secret set MACOS_CERTIFICATE_P12 --repo gilosbornhello/osstack --body \"$MACOS_CERTIFICATE_P12\"",
+    );
+  });
+
+  it("writes a single-binary release action plan", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = SINGLE_BINARY_RELEASE_SECRETS;
     const output = join(tmp, "single-binary-release-plan.md");
 
     const exitCode = await main(["release", "plan", "--target", "single-binary", "--output", output, "--json"]);

@@ -88,6 +88,7 @@
 - portable bundle 包含 `bin/osstack`、`lib/node_modules/@osstack/cli/dist/bin.js`、`lib/node_modules`，并实际执行 `osstack --version`、`osstack help`、`osstack loop doctor --json`。
 - `scripts/build-single-binary.mjs` 已新增，可生成 `osstack-<version>-<platform>-<arch>`、`sha256sums.txt`、`*.manifest.json`。
 - `scripts/sign-single-binary.mjs` 已新增，可对 manifest 指向的 binary 执行 `codesign` 并更新 manifest/checksum。
+- `scripts/notarize-single-binary.mjs` 已新增，可在 Developer ID 签名后把命令行工具打成临时 zip，使用 `xcrun notarytool submit --wait` 送交 Apple 公证，再用 `spctl --assess` 完成正式 macOS 公证校验，并把 manifest 标记为 `notarized=true`。
 - `scripts/generate-single-binary-sbom.mjs` 已新增，可生成 SPDX 2.3 JSON SBOM，记录 binary、manifest、checksum 文件及 SHA-256。
 - `scripts/package-single-binary.mjs` 已新增，可把 binary、manifest、`sha256sums.txt` 打成 `osstack-<version>-<platform>-<arch>.tar.gz`，并生成 archive manifest。
 - `scripts/publish-single-binary-release.mjs` 已新增，可 dry-run 验证或使用 `gh release upload` 上传 archive assets。
@@ -99,18 +100,18 @@
 - `.github/workflows/ci.yml` 已改为 Ubuntu 日常质量门，不再为普通 PR 强制跑 macOS release archive smoke。
 - `.github/workflows/macos-release-candidate.yml` 已新增，负责 macOS single-binary release-candidate smoke，可在主线相关路径变更或手动触发时运行。
 - `.github/workflows/release.yml` 已接入 single-binary archive candidate build/sign/package，并通过 `actions/upload-artifact` 上传 workflow artifact。
-- `.github/workflows/single-binary-release.yml` 已新增，支持 tag `v*` 或手动触发，dry-run 验证或正式 `gh release upload`。
+- `.github/workflows/single-binary-release.yml` 已新增，支持 tag `v*` 或手动触发，dry-run 验证或正式 `gh release upload`；非 dry-run 路径现在要求 Apple notarization 与 Developer ID 证书 secrets，导入临时 keychain 后重新签名、公证、重打包。
 - CLI entrypoint 已兼容 Bun 虚拟文件系统路径；版本号通过 `OSSTACK_VERSION` 编译期注入，避免 single executable 运行时找不到 `package.json` 后退到 `0.0.0`。
 - portable smoke 会输出 Node SEA、Bun、pkg、nexe、postject 的本机候选状态，给后续分发策略留出机器可读证据。
-- `release doctor --target single-binary` 已接入独立的 `single_binary_release_assets` 静态 preflight 和 `single_binary_workflow` 远端 workflow 检查，`--target all` 也会包含该检查；它会检查 build/sign/SBOM/package/publish 脚本、release pack/publish smoke、tag/manual workflow、dry-run upload、`GH_TOKEN`、workflow artifact 留存，以及 `Single Binary Release` workflow 是否 active / 最近 validation 是否成功；`release plan --target single-binary` 和 `--target all` 的 validation commands 会列出 `pnpm smoke:single-binary-release-pack`、`pnpm smoke:single-binary-release-publish` 与 Single Binary Release dry-run workflow。
-- 当前仍没有 Developer ID codesign、notarization、跨机器安装验证、正式 GitHub Release 上传。
+- `release doctor --target single-binary` 已接入独立的 `single_binary_release_assets` 静态 preflight、Apple/Developer ID repository secrets gate 和 `single_binary_workflow` 远端 workflow 检查，`--target all` 也会包含该检查；它会检查 build/sign/notarize/SBOM/package/publish 脚本、release pack/publish smoke、tag/manual workflow、dry-run upload、`GH_TOKEN`、workflow artifact 留存，以及 `Single Binary Release` workflow 是否 active / 最近 validation 是否成功；`release plan --target single-binary` 和 `--target all` 的 validation commands 会列出 `pnpm smoke:single-binary-release-pack`、`pnpm smoke:single-binary-release-publish` 与 Single Binary Release dry-run workflow。
+- 当前仍没有远端 Developer ID codesign/notarization 成功记录、跨机器安装验证、正式 GitHub Release 上传。
 
 建议：
 
 - 保持 npm 为主路径。
 - 将 portable bundle 作为“无全局 npm 安装”的备用分发形态。
 - 将 Bun single executable 作为首选单文件路线继续产品化。
-- 后续把 `sign-single-binary.mjs` 接入 CI release job，用 Developer ID identity + notarytool 把本地 release candidate 升级为 signed/notarized asset，并补齐跨机器 smoke。
+- 后续配置 Apple/Developer ID repository secrets，跑通远端 Single Binary Release 非 dry-run 路径，并补齐跨机器 smoke。
 
 ### Task 1.1 - 1.4：Report / Scorecard / Proof
 
