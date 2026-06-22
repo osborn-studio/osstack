@@ -360,6 +360,7 @@
 - official packs 有 version、quality_score、last_reviewed_at、source_provenance。
 - publish gate 会阻止 official/external `processed_mit` 知识包继续使用裸上游 `MIT` 许可标签，要求显式标记为 Osstack processed/derived license label，避免把上游知识库痕迹直接发布成 official pack。
 - 私有知识包 HTTP 访问要求 bearer token + 显式 `tenant_id`，无 tenant 的 `/v1/private-packs` 请求会被拒绝，私有 search 只有在授权且 tenant 明确时才合入 tenant-scoped private packs，避免未绑定 tenant 的私有包被泛授权搜索泄露。
+- feedback entry 支持记录 `tenant_id` 与 `authorized`，CLI `knowledge feedback` 支持 `--tenant`，云端 `/v1/feedback` 会把 tenant/auth 范围写入 sink 与响应，便于后续做知识质量审计和租户级反馈分析。
 - CLI 支持 cloud login/sync/search/import/ingest/pin/feedback/sources。
 - 本地 smoke 验证 official/private packs、sync、search、feedback。
 - deploy assets 存在：Dockerfile、Fly、Render、GitHub Actions。

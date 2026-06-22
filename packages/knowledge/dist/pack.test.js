@@ -367,6 +367,7 @@ describe("knowledge packs", () => {
             rating: "useful",
             cloudUrl: "https://knowledge.osstack.ai",
             authToken: "kst_feedback_token",
+            tenantId: "team_alpha",
             fetchImpl: async (_url, init) => {
                 calls.push({
                     authorization: new Headers(init?.headers).get("authorization"),
@@ -378,14 +379,14 @@ describe("knowledge packs", () => {
         expect(entry).toMatchObject({ chunk_id: "chunk-loop-proof", rating: "useful", status: "sent" });
         expect(calls).toEqual([{
                 authorization: "Bearer kst_feedback_token",
-                body: expect.objectContaining({ chunk_id: "chunk-loop-proof", rating: "useful" }),
+                body: expect.objectContaining({ chunk_id: "chunk-loop-proof", rating: "useful", tenant_id: "team_alpha" }),
             }]);
         const feedbackLines = (await readFile(join(cacheDir, "feedback.jsonl"), "utf-8"))
             .trim()
             .split("\n")
             .map((line) => JSON.parse(line));
         expect(feedbackLines).toMatchObject([
-            expect.objectContaining({ chunk_id: "chunk-loop-proof", rating: "useful", status: "sent" }),
+            expect.objectContaining({ chunk_id: "chunk-loop-proof", rating: "useful", status: "sent", tenant_id: "team_alpha" }),
         ]);
     });
     it("ships official osstack packs with reviewed metadata and passing retrieval fixtures", async () => {

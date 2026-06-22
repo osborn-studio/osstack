@@ -70,6 +70,9 @@ describe("Knowledge Cloud HTTP service", () => {
     const feedbackResponse = await fetchJson(`${url}/v1/feedback`, {
       chunk_id: "proof-checksum-pack",
       rating: "useful",
+      tenant_id: "team_alpha",
+    }, {
+      authorization: "Bearer kst_feedback_test",
     });
     expect(feedbackResponse).toMatchObject({
       ok: true,
@@ -77,10 +80,18 @@ describe("Knowledge Cloud HTTP service", () => {
         chunk_id: "proof-checksum-pack",
         rating: "useful",
         status: "sent",
+        tenant_id: "team_alpha",
+        authorized: true,
         created_at: "2026-06-22T00:00:00.000Z",
       },
     });
-    expect(feedback).toHaveLength(1);
+    expect(feedback).toEqual([
+      expect.objectContaining({
+        chunk_id: "proof-checksum-pack",
+        tenant_id: "team_alpha",
+        authorized: true,
+      }),
+    ]);
   });
 
   it("serves tenant private packs only to authorized matching tenants", async () => {

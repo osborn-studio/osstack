@@ -380,6 +380,7 @@ export async function cacheKnowledgeFeedback(options) {
         chunk_id: options.chunkId,
         rating: options.rating,
         created_at: options.createdAt ?? new Date().toISOString(),
+        ...(options.tenantId === undefined ? {} : { tenant_id: options.tenantId }),
     };
     let entry = { ...baseEntry, status: "recorded" };
     if (options.cloudUrl !== undefined && options.cloudUrl.length > 0) {

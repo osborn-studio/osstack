@@ -150,6 +150,7 @@ async function routeKnowledgeCloudRequest(
     const body = await readJsonBody(req);
     const chunkId = stringField(body, "chunk_id");
     const rating = stringField(body, "rating");
+    const tenantId = tenantIdField(body);
     if (chunkId === undefined || (rating !== "useful" && rating !== "bad")) {
       sendJson(res, 400, { error: "chunk_id and rating are required" });
       return;
@@ -159,6 +160,8 @@ async function routeKnowledgeCloudRequest(
       rating,
       status: "sent",
       created_at: options.now?.() ?? new Date().toISOString(),
+      ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
+      authorized: isAuthorizedPrivateRequest(options, req),
     };
     await options.feedbackSink?.(entry);
     sendJson(res, 200, { ok: true, feedback: entry });

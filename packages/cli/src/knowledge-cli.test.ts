@@ -548,11 +548,23 @@ describe("knowledge CLI", () => {
     });
 
     logs = [];
-    const feedbackExitCode = await main(["knowledge", "feedback", "chunk-cockpit", "--useful", "--cache-dir", cacheDir, "--json"]);
+    const feedbackExitCode = await main([
+      "knowledge",
+      "feedback",
+      "chunk-cockpit",
+      "--useful",
+      "--tenant",
+      "team_alpha",
+      "--cache-dir",
+      cacheDir,
+      "--json",
+    ]);
     expect(feedbackExitCode).toBe(0);
     expect(JSON.parse(logs.join("\n"))).toMatchObject({
-      feedback: { chunk_id: "chunk-cockpit", rating: "useful", status: "recorded" },
+      feedback: { chunk_id: "chunk-cockpit", rating: "useful", status: "recorded", tenant_id: "team_alpha" },
     });
+    await expect(readFile(join(cacheDir, "feedback.jsonl"), "utf-8"))
+      .resolves.toContain("\"tenant_id\":\"team_alpha\"");
   });
 
   it("runs retrieval eval fixtures against knowledge packs", async () => {

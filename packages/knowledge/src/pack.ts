@@ -426,6 +426,7 @@ export async function cacheKnowledgeFeedback(options: {
   rating: "useful" | "bad";
   cloudUrl?: string;
   authToken?: string;
+  tenantId?: string;
   fetchImpl?: typeof fetch;
   createdAt?: string;
 }): Promise<KnowledgeFeedbackEntry> {
@@ -434,6 +435,7 @@ export async function cacheKnowledgeFeedback(options: {
     chunk_id: options.chunkId,
     rating: options.rating,
     created_at: options.createdAt ?? new Date().toISOString(),
+    ...(options.tenantId === undefined ? {} : { tenant_id: options.tenantId }),
   };
   let entry: KnowledgeFeedbackEntry = { ...baseEntry, status: "recorded" };
   if (options.cloudUrl !== undefined && options.cloudUrl.length > 0) {

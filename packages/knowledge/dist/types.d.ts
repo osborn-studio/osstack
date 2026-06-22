@@ -51,6 +51,8 @@ export interface KnowledgeFeedbackEntry {
     rating: "useful" | "bad";
     status: "recorded" | "sent";
     created_at: string;
+    tenant_id?: string;
+    authorized?: boolean;
     reason?: string;
 }
 export interface KnowledgeRetrievalEvalCase {

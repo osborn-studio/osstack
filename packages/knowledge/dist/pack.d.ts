@@ -46,6 +46,7 @@ export declare function cacheKnowledgeFeedback(options: {
     rating: "useful" | "bad";
     cloudUrl?: string;
     authToken?: string;
+    tenantId?: string;
     fetchImpl?: typeof fetch;
     createdAt?: string;
 }): Promise<KnowledgeFeedbackEntry>;

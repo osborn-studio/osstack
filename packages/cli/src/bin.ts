@@ -2106,7 +2106,7 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   osstack knowledge ingest P --scope official|team|project --id ID --name NAME --license L --output P [--taxonomy T] [--source-kind K] [--json]
   osstack knowledge validate --pack P|--official [--json]
   osstack knowledge pin <pack_id>@<version> [--cache-dir P] [--json]
-  osstack knowledge feedback <chunk_id> --useful|--bad [--cloud-url URL] [--cache-dir P] [--json]
+  osstack knowledge feedback <chunk_id> --useful|--bad [--tenant ID] [--cloud-url URL] [--cache-dir P] [--json]
   osstack knowledge eval --pack P|--official --fixtures P [--top-k N] [--json]
   osstack knowledge sources --internal --pack P|--official [--json]
 
@@ -2509,7 +2509,7 @@ Env:
   }
 
   if (sub === "feedback") {
-    const chunkId = firstPositionalValue(args.slice(1), new Set(["--cloud-url", "--cache-dir"]));
+    const chunkId = firstPositionalValue(args.slice(1), new Set(["--cloud-url", "--cache-dir", "--tenant"]));
     if (chunkId === undefined) {
       console.error("osstack: knowledge feedback requires <chunk_id>");
       return 1;
@@ -2523,12 +2523,14 @@ Env:
     const config = await readKnowledgeCloudConfig(knowledgeCacheDir(args));
     const cloudUrl = resolveKnowledgeCloudUrl(args, config);
     const authToken = resolveKnowledgeAuthToken(args, config);
+    const tenantId = flagValue(args, "--tenant");
     const feedback = await cacheKnowledgeFeedback({
       cacheDir: knowledgeCacheDir(args),
       chunkId,
       rating: useful ? "useful" : "bad",
       ...(cloudUrl !== undefined ? { cloudUrl } : {}),
       ...(authToken === undefined ? {} : { authToken }),
+      ...(tenantId === undefined ? {} : { tenantId }),
     });
     if (args.includes("--json")) {
       console.log(JSON.stringify({ feedback }, null, 2));
