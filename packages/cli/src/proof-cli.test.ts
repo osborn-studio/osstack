@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -61,6 +62,32 @@ describe("proof CLI", () => {
       scanned_files: expect.any(Number),
       findings: [expect.objectContaining({ rule_id: "secret.api_key", file: join(tmp, "unsafe.ts") })],
     });
+  });
+
+  it("includes a redacted git diff artifact in the proof pack", async () => {
+    execFileSync("git", ["init"], { cwd: tmp, stdio: "ignore" });
+    execFileSync("git", ["config", "user.email", "test@example.com"], { cwd: tmp });
+    execFileSync("git", ["config", "user.name", "Test User"], { cwd: tmp });
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    await writeFile(join(tmp, "app.ts"), "export const value = 'safe';\n");
+    execFileSync("git", ["add", "LOOP-STATE.json", "app.ts"], { cwd: tmp, stdio: "ignore" });
+    execFileSync("git", ["commit", "-m", "initial"], { cwd: tmp, stdio: "ignore" });
+    await writeFile(join(tmp, "app.ts"), "export const api_key = \"sk-1234567890abcdefghijklmnop\";\n");
+
+    const exitCode = await main(["proof", "--workspace", tmp]);
+
+    expect(exitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    const manifest = JSON.parse(await readFile(join(proofDir, "manifest.json"), "utf-8")) as {
+      artifacts: Array<{ path: string; sha256: string }>;
+    };
+    expect(manifest.artifacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "git-diff.patch", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
+    ]));
+    const diff = await readFile(join(proofDir, "git-diff.patch"), "utf-8");
+    expect(diff).toContain("diff --git a/app.ts b/app.ts");
+    expect(diff).toContain("[REDACTED:openai_key]");
+    expect(diff).not.toContain("sk-1234567890abcdefghijklmnop");
   });
 
   it("records local knowledge trace evidence in the proof pack", async () => {

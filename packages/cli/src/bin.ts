@@ -19,7 +19,7 @@ import {
   renderProofViewFromProofDir,
   type ProofAudience,
 } from "@osstack/compliance";
-import { getAgentScorecard, listAgentScorecards, listPitfallLessons, openDb, upsertPitfallLesson } from "@osstack/core";
+import { getAgentScorecard, listAgentScorecards, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson } from "@osstack/core";
 import { scanFiles, type GovernanceFinding } from "@osstack/governance";
 import {
   renderBranchStewardReport,
@@ -1842,7 +1842,7 @@ Options:
   const governanceRoot = dirname(stateFilePath);
   const governance = await scanWorkspaceGovernance(governanceRoot);
   const knowledge = await createKnowledgeProofEvidence(args, state.loop_id);
-  const proof = await writeProofPack(state, outputDir, events, runId, governance, knowledge, flagValues(args, "--compliance-pack"));
+  const proof = await writeProofPack(state, outputDir, events, runId, governance, knowledge, flagValues(args, "--compliance-pack"), workspacePath);
 
   const summary = {
     loop_id: state.loop_id,
@@ -2315,7 +2315,7 @@ async function writeRequestedLoopArtifacts(
   if (args.includes("--proof")) {
     const governance = governanceOverride ?? await scanWorkspaceGovernance(workspacePath);
     const knowledge = await createKnowledgeProofEvidence(args, state.loop_id, state.knowledge);
-    const proof = await writeProofPack(state, join(workspacePath, "release"), events, state.loop_id, governance, knowledge);
+    const proof = await writeProofPack(state, join(workspacePath, "release"), events, state.loop_id, governance, knowledge, [], workspacePath);
     artifacts.proof_dir = proof.proof_dir;
     artifacts.proof_manifest = proof.proof_manifest;
   }
@@ -2331,6 +2331,7 @@ async function writeProofPack(
   governance: GovernanceProofEvidence = unknownGovernanceEvidence("No governance scan evidence provided."),
   knowledge: KnowledgeProofEvidence = offKnowledgeEvidence(),
   compliancePackIds: string[] = [],
+  workspacePath?: string,
 ): Promise<{
   proof_dir: string;
   proof_manifest: string;
@@ -2355,6 +2356,9 @@ async function writeProofPack(
     { path: "governance-results.json", content: `${JSON.stringify(governance, null, 2)}\n` },
     { path: "knowledge-results.json", content: `${JSON.stringify(knowledge, null, 2)}\n` },
   ];
+  if (workspacePath !== undefined) {
+    artifacts.push(await createGitDiffProofArtifact(workspacePath));
+  }
   for (const packId of compliancePackIds) {
     artifacts.push({
       path: `compliance-${safeFileSegment(packId)}.md`,
@@ -2401,6 +2405,33 @@ async function writeProofPack(
     proof_manifest: proofManifest,
     artifact_count: manifestArtifacts.length + 1,
   };
+}
+
+async function createGitDiffProofArtifact(workspacePath: string): Promise<{ path: string; content: string }> {
+  try {
+    const { stdout } = await execFileAsync("git", [
+      "-C",
+      workspacePath,
+      "diff",
+      "--no-ext-diff",
+      "--binary",
+      "HEAD",
+      "--",
+    ], { timeout: 15_000, maxBuffer: 10 * 1024 * 1024 });
+    const redacted = new PIIRedactor().redact(stdout).text;
+    return {
+      path: "git-diff.patch",
+      content: redacted.length === 0
+        ? "# Git Diff Evidence\n\nNo tracked git diff was present when this proof pack was generated.\n"
+        : redacted,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      path: "git-diff.patch",
+      content: `# Git Diff Evidence\n\nGit diff evidence unavailable: ${message}\n`,
+    };
+  }
 }
 
 function hasRequestedLoopArtifacts(args: string[]): boolean {
