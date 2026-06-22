@@ -123,6 +123,35 @@ try {
     "compliance report must map proof manifest evidence",
   );
 
+  const soc2CompliancePath = join(workspace, "release", "compliance-soc2-lite.md");
+  const soc2Compliance = run(process.execPath, [
+    osstackBin,
+    "compliance",
+    "render",
+    summary.loop_id,
+    "--pack",
+    "soc2-lite",
+    "--proof-dir",
+    proofDir,
+    "--output",
+    soc2CompliancePath,
+    "--json",
+  ], { cwd: root, capture: true });
+  const soc2ComplianceSummary = JSON.parse(soc2Compliance.stdout);
+  assert(soc2ComplianceSummary.pack_id === "soc2-lite", "compliance render must support non-default lite packs from proof dir");
+  assert(soc2ComplianceSummary.output === soc2CompliancePath, "SOC 2 lite compliance render must write requested output");
+  const soc2ComplianceReport = await readFile(soc2CompliancePath, "utf-8");
+  assertIncludes(
+    soc2ComplianceReport,
+    "External certification claim: `none`",
+    "SOC 2 lite compliance report must avoid external certification claims",
+  );
+  assertIncludes(
+    soc2ComplianceReport,
+    "This report is not a SOC 2, ISO 27001, EU AI Act, or third-party certification.",
+    "SOC 2 lite compliance report must include the no-certification disclaimer",
+  );
+
   const pr = run(process.execPath, [
     osstackBin,
     "pr",
@@ -153,6 +182,7 @@ try {
     proof_zip: summary.artifacts.proof_zip,
     proof_validation: "proof-core",
     compliance_report: compliancePath,
+    soc2_compliance_report: soc2CompliancePath,
     pr_body: prSummary.path,
     conformance: "L4 Audited",
   }, null, 2));
