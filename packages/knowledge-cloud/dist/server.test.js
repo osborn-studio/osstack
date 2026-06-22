@@ -622,6 +622,14 @@ describe("Knowledge Cloud HTTP service", () => {
         await expect(loadPublishedKnowledgeCloudPacksFromDir(publishedPackDir))
             .rejects.toThrow(/tenant_id does not match persisted private directory/);
     });
+    it("rejects private packs persisted in the official storage directory", async () => {
+        const publishedPackDir = tempDir();
+        const officialDir = join(publishedPackDir, "official");
+        await mkdir(officialDir, { recursive: true });
+        await writeFile(join(officialDir, "team%2Fwrong-official.json"), `${JSON.stringify(teamPack({ id: "team/wrong-official" }).manifest, null, 2)}\n`, "utf-8");
+        await expect(loadPublishedKnowledgeCloudPacksFromDir(publishedPackDir))
+            .rejects.toThrow(/official persisted pack cannot be private/);
+    });
 });
 async function officialPacks() {
     const root = resolve(process.cwd(), "../..");

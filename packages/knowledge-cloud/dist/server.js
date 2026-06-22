@@ -138,7 +138,7 @@ async function routeKnowledgeCloudRequest(options, req, res) {
             await recordAudit(options, {
                 action: "publish",
                 status: "rejected",
-                private: manifest.scope === "team" || manifest.scope === "project" || manifest.tenant_id !== undefined,
+                private: isPrivateKnowledgePack(manifest),
                 ...(manifest.tenant_id === undefined ? {} : { tenant_id: manifest.tenant_id }),
                 pack_id: manifest.id,
                 issue_codes: gate.issues.map((issue) => issue.code),
@@ -150,7 +150,7 @@ async function routeKnowledgeCloudRequest(options, req, res) {
             manifest,
             path: `cloud://${manifest.id}@${manifest.version}`,
         };
-        const privatePack = manifest.scope === "team" || manifest.scope === "project" || manifest.tenant_id !== undefined;
+        const privatePack = isPrivateKnowledgePack(manifest);
         if (privatePack) {
             const tenantId = manifestTenantId(manifest);
             if (tenantId === undefined || tenantId.trim().length === 0) {
@@ -382,6 +382,9 @@ async function loadPublishedPacksFromDir(dir, tenantId) {
     for (const file of files) {
         const path = join(dir, file);
         const manifest = validateKnowledgePackManifest(JSON.parse(await readFile(path, "utf-8")));
+        if (tenantId === undefined && isPrivateKnowledgePack(manifest)) {
+            throw new Error("official persisted pack cannot be private");
+        }
         if (tenantId !== undefined && manifestTenantId(manifest) !== tenantId) {
             throw new Error("tenant_id does not match persisted private directory");
         }
@@ -446,6 +449,9 @@ function manifestTenantId(manifest) {
     if (!isSafeTenantId(tenantId))
         throw new BadRequestError("tenant_id is invalid");
     return tenantId;
+}
+function isPrivateKnowledgePack(manifest) {
+    return manifest.scope === "team" || manifest.scope === "project" || manifest.tenant_id !== undefined;
 }
 function isSafeTenantId(tenantId) {
     return /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(tenantId);
