@@ -91,6 +91,18 @@ describe("proof CLI", () => {
           summary: "Verifier passed.",
         },
       }),
+      JSON.stringify({
+        event_id: "evt-proof-3",
+        loop_id: "cli-proof-loop",
+        type: "loop.worktree.merged",
+        seq: 3,
+        created_at: 1782090002000,
+        payload: {
+          task_id: "proof-task",
+          branch: "osstack/loop/proof",
+          commit: "abc123",
+        },
+      }),
     ].join("\n") + "\n");
 
     const exitCode = await main(["proof", "--workspace", tmp, "--events", eventsPath]);
@@ -110,6 +122,19 @@ describe("proof CLI", () => {
         task_id: "proof-task",
         pass: true,
         reviewer_agent_id: "local-verifier",
+      }],
+    });
+    const worktreeStatus = JSON.parse(await readFile(join(proofDir, "worktree-status.json"), "utf-8")) as {
+      status: string;
+      entries: Array<{ task_id: string; status: string; branch: string; commit: string }>;
+    };
+    expect(worktreeStatus).toMatchObject({
+      status: "recorded",
+      entries: [{
+        task_id: "proof-task",
+        status: "merged",
+        branch: "osstack/loop/proof",
+        commit: "abc123",
       }],
     });
   });

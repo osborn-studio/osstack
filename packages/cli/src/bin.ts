@@ -833,6 +833,7 @@ async function writeProofPack(
     { path: "events.jsonl", content: events.map((event) => JSON.stringify(event)).join("\n") + (events.length > 0 ? "\n" : "") },
     { path: "policy-decision.json", content: `${JSON.stringify(createPolicyDecisionEvidence(events), null, 2)}\n` },
     { path: "verify-results.json", content: `${JSON.stringify(createVerifyResultsEvidence(scorecard, events), null, 2)}\n` },
+    { path: "worktree-status.json", content: `${JSON.stringify(createWorktreeStatusEvidence(events), null, 2)}\n` },
   ];
 
   await mkdir(proofDir, { recursive: true });
@@ -925,6 +926,45 @@ function createVerifyResultsEvidence(
     status: results.every((result) => result.pass) ? "pass" : "fail",
     results,
   };
+}
+
+function createWorktreeStatusEvidence(events: LoopEvent[]): {
+  status: "recorded" | "unknown";
+  entries?: Array<{
+    task_id: string;
+    status: "created" | "merged" | "cleaned";
+    branch: string;
+    commit: string;
+    path: string;
+    event_seq: number;
+  }>;
+  reason?: string;
+} {
+  const entries = events
+    .filter((event) => (
+      event.type === "loop.worktree.created"
+      || event.type === "loop.worktree.merged"
+      || event.type === "loop.worktree.cleaned"
+    ))
+    .map((event) => ({
+      task_id: stringEventPayload(event, "task_id"),
+      status: event.type === "loop.worktree.created"
+        ? "created" as const
+        : event.type === "loop.worktree.merged"
+          ? "merged" as const
+          : "cleaned" as const,
+      branch: stringEventPayload(event, "branch"),
+      commit: stringEventPayload(event, "commit"),
+      path: stringEventPayload(event, "path"),
+      event_seq: event.seq,
+    }));
+  if (entries.length === 0) {
+    return {
+      status: "unknown",
+      reason: "No loop.worktree.* event evidence found.",
+    };
+  }
+  return { status: "recorded", entries };
 }
 
 function stringEventPayload(event: LoopEvent, key: string): string {
