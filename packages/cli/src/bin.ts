@@ -1121,6 +1121,7 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   osstack knowledge list --pack P [--json]
   osstack knowledge sync [--cloud-url URL] [--cache-dir P] [--json]
   osstack knowledge search <query> [--pack P] [--cloud-url URL] [--cache-dir P] [--limit N] [--json]
+  osstack knowledge inspect <chunk_id> [--pack P] [--cache-dir P] [--json]
   osstack knowledge import P --scope team|project --id ID --name NAME --license L --output P [--taxonomy T] [--json]
   osstack knowledge pin <pack_id>@<version> [--cache-dir P] [--json]
   osstack knowledge feedback <chunk_id> --useful|--bad [--cloud-url URL] [--cache-dir P] [--json]
@@ -1227,6 +1228,55 @@ Env:
       }
     }
     return 0;
+  }
+
+  if (sub === "inspect") {
+    const chunkId = firstPositionalValue(args.slice(1), new Set(["--pack", "--cache-dir"]));
+    if (chunkId === undefined) {
+      console.error("osstack: knowledge inspect requires <chunk_id>");
+      return 1;
+    }
+    const packPaths = flagValues(args, "--pack");
+    const packs = [
+      ...await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath))),
+      ...await listCachedKnowledgePacks(knowledgeCacheDir(args)),
+    ];
+    for (const pack of packs) {
+      const chunk = pack.manifest.chunks.find((item) => item.chunk_id === chunkId);
+      if (chunk === undefined) continue;
+      const sourceRefs = new Set(chunk.source_refs ?? []);
+      const sources = (pack.manifest.source_provenance ?? []).filter((source) => sourceRefs.has(source.source_id));
+      const result = {
+        pack: {
+          id: pack.manifest.id,
+          version: pack.manifest.version,
+          name: pack.manifest.name,
+          license: pack.manifest.license,
+          source_kind: pack.manifest.source_kind,
+          quality_score: pack.manifest.quality_score,
+          path: pack.path,
+        },
+        chunk,
+        sources,
+      };
+      if (args.includes("--json")) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(`${pack.manifest.id}@${pack.manifest.version}:${chunk.chunk_id}`);
+        console.log(chunk.title);
+        console.log(chunk.body);
+        if ((chunk.tags ?? []).length > 0) console.log(`tags=${chunk.tags?.join(",")}`);
+        if (sources.length > 0) {
+          console.log("sources:");
+          for (const source of sources) {
+            console.log(`  ${source.source_id} ${source.path} scope=${source.scope} license=${source.license}`);
+          }
+        }
+      }
+      return 0;
+    }
+    console.error(`osstack: knowledge chunk not found: ${chunkId}`);
+    return 1;
   }
 
   if (sub === "import") {

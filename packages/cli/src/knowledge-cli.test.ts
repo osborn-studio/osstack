@@ -65,6 +65,34 @@ describe("knowledge CLI", () => {
     });
   });
 
+  it("inspects a local knowledge chunk with pack metadata and provenance refs", async () => {
+    const packPath = await writePack();
+
+    const exitCode = await main(["knowledge", "inspect", "chunk-cloud-governance", "--pack", packPath, "--json"]);
+
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      pack: {
+        id: "osstack-cloud-bootstrap",
+        version: "2026.06.22",
+        source_kind: "processed_mit",
+        quality_score: 88,
+      },
+      chunk: {
+        chunk_id: "chunk-cloud-governance",
+        title: "Cloud governance trace",
+        body: expect.stringContaining("Osstack Knowledge Cloud should record pack ids"),
+        tags: ["cloud", "governance"],
+        source_refs: ["osstack-knowledge-cloud-v1"],
+      },
+      sources: [expect.objectContaining({
+        source_id: "osstack-knowledge-cloud-v1",
+        path: "processed/cloud-governance.md",
+        scope: "official",
+      })],
+    });
+  });
+
   it("searches Knowledge Cloud when a cloud URL is provided", async () => {
     const server = await startKnowledgeServer();
     try {
@@ -323,6 +351,7 @@ async function writePack(): Promise<string> {
         title: "Cloud governance trace",
         body: "Osstack Knowledge Cloud should record pack ids and chunk ids in report and proof evidence.",
         tags: ["cloud", "governance"],
+        source_refs: ["osstack-knowledge-cloud-v1"],
       },
       {
         chunk_id: "chunk-local-cache",
@@ -331,6 +360,14 @@ async function writePack(): Promise<string> {
         tags: ["local", "cache"],
       },
     ],
+    source_provenance: [{
+      source_id: "osstack-knowledge-cloud-v1",
+      path: "processed/cloud-governance.md",
+      sha256: "sha256-placeholder",
+      license: "MIT-derived-processed",
+      scope: "official",
+      imported_at: "2026-06-22T00:00:00.000Z",
+    }],
   }, null, 2));
   return packPath;
 }
