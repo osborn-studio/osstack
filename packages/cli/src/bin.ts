@@ -109,7 +109,7 @@ Loop 工程：
   pr                  生成 GitHub PR evidence body
 
 治理与知识：
-  governance scan     运行确定性治理检查
+  govern check        运行确定性治理检查
   compliance list     列出合规映射包
   knowledge search    搜索本地或云端 Osstack 知识库
   lessons list        查看本地 pitfall 知识库
@@ -283,6 +283,8 @@ Branch Steward:
   steward scan [--repo O/R] [--base B] [--remote R] [--workspace P] [--json]
 
 Governance:
+  govern check [path...] [--workspace P] [--changed] [--json]
+                                 Run deterministic governance checks over workspace files
   governance scan <path...> [--json]
                                  Run deterministic governance checks over files
   compliance list [--json]
@@ -451,7 +453,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     return await handleStewardCommand(args.slice(1));
   }
 
-  if (cmd === "governance") {
+  if (cmd === "governance" || cmd === "govern") {
     return await handleGovernanceCommand(args.slice(1));
   }
 
@@ -987,25 +989,42 @@ async function handleGovernanceCommand(args: string[]): Promise<number> {
   if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack governance — deterministic run governance checks
 
+  osstack govern check [path...] [--workspace P] [--changed] [--json]
   osstack governance scan <path...> [--json]
 `);
     return 0;
   }
 
-  if (sub !== "scan") {
+  if (sub !== "scan" && sub !== "check") {
     console.error(`osstack: unknown governance subcommand "${sub}"`);
     return 1;
   }
 
-  const paths = positionalValues(args.slice(1), new Set()).filter((value) => value !== "scan");
+  const paths = positionalValues(args.slice(1), new Set(["--workspace"])).filter((value) => value !== sub);
   if (paths.length === 0) {
-    console.error("osstack: governance scan requires at least one path");
-    return 1;
+    if (sub === "scan") {
+      console.error("osstack: governance scan requires at least one path");
+      return 1;
+    }
+    const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+    const resolvedPaths = args.includes("--changed") || args.includes("--diff")
+      ? await collectChangedGovernanceScanFiles(workspacePath)
+      : await collectGovernanceScanFiles(workspacePath);
+    if (resolvedPaths instanceof Error) {
+      console.error(`osstack: ${resolvedPaths.message}`);
+      return 1;
+    }
+    return await runGovernanceScan(resolvedPaths, args);
   }
 
+  return await runGovernanceScan(paths, args);
+}
+
+async function runGovernanceScan(paths: string[], args: string[]): Promise<number> {
   const result = await scanFiles(paths);
+  const output = { ...result, scanned_files: paths };
   if (args.includes("--json")) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(output, null, 2));
   } else {
     printGovernanceScan(result);
   }
@@ -2473,6 +2492,38 @@ async function collectGovernanceScanFiles(workspacePath: string): Promise<string
   const files: string[] = [];
   await collectGovernanceScanFilesInto(workspacePath, files);
   return files;
+}
+
+async function collectChangedGovernanceScanFiles(workspacePath: string): Promise<string[] | Error> {
+  try {
+    const [workingTree, staged] = await Promise.all([
+      execFileAsync("git", ["-C", workspacePath, "ls-files", "--modified", "--others", "--exclude-standard"], { timeout: 10_000 }),
+      execFileAsync("git", ["-C", workspacePath, "diff", "--name-only", "--cached", "--diff-filter=ACMRT"], { timeout: 10_000 }),
+    ]);
+    const relativePaths = uniqueNonEmptyLines(`${workingTree.stdout}\n${staged.stdout}`);
+    const files: string[] = [];
+    for (const relativePath of relativePaths) {
+      if (!isGovernanceScannableFile(relativePath)) continue;
+      const absolutePath = join(workspacePath, relativePath);
+      if (await isRegularFile(absolutePath)) files.push(absolutePath);
+    }
+    return files;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return new Error(`could not collect changed files with git: ${message}`);
+  }
+}
+
+function uniqueNonEmptyLines(value: string): string[] {
+  return [...new Set(value.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0))];
+}
+
+async function isRegularFile(path: string): Promise<boolean> {
+  try {
+    return (await stat(path)).isFile();
+  } catch {
+    return false;
+  }
 }
 
 async function collectGovernanceScanFilesInto(dir: string, files: string[]): Promise<void> {
