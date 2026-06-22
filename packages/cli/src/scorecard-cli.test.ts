@@ -8,11 +8,13 @@ import { main } from "./bin.js";
 let tmp: string;
 let logs: string[];
 let errors: string[];
+let oldLang: string | undefined;
 
 beforeEach(() => {
   tmp = mkdtempSync(join(tmpdir(), "osstack-cli-scorecard-"));
   logs = [];
   errors = [];
+  oldLang = process.env["OSSTACK_LANG"];
   vi.spyOn(console, "log").mockImplementation((...args) => {
     logs.push(args.map(String).join(" "));
   });
@@ -22,6 +24,8 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  if (oldLang === undefined) delete process.env["OSSTACK_LANG"];
+  else process.env["OSSTACK_LANG"] = oldLang;
   vi.restoreAllMocks();
   await rm(tmp, { recursive: true, force: true });
 });
@@ -47,6 +51,32 @@ describe("scorecard CLI", () => {
 
     expect(exitCode).toBe(0);
     expect(logs.join("\n")).toContain("# Osstack Scorecard - cli-scorecard-loop");
+  });
+
+  it("renders a Chinese scorecard with --lang zh-CN", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+
+    const exitCode = await main(["scorecard", "--workspace", tmp, "--lang", "zh-CN", "--stdout"]);
+
+    expect(exitCode).toBe(0);
+    const output = logs.join("\n");
+    expect(output).toContain("# Osstack 评分卡 - cli-scorecard-loop");
+    expect(output).toContain("## 摘要");
+    expect(output).toContain("## 评分项");
+  });
+
+  it("uses OSSTACK_LANG for written scorecard artifacts", async () => {
+    process.env["OSSTACK_LANG"] = "zh-CN";
+    await writeState(join(tmp, "LOOP-STATE.json"));
+
+    const exitCode = await main(["scorecard", "--workspace", tmp]);
+
+    expect(exitCode).toBe(0);
+    const markdownPath = join(tmp, "release", "osstack-scorecard-cli-scorecard-loop.md");
+    const htmlPath = join(tmp, "release", "osstack-scorecard-cli-scorecard-loop.html");
+    await expect(readFile(markdownPath, "utf-8")).resolves.toContain("# Osstack 评分卡 - cli-scorecard-loop");
+    await expect(readFile(htmlPath, "utf-8")).resolves.toContain("<html lang=\"zh-CN\">");
+    await expect(readFile(htmlPath, "utf-8")).resolves.toContain("<title>Osstack 评分卡 - cli-scorecard-loop</title>");
   });
 
   it("fails when state is missing", async () => {

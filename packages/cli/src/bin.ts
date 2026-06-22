@@ -1705,19 +1705,21 @@ async function handleScorecardCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack scorecard — loop evidence scorecard
 
-  osstack scorecard [run_id] [--workspace P] [--state P] [--output-dir P] [--stdout]
+  osstack scorecard [run_id] [--workspace P] [--state P] [--output-dir P] [--stdout] [--lang en|zh-CN]
 
 Options:
   --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
   --state P           JSON state path (default: LOOP-STATE.json)
   --output-dir P      Directory for scorecard files (default: <workspace>/release)
   --stdout            Print Markdown instead of writing files
+  --lang L            Scorecard language: en or zh-CN (default: OSSTACK_LANG or en)
 `);
     return 0;
   }
 
-  const runId = firstPositionalValue(args, new Set(["--workspace", "--state", "--output-dir"]));
+  const runId = firstPositionalValue(args, new Set(["--workspace", "--state", "--output-dir", "--lang"]));
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const language = resolveLanguage(flagValue(args, "--lang"));
   const evidenceResult = runId === undefined
     ? undefined
     : await readPersistedLoopRunEvidence(runId);
@@ -1734,7 +1736,7 @@ Options:
   }
 
   const scorecard = createLoopStateScorecardFromState(state);
-  const markdown = renderLoopStateScorecardMarkdown(scorecard);
+  const markdown = renderLoopStateScorecardMarkdown(scorecard, { language });
   if (args.includes("--stdout")) {
     console.log(markdown);
     return 0;
@@ -1746,7 +1748,7 @@ Options:
   const htmlPath = join(outputDir, `${baseName}.html`);
   await mkdir(outputDir, { recursive: true });
   await writeFile(markdownPath, markdown, "utf-8");
-  await writeFile(htmlPath, renderLoopStateScorecardHtml(scorecard), "utf-8");
+  await writeFile(htmlPath, renderLoopStateScorecardHtml(scorecard, { language }), "utf-8");
   console.log(`markdown=${markdownPath}`);
   console.log(`html=${htmlPath}`);
   console.log(`score=${scorecard.total_score}/${scorecard.max_score}`);
@@ -2273,8 +2275,9 @@ async function writeRequestedLoopArtifacts(
     const markdownPath = join(releaseDir, `osstack-scorecard-${loopId}.md`);
     const htmlPath = join(releaseDir, `osstack-scorecard-${loopId}.html`);
     await mkdir(releaseDir, { recursive: true });
-    await writeFile(markdownPath, renderLoopStateScorecardMarkdown(scorecard), "utf-8");
-    await writeFile(htmlPath, renderLoopStateScorecardHtml(scorecard), "utf-8");
+    const language = resolveLanguage(flagValue(args, "--lang"));
+    await writeFile(markdownPath, renderLoopStateScorecardMarkdown(scorecard, { language }), "utf-8");
+    await writeFile(htmlPath, renderLoopStateScorecardHtml(scorecard, { language }), "utf-8");
     artifacts.scorecard_markdown = markdownPath;
     artifacts.scorecard_html = htmlPath;
   }
@@ -2311,8 +2314,8 @@ async function writeProofPack(
   const worktreeStatus = createWorktreeStatusEvidence(events);
   const artifacts = [
     { path: "report.md", content: renderReportMarkdownForArtifacts(state, events) },
-    { path: "scorecard.md", content: renderLoopStateScorecardMarkdown(scorecard) },
-    { path: "scorecard.html", content: renderLoopStateScorecardHtml(scorecard) },
+    { path: "scorecard.md", content: renderLoopStateScorecardMarkdown(scorecard, { language: resolveLanguage() }) },
+    { path: "scorecard.html", content: renderLoopStateScorecardHtml(scorecard, { language: resolveLanguage() }) },
     { path: "loop-state.json", content: `${JSON.stringify(state, null, 2)}\n` },
     { path: "events.jsonl", content: events.map((event) => JSON.stringify(event)).join("\n") + (events.length > 0 ? "\n" : "") },
     { path: "policy-decision.json", content: `${JSON.stringify(policyDecision, null, 2)}\n` },

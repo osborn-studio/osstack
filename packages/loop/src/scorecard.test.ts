@@ -75,4 +75,25 @@ describe("loop state scorecard", () => {
     expect(html).toContain("scorecard-render-loop");
     expect(html).toContain("unknown");
   });
+
+  it("renders Chinese markdown and html labels when requested", () => {
+    const scorecard = createLoopStateScorecard(createLoopStateReport({
+      loop_id: "scorecard-zh-loop",
+      started_at: "2026-06-22T00:00:00.000Z",
+      updated_at: "2026-06-22T00:01:00.000Z",
+      completed_tasks: [],
+      in_progress: [],
+      pending: [],
+      decisions: [],
+    }));
+
+    const markdown = renderLoopStateScorecardMarkdown(scorecard, { language: "zh-CN" });
+    const html = renderLoopStateScorecardHtml(scorecard, { language: "zh-CN" });
+
+    expect(markdown).toContain("# Osstack 评分卡 - scorecard-zh-loop");
+    expect(markdown).toContain("## 摘要");
+    expect(markdown).toContain("## 评分项");
+    expect(html).toContain("<html lang=\"zh-CN\">");
+    expect(html).toContain("<title>Osstack 评分卡 - scorecard-zh-loop</title>");
+  });
 });

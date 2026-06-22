@@ -101,6 +101,10 @@ export interface RenderLoopStateReportMarkdownOptions {
   language?: LoopReportLanguage;
 }
 
+export interface RenderLoopStateScorecardOptions {
+  language?: LoopReportLanguage;
+}
+
 export function createLoopStateReport(state: LoopState, options: LoopStateReportOptions = {}): LoopStateReport {
   const completedTasks = state.completed_tasks;
   const successCount = completedTasks.filter((task) => task.outcome === "success").length;
@@ -301,16 +305,20 @@ export function renderLoopStateReportFromStateAndEvents(
   return renderLoopStateReportMarkdown(createLoopStateReport(state, { events }), options);
 }
 
-export function renderLoopStateScorecardMarkdown(scorecard: LoopStateScorecard): string {
+export function renderLoopStateScorecardMarkdown(
+  scorecard: LoopStateScorecard,
+  options: RenderLoopStateScorecardOptions = {},
+): string {
+  const text = scorecardText(options.language ?? "en");
   const lines = [
-    `# Osstack Scorecard - ${scorecard.loop_id}`,
+    `# ${text.title} - ${scorecard.loop_id}`,
     "",
-    "## Summary",
-    `- Score: ${scorecard.total_score} / ${scorecard.max_score}`,
-    `- Generated from: ${scorecard.generated_from}`,
+    `## ${text.summary}`,
+    `- ${text.score}: ${scorecard.total_score} / ${scorecard.max_score}`,
+    `- ${text.generatedFrom}: ${scorecard.generated_from}`,
     "",
-    "## Items",
-    "| Item | Status | Score | Evidence |",
+    `## ${text.items}`,
+    `| ${text.item} | ${text.status} | ${text.score} | ${text.evidence} |`,
     "| --- | --- | ---: | --- |",
     ...scorecard.items.map((item) => (
       `| ${item.id} | ${item.status} | ${item.earned} / ${item.max} | ${item.evidence.join("<br>")} |`
@@ -319,7 +327,12 @@ export function renderLoopStateScorecardMarkdown(scorecard: LoopStateScorecard):
   return `${lines.join("\n")}\n`;
 }
 
-export function renderLoopStateScorecardHtml(scorecard: LoopStateScorecard): string {
+export function renderLoopStateScorecardHtml(
+  scorecard: LoopStateScorecard,
+  options: RenderLoopStateScorecardOptions = {},
+): string {
+  const language = options.language ?? "en";
+  const text = scorecardText(language);
   const rows = scorecard.items.map((item) => `
       <tr class="${escapeHtml(item.status)}">
         <td>${escapeHtml(item.label)}</td>
@@ -329,11 +342,11 @@ export function renderLoopStateScorecardHtml(scorecard: LoopStateScorecard): str
       </tr>`).join("");
 
   return `<!doctype html>
-<html lang="en">
+<html lang="${language}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Osstack Scorecard - ${escapeHtml(scorecard.loop_id)}</title>
+  <title>${escapeHtml(text.title)} - ${escapeHtml(scorecard.loop_id)}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 32px; color: #17202a; }
     h1 { font-size: 28px; margin-bottom: 8px; }
@@ -347,11 +360,11 @@ export function renderLoopStateScorecardHtml(scorecard: LoopStateScorecard): str
   </style>
 </head>
 <body>
-  <h1>Osstack Scorecard - ${escapeHtml(scorecard.loop_id)}</h1>
-  <div class="score">Score: ${scorecard.total_score} / ${scorecard.max_score}</div>
+  <h1>${escapeHtml(text.title)} - ${escapeHtml(scorecard.loop_id)}</h1>
+  <div class="score">${escapeHtml(text.score)}: ${scorecard.total_score} / ${scorecard.max_score}</div>
   <table>
     <thead>
-      <tr><th>Item</th><th>Status</th><th>Score</th><th>Evidence</th></tr>
+      <tr><th>${escapeHtml(text.item)}</th><th>${escapeHtml(text.status)}</th><th>${escapeHtml(text.score)}</th><th>${escapeHtml(text.evidence)}</th></tr>
     </thead>
     <tbody>${rows}
     </tbody>
@@ -716,6 +729,40 @@ function reportText(language: LoopReportLanguage): {
     decisions: "Decisions",
     risks: "Risks",
     nextSteps: "Next Steps",
+  };
+}
+
+function scorecardText(language: LoopReportLanguage): {
+  title: string;
+  summary: string;
+  score: string;
+  generatedFrom: string;
+  items: string;
+  item: string;
+  status: string;
+  evidence: string;
+} {
+  if (language === "zh-CN") {
+    return {
+      title: "Osstack 评分卡",
+      summary: "摘要",
+      score: "分数",
+      generatedFrom: "生成来源",
+      items: "评分项",
+      item: "项目",
+      status: "状态",
+      evidence: "证据",
+    };
+  }
+  return {
+    title: "Osstack Scorecard",
+    summary: "Summary",
+    score: "Score",
+    generatedFrom: "Generated from",
+    items: "Items",
+    item: "Item",
+    status: "Status",
+    evidence: "Evidence",
   };
 }
 
