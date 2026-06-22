@@ -1522,6 +1522,7 @@ function releaseActionPlan(result: ReleaseDoctorResult): ReleaseActionPlan {
   ];
   const validationCommands = [
     `osstack release doctor --target ${result.target} --output release-readiness.md --json`,
+    "osstack proof validate <run_id> --proof-dir release/osstack-proof-<run_id> --json",
     ...(result.target === "all" || result.target === "npm"
       ? [
         versionPrNumber === undefined
