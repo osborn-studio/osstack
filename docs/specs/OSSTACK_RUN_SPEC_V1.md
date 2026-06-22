@@ -209,6 +209,9 @@ Implementations MUST use the vectors under `test-vectors/` as compatibility exam
 
 - `OS-GOV-001.json`: policy and governance evidence.
 - `OS-EVID-001.json`: state, event, and proof evidence.
+- `OS-EVID-BAD-001.json`: malformed external event-derived proof evidence.
+- `OS-PROOF-BAD-001.json`: malformed proof artifacts that must not be accepted as audit evidence.
+- `OS-AUDIT-001.json`: reviewed and audited proof evidence.
 - `OS-KNOW-001.json`: knowledge pack metadata and local/cloud mode evidence.
 
 Every MUST clause above SHOULD map to at least one schema, test vector, or deterministic verifier rule.

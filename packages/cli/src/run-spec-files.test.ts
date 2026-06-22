@@ -84,6 +84,7 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       "test-vectors/OS-GOV-001.json",
       "test-vectors/OS-EVID-001.json",
       "test-vectors/OS-EVID-BAD-001.json",
+      "test-vectors/OS-PROOF-BAD-001.json",
       "test-vectors/OS-AUDIT-001.json",
       "test-vectors/OS-KNOW-001.json",
     ];
@@ -128,6 +129,29 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
     expect(malformedEvidenceVector.expected_errors).toEqual(expect.arrayContaining([
       "verify-results.results[0].reviewer_agent_id is required",
       "worktree-status.entries[0].path is required",
+    ]));
+
+    const malformedProofVector = JSON.parse(
+      await readFile(join(specDir, "test-vectors", "OS-PROOF-BAD-001.json"), "utf-8"),
+    ) as {
+      expected_status: string;
+      expected_errors: string[];
+      proof_manifest: { artifacts: Array<{ path: string; sha256?: string; bytes?: number }> };
+      policy_decision: { status: string; reason: string };
+      knowledge_results: { results: Array<{ source_refs: string[] }> };
+    };
+    expect(malformedProofVector.expected_status).toBe("reject");
+    expect(malformedProofVector.proof_manifest.artifacts[0]?.sha256).toBe("not-a-sha256");
+    expect(malformedProofVector.proof_manifest.artifacts[0]?.bytes).toBe(0);
+    expect(malformedProofVector.policy_decision).toEqual({ status: "unknown", reason: "" });
+    expect(malformedProofVector.knowledge_results.results[0]?.source_refs).toEqual([]);
+    expect(malformedProofVector.expected_errors).toEqual(expect.arrayContaining([
+      "manifest.artifacts[0].sha256 must be a 64-character lowercase hex checksum",
+      "manifest.artifacts[0].bytes must be greater than zero",
+      "manifest.artifacts[1].sha256 is required",
+      "manifest.artifacts[1].bytes is required",
+      "policy-decision.reason is required when status is unknown",
+      "knowledge-results.results[0].source_refs must contain at least one source reference",
     ]));
 
     const auditVector = JSON.parse(
