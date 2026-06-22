@@ -183,13 +183,15 @@ describe("product entry commands", () => {
 
     const exitCode = await main(["release", "doctor", "--target", "npm", "--json"]);
 
-    expect(exitCode).toBe(0);
+    expect(exitCode).toBe(1);
     const result = JSON.parse(logs.join("\n")) as {
       ok: boolean;
+      readiness: { npm_publish: boolean };
       checks: Array<{ id: string; status: string; message: string; details?: Record<string, unknown> }>;
       next_steps: string[];
     };
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(false);
+    expect(result.readiness.npm_publish).toBe(false);
     expect(result.checks).toContainEqual(expect.objectContaining({
       id: "version_packages_pr",
       status: "warn",
@@ -235,9 +237,9 @@ describe("product entry commands", () => {
 
     const exitCode = await main(["release", "doctor", "--target", "npm", "--output", output, "--json"]);
 
-    expect(exitCode).toBe(0);
+    expect(exitCode).toBe(1);
     expect(JSON.parse(logs.join("\n"))).toMatchObject({
-      ok: true,
+      ok: false,
       target: "npm",
       output,
     });
@@ -247,7 +249,7 @@ describe("product entry commands", () => {
     expect(markdown).toContain("| version_packages_pr | warn |");
     expect(markdown).toContain("Review Version Packages PR #5");
     expect(markdown).toContain("Readiness");
-    expect(markdown).toContain("npm_publish");
+    expect(markdown).toContain("| npm_publish | not_ready |");
   });
 
   it("prints a release action plan from current readiness", async () => {
