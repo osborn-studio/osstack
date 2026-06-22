@@ -179,7 +179,7 @@ describe("product entry commands", () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "warn";
-    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "open:5:UNSTABLE";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "open:5:UNSTABLE:MERGEABLE:0";
 
     const exitCode = await main(["release", "doctor", "--target", "npm", "--json"]);
 
@@ -196,9 +196,11 @@ describe("product entry commands", () => {
       details: expect.objectContaining({
         number: 5,
         merge_state: "UNSTABLE",
+        mergeable: "MERGEABLE",
+        check_count: 0,
       }),
     }));
-    expect(result.next_steps.join("\n")).toContain("Review Version Packages PR #5");
+    expect(result.next_steps.join("\n")).toContain("Review Version Packages PR #5; it is mergeable but has no reported checks");
   });
 
   it("surfaces missing Knowledge Cloud deploy workflow status", async () => {
@@ -227,7 +229,7 @@ describe("product entry commands", () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "warn";
-    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "open:5:UNSTABLE";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "open:5:UNSTABLE:MERGEABLE:0";
     const output = join(tmp, "release-readiness.md");
 
     const exitCode = await main(["release", "doctor", "--target", "npm", "--output", output, "--json"]);
@@ -267,7 +269,8 @@ describe("product entry commands", () => {
     expect(result.ready).toBe(true);
     expect(result.blockers.join("\n")).toContain("Version Packages PR #5");
     expect(result.validation_commands).toContain("osstack release doctor --target npm --output release-readiness.md --json");
-    expect(result.validation_commands).toContain("gh pr view 5 --json mergeStateStatus,statusCheckRollup,url");
+    expect(result.validation_commands).toContain("gh pr view 5 --json mergeable,mergeStateStatus,statusCheckRollup,url");
+    expect(result.validation_commands).toContain("gh run list --branch changeset-release/main --limit 5");
     expect(result.publish_commands).toContain("gh pr merge 5 --squash --delete-branch");
     expect(result.publish_commands).toContain("npm install -g @osstack/cli");
   });
