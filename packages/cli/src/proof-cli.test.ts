@@ -271,6 +271,53 @@ describe("proof CLI", () => {
     expect(markdown).toContain("| Secure coding control | <strong style=\"color:#b00020\">MISSING</strong> |");
   });
 
+  it("validates proof evidence as a machine-readable release gate", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const eventsPath = join(tmp, "events.jsonl");
+    await writeProofEvents(eventsPath);
+    const proofExitCode = await main(["proof", "--workspace", tmp, "--events", eventsPath]);
+    expect(proofExitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+
+    logs = [];
+    const validExitCode = await main([
+      "proof",
+      "validate",
+      "cli-proof-loop",
+      "--workspace",
+      tmp,
+      "--json",
+    ]);
+    expect(validExitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      run_id: "cli-proof-loop",
+      proof_dir: proofDir,
+      ok: true,
+      missing: [],
+    });
+
+    await unlink(join(proofDir, "governance-results.json"));
+    logs = [];
+    const invalidExitCode = await main([
+      "proof",
+      "validate",
+      "cli-proof-loop",
+      "--workspace",
+      tmp,
+      "--json",
+    ]);
+
+    expect(invalidExitCode).toBe(1);
+    const summary = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      missing: Array<{ control_id: string; evidence_path: string }>;
+    };
+    expect(summary.ok).toBe(false);
+    expect(summary.missing).toEqual(expect.arrayContaining([
+      expect.objectContaining({ control_id: "secure-coding-control", evidence_path: "governance-results.json" }),
+    ]));
+  });
+
   it("fails open from cloud knowledge mode to local proof evidence", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
     const packPath = join(tmp, "knowledge-pack.json");
@@ -614,4 +661,48 @@ async function writeState(path: string): Promise<void> {
     pending: [],
     decisions: [],
   }, null, 2));
+}
+
+async function writeProofEvents(path: string): Promise<void> {
+  await writeFile(path, [
+    JSON.stringify({
+      event_id: "evt-proof-1",
+      loop_id: "cli-proof-loop",
+      type: "loop.plan.done",
+      seq: 1,
+      created_at: 1782090000000,
+      payload: {
+        task_id: "proof-task",
+        agent_id: "codex-cli",
+        routing_reason: "matched code.test capability",
+      },
+    }),
+    JSON.stringify({
+      event_id: "evt-proof-2",
+      loop_id: "cli-proof-loop",
+      type: "loop.verify.done",
+      seq: 2,
+      created_at: 1782090001000,
+      payload: {
+        task_id: "proof-task",
+        pass: true,
+        score: 1,
+        reviewer_agent_id: "local-verifier",
+        summary: "Verifier passed.",
+      },
+    }),
+    JSON.stringify({
+      event_id: "evt-proof-3",
+      loop_id: "cli-proof-loop",
+      type: "loop.worktree.merged",
+      seq: 3,
+      created_at: 1782090002000,
+      payload: {
+        task_id: "proof-task",
+        branch: "osstack/loop/proof",
+        commit: "abc123",
+        worktree_path: join(tmp, ".osstack-worktrees", "proof-task"),
+      },
+    }),
+  ].join("\n") + "\n");
 }

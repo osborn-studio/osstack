@@ -527,7 +527,7 @@ function renderKnowledgeTrace(knowledge: LoopKnowledgeTrace | undefined): string
   }
   if (knowledge.results.length > 0) {
     lines.push(...knowledge.results.map((result) => (
-      `- Chunk: ${result.chunk_id} (${result.pack_id}@${result.pack_version}, score ${result.score}) - ${result.title}`
+      `- Chunk: ${result.chunk_id} (${result.pack_id}@${result.pack_version}, score ${result.score}${result.matched_terms.length === 0 ? "" : `, matched_terms=${result.matched_terms.join(",")}`}) - ${result.title}`
     )));
   }
   return lines;

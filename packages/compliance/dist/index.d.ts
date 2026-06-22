@@ -44,6 +44,20 @@ export interface ProofViewOptions {
     evidence: ProofEvidence;
     language?: ProofViewLanguage;
 }
+export interface ProofEvidenceValidationControl {
+    control_id: string;
+    title: string;
+    evidence_path: string;
+    status: "PRESENT" | "MISSING";
+    reason?: string;
+}
+export interface ProofEvidenceValidation {
+    ok: boolean;
+    scope: string;
+    present: ProofEvidenceValidationControl[];
+    missing: ProofEvidenceValidationControl[];
+    controls: ProofEvidenceValidationControl[];
+}
 export declare function listCompliancePacks(): CompliancePack[];
 export declare function getCompliancePack(packId: string): CompliancePack;
 export declare function loadCompliancePack(packDir: string): Promise<CompliancePack>;
@@ -63,4 +77,10 @@ export declare function renderProofViewFromProofDir(options: {
     language?: ProofViewLanguage;
 }): Promise<string>;
 export declare function renderProofView(options: ProofViewOptions): string;
+export declare function validateProofEvidence(options: {
+    evidence: ProofEvidence;
+    packId?: string;
+    audience?: ProofAudience;
+    language?: ProofViewLanguage;
+}): ProofEvidenceValidation;
 //# sourceMappingURL=index.d.ts.map

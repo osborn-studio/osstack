@@ -80,6 +80,20 @@ try {
   const proofZipStat = await stat(summary.artifacts.proof_zip);
   assert(proofZipStat.size > 0, "proof zip must be non-empty");
 
+  const proofValidation = run(process.execPath, [
+    osstackBin,
+    "proof",
+    "validate",
+    summary.loop_id,
+    "--proof-dir",
+    proofDir,
+    "--json",
+  ], { cwd: root, capture: true });
+  const proofValidationSummary = JSON.parse(proofValidation.stdout);
+  assert(proofValidationSummary.ok === true, "proof validate must pass for deliver proof smoke");
+  assert(proofValidationSummary.scope === "proof-core", "proof validate must use proof-core by default");
+  assert(proofValidationSummary.missing?.length === 0, "proof validate must not report missing core evidence");
+
   const compliancePath = join(workspace, "release", "compliance-engineering-readiness.md");
   const compliance = run(process.execPath, [
     osstackBin,
@@ -137,6 +151,7 @@ try {
     scorecard: summary.artifacts.scorecard_markdown,
     proof_dir: proofDir,
     proof_zip: summary.artifacts.proof_zip,
+    proof_validation: "proof-core",
     compliance_report: compliancePath,
     pr_body: prSummary.path,
     conformance: "L4 Audited",

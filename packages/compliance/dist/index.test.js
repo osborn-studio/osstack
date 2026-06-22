@@ -3,7 +3,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { loadCompliancePack, loadProofEvidence, listCompliancePacks, renderComplianceReport, renderComplianceReportFromProofDir, renderProofView, renderProofViewFromProofDir, validateCompliancePackFiles, } from "./index.js";
+import { loadCompliancePack, loadProofEvidence, listCompliancePacks, renderComplianceReport, renderComplianceReportFromProofDir, renderProofView, renderProofViewFromProofDir, validateProofEvidence, validateCompliancePackFiles, } from "./index.js";
 let tmp;
 beforeEach(() => {
     tmp = mkdtempSync(join(tmpdir(), "osstack-compliance-"));
@@ -107,6 +107,34 @@ describe("compliance packs", () => {
         expect(markdown).toContain("| Change validation | MISSING |");
         expect(markdown).toContain("| Automated decision trace | MISSING |");
         expect(markdown).toContain("| Evidence integrity | MISSING |");
+    });
+    it("validates proof evidence into reusable present and missing controls", () => {
+        const validation = validateProofEvidence({
+            packId: "engineering-readiness",
+            evidence: {
+                ...sampleEvidence(),
+                governance: { status: "unknown", reason: "not evaluated" },
+                knowledge: { mode: "local", status: "recorded", results: [{ chunk_id: "chunk-1" }] },
+            },
+        });
+        expect(validation.ok).toBe(false);
+        expect(validation.present.map((item) => item.evidence_path)).toEqual(expect.arrayContaining([
+            "manifest.json",
+            "verify-results.json",
+            "policy-decision.json",
+            "worktree-status.json",
+        ]));
+        expect(validation.missing).toEqual(expect.arrayContaining([
+            expect.objectContaining({
+                control_id: "secure-coding-control",
+                evidence_path: "governance-results.json",
+                reason: "missing or malformed proof evidence",
+            }),
+            expect.objectContaining({
+                control_id: "knowledge-trace",
+                evidence_path: "knowledge-results.json",
+            }),
+        ]));
     });
     it("renders SOC 2 lite evidence mapping without claiming certification", () => {
         const markdown = renderComplianceReport({

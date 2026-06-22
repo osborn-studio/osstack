@@ -75,6 +75,7 @@ describe("loop state file", () => {
           title: "Loop proof evidence",
           score: 0.92,
           snippet: "Record knowledge chunks in proof evidence.",
+          matched_terms: ["proof"],
           tags: ["proof"],
           source_refs: [],
         }],
@@ -99,6 +100,7 @@ describe("loop state file", () => {
     expect(markdown).toContain("Worktree: osstack/loop/loop-test/task-1, commit abc123");
     expect(markdown).toContain("## Knowledge Trace");
     expect(markdown).toContain("chunk-loop-proof");
+    expect(markdown).toContain("matched_terms=proof");
   });
 
   it("renders empty sections explicitly", () => {

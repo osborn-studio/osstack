@@ -14,9 +14,11 @@ import { agentAuthMode, defaultAdapters, rolesForCapabilityKinds } from "@osstac
 import {
   getCompliancePack,
   listCompliancePacks,
+  loadProofEvidence,
   renderComplianceReport,
   renderComplianceReportFromProofDir,
   renderProofViewFromProofDir,
+  validateProofEvidence,
   type ProofAudience,
 } from "@osstack/compliance";
 import { getAgentScorecard, listAgentScorecards, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson } from "@osstack/core";
@@ -3106,6 +3108,7 @@ async function handleProofCommand(args: string[]): Promise<number> {
     console.log(`osstack proof — local evidence proof pack
 
   osstack proof [run_id] [--loop loop_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-mode M] [--knowledge-cloud-url URL] [--knowledge-query Q] [--compliance-pack P] [--output-dir P] [--json]
+  osstack proof validate <run_id> [--proof-dir P] [--workspace P] [--pack P] [--audience engineer|manager|auditor|customer] [--json]
   osstack proof view <run_id> --audience engineer|manager|auditor|customer [--proof-dir P] [--workspace P] [--output P] [--lang en|zh-CN] [--json]
 
 Options:
@@ -3121,6 +3124,7 @@ Options:
   --compliance-pack P
                       Optional compliance mapping pack to include
   --output-dir P      Directory for proof pack folders (default: <workspace>/release)
+  --pack P            Validate against a compliance mapping pack
   --lang L            Proof view language: en or zh-CN (default: OSSTACK_LANG or en)
   --json              Print machine-readable summary
 `);
@@ -3129,6 +3133,9 @@ Options:
 
   if (args[0] === "view") {
     return await handleProofViewCommand(args.slice(1));
+  }
+  if (args[0] === "validate") {
+    return await handleProofValidateCommand(args.slice(1));
   }
 
   const runId = firstPositionalValue(args, new Set([
@@ -3199,6 +3206,51 @@ Options:
     console.log(`artifacts=${summary.artifact_count}`);
   }
   return 0;
+}
+
+async function handleProofValidateCommand(args: string[]): Promise<number> {
+  const runId = firstPositionalValue(args, new Set(["--proof-dir", "--workspace", "--pack", "--audience", "--lang"]));
+  if (runId === undefined) {
+    console.error("osstack: proof validate requires a run_id");
+    return 1;
+  }
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const proofDir = flagValue(args, "--proof-dir") ?? join(workspacePath, "release", `osstack-proof-${safeFileSegment(runId)}`);
+  const audience = parseProofAudience(flagValue(args, "--audience"));
+  if (flagValue(args, "--audience") !== undefined && audience === undefined) {
+    console.error("osstack: proof validate requires --audience engineer|manager|auditor|customer");
+    return 1;
+  }
+  const packId = flagValue(args, "--pack");
+  const language = resolveLanguage(flagValue(args, "--lang"));
+  try {
+    const validation = validateProofEvidence({
+      evidence: await loadProofEvidence(proofDir),
+      ...(packId === undefined ? {} : { packId }),
+      ...(audience === undefined ? {} : { audience }),
+      language,
+    });
+    const summary = {
+      run_id: runId,
+      proof_dir: proofDir,
+      ...validation,
+    };
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(summary, null, 2));
+    } else {
+      console.log(`proof_validation=${validation.ok ? "pass" : "fail"}`);
+      console.log(`scope=${validation.scope}`);
+      console.log(`present=${validation.present.length}`);
+      console.log(`missing=${validation.missing.length}`);
+      for (const missing of validation.missing) {
+        console.log(`missing ${missing.control_id} ${missing.evidence_path}`);
+      }
+    }
+    return validation.ok ? 0 : 1;
+  } catch (error) {
+    console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  }
 }
 
 async function handleProofViewCommand(args: string[]): Promise<number> {
@@ -4417,7 +4469,7 @@ function knowledgeProofFromTrace(trace: LoopKnowledgeTrace): KnowledgeProofEvide
       status: "recorded",
       query: trace.query ?? "",
       packs: trace.packs,
-      results: trace.results,
+      results: trace.results.map((result) => ({ ...result, matched_terms: result.matched_terms ?? [] })),
       ...(trace.reason !== undefined ? { reason: trace.reason } : {}),
       ...(trace.fallback_mode === "local" ? { fallback_mode: trace.fallback_mode } : {}),
     };
@@ -4509,6 +4561,7 @@ function createAgentRuntimeEvidence(events: LoopEvent[]): {
 }
 
 function rolesForAgentId(agentId: string): string[] {
+  if (agentId === "local-command") return ["coding", "test-verify", "release/proof"];
   const adapter = defaultAdapters().find((candidate) => candidate.id === agentId);
   return rolesForCapabilityKinds(adapter?.capabilities().map((capability) => capability.kind) ?? []);
 }

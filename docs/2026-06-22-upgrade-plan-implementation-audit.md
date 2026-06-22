@@ -120,6 +120,7 @@
 - 支持 `--loop` artifact id，并校验 `LOOP-STATE.json` 的 loop_id，避免误读证据。
 - proof pack 包含 manifest、report、scorecard、loop state、governance/knowledge results、sha256sums。
 - `proof view` 支持 audience-oriented evidence views。
+- `osstack proof validate <run_id>` 支持对 proof pack 做机器可读结构门禁，默认检查 proof-core，也可通过 `--pack` 或 `--audience` 复用 compliance/proof-view 控制项。
 - npm install smoke 会生成 scorecard markdown、proof manifest、proof zip。
 
 未完成/需增强：
@@ -343,6 +344,7 @@
 
 - `osstack proof view <run_id> --audience engineer|manager|auditor|customer` 存在。
 - 视图基于已有 proof evidence，不生成假证据。
+- proof/compliance 的结构级证据检查已抽成 `validateProofEvidence`，可复用地输出 `present` / `missing` 控制项，并由 `osstack proof validate` 作为上线前门禁使用。
 
 需增强：
 
@@ -413,7 +415,7 @@ osstack release doctor --json
 
 在发布凭证补齐前，建议继续做本地可验证的 P1：
 
-1. 继续把 proof/compliance 的结构级证据检查扩展成可复用 validator；当前 proof view/compliance render 已经会把 malformed manifest、verify、policy、agent runtime、governance、worktree、knowledge evidence 标成 `MISSING`。
+1. 继续给 `osstack proof validate` 增加更多 negative/malformed vectors，并把它接入 release doctor / release plan；当前 proof/compliance 的结构级证据检查已抽成可复用 validator，proof view/compliance render 会把 malformed manifest、verify、policy、agent runtime、governance、worktree、knowledge evidence 标成 `MISSING`。
 2. 继续补更多 negative/malformed vectors，覆盖边界格式、旧版本兼容字段、外部 proof 目录导入场景。
 3. 继续强化 release doctor、Knowledge Cloud deploy preflight、npm publish preflight；当前 release doctor 已能识别 Version Packages PR #5 的 `CLEAN / MERGEABLE` 状态，显示 Knowledge Cloud Deploy workflow 最近一次 validation run，通过 `--output` 生成 Markdown 发布行动清单，并通过 `release plan` 生成验证/发布/部署命令 runbook。
 

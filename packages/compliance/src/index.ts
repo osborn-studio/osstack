@@ -54,6 +54,22 @@ export interface ProofViewOptions {
   language?: ProofViewLanguage;
 }
 
+export interface ProofEvidenceValidationControl {
+  control_id: string;
+  title: string;
+  evidence_path: string;
+  status: "PRESENT" | "MISSING";
+  reason?: string;
+}
+
+export interface ProofEvidenceValidation {
+  ok: boolean;
+  scope: string;
+  present: ProofEvidenceValidationControl[];
+  missing: ProofEvidenceValidationControl[];
+  controls: ProofEvidenceValidationControl[];
+}
+
 const BUILTIN_PACKS: CompliancePack[] = [{
   id: "engineering-readiness",
   version: "2026.06.22",
@@ -508,6 +524,65 @@ export function renderProofView(options: ProofViewOptions): string {
     ...rows,
     "",
   ].join("\n");
+}
+
+export function validateProofEvidence(options: {
+  evidence: ProofEvidence;
+  packId?: string;
+  audience?: ProofAudience;
+  language?: ProofViewLanguage;
+}): ProofEvidenceValidation {
+  const language = options.language ?? "en";
+  const controls = validationControls(options, language);
+  const evaluated = controls.map((control) => {
+    const status = controlStatus(control, options.evidence);
+    return {
+      control_id: control.control_id,
+      title: control.title,
+      evidence_path: control.evidence_path,
+      status,
+      ...(status === "MISSING" ? { reason: "missing or malformed proof evidence" } : {}),
+    };
+  });
+  const present = evaluated.filter((control) => control.status === "PRESENT");
+  const missing = evaluated.filter((control) => control.status === "MISSING");
+  return {
+    ok: missing.length === 0,
+    scope: validationScope(options),
+    present,
+    missing,
+    controls: evaluated,
+  };
+}
+
+function validationControls(
+  options: { packId?: string; audience?: ProofAudience },
+  language: ProofViewLanguage,
+): Array<{ control_id: string; title: string; evidence_path: string }> {
+  if (options.packId !== undefined) {
+    return getCompliancePack(options.packId).controls.map((control) => ({
+      control_id: control.id,
+      title: localizedControlTitle(control, language),
+      evidence_path: control.evidence_path,
+    }));
+  }
+  if (options.audience !== undefined) {
+    return proofViewControls(options.audience, language);
+  }
+  return [
+    { control_id: "evidence-integrity", title: "Evidence integrity", evidence_path: "manifest.json" },
+    { control_id: "change-validation", title: "Change validation", evidence_path: "verify-results.json" },
+    { control_id: "automated-decision-trace", title: "Automated decision trace", evidence_path: "policy-decision.json" },
+    { control_id: "agent-runtime-trace", title: "Agent runtime trace", evidence_path: "agent-runtime.json" },
+    { control_id: "secure-coding-control", title: "Secure coding control", evidence_path: "governance-results.json" },
+    { control_id: "worktree-isolation", title: "Worktree isolation evidence", evidence_path: "worktree-status.json" },
+  ];
+}
+
+function validationScope(options: { packId?: string; audience?: ProofAudience }): string {
+  if (options.packId !== undefined) return `compliance:${options.packId}`;
+  if (options.audience !== undefined) return `audience:${options.audience}`;
+  return "proof-core";
 }
 
 function proofViewText(language: ProofViewLanguage): {
