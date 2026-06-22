@@ -2355,6 +2355,7 @@ async function writeProofPack(
     { path: "worktree-status.json", content: `${JSON.stringify(worktreeStatus, null, 2)}\n` },
     { path: "governance-results.json", content: `${JSON.stringify(governance, null, 2)}\n` },
     { path: "knowledge-results.json", content: `${JSON.stringify(knowledge, null, 2)}\n` },
+    { path: "logs/events.log", content: renderProofEventsLog(events) },
   ];
   artifacts.push(...createVerifierOutputArtifacts(verifyResults));
   if (workspacePath !== undefined) {
@@ -3099,6 +3100,29 @@ function verifierOutputDir(agentId: string): "checker-output" | "reviewer-output
   return normalized.includes("checker") || normalized.includes("verify") || normalized.includes("verifier")
     ? "checker-output"
     : "reviewer-output";
+}
+
+function renderProofEventsLog(events: LoopEvent[]): string {
+  const lines = events.map((event) => `${event.seq} ${event.type} ${proofEventSummary(event)}`);
+  const content = lines.length === 0
+    ? "No loop events were provided for this proof pack.\n"
+    : `${lines.join("\n")}\n`;
+  return new PIIRedactor().redact(content).text;
+}
+
+function proofEventSummary(event: LoopEvent): string {
+  if (event.type === "loop.verify.done") {
+    const taskId = stringEventPayload(event, "task_id");
+    const pass = booleanEventPayload(event, "pass") ? "passed" : "failed";
+    return `${taskId} verify ${pass}: ${stringEventPayload(event, "summary")}`;
+  }
+  if (event.type === "loop.plan.done") {
+    return `${stringEventPayload(event, "task_id")} planned for ${stringEventPayload(event, "agent_id")}: ${stringEventPayload(event, "routing_reason")}`;
+  }
+  if (event.type.startsWith("loop.worktree.")) {
+    return `${stringEventPayload(event, "task_id")} ${event.type.replace("loop.worktree.", "worktree ")} ${stringEventPayload(event, "branch")}`;
+  }
+  return stringEventPayload(event, "summary");
 }
 
 function createVerifyResultsEvidence(
