@@ -38,10 +38,20 @@ describe("proof CLI", () => {
     const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
     const manifest = JSON.parse(await readFile(join(proofDir, "manifest.json"), "utf-8")) as {
       loop_id: string;
+      run_id: string;
+      osstack_version: string;
+      workspace: string;
+      agent_id: string;
+      agent_ids: string[];
       artifacts: Array<{ path: string; sha256: string }>;
     };
     expect(logs.join("\n")).toContain(`proof=${proofDir}`);
     expect(manifest.loop_id).toBe("cli-proof-loop");
+    expect(manifest.run_id).toBe("cli-proof-loop");
+    expect(manifest.osstack_version).toMatch(/^\d+\.\d+\.\d+/);
+    expect(manifest.workspace).toBe(tmp);
+    expect(manifest.agent_id).toBe("codex-cli");
+    expect(manifest.agent_ids).toEqual(["codex-cli"]);
     expect(manifest.artifacts).toEqual(expect.arrayContaining([
       expect.objectContaining({ path: "report.md", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
       expect.objectContaining({ path: "scorecard.html", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),

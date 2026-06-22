@@ -2399,7 +2399,12 @@ async function writeProofPack(
   const manifest = {
     schema_version: 1,
     kind: "osstack.proof_pack",
+    osstack_version: VERSION,
+    run_id: artifactId,
     loop_id: state.loop_id,
+    agent_id: primaryAgentId(state),
+    agent_ids: proofAgentIds(state),
+    ...(workspacePath !== undefined ? { workspace: workspacePath } : {}),
     generated_from: "LOOP-STATE.json",
     generated_at: new Date().toISOString(),
     artifacts: manifestArtifacts,
@@ -2412,6 +2417,14 @@ async function writeProofPack(
     proof_manifest: proofManifest,
     artifact_count: manifestArtifacts.length + 1,
   };
+}
+
+function primaryAgentId(state: LoopState): string {
+  return proofAgentIds(state)[0] ?? "unknown";
+}
+
+function proofAgentIds(state: LoopState): string[] {
+  return [...new Set(state.completed_tasks.map((task) => task.agent_id).filter((agentId) => agentId.length > 0))];
 }
 
 function renderSha256Sums(artifacts: Array<{ path: string; sha256: string }>): string {
