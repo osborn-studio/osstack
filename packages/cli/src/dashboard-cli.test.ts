@@ -139,6 +139,50 @@ describe("dashboard/cockpit CLI", () => {
     await expect(readFile(summary.report, "utf-8")).resolves.toContain("Generate reports from the cockpit surface.");
   });
 
+  it("runs queued work from the cockpit with evidence defaults", async () => {
+    const workspace = join(tmp, "workspace");
+    await mkdir(join(workspace, "tasks"), { recursive: true });
+    await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
+      task_id: "cockpit-run-task",
+      capability: "code.test",
+      prompt: "Run queued work from cockpit",
+    }, null, 2));
+
+    const exitCode = await main([
+      "cockpit",
+      "run",
+      "--workspace",
+      workspace,
+      "--execute",
+      "node -e \"require('fs').writeFileSync('cockpit-run.txt','ok')\"",
+      "--verify",
+      "node -e \"process.exit(require('fs').existsSync('cockpit-run.txt') ? 0 : 1)\"",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      loop_id: string;
+      completed_tasks: Array<{ task_id: string; outcome: string }>;
+      artifacts: {
+        report: string;
+        scorecard_markdown: string;
+        scorecard_html: string;
+        proof_dir: string;
+        proof_manifest: string;
+      };
+    };
+    expect(summary.completed_tasks).toEqual([
+      expect.objectContaining({ task_id: "cockpit-run-task", outcome: "success" }),
+    ]);
+    expect(summary.artifacts.report).toBe(join(workspace, "reports", `osstack-report-${summary.loop_id}.md`));
+    expect(summary.artifacts.scorecard_markdown).toBe(join(workspace, "release", `osstack-scorecard-${summary.loop_id}.md`));
+    expect(summary.artifacts.scorecard_html).toBe(join(workspace, "release", `osstack-scorecard-${summary.loop_id}.html`));
+    expect(summary.artifacts.proof_dir).toBe(join(workspace, "release", `osstack-proof-${summary.loop_id}`));
+    await expect(readFile(summary.artifacts.report, "utf-8")).resolves.toContain(`# Osstack Loop Report - ${summary.loop_id}`);
+    await expect(readFile(summary.artifacts.proof_manifest, "utf-8")).resolves.toContain("\"kind\": \"osstack.proof_pack\"");
+  });
+
   it("generates a cockpit proof pack from workspace loop evidence", async () => {
     const workspace = join(tmp, "workspace");
     await mkdir(workspace, { recursive: true });

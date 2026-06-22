@@ -5208,11 +5208,17 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
     return await handleCockpitProofCommand(args.slice(1));
   }
 
+  if (sub === "run") {
+    return await handleCockpitRunCommand(args.slice(1));
+  }
+
   if (sub === "help") {
     console.log(`osstack dashboard / cockpit — local development cockpit
 
   osstack cockpit           Show daemon, run, kanban, report, and proof summary
   osstack cockpit --json    Print daemon status + dashboard snapshot JSON
+  osstack cockpit run [loop run options]
+                            Run queued work with report, scorecard, and proof defaults
   osstack cockpit report [run_id] [--workspace P] [--state P] [--events P] [--output P] [--open]
                             Generate a cockpit report from loop evidence
   osstack cockpit proof [run_id] [--workspace P] [--state P] [--events P] [--output-dir P] [--open]
@@ -5274,6 +5280,19 @@ async function handleCockpitReportCommand(args: string[]): Promise<number> {
     console.log(`opened=${opened ? "yes" : "no"}`);
   }
   return 0;
+}
+
+async function handleCockpitRunCommand(args: string[]): Promise<number> {
+  const runArgs = ["run", ...cockpitRunArgs(args)];
+  return await handleLoopCommand(runArgs);
+}
+
+function cockpitRunArgs(args: string[]): string[] {
+  const next = [...args];
+  if (!next.includes("--source")) {
+    next.push("--source", "task_queue");
+  }
+  return ensureFlags(next, ["--report", "--scorecard", "--proof"]);
 }
 
 async function handleCockpitProofCommand(args: string[]): Promise<number> {
