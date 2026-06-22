@@ -7531,7 +7531,7 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
     }
     const summary = {
       daemon: healthResp.result,
-      cockpit: snapshotResp.result,
+      cockpit: workspaceScopedCockpitSnapshot(snapshotResp.result, args),
     };
     if (args.includes("--json")) {
       console.log(JSON.stringify(summary, null, 2));
@@ -7658,6 +7658,19 @@ function workspaceDashboardUrl(url: string, args: string[]): string {
   const nextUrl = new URL(url);
   nextUrl.searchParams.set("workspace", resolve(workspacePath));
   return nextUrl.toString();
+}
+
+function workspaceScopedCockpitSnapshot(snapshot: unknown, args: string[]): unknown {
+  if (!isRecord(snapshot)) return snapshot;
+  const dashboard = isRecord(snapshot["dashboard"]) ? snapshot["dashboard"] : undefined;
+  if (dashboard === undefined || typeof dashboard["url"] !== "string") return snapshot;
+  return {
+    ...snapshot,
+    dashboard: {
+      ...dashboard,
+      url: workspaceDashboardUrl(dashboard["url"], args),
+    },
+  };
 }
 
 async function handleCockpitNextCommand(args: string[]): Promise<number> {
