@@ -61,6 +61,7 @@ export interface KnowledgeCloudAuditEntry {
 
 type KnowledgeCloudAuditAction = KnowledgeCloudAuditEntry["action"];
 type KnowledgeCloudAuditStatus = KnowledgeCloudAuditEntry["status"];
+const MAX_JSON_BODY_BYTES = 1024 * 1024;
 
 export interface PublishedKnowledgeCloudPacks {
   packs: KnowledgePack[];
@@ -76,6 +77,10 @@ export function createKnowledgeCloudHandler(options: KnowledgeCloudOptions) {
     try {
       await routeKnowledgeCloudRequest({ ...options, packs, privatePacks, feedbackLog, auditLog }, req, res);
     } catch (error) {
+      if (error instanceof PayloadTooLargeError) {
+        sendJson(res, 413, { error: error.message });
+        return;
+      }
       if (error instanceof BadRequestError) {
         sendJson(res, 400, { error: error.message });
         return;
@@ -535,8 +540,14 @@ function packSummary(manifest: KnowledgePackManifest): KnowledgePackSummary {
 
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = [];
+  let bytes = 0;
   for await (const chunk of req) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk));
+    bytes += buffer.byteLength;
+    if (bytes > MAX_JSON_BODY_BYTES) {
+      throw new PayloadTooLargeError("request body too large");
+    }
+    chunks.push(buffer);
   }
   const raw = Buffer.concat(chunks).toString("utf-8").trim();
   if (raw.length === 0) return {};
@@ -597,3 +608,5 @@ function sendJson(res: ServerResponse, status: number, payload: unknown): void {
 }
 
 class BadRequestError extends Error {}
+
+class PayloadTooLargeError extends Error {}

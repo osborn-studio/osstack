@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { loadKnowledgePack, loadKnowledgePackIndex, searchKnowledgePacks, validateKnowledgePackManifest, validateKnowledgePublishGate, } from "@osstack/knowledge";
+const MAX_JSON_BODY_BYTES = 1024 * 1024;
 export function createKnowledgeCloudHandler(options) {
     const feedbackLog = [...(options.feedbackLog ?? [])];
     const auditLog = [...(options.auditLog ?? [])];
@@ -12,6 +13,10 @@ export function createKnowledgeCloudHandler(options) {
             await routeKnowledgeCloudRequest({ ...options, packs, privatePacks, feedbackLog, auditLog }, req, res);
         }
         catch (error) {
+            if (error instanceof PayloadTooLargeError) {
+                sendJson(res, 413, { error: error.message });
+                return;
+            }
             if (error instanceof BadRequestError) {
                 sendJson(res, 400, { error: error.message });
                 return;
@@ -453,8 +458,14 @@ function packSummary(manifest) {
 }
 async function readJsonBody(req) {
     const chunks = [];
+    let bytes = 0;
     for await (const chunk of req) {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk));
+        bytes += buffer.byteLength;
+        if (bytes > MAX_JSON_BODY_BYTES) {
+            throw new PayloadTooLargeError("request body too large");
+        }
+        chunks.push(buffer);
     }
     const raw = Buffer.concat(chunks).toString("utf-8").trim();
     if (raw.length === 0)
@@ -513,5 +524,7 @@ function sendJson(res, status, payload) {
     res.end(`${JSON.stringify(payload)}\n`);
 }
 class BadRequestError extends Error {
+}
+class PayloadTooLargeError extends Error {
 }
 //# sourceMappingURL=server.js.map

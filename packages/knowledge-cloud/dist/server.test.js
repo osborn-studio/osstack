@@ -134,6 +134,21 @@ describe("Knowledge Cloud HTTP service", () => {
             error: "invalid JSON body",
         });
     });
+    it("rejects oversized JSON request bodies", async () => {
+        const url = await startCloud({ packs: await officialPacks() });
+        const response = await fetch(`${url}/v1/search`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+                query: "proof",
+                padding: "x".repeat(1024 * 1024),
+            }),
+        });
+        expect(response.status).toBe(413);
+        await expect(response.json()).resolves.toMatchObject({
+            error: "request body too large",
+        });
+    });
     it("serves tenant private packs only to authorized matching tenants", async () => {
         const packs = await officialPacks();
         const privatePack = teamPack();
