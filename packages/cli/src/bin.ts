@@ -28,6 +28,7 @@ import {
 } from "@osstack/github";
 import {
   LoopEngine,
+  countTaskQueueTasks,
   enqueueTask,
   readLoopState,
   renderLoopStateMarkdown,
@@ -4997,12 +4998,14 @@ async function checkTaskQueue(
   const jsonFiles = entries.filter((entry) => entry.endsWith(".json")).sort();
   let validTasks = 0;
   const invalidFiles: string[] = [];
+  const invalidDetails: Record<string, string> = {};
   for (const file of jsonFiles) {
     const path = join(taskDir, file);
     try {
-      validTasks += countQueueTasks(JSON.parse(await readFile(path, "utf-8")) as unknown);
-    } catch {
+      validTasks += countTaskQueueTasks(JSON.parse(await readFile(path, "utf-8")) as unknown);
+    } catch (error) {
       invalidFiles.push(file);
+      invalidDetails[file] = errorMessage(error);
     }
   }
 
@@ -5012,6 +5015,7 @@ async function checkTaskQueue(
       json_files: jsonFiles.length,
       valid_tasks: validTasks,
       invalid_files: invalidFiles,
+      invalid_details: invalidDetails,
     });
     return;
   }
@@ -5100,23 +5104,6 @@ async function checkLoopDaemon(
       error: errorMessage(error),
     });
   }
-}
-
-function countQueueTasks(value: unknown): number {
-  const items = Array.isArray(value) ? value : [value];
-  if (items.length === 0) throw new Error("task queue file cannot be empty");
-  let count = 0;
-  for (const item of items) {
-    if (item === null || Array.isArray(item) || typeof item !== "object") {
-      throw new Error("task queue item must be an object");
-    }
-    const prompt = (item as Record<string, unknown>)["prompt"];
-    if (typeof prompt !== "string" || prompt.trim() === "") {
-      throw new Error("task queue item requires a non-empty prompt");
-    }
-    count++;
-  }
-  return count;
 }
 
 function printLoopDoctor(result: LoopDoctorResult): void {

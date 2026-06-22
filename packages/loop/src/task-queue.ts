@@ -25,6 +25,10 @@ export interface ArchiveTaskResult {
   toPath?: string;
 }
 
+export interface ParseTaskQueueOptions {
+  taskFile?: string;
+}
+
 export async function enqueueTask(input: EnqueueTaskInput): Promise<EnqueuedTask> {
   const taskId = input.taskId ?? `task_${randomUUID().slice(0, 8)}`;
   const task = Task.parse({
@@ -43,9 +47,30 @@ export async function enqueueTask(input: EnqueueTaskInput): Promise<EnqueuedTask
     capability: task.capability,
     prompt: task.prompt,
     priority: task.priority,
+    source: task.source,
     ...(task.context !== undefined ? { context: task.context } : {}),
   }, null, 2)}\n`, "utf-8");
   return { task, path };
+}
+
+export function parseTaskQueueFile(raw: unknown, options: ParseTaskQueueOptions = {}): LoopTask[] {
+  const parsed = TaskQueueFile.parse(raw);
+  const items = Array.isArray(parsed) ? parsed : [parsed];
+  return items.map((item) => Task.parse({
+    task_id: item.task_id ?? randomUUID(),
+    capability: item.capability ?? "code.write",
+    prompt: item.prompt,
+    priority: item.priority ?? 50,
+    source: "task_queue",
+    context: {
+      ...(item.context ?? {}),
+      ...(options.taskFile === undefined ? {} : { task_file: options.taskFile }),
+    },
+  }));
+}
+
+export function countTaskQueueTasks(raw: unknown): number {
+  return parseTaskQueueFile(raw).length;
 }
 
 export async function archiveCompletedTaskFile(
@@ -83,8 +108,15 @@ const TaskQueueItem = z.object({
   capability: z.string().optional(),
   prompt: z.string().min(1),
   priority: z.number().min(0).max(100).optional(),
+  source: z.literal("task_queue").optional(),
   context: z.record(z.unknown()).optional(),
+}).strict();
+
+const TaskQueueFileItem = TaskQueueItem.extend({
+  task_id: z.string().optional(),
 });
+
+const TaskQueueFile = z.union([TaskQueueFileItem, z.array(TaskQueueFileItem).min(1)]);
 
 async function uniqueTaskPath(dir: string, filename: string): Promise<string> {
   const base = filename.endsWith(".json") ? filename.slice(0, -5) : filename;

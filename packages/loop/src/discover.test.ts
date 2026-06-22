@@ -224,4 +224,27 @@ describe("discover scanners", () => {
     });
     expect(tasks[0]!.context?.["task_file"]).toBe(join(repo, "tasks", "task.json"));
   });
+
+  it("TaskQueueScanner ignores queue files that fail schema validation", async () => {
+    const repo = mkdtempSync(join(tmpdir(), "osstack-loop-"));
+    mkdirSync(join(repo, "tasks"));
+    writeFileSync(join(repo, "tasks", "valid.json"), JSON.stringify({
+      task_id: "valid-task",
+      prompt: "Run the valid task",
+    }));
+    writeFileSync(join(repo, "tasks", "bad-extra.json"), JSON.stringify({
+      task_id: "bad-extra",
+      prompt: "This should be rejected",
+      unexpected: true,
+    }));
+    writeFileSync(join(repo, "tasks", "bad-source.json"), JSON.stringify({
+      task_id: "bad-source",
+      prompt: "This should also be rejected",
+      source: "manual",
+    }));
+
+    const tasks = await new TaskQueueScanner(repo).scan();
+
+    expect(tasks.map((task) => task.task_id)).toEqual(["valid-task"]);
+  });
 });

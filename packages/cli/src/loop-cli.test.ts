@@ -421,13 +421,18 @@ describe("loop CLI", () => {
     expect(exitCode).toBe(1);
     const result = JSON.parse(logs.join("\n")) as {
       ok: boolean;
-      checks: Array<{ id: string; status: string; details?: { invalid_files?: string[] } }>;
+      checks: Array<{ id: string; status: string; details?: { invalid_files?: string[]; invalid_details?: Record<string, string> } }>;
     };
     expect(result.ok).toBe(false);
     expect(result.checks).toContainEqual(expect.objectContaining({
       id: "task_queue",
       status: "error",
-      details: expect.objectContaining({ invalid_files: ["bad.json"] }),
+      details: expect.objectContaining({
+        invalid_files: ["bad.json"],
+        invalid_details: expect.objectContaining({
+          "bad.json": expect.stringContaining("prompt"),
+        }),
+      }),
     }));
   });
 

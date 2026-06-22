@@ -3,6 +3,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import {
   LoopEngine,
+  countTaskQueueTasks,
   enqueueTask,
   readLoopState,
   renderLoopStateMarkdown,
@@ -261,12 +262,14 @@ async function checkTaskQueue(
   const jsonFiles = entries.filter((entry) => entry.endsWith(".json")).sort();
   let validTasks = 0;
   const invalidFiles: string[] = [];
+  const invalidDetails: Record<string, string> = {};
   for (const file of jsonFiles) {
     const path = join(taskDir, file);
     try {
-      validTasks += countQueueTasks(JSON.parse(await readFile(path, "utf-8")) as unknown);
-    } catch {
+      validTasks += countTaskQueueTasks(JSON.parse(await readFile(path, "utf-8")) as unknown);
+    } catch (error) {
       invalidFiles.push(file);
+      invalidDetails[file] = errorMessage(error);
     }
   }
   if (invalidFiles.length > 0) {
@@ -275,6 +278,7 @@ async function checkTaskQueue(
       json_files: jsonFiles.length,
       valid_tasks: validTasks,
       invalid_files: invalidFiles,
+      invalid_details: invalidDetails,
     });
     return;
   }
@@ -299,14 +303,6 @@ async function checkLoopState(
     loop_id: state.loop_id,
     completed_tasks: state.completed_tasks.length,
   });
-}
-
-function countQueueTasks(value: unknown): number {
-  if (Array.isArray(value)) return value.reduce((sum, item) => sum + countQueueTasks(item), 0);
-  if (typeof value !== "object" || value === null) throw new Error("task item must be an object");
-  const prompt = (value as { prompt?: unknown }).prompt;
-  if (typeof prompt !== "string" || prompt.trim() === "") throw new Error("task prompt is required");
-  return 1;
 }
 
 function printLoopRun(result: LoopRunSummary, json: boolean): void {
