@@ -96,5 +96,17 @@ describe("daemon evidence CLI", () => {
     const proofDir = join(workspace, "release", `osstack-proof-${runSummary.run_id}`);
     await expect(readFile(join(proofDir, "events.jsonl"), "utf-8")).resolves.toContain("loop.verify.done");
     await expect(readFile(join(proofDir, "report.md"), "utf-8")).resolves.toContain("## Events Timeline");
+    await expect(readFile(join(proofDir, "policy-decision.json"), "utf-8")).resolves.toContain("daemon-evidence-task");
+    const verifyResults = JSON.parse(await readFile(join(proofDir, "verify-results.json"), "utf-8")) as {
+      status: string;
+      results: Array<{ task_id: string; pass: boolean }>;
+    };
+    expect(verifyResults).toMatchObject({
+      status: "pass",
+      results: [expect.objectContaining({
+        task_id: "daemon-evidence-task",
+        pass: true,
+      })],
+    });
   });
 });

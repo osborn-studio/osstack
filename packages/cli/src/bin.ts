@@ -831,11 +831,8 @@ async function writeProofPack(
     { path: "scorecard.html", content: renderLoopStateScorecardHtml(scorecard) },
     { path: "loop-state.json", content: `${JSON.stringify(state, null, 2)}\n` },
     { path: "events.jsonl", content: events.map((event) => JSON.stringify(event)).join("\n") + (events.length > 0 ? "\n" : "") },
-    { path: "policy-decision.json", content: `${JSON.stringify({ status: "unknown", reason: "No policy decision evidence in state-only proof pack." }, null, 2)}\n` },
-    { path: "verify-results.json", content: `${JSON.stringify({
-      status: scorecard.items.find((item) => item.id === "verify_gates_passed")?.status ?? "unknown",
-      reason: "Derived from completed task outcomes in LOOP-STATE.json.",
-    }, null, 2)}\n` },
+    { path: "policy-decision.json", content: `${JSON.stringify(createPolicyDecisionEvidence(events), null, 2)}\n` },
+    { path: "verify-results.json", content: `${JSON.stringify(createVerifyResultsEvidence(scorecard, events), null, 2)}\n` },
   ];
 
   await mkdir(proofDir, { recursive: true });
@@ -869,6 +866,80 @@ async function writeProofPack(
 
 function hasRequestedLoopArtifacts(args: string[]): boolean {
   return args.includes("--report") || args.includes("--scorecard") || args.includes("--proof");
+}
+
+function createPolicyDecisionEvidence(events: LoopEvent[]): {
+  status: "recorded" | "unknown";
+  decisions?: Array<{ task_id: string; agent_id: string; reason: string; event_seq: number }>;
+  reason?: string;
+} {
+  const decisions = events
+    .filter((event) => event.type === "loop.plan.done")
+    .map((event) => ({
+      task_id: stringEventPayload(event, "task_id"),
+      agent_id: stringEventPayload(event, "agent_id"),
+      reason: stringEventPayload(event, "routing_reason"),
+      event_seq: event.seq,
+    }));
+  if (decisions.length === 0) {
+    return {
+      status: "unknown",
+      reason: "No loop.plan.done policy decision evidence found.",
+    };
+  }
+  return { status: "recorded", decisions };
+}
+
+function createVerifyResultsEvidence(
+  scorecard: ReturnType<typeof createLoopStateScorecardFromState>,
+  events: LoopEvent[],
+): {
+  status: "pass" | "fail" | "unknown";
+  results?: Array<{
+    task_id: string;
+    pass: boolean;
+    score: number | "unknown";
+    reviewer_agent_id: string;
+    summary: string;
+    event_seq: number;
+  }>;
+  reason?: string;
+} {
+  const results = events
+    .filter((event) => event.type === "loop.verify.done")
+    .map((event) => ({
+      task_id: stringEventPayload(event, "task_id"),
+      pass: booleanEventPayload(event, "pass"),
+      score: numberEventPayload(event, "score") ?? "unknown",
+      reviewer_agent_id: stringEventPayload(event, "reviewer_agent_id"),
+      summary: stringEventPayload(event, "summary"),
+      event_seq: event.seq,
+    }));
+  if (results.length === 0) {
+    return {
+      status: scorecard.items.find((item) => item.id === "verify_gates_passed")?.status ?? "unknown",
+      reason: "No loop.verify.done event evidence found; status derived from completed task outcomes in LOOP-STATE.json.",
+    };
+  }
+  return {
+    status: results.every((result) => result.pass) ? "pass" : "fail",
+    results,
+  };
+}
+
+function stringEventPayload(event: LoopEvent, key: string): string {
+  const value = event.payload?.[key];
+  return typeof value === "string" && value.length > 0 ? value : "unknown";
+}
+
+function booleanEventPayload(event: LoopEvent, key: string): boolean {
+  const value = event.payload?.[key];
+  return typeof value === "boolean" ? value : false;
+}
+
+function numberEventPayload(event: LoopEvent, key: string): number | undefined {
+  const value = event.payload?.[key];
+  return typeof value === "number" ? value : undefined;
 }
 
 function renderReportMarkdownForArtifacts(state: LoopState, events: LoopEvent[]): string {
