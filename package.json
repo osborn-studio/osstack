@@ -19,6 +19,7 @@
     "build:single-binary": "node scripts/build-single-binary.mjs",
     "sign:single-binary": "node scripts/sign-single-binary.mjs",
     "package:single-binary": "node scripts/package-single-binary.mjs",
+    "publish:single-binary": "node scripts/publish-single-binary-release.mjs",
     "demo:loop": "pnpm build && node scripts/demo-loop.mjs",
     "demo:loop:daemon": "pnpm build && node scripts/demo-loop-daemon.mjs",
     "smoke:loop": "pnpm build && node scripts/smoke-loop.mjs",
@@ -29,6 +30,7 @@
     "smoke:bun-single-binary": "node scripts/smoke-bun-single-binary.mjs",
     "smoke:single-binary-signing": "node scripts/smoke-single-binary-signing.mjs",
     "smoke:single-binary-release-pack": "node scripts/smoke-single-binary-release-pack.mjs",
+    "smoke:single-binary-release-publish": "node scripts/smoke-single-binary-release-publish.mjs",
     "smoke:portable-cli": "node scripts/smoke-portable-cli.mjs"
   },
   "devDependencies": {
