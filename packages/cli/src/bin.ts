@@ -2,9 +2,10 @@
 // (shebang is injected by tsup banner)
 
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { connect, type Socket } from "node:net";
-import { readdir, readFile, stat } from "node:fs/promises";
+import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
@@ -15,7 +16,19 @@ import {
   scanBranchStewardCandidates,
   type BranchStewardConfig,
 } from "@osstack/github";
-import { LoopEngine, enqueueTask, readLoopState, renderLoopStateMarkdown } from "@osstack/loop";
+import {
+  LoopEngine,
+  enqueueTask,
+  readLoopState,
+  renderLoopStateMarkdown,
+  renderLoopStateReportFromState,
+  renderLoopStateReportFromStateAndEvents,
+  createLoopStateScorecardFromState,
+  renderLoopStateScorecardHtml,
+  renderLoopStateScorecardMarkdown,
+  type LoopEvent,
+  type LoopState,
+} from "@osstack/loop";
 import { initProject } from "@osstack/skills";
 import {
   addSource, checkAll, defaultManifestPath, readManifest,
@@ -125,9 +138,15 @@ Kanban board (osstack's own; subscribable from Telegram via Hermes):
   kanban events [--since N]      Drain pending card events (for relays)
 
 Loop engineering (local, testable hot-loop MVP):
+  report [--workspace P] [--state P]
+                                 Render an evidence-oriented report from LOOP-STATE.json
+  scorecard [--workspace P] [--state P] [--output-dir P] [--stdout]
+                                 Generate Markdown + HTML evidence scorecards
+  proof [--workspace P] [--state P] [--output-dir P] [--json]
+                                 Generate a checksumed local proof pack
   loop run [--workspace P] [--source S] [--execute CMD] [--verify CMD]
            [--reviewer ID] [--checker ID] [--goal CMD] [--max-iter N] [--cycles N] [--interval-ms N]
-           [--state P] [--markdown P] [--worktree] [--json] [--daemon]
+           [--state P] [--markdown P] [--worktree] [--report] [--scorecard] [--proof] [--json] [--daemon]
                                  Run one discover→execute→verify→iterate cycle
   loop start [--workspace P] [--source S] [--execute CMD] [--verify CMD]
              [--reviewer ID] [--checker ID] [--goal CMD] [--schedule CRON] [--interval-ms N] [--cycles N]
@@ -261,6 +280,18 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "loop") {
     return await handleLoopCommand(args.slice(1));
+  }
+
+  if (cmd === "report") {
+    return await handleReportCommand(args.slice(1));
+  }
+
+  if (cmd === "scorecard") {
+    return await handleScorecardCommand(args.slice(1));
+  }
+
+  if (cmd === "proof") {
+    return await handleProofCommand(args.slice(1));
   }
 
   if (cmd === "steward") {
@@ -527,9 +558,250 @@ Manifest path: ${path}
 
 type RpcResp = { ok: boolean; result?: unknown; error?: { message: string } };
 
+async function handleReportCommand(args: string[]): Promise<number> {
+  if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack report — evidence-oriented loop report
+
+  osstack report [--workspace P] [--state P]
+
+Options:
+  --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
+  --state P           JSON state path (default: LOOP-STATE.json)
+`);
+    return 0;
+  }
+
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const stateFilePath = resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+  const state = await readLoopState(stateFilePath);
+  if (state === null) {
+    console.error(`osstack: no loop state found at ${stateFilePath}`);
+    return 1;
+  }
+  console.log(renderLoopStateReportFromState(state));
+  return 0;
+}
+
+async function handleScorecardCommand(args: string[]): Promise<number> {
+  if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack scorecard — loop evidence scorecard
+
+  osstack scorecard [--workspace P] [--state P] [--output-dir P] [--stdout]
+
+Options:
+  --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
+  --state P           JSON state path (default: LOOP-STATE.json)
+  --output-dir P      Directory for scorecard files (default: <workspace>/release)
+  --stdout            Print Markdown instead of writing files
+`);
+    return 0;
+  }
+
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const stateFilePath = resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+  const state = await readLoopState(stateFilePath);
+  if (state === null) {
+    console.error(`osstack: no loop state found at ${stateFilePath}`);
+    return 1;
+  }
+
+  const scorecard = createLoopStateScorecardFromState(state);
+  const markdown = renderLoopStateScorecardMarkdown(scorecard);
+  if (args.includes("--stdout")) {
+    console.log(markdown);
+    return 0;
+  }
+
+  const outputDir = resolveLoopPath(flagValue(args, "--output-dir") ?? "release", workspacePath);
+  const baseName = `osstack-scorecard-${safeFileSegment(scorecard.loop_id)}`;
+  const markdownPath = join(outputDir, `${baseName}.md`);
+  const htmlPath = join(outputDir, `${baseName}.html`);
+  await mkdir(outputDir, { recursive: true });
+  await writeFile(markdownPath, markdown, "utf-8");
+  await writeFile(htmlPath, renderLoopStateScorecardHtml(scorecard), "utf-8");
+  console.log(`markdown=${markdownPath}`);
+  console.log(`html=${htmlPath}`);
+  console.log(`score=${scorecard.total_score}/${scorecard.max_score}`);
+  return 0;
+}
+
+async function handleProofCommand(args: string[]): Promise<number> {
+  if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack proof — local evidence proof pack
+
+  osstack proof [--workspace P] [--state P] [--output-dir P] [--json]
+
+Options:
+  --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
+  --state P           JSON state path (default: LOOP-STATE.json)
+  --output-dir P      Directory for proof pack folders (default: <workspace>/release)
+  --json              Print machine-readable summary
+`);
+    return 0;
+  }
+
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const stateFilePath = resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+  const state = await readLoopState(stateFilePath);
+  if (state === null) {
+    console.error(`osstack: no loop state found at ${stateFilePath}`);
+    return 1;
+  }
+
+  const outputDir = resolveLoopPath(flagValue(args, "--output-dir") ?? "release", workspacePath);
+  const proof = await writeProofPack(state, outputDir);
+
+  const summary = {
+    loop_id: state.loop_id,
+    proof_dir: proof.proof_dir,
+    manifest: proof.proof_manifest,
+    artifact_count: proof.artifact_count,
+  };
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(summary, null, 2));
+  } else {
+    console.log(`proof=${summary.proof_dir}`);
+    console.log(`manifest=${summary.manifest}`);
+    console.log(`artifacts=${summary.artifact_count}`);
+  }
+  return 0;
+}
+
 function flagValue(args: string[], name: string): string | undefined {
   const i = args.indexOf(name);
   return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined;
+}
+
+async function writeRequestedLoopArtifactsFromStateFile(options: {
+  args: string[];
+  workspacePath: string;
+  stateFilePath: string;
+  events?: unknown[];
+}): Promise<LoopEvidenceArtifacts | undefined | Error> {
+  if (!hasRequestedLoopArtifacts(options.args)) return undefined;
+  const statePath = resolveLoopPath(options.stateFilePath, options.workspacePath);
+  const state = await readLoopState(statePath);
+  if (state === null) {
+    return new Error(`no loop state found at ${statePath}; cannot generate evidence artifacts`);
+  }
+  return await writeRequestedLoopArtifacts(
+    state,
+    options.workspacePath,
+    options.args,
+    normalizeLoopEvents(options.events),
+  );
+}
+
+async function writeRequestedLoopArtifacts(
+  state: LoopState,
+  workspacePath: string,
+  args: string[],
+  events: LoopEvent[] = [],
+): Promise<LoopEvidenceArtifacts | undefined> {
+  if (!hasRequestedLoopArtifacts(args)) return undefined;
+
+  const artifacts: LoopEvidenceArtifacts = {};
+  const loopId = safeFileSegment(state.loop_id);
+
+  if (args.includes("--report")) {
+    const reportDir = join(workspacePath, "reports");
+    const reportPath = join(reportDir, `osstack-report-${loopId}.md`);
+    await mkdir(reportDir, { recursive: true });
+    await writeFile(reportPath, renderReportMarkdownForArtifacts(state, events), "utf-8");
+    artifacts.report = reportPath;
+  }
+
+  if (args.includes("--scorecard")) {
+    const releaseDir = join(workspacePath, "release");
+    const scorecard = createLoopStateScorecardFromState(state);
+    const markdownPath = join(releaseDir, `osstack-scorecard-${loopId}.md`);
+    const htmlPath = join(releaseDir, `osstack-scorecard-${loopId}.html`);
+    await mkdir(releaseDir, { recursive: true });
+    await writeFile(markdownPath, renderLoopStateScorecardMarkdown(scorecard), "utf-8");
+    await writeFile(htmlPath, renderLoopStateScorecardHtml(scorecard), "utf-8");
+    artifacts.scorecard_markdown = markdownPath;
+    artifacts.scorecard_html = htmlPath;
+  }
+
+  if (args.includes("--proof")) {
+    const proof = await writeProofPack(state, join(workspacePath, "release"), events);
+    artifacts.proof_dir = proof.proof_dir;
+    artifacts.proof_manifest = proof.proof_manifest;
+  }
+
+  return artifacts;
+}
+
+async function writeProofPack(state: LoopState, outputDir: string, events: LoopEvent[] = []): Promise<{
+  proof_dir: string;
+  proof_manifest: string;
+  artifact_count: number;
+}> {
+  const proofDir = join(outputDir, `osstack-proof-${safeFileSegment(state.loop_id)}`);
+  const scorecard = createLoopStateScorecardFromState(state);
+  const artifacts = [
+    { path: "report.md", content: renderReportMarkdownForArtifacts(state, events) },
+    { path: "scorecard.md", content: renderLoopStateScorecardMarkdown(scorecard) },
+    { path: "scorecard.html", content: renderLoopStateScorecardHtml(scorecard) },
+    { path: "loop-state.json", content: `${JSON.stringify(state, null, 2)}\n` },
+    { path: "events.jsonl", content: events.map((event) => JSON.stringify(event)).join("\n") + (events.length > 0 ? "\n" : "") },
+    { path: "policy-decision.json", content: `${JSON.stringify({ status: "unknown", reason: "No policy decision evidence in state-only proof pack." }, null, 2)}\n` },
+    { path: "verify-results.json", content: `${JSON.stringify({
+      status: scorecard.items.find((item) => item.id === "verify_gates_passed")?.status ?? "unknown",
+      reason: "Derived from completed task outcomes in LOOP-STATE.json.",
+    }, null, 2)}\n` },
+  ];
+
+  await mkdir(proofDir, { recursive: true });
+  const manifestArtifacts: Array<{ path: string; sha256: string; bytes: number }> = [];
+  for (const artifact of artifacts) {
+    await writeFile(join(proofDir, artifact.path), artifact.content, "utf-8");
+    manifestArtifacts.push({
+      path: artifact.path,
+      sha256: sha256(artifact.content),
+      bytes: Buffer.byteLength(artifact.content, "utf-8"),
+    });
+  }
+
+  const manifest = {
+    schema_version: 1,
+    kind: "osstack.proof_pack",
+    loop_id: state.loop_id,
+    generated_from: "LOOP-STATE.json",
+    generated_at: new Date().toISOString(),
+    artifacts: manifestArtifacts,
+  };
+  const manifestContent = `${JSON.stringify(manifest, null, 2)}\n`;
+  const proofManifest = join(proofDir, "manifest.json");
+  await writeFile(proofManifest, manifestContent, "utf-8");
+  return {
+    proof_dir: proofDir,
+    proof_manifest: proofManifest,
+    artifact_count: manifestArtifacts.length + 1,
+  };
+}
+
+function hasRequestedLoopArtifacts(args: string[]): boolean {
+  return args.includes("--report") || args.includes("--scorecard") || args.includes("--proof");
+}
+
+function renderReportMarkdownForArtifacts(state: LoopState, events: LoopEvent[]): string {
+  return events.length === 0
+    ? renderLoopStateReportFromState(state)
+    : renderLoopStateReportFromStateAndEvents(state, events);
+}
+
+function normalizeLoopEvents(events: unknown[] | undefined): LoopEvent[] {
+  if (events === undefined) return [];
+  return events.filter((event): event is LoopEvent => (
+    typeof event === "object"
+    && event !== null
+    && typeof (event as { event_id?: unknown }).event_id === "string"
+    && typeof (event as { loop_id?: unknown }).loop_id === "string"
+    && typeof (event as { type?: unknown }).type === "string"
+    && typeof (event as { seq?: unknown }).seq === "number"
+    && typeof (event as { created_at?: unknown }).created_at === "number"
+  ));
 }
 
 function flagValues(args: string[], name: string): string[] {
@@ -734,6 +1006,17 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         return 1;
       }
       const result = resp.result as LoopRunSummary;
+      const artifacts = await writeRequestedLoopArtifactsFromStateFile({
+        args,
+        workspacePath,
+        stateFilePath,
+        events: result.events,
+      });
+      if (artifacts instanceof Error) {
+        console.error(`osstack: ${artifacts.message}`);
+        return 1;
+      }
+      if (artifacts !== undefined) result.artifacts = artifacts;
       printLoopRun(result, json);
       return result.completed_tasks.some((task) => task.outcome !== "success") ? 2 : 0;
     }
@@ -771,12 +1054,14 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ? result.cycles.at(-1)?.goal
         : undefined;
 
+    const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, args, result.events);
     printLoopRun({
       loop_id: result.loop_id,
       json_path: result.jsonPath,
       markdown_path: result.markdownPath,
       completed_tasks: result.state.completed_tasks,
       events: result.events,
+      ...(artifacts !== undefined ? { artifacts } : {}),
       ...(goal !== undefined ? { goal } : {}),
       ...(result.state.key_metrics !== undefined ? { metrics: result.state.key_metrics } : {}),
       ...("cycles" in result ? { cycles: result.cycles.map((cycle) => ({
@@ -919,6 +1204,9 @@ Options:
   --stop-when-idle    Stop after the first cycle that executes no tasks
   --state P           JSON state path (default: LOOP-STATE.json)
   --markdown P        Markdown state path (default: STATE.md beside JSON)
+  --report            Generate reports/osstack-report-<loop_id>.md after run
+  --scorecard         Generate release/osstack-scorecard-<loop_id>.md/html after run
+  --proof             Generate release/osstack-proof-<loop_id>/ after run
   --json              Emit machine-readable summary
   --daemon            Run through the osstack daemon RPC socket
 
@@ -936,6 +1224,14 @@ Example:
 
 function resolveLoopPath(path: string, cwd: string): string {
   return isAbsolute(path) ? path : join(cwd, path);
+}
+
+function safeFileSegment(value: string): string {
+  return value.replaceAll(/[^a-zA-Z0-9._-]/g, "-");
+}
+
+function sha256(content: string): string {
+  return createHash("sha256").update(content).digest("hex");
 }
 
 function parsePositiveIntegerFlag(value: string | undefined, name: string): number | undefined | Error {
@@ -967,6 +1263,7 @@ interface LoopRunSummary {
     agent_id: string;
     duration_ms: number;
   }>;
+  artifacts?: LoopEvidenceArtifacts;
   metrics?: {
     success_rate: number;
   };
@@ -990,6 +1287,14 @@ interface LoopRunSummary {
       summary: string;
     };
   }>;
+}
+
+interface LoopEvidenceArtifacts {
+  report?: string;
+  scorecard_markdown?: string;
+  scorecard_html?: string;
+  proof_dir?: string;
+  proof_manifest?: string;
 }
 
 interface LoopSessionSummary {
@@ -1106,6 +1411,13 @@ function printLoopRun(result: LoopRunSummary, json: boolean): void {
   console.log(`tasks=${result.completed_tasks.length} success_rate=${Math.round((result.metrics?.success_rate ?? 1) * 100)}%`);
   if (result.goal !== undefined) {
     console.log(`goal=${result.goal.pass ? "passed" : "not_met"} exit_code=${result.goal.exitCode}`);
+  }
+  if (result.artifacts !== undefined) {
+    if (result.artifacts.report !== undefined) console.log(`report=${result.artifacts.report}`);
+    if (result.artifacts.scorecard_markdown !== undefined) console.log(`scorecard_markdown=${result.artifacts.scorecard_markdown}`);
+    if (result.artifacts.scorecard_html !== undefined) console.log(`scorecard_html=${result.artifacts.scorecard_html}`);
+    if (result.artifacts.proof_dir !== undefined) console.log(`proof=${result.artifacts.proof_dir}`);
+    if (result.artifacts.proof_manifest !== undefined) console.log(`proof_manifest=${result.artifacts.proof_manifest}`);
   }
   if (result.cycles !== undefined) {
     console.log(`cycles=${result.cycles.length}`);

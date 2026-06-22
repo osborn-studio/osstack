@@ -83,6 +83,51 @@ describe("loop CLI", () => {
     expect(logs.join("\n")).toContain("cli-loop-task - success");
   });
 
+  it("generates report, scorecard, and proof artifacts during loop run", async () => {
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-loop-artifacts-task",
+      capability: "code.test",
+      prompt: "Exercise loop artifact generation",
+    }));
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--report",
+      "--scorecard",
+      "--proof",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      loop_id: string;
+      artifacts: {
+        report?: string;
+        scorecard_markdown?: string;
+        scorecard_html?: string;
+        proof_dir?: string;
+        proof_manifest?: string;
+      };
+    };
+    expect(summary.artifacts.report).toBe(join(tmp, "reports", `osstack-report-${summary.loop_id}.md`));
+    expect(summary.artifacts.scorecard_markdown).toBe(join(tmp, "release", `osstack-scorecard-${summary.loop_id}.md`));
+    expect(summary.artifacts.scorecard_html).toBe(join(tmp, "release", `osstack-scorecard-${summary.loop_id}.html`));
+    expect(summary.artifacts.proof_dir).toBe(join(tmp, "release", `osstack-proof-${summary.loop_id}`));
+    await expect(readFile(summary.artifacts.report!, "utf-8")).resolves.toContain(`# Osstack Loop Report - ${summary.loop_id}`);
+    await expect(readFile(summary.artifacts.report!, "utf-8")).resolves.toContain("## Events Timeline");
+    await expect(readFile(summary.artifacts.report!, "utf-8")).resolves.toContain("loop.verify.done");
+    await expect(readFile(summary.artifacts.scorecard_markdown!, "utf-8")).resolves.toContain(`# Osstack Scorecard - ${summary.loop_id}`);
+    await expect(readFile(summary.artifacts.scorecard_html!, "utf-8")).resolves.toContain("<!doctype html>");
+    await expect(readFile(summary.artifacts.proof_manifest!, "utf-8")).resolves.toContain("\"kind\": \"osstack.proof_pack\"");
+    await expect(readFile(join(summary.artifacts.proof_dir!, "events.jsonl"), "utf-8")).resolves.toContain("loop.verify.done");
+  });
+
   it("rejects an invalid max iteration value", async () => {
     const exitCode = await main(["loop", "run", "--max-iter", "0"]);
 
