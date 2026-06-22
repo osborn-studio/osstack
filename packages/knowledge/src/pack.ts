@@ -45,6 +45,10 @@ export function validateKnowledgePackManifest(value: unknown): KnowledgePackMani
   if (scope !== undefined && !["official", "team", "project"].includes(scope)) {
     throw new Error("knowledge pack scope is invalid");
   }
+  const tenantId = optionalString(value, "tenant_id");
+  if (tenantId !== undefined && tenantId.trim().length === 0) {
+    throw new Error("knowledge pack tenant_id must be non-empty");
+  }
   const taxonomy = optionalStringArray(value, "taxonomy");
   const chunksRaw = value["chunks"];
   if (!Array.isArray(chunksRaw)) throw new Error("knowledge pack chunks must be an array");
@@ -78,6 +82,7 @@ export function validateKnowledgePackManifest(value: unknown): KnowledgePackMani
     source_kind: sourceKind as KnowledgePackManifest["source_kind"],
     quality_score: qualityScore,
     ...(scope === undefined ? {} : { scope: scope as KnowledgeScope }),
+    ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
     ...(taxonomy === undefined ? {} : { taxonomy }),
     ...(generatedAt === undefined ? {} : { generated_at: generatedAt }),
     ...(lastReviewedAt === undefined ? {} : { last_reviewed_at: lastReviewedAt }),
@@ -525,6 +530,7 @@ export async function resolveKnowledgeSearch(options: {
   limit?: number;
   cloudUrl?: string;
   authToken?: string;
+  tenantId?: string;
   fetchImpl?: typeof fetch;
 }): Promise<KnowledgeSearchEvidence> {
   const mode = options.mode ?? inferKnowledgeMode(options);
@@ -548,6 +554,7 @@ export async function resolveKnowledgeSearch(options: {
     ...(options.limit === undefined ? {} : { limit: options.limit }),
     ...(options.cloudUrl === undefined ? {} : { cloudUrl: options.cloudUrl }),
     ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+    ...(options.tenantId === undefined ? {} : { tenantId: options.tenantId }),
     ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
   });
 }
@@ -588,6 +595,7 @@ async function cloudKnowledgeEvidence(options: {
   limit?: number;
   cloudUrl?: string;
   authToken?: string;
+  tenantId?: string;
   fetchImpl?: typeof fetch;
 }): Promise<KnowledgeSearchEvidence> {
   if (options.cloudUrl === undefined || options.cloudUrl.length === 0) {
@@ -597,7 +605,11 @@ async function cloudKnowledgeEvidence(options: {
     const response = await (options.fetchImpl ?? fetch)(new URL("/v1/search", withTrailingSlash(options.cloudUrl)), {
       method: "POST",
       headers: cloudHeaders(options.authToken),
-      body: JSON.stringify({ query: options.query, limit: options.limit ?? 5 }),
+      body: JSON.stringify({
+        query: options.query,
+        limit: options.limit ?? 5,
+        ...(options.tenantId === undefined ? {} : { tenant_id: options.tenantId }),
+      }),
     });
     if (!response.ok) throw new Error(`cloud search failed with HTTP ${response.status}`);
     const payload = await response.json() as unknown;

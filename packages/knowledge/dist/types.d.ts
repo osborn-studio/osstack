@@ -16,6 +16,7 @@ export interface KnowledgePackManifest {
     source_kind: KnowledgeSourceKind;
     quality_score: number;
     scope?: KnowledgeScope;
+    tenant_id?: string;
     taxonomy?: string[];
     generated_at?: string;
     last_reviewed_at?: string;

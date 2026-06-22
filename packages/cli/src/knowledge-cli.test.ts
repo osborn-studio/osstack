@@ -131,7 +131,8 @@ describe("knowledge CLI", () => {
   });
 
   it("searches Knowledge Cloud when a cloud URL is provided", async () => {
-    const server = await startKnowledgeServer();
+    const requests: Array<{ authorization: string | null; body?: unknown }> = [];
+    const server = await startKnowledgeServer({ requests });
     try {
       const address = server.address() as AddressInfo;
       const exitCode = await main([
@@ -140,6 +141,10 @@ describe("knowledge CLI", () => {
         "cloud cockpit",
         "--cloud-url",
         `http://127.0.0.1:${address.port}`,
+        "--token",
+        "kst_cli_search",
+        "--tenant",
+        "team_alpha",
         "--json",
       ]);
 
@@ -155,6 +160,10 @@ describe("knowledge CLI", () => {
         status: "recorded",
         packs: [expect.objectContaining({ id: "osstack-cloud-cockpit", source_kind: "osstack_native" })],
         results: [expect.objectContaining({ chunk_id: "chunk-cockpit" })],
+      });
+      expect(requests).toContainEqual({
+        authorization: "Bearer kst_cli_search",
+        body: { query: "cloud cockpit", limit: 5, tenant_id: "team_alpha" },
       });
     } finally {
       await closeServer(server);
@@ -473,7 +482,7 @@ describe("knowledge CLI", () => {
         status: "synced",
         packs: [expect.objectContaining({ id: "osstack-cloud-cockpit" })],
       });
-      expect(requests).toContainEqual({ authorization: "Bearer kst_test_token" });
+      expect(requests).toContainEqual(expect.objectContaining({ authorization: "Bearer kst_test_token" }));
     } finally {
       await closeServer(server);
     }
@@ -523,42 +532,49 @@ describe("knowledge CLI", () => {
   });
 });
 
-async function startKnowledgeServer(options: { requests?: Array<{ authorization: string | null }> } = {}): Promise<Server> {
+async function startKnowledgeServer(options: { requests?: Array<{ authorization: string | null; body?: unknown }> } = {}): Promise<Server> {
   const server = createServer((req, res) => {
-    options.requests?.push({ authorization: req.headers.authorization ?? null });
-    if (req.method === "POST" && req.url === "/v1/feedback") {
-      res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ ok: true }));
-      return;
-    }
-    if (req.method === "POST" && req.url === "/v1/sync") {
+    let rawBody = "";
+    req.on("data", (chunk) => {
+      rawBody += String(chunk);
+    });
+    req.on("end", () => {
+      const parsedBody = rawBody.length === 0 ? undefined : JSON.parse(rawBody);
+      options.requests?.push({ authorization: req.headers.authorization ?? null, body: parsedBody });
+      if (req.method === "POST" && req.url === "/v1/feedback") {
+        res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ ok: true }));
+        return;
+      }
+      if (req.method === "POST" && req.url === "/v1/sync") {
+        res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({
+          packs: [cloudCockpitPack()],
+        }));
+        return;
+      }
+      if (req.method !== "POST" || req.url !== "/v1/search") {
+        res.writeHead(404).end();
+        return;
+      }
       res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({
-        packs: [cloudCockpitPack()],
+        packs: [{
+          id: "osstack-cloud-cockpit",
+          version: "2026.06.22",
+          license: "Osstack Cloud Terms",
+          source_kind: "osstack_native",
+          quality_score: 97,
+        }],
+        results: [{
+          pack_id: "osstack-cloud-cockpit",
+          pack_version: "2026.06.22",
+          chunk_id: "chunk-cockpit",
+          title: "Cockpit evidence surface",
+          score: 10,
+          snippet: "Knowledge Cloud should return Osstack-native cockpit and proof guidance.",
+          tags: ["cockpit"],
+          source_refs: ["osstack-cloud"],
+        }],
       }));
-      return;
-    }
-    if (req.method !== "POST" || req.url !== "/v1/search") {
-      res.writeHead(404).end();
-      return;
-    }
-    res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({
-      packs: [{
-        id: "osstack-cloud-cockpit",
-        version: "2026.06.22",
-        license: "Osstack Cloud Terms",
-        source_kind: "osstack_native",
-        quality_score: 97,
-      }],
-      results: [{
-        pack_id: "osstack-cloud-cockpit",
-        pack_version: "2026.06.22",
-        chunk_id: "chunk-cockpit",
-        title: "Cockpit evidence surface",
-        score: 10,
-        snippet: "Knowledge Cloud should return Osstack-native cockpit and proof guidance.",
-        tags: ["cockpit"],
-        source_refs: ["osstack-cloud"],
-      }],
-    }));
+    });
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   return server;

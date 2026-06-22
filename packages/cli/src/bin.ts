@@ -1245,7 +1245,7 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   osstack knowledge list --pack P|--official [--json]
   osstack knowledge login --cloud-url URL [--token T] [--cache-dir P] [--json]
   osstack knowledge sync [--cloud-url URL] [--cache-dir P] [--private] [--tenant T] [--json]
-  osstack knowledge search <query> [--pack P] [--official] [--cloud-url URL] [--cache-dir P] [--limit N] [--json]
+  osstack knowledge search <query> [--pack P] [--official] [--cloud-url URL] [--tenant T] [--cache-dir P] [--limit N] [--json]
   osstack knowledge inspect <chunk_id> [--pack P] [--official] [--cache-dir P] [--json]
   osstack knowledge import P --scope team|project --id ID --name NAME --license L --output P [--taxonomy T] [--json]
   osstack knowledge ingest P --scope official|team|project --id ID --name NAME --license L --output P [--taxonomy T] [--source-kind K] [--json]
@@ -1374,7 +1374,7 @@ Env:
       console.error("osstack: --mode must be one of off, local, cloud");
       return 1;
     }
-    const query = positionalValues(args.slice(1), new Set(["--pack", "--limit", "--cloud-url", "--mode", "--cache-dir"])).join(" ");
+    const query = positionalValues(args.slice(1), new Set(["--pack", "--limit", "--cloud-url", "--mode", "--cache-dir", "--tenant", "--token"])).join(" ");
     if (query.length === 0) {
       console.error("osstack: knowledge search requires a query");
       return 1;
@@ -1395,6 +1395,7 @@ Env:
       return 1;
     }
     const authToken = resolveKnowledgeAuthToken(args, config);
+    const tenantId = flagValue(args, "--tenant");
     const evidence = await resolveKnowledgeSearch(knowledgeSearchOptions({
       mode,
       query,
@@ -1402,6 +1403,7 @@ Env:
       limit,
       cloudUrl,
       ...(authToken === undefined ? {} : { authToken }),
+      ...(tenantId === undefined ? {} : { tenantId }),
     }));
     if (args.includes("--json")) {
       console.log(JSON.stringify(evidence, null, 2));
@@ -2074,6 +2076,7 @@ function knowledgeSearchOptions(options: {
   limit: number;
   cloudUrl: string | undefined;
   authToken?: string;
+  tenantId?: string;
 }): Parameters<typeof resolveKnowledgeSearch>[0] {
   return {
     ...(options.mode !== undefined ? { mode: options.mode } : {}),
@@ -2082,6 +2085,7 @@ function knowledgeSearchOptions(options: {
     limit: options.limit,
     ...(options.cloudUrl !== undefined ? { cloudUrl: options.cloudUrl } : {}),
     ...(options.authToken !== undefined ? { authToken: options.authToken } : {}),
+    ...(options.tenantId !== undefined ? { tenantId: options.tenantId } : {}),
   };
 }
 

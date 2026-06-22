@@ -14,7 +14,7 @@
     {
       "source_id": "osstack-run-spec-v1",
       "path": "docs/specs/OSSTACK_RUN_SPEC_V1.md",
-      "sha256": "b2e8c4bd46f0fcd6c3ffec53dec326ce6055b922f364e8c067172417b7222c36",
+      "sha256": "d8c3b3ef0f6aa17b3d7b3f777aa5925df2223587a13882a8ffce0e36c77a2972",
       "license": "Osstack-native",
       "scope": "official",
       "imported_at": "2026-06-22T00:00:00.000Z"

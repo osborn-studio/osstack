@@ -3,6 +3,7 @@ import { type KnowledgeFeedbackEntry, type KnowledgePack, type KnowledgePackSumm
 export interface KnowledgeCloudOptions {
     packs: KnowledgePack[];
     privatePacks?: KnowledgePack[];
+    privateAuthToken?: string;
     now?: () => string;
     feedbackSink?: (entry: KnowledgeFeedbackEntry) => void | Promise<void>;
 }

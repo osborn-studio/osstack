@@ -60,6 +60,7 @@ export declare function resolveKnowledgeSearch(options: {
     limit?: number;
     cloudUrl?: string;
     authToken?: string;
+    tenantId?: string;
     fetchImpl?: typeof fetch;
 }): Promise<KnowledgeSearchEvidence>;
 //# sourceMappingURL=pack.d.ts.map
