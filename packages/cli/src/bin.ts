@@ -785,13 +785,14 @@ async function handleReleaseCommand(args: string[]): Promise<number> {
   if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack release — publish/deploy readiness
 
-  osstack release doctor [--target all|npm|knowledge-cloud] [--json]
+  osstack release doctor [--target all|npm|knowledge-cloud] [--proof-dir P] [--json]
   osstack release plan [--target all|npm|knowledge-cloud] [--output P] [--json]
 
 Checks:
   - GitHub CLI authentication for repository operations
   - GitHub Actions runner availability for release/deploy workflows
   - repository secrets NPM_TOKEN and FLY_API_TOKEN
+  - optional proof-core evidence validation with --proof-dir
   - local npm login for manual publishing
   - local flyctl login for manual Knowledge Cloud deploy debugging
 `);
@@ -843,7 +844,8 @@ async function handleReleaseDoctorCommand(args: string[]): Promise<number> {
     console.error("osstack: release doctor --target must be all, npm, or knowledge-cloud");
     return 1;
   }
-  const result = await releaseDoctor(target);
+  const proofDir = flagValue(args, "--proof-dir");
+  const result = await releaseDoctor(target, proofDir === undefined ? {} : { proofDir });
   const output = flagValue(args, "--output");
   if (output !== undefined) {
     await mkdir(dirname(output), { recursive: true });
@@ -864,7 +866,10 @@ function parseReleaseDoctorTarget(value: string): ReleaseDoctorResult["target"] 
   return undefined;
 }
 
-async function releaseDoctor(target: ReleaseDoctorResult["target"]): Promise<ReleaseDoctorResult> {
+async function releaseDoctor(
+  target: ReleaseDoctorResult["target"],
+  options: { proofDir?: string } = {},
+): Promise<ReleaseDoctorResult> {
   const checks: ReleaseDoctorCheck[] = [];
   const githubAuth = await releaseCommandCheck({
     id: "github_auth",
@@ -910,6 +915,10 @@ async function releaseDoctor(target: ReleaseDoctorResult["target"]): Promise<Rel
     }));
   }
 
+  if (options.proofDir !== undefined) {
+    checks.push(await releaseProofValidationCheck(options.proofDir));
+  }
+
   const versionPackagesPrReady = checks.find((check) => check.id === "version_packages_pr")?.status !== "warn";
   const knowledgeWorkflowReady = checks.find((check) => check.id === "knowledge_cloud_workflow")?.status !== "error";
   const actionsReady = githubActions.status !== "error";
@@ -934,6 +943,32 @@ async function releaseDoctor(target: ReleaseDoctorResult["target"]): Promise<Rel
     },
     next_steps: releaseDoctorNextSteps({ target, npmPublish, knowledgeCloudDeploy, githubAuth, secrets, checks }),
   };
+}
+
+async function releaseProofValidationCheck(proofDir: string): Promise<ReleaseDoctorCheck> {
+  try {
+    const validation = validateProofEvidence({ evidence: await loadProofEvidence(proofDir) });
+    return {
+      id: "proof_validation",
+      status: validation.ok ? "ok" : "error",
+      message: validation.ok
+        ? "Proof-core evidence validation passed."
+        : "Proof-core evidence validation found missing or malformed evidence.",
+      details: {
+        proof_dir: proofDir,
+        scope: validation.scope,
+        present: validation.present,
+        missing: validation.missing,
+      },
+    };
+  } catch (error) {
+    return {
+      id: "proof_validation",
+      status: "error",
+      message: `Proof-core evidence validation failed: ${error instanceof Error ? error.message : String(error)}`,
+      details: { proof_dir: proofDir },
+    };
+  }
 }
 
 async function releaseVersionPackagesPrCheck(): Promise<ReleaseDoctorCheck> {
@@ -1417,6 +1452,10 @@ function releaseDoctorNextSteps(options: {
     steps.push("Restore the Knowledge Cloud Deploy workflow before running deploy=true.");
   } else if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeWorkflow?.status === "warn") {
     steps.push("Review the latest Knowledge Cloud Deploy workflow run before running deploy=true.");
+  }
+  const proofValidation = options.checks.find((check) => check.id === "proof_validation");
+  if (proofValidation?.status === "error") {
+    steps.push("Fix missing or malformed proof evidence before publishing or deploying.");
   }
   if ((options.target === "all" || options.target === "npm") && options.npmPublish) {
     steps.push("NPM publish path is ready for the release workflow.");

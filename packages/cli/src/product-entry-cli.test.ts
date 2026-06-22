@@ -149,6 +149,60 @@ describe("product entry commands", () => {
     expect(result.next_steps.join("\n")).toContain("Knowledge Cloud deploy=true is ready");
   });
 
+  it("can include proof-core validation in release doctor readiness", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const proofDir = join(tmp, "release", "osstack-proof-release-ready");
+    await writeReleaseProofEvidence(proofDir);
+
+    const exitCode = await main(["release", "doctor", "--proof-dir", proofDir, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+    };
+    expect(result.ok).toBe(true);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "proof_validation",
+      status: "ok",
+      details: expect.objectContaining({ proof_dir: proofDir, scope: "proof-core", missing: [] }),
+    }));
+  });
+
+  it("blocks release doctor when supplied proof-core evidence is malformed", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const proofDir = join(tmp, "release", "osstack-proof-release-bad");
+    await writeReleaseProofEvidence(proofDir, { omitGovernance: true });
+
+    const exitCode = await main(["release", "doctor", "--proof-dir", proofDir, "--json"]);
+
+    expect(exitCode).toBe(1);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      checks: Array<{ id: string; status: string; details?: { missing?: Array<{ control_id: string }> } }>;
+      next_steps: string[];
+    };
+    expect(result.ok).toBe(false);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "proof_validation",
+      status: "error",
+      details: expect.objectContaining({
+        missing: expect.arrayContaining([expect.objectContaining({ control_id: "secure-coding-control" })]),
+      }),
+    }));
+    expect(result.next_steps.join("\n")).toContain("Fix missing or malformed proof evidence before publishing or deploying.");
+  });
+
   it("reports missing Knowledge Cloud deploy secrets without blocking npm readiness", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
@@ -352,3 +406,58 @@ describe("product entry commands", () => {
     expect(errors.join("\n")).toContain("release doctor --target must be all, npm, or knowledge-cloud");
   });
 });
+
+async function writeReleaseProofEvidence(proofDir: string, options: { omitGovernance?: boolean } = {}): Promise<void> {
+  await mkdir(proofDir, { recursive: true });
+  await writeFile(join(proofDir, "manifest.json"), JSON.stringify({
+    artifacts: [
+      { path: "report.md", sha256: "a".repeat(64), bytes: 10 },
+      { path: "verify-results.json", sha256: "b".repeat(64), bytes: 20 },
+    ],
+  }, null, 2));
+  await writeFile(join(proofDir, "verify-results.json"), JSON.stringify({
+    status: "pass",
+    results: [{
+      task_id: "release-task",
+      pass: true,
+      score: 1,
+      reviewer_agent_id: "local-verifier",
+      summary: "release verification passed",
+      event_seq: 2,
+    }],
+  }, null, 2));
+  await writeFile(join(proofDir, "policy-decision.json"), JSON.stringify({
+    status: "recorded",
+    decisions: [{
+      task_id: "release-task",
+      agent_id: "codex-cli",
+      auth_mode: "subprocess/login-reuse",
+      roles: ["coding", "test-verify", "release/proof"],
+      reason: "matched release capability",
+      event_seq: 1,
+    }],
+  }, null, 2));
+  await writeFile(join(proofDir, "agent-runtime.json"), JSON.stringify({
+    status: "recorded",
+    agents: [{
+      agent_id: "codex-cli",
+      auth_mode: "subprocess/login-reuse",
+      roles: ["coding", "test-verify", "release/proof"],
+      plan_event_seqs: [1],
+    }],
+  }, null, 2));
+  if (options.omitGovernance !== true) {
+    await writeFile(join(proofDir, "governance-results.json"), JSON.stringify({ status: "pass", findings: [] }, null, 2));
+  }
+  await writeFile(join(proofDir, "worktree-status.json"), JSON.stringify({
+    status: "recorded",
+    entries: [{
+      task_id: "release-task",
+      status: "merged",
+      branch: "codex/release-task",
+      commit: "abc123",
+      path: join(proofDir, "..", "worktree"),
+      event_seq: 3,
+    }],
+  }, null, 2));
+}
