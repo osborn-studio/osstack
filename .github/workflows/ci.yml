@@ -53,5 +53,8 @@ jobs:
       - name: Deliver proof smoke
         run: pnpm smoke:deliver-proof
 
+      - name: Real repo deliver smoke
+        run: pnpm smoke:real-repo-deliver
+
       - name: NPM install smoke
         run: pnpm smoke:npm-install
