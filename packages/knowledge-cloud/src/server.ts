@@ -76,6 +76,10 @@ export function createKnowledgeCloudHandler(options: KnowledgeCloudOptions) {
     try {
       await routeKnowledgeCloudRequest({ ...options, packs, privatePacks, feedbackLog, auditLog }, req, res);
     } catch (error) {
+      if (error instanceof BadRequestError) {
+        sendJson(res, 400, { error: error.message });
+        return;
+      }
       sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) });
     }
   };
@@ -536,7 +540,11 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   }
   const raw = Buffer.concat(chunks).toString("utf-8").trim();
   if (raw.length === 0) return {};
-  return JSON.parse(raw) as unknown;
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    throw new BadRequestError("invalid JSON body");
+  }
 }
 
 function stringField(value: unknown, key: string): string | undefined {
@@ -587,3 +595,5 @@ function sendJson(res: ServerResponse, status: number, payload: unknown): void {
   res.writeHead(status, { "content-type": "application/json" });
   res.end(`${JSON.stringify(payload)}\n`);
 }
+
+class BadRequestError extends Error {}

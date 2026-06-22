@@ -141,6 +141,21 @@ describe("Knowledge Cloud HTTP service", () => {
     expect(hugeLimit.results).toHaveLength(50);
   });
 
+  it("returns bad request for malformed JSON bodies", async () => {
+    const url = await startCloud({ packs: await officialPacks() });
+
+    const response = await fetch(`${url}/v1/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{\"query\":",
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "invalid JSON body",
+    });
+  });
+
   it("serves tenant private packs only to authorized matching tenants", async () => {
     const packs = await officialPacks();
     const privatePack = teamPack();

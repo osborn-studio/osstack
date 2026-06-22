@@ -12,6 +12,10 @@ export function createKnowledgeCloudHandler(options) {
             await routeKnowledgeCloudRequest({ ...options, packs, privatePacks, feedbackLog, auditLog }, req, res);
         }
         catch (error) {
+            if (error instanceof BadRequestError) {
+                sendJson(res, 400, { error: error.message });
+                return;
+            }
             sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) });
         }
     };
@@ -455,7 +459,12 @@ async function readJsonBody(req) {
     const raw = Buffer.concat(chunks).toString("utf-8").trim();
     if (raw.length === 0)
         return {};
-    return JSON.parse(raw);
+    try {
+        return JSON.parse(raw);
+    }
+    catch {
+        throw new BadRequestError("invalid JSON body");
+    }
 }
 function stringField(value, key) {
     if (!isRecord(value))
@@ -502,5 +511,7 @@ function isNodeError(error) {
 function sendJson(res, status, payload) {
     res.writeHead(status, { "content-type": "application/json" });
     res.end(`${JSON.stringify(payload)}\n`);
+}
+class BadRequestError extends Error {
 }
 //# sourceMappingURL=server.js.map
