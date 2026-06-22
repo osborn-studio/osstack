@@ -2526,6 +2526,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     "osstack knowledge sync",
     "osstack knowledge search \"proof pack checksum\"",
   ];
+  const knowledgeCloudPostReleaseUrl = options.cloudUrl ?? "https://knowledge.osstack.ai";
   const postReleaseValidationCommands = [
     ...(result.target === "knowledge-cloud" || result.target === "single-binary" ? [] : [
       "npm install -g @osstack/cli",
@@ -2534,9 +2535,9 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
       "osstack doctor --workspace . --json",
     ]),
     ...(result.target === "npm" || result.target === "single-binary" ? [] : [
-      "osstack release doctor --target knowledge-cloud --cloud-url https://knowledge.osstack.ai --json",
-      "osstack knowledge sync --cloud-url https://knowledge.osstack.ai --json",
-      "osstack knowledge search \"proof pack checksum\" --cloud-url https://knowledge.osstack.ai --json",
+      `osstack release doctor --target knowledge-cloud --cloud-url ${knowledgeCloudPostReleaseUrl} --json`,
+      `osstack knowledge sync --cloud-url ${knowledgeCloudPostReleaseUrl} --json`,
+      `osstack knowledge search "proof pack checksum" --cloud-url ${knowledgeCloudPostReleaseUrl} --json`,
     ]),
     ...(result.target === "npm" || result.target === "knowledge-cloud" ? [] : [
       "gh release view v<version> --repo gilosbornhello/osstack",

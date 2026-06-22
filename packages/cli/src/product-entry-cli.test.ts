@@ -613,10 +613,10 @@ describe("product entry commands", () => {
       expect(result.validation_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false");
       expect(result.deploy_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
       expect(result.post_release_validation_commands).toContain(
-        "osstack release doctor --target knowledge-cloud --cloud-url https://knowledge.osstack.ai --json",
+        `osstack release doctor --target knowledge-cloud --cloud-url ${cloud.url} --json`,
       );
       expect(result.post_release_validation_commands).toContain(
-        "osstack knowledge search \"proof pack checksum\" --cloud-url https://knowledge.osstack.ai --json",
+        `osstack knowledge search "proof pack checksum" --cloud-url ${cloud.url} --json`,
       );
       const markdown = await readFile(output, "utf-8");
       expect(markdown).toContain("# Osstack Release Action Plan");
@@ -625,7 +625,7 @@ describe("product entry commands", () => {
       expect(markdown).toContain("Do not run publish or deploy commands until blockers are resolved.");
       expect(markdown).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
       expect(markdown).toContain("## Post-Release Validation Commands");
-      expect(markdown).toContain("osstack release doctor --target knowledge-cloud --cloud-url https://knowledge.osstack.ai --json");
+      expect(markdown).toContain(`osstack release doctor --target knowledge-cloud --cloud-url ${cloud.url} --json`);
     } finally {
       await cloud.close();
     }

@@ -1,20 +1,26 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const root = process.cwd();
 const tempRoot = await mkdtemp(join(tmpdir(), "osstack-release-plan-smoke-"));
 const output = join(tempRoot, "release-plan.md");
+let cloud;
 
 try {
-  const result = run(process.execPath, [
+  cloud = await startKnowledgeCloudHandoffServer();
+  const cloudUrl = cloud.url;
+  const result = await runAsync(process.execPath, [
     "packages/cli/dist/bin.js",
     "release",
     "plan",
     "--target",
     "all",
+    "--cloud-url",
+    cloudUrl,
     "--output",
     output,
     "--json",
@@ -35,7 +41,7 @@ try {
   assertArrayIncludes(plan.post_release_validation_commands, "osstack release doctor --target npm --json", "post-release commands must include npm doctor");
   assertArrayIncludes(
     plan.post_release_validation_commands,
-    "osstack release doctor --target knowledge-cloud --cloud-url https://knowledge.osstack.ai --json",
+    `osstack release doctor --target knowledge-cloud --cloud-url ${cloudUrl} --json`,
     "post-release commands must include deployed Knowledge Cloud doctor",
   );
   assertArrayIncludes(plan.post_release_validation_commands, "shasum -a 256 -c sha256sums.txt", "post-release commands must include release checksum verification");
@@ -47,12 +53,13 @@ try {
   assertIncludes(markdown, "## Deploy Commands", "markdown plan must render deploy commands");
   assertIncludes(markdown, "## Post-Release Validation Commands", "markdown plan must render post-release validation commands");
   assertIncludes(markdown, "pnpm smoke:release-plan", "markdown validation commands must include release plan smoke");
-  assertIncludes(markdown, "osstack release doctor --target knowledge-cloud --cloud-url https://knowledge.osstack.ai --json", "markdown post-release commands must include Knowledge Cloud doctor");
+  assertIncludes(markdown, `osstack release doctor --target knowledge-cloud --cloud-url ${cloudUrl} --json`, "markdown post-release commands must include Knowledge Cloud doctor");
 
   console.log(JSON.stringify({
     ok: true,
     kind: "release-plan-smoke",
     output,
+    cloud_url: cloudUrl,
     target: plan.target,
     validation_commands: plan.validation_commands.length,
     publish_commands: plan.publish_commands.length,
@@ -60,6 +67,7 @@ try {
     post_release_validation_commands: plan.post_release_validation_commands.length,
   }, null, 2));
 } finally {
+  if (cloud !== undefined) await cloud.close();
   if (process.env["OSSTACK_KEEP_RELEASE_PLAN_SMOKE"] !== "1") {
     await rm(tempRoot, { recursive: true, force: true });
   } else {
@@ -107,6 +115,33 @@ function run(command, args, options = {}) {
   };
 }
 
+function runAsync(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: options.cwd,
+      env: options.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => {
+      stdout += String(chunk);
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+    child.once("error", reject);
+    child.once("exit", (status) => {
+      if (status !== 0) {
+        const output = [stdout, stderr].filter(Boolean).join("\n");
+        reject(new Error(`${command} ${args.join(" ")} failed with ${status}${output ? `\n${output}` : ""}`));
+        return;
+      }
+      resolve({ stdout, stderr });
+    });
+  });
+}
+
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -120,4 +155,50 @@ function assertIncludes(text, expected, message) {
   if (!text.includes(expected)) {
     throw new Error(`${message}: missing ${JSON.stringify(expected)}`);
   }
+}
+
+function startKnowledgeCloudHandoffServer() {
+  const server = createServer(async (request, response) => {
+    const url = new URL(request.url ?? "/", "http://127.0.0.1");
+    if (request.method === "GET" && url.pathname === "/healthz") {
+      writeJson(response, 200, { ok: true, service: "osstack-knowledge-cloud", packs: 6 });
+      return;
+    }
+    if (request.method === "POST" && url.pathname === "/v1/search") {
+      writeJson(response, 200, {
+        packs: [{ id: "osstack-core/proof-and-scorecard", version: "2026.06.22" }],
+        results: [{ chunk_id: "proof-checksum-pack", pack_id: "osstack-core/proof-and-scorecard", score: 1 }],
+      });
+      return;
+    }
+    if (request.method === "POST" && url.pathname === "/v1/audit") {
+      writeJson(response, 200, { filters: { action: "search", status: "ok", limit: 1 }, events: [] });
+      return;
+    }
+    writeJson(response, 404, { error: "not_found" });
+  });
+  return new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (address === null || typeof address === "string") {
+        reject(new Error("release plan smoke server did not bind a TCP port"));
+        return;
+      }
+      resolve({
+        url: `http://127.0.0.1:${address.port}`,
+        close: () => new Promise((closeResolve, closeReject) => {
+          server.close((error) => {
+            if (error !== undefined) closeReject(error);
+            else closeResolve();
+          });
+        }),
+      });
+    });
+  });
+}
+
+function writeJson(response, status, body) {
+  response.writeHead(status, { "content-type": "application/json" });
+  response.end(JSON.stringify(body));
 }
