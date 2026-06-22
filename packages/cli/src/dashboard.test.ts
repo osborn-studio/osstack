@@ -150,7 +150,7 @@ describe("dashboard", () => {
         expect.objectContaining({
           label: "Release Readiness",
           detail: "2 blocker(s): github_actions_check, proof_validation",
-          command: "osstack release doctor --target all --output release-readiness.md --json",
+          command: `osstack release doctor --target all --workspace ${tmp} --output release-readiness.md --json`,
           status: "blocked",
           blockers: [
             {

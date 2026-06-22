@@ -273,7 +273,7 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
     },
     recent_runs: recentRuns,
     next_steps: [
-      ...releaseReadinessNextSteps(releaseReadinessBlockers),
+      ...releaseReadinessNextSteps(releaseReadinessBlockers, workspacePath),
       {
         label: "产品设计",
         detail: "google-stitch 2.0 primary, claude-design fallback",
@@ -360,16 +360,22 @@ function readReleaseReadinessBlockers(path: string): ReleaseReadinessBlocker[] {
 
 function releaseReadinessNextSteps(
   blockers: ReleaseReadinessBlocker[],
+  workspacePath: string,
 ): DashboardSnapshot["next_steps"] {
   if (blockers.length === 0) return [];
   const ids = blockers.map((blocker) => blocker.id).join(", ");
   return [{
     label: "Release Readiness",
     detail: `${blockers.length} blocker(s): ${ids}`,
-    command: "osstack release doctor --target all --output release-readiness.md --json",
+    command: `osstack release doctor --target all --workspace ${shellArg(workspacePath)} --output release-readiness.md --json`,
     status: "blocked",
     blockers,
   }];
+}
+
+function shellArg(value: string): string {
+  if (/^[A-Za-z0-9_./:-]+$/.test(value)) return value;
+  return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
 export async function startDashboardServer(

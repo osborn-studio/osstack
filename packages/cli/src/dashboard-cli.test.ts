@@ -174,7 +174,7 @@ describe("dashboard/cockpit CLI", () => {
 
   it("prints workspace release readiness blockers from cockpit next", async () => {
     daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
-    const workspace = join(tmp, "workspace");
+    const workspace = join(tmp, "workspace with spaces");
     await mkdir(workspace, { recursive: true });
     await writeFile(join(workspace, "release-readiness.md"), [
       "# Osstack Release Readiness",
@@ -204,7 +204,7 @@ describe("dashboard/cockpit CLI", () => {
       expect.objectContaining({
         label: "Release Readiness",
         detail: "1 blocker(s): github_actions_check",
-        command: "osstack release doctor --target all --output release-readiness.md --json",
+        command: `osstack release doctor --target all --workspace '${workspace}' --output release-readiness.md --json`,
         status: "blocked",
         blockers: [{
           id: "github_actions_check",
