@@ -232,6 +232,19 @@ try {
     tenantAudit.events.some((item) => item.action === "feedback" && item.chunk_id === "proof-checksum-pack"),
     "/v1/audit must include tenant feedback events",
   );
+  const filteredTenantAudit = await fetchJson(`${url}/v1/audit`, {
+    tenant_id: "team_smoke",
+    action: "search",
+    status: "ok",
+    limit: 1,
+  }, {
+    authorization: "Bearer kst_smoke_private",
+  });
+  assert(filteredTenantAudit.filters?.action === "search", "/v1/audit must echo action filters");
+  assert(filteredTenantAudit.filters?.status === "ok", "/v1/audit must echo status filters");
+  assert(filteredTenantAudit.filters?.limit === 1, "/v1/audit must echo clamped limit filters");
+  assert(filteredTenantAudit.events.length === 1, "/v1/audit limit must constrain returned events");
+  assert(filteredTenantAudit.events[0]?.action === "search", "/v1/audit action filter must return matching events");
   const auditLog = await readFile(auditLogPath, "utf-8");
   assert(auditLog.includes("\"action\":\"publish\""), "audit JSONL must record publish events");
   assert(auditLog.includes("\"action\":\"search\""), "audit JSONL must record search events");

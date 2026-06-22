@@ -491,6 +491,33 @@ describe("Knowledge Cloud HTTP service", () => {
         expect.objectContaining({ action: "feedback", chunk_id: "private-release" }),
       ]),
     });
+
+    const filteredTenantAudit = await fetchJson(
+      `${url}/v1/audit`,
+      {
+        tenant_id: "team_alpha",
+        action: "search",
+        status: "ok",
+        limit: 1,
+      },
+      { authorization: "Bearer kst_alpha_private" },
+    );
+    expect(filteredTenantAudit).toMatchObject({
+      tenant_id: "team_alpha",
+      filters: {
+        action: "search",
+        status: "ok",
+        limit: 1,
+      },
+      events: [
+        expect.objectContaining({
+          action: "search",
+          status: "ok",
+          tenant_id: "team_alpha",
+          result_count: 2,
+        }),
+      ],
+    });
   });
 
   it("persists published packs and reloads them after restart", async () => {

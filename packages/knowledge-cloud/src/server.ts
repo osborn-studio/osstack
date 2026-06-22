@@ -59,6 +59,9 @@ export interface KnowledgeCloudAuditEntry {
   issue_codes?: string[];
 }
 
+type KnowledgeCloudAuditAction = KnowledgeCloudAuditEntry["action"];
+type KnowledgeCloudAuditStatus = KnowledgeCloudAuditEntry["status"];
+
 export interface PublishedKnowledgeCloudPacks {
   packs: KnowledgePack[];
   privatePacks: KnowledgePack[];
@@ -346,11 +349,22 @@ async function routeKnowledgeCloudRequest(
       sendJson(res, 401, { error: "tenant audit log requires authorization" });
       return;
     }
-    const events = tenantId === undefined
+    const action = auditActionField(body);
+    const status = auditStatusField(body);
+    const limit = auditLimitField(body);
+    const filteredEvents = (tenantId === undefined
       ? options.auditLog.filter((entry) => entry.tenant_id === undefined)
-      : options.auditLog.filter((entry) => entry.tenant_id === tenantId);
+      : options.auditLog.filter((entry) => entry.tenant_id === tenantId))
+      .filter((entry) => action === undefined || entry.action === action)
+      .filter((entry) => status === undefined || entry.status === status);
+    const events = limit === undefined ? filteredEvents : filteredEvents.slice(0, limit);
     sendJson(res, 200, {
       ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
+      filters: {
+        ...(action === undefined ? {} : { action }),
+        ...(status === undefined ? {} : { status }),
+        ...(limit === undefined ? {} : { limit }),
+      },
       events,
     });
     return;
@@ -516,6 +530,24 @@ function numberField(value: unknown, key: string): number | undefined {
   if (!isRecord(value)) return undefined;
   const field = value[key];
   return typeof field === "number" && Number.isFinite(field) ? field : undefined;
+}
+
+function auditActionField(value: unknown): KnowledgeCloudAuditAction | undefined {
+  const action = stringField(value, "action");
+  if (action === "publish" || action === "private_packs" || action === "search" || action === "feedback") return action;
+  return undefined;
+}
+
+function auditStatusField(value: unknown): KnowledgeCloudAuditStatus | undefined {
+  const status = stringField(value, "status");
+  if (status === "ok" || status === "rejected" || status === "unauthorized") return status;
+  return undefined;
+}
+
+function auditLimitField(value: unknown): number | undefined {
+  const limit = numberField(value, "limit");
+  if (limit === undefined) return undefined;
+  return Math.max(1, Math.min(100, Math.trunc(limit)));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
