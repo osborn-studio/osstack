@@ -17,7 +17,9 @@ smooth cycles, tighten the cadence to weekly by just doing it every Friday.
    can skip it (`pnpm changeset --empty` if the bot insists).
 
 2. CI (`.github/workflows/ci.yml`) gates the merge: Biome lint, build,
-   typecheck, tests, and `pnpm smoke:npm-install`. The smoke packs every
+   typecheck, tests, and `pnpm smoke:npm-install`. This daily PR gate runs on
+   Ubuntu so ordinary development is not blocked by paid macOS runner
+   availability. The smoke packs every
    `@osstack/*` workspace package, installs the tarballs into a temporary
    global npm prefix, then verifies `osstack --version` and
    `osstack loop doctor --workspace <tmp> --json`.
@@ -31,6 +33,14 @@ smooth cycles, tighten the cadence to weekly by just doing it every Friday.
    dist-tag and tags the release.
 
 5. Verify on a machine: `osstack upgrade --dry-run`, then `osstack upgrade`.
+
+The macOS single-binary release-candidate smoke lives in
+`.github/workflows/macos-release-candidate.yml`. It runs on `main` changes that
+touch the binary release path and can also be triggered manually:
+
+```bash
+gh workflow run "macOS Release Candidate" --ref main
+```
 
 ## Channels
 
