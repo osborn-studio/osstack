@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -51,6 +51,7 @@ describe("deliver CLI", () => {
         scorecard_markdown?: string;
         scorecard_html?: string;
         proof_dir?: string;
+        proof_zip?: string;
         proof_manifest?: string;
       };
       completed_tasks: Array<{ outcome: string }>;
@@ -66,6 +67,67 @@ describe("deliver CLI", () => {
     await expect(readFile(summary.artifacts.report!, "utf-8")).resolves.toContain("# Osstack Loop Report");
     await expect(readFile(summary.artifacts.scorecard_html!, "utf-8")).resolves.toContain("<!doctype html>");
     await expect(readFile(summary.artifacts.proof_manifest!, "utf-8")).resolves.toContain("\"kind\": \"osstack.proof_pack\"");
+    await expect(stat(summary.artifacts.proof_zip!)).resolves.toMatchObject({ size: expect.any(Number) });
+  });
+
+  it("records governed delivery findings without blocking by default", async () => {
+    await writeFile(join(tmp, "unsafe.ts"), "const api_key = \"sk-test-secret-token\";\n");
+
+    const exitCode = await main([
+      "deliver",
+      "Govern existing workspace",
+      "--workspace",
+      tmp,
+      "--execute",
+      "node -e \"process.exit(0)\"",
+      "--govern",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      governance: { mode: string; status: string; blocking: boolean; findings: Array<{ rule_id: string }> };
+      artifacts: { report: string; proof_dir: string };
+    };
+    expect(summary.governance).toMatchObject({
+      mode: "warn",
+      status: "fail",
+      blocking: false,
+      findings: [expect.objectContaining({ rule_id: "secret.api_key" })],
+    });
+    await expect(readFile(summary.artifacts.report, "utf-8")).resolves.toContain("governance-verifier");
+    await expect(readFile(join(summary.artifacts.proof_dir, "governance-results.json"), "utf-8")).resolves.toContain("secret.api_key");
+  });
+
+  it("fails strict governed delivery runs on error severity findings", async () => {
+    await writeFile(join(tmp, "unsafe.ts"), "const api_key = \"sk-test-secret-token\";\n");
+
+    const exitCode = await main([
+      "deliver",
+      "Strict govern existing workspace",
+      "--workspace",
+      tmp,
+      "--execute",
+      "node -e \"process.exit(0)\"",
+      "--govern",
+      "strict",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(2);
+    const summary = JSON.parse(logs.join("\n")) as {
+      governance: { mode: string; status: string; blocking: boolean };
+      artifacts: { proof_dir: string };
+    };
+    expect(summary.governance).toMatchObject({ mode: "strict", status: "fail", blocking: true });
+    const governance = JSON.parse(await readFile(join(summary.artifacts.proof_dir, "governance-results.json"), "utf-8")) as {
+      blocking: boolean;
+      findings: Array<{ rule_id: string; severity: string }>;
+    };
+    expect(governance).toMatchObject({
+      blocking: true,
+      findings: [expect.objectContaining({ rule_id: "secret.api_key", severity: "error" })],
+    });
   });
 
   it("suggests a verify command from package.json and records it in task context", async () => {

@@ -3430,7 +3430,7 @@ async function handleDeliverCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack deliver — product entry from one intent to proof
 
-  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--json]
+  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--govern [warn|strict]] [--json]
 
 Stages:
   intake -> plan -> execute-loop -> verify-review -> proof
@@ -3448,6 +3448,7 @@ Stages:
     "--priority",
     "--max-iter",
     "--worktree-root",
+    "--govern",
   ]));
   if (prompt === undefined) {
     console.error("osstack: deliver requires a prompt");
@@ -3470,6 +3471,11 @@ Stages:
   }
   const verifyCommands = flagValues(args, "--verify");
   const suggestedVerify = await suggestVerifyCommand(workspacePath);
+  const governanceMode = parseLoopGovernanceMode(args);
+  if (governanceMode instanceof Error) {
+    console.error(`osstack: ${governanceMode.message}`);
+    return 1;
+  }
   const autoAgent = args.includes("--auto-agent");
   const stages = ["intake", "plan", "execute-loop", "verify-review", "proof"];
   const task = await enqueueTask({
@@ -3503,7 +3509,13 @@ Stages:
   });
   const result = await engine.runOnce();
   const artifactArgs = ensureFlags(args, ["--report", "--scorecard", "--proof"]);
-  const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, artifactArgs, result.events);
+  const governance = governanceMode === undefined
+    ? undefined
+    : await createLoopGovernanceEvidence(governanceMode, workspacePath);
+  const events = governance === undefined
+    ? result.events
+    : appendGovernanceVerifyEvent(result.events, result.loop_id, governance);
+  const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, artifactArgs, events, governance);
   const learnedLessons = await learnLessonsFromLoopState(result.state);
   const summary = {
     prompt,
@@ -3516,7 +3528,9 @@ Stages:
     json_path: result.jsonPath,
     markdown_path: result.markdownPath,
     completed_tasks: result.state.completed_tasks,
+    events,
     ...(artifacts !== undefined ? { artifacts } : {}),
+    ...(governance !== undefined ? { governance } : {}),
     ...(learnedLessons !== undefined ? { learned_lessons: learnedLessons } : {}),
     ...(result.state.key_metrics !== undefined ? { metrics: result.state.key_metrics } : {}),
   };
@@ -3526,10 +3540,11 @@ Stages:
     console.log(`deliver=${result.loop_id}`);
     console.log(`task=${task.path}`);
     if (suggestedVerify !== undefined) console.log(`suggested_verify=${suggestedVerify}`);
+    if (governance !== undefined) console.log(`governance=${governance.status} mode=${governance.mode} blocking=${governance.blocking ? "yes" : "no"}`);
     if (artifacts?.report !== undefined) console.log(`report=${artifacts.report}`);
     if (artifacts?.proof_dir !== undefined) console.log(`proof=${artifacts.proof_dir}`);
   }
-  return result.state.completed_tasks.some((completed) => completed.outcome !== "success") ? 2 : 0;
+  return result.state.completed_tasks.some((completed) => completed.outcome !== "success") || governance?.blocking === true ? 2 : 0;
 }
 
 function ensureFlags(args: string[], flags: string[]): string[] {
