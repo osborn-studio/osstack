@@ -938,14 +938,16 @@ async function releaseVersionPackagesPrCheck(): Promise<ReleaseDoctorCheck> {
       "--head",
       "changeset-release/main",
       "--json",
-      "number,title,url,mergeStateStatus,isDraft",
+      "number,title,url,mergeStateStatus,mergeable,isDraft,statusCheckRollup",
     ], { timeout: 10_000 });
     const prs = JSON.parse(stdout) as Array<{
       number?: number;
       title?: string;
       url?: string;
       mergeStateStatus?: string;
+      mergeable?: string;
       isDraft?: boolean;
+      statusCheckRollup?: unknown[];
     }>;
     if (prs.length === 0) {
       return {
@@ -956,6 +958,7 @@ async function releaseVersionPackagesPrCheck(): Promise<ReleaseDoctorCheck> {
     }
     const pr = prs[0];
     const mergeState = pr?.mergeStateStatus ?? "UNKNOWN";
+    const checkCount = Array.isArray(pr?.statusCheckRollup) ? pr.statusCheckRollup.length : undefined;
     const ready = pr?.isDraft !== true && (mergeState === "CLEAN" || mergeState === "HAS_HOOKS");
     return {
       id: "version_packages_pr",
@@ -969,6 +972,8 @@ async function releaseVersionPackagesPrCheck(): Promise<ReleaseDoctorCheck> {
         url: pr?.url,
         draft: pr?.isDraft,
         merge_state: mergeState,
+        mergeable: pr?.mergeable,
+        check_count: checkCount,
       },
     };
   } catch (error) {
@@ -989,10 +994,12 @@ function releaseVersionPackagesPrOverride(value: string): ReleaseDoctorCheck {
       message: "No open Version Packages PR is waiting for npm publish.",
     };
   }
-  const match = /^open:(\d+):([A-Z_]+)$/.exec(value);
+  const match = /^open:(\d+):([A-Z_]+)(?::([A-Z_]+))?(?::(\d+))?$/.exec(value);
   if (match !== null) {
     const number = Number(match[1]);
     const mergeState = match[2] ?? "UNKNOWN";
+    const mergeable = match[3];
+    const checkCount = match[4] === undefined ? undefined : Number(match[4]);
     const ready = mergeState === "CLEAN" || mergeState === "HAS_HOOKS";
     return {
       id: "version_packages_pr",
@@ -1000,7 +1007,13 @@ function releaseVersionPackagesPrOverride(value: string): ReleaseDoctorCheck {
       message: ready
         ? `Version Packages PR #${number} is open and mergeable.`
         : `Version Packages PR #${number} needs attention before npm publish.`,
-      details: { number, merge_state: mergeState, draft: false },
+      details: {
+        number,
+        merge_state: mergeState,
+        mergeable,
+        check_count: checkCount,
+        draft: false,
+      },
     };
   }
   return {
@@ -1208,7 +1221,12 @@ function releaseDoctorNextSteps(options: {
   const versionPr = options.checks.find((check) => check.id === "version_packages_pr");
   if ((options.target === "all" || options.target === "npm") && versionPr?.status === "warn") {
     const number = typeof versionPr.details?.["number"] === "number" ? ` #${versionPr.details["number"]}` : "";
-    steps.push(`Review Version Packages PR${number}; it is not currently clean for npm publish.`);
+    const mergeable = versionPr.details?.["mergeable"];
+    const checkCount = versionPr.details?.["check_count"];
+    const checkContext = mergeable === "MERGEABLE" && checkCount === 0
+      ? "it is mergeable but has no reported checks"
+      : "it is not currently clean";
+    steps.push(`Review Version Packages PR${number}; ${checkContext} for npm publish.`);
   }
   const knowledgeWorkflow = options.checks.find((check) => check.id === "knowledge_cloud_workflow");
   if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeWorkflow?.status === "error") {
@@ -1299,8 +1317,9 @@ function releaseActionPlan(result: ReleaseDoctorResult): ReleaseActionPlan {
     ...(result.target === "all" || result.target === "npm"
       ? [
         versionPrNumber === undefined
-          ? "gh pr list --state open --head changeset-release/main --json number,mergeStateStatus,statusCheckRollup,url"
-          : `gh pr view ${versionPrNumber} --json mergeStateStatus,statusCheckRollup,url`,
+          ? "gh pr list --state open --head changeset-release/main --json number,mergeable,mergeStateStatus,statusCheckRollup,url"
+          : `gh pr view ${versionPrNumber} --json mergeable,mergeStateStatus,statusCheckRollup,url`,
+        "gh run list --branch changeset-release/main --limit 5",
       ]
       : []),
     ...(result.target === "all" || result.target === "knowledge-cloud"
