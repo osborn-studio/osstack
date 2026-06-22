@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDb, KanbanRepository, upsertPitfallLesson } from "@osstack/core";
 import { insertRun, insertTask, finalizeRun } from "./store.js";
-import { createDashboardSnapshot, dashboardUrl, renderDashboardHtml } from "./dashboard.js";
+import { createDashboardSnapshot, dashboardUrl, renderDashboardHtml, startDashboardServer } from "./dashboard.js";
 
 let tmp: string;
 beforeEach(() => { tmp = mkdtempSync(join(tmpdir(), "osstack-dashboard-")); });
@@ -164,6 +164,54 @@ describe("dashboard", () => {
         }),
       ]));
     } finally {
+      db.close();
+    }
+  });
+
+  it("serves workspace-scoped release readiness blockers from the dashboard API", async () => {
+    const path = join(tmp, "state.db");
+    const workspace = join(tmp, "workspace");
+    mkdirSync(workspace, { recursive: true });
+    writeFileSync(join(workspace, "release-readiness.md"), [
+      "# Osstack Release Readiness",
+      "",
+      "## Blockers",
+      "",
+      "- [github_actions_check] Fix GitHub Actions runner allocation before publishing or deploying.",
+    ].join("\n"));
+
+    const db = openDb({ path });
+    const kanban = new KanbanRepository(db, path, () => 300);
+    const server = await startDashboardServer((params) => createDashboardSnapshot({
+      db,
+      kanban,
+      dbPath: path,
+      ...(params?.workspacePath === undefined ? {} : { workspacePath: params.workspacePath }),
+      version: "0.0.0",
+      phase: "test",
+      dashboardUrl: "http://127.0.0.1:8799/dashboard",
+      adapters: [],
+      activeRuns: 0,
+      now: () => 300,
+    }), { host: "127.0.0.1", port: 0 });
+
+    try {
+      const response = await fetch(`${server.url.replace("/dashboard", "/api/dashboard")}?workspace=${encodeURIComponent(workspace)}`);
+      const snapshot = await response.json() as {
+        next_steps: Array<{ label: string; blockers?: Array<{ id: string; detail: string }> }>;
+      };
+
+      expect(snapshot.next_steps).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          label: "Release Readiness",
+          blockers: [{
+            id: "github_actions_check",
+            detail: "Fix GitHub Actions runner allocation before publishing or deploying.",
+          }],
+        }),
+      ]));
+    } finally {
+      await server.close();
       db.close();
     }
   });

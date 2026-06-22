@@ -124,6 +124,10 @@ export interface DashboardServerHandle {
   close: () => Promise<void>;
 }
 
+export interface DashboardHttpSnapshotParams {
+  workspacePath?: string;
+}
+
 export function dashboardUrl(opts: DashboardUrlOptions): string {
   const host = opts.urlHost ?? opts.host;
   return `http://${host}:${opts.port}/dashboard`;
@@ -367,7 +371,7 @@ function releaseReadinessNextSteps(
 }
 
 export async function startDashboardServer(
-  snapshot: () => DashboardSnapshot,
+  snapshot: (params?: DashboardHttpSnapshotParams) => DashboardSnapshot,
   opts: DashboardUrlOptions = dashboardUrlFromEnv(),
 ): Promise<DashboardServerHandle> {
   let url = dashboardUrl(opts);
@@ -396,16 +400,20 @@ export async function startDashboardServer(
 async function handleDashboardRequest(
   req: IncomingMessage,
   res: ServerResponse,
-  snapshot: () => DashboardSnapshot,
+  snapshot: (params?: DashboardHttpSnapshotParams) => DashboardSnapshot,
   url: string,
 ): Promise<void> {
-  const path = new URL(req.url ?? "/", url).pathname;
+  const requestUrl = new URL(req.url ?? "/", url);
+  const path = requestUrl.pathname;
   if (path === "/" || path === "/dashboard") {
     send(res, 200, "text/html; charset=utf-8", renderDashboardHtml());
     return;
   }
   if (path === "/api/dashboard") {
-    send(res, 200, "application/json; charset=utf-8", JSON.stringify(snapshot()));
+    const workspacePath = requestUrl.searchParams.get("workspace") ?? undefined;
+    send(res, 200, "application/json; charset=utf-8", JSON.stringify(snapshot(
+      workspacePath === undefined ? undefined : { workspacePath },
+    )));
     return;
   }
   if (path === "/dashboard/url") {
@@ -635,7 +643,7 @@ function releaseBlockersHtml(n){
 }
 const t = ${JSON.stringify(text)};
 async function load(){
-  const res = await fetch('/api/dashboard');
+  const res = await fetch('/api/dashboard' + window.location.search);
   const d = await res.json();
   document.getElementById('generated').textContent = d.dashboard.phase + ' · ' + new Date(d.dashboard.generated_at * 1000).toLocaleString();
   document.getElementById('metrics').innerHTML = [
