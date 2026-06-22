@@ -416,6 +416,26 @@ describe("Knowledge Cloud HTTP service", () => {
             results: [expect.objectContaining({ pack_id: "team/private-published" })],
         });
     });
+    it("rejects unsafe tenant ids before private publish authorization or persistence", async () => {
+        const url = await startCloud({
+            packs: await officialPacks(),
+            privateTenantTokens: { team_alpha: "kst_alpha_private" },
+        });
+        const response = await fetch(`${url}/v1/publish`, {
+            method: "POST",
+            headers: {
+                "content-type": "application/json",
+                authorization: "Bearer kst_alpha_private",
+            },
+            body: JSON.stringify({
+                pack: teamPack({}, { tenantId: "../escape" }),
+            }),
+        });
+        expect(response.status).toBe(400);
+        await expect(response.json()).resolves.toMatchObject({
+            error: "tenant_id is invalid",
+        });
+    });
     it("records tenant-scoped audit events for publish, private access, search, and feedback", async () => {
         const auditEvents = [];
         const url = await startCloud({

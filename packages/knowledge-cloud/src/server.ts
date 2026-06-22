@@ -225,7 +225,7 @@ async function routeKnowledgeCloudRequest(
     };
     const privatePack = manifest.scope === "team" || manifest.scope === "project" || manifest.tenant_id !== undefined;
     if (privatePack) {
-      const tenantId = manifest.tenant_id;
+      const tenantId = manifestTenantId(manifest);
       if (tenantId === undefined || tenantId.trim().length === 0) {
         await recordAudit(options, {
           action: "publish",
@@ -513,7 +513,19 @@ function packField(body: unknown): unknown {
 function tenantIdField(body: unknown): string | undefined {
   const tenantId = stringField(body, "tenant_id");
   if (tenantId === undefined || tenantId.trim().length === 0) return undefined;
+  if (!isSafeTenantId(tenantId)) throw new BadRequestError("tenant_id is invalid");
   return tenantId;
+}
+
+function manifestTenantId(manifest: KnowledgePackManifest): string | undefined {
+  const tenantId = manifest.tenant_id;
+  if (tenantId === undefined || tenantId.trim().length === 0) return undefined;
+  if (!isSafeTenantId(tenantId)) throw new BadRequestError("tenant_id is invalid");
+  return tenantId;
+}
+
+function isSafeTenantId(tenantId: string): boolean {
+  return /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(tenantId);
 }
 
 function isAuthorizedPrivateRequest(options: KnowledgeCloudOptions, req: IncomingMessage, tenantId?: string): boolean {
