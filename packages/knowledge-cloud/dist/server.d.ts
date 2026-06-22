@@ -5,6 +5,7 @@ export interface KnowledgeCloudOptions {
     privatePacks?: KnowledgePack[];
     privateAuthToken?: string;
     privateTenantTokens?: Record<string, string>;
+    publishedPackDir?: string;
     feedbackLog?: KnowledgeFeedbackEntry[];
     now?: () => string;
     feedbackSink?: (entry: KnowledgeFeedbackEntry) => void | Promise<void>;
@@ -22,7 +23,12 @@ export interface KnowledgeCloudSearchResponse {
     packs: KnowledgePackSummary[];
     results: KnowledgeSearchResult[];
 }
+export interface PublishedKnowledgeCloudPacks {
+    packs: KnowledgePack[];
+    privatePacks: KnowledgePack[];
+}
 export declare function createKnowledgeCloudHandler(options: KnowledgeCloudOptions): (req: IncomingMessage, res: ServerResponse) => Promise<void>;
 export declare function startKnowledgeCloudServer(options: KnowledgeCloudServerOptions): Promise<KnowledgeCloudServerHandle>;
 export declare function loadKnowledgeCloudPacksFromIndex(indexPath: string): Promise<KnowledgePack[]>;
+export declare function loadPublishedKnowledgeCloudPacksFromDir(root: string): Promise<PublishedKnowledgeCloudPacks>;
 //# sourceMappingURL=server.d.ts.map

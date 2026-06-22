@@ -4,13 +4,13 @@ import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadKnowledgePack } from "@osstack/knowledge";
-import { loadKnowledgeCloudPacksFromIndex, startKnowledgeCloudServer } from "./index.js";
+import { loadKnowledgeCloudPacksFromIndex, loadPublishedKnowledgeCloudPacksFromDir, startKnowledgeCloudServer, } from "./index.js";
 export async function main(argv = process.argv.slice(2)) {
     if (argv.includes("--help") || argv.includes("-h")) {
         console.log(`osstack-knowledge-cloud
 
 Usage:
-  osstack-knowledge-cloud [--host H] [--port N] [--official-index P] [--private-pack P] [--private-token T] [--private-tenant-token tenant=token] [--feedback-log P] [--json]
+  osstack-knowledge-cloud [--host H] [--port N] [--official-index P] [--private-pack P] [--private-token T] [--private-tenant-token tenant=token] [--published-pack-dir P] [--feedback-log P] [--json]
 
 Options:
   --host H              Host to bind. Default: 127.0.0.1
@@ -20,6 +20,7 @@ Options:
   --private-token T     Bearer token required for /v1/private-packs and private search.
   --private-tenant-token tenant=token
                          Tenant-bound bearer token for private packs. Repeatable.
+  --published-pack-dir P Persist /v1/publish packs and preload them on startup.
   --feedback-log P      Append feedback entries as JSONL for audit/quality review.
   --json                Print startup metadata as JSON.
 
@@ -29,6 +30,7 @@ Env:
   OSSTACK_OFFICIAL_KNOWLEDGE_INDEX
   OSSTACK_KNOWLEDGE_PRIVATE_TOKEN
   OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON
+  OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR
   OSSTACK_KNOWLEDGE_FEEDBACK_LOG
 `);
         return 0;
@@ -45,6 +47,10 @@ Env:
         ?? defaultOfficialIndexPath();
     const packs = await loadKnowledgeCloudPacksFromIndex(officialIndex);
     const privatePacks = await Promise.all(flagValues(argv, "--private-pack").map((path) => loadKnowledgePack(path)));
+    const publishedPackDir = flagValue(argv, "--published-pack-dir") ?? process.env["OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR"];
+    const publishedPacks = publishedPackDir === undefined || publishedPackDir.trim().length === 0
+        ? { packs: [], privatePacks: [] }
+        : await loadPublishedKnowledgeCloudPacksFromDir(publishedPackDir);
     const privateAuthToken = flagValue(argv, "--private-token") ?? process.env["OSSTACK_KNOWLEDGE_PRIVATE_TOKEN"];
     const privateTenantTokens = parsePrivateTenantTokens(flagValues(argv, "--private-tenant-token"), process.env["OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON"]);
     const feedbackLog = flagValue(argv, "--feedback-log") ?? process.env["OSSTACK_KNOWLEDGE_FEEDBACK_LOG"];
@@ -58,10 +64,13 @@ Env:
     const handle = await startKnowledgeCloudServer({
         host,
         port,
-        packs,
-        ...(privatePacks.length === 0 ? {} : { privatePacks }),
+        packs: [...packs, ...publishedPacks.packs],
+        ...([...privatePacks, ...publishedPacks.privatePacks].length === 0
+            ? {}
+            : { privatePacks: [...privatePacks, ...publishedPacks.privatePacks] }),
         ...(privateAuthToken === undefined || privateAuthToken.trim().length === 0 ? {} : { privateAuthToken: privateAuthToken.trim() }),
         ...(Object.keys(privateTenantTokens).length === 0 ? {} : { privateTenantTokens }),
+        ...(publishedPackDir === undefined || publishedPackDir.trim().length === 0 ? {} : { publishedPackDir }),
         ...(feedbackEntries.length === 0 ? {} : { feedbackLog: feedbackEntries }),
         ...(feedbackLog === undefined || feedbackLog.trim().length === 0
             ? {}
@@ -74,11 +83,16 @@ Env:
     const startup = {
         url: handle.url,
         official_index: officialIndex,
-        packs: packs.length,
-        private_packs: privatePacks.length,
+        packs: packs.length + publishedPacks.packs.length,
+        private_packs: privatePacks.length + publishedPacks.privatePacks.length,
+        published_packs_loaded: publishedPacks.packs.length,
+        published_private_packs_loaded: publishedPacks.privatePacks.length,
         private_auth_required: privateAuthToken !== undefined && privateAuthToken.trim().length > 0
             || Object.keys(privateTenantTokens).length > 0,
         private_tenant_tokens: Object.keys(privateTenantTokens).length,
+        ...(publishedPackDir === undefined || publishedPackDir.trim().length === 0
+            ? {}
+            : { published_pack_dir: publishedPackDir }),
         ...(feedbackLog === undefined || feedbackLog.trim().length === 0
             ? {}
             : { feedback_log: feedbackLog, feedback_log_loaded: feedbackEntries.length }),

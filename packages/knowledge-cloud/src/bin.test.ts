@@ -40,6 +40,7 @@ describe("osstack-knowledge-cloud bin", () => {
     expect(exitCode).toBe(0);
     expect(logs.join("\n")).toContain("osstack-knowledge-cloud");
     expect(logs.join("\n")).toContain("--official-index");
+    expect(logs.join("\n")).toContain("--published-pack-dir");
   });
 
   it("rejects invalid ports", async () => {
@@ -134,6 +135,55 @@ describe("osstack-knowledge-cloud bin", () => {
     expect(JSON.parse(logs.join("\n"))).toMatchObject({
       feedback_log: feedbackLog,
       feedback_log_loaded: 1,
+    });
+  });
+
+  it("preloads published pack storage on startup", async () => {
+    process.env["OSSTACK_KNOWLEDGE_CLOUD_ONCE"] = "1";
+    const publishedPackDir = join(tmp, "published-packs");
+    await mkdir(join(publishedPackDir, "official"), { recursive: true });
+    await writeFile(join(publishedPackDir, "official", "osstack-core%2Fpublished-startup.json"), JSON.stringify({
+      id: "osstack-core/published-startup",
+      version: "2026.06.22",
+      name: "Published Startup Pack",
+      license: "Osstack-native",
+      source_kind: "osstack_native",
+      quality_score: 90,
+      scope: "official",
+      taxonomy: ["osstack-core/knowledge-cloud"],
+      last_reviewed_at: "2026-06-22T00:00:00.000Z",
+      review: {
+        status: "approved",
+        reviewer_id: "knowledge-reviewer",
+        reviewed_at: "2026-06-22T00:00:00.000Z",
+        summary: "Approved persisted startup pack.",
+      },
+      source_attribution: ["osstack-native product knowledge"],
+      source_provenance: [{
+        source_id: "published-startup",
+        path: "published-startup.md",
+        sha256: "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        license: "Osstack-native",
+        scope: "official",
+        imported_at: "2026-06-22T00:00:00.000Z",
+      }],
+      chunks: [{
+        chunk_id: "published-startup-pack",
+        title: "Published startup pack",
+        body: "Osstack Knowledge Cloud reloads approved published packs from persistent startup storage.",
+        tags: ["published", "startup"],
+        source_refs: ["published-startup"],
+      }],
+    }, null, 2), "utf-8");
+
+    const exitCode = await main(["--port", "0", "--published-pack-dir", publishedPackDir, "--json"]);
+
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      packs: 7,
+      published_pack_dir: publishedPackDir,
+      published_packs_loaded: 1,
+      published_private_packs_loaded: 0,
     });
   });
 });

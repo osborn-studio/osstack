@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { loadKnowledgePack, loadKnowledgePackIndex, searchKnowledgePacks, validateKnowledgePackManifest, validateKnowledgePublishGate, } from "@osstack/knowledge";
 export function createKnowledgeCloudHandler(options) {
@@ -45,6 +46,14 @@ export async function loadKnowledgeCloudPacksFromIndex(indexPath) {
     const index = await loadKnowledgePackIndex(indexPath);
     const indexDir = dirname(indexPath);
     return Promise.all(index.packs.map((pack) => loadKnowledgePack(join(indexDir, pack.path))));
+}
+export async function loadPublishedKnowledgeCloudPacksFromDir(root) {
+    const packs = await loadPublishedPacksFromDir(join(root, "official"));
+    const privatePacks = [];
+    for (const tenantId of await tenantDirs(join(root, "private"))) {
+        privatePacks.push(...await loadPublishedPacksFromDir(join(root, "private", tenantId)));
+    }
+    return { packs, privatePacks };
 }
 async function routeKnowledgeCloudRequest(options, req, res) {
     const method = req.method ?? "GET";
@@ -117,6 +126,7 @@ async function routeKnowledgeCloudRequest(options, req, res) {
                 sendJson(res, 401, { error: "private knowledge publish requires authorization" });
                 return;
             }
+            await persistPublishedPack(options.publishedPackDir, pack, tenantId);
             upsertPack(options.privatePacks, pack);
             sendJson(res, 200, {
                 ok: true,
@@ -126,6 +136,7 @@ async function routeKnowledgeCloudRequest(options, req, res) {
             });
             return;
         }
+        await persistPublishedPack(options.publishedPackDir, pack);
         upsertPack(options.packs, pack);
         sendJson(res, 200, {
             ok: true,
@@ -220,6 +231,54 @@ function tenantPrivatePacks(options, tenantId) {
         return tenantId === packTenantId;
     });
 }
+async function persistPublishedPack(root, pack, tenantId) {
+    if (root === undefined || root.trim().length === 0)
+        return;
+    const dir = tenantId === undefined ? join(root, "official") : join(root, "private", tenantId);
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, publishedPackFileName(pack.manifest)), `${JSON.stringify(pack.manifest, null, 2)}\n`, "utf-8");
+}
+async function loadPublishedPacksFromDir(dir) {
+    const files = await jsonFiles(dir);
+    const packs = [];
+    for (const file of files) {
+        const path = join(dir, file);
+        const manifest = validateKnowledgePackManifest(JSON.parse(await readFile(path, "utf-8")));
+        packs.push({ manifest, path });
+    }
+    return packs;
+}
+async function tenantDirs(dir) {
+    try {
+        const entries = await readdir(dir, { withFileTypes: true });
+        return entries
+            .filter((entry) => entry.isDirectory())
+            .map((entry) => entry.name)
+            .sort((a, b) => a.localeCompare(b));
+    }
+    catch (error) {
+        if (isNodeError(error) && error.code === "ENOENT")
+            return [];
+        throw error;
+    }
+}
+async function jsonFiles(dir) {
+    try {
+        const entries = await readdir(dir, { withFileTypes: true });
+        return entries
+            .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+            .map((entry) => entry.name)
+            .sort((a, b) => a.localeCompare(b));
+    }
+    catch (error) {
+        if (isNodeError(error) && error.code === "ENOENT")
+            return [];
+        throw error;
+    }
+}
+function publishedPackFileName(manifest) {
+    return `${encodeURIComponent(manifest.id)}.json`;
+}
 function upsertPack(packs, pack) {
     const index = packs.findIndex((candidate) => candidate.manifest.id === pack.manifest.id);
     if (index >= 0)
@@ -285,6 +344,9 @@ function numberField(value, key) {
 }
 function isRecord(value) {
     return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function isNodeError(error) {
+    return error instanceof Error && "code" in error;
 }
 function sendJson(res, status, payload) {
     res.writeHead(status, { "content-type": "application/json" });

@@ -1,17 +1,26 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { mkdtempSync } from "node:fs";
+import { readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { KnowledgeFeedbackEntry, KnowledgePack } from "@osstack/knowledge";
-import { createKnowledgeCloudHandler, loadKnowledgeCloudPacksFromIndex } from "./index.js";
+import {
+  createKnowledgeCloudHandler,
+  loadKnowledgeCloudPacksFromIndex,
+  loadPublishedKnowledgeCloudPacksFromDir,
+} from "./index.js";
 
 let server: Server | undefined;
+const tempDirs: string[] = [];
 
 afterEach(async () => {
   if (server !== undefined) {
     await closeServer(server);
     server = undefined;
   }
+  await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
 describe("Knowledge Cloud HTTP service", () => {
@@ -366,6 +375,85 @@ describe("Knowledge Cloud HTTP service", () => {
       results: [expect.objectContaining({ pack_id: "team/private-published" })],
     });
   });
+
+  it("persists published packs and reloads them after restart", async () => {
+    const publishedPackDir = tempDir();
+    let url = await startCloud({
+      packs: await officialPacks(),
+      privateTenantTokens: { team_alpha: "kst_alpha_private" },
+      publishedPackDir,
+    });
+    await fetchJson(`${url}/v1/publish`, {
+      pack: reviewedOfficialPack({
+        id: "osstack-core/persisted-cloud-publish",
+        chunks: [{
+          chunk_id: "persisted-cloud-publish-review",
+          title: "Persisted cloud publish review",
+          body: "Osstack Knowledge Cloud persists approved publish artifacts so restarted services can search reviewed packs.",
+          tags: ["cloud", "publish", "persisted"],
+          source_refs: ["cloud-publish"],
+        }],
+      }),
+    });
+    const privatePack = teamPack({
+      id: "team/private-persisted",
+      chunks: [{
+        chunk_id: "private-persisted-review",
+        title: "Private persisted runbook",
+        body: "Private persisted Osstack runbooks keep alpha vault rotation notes scoped to tenant authorization.",
+        tags: ["private", "persisted", "review"],
+      }],
+    });
+    await fetchJson(
+      `${url}/v1/publish`,
+      { pack: privatePack },
+      { authorization: "Bearer kst_alpha_private" },
+    );
+    await closeServer(server!);
+    server = undefined;
+
+    await expect(readdir(join(publishedPackDir, "official"))).resolves.toEqual([
+      "osstack-core%2Fpersisted-cloud-publish.json",
+    ]);
+    await expect(readdir(join(publishedPackDir, "private", "team_alpha"))).resolves.toEqual([
+      "team%2Fprivate-persisted.json",
+    ]);
+
+    const persisted = await loadPublishedKnowledgeCloudPacksFromDir(publishedPackDir);
+    url = await startCloud({
+      packs: [...await officialPacks(), ...persisted.packs],
+      privatePacks: persisted.privatePacks,
+      privateTenantTokens: { team_alpha: "kst_alpha_private" },
+    });
+
+    const officialSearch = await fetchJson(`${url}/v1/search`, {
+      query: "restarted services can search reviewed packs",
+      limit: 1,
+    });
+    expect(officialSearch).toMatchObject({
+      results: [expect.objectContaining({ pack_id: "osstack-core/persisted-cloud-publish" })],
+    });
+
+    const unauthorizedPrivateSearch = await fetchJson(`${url}/v1/search`, {
+      query: "alpha vault rotation notes",
+      tenant_id: "team_alpha",
+      limit: 1,
+    });
+    expect(unauthorizedPrivateSearch).toMatchObject({ results: [] });
+
+    const privateSearch = await fetchJson(
+      `${url}/v1/search`,
+      {
+        query: "alpha vault rotation notes",
+        tenant_id: "team_alpha",
+        limit: 1,
+      },
+      { authorization: "Bearer kst_alpha_private" },
+    );
+    expect(privateSearch).toMatchObject({
+      results: [expect.objectContaining({ pack_id: "team/private-persisted" })],
+    });
+  });
 });
 
 async function officialPacks(): Promise<KnowledgePack[]> {
@@ -403,6 +491,12 @@ async function closeServer(target: Server): Promise<void> {
       else resolveClose();
     });
   });
+}
+
+function tempDir(): string {
+  const dir = mkdtempSync(join(tmpdir(), "osstack-knowledge-cloud-published-"));
+  tempDirs.push(dir);
+  return dir;
 }
 
 function teamPack(

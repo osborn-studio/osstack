@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { dirname, join } from "node:path";
 import {
@@ -19,6 +20,7 @@ export interface KnowledgeCloudOptions {
   privatePacks?: KnowledgePack[];
   privateAuthToken?: string;
   privateTenantTokens?: Record<string, string>;
+  publishedPackDir?: string;
   feedbackLog?: KnowledgeFeedbackEntry[];
   now?: () => string;
   feedbackSink?: (entry: KnowledgeFeedbackEntry) => void | Promise<void>;
@@ -38,6 +40,11 @@ export interface KnowledgeCloudServerHandle {
 export interface KnowledgeCloudSearchResponse {
   packs: KnowledgePackSummary[];
   results: KnowledgeSearchResult[];
+}
+
+export interface PublishedKnowledgeCloudPacks {
+  packs: KnowledgePack[];
+  privatePacks: KnowledgePack[];
 }
 
 export function createKnowledgeCloudHandler(options: KnowledgeCloudOptions) {
@@ -85,6 +92,15 @@ export async function loadKnowledgeCloudPacksFromIndex(indexPath: string): Promi
   const index = await loadKnowledgePackIndex(indexPath);
   const indexDir = dirname(indexPath);
   return Promise.all(index.packs.map((pack) => loadKnowledgePack(join(indexDir, pack.path))));
+}
+
+export async function loadPublishedKnowledgeCloudPacksFromDir(root: string): Promise<PublishedKnowledgeCloudPacks> {
+  const packs = await loadPublishedPacksFromDir(join(root, "official"));
+  const privatePacks: KnowledgePack[] = [];
+  for (const tenantId of await tenantDirs(join(root, "private"))) {
+    privatePacks.push(...await loadPublishedPacksFromDir(join(root, "private", tenantId)));
+  }
+  return { packs, privatePacks };
 }
 
 async function routeKnowledgeCloudRequest(
@@ -161,6 +177,7 @@ async function routeKnowledgeCloudRequest(
         sendJson(res, 401, { error: "private knowledge publish requires authorization" });
         return;
       }
+      await persistPublishedPack(options.publishedPackDir, pack, tenantId);
       upsertPack(options.privatePacks, pack);
       sendJson(res, 200, {
         ok: true,
@@ -170,6 +187,7 @@ async function routeKnowledgeCloudRequest(
       });
       return;
     }
+    await persistPublishedPack(options.publishedPackDir, pack);
     upsertPack(options.packs, pack);
     sendJson(res, 200, {
       ok: true,
@@ -269,6 +287,54 @@ function tenantPrivatePacks(options: KnowledgeCloudOptions, tenantId: string): K
   });
 }
 
+async function persistPublishedPack(root: string | undefined, pack: KnowledgePack, tenantId?: string): Promise<void> {
+  if (root === undefined || root.trim().length === 0) return;
+  const dir = tenantId === undefined ? join(root, "official") : join(root, "private", tenantId);
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, publishedPackFileName(pack.manifest)), `${JSON.stringify(pack.manifest, null, 2)}\n`, "utf-8");
+}
+
+async function loadPublishedPacksFromDir(dir: string): Promise<KnowledgePack[]> {
+  const files = await jsonFiles(dir);
+  const packs: KnowledgePack[] = [];
+  for (const file of files) {
+    const path = join(dir, file);
+    const manifest = validateKnowledgePackManifest(JSON.parse(await readFile(path, "utf-8")) as unknown);
+    packs.push({ manifest, path });
+  }
+  return packs;
+}
+
+async function tenantDirs(dir: string): Promise<string[]> {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true });
+    return entries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort((a, b) => a.localeCompare(b));
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+async function jsonFiles(dir: string): Promise<string[]> {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true });
+    return entries
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+      .map((entry) => entry.name)
+      .sort((a, b) => a.localeCompare(b));
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+function publishedPackFileName(manifest: KnowledgePackManifest): string {
+  return `${encodeURIComponent(manifest.id)}.json`;
+}
+
 function upsertPack(packs: KnowledgePack[], pack: KnowledgePack): void {
   const index = packs.findIndex((candidate) => candidate.manifest.id === pack.manifest.id);
   if (index >= 0) packs[index] = pack;
@@ -332,6 +398,10 @@ function numberField(value: unknown, key: string): number | undefined {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error;
 }
 
 function sendJson(res: ServerResponse, status: number, payload: unknown): void {

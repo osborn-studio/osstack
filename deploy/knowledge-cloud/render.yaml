@@ -11,3 +11,5 @@ services:
         value: 8787
       - key: OSSTACK_KNOWLEDGE_FEEDBACK_LOG
         value: /data/feedback/feedback.jsonl
+      - key: OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR
+        value: /data/published-packs

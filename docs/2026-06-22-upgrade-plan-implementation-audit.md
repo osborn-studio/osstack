@@ -22,7 +22,7 @@
 - `npm install -g @osstack/cli` 还没有从真实 npm registry 验证，只验证了本地 tarball 安装。
 - 可选单文件分发已有 portable CLI bundle smoke、Bun single executable smoke、本地 release asset manifest/checksum/SPDX SBOM、ad-hoc codesign 验证、`.tar.gz` release archive smoke，并已接入 CI/release workflow candidate artifact 与 tag/workflow_dispatch GitHub Release 上传路径；发布级 Developer ID 签名/公证/跨机器验证尚未完成。
 - Cockpit 当前是 dashboard/web cockpit + CLI summary，不是完整交互式 TUI。
-- Knowledge Cloud 已有本地 ingestion/rewrite/review 和云端 `/v1/publish` 门禁切片，但生产 storage、审核后台、正式云端运营流水线仍未完成。
+- Knowledge Cloud 已有本地 ingestion/rewrite/review、云端 `/v1/publish` 门禁和文件型 published-pack storage 切片，但审核后台、Postgres/object storage/vector index、正式云端运营流水线仍未完成。
 
 ## 2. Phase 完成矩阵
 
@@ -368,11 +368,12 @@
 - official packs 有显式 `review.status=approved`、reviewer、reviewed_at 与 summary；`knowledge ingest` 支持 `--reviewer` / `--review-status` / `--review-note`，把 source intake -> rewrite -> review -> publish gate 串成可审计的本地切片。
 - publish gate 会阻止 official/external `processed_mit` 知识包继续使用裸上游 `MIT` 许可标签，并要求 official pack 具备 approved review、显式标记为 Osstack processed/derived license label，避免把上游知识库痕迹直接发布成 official pack。
 - 云端 `/v1/publish` 会复用 manifest validator 与 publish gate：未 approved review 的 official pack 会被拒绝；approved official pack 发布后可被 search 命中；team/project/tenant pack 必须携带 `tenant_id` 并通过目标 tenant token 授权后才会进入 private search 范围。
+- 云端支持 `OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR` / `--published-pack-dir` 文件型 published-pack storage：approved official pack 会落到 `official/<pack-id>.json`，tenant/private pack 会落到 `private/<tenant_id>/<pack-id>.json`；服务重启后可 preload 已发布包并保留 private search 授权边界。
 - 私有知识包 HTTP 访问要求 bearer token + 显式 `tenant_id`，无 tenant 的 `/v1/private-packs` 请求会被拒绝，私有 search 只有在授权且 tenant 明确时才合入 tenant-scoped private packs，避免未绑定 tenant 的私有包被泛授权搜索泄露。
 - Knowledge Cloud 支持 tenant-bound private tokens：`osstack-knowledge-cloud --private-tenant-token tenant=token` 和 `OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON` 可把私有知识包访问绑定到具体 tenant，错误 tenant token 无法读取目标 tenant 的 private packs；旧的 `--private-token` 仍作为兼容的全局 private token。
 - feedback entry 支持记录 `tenant_id` 与 `authorized`，CLI `knowledge feedback` 支持 `--tenant`，云端 `/v1/feedback` 会把 tenant/auth 范围写入 sink 与响应，便于后续做知识质量审计和租户级反馈分析。
 - 云端服务支持 `/v1/feedback/summary`，可按 `tenant_id` 聚合 useful/bad/total 和 chunk 级反馈计数；Knowledge Cloud smoke 已覆盖 tenant feedback summary。
-- `osstack-knowledge-cloud` 支持 `--feedback-log` / `OSSTACK_KNOWLEDGE_FEEDBACK_LOG` 将 feedback entry 追加写入 JSONL，并在启动时预加载既有 JSONL 作为 summary 初始状态；Fly/Render 部署配置默认使用 `/data/feedback/feedback.jsonl`，deploy asset smoke 会检查该落盘路径。
+- `osstack-knowledge-cloud` 支持 `--feedback-log` / `OSSTACK_KNOWLEDGE_FEEDBACK_LOG` 将 feedback entry 追加写入 JSONL，并在启动时预加载既有 JSONL 作为 summary 初始状态；Fly/Render 部署配置默认使用 `/data/feedback/feedback.jsonl` 和 `/data/published-packs`，deploy asset smoke 会检查这些落盘路径。
 - Knowledge search result 会返回 `matched_terms`，本地检索和云端检索 validator 均已覆盖，prompt snippet 会携带命中词，便于 proof/report 解释 chunk 为什么被检索命中。
 - 本地与云端共用的 `searchKnowledgePacks` 已从简单词频排序升级为 BM25-style 排序：考虑 query term 文档频率、chunk 长度归一化和 pack quality score，并覆盖“稀有词完整命中优先于重复通用词”的回归测试。
 - CLI 支持 cloud login/sync/search/import/ingest/pin/feedback/sources。
@@ -382,7 +383,7 @@
 未完成：
 
 - 真实云端域名/URL 未上线；`--cloud-url` health + search gate 已具备，但尚无生产 URL 通过记录。
-- 生产 storage/Postgres/vector index 未实现；BM25-style 本地/云端共享排序已作为 MVP 检索排序落地。
+- 文件型 published-pack storage 已实现并被 service/bin/smoke 覆盖；Postgres/object storage/vector index 未实现；BM25-style 本地/云端共享排序已作为 MVP 检索排序落地。
 - ingestion pipeline 仍是本地 MVP，不是完整云端 source intake -> rewrite -> review -> publish 运营系统；当前已有本地 source intake、Osstack rewrite、approved review metadata 与云端 `/v1/publish` gate，可检查 Osstack voice、provenance、source_refs、quality/review/taxonomy 与 processed license label，并把通过审核的包加入当前 Cloud 进程的 official/private 检索范围。
 - tenant auth/permissions 已有 global token、tenant-bound token 与 explicit tenant scope 的本地 HTTP gate，但仍不是完整生产级账号、组织、角色、审计日志权限模型。
 
