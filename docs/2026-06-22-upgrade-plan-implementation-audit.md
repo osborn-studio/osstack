@@ -18,7 +18,7 @@
 
 - GitHub push 被 OAuth token 缺少 `workflow` scope 阻塞，导致 PR、CI、云端部署、npm 发布无法继续；本地 workflow 已接入 `smoke:deliver-proof` 与包含 installed-CLI knowledge fallback 的 `smoke:npm-install`。
 - `npm install -g @osstack/cli` 还没有从真实 npm registry 验证，只验证了本地 tarball 安装。
-- 可选单文件分发尚未实现。
+- 可选单文件分发已有 portable CLI bundle smoke 作为过渡证据；真正 macOS arm64 single executable 尚未实现。
 - Cockpit 当前是 dashboard/web cockpit + CLI summary，不是完整交互式 TUI。
 - Knowledge Cloud 的 ingestion/rewrite/review/publish 生产流水线仍是 MVP/本地包化阶段，还不是完整云端运营系统。
 
@@ -26,7 +26,7 @@
 
 | Phase | 计划目标 | 当前状态 | 证据 | 剩余工作 |
 |---|---|---:|---|---|
-| Phase 0 Distribution | 一行安装 + daemon install + 可选单文件分发 | 部分完成 | `scripts/smoke-npm-install.mjs` 验证本地 tarball install；`serve --install --no-load` 验证 launchd plist 生命周期 | 真实 npm publish；真实 `npm install -g @osstack/cli`；单文件分发 |
+| Phase 0 Distribution | 一行安装 + daemon install + 可选单文件分发 | 部分完成 | `scripts/smoke-npm-install.mjs` 验证本地 tarball install；`serve --install --no-load` 验证 launchd plist 生命周期；`scripts/smoke-portable-cli.mjs` 验证 portable bundle | 真实 npm publish；真实 `npm install -g @osstack/cli`；真正 single executable |
 | Phase 1 Evidence Layer | report + scorecard + proof + subprocess-first adapters | 基本完成 | `report-cli.test.ts`、`scorecard-cli.test.ts`、`proof-cli.test.ts`、`agent-list-cli.test.ts`、npm install smoke | daemon event-rich report 仍需更多真实运行样本验证 |
 | Phase 2 Product Entry | `osstack deliver` + agent 角色化 | 基本完成 | `deliver-cli.test.ts`、`product-entry-cli.test.ts`、`agent-scorecard-cli.test.ts` | deliver 的 execute-loop 生产路径需更多真实仓库 smoke |
 | Phase 3 Governed Run | Run Spec + governance verifier + PR evidence | 基本完成 | `docs/specs/OSSTACK_RUN_SPEC_V1.md`、schemas/test vectors、`governance-cli.test.ts`、`pr-cli.test.ts` | spec MUST 到 verifier 的覆盖矩阵可继续细化 |
@@ -77,16 +77,20 @@
 
 ### Task 0.3：可选单文件分发
 
-状态：未完成。
+状态：部分完成。
 
 证据：
 
-- 当前没有 Bun compile、Node SEA、pkg 或 macOS arm64 single binary 产物。
+- `scripts/smoke-portable-cli.mjs` 已新增，验证 workspace packages build/pack 后可以被安装进临时 portable prefix。
+- portable bundle 包含 `bin/osstack`、`lib/node_modules/@osstack/cli/dist/bin.js`、`lib/node_modules`，并实际执行 `osstack --version`、`osstack help`、`osstack loop doctor --json`。
+- smoke 会输出 Node SEA、Bun、pkg、nexe、postject 的本机候选状态，给后续真单文件方案评估留出机器可读证据。
+- 当前仍没有 Bun compile、Node SEA、pkg 或 macOS arm64 single executable 产物。
 
 建议：
 
 - 保持 npm 为主路径。
-- 后续单独做 `scripts/build-single-binary.mjs` 评估，不阻塞当前 PR。
+- 将 portable bundle 作为“无全局 npm 安装”的备用分发形态。
+- 后续单独做 `scripts/build-single-binary.mjs` 或 `scripts/build-node-sea.mjs`，补齐 postject/codesign/notarization 后再声明真正 single executable。
 
 ### Task 1.1 - 1.4：Report / Scorecard / Proof
 
@@ -350,7 +354,7 @@
 | P1 | `CONFORMANCE_MATRIX.md` | 让 OSSTACK_RUN_SPEC_V1 的 MUST 条款可审计 | 每条 MUST 映射 schema/test/verifier |
 | P1 | 真实 repo deliver e2e smoke | 证明 Product Entry 可处理实际项目 | 临时 repo 跑 deliver/loop/proof 成功 |
 | P1 | Compliance report 从 proof dir 渲染 smoke | 证明 enterprise proof 包装闭环 | deliver proof dir 可渲染合规报告且不声称外部认证 |
-| P2 | 单文件分发评估 | 可选增强，不阻塞 npm 主路径 | macOS arm64 binary + smoke |
+| P2 | 真单文件分发评估 | 可选增强，不阻塞 npm 主路径；portable bundle smoke 已覆盖过渡形态 | macOS arm64 single executable + smoke |
 | P2 | 交互式 TUI | 当前 cockpit 是 Web/summary + run/retry/approve/report/proof MVP | 提供完整交互式 TUI |
 
 ## 5. 外部阻塞记录
