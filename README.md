@@ -73,14 +73,19 @@ unless you wire in an agent that calls out.
   loop runtime themselves are cross-platform.
 - *(Optional)* a Hermes agent checkout for the Telegram/Kanban bridge.
 
-### From npm (once published)
+### From npm
 
 ```bash
 npm install -g @osstack/cli
 osstack --version
+osstack loop doctor --workspace .
 ```
 
-### From source (current canonical method)
+### From source (developer path)
+
+Use this path when you want to contribute to osstack itself, test an
+unreleased branch, or work on the monorepo packages directly. Product users
+should prefer the npm install above.
 
 ```bash
 git clone https://github.com/gilosbornhello/osstack.git ~/Developer/osstack

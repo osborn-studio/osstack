@@ -108,6 +108,7 @@ describe("product entry commands", () => {
     expect(exitCode).toBe(0);
     const output = logs.join("\n");
     expect(output).toContain("5-minute quickstart");
+    expect(output).toContain("npm install -g @osstack/cli");
     expect(output).toContain("osstack doctor");
     expect(output).toContain("osstack loop enqueue");
     expect(output).toContain("osstack loop run");

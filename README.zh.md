@@ -64,14 +64,19 @@ osstack 就是这一层：
 - 由 launchd 托管 daemon 需要 **macOS**（Linux/systemd 在计划中）。CLI 与循环运行时本身跨平台。
 - *（可选）* 一份 Hermes Agent 检出，用于 Telegram/看板桥接。
 
-### 通过 npm（发布后）
+### 通过 npm
 
 ```bash
 npm install -g @osstack/cli
 osstack --version
+osstack loop doctor --workspace .
 ```
 
-### 从源码（当前规范方式）
+### 从源码（开发者路径）
+
+当你要参与 osstack 自身开发、测试尚未发布的分支，或直接修改
+monorepo packages 时，使用这条路径。普通产品用户优先使用上面的 npm
+安装方式。
 
 ```bash
 git clone https://github.com/gilosbornhello/osstack.git ~/Developer/osstack
