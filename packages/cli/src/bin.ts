@@ -802,6 +802,8 @@ type ProofFileIntegrityIssueCode =
   | "manifest_missing_created_at"
   | "manifest_missing_generated_at"
   | "artifact_malformed"
+  | "artifact_invalid_sha256"
+  | "artifact_invalid_bytes"
   | "duplicate_artifact_path"
   | "path_outside_proof_dir"
   | "missing_artifact"
@@ -1620,6 +1622,7 @@ async function validateProofFileIntegrity(
 
   const proofRoot = resolve(proofDir);
   const manifestShaByPath = new Map<string, string>();
+  const invalidArtifactPaths = new Set<string>();
   let sha256sumsContent: string | undefined;
   for (const artifact of manifestRaw["artifacts"]) {
     if (!isRecord(artifact)) {
@@ -1640,6 +1643,19 @@ async function validateProofFileIntegrity(
         path: typeof artifactPath === "string" && artifactPath.length > 0 ? artifactPath : "<unknown>",
         code: "artifact_malformed",
       });
+      continue;
+    }
+    let artifactInvalid = false;
+    if (!/^[a-f0-9]{64}$/.test(expectedSha256)) {
+      issues.push({ path: artifactPath, code: "artifact_invalid_sha256", expected: "64 lowercase hex characters", actual: expectedSha256 });
+      artifactInvalid = true;
+    }
+    if (expectedBytes < 0) {
+      issues.push({ path: artifactPath, code: "artifact_invalid_bytes", expected: "non-negative integer", actual: expectedBytes });
+      artifactInvalid = true;
+    }
+    if (artifactInvalid) {
+      invalidArtifactPaths.add(artifactPath);
       continue;
     }
     if (manifestShaByPath.has(artifactPath)) {
@@ -1685,7 +1701,7 @@ async function validateProofFileIntegrity(
     }
   }
 
-  issues.push(...validateProofSha256Sums(manifestShaByPath, sha256sumsContent));
+  issues.push(...validateProofSha256Sums(manifestShaByPath, sha256sumsContent, invalidArtifactPaths));
   return { ok: issues.length === 0, issues };
 }
 
@@ -1697,6 +1713,7 @@ function missingManifestString(manifestRaw: Record<string, unknown>, key: string
 function validateProofSha256Sums(
   manifestShaByPath: Map<string, string>,
   content: string | undefined,
+  ignoredPaths = new Set<string>(),
 ): ProofFileIntegrityIssue[] {
   if (!manifestShaByPath.has("sha256sums.txt") || content === undefined) {
     return [{ path: "sha256sums.txt", code: "sha256sums_missing" }];
@@ -1731,6 +1748,7 @@ function validateProofSha256Sums(
   }
 
   for (const path of sums.keys()) {
+    if (ignoredPaths.has(path)) continue;
     if (!manifestShaByPath.has(path)) {
       issues.push({ path, code: "sha256sums_extra_entry" });
     }
