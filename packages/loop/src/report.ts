@@ -431,9 +431,7 @@ function deriveConformance(
     evidence.push(hasPassingVerify ? "verify gate passed" : "verify failure recorded");
   }
 
-  const hasReviewer = verifyResults.some((result) => (
-    result.reviewer_agent_id !== "unknown" && result.reviewer_agent_id !== "local-verifier"
-  ));
+  const hasReviewer = verifyResults.some((result) => result.reviewer_agent_id !== "unknown");
   if (level !== "L1" && hasReviewer) {
     level = "L3";
     name = "Reviewed";
@@ -444,7 +442,7 @@ function deriveConformance(
   const hasWorktreeEvidence = worktreeStatus.length > 0;
   const hasRiskEvidence = summary.failed_count > 0 || summary.escalated_count > 0 || summary.success_count > 0;
   if (
-    (level === "L2" || level === "L3")
+    level === "L3"
     && hasAgentDecision
     && hasReplayableEvents
     && hasWorktreeEvidence

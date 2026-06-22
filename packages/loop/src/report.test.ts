@@ -3,9 +3,63 @@ import {
   createLoopStateReport,
   renderLoopStateReportMarkdown,
 } from "./report.js";
-import type { LoopState } from "./types.js";
+import type { LoopEvent, LoopState } from "./types.js";
 
 describe("loop state report", () => {
+  it("derives L1-L4 conformance without overstating available evidence", () => {
+    const cases = [
+      {
+        name: "L1 state-only tracked run",
+        events: [],
+        expected: { level: "L1", name: "Tracked" },
+      },
+      {
+        name: "L2 verified run without reviewer identity",
+        events: [
+          verifyEvent({ reviewer_agent_id: undefined }),
+        ],
+        expected: { level: "L2", name: "Verified" },
+      },
+      {
+        name: "L3 reviewed run with checker identity",
+        events: [
+          verifyEvent({ reviewer_agent_id: "local-verifier" }),
+        ],
+        expected: { level: "L3", name: "Reviewed" },
+      },
+      {
+        name: "L4 audited run with review, policy, worktree, events, and risk evidence",
+        events: [
+          planEvent(),
+          verifyEvent({ reviewer_agent_id: "local-verifier" }),
+          worktreeEvent(),
+        ],
+        expected: { level: "L4", name: "Audited" },
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      const report = createLoopStateReport(successState(testCase.name), { events: [...testCase.events] });
+      expect(report.conformance).toMatchObject(testCase.expected);
+    }
+  });
+
+  it("does not promote a verified run to L4 without reviewer/checker evidence", () => {
+    const report = createLoopStateReport(successState("no-reviewer-l4-guard"), {
+      events: [
+        planEvent(),
+        verifyEvent({ reviewer_agent_id: undefined }),
+        worktreeEvent(),
+      ],
+    });
+
+    expect(report.conformance).toMatchObject({
+      level: "L2",
+      name: "Verified",
+    });
+    expect(report.conformance.evidence).not.toContain("reviewer/checker result recorded");
+  });
+
   it("normalizes a LOOP-STATE.json snapshot into report sections", () => {
     const state: LoopState = {
       loop_id: "loop-report-test",
@@ -229,3 +283,69 @@ describe("loop state report", () => {
     expect(markdown).toContain("1 | loop.plan.done | task-event-rich routed to codex-cli");
   });
 });
+
+function successState(loopId: string): LoopState {
+  return {
+    loop_id: loopId,
+    started_at: "2026-06-22T00:00:00.000Z",
+    updated_at: "2026-06-22T00:05:00.000Z",
+    completed_tasks: [{
+      task_id: "task-conformance",
+      capability: "code.test",
+      outcome: "success",
+      iterations: 1,
+      agent_id: "codex-cli",
+      duration_ms: 900,
+    }],
+    in_progress: [],
+    pending: [],
+    decisions: [],
+  };
+}
+
+function planEvent(): LoopEvent {
+  return {
+    event_id: "evt-plan",
+    loop_id: "loop-conformance",
+    type: "loop.plan.done",
+    seq: 1,
+    created_at: 1782090000000,
+    payload: {
+      task_id: "task-conformance",
+      agent_id: "codex-cli",
+      routing_reason: "matched code.test capability",
+    },
+  };
+}
+
+function verifyEvent(options: { reviewer_agent_id: string | undefined }): LoopEvent {
+  return {
+    event_id: `evt-verify-${options.reviewer_agent_id ?? "unknown"}`,
+    loop_id: "loop-conformance",
+    type: "loop.verify.done",
+    seq: 2,
+    created_at: 1782090001000,
+    payload: {
+      task_id: "task-conformance",
+      pass: true,
+      score: 1,
+      ...(options.reviewer_agent_id === undefined ? {} : { reviewer_agent_id: options.reviewer_agent_id }),
+      summary: "Verifier passed.",
+    },
+  };
+}
+
+function worktreeEvent(): LoopEvent {
+  return {
+    event_id: "evt-worktree",
+    loop_id: "loop-conformance",
+    type: "loop.worktree.merged",
+    seq: 3,
+    created_at: 1782090002000,
+    payload: {
+      task_id: "task-conformance",
+      branch: "osstack/loop/test",
+      commit: "abc123",
+    },
+  };
+}
