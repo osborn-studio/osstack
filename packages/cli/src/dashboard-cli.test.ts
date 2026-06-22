@@ -91,6 +91,19 @@ describe("dashboard/cockpit CLI", () => {
     expect(Array.isArray(summary.cockpit.board.columns)).toBe(true);
   });
 
+  it("prints a workspace-scoped cockpit URL", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace with spaces");
+    await mkdir(workspace, { recursive: true });
+
+    const exitCode = await main(["cockpit", "url", "--workspace", workspace]);
+
+    expect(exitCode).toBe(0);
+    const output = logs.join("\n");
+    expect(output).toContain("/dashboard?workspace=");
+    expect(new URL(output).searchParams.get("workspace")).toBe(workspace);
+  });
+
   it("prints actionable cockpit next steps as a standalone command", async () => {
     daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
 

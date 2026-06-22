@@ -7552,7 +7552,7 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
       console.error("osstack: dashboard URL is not available yet; check `osstack health`");
       return 1;
     }
-    console.log(url);
+    console.log(workspaceDashboardUrl(url, args));
     return 0;
   }
 
@@ -7563,8 +7563,9 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
       return 1;
     }
     const { spawn } = await import("node:child_process");
-    spawn("open", [resp.result.url], { detached: true, stdio: "ignore" }).unref();
-    console.log(resp.result.url);
+    const url = workspaceDashboardUrl(resp.result.url, args);
+    spawn("open", [url], { detached: true, stdio: "ignore" }).unref();
+    console.log(url);
     return 0;
   }
 
@@ -7621,8 +7622,10 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
                             Generate a cockpit report from loop evidence
   osstack cockpit proof [run_id] [--workspace P] [--state P] [--events P] [--output-dir P] [--open]
                             Generate a proof pack from loop evidence
-  osstack dashboard url       Print the URL for chat bots to return
-  osstack dashboard open      Open the dashboard locally
+  osstack dashboard url [--workspace P]
+                              Print the URL for chat bots to return
+  osstack dashboard open [--workspace P]
+                              Open the dashboard locally
   osstack dashboard snapshot [--workspace P]
                               Print the JSON backing the dashboard
   osstack dashboard summary [--workspace P]
@@ -7647,6 +7650,14 @@ Env:
 function dashboardSnapshotParams(args: string[]): { workspacePath?: string } | undefined {
   const workspacePath = flagValue(args, "--workspace");
   return workspacePath === undefined ? undefined : { workspacePath: resolve(workspacePath) };
+}
+
+function workspaceDashboardUrl(url: string, args: string[]): string {
+  const workspacePath = flagValue(args, "--workspace");
+  if (workspacePath === undefined) return url;
+  const nextUrl = new URL(url);
+  nextUrl.searchParams.set("workspace", resolve(workspacePath));
+  return nextUrl.toString();
 }
 
 async function handleCockpitNextCommand(args: string[]): Promise<number> {
