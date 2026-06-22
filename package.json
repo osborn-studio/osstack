@@ -20,6 +20,7 @@
     "demo:loop:daemon": "pnpm build && node scripts/demo-loop-daemon.mjs",
     "smoke:loop": "pnpm build && node scripts/smoke-loop.mjs",
     "smoke:knowledge-cloud": "pnpm build && node scripts/smoke-knowledge-cloud.mjs",
+    "smoke:knowledge-cloud:deploy": "node scripts/smoke-knowledge-cloud-deploy-assets.mjs",
     "smoke:npm-install": "node scripts/smoke-npm-install.mjs"
   },
   "devDependencies": {

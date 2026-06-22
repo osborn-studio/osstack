@@ -8,6 +8,7 @@ Operational helpers that live outside the daemon hot loop.
 | `demo-loop-daemon.mjs` | Starts an isolated real daemon, queues the same failing-test repair through `loop start --once`, waits for completion, and leaves the workspace plus daemon home for inspection. |
 | `smoke-loop.mjs` | Builds confidence in the Loop Engineering MVP by running the built CLI against temporary local, `loop doctor`, git-worktree, `ds-review` adapter, daemon-managed once/goal/schedule/recovery/stats, and legacy `osb-loop` shim workspaces. |
 | `smoke-knowledge-cloud.mjs` | Starts the built Knowledge Cloud service on a dynamic port and verifies `/v1/packs` plus `/v1/search` against official osstack packs. |
+| `smoke-knowledge-cloud-deploy-assets.mjs` | Verifies Docker/Fly/Render deployment assets agree on the Knowledge Cloud executable, port, and `/healthz` healthcheck. |
 | `symphony-watch.sh` | One-shot: check openai/symphony drift against blessed_sha. Read-only by default; `--pull` fetches, `--bless` re-pins. |
 | `symphony-cron-runner.sh` | Designed for Hermes/system cron. Wraps `symphony-watch.sh --pull` and fires `notify-osborn.py` if drift detected. Always appends to `~/.osstack/logs/symphony-watch.log` so cron runs are auditable. |
 | `notify-osborn.py` | Multi-channel notifier. Tries email → hermes → local in order. Reads creds from macOS Keychain; gracefully degrades if creds missing. |

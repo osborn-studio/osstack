@@ -50,6 +50,9 @@ jobs:
       - name: Knowledge Cloud smoke
         run: pnpm smoke:knowledge-cloud
 
+      - name: Knowledge Cloud deploy asset smoke
+        run: pnpm smoke:knowledge-cloud:deploy
+
       - name: NPM install smoke
         run: pnpm smoke:npm-install
 

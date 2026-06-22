@@ -1,0 +1,23 @@
+app = "osstack-knowledge-cloud"
+primary_region = "sjc"
+
+[build]
+  dockerfile = "../../Dockerfile.knowledge-cloud"
+
+[env]
+  OSSTACK_KNOWLEDGE_CLOUD_HOST = "0.0.0.0"
+  OSSTACK_KNOWLEDGE_CLOUD_PORT = "8787"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "3s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/healthz"

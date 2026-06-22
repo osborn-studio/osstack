@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: osstack-knowledge-cloud
+    runtime: docker
+    dockerfilePath: ./Dockerfile.knowledge-cloud
+    healthCheckPath: /healthz
+    envVars:
+      - key: OSSTACK_KNOWLEDGE_CLOUD_HOST
+        value: 0.0.0.0
+      - key: OSSTACK_KNOWLEDGE_CLOUD_PORT
+        value: 8787
