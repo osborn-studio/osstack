@@ -1589,10 +1589,9 @@ async function validateProofArchiveIntegrity(
   if (expectedPaths === undefined) {
     return { ok: true, checked: false, proof_zip: proofZip, issues: [] };
   }
-  let listing: string;
+  let archivePaths: string[];
   try {
-    const { stdout } = await execFileAsync("unzip", ["-Z1", proofZip], { timeout: 10_000 });
-    listing = stdout;
+    archivePaths = readZipEntryNames(await readFile(proofZip));
   } catch {
     return {
       ok: false,
@@ -1604,7 +1603,7 @@ async function validateProofArchiveIntegrity(
 
   const issues: ProofArchiveIntegrityIssue[] = [];
   const actualPaths = new Set<string>();
-  for (const path of listing.split(/\r?\n/).filter((line) => line.length > 0)) {
+  for (const path of archivePaths) {
     if (actualPaths.has(path)) {
       issues.push({ path, code: "proof_zip_duplicate_entry" });
       continue;
@@ -1618,6 +1617,41 @@ async function validateProofArchiveIntegrity(
     if (!expectedPaths.has(path)) issues.push({ path, code: "proof_zip_extra_entry" });
   }
   return { ok: issues.length === 0, checked: true, proof_zip: proofZip, issues };
+}
+
+function readZipEntryNames(data: Buffer): string[] {
+  const eocdOffset = findZipEndOfCentralDirectory(data);
+  if (eocdOffset < 0 || eocdOffset + 22 > data.length) throw new Error("zip end of central directory not found");
+  const entryCount = data.readUInt16LE(eocdOffset + 10);
+  const centralDirectorySize = data.readUInt32LE(eocdOffset + 12);
+  const centralDirectoryOffset = data.readUInt32LE(eocdOffset + 16);
+  if (centralDirectoryOffset + centralDirectorySize > data.length) throw new Error("zip central directory is outside archive");
+
+  const names: string[] = [];
+  let offset = centralDirectoryOffset;
+  for (let index = 0; index < entryCount; index += 1) {
+    if (offset + 46 > data.length || data.readUInt32LE(offset) !== 0x02014b50) {
+      throw new Error("zip central directory entry is malformed");
+    }
+    const fileNameLength = data.readUInt16LE(offset + 28);
+    const extraLength = data.readUInt16LE(offset + 30);
+    const commentLength = data.readUInt16LE(offset + 32);
+    const nameStart = offset + 46;
+    const nameEnd = nameStart + fileNameLength;
+    if (nameEnd > data.length) throw new Error("zip entry name is outside archive");
+    names.push(data.subarray(nameStart, nameEnd).toString("utf-8"));
+    offset = nameEnd + extraLength + commentLength;
+  }
+  return names;
+}
+
+function findZipEndOfCentralDirectory(data: Buffer): number {
+  if (data.length < 22) return -1;
+  const minOffset = Math.max(0, data.length - 65_557);
+  for (let offset = data.length - 22; offset >= minOffset; offset -= 1) {
+    if (data.readUInt32LE(offset) === 0x06054b50) return offset;
+  }
+  return -1;
 }
 
 function proofArchiveExpectedPaths(manifestRaw: unknown): Set<string> | undefined {

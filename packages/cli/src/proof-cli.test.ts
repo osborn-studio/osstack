@@ -468,6 +468,38 @@ describe("proof CLI", () => {
     ]));
   });
 
+  it("validates proof zip inventories without relying on an external unzip binary", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const eventsPath = join(tmp, "events.jsonl");
+    await writeProofEvents(eventsPath);
+    const proofExitCode = await main(["proof", "--workspace", tmp, "--events", eventsPath]);
+    expect(proofExitCode).toBe(0);
+    const originalPath = process.env["PATH"];
+    process.env["PATH"] = "";
+
+    try {
+      logs = [];
+      const validExitCode = await main([
+        "proof",
+        "validate",
+        "cli-proof-loop",
+        "--workspace",
+        tmp,
+        "--json",
+      ]);
+
+      expect(validExitCode).toBe(0);
+      const summary = JSON.parse(logs.join("\n")) as {
+        ok: boolean;
+        archive_integrity: { ok: boolean; checked: boolean; issues: Array<unknown> };
+      };
+      expect(summary.ok).toBe(true);
+      expect(summary.archive_integrity).toMatchObject({ ok: true, checked: true, issues: [] });
+    } finally {
+      process.env["PATH"] = originalPath;
+    }
+  });
+
   it("rejects proof packs when manifest artifacts are missing from disk", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
     const proofExitCode = await main(["proof", "--workspace", tmp]);
