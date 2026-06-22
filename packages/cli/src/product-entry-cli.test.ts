@@ -264,6 +264,7 @@ describe("product entry commands", () => {
     const result = JSON.parse(logs.join("\n")) as {
       target: string;
       ready: boolean;
+      safe_to_execute: boolean;
       blockers: string[];
       operator_commands: string[];
       validation_commands: string[];
@@ -271,6 +272,7 @@ describe("product entry commands", () => {
     };
     expect(result.target).toBe("npm");
     expect(result.ready).toBe(false);
+    expect(result.safe_to_execute).toBe(false);
     expect(result.blockers.join("\n")).toContain("NPM_TOKEN");
     expect(result.blockers.join("\n")).toContain("Version Packages PR #5");
     expect(result.operator_commands).toContain("gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\"");
@@ -294,12 +296,14 @@ describe("product entry commands", () => {
     expect(exitCode).toBe(0);
     const result = JSON.parse(logs.join("\n")) as {
       ready: boolean;
+      safe_to_execute: boolean;
       blockers: string[];
       validation_commands: string[];
       deploy_commands: string[];
       output: string;
     };
     expect(result.ready).toBe(false);
+    expect(result.safe_to_execute).toBe(false);
     expect(result.output).toBe(output);
     expect(result.blockers.join("\n")).toContain("FLY_API_TOKEN");
     expect(result.validation_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false");
@@ -307,6 +311,8 @@ describe("product entry commands", () => {
     const markdown = await readFile(output, "utf-8");
     expect(markdown).toContain("# Osstack Release Action Plan");
     expect(markdown).toContain("Target: `knowledge-cloud`");
+    expect(markdown).toContain("Safe to execute publish/deploy commands: `no`");
+    expect(markdown).toContain("Do not run publish or deploy commands until blockers are resolved.");
     expect(markdown).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
   });
 
