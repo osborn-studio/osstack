@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://osstack.dev/specs/schemas/worktree-status.schema.json",
+  "title": "Osstack Worktree Status Evidence",
+  "type": "object",
+  "required": ["status"],
+  "properties": {
+    "status": { "type": "string", "enum": ["recorded", "unknown"] },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["task_id", "status", "branch", "commit", "path", "event_seq"],
+        "properties": {
+          "task_id": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "enum": ["created", "merged", "cleaned"] },
+          "branch": { "type": "string", "minLength": 1 },
+          "commit": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "event_seq": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "reason": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

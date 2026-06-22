@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://osstack.dev/specs/schemas/verify-results.schema.json",
+  "title": "Osstack Verify Results Evidence",
+  "type": "object",
+  "required": ["status"],
+  "properties": {
+    "status": { "type": "string", "enum": ["pass", "fail", "unknown"] },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["task_id", "pass", "score", "reviewer_agent_id", "summary", "event_seq"],
+        "properties": {
+          "task_id": { "type": "string", "minLength": 1 },
+          "pass": { "type": "boolean" },
+          "score": {
+            "oneOf": [
+              { "type": "number" },
+              { "type": "string", "const": "unknown" }
+            ]
+          },
+          "reviewer_agent_id": { "type": "string", "minLength": 1 },
+          "summary": { "type": "string" },
+          "event_seq": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "reason": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

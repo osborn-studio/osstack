@@ -49,5 +49,42 @@
       }
     ]
   },
+  "agent_runtime": {
+    "status": "recorded",
+    "agents": [
+      {
+        "agent_id": "codex-cli",
+        "auth_mode": "subprocess/login-reuse",
+        "roles": ["coding", "test-verify", "reviewer", "release/proof"],
+        "plan_event_seqs": [1]
+      }
+    ]
+  },
+  "verify_results": {
+    "status": "pass",
+    "results": [
+      {
+        "task_id": "task-evid-001",
+        "pass": true,
+        "score": 1,
+        "reviewer_agent_id": "local-verifier",
+        "summary": "Verifier passed.",
+        "event_seq": 6
+      }
+    ]
+  },
+  "worktree_status": {
+    "status": "recorded",
+    "entries": [
+      {
+        "task_id": "task-evid-001",
+        "status": "merged",
+        "branch": "osstack/loop/task-evid-001",
+        "commit": "abc123",
+        "path": "/tmp/osstack/task-evid-001",
+        "event_seq": 5
+      }
+    ]
+  },
   "expected_conformance": "L2"
 }

@@ -37,6 +37,9 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
     expect(spec).toContain("schemas/loop-state.schema.json");
     expect(spec).toContain("schemas/policy-decision.schema.json");
     expect(spec).toContain("schemas/proof-pack-manifest.schema.json");
+    expect(spec).toContain("schemas/agent-runtime.schema.json");
+    expect(spec).toContain("schemas/verify-results.schema.json");
+    expect(spec).toContain("schemas/worktree-status.schema.json");
     expect(spec).toContain("schemas/knowledge-pack.schema.json");
   });
 
@@ -74,6 +77,9 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       "schemas/loop-state.schema.json",
       "schemas/policy-decision.schema.json",
       "schemas/proof-pack-manifest.schema.json",
+      "schemas/agent-runtime.schema.json",
+      "schemas/verify-results.schema.json",
+      "schemas/worktree-status.schema.json",
       "schemas/knowledge-pack.schema.json",
       "test-vectors/OS-GOV-001.json",
       "test-vectors/OS-EVID-001.json",
@@ -97,9 +103,21 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
 
     const evidenceVector = JSON.parse(
       await readFile(join(specDir, "test-vectors", "OS-EVID-001.json"), "utf-8"),
-    ) as { expected_conformance: string; proof_manifest: { kind: string } };
+    ) as {
+      expected_conformance: string;
+      proof_manifest: { kind: string };
+      agent_runtime: { status: string; agents: Array<{ auth_mode: string }> };
+      verify_results: { status: string; results: Array<{ reviewer_agent_id: string }> };
+      worktree_status: { status: string; entries: Array<{ status: string }> };
+    };
     expect(evidenceVector.expected_conformance).toBe("L2");
     expect(evidenceVector.proof_manifest.kind).toBe("osstack.proof_pack");
+    expect(evidenceVector.agent_runtime.status).toBe("recorded");
+    expect(evidenceVector.agent_runtime.agents[0]?.auth_mode).toBe("subprocess/login-reuse");
+    expect(evidenceVector.verify_results.status).toBe("pass");
+    expect(evidenceVector.verify_results.results[0]?.reviewer_agent_id).toBe("local-verifier");
+    expect(evidenceVector.worktree_status.status).toBe("recorded");
+    expect(evidenceVector.worktree_status.entries[0]?.status).toBe("merged");
 
     const knowledgeVector = JSON.parse(
       await readFile(join(specDir, "test-vectors", "OS-KNOW-001.json"), "utf-8"),

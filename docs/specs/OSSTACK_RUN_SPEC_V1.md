@@ -112,6 +112,12 @@ Successful merge or cleanup evidence MUST be replayable from events. If no workt
 
 A proof pack MUST conform to `schemas/proof-pack-manifest.schema.json`.
 
+Proof evidence artifacts SHOULD conform to their companion schemas when present:
+
+- `agent-runtime.json` -> `schemas/agent-runtime.schema.json`
+- `verify-results.json` -> `schemas/verify-results.schema.json`
+- `worktree-status.json` -> `schemas/worktree-status.schema.json`
+
 A proof pack MUST include:
 
 - `manifest.json`
