@@ -26,7 +26,7 @@
 | Loop Engineering | 已完成本地闭环 | `pnpm smoke:loop` 通过；CLI 支持 `--loop` 读取 loop artifact，并校验 loop_id 防止误用 |
 | Evidence / Proof | 已完成本地链路 | `report --loop`、`scorecard --loop`、`proof --loop` 在 npm 安装 smoke 中生成 markdown、manifest、zip |
 | Knowledge Packs | 已完成官方包化 | 6 个 official packs 可加载、可列 source、可做 retrieval eval |
-| Knowledge Cloud | 已完成本地服务与部署资产 | 本地服务 smoke 返回 6 packs；部署资产 smoke 检查 Dockerfile、Fly、Render、GitHub Actions |
+| Knowledge Cloud | 已完成本地服务与部署资产 | 本地服务 smoke 返回 6 official packs、1 private pack，并验证 sync/search/private/feedback；部署资产 smoke 检查 Dockerfile、Fly、Render、GitHub Actions |
 | macOS launchd 安装 | 已完成安全 smoke | `serve --install --no-load`、`serve --status --no-load`、`serve --uninstall --no-load` 使用临时目录验证 |
 | 测试体系 | 已完成当前门禁 | lint、build、test、smoke 全部通过 |
 | 云端上线 | 未完成 | push 被 GitHub OAuth `workflow` scope 阻塞 |
@@ -42,7 +42,7 @@
 | `pnpm -r build` | 通过 | 15 of 16 workspace projects build succeeded |
 | `pnpm test` | 通过 | CLI 136 tests、Loop 58 tests、Core 71 tests 等全部通过 |
 | `pnpm smoke:knowledge-cloud:deploy` | 通过 | 检查 `Dockerfile.knowledge-cloud`、Fly、Render、GitHub Actions 部署资产 |
-| `pnpm smoke:knowledge-cloud` | 通过 | health=`osstack-knowledge-cloud`，packs=`6`，top_result=`proof-checksum-pack` |
+| `pnpm smoke:knowledge-cloud` | 通过 | health=`osstack-knowledge-cloud`，packs=`6`，private_packs=`1`，sync_packs=`6`，top_result=`proof-checksum-pack`，private_result=`private-release-approval`，feedback=`sent` |
 | `pnpm smoke:npm-install` | 通过 | 15 个 tarballs；安装后 CLI、launchd dry-run、evidence、knowledge、cloud 全部验证 |
 | `pnpm smoke:loop` | 通过 | `[smoke] ok workspace=...` |
 | `node packages/cli/dist/bin.js knowledge eval --official --fixtures knowledge-evals/retrieval/osstack-core.json --json` | 通过 | total=`30`，passed=`30`，failed=`0`，top_k=`3` |
@@ -73,7 +73,7 @@
 - 有独立 package：`@osstack/knowledge-cloud`。
 - 有 CLI/bin：`osstack-knowledge-cloud`。
 - 有 health/search/pack loading 的服务测试。
-- 有本地 smoke：启动服务、查询 health、加载 6 个 official packs、返回 top result。
+- 有本地 smoke：启动服务、查询 health、加载 6 个 official packs、加载 1 个 team/private pack、验证 `/v1/sync`、验证 `/v1/private-packs`、验证 official/private 搜索、验证 `/v1/feedback`。
 - 有部署资产 smoke：
   - `Dockerfile.knowledge-cloud`
   - `deploy/knowledge-cloud/fly.toml`
