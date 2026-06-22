@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -249,6 +249,36 @@ try {
   assert(auditLog.includes("\"action\":\"publish\""), "audit JSONL must record publish events");
   assert(auditLog.includes("\"action\":\"search\""), "audit JSONL must record search events");
   assert(auditLog.includes("\"tenant_id\":\"team_smoke\""), "audit JSONL must record tenant scope");
+  const releaseDoctor = runBuiltCli([
+    "release",
+    "doctor",
+    "--target",
+    "knowledge-cloud",
+    "--cloud-url",
+    url,
+    "--json",
+  ]);
+  const releaseDoctorSummary = JSON.parse(releaseDoctor.stdout);
+  assert(releaseDoctorSummary.ok === true, "release doctor must pass against the smoke Knowledge Cloud service");
+  assert(
+    releaseDoctorSummary.readiness?.knowledge_cloud_deploy === true,
+    "release doctor must mark Knowledge Cloud deploy handoff as ready",
+  );
+  const releaseDoctorChecks = Array.isArray(releaseDoctorSummary.checks) ? releaseDoctorSummary.checks : [];
+  assert(
+    releaseDoctorChecks.some((item) => item.id === "knowledge_cloud_health" && item.status === "ok"),
+    "release doctor must pass the deployed health gate",
+  );
+  assert(
+    releaseDoctorChecks.some((item) => item.id === "knowledge_cloud_search" && item.status === "ok"),
+    "release doctor must pass the deployed search gate",
+  );
+  const releaseDoctorAudit = releaseDoctorChecks.find((item) => item.id === "knowledge_cloud_audit");
+  assert(releaseDoctorAudit?.status === "ok", "release doctor must pass the deployed audit gate");
+  assert(
+    releaseDoctorAudit?.details?.tenant_event_leak === false,
+    "release doctor audit gate must reject tenant audit leaks",
+  );
 
   console.log(JSON.stringify({
     ok: true,
@@ -264,6 +294,11 @@ try {
     feedback_log: feedbackLogPath,
     audit_log: auditLogPath,
     audit_events: tenantAudit.events.length + publicAudit.events.length,
+    release_doctor: {
+      ok: releaseDoctorSummary.ok,
+      knowledge_cloud_deploy: releaseDoctorSummary.readiness?.knowledge_cloud_deploy,
+      audit_gate: releaseDoctorAudit?.status ?? null,
+    },
     published_pack_dir: publishedPackDir,
   }, null, 2));
 } finally {
@@ -315,4 +350,32 @@ async function fetchJson(url, body, headers = {}) {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function runBuiltCli(args) {
+  const result = spawnSync(process.execPath, ["packages/cli/dist/bin.js", ...args], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      OSSTACK_TEST_RELEASE_GITHUB_AUTH: "ok",
+      OSSTACK_TEST_RELEASE_GITHUB_ACTIONS: "ok",
+      OSSTACK_TEST_RELEASE_SECRETS: "FLY_API_TOKEN",
+      OSSTACK_TEST_RELEASE_FLY_AUTH: "ok",
+      OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW: "ok",
+    },
+    encoding: "utf-8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (result.status !== 0) {
+    throw new Error([
+      `built CLI failed: node packages/cli/dist/bin.js ${args.join(" ")}`,
+      `exit=${result.status}`,
+      `stdout:\n${result.stdout}`,
+      `stderr:\n${result.stderr}`,
+    ].join("\n"));
+  }
+  return {
+    stdout: result.stdout,
+    stderr: result.stderr,
+  };
 }
