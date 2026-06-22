@@ -214,6 +214,30 @@ describe("dashboard/cockpit CLI", () => {
     ]);
   });
 
+  it("shell-quotes release readiness commands for workspace paths with apostrophes", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "Gilbert's workspace");
+    await mkdir(workspace, { recursive: true });
+    await writeFile(join(workspace, "release-readiness.md"), [
+      "# Osstack Release Readiness",
+      "",
+      "## Blockers",
+      "",
+      "- [github_actions_check] Fix GitHub Actions runner allocation before publishing or deploying.",
+      "",
+    ].join("\n"));
+
+    const exitCode = await main(["cockpit", "next", "--workspace", workspace, "--status", "blocked", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      next_steps: Array<{ command?: string }>;
+    };
+    expect(summary.next_steps[0]?.command).toBe(
+      `osstack release doctor --target all --workspace '${workspace.replaceAll("'", "'\\''")}' --output release-readiness.md --json`,
+    );
+  });
+
   it("prints release readiness blocker details in cockpit next text output", async () => {
     daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
     const workspace = join(tmp, "workspace");
