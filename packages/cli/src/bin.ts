@@ -6181,6 +6181,10 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
     return 0;
   }
 
+  if (sub === "next") {
+    return await handleCockpitNextCommand(args.slice(1));
+  }
+
   if (sub === "report") {
     return await handleCockpitReportCommand(args.slice(1));
   }
@@ -6208,6 +6212,8 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
   osstack cockpit --json    Print daemon status + dashboard snapshot JSON
   osstack cockpit run [loop run options]
                             Run queued work with report, scorecard, and proof defaults
+  osstack cockpit next [--json]
+                            Print actionable next steps from the cockpit snapshot
   osstack cockpit retry [task_id] [--workspace P] [--state P] [--json]
                             Requeue a failed or escalated task from loop state
   osstack cockpit approve <card_id> [--comment TEXT] [--json]
@@ -6220,6 +6226,7 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
   osstack dashboard open      Open the dashboard locally
   osstack dashboard snapshot  Print the JSON backing the dashboard
   osstack dashboard summary   Show the same product cockpit summary
+  osstack dashboard next      Show the same actionable next steps
   osstack cockpit url         Same as dashboard url
   osstack cockpit open        Same as dashboard open
 
@@ -6233,6 +6240,22 @@ Env:
 
   console.error(`osstack: unknown dashboard subcommand "${sub}"`);
   return 1;
+}
+
+async function handleCockpitNextCommand(args: string[]): Promise<number> {
+  const resp = (await rpc("dashboard.snapshot")) as { ok: boolean; result?: unknown; error?: { message: string } };
+  if (!resp.ok) {
+    console.error("osstack:", resp.error?.message ?? "dashboard.snapshot failed");
+    return 1;
+  }
+  const cockpit = isRecord(resp.result) ? resp.result : {};
+  const nextSteps = Array.isArray(cockpit["next_steps"]) ? cockpit["next_steps"] : [];
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({ next_steps: nextSteps }, null, 2));
+    return 0;
+  }
+  printCockpitNextSteps(nextSteps, cockpitSummaryText(resolveLanguage()));
+  return 0;
 }
 
 async function handleCockpitReportCommand(args: string[]): Promise<number> {
@@ -6486,12 +6509,7 @@ function printCockpitSummary(summary: { daemon?: unknown; cockpit?: unknown }): 
     console.log(`  ${String(run["run_id"] ?? "unknown")} ${String(run["phase"] ?? "unknown")} ${String(run["outcome"] ?? "running")} ${String(run["agent_id"] ?? "unknown")}`);
   }
   if (recentRuns.length === 0) console.log(`  ${text.none}`);
-  console.log(`${text.nextSteps}:`);
-  for (const step of nextSteps.slice(0, 5)) {
-    if (!isRecord(step)) continue;
-    console.log(`  [${String(step["status"] ?? "unknown")}] ${String(step["label"] ?? "unknown")} - ${String(step["detail"] ?? "")}`);
-  }
-  if (nextSteps.length === 0) console.log(`  ${text.none}`);
+  printCockpitNextSteps(nextSteps, text);
 }
 
 function cockpitSummaryText(language: LoopReportLanguage): {
@@ -6517,6 +6535,15 @@ function cockpitSummaryText(language: LoopReportLanguage): {
     nextSteps: "next steps",
     none: "none",
   };
+}
+
+function printCockpitNextSteps(nextSteps: unknown[], text: ReturnType<typeof cockpitSummaryText>): void {
+  console.log(`${text.nextSteps}:`);
+  for (const step of nextSteps.slice(0, 5)) {
+    if (!isRecord(step)) continue;
+    console.log(`  [${String(step["status"] ?? "unknown")}] ${String(step["label"] ?? "unknown")} - ${String(step["detail"] ?? "")}`);
+  }
+  if (nextSteps.length === 0) console.log(`  ${text.none}`);
 }
 
 async function handleHermesCommand(args: string[]): Promise<number> {

@@ -91,6 +91,41 @@ describe("dashboard/cockpit CLI", () => {
     expect(Array.isArray(summary.cockpit.board.columns)).toBe(true);
   });
 
+  it("prints actionable cockpit next steps as a standalone command", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+
+    const exitCode = await main(["cockpit", "next"]);
+
+    expect(exitCode).toBe(0);
+    const output = logs.join("\n");
+    expect(output).toContain("next steps:");
+    expect(output).toContain("[ready] 产品设计 - google-stitch 2.0 primary, claude-design fallback");
+    expect(output).toContain("[ready] Coding - codex-cli primary, claude-code fallback");
+  });
+
+  it("prints cockpit next steps as JSON", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+
+    const exitCode = await main(["cockpit", "next", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      next_steps: Array<{ label: string; detail: string; status: string }>;
+    };
+    expect(summary.next_steps).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        label: "产品设计",
+        detail: "google-stitch 2.0 primary, claude-design fallback",
+        status: "ready",
+      }),
+      expect.objectContaining({
+        label: "Coding",
+        detail: "codex-cli primary, claude-code fallback",
+        status: "ready",
+      }),
+    ]));
+  });
+
   it("localizes the cockpit summary with OSSTACK_LANG", async () => {
     process.env["OSSTACK_LANG"] = "zh-CN";
     daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
