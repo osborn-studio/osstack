@@ -516,6 +516,7 @@ describe("product entry commands", () => {
     expect(result.validation_commands).toContain("gh run list --branch changeset-release/main --limit 5");
     expect(result.publish_commands).toContain("gh pr merge 5 --squash --delete-branch");
     expect(result.publish_commands).toContain("npm install -g @osstack/cli");
+    expect(result.post_release_validation_commands).toContain("npm view @osstack/cli version --json");
     expect(result.post_release_validation_commands).toContain("npm install -g @osstack/cli");
     expect(result.post_release_validation_commands).toContain("osstack release doctor --target npm --json");
     expect(result.post_release_validation_commands).toContain("osstack doctor --workspace . --json");
@@ -551,6 +552,7 @@ describe("product entry commands", () => {
     expect(result.validation_commands).toContain("pnpm smoke:single-binary-release-pack");
     expect(result.publish_commands).toContain("npm install -g @osstack/cli");
     expect(result.deploy_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+    expect(result.post_release_validation_commands).toContain("npm view @osstack/cli version --json");
     expect(result.post_release_validation_commands).toContain("osstack release doctor --target npm --json");
     expect(result.post_release_validation_commands).toContain(
       "osstack release doctor --target knowledge-cloud --cloud-url https://knowledge.osstack.ai --json",

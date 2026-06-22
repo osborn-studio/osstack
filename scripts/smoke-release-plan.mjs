@@ -42,6 +42,7 @@ try {
   assertArrayIncludes(plan.deploy_commands, `osstack knowledge login --cloud-url ${cloudUrl}`, "deploy commands must login to the supplied Knowledge Cloud URL");
   assertArrayIncludes(plan.deploy_commands, `osstack knowledge sync --cloud-url ${cloudUrl} --json`, "deploy commands must sync from the supplied Knowledge Cloud URL");
   assertArrayIncludes(plan.deploy_commands, `osstack knowledge search "proof pack checksum" --cloud-url ${cloudUrl} --json`, "deploy commands must search the supplied Knowledge Cloud URL");
+  assertArrayIncludes(plan.post_release_validation_commands, "npm view @osstack/cli version --json", "post-release commands must confirm @osstack/cli is visible in npm registry");
   assertArrayIncludes(plan.post_release_validation_commands, "osstack release doctor --target npm --json", "post-release commands must include npm doctor");
   assertArrayIncludes(
     plan.post_release_validation_commands,

@@ -2591,6 +2591,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
   ];
   const postReleaseValidationCommands = [
     ...(result.target === "knowledge-cloud" || result.target === "single-binary" ? [] : [
+      "npm view @osstack/cli version --json",
       "npm install -g @osstack/cli",
       "osstack --version",
       "osstack release doctor --target npm --json",
