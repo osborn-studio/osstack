@@ -164,13 +164,31 @@ The `source_kind` field MUST distinguish osstack-native material from processed 
 
 Runs MAY operate with knowledge mode `off`, `local`, or `cloud`. If cloud knowledge is unavailable, the run SHOULD fail open to `local` or `off`. Reports and proof packs SHOULD record injected knowledge pack ids and chunk ids when knowledge is used.
 
-## R-012 Versioning and Deprecation
+## R-012 PR Evidence
+
+A PR evidence body SHOULD be derivable from loop state, events, and proof pack artifacts without requiring network access.
+
+The PR body SHOULD include:
+
+- summary
+- tasks completed
+- agent selection and policy reasoning
+- verification results
+- governance findings
+- knowledge trace
+- worktree status when available
+- proof pack path
+- risks and open questions
+
+Dry-run generation MUST NOT write to GitHub, force-push, or commit directly to the default branch.
+
+## R-013 Versioning and Deprecation
 
 Spec versions MUST use semantic versioning. A breaking schema or clause change MUST increment the major version.
 
 A deprecated field SHOULD remain accepted for one minor version unless it creates a security risk.
 
-## R-013 Test Vectors
+## R-014 Test Vectors
 
 Implementations MUST use the vectors under `test-vectors/` as compatibility examples:
 

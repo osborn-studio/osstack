@@ -25,6 +25,7 @@ import {
   renderLoopStateMarkdown,
   renderLoopStateReportFromState,
   renderLoopStateReportFromStateAndEvents,
+  createLoopStateReport,
   createLoopStateScorecardFromState,
   renderLoopStateScorecardHtml,
   renderLoopStateScorecardMarkdown,
@@ -147,6 +148,8 @@ Loop engineering (local, testable hot-loop MVP):
                                  Generate Markdown + HTML evidence scorecards
   proof [--workspace P] [--state P] [--output-dir P] [--json]
                                  Generate a checksumed local proof pack
+  pr [run_id] [--workspace P] [--state P] [--events P] [--proof-dir P] [--dry-run]
+                                 Write a GitHub-ready PR body from run evidence
   loop run [--workspace P] [--source S] [--execute CMD] [--verify CMD]
            [--reviewer ID] [--checker ID] [--goal CMD] [--max-iter N] [--cycles N] [--interval-ms N]
            [--state P] [--markdown P] [--worktree] [--report] [--scorecard] [--proof] [--json] [--daemon]
@@ -303,6 +306,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "proof") {
     return await handleProofCommand(args.slice(1));
+  }
+
+  if (cmd === "pr") {
+    return await handlePrCommand(args.slice(1));
   }
 
   if (cmd === "steward") {
@@ -889,6 +896,88 @@ Options:
   return 0;
 }
 
+async function handlePrCommand(args: string[]): Promise<number> {
+  if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack pr — generate PR evidence body
+
+  osstack pr [run_id] [--workspace P] [--state P] [--events P] [--proof-dir P] [--output P] [--dry-run] [--json]
+
+Options:
+  --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
+  --state P           JSON state path (default: LOOP-STATE.json)
+  --events P          Optional loop events JSONL path for policy/verify evidence
+  --proof-dir P       Optional proof pack directory to read governance/knowledge evidence
+  --output P          Output markdown path (default: <workspace>/reports/pr-body-<id>.md)
+  --dry-run           Write a local PR body only; this is the default
+  --create            Reserved for future GitHub PR creation; currently not implemented
+  --json              Print machine-readable summary
+`);
+    return 0;
+  }
+  if (args.includes("--create")) {
+    console.error("osstack pr --create is not implemented yet; use --dry-run to generate a PR body.");
+    return 1;
+  }
+
+  const runId = firstPositionalValue(args, new Set([
+    "--workspace",
+    "--state",
+    "--events",
+    "--proof-dir",
+    "--output",
+  ]));
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const evidenceResult = runId === undefined
+    ? undefined
+    : await readPersistedLoopRunEvidence(runId);
+  if (evidenceResult instanceof Error) {
+    console.error(`osstack: ${evidenceResult.message}`);
+    return 1;
+  }
+  const stateFilePath = evidenceResult?.state_json
+    ?? resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+  const state = await readLoopState(stateFilePath);
+  if (state === null) {
+    console.error(`osstack: no loop state found at ${stateFilePath}`);
+    return 1;
+  }
+  const events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
+  const artifactId = runId ?? state.loop_id;
+  const proofDir = resolveLoopPath(
+    flagValue(args, "--proof-dir") ?? join("release", `osstack-proof-${safeFileSegment(artifactId)}`),
+    workspacePath,
+  );
+  const outputPath = resolveLoopPath(
+    flagValue(args, "--output") ?? join("reports", `pr-body-${safeFileSegment(artifactId)}.md`),
+    workspacePath,
+  );
+  const proofEvidence = await readProofEvidenceForPr(proofDir);
+  const body = renderPrBody({
+    state,
+    events,
+    proofDir,
+    governance: proofEvidence.governance,
+    knowledge: proofEvidence.knowledge,
+    worktree: proofEvidence.worktree,
+    verify: proofEvidence.verify,
+  });
+  await mkdir(dirname(outputPath), { recursive: true });
+  await writeFile(outputPath, body, "utf-8");
+  const summary = {
+    mode: "dry-run",
+    loop_id: state.loop_id,
+    path: outputPath,
+    proof_dir: proofDir,
+  };
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(summary, null, 2));
+  } else {
+    console.log(`pr_body=${outputPath}`);
+    console.log(`proof=${proofDir}`);
+  }
+  return 0;
+}
+
 function flagValue(args: string[], name: string): string | undefined {
   const i = args.indexOf(name);
   return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined;
@@ -1158,6 +1247,170 @@ function unknownGovernanceEvidence(reason: string): GovernanceProofEvidence {
   };
 }
 
+async function readProofEvidenceForPr(proofDir: string): Promise<{
+  governance?: unknown;
+  knowledge?: unknown;
+  worktree?: unknown;
+  verify?: unknown;
+}> {
+  const [governance, knowledge, worktree, verify] = await Promise.all([
+    readJsonFileIfExists(join(proofDir, "governance-results.json")),
+    readJsonFileIfExists(join(proofDir, "knowledge-results.json")),
+    readJsonFileIfExists(join(proofDir, "worktree-status.json")),
+    readJsonFileIfExists(join(proofDir, "verify-results.json")),
+  ]);
+  return { governance, knowledge, worktree, verify };
+}
+
+async function readJsonFileIfExists(path: string): Promise<unknown | undefined> {
+  try {
+    return JSON.parse(await readFile(path, "utf-8")) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+function renderPrBody(options: {
+  state: LoopState;
+  events: LoopEvent[];
+  proofDir: string;
+  governance?: unknown;
+  knowledge?: unknown;
+  worktree?: unknown;
+  verify?: unknown;
+}): string {
+  const report = createLoopStateReport(options.state, { events: options.events });
+  const lines: string[] = [
+    `# PR Evidence - ${options.state.loop_id}`,
+    "",
+    "## Summary",
+    `- Loop: ${options.state.loop_id}`,
+    `- Conformance: ${report.conformance.level} ${report.conformance.name}`,
+    `- Completed: ${report.summary.completed_count}`,
+    `- Failed: ${report.summary.failed_count}`,
+    `- Escalated: ${report.summary.escalated_count}`,
+    `- Success rate: ${Math.round(report.summary.success_rate * 100)}%`,
+    "",
+    "## Tasks Completed",
+    ...renderPrTasks(options.state),
+    "",
+    "## Agent Selection",
+    ...renderPrPolicy(options.events),
+    "",
+    "## Verification",
+    ...renderPrVerification(options.events, options.verify),
+    "",
+    "## Governance",
+    ...renderPrGovernance(options.governance),
+    "",
+    "## Knowledge Trace",
+    ...renderPrKnowledge(options.knowledge),
+    "",
+    "## Worktree",
+    ...renderPrWorktree(options.worktree),
+    "",
+    "## Proof Pack",
+    `- ${options.proofDir}`,
+    "",
+    "## Risks / Open Questions",
+    ...report.risks.map((risk) => `- ${risk}`),
+    ...report.next_steps.map((step) => `- Next: ${step}`),
+    "",
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
+function renderPrTasks(state: LoopState): string[] {
+  if (state.completed_tasks.length === 0) return ["- None"];
+  return state.completed_tasks.map((task) => (
+    `- ${task.task_id}: ${task.outcome} via ${task.agent_id} (${task.iterations} iteration${task.iterations === 1 ? "" : "s"})`
+  ));
+}
+
+function renderPrPolicy(events: LoopEvent[]): string[] {
+  const decisions = createPolicyDecisionEvidence(events);
+  if (decisions.status === "unknown" || decisions.decisions === undefined || decisions.decisions.length === 0) {
+    return [`- ${decisions.reason ?? "No policy decision evidence found."}`];
+  }
+  return decisions.decisions.map((decision) => (
+    `- ${decision.task_id}: ${decision.agent_id} - ${decision.reason}`
+  ));
+}
+
+function renderPrVerification(events: LoopEvent[], proofVerify: unknown): string[] {
+  const eventLines = events
+    .filter((event) => event.type === "loop.verify.done")
+    .map((event) => (
+      `- ${stringEventPayload(event, "task_id")}: ${booleanEventPayload(event, "pass") ? "pass" : "fail"} - ${stringEventPayload(event, "summary")}`
+    ));
+  if (eventLines.length > 0) return eventLines;
+  if (isRecord(proofVerify) && typeof proofVerify["status"] === "string") {
+    return [`- Proof verify status: ${proofVerify["status"]}`];
+  }
+  return ["- No verify evidence found."];
+}
+
+function renderPrGovernance(governance: unknown): string[] {
+  if (!isRecord(governance)) return ["- No governance evidence found."];
+  const status = typeof governance["status"] === "string" ? governance["status"] : "unknown";
+  const findings = Array.isArray(governance["findings"]) ? governance["findings"] : [];
+  if (findings.length === 0) return [`- Status: ${status}`];
+  return [
+    `- Status: ${status}`,
+    ...findings.map((finding) => {
+      if (!isRecord(finding)) return "- Unknown governance finding";
+      const rule = typeof finding["rule_id"] === "string" ? finding["rule_id"] : "unknown";
+      const severity = typeof finding["severity"] === "string" ? finding["severity"] : "unknown";
+      const file = typeof finding["file"] === "string" ? finding["file"] : "unknown";
+      const line = typeof finding["line"] === "number" ? finding["line"] : "unknown";
+      const message = typeof finding["message"] === "string" ? finding["message"] : "";
+      return `- [${severity}] ${rule} ${file}:${line} - ${message}`;
+    }),
+  ];
+}
+
+function renderPrKnowledge(knowledge: unknown): string[] {
+  if (!isRecord(knowledge)) return ["- Mode: off"];
+  const mode = typeof knowledge["mode"] === "string" ? knowledge["mode"] : "unknown";
+  const status = typeof knowledge["status"] === "string" ? knowledge["status"] : "unknown";
+  const packs = Array.isArray(knowledge["packs"]) ? knowledge["packs"] : [];
+  const results = Array.isArray(knowledge["results"]) ? knowledge["results"] : [];
+  return [
+    `- Mode: ${mode}`,
+    `- Status: ${status}`,
+    ...packs.map((pack) => {
+      if (!isRecord(pack)) return "- Pack: unknown";
+      const id = typeof pack["id"] === "string" ? pack["id"] : "unknown";
+      const version = typeof pack["version"] === "string" ? pack["version"] : "unknown";
+      const sourceKind = typeof pack["source_kind"] === "string" ? pack["source_kind"] : "unknown";
+      return `- Pack: ${id}@${version} (${sourceKind})`;
+    }),
+    ...results.map((result) => {
+      if (!isRecord(result)) return "- Chunk: unknown";
+      const chunkId = typeof result["chunk_id"] === "string" ? result["chunk_id"] : "unknown";
+      const title = typeof result["title"] === "string" ? result["title"] : "unknown";
+      return `- Chunk: ${chunkId} - ${title}`;
+    }),
+  ];
+}
+
+function renderPrWorktree(worktree: unknown): string[] {
+  if (!isRecord(worktree)) return ["- No worktree evidence found."];
+  const entries = Array.isArray(worktree["entries"]) ? worktree["entries"] : [];
+  if (entries.length === 0) {
+    const status = typeof worktree["status"] === "string" ? worktree["status"] : "unknown";
+    return [`- Status: ${status}`];
+  }
+  return entries.map((entry) => {
+    if (!isRecord(entry)) return "- Unknown worktree entry";
+    const taskId = typeof entry["task_id"] === "string" ? entry["task_id"] : "unknown";
+    const status = typeof entry["status"] === "string" ? entry["status"] : "unknown";
+    const branch = typeof entry["branch"] === "string" ? entry["branch"] : "unknown";
+    const commit = typeof entry["commit"] === "string" ? entry["commit"] : "unknown";
+    return `- ${taskId}: ${status} branch=${branch} commit=${commit}`;
+  });
+}
+
 async function createKnowledgeProofEvidence(args: string[], defaultQuery: string): Promise<KnowledgeProofEvidence> {
   const packPaths = flagValues(args, "--knowledge-pack");
   if (packPaths.length === 0) return offKnowledgeEvidence();
@@ -1367,6 +1620,10 @@ function parsePayloadJson(raw: string): Record<string, unknown> {
   } catch {
     return {};
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function findStateJsonPath(events: LoopEvent[]): string | undefined {

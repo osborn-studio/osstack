@@ -21,8 +21,9 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       "R-009 Proof Pack",
       "R-010 Conformance Levels",
       "R-011 Knowledge Evidence",
-      "R-012 Versioning and Deprecation",
-      "R-013 Test Vectors",
+      "R-012 PR Evidence",
+      "R-013 Versioning and Deprecation",
+      "R-014 Test Vectors",
     ]) {
       expect(spec).toContain(clause);
     }
