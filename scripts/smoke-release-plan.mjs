@@ -49,6 +49,12 @@ try {
     "post-release commands must include deployed Knowledge Cloud doctor",
   );
   assertArrayIncludes(plan.post_release_validation_commands, "osstack release doctor --target single-binary --json", "post-release commands must include single-binary doctor");
+  assertArrayIncludes(
+    plan.post_release_validation_commands,
+    "gh release download v<version> --repo gilosbornhello/osstack --pattern 'osstack-*.tar.gz' --pattern 'osstack-*.archive.json' --pattern 'osstack-*.sbom.spdx.json' --pattern 'sha256sums.txt'",
+    "post-release commands must download all single-binary release evidence assets",
+  );
+  assertArrayIncludes(plan.post_release_validation_commands, "test -s osstack-*.archive.json && test -s osstack-*.sbom.spdx.json", "post-release commands must verify single-binary manifest and SBOM assets are present");
   assertArrayIncludes(plan.post_release_validation_commands, "tar -xzf osstack-*.tar.gz", "post-release commands must extract the release archive before checksum verification");
   assertArrayIncludes(plan.post_release_validation_commands, "shasum -a 256 -c sha256sums.txt", "post-release commands must include release checksum verification");
 

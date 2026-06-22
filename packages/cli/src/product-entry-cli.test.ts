@@ -1028,7 +1028,11 @@ describe("product entry commands", () => {
     expect(result.publish_commands).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false");
     expect(result.deploy_commands).toEqual([]);
     expect(result.post_release_validation_commands).toContain("gh release view v<version> --repo gilosbornhello/osstack");
+    expect(result.post_release_validation_commands).toContain(
+      "gh release download v<version> --repo gilosbornhello/osstack --pattern 'osstack-*.tar.gz' --pattern 'osstack-*.archive.json' --pattern 'osstack-*.sbom.spdx.json' --pattern 'sha256sums.txt'",
+    );
     expect(result.post_release_validation_commands).toContain("osstack release doctor --target single-binary --json");
+    expect(result.post_release_validation_commands).toContain("test -s osstack-*.archive.json && test -s osstack-*.sbom.spdx.json");
     expect(result.post_release_validation_commands).toContain("tar -xzf osstack-*.tar.gz");
     expect(result.post_release_validation_commands).toContain("shasum -a 256 -c sha256sums.txt");
     const markdown = await readFile(output, "utf-8");
