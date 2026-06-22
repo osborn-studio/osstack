@@ -294,6 +294,35 @@ describe("Knowledge Cloud HTTP service", () => {
                 })],
         });
     });
+    it("excludes tenant feedback from public feedback summaries", async () => {
+        const url = await startCloud({
+            packs: await officialPacks(),
+            privateTenantTokens: {
+                team_alpha: "kst_alpha_private",
+            },
+            now: () => "2026-06-22T00:00:00.000Z",
+        });
+        await fetchJson(`${url}/v1/feedback`, {
+            chunk_id: "official-runbook",
+            rating: "useful",
+        });
+        await fetchJson(`${url}/v1/feedback`, {
+            chunk_id: "private-release",
+            rating: "bad",
+            tenant_id: "team_alpha",
+        }, { authorization: "Bearer kst_alpha_private" });
+        const publicSummary = await fetchJson(`${url}/v1/feedback/summary`, {});
+        expect(publicSummary).toMatchObject({
+            total: 1,
+            useful: 1,
+            bad: 0,
+            chunks: [expect.objectContaining({
+                    chunk_id: "official-runbook",
+                    useful: 1,
+                })],
+        });
+        expect(JSON.stringify(publicSummary)).not.toContain("private-release");
+    });
     it("does not let one tenant token authorize another tenant without an explicit token", async () => {
         const url = await startCloud({
             packs: await officialPacks(),

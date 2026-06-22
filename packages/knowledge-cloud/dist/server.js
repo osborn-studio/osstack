@@ -337,7 +337,7 @@ async function recordAudit(options, entry) {
 }
 function summarizeFeedback(entries, tenantId) {
     const filtered = tenantId === undefined
-        ? entries
+        ? entries.filter((entry) => entry.tenant_id === undefined)
         : entries.filter((entry) => entry.tenant_id === tenantId);
     const chunks = new Map();
     let useful = 0;

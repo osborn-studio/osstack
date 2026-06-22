@@ -422,7 +422,7 @@ function summarizeFeedback(entries: KnowledgeFeedbackEntry[], tenantId: string |
   chunks: Array<{ chunk_id: string; total: number; useful: number; bad: number }>;
 } {
   const filtered = tenantId === undefined
-    ? entries
+    ? entries.filter((entry) => entry.tenant_id === undefined)
     : entries.filter((entry) => entry.tenant_id === tenantId);
   const chunks = new Map<string, { chunk_id: string; total: number; useful: number; bad: number }>();
   let useful = 0;
