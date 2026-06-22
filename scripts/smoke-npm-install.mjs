@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -57,6 +57,41 @@ try {
   assertIncludes(guide.stdout, "osstack doctor --workspace .", "guide must include product doctor");
   assertIncludes(guide.stdout, "osstack proof view", "guide must include proof view");
 
+  await writeFile(join(workspace, "LOOP-STATE.json"), `${JSON.stringify({
+    loop_id: "npm-smoke-loop",
+    started_at: "2026-06-22T00:00:00.000Z",
+    updated_at: "2026-06-22T00:01:00.000Z",
+    completed_tasks: [{
+      task_id: "npm-smoke-task",
+      capability: "code.test",
+      outcome: "success",
+      iterations: 1,
+      agent_id: "codex-cli",
+      duration_ms: 1000,
+    }],
+    in_progress: [],
+    pending: [],
+    decisions: ["Validate installed evidence commands."],
+  }, null, 2)}\n`);
+
+  const report = run(osstackBin, ["report", "--loop", "npm-smoke-loop", "--workspace", workspace], { cwd: root, capture: true });
+  assertIncludes(report.stdout, "# Osstack Loop Report - npm-smoke-loop", "report --loop must render the installed loop report");
+
+  run(osstackBin, ["scorecard", "--loop", "npm-smoke-loop", "--workspace", workspace], { cwd: root, capture: true });
+  const scorecardMarkdown = join(workspace, "release", "osstack-scorecard-npm-smoke-loop.md");
+  const scorecardHtml = join(workspace, "release", "osstack-scorecard-npm-smoke-loop.html");
+  assertIncludes(await readFile(scorecardMarkdown, "utf-8"), "# Osstack Scorecard - npm-smoke-loop", "scorecard --loop must write markdown");
+  assertIncludes(await readFile(scorecardHtml, "utf-8"), "<!doctype html>", "scorecard --loop must write HTML");
+
+  run(osstackBin, ["proof", "--loop", "npm-smoke-loop", "--workspace", workspace, "--json"], { cwd: root, capture: true });
+  const proofManifest = join(workspace, "release", "osstack-proof-npm-smoke-loop", "manifest.json");
+  const proofZip = join(workspace, "release", "osstack-proof-npm-smoke-loop.zip");
+  assertIncludes(await readFile(proofManifest, "utf-8"), "\"run_id\": \"npm-smoke-loop\"", "proof --loop must write manifest");
+  const proofZipStat = await stat(proofZip);
+  if (proofZipStat.size <= 0) {
+    throw new Error(`proof --loop wrote an empty zip: ${proofZip}`);
+  }
+
   const knowledgeEval = run(osstackBin, [
     "knowledge",
     "eval",
@@ -112,6 +147,11 @@ try {
     workspace,
     product_doctor: productDoctorParsed.ok,
     examples: examplesParsed.examples.length,
+    evidence_artifacts: {
+      scorecard_markdown: scorecardMarkdown,
+      proof_manifest: proofManifest,
+      proof_zip: proofZip,
+    },
     knowledge_eval: {
       total: knowledgeEvalParsed.total,
       passed: knowledgeEvalParsed.passed,
