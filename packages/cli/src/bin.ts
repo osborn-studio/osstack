@@ -5204,6 +5204,10 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
     return await handleCockpitReportCommand(args.slice(1));
   }
 
+  if (sub === "proof") {
+    return await handleCockpitProofCommand(args.slice(1));
+  }
+
   if (sub === "help") {
     console.log(`osstack dashboard / cockpit — local development cockpit
 
@@ -5211,6 +5215,8 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
   osstack cockpit --json    Print daemon status + dashboard snapshot JSON
   osstack cockpit report [run_id] [--workspace P] [--state P] [--events P] [--output P] [--open]
                             Generate a cockpit report from loop evidence
+  osstack cockpit proof [run_id] [--workspace P] [--state P] [--events P] [--output-dir P] [--open]
+                            Generate a proof pack from loop evidence
   osstack dashboard url       Print the URL for chat bots to return
   osstack dashboard open      Open the dashboard locally
   osstack dashboard snapshot  Print the JSON backing the dashboard
@@ -5265,6 +5271,57 @@ async function handleCockpitReportCommand(args: string[]): Promise<number> {
     console.log(JSON.stringify({ loop_id: state.loop_id, run_id: artifactId, report: output, opened }, null, 2));
   } else {
     console.log(`report=${output}`);
+    console.log(`opened=${opened ? "yes" : "no"}`);
+  }
+  return 0;
+}
+
+async function handleCockpitProofCommand(args: string[]): Promise<number> {
+  const runId = firstPositionalValue(args, new Set(["--workspace", "--state", "--events", "--output-dir"]));
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const evidenceResult = runId === undefined
+    ? undefined
+    : await readPersistedLoopRunEvidence(runId);
+  if (evidenceResult instanceof Error) {
+    console.error(`osstack: ${evidenceResult.message}`);
+    return 1;
+  }
+  const stateFilePath = evidenceResult?.state_json
+    ?? resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+  const state = await readLoopState(stateFilePath);
+  if (state === null) {
+    console.error(`osstack: no loop state found at ${stateFilePath}`);
+    return 1;
+  }
+  const events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
+  const outputDir = resolveLoopPath(flagValue(args, "--output-dir") ?? "release", workspacePath);
+  const governance = await scanWorkspaceGovernance(dirname(stateFilePath));
+  let proof: Awaited<ReturnType<typeof writeProofPack>>;
+  try {
+    proof = await writeProofPack(state, outputDir, events, runId ?? state.loop_id, governance, offKnowledgeEvidence(), [], workspacePath);
+  } catch (error) {
+    console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  }
+  const opened = args.includes("--open");
+  if (opened) {
+    const { spawn } = await import("node:child_process");
+    spawn("open", [proof.proof_dir], { detached: true, stdio: "ignore" }).unref();
+  }
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({
+      loop_id: state.loop_id,
+      run_id: runId ?? state.loop_id,
+      proof_dir: proof.proof_dir,
+      proof_zip: proof.proof_zip,
+      manifest: proof.proof_manifest,
+      artifact_count: proof.artifact_count,
+      opened,
+    }, null, 2));
+  } else {
+    console.log(`proof=${proof.proof_dir}`);
+    console.log(`proof_zip=${proof.proof_zip}`);
+    console.log(`manifest=${proof.proof_manifest}`);
     console.log(`opened=${opened ? "yes" : "no"}`);
   }
   return 0;

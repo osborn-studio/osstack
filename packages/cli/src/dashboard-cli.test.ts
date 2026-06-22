@@ -138,4 +138,47 @@ describe("dashboard/cockpit CLI", () => {
     await expect(readFile(summary.report, "utf-8")).resolves.toContain("# Osstack Loop Report - cockpit-report-loop");
     await expect(readFile(summary.report, "utf-8")).resolves.toContain("Generate reports from the cockpit surface.");
   });
+
+  it("generates a cockpit proof pack from workspace loop evidence", async () => {
+    const workspace = join(tmp, "workspace");
+    await mkdir(workspace, { recursive: true });
+    await writeFile(join(workspace, "LOOP-STATE.json"), JSON.stringify({
+      loop_id: "cockpit-proof-loop",
+      started_at: "2026-06-22T01:00:00.000Z",
+      updated_at: "2026-06-22T01:05:00.000Z",
+      completed_tasks: [{
+        task_id: "cockpit-proof-task",
+        capability: "code.test",
+        outcome: "success",
+        iterations: 1,
+        agent_id: "codex-cli",
+        duration_ms: 1000,
+      }],
+      in_progress: [],
+      pending: [],
+      decisions: ["Generate proof packs from the cockpit surface."],
+    }, null, 2));
+
+    const exitCode = await main(["cockpit", "proof", "--workspace", workspace, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      loop_id: string;
+      proof_dir: string;
+      proof_zip: string;
+      manifest: string;
+      artifact_count: number;
+      opened: boolean;
+    };
+    expect(summary).toMatchObject({
+      loop_id: "cockpit-proof-loop",
+      proof_dir: join(workspace, "release", "osstack-proof-cockpit-proof-loop"),
+      proof_zip: join(workspace, "release", "osstack-proof-cockpit-proof-loop.zip"),
+      manifest: join(workspace, "release", "osstack-proof-cockpit-proof-loop", "manifest.json"),
+      opened: false,
+    });
+    expect(summary.artifact_count).toBeGreaterThan(0);
+    await expect(readFile(summary.manifest, "utf-8")).resolves.toContain("\"run_id\": \"cockpit-proof-loop\"");
+    await expect(readFile(join(summary.proof_dir, "report.md"), "utf-8")).resolves.toContain("# Osstack Loop Report - cockpit-proof-loop");
+  });
 });

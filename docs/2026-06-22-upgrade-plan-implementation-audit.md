@@ -31,7 +31,7 @@
 | Phase 2 Product Entry | `osstack deliver` + agent 角色化 | 基本完成 | `deliver-cli.test.ts`、`product-entry-cli.test.ts`、`agent-scorecard-cli.test.ts` | deliver 的 execute-loop 生产路径需更多真实仓库 smoke |
 | Phase 3 Governed Run | Run Spec + governance verifier + PR evidence | 基本完成 | `docs/specs/OSSTACK_RUN_SPEC_V1.md`、schemas/test vectors、`governance-cli.test.ts`、`pr-cli.test.ts` | spec MUST 到 verifier 的覆盖矩阵可继续细化 |
 | Phase 4 Learning Control Plane | Pitfall KB + Knowledge bootstrap + agent scorecard | 基本完成 | `lessons-cli.test.ts`、`knowledge-cli.test.ts`、`agent-scorecard-cli.test.ts` | pitfall 自动提升 verified_count 的真实 loop 闭环需继续增强 |
-| Phase 5 Product Surface | Cockpit/TUI + examples/guide/doctor + i18n + checkpoint | 部分完成 | `dashboard.ts`、`dashboard-cli.test.ts`、`product-entry-cli.test.ts`、`i18n-cli.test.ts`、`checkpoint-cli.test.ts` | 交互式 TUI 未完成；report/scorecard/cockpit i18n 仍可扩展 |
+| Phase 5 Product Surface | Cockpit/TUI + examples/guide/doctor + i18n + checkpoint | 部分完成 | `dashboard.ts`、`dashboard-cli.test.ts`、`product-entry-cli.test.ts`、`i18n-cli.test.ts`、`checkpoint-cli.test.ts` | 交互式 TUI 未完成；run/approve/retry 仍待补齐；report/scorecard/cockpit i18n 仍可扩展 |
 | Phase 6 Trust/Compliance/Knowledge Cloud | compliance packs + enterprise proof views + Osstack Knowledge Cloud | 部分到基本完成 | `compliance-packs/*`、`compliance-cli.test.ts`、`proof view`、`knowledge-cloud` package、deploy assets、smoke | 真实云端上线、生产 ingestion pipeline、tenant auth/storage/vector index |
 
 ## 3. 任务级状态
@@ -238,12 +238,13 @@
 - 支持 daemon status + dashboard snapshot summary。
 - 支持 `cockpit --json`。
 - 支持 `cockpit report` 从 loop evidence 生成 report。
+- 支持 `cockpit proof` 从 loop evidence 生成 proof pack，并可 `--open` 打开 proof 目录。
 - Web dashboard 展示 active runs、queued tasks、active loops、agents、kanban、reports/proof packs、lessons、scorecards。
 
 未完成：
 
 - 还不是完整交互式 TUI。
-- 还不能直接在 cockpit 中执行 run/approve/retry/open proof。
+- 还不能直接在 cockpit 中执行 run/approve/retry。
 
 建议：
 
