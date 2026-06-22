@@ -103,10 +103,16 @@ export interface DashboardSnapshot {
     started_at: number;
     duration_ms: number | null;
   }>;
-  next_steps: Array<{ label: string; detail: string; command: string; status: "ready" | "running" | "blocked" }>;
+  next_steps: Array<{
+    label: string;
+    detail: string;
+    command: string;
+    status: "ready" | "running" | "blocked";
+    blockers?: ReleaseReadinessBlocker[];
+  }>;
 }
 
-interface ReleaseReadinessBlocker {
+export interface ReleaseReadinessBlocker {
   id: string;
   detail: string;
 }
@@ -356,6 +362,7 @@ function releaseReadinessNextSteps(
     detail: `${blockers.length} blocker(s): ${ids}`,
     command: "osstack release doctor --target all --output release-readiness.md --json",
     status: "blocked",
+    blockers,
   }];
 }
 

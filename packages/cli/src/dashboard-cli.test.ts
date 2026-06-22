@@ -150,7 +150,13 @@ describe("dashboard/cockpit CLI", () => {
 
     expect(exitCode).toBe(0);
     const summary = JSON.parse(logs.join("\n")) as {
-      next_steps: Array<{ label: string; detail: string; status: string; command?: string }>;
+      next_steps: Array<{
+        label: string;
+        detail: string;
+        status: string;
+        command?: string;
+        blockers?: Array<{ id: string; detail: string }>;
+      }>;
     };
     expect(summary.next_steps).toEqual([
       expect.objectContaining({
@@ -158,8 +164,33 @@ describe("dashboard/cockpit CLI", () => {
         detail: "1 blocker(s): github_actions_check",
         command: "osstack release doctor --target all --output release-readiness.md --json",
         status: "blocked",
+        blockers: [{
+          id: "github_actions_check",
+          detail: "Fix GitHub Actions runner allocation before publishing or deploying.",
+        }],
       }),
     ]);
+  });
+
+  it("prints release readiness blocker details in cockpit next text output", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace");
+    await mkdir(workspace, { recursive: true });
+    await writeFile(join(workspace, "release-readiness.md"), [
+      "# Osstack Release Readiness",
+      "",
+      "## Blockers",
+      "",
+      "- [github_actions_check] Fix GitHub Actions runner allocation before publishing or deploying.",
+      "",
+    ].join("\n"));
+
+    const exitCode = await main(["cockpit", "next", "--workspace", workspace, "--status", "blocked"]);
+
+    expect(exitCode).toBe(0);
+    const output = logs.join("\n");
+    expect(output).toContain("[blocked] Release Readiness - 1 blocker(s): github_actions_check");
+    expect(output).toContain("blocker github_actions_check: Fix GitHub Actions runner allocation before publishing or deploying.");
   });
 
   it("filters cockpit next steps by status in JSON", async () => {

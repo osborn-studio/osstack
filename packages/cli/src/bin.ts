@@ -7965,6 +7965,11 @@ function printCockpitNextSteps(nextSteps: unknown[], text: ReturnType<typeof coc
   for (const step of nextSteps.slice(0, 5)) {
     if (!isRecord(step)) continue;
     console.log(`  [${String(step["status"] ?? "unknown")}] ${String(step["label"] ?? "unknown")} - ${String(step["detail"] ?? "")}`);
+    const blockers = Array.isArray(step["blockers"]) ? step["blockers"] : [];
+    for (const blocker of blockers) {
+      if (!isRecord(blocker)) continue;
+      console.log(`    blocker ${String(blocker["id"] ?? "unknown")}: ${String(blocker["detail"] ?? "")}`);
+    }
     if (typeof step["command"] === "string" && step["command"].length > 0) {
       console.log(`    command: ${step["command"]}`);
     }

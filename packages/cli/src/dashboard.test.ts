@@ -151,6 +151,16 @@ describe("dashboard", () => {
           detail: "2 blocker(s): github_actions_check, proof_validation",
           command: "osstack release doctor --target all --output release-readiness.md --json",
           status: "blocked",
+          blockers: [
+            {
+              id: "github_actions_check",
+              detail: "Fix GitHub Actions runner allocation before publishing or deploying.",
+            },
+            {
+              id: "proof_validation",
+              detail: "Remove external certification claims and repair compliance report references before publishing or deploying.",
+            },
+          ],
         }),
       ]));
     } finally {
