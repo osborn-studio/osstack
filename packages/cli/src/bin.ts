@@ -6,7 +6,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { connect, type Socket } from "node:net";
 import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, extname, isAbsolute, join, relative } from "node:path";
+import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
@@ -789,6 +789,26 @@ interface ReleaseDoctorOptions {
   cloudUrl?: string;
 }
 
+type ProofFileIntegrityIssueCode =
+  | "manifest_malformed"
+  | "artifact_malformed"
+  | "path_outside_proof_dir"
+  | "missing_artifact"
+  | "bytes_mismatch"
+  | "sha256_mismatch";
+
+interface ProofFileIntegrityIssue {
+  path: string;
+  code: ProofFileIntegrityIssueCode;
+  expected?: string | number;
+  actual?: string | number;
+}
+
+interface ProofFileIntegrityValidation {
+  ok: boolean;
+  issues: ProofFileIntegrityIssue[];
+}
+
 const SINGLE_BINARY_RELEASE_SECRETS = [
   "APPLE_ID",
   "APPLE_TEAM_ID",
@@ -1371,19 +1391,25 @@ async function releaseProofValidationCheck(
   options: { discovered?: boolean } = {},
 ): Promise<ReleaseDoctorCheck> {
   try {
-    const validation = validateProofEvidence({ evidence: await loadProofEvidence(proofDir) });
+    const evidence = await loadProofEvidence(proofDir);
+    const validation = validateProofEvidence({ evidence });
+    const fileIntegrity = await validateProofFileIntegrity(proofDir, evidence.manifest);
+    const ok = validation.ok && fileIntegrity.ok;
     return {
       id: "proof_validation",
-      status: validation.ok ? "ok" : "error",
-      message: validation.ok
-        ? "Proof-core evidence validation passed."
-        : "Proof-core evidence validation found missing or malformed evidence.",
+      status: ok ? "ok" : "error",
+      message: ok
+        ? "Proof-core evidence validation passed, including artifact file integrity."
+        : fileIntegrity.ok
+          ? "Proof-core evidence validation found missing or malformed evidence."
+          : "Proof-core artifact integrity validation found missing, moved, or modified files.",
       details: {
         proof_dir: proofDir,
         discovered: options.discovered === true,
         scope: validation.scope,
         present: validation.present,
         missing: validation.missing,
+        file_integrity: fileIntegrity,
       },
     };
   } catch (error) {
@@ -1394,6 +1420,78 @@ async function releaseProofValidationCheck(
       details: { proof_dir: proofDir, discovered: options.discovered === true },
     };
   }
+}
+
+async function validateProofFileIntegrity(
+  proofDir: string,
+  manifestRaw: unknown,
+): Promise<ProofFileIntegrityValidation> {
+  const issues: ProofFileIntegrityIssue[] = [];
+  if (!isRecord(manifestRaw) || !Array.isArray(manifestRaw["artifacts"])) {
+    return {
+      ok: false,
+      issues: [{ path: "manifest.json", code: "manifest_malformed" }],
+    };
+  }
+
+  const proofRoot = resolve(proofDir);
+  for (const artifact of manifestRaw["artifacts"]) {
+    if (!isRecord(artifact)) {
+      issues.push({ path: "<unknown>", code: "artifact_malformed" });
+      continue;
+    }
+    const artifactPath = artifact["path"];
+    const expectedSha256 = artifact["sha256"];
+    const expectedBytes = artifact["bytes"];
+    if (
+      typeof artifactPath !== "string"
+      || artifactPath.length === 0
+      || typeof expectedSha256 !== "string"
+      || typeof expectedBytes !== "number"
+      || !Number.isInteger(expectedBytes)
+    ) {
+      issues.push({
+        path: typeof artifactPath === "string" && artifactPath.length > 0 ? artifactPath : "<unknown>",
+        code: "artifact_malformed",
+      });
+      continue;
+    }
+
+    const artifactFile = resolve(proofRoot, artifactPath);
+    const artifactRelativePath = relative(proofRoot, artifactFile);
+    if (artifactRelativePath.startsWith("..") || isAbsolute(artifactRelativePath)) {
+      issues.push({ path: artifactPath, code: "path_outside_proof_dir" });
+      continue;
+    }
+
+    let content: Buffer;
+    try {
+      content = await readFile(artifactFile);
+    } catch {
+      issues.push({ path: artifactPath, code: "missing_artifact" });
+      continue;
+    }
+
+    if (content.length !== expectedBytes) {
+      issues.push({
+        path: artifactPath,
+        code: "bytes_mismatch",
+        expected: expectedBytes,
+        actual: content.length,
+      });
+    }
+    const actualSha256 = sha256Buffer(content);
+    if (actualSha256 !== expectedSha256) {
+      issues.push({
+        path: artifactPath,
+        code: "sha256_mismatch",
+        expected: expectedSha256,
+        actual: actualSha256,
+      });
+    }
+  }
+
+  return { ok: issues.length === 0, issues };
 }
 
 async function releaseVersionPackagesPrCheck(): Promise<ReleaseDoctorCheck> {
@@ -3889,29 +3987,38 @@ async function handleProofValidateCommand(args: string[]): Promise<number> {
   const packId = flagValue(args, "--pack");
   const language = resolveLanguage(flagValue(args, "--lang"));
   try {
+    const evidence = await loadProofEvidence(proofDir);
     const validation = validateProofEvidence({
-      evidence: await loadProofEvidence(proofDir),
+      evidence,
       ...(packId === undefined ? {} : { packId }),
       ...(audience === undefined ? {} : { audience }),
       language,
     });
+    const fileIntegrity = await validateProofFileIntegrity(proofDir, evidence.manifest);
+    const ok = validation.ok && fileIntegrity.ok;
     const summary = {
       run_id: runId,
       proof_dir: proofDir,
       ...validation,
+      file_integrity: fileIntegrity,
+      ok,
     };
     if (args.includes("--json")) {
       console.log(JSON.stringify(summary, null, 2));
     } else {
-      console.log(`proof_validation=${validation.ok ? "pass" : "fail"}`);
+      console.log(`proof_validation=${ok ? "pass" : "fail"}`);
       console.log(`scope=${validation.scope}`);
       console.log(`present=${validation.present.length}`);
       console.log(`missing=${validation.missing.length}`);
+      console.log(`file_integrity=${fileIntegrity.ok ? "pass" : "fail"}`);
       for (const missing of validation.missing) {
         console.log(`missing ${missing.control_id} ${missing.evidence_path}`);
       }
+      for (const issue of fileIntegrity.issues) {
+        console.log(`integrity ${issue.code} ${issue.path}`);
+      }
     }
-    return validation.ok ? 0 : 1;
+    return ok ? 0 : 1;
   } catch (error) {
     console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
     return 1;

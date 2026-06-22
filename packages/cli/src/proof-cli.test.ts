@@ -341,6 +341,97 @@ describe("proof CLI", () => {
     ]));
   });
 
+  it("rejects proof packs when manifest artifact hashes no longer match files", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const proofExitCode = await main(["proof", "--workspace", tmp]);
+    expect(proofExitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    await writeFile(join(proofDir, "report.md"), "# Tampered report\n");
+
+    logs = [];
+    const invalidExitCode = await main([
+      "proof",
+      "validate",
+      "cli-proof-loop",
+      "--workspace",
+      tmp,
+      "--json",
+    ]);
+
+    expect(invalidExitCode).toBe(1);
+    const summary = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      file_integrity: { ok: boolean; issues: Array<{ path: string; code: string }> };
+    };
+    expect(summary.ok).toBe(false);
+    expect(summary.file_integrity).toMatchObject({ ok: false });
+    expect(summary.file_integrity.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "report.md", code: "sha256_mismatch" }),
+      expect.objectContaining({ path: "report.md", code: "bytes_mismatch" }),
+    ]));
+  });
+
+  it("rejects proof packs when manifest artifacts are missing from disk", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const proofExitCode = await main(["proof", "--workspace", tmp]);
+    expect(proofExitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    await unlink(join(proofDir, "report.md"));
+
+    logs = [];
+    const invalidExitCode = await main([
+      "proof",
+      "validate",
+      "cli-proof-loop",
+      "--workspace",
+      tmp,
+      "--json",
+    ]);
+
+    expect(invalidExitCode).toBe(1);
+    const summary = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      file_integrity: { ok: boolean; issues: Array<{ path: string; code: string }> };
+    };
+    expect(summary.ok).toBe(false);
+    expect(summary.file_integrity.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "report.md", code: "missing_artifact" }),
+    ]));
+  });
+
+  it("rejects proof manifests that point artifacts outside the proof directory", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const proofExitCode = await main(["proof", "--workspace", tmp]);
+    expect(proofExitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    const manifestPath = join(proofDir, "manifest.json");
+    const manifest = JSON.parse(await readFile(manifestPath, "utf-8")) as {
+      artifacts: Array<{ path: string; sha256: string; bytes: number }>;
+    };
+    manifest.artifacts[0] = { path: "../outside.txt", sha256: "a".repeat(64), bytes: 1 };
+    await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+
+    logs = [];
+    const invalidExitCode = await main([
+      "proof",
+      "validate",
+      "cli-proof-loop",
+      "--workspace",
+      tmp,
+      "--json",
+    ]);
+
+    expect(invalidExitCode).toBe(1);
+    const summary = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      file_integrity: { ok: boolean; issues: Array<{ path: string; code: string }> };
+    };
+    expect(summary.ok).toBe(false);
+    expect(summary.file_integrity.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "../outside.txt", code: "path_outside_proof_dir" }),
+    ]));
+  });
+
   it("rejects malformed JSON and wrong-shaped proof directory artifacts", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
     const proofExitCode = await main(["proof", "--workspace", tmp]);

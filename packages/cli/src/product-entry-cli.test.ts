@@ -1,4 +1,5 @@
 import { mkdtempSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
@@ -791,13 +792,18 @@ describe("product entry commands", () => {
 
 async function writeReleaseProofEvidence(proofDir: string, options: { omitGovernance?: boolean } = {}): Promise<void> {
   await mkdir(proofDir, { recursive: true });
-  await writeFile(join(proofDir, "manifest.json"), JSON.stringify({
-    artifacts: [
-      { path: "report.md", sha256: "a".repeat(64), bytes: 10 },
-      { path: "verify-results.json", sha256: "b".repeat(64), bytes: 20 },
-    ],
-  }, null, 2));
-  await writeFile(join(proofDir, "verify-results.json"), JSON.stringify({
+  const artifacts: Array<{ path: string; sha256: string; bytes: number }> = [];
+  const writeArtifact = async (path: string, content: string): Promise<void> => {
+    await writeFile(join(proofDir, path), content);
+    artifacts.push({
+      path,
+      sha256: createHash("sha256").update(content).digest("hex"),
+      bytes: Buffer.byteLength(content),
+    });
+  };
+
+  await writeArtifact("report.md", "# Release Proof\n");
+  await writeArtifact("verify-results.json", JSON.stringify({
     status: "pass",
     results: [{
       task_id: "release-task",
@@ -808,7 +814,7 @@ async function writeReleaseProofEvidence(proofDir: string, options: { omitGovern
       event_seq: 2,
     }],
   }, null, 2));
-  await writeFile(join(proofDir, "policy-decision.json"), JSON.stringify({
+  await writeArtifact("policy-decision.json", JSON.stringify({
     status: "recorded",
     decisions: [{
       task_id: "release-task",
@@ -819,7 +825,7 @@ async function writeReleaseProofEvidence(proofDir: string, options: { omitGovern
       event_seq: 1,
     }],
   }, null, 2));
-  await writeFile(join(proofDir, "agent-runtime.json"), JSON.stringify({
+  await writeArtifact("agent-runtime.json", JSON.stringify({
     status: "recorded",
     agents: [{
       agent_id: "codex-cli",
@@ -829,9 +835,9 @@ async function writeReleaseProofEvidence(proofDir: string, options: { omitGovern
     }],
   }, null, 2));
   if (options.omitGovernance !== true) {
-    await writeFile(join(proofDir, "governance-results.json"), JSON.stringify({ status: "pass", findings: [] }, null, 2));
+    await writeArtifact("governance-results.json", JSON.stringify({ status: "pass", findings: [] }, null, 2));
   }
-  await writeFile(join(proofDir, "worktree-status.json"), JSON.stringify({
+  await writeArtifact("worktree-status.json", JSON.stringify({
     status: "recorded",
     entries: [{
       task_id: "release-task",
@@ -842,6 +848,7 @@ async function writeReleaseProofEvidence(proofDir: string, options: { omitGovern
       event_seq: 3,
     }],
   }, null, 2));
+  await writeFile(join(proofDir, "manifest.json"), JSON.stringify({ artifacts }, null, 2));
 }
 
 async function startKnowledgeCloudHandoffServer(options: {
