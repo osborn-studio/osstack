@@ -8,6 +8,7 @@
 "@osstack/governance": minor
 "@osstack/hermes-adapter": minor
 "@osstack/knowledge": minor
+"@osstack/knowledge-cloud": minor
 "@osstack/loop": minor
 "@osstack/plugins": minor
 "@osstack/runtime": minor

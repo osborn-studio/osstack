@@ -32,11 +32,40 @@ try {
     throw new Error(`loop doctor did not pass after npm install: ${doctor.stdout}`);
   }
 
+  const knowledgeCloudBin = join(prefix, "bin", "osstack-knowledge-cloud");
+  const knowledgeHelp = run(knowledgeCloudBin, ["--help"], { cwd: root, capture: true });
+  if (!knowledgeHelp.stdout.includes("osstack-knowledge-cloud")) {
+    throw new Error(`knowledge cloud help did not print expected command name: ${knowledgeHelp.stdout}`);
+  }
+  const knowledgeStart = run(
+    knowledgeCloudBin,
+    [
+      "--port",
+      "0",
+      "--official-index",
+      join(root, "knowledge-packs", "official", "index.json"),
+      "--json",
+    ],
+    {
+      cwd: root,
+      capture: true,
+      env: { ...process.env, OSSTACK_KNOWLEDGE_CLOUD_ONCE: "1" },
+    },
+  );
+  const knowledgeParsed = JSON.parse(knowledgeStart.stdout);
+  if (knowledgeParsed.packs !== 6 || knowledgeParsed.private_packs !== 0) {
+    throw new Error(`knowledge cloud npm smoke did not load official packs: ${knowledgeStart.stdout}`);
+  }
+
   console.log(JSON.stringify({
     ok: true,
     tarballs: tarballs.length,
     prefix,
     workspace,
+    knowledge_cloud: {
+      packs: knowledgeParsed.packs,
+      private_packs: knowledgeParsed.private_packs,
+    },
   }, null, 2));
 } finally {
   if (process.env["OSSTACK_KEEP_NPM_SMOKE"] !== "1") {
@@ -49,6 +78,7 @@ try {
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd,
+    env: options.env,
     encoding: "utf-8",
     stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit",
   });
