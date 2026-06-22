@@ -446,6 +446,67 @@ describe("proof CLI", () => {
     expect(errors.join("\n")).toContain("worktree-status.entries[0].path is required");
   });
 
+  it("rejects external events that do not conform to the event schema shape", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const eventsPath = join(tmp, "bad-event-shape.jsonl");
+    await writeFile(eventsPath, `${JSON.stringify({
+      event_id: "evt-bad-shape",
+      loop_id: "cli-proof-loop",
+      type: "loop.verify.done",
+      seq: 1,
+      created_at: "2026-06-22T00:00:00.000Z",
+      payload: "not an object",
+      extra: true,
+    })}\n`);
+
+    const exitCode = await main(["proof", "--workspace", tmp, "--events", eventsPath]);
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("invalid events JSONL");
+    expect(errors.join("\n")).toContain("events[0].created_at must be a finite number");
+    expect(errors.join("\n")).toContain("events[0].payload must be an object when present");
+    expect(errors.join("\n")).toContain("events[0].extra is not allowed");
+  });
+
+  it("rejects external events with non-monotonic or duplicate sequencing evidence", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const eventsPath = join(tmp, "bad-event-order.jsonl");
+    await writeFile(eventsPath, [
+      JSON.stringify({
+        event_id: "evt-duplicate",
+        loop_id: "cli-proof-loop",
+        type: "loop.plan.done",
+        seq: 2,
+        created_at: 1782090000000,
+        payload: {
+          task_id: "proof-task",
+          agent_id: "codex-cli",
+          routing_reason: "matched code.test capability",
+        },
+      }),
+      JSON.stringify({
+        event_id: "evt-duplicate",
+        loop_id: "cli-proof-loop",
+        type: "loop.verify.done",
+        seq: 1,
+        created_at: 1782090001000,
+        payload: {
+          task_id: "proof-task",
+          pass: true,
+          score: 1,
+          reviewer_agent_id: "local-verifier",
+          summary: "Verifier passed.",
+        },
+      }),
+    ].join("\n") + "\n");
+
+    const exitCode = await main(["proof", "--workspace", tmp, "--events", eventsPath]);
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("events[1].event_id must be unique");
+    expect(errors.join("\n")).toContain("events[1].seq must be greater than previous event seq 2");
+  });
+
   it("rejects malformed policy decision evidence before writing a proof pack", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
     const eventsPath = join(tmp, "bad-policy-events.jsonl");

@@ -2271,7 +2271,13 @@ Options:
   }
 
   const outputDir = resolveLoopPath(flagValue(args, "--output-dir") ?? "release", workspacePath);
-  const events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
+  let events: LoopEvent[];
+  try {
+    events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
+  } catch (error) {
+    console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  }
   const governanceRoot = dirname(stateFilePath);
   const governance = await scanWorkspaceGovernance(governanceRoot);
   const knowledge = await createKnowledgeProofEvidence(args, state.loop_id);
@@ -3946,7 +3952,11 @@ async function readLoopEventsJsonl(path: string): Promise<LoopEvent[]> {
       throw new Error(`invalid events JSONL at ${path}:${index + 1}: ${message}`);
     }
   }
-  return normalizeLoopEvents(parsed);
+  const errors = validateExternalLoopEvents(parsed);
+  if (errors.length > 0) {
+    throw new Error(`invalid events JSONL at ${path}: ${errors.join("; ")}`);
+  }
+  return parsed as LoopEvent[];
 }
 
 function normalizeLoopEvents(events: unknown[] | undefined): LoopEvent[] {
@@ -3960,6 +3970,53 @@ function normalizeLoopEvents(events: unknown[] | undefined): LoopEvent[] {
     && typeof (event as { seq?: unknown }).seq === "number"
     && typeof (event as { created_at?: unknown }).created_at === "number"
   ));
+}
+
+function validateExternalLoopEvents(events: unknown[]): string[] {
+  const errors: string[] = [];
+  const seenEventIds = new Set<string>();
+  let previousSeq = -1;
+  events.forEach((event, index) => {
+    if (!isRecord(event)) {
+      errors.push(`events[${index}] must be an object`);
+      return;
+    }
+    const allowed = new Set(["event_id", "loop_id", "type", "seq", "created_at", "payload"]);
+    for (const key of Object.keys(event)) {
+      if (!allowed.has(key)) errors.push(`events[${index}].${key} is not allowed`);
+    }
+    const eventId = event["event_id"];
+    if (typeof eventId !== "string" || eventId.length === 0) {
+      errors.push(`events[${index}].event_id is required`);
+    } else if (seenEventIds.has(eventId)) {
+      errors.push(`events[${index}].event_id must be unique`);
+    } else {
+      seenEventIds.add(eventId);
+    }
+    if (typeof event["loop_id"] !== "string" || event["loop_id"].length === 0) {
+      errors.push(`events[${index}].loop_id is required`);
+    }
+    if (typeof event["type"] !== "string" || event["type"].length === 0) {
+      errors.push(`events[${index}].type is required`);
+    }
+    const seq = event["seq"];
+    if (typeof seq !== "number" || !Number.isInteger(seq) || seq < 0) {
+      errors.push(`events[${index}].seq must be a non-negative integer`);
+    } else {
+      if (seq <= previousSeq) {
+        errors.push(`events[${index}].seq must be greater than previous event seq ${previousSeq}`);
+      }
+      previousSeq = seq;
+    }
+    if (typeof event["created_at"] !== "number" || !Number.isFinite(event["created_at"])) {
+      errors.push(`events[${index}].created_at must be a finite number`);
+    }
+    const payload = event["payload"];
+    if (payload !== undefined && !isRecord(payload)) {
+      errors.push(`events[${index}].payload must be an object when present`);
+    }
+  });
+  return errors;
 }
 
 function persistedLoopEventId(row: { event_id: string; payload_json: string }): string {
