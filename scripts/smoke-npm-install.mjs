@@ -89,6 +89,50 @@ try {
   assertIncludes(guide.stdout, "osstack doctor --workspace .", "guide must include product doctor");
   assertIncludes(guide.stdout, "osstack proof view", "guide must include proof view");
 
+  run("git", ["init", "-b", "main"], { cwd: workspace });
+  run("git", ["config", "user.name", "osstack npm smoke"], { cwd: workspace });
+  run("git", ["config", "user.email", "osstack-npm-smoke@example.invalid"], { cwd: workspace });
+  await writeFile(join(workspace, "README.md"), "osstack installed deliver smoke\n", "utf-8");
+  run("git", ["add", "README.md"], { cwd: workspace });
+  run("git", ["commit", "-m", "initial"], { cwd: workspace });
+  const installedDeliver = run(osstackBin, [
+    "deliver",
+    "Ship installed CLI deliver smoke",
+    "--workspace",
+    workspace,
+    "--execute",
+    "node -e \"require('fs').writeFileSync('installed-deliver.txt','ok')\"",
+    "--verify",
+    "node -e \"process.exit(require('fs').existsSync('installed-deliver.txt') ? 0 : 1)\"",
+    "--worktree",
+    "--worktree-root",
+    join(workspace, ".osstack-worktrees"),
+    "--auto-agent",
+    "--json",
+  ], { cwd: root, capture: true });
+  const installedDeliverParsed = JSON.parse(installedDeliver.stdout);
+  if (installedDeliverParsed.completed_tasks?.[0]?.outcome !== "success") {
+    throw new Error(`installed CLI deliver did not complete successfully: ${installedDeliver.stdout}`);
+  }
+  assertIncludes(
+    await readFile(installedDeliverParsed.artifacts.report, "utf-8"),
+    "Conformance: L4 Audited",
+    "installed CLI deliver report must prove L4 conformance",
+  );
+  assertIncludes(
+    await readFile(installedDeliverParsed.artifacts.proof_manifest, "utf-8"),
+    "\"kind\": \"osstack.proof_pack\"",
+    "installed CLI deliver must write a proof manifest",
+  );
+  const installedDeliverVerify = JSON.parse(await readFile(join(installedDeliverParsed.artifacts.proof_dir, "verify-results.json"), "utf-8"));
+  if (installedDeliverVerify.status !== "pass") {
+    throw new Error(`installed CLI deliver verify-results did not pass: ${JSON.stringify(installedDeliverVerify)}`);
+  }
+  const installedDeliverWorktree = JSON.parse(await readFile(join(installedDeliverParsed.artifacts.proof_dir, "worktree-status.json"), "utf-8"));
+  if (!installedDeliverWorktree.entries?.some((entry) => entry.status === "merged")) {
+    throw new Error(`installed CLI deliver did not record a merged worktree: ${JSON.stringify(installedDeliverWorktree)}`);
+  }
+
   await writeFile(join(workspace, "LOOP-STATE.json"), `${JSON.stringify({
     loop_id: "npm-smoke-loop",
     started_at: "2026-06-22T00:00:00.000Z",
@@ -242,6 +286,11 @@ try {
       load_skipped: installParsed.load_skipped,
     },
     product_doctor: productDoctorParsed.ok,
+    installed_deliver: {
+      loop_id: installedDeliverParsed.loop_id,
+      report: installedDeliverParsed.artifacts.report,
+      proof_manifest: installedDeliverParsed.artifacts.proof_manifest,
+    },
     examples: examplesParsed.examples.length,
     evidence_artifacts: {
       scorecard_markdown: scorecardMarkdown,

@@ -9,7 +9,7 @@
 本分支已经把 osstack 升级方案中的核心可交付能力推进到“本地发布候选”状态：
 
 - CLI、Loop、Knowledge Cloud、官方知识库、证据包、安装后 smoke 均已具备自动化验证。
-- npm tarball 安装后的真实用户入口已经跑通，包括 `osstack --version`、`doctor`、`loop doctor`、`serve --install --no-load`、`report`、`scorecard`、`proof`、`knowledge eval`、`knowledge sources`、`osstack-knowledge-cloud --help`。
+- npm tarball 安装后的真实用户入口已经跑通，包括 `osstack --version`、`doctor`、`loop doctor`、`serve --install --no-load`、`deliver --worktree`、`report`、`scorecard`、`proof`、`knowledge eval`、`knowledge sources`、`osstack-knowledge-cloud --help`。
 - portable CLI bundle 与 Bun single executable release archive candidate 已有自动化 smoke，可作为 npm 主路径之外的分发基础；本地 ad-hoc signing、SPDX SBOM、archive 解包运行已验证，CI/release workflow 已接入候选 artifact 生成，tag/workflow_dispatch 的 GitHub Release 上传路径已接入 dry-run smoke；发布级 single executable 仍需 Developer ID 签名、公证、跨机器验证、远端实际运行。
 - 官方知识库已经从“借鉴 UmaDev 的 MIT 知识内容”升级为 osstack 自有官方知识包表达，包含来源治理、checksum、provenance 与检索评测。
 - Knowledge Cloud 已具备本地服务 smoke、Docker/Fly/Render/GitHub Actions 部署资产 smoke。
@@ -26,6 +26,7 @@
 | 领域 | 当前状态 | 证据 |
 |---|---:|---|
 | CLI 产品入口 | 已完成 | `osstack --version`、顶层 help、`loop --help`、`guide`、`examples --json` 在 npm 安装 smoke 中验证 |
+| Product Entry / Deliver | 已完成安装后 smoke | `pnpm smoke:npm-install` 从 tarball 安装 CLI 后，在临时 git repo 跑 `osstack deliver --worktree --auto-agent --json`，验证 L4 report、proof manifest、verify pass、worktree merged evidence |
 | Loop Engineering | 已完成本地闭环 | `pnpm smoke:loop` 通过；CLI 支持 `--loop` 读取 loop artifact，并校验 loop_id 防止误用 |
 | Evidence / Proof | 已完成本地链路 | `report --loop`、`scorecard --loop`、`proof --loop` 在 npm 安装 smoke 中生成 markdown、manifest、zip |
 | Knowledge Packs | 已完成官方包化 | 6 个 official packs 可加载、可列 source、可做 retrieval eval |
@@ -73,6 +74,8 @@
 - 执行 `serve --install --no-load`，确认 launchd plist 可生成且不会触碰用户真实 LaunchAgents。
 - 执行 `serve --status --no-load` 与 `serve --uninstall --no-load`，确认安装生命周期可逆。
 - 执行产品 doctor 与 loop doctor。
+- 在临时 git repo 中执行安装后的 `osstack deliver --worktree --auto-agent --json`。
+- 校验 deliver 生成 L4 report、proof manifest、`verify-results.json` pass、`worktree-status.json` merged evidence。
 - 检查 `loop --help` 暴露 `--proof`、`--knowledge`。
 - 检查 `examples --json` 至少包含 6 个工作流，并覆盖 deliver/proof 入口。
 - 检查 `guide` 中包含 doctor 与 proof view 引导。

@@ -30,7 +30,7 @@
 |---|---|---:|---|---|
 | Phase 0 Distribution | 一行安装 + daemon install + 可选单文件分发 | 部分完成 | `scripts/smoke-npm-install.mjs` 验证本地 tarball install；`serve --install --no-load` 验证 launchd plist 生命周期；`scripts/smoke-portable-cli.mjs` 验证 portable bundle；`scripts/build-single-binary.mjs` 生成 Bun single executable release candidate；`scripts/generate-single-binary-sbom.mjs` 生成 SPDX SBOM；`scripts/smoke-bun-single-binary.mjs` 验证 manifest/checksum/runtime；`scripts/smoke-single-binary-signing.mjs` 验证 ad-hoc codesign；`scripts/smoke-single-binary-release-pack.mjs` 验证 release archive 可解包运行；`scripts/smoke-single-binary-release-publish.mjs` dry-run 验证 release upload inputs；CI/release workflow 已接 candidate artifact 与 formal upload path | 真实 npm publish；真实 `npm install -g @osstack/cli`；Developer ID 签名/公证/跨机器验证/远端正式 GitHub Release asset |
 | Phase 1 Evidence Layer | report + scorecard + proof + subprocess-first adapters | 基本完成 | `report-cli.test.ts`、`scorecard-cli.test.ts`、`proof-cli.test.ts`、`agent-list-cli.test.ts`、npm install smoke | daemon event-rich report 仍需更多真实运行样本验证 |
-| Phase 2 Product Entry | `osstack deliver` + agent 角色化 | 基本完成 | `deliver-cli.test.ts`、`product-entry-cli.test.ts`、`agent-scorecard-cli.test.ts` | deliver 的 execute-loop 生产路径需更多真实仓库 smoke |
+| Phase 2 Product Entry | `osstack deliver` + agent 角色化 | 基本完成 | `deliver-cli.test.ts`、`product-entry-cli.test.ts`、`agent-scorecard-cli.test.ts`、`smoke:npm-install` 安装后 deliver/worktree/proof smoke | 可继续在外部真实业务 repo 上扩展长任务 smoke |
 | Phase 3 Governed Run | Run Spec + governance verifier + PR evidence | 基本完成 | `docs/specs/OSSTACK_RUN_SPEC_V1.md`、schemas/test vectors、`governance-cli.test.ts`、`pr-cli.test.ts` | spec MUST 到 verifier 的覆盖矩阵可继续细化 |
 | Phase 4 Learning Control Plane | Pitfall KB + Knowledge bootstrap + agent scorecard | 基本完成 | `lessons-cli.test.ts`、`knowledge-cli.test.ts`、`agent-scorecard-cli.test.ts` | pitfall 自动提升 verified_count 的真实 loop 闭环需继续增强 |
 | Phase 5 Product Surface | Cockpit/TUI + examples/guide/doctor + i18n + checkpoint | 部分到基本完成 | `dashboard.ts`、`dashboard-cli.test.ts`、`product-entry-cli.test.ts`、`i18n-cli.test.ts`、`checkpoint-cli.test.ts` | 完整交互式 TUI 未完成；report/scorecard/cockpit i18n 仍可扩展 |
@@ -151,10 +151,11 @@
 - 可生成 task queue。
 - 可输出 report/scorecard/proof。
 - `deliver-cli.test.ts` 覆盖命令路径。
+- `smoke:npm-install` 会从 workspace tarballs 安装 CLI 后，在临时 git repo 中运行 `osstack deliver --worktree --auto-agent --json`，并校验 L4 report、proof manifest、verify pass、worktree merged evidence。
 
 需增强：
 
-- 在真实外部 repo 上做一条 execute-loop smoke。
+- 在真实外部业务 repo 上做更长任务的 execute-loop smoke。
 - auto verify command suggestion 仍可进一步智能化。
 
 ### Task 2.2：Agent 角色化展示
