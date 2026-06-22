@@ -793,6 +793,7 @@ type ProofFileIntegrityIssueCode =
   | "manifest_malformed"
   | "manifest_invalid_kind"
   | "manifest_invalid_schema_version"
+  | "manifest_unexpected_field"
   | "manifest_missing_osstack_version"
   | "manifest_missing_run_id"
   | "manifest_missing_loop_id"
@@ -802,6 +803,7 @@ type ProofFileIntegrityIssueCode =
   | "manifest_missing_created_at"
   | "manifest_missing_generated_at"
   | "artifact_malformed"
+  | "artifact_unexpected_field"
   | "artifact_invalid_sha256"
   | "artifact_invalid_bytes"
   | "duplicate_artifact_path"
@@ -1589,6 +1591,11 @@ async function validateProofFileIntegrity(
       issues: [{ path: "manifest.json", code: "manifest_malformed" }],
     };
   }
+  for (const key of Object.keys(manifestRaw)) {
+    if (!PROOF_MANIFEST_ALLOWED_FIELDS.has(key)) {
+      issues.push({ path: "manifest.json", code: "manifest_unexpected_field", actual: key });
+    }
+  }
   if (manifestRaw["kind"] !== "osstack.proof_pack") {
     issues.push({ path: "manifest.json", code: "manifest_invalid_kind" });
   }
@@ -1630,6 +1637,15 @@ async function validateProofFileIntegrity(
       continue;
     }
     const artifactPath = artifact["path"];
+    for (const key of Object.keys(artifact)) {
+      if (!PROOF_MANIFEST_ARTIFACT_ALLOWED_FIELDS.has(key)) {
+        issues.push({
+          path: typeof artifactPath === "string" && artifactPath.length > 0 ? artifactPath : "<unknown>",
+          code: "artifact_unexpected_field",
+          actual: key,
+        });
+      }
+    }
     const expectedSha256 = artifact["sha256"];
     const expectedBytes = artifact["bytes"];
     if (
@@ -1704,6 +1720,28 @@ async function validateProofFileIntegrity(
   issues.push(...validateProofSha256Sums(manifestShaByPath, sha256sumsContent, invalidArtifactPaths));
   return { ok: issues.length === 0, issues };
 }
+
+const PROOF_MANIFEST_ALLOWED_FIELDS = new Set([
+  "schema_version",
+  "kind",
+  "osstack_version",
+  "run_id",
+  "loop_id",
+  "agent_id",
+  "agent_ids",
+  "workspace",
+  "generated_from",
+  "created_at",
+  "generated_at",
+  "compliance_reports",
+  "artifacts",
+]);
+
+const PROOF_MANIFEST_ARTIFACT_ALLOWED_FIELDS = new Set([
+  "path",
+  "sha256",
+  "bytes",
+]);
 
 function missingManifestString(manifestRaw: Record<string, unknown>, key: string): boolean {
   const value = manifestRaw[key];
