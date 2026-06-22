@@ -145,12 +145,13 @@ export async function importKnowledgeSource(options: {
 export async function syncKnowledgeCache(options: {
   cacheDir: string;
   cloudUrl: string;
+  authToken?: string;
   fetchImpl?: typeof fetch;
 }): Promise<KnowledgeSyncEvidence> {
   try {
     const response = await (options.fetchImpl ?? fetch)(new URL("/v1/sync", withTrailingSlash(options.cloudUrl)), {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: cloudHeaders(options.authToken),
       body: JSON.stringify({ client: "osstack-cli" }),
     });
     if (!response.ok) throw new Error(`cloud sync failed with HTTP ${response.status}`);
@@ -221,6 +222,7 @@ export async function cacheKnowledgeFeedback(options: {
   chunkId: string;
   rating: "useful" | "bad";
   cloudUrl?: string;
+  authToken?: string;
   fetchImpl?: typeof fetch;
   createdAt?: string;
 }): Promise<KnowledgeFeedbackEntry> {
@@ -235,7 +237,7 @@ export async function cacheKnowledgeFeedback(options: {
     try {
       const response = await (options.fetchImpl ?? fetch)(new URL("/v1/feedback", withTrailingSlash(options.cloudUrl)), {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: cloudHeaders(options.authToken),
         body: JSON.stringify(baseEntry),
       });
       if (!response.ok) throw new Error(`cloud feedback failed with HTTP ${response.status}`);
@@ -391,6 +393,7 @@ export async function resolveKnowledgeSearch(options: {
   packs?: KnowledgePack[];
   limit?: number;
   cloudUrl?: string;
+  authToken?: string;
   fetchImpl?: typeof fetch;
 }): Promise<KnowledgeSearchEvidence> {
   const mode = options.mode ?? inferKnowledgeMode(options);
@@ -413,6 +416,7 @@ export async function resolveKnowledgeSearch(options: {
     packs: options.packs ?? [],
     ...(options.limit === undefined ? {} : { limit: options.limit }),
     ...(options.cloudUrl === undefined ? {} : { cloudUrl: options.cloudUrl }),
+    ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
     ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
   });
 }
@@ -452,6 +456,7 @@ async function cloudKnowledgeEvidence(options: {
   packs: KnowledgePack[];
   limit?: number;
   cloudUrl?: string;
+  authToken?: string;
   fetchImpl?: typeof fetch;
 }): Promise<KnowledgeSearchEvidence> {
   if (options.cloudUrl === undefined || options.cloudUrl.length === 0) {
@@ -460,7 +465,7 @@ async function cloudKnowledgeEvidence(options: {
   try {
     const response = await (options.fetchImpl ?? fetch)(new URL("/v1/search", withTrailingSlash(options.cloudUrl)), {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: cloudHeaders(options.authToken),
       body: JSON.stringify({ query: options.query, limit: options.limit ?? 5 }),
     });
     if (!response.ok) throw new Error(`cloud search failed with HTTP ${response.status}`);
@@ -470,6 +475,13 @@ async function cloudKnowledgeEvidence(options: {
     const message = error instanceof Error ? error.message : String(error);
     return fallbackFromCloud(options, message);
   }
+}
+
+function cloudHeaders(authToken?: string): Record<string, string> {
+  return {
+    "content-type": "application/json",
+    ...(authToken === undefined || authToken.trim().length === 0 ? {} : { authorization: `Bearer ${authToken.trim()}` }),
+  };
 }
 
 function fallbackFromCloud(

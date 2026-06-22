@@ -70,7 +70,8 @@ describe("knowledge packs", () => {
   });
 
   it("uses cloud search when a cloud endpoint returns osstack-native results", async () => {
-    const fetchImpl = async () => new Response(JSON.stringify({
+    const requests: Array<{ authorization: string | null }> = [];
+    const fetchImpl: typeof fetch = async () => new Response(JSON.stringify({
       packs: [{
         id: "osstack-cloud-web",
         version: "2026.06.22",
@@ -94,7 +95,11 @@ describe("knowledge packs", () => {
       mode: "cloud",
       query: "ui guidance",
       cloudUrl: "https://knowledge.osstack.ai",
-      fetchImpl,
+      authToken: "kst_search_token",
+      fetchImpl: async (url, init) => {
+        requests.push({ authorization: new Headers(init?.headers).get("authorization") });
+        return fetchImpl(url, init);
+      },
     });
 
     expect(evidence).toMatchObject({
@@ -103,6 +108,7 @@ describe("knowledge packs", () => {
       packs: [expect.objectContaining({ id: "osstack-cloud-web", source_kind: "osstack_native" })],
       results: [expect.objectContaining({ chunk_id: "chunk-cloud-ui" })],
     });
+    expect(requests).toEqual([{ authorization: "Bearer kst_search_token" }]);
   });
 
   it("fails open from cloud to local packs", async () => {
@@ -194,18 +200,24 @@ describe("knowledge packs", () => {
 
   it("syncs cloud packs into a local cache and loads them for search", async () => {
     const cacheDir = join(tmp, "cache");
+    const requests: Array<{ authorization: string | null }> = [];
     const evidence = await syncKnowledgeCache({
       cacheDir,
       cloudUrl: "https://knowledge.osstack.ai",
-      fetchImpl: async () => new Response(JSON.stringify({
-        packs: [samplePack({ id: "osstack-core/loop-engineering", source_kind: "osstack_native" })],
-      }), { status: 200 }),
+      authToken: "kst_sync_token",
+      fetchImpl: async (_url, init) => {
+        requests.push({ authorization: new Headers(init?.headers).get("authorization") });
+        return new Response(JSON.stringify({
+          packs: [samplePack({ id: "osstack-core/loop-engineering", source_kind: "osstack_native" })],
+        }), { status: 200 });
+      },
     });
 
     expect(evidence).toMatchObject({
       status: "synced",
       packs: [expect.objectContaining({ id: "osstack-core/loop-engineering", source_kind: "osstack_native" })],
     });
+    expect(requests).toEqual([{ authorization: "Bearer kst_sync_token" }]);
     const packs = await listCachedKnowledgePacks(cacheDir);
     const results = searchKnowledgePacks(packs, "proof evidence", { limit: 1 });
     expect(results[0]).toMatchObject({ pack_id: "osstack-core/loop-engineering" });
@@ -231,14 +243,21 @@ describe("knowledge packs", () => {
       chunkId: "chunk-loop-proof",
       rating: "useful",
       cloudUrl: "https://knowledge.osstack.ai",
+      authToken: "kst_feedback_token",
       fetchImpl: async (_url, init) => {
-        calls.push(JSON.parse(String(init?.body)) as unknown);
+        calls.push({
+          authorization: new Headers(init?.headers).get("authorization"),
+          body: JSON.parse(String(init?.body)) as unknown,
+        });
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       },
     });
 
     expect(entry).toMatchObject({ chunk_id: "chunk-loop-proof", rating: "useful", status: "sent" });
-    expect(calls).toEqual([expect.objectContaining({ chunk_id: "chunk-loop-proof", rating: "useful" })]);
+    expect(calls).toEqual([{
+      authorization: "Bearer kst_feedback_token",
+      body: expect.objectContaining({ chunk_id: "chunk-loop-proof", rating: "useful" }),
+    }]);
     const feedbackLines = (await readFile(join(cacheDir, "feedback.jsonl"), "utf-8"))
       .trim()
       .split("\n")

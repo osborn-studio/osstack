@@ -223,6 +223,46 @@ describe("knowledge CLI", () => {
     }
   });
 
+  it("logs in to Knowledge Cloud and reuses the saved config without printing the token", async () => {
+    const requests: Array<{ authorization: string | null }> = [];
+    const server = await startKnowledgeServer({ requests });
+    const cacheDir = join(tmp, "knowledge-cache");
+    try {
+      const address = server.address() as AddressInfo;
+      const cloudUrl = `http://127.0.0.1:${address.port}`;
+      const loginExitCode = await main([
+        "knowledge",
+        "login",
+        "--cloud-url",
+        cloudUrl,
+        "--token",
+        "kst_test_token",
+        "--cache-dir",
+        cacheDir,
+        "--json",
+      ]);
+
+      expect(loginExitCode).toBe(0);
+      expect(logs.join("\n")).not.toContain("kst_test_token");
+      expect(JSON.parse(logs.join("\n"))).toMatchObject({
+        login: { cloud_url: cloudUrl, cache_dir: cacheDir, authenticated: true },
+      });
+      expect(await readFile(join(cacheDir, "config.json"), "utf-8")).toContain("kst_test_token");
+
+      logs = [];
+      const syncExitCode = await main(["knowledge", "sync", "--cache-dir", cacheDir, "--json"]);
+
+      expect(syncExitCode).toBe(0);
+      expect(JSON.parse(logs.join("\n"))).toMatchObject({
+        status: "synced",
+        packs: [expect.objectContaining({ id: "osstack-cloud-cockpit" })],
+      });
+      expect(requests).toContainEqual({ authorization: "Bearer kst_test_token" });
+    } finally {
+      await closeServer(server);
+    }
+  });
+
   it("pins pack versions and records chunk feedback", async () => {
     const cacheDir = join(tmp, "knowledge-cache");
 
@@ -267,8 +307,9 @@ describe("knowledge CLI", () => {
   });
 });
 
-async function startKnowledgeServer(): Promise<Server> {
+async function startKnowledgeServer(options: { requests?: Array<{ authorization: string | null }> } = {}): Promise<Server> {
   const server = createServer((req, res) => {
+    options.requests?.push({ authorization: req.headers.authorization ?? null });
     if (req.method === "POST" && req.url === "/v1/feedback") {
       res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ ok: true }));
       return;

@@ -15,6 +15,7 @@ export declare function importKnowledgeSource(options: {
 export declare function syncKnowledgeCache(options: {
     cacheDir: string;
     cloudUrl: string;
+    authToken?: string;
     fetchImpl?: typeof fetch;
 }): Promise<KnowledgeSyncEvidence>;
 export declare function listCachedKnowledgePacks(cacheDir: string): Promise<KnowledgePack[]>;
@@ -24,6 +25,7 @@ export declare function cacheKnowledgeFeedback(options: {
     chunkId: string;
     rating: "useful" | "bad";
     cloudUrl?: string;
+    authToken?: string;
     fetchImpl?: typeof fetch;
     createdAt?: string;
 }): Promise<KnowledgeFeedbackEntry>;
@@ -40,6 +42,7 @@ export declare function resolveKnowledgeSearch(options: {
     packs?: KnowledgePack[];
     limit?: number;
     cloudUrl?: string;
+    authToken?: string;
     fetchImpl?: typeof fetch;
 }): Promise<KnowledgeSearchEvidence>;
 //# sourceMappingURL=pack.d.ts.map

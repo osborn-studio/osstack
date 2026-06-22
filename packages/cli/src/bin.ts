@@ -5,7 +5,7 @@ import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { connect, type Socket } from "node:net";
-import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
@@ -1119,6 +1119,7 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
     console.log(`osstack knowledge — Osstack knowledge pack bootstrap and cloud client
 
   osstack knowledge list --pack P [--json]
+  osstack knowledge login --cloud-url URL [--token T] [--cache-dir P] [--json]
   osstack knowledge sync [--cloud-url URL] [--cache-dir P] [--json]
   osstack knowledge search <query> [--pack P] [--cloud-url URL] [--cache-dir P] [--limit N] [--json]
   osstack knowledge inspect <chunk_id> [--pack P] [--cache-dir P] [--json]
@@ -1130,6 +1131,8 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
 
 Env:
   OSSTACK_KNOWLEDGE_URL  Default Knowledge Cloud base URL
+  OSSTACK_KNOWLEDGE_TOKEN
+                         Default Knowledge Cloud bearer token for login/sync/search/feedback
   OSSTACK_KNOWLEDGE_CACHE_DIR
                          Default local Knowledge Cloud cache directory
 `);
@@ -1164,15 +1167,53 @@ Env:
     return 0;
   }
 
-  if (sub === "sync") {
+  if (sub === "login") {
     const cloudUrl = flagValue(args, "--cloud-url") ?? process.env["OSSTACK_KNOWLEDGE_URL"];
-    if (cloudUrl === undefined) {
-      console.error("osstack: knowledge sync requires --cloud-url or OSSTACK_KNOWLEDGE_URL");
+    if (cloudUrl === undefined || cloudUrl.trim().length === 0) {
+      console.error("osstack: knowledge login requires --cloud-url or OSSTACK_KNOWLEDGE_URL");
       return 1;
     }
+    const token = flagValue(args, "--token") ?? process.env["OSSTACK_KNOWLEDGE_TOKEN"];
+    const config = {
+      cloud_url: cloudUrl.trim(),
+      ...(token === undefined || token.trim().length === 0 ? {} : { token: token.trim() }),
+      saved_at: new Date().toISOString(),
+    };
+    const cacheDir = knowledgeCacheDir(args);
+    await mkdir(cacheDir, { recursive: true });
+    const configPath = knowledgeConfigPath(cacheDir);
+    await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf-8");
+    await chmod(configPath, 0o600);
+    const result = {
+      login: {
+        cloud_url: config.cloud_url,
+        cache_dir: cacheDir,
+        config_path: configPath,
+        authenticated: "token" in config,
+      },
+    };
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(`knowledge_cloud=${result.login.cloud_url}`);
+      console.log(`cache=${result.login.cache_dir}`);
+      console.log(`authenticated=${result.login.authenticated ? "yes" : "no"}`);
+    }
+    return 0;
+  }
+
+  if (sub === "sync") {
+    const config = await readKnowledgeCloudConfig(knowledgeCacheDir(args));
+    const cloudUrl = resolveKnowledgeCloudUrl(args, config);
+    if (cloudUrl === undefined) {
+      console.error("osstack: knowledge sync requires --cloud-url, OSSTACK_KNOWLEDGE_URL, or `osstack knowledge login`");
+      return 1;
+    }
+    const authToken = resolveKnowledgeAuthToken(args, config);
     const evidence = await syncKnowledgeCache({
       cacheDir: knowledgeCacheDir(args),
       cloudUrl,
+      ...(authToken === undefined ? {} : { authToken }),
     });
     if (args.includes("--json")) {
       console.log(JSON.stringify(evidence, null, 2));
@@ -1188,7 +1229,8 @@ Env:
 
   if (sub === "search") {
     const packPaths = flagValues(args, "--pack");
-    const cloudUrl = flagValue(args, "--cloud-url") ?? process.env["OSSTACK_KNOWLEDGE_URL"];
+    const config = await readKnowledgeCloudConfig(knowledgeCacheDir(args));
+    const cloudUrl = resolveKnowledgeCloudUrl(args, config);
     const mode = parseKnowledgeMode(flagValue(args, "--mode"));
     if (mode === undefined && flagValue(args, "--mode") !== undefined) {
       console.error("osstack: --mode must be one of off, local, cloud");
@@ -1213,7 +1255,15 @@ Env:
       console.error("osstack: knowledge search requires at least one --pack path, cached pack, or --cloud-url");
       return 1;
     }
-    const evidence = await resolveKnowledgeSearch(knowledgeSearchOptions({ mode, query, packs, limit, cloudUrl }));
+    const authToken = resolveKnowledgeAuthToken(args, config);
+    const evidence = await resolveKnowledgeSearch(knowledgeSearchOptions({
+      mode,
+      query,
+      packs,
+      limit,
+      cloudUrl,
+      ...(authToken === undefined ? {} : { authToken }),
+    }));
     if (args.includes("--json")) {
       console.log(JSON.stringify(evidence, null, 2));
     } else if (evidence.results.length === 0) {
@@ -1372,12 +1422,15 @@ Env:
       console.error("osstack: knowledge feedback requires exactly one of --useful or --bad");
       return 1;
     }
-    const cloudUrl = flagValue(args, "--cloud-url") ?? process.env["OSSTACK_KNOWLEDGE_URL"];
+    const config = await readKnowledgeCloudConfig(knowledgeCacheDir(args));
+    const cloudUrl = resolveKnowledgeCloudUrl(args, config);
+    const authToken = resolveKnowledgeAuthToken(args, config);
     const feedback = await cacheKnowledgeFeedback({
       cacheDir: knowledgeCacheDir(args),
       chunkId,
       rating: useful ? "useful" : "bad",
       ...(cloudUrl !== undefined ? { cloudUrl } : {}),
+      ...(authToken === undefined ? {} : { authToken }),
     });
     if (args.includes("--json")) {
       console.log(JSON.stringify({ feedback }, null, 2));
@@ -1450,6 +1503,44 @@ function knowledgeCacheDir(args: string[]): string {
   return flagValue(args, "--cache-dir")
     ?? process.env["OSSTACK_KNOWLEDGE_CACHE_DIR"]
     ?? join(osstackHome(), "knowledge-cache");
+}
+
+interface KnowledgeCloudConfig {
+  cloud_url?: string;
+  token?: string;
+}
+
+function knowledgeConfigPath(cacheDir: string): string {
+  return join(cacheDir, "config.json");
+}
+
+async function readKnowledgeCloudConfig(cacheDir: string): Promise<KnowledgeCloudConfig> {
+  try {
+    const parsed = JSON.parse(await readFile(knowledgeConfigPath(cacheDir), "utf-8")) as unknown;
+    if (!isRecord(parsed)) return {};
+    return {
+      ...(typeof parsed["cloud_url"] === "string" && parsed["cloud_url"].trim().length > 0
+        ? { cloud_url: parsed["cloud_url"].trim() }
+        : {}),
+      ...(typeof parsed["token"] === "string" && parsed["token"].trim().length > 0
+        ? { token: parsed["token"].trim() }
+        : {}),
+    };
+  } catch {
+    return {};
+  }
+}
+
+function resolveKnowledgeCloudUrl(args: string[], config: KnowledgeCloudConfig): string | undefined {
+  return flagValue(args, "--cloud-url")
+    ?? process.env["OSSTACK_KNOWLEDGE_URL"]
+    ?? config.cloud_url;
+}
+
+function resolveKnowledgeAuthToken(args: string[], config: KnowledgeCloudConfig): string | undefined {
+  return flagValue(args, "--token")
+    ?? process.env["OSSTACK_KNOWLEDGE_TOKEN"]
+    ?? config.token;
 }
 
 function parseKnowledgeScope(value: string | undefined): KnowledgeScope | undefined {
@@ -1716,6 +1807,7 @@ function knowledgeSearchOptions(options: {
   packs: Parameters<typeof resolveKnowledgeSearch>[0]["packs"];
   limit: number;
   cloudUrl: string | undefined;
+  authToken?: string;
 }): Parameters<typeof resolveKnowledgeSearch>[0] {
   return {
     ...(options.mode !== undefined ? { mode: options.mode } : {}),
@@ -1723,6 +1815,7 @@ function knowledgeSearchOptions(options: {
     ...(options.packs !== undefined ? { packs: options.packs } : {}),
     limit: options.limit,
     ...(options.cloudUrl !== undefined ? { cloudUrl: options.cloudUrl } : {}),
+    ...(options.authToken !== undefined ? { authToken: options.authToken } : {}),
   };
 }
 
@@ -3060,7 +3153,9 @@ async function createKnowledgeProofEvidence(
   const packPaths = flagValues(args, "--knowledge-pack");
   const modeValue = flagValue(args, "--knowledge-mode") ?? flagValue(args, "--knowledge");
   const mode = parseKnowledgeMode(modeValue);
-  const cloudUrl = flagValue(args, "--knowledge-cloud-url") ?? process.env["OSSTACK_KNOWLEDGE_URL"];
+  const knowledgeConfig = await readKnowledgeCloudConfig(knowledgeCacheDir(args));
+  const cloudUrl = flagValue(args, "--knowledge-cloud-url") ?? resolveKnowledgeCloudUrl(args, knowledgeConfig);
+  const authToken = resolveKnowledgeAuthToken(args, knowledgeConfig);
   if (modeValue !== undefined && mode === undefined) {
     return {
       mode: "off",
@@ -3075,7 +3170,14 @@ async function createKnowledgeProofEvidence(
   const query = flagValue(args, "--knowledge-query") ?? defaultQuery;
   try {
     const packs = await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath)));
-    return await resolveKnowledgeSearch(knowledgeSearchOptions({ mode, query, packs, limit: 5, cloudUrl }));
+    return await resolveKnowledgeSearch(knowledgeSearchOptions({
+      mode,
+      query,
+      packs,
+      limit: 5,
+      cloudUrl,
+      ...(authToken === undefined ? {} : { authToken }),
+    }));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return {

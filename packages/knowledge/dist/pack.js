@@ -121,7 +121,7 @@ export async function syncKnowledgeCache(options) {
     try {
         const response = await (options.fetchImpl ?? fetch)(new URL("/v1/sync", withTrailingSlash(options.cloudUrl)), {
             method: "POST",
-            headers: { "content-type": "application/json" },
+            headers: cloudHeaders(options.authToken),
             body: JSON.stringify({ client: "osstack-cli" }),
         });
         if (!response.ok)
@@ -201,7 +201,7 @@ export async function cacheKnowledgeFeedback(options) {
         try {
             const response = await (options.fetchImpl ?? fetch)(new URL("/v1/feedback", withTrailingSlash(options.cloudUrl)), {
                 method: "POST",
-                headers: { "content-type": "application/json" },
+                headers: cloudHeaders(options.authToken),
                 body: JSON.stringify(baseEntry),
             });
             if (!response.ok)
@@ -362,6 +362,7 @@ export async function resolveKnowledgeSearch(options) {
         packs: options.packs ?? [],
         ...(options.limit === undefined ? {} : { limit: options.limit }),
         ...(options.cloudUrl === undefined ? {} : { cloudUrl: options.cloudUrl }),
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
         ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
     });
 }
@@ -401,7 +402,7 @@ async function cloudKnowledgeEvidence(options) {
     try {
         const response = await (options.fetchImpl ?? fetch)(new URL("/v1/search", withTrailingSlash(options.cloudUrl)), {
             method: "POST",
-            headers: { "content-type": "application/json" },
+            headers: cloudHeaders(options.authToken),
             body: JSON.stringify({ query: options.query, limit: options.limit ?? 5 }),
         });
         if (!response.ok)
@@ -413,6 +414,12 @@ async function cloudKnowledgeEvidence(options) {
         const message = error instanceof Error ? error.message : String(error);
         return fallbackFromCloud(options, message);
     }
+}
+function cloudHeaders(authToken) {
+    return {
+        "content-type": "application/json",
+        ...(authToken === undefined || authToken.trim().length === 0 ? {} : { authorization: `Bearer ${authToken.trim()}` }),
+    };
 }
 function fallbackFromCloud(options, reason) {
     if (options.packs.length > 0) {
