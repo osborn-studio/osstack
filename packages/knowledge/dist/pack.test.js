@@ -4,7 +4,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { assembleKnowledgeSnippet, cacheKnowledgeFeedback, evaluateKnowledgeRetrieval, ingestKnowledgeSource, importKnowledgeSource, listCachedKnowledgePacks, loadKnowledgePackIndex, loadKnowledgePack, pinKnowledgePack, resolveKnowledgeSearch, searchKnowledgePacks, syncKnowledgeCache, validateKnowledgePackManifest, validateKnowledgePublishGate, } from "./index.js";
+import { assembleKnowledgeSnippet, cacheKnowledgeFeedback, evaluateKnowledgeRetrieval, ingestKnowledgeSource, importKnowledgeSource, listCachedKnowledgePacks, loadKnowledgePackIndex, loadKnowledgePack, pinKnowledgePack, resolveKnowledgeSearch, searchKnowledgePacks, syncKnowledgeCache, validateKnowledgePackIndex, validateKnowledgePackManifest, validateKnowledgePublishGate, } from "./index.js";
 let tmp;
 beforeEach(() => {
     tmp = mkdtempSync(join(tmpdir(), "osstack-knowledge-"));
@@ -500,6 +500,20 @@ describe("knowledge packs", () => {
         expect(feedbackLines).toMatchObject([
             expect.objectContaining({ chunk_id: "chunk-loop-proof", rating: "useful", status: "sent", tenant_id: "team_alpha" }),
         ]);
+    });
+    it("rejects knowledge pack index paths that escape the index root", () => {
+        expect(() => validateKnowledgePackIndex({
+            generated_at: "2026-06-22T00:00:00.000Z",
+            channel: "official",
+            packs: [{
+                    id: "osstack-core/escaped",
+                    version: "2026.06.22",
+                    path: "../escaped/manifest.json",
+                    scope: "official",
+                    source_kind: "osstack_native",
+                    quality_score: 90,
+                }],
+        })).toThrow(/knowledge pack index path is unsafe/);
     });
     it("ships official osstack packs with reviewed metadata and passing retrieval fixtures", async () => {
         const root = resolve(process.cwd(), "../..");

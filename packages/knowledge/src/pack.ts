@@ -211,11 +211,15 @@ export function validateKnowledgePackIndex(value: unknown): KnowledgePackIndex {
     if (qualityScore < 0 || qualityScore > 100) {
       throw new Error("knowledge pack index quality_score must be between 0 and 100");
     }
+    const path = requiredString(entry, "path");
+    if (isUnsafeKnowledgeSourcePath(path)) {
+      throw new Error("knowledge pack index path is unsafe");
+    }
     const taxonomy = optionalStringArray(entry, "taxonomy");
     return {
       id,
       version: requiredString(entry, "version"),
-      path: requiredString(entry, "path"),
+      path,
       scope: scope as KnowledgePackIndex["packs"][number]["scope"],
       source_kind: sourceKind as KnowledgePackIndex["packs"][number]["source_kind"],
       quality_score: qualityScore,

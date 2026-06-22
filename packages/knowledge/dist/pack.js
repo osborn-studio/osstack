@@ -192,11 +192,15 @@ export function validateKnowledgePackIndex(value) {
         if (qualityScore < 0 || qualityScore > 100) {
             throw new Error("knowledge pack index quality_score must be between 0 and 100");
         }
+        const path = requiredString(entry, "path");
+        if (isUnsafeKnowledgeSourcePath(path)) {
+            throw new Error("knowledge pack index path is unsafe");
+        }
         const taxonomy = optionalStringArray(entry, "taxonomy");
         return {
             id,
             version: requiredString(entry, "version"),
-            path: requiredString(entry, "path"),
+            path,
             scope: scope,
             source_kind: sourceKind,
             quality_score: qualityScore,
