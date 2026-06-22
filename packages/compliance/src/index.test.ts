@@ -175,21 +175,109 @@ describe("compliance packs", () => {
     expect(markdown).toContain("# Osstack Proof View - engineer");
     expect(markdown).toContain("| Worktree isolation evidence | PRESENT |");
   });
+
+  it("marks malformed external proof evidence as missing", async () => {
+    const proofDir = join(tmp, "release", "osstack-proof-run_malformed");
+    await mkdir(proofDir, { recursive: true });
+    await writeFile(join(proofDir, "manifest.json"), JSON.stringify({
+      artifacts: [
+        { path: "verify-results.json", sha256: "not-a-sha" },
+      ],
+    }, null, 2));
+    await writeFile(join(proofDir, "verify-results.json"), JSON.stringify({
+      status: "pass",
+      results: [{ task_id: "t1", pass: true, score: 1, summary: "missing reviewer and event" }],
+    }, null, 2));
+    await writeFile(join(proofDir, "policy-decision.json"), JSON.stringify({
+      status: "recorded",
+      decisions: [{ task_id: "t1", agent_id: "codex-cli", reason: "missing auth mode and roles" }],
+    }, null, 2));
+    await writeFile(join(proofDir, "agent-runtime.json"), JSON.stringify({
+      status: "recorded",
+      agents: [{ agent_id: "codex-cli", auth_mode: "subprocess/login-reuse" }],
+    }, null, 2));
+    await writeFile(join(proofDir, "governance-results.json"), JSON.stringify({ status: "unknown", reason: "not evaluated" }, null, 2));
+    await writeFile(join(proofDir, "worktree-status.json"), JSON.stringify({
+      status: "recorded",
+      entries: [{ task_id: "t1", status: "merged", branch: "codex/t1", commit: "abc", event_seq: 3 }],
+    }, null, 2));
+    await writeFile(join(proofDir, "knowledge-results.json"), JSON.stringify({
+      mode: "local",
+      status: "recorded",
+      results: [{ chunk_id: "chunk-1" }],
+    }, null, 2));
+
+    const markdown = await renderProofViewFromProofDir({
+      audience: "auditor",
+      runId: "run_malformed",
+      proofDir,
+    });
+
+    expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Evidence integrity (`manifest.json`) - checksumed artifact inventory");
+    expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Change validation (`verify-results.json`) - change validation evidence");
+    expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Automated decision trace (`policy-decision.json`) - automated decision record");
+    expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Secure coding control (`governance-results.json`) - secure coding evidence");
+    expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Worktree isolation evidence (`worktree-status.json`) - change isolation evidence");
+    expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Knowledge trace (`knowledge-results.json`) - knowledge source trace");
+  });
 });
 
 function sampleEvidence() {
   return {
     manifest: {
       artifacts: [
-        { path: "report.md", sha256: "a".repeat(64) },
-        { path: "verify-results.json", sha256: "b".repeat(64) },
+        { path: "report.md", sha256: "a".repeat(64), bytes: 12 },
+        { path: "verify-results.json", sha256: "b".repeat(64), bytes: 128 },
       ],
     },
-    verify: { status: "pass", gates: [{ command: "pnpm test", exit_code: 0 }] },
-    policy: { status: "recorded", decisions: [{ task_id: "t1", agent_id: "codex-cli", reason: "best fit" }] },
-    agent_runtime: { status: "recorded", agents: [{ agent_id: "codex-cli", auth_mode: "subprocess/login-reuse" }] },
+    verify: {
+      status: "pass",
+      results: [{
+        task_id: "t1",
+        pass: true,
+        score: 1,
+        reviewer_agent_id: "local-verifier",
+        summary: "pnpm test passed",
+        event_seq: 2,
+      }],
+    },
+    policy: {
+      status: "recorded",
+      decisions: [{
+        task_id: "t1",
+        agent_id: "codex-cli",
+        auth_mode: "subprocess/login-reuse",
+        roles: ["coding", "test-verify"],
+        reason: "best fit",
+        event_seq: 1,
+      }],
+    },
+    agent_runtime: {
+      status: "recorded",
+      agents: [{
+        agent_id: "codex-cli",
+        auth_mode: "subprocess/login-reuse",
+        roles: ["coding", "test-verify"],
+        plan_event_seqs: [1],
+      }],
+    },
     governance: { status: "pass", findings: [] },
-    worktree: { status: "recorded", entries: [{ task_id: "t1", branch: "codex/t1", commit: "abc" }] },
-    knowledge: { status: "recorded", results: [{ chunk_id: "chunk-1" }] },
+    worktree: {
+      status: "recorded",
+      entries: [{
+        task_id: "t1",
+        status: "merged",
+        branch: "codex/t1",
+        commit: "abc",
+        path: "/tmp/osstack-t1",
+        event_seq: 3,
+      }],
+    },
+    knowledge: {
+      mode: "local",
+      status: "recorded",
+      packs: [{ id: "osstack-core/proof-and-scorecard", version: "2026.06.22", source_kind: "osstack_native" }],
+      results: [{ chunk_id: "chunk-1", pack_id: "osstack-core/proof-and-scorecard", source_refs: ["src-1"] }],
+    },
   };
 }

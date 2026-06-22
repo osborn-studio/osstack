@@ -378,21 +378,127 @@ function audienceFocus(audience, controlId) {
 function controlStatus(control, evidence) {
     switch (control.evidence_path) {
         case "verify-results.json":
-            return hasObject(evidence.verify) ? "PRESENT" : "MISSING";
+            return hasRecordedVerifyEvidence(evidence.verify) ? "PRESENT" : "MISSING";
         case "policy-decision.json":
-            return hasObject(evidence.policy) && hasNonEmptyArray(evidence.policy, "decisions") ? "PRESENT" : "MISSING";
+            return hasRecordedPolicyEvidence(evidence.policy) ? "PRESENT" : "MISSING";
         case "agent-runtime.json":
-            return hasObject(evidence.agent_runtime) && hasNonEmptyArray(evidence.agent_runtime, "agents") ? "PRESENT" : "MISSING";
+            return hasRecordedAgentRuntimeEvidence(evidence.agent_runtime) ? "PRESENT" : "MISSING";
         case "governance-results.json":
-            return hasObject(evidence.governance) ? "PRESENT" : "MISSING";
+            return hasGovernanceEvidence(evidence.governance) ? "PRESENT" : "MISSING";
         case "manifest.json":
-            return hasObject(evidence.manifest) && hasNonEmptyArray(evidence.manifest, "artifacts") ? "PRESENT" : "MISSING";
+            return hasProofManifestEvidence(evidence.manifest) ? "PRESENT" : "MISSING";
         case "worktree-status.json":
-            return hasObject(evidence.worktree) ? "PRESENT" : "MISSING";
+            return hasRecordedWorktreeEvidence(evidence.worktree) ? "PRESENT" : "MISSING";
         case "knowledge-results.json":
-            return hasObject(evidence.knowledge) ? "PRESENT" : "MISSING";
+            return hasRecordedKnowledgeEvidence(evidence.knowledge) ? "PRESENT" : "MISSING";
     }
     return "MISSING";
+}
+const SHA256_HEX = /^[a-f0-9]{64}$/;
+function hasRecordedVerifyEvidence(value) {
+    if (!hasObject(value) || (value["status"] !== "pass" && value["status"] !== "fail"))
+        return false;
+    return hasValidNonEmptyArray(value, "results", isVerifyResult);
+}
+function isVerifyResult(value) {
+    if (!hasObject(value))
+        return false;
+    return isNonEmptyString(value["task_id"])
+        && typeof value["pass"] === "boolean"
+        && (typeof value["score"] === "number" || value["score"] === "unknown")
+        && isNonEmptyString(value["reviewer_agent_id"])
+        && isNonEmptyString(value["summary"])
+        && isNonNegativeInteger(value["event_seq"]);
+}
+function hasRecordedPolicyEvidence(value) {
+    if (!hasObject(value) || value["status"] !== "recorded")
+        return false;
+    return hasValidNonEmptyArray(value, "decisions", isPolicyDecision);
+}
+function isPolicyDecision(value) {
+    if (!hasObject(value))
+        return false;
+    return isNonEmptyString(value["task_id"])
+        && isNonEmptyString(value["agent_id"])
+        && isNonEmptyString(value["auth_mode"])
+        && hasNonEmptyStringArray(value["roles"])
+        && isNonEmptyString(value["reason"])
+        && isNonNegativeInteger(value["event_seq"]);
+}
+function hasRecordedAgentRuntimeEvidence(value) {
+    if (!hasObject(value) || value["status"] !== "recorded")
+        return false;
+    return hasValidNonEmptyArray(value, "agents", isAgentRuntime);
+}
+function isAgentRuntime(value) {
+    if (!hasObject(value))
+        return false;
+    return isNonEmptyString(value["agent_id"])
+        && isNonEmptyString(value["auth_mode"])
+        && hasNonEmptyStringArray(value["roles"])
+        && hasNonNegativeIntegerArray(value["plan_event_seqs"]);
+}
+function hasGovernanceEvidence(value) {
+    return hasObject(value) && (value["status"] === "pass" || value["status"] === "fail");
+}
+function hasProofManifestEvidence(value) {
+    if (!hasObject(value))
+        return false;
+    return hasValidNonEmptyArray(value, "artifacts", isProofManifestArtifact);
+}
+function isProofManifestArtifact(value) {
+    if (!hasObject(value))
+        return false;
+    return isNonEmptyString(value["path"])
+        && typeof value["sha256"] === "string"
+        && SHA256_HEX.test(value["sha256"])
+        && isPositiveInteger(value["bytes"]);
+}
+function hasRecordedWorktreeEvidence(value) {
+    if (!hasObject(value) || value["status"] !== "recorded")
+        return false;
+    return hasValidNonEmptyArray(value, "entries", isWorktreeEntry);
+}
+function isWorktreeEntry(value) {
+    if (!hasObject(value))
+        return false;
+    if (!isNonEmptyString(value["task_id"]))
+        return false;
+    if (value["status"] !== "created" && value["status"] !== "merged" && value["status"] !== "cleaned")
+        return false;
+    if (!isNonEmptyString(value["branch"]) || !isNonEmptyString(value["path"]))
+        return false;
+    if (value["status"] === "merged" && !isNonEmptyString(value["commit"]))
+        return false;
+    return isNonNegativeInteger(value["event_seq"]);
+}
+function hasRecordedKnowledgeEvidence(value) {
+    if (!hasObject(value) || value["status"] !== "recorded")
+        return false;
+    return hasValidNonEmptyArray(value, "results", isKnowledgeResult);
+}
+function isKnowledgeResult(value) {
+    if (!hasObject(value))
+        return false;
+    return isNonEmptyString(value["chunk_id"]) && hasNonEmptyStringArray(value["source_refs"]);
+}
+function hasValidNonEmptyArray(value, key, predicate) {
+    return Array.isArray(value[key]) && value[key].length > 0 && value[key].every(predicate);
+}
+function isNonEmptyString(value) {
+    return typeof value === "string" && value.length > 0 && value !== "unknown";
+}
+function hasNonEmptyStringArray(value) {
+    return Array.isArray(value) && value.length > 0 && value.every(isNonEmptyString);
+}
+function hasNonNegativeIntegerArray(value) {
+    return Array.isArray(value) && value.length > 0 && value.every(isNonNegativeInteger);
+}
+function isNonNegativeInteger(value) {
+    return Number.isInteger(value) && typeof value === "number" && value >= 0;
+}
+function isPositiveInteger(value) {
+    return Number.isInteger(value) && typeof value === "number" && value > 0;
 }
 function proofStatusCell(status) {
     if (status === "PRESENT")
@@ -475,8 +581,5 @@ function requiredString(value, key) {
 }
 function hasObject(value) {
     return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function hasNonEmptyArray(value, key) {
-    return hasObject(value) && Array.isArray(value[key]) && value[key].length > 0;
 }
 //# sourceMappingURL=index.js.map

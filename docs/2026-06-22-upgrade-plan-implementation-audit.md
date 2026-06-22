@@ -393,8 +393,8 @@ osstack release doctor --json
 
 在发布凭证补齐前，建议继续做本地可验证的 P1：
 
-1. 为未来外部 `verify-results.json` / `worktree-status.json` 文件级 imports 增加 schema validation。
-2. 继续补更多 negative/malformed vectors，覆盖坏的 manifest、policy decision、knowledge evidence。
+1. 继续把 proof/compliance 的结构级证据检查扩展成可复用 validator；当前 proof view/compliance render 已经会把 malformed manifest、verify、policy、agent runtime、governance、worktree、knowledge evidence 标成 `MISSING`。
+2. 继续补更多 negative/malformed vectors，覆盖边界格式、旧版本兼容字段、外部 proof 目录导入场景。
 3. 继续强化 release doctor、Knowledge Cloud deploy preflight、npm publish preflight。
 
 授权解除后，立即转入 P0：
