@@ -43,6 +43,154 @@ const BUILTIN_PACKS = [{
                 description: "Knowledge pack and chunk traces show which retrieved context was used.",
             },
         ],
+    }, {
+        id: "soc2-lite",
+        version: "2026.06.22",
+        name: "SOC 2 Lite Internal Mapping",
+        certification_claim: "none",
+        controls: [
+            {
+                id: "soc2-change-validation",
+                title: "Change validation",
+                evidence_path: "verify-results.json",
+                description: "Maps verification results to an internal change-management evidence view.",
+            },
+            {
+                id: "soc2-automated-decision-trace",
+                title: "Automated decision trace",
+                evidence_path: "policy-decision.json",
+                description: "Records the agent selection and routing rationale for audit review.",
+            },
+            {
+                id: "soc2-secure-development",
+                title: "Secure development checks",
+                evidence_path: "governance-results.json",
+                description: "Maps deterministic governance findings to secure-development evidence.",
+            },
+            {
+                id: "soc2-evidence-integrity",
+                title: "Evidence integrity",
+                evidence_path: "manifest.json",
+                description: "Uses proof manifest checksums as tamper-evident artifact inventory.",
+            },
+            {
+                id: "soc2-agent-runtime",
+                title: "Agent runtime trace",
+                evidence_path: "agent-runtime.json",
+                description: "Shows which agent runtime modes participated in the run.",
+            },
+        ],
+    }, {
+        id: "iso27001-lite",
+        version: "2026.06.22",
+        name: "ISO 27001 Lite Internal Mapping",
+        certification_claim: "none",
+        controls: [
+            {
+                id: "iso-change-control",
+                title: "Change control evidence",
+                evidence_path: "verify-results.json",
+                description: "Verification gates provide internal evidence for change control.",
+            },
+            {
+                id: "iso-secure-engineering",
+                title: "Secure engineering evidence",
+                evidence_path: "governance-results.json",
+                description: "Governance checks provide deterministic secure-engineering signals.",
+            },
+            {
+                id: "iso-change-isolation",
+                title: "Change isolation",
+                evidence_path: "worktree-status.json",
+                description: "Worktree evidence records isolated execution branches and commits.",
+            },
+            {
+                id: "iso-evidence-inventory",
+                title: "Evidence inventory",
+                evidence_path: "manifest.json",
+                description: "Proof manifest lists artifacts with SHA-256 checksums.",
+            },
+            {
+                id: "iso-knowledge-source-trace",
+                title: "Knowledge source trace",
+                evidence_path: "knowledge-results.json",
+                description: "Knowledge traces record retrieved Osstack-native pack and chunk ids.",
+            },
+        ],
+    }, {
+        id: "eu-ai-act-lite",
+        version: "2026.06.22",
+        name: "EU AI Act Lite Internal Mapping",
+        certification_claim: "none",
+        controls: [
+            {
+                id: "eu-automated-decision-record",
+                title: "Automated decision record",
+                evidence_path: "policy-decision.json",
+                description: "Policy decision evidence records automated agent selection rationale.",
+            },
+            {
+                id: "eu-agent-runtime-transparency",
+                title: "Agent runtime transparency",
+                evidence_path: "agent-runtime.json",
+                description: "Agent runtime evidence records auth/invocation mode and role tags.",
+            },
+            {
+                id: "eu-technical-robustness",
+                title: "Technical robustness evidence",
+                evidence_path: "verify-results.json",
+                description: "Verification results show whether the run met its technical gates.",
+            },
+            {
+                id: "eu-risk-and-safety",
+                title: "Risk and safety checks",
+                evidence_path: "governance-results.json",
+                description: "Governance findings provide deterministic safety and secure-coding signals.",
+            },
+            {
+                id: "eu-knowledge-traceability",
+                title: "Knowledge traceability",
+                evidence_path: "knowledge-results.json",
+                description: "Knowledge evidence records pack and chunk ids used as retrieved context.",
+            },
+        ],
+    }, {
+        id: "internal-audit",
+        version: "2026.06.22",
+        name: "Internal Audit",
+        certification_claim: "none",
+        controls: [
+            {
+                id: "audit-proof-inventory",
+                title: "Proof inventory",
+                evidence_path: "manifest.json",
+                description: "Proof manifest gives the artifact inventory and integrity hashes.",
+            },
+            {
+                id: "audit-validation",
+                title: "Validation evidence",
+                evidence_path: "verify-results.json",
+                description: "Verification evidence records pass/fail status for the run.",
+            },
+            {
+                id: "audit-agent-selection",
+                title: "Agent selection evidence",
+                evidence_path: "policy-decision.json",
+                description: "Policy decision evidence records selected agent and reason.",
+            },
+            {
+                id: "audit-runtime",
+                title: "Runtime evidence",
+                evidence_path: "agent-runtime.json",
+                description: "Runtime evidence records selected agent modes and roles.",
+            },
+            {
+                id: "audit-change-isolation",
+                title: "Change isolation evidence",
+                evidence_path: "worktree-status.json",
+                description: "Worktree evidence records branch, commit, and cleanup status.",
+            },
+        ],
     }];
 export function listCompliancePacks() {
     return BUILTIN_PACKS.map((pack) => ({
@@ -60,15 +208,16 @@ export function getCompliancePack(packId) {
     };
 }
 export async function loadProofEvidence(proofDir) {
-    const [manifest, verify, policy, governance, worktree, knowledge] = await Promise.all([
+    const [manifest, verify, policy, agentRuntime, governance, worktree, knowledge] = await Promise.all([
         readJsonIfExists(join(proofDir, "manifest.json")),
         readJsonIfExists(join(proofDir, "verify-results.json")),
         readJsonIfExists(join(proofDir, "policy-decision.json")),
+        readJsonIfExists(join(proofDir, "agent-runtime.json")),
         readJsonIfExists(join(proofDir, "governance-results.json")),
         readJsonIfExists(join(proofDir, "worktree-status.json")),
         readJsonIfExists(join(proofDir, "knowledge-results.json")),
     ]);
-    return { manifest, verify, policy, governance, worktree, knowledge };
+    return { manifest, verify, policy, agent_runtime: agentRuntime, governance, worktree, knowledge };
 }
 export async function renderComplianceReportFromProofDir(options) {
     return renderComplianceReport({
@@ -80,7 +229,7 @@ export async function renderComplianceReportFromProofDir(options) {
 export function renderComplianceReport(options) {
     const pack = getCompliancePack(options.packId);
     const rows = pack.controls.map((control) => {
-        const status = controlStatus(control.id, options.evidence);
+        const status = controlStatus(control, options.evidence);
         return `| ${control.title} | ${status} | \`${control.evidence_path}\` | ${control.description} |`;
     });
     return [
@@ -91,7 +240,7 @@ export function renderComplianceReport(options) {
         "External certification claim: `none`",
         "",
         "This report is not a SOC 2, ISO 27001, EU AI Act, or third-party certification.",
-        "It maps osstack proof evidence to an internal engineering-readiness view.",
+        `It maps osstack proof evidence to the internal ${pack.name} view.`,
         "",
         "| Control | Status | Evidence | Mapping |",
         "|---|---|---|---|",
@@ -109,7 +258,7 @@ export async function renderProofViewFromProofDir(options) {
 export function renderProofView(options) {
     const controls = proofViewControls(options.audience);
     const rows = controls.map((control) => {
-        const status = controlStatus(control.control_id, options.evidence);
+        const status = controlStatus(control, options.evidence);
         return `| ${control.title} | ${status} | \`${control.evidence_path}\` | ${control.focus} |`;
     });
     return [
@@ -182,19 +331,21 @@ function audienceFocus(audience, controlId) {
     };
     return focus[audience][controlId] ?? "evidence status";
 }
-function controlStatus(controlId, evidence) {
-    switch (controlId) {
-        case "change-validation":
+function controlStatus(control, evidence) {
+    switch (control.evidence_path) {
+        case "verify-results.json":
             return hasObject(evidence.verify) ? "PRESENT" : "MISSING";
-        case "automated-decision-trace":
+        case "policy-decision.json":
             return hasObject(evidence.policy) && hasNonEmptyArray(evidence.policy, "decisions") ? "PRESENT" : "MISSING";
-        case "secure-coding-control":
+        case "agent-runtime.json":
+            return hasObject(evidence.agent_runtime) && hasNonEmptyArray(evidence.agent_runtime, "agents") ? "PRESENT" : "MISSING";
+        case "governance-results.json":
             return hasObject(evidence.governance) ? "PRESENT" : "MISSING";
-        case "evidence-integrity":
+        case "manifest.json":
             return hasObject(evidence.manifest) && hasNonEmptyArray(evidence.manifest, "artifacts") ? "PRESENT" : "MISSING";
-        case "worktree-isolation":
+        case "worktree-status.json":
             return hasObject(evidence.worktree) ? "PRESENT" : "MISSING";
-        case "knowledge-trace":
+        case "knowledge-results.json":
             return hasObject(evidence.knowledge) ? "PRESENT" : "MISSING";
     }
     return "MISSING";

@@ -1,0 +1,12 @@
+{
+  "status_values": ["PRESENT", "MISSING"],
+  "minimum_release_ready": {
+    "required_present": [
+      "audit-proof-inventory",
+      "audit-validation",
+      "audit-agent-selection",
+      "audit-runtime"
+    ],
+    "note": "This rubric is an internal audit checklist only and is not an external certification."
+  }
+}

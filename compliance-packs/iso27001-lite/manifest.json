@@ -1,0 +1,7 @@
+{
+  "id": "iso27001-lite",
+  "version": "2026.06.22",
+  "name": "ISO 27001 Lite Internal Mapping",
+  "certification_claim": "none",
+  "description": "Maps osstack proof evidence to ISO 27001-inspired internal control evidence. This pack does not claim ISO 27001 certification or audit readiness."
+}

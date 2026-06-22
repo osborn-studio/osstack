@@ -1,0 +1,11 @@
+{
+  "status_values": ["PRESENT", "MISSING"],
+  "minimum_release_ready": {
+    "required_present": [
+      "iso-change-control",
+      "iso-secure-engineering",
+      "iso-evidence-inventory"
+    ],
+    "note": "This rubric is an internal ISO 27001-inspired mapping only and is not an external certification."
+  }
+}

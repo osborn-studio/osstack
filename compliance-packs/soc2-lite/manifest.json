@@ -1,0 +1,7 @@
+{
+  "id": "soc2-lite",
+  "version": "2026.06.22",
+  "name": "SOC 2 Lite Internal Mapping",
+  "certification_claim": "none",
+  "description": "Maps osstack proof evidence to SOC 2-inspired internal control evidence. This pack does not claim SOC 2 certification, attestation, or audit readiness."
+}

@@ -1,0 +1,27 @@
+[
+  {
+    "id": "iso-change-control",
+    "title": "Change control evidence",
+    "description": "Verification gates provide internal evidence for change control."
+  },
+  {
+    "id": "iso-secure-engineering",
+    "title": "Secure engineering evidence",
+    "description": "Governance checks provide deterministic secure-engineering signals."
+  },
+  {
+    "id": "iso-change-isolation",
+    "title": "Change isolation",
+    "description": "Worktree evidence records isolated execution branches and commits."
+  },
+  {
+    "id": "iso-evidence-inventory",
+    "title": "Evidence inventory",
+    "description": "Proof manifest lists artifacts with SHA-256 checksums."
+  },
+  {
+    "id": "iso-knowledge-source-trace",
+    "title": "Knowledge source trace",
+    "description": "Knowledge traces record retrieved Osstack-native pack and chunk ids."
+  }
+]

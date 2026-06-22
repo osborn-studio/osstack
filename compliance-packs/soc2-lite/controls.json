@@ -1,0 +1,27 @@
+[
+  {
+    "id": "soc2-change-validation",
+    "title": "Change validation",
+    "description": "Maps verification results to an internal change-management evidence view."
+  },
+  {
+    "id": "soc2-automated-decision-trace",
+    "title": "Automated decision trace",
+    "description": "Records the agent selection and routing rationale for audit review."
+  },
+  {
+    "id": "soc2-secure-development",
+    "title": "Secure development checks",
+    "description": "Maps deterministic governance findings to secure-development evidence."
+  },
+  {
+    "id": "soc2-evidence-integrity",
+    "title": "Evidence integrity",
+    "description": "Uses proof manifest checksums as tamper-evident artifact inventory."
+  },
+  {
+    "id": "soc2-agent-runtime",
+    "title": "Agent runtime trace",
+    "description": "Shows which agent runtime modes participated in the run."
+  }
+]

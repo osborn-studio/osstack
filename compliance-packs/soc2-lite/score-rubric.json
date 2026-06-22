@@ -1,0 +1,12 @@
+{
+  "status_values": ["PRESENT", "MISSING"],
+  "minimum_release_ready": {
+    "required_present": [
+      "soc2-change-validation",
+      "soc2-automated-decision-trace",
+      "soc2-secure-development",
+      "soc2-evidence-integrity"
+    ],
+    "note": "This rubric is an internal SOC 2-inspired mapping only and is not an external certification."
+  }
+}

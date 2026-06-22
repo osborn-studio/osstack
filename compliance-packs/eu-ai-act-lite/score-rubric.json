@@ -1,0 +1,12 @@
+{
+  "status_values": ["PRESENT", "MISSING"],
+  "minimum_release_ready": {
+    "required_present": [
+      "eu-automated-decision-record",
+      "eu-agent-runtime-transparency",
+      "eu-technical-robustness",
+      "eu-risk-and-safety"
+    ],
+    "note": "This rubric is an internal EU AI Act-inspired mapping only and is not legal advice or certification."
+  }
+}

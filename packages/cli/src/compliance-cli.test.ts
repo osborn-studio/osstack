@@ -32,11 +32,13 @@ describe("compliance CLI", () => {
 
     expect(exitCode).toBe(0);
     expect(JSON.parse(logs.join("\n"))).toMatchObject({
-      packs: [expect.objectContaining({
-        id: "engineering-readiness",
-        version: "2026.06.22",
-        certification_claim: "none",
-      })],
+      packs: expect.arrayContaining([
+        expect.objectContaining({ id: "engineering-readiness", version: "2026.06.22", certification_claim: "none" }),
+        expect.objectContaining({ id: "soc2-lite", version: "2026.06.22", certification_claim: "none" }),
+        expect.objectContaining({ id: "iso27001-lite", version: "2026.06.22", certification_claim: "none" }),
+        expect.objectContaining({ id: "eu-ai-act-lite", version: "2026.06.22", certification_claim: "none" }),
+        expect.objectContaining({ id: "internal-audit", version: "2026.06.22", certification_claim: "none" }),
+      ]),
     });
   });
 
@@ -80,6 +82,10 @@ async function writeProofEvidence(proofDir: string): Promise<void> {
   await writeFile(join(proofDir, "policy-decision.json"), JSON.stringify({
     status: "recorded",
     decisions: [{ task_id: "t1", agent_id: "codex-cli", reason: "best fit" }],
+  }, null, 2));
+  await writeFile(join(proofDir, "agent-runtime.json"), JSON.stringify({
+    status: "recorded",
+    agents: [{ agent_id: "codex-cli", auth_mode: "subprocess/login-reuse" }],
   }, null, 2));
   await writeFile(join(proofDir, "governance-results.json"), JSON.stringify({ status: "pass", findings: [] }, null, 2));
   await writeFile(join(proofDir, "worktree-status.json"), JSON.stringify({ status: "recorded", entries: [] }, null, 2));

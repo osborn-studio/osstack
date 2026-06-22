@@ -1,0 +1,27 @@
+[
+  {
+    "id": "audit-proof-inventory",
+    "title": "Proof inventory",
+    "description": "Proof manifest gives the artifact inventory and integrity hashes."
+  },
+  {
+    "id": "audit-validation",
+    "title": "Validation evidence",
+    "description": "Verification evidence records pass/fail status for the run."
+  },
+  {
+    "id": "audit-agent-selection",
+    "title": "Agent selection evidence",
+    "description": "Policy decision evidence records selected agent and reason."
+  },
+  {
+    "id": "audit-runtime",
+    "title": "Runtime evidence",
+    "description": "Runtime evidence records selected agent modes and roles."
+  },
+  {
+    "id": "audit-change-isolation",
+    "title": "Change isolation evidence",
+    "description": "Worktree evidence records branch, commit, and cleanup status."
+  }
+]

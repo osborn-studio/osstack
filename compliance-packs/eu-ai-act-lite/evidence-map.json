@@ -1,0 +1,7 @@
+{
+  "eu-automated-decision-record": "policy-decision.json",
+  "eu-agent-runtime-transparency": "agent-runtime.json",
+  "eu-technical-robustness": "verify-results.json",
+  "eu-risk-and-safety": "governance-results.json",
+  "eu-knowledge-traceability": "knowledge-results.json"
+}
