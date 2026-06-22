@@ -44,8 +44,33 @@ smooth cycles, tighten the cadence to weekly by just doing it every Friday.
 - **NPM_TOKEN secret** on the GitHub repo: an npm automation token with
   publish rights to the `@osstack` scope. Until configured, release.yml
   only maintains the Version PR and skips publish.
+- **FLY_API_TOKEN secret** on the GitHub repo: a Fly.io token with deploy
+  rights to the `osstack-knowledge-cloud` app. Until configured,
+  Knowledge Cloud deploy runs can validate build/smoke checks but must not
+  be run with `deploy=true`.
 - The `@osstack` npm scope must exist and be owned by the publishing account
   (`npm org` / scope settings on npmjs.com).
+
+Before merging the Version Packages PR, run:
+
+```bash
+osstack release doctor --target all --json
+osstack release plan --json
+```
+
+The plan is safe to execute only when `safe_to_execute` is `true`.
+
+If GitHub marks the Version Packages PR CI as `action_required`, rerun the
+latest workflow before merging:
+
+```bash
+gh run list --branch changeset-release/main --limit 5
+gh run rerun <latest-ci-run-id>
+gh run watch <latest-ci-run-id> --exit-status
+```
+
+This is expected when GitHub requires an operator decision for the bot-created
+Version Packages PR workflow.
 
 ## Hotfix flow (between trains)
 
@@ -69,3 +94,18 @@ smooth cycles, tighten the cadence to weekly by just doing it every Friday.
 automatically. Manual rollback: `npm i -g @osstack/cli@<previous>` and
 restore the matching `~/.osstack/backups/state-v<previous>-*.db` snapshot
 only if the bad version migrated the schema.
+
+## Knowledge Cloud deploy
+
+Run a validation-only deployment check first:
+
+```bash
+gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=false
+```
+
+After `FLY_API_TOKEN` is configured and release readiness is clean, deploy:
+
+```bash
+gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true
+gh run watch <knowledge-cloud-deploy-run-id> --exit-status
+```
