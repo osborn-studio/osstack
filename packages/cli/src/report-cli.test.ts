@@ -8,11 +8,13 @@ import { main } from "./bin.js";
 let tmp: string;
 let logs: string[];
 let errors: string[];
+let oldLang: string | undefined;
 
 beforeEach(() => {
   tmp = mkdtempSync(join(tmpdir(), "osstack-cli-report-"));
   logs = [];
   errors = [];
+  oldLang = process.env["OSSTACK_LANG"];
   vi.spyOn(console, "log").mockImplementation((...args) => {
     logs.push(args.map(String).join(" "));
   });
@@ -22,6 +24,8 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  if (oldLang === undefined) delete process.env["OSSTACK_LANG"];
+  else process.env["OSSTACK_LANG"] = oldLang;
   vi.restoreAllMocks();
   await rm(tmp, { recursive: true, force: true });
 });
@@ -49,6 +53,18 @@ describe("report CLI", () => {
 
     expect(exitCode).toBe(0);
     expect(logs.join("\n")).toContain("# Osstack Loop Report - cli-report-loop");
+  });
+
+  it("renders a Chinese report with --lang zh-CN", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+
+    const exitCode = await main(["report", "--workspace", tmp, "--lang", "zh-CN"]);
+
+    expect(exitCode).toBe(0);
+    const output = logs.join("\n");
+    expect(output).toContain("# Osstack 循环报告 - cli-report-loop");
+    expect(output).toContain("## 摘要");
+    expect(output).toContain("## 已完成任务");
   });
 
   it("renders event-rich sections from an events JSONL file", async () => {

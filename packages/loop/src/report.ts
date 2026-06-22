@@ -95,6 +95,12 @@ export interface LoopStateScorecard {
   items: LoopStateScorecardItem[];
 }
 
+export type LoopReportLanguage = "en" | "zh-CN";
+
+export interface RenderLoopStateReportMarkdownOptions {
+  language?: LoopReportLanguage;
+}
+
 export function createLoopStateReport(state: LoopState, options: LoopStateReportOptions = {}): LoopStateReport {
   const completedTasks = state.completed_tasks;
   const successCount = completedTasks.filter((task) => task.outcome === "success").length;
@@ -209,79 +215,90 @@ export function createLoopStateScorecard(report: LoopStateReport): LoopStateScor
   };
 }
 
-export function renderLoopStateReportMarkdown(report: LoopStateReport): string {
+export function renderLoopStateReportMarkdown(
+  report: LoopStateReport,
+  options: RenderLoopStateReportMarkdownOptions = {},
+): string {
   const { summary } = report;
+  const text = reportText(options.language ?? "en");
   const lines: string[] = [
-    `# Osstack Loop Report - ${summary.loop_id}`,
+    `# ${text.title} - ${summary.loop_id}`,
     "",
-    "## Summary",
-    `- Started: ${summary.started_at}`,
-    `- Updated: ${summary.updated_at}`,
-    `- Completed: ${summary.completed_count}`,
-    `- Success: ${summary.success_count}`,
-    `- Failed: ${summary.failed_count}`,
-    `- Escalated: ${summary.escalated_count}`,
-    `- In progress: ${summary.in_progress_count}`,
-    `- Pending: ${summary.pending_count}`,
-    `- Success rate: ${formatPercent(summary.success_rate)}`,
-    `- Conformance: ${report.conformance.level} ${report.conformance.name}`,
+    `## ${text.summary}`,
+    `- ${text.started}: ${summary.started_at}`,
+    `- ${text.updated}: ${summary.updated_at}`,
+    `- ${text.completed}: ${summary.completed_count}`,
+    `- ${text.success}: ${summary.success_count}`,
+    `- ${text.failed}: ${summary.failed_count}`,
+    `- ${text.escalated}: ${summary.escalated_count}`,
+    `- ${text.inProgress}: ${summary.in_progress_count}`,
+    `- ${text.pending}: ${summary.pending_count}`,
+    `- ${text.successRate}: ${formatPercent(summary.success_rate)}`,
+    `- ${text.conformance}: ${report.conformance.level} ${report.conformance.name}`,
   ];
 
   if (summary.total_cycles !== undefined) {
-    lines.push(`- Total cycles: ${summary.total_cycles}`);
+    lines.push(`- ${text.totalCycles}: ${summary.total_cycles}`);
   }
   if (summary.avg_duration_ms !== undefined) {
-    lines.push(`- Average duration: ${summary.avg_duration_ms} ms`);
+    lines.push(`- ${text.averageDuration}: ${summary.avg_duration_ms} ms`);
   }
   if (summary.tokens_consumed !== undefined) {
-    lines.push(`- Tokens consumed: ${summary.tokens_consumed}`);
+    lines.push(`- ${text.tokensConsumed}: ${summary.tokens_consumed}`);
   }
 
   lines.push(
     "",
-    "## Completed Tasks",
+    `## ${text.completedTasks}`,
     ...renderCompletedTasks(report.completed_tasks),
     "",
-    "## In Progress",
+    `## ${text.inProgressSection}`,
     ...renderTasks(report.in_progress),
     "",
-    "## Pending Tasks",
+    `## ${text.pendingTasks}`,
     ...renderTasks(report.pending),
     "",
-    "## Policy Decisions",
+    `## ${text.policyDecisions}`,
     ...renderPolicyDecisions(report.policy_decisions),
     "",
-    "## Verify Results",
+    `## ${text.verifyResults}`,
     ...renderVerifyResults(report.verify_results),
     "",
-    "## Worktree Status",
+    `## ${text.worktreeStatus}`,
     ...renderWorktreeStatus(report.worktree_status),
     "",
-    "## Events Timeline",
+    `## ${text.eventsTimeline}`,
     ...renderEventsTimeline(report.events_timeline),
     "",
-    "## Knowledge Trace",
+    `## ${text.knowledgeTrace}`,
     ...renderKnowledgeTrace(report.knowledge),
     "",
-    "## Decisions",
+    `## ${text.decisions}`,
     ...renderTextList(report.decisions),
     "",
-    "## Risks",
+    `## ${text.risks}`,
     ...renderTextList(report.risks),
     "",
-    "## Next Steps",
+    `## ${text.nextSteps}`,
     ...renderTextList(report.next_steps),
   );
 
   return `${lines.join("\n")}\n`;
 }
 
-export function renderLoopStateReportFromState(state: LoopState): string {
-  return renderLoopStateReportMarkdown(createLoopStateReport(state));
+export function renderLoopStateReportFromState(
+  state: LoopState,
+  options: RenderLoopStateReportMarkdownOptions = {},
+): string {
+  return renderLoopStateReportMarkdown(createLoopStateReport(state), options);
 }
 
-export function renderLoopStateReportFromStateAndEvents(state: LoopState, events: LoopEvent[]): string {
-  return renderLoopStateReportMarkdown(createLoopStateReport(state, { events }));
+export function renderLoopStateReportFromStateAndEvents(
+  state: LoopState,
+  events: LoopEvent[],
+  options: RenderLoopStateReportMarkdownOptions = {},
+): string {
+  return renderLoopStateReportMarkdown(createLoopStateReport(state, { events }), options);
 }
 
 export function renderLoopStateScorecardMarkdown(scorecard: LoopStateScorecard): string {
@@ -612,6 +629,94 @@ function numberPayload(event: LoopEvent, key: string): number | undefined {
 function booleanPayload(event: LoopEvent, key: string): boolean {
   const value = payloadValue(event, key);
   return typeof value === "boolean" ? value : false;
+}
+
+function reportText(language: LoopReportLanguage): {
+  title: string;
+  summary: string;
+  started: string;
+  updated: string;
+  completed: string;
+  success: string;
+  failed: string;
+  escalated: string;
+  inProgress: string;
+  pending: string;
+  successRate: string;
+  conformance: string;
+  totalCycles: string;
+  averageDuration: string;
+  tokensConsumed: string;
+  completedTasks: string;
+  inProgressSection: string;
+  pendingTasks: string;
+  policyDecisions: string;
+  verifyResults: string;
+  worktreeStatus: string;
+  eventsTimeline: string;
+  knowledgeTrace: string;
+  decisions: string;
+  risks: string;
+  nextSteps: string;
+} {
+  if (language === "zh-CN") {
+    return {
+      title: "Osstack 循环报告",
+      summary: "摘要",
+      started: "开始时间",
+      updated: "更新时间",
+      completed: "已完成",
+      success: "成功",
+      failed: "失败",
+      escalated: "升级",
+      inProgress: "进行中",
+      pending: "待处理",
+      successRate: "成功率",
+      conformance: "符合级别",
+      totalCycles: "总循环数",
+      averageDuration: "平均耗时",
+      tokensConsumed: "Token 消耗",
+      completedTasks: "已完成任务",
+      inProgressSection: "进行中",
+      pendingTasks: "待处理任务",
+      policyDecisions: "策略决策",
+      verifyResults: "验证结果",
+      worktreeStatus: "Worktree 状态",
+      eventsTimeline: "事件时间线",
+      knowledgeTrace: "知识注入记录",
+      decisions: "决策记录",
+      risks: "风险",
+      nextSteps: "下一步",
+    };
+  }
+  return {
+    title: "Osstack Loop Report",
+    summary: "Summary",
+    started: "Started",
+    updated: "Updated",
+    completed: "Completed",
+    success: "Success",
+    failed: "Failed",
+    escalated: "Escalated",
+    inProgress: "In progress",
+    pending: "Pending",
+    successRate: "Success rate",
+    conformance: "Conformance",
+    totalCycles: "Total cycles",
+    averageDuration: "Average duration",
+    tokensConsumed: "Tokens consumed",
+    completedTasks: "Completed Tasks",
+    inProgressSection: "In Progress",
+    pendingTasks: "Pending Tasks",
+    policyDecisions: "Policy Decisions",
+    verifyResults: "Verify Results",
+    worktreeStatus: "Worktree Status",
+    eventsTimeline: "Events Timeline",
+    knowledgeTrace: "Knowledge Trace",
+    decisions: "Decisions",
+    risks: "Risks",
+    nextSteps: "Next Steps",
+  };
 }
 
 function scorecardItem(args: {

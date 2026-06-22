@@ -39,6 +39,7 @@ import {
   renderLoopStateScorecardMarkdown,
   type LoopEvent,
   type LoopKnowledgeTrace,
+  type LoopReportLanguage,
   type LoopState,
 } from "@osstack/loop";
 import {
@@ -70,6 +71,58 @@ const execFileAsync = promisify(execFile);
 
 function socketPath(): string {
   return resolveSocketPath();
+}
+
+function resolveLanguage(value = process.env["OSSTACK_LANG"]): LoopReportLanguage {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "zh-cn" || normalized === "zh" || normalized === "cn") return "zh-CN";
+  return "en";
+}
+
+function renderChineseMainHelp(): string {
+  return `osstack ${VERSION} — Hermes 驻留项目经理 Agent
+
+用法：
+  osstack <命令> [参数]
+
+守护进程命令：
+  serve               启动 daemon（Unix socket：${socketPath()}）
+  serve --install     安装 macOS launchd daemon
+  health              查看 daemon 健康状态
+  status              查看 CLI/daemon 版本与升级状态
+  cockpit             打开或查看产品控制台
+  stats               查看 agent 与 loop 指标
+
+项目命令：
+  doctor              检查 workspace、loop、agent 与下一步建议
+  examples            输出可直接运行的工作流示例
+  guide               输出或写入 5 分钟 Quickstart
+  deliver <需求>      从一句需求进入 task queue -> loop -> report/scorecard/proof
+
+Loop 工程：
+  loop run            运行 discover -> execute -> verify -> iterate 循环
+  loop enqueue        写入 tasks/ 队列任务
+  loop status         渲染 LOOP-STATE.json / STATE.md
+  report              生成证据报告（支持 --lang en|zh-CN）
+  scorecard           生成证据评分卡
+  proof               生成 proof pack
+  pr                  生成 GitHub PR evidence body
+
+治理与知识：
+  governance scan     运行确定性治理检查
+  compliance list     列出合规映射包
+  knowledge search    搜索本地或云端 Osstack 知识库
+  lessons list        查看本地 pitfall 知识库
+
+Agent：
+  agent list          查看 agent 的 role/capability/auth mode
+  agent scorecard     查看 agent 历史表现
+
+环境变量：
+  OSSTACK_LANG        语言：en 或 zh-CN
+  OSSTACK_HOME        存储根目录（默认 ~/.osstack）
+  OSSTACK_SOCKET      daemon socket 路径
+`;
 }
 
 const LAUNCHD_LABEL = "ai.osstack.daemon";
@@ -133,6 +186,10 @@ export async function main(args = process.argv.slice(2)): Promise<number> {
   }
 
   if (cmd === "--help" || cmd === "-h" || cmd === "help" || !cmd) {
+    if (resolveLanguage() === "zh-CN") {
+      console.log(renderChineseMainHelp());
+      return 0;
+    }
     console.log(`osstack ${VERSION} — Hermes-resident project manager agent
 
 Usage:
@@ -1611,18 +1668,20 @@ async function handleReportCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack report — evidence-oriented loop report
 
-  osstack report [run_id] [--workspace P] [--state P] [--events P]
+  osstack report [run_id] [--workspace P] [--state P] [--events P] [--lang en|zh-CN]
 
 Options:
   --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
   --state P           JSON state path (default: LOOP-STATE.json)
   --events P          Optional loop events JSONL path for timeline evidence
+  --lang L            Report language: en or zh-CN (default: OSSTACK_LANG or en)
 `);
     return 0;
   }
 
-  const runId = firstPositionalValue(args, new Set(["--workspace", "--state", "--events"]));
+  const runId = firstPositionalValue(args, new Set(["--workspace", "--state", "--events", "--lang"]));
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const language = resolveLanguage(flagValue(args, "--lang"));
   const evidenceResult = runId === undefined
     ? undefined
     : await readPersistedLoopRunEvidence(runId);
@@ -1638,7 +1697,7 @@ Options:
     return 1;
   }
   const events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
-  console.log(renderReportMarkdownForArtifacts(state, events));
+  console.log(renderReportMarkdownForArtifacts(state, events, language));
   return 0;
 }
 
@@ -2933,10 +2992,14 @@ function numberEventPayload(event: LoopEvent, key: string): number | undefined {
   return typeof value === "number" ? value : undefined;
 }
 
-function renderReportMarkdownForArtifacts(state: LoopState, events: LoopEvent[]): string {
+function renderReportMarkdownForArtifacts(
+  state: LoopState,
+  events: LoopEvent[],
+  language: LoopReportLanguage = resolveLanguage(),
+): string {
   return events.length === 0
-    ? renderLoopStateReportFromState(state)
-    : renderLoopStateReportFromStateAndEvents(state, events);
+    ? renderLoopStateReportFromState(state, { language })
+    : renderLoopStateReportFromStateAndEvents(state, events, { language });
 }
 
 async function readLoopEventsJsonlFlag(args: string[], workspacePath: string): Promise<LoopEvent[]> {
