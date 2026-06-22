@@ -1,4 +1,4 @@
-import type { KnowledgeMode, KnowledgeFeedbackEntry, KnowledgePack, KnowledgePackManifest, KnowledgePin, KnowledgeScope, KnowledgeSearchEvidence, KnowledgeSearchResult, KnowledgeSyncEvidence } from "./types.js";
+import type { KnowledgeMode, KnowledgeFeedbackEntry, KnowledgePack, KnowledgePackManifest, KnowledgePin, KnowledgeRetrievalEvalCase, KnowledgeRetrievalEvalSummary, KnowledgeScope, KnowledgeSearchEvidence, KnowledgeSearchResult, KnowledgeSyncEvidence } from "./types.js";
 export declare function loadKnowledgePack(path: string): Promise<KnowledgePack>;
 export declare function validateKnowledgePackManifest(value: unknown): KnowledgePackManifest;
 export declare function importKnowledgeSource(options: {
@@ -30,6 +30,9 @@ export declare function cacheKnowledgeFeedback(options: {
 export declare function searchKnowledgePacks(packs: KnowledgePack[], query: string, options?: {
     limit?: number;
 }): KnowledgeSearchResult[];
+export declare function evaluateKnowledgeRetrieval(packs: KnowledgePack[], cases: KnowledgeRetrievalEvalCase[], options?: {
+    topK?: number;
+}): KnowledgeRetrievalEvalSummary;
 export declare function assembleKnowledgeSnippet(results: KnowledgeSearchResult[]): string;
 export declare function resolveKnowledgeSearch(options: {
     mode?: KnowledgeMode;

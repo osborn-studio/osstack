@@ -211,6 +211,32 @@ describe("knowledge CLI", () => {
       feedback: { chunk_id: "chunk-cockpit", rating: "useful", status: "recorded" },
     });
   });
+
+  it("runs retrieval eval fixtures against knowledge packs", async () => {
+    const packPath = join(tmp, "pack.json");
+    const fixturesPath = join(tmp, "fixtures.json");
+    await writeFile(packPath, JSON.stringify(cloudCockpitPack(), null, 2));
+    await writeFile(fixturesPath, JSON.stringify([
+      { id: "eval_cockpit", query: "cockpit proof guidance", expected_chunk_id: "chunk-cockpit" },
+    ], null, 2));
+
+    const exitCode = await main([
+      "knowledge",
+      "eval",
+      "--pack",
+      packPath,
+      "--fixtures",
+      fixturesPath,
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      total: 1,
+      passed: 1,
+      failed: 0,
+    });
+  });
 });
 
 async function startKnowledgeServer(): Promise<Server> {

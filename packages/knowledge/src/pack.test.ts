@@ -1,11 +1,12 @@
 import { mkdtempSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   assembleKnowledgeSnippet,
   cacheKnowledgeFeedback,
+  evaluateKnowledgeRetrieval,
   importKnowledgeSource,
   listCachedKnowledgePacks,
   loadKnowledgePack,
@@ -14,6 +15,7 @@ import {
   searchKnowledgePacks,
   syncKnowledgeCache,
   validateKnowledgePackManifest,
+  type KnowledgeRetrievalEvalCase,
 } from "./index.js";
 
 let tmp: string;
@@ -244,6 +246,39 @@ describe("knowledge packs", () => {
     expect(feedbackLines).toMatchObject([
       expect.objectContaining({ chunk_id: "chunk-loop-proof", rating: "useful", status: "sent" }),
     ]);
+  });
+
+  it("ships official osstack packs with reviewed metadata and passing retrieval fixtures", async () => {
+    const root = resolve(process.cwd(), "../..");
+    const packPaths = [
+      "knowledge-packs/official/loop-engineering/manifest.json",
+      "knowledge-packs/official/agent-routing-policy/manifest.json",
+      "knowledge-packs/official/verifier-and-governance/manifest.json",
+      "knowledge-packs/official/worktree-safety/manifest.json",
+      "knowledge-packs/official/proof-and-scorecard/manifest.json",
+      "knowledge-packs/official/pr-and-release/manifest.json",
+    ].map((path) => join(root, path));
+    const packs = await Promise.all(packPaths.map((path) => loadKnowledgePack(path)));
+    const fixtures = JSON.parse(
+      await readFile(join(root, "knowledge-evals/retrieval/osstack-core.json"), "utf-8"),
+    ) as KnowledgeRetrievalEvalCase[];
+
+    expect(packs).toHaveLength(6);
+    for (const pack of packs) {
+      expect(pack.manifest).toMatchObject({
+        source_kind: "osstack_native",
+        scope: "official",
+        license: "Osstack-native",
+        last_reviewed_at: "2026-06-22T00:00:00.000Z",
+      });
+      expect(pack.manifest.quality_score).toBeGreaterThanOrEqual(89);
+    }
+    expect(fixtures).toHaveLength(30);
+    expect(evaluateKnowledgeRetrieval(packs, fixtures, { topK: 3 })).toMatchObject({
+      total: 30,
+      passed: 30,
+      failed: 0,
+    });
   });
 });
 

@@ -1,0 +1,22 @@
+{
+  "id": "osstack-core/pr-and-release",
+  "version": "2026.06.22",
+  "name": "Osstack PR and Release",
+  "license": "Osstack-native",
+  "source_kind": "osstack_native",
+  "quality_score": 90,
+  "scope": "official",
+  "taxonomy": ["osstack-core/pr-and-release"],
+  "generated_at": "2026-06-22T00:00:00.000Z",
+  "last_reviewed_at": "2026-06-22T00:00:00.000Z",
+  "source_attribution": ["osstack-native product knowledge"],
+  "chunks": [
+    {
+      "chunk_id": "pr-evidence-body",
+      "title": "PR evidence body",
+      "body": "Osstack PR bodies summarize tasks completed, agent selection, policy reasoning, verification, governance findings, reviewer output, proof pack path, risks, and manual fallback steps.",
+      "tags": ["pr", "release", "evidence"],
+      "source_refs": ["osstack-native"]
+    }
+  ]
+}

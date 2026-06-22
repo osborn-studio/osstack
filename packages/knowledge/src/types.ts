@@ -62,6 +62,29 @@ export interface KnowledgeFeedbackEntry {
   reason?: string;
 }
 
+export interface KnowledgeRetrievalEvalCase {
+  id: string;
+  query: string;
+  expected_chunk_id: string;
+}
+
+export interface KnowledgeRetrievalEvalResult {
+  id: string;
+  query: string;
+  expected_chunk_id: string;
+  matched: boolean;
+  rank: number | null;
+  top_chunk_ids: string[];
+}
+
+export interface KnowledgeRetrievalEvalSummary {
+  total: number;
+  passed: number;
+  failed: number;
+  top_k: number;
+  results: KnowledgeRetrievalEvalResult[];
+}
+
 export interface KnowledgeSearchResult {
   pack_id: string;
   pack_version: string;

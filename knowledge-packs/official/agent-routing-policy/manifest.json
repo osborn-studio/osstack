@@ -1,0 +1,22 @@
+{
+  "id": "osstack-core/agent-routing-policy",
+  "version": "2026.06.22",
+  "name": "Osstack Agent Routing Policy",
+  "license": "Osstack-native",
+  "source_kind": "osstack_native",
+  "quality_score": 91,
+  "scope": "official",
+  "taxonomy": ["osstack-core/agent-routing-policy"],
+  "generated_at": "2026-06-22T00:00:00.000Z",
+  "last_reviewed_at": "2026-06-22T00:00:00.000Z",
+  "source_attribution": ["osstack-native product knowledge"],
+  "chunks": [
+    {
+      "chunk_id": "routing-scorecard",
+      "title": "Agent scorecard routing",
+      "body": "Osstack routing should explain why an agent was selected using capability fit, cost tier, recent failures, success rate, and policy decisions recorded in the run evidence.",
+      "tags": ["agent", "routing", "policy", "scorecard"],
+      "source_refs": ["osstack-native"]
+    }
+  ]
+}

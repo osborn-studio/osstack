@@ -1,0 +1,22 @@
+{
+  "id": "osstack-core/verifier-and-governance",
+  "version": "2026.06.22",
+  "name": "Osstack Verifier and Governance",
+  "license": "Osstack-native",
+  "source_kind": "osstack_native",
+  "quality_score": 90,
+  "scope": "official",
+  "taxonomy": ["osstack-core/verifier-and-governance"],
+  "generated_at": "2026-06-22T00:00:00.000Z",
+  "last_reviewed_at": "2026-06-22T00:00:00.000Z",
+  "source_attribution": ["osstack-native product knowledge"],
+  "chunks": [
+    {
+      "chunk_id": "governance-fail-open",
+      "title": "Fail-open governance verifier",
+      "body": "Osstack governance is deterministic and should default to fail-open warnings unless strict mode is requested, while still recording findings in report, scorecard, proof, and PR evidence.",
+      "tags": ["governance", "verifier", "fail-open"],
+      "source_refs": ["osstack-native"]
+    }
+  ]
+}

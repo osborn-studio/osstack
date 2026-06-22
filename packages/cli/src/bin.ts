@@ -42,6 +42,7 @@ import {
 } from "@osstack/loop";
 import {
   cacheKnowledgeFeedback,
+  evaluateKnowledgeRetrieval,
   importKnowledgeSource,
   listCachedKnowledgePacks,
   loadKnowledgePack,
@@ -50,6 +51,7 @@ import {
   syncKnowledgeCache,
   type KnowledgeScope,
   type KnowledgeMode,
+  type KnowledgeRetrievalEvalCase,
   type KnowledgeSearchEvidence,
 } from "@osstack/knowledge";
 import { initProject } from "@osstack/skills";
@@ -698,6 +700,7 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   osstack knowledge import P --scope team|project --id ID --name NAME --license L --output P [--taxonomy T] [--json]
   osstack knowledge pin <pack_id>@<version> [--cache-dir P] [--json]
   osstack knowledge feedback <chunk_id> --useful|--bad [--cloud-url URL] [--cache-dir P] [--json]
+  osstack knowledge eval --pack P --fixtures P [--top-k N] [--json]
   osstack knowledge sources --internal --pack P [--json]
 
 Env:
@@ -908,6 +911,33 @@ Env:
       console.log(`feedback=${feedback.chunk_id} ${feedback.rating} ${feedback.status}`);
     }
     return 0;
+  }
+
+  if (sub === "eval") {
+    const packPaths = flagValues(args, "--pack");
+    const fixturesPath = flagValue(args, "--fixtures");
+    if (packPaths.length === 0 || fixturesPath === undefined) {
+      console.error("osstack: knowledge eval requires --pack and --fixtures");
+      return 1;
+    }
+    const topKRaw = flagValue(args, "--top-k");
+    const topK = topKRaw === undefined ? 3 : Number.parseInt(topKRaw, 10);
+    if (!Number.isInteger(topK) || topK <= 0) {
+      console.error("osstack: --top-k must be a positive integer");
+      return 1;
+    }
+    const packs = await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath)));
+    const fixtures = JSON.parse(await readFile(fixturesPath, "utf-8")) as KnowledgeRetrievalEvalCase[];
+    const summary = evaluateKnowledgeRetrieval(packs, fixtures, { topK });
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(summary, null, 2));
+    } else {
+      console.log(`retrieval_eval=${summary.passed}/${summary.total} top_k=${summary.top_k}`);
+      for (const result of summary.results.filter((item) => !item.matched)) {
+        console.log(`MISSING ${result.id} expected=${result.expected_chunk_id} top=${result.top_chunk_ids.join(",")}`);
+      }
+    }
+    return summary.failed === 0 ? 0 : 2;
   }
 
   if (sub === "sources") {

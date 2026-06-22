@@ -311,6 +311,28 @@ export function searchKnowledgePacks(packs, query, options = {}) {
         .sort((a, b) => b.score - a.score || a.pack_id.localeCompare(b.pack_id) || a.chunk_id.localeCompare(b.chunk_id))
         .slice(0, options.limit ?? 5);
 }
+export function evaluateKnowledgeRetrieval(packs, cases, options = {}) {
+    const topK = options.topK ?? 3;
+    const results = cases.map((testCase) => {
+        const top = searchKnowledgePacks(packs, testCase.query, { limit: topK });
+        const rankIndex = top.findIndex((result) => result.chunk_id === testCase.expected_chunk_id);
+        return {
+            id: testCase.id,
+            query: testCase.query,
+            expected_chunk_id: testCase.expected_chunk_id,
+            matched: rankIndex >= 0,
+            rank: rankIndex >= 0 ? rankIndex + 1 : null,
+            top_chunk_ids: top.map((result) => result.chunk_id),
+        };
+    });
+    return {
+        total: results.length,
+        passed: results.filter((result) => result.matched).length,
+        failed: results.filter((result) => !result.matched).length,
+        top_k: topK,
+        results,
+    };
+}
 export function assembleKnowledgeSnippet(results) {
     return results.map((result) => [
         `# ${result.title}`,

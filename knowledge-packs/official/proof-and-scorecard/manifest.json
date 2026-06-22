@@ -1,0 +1,22 @@
+{
+  "id": "osstack-core/proof-and-scorecard",
+  "version": "2026.06.22",
+  "name": "Osstack Proof and Scorecard",
+  "license": "Osstack-native",
+  "source_kind": "osstack_native",
+  "quality_score": 94,
+  "scope": "official",
+  "taxonomy": ["osstack-core/proof-and-scorecard"],
+  "generated_at": "2026-06-22T00:00:00.000Z",
+  "last_reviewed_at": "2026-06-22T00:00:00.000Z",
+  "source_attribution": ["osstack-native product knowledge"],
+  "chunks": [
+    {
+      "chunk_id": "proof-checksum-pack",
+      "title": "Checksumed proof packs",
+      "body": "Osstack proof packs collect report, scorecard, loop state, events, verify results, governance findings, knowledge traces, worktree status, and a manifest with SHA-256 checksums.",
+      "tags": ["proof", "scorecard", "checksum", "evidence"],
+      "source_refs": ["osstack-native"]
+    }
+  ]
+}
