@@ -17,6 +17,12 @@ describe("PIIRedactor.redact (default patterns)", () => {
     expect(out.stats.counts.anthropic_key).toBe(1);
   });
 
+  it("redacts hyphenated sk-style tokens", () => {
+    const out = r.redact("const api_key = \"sk-test-secret-token\";");
+    expect(out.text).toBe("const api_key = \"[REDACTED:openai_key]\";");
+    expect(out.stats.counts.openai_key).toBe(1);
+  });
+
   it("redacts an AWS access key", () => {
     const out = r.redact("token AKIAABCDEFGHIJKLMNOP found");
     expect(out.text).toBe("token [REDACTED:aws_access_key] found");

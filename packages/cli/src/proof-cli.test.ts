@@ -78,6 +78,9 @@ describe("proof CLI", () => {
       scanned_files: expect.any(Number),
       findings: [expect.objectContaining({ rule_id: "secret.api_key", file: join(tmp, "unsafe.ts") })],
     });
+    const governanceText = await readFile(join(proofDir, "governance-results.json"), "utf-8");
+    expect(governanceText).toContain("[REDACTED:openai_key]");
+    expect(governanceText).not.toContain("sk-test-secret-token");
   });
 
   it("includes a redacted git diff artifact in the proof pack", async () => {

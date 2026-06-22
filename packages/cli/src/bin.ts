@@ -2382,14 +2382,16 @@ async function writeProofPack(
 
   await mkdir(proofDir, { recursive: true });
   const manifestArtifacts: Array<{ path: string; sha256: string; bytes: number }> = [];
+  const redactor = new PIIRedactor();
   for (const artifact of artifacts) {
     const artifactPath = join(proofDir, artifact.path);
+    const content = redactor.redact(artifact.content).text;
     await mkdir(dirname(artifactPath), { recursive: true });
-    await writeFile(artifactPath, artifact.content, "utf-8");
+    await writeFile(artifactPath, content, "utf-8");
     manifestArtifacts.push({
       path: artifact.path,
-      sha256: sha256(artifact.content),
-      bytes: Buffer.byteLength(artifact.content, "utf-8"),
+      sha256: sha256(content),
+      bytes: Buffer.byteLength(content, "utf-8"),
     });
   }
   const sha256sumsContent = renderSha256Sums(manifestArtifacts);

@@ -40,7 +40,7 @@ export const DEFAULT_PATTERNS: readonly PIIPattern[] = [
   },
   {
     id: "openai_key",
-    pattern: /\bsk-[A-Za-z0-9]{20,200}\b/g,
+    pattern: /\bsk-[A-Za-z0-9_-]{8,200}\b/g,
     replace: "[REDACTED:openai_key]",
   },
   {
