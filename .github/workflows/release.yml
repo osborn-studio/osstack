@@ -53,6 +53,9 @@ jobs:
       - name: Knowledge Cloud deploy asset smoke
         run: pnpm smoke:knowledge-cloud:deploy
 
+      - name: Deliver proof smoke
+        run: pnpm smoke:deliver-proof
+
       - name: NPM install smoke
         run: pnpm smoke:npm-install
 

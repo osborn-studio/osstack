@@ -16,7 +16,7 @@
 
 仍未完成的部分集中在外部发布和产品深化：
 
-- GitHub push 被 OAuth token 缺少 `workflow` scope 阻塞，导致 PR、CI、云端部署、npm 发布无法继续。
+- GitHub push 被 OAuth token 缺少 `workflow` scope 阻塞，导致 PR、CI、云端部署、npm 发布无法继续；本地 workflow 已接入 `smoke:deliver-proof` 与包含 installed-CLI knowledge fallback 的 `smoke:npm-install`。
 - `npm install -g @osstack/cli` 还没有从真实 npm registry 验证，只验证了本地 tarball 安装。
 - 可选单文件分发尚未实现。
 - Cockpit 当前是 dashboard/web cockpit + CLI summary，不是完整交互式 TUI。
@@ -385,7 +385,7 @@ gh pr create --draft --base main --head codex/osstack-report-foundation \
 
 1. 为未来外部 `verify-results.json` / `worktree-status.json` 文件级 imports 增加 schema validation。
 2. 继续补更多 negative/malformed vectors，覆盖坏的 manifest、policy decision、knowledge evidence。
-3. 把 `smoke:deliver-proof` 和 installed-CLI knowledge fallback smoke 接入远端 CI。
+3. 授权恢复后验证远端 CI 中的 `smoke:deliver-proof` 和 installed-CLI knowledge fallback smoke。
 
 授权解除后，立即转入 P0：
 
