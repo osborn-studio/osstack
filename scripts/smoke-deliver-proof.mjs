@@ -1,0 +1,144 @@
+#!/usr/bin/env node
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+const root = process.cwd();
+const workspace = await mkdtemp(join(tmpdir(), "osstack-deliver-proof-smoke-"));
+
+try {
+  run("pnpm", ["build"], { cwd: root });
+  git(["init", "-b", "main"]);
+  git(["config", "user.name", "osstack smoke"]);
+  git(["config", "user.email", "osstack-smoke@example.invalid"]);
+  await writeFile(join(workspace, "README.md"), "osstack deliver proof smoke\n", "utf-8");
+  git(["add", "README.md"]);
+  git(["commit", "-m", "initial"]);
+
+  const osstackBin = join(root, "packages", "cli", "dist", "bin.js");
+  const deliver = run(process.execPath, [
+    osstackBin,
+    "deliver",
+    "Ship smoke proof",
+    "--workspace",
+    workspace,
+    "--execute",
+    "node -e \"require('fs').writeFileSync('smoke.txt','ok')\"",
+    "--verify",
+    "node -e \"process.exit(require('fs').existsSync('smoke.txt') ? 0 : 1)\"",
+    "--worktree",
+    "--worktree-root",
+    join(workspace, ".osstack-worktrees"),
+    "--auto-agent",
+    "--json",
+  ], { cwd: root, capture: true });
+  const summary = JSON.parse(deliver.stdout);
+  assert(summary.completed_tasks?.[0]?.outcome === "success", "deliver must complete one successful task");
+  assert(summary.artifacts?.report !== undefined, "deliver must produce report artifact");
+  assert(summary.artifacts?.scorecard_markdown !== undefined, "deliver must produce scorecard markdown");
+  assert(summary.artifacts?.scorecard_html !== undefined, "deliver must produce scorecard html");
+  assert(summary.artifacts?.proof_dir !== undefined, "deliver must produce proof dir");
+  assert(summary.artifacts?.proof_manifest !== undefined, "deliver must produce proof manifest");
+  assert(summary.artifacts?.proof_zip !== undefined, "deliver must produce proof zip");
+
+  const proofDir = summary.artifacts.proof_dir;
+  const proofManifestPath = summary.artifacts.proof_manifest;
+  const proofManifest = JSON.parse(await readFile(proofManifestPath, "utf-8"));
+  const proofPaths = new Set(proofManifest.artifacts.map((artifact) => artifact.path));
+  for (const required of [
+    "agent-runtime.json",
+    "verify-results.json",
+    "worktree-status.json",
+    "policy-decision.json",
+    "git-diff.patch",
+    "sha256sums.txt",
+  ]) {
+    assert(proofPaths.has(required), `proof pack must include ${required}`);
+  }
+
+  const report = await readFile(summary.artifacts.report, "utf-8");
+  assertIncludes(report, "Conformance: L4 Audited", "deliver smoke report must prove L4 audited conformance");
+  assertIncludes(report, "## Worktree Status", "deliver smoke report must include worktree evidence");
+  assertIncludes(report, "## Verify Results", "deliver smoke report must include verify evidence");
+
+  const verifyResults = JSON.parse(await readFile(join(proofDir, "verify-results.json"), "utf-8"));
+  assert(verifyResults.status === "pass", "verify-results must pass");
+  assert(verifyResults.results?.[0]?.reviewer_agent_id === "local-verifier", "verify-results must record verifier id");
+
+  const worktreeStatus = JSON.parse(await readFile(join(proofDir, "worktree-status.json"), "utf-8"));
+  assert(worktreeStatus.status === "recorded", "worktree-status must be recorded");
+  assert(worktreeStatus.entries?.some((entry) => entry.status === "merged"), "worktree-status must record a merge");
+
+  const proofZipStat = await stat(summary.artifacts.proof_zip);
+  assert(proofZipStat.size > 0, "proof zip must be non-empty");
+
+  const pr = run(process.execPath, [
+    osstackBin,
+    "pr",
+    "--workspace",
+    workspace,
+    "--events",
+    join(proofDir, "events.jsonl"),
+    "--proof-dir",
+    proofDir,
+    "--dry-run",
+    "--json",
+  ], { cwd: root, capture: true });
+  const prSummary = JSON.parse(pr.stdout);
+  assert(prSummary.mode === "dry-run", "pr command must run in dry-run mode");
+  const prBody = await readFile(prSummary.path, "utf-8");
+  assertIncludes(prBody, "# PR Evidence", "dry-run PR body must be written");
+  assertIncludes(prBody, "## Proof Pack", "dry-run PR body must include proof pack section");
+  assertIncludes(prBody, proofDir, "dry-run PR body must reference proof dir");
+
+  console.log(JSON.stringify({
+    ok: true,
+    workspace,
+    loop_id: summary.loop_id,
+    task_id: summary.task.task_id,
+    report: summary.artifacts.report,
+    scorecard: summary.artifacts.scorecard_markdown,
+    proof_dir: proofDir,
+    proof_zip: summary.artifacts.proof_zip,
+    pr_body: prSummary.path,
+    conformance: "L4 Audited",
+  }, null, 2));
+} finally {
+  if (process.env["OSSTACK_KEEP_DELIVER_SMOKE"] !== "1") {
+    await rm(workspace, { recursive: true, force: true });
+  } else {
+    console.error(`kept smoke workspace: ${workspace}`);
+  }
+}
+
+function run(command, args, options = {}) {
+  const result = spawnSync(command, args, {
+    cwd: options.cwd,
+    env: options.env,
+    encoding: "utf-8",
+    stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit",
+  });
+  if (result.status !== 0) {
+    const output = [result.stdout, result.stderr].filter(Boolean).join("\n");
+    throw new Error(`${command} ${args.join(" ")} failed with ${result.status}${output ? `\n${output}` : ""}`);
+  }
+  return {
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? "",
+  };
+}
+
+function git(args) {
+  execFileSync("git", args, { cwd: workspace, stdio: "ignore" });
+}
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}
+
+function assertIncludes(text, expected, message) {
+  if (!text.includes(expected)) {
+    throw new Error(`${message}: missing ${JSON.stringify(expected)}`);
+  }
+}
