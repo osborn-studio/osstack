@@ -34,7 +34,7 @@
 | Phase 3 Governed Run | Run Spec + governance verifier + PR evidence | 基本完成 | `docs/specs/OSSTACK_RUN_SPEC_V1.md`、`docs/specs/CONFORMANCE_MATRIX.md`、schemas/test vectors、`governance-cli.test.ts`、`pr-cli.test.ts` | 继续随新 MUST 条款补 runtime/schema/vector 覆盖 |
 | Phase 4 Learning Control Plane | Pitfall KB + Knowledge bootstrap + agent scorecard | 基本完成 | `lessons-cli.test.ts`、`knowledge-cli.test.ts`、`agent-scorecard-cli.test.ts` | pitfall 自动提升 verified_count 的真实 loop 闭环需继续增强 |
 | Phase 5 Product Surface | Cockpit/TUI + examples/guide/doctor + i18n + checkpoint | 部分到基本完成 | `dashboard.ts`、`dashboard-cli.test.ts`、`product-entry-cli.test.ts`、`i18n-cli.test.ts`、`proof-cli.test.ts`、`compliance-cli.test.ts`、`checkpoint-cli.test.ts` | 完整交互式 TUI 未完成；更深层报告模板/运营内容本地化仍可扩展 |
-| Phase 6 Trust/Compliance/Knowledge Cloud | compliance packs + enterprise proof views + Osstack Knowledge Cloud | 部分到基本完成 | `compliance-packs/*`、`compliance-cli.test.ts`、`proof view`、`knowledge-cloud` package、`/v1/publish` gate、deploy assets、smoke | 真实云端上线、生产 ingestion pipeline、tenant auth/storage/vector index |
+| Phase 6 Trust/Compliance/Knowledge Cloud | compliance packs + enterprise proof views + Osstack Knowledge Cloud | 部分到基本完成 | `compliance-packs/*`、`compliance-cli.test.ts`、`proof --compliance-pack` proof artifacts、`proof view`、`knowledge-cloud` package、`/v1/publish` gate、deploy assets、smoke | 真实云端上线、生产 ingestion pipeline、tenant auth/storage/vector index |
 
 ## 3. 任务级状态
 
@@ -336,10 +336,11 @@
 - `osstack compliance list` / `render` 存在。
 - compliance report 不声称外部认证。
 - `smoke:deliver-proof` 已从真实 deliver proof dir 渲染 `engineering-readiness` 与 `soc2-lite` compliance reports，并校验 proof manifest checksum evidence mapping 以及 lite pack 不声称外部认证。
+- `osstack proof --compliance-pack <pack>` 支持把一个或多个内部 compliance mapping reports 直接写入 proof pack、proof zip 和 manifest `compliance_reports` 索引；manifest schema 要求这些报告的 `certification_claim` 为 `none`。
 
 需增强：
 
-- 如果要把 compliance report 默认打进 proof pack，还需要新增产品选项或默认策略；当前已验证的是 proof dir 可生成可引用合规视图。
+- compliance report 默认打进 proof pack 的产品策略仍可后续决定；当前已支持显式 `--compliance-pack` 多次传入并打包。
 
 ### Task 6.2：Enterprise proof views
 

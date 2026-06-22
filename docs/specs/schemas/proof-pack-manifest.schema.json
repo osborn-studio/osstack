@@ -10,6 +10,19 @@
     "loop_id": { "type": "string", "minLength": 1 },
     "generated_from": { "type": "string", "minLength": 1 },
     "generated_at": { "type": "string", "minLength": 1 },
+    "compliance_reports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pack_id", "path", "certification_claim"],
+        "properties": {
+          "pack_id": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "certification_claim": { "type": "string", "const": "none" }
+        },
+        "additionalProperties": false
+      }
+    },
     "artifacts": {
       "type": "array",
       "items": {

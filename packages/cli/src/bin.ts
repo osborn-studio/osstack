@@ -4420,9 +4420,12 @@ async function writeProofPack(
   if (workspacePath !== undefined) {
     artifacts.push(await createGitDiffProofArtifact(workspacePath));
   }
+  const complianceReports: Array<{ pack_id: string; path: string; certification_claim: "none" }> = [];
   for (const packId of compliancePackIds) {
+    const path = `compliance-${safeFileSegment(packId)}.md`;
+    complianceReports.push({ pack_id: packId, path, certification_claim: "none" });
     artifacts.push({
-      path: `compliance-${safeFileSegment(packId)}.md`,
+      path,
       content: renderComplianceReport({
         packId,
         runId: artifactId,
@@ -4472,6 +4475,7 @@ async function writeProofPack(
     ...(workspacePath !== undefined ? { workspace: workspacePath } : {}),
     generated_from: "LOOP-STATE.json",
     generated_at: new Date().toISOString(),
+    ...(complianceReports.length === 0 ? {} : { compliance_reports: complianceReports }),
     artifacts: manifestArtifacts,
   };
   const manifestContent = `${JSON.stringify(manifest, null, 2)}\n`;

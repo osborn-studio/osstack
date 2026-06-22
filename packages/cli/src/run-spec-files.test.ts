@@ -106,13 +106,29 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
 
     const proofManifestSchema = JSON.parse(
       await readFile(join(specDir, "schemas", "proof-pack-manifest.schema.json"), "utf-8"),
-    ) as { required: string[] };
+    ) as {
+      required: string[];
+      properties: {
+        compliance_reports?: {
+          items?: {
+            required?: string[];
+            properties?: { certification_claim?: { const?: string } };
+          };
+        };
+      };
+    };
     expect(proofManifestSchema.required).toEqual(expect.arrayContaining([
       "schema_version",
       "kind",
       "loop_id",
       "artifacts",
     ]));
+    expect(proofManifestSchema.properties.compliance_reports?.items?.required).toEqual(expect.arrayContaining([
+      "pack_id",
+      "path",
+      "certification_claim",
+    ]));
+    expect(proofManifestSchema.properties.compliance_reports?.items?.properties?.certification_claim?.const).toBe("none");
 
     const evidenceVector = JSON.parse(
       await readFile(join(specDir, "test-vectors", "OS-EVID-001.json"), "utf-8"),

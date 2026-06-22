@@ -153,7 +153,7 @@ describe("proof CLI", () => {
     });
   });
 
-  it("can include an engineering readiness compliance report in the proof pack", async () => {
+  it("can include compliance reports in the proof pack manifest and zip", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
 
     const exitCode = await main([
@@ -162,18 +162,41 @@ describe("proof CLI", () => {
       tmp,
       "--compliance-pack",
       "engineering-readiness",
+      "--compliance-pack",
+      "soc2-lite",
+      "--json",
     ]);
 
     expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as { proof_zip: string };
     const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
     const manifest = JSON.parse(await readFile(join(proofDir, "manifest.json"), "utf-8")) as {
       artifacts: Array<{ path: string }>;
+      compliance_reports: Array<{ pack_id: string; path: string; certification_claim: string }>;
     };
     expect(manifest.artifacts).toEqual(expect.arrayContaining([
       expect.objectContaining({ path: "compliance-engineering-readiness.md" }),
+      expect.objectContaining({ path: "compliance-soc2-lite.md" }),
     ]));
+    expect(manifest.compliance_reports).toEqual([
+      {
+        pack_id: "engineering-readiness",
+        path: "compliance-engineering-readiness.md",
+        certification_claim: "none",
+      },
+      {
+        pack_id: "soc2-lite",
+        path: "compliance-soc2-lite.md",
+        certification_claim: "none",
+      },
+    ]);
     await expect(readFile(join(proofDir, "compliance-engineering-readiness.md"), "utf-8"))
       .resolves.toContain("External certification claim: `none`");
+    await expect(readFile(join(proofDir, "compliance-soc2-lite.md"), "utf-8"))
+      .resolves.toContain("External certification claim: `none`");
+    const listing = execFileSync("unzip", ["-Z1", summary.proof_zip], { encoding: "utf-8" });
+    expect(listing).toContain("compliance-engineering-readiness.md");
+    expect(listing).toContain("compliance-soc2-lite.md");
   });
 
   it("renders an audience proof view from an existing proof pack without repacking evidence", async () => {
