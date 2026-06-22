@@ -17,6 +17,10 @@ let resolved = false;
 
 try {
   const url = await waitForStartup();
+  const health = await fetchJson(`${url}/healthz`);
+  assert(health.ok === true, "/healthz must return ok=true");
+  assert(health.service === "osstack-knowledge-cloud", "/healthz must identify the service");
+
   const packs = await fetchJson(`${url}/v1/packs`);
   assert(Array.isArray(packs.packs), "/v1/packs must return packs");
   assert(packs.packs.length >= 6, "/v1/packs must expose official packs");
@@ -35,6 +39,7 @@ try {
   console.log(JSON.stringify({
     ok: true,
     url,
+    health: health.service,
     packs: packs.packs.length,
     top_result: search.results[0]?.chunk_id ?? null,
   }, null, 2));

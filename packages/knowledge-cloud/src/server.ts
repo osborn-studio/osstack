@@ -86,6 +86,15 @@ async function routeKnowledgeCloudRequest(
 ): Promise<void> {
   const method = req.method ?? "GET";
   const url = new URL(req.url ?? "/", "http://knowledge.osstack.local");
+  if (method === "GET" && url.pathname === "/healthz") {
+    sendJson(res, 200, {
+      ok: true,
+      service: "osstack-knowledge-cloud",
+      packs: options.packs.length,
+      private_packs: options.privatePacks?.length ?? 0,
+    });
+    return;
+  }
   if (method === "GET" && url.pathname === "/v1/packs") {
     sendJson(res, 200, {
       packs: options.packs.map((pack) => packSummary(pack.manifest)),

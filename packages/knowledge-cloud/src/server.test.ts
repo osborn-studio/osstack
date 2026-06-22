@@ -26,6 +26,14 @@ describe("Knowledge Cloud HTTP service", () => {
       },
     });
 
+    const health = await fetchJson(`${url}/healthz`);
+    expect(health).toMatchObject({
+      ok: true,
+      service: "osstack-knowledge-cloud",
+      packs: 6,
+      private_packs: 0,
+    });
+
     const packsResponse = await fetchJson(`${url}/v1/packs`);
     expect(packsResponse).toMatchObject({
       packs: expect.arrayContaining([
