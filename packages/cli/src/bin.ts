@@ -3699,7 +3699,7 @@ async function handleDeliverCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack deliver — product entry from one intent to proof
 
-  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--govern [warn|strict]] [--json]
+  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--checkpoint] [--govern [warn|strict]] [--json]
 
 Stages:
   intake -> plan -> execute-loop -> verify-review -> proof
@@ -3746,6 +3746,10 @@ Stages:
     return 1;
   }
   const autoAgent = args.includes("--auto-agent");
+  const useWorktree = args.includes("--worktree");
+  const checkpoint = args.includes("--checkpoint") && !useWorktree
+    ? await createShadowCheckpoint(realpathSync(workspacePath))
+    : undefined;
   const stages = ["intake", "plan", "execute-loop", "verify-review", "proof"];
   const task = await enqueueTask({
     workspacePath,
@@ -3773,7 +3777,7 @@ Stages:
     ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
     sources: ["task_queue"],
     ...(maxIterations !== undefined ? { maxIterations } : {}),
-    ...(args.includes("--worktree") ? { useWorktree: true } : {}),
+    ...(useWorktree ? { useWorktree: true } : {}),
     ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
   });
   const result = await engine.runOnce();
@@ -3798,6 +3802,7 @@ Stages:
     markdown_path: result.markdownPath,
     completed_tasks: result.state.completed_tasks,
     events,
+    ...(checkpoint !== undefined ? { checkpoint } : {}),
     ...(artifacts !== undefined ? { artifacts } : {}),
     ...(governance !== undefined ? { governance } : {}),
     ...(learnedLessons !== undefined ? { learned_lessons: learnedLessons } : {}),
@@ -3968,6 +3973,10 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const stopWhenIdle = args.includes("--stop-when-idle");
     const archiveCompletedTasks = args.includes("--archive-completed");
     const autoAgent = args.includes("--auto-agent");
+    const useWorktree = args.includes("--worktree");
+    const checkpoint = args.includes("--checkpoint") && !useWorktree
+      ? await createShadowCheckpoint(realpathSync(workspacePath))
+      : undefined;
     const knowledge = await createKnowledgeProofEvidence(args, "loop run");
     const governanceMode = parseLoopGovernanceMode(args);
     if (governanceMode instanceof Error) {
@@ -4008,7 +4017,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ...(intervalMs !== undefined ? { intervalMs } : {}),
         ...(archiveCompletedTasks ? { archiveCompletedTasks } : {}),
         ...(stopWhenIdle ? { stopWhenIdle } : {}),
-        ...(args.includes("--worktree") ? { useWorktree: true } : {}),
+        ...(useWorktree ? { useWorktree: true } : {}),
         ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
         ...(shouldRecordLoopKnowledge(args, knowledge) ? { knowledge } : {}),
       }) as RpcResp;
@@ -4037,6 +4046,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         return 1;
       }
       if (artifacts !== undefined) result.artifacts = artifacts;
+      if (checkpoint !== undefined) result.checkpoint = checkpoint;
       const persistedState = await readLoopState(resolveLoopPath(stateFilePath, workspacePath));
       if (persistedState !== null) {
         const learnedLessons = await learnLessonsFromLoopState(persistedState);
@@ -4063,7 +4073,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(sources.length > 0 ? { sources } : {}),
       ...(maxIterations !== undefined ? { maxIterations } : {}),
       ...(archiveCompletedTasks ? { archiveCompletedTasks } : {}),
-      ...(args.includes("--worktree") ? { useWorktree: true } : {}),
+      ...(useWorktree ? { useWorktree: true } : {}),
       ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
       ...(shouldRecordLoopKnowledge(args, knowledge) ? { knowledge } : {}),
     });
@@ -4097,6 +4107,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(artifacts !== undefined ? { artifacts } : {}),
       ...(learnedLessons !== undefined ? { learned_lessons: learnedLessons } : {}),
       ...(governance !== undefined ? { governance } : {}),
+      ...(checkpoint !== undefined ? { checkpoint } : {}),
       ...(goal !== undefined ? { goal } : {}),
       ...(result.state.key_metrics !== undefined ? { metrics: result.state.key_metrics } : {}),
       ...("cycles" in result ? { cycles: result.cycles.map((cycle) => ({
@@ -4230,6 +4241,7 @@ Options:
   --goal CMD          Global shell command; loop stops when it exits 0
   --schedule CRON     Cron schedule for daemon-managed loop start
   --archive-completed Move successful single-task queue files into tasks/archive/
+  --checkpoint       Create a shadow checkpoint before non-worktree runs
   --worktree         Run each task in an isolated git worktree, merge success back
   --worktree-root P  Directory for temporary isolated worktrees
   --max-iter N        Iterations before escalation (default: 1)
@@ -4313,6 +4325,7 @@ interface LoopRunSummary {
     learned: number;
     lessons: ReturnType<typeof upsertPitfallLesson>[];
   };
+  checkpoint?: ShadowCheckpointSummary;
   governance?: LoopGovernanceEvidence;
   metrics?: {
     success_rate: number;

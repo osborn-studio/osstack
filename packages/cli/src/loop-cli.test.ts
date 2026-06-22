@@ -137,6 +137,50 @@ describe("loop CLI", () => {
     });
   });
 
+  it("creates a shadow checkpoint before a local non-worktree loop run", async () => {
+    process.env["OSSTACK_HOME"] = join(tmp, "home");
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-loop-checkpoint-task",
+      capability: "code.test",
+      prompt: "Exercise checkpoint flag",
+    }));
+    await writeFile(join(tmp, "app.txt"), "before\n");
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--execute",
+      "node -e \"require('fs').writeFileSync('app.txt', 'after\\n')\"",
+      "--verify",
+      "node -e \"process.exit(require('fs').readFileSync('app.txt','utf8') === 'after\\n' ? 0 : 1)\"",
+      "--checkpoint",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      checkpoint: { checkpoint_id: string; checkpoint_dir: string; files: number };
+      completed_tasks: Array<{ task_id: string; outcome: string }>;
+    };
+    expect(summary.completed_tasks).toContainEqual(expect.objectContaining({
+      task_id: "cli-loop-checkpoint-task",
+      outcome: "success",
+    }));
+    expect(summary.checkpoint).toMatchObject({
+      checkpoint_id: expect.stringMatching(/^chk_/),
+      files: expect.any(Number),
+    });
+    expect(summary.checkpoint.checkpoint_dir).toContain(join(tmp, "home", "checkpoints"));
+    await expect(readFile(join(tmp, "app.txt"), "utf-8")).resolves.toBe("after\n");
+    await expect(readFile(join(summary.checkpoint.checkpoint_dir, "files", "app.txt"), "utf-8"))
+      .resolves.toBe("before\n");
+  });
+
   it("records loop knowledge trace in state, report, and proof artifacts", async () => {
     await mkdir(join(tmp, "tasks"));
     await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({

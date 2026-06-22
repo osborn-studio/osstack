@@ -99,6 +99,33 @@ describe("deliver CLI", () => {
     await expect(readFile(join(summary.artifacts.proof_dir, "governance-results.json"), "utf-8")).resolves.toContain("secret.api_key");
   });
 
+  it("creates a shadow checkpoint before a non-worktree delivery run", async () => {
+    process.env["OSSTACK_HOME"] = join(tmp, "home");
+    await writeFile(join(tmp, "app.txt"), "before\n");
+
+    const exitCode = await main([
+      "deliver",
+      "Checkpoint delivery",
+      "--workspace",
+      tmp,
+      "--execute",
+      "node -e \"require('fs').writeFileSync('app.txt', 'after\\n')\"",
+      "--verify",
+      "node -e \"process.exit(require('fs').readFileSync('app.txt','utf8') === 'after\\n' ? 0 : 1)\"",
+      "--checkpoint",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      checkpoint: { checkpoint_id: string; checkpoint_dir: string };
+    };
+    expect(summary.checkpoint.checkpoint_id).toMatch(/^chk_/);
+    await expect(readFile(join(tmp, "app.txt"), "utf-8")).resolves.toBe("after\n");
+    await expect(readFile(join(summary.checkpoint.checkpoint_dir, "files", "app.txt"), "utf-8"))
+      .resolves.toBe("before\n");
+  });
+
   it("fails strict governed delivery runs on error severity findings", async () => {
     await writeFile(join(tmp, "unsafe.ts"), "const api_key = \"sk-test-secret-token\";\n");
 
