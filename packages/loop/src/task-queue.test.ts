@@ -3,7 +3,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { archiveCompletedTaskFile, enqueueTask } from "./task-queue.js";
+import { archiveCompletedTaskFile, countTaskQueueTasks, enqueueTask, parseTaskQueueFile } from "./task-queue.js";
 import type { CompletedTask, Task } from "./types.js";
 
 let workspace: string;
@@ -36,6 +36,45 @@ describe("task queue", () => {
       context: { branch: "main" },
     });
     await expect(readFile(result.path, "utf-8")).resolves.toContain('"prompt": "Fix failing tests"');
+    await expect(readFile(result.path, "utf-8")).resolves.toContain('"source": "task_queue"');
+  });
+
+  it("parses external queue files into schema-conformant loop tasks", async () => {
+    const tasks = parseTaskQueueFile({
+      task_id: "queue-task",
+      prompt: "Run focused tests",
+      source: "task_queue",
+      context: { package: "@osstack/loop" },
+    }, { taskFile: join(workspace, "tasks", "queue-task.json") });
+
+    expect(tasks).toEqual([expect.objectContaining({
+      task_id: "queue-task",
+      capability: "code.write",
+      prompt: "Run focused tests",
+      priority: 50,
+      source: "task_queue",
+      context: {
+        package: "@osstack/loop",
+        task_file: join(workspace, "tasks", "queue-task.json"),
+      },
+    })]);
+    expect(countTaskQueueTasks([{
+      task_id: "one",
+      prompt: "One",
+    }, {
+      task_id: "two",
+      capability: "code.test",
+      prompt: "Two",
+      priority: 90,
+      source: "task_queue",
+    }])).toBe(2);
+  });
+
+  it("rejects task queue files that cannot satisfy the task schema after normalization", () => {
+    expect(() => parseTaskQueueFile({ task_id: "bad", prompt: "Ship", unexpected: true })).toThrow();
+    expect(() => parseTaskQueueFile({ task_id: "bad-source", prompt: "Ship", source: "manual" })).toThrow();
+    expect(() => parseTaskQueueFile({ task_id: "bad-priority", prompt: "Ship", priority: 101 })).toThrow();
+    expect(() => parseTaskQueueFile([])).toThrow();
   });
 
   it("allocates unique queue filenames and slugifies empty ids", async () => {

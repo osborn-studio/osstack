@@ -13,7 +13,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { scanBranchStewardCandidates } from "@osstack/github";
-import { z } from "zod";
+import { parseTaskQueueFile } from "./task-queue.js";
 import { Task, type DiscoverSource, type DiscoverScanner } from "./types.js";
 
 // ── Factory ─────────────────────────────────────────────────────────────
@@ -184,21 +184,7 @@ export class TaskQueueScanner implements DiscoverScanner {
       const path = join(taskDir, entry);
       try {
         const raw = JSON.parse(await readFile(path, "utf-8")) as unknown;
-        const parsed = TaskQueueFile.parse(raw);
-        const items = Array.isArray(parsed) ? parsed : [parsed];
-        for (const item of items) {
-          tasks.push(Task.parse({
-            task_id: item.task_id ?? randomUUID(),
-            capability: item.capability ?? "code.write",
-            prompt: item.prompt,
-            priority: item.priority ?? 50,
-            source: "task_queue",
-            context: {
-              ...(item.context ?? {}),
-              task_file: path,
-            },
-          }));
-        }
+        tasks.push(...parseTaskQueueFile(raw, { taskFile: path }));
       } catch {
         // Ignore malformed queue entries; future versions should surface these
         // as loop.error events without stopping discovery from other files.
@@ -208,15 +194,6 @@ export class TaskQueueScanner implements DiscoverScanner {
     return tasks.sort((a, b) => b.priority - a.priority);
   }
 }
-
-const TaskQueueItem = z.object({
-  task_id: z.string().optional(),
-  capability: z.string().optional(),
-  prompt: z.string().min(1),
-  priority: z.number().min(0).max(100).optional(),
-  context: z.record(z.unknown()).optional(),
-});
-const TaskQueueFile = z.union([TaskQueueItem, z.array(TaskQueueItem)]);
 
 // ── NoopScanner ─────────────────────────────────────────────────────────
 
