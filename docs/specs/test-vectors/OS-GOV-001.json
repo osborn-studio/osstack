@@ -1,0 +1,23 @@
+{
+  "id": "OS-GOV-001",
+  "description": "Recorded policy decision and verify gate evidence",
+  "task": {
+    "task_id": "task-gov-001",
+    "capability": "code.test",
+    "prompt": "Run deterministic checks",
+    "priority": 80,
+    "source": "task_queue"
+  },
+  "policy_decision": {
+    "status": "recorded",
+    "decisions": [
+      {
+        "task_id": "task-gov-001",
+        "agent_id": "codex-cli",
+        "reason": "matched code.test capability",
+        "event_seq": 4
+      }
+    ]
+  },
+  "expected_conformance": "L2"
+}

@@ -1,0 +1,53 @@
+{
+  "id": "OS-EVID-001",
+  "description": "Replayable loop state, events, and proof pack manifest",
+  "loop_state": {
+    "loop_id": "loop-evid-001",
+    "started_at": "2026-06-22T00:00:00.000Z",
+    "updated_at": "2026-06-22T00:01:00.000Z",
+    "completed_tasks": [
+      {
+        "task_id": "task-evid-001",
+        "capability": "code.test",
+        "outcome": "success",
+        "iterations": 1,
+        "agent_id": "codex-cli",
+        "duration_ms": 1000
+      }
+    ],
+    "in_progress": [],
+    "pending": [],
+    "decisions": []
+  },
+  "events": [
+    {
+      "event_id": "evt-evid-1",
+      "loop_id": "loop-evid-001",
+      "type": "loop.verify.done",
+      "seq": 6,
+      "created_at": 1782090000000,
+      "payload": {
+        "task_id": "task-evid-001",
+        "pass": true,
+        "score": 1,
+        "reviewer_agent_id": "local-verifier",
+        "summary": "Verifier passed."
+      }
+    }
+  ],
+  "proof_manifest": {
+    "schema_version": 1,
+    "kind": "osstack.proof_pack",
+    "loop_id": "loop-evid-001",
+    "generated_from": "LOOP-STATE.json",
+    "generated_at": "2026-06-22T00:01:00.000Z",
+    "artifacts": [
+      {
+        "path": "report.md",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 128
+      }
+    ]
+  },
+  "expected_conformance": "L2"
+}

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://osstack.dev/specs/schemas/loop-state.schema.json",
+  "title": "Osstack Loop State",
+  "type": "object",
+  "required": ["loop_id", "started_at", "updated_at", "completed_tasks"],
+  "properties": {
+    "loop_id": { "type": "string", "minLength": 1 },
+    "started_at": { "type": "string", "minLength": 1 },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "completed_tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["task_id", "outcome", "iterations", "agent_id", "duration_ms"],
+        "properties": {
+          "task_id": { "type": "string" },
+          "capability": { "type": "string" },
+          "outcome": { "type": "string", "enum": ["success", "failed", "escalated"] },
+          "iterations": { "type": "number", "minimum": 0 },
+          "agent_id": { "type": "string" },
+          "duration_ms": { "type": "number", "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "in_progress": { "type": "array" },
+    "pending": { "type": "array" },
+    "decisions": { "type": "array", "items": { "type": "string" } },
+    "key_metrics": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": false
+}
