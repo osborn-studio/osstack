@@ -59,6 +59,19 @@ V1 is preserved verbatim in [legacy-python/](legacy-python/). Sprint 5 (S5) ship
 - Hermes Agent installed at `/Volumes/AIMATE_WORK/projects/hermes-agent/` (or wherever; `HERMES_HOME` defaults to `~/.hermes`)
 - macOS (launchctl-based daemon; Linux/systemd in a future sprint)
 
+## Install
+
+For normal use, install the CLI globally and register the macOS LaunchAgent:
+
+```bash
+npm install -g @osstack/cli
+osstack --version
+osstack serve --install
+osstack status
+```
+
+`osstack serve --install` writes `~/Library/LaunchAgents/ai.osstack.daemon.plist`, starts it with `launchctl`, and keeps daemon logs under `~/.osstack/logs/`. Use `osstack serve --status` to inspect it and `osstack serve --uninstall` to remove it. For a dry filesystem-only check, add `--no-load`.
+
 ## Develop
 
 ```bash
@@ -164,6 +177,7 @@ The same runner is also available through the daemon RPC surface:
 
 ```bash
 node packages/cli/dist/bin.js serve
+node packages/cli/dist/bin.js serve --install --no-load
 node packages/cli/dist/bin.js loop run --daemon --workspace "$PWD" --source task_queue --verify "pnpm test"
 node packages/cli/dist/bin.js loop status --daemon --workspace "$PWD"
 ```

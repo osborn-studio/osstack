@@ -5,7 +5,7 @@ import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { connect, type Socket } from "node:net";
-import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
@@ -61,7 +61,7 @@ import {
 } from "@osstack/skill-registry";
 import { startDaemon } from "./daemon.js";
 import { handleConfigCommand } from "./config.js";
-import { osstackHome, resolveSocketPath } from "./paths.js";
+import { logsDir, osstackHome, resolveSocketPath } from "./paths.js";
 import { PROTOCOL_VERSION, VERSION } from "./version.js";
 import { handleUpgradeCommand } from "./upgrade.js";
 
@@ -69,6 +69,27 @@ const execFileAsync = promisify(execFile);
 
 function socketPath(): string {
   return resolveSocketPath();
+}
+
+const LAUNCHD_LABEL = "ai.osstack.daemon";
+
+interface ServeLaunchdStatus {
+  label: string;
+  plist_path: string;
+  installed: boolean;
+  loaded: boolean;
+  socket_path: string;
+}
+
+interface ServeLaunchdInstallResult extends ServeLaunchdStatus {
+  loaded: boolean;
+  load_skipped: boolean;
+  home: string;
+  logs_dir: string;
+}
+
+interface ServeLaunchdUninstallResult extends ServeLaunchdStatus {
+  unloaded: boolean;
 }
 
 async function rpc(method: string, params?: unknown, timeoutMs = 10_000): Promise<unknown> {
@@ -118,6 +139,7 @@ Usage:
 
 Daemon commands:
   serve               Start the daemon (Unix socket at ${socketPath()})
+  serve --install     Install the macOS launchd daemon (use --uninstall/--status to manage it)
   health              Show daemon health (requires running daemon)
   status              CLI/daemon version handshake + update availability
   dashboard url       Print the local development dashboard URL
@@ -241,6 +263,9 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "serve") {
+    if (args.includes("--install") || args.includes("--uninstall") || args.includes("--status")) {
+      return await handleServeManagementCommand(args.slice(1));
+    }
     const handle = await startDaemon();
     console.log(`osstack daemon listening on ${handle.socketPath}`);
     console.log(`db_path=${handle.dbPath}  pid=${process.pid}`);
@@ -1587,6 +1612,218 @@ Options:
     console.log(`proof=${proofDir}`);
   }
   return 0;
+}
+
+async function handleServeManagementCommand(args: string[]): Promise<number> {
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack serve — daemon foreground runner and launchd installer
+
+Usage:
+  osstack serve
+  osstack serve --install [--bin PATH] [--no-load] [--json]
+  osstack serve --status [--json]
+  osstack serve --uninstall [--no-load] [--json]
+
+Options:
+  --install       Write ~/Library/LaunchAgents/${LAUNCHD_LABEL}.plist and load it with launchctl
+  --uninstall     Boot out the LaunchAgent and remove its plist
+  --status        Show plist/launchd status
+  --bin PATH      osstack binary path to put in the plist
+  --no-load       Only write/remove plist; skip launchctl calls
+  --json          Print machine-readable output
+`);
+    return 0;
+  }
+
+  const json = args.includes("--json");
+  const noLoad = args.includes("--no-load");
+  const binPath = flagValue(args, "--bin") ?? defaultOsstackBinPath();
+  try {
+    if (args.includes("--install")) {
+      const result = await installLaunchAgent({ binPath, noLoad });
+      printServeLaunchdResult(result, json);
+      return 0;
+    }
+    if (args.includes("--uninstall")) {
+      const result = await uninstallLaunchAgent({ noLoad });
+      printServeLaunchdResult(result, json);
+      return 0;
+    }
+    if (args.includes("--status")) {
+      const result = await readLaunchAgentStatus({ noLoad });
+      printServeLaunchdResult(result, json);
+      return 0;
+    }
+  } catch (error) {
+    console.error(`osstack: ${errorMessage(error)}`);
+    return 1;
+  }
+
+  console.error("osstack: serve management requires --install, --uninstall, or --status");
+  return 1;
+}
+
+async function installLaunchAgent(options: { binPath: string; noLoad: boolean }): Promise<ServeLaunchdInstallResult> {
+  const plistPath = launchAgentPlistPath();
+  const logDir = logsDir();
+  await mkdir(dirname(plistPath), { recursive: true });
+  await mkdir(logDir, { recursive: true });
+  await mkdir(osstackHome(), { recursive: true });
+  const plist = renderLaunchAgentPlist({
+    binPath: options.binPath,
+    home: osstackHome(),
+    socketPath: resolveSocketPath(),
+    stdoutPath: join(logDir, "daemon.log"),
+    stderrPath: join(logDir, "daemon.error.log"),
+  });
+  await writeFile(plistPath, plist, "utf-8");
+
+  let loaded = false;
+  if (!options.noLoad) {
+    ensureLaunchdSupported();
+    await launchctl(["bootstrap", launchdDomain(), plistPath]);
+    await launchctl(["kickstart", "-k", `${launchdDomain()}/${LAUNCHD_LABEL}`]);
+    loaded = await isLaunchAgentLoaded();
+  }
+
+  return {
+    label: LAUNCHD_LABEL,
+    plist_path: plistPath,
+    installed: true,
+    loaded,
+    load_skipped: options.noLoad,
+    socket_path: resolveSocketPath(),
+    home: osstackHome(),
+    logs_dir: logDir,
+  };
+}
+
+async function uninstallLaunchAgent(options: { noLoad: boolean }): Promise<ServeLaunchdUninstallResult> {
+  const plistPath = launchAgentPlistPath();
+  const wasInstalled = await fileExists(plistPath);
+  let unloaded = false;
+  if (!options.noLoad && process.platform === "darwin") {
+    const bootout = await launchctl(["bootout", launchdDomain(), plistPath], { allowFailure: true });
+    unloaded = bootout.ok;
+  }
+  if (wasInstalled) await rm(plistPath, { force: true });
+  return {
+    label: LAUNCHD_LABEL,
+    plist_path: plistPath,
+    installed: false,
+    loaded: false,
+    unloaded,
+    socket_path: resolveSocketPath(),
+  };
+}
+
+async function readLaunchAgentStatus(options: { noLoad: boolean } = { noLoad: false }): Promise<ServeLaunchdStatus> {
+  const plistPath = launchAgentPlistPath();
+  return {
+    label: LAUNCHD_LABEL,
+    plist_path: plistPath,
+    installed: await fileExists(plistPath),
+    loaded: options.noLoad ? false : await isLaunchAgentLoaded(),
+    socket_path: resolveSocketPath(),
+  };
+}
+
+function printServeLaunchdResult(result: ServeLaunchdStatus | ServeLaunchdInstallResult | ServeLaunchdUninstallResult, json: boolean): void {
+  if (json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+  console.log(`label=${result.label}`);
+  console.log(`plist=${result.plist_path}`);
+  console.log(`installed=${result.installed}`);
+  console.log(`loaded=${result.loaded}`);
+  console.log(`socket=${result.socket_path}`);
+  if ("load_skipped" in result) console.log(`load_skipped=${result.load_skipped}`);
+  if ("unloaded" in result) console.log(`unloaded=${result.unloaded}`);
+}
+
+function renderLaunchAgentPlist(options: {
+  binPath: string;
+  home: string;
+  socketPath: string;
+  stdoutPath: string;
+  stderrPath: string;
+}): string {
+  const args = [
+    "/usr/bin/env",
+    `OSSTACK_HOME=${options.home}`,
+    `OSSTACK_SOCKET=${options.socketPath}`,
+    options.binPath,
+    "serve",
+  ];
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>${xmlEscape(LAUNCHD_LABEL)}</string>
+  <key>ProgramArguments</key>
+  <array>
+${args.map((arg) => `    <string>${xmlEscape(arg)}</string>`).join("\n")}
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>${xmlEscape(options.stdoutPath)}</string>
+  <key>StandardErrorPath</key>
+  <string>${xmlEscape(options.stderrPath)}</string>
+  <key>WorkingDirectory</key>
+  <string>${xmlEscape(process.cwd())}</string>
+</dict>
+</plist>
+`;
+}
+
+function launchAgentPlistPath(): string {
+  const dir = process.env["OSSTACK_LAUNCH_AGENTS_DIR"]
+    ?? join(process.env["HOME"] ?? "", "Library", "LaunchAgents");
+  return join(dir, `${LAUNCHD_LABEL}.plist`);
+}
+
+function launchdDomain(): string {
+  return `gui/${process.getuid?.() ?? 501}`;
+}
+
+function ensureLaunchdSupported(): void {
+  if (process.platform !== "darwin") {
+    throw new Error("launchd install is only supported on macOS; use `osstack serve` directly on this platform.");
+  }
+}
+
+async function launchctl(args: string[], options: { allowFailure?: boolean } = {}): Promise<{ ok: boolean; output: string }> {
+  try {
+    const { stdout, stderr } = await execFileAsync("launchctl", args, { timeout: 15_000 });
+    return { ok: true, output: `${stdout}${stderr}` };
+  } catch (error) {
+    if (options.allowFailure === true) return { ok: false, output: errorMessage(error) };
+    throw new Error(`launchctl ${args.join(" ")} failed: ${errorMessage(error)}`);
+  }
+}
+
+async function isLaunchAgentLoaded(): Promise<boolean> {
+  if (process.platform !== "darwin") return false;
+  const result = await launchctl(["print", `${launchdDomain()}/${LAUNCHD_LABEL}`], { allowFailure: true });
+  return result.ok;
+}
+
+function defaultOsstackBinPath(): string {
+  return process.env["OSSTACK_CLI"] ?? process.argv[1] ?? "osstack";
+}
+
+function xmlEscape(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("'", "&apos;");
 }
 
 function flagValue(args: string[], name: string): string | undefined {
