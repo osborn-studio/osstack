@@ -40,6 +40,7 @@ export interface DashboardSnapshot {
     url: string;
     generated_at: number;
     db_path: string;
+    workspace_path: string;
   };
   overview: {
     progress_percent: number;
@@ -212,6 +213,7 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
       url: opts.dashboardUrl,
       generated_at: generatedAt,
       db_path: opts.dbPath,
+      workspace_path: workspacePath,
     },
     overview: {
       progress_percent: progressPercent,
@@ -645,7 +647,7 @@ const t = ${JSON.stringify(text)};
 async function load(){
   const res = await fetch('/api/dashboard' + window.location.search);
   const d = await res.json();
-  document.getElementById('generated').textContent = d.dashboard.phase + ' · ' + new Date(d.dashboard.generated_at * 1000).toLocaleString();
+  document.getElementById('generated').textContent = d.dashboard.phase + ' · ' + new Date(d.dashboard.generated_at * 1000).toLocaleString() + ' · ' + d.dashboard.workspace_path;
   document.getElementById('metrics').innerHTML = [
     metric(t.metrics[0], d.overview.progress_percent + '%', 'blue', d.overview.progress_percent),
     metric(t.metrics[1], d.overview.total_runs, 'ok'),

@@ -105,6 +105,7 @@ describe("dashboard", () => {
       ]));
       expect(snapshot.recent_runs[0]?.run_id).toBe("r2");
       expect(snapshot.dashboard.url).toBe("http://127.0.0.1:8799/dashboard");
+      expect(snapshot.dashboard.workspace_path).toBe(tmp);
     } finally {
       db.close();
     }
@@ -225,6 +226,7 @@ describe("dashboard", () => {
     expect(html).toContain("<code>'+esc(n.command)+'</code>");
     expect(html).toContain("Array.isArray(n.blockers)");
     expect(html).toContain("release-blocker");
+    expect(html).toContain("d.dashboard.workspace_path");
   });
 
   it("renders cockpit chrome in English and Chinese", () => {
