@@ -213,6 +213,36 @@ describe("proof CLI", () => {
     await expect(readFile(join(proofDir, "manifest.json"), "utf-8")).resolves.toBe(manifestBefore);
   });
 
+  it("renders a Chinese audience proof view with --lang zh-CN", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const proofExitCode = await main(["proof", "--workspace", tmp]);
+    expect(proofExitCode).toBe(0);
+
+    logs = [];
+    const viewExitCode = await main([
+      "proof",
+      "view",
+      "cli-proof-loop",
+      "--audience",
+      "auditor",
+      "--workspace",
+      tmp,
+      "--lang",
+      "zh-CN",
+      "--json",
+    ]);
+
+    expect(viewExitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as { output: string };
+    const markdown = await readFile(summary.output, "utf-8");
+    expect(markdown).toContain("# Osstack 证据视图 - auditor");
+    expect(markdown).toContain("受众：`auditor`");
+    expect(markdown).toContain("此视图会重排已有 proof 证据，不会创建新证据。");
+    expect(markdown).toContain("## 缺失证据");
+    expect(markdown).toContain("| 证据 | 状态 | 来源 | 关注点 |");
+    expect(markdown).toContain("带 checksum 的证据清单");
+  });
+
   it("highlights missing evidence in rendered proof views", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
     const proofExitCode = await main(["proof", "--workspace", tmp]);

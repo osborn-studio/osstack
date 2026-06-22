@@ -3103,7 +3103,7 @@ async function handleProofCommand(args: string[]): Promise<number> {
     console.log(`osstack proof — local evidence proof pack
 
   osstack proof [run_id] [--loop loop_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-mode M] [--knowledge-cloud-url URL] [--knowledge-query Q] [--compliance-pack P] [--output-dir P] [--json]
-  osstack proof view <run_id> --audience engineer|manager|auditor|customer [--proof-dir P] [--workspace P] [--output P] [--json]
+  osstack proof view <run_id> --audience engineer|manager|auditor|customer [--proof-dir P] [--workspace P] [--output P] [--lang en|zh-CN] [--json]
 
 Options:
   --loop ID           State-file loop id / artifact id when no persisted run_id is used
@@ -3118,6 +3118,7 @@ Options:
   --compliance-pack P
                       Optional compliance mapping pack to include
   --output-dir P      Directory for proof pack folders (default: <workspace>/release)
+  --lang L            Proof view language: en or zh-CN (default: OSSTACK_LANG or en)
   --json              Print machine-readable summary
 `);
     return 0;
@@ -3198,7 +3199,7 @@ Options:
 }
 
 async function handleProofViewCommand(args: string[]): Promise<number> {
-  const runId = firstPositionalValue(args, new Set(["--audience", "--proof-dir", "--workspace", "--output"]));
+  const runId = firstPositionalValue(args, new Set(["--audience", "--proof-dir", "--workspace", "--output", "--lang"]));
   if (runId === undefined) {
     console.error("osstack: proof view requires a run_id");
     return 1;
@@ -3211,7 +3212,8 @@ async function handleProofViewCommand(args: string[]): Promise<number> {
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
   const proofDir = flagValue(args, "--proof-dir") ?? join(workspacePath, "release", `osstack-proof-${safeFileSegment(runId)}`);
   const output = flagValue(args, "--output") ?? join(workspacePath, "reports", `proof-view-${audience}-${safeFileSegment(runId)}.md`);
-  const markdown = await renderProofViewFromProofDir({ audience, runId, proofDir });
+  const language = resolveLanguage(flagValue(args, "--lang"));
+  const markdown = await renderProofViewFromProofDir({ audience, runId, proofDir, language });
   await mkdir(dirname(output), { recursive: true });
   await writeFile(output, markdown, "utf-8");
   if (args.includes("--json")) {

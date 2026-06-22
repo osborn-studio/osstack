@@ -33,10 +33,12 @@ export interface ComplianceReportOptions {
     evidence: ProofEvidence;
 }
 export type ProofAudience = "engineer" | "manager" | "auditor" | "customer";
+export type ProofViewLanguage = "en" | "zh-CN";
 export interface ProofViewOptions {
     audience: ProofAudience;
     runId: string;
     evidence: ProofEvidence;
+    language?: ProofViewLanguage;
 }
 export declare function listCompliancePacks(): CompliancePack[];
 export declare function getCompliancePack(packId: string): CompliancePack;
@@ -53,6 +55,7 @@ export declare function renderProofViewFromProofDir(options: {
     audience: ProofAudience;
     runId: string;
     proofDir: string;
+    language?: ProofViewLanguage;
 }): Promise<string>;
 export declare function renderProofView(options: ProofViewOptions): string;
 //# sourceMappingURL=index.d.ts.map

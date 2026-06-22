@@ -141,6 +141,23 @@ describe("compliance packs", () => {
     expect(markdown).toContain("This view rearranges existing proof evidence and does not create new evidence.");
   });
 
+  it("renders Chinese audience proof views", () => {
+    const markdown = renderProofView({
+      audience: "auditor",
+      runId: "run_123",
+      evidence: sampleEvidence(),
+      language: "zh-CN",
+    });
+
+    expect(markdown).toContain("# Osstack 证据视图 - auditor");
+    expect(markdown).toContain("运行：`run_123`");
+    expect(markdown).toContain("受众：`auditor`");
+    expect(markdown).toContain("此视图会重排已有 proof 证据，不会创建新证据。");
+    expect(markdown).toContain("此受众视图没有缺失必需证据。");
+    expect(markdown).toContain("| 证据 | 状态 | 来源 | 关注点 |");
+    expect(markdown).toContain("带 checksum 的证据清单");
+  });
+
   it("marks missing evidence in proof views", () => {
     const markdown = renderProofView({
       audience: "customer",

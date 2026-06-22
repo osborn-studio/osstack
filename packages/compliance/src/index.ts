@@ -41,11 +41,13 @@ export interface ComplianceReportOptions {
 }
 
 export type ProofAudience = "engineer" | "manager" | "auditor" | "customer";
+export type ProofViewLanguage = "en" | "zh-CN";
 
 export interface ProofViewOptions {
   audience: ProofAudience;
   runId: string;
   evidence: ProofEvidence;
+  language?: ProofViewLanguage;
 }
 
 const BUILTIN_PACKS: CompliancePack[] = [{
@@ -347,44 +349,100 @@ export async function renderProofViewFromProofDir(options: {
   audience: ProofAudience;
   runId: string;
   proofDir: string;
+  language?: ProofViewLanguage;
 }): Promise<string> {
-  return renderProofView({
+  const renderOptions: ProofViewOptions = {
     audience: options.audience,
     runId: options.runId,
     evidence: await loadProofEvidence(options.proofDir),
-  });
+  };
+  if (options.language !== undefined) {
+    renderOptions.language = options.language;
+  }
+  return renderProofView(renderOptions);
 }
 
 export function renderProofView(options: ProofViewOptions): string {
-  const controls = proofViewControls(options.audience);
+  const language = options.language ?? "en";
+  const text = proofViewText(language);
+  const controls = proofViewControls(options.audience, language);
   const rows = controls.map((control) => {
     const status = controlStatus(control, options.evidence);
     return `| ${control.title} | ${proofStatusCell(status)} | \`${control.evidence_path}\` | ${control.focus} |`;
   });
   const missing = controls
     .filter((control) => controlStatus(control, options.evidence) === "MISSING")
-    .map((control) => `- REQUIRED EVIDENCE MISSING: ${control.title} (\`${control.evidence_path}\`) - ${control.focus}`);
+    .map((control) => text.missingItem(control.title, control.evidence_path, control.focus));
   return [
-    `# Osstack Proof View - ${options.audience}`,
+    `# ${text.title} - ${options.audience}`,
     "",
-    `Run: \`${options.runId}\``,
-    `Audience: \`${options.audience}\``,
+    `${text.runLabel}${text.labelSeparator}\`${options.runId}\``,
+    `${text.audienceLabel}${text.labelSeparator}\`${options.audience}\``,
     "",
-    "This view rearranges existing proof evidence and does not create new evidence.",
-    "Missing evidence is marked as `MISSING`; this view does not synthesize or infer absent proof.",
+    text.description,
+    text.missingDescription,
     "",
-    "## Missing Evidence",
+    `## ${text.missingHeading}`,
     "",
-    ...(missing.length > 0 ? missing : ["No required evidence is missing for this audience view."]),
+    ...(missing.length > 0 ? missing : [text.noMissingEvidence]),
     "",
-    "| Evidence | Status | Source | Focus |",
+    `| ${text.evidenceHeader} | ${text.statusHeader} | ${text.sourceHeader} | ${text.focusHeader} |`,
     "|---|---|---|---|",
     ...rows,
     "",
   ].join("\n");
 }
 
-function proofViewControls(audience: ProofAudience): Array<{
+function proofViewText(language: ProofViewLanguage): {
+  title: string;
+  runLabel: string;
+  audienceLabel: string;
+  labelSeparator: string;
+  description: string;
+  missingDescription: string;
+  missingHeading: string;
+  noMissingEvidence: string;
+  evidenceHeader: string;
+  statusHeader: string;
+  sourceHeader: string;
+  focusHeader: string;
+  missingItem: (title: string, evidencePath: string, focus: string) => string;
+} {
+  if (language === "zh-CN") {
+    return {
+      title: "Osstack 证据视图",
+      runLabel: "运行",
+      audienceLabel: "受众",
+      labelSeparator: "：",
+      description: "此视图会重排已有 proof 证据，不会创建新证据。",
+      missingDescription: "缺失证据会标记为 `MISSING`；此视图不会合成或推断不存在的证据。",
+      missingHeading: "缺失证据",
+      noMissingEvidence: "此受众视图没有缺失必需证据。",
+      evidenceHeader: "证据",
+      statusHeader: "状态",
+      sourceHeader: "来源",
+      focusHeader: "关注点",
+      missingItem: (title, evidencePath, focus) => `- 缺失必需证据：${title}（\`${evidencePath}\`）- ${focus}`,
+    };
+  }
+  return {
+    title: "Osstack Proof View",
+    runLabel: "Run",
+    audienceLabel: "Audience",
+    labelSeparator: ": ",
+    description: "This view rearranges existing proof evidence and does not create new evidence.",
+    missingDescription: "Missing evidence is marked as `MISSING`; this view does not synthesize or infer absent proof.",
+    missingHeading: "Missing Evidence",
+    noMissingEvidence: "No required evidence is missing for this audience view.",
+    evidenceHeader: "Evidence",
+    statusHeader: "Status",
+    sourceHeader: "Source",
+    focusHeader: "Focus",
+    missingItem: (title, evidencePath, focus) => `- REQUIRED EVIDENCE MISSING: ${title} (\`${evidencePath}\`) - ${focus}`,
+  };
+}
+
+function proofViewControls(audience: ProofAudience, language: ProofViewLanguage): Array<{
   control_id: string;
   title: string;
   evidence_path: string;
@@ -403,47 +461,83 @@ function proofViewControls(audience: ProofAudience): Array<{
       control_id: id,
       title: control?.title ?? id,
       evidence_path: control?.evidence_path ?? "unknown",
-      focus: audienceFocus(audience, id),
+      focus: audienceFocus(audience, id, language),
     };
   });
 }
 
-function audienceFocus(audience: ProofAudience, controlId: string): string {
-  const focus: Record<ProofAudience, Record<string, string>> = {
-    engineer: {
-      "change-validation": "what passed or failed",
-      "secure-coding-control": "deterministic findings to fix",
-      "worktree-isolation": "branch and commit context",
-      "automated-decision-trace": "agent routing rationale",
-      "knowledge-trace": "retrieved context used during work",
-      "evidence-integrity": "artifact checksum trail",
+function audienceFocus(audience: ProofAudience, controlId: string, language: ProofViewLanguage): string {
+  const focus: Record<ProofViewLanguage, Record<ProofAudience, Record<string, string>>> = {
+    en: {
+      engineer: {
+        "change-validation": "what passed or failed",
+        "secure-coding-control": "deterministic findings to fix",
+        "worktree-isolation": "branch and commit context",
+        "automated-decision-trace": "agent routing rationale",
+        "knowledge-trace": "retrieved context used during work",
+        "evidence-integrity": "artifact checksum trail",
+      },
+      manager: {
+        "change-validation": "release readiness",
+        "automated-decision-trace": "why this agent path was chosen",
+        "secure-coding-control": "risk posture",
+        "evidence-integrity": "reviewable proof bundle",
+        "worktree-isolation": "delivery isolation",
+        "knowledge-trace": "context quality",
+      },
+      auditor: {
+        "evidence-integrity": "checksumed artifact inventory",
+        "automated-decision-trace": "automated decision record",
+        "secure-coding-control": "secure coding evidence",
+        "change-validation": "change validation evidence",
+        "worktree-isolation": "change isolation evidence",
+        "knowledge-trace": "knowledge source trace",
+      },
+      customer: {
+        "change-validation": "delivery validation summary",
+        "secure-coding-control": "safety checks summary",
+        "evidence-integrity": "tamper-evident bundle",
+        "automated-decision-trace": "high-level automation trace",
+        "worktree-isolation": "isolated delivery workflow",
+        "knowledge-trace": "approved context trace",
+      },
     },
-    manager: {
-      "change-validation": "release readiness",
-      "automated-decision-trace": "why this agent path was chosen",
-      "secure-coding-control": "risk posture",
-      "evidence-integrity": "reviewable proof bundle",
-      "worktree-isolation": "delivery isolation",
-      "knowledge-trace": "context quality",
-    },
-    auditor: {
-      "evidence-integrity": "checksumed artifact inventory",
-      "automated-decision-trace": "automated decision record",
-      "secure-coding-control": "secure coding evidence",
-      "change-validation": "change validation evidence",
-      "worktree-isolation": "change isolation evidence",
-      "knowledge-trace": "knowledge source trace",
-    },
-    customer: {
-      "change-validation": "delivery validation summary",
-      "secure-coding-control": "safety checks summary",
-      "evidence-integrity": "tamper-evident bundle",
-      "automated-decision-trace": "high-level automation trace",
-      "worktree-isolation": "isolated delivery workflow",
-      "knowledge-trace": "approved context trace",
+    "zh-CN": {
+      engineer: {
+        "change-validation": "通过或失败的内容",
+        "secure-coding-control": "需要修复的确定性发现",
+        "worktree-isolation": "分支与提交上下文",
+        "automated-decision-trace": "agent 路由依据",
+        "knowledge-trace": "工作中使用的检索上下文",
+        "evidence-integrity": "证据 checksum 链路",
+      },
+      manager: {
+        "change-validation": "发布就绪度",
+        "automated-decision-trace": "为什么选择这条 agent 路径",
+        "secure-coding-control": "风险状态",
+        "evidence-integrity": "可审查的证据包",
+        "worktree-isolation": "交付隔离",
+        "knowledge-trace": "上下文质量",
+      },
+      auditor: {
+        "evidence-integrity": "带 checksum 的证据清单",
+        "automated-decision-trace": "自动化决策记录",
+        "secure-coding-control": "安全编码证据",
+        "change-validation": "变更验证证据",
+        "worktree-isolation": "变更隔离证据",
+        "knowledge-trace": "知识来源追踪",
+      },
+      customer: {
+        "change-validation": "交付验证摘要",
+        "secure-coding-control": "安全检查摘要",
+        "evidence-integrity": "防篡改证据包",
+        "automated-decision-trace": "高层自动化追踪",
+        "worktree-isolation": "隔离交付流程",
+        "knowledge-trace": "已批准上下文追踪",
+      },
     },
   };
-  return focus[audience][controlId] ?? "evidence status";
+  return focus[language][audience][controlId] ?? (language === "zh-CN" ? "证据状态" : "evidence status");
 }
 
 function controlStatus(control: { control_id?: string; evidence_path: string }, evidence: ProofEvidence): "PRESENT" | "MISSING" {
