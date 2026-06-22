@@ -71,6 +71,53 @@ export function validateKnowledgePackManifest(value) {
         chunks,
     };
 }
+export async function loadKnowledgePackIndex(path) {
+    const raw = await readFile(path, "utf-8");
+    return validateKnowledgePackIndex(JSON.parse(raw));
+}
+export function validateKnowledgePackIndex(value) {
+    if (!isRecord(value))
+        throw new Error("knowledge pack index must be an object");
+    const generatedAt = requiredString(value, "generated_at");
+    const channel = requiredString(value, "channel");
+    if (channel !== "official")
+        throw new Error("knowledge pack index channel must be official");
+    const packsRaw = value["packs"];
+    if (!Array.isArray(packsRaw))
+        throw new Error("knowledge pack index packs must be an array");
+    const ids = new Set();
+    const packs = packsRaw.map((entry, index) => {
+        if (!isRecord(entry))
+            throw new Error(`knowledge pack index entry ${index} must be an object`);
+        const id = requiredString(entry, "id");
+        if (ids.has(id))
+            throw new Error(`knowledge pack index duplicate id: ${id}`);
+        ids.add(id);
+        const sourceKind = requiredString(entry, "source_kind");
+        if (!["osstack_native", "processed_mit", "curated_external", "internal"].includes(sourceKind)) {
+            throw new Error("knowledge pack index source_kind is invalid");
+        }
+        const scope = requiredString(entry, "scope");
+        if (!["official", "team", "project"].includes(scope)) {
+            throw new Error("knowledge pack index scope is invalid");
+        }
+        const qualityScore = requiredNumber(entry, "quality_score");
+        if (qualityScore < 0 || qualityScore > 100) {
+            throw new Error("knowledge pack index quality_score must be between 0 and 100");
+        }
+        const taxonomy = optionalStringArray(entry, "taxonomy");
+        return {
+            id,
+            version: requiredString(entry, "version"),
+            path: requiredString(entry, "path"),
+            scope: scope,
+            source_kind: sourceKind,
+            quality_score: qualityScore,
+            ...(taxonomy === undefined ? {} : { taxonomy }),
+        };
+    });
+    return { generated_at: generatedAt, channel: "official", packs };
+}
 export async function importKnowledgeSource(options) {
     const generatedAt = options.generatedAt ?? new Date().toISOString();
     const sourceFiles = await collectKnowledgeSourceFiles(options.path);

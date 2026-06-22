@@ -9,6 +9,7 @@ import {
   evaluateKnowledgeRetrieval,
   importKnowledgeSource,
   listCachedKnowledgePacks,
+  loadKnowledgePackIndex,
   loadKnowledgePack,
   pinKnowledgePack,
   resolveKnowledgeSearch,
@@ -304,21 +305,34 @@ describe("knowledge packs", () => {
 
   it("ships official osstack packs with reviewed metadata and passing retrieval fixtures", async () => {
     const root = resolve(process.cwd(), "../..");
-    const packPaths = [
-      "knowledge-packs/official/loop-engineering/manifest.json",
-      "knowledge-packs/official/agent-routing-policy/manifest.json",
-      "knowledge-packs/official/verifier-and-governance/manifest.json",
-      "knowledge-packs/official/worktree-safety/manifest.json",
-      "knowledge-packs/official/proof-and-scorecard/manifest.json",
-      "knowledge-packs/official/pr-and-release/manifest.json",
-    ].map((path) => join(root, path));
+    const indexRoot = join(root, "knowledge-packs", "official");
+    const index = await loadKnowledgePackIndex(join(indexRoot, "index.json"));
+    const packPaths = index.packs.map((pack) => join(indexRoot, pack.path));
     const packs = await Promise.all(packPaths.map((path) => loadKnowledgePack(path)));
     const fixtures = JSON.parse(
       await readFile(join(root, "knowledge-evals/retrieval/osstack-core.json"), "utf-8"),
     ) as KnowledgeRetrievalEvalCase[];
 
+    expect(index).toMatchObject({
+      channel: "official",
+      packs: expect.arrayContaining([
+        expect.objectContaining({ id: "osstack-core/loop-engineering", path: "loop-engineering/manifest.json" }),
+        expect.objectContaining({ id: "osstack-core/proof-and-scorecard", path: "proof-and-scorecard/manifest.json" }),
+      ]),
+    });
     expect(packs).toHaveLength(6);
-    for (const pack of packs) {
+    for (const [entryIndex, indexEntry] of index.packs.entries()) {
+      const pack = packs[entryIndex];
+      expect(pack).toBeDefined();
+      if (pack === undefined) throw new Error(`missing official knowledge pack for ${indexEntry.id}`);
+      expect(pack.manifest).toMatchObject({
+        id: indexEntry.id,
+        version: indexEntry.version,
+        source_kind: indexEntry.source_kind,
+        scope: indexEntry.scope,
+        quality_score: indexEntry.quality_score,
+        taxonomy: indexEntry.taxonomy,
+      });
       expect(pack.manifest).toMatchObject({
         source_kind: "osstack_native",
         scope: "official",

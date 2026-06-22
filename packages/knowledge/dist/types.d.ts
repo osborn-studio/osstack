@@ -89,6 +89,20 @@ export interface KnowledgePackSummary {
     source_kind: KnowledgeSourceKind;
     quality_score: number;
 }
+export interface KnowledgePackIndexEntry {
+    id: string;
+    version: string;
+    path: string;
+    scope: KnowledgeScope;
+    source_kind: KnowledgeSourceKind;
+    quality_score: number;
+    taxonomy?: string[];
+}
+export interface KnowledgePackIndex {
+    generated_at: string;
+    channel: "official";
+    packs: KnowledgePackIndexEntry[];
+}
 export type KnowledgeSearchEvidence = {
     mode: "off";
     status: "not_used";

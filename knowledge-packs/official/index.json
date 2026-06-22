@@ -1,0 +1,60 @@
+{
+  "generated_at": "2026-06-22T00:00:00.000Z",
+  "channel": "official",
+  "packs": [
+    {
+      "id": "osstack-core/agent-routing-policy",
+      "version": "2026.06.22",
+      "path": "agent-routing-policy/manifest.json",
+      "scope": "official",
+      "source_kind": "osstack_native",
+      "quality_score": 91,
+      "taxonomy": ["osstack-core/agent-routing-policy"]
+    },
+    {
+      "id": "osstack-core/loop-engineering",
+      "version": "2026.06.22",
+      "path": "loop-engineering/manifest.json",
+      "scope": "official",
+      "source_kind": "osstack_native",
+      "quality_score": 92,
+      "taxonomy": ["osstack-core/loop-engineering"]
+    },
+    {
+      "id": "osstack-core/pr-and-release",
+      "version": "2026.06.22",
+      "path": "pr-and-release/manifest.json",
+      "scope": "official",
+      "source_kind": "osstack_native",
+      "quality_score": 90,
+      "taxonomy": ["osstack-core/pr-and-release"]
+    },
+    {
+      "id": "osstack-core/proof-and-scorecard",
+      "version": "2026.06.22",
+      "path": "proof-and-scorecard/manifest.json",
+      "scope": "official",
+      "source_kind": "osstack_native",
+      "quality_score": 94,
+      "taxonomy": ["osstack-core/proof-and-scorecard"]
+    },
+    {
+      "id": "osstack-core/verifier-and-governance",
+      "version": "2026.06.22",
+      "path": "verifier-and-governance/manifest.json",
+      "scope": "official",
+      "source_kind": "osstack_native",
+      "quality_score": 90,
+      "taxonomy": ["osstack-core/verifier-and-governance"]
+    },
+    {
+      "id": "osstack-core/worktree-safety",
+      "version": "2026.06.22",
+      "path": "worktree-safety/manifest.json",
+      "scope": "official",
+      "source_kind": "osstack_native",
+      "quality_score": 89,
+      "taxonomy": ["osstack-core/worktree-safety"]
+    }
+  ]
+}
