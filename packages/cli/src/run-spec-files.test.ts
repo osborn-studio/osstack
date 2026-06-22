@@ -79,4 +79,39 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
     expect(knowledgeVector.knowledge_pack.source_kind).toBe("processed_mit");
     expect(knowledgeVector.knowledge_pack.quality_score).toBeGreaterThan(0);
   });
+
+  it("ships product companion docs for the run spec", async () => {
+    const productDir = join(repoRoot, "docs", "product");
+    const productDocs = [
+      "00_TERMINOLOGY_CONSISTENCY.md",
+      "01_VISION.md",
+      "02_PRD.md",
+      "03_USER_JOURNEY_AND_USE_CASES.md",
+      "04_SYSTEM_ARCHITECTURE.md",
+      "05_AI_AND_LLM_ARCHITECTURE.md",
+      "06_SKILLS_AND_AGENT_REGISTRY.md",
+      "07_REPORT_TEMPLATES_AND_OUTPUTS.md",
+      "08_LIVE_WORKBENCH_UI_SPEC.md",
+      "09_IMPLEMENTATION_PLAN.md",
+      "10_TASK_BREAKDOWN.md",
+      "11_TEST_AND_EVAL_PLAN.md",
+      "12_RUNBOOK.md",
+      "13_DECISIONS.md",
+    ];
+
+    for (const relative of productDocs) {
+      const text = await readFile(join(productDir, relative), "utf-8");
+      expect(text.trim().length).toBeGreaterThan(200);
+      expect(text).not.toContain("TBD");
+      expect(text).not.toContain("TODO");
+    }
+
+    const architecture = await readFile(join(productDir, "04_SYSTEM_ARCHITECTURE.md"), "utf-8");
+    expect(architecture).toContain("@osstack/loop");
+    expect(architecture).toContain("Knowledge Cloud");
+
+    const decisions = await readFile(join(productDir, "13_DECISIONS.md"), "utf-8");
+    expect(decisions).toContain("D-001");
+    expect(decisions).toContain("Osstack-Native");
+  });
 });
