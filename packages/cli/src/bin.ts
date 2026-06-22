@@ -2652,6 +2652,7 @@ function printReleaseDoctor(result: ReleaseDoctorResult): void {
 }
 
 function renderReleaseReadinessReport(result: ReleaseDoctorResult): string {
+  const blockers = result.next_steps.filter(isReleaseBlockerStep);
   return [
     "# Osstack Release Readiness",
     "",
@@ -2687,6 +2688,14 @@ function renderReleaseReadinessReport(result: ReleaseDoctorResult): string {
         "",
       ];
     }),
+    ...(blockers.length === 0
+      ? []
+      : [
+        "## Blockers",
+        "",
+        ...blockers.map((step) => `- ${step}`),
+        "",
+      ]),
     "## Next Steps",
     "",
     ...result.next_steps.map((step) => `- ${step}`),
@@ -2699,22 +2708,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
   const versionPrNumber = typeof versionPr?.details?.["number"] === "number"
     ? versionPr.details["number"]
     : undefined;
-  const blockers = result.next_steps.filter((step) =>
-    step.startsWith("Add repository secret")
-    || step.startsWith("Refresh GitHub auth")
-    || step.startsWith("Fix GitHub Actions")
-    || step.startsWith("Add Apple notarization")
-    || step.startsWith("Fix missing or malformed proof evidence")
-    || step.startsWith("Regenerate or repair proof pack artifacts")
-    || step.startsWith("Restore NPM publish assets")
-    || step.startsWith("Restore Knowledge Cloud deploy assets")
-    || step.startsWith("Restore the Knowledge Cloud Deploy workflow")
-    || step.startsWith("Fix the deployed Knowledge Cloud")
-    || step.startsWith("Fix deployed Knowledge Cloud")
-    || step.startsWith("Restore single-binary release assets")
-    || step.startsWith("Restore the Single Binary Release workflow")
-    || step.startsWith("Review Version Packages PR")
-  );
+  const blockers = result.next_steps.filter(isReleaseBlockerStep);
   const repositorySecrets = result.checks.find((check) => check.id === "repository_secrets");
   const missingSecrets = repositorySecrets?.details?.["missing"];
   const latestVersionPrCiUrl = typeof versionPr?.details?.["latest_ci_url"] === "string"
@@ -2821,6 +2815,24 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     deploy_commands: deployCommands,
     post_release_validation_commands: postReleaseValidationCommands,
   };
+}
+
+function isReleaseBlockerStep(step: string): boolean {
+  return step.startsWith("Add repository secret")
+    || step.startsWith("Refresh GitHub auth")
+    || step.startsWith("Fix GitHub Actions")
+    || step.startsWith("Add Apple notarization")
+    || step.startsWith("Fix missing or malformed proof evidence")
+    || step.startsWith("Regenerate or repair proof pack artifacts")
+    || step.startsWith("Remove external certification claims")
+    || step.startsWith("Restore NPM publish assets")
+    || step.startsWith("Restore Knowledge Cloud deploy assets")
+    || step.startsWith("Restore the Knowledge Cloud Deploy workflow")
+    || step.startsWith("Fix the deployed Knowledge Cloud")
+    || step.startsWith("Fix deployed Knowledge Cloud")
+    || step.startsWith("Restore single-binary release assets")
+    || step.startsWith("Restore the Single Binary Release workflow")
+    || step.startsWith("Review Version Packages PR");
 }
 
 function releaseGitHubActionsOperatorCommands(check: ReleaseDoctorCheck | undefined): string[] {

@@ -548,6 +548,25 @@ describe("product entry commands", () => {
     expect(markdown).toContain("| npm_publish | not_ready |");
   });
 
+  it("renders release readiness blockers for GitHub runner allocation failures", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "allocation";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const output = join(tmp, "release-readiness-runner.md");
+
+    const exitCode = await main(["release", "doctor", "--output", output, "--json"]);
+
+    expect(exitCode).toBe(1);
+    const markdown = await readFile(output, "utf-8");
+    expect(markdown).toContain("## Blockers");
+    expect(markdown).toContain("- Fix GitHub Actions runner allocation before publishing or deploying.");
+    expect(markdown).toContain("\"runner_allocation\": true");
+  });
+
   it("prints a release action plan from current readiness", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "";
