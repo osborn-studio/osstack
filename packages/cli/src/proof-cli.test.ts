@@ -318,7 +318,14 @@ describe("proof CLI", () => {
 
     expect(exitCode).toBe(0);
     const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    const manifest = JSON.parse(await readFile(join(proofDir, "manifest.json"), "utf-8")) as {
+      artifacts: Array<{ path: string; sha256: string }>;
+    };
+    expect(manifest.artifacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "checker-output/proof-task-local-verifier.txt", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
+    ]));
     await expect(readFile(join(proofDir, "events.jsonl"), "utf-8")).resolves.toContain("loop.verify.done");
+    await expect(readFile(join(proofDir, "checker-output", "proof-task-local-verifier.txt"), "utf-8")).resolves.toContain("Verifier passed.");
     await expect(readFile(join(proofDir, "report.md"), "utf-8")).resolves.toContain("## Verify Results");
     await expect(readFile(join(proofDir, "report.md"), "utf-8")).resolves.toContain("subprocess/login-reuse");
     await expect(readFile(join(proofDir, "policy-decision.json"), "utf-8")).resolves.toContain("matched code.test capability");

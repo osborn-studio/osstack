@@ -2356,6 +2356,7 @@ async function writeProofPack(
     { path: "governance-results.json", content: `${JSON.stringify(governance, null, 2)}\n` },
     { path: "knowledge-results.json", content: `${JSON.stringify(knowledge, null, 2)}\n` },
   ];
+  artifacts.push(...createVerifierOutputArtifacts(verifyResults));
   if (workspacePath !== undefined) {
     artifacts.push(await createGitDiffProofArtifact(workspacePath));
   }
@@ -2381,7 +2382,9 @@ async function writeProofPack(
   await mkdir(proofDir, { recursive: true });
   const manifestArtifacts: Array<{ path: string; sha256: string; bytes: number }> = [];
   for (const artifact of artifacts) {
-    await writeFile(join(proofDir, artifact.path), artifact.content, "utf-8");
+    const artifactPath = join(proofDir, artifact.path);
+    await mkdir(dirname(artifactPath), { recursive: true });
+    await writeFile(artifactPath, artifact.content, "utf-8");
     manifestArtifacts.push({
       path: artifact.path,
       sha256: sha256(artifact.content),
@@ -3069,6 +3072,33 @@ function createAgentRuntimeEvidence(events: LoopEvent[]): {
 function rolesForAgentId(agentId: string): string[] {
   const adapter = defaultAdapters().find((candidate) => candidate.id === agentId);
   return rolesForCapabilityKinds(adapter?.capabilities().map((capability) => capability.kind) ?? []);
+}
+
+function createVerifierOutputArtifacts(verifyResults: ReturnType<typeof createVerifyResultsEvidence>): Array<{ path: string; content: string }> {
+  if (verifyResults.results === undefined) return [];
+  return verifyResults.results.map((result) => {
+    const agentId = result.reviewer_agent_id === "" ? "unknown-verifier" : result.reviewer_agent_id;
+    const dir = verifierOutputDir(agentId);
+    const path = `${dir}/${safeFileSegment(result.task_id)}-${safeFileSegment(agentId)}.txt`;
+    const content = [
+      `task_id: ${result.task_id}`,
+      `reviewer_agent_id: ${agentId}`,
+      `pass: ${result.pass ? "true" : "false"}`,
+      `score: ${String(result.score)}`,
+      `event_seq: ${result.event_seq}`,
+      "",
+      result.summary,
+      "",
+    ].join("\n");
+    return { path, content: new PIIRedactor().redact(content).text };
+  });
+}
+
+function verifierOutputDir(agentId: string): "checker-output" | "reviewer-output" {
+  const normalized = agentId.toLowerCase();
+  return normalized.includes("checker") || normalized.includes("verify") || normalized.includes("verifier")
+    ? "checker-output"
+    : "reviewer-output";
 }
 
 function createVerifyResultsEvidence(
