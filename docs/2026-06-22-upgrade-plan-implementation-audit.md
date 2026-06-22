@@ -31,7 +31,7 @@
 | Phase 0 Distribution | 一行安装 + daemon install + 可选单文件分发 | 部分完成 | `scripts/smoke-npm-install.mjs` 验证本地 tarball install；`serve --install --no-load` 验证 launchd plist 生命周期；`scripts/smoke-portable-cli.mjs` 验证 portable bundle；`scripts/build-single-binary.mjs` 生成 Bun single executable release candidate；`scripts/generate-single-binary-sbom.mjs` 生成 SPDX SBOM；`scripts/smoke-bun-single-binary.mjs` 验证 manifest/checksum/runtime；`scripts/smoke-single-binary-signing.mjs` 验证 ad-hoc codesign；`scripts/smoke-single-binary-release-pack.mjs` 验证 release archive 可解包运行；`scripts/smoke-single-binary-release-publish.mjs` dry-run 验证 release upload inputs；CI/release workflow 已接 candidate artifact 与 formal upload path | 真实 npm publish；真实 `npm install -g @osstack/cli`；Developer ID 签名/公证/跨机器验证/远端正式 GitHub Release asset |
 | Phase 1 Evidence Layer | report + scorecard + proof + subprocess-first adapters | 基本完成 | `report-cli.test.ts`、`scorecard-cli.test.ts`、`proof-cli.test.ts`、`agent-list-cli.test.ts`、npm install smoke | daemon event-rich report 仍需更多真实运行样本验证 |
 | Phase 2 Product Entry | `osstack deliver` + agent 角色化 | 基本完成 | `deliver-cli.test.ts`、`product-entry-cli.test.ts`、`agent-scorecard-cli.test.ts`、`smoke:npm-install` 安装后 deliver/worktree/proof smoke | 可继续在外部真实业务 repo 上扩展长任务 smoke |
-| Phase 3 Governed Run | Run Spec + governance verifier + PR evidence | 基本完成 | `docs/specs/OSSTACK_RUN_SPEC_V1.md`、schemas/test vectors、`governance-cli.test.ts`、`pr-cli.test.ts` | spec MUST 到 verifier 的覆盖矩阵可继续细化 |
+| Phase 3 Governed Run | Run Spec + governance verifier + PR evidence | 基本完成 | `docs/specs/OSSTACK_RUN_SPEC_V1.md`、`docs/specs/CONFORMANCE_MATRIX.md`、schemas/test vectors、`governance-cli.test.ts`、`pr-cli.test.ts` | 继续随新 MUST 条款补 runtime/schema/vector 覆盖 |
 | Phase 4 Learning Control Plane | Pitfall KB + Knowledge bootstrap + agent scorecard | 基本完成 | `lessons-cli.test.ts`、`knowledge-cli.test.ts`、`agent-scorecard-cli.test.ts` | pitfall 自动提升 verified_count 的真实 loop 闭环需继续增强 |
 | Phase 5 Product Surface | Cockpit/TUI + examples/guide/doctor + i18n + checkpoint | 部分到基本完成 | `dashboard.ts`、`dashboard-cli.test.ts`、`product-entry-cli.test.ts`、`i18n-cli.test.ts`、`checkpoint-cli.test.ts` | 完整交互式 TUI 未完成；report/scorecard/cockpit i18n 仍可扩展 |
 | Phase 6 Trust/Compliance/Knowledge Cloud | compliance packs + enterprise proof views + Osstack Knowledge Cloud | 部分到基本完成 | `compliance-packs/*`、`compliance-cli.test.ts`、`proof view`、`knowledge-cloud` package、deploy assets、smoke | 真实云端上线、生产 ingestion pipeline、tenant auth/storage/vector index |
@@ -178,9 +178,10 @@
 - schemas/test vectors 存在，包括 task/event/loop-state/policy-decision/proof-pack/knowledge-pack。
 - `run-spec-files.test.ts` 验证 spec 文件和 vectors。
 
-需增强：
+已增强：
 
-- 建议新增 `docs/specs/CONFORMANCE_MATRIX.md`，把每条 MUST 映射到 schema/test/verifier。
+- `docs/specs/CONFORMANCE_MATRIX.md` 已把 R-001 到 R-014 映射到 schema、test vector、deterministic verifier、smoke 或 CLI test。
+- `run-spec-files.test.ts` 会防止矩阵遗漏 stable clause、回退到旧的 `workflow-scope push` blocker 文案，并要求记录 installed-CLI deliver smoke 与当前 GitHub Actions billing blocker。
 
 ### Task 3.2：Governance verifier
 
@@ -371,7 +372,7 @@
 | P0 | 配置 `FLY_API_TOKEN` | 没有 Fly deploy secret 不能运行 Knowledge Cloud `deploy=true` | `osstack release doctor --target knowledge-cloud --json` ready |
 | P0 | 部署 Knowledge Cloud 到真实云端 | Phase 6 需要“上线”而非本地 smoke | 生产 URL + `/healthz` + search smoke |
 | P0 | npm publish 并从 registry 安装 | Phase 0 一行安装的最终验收 | `npm install -g @osstack/cli` 成功 |
-| P1 | `CONFORMANCE_MATRIX.md` | 让 OSSTACK_RUN_SPEC_V1 的 MUST 条款可审计 | 每条 MUST 映射 schema/test/verifier |
+| P1 | `CONFORMANCE_MATRIX.md` 持续维护 | 让 OSSTACK_RUN_SPEC_V1 的 MUST 条款可审计 | 每条新增/变更 MUST 同步 schema/test/vector/verifier/smoke 映射 |
 | P1 | 真实 repo deliver e2e smoke | 证明 Product Entry 可处理实际项目 | 临时 repo 跑 deliver/loop/proof 成功 |
 | P1 | Compliance report 从 proof dir 渲染 smoke | 证明 enterprise proof 包装闭环 | deliver proof dir 可渲染合规报告且不声称外部认证 |
 | P2 | 单文件 release asset 产品化 | 可选增强，不阻塞 npm 主路径；Bun single executable 本地 release archive candidate 已有 manifest/checksum/SPDX SBOM/ad-hoc signing/extract smoke，workflow artifact 与 formal upload path 已接入 | macOS arm64 Developer ID signed/notarized asset + cross-machine smoke + remote formal GitHub Release proof |

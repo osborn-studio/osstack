@@ -68,6 +68,9 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
     expect(matrix).toContain("Status Legend");
     expect(matrix).toContain("Current Conformance Summary");
     expect(matrix).toContain("Required Follow-Up Tests");
+    expect(matrix).toContain("installed-CLI deliver");
+    expect(matrix).toContain("GitHub Actions billing/spending-limit");
+    expect(matrix).not.toContain("workflow-scope push");
   });
 
   it("keeps schema and test vector JSON parseable with required anchors", async () => {
