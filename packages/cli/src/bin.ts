@@ -109,6 +109,7 @@ Loop 工程：
   report              生成证据报告（支持 --lang en|zh-CN）
   scorecard           生成证据评分卡
   proof               生成 proof pack
+  proof view          按 engineer/manager/auditor/customer 重排已有证据
   pr                  生成 GitHub PR evidence body
 
 治理与知识：
@@ -264,6 +265,8 @@ Loop engineering (local, testable hot-loop MVP):
                                  Generate Markdown + HTML evidence scorecards
   proof [--workspace P] [--state P] [--output-dir P] [--json]
                                  Generate a checksumed local proof pack
+  proof view <run_id> --audience engineer|manager|auditor|customer
+                                 Rearrange existing proof evidence for a target audience
   pr [run_id] [--workspace P] [--state P] [--events P] [--proof-dir P] [--dry-run]
                                  Write a GitHub-ready PR body from run evidence
   loop run [--workspace P] [--source S] [--execute CMD] [--verify CMD]

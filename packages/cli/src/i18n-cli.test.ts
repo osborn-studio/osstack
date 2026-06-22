@@ -34,6 +34,7 @@ describe("CLI i18n", () => {
     expect(output).toContain("Hermes-resident project manager agent");
     expect(output).toContain("Usage:");
     expect(output).toContain("Project commands:");
+    expect(output).toContain("proof view <run_id> --audience engineer|manager|auditor|customer");
     expect(errors).toEqual([]);
   });
 
@@ -47,6 +48,8 @@ describe("CLI i18n", () => {
     expect(output).toContain("Hermes 驻留项目经理 Agent");
     expect(output).toContain("用法：");
     expect(output).toContain("项目命令：");
+    expect(output).toContain("proof view");
+    expect(output).toContain("engineer/manager/auditor/customer");
     expect(errors).toEqual([]);
   });
 });
