@@ -1153,10 +1153,12 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   expectAsset(fly, 'dockerfile = "Dockerfile.knowledge-cloud"', "Fly config must use Dockerfile.knowledge-cloud.");
   expectAsset(fly, "internal_port = 8787", "Fly config must route to port 8787.");
   expectAsset(fly, 'path = "/healthz"', "Fly config must healthcheck /healthz.");
+  expectAsset(fly, 'OSSTACK_KNOWLEDGE_AUDIT_LOG = "/data/audit/knowledge-cloud-audit.jsonl"', "Fly config must persist audit JSONL.");
   expectAsset(fly, 'OSSTACK_KNOWLEDGE_FEEDBACK_LOG = "/data/feedback/feedback.jsonl"', "Fly config must persist feedback JSONL.");
   expectAsset(fly, 'OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR = "/data/published-packs"', "Fly config must persist published knowledge packs.");
   expectAsset(render, "dockerfilePath: ./Dockerfile.knowledge-cloud", "Render config must use Dockerfile.knowledge-cloud.");
   expectAsset(render, "healthCheckPath: /healthz", "Render config must healthcheck /healthz.");
+  expectAsset(render, "OSSTACK_KNOWLEDGE_AUDIT_LOG", "Render config must persist audit JSONL.");
   expectAsset(render, "OSSTACK_KNOWLEDGE_FEEDBACK_LOG", "Render config must persist feedback JSONL.");
   expectAsset(render, "OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR", "Render config must persist published knowledge packs.");
   expectAsset(workflow, "workflow_dispatch:", "Knowledge Cloud deploy workflow must be manually triggerable.");
@@ -1178,6 +1180,7 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
       missing,
       violations,
       root: assetRoot,
+      audit_log: "/data/audit/knowledge-cloud-audit.jsonl",
       published_pack_dir: "/data/published-packs",
     },
   };

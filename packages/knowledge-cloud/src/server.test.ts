@@ -376,6 +376,123 @@ describe("Knowledge Cloud HTTP service", () => {
     });
   });
 
+  it("records tenant-scoped audit events for publish, private access, search, and feedback", async () => {
+    const auditEvents: unknown[] = [];
+    const url = await startCloud({
+      packs: await officialPacks(),
+      privateTenantTokens: { team_alpha: "kst_alpha_private" },
+      now: () => "2026-06-22T00:00:00.000Z",
+      auditSink: (entry) => {
+        auditEvents.push(entry);
+      },
+    });
+
+    await fetchJson(`${url}/v1/publish`, {
+      pack: reviewedOfficialPack(),
+    });
+    await fetchJson(
+      `${url}/v1/publish`,
+      { pack: teamPack({ id: "team/audited-private-pack" }) },
+      { authorization: "Bearer kst_alpha_private" },
+    );
+    await fetchJson(
+      `${url}/v1/private-packs`,
+      { tenant_id: "team_alpha" },
+      { authorization: "Bearer kst_alpha_private" },
+    );
+    await fetchJson(
+      `${url}/v1/search`,
+      {
+        query: "private release approval",
+        tenant_id: "team_alpha",
+        limit: 2,
+      },
+      { authorization: "Bearer kst_alpha_private" },
+    );
+    await fetchJson(
+      `${url}/v1/feedback`,
+      {
+        chunk_id: "private-release",
+        rating: "useful",
+        tenant_id: "team_alpha",
+      },
+      { authorization: "Bearer kst_alpha_private" },
+    );
+
+    expect(auditEvents).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        event_id: "audit-1",
+        action: "publish",
+        status: "ok",
+        private: false,
+        pack_id: "osstack-core/cloud-publish",
+      }),
+      expect.objectContaining({
+        action: "publish",
+        status: "ok",
+        private: true,
+        tenant_id: "team_alpha",
+        pack_id: "team/audited-private-pack",
+      }),
+      expect.objectContaining({
+        action: "private_packs",
+        status: "ok",
+        tenant_id: "team_alpha",
+        authorized: true,
+      }),
+      expect.objectContaining({
+        action: "search",
+        status: "ok",
+        tenant_id: "team_alpha",
+        authorized: true,
+        result_count: 2,
+      }),
+      expect.objectContaining({
+        action: "feedback",
+        status: "ok",
+        tenant_id: "team_alpha",
+        chunk_id: "private-release",
+        rating: "useful",
+      }),
+    ]));
+
+    const publicAudit = await fetchJson(`${url}/v1/audit`, {});
+    expect(publicAudit).toMatchObject({
+      events: [expect.objectContaining({
+        action: "publish",
+        private: false,
+        pack_id: "osstack-core/cloud-publish",
+      })],
+    });
+    expect(publicAudit).toMatchObject({
+      events: expect.not.arrayContaining([
+        expect.objectContaining({ tenant_id: "team_alpha" }),
+      ]),
+    });
+
+    const unauthorizedTenantAudit = await fetch(`${url}/v1/audit`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ tenant_id: "team_alpha" }),
+    });
+    expect(unauthorizedTenantAudit.status).toBe(401);
+
+    const tenantAudit = await fetchJson(
+      `${url}/v1/audit`,
+      { tenant_id: "team_alpha" },
+      { authorization: "Bearer kst_alpha_private" },
+    );
+    expect(tenantAudit).toMatchObject({
+      tenant_id: "team_alpha",
+      events: expect.arrayContaining([
+        expect.objectContaining({ action: "publish", pack_id: "team/audited-private-pack" }),
+        expect.objectContaining({ action: "private_packs", authorized: true }),
+        expect.objectContaining({ action: "search", result_count: 2 }),
+        expect.objectContaining({ action: "feedback", chunk_id: "private-release" }),
+      ]),
+    });
+  });
+
   it("persists published packs and reloads them after restart", async () => {
     const publishedPackDir = tempDir();
     let url = await startCloud({

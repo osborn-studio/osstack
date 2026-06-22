@@ -7,8 +7,10 @@ import { join } from "node:path";
 const tmp = join(tmpdir(), `osstack-knowledge-cloud-smoke-${process.pid}`);
 await mkdir(tmp, { recursive: true });
 const privatePackPath = join(tmp, "team-private-pack.json");
+const auditLogPath = join(tmp, "audit", "knowledge-cloud-audit.jsonl");
 const feedbackLogPath = join(tmp, "feedback", "feedback.jsonl");
 const publishedPackDir = join(tmp, "published-packs");
+await mkdir(join(tmp, "audit"), { recursive: true });
 await mkdir(join(tmp, "feedback"), { recursive: true });
 await writeFile(feedbackLogPath, `${JSON.stringify({
   chunk_id: "proof-checksum-pack",
@@ -51,6 +53,7 @@ const child = spawn(
     cwd: process.cwd(),
     env: {
       ...process.env,
+      OSSTACK_KNOWLEDGE_AUDIT_LOG: auditLogPath,
       OSSTACK_KNOWLEDGE_FEEDBACK_LOG: feedbackLogPath,
       OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR: publishedPackDir,
     },
@@ -195,6 +198,44 @@ try {
   const feedbackLog = await readFile(feedbackLogPath, "utf-8");
   assert(feedbackLog.includes("\"chunk_id\":\"proof-checksum-pack\""), "feedback JSONL must record chunk ids");
   assert(feedbackLog.includes("\"tenant_id\":\"team_smoke\""), "feedback JSONL must record tenant scope");
+  const publicAudit = await fetchJson(`${url}/v1/audit`, {});
+  assert(
+    publicAudit.events.some((item) => item.action === "publish"
+      && item.pack_id === "osstack-core/smoke-published"
+      && item.private === false),
+    "/v1/audit must expose official publish audit events",
+  );
+  assert(
+    !publicAudit.events.some((item) => item.tenant_id === "team_smoke"),
+    "/v1/audit without tenant scope must not leak tenant audit events",
+  );
+  const unauthorizedAudit = await fetch(`${url}/v1/audit`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ tenant_id: "team_smoke" }),
+  });
+  assert(unauthorizedAudit.status === 401, "/v1/audit must protect tenant audit events");
+  const tenantAudit = await fetchJson(`${url}/v1/audit`, {
+    tenant_id: "team_smoke",
+  }, {
+    authorization: "Bearer kst_smoke_private",
+  });
+  assert(
+    tenantAudit.events.some((item) => item.action === "private_packs" && item.authorized === true),
+    "/v1/audit must include authorized private pack access events",
+  );
+  assert(
+    tenantAudit.events.some((item) => item.action === "search" && item.result_count >= 1),
+    "/v1/audit must include tenant search events",
+  );
+  assert(
+    tenantAudit.events.some((item) => item.action === "feedback" && item.chunk_id === "proof-checksum-pack"),
+    "/v1/audit must include tenant feedback events",
+  );
+  const auditLog = await readFile(auditLogPath, "utf-8");
+  assert(auditLog.includes("\"action\":\"publish\""), "audit JSONL must record publish events");
+  assert(auditLog.includes("\"action\":\"search\""), "audit JSONL must record search events");
+  assert(auditLog.includes("\"tenant_id\":\"team_smoke\""), "audit JSONL must record tenant scope");
 
   console.log(JSON.stringify({
     ok: true,
@@ -208,6 +249,8 @@ try {
     feedback: feedback.feedback?.status ?? null,
     feedback_summary_total: feedbackSummary.total,
     feedback_log: feedbackLogPath,
+    audit_log: auditLogPath,
+    audit_events: tenantAudit.events.length + publicAudit.events.length,
     published_pack_dir: publishedPackDir,
   }, null, 2));
 } finally {

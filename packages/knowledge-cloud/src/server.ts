@@ -22,8 +22,10 @@ export interface KnowledgeCloudOptions {
   privateTenantTokens?: Record<string, string>;
   publishedPackDir?: string;
   feedbackLog?: KnowledgeFeedbackEntry[];
+  auditLog?: KnowledgeCloudAuditEntry[];
   now?: () => string;
   feedbackSink?: (entry: KnowledgeFeedbackEntry) => void | Promise<void>;
+  auditSink?: (entry: KnowledgeCloudAuditEntry) => void | Promise<void>;
 }
 
 export interface KnowledgeCloudServerOptions extends KnowledgeCloudOptions {
@@ -42,6 +44,21 @@ export interface KnowledgeCloudSearchResponse {
   results: KnowledgeSearchResult[];
 }
 
+export interface KnowledgeCloudAuditEntry {
+  event_id: string;
+  action: "publish" | "private_packs" | "search" | "feedback";
+  status: "ok" | "rejected" | "unauthorized";
+  created_at: string;
+  tenant_id?: string;
+  private?: boolean;
+  pack_id?: string;
+  chunk_id?: string;
+  rating?: "useful" | "bad";
+  authorized?: boolean;
+  result_count?: number;
+  issue_codes?: string[];
+}
+
 export interface PublishedKnowledgeCloudPacks {
   packs: KnowledgePack[];
   privatePacks: KnowledgePack[];
@@ -49,11 +66,12 @@ export interface PublishedKnowledgeCloudPacks {
 
 export function createKnowledgeCloudHandler(options: KnowledgeCloudOptions) {
   const feedbackLog: KnowledgeFeedbackEntry[] = [...(options.feedbackLog ?? [])];
+  const auditLog: KnowledgeCloudAuditEntry[] = [...(options.auditLog ?? [])];
   const packs: KnowledgePack[] = [...options.packs];
   const privatePacks: KnowledgePack[] = [...(options.privatePacks ?? [])];
   return async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     try {
-      await routeKnowledgeCloudRequest({ ...options, packs, privatePacks, feedbackLog }, req, res);
+      await routeKnowledgeCloudRequest({ ...options, packs, privatePacks, feedbackLog, auditLog }, req, res);
     } catch (error) {
       sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) });
     }
@@ -104,7 +122,11 @@ export async function loadPublishedKnowledgeCloudPacksFromDir(root: string): Pro
 }
 
 async function routeKnowledgeCloudRequest(
-  options: KnowledgeCloudOptions & { privatePacks: KnowledgePack[]; feedbackLog: KnowledgeFeedbackEntry[] },
+  options: KnowledgeCloudOptions & {
+    privatePacks: KnowledgePack[];
+    feedbackLog: KnowledgeFeedbackEntry[];
+    auditLog: KnowledgeCloudAuditEntry[];
+  },
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<void> {
@@ -140,9 +162,24 @@ async function routeKnowledgeCloudRequest(
       return;
     }
     if (!isAuthorizedPrivateRequest(options, req, tenantId)) {
+      await recordAudit(options, {
+        action: "private_packs",
+        status: "unauthorized",
+        tenant_id: tenantId,
+        authorized: false,
+        private: true,
+      });
       sendJson(res, 401, { error: "private knowledge packs require authorization" });
       return;
     }
+    await recordAudit(options, {
+      action: "private_packs",
+      status: "ok",
+      tenant_id: tenantId,
+      authorized: true,
+      private: true,
+      result_count: tenantPrivatePacks(options, tenantId).length,
+    });
     sendJson(res, 200, {
       packs: tenantPrivatePacks(options, tenantId).map((pack) => pack.manifest),
     });
@@ -159,6 +196,14 @@ async function routeKnowledgeCloudRequest(
     }
     const gate = validateKnowledgePublishGate(manifest);
     if (!gate.ok) {
+      await recordAudit(options, {
+        action: "publish",
+        status: "rejected",
+        private: manifest.scope === "team" || manifest.scope === "project" || manifest.tenant_id !== undefined,
+        ...(manifest.tenant_id === undefined ? {} : { tenant_id: manifest.tenant_id }),
+        pack_id: manifest.id,
+        issue_codes: gate.issues.map((issue) => issue.code),
+      });
       sendJson(res, 400, { ok: false, issues: gate.issues });
       return;
     }
@@ -170,15 +215,38 @@ async function routeKnowledgeCloudRequest(
     if (privatePack) {
       const tenantId = manifest.tenant_id;
       if (tenantId === undefined || tenantId.trim().length === 0) {
+        await recordAudit(options, {
+          action: "publish",
+          status: "rejected",
+          private: true,
+          pack_id: manifest.id,
+          issue_codes: ["private_publish_missing_tenant_id"],
+        });
         sendJson(res, 400, { error: "private knowledge publish requires tenant_id" });
         return;
       }
       if (!isAuthorizedPrivateRequest(options, req, tenantId)) {
+        await recordAudit(options, {
+          action: "publish",
+          status: "unauthorized",
+          private: true,
+          tenant_id: tenantId,
+          pack_id: manifest.id,
+          authorized: false,
+        });
         sendJson(res, 401, { error: "private knowledge publish requires authorization" });
         return;
       }
       await persistPublishedPack(options.publishedPackDir, pack, tenantId);
       upsertPack(options.privatePacks, pack);
+      await recordAudit(options, {
+        action: "publish",
+        status: "ok",
+        private: true,
+        tenant_id: tenantId,
+        pack_id: manifest.id,
+        authorized: true,
+      });
       sendJson(res, 200, {
         ok: true,
         private: true,
@@ -189,6 +257,12 @@ async function routeKnowledgeCloudRequest(
     }
     await persistPublishedPack(options.publishedPackDir, pack);
     upsertPack(options.packs, pack);
+    await recordAudit(options, {
+      action: "publish",
+      status: "ok",
+      private: false,
+      pack_id: manifest.id,
+    });
     sendJson(res, 200, {
       ok: true,
       private: false,
@@ -205,15 +279,25 @@ async function routeKnowledgeCloudRequest(
     }
     const limit = numberField(body, "limit") ?? 5;
     const tenantId = tenantIdField(body);
+    const authorized = tenantId === undefined ? undefined : isAuthorizedPrivateRequest(options, req, tenantId);
     const packs = [
       ...options.packs,
-      ...(tenantId !== undefined && isAuthorizedPrivateRequest(options, req, tenantId)
+      ...(tenantId !== undefined && authorized === true
         ? tenantPrivatePacks(options, tenantId)
         : []),
     ];
+    const results = searchKnowledgePacks(packs, query, { limit });
+    await recordAudit(options, {
+      action: "search",
+      status: "ok",
+      ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
+      ...(authorized === undefined ? {} : { authorized }),
+      private: tenantId !== undefined,
+      result_count: results.length,
+    });
     sendJson(res, 200, {
       packs: packs.map((pack) => packSummary(pack.manifest)),
-      results: searchKnowledgePacks(packs, query, { limit }),
+      results,
     } satisfies KnowledgeCloudSearchResponse);
     return;
   }
@@ -238,6 +322,15 @@ async function routeKnowledgeCloudRequest(
     };
     options.feedbackLog.push(entry);
     await options.feedbackSink?.(entry);
+    await recordAudit(options, {
+      action: "feedback",
+      status: "ok",
+      chunk_id: chunkId,
+      rating,
+      ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
+      ...(entry.authorized === undefined ? {} : { authorized: entry.authorized }),
+      private: tenantId !== undefined,
+    });
     sendJson(res, 200, { ok: true, feedback: entry });
     return;
   }
@@ -246,7 +339,36 @@ async function routeKnowledgeCloudRequest(
     sendJson(res, 200, summarizeFeedback(options.feedbackLog, tenantIdField(body)));
     return;
   }
+  if (method === "POST" && url.pathname === "/v1/audit") {
+    const body = await readJsonBody(req);
+    const tenantId = tenantIdField(body);
+    if (tenantId !== undefined && !isAuthorizedPrivateRequest(options, req, tenantId)) {
+      sendJson(res, 401, { error: "tenant audit log requires authorization" });
+      return;
+    }
+    const events = tenantId === undefined
+      ? options.auditLog.filter((entry) => entry.tenant_id === undefined)
+      : options.auditLog.filter((entry) => entry.tenant_id === tenantId);
+    sendJson(res, 200, {
+      ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
+      events,
+    });
+    return;
+  }
   sendJson(res, 404, { error: "not found" });
+}
+
+async function recordAudit(
+  options: KnowledgeCloudOptions & { auditLog: KnowledgeCloudAuditEntry[] },
+  entry: Omit<KnowledgeCloudAuditEntry, "event_id" | "created_at">,
+): Promise<void> {
+  const auditEntry: KnowledgeCloudAuditEntry = {
+    event_id: `audit-${options.auditLog.length + 1}`,
+    created_at: options.now?.() ?? new Date().toISOString(),
+    ...entry,
+  };
+  options.auditLog.push(auditEntry);
+  await options.auditSink?.(auditEntry);
 }
 
 function summarizeFeedback(entries: KnowledgeFeedbackEntry[], tenantId: string | undefined): {

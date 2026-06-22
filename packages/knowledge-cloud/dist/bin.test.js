@@ -37,6 +37,7 @@ describe("osstack-knowledge-cloud bin", () => {
         expect(logs.join("\n")).toContain("osstack-knowledge-cloud");
         expect(logs.join("\n")).toContain("--official-index");
         expect(logs.join("\n")).toContain("--published-pack-dir");
+        expect(logs.join("\n")).toContain("--audit-log");
     });
     it("rejects invalid ports", async () => {
         const exitCode = await main(["--port", "99999"]);
@@ -110,6 +111,26 @@ describe("osstack-knowledge-cloud bin", () => {
             feedback_log: feedbackLog,
             feedback_log_loaded: 1,
         });
+    });
+    it("configures and preloads a Knowledge Cloud audit JSONL path", async () => {
+        process.env["OSSTACK_KNOWLEDGE_CLOUD_ONCE"] = "1";
+        const auditLog = join(tmp, "audit", "knowledge-cloud-audit.jsonl");
+        await mkdir(join(tmp, "audit"), { recursive: true });
+        await writeFile(auditLog, `${JSON.stringify({
+            event_id: "audit-existing",
+            action: "publish",
+            status: "ok",
+            created_at: "2026-06-22T00:00:00.000Z",
+            pack_id: "osstack-core/preloaded-audit",
+            private: false,
+        })}\n`, "utf-8");
+        const exitCode = await main(["--port", "0", "--audit-log", auditLog, "--json"]);
+        expect(exitCode).toBe(0);
+        expect(JSON.parse(logs.join("\n"))).toMatchObject({
+            audit_log: auditLog,
+            audit_log_loaded: 1,
+        });
+        await expect(readFile(auditLog, "utf-8")).resolves.toContain("audit-existing");
     });
     it("preloads published pack storage on startup", async () => {
         process.env["OSSTACK_KNOWLEDGE_CLOUD_ONCE"] = "1";

@@ -10,7 +10,7 @@ export async function main(argv = process.argv.slice(2)) {
         console.log(`osstack-knowledge-cloud
 
 Usage:
-  osstack-knowledge-cloud [--host H] [--port N] [--official-index P] [--private-pack P] [--private-token T] [--private-tenant-token tenant=token] [--published-pack-dir P] [--feedback-log P] [--json]
+  osstack-knowledge-cloud [--host H] [--port N] [--official-index P] [--private-pack P] [--private-token T] [--private-tenant-token tenant=token] [--published-pack-dir P] [--feedback-log P] [--audit-log P] [--json]
 
 Options:
   --host H              Host to bind. Default: 127.0.0.1
@@ -22,6 +22,7 @@ Options:
                          Tenant-bound bearer token for private packs. Repeatable.
   --published-pack-dir P Persist /v1/publish packs and preload them on startup.
   --feedback-log P      Append feedback entries as JSONL for audit/quality review.
+  --audit-log P         Append tenant-scoped publish/search/access audit events as JSONL.
   --json                Print startup metadata as JSON.
 
 Env:
@@ -32,6 +33,7 @@ Env:
   OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON
   OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR
   OSSTACK_KNOWLEDGE_FEEDBACK_LOG
+  OSSTACK_KNOWLEDGE_AUDIT_LOG
 `);
         return 0;
     }
@@ -61,6 +63,14 @@ Env:
         await mkdir(dirname(feedbackLog), { recursive: true });
         await writeFile(feedbackLog, "", { flag: "a" });
     }
+    const auditLog = flagValue(argv, "--audit-log") ?? process.env["OSSTACK_KNOWLEDGE_AUDIT_LOG"];
+    const auditEntries = auditLog === undefined || auditLog.trim().length === 0
+        ? []
+        : await readAuditLog(auditLog);
+    if (auditLog !== undefined && auditLog.trim().length > 0) {
+        await mkdir(dirname(auditLog), { recursive: true });
+        await writeFile(auditLog, "", { flag: "a" });
+    }
     const handle = await startKnowledgeCloudServer({
         host,
         port,
@@ -72,11 +82,19 @@ Env:
         ...(Object.keys(privateTenantTokens).length === 0 ? {} : { privateTenantTokens }),
         ...(publishedPackDir === undefined || publishedPackDir.trim().length === 0 ? {} : { publishedPackDir }),
         ...(feedbackEntries.length === 0 ? {} : { feedbackLog: feedbackEntries }),
+        ...(auditEntries.length === 0 ? {} : { auditLog: auditEntries }),
         ...(feedbackLog === undefined || feedbackLog.trim().length === 0
             ? {}
             : {
                 feedbackSink: async (entry) => {
                     await appendFile(feedbackLog, `${JSON.stringify(entry)}\n`, "utf-8");
+                },
+            }),
+        ...(auditLog === undefined || auditLog.trim().length === 0
+            ? {}
+            : {
+                auditSink: async (entry) => {
+                    await appendFile(auditLog, `${JSON.stringify(entry)}\n`, "utf-8");
                 },
             }),
     });
@@ -96,6 +114,9 @@ Env:
         ...(feedbackLog === undefined || feedbackLog.trim().length === 0
             ? {}
             : { feedback_log: feedbackLog, feedback_log_loaded: feedbackEntries.length }),
+        ...(auditLog === undefined || auditLog.trim().length === 0
+            ? {}
+            : { audit_log: auditLog, audit_log_loaded: auditEntries.length }),
     };
     if (argv.includes("--json")) {
         console.log(JSON.stringify(startup, null, 2));
@@ -130,12 +151,42 @@ async function readFeedbackLog(path) {
     }
     return entries;
 }
+async function readAuditLog(path) {
+    let raw = "";
+    try {
+        raw = await readFile(path, "utf-8");
+    }
+    catch {
+        return [];
+    }
+    const entries = [];
+    for (const line of raw.split(/\r?\n/)) {
+        if (line.trim().length === 0)
+            continue;
+        try {
+            const parsed = JSON.parse(line);
+            if (isAuditEntry(parsed))
+                entries.push(parsed);
+        }
+        catch {
+        }
+    }
+    return entries;
+}
 function isFeedbackEntry(value) {
     if (!isRecord(value))
         return false;
     return typeof value["chunk_id"] === "string"
         && (value["rating"] === "useful" || value["rating"] === "bad")
         && (value["status"] === "recorded" || value["status"] === "sent")
+        && typeof value["created_at"] === "string";
+}
+function isAuditEntry(value) {
+    if (!isRecord(value))
+        return false;
+    return typeof value["event_id"] === "string"
+        && (value["action"] === "publish" || value["action"] === "private_packs" || value["action"] === "search" || value["action"] === "feedback")
+        && (value["status"] === "ok" || value["status"] === "rejected" || value["status"] === "unauthorized")
         && typeof value["created_at"] === "string";
 }
 function parsePrivateTenantTokens(values, json) {
