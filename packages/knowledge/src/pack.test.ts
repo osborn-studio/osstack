@@ -18,6 +18,7 @@ import {
   searchKnowledgePacks,
   syncKnowledgeCache,
   validateKnowledgePackManifest,
+  validateKnowledgePublishGate,
   type KnowledgeRetrievalEvalCase,
 } from "./index.js";
 
@@ -254,6 +255,57 @@ describe("knowledge packs", () => {
     expect(manifest.chunks[0]?.body).toContain("Operational guidance:");
   });
 
+  it("rejects official publish candidates without Osstack processing evidence", async () => {
+    const report = validateKnowledgePublishGate({
+      id: "osstack-core/raw",
+      version: "2026.06.22",
+      name: "Raw Official Notes",
+      license: "MIT",
+      source_kind: "processed_mit",
+      quality_score: 70,
+      scope: "official",
+      chunks: [{
+        chunk_id: "raw_1",
+        title: "Raw Notes",
+        body: "Generic release notes copied from an upstream source.",
+      }],
+    });
+
+    expect(report).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({ code: "official_low_quality_score" }),
+        expect.objectContaining({ code: "official_missing_taxonomy" }),
+        expect.objectContaining({ code: "official_missing_review" }),
+        expect.objectContaining({ code: "missing_source_attribution" }),
+        expect.objectContaining({ code: "missing_source_provenance" }),
+        expect.objectContaining({ code: "chunk_missing_osstack_voice" }),
+        expect.objectContaining({ code: "chunk_missing_source_refs" }),
+      ]),
+    });
+  });
+
+  it("blocks official ingest candidates without taxonomy before writing a weak pack", async () => {
+    const sourceDir = join(tmp, "weak-official");
+    await mkdir(sourceDir);
+    await writeFile(join(sourceDir, "notes.md"), [
+      "# Release Notes",
+      "",
+      "Ship releases with verification artifacts.",
+    ].join("\n"));
+
+    await expect(ingestKnowledgeSource({
+      path: sourceDir,
+      id: "osstack-core/weak",
+      name: "Osstack Weak Pack",
+      license: "MIT-derived-processed",
+      scope: "official",
+      sourceKind: "processed_mit",
+      generatedAt: "2026-06-22T00:00:00.000Z",
+      sourceAttribution: ["processed from MIT-compatible notes"],
+    })).rejects.toThrow(/official_missing_taxonomy/);
+  });
+
   it("syncs cloud packs into a local cache and loads them for search", async () => {
     const cacheDir = join(tmp, "cache");
     const requests: Array<{ authorization: string | null }> = [];
@@ -404,6 +456,7 @@ describe("knowledge packs", () => {
         expect(createHash("sha256").update(sourceBytes).digest("hex")).toBe(source.sha256);
       }
       expect(pack.manifest.quality_score).toBeGreaterThanOrEqual(89);
+      expect(validateKnowledgePublishGate(pack.manifest)).toMatchObject({ ok: true, issues: [] });
     }
     expect(fixtures).toHaveLength(30);
     expect(evaluateKnowledgeRetrieval(packs, fixtures, { topK: 3 })).toMatchObject({

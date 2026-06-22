@@ -54,6 +54,7 @@ import {
   pinKnowledgePack,
   resolveKnowledgeSearch,
   syncKnowledgeCache,
+  validateKnowledgePublishGate,
   type KnowledgePack,
   type KnowledgeScope,
   type KnowledgeMode,
@@ -1249,6 +1250,7 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   osstack knowledge inspect <chunk_id> [--pack P] [--official] [--cache-dir P] [--json]
   osstack knowledge import P --scope team|project --id ID --name NAME --license L --output P [--taxonomy T] [--json]
   osstack knowledge ingest P --scope official|team|project --id ID --name NAME --license L --output P [--taxonomy T] [--source-kind K] [--json]
+  osstack knowledge validate --pack P|--official [--json]
   osstack knowledge pin <pack_id>@<version> [--cache-dir P] [--json]
   osstack knowledge feedback <chunk_id> --useful|--bad [--cloud-url URL] [--cache-dir P] [--json]
   osstack knowledge eval --pack P|--official --fixtures P [--top-k N] [--json]
@@ -1600,6 +1602,36 @@ Env:
       console.log(`Ingested ${manifest.chunks.length} osstack-native chunk(s) into ${output}`);
     }
     return 0;
+  }
+
+  if (sub === "validate") {
+    const packPaths = flagValues(args, "--pack");
+    if (packPaths.length === 0 && !args.includes("--official")) {
+      console.error("osstack: knowledge validate requires at least one --pack path or --official");
+      return 1;
+    }
+    const packs = [
+      ...await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath))),
+      ...await officialKnowledgePacksIfRequested(args),
+    ];
+    const reports = packs.map((pack) => ({
+      pack_id: pack.manifest.id,
+      version: pack.manifest.version,
+      path: pack.path,
+      ...validateKnowledgePublishGate(pack.manifest),
+    }));
+    const ok = reports.every((report) => report.ok);
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({ ok, packs: reports }, null, 2));
+    } else {
+      for (const report of reports) {
+        console.log(`${report.ok ? "OK" : "FAIL"} ${report.pack_id}@${report.version}`);
+        for (const issue of report.issues) {
+          console.log(`  ${issue.code}: ${issue.message}`);
+        }
+      }
+    }
+    return ok ? 0 : 1;
   }
 
   if (sub === "pin") {

@@ -171,6 +171,8 @@ A knowledge pack MUST include:
 
 The `source_kind` field MUST distinguish osstack-native material from processed MIT-compatible, curated external, or internal material. Processed external knowledge MUST be transformed into Osstack concepts and MUST retain license/source attribution metadata.
 
+Official knowledge packs SHOULD pass the Osstack knowledge publish gate before cloud publication. The gate SHOULD reject official packs that lack review metadata, source attribution, provenance, taxonomy, source references, sufficient quality score, or Osstack-native chunk wording.
+
 Team/private knowledge packs MAY include `tenant_id`. Cloud services serving private packs SHOULD require bearer-token authorization and MUST NOT return a tenant-scoped private pack to a different `tenant_id`.
 
 Runs MAY operate with knowledge mode `off`, `local`, or `cloud`. If cloud knowledge is unavailable, the run SHOULD fail open to `local` or `off`. Reports and proof packs SHOULD record injected knowledge pack ids and chunk ids when knowledge is used.

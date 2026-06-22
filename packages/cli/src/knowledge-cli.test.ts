@@ -322,6 +322,56 @@ describe("knowledge CLI", () => {
     });
   });
 
+  it("validates official knowledge packs with the publish gate", async () => {
+    const exitCode = await main(["knowledge", "validate", "--official", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const output = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      packs: Array<{ pack_id: string; ok: boolean; issues: unknown[] }>;
+    };
+    expect(output.ok).toBe(true);
+    expect(output.packs).toHaveLength(6);
+    expect(output.packs).toContainEqual(expect.objectContaining({
+      pack_id: "osstack-core/loop-engineering",
+      ok: true,
+      issues: [],
+    }));
+  });
+
+  it("fails knowledge validate for weak official publish candidates", async () => {
+    const weakPath = join(tmp, "weak-pack.json");
+    await writeFile(weakPath, JSON.stringify({
+      id: "osstack-core/weak",
+      version: "2026.06.22",
+      name: "Weak Pack",
+      license: "MIT",
+      source_kind: "processed_mit",
+      quality_score: 10,
+      scope: "official",
+      chunks: [{
+        chunk_id: "weak_1",
+        title: "Weak",
+        body: "Generic copied source text.",
+      }],
+    }, null, 2));
+
+    const exitCode = await main(["knowledge", "validate", "--pack", weakPath, "--json"]);
+
+    expect(exitCode).toBe(1);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      ok: false,
+      packs: [expect.objectContaining({
+        pack_id: "osstack-core/weak",
+        ok: false,
+        issues: expect.arrayContaining([
+          expect.objectContaining({ code: "official_low_quality_score" }),
+          expect.objectContaining({ code: "chunk_missing_osstack_voice" }),
+        ]),
+      })],
+    });
+  });
+
   it("syncs cloud packs into cache and searches cached packs", async () => {
     const server = await startKnowledgeServer();
     const cacheDir = join(tmp, "knowledge-cache");
