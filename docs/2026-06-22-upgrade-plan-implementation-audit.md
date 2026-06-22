@@ -31,7 +31,7 @@
 | Phase 2 Product Entry | `osstack deliver` + agent 角色化 | 基本完成 | `deliver-cli.test.ts`、`product-entry-cli.test.ts`、`agent-scorecard-cli.test.ts` | deliver 的 execute-loop 生产路径需更多真实仓库 smoke |
 | Phase 3 Governed Run | Run Spec + governance verifier + PR evidence | 基本完成 | `docs/specs/OSSTACK_RUN_SPEC_V1.md`、schemas/test vectors、`governance-cli.test.ts`、`pr-cli.test.ts` | spec MUST 到 verifier 的覆盖矩阵可继续细化 |
 | Phase 4 Learning Control Plane | Pitfall KB + Knowledge bootstrap + agent scorecard | 基本完成 | `lessons-cli.test.ts`、`knowledge-cli.test.ts`、`agent-scorecard-cli.test.ts` | pitfall 自动提升 verified_count 的真实 loop 闭环需继续增强 |
-| Phase 5 Product Surface | Cockpit/TUI + examples/guide/doctor + i18n + checkpoint | 部分完成 | `dashboard.ts`、`dashboard-cli.test.ts`、`product-entry-cli.test.ts`、`i18n-cli.test.ts`、`checkpoint-cli.test.ts` | 交互式 TUI 未完成；approve/retry 仍待补齐；report/scorecard/cockpit i18n 仍可扩展 |
+| Phase 5 Product Surface | Cockpit/TUI + examples/guide/doctor + i18n + checkpoint | 部分完成 | `dashboard.ts`、`dashboard-cli.test.ts`、`product-entry-cli.test.ts`、`i18n-cli.test.ts`、`checkpoint-cli.test.ts` | 交互式 TUI 未完成；approve 仍待补齐；report/scorecard/cockpit i18n 仍可扩展 |
 | Phase 6 Trust/Compliance/Knowledge Cloud | compliance packs + enterprise proof views + Osstack Knowledge Cloud | 部分到基本完成 | `compliance-packs/*`、`compliance-cli.test.ts`、`proof view`、`knowledge-cloud` package、deploy assets、smoke | 真实云端上线、生产 ingestion pipeline、tenant auth/storage/vector index |
 
 ## 3. 任务级状态
@@ -238,6 +238,7 @@
 - 支持 daemon status + dashboard snapshot summary。
 - 支持 `cockpit --json`。
 - 支持 `cockpit run` 以 task queue 为默认 source 运行 queued work，并默认生成 report、scorecard、proof。
+- 支持 `cockpit retry` 从失败/升级的 loop state task 重新入队，保留原任务、loop、agent、error/verify 摘要上下文。
 - 支持 `cockpit report` 从 loop evidence 生成 report。
 - 支持 `cockpit proof` 从 loop evidence 生成 proof pack，并可 `--open` 打开 proof 目录。
 - Web dashboard 展示 active runs、queued tasks、active loops、agents、kanban、reports/proof packs、lessons、scorecards。
@@ -245,7 +246,7 @@
 未完成：
 
 - 还不是完整交互式 TUI。
-- 还不能直接在 cockpit 中执行 approve/retry。
+- 还不能直接在 cockpit 中执行 approve。
 
 建议：
 
@@ -350,7 +351,7 @@
 | P1 | 真实 repo deliver e2e smoke | 证明 Product Entry 可处理实际项目 | 临时 repo 跑 deliver/loop/proof 成功 |
 | P1 | Compliance report 从 proof dir 渲染 smoke | 证明 enterprise proof 包装闭环 | deliver proof dir 可渲染合规报告且不声称外部认证 |
 | P2 | 单文件分发评估 | 可选增强，不阻塞 npm 主路径 | macOS arm64 binary + smoke |
-| P2 | 交互式 TUI | 当前 cockpit 是 Web/summary + run/report/proof MVP | cockpit 中可 approve/retry 并提供完整交互式 TUI |
+| P2 | 交互式 TUI | 当前 cockpit 是 Web/summary + run/retry/report/proof MVP | cockpit 中可 approve 并提供完整交互式 TUI |
 
 ## 5. 外部阻塞记录
 

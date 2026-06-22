@@ -5212,6 +5212,10 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
     return await handleCockpitRunCommand(args.slice(1));
   }
 
+  if (sub === "retry") {
+    return await handleCockpitRetryCommand(args.slice(1));
+  }
+
   if (sub === "help") {
     console.log(`osstack dashboard / cockpit — local development cockpit
 
@@ -5219,6 +5223,8 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
   osstack cockpit --json    Print daemon status + dashboard snapshot JSON
   osstack cockpit run [loop run options]
                             Run queued work with report, scorecard, and proof defaults
+  osstack cockpit retry [task_id] [--workspace P] [--state P] [--json]
+                            Requeue a failed or escalated task from loop state
   osstack cockpit report [run_id] [--workspace P] [--state P] [--events P] [--output P] [--open]
                             Generate a cockpit report from loop evidence
   osstack cockpit proof [run_id] [--workspace P] [--state P] [--events P] [--output-dir P] [--open]
@@ -5285,6 +5291,77 @@ async function handleCockpitReportCommand(args: string[]): Promise<number> {
 async function handleCockpitRunCommand(args: string[]): Promise<number> {
   const runArgs = ["run", ...cockpitRunArgs(args)];
   return await handleLoopCommand(runArgs);
+}
+
+async function handleCockpitRetryCommand(args: string[]): Promise<number> {
+  const taskId = firstPositionalValue(args, new Set(["--workspace", "--state"]));
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const stateFilePath = resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+  const state = await readLoopState(stateFilePath);
+  if (state === null) {
+    console.error(`osstack: no loop state found at ${stateFilePath}`);
+    return 1;
+  }
+  const retryableTasks = state.completed_tasks.filter((task) => task.outcome !== "success");
+  const sourceTask = taskId === undefined
+    ? retryableTasks.at(-1)
+    : state.completed_tasks.find((task) => task.task_id === taskId);
+  if (sourceTask === undefined) {
+    console.error(taskId === undefined
+      ? "osstack: no failed or escalated task found to retry"
+      : `osstack: no completed task found for task_id=${taskId}`);
+    return 1;
+  }
+  if (sourceTask.outcome === "success") {
+    console.error(`osstack: task_id=${sourceTask.task_id} succeeded; retry only accepts failed or escalated tasks`);
+    return 1;
+  }
+  const retry = await enqueueTask({
+    workspacePath,
+    taskId: `${sourceTask.task_id}-retry`,
+    capability: sourceTask.capability ?? "code.write",
+    priority: 70,
+    prompt: retryPromptForCompletedTask(sourceTask),
+    context: retryContextForCompletedTask(state.loop_id, sourceTask),
+  });
+  const summary = {
+    loop_id: state.loop_id,
+    retry_of_task_id: sourceTask.task_id,
+    retry_task: retry.task,
+    path: retry.path,
+  };
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(summary, null, 2));
+  } else {
+    console.log(`retry_of=${sourceTask.task_id}`);
+    console.log(`task_id=${retry.task.task_id}`);
+    console.log(`path=${retry.path}`);
+  }
+  return 0;
+}
+
+function retryPromptForCompletedTask(task: LoopState["completed_tasks"][number]): string {
+  const summary = task.error_summary ?? task.verify_summary ?? task.execution_summary ?? "No failure summary was recorded.";
+  return [
+    `Retry failed osstack loop task ${task.task_id}.`,
+    `Previous outcome: ${task.outcome}.`,
+    `Previous agent: ${task.agent_id}.`,
+    `Summary: ${summary}`,
+  ].join("\n");
+}
+
+function retryContextForCompletedTask(loopId: string, task: LoopState["completed_tasks"][number]): Record<string, unknown> {
+  return {
+    retry_of_task_id: task.task_id,
+    retry_from_loop_id: loopId,
+    previous_outcome: task.outcome,
+    previous_agent_id: task.agent_id,
+    previous_iterations: task.iterations,
+    ...(task.run_id !== undefined ? { previous_run_id: task.run_id } : {}),
+    ...(task.error_summary !== undefined ? { previous_error_summary: task.error_summary } : {}),
+    ...(task.verify_summary !== undefined ? { previous_verify_summary: task.verify_summary } : {}),
+    ...(task.verify_issues !== undefined ? { previous_verify_issues: task.verify_issues } : {}),
+  };
 }
 
 function cockpitRunArgs(args: string[]): string[] {

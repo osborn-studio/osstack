@@ -183,6 +183,83 @@ describe("dashboard/cockpit CLI", () => {
     await expect(readFile(summary.artifacts.proof_manifest, "utf-8")).resolves.toContain("\"kind\": \"osstack.proof_pack\"");
   });
 
+  it("requeues a failed task from cockpit retry", async () => {
+    const workspace = join(tmp, "workspace");
+    await mkdir(workspace, { recursive: true });
+    await writeFile(join(workspace, "LOOP-STATE.json"), JSON.stringify({
+      loop_id: "cockpit-retry-loop",
+      started_at: "2026-06-22T01:00:00.000Z",
+      updated_at: "2026-06-22T01:05:00.000Z",
+      completed_tasks: [{
+        task_id: "failed-task",
+        capability: "code.test",
+        outcome: "failed",
+        iterations: 2,
+        agent_id: "codex-cli",
+        duration_ms: 1200,
+        verify_summary: "Tests failed.",
+        verify_issues: [{ severity: "error", message: "Expected ok" }],
+      }],
+      in_progress: [],
+      pending: [],
+      decisions: [],
+    }, null, 2));
+
+    const exitCode = await main(["cockpit", "retry", "failed-task", "--workspace", workspace, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      loop_id: string;
+      retry_of_task_id: string;
+      retry_task: { task_id: string; prompt: string; capability: string; priority: number; context: Record<string, unknown> };
+      path: string;
+    };
+    expect(summary).toMatchObject({
+      loop_id: "cockpit-retry-loop",
+      retry_of_task_id: "failed-task",
+      retry_task: {
+        task_id: "failed-task-retry",
+        capability: "code.test",
+        priority: 70,
+        context: expect.objectContaining({
+          retry_of_task_id: "failed-task",
+          retry_from_loop_id: "cockpit-retry-loop",
+          previous_outcome: "failed",
+          previous_agent_id: "codex-cli",
+          previous_verify_summary: "Tests failed.",
+        }),
+      },
+    });
+    expect(summary.retry_task.prompt).toContain("Retry failed osstack loop task failed-task.");
+    await expect(readFile(summary.path, "utf-8")).resolves.toContain("\"task_id\": \"failed-task-retry\"");
+  });
+
+  it("refuses to retry a successful cockpit task", async () => {
+    const workspace = join(tmp, "workspace");
+    await mkdir(workspace, { recursive: true });
+    await writeFile(join(workspace, "LOOP-STATE.json"), JSON.stringify({
+      loop_id: "cockpit-success-loop",
+      started_at: "2026-06-22T01:00:00.000Z",
+      updated_at: "2026-06-22T01:05:00.000Z",
+      completed_tasks: [{
+        task_id: "successful-task",
+        capability: "code.test",
+        outcome: "success",
+        iterations: 1,
+        agent_id: "codex-cli",
+        duration_ms: 1000,
+      }],
+      in_progress: [],
+      pending: [],
+      decisions: [],
+    }, null, 2));
+
+    const exitCode = await main(["cockpit", "retry", "successful-task", "--workspace", workspace]);
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("retry only accepts failed or escalated tasks");
+  });
+
   it("generates a cockpit proof pack from workspace loop evidence", async () => {
     const workspace = join(tmp, "workspace");
     await mkdir(workspace, { recursive: true });
