@@ -836,6 +836,7 @@ async function releaseDoctor(target: ReleaseDoctorResult["target"]): Promise<Rel
   checks.push(secrets);
 
   if (target === "all" || target === "npm") {
+    checks.push(await releaseVersionPackagesPrCheck());
     checks.push(await releaseCommandCheck({
       id: "npm_auth",
       command: "npm",
@@ -848,6 +849,7 @@ async function releaseDoctor(target: ReleaseDoctorResult["target"]): Promise<Rel
   }
 
   if (target === "all" || target === "knowledge-cloud") {
+    checks.push(await releaseKnowledgeCloudWorkflowCheck());
     checks.push(await releaseCommandCheck({
       id: "fly_auth",
       command: "flyctl",
@@ -864,15 +866,211 @@ async function releaseDoctor(target: ReleaseDoctorResult["target"]): Promise<Rel
   const ok = target === "npm" ? npmPublish
     : target === "knowledge-cloud" ? knowledgeCloudDeploy
       : npmPublish && knowledgeCloudDeploy;
+  const hardFailures = checks.some((check) =>
+    check.status === "error"
+    && check.id !== "repository_secrets"
+    && !(target === "npm" && check.id === "knowledge_cloud_workflow")
+    && !(target === "knowledge-cloud" && check.id === "version_packages_pr")
+  );
   return {
-    ok,
+    ok: ok && !hardFailures,
     target,
     checks,
     readiness: {
       npm_publish: npmPublish,
       knowledge_cloud_deploy: knowledgeCloudDeploy,
     },
-    next_steps: releaseDoctorNextSteps({ target, npmPublish, knowledgeCloudDeploy, githubAuth, secrets }),
+    next_steps: releaseDoctorNextSteps({ target, npmPublish, knowledgeCloudDeploy, githubAuth, secrets, checks }),
+  };
+}
+
+async function releaseVersionPackagesPrCheck(): Promise<ReleaseDoctorCheck> {
+  const override = process.env["OSSTACK_TEST_RELEASE_VERSION_PR"];
+  if (override !== undefined) return releaseVersionPackagesPrOverride(override);
+  try {
+    const { stdout } = await execFileAsync("gh", [
+      "pr",
+      "list",
+      "--state",
+      "open",
+      "--head",
+      "changeset-release/main",
+      "--json",
+      "number,title,url,mergeStateStatus,isDraft",
+    ], { timeout: 10_000 });
+    const prs = JSON.parse(stdout) as Array<{
+      number?: number;
+      title?: string;
+      url?: string;
+      mergeStateStatus?: string;
+      isDraft?: boolean;
+    }>;
+    if (prs.length === 0) {
+      return {
+        id: "version_packages_pr",
+        status: "ok",
+        message: "No open Version Packages PR is waiting for npm publish.",
+      };
+    }
+    const pr = prs[0];
+    const mergeState = pr?.mergeStateStatus ?? "UNKNOWN";
+    const ready = pr?.isDraft !== true && (mergeState === "CLEAN" || mergeState === "HAS_HOOKS");
+    return {
+      id: "version_packages_pr",
+      status: ready ? "ok" : "warn",
+      message: ready
+        ? `Version Packages PR #${pr?.number ?? "unknown"} is open and mergeable.`
+        : `Version Packages PR #${pr?.number ?? "unknown"} needs attention before npm publish.`,
+      details: {
+        number: pr?.number,
+        title: pr?.title,
+        url: pr?.url,
+        draft: pr?.isDraft,
+        merge_state: mergeState,
+      },
+    };
+  } catch (error) {
+    return {
+      id: "version_packages_pr",
+      status: "warn",
+      message: "Could not inspect the Version Packages PR with gh pr list.",
+      details: { error: releaseErrorMessage(error) },
+    };
+  }
+}
+
+function releaseVersionPackagesPrOverride(value: string): ReleaseDoctorCheck {
+  if (value === "none") {
+    return {
+      id: "version_packages_pr",
+      status: "ok",
+      message: "No open Version Packages PR is waiting for npm publish.",
+    };
+  }
+  const match = /^open:(\d+):([A-Z_]+)$/.exec(value);
+  if (match !== null) {
+    const number = Number(match[1]);
+    const mergeState = match[2] ?? "UNKNOWN";
+    const ready = mergeState === "CLEAN" || mergeState === "HAS_HOOKS";
+    return {
+      id: "version_packages_pr",
+      status: ready ? "ok" : "warn",
+      message: ready
+        ? `Version Packages PR #${number} is open and mergeable.`
+        : `Version Packages PR #${number} needs attention before npm publish.`,
+      details: { number, merge_state: mergeState, draft: false },
+    };
+  }
+  return {
+    id: "version_packages_pr",
+    status: "warn",
+    message: "Could not parse OSSTACK_TEST_RELEASE_VERSION_PR.",
+    details: { value },
+  };
+}
+
+async function releaseKnowledgeCloudWorkflowCheck(): Promise<ReleaseDoctorCheck> {
+  const override = process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"];
+  if (override !== undefined) return releaseKnowledgeCloudWorkflowOverride(override);
+  try {
+    const { stdout: workflows } = await execFileAsync("gh", ["workflow", "list", "--all"], { timeout: 10_000 });
+    const workflowLine = workflows.split(/\r?\n/).find((line) => line.startsWith("Knowledge Cloud Deploy\t"));
+    if (workflowLine === undefined) {
+      return {
+        id: "knowledge_cloud_workflow",
+        status: "error",
+        message: "Knowledge Cloud Deploy workflow is missing.",
+      };
+    }
+    const active = workflowLine.split(/\t/)[1] === "active";
+    if (!active) {
+      return {
+        id: "knowledge_cloud_workflow",
+        status: "error",
+        message: "Knowledge Cloud Deploy workflow is not active.",
+        details: { workflow: workflowLine },
+      };
+    }
+    const { stdout: runs } = await execFileAsync("gh", [
+      "run",
+      "list",
+      "--workflow",
+      "Knowledge Cloud Deploy",
+      "--limit",
+      "1",
+      "--json",
+      "databaseId,status,conclusion,displayTitle,url,headBranch",
+    ], { timeout: 10_000 });
+    const parsed = JSON.parse(runs) as Array<{
+      databaseId?: number;
+      status?: string;
+      conclusion?: string;
+      displayTitle?: string;
+      url?: string;
+      headBranch?: string;
+    }>;
+    const latest = parsed[0];
+    if (latest === undefined) {
+      return {
+        id: "knowledge_cloud_workflow",
+        status: "warn",
+        message: "Knowledge Cloud Deploy workflow is active but has no recorded validation runs.",
+      };
+    }
+    const success = latest.status === "completed" && latest.conclusion === "success";
+    return {
+      id: "knowledge_cloud_workflow",
+      status: success ? "ok" : "warn",
+      message: success
+        ? `Latest Knowledge Cloud deploy validation succeeded: run ${latest.databaseId ?? "unknown"}.`
+        : `Latest Knowledge Cloud deploy validation is not successful: run ${latest.databaseId ?? "unknown"}.`,
+      details: {
+        run_id: latest.databaseId,
+        status: latest.status,
+        conclusion: latest.conclusion,
+        title: latest.displayTitle,
+        branch: latest.headBranch,
+        url: latest.url,
+      },
+    };
+  } catch (error) {
+    return {
+      id: "knowledge_cloud_workflow",
+      status: "warn",
+      message: "Could not inspect Knowledge Cloud Deploy workflow with gh.",
+      details: { error: releaseErrorMessage(error) },
+    };
+  }
+}
+
+function releaseKnowledgeCloudWorkflowOverride(value: string): ReleaseDoctorCheck {
+  if (value === "ok") {
+    return {
+      id: "knowledge_cloud_workflow",
+      status: "ok",
+      message: "Latest Knowledge Cloud deploy validation succeeded.",
+      details: { status: "completed", conclusion: "success" },
+    };
+  }
+  if (value === "missing") {
+    return {
+      id: "knowledge_cloud_workflow",
+      status: "error",
+      message: "Knowledge Cloud Deploy workflow is missing.",
+    };
+  }
+  if (value === "warn" || value === "error") {
+    return {
+      id: "knowledge_cloud_workflow",
+      status: value,
+      message: "Knowledge Cloud Deploy workflow needs attention.",
+    };
+  }
+  return {
+    id: "knowledge_cloud_workflow",
+    status: "warn",
+    message: "Could not parse OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW.",
+    details: { value },
   };
 }
 
@@ -952,6 +1150,7 @@ function releaseDoctorNextSteps(options: {
   knowledgeCloudDeploy: boolean;
   githubAuth: ReleaseDoctorCheck;
   secrets: ReleaseDoctorCheck;
+  checks: ReleaseDoctorCheck[];
 }): string[] {
   const steps: string[] = [];
   if (options.githubAuth.status === "error") {
@@ -963,6 +1162,17 @@ function releaseDoctorNextSteps(options: {
   }
   if (Array.isArray(missing) && missing.includes("FLY_API_TOKEN")) {
     steps.push("Add repository secret FLY_API_TOKEN before running Knowledge Cloud deploy=true.");
+  }
+  const versionPr = options.checks.find((check) => check.id === "version_packages_pr");
+  if ((options.target === "all" || options.target === "npm") && versionPr?.status === "warn") {
+    const number = typeof versionPr.details?.["number"] === "number" ? ` #${versionPr.details["number"]}` : "";
+    steps.push(`Review Version Packages PR${number}; it is not currently clean for npm publish.`);
+  }
+  const knowledgeWorkflow = options.checks.find((check) => check.id === "knowledge_cloud_workflow");
+  if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeWorkflow?.status === "error") {
+    steps.push("Restore the Knowledge Cloud Deploy workflow before running deploy=true.");
+  } else if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeWorkflow?.status === "warn") {
+    steps.push("Review the latest Knowledge Cloud Deploy workflow run before running deploy=true.");
   }
   if ((options.target === "all" || options.target === "npm") && options.npmPublish) {
     steps.push("NPM publish path is ready for the release workflow.");
