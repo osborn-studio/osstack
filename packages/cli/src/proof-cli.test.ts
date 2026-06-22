@@ -45,6 +45,7 @@ describe("proof CLI", () => {
       expect.objectContaining({ path: "report.md", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
       expect.objectContaining({ path: "scorecard.html", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
       expect.objectContaining({ path: "loop-state.json", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
+      expect.objectContaining({ path: "agent-runtime.json", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
       expect.objectContaining({ path: "governance-results.json", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
       expect.objectContaining({ path: "knowledge-results.json", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
     ]));
@@ -276,7 +277,20 @@ describe("proof CLI", () => {
     const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
     await expect(readFile(join(proofDir, "events.jsonl"), "utf-8")).resolves.toContain("loop.verify.done");
     await expect(readFile(join(proofDir, "report.md"), "utf-8")).resolves.toContain("## Verify Results");
+    await expect(readFile(join(proofDir, "report.md"), "utf-8")).resolves.toContain("subprocess/login-reuse");
     await expect(readFile(join(proofDir, "policy-decision.json"), "utf-8")).resolves.toContain("matched code.test capability");
+    const agentRuntime = JSON.parse(await readFile(join(proofDir, "agent-runtime.json"), "utf-8")) as {
+      status: string;
+      agents: Array<{ agent_id: string; auth_mode: string; roles: string[] }>;
+    };
+    expect(agentRuntime).toMatchObject({
+      status: "recorded",
+      agents: [expect.objectContaining({
+        agent_id: "codex-cli",
+        auth_mode: "subprocess/login-reuse",
+        roles: ["coding", "test-verify", "reviewer", "release/proof"],
+      })],
+    });
     const verifyResults = JSON.parse(await readFile(join(proofDir, "verify-results.json"), "utf-8")) as {
       status: string;
       results: Array<{ task_id: string; pass: boolean; reviewer_agent_id: string }>;

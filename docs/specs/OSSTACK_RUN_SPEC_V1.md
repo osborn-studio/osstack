@@ -121,8 +121,11 @@ A proof pack MUST include:
 - `loop-state.json`
 - `events.jsonl`
 - `policy-decision.json`
+- `agent-runtime.json`
 - `verify-results.json`
 - `knowledge-results.json`
+
+`agent-runtime.json` MUST record the selected agent ids, their auth/invocation mode, role tags, and the plan event sequences that justify the entry.
 
 A proof pack SHOULD include `worktree-status.json` when worktree evidence is available. Every artifact listed in `manifest.json` MUST include a sha256 checksum and byte count.
 

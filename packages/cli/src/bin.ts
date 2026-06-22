@@ -10,7 +10,7 @@ import { dirname, extname, isAbsolute, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
-import { defaultAdapters } from "@osstack/agents";
+import { agentAuthMode, defaultAdapters, rolesForCapabilityKinds } from "@osstack/agents";
 import {
   getCompliancePack,
   listCompliancePacks,
@@ -493,8 +493,8 @@ async function listLocalAgentProfiles(): Promise<Array<{
       id: adapter.id,
       display_name: adapter.display_name,
       cost_tier: adapter.cost_tier,
-      auth_mode: authModeForAgent(adapter.id),
-      roles: rolesForCapabilities(capabilities.map((capability) => capability.kind)),
+      auth_mode: agentAuthMode(adapter.id),
+      roles: rolesForCapabilityKinds(capabilities.map((capability) => capability.kind)),
       capabilities: capabilities.map((capability) => ({
         id: capability.id,
         kind: capability.kind,
@@ -506,32 +506,13 @@ async function listLocalAgentProfiles(): Promise<Array<{
   }));
 }
 
-function rolesForCapabilities(kinds: string[]): string[] {
-  const roles: string[] = [];
-  const has = (prefixOrKind: string) => kinds.some((kind) => kind === prefixOrKind || kind.startsWith(`${prefixOrKind}.`));
-  if (kinds.some((kind) => ["code.write", "code.refactor", "code.debug"].includes(kind))) roles.push("coding");
-  if (kinds.some((kind) => ["code.test", "verify.alignment", "verify.acceptance", "release.verify", "release.check"].includes(kind))) roles.push("test-verify");
-  if (kinds.some((kind) => ["code.review", "review.code", "design.review"].includes(kind))) roles.push("reviewer");
-  if (has("design")) roles.push("designer");
-  if (kinds.some((kind) => ["design.prd", "design.architecture", "research.ml"].includes(kind))) roles.push("product/planning");
-  if (kinds.some((kind) => ["release.verify", "release.check", "code.review", "review.code"].includes(kind))) roles.push("release/proof");
-  return roles;
-}
-
-function authModeForAgent(agentId: string): string {
-  if (agentId === "codex-cli") return "subprocess/login-reuse";
-  if (agentId === "claude-code" || agentId === "claude-design") return "sdk/api-key";
-  if (agentId === "google-stitch") return "connector/api-key";
-  return "local";
-}
-
 function printAgentScorecard(scorecard: ReturnType<typeof getAgentScorecard>): void {
   console.log(`${scorecard.agent_id}`);
   console.log(`  runs=${scorecard.total_runs} completed=${scorecard.completed_runs} failed=${scorecard.failed_runs} success=${Math.round(scorecard.success_rate * 100)}%`);
   console.log(`  avg_duration_ms=${scorecard.avg_duration_ms ?? "unknown"} cost_tier=${scorecard.cost_tier} fit=${scorecard.capability_fit}`);
   const adapter = defaultAdapters().find((candidate) => candidate.id === scorecard.agent_id);
   const scorecardKinds = scorecard.best_task_kinds.map((kind) => kind.kind);
-  const roles = rolesForCapabilities(adapter?.capabilities().map((capability) => capability.kind) ?? scorecardKinds);
+  const roles = rolesForCapabilityKinds(adapter?.capabilities().map((capability) => capability.kind) ?? scorecardKinds);
   if (roles.length > 0) console.log(`  roles=${roles.join(",")}`);
   console.log(`  recent_failures=${scorecard.recent_failures}`);
   if (scorecard.best_task_kinds.length > 0) {
@@ -1740,6 +1721,7 @@ async function writeProofPack(
   const proofDir = join(outputDir, `osstack-proof-${safeFileSegment(artifactId)}`);
   const scorecard = createLoopStateScorecardFromState(state);
   const policyDecision = createPolicyDecisionEvidence(events);
+  const agentRuntime = createAgentRuntimeEvidence(events);
   const verifyResults = createVerifyResultsEvidence(scorecard, events);
   const worktreeStatus = createWorktreeStatusEvidence(events);
   const artifacts = [
@@ -1749,6 +1731,7 @@ async function writeProofPack(
     { path: "loop-state.json", content: `${JSON.stringify(state, null, 2)}\n` },
     { path: "events.jsonl", content: events.map((event) => JSON.stringify(event)).join("\n") + (events.length > 0 ? "\n" : "") },
     { path: "policy-decision.json", content: `${JSON.stringify(policyDecision, null, 2)}\n` },
+    { path: "agent-runtime.json", content: `${JSON.stringify(agentRuntime, null, 2)}\n` },
     { path: "verify-results.json", content: `${JSON.stringify(verifyResults, null, 2)}\n` },
     { path: "worktree-status.json", content: `${JSON.stringify(worktreeStatus, null, 2)}\n` },
     { path: "governance-results.json", content: `${JSON.stringify(governance, null, 2)}\n` },
@@ -1764,6 +1747,7 @@ async function writeProofPack(
           manifest: { artifacts: artifacts.map((artifact) => ({ path: artifact.path, sha256: sha256(artifact.content) })) },
           verify: verifyResults,
           policy: policyDecision,
+          agent_runtime: agentRuntime,
           governance,
           worktree: worktreeStatus,
           knowledge,
@@ -2213,7 +2197,14 @@ function offKnowledgeEvidence(): KnowledgeProofEvidence {
 
 function createPolicyDecisionEvidence(events: LoopEvent[]): {
   status: "recorded" | "unknown";
-  decisions?: Array<{ task_id: string; agent_id: string; reason: string; event_seq: number }>;
+  decisions?: Array<{
+    task_id: string;
+    agent_id: string;
+    auth_mode: string;
+    roles: string[];
+    reason: string;
+    event_seq: number;
+  }>;
   reason?: string;
 } {
   const decisions = events
@@ -2221,6 +2212,8 @@ function createPolicyDecisionEvidence(events: LoopEvent[]): {
     .map((event) => ({
       task_id: stringEventPayload(event, "task_id"),
       agent_id: stringEventPayload(event, "agent_id"),
+      auth_mode: agentAuthMode(stringEventPayload(event, "agent_id")),
+      roles: rolesForAgentId(stringEventPayload(event, "agent_id")),
       reason: stringEventPayload(event, "routing_reason"),
       event_seq: event.seq,
     }));
@@ -2231,6 +2224,44 @@ function createPolicyDecisionEvidence(events: LoopEvent[]): {
     };
   }
   return { status: "recorded", decisions };
+}
+
+function createAgentRuntimeEvidence(events: LoopEvent[]): {
+  status: "recorded" | "unknown";
+  agents?: Array<{
+    agent_id: string;
+    auth_mode: string;
+    roles: string[];
+    plan_event_seqs: number[];
+  }>;
+  reason?: string;
+} {
+  const byAgent = new Map<string, number[]>();
+  for (const event of events) {
+    if (event.type !== "loop.plan.done") continue;
+    const agentId = stringEventPayload(event, "agent_id");
+    byAgent.set(agentId, [...(byAgent.get(agentId) ?? []), event.seq]);
+  }
+  if (byAgent.size === 0) {
+    return {
+      status: "unknown",
+      reason: "No loop.plan.done event evidence found.",
+    };
+  }
+  return {
+    status: "recorded",
+    agents: [...byAgent.entries()].map(([agentId, seqs]) => ({
+      agent_id: agentId,
+      auth_mode: agentAuthMode(agentId),
+      roles: rolesForAgentId(agentId),
+      plan_event_seqs: seqs,
+    })),
+  };
+}
+
+function rolesForAgentId(agentId: string): string[] {
+  const adapter = defaultAdapters().find((candidate) => candidate.id === agentId);
+  return rolesForCapabilityKinds(adapter?.capabilities().map((capability) => capability.kind) ?? []);
 }
 
 function createVerifyResultsEvidence(

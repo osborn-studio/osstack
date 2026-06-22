@@ -88,7 +88,7 @@ describe("report CLI", () => {
     expect(exitCode).toBe(0);
     const output = logs.join("\n");
     expect(output).toContain("## Policy Decisions");
-    expect(output).toContain("cli-report-task | codex-cli | matched code.test capability");
+    expect(output).toContain("cli-report-task | codex-cli | subprocess/login-reuse | coding, test-verify, reviewer, release/proof | matched code.test capability");
     expect(output).toContain("## Verify Results");
     expect(output).toContain("cli-report-task | pass | 1 | local-verifier | Verifier passed.");
     expect(output).toContain("## Events Timeline");

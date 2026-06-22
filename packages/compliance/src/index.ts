@@ -20,6 +20,7 @@ export interface ProofEvidence {
   manifest?: unknown;
   verify?: unknown;
   policy?: unknown;
+  agent_runtime?: unknown;
   governance?: unknown;
   worktree?: unknown;
   pr?: unknown;

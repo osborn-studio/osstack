@@ -1,3 +1,4 @@
+import { agentAuthMode, defaultAdapters, rolesForCapabilityKinds } from "@osstack/agents";
 import type { CompletedTask, LoopEvent, LoopState, Task } from "./types.js";
 
 export interface LoopStateReportSummary {
@@ -46,6 +47,8 @@ export interface LoopStateReportOptions {
 export interface LoopReportPolicyDecision {
   task_id: string;
   agent_id: string;
+  auth_mode: string;
+  roles: string[];
   reason: string;
 }
 
@@ -443,9 +446,9 @@ function renderTasks(tasks: Task[]): string[] {
 function renderPolicyDecisions(items: LoopReportPolicyDecision[]): string[] {
   if (items.length === 0) return ["- None"];
   return [
-    "| Task | Agent | Reason |",
-    "| --- | --- | --- |",
-    ...items.map((item) => `| ${item.task_id} | ${item.agent_id} | ${item.reason} |`),
+    "| Task | Agent | Auth mode | Roles | Reason |",
+    "| --- | --- | --- | --- | --- |",
+    ...items.map((item) => `| ${item.task_id} | ${item.agent_id} | ${item.auth_mode} | ${item.roles.join(", ") || "unknown"} | ${item.reason} |`),
   ];
 }
 
@@ -495,8 +498,15 @@ function derivePolicyDecisions(events: LoopEvent[]): LoopReportPolicyDecision[] 
     .map((event) => ({
       task_id: stringPayload(event, "task_id"),
       agent_id: stringPayload(event, "agent_id"),
+      auth_mode: agentAuthMode(stringPayload(event, "agent_id")),
+      roles: rolesForAgent(stringPayload(event, "agent_id")),
       reason: stringPayload(event, "routing_reason"),
     }));
+}
+
+function rolesForAgent(agentId: string): string[] {
+  const adapter = defaultAdapters().find((candidate) => candidate.id === agentId);
+  return rolesForCapabilityKinds(adapter?.capabilities().map((capability) => capability.kind) ?? []);
 }
 
 function deriveVerifyResults(events: LoopEvent[]): LoopReportVerifyResult[] {

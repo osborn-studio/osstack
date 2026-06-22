@@ -15,6 +15,7 @@ import { DeepSeekVerifyAdapter } from "./adapters/ds-verify.js";
 import { GoogleStitchAdapter } from "./adapters/google-stitch.js";
 
 export * from "./base.js";
+export * from "./metadata.js";
 export { ClaudeCodeAdapter } from "./adapters/claude-code.js";
 export { CodexCliAdapter } from "./adapters/codex-cli.js";
 export { ClaudeDesignAdapter } from "./adapters/claude-design.js";

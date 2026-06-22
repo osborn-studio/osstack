@@ -178,6 +178,8 @@ describe("loop state report", () => {
     expect(report.policy_decisions).toContainEqual(expect.objectContaining({
       task_id: "task-event-rich",
       agent_id: "codex-cli",
+      auth_mode: "subprocess/login-reuse",
+      roles: ["coding", "test-verify", "reviewer", "release/proof"],
       reason: "matched code.test capability",
     }));
     expect(report.worktree_status).toContainEqual(expect.objectContaining({
@@ -193,7 +195,7 @@ describe("loop state report", () => {
     const markdown = renderLoopStateReportMarkdown(report);
     expect(markdown).toContain("- Conformance: L4 Audited");
     expect(markdown).toContain("## Policy Decisions");
-    expect(markdown).toContain("task-event-rich | codex-cli | matched code.test capability");
+    expect(markdown).toContain("task-event-rich | codex-cli | subprocess/login-reuse | coding, test-verify, reviewer, release/proof | matched code.test capability");
     expect(markdown).toContain("## Verify Results");
     expect(markdown).toContain("task-event-rich | pass | 1 | local-verifier | Verifier passed.");
     expect(markdown).toContain("## Worktree Status");
