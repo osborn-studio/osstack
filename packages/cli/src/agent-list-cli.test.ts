@@ -34,8 +34,20 @@ describe("agent list CLI", () => {
     };
     expect(output.agents).toEqual(expect.arrayContaining([
       expect.objectContaining({
+        id: "claude-cli",
+        roles: expect.arrayContaining(["coding", "test-verify", "reviewer", "release/proof"]),
+        auth_mode: "subprocess/login-reuse",
+        capabilities: expect.arrayContaining([expect.objectContaining({ kind: "code.write" })]),
+      }),
+      expect.objectContaining({
         id: "codex-cli",
-        roles: expect.arrayContaining(["coding", "test-verify", "reviewer"]),
+        roles: expect.arrayContaining(["coding", "test-verify", "reviewer", "release/proof"]),
+        auth_mode: "subprocess/login-reuse",
+        capabilities: expect.arrayContaining([expect.objectContaining({ kind: "code.write" })]),
+      }),
+      expect.objectContaining({
+        id: "opencode-cli",
+        roles: expect.arrayContaining(["coding", "test-verify", "reviewer", "release/proof"]),
         auth_mode: "subprocess/login-reuse",
         capabilities: expect.arrayContaining([expect.objectContaining({ kind: "code.write" })]),
       }),

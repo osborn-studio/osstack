@@ -41,7 +41,7 @@ It is **not** a standalone product. Hermes owns messaging, cron, dashboard, kanb
 |---|---|
 | [`@osstack/cli`](packages/cli) | `osstack` binary |
 | [`@osstack/core`](packages/core) | orchestrator / lifecycle / policy / memory / learning / privacy / observability / kg |
-| [`@osstack/agents`](packages/agents) | sub-agent adapters (claude-code, codex-cli) |
+| [`@osstack/agents`](packages/agents) | sub-agent adapters (claude-cli, codex-cli, opencode-cli, claude-code) |
 | [`@osstack/hermes-adapter`](packages/hermes-adapter) | Hermes Run Adapter Contract impl |
 | [`@osstack/skills`](packages/skills) | lifecycle skill templates + V1 shim |
 | [`@osstack/plugins`](packages/plugins) | 7 plugin slots |
@@ -145,10 +145,11 @@ node packages/cli/dist/bin.js loop doctor --workspace "$PWD"
 node packages/cli/dist/bin.js loop doctor --workspace "$PWD" --daemon --json
 ```
 
-Use `--agent <id>` to execute each task through a registered adapter such as `codex-cli` or `claude-code`. The adapter receives the task prompt plus `repo_path` in its context and streams Hermes run events back into the loop result:
+Use `--agent <id>` to execute each task through a registered adapter such as `claude-cli`, `codex-cli`, `opencode-cli`, or `claude-code`. The adapter receives the task prompt plus `repo_path` in its context and streams Hermes run events back into the loop result. By default, osstack's CLI adapters reuse the user's locally authenticated CLI session and do not store model API keys; SDK or connector adapters remain explicit opt-ins when a provider key is required.
 
 ```bash
-node packages/cli/dist/bin.js loop run --source task_queue --agent codex-cli --verify "pnpm test"
+node packages/cli/dist/bin.js agent list
+node packages/cli/dist/bin.js loop run --source task_queue --agent claude-cli --verify "pnpm test"
 ```
 
 Use `--auto-agent` when you want the loop to choose the maker automatically. The router finds adapters that advertise the task capability, then the policy engine ranks them by cost, exact capability fit, and available run history:

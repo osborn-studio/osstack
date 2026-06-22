@@ -17,7 +17,9 @@ export function rolesForCapabilityKinds(kinds: readonly string[]): string[] {
 }
 
 export function agentAuthMode(agentId: string): AgentAuthMode {
-  if (agentId === "codex-cli") return "subprocess/login-reuse";
+  if (agentId === "claude-cli" || agentId === "codex-cli" || agentId === "opencode-cli") {
+    return "subprocess/login-reuse";
+  }
   if (agentId === "claude-code" || agentId === "claude-design") return "sdk/api-key";
   if (agentId === "google-stitch") return "connector/api-key";
   return "local";
