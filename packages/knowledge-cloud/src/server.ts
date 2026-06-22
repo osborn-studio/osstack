@@ -280,7 +280,7 @@ async function routeKnowledgeCloudRequest(
       sendJson(res, 400, { error: "query is required" });
       return;
     }
-    const limit = numberField(body, "limit") ?? 5;
+    const limit = searchLimitField(body);
     const tenantId = tenantIdField(body);
     const authorized = tenantId === undefined ? undefined : isAuthorizedPrivateRequest(options, req, tenantId);
     const packs = [
@@ -567,6 +567,12 @@ function auditLimitField(value: unknown): number | undefined {
   const limit = numberField(value, "limit");
   if (limit === undefined) return undefined;
   return Math.max(1, Math.min(100, Math.trunc(limit)));
+}
+
+function searchLimitField(value: unknown): number {
+  const limit = numberField(value, "limit");
+  if (limit === undefined) return 5;
+  return Math.max(1, Math.min(50, Math.trunc(limit)));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

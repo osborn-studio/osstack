@@ -123,6 +123,24 @@ describe("Knowledge Cloud HTTP service", () => {
     });
   });
 
+  it("clamps search limits to production-safe bounds", async () => {
+    const url = await startCloud({
+      packs: Array.from({ length: 60 }, (_value, index) => memorySearchPack(index + 1)),
+    });
+
+    const negativeLimit = await fetchJson(`${url}/v1/search`, {
+      query: "osstack limit clamp",
+      limit: -5,
+    }) as { results: unknown[] };
+    expect(negativeLimit.results).toHaveLength(1);
+
+    const hugeLimit = await fetchJson(`${url}/v1/search`, {
+      query: "osstack limit clamp",
+      limit: 999,
+    }) as { results: unknown[] };
+    expect(hugeLimit.results).toHaveLength(50);
+  });
+
   it("serves tenant private packs only to authorized matching tenants", async () => {
     const packs = await officialPacks();
     const privatePack = teamPack();
@@ -760,6 +778,26 @@ function teamPack(
         tags: ["private", "release", "approval"],
       }],
       ...overrides,
+    },
+  };
+}
+
+function memorySearchPack(index: number): KnowledgePack {
+  return {
+    path: `memory://search-limit/${index}`,
+    manifest: {
+      id: `osstack-core/search-limit-${index}`,
+      version: "2026.06.22",
+      name: `Search Limit ${index}`,
+      license: "Osstack-native",
+      source_kind: "osstack_native",
+      quality_score: 90,
+      scope: "official",
+      chunks: [{
+        chunk_id: `search-limit-${index}`,
+        title: `Search Limit ${index}`,
+        body: "Osstack limit clamp guidance for Knowledge Cloud search result bounds.",
+      }],
     },
   };
 }
