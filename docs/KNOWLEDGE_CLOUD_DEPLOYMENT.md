@@ -70,5 +70,6 @@ If the cloud endpoint is unavailable, osstack knowledge search fails open to cac
 - Keep official packs Osstack-native and versioned.
 - Do not publish raw upstream knowledge mirrors.
 - Add private packs through the `/v1/private-packs` path or tenant-specific deployment config.
+- Set `OSSTACK_KNOWLEDGE_PRIVATE_TOKEN` for deployments that expose team/private packs; private sync/search requests must send `Authorization: Bearer <token>` and the matching `tenant_id`.
 - Persist feedback before using it for quality scoring.
 - Add object storage/Postgres/vector search when the in-memory MVP no longer fits the pack volume.

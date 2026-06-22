@@ -43,8 +43,19 @@ describe("osstack-knowledge-cloud bin", () => {
         expect(output).toMatchObject({
             packs: 6,
             private_packs: 0,
+            private_auth_required: false,
         });
         expect(output.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
+    });
+    it("reports private auth when a private token is configured", async () => {
+        process.env["OSSTACK_KNOWLEDGE_CLOUD_ONCE"] = "1";
+        const exitCode = await main(["--port", "0", "--private-token", "kst_private_test", "--json"]);
+        expect(exitCode).toBe(0);
+        expect(JSON.parse(logs.join("\n"))).toMatchObject({
+            packs: 6,
+            private_packs: 0,
+            private_auth_required: true,
+        });
     });
 });
 //# sourceMappingURL=bin.test.js.map

@@ -9,19 +9,21 @@ export async function main(argv = process.argv.slice(2)) {
         console.log(`osstack-knowledge-cloud
 
 Usage:
-  osstack-knowledge-cloud [--host H] [--port N] [--official-index P] [--private-pack P] [--json]
+  osstack-knowledge-cloud [--host H] [--port N] [--official-index P] [--private-pack P] [--private-token T] [--json]
 
 Options:
   --host H              Host to bind. Default: 127.0.0.1
   --port N              Port to bind. Default: 8787
   --official-index P    Official Knowledge Cloud index.json path.
   --private-pack P      Team/private pack manifest path. Repeatable.
+  --private-token T     Bearer token required for /v1/private-packs and private search.
   --json                Print startup metadata as JSON.
 
 Env:
   OSSTACK_KNOWLEDGE_CLOUD_HOST
   OSSTACK_KNOWLEDGE_CLOUD_PORT
   OSSTACK_OFFICIAL_KNOWLEDGE_INDEX
+  OSSTACK_KNOWLEDGE_PRIVATE_TOKEN
 `);
         return 0;
     }
@@ -37,17 +39,20 @@ Env:
         ?? defaultOfficialIndexPath();
     const packs = await loadKnowledgeCloudPacksFromIndex(officialIndex);
     const privatePacks = await Promise.all(flagValues(argv, "--private-pack").map((path) => loadKnowledgePack(path)));
+    const privateAuthToken = flagValue(argv, "--private-token") ?? process.env["OSSTACK_KNOWLEDGE_PRIVATE_TOKEN"];
     const handle = await startKnowledgeCloudServer({
         host,
         port,
         packs,
         ...(privatePacks.length === 0 ? {} : { privatePacks }),
+        ...(privateAuthToken === undefined || privateAuthToken.trim().length === 0 ? {} : { privateAuthToken: privateAuthToken.trim() }),
     });
     const startup = {
         url: handle.url,
         official_index: officialIndex,
         packs: packs.length,
         private_packs: privatePacks.length,
+        private_auth_required: privateAuthToken !== undefined && privateAuthToken.trim().length > 0,
     };
     if (argv.includes("--json")) {
         console.log(JSON.stringify(startup, null, 2));

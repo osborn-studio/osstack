@@ -15,6 +15,7 @@ import {
 export interface KnowledgeCloudOptions {
   packs: KnowledgePack[];
   privatePacks?: KnowledgePack[];
+  privateAuthToken?: string;
   now?: () => string;
   feedbackSink?: (entry: KnowledgeFeedbackEntry) => void | Promise<void>;
 }
@@ -109,9 +110,13 @@ async function routeKnowledgeCloudRequest(
     return;
   }
   if (method === "POST" && url.pathname === "/v1/private-packs") {
-    await readJsonBody(req);
+    const body = await readJsonBody(req);
+    if (!isAuthorizedPrivateRequest(options, req)) {
+      sendJson(res, 401, { error: "private knowledge packs require authorization" });
+      return;
+    }
     sendJson(res, 200, {
-      packs: (options.privatePacks ?? []).map((pack) => pack.manifest),
+      packs: tenantPrivatePacks(options, body).map((pack) => pack.manifest),
     });
     return;
   }
@@ -123,7 +128,10 @@ async function routeKnowledgeCloudRequest(
       return;
     }
     const limit = numberField(body, "limit") ?? 5;
-    const packs = [...options.packs, ...(options.privatePacks ?? [])];
+    const packs = [
+      ...options.packs,
+      ...(isAuthorizedPrivateRequest(options, req) ? tenantPrivatePacks(options, body) : []),
+    ];
     sendJson(res, 200, {
       packs: packs.map((pack) => packSummary(pack.manifest)),
       results: searchKnowledgePacks(packs, query, { limit }),
@@ -149,6 +157,21 @@ async function routeKnowledgeCloudRequest(
     return;
   }
   sendJson(res, 404, { error: "not found" });
+}
+
+function tenantPrivatePacks(options: KnowledgeCloudOptions, body: unknown): KnowledgePack[] {
+  const tenantId = stringField(body, "tenant_id");
+  return (options.privatePacks ?? []).filter((pack) => {
+    const packTenantId = pack.manifest.tenant_id;
+    if (packTenantId === undefined) return tenantId === undefined;
+    return tenantId === packTenantId;
+  });
+}
+
+function isAuthorizedPrivateRequest(options: KnowledgeCloudOptions, req: IncomingMessage): boolean {
+  const token = options.privateAuthToken?.trim();
+  if (token === undefined || token.length === 0) return true;
+  return req.headers.authorization === `Bearer ${token}`;
 }
 
 function packSummary(manifest: KnowledgePackManifest): KnowledgePackSummary {

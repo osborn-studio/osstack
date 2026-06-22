@@ -73,7 +73,7 @@ describe("knowledge packs", () => {
   });
 
   it("uses cloud search when a cloud endpoint returns osstack-native results", async () => {
-    const requests: Array<{ authorization: string | null }> = [];
+    const requests: Array<{ authorization: string | null; body: unknown }> = [];
     const fetchImpl: typeof fetch = async () => new Response(JSON.stringify({
       packs: [{
         id: "osstack-cloud-web",
@@ -100,9 +100,13 @@ describe("knowledge packs", () => {
       cloudUrl: "https://knowledge.osstack.ai",
       authToken: "kst_search_token",
       fetchImpl: async (url, init) => {
-        requests.push({ authorization: new Headers(init?.headers).get("authorization") });
+        requests.push({
+          authorization: new Headers(init?.headers).get("authorization"),
+          body: JSON.parse(String(init?.body ?? "{}")) as unknown,
+        });
         return fetchImpl(url, init);
       },
+      tenantId: "team_alpha",
     });
 
     expect(evidence).toMatchObject({
@@ -111,7 +115,10 @@ describe("knowledge packs", () => {
       packs: [expect.objectContaining({ id: "osstack-cloud-web", source_kind: "osstack_native" })],
       results: [expect.objectContaining({ chunk_id: "chunk-cloud-ui" })],
     });
-    expect(requests).toEqual([{ authorization: "Bearer kst_search_token" }]);
+    expect(requests).toEqual([{
+      authorization: "Bearer kst_search_token",
+      body: { query: "ui guidance", limit: 5, tenant_id: "team_alpha" },
+    }]);
   });
 
   it("fails open from cloud to local packs", async () => {

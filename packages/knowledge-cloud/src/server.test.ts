@@ -83,20 +83,58 @@ describe("Knowledge Cloud HTTP service", () => {
     expect(feedback).toHaveLength(1);
   });
 
-  it("serves tenant private packs separately while including them in search", async () => {
+  it("serves tenant private packs only to authorized matching tenants", async () => {
     const packs = await officialPacks();
     const privatePack = teamPack();
-    const url = await startCloud({ packs, privatePacks: [privatePack] });
+    const url = await startCloud({
+      packs,
+      privatePacks: [privatePack],
+      privateAuthToken: "kst_private_test",
+    });
 
-    const privateResponse = await fetchJson(`${url}/v1/private-packs`, { tenant_id: "team_alpha" });
+    const unauthorized = await fetch(`${url}/v1/private-packs`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ tenant_id: "team_alpha" }),
+    });
+    expect(unauthorized.status).toBe(401);
+
+    const wrongTenant = await fetchJson(
+      `${url}/v1/private-packs`,
+      { tenant_id: "team_beta" },
+      { authorization: "Bearer kst_private_test" },
+    );
+    expect(wrongTenant).toMatchObject({ packs: [] });
+
+    const privateResponse = await fetchJson(
+      `${url}/v1/private-packs`,
+      { tenant_id: "team_alpha" },
+      { authorization: "Bearer kst_private_test" },
+    );
     expect(privateResponse).toMatchObject({
       packs: [expect.objectContaining({ id: "team/private-runbook", source_kind: "internal" })],
     });
 
-    const searchResponse = await fetchJson(`${url}/v1/search`, {
+    const publicSearch = await fetchJson(`${url}/v1/search`, {
       query: "private release approval",
       limit: 3,
+      tenant_id: "team_alpha",
     });
+    expect(publicSearch).toMatchObject({
+      results: expect.not.arrayContaining([
+        expect.objectContaining({ pack_id: "team/private-runbook" }),
+      ]),
+    });
+
+    const searchResponse = await fetchJson(
+      `${url}/v1/search`,
+      {
+        query: "private release approval",
+        limit: 3,
+        tenant_id: "team_alpha",
+      },
+      { authorization: "Bearer kst_private_test" },
+    );
     expect(searchResponse).toMatchObject({
       results: expect.arrayContaining([
         expect.objectContaining({
@@ -120,12 +158,16 @@ async function startCloud(options: Parameters<typeof createKnowledgeCloudHandler
   return `http://127.0.0.1:${address.port}`;
 }
 
-async function fetchJson(url: string, body?: unknown): Promise<unknown> {
+async function fetchJson(
+  url: string,
+  body?: unknown,
+  headers: Record<string, string> = {},
+): Promise<unknown> {
   const response = await fetch(url, body === undefined
     ? undefined
     : {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...headers },
       body: JSON.stringify(body),
     });
   expect(response.ok).toBe(true);
@@ -152,6 +194,7 @@ function teamPack(): KnowledgePack {
       source_kind: "internal",
       quality_score: 82,
       scope: "team",
+      tenant_id: "team_alpha",
       taxonomy: ["agent-operations/private-release"],
       chunks: [{
         chunk_id: "private-release",

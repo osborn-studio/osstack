@@ -28,6 +28,10 @@ export function validateKnowledgePackManifest(value) {
     if (scope !== undefined && !["official", "team", "project"].includes(scope)) {
         throw new Error("knowledge pack scope is invalid");
     }
+    const tenantId = optionalString(value, "tenant_id");
+    if (tenantId !== undefined && tenantId.trim().length === 0) {
+        throw new Error("knowledge pack tenant_id must be non-empty");
+    }
     const taxonomy = optionalStringArray(value, "taxonomy");
     const chunksRaw = value["chunks"];
     if (!Array.isArray(chunksRaw))
@@ -63,6 +67,7 @@ export function validateKnowledgePackManifest(value) {
         source_kind: sourceKind,
         quality_score: qualityScore,
         ...(scope === undefined ? {} : { scope: scope }),
+        ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
         ...(taxonomy === undefined ? {} : { taxonomy }),
         ...(generatedAt === undefined ? {} : { generated_at: generatedAt }),
         ...(lastReviewedAt === undefined ? {} : { last_reviewed_at: lastReviewedAt }),
@@ -480,6 +485,7 @@ export async function resolveKnowledgeSearch(options) {
         ...(options.limit === undefined ? {} : { limit: options.limit }),
         ...(options.cloudUrl === undefined ? {} : { cloudUrl: options.cloudUrl }),
         ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+        ...(options.tenantId === undefined ? {} : { tenantId: options.tenantId }),
         ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
     });
 }
@@ -520,7 +526,11 @@ async function cloudKnowledgeEvidence(options) {
         const response = await (options.fetchImpl ?? fetch)(new URL("/v1/search", withTrailingSlash(options.cloudUrl)), {
             method: "POST",
             headers: cloudHeaders(options.authToken),
-            body: JSON.stringify({ query: options.query, limit: options.limit ?? 5 }),
+            body: JSON.stringify({
+                query: options.query,
+                limit: options.limit ?? 5,
+                ...(options.tenantId === undefined ? {} : { tenant_id: options.tenantId }),
+            }),
         });
         if (!response.ok)
             throw new Error(`cloud search failed with HTTP ${response.status}`);

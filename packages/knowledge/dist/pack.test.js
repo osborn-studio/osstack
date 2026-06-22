@@ -73,9 +73,13 @@ describe("knowledge packs", () => {
             cloudUrl: "https://knowledge.osstack.ai",
             authToken: "kst_search_token",
             fetchImpl: async (url, init) => {
-                requests.push({ authorization: new Headers(init?.headers).get("authorization") });
+                requests.push({
+                    authorization: new Headers(init?.headers).get("authorization"),
+                    body: JSON.parse(String(init?.body ?? "{}")),
+                });
                 return fetchImpl(url, init);
             },
+            tenantId: "team_alpha",
         });
         expect(evidence).toMatchObject({
             mode: "cloud",
@@ -83,7 +87,10 @@ describe("knowledge packs", () => {
             packs: [expect.objectContaining({ id: "osstack-cloud-web", source_kind: "osstack_native" })],
             results: [expect.objectContaining({ chunk_id: "chunk-cloud-ui" })],
         });
-        expect(requests).toEqual([{ authorization: "Bearer kst_search_token" }]);
+        expect(requests).toEqual([{
+                authorization: "Bearer kst_search_token",
+                body: { query: "ui guidance", limit: 5, tenant_id: "team_alpha" },
+            }]);
     });
     it("fails open from cloud to local packs", async () => {
         const path = join(tmp, "pack.json");

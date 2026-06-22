@@ -15,6 +15,7 @@ await writeFile(privatePackPath, JSON.stringify({
   source_kind: "internal",
   quality_score: 82,
   scope: "team",
+  tenant_id: "team_smoke",
   taxonomy: ["agent-operations/private-release"],
   chunks: [{
     chunk_id: "private-release-approval",
@@ -26,7 +27,15 @@ await writeFile(privatePackPath, JSON.stringify({
 
 const child = spawn(
   process.execPath,
-  ["packages/knowledge-cloud/dist/bin.js", "--port", "0", "--private-pack", privatePackPath],
+  [
+    "packages/knowledge-cloud/dist/bin.js",
+    "--port",
+    "0",
+    "--private-pack",
+    privatePackPath,
+    "--private-token",
+    "kst_smoke_private",
+  ],
   {
     cwd: process.cwd(),
     env: { ...process.env },
@@ -58,7 +67,18 @@ try {
     "/v1/sync must include official proof guidance manifest",
   );
 
-  const privatePacks = await fetchJson(`${url}/v1/private-packs`, { tenant_id: "team_smoke" });
+  const unauthorizedPrivate = await fetch(`${url}/v1/private-packs`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ tenant_id: "team_smoke" }),
+  });
+  assert(unauthorizedPrivate.status === 401, "/v1/private-packs must protect private packs when token is configured");
+
+  const privatePacks = await fetchJson(
+    `${url}/v1/private-packs`,
+    { tenant_id: "team_smoke" },
+    { authorization: "Bearer kst_smoke_private" },
+  );
   assert(Array.isArray(privatePacks.packs), "/v1/private-packs must return packs");
   assert(
     privatePacks.packs.some((item) => item.id === "team/private-release" && item.scope === "team"),
@@ -79,6 +99,9 @@ try {
   const privateSearch = await fetchJson(`${url}/v1/search`, {
     query: "private release approval rollback owner",
     limit: 3,
+    tenant_id: "team_smoke",
+  }, {
+    authorization: "Bearer kst_smoke_private",
   });
   assert(
     privateSearch.results.some((item) => item.pack_id === "team/private-release"
@@ -136,12 +159,12 @@ function waitForStartup() {
   });
 }
 
-async function fetchJson(url, body) {
+async function fetchJson(url, body, headers = {}) {
   const response = await fetch(url, body === undefined
     ? undefined
     : {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...headers },
       body: JSON.stringify(body),
     });
   const text = await response.text();
