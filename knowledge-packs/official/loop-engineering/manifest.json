@@ -10,6 +10,16 @@
   "generated_at": "2026-06-22T00:00:00.000Z",
   "last_reviewed_at": "2026-06-22T00:00:00.000Z",
   "source_attribution": ["osstack-native product knowledge"],
+  "source_provenance": [
+    {
+      "source_id": "osstack-run-spec-v1",
+      "path": "docs/specs/OSSTACK_RUN_SPEC_V1.md",
+      "sha256": "47537d339e768563d12fd4614bfc8dd5efe2037bd7c52f43fa3325319deea9eb",
+      "license": "Osstack-native",
+      "scope": "official",
+      "imported_at": "2026-06-22T00:00:00.000Z"
+    }
+  ],
   "chunks": [
     {
       "chunk_id": "loop-hot-loop",

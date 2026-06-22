@@ -10,6 +10,16 @@
   "generated_at": "2026-06-22T00:00:00.000Z",
   "last_reviewed_at": "2026-06-22T00:00:00.000Z",
   "source_attribution": ["osstack-native product knowledge"],
+  "source_provenance": [
+    {
+      "source_id": "osstack-report-templates-and-outputs",
+      "path": "docs/product/07_REPORT_TEMPLATES_AND_OUTPUTS.md",
+      "sha256": "74b613fd7225d3eae406f1bde5b33c8e570e4638fd1a8d1ea5ed736d0da85b4b",
+      "license": "Osstack-native",
+      "scope": "official",
+      "imported_at": "2026-06-22T00:00:00.000Z"
+    }
+  ],
   "chunks": [
     {
       "chunk_id": "pr-evidence-body",

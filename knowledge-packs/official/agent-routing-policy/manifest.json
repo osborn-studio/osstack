@@ -10,6 +10,16 @@
   "generated_at": "2026-06-22T00:00:00.000Z",
   "last_reviewed_at": "2026-06-22T00:00:00.000Z",
   "source_attribution": ["osstack-native product knowledge"],
+  "source_provenance": [
+    {
+      "source_id": "osstack-product-skills-and-agent-registry",
+      "path": "docs/product/06_SKILLS_AND_AGENT_REGISTRY.md",
+      "sha256": "444fad67a4e00b503b76cb01c5b2a035b58e90d545f54682375394e912a8b9ad",
+      "license": "Osstack-native",
+      "scope": "official",
+      "imported_at": "2026-06-22T00:00:00.000Z"
+    }
+  ],
   "chunks": [
     {
       "chunk_id": "routing-scorecard",

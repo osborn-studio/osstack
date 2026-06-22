@@ -214,9 +214,36 @@ describe("knowledge CLI", () => {
 
     expect(sourcesExitCode).toBe(0);
     expect(JSON.parse(logs.join("\n"))).toMatchObject({
-      pack_id: "project/agent-guide",
-      sources: [expect.objectContaining({ path: "agent-guide.md", scope: "project" })],
+      packs: [expect.objectContaining({
+        pack_id: "project/agent-guide",
+        sources: [expect.objectContaining({ path: "agent-guide.md", scope: "project" })],
+      })],
     });
+  });
+
+  it("lists internal provenance for official knowledge packs", async () => {
+    const exitCode = await main(["knowledge", "sources", "--internal", "--official", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const output = JSON.parse(logs.join("\n")) as {
+      packs: Array<{
+        pack_id: string;
+        version: string;
+        sources: Array<{ source_id: string; path: string; license: string; scope: string }>;
+      }>;
+    };
+    expect(output.packs).toHaveLength(6);
+    const loopPack = output.packs.find((pack) => pack.pack_id === "osstack-core/loop-engineering");
+    expect(loopPack).toMatchObject({
+      version: "2026.06.22",
+      sources: [expect.objectContaining({
+        source_id: "osstack-run-spec-v1",
+        path: "docs/specs/OSSTACK_RUN_SPEC_V1.md",
+        scope: "official",
+        license: "Osstack-native",
+      })],
+    });
+    expect(output.packs.every((pack) => pack.sources.length > 0)).toBe(true);
   });
 
   it("ingests licensed sources into an osstack-native knowledge pack", async () => {

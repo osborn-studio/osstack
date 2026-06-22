@@ -1251,7 +1251,7 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   osstack knowledge pin <pack_id>@<version> [--cache-dir P] [--json]
   osstack knowledge feedback <chunk_id> --useful|--bad [--cloud-url URL] [--cache-dir P] [--json]
   osstack knowledge eval --pack P|--official --fixtures P [--top-k N] [--json]
-  osstack knowledge sources --internal --pack P [--json]
+  osstack knowledge sources --internal --pack P|--official [--json]
 
 Env:
   OSSTACK_KNOWLEDGE_URL  Default Knowledge Cloud base URL
@@ -1681,21 +1681,35 @@ Env:
 
   if (sub === "sources") {
     const packPath = flagValue(args, "--pack");
-    if (packPath === undefined) {
-      console.error("osstack: knowledge sources requires --pack");
+    if (packPath === undefined && !args.includes("--official")) {
+      console.error("osstack: knowledge sources requires --pack or --official");
       return 1;
     }
     if (!args.includes("--internal")) {
       console.error("osstack: knowledge sources requires --internal to show provenance");
       return 1;
     }
-    const pack = await loadKnowledgePack(packPath);
-    const sources = pack.manifest.source_provenance ?? [];
+    const packs = [
+      ...(packPath === undefined ? [] : [await loadKnowledgePack(packPath)]),
+      ...await officialKnowledgePacksIfRequested(args),
+    ];
+    const packSources = packs.map((pack) => ({
+      pack_id: pack.manifest.id,
+      version: pack.manifest.version,
+      sources: pack.manifest.source_provenance ?? [],
+    }));
     if (args.includes("--json")) {
-      console.log(JSON.stringify({ pack_id: pack.manifest.id, sources }, null, 2));
+      console.log(JSON.stringify({ packs: packSources }, null, 2));
     } else {
-      for (const source of sources) {
-        console.log(`${source.source_id} ${source.path} scope=${source.scope} license=${source.license}`);
+      for (const pack of packSources) {
+        console.log(`${pack.pack_id}@${pack.version}`);
+        if (pack.sources.length === 0) {
+          console.log("  no internal provenance recorded");
+          continue;
+        }
+        for (const source of pack.sources) {
+          console.log(`  ${source.source_id} ${source.path} scope=${source.scope} license=${source.license}`);
+        }
       }
     }
     return 0;
