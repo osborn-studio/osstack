@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync } from "node:fs";
-import { readFile, rm } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { main } from "./bin.js";
@@ -93,5 +93,27 @@ describe("osstack-knowledge-cloud bin", () => {
       feedback_log: feedbackLog,
     });
     await expect(readFile(feedbackLog, "utf-8")).resolves.toBe("");
+  });
+
+  it("preloads existing feedback JSONL entries for summaries", async () => {
+    process.env["OSSTACK_KNOWLEDGE_CLOUD_ONCE"] = "1";
+    const feedbackLog = join(tmp, "audit", "feedback.jsonl");
+    await mkdir(join(tmp, "audit"), { recursive: true });
+    await writeFile(feedbackLog, `${JSON.stringify({
+      chunk_id: "proof-checksum-pack",
+      rating: "useful",
+      status: "sent",
+      created_at: "2026-06-22T00:00:00.000Z",
+      tenant_id: "team_alpha",
+      authorized: true,
+    })}\n`, "utf-8");
+
+    const exitCode = await main(["--port", "0", "--feedback-log", feedbackLog, "--json"]);
+
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      feedback_log: feedbackLog,
+      feedback_log_loaded: 1,
+    });
   });
 });

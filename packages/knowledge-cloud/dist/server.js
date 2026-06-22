@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { dirname, join } from "node:path";
 import { loadKnowledgePack, loadKnowledgePackIndex, searchKnowledgePacks, } from "@osstack/knowledge";
 export function createKnowledgeCloudHandler(options) {
-    const feedbackLog = [];
+    const feedbackLog = [...(options.feedbackLog ?? [])];
     return async (req, res) => {
         try {
             await routeKnowledgeCloudRequest({ ...options, feedbackLog }, req, res);

@@ -8,6 +8,15 @@ const tmp = join(tmpdir(), `osstack-knowledge-cloud-smoke-${process.pid}`);
 await mkdir(tmp, { recursive: true });
 const privatePackPath = join(tmp, "team-private-pack.json");
 const feedbackLogPath = join(tmp, "feedback", "feedback.jsonl");
+await mkdir(join(tmp, "feedback"), { recursive: true });
+await writeFile(feedbackLogPath, `${JSON.stringify({
+  chunk_id: "proof-checksum-pack",
+  rating: "bad",
+  status: "sent",
+  created_at: "2026-06-21T00:00:00.000Z",
+  tenant_id: "team_smoke",
+  authorized: true,
+})}\n`, "utf-8");
 await writeFile(privatePackPath, JSON.stringify({
   id: "team/private-release",
   version: "2026.06.22-smoke",
@@ -124,8 +133,9 @@ try {
   const feedbackSummary = await fetchJson(`${url}/v1/feedback/summary`, {
     tenant_id: "team_smoke",
   });
-  assert(feedbackSummary.total === 1, "/v1/feedback/summary must count tenant feedback");
+  assert(feedbackSummary.total === 2, "/v1/feedback/summary must count preloaded and live tenant feedback");
   assert(feedbackSummary.useful === 1, "/v1/feedback/summary must count useful tenant feedback");
+  assert(feedbackSummary.bad === 1, "/v1/feedback/summary must count bad tenant feedback");
   const feedbackLog = await readFile(feedbackLogPath, "utf-8");
   assert(feedbackLog.includes("\"chunk_id\":\"proof-checksum-pack\""), "feedback JSONL must record chunk ids");
   assert(feedbackLog.includes("\"tenant_id\":\"team_smoke\""), "feedback JSONL must record tenant scope");

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 import { realpathSync } from "node:fs";
-import { appendFile, mkdir, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { loadKnowledgePack } from "@osstack/knowledge";
+import { loadKnowledgePack, type KnowledgeFeedbackEntry } from "@osstack/knowledge";
 import { loadKnowledgeCloudPacksFromIndex, startKnowledgeCloudServer } from "./index.js";
 
 export async function main(argv = process.argv.slice(2)): Promise<number> {
@@ -48,6 +48,9 @@ Env:
   const privatePacks = await Promise.all(flagValues(argv, "--private-pack").map((path) => loadKnowledgePack(path)));
   const privateAuthToken = flagValue(argv, "--private-token") ?? process.env["OSSTACK_KNOWLEDGE_PRIVATE_TOKEN"];
   const feedbackLog = flagValue(argv, "--feedback-log") ?? process.env["OSSTACK_KNOWLEDGE_FEEDBACK_LOG"];
+  const feedbackEntries = feedbackLog === undefined || feedbackLog.trim().length === 0
+    ? []
+    : await readFeedbackLog(feedbackLog);
   if (feedbackLog !== undefined && feedbackLog.trim().length > 0) {
     await mkdir(dirname(feedbackLog), { recursive: true });
     await writeFile(feedbackLog, "", { flag: "a" });
@@ -58,6 +61,7 @@ Env:
     packs,
     ...(privatePacks.length === 0 ? {} : { privatePacks }),
     ...(privateAuthToken === undefined || privateAuthToken.trim().length === 0 ? {} : { privateAuthToken: privateAuthToken.trim() }),
+    ...(feedbackEntries.length === 0 ? {} : { feedbackLog: feedbackEntries }),
     ...(feedbackLog === undefined || feedbackLog.trim().length === 0
       ? {}
       : {
@@ -73,7 +77,9 @@ Env:
     packs: packs.length,
     private_packs: privatePacks.length,
     private_auth_required: privateAuthToken !== undefined && privateAuthToken.trim().length > 0,
-    ...(feedbackLog === undefined || feedbackLog.trim().length === 0 ? {} : { feedback_log: feedbackLog }),
+    ...(feedbackLog === undefined || feedbackLog.trim().length === 0
+      ? {}
+      : { feedback_log: feedbackLog, feedback_log_loaded: feedbackEntries.length }),
   };
   if (argv.includes("--json")) {
     console.log(JSON.stringify(startup, null, 2));
@@ -85,6 +91,37 @@ Env:
   await waitForShutdown();
   await handle.close();
   return 0;
+}
+
+async function readFeedbackLog(path: string): Promise<KnowledgeFeedbackEntry[]> {
+  let raw = "";
+  try {
+    raw = await readFile(path, "utf-8");
+  } catch {
+    return [];
+  }
+  const entries: KnowledgeFeedbackEntry[] = [];
+  for (const line of raw.split(/\r?\n/)) {
+    if (line.trim().length === 0) continue;
+    try {
+      const parsed = JSON.parse(line) as unknown;
+      if (isFeedbackEntry(parsed)) entries.push(parsed);
+    } catch {
+    }
+  }
+  return entries;
+}
+
+function isFeedbackEntry(value: unknown): value is KnowledgeFeedbackEntry {
+  if (!isRecord(value)) return false;
+  return typeof value["chunk_id"] === "string"
+    && (value["rating"] === "useful" || value["rating"] === "bad")
+    && (value["status"] === "recorded" || value["status"] === "sent")
+    && typeof value["created_at"] === "string";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function defaultOfficialIndexPath(): string {

@@ -16,6 +16,7 @@ export interface KnowledgeCloudOptions {
   packs: KnowledgePack[];
   privatePacks?: KnowledgePack[];
   privateAuthToken?: string;
+  feedbackLog?: KnowledgeFeedbackEntry[];
   now?: () => string;
   feedbackSink?: (entry: KnowledgeFeedbackEntry) => void | Promise<void>;
 }
@@ -37,7 +38,7 @@ export interface KnowledgeCloudSearchResponse {
 }
 
 export function createKnowledgeCloudHandler(options: KnowledgeCloudOptions) {
-  const feedbackLog: KnowledgeFeedbackEntry[] = [];
+  const feedbackLog: KnowledgeFeedbackEntry[] = [...(options.feedbackLog ?? [])];
   return async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     try {
       await routeKnowledgeCloudRequest({ ...options, feedbackLog }, req, res);
