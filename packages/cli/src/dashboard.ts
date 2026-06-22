@@ -549,6 +549,7 @@ export function renderDashboardHtml(language: DashboardLanguage = dashboardLangu
   th, td { border-bottom:1px solid var(--line); text-align:left; padding:9px 6px; color:#cbd5e1; }
   th { color:var(--muted); font-weight:600; }
   code { display:inline-block; margin-top:4px; padding:2px 5px; border-radius:4px; background:#020617; color:#bae6fd; font-size:11px; }
+  .release-blocker { display:block; margin-top:5px; color:#fca5a5; font-size:11px; line-height:1.35; }
   @media (max-width: 900px) { .grid6, .grid3, .grid2 { grid-template-columns: 1fr; } header { flex-direction:column; } }
 </style>
 </head>
@@ -628,6 +629,10 @@ function metric(label, value, color, pct){
   return '<div class="panel metric"><div class="label">'+label+'</div><div class="value '+color+'">'+value+'</div>'+(pct !== undefined ? '<div class="bar"><div class="fill" style="width:'+pct+'%"></div></div>' : '')+'</div>';
 }
 function statusClass(status){ return status === "done" || status === "completed" ? "ok" : status === "blocked" || status === "failed" ? "err" : status === "running" ? "warn" : "blue"; }
+function releaseBlockersHtml(n){
+  const blockers = Array.isArray(n.blockers) ? n.blockers : [];
+  return blockers.map(b => '<span class="release-blocker">blocker '+esc(b.id)+': '+esc(b.detail)+'</span>').join('');
+}
 const t = ${JSON.stringify(text)};
 async function load(){
   const res = await fetch('/api/dashboard');
@@ -645,7 +650,7 @@ async function load(){
   ].join('');
   document.getElementById('agents').innerHTML = d.agents.map(a => '<div class="row"><span class="dot ok"></span><span><b>'+esc(a.id)+'</b><br><small>'+esc(a.display_name)+' · '+esc(a.cost_tier)+'</small></span></div>').join('');
   document.getElementById('quality').innerHTML = '<div class="row"><div class="quality '+statusClass(d.quality.grade)+'">'+d.quality.grade+'</div><span>'+esc(t.successRate)+' '+Math.round(d.quality.success_rate*100)+'% · '+esc(t.blocked)+' '+d.quality.blocked_cards+'</span></div><div class="list" style="margin-top:12px">'+d.quality.dimensions.map(q => '<div class="row"><span class="tag">'+q.grade+'</span><span>'+esc(q.name)+'<br><small>'+esc(q.detail)+'</small></span></div>').join('')+'</div>';
-  document.getElementById('next').innerHTML = d.next_steps.map(n => '<div class="row"><span class="dot '+statusClass(n.status)+'"></span><span><b>'+esc(n.label)+'</b><br><small>'+esc(n.detail)+'</small>'+(n.command ? '<br><code>'+esc(n.command)+'</code>' : '')+'</span></div>').join('');
+  document.getElementById('next').innerHTML = d.next_steps.map(n => '<div class="row"><span class="dot '+statusClass(n.status)+'"></span><span><b>'+esc(n.label)+'</b><br><small>'+esc(n.detail)+'</small>'+releaseBlockersHtml(n)+(n.command ? '<br><code>'+esc(n.command)+'</code>' : '')+'</span></div>').join('');
   document.getElementById('evidence').innerHTML = [
     '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.reports)+'</b><br><small>'+d.evidence.reports+' markdown report(s)</small></span></div>',
     '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.proofPacks)+'</b><br><small>'+d.evidence.proof_packs+' checksumed proof pack(s)</small></span></div>',

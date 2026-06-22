@@ -175,6 +175,8 @@ describe("dashboard", () => {
     expect(html).toContain('id="scorecards"');
     expect(html).toContain('id="lessons"');
     expect(html).toContain("<code>'+esc(n.command)+'</code>");
+    expect(html).toContain("Array.isArray(n.blockers)");
+    expect(html).toContain("release-blocker");
   });
 
   it("renders cockpit chrome in English and Chinese", () => {
