@@ -230,9 +230,11 @@ Project commands:
                       Product readiness check: loop + agents + next steps
   examples [--json]   Print runnable workflow examples
   guide [--output P]  Print or write the 5-minute quickstart
-  release doctor [--target all|npm|knowledge-cloud] [--json]
+  release doctor [--target all|npm|knowledge-cloud] [--workspace P] [--proof-dir P] [--json]
                       Check publish/deploy prerequisites: GitHub auth, repo
                       secrets, npm auth, and Fly.io deploy readiness
+  release plan [--target all|npm|knowledge-cloud] [--workspace P] [--proof-dir P] [--json]
+                      Generate a blocker-aware publish/deploy runbook
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
   deliver <prompt> [--verify CMD] [--auto-agent] [--worktree]
                       Product entry: task queue -> loop -> report/scorecard/proof
@@ -786,7 +788,7 @@ async function handleReleaseCommand(args: string[]): Promise<number> {
     console.log(`osstack release — publish/deploy readiness
 
   osstack release doctor [--target all|npm|knowledge-cloud] [--workspace P] [--proof-dir P] [--json]
-  osstack release plan [--target all|npm|knowledge-cloud] [--workspace P] [--output P] [--json]
+  osstack release plan [--target all|npm|knowledge-cloud] [--workspace P] [--proof-dir P] [--output P] [--json]
 
 Checks:
   - GitHub CLI authentication for repository operations
@@ -823,8 +825,9 @@ async function handleReleasePlanCommand(args: string[]): Promise<number> {
     return 1;
   }
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
-  const doctor = await releaseDoctor(target, { workspacePath });
-  const plan = releaseActionPlan(doctor);
+  const proofDir = flagValue(args, "--proof-dir");
+  const doctor = await releaseDoctor(target, proofDir === undefined ? { workspacePath } : { workspacePath, proofDir });
+  const plan = releaseActionPlan(doctor, proofDir === undefined ? {} : { proofDir });
   const output = flagValue(args, "--output");
   if (output !== undefined) {
     await mkdir(dirname(output), { recursive: true });
@@ -1548,7 +1551,7 @@ function renderReleaseReadinessReport(result: ReleaseDoctorResult): string {
   ].join("\n");
 }
 
-function releaseActionPlan(result: ReleaseDoctorResult): ReleaseActionPlan {
+function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: string } = {}): ReleaseActionPlan {
   const versionPr = result.checks.find((check) => check.id === "version_packages_pr");
   const versionPrNumber = typeof versionPr?.details?.["number"] === "number"
     ? versionPr.details["number"]
@@ -1585,8 +1588,8 @@ function releaseActionPlan(result: ReleaseDoctorResult): ReleaseActionPlan {
       : []),
   ];
   const validationCommands = [
-    `osstack release doctor --target ${result.target} --output release-readiness.md --json`,
-    "osstack proof validate <run_id> --proof-dir release/osstack-proof-<run_id> --json",
+    `osstack release doctor --target ${result.target}${options.proofDir === undefined ? "" : ` --proof-dir ${options.proofDir}`} --output release-readiness.md --json`,
+    `osstack proof validate <run_id> --proof-dir ${options.proofDir ?? "release/osstack-proof-<run_id>"} --json`,
     ...(result.target === "all" || result.target === "npm"
       ? [
         versionPrNumber === undefined

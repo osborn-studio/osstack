@@ -338,6 +338,45 @@ describe("product entry commands", () => {
     expect(result.validation_commands).toContain("osstack proof validate <run_id> --proof-dir release/osstack-proof-<run_id> --json");
   });
 
+  it("lets release plans validate an explicitly supplied proof directory", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    await writeReleaseProofEvidence(join(tmp, "release", "osstack-proof-latest"), { omitGovernance: true });
+    const explicitProofDir = join(tmp, "custom-proof", "osstack-proof-release-ready");
+    await writeReleaseProofEvidence(explicitProofDir);
+
+    const exitCode = await main([
+      "release",
+      "plan",
+      "--workspace",
+      tmp,
+      "--proof-dir",
+      explicitProofDir,
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ready: boolean;
+      safe_to_execute: boolean;
+      blockers: string[];
+      validation_commands: string[];
+    };
+    expect(result.ready).toBe(true);
+    expect(result.safe_to_execute).toBe(true);
+    expect(result.blockers).not.toContain("Fix missing or malformed proof evidence before publishing or deploying.");
+    expect(result.validation_commands).toContain(
+      `osstack release doctor --target all --proof-dir ${explicitProofDir} --output release-readiness.md --json`,
+    );
+    expect(result.validation_commands).toContain(
+      `osstack proof validate <run_id> --proof-dir ${explicitProofDir} --json`,
+    );
+  });
+
   it("surfaces missing Knowledge Cloud deploy workflow status", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";

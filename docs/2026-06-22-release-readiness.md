@@ -206,7 +206,13 @@ osstack release doctor --output release-readiness.md --json
 osstack release plan --target all --output release-plan.md --json
 ```
 
-该计划会列出 blockers、validation commands、npm publish commands 和 Knowledge Cloud deploy commands。它不会执行发布动作，只生成上线步骤。
+如果要固定某个已审核 proof pack，不依赖 workspace 下的自动发现结果，可以显式传入：
+
+```sh
+osstack release plan --target all --proof-dir release/osstack-proof-<run_id> --output release-plan.md --json
+```
+
+该计划会列出 blockers、validation commands、npm publish commands 和 Knowledge Cloud deploy commands；当传入 `--proof-dir` 时，release readiness 与 proof validate 命令都会绑定同一个证据目录。它不会执行发布动作，只生成上线步骤。
 
 ## 10. 推荐上线步骤
 
