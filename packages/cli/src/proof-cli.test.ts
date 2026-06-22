@@ -49,9 +49,15 @@ describe("proof CLI", () => {
       expect.objectContaining({ path: "agent-runtime.json", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
       expect.objectContaining({ path: "governance-results.json", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
       expect.objectContaining({ path: "knowledge-results.json", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
+      expect.objectContaining({ path: "sha256sums.txt", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
     ]));
     await expect(readFile(join(proofDir, "report.md"), "utf-8")).resolves.toContain("# Osstack Loop Report - cli-proof-loop");
     await expect(readFile(join(proofDir, "scorecard.html"), "utf-8")).resolves.toContain("<!doctype html>");
+    const sha256sums = await readFile(join(proofDir, "sha256sums.txt"), "utf-8");
+    expect(sha256sums).toContain("  report.md\n");
+    expect(sha256sums).toContain("  governance-results.json\n");
+    expect(sha256sums).toContain("  git-diff.patch\n");
+    expect(sha256sums).not.toContain("manifest.json");
     const governance = JSON.parse(await readFile(join(proofDir, "governance-results.json"), "utf-8")) as {
       status: string;
       scanned_files: number;

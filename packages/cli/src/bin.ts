@@ -2388,6 +2388,13 @@ async function writeProofPack(
       bytes: Buffer.byteLength(artifact.content, "utf-8"),
     });
   }
+  const sha256sumsContent = renderSha256Sums(manifestArtifacts);
+  await writeFile(join(proofDir, "sha256sums.txt"), sha256sumsContent, "utf-8");
+  manifestArtifacts.push({
+    path: "sha256sums.txt",
+    sha256: sha256(sha256sumsContent),
+    bytes: Buffer.byteLength(sha256sumsContent, "utf-8"),
+  });
 
   const manifest = {
     schema_version: 1,
@@ -2405,6 +2412,10 @@ async function writeProofPack(
     proof_manifest: proofManifest,
     artifact_count: manifestArtifacts.length + 1,
   };
+}
+
+function renderSha256Sums(artifacts: Array<{ path: string; sha256: string }>): string {
+  return artifacts.map((artifact) => `${artifact.sha256}  ${artifact.path}`).join("\n") + "\n";
 }
 
 async function createGitDiffProofArtifact(workspacePath: string): Promise<{ path: string; content: string }> {
