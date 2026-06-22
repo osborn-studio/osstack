@@ -11,6 +11,12 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import { defaultAdapters } from "@osstack/agents";
+import {
+  getCompliancePack,
+  listCompliancePacks,
+  renderComplianceReport,
+  renderComplianceReportFromProofDir,
+} from "@osstack/compliance";
 import { getAgentScorecard, listAgentScorecards, listPitfallLessons, openDb, upsertPitfallLesson } from "@osstack/core";
 import { scanFiles, type GovernanceFinding } from "@osstack/governance";
 import {
@@ -184,6 +190,10 @@ Branch Steward:
 Governance:
   governance scan <path...> [--json]
                                  Run deterministic governance checks over files
+  compliance list [--json]
+                                 List compliance mapping packs
+  compliance render <run_id> --pack P [--proof-dir P]
+                                 Render a compliance evidence mapping report
   knowledge list --pack P [--json]
                                  List local Osstack knowledge packs
   knowledge search <query> [--pack P] [--cloud-url URL] [--json]
@@ -329,6 +339,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "governance") {
     return await handleGovernanceCommand(args.slice(1));
+  }
+
+  if (cmd === "compliance") {
+    return await handleComplianceCommand(args.slice(1));
   }
 
   if (cmd === "knowledge") {
@@ -595,6 +609,76 @@ function printGovernanceScan(result: Awaited<ReturnType<typeof scanFiles>>): voi
     const location = finding.file === undefined ? `line ${finding.line}` : `${finding.file}:${finding.line}`;
     console.log(`- [${finding.severity}] ${finding.rule_id} ${location} - ${finding.message}`);
   }
+}
+
+async function handleComplianceCommand(args: string[]): Promise<number> {
+  const sub = args[0];
+  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack compliance — evidence mapping reports
+
+  osstack compliance list [--json]
+  osstack compliance render <run_id> --pack engineering-readiness [--proof-dir P] [--workspace P] [--output P] [--json]
+
+Notes:
+  Compliance reports map osstack proof evidence to internal controls.
+  They do not claim SOC 2, ISO 27001, EU AI Act, or third-party certification.
+`);
+    return 0;
+  }
+
+  if (sub === "list") {
+    const packs = listCompliancePacks().map((pack) => ({
+      id: pack.id,
+      version: pack.version,
+      name: pack.name,
+      certification_claim: pack.certification_claim,
+      controls: pack.controls.length,
+    }));
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({ packs }, null, 2));
+    } else {
+      for (const pack of packs) {
+        console.log(`${pack.id}@${pack.version} ${pack.name} claim=${pack.certification_claim} controls=${pack.controls}`);
+      }
+    }
+    return 0;
+  }
+
+  if (sub === "render") {
+    const runId = firstPositionalValue(args.slice(1), new Set(["--pack", "--proof-dir", "--workspace", "--output"]));
+    if (runId === undefined) {
+      console.error("osstack: compliance render requires a run_id");
+      return 1;
+    }
+    const packId = flagValue(args, "--pack");
+    if (packId === undefined) {
+      console.error("osstack: compliance render requires --pack");
+      return 1;
+    }
+    let packVersion: string;
+    try {
+      packVersion = getCompliancePack(packId).version;
+    } catch (error) {
+      console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
+      return 1;
+    }
+    const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+    const proofDir = flagValue(args, "--proof-dir") ?? join(workspacePath, "release", `osstack-proof-${safeFileSegment(runId)}`);
+    const output = flagValue(args, "--output") ?? join(workspacePath, "reports", `compliance-${packId}-${safeFileSegment(runId)}.md`);
+    const markdown = await renderComplianceReportFromProofDir({ packId, runId, proofDir });
+    await mkdir(dirname(output), { recursive: true });
+    await writeFile(output, markdown, "utf-8");
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({ run_id: runId, pack_id: packId, pack_version: packVersion, output }, null, 2));
+    } else {
+      console.log(`compliance=${output}`);
+      console.log(`pack=${packId}@${packVersion}`);
+    }
+    return 0;
+  }
+
+  console.error(`osstack: unknown compliance subcommand "${sub}"`);
+  return 1;
 }
 
 async function handleKnowledgeCommand(args: string[]): Promise<number> {
@@ -1127,7 +1211,7 @@ async function handleProofCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack proof — local evidence proof pack
 
-  osstack proof [run_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-mode M] [--knowledge-cloud-url URL] [--knowledge-query Q] [--output-dir P] [--json]
+  osstack proof [run_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-mode M] [--knowledge-cloud-url URL] [--knowledge-query Q] [--compliance-pack P] [--output-dir P] [--json]
 
 Options:
   --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
@@ -1138,6 +1222,8 @@ Options:
   --knowledge-cloud-url URL
                       Optional Knowledge Cloud base URL
   --knowledge-query Q Query used for knowledge trace search
+  --compliance-pack P
+                      Optional compliance mapping pack to include
   --output-dir P      Directory for proof pack folders (default: <workspace>/release)
   --json              Print machine-readable summary
 `);
@@ -1152,6 +1238,7 @@ Options:
     "--knowledge-mode",
     "--knowledge-cloud-url",
     "--knowledge-query",
+    "--compliance-pack",
     "--output-dir",
   ]));
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
@@ -1175,7 +1262,7 @@ Options:
   const governanceRoot = dirname(stateFilePath);
   const governance = await scanWorkspaceGovernance(governanceRoot);
   const knowledge = await createKnowledgeProofEvidence(args, state.loop_id);
-  const proof = await writeProofPack(state, outputDir, events, runId, governance, knowledge);
+  const proof = await writeProofPack(state, outputDir, events, runId, governance, knowledge, flagValues(args, "--compliance-pack"));
 
   const summary = {
     loop_id: state.loop_id,
@@ -1416,6 +1503,7 @@ async function writeProofPack(
   artifactId = state.loop_id,
   governance: GovernanceProofEvidence = unknownGovernanceEvidence("No governance scan evidence provided."),
   knowledge: KnowledgeProofEvidence = offKnowledgeEvidence(),
+  compliancePackIds: string[] = [],
 ): Promise<{
   proof_dir: string;
   proof_manifest: string;
@@ -1423,18 +1511,38 @@ async function writeProofPack(
 }> {
   const proofDir = join(outputDir, `osstack-proof-${safeFileSegment(artifactId)}`);
   const scorecard = createLoopStateScorecardFromState(state);
+  const policyDecision = createPolicyDecisionEvidence(events);
+  const verifyResults = createVerifyResultsEvidence(scorecard, events);
+  const worktreeStatus = createWorktreeStatusEvidence(events);
   const artifacts = [
     { path: "report.md", content: renderReportMarkdownForArtifacts(state, events) },
     { path: "scorecard.md", content: renderLoopStateScorecardMarkdown(scorecard) },
     { path: "scorecard.html", content: renderLoopStateScorecardHtml(scorecard) },
     { path: "loop-state.json", content: `${JSON.stringify(state, null, 2)}\n` },
     { path: "events.jsonl", content: events.map((event) => JSON.stringify(event)).join("\n") + (events.length > 0 ? "\n" : "") },
-    { path: "policy-decision.json", content: `${JSON.stringify(createPolicyDecisionEvidence(events), null, 2)}\n` },
-    { path: "verify-results.json", content: `${JSON.stringify(createVerifyResultsEvidence(scorecard, events), null, 2)}\n` },
-    { path: "worktree-status.json", content: `${JSON.stringify(createWorktreeStatusEvidence(events), null, 2)}\n` },
+    { path: "policy-decision.json", content: `${JSON.stringify(policyDecision, null, 2)}\n` },
+    { path: "verify-results.json", content: `${JSON.stringify(verifyResults, null, 2)}\n` },
+    { path: "worktree-status.json", content: `${JSON.stringify(worktreeStatus, null, 2)}\n` },
     { path: "governance-results.json", content: `${JSON.stringify(governance, null, 2)}\n` },
     { path: "knowledge-results.json", content: `${JSON.stringify(knowledge, null, 2)}\n` },
   ];
+  for (const packId of compliancePackIds) {
+    artifacts.push({
+      path: `compliance-${safeFileSegment(packId)}.md`,
+      content: renderComplianceReport({
+        packId,
+        runId: artifactId,
+        evidence: {
+          manifest: { artifacts: artifacts.map((artifact) => ({ path: artifact.path, sha256: sha256(artifact.content) })) },
+          verify: verifyResults,
+          policy: policyDecision,
+          governance,
+          worktree: worktreeStatus,
+          knowledge,
+        },
+      }),
+    });
+  }
 
   await mkdir(proofDir, { recursive: true });
   const manifestArtifacts: Array<{ path: string; sha256: string; bytes: number }> = [];

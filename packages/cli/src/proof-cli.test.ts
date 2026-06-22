@@ -106,6 +106,29 @@ describe("proof CLI", () => {
     });
   });
 
+  it("can include an engineering readiness compliance report in the proof pack", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+
+    const exitCode = await main([
+      "proof",
+      "--workspace",
+      tmp,
+      "--compliance-pack",
+      "engineering-readiness",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    const manifest = JSON.parse(await readFile(join(proofDir, "manifest.json"), "utf-8")) as {
+      artifacts: Array<{ path: string }>;
+    };
+    expect(manifest.artifacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "compliance-engineering-readiness.md" }),
+    ]));
+    await expect(readFile(join(proofDir, "compliance-engineering-readiness.md"), "utf-8"))
+      .resolves.toContain("External certification claim: `none`");
+  });
+
   it("fails open from cloud knowledge mode to local proof evidence", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
     const packPath = join(tmp, "knowledge-pack.json");

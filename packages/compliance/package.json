@@ -1,0 +1,18 @@
+{
+  "name": "@osstack/compliance",
+  "version": "0.0.0",
+  "description": "Osstack compliance mapping packs and evidence report rendering.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19"
+  }
+}

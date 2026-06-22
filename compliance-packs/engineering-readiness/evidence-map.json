@@ -1,0 +1,8 @@
+{
+  "change-validation": "verify-results.json",
+  "automated-decision-trace": "policy-decision.json",
+  "secure-coding-control": "governance-results.json",
+  "evidence-integrity": "manifest.json",
+  "worktree-isolation": "worktree-status.json",
+  "knowledge-trace": "knowledge-results.json"
+}

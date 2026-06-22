@@ -54,6 +54,9 @@ importers:
       '@osstack/agents':
         specifier: workspace:*
         version: link:../agents
+      '@osstack/compliance':
+        specifier: workspace:*
+        version: link:../compliance
       '@osstack/config':
         specifier: workspace:*
         version: link:../config
@@ -91,6 +94,12 @@ importers:
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
+
+  packages/compliance:
+    devDependencies:
       '@types/node':
         specifier: ^22.19.19
         version: 22.19.19
