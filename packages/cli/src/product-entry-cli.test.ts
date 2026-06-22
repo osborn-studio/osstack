@@ -14,6 +14,7 @@ beforeEach(() => {
   logs = [];
   errors = [];
   process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
+  process.env["OSSTACK_TEST_RELEASE_SINGLE_BINARY_WORKFLOW"] = "ok";
   vi.spyOn(console, "log").mockImplementation((...args) => {
     logs.push(args.map(String).join(" "));
   });
@@ -31,6 +32,7 @@ afterEach(async () => {
   delete process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"];
   delete process.env["OSSTACK_TEST_RELEASE_VERSION_PR"];
   delete process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"];
+  delete process.env["OSSTACK_TEST_RELEASE_SINGLE_BINARY_WORKFLOW"];
   await rm(tmp, { recursive: true, force: true });
 });
 
@@ -147,6 +149,7 @@ describe("product entry commands", () => {
       expect.objectContaining({ id: "knowledge_cloud_workflow", status: "ok" }),
       expect.objectContaining({ id: "fly_auth", status: "ok" }),
       expect.objectContaining({ id: "single_binary_release_assets", status: "ok" }),
+      expect.objectContaining({ id: "single_binary_workflow", status: "ok" }),
     ]));
     expect(result.next_steps.join("\n")).toContain("NPM publish path is ready");
     expect(result.next_steps.join("\n")).toContain("Knowledge Cloud deploy=true is ready");
@@ -518,6 +521,7 @@ describe("product entry commands", () => {
       expect.objectContaining({ id: "github_auth", status: "ok" }),
       expect.objectContaining({ id: "github_actions", status: "ok" }),
       expect.objectContaining({ id: "single_binary_release_assets", status: "ok" }),
+      expect.objectContaining({ id: "single_binary_workflow", status: "ok" }),
     ]));
   });
 

@@ -925,6 +925,7 @@ async function releaseDoctor(
   }
   if (target === "all" || target === "single-binary") {
     checks.push(await releaseSingleBinaryReleaseAssetsCheck(process.cwd()));
+    checks.push(await releaseSingleBinaryWorkflowCheck());
   }
 
   const proofDir = options.proofDir ?? await discoverLatestProofDir(options.workspacePath ?? process.cwd());
@@ -937,10 +938,11 @@ async function releaseDoctor(
   const knowledgeDeployAssetsReady = checks.find((check) => check.id === "knowledge_cloud_deploy_assets")?.status !== "error";
   const knowledgeWorkflowReady = checks.find((check) => check.id === "knowledge_cloud_workflow")?.status !== "error";
   const singleBinaryAssetsReady = checks.find((check) => check.id === "single_binary_release_assets")?.status !== "error";
+  const singleBinaryWorkflowReady = checks.find((check) => check.id === "single_binary_workflow")?.status !== "error";
   const actionsReady = githubActions.status !== "error";
   const npmPublish = actionsReady && hasSecret(secrets, "NPM_TOKEN") && npmPublishAssetsReady && versionPackagesPrReady;
   const knowledgeCloudDeploy = actionsReady && hasSecret(secrets, "FLY_API_TOKEN") && knowledgeDeployAssetsReady && knowledgeWorkflowReady;
-  const singleBinaryRelease = actionsReady && singleBinaryAssetsReady;
+  const singleBinaryRelease = actionsReady && singleBinaryAssetsReady && singleBinaryWorkflowReady;
   const ok = target === "npm" ? npmPublish
     : target === "knowledge-cloud" ? knowledgeCloudDeploy
       : target === "single-binary" ? singleBinaryRelease
@@ -1441,6 +1443,111 @@ function releaseKnowledgeCloudWorkflowOverride(value: string): ReleaseDoctorChec
   };
 }
 
+async function releaseSingleBinaryWorkflowCheck(): Promise<ReleaseDoctorCheck> {
+  const override = process.env["OSSTACK_TEST_RELEASE_SINGLE_BINARY_WORKFLOW"];
+  if (override !== undefined) return releaseSingleBinaryWorkflowOverride(override);
+  try {
+    const { stdout: workflows } = await execFileAsync("gh", ["workflow", "list", "--all"], { timeout: 10_000 });
+    const workflowLine = workflows.split(/\r?\n/).find((line) => line.startsWith("Single Binary Release\t"));
+    if (workflowLine === undefined) {
+      return {
+        id: "single_binary_workflow",
+        status: "error",
+        message: "Single Binary Release workflow is missing.",
+      };
+    }
+    const active = workflowLine.split(/\t/)[1] === "active";
+    if (!active) {
+      return {
+        id: "single_binary_workflow",
+        status: "error",
+        message: "Single Binary Release workflow is not active.",
+        details: { workflow: workflowLine },
+      };
+    }
+    const { stdout: runs } = await execFileAsync("gh", [
+      "run",
+      "list",
+      "--workflow",
+      "Single Binary Release",
+      "--limit",
+      "1",
+      "--json",
+      "databaseId,status,conclusion,displayTitle,url,headBranch",
+    ], { timeout: 10_000 });
+    const parsed = JSON.parse(runs) as Array<{
+      databaseId?: number;
+      status?: string;
+      conclusion?: string;
+      displayTitle?: string;
+      url?: string;
+      headBranch?: string;
+    }>;
+    const latest = parsed[0];
+    if (latest === undefined) {
+      return {
+        id: "single_binary_workflow",
+        status: "warn",
+        message: "Single Binary Release workflow is active but has no recorded validation runs.",
+      };
+    }
+    const success = latest.status === "completed" && latest.conclusion === "success";
+    return {
+      id: "single_binary_workflow",
+      status: success ? "ok" : "warn",
+      message: success
+        ? `Latest Single Binary Release validation succeeded: run ${latest.databaseId ?? "unknown"}.`
+        : `Latest Single Binary Release validation is not successful: run ${latest.databaseId ?? "unknown"}.`,
+      details: {
+        run_id: latest.databaseId,
+        status: latest.status,
+        conclusion: latest.conclusion,
+        title: latest.displayTitle,
+        branch: latest.headBranch,
+        url: latest.url,
+      },
+    };
+  } catch (error) {
+    return {
+      id: "single_binary_workflow",
+      status: "warn",
+      message: "Could not inspect Single Binary Release workflow with gh.",
+      details: { error: releaseErrorMessage(error) },
+    };
+  }
+}
+
+function releaseSingleBinaryWorkflowOverride(value: string): ReleaseDoctorCheck {
+  if (value === "ok") {
+    return {
+      id: "single_binary_workflow",
+      status: "ok",
+      message: "Latest Single Binary Release validation succeeded.",
+      details: { status: "completed", conclusion: "success" },
+    };
+  }
+  if (value === "missing") {
+    return {
+      id: "single_binary_workflow",
+      status: "error",
+      message: "Single Binary Release workflow is missing.",
+    };
+  }
+  if (value === "warn" || value === "error") {
+    return {
+      id: "single_binary_workflow",
+      status: value,
+      message: "Single Binary Release workflow needs attention.",
+    };
+  }
+  return {
+    id: "single_binary_workflow",
+    status: "warn",
+    message: "Could not parse OSSTACK_TEST_RELEASE_SINGLE_BINARY_WORKFLOW.",
+    details: { value },
+  };
+}
+
 async function releaseGitHubActionsCheck(): Promise<ReleaseDoctorCheck> {
   const override = process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"];
   if (override !== undefined) return releaseGitHubActionsOverride(override);
@@ -1706,6 +1813,12 @@ function releaseDoctorNextSteps(options: {
   if ((options.target === "all" || options.target === "single-binary") && singleBinaryAssets?.status === "error") {
     steps.push("Restore single-binary release assets before publishing release archives.");
   }
+  const singleBinaryWorkflow = options.checks.find((check) => check.id === "single_binary_workflow");
+  if ((options.target === "all" || options.target === "single-binary") && singleBinaryWorkflow?.status === "error") {
+    steps.push("Restore the Single Binary Release workflow before uploading release archives.");
+  } else if ((options.target === "all" || options.target === "single-binary") && singleBinaryWorkflow?.status === "warn") {
+    steps.push("Review the latest Single Binary Release workflow run before uploading release archives.");
+  }
   const proofValidation = options.checks.find((check) => check.id === "proof_validation");
   if (proofValidation?.status === "error") {
     steps.push("Fix missing or malformed proof evidence before publishing or deploying.");
@@ -1796,6 +1909,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     || step.startsWith("Restore Knowledge Cloud deploy assets")
     || step.startsWith("Restore the Knowledge Cloud Deploy workflow")
     || step.startsWith("Restore single-binary release assets")
+    || step.startsWith("Restore the Single Binary Release workflow")
     || step.startsWith("Review Version Packages PR")
   );
   const repositorySecrets = result.checks.find((check) => check.id === "repository_secrets");

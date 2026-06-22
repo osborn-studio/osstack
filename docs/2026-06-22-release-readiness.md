@@ -118,7 +118,7 @@
 - `pnpm smoke:single-binary-release-pack` 会把 binary、manifest、checksum、SPDX SBOM 打成 `.tar.gz`，校验 archive SHA-256，解包后运行 `osstack --version`。
 - `pnpm smoke:single-binary-release-publish` 会 dry-run 验证正式 GitHub Release 上传所需资产，不访问 GitHub、不修改 manifest upload 状态。
 - `.github/workflows/single-binary-release.yml` 已支持 tag `v*` 和手动触发；手动 dry-run 只校验资产，非 dry-run 使用 `gh release upload`。
-- `release doctor --target single-binary` 可单独检查 single-binary release 资产是否完整；`--target all` 也会包含该检查。覆盖 build/sign/SBOM/package/publish 脚本、release pack/publish smoke、tag/manual workflow、dry-run upload、`GH_TOKEN` 与 workflow artifact 留存。
+- `release doctor --target single-binary` 可单独检查 single-binary release 资产与 workflow 状态；`--target all` 也会包含该检查。覆盖 build/sign/SBOM/package/publish 脚本、release pack/publish smoke、tag/manual workflow、dry-run upload、`GH_TOKEN`、workflow artifact 留存，以及 `Single Binary Release` workflow 是否 active/最近 validation 是否成功。
 
 当前产物是本地 release candidate，还不是可公开发布资产。上线前仍需要：
 
@@ -196,6 +196,7 @@ osstack release doctor --json
 - `knowledge_cloud_deploy_assets`：检查 Knowledge Cloud Dockerfile、Fly/Render 配置和 GitHub Actions deploy workflow 的关键部署约束，失败时会阻止 `knowledge_cloud_deploy` ready。
 - `knowledge_cloud_workflow`：识别 `Knowledge Cloud Deploy` workflow 是否存在、是否 active，以及最近一次验证 run 的状态。当前最近一次 validation run 为 success，但 `deploy=true` 仍需要 `FLY_API_TOKEN`。
 - `single_binary_release_assets`：在 `--target single-binary` 或 `--target all` 时检查单文件 GitHub Release 资产链路，失败时会阻止对应发布行动计划。
+- `single_binary_workflow`：识别 `Single Binary Release` workflow 是否存在、是否 active，以及最近一次 dry-run / release run 的状态。
 
 也可以输出 Markdown handoff artifact：
 
