@@ -8,6 +8,8 @@ const specDir = join(repoRoot, "docs", "specs");
 describe("OSSTACK_RUN_SPEC_V1 files", () => {
   it("defines stable clauses and L1-L4 conformance levels", async () => {
     const spec = await readFile(join(specDir, "OSSTACK_RUN_SPEC_V1.md"), "utf-8");
+    const version = spec.match(/^Version:\s*(\S+)$/m)?.[1];
+    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
 
     for (const clause of [
       "R-001 Lifecycle",
@@ -36,6 +38,33 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
     expect(spec).toContain("schemas/policy-decision.schema.json");
     expect(spec).toContain("schemas/proof-pack-manifest.schema.json");
     expect(spec).toContain("schemas/knowledge-pack.schema.json");
+  });
+
+  it("keeps a conformance matrix for every stable run spec clause", async () => {
+    const matrix = await readFile(join(specDir, "CONFORMANCE_MATRIX.md"), "utf-8");
+
+    for (const clause of [
+      "R-001 Lifecycle",
+      "R-002 Task Schema",
+      "R-003 Capability and Adapter Contract",
+      "R-004 Policy Decision",
+      "R-005 Event Schema",
+      "R-006 Loop State",
+      "R-007 Verify Gates",
+      "R-008 Worktree Safety",
+      "R-009 Proof Pack",
+      "R-010 Conformance Levels",
+      "R-011 Knowledge Evidence",
+      "R-012 PR Evidence",
+      "R-013 Versioning and Deprecation",
+      "R-014 Test Vectors",
+    ]) {
+      expect(matrix).toContain(clause);
+    }
+
+    expect(matrix).toContain("Status Legend");
+    expect(matrix).toContain("Current Conformance Summary");
+    expect(matrix).toContain("Required Follow-Up Tests");
   });
 
   it("keeps schema and test vector JSON parseable with required anchors", async () => {
