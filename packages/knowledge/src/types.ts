@@ -95,6 +95,7 @@ export interface KnowledgeSearchResult {
   title: string;
   score: number;
   snippet: string;
+  matched_terms: string[];
   tags: string[];
   source_refs: string[];
 }

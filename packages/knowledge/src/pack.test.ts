@@ -69,8 +69,10 @@ describe("knowledge packs", () => {
       pack_id: "osstack-web-quality",
       chunk_id: "chunk-frontend-governance",
       title: "Frontend governance checks",
+      matched_terms: ["frontend", "governance"],
     });
     expect(assembleKnowledgeSnippet(results)).toContain("pack=osstack-web-quality@2026.06.22");
+    expect(assembleKnowledgeSnippet(results)).toContain("matched_terms=frontend,governance");
   });
 
   it("uses cloud search when a cloud endpoint returns osstack-native results", async () => {
@@ -92,6 +94,7 @@ describe("knowledge packs", () => {
         snippet: "Use osstack-native cockpit guidance from the cloud pack.",
         tags: ["ui"],
         source_refs: ["osstack-cloud"],
+        matched_terms: ["ui", "guidance"],
       }],
     }), { status: 200 });
 
@@ -114,7 +117,7 @@ describe("knowledge packs", () => {
       mode: "cloud",
       status: "recorded",
       packs: [expect.objectContaining({ id: "osstack-cloud-web", source_kind: "osstack_native" })],
-      results: [expect.objectContaining({ chunk_id: "chunk-cloud-ui" })],
+      results: [expect.objectContaining({ chunk_id: "chunk-cloud-ui", matched_terms: ["ui", "guidance"] })],
     });
     expect(requests).toEqual([{
       authorization: "Bearer kst_search_token",

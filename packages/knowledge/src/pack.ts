@@ -558,7 +558,8 @@ export function searchKnowledgePacks(
   for (const pack of packs) {
     for (const chunk of pack.manifest.chunks) {
       const haystack = `${chunk.title} ${chunk.body} ${(chunk.tags ?? []).join(" ")}`.toLowerCase();
-      const score = terms.reduce((sum, term) => sum + countOccurrences(haystack, term), 0);
+      const termCounts = terms.map((term) => ({ term, count: countOccurrences(haystack, term) }));
+      const score = termCounts.reduce((sum, termCount) => sum + termCount.count, 0);
       if (score === 0) continue;
       results.push({
         pack_id: pack.manifest.id,
@@ -567,6 +568,7 @@ export function searchKnowledgePacks(
         title: chunk.title,
         score,
         snippet: snippetFor(chunk.body, terms),
+        matched_terms: termCounts.filter((termCount) => termCount.count > 0).map((termCount) => termCount.term),
         tags: chunk.tags ?? [],
         source_refs: chunk.source_refs ?? [],
       });
@@ -607,7 +609,12 @@ export function evaluateKnowledgeRetrieval(
 export function assembleKnowledgeSnippet(results: KnowledgeSearchResult[]): string {
   return results.map((result) => [
     `# ${result.title}`,
-    `pack=${result.pack_id}@${result.pack_version} chunk=${result.chunk_id} score=${result.score}`,
+    [
+      `pack=${result.pack_id}@${result.pack_version}`,
+      `chunk=${result.chunk_id}`,
+      `score=${result.score}`,
+      result.matched_terms.length === 0 ? undefined : `matched_terms=${result.matched_terms.join(",")}`,
+    ].filter(Boolean).join(" "),
     result.snippet,
   ].join("\n")).join("\n\n");
 }
@@ -789,6 +796,7 @@ function validateSearchResult(value: unknown): KnowledgeSearchResult {
     title: requiredString(value, "title"),
     score: requiredNumber(value, "score"),
     snippet: requiredString(value, "snippet"),
+    matched_terms: optionalStringArray(value, "matched_terms") ?? [],
     tags: optionalStringArray(value, "tags") ?? [],
     source_refs: optionalStringArray(value, "source_refs") ?? [],
   };
