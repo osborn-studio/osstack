@@ -642,6 +642,16 @@ add a changeset with `pnpm changeset`, and the release workflow opens a "Version
 Packages" PR that publishes to npm on merge. See
 [RELEASING.md](RELEASING.md) for the bi-weekly release-train process.
 
+Before publishing or deploying Knowledge Cloud, run:
+
+```bash
+osstack release doctor --json
+```
+
+It checks GitHub auth, repository secrets (`NPM_TOKEN`, `FLY_API_TOKEN`), local
+npm auth, and local Fly.io auth so the release train fails before a partial
+publish/deploy is mistaken for production readiness.
+
 ---
 
 ## License

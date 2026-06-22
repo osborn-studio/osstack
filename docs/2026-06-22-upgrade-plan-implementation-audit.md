@@ -52,13 +52,13 @@
 
 - 还没有真实 npm registry 发布。
 - 还没有从 npm registry 执行 `npm install -g @osstack/cli`。
-- push/CI/release workflow 被 GitHub `workflow` scope 阻塞。
+- GitHub push/CI/release workflow 已恢复；真实 npm publish 仍需要仓库 secret `NPM_TOKEN`，可用 `osstack release doctor --target npm --json` 做发布前置检查。
 
 下一步：
 
-1. 执行 `gh auth refresh -h github.com -s workflow`。
-2. push branch 并开 PR。
-3. CI 通过后跑 release workflow 或 changesets publish。
+1. 配置仓库 secret `NPM_TOKEN`。
+2. 跑 `osstack release doctor --target npm --json`。
+3. CI 通过后跑 release workflow 或合并 changesets Version Packages PR。
 4. 用真实 npm registry 复跑安装 smoke。
 
 ### Task 0.2：`osstack serve --install`
@@ -377,37 +377,25 @@
 当前执行：
 
 ```sh
-git push -u origin codex/osstack-report-foundation
-```
+GitHub push、PR、CI、release workflow 已恢复。后续发布阻塞点已从 OAuth scope 转为真实发布凭证：
 
-仍失败：
+- npm registry publish 需要仓库 secret `NPM_TOKEN`。
+- Knowledge Cloud `deploy=true` 需要仓库 secret `FLY_API_TOKEN`。
+- 本地人工排障可继续配置 `npm login` 与 `flyctl auth login`。
 
-```text
-refusing to allow an OAuth App to create or update workflow `.github/workflows/ci.yml` without `workflow` scope
-```
-
-需要用户在本机执行：
+发布前检查：
 
 ```sh
-gh auth refresh -h github.com -s workflow
-```
-
-授权后继续：
-
-```sh
-git push -u origin codex/osstack-report-foundation
-gh pr create --draft --base main --head codex/osstack-report-foundation \
-  --title "Upgrade osstack product foundation and knowledge cloud" \
-  --body "Adds Loop evidence flows, official knowledge packs, Knowledge Cloud deploy assets, npm install smoke coverage, cockpit improvements, and release readiness evidence."
+osstack release doctor --json
 ```
 
 ## 6. 下一步建议
 
-在授权解除前，建议继续做本地可验证的 P1：
+在发布凭证补齐前，建议继续做本地可验证的 P1：
 
 1. 为未来外部 `verify-results.json` / `worktree-status.json` 文件级 imports 增加 schema validation。
 2. 继续补更多 negative/malformed vectors，覆盖坏的 manifest、policy decision、knowledge evidence。
-3. 授权恢复后验证远端 CI 中的 `smoke:deliver-proof` 和 installed-CLI knowledge fallback smoke。
+3. 继续强化 release doctor、Knowledge Cloud deploy preflight、npm publish preflight。
 
 授权解除后，立即转入 P0：
 

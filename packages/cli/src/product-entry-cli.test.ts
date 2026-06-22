@@ -23,6 +23,10 @@ beforeEach(() => {
 
 afterEach(async () => {
   vi.restoreAllMocks();
+  delete process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"];
+  delete process.env["OSSTACK_TEST_RELEASE_SECRETS"];
+  delete process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"];
+  delete process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"];
   await rm(tmp, { recursive: true, force: true });
 });
 
@@ -100,5 +104,74 @@ describe("product entry commands", () => {
     expect(exitCode).toBe(0);
     expect(JSON.parse(logs.join("\n"))).toMatchObject({ output });
     await expect(readFile(output, "utf-8")).resolves.toContain("5-minute quickstart");
+  });
+
+  it("checks release publish and deploy prerequisites", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+
+    const exitCode = await main(["release", "doctor", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      target: string;
+      readiness: { npm_publish: boolean; knowledge_cloud_deploy: boolean };
+      checks: Array<{ id: string; status: string; details?: { missing?: string[] } }>;
+      next_steps: string[];
+    };
+    expect(result).toMatchObject({
+      ok: true,
+      target: "all",
+      readiness: {
+        npm_publish: true,
+        knowledge_cloud_deploy: true,
+      },
+    });
+    expect(result.checks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "github_auth", status: "ok" }),
+      expect.objectContaining({ id: "repository_secrets", status: "ok" }),
+      expect.objectContaining({ id: "npm_auth", status: "ok" }),
+      expect.objectContaining({ id: "fly_auth", status: "ok" }),
+    ]));
+    expect(result.next_steps.join("\n")).toContain("NPM publish path is ready");
+    expect(result.next_steps.join("\n")).toContain("Knowledge Cloud deploy=true is ready");
+  });
+
+  it("reports missing Knowledge Cloud deploy secrets without blocking npm readiness", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "warn";
+
+    const exitCode = await main(["release", "doctor", "--target", "knowledge-cloud", "--json"]);
+
+    expect(exitCode).toBe(1);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      readiness: { npm_publish: boolean; knowledge_cloud_deploy: boolean };
+      checks: Array<{ id: string; status: string; details?: { missing?: string[] } }>;
+      next_steps: string[];
+    };
+    expect(result.ok).toBe(false);
+    expect(result.readiness).toMatchObject({
+      npm_publish: true,
+      knowledge_cloud_deploy: false,
+    });
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "repository_secrets",
+      status: "error",
+      details: expect.objectContaining({ missing: ["FLY_API_TOKEN"] }),
+    }));
+    expect(result.checks).toContainEqual(expect.objectContaining({ id: "fly_auth", status: "warn" }));
+    expect(result.next_steps.join("\n")).toContain("FLY_API_TOKEN");
+  });
+
+  it("rejects unknown release doctor targets", async () => {
+    const exitCode = await main(["release", "doctor", "--target", "staging", "--json"]);
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("release doctor --target must be all, npm, or knowledge-cloud");
   });
 });
