@@ -8,6 +8,8 @@ import {
   listCompliancePacks,
   renderComplianceReport,
   renderComplianceReportFromProofDir,
+  renderProofView,
+  renderProofViewFromProofDir,
 } from "./index.js";
 
 let tmp: string;
@@ -93,6 +95,51 @@ describe("compliance packs", () => {
     });
 
     expect(evidence.verify).toMatchObject({ status: "pass" });
+    expect(markdown).toContain("| Worktree isolation evidence | PRESENT |");
+  });
+
+  it("renders audience proof views by rearranging existing evidence", () => {
+    const markdown = renderProofView({
+      audience: "auditor",
+      runId: "run_123",
+      evidence: sampleEvidence(),
+    });
+
+    expect(markdown).toContain("# Osstack Proof View - auditor");
+    expect(markdown).toContain("Run: `run_123`");
+    expect(markdown).toContain("| Evidence integrity | PRESENT |");
+    expect(markdown).toContain("| Automated decision trace | PRESENT |");
+    expect(markdown).toContain("This view rearranges existing proof evidence and does not create new evidence.");
+  });
+
+  it("marks missing evidence in proof views", () => {
+    const markdown = renderProofView({
+      audience: "customer",
+      runId: "run_missing",
+      evidence: { manifest: { artifacts: [] } },
+    });
+
+    expect(markdown).toContain("| Evidence integrity | MISSING |");
+    expect(markdown).toContain("| Change validation | MISSING |");
+    expect(markdown).toContain("| Secure coding control | MISSING |");
+  });
+
+  it("renders proof views from an existing proof directory", async () => {
+    const proofDir = join(tmp, "release", "osstack-proof-run_123");
+    await mkdir(proofDir, { recursive: true });
+    await writeFile(join(proofDir, "manifest.json"), JSON.stringify(sampleEvidence().manifest, null, 2));
+    await writeFile(join(proofDir, "verify-results.json"), JSON.stringify(sampleEvidence().verify, null, 2));
+    await writeFile(join(proofDir, "policy-decision.json"), JSON.stringify(sampleEvidence().policy, null, 2));
+    await writeFile(join(proofDir, "governance-results.json"), JSON.stringify(sampleEvidence().governance, null, 2));
+    await writeFile(join(proofDir, "worktree-status.json"), JSON.stringify(sampleEvidence().worktree, null, 2));
+
+    const markdown = await renderProofViewFromProofDir({
+      audience: "engineer",
+      runId: "run_123",
+      proofDir,
+    });
+
+    expect(markdown).toContain("# Osstack Proof View - engineer");
     expect(markdown).toContain("| Worktree isolation evidence | PRESENT |");
   });
 });

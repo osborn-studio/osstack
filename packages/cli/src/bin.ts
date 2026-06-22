@@ -16,6 +16,8 @@ import {
   listCompliancePacks,
   renderComplianceReport,
   renderComplianceReportFromProofDir,
+  renderProofViewFromProofDir,
+  type ProofAudience,
 } from "@osstack/compliance";
 import { getAgentScorecard, listAgentScorecards, listPitfallLessons, openDb, upsertPitfallLesson } from "@osstack/core";
 import { scanFiles, type GovernanceFinding } from "@osstack/governance";
@@ -1212,6 +1214,7 @@ async function handleProofCommand(args: string[]): Promise<number> {
     console.log(`osstack proof — local evidence proof pack
 
   osstack proof [run_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-mode M] [--knowledge-cloud-url URL] [--knowledge-query Q] [--compliance-pack P] [--output-dir P] [--json]
+  osstack proof view <run_id> --audience engineer|manager|auditor|customer [--proof-dir P] [--workspace P] [--output P] [--json]
 
 Options:
   --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
@@ -1228,6 +1231,10 @@ Options:
   --json              Print machine-readable summary
 `);
     return 0;
+  }
+
+  if (args[0] === "view") {
+    return await handleProofViewCommand(args.slice(1));
   }
 
   const runId = firstPositionalValue(args, new Set([
@@ -1278,6 +1285,37 @@ Options:
     console.log(`artifacts=${summary.artifact_count}`);
   }
   return 0;
+}
+
+async function handleProofViewCommand(args: string[]): Promise<number> {
+  const runId = firstPositionalValue(args, new Set(["--audience", "--proof-dir", "--workspace", "--output"]));
+  if (runId === undefined) {
+    console.error("osstack: proof view requires a run_id");
+    return 1;
+  }
+  const audience = parseProofAudience(flagValue(args, "--audience"));
+  if (audience === undefined) {
+    console.error("osstack: proof view requires --audience engineer|manager|auditor|customer");
+    return 1;
+  }
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const proofDir = flagValue(args, "--proof-dir") ?? join(workspacePath, "release", `osstack-proof-${safeFileSegment(runId)}`);
+  const output = flagValue(args, "--output") ?? join(workspacePath, "reports", `proof-view-${audience}-${safeFileSegment(runId)}.md`);
+  const markdown = await renderProofViewFromProofDir({ audience, runId, proofDir });
+  await mkdir(dirname(output), { recursive: true });
+  await writeFile(output, markdown, "utf-8");
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({ run_id: runId, audience, proof_dir: proofDir, output }, null, 2));
+  } else {
+    console.log(`proof_view=${output}`);
+    console.log(`audience=${audience}`);
+  }
+  return 0;
+}
+
+function parseProofAudience(value: string | undefined): ProofAudience | undefined {
+  if (value === "engineer" || value === "manager" || value === "auditor" || value === "customer") return value;
+  return undefined;
 }
 
 async function handlePrCommand(args: string[]): Promise<number> {

@@ -129,6 +129,43 @@ describe("proof CLI", () => {
       .resolves.toContain("External certification claim: `none`");
   });
 
+  it("renders an audience proof view from an existing proof pack without repacking evidence", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const proofExitCode = await main(["proof", "--workspace", tmp]);
+    expect(proofExitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    const manifestBefore = await readFile(join(proofDir, "manifest.json"), "utf-8");
+
+    logs = [];
+    const viewExitCode = await main([
+      "proof",
+      "view",
+      "cli-proof-loop",
+      "--audience",
+      "auditor",
+      "--workspace",
+      tmp,
+      "--json",
+    ]);
+
+    expect(viewExitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      run_id: string;
+      audience: string;
+      output: string;
+      proof_dir: string;
+    };
+    expect(summary).toMatchObject({
+      run_id: "cli-proof-loop",
+      audience: "auditor",
+      proof_dir: proofDir,
+      output: join(tmp, "reports", "proof-view-auditor-cli-proof-loop.md"),
+    });
+    await expect(readFile(summary.output, "utf-8")).resolves.toContain("# Osstack Proof View - auditor");
+    await expect(readFile(summary.output, "utf-8")).resolves.toContain("This view rearranges existing proof evidence");
+    await expect(readFile(join(proofDir, "manifest.json"), "utf-8")).resolves.toBe(manifestBefore);
+  });
+
   it("fails open from cloud knowledge mode to local proof evidence", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
     const packPath = join(tmp, "knowledge-pack.json");

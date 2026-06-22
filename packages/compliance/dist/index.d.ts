@@ -25,6 +25,12 @@ export interface ComplianceReportOptions {
     runId: string;
     evidence: ProofEvidence;
 }
+export type ProofAudience = "engineer" | "manager" | "auditor" | "customer";
+export interface ProofViewOptions {
+    audience: ProofAudience;
+    runId: string;
+    evidence: ProofEvidence;
+}
 export declare function listCompliancePacks(): CompliancePack[];
 export declare function getCompliancePack(packId: string): CompliancePack;
 export declare function loadProofEvidence(proofDir: string): Promise<ProofEvidence>;
@@ -34,4 +40,10 @@ export declare function renderComplianceReportFromProofDir(options: {
     proofDir: string;
 }): Promise<string>;
 export declare function renderComplianceReport(options: ComplianceReportOptions): string;
+export declare function renderProofViewFromProofDir(options: {
+    audience: ProofAudience;
+    runId: string;
+    proofDir: string;
+}): Promise<string>;
+export declare function renderProofView(options: ProofViewOptions): string;
 //# sourceMappingURL=index.d.ts.map

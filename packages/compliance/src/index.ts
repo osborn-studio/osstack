@@ -32,6 +32,14 @@ export interface ComplianceReportOptions {
   evidence: ProofEvidence;
 }
 
+export type ProofAudience = "engineer" | "manager" | "auditor" | "customer";
+
+export interface ProofViewOptions {
+  audience: ProofAudience;
+  runId: string;
+  evidence: ProofEvidence;
+}
+
 const BUILTIN_PACKS: CompliancePack[] = [{
   id: "engineering-readiness",
   version: "2026.06.22",
@@ -138,6 +146,102 @@ export function renderComplianceReport(options: ComplianceReportOptions): string
     ...rows,
     "",
   ].join("\n");
+}
+
+export async function renderProofViewFromProofDir(options: {
+  audience: ProofAudience;
+  runId: string;
+  proofDir: string;
+}): Promise<string> {
+  return renderProofView({
+    audience: options.audience,
+    runId: options.runId,
+    evidence: await loadProofEvidence(options.proofDir),
+  });
+}
+
+export function renderProofView(options: ProofViewOptions): string {
+  const controls = proofViewControls(options.audience);
+  const rows = controls.map((control) => {
+    const status = controlStatus(control.control_id, options.evidence);
+    return `| ${control.title} | ${status} | \`${control.evidence_path}\` | ${control.focus} |`;
+  });
+  return [
+    `# Osstack Proof View - ${options.audience}`,
+    "",
+    `Run: \`${options.runId}\``,
+    `Audience: \`${options.audience}\``,
+    "",
+    "This view rearranges existing proof evidence and does not create new evidence.",
+    "Missing evidence is marked as `MISSING`; this view does not synthesize or infer absent proof.",
+    "",
+    "| Evidence | Status | Source | Focus |",
+    "|---|---|---|---|",
+    ...rows,
+    "",
+  ].join("\n");
+}
+
+function proofViewControls(audience: ProofAudience): Array<{
+  control_id: string;
+  title: string;
+  evidence_path: string;
+  focus: string;
+}> {
+  const byId = new Map(BUILTIN_PACKS[0]?.controls.map((control) => [control.id, control]) ?? []);
+  const order = {
+    engineer: ["change-validation", "secure-coding-control", "worktree-isolation", "automated-decision-trace", "knowledge-trace", "evidence-integrity"],
+    manager: ["change-validation", "automated-decision-trace", "secure-coding-control", "evidence-integrity", "worktree-isolation", "knowledge-trace"],
+    auditor: ["evidence-integrity", "automated-decision-trace", "secure-coding-control", "change-validation", "worktree-isolation", "knowledge-trace"],
+    customer: ["change-validation", "secure-coding-control", "evidence-integrity", "automated-decision-trace", "worktree-isolation", "knowledge-trace"],
+  } satisfies Record<ProofAudience, string[]>;
+  return order[audience].map((id) => {
+    const control = byId.get(id);
+    return {
+      control_id: id,
+      title: control?.title ?? id,
+      evidence_path: control?.evidence_path ?? "unknown",
+      focus: audienceFocus(audience, id),
+    };
+  });
+}
+
+function audienceFocus(audience: ProofAudience, controlId: string): string {
+  const focus: Record<ProofAudience, Record<string, string>> = {
+    engineer: {
+      "change-validation": "what passed or failed",
+      "secure-coding-control": "deterministic findings to fix",
+      "worktree-isolation": "branch and commit context",
+      "automated-decision-trace": "agent routing rationale",
+      "knowledge-trace": "retrieved context used during work",
+      "evidence-integrity": "artifact checksum trail",
+    },
+    manager: {
+      "change-validation": "release readiness",
+      "automated-decision-trace": "why this agent path was chosen",
+      "secure-coding-control": "risk posture",
+      "evidence-integrity": "reviewable proof bundle",
+      "worktree-isolation": "delivery isolation",
+      "knowledge-trace": "context quality",
+    },
+    auditor: {
+      "evidence-integrity": "checksumed artifact inventory",
+      "automated-decision-trace": "automated decision record",
+      "secure-coding-control": "secure coding evidence",
+      "change-validation": "change validation evidence",
+      "worktree-isolation": "change isolation evidence",
+      "knowledge-trace": "knowledge source trace",
+    },
+    customer: {
+      "change-validation": "delivery validation summary",
+      "secure-coding-control": "safety checks summary",
+      "evidence-integrity": "tamper-evident bundle",
+      "automated-decision-trace": "high-level automation trace",
+      "worktree-isolation": "isolated delivery workflow",
+      "knowledge-trace": "approved context trace",
+    },
+  };
+  return focus[audience][controlId] ?? "evidence status";
 }
 
 function controlStatus(controlId: string, evidence: ProofEvidence): "PRESENT" | "MISSING" {
