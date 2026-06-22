@@ -483,7 +483,15 @@ describe("product entry commands", () => {
     process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "warn";
     process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
     const output = join(tmp, "knowledge-release-plan.md");
-    const cloud = await startHealthServer(200, { ok: true, service: "osstack-knowledge-cloud", packs: 6 });
+    const cloud = await startKnowledgeCloudHandoffServer({
+      healthStatus: 200,
+      healthBody: { ok: true, service: "osstack-knowledge-cloud", packs: 6 },
+      searchStatus: 200,
+      searchBody: {
+        packs: [{ id: "proof-checksum-pack", version: "0.1.0" }],
+        results: [{ chunk_id: "proof-checksum-pack/checksum", pack_id: "proof-checksum-pack", score: 1 }],
+      },
+    });
 
     try {
       const exitCode = await main([
@@ -534,7 +542,15 @@ describe("product entry commands", () => {
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
-    const cloud = await startHealthServer(200, { ok: true, service: "osstack-knowledge-cloud", packs: 6 });
+    const cloud = await startKnowledgeCloudHandoffServer({
+      healthStatus: 200,
+      healthBody: { ok: true, service: "osstack-knowledge-cloud", packs: 6 },
+      searchStatus: 200,
+      searchBody: {
+        packs: [{ id: "proof-checksum-pack", version: "0.1.0" }],
+        results: [{ chunk_id: "proof-checksum-pack/checksum", pack_id: "proof-checksum-pack", score: 1 }],
+      },
+    });
 
     try {
       const exitCode = await main([
@@ -560,6 +576,15 @@ describe("product entry commands", () => {
         status: "ok",
         details: expect.objectContaining({ cloud_url: cloud.url, packs: 6 }),
       }));
+      expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_search",
+        status: "ok",
+        details: expect.objectContaining({
+          cloud_url: cloud.url,
+          query: "proof pack checksum",
+          result_count: 1,
+        }),
+      }));
     } finally {
       await cloud.close();
     }
@@ -570,7 +595,15 @@ describe("product entry commands", () => {
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
-    const cloud = await startHealthServer(503, { ok: false, service: "osstack-knowledge-cloud" });
+    const cloud = await startKnowledgeCloudHandoffServer({
+      healthStatus: 503,
+      healthBody: { ok: false, service: "osstack-knowledge-cloud" },
+      searchStatus: 200,
+      searchBody: {
+        packs: [{ id: "proof-checksum-pack", version: "0.1.0" }],
+        results: [{ chunk_id: "proof-checksum-pack/checksum", pack_id: "proof-checksum-pack", score: 1 }],
+      },
+    });
 
     try {
       const exitCode = await main([
@@ -597,6 +630,49 @@ describe("product entry commands", () => {
         status: "error",
       }));
       expect(result.next_steps.join("\n")).toContain("Fix the deployed Knowledge Cloud /healthz endpoint before handoff.");
+    } finally {
+      await cloud.close();
+    }
+  });
+
+  it("blocks Knowledge Cloud deploy handoff when deployed search returns no results", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const cloud = await startKnowledgeCloudHandoffServer({
+      healthStatus: 200,
+      healthBody: { ok: true, service: "osstack-knowledge-cloud", packs: 6 },
+      searchStatus: 200,
+      searchBody: { packs: [{ id: "proof-checksum-pack", version: "0.1.0" }], results: [] },
+    });
+
+    try {
+      const exitCode = await main([
+        "release",
+        "doctor",
+        "--target",
+        "knowledge-cloud",
+        "--cloud-url",
+        cloud.url,
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(1);
+      const result = JSON.parse(logs.join("\n")) as {
+        ok: boolean;
+        readiness: { knowledge_cloud_deploy: boolean };
+        checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+        next_steps: string[];
+      };
+      expect(result.ok).toBe(false);
+      expect(result.readiness.knowledge_cloud_deploy).toBe(false);
+      expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_search",
+        status: "error",
+        details: expect.objectContaining({ result_count: 0 }),
+      }));
+      expect(result.next_steps.join("\n")).toContain("Fix deployed Knowledge Cloud search before handoff.");
     } finally {
       await cloud.close();
     }
@@ -762,15 +838,25 @@ async function writeReleaseProofEvidence(proofDir: string, options: { omitGovern
   }, null, 2));
 }
 
-async function startHealthServer(status: number, body: unknown): Promise<{ url: string; close: () => Promise<void> }> {
+async function startKnowledgeCloudHandoffServer(options: {
+  healthStatus: number;
+  healthBody: unknown;
+  searchStatus: number;
+  searchBody: unknown;
+}): Promise<{ url: string; close: () => Promise<void> }> {
   const server = createServer((req, res) => {
-    if (req.url !== "/healthz") {
-      res.writeHead(404, { "content-type": "application/json" });
-      res.end(JSON.stringify({ error: "not found" }));
+    if (req.url === "/healthz") {
+      res.writeHead(options.healthStatus, { "content-type": "application/json" });
+      res.end(JSON.stringify(options.healthBody));
       return;
     }
-    res.writeHead(status, { "content-type": "application/json" });
-    res.end(JSON.stringify(body));
+    if (req.url === "/v1/search" && req.method === "POST") {
+      res.writeHead(options.searchStatus, { "content-type": "application/json" });
+      res.end(JSON.stringify(options.searchBody));
+      return;
+    }
+    res.writeHead(404, { "content-type": "application/json" });
+    res.end(JSON.stringify({ error: "not found" }));
   });
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);

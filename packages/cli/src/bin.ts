@@ -945,6 +945,7 @@ async function releaseDoctor(
     checks.push(await releaseKnowledgeCloudWorkflowCheck());
     if (options.cloudUrl !== undefined) {
       checks.push(await releaseKnowledgeCloudHealthCheck(options.cloudUrl));
+      checks.push(await releaseKnowledgeCloudSearchCheck(options.cloudUrl));
     }
     checks.push(await releaseCommandCheck({
       id: "fly_auth",
@@ -971,6 +972,7 @@ async function releaseDoctor(
   const knowledgeDeployAssetsReady = checks.find((check) => check.id === "knowledge_cloud_deploy_assets")?.status !== "error";
   const knowledgeWorkflowReady = checks.find((check) => check.id === "knowledge_cloud_workflow")?.status !== "error";
   const knowledgeHealthReady = checks.find((check) => check.id === "knowledge_cloud_health")?.status !== "error";
+  const knowledgeSearchReady = checks.find((check) => check.id === "knowledge_cloud_search")?.status !== "error";
   const singleBinaryAssetsReady = checks.find((check) => check.id === "single_binary_release_assets")?.status !== "error";
   const singleBinaryWorkflowReady = checks.find((check) => check.id === "single_binary_workflow")?.status !== "error";
   const actionsReady = githubActions.status !== "error";
@@ -979,7 +981,8 @@ async function releaseDoctor(
     && hasSecret(secrets, "FLY_API_TOKEN")
     && knowledgeDeployAssetsReady
     && knowledgeWorkflowReady
-    && knowledgeHealthReady;
+    && knowledgeHealthReady
+    && knowledgeSearchReady;
   const singleBinaryRelease = actionsReady
     && SINGLE_BINARY_RELEASE_SECRETS.every((secret) => hasSecret(secrets, secret))
     && singleBinaryAssetsReady
@@ -1177,6 +1180,66 @@ async function releaseKnowledgeCloudHealthCheck(cloudUrl: string): Promise<Relea
       details: {
         cloud_url: normalized,
         health_url: healthUrlString,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function releaseKnowledgeCloudSearchCheck(cloudUrl: string): Promise<ReleaseDoctorCheck> {
+  const normalized = normalizeCloudUrl(cloudUrl);
+  const query = "proof pack checksum";
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  let searchUrl: URL | undefined;
+  try {
+    searchUrl = new URL("/v1/search", normalized);
+    const response = await fetch(searchUrl, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ query, limit: 1 }),
+      signal: controller.signal,
+    });
+    const raw = await response.text();
+    const body = parseJsonObject(raw);
+    const packs = Array.isArray(body?.["packs"]) ? body["packs"] : [];
+    const results = Array.isArray(body?.["results"]) ? body["results"] : [];
+    const firstResult = isRecord(results[0]) ? results[0] : undefined;
+    const firstChunkId = typeof firstResult?.["chunk_id"] === "string" ? firstResult["chunk_id"] : undefined;
+    const firstPackId = typeof firstResult?.["pack_id"] === "string" ? firstResult["pack_id"] : undefined;
+    const ok = response.ok && results.length > 0;
+    return {
+      id: "knowledge_cloud_search",
+      status: ok ? "ok" : "error",
+      message: ok
+        ? `Deployed Knowledge Cloud search smoke passed at ${searchUrl.toString()}.`
+        : `Deployed Knowledge Cloud search smoke failed at ${searchUrl.toString()}.`,
+      details: {
+        cloud_url: normalized,
+        search_url: searchUrl.toString(),
+        http_status: response.status,
+        query,
+        pack_count: packs.length,
+        result_count: results.length,
+        ...(firstChunkId === undefined ? {} : { first_chunk_id: firstChunkId }),
+        ...(firstPackId === undefined ? {} : { first_pack_id: firstPackId }),
+      },
+    };
+  } catch (error) {
+    const searchUrlString = searchUrl === undefined ? `${normalized.replace(/\/+$/, "")}/v1/search` : searchUrl.toString();
+    return {
+      id: "knowledge_cloud_search",
+      status: "error",
+      message: `Could not run deployed Knowledge Cloud search smoke at ${searchUrlString}.`,
+      details: {
+        cloud_url: normalized,
+        search_url: searchUrlString,
+        query,
         error: error instanceof Error ? error.message : String(error),
       },
     };
@@ -1933,6 +1996,10 @@ function releaseDoctorNextSteps(options: {
   if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeHealth?.status === "error") {
     steps.push("Fix the deployed Knowledge Cloud /healthz endpoint before handoff.");
   }
+  const knowledgeSearch = options.checks.find((check) => check.id === "knowledge_cloud_search");
+  if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeSearch?.status === "error") {
+    steps.push("Fix deployed Knowledge Cloud search before handoff.");
+  }
   const singleBinaryAssets = options.checks.find((check) => check.id === "single_binary_release_assets");
   if ((options.target === "all" || options.target === "single-binary") && singleBinaryAssets?.status === "error") {
     steps.push("Restore single-binary release assets before publishing release archives.");
@@ -2034,6 +2101,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     || step.startsWith("Restore Knowledge Cloud deploy assets")
     || step.startsWith("Restore the Knowledge Cloud Deploy workflow")
     || step.startsWith("Fix the deployed Knowledge Cloud")
+    || step.startsWith("Fix deployed Knowledge Cloud search")
     || step.startsWith("Restore single-binary release assets")
     || step.startsWith("Restore the Single Binary Release workflow")
     || step.startsWith("Review Version Packages PR")
