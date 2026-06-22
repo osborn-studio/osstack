@@ -921,6 +921,9 @@ async function releaseDoctor(
       missingSeverity: "warn",
     }));
   }
+  if (target === "all") {
+    checks.push(await releaseSingleBinaryReleaseAssetsCheck(process.cwd()));
+  }
 
   const proofDir = options.proofDir ?? await discoverLatestProofDir(options.workspacePath ?? process.cwd());
   if (proofDir !== undefined) {
@@ -1072,6 +1075,66 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
     message: ok
       ? "Knowledge Cloud deploy assets are present and internally consistent."
       : "Knowledge Cloud deploy assets are missing or inconsistent.",
+    details: {
+      checked: requiredAssets,
+      missing,
+      violations,
+      root: assetRoot,
+    },
+  };
+}
+
+async function releaseSingleBinaryReleaseAssetsCheck(workspacePath: string): Promise<ReleaseDoctorCheck> {
+  const assetRoot = await findReleaseAssetRoot(workspacePath);
+  const requiredAssets = [
+    "scripts/build-single-binary.mjs",
+    "scripts/sign-single-binary.mjs",
+    "scripts/generate-single-binary-sbom.mjs",
+    "scripts/package-single-binary.mjs",
+    "scripts/publish-single-binary-release.mjs",
+    "scripts/smoke-single-binary-release-pack.mjs",
+    "scripts/smoke-single-binary-release-publish.mjs",
+    ".github/workflows/single-binary-release.yml",
+  ];
+  const missing: string[] = [];
+  const violations: string[] = [];
+  const readAsset = async (path: string): Promise<string> => {
+    try {
+      return await readFile(join(assetRoot, path), "utf-8");
+    } catch {
+      missing.push(path);
+      return "";
+    }
+  };
+  const publishScript = await readAsset("scripts/publish-single-binary-release.mjs");
+  const publishSmoke = await readAsset("scripts/smoke-single-binary-release-publish.mjs");
+  const workflow = await readAsset(".github/workflows/single-binary-release.yml");
+  for (const asset of requiredAssets.slice(0, 6)) await readAsset(asset);
+  const expectAsset = (text: string, needle: string, message: string): void => {
+    if (text !== "" && !text.includes(needle)) violations.push(message);
+  };
+
+  expectAsset(publishScript, "archive sha256 mismatch", "Single-binary publish script must verify archive SHA-256.");
+  expectAsset(publishScript, "gh\", [\"release\", \"upload\"", "Single-binary publish script must upload assets through gh release upload.");
+  expectAsset(publishScript, "github_release_uploaded: true", "Single-binary publish script must mark successful GitHub upload.");
+  expectAsset(publishSmoke, "--dry-run", "Single-binary release publish smoke must exercise dry-run upload.");
+  expectAsset(publishSmoke, "publish.assets.length !== 4", "Single-binary release publish smoke must require four release assets.");
+  expectAsset(workflow, "push:", "Single-binary release workflow must run for release tags.");
+  expectAsset(workflow, "tags:", "Single-binary release workflow must declare tag triggers.");
+  expectAsset(workflow, "workflow_dispatch:", "Single-binary release workflow must be manually triggerable.");
+  expectAsset(workflow, "pnpm smoke:single-binary-release-pack", "Single-binary release workflow must smoke release archives.");
+  expectAsset(workflow, "pnpm publish:single-binary", "Single-binary release workflow must call the publish script.");
+  expectAsset(workflow, "GH_TOKEN:", "Single-binary release workflow must pass GH_TOKEN for upload.");
+  expectAsset(workflow, "github.token", "Single-binary release workflow must use the workflow GitHub token.");
+  expectAsset(workflow, "actions/upload-artifact@v4", "Single-binary release workflow must retain workflow artifact copies.");
+
+  const ok = missing.length === 0 && violations.length === 0;
+  return {
+    id: "single_binary_release_assets",
+    status: ok ? "ok" : "error",
+    message: ok
+      ? "Single-binary release assets are present and internally consistent."
+      : "Single-binary release assets are missing or inconsistent.",
     details: {
       checked: requiredAssets,
       missing,
@@ -1632,6 +1695,10 @@ function releaseDoctorNextSteps(options: {
   } else if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeWorkflow?.status === "warn") {
     steps.push("Review the latest Knowledge Cloud Deploy workflow run before running deploy=true.");
   }
+  const singleBinaryAssets = options.checks.find((check) => check.id === "single_binary_release_assets");
+  if (options.target === "all" && singleBinaryAssets?.status === "error") {
+    steps.push("Restore single-binary release assets before publishing release archives.");
+  }
   const proofValidation = options.checks.find((check) => check.id === "proof_validation");
   if (proofValidation?.status === "error") {
     steps.push("Fix missing or malformed proof evidence before publishing or deploying.");
@@ -1716,6 +1783,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     || step.startsWith("Restore NPM publish assets")
     || step.startsWith("Restore Knowledge Cloud deploy assets")
     || step.startsWith("Restore the Knowledge Cloud Deploy workflow")
+    || step.startsWith("Restore single-binary release assets")
     || step.startsWith("Review Version Packages PR")
   );
   const repositorySecrets = result.checks.find((check) => check.id === "repository_secrets");
@@ -1757,6 +1825,12 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
       ? [
         "pnpm smoke:knowledge-cloud:deploy",
         "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false",
+      ]
+      : []),
+    ...(result.target === "all"
+      ? [
+        "pnpm smoke:single-binary-release-pack",
+        "pnpm smoke:single-binary-release-publish",
       ]
       : []),
   ];

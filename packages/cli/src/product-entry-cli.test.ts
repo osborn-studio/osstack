@@ -146,6 +146,7 @@ describe("product entry commands", () => {
       expect.objectContaining({ id: "knowledge_cloud_deploy_assets", status: "ok" }),
       expect.objectContaining({ id: "knowledge_cloud_workflow", status: "ok" }),
       expect.objectContaining({ id: "fly_auth", status: "ok" }),
+      expect.objectContaining({ id: "single_binary_release_assets", status: "ok" }),
     ]));
     expect(result.next_steps.join("\n")).toContain("NPM publish path is ready");
     expect(result.next_steps.join("\n")).toContain("Knowledge Cloud deploy=true is ready");
@@ -309,11 +310,14 @@ describe("product entry commands", () => {
       safe_to_execute: boolean;
       blockers: string[];
       operator_commands: string[];
+      validation_commands: string[];
     };
     expect(result.ready).toBe(false);
     expect(result.safe_to_execute).toBe(false);
     expect(result.blockers).toContain("Fix GitHub Actions billing or spending limit before publishing or deploying.");
     expect(result.operator_commands).toContain("Open GitHub Billing & plans and fix failed payments or increase the Actions spending limit.");
+    expect(result.validation_commands).toContain("pnpm smoke:single-binary-release-pack");
+    expect(result.validation_commands).toContain("pnpm smoke:single-binary-release-publish");
   });
 
   it("includes auto-detected proof validation blockers in release plans", async () => {
