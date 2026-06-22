@@ -33,8 +33,10 @@ import {
   type LoopState,
 } from "@osstack/loop";
 import {
+  importKnowledgeSource,
   loadKnowledgePack,
   resolveKnowledgeSearch,
+  type KnowledgeScope,
   type KnowledgeMode,
   type KnowledgeSearchEvidence,
 } from "@osstack/knowledge";
@@ -186,6 +188,8 @@ Governance:
                                  List local Osstack knowledge packs
   knowledge search <query> [--pack P] [--cloud-url URL] [--json]
                                  Search Osstack knowledge packs or cloud
+  knowledge import P --scope team|project --output P
+                                 Import local docs as an Osstack-native pack
   lessons list [--family F] [--json]
                                  List learned local pitfall lessons
   lessons learn [--workspace P] [--state P] [--json]
@@ -600,6 +604,8 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
 
   osstack knowledge list --pack P [--json]
   osstack knowledge search <query> [--pack P] [--cloud-url URL] [--limit N] [--json]
+  osstack knowledge import P --scope team|project --id ID --name NAME --license L --output P [--taxonomy T] [--json]
+  osstack knowledge sources --internal --pack P [--json]
 
 Env:
   OSSTACK_KNOWLEDGE_URL  Default Knowledge Cloud base URL
@@ -682,6 +688,84 @@ Env:
     return 0;
   }
 
+  if (sub === "import") {
+    const sourcePath = firstPositionalValue(args.slice(1), new Set([
+      "--scope",
+      "--id",
+      "--name",
+      "--license",
+      "--output",
+      "--taxonomy",
+      "--quality-score",
+    ]));
+    if (sourcePath === undefined) {
+      console.error("osstack: knowledge import requires a source path");
+      return 1;
+    }
+    const scope = parseKnowledgeScope(flagValue(args, "--scope"));
+    if (scope === undefined) {
+      console.error("osstack: --scope must be one of official, team, project");
+      return 1;
+    }
+    const id = flagValue(args, "--id");
+    const name = flagValue(args, "--name");
+    const license = flagValue(args, "--license");
+    const output = flagValue(args, "--output");
+    if (id === undefined || name === undefined || license === undefined || output === undefined) {
+      console.error("osstack: knowledge import requires --id, --name, --license, and --output");
+      return 1;
+    }
+    const qualityScoreRaw = flagValue(args, "--quality-score");
+    const qualityScore = qualityScoreRaw === undefined ? undefined : Number.parseInt(qualityScoreRaw, 10);
+    if (qualityScoreRaw !== undefined && (!Number.isInteger(qualityScore) || qualityScore < 0 || qualityScore > 100)) {
+      console.error("osstack: --quality-score must be an integer from 0 to 100");
+      return 1;
+    }
+    const manifest = await importKnowledgeSource({
+      path: sourcePath,
+      id,
+      name,
+      license,
+      scope,
+      taxonomy: flagValues(args, "--taxonomy"),
+      ...(qualityScore === undefined ? {} : { qualityScore }),
+    });
+    await writeFile(output, `${JSON.stringify(manifest, null, 2)}\n`, "utf-8");
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({
+        pack_id: manifest.id,
+        output,
+        chunks: manifest.chunks.length,
+        sources: manifest.source_provenance?.length ?? 0,
+      }, null, 2));
+    } else {
+      console.log(`Imported ${manifest.chunks.length} chunk(s) into ${output}`);
+    }
+    return 0;
+  }
+
+  if (sub === "sources") {
+    const packPath = flagValue(args, "--pack");
+    if (packPath === undefined) {
+      console.error("osstack: knowledge sources requires --pack");
+      return 1;
+    }
+    if (!args.includes("--internal")) {
+      console.error("osstack: knowledge sources requires --internal to show provenance");
+      return 1;
+    }
+    const pack = await loadKnowledgePack(packPath);
+    const sources = pack.manifest.source_provenance ?? [];
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({ pack_id: pack.manifest.id, sources }, null, 2));
+    } else {
+      for (const source of sources) {
+        console.log(`${source.source_id} ${source.path} scope=${source.scope} license=${source.license}`);
+      }
+    }
+    return 0;
+  }
+
   console.error(`osstack: unknown knowledge subcommand "${sub}"`);
   return 1;
 }
@@ -689,6 +773,11 @@ Env:
 function parseKnowledgeMode(value: string | undefined): KnowledgeMode | undefined {
   if (value === undefined) return undefined;
   if (value === "off" || value === "local" || value === "cloud") return value;
+  return undefined;
+}
+
+function parseKnowledgeScope(value: string | undefined): KnowledgeScope | undefined {
+  if (value === "official" || value === "team" || value === "project") return value;
   return undefined;
 }
 

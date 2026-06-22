@@ -1,9 +1,9 @@
 import { mkdtempSync } from "node:fs";
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { assembleKnowledgeSnippet, loadKnowledgePack, resolveKnowledgeSearch, searchKnowledgePacks, validateKnowledgePackManifest, } from "./index.js";
+import { assembleKnowledgeSnippet, importKnowledgeSource, loadKnowledgePack, resolveKnowledgeSearch, searchKnowledgePacks, validateKnowledgePackManifest, } from "./index.js";
 let tmp;
 beforeEach(() => {
     tmp = mkdtempSync(join(tmpdir(), "osstack-knowledge-"));
@@ -112,6 +112,48 @@ describe("knowledge packs", () => {
             mode: "off",
             status: "not_used",
             fallback_mode: "off",
+        });
+    });
+    it("imports local docs into an osstack-native pack with provenance", async () => {
+        const sourceDir = join(tmp, "team-docs");
+        await mkdir(sourceDir);
+        await writeFile(join(sourceDir, "runbook.md"), [
+            "# Release Runbook",
+            "",
+            "Every osstack release should include proof packs, scorecards, and a rollback note.",
+        ].join("\n"));
+        const manifest = await importKnowledgeSource({
+            path: sourceDir,
+            id: "team/release-runbook",
+            name: "Team Release Runbook",
+            license: "Internal",
+            scope: "team",
+            taxonomy: ["osstack-core/pr-and-release"],
+            generatedAt: "2026-06-22T00:00:00.000Z",
+        });
+        expect(manifest).toMatchObject({
+            id: "team/release-runbook",
+            source_kind: "internal",
+            scope: "team",
+            taxonomy: ["osstack-core/pr-and-release"],
+            quality_score: 50,
+            last_reviewed_at: "2026-06-22T00:00:00.000Z",
+            source_provenance: [expect.objectContaining({
+                    path: "runbook.md",
+                    license: "Internal",
+                    scope: "team",
+                    sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+                })],
+            chunks: [expect.objectContaining({
+                    title: "Release Runbook",
+                    tags: expect.arrayContaining(["team", "osstack-core/pr-and-release"]),
+                    source_refs: ["src_1"],
+                })],
+        });
+        const results = searchKnowledgePacks([{ manifest, path: sourceDir }], "rollback proof", { limit: 1 });
+        expect(results[0]).toMatchObject({
+            pack_id: "team/release-runbook",
+            chunk_id: "chk_1",
         });
     });
 });

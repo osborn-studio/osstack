@@ -1,5 +1,6 @@
-import { readFile, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { readdir, readFile, stat } from "node:fs/promises";
+import { basename, extname, join, relative } from "node:path";
 export async function loadKnowledgePack(path) {
     const pathStat = await stat(path);
     const manifestPath = pathStat.isDirectory() ? join(path, "manifest.json") : path;
@@ -23,6 +24,11 @@ export function validateKnowledgePackManifest(value) {
     if (qualityScore < 0 || qualityScore > 100) {
         throw new Error("knowledge pack quality_score must be between 0 and 100");
     }
+    const scope = optionalString(value, "scope");
+    if (scope !== undefined && !["official", "team", "project"].includes(scope)) {
+        throw new Error("knowledge pack scope is invalid");
+    }
+    const taxonomy = optionalStringArray(value, "taxonomy");
     const chunksRaw = value["chunks"];
     if (!Array.isArray(chunksRaw))
         throw new Error("knowledge pack chunks must be an array");
@@ -43,7 +49,12 @@ export function validateKnowledgePackManifest(value) {
         };
     });
     const generatedAt = optionalString(value, "generated_at");
+    const lastReviewedAt = optionalString(value, "last_reviewed_at");
     const sourceAttribution = optionalStringArray(value, "source_attribution");
+    const sourceProvenanceRaw = value["source_provenance"];
+    const sourceProvenance = sourceProvenanceRaw === undefined
+        ? undefined
+        : validateSourceProvenanceArray(sourceProvenanceRaw);
     return {
         id,
         version,
@@ -51,10 +62,87 @@ export function validateKnowledgePackManifest(value) {
         license,
         source_kind: sourceKind,
         quality_score: qualityScore,
+        ...(scope === undefined ? {} : { scope: scope }),
+        ...(taxonomy === undefined ? {} : { taxonomy }),
         ...(generatedAt === undefined ? {} : { generated_at: generatedAt }),
+        ...(lastReviewedAt === undefined ? {} : { last_reviewed_at: lastReviewedAt }),
         ...(sourceAttribution === undefined ? {} : { source_attribution: sourceAttribution }),
+        ...(sourceProvenance === undefined ? {} : { source_provenance: sourceProvenance }),
         chunks,
     };
+}
+export async function importKnowledgeSource(options) {
+    const generatedAt = options.generatedAt ?? new Date().toISOString();
+    const sourceFiles = await collectKnowledgeSourceFiles(options.path);
+    const sourceProvenance = [];
+    const chunks = [];
+    let index = 1;
+    for (const filePath of sourceFiles) {
+        const raw = await readFile(filePath, "utf-8");
+        const body = normalizeKnowledgeBody(raw);
+        if (body.length === 0)
+            continue;
+        const sourceId = `src_${index}`;
+        const relPath = relative(options.path, filePath) || basename(filePath);
+        sourceProvenance.push({
+            source_id: sourceId,
+            path: relPath,
+            sha256: sha256(raw),
+            license: options.license,
+            scope: options.scope,
+            imported_at: generatedAt,
+        });
+        chunks.push({
+            chunk_id: `chk_${index}`,
+            title: titleFromBody(body, filePath),
+            body,
+            tags: [...new Set([options.scope, ...(options.taxonomy ?? [])])],
+            source_refs: [sourceId],
+        });
+        index++;
+    }
+    return validateKnowledgePackManifest({
+        id: options.id,
+        version: options.version ?? generatedAt.slice(0, 10).replaceAll("-", "."),
+        name: options.name,
+        license: options.license,
+        source_kind: options.scope === "official" ? "osstack_native" : "internal",
+        quality_score: options.qualityScore ?? 50,
+        scope: options.scope,
+        taxonomy: options.taxonomy ?? [],
+        generated_at: generatedAt,
+        last_reviewed_at: generatedAt,
+        source_attribution: [`imported from ${options.scope} source ${basename(options.path)}`],
+        source_provenance: sourceProvenance,
+        chunks,
+    });
+}
+async function collectKnowledgeSourceFiles(path) {
+    const pathStat = await stat(path);
+    if (pathStat.isFile())
+        return isKnowledgeSourceFile(path) ? [path] : [];
+    const entries = await readdir(path, { withFileTypes: true });
+    const nested = await Promise.all(entries.map(async (entry) => {
+        const entryPath = join(path, entry.name);
+        if (entry.isDirectory())
+            return collectKnowledgeSourceFiles(entryPath);
+        if (entry.isFile() && isKnowledgeSourceFile(entryPath))
+            return [entryPath];
+        return [];
+    }));
+    return nested.flat().sort((a, b) => a.localeCompare(b));
+}
+function isKnowledgeSourceFile(path) {
+    return [".md", ".txt"].includes(extname(path).toLowerCase());
+}
+function normalizeKnowledgeBody(raw) {
+    return raw.replace(/\r\n/g, "\n").trim();
+}
+function titleFromBody(body, path) {
+    const heading = body.split("\n").find((line) => line.trim().startsWith("# "));
+    if (heading !== undefined)
+        return heading.replace(/^#\s+/, "").trim();
+    return basename(path, extname(path)).replace(/[-_]+/g, " ");
 }
 export function searchKnowledgePacks(packs, query, options = {}) {
     const terms = tokenize(query);
@@ -247,6 +335,29 @@ function packSummaries(packs) {
 }
 function withTrailingSlash(url) {
     return url.endsWith("/") ? url : `${url}/`;
+}
+function validateSourceProvenanceArray(value) {
+    if (!Array.isArray(value))
+        throw new Error("knowledge pack source_provenance must be an array");
+    return value.map((item) => {
+        if (!isRecord(item))
+            throw new Error("knowledge pack source_provenance entries must be objects");
+        const scope = requiredString(item, "scope");
+        if (!["official", "team", "project"].includes(scope)) {
+            throw new Error("knowledge pack source_provenance scope is invalid");
+        }
+        return {
+            source_id: requiredString(item, "source_id"),
+            path: requiredString(item, "path"),
+            sha256: requiredString(item, "sha256"),
+            license: requiredString(item, "license"),
+            scope: scope,
+            imported_at: requiredString(item, "imported_at"),
+        };
+    });
+}
+function sha256(value) {
+    return createHash("sha256").update(value).digest("hex");
 }
 function tokenize(query) {
     return query

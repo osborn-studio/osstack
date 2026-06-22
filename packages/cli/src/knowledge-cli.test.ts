@@ -1,6 +1,6 @@
 import { mkdtempSync } from "node:fs";
 import { createServer, type Server } from "node:http";
-import { rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -101,6 +101,57 @@ describe("knowledge CLI", () => {
 
     expect(exitCode).toBe(1);
     expect(errors.join("\n")).toContain("knowledge list requires at least one --pack path");
+  });
+
+  it("imports project docs into a local knowledge pack and lists internal sources", async () => {
+    const docsDir = join(tmp, "docs");
+    await mkdir(docsDir);
+    await writeFile(join(docsDir, "agent-guide.md"), [
+      "# Agent Guide",
+      "",
+      "Project agents must record proof evidence and cite knowledge chunks in reports.",
+    ].join("\n"));
+    const outputPath = join(tmp, "project-pack.json");
+
+    const importExitCode = await main([
+      "knowledge",
+      "import",
+      docsDir,
+      "--scope",
+      "project",
+      "--id",
+      "project/agent-guide",
+      "--name",
+      "Project Agent Guide",
+      "--license",
+      "Internal",
+      "--taxonomy",
+      "agent-operations/multi-agent-review",
+      "--output",
+      outputPath,
+      "--json",
+    ]);
+
+    expect(importExitCode).toBe(0);
+    const manifest = JSON.parse(await readFile(outputPath, "utf-8")) as {
+      id: string;
+      scope: string;
+      source_provenance: Array<{ path: string; license: string }>;
+    };
+    expect(manifest).toMatchObject({
+      id: "project/agent-guide",
+      scope: "project",
+      source_provenance: [expect.objectContaining({ path: "agent-guide.md", license: "Internal" })],
+    });
+
+    logs = [];
+    const sourcesExitCode = await main(["knowledge", "sources", "--internal", "--pack", outputPath, "--json"]);
+
+    expect(sourcesExitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      pack_id: "project/agent-guide",
+      sources: [expect.objectContaining({ path: "agent-guide.md", scope: "project" })],
+    });
   });
 });
 

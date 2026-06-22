@@ -14,10 +14,38 @@
       "enum": ["osstack_native", "processed_mit", "curated_external", "internal"]
     },
     "quality_score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "scope": {
+      "type": "string",
+      "enum": ["official", "team", "project"]
+    },
+    "taxonomy": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
     "generated_at": { "type": "string" },
+    "last_reviewed_at": { "type": "string" },
     "source_attribution": {
       "type": "array",
       "items": { "type": "string" }
+    },
+    "source_provenance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source_id", "path", "sha256", "license", "scope", "imported_at"],
+        "properties": {
+          "source_id": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "license": { "type": "string", "minLength": 1 },
+          "scope": {
+            "type": "string",
+            "enum": ["official", "team", "project"]
+          },
+          "imported_at": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
     },
     "chunks": {
       "type": "array",

@@ -1,5 +1,6 @@
 export type KnowledgeSourceKind = "osstack_native" | "processed_mit" | "curated_external" | "internal";
 export type KnowledgeMode = "off" | "local" | "cloud";
+export type KnowledgeScope = "official" | "team" | "project";
 export interface KnowledgeChunk {
     chunk_id: string;
     title: string;
@@ -14,9 +15,21 @@ export interface KnowledgePackManifest {
     license: string;
     source_kind: KnowledgeSourceKind;
     quality_score: number;
+    scope?: KnowledgeScope;
+    taxonomy?: string[];
     generated_at?: string;
+    last_reviewed_at?: string;
     source_attribution?: string[];
+    source_provenance?: KnowledgeSourceProvenance[];
     chunks: KnowledgeChunk[];
+}
+export interface KnowledgeSourceProvenance {
+    source_id: string;
+    path: string;
+    sha256: string;
+    license: string;
+    scope: KnowledgeScope;
+    imported_at: string;
 }
 export interface KnowledgePack {
     manifest: KnowledgePackManifest;
