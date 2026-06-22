@@ -137,6 +137,69 @@ describe("loop CLI", () => {
     });
   });
 
+  it("records loop knowledge trace in state, report, and proof artifacts", async () => {
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-loop-knowledge-task",
+      capability: "code.test",
+      prompt: "Use cloud governance knowledge",
+    }));
+    const packPath = join(tmp, "knowledge-pack.json");
+    await writeFile(packPath, JSON.stringify({
+      id: "osstack-cloud-bootstrap",
+      version: "2026.06.22",
+      name: "Osstack Cloud Bootstrap",
+      license: "MIT-derived-processed",
+      source_kind: "processed_mit",
+      quality_score: 88,
+      chunks: [{
+        chunk_id: "chunk-cloud-governance",
+        title: "Cloud governance trace",
+        body: "Osstack Knowledge Cloud records pack ids and chunk ids in report and proof evidence.",
+        tags: ["cloud", "governance"],
+      }],
+    }, null, 2));
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--knowledge",
+      "local",
+      "--knowledge-pack",
+      packPath,
+      "--knowledge-query",
+      "cloud governance",
+      "--report",
+      "--proof",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      artifacts: { report: string; proof_dir: string };
+    };
+    const state = JSON.parse(await readFile(join(tmp, "LOOP-STATE.json"), "utf-8")) as {
+      knowledge: { mode: string; status: string; results: Array<{ chunk_id: string }> };
+    };
+    expect(state.knowledge).toMatchObject({
+      mode: "local",
+      status: "recorded",
+      results: [expect.objectContaining({ chunk_id: "chunk-cloud-governance" })],
+    });
+    await expect(readFile(summary.artifacts.report, "utf-8")).resolves.toContain("chunk-cloud-governance");
+    const proofKnowledge = JSON.parse(
+      await readFile(join(summary.artifacts.proof_dir, "knowledge-results.json"), "utf-8"),
+    ) as { mode: string; results: Array<{ chunk_id: string }> };
+    expect(proofKnowledge).toMatchObject({
+      mode: "local",
+      results: [expect.objectContaining({ chunk_id: "chunk-cloud-governance" })],
+    });
+  });
+
   it("rejects an invalid max iteration value", async () => {
     const exitCode = await main(["loop", "run", "--max-iter", "0"]);
 

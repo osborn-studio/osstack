@@ -19,6 +19,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { encodeFrame, FrameDecoder, type HermesEvent } from "@osstack/hermes-adapter";
 import {
   LoopEngine,
+  LoopKnowledgeTrace,
   nextCronDelayMs,
   validateCronExpression,
   readLoopState,
@@ -27,6 +28,7 @@ import {
   type LoopRunCyclesResult,
   type LoopRunOptions,
   type LoopRunResult,
+  type LoopKnowledgeTrace as LoopKnowledgeTraceType,
   type CompletedTask,
 } from "@osstack/loop";
 import {
@@ -1264,6 +1266,8 @@ function parseLoopRunParams(
   if (intervalMs instanceof Error) return intervalMs;
   const stopWhenIdle = optionalBoolean(p, "stopWhenIdle");
   if (stopWhenIdle instanceof Error) return stopWhenIdle;
+  const knowledge = optionalKnowledgeTrace(p, "knowledge");
+  if (knowledge instanceof Error) return knowledge;
 
   const runOptions: LoopRunOptions = {
     workspacePath,
@@ -1283,6 +1287,7 @@ function parseLoopRunParams(
     ...(maxIterations !== undefined ? { maxIterations } : {}),
     ...(commandTimeoutMs !== undefined ? { commandTimeoutMs } : {}),
     ...(outputLimit !== undefined ? { outputLimit } : {}),
+    ...(knowledge !== undefined ? { knowledge } : {}),
   };
   const cyclesOptions = cycles !== undefined || intervalMs !== undefined || stopWhenIdle !== undefined
     ? {
@@ -1366,6 +1371,14 @@ function objectParams(params: unknown): Record<string, unknown> | Error {
     return new Error("params must be an object");
   }
   return params as Record<string, unknown>;
+}
+
+function optionalKnowledgeTrace(params: Record<string, unknown>, key: string): LoopKnowledgeTraceType | undefined | Error {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  const parsed = LoopKnowledgeTrace.safeParse(value);
+  if (!parsed.success) return new Error(`params.${key} must be a valid loop knowledge trace`);
+  return parsed.data;
 }
 
 function optionalString(params: Record<string, unknown>, key: string): string | undefined {

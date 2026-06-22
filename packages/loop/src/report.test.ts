@@ -90,6 +90,28 @@ describe("loop state report", () => {
       in_progress: [],
       pending: [],
       decisions: ["Keep reports derived from durable state."],
+      knowledge: {
+        mode: "local",
+        status: "recorded",
+        query: "proof evidence",
+        packs: [{
+          id: "osstack-core/proof-and-scorecard",
+          version: "2026.06.22",
+          license: "MIT",
+          source_kind: "osstack_native",
+          quality_score: 90,
+        }],
+        results: [{
+          pack_id: "osstack-core/proof-and-scorecard",
+          pack_version: "2026.06.22",
+          chunk_id: "chunk-proof-trace",
+          title: "Proof trace",
+          score: 0.9,
+          snippet: "Reports should show knowledge pack and chunk usage.",
+          tags: ["proof"],
+          source_refs: [],
+        }],
+      },
     });
 
     const markdown = renderLoopStateReportMarkdown(report);
@@ -102,6 +124,9 @@ describe("loop state report", () => {
     expect(markdown).toContain("task-1 | unknown | success | codex-cli | 1 | 900 ms");
     expect(markdown).toContain("## Decisions");
     expect(markdown).toContain("Keep reports derived from durable state.");
+    expect(markdown).toContain("## Knowledge Trace");
+    expect(markdown).toContain("osstack-core/proof-and-scorecard@2026.06.22");
+    expect(markdown).toContain("chunk-proof-trace");
     expect(markdown).toContain("## Risks");
     expect(markdown).toContain("- None");
   });

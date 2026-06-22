@@ -36,6 +36,7 @@ import {
   LoopState,
   type CompletedTask,
   type LoopEvent,
+  type LoopKnowledgeTrace,
   type Task,
   type Verdict,
 } from "./types.js";
@@ -62,6 +63,7 @@ export interface LoopRunOptions {
   adapters?: readonly AgentAdapter[];
   policyEngine?: PolicyEngine;
   policyHistory?: PolicyHistory;
+  knowledge?: LoopKnowledgeTrace;
 }
 
 export interface LoopGoalResult {
@@ -169,6 +171,18 @@ export class LoopEngine {
     const decisions = [...(state.decisions ?? [])];
 
     if (lifecycle.emitStarted) this.emit(loopId, "loop.started", { workspace_path: workspacePath });
+    if (this.options.knowledge !== undefined) {
+      this.emit(loopId, "loop.knowledge.used", {
+        mode: this.options.knowledge.mode,
+        status: this.options.knowledge.status,
+        pack_count: this.options.knowledge.packs.length,
+        chunk_count: this.options.knowledge.results.length,
+        ...(this.options.knowledge.query !== undefined ? { query: this.options.knowledge.query } : {}),
+        ...(this.options.knowledge.reason !== undefined ? { reason: this.options.knowledge.reason } : {}),
+        ...(this.options.knowledge.fallback_mode !== undefined ? { fallback_mode: this.options.knowledge.fallback_mode } : {}),
+      });
+      decisions.push(`knowledge: ${this.options.knowledge.mode}/${this.options.knowledge.status} with ${this.options.knowledge.results.length} chunk(s)`);
+    }
     this.emit(loopId, "loop.cycle.started", { cycle });
     await this.cleanupLoopWorktrees(loopId, workspacePath, cycle, "before_cycle", decisions);
     const discoveredTasks = await this.discover(workspacePath);
@@ -230,6 +244,7 @@ export class LoopEngine {
         tokens_consumed: state.key_metrics?.tokens_consumed ?? 0,
       },
       decisions,
+      ...(this.options.knowledge !== undefined ? { knowledge: this.options.knowledge } : {}),
     });
 
     const paths = await writeLoopState(jsonPath, nextState, { ...(markdownPath !== undefined ? { markdownPath } : {}) });

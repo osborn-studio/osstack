@@ -1,5 +1,5 @@
 import { agentAuthMode, defaultAdapters, rolesForCapabilityKinds } from "@osstack/agents";
-import type { CompletedTask, LoopEvent, LoopState, Task } from "./types.js";
+import type { CompletedTask, LoopEvent, LoopKnowledgeTrace, LoopState, Task } from "./types.js";
 
 export interface LoopStateReportSummary {
   loop_id: string;
@@ -27,6 +27,7 @@ export interface LoopStateReport {
   verify_results: LoopReportVerifyResult[];
   worktree_status: LoopReportWorktreeStatus[];
   events_timeline: LoopReportTimelineEvent[];
+  knowledge: LoopKnowledgeTrace | undefined;
   decisions: string[];
   risks: string[];
   next_steps: string[];
@@ -135,6 +136,7 @@ export function createLoopStateReport(state: LoopState, options: LoopStateReport
     verify_results: verifyResults,
     worktree_status: worktreeStatus,
     events_timeline: eventsTimeline,
+    knowledge: state.knowledge,
     decisions: state.decisions ?? [],
     risks: deriveRisks(summary),
     next_steps: deriveNextSteps(summary),
@@ -257,6 +259,9 @@ export function renderLoopStateReportMarkdown(report: LoopStateReport): string {
     "",
     "## Events Timeline",
     ...renderEventsTimeline(report.events_timeline),
+    "",
+    "## Knowledge Trace",
+    ...renderKnowledgeTrace(report.knowledge),
     "",
     "## Decisions",
     ...renderTextList(report.decisions),
@@ -477,6 +482,27 @@ function renderEventsTimeline(items: LoopReportTimelineEvent[]): string[] {
     "| ---: | --- | --- |",
     ...items.map((item) => `| ${item.seq} | ${item.type} | ${item.summary} |`),
   ];
+}
+
+function renderKnowledgeTrace(knowledge: LoopKnowledgeTrace | undefined): string[] {
+  if (knowledge === undefined) return ["- Mode: off"];
+  const lines = [
+    `- Mode: ${knowledge.mode}`,
+    `- Status: ${knowledge.status}`,
+  ];
+  if (knowledge.query !== undefined) lines.push(`- Query: ${knowledge.query}`);
+  if (knowledge.reason !== undefined) lines.push(`- Reason: ${knowledge.reason}`);
+  if (knowledge.packs.length > 0) {
+    lines.push(...knowledge.packs.map((pack) => (
+      `- Pack: ${pack.id}@${pack.version} (${pack.source_kind}, quality ${pack.quality_score})`
+    )));
+  }
+  if (knowledge.results.length > 0) {
+    lines.push(...knowledge.results.map((result) => (
+      `- Chunk: ${result.chunk_id} (${result.pack_id}@${result.pack_version}, score ${result.score}) - ${result.title}`
+    )));
+  }
+  return lines;
 }
 
 function renderTextList(items: string[]): string[] {

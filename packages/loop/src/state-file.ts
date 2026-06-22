@@ -80,6 +80,10 @@ export function renderLoopStateMarkdown(state: LoopState): string {
     );
   }
 
+  if (state.knowledge !== undefined) {
+    lines.push("", "## Knowledge Trace", ...renderKnowledgeTrace(state.knowledge));
+  }
+
   if (state.decisions && state.decisions.length > 0) {
     lines.push("", "## Decisions", ...state.decisions.map((decision) => `- ${decision}`));
   }
@@ -103,6 +107,27 @@ function renderCompletedTasks(tasks: CompletedTask[]): string[] {
     const capability = task.capability === undefined ? "" : `, ${task.capability}`;
     return `- [x] ${task.task_id} - ${task.outcome} via ${task.agent_id} (${task.iterations} iteration${task.iterations === 1 ? "" : "s"}, ${task.duration_ms} ms${capability})`;
   });
+}
+
+function renderKnowledgeTrace(knowledge: LoopState["knowledge"]): string[] {
+  if (knowledge === undefined) return ["- Mode: off"];
+  const lines = [
+    `- Mode: ${knowledge.mode}`,
+    `- Status: ${knowledge.status}`,
+  ];
+  if (knowledge.query !== undefined) lines.push(`- Query: ${knowledge.query}`);
+  if (knowledge.reason !== undefined) lines.push(`- Reason: ${knowledge.reason}`);
+  if (knowledge.packs.length > 0) {
+    lines.push(...knowledge.packs.map((pack) => (
+      `- Pack: ${pack.id}@${pack.version} (${pack.source_kind}, quality ${pack.quality_score})`
+    )));
+  }
+  if (knowledge.results.length > 0) {
+    lines.push(...knowledge.results.map((result) => (
+      `- Chunk: ${result.chunk_id} (${result.pack_id}@${result.pack_version}, score ${result.score}) - ${result.title}`
+    )));
+  }
+  return lines;
 }
 
 function isNotFound(error: unknown): boolean {

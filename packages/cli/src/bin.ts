@@ -38,6 +38,7 @@ import {
   renderLoopStateScorecardHtml,
   renderLoopStateScorecardMarkdown,
   type LoopEvent,
+  type LoopKnowledgeTrace,
   type LoopState,
 } from "@osstack/loop";
 import {
@@ -205,7 +206,8 @@ Loop engineering (local, testable hot-loop MVP):
                                  Write a GitHub-ready PR body from run evidence
   loop run [--workspace P] [--source S] [--execute CMD] [--verify CMD]
            [--reviewer ID] [--checker ID] [--goal CMD] [--max-iter N] [--cycles N] [--interval-ms N]
-           [--state P] [--markdown P] [--worktree] [--report] [--scorecard] [--proof] [--json] [--daemon]
+           [--state P] [--markdown P] [--worktree] [--knowledge off|local|cloud]
+           [--report] [--scorecard] [--proof] [--json] [--daemon]
                                  Run one discover→execute→verify→iterate cycle
   loop start [--workspace P] [--source S] [--execute CMD] [--verify CMD]
              [--reviewer ID] [--checker ID] [--goal CMD] [--schedule CRON] [--interval-ms N] [--cycles N]
@@ -2220,7 +2222,7 @@ async function writeRequestedLoopArtifacts(
 
   if (args.includes("--proof")) {
     const governance = await scanWorkspaceGovernance(workspacePath);
-    const knowledge = await createKnowledgeProofEvidence(args, state.loop_id);
+    const knowledge = await createKnowledgeProofEvidence(args, state.loop_id, state.knowledge);
     const proof = await writeProofPack(state, join(workspacePath, "release"), events, state.loop_id, governance, knowledge);
     artifacts.proof_dir = proof.proof_dir;
     artifacts.proof_manifest = proof.proof_manifest;
@@ -2672,9 +2674,13 @@ function renderPrWorktree(worktree: unknown): string[] {
   });
 }
 
-async function createKnowledgeProofEvidence(args: string[], defaultQuery: string): Promise<KnowledgeProofEvidence> {
+async function createKnowledgeProofEvidence(
+  args: string[],
+  defaultQuery: string,
+  fallback?: LoopKnowledgeTrace,
+): Promise<KnowledgeProofEvidence> {
   const packPaths = flagValues(args, "--knowledge-pack");
-  const modeValue = flagValue(args, "--knowledge-mode");
+  const modeValue = flagValue(args, "--knowledge-mode") ?? flagValue(args, "--knowledge");
   const mode = parseKnowledgeMode(modeValue);
   const cloudUrl = flagValue(args, "--knowledge-cloud-url") ?? process.env["OSSTACK_KNOWLEDGE_URL"];
   if (modeValue !== undefined && mode === undefined) {
@@ -2686,6 +2692,7 @@ async function createKnowledgeProofEvidence(args: string[], defaultQuery: string
       results: [],
     };
   }
+  if (!hasKnowledgeRequest(args) && fallback !== undefined) return knowledgeProofFromTrace(fallback);
   if (packPaths.length === 0 && cloudUrl === undefined && mode !== "cloud") return offKnowledgeEvidence();
   const query = flagValue(args, "--knowledge-query") ?? defaultQuery;
   try {
@@ -2704,12 +2711,58 @@ async function createKnowledgeProofEvidence(args: string[], defaultQuery: string
   }
 }
 
+function hasKnowledgeRequest(args: string[]): boolean {
+  return args.includes("--knowledge")
+    || args.includes("--knowledge-mode")
+    || args.includes("--knowledge-pack")
+    || args.includes("--knowledge-cloud-url")
+    || args.includes("--knowledge-query");
+}
+
+function shouldRecordLoopKnowledge(args: string[], evidence: KnowledgeProofEvidence): boolean {
+  return hasKnowledgeRequest(args) || evidence.mode !== "off" || evidence.status !== "not_used";
+}
+
 function offKnowledgeEvidence(): KnowledgeProofEvidence {
   return {
     mode: "off",
     status: "not_used",
     packs: [],
     results: [],
+  };
+}
+
+function knowledgeProofFromTrace(trace: LoopKnowledgeTrace): KnowledgeProofEvidence {
+  if (trace.status === "recorded" && trace.mode !== "off") {
+    return {
+      mode: trace.mode,
+      status: "recorded",
+      query: trace.query ?? "",
+      packs: trace.packs,
+      results: trace.results,
+      ...(trace.reason !== undefined ? { reason: trace.reason } : {}),
+      ...(trace.fallback_mode === "local" ? { fallback_mode: trace.fallback_mode } : {}),
+    };
+  }
+  if (trace.status === "error" && trace.mode !== "off") {
+    return {
+      mode: trace.mode,
+      status: "error",
+      ...(trace.query !== undefined ? { query: trace.query } : {}),
+      reason: trace.reason ?? "knowledge trace recorded an error",
+      packs: trace.packs,
+      results: [],
+      ...(trace.fallback_mode !== undefined ? { fallback_mode: trace.fallback_mode } : {}),
+    };
+  }
+  return {
+    mode: "off",
+    status: "not_used",
+    packs: [],
+    results: [],
+    ...(trace.query !== undefined ? { query: trace.query } : {}),
+    ...(trace.reason !== undefined ? { reason: trace.reason } : {}),
+    ...(trace.fallback_mode === "off" ? { fallback_mode: trace.fallback_mode } : {}),
   };
 }
 
@@ -3249,6 +3302,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const stopWhenIdle = args.includes("--stop-when-idle");
     const archiveCompletedTasks = args.includes("--archive-completed");
     const autoAgent = args.includes("--auto-agent");
+    const knowledge = await createKnowledgeProofEvidence(args, "loop run");
     const maxIterations = parsePositiveIntegerFlag(maxIterRaw, "--max-iter");
     if (maxIterations instanceof Error) {
       console.error(`osstack: ${maxIterations.message}`);
@@ -3285,6 +3339,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ...(stopWhenIdle ? { stopWhenIdle } : {}),
         ...(args.includes("--worktree") ? { useWorktree: true } : {}),
         ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
+        ...(shouldRecordLoopKnowledge(args, knowledge) ? { knowledge } : {}),
       }) as RpcResp;
       if (!resp.ok) {
         console.error("osstack:", resp.error?.message ?? "loop.run failed");
@@ -3330,6 +3385,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(archiveCompletedTasks ? { archiveCompletedTasks } : {}),
       ...(args.includes("--worktree") ? { useWorktree: true } : {}),
       ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
+      ...(shouldRecordLoopKnowledge(args, knowledge) ? { knowledge } : {}),
     });
     const result = runCycles
       ? await engine.runCycles({
@@ -3499,6 +3555,11 @@ Options:
   --report            Generate reports/osstack-report-<loop_id>.md after run
   --scorecard         Generate release/osstack-scorecard-<loop_id>.md/html after run
   --proof             Generate release/osstack-proof-<loop_id>/ after run
+  --knowledge M       Record knowledge mode: off, local, or cloud
+  --knowledge-pack P  Local Osstack knowledge pack for loop trace/retrieval
+  --knowledge-cloud-url URL
+                      Knowledge Cloud URL; unavailable cloud fails open to local/off
+  --knowledge-query Q Query used for knowledge trace search
   --json              Emit machine-readable summary
   --daemon            Run through the osstack daemon RPC socket
 
