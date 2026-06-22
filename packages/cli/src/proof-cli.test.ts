@@ -106,6 +106,54 @@ describe("proof CLI", () => {
     });
   });
 
+  it("fails open from cloud knowledge mode to local proof evidence", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const packPath = join(tmp, "knowledge-pack.json");
+    await writeFile(packPath, JSON.stringify({
+      id: "osstack-cloud-bootstrap",
+      version: "2026.06.22",
+      name: "Osstack Cloud Bootstrap",
+      license: "MIT-derived-processed",
+      source_kind: "processed_mit",
+      quality_score: 88,
+      chunks: [{
+        chunk_id: "chunk-cloud-governance",
+        title: "Cloud governance trace",
+        body: "Osstack Knowledge Cloud records pack ids and chunk ids in proof evidence.",
+        tags: ["cloud", "governance"],
+      }],
+    }, null, 2));
+
+    const exitCode = await main([
+      "proof",
+      "--workspace",
+      tmp,
+      "--knowledge-mode",
+      "cloud",
+      "--knowledge-pack",
+      packPath,
+      "--knowledge-query",
+      "cloud governance",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    const knowledge = JSON.parse(await readFile(join(proofDir, "knowledge-results.json"), "utf-8")) as {
+      mode: string;
+      status: string;
+      fallback_mode: string;
+      reason: string;
+      results: Array<{ chunk_id: string }>;
+    };
+    expect(knowledge).toMatchObject({
+      mode: "local",
+      status: "recorded",
+      fallback_mode: "local",
+      results: [expect.objectContaining({ chunk_id: "chunk-cloud-governance" })],
+    });
+    expect(knowledge.reason).toContain("cloudUrl is required");
+  });
+
   it("prints JSON summary with --json", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
 

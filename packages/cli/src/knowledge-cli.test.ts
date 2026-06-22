@@ -1,5 +1,7 @@
 import { mkdtempSync } from "node:fs";
+import { createServer, type Server } from "node:http";
 import { rm, writeFile } from "node:fs/promises";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -63,6 +65,37 @@ describe("knowledge CLI", () => {
     });
   });
 
+  it("searches Knowledge Cloud when a cloud URL is provided", async () => {
+    const server = await startKnowledgeServer();
+    try {
+      const address = server.address() as AddressInfo;
+      const exitCode = await main([
+        "knowledge",
+        "search",
+        "cloud cockpit",
+        "--cloud-url",
+        `http://127.0.0.1:${address.port}`,
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(0);
+      const output = JSON.parse(logs.join("\n")) as {
+        mode: string;
+        status: string;
+        packs: Array<{ id: string; source_kind: string }>;
+        results: Array<{ pack_id: string; chunk_id: string }>;
+      };
+      expect(output).toMatchObject({
+        mode: "cloud",
+        status: "recorded",
+        packs: [expect.objectContaining({ id: "osstack-cloud-cockpit", source_kind: "osstack_native" })],
+        results: [expect.objectContaining({ chunk_id: "chunk-cockpit" })],
+      });
+    } finally {
+      await closeServer(server);
+    }
+  });
+
   it("requires at least one pack path", async () => {
     const exitCode = await main(["knowledge", "list"]);
 
@@ -70,6 +103,45 @@ describe("knowledge CLI", () => {
     expect(errors.join("\n")).toContain("knowledge list requires at least one --pack path");
   });
 });
+
+async function startKnowledgeServer(): Promise<Server> {
+  const server = createServer((req, res) => {
+    if (req.method !== "POST" || req.url !== "/v1/search") {
+      res.writeHead(404).end();
+      return;
+    }
+    res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({
+      packs: [{
+        id: "osstack-cloud-cockpit",
+        version: "2026.06.22",
+        license: "Osstack Cloud Terms",
+        source_kind: "osstack_native",
+        quality_score: 97,
+      }],
+      results: [{
+        pack_id: "osstack-cloud-cockpit",
+        pack_version: "2026.06.22",
+        chunk_id: "chunk-cockpit",
+        title: "Cockpit evidence surface",
+        score: 10,
+        snippet: "Knowledge Cloud should return Osstack-native cockpit and proof guidance.",
+        tags: ["cockpit"],
+        source_refs: ["osstack-cloud"],
+      }],
+    }));
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  return server;
+}
+
+async function closeServer(server: Server): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => {
+      if (error) reject(error);
+      else resolve();
+    });
+  });
+}
 
 async function writePack(): Promise<string> {
   const packPath = join(tmp, "knowledge-pack.json");

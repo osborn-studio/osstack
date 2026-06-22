@@ -1,6 +1,13 @@
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
-import type { KnowledgePack, KnowledgePackManifest, KnowledgeSearchResult } from "./types.js";
+import type {
+  KnowledgeMode,
+  KnowledgePack,
+  KnowledgePackManifest,
+  KnowledgePackSummary,
+  KnowledgeSearchEvidence,
+  KnowledgeSearchResult,
+} from "./types.js";
 
 export async function loadKnowledgePack(path: string): Promise<KnowledgePack> {
   const pathStat = await stat(path);
@@ -93,6 +100,185 @@ export function assembleKnowledgeSnippet(results: KnowledgeSearchResult[]): stri
     `pack=${result.pack_id}@${result.pack_version} chunk=${result.chunk_id} score=${result.score}`,
     result.snippet,
   ].join("\n")).join("\n\n");
+}
+
+export async function resolveKnowledgeSearch(options: {
+  mode?: KnowledgeMode;
+  query?: string;
+  packs?: KnowledgePack[];
+  limit?: number;
+  cloudUrl?: string;
+  fetchImpl?: typeof fetch;
+}): Promise<KnowledgeSearchEvidence> {
+  const mode = options.mode ?? inferKnowledgeMode(options);
+  if (mode === "off") return offKnowledgeEvidence(options.query);
+  const query = options.query?.trim();
+  if (query === undefined || query.length === 0) {
+    return {
+      mode,
+      status: "error",
+      reason: "knowledge search requires a non-empty query",
+      packs: packSummaries(options.packs ?? []),
+      results: [],
+    };
+  }
+  if (mode === "local") {
+    return localKnowledgeEvidence(query, options.packs ?? [], options.limit);
+  }
+  return cloudKnowledgeEvidence({
+    query,
+    packs: options.packs ?? [],
+    ...(options.limit === undefined ? {} : { limit: options.limit }),
+    ...(options.cloudUrl === undefined ? {} : { cloudUrl: options.cloudUrl }),
+    ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
+  });
+}
+
+function inferKnowledgeMode(options: { cloudUrl?: string; packs?: KnowledgePack[] }): KnowledgeMode {
+  if (options.cloudUrl !== undefined && options.cloudUrl.length > 0) return "cloud";
+  if ((options.packs ?? []).length > 0) return "local";
+  return "off";
+}
+
+function offKnowledgeEvidence(query?: string, reason?: string): KnowledgeSearchEvidence {
+  return {
+    mode: "off",
+    status: "not_used",
+    packs: [],
+    results: [],
+    ...(query === undefined ? {} : { query }),
+    ...(reason === undefined ? {} : { reason }),
+  };
+}
+
+function localKnowledgeEvidence(query: string, packs: KnowledgePack[], limit = 5): KnowledgeSearchEvidence {
+  if (packs.length === 0) {
+    return offKnowledgeEvidence(query, "no local knowledge packs configured");
+  }
+  return {
+    mode: "local",
+    status: "recorded",
+    query,
+    packs: packSummaries(packs),
+    results: searchKnowledgePacks(packs, query, { limit }),
+  };
+}
+
+async function cloudKnowledgeEvidence(options: {
+  query: string;
+  packs: KnowledgePack[];
+  limit?: number;
+  cloudUrl?: string;
+  fetchImpl?: typeof fetch;
+}): Promise<KnowledgeSearchEvidence> {
+  if (options.cloudUrl === undefined || options.cloudUrl.length === 0) {
+    return fallbackFromCloud(options, "cloudUrl is required for cloud knowledge search");
+  }
+  try {
+    const response = await (options.fetchImpl ?? fetch)(new URL("/v1/search", withTrailingSlash(options.cloudUrl)), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: options.query, limit: options.limit ?? 5 }),
+    });
+    if (!response.ok) throw new Error(`cloud search failed with HTTP ${response.status}`);
+    const payload = await response.json() as unknown;
+    return validateCloudKnowledgeResponse(options.query, payload);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return fallbackFromCloud(options, message);
+  }
+}
+
+function fallbackFromCloud(
+  options: { query: string; packs: KnowledgePack[]; limit?: number },
+  reason: string,
+): KnowledgeSearchEvidence {
+  if (options.packs.length > 0) {
+    return {
+      mode: "local",
+      status: "recorded",
+      query: options.query,
+      packs: packSummaries(options.packs),
+      results: searchKnowledgePacks(
+        options.packs,
+        options.query,
+        options.limit === undefined ? {} : { limit: options.limit },
+      ),
+      fallback_mode: "local",
+      reason,
+    };
+  }
+  return {
+    mode: "off",
+    status: "not_used",
+    packs: [],
+    results: [],
+    query: options.query,
+    reason,
+    fallback_mode: "off",
+  };
+}
+
+function validateCloudKnowledgeResponse(query: string, value: unknown): KnowledgeSearchEvidence {
+  if (!isRecord(value)) throw new Error("cloud knowledge response must be an object");
+  const packsRaw = value["packs"];
+  const resultsRaw = value["results"];
+  if (!Array.isArray(packsRaw)) throw new Error("cloud knowledge response packs must be an array");
+  if (!Array.isArray(resultsRaw)) throw new Error("cloud knowledge response results must be an array");
+  return {
+    mode: "cloud",
+    status: "recorded",
+    query,
+    packs: packsRaw.map(validatePackSummary),
+    results: resultsRaw.map(validateSearchResult),
+  };
+}
+
+function validatePackSummary(value: unknown): KnowledgePackSummary {
+  if (!isRecord(value)) throw new Error("cloud knowledge pack summary must be an object");
+  const sourceKind = requiredString(value, "source_kind");
+  if (!["osstack_native", "processed_mit", "curated_external", "internal"].includes(sourceKind)) {
+    throw new Error("cloud knowledge pack source_kind is invalid");
+  }
+  const qualityScore = requiredNumber(value, "quality_score");
+  if (qualityScore < 0 || qualityScore > 100) {
+    throw new Error("cloud knowledge pack quality_score must be between 0 and 100");
+  }
+  return {
+    id: requiredString(value, "id"),
+    version: requiredString(value, "version"),
+    license: requiredString(value, "license"),
+    source_kind: sourceKind as KnowledgePackSummary["source_kind"],
+    quality_score: qualityScore,
+  };
+}
+
+function validateSearchResult(value: unknown): KnowledgeSearchResult {
+  if (!isRecord(value)) throw new Error("cloud knowledge result must be an object");
+  return {
+    pack_id: requiredString(value, "pack_id"),
+    pack_version: requiredString(value, "pack_version"),
+    chunk_id: requiredString(value, "chunk_id"),
+    title: requiredString(value, "title"),
+    score: requiredNumber(value, "score"),
+    snippet: requiredString(value, "snippet"),
+    tags: optionalStringArray(value, "tags") ?? [],
+    source_refs: optionalStringArray(value, "source_refs") ?? [],
+  };
+}
+
+function packSummaries(packs: KnowledgePack[]): KnowledgePackSummary[] {
+  return packs.map((pack) => ({
+    id: pack.manifest.id,
+    version: pack.manifest.version,
+    license: pack.manifest.license,
+    source_kind: pack.manifest.source_kind,
+    quality_score: pack.manifest.quality_score,
+  }));
+}
+
+function withTrailingSlash(url: string): string {
+  return url.endsWith("/") ? url : `${url}/`;
 }
 
 function tokenize(query: string): string[] {

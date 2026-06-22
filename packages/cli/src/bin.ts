@@ -32,7 +32,12 @@ import {
   type LoopEvent,
   type LoopState,
 } from "@osstack/loop";
-import { loadKnowledgePack, searchKnowledgePacks, type KnowledgeSearchResult } from "@osstack/knowledge";
+import {
+  loadKnowledgePack,
+  resolveKnowledgeSearch,
+  type KnowledgeMode,
+  type KnowledgeSearchEvidence,
+} from "@osstack/knowledge";
 import { initProject } from "@osstack/skills";
 import {
   addSource, checkAll, defaultManifestPath, readManifest,
@@ -179,8 +184,8 @@ Governance:
                                  Run deterministic governance checks over files
   knowledge list --pack P [--json]
                                  List local Osstack knowledge packs
-  knowledge search <query> --pack P [--json]
-                                 Search local Osstack knowledge pack chunks
+  knowledge search <query> [--pack P] [--cloud-url URL] [--json]
+                                 Search Osstack knowledge packs or cloud
   lessons list [--family F] [--json]
                                  List learned local pitfall lessons
   lessons learn [--workspace P] [--state P] [--json]
@@ -591,10 +596,13 @@ function printGovernanceScan(result: Awaited<ReturnType<typeof scanFiles>>): voi
 async function handleKnowledgeCommand(args: string[]): Promise<number> {
   const sub = args[0];
   if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
-    console.log(`osstack knowledge — local Osstack knowledge pack bootstrap
+    console.log(`osstack knowledge — Osstack knowledge pack bootstrap and cloud client
 
   osstack knowledge list --pack P [--json]
-  osstack knowledge search <query> --pack P [--limit N] [--json]
+  osstack knowledge search <query> [--pack P] [--cloud-url URL] [--limit N] [--json]
+
+Env:
+  OSSTACK_KNOWLEDGE_URL  Default Knowledge Cloud base URL
 `);
     return 0;
   }
@@ -629,11 +637,17 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
 
   if (sub === "search") {
     const packPaths = flagValues(args, "--pack");
-    if (packPaths.length === 0) {
-      console.error("osstack: knowledge search requires at least one --pack path");
+    const cloudUrl = flagValue(args, "--cloud-url") ?? process.env["OSSTACK_KNOWLEDGE_URL"];
+    if (packPaths.length === 0 && cloudUrl === undefined) {
+      console.error("osstack: knowledge search requires at least one --pack path or --cloud-url");
       return 1;
     }
-    const query = positionalValues(args.slice(1), new Set(["--pack", "--limit"])).join(" ");
+    const mode = parseKnowledgeMode(flagValue(args, "--mode"));
+    if (mode === undefined && flagValue(args, "--mode") !== undefined) {
+      console.error("osstack: --mode must be one of off, local, cloud");
+      return 1;
+    }
+    const query = positionalValues(args.slice(1), new Set(["--pack", "--limit", "--cloud-url", "--mode"])).join(" ");
     if (query.length === 0) {
       console.error("osstack: knowledge search requires a query");
       return 1;
@@ -645,13 +659,22 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
       return 1;
     }
     const packs = await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath)));
-    const results = searchKnowledgePacks(packs, query, { limit });
+    const evidence = await resolveKnowledgeSearch({
+      mode,
+      query,
+      packs,
+      limit,
+      cloudUrl,
+    });
     if (args.includes("--json")) {
-      console.log(JSON.stringify({ query, results }, null, 2));
-    } else if (results.length === 0) {
+      console.log(JSON.stringify(evidence, null, 2));
+    } else if (evidence.results.length === 0) {
       console.log("No knowledge chunks matched.");
     } else {
-      for (const result of results) {
+      if (evidence.fallback_mode !== undefined && evidence.reason !== undefined) {
+        console.log(`Knowledge fallback: ${evidence.fallback_mode} (${evidence.reason})`);
+      }
+      for (const result of evidence.results) {
         console.log(`${result.pack_id}:${result.chunk_id} score=${result.score} ${result.title}`);
         console.log(result.snippet);
       }
@@ -661,6 +684,12 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
 
   console.error(`osstack: unknown knowledge subcommand "${sub}"`);
   return 1;
+}
+
+function parseKnowledgeMode(value: string | undefined): KnowledgeMode | undefined {
+  if (value === undefined) return undefined;
+  if (value === "off" || value === "local" || value === "cloud") return value;
+  return undefined;
 }
 
 async function handleLessonsCommand(args: string[]): Promise<number> {
@@ -905,33 +934,7 @@ type GovernanceProofEvidence =
     findings: GovernanceFinding[];
   };
 
-type KnowledgeProofEvidence =
-  | {
-    mode: "off";
-    status: "not_used";
-    packs: [];
-    results: [];
-  }
-  | {
-    mode: "local";
-    status: "recorded";
-    query: string;
-    packs: Array<{
-      id: string;
-      version: string;
-      license: string;
-      source_kind: string;
-      quality_score: number;
-    }>;
-    results: KnowledgeSearchResult[];
-  }
-  | {
-    mode: "local";
-    status: "error";
-    reason: string;
-    packs: [];
-    results: [];
-  };
+type KnowledgeProofEvidence = KnowledgeSearchEvidence;
 
 interface PrReadinessCheck {
   id: string;
@@ -1035,13 +1038,16 @@ async function handleProofCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack proof — local evidence proof pack
 
-  osstack proof [run_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-query Q] [--output-dir P] [--json]
+  osstack proof [run_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-mode M] [--knowledge-cloud-url URL] [--knowledge-query Q] [--output-dir P] [--json]
 
 Options:
   --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
   --state P           JSON state path (default: LOOP-STATE.json)
   --events P          Optional loop events JSONL path to include in the pack
   --knowledge-pack P  Optional local knowledge pack path to trace in evidence
+  --knowledge-mode M  off, local, or cloud
+  --knowledge-cloud-url URL
+                      Optional Knowledge Cloud base URL
   --knowledge-query Q Query used for knowledge trace search
   --output-dir P      Directory for proof pack folders (default: <workspace>/release)
   --json              Print machine-readable summary
@@ -1054,6 +1060,8 @@ Options:
     "--state",
     "--events",
     "--knowledge-pack",
+    "--knowledge-mode",
+    "--knowledge-cloud-url",
     "--knowledge-query",
     "--output-dir",
   ]));
@@ -1733,28 +1741,35 @@ function renderPrWorktree(worktree: unknown): string[] {
 
 async function createKnowledgeProofEvidence(args: string[], defaultQuery: string): Promise<KnowledgeProofEvidence> {
   const packPaths = flagValues(args, "--knowledge-pack");
-  if (packPaths.length === 0) return offKnowledgeEvidence();
+  const modeValue = flagValue(args, "--knowledge-mode");
+  const mode = parseKnowledgeMode(modeValue);
+  const cloudUrl = flagValue(args, "--knowledge-cloud-url") ?? process.env["OSSTACK_KNOWLEDGE_URL"];
+  if (modeValue !== undefined && mode === undefined) {
+    return {
+      mode: "off",
+      status: "not_used",
+      reason: "--knowledge-mode must be one of off, local, cloud",
+      packs: [],
+      results: [],
+    };
+  }
+  if (packPaths.length === 0 && cloudUrl === undefined && mode !== "cloud") return offKnowledgeEvidence();
   const query = flagValue(args, "--knowledge-query") ?? defaultQuery;
   try {
     const packs = await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath)));
-    return {
-      mode: "local",
-      status: "recorded",
+    return await resolveKnowledgeSearch({
+      mode,
       query,
-      packs: packs.map((pack) => ({
-        id: pack.manifest.id,
-        version: pack.manifest.version,
-        license: pack.manifest.license,
-        source_kind: pack.manifest.source_kind,
-        quality_score: pack.manifest.quality_score,
-      })),
-      results: searchKnowledgePacks(packs, query, { limit: 5 }),
-    };
+      packs,
+      limit: 5,
+      cloudUrl,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return {
-      mode: "local",
+      mode: mode ?? "local",
       status: "error",
+      query,
       reason: message,
       packs: [],
       results: [],
