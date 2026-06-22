@@ -98,6 +98,12 @@ jobs:
             echo "NPM_TOKEN not configured — will manage the Version PR but skip publish." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: Require npm token for version package commits
+        if: "${{ steps.npm-token.outputs.present != 'true' && startsWith(github.event.head_commit.message, 'chore(release): version packages') }}"
+        run: |
+          echo "Version package commits must publish to npm. Configure repository secret NPM_TOKEN and rerun." >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
       - name: Version PR / Publish
         uses: changesets/action@v1
         with:

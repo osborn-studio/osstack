@@ -49,8 +49,14 @@ jobs:
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "FLY_API_TOKEN not configured; skipping Fly.io deploy." >> "$GITHUB_STEP_SUMMARY"
+            echo "FLY_API_TOKEN not configured." >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      - name: Require Fly token for deploy
+        if: ${{ inputs.deploy && steps.fly-token.outputs.present != 'true' }}
+        run: |
+          echo "deploy=true requires repository secret FLY_API_TOKEN." >> "$GITHUB_STEP_SUMMARY"
+          exit 1
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
         if: ${{ inputs.deploy && steps.fly-token.outputs.present == 'true' }}
@@ -65,8 +71,6 @@ jobs:
         run: |
           if [ "${{ inputs.deploy }}" != "true" ]; then
             echo "Deployment input was false; validation-only run completed." >> "$GITHUB_STEP_SUMMARY"
-          elif [ "${{ steps.fly-token.outputs.present }}" != "true" ]; then
-            echo "Set FLY_API_TOKEN and rerun with deploy=true to publish." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Knowledge Cloud deploy completed." >> "$GITHUB_STEP_SUMMARY"
           fi

@@ -26,6 +26,7 @@ assertIncludes(workflow, "pnpm smoke:knowledge-cloud", "Knowledge Cloud deploy w
 assertIncludes(workflow, "pnpm smoke:knowledge-cloud:deploy", "Knowledge Cloud deploy workflow must run deploy asset smoke");
 assertIncludes(workflow, "docker build -f Dockerfile.knowledge-cloud", "Knowledge Cloud deploy workflow must build the Docker image");
 assertIncludes(workflow, "secrets.FLY_API_TOKEN", "Knowledge Cloud deploy workflow must gate Fly deploy on FLY_API_TOKEN");
+assertIncludes(workflow, "deploy=true requires repository secret FLY_API_TOKEN", "Knowledge Cloud deploy=true must fail when FLY_API_TOKEN is missing");
 assertIncludes(workflow, "flyctl deploy --config deploy/knowledge-cloud/fly.toml", "Knowledge Cloud deploy workflow must deploy with the Fly config");
 
 console.log(JSON.stringify({
