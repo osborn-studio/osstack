@@ -786,7 +786,7 @@ async function handleReleaseCommand(args: string[]): Promise<number> {
     console.log(`osstack release — publish/deploy readiness
 
   osstack release doctor [--target all|npm|knowledge-cloud] [--workspace P] [--proof-dir P] [--json]
-  osstack release plan [--target all|npm|knowledge-cloud] [--output P] [--json]
+  osstack release plan [--target all|npm|knowledge-cloud] [--workspace P] [--output P] [--json]
 
 Checks:
   - GitHub CLI authentication for repository operations
@@ -822,7 +822,8 @@ async function handleReleasePlanCommand(args: string[]): Promise<number> {
     console.error("osstack: release plan --target must be all, npm, or knowledge-cloud");
     return 1;
   }
-  const doctor = await releaseDoctor(target);
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const doctor = await releaseDoctor(target, { workspacePath });
   const plan = releaseActionPlan(doctor);
   const output = flagValue(args, "--output");
   if (output !== undefined) {
@@ -1556,6 +1557,7 @@ function releaseActionPlan(result: ReleaseDoctorResult): ReleaseActionPlan {
     step.startsWith("Add repository secret")
     || step.startsWith("Refresh GitHub auth")
     || step.startsWith("Fix GitHub Actions")
+    || step.startsWith("Fix missing or malformed proof evidence")
     || step.startsWith("Restore the Knowledge Cloud Deploy workflow")
     || step.startsWith("Review Version Packages PR")
   );

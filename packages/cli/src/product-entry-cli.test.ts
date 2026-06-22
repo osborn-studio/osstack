@@ -314,6 +314,30 @@ describe("product entry commands", () => {
     expect(result.operator_commands).toContain("Open GitHub Billing & plans and fix failed payments or increase the Actions spending limit.");
   });
 
+  it("includes auto-detected proof validation blockers in release plans", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    await writeReleaseProofEvidence(join(tmp, "release", "osstack-proof-latest"), { omitGovernance: true });
+
+    const exitCode = await main(["release", "plan", "--workspace", tmp, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ready: boolean;
+      safe_to_execute: boolean;
+      blockers: string[];
+      validation_commands: string[];
+    };
+    expect(result.ready).toBe(false);
+    expect(result.safe_to_execute).toBe(false);
+    expect(result.blockers).toContain("Fix missing or malformed proof evidence before publishing or deploying.");
+    expect(result.validation_commands).toContain("osstack proof validate <run_id> --proof-dir release/osstack-proof-<run_id> --json");
+  });
+
   it("surfaces missing Knowledge Cloud deploy workflow status", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
