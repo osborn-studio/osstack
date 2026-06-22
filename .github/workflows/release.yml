@@ -47,6 +47,9 @@ jobs:
       - name: Test
         run: pnpm -r test
 
+      - name: NPM install smoke
+        run: pnpm smoke:npm-install
+
       - name: Detect npm token
         id: npm-token
         run: |

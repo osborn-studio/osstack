@@ -18,7 +18,8 @@
     "coverage:loop": "pnpm --filter @osstack/loop test:coverage",
     "demo:loop": "pnpm build && node scripts/demo-loop.mjs",
     "demo:loop:daemon": "pnpm build && node scripts/demo-loop-daemon.mjs",
-    "smoke:loop": "pnpm build && node scripts/smoke-loop.mjs"
+    "smoke:loop": "pnpm build && node scripts/smoke-loop.mjs",
+    "smoke:npm-install": "node scripts/smoke-npm-install.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",

@@ -17,7 +17,10 @@ smooth cycles, tighten the cadence to weekly by just doing it every Friday.
    can skip it (`pnpm changeset --empty` if the bot insists).
 
 2. CI (`.github/workflows/ci.yml`) gates the merge: Biome lint, build,
-   typecheck, tests.
+   typecheck, tests, and `pnpm smoke:npm-install`. The smoke packs every
+   `@osstack/*` workspace package, installs the tarballs into a temporary
+   global npm prefix, then verifies `osstack --version` and
+   `osstack loop doctor --workspace <tmp> --json`.
 
 3. The release workflow (`.github/workflows/release.yml`) keeps a
    **"Version Packages" PR** open on main. It accumulates pending changesets
