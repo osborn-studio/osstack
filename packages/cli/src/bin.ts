@@ -7,7 +7,7 @@ import { realpathSync } from "node:fs";
 import { connect, type Socket } from "node:net";
 import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import { agentAuthMode, defaultAdapters, rolesForCapabilityKinds } from "@osstack/agents";
@@ -47,10 +47,12 @@ import {
   evaluateKnowledgeRetrieval,
   importKnowledgeSource,
   listCachedKnowledgePacks,
+  loadKnowledgePackIndex,
   loadKnowledgePack,
   pinKnowledgePack,
   resolveKnowledgeSearch,
   syncKnowledgeCache,
+  type KnowledgePack,
   type KnowledgeScope,
   type KnowledgeMode,
   type KnowledgeRetrievalEvalCase,
@@ -1235,15 +1237,15 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack knowledge — Osstack knowledge pack bootstrap and cloud client
 
-  osstack knowledge list --pack P [--json]
+  osstack knowledge list --pack P|--official [--json]
   osstack knowledge login --cloud-url URL [--token T] [--cache-dir P] [--json]
   osstack knowledge sync [--cloud-url URL] [--cache-dir P] [--private] [--tenant T] [--json]
-  osstack knowledge search <query> [--pack P] [--cloud-url URL] [--cache-dir P] [--limit N] [--json]
-  osstack knowledge inspect <chunk_id> [--pack P] [--cache-dir P] [--json]
+  osstack knowledge search <query> [--pack P] [--official] [--cloud-url URL] [--cache-dir P] [--limit N] [--json]
+  osstack knowledge inspect <chunk_id> [--pack P] [--official] [--cache-dir P] [--json]
   osstack knowledge import P --scope team|project --id ID --name NAME --license L --output P [--taxonomy T] [--json]
   osstack knowledge pin <pack_id>@<version> [--cache-dir P] [--json]
   osstack knowledge feedback <chunk_id> --useful|--bad [--cloud-url URL] [--cache-dir P] [--json]
-  osstack knowledge eval --pack P --fixtures P [--top-k N] [--json]
+  osstack knowledge eval --pack P|--official --fixtures P [--top-k N] [--json]
   osstack knowledge sources --internal --pack P [--json]
 
 Env:
@@ -1258,11 +1260,14 @@ Env:
 
   if (sub === "list") {
     const packPaths = flagValues(args, "--pack");
-    if (packPaths.length === 0) {
-      console.error("osstack: knowledge list requires at least one --pack path");
+    if (packPaths.length === 0 && !args.includes("--official")) {
+      console.error("osstack: knowledge list requires at least one --pack path or --official");
       return 1;
     }
-    const packs = await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath)));
+    const packs = [
+      ...await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath))),
+      ...await officialKnowledgePacksIfRequested(args),
+    ];
     const summaries = packs.map((pack) => ({
       id: pack.manifest.id,
       version: pack.manifest.version,
@@ -1376,10 +1381,11 @@ Env:
     }
     const packs = [
       ...await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath))),
+      ...await officialKnowledgePacksIfRequested(args),
       ...await listCachedKnowledgePacks(knowledgeCacheDir(args)),
     ];
     if (packs.length === 0 && cloudUrl === undefined && mode !== "off") {
-      console.error("osstack: knowledge search requires at least one --pack path, cached pack, or --cloud-url");
+      console.error("osstack: knowledge search requires at least one --pack path, --official, cached pack, or --cloud-url");
       return 1;
     }
     const authToken = resolveKnowledgeAuthToken(args, config);
@@ -1416,6 +1422,7 @@ Env:
     const packPaths = flagValues(args, "--pack");
     const packs = [
       ...await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath))),
+      ...await officialKnowledgePacksIfRequested(args),
       ...await listCachedKnowledgePacks(knowledgeCacheDir(args)),
     ];
     for (const pack of packs) {
@@ -1570,8 +1577,8 @@ Env:
   if (sub === "eval") {
     const packPaths = flagValues(args, "--pack");
     const fixturesPath = flagValue(args, "--fixtures");
-    if (packPaths.length === 0 || fixturesPath === undefined) {
-      console.error("osstack: knowledge eval requires --pack and --fixtures");
+    if ((packPaths.length === 0 && !args.includes("--official")) || fixturesPath === undefined) {
+      console.error("osstack: knowledge eval requires --pack or --official, plus --fixtures");
       return 1;
     }
     const topKRaw = flagValue(args, "--top-k");
@@ -1580,7 +1587,10 @@ Env:
       console.error("osstack: --top-k must be a positive integer");
       return 1;
     }
-    const packs = await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath)));
+    const packs = [
+      ...await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath))),
+      ...await officialKnowledgePacksIfRequested(args),
+    ];
     const fixtures = JSON.parse(await readFile(fixturesPath, "utf-8")) as KnowledgeRetrievalEvalCase[];
     const summary = evaluateKnowledgeRetrieval(packs, fixtures, { topK });
     if (args.includes("--json")) {
@@ -1630,6 +1640,32 @@ function knowledgeCacheDir(args: string[]): string {
   return flagValue(args, "--cache-dir")
     ?? process.env["OSSTACK_KNOWLEDGE_CACHE_DIR"]
     ?? join(osstackHome(), "knowledge-cache");
+}
+
+async function officialKnowledgePacksIfRequested(args: string[]): Promise<KnowledgePack[]> {
+  if (!args.includes("--official")) return [];
+  return loadOfficialKnowledgePacks();
+}
+
+async function loadOfficialKnowledgePacks(): Promise<KnowledgePack[]> {
+  const configuredIndex = process.env["OSSTACK_OFFICIAL_KNOWLEDGE_INDEX"];
+  const here = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    ...(configuredIndex === undefined || configuredIndex.trim().length === 0 ? [] : [configuredIndex.trim()]),
+    join(process.cwd(), "knowledge-packs", "official", "index.json"),
+    join(here, "..", "..", "..", "knowledge-packs", "official", "index.json"),
+  ];
+  const failures: string[] = [];
+  for (const indexPath of candidates) {
+    try {
+      const index = await loadKnowledgePackIndex(indexPath);
+      const indexDir = dirname(indexPath);
+      return Promise.all(index.packs.map((pack) => loadKnowledgePack(join(indexDir, pack.path))));
+    } catch (error) {
+      failures.push(`${indexPath}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  throw new Error(`official knowledge packs unavailable; tried ${failures.join("; ")}`);
 }
 
 interface KnowledgeCloudConfig {

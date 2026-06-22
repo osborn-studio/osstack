@@ -47,6 +47,28 @@ describe("knowledge CLI", () => {
     });
   });
 
+  it("lists official osstack knowledge packs without explicit manifest paths", async () => {
+    const exitCode = await main(["knowledge", "list", "--official", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const output = JSON.parse(logs.join("\n")) as {
+      packs: Array<{ id: string; source_kind: string; chunks: number }>;
+    };
+    expect(output.packs).toHaveLength(6);
+    expect(output.packs).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: "osstack-core/loop-engineering",
+        source_kind: "osstack_native",
+        chunks: 1,
+      }),
+      expect.objectContaining({
+        id: "osstack-core/proof-and-scorecard",
+        source_kind: "osstack_native",
+        chunks: 1,
+      }),
+    ]));
+  });
+
   it("searches local knowledge pack chunks", async () => {
     const packPath = await writePack();
 
@@ -62,6 +84,21 @@ describe("knowledge CLI", () => {
       pack_id: "osstack-cloud-bootstrap",
       chunk_id: "chunk-cloud-governance",
       title: "Cloud governance trace",
+    });
+  });
+
+  it("searches official osstack knowledge packs", async () => {
+    const exitCode = await main(["knowledge", "search", "proof pack sha256 manifest", "--official", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const output = JSON.parse(logs.join("\n")) as {
+      mode: string;
+      results: Array<{ pack_id: string; chunk_id: string }>;
+    };
+    expect(output.mode).toBe("local");
+    expect(output.results[0]).toMatchObject({
+      pack_id: "osstack-core/proof-and-scorecard",
+      chunk_id: "proof-checksum-pack",
     });
   });
 
@@ -221,6 +258,20 @@ describe("knowledge CLI", () => {
     } finally {
       await closeServer(server);
     }
+  });
+
+  it("evaluates official osstack knowledge packs with repository fixtures", async () => {
+    const fixtures = join(__dirname, "..", "..", "..", "knowledge-evals", "retrieval", "osstack-core.json");
+
+    const exitCode = await main(["knowledge", "eval", "--official", "--fixtures", fixtures, "--json"]);
+
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      total: 30,
+      passed: 30,
+      failed: 0,
+      top_k: 3,
+    });
   });
 
   it("syncs tenant private cloud packs into cache and searches them locally", async () => {
