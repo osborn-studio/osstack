@@ -371,6 +371,39 @@ describe("proof CLI", () => {
     ]));
   });
 
+  it("rejects proof packs when sha256sums entries diverge from the manifest", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const proofExitCode = await main(["proof", "--workspace", tmp]);
+    expect(proofExitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    const sha256sumsPath = join(proofDir, "sha256sums.txt");
+    const sha256sums = await readFile(sha256sumsPath, "utf-8");
+    await writeFile(
+      sha256sumsPath,
+      sha256sums.replace(/^[a-f0-9]{64} {2}report\.md$/m, `${"b".repeat(64)}  report.md`),
+    );
+
+    logs = [];
+    const invalidExitCode = await main([
+      "proof",
+      "validate",
+      "cli-proof-loop",
+      "--workspace",
+      tmp,
+      "--json",
+    ]);
+
+    expect(invalidExitCode).toBe(1);
+    const summary = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      file_integrity: { ok: boolean; issues: Array<{ path: string; code: string }> };
+    };
+    expect(summary.ok).toBe(false);
+    expect(summary.file_integrity.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "report.md", code: "sha256sums_mismatch" }),
+    ]));
+  });
+
   it("rejects proof packs when manifest artifacts are missing from disk", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
     const proofExitCode = await main(["proof", "--workspace", tmp]);

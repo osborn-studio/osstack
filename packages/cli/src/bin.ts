@@ -795,7 +795,12 @@ type ProofFileIntegrityIssueCode =
   | "path_outside_proof_dir"
   | "missing_artifact"
   | "bytes_mismatch"
-  | "sha256_mismatch";
+  | "sha256_mismatch"
+  | "sha256sums_missing"
+  | "sha256sums_malformed"
+  | "sha256sums_missing_entry"
+  | "sha256sums_extra_entry"
+  | "sha256sums_mismatch";
 
 interface ProofFileIntegrityIssue {
   path: string;
@@ -1435,6 +1440,8 @@ async function validateProofFileIntegrity(
   }
 
   const proofRoot = resolve(proofDir);
+  const manifestShaByPath = new Map<string, string>();
+  let sha256sumsContent: string | undefined;
   for (const artifact of manifestRaw["artifacts"]) {
     if (!isRecord(artifact)) {
       issues.push({ path: "<unknown>", code: "artifact_malformed" });
@@ -1456,6 +1463,7 @@ async function validateProofFileIntegrity(
       });
       continue;
     }
+    manifestShaByPath.set(artifactPath, expectedSha256);
 
     const artifactFile = resolve(proofRoot, artifactPath);
     const artifactRelativePath = relative(proofRoot, artifactFile);
@@ -1489,9 +1497,57 @@ async function validateProofFileIntegrity(
         actual: actualSha256,
       });
     }
+    if (artifactPath === "sha256sums.txt") {
+      sha256sumsContent = content.toString("utf-8");
+    }
   }
 
+  issues.push(...validateProofSha256Sums(manifestShaByPath, sha256sumsContent));
   return { ok: issues.length === 0, issues };
+}
+
+function validateProofSha256Sums(
+  manifestShaByPath: Map<string, string>,
+  content: string | undefined,
+): ProofFileIntegrityIssue[] {
+  if (!manifestShaByPath.has("sha256sums.txt") || content === undefined) {
+    return [{ path: "sha256sums.txt", code: "sha256sums_missing" }];
+  }
+  const issues: ProofFileIntegrityIssue[] = [];
+  const sums = new Map<string, string>();
+  for (const line of content.split(/\r?\n/)) {
+    if (line.length === 0) continue;
+    const match = /^([a-f0-9]{64}) {2}(.+)$/.exec(line);
+    if (match === null || sums.has(match[2])) {
+      issues.push({ path: "sha256sums.txt", code: "sha256sums_malformed" });
+      continue;
+    }
+    sums.set(match[2], match[1]);
+  }
+
+  for (const [path, manifestSha] of manifestShaByPath.entries()) {
+    if (path === "sha256sums.txt") continue;
+    const checksumSha = sums.get(path);
+    if (checksumSha === undefined) {
+      issues.push({ path, code: "sha256sums_missing_entry" });
+      continue;
+    }
+    if (checksumSha !== manifestSha) {
+      issues.push({
+        path,
+        code: "sha256sums_mismatch",
+        expected: manifestSha,
+        actual: checksumSha,
+      });
+    }
+  }
+
+  for (const path of sums.keys()) {
+    if (!manifestShaByPath.has(path)) {
+      issues.push({ path, code: "sha256sums_extra_entry" });
+    }
+  }
+  return issues;
 }
 
 async function releaseVersionPackagesPrCheck(): Promise<ReleaseDoctorCheck> {

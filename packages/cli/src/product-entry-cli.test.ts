@@ -848,6 +848,7 @@ async function writeReleaseProofEvidence(proofDir: string, options: { omitGovern
       event_seq: 3,
     }],
   }, null, 2));
+  await writeArtifact("sha256sums.txt", artifacts.map((artifact) => `${artifact.sha256}  ${artifact.path}`).join("\n") + "\n");
   await writeFile(join(proofDir, "manifest.json"), JSON.stringify({ artifacts }, null, 2));
 }
 
