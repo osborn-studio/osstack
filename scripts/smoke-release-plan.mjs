@@ -8,6 +8,7 @@ import { join } from "node:path";
 const root = process.cwd();
 const tempRoot = await mkdtemp(join(tmpdir(), "osstack-release-plan-smoke-"));
 const output = join(tempRoot, "release-plan.md");
+const cacheDir = join(tempRoot, "knowledge-cache");
 let cloud;
 
 try {
@@ -55,6 +56,39 @@ try {
   assertIncludes(markdown, "pnpm smoke:release-plan", "markdown validation commands must include release plan smoke");
   assertIncludes(markdown, `osstack release doctor --target knowledge-cloud --cloud-url ${cloudUrl} --json`, "markdown post-release commands must include Knowledge Cloud doctor");
 
+  const sync = JSON.parse((await runAsync(process.execPath, [
+    "packages/cli/dist/bin.js",
+    "knowledge",
+    "sync",
+    "--cloud-url",
+    cloudUrl,
+    "--cache-dir",
+    cacheDir,
+    "--json",
+  ], {
+    cwd: root,
+    env: process.env,
+  })).stdout);
+  assert(sync.status === "synced", "post-release knowledge sync command must complete");
+  assert(sync.packs?.some((pack) => pack.id === "osstack-core/proof-and-scorecard"), "post-release knowledge sync must cache proof pack guidance");
+
+  const search = JSON.parse((await runAsync(process.execPath, [
+    "packages/cli/dist/bin.js",
+    "knowledge",
+    "search",
+    "proof pack checksum",
+    "--cloud-url",
+    cloudUrl,
+    "--cache-dir",
+    cacheDir,
+    "--json",
+  ], {
+    cwd: root,
+    env: process.env,
+  })).stdout);
+  assert(search.mode === "cloud", "post-release knowledge search command must use the cloud URL");
+  assert(search.results?.some((result) => result.chunk_id === "proof-checksum-pack"), "post-release knowledge search must find proof checksum guidance");
+
   console.log(JSON.stringify({
     ok: true,
     kind: "release-plan-smoke",
@@ -65,6 +99,8 @@ try {
     publish_commands: plan.publish_commands.length,
     deploy_commands: plan.deploy_commands.length,
     post_release_validation_commands: plan.post_release_validation_commands.length,
+    knowledge_sync: sync.status,
+    knowledge_search: search.results[0]?.chunk_id ?? null,
   }, null, 2));
 } finally {
   if (cloud !== undefined) await cloud.close();
@@ -166,9 +202,28 @@ function startKnowledgeCloudHandoffServer() {
     }
     if (request.method === "POST" && url.pathname === "/v1/search") {
       writeJson(response, 200, {
-        packs: [{ id: "osstack-core/proof-and-scorecard", version: "2026.06.22" }],
-        results: [{ chunk_id: "proof-checksum-pack", pack_id: "osstack-core/proof-and-scorecard", score: 1 }],
+        packs: [{
+          id: "osstack-core/proof-and-scorecard",
+          version: "2026.06.22",
+          license: "Osstack-native",
+          source_kind: "osstack_native",
+          quality_score: 95,
+        }],
+        results: [{
+          chunk_id: "proof-checksum-pack",
+          pack_id: "osstack-core/proof-and-scorecard",
+          pack_version: "2026.06.22",
+          title: "Proof checksum pack",
+          score: 1,
+          snippet: "Post-release Knowledge Cloud validation must find proof pack checksum guidance before handoff.",
+          tags: ["proof", "checksum", "release"],
+          source_refs: ["release-plan-smoke-proof"],
+        }],
       });
+      return;
+    }
+    if (request.method === "POST" && url.pathname === "/v1/sync") {
+      writeJson(response, 200, { packs: [proofPack()] });
       return;
     }
     if (request.method === "POST" && url.pathname === "/v1/audit") {
@@ -201,4 +256,40 @@ function startKnowledgeCloudHandoffServer() {
 function writeJson(response, status, body) {
   response.writeHead(status, { "content-type": "application/json" });
   response.end(JSON.stringify(body));
+}
+
+function proofPack() {
+  return {
+    id: "osstack-core/proof-and-scorecard",
+    version: "2026.06.22",
+    name: "Proof and Scorecard",
+    license: "Osstack-native",
+    source_kind: "osstack_native",
+    quality_score: 95,
+    scope: "official",
+    last_reviewed_at: "2026-06-22T00:00:00.000Z",
+    taxonomy: ["osstack-core/proof-and-scorecard"],
+    review: {
+      status: "approved",
+      reviewer_id: "release-plan-smoke",
+      reviewed_at: "2026-06-22T00:00:00.000Z",
+      summary: "Release plan smoke pack for post-release Knowledge Cloud validation.",
+    },
+    source_attribution: ["osstack release plan smoke"],
+    source_provenance: [{
+      source_id: "release-plan-smoke-proof",
+      path: "release-plan-smoke-proof.md",
+      sha256: "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      license: "Osstack-native",
+      scope: "official",
+      imported_at: "2026-06-22T00:00:00.000Z",
+    }],
+    chunks: [{
+      chunk_id: "proof-checksum-pack",
+      title: "Proof checksum pack",
+      body: "Post-release Knowledge Cloud validation must find proof pack checksum guidance before handoff.",
+      tags: ["proof", "checksum", "release"],
+      source_refs: ["release-plan-smoke-proof"],
+    }],
+  };
 }
