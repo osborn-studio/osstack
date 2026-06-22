@@ -186,7 +186,8 @@ function isFeedbackEntry(value: unknown): value is KnowledgeFeedbackEntry {
   return typeof value["chunk_id"] === "string"
     && (value["rating"] === "useful" || value["rating"] === "bad")
     && (value["status"] === "recorded" || value["status"] === "sent")
-    && typeof value["created_at"] === "string";
+    && typeof value["created_at"] === "string"
+    && hasSafeOptionalTenantId(value);
 }
 
 function isAuditEntry(value: unknown): value is KnowledgeCloudAuditEntry {
@@ -194,7 +195,8 @@ function isAuditEntry(value: unknown): value is KnowledgeCloudAuditEntry {
   return typeof value["event_id"] === "string"
     && (value["action"] === "publish" || value["action"] === "private_packs" || value["action"] === "search" || value["action"] === "feedback")
     && (value["status"] === "ok" || value["status"] === "rejected" || value["status"] === "unauthorized")
-    && typeof value["created_at"] === "string";
+    && typeof value["created_at"] === "string"
+    && hasSafeOptionalTenantId(value);
 }
 
 function parsePrivateTenantTokens(values: string[], json?: string): Record<string, string> {
@@ -224,6 +226,11 @@ function parsePrivateTenantTokens(values: string[], json?: string): Record<strin
 
 function isSafeTenantId(tenantId: string): boolean {
   return /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(tenantId);
+}
+
+function hasSafeOptionalTenantId(value: Record<string, unknown>): boolean {
+  const tenantId = value["tenant_id"];
+  return tenantId === undefined || (typeof tenantId === "string" && isSafeTenantId(tenantId));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

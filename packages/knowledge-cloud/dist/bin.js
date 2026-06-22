@@ -179,7 +179,8 @@ function isFeedbackEntry(value) {
     return typeof value["chunk_id"] === "string"
         && (value["rating"] === "useful" || value["rating"] === "bad")
         && (value["status"] === "recorded" || value["status"] === "sent")
-        && typeof value["created_at"] === "string";
+        && typeof value["created_at"] === "string"
+        && hasSafeOptionalTenantId(value);
 }
 function isAuditEntry(value) {
     if (!isRecord(value))
@@ -187,7 +188,8 @@ function isAuditEntry(value) {
     return typeof value["event_id"] === "string"
         && (value["action"] === "publish" || value["action"] === "private_packs" || value["action"] === "search" || value["action"] === "feedback")
         && (value["status"] === "ok" || value["status"] === "rejected" || value["status"] === "unauthorized")
-        && typeof value["created_at"] === "string";
+        && typeof value["created_at"] === "string"
+        && hasSafeOptionalTenantId(value);
 }
 function parsePrivateTenantTokens(values, json) {
     const tokens = {};
@@ -220,6 +222,10 @@ function parsePrivateTenantTokens(values, json) {
 }
 function isSafeTenantId(tenantId) {
     return /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(tenantId);
+}
+function hasSafeOptionalTenantId(value) {
+    const tenantId = value["tenant_id"];
+    return tenantId === undefined || (typeof tenantId === "string" && isSafeTenantId(tenantId));
 }
 function isRecord(value) {
     return value !== null && typeof value === "object" && !Array.isArray(value);

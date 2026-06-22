@@ -169,6 +169,28 @@ describe("osstack-knowledge-cloud bin", () => {
     });
   });
 
+  it("ignores feedback JSONL entries with unsafe tenant ids", async () => {
+    process.env["OSSTACK_KNOWLEDGE_CLOUD_ONCE"] = "1";
+    const feedbackLog = join(tmp, "audit", "feedback.jsonl");
+    await mkdir(join(tmp, "audit"), { recursive: true });
+    await writeFile(feedbackLog, `${JSON.stringify({
+      chunk_id: "proof-checksum-pack",
+      rating: "useful",
+      status: "sent",
+      created_at: "2026-06-22T00:00:00.000Z",
+      tenant_id: "../team_alpha",
+      authorized: true,
+    })}\n`, "utf-8");
+
+    const exitCode = await main(["--port", "0", "--feedback-log", feedbackLog, "--json"]);
+
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      feedback_log: feedbackLog,
+      feedback_log_loaded: 0,
+    });
+  });
+
   it("configures and preloads a Knowledge Cloud audit JSONL path", async () => {
     process.env["OSSTACK_KNOWLEDGE_CLOUD_ONCE"] = "1";
     const auditLog = join(tmp, "audit", "knowledge-cloud-audit.jsonl");
@@ -190,6 +212,28 @@ describe("osstack-knowledge-cloud bin", () => {
       audit_log_loaded: 1,
     });
     await expect(readFile(auditLog, "utf-8")).resolves.toContain("audit-existing");
+  });
+
+  it("ignores audit JSONL entries with unsafe tenant ids", async () => {
+    process.env["OSSTACK_KNOWLEDGE_CLOUD_ONCE"] = "1";
+    const auditLog = join(tmp, "audit", "knowledge-cloud-audit.jsonl");
+    await mkdir(join(tmp, "audit"), { recursive: true });
+    await writeFile(auditLog, `${JSON.stringify({
+      event_id: "audit-unsafe-tenant",
+      action: "search",
+      status: "ok",
+      created_at: "2026-06-22T00:00:00.000Z",
+      tenant_id: "../team_alpha",
+      private: true,
+    })}\n`, "utf-8");
+
+    const exitCode = await main(["--port", "0", "--audit-log", auditLog, "--json"]);
+
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      audit_log: auditLog,
+      audit_log_loaded: 0,
+    });
   });
 
   it("preloads published pack storage on startup", async () => {
