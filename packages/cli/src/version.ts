@@ -1,12 +1,13 @@
-// Version is read from package.json at module load — never hand-maintained.
-// Works both from src/ (vitest) and from the tsup bundle at dist/bin.js,
-// because in both cases package.json sits one directory up.
+// Version is read from package.json at module load and can be injected by
+// single-file compilers via OSSTACK_VERSION. Never hand-maintain it in code.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 function readPackageVersion(): string {
+  const injected = process.env.OSSTACK_VERSION;
+  if (typeof injected === "string" && injected.length > 0) return injected;
   try {
     const here = dirname(fileURLToPath(import.meta.url));
     const raw = readFileSync(join(here, "..", "package.json"), "utf8");

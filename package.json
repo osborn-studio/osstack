@@ -23,6 +23,7 @@
     "smoke:knowledge-cloud": "pnpm build && node scripts/smoke-knowledge-cloud.mjs",
     "smoke:knowledge-cloud:deploy": "node scripts/smoke-knowledge-cloud-deploy-assets.mjs",
     "smoke:npm-install": "node scripts/smoke-npm-install.mjs",
+    "smoke:bun-single-binary": "node scripts/smoke-bun-single-binary.mjs",
     "smoke:portable-cli": "node scripts/smoke-portable-cli.mjs"
   },
   "devDependencies": {

@@ -10,7 +10,7 @@
 
 - CLI、Loop、Knowledge Cloud、官方知识库、证据包、安装后 smoke 均已具备自动化验证。
 - npm tarball 安装后的真实用户入口已经跑通，包括 `osstack --version`、`doctor`、`loop doctor`、`serve --install --no-load`、`report`、`scorecard`、`proof`、`knowledge eval`、`knowledge sources`、`osstack-knowledge-cloud --help`。
-- portable CLI bundle 已有自动化 smoke，可作为 npm 主路径之外的过渡分发形态；真正 single executable 仍需后续专项打包、签名、公证验证。
+- portable CLI bundle 与 Bun single executable 已有自动化 smoke，可作为 npm 主路径之外的分发基础；发布级 single executable 仍需签名、公证、checksum、跨机器验证。
 - 官方知识库已经从“借鉴 UmaDev 的 MIT 知识内容”升级为 osstack 自有官方知识包表达，包含来源治理、checksum、provenance 与检索评测。
 - Knowledge Cloud 已具备本地服务 smoke、Docker/Fly/Render/GitHub Actions 部署资产 smoke。
 
@@ -30,6 +30,7 @@
 | Knowledge Cloud | 已完成本地服务与部署资产 | 本地服务 smoke 返回 6 official packs、1 private pack，并验证 sync/search/private/feedback；部署资产 smoke 检查 Dockerfile、Fly、Render、GitHub Actions |
 | macOS launchd 安装 | 已完成安全 smoke | `serve --install --no-load`、`serve --status --no-load`、`serve --uninstall --no-load` 使用临时目录验证 |
 | Portable CLI 分发 | 已完成过渡 smoke | `pnpm smoke:portable-cli` 验证 workspace tarballs 可安装进 portable prefix，并输出 single executable 候选工具状态 |
+| Bun 单文件分发 | 已完成本地 smoke | `pnpm smoke:bun-single-binary` 生成临时 single executable，验证 `--version`、`help`、`loop doctor --json` |
 | 测试体系 | 已完成当前门禁 | lint、build、test、smoke 全部通过 |
 | 云端上线 | 未完成 | push 被 GitHub OAuth `workflow` scope 阻塞 |
 | npm 发布 | 未完成 | 需要 push/PR/CI 通过后再走 release |
@@ -47,6 +48,7 @@
 | `pnpm smoke:knowledge-cloud` | 通过 | health=`osstack-knowledge-cloud`，packs=`6`，private_packs=`1`，sync_packs=`6`，top_result=`proof-checksum-pack`，private_result=`private-release-approval`，feedback=`sent` |
 | `pnpm smoke:npm-install` | 通过 | 15 个 tarballs；安装后 CLI、launchd dry-run、evidence、knowledge eval、Knowledge Cloud load、sync cache、cloud outage local fallback 全部验证 |
 | `pnpm smoke:portable-cli` | 通过 | build `@osstack/cli`，生成临时 portable bundle，执行 `--version`、`help`、`loop doctor --json`，并报告 Node SEA/Bun/pkg/nexe/postject 候选状态 |
+| `pnpm smoke:bun-single-binary` | 通过 | Bun 1.3.13 编译 672 modules 成约 67MB 单文件；`--version` 输出 `osstack 0.1.0`，`loop doctor` 通过 |
 | `pnpm smoke:deliver-proof` | 通过 | 临时 git repo 跑 `deliver -> report -> scorecard -> proof -> compliance render -> pr dry-run`，证明 L4 evidence 与合规视图可从 proof dir 串起来 |
 | `pnpm smoke:loop` | 通过 | `[smoke] ok workspace=...` |
 | `node packages/cli/dist/bin.js knowledge eval --official --fixtures knowledge-evals/retrieval/osstack-core.json --json` | 通过 | total=`30`，passed=`30`，failed=`0`，top_k=`3` |
@@ -85,7 +87,26 @@
 
 这不是 macOS arm64 single executable，不应替代最终的单文件验收。它的价值是先证明当前 CLI 产物可以脱离 monorepo 运行，并给非 npm 分发提供一条低风险备用路径。
 
-## 6. Knowledge Cloud 当前成熟度
+## 6. Bun 单文件 smoke 覆盖范围
+
+`pnpm smoke:bun-single-binary` 已经证明 osstack CLI 可以生成本地 single executable。它覆盖：
+
+- build `@osstack/cli`。
+- 读取 `packages/cli/package.json` 版本号，并通过 `OSSTACK_VERSION` 编译期注入。
+- 使用 Bun `build --compile --env inline` 生成临时单文件可执行文件。
+- 执行 `osstack --version`，确认版本号不是 fallback `0.0.0`。
+- 执行 `osstack help`，确认产品命令与证据命令暴露。
+- 执行 `osstack loop doctor --workspace <tmp> --json`，确认单文件能在真实 workspace 上运行。
+
+当前 smoke 产物还不是发布资产。上线前仍需要：
+
+- 固定目标平台矩阵，先以 macOS arm64 为主。
+- 生成 checksum/SBOM。
+- 做 macOS codesign/notarization。
+- 在干净机器上验证 `--version`、`doctor`、`serve --install --no-load`、`loop doctor`。
+- 将产物挂到 GitHub Release 或官网下载路径。
+
+## 7. Knowledge Cloud 当前成熟度
 
 当前 Knowledge Cloud 已经达到“可部署资产齐备、本地服务通过”的阶段：
 
@@ -107,7 +128,7 @@
 - 可观测性仪表盘与告警。
 - 正式知识包版本发布与回滚流程。
 
-## 7. 官方知识库当前成熟度
+## 8. 官方知识库当前成熟度
 
 官方知识库已经不再只是直接复刻外部项目资料，而是被加工为 osstack 官方知识包：
 
@@ -130,7 +151,7 @@
 - 对每个 pack 建立 owner、version、release note、quality score。
 - 在云端增加私有包、团队包、用户包隔离。
 
-## 8. GitHub / 上线阻塞
+## 9. GitHub / 上线阻塞
 
 当前 push 阻塞不是代码问题，而是 GitHub OAuth scope 问题。
 
@@ -171,7 +192,7 @@ git push -u origin codex/osstack-report-foundation
 gh pr create --draft --base main --head codex/osstack-report-foundation
 ```
 
-## 9. 推荐上线步骤
+## 10. 推荐上线步骤
 
 ### Step 1：恢复 GitHub push 能力
 

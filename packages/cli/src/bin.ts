@@ -5756,7 +5756,13 @@ function num(n: number, w: number): string {
 
 function isDirectCliEntrypoint(): boolean {
   if (process.argv[1] === undefined) return false;
-  const invoked = pathToFileURL(realpathSync(process.argv[1])).href;
+  let invokedPath = process.argv[1];
+  try {
+    invokedPath = realpathSync(process.argv[1]);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+  }
+  const invoked = pathToFileURL(invokedPath).href;
   return import.meta.url === invoked;
 }
 
