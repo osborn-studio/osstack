@@ -1105,6 +1105,7 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   };
   expectAsset(changeset, "\"@osstack/cli\": minor", "Changeset must version @osstack/cli.");
   expectAsset(workflow, "uses: changesets/action@v1", "Release workflow must use changesets/action.");
+  expectAsset(workflow, "pnpm smoke:release-plan", "Release workflow must run release plan smoke.");
   expectAsset(workflow, "pnpm smoke:npm-install", "Release workflow must run npm install smoke.");
   expectAsset(workflow, "pnpm changeset publish --provenance", "Release workflow must publish with npm provenance.");
   expectAsset(workflow, "secrets.NPM_TOKEN", "Release workflow must gate publishing on NPM_TOKEN.");
@@ -2484,6 +2485,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
   const validationCommands = [
     `osstack release doctor --target ${result.target}${options.proofDir === undefined ? "" : ` --proof-dir ${options.proofDir}`}${options.cloudUrl === undefined ? "" : ` --cloud-url ${options.cloudUrl}`} --output release-readiness.md --json`,
     `osstack proof validate <run_id> --proof-dir ${options.proofDir ?? "release/osstack-proof-<run_id>"} --json`,
+    ...(result.target === "all" ? ["pnpm smoke:release-plan"] : []),
     ...(result.target === "all" || result.target === "npm"
       ? [
         "pnpm smoke:npm-install",

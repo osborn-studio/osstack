@@ -520,6 +520,48 @@ describe("product entry commands", () => {
     expect(result.post_release_validation_commands).toContain("osstack doctor --workspace . --json");
   });
 
+  it("writes a full release action plan with runbook smoke coverage", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SINGLE_BINARY_WORKFLOW"] = "ok";
+    const output = join(tmp, "full-release-plan.md");
+
+    const exitCode = await main(["release", "plan", "--target", "all", "--output", output, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ready: boolean;
+      safe_to_execute: boolean;
+      validation_commands: string[];
+      publish_commands: string[];
+      deploy_commands: string[];
+      post_release_validation_commands: string[];
+    };
+    expect(result.ready).toBe(true);
+    expect(result.safe_to_execute).toBe(true);
+    expect(result.validation_commands).toContain("pnpm smoke:release-plan");
+    expect(result.validation_commands).toContain("pnpm smoke:npm-install");
+    expect(result.validation_commands).toContain("pnpm smoke:knowledge-cloud:deploy");
+    expect(result.validation_commands).toContain("pnpm smoke:single-binary-release-pack");
+    expect(result.publish_commands).toContain("npm install -g @osstack/cli");
+    expect(result.deploy_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+    expect(result.post_release_validation_commands).toContain("osstack release doctor --target npm --json");
+    expect(result.post_release_validation_commands).toContain(
+      "osstack release doctor --target knowledge-cloud --cloud-url https://knowledge.osstack.ai --json",
+    );
+    expect(result.post_release_validation_commands).toContain("shasum -a 256 -c sha256sums.txt");
+    const markdown = await readFile(output, "utf-8");
+    expect(markdown).toContain("## Validation Commands");
+    expect(markdown).toContain("pnpm smoke:release-plan");
+    expect(markdown).toContain("## Post-Release Validation Commands");
+    expect(markdown).toContain("osstack release doctor --target knowledge-cloud --cloud-url https://knowledge.osstack.ai --json");
+  });
+
   it("writes a Knowledge Cloud release action plan", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "";

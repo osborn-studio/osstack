@@ -30,6 +30,7 @@
     "smoke:knowledge-cloud": "pnpm build && node scripts/smoke-knowledge-cloud.mjs",
     "smoke:knowledge-cloud:deploy": "node scripts/smoke-knowledge-cloud-deploy-assets.mjs",
     "smoke:npm-install": "node scripts/smoke-npm-install.mjs",
+    "smoke:release-plan": "pnpm --filter @osstack/cli build && node scripts/smoke-release-plan.mjs",
     "smoke:bun-single-binary": "node scripts/smoke-bun-single-binary.mjs",
     "smoke:single-binary-signing": "node scripts/smoke-single-binary-signing.mjs",
     "smoke:single-binary-release-pack": "node scripts/smoke-single-binary-release-pack.mjs",

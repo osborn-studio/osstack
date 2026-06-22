@@ -44,6 +44,9 @@ jobs:
       - name: Test
         run: pnpm -r test
 
+      - name: Release plan smoke
+        run: pnpm smoke:release-plan
+
       - name: Knowledge Cloud smoke
         run: pnpm smoke:knowledge-cloud
 
