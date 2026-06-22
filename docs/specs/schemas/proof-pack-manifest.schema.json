@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://osstack.dev/specs/schemas/proof-pack-manifest.schema.json",
+  "title": "Osstack Proof Pack Manifest",
+  "type": "object",
+  "required": ["schema_version", "kind", "loop_id", "generated_from", "generated_at", "artifacts"],
+  "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "kind": { "type": "string", "const": "osstack.proof_pack" },
+    "loop_id": { "type": "string", "minLength": 1 },
+    "generated_from": { "type": "string", "minLength": 1 },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "sha256", "bytes"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "bytes": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

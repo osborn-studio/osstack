@@ -1,0 +1,7 @@
+{
+  "id": "engineering-readiness",
+  "version": "2026.06.22",
+  "name": "Engineering Readiness",
+  "certification_claim": "none",
+  "description": "Maps osstack proof evidence to internal engineering-readiness controls. This pack does not claim SOC 2, ISO 27001, EU AI Act, or third-party certification."
+}

@@ -1,0 +1,32 @@
+{
+  "id": "osstack-core/worktree-safety",
+  "version": "2026.06.22",
+  "name": "Osstack Worktree Safety",
+  "license": "Osstack-native",
+  "source_kind": "osstack_native",
+  "quality_score": 89,
+  "scope": "official",
+  "taxonomy": ["osstack-core/worktree-safety"],
+  "generated_at": "2026-06-22T00:00:00.000Z",
+  "last_reviewed_at": "2026-06-22T00:00:00.000Z",
+  "source_attribution": ["osstack-native product knowledge"],
+  "source_provenance": [
+    {
+      "source_id": "osstack-system-architecture",
+      "path": "docs/product/04_SYSTEM_ARCHITECTURE.md",
+      "sha256": "93e961699d2643ffb459263026b9017593654e7161ca8fe9d98724ba392a15d8",
+      "license": "Osstack-native",
+      "scope": "official",
+      "imported_at": "2026-06-22T00:00:00.000Z"
+    }
+  ],
+  "chunks": [
+    {
+      "chunk_id": "worktree-isolation",
+      "title": "Worktree isolation evidence",
+      "body": "Osstack uses git worktrees to isolate attempts, keep failed iterations away from the main workspace, and record branch and commit context in proof evidence.",
+      "tags": ["worktree", "isolation", "git"],
+      "source_refs": ["osstack-native"]
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+name: Single Binary Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to upload assets to, for example v0.1.0"
+        required: true
+        type: string
+      dry_run:
+        description: "Validate assets without uploading to GitHub Release"
+        required: true
+        default: true
+        type: boolean
+
+concurrency: single-binary-release-${{ github.ref }}
+
+permissions:
+  contents: write
+
+jobs:
+  single-binary-release:
+    runs-on: macos-14
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build single binary archive candidate
+        run: |
+          OUT="dist/single-binary/darwin-arm64"
+          pnpm build:single-binary -- --output-dir "$OUT" --json
+          MANIFEST="$(ls "$OUT"/osstack-*-darwin-arm64.manifest.json | head -n 1)"
+          pnpm sign:single-binary -- --manifest "$MANIFEST" --identity - --json
+          pnpm sbom:single-binary -- --manifest "$MANIFEST" --json
+          pnpm package:single-binary -- --manifest "$MANIFEST" --json
+
+      - name: Smoke release archive
+        run: pnpm smoke:single-binary-release-pack
+
+      - name: Resolve release tag
+        id: release-tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dry-run release upload
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          ARCHIVE_MANIFEST="$(ls dist/single-binary/darwin-arm64/osstack-*.archive.json | head -n 1)"
+          pnpm publish:single-binary -- \
+            --archive-manifest "$ARCHIVE_MANIFEST" \
+            --tag "${{ steps.release-tag.outputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --dry-run \
+            --json
+
+      - name: Upload GitHub Release assets
+        if: ${{ github.event_name != 'workflow_dispatch' || !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ARCHIVE_MANIFEST="$(ls dist/single-binary/darwin-arm64/osstack-*.archive.json | head -n 1)"
+          pnpm publish:single-binary -- \
+            --archive-manifest "$ARCHIVE_MANIFEST" \
+            --tag "${{ steps.release-tag.outputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --title "${{ steps.release-tag.outputs.tag }}" \
+            --notes "osstack single-binary release asset" \
+            --json
+
+      - name: Upload workflow artifact copy
+        uses: actions/upload-artifact@v4
+        with:
+          name: osstack-single-binary-darwin-arm64-release-candidate
+          path: |
+            dist/single-binary/darwin-arm64/osstack-*.tar.gz
+            dist/single-binary/darwin-arm64/osstack-*.archive.json
+            dist/single-binary/darwin-arm64/osstack-*.manifest.json
+            dist/single-binary/darwin-arm64/osstack-*.sbom.spdx.json
+            dist/single-binary/darwin-arm64/sha256sums.txt
+          if-no-files-found: error
+          retention-days: 14

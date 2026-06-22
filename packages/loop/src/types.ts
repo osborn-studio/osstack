@@ -13,6 +13,7 @@ import { z } from "zod";
 export const DiscoverSource = z.enum([
   "git_diff",
   "gh_issue",
+  "github_branch",
   "ci_log",
   "task_queue",
   "manual",
@@ -150,6 +151,38 @@ export const LoopMetrics = z.object({
   tokens_consumed: z.number(),
 });
 
+export const KnowledgePackSummary = z.object({
+  id: z.string(),
+  version: z.string(),
+  license: z.string(),
+  source_kind: z.enum(["osstack_native", "processed_mit", "curated_external", "internal"]),
+  quality_score: z.number(),
+});
+export type KnowledgePackSummary = z.infer<typeof KnowledgePackSummary>;
+
+export const KnowledgeSearchResult = z.object({
+  pack_id: z.string(),
+  pack_version: z.string(),
+  chunk_id: z.string(),
+  title: z.string(),
+  score: z.number(),
+  snippet: z.string(),
+  tags: z.array(z.string()).default([]),
+  source_refs: z.array(z.string()).default([]),
+});
+export type KnowledgeSearchResult = z.infer<typeof KnowledgeSearchResult>;
+
+export const LoopKnowledgeTrace = z.object({
+  mode: z.enum(["off", "local", "cloud"]),
+  status: z.enum(["not_used", "recorded", "error"]),
+  query: z.string().optional(),
+  packs: z.array(KnowledgePackSummary).default([]),
+  results: z.array(KnowledgeSearchResult).default([]),
+  reason: z.string().optional(),
+  fallback_mode: z.enum(["off", "local"]).optional(),
+});
+export type LoopKnowledgeTrace = z.infer<typeof LoopKnowledgeTrace>;
+
 /** The durable state of one loop session. Written to STATE.md + LOOP-STATE.json. */
 export const LoopState = z.object({
   loop_id: z.string(),
@@ -160,6 +193,7 @@ export const LoopState = z.object({
   pending: z.array(Task).optional(),
   key_metrics: LoopMetrics.optional(),
   decisions: z.array(z.string()).optional(),
+  knowledge: LoopKnowledgeTrace.optional(),
 });
 export type LoopState = z.infer<typeof LoopState>;
 
@@ -225,6 +259,7 @@ export const LoopEventType = z.enum([
   "loop.worktree.cleaned",
   "loop.worktree.orphans_cleaned",
   "loop.goal.checked",
+  "loop.knowledge.used",
   "loop.queue.archived",
   "loop.state.written",
   "loop.cycle.completed",

@@ -1,0 +1,7 @@
+{
+  "audit-proof-inventory": "manifest.json",
+  "audit-validation": "verify-results.json",
+  "audit-agent-selection": "policy-decision.json",
+  "audit-runtime": "agent-runtime.json",
+  "audit-change-isolation": "worktree-status.json"
+}

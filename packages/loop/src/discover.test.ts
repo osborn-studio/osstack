@@ -2,8 +2,16 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
-import { GitDiffScanner, TaskQueueScanner, createScanner } from "./discover.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { GitDiffScanner, GitHubBranchScanner, TaskQueueScanner, createScanner } from "./discover.js";
+
+const { scanBranchStewardCandidatesMock } = vi.hoisted(() => ({
+  scanBranchStewardCandidatesMock: vi.fn(),
+}));
+
+vi.mock("@osstack/github", () => ({
+  scanBranchStewardCandidates: scanBranchStewardCandidatesMock,
+}));
 
 function git(args: string[], cwd: string): void {
   execFileSync("git", args, { cwd, stdio: "ignore" });
@@ -22,6 +30,10 @@ function makeRepo(): string {
 }
 
 describe("discover scanners", () => {
+  beforeEach(() => {
+    scanBranchStewardCandidatesMock.mockReset();
+  });
+
   it("GitDiffScanner should produce prioritized review tasks for changed files", async () => {
     const repo = makeRepo();
     writeFileSync(join(repo, "small.ts"), "export const small = 1;\nexport const next = 2;\n");
@@ -45,8 +57,148 @@ describe("discover scanners", () => {
     mkdirSync(join(repo, "tasks"));
 
     expect(createScanner("git_diff", repo)).toBeInstanceOf(GitDiffScanner);
+    expect(createScanner("github_branch", repo)).toBeInstanceOf(GitHubBranchScanner);
     expect(createScanner("task_queue", repo)).toBeInstanceOf(TaskQueueScanner);
     await expect(createScanner("manual", repo).scan()).resolves.toEqual([]);
+  });
+
+  it("GitHubBranchScanner should return no tasks when origin is unavailable", async () => {
+    const repo = mkdtempSync(join(tmpdir(), "osstack-loop-"));
+    git(["init"], repo);
+
+    await expect(new GitHubBranchScanner(repo).scan()).resolves.toEqual([]);
+    expect(scanBranchStewardCandidatesMock).not.toHaveBeenCalled();
+  });
+
+  it("GitHubBranchScanner should map branch steward candidates to release verification tasks", async () => {
+    const repo = mkdtempSync(join(tmpdir(), "osstack-loop-"));
+    git(["init"], repo);
+    git(["remote", "add", "origin", "https://github.com/acme/widget.git"], repo);
+    scanBranchStewardCandidatesMock.mockResolvedValueOnce({
+      repo: "acme/widget",
+      base: "main",
+      generatedAt: "2026-06-20T00:00:00.000Z",
+      candidates: [
+        {
+          repo: "acme/widget",
+          base: "main",
+          head: "feat/useful branch",
+          remote: "origin",
+          aheadBy: 3,
+          behindBy: 0,
+          changedFiles: 2,
+          additions: 20,
+          deletions: 4,
+          hasOpenPr: false,
+          checksState: "unknown",
+          sensitivePaths: [],
+          reasons: ["small branch"],
+          score: 84,
+          action: "create_pr",
+        },
+      ],
+      prIntents: [],
+    });
+
+    const tasks = await new GitHubBranchScanner(repo).scan();
+
+    expect(scanBranchStewardCandidatesMock).toHaveBeenCalledWith(
+      {
+        repo: "acme/widget",
+        base: "main",
+        remote: "origin",
+        branchPrefixAllowlist: ["feat/", "feature/", "codex/"],
+        sensitivePathGlobs: [".github/workflows/", "package.json", "pnpm-lock.yaml"],
+        maxChangedFiles: 80,
+        maxBehindBy: 25,
+        prThreshold: 80,
+        autoMergeThreshold: 90,
+      },
+      undefined,
+      { cwd: repo },
+    );
+    expect(tasks).toEqual([
+      {
+        task_id: "github-branch-feat-useful-branch-103d53fe",
+        capability: "release.verify",
+        prompt: "Evaluate origin/feat/useful branch for safe PR creation into main.",
+        priority: 84,
+        source: "github_branch",
+        context: {
+          repo: "acme/widget",
+          base: "main",
+          head: "feat/useful branch",
+          score: 84,
+          action: "create_pr",
+          reasons: ["small branch"],
+        },
+      },
+    ]);
+  });
+
+  it("GitHubBranchScanner should return no tasks when candidate scanning fails", async () => {
+    const repo = mkdtempSync(join(tmpdir(), "osstack-loop-"));
+    git(["init"], repo);
+    git(["remote", "add", "origin", "https://github.com/acme/widget.git"], repo);
+    scanBranchStewardCandidatesMock.mockRejectedValueOnce(new Error("scan failed"));
+
+    await expect(new GitHubBranchScanner(repo).scan()).resolves.toEqual([]);
+  });
+
+  it("GitHubBranchScanner should produce distinct task ids for branch names with matching sanitized forms", async () => {
+    const repo = mkdtempSync(join(tmpdir(), "osstack-loop-"));
+    git(["init"], repo);
+    git(["remote", "add", "origin", "https://github.com/acme/widget.git"], repo);
+    scanBranchStewardCandidatesMock.mockResolvedValueOnce({
+      repo: "acme/widget",
+      base: "main",
+      generatedAt: "2026-06-20T00:00:00.000Z",
+      candidates: [
+        {
+          repo: "acme/widget",
+          base: "main",
+          head: "feat/foo-bar",
+          remote: "origin",
+          aheadBy: 3,
+          behindBy: 0,
+          changedFiles: 2,
+          additions: 20,
+          deletions: 4,
+          hasOpenPr: false,
+          checksState: "unknown",
+          sensitivePaths: [],
+          reasons: ["small branch"],
+          score: 84,
+          action: "create_pr",
+        },
+        {
+          repo: "acme/widget",
+          base: "main",
+          head: "feat/foo/bar",
+          remote: "origin",
+          aheadBy: 3,
+          behindBy: 0,
+          changedFiles: 2,
+          additions: 20,
+          deletions: 4,
+          hasOpenPr: false,
+          checksState: "unknown",
+          sensitivePaths: [],
+          reasons: ["small branch"],
+          score: 83,
+          action: "create_pr",
+        },
+      ],
+      prIntents: [],
+    });
+
+    const tasks = await new GitHubBranchScanner(repo).scan();
+
+    expect(tasks.map((task) => task.task_id)).toEqual([
+      "github-branch-feat-foo-bar-1c193d86",
+      "github-branch-feat-foo-bar-dbcdc88c",
+    ]);
+    expect(new Set(tasks.map((task) => task.task_id)).size).toBe(2);
   });
 
   it("TaskQueueScanner should load JSON task queue entries", async () => {

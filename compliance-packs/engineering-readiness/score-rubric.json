@@ -1,0 +1,12 @@
+{
+  "status_values": ["PRESENT", "MISSING"],
+  "minimum_release_ready": {
+    "required_present": [
+      "change-validation",
+      "automated-decision-trace",
+      "secure-coding-control",
+      "evidence-integrity"
+    ],
+    "note": "This rubric is an internal readiness signal only and is not an external certification."
+  }
+}

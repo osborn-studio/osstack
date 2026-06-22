@@ -16,9 +16,10 @@ import { readFile, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
-import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
+import { encodeFrame, FrameDecoder, type HermesEvent } from "@osstack/hermes-adapter";
 import {
   LoopEngine,
+  LoopKnowledgeTrace,
   nextCronDelayMs,
   validateCronExpression,
   readLoopState,
@@ -27,6 +28,7 @@ import {
   type LoopRunCyclesResult,
   type LoopRunOptions,
   type LoopRunResult,
+  type LoopKnowledgeTrace as LoopKnowledgeTraceType,
   type CompletedTask,
 } from "@osstack/loop";
 import {
@@ -50,6 +52,13 @@ import { osstackHome, pidFilePath, resolveSocketPath } from "./paths.js";
 import { PROTOCOL_VERSION, VERSION } from "./version.js";
 import { readUpdateCache, startUpdateChecker } from "./update-check.js";
 import { acquireDaemonLock } from "./daemon-lock.js";
+import {
+  createDashboardSnapshot,
+  dashboardUrl,
+  dashboardUrlFromEnv,
+  startDashboardServer,
+  type DashboardServerHandle,
+} from "./dashboard.js";
 
 const DAEMON_VERSION = VERSION;
 const DAEMON_PHASE = "S1.5-controls";
@@ -79,6 +88,8 @@ interface DaemonContext {
   gbrain: GBrainAdapter;
   /** osstack's own kanban board (borrowed from Hermes; see core/src/kanban). */
   kanban: KanbanRepository;
+  /** Local browser dashboard, returned to chat bridges as a shareable URL. */
+  dashboardUrl: string | null;
   /** Active runs by run_id → AbortController for cancellation. */
   activeRuns: Map<string, AbortController>;
   /** Daemon-managed polling loop sessions, keyed by loop_session_id. */
@@ -202,6 +213,7 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
         otel_enabled: otelEnabled(),
         hermes_enabled: ctx.hermes.enabled,
         gbrain_enabled: ctx.gbrain.enabled,
+        dashboard_url: ctx.dashboardUrl,
         update_available: update?.update_available ?? false,
         latest_version: update?.latest ?? null,
       });
@@ -285,10 +297,14 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       const parsed = parseLoopRunParams(req.params);
       if (parsed instanceof Error) return singleErr(req.id, "bad_request", parsed.message);
       const engine = new LoopEngine(withLoopAdapters(ctx, parsed.runOptions));
-      const result = parsed.cyclesOptions === undefined
-        ? loopRunSummary(await engine.runOnce())
-        : loopRunCyclesSummary(await engine.runCycles(parsed.cyclesOptions));
-      return singleOk(req.id, result);
+      if (parsed.cyclesOptions === undefined) {
+        const raw = await engine.runOnce();
+        const runId = persistLoopRunEvidence(ctx, raw);
+        return singleOk(req.id, loopRunSummary(raw, runId));
+      }
+      const raw = await engine.runCycles(parsed.cyclesOptions);
+      const runId = persistLoopRunEvidence(ctx, raw);
+      return singleOk(req.id, loopRunCyclesSummary(raw, runId));
     }
 
     case "loop.start": {
@@ -348,6 +364,29 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
         check: await ctx.hermes.healthCheck(),
         active_kanban_links: ctx.hermesKanbanByRun.size,
       });
+
+    case "dashboard.url":
+      return singleOk(req.id, {
+        url: ctx.dashboardUrl,
+        available: ctx.dashboardUrl !== null,
+      });
+
+    case "dashboard.snapshot":
+      return singleOk(req.id, createDashboardSnapshot({
+        db: ctx.db,
+        kanban: ctx.kanban,
+        dbPath: ctx.dbPath,
+        version: DAEMON_VERSION,
+        phase: DAEMON_PHASE,
+        dashboardUrl: ctx.dashboardUrl ?? dashboardUrl(dashboardUrlFromEnv()),
+        adapters: Array.from(ctx.adapters.values()).map((a) => ({
+          id: a.id,
+          display_name: a.display_name,
+          cost_tier: a.cost_tier,
+        })),
+        activeRuns: ctx.activeRuns.size,
+        activeLoops: activeLoopCount(ctx),
+      }));
 
     case "killswitch.check": {
       // F4: if policy hasn't been making decisions over a meaningful window,
@@ -699,8 +738,9 @@ function loopStat(session: LoopSession): LoopStat {
 // loop.run / loop.status
 // ──────────────────────────────────────────────────────────────────────
 
-function loopRunSummary(result: LoopRunResult): Record<string, unknown> {
+function loopRunSummary(result: LoopRunResult, runId?: string): Record<string, unknown> {
   return {
+    ...(runId !== undefined ? { run_id: runId } : {}),
     loop_id: result.loop_id,
     json_path: result.jsonPath,
     markdown_path: result.markdownPath,
@@ -712,8 +752,9 @@ function loopRunSummary(result: LoopRunResult): Record<string, unknown> {
   };
 }
 
-function loopRunCyclesSummary(result: LoopRunCyclesResult): Record<string, unknown> {
+function loopRunCyclesSummary(result: LoopRunCyclesResult, runId?: string): Record<string, unknown> {
   return {
+    ...(runId !== undefined ? { run_id: runId } : {}),
     loop_id: result.loop_id,
     json_path: result.jsonPath,
     markdown_path: result.markdownPath,
@@ -729,6 +770,49 @@ function loopRunCyclesSummary(result: LoopRunCyclesResult): Record<string, unkno
       ...(cycle.goal !== undefined ? { goal: cycle.goal } : {}),
     })),
   };
+}
+
+function persistLoopRunEvidence(ctx: DaemonContext, result: LoopRunResult | LoopRunCyclesResult): string {
+  const runId = `loop_run_${randomUUID().slice(0, 8)}`;
+  const taskId = `loop_task_${runId}`;
+  const now = Date.now() / 1000;
+  const outcome = result.state.completed_tasks.some((task) => task.outcome !== "success")
+    ? "failed"
+    : "completed";
+
+  insertTask(ctx.db, ctx.dbPath, {
+    task_id: taskId,
+    title: `Loop run ${result.loop_id}`,
+    description: `Persisted evidence for loop ${result.loop_id}`,
+    created_at: now,
+  });
+  insertRun(ctx.db, ctx.dbPath, {
+    run_id: runId,
+    task_id: taskId,
+    session_id: result.loop_id,
+    agent_id: "osstack-loop",
+    capability_id: "loop.engine",
+    phase: "loop",
+    started_at: now,
+  });
+
+  for (const event of result.events) {
+    appendEvent(ctx.db, ctx.dbPath, {
+      event_id: `${runId}:${event.seq}`,
+      run_id: runId,
+      session_id: result.loop_id,
+      seq: event.seq,
+      type: event.type,
+      created_at: event.created_at,
+      terminal: event.type === "loop.stopped",
+      payload: {
+        ...(event.payload ?? {}),
+        loop_event_id: event.event_id,
+      },
+    } as unknown as HermesEvent);
+  }
+  finalizeRun(ctx.db, ctx.dbPath, runId, outcome, Date.now() / 1000);
+  return runId;
 }
 
 interface LoopStartSchedule {
@@ -1182,6 +1266,8 @@ function parseLoopRunParams(
   if (intervalMs instanceof Error) return intervalMs;
   const stopWhenIdle = optionalBoolean(p, "stopWhenIdle");
   if (stopWhenIdle instanceof Error) return stopWhenIdle;
+  const knowledge = optionalKnowledgeTrace(p, "knowledge");
+  if (knowledge instanceof Error) return knowledge;
 
   const runOptions: LoopRunOptions = {
     workspacePath,
@@ -1201,6 +1287,7 @@ function parseLoopRunParams(
     ...(maxIterations !== undefined ? { maxIterations } : {}),
     ...(commandTimeoutMs !== undefined ? { commandTimeoutMs } : {}),
     ...(outputLimit !== undefined ? { outputLimit } : {}),
+    ...(knowledge !== undefined ? { knowledge } : {}),
   };
   const cyclesOptions = cycles !== undefined || intervalMs !== undefined || stopWhenIdle !== undefined
     ? {
@@ -1284,6 +1371,14 @@ function objectParams(params: unknown): Record<string, unknown> | Error {
     return new Error("params must be an object");
   }
   return params as Record<string, unknown>;
+}
+
+function optionalKnowledgeTrace(params: Record<string, unknown>, key: string): LoopKnowledgeTraceType | undefined | Error {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  const parsed = LoopKnowledgeTrace.safeParse(value);
+  if (!parsed.success) return new Error(`params.${key} must be a valid loop knowledge trace`);
+  return parsed.data;
 }
 
 function optionalString(params: Record<string, unknown>, key: string): string | undefined {
@@ -1732,6 +1827,7 @@ function buildContext(): DaemonContext {
   const kanban = new KanbanRepository(db, dbPath);
   return {
     dbPath, loopSessionsPath, db, redactor, adapters, policy, hermes, gbrain, kanban,
+    dashboardUrl: null,
     activeRuns: new Map(),
     loopSessions: new Map(),
     hermesKanbanByRun: new Map(),
@@ -1756,6 +1852,7 @@ export async function startDaemon(opts: { socketPath?: string } = {}): Promise<D
   initOtel({ serviceVersion: DAEMON_VERSION });
   const ctx = buildContext();
   const stopUpdateChecker = startUpdateChecker();
+  let dashboard: DashboardServerHandle | null = null;
 
   const server = createServer((sock: Socket) => {
     const decoder = new FrameDecoder();
@@ -1831,6 +1928,7 @@ export async function startDaemon(opts: { socketPath?: string } = {}): Promise<D
             .filter((done): done is Promise<void> => done !== undefined);
           await Promise.allSettled(loopCompletions);
           await new Promise<void>((resolveClose) => server.close(() => resolveClose()));
+          if (dashboard !== null) await dashboard.close();
           try { ctx.db.close(); } catch { /* swallow */ }
           try { cleanupStaleSocket(socketPath); } catch { /* swallow */ }
           try { releaseLock(); } catch { /* swallow */ }
@@ -1842,6 +1940,31 @@ export async function startDaemon(opts: { socketPath?: string } = {}): Promise<D
       process.once("SIGTERM", onSig);
       process.once("SIGINT", onSig);
       ctx.requestShutdown = onSig;
+
+      const dashOpts = dashboardUrlFromEnv();
+      void startDashboardServer(
+        () => createDashboardSnapshot({
+          db: ctx.db,
+          kanban: ctx.kanban,
+          dbPath: ctx.dbPath,
+          version: DAEMON_VERSION,
+          phase: DAEMON_PHASE,
+          dashboardUrl: ctx.dashboardUrl ?? dashboardUrl(dashOpts),
+          adapters: Array.from(ctx.adapters.values()).map((a) => ({
+            id: a.id,
+            display_name: a.display_name,
+            cost_tier: a.cost_tier,
+          })),
+          activeRuns: ctx.activeRuns.size,
+          activeLoops: activeLoopCount(ctx),
+        }),
+        dashOpts,
+      ).then((handle) => {
+        dashboard = handle;
+        ctx.dashboardUrl = handle.url;
+      }).catch((err) => {
+        process.stderr.write(`osstack: dashboard server failed: ${(err as Error).message}\n`);
+      });
 
       resolve({ close: shutdown, socketPath, dbPath: ctx.dbPath });
       });

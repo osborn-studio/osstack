@@ -54,15 +54,27 @@ importers:
       '@osstack/agents':
         specifier: workspace:*
         version: link:../agents
+      '@osstack/compliance':
+        specifier: workspace:*
+        version: link:../compliance
       '@osstack/config':
         specifier: workspace:*
         version: link:../config
       '@osstack/core':
         specifier: workspace:*
         version: link:../core
+      '@osstack/github':
+        specifier: workspace:*
+        version: link:../github
+      '@osstack/governance':
+        specifier: workspace:*
+        version: link:../governance
       '@osstack/hermes-adapter':
         specifier: workspace:*
         version: link:../hermes-adapter
+      '@osstack/knowledge':
+        specifier: workspace:*
+        version: link:../knowledge
       '@osstack/loop':
         specifier: workspace:*
         version: link:../loop
@@ -82,6 +94,12 @@ importers:
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
+
+  packages/compliance:
+    devDependencies:
       '@types/node':
         specifier: ^22.19.19
         version: 22.19.19
@@ -133,6 +151,22 @@ importers:
         specifier: ^22.19.19
         version: 22.19.19
 
+  packages/github:
+    dependencies:
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
+
+  packages/governance:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
+
   packages/hermes-adapter:
     dependencies:
       '@osstack/core':
@@ -146,6 +180,22 @@ importers:
         specifier: ^25.8.0
         version: 25.8.0
 
+  packages/knowledge:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
+
+  packages/knowledge-cloud:
+    dependencies:
+      '@osstack/knowledge':
+        specifier: workspace:*
+        version: link:../knowledge
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
+
   packages/loop:
     dependencies:
       '@osstack/agents':
@@ -154,6 +204,9 @@ importers:
       '@osstack/core':
         specifier: workspace:*
         version: link:../core
+      '@osstack/github':
+        specifier: workspace:*
+        version: link:../github
       '@osstack/hermes-adapter':
         specifier: workspace:*
         version: link:../hermes-adapter

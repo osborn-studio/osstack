@@ -3,6 +3,7 @@ export * from "./scheduler.js";
 export * from "./discover.js";
 export * from "./iterator.js";
 export * from "./state-file.js";
+export * from "./report.js";
 export * from "./task-queue.js";
 export * from "./planner.js";
 export * from "./executor.js";

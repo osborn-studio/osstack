@@ -19,5 +19,16 @@
   },
   "devDependencies": {
     "@types/node": "^25.8.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gilosbornhello/osstack.git",
+    "directory": "packages/skills"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

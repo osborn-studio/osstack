@@ -75,6 +75,9 @@ BRIDGE=~/.hermes/skills/software-development/osstack/scripts/osstack_bridge.py
 # Show the board (what's in flight, what's blocked, what's done)
 python3 $BRIDGE kanban-board
 
+# Return the cockpit URL for Telegram/WeChat replies
+python3 $BRIDGE dashboard-url
+
 # Create a planning card
 python3 $BRIDGE kanban-create "Refactor auth module" 5 claude-code
 
@@ -108,6 +111,8 @@ Subcommand reference:
 | `kanban-subscribe <card_id> <chat_id> [thread]` | `kanban.subscribe` | Telegram chat ← card progress |
 | `kanban-events [since]` | `kanban.events` | Drain events for the relay |
 | `kanban-subscriptions [card_id]` | `kanban.subscriptions` | List who's subscribed |
+| `dashboard-url` | `dashboard.url` | Return the local cockpit URL to send back in chat |
+| `dashboard-snapshot` | `dashboard.snapshot` | Return the JSON backing the cockpit |
 
 Borrowed from Hermes Agent's own kanban: the 6-lane column model, per-card event log, incremental polling (`since`/`latest_event_id`), and the notify-subscription pattern. osstack's board is its own SQLite-backed surface so it works even when Hermes is offline; Hermes is just the relay.
 

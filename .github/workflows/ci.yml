@@ -24,6 +24,10 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Install
         run: pnpm install --frozen-lockfile
 
@@ -39,3 +43,18 @@ jobs:
 
       - name: Test
         run: pnpm -r test
+
+      - name: Knowledge Cloud smoke
+        run: pnpm smoke:knowledge-cloud
+
+      - name: Knowledge Cloud deploy asset smoke
+        run: pnpm smoke:knowledge-cloud:deploy
+
+      - name: Deliver proof smoke
+        run: pnpm smoke:deliver-proof
+
+      - name: Single binary release archive smoke
+        run: pnpm smoke:single-binary-release-pack
+
+      - name: NPM install smoke
+        run: pnpm smoke:npm-install

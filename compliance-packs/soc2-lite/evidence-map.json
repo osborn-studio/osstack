@@ -1,0 +1,7 @@
+{
+  "soc2-change-validation": "verify-results.json",
+  "soc2-automated-decision-trace": "policy-decision.json",
+  "soc2-secure-development": "governance-results.json",
+  "soc2-evidence-integrity": "manifest.json",
+  "soc2-agent-runtime": "agent-runtime.json"
+}

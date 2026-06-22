@@ -234,6 +234,33 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_kanban_subs_card ON kanban_notify_subs(card_id);
     `,
   },
+  {
+    id: 5,
+    name: "pitfall_lessons",
+    // Learning Control Plane: durable pitfall KB extracted from failed,
+    // escalated, blocked, or otherwise instructive runs.
+    sql: `
+      CREATE TABLE IF NOT EXISTS pitfall_lessons (
+        pitfall_id          TEXT PRIMARY KEY,
+        family              TEXT NOT NULL,
+        fingerprint         TEXT NOT NULL UNIQUE,
+        tech_stack_json     TEXT NOT NULL,
+        symptom             TEXT NOT NULL,
+        resolution          TEXT NOT NULL,
+        verified_count      INTEGER NOT NULL DEFAULT 1 CHECK (verified_count >= 0),
+        source_run_ids_json TEXT NOT NULL,
+        status              TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','archived')),
+        tenant_id           TEXT,
+        created_at          REAL NOT NULL,
+        updated_at          REAL NOT NULL,
+        last_seen_at        REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_pitfall_lessons_family
+        ON pitfall_lessons(family, status, last_seen_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_pitfall_lessons_tenant
+        ON pitfall_lessons(tenant_id, status, last_seen_at DESC);
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

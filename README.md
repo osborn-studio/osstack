@@ -54,6 +54,9 @@ next time. osstack is that layer:
   earning its keep.
 - **Daemon + self-update** — a long-lived local daemon with a clean
   `osstack upgrade` path (backup → drain → install → health-check → auto-rollback).
+- **Knowledge Cloud + proof packs** — an OSSTACK-native, cloud-deployable
+  knowledge service with official packs, provenance, quality metadata, and
+  loop/report evidence hooks.
 
 Everything is local-first: state lives in a single SQLite file under
 `~/.osstack/`, the daemon listens on a Unix socket, nothing leaves your machine
@@ -255,6 +258,18 @@ osstack loop run --source git_diff --reviewer ds-review
 
 **Exit codes:** `0` all good · `1` config/command error · `2` a task failed,
 escalated, or verification did not pass.
+
+Use `--agent <id>` to execute each task through a registered adapter such as
+`claude-cli`, `codex-cli`, `opencode-cli`, or `claude-code`. The adapter receives
+the task prompt plus `repo_path` in its context and streams Hermes run events
+back into the loop result. By default, osstack's CLI adapters reuse the user's
+locally authenticated CLI session and do not store model API keys; SDK or
+connector adapters remain explicit opt-ins when a provider key is required.
+
+```bash
+osstack agent list
+osstack loop run --source task_queue --agent claude-cli --verify "pnpm test"
+```
 
 ### Standalone runner (`osstack-loop`, no daemon, no CLI)
 

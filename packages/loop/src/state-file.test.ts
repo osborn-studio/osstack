@@ -57,6 +57,28 @@ describe("loop state file", () => {
       }],
       in_progress: [],
       decisions: ["Selected codex-cli for a review task."],
+      knowledge: {
+        mode: "local",
+        status: "recorded",
+        query: "review changed files",
+        packs: [{
+          id: "osstack-core/loop-engineering",
+          version: "2026.06.22",
+          license: "MIT",
+          source_kind: "osstack_native",
+          quality_score: 92,
+        }],
+        results: [{
+          pack_id: "osstack-core/loop-engineering",
+          pack_version: "2026.06.22",
+          chunk_id: "chunk-loop-proof",
+          title: "Loop proof evidence",
+          score: 0.92,
+          snippet: "Record knowledge chunks in proof evidence.",
+          tags: ["proof"],
+          source_refs: [],
+        }],
+      },
       key_metrics: {
         total_cycles: 1,
         avg_duration_ms: 1200,
@@ -75,6 +97,8 @@ describe("loop state file", () => {
     expect(markdown).toContain("Verification: 1 verifier command passed.");
     expect(markdown).toContain("Commands: pnpm test -> 0");
     expect(markdown).toContain("Worktree: osstack/loop/loop-test/task-1, commit abc123");
+    expect(markdown).toContain("## Knowledge Trace");
+    expect(markdown).toContain("chunk-loop-proof");
   });
 
   it("renders empty sections explicitly", () => {

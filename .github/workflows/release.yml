@@ -18,6 +18,7 @@ concurrency: release-${{ github.ref }}
 permissions:
   contents: write
   pull-requests: write
+  id-token: write
 
 jobs:
   release:
@@ -37,6 +38,10 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Install
         run: pnpm install --frozen-lockfile
 
@@ -45,6 +50,43 @@ jobs:
 
       - name: Test
         run: pnpm -r test
+
+      - name: Knowledge Cloud smoke
+        run: pnpm smoke:knowledge-cloud
+
+      - name: Knowledge Cloud deploy asset smoke
+        run: pnpm smoke:knowledge-cloud:deploy
+
+      - name: Deliver proof smoke
+        run: pnpm smoke:deliver-proof
+
+      - name: Single binary release archive smoke
+        run: pnpm smoke:single-binary-release-pack
+
+      - name: Build single binary archive candidate
+        run: |
+          OUT="dist/single-binary/darwin-arm64"
+          pnpm build:single-binary -- --output-dir "$OUT" --json
+          MANIFEST="$(ls "$OUT"/osstack-*-darwin-arm64.manifest.json | head -n 1)"
+          pnpm sign:single-binary -- --manifest "$MANIFEST" --identity - --json
+          pnpm sbom:single-binary -- --manifest "$MANIFEST" --json
+          pnpm package:single-binary -- --manifest "$MANIFEST" --json
+
+      - name: Upload single binary archive candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: osstack-single-binary-darwin-arm64-candidate
+          path: |
+            dist/single-binary/darwin-arm64/osstack-*.tar.gz
+            dist/single-binary/darwin-arm64/osstack-*.archive.json
+            dist/single-binary/darwin-arm64/osstack-*.manifest.json
+            dist/single-binary/darwin-arm64/osstack-*.sbom.spdx.json
+            dist/single-binary/darwin-arm64/sha256sums.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: NPM install smoke
+        run: pnpm smoke:npm-install
 
       - name: Detect npm token
         id: npm-token
@@ -60,7 +102,7 @@ jobs:
         uses: changesets/action@v1
         with:
           version: pnpm changeset version
-          publish: pnpm changeset publish
+          publish: pnpm changeset publish --provenance
           commit: "chore(release): version packages"
           title: "chore(release): version packages"
         env:

@@ -1,0 +1,156 @@
+#!/usr/bin/env node
+import { spawn } from "node:child_process";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+const tmp = join(tmpdir(), `osstack-knowledge-cloud-smoke-${process.pid}`);
+await mkdir(tmp, { recursive: true });
+const privatePackPath = join(tmp, "team-private-pack.json");
+await writeFile(privatePackPath, JSON.stringify({
+  id: "team/private-release",
+  version: "2026.06.22-smoke",
+  name: "Team Private Release",
+  license: "Internal",
+  source_kind: "internal",
+  quality_score: 82,
+  scope: "team",
+  taxonomy: ["agent-operations/private-release"],
+  chunks: [{
+    chunk_id: "private-release-approval",
+    title: "Private release approval",
+    body: "Private team releases require approval notes, proof pack paths, rollback owner, and tenant-scoped Knowledge Cloud search.",
+    tags: ["private", "release", "approval"],
+  }],
+}, null, 2));
+
+const child = spawn(
+  process.execPath,
+  ["packages/knowledge-cloud/dist/bin.js", "--port", "0", "--private-pack", privatePackPath],
+  {
+    cwd: process.cwd(),
+    env: { ...process.env },
+    stdio: ["ignore", "pipe", "pipe"],
+  },
+);
+
+let stdout = "";
+let stderr = "";
+let resolved = false;
+
+try {
+  const url = await waitForStartup();
+  const health = await fetchJson(`${url}/healthz`);
+  assert(health.ok === true, "/healthz must return ok=true");
+  assert(health.service === "osstack-knowledge-cloud", "/healthz must identify the service");
+  assert(health.private_packs === 1, "/healthz must count private packs");
+
+  const packs = await fetchJson(`${url}/v1/packs`);
+  assert(Array.isArray(packs.packs), "/v1/packs must return packs");
+  assert(packs.packs.length >= 6, "/v1/packs must expose official packs");
+
+  const sync = await fetchJson(`${url}/v1/sync`, { client: "osstack-smoke" });
+  assert(Array.isArray(sync.packs), "/v1/sync must return pack manifests");
+  assert(
+    sync.packs.some((item) => item.id === "osstack-core/proof-and-scorecard"
+      && Array.isArray(item.chunks)
+      && item.chunks.some((chunk) => chunk.chunk_id === "proof-checksum-pack")),
+    "/v1/sync must include official proof guidance manifest",
+  );
+
+  const privatePacks = await fetchJson(`${url}/v1/private-packs`, { tenant_id: "team_smoke" });
+  assert(Array.isArray(privatePacks.packs), "/v1/private-packs must return packs");
+  assert(
+    privatePacks.packs.some((item) => item.id === "team/private-release" && item.scope === "team"),
+    "/v1/private-packs must expose tenant-scoped team packs",
+  );
+
+  const search = await fetchJson(`${url}/v1/search`, {
+    query: "proof pack checksum manifest",
+    limit: 2,
+  });
+  assert(Array.isArray(search.results), "/v1/search must return results");
+  assert(
+    search.results.some((item) => item.pack_id === "osstack-core/proof-and-scorecard"
+      && item.chunk_id === "proof-checksum-pack"),
+    "/v1/search must find official proof guidance",
+  );
+
+  const privateSearch = await fetchJson(`${url}/v1/search`, {
+    query: "private release approval rollback owner",
+    limit: 3,
+  });
+  assert(
+    privateSearch.results.some((item) => item.pack_id === "team/private-release"
+      && item.chunk_id === "private-release-approval"),
+    "/v1/search must include tenant/private packs loaded at startup",
+  );
+
+  const feedback = await fetchJson(`${url}/v1/feedback`, {
+    chunk_id: "proof-checksum-pack",
+    rating: "useful",
+  });
+  assert(feedback.ok === true, "/v1/feedback must accept useful/bad ratings");
+  assert(feedback.feedback?.status === "sent", "/v1/feedback must return sent status");
+
+  console.log(JSON.stringify({
+    ok: true,
+    url,
+    health: health.service,
+    packs: packs.packs.length,
+    private_packs: health.private_packs,
+    sync_packs: sync.packs.length,
+    top_result: search.results[0]?.chunk_id ?? null,
+    private_result: privateSearch.results[0]?.chunk_id ?? null,
+    feedback: feedback.feedback?.status ?? null,
+  }, null, 2));
+} finally {
+  child.kill("SIGTERM");
+  await rm(tmp, { recursive: true, force: true });
+}
+
+function waitForStartup() {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error(`knowledge cloud did not start\nstdout:\n${stdout}\nstderr:\n${stderr}`));
+    }, 10_000);
+
+    child.stdout.on("data", (chunk) => {
+      stdout += String(chunk);
+      const match = stdout.match(/^knowledge_cloud=(.+)$/m);
+      if (match !== null && !resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        resolve(match[1]);
+      }
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+    child.once("exit", (code) => {
+      if (!resolved) {
+        clearTimeout(timeout);
+        reject(new Error(`knowledge cloud exited before startup with ${code}\nstdout:\n${stdout}\nstderr:\n${stderr}`));
+      }
+    });
+  });
+}
+
+async function fetchJson(url, body) {
+  const response = await fetch(url, body === undefined
+    ? undefined
+    : {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(`${url} failed with HTTP ${response.status}: ${text}`);
+  }
+  return JSON.parse(text);
+}
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}

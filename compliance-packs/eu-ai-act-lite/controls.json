@@ -1,0 +1,27 @@
+[
+  {
+    "id": "eu-automated-decision-record",
+    "title": "Automated decision record",
+    "description": "Policy decision evidence records automated agent selection rationale."
+  },
+  {
+    "id": "eu-agent-runtime-transparency",
+    "title": "Agent runtime transparency",
+    "description": "Agent runtime evidence records auth/invocation mode and role tags."
+  },
+  {
+    "id": "eu-technical-robustness",
+    "title": "Technical robustness evidence",
+    "description": "Verification results show whether the run met its technical gates."
+  },
+  {
+    "id": "eu-risk-and-safety",
+    "title": "Risk and safety checks",
+    "description": "Governance findings provide deterministic safety and secure-coding signals."
+  },
+  {
+    "id": "eu-knowledge-traceability",
+    "title": "Knowledge traceability",
+    "description": "Knowledge evidence records pack and chunk ids used as retrieved context."
+  }
+]

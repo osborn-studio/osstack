@@ -9,9 +9,10 @@
 //   - TaskQueueScanner: read tasks/ YAML files → Task[]
 
 import { execSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { scanBranchStewardCandidates } from "@osstack/github";
 import { z } from "zod";
 import { Task, type DiscoverSource, type DiscoverScanner } from "./types.js";
 
@@ -22,6 +23,8 @@ export function createScanner(source: DiscoverSource, workspacePath: string): Di
   switch (source) {
     case "git_diff":
       return new GitDiffScanner(workspacePath);
+    case "github_branch":
+      return new GitHubBranchScanner(workspacePath);
     case "task_queue":
       return new TaskQueueScanner(workspacePath);
     default:
@@ -77,6 +80,86 @@ export class GitDiffScanner implements DiscoverScanner {
       return [];
     }
   }
+}
+
+// ── GitHubBranchScanner ────────────────────────────────────────────────
+
+export class GitHubBranchScanner implements DiscoverScanner {
+  readonly source: DiscoverSource = "github_branch";
+
+  constructor(private workspacePath: string) {}
+
+  async scan(): Promise<Task[]> {
+    const repo = inferGitHubRepoSlug(this.workspacePath);
+    if (repo === undefined) return [];
+
+    let report: Awaited<ReturnType<typeof scanBranchStewardCandidates>>;
+    try {
+      report = await scanBranchStewardCandidates(
+        {
+          repo,
+          base: "main",
+          remote: "origin",
+          branchPrefixAllowlist: ["feat/", "feature/", "codex/"],
+          sensitivePathGlobs: [".github/workflows/", "package.json", "pnpm-lock.yaml"],
+          maxChangedFiles: 80,
+          maxBehindBy: 25,
+          prThreshold: 80,
+          autoMergeThreshold: 90,
+        },
+        undefined,
+        { cwd: this.workspacePath },
+      );
+    } catch {
+      return [];
+    }
+
+    return report.candidates.map((candidate) =>
+      Task.parse({
+        task_id: githubBranchTaskId(candidate.head),
+        capability: "release.verify",
+        prompt: `Evaluate ${candidate.remote}/${candidate.head} for safe PR creation into ${candidate.base}.`,
+        priority: candidate.score,
+        source: "github_branch",
+        context: {
+          repo: candidate.repo,
+          base: candidate.base,
+          head: candidate.head,
+          score: candidate.score,
+          action: candidate.action,
+          reasons: candidate.reasons,
+        },
+      }),
+    );
+  }
+}
+
+function githubBranchTaskId(head: string): string {
+  const sanitizedHead = head.replace(/[^a-zA-Z0-9._-]/g, "-");
+  const stableHash = createHash("sha1").update(head).digest("hex").slice(0, 8);
+  return `github-branch-${sanitizedHead}-${stableHash}`;
+}
+
+function inferGitHubRepoSlug(workspacePath: string): string | undefined {
+  try {
+    const remoteUrl = execSync("git remote get-url origin", {
+      cwd: workspacePath,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 10_000,
+    }).trim();
+
+    return parseGitHubRepoSlug(remoteUrl);
+  } catch {
+    return undefined;
+  }
+}
+
+function parseGitHubRepoSlug(remoteUrl: string): string | undefined {
+  const match = remoteUrl.match(
+    /^(?:git@github\.com:|https:\/\/github\.com\/|ssh:\/\/git@github\.com\/)([^/]+\/[^/]+?)(?:\.git)?$/,
+  );
+  return match?.[1];
 }
 
 // ── TaskQueueScanner ────────────────────────────────────────────────────

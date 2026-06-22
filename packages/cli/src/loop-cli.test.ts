@@ -41,6 +41,20 @@ afterEach(async () => {
 });
 
 describe("loop CLI", () => {
+  it("prints loop help from --help", async () => {
+    const exitCode = await main(["loop", "--help"]);
+
+    expect(exitCode).toBe(0);
+    const output = logs.join("\n");
+    expect(output).toContain("osstack loop — local Loop Engineering runner");
+    expect(output).toContain("osstack loop run [options]");
+    expect(output).toContain("osstack loop doctor [options]");
+    expect(output).toContain("--proof");
+    expect(output).toContain("--knowledge M");
+    expect(output).toContain("--govern [M]");
+    expect(errors).toEqual([]);
+  });
+
   it("runs a queued task and reads status from --workspace", async () => {
     await mkdir(join(tmp, "tasks"));
     await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
@@ -81,6 +95,248 @@ describe("loop CLI", () => {
 
     expect(statusCode).toBe(0);
     expect(logs.join("\n")).toContain("cli-loop-task - success");
+  });
+
+  it("generates report, scorecard, and proof artifacts during loop run", async () => {
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-loop-artifacts-task",
+      capability: "code.test",
+      prompt: "Exercise loop artifact generation",
+    }));
+    await writeFile(join(tmp, "unsafe.ts"), "const api_key = \"sk-test-secret-token\";\n");
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--report",
+      "--scorecard",
+      "--proof",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      loop_id: string;
+      artifacts: {
+        report?: string;
+        scorecard_markdown?: string;
+        scorecard_html?: string;
+        proof_dir?: string;
+        proof_manifest?: string;
+      };
+    };
+    expect(summary.artifacts.report).toBe(join(tmp, "reports", `osstack-report-${summary.loop_id}.md`));
+    expect(summary.artifacts.scorecard_markdown).toBe(join(tmp, "release", `osstack-scorecard-${summary.loop_id}.md`));
+    expect(summary.artifacts.scorecard_html).toBe(join(tmp, "release", `osstack-scorecard-${summary.loop_id}.html`));
+    expect(summary.artifacts.proof_dir).toBe(join(tmp, "release", `osstack-proof-${summary.loop_id}`));
+    await expect(readFile(summary.artifacts.report!, "utf-8")).resolves.toContain(`# Osstack Loop Report - ${summary.loop_id}`);
+    await expect(readFile(summary.artifacts.report!, "utf-8")).resolves.toContain("## Events Timeline");
+    await expect(readFile(summary.artifacts.report!, "utf-8")).resolves.toContain("loop.verify.done");
+    await expect(readFile(summary.artifacts.scorecard_markdown!, "utf-8")).resolves.toContain(`# Osstack Scorecard - ${summary.loop_id}`);
+    await expect(readFile(summary.artifacts.scorecard_html!, "utf-8")).resolves.toContain("<!doctype html>");
+    await expect(readFile(summary.artifacts.proof_manifest!, "utf-8")).resolves.toContain("\"kind\": \"osstack.proof_pack\"");
+    await expect(readFile(join(summary.artifacts.proof_dir!, "events.jsonl"), "utf-8")).resolves.toContain("loop.verify.done");
+    const governance = JSON.parse(await readFile(join(summary.artifacts.proof_dir!, "governance-results.json"), "utf-8")) as {
+      status: string;
+      findings: Array<{ rule_id: string; file: string }>;
+    };
+    expect(governance).toMatchObject({
+      status: "fail",
+      findings: [expect.objectContaining({ rule_id: "secret.api_key", file: join(tmp, "unsafe.ts") })],
+    });
+  });
+
+  it("creates a shadow checkpoint before a local non-worktree loop run", async () => {
+    process.env["OSSTACK_HOME"] = join(tmp, "home");
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-loop-checkpoint-task",
+      capability: "code.test",
+      prompt: "Exercise checkpoint flag",
+    }));
+    await writeFile(join(tmp, "app.txt"), "before\n");
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--execute",
+      "node -e \"require('fs').writeFileSync('app.txt', 'after\\n')\"",
+      "--verify",
+      "node -e \"process.exit(require('fs').readFileSync('app.txt','utf8') === 'after\\n' ? 0 : 1)\"",
+      "--checkpoint",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      checkpoint: { checkpoint_id: string; checkpoint_dir: string; files: number };
+      completed_tasks: Array<{ task_id: string; outcome: string }>;
+    };
+    expect(summary.completed_tasks).toContainEqual(expect.objectContaining({
+      task_id: "cli-loop-checkpoint-task",
+      outcome: "success",
+    }));
+    expect(summary.checkpoint).toMatchObject({
+      checkpoint_id: expect.stringMatching(/^chk_/),
+      files: expect.any(Number),
+    });
+    expect(summary.checkpoint.checkpoint_dir).toContain(join(tmp, "home", "checkpoints"));
+    await expect(readFile(join(tmp, "app.txt"), "utf-8")).resolves.toBe("after\n");
+    await expect(readFile(join(summary.checkpoint.checkpoint_dir, "files", "app.txt"), "utf-8"))
+      .resolves.toBe("before\n");
+  });
+
+  it("records loop knowledge trace in state, report, and proof artifacts", async () => {
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-loop-knowledge-task",
+      capability: "code.test",
+      prompt: "Use cloud governance knowledge",
+    }));
+    const packPath = join(tmp, "knowledge-pack.json");
+    await writeFile(packPath, JSON.stringify({
+      id: "osstack-cloud-bootstrap",
+      version: "2026.06.22",
+      name: "Osstack Cloud Bootstrap",
+      license: "MIT-derived-processed",
+      source_kind: "processed_mit",
+      quality_score: 88,
+      chunks: [{
+        chunk_id: "chunk-cloud-governance",
+        title: "Cloud governance trace",
+        body: "Osstack Knowledge Cloud records pack ids and chunk ids in report and proof evidence.",
+        tags: ["cloud", "governance"],
+      }],
+    }, null, 2));
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--knowledge",
+      "local",
+      "--knowledge-pack",
+      packPath,
+      "--knowledge-query",
+      "cloud governance",
+      "--report",
+      "--proof",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      artifacts: { report: string; proof_dir: string };
+    };
+    const state = JSON.parse(await readFile(join(tmp, "LOOP-STATE.json"), "utf-8")) as {
+      knowledge: { mode: string; status: string; results: Array<{ chunk_id: string }> };
+    };
+    expect(state.knowledge).toMatchObject({
+      mode: "local",
+      status: "recorded",
+      results: [expect.objectContaining({ chunk_id: "chunk-cloud-governance" })],
+    });
+    await expect(readFile(summary.artifacts.report, "utf-8")).resolves.toContain("chunk-cloud-governance");
+    const proofKnowledge = JSON.parse(
+      await readFile(join(summary.artifacts.proof_dir, "knowledge-results.json"), "utf-8"),
+    ) as { mode: string; results: Array<{ chunk_id: string }> };
+    expect(proofKnowledge).toMatchObject({
+      mode: "local",
+      results: [expect.objectContaining({ chunk_id: "chunk-cloud-governance" })],
+    });
+  });
+
+  it("records governance findings without blocking by default", async () => {
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-loop-govern-task",
+      capability: "code.test",
+      prompt: "Exercise governed loop",
+    }));
+    await writeFile(join(tmp, "unsafe.ts"), "const api_key = \"sk-test-secret-token\";\n");
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--govern",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      governance: { mode: string; status: string; blocking: boolean; findings: Array<{ rule_id: string }> };
+      events: Array<{ type: string; payload?: { reviewer_agent_id?: string; pass?: boolean } }>;
+    };
+    expect(summary.governance).toMatchObject({
+      mode: "warn",
+      status: "fail",
+      blocking: false,
+      findings: [expect.objectContaining({ rule_id: "secret.api_key" })],
+    });
+    expect(summary.events).toContainEqual(expect.objectContaining({
+      type: "loop.verify.done",
+      payload: expect.objectContaining({ reviewer_agent_id: "governance-verifier", pass: true }),
+    }));
+  });
+
+  it("fails strict governed runs on error severity findings and writes proof evidence", async () => {
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-loop-govern-strict-task",
+      capability: "code.test",
+      prompt: "Exercise strict governed loop",
+    }));
+    await writeFile(join(tmp, "unsafe.ts"), "const api_key = \"sk-test-secret-token\";\n");
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--govern",
+      "strict",
+      "--report",
+      "--proof",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(2);
+    const summary = JSON.parse(logs.join("\n")) as {
+      artifacts: { report: string; proof_dir: string };
+      governance: { mode: string; status: string; blocking: boolean };
+      events: Array<{ type: string; payload?: { reviewer_agent_id?: string; pass?: boolean } }>;
+    };
+    expect(summary.governance).toMatchObject({ mode: "strict", status: "fail", blocking: true });
+    expect(summary.events).toContainEqual(expect.objectContaining({
+      type: "loop.verify.done",
+      payload: expect.objectContaining({ reviewer_agent_id: "governance-verifier", pass: false }),
+    }));
+    await expect(readFile(summary.artifacts.report, "utf-8")).resolves.toContain("governance-verifier");
+    const governance = JSON.parse(
+      await readFile(join(summary.artifacts.proof_dir, "governance-results.json"), "utf-8"),
+    ) as { status: string; findings: Array<{ rule_id: string; severity: string }> };
+    expect(governance).toMatchObject({
+      status: "fail",
+      findings: [expect.objectContaining({ rule_id: "secret.api_key", severity: "error" })],
+    });
   });
 
   it("rejects an invalid max iteration value", async () => {
@@ -302,6 +558,7 @@ describe("loop CLI", () => {
 
   it("does not treat an unknown --agent as a successful local no-op", async () => {
     const workspace = join(tmp, "unknown-agent-workspace");
+    process.env["OSSTACK_HOME"] = join(tmp, "unknown-agent-home");
     await mkdir(join(workspace, "tasks"), { recursive: true });
     await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
       task_id: "cli-unknown-agent-task",
@@ -323,7 +580,9 @@ describe("loop CLI", () => {
 
     expect(exitCode).toBe(2);
     const result = JSON.parse(logs.join("\n")) as {
+      loop_id: string;
       completed_tasks: Array<{ task_id: string; outcome: string; agent_id: string }>;
+      learned_lessons?: { learned: number; lessons: Array<{ family: string; source_run_ids: string[] }> };
       events: Array<{ type: string; payload?: { summary?: string } }>;
     };
     expect(result.completed_tasks).toEqual([
@@ -339,6 +598,21 @@ describe("loop CLI", () => {
         summary: "agent adapter not registered: missing-loop-agent",
       }),
     }));
+    expect(result.learned_lessons).toMatchObject({
+      learned: 1,
+      lessons: [expect.objectContaining({
+        family: "max_iter_escalation",
+        source_run_ids: [result.loop_id],
+      })],
+    });
+
+    logs = [];
+    const listCode = await main(["lessons", "list", "--json"]);
+
+    expect(listCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      lessons: [expect.objectContaining({ family: "max_iter_escalation" })],
+    });
   });
 
   it("runs ds-review as a post-execution reviewer verifier", async () => {

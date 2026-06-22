@@ -7,7 +7,9 @@
 
 import type { AgentAdapter } from "./base.js";
 import { ClaudeCodeAdapter } from "./adapters/claude-code.js";
+import { ClaudeCliAdapter } from "./adapters/claude-cli.js";
 import { CodexCliAdapter } from "./adapters/codex-cli.js";
+import { OpenCodeCliAdapter } from "./adapters/opencode-cli.js";
 import { AutoResearchAdapter } from "./adapters/autoresearch.js";
 import { ClaudeDesignAdapter } from "./adapters/claude-design.js";
 import { DeepSeekReviewAdapter } from "./adapters/ds-review.js";
@@ -15,8 +17,11 @@ import { DeepSeekVerifyAdapter } from "./adapters/ds-verify.js";
 import { GoogleStitchAdapter } from "./adapters/google-stitch.js";
 
 export * from "./base.js";
+export * from "./metadata.js";
 export { ClaudeCodeAdapter } from "./adapters/claude-code.js";
+export { ClaudeCliAdapter } from "./adapters/claude-cli.js";
 export { CodexCliAdapter } from "./adapters/codex-cli.js";
+export { OpenCodeCliAdapter } from "./adapters/opencode-cli.js";
 export { ClaudeDesignAdapter } from "./adapters/claude-design.js";
 export { DeepSeekReviewAdapter } from "./adapters/ds-review.js";
 export { DeepSeekVerifyAdapter } from "./adapters/ds-verify.js";
@@ -47,7 +52,9 @@ export {
 export function defaultAdapters(): AgentAdapter[] {
   return [
     new ClaudeCodeAdapter(),
+    new ClaudeCliAdapter(),
     new CodexCliAdapter(),
+    new OpenCodeCliAdapter(),
     new DeepSeekReviewAdapter(),
     new DeepSeekVerifyAdapter(),
     new AutoResearchAdapter(),

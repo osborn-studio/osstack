@@ -1,0 +1,32 @@
+[
+  {
+    "id": "change-validation",
+    "title": "Change validation",
+    "description": "Verify gates or scorecard evidence show whether the change was validated."
+  },
+  {
+    "id": "automated-decision-trace",
+    "title": "Automated decision trace",
+    "description": "Policy decisions record agent selection and routing rationale."
+  },
+  {
+    "id": "secure-coding-control",
+    "title": "Secure coding control",
+    "description": "Governance findings map deterministic checks to secure coding evidence."
+  },
+  {
+    "id": "evidence-integrity",
+    "title": "Evidence integrity",
+    "description": "Proof manifest artifacts carry SHA-256 checksums."
+  },
+  {
+    "id": "worktree-isolation",
+    "title": "Worktree isolation evidence",
+    "description": "Worktree branch and commit evidence show isolated execution context."
+  },
+  {
+    "id": "knowledge-trace",
+    "title": "Knowledge trace",
+    "description": "Knowledge pack and chunk traces show which retrieved context was used."
+  }
+]

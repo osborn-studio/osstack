@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://osstack.dev/specs/schemas/agent-runtime.schema.json",
+  "title": "Osstack Agent Runtime Evidence",
+  "type": "object",
+  "required": ["status"],
+  "properties": {
+    "status": { "type": "string", "enum": ["recorded", "unknown"] },
+    "agents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["agent_id", "auth_mode", "roles", "plan_event_seqs"],
+        "properties": {
+          "agent_id": { "type": "string", "minLength": 1 },
+          "auth_mode": { "type": "string", "minLength": 1 },
+          "roles": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "plan_event_seqs": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "reason": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

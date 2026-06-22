@@ -1,0 +1,7 @@
+{
+  "id": "internal-audit",
+  "version": "2026.06.22",
+  "name": "Internal Audit",
+  "certification_claim": "none",
+  "description": "Maps osstack proof evidence to an internal audit evidence checklist. This pack does not claim external certification."
+}

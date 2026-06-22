@@ -1,0 +1,22 @@
+FROM node:20-slim
+
+WORKDIR /app
+
+RUN corepack enable pnpm
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages ./packages
+COPY knowledge-packs ./knowledge-packs
+
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @osstack/knowledge --filter @osstack/knowledge-cloud build
+
+ENV OSSTACK_KNOWLEDGE_CLOUD_HOST=0.0.0.0
+ENV OSSTACK_KNOWLEDGE_CLOUD_PORT=8787
+
+EXPOSE 8787
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:' + (process.env.OSSTACK_KNOWLEDGE_CLOUD_PORT || '8787') + '/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+
+CMD ["node", "packages/knowledge-cloud/dist/bin.js"]

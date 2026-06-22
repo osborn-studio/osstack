@@ -1,0 +1,32 @@
+{
+  "id": "osstack-core/loop-engineering",
+  "version": "2026.06.22",
+  "name": "Osstack Loop Engineering",
+  "license": "Osstack-native",
+  "source_kind": "osstack_native",
+  "quality_score": 92,
+  "scope": "official",
+  "taxonomy": ["osstack-core/loop-engineering"],
+  "generated_at": "2026-06-22T00:00:00.000Z",
+  "last_reviewed_at": "2026-06-22T00:00:00.000Z",
+  "source_attribution": ["osstack-native product knowledge"],
+  "source_provenance": [
+    {
+      "source_id": "osstack-run-spec-v1",
+      "path": "docs/specs/OSSTACK_RUN_SPEC_V1.md",
+      "sha256": "b2e8c4bd46f0fcd6c3ffec53dec326ce6055b922f364e8c067172417b7222c36",
+      "license": "Osstack-native",
+      "scope": "official",
+      "imported_at": "2026-06-22T00:00:00.000Z"
+    }
+  ],
+  "chunks": [
+    {
+      "chunk_id": "loop-hot-loop",
+      "title": "Hot-loop execution",
+      "body": "Osstack loop engineering turns a task queue or git diff into repeated execute, verify, review, and iterate cycles until the goal passes or escalation is required.",
+      "tags": ["loop", "iterate", "verify"],
+      "source_refs": ["osstack-native"]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "iso-change-control": "verify-results.json",
+  "iso-secure-engineering": "governance-results.json",
+  "iso-change-isolation": "worktree-status.json",
+  "iso-evidence-inventory": "manifest.json",
+  "iso-knowledge-source-trace": "knowledge-results.json"
+}

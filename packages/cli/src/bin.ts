@@ -2,14 +2,63 @@
 // (shebang is injected by tsup banner)
 
 import { execFile } from "node:child_process";
+import { createHash, randomUUID } from "node:crypto";
+import { realpathSync } from "node:fs";
 import { connect, type Socket } from "node:net";
-import { readdir, readFile, stat } from "node:fs/promises";
-import { isAbsolute, join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { dirname, extname, isAbsolute, join, relative } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
-import { defaultAdapters } from "@osstack/agents";
-import { LoopEngine, enqueueTask, readLoopState, renderLoopStateMarkdown } from "@osstack/loop";
+import { agentAuthMode, defaultAdapters, rolesForCapabilityKinds } from "@osstack/agents";
+import {
+  getCompliancePack,
+  listCompliancePacks,
+  renderComplianceReport,
+  renderComplianceReportFromProofDir,
+  renderProofViewFromProofDir,
+  type ProofAudience,
+} from "@osstack/compliance";
+import { getAgentScorecard, listAgentScorecards, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson } from "@osstack/core";
+import { scanFiles, type GovernanceFinding } from "@osstack/governance";
+import {
+  renderBranchStewardReport,
+  scanBranchStewardCandidates,
+  type BranchStewardConfig,
+} from "@osstack/github";
+import {
+  LoopEngine,
+  enqueueTask,
+  readLoopState,
+  renderLoopStateMarkdown,
+  renderLoopStateReportFromState,
+  renderLoopStateReportFromStateAndEvents,
+  createLoopStateReport,
+  createLoopStateScorecardFromState,
+  renderLoopStateScorecardHtml,
+  renderLoopStateScorecardMarkdown,
+  type LoopEvent,
+  type LoopKnowledgeTrace,
+  type LoopReportLanguage,
+  type LoopState,
+} from "@osstack/loop";
+import {
+  cacheKnowledgeFeedback,
+  evaluateKnowledgeRetrieval,
+  ingestKnowledgeSource,
+  importKnowledgeSource,
+  listCachedKnowledgePacks,
+  loadKnowledgePackIndex,
+  loadKnowledgePack,
+  pinKnowledgePack,
+  resolveKnowledgeSearch,
+  syncKnowledgeCache,
+  type KnowledgePack,
+  type KnowledgeScope,
+  type KnowledgeMode,
+  type KnowledgeRetrievalEvalCase,
+  type KnowledgeSearchEvidence,
+} from "@osstack/knowledge";
 import { initProject } from "@osstack/skills";
 import {
   addSource, checkAll, defaultManifestPath, readManifest,
@@ -17,7 +66,7 @@ import {
 } from "@osstack/skill-registry";
 import { startDaemon } from "./daemon.js";
 import { handleConfigCommand } from "./config.js";
-import { resolveSocketPath } from "./paths.js";
+import { logsDir, osstackHome, resolveSocketPath } from "./paths.js";
 import { PROTOCOL_VERSION, VERSION } from "./version.js";
 import { handleUpgradeCommand } from "./upgrade.js";
 
@@ -25,6 +74,80 @@ const execFileAsync = promisify(execFile);
 
 function socketPath(): string {
   return resolveSocketPath();
+}
+
+function resolveLanguage(value = process.env["OSSTACK_LANG"]): LoopReportLanguage {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "zh-cn" || normalized === "zh" || normalized === "cn") return "zh-CN";
+  return "en";
+}
+
+function renderChineseMainHelp(): string {
+  return `osstack ${VERSION} — Hermes 驻留项目经理 Agent
+
+用法：
+  osstack <命令> [参数]
+
+守护进程命令：
+  serve               启动 daemon（Unix socket：${socketPath()}）
+  serve --install     安装 macOS launchd daemon
+  health              查看 daemon 健康状态
+  status              查看 CLI/daemon 版本与升级状态
+  cockpit             打开或查看产品控制台
+  stats               查看 agent 与 loop 指标
+
+项目命令：
+  doctor              检查 workspace、loop、agent 与下一步建议
+  examples            输出可直接运行的工作流示例
+  guide               输出或写入 5 分钟 Quickstart
+  deliver <需求>      从一句需求进入 task queue -> loop -> report/scorecard/proof
+
+Loop 工程：
+  loop run            运行 discover -> execute -> verify -> iterate 循环
+  loop enqueue        写入 tasks/ 队列任务
+  loop status         渲染 LOOP-STATE.json / STATE.md
+  report              生成证据报告（支持 --lang en|zh-CN）
+  scorecard           生成证据评分卡
+  proof               生成 proof pack
+  proof view          按 engineer/manager/auditor/customer 重排已有证据
+  pr                  生成 GitHub PR evidence body
+
+治理与知识：
+  govern check        运行确定性治理检查
+  compliance list     列出合规映射包
+  knowledge search    搜索本地或云端 Osstack 知识库
+  lessons list        查看本地 pitfall 知识库
+
+Agent：
+  agent list          查看 agent 的 role/capability/auth mode
+  agent scorecard     查看 agent 历史表现
+
+环境变量：
+  OSSTACK_LANG        语言：en 或 zh-CN
+  OSSTACK_HOME        存储根目录（默认 ~/.osstack）
+  OSSTACK_SOCKET      daemon socket 路径
+`;
+}
+
+const LAUNCHD_LABEL = "ai.osstack.daemon";
+
+interface ServeLaunchdStatus {
+  label: string;
+  plist_path: string;
+  installed: boolean;
+  loaded: boolean;
+  socket_path: string;
+}
+
+interface ServeLaunchdInstallResult extends ServeLaunchdStatus {
+  loaded: boolean;
+  load_skipped: boolean;
+  home: string;
+  logs_dir: string;
+}
+
+interface ServeLaunchdUninstallResult extends ServeLaunchdStatus {
+  unloaded: boolean;
 }
 
 async function rpc(method: string, params?: unknown, timeoutMs = 10_000): Promise<unknown> {
@@ -67,6 +190,10 @@ export async function main(args = process.argv.slice(2)): Promise<number> {
   }
 
   if (cmd === "--help" || cmd === "-h" || cmd === "help" || !cmd) {
+    if (resolveLanguage() === "zh-CN") {
+      console.log(renderChineseMainHelp());
+      return 0;
+    }
     console.log(`osstack ${VERSION} — Hermes-resident project manager agent
 
 Usage:
@@ -74,11 +201,18 @@ Usage:
 
 Daemon commands:
   serve               Start the daemon (Unix socket at ${socketPath()})
+  serve --install     Install the macOS launchd daemon (use --uninstall/--status to manage it)
   health              Show daemon health (requires running daemon)
   status              CLI/daemon version handshake + update availability
+  dashboard url       Print the local development dashboard URL
+  dashboard open      Open the local development dashboard in a browser
+  cockpit [url|open|snapshot]
+                      Product cockpit alias for dashboard
   stats               Show per-agent and loop metrics (requires running daemon)
   killswitch          Check if the policy layer is earning its keep (F4)
   agent list          List registered sub-agents and their capabilities
+  agent scorecard [agent_id]
+                      Show agent run-history scorecards
 
 Self-update:
   upgrade [--channel latest|canary] [--dry-run] [--auto]
@@ -87,7 +221,15 @@ Self-update:
                       and roll back automatically on failure.
 
 Project commands:
+  doctor [--workspace P] [--daemon] [--json]
+                      Product readiness check: loop + agents + next steps
+  examples [--json]   Print runnable workflow examples
+  guide [--output P]  Print or write the 5-minute quickstart
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
+  deliver <prompt> [--verify CMD] [--auto-agent] [--worktree]
+                      Product entry: task queue -> loop -> report/scorecard/proof
+  checkpoint create [--workspace P] [--json]
+                      Create a shadow checkpoint outside .git for non-worktree recovery
 
 Agent configuration (role-based; no daemon needed):
   config [show]         Show active profile + how coding/test-verify/design resolve
@@ -117,9 +259,20 @@ Kanban board (osstack's own; subscribable from Telegram via Hermes):
   kanban events [--since N]      Drain pending card events (for relays)
 
 Loop engineering (local, testable hot-loop MVP):
+  report [run_id] [--loop loop_id] [--workspace P] [--state P]
+                                 Render an evidence-oriented report from LOOP-STATE.json
+  scorecard [run_id] [--loop loop_id] [--workspace P] [--state P] [--output-dir P] [--stdout]
+                                 Generate Markdown + HTML evidence scorecards
+  proof [run_id] [--loop loop_id] [--workspace P] [--state P] [--output-dir P] [--json]
+                                 Generate a checksumed local proof pack
+  proof view <run_id> --audience engineer|manager|auditor|customer
+                                 Rearrange existing proof evidence for a target audience
+  pr [run_id] [--workspace P] [--state P] [--events P] [--proof-dir P] [--dry-run]
+                                 Write a GitHub-ready PR body from run evidence
   loop run [--workspace P] [--source S] [--execute CMD] [--verify CMD]
            [--reviewer ID] [--checker ID] [--goal CMD] [--max-iter N] [--cycles N] [--interval-ms N]
-           [--state P] [--markdown P] [--worktree] [--json] [--daemon]
+           [--state P] [--markdown P] [--worktree] [--knowledge off|local|cloud] [--govern [warn|strict]]
+           [--report] [--scorecard] [--proof] [--json] [--daemon]
                                  Run one discover→execute→verify→iterate cycle
   loop start [--workspace P] [--source S] [--execute CMD] [--verify CMD]
              [--reviewer ID] [--checker ID] [--goal CMD] [--schedule CRON] [--interval-ms N] [--cycles N]
@@ -133,6 +286,29 @@ Loop engineering (local, testable hot-loop MVP):
   loop stop <loop_session_id>     Stop a daemon-managed polling loop
   loop status [--workspace P] [--state P] [--daemon]
                                  Render LOOP-STATE.json as STATE.md
+
+Branch Steward:
+  steward scan [--repo O/R] [--base B] [--remote R] [--workspace P] [--json]
+
+Governance:
+  govern check [path...] [--workspace P] [--changed] [--json]
+                                 Run deterministic governance checks over workspace files
+  governance scan <path...> [--json]
+                                 Run deterministic governance checks over files
+  compliance list [--json]
+                                 List compliance mapping packs
+  compliance render <run_id> --pack P [--proof-dir P]
+                                 Render a compliance evidence mapping report
+  knowledge list --pack P [--json]
+                                 List local Osstack knowledge packs
+  knowledge search <query> [--pack P] [--cloud-url URL] [--json]
+                                 Search Osstack knowledge packs or cloud
+  knowledge import P --scope team|project --output P
+                                 Import local docs as an Osstack-native pack
+  lessons list [--family F] [--json]
+                                 List learned local pitfall lessons
+  lessons learn [--workspace P] [--state P] [--json]
+                                 Extract pitfall lessons from LOOP-STATE.json
 
 Hermes integration:
   hermes health                  Show kanban-sync bridge state
@@ -160,6 +336,9 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "serve") {
+    if (args.includes("--install") || args.includes("--uninstall") || args.includes("--status")) {
+      return await handleServeManagementCommand(args.slice(1));
+    }
     const handle = await startDaemon();
     console.log(`osstack daemon listening on ${handle.socketPath}`);
     console.log(`db_path=${handle.dbPath}  pid=${process.pid}`);
@@ -212,6 +391,18 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     return await handleUpgradeCommand(args.slice(1), rpc);
   }
 
+  if (cmd === "doctor") {
+    return await handleProductDoctorCommand(args.slice(1));
+  }
+
+  if (cmd === "examples") {
+    return await handleExamplesCommand(args.slice(1));
+  }
+
+  if (cmd === "guide") {
+    return await handleGuideCommand(args.slice(1));
+  }
+
   if (cmd === "stats") {
     const resp = (await rpc("stats")) as { ok: boolean; result?: unknown; error?: { message: string } };
     if (!resp.ok) {
@@ -222,14 +413,12 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     return 0;
   }
 
-  if (cmd === "agent" && args[1] === "list") {
-    const resp = (await rpc("agent.list")) as { ok: boolean; result?: unknown; error?: { message: string } };
-    if (!resp.ok) {
-      console.error("osstack:", resp.error?.message ?? "agent.list failed");
-      return 1;
-    }
-    console.log(JSON.stringify(resp.result, null, 2));
-    return 0;
+  if (cmd === "dashboard" || cmd === "cockpit") {
+    return await handleDashboardCommand(args.slice(1));
+  }
+
+  if (cmd === "agent") {
+    return await handleAgentCommand(args.slice(1));
   }
 
   if (cmd === "config") {
@@ -246,6 +435,50 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "loop") {
     return await handleLoopCommand(args.slice(1));
+  }
+
+  if (cmd === "deliver") {
+    return await handleDeliverCommand(args.slice(1));
+  }
+
+  if (cmd === "checkpoint") {
+    return await handleCheckpointCommand(args.slice(1));
+  }
+
+  if (cmd === "report") {
+    return await handleReportCommand(args.slice(1));
+  }
+
+  if (cmd === "scorecard") {
+    return await handleScorecardCommand(args.slice(1));
+  }
+
+  if (cmd === "proof") {
+    return await handleProofCommand(args.slice(1));
+  }
+
+  if (cmd === "pr") {
+    return await handlePrCommand(args.slice(1));
+  }
+
+  if (cmd === "steward") {
+    return await handleStewardCommand(args.slice(1));
+  }
+
+  if (cmd === "governance" || cmd === "govern") {
+    return await handleGovernanceCommand(args.slice(1));
+  }
+
+  if (cmd === "compliance") {
+    return await handleComplianceCommand(args.slice(1));
+  }
+
+  if (cmd === "knowledge") {
+    return await handleKnowledgeCommand(args.slice(1));
+  }
+
+  if (cmd === "lessons") {
+    return await handleLessonsCommand(args.slice(1));
   }
 
   if (cmd === "hermes") {
@@ -287,6 +520,1415 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   console.error(`osstack: unknown command "${args.join(" ")}" — see "osstack help"`);
   return 1;
+}
+
+async function handleAgentCommand(args: string[]): Promise<number> {
+  const sub = args[0];
+  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack agent — agent registry and performance
+
+  osstack agent list
+  osstack agent scorecard [agent_id] [--json]
+`);
+    return 0;
+  }
+
+  if (sub === "list") {
+    if (!args.includes("--daemon")) {
+      const agents = await listLocalAgentProfiles();
+      if (args.includes("--json")) {
+        console.log(JSON.stringify({ agents }, null, 2));
+      } else {
+        for (const agent of agents) {
+          console.log(`${agent.id} — ${agent.display_name}`);
+          console.log(`  roles=${agent.roles.join(",") || "(none)"}`);
+          console.log(`  auth_mode=${agent.auth_mode} cost_tier=${agent.cost_tier} available=${agent.available.available}`);
+          if (!agent.available.available && agent.available.reason !== undefined) {
+            console.log(`  unavailable_reason=${agent.available.reason}`);
+          }
+          console.log(`  capabilities=${agent.capabilities.map((capability) => capability.kind).join(",")}`);
+        }
+      }
+      return 0;
+    }
+    const resp = (await rpc("agent.list")) as { ok: boolean; result?: unknown; error?: { message: string } };
+    if (!resp.ok) {
+      console.error("osstack:", resp.error?.message ?? "agent.list failed");
+      return 1;
+    }
+    console.log(JSON.stringify(resp.result, null, 2));
+    return 0;
+  }
+
+  if (sub === "scorecard") {
+    const agentId = positionalValues(args.slice(1), new Set()).find((value) => value !== "scorecard");
+    const dbPath = await ensureLocalStateDbPath();
+    const db = openDb({ path: dbPath });
+    try {
+      if (agentId !== undefined) {
+        const scorecard = getAgentScorecard(db, agentId);
+        if (args.includes("--json")) {
+          console.log(JSON.stringify(scorecard, null, 2));
+        } else {
+          printAgentScorecard(scorecard);
+        }
+        return 0;
+      }
+      const scorecards = listAgentScorecards(db);
+      if (args.includes("--json")) {
+        console.log(JSON.stringify({ scorecards }, null, 2));
+      } else if (scorecards.length === 0) {
+        console.log("No agent run history yet.");
+      } else {
+        for (const scorecard of scorecards) printAgentScorecard(scorecard);
+      }
+      return 0;
+    } finally {
+      db.close();
+    }
+  }
+
+  console.error(`osstack: unknown agent subcommand "${sub}"`);
+  return 1;
+}
+
+async function handleProductDoctorCommand(args: string[]): Promise<number> {
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack doctor — product readiness check
+
+  osstack doctor [--workspace P] [--daemon] [--json]
+
+Checks:
+  - workspace, tasks/, LOOP-STATE.json, git/worktree readiness
+  - daemon socket when --daemon is set
+  - local agent registry roles, auth modes, and availability
+`);
+    return 0;
+  }
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const loop = await loopDoctor({
+    workspacePath,
+    stateFilePath: resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath),
+    checkDaemon: args.includes("--daemon"),
+  });
+  const agents = await productAgentDoctor();
+  const nextSteps = productDoctorNextSteps(loop, agents);
+  const result = {
+    ok: loop.ok && agents.total > 0,
+    workspace: workspacePath,
+    loop,
+    agents,
+    next_steps: nextSteps,
+  };
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(result, null, 2));
+  } else {
+    printProductDoctor(result);
+  }
+  return result.ok ? 0 : 1;
+}
+
+async function productAgentDoctor(): Promise<{
+  total: number;
+  available: number;
+  unavailable: number;
+  by_role: Record<string, string[]>;
+  profiles: Array<{
+    id: string;
+    display_name: string;
+    auth_mode: string;
+    cost_tier: string;
+    roles: string[];
+    available: boolean;
+    reason?: string;
+  }>;
+}> {
+  const profiles = await Promise.all(defaultAdapters().map(async (adapter) => {
+    const availability = await adapter.isAvailable();
+    const roles = rolesForCapabilityKinds(adapter.capabilities().map((capability) => capability.kind));
+    return {
+      id: adapter.id,
+      display_name: adapter.display_name,
+      auth_mode: agentAuthMode(adapter.id),
+      cost_tier: adapter.cost_tier,
+      roles,
+      available: availability.available,
+      ...(availability.reason !== undefined ? { reason: availability.reason } : {}),
+    };
+  }));
+  const byRole: Record<string, string[]> = {};
+  for (const profile of profiles) {
+    for (const role of profile.roles) {
+      byRole[role] = [...(byRole[role] ?? []), profile.id];
+    }
+  }
+  return {
+    total: profiles.length,
+    available: profiles.filter((profile) => profile.available).length,
+    unavailable: profiles.filter((profile) => !profile.available).length,
+    by_role: byRole,
+    profiles,
+  };
+}
+
+function productDoctorNextSteps(
+  loop: LoopDoctorResult,
+  agents: Awaited<ReturnType<typeof productAgentDoctor>>,
+): string[] {
+  const steps: string[] = [];
+  const taskQueue = loop.checks.find((check) => check.id === "task_queue");
+  if (taskQueue?.status === "ok") {
+    steps.push("Run queued work: osstack loop run --source task_queue --report --scorecard --proof");
+  } else {
+    steps.push("Queue a task: osstack loop enqueue \"Run local checks\" --capability code.test");
+  }
+  if (agents.available > 0) {
+    steps.push("Try routing: osstack loop run --source task_queue --auto-agent --verify \"pnpm test\"");
+  } else {
+    steps.push("Configure an available agent or use --execute for local shell execution.");
+  }
+  steps.push("Read examples: osstack examples");
+  return steps;
+}
+
+function printProductDoctor(result: {
+  ok: boolean;
+  workspace: string;
+  loop: LoopDoctorResult;
+  agents: Awaited<ReturnType<typeof productAgentDoctor>>;
+  next_steps: string[];
+}): void {
+  console.log(`Osstack doctor: ${result.ok ? "ok" : "attention needed"}`);
+  console.log(`workspace=${result.workspace}`);
+  console.log("");
+  printLoopDoctor(result.loop);
+  console.log("");
+  console.log(`Agents: ${result.agents.available}/${result.agents.total} available`);
+  for (const profile of result.agents.profiles) {
+    console.log(`  [${profile.available ? "ok" : "warn"}] ${profile.id} auth=${profile.auth_mode} roles=${profile.roles.join(",") || "none"}`);
+  }
+  console.log("");
+  console.log("Next steps:");
+  for (const step of result.next_steps) console.log(`- ${step}`);
+}
+
+async function handleExamplesCommand(args: string[]): Promise<number> {
+  const examples = osstackExamples();
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({ examples }, null, 2));
+    return 0;
+  }
+  console.log("# Osstack Examples\n");
+  for (const example of examples) {
+    console.log(`## ${example.title}`);
+    console.log(example.description);
+    console.log("");
+    console.log("```bash");
+    for (const command of example.commands) console.log(command);
+    console.log("```\n");
+  }
+  return 0;
+}
+
+async function handleGuideCommand(args: string[]): Promise<number> {
+  const markdown = renderQuickstartGuide();
+  const output = flagValue(args, "--output");
+  if (output !== undefined) {
+    await mkdir(dirname(output), { recursive: true });
+    await writeFile(output, markdown, "utf-8");
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({ output }, null, 2));
+    } else {
+      console.log(`guide=${output}`);
+    }
+    return 0;
+  }
+  console.log(markdown);
+  return 0;
+}
+
+async function handleCheckpointCommand(args: string[]): Promise<number> {
+  const sub = args[0] ?? "help";
+  if (sub === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack checkpoint — shadow recovery points for non-worktree runs
+
+  osstack checkpoint create [--workspace P] [--json]
+
+Checkpoints are written under $OSSTACK_HOME/checkpoints and never inside .git.
+`);
+    return 0;
+  }
+  if (sub !== "create") {
+    console.error(`osstack: unknown checkpoint subcommand "${sub}"`);
+    return 1;
+  }
+
+  const workspacePath = realpathSync(flagValue(args, "--workspace") ?? process.cwd());
+  const checkpoint = await createShadowCheckpoint(workspacePath);
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(checkpoint, null, 2));
+  } else {
+    console.log(`checkpoint=${checkpoint.checkpoint_id}`);
+    console.log(`dir=${checkpoint.checkpoint_dir}`);
+    console.log(`files=${checkpoint.files} bytes=${checkpoint.bytes}`);
+  }
+  return 0;
+}
+
+interface ShadowCheckpointSummary {
+  checkpoint_id: string;
+  checkpoint_dir: string;
+  metadata_path: string;
+  workspace: string;
+  files: number;
+  bytes: number;
+}
+
+async function createShadowCheckpoint(workspacePath: string): Promise<ShadowCheckpointSummary> {
+  const workspaceStat = await stat(workspacePath);
+  if (!workspaceStat.isDirectory()) throw new Error(`workspace is not a directory: ${workspacePath}`);
+  const checkpointId = `chk_${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}_${randomUUID().slice(0, 8)}`;
+  const checkpointDir = join(osstackHome(), "checkpoints", checkpointId);
+  const filesDir = join(checkpointDir, "files");
+  const exclusions = [".git", "node_modules", ".osstack"];
+  const entries = await collectCheckpointFiles(workspacePath, workspacePath, new Set(exclusions));
+  let totalBytes = 0;
+  const metadataFiles: Array<{ path: string; sha256: string; bytes: number }> = [];
+  await mkdir(filesDir, { recursive: true });
+  for (const entry of entries) {
+    const target = join(filesDir, entry.relativePath);
+    await mkdir(dirname(target), { recursive: true });
+    await copyFile(entry.sourcePath, target);
+    totalBytes += entry.bytes;
+    metadataFiles.push({
+      path: entry.relativePath,
+      sha256: entry.sha256,
+      bytes: entry.bytes,
+    });
+  }
+  const metadata = {
+    kind: "osstack.shadow_checkpoint",
+    version: 1,
+    checkpoint_id: checkpointId,
+    created_at: new Date().toISOString(),
+    workspace: workspacePath,
+    files_root: filesDir,
+    files: metadataFiles,
+    exclusions,
+    notes: [
+      "Shadow checkpoints are stored outside the workspace and do not write to .git.",
+      "Restore/rewind commands can be layered on this metadata in a later release.",
+    ],
+  };
+  const metadataPath = join(checkpointDir, "metadata.json");
+  await writeFile(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`, "utf-8");
+  return {
+    checkpoint_id: checkpointId,
+    checkpoint_dir: checkpointDir,
+    metadata_path: metadataPath,
+    workspace: workspacePath,
+    files: metadataFiles.length,
+    bytes: totalBytes,
+  };
+}
+
+async function collectCheckpointFiles(
+  root: string,
+  current: string,
+  excludedNames: Set<string>,
+): Promise<Array<{ sourcePath: string; relativePath: string; sha256: string; bytes: number }>> {
+  const dirents = await readdir(current, { withFileTypes: true });
+  const files: Array<{ sourcePath: string; relativePath: string; sha256: string; bytes: number }> = [];
+  for (const dirent of dirents.sort((a, b) => a.name.localeCompare(b.name))) {
+    if (excludedNames.has(dirent.name)) continue;
+    const sourcePath = join(current, dirent.name);
+    if (dirent.isDirectory()) {
+      files.push(...await collectCheckpointFiles(root, sourcePath, excludedNames));
+      continue;
+    }
+    if (!dirent.isFile()) continue;
+    const content = await readFile(sourcePath);
+    files.push({
+      sourcePath,
+      relativePath: relative(root, sourcePath),
+      sha256: sha256Buffer(content),
+      bytes: content.byteLength,
+    });
+  }
+  return files;
+}
+
+function osstackExamples(): Array<{ title: string; description: string; commands: string[] }> {
+  return [
+    {
+      title: "Fix a bug",
+      description: "Queue a failing behavior, run the loop, and produce evidence.",
+      commands: [
+        "osstack loop enqueue \"Fix the failing unit test\" --capability code.test",
+        "osstack loop run --source task_queue --verify \"pnpm test\" --report --scorecard --proof",
+      ],
+    },
+    {
+      title: "Implement a feature",
+      description: "Use the product entry command to create a task, execute, verify, and package proof.",
+      commands: [
+        "osstack deliver \"Add billing dashboard\" --verify \"pnpm test\" --auto-agent --worktree --json",
+      ],
+    },
+    {
+      title: "Review git diff",
+      description: "Turn local changes into a review/checker workflow.",
+      commands: [
+        "osstack loop run --source git_diff --reviewer ds-review --verify \"pnpm test\" --report",
+      ],
+    },
+    {
+      title: "Auto-agent routing",
+      description: "Let router and policy choose the maker based on capability and local availability.",
+      commands: [
+        "osstack agent list",
+        "osstack loop run --source task_queue --auto-agent --verify \"pnpm test\"",
+      ],
+    },
+    {
+      title: "Worktree isolation",
+      description: "Run each task in an isolated worktree, then merge only successful changes.",
+      commands: [
+        "osstack loop run --source task_queue --worktree --worktree-root ../osstack-worktrees --verify \"pnpm test\"",
+      ],
+    },
+    {
+      title: "Proof pack",
+      description: "Generate report, scorecard, proof pack, and PR evidence body.",
+      commands: [
+        "osstack loop run --source task_queue --report --scorecard --proof",
+        "osstack pr --dry-run",
+      ],
+    },
+  ];
+}
+
+function renderQuickstartGuide(): string {
+  return `# Osstack 5-minute quickstart
+
+## 1. Install and check readiness
+
+\`\`\`bash
+npm install -g @osstack/cli
+osstack --version
+osstack doctor --workspace .
+\`\`\`
+
+## 2. Queue one task
+
+\`\`\`bash
+osstack loop enqueue "Run local checks and fix the first failure" --capability code.test
+\`\`\`
+
+## 3. Run the loop and generate evidence
+
+\`\`\`bash
+osstack loop run --source task_queue --verify "pnpm test" --report --scorecard --proof
+\`\`\`
+
+## 4. Inspect the result
+
+\`\`\`bash
+osstack loop status
+osstack report
+osstack proof view "$(node -e 'const s=require("./LOOP-STATE.json"); process.stdout.write(s.loop_id)')" --audience engineer
+\`\`\`
+
+## 5. Try the product entry path
+
+\`\`\`bash
+osstack deliver "Add billing dashboard" --verify "pnpm test" --auto-agent --worktree
+\`\`\`
+
+More workflows:
+
+\`\`\`bash
+osstack examples
+\`\`\`
+`;
+}
+
+async function listLocalAgentProfiles(): Promise<Array<{
+  id: string;
+  display_name: string;
+  cost_tier: string;
+  auth_mode: string;
+  roles: string[];
+  capabilities: Array<{ id: string; kind: string; description: string; cost_tier: string }>;
+  available: { available: boolean; reason?: string; last_checked_at: number };
+}>> {
+  return await Promise.all(defaultAdapters().map(async (adapter) => {
+    const capabilities = adapter.capabilities();
+    return {
+      id: adapter.id,
+      display_name: adapter.display_name,
+      cost_tier: adapter.cost_tier,
+      auth_mode: agentAuthMode(adapter.id),
+      roles: rolesForCapabilityKinds(capabilities.map((capability) => capability.kind)),
+      capabilities: capabilities.map((capability) => ({
+        id: capability.id,
+        kind: capability.kind,
+        description: capability.description,
+        cost_tier: capability.cost_tier,
+      })),
+      available: await adapter.isAvailable(),
+    };
+  }));
+}
+
+function printAgentScorecard(scorecard: ReturnType<typeof getAgentScorecard>): void {
+  console.log(`${scorecard.agent_id}`);
+  console.log(`  runs=${scorecard.total_runs} completed=${scorecard.completed_runs} failed=${scorecard.failed_runs} success=${Math.round(scorecard.success_rate * 100)}%`);
+  console.log(`  avg_duration_ms=${scorecard.avg_duration_ms ?? "unknown"} cost_tier=${scorecard.cost_tier} fit=${scorecard.capability_fit}`);
+  const adapter = defaultAdapters().find((candidate) => candidate.id === scorecard.agent_id);
+  const scorecardKinds = scorecard.best_task_kinds.map((kind) => kind.kind);
+  const roles = rolesForCapabilityKinds(adapter?.capabilities().map((capability) => capability.kind) ?? scorecardKinds);
+  if (roles.length > 0) console.log(`  roles=${roles.join(",")}`);
+  console.log(`  recent_failures=${scorecard.recent_failures}`);
+  if (scorecard.best_task_kinds.length > 0) {
+    console.log(`  best_task_kinds=${scorecard.best_task_kinds.map((kind) => `${kind.kind}:${Math.round(kind.success_rate * 100)}%`).join(", ")}`);
+  }
+  if (scorecard.warnings.length > 0) {
+    console.log(`  warnings=${scorecard.warnings.join("; ")}`);
+  }
+}
+
+function printStewardHelp(): void {
+  console.log(`osstack steward — Branch Steward dry-run reports
+
+  osstack steward scan [--repo O/R] [--base B] [--remote R] [--workspace P] [--json]
+  osstack steward help
+`);
+}
+
+async function handleStewardCommand(args: string[]): Promise<number> {
+  const sub = args[0];
+
+  if (sub === undefined || sub === "help" || sub === "--help" || sub === "-h") {
+    printStewardHelp();
+    return 0;
+  }
+
+  if (sub !== "scan") {
+    console.error(`osstack: unknown steward subcommand "${sub}"`);
+    return 1;
+  }
+
+  const workspacePathValue = stewardFlagValue(args, "--workspace");
+  const repoValue = stewardFlagValue(args, "--repo");
+  const baseValue = stewardFlagValue(args, "--base");
+  const remoteValue = stewardFlagValue(args, "--remote");
+  if (workspacePathValue instanceof Error) {
+    console.error(`osstack: ${workspacePathValue.message}`);
+    return 1;
+  }
+  if (repoValue instanceof Error) {
+    console.error(`osstack: ${repoValue.message}`);
+    return 1;
+  }
+  if (baseValue instanceof Error) {
+    console.error(`osstack: ${baseValue.message}`);
+    return 1;
+  }
+  if (remoteValue instanceof Error) {
+    console.error(`osstack: ${remoteValue.message}`);
+    return 1;
+  }
+
+  const workspacePath = workspacePathValue ?? process.cwd();
+  const remote = remoteValue ?? "origin";
+  const repo = repoValue ?? await inferGitHubRepoSlug(workspacePath, remote);
+  if (repo === undefined) {
+    console.error(`osstack: unable to infer GitHub repo from ${remote} remote; pass --repo owner/repo`);
+    return 1;
+  }
+
+  const config: BranchStewardConfig = {
+    repo,
+    base: baseValue ?? "main",
+    remote,
+    branchPrefixAllowlist: ["feat/", "feature/", "codex/"],
+    sensitivePathGlobs: [".github/workflows/", "package.json", "pnpm-lock.yaml"],
+    maxChangedFiles: 80,
+    maxBehindBy: 25,
+    prThreshold: 80,
+    autoMergeThreshold: 90,
+  };
+
+  let report: Awaited<ReturnType<typeof scanBranchStewardCandidates>>;
+  try {
+    report = await scanBranchStewardCandidates(config, undefined, { cwd: workspacePath });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`osstack: steward scan failed: ${message}`);
+    return 1;
+  }
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(report, null, 2));
+  } else {
+    console.log(renderBranchStewardReport(report));
+  }
+  return 0;
+}
+
+async function inferGitHubRepoSlug(workspacePath: string, remote: string): Promise<string | undefined> {
+  try {
+    const { stdout } = await execFileAsync("git", ["remote", "get-url", remote], {
+      cwd: workspacePath,
+      encoding: "utf-8",
+      timeout: 10_000,
+    });
+    return parseGitHubRepoSlug(String(stdout).trim());
+  } catch {
+    return undefined;
+  }
+}
+
+function stewardFlagValue(args: string[], name: string): string | undefined | Error {
+  const i = args.indexOf(name);
+  if (i < 0) return undefined;
+  const value = args[i + 1];
+  if (value === undefined || value.startsWith("--")) {
+    return new Error(`${name} requires a value`);
+  }
+  return value;
+}
+
+function parseGitHubRepoSlug(remoteUrl: string): string | undefined {
+  const match = remoteUrl.match(
+    /^(?:https:\/\/github\.com\/|git@github\.com:|ssh:\/\/git@github\.com\/)([^/\s:]+)\/([^/\s]+?)(?:\.git)?\/?$/,
+  );
+  if (match === null) return undefined;
+  return `${match[1]}/${match[2]}`;
+}
+
+async function handleGovernanceCommand(args: string[]): Promise<number> {
+  const sub = args[0];
+  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack governance — deterministic run governance checks
+
+  osstack govern check [path...] [--workspace P] [--changed] [--json]
+  osstack governance scan <path...> [--json]
+`);
+    return 0;
+  }
+
+  if (sub !== "scan" && sub !== "check") {
+    console.error(`osstack: unknown governance subcommand "${sub}"`);
+    return 1;
+  }
+
+  const paths = positionalValues(args.slice(1), new Set(["--workspace"])).filter((value) => value !== sub);
+  if (paths.length === 0) {
+    if (sub === "scan") {
+      console.error("osstack: governance scan requires at least one path");
+      return 1;
+    }
+    const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+    const resolvedPaths = args.includes("--changed") || args.includes("--diff")
+      ? await collectChangedGovernanceScanFiles(workspacePath)
+      : await collectGovernanceScanFiles(workspacePath);
+    if (resolvedPaths instanceof Error) {
+      console.error(`osstack: ${resolvedPaths.message}`);
+      return 1;
+    }
+    return await runGovernanceScan(resolvedPaths, args);
+  }
+
+  return await runGovernanceScan(paths, args);
+}
+
+async function runGovernanceScan(paths: string[], args: string[]): Promise<number> {
+  const result = await scanFiles(paths);
+  const output = { ...result, scanned_files: paths };
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(output, null, 2));
+  } else {
+    printGovernanceScan(result);
+  }
+  return result.ok ? 0 : 2;
+}
+
+function printGovernanceScan(result: Awaited<ReturnType<typeof scanFiles>>): void {
+  if (result.findings.length === 0) {
+    console.log("Governance scan clean.");
+    return;
+  }
+  console.log(`Governance findings: ${result.findings.length}`);
+  for (const finding of result.findings) {
+    const location = finding.file === undefined ? `line ${finding.line}` : `${finding.file}:${finding.line}`;
+    console.log(`- [${finding.severity}] ${finding.rule_id} ${location} - ${finding.message}`);
+  }
+}
+
+async function handleComplianceCommand(args: string[]): Promise<number> {
+  const sub = args[0];
+  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack compliance — evidence mapping reports
+
+  osstack compliance list [--json]
+  osstack compliance render <run_id> --pack engineering-readiness [--proof-dir P] [--workspace P] [--output P] [--json]
+
+Notes:
+  Compliance reports map osstack proof evidence to internal controls.
+  They do not claim SOC 2, ISO 27001, EU AI Act, or third-party certification.
+`);
+    return 0;
+  }
+
+  if (sub === "list") {
+    const packs = listCompliancePacks().map((pack) => ({
+      id: pack.id,
+      version: pack.version,
+      name: pack.name,
+      certification_claim: pack.certification_claim,
+      controls: pack.controls.length,
+    }));
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({ packs }, null, 2));
+    } else {
+      for (const pack of packs) {
+        console.log(`${pack.id}@${pack.version} ${pack.name} claim=${pack.certification_claim} controls=${pack.controls}`);
+      }
+    }
+    return 0;
+  }
+
+  if (sub === "render") {
+    const runId = firstPositionalValue(args.slice(1), new Set(["--pack", "--proof-dir", "--workspace", "--output"]));
+    if (runId === undefined) {
+      console.error("osstack: compliance render requires a run_id");
+      return 1;
+    }
+    const packId = flagValue(args, "--pack");
+    if (packId === undefined) {
+      console.error("osstack: compliance render requires --pack");
+      return 1;
+    }
+    let packVersion: string;
+    try {
+      packVersion = getCompliancePack(packId).version;
+    } catch (error) {
+      console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
+      return 1;
+    }
+    const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+    const proofDir = flagValue(args, "--proof-dir") ?? join(workspacePath, "release", `osstack-proof-${safeFileSegment(runId)}`);
+    const output = flagValue(args, "--output") ?? join(workspacePath, "reports", `compliance-${packId}-${safeFileSegment(runId)}.md`);
+    const markdown = await renderComplianceReportFromProofDir({ packId, runId, proofDir });
+    await mkdir(dirname(output), { recursive: true });
+    await writeFile(output, markdown, "utf-8");
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({ run_id: runId, pack_id: packId, pack_version: packVersion, output }, null, 2));
+    } else {
+      console.log(`compliance=${output}`);
+      console.log(`pack=${packId}@${packVersion}`);
+    }
+    return 0;
+  }
+
+  console.error(`osstack: unknown compliance subcommand "${sub}"`);
+  return 1;
+}
+
+async function handleKnowledgeCommand(args: string[]): Promise<number> {
+  const sub = args[0];
+  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack knowledge — Osstack knowledge pack bootstrap and cloud client
+
+  osstack knowledge list --pack P|--official [--json]
+  osstack knowledge login --cloud-url URL [--token T] [--cache-dir P] [--json]
+  osstack knowledge sync [--cloud-url URL] [--cache-dir P] [--private] [--tenant T] [--json]
+  osstack knowledge search <query> [--pack P] [--official] [--cloud-url URL] [--cache-dir P] [--limit N] [--json]
+  osstack knowledge inspect <chunk_id> [--pack P] [--official] [--cache-dir P] [--json]
+  osstack knowledge import P --scope team|project --id ID --name NAME --license L --output P [--taxonomy T] [--json]
+  osstack knowledge ingest P --scope official|team|project --id ID --name NAME --license L --output P [--taxonomy T] [--source-kind K] [--json]
+  osstack knowledge pin <pack_id>@<version> [--cache-dir P] [--json]
+  osstack knowledge feedback <chunk_id> --useful|--bad [--cloud-url URL] [--cache-dir P] [--json]
+  osstack knowledge eval --pack P|--official --fixtures P [--top-k N] [--json]
+  osstack knowledge sources --internal --pack P|--official [--json]
+
+Env:
+  OSSTACK_KNOWLEDGE_URL  Default Knowledge Cloud base URL
+  OSSTACK_KNOWLEDGE_TOKEN
+                         Default Knowledge Cloud bearer token for login/sync/search/feedback
+  OSSTACK_KNOWLEDGE_CACHE_DIR
+                         Default local Knowledge Cloud cache directory
+`);
+    return 0;
+  }
+
+  if (sub === "list") {
+    const packPaths = flagValues(args, "--pack");
+    if (packPaths.length === 0 && !args.includes("--official")) {
+      console.error("osstack: knowledge list requires at least one --pack path or --official");
+      return 1;
+    }
+    const packs = [
+      ...await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath))),
+      ...await officialKnowledgePacksIfRequested(args),
+    ];
+    const summaries = packs.map((pack) => ({
+      id: pack.manifest.id,
+      version: pack.manifest.version,
+      name: pack.manifest.name,
+      license: pack.manifest.license,
+      source_kind: pack.manifest.source_kind,
+      quality_score: pack.manifest.quality_score,
+      chunks: pack.manifest.chunks.length,
+      path: pack.path,
+    }));
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({ packs: summaries }, null, 2));
+    } else {
+      for (const pack of summaries) {
+        console.log(`${pack.id}@${pack.version} ${pack.name}`);
+        console.log(`  license=${pack.license} source_kind=${pack.source_kind} quality=${pack.quality_score} chunks=${pack.chunks}`);
+      }
+    }
+    return 0;
+  }
+
+  if (sub === "login") {
+    const cloudUrl = flagValue(args, "--cloud-url") ?? process.env["OSSTACK_KNOWLEDGE_URL"];
+    if (cloudUrl === undefined || cloudUrl.trim().length === 0) {
+      console.error("osstack: knowledge login requires --cloud-url or OSSTACK_KNOWLEDGE_URL");
+      return 1;
+    }
+    const token = flagValue(args, "--token") ?? process.env["OSSTACK_KNOWLEDGE_TOKEN"];
+    const config = {
+      cloud_url: cloudUrl.trim(),
+      ...(token === undefined || token.trim().length === 0 ? {} : { token: token.trim() }),
+      saved_at: new Date().toISOString(),
+    };
+    const cacheDir = knowledgeCacheDir(args);
+    await mkdir(cacheDir, { recursive: true });
+    const configPath = knowledgeConfigPath(cacheDir);
+    await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf-8");
+    await chmod(configPath, 0o600);
+    const result = {
+      login: {
+        cloud_url: config.cloud_url,
+        cache_dir: cacheDir,
+        config_path: configPath,
+        authenticated: "token" in config,
+      },
+    };
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(`knowledge_cloud=${result.login.cloud_url}`);
+      console.log(`cache=${result.login.cache_dir}`);
+      console.log(`authenticated=${result.login.authenticated ? "yes" : "no"}`);
+    }
+    return 0;
+  }
+
+  if (sub === "sync") {
+    const config = await readKnowledgeCloudConfig(knowledgeCacheDir(args));
+    const cloudUrl = resolveKnowledgeCloudUrl(args, config);
+    if (cloudUrl === undefined) {
+      console.error("osstack: knowledge sync requires --cloud-url, OSSTACK_KNOWLEDGE_URL, or `osstack knowledge login`");
+      return 1;
+    }
+    const authToken = resolveKnowledgeAuthToken(args, config);
+    const privatePacks = args.includes("--private");
+    const tenantId = flagValue(args, "--tenant");
+    const evidence = await syncKnowledgeCache({
+      cacheDir: knowledgeCacheDir(args),
+      cloudUrl,
+      ...(authToken === undefined ? {} : { authToken }),
+      ...(privatePacks ? { privatePacks: true } : {}),
+      ...(tenantId === undefined ? {} : { tenantId }),
+    });
+    const summary = {
+      ...evidence,
+      private: privatePacks,
+      ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
+    };
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(summary, null, 2));
+    } else if (evidence.status === "synced") {
+      console.log(`synced=${evidence.packs.length}`);
+      console.log(`cache=${evidence.cache_dir}`);
+      if (privatePacks) console.log(`private=yes${tenantId === undefined ? "" : ` tenant=${tenantId}`}`);
+    } else {
+      console.error(`osstack: knowledge sync failed: ${evidence.reason ?? "unknown"}`);
+      return 1;
+    }
+    return evidence.status === "synced" ? 0 : 1;
+  }
+
+  if (sub === "search") {
+    const packPaths = flagValues(args, "--pack");
+    const config = await readKnowledgeCloudConfig(knowledgeCacheDir(args));
+    const cloudUrl = resolveKnowledgeCloudUrl(args, config);
+    const mode = parseKnowledgeMode(flagValue(args, "--mode"));
+    if (mode === undefined && flagValue(args, "--mode") !== undefined) {
+      console.error("osstack: --mode must be one of off, local, cloud");
+      return 1;
+    }
+    const query = positionalValues(args.slice(1), new Set(["--pack", "--limit", "--cloud-url", "--mode", "--cache-dir"])).join(" ");
+    if (query.length === 0) {
+      console.error("osstack: knowledge search requires a query");
+      return 1;
+    }
+    const limitRaw = flagValue(args, "--limit");
+    const limit = limitRaw === undefined ? 5 : Number.parseInt(limitRaw, 10);
+    if (!Number.isInteger(limit) || limit <= 0) {
+      console.error("osstack: --limit must be a positive integer");
+      return 1;
+    }
+    const packs = [
+      ...await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath))),
+      ...await officialKnowledgePacksIfRequested(args),
+      ...await listCachedKnowledgePacks(knowledgeCacheDir(args)),
+    ];
+    if (packs.length === 0 && cloudUrl === undefined && mode !== "off") {
+      console.error("osstack: knowledge search requires at least one --pack path, --official, cached pack, or --cloud-url");
+      return 1;
+    }
+    const authToken = resolveKnowledgeAuthToken(args, config);
+    const evidence = await resolveKnowledgeSearch(knowledgeSearchOptions({
+      mode,
+      query,
+      packs,
+      limit,
+      cloudUrl,
+      ...(authToken === undefined ? {} : { authToken }),
+    }));
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(evidence, null, 2));
+    } else if (evidence.results.length === 0) {
+      console.log("No knowledge chunks matched.");
+    } else {
+      if (evidence.fallback_mode !== undefined && evidence.reason !== undefined) {
+        console.log(`Knowledge fallback: ${evidence.fallback_mode} (${evidence.reason})`);
+      }
+      for (const result of evidence.results) {
+        console.log(`${result.pack_id}:${result.chunk_id} score=${result.score} ${result.title}`);
+        console.log(result.snippet);
+      }
+    }
+    return 0;
+  }
+
+  if (sub === "inspect") {
+    const chunkId = firstPositionalValue(args.slice(1), new Set(["--pack", "--cache-dir"]));
+    if (chunkId === undefined) {
+      console.error("osstack: knowledge inspect requires <chunk_id>");
+      return 1;
+    }
+    const packPaths = flagValues(args, "--pack");
+    const packs = [
+      ...await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath))),
+      ...await officialKnowledgePacksIfRequested(args),
+      ...await listCachedKnowledgePacks(knowledgeCacheDir(args)),
+    ];
+    for (const pack of packs) {
+      const chunk = pack.manifest.chunks.find((item) => item.chunk_id === chunkId);
+      if (chunk === undefined) continue;
+      const sourceRefs = new Set(chunk.source_refs ?? []);
+      const sources = (pack.manifest.source_provenance ?? []).filter((source) => sourceRefs.has(source.source_id));
+      const result = {
+        pack: {
+          id: pack.manifest.id,
+          version: pack.manifest.version,
+          name: pack.manifest.name,
+          license: pack.manifest.license,
+          source_kind: pack.manifest.source_kind,
+          quality_score: pack.manifest.quality_score,
+          path: pack.path,
+        },
+        chunk,
+        sources,
+      };
+      if (args.includes("--json")) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(`${pack.manifest.id}@${pack.manifest.version}:${chunk.chunk_id}`);
+        console.log(chunk.title);
+        console.log(chunk.body);
+        if ((chunk.tags ?? []).length > 0) console.log(`tags=${chunk.tags?.join(",")}`);
+        if (sources.length > 0) {
+          console.log("sources:");
+          for (const source of sources) {
+            console.log(`  ${source.source_id} ${source.path} scope=${source.scope} license=${source.license}`);
+          }
+        }
+      }
+      return 0;
+    }
+    console.error(`osstack: knowledge chunk not found: ${chunkId}`);
+    return 1;
+  }
+
+  if (sub === "import") {
+    const sourcePath = firstPositionalValue(args.slice(1), new Set([
+      "--scope",
+      "--id",
+      "--name",
+      "--license",
+      "--output",
+      "--taxonomy",
+      "--quality-score",
+    ]));
+    if (sourcePath === undefined) {
+      console.error("osstack: knowledge import requires a source path");
+      return 1;
+    }
+    const scope = parseKnowledgeScope(flagValue(args, "--scope"));
+    if (scope === undefined) {
+      console.error("osstack: --scope must be one of official, team, project");
+      return 1;
+    }
+    const id = flagValue(args, "--id");
+    const name = flagValue(args, "--name");
+    const license = flagValue(args, "--license");
+    const output = flagValue(args, "--output");
+    if (id === undefined || name === undefined || license === undefined || output === undefined) {
+      console.error("osstack: knowledge import requires --id, --name, --license, and --output");
+      return 1;
+    }
+    const qualityScoreRaw = flagValue(args, "--quality-score");
+    const qualityScore = qualityScoreRaw === undefined ? undefined : Number.parseInt(qualityScoreRaw, 10);
+    if (qualityScoreRaw !== undefined && (
+      qualityScore === undefined
+      || !Number.isInteger(qualityScore)
+      || qualityScore < 0
+      || qualityScore > 100
+    )) {
+      console.error("osstack: --quality-score must be an integer from 0 to 100");
+      return 1;
+    }
+    const manifest = await importKnowledgeSource({
+      path: sourcePath,
+      id,
+      name,
+      license,
+      scope,
+      taxonomy: flagValues(args, "--taxonomy"),
+      ...(qualityScore === undefined ? {} : { qualityScore }),
+    });
+    await writeFile(output, `${JSON.stringify(manifest, null, 2)}\n`, "utf-8");
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({
+        pack_id: manifest.id,
+        output,
+        chunks: manifest.chunks.length,
+        sources: manifest.source_provenance?.length ?? 0,
+      }, null, 2));
+    } else {
+      console.log(`Imported ${manifest.chunks.length} chunk(s) into ${output}`);
+    }
+    return 0;
+  }
+
+  if (sub === "ingest") {
+    const sourcePath = firstPositionalValue(args.slice(1), new Set([
+      "--scope",
+      "--id",
+      "--name",
+      "--license",
+      "--output",
+      "--taxonomy",
+      "--quality-score",
+      "--source-kind",
+    ]));
+    if (sourcePath === undefined) {
+      console.error("osstack: knowledge ingest requires a source path");
+      return 1;
+    }
+    const scope = parseKnowledgeScope(flagValue(args, "--scope"));
+    if (scope === undefined) {
+      console.error("osstack: --scope must be one of official, team, project");
+      return 1;
+    }
+    const sourceKind = parseKnowledgeSourceKind(flagValue(args, "--source-kind"));
+    if (sourceKind === undefined && flagValue(args, "--source-kind") !== undefined) {
+      console.error("osstack: --source-kind must be one of osstack_native, processed_mit, curated_external, internal");
+      return 1;
+    }
+    const id = flagValue(args, "--id");
+    const name = flagValue(args, "--name");
+    const license = flagValue(args, "--license");
+    const output = flagValue(args, "--output");
+    if (id === undefined || name === undefined || license === undefined || output === undefined) {
+      console.error("osstack: knowledge ingest requires --id, --name, --license, and --output");
+      return 1;
+    }
+    const qualityScoreRaw = flagValue(args, "--quality-score");
+    const qualityScore = qualityScoreRaw === undefined ? undefined : Number.parseInt(qualityScoreRaw, 10);
+    if (qualityScoreRaw !== undefined && (
+      qualityScore === undefined
+      || !Number.isInteger(qualityScore)
+      || qualityScore < 0
+      || qualityScore > 100
+    )) {
+      console.error("osstack: --quality-score must be an integer from 0 to 100");
+      return 1;
+    }
+    const manifest = await ingestKnowledgeSource({
+      path: sourcePath,
+      id,
+      name,
+      license,
+      scope,
+      taxonomy: flagValues(args, "--taxonomy"),
+      ...(qualityScore === undefined ? {} : { qualityScore }),
+      ...(sourceKind === undefined ? {} : { sourceKind }),
+    });
+    await writeFile(output, `${JSON.stringify(manifest, null, 2)}\n`, "utf-8");
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({
+        pack_id: manifest.id,
+        output,
+        source_kind: manifest.source_kind,
+        taxonomy: manifest.taxonomy ?? [],
+        chunks: manifest.chunks.length,
+        sources: manifest.source_provenance?.length ?? 0,
+      }, null, 2));
+    } else {
+      console.log(`Ingested ${manifest.chunks.length} osstack-native chunk(s) into ${output}`);
+    }
+    return 0;
+  }
+
+  if (sub === "pin") {
+    const spec = firstPositionalValue(args.slice(1), new Set(["--cache-dir"]));
+    if (spec === undefined) {
+      console.error("osstack: knowledge pin requires <pack_id>@<version>");
+      return 1;
+    }
+    try {
+      const pin = await pinKnowledgePack(knowledgeCacheDir(args), spec);
+      if (args.includes("--json")) {
+        console.log(JSON.stringify({ pin }, null, 2));
+      } else {
+        console.log(`pinned=${pin.pack_id}@${pin.version}`);
+      }
+      return 0;
+    } catch (error) {
+      console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
+      return 1;
+    }
+  }
+
+  if (sub === "feedback") {
+    const chunkId = firstPositionalValue(args.slice(1), new Set(["--cloud-url", "--cache-dir"]));
+    if (chunkId === undefined) {
+      console.error("osstack: knowledge feedback requires <chunk_id>");
+      return 1;
+    }
+    const useful = args.includes("--useful");
+    const bad = args.includes("--bad");
+    if (useful === bad) {
+      console.error("osstack: knowledge feedback requires exactly one of --useful or --bad");
+      return 1;
+    }
+    const config = await readKnowledgeCloudConfig(knowledgeCacheDir(args));
+    const cloudUrl = resolveKnowledgeCloudUrl(args, config);
+    const authToken = resolveKnowledgeAuthToken(args, config);
+    const feedback = await cacheKnowledgeFeedback({
+      cacheDir: knowledgeCacheDir(args),
+      chunkId,
+      rating: useful ? "useful" : "bad",
+      ...(cloudUrl !== undefined ? { cloudUrl } : {}),
+      ...(authToken === undefined ? {} : { authToken }),
+    });
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({ feedback }, null, 2));
+    } else {
+      console.log(`feedback=${feedback.chunk_id} ${feedback.rating} ${feedback.status}`);
+    }
+    return 0;
+  }
+
+  if (sub === "eval") {
+    const packPaths = flagValues(args, "--pack");
+    const fixturesPath = flagValue(args, "--fixtures");
+    if ((packPaths.length === 0 && !args.includes("--official")) || fixturesPath === undefined) {
+      console.error("osstack: knowledge eval requires --pack or --official, plus --fixtures");
+      return 1;
+    }
+    const topKRaw = flagValue(args, "--top-k");
+    const topK = topKRaw === undefined ? 3 : Number.parseInt(topKRaw, 10);
+    if (!Number.isInteger(topK) || topK <= 0) {
+      console.error("osstack: --top-k must be a positive integer");
+      return 1;
+    }
+    const packs = [
+      ...await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath))),
+      ...await officialKnowledgePacksIfRequested(args),
+    ];
+    const fixtures = JSON.parse(await readFile(fixturesPath, "utf-8")) as KnowledgeRetrievalEvalCase[];
+    const summary = evaluateKnowledgeRetrieval(packs, fixtures, { topK });
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(summary, null, 2));
+    } else {
+      console.log(`retrieval_eval=${summary.passed}/${summary.total} top_k=${summary.top_k}`);
+      for (const result of summary.results.filter((item) => !item.matched)) {
+        console.log(`MISSING ${result.id} expected=${result.expected_chunk_id} top=${result.top_chunk_ids.join(",")}`);
+      }
+    }
+    return summary.failed === 0 ? 0 : 2;
+  }
+
+  if (sub === "sources") {
+    const packPath = flagValue(args, "--pack");
+    if (packPath === undefined && !args.includes("--official")) {
+      console.error("osstack: knowledge sources requires --pack or --official");
+      return 1;
+    }
+    if (!args.includes("--internal")) {
+      console.error("osstack: knowledge sources requires --internal to show provenance");
+      return 1;
+    }
+    const packs = [
+      ...(packPath === undefined ? [] : [await loadKnowledgePack(packPath)]),
+      ...await officialKnowledgePacksIfRequested(args),
+    ];
+    const packSources = packs.map((pack) => ({
+      pack_id: pack.manifest.id,
+      version: pack.manifest.version,
+      sources: pack.manifest.source_provenance ?? [],
+    }));
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({ packs: packSources }, null, 2));
+    } else {
+      for (const pack of packSources) {
+        console.log(`${pack.pack_id}@${pack.version}`);
+        if (pack.sources.length === 0) {
+          console.log("  no internal provenance recorded");
+          continue;
+        }
+        for (const source of pack.sources) {
+          console.log(`  ${source.source_id} ${source.path} scope=${source.scope} license=${source.license}`);
+        }
+      }
+    }
+    return 0;
+  }
+
+  console.error(`osstack: unknown knowledge subcommand "${sub}"`);
+  return 1;
+}
+
+function parseKnowledgeMode(value: string | undefined): KnowledgeMode | undefined {
+  if (value === undefined) return undefined;
+  if (value === "off" || value === "local" || value === "cloud") return value;
+  return undefined;
+}
+
+function parseKnowledgeSourceKind(
+  value: string | undefined,
+): "osstack_native" | "processed_mit" | "curated_external" | "internal" | undefined {
+  if (value === undefined) return undefined;
+  if (
+    value === "osstack_native"
+    || value === "processed_mit"
+    || value === "curated_external"
+    || value === "internal"
+  ) return value;
+  return undefined;
+}
+
+function knowledgeCacheDir(args: string[]): string {
+  return flagValue(args, "--cache-dir")
+    ?? process.env["OSSTACK_KNOWLEDGE_CACHE_DIR"]
+    ?? join(osstackHome(), "knowledge-cache");
+}
+
+async function officialKnowledgePacksIfRequested(args: string[]): Promise<KnowledgePack[]> {
+  if (!args.includes("--official")) return [];
+  return loadOfficialKnowledgePacks();
+}
+
+async function loadOfficialKnowledgePacks(): Promise<KnowledgePack[]> {
+  const configuredIndex = process.env["OSSTACK_OFFICIAL_KNOWLEDGE_INDEX"];
+  const here = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    ...(configuredIndex === undefined || configuredIndex.trim().length === 0 ? [] : [configuredIndex.trim()]),
+    join(process.cwd(), "knowledge-packs", "official", "index.json"),
+    join(here, "..", "..", "..", "knowledge-packs", "official", "index.json"),
+  ];
+  const failures: string[] = [];
+  for (const indexPath of candidates) {
+    try {
+      const index = await loadKnowledgePackIndex(indexPath);
+      const indexDir = dirname(indexPath);
+      return Promise.all(index.packs.map((pack) => loadKnowledgePack(join(indexDir, pack.path))));
+    } catch (error) {
+      failures.push(`${indexPath}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  throw new Error(`official knowledge packs unavailable; tried ${failures.join("; ")}`);
+}
+
+interface KnowledgeCloudConfig {
+  cloud_url?: string;
+  token?: string;
+}
+
+function knowledgeConfigPath(cacheDir: string): string {
+  return join(cacheDir, "config.json");
+}
+
+async function readKnowledgeCloudConfig(cacheDir: string): Promise<KnowledgeCloudConfig> {
+  try {
+    const parsed = JSON.parse(await readFile(knowledgeConfigPath(cacheDir), "utf-8")) as unknown;
+    if (!isRecord(parsed)) return {};
+    return {
+      ...(typeof parsed["cloud_url"] === "string" && parsed["cloud_url"].trim().length > 0
+        ? { cloud_url: parsed["cloud_url"].trim() }
+        : {}),
+      ...(typeof parsed["token"] === "string" && parsed["token"].trim().length > 0
+        ? { token: parsed["token"].trim() }
+        : {}),
+    };
+  } catch {
+    return {};
+  }
+}
+
+function resolveKnowledgeCloudUrl(args: string[], config: KnowledgeCloudConfig): string | undefined {
+  return flagValue(args, "--cloud-url")
+    ?? process.env["OSSTACK_KNOWLEDGE_URL"]
+    ?? config.cloud_url;
+}
+
+function resolveKnowledgeAuthToken(args: string[], config: KnowledgeCloudConfig): string | undefined {
+  return flagValue(args, "--token")
+    ?? process.env["OSSTACK_KNOWLEDGE_TOKEN"]
+    ?? config.token;
+}
+
+function parseKnowledgeScope(value: string | undefined): KnowledgeScope | undefined {
+  if (value === "official" || value === "team" || value === "project") return value;
+  return undefined;
+}
+
+async function handleLessonsCommand(args: string[]): Promise<number> {
+  const sub = args[0] ?? "list";
+  if (sub === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack lessons — local pitfall knowledge base
+
+  osstack lessons list [--family F] [--limit N] [--json]
+  osstack lessons learn [--workspace P] [--state P] [--json]
+`);
+    return 0;
+  }
+
+  if (sub === "list") {
+    const limit = parsePositiveIntegerFlag(flagValue(args, "--limit"), "--limit");
+    if (limit instanceof Error) {
+      console.error(`osstack: ${limit.message}`);
+      return 1;
+    }
+    const dbPath = await ensureLocalStateDbPath();
+    const db = openDb({ path: dbPath });
+    try {
+      const family = flagValue(args, "--family");
+      const lessons = listPitfallLessons(db, {
+        ...(family !== undefined ? { family } : {}),
+        ...(limit !== undefined ? { limit } : {}),
+      });
+      if (args.includes("--json")) {
+        console.log(JSON.stringify({ lessons }, null, 2));
+      } else if (lessons.length === 0) {
+        console.log("No lessons recorded yet.");
+      } else {
+        for (const lesson of lessons) {
+          console.log(`${lesson.pitfall_id} ${lesson.family} verified=${lesson.verified_count}`);
+          console.log(`  symptom=${lesson.symptom}`);
+          console.log(`  resolution=${lesson.resolution}`);
+        }
+      }
+      return 0;
+    } finally {
+      db.close();
+    }
+  }
+
+  if (sub === "learn") {
+    const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+    const statePath = resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+    const state = await readLoopState(statePath);
+    if (state === null) {
+      console.error(`osstack: no loop state found at ${statePath}`);
+      return 1;
+    }
+    const candidates = derivePitfallLessonsFromState(state);
+    const dbPath = await ensureLocalStateDbPath();
+    const db = openDb({ path: dbPath });
+    try {
+      const lessons = candidates.map((candidate) => upsertPitfallLesson(db, dbPath, candidate));
+      if (args.includes("--json")) {
+        console.log(JSON.stringify({ learned: lessons.length, lessons }, null, 2));
+      } else {
+        console.log(`learned=${lessons.length}`);
+        for (const lesson of lessons) {
+          console.log(`${lesson.pitfall_id} ${lesson.family} verified=${lesson.verified_count}`);
+        }
+      }
+      return 0;
+    } finally {
+      db.close();
+    }
+  }
+
+  console.error(`osstack: unknown lessons subcommand "${sub}"`);
+  return 1;
+}
+
+async function ensureLocalStateDbPath(): Promise<string> {
+  const home = osstackHome();
+  await mkdir(home, { recursive: true });
+  return join(home, "state.db");
+}
+
+function derivePitfallLessonsFromState(state: LoopState): Parameters<typeof upsertPitfallLesson>[2][] {
+  return state.completed_tasks
+    .filter((task) => task.outcome === "failed" || task.outcome === "escalated")
+    .map((task) => ({
+      family: task.outcome === "failed" ? "verify_failed" : "max_iter_escalation",
+      tech_stack: inferLessonTechStack(task.capability),
+      symptom: `${task.task_id} ended with ${task.outcome} after ${task.iterations} iteration${task.iterations === 1 ? "" : "s"}.`,
+      resolution: task.outcome === "failed"
+        ? "Inspect verifier output, rerun deterministic checks, and update the task or dependency setup before retrying."
+        : "Break the task into a smaller queue item, add a stronger verify gate, or route to a reviewer/checker before retrying.",
+      source_run_id: state.loop_id,
+    }));
+}
+
+async function learnLessonsFromLoopState(state: LoopState): Promise<{
+  learned: number;
+  lessons: ReturnType<typeof upsertPitfallLesson>[];
+} | undefined> {
+  const candidates = derivePitfallLessonsFromState(state);
+  if (candidates.length === 0) return undefined;
+  try {
+    const dbPath = await ensureLocalStateDbPath();
+    const db = openDb({ path: dbPath });
+    try {
+      const lessons = candidates.map((candidate) => upsertPitfallLesson(db, dbPath, candidate));
+      return { learned: lessons.length, lessons };
+    } finally {
+      db.close();
+    }
+  } catch {
+    return undefined;
+  }
+}
+
+function inferLessonTechStack(capability: string | undefined): string[] {
+  if (capability === undefined || capability.length === 0) return ["unknown"];
+  return [...new Set(capability.split(/[.:_-]+/).filter((part) => part.length > 0))];
 }
 
 async function handleSkillsCommand(args: string[]): Promise<number> {
@@ -399,9 +2041,1955 @@ Manifest path: ${path}
 
 type RpcResp = { ok: boolean; result?: unknown; error?: { message: string } };
 
+type GovernanceProofEvidence =
+  | {
+    status: "pass" | "fail";
+    ok: boolean;
+    scanned_files: number;
+    findings: GovernanceFinding[];
+  }
+  | {
+    status: "unknown";
+    ok: false;
+    scanned_files: 0;
+    reason: string;
+    findings: GovernanceFinding[];
+  };
+
+type LoopGovernanceMode = "warn" | "strict";
+
+type LoopGovernanceEvidence = GovernanceProofEvidence & {
+  mode: LoopGovernanceMode;
+  blocking: boolean;
+  error_findings: number;
+};
+
+type KnowledgeProofEvidence = KnowledgeSearchEvidence;
+
+function knowledgeSearchOptions(options: {
+  mode: KnowledgeMode | undefined;
+  query: string;
+  packs: Parameters<typeof resolveKnowledgeSearch>[0]["packs"];
+  limit: number;
+  cloudUrl: string | undefined;
+  authToken?: string;
+}): Parameters<typeof resolveKnowledgeSearch>[0] {
+  return {
+    ...(options.mode !== undefined ? { mode: options.mode } : {}),
+    query: options.query,
+    ...(options.packs !== undefined ? { packs: options.packs } : {}),
+    limit: options.limit,
+    ...(options.cloudUrl !== undefined ? { cloudUrl: options.cloudUrl } : {}),
+    ...(options.authToken !== undefined ? { authToken: options.authToken } : {}),
+  };
+}
+
+function knowledgeErrorMode(mode: KnowledgeMode | undefined): "local" | "cloud" {
+  return mode === "cloud" ? "cloud" : "local";
+}
+
+interface PrReadinessCheck {
+  id: string;
+  status: "ok" | "warn" | "error";
+  summary: string;
+}
+
+interface PrReadinessResult {
+  ok: boolean;
+  checks: PrReadinessCheck[];
+}
+
+async function handleReportCommand(args: string[]): Promise<number> {
+  if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack report — evidence-oriented loop report
+
+  osstack report [run_id] [--loop loop_id] [--workspace P] [--state P] [--events P] [--lang en|zh-CN]
+
+Options:
+  --loop ID           State-file loop id / artifact id when no persisted run_id is used
+  --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
+  --state P           JSON state path (default: LOOP-STATE.json)
+  --events P          Optional loop events JSONL path for timeline evidence
+  --lang L            Report language: en or zh-CN (default: OSSTACK_LANG or en)
+`);
+    return 0;
+  }
+
+  const runId = firstPositionalValue(args, new Set(["--loop", "--workspace", "--state", "--events", "--lang"]));
+  const loopId = flagValue(args, "--loop");
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const language = resolveLanguage(flagValue(args, "--lang"));
+  const evidenceResult = runId === undefined
+    ? undefined
+    : await readPersistedLoopRunEvidence(runId);
+  if (evidenceResult instanceof Error) {
+    console.error(`osstack: ${evidenceResult.message}`);
+    return 1;
+  }
+  const stateFilePath = evidenceResult?.state_json
+    ?? resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+  let state: LoopState | null;
+  try {
+    state = await readLoopState(stateFilePath);
+  } catch (error) {
+    console.error(`osstack: invalid loop state at ${stateFilePath}: ${errorMessage(error)}`);
+    return 1;
+  }
+  if (state === null) {
+    console.error(`osstack: no loop state found at ${stateFilePath}`);
+    return 1;
+  }
+  if (loopId !== undefined && state.loop_id !== loopId) {
+    console.error(`osstack: --loop ${loopId} does not match state loop_id=${state.loop_id}`);
+    return 1;
+  }
+  const events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
+  console.log(renderReportMarkdownForArtifacts(state, events, language));
+  return 0;
+}
+
+async function handleScorecardCommand(args: string[]): Promise<number> {
+  if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack scorecard — loop evidence scorecard
+
+  osstack scorecard [run_id] [--loop loop_id] [--workspace P] [--state P] [--output-dir P] [--stdout] [--lang en|zh-CN]
+
+Options:
+  --loop ID           State-file loop id / artifact id when no persisted run_id is used
+  --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
+  --state P           JSON state path (default: LOOP-STATE.json)
+  --output-dir P      Directory for scorecard files (default: <workspace>/release)
+  --stdout            Print Markdown instead of writing files
+  --lang L            Scorecard language: en or zh-CN (default: OSSTACK_LANG or en)
+`);
+    return 0;
+  }
+
+  const runId = firstPositionalValue(args, new Set(["--loop", "--workspace", "--state", "--output-dir", "--lang"]));
+  const loopId = flagValue(args, "--loop");
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const language = resolveLanguage(flagValue(args, "--lang"));
+  const evidenceResult = runId === undefined
+    ? undefined
+    : await readPersistedLoopRunEvidence(runId);
+  if (evidenceResult instanceof Error) {
+    console.error(`osstack: ${evidenceResult.message}`);
+    return 1;
+  }
+  const stateFilePath = evidenceResult?.state_json
+    ?? resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+  const state = await readLoopState(stateFilePath);
+  if (state === null) {
+    console.error(`osstack: no loop state found at ${stateFilePath}`);
+    return 1;
+  }
+  if (loopId !== undefined && state.loop_id !== loopId) {
+    console.error(`osstack: --loop ${loopId} does not match state loop_id=${state.loop_id}`);
+    return 1;
+  }
+
+  const scorecard = createLoopStateScorecardFromState(state);
+  const markdown = renderLoopStateScorecardMarkdown(scorecard, { language });
+  if (args.includes("--stdout")) {
+    console.log(markdown);
+    return 0;
+  }
+
+  const outputDir = resolveLoopPath(flagValue(args, "--output-dir") ?? "release", workspacePath);
+  const baseName = `osstack-scorecard-${safeFileSegment(runId ?? loopId ?? scorecard.loop_id)}`;
+  const markdownPath = join(outputDir, `${baseName}.md`);
+  const htmlPath = join(outputDir, `${baseName}.html`);
+  await mkdir(outputDir, { recursive: true });
+  await writeFile(markdownPath, markdown, "utf-8");
+  await writeFile(htmlPath, renderLoopStateScorecardHtml(scorecard, { language }), "utf-8");
+  console.log(`markdown=${markdownPath}`);
+  console.log(`html=${htmlPath}`);
+  console.log(`score=${scorecard.total_score}/${scorecard.max_score}`);
+  return 0;
+}
+
+async function handleProofCommand(args: string[]): Promise<number> {
+  if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack proof — local evidence proof pack
+
+  osstack proof [run_id] [--loop loop_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-mode M] [--knowledge-cloud-url URL] [--knowledge-query Q] [--compliance-pack P] [--output-dir P] [--json]
+  osstack proof view <run_id> --audience engineer|manager|auditor|customer [--proof-dir P] [--workspace P] [--output P] [--json]
+
+Options:
+  --loop ID           State-file loop id / artifact id when no persisted run_id is used
+  --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
+  --state P           JSON state path (default: LOOP-STATE.json)
+  --events P          Optional loop events JSONL path to include in the pack
+  --knowledge-pack P  Optional local knowledge pack path to trace in evidence
+  --knowledge-mode M  off, local, or cloud
+  --knowledge-cloud-url URL
+                      Optional Knowledge Cloud base URL
+  --knowledge-query Q Query used for knowledge trace search
+  --compliance-pack P
+                      Optional compliance mapping pack to include
+  --output-dir P      Directory for proof pack folders (default: <workspace>/release)
+  --json              Print machine-readable summary
+`);
+    return 0;
+  }
+
+  if (args[0] === "view") {
+    return await handleProofViewCommand(args.slice(1));
+  }
+
+  const runId = firstPositionalValue(args, new Set([
+    "--loop",
+    "--workspace",
+    "--state",
+    "--events",
+    "--knowledge-pack",
+    "--knowledge-mode",
+    "--knowledge-cloud-url",
+    "--knowledge-query",
+    "--compliance-pack",
+    "--output-dir",
+  ]));
+  const loopId = flagValue(args, "--loop");
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const evidenceResult = runId === undefined
+    ? undefined
+    : await readPersistedLoopRunEvidence(runId);
+  if (evidenceResult instanceof Error) {
+    console.error(`osstack: ${evidenceResult.message}`);
+    return 1;
+  }
+  const stateFilePath = evidenceResult?.state_json
+    ?? resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+  const state = await readLoopState(stateFilePath);
+  if (state === null) {
+    console.error(`osstack: no loop state found at ${stateFilePath}`);
+    return 1;
+  }
+  if (loopId !== undefined && state.loop_id !== loopId) {
+    console.error(`osstack: --loop ${loopId} does not match state loop_id=${state.loop_id}`);
+    return 1;
+  }
+
+  const outputDir = resolveLoopPath(flagValue(args, "--output-dir") ?? "release", workspacePath);
+  const events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
+  const governanceRoot = dirname(stateFilePath);
+  const governance = await scanWorkspaceGovernance(governanceRoot);
+  const knowledge = await createKnowledgeProofEvidence(args, state.loop_id);
+  let proof: Awaited<ReturnType<typeof writeProofPack>>;
+  try {
+    proof = await writeProofPack(state, outputDir, events, runId ?? loopId, governance, knowledge, flagValues(args, "--compliance-pack"), workspacePath);
+  } catch (error) {
+    console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  }
+
+  const summary = {
+    loop_id: state.loop_id,
+    proof_dir: proof.proof_dir,
+    proof_zip: proof.proof_zip,
+    manifest: proof.proof_manifest,
+    artifact_count: proof.artifact_count,
+  };
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(summary, null, 2));
+  } else {
+    console.log(`proof=${summary.proof_dir}`);
+    console.log(`proof_zip=${summary.proof_zip}`);
+    console.log(`manifest=${summary.manifest}`);
+    console.log(`artifacts=${summary.artifact_count}`);
+  }
+  return 0;
+}
+
+async function handleProofViewCommand(args: string[]): Promise<number> {
+  const runId = firstPositionalValue(args, new Set(["--audience", "--proof-dir", "--workspace", "--output"]));
+  if (runId === undefined) {
+    console.error("osstack: proof view requires a run_id");
+    return 1;
+  }
+  const audience = parseProofAudience(flagValue(args, "--audience"));
+  if (audience === undefined) {
+    console.error("osstack: proof view requires --audience engineer|manager|auditor|customer");
+    return 1;
+  }
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const proofDir = flagValue(args, "--proof-dir") ?? join(workspacePath, "release", `osstack-proof-${safeFileSegment(runId)}`);
+  const output = flagValue(args, "--output") ?? join(workspacePath, "reports", `proof-view-${audience}-${safeFileSegment(runId)}.md`);
+  const markdown = await renderProofViewFromProofDir({ audience, runId, proofDir });
+  await mkdir(dirname(output), { recursive: true });
+  await writeFile(output, markdown, "utf-8");
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({ run_id: runId, audience, proof_dir: proofDir, output }, null, 2));
+  } else {
+    console.log(`proof_view=${output}`);
+    console.log(`audience=${audience}`);
+  }
+  return 0;
+}
+
+function parseProofAudience(value: string | undefined): ProofAudience | undefined {
+  if (value === "engineer" || value === "manager" || value === "auditor" || value === "customer") return value;
+  return undefined;
+}
+
+async function handlePrCommand(args: string[]): Promise<number> {
+  if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack pr — generate PR evidence body
+
+  osstack pr [run_id] [--workspace P] [--state P] [--events P] [--proof-dir P] [--output P] [--dry-run|--create] [--json]
+
+Options:
+  --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
+  --state P           JSON state path (default: LOOP-STATE.json)
+  --events P          Optional loop events JSONL path for policy/verify evidence
+  --proof-dir P       Optional proof pack directory to read governance/knowledge evidence
+  --output P          Output markdown path (default: <workspace>/reports/pr-body-<id>.md)
+  --dry-run           Write a local PR body only; this is the default
+  --create            Run GitHub PR readiness checks and print manual steps
+  --json              Print machine-readable summary
+`);
+    return 0;
+  }
+
+  const runId = firstPositionalValue(args, new Set([
+    "--workspace",
+    "--state",
+    "--events",
+    "--proof-dir",
+    "--output",
+  ]));
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const evidenceResult = runId === undefined
+    ? undefined
+    : await readPersistedLoopRunEvidence(runId);
+  if (evidenceResult instanceof Error) {
+    console.error(`osstack: ${evidenceResult.message}`);
+    return 1;
+  }
+  const stateFilePath = evidenceResult?.state_json
+    ?? resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+  const state = await readLoopState(stateFilePath);
+  if (state === null) {
+    console.error(`osstack: no loop state found at ${stateFilePath}`);
+    return 1;
+  }
+  const events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
+  const artifactId = runId ?? state.loop_id;
+  const proofDir = resolveLoopPath(
+    flagValue(args, "--proof-dir") ?? join("release", `osstack-proof-${safeFileSegment(artifactId)}`),
+    workspacePath,
+  );
+  const outputPath = resolveLoopPath(
+    flagValue(args, "--output") ?? join("reports", `pr-body-${safeFileSegment(artifactId)}.md`),
+    workspacePath,
+  );
+  const proofEvidence = await readProofEvidenceForPr(proofDir);
+  const body = renderPrBody({
+    state,
+    events,
+    proofDir,
+    governance: proofEvidence.governance,
+    knowledge: proofEvidence.knowledge,
+    worktree: proofEvidence.worktree,
+    verify: proofEvidence.verify,
+  });
+  await mkdir(dirname(outputPath), { recursive: true });
+  await writeFile(outputPath, body, "utf-8");
+  const summary = {
+    mode: args.includes("--create") ? "create-preflight" : "dry-run",
+    loop_id: state.loop_id,
+    path: outputPath,
+    proof_dir: proofDir,
+  };
+  if (args.includes("--create")) {
+    const readiness = await checkPrCreateReadiness(workspacePath);
+    const createSummary = {
+      ...summary,
+      readiness,
+      manual_steps: manualPrCreateSteps(outputPath, readiness),
+    };
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(createSummary, null, 2));
+    } else {
+      console.log(`pr_body=${outputPath}`);
+      console.log(`proof=${proofDir}`);
+      console.log("manual_steps:");
+      for (const step of createSummary.manual_steps) console.log(`- ${step}`);
+    }
+    if (!readiness.ok) {
+      console.error("osstack: PR create preflight failed; no GitHub writes were attempted.");
+      return 1;
+    }
+    console.error("osstack: PR create API call is not enabled yet; use the manual steps above.");
+    return 1;
+  }
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(summary, null, 2));
+  } else {
+    console.log(`pr_body=${outputPath}`);
+    console.log(`proof=${proofDir}`);
+  }
+  return 0;
+}
+
+async function handleServeManagementCommand(args: string[]): Promise<number> {
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack serve — daemon foreground runner and launchd installer
+
+Usage:
+  osstack serve
+  osstack serve --install [--bin PATH] [--no-load] [--json]
+  osstack serve --status [--json]
+  osstack serve --uninstall [--no-load] [--json]
+
+Options:
+  --install       Write ~/Library/LaunchAgents/${LAUNCHD_LABEL}.plist and load it with launchctl
+  --uninstall     Boot out the LaunchAgent and remove its plist
+  --status        Show plist/launchd status
+  --bin PATH      osstack binary path to put in the plist
+  --no-load       Only write/remove plist; skip launchctl calls
+  --json          Print machine-readable output
+`);
+    return 0;
+  }
+
+  const json = args.includes("--json");
+  const noLoad = args.includes("--no-load");
+  const binPath = flagValue(args, "--bin") ?? defaultOsstackBinPath();
+  try {
+    if (args.includes("--install")) {
+      const result = await installLaunchAgent({ binPath, noLoad });
+      printServeLaunchdResult(result, json);
+      return 0;
+    }
+    if (args.includes("--uninstall")) {
+      const result = await uninstallLaunchAgent({ noLoad });
+      printServeLaunchdResult(result, json);
+      return 0;
+    }
+    if (args.includes("--status")) {
+      const result = await readLaunchAgentStatus({ noLoad });
+      printServeLaunchdResult(result, json);
+      return 0;
+    }
+  } catch (error) {
+    console.error(`osstack: ${errorMessage(error)}`);
+    return 1;
+  }
+
+  console.error("osstack: serve management requires --install, --uninstall, or --status");
+  return 1;
+}
+
+async function installLaunchAgent(options: { binPath: string; noLoad: boolean }): Promise<ServeLaunchdInstallResult> {
+  const plistPath = launchAgentPlistPath();
+  const logDir = logsDir();
+  await mkdir(dirname(plistPath), { recursive: true });
+  await mkdir(logDir, { recursive: true });
+  await mkdir(osstackHome(), { recursive: true });
+  const plist = renderLaunchAgentPlist({
+    binPath: options.binPath,
+    home: osstackHome(),
+    socketPath: resolveSocketPath(),
+    stdoutPath: join(logDir, "daemon.log"),
+    stderrPath: join(logDir, "daemon.error.log"),
+  });
+  await writeFile(plistPath, plist, "utf-8");
+
+  let loaded = false;
+  if (!options.noLoad) {
+    ensureLaunchdSupported();
+    await launchctl(["bootstrap", launchdDomain(), plistPath]);
+    await launchctl(["kickstart", "-k", `${launchdDomain()}/${LAUNCHD_LABEL}`]);
+    loaded = await isLaunchAgentLoaded();
+  }
+
+  return {
+    label: LAUNCHD_LABEL,
+    plist_path: plistPath,
+    installed: true,
+    loaded,
+    load_skipped: options.noLoad,
+    socket_path: resolveSocketPath(),
+    home: osstackHome(),
+    logs_dir: logDir,
+  };
+}
+
+async function uninstallLaunchAgent(options: { noLoad: boolean }): Promise<ServeLaunchdUninstallResult> {
+  const plistPath = launchAgentPlistPath();
+  const wasInstalled = await fileExists(plistPath);
+  let unloaded = false;
+  if (!options.noLoad && process.platform === "darwin") {
+    const bootout = await launchctl(["bootout", launchdDomain(), plistPath], { allowFailure: true });
+    unloaded = bootout.ok;
+  }
+  if (wasInstalled) await rm(plistPath, { force: true });
+  return {
+    label: LAUNCHD_LABEL,
+    plist_path: plistPath,
+    installed: false,
+    loaded: false,
+    unloaded,
+    socket_path: resolveSocketPath(),
+  };
+}
+
+async function readLaunchAgentStatus(options: { noLoad: boolean } = { noLoad: false }): Promise<ServeLaunchdStatus> {
+  const plistPath = launchAgentPlistPath();
+  return {
+    label: LAUNCHD_LABEL,
+    plist_path: plistPath,
+    installed: await fileExists(plistPath),
+    loaded: options.noLoad ? false : await isLaunchAgentLoaded(),
+    socket_path: resolveSocketPath(),
+  };
+}
+
+function printServeLaunchdResult(result: ServeLaunchdStatus | ServeLaunchdInstallResult | ServeLaunchdUninstallResult, json: boolean): void {
+  if (json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+  console.log(`label=${result.label}`);
+  console.log(`plist=${result.plist_path}`);
+  console.log(`installed=${result.installed}`);
+  console.log(`loaded=${result.loaded}`);
+  console.log(`socket=${result.socket_path}`);
+  if ("load_skipped" in result) console.log(`load_skipped=${result.load_skipped}`);
+  if ("unloaded" in result) console.log(`unloaded=${result.unloaded}`);
+}
+
+function renderLaunchAgentPlist(options: {
+  binPath: string;
+  home: string;
+  socketPath: string;
+  stdoutPath: string;
+  stderrPath: string;
+}): string {
+  const args = [
+    "/usr/bin/env",
+    `OSSTACK_HOME=${options.home}`,
+    `OSSTACK_SOCKET=${options.socketPath}`,
+    options.binPath,
+    "serve",
+  ];
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>${xmlEscape(LAUNCHD_LABEL)}</string>
+  <key>ProgramArguments</key>
+  <array>
+${args.map((arg) => `    <string>${xmlEscape(arg)}</string>`).join("\n")}
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>${xmlEscape(options.stdoutPath)}</string>
+  <key>StandardErrorPath</key>
+  <string>${xmlEscape(options.stderrPath)}</string>
+  <key>WorkingDirectory</key>
+  <string>${xmlEscape(process.cwd())}</string>
+</dict>
+</plist>
+`;
+}
+
+function launchAgentPlistPath(): string {
+  const dir = process.env["OSSTACK_LAUNCH_AGENTS_DIR"]
+    ?? join(process.env["HOME"] ?? "", "Library", "LaunchAgents");
+  return join(dir, `${LAUNCHD_LABEL}.plist`);
+}
+
+function launchdDomain(): string {
+  return `gui/${process.getuid?.() ?? 501}`;
+}
+
+function ensureLaunchdSupported(): void {
+  if (process.platform !== "darwin") {
+    throw new Error("launchd install is only supported on macOS; use `osstack serve` directly on this platform.");
+  }
+}
+
+async function launchctl(args: string[], options: { allowFailure?: boolean } = {}): Promise<{ ok: boolean; output: string }> {
+  try {
+    const { stdout, stderr } = await execFileAsync("launchctl", args, { timeout: 15_000 });
+    return { ok: true, output: `${stdout}${stderr}` };
+  } catch (error) {
+    if (options.allowFailure === true) return { ok: false, output: errorMessage(error) };
+    throw new Error(`launchctl ${args.join(" ")} failed: ${errorMessage(error)}`);
+  }
+}
+
+async function isLaunchAgentLoaded(): Promise<boolean> {
+  if (process.platform !== "darwin") return false;
+  const result = await launchctl(["print", `${launchdDomain()}/${LAUNCHD_LABEL}`], { allowFailure: true });
+  return result.ok;
+}
+
+function defaultOsstackBinPath(): string {
+  return process.env["OSSTACK_CLI"] ?? process.argv[1] ?? "osstack";
+}
+
+function xmlEscape(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
 function flagValue(args: string[], name: string): string | undefined {
   const i = args.indexOf(name);
   return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined;
+}
+
+function firstPositionalValue(args: string[], flagsWithValues: Set<string>): string | undefined {
+  return positionalValues(args, flagsWithValues)[0];
+}
+
+async function readPersistedLoopRunEvidence(runId: string): Promise<{
+  run_id: string;
+  state_json: string;
+  events: LoopEvent[];
+} | Error> {
+  const dbPath = join(osstackHome(), "state.db");
+  const db = openDb({ path: dbPath });
+  try {
+    const run = db.prepare("SELECT run_id, session_id, phase FROM runs WHERE run_id = ?").get(runId) as
+      | { run_id: string; session_id: string; phase: string }
+      | undefined;
+    if (run === undefined) return new Error(`no persisted run found for run_id=${runId}`);
+    const rows = db.prepare(
+      "SELECT event_id, run_id, session_id, seq, type, created_at, payload_json FROM events WHERE run_id = ? ORDER BY seq ASC",
+    ).all(runId) as Array<{
+      event_id: string;
+      run_id: string;
+      session_id: string;
+      seq: number;
+      type: string;
+      created_at: number;
+      payload_json: string;
+    }>;
+    const events = normalizeLoopEvents(rows.map((row) => ({
+      event_id: persistedLoopEventId(row),
+      loop_id: row.session_id,
+      type: row.type,
+      seq: row.seq,
+      created_at: row.created_at,
+      payload: parsePayloadJson(row.payload_json),
+    })));
+    const stateJson = findStateJsonPath(events);
+    if (stateJson === undefined) {
+      return new Error(`persisted run ${runId} has no loop.state.written event with jsonPath`);
+    }
+    return {
+      run_id: run.run_id,
+      state_json: stateJson,
+      events,
+    };
+  } finally {
+    db.close();
+  }
+}
+
+async function writeRequestedLoopArtifactsFromStateFile(options: {
+  args: string[];
+  workspacePath: string;
+  stateFilePath: string;
+  events?: unknown[];
+  governance?: GovernanceProofEvidence;
+}): Promise<LoopEvidenceArtifacts | undefined | Error> {
+  if (!hasRequestedLoopArtifacts(options.args)) return undefined;
+  const statePath = resolveLoopPath(options.stateFilePath, options.workspacePath);
+  const state = await readLoopState(statePath);
+  if (state === null) {
+    return new Error(`no loop state found at ${statePath}; cannot generate evidence artifacts`);
+  }
+  return await writeRequestedLoopArtifacts(
+    state,
+    options.workspacePath,
+    options.args,
+    normalizeLoopEvents(options.events),
+    options.governance,
+  );
+}
+
+async function writeRequestedLoopArtifacts(
+  state: LoopState,
+  workspacePath: string,
+  args: string[],
+  events: LoopEvent[] = [],
+  governanceOverride?: GovernanceProofEvidence,
+): Promise<LoopEvidenceArtifacts | undefined> {
+  if (!hasRequestedLoopArtifacts(args)) return undefined;
+
+  const artifacts: LoopEvidenceArtifacts = {};
+  const loopId = safeFileSegment(state.loop_id);
+
+  if (args.includes("--report")) {
+    const reportDir = join(workspacePath, "reports");
+    const reportPath = join(reportDir, `osstack-report-${loopId}.md`);
+    await mkdir(reportDir, { recursive: true });
+    await writeFile(reportPath, renderReportMarkdownForArtifacts(state, events), "utf-8");
+    artifacts.report = reportPath;
+  }
+
+  if (args.includes("--scorecard")) {
+    const releaseDir = join(workspacePath, "release");
+    const scorecard = createLoopStateScorecardFromState(state);
+    const markdownPath = join(releaseDir, `osstack-scorecard-${loopId}.md`);
+    const htmlPath = join(releaseDir, `osstack-scorecard-${loopId}.html`);
+    await mkdir(releaseDir, { recursive: true });
+    const language = resolveLanguage(flagValue(args, "--lang"));
+    await writeFile(markdownPath, renderLoopStateScorecardMarkdown(scorecard, { language }), "utf-8");
+    await writeFile(htmlPath, renderLoopStateScorecardHtml(scorecard, { language }), "utf-8");
+    artifacts.scorecard_markdown = markdownPath;
+    artifacts.scorecard_html = htmlPath;
+  }
+
+  if (args.includes("--proof")) {
+    const governance = governanceOverride ?? await scanWorkspaceGovernance(workspacePath);
+    const knowledge = await createKnowledgeProofEvidence(args, state.loop_id, state.knowledge);
+    const proof = await writeProofPack(state, join(workspacePath, "release"), events, state.loop_id, governance, knowledge, [], workspacePath);
+    artifacts.proof_dir = proof.proof_dir;
+    artifacts.proof_zip = proof.proof_zip;
+    artifacts.proof_manifest = proof.proof_manifest;
+  }
+
+  return artifacts;
+}
+
+async function writeProofPack(
+  state: LoopState,
+  outputDir: string,
+  events: LoopEvent[] = [],
+  artifactId = state.loop_id,
+  governance: GovernanceProofEvidence = unknownGovernanceEvidence("No governance scan evidence provided."),
+  knowledge: KnowledgeProofEvidence = offKnowledgeEvidence(),
+  compliancePackIds: string[] = [],
+  workspacePath?: string,
+): Promise<{
+  proof_dir: string;
+  proof_zip: string;
+  proof_manifest: string;
+  artifact_count: number;
+}> {
+  const proofDir = join(outputDir, `osstack-proof-${safeFileSegment(artifactId)}`);
+  const scorecard = createLoopStateScorecardFromState(state);
+  const policyDecision = createPolicyDecisionEvidence(events);
+  const agentRuntime = createAgentRuntimeEvidence(events);
+  const verifyResults = createVerifyResultsEvidence(scorecard, events);
+  const worktreeStatus = createWorktreeStatusEvidence(events);
+  validateProofEvidenceArtifacts({ policyDecision, agentRuntime, verifyResults, worktreeStatus });
+  const artifacts = [
+    { path: "report.md", content: renderReportMarkdownForArtifacts(state, events) },
+    { path: "scorecard.md", content: renderLoopStateScorecardMarkdown(scorecard, { language: resolveLanguage() }) },
+    { path: "scorecard.html", content: renderLoopStateScorecardHtml(scorecard, { language: resolveLanguage() }) },
+    { path: "loop-state.json", content: `${JSON.stringify(state, null, 2)}\n` },
+    { path: "events.jsonl", content: events.map((event) => JSON.stringify(event)).join("\n") + (events.length > 0 ? "\n" : "") },
+    { path: "policy-decision.json", content: `${JSON.stringify(policyDecision, null, 2)}\n` },
+    { path: "agent-runtime.json", content: `${JSON.stringify(agentRuntime, null, 2)}\n` },
+    { path: "verify-results.json", content: `${JSON.stringify(verifyResults, null, 2)}\n` },
+    { path: "worktree-status.json", content: `${JSON.stringify(worktreeStatus, null, 2)}\n` },
+    { path: "governance-results.json", content: `${JSON.stringify(governance, null, 2)}\n` },
+    { path: "knowledge-results.json", content: `${JSON.stringify(knowledge, null, 2)}\n` },
+    { path: "logs/events.log", content: renderProofEventsLog(events) },
+  ];
+  artifacts.push(...createVerifierOutputArtifacts(verifyResults));
+  if (workspacePath !== undefined) {
+    artifacts.push(await createGitDiffProofArtifact(workspacePath));
+  }
+  for (const packId of compliancePackIds) {
+    artifacts.push({
+      path: `compliance-${safeFileSegment(packId)}.md`,
+      content: renderComplianceReport({
+        packId,
+        runId: artifactId,
+        evidence: {
+          manifest: { artifacts: artifacts.map((artifact) => ({ path: artifact.path, sha256: sha256(artifact.content) })) },
+          verify: verifyResults,
+          policy: policyDecision,
+          agent_runtime: agentRuntime,
+          governance,
+          worktree: worktreeStatus,
+          knowledge,
+        },
+      }),
+    });
+  }
+
+  await mkdir(proofDir, { recursive: true });
+  const manifestArtifacts: Array<{ path: string; sha256: string; bytes: number }> = [];
+  const redactor = new PIIRedactor();
+  for (const artifact of artifacts) {
+    const artifactPath = join(proofDir, artifact.path);
+    const content = redactor.redact(artifact.content).text;
+    await mkdir(dirname(artifactPath), { recursive: true });
+    await writeFile(artifactPath, content, "utf-8");
+    manifestArtifacts.push({
+      path: artifact.path,
+      sha256: sha256(content),
+      bytes: Buffer.byteLength(content, "utf-8"),
+    });
+  }
+  const sha256sumsContent = renderSha256Sums(manifestArtifacts);
+  await writeFile(join(proofDir, "sha256sums.txt"), sha256sumsContent, "utf-8");
+  manifestArtifacts.push({
+    path: "sha256sums.txt",
+    sha256: sha256(sha256sumsContent),
+    bytes: Buffer.byteLength(sha256sumsContent, "utf-8"),
+  });
+
+  const manifest = {
+    schema_version: 1,
+    kind: "osstack.proof_pack",
+    osstack_version: VERSION,
+    run_id: artifactId,
+    loop_id: state.loop_id,
+    agent_id: primaryAgentId(state),
+    agent_ids: proofAgentIds(state),
+    ...(workspacePath !== undefined ? { workspace: workspacePath } : {}),
+    generated_from: "LOOP-STATE.json",
+    generated_at: new Date().toISOString(),
+    artifacts: manifestArtifacts,
+  };
+  const manifestContent = `${JSON.stringify(manifest, null, 2)}\n`;
+  const proofManifest = join(proofDir, "manifest.json");
+  await writeFile(proofManifest, manifestContent, "utf-8");
+  const proofZip = `${proofDir}.zip`;
+  await writeProofZip(proofDir, proofZip, [...manifestArtifacts.map((artifact) => artifact.path), "manifest.json"]);
+  return {
+    proof_dir: proofDir,
+    proof_zip: proofZip,
+    proof_manifest: proofManifest,
+    artifact_count: manifestArtifacts.length + 1,
+  };
+}
+
+function primaryAgentId(state: LoopState): string {
+  return proofAgentIds(state)[0] ?? "unknown";
+}
+
+function proofAgentIds(state: LoopState): string[] {
+  return [...new Set(state.completed_tasks.map((task) => task.agent_id).filter((agentId) => agentId.length > 0))];
+}
+
+function renderSha256Sums(artifacts: Array<{ path: string; sha256: string }>): string {
+  return artifacts.map((artifact) => `${artifact.sha256}  ${artifact.path}`).join("\n") + "\n";
+}
+
+async function writeProofZip(proofDir: string, zipPath: string, paths: string[]): Promise<void> {
+  const entries: Array<{ path: string; data: Buffer; crc32: number; offset: number }> = [];
+  const chunks: Buffer[] = [];
+  let offset = 0;
+  for (const path of paths) {
+    const data = await readFile(join(proofDir, path));
+    const name = Buffer.from(path.replaceAll("\\", "/"), "utf-8");
+    const crc = crc32(data);
+    const header = Buffer.alloc(30);
+    header.writeUInt32LE(0x04034b50, 0);
+    header.writeUInt16LE(20, 4);
+    header.writeUInt16LE(0, 6);
+    header.writeUInt16LE(0, 8);
+    header.writeUInt16LE(0, 10);
+    header.writeUInt16LE(0, 12);
+    header.writeUInt32LE(crc, 14);
+    header.writeUInt32LE(data.length, 18);
+    header.writeUInt32LE(data.length, 22);
+    header.writeUInt16LE(name.length, 26);
+    header.writeUInt16LE(0, 28);
+    chunks.push(header, name, data);
+    entries.push({ path, data, crc32: crc, offset });
+    offset += header.length + name.length + data.length;
+  }
+
+  const centralDirectoryOffset = offset;
+  for (const entry of entries) {
+    const name = Buffer.from(entry.path.replaceAll("\\", "/"), "utf-8");
+    const header = Buffer.alloc(46);
+    header.writeUInt32LE(0x02014b50, 0);
+    header.writeUInt16LE(20, 4);
+    header.writeUInt16LE(20, 6);
+    header.writeUInt16LE(0, 8);
+    header.writeUInt16LE(0, 10);
+    header.writeUInt16LE(0, 12);
+    header.writeUInt16LE(0, 14);
+    header.writeUInt32LE(entry.crc32, 16);
+    header.writeUInt32LE(entry.data.length, 20);
+    header.writeUInt32LE(entry.data.length, 24);
+    header.writeUInt16LE(name.length, 28);
+    header.writeUInt16LE(0, 30);
+    header.writeUInt16LE(0, 32);
+    header.writeUInt16LE(0, 34);
+    header.writeUInt16LE(0, 36);
+    header.writeUInt32LE(0, 38);
+    header.writeUInt32LE(entry.offset, 42);
+    chunks.push(header, name);
+    offset += header.length + name.length;
+  }
+  const centralDirectorySize = offset - centralDirectoryOffset;
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(0, 4);
+  end.writeUInt16LE(0, 6);
+  end.writeUInt16LE(entries.length, 8);
+  end.writeUInt16LE(entries.length, 10);
+  end.writeUInt32LE(centralDirectorySize, 12);
+  end.writeUInt32LE(centralDirectoryOffset, 16);
+  end.writeUInt16LE(0, 20);
+  chunks.push(end);
+  await writeFile(zipPath, Buffer.concat(chunks));
+}
+
+function crc32(data: Buffer): number {
+  let crc = 0xffffffff;
+  for (const byte of data) {
+    crc = CRC32_TABLE[(crc ^ byte) & 0xff]! ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+const CRC32_TABLE = Array.from({ length: 256 }, (_, index) => {
+  let crc = index;
+  for (let bit = 0; bit < 8; bit++) {
+    crc = (crc & 1) === 1 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1;
+  }
+  return crc >>> 0;
+});
+
+async function createGitDiffProofArtifact(workspacePath: string): Promise<{ path: string; content: string }> {
+  try {
+    const { stdout } = await execFileAsync("git", [
+      "-C",
+      workspacePath,
+      "diff",
+      "--no-ext-diff",
+      "--binary",
+      "HEAD",
+      "--",
+    ], { timeout: 15_000, maxBuffer: 10 * 1024 * 1024 });
+    const redacted = new PIIRedactor().redact(stdout).text;
+    return {
+      path: "git-diff.patch",
+      content: redacted.length === 0
+        ? "# Git Diff Evidence\n\nNo tracked git diff was present when this proof pack was generated.\n"
+        : redacted,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      path: "git-diff.patch",
+      content: `# Git Diff Evidence\n\nGit diff evidence unavailable: ${message}\n`,
+    };
+  }
+}
+
+function hasRequestedLoopArtifacts(args: string[]): boolean {
+  return args.includes("--report") || args.includes("--scorecard") || args.includes("--proof");
+}
+
+async function scanWorkspaceGovernance(workspacePath: string): Promise<GovernanceProofEvidence> {
+  try {
+    const files = await collectGovernanceScanFiles(workspacePath);
+    if (files.length === 0) {
+      return {
+        status: "pass",
+        ok: true,
+        scanned_files: 0,
+        findings: [],
+      };
+    }
+    const result = await scanFiles(files);
+    return {
+      status: result.ok ? "pass" : "fail",
+      ok: result.ok,
+      scanned_files: files.length,
+      findings: result.findings,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return unknownGovernanceEvidence(`Governance scan failed: ${message}`);
+  }
+}
+
+function parseLoopGovernanceMode(args: string[]): LoopGovernanceMode | undefined | Error {
+  const index = args.indexOf("--govern");
+  if (index < 0) return undefined;
+  const value = args[index + 1];
+  if (value === undefined || value.startsWith("--")) return "warn";
+  if (value === "warn" || value === "strict") return value;
+  return new Error("--govern must be warn or strict");
+}
+
+async function createLoopGovernanceEvidence(
+  mode: LoopGovernanceMode,
+  workspacePath: string,
+): Promise<LoopGovernanceEvidence> {
+  const evidence = await scanWorkspaceGovernance(workspacePath);
+  const errorFindings = evidence.findings.filter((finding) => finding.severity === "error").length;
+  return {
+    ...evidence,
+    mode,
+    blocking: mode === "strict" && errorFindings > 0,
+    error_findings: errorFindings,
+  };
+}
+
+function appendGovernanceVerifyEvent(
+  events: LoopEvent[],
+  loopId: string,
+  governance: LoopGovernanceEvidence,
+): LoopEvent[] {
+  const seq = nextLoopEventSeq(events);
+  const pass = !governance.blocking;
+  const summary = governance.status === "unknown"
+    ? "governance scan unknown; fail-open"
+    : `${governance.status}; findings=${governance.findings.length}; errors=${governance.error_findings}; mode=${governance.mode}`;
+  return [
+    ...events,
+    {
+      event_id: `evt_governance_${seq}`,
+      loop_id: loopId,
+      type: "loop.verify.done",
+      seq,
+      created_at: Date.now(),
+      payload: {
+        task_id: "governance",
+        pass,
+        score: pass ? 1 : 0,
+        issue_count: governance.findings.length,
+        reviewer_agent_id: "governance-verifier",
+        summary,
+      },
+    },
+  ];
+}
+
+function nextLoopEventSeq(events: LoopEvent[]): number {
+  return Math.max(0, ...events.map((event) => event.seq)) + 1;
+}
+
+async function collectGovernanceScanFiles(workspacePath: string): Promise<string[]> {
+  const files: string[] = [];
+  await collectGovernanceScanFilesInto(workspacePath, files);
+  return files;
+}
+
+async function collectChangedGovernanceScanFiles(workspacePath: string): Promise<string[] | Error> {
+  try {
+    const [workingTree, staged] = await Promise.all([
+      execFileAsync("git", ["-C", workspacePath, "ls-files", "--modified", "--others", "--exclude-standard"], { timeout: 10_000 }),
+      execFileAsync("git", ["-C", workspacePath, "diff", "--name-only", "--cached", "--diff-filter=ACMRT"], { timeout: 10_000 }),
+    ]);
+    const relativePaths = uniqueNonEmptyLines(`${workingTree.stdout}\n${staged.stdout}`);
+    const files: string[] = [];
+    for (const relativePath of relativePaths) {
+      if (!isGovernanceScannableFile(relativePath)) continue;
+      const absolutePath = join(workspacePath, relativePath);
+      if (await isRegularFile(absolutePath)) files.push(absolutePath);
+    }
+    return files;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return new Error(`could not collect changed files with git: ${message}`);
+  }
+}
+
+function uniqueNonEmptyLines(value: string): string[] {
+  return [...new Set(value.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0))];
+}
+
+async function isRegularFile(path: string): Promise<boolean> {
+  try {
+    return (await stat(path)).isFile();
+  } catch {
+    return false;
+  }
+}
+
+async function collectGovernanceScanFilesInto(dir: string, files: string[]): Promise<void> {
+  if (files.length >= 500) return;
+  const entries = await readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (files.length >= 500) return;
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (isGovernanceExcludedDir(entry.name)) continue;
+      await collectGovernanceScanFilesInto(path, files);
+      continue;
+    }
+    if (!entry.isFile()) continue;
+    if (!isGovernanceScannableFile(entry.name)) continue;
+    files.push(path);
+  }
+}
+
+function isGovernanceExcludedDir(name: string): boolean {
+  return new Set([
+    ".git",
+    ".next",
+    ".turbo",
+    "coverage",
+    "dist",
+    "node_modules",
+    "release",
+    "reports",
+    "tmp",
+    "vendor",
+  ]).has(name);
+}
+
+function isGovernanceScannableFile(name: string): boolean {
+  if (name === ".env") return true;
+  return new Set([
+    ".cjs",
+    ".css",
+    ".html",
+    ".js",
+    ".json",
+    ".jsx",
+    ".md",
+    ".mjs",
+    ".py",
+    ".sh",
+    ".sql",
+    ".ts",
+    ".tsx",
+    ".yaml",
+    ".yml",
+  ]).has(extname(name));
+}
+
+function unknownGovernanceEvidence(reason: string): GovernanceProofEvidence {
+  return {
+    status: "unknown",
+    ok: false,
+    scanned_files: 0,
+    reason,
+    findings: [],
+  };
+}
+
+async function readProofEvidenceForPr(proofDir: string): Promise<{
+  governance?: unknown;
+  knowledge?: unknown;
+  worktree?: unknown;
+  verify?: unknown;
+}> {
+  const [governance, knowledge, worktree, verify] = await Promise.all([
+    readJsonFileIfExists(join(proofDir, "governance-results.json")),
+    readJsonFileIfExists(join(proofDir, "knowledge-results.json")),
+    readJsonFileIfExists(join(proofDir, "worktree-status.json")),
+    readJsonFileIfExists(join(proofDir, "verify-results.json")),
+  ]);
+  return { governance, knowledge, worktree, verify };
+}
+
+async function readJsonFileIfExists(path: string): Promise<unknown | undefined> {
+  try {
+    return JSON.parse(await readFile(path, "utf-8")) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+function renderPrBody(options: {
+  state: LoopState;
+  events: LoopEvent[];
+  proofDir: string;
+  governance?: unknown;
+  knowledge?: unknown;
+  worktree?: unknown;
+  verify?: unknown;
+}): string {
+  const report = createLoopStateReport(options.state, { events: options.events });
+  const lines: string[] = [
+    `# PR Evidence - ${options.state.loop_id}`,
+    "",
+    "## Summary",
+    `- Loop: ${options.state.loop_id}`,
+    `- Conformance: ${report.conformance.level} ${report.conformance.name}`,
+    `- Completed: ${report.summary.completed_count}`,
+    `- Failed: ${report.summary.failed_count}`,
+    `- Escalated: ${report.summary.escalated_count}`,
+    `- Success rate: ${Math.round(report.summary.success_rate * 100)}%`,
+    "",
+    "## Tasks Completed",
+    ...renderPrTasks(options.state),
+    "",
+    "## Agent Selection",
+    ...renderPrPolicy(options.events),
+    "",
+    "## Verification",
+    ...renderPrVerification(options.events, options.verify),
+    "",
+    "## Governance",
+    ...renderPrGovernance(options.governance),
+    "",
+    "## Knowledge Trace",
+    ...renderPrKnowledge(options.knowledge),
+    "",
+    "## Worktree",
+    ...renderPrWorktree(options.worktree),
+    "",
+    "## Proof Pack",
+    `- ${options.proofDir}`,
+    "",
+    "## Risks / Open Questions",
+    ...report.risks.map((risk) => `- ${risk}`),
+    ...report.next_steps.map((step) => `- Next: ${step}`),
+    "",
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
+async function checkPrCreateReadiness(workspacePath: string): Promise<PrReadinessResult> {
+  const checks: PrReadinessCheck[] = [];
+  const insideWorkTree = await gitOutput(workspacePath, ["rev-parse", "--is-inside-work-tree"]);
+  if (insideWorkTree instanceof Error || insideWorkTree.trim() !== "true") {
+    checks.push({
+      id: "git_repository",
+      status: "error",
+      summary: "Workspace is not a git repository.",
+    });
+    checks.push({
+      id: "branch",
+      status: "error",
+      summary: "Cannot inspect branch outside a git repository.",
+    });
+    checks.push({
+      id: "remote",
+      status: "error",
+      summary: "Cannot inspect GitHub remote outside a git repository.",
+    });
+    checks.push({
+      id: "gh_auth",
+      status: "warn",
+      summary: "GitHub CLI auth was not checked because git repository checks failed.",
+    });
+    return { ok: false, checks };
+  }
+  checks.push({ id: "git_repository", status: "ok", summary: "Workspace is a git repository." });
+
+  const branch = await gitOutput(workspacePath, ["branch", "--show-current"]);
+  const currentBranch = branch instanceof Error ? "" : branch.trim();
+  const defaultBranch = await inferDefaultBranch(workspacePath);
+  if (currentBranch.length === 0) {
+    checks.push({ id: "branch", status: "error", summary: "Detached HEAD; create a named branch before opening a PR." });
+  } else if (currentBranch === defaultBranch) {
+    checks.push({ id: "branch", status: "error", summary: `Current branch ${currentBranch} is the default branch; create a feature branch first.` });
+  } else {
+    checks.push({ id: "branch", status: "ok", summary: `Current branch ${currentBranch}; default branch ${defaultBranch}.` });
+  }
+
+  const remote = await gitOutput(workspacePath, ["remote", "get-url", "origin"]);
+  if (remote instanceof Error || parseGitHubRepoSlug(remote.trim()) === undefined) {
+    checks.push({ id: "remote", status: "error", summary: "No GitHub origin remote was found." });
+  } else {
+    checks.push({ id: "remote", status: "ok", summary: `GitHub remote: ${parseGitHubRepoSlug(remote.trim())}` });
+  }
+
+  const ghAuth = await execOutput("gh", ["auth", "status"], workspacePath);
+  if (ghAuth instanceof Error) {
+    checks.push({ id: "gh_auth", status: "warn", summary: "GitHub CLI auth is unavailable or not logged in; use manual PR steps." });
+  } else {
+    checks.push({ id: "gh_auth", status: "ok", summary: "GitHub CLI auth is available." });
+  }
+  return {
+    ok: checks.every((check) => check.status !== "error"),
+    checks,
+  };
+}
+
+async function inferDefaultBranch(workspacePath: string): Promise<string> {
+  const symbolic = await gitOutput(workspacePath, ["symbolic-ref", "refs/remotes/origin/HEAD"]);
+  if (!(symbolic instanceof Error)) {
+    const match = symbolic.trim().match(/^refs\/remotes\/origin\/(.+)$/);
+    if (match?.[1]) return match[1];
+  }
+  const localMain = await gitOutput(workspacePath, ["show-ref", "--verify", "--quiet", "refs/heads/main"]);
+  if (!(localMain instanceof Error)) return "main";
+  const localMaster = await gitOutput(workspacePath, ["show-ref", "--verify", "--quiet", "refs/heads/master"]);
+  return localMaster instanceof Error ? "main" : "master";
+}
+
+async function gitOutput(workspacePath: string, args: string[]): Promise<string | Error> {
+  return execOutput("git", args, workspacePath);
+}
+
+async function execOutput(command: string, args: string[], cwd: string): Promise<string | Error> {
+  try {
+    const { stdout } = await execFileAsync(command, args, {
+      cwd,
+      encoding: "utf-8",
+      timeout: 10_000,
+    });
+    return String(stdout);
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
+  }
+}
+
+function manualPrCreateSteps(prBodyPath: string, readiness: PrReadinessResult): string[] {
+  const steps = [
+    "git checkout -b codex/osstack-evidence-pr",
+    "git status --short",
+    "git add <changed-files>",
+    "git commit -m \"feat: describe the change\"",
+    "git push -u origin HEAD",
+    `gh pr create --fill --body-file ${prBodyPath}`,
+  ];
+  if (!readiness.ok) {
+    steps.unshift("Resolve the failed readiness checks listed above.");
+  }
+  return steps;
+}
+
+function renderPrTasks(state: LoopState): string[] {
+  if (state.completed_tasks.length === 0) return ["- None"];
+  return state.completed_tasks.map((task) => (
+    `- ${task.task_id}: ${task.outcome} via ${task.agent_id} (${task.iterations} iteration${task.iterations === 1 ? "" : "s"})`
+  ));
+}
+
+function renderPrPolicy(events: LoopEvent[]): string[] {
+  const decisions = createPolicyDecisionEvidence(events);
+  if (decisions.status === "unknown" || decisions.decisions === undefined || decisions.decisions.length === 0) {
+    return [`- ${decisions.reason ?? "No policy decision evidence found."}`];
+  }
+  return decisions.decisions.map((decision) => (
+    `- ${decision.task_id}: ${decision.agent_id} [${decision.auth_mode}; roles=${decision.roles.join(",") || "unknown"}] - ${decision.reason} (scorecard: \`osstack agent scorecard ${decision.agent_id}\`)`
+  ));
+}
+
+function renderPrVerification(events: LoopEvent[], proofVerify: unknown): string[] {
+  const eventLines = events
+    .filter((event) => event.type === "loop.verify.done")
+    .map((event) => (
+      `- ${stringEventPayload(event, "task_id")}: ${booleanEventPayload(event, "pass") ? "pass" : "fail"} - ${stringEventPayload(event, "summary")}`
+    ));
+  if (eventLines.length > 0) return eventLines;
+  if (isRecord(proofVerify) && typeof proofVerify["status"] === "string") {
+    return [`- Proof verify status: ${proofVerify["status"]}`];
+  }
+  return ["- No verify evidence found."];
+}
+
+function renderPrGovernance(governance: unknown): string[] {
+  if (!isRecord(governance)) return ["- No governance evidence found."];
+  const status = typeof governance["status"] === "string" ? governance["status"] : "unknown";
+  const findings = Array.isArray(governance["findings"]) ? governance["findings"] : [];
+  if (findings.length === 0) return [`- Status: ${status}`];
+  return [
+    `- Status: ${status}`,
+    ...findings.map((finding) => {
+      if (!isRecord(finding)) return "- Unknown governance finding";
+      const rule = typeof finding["rule_id"] === "string" ? finding["rule_id"] : "unknown";
+      const severity = typeof finding["severity"] === "string" ? finding["severity"] : "unknown";
+      const file = typeof finding["file"] === "string" ? finding["file"] : "unknown";
+      const line = typeof finding["line"] === "number" ? finding["line"] : "unknown";
+      const message = typeof finding["message"] === "string" ? finding["message"] : "";
+      return `- [${severity}] ${rule} ${file}:${line} - ${message}`;
+    }),
+  ];
+}
+
+function renderPrKnowledge(knowledge: unknown): string[] {
+  if (!isRecord(knowledge)) return ["- Mode: off"];
+  const mode = typeof knowledge["mode"] === "string" ? knowledge["mode"] : "unknown";
+  const status = typeof knowledge["status"] === "string" ? knowledge["status"] : "unknown";
+  const packs = Array.isArray(knowledge["packs"]) ? knowledge["packs"] : [];
+  const results = Array.isArray(knowledge["results"]) ? knowledge["results"] : [];
+  return [
+    `- Mode: ${mode}`,
+    `- Status: ${status}`,
+    ...packs.map((pack) => {
+      if (!isRecord(pack)) return "- Pack: unknown";
+      const id = typeof pack["id"] === "string" ? pack["id"] : "unknown";
+      const version = typeof pack["version"] === "string" ? pack["version"] : "unknown";
+      const sourceKind = typeof pack["source_kind"] === "string" ? pack["source_kind"] : "unknown";
+      return `- Pack: ${id}@${version} (${sourceKind})`;
+    }),
+    ...results.map((result) => {
+      if (!isRecord(result)) return "- Chunk: unknown";
+      const chunkId = typeof result["chunk_id"] === "string" ? result["chunk_id"] : "unknown";
+      const title = typeof result["title"] === "string" ? result["title"] : "unknown";
+      return `- Chunk: ${chunkId} - ${title}`;
+    }),
+  ];
+}
+
+function renderPrWorktree(worktree: unknown): string[] {
+  if (!isRecord(worktree)) return ["- No worktree evidence found."];
+  const entries = Array.isArray(worktree["entries"]) ? worktree["entries"] : [];
+  if (entries.length === 0) {
+    const status = typeof worktree["status"] === "string" ? worktree["status"] : "unknown";
+    return [`- Status: ${status}`];
+  }
+  return entries.map((entry) => {
+    if (!isRecord(entry)) return "- Unknown worktree entry";
+    const taskId = typeof entry["task_id"] === "string" ? entry["task_id"] : "unknown";
+    const status = typeof entry["status"] === "string" ? entry["status"] : "unknown";
+    const branch = typeof entry["branch"] === "string" ? entry["branch"] : "unknown";
+    const commit = typeof entry["commit"] === "string" ? entry["commit"] : "unknown";
+    return `- ${taskId}: ${status} branch=${branch} commit=${commit}`;
+  });
+}
+
+async function createKnowledgeProofEvidence(
+  args: string[],
+  defaultQuery: string,
+  fallback?: LoopKnowledgeTrace,
+): Promise<KnowledgeProofEvidence> {
+  const packPaths = flagValues(args, "--knowledge-pack");
+  const modeValue = flagValue(args, "--knowledge-mode") ?? flagValue(args, "--knowledge");
+  const mode = parseKnowledgeMode(modeValue);
+  const knowledgeConfig = await readKnowledgeCloudConfig(knowledgeCacheDir(args));
+  const cloudUrl = flagValue(args, "--knowledge-cloud-url") ?? resolveKnowledgeCloudUrl(args, knowledgeConfig);
+  const authToken = resolveKnowledgeAuthToken(args, knowledgeConfig);
+  if (modeValue !== undefined && mode === undefined) {
+    return {
+      mode: "off",
+      status: "not_used",
+      reason: "--knowledge-mode must be one of off, local, cloud",
+      packs: [],
+      results: [],
+    };
+  }
+  if (!hasKnowledgeRequest(args) && fallback !== undefined) return knowledgeProofFromTrace(fallback);
+  if (packPaths.length === 0 && cloudUrl === undefined && mode !== "cloud") return offKnowledgeEvidence();
+  const query = flagValue(args, "--knowledge-query") ?? defaultQuery;
+  try {
+    const packs = await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath)));
+    return await resolveKnowledgeSearch(knowledgeSearchOptions({
+      mode,
+      query,
+      packs,
+      limit: 5,
+      cloudUrl,
+      ...(authToken === undefined ? {} : { authToken }),
+    }));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      mode: knowledgeErrorMode(mode),
+      status: "error",
+      query,
+      reason: message,
+      packs: [],
+      results: [],
+    };
+  }
+}
+
+function hasKnowledgeRequest(args: string[]): boolean {
+  return args.includes("--knowledge")
+    || args.includes("--knowledge-mode")
+    || args.includes("--knowledge-pack")
+    || args.includes("--knowledge-cloud-url")
+    || args.includes("--knowledge-query");
+}
+
+function shouldRecordLoopKnowledge(args: string[], evidence: KnowledgeProofEvidence): boolean {
+  return hasKnowledgeRequest(args) || evidence.mode !== "off" || evidence.status !== "not_used";
+}
+
+function offKnowledgeEvidence(): KnowledgeProofEvidence {
+  return {
+    mode: "off",
+    status: "not_used",
+    packs: [],
+    results: [],
+  };
+}
+
+function knowledgeProofFromTrace(trace: LoopKnowledgeTrace): KnowledgeProofEvidence {
+  if (trace.status === "recorded" && trace.mode !== "off") {
+    return {
+      mode: trace.mode,
+      status: "recorded",
+      query: trace.query ?? "",
+      packs: trace.packs,
+      results: trace.results,
+      ...(trace.reason !== undefined ? { reason: trace.reason } : {}),
+      ...(trace.fallback_mode === "local" ? { fallback_mode: trace.fallback_mode } : {}),
+    };
+  }
+  if (trace.status === "error" && trace.mode !== "off") {
+    return {
+      mode: trace.mode,
+      status: "error",
+      ...(trace.query !== undefined ? { query: trace.query } : {}),
+      reason: trace.reason ?? "knowledge trace recorded an error",
+      packs: trace.packs,
+      results: [],
+      ...(trace.fallback_mode !== undefined ? { fallback_mode: trace.fallback_mode } : {}),
+    };
+  }
+  return {
+    mode: "off",
+    status: "not_used",
+    packs: [],
+    results: [],
+    ...(trace.query !== undefined ? { query: trace.query } : {}),
+    ...(trace.reason !== undefined ? { reason: trace.reason } : {}),
+    ...(trace.fallback_mode === "off" ? { fallback_mode: trace.fallback_mode } : {}),
+  };
+}
+
+function createPolicyDecisionEvidence(events: LoopEvent[]): {
+  status: "recorded" | "unknown";
+  decisions?: Array<{
+    task_id: string;
+    agent_id: string;
+    auth_mode: string;
+    roles: string[];
+    reason: string;
+    event_seq: number;
+  }>;
+  reason?: string;
+} {
+  const decisions = events
+    .filter((event) => event.type === "loop.plan.done")
+    .map((event) => ({
+      task_id: stringEventPayload(event, "task_id"),
+      agent_id: stringEventPayload(event, "agent_id"),
+      auth_mode: agentAuthMode(stringEventPayload(event, "agent_id")),
+      roles: rolesForAgentId(stringEventPayload(event, "agent_id")),
+      reason: stringEventPayload(event, "routing_reason"),
+      event_seq: event.seq,
+    }));
+  if (decisions.length === 0) {
+    return {
+      status: "unknown",
+      reason: "No loop.plan.done policy decision evidence found.",
+    };
+  }
+  return { status: "recorded", decisions };
+}
+
+function createAgentRuntimeEvidence(events: LoopEvent[]): {
+  status: "recorded" | "unknown";
+  agents?: Array<{
+    agent_id: string;
+    auth_mode: string;
+    roles: string[];
+    plan_event_seqs: number[];
+  }>;
+  reason?: string;
+} {
+  const byAgent = new Map<string, number[]>();
+  for (const event of events) {
+    if (event.type !== "loop.plan.done") continue;
+    const agentId = stringEventPayload(event, "agent_id");
+    byAgent.set(agentId, [...(byAgent.get(agentId) ?? []), event.seq]);
+  }
+  if (byAgent.size === 0) {
+    return {
+      status: "unknown",
+      reason: "No loop.plan.done event evidence found.",
+    };
+  }
+  return {
+    status: "recorded",
+    agents: [...byAgent.entries()].map(([agentId, seqs]) => ({
+      agent_id: agentId,
+      auth_mode: agentAuthMode(agentId),
+      roles: rolesForAgentId(agentId),
+      plan_event_seqs: seqs,
+    })),
+  };
+}
+
+function rolesForAgentId(agentId: string): string[] {
+  const adapter = defaultAdapters().find((candidate) => candidate.id === agentId);
+  return rolesForCapabilityKinds(adapter?.capabilities().map((capability) => capability.kind) ?? []);
+}
+
+function createVerifierOutputArtifacts(verifyResults: ReturnType<typeof createVerifyResultsEvidence>): Array<{ path: string; content: string }> {
+  if (verifyResults.results === undefined) return [];
+  return verifyResults.results.map((result) => {
+    const agentId = result.reviewer_agent_id === "" ? "unknown-verifier" : result.reviewer_agent_id;
+    const dir = verifierOutputDir(agentId);
+    const path = `${dir}/${safeFileSegment(result.task_id)}-${safeFileSegment(agentId)}.txt`;
+    const content = [
+      `task_id: ${result.task_id}`,
+      `reviewer_agent_id: ${agentId}`,
+      `pass: ${result.pass ? "true" : "false"}`,
+      `score: ${String(result.score)}`,
+      `event_seq: ${result.event_seq}`,
+      "",
+      result.summary,
+      "",
+    ].join("\n");
+    return { path, content: new PIIRedactor().redact(content).text };
+  });
+}
+
+function verifierOutputDir(agentId: string): "checker-output" | "reviewer-output" {
+  const normalized = agentId.toLowerCase();
+  return normalized.includes("checker") || normalized.includes("verify") || normalized.includes("verifier")
+    ? "checker-output"
+    : "reviewer-output";
+}
+
+function renderProofEventsLog(events: LoopEvent[]): string {
+  const lines = events.map((event) => `${event.seq} ${event.type} ${proofEventSummary(event)}`);
+  const content = lines.length === 0
+    ? "No loop events were provided for this proof pack.\n"
+    : `${lines.join("\n")}\n`;
+  return new PIIRedactor().redact(content).text;
+}
+
+function proofEventSummary(event: LoopEvent): string {
+  if (event.type === "loop.verify.done") {
+    const taskId = stringEventPayload(event, "task_id");
+    const pass = booleanEventPayload(event, "pass") ? "passed" : "failed";
+    return `${taskId} verify ${pass}: ${stringEventPayload(event, "summary")}`;
+  }
+  if (event.type === "loop.plan.done") {
+    return `${stringEventPayload(event, "task_id")} planned for ${stringEventPayload(event, "agent_id")}: ${stringEventPayload(event, "routing_reason")}`;
+  }
+  if (event.type.startsWith("loop.worktree.")) {
+    return `${stringEventPayload(event, "task_id")} ${event.type.replace("loop.worktree.", "worktree ")} ${stringEventPayload(event, "branch")}`;
+  }
+  return stringEventPayload(event, "summary");
+}
+
+function createVerifyResultsEvidence(
+  scorecard: ReturnType<typeof createLoopStateScorecardFromState>,
+  events: LoopEvent[],
+): {
+  status: "pass" | "fail" | "unknown";
+  results?: Array<{
+    task_id: string;
+    pass: boolean;
+    score: number | "unknown";
+    reviewer_agent_id: string;
+    summary: string;
+    event_seq: number;
+  }>;
+  reason?: string;
+} {
+  const results: Array<{
+    task_id: string;
+    pass: boolean;
+    score: number | "unknown";
+    reviewer_agent_id: string;
+    summary: string;
+    event_seq: number;
+  }> = events
+    .filter((event) => event.type === "loop.verify.done")
+    .map((event) => ({
+      task_id: stringEventPayload(event, "task_id"),
+      pass: booleanEventPayload(event, "pass"),
+      score: numberEventPayload(event, "score") ?? "unknown",
+      reviewer_agent_id: stringEventPayload(event, "reviewer_agent_id"),
+      summary: stringEventPayload(event, "summary"),
+      event_seq: event.seq,
+    }));
+  if (results.length === 0) {
+    return {
+      status: scorecard.items.find((item) => item.id === "verify_gates_passed")?.status ?? "unknown",
+      reason: "No loop.verify.done event evidence found; status derived from completed task outcomes in LOOP-STATE.json.",
+    };
+  }
+  return {
+    status: results.every((result) => result.pass) ? "pass" : "fail",
+    results,
+  };
+}
+
+function createWorktreeStatusEvidence(events: LoopEvent[]): {
+  status: "recorded" | "unknown";
+  entries?: Array<{
+    task_id: string;
+    status: "created" | "merged" | "cleaned";
+    branch: string;
+    commit: string;
+    path: string;
+    event_seq: number;
+  }>;
+  reason?: string;
+} {
+  const entries = events
+    .filter((event) => (
+      event.type === "loop.worktree.created"
+      || event.type === "loop.worktree.merged"
+      || event.type === "loop.worktree.cleaned"
+    ))
+    .map((event) => ({
+      task_id: stringEventPayload(event, "task_id"),
+      status: event.type === "loop.worktree.created"
+        ? "created" as const
+        : event.type === "loop.worktree.merged"
+          ? "merged" as const
+          : "cleaned" as const,
+      branch: stringEventPayload(event, "branch"),
+      commit: stringEventPayload(event, "commit"),
+      path: firstStringEventPayload(event, ["path", "worktree_path"]),
+      event_seq: event.seq,
+    }));
+  if (entries.length === 0) {
+    return {
+      status: "unknown",
+      reason: "No loop.worktree.* event evidence found.",
+    };
+  }
+  return { status: "recorded", entries };
+}
+
+function validateProofEvidenceArtifacts(evidence: {
+  policyDecision: ReturnType<typeof createPolicyDecisionEvidence>;
+  agentRuntime: ReturnType<typeof createAgentRuntimeEvidence>;
+  verifyResults: ReturnType<typeof createVerifyResultsEvidence>;
+  worktreeStatus: ReturnType<typeof createWorktreeStatusEvidence>;
+}): void {
+  const errors = [
+    ...validatePolicyDecisionEvidence(evidence.policyDecision),
+    ...validateAgentRuntimeEvidence(evidence.agentRuntime),
+    ...validateVerifyResultsEvidence(evidence.verifyResults),
+    ...validateWorktreeStatusEvidence(evidence.worktreeStatus),
+  ];
+  if (errors.length > 0) {
+    throw new Error(`proof evidence validation failed: ${errors.join("; ")}`);
+  }
+}
+
+function validatePolicyDecisionEvidence(value: ReturnType<typeof createPolicyDecisionEvidence>): string[] {
+  const errors: string[] = [];
+  if (value.status !== "recorded" && value.status !== "unknown") {
+    errors.push("policy-decision.status must be recorded or unknown");
+  }
+  if (value.status === "recorded") {
+    if (!Array.isArray(value.decisions) || value.decisions.length === 0) {
+      errors.push("policy-decision.decisions must contain at least one decision when status is recorded");
+    } else {
+      value.decisions.forEach((decision, index) => {
+        if (decision.task_id.length === 0 || decision.task_id === "unknown") {
+          errors.push(`policy-decision.decisions[${index}].task_id is required`);
+        }
+        if (decision.agent_id.length === 0 || decision.agent_id === "unknown") {
+          errors.push(`policy-decision.decisions[${index}].agent_id is required`);
+        }
+        if (decision.auth_mode.length === 0) {
+          errors.push(`policy-decision.decisions[${index}].auth_mode is required`);
+        }
+        if (!Array.isArray(decision.roles)) {
+          errors.push(`policy-decision.decisions[${index}].roles must be an array`);
+        }
+        if (decision.reason.length === 0 || decision.reason === "unknown") {
+          errors.push(`policy-decision.decisions[${index}].reason is required`);
+        }
+        if (!Number.isInteger(decision.event_seq) || decision.event_seq < 0) {
+          errors.push(`policy-decision.decisions[${index}].event_seq must be a non-negative integer`);
+        }
+      });
+    }
+  }
+  if (value.status === "unknown" && (value.reason === undefined || value.reason.length === 0)) {
+    errors.push("policy-decision.reason is required when status is unknown");
+  }
+  return errors;
+}
+
+function validateAgentRuntimeEvidence(value: ReturnType<typeof createAgentRuntimeEvidence>): string[] {
+  const errors: string[] = [];
+  if (value.status !== "recorded" && value.status !== "unknown") {
+    errors.push("agent-runtime.status must be recorded or unknown");
+  }
+  if (value.status === "recorded") {
+    if (!Array.isArray(value.agents) || value.agents.length === 0) {
+      errors.push("agent-runtime.agents must contain at least one agent when status is recorded");
+    } else {
+      value.agents.forEach((agent, index) => {
+        if (agent.agent_id.length === 0) errors.push(`agent-runtime.agents[${index}].agent_id is required`);
+        if (agent.auth_mode.length === 0) errors.push(`agent-runtime.agents[${index}].auth_mode is required`);
+        if (!Array.isArray(agent.roles)) errors.push(`agent-runtime.agents[${index}].roles must be an array`);
+        if (!Array.isArray(agent.plan_event_seqs)) {
+          errors.push(`agent-runtime.agents[${index}].plan_event_seqs must be an array`);
+        } else if (agent.plan_event_seqs.some((seq) => !Number.isInteger(seq) || seq < 0)) {
+          errors.push(`agent-runtime.agents[${index}].plan_event_seqs must contain non-negative integers`);
+        }
+      });
+    }
+  }
+  if (value.status === "unknown" && (value.reason === undefined || value.reason.length === 0)) {
+    errors.push("agent-runtime.reason is required when status is unknown");
+  }
+  return errors;
+}
+
+function validateVerifyResultsEvidence(value: ReturnType<typeof createVerifyResultsEvidence>): string[] {
+  const errors: string[] = [];
+  if (value.status !== "pass" && value.status !== "fail" && value.status !== "unknown") {
+    errors.push("verify-results.status must be pass, fail, or unknown");
+  }
+  if (value.results !== undefined) {
+    value.results.forEach((result, index) => {
+      if (result.task_id.length === 0 || result.task_id === "unknown") {
+        errors.push(`verify-results.results[${index}].task_id is required`);
+      }
+      if (typeof result.pass !== "boolean") errors.push(`verify-results.results[${index}].pass must be boolean`);
+      if (result.score !== "unknown" && typeof result.score !== "number") {
+        errors.push(`verify-results.results[${index}].score must be number or unknown`);
+      }
+      if (result.reviewer_agent_id.length === 0 || result.reviewer_agent_id === "unknown") {
+        errors.push(`verify-results.results[${index}].reviewer_agent_id is required`);
+      }
+      if (result.summary.length === 0 || result.summary === "unknown") {
+        errors.push(`verify-results.results[${index}].summary is required`);
+      }
+      if (!Number.isInteger(result.event_seq) || result.event_seq < 0) {
+        errors.push(`verify-results.results[${index}].event_seq must be a non-negative integer`);
+      }
+    });
+  }
+  if (value.results === undefined && (value.reason === undefined || value.reason.length === 0)) {
+    errors.push("verify-results.reason is required when no results are recorded");
+  }
+  return errors;
+}
+
+function validateWorktreeStatusEvidence(value: ReturnType<typeof createWorktreeStatusEvidence>): string[] {
+  const errors: string[] = [];
+  if (value.status !== "recorded" && value.status !== "unknown") {
+    errors.push("worktree-status.status must be recorded or unknown");
+  }
+  if (value.status === "recorded") {
+    if (!Array.isArray(value.entries) || value.entries.length === 0) {
+      errors.push("worktree-status.entries must contain at least one entry when status is recorded");
+    } else {
+      value.entries.forEach((entry, index) => {
+        if (entry.task_id.length === 0 || entry.task_id === "unknown") {
+          errors.push(`worktree-status.entries[${index}].task_id is required`);
+        }
+        if (!["created", "merged", "cleaned"].includes(entry.status)) {
+          errors.push(`worktree-status.entries[${index}].status is invalid`);
+        }
+        if (entry.branch.length === 0 || entry.branch === "unknown") {
+          errors.push(`worktree-status.entries[${index}].branch is required`);
+        }
+        if (entry.status === "merged" && (entry.commit.length === 0 || entry.commit === "unknown")) {
+          errors.push(`worktree-status.entries[${index}].commit is required for merged worktrees`);
+        }
+        if (entry.path.length === 0 || entry.path === "unknown") {
+          errors.push(`worktree-status.entries[${index}].path is required`);
+        }
+        if (!Number.isInteger(entry.event_seq) || entry.event_seq < 0) {
+          errors.push(`worktree-status.entries[${index}].event_seq must be a non-negative integer`);
+        }
+      });
+    }
+  }
+  if (value.status === "unknown" && (value.reason === undefined || value.reason.length === 0)) {
+    errors.push("worktree-status.reason is required when status is unknown");
+  }
+  return errors;
+}
+
+function stringEventPayload(event: LoopEvent, key: string): string {
+  const value = event.payload?.[key];
+  return typeof value === "string" && value.length > 0 ? value : "unknown";
+}
+
+function firstStringEventPayload(event: LoopEvent, keys: string[]): string {
+  for (const key of keys) {
+    const value = event.payload?.[key];
+    if (typeof value === "string" && value.length > 0) return value;
+  }
+  return "unknown";
+}
+
+function booleanEventPayload(event: LoopEvent, key: string): boolean {
+  const value = event.payload?.[key];
+  return typeof value === "boolean" ? value : false;
+}
+
+function numberEventPayload(event: LoopEvent, key: string): number | undefined {
+  const value = event.payload?.[key];
+  return typeof value === "number" ? value : undefined;
+}
+
+function renderReportMarkdownForArtifacts(
+  state: LoopState,
+  events: LoopEvent[],
+  language: LoopReportLanguage = resolveLanguage(),
+): string {
+  return events.length === 0
+    ? renderLoopStateReportFromState(state, { language })
+    : renderLoopStateReportFromStateAndEvents(state, events, { language });
+}
+
+async function readLoopEventsJsonlFlag(args: string[], workspacePath: string): Promise<LoopEvent[]> {
+  const eventsPath = flagValue(args, "--events");
+  if (eventsPath === undefined) return [];
+  return readLoopEventsJsonl(resolveLoopPath(eventsPath, workspacePath));
+}
+
+async function readLoopEventsJsonl(path: string): Promise<LoopEvent[]> {
+  const raw = await readFile(path, "utf-8");
+  const parsed: unknown[] = [];
+  for (const [index, line] of raw.split(/\r?\n/).entries()) {
+    const trimmed = line.trim();
+    if (trimmed === "") continue;
+    try {
+      parsed.push(JSON.parse(trimmed) as unknown);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`invalid events JSONL at ${path}:${index + 1}: ${message}`);
+    }
+  }
+  return normalizeLoopEvents(parsed);
+}
+
+function normalizeLoopEvents(events: unknown[] | undefined): LoopEvent[] {
+  if (events === undefined) return [];
+  return events.filter((event): event is LoopEvent => (
+    typeof event === "object"
+    && event !== null
+    && typeof (event as { event_id?: unknown }).event_id === "string"
+    && typeof (event as { loop_id?: unknown }).loop_id === "string"
+    && typeof (event as { type?: unknown }).type === "string"
+    && typeof (event as { seq?: unknown }).seq === "number"
+    && typeof (event as { created_at?: unknown }).created_at === "number"
+  ));
+}
+
+function persistedLoopEventId(row: { event_id: string; payload_json: string }): string {
+  const payload = parsePayloadJson(row.payload_json);
+  const original = payload["loop_event_id"];
+  return typeof original === "string" ? original : row.event_id;
+}
+
+function parsePayloadJson(raw: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function findStateJsonPath(events: LoopEvent[]): string | undefined {
+  for (const event of events) {
+    if (event.type !== "loop.state.written") continue;
+    const jsonPath = event.payload?.["jsonPath"];
+    if (typeof jsonPath === "string" && jsonPath.length > 0) return jsonPath;
+  }
+  return undefined;
 }
 
 function flagValues(args: string[], name: string): string[] {
@@ -442,6 +4030,164 @@ function parseContextJson(value: string | undefined): Record<string, unknown> | 
     return new Error("--context-json must be a JSON object");
   }
   return parsed as Record<string, unknown>;
+}
+
+async function handleDeliverCommand(args: string[]): Promise<number> {
+  if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack deliver — product entry from one intent to proof
+
+  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--checkpoint] [--govern [warn|strict]] [--json]
+
+Stages:
+  intake -> plan -> execute-loop -> verify-review -> proof
+`);
+    return 0;
+  }
+
+  const prompt = firstPositionalValue(args, new Set([
+    "--workspace",
+    "--state",
+    "--execute",
+    "--verify",
+    "--agent",
+    "--capability",
+    "--priority",
+    "--max-iter",
+    "--worktree-root",
+    "--govern",
+  ]));
+  if (prompt === undefined) {
+    console.error("osstack: deliver requires a prompt");
+    return 1;
+  }
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
+  const executeCommand = flagValue(args, "--execute");
+  const agentId = flagValue(args, "--agent");
+  const capability = flagValue(args, "--capability") ?? "code.write";
+  const priority = parsePositiveIntegerFlag(flagValue(args, "--priority"), "--priority");
+  if (priority instanceof Error) {
+    console.error(`osstack: ${priority.message}`);
+    return 1;
+  }
+  const maxIterations = parsePositiveIntegerFlag(flagValue(args, "--max-iter"), "--max-iter");
+  if (maxIterations instanceof Error) {
+    console.error(`osstack: ${maxIterations.message}`);
+    return 1;
+  }
+  const verifyCommands = flagValues(args, "--verify");
+  const suggestedVerify = await suggestVerifyCommand(workspacePath);
+  const governanceMode = parseLoopGovernanceMode(args);
+  if (governanceMode instanceof Error) {
+    console.error(`osstack: ${governanceMode.message}`);
+    return 1;
+  }
+  const autoAgent = args.includes("--auto-agent");
+  const useWorktree = args.includes("--worktree");
+  const checkpoint = args.includes("--checkpoint") && !useWorktree
+    ? await createShadowCheckpoint(realpathSync(workspacePath))
+    : undefined;
+  const stages = ["intake", "plan", "execute-loop", "verify-review", "proof"];
+  const task = await enqueueTask({
+    workspacePath,
+    prompt,
+    capability,
+    ...(priority !== undefined ? { priority } : {}),
+    context: {
+      deliver_pipeline: {
+        stages,
+        suggested_verify: suggestedVerify,
+        verify_commands: verifyCommands,
+        auto_agent: autoAgent,
+      },
+    },
+  });
+  const adapters = agentId !== undefined || autoAgent ? defaultAdapters() : undefined;
+  const worktreeRoot = flagValue(args, "--worktree-root");
+  const engine = new LoopEngine({
+    workspacePath,
+    stateFilePath,
+    ...(executeCommand !== undefined ? { executeCommand } : {}),
+    ...(agentId !== undefined ? { agentId } : {}),
+    ...(autoAgent ? { autoAgent } : {}),
+    ...(adapters !== undefined ? { adapters } : {}),
+    ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
+    sources: ["task_queue"],
+    ...(maxIterations !== undefined ? { maxIterations } : {}),
+    ...(useWorktree ? { useWorktree: true } : {}),
+    ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
+  });
+  const result = await engine.runOnce();
+  const artifactArgs = ensureFlags(args, ["--report", "--scorecard", "--proof"]);
+  const governance = governanceMode === undefined
+    ? undefined
+    : await createLoopGovernanceEvidence(governanceMode, workspacePath);
+  const events = governance === undefined
+    ? result.events
+    : appendGovernanceVerifyEvent(result.events, result.loop_id, governance);
+  const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, artifactArgs, events, governance);
+  const learnedLessons = await learnLessonsFromLoopState(result.state);
+  const summary = {
+    prompt,
+    stages,
+    suggested_verify: suggestedVerify,
+    verify_commands: verifyCommands,
+    task: task.task,
+    task_path: task.path,
+    loop_id: result.loop_id,
+    json_path: result.jsonPath,
+    markdown_path: result.markdownPath,
+    completed_tasks: result.state.completed_tasks,
+    events,
+    ...(checkpoint !== undefined ? { checkpoint } : {}),
+    ...(artifacts !== undefined ? { artifacts } : {}),
+    ...(governance !== undefined ? { governance } : {}),
+    ...(learnedLessons !== undefined ? { learned_lessons: learnedLessons } : {}),
+    ...(result.state.key_metrics !== undefined ? { metrics: result.state.key_metrics } : {}),
+  };
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(summary, null, 2));
+  } else {
+    console.log(`deliver=${result.loop_id}`);
+    console.log(`task=${task.path}`);
+    if (suggestedVerify !== undefined) console.log(`suggested_verify=${suggestedVerify}`);
+    if (governance !== undefined) console.log(`governance=${governance.status} mode=${governance.mode} blocking=${governance.blocking ? "yes" : "no"}`);
+    if (artifacts?.report !== undefined) console.log(`report=${artifacts.report}`);
+    if (artifacts?.proof_dir !== undefined) console.log(`proof=${artifacts.proof_dir}`);
+  }
+  return result.state.completed_tasks.some((completed) => completed.outcome !== "success") || governance?.blocking === true ? 2 : 0;
+}
+
+function ensureFlags(args: string[], flags: string[]): string[] {
+  const next = [...args];
+  for (const flag of flags) {
+    if (!next.includes(flag)) next.push(flag);
+  }
+  return next;
+}
+
+async function suggestVerifyCommand(workspacePath: string): Promise<string | undefined> {
+  if (await fileExists(join(workspacePath, "pnpm-lock.yaml"))) return "pnpm test";
+  if (await fileExists(join(workspacePath, "bun.lockb")) || await fileExists(join(workspacePath, "bun.lock"))) return "bun test";
+  if (await fileExists(join(workspacePath, "package-lock.json"))) return "npm test";
+  try {
+    const packageJson = JSON.parse(await readFile(join(workspacePath, "package.json"), "utf-8")) as unknown;
+    if (isRecord(packageJson) && isRecord(packageJson["scripts"]) && typeof packageJson["scripts"]["test"] === "string") {
+      return "npm test";
+    }
+  } catch {
+    // No package.json or unreadable package metadata.
+  }
+  return undefined;
+}
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await stat(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function handleLoopCommand(args: string[]): Promise<number> {
@@ -564,6 +4310,16 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const stopWhenIdle = args.includes("--stop-when-idle");
     const archiveCompletedTasks = args.includes("--archive-completed");
     const autoAgent = args.includes("--auto-agent");
+    const useWorktree = args.includes("--worktree");
+    const checkpoint = args.includes("--checkpoint") && !useWorktree
+      ? await createShadowCheckpoint(realpathSync(workspacePath))
+      : undefined;
+    const knowledge = await createKnowledgeProofEvidence(args, "loop run");
+    const governanceMode = parseLoopGovernanceMode(args);
+    if (governanceMode instanceof Error) {
+      console.error(`osstack: ${governanceMode.message}`);
+      return 1;
+    }
     const maxIterations = parsePositiveIntegerFlag(maxIterRaw, "--max-iter");
     if (maxIterations instanceof Error) {
       console.error(`osstack: ${maxIterations.message}`);
@@ -598,16 +4354,43 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ...(intervalMs !== undefined ? { intervalMs } : {}),
         ...(archiveCompletedTasks ? { archiveCompletedTasks } : {}),
         ...(stopWhenIdle ? { stopWhenIdle } : {}),
-        ...(args.includes("--worktree") ? { useWorktree: true } : {}),
+        ...(useWorktree ? { useWorktree: true } : {}),
         ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
+        ...(shouldRecordLoopKnowledge(args, knowledge) ? { knowledge } : {}),
       }) as RpcResp;
       if (!resp.ok) {
         console.error("osstack:", resp.error?.message ?? "loop.run failed");
         return 1;
       }
       const result = resp.result as LoopRunSummary;
+      const governance = governanceMode === undefined
+        ? undefined
+        : await createLoopGovernanceEvidence(governanceMode, workspacePath);
+      const events = governance === undefined
+        ? normalizeLoopEvents(result.events)
+        : appendGovernanceVerifyEvent(normalizeLoopEvents(result.events), result.loop_id, governance);
+      if (events.length > 0) result.events = events;
+      if (governance !== undefined) result.governance = governance;
+      const artifacts = await writeRequestedLoopArtifactsFromStateFile({
+        args,
+        workspacePath,
+        stateFilePath,
+        events,
+        ...(governance !== undefined ? { governance } : {}),
+      });
+      if (artifacts instanceof Error) {
+        console.error(`osstack: ${artifacts.message}`);
+        return 1;
+      }
+      if (artifacts !== undefined) result.artifacts = artifacts;
+      if (checkpoint !== undefined) result.checkpoint = checkpoint;
+      const persistedState = await readLoopState(resolveLoopPath(stateFilePath, workspacePath));
+      if (persistedState !== null) {
+        const learnedLessons = await learnLessonsFromLoopState(persistedState);
+        if (learnedLessons !== undefined) result.learned_lessons = learnedLessons;
+      }
       printLoopRun(result, json);
-      return result.completed_tasks.some((task) => task.outcome !== "success") ? 2 : 0;
+      return result.completed_tasks.some((task) => task.outcome !== "success") || governance?.blocking === true ? 2 : 0;
     }
 
     const adapters = agentId !== undefined || verifierAgentIds.length > 0 || autoAgent
@@ -627,8 +4410,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(sources.length > 0 ? { sources } : {}),
       ...(maxIterations !== undefined ? { maxIterations } : {}),
       ...(archiveCompletedTasks ? { archiveCompletedTasks } : {}),
-      ...(args.includes("--worktree") ? { useWorktree: true } : {}),
+      ...(useWorktree ? { useWorktree: true } : {}),
       ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
+      ...(shouldRecordLoopKnowledge(args, knowledge) ? { knowledge } : {}),
     });
     const result = runCycles
       ? await engine.runCycles({
@@ -643,12 +4427,24 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ? result.cycles.at(-1)?.goal
         : undefined;
 
+    const governance = governanceMode === undefined
+      ? undefined
+      : await createLoopGovernanceEvidence(governanceMode, workspacePath);
+    const events = governance === undefined
+      ? result.events
+      : appendGovernanceVerifyEvent(result.events, result.loop_id, governance);
+    const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, args, events, governance);
+    const learnedLessons = await learnLessonsFromLoopState(result.state);
     printLoopRun({
       loop_id: result.loop_id,
       json_path: result.jsonPath,
       markdown_path: result.markdownPath,
       completed_tasks: result.state.completed_tasks,
-      events: result.events,
+      events,
+      ...(artifacts !== undefined ? { artifacts } : {}),
+      ...(learnedLessons !== undefined ? { learned_lessons: learnedLessons } : {}),
+      ...(governance !== undefined ? { governance } : {}),
+      ...(checkpoint !== undefined ? { checkpoint } : {}),
       ...(goal !== undefined ? { goal } : {}),
       ...(result.state.key_metrics !== undefined ? { metrics: result.state.key_metrics } : {}),
       ...("cycles" in result ? { cycles: result.cycles.map((cycle) => ({
@@ -658,7 +4454,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ...(cycle.goal !== undefined ? { goal: cycle.goal } : {}),
       })) } : {}),
     }, json);
-    return result.state.completed_tasks.some((task) => task.outcome !== "success") ? 2 : 0;
+    return result.state.completed_tasks.some((task) => task.outcome !== "success") || governance?.blocking === true ? 2 : 0;
   }
 
   if (sub === "enqueue") {
@@ -759,7 +4555,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     return 0;
   }
 
-  if (sub === "help") {
+  if (sub === "help" || sub === "--help" || sub === "-h") {
     console.log(`osstack loop — local Loop Engineering runner
 
   osstack loop run [options]       Run one discover→execute→verify→iterate cycle
@@ -772,7 +4568,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
 
 Options:
   --workspace P       Workspace to scan and run commands in (default: cwd)
-  --source S          Discovery source; repeatable. git_diff | task_queue
+  --source S          Discovery source; repeatable. git_diff | task_queue | github_branch
   --agent ID          Run tasks through a registered adapter (for example codex-cli)
   --auto-agent        Let router + policy choose an available adapter by capability
   --execute CMD       Shell command to run for each task
@@ -782,6 +4578,7 @@ Options:
   --goal CMD          Global shell command; loop stops when it exits 0
   --schedule CRON     Cron schedule for daemon-managed loop start
   --archive-completed Move successful single-task queue files into tasks/archive/
+  --checkpoint       Create a shadow checkpoint before non-worktree runs
   --worktree         Run each task in an isolated git worktree, merge success back
   --worktree-root P  Directory for temporary isolated worktrees
   --max-iter N        Iterations before escalation (default: 1)
@@ -791,6 +4588,15 @@ Options:
   --stop-when-idle    Stop after the first cycle that executes no tasks
   --state P           JSON state path (default: LOOP-STATE.json)
   --markdown P        Markdown state path (default: STATE.md beside JSON)
+  --report            Generate reports/osstack-report-<loop_id>.md after run
+  --scorecard         Generate release/osstack-scorecard-<loop_id>.md/html after run
+  --proof             Generate release/osstack-proof-<loop_id>/ after run
+  --knowledge M       Record knowledge mode: off, local, or cloud
+  --knowledge-pack P  Local Osstack knowledge pack for loop trace/retrieval
+  --knowledge-cloud-url URL
+                      Knowledge Cloud URL; unavailable cloud fails open to local/off
+  --knowledge-query Q Query used for knowledge trace search
+  --govern [M]        Run governance checks after loop run; M=warn or strict
   --json              Emit machine-readable summary
   --daemon            Run through the osstack daemon RPC socket
 
@@ -808,6 +4614,18 @@ Example:
 
 function resolveLoopPath(path: string, cwd: string): string {
   return isAbsolute(path) ? path : join(cwd, path);
+}
+
+function safeFileSegment(value: string): string {
+  return value.replaceAll(/[^a-zA-Z0-9._-]/g, "-");
+}
+
+function sha256(content: string): string {
+  return createHash("sha256").update(content).digest("hex");
+}
+
+function sha256Buffer(content: Buffer): string {
+  return createHash("sha256").update(content).digest("hex");
 }
 
 function parsePositiveIntegerFlag(value: string | undefined, name: string): number | undefined | Error {
@@ -839,6 +4657,13 @@ interface LoopRunSummary {
     agent_id: string;
     duration_ms: number;
   }>;
+  artifacts?: LoopEvidenceArtifacts;
+  learned_lessons?: {
+    learned: number;
+    lessons: ReturnType<typeof upsertPitfallLesson>[];
+  };
+  checkpoint?: ShadowCheckpointSummary;
+  governance?: LoopGovernanceEvidence;
   metrics?: {
     success_rate: number;
   };
@@ -862,6 +4687,15 @@ interface LoopRunSummary {
       summary: string;
     };
   }>;
+}
+
+interface LoopEvidenceArtifacts {
+  report?: string;
+  scorecard_markdown?: string;
+  scorecard_html?: string;
+  proof_dir?: string;
+  proof_zip?: string;
+  proof_manifest?: string;
 }
 
 interface LoopSessionSummary {
@@ -978,6 +4812,17 @@ function printLoopRun(result: LoopRunSummary, json: boolean): void {
   console.log(`tasks=${result.completed_tasks.length} success_rate=${Math.round((result.metrics?.success_rate ?? 1) * 100)}%`);
   if (result.goal !== undefined) {
     console.log(`goal=${result.goal.pass ? "passed" : "not_met"} exit_code=${result.goal.exitCode}`);
+  }
+  if (result.governance !== undefined) {
+    console.log(`governance=${result.governance.status} mode=${result.governance.mode} blocking=${result.governance.blocking ? "yes" : "no"} findings=${result.governance.findings.length}`);
+  }
+  if (result.artifacts !== undefined) {
+    if (result.artifacts.report !== undefined) console.log(`report=${result.artifacts.report}`);
+    if (result.artifacts.scorecard_markdown !== undefined) console.log(`scorecard_markdown=${result.artifacts.scorecard_markdown}`);
+    if (result.artifacts.scorecard_html !== undefined) console.log(`scorecard_html=${result.artifacts.scorecard_html}`);
+    if (result.artifacts.proof_dir !== undefined) console.log(`proof=${result.artifacts.proof_dir}`);
+    if (result.artifacts.proof_zip !== undefined) console.log(`proof_zip=${result.artifacts.proof_zip}`);
+    if (result.artifacts.proof_manifest !== undefined) console.log(`proof_manifest=${result.artifacts.proof_manifest}`);
   }
   if (result.cycles !== undefined) {
     console.log(`cycles=${result.cycles.length}`);
@@ -1335,6 +5180,399 @@ async function handleKanbanCommand(args: string[]): Promise<number> {
   return 1;
 }
 
+async function handleDashboardCommand(args: string[]): Promise<number> {
+  const sub = args[0]?.startsWith("--") ? "summary" : (args[0] ?? "summary");
+
+  if (sub === "summary") {
+    const [healthResp, snapshotResp] = await Promise.all([
+      rpc("health") as Promise<RpcResp>,
+      rpc("dashboard.snapshot") as Promise<RpcResp>,
+    ]);
+    if (!healthResp.ok) {
+      console.error("osstack:", healthResp.error?.message ?? "health failed");
+      return 1;
+    }
+    if (!snapshotResp.ok) {
+      console.error("osstack:", snapshotResp.error?.message ?? "dashboard.snapshot failed");
+      return 1;
+    }
+    const summary = {
+      daemon: healthResp.result,
+      cockpit: snapshotResp.result,
+    };
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(summary, null, 2));
+    } else {
+      printCockpitSummary(summary);
+    }
+    return 0;
+  }
+
+  if (sub === "url") {
+    const resp = (await rpc("dashboard.url")) as { ok: boolean; result?: { url?: string | null; available?: boolean }; error?: { message: string } };
+    if (!resp.ok) {
+      console.error("osstack:", resp.error?.message ?? "dashboard.url failed");
+      return 1;
+    }
+    const url = resp.result?.url;
+    if (!url) {
+      console.error("osstack: dashboard URL is not available yet; check `osstack health`");
+      return 1;
+    }
+    console.log(url);
+    return 0;
+  }
+
+  if (sub === "open") {
+    const resp = (await rpc("dashboard.url")) as { ok: boolean; result?: { url?: string | null }; error?: { message: string } };
+    if (!resp.ok || !resp.result?.url) {
+      console.error("osstack:", resp.error?.message ?? "dashboard URL is not available");
+      return 1;
+    }
+    const { spawn } = await import("node:child_process");
+    spawn("open", [resp.result.url], { detached: true, stdio: "ignore" }).unref();
+    console.log(resp.result.url);
+    return 0;
+  }
+
+  if (sub === "snapshot") {
+    const resp = (await rpc("dashboard.snapshot")) as { ok: boolean; result?: unknown; error?: { message: string } };
+    if (!resp.ok) {
+      console.error("osstack:", resp.error?.message ?? "dashboard.snapshot failed");
+      return 1;
+    }
+    console.log(JSON.stringify(resp.result, null, 2));
+    return 0;
+  }
+
+  if (sub === "report") {
+    return await handleCockpitReportCommand(args.slice(1));
+  }
+
+  if (sub === "proof") {
+    return await handleCockpitProofCommand(args.slice(1));
+  }
+
+  if (sub === "run") {
+    return await handleCockpitRunCommand(args.slice(1));
+  }
+
+  if (sub === "retry") {
+    return await handleCockpitRetryCommand(args.slice(1));
+  }
+
+  if (sub === "approve") {
+    return await handleCockpitApproveCommand(args.slice(1));
+  }
+
+  if (sub === "help") {
+    console.log(`osstack dashboard / cockpit — local development cockpit
+
+  osstack cockpit           Show daemon, run, kanban, report, and proof summary
+  osstack cockpit --json    Print daemon status + dashboard snapshot JSON
+  osstack cockpit run [loop run options]
+                            Run queued work with report, scorecard, and proof defaults
+  osstack cockpit retry [task_id] [--workspace P] [--state P] [--json]
+                            Requeue a failed or escalated task from loop state
+  osstack cockpit approve <card_id> [--comment TEXT] [--json]
+                            Approve a kanban card by moving it to done
+  osstack cockpit report [run_id] [--workspace P] [--state P] [--events P] [--output P] [--open]
+                            Generate a cockpit report from loop evidence
+  osstack cockpit proof [run_id] [--workspace P] [--state P] [--events P] [--output-dir P] [--open]
+                            Generate a proof pack from loop evidence
+  osstack dashboard url       Print the URL for chat bots to return
+  osstack dashboard open      Open the dashboard locally
+  osstack dashboard snapshot  Print the JSON backing the dashboard
+  osstack dashboard summary   Show the same product cockpit summary
+  osstack cockpit url         Same as dashboard url
+  osstack cockpit open        Same as dashboard open
+
+Env:
+  OSSTACK_DASHBOARD_PORT      Port for the HTTP dashboard (default 8799)
+  OSSTACK_DASHBOARD_HOST      Bind host (default 127.0.0.1)
+  OSSTACK_DASHBOARD_URL_HOST  Host shown in returned URLs (default localhost)
+`);
+    return 0;
+  }
+
+  console.error(`osstack: unknown dashboard subcommand "${sub}"`);
+  return 1;
+}
+
+async function handleCockpitReportCommand(args: string[]): Promise<number> {
+  const runId = firstPositionalValue(args, new Set(["--workspace", "--state", "--events", "--output", "--lang"]));
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const language = resolveLanguage(flagValue(args, "--lang"));
+  const evidenceResult = runId === undefined
+    ? undefined
+    : await readPersistedLoopRunEvidence(runId);
+  if (evidenceResult instanceof Error) {
+    console.error(`osstack: ${evidenceResult.message}`);
+    return 1;
+  }
+  const stateFilePath = evidenceResult?.state_json
+    ?? resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+  const state = await readLoopState(stateFilePath);
+  if (state === null) {
+    console.error(`osstack: no loop state found at ${stateFilePath}`);
+    return 1;
+  }
+  const events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
+  const artifactId = runId ?? state.loop_id;
+  const output = resolveLoopPath(
+    flagValue(args, "--output") ?? join("reports", `osstack-report-${safeFileSegment(artifactId)}.md`),
+    workspacePath,
+  );
+  await mkdir(dirname(output), { recursive: true });
+  await writeFile(output, renderReportMarkdownForArtifacts(state, events, language), "utf-8");
+  const opened = args.includes("--open");
+  if (opened) {
+    const { spawn } = await import("node:child_process");
+    spawn("open", [output], { detached: true, stdio: "ignore" }).unref();
+  }
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({ loop_id: state.loop_id, run_id: artifactId, report: output, opened }, null, 2));
+  } else {
+    console.log(`report=${output}`);
+    console.log(`opened=${opened ? "yes" : "no"}`);
+  }
+  return 0;
+}
+
+async function handleCockpitApproveCommand(args: string[]): Promise<number> {
+  const cardId = firstPositionalValue(args, new Set(["--comment"]));
+  if (cardId === undefined) {
+    console.error("osstack: cockpit approve requires a card_id");
+    return 1;
+  }
+  const comment = flagValue(args, "--comment");
+  const moveResp = (await rpc("kanban.move", {
+    card_id: cardId,
+    status: "done",
+    actor: "cockpit",
+  })) as RpcResp;
+  if (!moveResp.ok) {
+    console.error("osstack:", moveResp.error?.message ?? "cockpit approve failed");
+    return 1;
+  }
+  let commented = false;
+  if (comment !== undefined && comment.trim() !== "") {
+    const commentResp = (await rpc("kanban.comment", {
+      card_id: cardId,
+      body: comment,
+      author: "cockpit",
+    })) as RpcResp;
+    if (!commentResp.ok) {
+      console.error("osstack:", commentResp.error?.message ?? "cockpit approve comment failed");
+      return 1;
+    }
+    commented = true;
+  }
+  const card = moveResp.result as { card_id: string; status: string; completed_at?: number | null };
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({
+      card_id: card.card_id,
+      status: card.status,
+      approved: card.status === "done",
+      commented,
+      completed_at: card.completed_at ?? null,
+    }, null, 2));
+  } else {
+    console.log(`${card.card_id} approved → ${card.status}`);
+    console.log(`commented=${commented ? "yes" : "no"}`);
+  }
+  return 0;
+}
+
+async function handleCockpitRunCommand(args: string[]): Promise<number> {
+  const runArgs = ["run", ...cockpitRunArgs(args)];
+  return await handleLoopCommand(runArgs);
+}
+
+async function handleCockpitRetryCommand(args: string[]): Promise<number> {
+  const taskId = firstPositionalValue(args, new Set(["--workspace", "--state"]));
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const stateFilePath = resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+  const state = await readLoopState(stateFilePath);
+  if (state === null) {
+    console.error(`osstack: no loop state found at ${stateFilePath}`);
+    return 1;
+  }
+  const retryableTasks = state.completed_tasks.filter((task) => task.outcome !== "success");
+  const sourceTask = taskId === undefined
+    ? retryableTasks.at(-1)
+    : state.completed_tasks.find((task) => task.task_id === taskId);
+  if (sourceTask === undefined) {
+    console.error(taskId === undefined
+      ? "osstack: no failed or escalated task found to retry"
+      : `osstack: no completed task found for task_id=${taskId}`);
+    return 1;
+  }
+  if (sourceTask.outcome === "success") {
+    console.error(`osstack: task_id=${sourceTask.task_id} succeeded; retry only accepts failed or escalated tasks`);
+    return 1;
+  }
+  const retry = await enqueueTask({
+    workspacePath,
+    taskId: `${sourceTask.task_id}-retry`,
+    capability: sourceTask.capability ?? "code.write",
+    priority: 70,
+    prompt: retryPromptForCompletedTask(sourceTask),
+    context: retryContextForCompletedTask(state.loop_id, sourceTask),
+  });
+  const summary = {
+    loop_id: state.loop_id,
+    retry_of_task_id: sourceTask.task_id,
+    retry_task: retry.task,
+    path: retry.path,
+  };
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(summary, null, 2));
+  } else {
+    console.log(`retry_of=${sourceTask.task_id}`);
+    console.log(`task_id=${retry.task.task_id}`);
+    console.log(`path=${retry.path}`);
+  }
+  return 0;
+}
+
+function retryPromptForCompletedTask(task: LoopState["completed_tasks"][number]): string {
+  const summary = task.error_summary ?? task.verify_summary ?? task.execution_summary ?? "No failure summary was recorded.";
+  return [
+    `Retry failed osstack loop task ${task.task_id}.`,
+    `Previous outcome: ${task.outcome}.`,
+    `Previous agent: ${task.agent_id}.`,
+    `Summary: ${summary}`,
+  ].join("\n");
+}
+
+function retryContextForCompletedTask(loopId: string, task: LoopState["completed_tasks"][number]): Record<string, unknown> {
+  return {
+    retry_of_task_id: task.task_id,
+    retry_from_loop_id: loopId,
+    previous_outcome: task.outcome,
+    previous_agent_id: task.agent_id,
+    previous_iterations: task.iterations,
+    ...(task.run_id !== undefined ? { previous_run_id: task.run_id } : {}),
+    ...(task.error_summary !== undefined ? { previous_error_summary: task.error_summary } : {}),
+    ...(task.verify_summary !== undefined ? { previous_verify_summary: task.verify_summary } : {}),
+    ...(task.verify_issues !== undefined ? { previous_verify_issues: task.verify_issues } : {}),
+  };
+}
+
+function cockpitRunArgs(args: string[]): string[] {
+  const next = [...args];
+  if (!next.includes("--source")) {
+    next.push("--source", "task_queue");
+  }
+  return ensureFlags(next, ["--report", "--scorecard", "--proof"]);
+}
+
+async function handleCockpitProofCommand(args: string[]): Promise<number> {
+  const runId = firstPositionalValue(args, new Set(["--workspace", "--state", "--events", "--output-dir"]));
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const evidenceResult = runId === undefined
+    ? undefined
+    : await readPersistedLoopRunEvidence(runId);
+  if (evidenceResult instanceof Error) {
+    console.error(`osstack: ${evidenceResult.message}`);
+    return 1;
+  }
+  const stateFilePath = evidenceResult?.state_json
+    ?? resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+  const state = await readLoopState(stateFilePath);
+  if (state === null) {
+    console.error(`osstack: no loop state found at ${stateFilePath}`);
+    return 1;
+  }
+  const events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
+  const outputDir = resolveLoopPath(flagValue(args, "--output-dir") ?? "release", workspacePath);
+  const governance = await scanWorkspaceGovernance(dirname(stateFilePath));
+  let proof: Awaited<ReturnType<typeof writeProofPack>>;
+  try {
+    proof = await writeProofPack(state, outputDir, events, runId ?? state.loop_id, governance, offKnowledgeEvidence(), [], workspacePath);
+  } catch (error) {
+    console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  }
+  const opened = args.includes("--open");
+  if (opened) {
+    const { spawn } = await import("node:child_process");
+    spawn("open", [proof.proof_dir], { detached: true, stdio: "ignore" }).unref();
+  }
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({
+      loop_id: state.loop_id,
+      run_id: runId ?? state.loop_id,
+      proof_dir: proof.proof_dir,
+      proof_zip: proof.proof_zip,
+      manifest: proof.proof_manifest,
+      artifact_count: proof.artifact_count,
+      opened,
+    }, null, 2));
+  } else {
+    console.log(`proof=${proof.proof_dir}`);
+    console.log(`proof_zip=${proof.proof_zip}`);
+    console.log(`manifest=${proof.proof_manifest}`);
+    console.log(`opened=${opened ? "yes" : "no"}`);
+  }
+  return 0;
+}
+
+function printCockpitSummary(summary: { daemon?: unknown; cockpit?: unknown }): void {
+  const text = cockpitSummaryText(resolveLanguage());
+  const daemon = isRecord(summary.daemon) ? summary.daemon : {};
+  const cockpit = isRecord(summary.cockpit) ? summary.cockpit : {};
+  const dashboard = isRecord(cockpit["dashboard"]) ? cockpit["dashboard"] : {};
+  const overview = isRecord(cockpit["overview"]) ? cockpit["overview"] : {};
+  const board = isRecord(cockpit["board"]) ? cockpit["board"] : {};
+  const evidence = isRecord(cockpit["evidence"]) ? cockpit["evidence"] : {};
+  const quality = isRecord(cockpit["quality"]) ? cockpit["quality"] : {};
+  const recentRuns = Array.isArray(cockpit["recent_runs"]) ? cockpit["recent_runs"] : [];
+  const columns = Array.isArray(board["columns"]) ? board["columns"] : [];
+
+  console.log(text.title);
+  console.log(`daemon=${String(daemon["version"] ?? "unknown")} phase=${String(daemon["phase"] ?? "unknown")} draining=${String(daemon["draining"] ?? "unknown")}`);
+  console.log(`url=${String(dashboard["url"] ?? daemon["dashboard_url"] ?? "unavailable")}`);
+  console.log(`runs total=${String(overview["total_runs"] ?? 0)} active=${String(overview["active_runs"] ?? daemon["active_runs"] ?? 0)} queued=${String(overview["queued_tasks"] ?? 0)} loops=${String(overview["active_loops"] ?? daemon["active_loops"] ?? 0)}`);
+  console.log(`quality=${String(quality["grade"] ?? "unknown")} success_rate=${String(quality["success_rate"] ?? "unknown")}`);
+  console.log(`evidence reports=${String(evidence["reports"] ?? 0)} proof_packs=${String(evidence["proof_packs"] ?? 0)}`);
+  console.log(`${text.kanban}:`);
+  for (const column of columns) {
+    if (!isRecord(column)) continue;
+    const cards = Array.isArray(column["cards"]) ? column["cards"] : [];
+    console.log(`  ${String(column["name"] ?? "unknown")}: ${cards.length}`);
+  }
+  console.log(`${text.recentRuns}:`);
+  for (const run of recentRuns.slice(0, 5)) {
+    if (!isRecord(run)) continue;
+    console.log(`  ${String(run["run_id"] ?? "unknown")} ${String(run["phase"] ?? "unknown")} ${String(run["outcome"] ?? "running")} ${String(run["agent_id"] ?? "unknown")}`);
+  }
+  if (recentRuns.length === 0) console.log(`  ${text.none}`);
+}
+
+function cockpitSummaryText(language: LoopReportLanguage): {
+  title: string;
+  kanban: string;
+  recentRuns: string;
+  none: string;
+} {
+  if (language === "zh-CN") {
+    return {
+      title: "Osstack 驾驶舱",
+      kanban: "任务看板",
+      recentRuns: "最近运行",
+      none: "无",
+    };
+  }
+  return {
+    title: "Osstack Cockpit",
+    kanban: "kanban",
+    recentRuns: "recent runs",
+    none: "none",
+  };
+}
+
 async function handleHermesCommand(args: string[]): Promise<number> {
   const sub = args[0];
 
@@ -1561,7 +5799,19 @@ function num(n: number, w: number): string {
   return s.length >= w ? s : `${" ".repeat(w - s.length)}${s}`;
 }
 
-if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+function isDirectCliEntrypoint(): boolean {
+  if (process.argv[1] === undefined) return false;
+  let invokedPath = process.argv[1];
+  try {
+    invokedPath = realpathSync(process.argv[1]);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+  }
+  const invoked = pathToFileURL(invokedPath).href;
+  return import.meta.url === invoked;
+}
+
+if (isDirectCliEntrypoint()) {
   main().then(
     (code) => process.exit(code),
     (err) => {
