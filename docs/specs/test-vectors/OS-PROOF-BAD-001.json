@@ -1,0 +1,50 @@
+{
+  "id": "OS-PROOF-BAD-001",
+  "description": "Malformed proof artifacts that must not be treated as valid audit evidence",
+  "proof_manifest": {
+    "schema_version": 1,
+    "kind": "osstack.proof_pack",
+    "loop_id": "loop-proof-bad-001",
+    "generated_from": "osstack proof",
+    "generated_at": "2026-06-22T00:00:00.000Z",
+    "artifacts": [
+      {
+        "path": "verify-results.json",
+        "sha256": "not-a-sha256",
+        "bytes": 0
+      },
+      {
+        "path": "policy-decision.json"
+      }
+    ]
+  },
+  "policy_decision": {
+    "status": "unknown",
+    "reason": ""
+  },
+  "knowledge_results": {
+    "mode": "cloud",
+    "status": "recorded",
+    "packs": [
+      {
+        "id": "osstack-core/proof-and-scorecard",
+        "version": "2026.06.22"
+      }
+    ],
+    "results": [
+      {
+        "chunk_id": "proof-checksum-pack",
+        "source_refs": []
+      }
+    ]
+  },
+  "expected_status": "reject",
+  "expected_errors": [
+    "manifest.artifacts[0].sha256 must be a 64-character lowercase hex checksum",
+    "manifest.artifacts[0].bytes must be greater than zero",
+    "manifest.artifacts[1].sha256 is required",
+    "manifest.artifacts[1].bytes is required",
+    "policy-decision.reason is required when status is unknown",
+    "knowledge-results.results[0].source_refs must contain at least one source reference"
+  ]
+}
