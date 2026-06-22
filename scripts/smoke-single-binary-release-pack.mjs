@@ -37,6 +37,18 @@ try {
     build.manifest_path,
     "--json",
   ], { cwd: root, capture: true }).stdout);
+  const releaseDoctor = JSON.parse(run(process.execPath, [
+    "packages/cli/dist/bin.js",
+    "release",
+    "doctor",
+    "--target",
+    "single-binary",
+    "--json",
+  ], {
+    cwd: root,
+    capture: true,
+    env: singleBinaryReleaseDoctorEnv(),
+  }).stdout);
 
   const archiveBytes = await readFile(packed.archive_path);
   const archiveSha256 = createHash("sha256").update(archiveBytes).digest("hex");
@@ -76,6 +88,12 @@ try {
   if (sbomDoc.spdxVersion !== "SPDX-2.3" || !Array.isArray(sbomDoc.files) || sbomDoc.files.length < 3) {
     throw new Error("SBOM must be SPDX 2.3 and list release files");
   }
+  if (releaseDoctor.ok !== true || releaseDoctor.readiness?.single_binary_release !== true) {
+    throw new Error(`release doctor must mark single-binary release ready: ${JSON.stringify(releaseDoctor)}`);
+  }
+  if (!releaseDoctor.checks?.some((check) => check.id === "single_binary_release_assets" && check.status === "ok")) {
+    throw new Error(`release doctor must validate single-binary release assets: ${JSON.stringify(releaseDoctor)}`);
+  }
 
   console.log(JSON.stringify({
     ok: true,
@@ -90,6 +108,10 @@ try {
     github_release_uploaded: archiveManifest.publishing.github_release_uploaded,
     sbom_path: sbom.sbom_path,
     sbom_format: sbomDoc.spdxVersion,
+    release_doctor: {
+      single_binary_release: releaseDoctor.readiness?.single_binary_release,
+      single_binary_release_assets: releaseDoctor.checks.find((check) => check.id === "single_binary_release_assets")?.status ?? null,
+    },
     extracted_version: version,
   }, null, 2));
 } finally {
@@ -103,6 +125,7 @@ try {
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd,
+    env: options.env,
     encoding: "utf-8",
     stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit",
   });
@@ -120,4 +143,21 @@ function assertIncludes(text, expected, message) {
   if (!text.includes(expected)) {
     throw new Error(`${message}: missing ${JSON.stringify(expected)}`);
   }
+}
+
+function singleBinaryReleaseDoctorEnv() {
+  return {
+    ...process.env,
+    OSSTACK_TEST_RELEASE_GITHUB_AUTH: "ok",
+    OSSTACK_TEST_RELEASE_GITHUB_ACTIONS: "ok",
+    OSSTACK_TEST_RELEASE_SECRETS: [
+      "APPLE_ID",
+      "APPLE_TEAM_ID",
+      "APPLE_APP_SPECIFIC_PASSWORD",
+      "DEVELOPER_ID_APPLICATION",
+      "MACOS_CERTIFICATE_P12",
+      "MACOS_CERTIFICATE_PASSWORD",
+    ].join(","),
+    OSSTACK_TEST_RELEASE_SINGLE_BINARY_WORKFLOW: "ok",
+  };
 }

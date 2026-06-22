@@ -20,7 +20,7 @@
 - npm publish 仍需要仓库 secret `NPM_TOKEN`；Knowledge Cloud `deploy=true` 仍需要仓库 secret `FLY_API_TOKEN`。
 - 日常 PR CI 已拆到 `ubuntu-latest`，macOS single-binary release-candidate smoke 已拆到独立 `.github/workflows/macos-release-candidate.yml`，正式 release workflow 仍保留 macOS archive candidate artifact。
 - `npm install -g @osstack/cli` 还没有从真实 npm registry 验证，只验证了本地 tarball 安装。
-- 可选单文件分发已有 portable CLI bundle smoke、Bun single executable smoke、本地 release asset manifest/checksum/SPDX SBOM、ad-hoc codesign 验证、`.tar.gz` release archive smoke，并已接入 CI/release workflow candidate artifact 与 tag/workflow_dispatch GitHub Release 上传路径；发布级 Developer ID 签名/公证/跨机器验证尚未完成。
+- 可选单文件分发已有 portable CLI bundle smoke、Bun single executable smoke、本地 release asset manifest/checksum/SPDX SBOM、ad-hoc codesign 验证、`.tar.gz` release archive smoke、single-binary `release doctor` readiness，并已接入 CI/release workflow candidate artifact 与 tag/workflow_dispatch GitHub Release 上传路径；发布级 Developer ID 签名/公证/跨机器验证尚未完成。
 - Cockpit 当前是 dashboard/web cockpit + CLI summary，不是完整交互式 TUI。
 - Knowledge Cloud 已有本地 ingestion/rewrite/review、云端 `/v1/publish` 门禁、文件型 published-pack storage、tenant-scoped audit JSONL 与 `/v1/audit` 查询切片；审核后台、Postgres/object storage/vector index、正式云端运营流水线仍未完成。
 
@@ -103,7 +103,7 @@
 - `.github/workflows/single-binary-release.yml` 已新增，支持 tag `v*` 或手动触发，dry-run 验证或正式 `gh release upload`；非 dry-run 路径现在要求 Apple notarization 与 Developer ID 证书 secrets，导入临时 keychain 后重新签名、公证、重打包。
 - CLI entrypoint 已兼容 Bun 虚拟文件系统路径；版本号通过 `OSSTACK_VERSION` 编译期注入，避免 single executable 运行时找不到 `package.json` 后退到 `0.0.0`。
 - portable smoke 会输出 Node SEA、Bun、pkg、nexe、postject 的本机候选状态，给后续分发策略留出机器可读证据。
-- `release doctor --target single-binary` 已接入独立的 `single_binary_release_assets` 静态 preflight、Apple/Developer ID repository secrets gate 和 `single_binary_workflow` 远端 workflow 检查，`--target all` 也会包含该检查；它会检查 build/sign/notarize/SBOM/package/publish 脚本、release pack/publish smoke、tag/manual workflow、dry-run upload、`GH_TOKEN`、workflow artifact 留存，以及 `Single Binary Release` workflow 是否 active / 最近 validation 是否成功；`release plan --target single-binary` 和 `--target all` 的 validation commands 会列出 `pnpm smoke:single-binary-release-pack`、`pnpm smoke:single-binary-release-publish` 与 Single Binary Release dry-run workflow。
+- `release doctor --target single-binary` 已接入独立的 `single_binary_release_assets` 静态 preflight、Apple/Developer ID repository secrets gate 和 `single_binary_workflow` 远端 workflow 检查，`--target all` 也会包含该检查；它会检查 build/sign/notarize/SBOM/package/publish 脚本、release pack/publish smoke、tag/manual workflow、dry-run upload、`GH_TOKEN`、workflow artifact 留存，以及 `Single Binary Release` workflow 是否 active / 最近 validation 是否成功；`smoke:single-binary-release-pack` 会构建本地 release archive 后调用 `release doctor --target single-binary --json` 并确认 single-binary readiness 与 release asset gate；`release plan --target single-binary` 和 `--target all` 的 validation commands 会列出 `pnpm smoke:single-binary-release-pack`、`pnpm smoke:single-binary-release-publish` 与 Single Binary Release dry-run workflow。
 - 当前仍没有远端 Developer ID codesign/notarization 成功记录、跨机器安装验证、正式 GitHub Release 上传。
 
 建议：
