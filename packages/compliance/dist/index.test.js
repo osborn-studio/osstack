@@ -111,6 +111,7 @@ describe("compliance packs", () => {
         expect(markdown).toContain("Run: `run_123`");
         expect(markdown).toContain("| Evidence integrity | PRESENT |");
         expect(markdown).toContain("| Automated decision trace | PRESENT |");
+        expect(markdown).toContain("No required evidence is missing for this audience view.");
         expect(markdown).toContain("This view rearranges existing proof evidence and does not create new evidence.");
     });
     it("marks missing evidence in proof views", () => {
@@ -119,9 +120,12 @@ describe("compliance packs", () => {
             runId: "run_missing",
             evidence: { manifest: { artifacts: [] } },
         });
-        expect(markdown).toContain("| Evidence integrity | MISSING |");
-        expect(markdown).toContain("| Change validation | MISSING |");
-        expect(markdown).toContain("| Secure coding control | MISSING |");
+        expect(markdown).toContain("## Missing Evidence");
+        expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Change validation (`verify-results.json`) - delivery validation summary");
+        expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Secure coding control (`governance-results.json`) - safety checks summary");
+        expect(markdown).toContain("| Evidence integrity | <strong style=\"color:#b00020\">MISSING</strong> |");
+        expect(markdown).toContain("| Change validation | <strong style=\"color:#b00020\">MISSING</strong> |");
+        expect(markdown).toContain("| Secure coding control | <strong style=\"color:#b00020\">MISSING</strong> |");
     });
     it("renders proof views from an existing proof directory", async () => {
         const proofDir = join(tmp, "release", "osstack-proof-run_123");
@@ -154,6 +158,7 @@ function sampleEvidence() {
         agent_runtime: { status: "recorded", agents: [{ agent_id: "codex-cli", auth_mode: "subprocess/login-reuse" }] },
         governance: { status: "pass", findings: [] },
         worktree: { status: "recorded", entries: [{ task_id: "t1", branch: "codex/t1", commit: "abc" }] },
+        knowledge: { status: "recorded", results: [{ chunk_id: "chunk-1" }] },
     };
 }
 //# sourceMappingURL=index.test.js.map
