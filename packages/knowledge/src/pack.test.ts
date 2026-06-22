@@ -285,6 +285,42 @@ describe("knowledge packs", () => {
     });
   });
 
+  it("rejects processed official packs that keep a raw upstream license label", () => {
+    const report = validateKnowledgePublishGate({
+      id: "osstack-core/raw-mit-label",
+      version: "2026.06.22",
+      name: "Raw MIT Label",
+      license: "MIT",
+      source_kind: "processed_mit",
+      quality_score: 90,
+      scope: "official",
+      taxonomy: ["software-engineering/release-quality"],
+      last_reviewed_at: "2026-06-22T00:00:00.000Z",
+      source_attribution: ["processed from MIT-compatible upstream notes"],
+      source_provenance: [{
+        source_id: "src_1",
+        path: "upstream.md",
+        sha256: createHash("sha256").update("upstream").digest("hex"),
+        license: "MIT",
+        scope: "official",
+        imported_at: "2026-06-22T00:00:00.000Z",
+      }],
+      chunks: [{
+        chunk_id: "raw_mit_1",
+        title: "Release Quality",
+        body: "Osstack release quality guidance should convert upstream notes into runs, loops, verifiers, and proof pack actions.",
+        source_refs: ["src_1"],
+      }],
+    });
+
+    expect(report).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({ code: "processed_license_not_osstack_derived" }),
+      ]),
+    });
+  });
+
   it("blocks official ingest candidates without taxonomy before writing a weak pack", async () => {
     const sourceDir = join(tmp, "weak-official");
     await mkdir(sourceDir);
