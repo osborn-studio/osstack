@@ -4979,6 +4979,7 @@ async function handleCockpitReportCommand(args: string[]): Promise<number> {
 }
 
 function printCockpitSummary(summary: { daemon?: unknown; cockpit?: unknown }): void {
+  const text = cockpitSummaryText(resolveLanguage());
   const daemon = isRecord(summary.daemon) ? summary.daemon : {};
   const cockpit = isRecord(summary.cockpit) ? summary.cockpit : {};
   const dashboard = isRecord(cockpit["dashboard"]) ? cockpit["dashboard"] : {};
@@ -4989,24 +4990,46 @@ function printCockpitSummary(summary: { daemon?: unknown; cockpit?: unknown }): 
   const recentRuns = Array.isArray(cockpit["recent_runs"]) ? cockpit["recent_runs"] : [];
   const columns = Array.isArray(board["columns"]) ? board["columns"] : [];
 
-  console.log("Osstack Cockpit");
+  console.log(text.title);
   console.log(`daemon=${String(daemon["version"] ?? "unknown")} phase=${String(daemon["phase"] ?? "unknown")} draining=${String(daemon["draining"] ?? "unknown")}`);
   console.log(`url=${String(dashboard["url"] ?? daemon["dashboard_url"] ?? "unavailable")}`);
   console.log(`runs total=${String(overview["total_runs"] ?? 0)} active=${String(overview["active_runs"] ?? daemon["active_runs"] ?? 0)} loops=${String(overview["active_loops"] ?? daemon["active_loops"] ?? 0)}`);
   console.log(`quality=${String(quality["grade"] ?? "unknown")} success_rate=${String(quality["success_rate"] ?? "unknown")}`);
   console.log(`evidence reports=${String(evidence["reports"] ?? 0)} proof_packs=${String(evidence["proof_packs"] ?? 0)}`);
-  console.log("kanban:");
+  console.log(`${text.kanban}:`);
   for (const column of columns) {
     if (!isRecord(column)) continue;
     const cards = Array.isArray(column["cards"]) ? column["cards"] : [];
     console.log(`  ${String(column["name"] ?? "unknown")}: ${cards.length}`);
   }
-  console.log("recent runs:");
+  console.log(`${text.recentRuns}:`);
   for (const run of recentRuns.slice(0, 5)) {
     if (!isRecord(run)) continue;
     console.log(`  ${String(run["run_id"] ?? "unknown")} ${String(run["phase"] ?? "unknown")} ${String(run["outcome"] ?? "running")} ${String(run["agent_id"] ?? "unknown")}`);
   }
-  if (recentRuns.length === 0) console.log("  none");
+  if (recentRuns.length === 0) console.log(`  ${text.none}`);
+}
+
+function cockpitSummaryText(language: LoopReportLanguage): {
+  title: string;
+  kanban: string;
+  recentRuns: string;
+  none: string;
+} {
+  if (language === "zh-CN") {
+    return {
+      title: "Osstack 驾驶舱",
+      kanban: "任务看板",
+      recentRuns: "最近运行",
+      none: "无",
+    };
+  }
+  return {
+    title: "Osstack Cockpit",
+    kanban: "kanban",
+    recentRuns: "recent runs",
+    none: "none",
+  };
 }
 
 async function handleHermesCommand(args: string[]): Promise<number> {

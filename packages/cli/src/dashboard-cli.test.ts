@@ -12,6 +12,7 @@ let logs: string[];
 let errors: string[];
 let oldSocket: string | undefined;
 let oldHome: string | undefined;
+let oldLang: string | undefined;
 let daemon: DaemonHandles | null;
 
 beforeEach(() => {
@@ -20,6 +21,7 @@ beforeEach(() => {
   errors = [];
   oldSocket = process.env["OSSTACK_SOCKET"];
   oldHome = process.env["OSSTACK_HOME"];
+  oldLang = process.env["OSSTACK_LANG"];
   process.env["OSSTACK_HOME"] = join(tmp, "home");
   process.env["OSSTACK_SOCKET"] = `/tmp/osstack-dashboard-cli-${randomUUID()}.sock`;
   process.env["OSSTACK_UPDATE_CHECK"] = "0";
@@ -38,6 +40,8 @@ afterEach(async () => {
   else process.env["OSSTACK_SOCKET"] = oldSocket;
   if (oldHome === undefined) delete process.env["OSSTACK_HOME"];
   else process.env["OSSTACK_HOME"] = oldHome;
+  if (oldLang === undefined) delete process.env["OSSTACK_LANG"];
+  else process.env["OSSTACK_LANG"] = oldLang;
   delete process.env["OSSTACK_UPDATE_CHECK"];
   vi.restoreAllMocks();
   await rm(tmp, { recursive: true, force: true });
@@ -81,6 +85,19 @@ describe("dashboard/cockpit CLI", () => {
     expect(summary.daemon.active_loops).toBe(0);
     expect(summary.cockpit.dashboard.title).toContain("osstack");
     expect(Array.isArray(summary.cockpit.board.columns)).toBe(true);
+  });
+
+  it("localizes the cockpit summary with OSSTACK_LANG", async () => {
+    process.env["OSSTACK_LANG"] = "zh-CN";
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+
+    const exitCode = await main(["cockpit"]);
+
+    expect(exitCode).toBe(0);
+    const output = logs.join("\n");
+    expect(output).toContain("Osstack 驾驶舱");
+    expect(output).toContain("任务看板:");
+    expect(output).toContain("最近运行:");
   });
 
   it("generates a cockpit report from workspace loop evidence", async () => {

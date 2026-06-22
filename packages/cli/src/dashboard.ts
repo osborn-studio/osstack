@@ -346,13 +346,98 @@ function send(res: ServerResponse, status: number, contentType: string, body: st
   res.end(body);
 }
 
-export function renderDashboardHtml(): string {
+type DashboardLanguage = "en" | "zh-CN";
+
+function dashboardLanguage(value = process.env["OSSTACK_LANG"]): DashboardLanguage {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "zh-cn" || normalized === "zh" || normalized === "cn") return "zh-CN";
+  return "en";
+}
+
+function dashboardText(language: DashboardLanguage): {
+  htmlLang: string;
+  title: string;
+  subtitle: string;
+  agentRoles: string;
+  quality: string;
+  nextSteps: string;
+  evidence: string;
+  scorecards: string;
+  lessons: string;
+  kanban: string;
+  recentRuns: string;
+  codeMap: string;
+  metrics: string[];
+  successRate: string;
+  blocked: string;
+  reports: string;
+  proofPacks: string;
+  commands: string;
+  noAgentHistory: string;
+  noLessons: string;
+  noRuns: string;
+  unassigned: string;
+} {
+  if (language === "zh-CN") {
+    return {
+      htmlLang: "zh-CN",
+      title: "osstack 开发驾驶舱",
+      subtitle: "产品设计 · 编码 · 测试验证 · 任务看板 · 质量追踪",
+      agentRoles: "Agent 分工",
+      quality: "质量面板",
+      nextSteps: "后续计划",
+      evidence: "证据资产",
+      scorecards: "Agent Scorecards",
+      lessons: "Lessons",
+      kanban: "任务看板",
+      recentRuns: "最近运行",
+      codeMap: "代码地图",
+      metrics: ["总体进度", "运行次数", "活动任务", "活动 Loops", "事件记录", "看板卡片", "质量评分"],
+      successRate: "成功率",
+      blocked: "阻塞",
+      reports: "报告",
+      proofPacks: "Proof packs",
+      commands: "命令",
+      noAgentHistory: "暂无 agent 运行历史。",
+      noLessons: "暂无 pitfall lessons。",
+      noRuns: "暂无运行记录",
+      unassigned: "未分配",
+    };
+  }
+  return {
+    htmlLang: "en",
+    title: "osstack Cockpit",
+    subtitle: "Product design · Coding · Test verification · Kanban · Quality tracking",
+    agentRoles: "Agent Roles",
+    quality: "Quality",
+    nextSteps: "Next Steps",
+    evidence: "Evidence Assets",
+    scorecards: "Agent Scorecards",
+    lessons: "Lessons",
+    kanban: "Kanban Board",
+    recentRuns: "Recent Runs",
+    codeMap: "Code Map",
+    metrics: ["Progress", "Runs", "Active Tasks", "Active Loops", "Events", "Board Cards", "Quality Grade"],
+    successRate: "Success rate",
+    blocked: "Blocked",
+    reports: "Reports",
+    proofPacks: "Proof packs",
+    commands: "Commands",
+    noAgentHistory: "No agent run history yet.",
+    noLessons: "No pitfall lessons recorded.",
+    noRuns: "No recent runs",
+    unassigned: "unassigned",
+  };
+}
+
+export function renderDashboardHtml(language: DashboardLanguage = dashboardLanguage()): string {
+  const text = dashboardText(language);
   return `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="${text.htmlLang}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>osstack 开发驾驶舱</title>
+<title>${text.title}</title>
 <style>
   :root { color-scheme: dark; --bg:#0b1020; --panel:#111827; --panel2:#172033; --line:#263247; --text:#eef2ff; --muted:#94a3b8; --blue:#38bdf8; --green:#22c55e; --yellow:#f59e0b; --red:#ef4444; }
   * { box-sizing: border-box; }
@@ -398,8 +483,8 @@ export function renderDashboardHtml(): string {
     <div class="brand">
       <div class="mark">OS</div>
       <div>
-        <h1>osstack 开发驾驶舱</h1>
-        <p class="sub">产品设计 · 编码 · 测试验证 · 任务看板 · 质量追踪</p>
+        <h1>${text.title}</h1>
+        <p class="sub">${text.subtitle}</p>
       </div>
     </div>
     <div class="pill" id="generated">loading...</div>
@@ -409,49 +494,49 @@ export function renderDashboardHtml(): string {
 
   <section class="section grid3">
     <div class="panel">
-      <h2>Agent 分工</h2>
+      <h2>${text.agentRoles}</h2>
       <div class="list" id="agents"></div>
     </div>
     <div class="panel">
-      <h2>质量面板</h2>
+      <h2>${text.quality}</h2>
       <div id="quality"></div>
     </div>
     <div class="panel">
-      <h2>后续计划</h2>
+      <h2>${text.nextSteps}</h2>
       <div class="list" id="next"></div>
     </div>
   </section>
 
   <section class="section grid3">
     <div class="panel">
-      <h2>证据资产</h2>
+      <h2>${text.evidence}</h2>
       <div class="list" id="evidence"></div>
     </div>
     <div class="panel">
-      <h2>Agent Scorecards</h2>
+      <h2>${text.scorecards}</h2>
       <div class="list" id="scorecards"></div>
     </div>
     <div class="panel">
-      <h2>Lessons</h2>
+      <h2>${text.lessons}</h2>
       <div class="list" id="lessons"></div>
     </div>
   </section>
 
   <section class="section panel">
-    <h2>任务看板</h2>
+    <h2>${text.kanban}</h2>
     <div class="cards" id="board"></div>
   </section>
 
   <section class="section grid2">
     <div class="panel">
-      <h2>最近运行</h2>
+      <h2>${text.recentRuns}</h2>
       <table>
         <thead><tr><th>Run</th><th>Agent</th><th>Phase</th><th>Status</th></tr></thead>
         <tbody id="runs"></tbody>
       </table>
     </div>
     <div class="panel">
-      <h2>代码地图</h2>
+      <h2>${text.codeMap}</h2>
       <div class="list">
         <div class="row"><span class="dot blue"></span><span>CLI / daemon: packages/cli/src</span></div>
         <div class="row"><span class="dot blue"></span><span>Agent adapters: packages/agents/src/adapters</span></div>
@@ -468,34 +553,35 @@ function metric(label, value, color, pct){
   return '<div class="panel metric"><div class="label">'+label+'</div><div class="value '+color+'">'+value+'</div>'+(pct !== undefined ? '<div class="bar"><div class="fill" style="width:'+pct+'%"></div></div>' : '')+'</div>';
 }
 function statusClass(status){ return status === "done" || status === "completed" ? "ok" : status === "blocked" || status === "failed" ? "err" : status === "running" ? "warn" : "blue"; }
+const t = ${JSON.stringify(text)};
 async function load(){
   const res = await fetch('/api/dashboard');
   const d = await res.json();
   document.getElementById('generated').textContent = d.dashboard.phase + ' · ' + new Date(d.dashboard.generated_at * 1000).toLocaleString();
   document.getElementById('metrics').innerHTML = [
-    metric('总体进度', d.overview.progress_percent + '%', 'blue', d.overview.progress_percent),
-    metric('运行次数', d.overview.total_runs, 'ok'),
-    metric('活动任务', d.overview.active_runs, 'warn'),
-    metric('活动 Loops', d.overview.active_loops, 'warn'),
-    metric('事件记录', d.overview.total_events, 'blue'),
-    metric('看板卡片', d.board.total, 'ok'),
-    metric('质量评分', d.quality.grade, d.quality.grade === 'A' ? 'ok' : d.quality.grade === 'B' ? 'warn' : 'err')
+    metric(t.metrics[0], d.overview.progress_percent + '%', 'blue', d.overview.progress_percent),
+    metric(t.metrics[1], d.overview.total_runs, 'ok'),
+    metric(t.metrics[2], d.overview.active_runs, 'warn'),
+    metric(t.metrics[3], d.overview.active_loops, 'warn'),
+    metric(t.metrics[4], d.overview.total_events, 'blue'),
+    metric(t.metrics[5], d.board.total, 'ok'),
+    metric(t.metrics[6], d.quality.grade, d.quality.grade === 'A' ? 'ok' : d.quality.grade === 'B' ? 'warn' : 'err')
   ].join('');
   document.getElementById('agents').innerHTML = d.agents.map(a => '<div class="row"><span class="dot ok"></span><span><b>'+esc(a.id)+'</b><br><small>'+esc(a.display_name)+' · '+esc(a.cost_tier)+'</small></span></div>').join('');
-  document.getElementById('quality').innerHTML = '<div class="row"><div class="quality '+statusClass(d.quality.grade)+'">'+d.quality.grade+'</div><span>成功率 '+Math.round(d.quality.success_rate*100)+'% · 阻塞 '+d.quality.blocked_cards+'</span></div><div class="list" style="margin-top:12px">'+d.quality.dimensions.map(q => '<div class="row"><span class="tag">'+q.grade+'</span><span>'+esc(q.name)+'<br><small>'+esc(q.detail)+'</small></span></div>').join('')+'</div>';
+  document.getElementById('quality').innerHTML = '<div class="row"><div class="quality '+statusClass(d.quality.grade)+'">'+d.quality.grade+'</div><span>'+esc(t.successRate)+' '+Math.round(d.quality.success_rate*100)+'% · '+esc(t.blocked)+' '+d.quality.blocked_cards+'</span></div><div class="list" style="margin-top:12px">'+d.quality.dimensions.map(q => '<div class="row"><span class="tag">'+q.grade+'</span><span>'+esc(q.name)+'<br><small>'+esc(q.detail)+'</small></span></div>').join('')+'</div>';
   document.getElementById('next').innerHTML = d.next_steps.map(n => '<div class="row"><span class="dot '+statusClass(n.status)+'"></span><span><b>'+esc(n.label)+'</b><br><small>'+esc(n.detail)+'</small></span></div>').join('');
   document.getElementById('evidence').innerHTML = [
-    '<div class="row"><span class="dot blue"></span><span><b>Reports</b><br><small>'+d.evidence.reports+' markdown report(s)</small></span></div>',
-    '<div class="row"><span class="dot blue"></span><span><b>Proof packs</b><br><small>'+d.evidence.proof_packs+' checksumed proof pack(s)</small></span></div>',
-    '<div class="row"><span class="dot blue"></span><span><b>Commands</b><br><small>osstack report · osstack proof · osstack pr</small></span></div>'
+    '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.reports)+'</b><br><small>'+d.evidence.reports+' markdown report(s)</small></span></div>',
+    '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.proofPacks)+'</b><br><small>'+d.evidence.proof_packs+' checksumed proof pack(s)</small></span></div>',
+    '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.commands)+'</b><br><small>osstack report · osstack proof · osstack pr</small></span></div>'
   ].join('');
-  document.getElementById('scorecards').innerHTML = d.agent_scorecards.length ? d.agent_scorecards.map(s => '<div class="row"><span class="dot '+(s.recent_failures ? 'warn' : 'ok')+'"></span><span><b>'+esc(s.agent_id)+'</b><br><small>'+s.total_runs+' runs · '+Math.round(s.success_rate*100)+'% success · '+esc(s.capability_fit)+'</small></span></div>').join('') : '<div class="row"><span class="dot warn"></span><span>No agent run history yet.</span></div>';
-  document.getElementById('lessons').innerHTML = d.lessons.recent.length ? d.lessons.recent.map(l => '<div class="row"><span class="dot warn"></span><span><b>'+esc(l.family)+'</b><br><small>'+esc(l.symptom)+' · verified '+l.verified_count+'</small></span></div>').join('') : '<div class="row"><span class="dot ok"></span><span>No pitfall lessons recorded.</span></div>';
+  document.getElementById('scorecards').innerHTML = d.agent_scorecards.length ? d.agent_scorecards.map(s => '<div class="row"><span class="dot '+(s.recent_failures ? 'warn' : 'ok')+'"></span><span><b>'+esc(s.agent_id)+'</b><br><small>'+s.total_runs+' runs · '+Math.round(s.success_rate*100)+'% success · '+esc(s.capability_fit)+'</small></span></div>').join('') : '<div class="row"><span class="dot warn"></span><span>'+esc(t.noAgentHistory)+'</span></div>';
+  document.getElementById('lessons').innerHTML = d.lessons.recent.length ? d.lessons.recent.map(l => '<div class="row"><span class="dot warn"></span><span><b>'+esc(l.family)+'</b><br><small>'+esc(l.symptom)+' · verified '+l.verified_count+'</small></span></div>').join('') : '<div class="row"><span class="dot ok"></span><span>'+esc(t.noLessons)+'</span></div>';
   document.getElementById('board').innerHTML = lanes.map(lane => {
     const col = d.board.columns.find(c => c.name === lane) || { cards: [] };
-    return '<div class="lane"><div class="lane-title"><span>'+lane+'</span><span>'+col.cards.length+'</span></div>'+col.cards.map(c => '<div class="card"><b>'+esc(c.title)+'</b><small>'+esc(c.assignee || 'unassigned')+(c.blocked_reason ? ' · '+esc(c.blocked_reason) : '')+'</small></div>').join('')+'</div>';
+    return '<div class="lane"><div class="lane-title"><span>'+lane+'</span><span>'+col.cards.length+'</span></div>'+col.cards.map(c => '<div class="card"><b>'+esc(c.title)+'</b><small>'+esc(c.assignee || t.unassigned)+(c.blocked_reason ? ' · '+esc(c.blocked_reason) : '')+'</small></div>').join('')+'</div>';
   }).join('');
-  document.getElementById('runs').innerHTML = d.recent_runs.map(r => '<tr><td>'+esc(r.run_id)+'</td><td>'+esc(r.agent_id)+'</td><td>'+esc(r.phase)+'</td><td><span class="'+statusClass(r.outcome)+'">'+esc(r.outcome || 'running')+'</span></td></tr>').join('') || '<tr><td colspan="4">暂无运行记录</td></tr>';
+  document.getElementById('runs').innerHTML = d.recent_runs.map(r => '<tr><td>'+esc(r.run_id)+'</td><td>'+esc(r.agent_id)+'</td><td>'+esc(r.phase)+'</td><td><span class="'+statusClass(r.outcome)+'">'+esc(r.outcome || 'running')+'</span></td></tr>').join('') || '<tr><td colspan="4">'+esc(t.noRuns)+'</td></tr>';
 }
 load();
 setInterval(load, 5000);

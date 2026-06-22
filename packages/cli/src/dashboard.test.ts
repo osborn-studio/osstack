@@ -108,4 +108,18 @@ describe("dashboard", () => {
     expect(html).toContain('id="scorecards"');
     expect(html).toContain('id="lessons"');
   });
+
+  it("renders cockpit chrome in English and Chinese", () => {
+    const english = renderDashboardHtml("en");
+    const chinese = renderDashboardHtml("zh-CN");
+
+    expect(english).toContain('<html lang="en">');
+    expect(english).toContain("<title>osstack Cockpit</title>");
+    expect(english).toContain("<h2>Evidence Assets</h2>");
+    expect(english).toContain("No recent runs");
+    expect(chinese).toContain('<html lang="zh-CN">');
+    expect(chinese).toContain("<title>osstack 开发驾驶舱</title>");
+    expect(chinese).toContain("<h2>证据资产</h2>");
+    expect(chinese).toContain("暂无运行记录");
+  });
 });
