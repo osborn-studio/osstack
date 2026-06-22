@@ -904,8 +904,10 @@ async function releaseDoctor(target: ReleaseDoctorResult["target"]): Promise<Rel
     }));
   }
 
-  const npmPublish = hasSecret(secrets, "NPM_TOKEN");
-  const knowledgeCloudDeploy = hasSecret(secrets, "FLY_API_TOKEN");
+  const versionPackagesPrReady = checks.find((check) => check.id === "version_packages_pr")?.status !== "warn";
+  const knowledgeWorkflowReady = checks.find((check) => check.id === "knowledge_cloud_workflow")?.status !== "error";
+  const npmPublish = hasSecret(secrets, "NPM_TOKEN") && versionPackagesPrReady;
+  const knowledgeCloudDeploy = hasSecret(secrets, "FLY_API_TOKEN") && knowledgeWorkflowReady;
   const ok = target === "npm" ? npmPublish
     : target === "knowledge-cloud" ? knowledgeCloudDeploy
       : npmPublish && knowledgeCloudDeploy;
