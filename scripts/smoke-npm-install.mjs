@@ -9,6 +9,8 @@ const tempRoot = await mkdtemp(join(tmpdir(), "osstack-npm-smoke-"));
 const packDir = join(tempRoot, "packs");
 const prefix = join(tempRoot, "prefix");
 const workspace = join(tempRoot, "workspace");
+const osstackHome = join(tempRoot, "home");
+const launchAgentsDir = join(tempRoot, "LaunchAgents");
 
 try {
   run("pnpm", ["-r", "build"], { cwd: root });
@@ -26,6 +28,35 @@ try {
   const osstackBin = join(prefix, "bin", "osstack");
   run(osstackBin, ["--version"], { cwd: root });
   await mkdir(workspace, { recursive: true });
+
+  const launchdEnv = {
+    ...process.env,
+    OSSTACK_HOME: osstackHome,
+    OSSTACK_LAUNCH_AGENTS_DIR: launchAgentsDir,
+  };
+  const install = run(osstackBin, ["serve", "--install", "--no-load", "--bin", osstackBin, "--json"], {
+    cwd: root,
+    capture: true,
+    env: launchdEnv,
+  });
+  const installParsed = JSON.parse(install.stdout);
+  if (installParsed.installed !== true || installParsed.loaded !== false || installParsed.load_skipped !== true) {
+    throw new Error(`serve --install --no-load did not create an unloaded LaunchAgent: ${install.stdout}`);
+  }
+  const status = run(osstackBin, ["serve", "--status", "--no-load", "--json"], {
+    cwd: root,
+    capture: true,
+    env: launchdEnv,
+  });
+  const statusParsed = JSON.parse(status.stdout);
+  if (statusParsed.installed !== true || statusParsed.loaded !== false) {
+    throw new Error(`serve --status --no-load did not see the installed LaunchAgent: ${status.stdout}`);
+  }
+  run(osstackBin, ["serve", "--uninstall", "--no-load", "--json"], {
+    cwd: root,
+    capture: true,
+    env: launchdEnv,
+  });
 
   const productDoctor = run(osstackBin, ["doctor", "--workspace", workspace, "--json"], { cwd: root, capture: true });
   const productDoctorParsed = JSON.parse(productDoctor.stdout);
@@ -145,6 +176,10 @@ try {
     tarballs: tarballs.length,
     prefix,
     workspace,
+    launchd_install: {
+      plist_path: installParsed.plist_path,
+      load_skipped: installParsed.load_skipped,
+    },
     product_doctor: productDoctorParsed.ok,
     examples: examplesParsed.examples.length,
     evidence_artifacts: {
