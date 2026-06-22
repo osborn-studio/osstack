@@ -116,6 +116,34 @@ describe("Knowledge Cloud HTTP service", () => {
             ]),
         });
     });
+    it("requires an explicit tenant before returning private packs", async () => {
+        const url = await startCloud({
+            packs: await officialPacks(),
+            privatePacks: [teamPack({}, { omitTenant: true })],
+            privateAuthToken: "kst_private_test",
+        });
+        const missingTenant = await fetch(`${url}/v1/private-packs`, {
+            method: "POST",
+            headers: {
+                "content-type": "application/json",
+                authorization: "Bearer kst_private_test",
+            },
+            body: JSON.stringify({}),
+        });
+        expect(missingTenant.status).toBe(400);
+        await expect(missingTenant.json()).resolves.toMatchObject({
+            error: "private knowledge packs require tenant_id",
+        });
+        const searchWithoutTenant = await fetchJson(`${url}/v1/search`, {
+            query: "private release approval",
+            limit: 3,
+        }, { authorization: "Bearer kst_private_test" });
+        expect(searchWithoutTenant).toMatchObject({
+            results: expect.not.arrayContaining([
+                expect.objectContaining({ pack_id: "team/private-runbook" }),
+            ]),
+        });
+    });
 });
 async function officialPacks() {
     const root = resolve(process.cwd(), "../..");
@@ -148,7 +176,8 @@ async function closeServer(target) {
         });
     });
 }
-function teamPack() {
+function teamPack(overrides = {}, options = {}) {
+    const tenant = options.omitTenant === true ? {} : { tenant_id: "team_alpha" };
     return {
         path: "memory://team/private-runbook",
         manifest: {
@@ -159,7 +188,7 @@ function teamPack() {
             source_kind: "internal",
             quality_score: 82,
             scope: "team",
-            tenant_id: "team_alpha",
+            ...tenant,
             taxonomy: ["agent-operations/private-release"],
             chunks: [{
                     chunk_id: "private-release",
@@ -167,6 +196,7 @@ function teamPack() {
                     body: "Private team releases require approval notes, proof paths, and rollback ownership.",
                     tags: ["private", "release", "approval"],
                 }],
+            ...overrides,
         },
     };
 }

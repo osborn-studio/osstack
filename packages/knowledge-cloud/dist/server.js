@@ -74,8 +74,13 @@ async function routeKnowledgeCloudRequest(options, req, res) {
             sendJson(res, 401, { error: "private knowledge packs require authorization" });
             return;
         }
+        const tenantId = tenantIdField(body);
+        if (tenantId === undefined) {
+            sendJson(res, 400, { error: "private knowledge packs require tenant_id" });
+            return;
+        }
         sendJson(res, 200, {
-            packs: tenantPrivatePacks(options, body).map((pack) => pack.manifest),
+            packs: tenantPrivatePacks(options, tenantId).map((pack) => pack.manifest),
         });
         return;
     }
@@ -87,9 +92,12 @@ async function routeKnowledgeCloudRequest(options, req, res) {
             return;
         }
         const limit = numberField(body, "limit") ?? 5;
+        const tenantId = tenantIdField(body);
         const packs = [
             ...options.packs,
-            ...(isAuthorizedPrivateRequest(options, req) ? tenantPrivatePacks(options, body) : []),
+            ...(isAuthorizedPrivateRequest(options, req) && tenantId !== undefined
+                ? tenantPrivatePacks(options, tenantId)
+                : []),
         ];
         sendJson(res, 200, {
             packs: packs.map((pack) => packSummary(pack.manifest)),
@@ -117,14 +125,17 @@ async function routeKnowledgeCloudRequest(options, req, res) {
     }
     sendJson(res, 404, { error: "not found" });
 }
-function tenantPrivatePacks(options, body) {
-    const tenantId = stringField(body, "tenant_id");
+function tenantPrivatePacks(options, tenantId) {
     return (options.privatePacks ?? []).filter((pack) => {
         const packTenantId = pack.manifest.tenant_id;
-        if (packTenantId === undefined)
-            return tenantId === undefined;
         return tenantId === packTenantId;
     });
+}
+function tenantIdField(body) {
+    const tenantId = stringField(body, "tenant_id");
+    if (tenantId === undefined || tenantId.trim().length === 0)
+        return undefined;
+    return tenantId;
 }
 function isAuthorizedPrivateRequest(options, req) {
     const token = options.privateAuthToken?.trim();

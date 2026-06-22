@@ -359,6 +359,7 @@
 - official packs 6 个，retrieval eval 30/30。
 - official packs 有 version、quality_score、last_reviewed_at、source_provenance。
 - publish gate 会阻止 official/external `processed_mit` 知识包继续使用裸上游 `MIT` 许可标签，要求显式标记为 Osstack processed/derived license label，避免把上游知识库痕迹直接发布成 official pack。
+- 私有知识包 HTTP 访问要求 bearer token + 显式 `tenant_id`，无 tenant 的 `/v1/private-packs` 请求会被拒绝，私有 search 只有在授权且 tenant 明确时才合入 tenant-scoped private packs，避免未绑定 tenant 的私有包被泛授权搜索泄露。
 - CLI 支持 cloud login/sync/search/import/ingest/pin/feedback/sources。
 - 本地 smoke 验证 official/private packs、sync、search、feedback。
 - deploy assets 存在：Dockerfile、Fly、Render、GitHub Actions。
@@ -368,7 +369,7 @@
 - 真实云端域名/URL 未上线。
 - 生产 storage/Postgres/vector index/BM25 未实现。
 - ingestion pipeline 仍是本地 MVP，不是完整 source intake -> rewrite -> review -> publish 系统；当前已有 publish gate 可检查 Osstack voice、provenance、source_refs、quality/review/taxonomy 与 processed license label。
-- tenant auth/permissions 仍是轻量参数，不是生产级权限模型。
+- tenant auth/permissions 已有 token + explicit tenant scope 的本地 HTTP gate，但仍不是完整生产级账号、组织、角色、审计日志权限模型。
 
 ## 4. 当前最高优先级 Backlog
 
