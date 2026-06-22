@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { AddressInfo } from "node:net";
 import type Database from "better-sqlite3";
@@ -106,6 +106,11 @@ export interface DashboardSnapshot {
   next_steps: Array<{ label: string; detail: string; command: string; status: "ready" | "running" | "blocked" }>;
 }
 
+interface ReleaseReadinessBlocker {
+  id: string;
+  detail: string;
+}
+
 export interface DashboardServerHandle {
   url: string;
   host: string;
@@ -185,6 +190,7 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
   const workspacePath = opts.workspacePath ?? dirnameOfDb(opts.dbPath);
   const reportsCount = countMarkdownFiles(join(workspacePath, "reports"), "osstack-report-");
   const proofPackCount = countProofPacks(join(workspacePath, "release"));
+  const releaseReadinessBlockers = readReleaseReadinessBlockers(join(workspacePath, "release-readiness.md"));
   const lessons = listPitfallLessons(opts.db, { limit: 5 });
   const lessonCount = countActivePitfallLessons(opts.db);
 
@@ -255,6 +261,7 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
     },
     recent_runs: recentRuns,
     next_steps: [
+      ...releaseReadinessNextSteps(releaseReadinessBlockers),
       {
         label: "产品设计",
         detail: "google-stitch 2.0 primary, claude-design fallback",
@@ -315,6 +322,41 @@ function countProofPacks(dir: string): number {
   } catch {
     return 0;
   }
+}
+
+function readReleaseReadinessBlockers(path: string): ReleaseReadinessBlocker[] {
+  let markdown: string;
+  try {
+    markdown = readFileSync(path, "utf-8");
+  } catch {
+    return [];
+  }
+  const blockers: ReleaseReadinessBlocker[] = [];
+  let inBlockers = false;
+  for (const line of markdown.split(/\r?\n/)) {
+    if (/^##\s+Blockers\s*$/i.test(line.trim())) {
+      inBlockers = true;
+      continue;
+    }
+    if (inBlockers && /^##\s+/.test(line.trim())) break;
+    if (!inBlockers) continue;
+    const match = line.match(/^-\s+\[([^\]]+)\]\s+(.+)$/);
+    if (match) blockers.push({ id: match[1]!.trim(), detail: match[2]!.trim() });
+  }
+  return blockers;
+}
+
+function releaseReadinessNextSteps(
+  blockers: ReleaseReadinessBlocker[],
+): DashboardSnapshot["next_steps"] {
+  if (blockers.length === 0) return [];
+  const ids = blockers.map((blocker) => blocker.id).join(", ");
+  return [{
+    label: "Release Readiness",
+    detail: `${blockers.length} blocker(s): ${ids}`,
+    command: "osstack release doctor --target all --output release-readiness.md --json",
+    status: "blocked",
+  }];
 }
 
 export async function startDashboardServer(

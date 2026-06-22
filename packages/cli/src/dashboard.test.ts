@@ -115,6 +115,49 @@ describe("dashboard", () => {
       .toBe("http://localhost:8799/dashboard");
   });
 
+  it("surfaces release readiness blockers as cockpit next steps", () => {
+    const path = join(tmp, "state.db");
+    const db = openDb({ path });
+    try {
+      writeFileSync(join(tmp, "release-readiness.md"), [
+        "# Osstack Release Readiness",
+        "",
+        "## Blockers",
+        "",
+        "- [github_actions_check] Fix GitHub Actions runner allocation before publishing or deploying.",
+        "- [proof_validation] Remove external certification claims and repair compliance report references before publishing or deploying.",
+        "",
+        "## Next Steps",
+        "",
+        "- Open GitHub Actions settings/billing and confirm ubuntu-latest jobs can be assigned a runner.",
+      ].join("\n"));
+
+      const snapshot = createDashboardSnapshot({
+        db,
+        kanban: new KanbanRepository(db, path, () => 300),
+        dbPath: path,
+        workspacePath: tmp,
+        version: "0.0.0",
+        phase: "test",
+        dashboardUrl: "http://127.0.0.1:8799/dashboard",
+        adapters: [],
+        activeRuns: 0,
+        now: () => 300,
+      });
+
+      expect(snapshot.next_steps).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          label: "Release Readiness",
+          detail: "2 blocker(s): github_actions_check, proof_validation",
+          command: "osstack release doctor --target all --output release-readiness.md --json",
+          status: "blocked",
+        }),
+      ]));
+    } finally {
+      db.close();
+    }
+  });
+
   it("renders cockpit sections for evidence, lessons, and scorecards", () => {
     const html = renderDashboardHtml();
 
