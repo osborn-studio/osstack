@@ -804,6 +804,7 @@ interface ReleaseActionPlan {
   target: ReleaseDoctorResult["target"];
   ready: boolean;
   blockers: string[];
+  operator_commands: string[];
   validation_commands: string[];
   publish_commands: string[];
   deploy_commands: string[];
@@ -1342,6 +1343,26 @@ function releaseActionPlan(result: ReleaseDoctorResult): ReleaseActionPlan {
     || step.startsWith("Restore the Knowledge Cloud Deploy workflow")
     || step.startsWith("Review Version Packages PR")
   );
+  const repositorySecrets = result.checks.find((check) => check.id === "repository_secrets");
+  const missingSecrets = repositorySecrets?.details?.["missing"];
+  const latestVersionPrCiUrl = typeof versionPr?.details?.["latest_ci_url"] === "string"
+    ? versionPr.details["latest_ci_url"]
+    : undefined;
+  const latestVersionPrCiConclusion = versionPr?.details?.["latest_ci_conclusion"];
+  const operatorCommands = [
+    ...(Array.isArray(missingSecrets) && missingSecrets.includes("NPM_TOKEN")
+      ? ["gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\""]
+      : []),
+    ...(Array.isArray(missingSecrets) && missingSecrets.includes("FLY_API_TOKEN")
+      ? ["gh secret set FLY_API_TOKEN --repo gilosbornhello/osstack --body \"$FLY_API_TOKEN\""]
+      : []),
+    ...(latestVersionPrCiConclusion === "action_required"
+      ? [
+        "Open the latest Version Packages PR CI run and approve or rerun it if GitHub requires manual action.",
+        ...(latestVersionPrCiUrl === undefined ? [] : [latestVersionPrCiUrl]),
+      ]
+      : []),
+  ];
   const validationCommands = [
     `osstack release doctor --target ${result.target} --output release-readiness.md --json`,
     ...(result.target === "all" || result.target === "npm"
@@ -1372,6 +1393,7 @@ function releaseActionPlan(result: ReleaseDoctorResult): ReleaseActionPlan {
     target: result.target,
     ready: result.ok,
     blockers,
+    operator_commands: operatorCommands,
     validation_commands: validationCommands,
     publish_commands: publishCommands,
     deploy_commands: deployCommands,
@@ -1388,6 +1410,12 @@ function renderReleaseActionPlan(plan: ReleaseActionPlan): string {
     "## Blockers",
     "",
     ...(plan.blockers.length === 0 ? ["No blocking release prerequisites detected."] : plan.blockers.map((step) => `- ${step}`)),
+    "",
+    "## Operator Commands",
+    "",
+    ...(plan.operator_commands.length === 0 ? ["No manual operator commands required."] : plan.operator_commands.map((command) =>
+      command.startsWith("http") ? `- ${command}` : `- \`${command}\``
+    )),
     "",
     "## Validation Commands",
     "",
