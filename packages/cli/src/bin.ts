@@ -31,7 +31,7 @@ import {
   type LoopEvent,
   type LoopState,
 } from "@osstack/loop";
-import { loadKnowledgePack, searchKnowledgePacks } from "@osstack/knowledge";
+import { loadKnowledgePack, searchKnowledgePacks, type KnowledgeSearchResult } from "@osstack/knowledge";
 import { initProject } from "@osstack/skills";
 import {
   addSource, checkAll, defaultManifestPath, readManifest,
@@ -709,6 +709,34 @@ type GovernanceProofEvidence =
     findings: GovernanceFinding[];
   };
 
+type KnowledgeProofEvidence =
+  | {
+    mode: "off";
+    status: "not_used";
+    packs: [];
+    results: [];
+  }
+  | {
+    mode: "local";
+    status: "recorded";
+    query: string;
+    packs: Array<{
+      id: string;
+      version: string;
+      license: string;
+      source_kind: string;
+      quality_score: number;
+    }>;
+    results: KnowledgeSearchResult[];
+  }
+  | {
+    mode: "local";
+    status: "error";
+    reason: string;
+    packs: [];
+    results: [];
+  };
+
 async function handleReportCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack report — evidence-oriented loop report
@@ -800,19 +828,28 @@ async function handleProofCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack proof — local evidence proof pack
 
-  osstack proof [run_id] [--workspace P] [--state P] [--events P] [--output-dir P] [--json]
+  osstack proof [run_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-query Q] [--output-dir P] [--json]
 
 Options:
   --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
   --state P           JSON state path (default: LOOP-STATE.json)
   --events P          Optional loop events JSONL path to include in the pack
+  --knowledge-pack P  Optional local knowledge pack path to trace in evidence
+  --knowledge-query Q Query used for knowledge trace search
   --output-dir P      Directory for proof pack folders (default: <workspace>/release)
   --json              Print machine-readable summary
 `);
     return 0;
   }
 
-  const runId = firstPositionalValue(args, new Set(["--workspace", "--state", "--events", "--output-dir"]));
+  const runId = firstPositionalValue(args, new Set([
+    "--workspace",
+    "--state",
+    "--events",
+    "--knowledge-pack",
+    "--knowledge-query",
+    "--output-dir",
+  ]));
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
   const evidenceResult = runId === undefined
     ? undefined
@@ -833,7 +870,8 @@ Options:
   const events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
   const governanceRoot = dirname(stateFilePath);
   const governance = await scanWorkspaceGovernance(governanceRoot);
-  const proof = await writeProofPack(state, outputDir, events, runId, governance);
+  const knowledge = await createKnowledgeProofEvidence(args, state.loop_id);
+  const proof = await writeProofPack(state, outputDir, events, runId, governance, knowledge);
 
   const summary = {
     loop_id: state.loop_id,
@@ -958,7 +996,8 @@ async function writeRequestedLoopArtifacts(
 
   if (args.includes("--proof")) {
     const governance = await scanWorkspaceGovernance(workspacePath);
-    const proof = await writeProofPack(state, join(workspacePath, "release"), events, state.loop_id, governance);
+    const knowledge = await createKnowledgeProofEvidence(args, state.loop_id);
+    const proof = await writeProofPack(state, join(workspacePath, "release"), events, state.loop_id, governance, knowledge);
     artifacts.proof_dir = proof.proof_dir;
     artifacts.proof_manifest = proof.proof_manifest;
   }
@@ -972,6 +1011,7 @@ async function writeProofPack(
   events: LoopEvent[] = [],
   artifactId = state.loop_id,
   governance: GovernanceProofEvidence = unknownGovernanceEvidence("No governance scan evidence provided."),
+  knowledge: KnowledgeProofEvidence = offKnowledgeEvidence(),
 ): Promise<{
   proof_dir: string;
   proof_manifest: string;
@@ -989,6 +1029,7 @@ async function writeProofPack(
     { path: "verify-results.json", content: `${JSON.stringify(createVerifyResultsEvidence(scorecard, events), null, 2)}\n` },
     { path: "worktree-status.json", content: `${JSON.stringify(createWorktreeStatusEvidence(events), null, 2)}\n` },
     { path: "governance-results.json", content: `${JSON.stringify(governance, null, 2)}\n` },
+    { path: "knowledge-results.json", content: `${JSON.stringify(knowledge, null, 2)}\n` },
   ];
 
   await mkdir(proofDir, { recursive: true });
@@ -1114,6 +1155,46 @@ function unknownGovernanceEvidence(reason: string): GovernanceProofEvidence {
     scanned_files: 0,
     reason,
     findings: [],
+  };
+}
+
+async function createKnowledgeProofEvidence(args: string[], defaultQuery: string): Promise<KnowledgeProofEvidence> {
+  const packPaths = flagValues(args, "--knowledge-pack");
+  if (packPaths.length === 0) return offKnowledgeEvidence();
+  const query = flagValue(args, "--knowledge-query") ?? defaultQuery;
+  try {
+    const packs = await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath)));
+    return {
+      mode: "local",
+      status: "recorded",
+      query,
+      packs: packs.map((pack) => ({
+        id: pack.manifest.id,
+        version: pack.manifest.version,
+        license: pack.manifest.license,
+        source_kind: pack.manifest.source_kind,
+        quality_score: pack.manifest.quality_score,
+      })),
+      results: searchKnowledgePacks(packs, query, { limit: 5 }),
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      mode: "local",
+      status: "error",
+      reason: message,
+      packs: [],
+      results: [],
+    };
+  }
+}
+
+function offKnowledgeEvidence(): KnowledgeProofEvidence {
+  return {
+    mode: "off",
+    status: "not_used",
+    packs: [],
+    results: [],
   };
 }
 

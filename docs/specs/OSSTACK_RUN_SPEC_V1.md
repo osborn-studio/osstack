@@ -122,6 +122,7 @@ A proof pack MUST include:
 - `events.jsonl`
 - `policy-decision.json`
 - `verify-results.json`
+- `knowledge-results.json`
 
 A proof pack SHOULD include `worktree-status.json` when worktree evidence is available. Every artifact listed in `manifest.json` MUST include a sha256 checksum and byte count.
 

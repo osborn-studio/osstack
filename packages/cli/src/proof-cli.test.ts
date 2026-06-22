@@ -46,6 +46,7 @@ describe("proof CLI", () => {
       expect.objectContaining({ path: "scorecard.html", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
       expect.objectContaining({ path: "loop-state.json", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
       expect.objectContaining({ path: "governance-results.json", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
+      expect.objectContaining({ path: "knowledge-results.json", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
     ]));
     await expect(readFile(join(proofDir, "report.md"), "utf-8")).resolves.toContain("# Osstack Loop Report - cli-proof-loop");
     await expect(readFile(join(proofDir, "scorecard.html"), "utf-8")).resolves.toContain("<!doctype html>");
@@ -58,6 +59,50 @@ describe("proof CLI", () => {
       status: "fail",
       scanned_files: expect.any(Number),
       findings: [expect.objectContaining({ rule_id: "secret.api_key", file: join(tmp, "unsafe.ts") })],
+    });
+  });
+
+  it("records local knowledge trace evidence in the proof pack", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const packPath = join(tmp, "knowledge-pack.json");
+    await writeFile(packPath, JSON.stringify({
+      id: "osstack-cloud-bootstrap",
+      version: "2026.06.22",
+      name: "Osstack Cloud Bootstrap",
+      license: "MIT-derived-processed",
+      source_kind: "processed_mit",
+      quality_score: 88,
+      chunks: [{
+        chunk_id: "chunk-cloud-governance",
+        title: "Cloud governance trace",
+        body: "Osstack Knowledge Cloud records pack ids and chunk ids in proof evidence.",
+        tags: ["cloud", "governance"],
+      }],
+    }, null, 2));
+
+    const exitCode = await main([
+      "proof",
+      "--workspace",
+      tmp,
+      "--knowledge-pack",
+      packPath,
+      "--knowledge-query",
+      "cloud governance",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    const knowledge = JSON.parse(await readFile(join(proofDir, "knowledge-results.json"), "utf-8")) as {
+      mode: string;
+      status: string;
+      packs: Array<{ id: string; source_kind: string }>;
+      results: Array<{ chunk_id: string }>;
+    };
+    expect(knowledge).toMatchObject({
+      mode: "local",
+      status: "recorded",
+      packs: [expect.objectContaining({ id: "osstack-cloud-bootstrap", source_kind: "processed_mit" })],
+      results: [expect.objectContaining({ chunk_id: "chunk-cloud-governance" })],
     });
   });
 
