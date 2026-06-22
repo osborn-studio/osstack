@@ -74,19 +74,51 @@ async function writeProofEvidence(proofDir: string): Promise<void> {
   await mkdir(proofDir, { recursive: true });
   await writeFile(join(proofDir, "manifest.json"), JSON.stringify({
     artifacts: [
-      { path: "verify-results.json", sha256: "a".repeat(64) },
-      { path: "policy-decision.json", sha256: "b".repeat(64) },
+      { path: "verify-results.json", sha256: "a".repeat(64), bytes: 128 },
+      { path: "policy-decision.json", sha256: "b".repeat(64), bytes: 128 },
     ],
   }, null, 2));
-  await writeFile(join(proofDir, "verify-results.json"), JSON.stringify({ status: "pass" }, null, 2));
+  await writeFile(join(proofDir, "verify-results.json"), JSON.stringify({
+    status: "pass",
+    results: [{
+      task_id: "t1",
+      pass: true,
+      score: 1,
+      reviewer_agent_id: "local-verifier",
+      summary: "verification passed",
+      event_seq: 2,
+    }],
+  }, null, 2));
   await writeFile(join(proofDir, "policy-decision.json"), JSON.stringify({
     status: "recorded",
-    decisions: [{ task_id: "t1", agent_id: "codex-cli", reason: "best fit" }],
+    decisions: [{
+      task_id: "t1",
+      agent_id: "codex-cli",
+      auth_mode: "subprocess/login-reuse",
+      roles: ["coding", "test-verify"],
+      reason: "best fit",
+      event_seq: 1,
+    }],
   }, null, 2));
   await writeFile(join(proofDir, "agent-runtime.json"), JSON.stringify({
     status: "recorded",
-    agents: [{ agent_id: "codex-cli", auth_mode: "subprocess/login-reuse" }],
+    agents: [{
+      agent_id: "codex-cli",
+      auth_mode: "subprocess/login-reuse",
+      roles: ["coding", "test-verify"],
+      plan_event_seqs: [1],
+    }],
   }, null, 2));
   await writeFile(join(proofDir, "governance-results.json"), JSON.stringify({ status: "pass", findings: [] }, null, 2));
-  await writeFile(join(proofDir, "worktree-status.json"), JSON.stringify({ status: "recorded", entries: [] }, null, 2));
+  await writeFile(join(proofDir, "worktree-status.json"), JSON.stringify({
+    status: "recorded",
+    entries: [{
+      task_id: "t1",
+      status: "merged",
+      branch: "codex/t1",
+      commit: "abc",
+      path: "/tmp/osstack-t1",
+      event_seq: 3,
+    }],
+  }, null, 2));
 }
