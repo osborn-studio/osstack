@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { mkdtempSync } from "node:fs";
-import { readdir, rm } from "node:fs/promises";
+import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -613,6 +613,14 @@ describe("Knowledge Cloud HTTP service", () => {
         expect(privateSearch).toMatchObject({
             results: [expect.objectContaining({ pack_id: "team/private-persisted" })],
         });
+    });
+    it("rejects persisted private packs whose tenant id does not match the storage directory", async () => {
+        const publishedPackDir = tempDir();
+        const privateDir = join(publishedPackDir, "private", "team_alpha");
+        await mkdir(privateDir, { recursive: true });
+        await writeFile(join(privateDir, "team%2Fwrong-tenant.json"), `${JSON.stringify(teamPack({ id: "team/wrong-tenant" }, { tenantId: "team_beta" }).manifest, null, 2)}\n`, "utf-8");
+        await expect(loadPublishedKnowledgeCloudPacksFromDir(publishedPackDir))
+            .rejects.toThrow(/tenant_id does not match persisted private directory/);
     });
 });
 async function officialPacks() {

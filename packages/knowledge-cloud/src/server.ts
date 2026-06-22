@@ -128,7 +128,8 @@ export async function loadPublishedKnowledgeCloudPacksFromDir(root: string): Pro
   const packs = await loadPublishedPacksFromDir(join(root, "official"));
   const privatePacks: KnowledgePack[] = [];
   for (const tenantId of await tenantDirs(join(root, "private"))) {
-    privatePacks.push(...await loadPublishedPacksFromDir(join(root, "private", tenantId)));
+    if (!isSafeTenantId(tenantId)) throw new Error("persisted private tenant directory is invalid");
+    privatePacks.push(...await loadPublishedPacksFromDir(join(root, "private", tenantId), tenantId));
   }
   return { packs, privatePacks };
 }
@@ -458,12 +459,15 @@ async function persistPublishedPack(root: string | undefined, pack: KnowledgePac
   await writeFile(join(dir, publishedPackFileName(pack.manifest)), `${JSON.stringify(pack.manifest, null, 2)}\n`, "utf-8");
 }
 
-async function loadPublishedPacksFromDir(dir: string): Promise<KnowledgePack[]> {
+async function loadPublishedPacksFromDir(dir: string, tenantId?: string): Promise<KnowledgePack[]> {
   const files = await jsonFiles(dir);
   const packs: KnowledgePack[] = [];
   for (const file of files) {
     const path = join(dir, file);
     const manifest = validateKnowledgePackManifest(JSON.parse(await readFile(path, "utf-8")) as unknown);
+    if (tenantId !== undefined && manifestTenantId(manifest) !== tenantId) {
+      throw new Error("tenant_id does not match persisted private directory");
+    }
     packs.push({ manifest, path });
   }
   return packs;
