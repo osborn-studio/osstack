@@ -8,6 +8,7 @@ const workflow = await read(".github/workflows/knowledge-cloud-deploy.yml");
 
 assertIncludes(dockerfile, "EXPOSE 8787", "Dockerfile must expose the Knowledge Cloud port");
 assertIncludes(dockerfile, "FROM node:22-slim", "Dockerfile must use Node 22 for pnpm and node:sqlite support");
+assertIncludes(dockerfile, "tsconfig.base.json", "Dockerfile must copy the root TypeScript config used by package builds");
 assertIncludes(dockerfile, "/healthz", "Dockerfile must include the health endpoint");
 assertIncludes(dockerfile, "packages/knowledge-cloud/dist/bin.js", "Dockerfile must start the Knowledge Cloud executable");
 
