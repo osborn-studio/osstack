@@ -70,6 +70,8 @@ describe("dashboard/cockpit CLI", () => {
     expect(output).toContain("kanban:");
     expect(output).toContain("triage: 1");
     expect(output).toContain("recent runs:");
+    expect(output).toContain("next steps:");
+    expect(output).toContain("[ready] 产品设计 - google-stitch 2.0 primary, claude-design fallback");
   });
 
   it("prints daemon status and dashboard snapshot JSON with cockpit --json", async () => {
@@ -100,6 +102,7 @@ describe("dashboard/cockpit CLI", () => {
     expect(output).toContain("Osstack 驾驶舱");
     expect(output).toContain("任务看板:");
     expect(output).toContain("最近运行:");
+    expect(output).toContain("下一步:");
   });
 
   it("generates a cockpit report from workspace loop evidence", async () => {

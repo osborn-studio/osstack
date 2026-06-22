@@ -6465,6 +6465,7 @@ function printCockpitSummary(summary: { daemon?: unknown; cockpit?: unknown }): 
   const evidence = isRecord(cockpit["evidence"]) ? cockpit["evidence"] : {};
   const quality = isRecord(cockpit["quality"]) ? cockpit["quality"] : {};
   const recentRuns = Array.isArray(cockpit["recent_runs"]) ? cockpit["recent_runs"] : [];
+  const nextSteps = Array.isArray(cockpit["next_steps"]) ? cockpit["next_steps"] : [];
   const columns = Array.isArray(board["columns"]) ? board["columns"] : [];
 
   console.log(text.title);
@@ -6485,12 +6486,19 @@ function printCockpitSummary(summary: { daemon?: unknown; cockpit?: unknown }): 
     console.log(`  ${String(run["run_id"] ?? "unknown")} ${String(run["phase"] ?? "unknown")} ${String(run["outcome"] ?? "running")} ${String(run["agent_id"] ?? "unknown")}`);
   }
   if (recentRuns.length === 0) console.log(`  ${text.none}`);
+  console.log(`${text.nextSteps}:`);
+  for (const step of nextSteps.slice(0, 5)) {
+    if (!isRecord(step)) continue;
+    console.log(`  [${String(step["status"] ?? "unknown")}] ${String(step["label"] ?? "unknown")} - ${String(step["detail"] ?? "")}`);
+  }
+  if (nextSteps.length === 0) console.log(`  ${text.none}`);
 }
 
 function cockpitSummaryText(language: LoopReportLanguage): {
   title: string;
   kanban: string;
   recentRuns: string;
+  nextSteps: string;
   none: string;
 } {
   if (language === "zh-CN") {
@@ -6498,6 +6506,7 @@ function cockpitSummaryText(language: LoopReportLanguage): {
       title: "Osstack 驾驶舱",
       kanban: "任务看板",
       recentRuns: "最近运行",
+      nextSteps: "下一步",
       none: "无",
     };
   }
@@ -6505,6 +6514,7 @@ function cockpitSummaryText(language: LoopReportLanguage): {
     title: "Osstack Cockpit",
     kanban: "kanban",
     recentRuns: "recent runs",
+    nextSteps: "next steps",
     none: "none",
   };
 }
