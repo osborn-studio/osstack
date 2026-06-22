@@ -5216,6 +5216,10 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
     return await handleCockpitRetryCommand(args.slice(1));
   }
 
+  if (sub === "approve") {
+    return await handleCockpitApproveCommand(args.slice(1));
+  }
+
   if (sub === "help") {
     console.log(`osstack dashboard / cockpit — local development cockpit
 
@@ -5225,6 +5229,8 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
                             Run queued work with report, scorecard, and proof defaults
   osstack cockpit retry [task_id] [--workspace P] [--state P] [--json]
                             Requeue a failed or escalated task from loop state
+  osstack cockpit approve <card_id> [--comment TEXT] [--json]
+                            Approve a kanban card by moving it to done
   osstack cockpit report [run_id] [--workspace P] [--state P] [--events P] [--output P] [--open]
                             Generate a cockpit report from loop evidence
   osstack cockpit proof [run_id] [--workspace P] [--state P] [--events P] [--output-dir P] [--open]
@@ -5284,6 +5290,51 @@ async function handleCockpitReportCommand(args: string[]): Promise<number> {
   } else {
     console.log(`report=${output}`);
     console.log(`opened=${opened ? "yes" : "no"}`);
+  }
+  return 0;
+}
+
+async function handleCockpitApproveCommand(args: string[]): Promise<number> {
+  const cardId = firstPositionalValue(args, new Set(["--comment"]));
+  if (cardId === undefined) {
+    console.error("osstack: cockpit approve requires a card_id");
+    return 1;
+  }
+  const comment = flagValue(args, "--comment");
+  const moveResp = (await rpc("kanban.move", {
+    card_id: cardId,
+    status: "done",
+    actor: "cockpit",
+  })) as RpcResp;
+  if (!moveResp.ok) {
+    console.error("osstack:", moveResp.error?.message ?? "cockpit approve failed");
+    return 1;
+  }
+  let commented = false;
+  if (comment !== undefined && comment.trim() !== "") {
+    const commentResp = (await rpc("kanban.comment", {
+      card_id: cardId,
+      body: comment,
+      author: "cockpit",
+    })) as RpcResp;
+    if (!commentResp.ok) {
+      console.error("osstack:", commentResp.error?.message ?? "cockpit approve comment failed");
+      return 1;
+    }
+    commented = true;
+  }
+  const card = moveResp.result as { card_id: string; status: string; completed_at?: number | null };
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({
+      card_id: card.card_id,
+      status: card.status,
+      approved: card.status === "done",
+      commented,
+      completed_at: card.completed_at ?? null,
+    }, null, 2));
+  } else {
+    console.log(`${card.card_id} approved → ${card.status}`);
+    console.log(`commented=${commented ? "yes" : "no"}`);
   }
   return 0;
 }

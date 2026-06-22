@@ -260,6 +260,49 @@ describe("dashboard/cockpit CLI", () => {
     expect(errors.join("\n")).toContain("retry only accepts failed or escalated tasks");
   });
 
+  it("approves a kanban card from the cockpit", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    expect(await main(["kanban", "create", "Approve cockpit card", "--assignee", "codex-cli"])).toBe(0);
+    const created = logs.join("\n").match(/created (card_[a-f0-9]+):/)?.[1];
+    expect(created).toBeDefined();
+
+    logs = [];
+    const exitCode = await main([
+      "cockpit",
+      "approve",
+      created!,
+      "--comment",
+      "Reviewed from cockpit.",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      card_id: string;
+      status: string;
+      approved: boolean;
+      commented: boolean;
+    };
+    expect(summary).toMatchObject({
+      card_id: created,
+      status: "done",
+      approved: true,
+      commented: true,
+    });
+
+    logs = [];
+    expect(await main(["kanban", "board"])).toBe(0);
+    expect(logs.join("\n")).toContain("DONE (1)");
+
+    logs = [];
+    expect(await main(["kanban", "events", "--since", "0"])).toBe(0);
+    const events = JSON.parse(logs.join("\n")) as { events: Array<{ kind: string; card_id: string; payload: string | null }> };
+    expect(events.events).toEqual(expect.arrayContaining([
+      expect.objectContaining({ card_id: created, kind: "completed" }),
+      expect.objectContaining({ card_id: created, kind: "commented" }),
+    ]));
+  });
+
   it("generates a cockpit proof pack from workspace loop evidence", async () => {
     const workspace = join(tmp, "workspace");
     await mkdir(workspace, { recursive: true });
