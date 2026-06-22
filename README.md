@@ -72,6 +72,19 @@ osstack status
 
 `osstack serve --install` writes `~/Library/LaunchAgents/ai.osstack.daemon.plist`, starts it with `launchctl`, and keeps daemon logs under `~/.osstack/logs/`. Use `osstack serve --status` to inspect it and `osstack serve --uninstall` to remove it. For a dry filesystem-only check, add `--no-load`.
 
+## 5-Minute Quickstart
+
+From any repository:
+
+```bash
+osstack doctor --workspace .
+osstack loop enqueue "Run local checks and fix the first failure" --capability code.test
+osstack loop run --source task_queue --verify "pnpm test" --report --scorecard --proof
+osstack loop status
+```
+
+`osstack doctor` combines loop readiness, task queue checks, git/worktree checks, and local agent availability. `osstack examples` prints runnable recipes for bug fixing, feature work, git-diff review, auto-agent routing, worktree isolation, and proof packs. `osstack guide --output QUICKSTART.md` writes the same quickstart locally.
+
 ## Develop
 
 ```bash

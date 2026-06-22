@@ -159,6 +159,10 @@ Self-update:
                       and roll back automatically on failure.
 
 Project commands:
+  doctor [--workspace P] [--daemon] [--json]
+                      Product readiness check: loop + agents + next steps
+  examples [--json]   Print runnable workflow examples
+  guide [--output P]  Print or write the 5-minute quickstart
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
   deliver <prompt> [--verify CMD] [--auto-agent] [--worktree]
                       Product entry: task queue -> loop -> report/scorecard/proof
@@ -316,6 +320,18 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "upgrade") {
     return await handleUpgradeCommand(args.slice(1), rpc);
+  }
+
+  if (cmd === "doctor") {
+    return await handleProductDoctorCommand(args.slice(1));
+  }
+
+  if (cmd === "examples") {
+    return await handleExamplesCommand(args.slice(1));
+  }
+
+  if (cmd === "guide") {
+    return await handleGuideCommand(args.slice(1));
   }
 
   if (cmd === "stats") {
@@ -501,6 +517,256 @@ async function handleAgentCommand(args: string[]): Promise<number> {
 
   console.error(`osstack: unknown agent subcommand "${sub}"`);
   return 1;
+}
+
+async function handleProductDoctorCommand(args: string[]): Promise<number> {
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack doctor — product readiness check
+
+  osstack doctor [--workspace P] [--daemon] [--json]
+
+Checks:
+  - workspace, tasks/, LOOP-STATE.json, git/worktree readiness
+  - daemon socket when --daemon is set
+  - local agent registry roles, auth modes, and availability
+`);
+    return 0;
+  }
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const loop = await loopDoctor({
+    workspacePath,
+    stateFilePath: resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath),
+    checkDaemon: args.includes("--daemon"),
+  });
+  const agents = await productAgentDoctor();
+  const nextSteps = productDoctorNextSteps(loop, agents);
+  const result = {
+    ok: loop.ok && agents.total > 0,
+    workspace: workspacePath,
+    loop,
+    agents,
+    next_steps: nextSteps,
+  };
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(result, null, 2));
+  } else {
+    printProductDoctor(result);
+  }
+  return result.ok ? 0 : 1;
+}
+
+async function productAgentDoctor(): Promise<{
+  total: number;
+  available: number;
+  unavailable: number;
+  by_role: Record<string, string[]>;
+  profiles: Array<{
+    id: string;
+    display_name: string;
+    auth_mode: string;
+    cost_tier: string;
+    roles: string[];
+    available: boolean;
+    reason?: string;
+  }>;
+}> {
+  const profiles = await Promise.all(defaultAdapters().map(async (adapter) => {
+    const availability = await adapter.isAvailable();
+    const roles = rolesForCapabilityKinds(adapter.capabilities().map((capability) => capability.kind));
+    return {
+      id: adapter.id,
+      display_name: adapter.display_name,
+      auth_mode: agentAuthMode(adapter.id),
+      cost_tier: adapter.cost_tier,
+      roles,
+      available: availability.available,
+      ...(availability.reason !== undefined ? { reason: availability.reason } : {}),
+    };
+  }));
+  const byRole: Record<string, string[]> = {};
+  for (const profile of profiles) {
+    for (const role of profile.roles) {
+      byRole[role] = [...(byRole[role] ?? []), profile.id];
+    }
+  }
+  return {
+    total: profiles.length,
+    available: profiles.filter((profile) => profile.available).length,
+    unavailable: profiles.filter((profile) => !profile.available).length,
+    by_role: byRole,
+    profiles,
+  };
+}
+
+function productDoctorNextSteps(
+  loop: LoopDoctorResult,
+  agents: Awaited<ReturnType<typeof productAgentDoctor>>,
+): string[] {
+  const steps: string[] = [];
+  const taskQueue = loop.checks.find((check) => check.id === "task_queue");
+  if (taskQueue?.status === "ok") {
+    steps.push("Run queued work: osstack loop run --source task_queue --report --scorecard --proof");
+  } else {
+    steps.push("Queue a task: osstack loop enqueue \"Run local checks\" --capability code.test");
+  }
+  if (agents.available > 0) {
+    steps.push("Try routing: osstack loop run --source task_queue --auto-agent --verify \"pnpm test\"");
+  } else {
+    steps.push("Configure an available agent or use --execute for local shell execution.");
+  }
+  steps.push("Read examples: osstack examples");
+  return steps;
+}
+
+function printProductDoctor(result: {
+  ok: boolean;
+  workspace: string;
+  loop: LoopDoctorResult;
+  agents: Awaited<ReturnType<typeof productAgentDoctor>>;
+  next_steps: string[];
+}): void {
+  console.log(`Osstack doctor: ${result.ok ? "ok" : "attention needed"}`);
+  console.log(`workspace=${result.workspace}`);
+  console.log("");
+  printLoopDoctor(result.loop);
+  console.log("");
+  console.log(`Agents: ${result.agents.available}/${result.agents.total} available`);
+  for (const profile of result.agents.profiles) {
+    console.log(`  [${profile.available ? "ok" : "warn"}] ${profile.id} auth=${profile.auth_mode} roles=${profile.roles.join(",") || "none"}`);
+  }
+  console.log("");
+  console.log("Next steps:");
+  for (const step of result.next_steps) console.log(`- ${step}`);
+}
+
+async function handleExamplesCommand(args: string[]): Promise<number> {
+  const examples = osstackExamples();
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({ examples }, null, 2));
+    return 0;
+  }
+  console.log("# Osstack Examples\n");
+  for (const example of examples) {
+    console.log(`## ${example.title}`);
+    console.log(example.description);
+    console.log("");
+    console.log("```bash");
+    for (const command of example.commands) console.log(command);
+    console.log("```\n");
+  }
+  return 0;
+}
+
+async function handleGuideCommand(args: string[]): Promise<number> {
+  const markdown = renderQuickstartGuide();
+  const output = flagValue(args, "--output");
+  if (output !== undefined) {
+    await mkdir(dirname(output), { recursive: true });
+    await writeFile(output, markdown, "utf-8");
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({ output }, null, 2));
+    } else {
+      console.log(`guide=${output}`);
+    }
+    return 0;
+  }
+  console.log(markdown);
+  return 0;
+}
+
+function osstackExamples(): Array<{ title: string; description: string; commands: string[] }> {
+  return [
+    {
+      title: "Fix a bug",
+      description: "Queue a failing behavior, run the loop, and produce evidence.",
+      commands: [
+        "osstack loop enqueue \"Fix the failing unit test\" --capability code.test",
+        "osstack loop run --source task_queue --verify \"pnpm test\" --report --scorecard --proof",
+      ],
+    },
+    {
+      title: "Implement a feature",
+      description: "Use the product entry command to create a task, execute, verify, and package proof.",
+      commands: [
+        "osstack deliver \"Add billing dashboard\" --verify \"pnpm test\" --auto-agent --worktree --json",
+      ],
+    },
+    {
+      title: "Review git diff",
+      description: "Turn local changes into a review/checker workflow.",
+      commands: [
+        "osstack loop run --source git_diff --reviewer ds-review --verify \"pnpm test\" --report",
+      ],
+    },
+    {
+      title: "Auto-agent routing",
+      description: "Let router and policy choose the maker based on capability and local availability.",
+      commands: [
+        "osstack agent list",
+        "osstack loop run --source task_queue --auto-agent --verify \"pnpm test\"",
+      ],
+    },
+    {
+      title: "Worktree isolation",
+      description: "Run each task in an isolated worktree, then merge only successful changes.",
+      commands: [
+        "osstack loop run --source task_queue --worktree --worktree-root ../osstack-worktrees --verify \"pnpm test\"",
+      ],
+    },
+    {
+      title: "Proof pack",
+      description: "Generate report, scorecard, proof pack, and PR evidence body.",
+      commands: [
+        "osstack loop run --source task_queue --report --scorecard --proof",
+        "osstack pr --dry-run",
+      ],
+    },
+  ];
+}
+
+function renderQuickstartGuide(): string {
+  return `# Osstack 5-minute quickstart
+
+## 1. Install and check readiness
+
+\`\`\`bash
+npm install -g @osstack/cli
+osstack --version
+osstack doctor --workspace .
+\`\`\`
+
+## 2. Queue one task
+
+\`\`\`bash
+osstack loop enqueue "Run local checks and fix the first failure" --capability code.test
+\`\`\`
+
+## 3. Run the loop and generate evidence
+
+\`\`\`bash
+osstack loop run --source task_queue --verify "pnpm test" --report --scorecard --proof
+\`\`\`
+
+## 4. Inspect the result
+
+\`\`\`bash
+osstack loop status
+osstack report
+osstack proof view "$(node -e 'const s=require("./LOOP-STATE.json"); process.stdout.write(s.loop_id)')" --audience engineer
+\`\`\`
+
+## 5. Try the product entry path
+
+\`\`\`bash
+osstack deliver "Add billing dashboard" --verify "pnpm test" --auto-agent --worktree
+\`\`\`
+
+More workflows:
+
+\`\`\`bash
+osstack examples
+\`\`\`
+`;
 }
 
 async function listLocalAgentProfiles(): Promise<Array<{
