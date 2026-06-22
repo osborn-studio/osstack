@@ -2774,6 +2774,7 @@ async function writeProofPack(
   const agentRuntime = createAgentRuntimeEvidence(events);
   const verifyResults = createVerifyResultsEvidence(scorecard, events);
   const worktreeStatus = createWorktreeStatusEvidence(events);
+  validateProofEvidenceArtifacts({ agentRuntime, verifyResults, worktreeStatus });
   const artifacts = [
     { path: "report.md", content: renderReportMarkdownForArtifacts(state, events) },
     { path: "scorecard.md", content: renderLoopStateScorecardMarkdown(scorecard, { language: resolveLanguage() }) },
@@ -3730,6 +3731,103 @@ function createWorktreeStatusEvidence(events: LoopEvent[]): {
     };
   }
   return { status: "recorded", entries };
+}
+
+function validateProofEvidenceArtifacts(evidence: {
+  agentRuntime: ReturnType<typeof createAgentRuntimeEvidence>;
+  verifyResults: ReturnType<typeof createVerifyResultsEvidence>;
+  worktreeStatus: ReturnType<typeof createWorktreeStatusEvidence>;
+}): void {
+  const errors = [
+    ...validateAgentRuntimeEvidence(evidence.agentRuntime),
+    ...validateVerifyResultsEvidence(evidence.verifyResults),
+    ...validateWorktreeStatusEvidence(evidence.worktreeStatus),
+  ];
+  if (errors.length > 0) {
+    throw new Error(`proof evidence validation failed: ${errors.join("; ")}`);
+  }
+}
+
+function validateAgentRuntimeEvidence(value: ReturnType<typeof createAgentRuntimeEvidence>): string[] {
+  const errors: string[] = [];
+  if (value.status !== "recorded" && value.status !== "unknown") {
+    errors.push("agent-runtime.status must be recorded or unknown");
+  }
+  if (value.status === "recorded") {
+    if (!Array.isArray(value.agents) || value.agents.length === 0) {
+      errors.push("agent-runtime.agents must contain at least one agent when status is recorded");
+    } else {
+      value.agents.forEach((agent, index) => {
+        if (agent.agent_id.length === 0) errors.push(`agent-runtime.agents[${index}].agent_id is required`);
+        if (agent.auth_mode.length === 0) errors.push(`agent-runtime.agents[${index}].auth_mode is required`);
+        if (!Array.isArray(agent.roles)) errors.push(`agent-runtime.agents[${index}].roles must be an array`);
+        if (!Array.isArray(agent.plan_event_seqs)) {
+          errors.push(`agent-runtime.agents[${index}].plan_event_seqs must be an array`);
+        } else if (agent.plan_event_seqs.some((seq) => !Number.isInteger(seq) || seq < 0)) {
+          errors.push(`agent-runtime.agents[${index}].plan_event_seqs must contain non-negative integers`);
+        }
+      });
+    }
+  }
+  if (value.status === "unknown" && (value.reason === undefined || value.reason.length === 0)) {
+    errors.push("agent-runtime.reason is required when status is unknown");
+  }
+  return errors;
+}
+
+function validateVerifyResultsEvidence(value: ReturnType<typeof createVerifyResultsEvidence>): string[] {
+  const errors: string[] = [];
+  if (value.status !== "pass" && value.status !== "fail" && value.status !== "unknown") {
+    errors.push("verify-results.status must be pass, fail, or unknown");
+  }
+  if (value.results !== undefined) {
+    value.results.forEach((result, index) => {
+      if (result.task_id.length === 0) errors.push(`verify-results.results[${index}].task_id is required`);
+      if (typeof result.pass !== "boolean") errors.push(`verify-results.results[${index}].pass must be boolean`);
+      if (result.score !== "unknown" && typeof result.score !== "number") {
+        errors.push(`verify-results.results[${index}].score must be number or unknown`);
+      }
+      if (result.reviewer_agent_id.length === 0) {
+        errors.push(`verify-results.results[${index}].reviewer_agent_id is required`);
+      }
+      if (!Number.isInteger(result.event_seq) || result.event_seq < 0) {
+        errors.push(`verify-results.results[${index}].event_seq must be a non-negative integer`);
+      }
+    });
+  }
+  if (value.results === undefined && (value.reason === undefined || value.reason.length === 0)) {
+    errors.push("verify-results.reason is required when no results are recorded");
+  }
+  return errors;
+}
+
+function validateWorktreeStatusEvidence(value: ReturnType<typeof createWorktreeStatusEvidence>): string[] {
+  const errors: string[] = [];
+  if (value.status !== "recorded" && value.status !== "unknown") {
+    errors.push("worktree-status.status must be recorded or unknown");
+  }
+  if (value.status === "recorded") {
+    if (!Array.isArray(value.entries) || value.entries.length === 0) {
+      errors.push("worktree-status.entries must contain at least one entry when status is recorded");
+    } else {
+      value.entries.forEach((entry, index) => {
+        if (entry.task_id.length === 0) errors.push(`worktree-status.entries[${index}].task_id is required`);
+        if (!["created", "merged", "cleaned"].includes(entry.status)) {
+          errors.push(`worktree-status.entries[${index}].status is invalid`);
+        }
+        if (entry.branch.length === 0) errors.push(`worktree-status.entries[${index}].branch is required`);
+        if (entry.commit.length === 0) errors.push(`worktree-status.entries[${index}].commit is required`);
+        if (entry.path.length === 0) errors.push(`worktree-status.entries[${index}].path is required`);
+        if (!Number.isInteger(entry.event_seq) || entry.event_seq < 0) {
+          errors.push(`worktree-status.entries[${index}].event_seq must be a non-negative integer`);
+        }
+      });
+    }
+  }
+  if (value.status === "unknown" && (value.reason === undefined || value.reason.length === 0)) {
+    errors.push("worktree-status.reason is required when status is unknown");
+  }
+  return errors;
 }
 
 function stringEventPayload(event: LoopEvent, key: string): string {
