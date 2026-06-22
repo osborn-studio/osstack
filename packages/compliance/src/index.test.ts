@@ -1,15 +1,17 @@
 import { mkdtempSync } from "node:fs";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  loadCompliancePack,
   loadProofEvidence,
   listCompliancePacks,
   renderComplianceReport,
   renderComplianceReportFromProofDir,
   renderProofView,
   renderProofViewFromProofDir,
+  validateCompliancePackFiles,
 } from "./index.js";
 
 let tmp: string;
@@ -41,20 +43,20 @@ describe("compliance packs", () => {
     ]));
   });
 
-  it("keeps repository pack manifests aligned with built-in packs", async () => {
+  it("keeps repository compliance pack files aligned and self-contained", async () => {
     for (const pack of listCompliancePacks()) {
-      const manifestPath = resolve(process.cwd(), `../../compliance-packs/${pack.id}/manifest.json`);
-      const manifest = JSON.parse(await readFile(manifestPath, "utf-8")) as {
-        id: string;
-        version: string;
-        certification_claim: string;
-      };
+      const packDir = resolve(process.cwd(), `../../compliance-packs/${pack.id}`);
+      const loaded = await loadCompliancePack(packDir);
+      const validation = await validateCompliancePackFiles(packDir);
 
-      expect(manifest).toMatchObject({
+      expect(loaded).toMatchObject({
         id: pack.id,
         version: pack.version,
         certification_claim: "none",
       });
+      expect(loaded.controls).toEqual(pack.controls);
+      expect(validation.required_present.length).toBeGreaterThan(0);
+      expect(validation.template).toContain("{{controls}}");
     }
   });
 

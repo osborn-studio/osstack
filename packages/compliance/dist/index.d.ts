@@ -3,6 +3,7 @@ export interface CompliancePack {
     version: string;
     name: string;
     certification_claim: "none";
+    description?: string;
     controls: ComplianceControl[];
 }
 export interface ComplianceControl {
@@ -10,6 +11,11 @@ export interface ComplianceControl {
     title: string;
     evidence_path: string;
     description: string;
+}
+export interface CompliancePackFileValidation {
+    pack: CompliancePack;
+    required_present: string[];
+    template: string;
 }
 export interface ProofEvidence {
     manifest?: unknown;
@@ -34,6 +40,8 @@ export interface ProofViewOptions {
 }
 export declare function listCompliancePacks(): CompliancePack[];
 export declare function getCompliancePack(packId: string): CompliancePack;
+export declare function loadCompliancePack(packDir: string): Promise<CompliancePack>;
+export declare function validateCompliancePackFiles(packDir: string): Promise<CompliancePackFileValidation>;
 export declare function loadProofEvidence(proofDir: string): Promise<ProofEvidence>;
 export declare function renderComplianceReportFromProofDir(options: {
     packId: string;

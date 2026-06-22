@@ -6,6 +6,7 @@ export interface CompliancePack {
   version: string;
   name: string;
   certification_claim: "none";
+  description?: string;
   controls: ComplianceControl[];
 }
 
@@ -14,6 +15,12 @@ export interface ComplianceControl {
   title: string;
   evidence_path: string;
   description: string;
+}
+
+export interface CompliancePackFileValidation {
+  pack: CompliancePack;
+  required_present: string[];
+  template: string;
 }
 
 export interface ProofEvidence {
@@ -250,6 +257,44 @@ export function getCompliancePack(packId: string): CompliancePack {
   };
 }
 
+export async function loadCompliancePack(packDir: string): Promise<CompliancePack> {
+  const [manifestRaw, controlsRaw, evidenceMapRaw] = await Promise.all([
+    readJson(join(packDir, "manifest.json")),
+    readJson(join(packDir, "controls.json")),
+    readJson(join(packDir, "evidence-map.json")),
+  ]);
+  const manifest = validateComplianceManifest(manifestRaw);
+  const controls = validateComplianceControls(controlsRaw);
+  const evidenceMap = validateEvidenceMap(evidenceMapRaw);
+  return {
+    ...manifest,
+    controls: controls.map((control) => ({
+      ...control,
+      evidence_path: evidenceMap[control.id] ?? missingEvidencePath(control.id),
+    })),
+  };
+}
+
+export async function validateCompliancePackFiles(packDir: string): Promise<CompliancePackFileValidation> {
+  const [pack, rubricRaw, template] = await Promise.all([
+    loadCompliancePack(packDir),
+    readJson(join(packDir, "score-rubric.json")),
+    readFile(join(packDir, "report-template.md"), "utf-8"),
+  ]);
+  const rubric = validateScoreRubric(rubricRaw);
+  const controlIds = new Set(pack.controls.map((control) => control.id));
+  for (const required of rubric.required_present) {
+    if (!controlIds.has(required)) throw new Error(`compliance rubric references unknown control: ${required}`);
+  }
+  if (!template.includes("External certification claim: `none`")) {
+    throw new Error("compliance report template must not claim external certification");
+  }
+  if (!template.includes("{{controls}}")) {
+    throw new Error("compliance report template must include {{controls}}");
+  }
+  return { pack, required_present: rubric.required_present, template };
+}
+
 export async function loadProofEvidence(proofDir: string): Promise<ProofEvidence> {
   const [manifest, verify, policy, agentRuntime, governance, worktree, knowledge] = await Promise.all([
     readJsonIfExists(join(proofDir, "manifest.json")),
@@ -420,6 +465,72 @@ async function readJsonIfExists(path: string): Promise<unknown | undefined> {
   } catch {
     return undefined;
   }
+}
+
+async function readJson(path: string): Promise<unknown> {
+  return JSON.parse(await readFile(path, "utf-8")) as unknown;
+}
+
+function validateComplianceManifest(value: unknown): Omit<CompliancePack, "controls"> {
+  if (!hasObject(value)) throw new Error("compliance manifest must be an object");
+  const certificationClaim = requiredString(value, "certification_claim");
+  if (certificationClaim !== "none") throw new Error("compliance manifest certification_claim must be none");
+  return {
+    id: requiredString(value, "id"),
+    version: requiredString(value, "version"),
+    name: requiredString(value, "name"),
+    certification_claim: "none",
+    ...(typeof value["description"] === "string" && value["description"].length > 0
+      ? { description: value["description"] }
+      : {}),
+  };
+}
+
+function validateComplianceControls(value: unknown): Array<Omit<ComplianceControl, "evidence_path">> {
+  if (!Array.isArray(value)) throw new Error("compliance controls must be an array");
+  return value.map((control) => {
+    if (!hasObject(control)) throw new Error("compliance control must be an object");
+    return {
+      id: requiredString(control, "id"),
+      title: requiredString(control, "title"),
+      description: requiredString(control, "description"),
+    };
+  });
+}
+
+function validateEvidenceMap(value: unknown): Record<string, string> {
+  if (!hasObject(value)) throw new Error("compliance evidence-map must be an object");
+  const entries: Record<string, string> = {};
+  for (const [key, evidencePath] of Object.entries(value)) {
+    if (typeof evidencePath !== "string" || evidencePath.length === 0) {
+      throw new Error(`compliance evidence-map entry ${key} must be a non-empty string`);
+    }
+    entries[key] = evidencePath;
+  }
+  return entries;
+}
+
+function validateScoreRubric(value: unknown): { required_present: string[] } {
+  if (!hasObject(value)) throw new Error("compliance score-rubric must be an object");
+  const minimum = value["minimum_release_ready"];
+  if (!hasObject(minimum)) throw new Error("compliance score-rubric minimum_release_ready must be an object");
+  const required = minimum["required_present"];
+  if (!Array.isArray(required) || !required.every((item) => typeof item === "string" && item.length > 0)) {
+    throw new Error("compliance score-rubric required_present must be an array of strings");
+  }
+  return { required_present: required };
+}
+
+function missingEvidencePath(controlId: string): string {
+  throw new Error(`compliance evidence-map missing control: ${controlId}`);
+}
+
+function requiredString(value: Record<string, unknown>, key: string): string {
+  const field = value[key];
+  if (typeof field !== "string" || field.length === 0) {
+    throw new Error(`compliance ${key} must be a non-empty string`);
+  }
+  return field;
 }
 
 function hasObject(value: unknown): value is Record<string, unknown> {
