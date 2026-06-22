@@ -217,6 +217,36 @@ describe("dashboard", () => {
     }
   });
 
+  it("serves workspace-scoped dashboard URLs for integrations", async () => {
+    const path = join(tmp, "state.db");
+    const workspace = join(tmp, "workspace with spaces");
+    mkdirSync(workspace, { recursive: true });
+
+    const db = openDb({ path });
+    const kanban = new KanbanRepository(db, path, () => 300);
+    const server = await startDashboardServer(() => createDashboardSnapshot({
+      db,
+      kanban,
+      dbPath: path,
+      version: "0.0.0",
+      phase: "test",
+      dashboardUrl: "http://127.0.0.1:8799/dashboard",
+      adapters: [],
+      activeRuns: 0,
+      now: () => 300,
+    }), { host: "127.0.0.1", port: 0 });
+
+    try {
+      const response = await fetch(`${server.url.replace("/dashboard", "/dashboard/url")}?workspace=${encodeURIComponent(workspace)}`);
+      const body = await response.json() as { url: string };
+
+      expect(new URL(body.url).searchParams.get("workspace")).toBe(workspace);
+    } finally {
+      await server.close();
+      db.close();
+    }
+  });
+
   it("renders cockpit sections for evidence, lessons, and scorecards", () => {
     const html = renderDashboardHtml();
 

@@ -419,10 +419,19 @@ async function handleDashboardRequest(
     return;
   }
   if (path === "/dashboard/url") {
-    send(res, 200, "application/json; charset=utf-8", JSON.stringify({ url }));
+    send(res, 200, "application/json; charset=utf-8", JSON.stringify({
+      url: dashboardUrlWithWorkspace(url, requestUrl.searchParams.get("workspace") ?? undefined),
+    }));
     return;
   }
   send(res, 404, "text/plain; charset=utf-8", "not found");
+}
+
+function dashboardUrlWithWorkspace(url: string, workspacePath: string | undefined): string {
+  if (workspacePath === undefined) return url;
+  const nextUrl = new URL(url);
+  nextUrl.searchParams.set("workspace", workspacePath);
+  return nextUrl.toString();
 }
 
 function send(res: ServerResponse, status: number, contentType: string, body: string): void {
