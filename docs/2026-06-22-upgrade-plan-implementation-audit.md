@@ -373,11 +373,11 @@
 - Knowledge search result 会返回 `matched_terms`，本地检索和云端检索 validator 均已覆盖，prompt snippet 会携带命中词，便于 proof/report 解释 chunk 为什么被检索命中。
 - CLI 支持 cloud login/sync/search/import/ingest/pin/feedback/sources。
 - 本地 smoke 验证 official/private packs、sync、search、feedback。
-- deploy assets 存在：Dockerfile、Fly、Render、GitHub Actions；`release doctor --target knowledge-cloud` 已接入 `knowledge_cloud_deploy_assets` 静态 preflight，检查 Dockerfile、Fly/Render healthcheck、feedback JSONL 持久化路径、workflow smoke、Docker build、`FLY_API_TOKEN` gate 与 Fly deploy 命令；`release plan` 的 Knowledge Cloud validation commands 也会列出 `pnpm smoke:knowledge-cloud:deploy`。
+- deploy assets 存在：Dockerfile、Fly、Render、GitHub Actions；`release doctor --target knowledge-cloud` 已接入 `knowledge_cloud_deploy_assets` 静态 preflight，检查 Dockerfile、Fly/Render healthcheck、feedback JSONL 持久化路径、workflow smoke、Docker build、`FLY_API_TOKEN` gate 与 Fly deploy 命令；传入 `--cloud-url <url>` 时还会访问 `<url>/healthz` 并要求 HTTP 2xx、`ok=true`、`service=osstack-knowledge-cloud`；`release plan` 的 Knowledge Cloud validation commands 也会列出 `pnpm smoke:knowledge-cloud:deploy`。
 
 未完成：
 
-- 真实云端域名/URL 未上线。
+- 真实云端域名/URL 未上线；`--cloud-url` health gate 已具备，但尚无生产 URL 通过记录。
 - 生产 storage/Postgres/vector index/BM25 未实现。
 - ingestion pipeline 仍是本地 MVP，不是完整 source intake -> rewrite -> review -> publish 系统；当前已有 publish gate 可检查 Osstack voice、provenance、source_refs、quality/review/taxonomy 与 processed license label。
 - tenant auth/permissions 已有 token + explicit tenant scope 的本地 HTTP gate，但仍不是完整生产级账号、组织、角色、审计日志权限模型。
@@ -389,7 +389,7 @@
 | P0 | 修复 GitHub Actions billing/spending limit | 当前 runner 在账户层启动前失败，PR #26 无法变绿；`release doctor` 已能自动识别该 blocker | PR #26 CI rerun 后 runner 正常启动并通过 |
 | P0 | 配置 `NPM_TOKEN` | 没有 npm publish secret 不能合并 Version Packages PR | `osstack release doctor --target npm --json` ready |
 | P0 | 配置 `FLY_API_TOKEN` | 没有 Fly deploy secret 不能运行 Knowledge Cloud `deploy=true` | `osstack release doctor --target knowledge-cloud --json` ready |
-| P0 | 部署 Knowledge Cloud 到真实云端 | Phase 6 需要“上线”而非本地 smoke | 生产 URL + `/healthz` + search smoke |
+| P0 | 部署 Knowledge Cloud 到真实云端 | Phase 6 需要“上线”而非本地 smoke | 生产 URL + `release doctor --target knowledge-cloud --cloud-url <url>` + search smoke |
 | P0 | npm publish 并从 registry 安装 | Phase 0 一行安装的最终验收 | `npm install -g @osstack/cli` 成功 |
 | P1 | `CONFORMANCE_MATRIX.md` 持续维护 | 让 OSSTACK_RUN_SPEC_V1 的 MUST 条款可审计 | 每条新增/变更 MUST 同步 schema/test/vector/verifier/smoke 映射 |
 | P1 | 真实 repo deliver e2e smoke | 证明 Product Entry 可处理实际项目 | 临时 repo 跑 deliver/loop/proof 成功 |

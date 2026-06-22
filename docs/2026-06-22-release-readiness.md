@@ -142,10 +142,11 @@
   - `deploy/knowledge-cloud/render.yaml`
   - `.github/workflows/knowledge-cloud-deploy.yml`
 - `release doctor --target knowledge-cloud` 会静态检查部署资产是否完整：Dockerfile、Fly/Render healthcheck、feedback JSONL 持久化路径、workflow smoke、Docker build、`FLY_API_TOKEN` gate 与 Fly deploy 命令。
+- `release doctor --target knowledge-cloud --cloud-url <url>` 会额外访问 `<url>/healthz`，要求 HTTP 2xx、JSON `ok=true` 且 `service=osstack-knowledge-cloud`，并把 pack 数量写入 handoff details；该检查失败会阻止 `knowledge_cloud_deploy` ready。
 
 仍需上线后补齐：
 
-- 真实云端 URL。
+- 真实云端 URL 与 `/healthz` 通过记录。
 - 生产环境 secrets。
 - GitHub Actions 实际运行记录。
 - 可观测性仪表盘与告警。
@@ -196,6 +197,7 @@ osstack release doctor --json
 - `version_packages_pr`：识别 `changeset-release/main` 的 Version Packages PR，输出 PR number、URL、draft 状态和 `merge_state`。当前真实状态为 PR #5 `CLEAN / MERGEABLE`，CI run `27957659115` 已成功；仍需等 `NPM_TOKEN` 配好后再合并。
 - `knowledge_cloud_deploy_assets`：检查 Knowledge Cloud Dockerfile、Fly/Render 配置和 GitHub Actions deploy workflow 的关键部署约束，失败时会阻止 `knowledge_cloud_deploy` ready。
 - `knowledge_cloud_workflow`：识别 `Knowledge Cloud Deploy` workflow 是否存在、是否 active，以及最近一次验证 run 的状态。当前最近一次 validation run 为 success，但 `deploy=true` 仍需要 `FLY_API_TOKEN`。
+- `knowledge_cloud_health`：当传入 `--cloud-url` 时访问部署后的 `/healthz`，把真实云端服务是否可用纳入 handoff gate。
 - `single_binary_release_assets`：在 `--target single-binary` 或 `--target all` 时检查单文件 GitHub Release 资产链路，包括公证脚本和 workflow 的 Apple/Developer ID gate，失败时会阻止对应发布行动计划。
 - `single_binary_workflow`：识别 `Single Binary Release` workflow 是否存在、是否 active，以及最近一次 dry-run / release run 的状态。
 

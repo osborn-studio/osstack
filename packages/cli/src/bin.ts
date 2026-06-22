@@ -783,6 +783,12 @@ interface ReleaseDoctorResult {
   output?: string;
 }
 
+interface ReleaseDoctorOptions {
+  workspacePath?: string;
+  proofDir?: string;
+  cloudUrl?: string;
+}
+
 const SINGLE_BINARY_RELEASE_SECRETS = [
   "APPLE_ID",
   "APPLE_TEAM_ID",
@@ -797,8 +803,8 @@ async function handleReleaseCommand(args: string[]): Promise<number> {
   if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack release — publish/deploy readiness
 
-  osstack release doctor [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
-  osstack release plan [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--output P] [--json]
+  osstack release doctor [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--json]
+  osstack release plan [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--output P] [--json]
 
 Checks:
   - GitHub CLI authentication for repository operations
@@ -806,6 +812,7 @@ Checks:
   - repository secrets NPM_TOKEN and FLY_API_TOKEN
   - Apple notarization and Developer ID secrets for single-binary release
   - optional proof-core evidence validation with --proof-dir
+  - optional deployed Knowledge Cloud /healthz validation with --cloud-url
   - local npm login for manual publishing
   - local flyctl login for manual Knowledge Cloud deploy debugging
 `);
@@ -837,8 +844,16 @@ async function handleReleasePlanCommand(args: string[]): Promise<number> {
   }
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
   const proofDir = flagValue(args, "--proof-dir");
-  const doctor = await releaseDoctor(target, proofDir === undefined ? { workspacePath } : { workspacePath, proofDir });
-  const plan = releaseActionPlan(doctor, proofDir === undefined ? {} : { proofDir });
+  const cloudUrl = flagValue(args, "--cloud-url");
+  const doctor = await releaseDoctor(target, {
+    workspacePath,
+    ...(proofDir === undefined ? {} : { proofDir }),
+    ...(cloudUrl === undefined ? {} : { cloudUrl }),
+  });
+  const plan = releaseActionPlan(doctor, {
+    ...(proofDir === undefined ? {} : { proofDir }),
+    ...(cloudUrl === undefined ? {} : { cloudUrl }),
+  });
   const output = flagValue(args, "--output");
   if (output !== undefined) {
     await mkdir(dirname(output), { recursive: true });
@@ -861,7 +876,12 @@ async function handleReleaseDoctorCommand(args: string[]): Promise<number> {
   }
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
   const proofDir = flagValue(args, "--proof-dir");
-  const result = await releaseDoctor(target, proofDir === undefined ? { workspacePath } : { workspacePath, proofDir });
+  const cloudUrl = flagValue(args, "--cloud-url");
+  const result = await releaseDoctor(target, {
+    workspacePath,
+    ...(proofDir === undefined ? {} : { proofDir }),
+    ...(cloudUrl === undefined ? {} : { cloudUrl }),
+  });
   const output = flagValue(args, "--output");
   if (output !== undefined) {
     await mkdir(dirname(output), { recursive: true });
@@ -884,7 +904,7 @@ function parseReleaseDoctorTarget(value: string): ReleaseDoctorResult["target"] 
 
 async function releaseDoctor(
   target: ReleaseDoctorResult["target"],
-  options: { workspacePath?: string; proofDir?: string } = {},
+  options: ReleaseDoctorOptions = {},
 ): Promise<ReleaseDoctorResult> {
   const checks: ReleaseDoctorCheck[] = [];
   const githubAuth = await releaseCommandCheck({
@@ -923,6 +943,9 @@ async function releaseDoctor(
   if (target === "all" || target === "knowledge-cloud") {
     checks.push(await releaseKnowledgeCloudDeployAssetsCheck(process.cwd()));
     checks.push(await releaseKnowledgeCloudWorkflowCheck());
+    if (options.cloudUrl !== undefined) {
+      checks.push(await releaseKnowledgeCloudHealthCheck(options.cloudUrl));
+    }
     checks.push(await releaseCommandCheck({
       id: "fly_auth",
       command: "flyctl",
@@ -947,11 +970,16 @@ async function releaseDoctor(
   const versionPackagesPrReady = checks.find((check) => check.id === "version_packages_pr")?.status !== "warn";
   const knowledgeDeployAssetsReady = checks.find((check) => check.id === "knowledge_cloud_deploy_assets")?.status !== "error";
   const knowledgeWorkflowReady = checks.find((check) => check.id === "knowledge_cloud_workflow")?.status !== "error";
+  const knowledgeHealthReady = checks.find((check) => check.id === "knowledge_cloud_health")?.status !== "error";
   const singleBinaryAssetsReady = checks.find((check) => check.id === "single_binary_release_assets")?.status !== "error";
   const singleBinaryWorkflowReady = checks.find((check) => check.id === "single_binary_workflow")?.status !== "error";
   const actionsReady = githubActions.status !== "error";
   const npmPublish = actionsReady && hasSecret(secrets, "NPM_TOKEN") && npmPublishAssetsReady && versionPackagesPrReady;
-  const knowledgeCloudDeploy = actionsReady && hasSecret(secrets, "FLY_API_TOKEN") && knowledgeDeployAssetsReady && knowledgeWorkflowReady;
+  const knowledgeCloudDeploy = actionsReady
+    && hasSecret(secrets, "FLY_API_TOKEN")
+    && knowledgeDeployAssetsReady
+    && knowledgeWorkflowReady
+    && knowledgeHealthReady;
   const singleBinaryRelease = actionsReady
     && SINGLE_BINARY_RELEASE_SECRETS.every((secret) => hasSecret(secrets, secret))
     && singleBinaryAssetsReady
@@ -1103,6 +1131,71 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
       root: assetRoot,
     },
   };
+}
+
+async function releaseKnowledgeCloudHealthCheck(cloudUrl: string): Promise<ReleaseDoctorCheck> {
+  const normalized = normalizeCloudUrl(cloudUrl);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  let healthUrl: URL | undefined;
+  try {
+    healthUrl = new URL("/healthz", normalized);
+    const response = await fetch(healthUrl, {
+      method: "GET",
+      headers: { accept: "application/json" },
+      signal: controller.signal,
+    });
+    const raw = await response.text();
+    const body = parseJsonObject(raw);
+    const service = typeof body?.["service"] === "string" ? body["service"] : undefined;
+    const packs = typeof body?.["packs"] === "number" ? body["packs"] : undefined;
+    const privatePacks = typeof body?.["private_packs"] === "number" ? body["private_packs"] : undefined;
+    const bodyOk = body?.["ok"] === true;
+    const ok = response.ok && bodyOk && service === "osstack-knowledge-cloud";
+    return {
+      id: "knowledge_cloud_health",
+      status: ok ? "ok" : "error",
+      message: ok
+        ? `Deployed Knowledge Cloud health check passed at ${healthUrl.toString()}.`
+        : `Deployed Knowledge Cloud health check failed at ${healthUrl.toString()}.`,
+      details: {
+        cloud_url: normalized,
+        health_url: healthUrl.toString(),
+        http_status: response.status,
+        ok: bodyOk,
+        service,
+        ...(packs === undefined ? {} : { packs }),
+        ...(privatePacks === undefined ? {} : { private_packs: privatePacks }),
+      },
+    };
+  } catch (error) {
+    const healthUrlString = healthUrl === undefined ? `${normalized.replace(/\/+$/, "")}/healthz` : healthUrl.toString();
+    return {
+      id: "knowledge_cloud_health",
+      status: "error",
+      message: `Could not reach deployed Knowledge Cloud health check at ${healthUrlString}.`,
+      details: {
+        cloud_url: normalized,
+        health_url: healthUrlString,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function normalizeCloudUrl(value: string): string {
+  return value.trim();
+}
+
+function parseJsonObject(raw: string): Record<string, unknown> | undefined {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return isRecord(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function releaseSingleBinaryReleaseAssetsCheck(workspacePath: string): Promise<ReleaseDoctorCheck> {
@@ -1836,6 +1929,10 @@ function releaseDoctorNextSteps(options: {
   } else if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeWorkflow?.status === "warn") {
     steps.push("Review the latest Knowledge Cloud Deploy workflow run before running deploy=true.");
   }
+  const knowledgeHealth = options.checks.find((check) => check.id === "knowledge_cloud_health");
+  if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeHealth?.status === "error") {
+    steps.push("Fix the deployed Knowledge Cloud /healthz endpoint before handoff.");
+  }
   const singleBinaryAssets = options.checks.find((check) => check.id === "single_binary_release_assets");
   if ((options.target === "all" || options.target === "single-binary") && singleBinaryAssets?.status === "error") {
     steps.push("Restore single-binary release assets before publishing release archives.");
@@ -1922,7 +2019,7 @@ function renderReleaseReadinessReport(result: ReleaseDoctorResult): string {
   ].join("\n");
 }
 
-function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: string } = {}): ReleaseActionPlan {
+function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: string; cloudUrl?: string } = {}): ReleaseActionPlan {
   const versionPr = result.checks.find((check) => check.id === "version_packages_pr");
   const versionPrNumber = typeof versionPr?.details?.["number"] === "number"
     ? versionPr.details["number"]
@@ -1936,6 +2033,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     || step.startsWith("Restore NPM publish assets")
     || step.startsWith("Restore Knowledge Cloud deploy assets")
     || step.startsWith("Restore the Knowledge Cloud Deploy workflow")
+    || step.startsWith("Fix the deployed Knowledge Cloud")
     || step.startsWith("Restore single-binary release assets")
     || step.startsWith("Restore the Single Binary Release workflow")
     || step.startsWith("Review Version Packages PR")
@@ -1969,7 +2067,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
       : []),
   ];
   const validationCommands = [
-    `osstack release doctor --target ${result.target}${options.proofDir === undefined ? "" : ` --proof-dir ${options.proofDir}`} --output release-readiness.md --json`,
+    `osstack release doctor --target ${result.target}${options.proofDir === undefined ? "" : ` --proof-dir ${options.proofDir}`}${options.cloudUrl === undefined ? "" : ` --cloud-url ${options.cloudUrl}`} --output release-readiness.md --json`,
     `osstack proof validate <run_id> --proof-dir ${options.proofDir ?? "release/osstack-proof-<run_id>"} --json`,
     ...(result.target === "all" || result.target === "npm"
       ? [

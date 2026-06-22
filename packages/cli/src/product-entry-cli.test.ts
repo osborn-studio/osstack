@@ -1,5 +1,6 @@
 import { mkdtempSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -482,32 +483,123 @@ describe("product entry commands", () => {
     process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "warn";
     process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
     const output = join(tmp, "knowledge-release-plan.md");
+    const cloud = await startHealthServer(200, { ok: true, service: "osstack-knowledge-cloud", packs: 6 });
 
-    const exitCode = await main(["release", "plan", "--target", "knowledge-cloud", "--output", output, "--json"]);
+    try {
+      const exitCode = await main([
+        "release",
+        "plan",
+        "--target",
+        "knowledge-cloud",
+        "--cloud-url",
+        cloud.url,
+        "--output",
+        output,
+        "--json",
+      ]);
 
-    expect(exitCode).toBe(0);
-    const result = JSON.parse(logs.join("\n")) as {
-      ready: boolean;
-      safe_to_execute: boolean;
-      blockers: string[];
-      validation_commands: string[];
-      deploy_commands: string[];
-      output: string;
-    };
-    expect(result.ready).toBe(false);
-    expect(result.safe_to_execute).toBe(false);
-    expect(result.output).toBe(output);
-    expect(result.blockers.join("\n")).toContain("FLY_API_TOKEN");
-    expect(result.validation_commands).toContain("osstack proof validate <run_id> --proof-dir release/osstack-proof-<run_id> --json");
-    expect(result.validation_commands).toContain("pnpm smoke:knowledge-cloud:deploy");
-    expect(result.validation_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false");
-    expect(result.deploy_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
-    const markdown = await readFile(output, "utf-8");
-    expect(markdown).toContain("# Osstack Release Action Plan");
-    expect(markdown).toContain("Target: `knowledge-cloud`");
-    expect(markdown).toContain("Safe to execute publish/deploy commands: `no`");
-    expect(markdown).toContain("Do not run publish or deploy commands until blockers are resolved.");
-    expect(markdown).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+      expect(exitCode).toBe(0);
+      const result = JSON.parse(logs.join("\n")) as {
+        ready: boolean;
+        safe_to_execute: boolean;
+        blockers: string[];
+        validation_commands: string[];
+        deploy_commands: string[];
+        output: string;
+      };
+      expect(result.ready).toBe(false);
+      expect(result.safe_to_execute).toBe(false);
+      expect(result.output).toBe(output);
+      expect(result.blockers.join("\n")).toContain("FLY_API_TOKEN");
+      expect(result.validation_commands).toContain(
+        `osstack release doctor --target knowledge-cloud --cloud-url ${cloud.url} --output release-readiness.md --json`,
+      );
+      expect(result.validation_commands).toContain("osstack proof validate <run_id> --proof-dir release/osstack-proof-<run_id> --json");
+      expect(result.validation_commands).toContain("pnpm smoke:knowledge-cloud:deploy");
+      expect(result.validation_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false");
+      expect(result.deploy_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+      const markdown = await readFile(output, "utf-8");
+      expect(markdown).toContain("# Osstack Release Action Plan");
+      expect(markdown).toContain("Target: `knowledge-cloud`");
+      expect(markdown).toContain("Safe to execute publish/deploy commands: `no`");
+      expect(markdown).toContain("Do not run publish or deploy commands until blockers are resolved.");
+      expect(markdown).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+    } finally {
+      await cloud.close();
+    }
+  });
+
+  it("checks a deployed Knowledge Cloud health URL before deploy handoff", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const cloud = await startHealthServer(200, { ok: true, service: "osstack-knowledge-cloud", packs: 6 });
+
+    try {
+      const exitCode = await main([
+        "release",
+        "doctor",
+        "--target",
+        "knowledge-cloud",
+        "--cloud-url",
+        cloud.url,
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(0);
+      const result = JSON.parse(logs.join("\n")) as {
+        ok: boolean;
+        readiness: { knowledge_cloud_deploy: boolean };
+        checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+      };
+      expect(result.ok).toBe(true);
+      expect(result.readiness.knowledge_cloud_deploy).toBe(true);
+      expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_health",
+        status: "ok",
+        details: expect.objectContaining({ cloud_url: cloud.url, packs: 6 }),
+      }));
+    } finally {
+      await cloud.close();
+    }
+  });
+
+  it("blocks Knowledge Cloud deploy handoff when the deployed health URL is unhealthy", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const cloud = await startHealthServer(503, { ok: false, service: "osstack-knowledge-cloud" });
+
+    try {
+      const exitCode = await main([
+        "release",
+        "doctor",
+        "--target",
+        "knowledge-cloud",
+        "--cloud-url",
+        cloud.url,
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(1);
+      const result = JSON.parse(logs.join("\n")) as {
+        ok: boolean;
+        readiness: { knowledge_cloud_deploy: boolean };
+        checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+        next_steps: string[];
+      };
+      expect(result.ok).toBe(false);
+      expect(result.readiness.knowledge_cloud_deploy).toBe(false);
+      expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_health",
+        status: "error",
+      }));
+      expect(result.next_steps.join("\n")).toContain("Fix the deployed Knowledge Cloud /healthz endpoint before handoff.");
+    } finally {
+      await cloud.close();
+    }
   });
 
   it("checks single-binary release assets as an independent release target", async () => {
@@ -668,4 +760,38 @@ async function writeReleaseProofEvidence(proofDir: string, options: { omitGovern
       event_seq: 3,
     }],
   }, null, 2));
+}
+
+async function startHealthServer(status: number, body: unknown): Promise<{ url: string; close: () => Promise<void> }> {
+  const server = createServer((req, res) => {
+    if (req.url !== "/healthz") {
+      res.writeHead(404, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "not found" }));
+      return;
+    }
+    res.writeHead(status, { "content-type": "application/json" });
+    res.end(JSON.stringify(body));
+  });
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      server.off("error", reject);
+      resolve();
+    });
+  });
+  const address = server.address();
+  if (address === null || typeof address === "string") throw new Error("test health server did not bind TCP");
+  return {
+    url: `http://127.0.0.1:${address.port}`,
+    close: () => closeServer(server),
+  };
+}
+
+function closeServer(server: Server): Promise<void> {
+  return new Promise((resolve, reject) => {
+    server.close((error) => {
+      if (error !== undefined) reject(error);
+      else resolve();
+    });
+  });
 }
