@@ -11,7 +11,7 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import { defaultAdapters } from "@osstack/agents";
-import { openDb } from "@osstack/core";
+import { listPitfallLessons, openDb, upsertPitfallLesson } from "@osstack/core";
 import { scanFiles, type GovernanceFinding } from "@osstack/governance";
 import {
   renderBranchStewardReport,
@@ -177,6 +177,10 @@ Governance:
                                  List local Osstack knowledge packs
   knowledge search <query> --pack P [--json]
                                  Search local Osstack knowledge pack chunks
+  lessons list [--family F] [--json]
+                                 List learned local pitfall lessons
+  lessons learn [--workspace P] [--state P] [--json]
+                                 Extract pitfall lessons from LOOP-STATE.json
 
 Hermes integration:
   hermes health                  Show kanban-sync bridge state
@@ -322,6 +326,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "knowledge") {
     return await handleKnowledgeCommand(args.slice(1));
+  }
+
+  if (cmd === "lessons") {
+    return await handleLessonsCommand(args.slice(1));
   }
 
   if (cmd === "hermes") {
@@ -589,6 +597,103 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
 
   console.error(`osstack: unknown knowledge subcommand "${sub}"`);
   return 1;
+}
+
+async function handleLessonsCommand(args: string[]): Promise<number> {
+  const sub = args[0] ?? "list";
+  if (sub === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack lessons — local pitfall knowledge base
+
+  osstack lessons list [--family F] [--limit N] [--json]
+  osstack lessons learn [--workspace P] [--state P] [--json]
+`);
+    return 0;
+  }
+
+  if (sub === "list") {
+    const limit = parsePositiveIntegerFlag(flagValue(args, "--limit"), "--limit");
+    if (limit instanceof Error) {
+      console.error(`osstack: ${limit.message}`);
+      return 1;
+    }
+    const dbPath = await ensureLocalStateDbPath();
+    const db = openDb({ path: dbPath });
+    try {
+      const lessons = listPitfallLessons(db, {
+        ...(flagValue(args, "--family") !== undefined ? { family: flagValue(args, "--family") } : {}),
+        ...(limit !== undefined ? { limit } : {}),
+      });
+      if (args.includes("--json")) {
+        console.log(JSON.stringify({ lessons }, null, 2));
+      } else if (lessons.length === 0) {
+        console.log("No lessons recorded yet.");
+      } else {
+        for (const lesson of lessons) {
+          console.log(`${lesson.pitfall_id} ${lesson.family} verified=${lesson.verified_count}`);
+          console.log(`  symptom=${lesson.symptom}`);
+          console.log(`  resolution=${lesson.resolution}`);
+        }
+      }
+      return 0;
+    } finally {
+      db.close();
+    }
+  }
+
+  if (sub === "learn") {
+    const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+    const statePath = resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+    const state = await readLoopState(statePath);
+    if (state === null) {
+      console.error(`osstack: no loop state found at ${statePath}`);
+      return 1;
+    }
+    const candidates = derivePitfallLessonsFromState(state);
+    const dbPath = await ensureLocalStateDbPath();
+    const db = openDb({ path: dbPath });
+    try {
+      const lessons = candidates.map((candidate) => upsertPitfallLesson(db, dbPath, candidate));
+      if (args.includes("--json")) {
+        console.log(JSON.stringify({ learned: lessons.length, lessons }, null, 2));
+      } else {
+        console.log(`learned=${lessons.length}`);
+        for (const lesson of lessons) {
+          console.log(`${lesson.pitfall_id} ${lesson.family} verified=${lesson.verified_count}`);
+        }
+      }
+      return 0;
+    } finally {
+      db.close();
+    }
+  }
+
+  console.error(`osstack: unknown lessons subcommand "${sub}"`);
+  return 1;
+}
+
+async function ensureLocalStateDbPath(): Promise<string> {
+  const home = osstackHome();
+  await mkdir(home, { recursive: true });
+  return join(home, "state.db");
+}
+
+function derivePitfallLessonsFromState(state: LoopState): Parameters<typeof upsertPitfallLesson>[2][] {
+  return state.completed_tasks
+    .filter((task) => task.outcome === "failed" || task.outcome === "escalated")
+    .map((task) => ({
+      family: task.outcome === "failed" ? "verify_failed" : "max_iter_escalation",
+      tech_stack: inferLessonTechStack(task.capability),
+      symptom: `${task.task_id} ended with ${task.outcome} after ${task.iterations} iteration${task.iterations === 1 ? "" : "s"}.`,
+      resolution: task.outcome === "failed"
+        ? "Inspect verifier output, rerun deterministic checks, and update the task or dependency setup before retrying."
+        : "Break the task into a smaller queue item, add a stronger verify gate, or route to a reviewer/checker before retrying.",
+      source_run_id: state.loop_id,
+    }));
+}
+
+function inferLessonTechStack(capability: string | undefined): string[] {
+  if (capability === undefined || capability.length === 0) return ["unknown"];
+  return [...new Set(capability.split(/[.:_-]+/).filter((part) => part.length > 0))];
 }
 
 async function handleSkillsCommand(args: string[]): Promise<number> {

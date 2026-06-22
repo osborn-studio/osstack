@@ -179,3 +179,20 @@ export const MemoryFactRow = z.object({
   updated_at: z.number(),
 });
 export type MemoryFactRow = z.infer<typeof MemoryFactRow>;
+
+export const PitfallLessonRow = z.object({
+  pitfall_id: z.string().min(1),
+  family: z.string().min(1),
+  fingerprint: z.string().min(1),
+  tech_stack_json: z.string(),
+  symptom: z.string().min(1),
+  resolution: z.string().min(1),
+  verified_count: z.number().int().nonnegative(),
+  source_run_ids_json: z.string(),
+  status: z.enum(["active", "archived"]).default("active"),
+  tenant_id: z.string().nullable().default(null),
+  created_at: z.number(),
+  updated_at: z.number(),
+  last_seen_at: z.number(),
+});
+export type PitfallLessonRow = z.infer<typeof PitfallLessonRow>;
