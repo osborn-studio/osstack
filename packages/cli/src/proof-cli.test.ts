@@ -441,6 +441,42 @@ describe("proof CLI", () => {
     ]));
   });
 
+  it("rejects proof manifests with invalid identity fields", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const proofExitCode = await main(["proof", "--workspace", tmp]);
+    expect(proofExitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    const manifestPath = join(proofDir, "manifest.json");
+    const manifest = JSON.parse(await readFile(manifestPath, "utf-8")) as {
+      kind?: string;
+      schema_version?: number;
+    };
+    manifest.kind = "not.osstack.proof_pack";
+    manifest.schema_version = 0;
+    await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+
+    logs = [];
+    const invalidExitCode = await main([
+      "proof",
+      "validate",
+      "cli-proof-loop",
+      "--workspace",
+      tmp,
+      "--json",
+    ]);
+
+    expect(invalidExitCode).toBe(1);
+    const summary = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      file_integrity: { ok: boolean; issues: Array<{ path: string; code: string }> };
+    };
+    expect(summary.ok).toBe(false);
+    expect(summary.file_integrity.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "manifest.json", code: "manifest_invalid_kind" }),
+      expect.objectContaining({ path: "manifest.json", code: "manifest_invalid_schema_version" }),
+    ]));
+  });
+
   it("rejects proof manifests with duplicate artifact paths", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
     const proofExitCode = await main(["proof", "--workspace", tmp]);

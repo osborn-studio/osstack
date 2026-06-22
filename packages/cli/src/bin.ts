@@ -791,6 +791,8 @@ interface ReleaseDoctorOptions {
 
 type ProofFileIntegrityIssueCode =
   | "manifest_malformed"
+  | "manifest_invalid_kind"
+  | "manifest_invalid_schema_version"
   | "manifest_missing_created_at"
   | "manifest_missing_generated_at"
   | "artifact_malformed"
@@ -1578,6 +1580,12 @@ async function validateProofFileIntegrity(
       ok: false,
       issues: [{ path: "manifest.json", code: "manifest_malformed" }],
     };
+  }
+  if (manifestRaw["kind"] !== "osstack.proof_pack") {
+    issues.push({ path: "manifest.json", code: "manifest_invalid_kind" });
+  }
+  if (typeof manifestRaw["schema_version"] !== "number" || !Number.isInteger(manifestRaw["schema_version"]) || manifestRaw["schema_version"] < 1) {
+    issues.push({ path: "manifest.json", code: "manifest_invalid_schema_version" });
   }
   if (typeof manifestRaw["created_at"] !== "string" || manifestRaw["created_at"].trim().length === 0) {
     issues.push({ path: "manifest.json", code: "manifest_missing_created_at" });
