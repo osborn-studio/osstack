@@ -11,7 +11,7 @@
 
 - Phase 1 Evidence Layer、Phase 2 Product Entry、Phase 3 Governed Run、Phase 4 Learning Control Plane、Phase 6 的 Knowledge Cloud/Compliance 大部分已经有代码、命令和测试。
 - 最关键的端到端路径已经跑通：`deliver/loop -> report -> scorecard -> proof -> pr body -> knowledge trace -> compliance render`。
-- npm 安装后的真实用户路径已有 smoke：tarball pack/install、CLI 二进制、launchd dry-run、doctor、loop doctor、evidence commands、installed deliver/proof validate、proof zip archive integrity、official knowledge eval、Knowledge Cloud package loading、cloud sync cache、cloud outage local fallback。
+- npm 安装后的真实用户路径已有 smoke：tarball pack/install、CLI 二进制、launchd dry-run、doctor、installed `release doctor --target npm` readiness、loop doctor、evidence commands、installed deliver/proof validate、proof zip archive integrity、official knowledge eval、Knowledge Cloud package loading、cloud sync cache、cloud outage local fallback。
 - Knowledge Cloud 已具备 official/private pack HTTP 服务、sync/search/feedback/publish endpoint、部署资产和本地 smoke；本地 smoke 会启动真实服务并调用构建后的 CLI 跑 `release doctor --target knowledge-cloud --cloud-url <local-url>`，覆盖 health/search/audit handoff gate。
 
 仍未完成的部分集中在外部发布和产品深化：
@@ -47,9 +47,9 @@
 - `@osstack/cli` package 可 build/pack/install。
 - 本地 tarball 全局安装 smoke 通过。
 - 安装后 `osstack --version` 通过。
-- 安装后 `doctor`、`loop doctor`、evidence commands、knowledge commands 通过。
+- 安装后 `doctor`、`release doctor --target npm`、`loop doctor`、evidence commands、knowledge commands 通过。
 - `.changeset/osstack-upgrade-knowledge-cloud.md`、`.github/workflows/release.yml` 已存在。
-- `release doctor --target npm` 已接入 `npm_publish_assets` 静态 preflight，检查 `@osstack/cli` package 元数据、changeset、release workflow 的 changesets action、`pnpm smoke:npm-install`、npm provenance、`NPM_TOKEN` 与 `NODE_AUTH_TOKEN` 发布约束；`release plan` 的 npm validation commands 也会列出 `pnpm smoke:npm-install`。
+- `release doctor --target npm` 已接入 `npm_publish_assets` 静态 preflight，检查 `@osstack/cli` package 元数据、changeset、release workflow 的 changesets action、`pnpm smoke:npm-install`、npm provenance、`NPM_TOKEN` 与 `NODE_AUTH_TOKEN` 发布约束；`smoke:npm-install` 会用安装后的 CLI 执行 `release doctor --target npm --json` 并确认 npm publish readiness 与 publish assets gate；`release plan` 的 npm validation commands 也会列出 `pnpm smoke:npm-install`。
 
 未完成：
 

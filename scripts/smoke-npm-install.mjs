@@ -64,6 +64,31 @@ try {
   if (productDoctorParsed.ok !== true || productDoctorParsed.loop?.ok !== true) {
     throw new Error(`product doctor did not pass after npm install: ${productDoctor.stdout}`);
   }
+  const releaseDoctor = run(osstackBin, [
+    "release",
+    "doctor",
+    "--target",
+    "npm",
+    "--json",
+  ], {
+    cwd: root,
+    capture: true,
+    env: {
+      ...process.env,
+      OSSTACK_TEST_RELEASE_GITHUB_AUTH: "ok",
+      OSSTACK_TEST_RELEASE_GITHUB_ACTIONS: "ok",
+      OSSTACK_TEST_RELEASE_SECRETS: "NPM_TOKEN",
+      OSSTACK_TEST_RELEASE_NPM_AUTH: "ok",
+      OSSTACK_TEST_RELEASE_VERSION_PR: "none",
+    },
+  });
+  const releaseDoctorParsed = JSON.parse(releaseDoctor.stdout);
+  if (releaseDoctorParsed.ok !== true || releaseDoctorParsed.readiness?.npm_publish !== true) {
+    throw new Error(`installed CLI release doctor did not mark npm publish ready: ${releaseDoctor.stdout}`);
+  }
+  if (!releaseDoctorParsed.checks?.some((check) => check.id === "npm_publish_assets" && check.status === "ok")) {
+    throw new Error(`installed CLI release doctor did not validate npm publish assets: ${releaseDoctor.stdout}`);
+  }
 
   const doctor = run(osstackBin, ["loop", "doctor", "--workspace", workspace, "--json"], { cwd: root, capture: true });
   const parsed = JSON.parse(doctor.stdout);
@@ -304,6 +329,10 @@ try {
       load_skipped: installParsed.load_skipped,
     },
     product_doctor: productDoctorParsed.ok,
+    release_doctor: {
+      npm_publish: releaseDoctorParsed.readiness?.npm_publish,
+      npm_publish_assets: releaseDoctorParsed.checks.find((check) => check.id === "npm_publish_assets")?.status ?? null,
+    },
     installed_deliver: {
       loop_id: installedDeliverParsed.loop_id,
       report: installedDeliverParsed.artifacts.report,
