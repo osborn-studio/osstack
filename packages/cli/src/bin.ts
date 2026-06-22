@@ -4908,11 +4908,17 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
     return 0;
   }
 
+  if (sub === "report") {
+    return await handleCockpitReportCommand(args.slice(1));
+  }
+
   if (sub === "help") {
     console.log(`osstack dashboard / cockpit — local development cockpit
 
   osstack cockpit           Show daemon, run, kanban, report, and proof summary
   osstack cockpit --json    Print daemon status + dashboard snapshot JSON
+  osstack cockpit report [run_id] [--workspace P] [--state P] [--events P] [--output P] [--open]
+                            Generate a cockpit report from loop evidence
   osstack dashboard url       Print the URL for chat bots to return
   osstack dashboard open      Open the dashboard locally
   osstack dashboard snapshot  Print the JSON backing the dashboard
@@ -4930,6 +4936,46 @@ Env:
 
   console.error(`osstack: unknown dashboard subcommand "${sub}"`);
   return 1;
+}
+
+async function handleCockpitReportCommand(args: string[]): Promise<number> {
+  const runId = firstPositionalValue(args, new Set(["--workspace", "--state", "--events", "--output", "--lang"]));
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const language = resolveLanguage(flagValue(args, "--lang"));
+  const evidenceResult = runId === undefined
+    ? undefined
+    : await readPersistedLoopRunEvidence(runId);
+  if (evidenceResult instanceof Error) {
+    console.error(`osstack: ${evidenceResult.message}`);
+    return 1;
+  }
+  const stateFilePath = evidenceResult?.state_json
+    ?? resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+  const state = await readLoopState(stateFilePath);
+  if (state === null) {
+    console.error(`osstack: no loop state found at ${stateFilePath}`);
+    return 1;
+  }
+  const events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
+  const artifactId = runId ?? state.loop_id;
+  const output = resolveLoopPath(
+    flagValue(args, "--output") ?? join("reports", `osstack-report-${safeFileSegment(artifactId)}.md`),
+    workspacePath,
+  );
+  await mkdir(dirname(output), { recursive: true });
+  await writeFile(output, renderReportMarkdownForArtifacts(state, events, language), "utf-8");
+  const opened = args.includes("--open");
+  if (opened) {
+    const { spawn } = await import("node:child_process");
+    spawn("open", [output], { detached: true, stdio: "ignore" }).unref();
+  }
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({ loop_id: state.loop_id, run_id: artifactId, report: output, opened }, null, 2));
+  } else {
+    console.log(`report=${output}`);
+    console.log(`opened=${opened ? "yes" : "no"}`);
+  }
+  return 0;
 }
 
 function printCockpitSummary(summary: { daemon?: unknown; cockpit?: unknown }): void {
