@@ -174,6 +174,33 @@ describe("product entry commands", () => {
     }));
   });
 
+  it("auto-detects the latest proof directory for release doctor readiness", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const staleProofDir = join(tmp, "release", "osstack-proof-stale");
+    const latestProofDir = join(tmp, "release", "osstack-proof-latest");
+    await writeReleaseProofEvidence(staleProofDir, { omitGovernance: true });
+    await writeReleaseProofEvidence(latestProofDir);
+
+    const exitCode = await main(["release", "doctor", "--workspace", tmp, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+    };
+    expect(result.ok).toBe(true);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "proof_validation",
+      status: "ok",
+      details: expect.objectContaining({ proof_dir: latestProofDir, discovered: true }),
+    }));
+  });
+
   it("blocks release doctor when supplied proof-core evidence is malformed", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,FLY_API_TOKEN";

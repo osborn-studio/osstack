@@ -785,7 +785,7 @@ async function handleReleaseCommand(args: string[]): Promise<number> {
   if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack release — publish/deploy readiness
 
-  osstack release doctor [--target all|npm|knowledge-cloud] [--proof-dir P] [--json]
+  osstack release doctor [--target all|npm|knowledge-cloud] [--workspace P] [--proof-dir P] [--json]
   osstack release plan [--target all|npm|knowledge-cloud] [--output P] [--json]
 
 Checks:
@@ -844,8 +844,9 @@ async function handleReleaseDoctorCommand(args: string[]): Promise<number> {
     console.error("osstack: release doctor --target must be all, npm, or knowledge-cloud");
     return 1;
   }
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
   const proofDir = flagValue(args, "--proof-dir");
-  const result = await releaseDoctor(target, proofDir === undefined ? {} : { proofDir });
+  const result = await releaseDoctor(target, proofDir === undefined ? { workspacePath } : { workspacePath, proofDir });
   const output = flagValue(args, "--output");
   if (output !== undefined) {
     await mkdir(dirname(output), { recursive: true });
@@ -868,7 +869,7 @@ function parseReleaseDoctorTarget(value: string): ReleaseDoctorResult["target"] 
 
 async function releaseDoctor(
   target: ReleaseDoctorResult["target"],
-  options: { proofDir?: string } = {},
+  options: { workspacePath?: string; proofDir?: string } = {},
 ): Promise<ReleaseDoctorResult> {
   const checks: ReleaseDoctorCheck[] = [];
   const githubAuth = await releaseCommandCheck({
@@ -915,8 +916,9 @@ async function releaseDoctor(
     }));
   }
 
-  if (options.proofDir !== undefined) {
-    checks.push(await releaseProofValidationCheck(options.proofDir));
+  const proofDir = options.proofDir ?? await discoverLatestProofDir(options.workspacePath ?? process.cwd());
+  if (proofDir !== undefined) {
+    checks.push(await releaseProofValidationCheck(proofDir, { discovered: options.proofDir === undefined }));
   }
 
   const versionPackagesPrReady = checks.find((check) => check.id === "version_packages_pr")?.status !== "warn";
@@ -945,7 +947,27 @@ async function releaseDoctor(
   };
 }
 
-async function releaseProofValidationCheck(proofDir: string): Promise<ReleaseDoctorCheck> {
+async function discoverLatestProofDir(workspacePath: string): Promise<string | undefined> {
+  try {
+    const releaseDir = join(workspacePath, "release");
+    const entries = await readdir(releaseDir, { withFileTypes: true });
+    const candidates = await Promise.all(entries
+      .filter((entry) => entry.isDirectory() && entry.name.startsWith("osstack-proof-"))
+      .map(async (entry) => {
+        const path = join(releaseDir, entry.name);
+        const info = await stat(path);
+        return { path, mtimeMs: info.mtimeMs };
+      }));
+    return candidates.sort((a, b) => b.mtimeMs - a.mtimeMs || b.path.localeCompare(a.path))[0]?.path;
+  } catch {
+    return undefined;
+  }
+}
+
+async function releaseProofValidationCheck(
+  proofDir: string,
+  options: { discovered?: boolean } = {},
+): Promise<ReleaseDoctorCheck> {
   try {
     const validation = validateProofEvidence({ evidence: await loadProofEvidence(proofDir) });
     return {
@@ -956,6 +978,7 @@ async function releaseProofValidationCheck(proofDir: string): Promise<ReleaseDoc
         : "Proof-core evidence validation found missing or malformed evidence.",
       details: {
         proof_dir: proofDir,
+        discovered: options.discovered === true,
         scope: validation.scope,
         present: validation.present,
         missing: validation.missing,
@@ -966,7 +989,7 @@ async function releaseProofValidationCheck(proofDir: string): Promise<ReleaseDoc
       id: "proof_validation",
       status: "error",
       message: `Proof-core evidence validation failed: ${error instanceof Error ? error.message : String(error)}`,
-      details: { proof_dir: proofDir },
+      details: { proof_dir: proofDir, discovered: options.discovered === true },
     };
   }
 }
