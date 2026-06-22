@@ -7575,7 +7575,7 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
       console.error("osstack:", resp.error?.message ?? "dashboard.snapshot failed");
       return 1;
     }
-    console.log(JSON.stringify(resp.result, null, 2));
+    console.log(JSON.stringify(workspaceScopedCockpitSnapshot(resp.result, args), null, 2));
     return 0;
   }
 

@@ -105,6 +105,21 @@ describe("dashboard/cockpit CLI", () => {
     expect(new URL(summary.cockpit.dashboard.url).searchParams.get("workspace")).toBe(workspace);
   });
 
+  it("prints a workspace-scoped dashboard URL in snapshot JSON", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace with spaces");
+    await mkdir(workspace, { recursive: true });
+
+    const exitCode = await main(["dashboard", "snapshot", "--workspace", workspace]);
+
+    expect(exitCode).toBe(0);
+    const snapshot = JSON.parse(logs.join("\n")) as {
+      dashboard: { url: string; workspace_path: string };
+    };
+    expect(snapshot.dashboard.workspace_path).toBe(workspace);
+    expect(new URL(snapshot.dashboard.url).searchParams.get("workspace")).toBe(workspace);
+  });
+
   it("prints a workspace-scoped cockpit URL", async () => {
     daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
     const workspace = join(tmp, "workspace with spaces");
