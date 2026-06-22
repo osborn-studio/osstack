@@ -25,6 +25,12 @@ try {
     "-",
     "--json",
   ], { cwd: root, capture: true }).stdout);
+  const sbom = JSON.parse(run(process.execPath, [
+    "scripts/generate-single-binary-sbom.mjs",
+    "--manifest",
+    build.manifest_path,
+    "--json",
+  ], { cwd: root, capture: true }).stdout);
   const packed = JSON.parse(run(process.execPath, [
     "scripts/package-single-binary.mjs",
     "--manifest",
@@ -43,6 +49,7 @@ try {
     basename(build.binary_path),
     basename(build.manifest_path),
     basename(build.checksum_path),
+    basename(sbom.sbom_path),
   ]) {
     assertIncludes(listing, required, `archive must contain ${required}`);
   }
@@ -62,6 +69,13 @@ try {
   if (archiveManifest.binary?.signed !== true || archiveManifest.binary?.ad_hoc !== true) {
     throw new Error("archive manifest must record signed ad-hoc binary");
   }
+  if (archiveManifest.sbom?.format !== "SPDX-2.3") {
+    throw new Error("archive manifest must record SPDX SBOM");
+  }
+  const sbomDoc = JSON.parse(await readFile(sbom.sbom_path, "utf-8"));
+  if (sbomDoc.spdxVersion !== "SPDX-2.3" || !Array.isArray(sbomDoc.files) || sbomDoc.files.length < 3) {
+    throw new Error("SBOM must be SPDX 2.3 and list release files");
+  }
 
   console.log(JSON.stringify({
     ok: true,
@@ -74,6 +88,8 @@ try {
     ad_hoc: signed.ad_hoc,
     notarized: signed.notarized,
     github_release_uploaded: archiveManifest.publishing.github_release_uploaded,
+    sbom_path: sbom.sbom_path,
+    sbom_format: sbomDoc.spdxVersion,
     extracted_version: version,
   }, null, 2));
 } finally {

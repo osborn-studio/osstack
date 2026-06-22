@@ -38,6 +38,7 @@ const assets = [
   archivePath,
   archiveManifestPath,
   join(releaseDir, "sha256sums.txt"),
+  archiveManifest.sbom?.path,
 ].filter(Boolean);
 for (const asset of assets) {
   await stat(asset);

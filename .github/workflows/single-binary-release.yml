@@ -48,6 +48,7 @@ jobs:
           pnpm build:single-binary -- --output-dir "$OUT" --json
           MANIFEST="$(ls "$OUT"/osstack-*-darwin-arm64.manifest.json | head -n 1)"
           pnpm sign:single-binary -- --manifest "$MANIFEST" --identity - --json
+          pnpm sbom:single-binary -- --manifest "$MANIFEST" --json
           pnpm package:single-binary -- --manifest "$MANIFEST" --json
 
       - name: Smoke release archive
@@ -95,6 +96,7 @@ jobs:
             dist/single-binary/darwin-arm64/osstack-*.tar.gz
             dist/single-binary/darwin-arm64/osstack-*.archive.json
             dist/single-binary/darwin-arm64/osstack-*.manifest.json
+            dist/single-binary/darwin-arm64/osstack-*.sbom.spdx.json
             dist/single-binary/darwin-arm64/sha256sums.txt
           if-no-files-found: error
           retention-days: 14

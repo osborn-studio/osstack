@@ -10,7 +10,7 @@
 
 - CLI、Loop、Knowledge Cloud、官方知识库、证据包、安装后 smoke 均已具备自动化验证。
 - npm tarball 安装后的真实用户入口已经跑通，包括 `osstack --version`、`doctor`、`loop doctor`、`serve --install --no-load`、`report`、`scorecard`、`proof`、`knowledge eval`、`knowledge sources`、`osstack-knowledge-cloud --help`。
-- portable CLI bundle 与 Bun single executable release archive candidate 已有自动化 smoke，可作为 npm 主路径之外的分发基础；本地 ad-hoc signing 与 archive 解包运行已验证，CI/release workflow 已接入候选 artifact 生成，tag/workflow_dispatch 的 GitHub Release 上传路径已接入 dry-run smoke；发布级 single executable 仍需 Developer ID 签名、公证、跨机器验证、远端实际运行。
+- portable CLI bundle 与 Bun single executable release archive candidate 已有自动化 smoke，可作为 npm 主路径之外的分发基础；本地 ad-hoc signing、SPDX SBOM、archive 解包运行已验证，CI/release workflow 已接入候选 artifact 生成，tag/workflow_dispatch 的 GitHub Release 上传路径已接入 dry-run smoke；发布级 single executable 仍需 Developer ID 签名、公证、跨机器验证、远端实际运行。
 - 官方知识库已经从“借鉴 UmaDev 的 MIT 知识内容”升级为 osstack 自有官方知识包表达，包含来源治理、checksum、provenance 与检索评测。
 - Knowledge Cloud 已具备本地服务 smoke、Docker/Fly/Render/GitHub Actions 部署资产 smoke。
 
@@ -30,7 +30,7 @@
 | Knowledge Cloud | 已完成本地服务与部署资产 | 本地服务 smoke 返回 6 official packs、1 private pack，并验证 sync/search/private/feedback；部署资产 smoke 检查 Dockerfile、Fly、Render、GitHub Actions |
 | macOS launchd 安装 | 已完成安全 smoke | `serve --install --no-load`、`serve --status --no-load`、`serve --uninstall --no-load` 使用临时目录验证 |
 | Portable CLI 分发 | 已完成过渡 smoke | `pnpm smoke:portable-cli` 验证 workspace tarballs 可安装进 portable prefix，并输出 single executable 候选工具状态 |
-| Bun 单文件分发 | 已完成本地 release archive candidate smoke，已接 CI/release artifact | `pnpm build:single-binary` 生成 binary/manifest/checksum；`pnpm smoke:bun-single-binary` 验证 `--version`、`help`、`loop doctor --json`、sha256；`pnpm smoke:single-binary-signing` 验证 ad-hoc codesign；`pnpm smoke:single-binary-release-pack` 验证 tarball 可解包运行；release workflow 上传 candidate artifact |
+| Bun 单文件分发 | 已完成本地 release archive candidate smoke，已接 CI/release artifact | `pnpm build:single-binary` 生成 binary/manifest/checksum；`pnpm sbom:single-binary` 生成 SPDX 2.3 SBOM；`pnpm smoke:bun-single-binary` 验证 `--version`、`help`、`loop doctor --json`、sha256；`pnpm smoke:single-binary-signing` 验证 ad-hoc codesign；`pnpm smoke:single-binary-release-pack` 验证 tarball 可解包运行；release workflow 上传 candidate artifact |
 | 测试体系 | 已完成当前门禁 | lint、build、test、smoke 全部通过 |
 | 云端上线 | 未完成 | push 被 GitHub OAuth `workflow` scope 阻塞 |
 | npm 发布 | 未完成 | 需要 push/PR/CI 通过后再走 release |
@@ -51,8 +51,8 @@
 | `pnpm build:single-binary -- --output-dir <tmp> --json` | 通过 | 生成 `osstack-0.1.0-darwin-arm64`、manifest、`sha256sums.txt`；manifest 明确 `signed=false`、`notarized=false` |
 | `pnpm smoke:bun-single-binary` | 通过 | Bun 1.3.13 编译 672 modules 成约 67MB 单文件；`--version` 输出 `osstack 0.1.0`，`loop doctor` 通过，并校验 manifest/checksum |
 | `pnpm smoke:single-binary-signing` | 通过 | 生成 release candidate，ad-hoc `codesign`，`codesign --verify` 通过；manifest 记录 `signed=true`、`ad_hoc=true`、`notarized=false` |
-| `pnpm smoke:single-binary-release-pack` | 通过 | 生成 `.tar.gz` archive 和 archive manifest，校验 archive sha256，解包后 `osstack --version` 输出 `osstack 0.1.0`，manifest 记录 `github_release_uploaded=false` |
-| `pnpm smoke:single-binary-release-publish` | 通过 | dry-run 验证 GitHub Release upload 输入：archive、archive manifest、sha256sums；不访问 GitHub，不修改 upload 状态 |
+| `pnpm smoke:single-binary-release-pack` | 通过 | 生成 `.tar.gz` archive、archive manifest、SPDX SBOM，校验 archive sha256，解包后 `osstack --version` 输出 `osstack 0.1.0`，manifest 记录 `github_release_uploaded=false` |
+| `pnpm smoke:single-binary-release-publish` | 通过 | dry-run 验证 GitHub Release upload 输入：archive、archive manifest、sha256sums、SPDX SBOM；不访问 GitHub，不修改 upload 状态 |
 | `.github/workflows/ci.yml` single binary step | 已接入，待远端 CI 运行 | macOS runner setup Bun 后执行 `pnpm smoke:single-binary-release-pack` |
 | `.github/workflows/release.yml` single binary artifact step | 已接入，待远端 CI 运行 | 生成 signed ad-hoc archive candidate 并用 `actions/upload-artifact` 上传 14 天留存 artifact |
 | `.github/workflows/single-binary-release.yml` formal upload path | 已接入，待远端 CI 运行 | tag `v*` 或手动触发；dry-run 可验证，非 dry-run 使用 `gh release upload` 上传正式 GitHub Release assets |
@@ -102,20 +102,20 @@
 - 读取 `packages/cli/package.json` 版本号，并通过 `OSSTACK_VERSION` 编译期注入。
 - 使用 Bun `build --compile --env inline` 生成 `osstack-<version>-<platform>-<arch>`。
 - 生成 `sha256sums.txt` 与 `*.manifest.json`。
+- 生成 `*.sbom.spdx.json`，记录 CLI package、binary、release manifest、checksum 文件及 SHA-256。
 - 执行 `osstack --version`，确认版本号不是 fallback `0.0.0`。
 - 执行 `osstack help`，确认产品命令与证据命令暴露。
 - 执行 `osstack loop doctor --workspace <tmp> --json`，确认单文件能在真实 workspace 上运行。
 - 校验 binary SHA-256 与 manifest/checksum 文件一致。
 - 校验 manifest 不声称本地构建已经签名或公证。
 - `pnpm smoke:single-binary-signing` 会对 release candidate 做 ad-hoc codesign，运行 `codesign --verify`，并更新 manifest/checksum。
-- `pnpm smoke:single-binary-release-pack` 会把 binary、manifest、checksum 打成 `.tar.gz`，校验 archive SHA-256，解包后运行 `osstack --version`。
+- `pnpm smoke:single-binary-release-pack` 会把 binary、manifest、checksum、SPDX SBOM 打成 `.tar.gz`，校验 archive SHA-256，解包后运行 `osstack --version`。
 - `pnpm smoke:single-binary-release-publish` 会 dry-run 验证正式 GitHub Release 上传所需资产，不访问 GitHub、不修改 manifest upload 状态。
 - `.github/workflows/single-binary-release.yml` 已支持 tag `v*` 和手动触发；手动 dry-run 只校验资产，非 dry-run 使用 `gh release upload`。
 
 当前产物是本地 release candidate，还不是可公开发布资产。上线前仍需要：
 
 - 固定目标平台矩阵，先以 macOS arm64 为主。
-- 生成 SBOM。
 - 使用 Developer ID 做正式 macOS codesign/notarization。
 - 在干净机器上验证 `--version`、`doctor`、`serve --install --no-load`、`loop doctor`。
 - 在远端执行 single-binary release workflow 并确认 GitHub Release assets 真实可下载；当前本地和 workflow artifact 只是候选包留存。

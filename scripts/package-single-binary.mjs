@@ -22,18 +22,30 @@ const releaseDir = dirname(manifestPath);
 const binaryName = manifest.binary?.name ?? basename(binaryPath);
 const manifestName = basename(manifestPath);
 const checksumName = basename(checksumPath);
+const sbomPath = join(releaseDir, `${binaryName}.sbom.spdx.json`);
+let sbomName;
+try {
+  await stat(sbomPath);
+  sbomName = basename(sbomPath);
+} catch {
+  sbomName = undefined;
+}
 const archiveName = `${binaryName}.tar.gz`;
 const archivePath = join(releaseDir, archiveName);
 const archiveManifestPath = join(releaseDir, `${binaryName}.archive.json`);
+const contents = [
+  binaryName,
+  manifestName,
+  checksumName,
+  ...(sbomName === undefined ? [] : [sbomName]),
+];
 
 run("tar", [
   "-czf",
   archivePath,
   "-C",
   releaseDir,
-  binaryName,
-  manifestName,
-  checksumName,
+  ...contents,
 ], { capture: json });
 
 const archiveBytes = await readFile(archivePath);
@@ -53,11 +65,7 @@ const archiveManifest = {
     size_bytes: archiveStat.size,
     sha256: archiveSha256,
   },
-  contents: [
-    binaryName,
-    manifestName,
-    checksumName,
-  ],
+  contents,
   binary: {
     name: binaryName,
     sha256: manifest.binary?.sha256,
@@ -70,6 +78,14 @@ const archiveManifest = {
     note: "Local archive candidate only. Upload after CI, release approval, and notarization gates pass.",
   },
 };
+if (sbomName !== undefined) {
+  archiveManifest.sbom = {
+    path: sbomPath,
+    name: sbomName,
+    format: "SPDX-2.3",
+    sha256: createHash("sha256").update(await readFile(sbomPath)).digest("hex"),
+  };
+}
 await writeFile(archiveManifestPath, `${JSON.stringify(archiveManifest, null, 2)}\n`);
 
 const summary = {

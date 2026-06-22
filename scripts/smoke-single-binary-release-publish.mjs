@@ -23,6 +23,12 @@ try {
     "-",
     "--json",
   ], { cwd: root, capture: true });
+  run(process.execPath, [
+    "scripts/generate-single-binary-sbom.mjs",
+    "--manifest",
+    build.manifest_path,
+    "--json",
+  ], { cwd: root, capture: true });
   const packed = JSON.parse(run(process.execPath, [
     "scripts/package-single-binary.mjs",
     "--manifest",
@@ -44,8 +50,8 @@ try {
   if (publish.dry_run !== true || publish.github_release_uploaded !== false) {
     throw new Error(`dry-run publish summary must not claim upload: ${JSON.stringify(publish)}`);
   }
-  if (!Array.isArray(publish.assets) || publish.assets.length !== 3) {
-    throw new Error(`dry-run publish must include three assets: ${JSON.stringify(publish.assets)}`);
+  if (!Array.isArray(publish.assets) || publish.assets.length !== 4) {
+    throw new Error(`dry-run publish must include four assets: ${JSON.stringify(publish.assets)}`);
   }
   const archiveManifest = JSON.parse(await readFile(packed.archive_manifest_path, "utf-8"));
   if (archiveManifest.publishing?.github_release_uploaded !== false) {
