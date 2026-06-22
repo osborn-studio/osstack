@@ -908,6 +908,7 @@ async function releaseDoctor(
   }
 
   if (target === "all" || target === "knowledge-cloud") {
+    checks.push(await releaseKnowledgeCloudDeployAssetsCheck(process.cwd()));
     checks.push(await releaseKnowledgeCloudWorkflowCheck());
     checks.push(await releaseCommandCheck({
       id: "fly_auth",
@@ -926,10 +927,11 @@ async function releaseDoctor(
   }
 
   const versionPackagesPrReady = checks.find((check) => check.id === "version_packages_pr")?.status !== "warn";
+  const knowledgeDeployAssetsReady = checks.find((check) => check.id === "knowledge_cloud_deploy_assets")?.status !== "error";
   const knowledgeWorkflowReady = checks.find((check) => check.id === "knowledge_cloud_workflow")?.status !== "error";
   const actionsReady = githubActions.status !== "error";
   const npmPublish = actionsReady && hasSecret(secrets, "NPM_TOKEN") && versionPackagesPrReady;
-  const knowledgeCloudDeploy = actionsReady && hasSecret(secrets, "FLY_API_TOKEN") && knowledgeWorkflowReady;
+  const knowledgeCloudDeploy = actionsReady && hasSecret(secrets, "FLY_API_TOKEN") && knowledgeDeployAssetsReady && knowledgeWorkflowReady;
   const ok = target === "npm" ? npmPublish
     : target === "knowledge-cloud" ? knowledgeCloudDeploy
       : npmPublish && knowledgeCloudDeploy;
@@ -949,6 +951,78 @@ async function releaseDoctor(
     },
     next_steps: releaseDoctorNextSteps({ target, npmPublish, knowledgeCloudDeploy, githubAuth, secrets, checks }),
   };
+}
+
+async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Promise<ReleaseDoctorCheck> {
+  const assetRoot = await findKnowledgeCloudDeployAssetRoot(workspacePath);
+  const requiredAssets = [
+    "Dockerfile.knowledge-cloud",
+    "deploy/knowledge-cloud/fly.toml",
+    "deploy/knowledge-cloud/render.yaml",
+    ".github/workflows/knowledge-cloud-deploy.yml",
+  ];
+  const missing: string[] = [];
+  const violations: string[] = [];
+  const readAsset = async (path: string): Promise<string> => {
+    try {
+      return await readFile(join(assetRoot, path), "utf-8");
+    } catch {
+      missing.push(path);
+      return "";
+    }
+  };
+  const dockerfile = await readAsset("Dockerfile.knowledge-cloud");
+  const fly = await readAsset("deploy/knowledge-cloud/fly.toml");
+  const render = await readAsset("deploy/knowledge-cloud/render.yaml");
+  const workflow = await readAsset(".github/workflows/knowledge-cloud-deploy.yml");
+  const expectAsset = (text: string, needle: string, message: string): void => {
+    if (text !== "" && !text.includes(needle)) violations.push(message);
+  };
+
+  expectAsset(dockerfile, "EXPOSE 8787", "Dockerfile must expose port 8787.");
+  expectAsset(dockerfile, "packages/knowledge-cloud/dist/bin.js", "Dockerfile must start the Knowledge Cloud executable.");
+  expectAsset(fly, 'dockerfile = "Dockerfile.knowledge-cloud"', "Fly config must use Dockerfile.knowledge-cloud.");
+  expectAsset(fly, "internal_port = 8787", "Fly config must route to port 8787.");
+  expectAsset(fly, 'path = "/healthz"', "Fly config must healthcheck /healthz.");
+  expectAsset(fly, 'OSSTACK_KNOWLEDGE_FEEDBACK_LOG = "/data/feedback/feedback.jsonl"', "Fly config must persist feedback JSONL.");
+  expectAsset(render, "dockerfilePath: ./Dockerfile.knowledge-cloud", "Render config must use Dockerfile.knowledge-cloud.");
+  expectAsset(render, "healthCheckPath: /healthz", "Render config must healthcheck /healthz.");
+  expectAsset(render, "OSSTACK_KNOWLEDGE_FEEDBACK_LOG", "Render config must persist feedback JSONL.");
+  expectAsset(workflow, "workflow_dispatch:", "Knowledge Cloud deploy workflow must be manually triggerable.");
+  expectAsset(workflow, "pnpm smoke:knowledge-cloud", "Knowledge Cloud deploy workflow must run service smoke.");
+  expectAsset(workflow, "pnpm smoke:knowledge-cloud:deploy", "Knowledge Cloud deploy workflow must run deploy asset smoke.");
+  expectAsset(workflow, "docker build -f Dockerfile.knowledge-cloud", "Knowledge Cloud deploy workflow must build the Docker image.");
+  expectAsset(workflow, "secrets.FLY_API_TOKEN", "Knowledge Cloud deploy workflow must gate deploy on FLY_API_TOKEN.");
+  expectAsset(workflow, "flyctl deploy --config deploy/knowledge-cloud/fly.toml", "Knowledge Cloud deploy workflow must deploy with the Fly config.");
+
+  const ok = missing.length === 0 && violations.length === 0;
+  return {
+    id: "knowledge_cloud_deploy_assets",
+    status: ok ? "ok" : "error",
+    message: ok
+      ? "Knowledge Cloud deploy assets are present and internally consistent."
+      : "Knowledge Cloud deploy assets are missing or inconsistent.",
+    details: {
+      checked: requiredAssets,
+      missing,
+      violations,
+      root: assetRoot,
+    },
+  };
+}
+
+async function findKnowledgeCloudDeployAssetRoot(startPath: string): Promise<string> {
+  let current = startPath;
+  while (true) {
+    try {
+      await stat(join(current, "Dockerfile.knowledge-cloud"));
+      return current;
+    } catch {
+      const parent = dirname(current);
+      if (parent === current) return startPath;
+      current = parent;
+    }
+  }
 }
 
 async function discoverLatestProofDir(workspacePath: string): Promise<string | undefined> {
@@ -1474,6 +1548,10 @@ function releaseDoctorNextSteps(options: {
       : "it is not currently clean";
     steps.push(`Review Version Packages PR${number}; ${checkContext} for npm publish.`);
   }
+  const knowledgeDeployAssets = options.checks.find((check) => check.id === "knowledge_cloud_deploy_assets");
+  if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeDeployAssets?.status === "error") {
+    steps.push("Restore Knowledge Cloud deploy assets before running deploy=true.");
+  }
   const knowledgeWorkflow = options.checks.find((check) => check.id === "knowledge_cloud_workflow");
   if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeWorkflow?.status === "error") {
     steps.push("Restore the Knowledge Cloud Deploy workflow before running deploy=true.");
@@ -1561,6 +1639,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     || step.startsWith("Refresh GitHub auth")
     || step.startsWith("Fix GitHub Actions")
     || step.startsWith("Fix missing or malformed proof evidence")
+    || step.startsWith("Restore Knowledge Cloud deploy assets")
     || step.startsWith("Restore the Knowledge Cloud Deploy workflow")
     || step.startsWith("Review Version Packages PR")
   );
@@ -1599,7 +1678,10 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
       ]
       : []),
     ...(result.target === "all" || result.target === "knowledge-cloud"
-      ? ["gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false"]
+      ? [
+        "pnpm smoke:knowledge-cloud:deploy",
+        "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false",
+      ]
       : []),
   ];
   const publishCommands = result.target === "knowledge-cloud" ? [] : [

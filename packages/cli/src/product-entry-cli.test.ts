@@ -142,6 +142,7 @@ describe("product entry commands", () => {
       expect.objectContaining({ id: "repository_secrets", status: "ok" }),
       expect.objectContaining({ id: "version_packages_pr", status: "ok" }),
       expect.objectContaining({ id: "npm_auth", status: "ok" }),
+      expect.objectContaining({ id: "knowledge_cloud_deploy_assets", status: "ok" }),
       expect.objectContaining({ id: "knowledge_cloud_workflow", status: "ok" }),
       expect.objectContaining({ id: "fly_auth", status: "ok" }),
     ]));
@@ -479,6 +480,7 @@ describe("product entry commands", () => {
     expect(result.output).toBe(output);
     expect(result.blockers.join("\n")).toContain("FLY_API_TOKEN");
     expect(result.validation_commands).toContain("osstack proof validate <run_id> --proof-dir release/osstack-proof-<run_id> --json");
+    expect(result.validation_commands).toContain("pnpm smoke:knowledge-cloud:deploy");
     expect(result.validation_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false");
     expect(result.deploy_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
     const markdown = await readFile(output, "utf-8");

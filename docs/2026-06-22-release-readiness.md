@@ -139,6 +139,7 @@
   - `deploy/knowledge-cloud/fly.toml`
   - `deploy/knowledge-cloud/render.yaml`
   - `.github/workflows/knowledge-cloud-deploy.yml`
+- `release doctor --target knowledge-cloud` 会静态检查部署资产是否完整：Dockerfile、Fly/Render healthcheck、feedback JSONL 持久化路径、workflow smoke、Docker build、`FLY_API_TOKEN` gate 与 Fly deploy 命令。
 
 仍需上线后补齐：
 
@@ -190,6 +191,7 @@ osstack release doctor --json
 当前 `release doctor` 会额外检查发布列车状态：
 
 - `version_packages_pr`：识别 `changeset-release/main` 的 Version Packages PR，输出 PR number、URL、draft 状态和 `merge_state`。当前真实状态为 PR #5 `CLEAN / MERGEABLE`，CI run `27957659115` 已成功；仍需等 `NPM_TOKEN` 配好后再合并。
+- `knowledge_cloud_deploy_assets`：检查 Knowledge Cloud Dockerfile、Fly/Render 配置和 GitHub Actions deploy workflow 的关键部署约束，失败时会阻止 `knowledge_cloud_deploy` ready。
 - `knowledge_cloud_workflow`：识别 `Knowledge Cloud Deploy` workflow 是否存在、是否 active，以及最近一次验证 run 的状态。当前最近一次 validation run 为 success，但 `deploy=true` 仍需要 `FLY_API_TOKEN`。
 
 也可以输出 Markdown handoff artifact：
@@ -213,6 +215,13 @@ osstack release plan --target all --proof-dir release/osstack-proof-<run_id> --o
 ```
 
 该计划会列出 blockers、validation commands、npm publish commands 和 Knowledge Cloud deploy commands；当传入 `--proof-dir` 时，release readiness 与 proof validate 命令都会绑定同一个证据目录。它不会执行发布动作，只生成上线步骤。
+
+Knowledge Cloud 目标的 validation commands 会包含：
+
+```sh
+pnpm smoke:knowledge-cloud:deploy
+gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=false
+```
 
 ## 10. 推荐上线步骤
 
