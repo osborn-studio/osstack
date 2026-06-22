@@ -119,10 +119,14 @@ export async function importKnowledgeSource(options) {
 }
 export async function syncKnowledgeCache(options) {
     try {
-        const response = await (options.fetchImpl ?? fetch)(new URL("/v1/sync", withTrailingSlash(options.cloudUrl)), {
+        const endpoint = options.privatePacks === true ? "/v1/private-packs" : "/v1/sync";
+        const response = await (options.fetchImpl ?? fetch)(new URL(endpoint, withTrailingSlash(options.cloudUrl)), {
             method: "POST",
             headers: cloudHeaders(options.authToken),
-            body: JSON.stringify({ client: "osstack-cli" }),
+            body: JSON.stringify({
+                client: "osstack-cli",
+                ...(options.tenantId === undefined ? {} : { tenant_id: options.tenantId }),
+            }),
         });
         if (!response.ok)
             throw new Error(`cloud sync failed with HTTP ${response.status}`);

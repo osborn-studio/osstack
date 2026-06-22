@@ -1237,7 +1237,7 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
 
   osstack knowledge list --pack P [--json]
   osstack knowledge login --cloud-url URL [--token T] [--cache-dir P] [--json]
-  osstack knowledge sync [--cloud-url URL] [--cache-dir P] [--json]
+  osstack knowledge sync [--cloud-url URL] [--cache-dir P] [--private] [--tenant T] [--json]
   osstack knowledge search <query> [--pack P] [--cloud-url URL] [--cache-dir P] [--limit N] [--json]
   osstack knowledge inspect <chunk_id> [--pack P] [--cache-dir P] [--json]
   osstack knowledge import P --scope team|project --id ID --name NAME --license L --output P [--taxonomy T] [--json]
@@ -1327,16 +1327,26 @@ Env:
       return 1;
     }
     const authToken = resolveKnowledgeAuthToken(args, config);
+    const privatePacks = args.includes("--private");
+    const tenantId = flagValue(args, "--tenant");
     const evidence = await syncKnowledgeCache({
       cacheDir: knowledgeCacheDir(args),
       cloudUrl,
       ...(authToken === undefined ? {} : { authToken }),
+      ...(privatePacks ? { privatePacks: true } : {}),
+      ...(tenantId === undefined ? {} : { tenantId }),
     });
+    const summary = {
+      ...evidence,
+      private: privatePacks,
+      ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
+    };
     if (args.includes("--json")) {
-      console.log(JSON.stringify(evidence, null, 2));
+      console.log(JSON.stringify(summary, null, 2));
     } else if (evidence.status === "synced") {
       console.log(`synced=${evidence.packs.length}`);
       console.log(`cache=${evidence.cache_dir}`);
+      if (privatePacks) console.log(`private=yes${tenantId === undefined ? "" : ` tenant=${tenantId}`}`);
     } else {
       console.error(`osstack: knowledge sync failed: ${evidence.reason ?? "unknown"}`);
       return 1;

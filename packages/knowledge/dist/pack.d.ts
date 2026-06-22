@@ -16,6 +16,8 @@ export declare function syncKnowledgeCache(options: {
     cacheDir: string;
     cloudUrl: string;
     authToken?: string;
+    privatePacks?: boolean;
+    tenantId?: string;
     fetchImpl?: typeof fetch;
 }): Promise<KnowledgeSyncEvidence>;
 export declare function listCachedKnowledgePacks(cacheDir: string): Promise<KnowledgePack[]>;

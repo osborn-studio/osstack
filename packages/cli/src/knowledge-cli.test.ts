@@ -223,6 +223,77 @@ describe("knowledge CLI", () => {
     }
   });
 
+  it("syncs tenant private cloud packs into cache and searches them locally", async () => {
+    const requests: Array<{ url: string | undefined; body: unknown }> = [];
+    const server = createServer((req, res) => {
+      if (req.method !== "POST" || req.url !== "/v1/private-packs") {
+        res.writeHead(404).end();
+        return;
+      }
+      let body = "";
+      req.on("data", (chunk) => {
+        body += String(chunk);
+      });
+      req.on("end", () => {
+        requests.push({ url: req.url, body: JSON.parse(body) as unknown });
+        res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({
+          packs: [cloudCockpitPack({
+            id: "team/private-cockpit",
+            name: "Team Private Cockpit",
+            license: "Internal",
+            source_kind: "internal",
+            scope: "team",
+          })],
+        }));
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const cacheDir = join(tmp, "private-cache");
+    try {
+      const address = server.address() as AddressInfo;
+      const cloudUrl = `http://127.0.0.1:${address.port}`;
+      const syncExitCode = await main([
+        "knowledge",
+        "sync",
+        "--cloud-url",
+        cloudUrl,
+        "--cache-dir",
+        cacheDir,
+        "--private",
+        "--tenant",
+        "team_alpha",
+        "--json",
+      ]);
+
+      expect(syncExitCode).toBe(0);
+      expect(JSON.parse(logs.join("\n"))).toMatchObject({
+        status: "synced",
+        private: true,
+        tenant_id: "team_alpha",
+        packs: [expect.objectContaining({ id: "team/private-cockpit", source_kind: "internal" })],
+      });
+      expect(requests).toMatchObject([{ url: "/v1/private-packs", body: { tenant_id: "team_alpha" } }]);
+
+      logs = [];
+      const searchExitCode = await main([
+        "knowledge",
+        "search",
+        "cockpit proof",
+        "--cache-dir",
+        cacheDir,
+        "--json",
+      ]);
+
+      expect(searchExitCode).toBe(0);
+      expect(JSON.parse(logs.join("\n"))).toMatchObject({
+        mode: "local",
+        results: [expect.objectContaining({ pack_id: "team/private-cockpit", chunk_id: "chunk-cockpit" })],
+      });
+    } finally {
+      await closeServer(server);
+    }
+  });
+
   it("logs in to Knowledge Cloud and reuses the saved config without printing the token", async () => {
     const requests: Array<{ authorization: string | null }> = [];
     const server = await startKnowledgeServer({ requests });
@@ -348,7 +419,7 @@ async function startKnowledgeServer(options: { requests?: Array<{ authorization:
   return server;
 }
 
-function cloudCockpitPack() {
+function cloudCockpitPack(overrides: Record<string, unknown> = {}) {
   return {
     id: "osstack-cloud-cockpit",
     version: "2026.06.22",
@@ -365,6 +436,7 @@ function cloudCockpitPack() {
       tags: ["cockpit", "proof"],
       source_refs: ["osstack-cloud"],
     }],
+    ...overrides,
   };
 }
 

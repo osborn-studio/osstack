@@ -223,6 +223,41 @@ describe("knowledge packs", () => {
     expect(results[0]).toMatchObject({ pack_id: "osstack-core/loop-engineering" });
   });
 
+  it("syncs tenant private packs from the private-packs endpoint", async () => {
+    const cacheDir = join(tmp, "private-cache");
+    const requests: Array<{ path: string; tenant_id?: string }> = [];
+    const evidence = await syncKnowledgeCache({
+      cacheDir,
+      cloudUrl: "https://knowledge.osstack.ai",
+      privatePacks: true,
+      tenantId: "team_alpha",
+      fetchImpl: async (url, init) => {
+        const body = JSON.parse(String(init?.body ?? "{}")) as { tenant_id?: string };
+        requests.push({
+          path: new URL(String(url)).pathname,
+          ...(body.tenant_id === undefined ? {} : { tenant_id: body.tenant_id }),
+        });
+        return new Response(JSON.stringify({
+          packs: [samplePack({
+            id: "team/private-runbook",
+            name: "Team Private Runbook",
+            source_kind: "internal",
+            scope: "team",
+            license: "Internal",
+          })],
+        }), { status: 200 });
+      },
+    });
+
+    expect(evidence).toMatchObject({
+      status: "synced",
+      packs: [expect.objectContaining({ id: "team/private-runbook", source_kind: "internal" })],
+    });
+    expect(requests).toEqual([{ path: "/v1/private-packs", tenant_id: "team_alpha" }]);
+    const packs = await listCachedKnowledgePacks(cacheDir);
+    expect(packs[0]?.manifest).toMatchObject({ id: "team/private-runbook", scope: "team" });
+  });
+
   it("pins pack versions in the local cache", async () => {
     const cacheDir = join(tmp, "cache");
 

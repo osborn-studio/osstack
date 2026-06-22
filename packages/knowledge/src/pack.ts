@@ -146,13 +146,19 @@ export async function syncKnowledgeCache(options: {
   cacheDir: string;
   cloudUrl: string;
   authToken?: string;
+  privatePacks?: boolean;
+  tenantId?: string;
   fetchImpl?: typeof fetch;
 }): Promise<KnowledgeSyncEvidence> {
   try {
-    const response = await (options.fetchImpl ?? fetch)(new URL("/v1/sync", withTrailingSlash(options.cloudUrl)), {
+    const endpoint = options.privatePacks === true ? "/v1/private-packs" : "/v1/sync";
+    const response = await (options.fetchImpl ?? fetch)(new URL(endpoint, withTrailingSlash(options.cloudUrl)), {
       method: "POST",
       headers: cloudHeaders(options.authToken),
-      body: JSON.stringify({ client: "osstack-cli" }),
+      body: JSON.stringify({
+        client: "osstack-cli",
+        ...(options.tenantId === undefined ? {} : { tenant_id: options.tenantId }),
+      }),
     });
     if (!response.ok) throw new Error(`cloud sync failed with HTTP ${response.status}`);
     const payload = await response.json() as unknown;
