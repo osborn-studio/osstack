@@ -104,6 +104,36 @@ describe("osstack-knowledge-cloud bin", () => {
     });
   });
 
+  it("rejects unsafe tenant ids in tenant-bound private auth", async () => {
+    process.env["OSSTACK_KNOWLEDGE_CLOUD_ONCE"] = "1";
+
+    await expect(main([
+      "--port",
+      "0",
+      "--private-tenant-token",
+      "../team_alpha=kst_alpha_private",
+      "--json",
+    ])).rejects.toThrow(/tenant id is invalid/);
+  });
+
+  it("rejects unsafe tenant ids in tenant token JSON env", async () => {
+    process.env["OSSTACK_KNOWLEDGE_CLOUD_ONCE"] = "1";
+    const originalTenantTokens = process.env["OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON"];
+    process.env["OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON"] = JSON.stringify({
+      "../team_alpha": "kst_alpha_private",
+    });
+
+    try {
+      await expect(main(["--port", "0", "--json"])).rejects.toThrow(/tenant id is invalid/);
+    } finally {
+      if (originalTenantTokens === undefined) {
+        delete process.env["OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON"];
+      } else {
+        process.env["OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON"] = originalTenantTokens;
+      }
+    }
+  });
+
   it("configures a feedback JSONL audit log path", async () => {
     process.env["OSSTACK_KNOWLEDGE_CLOUD_ONCE"] = "1";
     const feedbackLog = join(tmp, "audit", "feedback.jsonl");

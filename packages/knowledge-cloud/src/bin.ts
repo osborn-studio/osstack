@@ -204,7 +204,9 @@ function parsePrivateTenantTokens(values: string[], json?: string): Record<strin
     if (!isRecord(parsed)) throw new Error("OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON must be a JSON object");
     for (const [tenantId, token] of Object.entries(parsed)) {
       if (typeof token === "string" && tenantId.trim().length > 0 && token.trim().length > 0) {
-        tokens[tenantId.trim()] = token.trim();
+        const normalizedTenantId = tenantId.trim();
+        if (!isSafeTenantId(normalizedTenantId)) throw new Error("tenant id is invalid");
+        tokens[normalizedTenantId] = token.trim();
       }
     }
   }
@@ -214,9 +216,14 @@ function parsePrivateTenantTokens(values: string[], json?: string): Record<strin
     const tenantId = value.slice(0, separatorIndex).trim();
     const token = value.slice(separatorIndex + 1).trim();
     if (tenantId.length === 0 || token.length === 0) throw new Error("--private-tenant-token must use tenant=token");
+    if (!isSafeTenantId(tenantId)) throw new Error("tenant id is invalid");
     tokens[tenantId] = token;
   }
   return tokens;
+}
+
+function isSafeTenantId(tenantId: string): boolean {
+  return /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(tenantId);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
