@@ -61,6 +61,32 @@ describe("proof CLI", () => {
     });
   });
 
+  it("includes supplied events JSONL in the proof pack", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const eventsPath = join(tmp, "events.jsonl");
+    await writeFile(eventsPath, `${JSON.stringify({
+      event_id: "evt-proof-1",
+      loop_id: "cli-proof-loop",
+      type: "loop.verify.done",
+      seq: 1,
+      created_at: 1782090000000,
+      payload: {
+        task_id: "proof-task",
+        pass: true,
+        score: 1,
+        reviewer_agent_id: "local-verifier",
+        summary: "Verifier passed.",
+      },
+    })}\n`);
+
+    const exitCode = await main(["proof", "--workspace", tmp, "--events", eventsPath]);
+
+    expect(exitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    await expect(readFile(join(proofDir, "events.jsonl"), "utf-8")).resolves.toContain("loop.verify.done");
+    await expect(readFile(join(proofDir, "report.md"), "utf-8")).resolves.toContain("## Verify Results");
+  });
+
   it("fails when state is missing", async () => {
     const exitCode = await main(["proof", "--workspace", tmp]);
 

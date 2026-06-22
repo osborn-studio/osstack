@@ -562,11 +562,12 @@ async function handleReportCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack report — evidence-oriented loop report
 
-  osstack report [--workspace P] [--state P]
+  osstack report [--workspace P] [--state P] [--events P]
 
 Options:
   --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
   --state P           JSON state path (default: LOOP-STATE.json)
+  --events P          Optional loop events JSONL path for timeline evidence
 `);
     return 0;
   }
@@ -578,7 +579,8 @@ Options:
     console.error(`osstack: no loop state found at ${stateFilePath}`);
     return 1;
   }
-  console.log(renderLoopStateReportFromState(state));
+  const events = await readLoopEventsJsonlFlag(args, workspacePath);
+  console.log(renderReportMarkdownForArtifacts(state, events));
   return 0;
 }
 
@@ -629,11 +631,12 @@ async function handleProofCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack proof — local evidence proof pack
 
-  osstack proof [--workspace P] [--state P] [--output-dir P] [--json]
+  osstack proof [--workspace P] [--state P] [--events P] [--output-dir P] [--json]
 
 Options:
   --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
   --state P           JSON state path (default: LOOP-STATE.json)
+  --events P          Optional loop events JSONL path to include in the pack
   --output-dir P      Directory for proof pack folders (default: <workspace>/release)
   --json              Print machine-readable summary
 `);
@@ -649,7 +652,8 @@ Options:
   }
 
   const outputDir = resolveLoopPath(flagValue(args, "--output-dir") ?? "release", workspacePath);
-  const proof = await writeProofPack(state, outputDir);
+  const events = await readLoopEventsJsonlFlag(args, workspacePath);
+  const proof = await writeProofPack(state, outputDir, events);
 
   const summary = {
     loop_id: state.loop_id,
@@ -789,6 +793,28 @@ function renderReportMarkdownForArtifacts(state: LoopState, events: LoopEvent[])
   return events.length === 0
     ? renderLoopStateReportFromState(state)
     : renderLoopStateReportFromStateAndEvents(state, events);
+}
+
+async function readLoopEventsJsonlFlag(args: string[], workspacePath: string): Promise<LoopEvent[]> {
+  const eventsPath = flagValue(args, "--events");
+  if (eventsPath === undefined) return [];
+  return readLoopEventsJsonl(resolveLoopPath(eventsPath, workspacePath));
+}
+
+async function readLoopEventsJsonl(path: string): Promise<LoopEvent[]> {
+  const raw = await readFile(path, "utf-8");
+  const parsed: unknown[] = [];
+  for (const [index, line] of raw.split(/\r?\n/).entries()) {
+    const trimmed = line.trim();
+    if (trimmed === "") continue;
+    try {
+      parsed.push(JSON.parse(trimmed) as unknown);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`invalid events JSONL at ${path}:${index + 1}: ${message}`);
+    }
+  }
+  return normalizeLoopEvents(parsed);
 }
 
 function normalizeLoopEvents(events: unknown[] | undefined): LoopEvent[] {

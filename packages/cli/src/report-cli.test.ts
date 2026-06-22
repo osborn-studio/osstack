@@ -51,6 +51,50 @@ describe("report CLI", () => {
     expect(logs.join("\n")).toContain("# Osstack Loop Report - cli-report-loop");
   });
 
+  it("renders event-rich sections from an events JSONL file", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const eventsPath = join(tmp, "events.jsonl");
+    await writeFile(eventsPath, [
+      JSON.stringify({
+        event_id: "evt-1",
+        loop_id: "cli-report-loop",
+        type: "loop.plan.done",
+        seq: 1,
+        created_at: 1782090000000,
+        payload: {
+          task_id: "cli-report-task",
+          agent_id: "codex-cli",
+          routing_reason: "matched code.test capability",
+        },
+      }),
+      JSON.stringify({
+        event_id: "evt-2",
+        loop_id: "cli-report-loop",
+        type: "loop.verify.done",
+        seq: 2,
+        created_at: 1782090001000,
+        payload: {
+          task_id: "cli-report-task",
+          pass: true,
+          score: 1,
+          reviewer_agent_id: "local-verifier",
+          summary: "Verifier passed.",
+        },
+      }),
+    ].join("\n") + "\n");
+
+    const exitCode = await main(["report", "--workspace", tmp, "--events", eventsPath]);
+
+    expect(exitCode).toBe(0);
+    const output = logs.join("\n");
+    expect(output).toContain("## Policy Decisions");
+    expect(output).toContain("cli-report-task | codex-cli | matched code.test capability");
+    expect(output).toContain("## Verify Results");
+    expect(output).toContain("cli-report-task | pass | 1 | local-verifier | Verifier passed.");
+    expect(output).toContain("## Events Timeline");
+    expect(output).toContain("loop.verify.done");
+  });
+
   it("fails when the state file is missing", async () => {
     const exitCode = await main(["report", "--workspace", tmp]);
 
