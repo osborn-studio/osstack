@@ -792,6 +792,7 @@ interface ReleaseDoctorOptions {
 type ProofFileIntegrityIssueCode =
   | "manifest_malformed"
   | "artifact_malformed"
+  | "duplicate_artifact_path"
   | "path_outside_proof_dir"
   | "missing_artifact"
   | "bytes_mismatch"
@@ -1461,6 +1462,10 @@ async function validateProofFileIntegrity(
         path: typeof artifactPath === "string" && artifactPath.length > 0 ? artifactPath : "<unknown>",
         code: "artifact_malformed",
       });
+      continue;
+    }
+    if (manifestShaByPath.has(artifactPath)) {
+      issues.push({ path: artifactPath, code: "duplicate_artifact_path" });
       continue;
     }
     manifestShaByPath.set(artifactPath, expectedSha256);
