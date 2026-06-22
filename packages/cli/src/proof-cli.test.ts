@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { readFile, rm, stat, writeFile } from "node:fs/promises";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -267,10 +267,18 @@ describe("proof CLI", () => {
     const exitCode = await main(["proof", "--workspace", tmp, "--json"]);
 
     expect(exitCode).toBe(0);
-    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+    const summary = JSON.parse(logs.join("\n")) as { loop_id: string; proof_dir: string; proof_zip: string };
+    expect(summary).toMatchObject({
       loop_id: "cli-proof-loop",
       proof_dir: join(tmp, "release", "osstack-proof-cli-proof-loop"),
+      proof_zip: join(tmp, "release", "osstack-proof-cli-proof-loop.zip"),
     });
+    const signature = await readFile(summary.proof_zip);
+    expect(signature.subarray(0, 4).toString("hex")).toBe("504b0304");
+    await expect(stat(summary.proof_zip)).resolves.toMatchObject({ size: expect.any(Number) });
+    const listing = execFileSync("unzip", ["-Z1", summary.proof_zip], { encoding: "utf-8" });
+    expect(listing).toContain("manifest.json");
+    expect(listing).toContain("report.md");
   });
 
   it("includes supplied events JSONL in the proof pack", async () => {

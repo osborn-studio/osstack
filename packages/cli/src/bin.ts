@@ -1847,6 +1847,7 @@ Options:
   const summary = {
     loop_id: state.loop_id,
     proof_dir: proof.proof_dir,
+    proof_zip: proof.proof_zip,
     manifest: proof.proof_manifest,
     artifact_count: proof.artifact_count,
   };
@@ -1854,6 +1855,7 @@ Options:
     console.log(JSON.stringify(summary, null, 2));
   } else {
     console.log(`proof=${summary.proof_dir}`);
+    console.log(`proof_zip=${summary.proof_zip}`);
     console.log(`manifest=${summary.manifest}`);
     console.log(`artifacts=${summary.artifact_count}`);
   }
@@ -2317,6 +2319,7 @@ async function writeRequestedLoopArtifacts(
     const knowledge = await createKnowledgeProofEvidence(args, state.loop_id, state.knowledge);
     const proof = await writeProofPack(state, join(workspacePath, "release"), events, state.loop_id, governance, knowledge, [], workspacePath);
     artifacts.proof_dir = proof.proof_dir;
+    artifacts.proof_zip = proof.proof_zip;
     artifacts.proof_manifest = proof.proof_manifest;
   }
 
@@ -2334,6 +2337,7 @@ async function writeProofPack(
   workspacePath?: string,
 ): Promise<{
   proof_dir: string;
+  proof_zip: string;
   proof_manifest: string;
   artifact_count: number;
 }> {
@@ -2418,8 +2422,11 @@ async function writeProofPack(
   const manifestContent = `${JSON.stringify(manifest, null, 2)}\n`;
   const proofManifest = join(proofDir, "manifest.json");
   await writeFile(proofManifest, manifestContent, "utf-8");
+  const proofZip = `${proofDir}.zip`;
+  await writeProofZip(proofDir, proofZip, [...manifestArtifacts.map((artifact) => artifact.path), "manifest.json"]);
   return {
     proof_dir: proofDir,
+    proof_zip: proofZip,
     proof_manifest: proofManifest,
     artifact_count: manifestArtifacts.length + 1,
   };
@@ -2436,6 +2443,85 @@ function proofAgentIds(state: LoopState): string[] {
 function renderSha256Sums(artifacts: Array<{ path: string; sha256: string }>): string {
   return artifacts.map((artifact) => `${artifact.sha256}  ${artifact.path}`).join("\n") + "\n";
 }
+
+async function writeProofZip(proofDir: string, zipPath: string, paths: string[]): Promise<void> {
+  const entries: Array<{ path: string; data: Buffer; crc32: number; offset: number }> = [];
+  const chunks: Buffer[] = [];
+  let offset = 0;
+  for (const path of paths) {
+    const data = await readFile(join(proofDir, path));
+    const name = Buffer.from(path.replaceAll("\\", "/"), "utf-8");
+    const crc = crc32(data);
+    const header = Buffer.alloc(30);
+    header.writeUInt32LE(0x04034b50, 0);
+    header.writeUInt16LE(20, 4);
+    header.writeUInt16LE(0, 6);
+    header.writeUInt16LE(0, 8);
+    header.writeUInt16LE(0, 10);
+    header.writeUInt16LE(0, 12);
+    header.writeUInt32LE(crc, 14);
+    header.writeUInt32LE(data.length, 18);
+    header.writeUInt32LE(data.length, 22);
+    header.writeUInt16LE(name.length, 26);
+    header.writeUInt16LE(0, 28);
+    chunks.push(header, name, data);
+    entries.push({ path, data, crc32: crc, offset });
+    offset += header.length + name.length + data.length;
+  }
+
+  const centralDirectoryOffset = offset;
+  for (const entry of entries) {
+    const name = Buffer.from(entry.path.replaceAll("\\", "/"), "utf-8");
+    const header = Buffer.alloc(46);
+    header.writeUInt32LE(0x02014b50, 0);
+    header.writeUInt16LE(20, 4);
+    header.writeUInt16LE(20, 6);
+    header.writeUInt16LE(0, 8);
+    header.writeUInt16LE(0, 10);
+    header.writeUInt16LE(0, 12);
+    header.writeUInt16LE(0, 14);
+    header.writeUInt32LE(entry.crc32, 16);
+    header.writeUInt32LE(entry.data.length, 20);
+    header.writeUInt32LE(entry.data.length, 24);
+    header.writeUInt16LE(name.length, 28);
+    header.writeUInt16LE(0, 30);
+    header.writeUInt16LE(0, 32);
+    header.writeUInt16LE(0, 34);
+    header.writeUInt16LE(0, 36);
+    header.writeUInt32LE(0, 38);
+    header.writeUInt32LE(entry.offset, 42);
+    chunks.push(header, name);
+    offset += header.length + name.length;
+  }
+  const centralDirectorySize = offset - centralDirectoryOffset;
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(0, 4);
+  end.writeUInt16LE(0, 6);
+  end.writeUInt16LE(entries.length, 8);
+  end.writeUInt16LE(entries.length, 10);
+  end.writeUInt32LE(centralDirectorySize, 12);
+  end.writeUInt32LE(centralDirectoryOffset, 16);
+  end.writeUInt16LE(0, 20);
+  chunks.push(end);
+  await writeFile(zipPath, Buffer.concat(chunks));
+}
+
+function crc32(data: Buffer): number {
+  let crc = 0xffffffff;
+  for (const byte of data) {
+    crc = CRC32_TABLE[(crc ^ byte) & 0xff]! ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+const CRC32_TABLE = Array.from({ length: 256 }, (_, index) => {
+  let crc = index;
+  for (let bit = 0; bit < 8; bit++) {
+    crc = (crc & 1) === 1 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1;
+  }
+  return crc >>> 0;
+});
 
 async function createGitDiffProofArtifact(workspacePath: string): Promise<{ path: string; content: string }> {
   try {
@@ -3970,6 +4056,7 @@ interface LoopEvidenceArtifacts {
   scorecard_markdown?: string;
   scorecard_html?: string;
   proof_dir?: string;
+  proof_zip?: string;
   proof_manifest?: string;
 }
 
@@ -4096,6 +4183,7 @@ function printLoopRun(result: LoopRunSummary, json: boolean): void {
     if (result.artifacts.scorecard_markdown !== undefined) console.log(`scorecard_markdown=${result.artifacts.scorecard_markdown}`);
     if (result.artifacts.scorecard_html !== undefined) console.log(`scorecard_html=${result.artifacts.scorecard_html}`);
     if (result.artifacts.proof_dir !== undefined) console.log(`proof=${result.artifacts.proof_dir}`);
+    if (result.artifacts.proof_zip !== undefined) console.log(`proof_zip=${result.artifacts.proof_zip}`);
     if (result.artifacts.proof_manifest !== undefined) console.log(`proof_manifest=${result.artifacts.proof_manifest}`);
   }
   if (result.cycles !== undefined) {
