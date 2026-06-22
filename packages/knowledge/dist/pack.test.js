@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtempSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -332,7 +333,16 @@ describe("knowledge packs", () => {
                 scope: "official",
                 license: "Osstack-native",
                 last_reviewed_at: "2026-06-22T00:00:00.000Z",
+                source_provenance: [expect.objectContaining({
+                        license: "Osstack-native",
+                        scope: "official",
+                        imported_at: "2026-06-22T00:00:00.000Z",
+                    })],
             });
+            for (const source of pack.manifest.source_provenance ?? []) {
+                const sourceBytes = await readFile(join(root, source.path));
+                expect(createHash("sha256").update(sourceBytes).digest("hex")).toBe(source.sha256);
+            }
             expect(pack.manifest.quality_score).toBeGreaterThanOrEqual(89);
         }
         expect(fixtures).toHaveLength(30);

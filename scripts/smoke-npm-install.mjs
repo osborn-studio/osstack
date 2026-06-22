@@ -26,10 +26,58 @@ try {
   const osstackBin = join(prefix, "bin", "osstack");
   run(osstackBin, ["--version"], { cwd: root });
   await mkdir(workspace, { recursive: true });
+
+  const productDoctor = run(osstackBin, ["doctor", "--workspace", workspace, "--json"], { cwd: root, capture: true });
+  const productDoctorParsed = JSON.parse(productDoctor.stdout);
+  if (productDoctorParsed.ok !== true || productDoctorParsed.loop?.ok !== true) {
+    throw new Error(`product doctor did not pass after npm install: ${productDoctor.stdout}`);
+  }
+
   const doctor = run(osstackBin, ["loop", "doctor", "--workspace", workspace, "--json"], { cwd: root, capture: true });
   const parsed = JSON.parse(doctor.stdout);
   if (parsed.ok !== true) {
     throw new Error(`loop doctor did not pass after npm install: ${doctor.stdout}`);
+  }
+
+  const loopHelp = run(osstackBin, ["loop", "--help"], { cwd: root, capture: true });
+  assertIncludes(loopHelp.stdout, "osstack loop run [options]", "loop help must expose loop run");
+  assertIncludes(loopHelp.stdout, "--proof", "loop help must expose proof generation");
+  assertIncludes(loopHelp.stdout, "--knowledge M", "loop help must expose knowledge mode");
+
+  const examples = run(osstackBin, ["examples", "--json"], { cwd: root, capture: true });
+  const examplesParsed = JSON.parse(examples.stdout);
+  if (!Array.isArray(examplesParsed.examples) || examplesParsed.examples.length < 6) {
+    throw new Error(`examples smoke expected at least 6 workflows: ${examples.stdout}`);
+  }
+  if (!examples.stdout.includes("osstack deliver") || !examples.stdout.includes("--proof")) {
+    throw new Error(`examples smoke did not expose deliver/proof paths: ${examples.stdout}`);
+  }
+
+  const guide = run(osstackBin, ["guide"], { cwd: root, capture: true });
+  assertIncludes(guide.stdout, "osstack doctor --workspace .", "guide must include product doctor");
+  assertIncludes(guide.stdout, "osstack proof view", "guide must include proof view");
+
+  const knowledgeEval = run(osstackBin, [
+    "knowledge",
+    "eval",
+    "--official",
+    "--fixtures",
+    join(root, "knowledge-evals", "retrieval", "osstack-core.json"),
+    "--json",
+  ], { cwd: root, capture: true });
+  const knowledgeEvalParsed = JSON.parse(knowledgeEval.stdout);
+  if (knowledgeEvalParsed.total !== 30 || knowledgeEvalParsed.passed !== 30 || knowledgeEvalParsed.failed !== 0) {
+    throw new Error(`official knowledge retrieval eval did not pass 30/30: ${knowledgeEval.stdout}`);
+  }
+
+  const knowledgeSources = run(osstackBin, ["knowledge", "sources", "--internal", "--official", "--json"], { cwd: root, capture: true });
+  const knowledgeSourcesParsed = JSON.parse(knowledgeSources.stdout);
+  if (
+    !Array.isArray(knowledgeSourcesParsed.packs)
+    || knowledgeSourcesParsed.packs.length !== 6
+    || !knowledgeSourcesParsed.packs.every((pack) => Array.isArray(pack.sources) && pack.sources.length > 0)
+  ) {
+    throw new Error(`official knowledge sources did not expose provenance for all packs: ${knowledgeSources.stdout}`);
   }
 
   const knowledgeCloudBin = join(prefix, "bin", "osstack-knowledge-cloud");
@@ -62,6 +110,16 @@ try {
     tarballs: tarballs.length,
     prefix,
     workspace,
+    product_doctor: productDoctorParsed.ok,
+    examples: examplesParsed.examples.length,
+    knowledge_eval: {
+      total: knowledgeEvalParsed.total,
+      passed: knowledgeEvalParsed.passed,
+      failed: knowledgeEvalParsed.failed,
+    },
+    knowledge_sources: {
+      packs: knowledgeSourcesParsed.packs.length,
+    },
     knowledge_cloud: {
       packs: knowledgeParsed.packs,
       private_packs: knowledgeParsed.private_packs,
@@ -90,4 +148,10 @@ function run(command, args, options = {}) {
     stdout: result.stdout ?? "",
     stderr: result.stderr ?? "",
   };
+}
+
+function assertIncludes(text, expected, message) {
+  if (!text.includes(expected)) {
+    throw new Error(`${message}: missing ${JSON.stringify(expected)} in ${JSON.stringify(text)}`);
+  }
 }
