@@ -379,7 +379,7 @@
 - 本地与云端共用的 `searchKnowledgePacks` 已从简单词频排序升级为 BM25-style 排序：考虑 query term 文档频率、chunk 长度归一化和 pack quality score，并覆盖“稀有词完整命中优先于重复通用词”的回归测试。
 - CLI 支持 cloud login/sync/search/import/ingest/pin/feedback/sources。
 - 本地 smoke 验证 official/private packs、sync、search、feedback。
-- deploy assets 存在：Dockerfile、Fly、Render、GitHub Actions；`release doctor --target knowledge-cloud` 已接入 `knowledge_cloud_deploy_assets` 静态 preflight，检查 Dockerfile、Fly/Render healthcheck、feedback JSONL 持久化路径、workflow smoke、Docker build、`FLY_API_TOKEN` gate 与 Fly deploy 命令；传入 `--cloud-url <url>` 时还会访问 `<url>/healthz` 并要求 HTTP 2xx、`ok=true`、`service=osstack-knowledge-cloud`，同时用默认 `proof pack checksum` 查询 `<url>/v1/search` 并要求至少 1 条结果；`release plan` 的 Knowledge Cloud validation commands 也会列出 `pnpm smoke:knowledge-cloud:deploy`。
+- deploy assets 存在：Dockerfile、Fly、Render、GitHub Actions；`release doctor --target knowledge-cloud` 已接入 `knowledge_cloud_deploy_assets` 静态 preflight，检查 Dockerfile、Fly/Render healthcheck、feedback JSONL 持久化路径、published-pack storage 路径、workflow smoke、Docker build、`FLY_API_TOKEN` gate 与 Fly deploy 命令；传入 `--cloud-url <url>` 时还会访问 `<url>/healthz` 并要求 HTTP 2xx、`ok=true`、`service=osstack-knowledge-cloud`，同时用默认 `proof pack checksum` 查询 `<url>/v1/search` 并要求至少 1 条结果；`release plan` 的 Knowledge Cloud validation commands 也会列出 `pnpm smoke:knowledge-cloud:deploy`。
 
 未完成：
 

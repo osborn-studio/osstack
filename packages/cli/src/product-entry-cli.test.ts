@@ -138,7 +138,7 @@ describe("product entry commands", () => {
       ok: boolean;
       target: string;
       readiness: { npm_publish: boolean; knowledge_cloud_deploy: boolean };
-      checks: Array<{ id: string; status: string; details?: { missing?: string[] } }>;
+      checks: Array<{ id: string; status: string; details?: { missing?: string[]; published_pack_dir?: string } }>;
       next_steps: string[];
     };
     expect(result).toMatchObject({
@@ -162,6 +162,12 @@ describe("product entry commands", () => {
       expect.objectContaining({ id: "single_binary_release_assets", status: "ok" }),
       expect.objectContaining({ id: "single_binary_workflow", status: "ok" }),
     ]));
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "knowledge_cloud_deploy_assets",
+      details: expect.objectContaining({
+        published_pack_dir: "/data/published-packs",
+      }),
+    }));
     expect(result.next_steps.join("\n")).toContain("NPM publish path is ready");
     expect(result.next_steps.join("\n")).toContain("Knowledge Cloud deploy=true is ready");
   });
