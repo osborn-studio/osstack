@@ -4352,7 +4352,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     return 0;
   }
 
-  if (sub === "help") {
+  if (sub === "help" || sub === "--help" || sub === "-h") {
     console.log(`osstack loop — local Loop Engineering runner
 
   osstack loop run [options]       Run one discover→execute→verify→iterate cycle

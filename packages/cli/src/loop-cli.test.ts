@@ -41,6 +41,20 @@ afterEach(async () => {
 });
 
 describe("loop CLI", () => {
+  it("prints loop help from --help", async () => {
+    const exitCode = await main(["loop", "--help"]);
+
+    expect(exitCode).toBe(0);
+    const output = logs.join("\n");
+    expect(output).toContain("osstack loop — local Loop Engineering runner");
+    expect(output).toContain("osstack loop run [options]");
+    expect(output).toContain("osstack loop doctor [options]");
+    expect(output).toContain("--proof");
+    expect(output).toContain("--knowledge M");
+    expect(output).toContain("--govern [M]");
+    expect(errors).toEqual([]);
+  });
+
   it("runs a queued task and reads status from --workspace", async () => {
     await mkdir(join(tmp, "tasks"));
     await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
