@@ -123,9 +123,9 @@
 - 支持 `--loop` artifact id，并校验 `LOOP-STATE.json` 的 loop_id，避免误读证据。
 - proof pack 包含 manifest、report、scorecard、loop state、governance/knowledge results、sha256sums。
 - `proof view` 支持 audience-oriented evidence views。
-- `osstack proof validate <run_id>` 支持对 proof pack 做机器可读结构门禁，默认检查 proof-core，也可通过 `--pack` 或 `--audience` 复用 compliance/proof-view 控制项；同时会读取 manifest artifact 清单，拒绝重复 artifact path、缺失文件、bytes 不一致、sha256 不一致、`sha256sums.txt` 与 manifest 不一致和试图跳出 proof 目录的 artifact path。
+- `osstack proof validate <run_id>` 支持对 proof pack 做机器可读结构门禁，默认检查 proof-core，也可通过 `--pack` 或 `--audience` 复用 compliance/proof-view 控制项；同时会读取 manifest artifact 清单，拒绝重复 artifact path、缺失文件、bytes 不一致、sha256 不一致、`sha256sums.txt` 与 manifest 不一致和试图跳出 proof 目录的 artifact path；当 sibling proof zip 存在时，还会校验 zip 条目与 manifest artifacts + `manifest.json` 一致。
 - `osstack release plan --workspace <workspace>` 会复用 release doctor 的 workspace proof 检查；也支持 `--proof-dir <proof_dir>` 固定某个已审核 proof pack，并把 release doctor / proof validate validation commands 绑定到同一个证据目录，避免上线时误读自动发现的旧证据。
-- `osstack release doctor --proof-dir <proof_dir>` 会执行 proof-core 与 manifest artifact 文件完整性校验；未传 `--proof-dir` 时会从 `--workspace`/当前目录的 `release/osstack-proof-*` 自动发现最新 proof dir。重复 artifact path、缺失、malformed、hash/bytes 不一致、checksum inventory 不一致或越界 artifact path 会输出 `proof_validation` error，让 release readiness 失败，并在 next steps 中区分“修复缺失/格式错误 evidence”和“重新生成或修复 proof pack artifacts”。
+- `osstack release doctor --proof-dir <proof_dir>` 会执行 proof-core、manifest artifact 文件完整性和可选 proof zip 条目完整性校验；未传 `--proof-dir` 时会从 `--workspace`/当前目录的 `release/osstack-proof-*` 自动发现最新 proof dir。重复 artifact path、缺失、malformed、hash/bytes 不一致、checksum inventory 不一致、zip 条目不一致或越界 artifact path 会输出 `proof_validation` error，让 release readiness 失败，并在 next steps 中区分“修复缺失/格式错误 evidence”和“重新生成或修复 proof pack artifacts”。
 - npm install smoke 会生成 scorecard markdown、proof manifest、proof zip。
 
 未完成/需增强：
@@ -350,7 +350,7 @@
 
 - `osstack proof view <run_id> --audience engineer|manager|auditor|customer` 存在。
 - 视图基于已有 proof evidence，不生成假证据。
-- proof/compliance 的结构级证据检查已抽成 `validateProofEvidence`，可复用地输出 `present` / `missing` 控制项，并由 `osstack proof validate` 作为上线前门禁使用；CLI 层还会对 manifest artifact 执行磁盘完整性校验，确认 artifact path 唯一、文件存在、byte count、sha256、`sha256sums.txt` inventory 和路径边界。
+- proof/compliance 的结构级证据检查已抽成 `validateProofEvidence`，可复用地输出 `present` / `missing` 控制项，并由 `osstack proof validate` 作为上线前门禁使用；CLI 层还会对 manifest artifact 执行磁盘完整性校验，确认 artifact path 唯一、文件存在、byte count、sha256、`sha256sums.txt` inventory、proof zip 条目和路径边界。
 
 需增强：
 

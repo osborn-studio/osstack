@@ -815,6 +815,24 @@ interface ProofFileIntegrityValidation {
   issues: ProofFileIntegrityIssue[];
 }
 
+type ProofArchiveIntegrityIssueCode =
+  | "proof_zip_unreadable"
+  | "proof_zip_missing_entry"
+  | "proof_zip_extra_entry"
+  | "proof_zip_duplicate_entry";
+
+interface ProofArchiveIntegrityIssue {
+  path: string;
+  code: ProofArchiveIntegrityIssueCode;
+}
+
+interface ProofArchiveIntegrityValidation {
+  ok: boolean;
+  checked: boolean;
+  proof_zip: string;
+  issues: ProofArchiveIntegrityIssue[];
+}
+
 const SINGLE_BINARY_RELEASE_SECRETS = [
   "APPLE_ID",
   "APPLE_TEAM_ID",
@@ -1400,13 +1418,14 @@ async function releaseProofValidationCheck(
     const evidence = await loadProofEvidence(proofDir);
     const validation = validateProofEvidence({ evidence });
     const fileIntegrity = await validateProofFileIntegrity(proofDir, evidence.manifest);
-    const ok = validation.ok && fileIntegrity.ok;
+    const archiveIntegrity = await validateProofArchiveIntegrity(proofDir, evidence.manifest);
+    const ok = validation.ok && fileIntegrity.ok && archiveIntegrity.ok;
     return {
       id: "proof_validation",
       status: ok ? "ok" : "error",
       message: ok
-        ? "Proof-core evidence validation passed, including artifact file integrity."
-        : fileIntegrity.ok
+        ? "Proof-core evidence validation passed, including artifact file and archive integrity."
+        : fileIntegrity.ok && archiveIntegrity.ok
           ? "Proof-core evidence validation found missing or malformed evidence."
           : "Proof-core artifact integrity validation found missing, moved, or modified files.",
       details: {
@@ -1416,6 +1435,7 @@ async function releaseProofValidationCheck(
         present: validation.present,
         missing: validation.missing,
         file_integrity: fileIntegrity,
+        archive_integrity: archiveIntegrity,
       },
     };
   } catch (error) {
@@ -1553,6 +1573,61 @@ function validateProofSha256Sums(
     }
   }
   return issues;
+}
+
+async function validateProofArchiveIntegrity(
+  proofDir: string,
+  manifestRaw: unknown,
+): Promise<ProofArchiveIntegrityValidation> {
+  const proofZip = `${proofDir}.zip`;
+  try {
+    await stat(proofZip);
+  } catch {
+    return { ok: true, checked: false, proof_zip: proofZip, issues: [] };
+  }
+  const expectedPaths = proofArchiveExpectedPaths(manifestRaw);
+  if (expectedPaths === undefined) {
+    return { ok: true, checked: false, proof_zip: proofZip, issues: [] };
+  }
+  let listing: string;
+  try {
+    const { stdout } = await execFileAsync("unzip", ["-Z1", proofZip], { timeout: 10_000 });
+    listing = stdout;
+  } catch {
+    return {
+      ok: false,
+      checked: true,
+      proof_zip: proofZip,
+      issues: [{ path: proofZip, code: "proof_zip_unreadable" }],
+    };
+  }
+
+  const issues: ProofArchiveIntegrityIssue[] = [];
+  const actualPaths = new Set<string>();
+  for (const path of listing.split(/\r?\n/).filter((line) => line.length > 0)) {
+    if (actualPaths.has(path)) {
+      issues.push({ path, code: "proof_zip_duplicate_entry" });
+      continue;
+    }
+    actualPaths.add(path);
+  }
+  for (const path of expectedPaths) {
+    if (!actualPaths.has(path)) issues.push({ path, code: "proof_zip_missing_entry" });
+  }
+  for (const path of actualPaths) {
+    if (!expectedPaths.has(path)) issues.push({ path, code: "proof_zip_extra_entry" });
+  }
+  return { ok: issues.length === 0, checked: true, proof_zip: proofZip, issues };
+}
+
+function proofArchiveExpectedPaths(manifestRaw: unknown): Set<string> | undefined {
+  if (!isRecord(manifestRaw) || !Array.isArray(manifestRaw["artifacts"])) return undefined;
+  const paths = new Set<string>(["manifest.json"]);
+  for (const artifact of manifestRaw["artifacts"]) {
+    if (!isRecord(artifact) || typeof artifact["path"] !== "string" || artifact["path"].length === 0) return undefined;
+    paths.add(artifact["path"]);
+  }
+  return paths;
 }
 
 async function releaseVersionPackagesPrCheck(): Promise<ReleaseDoctorCheck> {
@@ -2191,7 +2266,11 @@ function releaseDoctorNextSteps(options: {
 
 function releaseProofValidationNextStep(check: ReleaseDoctorCheck): string {
   const fileIntegrity = check.details?.["file_integrity"];
-  if (isRecord(fileIntegrity) && fileIntegrity["ok"] === false) {
+  const archiveIntegrity = check.details?.["archive_integrity"];
+  if (
+    (isRecord(fileIntegrity) && fileIntegrity["ok"] === false)
+    || (isRecord(archiveIntegrity) && archiveIntegrity["ok"] === false)
+  ) {
     return "Regenerate or repair proof pack artifacts before publishing or deploying.";
   }
   return "Fix missing or malformed proof evidence before publishing or deploying.";
@@ -4065,12 +4144,14 @@ async function handleProofValidateCommand(args: string[]): Promise<number> {
       language,
     });
     const fileIntegrity = await validateProofFileIntegrity(proofDir, evidence.manifest);
-    const ok = validation.ok && fileIntegrity.ok;
+    const archiveIntegrity = await validateProofArchiveIntegrity(proofDir, evidence.manifest);
+    const ok = validation.ok && fileIntegrity.ok && archiveIntegrity.ok;
     const summary = {
       run_id: runId,
       proof_dir: proofDir,
       ...validation,
       file_integrity: fileIntegrity,
+      archive_integrity: archiveIntegrity,
       ok,
     };
     if (args.includes("--json")) {
@@ -4081,11 +4162,15 @@ async function handleProofValidateCommand(args: string[]): Promise<number> {
       console.log(`present=${validation.present.length}`);
       console.log(`missing=${validation.missing.length}`);
       console.log(`file_integrity=${fileIntegrity.ok ? "pass" : "fail"}`);
+      console.log(`archive_integrity=${archiveIntegrity.ok ? "pass" : "fail"}`);
       for (const missing of validation.missing) {
         console.log(`missing ${missing.control_id} ${missing.evidence_path}`);
       }
       for (const issue of fileIntegrity.issues) {
         console.log(`integrity ${issue.code} ${issue.path}`);
+      }
+      for (const issue of archiveIntegrity.issues) {
+        console.log(`archive ${issue.code} ${issue.path}`);
       }
     }
     return ok ? 0 : 1;

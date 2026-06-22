@@ -439,6 +439,35 @@ describe("proof CLI", () => {
     ]));
   });
 
+  it("rejects proof zips that no longer contain manifest artifacts", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const proofExitCode = await main(["proof", "--workspace", tmp]);
+    expect(proofExitCode).toBe(0);
+    const proofZip = join(tmp, "release", "osstack-proof-cli-proof-loop.zip");
+    execFileSync("zip", ["-d", proofZip, "report.md"], { stdio: "ignore" });
+
+    logs = [];
+    const invalidExitCode = await main([
+      "proof",
+      "validate",
+      "cli-proof-loop",
+      "--workspace",
+      tmp,
+      "--json",
+    ]);
+
+    expect(invalidExitCode).toBe(1);
+    const summary = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      archive_integrity: { ok: boolean; issues: Array<{ path: string; code: string }> };
+    };
+    expect(summary.ok).toBe(false);
+    expect(summary.archive_integrity).toMatchObject({ ok: false });
+    expect(summary.archive_integrity.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "report.md", code: "proof_zip_missing_entry" }),
+    ]));
+  });
+
   it("rejects proof packs when manifest artifacts are missing from disk", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
     const proofExitCode = await main(["proof", "--workspace", tmp]);
