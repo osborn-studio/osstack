@@ -10,7 +10,7 @@ assertIncludes(dockerfile, "EXPOSE 8787", "Dockerfile must expose the Knowledge 
 assertIncludes(dockerfile, "/healthz", "Dockerfile must include the health endpoint");
 assertIncludes(dockerfile, "packages/knowledge-cloud/dist/bin.js", "Dockerfile must start the Knowledge Cloud executable");
 
-assertIncludes(fly, 'dockerfile = "../../Dockerfile.knowledge-cloud"', "Fly deploy config must use the Knowledge Cloud Dockerfile");
+assertIncludes(fly, 'dockerfile = "Dockerfile.knowledge-cloud"', "Fly deploy config must use the Knowledge Cloud Dockerfile");
 assertIncludes(fly, "internal_port = 8787", "Fly deploy config must route to port 8787");
 assertIncludes(fly, 'path = "/healthz"', "Fly deploy config must healthcheck /healthz");
 assertIncludes(fly, 'OSSTACK_KNOWLEDGE_CLOUD_HOST = "0.0.0.0"', "Fly deploy config must bind externally");

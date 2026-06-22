@@ -39,6 +39,7 @@ fly status --config deploy/knowledge-cloud/fly.toml
 ```
 
 Set the final app name and region in `deploy/knowledge-cloud/fly.toml` before production deploy.
+The Fly workflow runs from the repository root, so the Fly `build.dockerfile` path is `Dockerfile.knowledge-cloud`.
 
 ## GitHub Actions Deploy
 

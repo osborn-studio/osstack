@@ -2,7 +2,7 @@ app = "osstack-knowledge-cloud"
 primary_region = "sjc"
 
 [build]
-  dockerfile = "../../Dockerfile.knowledge-cloud"
+  dockerfile = "Dockerfile.knowledge-cloud"
 
 [env]
   OSSTACK_KNOWLEDGE_CLOUD_HOST = "0.0.0.0"
