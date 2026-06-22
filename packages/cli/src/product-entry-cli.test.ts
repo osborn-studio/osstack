@@ -1026,6 +1026,7 @@ describe("product entry commands", () => {
     expect(result.deploy_commands).toEqual([]);
     expect(result.post_release_validation_commands).toContain("gh release view v<version> --repo gilosbornhello/osstack");
     expect(result.post_release_validation_commands).toContain("osstack release doctor --target single-binary --json");
+    expect(result.post_release_validation_commands).toContain("tar -xzf osstack-*.tar.gz");
     expect(result.post_release_validation_commands).toContain("shasum -a 256 -c sha256sums.txt");
     const markdown = await readFile(output, "utf-8");
     expect(markdown).toContain("Target: `single-binary`");

@@ -2607,6 +2607,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     ...(result.target === "npm" || result.target === "knowledge-cloud" ? [] : [
       "gh release view v<version> --repo gilosbornhello/osstack",
       "gh release download v<version> --repo gilosbornhello/osstack --pattern 'osstack-*.tar.gz' --pattern 'sha256sums.txt'",
+      "tar -xzf osstack-*.tar.gz",
       "shasum -a 256 -c sha256sums.txt",
     ]),
   ];
