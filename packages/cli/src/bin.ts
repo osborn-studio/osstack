@@ -1457,6 +1457,8 @@ async function releaseSingleBinaryReleaseAssetsCheck(workspacePath: string): Pro
   };
 
   expectAsset(publishScript, "archive sha256 mismatch", "Single-binary publish script must verify archive SHA-256.");
+  expectAsset(publishScript, "public single-binary upload requires a Developer ID signed and notarized archive", "Single-binary publish script must reject public upload of non-notarized archives.");
+  expectAsset(publishScript, "archiveManifest.binary?.notarized !== true", "Single-binary publish script must inspect archive notarization metadata.");
   expectAsset(publishScript, "gh\", [\"release\", \"upload\"", "Single-binary publish script must upload assets through gh release upload.");
   expectAsset(publishScript, "github_release_uploaded: true", "Single-binary publish script must mark successful GitHub upload.");
   expectAsset(notarizeScript, "xcrun\", [", "Single-binary notarization script must use xcrun for notarytool.");
