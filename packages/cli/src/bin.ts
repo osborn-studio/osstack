@@ -784,6 +784,7 @@ async function handleReleaseCommand(args: string[]): Promise<number> {
     console.log(`osstack release — publish/deploy readiness
 
   osstack release doctor [--target all|npm|knowledge-cloud] [--json]
+  osstack release plan [--target all|npm|knowledge-cloud] [--output P] [--json]
 
 Checks:
   - GitHub CLI authentication for repository operations
@@ -794,8 +795,41 @@ Checks:
     return 0;
   }
   if (sub === "doctor") return await handleReleaseDoctorCommand(args.slice(1));
+  if (sub === "plan") return await handleReleasePlanCommand(args.slice(1));
   console.error(`osstack: unknown release subcommand "${sub}"`);
   return 1;
+}
+
+interface ReleaseActionPlan {
+  target: ReleaseDoctorResult["target"];
+  ready: boolean;
+  blockers: string[];
+  validation_commands: string[];
+  publish_commands: string[];
+  deploy_commands: string[];
+  output?: string;
+}
+
+async function handleReleasePlanCommand(args: string[]): Promise<number> {
+  const target = parseReleaseDoctorTarget(flagValue(args, "--target") ?? "all");
+  if (target === undefined) {
+    console.error("osstack: release plan --target must be all, npm, or knowledge-cloud");
+    return 1;
+  }
+  const doctor = await releaseDoctor(target);
+  const plan = releaseActionPlan(doctor);
+  const output = flagValue(args, "--output");
+  if (output !== undefined) {
+    await mkdir(dirname(output), { recursive: true });
+    await writeFile(output, renderReleaseActionPlan(plan), "utf-8");
+    plan.output = output;
+  }
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(plan, null, 2));
+  } else {
+    console.log(renderReleaseActionPlan(plan));
+  }
+  return 0;
 }
 
 async function handleReleaseDoctorCommand(args: string[]): Promise<number> {
@@ -1245,6 +1279,78 @@ function renderReleaseReadinessReport(result: ReleaseDoctorResult): string {
     "## Next Steps",
     "",
     ...result.next_steps.map((step) => `- ${step}`),
+    "",
+  ].join("\n");
+}
+
+function releaseActionPlan(result: ReleaseDoctorResult): ReleaseActionPlan {
+  const versionPr = result.checks.find((check) => check.id === "version_packages_pr");
+  const versionPrNumber = typeof versionPr?.details?.["number"] === "number"
+    ? versionPr.details["number"]
+    : undefined;
+  const blockers = result.next_steps.filter((step) =>
+    step.startsWith("Add repository secret")
+    || step.startsWith("Refresh GitHub auth")
+    || step.startsWith("Restore the Knowledge Cloud Deploy workflow")
+    || step.startsWith("Review Version Packages PR")
+  );
+  const validationCommands = [
+    `osstack release doctor --target ${result.target} --output release-readiness.md --json`,
+    ...(result.target === "all" || result.target === "npm"
+      ? [
+        versionPrNumber === undefined
+          ? "gh pr list --state open --head changeset-release/main --json number,mergeStateStatus,statusCheckRollup,url"
+          : `gh pr view ${versionPrNumber} --json mergeStateStatus,statusCheckRollup,url`,
+      ]
+      : []),
+    ...(result.target === "all" || result.target === "knowledge-cloud"
+      ? ["gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false"]
+      : []),
+  ];
+  const publishCommands = result.target === "knowledge-cloud" ? [] : [
+    ...(versionPrNumber === undefined ? [] : [`gh pr merge ${versionPrNumber} --squash --delete-branch`]),
+    "npm install -g @osstack/cli",
+    "osstack --version",
+    "osstack loop doctor --workspace .",
+  ];
+  const deployCommands = result.target === "npm" ? [] : [
+    "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true",
+    "osstack knowledge login --cloud-url https://knowledge.osstack.ai",
+    "osstack knowledge sync",
+    "osstack knowledge search \"proof pack checksum\"",
+  ];
+  return {
+    target: result.target,
+    ready: result.ok,
+    blockers,
+    validation_commands: validationCommands,
+    publish_commands: publishCommands,
+    deploy_commands: deployCommands,
+  };
+}
+
+function renderReleaseActionPlan(plan: ReleaseActionPlan): string {
+  return [
+    "# Osstack Release Action Plan",
+    "",
+    `Target: \`${plan.target}\``,
+    `Ready: \`${plan.ready ? "yes" : "no"}\``,
+    "",
+    "## Blockers",
+    "",
+    ...(plan.blockers.length === 0 ? ["No blocking release prerequisites detected."] : plan.blockers.map((step) => `- ${step}`)),
+    "",
+    "## Validation Commands",
+    "",
+    ...plan.validation_commands.map((command) => `- \`${command}\``),
+    "",
+    "## Publish Commands",
+    "",
+    ...(plan.publish_commands.length === 0 ? ["No npm publish commands for this target."] : plan.publish_commands.map((command) => `- \`${command}\``)),
+    "",
+    "## Deploy Commands",
+    "",
+    ...(plan.deploy_commands.length === 0 ? ["No Knowledge Cloud deploy commands for this target."] : plan.deploy_commands.map((command) => `- \`${command}\``)),
     "",
   ].join("\n");
 }

@@ -192,6 +192,14 @@ osstack release doctor --output release-readiness.md --json
 
 该报告包含 readiness summary、检查表、检查详情和 next steps，适合贴到 PR、发布群或 CI artifact。
 
+需要把状态转换成可执行 runbook 时，使用：
+
+```sh
+osstack release plan --target all --output release-plan.md --json
+```
+
+该计划会列出 blockers、validation commands、npm publish commands 和 Knowledge Cloud deploy commands。它不会执行发布动作，只生成上线步骤。
+
 ## 10. 推荐上线步骤
 
 ### Step 1：配置发布凭证
