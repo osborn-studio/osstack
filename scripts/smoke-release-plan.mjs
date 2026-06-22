@@ -39,6 +39,9 @@ try {
   assertArrayIncludes(plan.validation_commands, "pnpm smoke:single-binary-release-pack", "validation commands must include single-binary pack smoke");
   assertArrayIncludes(plan.publish_commands, "npm install -g @osstack/cli", "publish commands must include registry install verification");
   assertArrayIncludes(plan.deploy_commands, "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true", "deploy commands must include Knowledge Cloud deploy workflow");
+  assertArrayIncludes(plan.deploy_commands, `osstack knowledge login --cloud-url ${cloudUrl}`, "deploy commands must login to the supplied Knowledge Cloud URL");
+  assertArrayIncludes(plan.deploy_commands, `osstack knowledge sync --cloud-url ${cloudUrl} --json`, "deploy commands must sync from the supplied Knowledge Cloud URL");
+  assertArrayIncludes(plan.deploy_commands, `osstack knowledge search "proof pack checksum" --cloud-url ${cloudUrl} --json`, "deploy commands must search the supplied Knowledge Cloud URL");
   assertArrayIncludes(plan.post_release_validation_commands, "osstack release doctor --target npm --json", "post-release commands must include npm doctor");
   assertArrayIncludes(
     plan.post_release_validation_commands,

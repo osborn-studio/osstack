@@ -2582,13 +2582,13 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
       ? ["gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false"]
       : []),
   ];
+  const knowledgeCloudUrl = options.cloudUrl ?? "https://knowledge.osstack.ai";
   const deployCommands = result.target === "npm" || result.target === "single-binary" ? [] : [
     "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true",
-    "osstack knowledge login --cloud-url https://knowledge.osstack.ai",
-    "osstack knowledge sync",
-    "osstack knowledge search \"proof pack checksum\"",
+    `osstack knowledge login --cloud-url ${knowledgeCloudUrl}`,
+    `osstack knowledge sync --cloud-url ${knowledgeCloudUrl} --json`,
+    `osstack knowledge search "proof pack checksum" --cloud-url ${knowledgeCloudUrl} --json`,
   ];
-  const knowledgeCloudPostReleaseUrl = options.cloudUrl ?? "https://knowledge.osstack.ai";
   const postReleaseValidationCommands = [
     ...(result.target === "knowledge-cloud" || result.target === "single-binary" ? [] : [
       "npm install -g @osstack/cli",
@@ -2597,9 +2597,9 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
       "osstack doctor --workspace . --json",
     ]),
     ...(result.target === "npm" || result.target === "single-binary" ? [] : [
-      `osstack release doctor --target knowledge-cloud --cloud-url ${knowledgeCloudPostReleaseUrl} --json`,
-      `osstack knowledge sync --cloud-url ${knowledgeCloudPostReleaseUrl} --json`,
-      `osstack knowledge search "proof pack checksum" --cloud-url ${knowledgeCloudPostReleaseUrl} --json`,
+      `osstack release doctor --target knowledge-cloud --cloud-url ${knowledgeCloudUrl} --json`,
+      `osstack knowledge sync --cloud-url ${knowledgeCloudUrl} --json`,
+      `osstack knowledge search "proof pack checksum" --cloud-url ${knowledgeCloudUrl} --json`,
     ]),
     ...(result.target === "all" || result.target === "single-binary"
       ? ["osstack release doctor --target single-binary --json"]

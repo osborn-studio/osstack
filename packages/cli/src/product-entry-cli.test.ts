@@ -613,6 +613,9 @@ describe("product entry commands", () => {
       expect(result.validation_commands).toContain("pnpm smoke:knowledge-cloud:deploy");
       expect(result.validation_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false");
       expect(result.deploy_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+      expect(result.deploy_commands).toContain(`osstack knowledge login --cloud-url ${cloud.url}`);
+      expect(result.deploy_commands).toContain(`osstack knowledge sync --cloud-url ${cloud.url} --json`);
+      expect(result.deploy_commands).toContain(`osstack knowledge search "proof pack checksum" --cloud-url ${cloud.url} --json`);
       expect(result.post_release_validation_commands).toContain(
         `osstack release doctor --target knowledge-cloud --cloud-url ${cloud.url} --json`,
       );
