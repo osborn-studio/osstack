@@ -93,6 +93,10 @@ try {
   assert(proofValidationSummary.ok === true, "proof validate must pass for deliver proof smoke");
   assert(proofValidationSummary.scope === "proof-core", "proof validate must use proof-core by default");
   assert(proofValidationSummary.missing?.length === 0, "proof validate must not report missing core evidence");
+  assert(proofValidationSummary.archive_integrity?.checked === true, "proof validate must inspect proof zip inventory");
+  assert(proofValidationSummary.archive_integrity?.ok === true, "proof zip inventory validation must pass");
+  assert(proofValidationSummary.archive_integrity?.proof_zip === summary.artifacts.proof_zip, "proof zip validation must inspect the deliver proof zip");
+  assert(proofValidationSummary.archive_integrity?.issues?.length === 0, "proof zip inventory validation must not report issues");
 
   const compliancePath = join(workspace, "release", "compliance-engineering-readiness.md");
   const compliance = run(process.execPath, [
