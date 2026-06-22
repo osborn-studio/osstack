@@ -69,6 +69,13 @@ try {
   const worktreeStatus = JSON.parse(await readFile(join(proofDir, "worktree-status.json"), "utf-8"));
   assert(worktreeStatus.status === "recorded", "worktree-status must be recorded");
   assert(worktreeStatus.entries?.some((entry) => entry.status === "merged"), "worktree-status must record a merge");
+  for (const [index, entry] of worktreeStatus.entries.entries()) {
+    assert(entry.branch !== "unknown", `worktree-status entry ${index} must record branch`);
+    assert(entry.path !== "unknown", `worktree-status entry ${index} must record path`);
+    if (entry.status === "merged") {
+      assert(entry.commit !== "unknown", `worktree-status merged entry ${index} must record commit`);
+    }
+  }
 
   const proofZipStat = await stat(summary.artifacts.proof_zip);
   assert(proofZipStat.size > 0, "proof zip must be non-empty");

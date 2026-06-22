@@ -83,6 +83,7 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       "schemas/knowledge-pack.schema.json",
       "test-vectors/OS-GOV-001.json",
       "test-vectors/OS-EVID-001.json",
+      "test-vectors/OS-EVID-BAD-001.json",
       "test-vectors/OS-AUDIT-001.json",
       "test-vectors/OS-KNOW-001.json",
     ];
@@ -119,6 +120,15 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
     expect(evidenceVector.verify_results.results[0]?.reviewer_agent_id).toBe("local-verifier");
     expect(evidenceVector.worktree_status.status).toBe("recorded");
     expect(evidenceVector.worktree_status.entries[0]?.status).toBe("merged");
+
+    const malformedEvidenceVector = JSON.parse(
+      await readFile(join(specDir, "test-vectors", "OS-EVID-BAD-001.json"), "utf-8"),
+    ) as { expected_status: string; expected_errors: string[] };
+    expect(malformedEvidenceVector.expected_status).toBe("reject");
+    expect(malformedEvidenceVector.expected_errors).toEqual(expect.arrayContaining([
+      "verify-results.results[0].reviewer_agent_id is required",
+      "worktree-status.entries[0].path is required",
+    ]));
 
     const auditVector = JSON.parse(
       await readFile(join(specDir, "test-vectors", "OS-AUDIT-001.json"), "utf-8"),

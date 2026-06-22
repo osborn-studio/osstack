@@ -1,0 +1,36 @@
+{
+  "id": "OS-EVID-BAD-001",
+  "description": "Malformed external proof event evidence that must be rejected before packaging",
+  "events": [
+    {
+      "event_id": "evt-bad-verify",
+      "loop_id": "loop-bad-001",
+      "type": "loop.verify.done",
+      "seq": 1,
+      "created_at": 1782090000000,
+      "payload": {
+        "task_id": "task-bad-001",
+        "pass": true,
+        "score": 1,
+        "summary": "Verifier passed but reviewer id is missing."
+      }
+    },
+    {
+      "event_id": "evt-bad-worktree",
+      "loop_id": "loop-bad-001",
+      "type": "loop.worktree.merged",
+      "seq": 2,
+      "created_at": 1782090001000,
+      "payload": {
+        "task_id": "task-bad-001",
+        "branch": "osstack/loop/task-bad-001",
+        "commit": "abcdef1234567890"
+      }
+    }
+  ],
+  "expected_status": "reject",
+  "expected_errors": [
+    "verify-results.results[0].reviewer_agent_id is required",
+    "worktree-status.entries[0].path is required"
+  ]
+}

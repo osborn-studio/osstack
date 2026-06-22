@@ -345,6 +345,7 @@ describe("proof CLI", () => {
           task_id: "proof-task",
           branch: "osstack/loop/proof",
           commit: "abc123",
+          worktree_path: join(tmp, ".osstack-worktrees", "proof-task"),
         },
       }),
     ].join("\n") + "\n");
@@ -401,8 +402,48 @@ describe("proof CLI", () => {
         status: "merged",
         branch: "osstack/loop/proof",
         commit: "abc123",
+        path: join(tmp, ".osstack-worktrees", "proof-task"),
       }],
     });
+  });
+
+  it("rejects malformed external proof event evidence", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const eventsPath = join(tmp, "bad-events.jsonl");
+    await writeFile(eventsPath, [
+      JSON.stringify({
+        event_id: "evt-bad-verify",
+        loop_id: "cli-proof-loop",
+        type: "loop.verify.done",
+        seq: 1,
+        created_at: 1782090000000,
+        payload: {
+          task_id: "proof-task",
+          pass: true,
+          score: 1,
+          summary: "Verifier passed but reviewer id is missing.",
+        },
+      }),
+      JSON.stringify({
+        event_id: "evt-bad-worktree",
+        loop_id: "cli-proof-loop",
+        type: "loop.worktree.merged",
+        seq: 2,
+        created_at: 1782090001000,
+        payload: {
+          task_id: "proof-task",
+          branch: "osstack/loop/proof",
+          commit: "abc123",
+        },
+      }),
+    ].join("\n") + "\n");
+
+    const exitCode = await main(["proof", "--workspace", tmp, "--events", eventsPath]);
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("proof evidence validation failed");
+    expect(errors.join("\n")).toContain("verify-results.results[0].reviewer_agent_id is required");
+    expect(errors.join("\n")).toContain("worktree-status.entries[0].path is required");
   });
 
   it("fails when state is missing", async () => {

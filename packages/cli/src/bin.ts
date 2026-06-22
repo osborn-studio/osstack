@@ -2269,7 +2269,13 @@ Options:
   const governanceRoot = dirname(stateFilePath);
   const governance = await scanWorkspaceGovernance(governanceRoot);
   const knowledge = await createKnowledgeProofEvidence(args, state.loop_id);
-  const proof = await writeProofPack(state, outputDir, events, runId ?? loopId, governance, knowledge, flagValues(args, "--compliance-pack"), workspacePath);
+  let proof: Awaited<ReturnType<typeof writeProofPack>>;
+  try {
+    proof = await writeProofPack(state, outputDir, events, runId ?? loopId, governance, knowledge, flagValues(args, "--compliance-pack"), workspacePath);
+  } catch (error) {
+    console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  }
 
   const summary = {
     loop_id: state.loop_id,
@@ -3721,7 +3727,7 @@ function createWorktreeStatusEvidence(events: LoopEvent[]): {
           : "cleaned" as const,
       branch: stringEventPayload(event, "branch"),
       commit: stringEventPayload(event, "commit"),
-      path: stringEventPayload(event, "path"),
+      path: firstStringEventPayload(event, ["path", "worktree_path"]),
       event_seq: event.seq,
     }));
   if (entries.length === 0) {
@@ -3782,13 +3788,18 @@ function validateVerifyResultsEvidence(value: ReturnType<typeof createVerifyResu
   }
   if (value.results !== undefined) {
     value.results.forEach((result, index) => {
-      if (result.task_id.length === 0) errors.push(`verify-results.results[${index}].task_id is required`);
+      if (result.task_id.length === 0 || result.task_id === "unknown") {
+        errors.push(`verify-results.results[${index}].task_id is required`);
+      }
       if (typeof result.pass !== "boolean") errors.push(`verify-results.results[${index}].pass must be boolean`);
       if (result.score !== "unknown" && typeof result.score !== "number") {
         errors.push(`verify-results.results[${index}].score must be number or unknown`);
       }
-      if (result.reviewer_agent_id.length === 0) {
+      if (result.reviewer_agent_id.length === 0 || result.reviewer_agent_id === "unknown") {
         errors.push(`verify-results.results[${index}].reviewer_agent_id is required`);
+      }
+      if (result.summary.length === 0 || result.summary === "unknown") {
+        errors.push(`verify-results.results[${index}].summary is required`);
       }
       if (!Number.isInteger(result.event_seq) || result.event_seq < 0) {
         errors.push(`verify-results.results[${index}].event_seq must be a non-negative integer`);
@@ -3811,13 +3822,21 @@ function validateWorktreeStatusEvidence(value: ReturnType<typeof createWorktreeS
       errors.push("worktree-status.entries must contain at least one entry when status is recorded");
     } else {
       value.entries.forEach((entry, index) => {
-        if (entry.task_id.length === 0) errors.push(`worktree-status.entries[${index}].task_id is required`);
+        if (entry.task_id.length === 0 || entry.task_id === "unknown") {
+          errors.push(`worktree-status.entries[${index}].task_id is required`);
+        }
         if (!["created", "merged", "cleaned"].includes(entry.status)) {
           errors.push(`worktree-status.entries[${index}].status is invalid`);
         }
-        if (entry.branch.length === 0) errors.push(`worktree-status.entries[${index}].branch is required`);
-        if (entry.commit.length === 0) errors.push(`worktree-status.entries[${index}].commit is required`);
-        if (entry.path.length === 0) errors.push(`worktree-status.entries[${index}].path is required`);
+        if (entry.branch.length === 0 || entry.branch === "unknown") {
+          errors.push(`worktree-status.entries[${index}].branch is required`);
+        }
+        if (entry.status === "merged" && (entry.commit.length === 0 || entry.commit === "unknown")) {
+          errors.push(`worktree-status.entries[${index}].commit is required for merged worktrees`);
+        }
+        if (entry.path.length === 0 || entry.path === "unknown") {
+          errors.push(`worktree-status.entries[${index}].path is required`);
+        }
         if (!Number.isInteger(entry.event_seq) || entry.event_seq < 0) {
           errors.push(`worktree-status.entries[${index}].event_seq must be a non-negative integer`);
         }
@@ -3833,6 +3852,14 @@ function validateWorktreeStatusEvidence(value: ReturnType<typeof createWorktreeS
 function stringEventPayload(event: LoopEvent, key: string): string {
   const value = event.payload?.[key];
   return typeof value === "string" && value.length > 0 ? value : "unknown";
+}
+
+function firstStringEventPayload(event: LoopEvent, keys: string[]): string {
+  for (const key of keys) {
+    const value = event.payload?.[key];
+    if (typeof value === "string" && value.length > 0) return value;
+  }
+  return "unknown";
 }
 
 function booleanEventPayload(event: LoopEvent, key: string): boolean {
