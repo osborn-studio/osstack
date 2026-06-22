@@ -130,6 +130,46 @@ describe("dashboard/cockpit CLI", () => {
     ]));
   });
 
+  it("filters cockpit next steps by status in JSON", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+
+    const exitCode = await main(["cockpit", "next", "--status", "ready", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      next_steps: Array<{ label: string; status: string; command?: string }>;
+    };
+    expect(summary.next_steps.length).toBeGreaterThan(0);
+    expect(summary.next_steps.every((step) => step.status === "ready")).toBe(true);
+    expect(summary.next_steps).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        label: "Coding",
+        command: "osstack deliver \"<task>\" --auto-agent --worktree --checkpoint",
+        status: "ready",
+      }),
+    ]));
+  });
+
+  it("filters cockpit next steps by status in text output", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+
+    const exitCode = await main(["cockpit", "next", "--status", "ready"]);
+
+    expect(exitCode).toBe(0);
+    const output = logs.join("\n");
+    expect(output).toContain("next steps:");
+    expect(output).toContain("[ready] Coding - codex-cli primary, claude-code fallback");
+    expect(output).not.toContain("[running]");
+    expect(output).not.toContain("[blocked]");
+  });
+
+  it("rejects unsupported cockpit next status filters before contacting the daemon", async () => {
+    const exitCode = await main(["cockpit", "next", "--status", "done"]);
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("requires --status ready|running|blocked");
+  });
+
   it("localizes the cockpit summary with OSSTACK_LANG", async () => {
     process.env["OSSTACK_LANG"] = "zh-CN";
     daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });

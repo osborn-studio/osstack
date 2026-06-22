@@ -6212,7 +6212,7 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
   osstack cockpit --json    Print daemon status + dashboard snapshot JSON
   osstack cockpit run [loop run options]
                             Run queued work with report, scorecard, and proof defaults
-  osstack cockpit next [--json]
+  osstack cockpit next [--status ready|running|blocked] [--json]
                             Print actionable next steps from the cockpit snapshot
   osstack cockpit retry [task_id] [--workspace P] [--state P] [--json]
                             Requeue a failed or escalated task from loop state
@@ -6226,7 +6226,8 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
   osstack dashboard open      Open the dashboard locally
   osstack dashboard snapshot  Print the JSON backing the dashboard
   osstack dashboard summary   Show the same product cockpit summary
-  osstack dashboard next      Show the same actionable next steps
+  osstack dashboard next [--status ready|running|blocked]
+                            Show the same actionable next steps
   osstack cockpit url         Same as dashboard url
   osstack cockpit open        Same as dashboard open
 
@@ -6243,19 +6244,35 @@ Env:
 }
 
 async function handleCockpitNextCommand(args: string[]): Promise<number> {
+  const statusRaw = flagValue(args, "--status");
+  const statusFilter = parseCockpitNextStatus(statusRaw);
+  if (statusRaw !== undefined && statusFilter === undefined) {
+    console.error("osstack: cockpit next requires --status ready|running|blocked");
+    return 1;
+  }
   const resp = (await rpc("dashboard.snapshot")) as { ok: boolean; result?: unknown; error?: { message: string } };
   if (!resp.ok) {
     console.error("osstack:", resp.error?.message ?? "dashboard.snapshot failed");
     return 1;
   }
   const cockpit = isRecord(resp.result) ? resp.result : {};
-  const nextSteps = Array.isArray(cockpit["next_steps"]) ? cockpit["next_steps"] : [];
+  const rawNextSteps = Array.isArray(cockpit["next_steps"]) ? cockpit["next_steps"] : [];
+  const nextSteps = statusFilter === undefined
+    ? rawNextSteps
+    : rawNextSteps.filter((step) => isRecord(step) && step["status"] === statusFilter);
   if (args.includes("--json")) {
     console.log(JSON.stringify({ next_steps: nextSteps }, null, 2));
     return 0;
   }
   printCockpitNextSteps(nextSteps, cockpitSummaryText(resolveLanguage()));
   return 0;
+}
+
+type CockpitNextStatus = "ready" | "running" | "blocked";
+
+function parseCockpitNextStatus(value: string | undefined): CockpitNextStatus | undefined {
+  if (value === "ready" || value === "running" || value === "blocked") return value;
+  return undefined;
 }
 
 async function handleCockpitReportCommand(args: string[]): Promise<number> {
