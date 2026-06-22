@@ -1,3 +1,4 @@
+import { createServer } from "node:http";
 import { dirname, join } from "node:path";
 import { loadKnowledgePack, loadKnowledgePackIndex, searchKnowledgePacks, } from "@osstack/knowledge";
 export function createKnowledgeCloudHandler(options) {
@@ -8,6 +9,33 @@ export function createKnowledgeCloudHandler(options) {
         catch (error) {
             sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) });
         }
+    };
+}
+export async function startKnowledgeCloudServer(options) {
+    const server = createServer(createKnowledgeCloudHandler(options));
+    const host = options.host ?? "127.0.0.1";
+    const port = options.port ?? 0;
+    await new Promise((resolveListen, rejectListen) => {
+        server.once("error", rejectListen);
+        server.listen(port, host, () => {
+            server.off("error", rejectListen);
+            resolveListen();
+        });
+    });
+    const address = server.address();
+    const resolvedHost = address?.address === "::" ? "127.0.0.1" : (address?.address ?? host);
+    const resolvedPort = address?.port ?? port;
+    return {
+        url: `http://${resolvedHost}:${resolvedPort}`,
+        server,
+        close: () => new Promise((resolveClose, rejectClose) => {
+            server.close((error) => {
+                if (error !== undefined)
+                    rejectClose(error);
+                else
+                    resolveClose();
+            });
+        }),
     };
 }
 export async function loadKnowledgeCloudPacksFromIndex(indexPath) {

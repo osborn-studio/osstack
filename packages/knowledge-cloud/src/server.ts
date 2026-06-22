@@ -1,4 +1,5 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import type { AddressInfo } from "node:net";
 import { dirname, join } from "node:path";
 import {
   loadKnowledgePack,
@@ -18,6 +19,17 @@ export interface KnowledgeCloudOptions {
   feedbackSink?: (entry: KnowledgeFeedbackEntry) => void | Promise<void>;
 }
 
+export interface KnowledgeCloudServerOptions extends KnowledgeCloudOptions {
+  host?: string;
+  port?: number;
+}
+
+export interface KnowledgeCloudServerHandle {
+  url: string;
+  server: Server;
+  close: () => Promise<void>;
+}
+
 export interface KnowledgeCloudSearchResponse {
   packs: KnowledgePackSummary[];
   results: KnowledgeSearchResult[];
@@ -30,6 +42,34 @@ export function createKnowledgeCloudHandler(options: KnowledgeCloudOptions) {
     } catch (error) {
       sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) });
     }
+  };
+}
+
+export async function startKnowledgeCloudServer(
+  options: KnowledgeCloudServerOptions,
+): Promise<KnowledgeCloudServerHandle> {
+  const server = createServer(createKnowledgeCloudHandler(options));
+  const host = options.host ?? "127.0.0.1";
+  const port = options.port ?? 0;
+  await new Promise<void>((resolveListen, rejectListen) => {
+    server.once("error", rejectListen);
+    server.listen(port, host, () => {
+      server.off("error", rejectListen);
+      resolveListen();
+    });
+  });
+  const address = server.address() as AddressInfo | null;
+  const resolvedHost = address?.address === "::" ? "127.0.0.1" : (address?.address ?? host);
+  const resolvedPort = address?.port ?? port;
+  return {
+    url: `http://${resolvedHost}:${resolvedPort}`,
+    server,
+    close: () => new Promise<void>((resolveClose, rejectClose) => {
+      server.close((error) => {
+        if (error !== undefined) rejectClose(error);
+        else resolveClose();
+      });
+    }),
   };
 }
 
