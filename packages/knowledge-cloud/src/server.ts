@@ -16,6 +16,7 @@ export interface KnowledgeCloudOptions {
   packs: KnowledgePack[];
   privatePacks?: KnowledgePack[];
   privateAuthToken?: string;
+  privateTenantTokens?: Record<string, string>;
   feedbackLog?: KnowledgeFeedbackEntry[];
   now?: () => string;
   feedbackSink?: (entry: KnowledgeFeedbackEntry) => void | Promise<void>;
@@ -113,13 +114,13 @@ async function routeKnowledgeCloudRequest(
   }
   if (method === "POST" && url.pathname === "/v1/private-packs") {
     const body = await readJsonBody(req);
-    if (!isAuthorizedPrivateRequest(options, req)) {
-      sendJson(res, 401, { error: "private knowledge packs require authorization" });
-      return;
-    }
     const tenantId = tenantIdField(body);
     if (tenantId === undefined) {
       sendJson(res, 400, { error: "private knowledge packs require tenant_id" });
+      return;
+    }
+    if (!isAuthorizedPrivateRequest(options, req, tenantId)) {
+      sendJson(res, 401, { error: "private knowledge packs require authorization" });
       return;
     }
     sendJson(res, 200, {
@@ -138,7 +139,7 @@ async function routeKnowledgeCloudRequest(
     const tenantId = tenantIdField(body);
     const packs = [
       ...options.packs,
-      ...(isAuthorizedPrivateRequest(options, req) && tenantId !== undefined
+      ...(tenantId !== undefined && isAuthorizedPrivateRequest(options, req, tenantId)
         ? tenantPrivatePacks(options, tenantId)
         : []),
     ];
@@ -163,7 +164,9 @@ async function routeKnowledgeCloudRequest(
       status: "sent",
       created_at: options.now?.() ?? new Date().toISOString(),
       ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
-      authorized: isAuthorizedPrivateRequest(options, req),
+      authorized: tenantId === undefined
+        ? isAuthorizedPrivateRequest(options, req)
+        : isAuthorizedPrivateRequest(options, req, tenantId),
     };
     options.feedbackLog.push(entry);
     await options.feedbackSink?.(entry);
@@ -222,10 +225,16 @@ function tenantIdField(body: unknown): string | undefined {
   return tenantId;
 }
 
-function isAuthorizedPrivateRequest(options: KnowledgeCloudOptions, req: IncomingMessage): boolean {
-  const token = options.privateAuthToken?.trim();
-  if (token === undefined || token.length === 0) return true;
-  return req.headers.authorization === `Bearer ${token}`;
+function isAuthorizedPrivateRequest(options: KnowledgeCloudOptions, req: IncomingMessage, tenantId?: string): boolean {
+  const authorization = req.headers.authorization;
+  const tenantToken = tenantId === undefined ? undefined : options.privateTenantTokens?.[tenantId]?.trim();
+  if (tenantToken !== undefined && tenantToken.length > 0) return authorization === `Bearer ${tenantToken}`;
+  const globalToken = options.privateAuthToken?.trim();
+  if (globalToken !== undefined && globalToken.length > 0) return authorization === `Bearer ${globalToken}`;
+  if (tenantId !== undefined && Object.keys(options.privateTenantTokens ?? {}).length > 0) return false;
+  const tenantTokens = Object.values(options.privateTenantTokens ?? {}).map((token) => token.trim()).filter(Boolean);
+  if (tenantTokens.length > 0) return tenantTokens.some((token) => authorization === `Bearer ${token}`);
+  return true;
 }
 
 function packSummary(manifest: KnowledgePackManifest): KnowledgePackSummary {

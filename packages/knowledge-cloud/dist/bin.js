@@ -10,7 +10,7 @@ export async function main(argv = process.argv.slice(2)) {
         console.log(`osstack-knowledge-cloud
 
 Usage:
-  osstack-knowledge-cloud [--host H] [--port N] [--official-index P] [--private-pack P] [--private-token T] [--feedback-log P] [--json]
+  osstack-knowledge-cloud [--host H] [--port N] [--official-index P] [--private-pack P] [--private-token T] [--private-tenant-token tenant=token] [--feedback-log P] [--json]
 
 Options:
   --host H              Host to bind. Default: 127.0.0.1
@@ -18,6 +18,8 @@ Options:
   --official-index P    Official Knowledge Cloud index.json path.
   --private-pack P      Team/private pack manifest path. Repeatable.
   --private-token T     Bearer token required for /v1/private-packs and private search.
+  --private-tenant-token tenant=token
+                         Tenant-bound bearer token for private packs. Repeatable.
   --feedback-log P      Append feedback entries as JSONL for audit/quality review.
   --json                Print startup metadata as JSON.
 
@@ -26,6 +28,7 @@ Env:
   OSSTACK_KNOWLEDGE_CLOUD_PORT
   OSSTACK_OFFICIAL_KNOWLEDGE_INDEX
   OSSTACK_KNOWLEDGE_PRIVATE_TOKEN
+  OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON
   OSSTACK_KNOWLEDGE_FEEDBACK_LOG
 `);
         return 0;
@@ -43,6 +46,7 @@ Env:
     const packs = await loadKnowledgeCloudPacksFromIndex(officialIndex);
     const privatePacks = await Promise.all(flagValues(argv, "--private-pack").map((path) => loadKnowledgePack(path)));
     const privateAuthToken = flagValue(argv, "--private-token") ?? process.env["OSSTACK_KNOWLEDGE_PRIVATE_TOKEN"];
+    const privateTenantTokens = parsePrivateTenantTokens(flagValues(argv, "--private-tenant-token"), process.env["OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON"]);
     const feedbackLog = flagValue(argv, "--feedback-log") ?? process.env["OSSTACK_KNOWLEDGE_FEEDBACK_LOG"];
     const feedbackEntries = feedbackLog === undefined || feedbackLog.trim().length === 0
         ? []
@@ -57,6 +61,7 @@ Env:
         packs,
         ...(privatePacks.length === 0 ? {} : { privatePacks }),
         ...(privateAuthToken === undefined || privateAuthToken.trim().length === 0 ? {} : { privateAuthToken: privateAuthToken.trim() }),
+        ...(Object.keys(privateTenantTokens).length === 0 ? {} : { privateTenantTokens }),
         ...(feedbackEntries.length === 0 ? {} : { feedbackLog: feedbackEntries }),
         ...(feedbackLog === undefined || feedbackLog.trim().length === 0
             ? {}
@@ -71,7 +76,9 @@ Env:
         official_index: officialIndex,
         packs: packs.length,
         private_packs: privatePacks.length,
-        private_auth_required: privateAuthToken !== undefined && privateAuthToken.trim().length > 0,
+        private_auth_required: privateAuthToken !== undefined && privateAuthToken.trim().length > 0
+            || Object.keys(privateTenantTokens).length > 0,
+        private_tenant_tokens: Object.keys(privateTenantTokens).length,
         ...(feedbackLog === undefined || feedbackLog.trim().length === 0
             ? {}
             : { feedback_log: feedbackLog, feedback_log_loaded: feedbackEntries.length }),
@@ -116,6 +123,30 @@ function isFeedbackEntry(value) {
         && (value["rating"] === "useful" || value["rating"] === "bad")
         && (value["status"] === "recorded" || value["status"] === "sent")
         && typeof value["created_at"] === "string";
+}
+function parsePrivateTenantTokens(values, json) {
+    const tokens = {};
+    if (json !== undefined && json.trim().length > 0) {
+        const parsed = JSON.parse(json);
+        if (!isRecord(parsed))
+            throw new Error("OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON must be a JSON object");
+        for (const [tenantId, token] of Object.entries(parsed)) {
+            if (typeof token === "string" && tenantId.trim().length > 0 && token.trim().length > 0) {
+                tokens[tenantId.trim()] = token.trim();
+            }
+        }
+    }
+    for (const value of values) {
+        const separatorIndex = value.indexOf("=");
+        if (separatorIndex <= 0)
+            throw new Error("--private-tenant-token must use tenant=token");
+        const tenantId = value.slice(0, separatorIndex).trim();
+        const token = value.slice(separatorIndex + 1).trim();
+        if (tenantId.length === 0 || token.length === 0)
+            throw new Error("--private-tenant-token must use tenant=token");
+        tokens[tenantId] = token;
+    }
+    return tokens;
 }
 function isRecord(value) {
     return value !== null && typeof value === "object" && !Array.isArray(value);

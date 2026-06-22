@@ -367,6 +367,7 @@
 - official packs 有 version、quality_score、last_reviewed_at、source_provenance。
 - publish gate 会阻止 official/external `processed_mit` 知识包继续使用裸上游 `MIT` 许可标签，要求显式标记为 Osstack processed/derived license label，避免把上游知识库痕迹直接发布成 official pack。
 - 私有知识包 HTTP 访问要求 bearer token + 显式 `tenant_id`，无 tenant 的 `/v1/private-packs` 请求会被拒绝，私有 search 只有在授权且 tenant 明确时才合入 tenant-scoped private packs，避免未绑定 tenant 的私有包被泛授权搜索泄露。
+- Knowledge Cloud 支持 tenant-bound private tokens：`osstack-knowledge-cloud --private-tenant-token tenant=token` 和 `OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON` 可把私有知识包访问绑定到具体 tenant，错误 tenant token 无法读取目标 tenant 的 private packs；旧的 `--private-token` 仍作为兼容的全局 private token。
 - feedback entry 支持记录 `tenant_id` 与 `authorized`，CLI `knowledge feedback` 支持 `--tenant`，云端 `/v1/feedback` 会把 tenant/auth 范围写入 sink 与响应，便于后续做知识质量审计和租户级反馈分析。
 - 云端服务支持 `/v1/feedback/summary`，可按 `tenant_id` 聚合 useful/bad/total 和 chunk 级反馈计数；Knowledge Cloud smoke 已覆盖 tenant feedback summary。
 - `osstack-knowledge-cloud` 支持 `--feedback-log` / `OSSTACK_KNOWLEDGE_FEEDBACK_LOG` 将 feedback entry 追加写入 JSONL，并在启动时预加载既有 JSONL 作为 summary 初始状态；Fly/Render 部署配置默认使用 `/data/feedback/feedback.jsonl`，deploy asset smoke 会检查该落盘路径。
@@ -381,7 +382,7 @@
 - 真实云端域名/URL 未上线；`--cloud-url` health + search gate 已具备，但尚无生产 URL 通过记录。
 - 生产 storage/Postgres/vector index 未实现；BM25-style 本地/云端共享排序已作为 MVP 检索排序落地。
 - ingestion pipeline 仍是本地 MVP，不是完整 source intake -> rewrite -> review -> publish 系统；当前已有 publish gate 可检查 Osstack voice、provenance、source_refs、quality/review/taxonomy 与 processed license label。
-- tenant auth/permissions 已有 token + explicit tenant scope 的本地 HTTP gate，但仍不是完整生产级账号、组织、角色、审计日志权限模型。
+- tenant auth/permissions 已有 global token、tenant-bound token 与 explicit tenant scope 的本地 HTTP gate，但仍不是完整生产级账号、组织、角色、审计日志权限模型。
 
 ## 4. 当前最高优先级 Backlog
 

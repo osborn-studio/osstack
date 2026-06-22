@@ -176,6 +176,71 @@ describe("Knowledge Cloud HTTP service", () => {
     });
   });
 
+  it("enforces tenant-bound private tokens when configured", async () => {
+    const url = await startCloud({
+      packs: await officialPacks(),
+      privatePacks: [teamPack()],
+      privateTenantTokens: {
+        team_alpha: "kst_alpha_private",
+        team_beta: "kst_beta_private",
+      },
+    });
+
+    const wrongTenantToken = await fetch(`${url}/v1/private-packs`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer kst_beta_private",
+      },
+      body: JSON.stringify({ tenant_id: "team_alpha" }),
+    });
+    expect(wrongTenantToken.status).toBe(401);
+
+    const privateResponse = await fetchJson(
+      `${url}/v1/private-packs`,
+      { tenant_id: "team_alpha" },
+      { authorization: "Bearer kst_alpha_private" },
+    );
+    expect(privateResponse).toMatchObject({
+      packs: [expect.objectContaining({ id: "team/private-runbook" })],
+    });
+
+    const searchWithWrongTenantToken = await fetchJson(
+      `${url}/v1/search`,
+      {
+        query: "private release approval",
+        tenant_id: "team_alpha",
+      },
+      { authorization: "Bearer kst_beta_private" },
+    );
+    expect(searchWithWrongTenantToken).toMatchObject({
+      results: expect.not.arrayContaining([
+        expect.objectContaining({ pack_id: "team/private-runbook" }),
+      ]),
+    });
+  });
+
+  it("does not let one tenant token authorize another tenant without an explicit token", async () => {
+    const url = await startCloud({
+      packs: await officialPacks(),
+      privatePacks: [teamPack({}, { tenantId: "team_gamma" })],
+      privateTenantTokens: {
+        team_alpha: "kst_alpha_private",
+      },
+    });
+
+    const crossTenant = await fetch(`${url}/v1/private-packs`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer kst_alpha_private",
+      },
+      body: JSON.stringify({ tenant_id: "team_gamma" }),
+    });
+
+    expect(crossTenant.status).toBe(401);
+  });
+
   it("requires an explicit tenant before returning private packs", async () => {
     const url = await startCloud({
       packs: await officialPacks(),
@@ -251,9 +316,9 @@ async function closeServer(target: Server): Promise<void> {
 
 function teamPack(
   overrides: Partial<KnowledgePack["manifest"]> = {},
-  options: { omitTenant?: boolean } = {},
+  options: { omitTenant?: boolean; tenantId?: string } = {},
 ): KnowledgePack {
-  const tenant = options.omitTenant === true ? {} : { tenant_id: "team_alpha" };
+  const tenant = options.omitTenant === true ? {} : { tenant_id: options.tenantId ?? "team_alpha" };
   return {
     path: "memory://team/private-runbook",
     manifest: {

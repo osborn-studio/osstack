@@ -64,6 +64,23 @@ describe("osstack-knowledge-cloud bin", () => {
             private_auth_required: true,
         });
     });
+    it("reports tenant-bound private auth when tenant tokens are configured", async () => {
+        process.env["OSSTACK_KNOWLEDGE_CLOUD_ONCE"] = "1";
+        const exitCode = await main([
+            "--port",
+            "0",
+            "--private-tenant-token",
+            "team_alpha=kst_alpha_private",
+            "--private-tenant-token",
+            "team_beta=kst_beta_private",
+            "--json",
+        ]);
+        expect(exitCode).toBe(0);
+        expect(JSON.parse(logs.join("\n"))).toMatchObject({
+            private_auth_required: true,
+            private_tenant_tokens: 2,
+        });
+    });
     it("configures a feedback JSONL audit log path", async () => {
         process.env["OSSTACK_KNOWLEDGE_CLOUD_ONCE"] = "1";
         const feedbackLog = join(tmp, "audit", "feedback.jsonl");

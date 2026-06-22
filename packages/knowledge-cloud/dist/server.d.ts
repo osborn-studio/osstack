@@ -4,6 +4,7 @@ export interface KnowledgeCloudOptions {
     packs: KnowledgePack[];
     privatePacks?: KnowledgePack[];
     privateAuthToken?: string;
+    privateTenantTokens?: Record<string, string>;
     feedbackLog?: KnowledgeFeedbackEntry[];
     now?: () => string;
     feedbackSink?: (entry: KnowledgeFeedbackEntry) => void | Promise<void>;
