@@ -16,6 +16,7 @@
     "lint": "biome check .",
     "dev": "pnpm --filter @osstack/cli dev",
     "coverage:loop": "pnpm --filter @osstack/loop test:coverage",
+    "build:single-binary": "node scripts/build-single-binary.mjs",
     "demo:loop": "pnpm build && node scripts/demo-loop.mjs",
     "demo:loop:daemon": "pnpm build && node scripts/demo-loop-daemon.mjs",
     "smoke:loop": "pnpm build && node scripts/smoke-loop.mjs",

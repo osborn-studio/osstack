@@ -1,35 +1,31 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const root = process.cwd();
 const tempRoot = await mkdtemp(join(tmpdir(), "osstack-bun-binary-smoke-"));
-const binaryPath = join(tempRoot, "osstack");
+const outputDir = join(tempRoot, "release");
 const workspace = join(tempRoot, "workspace");
 
 try {
-  const bunVersion = run("bun", ["--version"], { cwd: root, capture: true }).stdout.trim();
   const packageJson = JSON.parse(await readFile(join(root, "packages", "cli", "package.json"), "utf-8"));
   const version = packageJson.version;
   if (typeof version !== "string" || version.length === 0) {
     throw new Error("packages/cli/package.json must contain a version");
   }
 
-  run("pnpm", ["--filter", "@osstack/cli", "build"], { cwd: root });
-  run("bun", [
-    "build",
-    "packages/cli/dist/bin.js",
-    "--compile",
-    "--env",
-    "inline",
-    "--outfile",
-    binaryPath,
-  ], {
-    cwd: root,
-    env: { ...process.env, OSSTACK_VERSION: version },
-  });
+  const buildSummary = JSON.parse(run(process.execPath, [
+    "scripts/build-single-binary.mjs",
+    "--output-dir",
+    outputDir,
+    "--json",
+  ], { cwd: root, capture: true }).stdout);
+  const binaryPath = buildSummary.binary_path;
+  const manifestPath = buildSummary.manifest_path;
+  const checksumPath = buildSummary.checksum_path;
 
   await mkdir(workspace, { recursive: true });
 
@@ -48,15 +44,36 @@ try {
     throw new Error(`single binary loop doctor did not pass: ${doctor.stdout}`);
   }
 
+  const manifest = JSON.parse(await readFile(manifestPath, "utf-8"));
+  if (manifest.kind !== "osstack.single_binary.release_asset") {
+    throw new Error(`unexpected single binary manifest kind: ${manifest.kind}`);
+  }
+  if (manifest.signing?.signed !== false || manifest.signing?.notarized !== false) {
+    throw new Error("local single binary manifest must not claim signing or notarization");
+  }
+
+  const binaryBytes = await readFile(binaryPath);
+  const sha256 = createHash("sha256").update(binaryBytes).digest("hex");
+  if (sha256 !== buildSummary.sha256 || sha256 !== manifest.binary?.sha256) {
+    throw new Error("single binary sha256 mismatch");
+  }
+  const checksum = await readFile(checksumPath, "utf-8");
+  assertIncludes(checksum, sha256, "checksum file must include binary sha256");
+
   const binaryStat = await stat(binaryPath);
   console.log(JSON.stringify({
     ok: true,
     kind: "bun-single-executable",
     package: packageJson.name,
     version,
-    bun_version: bunVersion,
+    bun_version: buildSummary.bun_version,
     binary_path: binaryPath,
+    manifest_path: manifestPath,
+    checksum_path: checksumPath,
+    sha256,
     binary_size_bytes: binaryStat.size,
+    signed: manifest.signing.signed,
+    notarized: manifest.signing.notarized,
     loop_doctor_ok: doctorParsed.ok,
   }, null, 2));
 } finally {
@@ -79,6 +96,7 @@ function run(command, args, options = {}) {
     throw new Error(`${command} ${args.join(" ")} failed with ${result.status}${output ? `\n${output}` : ""}`);
   }
   return {
+    status: result.status,
     stdout: result.stdout ?? "",
     stderr: result.stderr ?? "",
   };
