@@ -318,6 +318,50 @@ describe("proof CLI", () => {
     ]));
   });
 
+  it("rejects malformed JSON and wrong-shaped proof directory artifacts", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const proofExitCode = await main(["proof", "--workspace", tmp]);
+    expect(proofExitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    await writeFile(join(proofDir, "manifest.json"), "{");
+    await writeFile(join(proofDir, "verify-results.json"), "[]");
+    await writeFile(join(proofDir, "policy-decision.json"), "null");
+
+    logs = [];
+    const invalidExitCode = await main([
+      "proof",
+      "validate",
+      "cli-proof-loop",
+      "--workspace",
+      tmp,
+      "--json",
+    ]);
+
+    expect(invalidExitCode).toBe(1);
+    const summary = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      missing: Array<{ control_id: string; evidence_path: string; reason: string }>;
+    };
+    expect(summary.ok).toBe(false);
+    expect(summary.missing).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        control_id: "evidence-integrity",
+        evidence_path: "manifest.json",
+        reason: "missing or malformed proof evidence",
+      }),
+      expect.objectContaining({
+        control_id: "change-validation",
+        evidence_path: "verify-results.json",
+        reason: "missing or malformed proof evidence",
+      }),
+      expect.objectContaining({
+        control_id: "automated-decision-trace",
+        evidence_path: "policy-decision.json",
+        reason: "missing or malformed proof evidence",
+      }),
+    ]));
+  });
+
   it("fails open from cloud knowledge mode to local proof evidence", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
     const packPath = join(tmp, "knowledge-pack.json");

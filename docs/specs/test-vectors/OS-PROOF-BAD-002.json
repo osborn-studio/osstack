@@ -1,0 +1,25 @@
+{
+  "id": "OS-PROOF-BAD-002",
+  "description": "External proof directories with malformed JSON or non-object proof artifacts must fail proof validation",
+  "proof_dir_artifacts": {
+    "manifest.json": "{",
+    "verify-results.json": [],
+    "policy-decision.json": null
+  },
+  "expected_status": "reject",
+  "expected_missing_controls": [
+    {
+      "control_id": "evidence-integrity",
+      "evidence_path": "manifest.json"
+    },
+    {
+      "control_id": "change-validation",
+      "evidence_path": "verify-results.json"
+    },
+    {
+      "control_id": "automated-decision-trace",
+      "evidence_path": "policy-decision.json"
+    }
+  ],
+  "expected_reason": "missing or malformed proof evidence"
+}

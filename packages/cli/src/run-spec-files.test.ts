@@ -94,6 +94,7 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       "test-vectors/OS-EVID-001.json",
       "test-vectors/OS-EVID-BAD-001.json",
       "test-vectors/OS-PROOF-BAD-001.json",
+      "test-vectors/OS-PROOF-BAD-002.json",
       "test-vectors/OS-AUDIT-001.json",
       "test-vectors/OS-KNOW-001.json",
     ];
@@ -161,6 +162,25 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       "manifest.artifacts[1].bytes is required",
       "policy-decision.reason is required when status is unknown",
       "knowledge-results.results[0].source_refs must contain at least one source reference",
+    ]));
+
+    const malformedProofDirVector = JSON.parse(
+      await readFile(join(specDir, "test-vectors", "OS-PROOF-BAD-002.json"), "utf-8"),
+    ) as {
+      expected_status: string;
+      expected_reason: string;
+      proof_dir_artifacts: Record<string, unknown>;
+      expected_missing_controls: Array<{ control_id: string; evidence_path: string }>;
+    };
+    expect(malformedProofDirVector.expected_status).toBe("reject");
+    expect(malformedProofDirVector.proof_dir_artifacts["manifest.json"]).toBe("{");
+    expect(malformedProofDirVector.proof_dir_artifacts["verify-results.json"]).toEqual([]);
+    expect(malformedProofDirVector.proof_dir_artifacts["policy-decision.json"]).toBeNull();
+    expect(malformedProofDirVector.expected_reason).toBe("missing or malformed proof evidence");
+    expect(malformedProofDirVector.expected_missing_controls).toEqual(expect.arrayContaining([
+      { control_id: "evidence-integrity", evidence_path: "manifest.json" },
+      { control_id: "change-validation", evidence_path: "verify-results.json" },
+      { control_id: "automated-decision-trace", evidence_path: "policy-decision.json" },
     ]));
 
     const auditVector = JSON.parse(
