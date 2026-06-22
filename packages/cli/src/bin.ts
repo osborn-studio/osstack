@@ -991,6 +991,7 @@ async function releaseDoctor(
     if (options.cloudUrl !== undefined) {
       checks.push(await releaseKnowledgeCloudHealthCheck(options.cloudUrl));
       checks.push(await releaseKnowledgeCloudSearchCheck(options.cloudUrl));
+      checks.push(await releaseKnowledgeCloudSyncCheck(options.cloudUrl));
       checks.push(await releaseKnowledgeCloudAuditCheck(options.cloudUrl));
     }
     checks.push(await releaseCommandCheck({
@@ -1019,6 +1020,7 @@ async function releaseDoctor(
   const knowledgeWorkflowReady = checks.find((check) => check.id === "knowledge_cloud_workflow")?.status !== "error";
   const knowledgeHealthReady = checks.find((check) => check.id === "knowledge_cloud_health")?.status !== "error";
   const knowledgeSearchReady = checks.find((check) => check.id === "knowledge_cloud_search")?.status !== "error";
+  const knowledgeSyncReady = checks.find((check) => check.id === "knowledge_cloud_sync")?.status !== "error";
   const knowledgeAuditReady = checks.find((check) => check.id === "knowledge_cloud_audit")?.status !== "error";
   const singleBinaryAssetsReady = checks.find((check) => check.id === "single_binary_release_assets")?.status !== "error";
   const singleBinaryWorkflowReady = checks.find((check) => check.id === "single_binary_workflow")?.status !== "error";
@@ -1030,6 +1032,7 @@ async function releaseDoctor(
     && knowledgeWorkflowReady
     && knowledgeHealthReady
     && knowledgeSearchReady
+    && knowledgeSyncReady
     && knowledgeAuditReady;
   const singleBinaryRelease = actionsReady
     && SINGLE_BINARY_RELEASE_SECRETS.every((secret) => hasSecret(secrets, secret))
@@ -1295,6 +1298,59 @@ async function releaseKnowledgeCloudSearchCheck(cloudUrl: string): Promise<Relea
         cloud_url: normalized,
         search_url: searchUrlString,
         query,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function releaseKnowledgeCloudSyncCheck(cloudUrl: string): Promise<ReleaseDoctorCheck> {
+  const normalized = normalizeCloudUrl(cloudUrl);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  let syncUrl: URL | undefined;
+  try {
+    syncUrl = new URL("/v1/sync", normalized);
+    const response = await fetch(syncUrl, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ private: false }),
+      signal: controller.signal,
+    });
+    const raw = await response.text();
+    const body = parseJsonObject(raw);
+    const packs = Array.isArray(body?.["packs"]) ? body["packs"] : [];
+    const firstPack = isRecord(packs[0]) ? packs[0] : undefined;
+    const firstPackId = typeof firstPack?.["id"] === "string" ? firstPack["id"] : undefined;
+    const ok = response.ok && packs.length > 0;
+    return {
+      id: "knowledge_cloud_sync",
+      status: ok ? "ok" : "error",
+      message: ok
+        ? `Deployed Knowledge Cloud sync smoke passed at ${syncUrl.toString()}.`
+        : `Deployed Knowledge Cloud sync smoke failed at ${syncUrl.toString()}.`,
+      details: {
+        cloud_url: normalized,
+        sync_url: syncUrl.toString(),
+        http_status: response.status,
+        pack_count: packs.length,
+        ...(firstPackId === undefined ? {} : { first_pack_id: firstPackId }),
+      },
+    };
+  } catch (error) {
+    const syncUrlString = syncUrl === undefined ? `${normalized.replace(/\/+$/, "")}/v1/sync` : syncUrl.toString();
+    return {
+      id: "knowledge_cloud_sync",
+      status: "error",
+      message: `Could not run deployed Knowledge Cloud sync smoke at ${syncUrlString}.`,
+      details: {
+        cloud_url: normalized,
+        sync_url: syncUrlString,
         error: error instanceof Error ? error.message : String(error),
       },
     };
@@ -2330,6 +2386,10 @@ function releaseDoctorNextSteps(options: {
   const knowledgeSearch = options.checks.find((check) => check.id === "knowledge_cloud_search");
   if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeSearch?.status === "error") {
     steps.push("Fix deployed Knowledge Cloud search before handoff.");
+  }
+  const knowledgeSync = options.checks.find((check) => check.id === "knowledge_cloud_sync");
+  if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeSync?.status === "error") {
+    steps.push("Fix deployed Knowledge Cloud sync before handoff.");
   }
   const knowledgeAudit = options.checks.find((check) => check.id === "knowledge_cloud_audit");
   if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeAudit?.status === "error") {

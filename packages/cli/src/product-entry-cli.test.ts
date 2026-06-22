@@ -680,6 +680,15 @@ describe("product entry commands", () => {
         }),
       }));
       expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_sync",
+        status: "ok",
+        details: expect.objectContaining({
+          cloud_url: cloud.url,
+          pack_count: 1,
+          first_pack_id: "proof-checksum-pack",
+        }),
+      }));
+      expect(result.checks).toContainEqual(expect.objectContaining({
         id: "knowledge_cloud_audit",
         status: "ok",
         details: expect.objectContaining({
@@ -776,6 +785,54 @@ describe("product entry commands", () => {
         details: expect.objectContaining({ result_count: 0 }),
       }));
       expect(result.next_steps.join("\n")).toContain("Fix deployed Knowledge Cloud search before handoff.");
+    } finally {
+      await cloud.close();
+    }
+  });
+
+  it("blocks Knowledge Cloud deploy handoff when deployed sync returns no packs", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const cloud = await startKnowledgeCloudHandoffServer({
+      healthStatus: 200,
+      healthBody: { ok: true, service: "osstack-knowledge-cloud", packs: 6 },
+      searchStatus: 200,
+      searchBody: {
+        packs: [{ id: "proof-checksum-pack", version: "0.1.0" }],
+        results: [{ chunk_id: "proof-checksum-pack/checksum", pack_id: "proof-checksum-pack", score: 1 }],
+      },
+      syncStatus: 200,
+      syncBody: { packs: [] },
+    });
+
+    try {
+      const exitCode = await main([
+        "release",
+        "doctor",
+        "--target",
+        "knowledge-cloud",
+        "--cloud-url",
+        cloud.url,
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(1);
+      const result = JSON.parse(logs.join("\n")) as {
+        ok: boolean;
+        readiness: { knowledge_cloud_deploy: boolean };
+        checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+        next_steps: string[];
+      };
+      expect(result.ok).toBe(false);
+      expect(result.readiness.knowledge_cloud_deploy).toBe(false);
+      expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_sync",
+        status: "error",
+        details: expect.objectContaining({ pack_count: 0 }),
+      }));
+      expect(result.next_steps.join("\n")).toContain("Fix deployed Knowledge Cloud sync before handoff.");
     } finally {
       await cloud.close();
     }
@@ -1007,6 +1064,8 @@ async function startKnowledgeCloudHandoffServer(options: {
   healthBody: unknown;
   searchStatus: number;
   searchBody: unknown;
+  syncStatus?: number;
+  syncBody?: unknown;
   auditStatus?: number;
   auditBody?: unknown;
 }): Promise<{ url: string; close: () => Promise<void> }> {
@@ -1019,6 +1078,11 @@ async function startKnowledgeCloudHandoffServer(options: {
     if (req.url === "/v1/search" && req.method === "POST") {
       res.writeHead(options.searchStatus, { "content-type": "application/json" });
       res.end(JSON.stringify(options.searchBody));
+      return;
+    }
+    if (req.url === "/v1/sync" && req.method === "POST") {
+      res.writeHead(options.syncStatus ?? 200, { "content-type": "application/json" });
+      res.end(JSON.stringify(options.syncBody ?? { packs: [{ id: "proof-checksum-pack", version: "0.1.0" }] }));
       return;
     }
     if (req.url === "/v1/audit" && req.method === "POST") {
