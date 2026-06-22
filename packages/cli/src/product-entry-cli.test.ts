@@ -27,6 +27,8 @@ afterEach(async () => {
   delete process.env["OSSTACK_TEST_RELEASE_SECRETS"];
   delete process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"];
   delete process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"];
+  delete process.env["OSSTACK_TEST_RELEASE_VERSION_PR"];
+  delete process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"];
   await rm(tmp, { recursive: true, force: true });
 });
 
@@ -111,6 +113,8 @@ describe("product entry commands", () => {
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,FLY_API_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
 
     const exitCode = await main(["release", "doctor", "--json"]);
 
@@ -133,7 +137,9 @@ describe("product entry commands", () => {
     expect(result.checks).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: "github_auth", status: "ok" }),
       expect.objectContaining({ id: "repository_secrets", status: "ok" }),
+      expect.objectContaining({ id: "version_packages_pr", status: "ok" }),
       expect.objectContaining({ id: "npm_auth", status: "ok" }),
+      expect.objectContaining({ id: "knowledge_cloud_workflow", status: "ok" }),
       expect.objectContaining({ id: "fly_auth", status: "ok" }),
     ]));
     expect(result.next_steps.join("\n")).toContain("NPM publish path is ready");
@@ -144,6 +150,7 @@ describe("product entry commands", () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "warn";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
 
     const exitCode = await main(["release", "doctor", "--target", "knowledge-cloud", "--json"]);
 
@@ -166,6 +173,54 @@ describe("product entry commands", () => {
     }));
     expect(result.checks).toContainEqual(expect.objectContaining({ id: "fly_auth", status: "warn" }));
     expect(result.next_steps.join("\n")).toContain("FLY_API_TOKEN");
+  });
+
+  it("surfaces an unstable Version Packages PR in release doctor output", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "warn";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "open:5:UNSTABLE";
+
+    const exitCode = await main(["release", "doctor", "--target", "npm", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      checks: Array<{ id: string; status: string; message: string; details?: Record<string, unknown> }>;
+      next_steps: string[];
+    };
+    expect(result.ok).toBe(true);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "version_packages_pr",
+      status: "warn",
+      details: expect.objectContaining({
+        number: 5,
+        merge_state: "UNSTABLE",
+      }),
+    }));
+    expect(result.next_steps.join("\n")).toContain("Review Version Packages PR #5");
+  });
+
+  it("surfaces missing Knowledge Cloud deploy workflow status", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "warn";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "missing";
+
+    const exitCode = await main(["release", "doctor", "--target", "knowledge-cloud", "--json"]);
+
+    expect(exitCode).toBe(1);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      checks: Array<{ id: string; status: string; message: string }>;
+      next_steps: string[];
+    };
+    expect(result.ok).toBe(false);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "knowledge_cloud_workflow",
+      status: "error",
+    }));
+    expect(result.next_steps.join("\n")).toContain("Restore the Knowledge Cloud Deploy workflow");
   });
 
   it("rejects unknown release doctor targets", async () => {
