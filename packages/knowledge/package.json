@@ -6,7 +6,9 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p .",
     "test": "vitest run --passWithNoTests",
@@ -14,5 +16,16 @@
   },
   "devDependencies": {
     "@types/node": "^22.19.19"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gilosbornhello/osstack.git",
+    "directory": "packages/knowledge"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

@@ -50,7 +50,8 @@ describe("daemon evidence CLI", () => {
       capability: "code.test",
       prompt: "Exercise daemon evidence report",
     }));
-    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"] });
+    const socketPath = process.env["OSSTACK_SOCKET"]!;
+    daemon = await startDaemon({ socketPath });
 
     const runCode = await main([
       "loop",

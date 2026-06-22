@@ -1,7 +1,7 @@
 {
   "name": "@osstack/core",
   "version": "0.0.0",
-  "description": "OSBORN stack core \u2014 orchestrator, lifecycle, policy, memory, learning, privacy, observability, knowledge-graph, state, events.",
+  "description": "OSBORN stack core - orchestrator, lifecycle, policy, memory, learning, privacy, observability, knowledge-graph, state, events.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,5 +26,16 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.19.19"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gilosbornhello/osstack.git",
+    "directory": "packages/core"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

@@ -295,14 +295,14 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       const parsed = parseLoopRunParams(req.params);
       if (parsed instanceof Error) return singleErr(req.id, "bad_request", parsed.message);
       const engine = new LoopEngine(withLoopAdapters(ctx, parsed.runOptions));
-      const raw = parsed.cyclesOptions === undefined
-        ? await engine.runOnce()
-        : await engine.runCycles(parsed.cyclesOptions);
+      if (parsed.cyclesOptions === undefined) {
+        const raw = await engine.runOnce();
+        const runId = persistLoopRunEvidence(ctx, raw);
+        return singleOk(req.id, loopRunSummary(raw, runId));
+      }
+      const raw = await engine.runCycles(parsed.cyclesOptions);
       const runId = persistLoopRunEvidence(ctx, raw);
-      const result = parsed.cyclesOptions === undefined
-        ? loopRunSummary(raw, runId)
-        : loopRunCyclesSummary(raw, runId);
-      return singleOk(req.id, result);
+      return singleOk(req.id, loopRunCyclesSummary(raw, runId));
     }
 
     case "loop.start": {
@@ -807,7 +807,7 @@ function persistLoopRunEvidence(ctx: DaemonContext, result: LoopRunResult | Loop
         ...(event.payload ?? {}),
         loop_event_id: event.event_id,
       },
-    } as HermesEvent);
+    } as unknown as HermesEvent);
   }
   finalizeRun(ctx.db, ctx.dbPath, runId, outcome, Date.now() / 1000);
   return runId;

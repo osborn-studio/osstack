@@ -18,6 +18,7 @@ concurrency: release-${{ github.ref }}
 permissions:
   contents: write
   pull-requests: write
+  id-token: write
 
 jobs:
   release:
@@ -60,7 +61,7 @@ jobs:
         uses: changesets/action@v1
         with:
           version: pnpm changeset version
-          publish: pnpm changeset publish
+          publish: pnpm changeset publish --provenance
           commit: "chore(release): version packages"
           title: "chore(release): version packages"
         env:

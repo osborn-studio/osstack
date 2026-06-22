@@ -14,5 +14,16 @@
     "build": "tsc -p .",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gilosbornhello/osstack.git",
+    "directory": "packages/runtime"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

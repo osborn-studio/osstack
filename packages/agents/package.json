@@ -1,7 +1,7 @@
 {
   "name": "@osstack/agents",
   "version": "0.0.0",
-  "description": "Sub-agent adapters (claude-code, codex-cli, \u2026). Each implements AgentAdapter interface.",
+  "description": "Sub-agent adapters (claude-code, codex-cli, ...). Each implements AgentAdapter interface.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -22,5 +22,16 @@
   },
   "devDependencies": {
     "@types/node": "^25.8.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gilosbornhello/osstack.git",
+    "directory": "packages/agents"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

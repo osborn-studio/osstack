@@ -1,9 +1,14 @@
 ---
 "@osstack/agents": minor
 "@osstack/cli": minor
+"@osstack/compliance": minor
 "@osstack/config": minor
 "@osstack/core": minor
+"@osstack/github": minor
+"@osstack/governance": minor
 "@osstack/hermes-adapter": minor
+"@osstack/knowledge": minor
+"@osstack/loop": minor
 "@osstack/plugins": minor
 "@osstack/runtime": minor
 "@osstack/skill-registry": minor
@@ -25,4 +30,5 @@ Initial public release (0.1.0): engineering hardening + self-update.
 - Hermes binary resolution no longer hardcodes a machine-specific path
   (use HERMES_BIN or HERMES_AGENT_HOME).
 - launchd templates: ai.osstack.autoupgrade weekly self-update job.
+- `osstack serve --install` writes and manages the ai.osstack.daemon LaunchAgent.
 - Biome linting, GitHub Actions CI, daemon RPC smoke tests.

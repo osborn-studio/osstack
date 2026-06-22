@@ -868,13 +868,7 @@ Env:
       console.error("osstack: knowledge search requires at least one --pack path, cached pack, or --cloud-url");
       return 1;
     }
-    const evidence = await resolveKnowledgeSearch({
-      mode,
-      query,
-      packs,
-      limit,
-      cloudUrl,
-    });
+    const evidence = await resolveKnowledgeSearch(knowledgeSearchOptions({ mode, query, packs, limit, cloudUrl }));
     if (args.includes("--json")) {
       console.log(JSON.stringify(evidence, null, 2));
     } else if (evidence.results.length === 0) {
@@ -920,7 +914,12 @@ Env:
     }
     const qualityScoreRaw = flagValue(args, "--quality-score");
     const qualityScore = qualityScoreRaw === undefined ? undefined : Number.parseInt(qualityScoreRaw, 10);
-    if (qualityScoreRaw !== undefined && (!Number.isInteger(qualityScore) || qualityScore < 0 || qualityScore > 100)) {
+    if (qualityScoreRaw !== undefined && (
+      qualityScore === undefined
+      || !Number.isInteger(qualityScore)
+      || qualityScore < 0
+      || qualityScore > 100
+    )) {
       console.error("osstack: --quality-score must be an integer from 0 to 100");
       return 1;
     }
@@ -979,11 +978,12 @@ Env:
       console.error("osstack: knowledge feedback requires exactly one of --useful or --bad");
       return 1;
     }
+    const cloudUrl = flagValue(args, "--cloud-url") ?? process.env["OSSTACK_KNOWLEDGE_URL"];
     const feedback = await cacheKnowledgeFeedback({
       cacheDir: knowledgeCacheDir(args),
       chunkId,
       rating: useful ? "useful" : "bad",
-      cloudUrl: flagValue(args, "--cloud-url") ?? process.env["OSSTACK_KNOWLEDGE_URL"],
+      ...(cloudUrl !== undefined ? { cloudUrl } : {}),
     });
     if (args.includes("--json")) {
       console.log(JSON.stringify({ feedback }, null, 2));
@@ -1083,8 +1083,9 @@ async function handleLessonsCommand(args: string[]): Promise<number> {
     const dbPath = await ensureLocalStateDbPath();
     const db = openDb({ path: dbPath });
     try {
+      const family = flagValue(args, "--family");
       const lessons = listPitfallLessons(db, {
-        ...(flagValue(args, "--family") !== undefined ? { family: flagValue(args, "--family") } : {}),
+        ...(family !== undefined ? { family } : {}),
         ...(limit !== undefined ? { limit } : {}),
       });
       if (args.includes("--json")) {
@@ -1306,6 +1307,26 @@ type GovernanceProofEvidence =
   };
 
 type KnowledgeProofEvidence = KnowledgeSearchEvidence;
+
+function knowledgeSearchOptions(options: {
+  mode: KnowledgeMode | undefined;
+  query: string;
+  packs: Parameters<typeof resolveKnowledgeSearch>[0]["packs"];
+  limit: number;
+  cloudUrl: string | undefined;
+}): Parameters<typeof resolveKnowledgeSearch>[0] {
+  return {
+    ...(options.mode !== undefined ? { mode: options.mode } : {}),
+    query: options.query,
+    ...(options.packs !== undefined ? { packs: options.packs } : {}),
+    limit: options.limit,
+    ...(options.cloudUrl !== undefined ? { cloudUrl: options.cloudUrl } : {}),
+  };
+}
+
+function knowledgeErrorMode(mode: KnowledgeMode | undefined): "local" | "cloud" {
+  return mode === "cloud" ? "cloud" : "local";
+}
 
 interface PrReadinessCheck {
   id: string;
@@ -2403,17 +2424,11 @@ async function createKnowledgeProofEvidence(args: string[], defaultQuery: string
   const query = flagValue(args, "--knowledge-query") ?? defaultQuery;
   try {
     const packs = await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath)));
-    return await resolveKnowledgeSearch({
-      mode,
-      query,
-      packs,
-      limit: 5,
-      cloudUrl,
-    });
+    return await resolveKnowledgeSearch(knowledgeSearchOptions({ mode, query, packs, limit: 5, cloudUrl }));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return {
-      mode: mode ?? "local",
+      mode: knowledgeErrorMode(mode),
       status: "error",
       query,
       reason: message,
@@ -2516,7 +2531,14 @@ function createVerifyResultsEvidence(
   }>;
   reason?: string;
 } {
-  const results = events
+  const results: Array<{
+    task_id: string;
+    pass: boolean;
+    score: number | "unknown";
+    reviewer_agent_id: string;
+    summary: string;
+    event_seq: number;
+  }> = events
     .filter((event) => event.type === "loop.verify.done")
     .map((event) => ({
       task_id: stringEventPayload(event, "task_id"),
@@ -2764,6 +2786,7 @@ Stages:
     },
   });
   const adapters = agentId !== undefined || autoAgent ? defaultAdapters() : undefined;
+  const worktreeRoot = flagValue(args, "--worktree-root");
   const engine = new LoopEngine({
     workspacePath,
     stateFilePath,
@@ -2775,7 +2798,7 @@ Stages:
     sources: ["task_queue"],
     ...(maxIterations !== undefined ? { maxIterations } : {}),
     ...(args.includes("--worktree") ? { useWorktree: true } : {}),
-    ...(flagValue(args, "--worktree-root") !== undefined ? { worktreeRoot: flagValue(args, "--worktree-root") } : {}),
+    ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
   });
   const result = await engine.runOnce();
   const artifactArgs = ensureFlags(args, ["--report", "--scorecard", "--proof"]);
@@ -3006,7 +3029,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         args,
         workspacePath,
         stateFilePath,
-        events: result.events,
+        ...(result.events !== undefined ? { events: result.events } : {}),
       });
       if (artifacts instanceof Error) {
         console.error(`osstack: ${artifacts.message}`);
@@ -3015,7 +3038,8 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       if (artifacts !== undefined) result.artifacts = artifacts;
       const persistedState = await readLoopState(resolveLoopPath(stateFilePath, workspacePath));
       if (persistedState !== null) {
-        result.learned_lessons = await learnLessonsFromLoopState(persistedState);
+        const learnedLessons = await learnLessonsFromLoopState(persistedState);
+        if (learnedLessons !== undefined) result.learned_lessons = learnedLessons;
       }
       printLoopRun(result, json);
       return result.completed_tasks.some((task) => task.outcome !== "success") ? 2 : 0;
