@@ -1,11 +1,13 @@
 import { createServer } from "node:http";
 import { dirname, join } from "node:path";
-import { loadKnowledgePack, loadKnowledgePackIndex, searchKnowledgePacks, } from "@osstack/knowledge";
+import { loadKnowledgePack, loadKnowledgePackIndex, searchKnowledgePacks, validateKnowledgePackManifest, validateKnowledgePublishGate, } from "@osstack/knowledge";
 export function createKnowledgeCloudHandler(options) {
     const feedbackLog = [...(options.feedbackLog ?? [])];
+    const packs = [...options.packs];
+    const privatePacks = [...(options.privatePacks ?? [])];
     return async (req, res) => {
         try {
-            await routeKnowledgeCloudRequest({ ...options, feedbackLog }, req, res);
+            await routeKnowledgeCloudRequest({ ...options, packs, privatePacks, feedbackLog }, req, res);
         }
         catch (error) {
             sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) });
@@ -82,6 +84,53 @@ async function routeKnowledgeCloudRequest(options, req, res) {
         }
         sendJson(res, 200, {
             packs: tenantPrivatePacks(options, tenantId).map((pack) => pack.manifest),
+        });
+        return;
+    }
+    if (method === "POST" && url.pathname === "/v1/publish") {
+        const body = await readJsonBody(req);
+        let manifest;
+        try {
+            manifest = validateKnowledgePackManifest(packField(body));
+        }
+        catch (error) {
+            sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) });
+            return;
+        }
+        const gate = validateKnowledgePublishGate(manifest);
+        if (!gate.ok) {
+            sendJson(res, 400, { ok: false, issues: gate.issues });
+            return;
+        }
+        const pack = {
+            manifest,
+            path: `cloud://${manifest.id}@${manifest.version}`,
+        };
+        const privatePack = manifest.scope === "team" || manifest.scope === "project" || manifest.tenant_id !== undefined;
+        if (privatePack) {
+            const tenantId = manifest.tenant_id;
+            if (tenantId === undefined || tenantId.trim().length === 0) {
+                sendJson(res, 400, { error: "private knowledge publish requires tenant_id" });
+                return;
+            }
+            if (!isAuthorizedPrivateRequest(options, req, tenantId)) {
+                sendJson(res, 401, { error: "private knowledge publish requires authorization" });
+                return;
+            }
+            upsertPack(options.privatePacks, pack);
+            sendJson(res, 200, {
+                ok: true,
+                private: true,
+                tenant_id: tenantId,
+                pack: packSummary(manifest),
+            });
+            return;
+        }
+        upsertPack(options.packs, pack);
+        sendJson(res, 200, {
+            ok: true,
+            private: false,
+            pack: packSummary(manifest),
         });
         return;
     }
@@ -170,6 +219,17 @@ function tenantPrivatePacks(options, tenantId) {
         const packTenantId = pack.manifest.tenant_id;
         return tenantId === packTenantId;
     });
+}
+function upsertPack(packs, pack) {
+    const index = packs.findIndex((candidate) => candidate.manifest.id === pack.manifest.id);
+    if (index >= 0)
+        packs[index] = pack;
+    else
+        packs.push(pack);
+}
+function packField(body) {
+    const candidate = isRecord(body) && "pack" in body ? body["pack"] : body;
+    return isRecord(candidate) && "manifest" in candidate ? candidate["manifest"] : candidate;
 }
 function tenantIdField(body) {
     const tenantId = stringField(body, "tenant_id");

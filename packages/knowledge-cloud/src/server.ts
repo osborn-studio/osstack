@@ -5,6 +5,8 @@ import {
   loadKnowledgePack,
   loadKnowledgePackIndex,
   searchKnowledgePacks,
+  validateKnowledgePackManifest,
+  validateKnowledgePublishGate,
   type KnowledgeFeedbackEntry,
   type KnowledgePack,
   type KnowledgePackManifest,
@@ -40,9 +42,11 @@ export interface KnowledgeCloudSearchResponse {
 
 export function createKnowledgeCloudHandler(options: KnowledgeCloudOptions) {
   const feedbackLog: KnowledgeFeedbackEntry[] = [...(options.feedbackLog ?? [])];
+  const packs: KnowledgePack[] = [...options.packs];
+  const privatePacks: KnowledgePack[] = [...(options.privatePacks ?? [])];
   return async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     try {
-      await routeKnowledgeCloudRequest({ ...options, feedbackLog }, req, res);
+      await routeKnowledgeCloudRequest({ ...options, packs, privatePacks, feedbackLog }, req, res);
     } catch (error) {
       sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) });
     }
@@ -84,7 +88,7 @@ export async function loadKnowledgeCloudPacksFromIndex(indexPath: string): Promi
 }
 
 async function routeKnowledgeCloudRequest(
-  options: KnowledgeCloudOptions & { feedbackLog: KnowledgeFeedbackEntry[] },
+  options: KnowledgeCloudOptions & { privatePacks: KnowledgePack[]; feedbackLog: KnowledgeFeedbackEntry[] },
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<void> {
@@ -125,6 +129,52 @@ async function routeKnowledgeCloudRequest(
     }
     sendJson(res, 200, {
       packs: tenantPrivatePacks(options, tenantId).map((pack) => pack.manifest),
+    });
+    return;
+  }
+  if (method === "POST" && url.pathname === "/v1/publish") {
+    const body = await readJsonBody(req);
+    let manifest: KnowledgePackManifest;
+    try {
+      manifest = validateKnowledgePackManifest(packField(body));
+    } catch (error) {
+      sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) });
+      return;
+    }
+    const gate = validateKnowledgePublishGate(manifest);
+    if (!gate.ok) {
+      sendJson(res, 400, { ok: false, issues: gate.issues });
+      return;
+    }
+    const pack: KnowledgePack = {
+      manifest,
+      path: `cloud://${manifest.id}@${manifest.version}`,
+    };
+    const privatePack = manifest.scope === "team" || manifest.scope === "project" || manifest.tenant_id !== undefined;
+    if (privatePack) {
+      const tenantId = manifest.tenant_id;
+      if (tenantId === undefined || tenantId.trim().length === 0) {
+        sendJson(res, 400, { error: "private knowledge publish requires tenant_id" });
+        return;
+      }
+      if (!isAuthorizedPrivateRequest(options, req, tenantId)) {
+        sendJson(res, 401, { error: "private knowledge publish requires authorization" });
+        return;
+      }
+      upsertPack(options.privatePacks, pack);
+      sendJson(res, 200, {
+        ok: true,
+        private: true,
+        tenant_id: tenantId,
+        pack: packSummary(manifest),
+      });
+      return;
+    }
+    upsertPack(options.packs, pack);
+    sendJson(res, 200, {
+      ok: true,
+      private: false,
+      pack: packSummary(manifest),
     });
     return;
   }
@@ -217,6 +267,17 @@ function tenantPrivatePacks(options: KnowledgeCloudOptions, tenantId: string): K
     const packTenantId = pack.manifest.tenant_id;
     return tenantId === packTenantId;
   });
+}
+
+function upsertPack(packs: KnowledgePack[], pack: KnowledgePack): void {
+  const index = packs.findIndex((candidate) => candidate.manifest.id === pack.manifest.id);
+  if (index >= 0) packs[index] = pack;
+  else packs.push(pack);
+}
+
+function packField(body: unknown): unknown {
+  const candidate = isRecord(body) && "pack" in body ? body["pack"] : body;
+  return isRecord(candidate) && "manifest" in candidate ? candidate["manifest"] : candidate;
 }
 
 function tenantIdField(body: unknown): string | undefined {

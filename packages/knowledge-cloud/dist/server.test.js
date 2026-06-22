@@ -224,6 +224,82 @@ describe("Knowledge Cloud HTTP service", () => {
             ]),
         });
     });
+    it("publishes reviewed official packs through the cloud publish gate", async () => {
+        const url = await startCloud({ packs: await officialPacks() });
+        const unreviewed = await fetch(`${url}/v1/publish`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+                pack: reviewedOfficialPack({
+                    review: {
+                        status: "changes_requested",
+                        reviewer_id: "knowledge-reviewer",
+                        reviewed_at: "2026-06-22T00:00:00.000Z",
+                        summary: "Needs rewrite before publication.",
+                    },
+                }),
+            }),
+        });
+        expect(unreviewed.status).toBe(400);
+        await expect(unreviewed.json()).resolves.toMatchObject({
+            ok: false,
+            issues: [expect.objectContaining({ code: "official_review_not_approved" })],
+        });
+        const published = await fetchJson(`${url}/v1/publish`, {
+            pack: reviewedOfficialPack(),
+        });
+        expect(published).toMatchObject({
+            ok: true,
+            private: false,
+            pack: expect.objectContaining({ id: "osstack-core/cloud-publish" }),
+        });
+        const search = await fetchJson(`${url}/v1/search`, {
+            query: "cloud publish approved review",
+            limit: 1,
+        });
+        expect(search).toMatchObject({
+            results: [expect.objectContaining({
+                    pack_id: "osstack-core/cloud-publish",
+                    chunk_id: "cloud-publish-review",
+                })],
+        });
+    });
+    it("publishes tenant private packs only with the target tenant token", async () => {
+        const url = await startCloud({
+            packs: await officialPacks(),
+            privateTenantTokens: { team_alpha: "kst_alpha_private" },
+        });
+        const pack = teamPack({
+            id: "team/private-published",
+            chunks: [{
+                    chunk_id: "private-published-review",
+                    title: "Private published runbook",
+                    body: "Private published runbooks include approved review notes and tenant-scoped release evidence.",
+                    tags: ["private", "publish", "review"],
+                }],
+        });
+        const unauthorized = await fetch(`${url}/v1/publish`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ pack }),
+        });
+        expect(unauthorized.status).toBe(401);
+        const published = await fetchJson(`${url}/v1/publish`, { pack }, { authorization: "Bearer kst_alpha_private" });
+        expect(published).toMatchObject({
+            ok: true,
+            private: true,
+            tenant_id: "team_alpha",
+            pack: expect.objectContaining({ id: "team/private-published" }),
+        });
+        const search = await fetchJson(`${url}/v1/search`, {
+            query: "tenant scoped release evidence",
+            tenant_id: "team_alpha",
+            limit: 1,
+        }, { authorization: "Bearer kst_alpha_private" });
+        expect(search).toMatchObject({
+            results: [expect.objectContaining({ pack_id: "team/private-published" })],
+        });
+    });
 });
 async function officialPacks() {
     const root = resolve(process.cwd(), "../..");
@@ -278,6 +354,43 @@ function teamPack(overrides = {}, options = {}) {
                 }],
             ...overrides,
         },
+    };
+}
+function reviewedOfficialPack(overrides = {}) {
+    return {
+        id: "osstack-core/cloud-publish",
+        version: "2026.06.22",
+        name: "Osstack Cloud Publish",
+        license: "Osstack-native",
+        source_kind: "osstack_native",
+        quality_score: 91,
+        scope: "official",
+        taxonomy: ["osstack-core/knowledge-cloud"],
+        generated_at: "2026-06-22T00:00:00.000Z",
+        last_reviewed_at: "2026-06-22T00:00:00.000Z",
+        review: {
+            status: "approved",
+            reviewer_id: "knowledge-reviewer",
+            reviewed_at: "2026-06-22T00:00:00.000Z",
+            summary: "Reviewed for cloud publication.",
+        },
+        source_attribution: ["osstack-native product knowledge"],
+        source_provenance: [{
+                source_id: "cloud-publish",
+                path: "cloud-publish.md",
+                sha256: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                license: "Osstack-native",
+                scope: "official",
+                imported_at: "2026-06-22T00:00:00.000Z",
+            }],
+        chunks: [{
+                chunk_id: "cloud-publish-review",
+                title: "Cloud publish review",
+                body: "Osstack Knowledge Cloud publish gates require approved review metadata, source provenance, and proof-friendly pack evidence.",
+                tags: ["cloud", "publish", "review"],
+                source_refs: ["cloud-publish"],
+            }],
+        ...overrides,
     };
 }
 //# sourceMappingURL=server.test.js.map
