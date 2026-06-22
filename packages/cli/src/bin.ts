@@ -11,7 +11,7 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import { defaultAdapters } from "@osstack/agents";
-import { listPitfallLessons, openDb, upsertPitfallLesson } from "@osstack/core";
+import { getAgentScorecard, listAgentScorecards, listPitfallLessons, openDb, upsertPitfallLesson } from "@osstack/core";
 import { scanFiles, type GovernanceFinding } from "@osstack/governance";
 import {
   renderBranchStewardReport,
@@ -104,6 +104,8 @@ Daemon commands:
   stats               Show per-agent and loop metrics (requires running daemon)
   killswitch          Check if the policy layer is earning its keep (F4)
   agent list          List registered sub-agents and their capabilities
+  agent scorecard [agent_id]
+                      Show agent run-history scorecards
 
 Self-update:
   upgrade [--channel latest|canary] [--dry-run] [--auto]
@@ -274,14 +276,8 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     return await handleDashboardCommand(args.slice(1));
   }
 
-  if (cmd === "agent" && args[1] === "list") {
-    const resp = (await rpc("agent.list")) as { ok: boolean; result?: unknown; error?: { message: string } };
-    if (!resp.ok) {
-      console.error("osstack:", resp.error?.message ?? "agent.list failed");
-      return 1;
-    }
-    console.log(JSON.stringify(resp.result, null, 2));
-    return 0;
+  if (cmd === "agent") {
+    return await handleAgentCommand(args.slice(1));
   }
 
   if (cmd === "config") {
@@ -371,6 +367,72 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   console.error(`osstack: unknown command "${args.join(" ")}" — see "osstack help"`);
   return 1;
+}
+
+async function handleAgentCommand(args: string[]): Promise<number> {
+  const sub = args[0];
+  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack agent — agent registry and performance
+
+  osstack agent list
+  osstack agent scorecard [agent_id] [--json]
+`);
+    return 0;
+  }
+
+  if (sub === "list") {
+    const resp = (await rpc("agent.list")) as { ok: boolean; result?: unknown; error?: { message: string } };
+    if (!resp.ok) {
+      console.error("osstack:", resp.error?.message ?? "agent.list failed");
+      return 1;
+    }
+    console.log(JSON.stringify(resp.result, null, 2));
+    return 0;
+  }
+
+  if (sub === "scorecard") {
+    const agentId = positionalValues(args.slice(1), new Set()).find((value) => value !== "scorecard");
+    const dbPath = await ensureLocalStateDbPath();
+    const db = openDb({ path: dbPath });
+    try {
+      if (agentId !== undefined) {
+        const scorecard = getAgentScorecard(db, agentId);
+        if (args.includes("--json")) {
+          console.log(JSON.stringify(scorecard, null, 2));
+        } else {
+          printAgentScorecard(scorecard);
+        }
+        return 0;
+      }
+      const scorecards = listAgentScorecards(db);
+      if (args.includes("--json")) {
+        console.log(JSON.stringify({ scorecards }, null, 2));
+      } else if (scorecards.length === 0) {
+        console.log("No agent run history yet.");
+      } else {
+        for (const scorecard of scorecards) printAgentScorecard(scorecard);
+      }
+      return 0;
+    } finally {
+      db.close();
+    }
+  }
+
+  console.error(`osstack: unknown agent subcommand "${sub}"`);
+  return 1;
+}
+
+function printAgentScorecard(scorecard: ReturnType<typeof getAgentScorecard>): void {
+  console.log(`${scorecard.agent_id}`);
+  console.log(`  runs=${scorecard.total_runs} completed=${scorecard.completed_runs} failed=${scorecard.failed_runs} success=${Math.round(scorecard.success_rate * 100)}%`);
+  console.log(`  avg_duration_ms=${scorecard.avg_duration_ms ?? "unknown"} cost_tier=${scorecard.cost_tier} fit=${scorecard.capability_fit}`);
+  console.log(`  recent_failures=${scorecard.recent_failures}`);
+  if (scorecard.best_task_kinds.length > 0) {
+    console.log(`  best_task_kinds=${scorecard.best_task_kinds.map((kind) => `${kind.kind}:${Math.round(kind.success_rate * 100)}%`).join(", ")}`);
+  }
+  if (scorecard.warnings.length > 0) {
+    console.log(`  warnings=${scorecard.warnings.join("; ")}`);
+  }
 }
 
 function printStewardHelp(): void {
@@ -1438,7 +1500,7 @@ function renderPrPolicy(events: LoopEvent[]): string[] {
     return [`- ${decisions.reason ?? "No policy decision evidence found."}`];
   }
   return decisions.decisions.map((decision) => (
-    `- ${decision.task_id}: ${decision.agent_id} - ${decision.reason}`
+    `- ${decision.task_id}: ${decision.agent_id} - ${decision.reason} (scorecard: \`osstack agent scorecard ${decision.agent_id}\`)`
   ));
 }
 

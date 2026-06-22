@@ -76,6 +76,7 @@ describe("pr CLI", () => {
     expect(body).toContain("cli-pr-task");
     expect(body).toContain("## Agent Selection");
     expect(body).toContain("matched code.test capability");
+    expect(body).toContain("osstack agent scorecard codex-cli");
     expect(body).toContain("## Verification");
     expect(body).toContain("Verifier passed.");
     expect(body).toContain("## Governance");
