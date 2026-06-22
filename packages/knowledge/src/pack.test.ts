@@ -7,6 +7,7 @@ import {
   assembleKnowledgeSnippet,
   cacheKnowledgeFeedback,
   evaluateKnowledgeRetrieval,
+  ingestKnowledgeSource,
   importKnowledgeSource,
   listCachedKnowledgePacks,
   loadKnowledgePackIndex,
@@ -197,6 +198,52 @@ describe("knowledge packs", () => {
       pack_id: "team/release-runbook",
       chunk_id: "chk_1",
     });
+  });
+
+  it("ingests licensed sources into processed osstack-native guidance", async () => {
+    const sourceDir = join(tmp, "mit-notes");
+    await mkdir(sourceDir);
+    await writeFile(join(sourceDir, "quality.md"), [
+      "# Frontend Quality",
+      "",
+      "Avoid placeholder content, inaccessible controls, and fake loading states before release.",
+    ].join("\n"));
+
+    const manifest = await ingestKnowledgeSource({
+      path: sourceDir,
+      id: "osstack-core/frontend-quality",
+      name: "Osstack Frontend Quality",
+      license: "MIT-derived-processed",
+      scope: "official",
+      sourceKind: "processed_mit",
+      taxonomy: ["software-engineering/frontend-quality"],
+      qualityScore: 86,
+      generatedAt: "2026-06-22T00:00:00.000Z",
+      sourceAttribution: ["processed from MIT-compatible frontend quality notes"],
+    });
+
+    expect(manifest).toMatchObject({
+      id: "osstack-core/frontend-quality",
+      source_kind: "processed_mit",
+      scope: "official",
+      taxonomy: ["software-engineering/frontend-quality"],
+      quality_score: 86,
+      source_attribution: ["processed from MIT-compatible frontend quality notes"],
+      source_provenance: [expect.objectContaining({
+        path: "quality.md",
+        license: "MIT-derived-processed",
+        sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      })],
+      chunks: [expect.objectContaining({
+        chunk_id: "ing_1",
+        title: "Osstack Frontend Quality",
+        tags: expect.arrayContaining(["official", "osstack-native", "software-engineering/frontend-quality"]),
+        source_refs: ["src_1"],
+      })],
+    });
+    expect(manifest.chunks[0]?.body).toContain("Osstack taxonomy: software-engineering/frontend-quality.");
+    expect(manifest.chunks[0]?.body).toContain("runs, loops, agents, verifiers, proof packs");
+    expect(manifest.chunks[0]?.body).toContain("Operational guidance:");
   });
 
   it("syncs cloud packs into a local cache and loads them for search", async () => {

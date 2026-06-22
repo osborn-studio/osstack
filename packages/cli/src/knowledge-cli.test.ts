@@ -219,6 +219,73 @@ describe("knowledge CLI", () => {
     });
   });
 
+  it("ingests licensed sources into an osstack-native knowledge pack", async () => {
+    const sourceDir = join(tmp, "mit-sources");
+    await mkdir(sourceDir);
+    await writeFile(join(sourceDir, "release.md"), [
+      "# Release Evidence",
+      "",
+      "Ship releases with verification logs, risk notes, rollback notes, and proof artifacts.",
+    ].join("\n"));
+    const outputPath = join(tmp, "release-pack.json");
+
+    const ingestExitCode = await main([
+      "knowledge",
+      "ingest",
+      sourceDir,
+      "--scope",
+      "official",
+      "--id",
+      "osstack-core/release-evidence",
+      "--name",
+      "Osstack Release Evidence",
+      "--license",
+      "MIT-derived-processed",
+      "--source-kind",
+      "processed_mit",
+      "--taxonomy",
+      "osstack-core/pr-and-release",
+      "--quality-score",
+      "87",
+      "--output",
+      outputPath,
+      "--json",
+    ]);
+
+    expect(ingestExitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      pack_id: "osstack-core/release-evidence",
+      output: outputPath,
+      source_kind: "processed_mit",
+      taxonomy: ["osstack-core/pr-and-release"],
+      chunks: 1,
+      sources: 1,
+    });
+    const manifest = JSON.parse(await readFile(outputPath, "utf-8")) as {
+      source_kind: string;
+      chunks: Array<{ chunk_id: string; body: string }>;
+      source_provenance: Array<{ path: string; license: string }>;
+    };
+    expect(manifest).toMatchObject({
+      source_kind: "processed_mit",
+      source_provenance: [expect.objectContaining({ path: "release.md", license: "MIT-derived-processed" })],
+    });
+    expect(manifest.chunks[0]?.body).toContain("Osstack taxonomy: osstack-core/pr-and-release.");
+    expect(manifest.chunks[0]?.body).toContain("proof packs");
+
+    logs = [];
+    const searchExitCode = await main(["knowledge", "search", "rollback proof release", "--pack", outputPath, "--json"]);
+
+    expect(searchExitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      mode: "local",
+      results: [expect.objectContaining({
+        pack_id: "osstack-core/release-evidence",
+        chunk_id: "ing_1",
+      })],
+    });
+  });
+
   it("syncs cloud packs into cache and searches cached packs", async () => {
     const server = await startKnowledgeServer();
     const cacheDir = join(tmp, "knowledge-cache");

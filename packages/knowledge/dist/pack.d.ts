@@ -14,6 +14,19 @@ export declare function importKnowledgeSource(options: {
     qualityScore?: number;
     generatedAt?: string;
 }): Promise<KnowledgePackManifest>;
+export declare function ingestKnowledgeSource(options: {
+    path: string;
+    id: string;
+    name: string;
+    license: string;
+    scope: KnowledgeScope;
+    version?: string;
+    taxonomy?: string[];
+    qualityScore?: number;
+    generatedAt?: string;
+    sourceKind?: KnowledgePackManifest["source_kind"];
+    sourceAttribution?: string[];
+}): Promise<KnowledgePackManifest>;
 export declare function syncKnowledgeCache(options: {
     cacheDir: string;
     cloudUrl: string;

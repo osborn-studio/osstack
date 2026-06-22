@@ -187,6 +187,66 @@ export async function importKnowledgeSource(options: {
   });
 }
 
+export async function ingestKnowledgeSource(options: {
+  path: string;
+  id: string;
+  name: string;
+  license: string;
+  scope: KnowledgeScope;
+  version?: string;
+  taxonomy?: string[];
+  qualityScore?: number;
+  generatedAt?: string;
+  sourceKind?: KnowledgePackManifest["source_kind"];
+  sourceAttribution?: string[];
+}): Promise<KnowledgePackManifest> {
+  const generatedAt = options.generatedAt ?? new Date().toISOString();
+  const sourceFiles = await collectKnowledgeSourceFiles(options.path);
+  const sourceProvenance: KnowledgeSourceProvenance[] = [];
+  const chunks: KnowledgePackManifest["chunks"] = [];
+  let index = 1;
+  for (const filePath of sourceFiles) {
+    const raw = await readFile(filePath, "utf-8");
+    const body = normalizeKnowledgeBody(raw);
+    if (body.length === 0) continue;
+    const sourceId = `src_${index}`;
+    const relPath = relative(options.path, filePath) || basename(filePath);
+    sourceProvenance.push({
+      source_id: sourceId,
+      path: relPath,
+      sha256: sha256(raw),
+      license: options.license,
+      scope: options.scope,
+      imported_at: generatedAt,
+    });
+    chunks.push({
+      chunk_id: `ing_${index}`,
+      title: osstackTitleFromBody(body, filePath),
+      body: renderOsstackNativeGuidance(body, options.taxonomy ?? []),
+      tags: [...new Set([options.scope, "osstack-native", ...(options.taxonomy ?? [])])],
+      source_refs: [sourceId],
+    });
+    index++;
+  }
+  const sourceKind = options.sourceKind
+    ?? (options.scope === "official" ? "osstack_native" : "internal");
+  return validateKnowledgePackManifest({
+    id: options.id,
+    version: options.version ?? generatedAt.slice(0, 10).replaceAll("-", "."),
+    name: options.name,
+    license: options.license,
+    source_kind: sourceKind,
+    quality_score: options.qualityScore ?? (options.scope === "official" ? 80 : 60),
+    scope: options.scope,
+    taxonomy: options.taxonomy ?? [],
+    generated_at: generatedAt,
+    last_reviewed_at: generatedAt,
+    source_attribution: options.sourceAttribution ?? [`osstack-ingested from ${options.scope} source ${basename(options.path)}`],
+    source_provenance: sourceProvenance,
+    chunks,
+  });
+}
+
 export async function syncKnowledgeCache(options: {
   cacheDir: string;
   cloudUrl: string;
@@ -371,6 +431,26 @@ function titleFromBody(body: string, path: string): string {
   const heading = body.split("\n").find((line) => line.trim().startsWith("# "));
   if (heading !== undefined) return heading.replace(/^#\s+/, "").trim();
   return basename(path, extname(path)).replace(/[-_]+/g, " ");
+}
+
+function osstackTitleFromBody(body: string, path: string): string {
+  const title = titleFromBody(body, path);
+  return title.toLowerCase().startsWith("osstack ") ? title : `Osstack ${title}`;
+}
+
+function renderOsstackNativeGuidance(body: string, taxonomy: string[]): string {
+  const normalized = body
+    .replace(/^# .+$/m, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const excerpt = normalized.length > 520 ? `${normalized.slice(0, 520).trimEnd()}...` : normalized;
+  const taxonomyText = taxonomy.length === 0 ? "general" : taxonomy.join(", ");
+  return [
+    `Osstack taxonomy: ${taxonomyText}.`,
+    "Use this source as processed guidance for osstack runs, loops, agents, verifiers, proof packs, and Knowledge Cloud retrieval.",
+    `Operational guidance: ${excerpt}`,
+    "When this chunk is injected into a run, cite the pack id and chunk id in report/proof evidence and keep cloud failures fail-open.",
+  ].join("\n\n");
 }
 
 export function searchKnowledgePacks(
