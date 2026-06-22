@@ -38,6 +38,7 @@ try {
   assert(summary.artifacts?.report !== undefined, "deliver must produce a report");
   assert(summary.artifacts?.proof_dir !== undefined, "deliver must produce a proof dir");
   assert(summary.artifacts?.proof_manifest !== undefined, "deliver must produce a proof manifest");
+  assert(summary.artifacts?.proof_zip !== undefined, "deliver must produce a proof zip");
 
   run("npm", ["test"], { cwd: workspace });
   const fixedSource = await readFile(join(workspace, "src", "math.js"), "utf-8");
@@ -58,6 +59,25 @@ try {
   const worktreeStatus = JSON.parse(await readFile(join(proofDir, "worktree-status.json"), "utf-8"));
   assert(worktreeStatus.entries?.some((entry) => entry.status === "merged"), "real repo deliver must merge worktree changes");
 
+  const proofValidation = run(process.execPath, [
+    osstackBin,
+    "proof",
+    "validate",
+    summary.loop_id,
+    "--proof-dir",
+    proofDir,
+    "--json",
+  ], { cwd: root, capture: true });
+  const proofValidationSummary = JSON.parse(proofValidation.stdout);
+  assert(proofValidationSummary.ok === true, "real repo proof validate must pass");
+  assert(proofValidationSummary.file_integrity?.ok === true, "real repo proof file integrity must pass");
+  assert(proofValidationSummary.archive_integrity?.checked === true, "real repo proof validate must inspect proof zip inventory");
+  assert(proofValidationSummary.archive_integrity?.ok === true, "real repo proof zip inventory validation must pass");
+  assert(
+    proofValidationSummary.archive_integrity?.proof_zip === summary.artifacts.proof_zip,
+    "real repo proof zip validation must inspect the deliver proof zip",
+  );
+
   const diff = run("git", ["diff", "HEAD~1..HEAD", "--", "src/math.js"], { cwd: workspace, capture: true }).stdout;
   assertIncludes(diff, "return a + b", "real repo git history must contain the delivered fix");
 
@@ -69,6 +89,8 @@ try {
     task_id: summary.task.task_id,
     report: summary.artifacts.report,
     proof_dir: proofDir,
+    proof_zip: summary.artifacts.proof_zip,
+    proof_validation: "proof-core",
     verification: "npm test",
     merged_worktree: true,
   }, null, 2));
