@@ -793,6 +793,12 @@ type ProofFileIntegrityIssueCode =
   | "manifest_malformed"
   | "manifest_invalid_kind"
   | "manifest_invalid_schema_version"
+  | "manifest_missing_osstack_version"
+  | "manifest_missing_run_id"
+  | "manifest_missing_loop_id"
+  | "manifest_missing_agent_id"
+  | "manifest_missing_agent_ids"
+  | "manifest_missing_generated_from"
   | "manifest_missing_created_at"
   | "manifest_missing_generated_at"
   | "artifact_malformed"
@@ -1587,10 +1593,28 @@ async function validateProofFileIntegrity(
   if (typeof manifestRaw["schema_version"] !== "number" || !Number.isInteger(manifestRaw["schema_version"]) || manifestRaw["schema_version"] < 1) {
     issues.push({ path: "manifest.json", code: "manifest_invalid_schema_version" });
   }
-  if (typeof manifestRaw["created_at"] !== "string" || manifestRaw["created_at"].trim().length === 0) {
+  if (missingManifestString(manifestRaw, "osstack_version")) {
+    issues.push({ path: "manifest.json", code: "manifest_missing_osstack_version" });
+  }
+  if (missingManifestString(manifestRaw, "run_id")) {
+    issues.push({ path: "manifest.json", code: "manifest_missing_run_id" });
+  }
+  if (missingManifestString(manifestRaw, "loop_id")) {
+    issues.push({ path: "manifest.json", code: "manifest_missing_loop_id" });
+  }
+  if (missingManifestString(manifestRaw, "agent_id")) {
+    issues.push({ path: "manifest.json", code: "manifest_missing_agent_id" });
+  }
+  if (!Array.isArray(manifestRaw["agent_ids"]) || !manifestRaw["agent_ids"].some((agentId) => typeof agentId === "string" && agentId.trim().length > 0)) {
+    issues.push({ path: "manifest.json", code: "manifest_missing_agent_ids" });
+  }
+  if (missingManifestString(manifestRaw, "generated_from")) {
+    issues.push({ path: "manifest.json", code: "manifest_missing_generated_from" });
+  }
+  if (missingManifestString(manifestRaw, "created_at")) {
     issues.push({ path: "manifest.json", code: "manifest_missing_created_at" });
   }
-  if (typeof manifestRaw["generated_at"] !== "string" || manifestRaw["generated_at"].trim().length === 0) {
+  if (missingManifestString(manifestRaw, "generated_at")) {
     issues.push({ path: "manifest.json", code: "manifest_missing_generated_at" });
   }
 
@@ -1663,6 +1687,11 @@ async function validateProofFileIntegrity(
 
   issues.push(...validateProofSha256Sums(manifestShaByPath, sha256sumsContent));
   return { ok: issues.length === 0, issues };
+}
+
+function missingManifestString(manifestRaw: Record<string, unknown>, key: string): boolean {
+  const value = manifestRaw[key];
+  return typeof value !== "string" || value.trim().length === 0;
 }
 
 function validateProofSha256Sums(
