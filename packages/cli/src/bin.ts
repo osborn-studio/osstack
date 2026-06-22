@@ -1820,7 +1820,7 @@ function validateProofSha256Sums(
     const match = /^([a-f0-9]{64}) {2}(.+)$/.exec(line);
     const checksum = match?.[1];
     const path = match?.[2];
-    if (checksum === undefined || path === undefined || sums.has(path)) {
+    if (checksum === undefined || path === undefined || sums.has(path) || isUnsafeProofArtifactPath(path)) {
       issues.push({ path: "sha256sums.txt", code: "sha256sums_malformed" });
       continue;
     }
