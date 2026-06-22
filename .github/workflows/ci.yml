@@ -40,5 +40,8 @@ jobs:
       - name: Test
         run: pnpm -r test
 
+      - name: Knowledge Cloud smoke
+        run: pnpm smoke:knowledge-cloud
+
       - name: NPM install smoke
         run: pnpm smoke:npm-install
