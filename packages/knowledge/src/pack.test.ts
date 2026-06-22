@@ -58,6 +58,30 @@ describe("knowledge packs", () => {
     })).toThrow(/license/);
   });
 
+  it("rejects source provenance paths that escape the knowledge pack", () => {
+    expect(() => validateKnowledgePackManifest(samplePack({
+      source_provenance: [{
+        source_id: "src_escape",
+        path: "nested/../upstream.md",
+        sha256: createHash("sha256").update("upstream").digest("hex"),
+        license: "MIT-derived-processed",
+        scope: "official",
+        imported_at: "2026-06-22T00:00:00.000Z",
+      }],
+    }))).toThrow(/source_provenance path is unsafe/);
+
+    expect(() => validateKnowledgePackManifest(samplePack({
+      source_provenance: [{
+        source_id: "src_absolute",
+        path: "/tmp/upstream.md",
+        sha256: createHash("sha256").update("upstream").digest("hex"),
+        license: "MIT-derived-processed",
+        scope: "official",
+        imported_at: "2026-06-22T00:00:00.000Z",
+      }],
+    }))).toThrow(/source_provenance path is unsafe/);
+  });
+
   it("searches local packs and assembles prompt snippets", async () => {
     const path = join(tmp, "pack.json");
     await writeFile(path, JSON.stringify(samplePack(), null, 2));

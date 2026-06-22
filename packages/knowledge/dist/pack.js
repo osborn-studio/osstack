@@ -155,6 +155,9 @@ export function validateKnowledgePublishGate(manifest, options = {}) {
 function isProcessedLicenseLabel(license) {
     return /\b(processed|derived|osstack)\b/i.test(license);
 }
+function isUnsafeKnowledgeSourcePath(path) {
+    return path.startsWith("/") || /^[A-Za-z]:[\\/]/.test(path) || path.split(/[\\/]+/).includes("..");
+}
 export async function loadKnowledgePackIndex(path) {
     const raw = await readFile(path, "utf-8");
     return validateKnowledgePackIndex(JSON.parse(raw));
@@ -760,9 +763,13 @@ function validateSourceProvenanceArray(value) {
         if (!["official", "team", "project"].includes(scope)) {
             throw new Error("knowledge pack source_provenance scope is invalid");
         }
+        const path = requiredString(item, "path");
+        if (isUnsafeKnowledgeSourcePath(path)) {
+            throw new Error("knowledge pack source_provenance path is unsafe");
+        }
         return {
             source_id: requiredString(item, "source_id"),
-            path: requiredString(item, "path"),
+            path,
             sha256: requiredString(item, "sha256"),
             license: requiredString(item, "license"),
             scope: scope,

@@ -261,7 +261,7 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
         scope: string;
         taxonomy: string[];
         review: { status: string; reviewer_id: string };
-        source_provenance: Array<{ sha256: string; source_id: string }>;
+        source_provenance: Array<{ path: string; sha256: string; source_id: string }>;
       };
     };
     expect(knowledgeVector.expected_mode).toBe("local");
@@ -275,6 +275,24 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
     });
     expect(knowledgeVector.knowledge_pack.source_provenance[0]?.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(knowledgeVector.knowledge_pack.source_provenance[0]?.source_id).toBe("osstack-knowledge-cloud-v1");
+    expect(knowledgeVector.knowledge_pack.source_provenance[0]?.path).toMatch(/^sources\/[^/]+\.md$/);
+
+    const knowledgePackSchema = JSON.parse(
+      await readFile(join(specDir, "schemas", "knowledge-pack.schema.json"), "utf-8"),
+    ) as {
+      properties: {
+        source_provenance: {
+          items: {
+            properties: {
+              path: { pattern?: string };
+            };
+          };
+        };
+      };
+    };
+    const sourcePathPattern = knowledgePackSchema.properties.source_provenance.items.properties.path.pattern;
+    expect(sourcePathPattern).toContain("\\.\\.");
+    expect(sourcePathPattern).toContain("[A-Za-z]");
   });
 
   it("ships product companion docs for the run spec", async () => {
