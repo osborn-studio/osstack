@@ -2128,7 +2128,13 @@ Options:
   }
   const stateFilePath = evidenceResult?.state_json
     ?? resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
-  const state = await readLoopState(stateFilePath);
+  let state: LoopState | null;
+  try {
+    state = await readLoopState(stateFilePath);
+  } catch (error) {
+    console.error(`osstack: invalid loop state at ${stateFilePath}: ${errorMessage(error)}`);
+    return 1;
+  }
   if (state === null) {
     console.error(`osstack: no loop state found at ${stateFilePath}`);
     return 1;

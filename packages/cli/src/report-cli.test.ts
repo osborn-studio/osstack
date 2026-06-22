@@ -135,6 +135,25 @@ describe("report CLI", () => {
     expect(exitCode).toBe(1);
     expect(errors.join("\n")).toContain("osstack: no loop state found");
   });
+
+  it("reports malformed loop state without throwing", async () => {
+    const statePath = join(tmp, "LOOP-STATE.json");
+    await writeFile(statePath, JSON.stringify({
+      loop_id: "bad-report-loop",
+      completed_tasks: "not-an-array",
+      pending: [],
+      in_progress: [],
+      decisions: [],
+    }, null, 2));
+
+    const exitCode = await main(["report", "--workspace", tmp]);
+
+    expect(exitCode).toBe(1);
+    const output = errors.join("\n");
+    expect(output).toContain("osstack: invalid loop state");
+    expect(output).toContain(statePath);
+    expect(output).toContain("completed_tasks");
+  });
 });
 
 async function writeState(path: string): Promise<void> {
