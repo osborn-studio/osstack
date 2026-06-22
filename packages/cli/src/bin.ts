@@ -4844,7 +4844,32 @@ async function handleKanbanCommand(args: string[]): Promise<number> {
 }
 
 async function handleDashboardCommand(args: string[]): Promise<number> {
-  const sub = args[0] ?? "url";
+  const sub = args[0]?.startsWith("--") ? "summary" : (args[0] ?? "summary");
+
+  if (sub === "summary") {
+    const [healthResp, snapshotResp] = await Promise.all([
+      rpc("health") as Promise<RpcResp>,
+      rpc("dashboard.snapshot") as Promise<RpcResp>,
+    ]);
+    if (!healthResp.ok) {
+      console.error("osstack:", healthResp.error?.message ?? "health failed");
+      return 1;
+    }
+    if (!snapshotResp.ok) {
+      console.error("osstack:", snapshotResp.error?.message ?? "dashboard.snapshot failed");
+      return 1;
+    }
+    const summary = {
+      daemon: healthResp.result,
+      cockpit: snapshotResp.result,
+    };
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(summary, null, 2));
+    } else {
+      printCockpitSummary(summary);
+    }
+    return 0;
+  }
 
   if (sub === "url") {
     const resp = (await rpc("dashboard.url")) as { ok: boolean; result?: { url?: string | null; available?: boolean }; error?: { message: string } };
@@ -4886,9 +4911,12 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
   if (sub === "help") {
     console.log(`osstack dashboard / cockpit — local development cockpit
 
+  osstack cockpit           Show daemon, run, kanban, report, and proof summary
+  osstack cockpit --json    Print daemon status + dashboard snapshot JSON
   osstack dashboard url       Print the URL for chat bots to return
   osstack dashboard open      Open the dashboard locally
   osstack dashboard snapshot  Print the JSON backing the dashboard
+  osstack dashboard summary   Show the same product cockpit summary
   osstack cockpit url         Same as dashboard url
   osstack cockpit open        Same as dashboard open
 
@@ -4902,6 +4930,37 @@ Env:
 
   console.error(`osstack: unknown dashboard subcommand "${sub}"`);
   return 1;
+}
+
+function printCockpitSummary(summary: { daemon?: unknown; cockpit?: unknown }): void {
+  const daemon = isRecord(summary.daemon) ? summary.daemon : {};
+  const cockpit = isRecord(summary.cockpit) ? summary.cockpit : {};
+  const dashboard = isRecord(cockpit["dashboard"]) ? cockpit["dashboard"] : {};
+  const overview = isRecord(cockpit["overview"]) ? cockpit["overview"] : {};
+  const board = isRecord(cockpit["board"]) ? cockpit["board"] : {};
+  const evidence = isRecord(cockpit["evidence"]) ? cockpit["evidence"] : {};
+  const quality = isRecord(cockpit["quality"]) ? cockpit["quality"] : {};
+  const recentRuns = Array.isArray(cockpit["recent_runs"]) ? cockpit["recent_runs"] : [];
+  const columns = Array.isArray(board["columns"]) ? board["columns"] : [];
+
+  console.log("Osstack Cockpit");
+  console.log(`daemon=${String(daemon["version"] ?? "unknown")} phase=${String(daemon["phase"] ?? "unknown")} draining=${String(daemon["draining"] ?? "unknown")}`);
+  console.log(`url=${String(dashboard["url"] ?? daemon["dashboard_url"] ?? "unavailable")}`);
+  console.log(`runs total=${String(overview["total_runs"] ?? 0)} active=${String(overview["active_runs"] ?? daemon["active_runs"] ?? 0)} loops=${String(overview["active_loops"] ?? daemon["active_loops"] ?? 0)}`);
+  console.log(`quality=${String(quality["grade"] ?? "unknown")} success_rate=${String(quality["success_rate"] ?? "unknown")}`);
+  console.log(`evidence reports=${String(evidence["reports"] ?? 0)} proof_packs=${String(evidence["proof_packs"] ?? 0)}`);
+  console.log("kanban:");
+  for (const column of columns) {
+    if (!isRecord(column)) continue;
+    const cards = Array.isArray(column["cards"]) ? column["cards"] : [];
+    console.log(`  ${String(column["name"] ?? "unknown")}: ${cards.length}`);
+  }
+  console.log("recent runs:");
+  for (const run of recentRuns.slice(0, 5)) {
+    if (!isRecord(run)) continue;
+    console.log(`  ${String(run["run_id"] ?? "unknown")} ${String(run["phase"] ?? "unknown")} ${String(run["outcome"] ?? "running")} ${String(run["agent_id"] ?? "unknown")}`);
+  }
+  if (recentRuns.length === 0) console.log("  none");
 }
 
 async function handleHermesCommand(args: string[]): Promise<number> {
