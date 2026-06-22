@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const tmp = join(tmpdir(), `osstack-knowledge-cloud-smoke-${process.pid}`);
 await mkdir(tmp, { recursive: true });
 const privatePackPath = join(tmp, "team-private-pack.json");
+const feedbackLogPath = join(tmp, "feedback", "feedback.jsonl");
 await writeFile(privatePackPath, JSON.stringify({
   id: "team/private-release",
   version: "2026.06.22-smoke",
@@ -38,7 +39,7 @@ const child = spawn(
   ],
   {
     cwd: process.cwd(),
-    env: { ...process.env },
+    env: { ...process.env, OSSTACK_KNOWLEDGE_FEEDBACK_LOG: feedbackLogPath },
     stdio: ["ignore", "pipe", "pipe"],
   },
 );
@@ -125,6 +126,9 @@ try {
   });
   assert(feedbackSummary.total === 1, "/v1/feedback/summary must count tenant feedback");
   assert(feedbackSummary.useful === 1, "/v1/feedback/summary must count useful tenant feedback");
+  const feedbackLog = await readFile(feedbackLogPath, "utf-8");
+  assert(feedbackLog.includes("\"chunk_id\":\"proof-checksum-pack\""), "feedback JSONL must record chunk ids");
+  assert(feedbackLog.includes("\"tenant_id\":\"team_smoke\""), "feedback JSONL must record tenant scope");
 
   console.log(JSON.stringify({
     ok: true,
@@ -137,6 +141,7 @@ try {
     private_result: privateSearch.results[0]?.chunk_id ?? null,
     feedback: feedback.feedback?.status ?? null,
     feedback_summary_total: feedbackSummary.total,
+    feedback_log: feedbackLogPath,
   }, null, 2));
 } finally {
   child.kill("SIGTERM");

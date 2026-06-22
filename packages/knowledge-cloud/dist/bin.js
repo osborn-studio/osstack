@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { realpathSync } from "node:fs";
+import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadKnowledgePack } from "@osstack/knowledge";
@@ -9,7 +10,7 @@ export async function main(argv = process.argv.slice(2)) {
         console.log(`osstack-knowledge-cloud
 
 Usage:
-  osstack-knowledge-cloud [--host H] [--port N] [--official-index P] [--private-pack P] [--private-token T] [--json]
+  osstack-knowledge-cloud [--host H] [--port N] [--official-index P] [--private-pack P] [--private-token T] [--feedback-log P] [--json]
 
 Options:
   --host H              Host to bind. Default: 127.0.0.1
@@ -17,6 +18,7 @@ Options:
   --official-index P    Official Knowledge Cloud index.json path.
   --private-pack P      Team/private pack manifest path. Repeatable.
   --private-token T     Bearer token required for /v1/private-packs and private search.
+  --feedback-log P      Append feedback entries as JSONL for audit/quality review.
   --json                Print startup metadata as JSON.
 
 Env:
@@ -24,6 +26,7 @@ Env:
   OSSTACK_KNOWLEDGE_CLOUD_PORT
   OSSTACK_OFFICIAL_KNOWLEDGE_INDEX
   OSSTACK_KNOWLEDGE_PRIVATE_TOKEN
+  OSSTACK_KNOWLEDGE_FEEDBACK_LOG
 `);
         return 0;
     }
@@ -40,12 +43,24 @@ Env:
     const packs = await loadKnowledgeCloudPacksFromIndex(officialIndex);
     const privatePacks = await Promise.all(flagValues(argv, "--private-pack").map((path) => loadKnowledgePack(path)));
     const privateAuthToken = flagValue(argv, "--private-token") ?? process.env["OSSTACK_KNOWLEDGE_PRIVATE_TOKEN"];
+    const feedbackLog = flagValue(argv, "--feedback-log") ?? process.env["OSSTACK_KNOWLEDGE_FEEDBACK_LOG"];
+    if (feedbackLog !== undefined && feedbackLog.trim().length > 0) {
+        await mkdir(dirname(feedbackLog), { recursive: true });
+        await writeFile(feedbackLog, "", { flag: "a" });
+    }
     const handle = await startKnowledgeCloudServer({
         host,
         port,
         packs,
         ...(privatePacks.length === 0 ? {} : { privatePacks }),
         ...(privateAuthToken === undefined || privateAuthToken.trim().length === 0 ? {} : { privateAuthToken: privateAuthToken.trim() }),
+        ...(feedbackLog === undefined || feedbackLog.trim().length === 0
+            ? {}
+            : {
+                feedbackSink: async (entry) => {
+                    await appendFile(feedbackLog, `${JSON.stringify(entry)}\n`, "utf-8");
+                },
+            }),
     });
     const startup = {
         url: handle.url,
@@ -53,6 +68,7 @@ Env:
         packs: packs.length,
         private_packs: privatePacks.length,
         private_auth_required: privateAuthToken !== undefined && privateAuthToken.trim().length > 0,
+        ...(feedbackLog === undefined || feedbackLog.trim().length === 0 ? {} : { feedback_log: feedbackLog }),
     };
     if (argv.includes("--json")) {
         console.log(JSON.stringify(startup, null, 2));

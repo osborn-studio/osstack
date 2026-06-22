@@ -16,10 +16,12 @@ assertIncludes(fly, 'dockerfile = "Dockerfile.knowledge-cloud"', "Fly deploy con
 assertIncludes(fly, "internal_port = 8787", "Fly deploy config must route to port 8787");
 assertIncludes(fly, 'path = "/healthz"', "Fly deploy config must healthcheck /healthz");
 assertIncludes(fly, 'OSSTACK_KNOWLEDGE_CLOUD_HOST = "0.0.0.0"', "Fly deploy config must bind externally");
+assertIncludes(fly, 'OSSTACK_KNOWLEDGE_FEEDBACK_LOG = "/data/feedback/feedback.jsonl"', "Fly deploy config must persist Knowledge Cloud feedback JSONL");
 
 assertIncludes(render, "dockerfilePath: ./Dockerfile.knowledge-cloud", "Render deploy config must use the Knowledge Cloud Dockerfile");
 assertIncludes(render, "healthCheckPath: /healthz", "Render deploy config must healthcheck /healthz");
 assertIncludes(render, "value: 8787", "Render deploy config must set the Knowledge Cloud port");
+assertIncludes(render, "OSSTACK_KNOWLEDGE_FEEDBACK_LOG", "Render deploy config must persist Knowledge Cloud feedback JSONL");
 
 assertIncludes(workflow, "workflow_dispatch:", "Knowledge Cloud deploy workflow must be manually triggerable");
 assertIncludes(workflow, "pnpm smoke:knowledge-cloud", "Knowledge Cloud deploy workflow must run service smoke");
