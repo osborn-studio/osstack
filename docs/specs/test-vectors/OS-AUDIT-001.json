@@ -1,0 +1,148 @@
+{
+  "id": "OS-AUDIT-001",
+  "description": "Reviewed and audited proof evidence with checker output, worktree isolation, governance, and knowledge trace",
+  "loop_state": {
+    "loop_id": "loop-audit-001",
+    "started_at": "2026-06-22T00:00:00.000Z",
+    "updated_at": "2026-06-22T00:03:00.000Z",
+    "completed_tasks": [
+      {
+        "task_id": "task-audit-001",
+        "capability": "code.test",
+        "outcome": "success",
+        "iterations": 1,
+        "agent_id": "codex-cli",
+        "duration_ms": 3000
+      }
+    ],
+    "in_progress": [],
+    "pending": [],
+    "decisions": []
+  },
+  "events": [
+    {
+      "event_id": "evt-audit-plan",
+      "loop_id": "loop-audit-001",
+      "type": "loop.task.planned",
+      "seq": 1,
+      "created_at": 1782090000000,
+      "payload": {
+        "task_id": "task-audit-001",
+        "agent_id": "codex-cli",
+        "reason": "matched code.test capability"
+      }
+    },
+    {
+      "event_id": "evt-audit-review",
+      "loop_id": "loop-audit-001",
+      "type": "loop.verify.done",
+      "seq": 8,
+      "created_at": 1782090180000,
+      "payload": {
+        "task_id": "task-audit-001",
+        "pass": true,
+        "score": 1,
+        "reviewer_agent_id": "local-verifier",
+        "summary": "Verifier passed after review."
+      }
+    }
+  ],
+  "proof_manifest": {
+    "schema_version": 1,
+    "kind": "osstack.proof_pack",
+    "loop_id": "loop-audit-001",
+    "generated_from": "LOOP-STATE.json",
+    "generated_at": "2026-06-22T00:03:00.000Z",
+    "artifacts": [
+      {
+        "path": "report.md",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 2048
+      },
+      {
+        "path": "verify-results.json",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "bytes": 512
+      },
+      {
+        "path": "checker-output/task-audit-001-local-verifier.txt",
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "bytes": 128
+      },
+      {
+        "path": "worktree-status.json",
+        "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "bytes": 512
+      },
+      {
+        "path": "knowledge-results.json",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "bytes": 512
+      },
+      {
+        "path": "governance-results.json",
+        "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "bytes": 512
+      }
+    ]
+  },
+  "agent_runtime": {
+    "status": "recorded",
+    "agents": [
+      {
+        "agent_id": "codex-cli",
+        "auth_mode": "subprocess/login-reuse",
+        "roles": ["coding", "test-verify", "reviewer", "release/proof"],
+        "plan_event_seqs": [1]
+      }
+    ]
+  },
+  "policy_decision": {
+    "status": "recorded",
+    "decisions": [
+      {
+        "task_id": "task-audit-001",
+        "agent_id": "codex-cli",
+        "reason": "matched code.test capability",
+        "event_seq": 1
+      }
+    ]
+  },
+  "verify_results": {
+    "status": "pass",
+    "results": [
+      {
+        "task_id": "task-audit-001",
+        "pass": true,
+        "score": 1,
+        "reviewer_agent_id": "local-verifier",
+        "summary": "Verifier passed after review.",
+        "event_seq": 8
+      }
+    ]
+  },
+  "worktree_status": {
+    "status": "recorded",
+    "entries": [
+      {
+        "task_id": "task-audit-001",
+        "status": "merged",
+        "branch": "osstack/loop/task-audit-001",
+        "commit": "abcdef1234567890",
+        "path": "/tmp/osstack/task-audit-001",
+        "event_seq": 7
+      }
+    ]
+  },
+  "governance_results": {
+    "status": "pass",
+    "findings": []
+  },
+  "knowledge_results": {
+    "mode": "local",
+    "packs": ["osstack-core/proof-and-scorecard"],
+    "chunks": ["proof-checksum-pack"]
+  },
+  "expected_conformance": "L4",
+  "expected_review_level": "L3"
+}

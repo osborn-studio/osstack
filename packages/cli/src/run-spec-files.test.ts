@@ -83,6 +83,7 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       "schemas/knowledge-pack.schema.json",
       "test-vectors/OS-GOV-001.json",
       "test-vectors/OS-EVID-001.json",
+      "test-vectors/OS-AUDIT-001.json",
       "test-vectors/OS-KNOW-001.json",
     ];
 
@@ -118,6 +119,37 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
     expect(evidenceVector.verify_results.results[0]?.reviewer_agent_id).toBe("local-verifier");
     expect(evidenceVector.worktree_status.status).toBe("recorded");
     expect(evidenceVector.worktree_status.entries[0]?.status).toBe("merged");
+
+    const auditVector = JSON.parse(
+      await readFile(join(specDir, "test-vectors", "OS-AUDIT-001.json"), "utf-8"),
+    ) as {
+      expected_conformance: string;
+      expected_review_level: string;
+      proof_manifest: { artifacts: Array<{ path: string; sha256: string; bytes: number }> };
+      verify_results: { results: Array<{ reviewer_agent_id: string; event_seq: number }> };
+      policy_decision: { decisions: Array<{ reason: string }> };
+      governance_results: { status: string };
+      knowledge_results: { chunks: string[] };
+    };
+    expect(auditVector.expected_conformance).toBe("L4");
+    expect(auditVector.expected_review_level).toBe("L3");
+    expect(auditVector.verify_results.results[0]?.reviewer_agent_id).toBe("local-verifier");
+    expect(auditVector.verify_results.results[0]?.event_seq).toBe(8);
+    expect(auditVector.policy_decision.decisions[0]?.reason).toContain("matched code.test capability");
+    expect(auditVector.governance_results.status).toBe("pass");
+    expect(auditVector.knowledge_results.chunks).toContain("proof-checksum-pack");
+    expect(auditVector.proof_manifest.artifacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: "checker-output/task-audit-001-local-verifier.txt",
+        sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+        bytes: expect.any(Number),
+      }),
+      expect.objectContaining({
+        path: "worktree-status.json",
+        sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+        bytes: expect.any(Number),
+      }),
+    ]));
 
     const knowledgeVector = JSON.parse(
       await readFile(join(specDir, "test-vectors", "OS-KNOW-001.json"), "utf-8"),

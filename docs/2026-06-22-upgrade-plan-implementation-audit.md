@@ -383,8 +383,8 @@ gh pr create --draft --base main --head codex/osstack-report-foundation \
 
 在授权解除前，建议继续做本地可验证的 P1：
 
-1. 增加 L3/L4 reviewed/audited fixture vectors。
-2. 为外部 proof evidence imports 增加 schema validation。
+1. 为外部 proof evidence imports 增加 schema validation。
+2. 增加 negative/malformed vectors，覆盖坏的 proof evidence。
 3. 把 `smoke:deliver-proof` 和 installed-CLI knowledge fallback smoke 接入远端 CI。
 
 授权解除后，立即转入 P0：
