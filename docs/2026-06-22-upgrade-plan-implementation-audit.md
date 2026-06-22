@@ -336,7 +336,7 @@
 - `osstack compliance list` / `render` 存在。
 - compliance report 不声称外部认证。
 - `smoke:deliver-proof` 已从真实 deliver proof dir 渲染 `engineering-readiness` 与 `soc2-lite` compliance reports，并校验 proof manifest checksum evidence mapping 以及 lite pack 不声称外部认证。
-- `osstack proof --compliance-pack <pack>` 支持把一个或多个内部 compliance mapping reports 直接写入 proof pack、proof zip 和 manifest `compliance_reports` 索引；manifest schema 要求这些报告的 `certification_claim` 为 `none`。
+- `osstack proof --compliance-pack <pack>` 支持把一个或多个内部 compliance mapping reports 直接写入 proof pack、proof zip 和 manifest `compliance_reports` 索引；manifest schema 和 runtime proof validation 都要求这些报告的 `certification_claim` 为 `none`，且每个 report path 必须出现在 artifact checksum 清单里。
 
 需增强：
 

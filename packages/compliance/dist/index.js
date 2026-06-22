@@ -669,7 +669,9 @@ function hasGovernanceEvidence(value) {
 function hasProofManifestEvidence(value) {
     if (!hasObject(value))
         return false;
-    return hasValidNonEmptyArray(value, "artifacts", isProofManifestArtifact);
+    if (!hasValidNonEmptyArray(value, "artifacts", isProofManifestArtifact))
+        return false;
+    return hasValidComplianceReports(value);
 }
 function isProofManifestArtifact(value) {
     if (!hasObject(value))
@@ -678,6 +680,25 @@ function isProofManifestArtifact(value) {
         && typeof value["sha256"] === "string"
         && SHA256_HEX.test(value["sha256"])
         && isPositiveInteger(value["bytes"]);
+}
+function hasValidComplianceReports(manifest) {
+    const reports = manifest["compliance_reports"];
+    if (reports === undefined)
+        return true;
+    if (!Array.isArray(reports))
+        return false;
+    const artifactPaths = new Set(manifest["artifacts"]
+        .filter(hasObject)
+        .map((artifact) => artifact["path"])
+        .filter((path) => typeof path === "string"));
+    return reports.every((report) => {
+        if (!hasObject(report))
+            return false;
+        return isNonEmptyString(report["pack_id"])
+            && isNonEmptyString(report["path"])
+            && report["certification_claim"] === "none"
+            && artifactPaths.has(report["path"]);
+    });
 }
 function hasRecordedWorktreeEvidence(value) {
     if (!hasObject(value) || value["status"] !== "recorded")

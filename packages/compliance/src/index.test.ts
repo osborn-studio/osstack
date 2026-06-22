@@ -164,6 +164,57 @@ describe("compliance packs", () => {
     ]));
   });
 
+  it("rejects proof manifests with misleading compliance report certification claims", () => {
+    const validation = validateProofEvidence({
+      evidence: {
+        ...sampleEvidence(),
+        manifest: {
+          artifacts: [
+            { path: "report.md", sha256: "a".repeat(64), bytes: 12 },
+            { path: "compliance-soc2-lite.md", sha256: "b".repeat(64), bytes: 128 },
+          ],
+          compliance_reports: [{
+            pack_id: "soc2-lite",
+            path: "compliance-soc2-lite.md",
+            certification_claim: "soc2-certified",
+          }],
+        },
+      },
+    });
+
+    expect(validation.missing).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        control_id: "evidence-integrity",
+        evidence_path: "manifest.json",
+      }),
+    ]));
+  });
+
+  it("rejects proof manifests with compliance reports missing from the artifact inventory", () => {
+    const validation = validateProofEvidence({
+      evidence: {
+        ...sampleEvidence(),
+        manifest: {
+          artifacts: [
+            { path: "report.md", sha256: "a".repeat(64), bytes: 12 },
+          ],
+          compliance_reports: [{
+            pack_id: "engineering-readiness",
+            path: "compliance-engineering-readiness.md",
+            certification_claim: "none",
+          }],
+        },
+      },
+    });
+
+    expect(validation.missing).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        control_id: "evidence-integrity",
+        evidence_path: "manifest.json",
+      }),
+    ]));
+  });
+
   it("renders SOC 2 lite evidence mapping without claiming certification", () => {
     const markdown = renderComplianceReport({
       packId: "soc2-lite",
