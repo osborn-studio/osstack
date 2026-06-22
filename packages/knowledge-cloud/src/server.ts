@@ -37,9 +37,10 @@ export interface KnowledgeCloudSearchResponse {
 }
 
 export function createKnowledgeCloudHandler(options: KnowledgeCloudOptions) {
+  const feedbackLog: KnowledgeFeedbackEntry[] = [];
   return async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     try {
-      await routeKnowledgeCloudRequest(options, req, res);
+      await routeKnowledgeCloudRequest({ ...options, feedbackLog }, req, res);
     } catch (error) {
       sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) });
     }
@@ -81,7 +82,7 @@ export async function loadKnowledgeCloudPacksFromIndex(indexPath: string): Promi
 }
 
 async function routeKnowledgeCloudRequest(
-  options: KnowledgeCloudOptions,
+  options: KnowledgeCloudOptions & { feedbackLog: KnowledgeFeedbackEntry[] },
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<void> {
@@ -163,11 +164,48 @@ async function routeKnowledgeCloudRequest(
       ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
       authorized: isAuthorizedPrivateRequest(options, req),
     };
+    options.feedbackLog.push(entry);
     await options.feedbackSink?.(entry);
     sendJson(res, 200, { ok: true, feedback: entry });
     return;
   }
+  if (method === "POST" && url.pathname === "/v1/feedback/summary") {
+    const body = await readJsonBody(req);
+    sendJson(res, 200, summarizeFeedback(options.feedbackLog, tenantIdField(body)));
+    return;
+  }
   sendJson(res, 404, { error: "not found" });
+}
+
+function summarizeFeedback(entries: KnowledgeFeedbackEntry[], tenantId: string | undefined): {
+  total: number;
+  useful: number;
+  bad: number;
+  tenant_id?: string;
+  chunks: Array<{ chunk_id: string; total: number; useful: number; bad: number }>;
+} {
+  const filtered = tenantId === undefined
+    ? entries
+    : entries.filter((entry) => entry.tenant_id === tenantId);
+  const chunks = new Map<string, { chunk_id: string; total: number; useful: number; bad: number }>();
+  let useful = 0;
+  let bad = 0;
+  for (const entry of filtered) {
+    if (entry.rating === "useful") useful += 1;
+    else bad += 1;
+    const current = chunks.get(entry.chunk_id) ?? { chunk_id: entry.chunk_id, total: 0, useful: 0, bad: 0 };
+    current.total += 1;
+    if (entry.rating === "useful") current.useful += 1;
+    else current.bad += 1;
+    chunks.set(entry.chunk_id, current);
+  }
+  return {
+    total: filtered.length,
+    useful,
+    bad,
+    ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
+    chunks: [...chunks.values()].sort((a, b) => b.total - a.total || a.chunk_id.localeCompare(b.chunk_id)),
+  };
 }
 
 function tenantPrivatePacks(options: KnowledgeCloudOptions, tenantId: string): KnowledgePack[] {

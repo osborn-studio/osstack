@@ -112,9 +112,19 @@ try {
   const feedback = await fetchJson(`${url}/v1/feedback`, {
     chunk_id: "proof-checksum-pack",
     rating: "useful",
+    tenant_id: "team_smoke",
+  }, {
+    authorization: "Bearer kst_smoke_private",
   });
   assert(feedback.ok === true, "/v1/feedback must accept useful/bad ratings");
   assert(feedback.feedback?.status === "sent", "/v1/feedback must return sent status");
+  assert(feedback.feedback?.tenant_id === "team_smoke", "/v1/feedback must record tenant scope");
+
+  const feedbackSummary = await fetchJson(`${url}/v1/feedback/summary`, {
+    tenant_id: "team_smoke",
+  });
+  assert(feedbackSummary.total === 1, "/v1/feedback/summary must count tenant feedback");
+  assert(feedbackSummary.useful === 1, "/v1/feedback/summary must count useful tenant feedback");
 
   console.log(JSON.stringify({
     ok: true,
@@ -126,6 +136,7 @@ try {
     top_result: search.results[0]?.chunk_id ?? null,
     private_result: privateSearch.results[0]?.chunk_id ?? null,
     feedback: feedback.feedback?.status ?? null,
+    feedback_summary_total: feedbackSummary.total,
   }, null, 2));
 } finally {
   child.kill("SIGTERM");

@@ -82,6 +82,25 @@ describe("Knowledge Cloud HTTP service", () => {
                 authorized: true,
             }),
         ]);
+        await fetchJson(`${url}/v1/feedback`, {
+            chunk_id: "proof-checksum-pack",
+            rating: "bad",
+            tenant_id: "team_beta",
+        });
+        const feedbackSummary = await fetchJson(`${url}/v1/feedback/summary`, {
+            tenant_id: "team_alpha",
+        });
+        expect(feedbackSummary).toMatchObject({
+            total: 1,
+            useful: 1,
+            bad: 0,
+            tenant_id: "team_alpha",
+            chunks: [expect.objectContaining({
+                    chunk_id: "proof-checksum-pack",
+                    useful: 1,
+                    bad: 0,
+                })],
+        });
     });
     it("serves tenant private packs only to authorized matching tenants", async () => {
         const packs = await officialPacks();
