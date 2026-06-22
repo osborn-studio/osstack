@@ -238,15 +238,29 @@ async function routeKnowledgeCloudRequest(options, req, res) {
             sendJson(res, 400, { error: "chunk_id and rating are required" });
             return;
         }
+        const authorized = tenantId === undefined
+            ? isAuthorizedPrivateRequest(options, req)
+            : isAuthorizedPrivateRequest(options, req, tenantId);
+        if (tenantId !== undefined && !authorized) {
+            await recordAudit(options, {
+                action: "feedback",
+                status: "unauthorized",
+                chunk_id: chunkId,
+                rating,
+                tenant_id: tenantId,
+                authorized: false,
+                private: true,
+            });
+            sendJson(res, 401, { error: "tenant feedback requires authorization" });
+            return;
+        }
         const entry = {
             chunk_id: chunkId,
             rating,
             status: "sent",
             created_at: options.now?.() ?? new Date().toISOString(),
             ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
-            authorized: tenantId === undefined
-                ? isAuthorizedPrivateRequest(options, req)
-                : isAuthorizedPrivateRequest(options, req, tenantId),
+            authorized,
         };
         options.feedbackLog.push(entry);
         await options.feedbackSink?.(entry);

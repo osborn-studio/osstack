@@ -229,6 +229,56 @@ describe("Knowledge Cloud HTTP service", () => {
     });
   });
 
+  it("rejects unauthorized tenant feedback before it can pollute tenant summaries", async () => {
+    const url = await startCloud({
+      packs: await officialPacks(),
+      privateTenantTokens: {
+        team_alpha: "kst_alpha_private",
+      },
+      now: () => "2026-06-22T00:00:00.000Z",
+    });
+
+    const unauthorizedFeedback = await fetch(`${url}/v1/feedback`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        chunk_id: "private-release",
+        rating: "bad",
+        tenant_id: "team_alpha",
+      }),
+    });
+    expect(unauthorizedFeedback.status).toBe(401);
+
+    const feedbackSummary = await fetchJson(
+      `${url}/v1/feedback/summary`,
+      { tenant_id: "team_alpha" },
+      { authorization: "Bearer kst_alpha_private" },
+    );
+    expect(feedbackSummary).toMatchObject({
+      total: 0,
+      useful: 0,
+      bad: 0,
+      tenant_id: "team_alpha",
+      chunks: [],
+    });
+
+    const tenantAudit = await fetchJson(
+      `${url}/v1/audit`,
+      { tenant_id: "team_alpha", action: "feedback", status: "unauthorized" },
+      { authorization: "Bearer kst_alpha_private" },
+    );
+    expect(tenantAudit).toMatchObject({
+      events: [expect.objectContaining({
+        action: "feedback",
+        status: "unauthorized",
+        tenant_id: "team_alpha",
+        chunk_id: "private-release",
+        rating: "bad",
+        authorized: false,
+      })],
+    });
+  });
+
   it("does not let one tenant token authorize another tenant without an explicit token", async () => {
     const url = await startCloud({
       packs: await officialPacks(),
