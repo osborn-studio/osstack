@@ -990,6 +990,7 @@ async function releaseDoctor(
     if (options.cloudUrl !== undefined) {
       checks.push(await releaseKnowledgeCloudHealthCheck(options.cloudUrl));
       checks.push(await releaseKnowledgeCloudSearchCheck(options.cloudUrl));
+      checks.push(await releaseKnowledgeCloudAuditCheck(options.cloudUrl));
     }
     checks.push(await releaseCommandCheck({
       id: "fly_auth",
@@ -1017,6 +1018,7 @@ async function releaseDoctor(
   const knowledgeWorkflowReady = checks.find((check) => check.id === "knowledge_cloud_workflow")?.status !== "error";
   const knowledgeHealthReady = checks.find((check) => check.id === "knowledge_cloud_health")?.status !== "error";
   const knowledgeSearchReady = checks.find((check) => check.id === "knowledge_cloud_search")?.status !== "error";
+  const knowledgeAuditReady = checks.find((check) => check.id === "knowledge_cloud_audit")?.status !== "error";
   const singleBinaryAssetsReady = checks.find((check) => check.id === "single_binary_release_assets")?.status !== "error";
   const singleBinaryWorkflowReady = checks.find((check) => check.id === "single_binary_workflow")?.status !== "error";
   const actionsReady = githubActions.status !== "error";
@@ -1026,7 +1028,8 @@ async function releaseDoctor(
     && knowledgeDeployAssetsReady
     && knowledgeWorkflowReady
     && knowledgeHealthReady
-    && knowledgeSearchReady;
+    && knowledgeSearchReady
+    && knowledgeAuditReady;
   const singleBinaryRelease = actionsReady
     && SINGLE_BINARY_RELEASE_SECRETS.every((secret) => hasSecret(secrets, secret))
     && singleBinaryAssetsReady
@@ -1290,6 +1293,58 @@ async function releaseKnowledgeCloudSearchCheck(cloudUrl: string): Promise<Relea
         cloud_url: normalized,
         search_url: searchUrlString,
         query,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function releaseKnowledgeCloudAuditCheck(cloudUrl: string): Promise<ReleaseDoctorCheck> {
+  const normalized = normalizeCloudUrl(cloudUrl);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  let auditUrl: URL | undefined;
+  try {
+    auditUrl = new URL("/v1/audit", normalized);
+    const response = await fetch(auditUrl, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ action: "search", status: "ok", limit: 1 }),
+      signal: controller.signal,
+    });
+    const raw = await response.text();
+    const body = parseJsonObject(raw);
+    const events = Array.isArray(body?.["events"]) ? body["events"] : undefined;
+    const tenantEventLeak = (events ?? []).some((event) => isRecord(event) && typeof event["tenant_id"] === "string");
+    const ok = response.ok && events !== undefined && !tenantEventLeak;
+    return {
+      id: "knowledge_cloud_audit",
+      status: ok ? "ok" : "error",
+      message: ok
+        ? `Deployed Knowledge Cloud audit smoke passed at ${auditUrl.toString()}.`
+        : `Deployed Knowledge Cloud audit smoke failed at ${auditUrl.toString()}.`,
+      details: {
+        cloud_url: normalized,
+        audit_url: auditUrl.toString(),
+        http_status: response.status,
+        audit_event_count: events?.length ?? 0,
+        tenant_event_leak: tenantEventLeak,
+      },
+    };
+  } catch (error) {
+    const auditUrlString = auditUrl === undefined ? `${normalized.replace(/\/+$/, "")}/v1/audit` : auditUrl.toString();
+    return {
+      id: "knowledge_cloud_audit",
+      status: "error",
+      message: `Could not run deployed Knowledge Cloud audit smoke at ${auditUrlString}.`,
+      details: {
+        cloud_url: normalized,
+        audit_url: auditUrlString,
         error: error instanceof Error ? error.message : String(error),
       },
     };
@@ -2273,6 +2328,10 @@ function releaseDoctorNextSteps(options: {
   const knowledgeSearch = options.checks.find((check) => check.id === "knowledge_cloud_search");
   if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeSearch?.status === "error") {
     steps.push("Fix deployed Knowledge Cloud search before handoff.");
+  }
+  const knowledgeAudit = options.checks.find((check) => check.id === "knowledge_cloud_audit");
+  if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeAudit?.status === "error") {
+    steps.push("Fix deployed Knowledge Cloud audit endpoint before handoff.");
   }
   const singleBinaryAssets = options.checks.find((check) => check.id === "single_binary_release_assets");
   if ((options.target === "all" || options.target === "single-binary") && singleBinaryAssets?.status === "error") {

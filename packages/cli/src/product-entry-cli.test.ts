@@ -624,6 +624,15 @@ describe("product entry commands", () => {
           result_count: 1,
         }),
       }));
+      expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_audit",
+        status: "ok",
+        details: expect.objectContaining({
+          cloud_url: cloud.url,
+          audit_event_count: 0,
+          tenant_event_leak: false,
+        }),
+      }));
     } finally {
       await cloud.close();
     }
@@ -712,6 +721,56 @@ describe("product entry commands", () => {
         details: expect.objectContaining({ result_count: 0 }),
       }));
       expect(result.next_steps.join("\n")).toContain("Fix deployed Knowledge Cloud search before handoff.");
+    } finally {
+      await cloud.close();
+    }
+  });
+
+  it("blocks Knowledge Cloud deploy handoff when deployed audit leaks tenant events", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const cloud = await startKnowledgeCloudHandoffServer({
+      healthStatus: 200,
+      healthBody: { ok: true, service: "osstack-knowledge-cloud", packs: 6 },
+      searchStatus: 200,
+      searchBody: {
+        packs: [{ id: "proof-checksum-pack", version: "0.1.0" }],
+        results: [{ chunk_id: "proof-checksum-pack/checksum", pack_id: "proof-checksum-pack", score: 1 }],
+      },
+      auditBody: {
+        filters: { action: "search", status: "ok", limit: 1 },
+        events: [{ event_id: "audit-leak", action: "search", status: "ok", tenant_id: "team_alpha" }],
+      },
+    });
+
+    try {
+      const exitCode = await main([
+        "release",
+        "doctor",
+        "--target",
+        "knowledge-cloud",
+        "--cloud-url",
+        cloud.url,
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(1);
+      const result = JSON.parse(logs.join("\n")) as {
+        ok: boolean;
+        readiness: { knowledge_cloud_deploy: boolean };
+        checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+        next_steps: string[];
+      };
+      expect(result.ok).toBe(false);
+      expect(result.readiness.knowledge_cloud_deploy).toBe(false);
+      expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_audit",
+        status: "error",
+        details: expect.objectContaining({ tenant_event_leak: true }),
+      }));
+      expect(result.next_steps.join("\n")).toContain("Fix deployed Knowledge Cloud audit endpoint before handoff.");
     } finally {
       await cloud.close();
     }
@@ -889,6 +948,8 @@ async function startKnowledgeCloudHandoffServer(options: {
   healthBody: unknown;
   searchStatus: number;
   searchBody: unknown;
+  auditStatus?: number;
+  auditBody?: unknown;
 }): Promise<{ url: string; close: () => Promise<void> }> {
   const server = createServer((req, res) => {
     if (req.url === "/healthz") {
@@ -899,6 +960,11 @@ async function startKnowledgeCloudHandoffServer(options: {
     if (req.url === "/v1/search" && req.method === "POST") {
       res.writeHead(options.searchStatus, { "content-type": "application/json" });
       res.end(JSON.stringify(options.searchBody));
+      return;
+    }
+    if (req.url === "/v1/audit" && req.method === "POST") {
+      res.writeHead(options.auditStatus ?? 200, { "content-type": "application/json" });
+      res.end(JSON.stringify(options.auditBody ?? { filters: {}, events: [] }));
       return;
     }
     res.writeHead(404, { "content-type": "application/json" });
