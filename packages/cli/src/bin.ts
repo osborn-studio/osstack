@@ -2070,7 +2070,7 @@ function renderPrPolicy(events: LoopEvent[]): string[] {
     return [`- ${decisions.reason ?? "No policy decision evidence found."}`];
   }
   return decisions.decisions.map((decision) => (
-    `- ${decision.task_id}: ${decision.agent_id} - ${decision.reason} (scorecard: \`osstack agent scorecard ${decision.agent_id}\`)`
+    `- ${decision.task_id}: ${decision.agent_id} [${decision.auth_mode}; roles=${decision.roles.join(",") || "unknown"}] - ${decision.reason} (scorecard: \`osstack agent scorecard ${decision.agent_id}\`)`
   ));
 }
 
