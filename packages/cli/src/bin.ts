@@ -791,6 +791,8 @@ interface ReleaseDoctorOptions {
 
 type ProofFileIntegrityIssueCode =
   | "manifest_malformed"
+  | "manifest_missing_created_at"
+  | "manifest_missing_generated_at"
   | "artifact_malformed"
   | "duplicate_artifact_path"
   | "path_outside_proof_dir"
@@ -1576,6 +1578,12 @@ async function validateProofFileIntegrity(
       ok: false,
       issues: [{ path: "manifest.json", code: "manifest_malformed" }],
     };
+  }
+  if (typeof manifestRaw["created_at"] !== "string" || manifestRaw["created_at"].trim().length === 0) {
+    issues.push({ path: "manifest.json", code: "manifest_missing_created_at" });
+  }
+  if (typeof manifestRaw["generated_at"] !== "string" || manifestRaw["generated_at"].trim().length === 0) {
+    issues.push({ path: "manifest.json", code: "manifest_missing_generated_at" });
   }
 
   const proofRoot = resolve(proofDir);

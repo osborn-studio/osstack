@@ -1111,7 +1111,19 @@ async function writeReleaseProofEvidence(proofDir: string, options: { omitGovern
     }],
   }, null, 2));
   await writeArtifact("sha256sums.txt", artifacts.map((artifact) => `${artifact.sha256}  ${artifact.path}`).join("\n") + "\n");
-  await writeFile(join(proofDir, "manifest.json"), JSON.stringify({ artifacts }, null, 2));
+  await writeFile(join(proofDir, "manifest.json"), JSON.stringify({
+    schema_version: 1,
+    kind: "osstack.proof_pack",
+    osstack_version: "0.1.0",
+    run_id: "release-ready",
+    loop_id: "release-ready",
+    agent_id: "codex-cli",
+    agent_ids: ["codex-cli"],
+    generated_from: "LOOP-STATE.json",
+    created_at: "2026-06-22T00:00:00.000Z",
+    generated_at: "2026-06-22T00:00:00.000Z",
+    artifacts,
+  }, null, 2));
 }
 
 async function startKnowledgeCloudHandoffServer(options: {
