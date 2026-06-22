@@ -101,6 +101,8 @@ Daemon commands:
   status              CLI/daemon version handshake + update availability
   dashboard url       Print the local development dashboard URL
   dashboard open      Open the local development dashboard in a browser
+  cockpit [url|open|snapshot]
+                      Product cockpit alias for dashboard
   stats               Show per-agent and loop metrics (requires running daemon)
   killswitch          Check if the policy layer is earning its keep (F4)
   agent list          List registered sub-agents and their capabilities
@@ -272,7 +274,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     return 0;
   }
 
-  if (cmd === "dashboard") {
+  if (cmd === "dashboard" || cmd === "cockpit") {
     return await handleDashboardCommand(args.slice(1));
   }
 
@@ -2975,11 +2977,13 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
   }
 
   if (sub === "help") {
-    console.log(`osstack dashboard — local development cockpit
+    console.log(`osstack dashboard / cockpit — local development cockpit
 
   osstack dashboard url       Print the URL for chat bots to return
   osstack dashboard open      Open the dashboard locally
   osstack dashboard snapshot  Print the JSON backing the dashboard
+  osstack cockpit url         Same as dashboard url
+  osstack cockpit open        Same as dashboard open
 
 Env:
   OSSTACK_DASHBOARD_PORT      Port for the HTTP dashboard (default 8799)

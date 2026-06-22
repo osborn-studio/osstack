@@ -1,8 +1,10 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { readdirSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
 import type { AddressInfo } from "node:net";
 import type Database from "better-sqlite3";
 import type { KanbanRepository, CardStatus, CostTier } from "@osstack/core";
-import { getBoard } from "@osstack/core";
+import { getBoard, listAgentScorecards, listPitfallLessons, type AgentScorecard } from "@osstack/core";
 
 export interface DashboardAdapter {
   id: string;
@@ -20,6 +22,7 @@ export interface DashboardSnapshotOptions {
   db: Database.Database;
   kanban: KanbanRepository;
   dbPath: string;
+  workspacePath?: string;
   version: string;
   phase: string;
   dashboardUrl: string;
@@ -74,6 +77,20 @@ export interface DashboardSnapshot {
     dimensions: Array<{ name: string; grade: "A" | "B" | "C"; detail: string }>;
   };
   agents: DashboardAdapter[];
+  agent_scorecards: AgentScorecard[];
+  evidence: {
+    reports: number;
+    proof_packs: number;
+  };
+  lessons: {
+    total: number;
+    recent: Array<{
+      pitfall_id: string;
+      family: string;
+      symptom: string;
+      verified_count: number;
+    }>;
+  };
   recent_runs: Array<{
     run_id: string;
     task_id: string;
@@ -161,6 +178,11 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
     ORDER BY r.started_at DESC
     LIMIT 8
   `).all() as DashboardSnapshot["recent_runs"];
+  const workspacePath = opts.workspacePath ?? dirnameOfDb(opts.dbPath);
+  const reportsCount = countMarkdownFiles(join(workspacePath, "reports"), "osstack-report-");
+  const proofPackCount = countProofPacks(join(workspacePath, "release"));
+  const lessons = listPitfallLessons(opts.db, { limit: 5 });
+  const lessonCount = countActivePitfallLessons(opts.db);
 
   return {
     dashboard: {
@@ -212,6 +234,20 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
       ],
     },
     agents: [...opts.adapters],
+    agent_scorecards: listAgentScorecards(opts.db, { limit: 5 }),
+    evidence: {
+      reports: reportsCount,
+      proof_packs: proofPackCount,
+    },
+    lessons: {
+      total: lessonCount,
+      recent: lessons.map((lesson) => ({
+        pitfall_id: lesson.pitfall_id,
+        family: lesson.family,
+        symptom: lesson.symptom,
+        verified_count: lesson.verified_count,
+      })),
+    },
     recent_runs: recentRuns,
     next_steps: [
       { label: "产品设计", detail: "google-stitch 2.0 primary, claude-design fallback", status: "ready" },
@@ -220,6 +256,40 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
       { label: "测试验证", detail: "claude-code primary, codex-cli fallback", status: blockedCards > 0 ? "blocked" : "ready" },
     ],
   };
+}
+
+function dirnameOfDb(dbPath: string): string {
+  return dbPath === ":memory:" ? "." : dirname(dbPath);
+}
+
+function countActivePitfallLessons(db: Database.Database): number {
+  const row = db.prepare("SELECT COUNT(*) AS total FROM pitfall_lessons WHERE status = 'active'").get() as
+    | { total?: number }
+    | undefined;
+  return row?.total ?? 0;
+}
+
+function countMarkdownFiles(dir: string, prefix: string): number {
+  try {
+    return readdirSync(dir).filter((name) => name.startsWith(prefix) && name.endsWith(".md")).length;
+  } catch {
+    return 0;
+  }
+}
+
+function countProofPacks(dir: string): number {
+  try {
+    return readdirSync(dir).filter((name) => {
+      if (!name.startsWith("osstack-proof-")) return false;
+      try {
+        return statSync(join(dir, name)).isDirectory();
+      } catch {
+        return false;
+      }
+    }).length;
+  } catch {
+    return 0;
+  }
 }
 
 export async function startDashboardServer(
@@ -352,6 +422,21 @@ export function renderDashboardHtml(): string {
     </div>
   </section>
 
+  <section class="section grid3">
+    <div class="panel">
+      <h2>证据资产</h2>
+      <div class="list" id="evidence"></div>
+    </div>
+    <div class="panel">
+      <h2>Agent Scorecards</h2>
+      <div class="list" id="scorecards"></div>
+    </div>
+    <div class="panel">
+      <h2>Lessons</h2>
+      <div class="list" id="lessons"></div>
+    </div>
+  </section>
+
   <section class="section panel">
     <h2>任务看板</h2>
     <div class="cards" id="board"></div>
@@ -399,6 +484,13 @@ async function load(){
   document.getElementById('agents').innerHTML = d.agents.map(a => '<div class="row"><span class="dot ok"></span><span><b>'+esc(a.id)+'</b><br><small>'+esc(a.display_name)+' · '+esc(a.cost_tier)+'</small></span></div>').join('');
   document.getElementById('quality').innerHTML = '<div class="row"><div class="quality '+statusClass(d.quality.grade)+'">'+d.quality.grade+'</div><span>成功率 '+Math.round(d.quality.success_rate*100)+'% · 阻塞 '+d.quality.blocked_cards+'</span></div><div class="list" style="margin-top:12px">'+d.quality.dimensions.map(q => '<div class="row"><span class="tag">'+q.grade+'</span><span>'+esc(q.name)+'<br><small>'+esc(q.detail)+'</small></span></div>').join('')+'</div>';
   document.getElementById('next').innerHTML = d.next_steps.map(n => '<div class="row"><span class="dot '+statusClass(n.status)+'"></span><span><b>'+esc(n.label)+'</b><br><small>'+esc(n.detail)+'</small></span></div>').join('');
+  document.getElementById('evidence').innerHTML = [
+    '<div class="row"><span class="dot blue"></span><span><b>Reports</b><br><small>'+d.evidence.reports+' markdown report(s)</small></span></div>',
+    '<div class="row"><span class="dot blue"></span><span><b>Proof packs</b><br><small>'+d.evidence.proof_packs+' checksumed proof pack(s)</small></span></div>',
+    '<div class="row"><span class="dot blue"></span><span><b>Commands</b><br><small>osstack report · osstack proof · osstack pr</small></span></div>'
+  ].join('');
+  document.getElementById('scorecards').innerHTML = d.agent_scorecards.length ? d.agent_scorecards.map(s => '<div class="row"><span class="dot '+(s.recent_failures ? 'warn' : 'ok')+'"></span><span><b>'+esc(s.agent_id)+'</b><br><small>'+s.total_runs+' runs · '+Math.round(s.success_rate*100)+'% success · '+esc(s.capability_fit)+'</small></span></div>').join('') : '<div class="row"><span class="dot warn"></span><span>No agent run history yet.</span></div>';
+  document.getElementById('lessons').innerHTML = d.lessons.recent.length ? d.lessons.recent.map(l => '<div class="row"><span class="dot warn"></span><span><b>'+esc(l.family)+'</b><br><small>'+esc(l.symptom)+' · verified '+l.verified_count+'</small></span></div>').join('') : '<div class="row"><span class="dot ok"></span><span>No pitfall lessons recorded.</span></div>';
   document.getElementById('board').innerHTML = lanes.map(lane => {
     const col = d.board.columns.find(c => c.name === lane) || { cards: [] };
     return '<div class="lane"><div class="lane-title"><span>'+lane+'</span><span>'+col.cards.length+'</span></div>'+col.cards.map(c => '<div class="card"><b>'+esc(c.title)+'</b><small>'+esc(c.assignee || 'unassigned')+(c.blocked_reason ? ' · '+esc(c.blocked_reason) : '')+'</small></div>').join('')+'</div>';

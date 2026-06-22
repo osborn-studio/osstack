@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { openDb, KanbanRepository } from "@osstack/core";
+import { openDb, KanbanRepository, upsertPitfallLesson } from "@osstack/core";
 import { insertRun, insertTask, finalizeRun } from "./store.js";
-import { createDashboardSnapshot, dashboardUrl } from "./dashboard.js";
+import { createDashboardSnapshot, dashboardUrl, renderDashboardHtml } from "./dashboard.js";
 
 let tmp: string;
 beforeEach(() => { tmp = mkdtempSync(join(tmpdir(), "osstack-dashboard-")); });
@@ -27,6 +27,17 @@ describe("dashboard", () => {
       });
       finalizeRun(db, path, "r1", "completed", 103);
       db.prepare("UPDATE runs SET tokens_in = 10, tokens_out = 20 WHERE run_id = ?").run("r1");
+      mkdirSync(join(tmp, "reports"));
+      mkdirSync(join(tmp, "release", "osstack-proof-r1"), { recursive: true });
+      writeFileSync(join(tmp, "reports", "osstack-report-r1.md"), "# report\n");
+      writeFileSync(join(tmp, "release", "osstack-proof-r1", "manifest.json"), "{}\n");
+      upsertPitfallLesson(db, path, {
+        family: "verify_failed",
+        tech_stack: ["typescript"],
+        symptom: "test failed",
+        resolution: "rerun verifier",
+        source_run_id: "r1",
+      });
 
       insertTask(db, path, { task_id: "t2", title: "Verify release", created_at: 200 });
       insertRun(db, path, {
@@ -48,6 +59,7 @@ describe("dashboard", () => {
         db,
         kanban,
         dbPath: path,
+        workspacePath: tmp,
         version: "0.0.0",
         phase: "test",
         dashboardUrl: "http://127.0.0.1:8799/dashboard",
@@ -70,6 +82,13 @@ describe("dashboard", () => {
       expect(snapshot.board.by_status.running).toBe(1);
       expect(snapshot.board.by_status.blocked).toBe(1);
       expect(snapshot.agents.map((a) => a.id)).toEqual(["codex-cli", "claude-code"]);
+      expect(snapshot.evidence.reports).toBe(1);
+      expect(snapshot.evidence.proof_packs).toBe(1);
+      expect(snapshot.lessons.total).toBe(1);
+      expect(snapshot.agent_scorecards[0]).toMatchObject({
+        agent_id: "codex-cli",
+        total_runs: 1,
+      });
       expect(snapshot.recent_runs[0]?.run_id).toBe("r2");
       expect(snapshot.dashboard.url).toBe("http://127.0.0.1:8799/dashboard");
     } finally {
@@ -80,5 +99,13 @@ describe("dashboard", () => {
   it("builds a shareable dashboard url from host and port options", () => {
     expect(dashboardUrl({ host: "127.0.0.1", urlHost: "localhost", port: 8799 }))
       .toBe("http://localhost:8799/dashboard");
+  });
+
+  it("renders cockpit sections for evidence, lessons, and scorecards", () => {
+    const html = renderDashboardHtml();
+
+    expect(html).toContain('id="evidence"');
+    expect(html).toContain('id="scorecards"');
+    expect(html).toContain('id="lessons"');
   });
 });
