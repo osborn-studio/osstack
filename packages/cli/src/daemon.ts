@@ -16,7 +16,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
-import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
+import { encodeFrame, FrameDecoder, type HermesEvent } from "@osstack/hermes-adapter";
 import {
   LoopEngine,
   nextCronDelayMs,
@@ -295,9 +295,13 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       const parsed = parseLoopRunParams(req.params);
       if (parsed instanceof Error) return singleErr(req.id, "bad_request", parsed.message);
       const engine = new LoopEngine(withLoopAdapters(ctx, parsed.runOptions));
+      const raw = parsed.cyclesOptions === undefined
+        ? await engine.runOnce()
+        : await engine.runCycles(parsed.cyclesOptions);
+      const runId = persistLoopRunEvidence(ctx, raw);
       const result = parsed.cyclesOptions === undefined
-        ? loopRunSummary(await engine.runOnce())
-        : loopRunCyclesSummary(await engine.runCycles(parsed.cyclesOptions));
+        ? loopRunSummary(raw, runId)
+        : loopRunCyclesSummary(raw, runId);
       return singleOk(req.id, result);
     }
 
@@ -732,8 +736,9 @@ function loopStat(session: LoopSession): LoopStat {
 // loop.run / loop.status
 // ──────────────────────────────────────────────────────────────────────
 
-function loopRunSummary(result: LoopRunResult): Record<string, unknown> {
+function loopRunSummary(result: LoopRunResult, runId?: string): Record<string, unknown> {
   return {
+    ...(runId !== undefined ? { run_id: runId } : {}),
     loop_id: result.loop_id,
     json_path: result.jsonPath,
     markdown_path: result.markdownPath,
@@ -745,8 +750,9 @@ function loopRunSummary(result: LoopRunResult): Record<string, unknown> {
   };
 }
 
-function loopRunCyclesSummary(result: LoopRunCyclesResult): Record<string, unknown> {
+function loopRunCyclesSummary(result: LoopRunCyclesResult, runId?: string): Record<string, unknown> {
   return {
+    ...(runId !== undefined ? { run_id: runId } : {}),
     loop_id: result.loop_id,
     json_path: result.jsonPath,
     markdown_path: result.markdownPath,
@@ -762,6 +768,49 @@ function loopRunCyclesSummary(result: LoopRunCyclesResult): Record<string, unkno
       ...(cycle.goal !== undefined ? { goal: cycle.goal } : {}),
     })),
   };
+}
+
+function persistLoopRunEvidence(ctx: DaemonContext, result: LoopRunResult | LoopRunCyclesResult): string {
+  const runId = `loop_run_${randomUUID().slice(0, 8)}`;
+  const taskId = `loop_task_${runId}`;
+  const now = Date.now() / 1000;
+  const outcome = result.state.completed_tasks.some((task) => task.outcome !== "success")
+    ? "failed"
+    : "completed";
+
+  insertTask(ctx.db, ctx.dbPath, {
+    task_id: taskId,
+    title: `Loop run ${result.loop_id}`,
+    description: `Persisted evidence for loop ${result.loop_id}`,
+    created_at: now,
+  });
+  insertRun(ctx.db, ctx.dbPath, {
+    run_id: runId,
+    task_id: taskId,
+    session_id: result.loop_id,
+    agent_id: "osstack-loop",
+    capability_id: "loop.engine",
+    phase: "loop",
+    started_at: now,
+  });
+
+  for (const event of result.events) {
+    appendEvent(ctx.db, ctx.dbPath, {
+      event_id: `${runId}:${event.seq}`,
+      run_id: runId,
+      session_id: result.loop_id,
+      seq: event.seq,
+      type: event.type,
+      created_at: event.created_at,
+      terminal: event.type === "loop.stopped",
+      payload: {
+        ...(event.payload ?? {}),
+        loop_event_id: event.event_id,
+      },
+    } as HermesEvent);
+  }
+  finalizeRun(ctx.db, ctx.dbPath, runId, outcome, Date.now() / 1000);
+  return runId;
 }
 
 interface LoopStartSchedule {

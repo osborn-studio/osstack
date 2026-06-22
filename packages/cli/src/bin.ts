@@ -11,6 +11,7 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import { defaultAdapters } from "@osstack/agents";
+import { openDb } from "@osstack/core";
 import {
   renderBranchStewardReport,
   scanBranchStewardCandidates,
@@ -36,7 +37,7 @@ import {
 } from "@osstack/skill-registry";
 import { startDaemon } from "./daemon.js";
 import { handleConfigCommand } from "./config.js";
-import { resolveSocketPath } from "./paths.js";
+import { osstackHome, resolveSocketPath } from "./paths.js";
 import { PROTOCOL_VERSION, VERSION } from "./version.js";
 import { handleUpgradeCommand } from "./upgrade.js";
 
@@ -562,7 +563,7 @@ async function handleReportCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack report — evidence-oriented loop report
 
-  osstack report [--workspace P] [--state P] [--events P]
+  osstack report [run_id] [--workspace P] [--state P] [--events P]
 
 Options:
   --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
@@ -572,14 +573,23 @@ Options:
     return 0;
   }
 
+  const runId = firstPositionalValue(args, new Set(["--workspace", "--state", "--events"]));
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
-  const stateFilePath = resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+  const evidenceResult = runId === undefined
+    ? undefined
+    : await readPersistedLoopRunEvidence(runId);
+  if (evidenceResult instanceof Error) {
+    console.error(`osstack: ${evidenceResult.message}`);
+    return 1;
+  }
+  const stateFilePath = evidenceResult?.state_json
+    ?? resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
   const state = await readLoopState(stateFilePath);
   if (state === null) {
     console.error(`osstack: no loop state found at ${stateFilePath}`);
     return 1;
   }
-  const events = await readLoopEventsJsonlFlag(args, workspacePath);
+  const events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
   console.log(renderReportMarkdownForArtifacts(state, events));
   return 0;
 }
@@ -588,7 +598,7 @@ async function handleScorecardCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack scorecard — loop evidence scorecard
 
-  osstack scorecard [--workspace P] [--state P] [--output-dir P] [--stdout]
+  osstack scorecard [run_id] [--workspace P] [--state P] [--output-dir P] [--stdout]
 
 Options:
   --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
@@ -599,8 +609,17 @@ Options:
     return 0;
   }
 
+  const runId = firstPositionalValue(args, new Set(["--workspace", "--state", "--output-dir"]));
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
-  const stateFilePath = resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+  const evidenceResult = runId === undefined
+    ? undefined
+    : await readPersistedLoopRunEvidence(runId);
+  if (evidenceResult instanceof Error) {
+    console.error(`osstack: ${evidenceResult.message}`);
+    return 1;
+  }
+  const stateFilePath = evidenceResult?.state_json
+    ?? resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
   const state = await readLoopState(stateFilePath);
   if (state === null) {
     console.error(`osstack: no loop state found at ${stateFilePath}`);
@@ -615,7 +634,7 @@ Options:
   }
 
   const outputDir = resolveLoopPath(flagValue(args, "--output-dir") ?? "release", workspacePath);
-  const baseName = `osstack-scorecard-${safeFileSegment(scorecard.loop_id)}`;
+  const baseName = `osstack-scorecard-${safeFileSegment(runId ?? scorecard.loop_id)}`;
   const markdownPath = join(outputDir, `${baseName}.md`);
   const htmlPath = join(outputDir, `${baseName}.html`);
   await mkdir(outputDir, { recursive: true });
@@ -631,7 +650,7 @@ async function handleProofCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack proof — local evidence proof pack
 
-  osstack proof [--workspace P] [--state P] [--events P] [--output-dir P] [--json]
+  osstack proof [run_id] [--workspace P] [--state P] [--events P] [--output-dir P] [--json]
 
 Options:
   --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
@@ -643,8 +662,17 @@ Options:
     return 0;
   }
 
+  const runId = firstPositionalValue(args, new Set(["--workspace", "--state", "--events", "--output-dir"]));
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
-  const stateFilePath = resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
+  const evidenceResult = runId === undefined
+    ? undefined
+    : await readPersistedLoopRunEvidence(runId);
+  if (evidenceResult instanceof Error) {
+    console.error(`osstack: ${evidenceResult.message}`);
+    return 1;
+  }
+  const stateFilePath = evidenceResult?.state_json
+    ?? resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
   const state = await readLoopState(stateFilePath);
   if (state === null) {
     console.error(`osstack: no loop state found at ${stateFilePath}`);
@@ -652,8 +680,8 @@ Options:
   }
 
   const outputDir = resolveLoopPath(flagValue(args, "--output-dir") ?? "release", workspacePath);
-  const events = await readLoopEventsJsonlFlag(args, workspacePath);
-  const proof = await writeProofPack(state, outputDir, events);
+  const events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
+  const proof = await writeProofPack(state, outputDir, events, runId);
 
   const summary = {
     loop_id: state.loop_id,
@@ -674,6 +702,55 @@ Options:
 function flagValue(args: string[], name: string): string | undefined {
   const i = args.indexOf(name);
   return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined;
+}
+
+function firstPositionalValue(args: string[], flagsWithValues: Set<string>): string | undefined {
+  return positionalValues(args, flagsWithValues)[0];
+}
+
+async function readPersistedLoopRunEvidence(runId: string): Promise<{
+  run_id: string;
+  state_json: string;
+  events: LoopEvent[];
+} | Error> {
+  const dbPath = join(osstackHome(), "state.db");
+  const db = openDb({ path: dbPath });
+  try {
+    const run = db.prepare("SELECT run_id, session_id, phase FROM runs WHERE run_id = ?").get(runId) as
+      | { run_id: string; session_id: string; phase: string }
+      | undefined;
+    if (run === undefined) return new Error(`no persisted run found for run_id=${runId}`);
+    const rows = db.prepare(
+      "SELECT event_id, run_id, session_id, seq, type, created_at, payload_json FROM events WHERE run_id = ? ORDER BY seq ASC",
+    ).all(runId) as Array<{
+      event_id: string;
+      run_id: string;
+      session_id: string;
+      seq: number;
+      type: string;
+      created_at: number;
+      payload_json: string;
+    }>;
+    const events = normalizeLoopEvents(rows.map((row) => ({
+      event_id: persistedLoopEventId(row),
+      loop_id: row.session_id,
+      type: row.type,
+      seq: row.seq,
+      created_at: row.created_at,
+      payload: parsePayloadJson(row.payload_json),
+    })));
+    const stateJson = findStateJsonPath(events);
+    if (stateJson === undefined) {
+      return new Error(`persisted run ${runId} has no loop.state.written event with jsonPath`);
+    }
+    return {
+      run_id: run.run_id,
+      state_json: stateJson,
+      events,
+    };
+  } finally {
+    db.close();
+  }
 }
 
 async function writeRequestedLoopArtifactsFromStateFile(options: {
@@ -736,12 +813,17 @@ async function writeRequestedLoopArtifacts(
   return artifacts;
 }
 
-async function writeProofPack(state: LoopState, outputDir: string, events: LoopEvent[] = []): Promise<{
+async function writeProofPack(
+  state: LoopState,
+  outputDir: string,
+  events: LoopEvent[] = [],
+  artifactId = state.loop_id,
+): Promise<{
   proof_dir: string;
   proof_manifest: string;
   artifact_count: number;
 }> {
-  const proofDir = join(outputDir, `osstack-proof-${safeFileSegment(state.loop_id)}`);
+  const proofDir = join(outputDir, `osstack-proof-${safeFileSegment(artifactId)}`);
   const scorecard = createLoopStateScorecardFromState(state);
   const artifacts = [
     { path: "report.md", content: renderReportMarkdownForArtifacts(state, events) },
@@ -828,6 +910,32 @@ function normalizeLoopEvents(events: unknown[] | undefined): LoopEvent[] {
     && typeof (event as { seq?: unknown }).seq === "number"
     && typeof (event as { created_at?: unknown }).created_at === "number"
   ));
+}
+
+function persistedLoopEventId(row: { event_id: string; payload_json: string }): string {
+  const payload = parsePayloadJson(row.payload_json);
+  const original = payload["loop_event_id"];
+  return typeof original === "string" ? original : row.event_id;
+}
+
+function parsePayloadJson(raw: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function findStateJsonPath(events: LoopEvent[]): string | undefined {
+  for (const event of events) {
+    if (event.type !== "loop.state.written") continue;
+    const jsonPath = event.payload?.["jsonPath"];
+    if (typeof jsonPath === "string" && jsonPath.length > 0) return jsonPath;
+  }
+  return undefined;
 }
 
 function flagValues(args: string[], name: string): string[] {
