@@ -1678,6 +1678,11 @@ async function validateProofFileIntegrity(
       invalidArtifactPaths.add(artifactPath);
       continue;
     }
+    if (isUnsafeProofArtifactPath(artifactPath)) {
+      issues.push({ path: artifactPath, code: "path_outside_proof_dir" });
+      invalidArtifactPaths.add(artifactPath);
+      continue;
+    }
     if (manifestShaByPath.has(artifactPath)) {
       issues.push({ path: artifactPath, code: "duplicate_artifact_path" });
       continue;
@@ -1724,6 +1729,11 @@ async function validateProofFileIntegrity(
   issues.push(...validateProofComplianceReports(manifestRaw, manifestShaByPath));
   issues.push(...validateProofSha256Sums(manifestShaByPath, sha256sumsContent, invalidArtifactPaths));
   return { ok: issues.length === 0, issues };
+}
+
+function isUnsafeProofArtifactPath(artifactPath: string): boolean {
+  if (isAbsolute(artifactPath) || /^[A-Za-z]:[\\/]/.test(artifactPath)) return true;
+  return artifactPath.split(/[\\/]+/).includes("..");
 }
 
 const PROOF_MANIFEST_ALLOWED_FIELDS = new Set([
@@ -1808,11 +1818,13 @@ function validateProofSha256Sums(
   for (const line of content.split(/\r?\n/)) {
     if (line.length === 0) continue;
     const match = /^([a-f0-9]{64}) {2}(.+)$/.exec(line);
-    if (match === null || sums.has(match[2])) {
+    const checksum = match?.[1];
+    const path = match?.[2];
+    if (checksum === undefined || path === undefined || sums.has(path)) {
       issues.push({ path: "sha256sums.txt", code: "sha256sums_malformed" });
       continue;
     }
-    sums.set(match[2], match[1]);
+    sums.set(path, checksum);
   }
 
   for (const [path, manifestSha] of manifestShaByPath.entries()) {
