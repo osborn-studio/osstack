@@ -45,6 +45,7 @@ try {
     `osstack release doctor --target knowledge-cloud --cloud-url ${cloudUrl} --json`,
     "post-release commands must include deployed Knowledge Cloud doctor",
   );
+  assertArrayIncludes(plan.post_release_validation_commands, "osstack release doctor --target single-binary --json", "post-release commands must include single-binary doctor");
   assertArrayIncludes(plan.post_release_validation_commands, "shasum -a 256 -c sha256sums.txt", "post-release commands must include release checksum verification");
 
   const markdown = await readFile(output, "utf-8");

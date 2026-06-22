@@ -554,6 +554,7 @@ describe("product entry commands", () => {
     expect(result.post_release_validation_commands).toContain(
       "osstack release doctor --target knowledge-cloud --cloud-url https://knowledge.osstack.ai --json",
     );
+    expect(result.post_release_validation_commands).toContain("osstack release doctor --target single-binary --json");
     expect(result.post_release_validation_commands).toContain("shasum -a 256 -c sha256sums.txt");
     const markdown = await readFile(output, "utf-8");
     expect(markdown).toContain("## Validation Commands");
@@ -1024,6 +1025,7 @@ describe("product entry commands", () => {
     expect(result.publish_commands).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false");
     expect(result.deploy_commands).toEqual([]);
     expect(result.post_release_validation_commands).toContain("gh release view v<version> --repo gilosbornhello/osstack");
+    expect(result.post_release_validation_commands).toContain("osstack release doctor --target single-binary --json");
     expect(result.post_release_validation_commands).toContain("shasum -a 256 -c sha256sums.txt");
     const markdown = await readFile(output, "utf-8");
     expect(markdown).toContain("Target: `single-binary`");

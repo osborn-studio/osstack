@@ -2601,6 +2601,9 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
       `osstack knowledge sync --cloud-url ${knowledgeCloudPostReleaseUrl} --json`,
       `osstack knowledge search "proof pack checksum" --cloud-url ${knowledgeCloudPostReleaseUrl} --json`,
     ]),
+    ...(result.target === "all" || result.target === "single-binary"
+      ? ["osstack release doctor --target single-binary --json"]
+      : []),
     ...(result.target === "npm" || result.target === "knowledge-cloud" ? [] : [
       "gh release view v<version> --repo gilosbornhello/osstack",
       "gh release download v<version> --repo gilosbornhello/osstack --pattern 'osstack-*.tar.gz' --pattern 'sha256sums.txt'",
