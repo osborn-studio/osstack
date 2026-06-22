@@ -66,6 +66,16 @@ describe("agent scorecard CLI", () => {
     });
   });
 
+  it("prints role fit in the human-readable scorecard", async () => {
+    seedHistory();
+
+    const exitCode = await main(["agent", "scorecard", "codex-cli"]);
+
+    expect(exitCode).toBe(0);
+    expect(logs.join("\n")).toContain("roles=coding,test-verify,reviewer");
+    expect(logs.join("\n")).toContain("best_task_kinds=code.test");
+  });
+
   it("renders a human-readable empty state", async () => {
     const exitCode = await main(["agent", "scorecard"]);
 

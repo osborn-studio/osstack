@@ -420,6 +420,23 @@ async function handleAgentCommand(args: string[]): Promise<number> {
   }
 
   if (sub === "list") {
+    if (!args.includes("--daemon")) {
+      const agents = await listLocalAgentProfiles();
+      if (args.includes("--json")) {
+        console.log(JSON.stringify({ agents }, null, 2));
+      } else {
+        for (const agent of agents) {
+          console.log(`${agent.id} — ${agent.display_name}`);
+          console.log(`  roles=${agent.roles.join(",") || "(none)"}`);
+          console.log(`  auth_mode=${agent.auth_mode} cost_tier=${agent.cost_tier} available=${agent.available.available}`);
+          if (!agent.available.available && agent.available.reason !== undefined) {
+            console.log(`  unavailable_reason=${agent.available.reason}`);
+          }
+          console.log(`  capabilities=${agent.capabilities.map((capability) => capability.kind).join(",")}`);
+        }
+      }
+      return 0;
+    }
     const resp = (await rpc("agent.list")) as { ok: boolean; result?: unknown; error?: { message: string } };
     if (!resp.ok) {
       console.error("osstack:", resp.error?.message ?? "agent.list failed");
@@ -461,10 +478,61 @@ async function handleAgentCommand(args: string[]): Promise<number> {
   return 1;
 }
 
+async function listLocalAgentProfiles(): Promise<Array<{
+  id: string;
+  display_name: string;
+  cost_tier: string;
+  auth_mode: string;
+  roles: string[];
+  capabilities: Array<{ id: string; kind: string; description: string; cost_tier: string }>;
+  available: { available: boolean; reason?: string; last_checked_at: number };
+}>> {
+  return await Promise.all(defaultAdapters().map(async (adapter) => {
+    const capabilities = adapter.capabilities();
+    return {
+      id: adapter.id,
+      display_name: adapter.display_name,
+      cost_tier: adapter.cost_tier,
+      auth_mode: authModeForAgent(adapter.id),
+      roles: rolesForCapabilities(capabilities.map((capability) => capability.kind)),
+      capabilities: capabilities.map((capability) => ({
+        id: capability.id,
+        kind: capability.kind,
+        description: capability.description,
+        cost_tier: capability.cost_tier,
+      })),
+      available: await adapter.isAvailable(),
+    };
+  }));
+}
+
+function rolesForCapabilities(kinds: string[]): string[] {
+  const roles: string[] = [];
+  const has = (prefixOrKind: string) => kinds.some((kind) => kind === prefixOrKind || kind.startsWith(`${prefixOrKind}.`));
+  if (kinds.some((kind) => ["code.write", "code.refactor", "code.debug"].includes(kind))) roles.push("coding");
+  if (kinds.some((kind) => ["code.test", "verify.alignment", "verify.acceptance", "release.verify", "release.check"].includes(kind))) roles.push("test-verify");
+  if (kinds.some((kind) => ["code.review", "review.code", "design.review"].includes(kind))) roles.push("reviewer");
+  if (has("design")) roles.push("designer");
+  if (kinds.some((kind) => ["design.prd", "design.architecture", "research.ml"].includes(kind))) roles.push("product/planning");
+  if (kinds.some((kind) => ["release.verify", "release.check", "code.review", "review.code"].includes(kind))) roles.push("release/proof");
+  return roles;
+}
+
+function authModeForAgent(agentId: string): string {
+  if (agentId === "codex-cli") return "subprocess/login-reuse";
+  if (agentId === "claude-code" || agentId === "claude-design") return "sdk/api-key";
+  if (agentId === "google-stitch") return "connector/api-key";
+  return "local";
+}
+
 function printAgentScorecard(scorecard: ReturnType<typeof getAgentScorecard>): void {
   console.log(`${scorecard.agent_id}`);
   console.log(`  runs=${scorecard.total_runs} completed=${scorecard.completed_runs} failed=${scorecard.failed_runs} success=${Math.round(scorecard.success_rate * 100)}%`);
   console.log(`  avg_duration_ms=${scorecard.avg_duration_ms ?? "unknown"} cost_tier=${scorecard.cost_tier} fit=${scorecard.capability_fit}`);
+  const adapter = defaultAdapters().find((candidate) => candidate.id === scorecard.agent_id);
+  const scorecardKinds = scorecard.best_task_kinds.map((kind) => kind.kind);
+  const roles = rolesForCapabilities(adapter?.capabilities().map((capability) => capability.kind) ?? scorecardKinds);
+  if (roles.length > 0) console.log(`  roles=${roles.join(",")}`);
   console.log(`  recent_failures=${scorecard.recent_failures}`);
   if (scorecard.best_task_kinds.length > 0) {
     console.log(`  best_task_kinds=${scorecard.best_task_kinds.map((kind) => `${kind.kind}:${Math.round(kind.success_rate * 100)}%`).join(", ")}`);
