@@ -2511,7 +2511,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     || step.startsWith("Restore Knowledge Cloud deploy assets")
     || step.startsWith("Restore the Knowledge Cloud Deploy workflow")
     || step.startsWith("Fix the deployed Knowledge Cloud")
-    || step.startsWith("Fix deployed Knowledge Cloud search")
+    || step.startsWith("Fix deployed Knowledge Cloud")
     || step.startsWith("Restore single-binary release assets")
     || step.startsWith("Restore the Single Binary Release workflow")
     || step.startsWith("Review Version Packages PR")

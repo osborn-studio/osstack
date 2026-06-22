@@ -838,6 +838,48 @@ describe("product entry commands", () => {
     }
   });
 
+  it("includes deployed Knowledge Cloud sync failures as release plan blockers", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const cloud = await startKnowledgeCloudHandoffServer({
+      healthStatus: 200,
+      healthBody: { ok: true, service: "osstack-knowledge-cloud", packs: 6 },
+      searchStatus: 200,
+      searchBody: {
+        packs: [{ id: "proof-checksum-pack", version: "0.1.0" }],
+        results: [{ chunk_id: "proof-checksum-pack/checksum", pack_id: "proof-checksum-pack", score: 1 }],
+      },
+      syncStatus: 200,
+      syncBody: { packs: [] },
+    });
+
+    try {
+      const exitCode = await main([
+        "release",
+        "plan",
+        "--target",
+        "knowledge-cloud",
+        "--cloud-url",
+        cloud.url,
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(0);
+      const result = JSON.parse(logs.join("\n")) as {
+        ready: boolean;
+        safe_to_execute: boolean;
+        blockers: string[];
+      };
+      expect(result.ready).toBe(false);
+      expect(result.safe_to_execute).toBe(false);
+      expect(result.blockers).toContain("Fix deployed Knowledge Cloud sync before handoff.");
+    } finally {
+      await cloud.close();
+    }
+  });
+
   it("blocks Knowledge Cloud deploy handoff when deployed audit leaks tenant events", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
