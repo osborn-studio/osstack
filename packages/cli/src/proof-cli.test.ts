@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFile, rm, stat, writeFile } from "node:fs/promises";
+import { readFile, rm, stat, unlink, writeFile } from "node:fs/promises";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -211,6 +211,33 @@ describe("proof CLI", () => {
     await expect(readFile(summary.output, "utf-8")).resolves.toContain("# Osstack Proof View - auditor");
     await expect(readFile(summary.output, "utf-8")).resolves.toContain("This view rearranges existing proof evidence");
     await expect(readFile(join(proofDir, "manifest.json"), "utf-8")).resolves.toBe(manifestBefore);
+  });
+
+  it("highlights missing evidence in rendered proof views", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const proofExitCode = await main(["proof", "--workspace", tmp]);
+    expect(proofExitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    await unlink(join(proofDir, "governance-results.json"));
+
+    logs = [];
+    const viewExitCode = await main([
+      "proof",
+      "view",
+      "cli-proof-loop",
+      "--audience",
+      "customer",
+      "--workspace",
+      tmp,
+      "--json",
+    ]);
+
+    expect(viewExitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as { output: string };
+    const markdown = await readFile(summary.output, "utf-8");
+    expect(markdown).toContain("## Missing Evidence");
+    expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Secure coding control (`governance-results.json`) - safety checks summary");
+    expect(markdown).toContain("| Secure coding control | <strong style=\"color:#b00020\">MISSING</strong> |");
   });
 
   it("fails open from cloud knowledge mode to local proof evidence", async () => {

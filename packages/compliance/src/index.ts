@@ -359,8 +359,11 @@ export function renderProofView(options: ProofViewOptions): string {
   const controls = proofViewControls(options.audience);
   const rows = controls.map((control) => {
     const status = controlStatus(control, options.evidence);
-    return `| ${control.title} | ${status} | \`${control.evidence_path}\` | ${control.focus} |`;
+    return `| ${control.title} | ${proofStatusCell(status)} | \`${control.evidence_path}\` | ${control.focus} |`;
   });
+  const missing = controls
+    .filter((control) => controlStatus(control, options.evidence) === "MISSING")
+    .map((control) => `- REQUIRED EVIDENCE MISSING: ${control.title} (\`${control.evidence_path}\`) - ${control.focus}`);
   return [
     `# Osstack Proof View - ${options.audience}`,
     "",
@@ -369,6 +372,10 @@ export function renderProofView(options: ProofViewOptions): string {
     "",
     "This view rearranges existing proof evidence and does not create new evidence.",
     "Missing evidence is marked as `MISSING`; this view does not synthesize or infer absent proof.",
+    "",
+    "## Missing Evidence",
+    "",
+    ...(missing.length > 0 ? missing : ["No required evidence is missing for this audience view."]),
     "",
     "| Evidence | Status | Source | Focus |",
     "|---|---|---|---|",
@@ -457,6 +464,11 @@ function controlStatus(control: { control_id?: string; evidence_path: string }, 
       return hasObject(evidence.knowledge) ? "PRESENT" : "MISSING";
   }
   return "MISSING";
+}
+
+function proofStatusCell(status: "PRESENT" | "MISSING"): string {
+  if (status === "PRESENT") return "PRESENT";
+  return "<strong style=\"color:#b00020\">MISSING</strong>";
 }
 
 async function readJsonIfExists(path: string): Promise<unknown | undefined> {
