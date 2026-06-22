@@ -130,6 +130,38 @@ describe("dashboard/cockpit CLI", () => {
     ]));
   });
 
+  it("prints workspace release readiness blockers from cockpit next", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace");
+    await mkdir(workspace, { recursive: true });
+    await writeFile(join(workspace, "release-readiness.md"), [
+      "# Osstack Release Readiness",
+      "",
+      "## Blockers",
+      "",
+      "- [github_actions_check] Fix GitHub Actions runner allocation before publishing or deploying.",
+      "",
+      "## Next Steps",
+      "",
+      "- Open GitHub Actions settings/billing and confirm ubuntu-latest jobs can be assigned a runner.",
+    ].join("\n"));
+
+    const exitCode = await main(["cockpit", "next", "--workspace", workspace, "--status", "blocked", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      next_steps: Array<{ label: string; detail: string; status: string; command?: string }>;
+    };
+    expect(summary.next_steps).toEqual([
+      expect.objectContaining({
+        label: "Release Readiness",
+        detail: "1 blocker(s): github_actions_check",
+        command: "osstack release doctor --target all --output release-readiness.md --json",
+        status: "blocked",
+      }),
+    ]);
+  });
+
   it("filters cockpit next steps by status in JSON", async () => {
     daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
 

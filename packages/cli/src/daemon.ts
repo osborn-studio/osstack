@@ -13,7 +13,7 @@
 import { createServer, type Socket } from "node:net";
 import { existsSync, unlinkSync, statSync, chmodSync, mkdirSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, join } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { encodeFrame, FrameDecoder, type HermesEvent } from "@osstack/hermes-adapter";
@@ -371,11 +371,15 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
         available: ctx.dashboardUrl !== null,
       });
 
-    case "dashboard.snapshot":
+    case "dashboard.snapshot": {
+      const p = objectParams(req.params);
+      if (p instanceof Error) return singleErr(req.id, "bad_request", p.message);
+      const workspacePath = optionalString(p, "workspacePath");
       return singleOk(req.id, createDashboardSnapshot({
         db: ctx.db,
         kanban: ctx.kanban,
         dbPath: ctx.dbPath,
+        ...(workspacePath === undefined ? {} : { workspacePath: resolve(workspacePath) }),
         version: DAEMON_VERSION,
         phase: DAEMON_PHASE,
         dashboardUrl: ctx.dashboardUrl ?? dashboardUrl(dashboardUrlFromEnv()),
@@ -387,6 +391,7 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
         activeRuns: ctx.activeRuns.size,
         activeLoops: activeLoopCount(ctx),
       }));
+    }
 
     case "killswitch.check": {
       // F4: if policy hasn't been making decisions over a meaningful window,

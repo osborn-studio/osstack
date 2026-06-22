@@ -7514,11 +7514,12 @@ async function handleKanbanCommand(args: string[]): Promise<number> {
 
 async function handleDashboardCommand(args: string[]): Promise<number> {
   const sub = args[0]?.startsWith("--") ? "summary" : (args[0] ?? "summary");
+  const snapshotParams = dashboardSnapshotParams(args);
 
   if (sub === "summary") {
     const [healthResp, snapshotResp] = await Promise.all([
       rpc("health") as Promise<RpcResp>,
-      rpc("dashboard.snapshot") as Promise<RpcResp>,
+      rpc("dashboard.snapshot", snapshotParams) as Promise<RpcResp>,
     ]);
     if (!healthResp.ok) {
       console.error("osstack:", healthResp.error?.message ?? "health failed");
@@ -7568,7 +7569,7 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
   }
 
   if (sub === "snapshot") {
-    const resp = (await rpc("dashboard.snapshot")) as { ok: boolean; result?: unknown; error?: { message: string } };
+    const resp = (await rpc("dashboard.snapshot", snapshotParams)) as { ok: boolean; result?: unknown; error?: { message: string } };
     if (!resp.ok) {
       console.error("osstack:", resp.error?.message ?? "dashboard.snapshot failed");
       return 1;
@@ -7606,9 +7607,11 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
 
   osstack cockpit           Show daemon, run, kanban, report, and proof summary
   osstack cockpit --json    Print daemon status + dashboard snapshot JSON
+  osstack cockpit --workspace P
+                            Include project-local release readiness evidence
   osstack cockpit run [loop run options]
                             Run queued work with report, scorecard, and proof defaults
-  osstack cockpit next [--status ready|running|blocked] [--json]
+  osstack cockpit next [--workspace P] [--status ready|running|blocked] [--json]
                             Print actionable next steps from the cockpit snapshot
   osstack cockpit retry [task_id] [--workspace P] [--state P] [--json]
                             Requeue a failed or escalated task from loop state
@@ -7620,9 +7623,11 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
                             Generate a proof pack from loop evidence
   osstack dashboard url       Print the URL for chat bots to return
   osstack dashboard open      Open the dashboard locally
-  osstack dashboard snapshot  Print the JSON backing the dashboard
-  osstack dashboard summary   Show the same product cockpit summary
-  osstack dashboard next [--status ready|running|blocked]
+  osstack dashboard snapshot [--workspace P]
+                              Print the JSON backing the dashboard
+  osstack dashboard summary [--workspace P]
+                              Show the same product cockpit summary
+  osstack dashboard next [--workspace P] [--status ready|running|blocked]
                             Show the same actionable next steps
   osstack cockpit url         Same as dashboard url
   osstack cockpit open        Same as dashboard open
@@ -7639,6 +7644,11 @@ Env:
   return 1;
 }
 
+function dashboardSnapshotParams(args: string[]): { workspacePath?: string } | undefined {
+  const workspacePath = flagValue(args, "--workspace");
+  return workspacePath === undefined ? undefined : { workspacePath: resolve(workspacePath) };
+}
+
 async function handleCockpitNextCommand(args: string[]): Promise<number> {
   const statusRaw = flagValue(args, "--status");
   const statusFilter = parseCockpitNextStatus(statusRaw);
@@ -7646,7 +7656,7 @@ async function handleCockpitNextCommand(args: string[]): Promise<number> {
     console.error("osstack: cockpit next requires --status ready|running|blocked");
     return 1;
   }
-  const resp = (await rpc("dashboard.snapshot")) as { ok: boolean; result?: unknown; error?: { message: string } };
+  const resp = (await rpc("dashboard.snapshot", dashboardSnapshotParams(args))) as { ok: boolean; result?: unknown; error?: { message: string } };
   if (!resp.ok) {
     console.error("osstack:", resp.error?.message ?? "dashboard.snapshot failed");
     return 1;
