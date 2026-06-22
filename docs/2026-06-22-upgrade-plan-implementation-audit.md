@@ -268,7 +268,7 @@
 - 支持 `cockpit proof` 从 loop evidence 生成 proof pack，并可 `--open` 打开 proof 目录。
 - Web dashboard 展示 active runs、queued tasks、active loops、agents、kanban、reports/proof packs、lessons、scorecards。
 - CLI cockpit summary 展示 actionable next steps，包含 ready/running/blocked 状态、下一步标签和执行路径说明。
-- 支持 `cockpit next` / `dashboard next` 单独输出 actionable next steps，并支持 `--json` 给后续 TUI/脚本复用。
+- 支持 `cockpit next` / `dashboard next` 单独输出 actionable next steps，并支持 `--json` 给后续 TUI/脚本复用；每条 next step 包含可复制建议命令。
 
 未完成：
 

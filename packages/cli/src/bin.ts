@@ -6542,6 +6542,9 @@ function printCockpitNextSteps(nextSteps: unknown[], text: ReturnType<typeof coc
   for (const step of nextSteps.slice(0, 5)) {
     if (!isRecord(step)) continue;
     console.log(`  [${String(step["status"] ?? "unknown")}] ${String(step["label"] ?? "unknown")} - ${String(step["detail"] ?? "")}`);
+    if (typeof step["command"] === "string" && step["command"].length > 0) {
+      console.log(`    command: ${step["command"]}`);
+    }
   }
   if (nextSteps.length === 0) console.log(`  ${text.none}`);
 }

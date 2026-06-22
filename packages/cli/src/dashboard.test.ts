@@ -93,6 +93,16 @@ describe("dashboard", () => {
         agent_id: "codex-cli",
         total_runs: 1,
       });
+      expect(snapshot.next_steps).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          label: "Coding",
+          command: "osstack deliver \"<task>\" --auto-agent --worktree --checkpoint",
+        }),
+        expect.objectContaining({
+          label: "测试验证",
+          command: "osstack cockpit proof --workspace <path> --json",
+        }),
+      ]));
       expect(snapshot.recent_runs[0]?.run_id).toBe("r2");
       expect(snapshot.dashboard.url).toBe("http://127.0.0.1:8799/dashboard");
     } finally {
@@ -111,6 +121,7 @@ describe("dashboard", () => {
     expect(html).toContain('id="evidence"');
     expect(html).toContain('id="scorecards"');
     expect(html).toContain('id="lessons"');
+    expect(html).toContain("<code>'+esc(n.command)+'</code>");
   });
 
   it("renders cockpit chrome in English and Chinese", () => {

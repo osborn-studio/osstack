@@ -103,7 +103,7 @@ export interface DashboardSnapshot {
     started_at: number;
     duration_ms: number | null;
   }>;
-  next_steps: Array<{ label: string; detail: string; status: "ready" | "running" | "blocked" }>;
+  next_steps: Array<{ label: string; detail: string; command: string; status: "ready" | "running" | "blocked" }>;
 }
 
 export interface DashboardServerHandle {
@@ -255,10 +255,30 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
     },
     recent_runs: recentRuns,
     next_steps: [
-      { label: "产品设计", detail: "google-stitch 2.0 primary, claude-design fallback", status: "ready" },
-      { label: "Coding", detail: "codex-cli primary, claude-code fallback", status: opts.activeRuns > 0 ? "running" : "ready" },
-      { label: "Loop Engineering", detail: `${opts.activeLoops ?? 0} active loop session(s)`, status: (opts.activeLoops ?? 0) > 0 ? "running" : "ready" },
-      { label: "测试验证", detail: "claude-code primary, codex-cli fallback", status: blockedCards > 0 ? "blocked" : "ready" },
+      {
+        label: "产品设计",
+        detail: "google-stitch 2.0 primary, claude-design fallback",
+        command: "osstack guide --write",
+        status: "ready",
+      },
+      {
+        label: "Coding",
+        detail: "codex-cli primary, claude-code fallback",
+        command: "osstack deliver \"<task>\" --auto-agent --worktree --checkpoint",
+        status: opts.activeRuns > 0 ? "running" : "ready",
+      },
+      {
+        label: "Loop Engineering",
+        detail: `${opts.activeLoops ?? 0} active loop session(s)`,
+        command: "osstack cockpit run --workspace <path> --json",
+        status: (opts.activeLoops ?? 0) > 0 ? "running" : "ready",
+      },
+      {
+        label: "测试验证",
+        detail: "claude-code primary, codex-cli fallback",
+        command: "osstack cockpit proof --workspace <path> --json",
+        status: blockedCards > 0 ? "blocked" : "ready",
+      },
     ],
   };
 }
@@ -479,6 +499,7 @@ export function renderDashboardHtml(language: DashboardLanguage = dashboardLangu
   table { width:100%; border-collapse:collapse; font-size:12px; }
   th, td { border-bottom:1px solid var(--line); text-align:left; padding:9px 6px; color:#cbd5e1; }
   th { color:var(--muted); font-weight:600; }
+  code { display:inline-block; margin-top:4px; padding:2px 5px; border-radius:4px; background:#020617; color:#bae6fd; font-size:11px; }
   @media (max-width: 900px) { .grid6, .grid3, .grid2 { grid-template-columns: 1fr; } header { flex-direction:column; } }
 </style>
 </head>
@@ -575,7 +596,7 @@ async function load(){
   ].join('');
   document.getElementById('agents').innerHTML = d.agents.map(a => '<div class="row"><span class="dot ok"></span><span><b>'+esc(a.id)+'</b><br><small>'+esc(a.display_name)+' · '+esc(a.cost_tier)+'</small></span></div>').join('');
   document.getElementById('quality').innerHTML = '<div class="row"><div class="quality '+statusClass(d.quality.grade)+'">'+d.quality.grade+'</div><span>'+esc(t.successRate)+' '+Math.round(d.quality.success_rate*100)+'% · '+esc(t.blocked)+' '+d.quality.blocked_cards+'</span></div><div class="list" style="margin-top:12px">'+d.quality.dimensions.map(q => '<div class="row"><span class="tag">'+q.grade+'</span><span>'+esc(q.name)+'<br><small>'+esc(q.detail)+'</small></span></div>').join('')+'</div>';
-  document.getElementById('next').innerHTML = d.next_steps.map(n => '<div class="row"><span class="dot '+statusClass(n.status)+'"></span><span><b>'+esc(n.label)+'</b><br><small>'+esc(n.detail)+'</small></span></div>').join('');
+  document.getElementById('next').innerHTML = d.next_steps.map(n => '<div class="row"><span class="dot '+statusClass(n.status)+'"></span><span><b>'+esc(n.label)+'</b><br><small>'+esc(n.detail)+'</small>'+(n.command ? '<br><code>'+esc(n.command)+'</code>' : '')+'</span></div>').join('');
   document.getElementById('evidence').innerHTML = [
     '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.reports)+'</b><br><small>'+d.evidence.reports+' markdown report(s)</small></span></div>',
     '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.proofPacks)+'</b><br><small>'+d.evidence.proof_packs+' checksumed proof pack(s)</small></span></div>',

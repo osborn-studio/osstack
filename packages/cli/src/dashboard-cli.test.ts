@@ -100,7 +100,9 @@ describe("dashboard/cockpit CLI", () => {
     const output = logs.join("\n");
     expect(output).toContain("next steps:");
     expect(output).toContain("[ready] 产品设计 - google-stitch 2.0 primary, claude-design fallback");
+    expect(output).toContain("command: osstack guide --write");
     expect(output).toContain("[ready] Coding - codex-cli primary, claude-code fallback");
+    expect(output).toContain("command: osstack deliver \"<task>\" --auto-agent --worktree --checkpoint");
   });
 
   it("prints cockpit next steps as JSON", async () => {
@@ -110,17 +112,19 @@ describe("dashboard/cockpit CLI", () => {
 
     expect(exitCode).toBe(0);
     const summary = JSON.parse(logs.join("\n")) as {
-      next_steps: Array<{ label: string; detail: string; status: string }>;
+      next_steps: Array<{ label: string; detail: string; status: string; command?: string }>;
     };
     expect(summary.next_steps).toEqual(expect.arrayContaining([
       expect.objectContaining({
         label: "产品设计",
         detail: "google-stitch 2.0 primary, claude-design fallback",
+        command: "osstack guide --write",
         status: "ready",
       }),
       expect.objectContaining({
         label: "Coding",
         detail: "codex-cli primary, claude-code fallback",
+        command: "osstack deliver \"<task>\" --auto-agent --worktree --checkpoint",
         status: "ready",
       }),
     ]));
