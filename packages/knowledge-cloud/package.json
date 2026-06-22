@@ -1,0 +1,34 @@
+{
+  "name": "@osstack/knowledge-cloud",
+  "version": "0.0.0",
+  "description": "Minimal Osstack Knowledge Cloud HTTP service for official and tenant knowledge packs.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@osstack/knowledge": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gilosbornhello/osstack.git",
+    "directory": "packages/knowledge-cloud"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

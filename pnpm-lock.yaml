@@ -186,6 +186,16 @@ importers:
         specifier: ^22.19.19
         version: 22.19.19
 
+  packages/knowledge-cloud:
+    dependencies:
+      '@osstack/knowledge':
+        specifier: workspace:*
+        version: link:../knowledge
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
+
   packages/loop:
     dependencies:
       '@osstack/agents':
