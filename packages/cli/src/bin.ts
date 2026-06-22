@@ -4920,6 +4920,7 @@ async function writeProofPack(
     bytes: Buffer.byteLength(sha256sumsContent, "utf-8"),
   });
 
+  const createdAt = new Date().toISOString();
   const manifest = {
     schema_version: 1,
     kind: "osstack.proof_pack",
@@ -4930,7 +4931,8 @@ async function writeProofPack(
     agent_ids: proofAgentIds(state),
     ...(workspacePath !== undefined ? { workspace: workspacePath } : {}),
     generated_from: "LOOP-STATE.json",
-    generated_at: new Date().toISOString(),
+    created_at: createdAt,
+    generated_at: createdAt,
     ...(complianceReports.length === 0 ? {} : { compliance_reports: complianceReports }),
     artifacts: manifestArtifacts,
   };

@@ -40,6 +40,8 @@ describe("proof CLI", () => {
       loop_id: string;
       run_id: string;
       osstack_version: string;
+      created_at: string;
+      generated_at: string;
       workspace: string;
       agent_id: string;
       agent_ids: string[];
@@ -49,6 +51,8 @@ describe("proof CLI", () => {
     expect(manifest.loop_id).toBe("cli-proof-loop");
     expect(manifest.run_id).toBe("cli-proof-loop");
     expect(manifest.osstack_version).toMatch(/^\d+\.\d+\.\d+/);
+    expect(manifest.created_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(manifest.generated_at).toBe(manifest.created_at);
     expect(manifest.workspace).toBe(tmp);
     expect(manifest.agent_id).toBe("codex-cli");
     expect(manifest.agent_ids).toEqual(["codex-cli"]);
