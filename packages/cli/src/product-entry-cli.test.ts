@@ -179,7 +179,7 @@ describe("product entry commands", () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "warn";
-    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "open:5:UNSTABLE:MERGEABLE:0";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "open:5:UNSTABLE:MERGEABLE:0:CI:action_required";
 
     const exitCode = await main(["release", "doctor", "--target", "npm", "--json"]);
 
@@ -198,9 +198,10 @@ describe("product entry commands", () => {
         merge_state: "UNSTABLE",
         mergeable: "MERGEABLE",
         check_count: 0,
+        latest_ci_conclusion: "action_required",
       }),
     }));
-    expect(result.next_steps.join("\n")).toContain("Review Version Packages PR #5; it is mergeable but has no reported checks");
+    expect(result.next_steps.join("\n")).toContain("Review Version Packages PR #5; approve or rerun its latest CI workflow");
   });
 
   it("surfaces missing Knowledge Cloud deploy workflow status", async () => {
@@ -229,7 +230,7 @@ describe("product entry commands", () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "warn";
-    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "open:5:UNSTABLE:MERGEABLE:0";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "open:5:UNSTABLE:MERGEABLE:0:CI:action_required";
     const output = join(tmp, "release-readiness.md");
 
     const exitCode = await main(["release", "doctor", "--target", "npm", "--output", output, "--json"]);

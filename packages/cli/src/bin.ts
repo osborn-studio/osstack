@@ -959,6 +959,7 @@ async function releaseVersionPackagesPrCheck(): Promise<ReleaseDoctorCheck> {
     const pr = prs[0];
     const mergeState = pr?.mergeStateStatus ?? "UNKNOWN";
     const checkCount = Array.isArray(pr?.statusCheckRollup) ? pr.statusCheckRollup.length : undefined;
+    const latestCi = await latestVersionPrCiRun();
     const ready = pr?.isDraft !== true && (mergeState === "CLEAN" || mergeState === "HAS_HOOKS");
     return {
       id: "version_packages_pr",
@@ -974,6 +975,9 @@ async function releaseVersionPackagesPrCheck(): Promise<ReleaseDoctorCheck> {
         merge_state: mergeState,
         mergeable: pr?.mergeable,
         check_count: checkCount,
+        latest_ci_status: latestCi?.status,
+        latest_ci_conclusion: latestCi?.conclusion,
+        latest_ci_url: latestCi?.url,
       },
     };
   } catch (error) {
@@ -986,6 +990,27 @@ async function releaseVersionPackagesPrCheck(): Promise<ReleaseDoctorCheck> {
   }
 }
 
+async function latestVersionPrCiRun(): Promise<{ status?: string; conclusion?: string; url?: string } | undefined> {
+  try {
+    const { stdout } = await execFileAsync("gh", [
+      "run",
+      "list",
+      "--workflow",
+      "CI",
+      "--branch",
+      "changeset-release/main",
+      "--limit",
+      "1",
+      "--json",
+      "status,conclusion,url",
+    ], { timeout: 10_000 });
+    const runs = JSON.parse(stdout) as Array<{ status?: string; conclusion?: string; url?: string }>;
+    return runs[0];
+  } catch {
+    return undefined;
+  }
+}
+
 function releaseVersionPackagesPrOverride(value: string): ReleaseDoctorCheck {
   if (value === "none") {
     return {
@@ -994,12 +1019,13 @@ function releaseVersionPackagesPrOverride(value: string): ReleaseDoctorCheck {
       message: "No open Version Packages PR is waiting for npm publish.",
     };
   }
-  const match = /^open:(\d+):([A-Z_]+)(?::([A-Z_]+))?(?::(\d+))?$/.exec(value);
+  const match = /^open:(\d+):([A-Z_]+)(?::([A-Z_]+))?(?::(\d+))?(?::CI:([a-z_]+))?$/.exec(value);
   if (match !== null) {
     const number = Number(match[1]);
     const mergeState = match[2] ?? "UNKNOWN";
     const mergeable = match[3];
     const checkCount = match[4] === undefined ? undefined : Number(match[4]);
+    const latestCiConclusion = match[5];
     const ready = mergeState === "CLEAN" || mergeState === "HAS_HOOKS";
     return {
       id: "version_packages_pr",
@@ -1012,6 +1038,7 @@ function releaseVersionPackagesPrOverride(value: string): ReleaseDoctorCheck {
         merge_state: mergeState,
         mergeable,
         check_count: checkCount,
+        latest_ci_conclusion: latestCiConclusion,
         draft: false,
       },
     };
@@ -1223,7 +1250,10 @@ function releaseDoctorNextSteps(options: {
     const number = typeof versionPr.details?.["number"] === "number" ? ` #${versionPr.details["number"]}` : "";
     const mergeable = versionPr.details?.["mergeable"];
     const checkCount = versionPr.details?.["check_count"];
-    const checkContext = mergeable === "MERGEABLE" && checkCount === 0
+    const latestCiConclusion = versionPr.details?.["latest_ci_conclusion"];
+    const checkContext = latestCiConclusion === "action_required"
+      ? "approve or rerun its latest CI workflow"
+      : mergeable === "MERGEABLE" && checkCount === 0
       ? "it is mergeable but has no reported checks"
       : "it is not currently clean";
     steps.push(`Review Version Packages PR${number}; ${checkContext} for npm publish.`);
