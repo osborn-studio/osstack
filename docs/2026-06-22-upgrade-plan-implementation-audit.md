@@ -11,7 +11,7 @@
 
 - Phase 1 Evidence Layer、Phase 2 Product Entry、Phase 3 Governed Run、Phase 4 Learning Control Plane、Phase 6 的 Knowledge Cloud/Compliance 大部分已经有代码、命令和测试。
 - 最关键的端到端路径已经跑通：`deliver/loop -> report -> scorecard -> proof -> pr body -> knowledge trace -> compliance render`。
-- npm 安装后的真实用户路径已有 smoke：tarball pack/install、CLI 二进制、launchd dry-run、doctor、loop doctor、evidence commands、official knowledge eval、Knowledge Cloud package loading、cloud sync cache、cloud outage local fallback。
+- npm 安装后的真实用户路径已有 smoke：tarball pack/install、CLI 二进制、launchd dry-run、doctor、loop doctor、evidence commands、installed deliver/proof validate、proof zip archive integrity、official knowledge eval、Knowledge Cloud package loading、cloud sync cache、cloud outage local fallback。
 - Knowledge Cloud 已具备 official/private pack HTTP 服务、sync/search/feedback/publish endpoint、部署资产和本地 smoke。
 
 仍未完成的部分集中在外部发布和产品深化：
@@ -28,7 +28,7 @@
 
 | Phase | 计划目标 | 当前状态 | 证据 | 剩余工作 |
 |---|---|---:|---|---|
-| Phase 0 Distribution | 一行安装 + daemon install + 可选单文件分发 | 部分完成 | `scripts/smoke-npm-install.mjs` 验证本地 tarball install；`serve --install --no-load` 验证 launchd plist 生命周期；`scripts/smoke-portable-cli.mjs` 验证 portable bundle；`scripts/build-single-binary.mjs` 生成 Bun single executable release candidate；`scripts/generate-single-binary-sbom.mjs` 生成 SPDX SBOM；`scripts/smoke-bun-single-binary.mjs` 验证 manifest/checksum/runtime；`scripts/smoke-single-binary-signing.mjs` 验证 ad-hoc codesign；`scripts/smoke-single-binary-release-pack.mjs` 验证 release archive 可解包运行；`scripts/smoke-single-binary-release-publish.mjs` dry-run 验证 release upload inputs；CI/release workflow 已接 candidate artifact 与 formal upload path | 真实 npm publish；真实 `npm install -g @osstack/cli`；Developer ID 签名/公证/跨机器验证/远端正式 GitHub Release asset |
+| Phase 0 Distribution | 一行安装 + daemon install + 可选单文件分发 | 部分完成 | `scripts/smoke-npm-install.mjs` 验证本地 tarball install、安装后 deliver、proof validate file/archive integrity；`serve --install --no-load` 验证 launchd plist 生命周期；`scripts/smoke-portable-cli.mjs` 验证 portable bundle；`scripts/build-single-binary.mjs` 生成 Bun single executable release candidate；`scripts/generate-single-binary-sbom.mjs` 生成 SPDX SBOM；`scripts/smoke-bun-single-binary.mjs` 验证 manifest/checksum/runtime；`scripts/smoke-single-binary-signing.mjs` 验证 ad-hoc codesign；`scripts/smoke-single-binary-release-pack.mjs` 验证 release archive 可解包运行；`scripts/smoke-single-binary-release-publish.mjs` dry-run 验证 release upload inputs；CI/release workflow 已接 candidate artifact 与 formal upload path | 真实 npm publish；真实 `npm install -g @osstack/cli`；Developer ID 签名/公证/跨机器验证/远端正式 GitHub Release asset |
 | Phase 1 Evidence Layer | report + scorecard + proof + subprocess-first adapters | 基本完成 | `report-cli.test.ts`、`scorecard-cli.test.ts`、`proof-cli.test.ts`、`agent-list-cli.test.ts`、npm install smoke | daemon event-rich report 仍需更多真实运行样本验证 |
 | Phase 2 Product Entry | `osstack deliver` + agent 角色化 | 基本完成 | `deliver-cli.test.ts`、`product-entry-cli.test.ts`、`agent-scorecard-cli.test.ts`、`smoke:npm-install` 安装后 deliver/worktree/proof smoke | 可继续在外部真实业务 repo 上扩展长任务 smoke |
 | Phase 3 Governed Run | Run Spec + governance verifier + PR evidence | 基本完成 | `docs/specs/OSSTACK_RUN_SPEC_V1.md`、`docs/specs/CONFORMANCE_MATRIX.md`、schemas/test vectors、`governance-cli.test.ts`、`pr-cli.test.ts` | 继续随新 MUST 条款补 runtime/schema/vector 覆盖 |
@@ -126,7 +126,7 @@
 - `osstack proof validate <run_id>` 支持对 proof pack 做机器可读结构门禁，默认检查 proof-core，也可通过 `--pack` 或 `--audience` 复用 compliance/proof-view 控制项；同时会读取 manifest artifact 清单，拒绝重复 artifact path、缺失文件、bytes 不一致、sha256 不一致、`sha256sums.txt` 与 manifest 不一致和试图跳出 proof 目录的 artifact path；当 sibling proof zip 存在时，还会用内置 zip central directory parser 校验 zip 条目与 manifest artifacts + `manifest.json` 一致，不依赖外部 `unzip`。
 - `osstack release plan --workspace <workspace>` 会复用 release doctor 的 workspace proof 检查；也支持 `--proof-dir <proof_dir>` 固定某个已审核 proof pack，并把 release doctor / proof validate validation commands 绑定到同一个证据目录，避免上线时误读自动发现的旧证据。
 - `osstack release doctor --proof-dir <proof_dir>` 会执行 proof-core、manifest artifact 文件完整性和可选 proof zip 条目完整性校验；未传 `--proof-dir` 时会从 `--workspace`/当前目录的 `release/osstack-proof-*` 自动发现最新 proof dir。重复 artifact path、缺失、malformed、hash/bytes 不一致、checksum inventory 不一致、zip 条目不一致或越界 artifact path 会输出 `proof_validation` error，让 release readiness 失败，并在 next steps 中区分“修复缺失/格式错误 evidence”和“重新生成或修复 proof pack artifacts”。
-- npm install smoke 会生成 scorecard markdown、proof manifest、proof zip。
+- npm install smoke 会生成 scorecard markdown、proof manifest、proof zip，并使用安装后的 CLI 对 deliver proof 和普通 loop proof 执行 `proof validate`，确认 file integrity 与 archive integrity 都通过。
 
 未完成/需增强：
 
@@ -157,7 +157,7 @@
 - 可生成 task queue。
 - 可输出 report/scorecard/proof。
 - `deliver-cli.test.ts` 覆盖命令路径。
-- `smoke:npm-install` 会从 workspace tarballs 安装 CLI 后，在临时 git repo 中运行 `osstack deliver --worktree --auto-agent --json`，并校验 L4 report、proof manifest、verify pass、worktree merged evidence。
+- `smoke:npm-install` 会从 workspace tarballs 安装 CLI 后，在临时 git repo 中运行 `osstack deliver --worktree --auto-agent --json`，并校验 L4 report、proof manifest、proof zip、verify pass、worktree merged evidence，以及安装后 `proof validate` 的 file/archive integrity。
 
 需增强：
 

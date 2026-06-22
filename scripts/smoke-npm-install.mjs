@@ -124,6 +124,9 @@ try {
     "\"kind\": \"osstack.proof_pack\"",
     "installed CLI deliver must write a proof manifest",
   );
+  if (typeof installedDeliverParsed.artifacts.proof_zip !== "string") {
+    throw new Error(`installed CLI deliver did not report a proof zip artifact: ${installedDeliver.stdout}`);
+  }
   const installedDeliverVerify = JSON.parse(await readFile(join(installedDeliverParsed.artifacts.proof_dir, "verify-results.json"), "utf-8"));
   if (installedDeliverVerify.status !== "pass") {
     throw new Error(`installed CLI deliver verify-results did not pass: ${JSON.stringify(installedDeliverVerify)}`);
@@ -132,6 +135,13 @@ try {
   if (!installedDeliverWorktree.entries?.some((entry) => entry.status === "merged")) {
     throw new Error(`installed CLI deliver did not record a merged worktree: ${JSON.stringify(installedDeliverWorktree)}`);
   }
+  const installedDeliverProofValidation = assertProofValidationPass({
+    command: osstackBin,
+    runId: installedDeliverParsed.loop_id,
+    proofDir: installedDeliverParsed.artifacts.proof_dir,
+    proofZip: installedDeliverParsed.artifacts.proof_zip,
+    message: "installed CLI deliver proof validate",
+  });
 
   await writeFile(join(workspace, "LOOP-STATE.json"), `${JSON.stringify({
     loop_id: "npm-smoke-loop",
@@ -167,6 +177,14 @@ try {
   if (proofZipStat.size <= 0) {
     throw new Error(`proof --loop wrote an empty zip: ${proofZip}`);
   }
+  const loopProofValidation = assertProofValidationPass({
+    command: osstackBin,
+    runId: "npm-smoke-loop",
+    proofDir: join(workspace, "release", "osstack-proof-npm-smoke-loop"),
+    proofZip,
+    message: "installed CLI proof --loop validation",
+    requireCoreEvidence: false,
+  });
 
   const knowledgeEval = run(osstackBin, [
     "knowledge",
@@ -290,12 +308,21 @@ try {
       loop_id: installedDeliverParsed.loop_id,
       report: installedDeliverParsed.artifacts.report,
       proof_manifest: installedDeliverParsed.artifacts.proof_manifest,
+      proof_zip: installedDeliverParsed.artifacts.proof_zip,
+      proof_validation: {
+        file_integrity: installedDeliverProofValidation.file_integrity?.ok,
+        archive_integrity: installedDeliverProofValidation.archive_integrity?.ok,
+      },
     },
     examples: examplesParsed.examples.length,
     evidence_artifacts: {
       scorecard_markdown: scorecardMarkdown,
       proof_manifest: proofManifest,
       proof_zip: proofZip,
+      proof_validation: {
+        file_integrity: loopProofValidation.file_integrity?.ok,
+        archive_integrity: loopProofValidation.archive_integrity?.ok,
+      },
     },
     knowledge_eval: {
       total: knowledgeEvalParsed.total,
@@ -364,7 +391,7 @@ function run(command, args, options = {}) {
     encoding: "utf-8",
     stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit",
   });
-  if (result.status !== 0) {
+  if (result.status !== 0 && options.allowFailure !== true) {
     const output = [result.stdout, result.stderr].filter(Boolean).join("\n");
     throw new Error(`${command} ${args.join(" ")} failed with ${result.status}${output ? `\n${output}` : ""}`);
   }
@@ -378,4 +405,32 @@ function assertIncludes(text, expected, message) {
   if (!text.includes(expected)) {
     throw new Error(`${message}: missing ${JSON.stringify(expected)} in ${JSON.stringify(text)}`);
   }
+}
+
+function assertProofValidationPass({ command, runId, proofDir, proofZip, message, requireCoreEvidence = true }) {
+  const result = run(command, ["proof", "validate", runId, "--proof-dir", proofDir, "--json"], {
+    cwd: root,
+    capture: true,
+    allowFailure: !requireCoreEvidence,
+  });
+  const summary = JSON.parse(result.stdout);
+  if (requireCoreEvidence && summary.ok !== true) {
+    throw new Error(`${message} did not pass: ${result.stdout}`);
+  }
+  if (summary.file_integrity?.ok !== true) {
+    throw new Error(`${message} file integrity did not pass: ${result.stdout}`);
+  }
+  if (summary.archive_integrity?.checked !== true) {
+    throw new Error(`${message} did not inspect proof zip inventory: ${result.stdout}`);
+  }
+  if (summary.archive_integrity?.ok !== true) {
+    throw new Error(`${message} archive integrity did not pass: ${result.stdout}`);
+  }
+  if (summary.archive_integrity?.proof_zip !== proofZip) {
+    throw new Error(`${message} inspected the wrong proof zip: expected ${proofZip}, got ${summary.archive_integrity?.proof_zip}`);
+  }
+  if (summary.archive_integrity?.issues?.length !== 0) {
+    throw new Error(`${message} archive integrity reported issues: ${result.stdout}`);
+  }
+  return summary;
 }
