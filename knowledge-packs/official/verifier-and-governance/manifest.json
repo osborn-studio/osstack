@@ -9,6 +9,12 @@
   "taxonomy": ["osstack-core/verifier-and-governance"],
   "generated_at": "2026-06-22T00:00:00.000Z",
   "last_reviewed_at": "2026-06-22T00:00:00.000Z",
+  "review": {
+    "status": "approved",
+    "reviewer_id": "osstack-knowledge-review",
+    "reviewed_at": "2026-06-22T00:00:00.000Z",
+    "summary": "Reviewed as osstack-native official knowledge for Knowledge Cloud publication."
+  },
   "source_attribution": ["osstack-native product knowledge"],
   "source_provenance": [
     {

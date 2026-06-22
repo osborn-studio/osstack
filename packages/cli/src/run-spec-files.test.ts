@@ -216,10 +216,28 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
 
     const knowledgeVector = JSON.parse(
       await readFile(join(specDir, "test-vectors", "OS-KNOW-001.json"), "utf-8"),
-    ) as { expected_mode: string; knowledge_pack: { source_kind: string; quality_score: number } };
+    ) as {
+      expected_mode: string;
+      knowledge_pack: {
+        source_kind: string;
+        quality_score: number;
+        scope: string;
+        taxonomy: string[];
+        review: { status: string; reviewer_id: string };
+        source_provenance: Array<{ sha256: string; source_id: string }>;
+      };
+    };
     expect(knowledgeVector.expected_mode).toBe("local");
     expect(knowledgeVector.knowledge_pack.source_kind).toBe("processed_mit");
     expect(knowledgeVector.knowledge_pack.quality_score).toBeGreaterThan(0);
+    expect(knowledgeVector.knowledge_pack.scope).toBe("official");
+    expect(knowledgeVector.knowledge_pack.taxonomy).toContain("osstack-core/knowledge-cloud");
+    expect(knowledgeVector.knowledge_pack.review).toMatchObject({
+      status: "approved",
+      reviewer_id: "osstack-knowledge-review",
+    });
+    expect(knowledgeVector.knowledge_pack.source_provenance[0]?.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(knowledgeVector.knowledge_pack.source_provenance[0]?.source_id).toBe("osstack-knowledge-cloud-v1");
   });
 
   it("ships product companion docs for the run spec", async () => {

@@ -283,6 +283,12 @@ describe("knowledge CLI", () => {
       "osstack-core/pr-and-release",
       "--quality-score",
       "87",
+      "--reviewer",
+      "knowledge-reviewer",
+      "--review-status",
+      "approved",
+      "--review-note",
+      "Reviewed as osstack-native processed release evidence.",
       "--output",
       outputPath,
       "--json",
@@ -294,16 +300,23 @@ describe("knowledge CLI", () => {
       output: outputPath,
       source_kind: "processed_mit",
       taxonomy: ["osstack-core/pr-and-release"],
+      review_status: "approved",
       chunks: 1,
       sources: 1,
     });
     const manifest = JSON.parse(await readFile(outputPath, "utf-8")) as {
       source_kind: string;
+      review: { status: string; reviewer_id: string; summary: string };
       chunks: Array<{ chunk_id: string; body: string }>;
       source_provenance: Array<{ path: string; license: string }>;
     };
     expect(manifest).toMatchObject({
       source_kind: "processed_mit",
+      review: {
+        status: "approved",
+        reviewer_id: "knowledge-reviewer",
+        summary: "Reviewed as osstack-native processed release evidence.",
+      },
       source_provenance: [expect.objectContaining({ path: "release.md", license: "MIT-derived-processed" })],
     });
     expect(manifest.chunks[0]?.body).toContain("Osstack taxonomy: osstack-core/pr-and-release.");

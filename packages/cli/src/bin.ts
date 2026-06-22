@@ -2736,7 +2736,7 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   osstack knowledge search <query> [--pack P] [--official] [--cloud-url URL] [--tenant T] [--cache-dir P] [--limit N] [--json]
   osstack knowledge inspect <chunk_id> [--pack P] [--official] [--cache-dir P] [--json]
   osstack knowledge import P --scope team|project --id ID --name NAME --license L --output P [--taxonomy T] [--json]
-  osstack knowledge ingest P --scope official|team|project --id ID --name NAME --license L --output P [--taxonomy T] [--source-kind K] [--json]
+  osstack knowledge ingest P --scope official|team|project --id ID --name NAME --license L --output P [--taxonomy T] [--source-kind K] [--reviewer ID] [--review-status approved|changes_requested] [--review-note TEXT] [--json]
   osstack knowledge validate --pack P|--official [--json]
   osstack knowledge pin <pack_id>@<version> [--cache-dir P] [--json]
   osstack knowledge feedback <chunk_id> --useful|--bad [--tenant ID] [--cloud-url URL] [--cache-dir P] [--json]
@@ -3031,6 +3031,9 @@ Env:
       "--taxonomy",
       "--quality-score",
       "--source-kind",
+      "--reviewer",
+      "--review-status",
+      "--review-note",
     ]));
     if (sourcePath === undefined) {
       console.error("osstack: knowledge ingest requires a source path");
@@ -3065,6 +3068,17 @@ Env:
       console.error("osstack: --quality-score must be an integer from 0 to 100");
       return 1;
     }
+    const reviewStatus = parseKnowledgeReviewStatus(flagValue(args, "--review-status"));
+    if (reviewStatus === undefined && flagValue(args, "--review-status") !== undefined) {
+      console.error("osstack: --review-status must be approved or changes_requested");
+      return 1;
+    }
+    const reviewerId = flagValue(args, "--reviewer");
+    const reviewNote = flagValue(args, "--review-note");
+    if ((reviewerId === undefined) !== (reviewStatus === undefined)) {
+      console.error("osstack: knowledge ingest review metadata requires both --reviewer and --review-status");
+      return 1;
+    }
     const manifest = await ingestKnowledgeSource({
       path: sourcePath,
       id,
@@ -3074,6 +3088,16 @@ Env:
       taxonomy: flagValues(args, "--taxonomy"),
       ...(qualityScore === undefined ? {} : { qualityScore }),
       ...(sourceKind === undefined ? {} : { sourceKind }),
+      ...(reviewerId === undefined || reviewStatus === undefined
+        ? {}
+        : {
+          review: {
+            status: reviewStatus,
+            reviewer_id: reviewerId,
+            reviewed_at: new Date().toISOString(),
+            summary: reviewNote ?? "Knowledge source reviewed for Osstack publication.",
+          },
+        }),
     });
     await writeFile(output, `${JSON.stringify(manifest, null, 2)}\n`, "utf-8");
     if (args.includes("--json")) {
@@ -3082,6 +3106,7 @@ Env:
         output,
         source_kind: manifest.source_kind,
         taxonomy: manifest.taxonomy ?? [],
+        review_status: manifest.review?.status ?? "unknown",
         chunks: manifest.chunks.length,
         sources: manifest.source_provenance?.length ?? 0,
       }, null, 2));
@@ -3259,6 +3284,12 @@ function parseKnowledgeSourceKind(
     || value === "curated_external"
     || value === "internal"
   ) return value;
+  return undefined;
+}
+
+function parseKnowledgeReviewStatus(value: string | undefined): "approved" | "changes_requested" | undefined {
+  if (value === undefined) return undefined;
+  if (value === "approved" || value === "changes_requested") return value;
   return undefined;
 }
 

@@ -8,8 +8,27 @@
     "license": "MIT-derived-processed",
     "source_kind": "processed_mit",
     "quality_score": 88,
+    "scope": "official",
+    "taxonomy": ["osstack-core/knowledge-cloud"],
     "generated_at": "2026-06-22T00:00:00.000Z",
+    "last_reviewed_at": "2026-06-22T00:00:00.000Z",
+    "review": {
+      "status": "approved",
+      "reviewer_id": "osstack-knowledge-review",
+      "reviewed_at": "2026-06-22T00:00:00.000Z",
+      "summary": "Processed source was transformed into osstack-native cloud guidance with provenance."
+    },
     "source_attribution": ["curated from MIT-compatible engineering material"],
+    "source_provenance": [
+      {
+        "source_id": "osstack-knowledge-cloud-v1",
+        "path": "sources/knowledge-cloud.md",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "license": "MIT-derived-processed",
+        "scope": "official",
+        "imported_at": "2026-06-22T00:00:00.000Z"
+      }
+    ],
     "chunks": [
       {
         "chunk_id": "chunk-cloud-governance",

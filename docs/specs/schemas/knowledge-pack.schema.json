@@ -25,6 +25,20 @@
     },
     "generated_at": { "type": "string" },
     "last_reviewed_at": { "type": "string" },
+    "review": {
+      "type": "object",
+      "required": ["status", "reviewer_id", "reviewed_at", "summary"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["approved", "changes_requested"]
+        },
+        "reviewer_id": { "type": "string", "minLength": 1 },
+        "reviewed_at": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
     "source_attribution": {
       "type": "array",
       "items": { "type": "string" }

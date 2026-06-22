@@ -70,6 +70,7 @@ export function validateKnowledgePackManifest(value: unknown): KnowledgePackMani
   });
   const generatedAt = optionalString(value, "generated_at");
   const lastReviewedAt = optionalString(value, "last_reviewed_at");
+  const review = value["review"] === undefined ? undefined : validateKnowledgeReview(value["review"]);
   const sourceAttribution = optionalStringArray(value, "source_attribution");
   const sourceProvenanceRaw = value["source_provenance"];
   const sourceProvenance = sourceProvenanceRaw === undefined
@@ -87,6 +88,7 @@ export function validateKnowledgePackManifest(value: unknown): KnowledgePackMani
     ...(taxonomy === undefined ? {} : { taxonomy }),
     ...(generatedAt === undefined ? {} : { generated_at: generatedAt }),
     ...(lastReviewedAt === undefined ? {} : { last_reviewed_at: lastReviewedAt }),
+    ...(review === undefined ? {} : { review }),
     ...(sourceAttribution === undefined ? {} : { source_attribution: sourceAttribution }),
     ...(sourceProvenance === undefined ? {} : { source_provenance: sourceProvenance }),
     chunks,
@@ -122,6 +124,12 @@ export function validateKnowledgePublishGate(
     issues.push({
       code: "official_missing_review",
       message: "official knowledge packs require last_reviewed_at",
+    });
+  }
+  if (official && manifest.review?.status !== "approved") {
+    issues.push({
+      code: "official_review_not_approved",
+      message: "official knowledge packs require review.status=approved",
     });
   }
   if ((official || external) && (manifest.source_attribution ?? []).length === 0) {
@@ -286,6 +294,7 @@ export async function ingestKnowledgeSource(options: {
   generatedAt?: string;
   sourceKind?: KnowledgePackManifest["source_kind"];
   sourceAttribution?: string[];
+  review?: KnowledgePackManifest["review"];
 }): Promise<KnowledgePackManifest> {
   const generatedAt = options.generatedAt ?? new Date().toISOString();
   const sourceFiles = await collectKnowledgeSourceFiles(options.path);
@@ -328,6 +337,7 @@ export async function ingestKnowledgeSource(options: {
     taxonomy: options.taxonomy ?? [],
     generated_at: generatedAt,
     last_reviewed_at: generatedAt,
+    ...(options.review === undefined ? {} : { review: options.review }),
     source_attribution: options.sourceAttribution ?? [`osstack-ingested from ${options.scope} source ${basename(options.path)}`],
     source_provenance: sourceProvenance,
     chunks,
@@ -852,6 +862,20 @@ function validateSourceProvenanceArray(value: unknown): KnowledgeSourceProvenanc
       imported_at: requiredString(item, "imported_at"),
     };
   });
+}
+
+function validateKnowledgeReview(value: unknown): KnowledgePackManifest["review"] {
+  if (!isRecord(value)) throw new Error("knowledge pack review must be an object");
+  const status = requiredString(value, "status");
+  if (status !== "approved" && status !== "changes_requested") {
+    throw new Error("knowledge pack review.status is invalid");
+  }
+  return {
+    status,
+    reviewer_id: requiredString(value, "reviewer_id"),
+    reviewed_at: requiredString(value, "reviewed_at"),
+    summary: requiredString(value, "summary"),
+  };
 }
 
 function sha256(value: string): string {

@@ -221,6 +221,12 @@ describe("knowledge packs", () => {
             qualityScore: 86,
             generatedAt: "2026-06-22T00:00:00.000Z",
             sourceAttribution: ["processed from MIT-compatible frontend quality notes"],
+            review: {
+                status: "approved",
+                reviewer_id: "knowledge-reviewer",
+                reviewed_at: "2026-06-22T00:00:00.000Z",
+                summary: "Processed notes use osstack-native terminology and source references.",
+            },
         });
         expect(manifest).toMatchObject({
             id: "osstack-core/frontend-quality",
@@ -228,6 +234,11 @@ describe("knowledge packs", () => {
             scope: "official",
             taxonomy: ["software-engineering/frontend-quality"],
             quality_score: 86,
+            review: {
+                status: "approved",
+                reviewer_id: "knowledge-reviewer",
+                reviewed_at: "2026-06-22T00:00:00.000Z",
+            },
             source_attribution: ["processed from MIT-compatible frontend quality notes"],
             source_provenance: [expect.objectContaining({
                     path: "quality.md",
@@ -266,6 +277,7 @@ describe("knowledge packs", () => {
                 expect.objectContaining({ code: "official_low_quality_score" }),
                 expect.objectContaining({ code: "official_missing_taxonomy" }),
                 expect.objectContaining({ code: "official_missing_review" }),
+                expect.objectContaining({ code: "official_review_not_approved" }),
                 expect.objectContaining({ code: "missing_source_attribution" }),
                 expect.objectContaining({ code: "missing_source_provenance" }),
                 expect.objectContaining({ code: "chunk_missing_osstack_voice" }),
@@ -284,6 +296,12 @@ describe("knowledge packs", () => {
             scope: "official",
             taxonomy: ["software-engineering/release-quality"],
             last_reviewed_at: "2026-06-22T00:00:00.000Z",
+            review: {
+                status: "approved",
+                reviewer_id: "knowledge-reviewer",
+                reviewed_at: "2026-06-22T00:00:00.000Z",
+                summary: "Reviewed as osstack-native processed guidance.",
+            },
             source_attribution: ["processed from MIT-compatible upstream notes"],
             source_provenance: [{
                     source_id: "src_1",
@@ -304,6 +322,46 @@ describe("knowledge packs", () => {
             ok: false,
             issues: expect.arrayContaining([
                 expect.objectContaining({ code: "processed_license_not_osstack_derived" }),
+            ]),
+        });
+    });
+    it("rejects official knowledge packs that are not review-approved", () => {
+        const report = validateKnowledgePublishGate({
+            id: "osstack-core/review-needed",
+            version: "2026.06.22",
+            name: "Review Needed",
+            license: "Osstack-native",
+            source_kind: "osstack_native",
+            quality_score: 90,
+            scope: "official",
+            taxonomy: ["osstack-core/review-needed"],
+            last_reviewed_at: "2026-06-22T00:00:00.000Z",
+            review: {
+                status: "changes_requested",
+                reviewer_id: "knowledge-reviewer",
+                reviewed_at: "2026-06-22T00:00:00.000Z",
+                summary: "Needs source rewriting before publication.",
+            },
+            source_attribution: ["osstack-native product knowledge"],
+            source_provenance: [{
+                    source_id: "src_1",
+                    path: "notes.md",
+                    sha256: createHash("sha256").update("notes").digest("hex"),
+                    license: "Osstack-native",
+                    scope: "official",
+                    imported_at: "2026-06-22T00:00:00.000Z",
+                }],
+            chunks: [{
+                    chunk_id: "review_needed_1",
+                    title: "Review Needed",
+                    body: "Osstack review guidance should map source intake into runs, loops, proof packs, and Knowledge Cloud publication.",
+                    source_refs: ["src_1"],
+                }],
+        });
+        expect(report).toMatchObject({
+            ok: false,
+            issues: expect.arrayContaining([
+                expect.objectContaining({ code: "official_review_not_approved" }),
             ]),
         });
     });
