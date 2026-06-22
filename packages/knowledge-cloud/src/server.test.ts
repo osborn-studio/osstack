@@ -279,6 +279,49 @@ describe("Knowledge Cloud HTTP service", () => {
     });
   });
 
+  it("requires tenant authorization before reading tenant feedback summaries", async () => {
+    const url = await startCloud({
+      packs: await officialPacks(),
+      privateTenantTokens: {
+        team_alpha: "kst_alpha_private",
+      },
+      now: () => "2026-06-22T00:00:00.000Z",
+    });
+
+    await fetchJson(
+      `${url}/v1/feedback`,
+      {
+        chunk_id: "private-release",
+        rating: "useful",
+        tenant_id: "team_alpha",
+      },
+      { authorization: "Bearer kst_alpha_private" },
+    );
+
+    const unauthorizedSummary = await fetch(`${url}/v1/feedback/summary`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ tenant_id: "team_alpha" }),
+    });
+    expect(unauthorizedSummary.status).toBe(401);
+
+    const authorizedSummary = await fetchJson(
+      `${url}/v1/feedback/summary`,
+      { tenant_id: "team_alpha" },
+      { authorization: "Bearer kst_alpha_private" },
+    );
+    expect(authorizedSummary).toMatchObject({
+      total: 1,
+      useful: 1,
+      bad: 0,
+      tenant_id: "team_alpha",
+      chunks: [expect.objectContaining({
+        chunk_id: "private-release",
+        useful: 1,
+      })],
+    });
+  });
+
   it("does not let one tenant token authorize another tenant without an explicit token", async () => {
     const url = await startCloud({
       packs: await officialPacks(),

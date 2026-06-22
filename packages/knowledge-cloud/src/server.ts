@@ -353,7 +353,12 @@ async function routeKnowledgeCloudRequest(
   }
   if (method === "POST" && url.pathname === "/v1/feedback/summary") {
     const body = await readJsonBody(req);
-    sendJson(res, 200, summarizeFeedback(options.feedbackLog, tenantIdField(body)));
+    const tenantId = tenantIdField(body);
+    if (tenantId !== undefined && !isAuthorizedPrivateRequest(options, req, tenantId)) {
+      sendJson(res, 401, { error: "tenant feedback summary requires authorization" });
+      return;
+    }
+    sendJson(res, 200, summarizeFeedback(options.feedbackLog, tenantId));
     return;
   }
   if (method === "POST" && url.pathname === "/v1/audit") {
