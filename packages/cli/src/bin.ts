@@ -753,6 +753,26 @@ function derivePitfallLessonsFromState(state: LoopState): Parameters<typeof upse
     }));
 }
 
+async function learnLessonsFromLoopState(state: LoopState): Promise<{
+  learned: number;
+  lessons: ReturnType<typeof upsertPitfallLesson>[];
+} | undefined> {
+  const candidates = derivePitfallLessonsFromState(state);
+  if (candidates.length === 0) return undefined;
+  try {
+    const dbPath = await ensureLocalStateDbPath();
+    const db = openDb({ path: dbPath });
+    try {
+      const lessons = candidates.map((candidate) => upsertPitfallLesson(db, dbPath, candidate));
+      return { learned: lessons.length, lessons };
+    } finally {
+      db.close();
+    }
+  } catch {
+    return undefined;
+  }
+}
+
 function inferLessonTechStack(capability: string | undefined): string[] {
   if (capability === undefined || capability.length === 0) return ["unknown"];
   return [...new Set(capability.split(/[.:_-]+/).filter((part) => part.length > 0))];
@@ -2015,6 +2035,10 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         return 1;
       }
       if (artifacts !== undefined) result.artifacts = artifacts;
+      const persistedState = await readLoopState(resolveLoopPath(stateFilePath, workspacePath));
+      if (persistedState !== null) {
+        result.learned_lessons = await learnLessonsFromLoopState(persistedState);
+      }
       printLoopRun(result, json);
       return result.completed_tasks.some((task) => task.outcome !== "success") ? 2 : 0;
     }
@@ -2053,6 +2077,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         : undefined;
 
     const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, args, result.events);
+    const learnedLessons = await learnLessonsFromLoopState(result.state);
     printLoopRun({
       loop_id: result.loop_id,
       json_path: result.jsonPath,
@@ -2060,6 +2085,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       completed_tasks: result.state.completed_tasks,
       events: result.events,
       ...(artifacts !== undefined ? { artifacts } : {}),
+      ...(learnedLessons !== undefined ? { learned_lessons: learnedLessons } : {}),
       ...(goal !== undefined ? { goal } : {}),
       ...(result.state.key_metrics !== undefined ? { metrics: result.state.key_metrics } : {}),
       ...("cycles" in result ? { cycles: result.cycles.map((cycle) => ({
@@ -2262,6 +2288,10 @@ interface LoopRunSummary {
     duration_ms: number;
   }>;
   artifacts?: LoopEvidenceArtifacts;
+  learned_lessons?: {
+    learned: number;
+    lessons: ReturnType<typeof upsertPitfallLesson>[];
+  };
   metrics?: {
     success_rate: number;
   };

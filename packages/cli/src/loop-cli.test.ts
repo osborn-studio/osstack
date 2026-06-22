@@ -356,6 +356,7 @@ describe("loop CLI", () => {
 
   it("does not treat an unknown --agent as a successful local no-op", async () => {
     const workspace = join(tmp, "unknown-agent-workspace");
+    process.env["OSSTACK_HOME"] = join(tmp, "unknown-agent-home");
     await mkdir(join(workspace, "tasks"), { recursive: true });
     await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
       task_id: "cli-unknown-agent-task",
@@ -377,7 +378,9 @@ describe("loop CLI", () => {
 
     expect(exitCode).toBe(2);
     const result = JSON.parse(logs.join("\n")) as {
+      loop_id: string;
       completed_tasks: Array<{ task_id: string; outcome: string; agent_id: string }>;
+      learned_lessons?: { learned: number; lessons: Array<{ family: string; source_run_ids: string[] }> };
       events: Array<{ type: string; payload?: { summary?: string } }>;
     };
     expect(result.completed_tasks).toEqual([
@@ -393,6 +396,21 @@ describe("loop CLI", () => {
         summary: "agent adapter not registered: missing-loop-agent",
       }),
     }));
+    expect(result.learned_lessons).toMatchObject({
+      learned: 1,
+      lessons: [expect.objectContaining({
+        family: "max_iter_escalation",
+        source_run_ids: [result.loop_id],
+      })],
+    });
+
+    logs = [];
+    const listCode = await main(["lessons", "list", "--json"]);
+
+    expect(listCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      lessons: [expect.objectContaining({ family: "max_iter_escalation" })],
+    });
   });
 
   it("runs ds-review as a post-execution reviewer verifier", async () => {
