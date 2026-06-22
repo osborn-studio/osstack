@@ -273,6 +273,12 @@ try {
     releaseDoctorChecks.some((item) => item.id === "knowledge_cloud_search" && item.status === "ok"),
     "release doctor must pass the deployed search gate",
   );
+  const releaseDoctorSync = releaseDoctorChecks.find((item) => item.id === "knowledge_cloud_sync");
+  assert(releaseDoctorSync?.status === "ok", "release doctor must pass the deployed sync gate");
+  assert(
+    releaseDoctorSync?.details?.pack_count >= 6,
+    "release doctor sync gate must see official Knowledge Cloud packs",
+  );
   const releaseDoctorAudit = releaseDoctorChecks.find((item) => item.id === "knowledge_cloud_audit");
   assert(releaseDoctorAudit?.status === "ok", "release doctor must pass the deployed audit gate");
   assert(
@@ -297,6 +303,7 @@ try {
     release_doctor: {
       ok: releaseDoctorSummary.ok,
       knowledge_cloud_deploy: releaseDoctorSummary.readiness?.knowledge_cloud_deploy,
+      sync_gate: releaseDoctorSync?.status ?? null,
       audit_gate: releaseDoctorAudit?.status ?? null,
     },
     published_pack_dir: publishedPackDir,
