@@ -73,6 +73,35 @@ try {
   const proofZipStat = await stat(summary.artifacts.proof_zip);
   assert(proofZipStat.size > 0, "proof zip must be non-empty");
 
+  const compliancePath = join(workspace, "release", "compliance-engineering-readiness.md");
+  const compliance = run(process.execPath, [
+    osstackBin,
+    "compliance",
+    "render",
+    summary.loop_id,
+    "--pack",
+    "engineering-readiness",
+    "--proof-dir",
+    proofDir,
+    "--output",
+    compliancePath,
+    "--json",
+  ], { cwd: root, capture: true });
+  const complianceSummary = JSON.parse(compliance.stdout);
+  assert(complianceSummary.pack_id === "engineering-readiness", "compliance render must use engineering-readiness pack");
+  assert(complianceSummary.output === compliancePath, "compliance render must write requested output");
+  const complianceReport = await readFile(compliancePath, "utf-8");
+  assertIncludes(
+    complianceReport,
+    "External certification claim: `none`",
+    "compliance report must avoid external certification claims",
+  );
+  assertIncludes(
+    complianceReport,
+    "| Evidence integrity | PRESENT | `manifest.json` | Proof manifest artifacts carry SHA-256 checksums. |",
+    "compliance report must map proof manifest evidence",
+  );
+
   const pr = run(process.execPath, [
     osstackBin,
     "pr",
@@ -101,6 +130,7 @@ try {
     scorecard: summary.artifacts.scorecard_markdown,
     proof_dir: proofDir,
     proof_zip: summary.artifacts.proof_zip,
+    compliance_report: compliancePath,
     pr_body: prSummary.path,
     conformance: "L4 Audited",
   }, null, 2));

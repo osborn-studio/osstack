@@ -296,10 +296,11 @@
 - 每个 pack 含 manifest、controls、evidence-map、report-template、score-rubric。
 - `osstack compliance list` / `render` 存在。
 - compliance report 不声称外部认证。
+- `smoke:deliver-proof` 已从真实 deliver proof dir 渲染 `engineering-readiness` compliance report，并校验 proof manifest checksum evidence mapping。
 
 需增强：
 
-- proof pack 默认包含 compliance report 的路径需要更多 e2e smoke。
+- 如果要把 compliance report 默认打进 proof pack，还需要新增产品选项或默认策略；当前已验证的是 proof dir 可生成可引用合规视图。
 
 ### Task 6.2：Enterprise proof views
 
@@ -345,7 +346,7 @@
 | P0 | npm publish 并从 registry 安装 | Phase 0 一行安装的最终验收 | `npm install -g @osstack/cli` 成功 |
 | P1 | `CONFORMANCE_MATRIX.md` | 让 OSSTACK_RUN_SPEC_V1 的 MUST 条款可审计 | 每条 MUST 映射 schema/test/verifier |
 | P1 | 真实 repo deliver e2e smoke | 证明 Product Entry 可处理实际项目 | 临时 repo 跑 deliver/loop/proof 成功 |
-| P1 | Compliance report 进入 proof e2e smoke | 证明 enterprise proof 包装闭环 | proof pack 内含 compliance report |
+| P1 | Compliance report 从 proof dir 渲染 smoke | 证明 enterprise proof 包装闭环 | deliver proof dir 可渲染合规报告且不声称外部认证 |
 | P2 | 单文件分发评估 | 可选增强，不阻塞 npm 主路径 | macOS arm64 binary + smoke |
 | P2 | 交互式 TUI | 当前 cockpit 是 Web/summary MVP | cockpit 中可看/开/生成 report/proof/run |
 
@@ -382,9 +383,9 @@ gh pr create --draft --base main --head codex/osstack-report-foundation \
 
 在授权解除前，建议继续做本地可验证的 P1：
 
-1. 新增 `docs/specs/CONFORMANCE_MATRIX.md`，把 `OSSTACK_RUN_SPEC_V1` 的 MUST 映射到 schema/test/verifier。
-2. 增强 proof e2e smoke，让 compliance report 进入 proof pack。
-3. 增加真实临时 repo 的 `deliver -> proof` smoke。
+1. 增加 L3/L4 reviewed/audited fixture vectors。
+2. 为外部 proof evidence imports 增加 schema validation。
+3. 把 `smoke:deliver-proof` 和 installed-CLI knowledge fallback smoke 接入远端 CI。
 
 授权解除后，立即转入 P0：
 

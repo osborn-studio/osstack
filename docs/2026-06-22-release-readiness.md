@@ -44,6 +44,7 @@
 | `pnpm smoke:knowledge-cloud:deploy` | 通过 | 检查 `Dockerfile.knowledge-cloud`、Fly、Render、GitHub Actions 部署资产 |
 | `pnpm smoke:knowledge-cloud` | 通过 | health=`osstack-knowledge-cloud`，packs=`6`，private_packs=`1`，sync_packs=`6`，top_result=`proof-checksum-pack`，private_result=`private-release-approval`，feedback=`sent` |
 | `pnpm smoke:npm-install` | 通过 | 15 个 tarballs；安装后 CLI、launchd dry-run、evidence、knowledge eval、Knowledge Cloud load、sync cache、cloud outage local fallback 全部验证 |
+| `pnpm smoke:deliver-proof` | 通过 | 临时 git repo 跑 `deliver -> report -> scorecard -> proof -> compliance render -> pr dry-run`，证明 L4 evidence 与合规视图可从 proof dir 串起来 |
 | `pnpm smoke:loop` | 通过 | `[smoke] ok workspace=...` |
 | `node packages/cli/dist/bin.js knowledge eval --official --fixtures knowledge-evals/retrieval/osstack-core.json --json` | 通过 | total=`30`，passed=`30`，failed=`0`，top_k=`3` |
 
