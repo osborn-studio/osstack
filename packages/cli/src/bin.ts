@@ -263,7 +263,7 @@ Loop engineering (local, testable hot-loop MVP):
                                  Write a GitHub-ready PR body from run evidence
   loop run [--workspace P] [--source S] [--execute CMD] [--verify CMD]
            [--reviewer ID] [--checker ID] [--goal CMD] [--max-iter N] [--cycles N] [--interval-ms N]
-           [--state P] [--markdown P] [--worktree] [--knowledge off|local|cloud]
+           [--state P] [--markdown P] [--worktree] [--knowledge off|local|cloud] [--govern [warn|strict]]
            [--report] [--scorecard] [--proof] [--json] [--daemon]
                                  Run one discover→execute→verify→iterate cycle
   loop start [--workspace P] [--source S] [--execute CMD] [--verify CMD]
@@ -1631,6 +1631,14 @@ type GovernanceProofEvidence =
     findings: GovernanceFinding[];
   };
 
+type LoopGovernanceMode = "warn" | "strict";
+
+type LoopGovernanceEvidence = GovernanceProofEvidence & {
+  mode: LoopGovernanceMode;
+  blocking: boolean;
+  error_findings: number;
+};
+
 type KnowledgeProofEvidence = KnowledgeSearchEvidence;
 
 function knowledgeSearchOptions(options: {
@@ -2235,6 +2243,7 @@ async function writeRequestedLoopArtifactsFromStateFile(options: {
   workspacePath: string;
   stateFilePath: string;
   events?: unknown[];
+  governance?: GovernanceProofEvidence;
 }): Promise<LoopEvidenceArtifacts | undefined | Error> {
   if (!hasRequestedLoopArtifacts(options.args)) return undefined;
   const statePath = resolveLoopPath(options.stateFilePath, options.workspacePath);
@@ -2247,6 +2256,7 @@ async function writeRequestedLoopArtifactsFromStateFile(options: {
     options.workspacePath,
     options.args,
     normalizeLoopEvents(options.events),
+    options.governance,
   );
 }
 
@@ -2255,6 +2265,7 @@ async function writeRequestedLoopArtifacts(
   workspacePath: string,
   args: string[],
   events: LoopEvent[] = [],
+  governanceOverride?: GovernanceProofEvidence,
 ): Promise<LoopEvidenceArtifacts | undefined> {
   if (!hasRequestedLoopArtifacts(args)) return undefined;
 
@@ -2283,7 +2294,7 @@ async function writeRequestedLoopArtifacts(
   }
 
   if (args.includes("--proof")) {
-    const governance = await scanWorkspaceGovernance(workspacePath);
+    const governance = governanceOverride ?? await scanWorkspaceGovernance(workspacePath);
     const knowledge = await createKnowledgeProofEvidence(args, state.loop_id, state.knowledge);
     const proof = await writeProofPack(state, join(workspacePath, "release"), events, state.loop_id, governance, knowledge);
     artifacts.proof_dir = proof.proof_dir;
@@ -2399,6 +2410,63 @@ async function scanWorkspaceGovernance(workspacePath: string): Promise<Governanc
     const message = error instanceof Error ? error.message : String(error);
     return unknownGovernanceEvidence(`Governance scan failed: ${message}`);
   }
+}
+
+function parseLoopGovernanceMode(args: string[]): LoopGovernanceMode | undefined | Error {
+  const index = args.indexOf("--govern");
+  if (index < 0) return undefined;
+  const value = args[index + 1];
+  if (value === undefined || value.startsWith("--")) return "warn";
+  if (value === "warn" || value === "strict") return value;
+  return new Error("--govern must be warn or strict");
+}
+
+async function createLoopGovernanceEvidence(
+  mode: LoopGovernanceMode,
+  workspacePath: string,
+): Promise<LoopGovernanceEvidence> {
+  const evidence = await scanWorkspaceGovernance(workspacePath);
+  const errorFindings = evidence.findings.filter((finding) => finding.severity === "error").length;
+  return {
+    ...evidence,
+    mode,
+    blocking: mode === "strict" && errorFindings > 0,
+    error_findings: errorFindings,
+  };
+}
+
+function appendGovernanceVerifyEvent(
+  events: LoopEvent[],
+  loopId: string,
+  governance: LoopGovernanceEvidence,
+): LoopEvent[] {
+  const seq = nextLoopEventSeq(events);
+  const pass = !governance.blocking;
+  const summary = governance.status === "unknown"
+    ? "governance scan unknown; fail-open"
+    : `${governance.status}; findings=${governance.findings.length}; errors=${governance.error_findings}; mode=${governance.mode}`;
+  return [
+    ...events,
+    {
+      event_id: `evt_governance_${seq}`,
+      loop_id: loopId,
+      type: "loop.verify.done",
+      seq,
+      created_at: Date.now(),
+      payload: {
+        task_id: "governance",
+        pass,
+        score: pass ? 1 : 0,
+        issue_count: governance.findings.length,
+        reviewer_agent_id: "governance-verifier",
+        summary,
+      },
+    },
+  ];
+}
+
+function nextLoopEventSeq(events: LoopEvent[]): number {
+  return Math.max(0, ...events.map((event) => event.seq)) + 1;
 }
 
 async function collectGovernanceScanFiles(workspacePath: string): Promise<string[]> {
@@ -3369,6 +3437,11 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const archiveCompletedTasks = args.includes("--archive-completed");
     const autoAgent = args.includes("--auto-agent");
     const knowledge = await createKnowledgeProofEvidence(args, "loop run");
+    const governanceMode = parseLoopGovernanceMode(args);
+    if (governanceMode instanceof Error) {
+      console.error(`osstack: ${governanceMode.message}`);
+      return 1;
+    }
     const maxIterations = parsePositiveIntegerFlag(maxIterRaw, "--max-iter");
     if (maxIterations instanceof Error) {
       console.error(`osstack: ${maxIterations.message}`);
@@ -3412,11 +3485,20 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         return 1;
       }
       const result = resp.result as LoopRunSummary;
+      const governance = governanceMode === undefined
+        ? undefined
+        : await createLoopGovernanceEvidence(governanceMode, workspacePath);
+      const events = governance === undefined
+        ? normalizeLoopEvents(result.events)
+        : appendGovernanceVerifyEvent(normalizeLoopEvents(result.events), result.loop_id, governance);
+      if (events.length > 0) result.events = events;
+      if (governance !== undefined) result.governance = governance;
       const artifacts = await writeRequestedLoopArtifactsFromStateFile({
         args,
         workspacePath,
         stateFilePath,
-        ...(result.events !== undefined ? { events: result.events } : {}),
+        events,
+        ...(governance !== undefined ? { governance } : {}),
       });
       if (artifacts instanceof Error) {
         console.error(`osstack: ${artifacts.message}`);
@@ -3429,7 +3511,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         if (learnedLessons !== undefined) result.learned_lessons = learnedLessons;
       }
       printLoopRun(result, json);
-      return result.completed_tasks.some((task) => task.outcome !== "success") ? 2 : 0;
+      return result.completed_tasks.some((task) => task.outcome !== "success") || governance?.blocking === true ? 2 : 0;
     }
 
     const adapters = agentId !== undefined || verifierAgentIds.length > 0 || autoAgent
@@ -3466,16 +3548,23 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ? result.cycles.at(-1)?.goal
         : undefined;
 
-    const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, args, result.events);
+    const governance = governanceMode === undefined
+      ? undefined
+      : await createLoopGovernanceEvidence(governanceMode, workspacePath);
+    const events = governance === undefined
+      ? result.events
+      : appendGovernanceVerifyEvent(result.events, result.loop_id, governance);
+    const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, args, events, governance);
     const learnedLessons = await learnLessonsFromLoopState(result.state);
     printLoopRun({
       loop_id: result.loop_id,
       json_path: result.jsonPath,
       markdown_path: result.markdownPath,
       completed_tasks: result.state.completed_tasks,
-      events: result.events,
+      events,
       ...(artifacts !== undefined ? { artifacts } : {}),
       ...(learnedLessons !== undefined ? { learned_lessons: learnedLessons } : {}),
+      ...(governance !== undefined ? { governance } : {}),
       ...(goal !== undefined ? { goal } : {}),
       ...(result.state.key_metrics !== undefined ? { metrics: result.state.key_metrics } : {}),
       ...("cycles" in result ? { cycles: result.cycles.map((cycle) => ({
@@ -3485,7 +3574,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ...(cycle.goal !== undefined ? { goal: cycle.goal } : {}),
       })) } : {}),
     }, json);
-    return result.state.completed_tasks.some((task) => task.outcome !== "success") ? 2 : 0;
+    return result.state.completed_tasks.some((task) => task.outcome !== "success") || governance?.blocking === true ? 2 : 0;
   }
 
   if (sub === "enqueue") {
@@ -3626,6 +3715,7 @@ Options:
   --knowledge-cloud-url URL
                       Knowledge Cloud URL; unavailable cloud fails open to local/off
   --knowledge-query Q Query used for knowledge trace search
+  --govern [M]        Run governance checks after loop run; M=warn or strict
   --json              Emit machine-readable summary
   --daemon            Run through the osstack daemon RPC socket
 
@@ -3687,6 +3777,7 @@ interface LoopRunSummary {
     learned: number;
     lessons: ReturnType<typeof upsertPitfallLesson>[];
   };
+  governance?: LoopGovernanceEvidence;
   metrics?: {
     success_rate: number;
   };
@@ -3834,6 +3925,9 @@ function printLoopRun(result: LoopRunSummary, json: boolean): void {
   console.log(`tasks=${result.completed_tasks.length} success_rate=${Math.round((result.metrics?.success_rate ?? 1) * 100)}%`);
   if (result.goal !== undefined) {
     console.log(`goal=${result.goal.pass ? "passed" : "not_met"} exit_code=${result.goal.exitCode}`);
+  }
+  if (result.governance !== undefined) {
+    console.log(`governance=${result.governance.status} mode=${result.governance.mode} blocking=${result.governance.blocking ? "yes" : "no"} findings=${result.governance.findings.length}`);
   }
   if (result.artifacts !== undefined) {
     if (result.artifacts.report !== undefined) console.log(`report=${result.artifacts.report}`);

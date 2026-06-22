@@ -200,6 +200,87 @@ describe("loop CLI", () => {
     });
   });
 
+  it("records governance findings without blocking by default", async () => {
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-loop-govern-task",
+      capability: "code.test",
+      prompt: "Exercise governed loop",
+    }));
+    await writeFile(join(tmp, "unsafe.ts"), "const api_key = \"sk-test-secret-token\";\n");
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--govern",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      governance: { mode: string; status: string; blocking: boolean; findings: Array<{ rule_id: string }> };
+      events: Array<{ type: string; payload?: { reviewer_agent_id?: string; pass?: boolean } }>;
+    };
+    expect(summary.governance).toMatchObject({
+      mode: "warn",
+      status: "fail",
+      blocking: false,
+      findings: [expect.objectContaining({ rule_id: "secret.api_key" })],
+    });
+    expect(summary.events).toContainEqual(expect.objectContaining({
+      type: "loop.verify.done",
+      payload: expect.objectContaining({ reviewer_agent_id: "governance-verifier", pass: true }),
+    }));
+  });
+
+  it("fails strict governed runs on error severity findings and writes proof evidence", async () => {
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-loop-govern-strict-task",
+      capability: "code.test",
+      prompt: "Exercise strict governed loop",
+    }));
+    await writeFile(join(tmp, "unsafe.ts"), "const api_key = \"sk-test-secret-token\";\n");
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--govern",
+      "strict",
+      "--report",
+      "--proof",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(2);
+    const summary = JSON.parse(logs.join("\n")) as {
+      artifacts: { report: string; proof_dir: string };
+      governance: { mode: string; status: string; blocking: boolean };
+      events: Array<{ type: string; payload?: { reviewer_agent_id?: string; pass?: boolean } }>;
+    };
+    expect(summary.governance).toMatchObject({ mode: "strict", status: "fail", blocking: true });
+    expect(summary.events).toContainEqual(expect.objectContaining({
+      type: "loop.verify.done",
+      payload: expect.objectContaining({ reviewer_agent_id: "governance-verifier", pass: false }),
+    }));
+    await expect(readFile(summary.artifacts.report, "utf-8")).resolves.toContain("governance-verifier");
+    const governance = JSON.parse(
+      await readFile(join(summary.artifacts.proof_dir, "governance-results.json"), "utf-8"),
+    ) as { status: string; findings: Array<{ rule_id: string; severity: string }> };
+    expect(governance).toMatchObject({
+      status: "fail",
+      findings: [expect.objectContaining({ rule_id: "secret.api_key", severity: "error" })],
+    });
+  });
+
   it("rejects an invalid max iteration value", async () => {
     const exitCode = await main(["loop", "run", "--max-iter", "0"]);
 
