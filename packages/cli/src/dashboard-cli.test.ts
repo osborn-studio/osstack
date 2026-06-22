@@ -65,6 +65,7 @@ describe("dashboard/cockpit CLI", () => {
     expect(output).toContain("Osstack Cockpit");
     expect(output).toContain("daemon=");
     expect(output).toContain("runs total=");
+    expect(output).toContain("queued=");
     expect(output).toContain("evidence reports=");
     expect(output).toContain("kanban:");
     expect(output).toContain("triage: 1");
@@ -79,11 +80,12 @@ describe("dashboard/cockpit CLI", () => {
     expect(exitCode).toBe(0);
     const summary = JSON.parse(logs.join("\n")) as {
       daemon: { version: string; active_loops: number };
-      cockpit: { dashboard: { title: string }; board: { columns: unknown[] } };
+      cockpit: { dashboard: { title: string }; overview: { queued_tasks: number }; board: { columns: unknown[] } };
     };
     expect(summary.daemon.version).toMatch(/^\d+\.\d+\.\d+/);
     expect(summary.daemon.active_loops).toBe(0);
     expect(summary.cockpit.dashboard.title).toContain("osstack");
+    expect(summary.cockpit.overview.queued_tasks).toBe(0);
     expect(Array.isArray(summary.cockpit.board.columns)).toBe(true);
   });
 

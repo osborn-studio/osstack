@@ -49,6 +49,9 @@ describe("dashboard", () => {
         phase: "test",
         started_at: 200,
       });
+      db.prepare(
+        "INSERT INTO tasks(task_id, title, description, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+      ).run("t3", "Queued follow-up", "", "pending", 250, 250);
 
       const kanban = new KanbanRepository(db, path, () => 300);
       kanban.createCard({ card_id: "card_1", title: "Design URL flow", status: "done", assignee: "google-stitch" });
@@ -75,6 +78,7 @@ describe("dashboard", () => {
       expect(snapshot.overview.total_runs).toBe(2);
       expect(snapshot.overview.completed_runs).toBe(1);
       expect(snapshot.overview.active_runs).toBe(1);
+      expect(snapshot.overview.queued_tasks).toBe(1);
       expect(snapshot.overview.active_loops).toBe(2);
       expect(snapshot.overview.progress_percent).toBe(33);
       expect(snapshot.quality.grade).toBe("B");
@@ -116,10 +120,12 @@ describe("dashboard", () => {
     expect(english).toContain('<html lang="en">');
     expect(english).toContain("<title>osstack Cockpit</title>");
     expect(english).toContain("<h2>Evidence Assets</h2>");
+    expect(english).toContain("Queued Tasks");
     expect(english).toContain("No recent runs");
     expect(chinese).toContain('<html lang="zh-CN">');
     expect(chinese).toContain("<title>osstack 开发驾驶舱</title>");
     expect(chinese).toContain("<h2>证据资产</h2>");
+    expect(chinese).toContain("队列任务");
     expect(chinese).toContain("暂无运行记录");
   });
 });

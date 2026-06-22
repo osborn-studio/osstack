@@ -48,6 +48,7 @@ export interface DashboardSnapshot {
     failed_runs: number;
     cancelled_runs: number;
     active_runs: number;
+    queued_tasks: number;
     active_loops: number;
     total_events: number;
     tokens_in: number;
@@ -148,6 +149,9 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
     avg_duration_ms: number | null;
   };
   const totalEvents = (opts.db.prepare("SELECT COUNT(*) AS c FROM events").get() as { c: number }).c;
+  const queuedTasks = (opts.db.prepare("SELECT COUNT(*) AS c FROM tasks WHERE status = 'pending'").get() as
+    | { c: number }
+    | undefined)?.c ?? 0;
   const boardOptions = opts.now
     ? { includeArchived: false, now: opts.now }
     : { includeArchived: false };
@@ -200,6 +204,7 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
       failed_runs: failed,
       cancelled_runs: cancelled,
       active_runs: opts.activeRuns,
+      queued_tasks: queuedTasks,
       active_loops: opts.activeLoops ?? 0,
       total_events: totalEvents,
       tokens_in: runCounts.tokens_in ?? 0,
@@ -392,7 +397,7 @@ function dashboardText(language: DashboardLanguage): {
       kanban: "任务看板",
       recentRuns: "最近运行",
       codeMap: "代码地图",
-      metrics: ["总体进度", "运行次数", "活动任务", "活动 Loops", "事件记录", "看板卡片", "质量评分"],
+      metrics: ["总体进度", "运行次数", "活动任务", "队列任务", "活动 Loops", "事件记录", "看板卡片", "质量评分"],
       successRate: "成功率",
       blocked: "阻塞",
       reports: "报告",
@@ -417,7 +422,7 @@ function dashboardText(language: DashboardLanguage): {
     kanban: "Kanban Board",
     recentRuns: "Recent Runs",
     codeMap: "Code Map",
-    metrics: ["Progress", "Runs", "Active Tasks", "Active Loops", "Events", "Board Cards", "Quality Grade"],
+    metrics: ["Progress", "Runs", "Active Tasks", "Queued Tasks", "Active Loops", "Events", "Board Cards", "Quality Grade"],
     successRate: "Success rate",
     blocked: "Blocked",
     reports: "Reports",
@@ -562,10 +567,11 @@ async function load(){
     metric(t.metrics[0], d.overview.progress_percent + '%', 'blue', d.overview.progress_percent),
     metric(t.metrics[1], d.overview.total_runs, 'ok'),
     metric(t.metrics[2], d.overview.active_runs, 'warn'),
-    metric(t.metrics[3], d.overview.active_loops, 'warn'),
-    metric(t.metrics[4], d.overview.total_events, 'blue'),
-    metric(t.metrics[5], d.board.total, 'ok'),
-    metric(t.metrics[6], d.quality.grade, d.quality.grade === 'A' ? 'ok' : d.quality.grade === 'B' ? 'warn' : 'err')
+    metric(t.metrics[3], d.overview.queued_tasks, d.overview.queued_tasks > 0 ? 'warn' : 'ok'),
+    metric(t.metrics[4], d.overview.active_loops, 'warn'),
+    metric(t.metrics[5], d.overview.total_events, 'blue'),
+    metric(t.metrics[6], d.board.total, 'ok'),
+    metric(t.metrics[7], d.quality.grade, d.quality.grade === 'A' ? 'ok' : d.quality.grade === 'B' ? 'warn' : 'err')
   ].join('');
   document.getElementById('agents').innerHTML = d.agents.map(a => '<div class="row"><span class="dot ok"></span><span><b>'+esc(a.id)+'</b><br><small>'+esc(a.display_name)+' · '+esc(a.cost_tier)+'</small></span></div>').join('');
   document.getElementById('quality').innerHTML = '<div class="row"><div class="quality '+statusClass(d.quality.grade)+'">'+d.quality.grade+'</div><span>'+esc(t.successRate)+' '+Math.round(d.quality.success_rate*100)+'% · '+esc(t.blocked)+' '+d.quality.blocked_cards+'</span></div><div class="list" style="margin-top:12px">'+d.quality.dimensions.map(q => '<div class="row"><span class="tag">'+q.grade+'</span><span>'+esc(q.name)+'<br><small>'+esc(q.detail)+'</small></span></div>').join('')+'</div>';
