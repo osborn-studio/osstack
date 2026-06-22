@@ -116,6 +116,12 @@ export function validateKnowledgePublishGate(manifest, options = {}) {
             message: "official or externally processed knowledge requires source_provenance",
         });
     }
+    if ((official || external) && manifest.source_kind === "processed_mit" && !isProcessedLicenseLabel(manifest.license)) {
+        issues.push({
+            code: "processed_license_not_osstack_derived",
+            message: "processed_mit knowledge packs must use an Osstack processed or derived license label, not the raw upstream license",
+        });
+    }
     if (official && manifest.chunks.length === 0) {
         issues.push({
             code: "official_empty_chunks",
@@ -137,6 +143,9 @@ export function validateKnowledgePublishGate(manifest, options = {}) {
         }
     }
     return { ok: issues.length === 0, issues };
+}
+function isProcessedLicenseLabel(license) {
+    return /\b(processed|derived|osstack)\b/i.test(license);
 }
 export async function loadKnowledgePackIndex(path) {
     const raw = await readFile(path, "utf-8");
