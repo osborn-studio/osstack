@@ -806,6 +806,10 @@ type ProofFileIntegrityIssueCode =
   | "artifact_unexpected_field"
   | "artifact_invalid_sha256"
   | "artifact_invalid_bytes"
+  | "compliance_report_malformed"
+  | "compliance_report_unexpected_field"
+  | "compliance_report_invalid_certification_claim"
+  | "compliance_report_missing_artifact"
   | "duplicate_artifact_path"
   | "path_outside_proof_dir"
   | "missing_artifact"
@@ -1717,6 +1721,7 @@ async function validateProofFileIntegrity(
     }
   }
 
+  issues.push(...validateProofComplianceReports(manifestRaw, manifestShaByPath));
   issues.push(...validateProofSha256Sums(manifestShaByPath, sha256sumsContent, invalidArtifactPaths));
   return { ok: issues.length === 0, issues };
 }
@@ -1743,9 +1748,51 @@ const PROOF_MANIFEST_ARTIFACT_ALLOWED_FIELDS = new Set([
   "bytes",
 ]);
 
+const PROOF_MANIFEST_COMPLIANCE_REPORT_ALLOWED_FIELDS = new Set([
+  "pack_id",
+  "path",
+  "certification_claim",
+]);
+
 function missingManifestString(manifestRaw: Record<string, unknown>, key: string): boolean {
   const value = manifestRaw[key];
   return typeof value !== "string" || value.trim().length === 0;
+}
+
+function validateProofComplianceReports(
+  manifestRaw: Record<string, unknown>,
+  manifestShaByPath: Map<string, string>,
+): ProofFileIntegrityIssue[] {
+  const reports = manifestRaw["compliance_reports"];
+  if (reports === undefined) return [];
+  if (!Array.isArray(reports)) {
+    return [{ path: "manifest.json", code: "compliance_report_malformed" }];
+  }
+  const issues: ProofFileIntegrityIssue[] = [];
+  for (const report of reports) {
+    if (!isRecord(report)) {
+      issues.push({ path: "<unknown>", code: "compliance_report_malformed" });
+      continue;
+    }
+    const reportPath = report["path"];
+    const issuePath = typeof reportPath === "string" && reportPath.length > 0 ? reportPath : "<unknown>";
+    for (const key of Object.keys(report)) {
+      if (!PROOF_MANIFEST_COMPLIANCE_REPORT_ALLOWED_FIELDS.has(key)) {
+        issues.push({ path: issuePath, code: "compliance_report_unexpected_field", actual: key });
+      }
+    }
+    if (typeof report["pack_id"] !== "string" || report["pack_id"].trim().length === 0 || typeof reportPath !== "string" || reportPath.length === 0) {
+      issues.push({ path: issuePath, code: "compliance_report_malformed" });
+      continue;
+    }
+    if (report["certification_claim"] !== "none") {
+      issues.push({ path: issuePath, code: "compliance_report_invalid_certification_claim", expected: "none", actual: String(report["certification_claim"]) });
+    }
+    if (!manifestShaByPath.has(reportPath)) {
+      issues.push({ path: reportPath, code: "compliance_report_missing_artifact" });
+    }
+  }
+  return issues;
 }
 
 function validateProofSha256Sums(
