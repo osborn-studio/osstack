@@ -259,11 +259,11 @@ Kanban board (osstack's own; subscribable from Telegram via Hermes):
   kanban events [--since N]      Drain pending card events (for relays)
 
 Loop engineering (local, testable hot-loop MVP):
-  report [--workspace P] [--state P]
+  report [run_id] [--loop loop_id] [--workspace P] [--state P]
                                  Render an evidence-oriented report from LOOP-STATE.json
-  scorecard [--workspace P] [--state P] [--output-dir P] [--stdout]
+  scorecard [run_id] [--loop loop_id] [--workspace P] [--state P] [--output-dir P] [--stdout]
                                  Generate Markdown + HTML evidence scorecards
-  proof [--workspace P] [--state P] [--output-dir P] [--json]
+  proof [run_id] [--loop loop_id] [--workspace P] [--state P] [--output-dir P] [--json]
                                  Generate a checksumed local proof pack
   proof view <run_id> --audience engineer|manager|auditor|customer
                                  Rearrange existing proof evidence for a target audience
@@ -2103,9 +2103,10 @@ async function handleReportCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack report — evidence-oriented loop report
 
-  osstack report [run_id] [--workspace P] [--state P] [--events P] [--lang en|zh-CN]
+  osstack report [run_id] [--loop loop_id] [--workspace P] [--state P] [--events P] [--lang en|zh-CN]
 
 Options:
+  --loop ID           State-file loop id / artifact id when no persisted run_id is used
   --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
   --state P           JSON state path (default: LOOP-STATE.json)
   --events P          Optional loop events JSONL path for timeline evidence
@@ -2114,7 +2115,8 @@ Options:
     return 0;
   }
 
-  const runId = firstPositionalValue(args, new Set(["--workspace", "--state", "--events", "--lang"]));
+  const runId = firstPositionalValue(args, new Set(["--loop", "--workspace", "--state", "--events", "--lang"]));
+  const loopId = flagValue(args, "--loop");
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
   const language = resolveLanguage(flagValue(args, "--lang"));
   const evidenceResult = runId === undefined
@@ -2129,6 +2131,10 @@ Options:
   const state = await readLoopState(stateFilePath);
   if (state === null) {
     console.error(`osstack: no loop state found at ${stateFilePath}`);
+    return 1;
+  }
+  if (loopId !== undefined && state.loop_id !== loopId) {
+    console.error(`osstack: --loop ${loopId} does not match state loop_id=${state.loop_id}`);
     return 1;
   }
   const events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
@@ -2140,9 +2146,10 @@ async function handleScorecardCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack scorecard — loop evidence scorecard
 
-  osstack scorecard [run_id] [--workspace P] [--state P] [--output-dir P] [--stdout] [--lang en|zh-CN]
+  osstack scorecard [run_id] [--loop loop_id] [--workspace P] [--state P] [--output-dir P] [--stdout] [--lang en|zh-CN]
 
 Options:
+  --loop ID           State-file loop id / artifact id when no persisted run_id is used
   --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
   --state P           JSON state path (default: LOOP-STATE.json)
   --output-dir P      Directory for scorecard files (default: <workspace>/release)
@@ -2152,7 +2159,8 @@ Options:
     return 0;
   }
 
-  const runId = firstPositionalValue(args, new Set(["--workspace", "--state", "--output-dir", "--lang"]));
+  const runId = firstPositionalValue(args, new Set(["--loop", "--workspace", "--state", "--output-dir", "--lang"]));
+  const loopId = flagValue(args, "--loop");
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
   const language = resolveLanguage(flagValue(args, "--lang"));
   const evidenceResult = runId === undefined
@@ -2169,6 +2177,10 @@ Options:
     console.error(`osstack: no loop state found at ${stateFilePath}`);
     return 1;
   }
+  if (loopId !== undefined && state.loop_id !== loopId) {
+    console.error(`osstack: --loop ${loopId} does not match state loop_id=${state.loop_id}`);
+    return 1;
+  }
 
   const scorecard = createLoopStateScorecardFromState(state);
   const markdown = renderLoopStateScorecardMarkdown(scorecard, { language });
@@ -2178,7 +2190,7 @@ Options:
   }
 
   const outputDir = resolveLoopPath(flagValue(args, "--output-dir") ?? "release", workspacePath);
-  const baseName = `osstack-scorecard-${safeFileSegment(runId ?? scorecard.loop_id)}`;
+  const baseName = `osstack-scorecard-${safeFileSegment(runId ?? loopId ?? scorecard.loop_id)}`;
   const markdownPath = join(outputDir, `${baseName}.md`);
   const htmlPath = join(outputDir, `${baseName}.html`);
   await mkdir(outputDir, { recursive: true });
@@ -2194,10 +2206,11 @@ async function handleProofCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack proof — local evidence proof pack
 
-  osstack proof [run_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-mode M] [--knowledge-cloud-url URL] [--knowledge-query Q] [--compliance-pack P] [--output-dir P] [--json]
+  osstack proof [run_id] [--loop loop_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-mode M] [--knowledge-cloud-url URL] [--knowledge-query Q] [--compliance-pack P] [--output-dir P] [--json]
   osstack proof view <run_id> --audience engineer|manager|auditor|customer [--proof-dir P] [--workspace P] [--output P] [--json]
 
 Options:
+  --loop ID           State-file loop id / artifact id when no persisted run_id is used
   --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
   --state P           JSON state path (default: LOOP-STATE.json)
   --events P          Optional loop events JSONL path to include in the pack
@@ -2219,6 +2232,7 @@ Options:
   }
 
   const runId = firstPositionalValue(args, new Set([
+    "--loop",
     "--workspace",
     "--state",
     "--events",
@@ -2229,6 +2243,7 @@ Options:
     "--compliance-pack",
     "--output-dir",
   ]));
+  const loopId = flagValue(args, "--loop");
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
   const evidenceResult = runId === undefined
     ? undefined
@@ -2244,13 +2259,17 @@ Options:
     console.error(`osstack: no loop state found at ${stateFilePath}`);
     return 1;
   }
+  if (loopId !== undefined && state.loop_id !== loopId) {
+    console.error(`osstack: --loop ${loopId} does not match state loop_id=${state.loop_id}`);
+    return 1;
+  }
 
   const outputDir = resolveLoopPath(flagValue(args, "--output-dir") ?? "release", workspacePath);
   const events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
   const governanceRoot = dirname(stateFilePath);
   const governance = await scanWorkspaceGovernance(governanceRoot);
   const knowledge = await createKnowledgeProofEvidence(args, state.loop_id);
-  const proof = await writeProofPack(state, outputDir, events, runId, governance, knowledge, flagValues(args, "--compliance-pack"), workspacePath);
+  const proof = await writeProofPack(state, outputDir, events, runId ?? loopId, governance, knowledge, flagValues(args, "--compliance-pack"), workspacePath);
 
   const summary = {
     loop_id: state.loop_id,

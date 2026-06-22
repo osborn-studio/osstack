@@ -281,6 +281,30 @@ describe("proof CLI", () => {
     expect(listing).toContain("report.md");
   });
 
+  it("uses --loop as the state-file proof artifact id", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+
+    const exitCode = await main(["proof", "--loop", "cli-proof-loop", "--workspace", tmp, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as { loop_id: string; proof_dir: string; proof_zip: string };
+    expect(summary).toMatchObject({
+      loop_id: "cli-proof-loop",
+      proof_dir: join(tmp, "release", "osstack-proof-cli-proof-loop"),
+      proof_zip: join(tmp, "release", "osstack-proof-cli-proof-loop.zip"),
+    });
+    await expect(readFile(join(summary.proof_dir, "manifest.json"), "utf-8")).resolves.toContain("\"run_id\": \"cli-proof-loop\"");
+  });
+
+  it("rejects a --loop id that does not match state", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+
+    const exitCode = await main(["proof", "--loop", "other-loop", "--workspace", tmp]);
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("--loop other-loop does not match state loop_id=cli-proof-loop");
+  });
+
   it("includes supplied events JSONL in the proof pack", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
     const eventsPath = join(tmp, "events.jsonl");

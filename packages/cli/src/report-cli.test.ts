@@ -55,6 +55,24 @@ describe("report CLI", () => {
     expect(logs.join("\n")).toContain("# Osstack Loop Report - cli-report-loop");
   });
 
+  it("accepts --loop for state-file loop reports", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+
+    const exitCode = await main(["report", "--loop", "cli-report-loop", "--workspace", tmp]);
+
+    expect(exitCode).toBe(0);
+    expect(logs.join("\n")).toContain("# Osstack Loop Report - cli-report-loop");
+  });
+
+  it("rejects a --loop id that does not match state", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+
+    const exitCode = await main(["report", "--loop", "other-loop", "--workspace", tmp]);
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("--loop other-loop does not match state loop_id=cli-report-loop");
+  });
+
   it("renders a Chinese report with --lang zh-CN", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
 

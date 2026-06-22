@@ -53,6 +53,27 @@ describe("scorecard CLI", () => {
     expect(logs.join("\n")).toContain("# Osstack Scorecard - cli-scorecard-loop");
   });
 
+  it("uses --loop as the state-file scorecard artifact id", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+
+    const exitCode = await main(["scorecard", "--loop", "cli-scorecard-loop", "--workspace", tmp]);
+
+    expect(exitCode).toBe(0);
+    const markdownPath = join(tmp, "release", "osstack-scorecard-cli-scorecard-loop.md");
+    const htmlPath = join(tmp, "release", "osstack-scorecard-cli-scorecard-loop.html");
+    await expect(readFile(markdownPath, "utf-8")).resolves.toContain("# Osstack Scorecard - cli-scorecard-loop");
+    await expect(readFile(htmlPath, "utf-8")).resolves.toContain("<!doctype html>");
+  });
+
+  it("rejects a --loop id that does not match state", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+
+    const exitCode = await main(["scorecard", "--loop", "other-loop", "--workspace", tmp]);
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("--loop other-loop does not match state loop_id=cli-scorecard-loop");
+  });
+
   it("renders a Chinese scorecard with --lang zh-CN", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
 
