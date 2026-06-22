@@ -223,6 +223,30 @@ describe("product entry commands", () => {
     expect(result.next_steps.join("\n")).toContain("Restore the Knowledge Cloud Deploy workflow");
   });
 
+  it("writes a release readiness report for handoff and CI artifacts", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "warn";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "open:5:UNSTABLE";
+    const output = join(tmp, "release-readiness.md");
+
+    const exitCode = await main(["release", "doctor", "--target", "npm", "--output", output, "--json"]);
+
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      ok: true,
+      target: "npm",
+      output,
+    });
+    const markdown = await readFile(output, "utf-8");
+    expect(markdown).toContain("# Osstack Release Readiness");
+    expect(markdown).toContain("Target: `npm`");
+    expect(markdown).toContain("| version_packages_pr | warn |");
+    expect(markdown).toContain("Review Version Packages PR #5");
+    expect(markdown).toContain("Readiness");
+    expect(markdown).toContain("npm_publish");
+  });
+
   it("rejects unknown release doctor targets", async () => {
     const exitCode = await main(["release", "doctor", "--target", "staging", "--json"]);
 

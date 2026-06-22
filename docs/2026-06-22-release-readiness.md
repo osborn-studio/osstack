@@ -184,6 +184,14 @@ osstack release doctor --json
 - `version_packages_pr`：识别 `changeset-release/main` 的 Version Packages PR，输出 PR number、URL、draft 状态和 `merge_state`。当前真实状态为 PR #5 `UNSTABLE`，需要在合并 npm version PR 前处理。
 - `knowledge_cloud_workflow`：识别 `Knowledge Cloud Deploy` workflow 是否存在、是否 active，以及最近一次验证 run 的状态。当前最近一次 validation run 为 success，但 `deploy=true` 仍需要 `FLY_API_TOKEN`。
 
+也可以输出 Markdown handoff artifact：
+
+```sh
+osstack release doctor --output release-readiness.md --json
+```
+
+该报告包含 readiness summary、检查表、检查详情和 next steps，适合贴到 PR、发布群或 CI artifact。
+
 ## 10. 推荐上线步骤
 
 ### Step 1：配置发布凭证

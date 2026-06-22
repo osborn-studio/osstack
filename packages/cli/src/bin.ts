@@ -775,6 +775,7 @@ interface ReleaseDoctorResult {
     knowledge_cloud_deploy: boolean;
   };
   next_steps: string[];
+  output?: string;
 }
 
 async function handleReleaseCommand(args: string[]): Promise<number> {
@@ -804,10 +805,17 @@ async function handleReleaseDoctorCommand(args: string[]): Promise<number> {
     return 1;
   }
   const result = await releaseDoctor(target);
+  const output = flagValue(args, "--output");
+  if (output !== undefined) {
+    await mkdir(dirname(output), { recursive: true });
+    await writeFile(output, renderReleaseReadinessReport(result), "utf-8");
+    result.output = output;
+  }
   if (args.includes("--json")) {
     console.log(JSON.stringify(result, null, 2));
   } else {
     printReleaseDoctor(result);
+    if (output !== undefined) console.log(`release_readiness=${output}`);
   }
   return result.ok ? 0 : 1;
 }
@@ -1197,6 +1205,52 @@ function printReleaseDoctor(result: ReleaseDoctorResult): void {
   console.log("");
   console.log("Next steps:");
   for (const step of result.next_steps) console.log(`- ${step}`);
+}
+
+function renderReleaseReadinessReport(result: ReleaseDoctorResult): string {
+  return [
+    "# Osstack Release Readiness",
+    "",
+    `Target: \`${result.target}\``,
+    `Overall: \`${result.ok ? "ready" : "attention_needed"}\``,
+    "",
+    "## Readiness",
+    "",
+    "| Area | Status |",
+    "|---|---|",
+    `| npm_publish | ${result.readiness.npm_publish ? "ready" : "not_ready"} |`,
+    `| knowledge_cloud_deploy | ${result.readiness.knowledge_cloud_deploy ? "ready" : "not_ready"} |`,
+    "",
+    "## Checks",
+    "",
+    "| Check | Status | Message |",
+    "|---|---|---|",
+    ...result.checks.map((check) =>
+      `| ${markdownCell(check.id)} | ${check.status} | ${markdownCell(check.message)} |`
+    ),
+    "",
+    "## Details",
+    "",
+    ...result.checks.flatMap((check) => {
+      if (check.details === undefined) return [];
+      return [
+        `### ${check.id}`,
+        "",
+        "```json",
+        JSON.stringify(check.details, null, 2),
+        "```",
+        "",
+      ];
+    }),
+    "## Next Steps",
+    "",
+    ...result.next_steps.map((step) => `- ${step}`),
+    "",
+  ].join("\n");
+}
+
+function markdownCell(value: string): string {
+  return value.replaceAll("|", "\\|").replaceAll("\n", " ");
 }
 
 function releaseErrorMessage(error: unknown): string {
