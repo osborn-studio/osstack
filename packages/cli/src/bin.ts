@@ -12,6 +12,7 @@ import { promisify } from "node:util";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import { defaultAdapters } from "@osstack/agents";
 import { openDb } from "@osstack/core";
+import { scanFiles } from "@osstack/governance";
 import {
   renderBranchStewardReport,
   scanBranchStewardCandidates,
@@ -165,6 +166,10 @@ Loop engineering (local, testable hot-loop MVP):
 Branch Steward:
   steward scan [--repo O/R] [--base B] [--remote R] [--workspace P] [--json]
 
+Governance:
+  governance scan <path...> [--json]
+                                 Run deterministic governance checks over files
+
 Hermes integration:
   hermes health                  Show kanban-sync bridge state
   hermes dashboard               Open the Hermes WebUI in a browser
@@ -297,6 +302,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "steward") {
     return await handleStewardCommand(args.slice(1));
+  }
+
+  if (cmd === "governance") {
+    return await handleGovernanceCommand(args.slice(1));
   }
 
   if (cmd === "hermes") {
@@ -447,6 +456,48 @@ function parseGitHubRepoSlug(remoteUrl: string): string | undefined {
   );
   if (match === null) return undefined;
   return `${match[1]}/${match[2]}`;
+}
+
+async function handleGovernanceCommand(args: string[]): Promise<number> {
+  const sub = args[0];
+  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack governance — deterministic run governance checks
+
+  osstack governance scan <path...> [--json]
+`);
+    return 0;
+  }
+
+  if (sub !== "scan") {
+    console.error(`osstack: unknown governance subcommand "${sub}"`);
+    return 1;
+  }
+
+  const paths = positionalValues(args.slice(1), new Set()).filter((value) => value !== "scan");
+  if (paths.length === 0) {
+    console.error("osstack: governance scan requires at least one path");
+    return 1;
+  }
+
+  const result = await scanFiles(paths);
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(result, null, 2));
+  } else {
+    printGovernanceScan(result);
+  }
+  return result.ok ? 0 : 2;
+}
+
+function printGovernanceScan(result: Awaited<ReturnType<typeof scanFiles>>): void {
+  if (result.findings.length === 0) {
+    console.log("Governance scan clean.");
+    return;
+  }
+  console.log(`Governance findings: ${result.findings.length}`);
+  for (const finding of result.findings) {
+    const location = finding.file === undefined ? `line ${finding.line}` : `${finding.file}:${finding.line}`;
+    console.log(`- [${finding.severity}] ${finding.rule_id} ${location} - ${finding.message}`);
+  }
 }
 
 async function handleSkillsCommand(args: string[]): Promise<number> {

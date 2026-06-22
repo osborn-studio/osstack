@@ -63,6 +63,9 @@ importers:
       '@osstack/github':
         specifier: workspace:*
         version: link:../github
+      '@osstack/governance':
+        specifier: workspace:*
+        version: link:../governance
       '@osstack/hermes-adapter':
         specifier: workspace:*
         version: link:../hermes-adapter
@@ -141,6 +144,12 @@ importers:
       zod:
         specifier: ^3.25.76
         version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
+
+  packages/governance:
     devDependencies:
       '@types/node':
         specifier: ^22.19.19
