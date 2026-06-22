@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 const dockerfile = await read("Dockerfile.knowledge-cloud");
 const fly = await read("deploy/knowledge-cloud/fly.toml");
 const render = await read("deploy/knowledge-cloud/render.yaml");
+const workflow = await read(".github/workflows/knowledge-cloud-deploy.yml");
 
 assertIncludes(dockerfile, "EXPOSE 8787", "Dockerfile must expose the Knowledge Cloud port");
 assertIncludes(dockerfile, "/healthz", "Dockerfile must include the health endpoint");
@@ -18,12 +19,20 @@ assertIncludes(render, "dockerfilePath: ./Dockerfile.knowledge-cloud", "Render d
 assertIncludes(render, "healthCheckPath: /healthz", "Render deploy config must healthcheck /healthz");
 assertIncludes(render, "value: 8787", "Render deploy config must set the Knowledge Cloud port");
 
+assertIncludes(workflow, "workflow_dispatch:", "Knowledge Cloud deploy workflow must be manually triggerable");
+assertIncludes(workflow, "pnpm smoke:knowledge-cloud", "Knowledge Cloud deploy workflow must run service smoke");
+assertIncludes(workflow, "pnpm smoke:knowledge-cloud:deploy", "Knowledge Cloud deploy workflow must run deploy asset smoke");
+assertIncludes(workflow, "docker build -f Dockerfile.knowledge-cloud", "Knowledge Cloud deploy workflow must build the Docker image");
+assertIncludes(workflow, "secrets.FLY_API_TOKEN", "Knowledge Cloud deploy workflow must gate Fly deploy on FLY_API_TOKEN");
+assertIncludes(workflow, "flyctl deploy --config deploy/knowledge-cloud/fly.toml", "Knowledge Cloud deploy workflow must deploy with the Fly config");
+
 console.log(JSON.stringify({
   ok: true,
   checked: [
     "Dockerfile.knowledge-cloud",
     "deploy/knowledge-cloud/fly.toml",
     "deploy/knowledge-cloud/render.yaml",
+    ".github/workflows/knowledge-cloud-deploy.yml",
   ],
 }, null, 2));
 
