@@ -153,10 +153,78 @@ describe("knowledge CLI", () => {
       sources: [expect.objectContaining({ path: "agent-guide.md", scope: "project" })],
     });
   });
+
+  it("syncs cloud packs into cache and searches cached packs", async () => {
+    const server = await startKnowledgeServer();
+    const cacheDir = join(tmp, "knowledge-cache");
+    try {
+      const address = server.address() as AddressInfo;
+      const cloudUrl = `http://127.0.0.1:${address.port}`;
+      const syncExitCode = await main([
+        "knowledge",
+        "sync",
+        "--cloud-url",
+        cloudUrl,
+        "--cache-dir",
+        cacheDir,
+        "--json",
+      ]);
+      expect(syncExitCode).toBe(0);
+      expect(JSON.parse(logs.join("\n"))).toMatchObject({
+        status: "synced",
+        packs: [expect.objectContaining({ id: "osstack-cloud-cockpit" })],
+      });
+
+      logs = [];
+      const searchExitCode = await main([
+        "knowledge",
+        "search",
+        "cockpit proof",
+        "--cache-dir",
+        cacheDir,
+        "--json",
+      ]);
+
+      expect(searchExitCode).toBe(0);
+      expect(JSON.parse(logs.join("\n"))).toMatchObject({
+        mode: "local",
+        results: [expect.objectContaining({ pack_id: "osstack-cloud-cockpit", chunk_id: "chunk-cockpit" })],
+      });
+    } finally {
+      await closeServer(server);
+    }
+  });
+
+  it("pins pack versions and records chunk feedback", async () => {
+    const cacheDir = join(tmp, "knowledge-cache");
+
+    const pinExitCode = await main(["knowledge", "pin", "osstack-core/loop-engineering@2026.06.22", "--cache-dir", cacheDir, "--json"]);
+    expect(pinExitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      pin: { pack_id: "osstack-core/loop-engineering", version: "2026.06.22" },
+    });
+
+    logs = [];
+    const feedbackExitCode = await main(["knowledge", "feedback", "chunk-cockpit", "--useful", "--cache-dir", cacheDir, "--json"]);
+    expect(feedbackExitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      feedback: { chunk_id: "chunk-cockpit", rating: "useful", status: "recorded" },
+    });
+  });
 });
 
 async function startKnowledgeServer(): Promise<Server> {
   const server = createServer((req, res) => {
+    if (req.method === "POST" && req.url === "/v1/feedback") {
+      res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ ok: true }));
+      return;
+    }
+    if (req.method === "POST" && req.url === "/v1/sync") {
+      res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({
+        packs: [cloudCockpitPack()],
+      }));
+      return;
+    }
     if (req.method !== "POST" || req.url !== "/v1/search") {
       res.writeHead(404).end();
       return;
@@ -183,6 +251,26 @@ async function startKnowledgeServer(): Promise<Server> {
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   return server;
+}
+
+function cloudCockpitPack() {
+  return {
+    id: "osstack-cloud-cockpit",
+    version: "2026.06.22",
+    name: "Osstack Cloud Cockpit",
+    license: "Osstack Cloud Terms",
+    source_kind: "osstack_native",
+    quality_score: 97,
+    last_reviewed_at: "2026-06-22T00:00:00.000Z",
+    taxonomy: ["osstack-core/proof-and-scorecard"],
+    chunks: [{
+      chunk_id: "chunk-cockpit",
+      title: "Cockpit evidence surface",
+      body: "Knowledge Cloud should return Osstack-native cockpit and proof guidance.",
+      tags: ["cockpit", "proof"],
+      source_refs: ["osstack-cloud"],
+    }],
+  };
 }
 
 async function closeServer(server: Server): Promise<void> {

@@ -3,7 +3,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { assembleKnowledgeSnippet, importKnowledgeSource, loadKnowledgePack, resolveKnowledgeSearch, searchKnowledgePacks, validateKnowledgePackManifest, } from "./index.js";
+import { assembleKnowledgeSnippet, cacheKnowledgeFeedback, importKnowledgeSource, listCachedKnowledgePacks, loadKnowledgePack, pinKnowledgePack, resolveKnowledgeSearch, searchKnowledgePacks, syncKnowledgeCache, validateKnowledgePackManifest, } from "./index.js";
 let tmp;
 beforeEach(() => {
     tmp = mkdtempSync(join(tmpdir(), "osstack-knowledge-"));
@@ -156,8 +156,56 @@ describe("knowledge packs", () => {
             chunk_id: "chk_1",
         });
     });
+    it("syncs cloud packs into a local cache and loads them for search", async () => {
+        const cacheDir = join(tmp, "cache");
+        const evidence = await syncKnowledgeCache({
+            cacheDir,
+            cloudUrl: "https://knowledge.osstack.ai",
+            fetchImpl: async () => new Response(JSON.stringify({
+                packs: [samplePack({ id: "osstack-core/loop-engineering", source_kind: "osstack_native" })],
+            }), { status: 200 }),
+        });
+        expect(evidence).toMatchObject({
+            status: "synced",
+            packs: [expect.objectContaining({ id: "osstack-core/loop-engineering", source_kind: "osstack_native" })],
+        });
+        const packs = await listCachedKnowledgePacks(cacheDir);
+        const results = searchKnowledgePacks(packs, "proof evidence", { limit: 1 });
+        expect(results[0]).toMatchObject({ pack_id: "osstack-core/loop-engineering" });
+    });
+    it("pins pack versions in the local cache", async () => {
+        const cacheDir = join(tmp, "cache");
+        const pin = await pinKnowledgePack(cacheDir, "osstack-core/loop-engineering@2026.06.22");
+        expect(pin).toEqual({ pack_id: "osstack-core/loop-engineering", version: "2026.06.22" });
+        expect(JSON.parse(await readFile(join(cacheDir, "pins.json"), "utf-8"))).toMatchObject({
+            pins: [{ pack_id: "osstack-core/loop-engineering", version: "2026.06.22" }],
+        });
+    });
+    it("records feedback locally and sends it to cloud when configured", async () => {
+        const cacheDir = join(tmp, "cache");
+        const calls = [];
+        const entry = await cacheKnowledgeFeedback({
+            cacheDir,
+            chunkId: "chunk-loop-proof",
+            rating: "useful",
+            cloudUrl: "https://knowledge.osstack.ai",
+            fetchImpl: async (_url, init) => {
+                calls.push(JSON.parse(String(init?.body)));
+                return new Response(JSON.stringify({ ok: true }), { status: 200 });
+            },
+        });
+        expect(entry).toMatchObject({ chunk_id: "chunk-loop-proof", rating: "useful", status: "sent" });
+        expect(calls).toEqual([expect.objectContaining({ chunk_id: "chunk-loop-proof", rating: "useful" })]);
+        const feedbackLines = (await readFile(join(cacheDir, "feedback.jsonl"), "utf-8"))
+            .trim()
+            .split("\n")
+            .map((line) => JSON.parse(line));
+        expect(feedbackLines).toMatchObject([
+            expect.objectContaining({ chunk_id: "chunk-loop-proof", rating: "useful", status: "sent" }),
+        ]);
+    });
 });
-function samplePack() {
+function samplePack(overrides = {}) {
     return {
         id: "osstack-web-quality",
         version: "2026.06.22",
@@ -182,6 +230,7 @@ function samplePack() {
                 tags: ["proof", "loop"],
             },
         ],
+        ...overrides,
     };
 }
 //# sourceMappingURL=pack.test.js.map

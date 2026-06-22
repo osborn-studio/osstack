@@ -41,9 +41,13 @@ import {
   type LoopState,
 } from "@osstack/loop";
 import {
+  cacheKnowledgeFeedback,
   importKnowledgeSource,
+  listCachedKnowledgePacks,
   loadKnowledgePack,
+  pinKnowledgePack,
   resolveKnowledgeSearch,
+  syncKnowledgeCache,
   type KnowledgeScope,
   type KnowledgeMode,
   type KnowledgeSearchEvidence,
@@ -689,12 +693,17 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
     console.log(`osstack knowledge — Osstack knowledge pack bootstrap and cloud client
 
   osstack knowledge list --pack P [--json]
-  osstack knowledge search <query> [--pack P] [--cloud-url URL] [--limit N] [--json]
+  osstack knowledge sync [--cloud-url URL] [--cache-dir P] [--json]
+  osstack knowledge search <query> [--pack P] [--cloud-url URL] [--cache-dir P] [--limit N] [--json]
   osstack knowledge import P --scope team|project --id ID --name NAME --license L --output P [--taxonomy T] [--json]
+  osstack knowledge pin <pack_id>@<version> [--cache-dir P] [--json]
+  osstack knowledge feedback <chunk_id> --useful|--bad [--cloud-url URL] [--cache-dir P] [--json]
   osstack knowledge sources --internal --pack P [--json]
 
 Env:
   OSSTACK_KNOWLEDGE_URL  Default Knowledge Cloud base URL
+  OSSTACK_KNOWLEDGE_CACHE_DIR
+                         Default local Knowledge Cloud cache directory
 `);
     return 0;
   }
@@ -727,19 +736,37 @@ Env:
     return 0;
   }
 
+  if (sub === "sync") {
+    const cloudUrl = flagValue(args, "--cloud-url") ?? process.env["OSSTACK_KNOWLEDGE_URL"];
+    if (cloudUrl === undefined) {
+      console.error("osstack: knowledge sync requires --cloud-url or OSSTACK_KNOWLEDGE_URL");
+      return 1;
+    }
+    const evidence = await syncKnowledgeCache({
+      cacheDir: knowledgeCacheDir(args),
+      cloudUrl,
+    });
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(evidence, null, 2));
+    } else if (evidence.status === "synced") {
+      console.log(`synced=${evidence.packs.length}`);
+      console.log(`cache=${evidence.cache_dir}`);
+    } else {
+      console.error(`osstack: knowledge sync failed: ${evidence.reason ?? "unknown"}`);
+      return 1;
+    }
+    return evidence.status === "synced" ? 0 : 1;
+  }
+
   if (sub === "search") {
     const packPaths = flagValues(args, "--pack");
     const cloudUrl = flagValue(args, "--cloud-url") ?? process.env["OSSTACK_KNOWLEDGE_URL"];
-    if (packPaths.length === 0 && cloudUrl === undefined) {
-      console.error("osstack: knowledge search requires at least one --pack path or --cloud-url");
-      return 1;
-    }
     const mode = parseKnowledgeMode(flagValue(args, "--mode"));
     if (mode === undefined && flagValue(args, "--mode") !== undefined) {
       console.error("osstack: --mode must be one of off, local, cloud");
       return 1;
     }
-    const query = positionalValues(args.slice(1), new Set(["--pack", "--limit", "--cloud-url", "--mode"])).join(" ");
+    const query = positionalValues(args.slice(1), new Set(["--pack", "--limit", "--cloud-url", "--mode", "--cache-dir"])).join(" ");
     if (query.length === 0) {
       console.error("osstack: knowledge search requires a query");
       return 1;
@@ -750,7 +777,14 @@ Env:
       console.error("osstack: --limit must be a positive integer");
       return 1;
     }
-    const packs = await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath)));
+    const packs = [
+      ...await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath))),
+      ...await listCachedKnowledgePacks(knowledgeCacheDir(args)),
+    ];
+    if (packs.length === 0 && cloudUrl === undefined && mode !== "off") {
+      console.error("osstack: knowledge search requires at least one --pack path, cached pack, or --cloud-url");
+      return 1;
+    }
     const evidence = await resolveKnowledgeSearch({
       mode,
       query,
@@ -830,6 +864,52 @@ Env:
     return 0;
   }
 
+  if (sub === "pin") {
+    const spec = firstPositionalValue(args.slice(1), new Set(["--cache-dir"]));
+    if (spec === undefined) {
+      console.error("osstack: knowledge pin requires <pack_id>@<version>");
+      return 1;
+    }
+    try {
+      const pin = await pinKnowledgePack(knowledgeCacheDir(args), spec);
+      if (args.includes("--json")) {
+        console.log(JSON.stringify({ pin }, null, 2));
+      } else {
+        console.log(`pinned=${pin.pack_id}@${pin.version}`);
+      }
+      return 0;
+    } catch (error) {
+      console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
+      return 1;
+    }
+  }
+
+  if (sub === "feedback") {
+    const chunkId = firstPositionalValue(args.slice(1), new Set(["--cloud-url", "--cache-dir"]));
+    if (chunkId === undefined) {
+      console.error("osstack: knowledge feedback requires <chunk_id>");
+      return 1;
+    }
+    const useful = args.includes("--useful");
+    const bad = args.includes("--bad");
+    if (useful === bad) {
+      console.error("osstack: knowledge feedback requires exactly one of --useful or --bad");
+      return 1;
+    }
+    const feedback = await cacheKnowledgeFeedback({
+      cacheDir: knowledgeCacheDir(args),
+      chunkId,
+      rating: useful ? "useful" : "bad",
+      cloudUrl: flagValue(args, "--cloud-url") ?? process.env["OSSTACK_KNOWLEDGE_URL"],
+    });
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({ feedback }, null, 2));
+    } else {
+      console.log(`feedback=${feedback.chunk_id} ${feedback.rating} ${feedback.status}`);
+    }
+    return 0;
+  }
+
   if (sub === "sources") {
     const packPath = flagValue(args, "--pack");
     if (packPath === undefined) {
@@ -860,6 +940,12 @@ function parseKnowledgeMode(value: string | undefined): KnowledgeMode | undefine
   if (value === undefined) return undefined;
   if (value === "off" || value === "local" || value === "cloud") return value;
   return undefined;
+}
+
+function knowledgeCacheDir(args: string[]): string {
+  return flagValue(args, "--cache-dir")
+    ?? process.env["OSSTACK_KNOWLEDGE_CACHE_DIR"]
+    ?? join(osstackHome(), "knowledge-cache");
 }
 
 function parseKnowledgeScope(value: string | undefined): KnowledgeScope | undefined {

@@ -35,6 +35,23 @@ export interface KnowledgePack {
     manifest: KnowledgePackManifest;
     path: string;
 }
+export interface KnowledgeSyncEvidence {
+    status: "synced" | "error";
+    packs: KnowledgePackSummary[];
+    cache_dir: string;
+    reason?: string;
+}
+export interface KnowledgePin {
+    pack_id: string;
+    version: string;
+}
+export interface KnowledgeFeedbackEntry {
+    chunk_id: string;
+    rating: "useful" | "bad";
+    status: "recorded" | "sent";
+    created_at: string;
+    reason?: string;
+}
 export interface KnowledgeSearchResult {
     pack_id: string;
     pack_version: string;

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readdir, readFile, stat } from "node:fs/promises";
+import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, extname, join, relative } from "node:path";
 export async function loadKnowledgePack(path) {
     const pathStat = await stat(path);
@@ -116,6 +116,146 @@ export async function importKnowledgeSource(options) {
         source_provenance: sourceProvenance,
         chunks,
     });
+}
+export async function syncKnowledgeCache(options) {
+    try {
+        const response = await (options.fetchImpl ?? fetch)(new URL("/v1/sync", withTrailingSlash(options.cloudUrl)), {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ client: "osstack-cli" }),
+        });
+        if (!response.ok)
+            throw new Error(`cloud sync failed with HTTP ${response.status}`);
+        const payload = await response.json();
+        if (!isRecord(payload) || !Array.isArray(payload["packs"])) {
+            throw new Error("cloud sync response packs must be an array");
+        }
+        const packs = payload["packs"].map(validateKnowledgePackManifest);
+        await mkdir(join(options.cacheDir, "packs"), { recursive: true });
+        for (const pack of packs) {
+            await writeCachedPack(options.cacheDir, pack);
+        }
+        return {
+            status: "synced",
+            cache_dir: options.cacheDir,
+            packs: packs.map(packSummaryFromManifest),
+        };
+    }
+    catch (error) {
+        return {
+            status: "error",
+            cache_dir: options.cacheDir,
+            packs: [],
+            reason: error instanceof Error ? error.message : String(error),
+        };
+    }
+}
+export async function listCachedKnowledgePacks(cacheDir) {
+    const packsDir = join(cacheDir, "packs");
+    let packDirs;
+    try {
+        packDirs = await readdir(packsDir);
+    }
+    catch {
+        return [];
+    }
+    const packs = [];
+    for (const packDir of packDirs.sort((a, b) => a.localeCompare(b))) {
+        const versionDir = join(packsDir, packDir);
+        let versions;
+        try {
+            versions = await readdir(versionDir);
+        }
+        catch {
+            continue;
+        }
+        for (const versionFile of versions.filter((name) => name.endsWith(".json")).sort((a, b) => a.localeCompare(b))) {
+            const path = join(versionDir, versionFile);
+            packs.push(await loadKnowledgePack(path));
+        }
+    }
+    return packs;
+}
+export async function pinKnowledgePack(cacheDir, spec) {
+    const at = spec.lastIndexOf("@");
+    if (at <= 0 || at === spec.length - 1)
+        throw new Error("knowledge pin must use <pack_id>@<version>");
+    const pin = { pack_id: spec.slice(0, at), version: spec.slice(at + 1) };
+    await mkdir(cacheDir, { recursive: true });
+    const pinsPath = join(cacheDir, "pins.json");
+    const existing = await readPins(pinsPath);
+    const pins = [...existing.filter((item) => item.pack_id !== pin.pack_id), pin]
+        .sort((a, b) => a.pack_id.localeCompare(b.pack_id));
+    await writeFile(pinsPath, `${JSON.stringify({ pins }, null, 2)}\n`, "utf-8");
+    return pin;
+}
+export async function cacheKnowledgeFeedback(options) {
+    await mkdir(options.cacheDir, { recursive: true });
+    const baseEntry = {
+        chunk_id: options.chunkId,
+        rating: options.rating,
+        created_at: options.createdAt ?? new Date().toISOString(),
+    };
+    let entry = { ...baseEntry, status: "recorded" };
+    if (options.cloudUrl !== undefined && options.cloudUrl.length > 0) {
+        try {
+            const response = await (options.fetchImpl ?? fetch)(new URL("/v1/feedback", withTrailingSlash(options.cloudUrl)), {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify(baseEntry),
+            });
+            if (!response.ok)
+                throw new Error(`cloud feedback failed with HTTP ${response.status}`);
+            entry = { ...baseEntry, status: "sent" };
+        }
+        catch (error) {
+            entry = {
+                ...baseEntry,
+                status: "recorded",
+                reason: error instanceof Error ? error.message : String(error),
+            };
+        }
+    }
+    const feedbackPath = join(options.cacheDir, "feedback.jsonl");
+    const existing = await readTextIfExists(feedbackPath);
+    await writeFile(feedbackPath, `${existing}${JSON.stringify(entry)}\n`, "utf-8");
+    return entry;
+}
+async function writeCachedPack(cacheDir, pack) {
+    const dir = join(cacheDir, "packs", safeCacheSegment(pack.id));
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, `${safeCacheSegment(pack.version)}.json`), `${JSON.stringify(pack, null, 2)}\n`, "utf-8");
+}
+async function readPins(path) {
+    try {
+        const parsed = JSON.parse(await readFile(path, "utf-8"));
+        if (!isRecord(parsed) || !Array.isArray(parsed["pins"]))
+            return [];
+        return parsed["pins"].filter((item) => isRecord(item) && typeof item["pack_id"] === "string" && typeof item["version"] === "string");
+    }
+    catch {
+        return [];
+    }
+}
+async function readTextIfExists(path) {
+    try {
+        return await readFile(path, "utf-8");
+    }
+    catch {
+        return "";
+    }
+}
+function packSummaryFromManifest(manifest) {
+    return {
+        id: manifest.id,
+        version: manifest.version,
+        license: manifest.license,
+        source_kind: manifest.source_kind,
+        quality_score: manifest.quality_score,
+    };
+}
+function safeCacheSegment(value) {
+    return value.replace(/[^a-zA-Z0-9._-]+/g, "__");
 }
 async function collectKnowledgeSourceFiles(path) {
     const pathStat = await stat(path);

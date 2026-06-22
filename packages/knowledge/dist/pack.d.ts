@@ -1,4 +1,4 @@
-import type { KnowledgeMode, KnowledgePack, KnowledgePackManifest, KnowledgeScope, KnowledgeSearchEvidence, KnowledgeSearchResult } from "./types.js";
+import type { KnowledgeMode, KnowledgeFeedbackEntry, KnowledgePack, KnowledgePackManifest, KnowledgePin, KnowledgeScope, KnowledgeSearchEvidence, KnowledgeSearchResult, KnowledgeSyncEvidence } from "./types.js";
 export declare function loadKnowledgePack(path: string): Promise<KnowledgePack>;
 export declare function validateKnowledgePackManifest(value: unknown): KnowledgePackManifest;
 export declare function importKnowledgeSource(options: {
@@ -12,6 +12,21 @@ export declare function importKnowledgeSource(options: {
     qualityScore?: number;
     generatedAt?: string;
 }): Promise<KnowledgePackManifest>;
+export declare function syncKnowledgeCache(options: {
+    cacheDir: string;
+    cloudUrl: string;
+    fetchImpl?: typeof fetch;
+}): Promise<KnowledgeSyncEvidence>;
+export declare function listCachedKnowledgePacks(cacheDir: string): Promise<KnowledgePack[]>;
+export declare function pinKnowledgePack(cacheDir: string, spec: string): Promise<KnowledgePin>;
+export declare function cacheKnowledgeFeedback(options: {
+    cacheDir: string;
+    chunkId: string;
+    rating: "useful" | "bad";
+    cloudUrl?: string;
+    fetchImpl?: typeof fetch;
+    createdAt?: string;
+}): Promise<KnowledgeFeedbackEntry>;
 export declare function searchKnowledgePacks(packs: KnowledgePack[], query: string, options?: {
     limit?: number;
 }): KnowledgeSearchResult[];
