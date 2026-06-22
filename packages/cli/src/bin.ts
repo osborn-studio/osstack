@@ -2293,14 +2293,17 @@ async function releaseGitHubActionsCheck(): Promise<ReleaseDoctorCheck> {
         message: "No recent GitHub Actions runs were found; trigger CI before publishing or deploying.",
       };
     }
-    const billingFailure = latest.databaseId === undefined
+    const runnerBlock = latest.databaseId === undefined
       ? undefined
-      : await releaseGitHubActionsBillingFailure(latest.databaseId);
-    if (billingFailure !== undefined) {
+      : await releaseGitHubActionsRunnerBlock(latest.databaseId);
+    if (runnerBlock !== undefined) {
+      const allocationFailure = runnerBlock.kind === "allocation";
       return {
         id: "github_actions",
         status: "error",
-        message: "GitHub Actions runner is blocked by account billing or spending limits.",
+        message: allocationFailure
+          ? "GitHub Actions failed before assigning a runner."
+          : "GitHub Actions runner is blocked by account billing or spending limits.",
         details: {
           run_id: latest.databaseId,
           status: latest.status,
@@ -2308,7 +2311,9 @@ async function releaseGitHubActionsCheck(): Promise<ReleaseDoctorCheck> {
           workflow: latest.workflowName,
           title: latest.displayTitle,
           url: latest.url,
-          annotation: billingFailure,
+          ...(allocationFailure ? { runner_allocation: true } : {}),
+          ...(runnerBlock.jobId === undefined ? {} : { job_id: runnerBlock.jobId }),
+          annotation: runnerBlock.message,
         },
       };
     }
@@ -2335,7 +2340,7 @@ async function releaseGitHubActionsCheck(): Promise<ReleaseDoctorCheck> {
   }
 }
 
-async function releaseGitHubActionsBillingFailure(runId: number): Promise<string | undefined> {
+async function releaseGitHubActionsRunnerBlock(runId: number): Promise<{ kind: "billing" | "allocation"; message: string; jobId?: number } | undefined> {
   try {
     const { stdout: jobsOutput } = await execFileAsync("gh", [
       "api",
@@ -2345,6 +2350,8 @@ async function releaseGitHubActionsBillingFailure(runId: number): Promise<string
       jobs?: Array<{
         id?: number;
         conclusion?: string;
+        runner_id?: number;
+        runner_name?: string;
         steps?: unknown[];
       }>;
     };
@@ -2355,16 +2362,30 @@ async function releaseGitHubActionsBillingFailure(runId: number): Promise<string
       && job.steps.length === 0
     );
     if (failedJob?.id === undefined) return undefined;
-    const { stdout: annotationsOutput } = await execFileAsync("gh", [
-      "api",
-      `repos/gilosbornhello/osstack/check-runs/${failedJob.id}/annotations`,
-    ], { timeout: 10_000 });
-    const annotations = JSON.parse(annotationsOutput) as Array<{ message?: string }>;
-    const annotation = annotations.find((item) =>
-      typeof item.message === "string"
-      && /payments have failed|spending limit/i.test(item.message)
-    );
-    return annotation?.message;
+    try {
+      const { stdout: annotationsOutput } = await execFileAsync("gh", [
+        "api",
+        `repos/gilosbornhello/osstack/check-runs/${failedJob.id}/annotations`,
+      ], { timeout: 10_000 });
+      const annotations = JSON.parse(annotationsOutput) as Array<{ message?: string }>;
+      const annotation = annotations.find((item) =>
+        typeof item.message === "string"
+        && /payments have failed|spending limit/i.test(item.message)
+      );
+      if (annotation?.message !== undefined) {
+        return { kind: "billing", message: annotation.message, jobId: failedJob.id };
+      }
+    } catch {
+      // Fall through to the runner-allocation heuristic below.
+    }
+    if (failedJob.runner_id === 0 || failedJob.runner_name === "") {
+      return {
+        kind: "allocation",
+        message: "GitHub Actions failed before assigning a runner; the job completed with no steps and no runner identity.",
+        jobId: failedJob.id,
+      };
+    }
+    return undefined;
   } catch {
     return undefined;
   }
@@ -2385,6 +2406,17 @@ function releaseGitHubActionsOverride(value: string): ReleaseDoctorCheck {
       message: "GitHub Actions runner is blocked by account billing or spending limits.",
       details: {
         annotation: "The job was not started because recent account payments have failed or your spending limit needs to be increased.",
+      },
+    };
+  }
+  if (value === "allocation") {
+    return {
+      id: "github_actions",
+      status: "error",
+      message: "GitHub Actions failed before assigning a runner.",
+      details: {
+        runner_allocation: true,
+        annotation: "GitHub Actions job completed with steps=[] and runner_id=0 / runner_name=\"\".",
       },
     };
   }
@@ -2488,7 +2520,7 @@ function releaseDoctorNextSteps(options: {
   }
   const githubActions = options.checks.find((check) => check.id === "github_actions");
   if (githubActions?.status === "error") {
-    steps.push("Fix GitHub Actions billing or spending limit before publishing or deploying.");
+    steps.push(releaseGitHubActionsNextStep(githubActions));
   } else if (githubActions?.status === "warn") {
     steps.push("Confirm GitHub Actions can start workflow jobs before publishing or deploying.");
   }
@@ -2570,6 +2602,13 @@ function releaseDoctorNextSteps(options: {
   }
   if (steps.length === 0) steps.push("Review failed checks above before publishing.");
   return steps;
+}
+
+function releaseGitHubActionsNextStep(check: ReleaseDoctorCheck): string {
+  if (check.details?.["runner_allocation"] === true) {
+    return "Fix GitHub Actions runner allocation before publishing or deploying.";
+  }
+  return "Fix GitHub Actions billing or spending limit before publishing or deploying.";
 }
 
 function releaseProofValidationNextStep(check: ReleaseDoctorCheck): string {
@@ -2700,9 +2739,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
         ...(latestVersionPrCiUrl === undefined ? [] : [latestVersionPrCiUrl]),
       ]
       : []),
-    ...(result.checks.find((check) => check.id === "github_actions")?.status === "error"
-      ? ["Open GitHub Billing & plans and fix failed payments or increase the Actions spending limit."]
-      : []),
+    ...releaseGitHubActionsOperatorCommands(result.checks.find((check) => check.id === "github_actions")),
   ];
   const validationCommands = [
     `osstack release doctor --target ${result.target}${options.proofDir === undefined ? "" : ` --proof-dir ${options.proofDir}`}${options.cloudUrl === undefined ? "" : ` --cloud-url ${options.cloudUrl}`} --output release-readiness.md --json`,
@@ -2784,6 +2821,14 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     deploy_commands: deployCommands,
     post_release_validation_commands: postReleaseValidationCommands,
   };
+}
+
+function releaseGitHubActionsOperatorCommands(check: ReleaseDoctorCheck | undefined): string[] {
+  if (check?.status !== "error") return [];
+  if (check.details?.["runner_allocation"] === true) {
+    return ["Open GitHub Actions settings/billing and confirm ubuntu-latest jobs can be assigned a runner."];
+  }
+  return ["Open GitHub Billing & plans and fix failed payments or increase the Actions spending limit."];
 }
 
 function renderReleaseActionPlan(plan: ReleaseActionPlan): string {
