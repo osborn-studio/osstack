@@ -140,6 +140,7 @@ describe("product entry commands", () => {
       expect.objectContaining({ id: "github_auth", status: "ok" }),
       expect.objectContaining({ id: "github_actions", status: "ok" }),
       expect.objectContaining({ id: "repository_secrets", status: "ok" }),
+      expect.objectContaining({ id: "npm_publish_assets", status: "ok" }),
       expect.objectContaining({ id: "version_packages_pr", status: "ok" }),
       expect.objectContaining({ id: "npm_auth", status: "ok" }),
       expect.objectContaining({ id: "knowledge_cloud_deploy_assets", status: "ok" }),
@@ -451,6 +452,7 @@ describe("product entry commands", () => {
     expect(result.operator_commands).toContain("Open the latest Version Packages PR CI run and approve or rerun it if GitHub requires manual action.");
     expect(result.validation_commands).toContain("osstack release doctor --target npm --output release-readiness.md --json");
     expect(result.validation_commands).toContain("osstack proof validate <run_id> --proof-dir release/osstack-proof-<run_id> --json");
+    expect(result.validation_commands).toContain("pnpm smoke:npm-install");
     expect(result.validation_commands).toContain("gh pr view 5 --json mergeable,mergeStateStatus,statusCheckRollup,url");
     expect(result.validation_commands).toContain("gh run list --branch changeset-release/main --limit 5");
     expect(result.publish_commands).toContain("gh pr merge 5 --squash --delete-branch");

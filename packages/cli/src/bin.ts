@@ -895,6 +895,7 @@ async function releaseDoctor(
   checks.push(secrets);
 
   if (target === "all" || target === "npm") {
+    checks.push(await releaseNpmPublishAssetsCheck(process.cwd()));
     checks.push(await releaseVersionPackagesPrCheck());
     checks.push(await releaseCommandCheck({
       id: "npm_auth",
@@ -926,11 +927,12 @@ async function releaseDoctor(
     checks.push(await releaseProofValidationCheck(proofDir, { discovered: options.proofDir === undefined }));
   }
 
+  const npmPublishAssetsReady = checks.find((check) => check.id === "npm_publish_assets")?.status !== "error";
   const versionPackagesPrReady = checks.find((check) => check.id === "version_packages_pr")?.status !== "warn";
   const knowledgeDeployAssetsReady = checks.find((check) => check.id === "knowledge_cloud_deploy_assets")?.status !== "error";
   const knowledgeWorkflowReady = checks.find((check) => check.id === "knowledge_cloud_workflow")?.status !== "error";
   const actionsReady = githubActions.status !== "error";
-  const npmPublish = actionsReady && hasSecret(secrets, "NPM_TOKEN") && versionPackagesPrReady;
+  const npmPublish = actionsReady && hasSecret(secrets, "NPM_TOKEN") && npmPublishAssetsReady && versionPackagesPrReady;
   const knowledgeCloudDeploy = actionsReady && hasSecret(secrets, "FLY_API_TOKEN") && knowledgeDeployAssetsReady && knowledgeWorkflowReady;
   const ok = target === "npm" ? npmPublish
     : target === "knowledge-cloud" ? knowledgeCloudDeploy
@@ -953,8 +955,76 @@ async function releaseDoctor(
   };
 }
 
+async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<ReleaseDoctorCheck> {
+  const assetRoot = await findReleaseAssetRoot(workspacePath);
+  const requiredAssets = [
+    "packages/cli/package.json",
+    ".changeset/osstack-upgrade-knowledge-cloud.md",
+    ".github/workflows/release.yml",
+  ];
+  const missing: string[] = [];
+  const violations: string[] = [];
+  const readAsset = async (path: string): Promise<string> => {
+    try {
+      return await readFile(join(assetRoot, path), "utf-8");
+    } catch {
+      missing.push(path);
+      return "";
+    }
+  };
+  const cliPackageRaw = await readAsset("packages/cli/package.json");
+  const changeset = await readAsset(".changeset/osstack-upgrade-knowledge-cloud.md");
+  const workflow = await readAsset(".github/workflows/release.yml");
+
+  if (cliPackageRaw !== "") {
+    try {
+      const cliPackage = JSON.parse(cliPackageRaw) as {
+        name?: string;
+        bin?: Record<string, string>;
+        files?: string[];
+        publishConfig?: { access?: string };
+        repository?: { directory?: string };
+        engines?: { node?: string };
+      };
+      if (cliPackage.name !== "@osstack/cli") violations.push("CLI package name must be @osstack/cli.");
+      if (cliPackage.bin?.["osstack"] !== "./dist/bin.js") violations.push("CLI package must expose bin.osstack=./dist/bin.js.");
+      if (!Array.isArray(cliPackage.files) || !cliPackage.files.includes("dist")) violations.push("CLI package files must include dist.");
+      if (cliPackage.publishConfig?.access !== "public") violations.push("CLI package publishConfig.access must be public.");
+      if (cliPackage.repository?.directory !== "packages/cli") violations.push("CLI package repository.directory must be packages/cli.");
+      if (cliPackage.engines?.node !== ">=20") violations.push("CLI package engines.node must be >=20.");
+    } catch {
+      violations.push("packages/cli/package.json must be valid JSON.");
+    }
+  }
+
+  const expectAsset = (text: string, needle: string, message: string): void => {
+    if (text !== "" && !text.includes(needle)) violations.push(message);
+  };
+  expectAsset(changeset, "\"@osstack/cli\": minor", "Changeset must version @osstack/cli.");
+  expectAsset(workflow, "uses: changesets/action@v1", "Release workflow must use changesets/action.");
+  expectAsset(workflow, "pnpm smoke:npm-install", "Release workflow must run npm install smoke.");
+  expectAsset(workflow, "pnpm changeset publish --provenance", "Release workflow must publish with npm provenance.");
+  expectAsset(workflow, "secrets.NPM_TOKEN", "Release workflow must gate publishing on NPM_TOKEN.");
+  expectAsset(workflow, "NODE_AUTH_TOKEN", "Release workflow must set NODE_AUTH_TOKEN for npm publish.");
+
+  const ok = missing.length === 0 && violations.length === 0;
+  return {
+    id: "npm_publish_assets",
+    status: ok ? "ok" : "error",
+    message: ok
+      ? "NPM publish assets are present and internally consistent."
+      : "NPM publish assets are missing or inconsistent.",
+    details: {
+      checked: requiredAssets,
+      missing,
+      violations,
+      root: assetRoot,
+    },
+  };
+}
+
 async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Promise<ReleaseDoctorCheck> {
-  const assetRoot = await findKnowledgeCloudDeployAssetRoot(workspacePath);
+  const assetRoot = await findReleaseAssetRoot(workspacePath);
   const requiredAssets = [
     "Dockerfile.knowledge-cloud",
     "deploy/knowledge-cloud/fly.toml",
@@ -1011,7 +1081,7 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   };
 }
 
-async function findKnowledgeCloudDeployAssetRoot(startPath: string): Promise<string> {
+async function findReleaseAssetRoot(startPath: string): Promise<string> {
   let current = startPath;
   while (true) {
     try {
@@ -1548,6 +1618,10 @@ function releaseDoctorNextSteps(options: {
       : "it is not currently clean";
     steps.push(`Review Version Packages PR${number}; ${checkContext} for npm publish.`);
   }
+  const npmPublishAssets = options.checks.find((check) => check.id === "npm_publish_assets");
+  if ((options.target === "all" || options.target === "npm") && npmPublishAssets?.status === "error") {
+    steps.push("Restore NPM publish assets before merging the Version Packages PR.");
+  }
   const knowledgeDeployAssets = options.checks.find((check) => check.id === "knowledge_cloud_deploy_assets");
   if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeDeployAssets?.status === "error") {
     steps.push("Restore Knowledge Cloud deploy assets before running deploy=true.");
@@ -1639,6 +1713,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     || step.startsWith("Refresh GitHub auth")
     || step.startsWith("Fix GitHub Actions")
     || step.startsWith("Fix missing or malformed proof evidence")
+    || step.startsWith("Restore NPM publish assets")
     || step.startsWith("Restore Knowledge Cloud deploy assets")
     || step.startsWith("Restore the Knowledge Cloud Deploy workflow")
     || step.startsWith("Review Version Packages PR")
@@ -1671,6 +1746,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     `osstack proof validate <run_id> --proof-dir ${options.proofDir ?? "release/osstack-proof-<run_id>"} --json`,
     ...(result.target === "all" || result.target === "npm"
       ? [
+        "pnpm smoke:npm-install",
         versionPrNumber === undefined
           ? "gh pr list --state open --head changeset-release/main --json number,mergeable,mergeStateStatus,statusCheckRollup,url"
           : `gh pr view ${versionPrNumber} --json mergeable,mergeStateStatus,statusCheckRollup,url`,
