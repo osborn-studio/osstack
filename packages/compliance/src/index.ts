@@ -38,8 +38,10 @@ export interface ComplianceReportOptions {
   packId: string;
   runId: string;
   evidence: ProofEvidence;
+  language?: ComplianceReportLanguage;
 }
 
+export type ComplianceReportLanguage = "en" | "zh-CN";
 export type ProofAudience = "engineer" | "manager" | "auditor" | "customer";
 export type ProofViewLanguage = "en" | "zh-CN";
 
@@ -314,35 +316,84 @@ export async function renderComplianceReportFromProofDir(options: {
   packId: string;
   runId: string;
   proofDir: string;
+  language?: ComplianceReportLanguage;
 }): Promise<string> {
-  return renderComplianceReport({
+  const renderOptions: ComplianceReportOptions = {
     packId: options.packId,
     runId: options.runId,
     evidence: await loadProofEvidence(options.proofDir),
-  });
+  };
+  if (options.language !== undefined) {
+    renderOptions.language = options.language;
+  }
+  return renderComplianceReport(renderOptions);
 }
 
 export function renderComplianceReport(options: ComplianceReportOptions): string {
   const pack = getCompliancePack(options.packId);
+  const text = complianceReportText(options.language ?? "en");
   const rows = pack.controls.map((control) => {
     const status = controlStatus(control, options.evidence);
     return `| ${control.title} | ${status} | \`${control.evidence_path}\` | ${control.description} |`;
   });
   return [
-    `# Osstack Compliance Report - ${pack.id}`,
+    `# ${text.title} - ${pack.id}`,
     "",
-    `Run: \`${options.runId}\``,
-    `Pack: \`${pack.id}@${pack.version}\``,
-    "External certification claim: `none`",
+    `${text.runLabel}${text.labelSeparator}\`${options.runId}\``,
+    `${text.packLabel}${text.labelSeparator}\`${pack.id}@${pack.version}\``,
+    `${text.certificationClaimLabel}${text.labelSeparator}\`none\``,
     "",
-    "This report is not a SOC 2, ISO 27001, EU AI Act, or third-party certification.",
-    `It maps osstack proof evidence to the internal ${pack.name} view.`,
+    text.noExternalCertification,
+    text.internalMapping(pack.name),
     "",
-    "| Control | Status | Evidence | Mapping |",
+    `| ${text.controlHeader} | ${text.statusHeader} | ${text.evidenceHeader} | ${text.mappingHeader} |`,
     "|---|---|---|---|",
     ...rows,
     "",
   ].join("\n");
+}
+
+function complianceReportText(language: ComplianceReportLanguage): {
+  title: string;
+  runLabel: string;
+  packLabel: string;
+  certificationClaimLabel: string;
+  labelSeparator: string;
+  noExternalCertification: string;
+  internalMapping: (packName: string) => string;
+  controlHeader: string;
+  statusHeader: string;
+  evidenceHeader: string;
+  mappingHeader: string;
+} {
+  if (language === "zh-CN") {
+    return {
+      title: "Osstack 合规映射报告",
+      runLabel: "运行",
+      packLabel: "映射包",
+      certificationClaimLabel: "外部认证声明",
+      labelSeparator: "：",
+      noExternalCertification: "此报告不是 SOC 2、ISO 27001、EU AI Act 或第三方认证。",
+      internalMapping: (packName) => `它会把 osstack proof 证据映射到内部 ${packName} 视图。`,
+      controlHeader: "控制项",
+      statusHeader: "状态",
+      evidenceHeader: "证据",
+      mappingHeader: "映射",
+    };
+  }
+  return {
+    title: "Osstack Compliance Report",
+    runLabel: "Run",
+    packLabel: "Pack",
+    certificationClaimLabel: "External certification claim",
+    labelSeparator: ": ",
+    noExternalCertification: "This report is not a SOC 2, ISO 27001, EU AI Act, or third-party certification.",
+    internalMapping: (packName) => `It maps osstack proof evidence to the internal ${packName} view.`,
+    controlHeader: "Control",
+    statusHeader: "Status",
+    evidenceHeader: "Evidence",
+    mappingHeader: "Mapping",
+  };
 }
 
 export async function renderProofViewFromProofDir(options: {

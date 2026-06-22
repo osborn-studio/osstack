@@ -58,6 +58,21 @@ describe("compliance packs", () => {
         expect(markdown).toContain("| Evidence integrity | PRESENT |");
         expect(markdown).toContain("| Secure coding control | PRESENT |");
     });
+    it("renders Chinese evidence mappings without claiming external certification", () => {
+        const markdown = renderComplianceReport({
+            packId: "engineering-readiness",
+            runId: "run_123",
+            evidence: sampleEvidence(),
+            language: "zh-CN",
+        });
+        expect(markdown).toContain("# Osstack 合规映射报告 - engineering-readiness");
+        expect(markdown).toContain("运行：`run_123`");
+        expect(markdown).toContain("映射包：`engineering-readiness@2026.06.22`");
+        expect(markdown).toContain("外部认证声明：`none`");
+        expect(markdown).toContain("此报告不是 SOC 2、ISO 27001、EU AI Act 或第三方认证。");
+        expect(markdown).toContain("它会把 osstack proof 证据映射到内部 Engineering Readiness 视图。");
+        expect(markdown).toContain("| 控制项 | 状态 | 证据 | 映射 |");
+    });
     it("marks missing proof evidence explicitly", () => {
         const markdown = renderComplianceReport({
             packId: "engineering-readiness",

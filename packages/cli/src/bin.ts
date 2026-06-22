@@ -2027,7 +2027,7 @@ async function handleComplianceCommand(args: string[]): Promise<number> {
     console.log(`osstack compliance — evidence mapping reports
 
   osstack compliance list [--json]
-  osstack compliance render <run_id> --pack engineering-readiness [--proof-dir P] [--workspace P] [--output P] [--json]
+  osstack compliance render <run_id> --pack engineering-readiness [--proof-dir P] [--workspace P] [--output P] [--lang en|zh-CN] [--json]
 
 Notes:
   Compliance reports map osstack proof evidence to internal controls.
@@ -2055,7 +2055,7 @@ Notes:
   }
 
   if (sub === "render") {
-    const runId = firstPositionalValue(args.slice(1), new Set(["--pack", "--proof-dir", "--workspace", "--output"]));
+    const runId = firstPositionalValue(args.slice(1), new Set(["--pack", "--proof-dir", "--workspace", "--output", "--lang"]));
     if (runId === undefined) {
       console.error("osstack: compliance render requires a run_id");
       return 1;
@@ -2075,7 +2075,8 @@ Notes:
     const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
     const proofDir = flagValue(args, "--proof-dir") ?? join(workspacePath, "release", `osstack-proof-${safeFileSegment(runId)}`);
     const output = flagValue(args, "--output") ?? join(workspacePath, "reports", `compliance-${packId}-${safeFileSegment(runId)}.md`);
-    const markdown = await renderComplianceReportFromProofDir({ packId, runId, proofDir });
+    const language = resolveLanguage(flagValue(args, "--lang"));
+    const markdown = await renderComplianceReportFromProofDir({ packId, runId, proofDir, language });
     await mkdir(dirname(output), { recursive: true });
     await writeFile(output, markdown, "utf-8");
     if (args.includes("--json")) {

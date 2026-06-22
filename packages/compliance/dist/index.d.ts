@@ -31,7 +31,9 @@ export interface ComplianceReportOptions {
     packId: string;
     runId: string;
     evidence: ProofEvidence;
+    language?: ComplianceReportLanguage;
 }
+export type ComplianceReportLanguage = "en" | "zh-CN";
 export type ProofAudience = "engineer" | "manager" | "auditor" | "customer";
 export type ProofViewLanguage = "en" | "zh-CN";
 export interface ProofViewOptions {
@@ -49,6 +51,7 @@ export declare function renderComplianceReportFromProofDir(options: {
     packId: string;
     runId: string;
     proofDir: string;
+    language?: ComplianceReportLanguage;
 }): Promise<string>;
 export declare function renderComplianceReport(options: ComplianceReportOptions): string;
 export declare function renderProofViewFromProofDir(options: {
