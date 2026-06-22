@@ -102,7 +102,7 @@
 - `.github/workflows/single-binary-release.yml` 已新增，支持 tag `v*` 或手动触发，dry-run 验证或正式 `gh release upload`。
 - CLI entrypoint 已兼容 Bun 虚拟文件系统路径；版本号通过 `OSSTACK_VERSION` 编译期注入，避免 single executable 运行时找不到 `package.json` 后退到 `0.0.0`。
 - portable smoke 会输出 Node SEA、Bun、pkg、nexe、postject 的本机候选状态，给后续分发策略留出机器可读证据。
-- `release doctor --target all` 已接入 `single_binary_release_assets` 静态 preflight，检查 build/sign/SBOM/package/publish 脚本、release pack/publish smoke、tag/manual workflow、dry-run upload、`GH_TOKEN` 与 workflow artifact 留存；`release plan --target all` 的 validation commands 会列出 `pnpm smoke:single-binary-release-pack` 与 `pnpm smoke:single-binary-release-publish`。
+- `release doctor --target single-binary` 已接入独立的 `single_binary_release_assets` 静态 preflight，`--target all` 也会包含该检查；它会检查 build/sign/SBOM/package/publish 脚本、release pack/publish smoke、tag/manual workflow、dry-run upload、`GH_TOKEN` 与 workflow artifact 留存；`release plan --target single-binary` 和 `--target all` 的 validation commands 会列出 `pnpm smoke:single-binary-release-pack`、`pnpm smoke:single-binary-release-publish` 与 Single Binary Release dry-run workflow。
 - 当前仍没有 Developer ID codesign、notarization、跨机器安装验证、正式 GitHub Release 上传。
 
 建议：

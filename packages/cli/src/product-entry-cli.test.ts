@@ -497,11 +497,65 @@ describe("product entry commands", () => {
     expect(markdown).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
   });
 
+  it("checks single-binary release assets as an independent release target", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "";
+
+    const exitCode = await main(["release", "doctor", "--target", "single-binary", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      target: string;
+      readiness: { single_binary_release: boolean };
+      checks: Array<{ id: string; status: string }>;
+    };
+    expect(result.ok).toBe(true);
+    expect(result.target).toBe("single-binary");
+    expect(result.readiness.single_binary_release).toBe(true);
+    expect(result.checks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "github_auth", status: "ok" }),
+      expect.objectContaining({ id: "github_actions", status: "ok" }),
+      expect.objectContaining({ id: "single_binary_release_assets", status: "ok" }),
+    ]));
+  });
+
+  it("writes a single-binary release action plan", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "";
+    const output = join(tmp, "single-binary-release-plan.md");
+
+    const exitCode = await main(["release", "plan", "--target", "single-binary", "--output", output, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ready: boolean;
+      safe_to_execute: boolean;
+      validation_commands: string[];
+      publish_commands: string[];
+      deploy_commands: string[];
+      output: string;
+    };
+    expect(result.ready).toBe(true);
+    expect(result.safe_to_execute).toBe(true);
+    expect(result.output).toBe(output);
+    expect(result.validation_commands).toContain("pnpm smoke:single-binary-release-pack");
+    expect(result.validation_commands).toContain("pnpm smoke:single-binary-release-publish");
+    expect(result.validation_commands).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=true");
+    expect(result.publish_commands).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false");
+    expect(result.deploy_commands).toEqual([]);
+    const markdown = await readFile(output, "utf-8");
+    expect(markdown).toContain("Target: `single-binary`");
+    expect(markdown).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false");
+  });
+
   it("rejects unknown release doctor targets", async () => {
     const exitCode = await main(["release", "doctor", "--target", "staging", "--json"]);
 
     expect(exitCode).toBe(1);
-    expect(errors.join("\n")).toContain("release doctor --target must be all, npm, or knowledge-cloud");
+    expect(errors.join("\n")).toContain("release doctor --target must be all, npm, knowledge-cloud, or single-binary");
   });
 });
 

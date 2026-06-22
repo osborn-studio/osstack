@@ -230,10 +230,10 @@ Project commands:
                       Product readiness check: loop + agents + next steps
   examples [--json]   Print runnable workflow examples
   guide [--output P]  Print or write the 5-minute quickstart
-  release doctor [--target all|npm|knowledge-cloud] [--workspace P] [--proof-dir P] [--json]
+  release doctor [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
                       Check publish/deploy prerequisites: GitHub auth, repo
                       secrets, npm auth, and Fly.io deploy readiness
-  release plan [--target all|npm|knowledge-cloud] [--workspace P] [--proof-dir P] [--json]
+  release plan [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
                       Generate a blocker-aware publish/deploy runbook
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
   deliver <prompt> [--verify CMD] [--auto-agent] [--worktree]
@@ -772,11 +772,12 @@ interface ReleaseDoctorCheck {
 
 interface ReleaseDoctorResult {
   ok: boolean;
-  target: "all" | "npm" | "knowledge-cloud";
+  target: "all" | "npm" | "knowledge-cloud" | "single-binary";
   checks: ReleaseDoctorCheck[];
   readiness: {
     npm_publish: boolean;
     knowledge_cloud_deploy: boolean;
+    single_binary_release: boolean;
   };
   next_steps: string[];
   output?: string;
@@ -787,8 +788,8 @@ async function handleReleaseCommand(args: string[]): Promise<number> {
   if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack release — publish/deploy readiness
 
-  osstack release doctor [--target all|npm|knowledge-cloud] [--workspace P] [--proof-dir P] [--json]
-  osstack release plan [--target all|npm|knowledge-cloud] [--workspace P] [--proof-dir P] [--output P] [--json]
+  osstack release doctor [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
+  osstack release plan [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--output P] [--json]
 
 Checks:
   - GitHub CLI authentication for repository operations
@@ -821,7 +822,7 @@ interface ReleaseActionPlan {
 async function handleReleasePlanCommand(args: string[]): Promise<number> {
   const target = parseReleaseDoctorTarget(flagValue(args, "--target") ?? "all");
   if (target === undefined) {
-    console.error("osstack: release plan --target must be all, npm, or knowledge-cloud");
+    console.error("osstack: release plan --target must be all, npm, knowledge-cloud, or single-binary");
     return 1;
   }
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
@@ -845,7 +846,7 @@ async function handleReleasePlanCommand(args: string[]): Promise<number> {
 async function handleReleaseDoctorCommand(args: string[]): Promise<number> {
   const target = parseReleaseDoctorTarget(flagValue(args, "--target") ?? "all");
   if (target === undefined) {
-    console.error("osstack: release doctor --target must be all, npm, or knowledge-cloud");
+    console.error("osstack: release doctor --target must be all, npm, knowledge-cloud, or single-binary");
     return 1;
   }
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
@@ -867,7 +868,7 @@ async function handleReleaseDoctorCommand(args: string[]): Promise<number> {
 }
 
 function parseReleaseDoctorTarget(value: string): ReleaseDoctorResult["target"] | undefined {
-  if (value === "all" || value === "npm" || value === "knowledge-cloud") return value;
+  if (value === "all" || value === "npm" || value === "knowledge-cloud" || value === "single-binary") return value;
   return undefined;
 }
 
@@ -890,6 +891,7 @@ async function releaseDoctor(
 
   const requiredSecrets = target === "npm" ? ["NPM_TOKEN"]
     : target === "knowledge-cloud" ? ["FLY_API_TOKEN"]
+      : target === "single-binary" ? []
       : ["NPM_TOKEN", "FLY_API_TOKEN"];
   const secrets = await releaseSecretsCheck(requiredSecrets);
   checks.push(secrets);
@@ -921,7 +923,7 @@ async function releaseDoctor(
       missingSeverity: "warn",
     }));
   }
-  if (target === "all") {
+  if (target === "all" || target === "single-binary") {
     checks.push(await releaseSingleBinaryReleaseAssetsCheck(process.cwd()));
   }
 
@@ -934,12 +936,15 @@ async function releaseDoctor(
   const versionPackagesPrReady = checks.find((check) => check.id === "version_packages_pr")?.status !== "warn";
   const knowledgeDeployAssetsReady = checks.find((check) => check.id === "knowledge_cloud_deploy_assets")?.status !== "error";
   const knowledgeWorkflowReady = checks.find((check) => check.id === "knowledge_cloud_workflow")?.status !== "error";
+  const singleBinaryAssetsReady = checks.find((check) => check.id === "single_binary_release_assets")?.status !== "error";
   const actionsReady = githubActions.status !== "error";
   const npmPublish = actionsReady && hasSecret(secrets, "NPM_TOKEN") && npmPublishAssetsReady && versionPackagesPrReady;
   const knowledgeCloudDeploy = actionsReady && hasSecret(secrets, "FLY_API_TOKEN") && knowledgeDeployAssetsReady && knowledgeWorkflowReady;
+  const singleBinaryRelease = actionsReady && singleBinaryAssetsReady;
   const ok = target === "npm" ? npmPublish
     : target === "knowledge-cloud" ? knowledgeCloudDeploy
-      : npmPublish && knowledgeCloudDeploy;
+      : target === "single-binary" ? singleBinaryRelease
+      : npmPublish && knowledgeCloudDeploy && singleBinaryRelease;
   const hardFailures = checks.some((check) =>
     check.status === "error"
     && check.id !== "repository_secrets"
@@ -953,8 +958,9 @@ async function releaseDoctor(
     readiness: {
       npm_publish: npmPublish,
       knowledge_cloud_deploy: knowledgeCloudDeploy,
+      single_binary_release: singleBinaryRelease,
     },
-    next_steps: releaseDoctorNextSteps({ target, npmPublish, knowledgeCloudDeploy, githubAuth, secrets, checks }),
+    next_steps: releaseDoctorNextSteps({ target, npmPublish, knowledgeCloudDeploy, singleBinaryRelease, githubAuth, secrets, checks }),
   };
 }
 
@@ -1647,6 +1653,7 @@ function releaseDoctorNextSteps(options: {
   target: ReleaseDoctorResult["target"];
   npmPublish: boolean;
   knowledgeCloudDeploy: boolean;
+  singleBinaryRelease: boolean;
   githubAuth: ReleaseDoctorCheck;
   secrets: ReleaseDoctorCheck;
   checks: ReleaseDoctorCheck[];
@@ -1696,7 +1703,7 @@ function releaseDoctorNextSteps(options: {
     steps.push("Review the latest Knowledge Cloud Deploy workflow run before running deploy=true.");
   }
   const singleBinaryAssets = options.checks.find((check) => check.id === "single_binary_release_assets");
-  if (options.target === "all" && singleBinaryAssets?.status === "error") {
+  if ((options.target === "all" || options.target === "single-binary") && singleBinaryAssets?.status === "error") {
     steps.push("Restore single-binary release assets before publishing release archives.");
   }
   const proofValidation = options.checks.find((check) => check.id === "proof_validation");
@@ -1708,6 +1715,9 @@ function releaseDoctorNextSteps(options: {
   }
   if ((options.target === "all" || options.target === "knowledge-cloud") && options.knowledgeCloudDeploy) {
     steps.push("Knowledge Cloud deploy=true is ready in GitHub Actions.");
+  }
+  if ((options.target === "all" || options.target === "single-binary") && options.singleBinaryRelease) {
+    steps.push("Single-binary GitHub Release asset path is ready.");
   }
   if (steps.length === 0) steps.push("Review failed checks above before publishing.");
   return steps;
@@ -1723,6 +1733,7 @@ function printReleaseDoctor(result: ReleaseDoctorResult): void {
   console.log("");
   console.log(`npm_publish=${result.readiness.npm_publish ? "ready" : "not_ready"}`);
   console.log(`knowledge_cloud_deploy=${result.readiness.knowledge_cloud_deploy ? "ready" : "not_ready"}`);
+  console.log(`single_binary_release=${result.readiness.single_binary_release ? "ready" : "not_ready"}`);
   console.log("");
   console.log("Next steps:");
   for (const step of result.next_steps) console.log(`- ${step}`);
@@ -1741,6 +1752,7 @@ function renderReleaseReadinessReport(result: ReleaseDoctorResult): string {
     "|---|---|",
     `| npm_publish | ${result.readiness.npm_publish ? "ready" : "not_ready"} |`,
     `| knowledge_cloud_deploy | ${result.readiness.knowledge_cloud_deploy ? "ready" : "not_ready"} |`,
+    `| single_binary_release | ${result.readiness.single_binary_release ? "ready" : "not_ready"} |`,
     "",
     "## Checks",
     "",
@@ -1827,20 +1839,26 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
         "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false",
       ]
       : []),
-    ...(result.target === "all"
+    ...(result.target === "all" || result.target === "single-binary"
       ? [
         "pnpm smoke:single-binary-release-pack",
         "pnpm smoke:single-binary-release-publish",
+        "gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=true",
       ]
       : []),
   ];
-  const publishCommands = result.target === "knowledge-cloud" ? [] : [
-    ...(versionPrNumber === undefined ? [] : [`gh pr merge ${versionPrNumber} --squash --delete-branch`]),
-    "npm install -g @osstack/cli",
-    "osstack --version",
-    "osstack loop doctor --workspace .",
+  const publishCommands = [
+    ...(result.target === "knowledge-cloud" || result.target === "single-binary" ? [] : [
+      ...(versionPrNumber === undefined ? [] : [`gh pr merge ${versionPrNumber} --squash --delete-branch`]),
+      "npm install -g @osstack/cli",
+      "osstack --version",
+      "osstack loop doctor --workspace .",
+    ]),
+    ...(result.target === "all" || result.target === "single-binary"
+      ? ["gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false"]
+      : []),
   ];
-  const deployCommands = result.target === "npm" ? [] : [
+  const deployCommands = result.target === "npm" || result.target === "single-binary" ? [] : [
     "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true",
     "osstack knowledge login --cloud-url https://knowledge.osstack.ai",
     "osstack knowledge sync",
