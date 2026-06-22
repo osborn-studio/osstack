@@ -1,8 +1,8 @@
 # osstack 发布就绪证据与上线阻塞记录
 
-> 日期：2026-06-22  
-> 分支：`codex/osstack-report-foundation`  
-> 本地验证 HEAD：`b4487bb ci: smoke launchd install after npm install`
+> 日期：2026-06-22
+> 分支：`codex/releasing-operator-docs`
+> 本地验证 HEAD：`9fda27b ci: split macos release candidate smoke`
 
 ## 1. 结论
 
@@ -16,8 +16,10 @@
 
 尚未完成的部分不是代码验证，而是外部发布链路：
 
-- GitHub push 被当前 `gh` OAuth token 缺少 `workflow` scope 阻塞。
-- 因为无法 push，PR、GitHub Actions、Knowledge Cloud 真实云端部署、npm 发布流程还不能启动。
+- GitHub push/PR 已恢复，Version Packages PR #5 当前为 `CLEAN / MERGEABLE`。
+- GitHub Actions 当前被账户 billing/spending-limit 卡住，runner 在执行任何 step 前失败；PR #26 已记录本地验证证据，修复 billing 后需要 rerun CI。
+- npm 发布仍需要仓库 secret `NPM_TOKEN`。
+- Knowledge Cloud `deploy=true` 仍需要仓库 secret `FLY_API_TOKEN`。
 
 ## 2. 已完成能力清单
 
@@ -32,12 +34,12 @@
 | Portable CLI 分发 | 已完成过渡 smoke | `pnpm smoke:portable-cli` 验证 workspace tarballs 可安装进 portable prefix，并输出 single executable 候选工具状态 |
 | Bun 单文件分发 | 已完成本地 release archive candidate smoke，已接 CI/release artifact | `pnpm build:single-binary` 生成 binary/manifest/checksum；`pnpm sbom:single-binary` 生成 SPDX 2.3 SBOM；`pnpm smoke:bun-single-binary` 验证 `--version`、`help`、`loop doctor --json`、sha256；`pnpm smoke:single-binary-signing` 验证 ad-hoc codesign；`pnpm smoke:single-binary-release-pack` 验证 tarball 可解包运行；release workflow 上传 candidate artifact |
 | 测试体系 | 已完成当前门禁 | lint、build、test、smoke 全部通过 |
-| 云端上线 | 未完成 | push 被 GitHub OAuth `workflow` scope 阻塞 |
-| npm 发布 | 未完成 | 需要 push/PR/CI 通过后再走 release |
+| 云端上线 | 未完成 | 需要修复 Actions billing、配置 `FLY_API_TOKEN`，然后运行 Knowledge Cloud `deploy=true` |
+| npm 发布 | 未完成 | PR #5 已 `CLEAN / MERGEABLE`，但合并前必须配置 `NPM_TOKEN` |
 
 ## 3. 本轮验证命令
 
-以下命令均在本地分支 `codex/osstack-report-foundation` 上执行。
+以下命令均在本地分支 `codex/releasing-operator-docs` 上执行。
 
 | 命令 | 结果 | 关键输出 |
 |---|---:|---|
@@ -53,7 +55,8 @@
 | `pnpm smoke:single-binary-signing` | 通过 | 生成 release candidate，ad-hoc `codesign`，`codesign --verify` 通过；manifest 记录 `signed=true`、`ad_hoc=true`、`notarized=false` |
 | `pnpm smoke:single-binary-release-pack` | 通过 | 生成 `.tar.gz` archive、archive manifest、SPDX SBOM，校验 archive sha256，解包后 `osstack --version` 输出 `osstack 0.1.0`，manifest 记录 `github_release_uploaded=false` |
 | `pnpm smoke:single-binary-release-publish` | 通过 | dry-run 验证 GitHub Release upload 输入：archive、archive manifest、sha256sums、SPDX SBOM；不访问 GitHub，不修改 upload 状态 |
-| `.github/workflows/ci.yml` single binary step | 已接入，待远端 CI 运行 | macOS runner setup Bun 后执行 `pnpm smoke:single-binary-release-pack` |
+| `.github/workflows/ci.yml` daily quality gate | 已拆到 Ubuntu，待远端 CI 运行 | lint、build、typecheck、test、Knowledge Cloud smoke、deploy asset smoke、deliver proof、npm install smoke |
+| `.github/workflows/macos-release-candidate.yml` | 已新增，待远端 CI 运行 | macOS runner setup Bun 后执行 `pnpm smoke:single-binary-release-pack` |
 | `.github/workflows/release.yml` single binary artifact step | 已接入，待远端 CI 运行 | 生成 signed ad-hoc archive candidate 并用 `actions/upload-artifact` 上传 14 天留存 artifact |
 | `.github/workflows/single-binary-release.yml` formal upload path | 已接入，待远端 CI 运行 | tag `v*` 或手动触发；dry-run 可验证，非 dry-run 使用 `gh release upload` 上传正式 GitHub Release assets |
 | `pnpm smoke:deliver-proof` | 通过 | 临时 git repo 跑 `deliver -> report -> scorecard -> proof -> compliance render -> pr dry-run`，证明 L4 evidence 与合规视图可从 proof dir 串起来 |
@@ -167,8 +170,9 @@
 
 ## 9. GitHub / 上线阻塞
 
-GitHub push、PR、CI、release workflow 已恢复。当前发布阻塞不是代码问题，而是生产发布凭证尚未配置：
+GitHub push、PR、workflow 定义已恢复。当前发布阻塞不是代码问题，而是账户级 Actions 与生产发布凭证尚未配置：
 
+- GitHub Actions runner 启动前失败：`recent account payments have failed or your spending limit needs to be increased`。
 - npm publish 需要仓库 secret `NPM_TOKEN`。
 - Knowledge Cloud `deploy=true` 需要仓库 secret `FLY_API_TOKEN`。
 - 本机人工发布/排障还需要 `npm login` 与 `flyctl auth login`。
@@ -181,7 +185,7 @@ osstack release doctor --json
 
 当前 `release doctor` 会额外检查发布列车状态：
 
-- `version_packages_pr`：识别 `changeset-release/main` 的 Version Packages PR，输出 PR number、URL、draft 状态和 `merge_state`。当前真实状态为 PR #5 `UNSTABLE`，需要在合并 npm version PR 前处理。
+- `version_packages_pr`：识别 `changeset-release/main` 的 Version Packages PR，输出 PR number、URL、draft 状态和 `merge_state`。当前真实状态为 PR #5 `CLEAN / MERGEABLE`，CI run `27957659115` 已成功；仍需等 `NPM_TOKEN` 配好后再合并。
 - `knowledge_cloud_workflow`：识别 `Knowledge Cloud Deploy` workflow 是否存在、是否 active，以及最近一次验证 run 的状态。当前最近一次 validation run 为 success，但 `deploy=true` 仍需要 `FLY_API_TOKEN`。
 
 也可以输出 Markdown handoff artifact：
@@ -215,21 +219,13 @@ osstack release doctor --json
 - `NPM_TOKEN` 显示 ready 后再合并 Version Packages PR。
 - `FLY_API_TOKEN` 显示 ready 后再运行 Knowledge Cloud `deploy=true`。
 
-### Step 2：创建 Draft PR
-
-执行：
-
-```sh
-gh pr create --draft --base main --head codex/osstack-report-foundation \
-  --title "Upgrade osstack product foundation and knowledge cloud" \
-  --body "Adds Loop evidence flows, official knowledge packs, Knowledge Cloud deploy assets, npm install smoke coverage, and release readiness evidence."
-```
+### Step 2：修复 GitHub Actions billing 并 rerun PR #26
 
 验收：
 
-- PR 创建成功。
-- CI 开始运行。
-- PR 描述包含本地验证结果与上线阻塞解除后的部署计划。
+- GitHub Billing / spending limit 恢复正常。
+- PR #26 CI runner 能启动并执行 steps。
+- PR #26 CI 通过后合并。
 
 ### Step 3：等待 CI 并修复差异
 
@@ -293,7 +289,9 @@ osstack knowledge eval --official --fixtures knowledge-evals/retrieval/osstack-c
 
 优先级建议：
 
-1. 先解除 GitHub push 阻塞，把当前成果进入 PR/CI。
-2. 再真实部署 Knowledge Cloud，拿到 URL。
-3. 再做 TUI / Live Workbench，因为 UI 需要稳定后端能力支撑。
-4. 最后强化合规包装，让 osstack 的知识库与证据包可以进入团队/商业使用场景。
+1. 先解除 GitHub Actions billing 阻塞，并合并 PR #26。
+2. 配置 `NPM_TOKEN` 与 `FLY_API_TOKEN`。
+3. 再真实部署 Knowledge Cloud，拿到 URL。
+4. 再发布 npm package，并从 registry 复跑安装 smoke。
+5. 再做 TUI / Live Workbench，因为 UI 需要稳定后端能力支撑。
+6. 最后强化合规包装，让 osstack 的知识库与证据包可以进入团队/商业使用场景。

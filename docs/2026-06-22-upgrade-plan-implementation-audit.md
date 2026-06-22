@@ -1,9 +1,9 @@
 # osstack 升级开发主计划实现审计
 
-> 日期：2026-06-22  
-> 目标文档：`/Users/gilbertchen/Documents/CODE/agentsteam/osstack/docs/2026-06-22-osstack-upgrade-development-plan.md`  
-> 审计分支：`codex/osstack-report-foundation`  
-> 审计 HEAD：`0a03f60 feat(cli): show queued tasks in cockpit`
+> 日期：2026-06-22
+> 目标文档：`/Users/gilbertchen/Documents/CODE/agentsteam/osstack/docs/2026-06-22-osstack-upgrade-development-plan.md`
+> 审计分支：`codex/releasing-operator-docs`
+> 审计 HEAD：`9fda27b ci: split macos release candidate smoke`
 
 ## 1. 审计结论
 
@@ -16,7 +16,9 @@
 
 仍未完成的部分集中在外部发布和产品深化：
 
-- GitHub push 被 OAuth token 缺少 `workflow` scope 阻塞，导致 PR、CI、云端部署、npm 发布无法继续；本地 workflow 已接入 `smoke:deliver-proof` 与包含 installed-CLI knowledge fallback 的 `smoke:npm-install`。
+- GitHub push/PR 已恢复，Version Packages PR #5 当前为 `CLEAN / MERGEABLE`，但 GitHub Actions 在账户层被 billing/spending-limit 阻塞，runner 尚不能启动。
+- npm publish 仍需要仓库 secret `NPM_TOKEN`；Knowledge Cloud `deploy=true` 仍需要仓库 secret `FLY_API_TOKEN`。
+- 日常 PR CI 已拆到 `ubuntu-latest`，macOS single-binary release-candidate smoke 已拆到独立 `.github/workflows/macos-release-candidate.yml`，正式 release workflow 仍保留 macOS archive candidate artifact。
 - `npm install -g @osstack/cli` 还没有从真实 npm registry 验证，只验证了本地 tarball 安装。
 - 可选单文件分发已有 portable CLI bundle smoke、Bun single executable smoke、本地 release asset manifest/checksum/SPDX SBOM、ad-hoc codesign 验证、`.tar.gz` release archive smoke，并已接入 CI/release workflow candidate artifact 与 tag/workflow_dispatch GitHub Release 上传路径；发布级 Developer ID 签名/公证/跨机器验证尚未完成。
 - Cockpit 当前是 dashboard/web cockpit + CLI summary，不是完整交互式 TUI。
@@ -93,7 +95,8 @@
 - `scripts/smoke-single-binary-signing.mjs` 已新增，执行本地 ad-hoc signing、`codesign --verify`、`osstack --version`，并确保 manifest 不声称 notarization。
 - `scripts/smoke-single-binary-release-pack.mjs` 已新增，执行 build -> ad-hoc sign -> package -> `tar -tzf` -> extract -> `osstack --version`，并确保 archive manifest 不声称 GitHub Release 上传。
 - `scripts/smoke-single-binary-release-publish.mjs` 已新增，dry-run 验证 GitHub Release upload inputs，不访问 GitHub。
-- `.github/workflows/ci.yml` 已接入 `pnpm smoke:single-binary-release-pack`。
+- `.github/workflows/ci.yml` 已改为 Ubuntu 日常质量门，不再为普通 PR 强制跑 macOS release archive smoke。
+- `.github/workflows/macos-release-candidate.yml` 已新增，负责 macOS single-binary release-candidate smoke，可在主线相关路径变更或手动触发时运行。
 - `.github/workflows/release.yml` 已接入 single-binary archive candidate build/sign/package，并通过 `actions/upload-artifact` 上传 workflow artifact。
 - `.github/workflows/single-binary-release.yml` 已新增，支持 tag `v*` 或手动触发，dry-run 验证或正式 `gh release upload`。
 - CLI entrypoint 已兼容 Bun 虚拟文件系统路径；版本号通过 `OSSTACK_VERSION` 编译期注入，避免 single executable 运行时找不到 `package.json` 后退到 `0.0.0`。
@@ -362,8 +365,9 @@
 
 | 优先级 | 项目 | 原因 | 完成证据 |
 |---:|---|---|---|
-| P0 | 刷新 GitHub auth scope 并 push | 没有 push 就无法 PR/CI/deploy/npm publish | `git push -u origin codex/osstack-report-foundation` 成功 |
-| P0 | 创建 PR 并跑 CI | 把本地候选变成可审查变更 | PR URL + green CI |
+| P0 | 修复 GitHub Actions billing/spending limit | 当前 runner 在账户层启动前失败，PR #26 无法变绿 | PR #26 CI rerun 后 runner 正常启动并通过 |
+| P0 | 配置 `NPM_TOKEN` | 没有 npm publish secret 不能合并 Version Packages PR | `osstack release doctor --target npm --json` ready |
+| P0 | 配置 `FLY_API_TOKEN` | 没有 Fly deploy secret 不能运行 Knowledge Cloud `deploy=true` | `osstack release doctor --target knowledge-cloud --json` ready |
 | P0 | 部署 Knowledge Cloud 到真实云端 | Phase 6 需要“上线”而非本地 smoke | 生产 URL + `/healthz` + search smoke |
 | P0 | npm publish 并从 registry 安装 | Phase 0 一行安装的最终验收 | `npm install -g @osstack/cli` 成功 |
 | P1 | `CONFORMANCE_MATRIX.md` | 让 OSSTACK_RUN_SPEC_V1 的 MUST 条款可审计 | 每条 MUST 映射 schema/test/verifier |
@@ -377,8 +381,9 @@
 当前执行：
 
 ```sh
-GitHub push、PR、CI、release workflow 已恢复。后续发布阻塞点已从 OAuth scope 转为真实发布凭证：
+GitHub push、PR、release workflow 定义已恢复。当前阻塞点是账户级 Actions 与真实发布凭证：
 
+- GitHub Actions runner 启动前失败：`recent account payments have failed or your spending limit needs to be increased`。
 - npm registry publish 需要仓库 secret `NPM_TOKEN`。
 - Knowledge Cloud `deploy=true` 需要仓库 secret `FLY_API_TOKEN`。
 - 本地人工排障可继续配置 `npm login` 与 `flyctl auth login`。
@@ -395,12 +400,12 @@ osstack release doctor --json
 
 1. 继续把 proof/compliance 的结构级证据检查扩展成可复用 validator；当前 proof view/compliance render 已经会把 malformed manifest、verify、policy、agent runtime、governance、worktree、knowledge evidence 标成 `MISSING`。
 2. 继续补更多 negative/malformed vectors，覆盖边界格式、旧版本兼容字段、外部 proof 目录导入场景。
-3. 继续强化 release doctor、Knowledge Cloud deploy preflight、npm publish preflight；当前 release doctor 已能识别 Version Packages PR #5 的 `UNSTABLE` 状态，显示 Knowledge Cloud Deploy workflow 最近一次 validation run，通过 `--output` 生成 Markdown 发布行动清单，并通过 `release plan` 生成验证/发布/部署命令 runbook。
+3. 继续强化 release doctor、Knowledge Cloud deploy preflight、npm publish preflight；当前 release doctor 已能识别 Version Packages PR #5 的 `CLEAN / MERGEABLE` 状态，显示 Knowledge Cloud Deploy workflow 最近一次 validation run，通过 `--output` 生成 Markdown 发布行动清单，并通过 `release plan` 生成验证/发布/部署命令 runbook。
 
 授权解除后，立即转入 P0：
 
-1. push branch。
-2. 创建 Draft PR。
-3. 修 CI 差异。
+1. 修复 GitHub Actions billing/spending limit。
+2. rerun PR #26 CI 并合并。
+3. 配置 `NPM_TOKEN` 与 `FLY_API_TOKEN`。
 4. 部署 Knowledge Cloud。
 5. npm publish。
