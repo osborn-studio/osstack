@@ -49,7 +49,7 @@ The manual workflow `.github/workflows/knowledge-cloud-deploy.yml` runs build, t
 - Set repository secret `FLY_API_TOKEN`.
 - Run with `deploy=true` to publish through `flyctl deploy --config deploy/knowledge-cloud/fly.toml --remote-only`.
 
-If `FLY_API_TOKEN` is missing, the workflow skips the deploy step and writes guidance to the job summary.
+If `FLY_API_TOKEN` is missing and `deploy=true`, the workflow fails before deployment so a validation-only run cannot be mistaken for a published cloud service.
 
 ## Render
 
