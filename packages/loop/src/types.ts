@@ -103,6 +103,23 @@ export type IterationOutcome = z.infer<typeof IterationOutcome>;
 
 // ── State persistence ──────────────────────────────────────────────────
 
+export const CommandAudit = z.object({
+  command: z.string(),
+  exit_code: z.number(),
+  duration_ms: z.number(),
+  summary: z.string().optional(),
+});
+export type CommandAudit = z.infer<typeof CommandAudit>;
+
+export const IssueAudit = z.object({
+  severity: IssueSeverity,
+  message: z.string(),
+  file: z.string().optional(),
+  line: z.number().optional(),
+  rule: z.string().optional(),
+});
+export type IssueAudit = z.infer<typeof IssueAudit>;
+
 export const CompletedTask = z.object({
   task_id: z.string(),
   capability: z.string().optional(),
@@ -110,6 +127,20 @@ export const CompletedTask = z.object({
   iterations: z.number(),
   agent_id: z.string(),
   duration_ms: z.number(),
+  run_id: z.string().optional(),
+  started_at: z.string().optional(),
+  completed_at: z.string().optional(),
+  execution_summary: z.string().optional(),
+  execution_commands: z.array(CommandAudit).optional(),
+  verifier_agent_id: z.string().optional(),
+  verify_summary: z.string().optional(),
+  verify_issue_count: z.number().optional(),
+  verify_issues: z.array(IssueAudit).optional(),
+  error_summary: z.string().optional(),
+  worktree_path: z.string().optional(),
+  worktree_branch: z.string().optional(),
+  worktree_commit: z.string().optional(),
+  worktree_branch_preserved: z.boolean().optional(),
 });
 export type CompletedTask = z.infer<typeof CompletedTask>;
 

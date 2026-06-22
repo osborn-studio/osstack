@@ -103,9 +103,24 @@ function renderTasks(tasks: Task[], includePriority: boolean): string[] {
 function renderCompletedTasks(tasks: CompletedTask[]): string[] {
   if (tasks.length === 0) return ["- None"];
 
-  return tasks.map((task) => {
+  return tasks.flatMap((task) => {
     const capability = task.capability === undefined ? "" : `, ${task.capability}`;
-    return `- [x] ${task.task_id} - ${task.outcome} via ${task.agent_id} (${task.iterations} iteration${task.iterations === 1 ? "" : "s"}, ${task.duration_ms} ms${capability})`;
+    const lines = [
+      `- [x] ${task.task_id} - ${task.outcome} via ${task.agent_id} (${task.iterations} iteration${task.iterations === 1 ? "" : "s"}, ${task.duration_ms} ms${capability})`,
+    ];
+    if (task.run_id !== undefined) lines.push(`  - Run: ${task.run_id}`);
+    if (task.verify_summary !== undefined) {
+      lines.push(`  - Verification: ${task.verify_summary} (${task.verify_issue_count ?? 0} issue${task.verify_issue_count === 1 ? "" : "s"})`);
+    }
+    if (task.execution_commands !== undefined && task.execution_commands.length > 0) {
+      lines.push(`  - Commands: ${task.execution_commands.map((command) => `${command.command} -> ${command.exit_code}`).join(", ")}`);
+    }
+    if (task.error_summary !== undefined) lines.push(`  - Error: ${task.error_summary}`);
+    if (task.worktree_branch !== undefined) {
+      const commit = task.worktree_commit === undefined ? "" : `, commit ${task.worktree_commit}`;
+      lines.push(`  - Worktree: ${task.worktree_branch}${commit}`);
+    }
+    return lines;
   });
 }
 
