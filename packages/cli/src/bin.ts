@@ -803,6 +803,7 @@ Checks:
 interface ReleaseActionPlan {
   target: ReleaseDoctorResult["target"];
   ready: boolean;
+  safe_to_execute: boolean;
   blockers: string[];
   operator_commands: string[];
   validation_commands: string[];
@@ -1394,6 +1395,7 @@ function releaseActionPlan(result: ReleaseDoctorResult): ReleaseActionPlan {
   return {
     target: result.target,
     ready: result.ok,
+    safe_to_execute: result.ok && blockers.length === 0,
     blockers,
     operator_commands: operatorCommands,
     validation_commands: validationCommands,
@@ -1408,6 +1410,11 @@ function renderReleaseActionPlan(plan: ReleaseActionPlan): string {
     "",
     `Target: \`${plan.target}\``,
     `Ready: \`${plan.ready ? "yes" : "no"}\``,
+    `Safe to execute publish/deploy commands: \`${plan.safe_to_execute ? "yes" : "no"}\``,
+    ...(plan.safe_to_execute ? [] : [
+      "",
+      "> Do not run publish or deploy commands until blockers are resolved.",
+    ]),
     "",
     "## Blockers",
     "",
