@@ -69,6 +69,12 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
     expect(matrix).toContain("Current Conformance Summary");
     expect(matrix).toContain("Required Follow-Up Tests");
     expect(matrix).toContain("installed-CLI deliver");
+    expect(matrix).toContain("scripts/smoke-real-repo-deliver.mjs");
+    expect(matrix).toContain("real repo deliver");
+    expect(matrix).toContain("npm test");
+    expect(matrix).toContain("Conformance: L4 Audited");
+    expect(matrix).toContain("verify-results.json");
+    expect(matrix).toContain("worktree-status.json");
     expect(matrix).toContain("GitHub Actions billing/spending-limit");
     expect(matrix).not.toContain("workflow-scope push");
   });
