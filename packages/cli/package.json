@@ -23,6 +23,7 @@
     "@osstack/governance": "workspace:*",
     "@osstack/github": "workspace:*",
     "@osstack/hermes-adapter": "workspace:*",
+    "@osstack/knowledge": "workspace:*",
     "@osstack/loop": "workspace:*",
     "@osstack/skill-registry": "workspace:*",
     "@osstack/skills": "workspace:*",

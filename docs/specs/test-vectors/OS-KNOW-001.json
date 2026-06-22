@@ -1,0 +1,24 @@
+{
+  "id": "OS-KNOW-001",
+  "description": "Processed MIT-compatible knowledge transformed into an Osstack-native cloud-ready pack",
+  "knowledge_pack": {
+    "id": "osstack-cloud-bootstrap",
+    "version": "2026.06.22",
+    "name": "Osstack Cloud Bootstrap",
+    "license": "MIT-derived-processed",
+    "source_kind": "processed_mit",
+    "quality_score": 88,
+    "generated_at": "2026-06-22T00:00:00.000Z",
+    "source_attribution": ["curated from MIT-compatible engineering material"],
+    "chunks": [
+      {
+        "chunk_id": "chunk-cloud-governance",
+        "title": "Cloud governance trace",
+        "body": "Osstack Knowledge Cloud should record pack ids and chunk ids in report and proof evidence.",
+        "tags": ["cloud", "governance"],
+        "source_refs": ["osstack-knowledge-cloud-v1"]
+      }
+    ]
+  },
+  "expected_mode": "local"
+}

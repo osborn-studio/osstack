@@ -145,17 +145,36 @@ A run is L4 when it satisfies L3 and the proof pack contains agent decision, dif
 
 Reports SHOULD display the highest conformance level that can be proven from available evidence.
 
-## R-011 Versioning and Deprecation
+## R-011 Knowledge Evidence
+
+Knowledge packs used by a run MUST conform to `schemas/knowledge-pack.schema.json`.
+
+A knowledge pack MUST include:
+
+- `id`
+- `version`
+- `name`
+- `license`
+- `source_kind`
+- `quality_score`
+- `chunks`
+
+The `source_kind` field MUST distinguish osstack-native material from processed MIT-compatible, curated external, or internal material. Processed external knowledge MUST be transformed into Osstack concepts and MUST retain license/source attribution metadata.
+
+Runs MAY operate with knowledge mode `off`, `local`, or `cloud`. If cloud knowledge is unavailable, the run SHOULD fail open to `local` or `off`. Reports and proof packs SHOULD record injected knowledge pack ids and chunk ids when knowledge is used.
+
+## R-012 Versioning and Deprecation
 
 Spec versions MUST use semantic versioning. A breaking schema or clause change MUST increment the major version.
 
 A deprecated field SHOULD remain accepted for one minor version unless it creates a security risk.
 
-## R-012 Test Vectors
+## R-013 Test Vectors
 
 Implementations MUST use the vectors under `test-vectors/` as compatibility examples:
 
 - `OS-GOV-001.json`: policy and governance evidence.
 - `OS-EVID-001.json`: state, event, and proof evidence.
+- `OS-KNOW-001.json`: knowledge pack metadata and local/cloud mode evidence.
 
 Every MUST clause above SHOULD map to at least one schema, test vector, or deterministic verifier rule.

@@ -20,8 +20,9 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       "R-008 Worktree Safety",
       "R-009 Proof Pack",
       "R-010 Conformance Levels",
-      "R-011 Versioning and Deprecation",
-      "R-012 Test Vectors",
+      "R-011 Knowledge Evidence",
+      "R-012 Versioning and Deprecation",
+      "R-013 Test Vectors",
     ]) {
       expect(spec).toContain(clause);
     }
@@ -33,6 +34,7 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
     expect(spec).toContain("schemas/loop-state.schema.json");
     expect(spec).toContain("schemas/policy-decision.schema.json");
     expect(spec).toContain("schemas/proof-pack-manifest.schema.json");
+    expect(spec).toContain("schemas/knowledge-pack.schema.json");
   });
 
   it("keeps schema and test vector JSON parseable with required anchors", async () => {
@@ -42,8 +44,10 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       "schemas/loop-state.schema.json",
       "schemas/policy-decision.schema.json",
       "schemas/proof-pack-manifest.schema.json",
+      "schemas/knowledge-pack.schema.json",
       "test-vectors/OS-GOV-001.json",
       "test-vectors/OS-EVID-001.json",
+      "test-vectors/OS-KNOW-001.json",
     ];
 
     for (const relative of jsonFiles) {
@@ -66,5 +70,12 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
     ) as { expected_conformance: string; proof_manifest: { kind: string } };
     expect(evidenceVector.expected_conformance).toBe("L2");
     expect(evidenceVector.proof_manifest.kind).toBe("osstack.proof_pack");
+
+    const knowledgeVector = JSON.parse(
+      await readFile(join(specDir, "test-vectors", "OS-KNOW-001.json"), "utf-8"),
+    ) as { expected_mode: string; knowledge_pack: { source_kind: string; quality_score: number } };
+    expect(knowledgeVector.expected_mode).toBe("local");
+    expect(knowledgeVector.knowledge_pack.source_kind).toBe("processed_mit");
+    expect(knowledgeVector.knowledge_pack.quality_score).toBeGreaterThan(0);
   });
 });

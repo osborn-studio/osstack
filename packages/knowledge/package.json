@@ -1,0 +1,18 @@
+{
+  "name": "@osstack/knowledge",
+  "version": "0.0.0",
+  "description": "Osstack-native knowledge pack contracts and local bootstrap search.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19"
+  }
+}

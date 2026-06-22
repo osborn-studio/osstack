@@ -31,6 +31,7 @@ import {
   type LoopEvent,
   type LoopState,
 } from "@osstack/loop";
+import { loadKnowledgePack, searchKnowledgePacks } from "@osstack/knowledge";
 import { initProject } from "@osstack/skills";
 import {
   addSource, checkAll, defaultManifestPath, readManifest,
@@ -169,6 +170,10 @@ Branch Steward:
 Governance:
   governance scan <path...> [--json]
                                  Run deterministic governance checks over files
+  knowledge list --pack P [--json]
+                                 List local Osstack knowledge packs
+  knowledge search <query> --pack P [--json]
+                                 Search local Osstack knowledge pack chunks
 
 Hermes integration:
   hermes health                  Show kanban-sync bridge state
@@ -306,6 +311,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "governance") {
     return await handleGovernanceCommand(args.slice(1));
+  }
+
+  if (cmd === "knowledge") {
+    return await handleKnowledgeCommand(args.slice(1));
   }
 
   if (cmd === "hermes") {
@@ -498,6 +507,81 @@ function printGovernanceScan(result: Awaited<ReturnType<typeof scanFiles>>): voi
     const location = finding.file === undefined ? `line ${finding.line}` : `${finding.file}:${finding.line}`;
     console.log(`- [${finding.severity}] ${finding.rule_id} ${location} - ${finding.message}`);
   }
+}
+
+async function handleKnowledgeCommand(args: string[]): Promise<number> {
+  const sub = args[0];
+  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack knowledge — local Osstack knowledge pack bootstrap
+
+  osstack knowledge list --pack P [--json]
+  osstack knowledge search <query> --pack P [--limit N] [--json]
+`);
+    return 0;
+  }
+
+  if (sub === "list") {
+    const packPaths = flagValues(args, "--pack");
+    if (packPaths.length === 0) {
+      console.error("osstack: knowledge list requires at least one --pack path");
+      return 1;
+    }
+    const packs = await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath)));
+    const summaries = packs.map((pack) => ({
+      id: pack.manifest.id,
+      version: pack.manifest.version,
+      name: pack.manifest.name,
+      license: pack.manifest.license,
+      source_kind: pack.manifest.source_kind,
+      quality_score: pack.manifest.quality_score,
+      chunks: pack.manifest.chunks.length,
+      path: pack.path,
+    }));
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({ packs: summaries }, null, 2));
+    } else {
+      for (const pack of summaries) {
+        console.log(`${pack.id}@${pack.version} ${pack.name}`);
+        console.log(`  license=${pack.license} source_kind=${pack.source_kind} quality=${pack.quality_score} chunks=${pack.chunks}`);
+      }
+    }
+    return 0;
+  }
+
+  if (sub === "search") {
+    const packPaths = flagValues(args, "--pack");
+    if (packPaths.length === 0) {
+      console.error("osstack: knowledge search requires at least one --pack path");
+      return 1;
+    }
+    const query = positionalValues(args.slice(1), new Set(["--pack", "--limit"])).join(" ");
+    if (query.length === 0) {
+      console.error("osstack: knowledge search requires a query");
+      return 1;
+    }
+    const limitRaw = flagValue(args, "--limit");
+    const limit = limitRaw === undefined ? 5 : Number.parseInt(limitRaw, 10);
+    if (!Number.isInteger(limit) || limit <= 0) {
+      console.error("osstack: --limit must be a positive integer");
+      return 1;
+    }
+    const packs = await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath)));
+    const results = searchKnowledgePacks(packs, query, { limit });
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({ query, results }, null, 2));
+    } else if (results.length === 0) {
+      console.log("No knowledge chunks matched.");
+    } else {
+      for (const result of results) {
+        console.log(`${result.pack_id}:${result.chunk_id} score=${result.score} ${result.title}`);
+        console.log(result.snippet);
+      }
+    }
+    return 0;
+  }
+
+  console.error(`osstack: unknown knowledge subcommand "${sub}"`);
+  return 1;
 }
 
 async function handleSkillsCommand(args: string[]): Promise<number> {

@@ -69,6 +69,9 @@ importers:
       '@osstack/hermes-adapter':
         specifier: workspace:*
         version: link:../hermes-adapter
+      '@osstack/knowledge':
+        specifier: workspace:*
+        version: link:../knowledge
       '@osstack/loop':
         specifier: workspace:*
         version: link:../loop
@@ -167,6 +170,12 @@ importers:
       '@types/node':
         specifier: ^25.8.0
         version: 25.8.0
+
+  packages/knowledge:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
 
   packages/loop:
     dependencies:
