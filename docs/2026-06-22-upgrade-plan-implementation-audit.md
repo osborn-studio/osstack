@@ -371,6 +371,7 @@
 - 云端服务支持 `/v1/feedback/summary`，可按 `tenant_id` 聚合 useful/bad/total 和 chunk 级反馈计数；Knowledge Cloud smoke 已覆盖 tenant feedback summary。
 - `osstack-knowledge-cloud` 支持 `--feedback-log` / `OSSTACK_KNOWLEDGE_FEEDBACK_LOG` 将 feedback entry 追加写入 JSONL，并在启动时预加载既有 JSONL 作为 summary 初始状态；Fly/Render 部署配置默认使用 `/data/feedback/feedback.jsonl`，deploy asset smoke 会检查该落盘路径。
 - Knowledge search result 会返回 `matched_terms`，本地检索和云端检索 validator 均已覆盖，prompt snippet 会携带命中词，便于 proof/report 解释 chunk 为什么被检索命中。
+- 本地与云端共用的 `searchKnowledgePacks` 已从简单词频排序升级为 BM25-style 排序：考虑 query term 文档频率、chunk 长度归一化和 pack quality score，并覆盖“稀有词完整命中优先于重复通用词”的回归测试。
 - CLI 支持 cloud login/sync/search/import/ingest/pin/feedback/sources。
 - 本地 smoke 验证 official/private packs、sync、search、feedback。
 - deploy assets 存在：Dockerfile、Fly、Render、GitHub Actions；`release doctor --target knowledge-cloud` 已接入 `knowledge_cloud_deploy_assets` 静态 preflight，检查 Dockerfile、Fly/Render healthcheck、feedback JSONL 持久化路径、workflow smoke、Docker build、`FLY_API_TOKEN` gate 与 Fly deploy 命令；传入 `--cloud-url <url>` 时还会访问 `<url>/healthz` 并要求 HTTP 2xx、`ok=true`、`service=osstack-knowledge-cloud`，同时用默认 `proof pack checksum` 查询 `<url>/v1/search` 并要求至少 1 条结果；`release plan` 的 Knowledge Cloud validation commands 也会列出 `pnpm smoke:knowledge-cloud:deploy`。
@@ -378,7 +379,7 @@
 未完成：
 
 - 真实云端域名/URL 未上线；`--cloud-url` health + search gate 已具备，但尚无生产 URL 通过记录。
-- 生产 storage/Postgres/vector index/BM25 未实现。
+- 生产 storage/Postgres/vector index 未实现；BM25-style 本地/云端共享排序已作为 MVP 检索排序落地。
 - ingestion pipeline 仍是本地 MVP，不是完整 source intake -> rewrite -> review -> publish 系统；当前已有 publish gate 可检查 Osstack voice、provenance、source_refs、quality/review/taxonomy 与 processed license label。
 - tenant auth/permissions 已有 token + explicit tenant scope 的本地 HTTP gate，但仍不是完整生产级账号、组织、角色、审计日志权限模型。
 

@@ -75,6 +75,38 @@ describe("knowledge packs", () => {
     expect(assembleKnowledgeSnippet(results)).toContain("matched_terms=frontend,governance");
   });
 
+  it("ranks chunks with rare query term coverage above repeated generic matches", async () => {
+    const path = join(tmp, "ranking-pack.json");
+    await writeFile(path, JSON.stringify(samplePack({
+      chunks: [
+        {
+          chunk_id: "chunk-repeated-generic",
+          title: "Proof repetition",
+          body: "proof proof proof proof proof proof proof proof proof proof",
+          tags: ["proof"],
+          source_refs: ["ranking-fixture"],
+        },
+        {
+          chunk_id: "chunk-specific-coverage",
+          title: "Proof checksum manifest",
+          body: "Proof evidence should include a checksum manifest for audit review.",
+          tags: ["proof", "checksum"],
+          source_refs: ["ranking-fixture"],
+        },
+      ],
+    }), null, 2));
+    const pack = await loadKnowledgePack(path);
+
+    const results = searchKnowledgePacks([pack], "proof checksum", { limit: 2 });
+
+    expect(results.map((result) => result.chunk_id)).toEqual([
+      "chunk-specific-coverage",
+      "chunk-repeated-generic",
+    ]);
+    expect(results[0]?.matched_terms).toEqual(["proof", "checksum"]);
+    expect(results[0]?.score).toBeGreaterThan(results[1]?.score ?? 0);
+  });
+
   it("uses cloud search when a cloud endpoint returns osstack-native results", async () => {
     const requests: Array<{ authorization: string | null; body: unknown }> = [];
     const fetchImpl: typeof fetch = async () => new Response(JSON.stringify({

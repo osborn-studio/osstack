@@ -554,25 +554,44 @@ export function searchKnowledgePacks(
 ): KnowledgeSearchResult[] {
   const terms = tokenize(query);
   if (terms.length === 0) return [];
+  const documents = packs.flatMap((pack) => pack.manifest.chunks.map((chunk) => {
+    const haystack = `${chunk.title} ${chunk.body} ${(chunk.tags ?? []).join(" ")}`.toLowerCase();
+    return {
+      pack,
+      chunk,
+      haystack,
+      length: Math.max(1, tokenize(haystack).length),
+    };
+  }));
+  const averageLength = documents.reduce((sum, document) => sum + document.length, 0) / Math.max(1, documents.length);
+  const documentFrequencies = new Map(terms.map((term) => [
+    term,
+    documents.filter((document) => countOccurrences(document.haystack, term) > 0).length,
+  ]));
   const results: KnowledgeSearchResult[] = [];
-  for (const pack of packs) {
-    for (const chunk of pack.manifest.chunks) {
-      const haystack = `${chunk.title} ${chunk.body} ${(chunk.tags ?? []).join(" ")}`.toLowerCase();
-      const termCounts = terms.map((term) => ({ term, count: countOccurrences(haystack, term) }));
-      const score = termCounts.reduce((sum, termCount) => sum + termCount.count, 0);
-      if (score === 0) continue;
-      results.push({
-        pack_id: pack.manifest.id,
-        pack_version: pack.manifest.version,
-        chunk_id: chunk.chunk_id,
-        title: chunk.title,
-        score,
-        snippet: snippetFor(chunk.body, terms),
-        matched_terms: termCounts.filter((termCount) => termCount.count > 0).map((termCount) => termCount.term),
-        tags: chunk.tags ?? [],
-        source_refs: chunk.source_refs ?? [],
-      });
-    }
+  for (const document of documents) {
+    const termCounts = terms.map((term) => ({ term, count: countOccurrences(document.haystack, term) }));
+    const rawScore = termCounts.reduce((sum, termCount) => sum + bm25TermScore({
+      frequency: termCount.count,
+      documentFrequency: documentFrequencies.get(termCount.term) ?? 0,
+      documentCount: documents.length,
+      documentLength: document.length,
+      averageDocumentLength: averageLength,
+    }), 0);
+    if (rawScore === 0) continue;
+    const qualityMultiplier = 0.9 + (document.pack.manifest.quality_score / 500);
+    const score = Number((rawScore * qualityMultiplier).toFixed(4));
+    results.push({
+      pack_id: document.pack.manifest.id,
+      pack_version: document.pack.manifest.version,
+      chunk_id: document.chunk.chunk_id,
+      title: document.chunk.title,
+      score,
+      snippet: snippetFor(document.chunk.body, terms),
+      matched_terms: termCounts.filter((termCount) => termCount.count > 0).map((termCount) => termCount.term),
+      tags: document.chunk.tags ?? [],
+      source_refs: document.chunk.source_refs ?? [],
+    });
   }
   return results
     .sort((a, b) => b.score - a.score || a.pack_id.localeCompare(b.pack_id) || a.chunk_id.localeCompare(b.chunk_id))
@@ -855,6 +874,22 @@ function countOccurrences(text: string, term: string): number {
     index = text.indexOf(term, index + term.length);
   }
   return count;
+}
+
+function bm25TermScore(options: {
+  frequency: number;
+  documentFrequency: number;
+  documentCount: number;
+  documentLength: number;
+  averageDocumentLength: number;
+}): number {
+  if (options.frequency <= 0 || options.documentFrequency <= 0) return 0;
+  const k1 = 1.2;
+  const b = 0.75;
+  const idf = Math.log(1 + (options.documentCount - options.documentFrequency + 0.5) / (options.documentFrequency + 0.5));
+  const lengthRatio = options.documentLength / Math.max(1, options.averageDocumentLength);
+  const denominator = options.frequency + k1 * (1 - b + b * lengthRatio);
+  return idf * ((options.frequency * (k1 + 1)) / denominator);
 }
 
 function snippetFor(body: string, terms: string): string;
