@@ -121,6 +121,8 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       "schema_version",
       "kind",
       "loop_id",
+      "created_at",
+      "generated_at",
       "artifacts",
     ]));
     expect(proofManifestSchema.properties.compliance_reports?.items?.required).toEqual(expect.arrayContaining([
@@ -134,13 +136,14 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       await readFile(join(specDir, "test-vectors", "OS-EVID-001.json"), "utf-8"),
     ) as {
       expected_conformance: string;
-      proof_manifest: { kind: string };
+      proof_manifest: { kind: string; created_at: string; generated_at: string };
       agent_runtime: { status: string; agents: Array<{ auth_mode: string }> };
       verify_results: { status: string; results: Array<{ reviewer_agent_id: string }> };
       worktree_status: { status: string; entries: Array<{ status: string }> };
     };
     expect(evidenceVector.expected_conformance).toBe("L2");
     expect(evidenceVector.proof_manifest.kind).toBe("osstack.proof_pack");
+    expect(evidenceVector.proof_manifest.created_at).toBe(evidenceVector.proof_manifest.generated_at);
     expect(evidenceVector.agent_runtime.status).toBe("recorded");
     expect(evidenceVector.agent_runtime.agents[0]?.auth_mode).toBe("subprocess/login-reuse");
     expect(evidenceVector.verify_results.status).toBe("pass");
