@@ -446,6 +446,30 @@ describe("proof CLI", () => {
     expect(errors.join("\n")).toContain("worktree-status.entries[0].path is required");
   });
 
+  it("rejects malformed policy decision evidence before writing a proof pack", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const eventsPath = join(tmp, "bad-policy-events.jsonl");
+    await writeFile(eventsPath, [
+      JSON.stringify({
+        event_id: "evt-bad-policy",
+        loop_id: "cli-proof-loop",
+        type: "loop.plan.done",
+        seq: 1,
+        created_at: 1782090000000,
+        payload: {
+          task_id: "proof-task",
+          agent_id: "codex-cli",
+        },
+      }),
+    ].join("\n") + "\n");
+
+    const exitCode = await main(["proof", "--workspace", tmp, "--events", eventsPath]);
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("proof evidence validation failed");
+    expect(errors.join("\n")).toContain("policy-decision.decisions[0].reason is required");
+  });
+
   it("fails when state is missing", async () => {
     const exitCode = await main(["proof", "--workspace", tmp]);
 

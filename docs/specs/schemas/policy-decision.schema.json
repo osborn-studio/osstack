@@ -10,11 +10,16 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["task_id", "agent_id", "reason", "event_seq"],
+        "required": ["task_id", "agent_id", "auth_mode", "roles", "reason", "event_seq"],
         "properties": {
-          "task_id": { "type": "string" },
-          "agent_id": { "type": "string" },
-          "reason": { "type": "string" },
+          "task_id": { "type": "string", "minLength": 1 },
+          "agent_id": { "type": "string", "minLength": 1 },
+          "auth_mode": { "type": "string", "minLength": 1 },
+          "roles": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "reason": { "type": "string", "minLength": 1 },
           "event_seq": { "type": "integer", "minimum": 0 }
         },
         "additionalProperties": false

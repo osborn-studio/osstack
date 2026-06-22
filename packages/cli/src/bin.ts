@@ -2786,7 +2786,7 @@ async function writeProofPack(
   const agentRuntime = createAgentRuntimeEvidence(events);
   const verifyResults = createVerifyResultsEvidence(scorecard, events);
   const worktreeStatus = createWorktreeStatusEvidence(events);
-  validateProofEvidenceArtifacts({ agentRuntime, verifyResults, worktreeStatus });
+  validateProofEvidenceArtifacts({ policyDecision, agentRuntime, verifyResults, worktreeStatus });
   const artifacts = [
     { path: "report.md", content: renderReportMarkdownForArtifacts(state, events) },
     { path: "scorecard.md", content: renderLoopStateScorecardMarkdown(scorecard, { language: resolveLanguage() }) },
@@ -3746,11 +3746,13 @@ function createWorktreeStatusEvidence(events: LoopEvent[]): {
 }
 
 function validateProofEvidenceArtifacts(evidence: {
+  policyDecision: ReturnType<typeof createPolicyDecisionEvidence>;
   agentRuntime: ReturnType<typeof createAgentRuntimeEvidence>;
   verifyResults: ReturnType<typeof createVerifyResultsEvidence>;
   worktreeStatus: ReturnType<typeof createWorktreeStatusEvidence>;
 }): void {
   const errors = [
+    ...validatePolicyDecisionEvidence(evidence.policyDecision),
     ...validateAgentRuntimeEvidence(evidence.agentRuntime),
     ...validateVerifyResultsEvidence(evidence.verifyResults),
     ...validateWorktreeStatusEvidence(evidence.worktreeStatus),
@@ -3758,6 +3760,43 @@ function validateProofEvidenceArtifacts(evidence: {
   if (errors.length > 0) {
     throw new Error(`proof evidence validation failed: ${errors.join("; ")}`);
   }
+}
+
+function validatePolicyDecisionEvidence(value: ReturnType<typeof createPolicyDecisionEvidence>): string[] {
+  const errors: string[] = [];
+  if (value.status !== "recorded" && value.status !== "unknown") {
+    errors.push("policy-decision.status must be recorded or unknown");
+  }
+  if (value.status === "recorded") {
+    if (!Array.isArray(value.decisions) || value.decisions.length === 0) {
+      errors.push("policy-decision.decisions must contain at least one decision when status is recorded");
+    } else {
+      value.decisions.forEach((decision, index) => {
+        if (decision.task_id.length === 0 || decision.task_id === "unknown") {
+          errors.push(`policy-decision.decisions[${index}].task_id is required`);
+        }
+        if (decision.agent_id.length === 0 || decision.agent_id === "unknown") {
+          errors.push(`policy-decision.decisions[${index}].agent_id is required`);
+        }
+        if (decision.auth_mode.length === 0) {
+          errors.push(`policy-decision.decisions[${index}].auth_mode is required`);
+        }
+        if (!Array.isArray(decision.roles)) {
+          errors.push(`policy-decision.decisions[${index}].roles must be an array`);
+        }
+        if (decision.reason.length === 0 || decision.reason === "unknown") {
+          errors.push(`policy-decision.decisions[${index}].reason is required`);
+        }
+        if (!Number.isInteger(decision.event_seq) || decision.event_seq < 0) {
+          errors.push(`policy-decision.decisions[${index}].event_seq must be a non-negative integer`);
+        }
+      });
+    }
+  }
+  if (value.status === "unknown" && (value.reason === undefined || value.reason.length === 0)) {
+    errors.push("policy-decision.reason is required when status is unknown");
+  }
+  return errors;
 }
 
 function validateAgentRuntimeEvidence(value: ReturnType<typeof createAgentRuntimeEvidence>): string[] {
