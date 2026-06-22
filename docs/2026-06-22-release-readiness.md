@@ -43,7 +43,7 @@
 | `pnpm test` | 通过 | CLI 136 tests、Loop 58 tests、Core 71 tests 等全部通过 |
 | `pnpm smoke:knowledge-cloud:deploy` | 通过 | 检查 `Dockerfile.knowledge-cloud`、Fly、Render、GitHub Actions 部署资产 |
 | `pnpm smoke:knowledge-cloud` | 通过 | health=`osstack-knowledge-cloud`，packs=`6`，private_packs=`1`，sync_packs=`6`，top_result=`proof-checksum-pack`，private_result=`private-release-approval`，feedback=`sent` |
-| `pnpm smoke:npm-install` | 通过 | 15 个 tarballs；安装后 CLI、launchd dry-run、evidence、knowledge、cloud 全部验证 |
+| `pnpm smoke:npm-install` | 通过 | 15 个 tarballs；安装后 CLI、launchd dry-run、evidence、knowledge eval、Knowledge Cloud load、sync cache、cloud outage local fallback 全部验证 |
 | `pnpm smoke:loop` | 通过 | `[smoke] ok workspace=...` |
 | `node packages/cli/dist/bin.js knowledge eval --official --fixtures knowledge-evals/retrieval/osstack-core.json --json` | 通过 | total=`30`，passed=`30`，failed=`0`，top_k=`3` |
 
@@ -65,6 +65,7 @@
 - 检查 `knowledge sources --internal --official` 能返回 6 个带 provenance 的 official packs。
 - 检查 `osstack-knowledge-cloud --help`。
 - 检查 Knowledge Cloud 能加载 6 个 official packs，且 private packs 为 0。
+- 用安装后的 CLI 从临时 Knowledge Cloud sync 6 个 official packs 到 cache，再用不可用 cloud URL 搜索，确认 fail-open 到 local cache 且命中 `proof-checksum-pack`。
 
 ## 5. Knowledge Cloud 当前成熟度
 

@@ -11,7 +11,7 @@
 
 - Phase 1 Evidence Layer、Phase 2 Product Entry、Phase 3 Governed Run、Phase 4 Learning Control Plane、Phase 6 的 Knowledge Cloud/Compliance 大部分已经有代码、命令和测试。
 - 最关键的端到端路径已经跑通：`deliver/loop -> report -> scorecard -> proof -> pr body -> knowledge trace -> compliance render`。
-- npm 安装后的真实用户路径已有 smoke：tarball pack/install、CLI 二进制、launchd dry-run、doctor、loop doctor、evidence commands、official knowledge eval、Knowledge Cloud package loading。
+- npm 安装后的真实用户路径已有 smoke：tarball pack/install、CLI 二进制、launchd dry-run、doctor、loop doctor、evidence commands、official knowledge eval、Knowledge Cloud package loading、cloud sync cache、cloud outage local fallback。
 - Knowledge Cloud 已具备 official/private pack HTTP 服务、sync/search/feedback endpoint、部署资产和本地 smoke。
 
 仍未完成的部分集中在外部发布和产品深化：
@@ -211,7 +211,7 @@
 已完成：
 
 - `osstack knowledge login/sync/list/search/inspect/import/ingest/pin/feedback/eval/sources` 存在。
-- local cache、cloud search、official packs、本地降级、provenance、retrieval eval 均有测试。
+- local cache、cloud search、official packs、本地降级、provenance、retrieval eval 均有测试；安装后 smoke 也覆盖 cloud outage -> cached official packs fallback。
 - report/proof 可记录 knowledge mode、packs、chunks。
 
 需增强：

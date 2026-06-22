@@ -2,7 +2,7 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 
 const root = process.cwd();
 const tempRoot = await mkdtemp(join(tmpdir(), "osstack-npm-smoke-"));
@@ -11,6 +11,7 @@ const prefix = join(tempRoot, "prefix");
 const workspace = join(tempRoot, "workspace");
 const osstackHome = join(tempRoot, "home");
 const launchAgentsDir = join(tempRoot, "LaunchAgents");
+let knowledgeCloudChild;
 
 try {
   run("pnpm", ["-r", "build"], { cwd: root });
@@ -171,6 +172,55 @@ try {
     throw new Error(`knowledge cloud npm smoke did not load official packs: ${knowledgeStart.stdout}`);
   }
 
+  const knowledgeCacheDir = join(tempRoot, "knowledge-cache");
+  const knowledgeCloud = await startKnowledgeCloud(knowledgeCloudBin, [
+    "--port",
+    "0",
+    "--official-index",
+    join(root, "knowledge-packs", "official", "index.json"),
+  ]);
+  knowledgeCloudChild = knowledgeCloud.child;
+  const knowledgeSync = run(osstackBin, [
+    "knowledge",
+    "sync",
+    "--cloud-url",
+    knowledgeCloud.url,
+    "--cache-dir",
+    knowledgeCacheDir,
+    "--json",
+  ], { cwd: root, capture: true });
+  const knowledgeSyncParsed = JSON.parse(knowledgeSync.stdout);
+  if (knowledgeSyncParsed.status !== "synced" || knowledgeSyncParsed.packs?.length !== 6) {
+    throw new Error(`installed CLI knowledge sync did not cache official packs: ${knowledgeSync.stdout}`);
+  }
+  knowledgeCloudChild.kill("SIGTERM");
+  knowledgeCloudChild = undefined;
+
+  const fallbackSearch = run(osstackBin, [
+    "knowledge",
+    "search",
+    "proof pack checksum manifest",
+    "--cloud-url",
+    "http://127.0.0.1:1",
+    "--cache-dir",
+    knowledgeCacheDir,
+    "--limit",
+    "3",
+    "--json",
+  ], { cwd: root, capture: true });
+  const fallbackSearchParsed = JSON.parse(fallbackSearch.stdout);
+  if (
+    fallbackSearchParsed.mode !== "local"
+    || fallbackSearchParsed.fallback_mode !== "local"
+    || !Array.isArray(fallbackSearchParsed.results)
+    || !fallbackSearchParsed.results.some((result) => (
+      result.pack_id === "osstack-core/proof-and-scorecard"
+      && result.chunk_id === "proof-checksum-pack"
+    ))
+  ) {
+    throw new Error(`installed CLI knowledge search did not fail open to cached packs: ${fallbackSearch.stdout}`);
+  }
+
   console.log(JSON.stringify({
     ok: true,
     tarballs: tarballs.length,
@@ -199,13 +249,52 @@ try {
       packs: knowledgeParsed.packs,
       private_packs: knowledgeParsed.private_packs,
     },
+    knowledge_cache_fallback: {
+      synced_packs: knowledgeSyncParsed.packs.length,
+      fallback_mode: fallbackSearchParsed.fallback_mode,
+      top_result: fallbackSearchParsed.results[0]?.chunk_id ?? null,
+    },
   }, null, 2));
 } finally {
+  if (knowledgeCloudChild !== undefined) {
+    knowledgeCloudChild.kill("SIGTERM");
+  }
   if (process.env["OSSTACK_KEEP_NPM_SMOKE"] !== "1") {
     await rm(tempRoot, { recursive: true, force: true });
   } else {
     console.error(`kept smoke directory: ${tempRoot}`);
   }
+}
+
+function startKnowledgeCloud(command, args) {
+  const child = spawn(command, args, {
+    cwd: root,
+    env: { ...process.env },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let stdout = "";
+  let stderr = "";
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      child.kill("SIGTERM");
+      reject(new Error(`knowledge cloud did not start\nstdout:\n${stdout}\nstderr:\n${stderr}`));
+    }, 10_000);
+    child.stdout.on("data", (chunk) => {
+      stdout += String(chunk);
+      const match = stdout.match(/^knowledge_cloud=(.+)$/m);
+      if (match !== null) {
+        clearTimeout(timeout);
+        resolve({ child, url: match[1] });
+      }
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+    child.once("exit", (code) => {
+      clearTimeout(timeout);
+      reject(new Error(`knowledge cloud exited before startup with ${code}\nstdout:\n${stdout}\nstderr:\n${stderr}`));
+    });
+  });
 }
 
 function run(command, args, options = {}) {
