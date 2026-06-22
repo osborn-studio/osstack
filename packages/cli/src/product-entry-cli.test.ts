@@ -252,9 +252,9 @@ describe("product entry commands", () => {
 
   it("prints a release action plan from current readiness", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "";
     process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "warn";
-    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "open:5:UNSTABLE";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "open:5:UNSTABLE:MERGEABLE:0:CI:action_required";
 
     const exitCode = await main(["release", "plan", "--target", "npm", "--json"]);
 
@@ -263,12 +263,16 @@ describe("product entry commands", () => {
       target: string;
       ready: boolean;
       blockers: string[];
+      operator_commands: string[];
       validation_commands: string[];
       publish_commands: string[];
     };
     expect(result.target).toBe("npm");
-    expect(result.ready).toBe(true);
+    expect(result.ready).toBe(false);
+    expect(result.blockers.join("\n")).toContain("NPM_TOKEN");
     expect(result.blockers.join("\n")).toContain("Version Packages PR #5");
+    expect(result.operator_commands).toContain("gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\"");
+    expect(result.operator_commands).toContain("Open the latest Version Packages PR CI run and approve or rerun it if GitHub requires manual action.");
     expect(result.validation_commands).toContain("osstack release doctor --target npm --output release-readiness.md --json");
     expect(result.validation_commands).toContain("gh pr view 5 --json mergeable,mergeStateStatus,statusCheckRollup,url");
     expect(result.validation_commands).toContain("gh run list --branch changeset-release/main --limit 5");
