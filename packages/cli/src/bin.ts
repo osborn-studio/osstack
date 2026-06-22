@@ -2174,7 +2174,7 @@ function releaseDoctorNextSteps(options: {
   }
   const proofValidation = options.checks.find((check) => check.id === "proof_validation");
   if (proofValidation?.status === "error") {
-    steps.push("Fix missing or malformed proof evidence before publishing or deploying.");
+    steps.push(releaseProofValidationNextStep(proofValidation));
   }
   if ((options.target === "all" || options.target === "npm") && options.npmPublish) {
     steps.push("NPM publish path is ready for the release workflow.");
@@ -2187,6 +2187,14 @@ function releaseDoctorNextSteps(options: {
   }
   if (steps.length === 0) steps.push("Review failed checks above before publishing.");
   return steps;
+}
+
+function releaseProofValidationNextStep(check: ReleaseDoctorCheck): string {
+  const fileIntegrity = check.details?.["file_integrity"];
+  if (isRecord(fileIntegrity) && fileIntegrity["ok"] === false) {
+    return "Regenerate or repair proof pack artifacts before publishing or deploying.";
+  }
+  return "Fix missing or malformed proof evidence before publishing or deploying.";
 }
 
 function printReleaseDoctor(result: ReleaseDoctorResult): void {
@@ -2259,6 +2267,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     || step.startsWith("Fix GitHub Actions")
     || step.startsWith("Add Apple notarization")
     || step.startsWith("Fix missing or malformed proof evidence")
+    || step.startsWith("Regenerate or repair proof pack artifacts")
     || step.startsWith("Restore NPM publish assets")
     || step.startsWith("Restore Knowledge Cloud deploy assets")
     || step.startsWith("Restore the Knowledge Cloud Deploy workflow")

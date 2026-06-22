@@ -125,7 +125,7 @@
 - `proof view` 支持 audience-oriented evidence views。
 - `osstack proof validate <run_id>` 支持对 proof pack 做机器可读结构门禁，默认检查 proof-core，也可通过 `--pack` 或 `--audience` 复用 compliance/proof-view 控制项；同时会读取 manifest artifact 清单，拒绝重复 artifact path、缺失文件、bytes 不一致、sha256 不一致、`sha256sums.txt` 与 manifest 不一致和试图跳出 proof 目录的 artifact path。
 - `osstack release plan --workspace <workspace>` 会复用 release doctor 的 workspace proof 检查；也支持 `--proof-dir <proof_dir>` 固定某个已审核 proof pack，并把 release doctor / proof validate validation commands 绑定到同一个证据目录，避免上线时误读自动发现的旧证据。
-- `osstack release doctor --proof-dir <proof_dir>` 会执行 proof-core 与 manifest artifact 文件完整性校验；未传 `--proof-dir` 时会从 `--workspace`/当前目录的 `release/osstack-proof-*` 自动发现最新 proof dir。重复 artifact path、缺失、malformed、hash/bytes 不一致、checksum inventory 不一致或越界 artifact path 会输出 `proof_validation` error，让 release readiness 失败并进入 next steps。
+- `osstack release doctor --proof-dir <proof_dir>` 会执行 proof-core 与 manifest artifact 文件完整性校验；未传 `--proof-dir` 时会从 `--workspace`/当前目录的 `release/osstack-proof-*` 自动发现最新 proof dir。重复 artifact path、缺失、malformed、hash/bytes 不一致、checksum inventory 不一致或越界 artifact path 会输出 `proof_validation` error，让 release readiness 失败，并在 next steps 中区分“修复缺失/格式错误 evidence”和“重新生成或修复 proof pack artifacts”。
 - npm install smoke 会生成 scorecard markdown、proof manifest、proof zip。
 
 未完成/需增强：
