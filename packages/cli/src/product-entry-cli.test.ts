@@ -499,6 +499,7 @@ describe("product entry commands", () => {
       operator_commands: string[];
       validation_commands: string[];
       publish_commands: string[];
+      post_release_validation_commands: string[];
     };
     expect(result.target).toBe("npm");
     expect(result.ready).toBe(false);
@@ -514,6 +515,9 @@ describe("product entry commands", () => {
     expect(result.validation_commands).toContain("gh run list --branch changeset-release/main --limit 5");
     expect(result.publish_commands).toContain("gh pr merge 5 --squash --delete-branch");
     expect(result.publish_commands).toContain("npm install -g @osstack/cli");
+    expect(result.post_release_validation_commands).toContain("npm install -g @osstack/cli");
+    expect(result.post_release_validation_commands).toContain("osstack release doctor --target npm --json");
+    expect(result.post_release_validation_commands).toContain("osstack doctor --workspace . --json");
   });
 
   it("writes a Knowledge Cloud release action plan", async () => {
@@ -552,6 +556,7 @@ describe("product entry commands", () => {
         blockers: string[];
         validation_commands: string[];
         deploy_commands: string[];
+        post_release_validation_commands: string[];
         output: string;
       };
       expect(result.ready).toBe(false);
@@ -565,12 +570,20 @@ describe("product entry commands", () => {
       expect(result.validation_commands).toContain("pnpm smoke:knowledge-cloud:deploy");
       expect(result.validation_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false");
       expect(result.deploy_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+      expect(result.post_release_validation_commands).toContain(
+        "osstack release doctor --target knowledge-cloud --cloud-url https://knowledge.osstack.ai --json",
+      );
+      expect(result.post_release_validation_commands).toContain(
+        "osstack knowledge search \"proof pack checksum\" --cloud-url https://knowledge.osstack.ai --json",
+      );
       const markdown = await readFile(output, "utf-8");
       expect(markdown).toContain("# Osstack Release Action Plan");
       expect(markdown).toContain("Target: `knowledge-cloud`");
       expect(markdown).toContain("Safe to execute publish/deploy commands: `no`");
       expect(markdown).toContain("Do not run publish or deploy commands until blockers are resolved.");
       expect(markdown).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+      expect(markdown).toContain("## Post-Release Validation Commands");
+      expect(markdown).toContain("osstack release doctor --target knowledge-cloud --cloud-url https://knowledge.osstack.ai --json");
     } finally {
       await cloud.close();
     }
@@ -858,6 +871,7 @@ describe("product entry commands", () => {
       validation_commands: string[];
       publish_commands: string[];
       deploy_commands: string[];
+      post_release_validation_commands: string[];
       output: string;
     };
     expect(result.ready).toBe(true);
@@ -868,9 +882,12 @@ describe("product entry commands", () => {
     expect(result.validation_commands).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=true");
     expect(result.publish_commands).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false");
     expect(result.deploy_commands).toEqual([]);
+    expect(result.post_release_validation_commands).toContain("gh release view v<version> --repo gilosbornhello/osstack");
+    expect(result.post_release_validation_commands).toContain("shasum -a 256 -c sha256sums.txt");
     const markdown = await readFile(output, "utf-8");
     expect(markdown).toContain("Target: `single-binary`");
     expect(markdown).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false");
+    expect(markdown).toContain("gh release view v<version> --repo gilosbornhello/osstack");
   });
 
   it("rejects unknown release doctor targets", async () => {

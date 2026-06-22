@@ -877,6 +877,7 @@ interface ReleaseActionPlan {
   validation_commands: string[];
   publish_commands: string[];
   deploy_commands: string[];
+  post_release_validation_commands: string[];
   output?: string;
 }
 
@@ -2523,6 +2524,24 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     "osstack knowledge sync",
     "osstack knowledge search \"proof pack checksum\"",
   ];
+  const postReleaseValidationCommands = [
+    ...(result.target === "knowledge-cloud" || result.target === "single-binary" ? [] : [
+      "npm install -g @osstack/cli",
+      "osstack --version",
+      "osstack release doctor --target npm --json",
+      "osstack doctor --workspace . --json",
+    ]),
+    ...(result.target === "npm" || result.target === "single-binary" ? [] : [
+      "osstack release doctor --target knowledge-cloud --cloud-url https://knowledge.osstack.ai --json",
+      "osstack knowledge sync --cloud-url https://knowledge.osstack.ai --json",
+      "osstack knowledge search \"proof pack checksum\" --cloud-url https://knowledge.osstack.ai --json",
+    ]),
+    ...(result.target === "npm" || result.target === "knowledge-cloud" ? [] : [
+      "gh release view v<version> --repo gilosbornhello/osstack",
+      "gh release download v<version> --repo gilosbornhello/osstack --pattern 'osstack-*.tar.gz' --pattern 'sha256sums.txt'",
+      "shasum -a 256 -c sha256sums.txt",
+    ]),
+  ];
   return {
     target: result.target,
     ready: result.ok,
@@ -2532,6 +2551,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     validation_commands: validationCommands,
     publish_commands: publishCommands,
     deploy_commands: deployCommands,
+    post_release_validation_commands: postReleaseValidationCommands,
   };
 }
 
@@ -2568,6 +2588,10 @@ function renderReleaseActionPlan(plan: ReleaseActionPlan): string {
     "## Deploy Commands",
     "",
     ...(plan.deploy_commands.length === 0 ? ["No Knowledge Cloud deploy commands for this target."] : plan.deploy_commands.map((command) => `- \`${command}\``)),
+    "",
+    "## Post-Release Validation Commands",
+    "",
+    ...plan.post_release_validation_commands.map((command) => `- \`${command}\``),
     "",
   ].join("\n");
 }
