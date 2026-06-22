@@ -2575,6 +2575,9 @@ function releaseDoctorNextSteps(options: {
 function releaseProofValidationNextStep(check: ReleaseDoctorCheck): string {
   const fileIntegrity = check.details?.["file_integrity"];
   const archiveIntegrity = check.details?.["archive_integrity"];
+  if (proofIntegrityHasIssuePrefix(fileIntegrity, "compliance_report_")) {
+    return "Remove external certification claims and repair compliance report references before publishing or deploying.";
+  }
   if (
     (isRecord(fileIntegrity) && fileIntegrity["ok"] === false)
     || (isRecord(archiveIntegrity) && archiveIntegrity["ok"] === false)
@@ -2582,6 +2585,15 @@ function releaseProofValidationNextStep(check: ReleaseDoctorCheck): string {
     return "Regenerate or repair proof pack artifacts before publishing or deploying.";
   }
   return "Fix missing or malformed proof evidence before publishing or deploying.";
+}
+
+function proofIntegrityHasIssuePrefix(value: unknown, prefix: string): boolean {
+  if (!isRecord(value) || !Array.isArray(value["issues"])) return false;
+  return value["issues"].some((issue) =>
+    isRecord(issue)
+    && typeof issue["code"] === "string"
+    && issue["code"].startsWith(prefix)
+  );
 }
 
 function printReleaseDoctor(result: ReleaseDoctorResult): void {

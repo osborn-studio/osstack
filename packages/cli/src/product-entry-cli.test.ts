@@ -287,6 +287,47 @@ describe("product entry commands", () => {
     expect(result.next_steps.join("\n")).toContain("Regenerate or repair proof pack artifacts before publishing or deploying.");
   });
 
+  it("tells operators to repair compliance evidence when proof compliance claims are invalid", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const proofDir = join(tmp, "release", "osstack-proof-release-bad-compliance");
+    await writeReleaseProofEvidence(proofDir);
+    const manifestPath = join(proofDir, "manifest.json");
+    const manifest = JSON.parse(await readFile(manifestPath, "utf-8")) as {
+      compliance_reports?: Array<{ pack_id: string; path: string; certification_claim: string }>;
+    };
+    manifest.compliance_reports = [{
+      pack_id: "engineering-readiness",
+      path: "compliance-engineering-readiness.md",
+      certification_claim: "soc2",
+    }];
+    await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+
+    const exitCode = await main(["release", "doctor", "--proof-dir", proofDir, "--json"]);
+
+    expect(exitCode).toBe(1);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      checks: Array<{ id: string; status: string; details?: { file_integrity?: { issues?: Array<{ code: string }> } } }>;
+      next_steps: string[];
+    };
+    expect(result.ok).toBe(false);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "proof_validation",
+      status: "error",
+      details: expect.objectContaining({
+        file_integrity: expect.objectContaining({
+          issues: expect.arrayContaining([expect.objectContaining({ code: "compliance_report_invalid_certification_claim" })]),
+        }),
+      }),
+    }));
+    expect(result.next_steps.join("\n")).toContain("Remove external certification claims and repair compliance report references before publishing or deploying.");
+  });
+
   it("reports missing Knowledge Cloud deploy secrets without blocking npm readiness", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
