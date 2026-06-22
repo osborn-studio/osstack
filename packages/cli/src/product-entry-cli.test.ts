@@ -247,6 +247,59 @@ describe("product entry commands", () => {
     expect(markdown).toContain("npm_publish");
   });
 
+  it("prints a release action plan from current readiness", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "warn";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "open:5:UNSTABLE";
+
+    const exitCode = await main(["release", "plan", "--target", "npm", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      target: string;
+      ready: boolean;
+      blockers: string[];
+      validation_commands: string[];
+      publish_commands: string[];
+    };
+    expect(result.target).toBe("npm");
+    expect(result.ready).toBe(true);
+    expect(result.blockers.join("\n")).toContain("Version Packages PR #5");
+    expect(result.validation_commands).toContain("osstack release doctor --target npm --output release-readiness.md --json");
+    expect(result.validation_commands).toContain("gh pr view 5 --json mergeStateStatus,statusCheckRollup,url");
+    expect(result.publish_commands).toContain("gh pr merge 5 --squash --delete-branch");
+    expect(result.publish_commands).toContain("npm install -g @osstack/cli");
+  });
+
+  it("writes a Knowledge Cloud release action plan", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "warn";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const output = join(tmp, "knowledge-release-plan.md");
+
+    const exitCode = await main(["release", "plan", "--target", "knowledge-cloud", "--output", output, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ready: boolean;
+      blockers: string[];
+      validation_commands: string[];
+      deploy_commands: string[];
+      output: string;
+    };
+    expect(result.ready).toBe(false);
+    expect(result.output).toBe(output);
+    expect(result.blockers.join("\n")).toContain("FLY_API_TOKEN");
+    expect(result.validation_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false");
+    expect(result.deploy_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+    const markdown = await readFile(output, "utf-8");
+    expect(markdown).toContain("# Osstack Release Action Plan");
+    expect(markdown).toContain("Target: `knowledge-cloud`");
+    expect(markdown).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+  });
+
   it("rejects unknown release doctor targets", async () => {
     const exitCode = await main(["release", "doctor", "--target", "staging", "--json"]);
 

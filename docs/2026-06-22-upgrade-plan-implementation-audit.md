@@ -395,7 +395,7 @@ osstack release doctor --json
 
 1. 继续把 proof/compliance 的结构级证据检查扩展成可复用 validator；当前 proof view/compliance render 已经会把 malformed manifest、verify、policy、agent runtime、governance、worktree、knowledge evidence 标成 `MISSING`。
 2. 继续补更多 negative/malformed vectors，覆盖边界格式、旧版本兼容字段、外部 proof 目录导入场景。
-3. 继续强化 release doctor、Knowledge Cloud deploy preflight、npm publish preflight；当前 release doctor 已能识别 Version Packages PR #5 的 `UNSTABLE` 状态，显示 Knowledge Cloud Deploy workflow 最近一次 validation run，并通过 `--output` 生成 Markdown 发布行动清单。
+3. 继续强化 release doctor、Knowledge Cloud deploy preflight、npm publish preflight；当前 release doctor 已能识别 Version Packages PR #5 的 `UNSTABLE` 状态，显示 Knowledge Cloud Deploy workflow 最近一次 validation run，通过 `--output` 生成 Markdown 发布行动清单，并通过 `release plan` 生成验证/发布/部署命令 runbook。
 
 授权解除后，立即转入 P0：
 
