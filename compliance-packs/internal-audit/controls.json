@@ -2,26 +2,36 @@
   {
     "id": "audit-proof-inventory",
     "title": "Proof inventory",
-    "description": "Proof manifest gives the artifact inventory and integrity hashes."
+    "description": "Proof manifest gives the artifact inventory and integrity hashes.",
+    "title_zh": "Proof 清单",
+    "description_zh": "Proof manifest 提供产物清单和完整性哈希。"
   },
   {
     "id": "audit-validation",
     "title": "Validation evidence",
-    "description": "Verification evidence records pass/fail status for the run."
+    "description": "Verification evidence records pass/fail status for the run.",
+    "title_zh": "验证证据",
+    "description_zh": "验证证据会记录本次运行的通过/失败状态。"
   },
   {
     "id": "audit-agent-selection",
     "title": "Agent selection evidence",
-    "description": "Policy decision evidence records selected agent and reason."
+    "description": "Policy decision evidence records selected agent and reason.",
+    "title_zh": "Agent 选择证据",
+    "description_zh": "策略决策证据会记录被选择的 agent 及原因。"
   },
   {
     "id": "audit-runtime",
     "title": "Runtime evidence",
-    "description": "Runtime evidence records selected agent modes and roles."
+    "description": "Runtime evidence records selected agent modes and roles.",
+    "title_zh": "运行时证据",
+    "description_zh": "运行时证据会记录被选择的 agent 模式和角色。"
   },
   {
     "id": "audit-change-isolation",
     "title": "Change isolation evidence",
-    "description": "Worktree evidence records branch, commit, and cleanup status."
+    "description": "Worktree evidence records branch, commit, and cleanup status.",
+    "title_zh": "变更隔离证据",
+    "description_zh": "Worktree 证据会记录分支、提交和清理状态。"
   }
 ]

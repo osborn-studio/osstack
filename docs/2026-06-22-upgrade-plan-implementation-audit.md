@@ -33,7 +33,7 @@
 | Phase 2 Product Entry | `osstack deliver` + agent 角色化 | 基本完成 | `deliver-cli.test.ts`、`product-entry-cli.test.ts`、`agent-scorecard-cli.test.ts`、`smoke:npm-install` 安装后 deliver/worktree/proof smoke | 可继续在外部真实业务 repo 上扩展长任务 smoke |
 | Phase 3 Governed Run | Run Spec + governance verifier + PR evidence | 基本完成 | `docs/specs/OSSTACK_RUN_SPEC_V1.md`、`docs/specs/CONFORMANCE_MATRIX.md`、schemas/test vectors、`governance-cli.test.ts`、`pr-cli.test.ts` | 继续随新 MUST 条款补 runtime/schema/vector 覆盖 |
 | Phase 4 Learning Control Plane | Pitfall KB + Knowledge bootstrap + agent scorecard | 基本完成 | `lessons-cli.test.ts`、`knowledge-cli.test.ts`、`agent-scorecard-cli.test.ts` | pitfall 自动提升 verified_count 的真实 loop 闭环需继续增强 |
-| Phase 5 Product Surface | Cockpit/TUI + examples/guide/doctor + i18n + checkpoint | 部分到基本完成 | `dashboard.ts`、`dashboard-cli.test.ts`、`product-entry-cli.test.ts`、`i18n-cli.test.ts`、`proof-cli.test.ts`、`compliance-cli.test.ts`、`checkpoint-cli.test.ts` | 完整交互式 TUI 未完成；非默认 lite pack 的 control 标题/描述深度中英本地化仍可扩展 |
+| Phase 5 Product Surface | Cockpit/TUI + examples/guide/doctor + i18n + checkpoint | 部分到基本完成 | `dashboard.ts`、`dashboard-cli.test.ts`、`product-entry-cli.test.ts`、`i18n-cli.test.ts`、`proof-cli.test.ts`、`compliance-cli.test.ts`、`checkpoint-cli.test.ts` | 完整交互式 TUI 未完成；更深层报告模板/运营内容本地化仍可扩展 |
 | Phase 6 Trust/Compliance/Knowledge Cloud | compliance packs + enterprise proof views + Osstack Knowledge Cloud | 部分到基本完成 | `compliance-packs/*`、`compliance-cli.test.ts`、`proof view`、`knowledge-cloud` package、deploy assets、smoke | 真实云端上线、生产 ingestion pipeline、tenant auth/storage/vector index |
 
 ## 3. 任务级状态
@@ -298,11 +298,12 @@
 - `i18n-cli.test.ts` 存在。
 - `proof view --lang zh-CN` 已覆盖中文标题、受众、缺失证据说明、表头和 auditor 关注点文案。
 - `compliance render --lang zh-CN` 已覆盖中文标题、运行、映射包、外部认证声明、免责声明、表头和内部映射说明。
-- 默认 `engineering-readiness` pack 已补齐 control 级 `title_zh` / `description_zh`，中文 compliance/proof view 会使用中文控制项标题和描述。
+- 所有内置 compliance packs 已补齐 control 级 `title_zh` / `description_zh`，中文 compliance render 会使用中文控制项标题和描述。
+- `proof view --lang zh-CN` 会对默认 `engineering-readiness` 证据视图使用中文控制项标题。
 
 需增强：
 
-- `soc2-lite`、`iso27001-lite`、`eu-ai-act-lite`、`internal-audit` 等非默认 lite pack 仍可继续补齐 control 级双语内容。
+- 更深层报告模板、运营说明、客户交付文案仍可继续系统化本地化。
 
 ### Task 5.4：Optional shadow checkpoint
 

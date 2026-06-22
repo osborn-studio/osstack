@@ -60,6 +60,17 @@ describe("compliance packs", () => {
     }
   });
 
+  it("keeps all built-in compliance controls bilingual", () => {
+    for (const pack of listCompliancePacks()) {
+      for (const control of pack.controls) {
+        expect(control.title_zh, `${pack.id}/${control.id} title_zh`).toEqual(expect.any(String));
+        expect(control.description_zh, `${pack.id}/${control.id} description_zh`).toEqual(expect.any(String));
+        expect(control.title_zh?.length).toBeGreaterThan(0);
+        expect(control.description_zh?.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
   it("renders evidence mappings without claiming external certification", () => {
     const markdown = renderComplianceReport({
       packId: "engineering-readiness",
@@ -93,6 +104,19 @@ describe("compliance packs", () => {
     expect(markdown).toContain("| 控制项 | 状态 | 证据 | 映射 |");
     expect(markdown).toContain("| 变更验证 | PRESENT | `verify-results.json` | 验证门禁或评分卡证据会显示本次变更是否已被验证。 |");
     expect(markdown).toContain("| 证据完整性 | PRESENT | `manifest.json` | Proof manifest 中的产物会携带 SHA-256 checksum。 |");
+  });
+
+  it("renders Chinese evidence mappings for non-default lite packs", () => {
+    const markdown = renderComplianceReport({
+      packId: "soc2-lite",
+      runId: "run_123",
+      evidence: sampleEvidence(),
+      language: "zh-CN",
+    });
+
+    expect(markdown).toContain("# Osstack 合规映射报告 - soc2-lite");
+    expect(markdown).toContain("| 变更验证 | PRESENT | `verify-results.json` | 将验证结果映射到内部变更管理证据视图。 |");
+    expect(markdown).toContain("| Agent 运行时追踪 | PRESENT | `agent-runtime.json` | 显示参与本次运行的 agent 运行时模式。 |");
   });
 
   it("marks missing proof evidence explicitly", () => {

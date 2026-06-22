@@ -2,26 +2,36 @@
   {
     "id": "iso-change-control",
     "title": "Change control evidence",
-    "description": "Verification gates provide internal evidence for change control."
+    "description": "Verification gates provide internal evidence for change control.",
+    "title_zh": "变更控制证据",
+    "description_zh": "验证门禁为变更控制提供内部证据。"
   },
   {
     "id": "iso-secure-engineering",
     "title": "Secure engineering evidence",
-    "description": "Governance checks provide deterministic secure-engineering signals."
+    "description": "Governance checks provide deterministic secure-engineering signals.",
+    "title_zh": "安全工程证据",
+    "description_zh": "治理检查提供确定性的安全工程信号。"
   },
   {
     "id": "iso-change-isolation",
     "title": "Change isolation",
-    "description": "Worktree evidence records isolated execution branches and commits."
+    "description": "Worktree evidence records isolated execution branches and commits.",
+    "title_zh": "变更隔离",
+    "description_zh": "Worktree 证据记录隔离执行分支和提交。"
   },
   {
     "id": "iso-evidence-inventory",
     "title": "Evidence inventory",
-    "description": "Proof manifest lists artifacts with SHA-256 checksums."
+    "description": "Proof manifest lists artifacts with SHA-256 checksums.",
+    "title_zh": "证据清单",
+    "description_zh": "Proof manifest 会列出带 SHA-256 checksum 的产物。"
   },
   {
     "id": "iso-knowledge-source-trace",
     "title": "Knowledge source trace",
-    "description": "Knowledge traces record retrieved Osstack-native pack and chunk ids."
+    "description": "Knowledge traces record retrieved Osstack-native pack and chunk ids.",
+    "title_zh": "知识来源追踪",
+    "description_zh": "知识追踪会记录检索到的 Osstack-native pack 和 chunk id。"
   }
 ]
