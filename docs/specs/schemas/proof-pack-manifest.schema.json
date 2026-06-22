@@ -26,7 +26,7 @@
         "required": ["pack_id", "path", "certification_claim"],
         "properties": {
           "pack_id": { "type": "string", "minLength": 1 },
-          "path": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1, "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)).+$" },
           "certification_claim": { "type": "string", "const": "none" }
         },
         "additionalProperties": false
@@ -38,7 +38,7 @@
         "type": "object",
         "required": ["path", "sha256", "bytes"],
         "properties": {
-          "path": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1, "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)).+$" },
           "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
           "bytes": { "type": "integer", "minimum": 0 }
         },

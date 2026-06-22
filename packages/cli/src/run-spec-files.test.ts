@@ -112,7 +112,17 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
         compliance_reports?: {
           items?: {
             required?: string[];
-            properties?: { certification_claim?: { const?: string } };
+            properties?: {
+              certification_claim?: { const?: string };
+              path?: { pattern?: string };
+            };
+          };
+        };
+        artifacts?: {
+          items?: {
+            properties?: {
+              path?: { pattern?: string };
+            };
           };
         };
       };
@@ -134,6 +144,10 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       "path",
       "certification_claim",
     ]));
+    const artifactPathPattern = proofManifestSchema.properties.artifacts?.items?.properties?.path?.pattern;
+    expect(artifactPathPattern).toBeTypeOf("string");
+    expect(artifactPathPattern).toContain("\\.\\.");
+    expect(proofManifestSchema.properties.compliance_reports?.items?.properties?.path?.pattern).toBe(artifactPathPattern);
     expect(proofManifestSchema.properties.compliance_reports?.items?.properties?.certification_claim?.const).toBe("none");
 
     const evidenceVector = JSON.parse(
