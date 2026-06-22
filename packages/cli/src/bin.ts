@@ -2,11 +2,11 @@
 // (shebang is injected by tsup banner)
 
 import { execFile } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { connect, type Socket } from "node:net";
-import { chmod, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, extname, isAbsolute, join } from "node:path";
+import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { dirname, extname, isAbsolute, join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
@@ -224,6 +224,8 @@ Project commands:
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
   deliver <prompt> [--verify CMD] [--auto-agent] [--worktree]
                       Product entry: task queue -> loop -> report/scorecard/proof
+  checkpoint create [--workspace P] [--json]
+                      Create a shadow checkpoint outside .git for non-worktree recovery
 
 Agent configuration (role-based; no daemon needed):
   config [show]         Show active profile + how coding/test-verify/design resolve
@@ -431,6 +433,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "deliver") {
     return await handleDeliverCommand(args.slice(1));
+  }
+
+  if (cmd === "checkpoint") {
+    return await handleCheckpointCommand(args.slice(1));
   }
 
   if (cmd === "report") {
@@ -733,6 +739,117 @@ async function handleGuideCommand(args: string[]): Promise<number> {
   }
   console.log(markdown);
   return 0;
+}
+
+async function handleCheckpointCommand(args: string[]): Promise<number> {
+  const sub = args[0] ?? "help";
+  if (sub === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack checkpoint — shadow recovery points for non-worktree runs
+
+  osstack checkpoint create [--workspace P] [--json]
+
+Checkpoints are written under $OSSTACK_HOME/checkpoints and never inside .git.
+`);
+    return 0;
+  }
+  if (sub !== "create") {
+    console.error(`osstack: unknown checkpoint subcommand "${sub}"`);
+    return 1;
+  }
+
+  const workspacePath = realpathSync(flagValue(args, "--workspace") ?? process.cwd());
+  const checkpoint = await createShadowCheckpoint(workspacePath);
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(checkpoint, null, 2));
+  } else {
+    console.log(`checkpoint=${checkpoint.checkpoint_id}`);
+    console.log(`dir=${checkpoint.checkpoint_dir}`);
+    console.log(`files=${checkpoint.files} bytes=${checkpoint.bytes}`);
+  }
+  return 0;
+}
+
+interface ShadowCheckpointSummary {
+  checkpoint_id: string;
+  checkpoint_dir: string;
+  metadata_path: string;
+  workspace: string;
+  files: number;
+  bytes: number;
+}
+
+async function createShadowCheckpoint(workspacePath: string): Promise<ShadowCheckpointSummary> {
+  const workspaceStat = await stat(workspacePath);
+  if (!workspaceStat.isDirectory()) throw new Error(`workspace is not a directory: ${workspacePath}`);
+  const checkpointId = `chk_${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}_${randomUUID().slice(0, 8)}`;
+  const checkpointDir = join(osstackHome(), "checkpoints", checkpointId);
+  const filesDir = join(checkpointDir, "files");
+  const exclusions = [".git", "node_modules", ".osstack"];
+  const entries = await collectCheckpointFiles(workspacePath, workspacePath, new Set(exclusions));
+  let totalBytes = 0;
+  const metadataFiles: Array<{ path: string; sha256: string; bytes: number }> = [];
+  await mkdir(filesDir, { recursive: true });
+  for (const entry of entries) {
+    const target = join(filesDir, entry.relativePath);
+    await mkdir(dirname(target), { recursive: true });
+    await copyFile(entry.sourcePath, target);
+    totalBytes += entry.bytes;
+    metadataFiles.push({
+      path: entry.relativePath,
+      sha256: entry.sha256,
+      bytes: entry.bytes,
+    });
+  }
+  const metadata = {
+    kind: "osstack.shadow_checkpoint",
+    version: 1,
+    checkpoint_id: checkpointId,
+    created_at: new Date().toISOString(),
+    workspace: workspacePath,
+    files_root: filesDir,
+    files: metadataFiles,
+    exclusions,
+    notes: [
+      "Shadow checkpoints are stored outside the workspace and do not write to .git.",
+      "Restore/rewind commands can be layered on this metadata in a later release.",
+    ],
+  };
+  const metadataPath = join(checkpointDir, "metadata.json");
+  await writeFile(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`, "utf-8");
+  return {
+    checkpoint_id: checkpointId,
+    checkpoint_dir: checkpointDir,
+    metadata_path: metadataPath,
+    workspace: workspacePath,
+    files: metadataFiles.length,
+    bytes: totalBytes,
+  };
+}
+
+async function collectCheckpointFiles(
+  root: string,
+  current: string,
+  excludedNames: Set<string>,
+): Promise<Array<{ sourcePath: string; relativePath: string; sha256: string; bytes: number }>> {
+  const dirents = await readdir(current, { withFileTypes: true });
+  const files: Array<{ sourcePath: string; relativePath: string; sha256: string; bytes: number }> = [];
+  for (const dirent of dirents.sort((a, b) => a.name.localeCompare(b.name))) {
+    if (excludedNames.has(dirent.name)) continue;
+    const sourcePath = join(current, dirent.name);
+    if (dirent.isDirectory()) {
+      files.push(...await collectCheckpointFiles(root, sourcePath, excludedNames));
+      continue;
+    }
+    if (!dirent.isFile()) continue;
+    const content = await readFile(sourcePath);
+    files.push({
+      sourcePath,
+      relativePath: relative(root, sourcePath),
+      sha256: sha256Buffer(content),
+      bytes: content.byteLength,
+    });
+  }
+  return files;
 }
 
 function osstackExamples(): Array<{ title: string; description: string; commands: string[] }> {
@@ -4155,6 +4272,10 @@ function safeFileSegment(value: string): string {
 }
 
 function sha256(content: string): string {
+  return createHash("sha256").update(content).digest("hex");
+}
+
+function sha256Buffer(content: Buffer): string {
   return createHash("sha256").update(content).digest("hex");
 }
 
