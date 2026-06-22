@@ -90,6 +90,7 @@ describe("loop CLI", () => {
       capability: "code.test",
       prompt: "Exercise loop artifact generation",
     }));
+    await writeFile(join(tmp, "unsafe.ts"), "const api_key = \"sk-test-secret-token\";\n");
 
     const exitCode = await main([
       "loop",
@@ -126,6 +127,14 @@ describe("loop CLI", () => {
     await expect(readFile(summary.artifacts.scorecard_html!, "utf-8")).resolves.toContain("<!doctype html>");
     await expect(readFile(summary.artifacts.proof_manifest!, "utf-8")).resolves.toContain("\"kind\": \"osstack.proof_pack\"");
     await expect(readFile(join(summary.artifacts.proof_dir!, "events.jsonl"), "utf-8")).resolves.toContain("loop.verify.done");
+    const governance = JSON.parse(await readFile(join(summary.artifacts.proof_dir!, "governance-results.json"), "utf-8")) as {
+      status: string;
+      findings: Array<{ rule_id: string; file: string }>;
+    };
+    expect(governance).toMatchObject({
+      status: "fail",
+      findings: [expect.objectContaining({ rule_id: "secret.api_key", file: join(tmp, "unsafe.ts") })],
+    });
   });
 
   it("rejects an invalid max iteration value", async () => {

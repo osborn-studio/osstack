@@ -72,6 +72,7 @@ describe("loop state report", () => {
     expect(report.risks).toContain("1 completed task failed.");
     expect(report.next_steps).toContain("Finish or unblock 1 in-progress task.");
     expect(report.next_steps).toContain("Triage 1 pending task.");
+    expect(report.conformance.level).toBe("L1");
   });
 
   it("renders a development-ready markdown report", () => {
@@ -95,6 +96,7 @@ describe("loop state report", () => {
 
     expect(markdown).toContain("# Osstack Loop Report - loop-render-test");
     expect(markdown).toContain("## Summary");
+    expect(markdown).toContain("- Conformance: L1 Tracked");
     expect(markdown).toContain("- Success rate: 100%");
     expect(markdown).toContain("## Completed Tasks");
     expect(markdown).toContain("task-1 | unknown | success | codex-cli | 1 | 900 ms");
@@ -183,8 +185,13 @@ describe("loop state report", () => {
       status: "merged",
       branch: "osstack/loop/test",
     }));
+    expect(report.conformance).toMatchObject({
+      level: "L4",
+      name: "Audited",
+    });
 
     const markdown = renderLoopStateReportMarkdown(report);
+    expect(markdown).toContain("- Conformance: L4 Audited");
     expect(markdown).toContain("## Policy Decisions");
     expect(markdown).toContain("task-event-rich | codex-cli | matched code.test capability");
     expect(markdown).toContain("## Verify Results");

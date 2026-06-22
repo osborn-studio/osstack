@@ -6,13 +6,13 @@ import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { connect, type Socket } from "node:net";
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
-import { isAbsolute, join } from "node:path";
+import { dirname, extname, isAbsolute, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import { defaultAdapters } from "@osstack/agents";
 import { openDb } from "@osstack/core";
-import { scanFiles } from "@osstack/governance";
+import { scanFiles, type GovernanceFinding } from "@osstack/governance";
 import {
   renderBranchStewardReport,
   scanBranchStewardCandidates,
@@ -610,6 +610,21 @@ Manifest path: ${path}
 
 type RpcResp = { ok: boolean; result?: unknown; error?: { message: string } };
 
+type GovernanceProofEvidence =
+  | {
+    status: "pass" | "fail";
+    ok: boolean;
+    scanned_files: number;
+    findings: GovernanceFinding[];
+  }
+  | {
+    status: "unknown";
+    ok: false;
+    scanned_files: 0;
+    reason: string;
+    findings: GovernanceFinding[];
+  };
+
 async function handleReportCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack report — evidence-oriented loop report
@@ -732,7 +747,9 @@ Options:
 
   const outputDir = resolveLoopPath(flagValue(args, "--output-dir") ?? "release", workspacePath);
   const events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
-  const proof = await writeProofPack(state, outputDir, events, runId);
+  const governanceRoot = dirname(stateFilePath);
+  const governance = await scanWorkspaceGovernance(governanceRoot);
+  const proof = await writeProofPack(state, outputDir, events, runId, governance);
 
   const summary = {
     loop_id: state.loop_id,
@@ -856,7 +873,8 @@ async function writeRequestedLoopArtifacts(
   }
 
   if (args.includes("--proof")) {
-    const proof = await writeProofPack(state, join(workspacePath, "release"), events);
+    const governance = await scanWorkspaceGovernance(workspacePath);
+    const proof = await writeProofPack(state, join(workspacePath, "release"), events, state.loop_id, governance);
     artifacts.proof_dir = proof.proof_dir;
     artifacts.proof_manifest = proof.proof_manifest;
   }
@@ -869,6 +887,7 @@ async function writeProofPack(
   outputDir: string,
   events: LoopEvent[] = [],
   artifactId = state.loop_id,
+  governance: GovernanceProofEvidence = unknownGovernanceEvidence("No governance scan evidence provided."),
 ): Promise<{
   proof_dir: string;
   proof_manifest: string;
@@ -885,6 +904,7 @@ async function writeProofPack(
     { path: "policy-decision.json", content: `${JSON.stringify(createPolicyDecisionEvidence(events), null, 2)}\n` },
     { path: "verify-results.json", content: `${JSON.stringify(createVerifyResultsEvidence(scorecard, events), null, 2)}\n` },
     { path: "worktree-status.json", content: `${JSON.stringify(createWorktreeStatusEvidence(events), null, 2)}\n` },
+    { path: "governance-results.json", content: `${JSON.stringify(governance, null, 2)}\n` },
   ];
 
   await mkdir(proofDir, { recursive: true });
@@ -918,6 +938,99 @@ async function writeProofPack(
 
 function hasRequestedLoopArtifacts(args: string[]): boolean {
   return args.includes("--report") || args.includes("--scorecard") || args.includes("--proof");
+}
+
+async function scanWorkspaceGovernance(workspacePath: string): Promise<GovernanceProofEvidence> {
+  try {
+    const files = await collectGovernanceScanFiles(workspacePath);
+    if (files.length === 0) {
+      return {
+        status: "pass",
+        ok: true,
+        scanned_files: 0,
+        findings: [],
+      };
+    }
+    const result = await scanFiles(files);
+    return {
+      status: result.ok ? "pass" : "fail",
+      ok: result.ok,
+      scanned_files: files.length,
+      findings: result.findings,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return unknownGovernanceEvidence(`Governance scan failed: ${message}`);
+  }
+}
+
+async function collectGovernanceScanFiles(workspacePath: string): Promise<string[]> {
+  const files: string[] = [];
+  await collectGovernanceScanFilesInto(workspacePath, files);
+  return files;
+}
+
+async function collectGovernanceScanFilesInto(dir: string, files: string[]): Promise<void> {
+  if (files.length >= 500) return;
+  const entries = await readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (files.length >= 500) return;
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (isGovernanceExcludedDir(entry.name)) continue;
+      await collectGovernanceScanFilesInto(path, files);
+      continue;
+    }
+    if (!entry.isFile()) continue;
+    if (!isGovernanceScannableFile(entry.name)) continue;
+    files.push(path);
+  }
+}
+
+function isGovernanceExcludedDir(name: string): boolean {
+  return new Set([
+    ".git",
+    ".next",
+    ".turbo",
+    "coverage",
+    "dist",
+    "node_modules",
+    "release",
+    "reports",
+    "tmp",
+    "vendor",
+  ]).has(name);
+}
+
+function isGovernanceScannableFile(name: string): boolean {
+  if (name === ".env") return true;
+  return new Set([
+    ".cjs",
+    ".css",
+    ".html",
+    ".js",
+    ".json",
+    ".jsx",
+    ".md",
+    ".mjs",
+    ".py",
+    ".sh",
+    ".sql",
+    ".ts",
+    ".tsx",
+    ".yaml",
+    ".yml",
+  ]).has(extname(name));
+}
+
+function unknownGovernanceEvidence(reason: string): GovernanceProofEvidence {
+  return {
+    status: "unknown",
+    ok: false,
+    scanned_files: 0,
+    reason,
+    findings: [],
+  };
 }
 
 function createPolicyDecisionEvidence(events: LoopEvent[]): {

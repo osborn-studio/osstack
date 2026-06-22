@@ -18,6 +18,7 @@ export interface LoopStateReportSummary {
 
 export interface LoopStateReport {
   summary: LoopStateReportSummary;
+  conformance: LoopReportConformance;
   completed_tasks: CompletedTask[];
   in_progress: Task[];
   pending: Task[];
@@ -28,6 +29,14 @@ export interface LoopStateReport {
   decisions: string[];
   risks: string[];
   next_steps: string[];
+}
+
+export type LoopReportConformanceLevel = "L1" | "L2" | "L3" | "L4";
+
+export interface LoopReportConformance {
+  level: LoopReportConformanceLevel;
+  name: "Tracked" | "Verified" | "Reviewed" | "Audited";
+  evidence: string[];
 }
 
 export interface LoopStateReportOptions {
@@ -108,15 +117,21 @@ export function createLoopStateReport(state: LoopState, options: LoopStateReport
     } : {}),
   };
 
+  const policyDecisions = derivePolicyDecisions(options.events ?? []);
+  const verifyResults = deriveVerifyResults(options.events ?? []);
+  const worktreeStatus = deriveWorktreeStatus(options.events ?? []);
+  const eventsTimeline = deriveEventsTimeline(options.events ?? []);
+
   return {
     summary,
+    conformance: deriveConformance(summary, policyDecisions, verifyResults, worktreeStatus, eventsTimeline),
     completed_tasks: completedTasks,
     in_progress: inProgress,
     pending,
-    policy_decisions: derivePolicyDecisions(options.events ?? []),
-    verify_results: deriveVerifyResults(options.events ?? []),
-    worktree_status: deriveWorktreeStatus(options.events ?? []),
-    events_timeline: deriveEventsTimeline(options.events ?? []),
+    policy_decisions: policyDecisions,
+    verify_results: verifyResults,
+    worktree_status: worktreeStatus,
+    events_timeline: eventsTimeline,
     decisions: state.decisions ?? [],
     risks: deriveRisks(summary),
     next_steps: deriveNextSteps(summary),
@@ -204,6 +219,7 @@ export function renderLoopStateReportMarkdown(report: LoopStateReport): string {
     `- In progress: ${summary.in_progress_count}`,
     `- Pending: ${summary.pending_count}`,
     `- Success rate: ${formatPercent(summary.success_rate)}`,
+    `- Conformance: ${report.conformance.level} ${report.conformance.name}`,
   ];
 
   if (summary.total_cycles !== undefined) {
@@ -353,6 +369,55 @@ function deriveNextSteps(summary: LoopStateReportSummary): string[] {
     nextSteps.push("Queue the next validated task or close the loop session.");
   }
   return nextSteps;
+}
+
+function deriveConformance(
+  summary: LoopStateReportSummary,
+  policyDecisions: LoopReportPolicyDecision[],
+  verifyResults: LoopReportVerifyResult[],
+  worktreeStatus: LoopReportWorktreeStatus[],
+  eventsTimeline: LoopReportTimelineEvent[],
+): LoopReportConformance {
+  const evidence = ["loop state recorded"];
+  let level: LoopReportConformanceLevel = "L1";
+  let name: LoopReportConformance["name"] = "Tracked";
+
+  const hasReplayableEvents = eventsTimeline.length > 0;
+  if (hasReplayableEvents) evidence.push("events timeline recorded");
+
+  const hasPassingVerify = verifyResults.some((result) => result.pass);
+  const hasExplicitVerifyFailure = verifyResults.some((result) => !result.pass && result.summary !== "unknown");
+  if (hasPassingVerify || hasExplicitVerifyFailure) {
+    level = "L2";
+    name = "Verified";
+    evidence.push(hasPassingVerify ? "verify gate passed" : "verify failure recorded");
+  }
+
+  const hasReviewer = verifyResults.some((result) => (
+    result.reviewer_agent_id !== "unknown" && result.reviewer_agent_id !== "local-verifier"
+  ));
+  if (level !== "L1" && hasReviewer) {
+    level = "L3";
+    name = "Reviewed";
+    evidence.push("reviewer/checker result recorded");
+  }
+
+  const hasAgentDecision = policyDecisions.length > 0;
+  const hasWorktreeEvidence = worktreeStatus.length > 0;
+  const hasRiskEvidence = summary.failed_count > 0 || summary.escalated_count > 0 || summary.success_count > 0;
+  if (
+    (level === "L2" || level === "L3")
+    && hasAgentDecision
+    && hasReplayableEvents
+    && hasWorktreeEvidence
+    && hasRiskEvidence
+  ) {
+    level = "L4";
+    name = "Audited";
+    evidence.push("agent decision recorded", "worktree evidence recorded", "risk evidence recorded");
+  }
+
+  return { level, name, evidence };
 }
 
 function renderCompletedTasks(tasks: CompletedTask[]): string[] {

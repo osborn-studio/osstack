@@ -29,6 +29,7 @@ afterEach(async () => {
 describe("proof CLI", () => {
   it("writes a proof pack with manifest checksums", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
+    await writeFile(join(tmp, "unsafe.ts"), "const api_key = \"sk-test-secret-token\";\n");
 
     const exitCode = await main(["proof", "--workspace", tmp]);
 
@@ -44,9 +45,20 @@ describe("proof CLI", () => {
       expect.objectContaining({ path: "report.md", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
       expect.objectContaining({ path: "scorecard.html", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
       expect.objectContaining({ path: "loop-state.json", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
+      expect.objectContaining({ path: "governance-results.json", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
     ]));
     await expect(readFile(join(proofDir, "report.md"), "utf-8")).resolves.toContain("# Osstack Loop Report - cli-proof-loop");
     await expect(readFile(join(proofDir, "scorecard.html"), "utf-8")).resolves.toContain("<!doctype html>");
+    const governance = JSON.parse(await readFile(join(proofDir, "governance-results.json"), "utf-8")) as {
+      status: string;
+      scanned_files: number;
+      findings: Array<{ rule_id: string; file: string }>;
+    };
+    expect(governance).toMatchObject({
+      status: "fail",
+      scanned_files: expect.any(Number),
+      findings: [expect.objectContaining({ rule_id: "secret.api_key", file: join(tmp, "unsafe.ts") })],
+    });
   });
 
   it("prints JSON summary with --json", async () => {
