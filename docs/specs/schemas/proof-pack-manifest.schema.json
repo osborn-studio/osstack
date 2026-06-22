@@ -3,7 +3,7 @@
   "$id": "https://osstack.dev/specs/schemas/proof-pack-manifest.schema.json",
   "title": "Osstack Proof Pack Manifest",
   "type": "object",
-  "required": ["schema_version", "kind", "loop_id", "generated_from", "created_at", "generated_at", "artifacts"],
+  "required": ["schema_version", "kind", "osstack_version", "run_id", "loop_id", "agent_id", "agent_ids", "generated_from", "created_at", "generated_at", "artifacts"],
   "properties": {
     "schema_version": { "type": "integer", "minimum": 1 },
     "kind": { "type": "string", "const": "osstack.proof_pack" },

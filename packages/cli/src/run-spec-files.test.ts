@@ -120,7 +120,11 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
     expect(proofManifestSchema.required).toEqual(expect.arrayContaining([
       "schema_version",
       "kind",
+      "osstack_version",
+      "run_id",
       "loop_id",
+      "agent_id",
+      "agent_ids",
       "created_at",
       "generated_at",
       "artifacts",
