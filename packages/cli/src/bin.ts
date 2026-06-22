@@ -931,6 +931,17 @@ type KnowledgeProofEvidence =
     results: [];
   };
 
+interface PrReadinessCheck {
+  id: string;
+  status: "ok" | "warn" | "error";
+  summary: string;
+}
+
+interface PrReadinessResult {
+  ok: boolean;
+  checks: PrReadinessCheck[];
+}
+
 async function handleReportCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack report — evidence-oriented loop report
@@ -1087,7 +1098,7 @@ async function handlePrCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack pr — generate PR evidence body
 
-  osstack pr [run_id] [--workspace P] [--state P] [--events P] [--proof-dir P] [--output P] [--dry-run] [--json]
+  osstack pr [run_id] [--workspace P] [--state P] [--events P] [--proof-dir P] [--output P] [--dry-run|--create] [--json]
 
 Options:
   --workspace P       Workspace containing LOOP-STATE.json (default: cwd)
@@ -1096,14 +1107,10 @@ Options:
   --proof-dir P       Optional proof pack directory to read governance/knowledge evidence
   --output P          Output markdown path (default: <workspace>/reports/pr-body-<id>.md)
   --dry-run           Write a local PR body only; this is the default
-  --create            Reserved for future GitHub PR creation; currently not implemented
+  --create            Run GitHub PR readiness checks and print manual steps
   --json              Print machine-readable summary
 `);
     return 0;
-  }
-  if (args.includes("--create")) {
-    console.error("osstack pr --create is not implemented yet; use --dry-run to generate a PR body.");
-    return 1;
   }
 
   const runId = firstPositionalValue(args, new Set([
@@ -1151,11 +1158,33 @@ Options:
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, body, "utf-8");
   const summary = {
-    mode: "dry-run",
+    mode: args.includes("--create") ? "create-preflight" : "dry-run",
     loop_id: state.loop_id,
     path: outputPath,
     proof_dir: proofDir,
   };
+  if (args.includes("--create")) {
+    const readiness = await checkPrCreateReadiness(workspacePath);
+    const createSummary = {
+      ...summary,
+      readiness,
+      manual_steps: manualPrCreateSteps(outputPath, readiness),
+    };
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(createSummary, null, 2));
+    } else {
+      console.log(`pr_body=${outputPath}`);
+      console.log(`proof=${proofDir}`);
+      console.log("manual_steps:");
+      for (const step of createSummary.manual_steps) console.log(`- ${step}`);
+    }
+    if (!readiness.ok) {
+      console.error("osstack: PR create preflight failed; no GitHub writes were attempted.");
+      return 1;
+    }
+    console.error("osstack: PR create API call is not enabled yet; use the manual steps above.");
+    return 1;
+  }
   if (args.includes("--json")) {
     console.log(JSON.stringify(summary, null, 2));
   } else {
@@ -1505,6 +1534,108 @@ function renderPrBody(options: {
     "",
   ];
   return `${lines.join("\n")}\n`;
+}
+
+async function checkPrCreateReadiness(workspacePath: string): Promise<PrReadinessResult> {
+  const checks: PrReadinessCheck[] = [];
+  const insideWorkTree = await gitOutput(workspacePath, ["rev-parse", "--is-inside-work-tree"]);
+  if (insideWorkTree instanceof Error || insideWorkTree.trim() !== "true") {
+    checks.push({
+      id: "git_repository",
+      status: "error",
+      summary: "Workspace is not a git repository.",
+    });
+    checks.push({
+      id: "branch",
+      status: "error",
+      summary: "Cannot inspect branch outside a git repository.",
+    });
+    checks.push({
+      id: "remote",
+      status: "error",
+      summary: "Cannot inspect GitHub remote outside a git repository.",
+    });
+    checks.push({
+      id: "gh_auth",
+      status: "warn",
+      summary: "GitHub CLI auth was not checked because git repository checks failed.",
+    });
+    return { ok: false, checks };
+  }
+  checks.push({ id: "git_repository", status: "ok", summary: "Workspace is a git repository." });
+
+  const branch = await gitOutput(workspacePath, ["branch", "--show-current"]);
+  const currentBranch = branch instanceof Error ? "" : branch.trim();
+  const defaultBranch = await inferDefaultBranch(workspacePath);
+  if (currentBranch.length === 0) {
+    checks.push({ id: "branch", status: "error", summary: "Detached HEAD; create a named branch before opening a PR." });
+  } else if (currentBranch === defaultBranch) {
+    checks.push({ id: "branch", status: "error", summary: `Current branch ${currentBranch} is the default branch; create a feature branch first.` });
+  } else {
+    checks.push({ id: "branch", status: "ok", summary: `Current branch ${currentBranch}; default branch ${defaultBranch}.` });
+  }
+
+  const remote = await gitOutput(workspacePath, ["remote", "get-url", "origin"]);
+  if (remote instanceof Error || parseGitHubRepoSlug(remote.trim()) === undefined) {
+    checks.push({ id: "remote", status: "error", summary: "No GitHub origin remote was found." });
+  } else {
+    checks.push({ id: "remote", status: "ok", summary: `GitHub remote: ${parseGitHubRepoSlug(remote.trim())}` });
+  }
+
+  const ghAuth = await execOutput("gh", ["auth", "status"], workspacePath);
+  if (ghAuth instanceof Error) {
+    checks.push({ id: "gh_auth", status: "warn", summary: "GitHub CLI auth is unavailable or not logged in; use manual PR steps." });
+  } else {
+    checks.push({ id: "gh_auth", status: "ok", summary: "GitHub CLI auth is available." });
+  }
+  return {
+    ok: checks.every((check) => check.status !== "error"),
+    checks,
+  };
+}
+
+async function inferDefaultBranch(workspacePath: string): Promise<string> {
+  const symbolic = await gitOutput(workspacePath, ["symbolic-ref", "refs/remotes/origin/HEAD"]);
+  if (!(symbolic instanceof Error)) {
+    const match = symbolic.trim().match(/^refs\/remotes\/origin\/(.+)$/);
+    if (match?.[1]) return match[1];
+  }
+  const localMain = await gitOutput(workspacePath, ["show-ref", "--verify", "--quiet", "refs/heads/main"]);
+  if (!(localMain instanceof Error)) return "main";
+  const localMaster = await gitOutput(workspacePath, ["show-ref", "--verify", "--quiet", "refs/heads/master"]);
+  return localMaster instanceof Error ? "main" : "master";
+}
+
+async function gitOutput(workspacePath: string, args: string[]): Promise<string | Error> {
+  return execOutput("git", args, workspacePath);
+}
+
+async function execOutput(command: string, args: string[], cwd: string): Promise<string | Error> {
+  try {
+    const { stdout } = await execFileAsync(command, args, {
+      cwd,
+      encoding: "utf-8",
+      timeout: 10_000,
+    });
+    return String(stdout);
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
+  }
+}
+
+function manualPrCreateSteps(prBodyPath: string, readiness: PrReadinessResult): string[] {
+  const steps = [
+    "git checkout -b codex/osstack-evidence-pr",
+    "git status --short",
+    "git add <changed-files>",
+    "git commit -m \"feat: describe the change\"",
+    "git push -u origin HEAD",
+    `gh pr create --fill --body-file ${prBodyPath}`,
+  ];
+  if (!readiness.ok) {
+    steps.unshift("Resolve the failed readiness checks listed above.");
+  }
+  return steps;
 }
 
 function renderPrTasks(state: LoopState): string[] {

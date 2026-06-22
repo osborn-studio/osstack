@@ -1,9 +1,13 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { mkdtempSync } from "node:fs";
+import { execFile } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { main } from "./bin.js";
+
+const execFileAsync = promisify(execFile);
 
 let tmp: string;
 let logs: string[];
@@ -87,13 +91,52 @@ describe("pr CLI", () => {
     expect(body).toContain(proofDir);
   });
 
-  it("fails closed for create mode until GitHub creation is implemented", async () => {
+  it("writes PR body and manual steps when create preflight fails outside git", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
 
-    const exitCode = await main(["pr", "--workspace", tmp, "--create"]);
+    const exitCode = await main(["pr", "--workspace", tmp, "--create", "--json"]);
 
     expect(exitCode).toBe(1);
-    expect(errors.join("\n")).toContain("osstack pr --create is not implemented yet");
+    expect(errors.join("\n")).toContain("PR create preflight failed");
+    const summary = JSON.parse(logs.join("\n")) as {
+      mode: string;
+      path: string;
+      readiness: { ok: boolean; checks: Array<{ id: string; status: string }> };
+      manual_steps: string[];
+    };
+    expect(summary.mode).toBe("create-preflight");
+    expect(summary.readiness.ok).toBe(false);
+    expect(summary.readiness.checks).toContainEqual(expect.objectContaining({
+      id: "git_repository",
+      status: "error",
+    }));
+    expect(summary.manual_steps).toEqual(expect.arrayContaining([
+      expect.stringContaining("git checkout -b"),
+    ]));
+    await expect(readFile(summary.path, "utf-8")).resolves.toContain("# PR Evidence - cli-pr-loop");
+  });
+
+  it("blocks create mode on the default branch", async () => {
+    await git(tmp, ["init", "-b", "main"]);
+    await git(tmp, ["config", "user.name", "test"]);
+    await git(tmp, ["config", "user.email", "test@example.invalid"]);
+    await writeFile(join(tmp, "README.md"), "test\n");
+    await git(tmp, ["add", "README.md"]);
+    await git(tmp, ["commit", "-m", "initial"]);
+    await git(tmp, ["remote", "add", "origin", "https://github.com/example/repo.git"]);
+    await writeState(join(tmp, "LOOP-STATE.json"));
+
+    const exitCode = await main(["pr", "--workspace", tmp, "--create", "--json"]);
+
+    expect(exitCode).toBe(1);
+    const summary = JSON.parse(logs.join("\n")) as {
+      readiness: { checks: Array<{ id: string; status: string; summary: string }> };
+    };
+    expect(summary.readiness.checks).toContainEqual(expect.objectContaining({
+      id: "branch",
+      status: "error",
+      summary: expect.stringContaining("default branch"),
+    }));
   });
 });
 
@@ -145,4 +188,8 @@ async function writeEvents(path: string): Promise<void> {
       },
     }),
   ].join("\n") + "\n");
+}
+
+async function git(cwd: string, args: string[]): Promise<void> {
+  await execFileAsync("git", args, { cwd });
 }

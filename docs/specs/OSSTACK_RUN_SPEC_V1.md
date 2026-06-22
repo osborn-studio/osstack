@@ -182,6 +182,8 @@ The PR body SHOULD include:
 
 Dry-run generation MUST NOT write to GitHub, force-push, or commit directly to the default branch.
 
+Create mode MUST run readiness checks before any GitHub write. At minimum it SHOULD check git repository state, current branch versus default branch, GitHub remote availability, and GitHub CLI authentication. If readiness fails, the command MUST write the local PR body and return manual steps instead of attempting a network write.
+
 ## R-013 Versioning and Deprecation
 
 Spec versions MUST use semantic versioning. A breaking schema or clause change MUST increment the major version.
