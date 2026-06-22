@@ -167,60 +167,32 @@
 
 ## 9. GitHub / 上线阻塞
 
-当前 push 阻塞不是代码问题，而是 GitHub OAuth scope 问题。
+GitHub push、PR、CI、release workflow 已恢复。当前发布阻塞不是代码问题，而是生产发布凭证尚未配置：
 
-执行：
+- npm publish 需要仓库 secret `NPM_TOKEN`。
+- Knowledge Cloud `deploy=true` 需要仓库 secret `FLY_API_TOKEN`。
+- 本机人工发布/排障还需要 `npm login` 与 `flyctl auth login`。
 
-```sh
-git push -u origin codex/osstack-report-foundation
-```
-
-失败原因：
-
-```text
-refusing to allow an OAuth App to create or update workflow .github/workflows/ci.yml without workflow scope
-```
-
-当前 `gh auth status` 显示 token scopes 只有：
-
-```text
-gist, read:org, repo
-```
-
-缺少：
-
-```text
-workflow
-```
-
-需要先执行：
+发布前执行：
 
 ```sh
-gh auth refresh -h github.com -s workflow
-```
-
-授权完成后再执行：
-
-```sh
-git push -u origin codex/osstack-report-foundation
-gh pr create --draft --base main --head codex/osstack-report-foundation
+osstack release doctor --json
 ```
 
 ## 10. 推荐上线步骤
 
-### Step 1：恢复 GitHub push 能力
+### Step 1：配置发布凭证
 
 执行：
 
 ```sh
-gh auth refresh -h github.com -s workflow
-git push -u origin codex/osstack-report-foundation
+osstack release doctor --json
 ```
 
 验收：
 
-- 分支成功出现在 GitHub。
-- `.github/workflows/ci.yml` 与 `.github/workflows/knowledge-cloud-deploy.yml` 被远端接受。
+- `NPM_TOKEN` 显示 ready 后再合并 Version Packages PR。
+- `FLY_API_TOKEN` 显示 ready 后再运行 Knowledge Cloud `deploy=true`。
 
 ### Step 2：创建 Draft PR
 

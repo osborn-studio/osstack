@@ -102,6 +102,7 @@ function renderChineseMainHelp(): string {
   doctor              检查 workspace、loop、agent 与下一步建议
   examples            输出可直接运行的工作流示例
   guide               输出或写入 5 分钟 Quickstart
+  release doctor      检查 npm / Knowledge Cloud 发布前置条件
   deliver <需求>      从一句需求进入 task queue -> loop -> report/scorecard/proof
 
 Loop 工程：
@@ -227,6 +228,9 @@ Project commands:
                       Product readiness check: loop + agents + next steps
   examples [--json]   Print runnable workflow examples
   guide [--output P]  Print or write the 5-minute quickstart
+  release doctor [--target all|npm|knowledge-cloud] [--json]
+                      Check publish/deploy prerequisites: GitHub auth, repo
+                      secrets, npm auth, and Fly.io deploy readiness
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
   deliver <prompt> [--verify CMD] [--auto-agent] [--worktree]
                       Product entry: task queue -> loop -> report/scorecard/proof
@@ -403,6 +407,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "guide") {
     return await handleGuideCommand(args.slice(1));
+  }
+
+  if (cmd === "release") {
+    return await handleReleaseCommand(args.slice(1));
   }
 
   if (cmd === "stats") {
@@ -747,6 +755,243 @@ async function handleGuideCommand(args: string[]): Promise<number> {
   }
   console.log(markdown);
   return 0;
+}
+
+type ReleaseDoctorStatus = "ok" | "warn" | "error";
+
+interface ReleaseDoctorCheck {
+  id: string;
+  status: ReleaseDoctorStatus;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+interface ReleaseDoctorResult {
+  ok: boolean;
+  target: "all" | "npm" | "knowledge-cloud";
+  checks: ReleaseDoctorCheck[];
+  readiness: {
+    npm_publish: boolean;
+    knowledge_cloud_deploy: boolean;
+  };
+  next_steps: string[];
+}
+
+async function handleReleaseCommand(args: string[]): Promise<number> {
+  const sub = args[0];
+  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack release — publish/deploy readiness
+
+  osstack release doctor [--target all|npm|knowledge-cloud] [--json]
+
+Checks:
+  - GitHub CLI authentication for repository operations
+  - repository secrets NPM_TOKEN and FLY_API_TOKEN
+  - local npm login for manual publishing
+  - local flyctl login for manual Knowledge Cloud deploy debugging
+`);
+    return 0;
+  }
+  if (sub === "doctor") return await handleReleaseDoctorCommand(args.slice(1));
+  console.error(`osstack: unknown release subcommand "${sub}"`);
+  return 1;
+}
+
+async function handleReleaseDoctorCommand(args: string[]): Promise<number> {
+  const target = parseReleaseDoctorTarget(flagValue(args, "--target") ?? "all");
+  if (target === undefined) {
+    console.error("osstack: release doctor --target must be all, npm, or knowledge-cloud");
+    return 1;
+  }
+  const result = await releaseDoctor(target);
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(result, null, 2));
+  } else {
+    printReleaseDoctor(result);
+  }
+  return result.ok ? 0 : 1;
+}
+
+function parseReleaseDoctorTarget(value: string): ReleaseDoctorResult["target"] | undefined {
+  if (value === "all" || value === "npm" || value === "knowledge-cloud") return value;
+  return undefined;
+}
+
+async function releaseDoctor(target: ReleaseDoctorResult["target"]): Promise<ReleaseDoctorResult> {
+  const checks: ReleaseDoctorCheck[] = [];
+  const githubAuth = await releaseCommandCheck({
+    id: "github_auth",
+    command: "gh",
+    args: ["auth", "status", "-h", "github.com"],
+    envOverride: "OSSTACK_TEST_RELEASE_GITHUB_AUTH",
+    okMessage: "GitHub CLI is authenticated for github.com.",
+    errorMessage: "GitHub CLI is not authenticated; run gh auth login or gh auth refresh -h github.com -s workflow.",
+  });
+  checks.push(githubAuth);
+
+  const requiredSecrets = target === "npm" ? ["NPM_TOKEN"]
+    : target === "knowledge-cloud" ? ["FLY_API_TOKEN"]
+      : ["NPM_TOKEN", "FLY_API_TOKEN"];
+  const secrets = await releaseSecretsCheck(requiredSecrets);
+  checks.push(secrets);
+
+  if (target === "all" || target === "npm") {
+    checks.push(await releaseCommandCheck({
+      id: "npm_auth",
+      command: "npm",
+      args: ["whoami"],
+      envOverride: "OSSTACK_TEST_RELEASE_NPM_AUTH",
+      okMessage: "Local npm login is available for manual publish checks.",
+      errorMessage: "Local npm login is missing; run npm login or rely on the NPM_TOKEN repository secret in CI.",
+      missingSeverity: "warn",
+    }));
+  }
+
+  if (target === "all" || target === "knowledge-cloud") {
+    checks.push(await releaseCommandCheck({
+      id: "fly_auth",
+      command: "flyctl",
+      args: ["auth", "whoami"],
+      envOverride: "OSSTACK_TEST_RELEASE_FLY_AUTH",
+      okMessage: "Local flyctl login is available for manual deploy checks.",
+      errorMessage: "Local flyctl login is missing; run flyctl auth login or rely on the FLY_API_TOKEN repository secret in CI.",
+      missingSeverity: "warn",
+    }));
+  }
+
+  const npmPublish = hasSecret(secrets, "NPM_TOKEN");
+  const knowledgeCloudDeploy = hasSecret(secrets, "FLY_API_TOKEN");
+  const ok = target === "npm" ? npmPublish
+    : target === "knowledge-cloud" ? knowledgeCloudDeploy
+      : npmPublish && knowledgeCloudDeploy;
+  return {
+    ok,
+    target,
+    checks,
+    readiness: {
+      npm_publish: npmPublish,
+      knowledge_cloud_deploy: knowledgeCloudDeploy,
+    },
+    next_steps: releaseDoctorNextSteps({ target, npmPublish, knowledgeCloudDeploy, githubAuth, secrets }),
+  };
+}
+
+async function releaseSecretsCheck(requiredSecrets: string[]): Promise<ReleaseDoctorCheck> {
+  const override = process.env["OSSTACK_TEST_RELEASE_SECRETS"];
+  let present: string[];
+  if (override !== undefined) {
+    present = override.split(",").map((item) => item.trim()).filter((item) => item.length > 0);
+  } else {
+    try {
+      const { stdout } = await execFileAsync("gh", ["secret", "list"], { timeout: 10_000 });
+      present = parseSecretList(stdout);
+    } catch (error) {
+      return {
+        id: "repository_secrets",
+        status: "error",
+        message: "Could not list GitHub repository secrets with gh secret list.",
+        details: { required: requiredSecrets, error: releaseErrorMessage(error) },
+      };
+    }
+  }
+  const missing = requiredSecrets.filter((secret) => !present.includes(secret));
+  return {
+    id: "repository_secrets",
+    status: missing.length === 0 ? "ok" : "error",
+    message: missing.length === 0
+      ? `Required repository secrets are configured: ${requiredSecrets.join(", ")}.`
+      : `Missing required repository secrets: ${missing.join(", ")}.`,
+    details: { required: requiredSecrets, present, missing },
+  };
+}
+
+function parseSecretList(stdout: string): string[] {
+  const secrets: string[] = [];
+  for (const line of stdout.split(/\r?\n/)) {
+    const name = line.trim().split(/\s+/)[0];
+    if (name !== undefined && name.length > 0) secrets.push(name);
+  }
+  return secrets;
+}
+
+async function releaseCommandCheck(options: {
+  id: string;
+  command: string;
+  args: string[];
+  envOverride: string;
+  okMessage: string;
+  errorMessage: string;
+  missingSeverity?: ReleaseDoctorStatus;
+}): Promise<ReleaseDoctorCheck> {
+  const override = process.env[options.envOverride];
+  if (override === "ok") return { id: options.id, status: "ok", message: options.okMessage };
+  if (override === "warn" || override === "error") {
+    return { id: options.id, status: override, message: options.errorMessage };
+  }
+  try {
+    await execFileAsync(options.command, options.args, { timeout: 10_000 });
+    return { id: options.id, status: "ok", message: options.okMessage };
+  } catch (error) {
+    return {
+      id: options.id,
+      status: options.missingSeverity ?? "error",
+      message: options.errorMessage,
+      details: { error: releaseErrorMessage(error) },
+    };
+  }
+}
+
+function hasSecret(check: ReleaseDoctorCheck, secret: string): boolean {
+  const present = check.details?.["present"];
+  return Array.isArray(present) && present.includes(secret);
+}
+
+function releaseDoctorNextSteps(options: {
+  target: ReleaseDoctorResult["target"];
+  npmPublish: boolean;
+  knowledgeCloudDeploy: boolean;
+  githubAuth: ReleaseDoctorCheck;
+  secrets: ReleaseDoctorCheck;
+}): string[] {
+  const steps: string[] = [];
+  if (options.githubAuth.status === "error") {
+    steps.push("Refresh GitHub auth: gh auth refresh -h github.com -s workflow");
+  }
+  const missing = options.secrets.details?.["missing"];
+  if (Array.isArray(missing) && missing.includes("NPM_TOKEN")) {
+    steps.push("Add repository secret NPM_TOKEN before merging the Version Packages PR.");
+  }
+  if (Array.isArray(missing) && missing.includes("FLY_API_TOKEN")) {
+    steps.push("Add repository secret FLY_API_TOKEN before running Knowledge Cloud deploy=true.");
+  }
+  if ((options.target === "all" || options.target === "npm") && options.npmPublish) {
+    steps.push("NPM publish path is ready for the release workflow.");
+  }
+  if ((options.target === "all" || options.target === "knowledge-cloud") && options.knowledgeCloudDeploy) {
+    steps.push("Knowledge Cloud deploy=true is ready in GitHub Actions.");
+  }
+  if (steps.length === 0) steps.push("Review failed checks above before publishing.");
+  return steps;
+}
+
+function printReleaseDoctor(result: ReleaseDoctorResult): void {
+  console.log(`Osstack release doctor: ${result.ok ? "ready" : "attention needed"}`);
+  console.log(`target=${result.target}`);
+  console.log("");
+  for (const check of result.checks) {
+    console.log(`[${check.status}] ${check.id}: ${check.message}`);
+  }
+  console.log("");
+  console.log(`npm_publish=${result.readiness.npm_publish ? "ready" : "not_ready"}`);
+  console.log(`knowledge_cloud_deploy=${result.readiness.knowledge_cloud_deploy ? "ready" : "not_ready"}`);
+  console.log("");
+  console.log("Next steps:");
+  for (const step of result.next_steps) console.log(`- ${step}`);
+}
+
+function releaseErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
 }
 
 async function handleCheckpointCommand(args: string[]): Promise<number> {
