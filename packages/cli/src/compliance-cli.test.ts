@@ -93,6 +93,7 @@ describe("compliance CLI", () => {
     expect(markdown).toContain("# Osstack 合规映射报告 - engineering-readiness");
     expect(markdown).toContain("外部认证声明：`none`");
     expect(markdown).toContain("| 控制项 | 状态 | 证据 | 映射 |");
+    expect(markdown).toContain("| 变更验证 | PRESENT | `verify-results.json` | 验证门禁或评分卡证据会显示本次变更是否已被验证。 |");
   });
 });
 

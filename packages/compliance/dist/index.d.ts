@@ -9,8 +9,10 @@ export interface CompliancePack {
 export interface ComplianceControl {
     id: string;
     title: string;
+    title_zh?: string;
     evidence_path: string;
     description: string;
+    description_zh?: string;
 }
 export interface CompliancePackFileValidation {
     pack: CompliancePack;

@@ -9,38 +9,50 @@ const BUILTIN_PACKS = [{
             {
                 id: "change-validation",
                 title: "Change validation",
+                title_zh: "变更验证",
                 evidence_path: "verify-results.json",
                 description: "Verify gates or scorecard evidence show whether the change was validated.",
+                description_zh: "验证门禁或评分卡证据会显示本次变更是否已被验证。",
             },
             {
                 id: "automated-decision-trace",
                 title: "Automated decision trace",
+                title_zh: "自动化决策追踪",
                 evidence_path: "policy-decision.json",
                 description: "Policy decisions record agent selection and routing rationale.",
+                description_zh: "策略决策会记录 agent 选择和路由依据。",
             },
             {
                 id: "secure-coding-control",
                 title: "Secure coding control",
+                title_zh: "安全编码控制",
                 evidence_path: "governance-results.json",
                 description: "Governance findings map deterministic checks to secure coding evidence.",
+                description_zh: "治理发现会把确定性检查映射为安全编码证据。",
             },
             {
                 id: "evidence-integrity",
                 title: "Evidence integrity",
+                title_zh: "证据完整性",
                 evidence_path: "manifest.json",
                 description: "Proof manifest artifacts carry SHA-256 checksums.",
+                description_zh: "Proof manifest 中的产物会携带 SHA-256 checksum。",
             },
             {
                 id: "worktree-isolation",
                 title: "Worktree isolation evidence",
+                title_zh: "Worktree 隔离证据",
                 evidence_path: "worktree-status.json",
                 description: "Worktree branch and commit evidence show isolated execution context.",
+                description_zh: "Worktree 分支和提交证据会显示隔离执行上下文。",
             },
             {
                 id: "knowledge-trace",
                 title: "Knowledge trace",
+                title_zh: "知识追踪",
                 evidence_path: "knowledge-results.json",
                 description: "Knowledge pack and chunk traces show which retrieved context was used.",
+                description_zh: "知识包和 chunk 追踪会显示使用了哪些检索上下文。",
             },
         ],
     }, {
@@ -272,7 +284,9 @@ export function renderComplianceReport(options) {
     const text = complianceReportText(options.language ?? "en");
     const rows = pack.controls.map((control) => {
         const status = controlStatus(control, options.evidence);
-        return `| ${control.title} | ${status} | \`${control.evidence_path}\` | ${control.description} |`;
+        const title = localizedControlTitle(control, options.language ?? "en");
+        const description = localizedControlDescription(control, options.language ?? "en");
+        return `| ${title} | ${status} | \`${control.evidence_path}\` | ${description} |`;
     });
     return [
         `# ${text.title} - ${pack.id}`,
@@ -289,6 +303,16 @@ export function renderComplianceReport(options) {
         ...rows,
         "",
     ].join("\n");
+}
+function localizedControlTitle(control, language) {
+    if (language === "zh-CN" && control.title_zh !== undefined)
+        return control.title_zh;
+    return control.title;
+}
+function localizedControlDescription(control, language) {
+    if (language === "zh-CN" && control.description_zh !== undefined)
+        return control.description_zh;
+    return control.description;
 }
 function complianceReportText(language) {
     if (language === "zh-CN") {
@@ -407,7 +431,7 @@ function proofViewControls(audience, language) {
         const control = byId.get(id);
         return {
             control_id: id,
-            title: control?.title ?? id,
+            title: control !== undefined ? localizedControlTitle(control, language) : id,
             evidence_path: control?.evidence_path ?? "unknown",
             focus: audienceFocus(audience, id, language),
         };
@@ -653,6 +677,12 @@ function validateComplianceControls(value) {
             id: requiredString(control, "id"),
             title: requiredString(control, "title"),
             description: requiredString(control, "description"),
+            ...(typeof control["title_zh"] === "string" && control["title_zh"].length > 0
+                ? { title_zh: control["title_zh"] }
+                : {}),
+            ...(typeof control["description_zh"] === "string" && control["description_zh"].length > 0
+                ? { description_zh: control["description_zh"] }
+                : {}),
         };
     });
 }

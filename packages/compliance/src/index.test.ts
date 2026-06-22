@@ -91,6 +91,8 @@ describe("compliance packs", () => {
     expect(markdown).toContain("此报告不是 SOC 2、ISO 27001、EU AI Act 或第三方认证。");
     expect(markdown).toContain("它会把 osstack proof 证据映射到内部 Engineering Readiness 视图。");
     expect(markdown).toContain("| 控制项 | 状态 | 证据 | 映射 |");
+    expect(markdown).toContain("| 变更验证 | PRESENT | `verify-results.json` | 验证门禁或评分卡证据会显示本次变更是否已被验证。 |");
+    expect(markdown).toContain("| 证据完整性 | PRESENT | `manifest.json` | Proof manifest 中的产物会携带 SHA-256 checksum。 |");
   });
 
   it("marks missing proof evidence explicitly", () => {
@@ -172,6 +174,7 @@ describe("compliance packs", () => {
     expect(markdown).toContain("此视图会重排已有 proof 证据，不会创建新证据。");
     expect(markdown).toContain("此受众视图没有缺失必需证据。");
     expect(markdown).toContain("| 证据 | 状态 | 来源 | 关注点 |");
+    expect(markdown).toContain("| 证据完整性 | PRESENT | `manifest.json` | 带 checksum 的证据清单 |");
     expect(markdown).toContain("带 checksum 的证据清单");
   });
 

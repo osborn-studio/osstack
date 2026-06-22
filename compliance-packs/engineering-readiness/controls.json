@@ -2,31 +2,43 @@
   {
     "id": "change-validation",
     "title": "Change validation",
-    "description": "Verify gates or scorecard evidence show whether the change was validated."
+    "title_zh": "变更验证",
+    "description": "Verify gates or scorecard evidence show whether the change was validated.",
+    "description_zh": "验证门禁或评分卡证据会显示本次变更是否已被验证。"
   },
   {
     "id": "automated-decision-trace",
     "title": "Automated decision trace",
-    "description": "Policy decisions record agent selection and routing rationale."
+    "title_zh": "自动化决策追踪",
+    "description": "Policy decisions record agent selection and routing rationale.",
+    "description_zh": "策略决策会记录 agent 选择和路由依据。"
   },
   {
     "id": "secure-coding-control",
     "title": "Secure coding control",
-    "description": "Governance findings map deterministic checks to secure coding evidence."
+    "title_zh": "安全编码控制",
+    "description": "Governance findings map deterministic checks to secure coding evidence.",
+    "description_zh": "治理发现会把确定性检查映射为安全编码证据。"
   },
   {
     "id": "evidence-integrity",
     "title": "Evidence integrity",
-    "description": "Proof manifest artifacts carry SHA-256 checksums."
+    "title_zh": "证据完整性",
+    "description": "Proof manifest artifacts carry SHA-256 checksums.",
+    "description_zh": "Proof manifest 中的产物会携带 SHA-256 checksum。"
   },
   {
     "id": "worktree-isolation",
     "title": "Worktree isolation evidence",
-    "description": "Worktree branch and commit evidence show isolated execution context."
+    "title_zh": "Worktree 隔离证据",
+    "description": "Worktree branch and commit evidence show isolated execution context.",
+    "description_zh": "Worktree 分支和提交证据会显示隔离执行上下文。"
   },
   {
     "id": "knowledge-trace",
     "title": "Knowledge trace",
-    "description": "Knowledge pack and chunk traces show which retrieved context was used."
+    "title_zh": "知识追踪",
+    "description": "Knowledge pack and chunk traces show which retrieved context was used.",
+    "description_zh": "知识包和 chunk 追踪会显示使用了哪些检索上下文。"
   }
 ]

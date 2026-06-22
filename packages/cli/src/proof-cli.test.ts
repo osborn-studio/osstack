@@ -240,6 +240,7 @@ describe("proof CLI", () => {
     expect(markdown).toContain("此视图会重排已有 proof 证据，不会创建新证据。");
     expect(markdown).toContain("## 缺失证据");
     expect(markdown).toContain("| 证据 | 状态 | 来源 | 关注点 |");
+    expect(markdown).toContain("| 证据完整性 |");
     expect(markdown).toContain("带 checksum 的证据清单");
   });
 
