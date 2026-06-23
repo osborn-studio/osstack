@@ -5345,6 +5345,31 @@ function pitfallFamilyForCompletedTask(task: LoopState["completed_tasks"][number
     || text.includes("both modified")) {
     return "merge_conflict";
   }
+  if (text.includes("fixture drift")
+    || text.includes("snapshot obsolete")
+    || text.includes("snapshot failed")
+    || text.includes("snapshot mismatch")
+    || text.includes("golden file")
+    || text.includes("expected fixture")
+    || text.includes("received fixture")) {
+    return "test_fixture_drift";
+  }
+  if (text.includes("network timeout")
+    || text.includes("network outage")
+    || text.includes("econnreset")
+    || text.includes("etimedout")
+    || text.includes("enotfound")
+    || text.includes("temporary failure in name resolution")
+    || text.includes("fetch failed")) {
+    return "network_outage";
+  }
+  if (text.includes("permission denied")
+    || text.includes("eacces")
+    || text.includes("eperm")
+    || text.includes("read-only file system")
+    || text.includes("operation not permitted")) {
+    return "filesystem_permission";
+  }
   if (text.includes("npm install")
     || text.includes("pnpm install")
     || text.includes("yarn install")
@@ -5395,6 +5420,15 @@ function pitfallResolutionForFamily(family: string): string {
   }
   if (family === "toolchain_mismatch") {
     return "Align the local Node/package-manager/toolchain versions with the project requirements before rerunning the verifier.";
+  }
+  if (family === "test_fixture_drift") {
+    return "Regenerate or repair the affected fixture/snapshot only after confirming the behavior change is intended.";
+  }
+  if (family === "network_outage") {
+    return "Retry with network availability confirmed, prefer cached/offline fallbacks, and record any external service dependency in the proof.";
+  }
+  if (family === "filesystem_permission") {
+    return "Fix workspace file permissions or sandbox configuration, then rerun the same deterministic verifier.";
   }
   if (family === "max_iter_escalation") {
     return "Break the task into a smaller queue item, add a stronger verify gate, or route to a reviewer/checker before retrying.";

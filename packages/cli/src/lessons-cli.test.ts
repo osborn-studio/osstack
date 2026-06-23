@@ -120,6 +120,33 @@ describe("lessons CLI", () => {
           duration_ms: 1000,
           verify_summary: "unsupported engine: Node version 18 does not satisfy >=20",
         },
+        {
+          task_id: "fixture-task",
+          capability: "test.fixture",
+          outcome: "failed",
+          iterations: 1,
+          agent_id: "codex-cli",
+          duration_ms: 1000,
+          verify_summary: "snapshot mismatch: expected fixture output changed",
+        },
+        {
+          task_id: "network-task",
+          capability: "ci.network",
+          outcome: "failed",
+          iterations: 1,
+          agent_id: "codex-cli",
+          duration_ms: 1000,
+          verify_summary: "fetch failed with network timeout ETIMEDOUT",
+        },
+        {
+          task_id: "permission-task",
+          capability: "filesystem.write",
+          outcome: "failed",
+          iterations: 1,
+          agent_id: "codex-cli",
+          duration_ms: 1000,
+          error_summary: "EACCES: permission denied writing artifact",
+        },
       ],
     });
 
@@ -164,6 +191,24 @@ describe("lessons CLI", () => {
         family: "toolchain_mismatch",
         symptom: expect.stringContaining("unsupported engine"),
         resolution: expect.stringContaining("toolchain"),
+        source_run_ids: ["failure-family-loop"],
+      }),
+      expect.objectContaining({
+        family: "test_fixture_drift",
+        symptom: expect.stringContaining("snapshot mismatch"),
+        resolution: expect.stringContaining("fixture/snapshot"),
+        source_run_ids: ["failure-family-loop"],
+      }),
+      expect.objectContaining({
+        family: "network_outage",
+        symptom: expect.stringContaining("network timeout"),
+        resolution: expect.stringContaining("network"),
+        source_run_ids: ["failure-family-loop"],
+      }),
+      expect.objectContaining({
+        family: "filesystem_permission",
+        symptom: expect.stringContaining("permission denied"),
+        resolution: expect.stringContaining("permissions"),
         source_run_ids: ["failure-family-loop"],
       }),
     ]));

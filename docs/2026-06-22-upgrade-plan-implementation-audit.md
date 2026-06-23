@@ -230,12 +230,12 @@
 - `osstack lessons list` 存在。
 - `osstack lessons learn` 会从 failed/escalated loop state 写入 pitfall lesson；同一个 `source_run_id` 重复学习不会重复提升 `verified_count`。
 - 后续 successful loop state 会按 tech stack 验证已有 failed/escalated lesson，并把成功 run id 写入 `source_run_ids`，从而提升 `verified_count`。
-- pitfall family 已区分 `verify_failed`、`max_iter_escalation`、`agent_unavailable`、`reviewer_checker_failed`、`dependency_install_failure`、`governance_high_severity`、`merge_conflict`、`toolchain_mismatch`，避免把缺 agent、reviewer/checker gate、依赖安装、治理高危、合并冲突或工具链问题都混入通用 max-iter/verify failed。
+- pitfall family 已区分 `verify_failed`、`max_iter_escalation`、`agent_unavailable`、`reviewer_checker_failed`、`dependency_install_failure`、`governance_high_severity`、`merge_conflict`、`toolchain_mismatch`、`test_fixture_drift`、`network_outage`、`filesystem_permission`，避免把缺 agent、reviewer/checker gate、依赖安装、治理高危、合并冲突、工具链、fixture、网络或文件权限问题都混入通用 max-iter/verify failed。
 - dashboard/cockpit 可展示 lessons。
 
 需增强：
 
-- test fixture drift、network outage、filesystem permission 等更多 failure family 的自动提取仍可继续补充。
+- 更多项目特定 failure family、跨 run 合并/归档策略、以及团队自定义 family taxonomy 仍可继续补充。
 - 需要更多真实项目样本来校准 tech stack 召回，避免成功 run 过宽地验证不相关 lesson。
 
 ### Task 4.2：Knowledge Cloud bootstrap client
