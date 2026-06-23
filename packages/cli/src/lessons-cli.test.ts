@@ -57,7 +57,7 @@ describe("lessons CLI", () => {
     expect(listed.lessons.every((lesson) => lesson.verified_count === 1)).toBe(true);
   });
 
-  it("classifies agent unavailable and reviewer checker failures as distinct pitfall families", async () => {
+  it("classifies common failure families into distinct pitfall lessons", async () => {
     await writeState(join(tmp, "failure-families-state.json"), {
       loop_id: "failure-family-loop",
       tasks: [
@@ -81,6 +81,27 @@ describe("lessons CLI", () => {
           verify_summary: "Reviewer found 2 blocking issues.",
           verify_issues: [{ severity: "error", message: "reviewer rejected unsafe diff" }],
         },
+        {
+          task_id: "dependency-task",
+          capability: "node.dependency.install",
+          outcome: "failed",
+          iterations: 1,
+          agent_id: "codex-cli",
+          duration_ms: 1000,
+          verify_summary: "pnpm install failed with missing dependency.",
+          verify_issues: [{ severity: "error", message: "Cannot find module '@example/missing'" }],
+        },
+        {
+          task_id: "governance-task",
+          capability: "code.security",
+          outcome: "failed",
+          iterations: 1,
+          agent_id: "codex-cli",
+          duration_ms: 1000,
+          verifier_agent_id: "governance-verifier",
+          verify_summary: "governance high severity finding blocking=true",
+          verify_issues: [{ severity: "error", message: "governance high severity unsafe eval" }],
+        },
       ],
     });
 
@@ -101,6 +122,18 @@ describe("lessons CLI", () => {
         family: "reviewer_checker_failed",
         symptom: expect.stringContaining("Reviewer found 2 blocking issues"),
         resolution: expect.stringContaining("reviewer/checker"),
+        source_run_ids: ["failure-family-loop"],
+      }),
+      expect.objectContaining({
+        family: "dependency_install_failure",
+        symptom: expect.stringContaining("pnpm install failed"),
+        resolution: expect.stringContaining("dependencies"),
+        source_run_ids: ["failure-family-loop"],
+      }),
+      expect.objectContaining({
+        family: "governance_high_severity",
+        symptom: expect.stringContaining("governance high severity"),
+        resolution: expect.stringContaining("governance"),
         source_run_ids: ["failure-family-loop"],
       }),
     ]));

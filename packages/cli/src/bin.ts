@@ -5332,6 +5332,22 @@ function pitfallFamilyForCompletedTask(task: LoopState["completed_tasks"][number
     || text.includes("not available")) {
     return "agent_unavailable";
   }
+  if (text.includes("governance-verifier")
+    || text.includes("governance")
+    || text.includes("high severity")
+    || text.includes("blocking=true")) {
+    return "governance_high_severity";
+  }
+  if (text.includes("npm install")
+    || text.includes("pnpm install")
+    || text.includes("yarn install")
+    || text.includes("bun install")
+    || text.includes("missing dependency")
+    || text.includes("cannot find module")
+    || text.includes("module not found")
+    || text.includes("enoent")) {
+    return "dependency_install_failure";
+  }
   if (text.includes("reviewer")
     || text.includes("checker")
     || task.verifier_agent_id !== undefined) {
@@ -5352,6 +5368,12 @@ function pitfallResolutionForFamily(family: string): string {
   }
   if (family === "reviewer_checker_failed") {
     return "Inspect reviewer/checker findings, fix the reported issues, and rerun the verifier before retrying the loop.";
+  }
+  if (family === "governance_high_severity") {
+    return "Inspect governance findings, fix high-severity safety issues, and rerun governance in the same mode before retrying.";
+  }
+  if (family === "dependency_install_failure") {
+    return "Install or repair project dependencies in the workspace, then rerun the deterministic verifier before retrying.";
   }
   if (family === "max_iter_escalation") {
     return "Break the task into a smaller queue item, add a stronger verify gate, or route to a reviewer/checker before retrying.";
