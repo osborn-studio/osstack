@@ -847,6 +847,72 @@ describe("product entry commands", () => {
     expect(markdown).toContain("## Next Actions");
   });
 
+  it("prints an EdgeOne Knowledge Cloud setup handoff from the deploy manifest", async () => {
+    const output = join(tmp, "edgeone-setup.md");
+
+    const exitCode = await main([
+      "release",
+      "edgeone",
+      "--workspace",
+      process.cwd(),
+      "--cloud-url",
+      "https://knowledge.example.com",
+      "--output",
+      output,
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      provider: string;
+      service: string;
+      default_domain: string;
+      runtime: {
+        node: string;
+        port: number;
+        entry: string;
+      };
+      deploy_secret: string;
+      environment: Record<string, string>;
+      console_checklist: string[];
+      github_commands: string[];
+      workflow_commands: string[];
+      validation_commands: string[];
+      output: string;
+    };
+    expect(result.provider).toBe("tencent-edgeone");
+    expect(result.service).toBe("osstack-knowledge-cloud");
+    expect(result.default_domain).toBe("knowledge.osstack.ai");
+    expect(result.runtime).toMatchObject({
+      node: "22",
+      port: 8787,
+      entry: "packages/knowledge-cloud/dist/bin.js",
+    });
+    expect(result.deploy_secret).toBe("EDGEONE_DEPLOY_HOOK_URL");
+    expect(result.environment).toMatchObject({
+      OSSTACK_KNOWLEDGE_CLOUD_HOST: "0.0.0.0",
+      OSSTACK_KNOWLEDGE_CLOUD_PORT: "8787",
+      OSSTACK_KNOWLEDGE_AUDIT_LOG: "/data/audit/knowledge-cloud-audit.jsonl",
+      OSSTACK_KNOWLEDGE_FEEDBACK_LOG: "/data/feedback/feedback.jsonl",
+      OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR: "/data/published-packs",
+    });
+    expect(result.console_checklist.join("\n")).toContain("Create an EdgeOne Pages project connected to gilosbornhello/osstack.");
+    expect(result.github_commands).toContain("gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"");
+    expect(result.workflow_commands).toContain(
+      "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true -f cloud_url=https://knowledge.example.com",
+    );
+    expect(result.validation_commands).toContain("osstack release doctor --target knowledge-cloud --cloud-url https://knowledge.example.com --json");
+    expect(result.validation_commands).toContain("osstack knowledge sync --cloud-url https://knowledge.example.com --json");
+    expect(result.validation_commands).toContain("osstack knowledge search \"proof pack checksum\" --cloud-url https://knowledge.example.com --json");
+    expect(result.output).toBe(output);
+    const markdown = await readFile(output, "utf-8");
+    expect(markdown).toContain("# EdgeOne Knowledge Cloud Setup");
+    expect(markdown).toContain("EDGEONE_DEPLOY_HOOK_URL");
+    expect(markdown).toContain("https://knowledge.example.com");
+    expect(markdown).toContain("## Console Checklist");
+    expect(markdown).toContain("## Validation Commands");
+  });
+
   it("checks a deployed Knowledge Cloud health URL before deploy handoff", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL";

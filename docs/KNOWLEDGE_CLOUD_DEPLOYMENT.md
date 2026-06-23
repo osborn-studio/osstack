@@ -39,6 +39,16 @@ reference if a second deployment target is needed later.
 
 ### EdgeOne production checklist
 
+Generate the operator handoff first:
+
+```bash
+osstack release edgeone --cloud-url <EdgeOne URL> --output edgeone-setup.md --json
+```
+
+The command reads `deploy/knowledge-cloud/edgeone.json` and emits the EdgeOne
+console checklist, required runtime environment, GitHub secret command,
+workflow trigger command, and deployed URL validation commands.
+
 1. Create an EdgeOne Pages project connected to `gilosbornhello/osstack`.
 2. Configure the project to build from `main`.
 3. Use `deploy/knowledge-cloud/edgeone.json` as the source of truth for runtime
