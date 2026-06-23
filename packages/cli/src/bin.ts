@@ -5263,15 +5263,16 @@ async function ensureLocalStateDbPath(): Promise<string> {
 function derivePitfallLessonsFromState(state: LoopState): Parameters<typeof upsertPitfallLesson>[2][] {
   return state.completed_tasks
     .filter((task) => task.outcome === "failed" || task.outcome === "escalated")
-    .map((task) => ({
-      family: task.outcome === "failed" ? "verify_failed" : "max_iter_escalation",
-      tech_stack: inferLessonTechStack(task.capability),
-      symptom: `${task.task_id} ended with ${task.outcome} after ${task.iterations} iteration${task.iterations === 1 ? "" : "s"}.`,
-      resolution: task.outcome === "failed"
-        ? "Inspect verifier output, rerun deterministic checks, and update the task or dependency setup before retrying."
-        : "Break the task into a smaller queue item, add a stronger verify gate, or route to a reviewer/checker before retrying.",
-      source_run_id: state.loop_id,
-    }));
+    .map((task) => {
+      const family = pitfallFamilyForCompletedTask(task);
+      return {
+        family,
+        tech_stack: inferLessonTechStack(task.capability),
+        symptom: pitfallSymptomForCompletedTask(task),
+        resolution: pitfallResolutionForFamily(family),
+        source_run_id: state.loop_id,
+      };
+    });
 }
 
 async function learnLessonsFromLoopState(state: LoopState): Promise<{
@@ -5316,6 +5317,46 @@ function verifyPitfallLessonsFromState(
     }));
   }
   return verified;
+}
+
+function pitfallFamilyForCompletedTask(task: LoopState["completed_tasks"][number]): string {
+  const text = [
+    task.error_summary,
+    task.execution_summary,
+    task.verify_summary,
+    ...(task.verify_issues ?? []).map((issue) => issue.message),
+  ].filter((item): item is string => item !== undefined).join("\n").toLowerCase();
+  if (text.includes("agent adapter not registered")
+    || text.includes("agent unavailable")
+    || text.includes("adapter unavailable")
+    || text.includes("not available")) {
+    return "agent_unavailable";
+  }
+  if (text.includes("reviewer")
+    || text.includes("checker")
+    || task.verifier_agent_id !== undefined) {
+    return "reviewer_checker_failed";
+  }
+  return task.outcome === "failed" ? "verify_failed" : "max_iter_escalation";
+}
+
+function pitfallSymptomForCompletedTask(task: LoopState["completed_tasks"][number]): string {
+  const base = `${task.task_id} ended with ${task.outcome} after ${task.iterations} iteration${task.iterations === 1 ? "" : "s"}.`;
+  const detail = task.error_summary ?? task.verify_summary ?? task.execution_summary;
+  return detail === undefined ? base : `${base} ${detail}`;
+}
+
+function pitfallResolutionForFamily(family: string): string {
+  if (family === "agent_unavailable") {
+    return "Check that the requested agent adapter is installed and logged in, or reroute the task to an available fallback agent.";
+  }
+  if (family === "reviewer_checker_failed") {
+    return "Inspect reviewer/checker findings, fix the reported issues, and rerun the verifier before retrying the loop.";
+  }
+  if (family === "max_iter_escalation") {
+    return "Break the task into a smaller queue item, add a stronger verify gate, or route to a reviewer/checker before retrying.";
+  }
+  return "Inspect verifier output, rerun deterministic checks, and update the task or dependency setup before retrying.";
 }
 
 function inferLessonTechStack(capability: string | undefined): string[] {

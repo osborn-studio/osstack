@@ -57,6 +57,55 @@ describe("lessons CLI", () => {
     expect(listed.lessons.every((lesson) => lesson.verified_count === 1)).toBe(true);
   });
 
+  it("classifies agent unavailable and reviewer checker failures as distinct pitfall families", async () => {
+    await writeState(join(tmp, "failure-families-state.json"), {
+      loop_id: "failure-family-loop",
+      tasks: [
+        {
+          task_id: "missing-agent-task",
+          capability: "code.write",
+          outcome: "escalated",
+          iterations: 1,
+          agent_id: "missing-agent",
+          duration_ms: 1000,
+          error_summary: "agent adapter not registered: missing-agent",
+        },
+        {
+          task_id: "reviewer-task",
+          capability: "code.review",
+          outcome: "failed",
+          iterations: 1,
+          agent_id: "codex-cli",
+          duration_ms: 1000,
+          verifier_agent_id: "ds-review",
+          verify_summary: "Reviewer found 2 blocking issues.",
+          verify_issues: [{ severity: "error", message: "reviewer rejected unsafe diff" }],
+        },
+      ],
+    });
+
+    const learnCode = await main(["lessons", "learn", "--workspace", tmp, "--state", "failure-families-state.json", "--json"]);
+
+    expect(learnCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      lessons: Array<{ family: string; symptom: string; resolution: string; source_run_ids: string[] }>;
+    };
+    expect(result.lessons).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        family: "agent_unavailable",
+        symptom: expect.stringContaining("agent adapter not registered"),
+        resolution: expect.stringContaining("adapter"),
+        source_run_ids: ["failure-family-loop"],
+      }),
+      expect.objectContaining({
+        family: "reviewer_checker_failed",
+        symptom: expect.stringContaining("Reviewer found 2 blocking issues"),
+        resolution: expect.stringContaining("reviewer/checker"),
+        source_run_ids: ["failure-family-loop"],
+      }),
+    ]));
+  });
+
   it("increments verified_count when a later successful loop verifies an existing pitfall", async () => {
     await writeState(join(tmp, "failed-state.json"), {
       loop_id: "failed-loop",
@@ -157,6 +206,10 @@ async function writeState(
       iterations: number;
       agent_id: string;
       duration_ms: number;
+      error_summary?: string;
+      verifier_agent_id?: string;
+      verify_summary?: string;
+      verify_issues?: Array<{ severity: "error" | "warning" | "info"; message: string }>;
     }>;
   } = {},
 ): Promise<void> {
