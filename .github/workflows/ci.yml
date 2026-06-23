@@ -15,6 +15,47 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed paths
+        id: changes
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          BASE_SHA="${PR_BASE_SHA:-$PUSH_BEFORE_SHA}"
+          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "heavy_smoke=true" >> "$GITHUB_OUTPUT"
+            echo "No usable base SHA; running full CI smoke." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > changed-files.txt
+          if [ ! -s changed-files.txt ]; then
+            echo "heavy_smoke=true" >> "$GITHUB_OUTPUT"
+            echo "No changed files detected; running full CI smoke." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          heavy_smoke=false
+          while IFS= read -r path; do
+            case "$path" in
+              docs/*|README.md|README.zh.md|CHANGELOG.md)
+                ;;
+              *)
+                heavy_smoke=true
+                ;;
+            esac
+          done < changed-files.txt
+
+          echo "heavy_smoke=$heavy_smoke" >> "$GITHUB_OUTPUT"
+          if [ "$heavy_smoke" = "true" ]; then
+            echo "Code or release-sensitive files changed; running full CI smoke." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Documentation-only change; skipping heavy smoke after lint/build/typecheck/test." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       # pnpm version comes from package.json's packageManager field
       - uses: pnpm/action-setup@v4
@@ -45,22 +86,29 @@ jobs:
         run: pnpm -r test
 
       - name: Release plan smoke
+        if: steps.changes.outputs.heavy_smoke == 'true'
         run: pnpm smoke:release-plan
 
       - name: Knowledge Cloud smoke
+        if: steps.changes.outputs.heavy_smoke == 'true'
         run: pnpm smoke:knowledge-cloud
 
       - name: Knowledge Cloud deploy asset smoke
+        if: steps.changes.outputs.heavy_smoke == 'true'
         run: pnpm smoke:knowledge-cloud:deploy
 
       - name: Deliver proof smoke
+        if: steps.changes.outputs.heavy_smoke == 'true'
         run: pnpm smoke:deliver-proof
 
       - name: Real repo deliver smoke
+        if: steps.changes.outputs.heavy_smoke == 'true'
         run: pnpm smoke:real-repo-deliver
 
       - name: NPM preflight smoke
+        if: steps.changes.outputs.heavy_smoke == 'true'
         run: pnpm smoke:npm-preflight
 
       - name: NPM install smoke
+        if: steps.changes.outputs.heavy_smoke == 'true'
         run: pnpm smoke:npm-install
