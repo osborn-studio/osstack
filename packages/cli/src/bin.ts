@@ -82,6 +82,7 @@ import {
   runInteractiveCockpitTui,
   selectCockpitTuiAction,
   type CockpitKnowledgeSummary,
+  type CockpitTuiActionSelection,
 } from "./cockpit-tui.js";
 import { logsDir, osstackHome, resolveSocketPath } from "./paths.js";
 import { PROTOCOL_VERSION, VERSION } from "./version.js";
@@ -9620,7 +9621,7 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
                             Run queued work with report, scorecard, and proof defaults
   osstack cockpit next [--workspace P] [--status ready|running|blocked] [--json]
                             Print actionable next steps from the cockpit snapshot
-  osstack cockpit tui [--workspace P] [--json] [--no-color] [--fullscreen] [--action N] [--interactive]
+  osstack cockpit tui [--workspace P] [--json] [--no-color] [--fullscreen] [--action N] [--execute-action] [--interactive]
                             Render a terminal cockpit panel for live workbench use
   osstack cockpit retry [task_id] [--workspace P] [--state P] [--json]
                             Requeue a failed or escalated task from loop state
@@ -9714,6 +9715,9 @@ async function handleCockpitTuiCommand(args: string[]): Promise<number> {
       console.error(`osstack: cockpit tui action must be between 1 and ${model.actions.length || 0}`);
       return 1;
     }
+    if (args.includes("--execute-action")) {
+      return await executeCockpitTuiAction(selected, { json: args.includes("--json") });
+    }
     if (args.includes("--json")) {
       console.log(JSON.stringify(selected, null, 2));
     } else {
@@ -9756,6 +9760,137 @@ async function cockpitKnowledgeSummary(args: string[]): Promise<CockpitKnowledge
         },
       }),
   };
+}
+
+async function executeCockpitTuiAction(
+  selection: CockpitTuiActionSelection,
+  options: { json: boolean },
+): Promise<number> {
+  const argv = parseCockpitActionCommand(selection.next_command);
+  if (argv instanceof Error) {
+    console.error(`osstack: ${argv.message}`);
+    return 1;
+  }
+  const result = await captureCliMain(argv.slice(1));
+  const payload = {
+    mode: "terminal-cockpit-action-execution",
+    selection,
+    argv,
+    exit_code: result.exit_code,
+    stdout: result.stdout,
+    stderr: result.stderr,
+  };
+  if (options.json) {
+    console.log(JSON.stringify(payload, null, 2));
+  } else {
+    console.log(renderCockpitTuiAction(selection));
+    console.log(`exit_code=${result.exit_code}`);
+    if (result.stdout.length > 0) {
+      console.log("stdout:");
+      for (const line of result.stdout) console.log(`  ${line}`);
+    }
+    if (result.stderr.length > 0) {
+      console.log("stderr:");
+      for (const line of result.stderr) console.log(`  ${line}`);
+    }
+  }
+  return result.exit_code;
+}
+
+async function captureCliMain(args: string[]): Promise<{ exit_code: number; stdout: string[]; stderr: string[] }> {
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+  const originalLog = console.log;
+  const originalError = console.error;
+  console.log = (...values: unknown[]) => {
+    stdout.push(values.map((value) => String(value)).join(" "));
+  };
+  console.error = (...values: unknown[]) => {
+    stderr.push(values.map((value) => String(value)).join(" "));
+  };
+  try {
+    const exitCode = await main(args);
+    return { exit_code: exitCode, stdout, stderr };
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
+  }
+}
+
+function parseCockpitActionCommand(command: string): string[] | Error {
+  if (command.includes("<task>") || command.includes("<query>")) {
+    return new Error("cockpit action still contains an input placeholder; edit the command and run it manually");
+  }
+  const argv = splitShellLikeCommand(command);
+  if (argv instanceof Error) return argv;
+  if (argv[0] !== "osstack") {
+    return new Error("cockpit --execute-action only runs osstack commands");
+  }
+  const commandGroup = argv[1];
+  const allowed = new Set([
+    "cockpit",
+    "dashboard",
+    "doctor",
+    "examples",
+    "guide",
+    "knowledge",
+    "proof",
+    "release",
+    "report",
+    "scorecard",
+  ]);
+  if (commandGroup === undefined || !allowed.has(commandGroup)) {
+    return new Error(`cockpit --execute-action rejected unsupported command: ${commandGroup ?? "unknown"}`);
+  }
+  return argv;
+}
+
+function splitShellLikeCommand(command: string): string[] | Error {
+  const argv: string[] = [];
+  let current = "";
+  let quote: "'" | "\"" | undefined;
+  for (let index = 0; index < command.length; index += 1) {
+    const char = command[index]!;
+    if (quote !== undefined) {
+      if (char === quote) {
+        quote = undefined;
+        continue;
+      }
+      if (quote === "'" && char === "\\" && command[index + 1] === "'") {
+        current += "'";
+        index += 1;
+        continue;
+      }
+      if (quote === "\"" && char === "\\" && command[index + 1] !== undefined) {
+        current += command[index + 1];
+        index += 1;
+        continue;
+      }
+      current += char;
+      continue;
+    }
+    if (char === "'" || char === "\"") {
+      quote = char;
+      continue;
+    }
+    if (/\s/.test(char)) {
+      if (current.length > 0) {
+        argv.push(current);
+        current = "";
+      }
+      continue;
+    }
+    if (char === "\\" && command[index + 1] !== undefined) {
+      current += command[index + 1];
+      index += 1;
+      continue;
+    }
+    current += char;
+  }
+  if (quote !== undefined) return new Error("unterminated quote in cockpit action command");
+  if (current.length > 0) argv.push(current);
+  if (argv.length === 0) return new Error("empty cockpit action command");
+  return argv;
 }
 
 async function handleCockpitNextCommand(args: string[]): Promise<number> {

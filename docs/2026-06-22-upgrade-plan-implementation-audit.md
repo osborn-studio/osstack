@@ -23,7 +23,7 @@
 - EdgeOne deploy workflow 已补上 `cancel-in-progress`、EdgeOne CLI 8 分钟命令 timeout / 10 分钟步骤 timeout，并已修复 validation-only 不校验 `cloud_url` 的缺口；最新 Knowledge Cloud Deploy validation-only run `28064311003` 在 `deploy=false` 时成功执行并通过 `Validate deployed Knowledge Cloud URL`。
 - 日常 PR CI 已拆到 `ubuntu-latest`，macOS single-binary release-candidate smoke 已拆到独立 `.github/workflows/macos-release-candidate.yml`，正式 release workflow 仍保留 macOS archive candidate artifact。
 - 可选单文件分发已有 portable CLI bundle smoke、Bun single executable smoke、本地 release asset manifest/checksum/SPDX SBOM、ad-hoc codesign 验证、`.tar.gz` release archive smoke、single-binary `release doctor` readiness，并已接入 CI/release workflow candidate artifact 与 tag/workflow_dispatch GitHub Release 上传路径；发布级 Developer ID 签名/公证/跨机器验证尚未完成。
-- Cockpit 当前是 dashboard/web cockpit + CLI summary + terminal workbench preview，不是完整 Ink/blessed 交互式 TUI。
+- Cockpit 当前是 dashboard/web cockpit + CLI summary + terminal workbench preview + 受控 action 执行，不是完整 Ink/blessed 交互式 TUI。
 - Knowledge Cloud 已有本地 ingestion/rewrite/review、云端 `/v1/publish` 门禁、official/tenant `/v1/review/queue` 审核队列、文件型 published-pack storage、tenant-scoped audit JSONL 与 `/v1/audit` 查询切片，并已上线 EdgeOne；完整审核 UI、Postgres/object storage/vector index、正式云端运营流水线仍未完成。
 
 ## 2. Phase 完成矩阵
@@ -35,7 +35,7 @@
 | Phase 2 Product Entry | `osstack deliver` + agent 角色化 | 基本完成 | `deliver-cli.test.ts`、`product-entry-cli.test.ts`、`agent-scorecard-cli.test.ts`、`smoke:npm-install` 安装后 deliver/worktree/proof smoke | 可继续在外部真实业务 repo 上扩展长任务 smoke |
 | Phase 3 Governed Run | Run Spec + governance verifier + PR evidence | 基本完成 | `docs/specs/OSSTACK_RUN_SPEC_V1.md`、`docs/specs/CONFORMANCE_MATRIX.md`、schemas/test vectors、`governance-cli.test.ts`、`pr-cli.test.ts` | 继续随新 MUST 条款补 runtime/schema/vector 覆盖 |
 | Phase 4 Learning Control Plane | Pitfall KB + Knowledge bootstrap + agent scorecard | 基本完成 | `lessons-cli.test.ts`、`knowledge-cli.test.ts`、`agent-scorecard-cli.test.ts` | 继续用更多真实项目运行样本校准 lesson family 与召回精度 |
-| Phase 5 Product Surface | Cockpit/TUI + examples/guide/doctor + i18n + checkpoint | 部分到基本完成 | `dashboard.ts`、`dashboard-cli.test.ts`、`product-entry-cli.test.ts`、`i18n-cli.test.ts`、`proof-cli.test.ts`、`compliance-cli.test.ts`、`checkpoint-cli.test.ts`、terminal cockpit Overview/Kanban/Evidence/Knowledge/Next Actions sections | 完整 Ink/blessed 交互式 TUI 未完成；更深层报告模板/运营内容本地化仍可扩展 |
+| Phase 5 Product Surface | Cockpit/TUI + examples/guide/doctor + i18n + checkpoint | 部分到基本完成 | `dashboard.ts`、`dashboard-cli.test.ts`、`product-entry-cli.test.ts`、`i18n-cli.test.ts`、`proof-cli.test.ts`、`compliance-cli.test.ts`、`checkpoint-cli.test.ts`、terminal cockpit Overview/Kanban/Evidence/Knowledge/Next Actions sections、`cockpit tui --action N --execute-action` controlled execution | 完整 Ink/blessed 交互式 TUI 未完成；更深层报告模板/运营内容本地化仍可扩展 |
 | Phase 6 Trust/Compliance/Knowledge Cloud | compliance packs + enterprise proof views + Osstack Knowledge Cloud | 主路径上线，生产运营深化中 | `compliance-packs/*`、`compliance-cli.test.ts`、`proof --compliance-pack` proof artifacts、`proof view`、`knowledge-cloud` package、`/v1/publish` gate、`/v1/review/queue` official/tenant review queue、`/v1/audit` tenant audit events、deploy assets、local smoke、EdgeOne production URL `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool`、`release doctor --target primary --cloud-url <EdgeOne URL>` ok、生产云端 sync 10 packs、retrieval eval 42/42、生产云端 search/audit/feedback-summary ok、cached `knowledge list` 与 `knowledge sources --internal` provenance、Knowledge Cloud Deploy validation-only run `28064311003` 执行线上 URL 验收 | 生产 ingestion pipeline、完整审核 UI、tenant auth/storage/vector index |
 
 ## 3. 任务级状态
@@ -291,11 +291,12 @@
 - 支持 `cockpit next` / `dashboard next` 单独输出 actionable next steps，并支持 `--status ready|running|blocked` 过滤与 `--json` 给后续 TUI/脚本复用；每条 next step 包含可复制建议命令。
 - 支持 `cockpit tui --workspace <path>` 输出终端 cockpit 面板，展示 Overview、Kanban、Evidence、Knowledge、Next Actions；Knowledge section 会读取本地 Knowledge Cloud cache，展示 cached pack 数、最高质量 pack 和 provenance 审计命令；`cockpit tui --json` 输出稳定的 sections/actions 数据契约，供后续 Ink/blessed 交互式 TUI 复用。
 - 支持 `cockpit tui --action N` / `--json` 从终端 cockpit actions 中选择一个动作并输出 workspace-aware `next_command`，让 TUI 从静态预览推进为可脚本化的 live workbench 入口；默认只选择/输出命令，不自动执行，避免误触发副作用。
+- 支持 `cockpit tui --action N --execute-action` 显式执行受控 action：仅允许 `osstack` 白名单命令，拒绝仍含 `<task>` / `<query>` 占位符的动作，返回 `terminal-cockpit-action-execution` JSON contract，并捕获被执行命令的 stdout/stderr/exit code；`dashboard-cli.test.ts` 已覆盖从 TUI action 生成 proof pack 的真实 live workbench 步骤。
 - 支持 `cockpit tui --interactive` 第一版键盘交互：终端中按编号选择 action 或输入 `q` 退出；`--interactive --json` 输出同一 action-selection 数据结构，安装后 smoke 会验证真实 npm 安装路径中的 interactive selection。
 
 未完成：
 
-- 还不是完整 Ink/blessed 全屏交互式 TUI；当前是 Web cockpit + script-friendly CLI summary + terminal TUI preview + Knowledge cache view + scriptable/interactive action selection + cockpit action commands。
+- 还不是完整 Ink/blessed 全屏交互式 TUI；当前是 Web cockpit + script-friendly CLI summary + terminal TUI preview + Knowledge cache view + scriptable/interactive action selection + controlled action execution + cockpit action commands。
 
 建议：
 
