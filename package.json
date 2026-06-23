@@ -23,6 +23,7 @@
     "package:single-binary": "node scripts/package-single-binary.mjs",
     "publish:single-binary": "node scripts/publish-single-binary-release.mjs",
     "preflight:npm-publish": "node scripts/preflight-npm-publish-access.mjs",
+    "smoke:npm-preflight": "node scripts/smoke-npm-preflight-access.mjs",
     "demo:loop": "pnpm build && node scripts/demo-loop.mjs",
     "demo:loop:daemon": "pnpm build && node scripts/demo-loop-daemon.mjs",
     "smoke:loop": "pnpm build && node scripts/smoke-loop.mjs",
