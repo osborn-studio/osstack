@@ -21,7 +21,7 @@ pnpm smoke:knowledge-cloud
 pnpm smoke:knowledge-cloud:deploy
 ```
 
-The first command starts the built service, checks `/healthz`, lists official packs, searches the official proof pack, publishes an approved pack through `/v1/publish`, and verifies the manifest is persisted. The second command verifies Docker/EdgeOne/Render deployment assets agree on the executable, port, healthcheck, feedback log, and published pack storage paths.
+The first command starts the built service, checks `/healthz`, lists official packs, searches the official proof pack, verifies official and tenant review queues through `/v1/review/queue`, publishes an approved pack through `/v1/publish`, and verifies the manifest is persisted. The second command verifies Docker/EdgeOne/Render deployment assets agree on the executable, port, healthcheck, feedback log, and published pack storage paths.
 
 ## Docker
 
@@ -85,6 +85,7 @@ workflow trigger command, and deployed URL validation commands.
    osstack release doctor --target knowledge-cloud --cloud-url <EdgeOne URL> --json
    osstack knowledge sync --cloud-url <EdgeOne URL> --json
    osstack knowledge search "proof pack checksum" --cloud-url <EdgeOne URL> --json
+   osstack knowledge review-queue --cloud-url <EdgeOne URL> --json
    ```
 
 11. Keep the EdgeOne production URL in the release evidence and use it as the
@@ -181,6 +182,7 @@ Create a Blueprint from `deploy/knowledge-cloud/render.yaml`. The service uses `
 osstack knowledge login --cloud-url https://knowledge.osstack.ai
 osstack knowledge sync
 osstack knowledge search "proof pack checksum"
+osstack knowledge review-queue --status needs_review
 ```
 
 If the cloud endpoint is unavailable, osstack knowledge search fails open to cached packs or local/off mode.
@@ -197,5 +199,6 @@ the command until `osstack knowledge sync` refreshes the cache.
 - Add private packs through the `/v1/private-packs` path or tenant-specific deployment config.
 - Set `OSSTACK_KNOWLEDGE_PRIVATE_TOKEN` for deployments that expose team/private packs; private sync/search requests must send `Authorization: Bearer <token>` and the matching `tenant_id`.
 - Persist feedback before using it for quality scoring.
+- Use `/v1/review/queue` or `osstack knowledge review-queue` to inspect official review debt before publishing. Tenant review queues require `tenant_id` plus `Authorization: Bearer <token>` and should be treated as private operational data.
 - Set `OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR` to persist `/v1/publish` official packs under `official/` and tenant/private packs under `private/<tenant_id>/`.
 - Add object storage/Postgres/vector search when file-backed published packs and BM25-style search no longer fit the pack volume.

@@ -133,6 +133,8 @@ Loop 工程：
   knowledge feedback   记录或上报 chunk 有用/无用反馈
   knowledge feedback-summary
                        查看 Knowledge Cloud 反馈汇总
+  knowledge review-queue
+                       查看 Knowledge Cloud 审核队列
   knowledge sources    查看内部 provenance/license 来源
   knowledge import     将团队或项目文档加工为 Osstack-native pack
   lessons list        查看本地 pitfall 知识库
@@ -4797,6 +4799,7 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   osstack knowledge prune [--cache-dir P] [--keep N] [--apply] [--json]
   osstack knowledge feedback <chunk_id> --useful|--bad [--tenant ID] [--cloud-url URL] [--cache-dir P] [--json]
   osstack knowledge feedback-summary [--tenant ID] [--cloud-url URL] [--cache-dir P] [--json]
+  osstack knowledge review-queue [--tenant ID] [--status needs_review|all|approved|changes_requested|missing] [--cloud-url URL] [--cache-dir P] [--json]
   osstack knowledge eval --pack P|--official --fixtures P [--top-k N] [--json]
   osstack knowledge sources --internal [--pack P|--official|--cache-dir P] [--json]
 
@@ -5335,6 +5338,42 @@ Env:
     }
   }
 
+  if (sub === "review-queue") {
+    const config = await readKnowledgeCloudConfig(knowledgeCacheDir(args));
+    const cloudUrl = resolveKnowledgeCloudUrl(args, config);
+    if (cloudUrl === undefined) {
+      console.error("osstack: knowledge review-queue requires --cloud-url, OSSTACK_KNOWLEDGE_URL, or `osstack knowledge login`");
+      return 1;
+    }
+    const authToken = resolveKnowledgeAuthToken(args, config);
+    const tenantId = flagValue(args, "--tenant");
+    const status = flagValue(args, "--status") ?? "needs_review";
+    if (!["needs_review", "all", "approved", "changes_requested", "missing"].includes(status)) {
+      console.error("osstack: knowledge review-queue --status must be needs_review, all, approved, changes_requested, or missing");
+      return 1;
+    }
+    try {
+      const queue = await fetchKnowledgeReviewQueue({
+        cloudUrl,
+        status,
+        ...(authToken === undefined ? {} : { authToken }),
+        ...(tenantId === undefined ? {} : { tenantId }),
+      });
+      if (args.includes("--json")) {
+        console.log(JSON.stringify(queue, null, 2));
+      } else {
+        console.log(`review_queue=${queue.total} scope=${queue.scope}${queue.tenant_id === undefined ? "" : ` tenant=${queue.tenant_id}`} status=${queue.status_filter}`);
+        for (const item of queue.items) {
+          console.log(`${item.pack_id}@${item.version} ${item.review_status} quality=${item.quality_score} chunks=${item.chunk_count} sources=${item.source_count}`);
+        }
+      }
+      return 0;
+    } catch (error) {
+      console.error(`osstack: knowledge review-queue failed: ${error instanceof Error ? error.message : String(error)}`);
+      return 1;
+    }
+  }
+
   if (sub === "eval") {
     const packPaths = flagValues(args, "--pack");
     const fixturesPath = flagValue(args, "--fixtures");
@@ -5511,6 +5550,28 @@ interface KnowledgeFeedbackSummary {
   chunks: Array<{ chunk_id: string; total: number; useful: number; bad: number }>;
 }
 
+interface KnowledgeReviewQueue {
+  scope: string;
+  status_filter: string;
+  total: number;
+  tenant_id?: string;
+  items: Array<{
+    pack_id: string;
+    version: string;
+    name: string;
+    scope: string;
+    tenant_id?: string;
+    source_kind: string;
+    quality_score: number;
+    review_status: string;
+    reviewer_id?: string;
+    reviewed_at?: string;
+    review_summary?: string;
+    chunk_count: number;
+    source_count: number;
+  }>;
+}
+
 async function fetchKnowledgeFeedbackSummary(options: {
   cloudUrl: string;
   authToken?: string;
@@ -5533,6 +5594,34 @@ async function fetchKnowledgeFeedbackSummary(options: {
     throw new Error(detail);
   }
   return parseKnowledgeFeedbackSummary(raw);
+}
+
+async function fetchKnowledgeReviewQueue(options: {
+  cloudUrl: string;
+  authToken?: string;
+  tenantId?: string;
+  status: string;
+}): Promise<KnowledgeReviewQueue> {
+  const endpoint = new URL("/v1/review/queue", normalizeCloudUrl(options.cloudUrl));
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+      ...(options.authToken === undefined ? {} : { authorization: `Bearer ${options.authToken}` }),
+    },
+    body: JSON.stringify({
+      status: options.status,
+      ...(options.tenantId === undefined ? {} : { tenant_id: options.tenantId }),
+    }),
+  });
+  const raw = await response.text();
+  if (!response.ok) {
+    const body = parseJsonObject(raw);
+    const detail = typeof body?.["error"] === "string" ? body["error"] : `HTTP ${response.status}`;
+    throw new Error(detail);
+  }
+  return parseKnowledgeReviewQueue(raw);
 }
 
 function parseKnowledgeFeedbackSummary(raw: string): KnowledgeFeedbackSummary {
@@ -5559,6 +5648,43 @@ function parseKnowledgeFeedbackSummary(raw: string): KnowledgeFeedbackSummary {
     bad,
     ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
     chunks,
+  };
+}
+
+function parseKnowledgeReviewQueue(raw: string): KnowledgeReviewQueue {
+  const parsed = JSON.parse(raw) as unknown;
+  if (!isRecord(parsed)) throw new Error("review queue response must be an object");
+  const scope = requiredKnowledgeString(parsed, "scope");
+  const statusFilter = requiredKnowledgeString(parsed, "status_filter");
+  const total = requiredKnowledgeNumber(parsed, "total");
+  const tenantId = typeof parsed["tenant_id"] === "string" ? parsed["tenant_id"] : undefined;
+  const itemsRaw = parsed["items"];
+  if (!Array.isArray(itemsRaw)) throw new Error("review queue response items must be an array");
+  const items = itemsRaw.map((item) => {
+    if (!isRecord(item)) throw new Error("review queue item must be an object");
+    const itemTenantId = typeof item["tenant_id"] === "string" ? item["tenant_id"] : undefined;
+    return {
+      pack_id: requiredKnowledgeString(item, "pack_id"),
+      version: requiredKnowledgeString(item, "version"),
+      name: requiredKnowledgeString(item, "name"),
+      scope: requiredKnowledgeString(item, "scope"),
+      ...(itemTenantId === undefined ? {} : { tenant_id: itemTenantId }),
+      source_kind: requiredKnowledgeString(item, "source_kind"),
+      quality_score: requiredKnowledgeNumber(item, "quality_score"),
+      review_status: requiredKnowledgeString(item, "review_status"),
+      ...(typeof item["reviewer_id"] === "string" ? { reviewer_id: item["reviewer_id"] } : {}),
+      ...(typeof item["reviewed_at"] === "string" ? { reviewed_at: item["reviewed_at"] } : {}),
+      ...(typeof item["review_summary"] === "string" ? { review_summary: item["review_summary"] } : {}),
+      chunk_count: requiredKnowledgeNumber(item, "chunk_count"),
+      source_count: requiredKnowledgeNumber(item, "source_count"),
+    };
+  });
+  return {
+    scope,
+    status_filter: statusFilter,
+    total,
+    ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
+    items,
   };
 }
 

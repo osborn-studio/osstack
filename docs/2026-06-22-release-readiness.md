@@ -31,7 +31,7 @@ main 已经把 osstack 升级方案中的核心可交付能力推进到“主路
 | Loop Engineering | 已完成本地闭环 | `pnpm smoke:loop` 通过；CLI 支持 `--loop` 读取 loop artifact，并校验 loop_id 防止误用 |
 | Evidence / Proof | 已完成本地链路 | `report --loop`、`scorecard --loop`、`proof --loop` 在 npm 安装 smoke 中生成 markdown、manifest、zip |
 | Knowledge Packs | 已完成官方包化 | 6 个 official packs 可加载、可列 source、可做 retrieval eval |
-| Knowledge Cloud | 已完成本地服务、部署资产和 EdgeOne 生产验收 | 本地服务 smoke 返回 6 official packs、1 private pack，并验证 sync/search/private/feedback；部署资产 smoke 检查 Dockerfile、EdgeOne、Render、GitHub Actions；生产 URL `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` 通过 `release doctor` health/search/sync/audit/feedback-summary |
+| Knowledge Cloud | 已完成本地服务、部署资产和 EdgeOne 生产验收 | 本地服务 smoke 返回 6 official packs、1 private pack，并验证 sync/search/private/feedback/review queue；部署资产 smoke 检查 Dockerfile、EdgeOne、Render、GitHub Actions；生产 URL `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` 通过 `release doctor` health/search/sync/audit/feedback-summary |
 | macOS launchd 安装 | 已完成安全 smoke | `serve --install --no-load`、`serve --status --no-load`、`serve --uninstall --no-load` 使用临时目录验证 |
 | Portable CLI 分发 | 已完成过渡 smoke | `pnpm smoke:portable-cli` 验证 workspace tarballs 可安装进 portable prefix，并输出 single executable 候选工具状态 |
 | Bun 单文件分发 | 已完成本地 release archive candidate smoke，已接 CI/release artifact | `pnpm build:single-binary` 生成 binary/manifest/checksum；`pnpm sbom:single-binary` 生成 SPDX 2.3 SBOM；`pnpm smoke:bun-single-binary` 验证 `--version`、`help`、`loop doctor --json`、sha256；`pnpm smoke:single-binary-signing` 验证 ad-hoc codesign；`pnpm smoke:single-binary-release-pack` 验证 tarball 可解包运行；release workflow 上传 candidate artifact |
@@ -136,7 +136,7 @@ main 已经把 osstack 升级方案中的核心可交付能力推进到“主路
 - 有独立 package：`@osstack/knowledge-cloud`。
 - 有 CLI/bin：`osstack-knowledge-cloud`。
 - 有 health/search/pack loading 的服务测试。
-- 有本地 smoke：启动服务、查询 health、加载 6 个 official packs、加载 1 个 team/private pack、验证 `/v1/sync`、验证 `/v1/private-packs`、验证 official/private 搜索、验证 `/v1/feedback`。
+- 有本地 smoke：启动服务、查询 health、加载 6 个 official packs、加载 1 个 team/private pack、验证 `/v1/sync`、验证 `/v1/private-packs`、验证 official/private 搜索、验证 `/v1/feedback`、验证 `/v1/review/queue` official 队列不泄漏 tenant pack、验证 tenant review queue 必须鉴权。
 - 有部署资产 smoke：
   - `Dockerfile.knowledge-cloud`
   - `deploy/knowledge-cloud/edgeone.json`
@@ -147,11 +147,11 @@ main 已经把 osstack 升级方案中的核心可交付能力推进到“主路
 
 仍需上线后补齐：
 
-- 真实云端 URL 与 `/healthz`、`/v1/search` 通过记录。
+- 生产云端 review queue 回归记录，并将 `osstack knowledge review-queue --cloud-url <EdgeOne URL> --json` 纳入每次知识包发布前检查。
 - 生产环境 secrets。
 - GitHub Actions 实际运行记录。
 - 可观测性仪表盘与告警。
-- 正式知识包版本发布与回滚流程。
+- 完整审核 UI、正式知识包版本发布与回滚流程。
 
 ## 8. 官方知识库当前成熟度
 
@@ -386,6 +386,6 @@ osstack knowledge eval --official --fixtures knowledge-evals/retrieval/osstack-c
 优先级建议：
 
 1. 做 TUI / Live Workbench，因为 npm 与 EdgeOne 主路径已经稳定。
-2. 做生产 Knowledge Cloud 运营：审核后台、object storage/Postgres/vector index、团队/组织权限模型。
+2. 做生产 Knowledge Cloud 运营：完整审核 UI、object storage/Postgres/vector index、团队/组织权限模型。
 3. 做 single-binary 公证发布：Developer ID signing、notarization、跨机器 smoke、正式 GitHub Release asset。
 4. 强化合规包装，让 osstack 的知识库与证据包可以进入团队/商业使用场景。

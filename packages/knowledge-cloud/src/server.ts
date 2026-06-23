@@ -61,6 +61,7 @@ export interface KnowledgeCloudAuditEntry {
 
 type KnowledgeCloudAuditAction = KnowledgeCloudAuditEntry["action"];
 type KnowledgeCloudAuditStatus = KnowledgeCloudAuditEntry["status"];
+type KnowledgeCloudReviewQueueStatus = "needs_review" | "all" | "approved" | "changes_requested" | "missing";
 const MAX_JSON_BODY_BYTES = 1024 * 1024;
 
 export interface PublishedKnowledgeCloudPacks {
@@ -371,6 +372,25 @@ async function routeKnowledgeCloudRequest(
     sendJson(res, 200, summarizeFeedback(options.feedbackLog, tenantId));
     return;
   }
+  if (method === "POST" && url.pathname === "/v1/review/queue") {
+    const body = await readJsonBody(req);
+    const tenantId = tenantIdField(body);
+    if (tenantId !== undefined && !isAuthorizedPrivateRequest(options, req, tenantId)) {
+      sendJson(res, 401, { error: "tenant review queue requires authorization" });
+      return;
+    }
+    const status = reviewQueueStatusField(body);
+    const packs = tenantId === undefined ? options.packs : tenantPrivatePacks(options, tenantId);
+    const items = reviewQueueItems(packs, status);
+    sendJson(res, 200, {
+      scope: tenantId === undefined ? "official" : "tenant",
+      ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
+      status_filter: status,
+      total: items.length,
+      items,
+    });
+    return;
+  }
   if (method === "POST" && url.pathname === "/v1/audit") {
     const body = await readJsonBody(req);
     const tenantId = tenantIdField(body);
@@ -443,6 +463,59 @@ function summarizeFeedback(entries: KnowledgeFeedbackEntry[], tenantId: string |
     ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
     chunks: [...chunks.values()].sort((a, b) => b.total - a.total || a.chunk_id.localeCompare(b.chunk_id)),
   };
+}
+
+function reviewQueueItems(packs: KnowledgePack[], status: KnowledgeCloudReviewQueueStatus): Array<{
+  pack_id: string;
+  version: string;
+  name: string;
+  scope: string;
+  tenant_id?: string;
+  source_kind: string;
+  quality_score: number;
+  review_status: "approved" | "changes_requested" | "missing";
+  reviewer_id?: string;
+  reviewed_at?: string;
+  review_summary?: string;
+  chunk_count: number;
+  source_count: number;
+}> {
+  return packs
+    .map((pack) => {
+      const review = pack.manifest.review;
+      const reviewStatus: "approved" | "changes_requested" | "missing" = review?.status ?? "missing";
+      return {
+        pack_id: pack.manifest.id,
+        version: pack.manifest.version,
+        name: pack.manifest.name,
+        scope: pack.manifest.scope ?? "official",
+        ...(pack.manifest.tenant_id === undefined ? {} : { tenant_id: pack.manifest.tenant_id }),
+        source_kind: pack.manifest.source_kind,
+        quality_score: pack.manifest.quality_score,
+        review_status: reviewStatus,
+        ...(review?.reviewer_id === undefined ? {} : { reviewer_id: review.reviewer_id }),
+        ...(review?.reviewed_at === undefined ? {} : { reviewed_at: review.reviewed_at }),
+        ...(review?.summary === undefined ? {} : { review_summary: review.summary }),
+        chunk_count: pack.manifest.chunks.length,
+        source_count: pack.manifest.source_provenance?.length ?? 0,
+      };
+    })
+    .filter((item) => {
+      if (status === "all") return true;
+      if (status === "needs_review") return item.review_status !== "approved";
+      return item.review_status === status;
+    })
+    .sort((a, b) => (
+      reviewQueuePriority(a.review_status) - reviewQueuePriority(b.review_status)
+      || a.pack_id.localeCompare(b.pack_id)
+      || a.version.localeCompare(b.version)
+    ));
+}
+
+function reviewQueuePriority(status: "approved" | "changes_requested" | "missing"): number {
+  if (status === "missing") return 0;
+  if (status === "changes_requested") return 1;
+  return 2;
 }
 
 function tenantPrivatePacks(options: KnowledgeCloudOptions, tenantId: string): KnowledgePack[] {
@@ -609,6 +682,18 @@ function auditLimitField(value: unknown): number | undefined {
   const limit = numberField(value, "limit");
   if (limit === undefined) return undefined;
   return Math.max(1, Math.min(100, Math.trunc(limit)));
+}
+
+function reviewQueueStatusField(value: unknown): KnowledgeCloudReviewQueueStatus {
+  const status = stringField(value, "status");
+  if (
+    status === "all"
+    || status === "approved"
+    || status === "changes_requested"
+    || status === "missing"
+    || status === "needs_review"
+  ) return status;
+  return "needs_review";
 }
 
 function searchLimitField(value: unknown): number {

@@ -103,6 +103,32 @@ try {
     "/v1/private-packs must expose tenant-scoped team packs",
   );
 
+  const publicReviewQueue = await fetchJson(`${url}/v1/review/queue`, {});
+  assert(publicReviewQueue.scope === "official", "/v1/review/queue must default to official scope");
+  assert(Array.isArray(publicReviewQueue.items), "/v1/review/queue must return review queue items");
+  assert(
+    !publicReviewQueue.items.some((item) => item.pack_id === "team/private-release"),
+    "/v1/review/queue without tenant scope must not leak tenant packs",
+  );
+  const unauthorizedReviewQueue = await fetch(`${url}/v1/review/queue`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ tenant_id: "team_smoke" }),
+  });
+  assert(unauthorizedReviewQueue.status === 401, "/v1/review/queue must protect tenant review queues");
+  const tenantReviewQueue = await fetchJson(`${url}/v1/review/queue`, {
+    tenant_id: "team_smoke",
+    status: "all",
+  }, {
+    authorization: "Bearer kst_smoke_private",
+  });
+  assert(tenantReviewQueue.scope === "tenant", "/v1/review/queue tenant scope must be tenant");
+  assert(tenantReviewQueue.tenant_id === "team_smoke", "/v1/review/queue must echo tenant_id");
+  assert(
+    tenantReviewQueue.items.some((item) => item.pack_id === "team/private-release"),
+    "/v1/review/queue must include authorized tenant packs",
+  );
+
   const search = await fetchJson(`${url}/v1/search`, {
     query: "proof pack checksum manifest",
     limit: 2,
@@ -302,6 +328,8 @@ try {
     private_result: privateSearch.results[0]?.chunk_id ?? null,
     feedback: feedback.feedback?.status ?? null,
     feedback_summary_total: feedbackSummary.total,
+    review_queue_total: publicReviewQueue.total,
+    tenant_review_queue_total: tenantReviewQueue.total,
     feedback_log: feedbackLogPath,
     audit_log: auditLogPath,
     audit_events: tenantAudit.events.length + publicAudit.events.length,
