@@ -95,6 +95,7 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       "test-vectors/OS-EVID-BAD-001.json",
       "test-vectors/OS-PROOF-BAD-001.json",
       "test-vectors/OS-PROOF-BAD-002.json",
+      "test-vectors/OS-PROOF-BAD-003.json",
       "test-vectors/OS-AUDIT-001.json",
       "test-vectors/OS-KNOW-001.json",
     ];
@@ -218,6 +219,25 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       { control_id: "evidence-integrity", evidence_path: "manifest.json" },
       { control_id: "change-validation", evidence_path: "verify-results.json" },
       { control_id: "automated-decision-trace", evidence_path: "policy-decision.json" },
+    ]));
+
+    const malformedChecksumVector = JSON.parse(
+      await readFile(join(specDir, "test-vectors", "OS-PROOF-BAD-003.json"), "utf-8"),
+    ) as {
+      expected_status: string;
+      proof_dir_mutation: { sha256sums_extra_lines: string[] };
+      expected_integrity_issues: Array<{ path: string; code: string }>;
+    };
+    expect(malformedChecksumVector.expected_status).toBe("reject");
+    expect(malformedChecksumVector.proof_dir_mutation.sha256sums_extra_lines).toEqual(expect.arrayContaining([
+      expect.stringContaining("report.md"),
+      expect.stringContaining("/tmp/osstack-proof-leak.txt"),
+      expect.stringContaining("nested/../report.md"),
+    ]));
+    expect(malformedChecksumVector.expected_integrity_issues).toEqual(expect.arrayContaining([
+      { path: "report.md", code: "sha256sums_duplicate_entry" },
+      { path: "/tmp/osstack-proof-leak.txt", code: "sha256sums_unsafe_path" },
+      { path: "nested/../report.md", code: "sha256sums_unsafe_path" },
     ]));
 
     const auditVector = JSON.parse(
