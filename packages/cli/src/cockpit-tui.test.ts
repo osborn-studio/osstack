@@ -4,6 +4,7 @@ import {
   initialCockpitTuiFullscreenState,
   renderCockpitFullscreen,
   renderCockpitTui,
+  runCockpitTuiFullscreenKeys,
   selectCockpitTuiAction,
   updateCockpitTuiFullscreenState,
   type CockpitKnowledgeSummary,
@@ -190,5 +191,32 @@ describe("cockpit TUI model", () => {
       },
     });
     expect(updateCockpitTuiFullscreenState(model, movedDown.state, "q")).toEqual({ type: "quit" });
+  });
+
+  it("runs deterministic full-screen key sequences for interactive automation", () => {
+    const model = cockpitTuiModel(
+      {},
+      {
+        dashboard: { workspace_path: "/workspace/project" },
+        next_steps: [
+          { label: "Loop", command: "osstack cockpit run --workspace <path> --json", status: "ready" },
+          { label: "Proof", command: "osstack cockpit proof --workspace <path> --json", status: "ready" },
+        ],
+      },
+      emptyKnowledge,
+    );
+
+    expect(runCockpitTuiFullscreenKeys(model, ["down", "enter"])).toMatchObject({
+      type: "select",
+      state: { active_section_index: 1, selected_action_index: 2 },
+      selection: {
+        selected_index: 2,
+        next_command: "osstack cockpit proof --workspace '/workspace/project' --json",
+      },
+    });
+    expect(runCockpitTuiFullscreenKeys(model, ["down", "q"])).toEqual({
+      type: "quit",
+      state: { active_section_index: 1, selected_action_index: 2 },
+    });
   });
 });
