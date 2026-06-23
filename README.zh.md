@@ -440,6 +440,11 @@ osstack task observe run_9f8c2a11
 `osstack agent list` 列出已注册适配器、它们的能力，以及在本机是否可用
 （`isAvailable()` 会探测底层 SDK/二进制）。
 
+**凭证模型：** osstack 默认不保存模型 API key。默认 CLI 适配器使用
+`subprocess/login-reuse`，复用用户本机已经登录的 CLI 会话。SDK/API-key
+适配器属于明确选择的高级路径；不要把 provider key 粘贴到 prompt、任务、issue
+或 proof artifact 中。
+
 | 适配器 | 能力 | 备注 |
 |---|---|---|
 | `claude-code` | `code.write`、`code.refactor`、`code.test`、`code.debug` | 经 `@anthropic-ai/claude-agent-sdk`。 |

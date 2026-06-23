@@ -476,6 +476,12 @@ improves over time.
 whether each is available on this machine (`isAvailable()` probes the underlying
 SDK/binary).
 
+**Credential model:** osstack does not store model API keys by default. The
+default CLI adapters use `subprocess/login-reuse`, which reuses the user's
+already authenticated local CLI session. SDK/API-key adapters are explicit
+opt-in paths; do not paste provider keys into prompts, tasks, issues, or proof
+artifacts.
+
 | Adapter | Capabilities | Notes |
 |---|---|---|
 | `claude-code` | `code.write`, `code.refactor`, `code.test`, `code.debug` | Via `@anthropic-ai/claude-agent-sdk`. |

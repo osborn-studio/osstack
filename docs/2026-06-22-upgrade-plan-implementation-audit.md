@@ -142,10 +142,12 @@
 - `osstack agent list` 显示 role、capability、auth mode。
 - `codex-cli` 等 subprocess/login-reuse 模式已进入测试。
 - agent scorecard 可显示成功率、失败、适合任务类型。
+- README / README.zh 已在 Agent 适配器章节加粗说明：osstack 默认不保存模型 API key，
+  默认 CLI 适配器复用本机已登录 CLI 会话，SDK/API-key 适配器属于明确 opt-in 路径。
 
 需增强：
 
-- README 中“默认不保存模型 API key”的说明可再加粗。
+- 后续新增具体 SDK/API-key adapter 时，为每个 adapter 补充 provider 级凭证配置说明与泄漏防护测试。
 
 ### Task 2.1：`osstack deliver`
 
