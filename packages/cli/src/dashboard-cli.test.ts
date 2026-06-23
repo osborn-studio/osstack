@@ -13,6 +13,7 @@ let errors: string[];
 let oldSocket: string | undefined;
 let oldHome: string | undefined;
 let oldLang: string | undefined;
+let oldCockpitTuiInput: string | undefined;
 let daemon: DaemonHandles | null;
 
 beforeEach(() => {
@@ -22,6 +23,7 @@ beforeEach(() => {
   oldSocket = process.env["OSSTACK_SOCKET"];
   oldHome = process.env["OSSTACK_HOME"];
   oldLang = process.env["OSSTACK_LANG"];
+  oldCockpitTuiInput = process.env["OSSTACK_TEST_COCKPIT_TUI_INPUT"];
   process.env["OSSTACK_HOME"] = join(tmp, "home");
   process.env["OSSTACK_SOCKET"] = `/tmp/osstack-dashboard-cli-${randomUUID()}.sock`;
   process.env["OSSTACK_UPDATE_CHECK"] = "0";
@@ -79,6 +81,8 @@ afterEach(async () => {
   else process.env["OSSTACK_HOME"] = oldHome;
   if (oldLang === undefined) delete process.env["OSSTACK_LANG"];
   else process.env["OSSTACK_LANG"] = oldLang;
+  if (oldCockpitTuiInput === undefined) delete process.env["OSSTACK_TEST_COCKPIT_TUI_INPUT"];
+  else process.env["OSSTACK_TEST_COCKPIT_TUI_INPUT"] = oldCockpitTuiInput;
   delete process.env["OSSTACK_UPDATE_CHECK"];
   vi.restoreAllMocks();
   await rm(tmp, { recursive: true, force: true });
@@ -326,6 +330,45 @@ describe("dashboard/cockpit CLI", () => {
 
     expect(exitCode).toBe(1);
     expect(errors.join("\n")).toContain("cockpit tui action must be between 1 and");
+  });
+
+  it("selects a cockpit TUI action through interactive input", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace");
+    await mkdir(workspace, { recursive: true });
+    process.env["OSSTACK_TEST_COCKPIT_TUI_INPUT"] = "2\n";
+
+    const exitCode = await main(["cockpit", "tui", "--workspace", workspace, "--interactive", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const selection = JSON.parse(logs.join("\n")) as {
+      mode: string;
+      selected_index: number;
+      action: { label: string; command: string; status: string };
+      next_command: string;
+    };
+    expect(selection).toMatchObject({
+      mode: "terminal-cockpit-action",
+      selected_index: 2,
+      action: {
+        label: "Coding",
+        command: "osstack deliver \"<task>\" --auto-agent --worktree --checkpoint",
+        status: "ready",
+      },
+    });
+  });
+
+  it("exits the interactive cockpit TUI without selecting an action", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    process.env["OSSTACK_TEST_COCKPIT_TUI_INPUT"] = "q\n";
+
+    const exitCode = await main(["cockpit", "tui", "--interactive", "--json"]);
+
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      mode: "terminal-cockpit-interactive",
+      status: "quit",
+    });
   });
 
   it("prints actionable cockpit next steps as a standalone command", async () => {

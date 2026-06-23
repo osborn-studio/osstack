@@ -50,7 +50,7 @@ main 已经把 osstack 升级方案中的核心可交付能力推进到“主路
 | `pnpm test` | 通过 | CLI 136 tests、Loop 58 tests、Core 71 tests 等全部通过 |
 | `pnpm smoke:knowledge-cloud:deploy` | 通过 | 检查 `Dockerfile.knowledge-cloud`、EdgeOne、Render、GitHub Actions 部署资产 |
 | `pnpm smoke:knowledge-cloud` | 通过 | health=`osstack-knowledge-cloud`，packs=`6`，private_packs=`1`，sync_packs=`6`，top_result=`proof-checksum-pack`，private_result=`private-release-approval`，feedback=`sent` |
-| `pnpm smoke:npm-install` | 通过 | 15 个 tarballs；安装后 CLI、launchd dry-run、evidence、knowledge eval、Knowledge Cloud load、sync cache、cloud outage local fallback 全部验证 |
+| `pnpm smoke:npm-install` | 通过 | 15 个 tarballs；安装后 CLI、launchd dry-run、cockpit TUI interactive selection、evidence、knowledge eval、Knowledge Cloud load、sync cache、cloud outage local fallback 全部验证 |
 | `pnpm smoke:portable-cli` | 通过 | build `@osstack/cli`，生成临时 portable bundle，执行 `--version`、`help`、`loop doctor --json`，并报告 Node SEA/Bun/pkg/nexe/postject 候选状态 |
 | `pnpm build:single-binary -- --output-dir <tmp> --json` | 通过 | 生成 `osstack-0.1.0-darwin-arm64`、manifest、`sha256sums.txt`；manifest 明确 `signed=false`、`notarized=false` |
 | `pnpm smoke:bun-single-binary` | 通过 | Bun 1.3.13 编译 672 modules 成约 67MB 单文件；`--version` 输出 `osstack 0.1.0`，`loop doctor` 通过，并校验 manifest/checksum |
@@ -80,6 +80,7 @@ main 已经把 osstack 升级方案中的核心可交付能力推进到“主路
 - 检查 `loop --help` 暴露 `--proof`、`--knowledge`。
 - 检查 `examples --json` 至少包含 6 个工作流，并覆盖 deliver/proof 入口。
 - 检查 `guide` 中包含 doctor 与 proof view 引导。
+- 检查安装后的 `cockpit tui --json` 与 `cockpit tui --interactive --json`，确认终端 cockpit section 与 action selection 可用。
 - 构造临时 `LOOP-STATE.json`，验证 `report --loop`、`scorecard --loop`、`proof --loop` 生成证据产物。
 - 运行官方知识库 retrieval eval，结果为 `30/30`。
 - 检查 `knowledge sources --internal --official` 能返回 6 个带 provenance 的 official packs。
@@ -379,7 +380,7 @@ osstack knowledge eval --official --fixtures knowledge-evals/retrieval/osstack-c
 
 | 方向 | 目标 | 验收 |
 |---|---|---|
-| TUI / Live Workbench | 把当前 CLI 能力变成更精致的操作台 | Terminal cockpit 已覆盖 Overview/Kanban/Evidence/Knowledge/Next Actions；下一步是完整键盘交互式 Ink/blessed 工作台 |
+| TUI / Live Workbench | 把当前 CLI 能力变成更精致的操作台 | Terminal cockpit 已覆盖 Overview/Kanban/Evidence/Knowledge/Next Actions，并支持 `--interactive` action selection；下一步是完整全屏 Ink/blessed 工作台 |
 | 云端知识库 | 把 official/private/team packs 服务化、权限化、版本化 | 支持 pack publish、search、provenance、eval、rollback |
 | 合规包装 | 把 provenance、license、policy、audit 输出变成用户可理解资产 | 每个证据包都能说明来源、权限、风险、可复现性 |
 
