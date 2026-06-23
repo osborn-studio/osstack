@@ -189,8 +189,13 @@ try {
   assert(feedback.feedback?.status === "sent", "/v1/feedback must return sent status");
   assert(feedback.feedback?.tenant_id === "team_smoke", "/v1/feedback must record tenant scope");
 
+  const publicFeedbackSummary = await fetchJson(`${url}/v1/feedback/summary`, {});
+  assert(publicFeedbackSummary.total === 0, "/v1/feedback/summary without tenant scope must not leak tenant feedback");
+
   const feedbackSummary = await fetchJson(`${url}/v1/feedback/summary`, {
     tenant_id: "team_smoke",
+  }, {
+    authorization: "Bearer kst_smoke_private",
   });
   assert(feedbackSummary.total === 2, "/v1/feedback/summary must count preloaded and live tenant feedback");
   assert(feedbackSummary.useful === 1, "/v1/feedback/summary must count useful tenant feedback");
