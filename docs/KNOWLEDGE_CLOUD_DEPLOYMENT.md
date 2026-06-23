@@ -184,6 +184,10 @@ osstack knowledge search "proof pack checksum"
 ```
 
 If the cloud endpoint is unavailable, osstack knowledge search fails open to cached packs or local/off mode.
+Use `--stale-after-days N` to include cache freshness evidence in local or fallback
+search results. The default `--stale-policy warn` keeps this path fail-open; use
+`--stale-policy strict` in release checks when stale cached knowledge should fail
+the command until `osstack knowledge sync` refreshes the cache.
 
 ## Production Notes
 

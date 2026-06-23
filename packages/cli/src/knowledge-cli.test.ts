@@ -653,6 +653,43 @@ describe("knowledge CLI", () => {
     });
   });
 
+  it("fails stale cached knowledge search when strict freshness policy is requested", async () => {
+    const cacheDir = join(tmp, "knowledge-cache");
+    const packsDir = join(cacheDir, "packs", "osstack-core__loop-engineering");
+    await mkdir(packsDir, { recursive: true });
+    await writeFile(join(packsDir, "2000.01.01.json"), JSON.stringify(cloudCockpitPack({
+      id: "osstack-core/loop-engineering",
+      version: "2000.01.01",
+      generated_at: "2000-01-01T00:00:00.000Z",
+      last_reviewed_at: "2000-01-01T00:00:00.000Z",
+    }), null, 2));
+
+    const exitCode = await main([
+      "knowledge",
+      "search",
+      "cockpit proof",
+      "--mode",
+      "local",
+      "--cache-dir",
+      cacheDir,
+      "--stale-after-days",
+      "1",
+      "--stale-policy",
+      "strict",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(1);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      mode: "local",
+      status: "recorded",
+      cache_stale: true,
+      cache_policy: "strict",
+      results: [expect.objectContaining({ pack_id: "osstack-core/loop-engineering" })],
+    });
+    expect(errors.join("\n")).toContain("knowledge cache is stale under --stale-policy strict");
+  });
+
   it("runs retrieval eval fixtures against knowledge packs", async () => {
     const packPath = join(tmp, "pack.json");
     const fixturesPath = join(tmp, "fixtures.json");

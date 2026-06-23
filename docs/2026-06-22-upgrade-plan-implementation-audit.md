@@ -257,10 +257,13 @@
 - 本地/离线 search 已支持 freshness evidence：`knowledge search --stale-after-days N` 会在本地
   search 或 cloud fallback 到本地 cache 时输出 `cache_stale`、`cache_age_days` 与阈值，提醒用户当前
   knowledge cache 是否超过可信 freshness window。
+- 本地/离线 search 已支持 stale cache policy：默认 `--stale-policy warn` 继续 fail-open，只输出 stale
+  evidence；自动化或发布前检查可使用 `--stale-policy strict`，在缓存超过 `--stale-after-days` 时保留
+  JSON evidence 但返回非零退出码，要求先 `knowledge sync` 或调整 freshness window。
 
 需增强：
 
-- 后续可增加离线策略 profile（例如 strict 阻断 stale cache、warn-only、自动提示 sync）。
+- 后续可增加自动提示 sync / 自动 sync 的离线策略 profile。
 
 ### Task 4.3：Agent scorecard
 

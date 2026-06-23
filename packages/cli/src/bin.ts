@@ -4691,7 +4691,7 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   osstack knowledge list --pack P|--official [--json]
   osstack knowledge login --cloud-url URL [--token T] [--cache-dir P] [--json]
   osstack knowledge sync [--cloud-url URL] [--cache-dir P] [--private] [--tenant T] [--json]
-  osstack knowledge search <query> [--pack P] [--official] [--cloud-url URL] [--tenant T] [--cache-dir P] [--limit N] [--stale-after-days N] [--json]
+  osstack knowledge search <query> [--pack P] [--official] [--cloud-url URL] [--tenant T] [--cache-dir P] [--limit N] [--stale-after-days N] [--stale-policy warn|strict] [--json]
   osstack knowledge inspect <chunk_id> [--pack P] [--official] [--cache-dir P] [--json]
   osstack knowledge import P --scope team|project --id ID --name NAME --license L --output P [--taxonomy T] [--json]
   osstack knowledge ingest P --scope official|team|project --id ID --name NAME --license L --output P [--taxonomy T] [--source-kind K] [--reviewer ID] [--review-status approved|changes_requested] [--review-note TEXT] [--json]
@@ -4823,7 +4823,7 @@ Env:
       console.error("osstack: --mode must be one of off, local, cloud");
       return 1;
     }
-    const query = positionalValues(args.slice(1), new Set(["--pack", "--limit", "--cloud-url", "--mode", "--cache-dir", "--tenant", "--token", "--stale-after-days"])).join(" ");
+    const query = positionalValues(args.slice(1), new Set(["--pack", "--limit", "--cloud-url", "--mode", "--cache-dir", "--tenant", "--token", "--stale-after-days", "--stale-policy"])).join(" ");
     if (query.length === 0) {
       console.error("osstack: knowledge search requires a query");
       return 1;
@@ -4837,6 +4837,11 @@ Env:
     const staleAfterDays = parsePositiveIntegerFlag(flagValue(args, "--stale-after-days"), "--stale-after-days");
     if (staleAfterDays instanceof Error) {
       console.error(`osstack: ${staleAfterDays.message}`);
+      return 1;
+    }
+    const stalePolicy = flagValue(args, "--stale-policy") ?? "warn";
+    if (!["warn", "strict"].includes(stalePolicy)) {
+      console.error("osstack: --stale-policy must be one of warn, strict");
       return 1;
     }
     const packs = [
@@ -4860,8 +4865,12 @@ Env:
       ...(tenantId === undefined ? {} : { tenantId }),
       ...(staleAfterDays === undefined ? {} : { staleAfterDays }),
     }));
+    const cacheIsStale = evidence.status === "recorded" && evidence.cache_stale === true;
+    const output = cacheIsStale
+      ? { ...evidence, cache_policy: stalePolicy }
+      : evidence;
     if (args.includes("--json")) {
-      console.log(JSON.stringify(evidence, null, 2));
+      console.log(JSON.stringify(output, null, 2));
     } else if (evidence.results.length === 0) {
       console.log("No knowledge chunks matched.");
     } else {
@@ -4869,12 +4878,16 @@ Env:
         console.log(`Knowledge fallback: ${evidence.fallback_mode} (${evidence.reason})`);
       }
       if (evidence.status === "recorded" && evidence.cache_stale === true) {
-        console.log(`Knowledge cache stale: age=${evidence.cache_age_days ?? "unknown"}d threshold=${evidence.cache_stale_after_days ?? "unknown"}d`);
+        console.log(`Knowledge cache stale: age=${evidence.cache_age_days ?? "unknown"}d threshold=${evidence.cache_stale_after_days ?? "unknown"}d policy=${stalePolicy}`);
       }
       for (const result of evidence.results) {
         console.log(`${result.pack_id}:${result.chunk_id} score=${result.score} ${result.title}`);
         console.log(result.snippet);
       }
+    }
+    if (cacheIsStale && stalePolicy === "strict") {
+      console.error("osstack: knowledge cache is stale under --stale-policy strict; run `osstack knowledge sync` or lower the freshness threshold");
+      return 1;
     }
     return 0;
   }
