@@ -323,7 +323,16 @@ describe("knowledge CLI", () => {
     expect(manifest.chunks[0]?.body).toContain("proof packs");
 
     logs = [];
-    const searchExitCode = await main(["knowledge", "search", "rollback proof release", "--pack", outputPath, "--json"]);
+    const searchExitCode = await main([
+      "knowledge",
+      "search",
+      "rollback proof release",
+      "--pack",
+      outputPath,
+      "--cache-dir",
+      join(tmp, "isolated-cache"),
+      "--json",
+    ]);
 
     expect(searchExitCode).toBe(0);
     expect(JSON.parse(logs.join("\n"))).toMatchObject({

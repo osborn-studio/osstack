@@ -35,6 +35,11 @@ describe("CLI i18n", () => {
     expect(output).toContain("Usage:");
     expect(output).toContain("Project commands:");
     expect(output).toContain("proof view <run_id> --audience engineer|manager|auditor|customer");
+    expect(output).toContain("knowledge sync");
+    expect(output).toContain("knowledge inspect");
+    expect(output).toContain("knowledge pin");
+    expect(output).toContain("knowledge feedback");
+    expect(output).toContain("knowledge sources");
     expect(errors).toEqual([]);
   });
 
@@ -50,6 +55,11 @@ describe("CLI i18n", () => {
     expect(output).toContain("项目命令：");
     expect(output).toContain("proof view");
     expect(output).toContain("engineer/manager/auditor/customer");
+    expect(output).toContain("knowledge sync");
+    expect(output).toContain("knowledge inspect");
+    expect(output).toContain("knowledge pin");
+    expect(output).toContain("knowledge feedback");
+    expect(output).toContain("knowledge sources");
     expect(errors).toEqual([]);
   });
 });

@@ -124,7 +124,15 @@ Loop 工程：
 治理与知识：
   govern check        运行确定性治理检查
   compliance list     列出合规映射包
-  knowledge search    搜索本地或云端 Osstack 知识库
+  knowledge list       列出本地、官方或缓存的 Osstack 知识包
+  knowledge login      保存 Knowledge Cloud URL/token 到本地缓存
+  knowledge sync       从 Knowledge Cloud 同步官方或团队知识包
+  knowledge search     搜索本地、缓存或云端 Osstack 知识库
+  knowledge inspect    查看 chunk 内容、pack 元数据和来源引用
+  knowledge pin        固定本地缓存中的 pack 版本
+  knowledge feedback   记录或上报 chunk 有用/无用反馈
+  knowledge sources    查看内部 provenance/license 来源
+  knowledge import     将团队或项目文档加工为 Osstack-native pack
   lessons list        查看本地 pitfall 知识库
 
 Agent：
@@ -323,10 +331,22 @@ Governance:
                                  List compliance mapping packs
   compliance render <run_id> --pack P [--proof-dir P]
                                  Render a compliance evidence mapping report
-  knowledge list --pack P [--json]
-                                 List local Osstack knowledge packs
-  knowledge search <query> [--pack P] [--cloud-url URL] [--json]
-                                 Search Osstack knowledge packs or cloud
+  knowledge list --pack P|--official [--json]
+                                 List local, official, or cached Osstack knowledge packs
+  knowledge login --cloud-url URL [--token T] [--json]
+                                 Save Knowledge Cloud connection settings locally
+  knowledge sync [--cloud-url URL] [--private] [--tenant T] [--json]
+                                 Sync official or tenant packs from Knowledge Cloud
+  knowledge search <query> [--pack P] [--official] [--cloud-url URL] [--json]
+                                 Search local, cached, or cloud Osstack knowledge packs
+  knowledge inspect <chunk_id> [--pack P] [--official] [--json]
+                                 Show chunk content, pack metadata, and source refs
+  knowledge pin <pack_id>@<version> [--json]
+                                 Pin a cached knowledge pack version
+  knowledge feedback <chunk_id> --useful|--bad [--cloud-url URL] [--json]
+                                 Record local/cloud feedback for retrieval quality
+  knowledge sources --internal --pack P|--official [--json]
+                                 Show internal provenance/license records
   knowledge import P --scope team|project --output P
                                  Import local docs as an Osstack-native pack
   lessons list [--family F] [--json]
