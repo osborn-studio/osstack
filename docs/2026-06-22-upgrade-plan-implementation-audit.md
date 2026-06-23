@@ -16,8 +16,8 @@
 
 仍未完成的部分集中在外部发布和产品深化：
 
-- GitHub push/PR 已恢复，Version Packages PR #5 当前为 `CLEAN / MERGEABLE`，但 GitHub Actions 在账户层被 billing/spending-limit 阻塞，runner 尚不能启动；`release doctor` 已新增 `github_actions` 检查并能把该阻塞写入 `release plan`。
-- npm publish 仍需要仓库 secret `NPM_TOKEN`；Knowledge Cloud `deploy=true` 仍需要仓库 secret `FLY_API_TOKEN`。
+- GitHub push/PR 与 Actions runner 已恢复，main CI 和 macOS Release Candidate 可以正常完成；`release doctor` 保留 `github_actions` 检查，用于提前发现账户层 runner/billing 类问题。
+- npm publish 仍需要修复仓库 secret `NPM_TOKEN` 的 `@osstack` scope 发布权限；Knowledge Cloud `deploy=true` 现在以 EdgeOne 为主路径，仍需要仓库 secret `EDGEONE_DEPLOY_HOOK_URL`。
 - 日常 PR CI 已拆到 `ubuntu-latest`，macOS single-binary release-candidate smoke 已拆到独立 `.github/workflows/macos-release-candidate.yml`，正式 release workflow 仍保留 macOS archive candidate artifact。
 - `npm install -g @osstack/cli` 还没有从真实 npm registry 验证，只验证了本地 tarball 安装。
 - 可选单文件分发已有 portable CLI bundle smoke、Bun single executable smoke、本地 release asset manifest/checksum/SPDX SBOM、ad-hoc codesign 验证、`.tar.gz` release archive smoke、single-binary `release doctor` readiness，并已接入 CI/release workflow candidate artifact 与 tag/workflow_dispatch GitHub Release 上传路径；发布级 Developer ID 签名/公证/跨机器验证尚未完成。
@@ -187,7 +187,7 @@
 已增强：
 
 - `docs/specs/CONFORMANCE_MATRIX.md` 已把 R-001 到 R-014 映射到 schema、test vector、deterministic verifier、smoke 或 CLI test。
-- `run-spec-files.test.ts` 会防止矩阵遗漏 stable clause、回退到旧的 `workflow-scope push` blocker 文案，并要求记录 installed-CLI deliver smoke 与当前 GitHub Actions billing blocker。
+- `run-spec-files.test.ts` 会防止矩阵遗漏 stable clause、回退到旧的 `workflow-scope push` blocker 文案，并要求记录 installed-CLI deliver smoke 与 GitHub Actions runner/release doctor 检查口径。
 
 ### Task 3.2：Governance verifier
 
@@ -374,13 +374,13 @@
 - Knowledge Cloud 支持 tenant-bound private tokens：`osstack-knowledge-cloud --private-tenant-token tenant=token` 和 `OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON` 可把私有知识包访问绑定到具体 tenant，错误 tenant token 无法读取目标 tenant 的 private packs；旧的 `--private-token` 仍作为兼容的全局 private token。
 - feedback entry 支持记录 `tenant_id` 与 `authorized`，CLI `knowledge feedback` 支持 `--tenant`，云端 `/v1/feedback` 会把 tenant/auth 范围写入 sink 与响应，便于后续做知识质量审计和租户级反馈分析。
 - 云端服务支持 `/v1/feedback/summary`，可按 `tenant_id` 聚合 useful/bad/total 和 chunk 级反馈计数；Knowledge Cloud smoke 已覆盖 tenant feedback summary。
-- `osstack-knowledge-cloud` 支持 `--feedback-log` / `OSSTACK_KNOWLEDGE_FEEDBACK_LOG` 将 feedback entry 追加写入 JSONL，并在启动时预加载既有 JSONL 作为 summary 初始状态；Fly/Render 部署配置默认使用 `/data/feedback/feedback.jsonl` 和 `/data/published-packs`，deploy asset smoke 会检查这些落盘路径。
-- `osstack-knowledge-cloud` 支持 `--audit-log` / `OSSTACK_KNOWLEDGE_AUDIT_LOG` 将 publish、private pack access、search、feedback 审计事件追加写入 JSONL，并在启动时预加载既有 JSONL；`/v1/audit` 可查询 official audit events，tenant audit events 需要对应 tenant token，支持 `action` / `status` / `limit` 过滤，避免公共查询泄漏租户事件并让运营排障可控；Fly/Render 部署配置默认使用 `/data/audit/knowledge-cloud-audit.jsonl`。
+- `osstack-knowledge-cloud` 支持 `--feedback-log` / `OSSTACK_KNOWLEDGE_FEEDBACK_LOG` 将 feedback entry 追加写入 JSONL，并在启动时预加载既有 JSONL 作为 summary 初始状态；EdgeOne/Render 部署配置默认使用 `/data/feedback/feedback.jsonl` 和 `/data/published-packs`，deploy asset smoke 会检查这些落盘路径。
+- `osstack-knowledge-cloud` 支持 `--audit-log` / `OSSTACK_KNOWLEDGE_AUDIT_LOG` 将 publish、private pack access、search、feedback 审计事件追加写入 JSONL，并在启动时预加载既有 JSONL；`/v1/audit` 可查询 official audit events，tenant audit events 需要对应 tenant token，支持 `action` / `status` / `limit` 过滤，避免公共查询泄漏租户事件并让运营排障可控；EdgeOne/Render 部署配置默认使用 `/data/audit/knowledge-cloud-audit.jsonl`。
 - Knowledge search result 会返回 `matched_terms`，本地检索和云端检索 validator 均已覆盖，prompt snippet 会携带命中词，便于 proof/report 解释 chunk 为什么被检索命中。
 - 本地与云端共用的 `searchKnowledgePacks` 已从简单词频排序升级为 BM25-style 排序：考虑 query term 文档频率、chunk 长度归一化和 pack quality score，并覆盖“稀有词完整命中优先于重复通用词”的回归测试。
 - CLI 支持 cloud login/sync/search/import/ingest/pin/feedback/sources。
 - 本地 smoke 验证 official/private packs、sync、search、feedback，并在真实本地服务上调用构建后的 `osstack release doctor --target knowledge-cloud --cloud-url <local-url> --json`，确认 health、search、audit 三道部署 handoff gate 通过且 public audit 不泄漏 tenant event。
-- deploy assets 存在：Dockerfile、Fly、Render、GitHub Actions；`release doctor --target knowledge-cloud` 已接入 `knowledge_cloud_deploy_assets` 静态 preflight，检查 Dockerfile、Fly/Render healthcheck、audit JSONL 持久化路径、feedback JSONL 持久化路径、published-pack storage 路径、workflow smoke、Docker build、`FLY_API_TOKEN` gate 与 Fly deploy 命令；传入 `--cloud-url <url>` 时还会访问 `<url>/healthz` 并要求 HTTP 2xx、`ok=true`、`service=osstack-knowledge-cloud`，用默认 `proof pack checksum` 查询 `<url>/v1/search` 并要求至少 1 条结果，同时对 `<url>/v1/audit` 执行 public audit smoke，要求返回 JSON events 数组且不能泄漏 tenant event；`release plan` 的 Knowledge Cloud validation commands 会列出 `pnpm smoke:knowledge-cloud:deploy`，`smoke:release-plan` 会检查 full release runbook 中该命令与部署后云端验收命令都存在，post-release validation commands 默认使用生产 URL `https://knowledge.osstack.ai`，如果传入 `--cloud-url <url>` 则复用该 URL 执行 `release doctor`、`knowledge sync` 和 `knowledge search`。
+- deploy assets 存在：Dockerfile、EdgeOne、Render、GitHub Actions；`release doctor --target knowledge-cloud` 已接入 `knowledge_cloud_deploy_assets` 静态 preflight，检查 Dockerfile、EdgeOne/Render healthcheck、audit JSONL 持久化路径、feedback JSONL 持久化路径、published-pack storage 路径、workflow smoke、Docker build、`EDGEONE_DEPLOY_HOOK_URL` gate 与 EdgeOne deploy hook 命令；传入 `--cloud-url <url>` 时还会访问 `<url>/healthz` 并要求 HTTP 2xx、`ok=true`、`service=osstack-knowledge-cloud`，用默认 `proof pack checksum` 查询 `<url>/v1/search` 并要求至少 1 条结果，同时对 `<url>/v1/audit` 执行 public audit smoke，要求返回 JSON events 数组且不能泄漏 tenant event；`release plan` 的 Knowledge Cloud validation commands 会列出 `pnpm smoke:knowledge-cloud:deploy`，`smoke:release-plan` 会检查 full release runbook 中该命令与部署后云端验收命令都存在，post-release validation commands 默认使用生产 URL `https://knowledge.osstack.ai`，如果传入 `--cloud-url <url>` 则复用该 URL 执行 `release doctor`、`knowledge sync` 和 `knowledge search`。
 
 未完成：
 
@@ -393,9 +393,9 @@
 
 | 优先级 | 项目 | 原因 | 完成证据 |
 |---:|---|---|---|
-| P0 | 修复 GitHub Actions billing/spending limit | 当前 runner 在账户层启动前失败，PR #26 无法变绿；`release doctor` 已能自动识别该 blocker | PR #26 CI rerun 后 runner 正常启动并通过 |
-| P0 | 配置 `NPM_TOKEN` | 没有 npm publish secret 不能合并 Version Packages PR | `osstack release doctor --target npm --json` ready |
-| P0 | 配置 `FLY_API_TOKEN` | 没有 Fly deploy secret 不能运行 Knowledge Cloud `deploy=true` | `osstack release doctor --target knowledge-cloud --json` ready |
+| P0 | GitHub Actions runner 验证 | runner 已恢复并能完成主线 CI；继续保留 release doctor 作为账户层 blocker 早发现机制 | main CI 和 macOS Release Candidate 持续为 green |
+| P0 | 修复 `NPM_TOKEN` 的 `@osstack` 发布权限 | secret 已存在但 npm 返回 `E403`，说明 token 对 `@osstack` scope 没有 publish/owner 权限 | `osstack release doctor --target npm --json` ready；Release workflow 通过 npm preflight |
+| P0 | 配置 `EDGEONE_DEPLOY_HOOK_URL` | EdgeOne 是 Knowledge Cloud 主部署路径；没有 EdgeOne deploy hook secret 不能运行 Knowledge Cloud `deploy=true` | `osstack release doctor --target knowledge-cloud --json` ready |
 | P0 | 部署 Knowledge Cloud 到真实云端 | Phase 6 需要“上线”而非本地 smoke | 生产 URL + `release doctor --target knowledge-cloud --cloud-url <url>` health/search/audit gate |
 | P0 | npm publish 并从 registry 安装 | Phase 0 一行安装的最终验收 | `npm install -g @osstack/cli` 成功 |
 | P1 | `CONFORMANCE_MATRIX.md` 持续维护 | 让 OSSTACK_RUN_SPEC_V1 的 MUST 条款可审计 | 每条新增/变更 MUST 同步 schema/test/vector/verifier/smoke 映射 |
@@ -409,13 +409,13 @@
 当前执行：
 
 ```sh
-GitHub push、PR、release workflow 定义已恢复。当前阻塞点是账户级 Actions 与真实发布凭证：
+GitHub push、PR、release workflow 定义已恢复。当前阻塞点集中在真实发布凭证与 EdgeOne deploy hook：
 
-- GitHub Actions runner 启动前失败：`recent account payments have failed or your spending limit needs to be increased`。
-- npm registry publish 需要仓库 secret `NPM_TOKEN`。
-- Knowledge Cloud `deploy=true` 需要仓库 secret `FLY_API_TOKEN`。
-- 本地人工排障可继续配置 `npm login` 与 `flyctl auth login`。
-- `osstack release doctor --json` 当前会输出 `github_actions` error，并让 `release plan` 保持 `safe_to_execute=false`。
+- GitHub Actions runner 已恢复，主线 CI 和 macOS Release Candidate 可正常完成。
+- npm registry publish 当前卡在 `@osstack` scope 权限：`NPM_TOKEN` 已存在，但 npm preflight 返回 `E403`，需要把生成 token 的 npm 账号加入/设为 `@osstack` owner 或 publisher。
+- Knowledge Cloud `deploy=true` 采用 EdgeOne 主路径，需要仓库 secret `EDGEONE_DEPLOY_HOOK_URL`。
+- `FLY_API_TOKEN` 不再是当前 osstack 上线主路径的必需凭证；Fly.io 只保留为可选参考。
+- 本地人工排障继续需要 `npm login`；EdgeOne 排障需要腾讯云/EdgeOne Pages 控制台权限。
 
 发布前检查：
 
@@ -433,8 +433,8 @@ osstack release doctor --json
 
 授权解除后，立即转入 P0：
 
-1. 修复 GitHub Actions billing/spending limit。
-2. rerun PR #26 CI 并合并。
-3. 配置 `NPM_TOKEN` 与 `FLY_API_TOKEN`。
-4. 部署 Knowledge Cloud。
-5. npm publish。
+1. 在 npm 创建/认领 `@osstack` scope，并确保生成 `NPM_TOKEN` 的账号拥有 publish/owner 权限。
+2. 重新生成并配置仓库 secret `NPM_TOKEN`，rerun Release workflow。
+3. 在 EdgeOne Pages 创建 Knowledge Cloud 项目和 deploy hook，配置仓库 secret `EDGEONE_DEPLOY_HOOK_URL`。
+4. 运行 Knowledge Cloud Deploy workflow，选择 `deploy=true`。
+5. 用生产 URL 执行 `osstack release doctor --target knowledge-cloud --cloud-url <EdgeOne URL> --json`、`osstack knowledge sync --cloud-url <EdgeOne URL> --json` 和 `osstack knowledge search "proof pack checksum" --cloud-url <EdgeOne URL> --json`。
