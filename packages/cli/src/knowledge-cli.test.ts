@@ -658,6 +658,46 @@ describe("knowledge CLI", () => {
     }
   });
 
+  it("prints Knowledge Cloud review queue for a tenant", async () => {
+    const requests: Array<{ authorization: string | null; body?: unknown }> = [];
+    const server = await startKnowledgeServer({ requests });
+    try {
+      const address = server.address() as AddressInfo;
+      const exitCode = await main([
+        "knowledge",
+        "review-queue",
+        "--cloud-url",
+        `http://127.0.0.1:${address.port}`,
+        "--token",
+        "kst_cli_review",
+        "--tenant",
+        "team_alpha",
+        "--status",
+        "all",
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(logs.join("\n"))).toMatchObject({
+        scope: "tenant",
+        tenant_id: "team_alpha",
+        status_filter: "all",
+        total: 1,
+        items: [expect.objectContaining({
+          pack_id: "team/private-review",
+          review_status: "changes_requested",
+          reviewer_id: "team-reviewer",
+        })],
+      });
+      expect(requests).toContainEqual({
+        authorization: "Bearer kst_cli_review",
+        body: { tenant_id: "team_alpha", status: "all" },
+      });
+    } finally {
+      await closeServer(server);
+    }
+  });
+
   it("prunes old cached knowledge pack versions with an explicit apply step", async () => {
     const cacheDir = join(tmp, "knowledge-cache");
     const packsDir = join(cacheDir, "packs", "osstack-core__loop-engineering");
@@ -818,6 +858,30 @@ async function startKnowledgeServer(options: { requests?: Array<{ authorization:
             { chunk_id: "chunk-cockpit", total: 2, useful: 2, bad: 0 },
             { chunk_id: "chunk-rollback", total: 1, useful: 0, bad: 1 },
           ],
+        }));
+        return;
+      }
+      if (req.method === "POST" && req.url === "/v1/review/queue") {
+        res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({
+          scope: "tenant",
+          tenant_id: "team_alpha",
+          status_filter: "all",
+          total: 1,
+          items: [{
+            pack_id: "team/private-review",
+            version: "2026.06.22",
+            name: "Private Review",
+            scope: "team",
+            tenant_id: "team_alpha",
+            source_kind: "internal",
+            quality_score: 82,
+            review_status: "changes_requested",
+            reviewer_id: "team-reviewer",
+            reviewed_at: "2026-06-22T00:00:00.000Z",
+            review_summary: "Add rollback owner before reuse.",
+            chunk_count: 1,
+            source_count: 0,
+          }],
         }));
         return;
       }

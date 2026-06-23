@@ -409,6 +409,103 @@ describe("Knowledge Cloud HTTP service", () => {
                 })],
         });
     });
+    it("serves a public review queue for official packs that still need review", async () => {
+        const url = await startCloud({
+            packs: [
+                packFromManifest(reviewedOfficialPack()),
+                packFromManifest(reviewedOfficialPack({
+                    id: "osstack-core/needs-rewrite",
+                    name: "Needs Rewrite",
+                    review: {
+                        status: "changes_requested",
+                        reviewer_id: "knowledge-reviewer",
+                        reviewed_at: "2026-06-22T00:00:00.000Z",
+                        summary: "Rewrite upstream phrasing before publication.",
+                    },
+                })),
+                packFromManifest(unreviewedOfficialPack({
+                    id: "osstack-core/missing-review",
+                    name: "Missing Review",
+                })),
+            ],
+            privatePacks: [teamPack()],
+        });
+        const queue = await fetchJson(`${url}/v1/review/queue`, {});
+        expect(queue).toMatchObject({
+            scope: "official",
+            total: 2,
+            items: [
+                expect.objectContaining({
+                    pack_id: "osstack-core/missing-review",
+                    review_status: "missing",
+                    scope: "official",
+                    chunk_count: 1,
+                    source_count: 1,
+                }),
+                expect.objectContaining({
+                    pack_id: "osstack-core/needs-rewrite",
+                    review_status: "changes_requested",
+                    reviewer_id: "knowledge-reviewer",
+                    review_summary: "Rewrite upstream phrasing before publication.",
+                }),
+            ],
+        });
+        expect(JSON.stringify(queue)).not.toContain("team/private-runbook");
+    });
+    it("serves tenant review queues only to authorized tenant tokens", async () => {
+        const url = await startCloud({
+            packs: await officialPacks(),
+            privatePacks: [
+                teamPack({
+                    id: "team/alpha-needs-review",
+                    review: {
+                        status: "changes_requested",
+                        reviewer_id: "team-reviewer",
+                        reviewed_at: "2026-06-22T00:00:00.000Z",
+                        summary: "Add rollback owner before reuse.",
+                    },
+                }),
+                teamPack({ id: "team/beta-private" }, { tenantId: "team_beta" }),
+            ],
+            privateTenantTokens: {
+                team_alpha: "kst_alpha_private",
+                team_beta: "kst_beta_private",
+            },
+        });
+        const unauthorized = await fetch(`${url}/v1/review/queue`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ tenant_id: "team_alpha" }),
+        });
+        expect(unauthorized.status).toBe(401);
+        const tenantQueue = await fetchJson(`${url}/v1/review/queue`, { tenant_id: "team_alpha" }, { authorization: "Bearer kst_alpha_private" });
+        expect(tenantQueue).toMatchObject({
+            scope: "tenant",
+            tenant_id: "team_alpha",
+            total: 1,
+            items: [expect.objectContaining({
+                    pack_id: "team/alpha-needs-review",
+                    review_status: "changes_requested",
+                    tenant_id: "team_alpha",
+                })],
+        });
+        expect(JSON.stringify(tenantQueue)).not.toContain("team/beta-private");
+    });
+    it("can include approved packs in the review queue for audit views", async () => {
+        const url = await startCloud({
+            packs: [packFromManifest(reviewedOfficialPack())],
+        });
+        const queue = await fetchJson(`${url}/v1/review/queue`, { status: "all" });
+        expect(queue).toMatchObject({
+            scope: "official",
+            total: 1,
+            items: [expect.objectContaining({
+                    pack_id: "osstack-core/cloud-publish",
+                    review_status: "approved",
+                    reviewer_id: "knowledge-reviewer",
+                })],
+        });
+    });
     it("publishes tenant private packs only with the target tenant token", async () => {
         const url = await startCloud({
             packs: await officialPacks(),
@@ -720,6 +817,12 @@ function teamPack(overrides = {}, options = {}) {
         },
     };
 }
+function packFromManifest(manifest) {
+    return {
+        path: `memory://${manifest.id}`,
+        manifest,
+    };
+}
 function memorySearchPack(index) {
     return {
         path: `memory://search-limit/${index}`,
@@ -775,5 +878,9 @@ function reviewedOfficialPack(overrides = {}) {
             }],
         ...overrides,
     };
+}
+function unreviewedOfficialPack(overrides = {}) {
+    const { review: _review, last_reviewed_at: _lastReviewedAt, ...manifest } = reviewedOfficialPack(overrides);
+    return manifest;
 }
 //# sourceMappingURL=server.test.js.map
