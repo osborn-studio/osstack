@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
-import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, extname, join, relative } from "node:path";
 import type {
   KnowledgeMode,
   KnowledgeFeedbackEntry,
   KnowledgePack,
+  KnowledgeCachePruneResult,
   KnowledgePackIndex,
   KnowledgePackManifest,
   KnowledgePublishGateReport,
@@ -445,6 +446,52 @@ export async function pinKnowledgePack(cacheDir: string, spec: string): Promise<
   return pin;
 }
 
+export async function pruneKnowledgeCache(options: {
+  cacheDir: string;
+  keepVersions?: number;
+  apply?: boolean;
+}): Promise<KnowledgeCachePruneResult> {
+  const keepVersions = options.keepVersions ?? 1;
+  if (!Number.isInteger(keepVersions) || keepVersions < 1) {
+    throw new Error("knowledge cache prune keepVersions must be a positive integer");
+  }
+  const packsDir = join(options.cacheDir, "packs");
+  const pins = await readPins(join(options.cacheDir, "pins.json"));
+  const cached = await collectCachedKnowledgePackVersions(packsDir);
+  const byId = new Map<string, Array<KnowledgePack & { cache_path: string }>>();
+  for (const pack of cached) {
+    const group = byId.get(pack.manifest.id) ?? [];
+    group.push(pack);
+    byId.set(pack.manifest.id, group);
+  }
+
+  const kept: KnowledgePackSummary[] = [];
+  const removed: KnowledgePackSummary[] = [];
+  for (const group of byId.values()) {
+    const sorted = group.sort((a, b) => b.manifest.version.localeCompare(a.manifest.version));
+    const versionsToKeep = new Set(sorted.slice(0, keepVersions).map((pack) => pack.manifest.version));
+    const pin = pins.find((item) => item.pack_id === sorted[0]?.manifest.id);
+    if (pin !== undefined) versionsToKeep.add(pin.version);
+    for (const pack of sorted) {
+      const summary = packSummaryFromManifest(pack.manifest);
+      if (versionsToKeep.has(pack.manifest.version)) {
+        kept.push(summary);
+        continue;
+      }
+      removed.push(summary);
+      if (options.apply === true) await rm(pack.cache_path, { force: true });
+    }
+  }
+
+  return {
+    cache_dir: options.cacheDir,
+    mode: options.apply === true ? "applied" : "dry-run",
+    keep_versions: keepVersions,
+    removed: removed.sort(comparePackSummaries),
+    kept: kept.sort(comparePackSummaries),
+  };
+}
+
 export async function cacheKnowledgeFeedback(options: {
   cacheDir: string;
   chunkId: string;
@@ -491,6 +538,35 @@ async function writeCachedPack(cacheDir: string, pack: KnowledgePackManifest): P
   const dir = join(cacheDir, "packs", safeCacheSegment(pack.id));
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, `${safeCacheSegment(pack.version)}.json`), `${JSON.stringify(pack, null, 2)}\n`, "utf-8");
+}
+
+async function collectCachedKnowledgePackVersions(packsDir: string): Promise<Array<KnowledgePack & { cache_path: string }>> {
+  let packDirs: string[];
+  try {
+    packDirs = await readdir(packsDir);
+  } catch {
+    return [];
+  }
+  const packs: Array<KnowledgePack & { cache_path: string }> = [];
+  for (const packDir of packDirs.sort((a, b) => a.localeCompare(b))) {
+    const versionDir = join(packsDir, packDir);
+    let versions: string[];
+    try {
+      versions = await readdir(versionDir);
+    } catch {
+      continue;
+    }
+    for (const versionFile of versions.filter((name) => name.endsWith(".json")).sort((a, b) => a.localeCompare(b))) {
+      const cachePath = join(versionDir, versionFile);
+      const pack = await loadKnowledgePack(cachePath);
+      packs.push({ ...pack, cache_path: cachePath });
+    }
+  }
+  return packs;
+}
+
+function comparePackSummaries(a: KnowledgePackSummary, b: KnowledgePackSummary): number {
+  return a.id.localeCompare(b.id) || a.version.localeCompare(b.version);
 }
 
 function isBlockedByPin(pack: KnowledgePackManifest, pins: KnowledgePin[]): boolean {

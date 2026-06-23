@@ -55,6 +55,7 @@ import {
   loadKnowledgePackIndex,
   loadKnowledgePack,
   pinKnowledgePack,
+  pruneKnowledgeCache,
   resolveKnowledgeSearch,
   syncKnowledgeCache,
   validateKnowledgePublishGate,
@@ -4696,6 +4697,7 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   osstack knowledge ingest P --scope official|team|project --id ID --name NAME --license L --output P [--taxonomy T] [--source-kind K] [--reviewer ID] [--review-status approved|changes_requested] [--review-note TEXT] [--json]
   osstack knowledge validate --pack P|--official [--json]
   osstack knowledge pin <pack_id>@<version> [--cache-dir P] [--json]
+  osstack knowledge prune [--cache-dir P] [--keep N] [--apply] [--json]
   osstack knowledge feedback <chunk_id> --useful|--bad [--tenant ID] [--cloud-url URL] [--cache-dir P] [--json]
   osstack knowledge eval --pack P|--official --fixtures P [--top-k N] [--json]
   osstack knowledge sources --internal --pack P|--official [--json]
@@ -4802,6 +4804,7 @@ Env:
       console.log(JSON.stringify(summary, null, 2));
     } else if (evidence.status === "synced") {
       console.log(`synced=${evidence.packs.length}`);
+      if (evidence.skipped_pins !== undefined && evidence.skipped_pins.length > 0) console.log(`skipped_pins=${evidence.skipped_pins.length}`);
       console.log(`cache=${evidence.cache_dir}`);
       if (privatePacks) console.log(`private=yes${tenantId === undefined ? "" : ` tenant=${tenantId}`}`);
     } else {
@@ -5121,6 +5124,29 @@ Env:
       console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
       return 1;
     }
+  }
+
+  if (sub === "prune") {
+    const keep = parsePositiveIntegerFlag(flagValue(args, "--keep"), "--keep");
+    if (keep instanceof Error) {
+      console.error(`osstack: ${keep.message}`);
+      return 1;
+    }
+    const result = await pruneKnowledgeCache({
+      cacheDir: knowledgeCacheDir(args),
+      ...(keep === undefined ? {} : { keepVersions: keep }),
+      apply: args.includes("--apply"),
+    });
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({ prune: result }, null, 2));
+    } else {
+      console.log(`mode=${result.mode}`);
+      console.log(`removed=${result.removed.length}`);
+      console.log(`kept=${result.kept.length}`);
+      console.log(`cache=${result.cache_dir}`);
+      if (result.mode === "dry-run") console.log("pass --apply to remove old cached pack versions");
+    }
+    return 0;
   }
 
   if (sub === "feedback") {

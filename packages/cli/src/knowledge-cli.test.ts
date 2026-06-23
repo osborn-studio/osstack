@@ -580,6 +580,45 @@ describe("knowledge CLI", () => {
       .resolves.toContain("\"tenant_id\":\"team_alpha\"");
   });
 
+  it("prunes old cached knowledge pack versions with an explicit apply step", async () => {
+    const cacheDir = join(tmp, "knowledge-cache");
+    const packsDir = join(cacheDir, "packs", "osstack-core__loop-engineering");
+    await mkdir(packsDir, { recursive: true });
+    await writeFile(join(packsDir, "2026.06.21.json"), JSON.stringify(cloudCockpitPack({
+      id: "osstack-core/loop-engineering",
+      version: "2026.06.21",
+    }), null, 2));
+    await writeFile(join(packsDir, "2026.06.22.json"), JSON.stringify(cloudCockpitPack({
+      id: "osstack-core/loop-engineering",
+      version: "2026.06.22",
+    }), null, 2));
+
+    const dryRunExitCode = await main(["knowledge", "prune", "--cache-dir", cacheDir, "--json"]);
+    expect(dryRunExitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      prune: {
+        mode: "dry-run",
+        removed: [expect.objectContaining({ id: "osstack-core/loop-engineering", version: "2026.06.21" })],
+      },
+    });
+    await expect(readFile(join(packsDir, "2026.06.21.json"), "utf-8"))
+      .resolves.toContain("2026.06.21");
+
+    logs = [];
+    const applyExitCode = await main(["knowledge", "prune", "--cache-dir", cacheDir, "--apply", "--json"]);
+    expect(applyExitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      prune: {
+        mode: "applied",
+        removed: [expect.objectContaining({ id: "osstack-core/loop-engineering", version: "2026.06.21" })],
+      },
+    });
+    await expect(readFile(join(packsDir, "2026.06.21.json"), "utf-8"))
+      .rejects.toThrow();
+    await expect(readFile(join(packsDir, "2026.06.22.json"), "utf-8"))
+      .resolves.toContain("2026.06.22");
+  });
+
   it("runs retrieval eval fixtures against knowledge packs", async () => {
     const packPath = join(tmp, "pack.json");
     const fixturesPath = join(tmp, "fixtures.json");

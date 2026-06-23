@@ -4,7 +4,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { assembleKnowledgeSnippet, cacheKnowledgeFeedback, evaluateKnowledgeRetrieval, ingestKnowledgeSource, importKnowledgeSource, listCachedKnowledgePacks, loadKnowledgePackIndex, loadKnowledgePack, pinKnowledgePack, resolveKnowledgeSearch, searchKnowledgePacks, syncKnowledgeCache, validateKnowledgePackIndex, validateKnowledgePackManifest, validateKnowledgePublishGate, } from "./index.js";
+import { assembleKnowledgeSnippet, cacheKnowledgeFeedback, evaluateKnowledgeRetrieval, ingestKnowledgeSource, importKnowledgeSource, listCachedKnowledgePacks, loadKnowledgePackIndex, loadKnowledgePack, pinKnowledgePack, pruneKnowledgeCache, resolveKnowledgeSearch, searchKnowledgePacks, syncKnowledgeCache, validateKnowledgePackIndex, validateKnowledgePackManifest, validateKnowledgePublishGate, } from "./index.js";
 let tmp;
 beforeEach(() => {
     tmp = mkdtempSync(join(tmpdir(), "osstack-knowledge-"));
@@ -554,6 +554,43 @@ describe("knowledge packs", () => {
             `${packId}@2026.06.22`,
         ]);
         expect(searchKnowledgePacks(packs, "new version only", { limit: 1 })).toEqual([]);
+    });
+    it("prunes unpinned old cached versions with a dry-run default", async () => {
+        const cacheDir = join(tmp, "cache");
+        const packId = "osstack-core/loop-engineering";
+        for (const version of ["2026.06.21", "2026.06.22", "2026.06.23"]) {
+            await syncKnowledgeCache({
+                cacheDir,
+                cloudUrl: "https://knowledge.osstack.ai",
+                fetchImpl: async () => new Response(JSON.stringify({
+                    packs: [samplePack({ id: packId, version })],
+                }), { status: 200 }),
+            });
+        }
+        await pinKnowledgePack(cacheDir, `${packId}@2026.06.22`);
+        const dryRun = await pruneKnowledgeCache({ cacheDir });
+        expect(dryRun).toMatchObject({
+            mode: "dry-run",
+            keep_versions: 1,
+            removed: [expect.objectContaining({ id: packId, version: "2026.06.21" })],
+            kept: expect.arrayContaining([
+                expect.objectContaining({ id: packId, version: "2026.06.22" }),
+                expect.objectContaining({ id: packId, version: "2026.06.23" }),
+            ]),
+        });
+        await expect(readFile(join(cacheDir, "packs", "osstack-core__loop-engineering", "2026.06.21.json"), "utf-8"))
+            .resolves.toContain("2026.06.21");
+        const applied = await pruneKnowledgeCache({ cacheDir, apply: true });
+        expect(applied).toMatchObject({
+            mode: "applied",
+            removed: [expect.objectContaining({ id: packId, version: "2026.06.21" })],
+        });
+        await expect(readFile(join(cacheDir, "packs", "osstack-core__loop-engineering", "2026.06.21.json"), "utf-8"))
+            .rejects.toThrow();
+        await expect(readFile(join(cacheDir, "packs", "osstack-core__loop-engineering", "2026.06.22.json"), "utf-8"))
+            .resolves.toContain("2026.06.22");
+        await expect(readFile(join(cacheDir, "packs", "osstack-core__loop-engineering", "2026.06.23.json"), "utf-8"))
+            .resolves.toContain("2026.06.23");
     });
     it("records feedback locally and sends it to cloud when configured", async () => {
         const cacheDir = join(tmp, "cache");

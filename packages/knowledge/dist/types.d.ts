@@ -54,6 +54,13 @@ export interface KnowledgePin {
     pack_id: string;
     version: string;
 }
+export interface KnowledgeCachePruneResult {
+    cache_dir: string;
+    mode: "dry-run" | "applied";
+    keep_versions: number;
+    removed: KnowledgePackSummary[];
+    kept: KnowledgePackSummary[];
+}
 export interface KnowledgeFeedbackEntry {
     chunk_id: string;
     rating: "useful" | "bad";
