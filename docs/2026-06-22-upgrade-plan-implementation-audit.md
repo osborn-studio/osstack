@@ -290,10 +290,11 @@
 - 支持 `cockpit next` / `dashboard next` 单独输出 actionable next steps，并支持 `--status ready|running|blocked` 过滤与 `--json` 给后续 TUI/脚本复用；每条 next step 包含可复制建议命令。
 - 支持 `cockpit tui --workspace <path>` 输出终端 cockpit 面板，展示 Overview、Kanban、Evidence、Knowledge、Next Actions；Knowledge section 会读取本地 Knowledge Cloud cache，展示 cached pack 数、最高质量 pack 和 provenance 审计命令；`cockpit tui --json` 输出稳定的 sections/actions 数据契约，供后续 Ink/blessed 交互式 TUI 复用。
 - 支持 `cockpit tui --action N` / `--json` 从终端 cockpit actions 中选择一个动作并输出 workspace-aware `next_command`，让 TUI 从静态预览推进为可脚本化的 live workbench 入口；默认只选择/输出命令，不自动执行，避免误触发副作用。
+- 支持 `cockpit tui --interactive` 第一版键盘交互：终端中按编号选择 action 或输入 `q` 退出；`--interactive --json` 输出同一 action-selection 数据结构，安装后 smoke 会验证真实 npm 安装路径中的 interactive selection。
 
 未完成：
 
-- 还不是完整 Ink/blessed 交互式 TUI；当前是 Web cockpit + script-friendly CLI summary + terminal TUI preview + Knowledge cache view + scriptable action selection + cockpit action commands。
+- 还不是完整 Ink/blessed 全屏交互式 TUI；当前是 Web cockpit + script-friendly CLI summary + terminal TUI preview + Knowledge cache view + scriptable/interactive action selection + cockpit action commands。
 
 建议：
 

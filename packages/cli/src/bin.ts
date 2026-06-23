@@ -9464,7 +9464,7 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
                             Run queued work with report, scorecard, and proof defaults
   osstack cockpit next [--workspace P] [--status ready|running|blocked] [--json]
                             Print actionable next steps from the cockpit snapshot
-  osstack cockpit tui [--workspace P] [--json] [--no-color] [--action N]
+  osstack cockpit tui [--workspace P] [--json] [--no-color] [--action N] [--interactive]
                             Render a terminal cockpit panel for live workbench use
   osstack cockpit retry [task_id] [--workspace P] [--state P] [--json]
                             Requeue a failed or escalated task from loop state
@@ -9546,6 +9546,9 @@ async function handleCockpitTuiCommand(args: string[]): Promise<number> {
   const snapshot = workspaceScopedCockpitSnapshot(snapshotResp.result, args);
   const knowledge = await cockpitKnowledgeSummary(args);
   const model = cockpitTuiModel(healthResp.result, snapshot, knowledge);
+  if (args.includes("--interactive")) {
+    return await runInteractiveCockpitTui(model, { json: args.includes("--json") });
+  }
   if (actionIndex !== undefined) {
     const selected = selectCockpitTuiAction(model, actionIndex);
     if (selected === undefined) {
@@ -9596,6 +9599,11 @@ interface CockpitTuiActionSelection {
   selected_index: number;
   action: { label: string; command: string; status: string };
   next_command: string;
+}
+
+interface CockpitTuiInteractiveQuit {
+  mode: "terminal-cockpit-interactive";
+  status: "quit";
 }
 
 async function cockpitKnowledgeSummary(args: string[]): Promise<CockpitKnowledgeSummary> {
@@ -9730,6 +9738,50 @@ function selectCockpitTuiAction(model: CockpitTuiModel, selectedIndex: number): 
     action: concreteAction,
     next_command: command,
   };
+}
+
+async function runInteractiveCockpitTui(model: CockpitTuiModel, options: { json: boolean }): Promise<number> {
+  const answer = await readCockpitTuiInteractiveInput(model, options);
+  if (answer === undefined || answer.toLowerCase() === "q" || answer.toLowerCase() === "quit") {
+    const quit: CockpitTuiInteractiveQuit = { mode: "terminal-cockpit-interactive", status: "quit" };
+    if (options.json) console.log(JSON.stringify(quit, null, 2));
+    else console.log("cockpit_interactive=quit");
+    return 0;
+  }
+  const selectedIndex = Number(answer);
+  if (!Number.isInteger(selectedIndex) || selectedIndex < 1) {
+    console.error(`osstack: cockpit tui interactive selection must be 1-${model.actions.length} or q`);
+    return 1;
+  }
+  const selected = selectCockpitTuiAction(model, selectedIndex);
+  if (selected === undefined) {
+    console.error(`osstack: cockpit tui interactive selection must be 1-${model.actions.length} or q`);
+    return 1;
+  }
+  if (options.json) console.log(JSON.stringify(selected, null, 2));
+  else console.log(renderCockpitTuiAction(selected));
+  return 0;
+}
+
+async function readCockpitTuiInteractiveInput(model: CockpitTuiModel, options: { json: boolean }): Promise<string | undefined> {
+  const testInput = process.env["OSSTACK_TEST_COCKPIT_TUI_INPUT"];
+  if (testInput !== undefined) return testInput.split(/\r?\n/, 1)[0]?.trim();
+  if (!options.json) {
+    console.log(renderCockpitTui(model));
+    console.log("");
+  }
+  if (process.stdin.isTTY !== true) {
+    console.error("osstack: cockpit tui --interactive requires a TTY; use --action N for scripts");
+    return undefined;
+  }
+  const { createInterface } = await import("node:readline/promises");
+  const readline = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = await readline.question(`Select action 1-${model.actions.length}, or q to quit: `);
+    return answer.trim();
+  } finally {
+    readline.close();
+  }
 }
 
 function concreteCockpitTuiCommand(command: string, workspace: string): string {

@@ -145,6 +145,22 @@ try {
   ) {
     throw new Error(`installed CLI cockpit tui did not render expected terminal model: ${cockpitTui.stdout}`);
   }
+  const cockpitTuiInteractive = run(osstackBin, ["cockpit", "tui", "--workspace", workspace, "--interactive", "--json"], {
+    cwd: root,
+    capture: true,
+    env: {
+      ...cockpitEnv,
+      OSSTACK_TEST_COCKPIT_TUI_INPUT: "2\n",
+    },
+  });
+  const cockpitTuiInteractiveParsed = JSON.parse(cockpitTuiInteractive.stdout);
+  if (
+    cockpitTuiInteractiveParsed.mode !== "terminal-cockpit-action"
+    || cockpitTuiInteractiveParsed.selected_index !== 2
+    || !cockpitTuiInteractiveParsed.next_command?.includes("osstack deliver")
+  ) {
+    throw new Error(`installed CLI cockpit tui interactive selection failed: ${cockpitTuiInteractive.stdout}`);
+  }
   await installedDaemon.stop();
   installedDaemon = undefined;
 
@@ -381,6 +397,7 @@ try {
       mode: cockpitTuiParsed.mode,
       sections: cockpitTuiParsed.sections.map((section) => section.title),
       actions: cockpitTuiParsed.actions.length,
+      interactive_selection: cockpitTuiInteractiveParsed.selected_index,
     },
     examples: examplesParsed.examples.length,
     evidence_artifacts: {
