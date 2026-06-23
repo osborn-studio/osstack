@@ -1,9 +1,49 @@
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const repoRoot = join(__dirname, "..", "..", "..");
 const specDir = join(repoRoot, "docs", "specs");
+
+const stableClausePattern = /^##\s+(R-\d{3})\s+(.+)$/gm;
+const localEvidencePattern = /`((?:packages|docs|scripts|\.github|cloud-functions|README(?:\.zh)?\.md)\/?[^`]*)`/g;
+
+type ConformanceRow = {
+  clause: string;
+  summary: string;
+  evidence: string;
+  status: string;
+  nextStep: string;
+};
+
+function extractStableClauses(spec: string): string[] {
+  return [...spec.matchAll(stableClausePattern)].map((match) => `${match[1]} ${match[2]}`);
+}
+
+function parseConformanceRows(matrix: string): ConformanceRow[] {
+  return matrix
+    .split(/\r?\n/)
+    .filter((line) => /^\|\s*R-\d{3}\s+/.test(line))
+    .map((line) => {
+      const cells = line
+        .slice(1, -1)
+        .split("|")
+        .map((cell) => cell.trim());
+      const [clause, summary, evidence, status, nextStep] = cells;
+      return {
+        clause: clause ?? "",
+        summary: summary ?? "",
+        evidence: evidence ?? "",
+        status: status ?? "",
+        nextStep: nextStep ?? "",
+      };
+    });
+}
+
+function extractLocalEvidenceRefs(evidence: string): string[] {
+  return [...evidence.matchAll(localEvidencePattern)].map((match) => match[1] ?? "");
+}
 
 describe("OSSTACK_RUN_SPEC_V1 files", () => {
   it("documents the subprocess-first credential model in both READMEs", async () => {
@@ -57,25 +97,25 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
   });
 
   it("keeps a conformance matrix for every stable run spec clause", async () => {
+    const spec = await readFile(join(specDir, "OSSTACK_RUN_SPEC_V1.md"), "utf-8");
     const matrix = await readFile(join(specDir, "CONFORMANCE_MATRIX.md"), "utf-8");
+    const specClauses = extractStableClauses(spec);
+    const rows = parseConformanceRows(matrix);
 
-    for (const clause of [
-      "R-001 Lifecycle",
-      "R-002 Task Schema",
-      "R-003 Capability and Adapter Contract",
-      "R-004 Policy Decision",
-      "R-005 Event Schema",
-      "R-006 Loop State",
-      "R-007 Verify Gates",
-      "R-008 Worktree Safety",
-      "R-009 Proof Pack",
-      "R-010 Conformance Levels",
-      "R-011 Knowledge Evidence",
-      "R-012 PR Evidence",
-      "R-013 Versioning and Deprecation",
-      "R-014 Test Vectors",
-    ]) {
-      expect(matrix).toContain(clause);
+    expect(specClauses.length).toBeGreaterThan(0);
+    expect(rows.map((row) => row.clause)).toEqual(specClauses);
+
+    for (const row of rows) {
+      expect(row.summary, `${row.clause} must summarize its requirement`).not.toBe("");
+      expect(row.evidence, `${row.clause} must map to evidence`).not.toBe("");
+      expect(row.nextStep, `${row.clause} must name the next coverage step`).not.toBe("");
+      expect(["Covered", "Partial", "Planned"], `${row.clause} has an invalid status`).toContain(row.status);
+
+      const refs = extractLocalEvidenceRefs(row.evidence);
+      expect(refs.length, `${row.clause} must cite at least one local evidence file`).toBeGreaterThan(0);
+      for (const ref of refs) {
+        expect(existsSync(join(repoRoot, ref)), `${row.clause} cites missing evidence ${ref}`).toBe(true);
+      }
     }
 
     expect(matrix).toContain("Status Legend");
