@@ -288,6 +288,48 @@ export async function loadKnowledgePackIndex(path) {
     const raw = await readFile(path, "utf-8");
     return validateKnowledgePackIndex(JSON.parse(raw));
 }
+export async function createKnowledgePublishCatalog(options) {
+    const index = await loadKnowledgePackIndex(options.indexPath);
+    const indexDir = dirnameFromPath(options.indexPath);
+    const packs = await Promise.all(index.packs.map(async (entry) => {
+        const packPath = join(indexDir, entry.path);
+        const raw = await readFile(packPath, "utf-8");
+        const pack = await loadKnowledgePack(packPath);
+        return {
+            id: pack.manifest.id,
+            version: pack.manifest.version,
+            path: entry.path,
+            sha256: sha256(raw),
+            bytes: Buffer.byteLength(raw, "utf-8"),
+            scope: pack.manifest.scope ?? entry.scope,
+            source_kind: pack.manifest.source_kind,
+            quality_score: pack.manifest.quality_score,
+            ...(pack.manifest.taxonomy === undefined ? {} : { taxonomy: pack.manifest.taxonomy }),
+            chunks: pack.manifest.chunks.length,
+            ...(pack.manifest.last_reviewed_at === undefined ? {} : { last_reviewed_at: pack.manifest.last_reviewed_at }),
+            publish_gate: validateKnowledgePublishGate(pack.manifest, { requireOfficial: true }),
+        };
+    }));
+    const catalog = {
+        generated_at: options.generatedAt ?? new Date().toISOString(),
+        channel: "official",
+        artifact_kind: "osstack_knowledge_publish_catalog",
+        packs,
+    };
+    if (options.evalFixturePath !== undefined) {
+        const fixtures = JSON.parse(await readFile(options.evalFixturePath, "utf-8"));
+        const loadedPacks = await Promise.all(index.packs.map((entry) => loadKnowledgePack(join(indexDir, entry.path))));
+        const summary = evaluateKnowledgeRetrieval(loadedPacks, fixtures, { topK: options.topK ?? 3 });
+        catalog.retrieval_eval = {
+            fixture_path: options.evalFixturePath,
+            total: summary.total,
+            passed: summary.passed,
+            failed: summary.failed,
+            top_k: summary.top_k,
+        };
+    }
+    return catalog;
+}
 export function validateKnowledgePackIndex(value) {
     if (!isRecord(value))
         throw new Error("knowledge pack index must be an object");
@@ -334,6 +376,13 @@ export function validateKnowledgePackIndex(value) {
         };
     });
     return { generated_at: generatedAt, channel: "official", packs };
+}
+function dirnameFromPath(path) {
+    const normalized = path.replace(/\\/g, "/");
+    const lastSlash = normalized.lastIndexOf("/");
+    if (lastSlash < 0)
+        return ".";
+    return path.slice(0, lastSlash);
 }
 export async function importKnowledgeSource(options) {
     const generatedAt = options.generatedAt ?? new Date().toISOString();

@@ -1,4 +1,4 @@
-import type { KnowledgeMode, KnowledgeAdaptationPlan, KnowledgeFeedbackEntry, KnowledgePack, KnowledgeCachePruneResult, KnowledgePackIndex, KnowledgePackManifest, KnowledgePublishGateReport, KnowledgePin, KnowledgeRetrieveOptions, KnowledgeRetrievalEvalCase, KnowledgeRetrievalEvalSummary, KnowledgeScope, KnowledgeSearchEvidence, KnowledgeSearchResult, KnowledgeSyncEvidence } from "./types.js";
+import type { KnowledgeMode, KnowledgeAdaptationPlan, KnowledgeFeedbackEntry, KnowledgePack, KnowledgeCachePruneResult, KnowledgePackIndex, KnowledgePackManifest, KnowledgePublishCatalog, KnowledgePublishGateReport, KnowledgePin, KnowledgeRetrieveOptions, KnowledgeRetrievalEvalCase, KnowledgeRetrievalEvalSummary, KnowledgeScope, KnowledgeSearchEvidence, KnowledgeSearchResult, KnowledgeSyncEvidence } from "./types.js";
 export declare function loadKnowledgePack(path: string): Promise<KnowledgePack>;
 export declare function validateKnowledgePackManifest(value: unknown): KnowledgePackManifest;
 export declare function validateKnowledgePublishGate(manifest: KnowledgePackManifest, options?: {
@@ -15,6 +15,12 @@ export declare function createKnowledgeAdaptationPlan(options: {
 }): Promise<KnowledgeAdaptationPlan>;
 export declare function validateKnowledgeAdaptationPlan(plan: KnowledgeAdaptationPlan): KnowledgePublishGateReport;
 export declare function loadKnowledgePackIndex(path: string): Promise<KnowledgePackIndex>;
+export declare function createKnowledgePublishCatalog(options: {
+    indexPath: string;
+    evalFixturePath?: string;
+    generatedAt?: string;
+    topK?: number;
+}): Promise<KnowledgePublishCatalog>;
 export declare function validateKnowledgePackIndex(value: unknown): KnowledgePackIndex;
 export declare function importKnowledgeSource(options: {
     path: string;

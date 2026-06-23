@@ -8,6 +8,7 @@ import {
   assembleKnowledgeSnippet,
   cacheKnowledgeFeedback,
   createKnowledgeAdaptationPlan,
+  createKnowledgePublishCatalog,
   evaluateKnowledgeRetrieval,
   ingestKnowledgeSource,
   importKnowledgeSource,
@@ -991,6 +992,42 @@ describe("knowledge packs", () => {
       passed: 42,
       failed: 0,
     });
+  });
+
+  it("builds an auditable Knowledge Cloud publish catalog for official packs", async () => {
+    const root = resolve(process.cwd(), "../..");
+    const indexPath = join(root, "knowledge-packs", "official", "index.json");
+    const fixturesPath = join(root, "knowledge-evals/retrieval/osstack-core.json");
+
+    const catalog = await createKnowledgePublishCatalog({
+      indexPath,
+      evalFixturePath: fixturesPath,
+      generatedAt: "2026-06-23T00:00:00.000Z",
+    });
+
+    expect(catalog).toMatchObject({
+      generated_at: "2026-06-23T00:00:00.000Z",
+      channel: "official",
+      artifact_kind: "osstack_knowledge_publish_catalog",
+      retrieval_eval: {
+        fixture_path: fixturesPath,
+        total: 42,
+        passed: 42,
+        failed: 0,
+        top_k: 3,
+      },
+    });
+    expect(catalog.packs).toHaveLength(10);
+    expect(catalog.packs).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: "osstack-core/loop-engineering",
+        sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+        bytes: expect.any(Number),
+        chunks: 1,
+        publish_gate: { ok: true, issues: [] },
+      }),
+    ]));
+    expect(catalog.packs.every((pack) => pack.bytes > 0 && pack.publish_gate.ok)).toBe(true);
   });
 });
 
