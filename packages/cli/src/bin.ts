@@ -3131,6 +3131,16 @@ async function collectCheckpointFiles(
 function osstackExamples(): Array<{ title: string; description: string; commands: string[] }> {
   return [
     {
+      title: "5-minute proof path",
+      description: "Run one product-entry task, generate evidence, and open the cockpit summary.",
+      commands: [
+        "osstack doctor --workspace .",
+        "osstack deliver \"Add one small verified change\" --verify \"pnpm test\" --auto-agent --worktree --report --scorecard --proof",
+        "osstack cockpit --workspace .",
+        "osstack proof view \"$(node -e 'const s=require(\"./LOOP-STATE.json\"); process.stdout.write(s.loop_id)')\" --audience engineer",
+      ],
+    },
+    {
       title: "Fix a bug",
       description: "Queue a failing behavior, run the loop, and produce evidence.",
       commands: [
@@ -3142,7 +3152,7 @@ function osstackExamples(): Array<{ title: string; description: string; commands
       title: "Implement a feature",
       description: "Use the product entry command to create a task, execute, verify, and package proof.",
       commands: [
-        "osstack deliver \"Add billing dashboard\" --verify \"pnpm test\" --auto-agent --worktree --json",
+        "osstack deliver \"Add billing dashboard\" --verify \"pnpm test\" --auto-agent --worktree --report --scorecard --proof --json",
       ],
     },
     {
@@ -3201,18 +3211,20 @@ osstack loop enqueue "Run local checks and fix the first failure" --capability c
 osstack loop run --source task_queue --verify "pnpm test" --report --scorecard --proof
 \`\`\`
 
-## 4. Inspect the result
+## 4. Inspect the result from cockpit and proof views
 
 \`\`\`bash
 osstack loop status
-osstack report
+osstack cockpit --workspace .
+# cockpit prints latest_report=... and latest_proof=...
 osstack proof view "$(node -e 'const s=require("./LOOP-STATE.json"); process.stdout.write(s.loop_id)')" --audience engineer
 \`\`\`
 
-## 5. Try the product entry path
+## 5. Prefer the one-command product entry path next time
 
 \`\`\`bash
-osstack deliver "Add billing dashboard" --verify "pnpm test" --auto-agent --worktree
+osstack deliver "Add one small verified change" --verify "pnpm test" --auto-agent --worktree --report --scorecard --proof
+osstack cockpit --workspace .
 \`\`\`
 
 More workflows:

@@ -99,9 +99,11 @@ describe("product entry commands", () => {
     expect(output).toContain("Fix a bug");
     expect(output).toContain("Implement a feature");
     expect(output).toContain("Review git diff");
+    expect(output).toContain("5-minute proof path");
     expect(output).toContain("--auto-agent");
     expect(output).toContain("--worktree");
     expect(output).toContain("--proof");
+    expect(output).toContain("osstack cockpit --workspace .");
   });
 
   it("prints a five-minute guide from install to proof", async () => {
@@ -115,6 +117,10 @@ describe("product entry commands", () => {
     expect(output).toContain("osstack loop enqueue");
     expect(output).toContain("osstack loop run");
     expect(output).toContain("--report --scorecard --proof");
+    expect(output).toContain("osstack deliver \"Add one small verified change\" --verify \"pnpm test\" --auto-agent --worktree --report --scorecard --proof");
+    expect(output).toContain("osstack cockpit --workspace .");
+    expect(output).toContain("latest_report=");
+    expect(output).toContain("latest_proof=");
   });
 
   it("writes the guide to a requested output path", async () => {
@@ -125,6 +131,7 @@ describe("product entry commands", () => {
     expect(exitCode).toBe(0);
     expect(JSON.parse(logs.join("\n"))).toMatchObject({ output });
     await expect(readFile(output, "utf-8")).resolves.toContain("5-minute quickstart");
+    await expect(readFile(output, "utf-8")).resolves.toContain("osstack cockpit --workspace .");
   });
 
   it("checks release publish and deploy prerequisites", async () => {
