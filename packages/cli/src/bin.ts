@@ -8076,6 +8076,10 @@ function printCockpitSummary(summary: { daemon?: unknown; cockpit?: unknown }): 
   console.log(`runs total=${String(overview["total_runs"] ?? 0)} active=${String(overview["active_runs"] ?? daemon["active_runs"] ?? 0)} queued=${String(overview["queued_tasks"] ?? 0)} loops=${String(overview["active_loops"] ?? daemon["active_loops"] ?? 0)}`);
   console.log(`quality=${String(quality["grade"] ?? "unknown")} success_rate=${String(quality["success_rate"] ?? "unknown")}`);
   console.log(`evidence reports=${String(evidence["reports"] ?? 0)} proof_packs=${String(evidence["proof_packs"] ?? 0)}`);
+  const latestReport = isRecord(evidence["latest_report"]) ? evidence["latest_report"] : undefined;
+  const latestProofPack = isRecord(evidence["latest_proof_pack"]) ? evidence["latest_proof_pack"] : undefined;
+  if (typeof latestReport?.["path"] === "string") console.log(`latest_report=${latestReport["path"]}`);
+  if (typeof latestProofPack?.["path"] === "string") console.log(`latest_proof=${latestProofPack["path"]}`);
   console.log(`${text.kanban}:`);
   for (const column of columns) {
     if (!isRecord(column)) continue;

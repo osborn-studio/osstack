@@ -58,7 +58,7 @@ describe("dashboard/cockpit CLI", () => {
     expect(await main(["kanban", "create", "Ship cockpit", "--assignee", "codex-cli"])).toBe(0);
 
     logs = [];
-    const exitCode = await main(["cockpit"]);
+    const exitCode = await main(["cockpit", "--workspace", join(tmp, "workspace")]);
 
     expect(exitCode).toBe(0);
     const output = logs.join("\n");
@@ -67,6 +67,8 @@ describe("dashboard/cockpit CLI", () => {
     expect(output).toContain("runs total=");
     expect(output).toContain("queued=");
     expect(output).toContain("evidence reports=");
+    expect(output).toContain(`latest_report=${join(tmp, "workspace", "reports", "osstack-report-smoke.md")}`);
+    expect(output).toContain(`latest_proof=${join(tmp, "workspace", "release", "osstack-proof-smoke")}`);
     expect(output).toContain("kanban:");
     expect(output).toContain("triage: 1");
     expect(output).toContain("recent runs:");
@@ -76,19 +78,35 @@ describe("dashboard/cockpit CLI", () => {
 
   it("prints daemon status and dashboard snapshot JSON with cockpit --json", async () => {
     daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace");
+    await mkdir(join(workspace, "reports"), { recursive: true });
+    await mkdir(join(workspace, "release", "osstack-proof-json"), { recursive: true });
+    await writeFile(join(workspace, "reports", "osstack-report-json.md"), "# report\n");
+    await writeFile(join(workspace, "release", "osstack-proof-json", "manifest.json"), "{}\n");
 
-    const exitCode = await main(["cockpit", "--json"]);
+    const exitCode = await main(["cockpit", "--workspace", workspace, "--json"]);
 
     expect(exitCode).toBe(0);
     const summary = JSON.parse(logs.join("\n")) as {
       daemon: { version: string; active_loops: number };
-      cockpit: { dashboard: { title: string }; overview: { queued_tasks: number }; board: { columns: unknown[] } };
+      cockpit: {
+        dashboard: { title: string };
+        overview: { queued_tasks: number };
+        board: { columns: unknown[] };
+        evidence: {
+          latest_report: { path: string } | null;
+          latest_proof_pack: { path: string; manifest: string | null } | null;
+        };
+      };
     };
     expect(summary.daemon.version).toMatch(/^\d+\.\d+\.\d+/);
     expect(summary.daemon.active_loops).toBe(0);
     expect(summary.cockpit.dashboard.title).toContain("osstack");
     expect(summary.cockpit.overview.queued_tasks).toBe(0);
     expect(Array.isArray(summary.cockpit.board.columns)).toBe(true);
+    expect(summary.cockpit.evidence.latest_report?.path).toBe(join(workspace, "reports", "osstack-report-json.md"));
+    expect(summary.cockpit.evidence.latest_proof_pack?.path).toBe(join(workspace, "release", "osstack-proof-json"));
+    expect(summary.cockpit.evidence.latest_proof_pack?.manifest).toBe(join(workspace, "release", "osstack-proof-json", "manifest.json"));
   });
 
   it("prints a workspace-scoped cockpit URL in summary JSON", async () => {
