@@ -9166,7 +9166,7 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
                             Run queued work with report, scorecard, and proof defaults
   osstack cockpit next [--workspace P] [--status ready|running|blocked] [--json]
                             Print actionable next steps from the cockpit snapshot
-  osstack cockpit tui [--workspace P] [--json] [--no-color]
+  osstack cockpit tui [--workspace P] [--json] [--no-color] [--action N]
                             Render a terminal cockpit panel for live workbench use
   osstack cockpit retry [task_id] [--workspace P] [--state P] [--json]
                             Requeue a failed or escalated task from loop state
@@ -9228,6 +9228,11 @@ function workspaceScopedCockpitSnapshot(snapshot: unknown, args: string[]): unkn
 }
 
 async function handleCockpitTuiCommand(args: string[]): Promise<number> {
+  const actionIndex = parsePositiveIntegerFlag(flagValue(args, "--action"), "--action");
+  if (actionIndex instanceof Error) {
+    console.error("osstack:", actionIndex.message);
+    return 1;
+  }
   const [healthResp, snapshotResp] = await Promise.all([
     rpc("health") as Promise<RpcResp>,
     rpc("dashboard.snapshot", dashboardSnapshotParams(args)) as Promise<RpcResp>,
@@ -9242,6 +9247,19 @@ async function handleCockpitTuiCommand(args: string[]): Promise<number> {
   }
   const snapshot = workspaceScopedCockpitSnapshot(snapshotResp.result, args);
   const model = cockpitTuiModel(healthResp.result, snapshot);
+  if (actionIndex !== undefined) {
+    const selected = selectCockpitTuiAction(model, actionIndex);
+    if (selected === undefined) {
+      console.error(`osstack: cockpit tui action must be between 1 and ${model.actions.length || 0}`);
+      return 1;
+    }
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(selected, null, 2));
+    } else {
+      console.log(renderCockpitTuiAction(selected));
+    }
+    return 0;
+  }
   if (args.includes("--json")) {
     console.log(JSON.stringify(model, null, 2));
   } else {
@@ -9257,6 +9275,13 @@ interface CockpitTuiModel {
   daemon: string;
   sections: Array<{ title: string; lines: string[] }>;
   actions: Array<{ label: string; command: string; status: string }>;
+}
+
+interface CockpitTuiActionSelection {
+  mode: "terminal-cockpit-action";
+  selected_index: number;
+  action: { label: string; command: string; status: string };
+  next_command: string;
 }
 
 function cockpitTuiModel(daemonRaw: unknown, snapshotRaw: unknown): CockpitTuiModel {
@@ -9328,8 +9353,32 @@ function renderCockpitTui(model: CockpitTuiModel): string {
       ...(section.lines.length === 0 ? ["  none"] : section.lines.map((line) => `  ${line}`)),
       "",
     ]),
+    "[Actions]",
+    ...(model.actions.length === 0
+      ? ["  none"]
+      : model.actions.slice(0, 9).map((action, index) => `  ${index + 1}. [${action.status}] ${action.label}: ${action.command}`)),
   ];
   return lines.join("\n").trimEnd();
+}
+
+function selectCockpitTuiAction(model: CockpitTuiModel, selectedIndex: number): CockpitTuiActionSelection | undefined {
+  const action = model.actions[selectedIndex - 1];
+  if (action === undefined) return undefined;
+  return {
+    mode: "terminal-cockpit-action",
+    selected_index: selectedIndex,
+    action,
+    next_command: action.command,
+  };
+}
+
+function renderCockpitTuiAction(selection: CockpitTuiActionSelection): string {
+  return [
+    `selected=${selection.selected_index}`,
+    `status=${selection.action.status}`,
+    `label=${selection.action.label}`,
+    `command=${selection.next_command}`,
+  ].join("\n");
 }
 
 async function handleCockpitNextCommand(args: string[]): Promise<number> {

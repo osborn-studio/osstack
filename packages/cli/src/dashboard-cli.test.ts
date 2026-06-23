@@ -209,6 +209,41 @@ describe("dashboard/cockpit CLI", () => {
     ]));
   });
 
+  it("selects a cockpit TUI action as a scriptable interaction", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace");
+    await mkdir(workspace, { recursive: true });
+
+    const exitCode = await main(["cockpit", "tui", "--workspace", workspace, "--action", "2", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const selection = JSON.parse(logs.join("\n")) as {
+      mode: string;
+      selected_index: number;
+      action: { label: string; command: string; status: string };
+      next_command: string;
+    };
+    expect(selection).toMatchObject({
+      mode: "terminal-cockpit-action",
+      selected_index: 2,
+      action: {
+        label: "Coding",
+        command: "osstack deliver \"<task>\" --auto-agent --worktree --checkpoint",
+        status: "ready",
+      },
+      next_command: "osstack deliver \"<task>\" --auto-agent --worktree --checkpoint",
+    });
+  });
+
+  it("rejects unavailable cockpit TUI actions", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+
+    const exitCode = await main(["cockpit", "tui", "--action", "99"]);
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("cockpit tui action must be between 1 and");
+  });
+
   it("prints actionable cockpit next steps as a standalone command", async () => {
     daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
 
