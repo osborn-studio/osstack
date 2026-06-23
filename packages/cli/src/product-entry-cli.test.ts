@@ -350,7 +350,7 @@ describe("product entry commands", () => {
     const result = JSON.parse(logs.join("\n")) as {
       ok: boolean;
       readiness: { npm_publish: boolean; knowledge_cloud_deploy: boolean };
-      checks: Array<{ id: string; status: string; details?: { missing?: string[] } }>;
+      checks: Array<{ id: string; status: string; message: string; details?: { missing?: string[]; missing_alternative_groups?: string[][] } }>;
       next_steps: string[];
     };
     expect(result.ok).toBe(false);
@@ -361,7 +361,11 @@ describe("product entry commands", () => {
     expect(result.checks).toContainEqual(expect.objectContaining({
       id: "repository_secrets",
       status: "error",
-      details: expect.objectContaining({ missing: ["EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"] }),
+      message: "Missing required repository secrets: one of (EDGEONE_API_TOKEN, EDGEONE_DEPLOY_HOOK_URL).",
+      details: expect.objectContaining({
+        missing: ["EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"],
+        missing_alternative_groups: [["EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"]],
+      }),
     }));
     expect(result.checks).toContainEqual(expect.objectContaining({ id: "edgeone_deploy_credential", status: "warn" }));
     expect(result.next_steps.join("\n")).toContain("EDGEONE_API_TOKEN");

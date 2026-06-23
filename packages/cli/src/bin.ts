@@ -2847,23 +2847,32 @@ async function releaseSecretsCheck(
   }
   const alternativeSecrets = new Set((options.alternativeGroups ?? []).flat());
   const missingRequired = requiredSecrets.filter((secret) => !alternativeSecrets.has(secret) && !present.includes(secret));
-  const missingAlternatives = (options.alternativeGroups ?? [])
-    .filter((group) => !group.some((secret) => present.includes(secret)))
-    .flat();
+  const missingAlternativeGroups = (options.alternativeGroups ?? [])
+    .filter((group) => !group.some((secret) => present.includes(secret)));
+  const missingAlternatives = missingAlternativeGroups.flat();
   const missing = [...missingRequired, ...missingAlternatives];
+  const missingDescription = formatMissingReleaseSecrets(missingRequired, missingAlternativeGroups);
   return {
     id: "repository_secrets",
     status: missing.length === 0 ? "ok" : "error",
     message: missing.length === 0
       ? `Required repository secrets are configured: ${requiredSecrets.join(", ")}.`
-      : `Missing required repository secrets: ${missing.join(", ")}.`,
+      : `Missing required repository secrets: ${missingDescription}.`,
     details: {
       required: requiredSecrets,
       present,
       missing,
       ...(options.alternativeGroups === undefined || options.alternativeGroups.length === 0 ? {} : { alternative_groups: options.alternativeGroups }),
+      ...(missingAlternativeGroups.length === 0 ? {} : { missing_alternative_groups: missingAlternativeGroups }),
     },
   };
+}
+
+function formatMissingReleaseSecrets(missingRequired: string[], missingAlternativeGroups: string[][]): string {
+  return [
+    ...missingRequired,
+    ...missingAlternativeGroups.map((group) => `one of (${group.join(", ")})`),
+  ].join(", ");
 }
 
 function parseSecretList(stdout: string): string[] {
