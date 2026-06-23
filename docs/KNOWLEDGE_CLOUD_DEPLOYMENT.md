@@ -77,7 +77,7 @@ workflow trigger command, and deployed URL validation commands.
 
 8. Run `.github/workflows/knowledge-cloud-deploy.yml` with `deploy=true`.
 9. If the production URL is already known, pass it as the workflow `cloud_url`
-   input so the deploy workflow runs the health/search/audit handoff checks
+   input so the deploy workflow runs the health/search/sync/audit/feedback-summary handoff checks
    immediately after triggering EdgeOne.
 10. Record the production URL and run cloud acceptance checks:
 
@@ -160,7 +160,7 @@ The manual workflow `.github/workflows/knowledge-cloud-deploy.yml` runs build, t
 - `EDGEONE_DEPLOY_HOOK_URL` remains supported as a fallback when no API token is configured.
 - Run with `deploy=true` only after one of those deploy credentials is configured.
 - Pass `cloud_url=<EdgeOne URL>` with `deploy=true` to run deployed
-  Knowledge Cloud health/search/audit acceptance checks inside the workflow.
+  Knowledge Cloud health/search/sync/audit/feedback-summary acceptance checks inside the workflow.
 - Do not set `FLY_API_TOKEN` for the primary path; it is unrelated to the EdgeOne deployment.
 
 Preflight release and deploy credentials before a production run:

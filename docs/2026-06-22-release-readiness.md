@@ -19,7 +19,7 @@ main 已经把 osstack 升级方案中的核心可交付能力推进到“主路
 
 - GitHub push/PR 已恢复；PR #55/#56 合并后的 main CI、Release、macOS Release Candidate 均为 success。
 - npm 发布已完成；`release doctor --target primary --cloud-url https://osstack-knowledge-cloud-1grycf4k.edgeone.cool --json` 当前返回 `ok: true`，readiness 中 `npm_publish=true`。
-- Knowledge Cloud 正式上线选择 EdgeOne；EdgeOne 生产 URL 已通过 `health/search/sync/audit` gate，`release doctor --target primary --cloud-url https://osstack-knowledge-cloud-1grycf4k.edgeone.cool --json` 当前返回 `knowledge_cloud_deploy=true`。
+- Knowledge Cloud 正式上线选择 EdgeOne；EdgeOne 生产 URL 已通过 `health/search/sync/audit/feedback-summary` gate，`release doctor --target primary --cloud-url https://osstack-knowledge-cloud-1grycf4k.edgeone.cool --json` 当前返回 `knowledge_cloud_deploy=true`。
 - `FLY_API_TOKEN` 不再是当前 osstack 上线主路径的必需凭证；Fly.io 只保留为可选备份/参考。
 
 ## 2. 已完成能力清单
@@ -31,7 +31,7 @@ main 已经把 osstack 升级方案中的核心可交付能力推进到“主路
 | Loop Engineering | 已完成本地闭环 | `pnpm smoke:loop` 通过；CLI 支持 `--loop` 读取 loop artifact，并校验 loop_id 防止误用 |
 | Evidence / Proof | 已完成本地链路 | `report --loop`、`scorecard --loop`、`proof --loop` 在 npm 安装 smoke 中生成 markdown、manifest、zip |
 | Knowledge Packs | 已完成官方包化 | 6 个 official packs 可加载、可列 source、可做 retrieval eval |
-| Knowledge Cloud | 已完成本地服务、部署资产和 EdgeOne 生产验收 | 本地服务 smoke 返回 6 official packs、1 private pack，并验证 sync/search/private/feedback；部署资产 smoke 检查 Dockerfile、EdgeOne、Render、GitHub Actions；生产 URL `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` 通过 `release doctor` health/search/sync/audit |
+| Knowledge Cloud | 已完成本地服务、部署资产和 EdgeOne 生产验收 | 本地服务 smoke 返回 6 official packs、1 private pack，并验证 sync/search/private/feedback；部署资产 smoke 检查 Dockerfile、EdgeOne、Render、GitHub Actions；生产 URL `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` 通过 `release doctor` health/search/sync/audit/feedback-summary |
 | macOS launchd 安装 | 已完成安全 smoke | `serve --install --no-load`、`serve --status --no-load`、`serve --uninstall --no-load` 使用临时目录验证 |
 | Portable CLI 分发 | 已完成过渡 smoke | `pnpm smoke:portable-cli` 验证 workspace tarballs 可安装进 portable prefix，并输出 single executable 候选工具状态 |
 | Bun 单文件分发 | 已完成本地 release archive candidate smoke，已接 CI/release artifact | `pnpm build:single-binary` 生成 binary/manifest/checksum；`pnpm sbom:single-binary` 生成 SPDX 2.3 SBOM；`pnpm smoke:bun-single-binary` 验证 `--version`、`help`、`loop doctor --json`、sha256；`pnpm smoke:single-binary-signing` 验证 ad-hoc codesign；`pnpm smoke:single-binary-release-pack` 验证 tarball 可解包运行；release workflow 上传 candidate artifact |
