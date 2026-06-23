@@ -270,8 +270,8 @@ try {
     "--json",
   ], { cwd: root, capture: true });
   const knowledgeEvalParsed = JSON.parse(knowledgeEval.stdout);
-  if (knowledgeEvalParsed.total !== 30 || knowledgeEvalParsed.passed !== 30 || knowledgeEvalParsed.failed !== 0) {
-    throw new Error(`official knowledge retrieval eval did not pass 30/30: ${knowledgeEval.stdout}`);
+  if (knowledgeEvalParsed.total !== 42 || knowledgeEvalParsed.passed !== 42 || knowledgeEvalParsed.failed !== 0) {
+    throw new Error(`official knowledge retrieval eval did not pass 42/42: ${knowledgeEval.stdout}`);
   }
 
   const knowledgeValidate = run(osstackBin, ["knowledge", "validate", "--official", "--json"], { cwd: root, capture: true });
@@ -279,7 +279,7 @@ try {
   if (
     knowledgeValidateParsed.ok !== true
     || !Array.isArray(knowledgeValidateParsed.packs)
-    || knowledgeValidateParsed.packs.length !== 6
+    || knowledgeValidateParsed.packs.length !== 10
     || !knowledgeValidateParsed.packs.every((pack) => pack.ok === true)
   ) {
     throw new Error(`official knowledge publish gate did not pass: ${knowledgeValidate.stdout}`);
@@ -289,8 +289,10 @@ try {
   const knowledgeSourcesParsed = JSON.parse(knowledgeSources.stdout);
   if (
     !Array.isArray(knowledgeSourcesParsed.packs)
-    || knowledgeSourcesParsed.packs.length !== 6
+    || knowledgeSourcesParsed.packs.length !== 10
     || !knowledgeSourcesParsed.packs.every((pack) => Array.isArray(pack.sources) && pack.sources.length > 0)
+    || !knowledgeSourcesParsed.packs.some((pack) => pack.pack_id === "osstack-core/architecture-control-plane")
+    || !knowledgeSourcesParsed.packs.some((pack) => pack.pack_id === "osstack-core/contract-validation")
   ) {
     throw new Error(`official knowledge sources did not expose provenance for all packs: ${knowledgeSources.stdout}`);
   }
@@ -316,7 +318,7 @@ try {
     },
   );
   const knowledgeParsed = JSON.parse(knowledgeStart.stdout);
-  if (knowledgeParsed.packs !== 6 || knowledgeParsed.private_packs !== 0) {
+  if (knowledgeParsed.packs !== 10 || knowledgeParsed.private_packs !== 0) {
     throw new Error(`knowledge cloud npm smoke did not load official packs: ${knowledgeStart.stdout}`);
   }
 
@@ -338,7 +340,11 @@ try {
     "--json",
   ], { cwd: root, capture: true });
   const knowledgeSyncParsed = JSON.parse(knowledgeSync.stdout);
-  if (knowledgeSyncParsed.status !== "synced" || knowledgeSyncParsed.packs?.length !== 6) {
+  if (
+    knowledgeSyncParsed.status !== "synced"
+    || knowledgeSyncParsed.packs?.length !== 10
+    || !knowledgeSyncParsed.packs.some((pack) => pack.id === "osstack-core/architecture-control-plane")
+  ) {
     throw new Error(`installed CLI knowledge sync did not cache official packs: ${knowledgeSync.stdout}`);
   }
   knowledgeCloudChild.kill("SIGTERM");

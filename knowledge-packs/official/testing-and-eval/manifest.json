@@ -1,0 +1,46 @@
+{
+  "id": "osstack-core/testing-and-eval",
+  "version": "2026.06.23",
+  "name": "Osstack Testing And Eval Gates",
+  "license": "Osstack-native",
+  "source_kind": "osstack_native",
+  "quality_score": 92,
+  "scope": "official",
+  "taxonomy": ["osstack-core/testing-and-eval", "software-engineering/testing"],
+  "generated_at": "2026-06-23T00:00:00.000Z",
+  "last_reviewed_at": "2026-06-23T00:00:00.000Z",
+  "review": {
+    "status": "approved",
+    "reviewer_id": "osstack-knowledge-review",
+    "reviewed_at": "2026-06-23T00:00:00.000Z",
+    "summary": "Reviewed as Osstack-native testing knowledge with retrieval fixtures before official publication."
+  },
+  "source_attribution": ["osstack-native product knowledge"],
+  "source_provenance": [
+    {
+      "source_id": "osstack-test-and-eval-plan",
+      "path": "docs/product/11_TEST_AND_EVAL_PLAN.md",
+      "sha256": "0c2defcbfd10ff455e880e480d6745985e450b04f0070c1744f947a27d5716d7",
+      "license": "Osstack-native",
+      "scope": "official",
+      "imported_at": "2026-06-23T00:00:00.000Z"
+    },
+    {
+      "source_id": "osstack-umadev-code-benchmark",
+      "path": "docs/external/2026-06-23-umadev-code-benchmark.md",
+      "sha256": "f4b6e89dbf837f22a1297f449cacd84d46b09b2c4da0aa5f956bb978b5215ff2",
+      "license": "Osstack-native analysis",
+      "scope": "official",
+      "imported_at": "2026-06-23T00:00:00.000Z"
+    }
+  ],
+  "chunks": [
+    {
+      "chunk_id": "testing-eval-gates",
+      "title": "Retrieval and proof eval gates",
+      "body": "Osstack testing should prove each product slice with deterministic Vitest coverage, retrieval eval fixtures, publish-gate validation, npm install smoke, proof validation, and Knowledge Cloud deployment smoke before release.",
+      "tags": ["testing", "eval", "smoke", "retrieval"],
+      "source_refs": ["osstack-test-and-eval-plan", "osstack-umadev-code-benchmark"]
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-22T00:00:00.000Z",
+  "generated_at": "2026-06-23T00:00:00.000Z",
   "channel": "official",
   "packs": [
     {
@@ -12,6 +12,24 @@
       "taxonomy": ["osstack-core/agent-routing-policy"]
     },
     {
+      "id": "osstack-core/architecture-control-plane",
+      "version": "2026.06.23",
+      "path": "architecture-control-plane/manifest.json",
+      "scope": "official",
+      "source_kind": "osstack_native",
+      "quality_score": 93,
+      "taxonomy": ["osstack-core/architecture-control-plane", "software-engineering/architecture"]
+    },
+    {
+      "id": "osstack-core/contract-validation",
+      "version": "2026.06.23",
+      "path": "contract-validation/manifest.json",
+      "scope": "official",
+      "source_kind": "osstack_native",
+      "quality_score": 92,
+      "taxonomy": ["osstack-core/contract-validation", "software-engineering/development"]
+    },
+    {
       "id": "osstack-core/loop-engineering",
       "version": "2026.06.22",
       "path": "loop-engineering/manifest.json",
@@ -19,6 +37,15 @@
       "source_kind": "osstack_native",
       "quality_score": 92,
       "taxonomy": ["osstack-core/loop-engineering"]
+    },
+    {
+      "id": "osstack-core/operations-runbook",
+      "version": "2026.06.23",
+      "path": "operations-runbook/manifest.json",
+      "scope": "official",
+      "source_kind": "osstack_native",
+      "quality_score": 91,
+      "taxonomy": ["osstack-core/operations-runbook", "software-engineering/operations"]
     },
     {
       "id": "osstack-core/pr-and-release",
@@ -37,6 +64,15 @@
       "source_kind": "osstack_native",
       "quality_score": 94,
       "taxonomy": ["osstack-core/proof-and-scorecard"]
+    },
+    {
+      "id": "osstack-core/testing-and-eval",
+      "version": "2026.06.23",
+      "path": "testing-and-eval/manifest.json",
+      "scope": "official",
+      "source_kind": "osstack_native",
+      "quality_score": 92,
+      "taxonomy": ["osstack-core/testing-and-eval", "software-engineering/testing"]
     },
     {
       "id": "osstack-core/verifier-and-governance",

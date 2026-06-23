@@ -1,0 +1,46 @@
+{
+  "id": "osstack-core/contract-validation",
+  "version": "2026.06.23",
+  "name": "Osstack Contract Validation",
+  "license": "Osstack-native",
+  "source_kind": "osstack_native",
+  "quality_score": 92,
+  "scope": "official",
+  "taxonomy": ["osstack-core/contract-validation", "software-engineering/development"],
+  "generated_at": "2026-06-23T00:00:00.000Z",
+  "last_reviewed_at": "2026-06-23T00:00:00.000Z",
+  "review": {
+    "status": "approved",
+    "reviewer_id": "osstack-knowledge-review",
+    "reviewed_at": "2026-06-23T00:00:00.000Z",
+    "summary": "Reviewed as Osstack-native contract-validation knowledge after adapting the UmaDev contract-layer lesson into Osstack proof evidence."
+  },
+  "source_attribution": ["osstack-native product knowledge"],
+  "source_provenance": [
+    {
+      "source_id": "osstack-task-breakdown",
+      "path": "docs/product/10_TASK_BREAKDOWN.md",
+      "sha256": "53c03f0ae34d15c134feaef2a57f3a98a21139c8c93d0752a638eb086e68b374",
+      "license": "Osstack-native",
+      "scope": "official",
+      "imported_at": "2026-06-23T00:00:00.000Z"
+    },
+    {
+      "source_id": "osstack-umadev-code-benchmark",
+      "path": "docs/external/2026-06-23-umadev-code-benchmark.md",
+      "sha256": "f4b6e89dbf837f22a1297f449cacd84d46b09b2c4da0aa5f956bb978b5215ff2",
+      "license": "Osstack-native analysis",
+      "scope": "official",
+      "imported_at": "2026-06-23T00:00:00.000Z"
+    }
+  ],
+  "chunks": [
+    {
+      "chunk_id": "contract-validation-proof",
+      "title": "Contract validation proof evidence",
+      "body": "Osstack contract validation should compare frontend fetch calls, backend routes, and osstack.contracts.json expectations, then write contract-validation.json into proof packs so API alignment becomes release evidence.",
+      "tags": ["contracts", "api", "proof", "frontend", "backend"],
+      "source_refs": ["osstack-task-breakdown", "osstack-umadev-code-benchmark"]
+    }
+  ]
+}

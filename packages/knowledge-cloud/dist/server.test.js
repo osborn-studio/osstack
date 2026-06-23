@@ -29,7 +29,7 @@ describe("Knowledge Cloud HTTP service", () => {
         expect(health).toMatchObject({
             ok: true,
             service: "osstack-knowledge-cloud",
-            packs: 6,
+            packs: 10,
             private_packs: 0,
         });
         const packsResponse = await fetchJson(`${url}/v1/packs`);
@@ -699,7 +699,7 @@ describe("Knowledge Cloud HTTP service", () => {
             chunks: [{
                     chunk_id: "private-persisted-review",
                     title: "Private persisted runbook",
-                    body: "Private persisted Osstack runbooks keep alpha vault rotation notes scoped to tenant authorization.",
+                    body: "Private persisted Osstack runbooks keep tenantonlyalpha vault rotation notes scoped to tenant authorization.",
                     tags: ["private", "persisted", "review"],
                 }],
         });
@@ -726,13 +726,13 @@ describe("Knowledge Cloud HTTP service", () => {
             results: [expect.objectContaining({ pack_id: "osstack-core/persisted-cloud-publish" })],
         });
         const unauthorizedPrivateSearch = await fetchJson(`${url}/v1/search`, {
-            query: "alpha vault rotation notes",
+            query: "tenantonlyalpha vault rotation",
             tenant_id: "team_alpha",
             limit: 1,
         });
         expect(unauthorizedPrivateSearch).toMatchObject({ results: [] });
         const privateSearch = await fetchJson(`${url}/v1/search`, {
-            query: "alpha vault rotation notes",
+            query: "tenantonlyalpha vault rotation",
             tenant_id: "team_alpha",
             limit: 1,
         }, { authorization: "Bearer kst_alpha_private" });
