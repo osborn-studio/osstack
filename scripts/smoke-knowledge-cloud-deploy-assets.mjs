@@ -51,12 +51,16 @@ assertIncludes(render, "OSSTACK_KNOWLEDGE_FEEDBACK_LOG", "Render deploy config m
 assertIncludes(render, "OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR", "Render deploy config must persist published Knowledge Cloud packs");
 
 assertIncludes(workflow, "workflow_dispatch:", "Knowledge Cloud deploy workflow must be manually triggerable");
+assertIncludes(workflow, "cancel-in-progress: true", "Knowledge Cloud deploy workflow must cancel older in-progress deploy runs");
 assertIncludes(workflow, "cloud_url:", "Knowledge Cloud deploy workflow must accept a deployed cloud URL for validation");
 assertIncludes(workflow, "pnpm smoke:knowledge-cloud", "Knowledge Cloud deploy workflow must run service smoke");
 assertIncludes(workflow, "pnpm smoke:knowledge-cloud:deploy", "Knowledge Cloud deploy workflow must run deploy asset smoke");
 assertIncludes(workflow, "docker build -f Dockerfile.knowledge-cloud", "Knowledge Cloud deploy workflow must build the Docker image");
 assertIncludes(workflow, "secrets.EDGEONE_API_TOKEN", "Knowledge Cloud deploy workflow must gate EdgeOne CLI deploy on EDGEONE_API_TOKEN");
 assertIncludes(workflow, "edgeone@latest makers deploy . -n osstack-knowledge-cloud", "Knowledge Cloud deploy workflow must deploy with the EdgeOne Makers CLI");
+assertIncludes(workflow, "timeout-minutes: 10", "Knowledge Cloud deploy workflow must bound the EdgeOne CLI step runtime");
+assertIncludes(workflow, "timeout --foreground --kill-after=30s 8m npx edgeone@latest", "Knowledge Cloud deploy workflow must kill a hung EdgeOne CLI deploy command before the job timeout");
+assertIncludes(workflow, "EdgeOne CLI deploy exceeded the 8 minute command timeout", "Knowledge Cloud deploy workflow must explain EdgeOne CLI timeout failures");
 assertIncludes(workflow, "Deploy Success", "Knowledge Cloud deploy workflow must tolerate EdgeOne post-success status lookup failures");
 assertIncludes(workflow, "EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must retain the deploy hook fallback");
 assertIncludes(workflow, "deploy=true requires repository secret EDGEONE_API_TOKEN or EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy=true must fail when no EdgeOne deploy credential is configured");
