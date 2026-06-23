@@ -75,6 +75,7 @@ import { startDaemon } from "./daemon.js";
 import { handleConfigCommand } from "./config.js";
 import {
   cockpitTuiModel,
+  renderCockpitFullscreen,
   renderCockpitTui,
   renderCockpitTuiAction,
   runInteractiveCockpitTui,
@@ -9612,7 +9613,7 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
                             Run queued work with report, scorecard, and proof defaults
   osstack cockpit next [--workspace P] [--status ready|running|blocked] [--json]
                             Print actionable next steps from the cockpit snapshot
-  osstack cockpit tui [--workspace P] [--json] [--no-color] [--action N] [--interactive]
+  osstack cockpit tui [--workspace P] [--json] [--no-color] [--fullscreen] [--action N] [--interactive]
                             Render a terminal cockpit panel for live workbench use
   osstack cockpit retry [task_id] [--workspace P] [--state P] [--json]
                             Requeue a failed or escalated task from loop state
@@ -9712,6 +9713,8 @@ async function handleCockpitTuiCommand(args: string[]): Promise<number> {
   }
   if (args.includes("--json")) {
     console.log(JSON.stringify(model, null, 2));
+  } else if (args.includes("--fullscreen")) {
+    console.log(renderCockpitFullscreen(model));
   } else {
     console.log(renderCockpitTui(model));
   }
