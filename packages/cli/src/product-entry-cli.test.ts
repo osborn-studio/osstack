@@ -821,6 +821,8 @@ describe("product entry commands", () => {
       next_actions: {
         operator: string[];
         validation: string[];
+        github_readonly: string[];
+        remote_workflow: string[];
         publish: string[];
         deploy: string[];
         post_release_validation: string[];
@@ -837,6 +839,8 @@ describe("product entry commands", () => {
     expect(result.next_actions.operator).toContain("Invite the npm account used for NPM_TOKEN as an owner or publisher for @osstack.");
     expect(result.next_actions.operator).toContain("gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"");
     expect(result.next_actions.validation).toContain("pnpm smoke:release-plan");
+    expect(result.next_actions.github_readonly).toContain("gh run list --branch changeset-release/main --limit 5");
+    expect(result.next_actions.remote_workflow).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false");
     expect(result.next_actions.deploy).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
     expect(result.output).toBe(output);
     const markdown = await readFile(output, "utf-8");
@@ -845,6 +849,9 @@ describe("product entry commands", () => {
     expect(markdown).toContain("NPM_TOKEN");
     expect(markdown).toContain("EDGEONE_DEPLOY_HOOK_URL");
     expect(markdown).toContain("## Next Actions");
+    expect(markdown).toContain("### GitHub Read-Only");
+    expect(markdown).toContain("### Remote Workflow");
+    expect(markdown).toContain("These commands can consume GitHub Actions minutes.");
   });
 
   it("prints an EdgeOne Knowledge Cloud setup handoff from the deploy manifest", async () => {

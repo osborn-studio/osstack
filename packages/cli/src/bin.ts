@@ -939,6 +939,8 @@ interface ReleaseStatusSummary {
   next_actions: {
     operator: string[];
     validation: string[];
+    github_readonly: string[];
+    remote_workflow: string[];
     publish: string[];
     deploy: string[];
     post_release_validation: string[];
@@ -3731,6 +3733,10 @@ function releaseStatusSummary(result: ReleaseDoctorResult, plan: ReleaseActionPl
     ...plan.blockers,
     ...result.next_steps.filter(isExternalReleaseBlockerStep),
   ]);
+  const actionCommands = uniqueStrings([
+    ...plan.validation_commands,
+    ...plan.deploy_commands,
+  ]);
   return {
     target: result.target,
     ready: result.ok,
@@ -3749,6 +3755,8 @@ function releaseStatusSummary(result: ReleaseDoctorResult, plan: ReleaseActionPl
     next_actions: {
       operator: plan.operator_commands,
       validation: plan.validation_commands,
+      github_readonly: actionCommands.filter(isGitHubReadOnlyCommand),
+      remote_workflow: actionCommands.filter(isRemoteWorkflowCommand),
       publish: plan.publish_commands,
       deploy: plan.deploy_commands,
       post_release_validation: plan.post_release_validation_commands,
@@ -3823,6 +3831,18 @@ function renderReleaseStatusSummary(status: ReleaseStatusSummary): string {
     "### Validation",
     "",
     ...renderCommandList(status.next_actions.validation),
+    "",
+    "### GitHub Read-Only",
+    "",
+    "These commands inspect GitHub state and do not start workflow jobs.",
+    "",
+    ...renderCommandList(status.next_actions.github_readonly),
+    "",
+    "### Remote Workflow",
+    "",
+    "These commands can consume GitHub Actions minutes.",
+    "",
+    ...renderCommandList(status.next_actions.remote_workflow),
     "",
     "### Publish",
     "",

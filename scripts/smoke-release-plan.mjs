@@ -97,6 +97,21 @@ try {
   assert(Array.isArray(status.external_blockers), "release status must expose external blockers");
   assertArrayIncludes(status.next_actions?.validation, "pnpm smoke:release-plan", "release status validation actions must include release plan smoke");
   assertArrayIncludes(
+    status.next_actions?.github_readonly,
+    "gh run list --branch changeset-release/main --limit 5",
+    "release status GitHub read-only actions must include workflow inspection",
+  );
+  assertArrayIncludes(
+    status.next_actions?.remote_workflow,
+    "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false",
+    "release status remote workflow actions must include dry-run deploy workflow",
+  );
+  assertArrayIncludes(
+    status.next_actions?.remote_workflow,
+    `gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${cloudUrl}`,
+    "release status remote workflow actions must include EdgeOne deploy workflow with the supplied cloud URL",
+  );
+  assertArrayIncludes(
     status.next_actions?.deploy,
     `gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${cloudUrl}`,
     "release status deploy actions must include EdgeOne Knowledge Cloud deploy command",
@@ -105,6 +120,9 @@ try {
   assertIncludes(statusMarkdown, "# Osstack Release Status", "release status markdown must render a title");
   assertIncludes(statusMarkdown, "## External Blockers", "release status markdown must render external blockers");
   assertIncludes(statusMarkdown, "## Next Actions", "release status markdown must render next actions");
+  assertIncludes(statusMarkdown, "### GitHub Read-Only", "release status markdown must separate GitHub read-only commands");
+  assertIncludes(statusMarkdown, "### Remote Workflow", "release status markdown must separate remote workflow commands");
+  assertIncludes(statusMarkdown, "These commands can consume GitHub Actions minutes.", "release status markdown must warn about Actions minutes");
 
   const edgeoneResult = await runAsync(process.execPath, [
     "packages/cli/dist/bin.js",
