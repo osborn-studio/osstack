@@ -16,8 +16,8 @@
 
 仍未完成的部分集中在外部发布和产品深化：
 
-- GitHub push/PR 与 Actions runner 已恢复，main CI 和 macOS Release Candidate 可以正常完成；`release doctor` 保留 `github_actions` 检查，用于提前发现账户层 runner/billing 类问题。
-- npm publish 仍需要修复仓库 secret `NPM_TOKEN` 的 `@osstack` scope 发布权限；Knowledge Cloud `deploy=true` 现在以 EdgeOne 为主路径，仍需要仓库 secret `EDGEONE_API_TOKEN`。
+- GitHub push/PR 与 Actions runner 已恢复，已有 main CI 和 macOS Release Candidate 通过记录；为节省 Actions minutes，当前最新可检查 CI run 是 cancelled，但 `release doctor` 仍能访问 Actions 状态，并保留 `github_actions` 检查用于提前发现账户层 runner/billing 类问题。
+- npm publish 仍需要修复 npmjs.com 上 `@osstack` scope/账号发布权限；仓库 secret `NPM_TOKEN` 已存在，但当前 npm scope access preflight 仍返回 scope missing/unauthorized。Knowledge Cloud `deploy=true` 现在以 EdgeOne 为主路径，仍需要仓库 secret `EDGEONE_API_TOKEN`，也支持 `EDGEONE_DEPLOY_HOOK_URL` 作为 fallback。
 - 日常 PR CI 已拆到 `ubuntu-latest`，macOS single-binary release-candidate smoke 已拆到独立 `.github/workflows/macos-release-candidate.yml`，正式 release workflow 仍保留 macOS archive candidate artifact。
 - `npm install -g @osstack/cli` 还没有从真实 npm registry 验证，只验证了本地 tarball 安装。
 - 可选单文件分发已有 portable CLI bundle smoke、Bun single executable smoke、本地 release asset manifest/checksum/SPDX SBOM、ad-hoc codesign 验证、`.tar.gz` release archive smoke、single-binary `release doctor` readiness，并已接入 CI/release workflow candidate artifact 与 tag/workflow_dispatch GitHub Release 上传路径；发布级 Developer ID 签名/公证/跨机器验证尚未完成。
@@ -55,11 +55,11 @@
 
 - 还没有真实 npm registry 发布。
 - 还没有从 npm registry 执行 `npm install -g @osstack/cli`。
-- GitHub push/CI/release workflow 已恢复；真实 npm publish 仍需要仓库 secret `NPM_TOKEN`，可用 `osstack release doctor --target npm --json` 做发布前置检查。
+- GitHub push/CI/release workflow 已恢复；仓库 secret `NPM_TOKEN` 已存在，真实 npm publish 仍需要在 npmjs.com 创建/认领 `@osstack` scope，并让 token 背后的 npm 账号拥有 owner 或 publisher 权限；可用 `osstack release doctor --target npm --json` 做发布前置检查。
 
 下一步：
 
-1. 配置仓库 secret `NPM_TOKEN`。
+1. 创建/认领 npmjs.com `@osstack` scope，并确保生成 `NPM_TOKEN` 的 npm 账号拥有 publish/owner 权限；必要时重新生成并更新 `NPM_TOKEN`。
 2. 跑 `osstack release doctor --target npm --json`。
 3. CI 通过后跑 release workflow 或合并 changesets Version Packages PR。
 4. 用真实 npm registry 复跑安装 smoke。
@@ -395,8 +395,8 @@
 | 优先级 | 项目 | 原因 | 完成证据 |
 |---:|---|---|---|
 | P0 | GitHub Actions runner 验证 | runner 已恢复并能完成主线 CI；继续保留 release doctor 作为账户层 blocker 早发现机制 | main CI 和 macOS Release Candidate 持续为 green |
-| P0 | 修复 `NPM_TOKEN` 的 `@osstack` 发布权限 | secret 已存在但 npm 返回 `E403`，说明 token 对 `@osstack` scope 没有 publish/owner 权限；`osstack release npm --output npm-publish-setup.md --json` 可生成 npmjs.com、GitHub secret、workflow rerun 和发布后验证交接清单 | `osstack release npm --output npm-publish-setup.md --json` 生成清单；`osstack release doctor --target npm --json` ready；Release workflow 通过 npm preflight |
-| P0 | 配置 `EDGEONE_API_TOKEN` | EdgeOne 是 Knowledge Cloud 主部署路径；没有 EdgeOne API Token secret 或 fallback deploy hook secret 不能运行 Knowledge Cloud `deploy=true` | `osstack release doctor --target knowledge-cloud --json` ready |
+| P0 | 修复 npm `@osstack` scope/账号发布权限 | `NPM_TOKEN` secret 已存在，但 npm 当前返回 scope missing/unauthorized；需要创建/认领 `@osstack` scope，并确保 token 背后的 npm 账号有 publish/owner 权限；`osstack release npm --output npm-publish-setup.md --json` 可生成 npmjs.com、GitHub secret、workflow rerun 和发布后验证交接清单 | `osstack release npm --output npm-publish-setup.md --json` 生成清单；`osstack release doctor --target npm --json` ready；Release workflow 通过 npm preflight |
+| P0 | 配置 `EDGEONE_API_TOKEN` 或 fallback deploy hook | EdgeOne 是 Knowledge Cloud 主部署路径；没有 EdgeOne API Token secret 或 fallback deploy hook secret 不能运行 Knowledge Cloud `deploy=true` | `osstack release doctor --target knowledge-cloud --json` ready |
 | P0 | 部署 Knowledge Cloud 到真实云端 | Phase 6 需要“上线”而非本地 smoke | 生产 URL + `release doctor --target knowledge-cloud --cloud-url <url>` health/search/audit gate |
 | P0 | npm publish 并从 registry 安装 | Phase 0 一行安装的最终验收 | `npm install -g @osstack/cli` 成功 |
 | P1 | `CONFORMANCE_MATRIX.md` 持续维护 | 让 OSSTACK_RUN_SPEC_V1 的 MUST 条款可审计 | 每条新增/变更 MUST 同步 schema/test/vector/verifier/smoke 映射 |
@@ -410,11 +410,11 @@
 当前执行：
 
 ```sh
-GitHub push、PR、release workflow 定义已恢复。当前阻塞点集中在真实发布凭证与 EdgeOne API Token：
+GitHub push、PR、release workflow 定义已恢复。当前阻塞点集中在 npm scope/账号权限与 EdgeOne 部署凭证：
 
-- GitHub Actions runner 已恢复，主线 CI 和 macOS Release Candidate 可正常完成。
-- npm registry publish 当前卡在 `@osstack` scope 权限：`NPM_TOKEN` 已存在，但 npm preflight 返回 `E403`，需要把生成 token 的 npm 账号加入/设为 `@osstack` owner 或 publisher。
-- Knowledge Cloud `deploy=true` 采用 EdgeOne 主路径，需要仓库 secret `EDGEONE_API_TOKEN`。
+- GitHub Actions runner 已恢复，已有主线 CI 和 macOS Release Candidate 通过记录；当前最新可检查 CI run 是 cancelled，属于节省 minutes 的停止记录，不等同于 runner 不可用。
+- npm registry publish 当前卡在 `@osstack` scope/账号权限：`NPM_TOKEN` 已存在，但 npm scope access preflight 仍返回 scope missing/unauthorized，需要创建/认领 `@osstack` scope，并把生成 token 的 npm 账号加入/设为 `@osstack` owner 或 publisher。
+- Knowledge Cloud `deploy=true` 采用 EdgeOne 主路径，需要仓库 secret `EDGEONE_API_TOKEN`；`EDGEONE_DEPLOY_HOOK_URL` 保留为 fallback。
 - `FLY_API_TOKEN` 不再是当前 osstack 上线主路径的必需凭证；Fly.io 只保留为可选参考。
 - 本地人工排障继续需要 `npm login`；EdgeOne 排障需要腾讯云/EdgeOne Pages 控制台权限。
 
@@ -434,8 +434,8 @@ osstack release doctor --json
 
 授权解除后，立即转入 P0：
 
-1. 在 npm 创建/认领 `@osstack` scope，并确保生成 `NPM_TOKEN` 的账号拥有 publish/owner 权限。
-2. 运行 `osstack release handoff --cloud-url <EdgeOne URL> --output-dir release-handoff --json` 生成统一交接包；也可单独运行 `osstack release npm --output npm-publish-setup.md --json`，按清单重新生成并配置仓库 secret `NPM_TOKEN`，rerun Release workflow。
-3. 在 EdgeOne Pages 创建 Knowledge Cloud 项目和 EdgeOne API Token，配置仓库 secret `EDGEONE_API_TOKEN`。
+1. 在 npm 创建/认领 `@osstack` scope，并确保生成 `NPM_TOKEN` 的账号拥有 publish/owner 权限；必要时重新生成并更新仓库 secret `NPM_TOKEN`。
+2. 运行 `osstack release handoff --cloud-url <EdgeOne URL> --output-dir release-handoff --json` 生成统一交接包；也可单独运行 `osstack release npm --output npm-publish-setup.md --json`，按清单修复 npm scope/账号权限后 rerun Release workflow。
+3. 在 EdgeOne Pages 创建 Knowledge Cloud 项目和 EdgeOne API Token，配置仓库 secret `EDGEONE_API_TOKEN`；如果先用 EdgeOne Deploy Hook，则配置 `EDGEONE_DEPLOY_HOOK_URL` fallback。
 4. 运行 Knowledge Cloud Deploy workflow，选择 `deploy=true`。
 5. 用生产 URL 执行 `osstack release doctor --target knowledge-cloud --cloud-url <EdgeOne URL> --json`、`osstack knowledge sync --cloud-url <EdgeOne URL> --json` 和 `osstack knowledge search "proof pack checksum" --cloud-url <EdgeOne URL> --json`。
