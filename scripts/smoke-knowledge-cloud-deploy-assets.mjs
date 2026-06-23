@@ -6,6 +6,7 @@ const edgeone = await read("deploy/knowledge-cloud/edgeone.json");
 const render = await read("deploy/knowledge-cloud/render.yaml");
 const workflow = await read(".github/workflows/knowledge-cloud-deploy.yml");
 const edgeOneFunction = await read("cloud-functions/[[default]].js");
+const edgeOneHealthFunction = await read("cloud-functions/healthz.js");
 const edgeOneFunctionPackage = await read("cloud-functions/package.json");
 
 assertIncludes(dockerfile, "EXPOSE 8787", "Dockerfile must expose the Knowledge Cloud port");
@@ -28,7 +29,8 @@ assertIncludes(edgeone, '"project_name": "osstack-knowledge-cloud"', "EdgeOne de
 assertIncludes(edgeOneFunction, "export default async function onRequest", "EdgeOne Cloud Function must export an onRequest handler");
 assertIncludes(edgeOneFunction, 'url.pathname === "/healthz"', "EdgeOne Cloud Function must serve /healthz");
 assertIncludes(edgeOneFunction, 'url.pathname === "/v1/search"', "EdgeOne Cloud Function must serve /v1/search");
-assertIncludes(edgeOneFunction, "searchKnowledgePacks", "EdgeOne Cloud Function must use osstack knowledge search");
+assertIncludes(edgeOneFunction, "function searchPacks", "EdgeOne Cloud Function must include self-contained search");
+assertIncludes(edgeOneHealthFunction, "osstack-knowledge-cloud", "EdgeOne /healthz function must return Knowledge Cloud service metadata");
 assertIncludes(edgeOneFunctionPackage, '"type": "module"', "EdgeOne Cloud Function package must opt into ESM");
 
 assertIncludes(render, "dockerfilePath: ./Dockerfile.knowledge-cloud", "Render deploy config must use the Knowledge Cloud Dockerfile");
@@ -80,6 +82,7 @@ console.log(JSON.stringify({
     "deploy/knowledge-cloud/render.yaml",
     ".github/workflows/knowledge-cloud-deploy.yml",
     "cloud-functions/[[default]].js",
+    "cloud-functions/healthz.js",
     "cloud-functions/package.json",
   ],
 }, null, 2));
