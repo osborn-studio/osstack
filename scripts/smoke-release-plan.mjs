@@ -10,6 +10,7 @@ const tempRoot = await mkdtemp(join(tmpdir(), "osstack-release-plan-smoke-"));
 const output = join(tempRoot, "release-plan.md");
 const statusOutput = join(tempRoot, "release-status.md");
 const edgeoneOutput = join(tempRoot, "edgeone-setup.md");
+const npmOutput = join(tempRoot, "npm-publish-setup.md");
 const cacheDir = join(tempRoot, "knowledge-cache");
 let cloud;
 
@@ -135,6 +136,41 @@ try {
   assertIncludes(edgeoneMarkdown, "# EdgeOne Knowledge Cloud Setup", "EdgeOne setup markdown must render a title");
   assertIncludes(edgeoneMarkdown, "EDGEONE_DEPLOY_HOOK_URL", "EdgeOne setup markdown must include deploy hook secret");
 
+  const npmResult = await runAsync(process.execPath, [
+    "packages/cli/dist/bin.js",
+    "release",
+    "npm",
+    "--output",
+    npmOutput,
+    "--json",
+  ], {
+    cwd: root,
+    capture: true,
+    env: releasePlanEnv(),
+  });
+  const npm = JSON.parse(npmResult.stdout);
+  assert(npm.scope === "@osstack", "npm setup must expose the osstack npm scope");
+  assert(npm.package_name === "@osstack/cli", "npm setup must read the CLI package metadata");
+  assert(npm.required_secret === "NPM_TOKEN", "npm setup must expose the npm publish secret");
+  assertArrayIncludes(
+    npm.github_commands,
+    "gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\"",
+    "npm setup must include the GitHub secret command",
+  );
+  assertArrayIncludes(
+    npm.validation_commands,
+    "pnpm preflight:npm-publish",
+    "npm setup must include npm publish preflight validation",
+  );
+  assertArrayIncludes(
+    npm.post_release_validation_commands,
+    "npm install -g @osstack/cli",
+    "npm setup must include global install post-release validation",
+  );
+  const npmMarkdown = await readFile(npmOutput, "utf-8");
+  assertIncludes(npmMarkdown, "# NPM Publish Setup", "npm setup markdown must render a title");
+  assertIncludes(npmMarkdown, "NPM_TOKEN", "npm setup markdown must include publish secret");
+
   const sync = JSON.parse((await runAsync(process.execPath, [
     "packages/cli/dist/bin.js",
     "knowledge",
@@ -174,6 +210,7 @@ try {
     output,
     status_output: statusOutput,
     edgeone_output: edgeoneOutput,
+    npm_output: npmOutput,
     cloud_url: cloudUrl,
     target: plan.target,
     validation_commands: plan.validation_commands.length,

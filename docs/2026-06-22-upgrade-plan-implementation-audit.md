@@ -394,7 +394,7 @@
 | 优先级 | 项目 | 原因 | 完成证据 |
 |---:|---|---|---|
 | P0 | GitHub Actions runner 验证 | runner 已恢复并能完成主线 CI；继续保留 release doctor 作为账户层 blocker 早发现机制 | main CI 和 macOS Release Candidate 持续为 green |
-| P0 | 修复 `NPM_TOKEN` 的 `@osstack` 发布权限 | secret 已存在但 npm 返回 `E403`，说明 token 对 `@osstack` scope 没有 publish/owner 权限 | `osstack release doctor --target npm --json` ready；Release workflow 通过 npm preflight |
+| P0 | 修复 `NPM_TOKEN` 的 `@osstack` 发布权限 | secret 已存在但 npm 返回 `E403`，说明 token 对 `@osstack` scope 没有 publish/owner 权限；`osstack release npm --output npm-publish-setup.md --json` 可生成 npmjs.com、GitHub secret、workflow rerun 和发布后验证交接清单 | `osstack release npm --output npm-publish-setup.md --json` 生成清单；`osstack release doctor --target npm --json` ready；Release workflow 通过 npm preflight |
 | P0 | 配置 `EDGEONE_DEPLOY_HOOK_URL` | EdgeOne 是 Knowledge Cloud 主部署路径；没有 EdgeOne deploy hook secret 不能运行 Knowledge Cloud `deploy=true` | `osstack release doctor --target knowledge-cloud --json` ready |
 | P0 | 部署 Knowledge Cloud 到真实云端 | Phase 6 需要“上线”而非本地 smoke | 生产 URL + `release doctor --target knowledge-cloud --cloud-url <url>` health/search/audit gate |
 | P0 | npm publish 并从 registry 安装 | Phase 0 一行安装的最终验收 | `npm install -g @osstack/cli` 成功 |
@@ -429,12 +429,12 @@ osstack release doctor --json
 
 1. 继续给 `osstack proof validate` 增加更多 negative/malformed vectors；当前 proof/compliance 的结构级证据检查已抽成可复用 validator，proof view/compliance render 会把 malformed manifest、verify、policy、agent runtime、governance、worktree、knowledge evidence 标成 `MISSING`，CLI 还会拒绝 manifest artifact path 重复、artifact 缺失、hash/bytes 不一致、`sha256sums.txt` inventory 不一致和越界路径，release plan 已输出 proof validate 命令并支持 `--workspace` 自动 proof 检查和显式 `--proof-dir` 覆盖，release doctor 已支持显式 `--proof-dir` 和最新 proof dir 自动发现。
 2. 继续补更多 negative/malformed vectors，覆盖边界格式、旧版本兼容字段、外部 proof 目录导入场景。
-3. 继续强化 release doctor、Knowledge Cloud deploy preflight、npm publish preflight；当前 release doctor 已能识别 Version Packages PR #5 的 `CLEAN / MERGEABLE` 状态，检查 NPM publish assets、Knowledge Cloud deploy assets 和 single-binary release assets，显示 Knowledge Cloud Deploy workflow 最近一次 validation run，通过 `--output` 生成 Markdown 发布行动清单，并通过 `release plan` 生成验证/发布/部署命令 runbook。
+3. 继续强化 release doctor、Knowledge Cloud deploy preflight、npm publish preflight；当前 release doctor 已能识别 Version Packages PR #5 的 `CLEAN / MERGEABLE` 状态，检查 NPM publish assets、Knowledge Cloud deploy assets 和 single-binary release assets，显示 Knowledge Cloud Deploy workflow 最近一次 validation run，通过 `--output` 生成 Markdown 发布行动清单，通过 `release plan` 生成验证/发布/部署命令 runbook，并通过 `release npm` 单独生成 npm 发布权限修复 handoff。
 
 授权解除后，立即转入 P0：
 
 1. 在 npm 创建/认领 `@osstack` scope，并确保生成 `NPM_TOKEN` 的账号拥有 publish/owner 权限。
-2. 重新生成并配置仓库 secret `NPM_TOKEN`，rerun Release workflow。
+2. 运行 `osstack release npm --output npm-publish-setup.md --json`，按清单重新生成并配置仓库 secret `NPM_TOKEN`，rerun Release workflow。
 3. 在 EdgeOne Pages 创建 Knowledge Cloud 项目和 deploy hook，配置仓库 secret `EDGEONE_DEPLOY_HOOK_URL`。
 4. 运行 Knowledge Cloud Deploy workflow，选择 `deploy=true`。
 5. 用生产 URL 执行 `osstack release doctor --target knowledge-cloud --cloud-url <EdgeOne URL> --json`、`osstack knowledge sync --cloud-url <EdgeOne URL> --json` 和 `osstack knowledge search "proof pack checksum" --cloud-url <EdgeOne URL> --json`。
