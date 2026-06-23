@@ -1,5 +1,11 @@
 # @osstack/cli
 
+## 0.5.0
+
+### Minor Changes
+
+- 13f6035: Add `osstack cockpit tui --fullscreen`, a framed cockpit workbench renderer backed by tested keyboard navigation state.
+
 ## 0.4.0
 
 ### Patch Changes
