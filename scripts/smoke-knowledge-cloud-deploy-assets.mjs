@@ -8,6 +8,7 @@ const workflow = await read(".github/workflows/knowledge-cloud-deploy.yml");
 const edgeOneFunction = await read("cloud-functions/[[default]].js");
 const edgeOneHealthFunction = await read("cloud-functions/healthz.js");
 const edgeOneFunctionPackage = await read("cloud-functions/package.json");
+const edgeOneOfficialPacks = await read("cloud-functions/official-packs.js");
 
 assertIncludes(dockerfile, "EXPOSE 8787", "Dockerfile must expose the Knowledge Cloud port");
 assertIncludes(dockerfile, "FROM node:22-slim", "Dockerfile must use Node 22 for pnpm and node:sqlite support");
@@ -27,11 +28,13 @@ assertIncludes(edgeone, '"deploy_secret": "EDGEONE_API_TOKEN"', "EdgeOne deploy 
 assertIncludes(edgeone, '"fallback_deploy_secret": "EDGEONE_DEPLOY_HOOK_URL"', "EdgeOne deploy config must retain the deploy hook fallback secret");
 assertIncludes(edgeone, '"project_name": "osstack-knowledge-cloud"', "EdgeOne deploy config must declare the Makers project name");
 assertIncludes(edgeOneFunction, "export default async function onRequest", "EdgeOne Cloud Function must export an onRequest handler");
+assertIncludes(edgeOneFunction, 'from "./official-packs.js"', "EdgeOne Cloud Function must load official packs from the function bundle");
 assertIncludes(edgeOneFunction, 'url.pathname === "/healthz"', "EdgeOne Cloud Function must serve /healthz");
 assertIncludes(edgeOneFunction, 'url.pathname === "/v1/search"', "EdgeOne Cloud Function must serve /v1/search");
 assertIncludes(edgeOneFunction, "function searchPacks", "EdgeOne Cloud Function must include self-contained search");
 assertIncludes(edgeOneHealthFunction, "osstack-knowledge-cloud", "EdgeOne /healthz function must return Knowledge Cloud service metadata");
 assertIncludes(edgeOneFunctionPackage, '"type": "module"', "EdgeOne Cloud Function package must opt into ESM");
+assertIncludes(edgeOneOfficialPacks, "proof-checksum-pack", "EdgeOne function bundle must include official proof knowledge pack data");
 
 assertIncludes(render, "dockerfilePath: ./Dockerfile.knowledge-cloud", "Render deploy config must use the Knowledge Cloud Dockerfile");
 assertIncludes(render, "healthCheckPath: /healthz", "Render deploy config must healthcheck /healthz");
@@ -54,6 +57,8 @@ assertIncludes(workflow, 'curl -fsS -X POST "$EDGEONE_DEPLOY_HOOK_URL"', "Knowle
 assertIncludes(workflow, "release doctor --target knowledge-cloud --cloud-url", "Knowledge Cloud deploy workflow must validate the deployed health/search/audit gates when cloud_url is supplied");
 assertIncludes(workflow, 'knowledge sync --cloud-url "${{ inputs.cloud_url }}" --json', "Knowledge Cloud deploy workflow must sync from the deployed cloud URL when supplied");
 assertIncludes(workflow, 'knowledge search "proof pack checksum" --cloud-url "${{ inputs.cloud_url }}" --json', "Knowledge Cloud deploy workflow must search the deployed cloud URL when supplied");
+assertIncludes(workflow, "OSSTACK_TEST_RELEASE_GITHUB_AUTH: ok", "Knowledge Cloud deploy workflow must keep post-deploy validation focused on the deployed URL inside CI");
+assertIncludes(workflow, "OSSTACK_TEST_RELEASE_SECRETS: EDGEONE_API_TOKEN", "Knowledge Cloud deploy workflow must provide release doctor CI secret evidence after the deploy gate has passed");
 
 const edgeOneHandler = await import(new URL("../cloud-functions/%5B%5Bdefault%5D%5D.js", import.meta.url));
 const health = await edgeOneHandler.default({ request: new Request("https://knowledge.osstack.ai/healthz") });
@@ -83,6 +88,7 @@ console.log(JSON.stringify({
     ".github/workflows/knowledge-cloud-deploy.yml",
     "cloud-functions/[[default]].js",
     "cloud-functions/healthz.js",
+    "cloud-functions/official-packs.js",
     "cloud-functions/package.json",
   ],
 }, null, 2));
