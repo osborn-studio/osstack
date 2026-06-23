@@ -109,22 +109,28 @@ osstack --version    # → osstack 0.1.0
 ## Quickstart
 
 ```bash
-# 1. Start the background daemon (Unix socket at ~/.osstack/daemon.sock)
-osstack serve &
+# 1. Check this workspace is ready
+osstack doctor --workspace .
 
-# 2. Check it's healthy + see the CLI/daemon version handshake
-osstack status
+# 2. Run one product-entry task and generate evidence
+osstack deliver "Add one small verified change" \
+  --verify "pnpm test" \
+  --auto-agent \
+  --worktree \
+  --report \
+  --scorecard \
+  --proof
 
-# 3. See which coding agents are available on this machine
-osstack agent list
+# 3. Open the cockpit summary for latest report/proof paths
+osstack cockpit --workspace .
 
-# 4. Queue a coding task and run one loop cycle until tests pass
-mkdir -p tasks
-osstack loop enqueue "Fix the failing auth test" --capability code.test --priority 80
-osstack loop run --source task_queue --execute "npm run fix" --verify "npm test"
+# 4. Re-render the latest proof for an engineer view
+osstack proof view "$(node -e 'const s=require("./LOOP-STATE.json"); process.stdout.write(s.loop_id)')" \
+  --audience engineer
 
-# 5. Watch it on the board
+# 5. Continue from the board or more examples
 osstack kanban board
+osstack examples
 ```
 
 ---
