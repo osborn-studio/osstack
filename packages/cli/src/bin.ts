@@ -1146,7 +1146,8 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   expectAsset(workflow, "uses: changesets/action@v1", "Release workflow must use changesets/action.");
   expectAsset(workflow, "pnpm smoke:release-plan", "Release workflow must run release plan smoke.");
   expectAsset(workflow, "pnpm smoke:npm-install", "Release workflow must run npm install smoke.");
-  expectAsset(workflow, "pnpm changeset publish --provenance", "Release workflow must publish with npm provenance.");
+  expectAsset(workflow, "publish: pnpm changeset publish", "Release workflow must publish through changesets.");
+  expectAsset(workflow, "NPM_CONFIG_PROVENANCE", "Release workflow must enable npm provenance for changesets publish.");
   expectAsset(workflow, "secrets.NPM_TOKEN", "Release workflow must gate publishing on NPM_TOKEN.");
   expectAsset(workflow, "NODE_AUTH_TOKEN", "Release workflow must set NODE_AUTH_TOKEN for npm publish.");
 
