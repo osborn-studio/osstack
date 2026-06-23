@@ -477,6 +477,39 @@ describe("proof CLI", () => {
     ]));
   });
 
+  it("rejects proof checksum inventories with entries not listed in the manifest", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const proofExitCode = await main(["proof", "--workspace", tmp]);
+    expect(proofExitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    const sha256sumsPath = join(proofDir, "sha256sums.txt");
+    const sha256sums = await readFile(sha256sumsPath, "utf-8");
+    await writeFile(
+      sha256sumsPath,
+      `${sha256sums}${"c".repeat(64)}  unmanifested-extra.txt\n`,
+    );
+
+    logs = [];
+    const invalidExitCode = await main([
+      "proof",
+      "validate",
+      "cli-proof-loop",
+      "--workspace",
+      tmp,
+      "--json",
+    ]);
+
+    expect(invalidExitCode).toBe(1);
+    const summary = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      file_integrity: { ok: boolean; issues: Array<{ path: string; code: string }> };
+    };
+    expect(summary.ok).toBe(false);
+    expect(summary.file_integrity.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "unmanifested-extra.txt", code: "sha256sums_extra_entry" }),
+    ]));
+  });
+
   it("rejects proof manifests missing required timestamps", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
     const proofExitCode = await main(["proof", "--workspace", tmp]);
@@ -772,6 +805,37 @@ describe("proof CLI", () => {
     expect(summary.archive_integrity).toMatchObject({ ok: false });
     expect(summary.archive_integrity.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({ path: "report.md", code: "proof_zip_missing_entry" }),
+    ]));
+  });
+
+  it("rejects proof zips that contain entries not listed in the manifest", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const proofExitCode = await main(["proof", "--workspace", tmp]);
+    expect(proofExitCode).toBe(0);
+    const proofZip = join(tmp, "release", "osstack-proof-cli-proof-loop.zip");
+    const extraFile = join(tmp, "unmanifested-extra.txt");
+    await writeFile(extraFile, "extra proof payload that was not recorded in manifest.json\n");
+    execFileSync("zip", ["-j", proofZip, extraFile], { stdio: "ignore" });
+
+    logs = [];
+    const invalidExitCode = await main([
+      "proof",
+      "validate",
+      "cli-proof-loop",
+      "--workspace",
+      tmp,
+      "--json",
+    ]);
+
+    expect(invalidExitCode).toBe(1);
+    const summary = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      archive_integrity: { ok: boolean; issues: Array<{ path: string; code: string }> };
+    };
+    expect(summary.ok).toBe(false);
+    expect(summary.archive_integrity).toMatchObject({ ok: false });
+    expect(summary.archive_integrity.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "unmanifested-extra.txt", code: "proof_zip_extra_entry" }),
     ]));
   });
 
