@@ -235,6 +235,22 @@ describe("dashboard/cockpit CLI", () => {
     });
   });
 
+  it("renders selected cockpit TUI actions with a concrete shell-quoted workspace", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "Gilbert's workspace");
+    await mkdir(workspace, { recursive: true });
+
+    const exitCode = await main(["cockpit", "tui", "--workspace", workspace, "--action", "4", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const selection = JSON.parse(logs.join("\n")) as {
+      next_command: string;
+    };
+    expect(selection.next_command).toBe(
+      `osstack cockpit proof --workspace '${workspace.replaceAll("'", "'\\''")}' --json`,
+    );
+  });
+
   it("rejects unavailable cockpit TUI actions", async () => {
     daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
 
