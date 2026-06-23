@@ -25,6 +25,28 @@ export interface KnowledgePackManifest {
     source_provenance?: KnowledgeSourceProvenance[];
     chunks: KnowledgeChunk[];
 }
+export type KnowledgeAdaptationStatus = "planned" | "ready_for_review" | "approved";
+export interface KnowledgeAdaptationFamily {
+    family_id: string;
+    source_paths: string[];
+    source_count: number;
+    target_pack_id: string;
+    target_name: string;
+    target_taxonomy: string[];
+    source_license: string;
+    target_license: string;
+    status: KnowledgeAdaptationStatus;
+    required_actions: string[];
+}
+export interface KnowledgeAdaptationPlan {
+    generated_at: string;
+    source_name: string;
+    source_root: string;
+    source_license: string;
+    target_scope: KnowledgeScope;
+    target_source_kind: Extract<KnowledgeSourceKind, "processed_mit" | "curated_external">;
+    families: KnowledgeAdaptationFamily[];
+}
 export interface KnowledgeReview {
     status: "approved" | "changes_requested";
     reviewer_id: string;

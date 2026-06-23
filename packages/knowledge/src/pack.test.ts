@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   assembleKnowledgeSnippet,
   cacheKnowledgeFeedback,
+  createKnowledgeAdaptationPlan,
   evaluateKnowledgeRetrieval,
   ingestKnowledgeSource,
   importKnowledgeSource,
@@ -20,6 +21,7 @@ import {
   searchKnowledgePacks,
   syncKnowledgeCache,
   validateKnowledgePackIndex,
+  validateKnowledgeAdaptationPlan,
   validateKnowledgePackManifest,
   validateKnowledgePublishGate,
   type KnowledgeRetrievalEvalCase,
@@ -398,6 +400,94 @@ describe("knowledge packs", () => {
     expect(manifest.chunks[0]?.body).toContain("Osstack taxonomy: software-engineering/frontend-quality.");
     expect(manifest.chunks[0]?.body).toContain("runs, loops, agents, verifiers, proof packs");
     expect(manifest.chunks[0]?.body).toContain("Operational guidance:");
+  });
+
+  it("plans external MIT corpus adaptation without keeping upstream product identity", async () => {
+    const sourceDir = join(tmp, "umadev-knowledge");
+    await mkdir(join(sourceDir, "ai"), { recursive: true });
+    await mkdir(join(sourceDir, "security"), { recursive: true });
+    await writeFile(join(sourceDir, "ai", "agent-evaluation.md"), [
+      "# Agent Evaluation",
+      "",
+      "Evaluate agent runs with scorecards, review gates, and retrieval traces.",
+    ].join("\n"));
+    await writeFile(join(sourceDir, "security", "secrets.md"), [
+      "# Secrets Management",
+      "",
+      "Prevent secret leakage during generated-code delivery.",
+    ].join("\n"));
+
+    const plan = await createKnowledgeAdaptationPlan({
+      path: sourceDir,
+      sourceName: "umacloud/umadev",
+      sourceLicense: "MIT",
+      generatedAt: "2026-06-23T00:00:00.000Z",
+    });
+
+    expect(plan).toMatchObject({
+      source_name: "umacloud/umadev",
+      source_license: "MIT",
+      target_scope: "official",
+      target_source_kind: "processed_mit",
+      families: [
+        expect.objectContaining({
+          family_id: "ai",
+          source_paths: ["ai/agent-evaluation.md"],
+          source_count: 1,
+          target_pack_id: "osstack-corpus/ai",
+          target_name: "Osstack Ai",
+          target_taxonomy: ["ai-agent-engineering/general"],
+          target_license: "MIT-derived-processed",
+          required_actions: expect.arrayContaining([
+            "rewrite_in_osstack_voice",
+            "record_source_provenance",
+            "review_before_official_publish",
+            "add_retrieval_eval",
+          ]),
+        }),
+        expect.objectContaining({
+          family_id: "security",
+          source_paths: ["security/secrets.md"],
+          target_pack_id: "osstack-corpus/security",
+          target_taxonomy: ["security/devsecops"],
+        }),
+      ],
+    });
+    expect(validateKnowledgeAdaptationPlan(plan)).toMatchObject({ ok: true, issues: [] });
+  });
+
+  it("rejects adaptation plans that would publish upstream-branded pack identities", () => {
+    const report = validateKnowledgeAdaptationPlan({
+      generated_at: "2026-06-23T00:00:00.000Z",
+      source_name: "umacloud/umadev",
+      source_root: "knowledge",
+      source_license: "MIT",
+      target_scope: "official",
+      target_source_kind: "processed_mit",
+      families: [{
+        family_id: "ai",
+        source_paths: ["ai/agent-evaluation.md"],
+        source_count: 1,
+        target_pack_id: "umadev/ai",
+        target_name: "UmaDev AI",
+        target_taxonomy: [],
+        source_license: "MIT",
+        target_license: "MIT",
+        status: "planned",
+        required_actions: ["record_source_provenance"],
+      }],
+    });
+
+    expect(report).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({ code: "adaptation_target_pack_not_osstack" }),
+        expect.objectContaining({ code: "adaptation_target_keeps_upstream_identity" }),
+        expect.objectContaining({ code: "adaptation_missing_taxonomy" }),
+        expect.objectContaining({ code: "adaptation_processed_license_not_osstack_derived" }),
+        expect.objectContaining({ code: "adaptation_missing_required_action" }),
+      ]),
+    });
   });
 
   it("rejects official publish candidates without Osstack processing evidence", async () => {
