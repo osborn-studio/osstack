@@ -1001,6 +1001,7 @@ async function releaseDoctor(
       errorMessage: "Local npm login is missing; run npm login or rely on the NPM_TOKEN repository secret in CI.",
       missingSeverity: "warn",
     }));
+    checks.push(await releaseNpmScopeAccessCheck());
   }
 
   if (target === "all" || target === "knowledge-cloud") {
@@ -1025,6 +1026,7 @@ async function releaseDoctor(
   }
 
   const npmPublishAssetsReady = checks.find((check) => check.id === "npm_publish_assets")?.status !== "error";
+  const npmScopeAccessReady = checks.find((check) => check.id === "npm_scope_access")?.status !== "error";
   const versionPackagesPrReady = checks.find((check) => check.id === "version_packages_pr")?.status !== "warn";
   const knowledgeDeployAssetsReady = checks.find((check) => check.id === "knowledge_cloud_deploy_assets")?.status !== "error";
   const knowledgeWorkflowReady = checks.find((check) => check.id === "knowledge_cloud_workflow")?.status !== "error";
@@ -1035,7 +1037,7 @@ async function releaseDoctor(
   const singleBinaryAssetsReady = checks.find((check) => check.id === "single_binary_release_assets")?.status !== "error";
   const singleBinaryWorkflowReady = checks.find((check) => check.id === "single_binary_workflow")?.status !== "error";
   const actionsReady = githubActions.status !== "error";
-  const npmPublish = actionsReady && hasSecret(secrets, "NPM_TOKEN") && npmPublishAssetsReady && versionPackagesPrReady;
+  const npmPublish = actionsReady && hasSecret(secrets, "NPM_TOKEN") && npmPublishAssetsReady && npmScopeAccessReady && versionPackagesPrReady;
   const knowledgeCloudDeploy = actionsReady
     && hasSecret(secrets, "EDGEONE_DEPLOY_HOOK_URL")
     && knowledgeDeployAssetsReady
@@ -1075,6 +1077,8 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   const assetRoot = await findReleaseAssetRoot(workspacePath);
   const requiredAssets = [
     "packages/cli/package.json",
+    "package.json",
+    "scripts/preflight-npm-publish-access.mjs",
     ".github/workflows/release.yml",
   ];
   const checkedAssets = [
@@ -1101,6 +1105,8 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   const cliPackageRaw = await readAsset("packages/cli/package.json");
   const changeset = await readOptionalAsset(".changeset/osstack-upgrade-knowledge-cloud.md");
   const workflow = await readAsset(".github/workflows/release.yml");
+  const rootPackage = await readAsset("package.json");
+  const npmPreflight = await readAsset("scripts/preflight-npm-publish-access.mjs");
   let cliVersion = "";
 
   if (cliPackageRaw !== "") {
@@ -1139,9 +1145,13 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   expectAsset(workflow, "pnpm smoke:release-plan", "Release workflow must run release plan smoke.");
   expectAsset(workflow, "pnpm smoke:npm-install", "Release workflow must run npm install smoke.");
   expectAsset(workflow, "publish: pnpm changeset publish", "Release workflow must publish through changesets.");
+  expectAsset(workflow, "pnpm preflight:npm-publish", "Release workflow must preflight npm scope publish access before changesets publish.");
   expectAsset(workflow, "NPM_CONFIG_PROVENANCE", "Release workflow must enable npm provenance for changesets publish.");
   expectAsset(workflow, "secrets.NPM_TOKEN", "Release workflow must gate publishing on NPM_TOKEN.");
   expectAsset(workflow, "NODE_AUTH_TOKEN", "Release workflow must set NODE_AUTH_TOKEN for npm publish.");
+  expectAsset(rootPackage, "\"preflight:npm-publish\"", "Root package scripts must expose preflight:npm-publish.");
+  expectAsset(npmPreflight, "npm\", [\"access\", \"ls-packages\", scope, \"--json\"]", "NPM preflight script must verify publish-scope access with npm access ls-packages.");
+  expectAsset(npmPreflight, "Scope not found", "NPM preflight script must explain missing npm scope failures.");
 
   const ok = missing.length === 0 && violations.length === 0;
   return {
@@ -1159,6 +1169,59 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
       versioned_for_publish: versionedForPublish,
     },
   };
+}
+
+async function releaseNpmScopeAccessCheck(): Promise<ReleaseDoctorCheck> {
+  const scope = "@osstack";
+  const override = process.env["OSSTACK_TEST_RELEASE_NPM_SCOPE_ACCESS"];
+  if (override === "ok") {
+    return {
+      id: "npm_scope_access",
+      status: "ok",
+      message: `npm publish access to ${scope} is available.`,
+      details: { scope },
+    };
+  }
+  if (override === "warn") {
+    return {
+      id: "npm_scope_access",
+      status: "warn",
+      message: `npm publish access to ${scope} was not checked locally.`,
+      details: { scope, reason: "not_checked" },
+    };
+  }
+  if (override === "error" || override === "error:scope") {
+    return {
+      id: "npm_scope_access",
+      status: "error",
+      message: `npm cannot publish to ${scope}; create the scope or grant NPM_TOKEN publish rights.`,
+      details: { scope, reason: "scope_not_found_or_unauthorized" },
+    };
+  }
+  try {
+    await execFileAsync("npm", ["access", "ls-packages", scope, "--json"], { timeout: 10_000 });
+    return {
+      id: "npm_scope_access",
+      status: "ok",
+      message: `npm publish access to ${scope} is available.`,
+      details: { scope },
+    };
+  } catch (error) {
+    const message = releaseErrorMessage(error);
+    const scopeMissing = /Scope not found|not found|E404/i.test(message);
+    return {
+      id: "npm_scope_access",
+      status: scopeMissing ? "error" : "warn",
+      message: scopeMissing
+        ? `npm cannot publish to ${scope}; create the scope or grant NPM_TOKEN publish rights.`
+        : `Could not verify npm publish access to ${scope}; release CI will run the token-backed preflight.`,
+      details: {
+        scope,
+        reason: scopeMissing ? "scope_not_found_or_unauthorized" : "not_checked",
+        error: message,
+      },
+    };
+  }
 }
 
 async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Promise<ReleaseDoctorCheck> {
@@ -2598,6 +2661,12 @@ function releaseDoctorNextSteps(options: {
   if ((options.target === "all" || options.target === "npm") && npmPublishAssets?.status === "error") {
     steps.push("Restore NPM publish assets before merging the Version Packages PR.");
   }
+  const npmScopeAccess = options.checks.find((check) => check.id === "npm_scope_access");
+  if ((options.target === "all" || options.target === "npm") && npmScopeAccess?.status === "error") {
+    steps.push("Create or authorize the npm @osstack scope before rerunning the Release workflow.");
+  } else if ((options.target === "all" || options.target === "npm") && npmScopeAccess?.status === "warn") {
+    steps.push("Confirm the npm account behind NPM_TOKEN can publish to @osstack before merging release commits.");
+  }
   const knowledgeDeployAssets = options.checks.find((check) => check.id === "knowledge_cloud_deploy_assets");
   if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeDeployAssets?.status === "error") {
     steps.push("Restore Knowledge Cloud deploy assets before running deploy=true.");
@@ -2780,6 +2849,13 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
         ...(latestVersionPrCiUrl === undefined ? [] : [latestVersionPrCiUrl]),
       ]
       : []),
+    ...(result.checks.find((check) => check.id === "npm_scope_access")?.status === "error"
+      ? [
+        "Create or claim the @osstack npm organization/scope on npmjs.com.",
+        "Invite the npm account used for NPM_TOKEN as an owner or publisher for @osstack.",
+        "Regenerate NPM_TOKEN from that npm account and update the GitHub repository secret.",
+      ]
+      : []),
     ...releaseGitHubActionsOperatorCommands(result.checks.find((check) => check.id === "github_actions")),
   ];
   const validationCommands = [
@@ -2873,6 +2949,7 @@ function isReleaseBlockerStep(step: string): boolean {
     || step.startsWith("Regenerate or repair proof pack artifacts")
     || step.startsWith("Remove external certification claims")
     || step.startsWith("Restore NPM publish assets")
+    || step.startsWith("Create or authorize the npm @osstack scope")
     || step.startsWith("Restore Knowledge Cloud deploy assets")
     || step.startsWith("Restore the Knowledge Cloud Deploy workflow")
     || step.startsWith("Fix the deployed Knowledge Cloud")
