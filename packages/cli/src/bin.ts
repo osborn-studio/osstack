@@ -239,6 +239,8 @@ Project commands:
                       Generate a blocker-aware publish/deploy runbook
   release status [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
                       Summarize completion, external blockers, and next actions
+  release handoff [--workspace P] [--cloud-url URL] [--output-dir P] [--json]
+                      Generate a consolidated release handoff folder
   release npm [--workspace P] [--output P] [--json]
                       Generate the npm publish setup handoff
   release edgeone [--workspace P] [--cloud-url URL] [--output P] [--json]
@@ -879,6 +881,7 @@ async function handleReleaseCommand(args: string[]): Promise<number> {
   osstack release doctor [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--json]
   osstack release plan [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--output P] [--json]
   osstack release status [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--output P] [--json]
+  osstack release handoff [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--output-dir P] [--json]
   osstack release npm [--workspace P] [--output P] [--json]
   osstack release edgeone [--workspace P] [--cloud-url URL] [--output P] [--json]
 
@@ -897,6 +900,7 @@ Checks:
   if (sub === "doctor") return await handleReleaseDoctorCommand(args.slice(1));
   if (sub === "plan") return await handleReleasePlanCommand(args.slice(1));
   if (sub === "status") return await handleReleaseStatusCommand(args.slice(1));
+  if (sub === "handoff") return await handleReleaseHandoffCommand(args.slice(1));
   if (sub === "npm") return await handleReleaseNpmCommand(args.slice(1));
   if (sub === "edgeone") return await handleReleaseEdgeOneCommand(args.slice(1));
   console.error(`osstack: unknown release subcommand "${sub}"`);
@@ -973,6 +977,47 @@ interface NpmPublishSetupSummary {
   validation_commands: string[];
   post_release_validation_commands: string[];
   output?: string;
+}
+
+interface ReleaseHandoffBundleSummary {
+  kind: string;
+  target: ReleaseDoctorResult["target"];
+  output_dir: string;
+  cloud_url: string;
+  required_secrets: string[];
+  files: {
+    manifest: string;
+    release_status: string;
+    release_plan: string;
+    npm_setup: string;
+    edgeone_setup: string;
+  };
+  external_blockers: string[];
+  next_actions: ReleaseStatusSummary["next_actions"];
+}
+
+async function handleReleaseHandoffCommand(args: string[]): Promise<number> {
+  const target = parseReleaseDoctorTarget(flagValue(args, "--target") ?? "all");
+  if (target === undefined) {
+    console.error("osstack: release handoff --target must be all, npm, knowledge-cloud, or single-binary");
+    return 1;
+  }
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const proofDir = flagValue(args, "--proof-dir");
+  const cloudUrl = flagValue(args, "--cloud-url") ?? "https://knowledge.osstack.ai";
+  const outputDir = flagValue(args, "--output-dir") ?? "release-handoff";
+  const handoff = await createReleaseHandoffBundle(workspacePath, {
+    target,
+    outputDir,
+    cloudUrl,
+    ...(proofDir === undefined ? {} : { proofDir }),
+  });
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(handoff, null, 2));
+  } else {
+    console.log(renderReleaseHandoffBundleSummary(handoff));
+  }
+  return 0;
 }
 
 async function handleReleaseNpmCommand(args: string[]): Promise<number> {
@@ -3147,6 +3192,98 @@ function releaseGitHubActionsOperatorCommands(check: ReleaseDoctorCheck | undefi
     return ["Open GitHub Actions settings/billing and confirm ubuntu-latest jobs can be assigned a runner."];
   }
   return ["Open GitHub Billing & plans and fix failed payments or increase the Actions spending limit."];
+}
+
+async function createReleaseHandoffBundle(
+  workspacePath: string,
+  options: {
+    target: ReleaseDoctorResult["target"];
+    outputDir: string;
+    cloudUrl: string;
+    proofDir?: string;
+  },
+): Promise<ReleaseHandoffBundleSummary> {
+  await mkdir(options.outputDir, { recursive: true });
+  const doctor = await releaseDoctor(options.target, {
+    workspacePath,
+    ...(options.proofDir === undefined ? {} : { proofDir: options.proofDir }),
+  });
+  const plan = releaseActionPlan(doctor, {
+    cloudUrl: options.cloudUrl,
+    ...(options.proofDir === undefined ? {} : { proofDir: options.proofDir }),
+  });
+  const status = releaseStatusSummary(doctor, plan);
+  const npmSetup = await createNpmPublishSetupSummary(workspacePath);
+  const edgeOneSetup = await createEdgeOneSetupSummary(workspacePath, { cloudUrl: options.cloudUrl });
+  const files = {
+    manifest: join(options.outputDir, "manifest.json"),
+    release_status: join(options.outputDir, "release-status.md"),
+    release_plan: join(options.outputDir, "release-plan.md"),
+    npm_setup: join(options.outputDir, "npm-publish-setup.md"),
+    edgeone_setup: join(options.outputDir, "edgeone-setup.md"),
+  };
+  await writeFile(files.release_status, renderReleaseStatusSummary(status), "utf-8");
+  await writeFile(files.release_plan, renderReleaseActionPlan(plan), "utf-8");
+  await writeFile(files.npm_setup, renderNpmPublishSetupSummary(npmSetup), "utf-8");
+  await writeFile(files.edgeone_setup, renderEdgeOneSetupSummary(edgeOneSetup), "utf-8");
+  const summary: ReleaseHandoffBundleSummary = {
+    kind: "osstack-release-handoff",
+    target: options.target,
+    output_dir: options.outputDir,
+    cloud_url: options.cloudUrl,
+    required_secrets: releaseHandoffRequiredSecrets(options.target),
+    files,
+    external_blockers: status.external_blockers,
+    next_actions: status.next_actions,
+  };
+  await writeFile(files.manifest, JSON.stringify({
+    kind: summary.kind,
+    target: summary.target,
+    cloud_url: summary.cloud_url,
+    required_secrets: summary.required_secrets,
+    files: {
+      release_status: "release-status.md",
+      release_plan: "release-plan.md",
+      npm_setup: "npm-publish-setup.md",
+      edgeone_setup: "edgeone-setup.md",
+    },
+    external_blockers: summary.external_blockers,
+    next_actions: summary.next_actions,
+  }, null, 2), "utf-8");
+  return summary;
+}
+
+function releaseHandoffRequiredSecrets(target: ReleaseDoctorResult["target"]): string[] {
+  return [
+    ...(target === "npm" || target === "all" ? ["NPM_TOKEN"] : []),
+    ...(target === "knowledge-cloud" || target === "all" ? ["EDGEONE_DEPLOY_HOOK_URL"] : []),
+    ...(target === "single-binary" || target === "all" ? SINGLE_BINARY_RELEASE_SECRETS : []),
+  ];
+}
+
+function renderReleaseHandoffBundleSummary(handoff: ReleaseHandoffBundleSummary): string {
+  return [
+    "# Osstack Release Handoff",
+    "",
+    `Target: \`${handoff.target}\``,
+    `Output directory: \`${handoff.output_dir}\``,
+    `Cloud URL: \`${handoff.cloud_url}\``,
+    "",
+    "## Files",
+    "",
+    ...Object.entries(handoff.files).map(([key, value]) => `- ${key}: \`${value}\``),
+    "",
+    "## Required Secrets",
+    "",
+    ...handoff.required_secrets.map((secret) => `- \`${secret}\``),
+    "",
+    "## External Blockers",
+    "",
+    ...(handoff.external_blockers.length === 0
+      ? ["No external blockers detected."]
+      : handoff.external_blockers.map((blocker) => `- ${blocker}`)),
+    "",
+  ].join("\n");
 }
 
 async function createNpmPublishSetupSummary(workspacePath: string): Promise<NpmPublishSetupSummary> {

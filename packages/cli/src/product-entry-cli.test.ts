@@ -961,6 +961,79 @@ describe("product entry commands", () => {
     expect(markdown).toContain("## Post-Release Validation Commands");
   });
 
+  it("writes a consolidated release handoff bundle for external launch blockers", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_NPM_SCOPE_ACCESS"] = "error:forbidden";
+    process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"] = "warn";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const outputDir = join(tmp, "release-handoff");
+
+    const exitCode = await main([
+      "release",
+      "handoff",
+      "--workspace",
+      process.cwd(),
+      "--cloud-url",
+      "https://knowledge.example.com",
+      "--output-dir",
+      outputDir,
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      target: string;
+      output_dir: string;
+      cloud_url: string;
+      required_secrets: string[];
+      files: {
+        manifest: string;
+        release_status: string;
+        release_plan: string;
+        npm_setup: string;
+        edgeone_setup: string;
+      };
+      external_blockers: string[];
+    };
+    expect(result.target).toBe("all");
+    expect(result.output_dir).toBe(outputDir);
+    expect(result.cloud_url).toBe("https://knowledge.example.com");
+    expect(result.required_secrets).toEqual([
+      "NPM_TOKEN",
+      "EDGEONE_DEPLOY_HOOK_URL",
+      "APPLE_ID",
+      "APPLE_TEAM_ID",
+      "APPLE_APP_SPECIFIC_PASSWORD",
+      "DEVELOPER_ID_APPLICATION",
+      "MACOS_CERTIFICATE_P12",
+      "MACOS_CERTIFICATE_PASSWORD",
+    ]);
+    expect(result.external_blockers.join("\n")).toContain("NPM_TOKEN");
+    expect(result.external_blockers.join("\n")).toContain("EDGEONE_DEPLOY_HOOK_URL");
+    expect(result.files.release_status).toBe(join(outputDir, "release-status.md"));
+    expect(result.files.release_plan).toBe(join(outputDir, "release-plan.md"));
+    expect(result.files.npm_setup).toBe(join(outputDir, "npm-publish-setup.md"));
+    expect(result.files.edgeone_setup).toBe(join(outputDir, "edgeone-setup.md"));
+    expect(result.files.manifest).toBe(join(outputDir, "manifest.json"));
+
+    const manifest = JSON.parse(await readFile(result.files.manifest, "utf-8")) as {
+      kind: string;
+      files: Record<string, string>;
+      required_secrets: string[];
+    };
+    expect(manifest.kind).toBe("osstack-release-handoff");
+    expect(manifest.required_secrets).toEqual(result.required_secrets);
+    expect(manifest.files["npm_setup"]).toBe("npm-publish-setup.md");
+    expect(await readFile(result.files.release_status, "utf-8")).toContain("# Osstack Release Status");
+    expect(await readFile(result.files.release_plan, "utf-8")).toContain("# Osstack Release Action Plan");
+    expect(await readFile(result.files.npm_setup, "utf-8")).toContain("# NPM Publish Setup");
+    expect(await readFile(result.files.edgeone_setup, "utf-8")).toContain("# EdgeOne Knowledge Cloud Setup");
+  });
+
   it("checks a deployed Knowledge Cloud health URL before deploy handoff", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL";

@@ -11,6 +11,7 @@ const output = join(tempRoot, "release-plan.md");
 const statusOutput = join(tempRoot, "release-status.md");
 const edgeoneOutput = join(tempRoot, "edgeone-setup.md");
 const npmOutput = join(tempRoot, "npm-publish-setup.md");
+const handoffOutputDir = join(tempRoot, "release-handoff");
 const cacheDir = join(tempRoot, "knowledge-cache");
 let cloud;
 
@@ -171,6 +172,31 @@ try {
   assertIncludes(npmMarkdown, "# NPM Publish Setup", "npm setup markdown must render a title");
   assertIncludes(npmMarkdown, "NPM_TOKEN", "npm setup markdown must include publish secret");
 
+  const handoffResult = await runAsync(process.execPath, [
+    "packages/cli/dist/bin.js",
+    "release",
+    "handoff",
+    "--cloud-url",
+    cloudUrl,
+    "--output-dir",
+    handoffOutputDir,
+    "--json",
+  ], {
+    cwd: root,
+    capture: true,
+    env: releasePlanEnv(),
+  });
+  const handoff = JSON.parse(handoffResult.stdout);
+  assert(handoff.kind === "osstack-release-handoff", "release handoff must identify its artifact kind");
+  assert(handoff.output_dir === handoffOutputDir, "release handoff must expose its output directory");
+  assertArrayIncludes(handoff.required_secrets, "NPM_TOKEN", "release handoff must include npm secret");
+  assertArrayIncludes(handoff.required_secrets, "EDGEONE_DEPLOY_HOOK_URL", "release handoff must include EdgeOne secret");
+  assertIncludes(await readFile(handoff.files.manifest, "utf-8"), "osstack-release-handoff", "release handoff manifest must be written");
+  assertIncludes(await readFile(handoff.files.release_status, "utf-8"), "# Osstack Release Status", "release handoff must write release status");
+  assertIncludes(await readFile(handoff.files.release_plan, "utf-8"), "# Osstack Release Action Plan", "release handoff must write release plan");
+  assertIncludes(await readFile(handoff.files.npm_setup, "utf-8"), "# NPM Publish Setup", "release handoff must write npm setup");
+  assertIncludes(await readFile(handoff.files.edgeone_setup, "utf-8"), "# EdgeOne Knowledge Cloud Setup", "release handoff must write EdgeOne setup");
+
   const sync = JSON.parse((await runAsync(process.execPath, [
     "packages/cli/dist/bin.js",
     "knowledge",
@@ -211,6 +237,7 @@ try {
     status_output: statusOutput,
     edgeone_output: edgeoneOutput,
     npm_output: npmOutput,
+    handoff_output_dir: handoffOutputDir,
     cloud_url: cloudUrl,
     target: plan.target,
     validation_commands: plan.validation_commands.length,

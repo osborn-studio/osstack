@@ -188,6 +188,7 @@ GitHub push、PR、workflow 定义已恢复；GitHub Actions runner 已从账户
 发布前执行：
 
 ```sh
+osstack release handoff --cloud-url <EdgeOne URL> --output-dir release-handoff --json
 osstack release status --target all --output release-status.md --json
 osstack release npm --output npm-publish-setup.md --json
 osstack release doctor --json
@@ -207,9 +208,12 @@ osstack release doctor --json
 也可以输出 Markdown handoff artifact：
 
 ```sh
+osstack release handoff --cloud-url <EdgeOne URL> --output-dir release-handoff --json
 osstack release status --target all --output release-status.md --json
 osstack release doctor --output release-readiness.md --json
 ```
+
+`release handoff` 是当前推荐的上线交接包入口：它一次性生成 `release-status.md`、`release-plan.md`、`npm-publish-setup.md`、`edgeone-setup.md` 和 `manifest.json`。默认 `target=all` 会列出 npm、EdgeOne 和 single-binary 所需 secrets；其中 `NPM_TOKEN` 与 `EDGEONE_DEPLOY_HOOK_URL` 是当前主路径外部阻塞，适合在 npmjs.com、GitHub Secrets、EdgeOne Pages 控制台之间切换操作时优先处理。它不会执行发布或部署动作。
 
 `release status` 是当前推荐的上线总览入口：它把代码验证完成度、npm 发布、EdgeOne Knowledge Cloud 部署、single-binary release 的状态放在同一张摘要里，并把 `NPM_TOKEN` 发布权限、`EDGEONE_DEPLOY_HOOK_URL`、Apple notarization secrets 等外部阻塞和下一步命令集中展示。
 
