@@ -635,6 +635,36 @@ export function searchKnowledgePacks(packs, query, options = {}) {
         .sort((a, b) => b.score - a.score || a.pack_id.localeCompare(b.pack_id) || a.chunk_id.localeCompare(b.chunk_id))
         .slice(0, options.limit ?? 5);
 }
+export async function retrieveKnowledge(options) {
+    const mode = options.mode ?? inferKnowledgeMode(options);
+    if (mode === "off")
+        return offKnowledgeEvidence(options.query, "knowledge retrieval mode is off");
+    const query = options.query?.trim();
+    const packs = options.packs ?? [];
+    if (query === undefined || query.length === 0) {
+        return {
+            mode,
+            status: "error",
+            reason: "knowledge search requires a non-empty query",
+            packs: packSummaries(packs),
+            results: [],
+            retrieval: retrievalMetadata(query ?? "", packs),
+        };
+    }
+    if (mode === "local") {
+        return localKnowledgeEvidence(query, packs, options.limit, freshnessOptions(options));
+    }
+    return cloudKnowledgeEvidence({
+        query,
+        packs,
+        ...(options.limit === undefined ? {} : { limit: options.limit }),
+        ...(options.cloudUrl === undefined ? {} : { cloudUrl: options.cloudUrl }),
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+        ...(options.tenantId === undefined ? {} : { tenantId: options.tenantId }),
+        ...freshnessOptions(options),
+        ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
+    });
+}
 export function evaluateKnowledgeRetrieval(packs, cases, options = {}) {
     const topK = options.topK ?? 3;
     const results = cases.map((testCase) => {
@@ -670,32 +700,7 @@ export function assembleKnowledgeSnippet(results) {
     ].join("\n")).join("\n\n");
 }
 export async function resolveKnowledgeSearch(options) {
-    const mode = options.mode ?? inferKnowledgeMode(options);
-    if (mode === "off")
-        return offKnowledgeEvidence(options.query);
-    const query = options.query?.trim();
-    if (query === undefined || query.length === 0) {
-        return {
-            mode,
-            status: "error",
-            reason: "knowledge search requires a non-empty query",
-            packs: packSummaries(options.packs ?? []),
-            results: [],
-        };
-    }
-    if (mode === "local") {
-        return localKnowledgeEvidence(query, options.packs ?? [], options.limit, freshnessOptions(options));
-    }
-    return cloudKnowledgeEvidence({
-        query,
-        packs: options.packs ?? [],
-        ...(options.limit === undefined ? {} : { limit: options.limit }),
-        ...(options.cloudUrl === undefined ? {} : { cloudUrl: options.cloudUrl }),
-        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
-        ...(options.tenantId === undefined ? {} : { tenantId: options.tenantId }),
-        ...freshnessOptions(options),
-        ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
-    });
+    return retrieveKnowledge(options);
 }
 function inferKnowledgeMode(options) {
     if (options.cloudUrl !== undefined && options.cloudUrl.length > 0)
@@ -724,6 +729,7 @@ function localKnowledgeEvidence(query, packs, limit = 5, freshness) {
         query,
         packs: packSummaries(packs),
         results: searchKnowledgePacks(packs, query, { limit }),
+        retrieval: retrievalMetadata(query, packs),
         ...knowledgeFreshnessEvidence(packs, freshness),
     };
 }
@@ -745,7 +751,10 @@ async function cloudKnowledgeEvidence(options) {
         if (!response.ok)
             throw new Error(`cloud search failed with HTTP ${response.status}`);
         const payload = await response.json();
-        return validateCloudKnowledgeResponse(options.query, payload);
+        return {
+            ...validateCloudKnowledgeResponse(options.query, payload),
+            retrieval: retrievalMetadata(options.query, options.packs),
+        };
     }
     catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -774,6 +783,7 @@ function fallbackFromCloud(options, reason) {
             results: searchKnowledgePacks(options.packs, options.query, options.limit === undefined ? {} : { limit: options.limit }),
             fallback_mode: "local",
             reason,
+            retrieval: retrievalMetadata(options.query, options.packs, "local"),
             ...knowledgeFreshnessEvidence(options.packs, freshnessOptions(options)),
         };
     }
@@ -785,6 +795,16 @@ function fallbackFromCloud(options, reason) {
         query: options.query,
         reason,
         fallback_mode: "off",
+        retrieval: retrievalMetadata(options.query, [], "off"),
+    };
+}
+function retrievalMetadata(query, packs, fallback) {
+    return {
+        engine: "bm25",
+        query_terms: tokenize(query),
+        searched_packs: packs.length,
+        searched_chunks: packs.reduce((sum, pack) => sum + pack.manifest.chunks.length, 0),
+        ...(fallback === undefined ? {} : { fallback }),
     };
 }
 function freshnessOptions(options) {

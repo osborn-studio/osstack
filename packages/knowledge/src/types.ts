@@ -117,6 +117,27 @@ export interface KnowledgeSearchResult {
   source_refs: string[];
 }
 
+export interface KnowledgeRetrievalMetadata {
+  engine: "bm25";
+  query_terms: string[];
+  searched_packs: number;
+  searched_chunks: number;
+  fallback?: "local" | "off";
+}
+
+export interface KnowledgeRetrieveOptions {
+  mode?: KnowledgeMode;
+  query?: string;
+  packs?: KnowledgePack[];
+  limit?: number;
+  cloudUrl?: string;
+  authToken?: string;
+  tenantId?: string;
+  staleAfterDays?: number;
+  now?: string | Date;
+  fetchImpl?: typeof fetch;
+}
+
 export interface KnowledgePackSummary {
   id: string;
   version: string;
@@ -160,6 +181,7 @@ export type KnowledgeSearchEvidence =
     query?: string;
     reason?: string;
     fallback_mode?: "off";
+    retrieval?: KnowledgeRetrievalMetadata;
   }
   | {
     mode: "local" | "cloud";
@@ -172,6 +194,7 @@ export type KnowledgeSearchEvidence =
     cache_stale?: boolean;
     cache_age_days?: number;
     cache_stale_after_days?: number;
+    retrieval?: KnowledgeRetrievalMetadata;
   }
   | {
     mode: "local" | "cloud";
@@ -181,4 +204,5 @@ export type KnowledgeSearchEvidence =
     packs: KnowledgePackSummary[];
     results: [];
     fallback_mode?: "local" | "off";
+    retrieval?: KnowledgeRetrievalMetadata;
   };
