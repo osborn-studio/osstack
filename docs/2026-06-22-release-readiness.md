@@ -379,7 +379,7 @@ osstack knowledge eval --official --fixtures knowledge-evals/retrieval/osstack-c
 
 | 方向 | 目标 | 验收 |
 |---|---|---|
-| TUI / Live Workbench | 把当前 CLI 能力变成更精致的操作台 | 能从任务、Loop、Evidence、Knowledge 四个视角进入同一工作流 |
+| TUI / Live Workbench | 把当前 CLI 能力变成更精致的操作台 | Terminal cockpit 已覆盖 Overview/Kanban/Evidence/Knowledge/Next Actions；下一步是完整键盘交互式 Ink/blessed 工作台 |
 | 云端知识库 | 把 official/private/team packs 服务化、权限化、版本化 | 支持 pack publish、search、provenance、eval、rollback |
 | 合规包装 | 把 provenance、license、policy、audit 输出变成用户可理解资产 | 每个证据包都能说明来源、权限、风险、可复现性 |
 

@@ -34,6 +34,43 @@ beforeEach(() => {
   });
 });
 
+async function writeCachedKnowledgePack(cacheDir: string): Promise<void> {
+  const packDir = join(cacheDir, "packs", "osstack-core__proof-and-scorecard");
+  await mkdir(packDir, { recursive: true });
+  await writeFile(join(packDir, "2026.06.22.json"), JSON.stringify({
+    id: "osstack-core/proof-and-scorecard",
+    version: "2026.06.22",
+    name: "Proof and Scorecard",
+    license: "Osstack-native",
+    source_kind: "osstack_native",
+    scope: "official",
+    quality_score: 95,
+    last_reviewed_at: "2026-06-22T00:00:00.000Z",
+    taxonomy: ["osstack-core/proof-and-scorecard"],
+    review: {
+      status: "approved",
+      reviewer_id: "osstack-reviewer",
+      reviewed_at: "2026-06-22T00:00:00.000Z",
+      summary: "Reviewed for Live Workbench test coverage.",
+    },
+    chunks: [{
+      chunk_id: "proof-checksum-pack",
+      title: "Proof checksum pack",
+      body: "Live Workbench should surface cached Knowledge Cloud packs and provenance commands.",
+      tags: ["proof", "knowledge"],
+      source_refs: ["proof-source"],
+    }],
+    source_provenance: [{
+      source_id: "proof-source",
+      path: "docs/specs/OSSTACK_RUN_SPEC_V1.md",
+      sha256: "sha256-placeholder",
+      license: "Osstack-native",
+      scope: "official",
+      imported_at: "2026-06-22T00:00:00.000Z",
+    }],
+  }, null, 2));
+}
+
 afterEach(async () => {
   if (daemon) await daemon.close();
   if (oldSocket === undefined) delete process.env["OSSTACK_SOCKET"];
@@ -171,6 +208,7 @@ describe("dashboard/cockpit CLI", () => {
     expect(output).toContain("Overview");
     expect(output).toContain("Kanban");
     expect(output).toContain("Evidence");
+    expect(output).toContain("Knowledge");
     expect(output).toContain("Next Actions");
     expect(output).toContain("reports=1");
     expect(output).toContain("proof_packs=1");
@@ -198,12 +236,42 @@ describe("dashboard/cockpit CLI", () => {
       "Overview",
       "Kanban",
       "Evidence",
+      "Knowledge",
       "Next Actions",
     ]);
     expect(summary.actions).toEqual(expect.arrayContaining([
       expect.objectContaining({
         label: "Loop Engineering",
         command: "osstack cockpit run --workspace <path> --json",
+        status: "ready",
+      }),
+    ]));
+  });
+
+  it("shows cached Knowledge Cloud packs in the terminal cockpit TUI", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace");
+    const cacheDir = join(tmp, "knowledge-cache");
+    await mkdir(join(workspace), { recursive: true });
+    await writeCachedKnowledgePack(cacheDir);
+
+    const exitCode = await main(["cockpit", "tui", "--workspace", workspace, "--cache-dir", cacheDir, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      sections: Array<{ title: string; lines: string[] }>;
+      actions: Array<{ label: string; command: string; status: string }>;
+    };
+    const knowledge = summary.sections.find((section) => section.title === "Knowledge");
+    expect(knowledge?.lines).toEqual([
+      "cached_packs=1 official=1 team=0 project=0 internal=0",
+      "top_pack=osstack-core/proof-and-scorecard@2026.06.22 quality=95 sources=1",
+      `provenance=osstack knowledge sources --internal --cache-dir ${cacheDir} --json`,
+    ]);
+    expect(summary.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        label: "Knowledge",
+        command: `osstack knowledge search "<query>" --cache-dir ${cacheDir} --json`,
         status: "ready",
       }),
     ]));
