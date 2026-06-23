@@ -992,6 +992,7 @@ interface ReleaseHandoffBundleSummary {
     release_plan: string;
     npm_setup: string;
     edgeone_setup: string;
+    next_actions: string;
   };
   external_blockers: string[];
   next_actions: ReleaseStatusSummary["next_actions"];
@@ -3237,11 +3238,21 @@ async function createReleaseHandoffBundle(
     release_plan: join(options.outputDir, "release-plan.md"),
     npm_setup: join(options.outputDir, "npm-publish-setup.md"),
     edgeone_setup: join(options.outputDir, "edgeone-setup.md"),
+    next_actions: join(options.outputDir, "next-actions.sh"),
   };
   await writeFile(files.release_status, renderReleaseStatusSummary(status), "utf-8");
   await writeFile(files.release_plan, renderReleaseActionPlan(plan), "utf-8");
   await writeFile(files.npm_setup, renderNpmPublishSetupSummary(npmSetup), "utf-8");
   await writeFile(files.edgeone_setup, renderEdgeOneSetupSummary(edgeOneSetup), "utf-8");
+  await writeFile(files.next_actions, renderReleaseHandoffNextActionsScript({
+    target: options.target,
+    cloudUrl: options.cloudUrl,
+    plan,
+    status,
+    npmSetup,
+    edgeOneSetup,
+  }), "utf-8");
+  await chmod(files.next_actions, 0o755);
   const summary: ReleaseHandoffBundleSummary = {
     kind: "osstack-release-handoff",
     target: options.target,
@@ -3262,11 +3273,94 @@ async function createReleaseHandoffBundle(
       release_plan: "release-plan.md",
       npm_setup: "npm-publish-setup.md",
       edgeone_setup: "edgeone-setup.md",
+      next_actions: "next-actions.sh",
     },
     external_blockers: summary.external_blockers,
     next_actions: summary.next_actions,
   }, null, 2), "utf-8");
   return summary;
+}
+
+function renderReleaseHandoffNextActionsScript(input: {
+  target: ReleaseDoctorResult["target"];
+  cloudUrl: string;
+  plan: ReleaseActionPlan;
+  status: ReleaseStatusSummary;
+  npmSetup: NpmPublishSetupSummary;
+  edgeOneSetup: EdgeOneSetupSummary;
+}): string {
+  const manualSteps = uniqueStrings([
+    ...input.npmSetup.console_checklist,
+    ...input.edgeOneSetup.console_checklist,
+    ...input.status.external_blockers,
+  ]);
+  const secretCommands = uniqueStrings([
+    ...input.npmSetup.github_commands,
+    ...input.edgeOneSetup.github_commands.filter((command) => command.startsWith("gh secret set ")),
+    ...input.status.next_actions.operator.filter((command) => command.startsWith("gh secret set ")),
+  ]);
+  const workflowCommands = uniqueStrings([
+    ...input.npmSetup.workflow_commands,
+    ...input.edgeOneSetup.github_commands.filter((command) => !command.startsWith("gh secret set ")),
+    ...input.edgeOneSetup.workflow_commands,
+    ...input.plan.deploy_commands,
+  ]);
+  const validationCommands = uniqueStrings([
+    ...input.npmSetup.validation_commands,
+    ...input.edgeOneSetup.validation_commands,
+    ...input.plan.validation_commands,
+  ]);
+  const publishCommands = uniqueStrings(input.plan.publish_commands);
+  const postReleaseValidationCommands = uniqueStrings([
+    ...input.npmSetup.post_release_validation_commands,
+    ...input.plan.post_release_validation_commands,
+  ]);
+
+  return [
+    "#!/usr/bin/env bash",
+    "set -euo pipefail",
+    "",
+    "cat <<'OSSTACK_RELEASE_NEXT_ACTIONS'",
+    "# Osstack Release Next Actions",
+    "",
+    "This script prints the operator checklist only.",
+    "It does not execute secret writes, npm publishing, EdgeOne deployment, or validation commands.",
+    "",
+    `Target: ${input.target}`,
+    `Cloud URL: ${input.cloudUrl}`,
+    `Safe to execute publish/deploy commands now: ${input.plan.safe_to_execute ? "yes" : "no"}`,
+    "",
+    "## Manual Console Steps",
+    "",
+    ...renderPlainChecklist(manualSteps),
+    "",
+    "## GitHub Secret Commands",
+    "",
+    ...renderPlainChecklist(secretCommands),
+    "",
+    "## Validation Commands",
+    "",
+    ...renderPlainChecklist(validationCommands),
+    "",
+    "## Publish Commands",
+    "",
+    ...renderPlainChecklist(publishCommands),
+    "",
+    "## Workflow And Deploy Commands",
+    "",
+    ...renderPlainChecklist(workflowCommands),
+    "",
+    "## Post-Release Validation Commands",
+    "",
+    ...renderPlainChecklist(postReleaseValidationCommands),
+    "",
+    "OSSTACK_RELEASE_NEXT_ACTIONS",
+    "",
+  ].join("\n");
+}
+
+function renderPlainChecklist(items: string[]): string[] {
+  return items.length === 0 ? ["- None."] : items.map((item) => `- ${item}`);
 }
 
 function releaseHandoffRequiredSecrets(target: ReleaseDoctorResult["target"]): string[] {

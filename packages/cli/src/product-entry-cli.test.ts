@@ -996,6 +996,7 @@ describe("product entry commands", () => {
         release_plan: string;
         npm_setup: string;
         edgeone_setup: string;
+        next_actions: string;
       };
       external_blockers: string[];
     };
@@ -1010,6 +1011,7 @@ describe("product entry commands", () => {
     expect(result.files.release_plan).toBe(join(outputDir, "release-plan.md"));
     expect(result.files.npm_setup).toBe(join(outputDir, "npm-publish-setup.md"));
     expect(result.files.edgeone_setup).toBe(join(outputDir, "edgeone-setup.md"));
+    expect(result.files.next_actions).toBe(join(outputDir, "next-actions.sh"));
     expect(result.files.manifest).toBe(join(outputDir, "manifest.json"));
 
     const manifest = JSON.parse(await readFile(result.files.manifest, "utf-8")) as {
@@ -1020,10 +1022,19 @@ describe("product entry commands", () => {
     expect(manifest.kind).toBe("osstack-release-handoff");
     expect(manifest.required_secrets).toEqual(result.required_secrets);
     expect(manifest.files["npm_setup"]).toBe("npm-publish-setup.md");
+    expect(manifest.files["next_actions"]).toBe("next-actions.sh");
     expect(await readFile(result.files.release_status, "utf-8")).toContain("# Osstack Release Status");
     expect(await readFile(result.files.release_plan, "utf-8")).toContain("# Osstack Release Action Plan");
     expect(await readFile(result.files.npm_setup, "utf-8")).toContain("# NPM Publish Setup");
     expect(await readFile(result.files.edgeone_setup, "utf-8")).toContain("# EdgeOne Knowledge Cloud Setup");
+    const nextActions = await readFile(result.files.next_actions, "utf-8");
+    expect(nextActions).toContain("#!/usr/bin/env bash");
+    expect(nextActions).toContain("set -euo pipefail");
+    expect(nextActions).toContain("This script prints the operator checklist only.");
+    expect(nextActions).toContain("gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\"");
+    expect(nextActions).toContain("gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"");
+    expect(nextActions).toContain("pnpm smoke:npm-preflight");
+    expect(nextActions).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true -f cloud_url=https://knowledge.example.com");
   });
 
   it("generates a primary release plan for npm plus EdgeOne without single-binary notarization", async () => {

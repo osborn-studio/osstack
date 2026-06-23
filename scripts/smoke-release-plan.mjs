@@ -198,6 +198,13 @@ try {
   assertIncludes(await readFile(handoff.files.release_plan, "utf-8"), "# Osstack Release Action Plan", "release handoff must write release plan");
   assertIncludes(await readFile(handoff.files.npm_setup, "utf-8"), "# NPM Publish Setup", "release handoff must write npm setup");
   assertIncludes(await readFile(handoff.files.edgeone_setup, "utf-8"), "# EdgeOne Knowledge Cloud Setup", "release handoff must write EdgeOne setup");
+  const nextActions = await readFile(handoff.files.next_actions, "utf-8");
+  assertIncludes(nextActions, "#!/usr/bin/env bash", "release handoff must write a shell-readable next actions script");
+  assertIncludes(nextActions, "This script prints the operator checklist only.", "next actions script must be non-mutating by default");
+  assertIncludes(nextActions, "gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\"", "next actions script must include npm secret setup");
+  assertIncludes(nextActions, "gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"", "next actions script must include EdgeOne deploy hook setup");
+  assertIncludes(nextActions, "pnpm smoke:npm-preflight", "next actions script must include npm preflight validation");
+  assertIncludes(nextActions, `gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${cloudUrl}`, "next actions script must include EdgeOne deploy workflow command");
 
   const sync = JSON.parse((await runAsync(process.execPath, [
     "packages/cli/dist/bin.js",

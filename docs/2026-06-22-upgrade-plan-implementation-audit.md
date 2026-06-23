@@ -429,7 +429,7 @@ osstack release doctor --json
 
 1. 继续给 `osstack proof validate` 增加更多 negative/malformed vectors；当前 proof/compliance 的结构级证据检查已抽成可复用 validator，proof view/compliance render 会把 malformed manifest、verify、policy、agent runtime、governance、worktree、knowledge evidence 标成 `MISSING`，CLI 还会拒绝 manifest artifact path 重复、artifact 缺失、hash/bytes 不一致、`sha256sums.txt` inventory 不一致和越界路径，release plan 已输出 proof validate 命令并支持 `--workspace` 自动 proof 检查和显式 `--proof-dir` 覆盖，release doctor 已支持显式 `--proof-dir` 和最新 proof dir 自动发现。
 2. 继续补更多 negative/malformed vectors，覆盖边界格式、旧版本兼容字段、外部 proof 目录导入场景。
-3. 继续强化 release doctor、Knowledge Cloud deploy preflight、npm publish preflight；当前 release doctor 已能识别 Version Packages PR #5 的 `CLEAN / MERGEABLE` 状态，检查 NPM publish assets、Knowledge Cloud deploy assets 和 single-binary release assets，显示 Knowledge Cloud Deploy workflow 最近一次 validation run，通过 `--output` 生成 Markdown 发布行动清单，通过 `release plan` 生成验证/发布/部署命令 runbook，通过 `release npm` 单独生成 npm 发布权限修复 handoff，并通过默认 `target=primary` 的 `release handoff` 一次性生成 status/plan/npm/EdgeOne/manifest 主路径交接目录；如需 single-binary 公证交接，再显式使用 `--target all`。
+3. 继续强化 release doctor、Knowledge Cloud deploy preflight、npm publish preflight；当前 release doctor 已能识别 Version Packages PR #5 的 `CLEAN / MERGEABLE` 状态，检查 NPM publish assets、Knowledge Cloud deploy assets 和 single-binary release assets，显示 Knowledge Cloud Deploy workflow 最近一次 validation run，通过 `--output` 生成 Markdown 发布行动清单，通过 `release plan` 生成验证/发布/部署命令 runbook，通过 `release npm` 单独生成 npm 发布权限修复 handoff，并通过默认 `target=primary` 的 `release handoff` 一次性生成 status/plan/npm/EdgeOne/next-actions/manifest 主路径交接目录；`next-actions.sh` 只打印操作者下一步清单，不会执行 secret 写入、发布或部署；如需 single-binary 公证交接，再显式使用 `--target all`。
 
 授权解除后，立即转入 P0：
 
