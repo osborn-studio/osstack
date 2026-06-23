@@ -131,6 +131,8 @@ Loop 工程：
   knowledge inspect    查看 chunk 内容、pack 元数据和来源引用
   knowledge pin        固定本地缓存中的 pack 版本
   knowledge feedback   记录或上报 chunk 有用/无用反馈
+  knowledge feedback-summary
+                       查看 Knowledge Cloud 反馈汇总
   knowledge sources    查看内部 provenance/license 来源
   knowledge import     将团队或项目文档加工为 Osstack-native pack
   lessons list        查看本地 pitfall 知识库
@@ -4731,6 +4733,7 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   osstack knowledge pin <pack_id>@<version> [--cache-dir P] [--json]
   osstack knowledge prune [--cache-dir P] [--keep N] [--apply] [--json]
   osstack knowledge feedback <chunk_id> --useful|--bad [--tenant ID] [--cloud-url URL] [--cache-dir P] [--json]
+  osstack knowledge feedback-summary [--tenant ID] [--cloud-url URL] [--cache-dir P] [--json]
   osstack knowledge eval --pack P|--official --fixtures P [--top-k N] [--json]
   osstack knowledge sources --internal [--pack P|--official|--cache-dir P] [--json]
 
@@ -5238,6 +5241,37 @@ Env:
     return 0;
   }
 
+  if (sub === "feedback-summary") {
+    const config = await readKnowledgeCloudConfig(knowledgeCacheDir(args));
+    const cloudUrl = resolveKnowledgeCloudUrl(args, config);
+    if (cloudUrl === undefined) {
+      console.error("osstack: knowledge feedback-summary requires --cloud-url, OSSTACK_KNOWLEDGE_URL, or `osstack knowledge login`");
+      return 1;
+    }
+    const authToken = resolveKnowledgeAuthToken(args, config);
+    const tenantId = flagValue(args, "--tenant");
+    try {
+      const summary = await fetchKnowledgeFeedbackSummary({
+        cloudUrl,
+        ...(authToken === undefined ? {} : { authToken }),
+        ...(tenantId === undefined ? {} : { tenantId }),
+      });
+      if (args.includes("--json")) {
+        console.log(JSON.stringify(summary, null, 2));
+      } else {
+        console.log(`feedback_total=${summary.total} useful=${summary.useful} bad=${summary.bad}`);
+        if (summary.tenant_id !== undefined) console.log(`tenant=${summary.tenant_id}`);
+        for (const chunk of summary.chunks) {
+          console.log(`${chunk.chunk_id} total=${chunk.total} useful=${chunk.useful} bad=${chunk.bad}`);
+        }
+      }
+      return 0;
+    } catch (error) {
+      console.error(`osstack: knowledge feedback-summary failed: ${error instanceof Error ? error.message : String(error)}`);
+      return 1;
+    }
+  }
+
   if (sub === "eval") {
     const packPaths = flagValues(args, "--pack");
     const fixturesPath = flagValue(args, "--fixtures");
@@ -5404,6 +5438,81 @@ function resolveKnowledgeAuthToken(args: string[], config: KnowledgeCloudConfig)
   return flagValue(args, "--token")
     ?? process.env["OSSTACK_KNOWLEDGE_TOKEN"]
     ?? config.token;
+}
+
+interface KnowledgeFeedbackSummary {
+  total: number;
+  useful: number;
+  bad: number;
+  tenant_id?: string;
+  chunks: Array<{ chunk_id: string; total: number; useful: number; bad: number }>;
+}
+
+async function fetchKnowledgeFeedbackSummary(options: {
+  cloudUrl: string;
+  authToken?: string;
+  tenantId?: string;
+}): Promise<KnowledgeFeedbackSummary> {
+  const endpoint = new URL("/v1/feedback/summary", normalizeCloudUrl(options.cloudUrl));
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+      ...(options.authToken === undefined ? {} : { authorization: `Bearer ${options.authToken}` }),
+    },
+    body: JSON.stringify(options.tenantId === undefined ? {} : { tenant_id: options.tenantId }),
+  });
+  const raw = await response.text();
+  if (!response.ok) {
+    const body = parseJsonObject(raw);
+    const detail = typeof body?.["error"] === "string" ? body["error"] : `HTTP ${response.status}`;
+    throw new Error(detail);
+  }
+  return parseKnowledgeFeedbackSummary(raw);
+}
+
+function parseKnowledgeFeedbackSummary(raw: string): KnowledgeFeedbackSummary {
+  const parsed = JSON.parse(raw) as unknown;
+  if (!isRecord(parsed)) throw new Error("feedback summary response must be an object");
+  const total = requiredKnowledgeNumber(parsed, "total");
+  const useful = requiredKnowledgeNumber(parsed, "useful");
+  const bad = requiredKnowledgeNumber(parsed, "bad");
+  const tenantId = typeof parsed["tenant_id"] === "string" ? parsed["tenant_id"] : undefined;
+  const chunksRaw = parsed["chunks"];
+  if (!Array.isArray(chunksRaw)) throw new Error("feedback summary response chunks must be an array");
+  const chunks = chunksRaw.map((item) => {
+    if (!isRecord(item)) throw new Error("feedback summary chunk must be an object");
+    return {
+      chunk_id: requiredKnowledgeString(item, "chunk_id"),
+      total: requiredKnowledgeNumber(item, "total"),
+      useful: requiredKnowledgeNumber(item, "useful"),
+      bad: requiredKnowledgeNumber(item, "bad"),
+    };
+  });
+  return {
+    total,
+    useful,
+    bad,
+    ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
+    chunks,
+  };
+}
+
+function requiredKnowledgeString(record: Record<string, unknown>, key: string): string {
+  const value = record[key];
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`feedback summary response ${key} must be a non-empty string`);
+  }
+  return value;
+}
+
+function requiredKnowledgeNumber(record: Record<string, unknown>, key: string): number {
+  const value = record[key];
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw new Error(`feedback summary response ${key} must be a non-negative number`);
+  }
+  return value;
 }
 
 function parseKnowledgeScope(value: string | undefined): KnowledgeScope | undefined {
