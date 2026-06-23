@@ -7,6 +7,11 @@ on:
         description: "Trigger EdgeOne deployment when EDGEONE_DEPLOY_HOOK_URL is configured"
         type: boolean
         default: false
+      cloud_url:
+        description: "Optional deployed Knowledge Cloud URL for post-deploy health/search/audit validation"
+        type: string
+        required: false
+        default: ""
 
 concurrency: knowledge-cloud-deploy
 
@@ -65,10 +70,19 @@ jobs:
         env:
           EDGEONE_DEPLOY_HOOK_URL: ${{ secrets.EDGEONE_DEPLOY_HOOK_URL }}
 
+      - name: Validate deployed Knowledge Cloud URL
+        if: ${{ inputs.deploy && inputs.cloud_url != '' }}
+        run: |
+          node packages/cli/dist/bin.js release doctor --target knowledge-cloud --cloud-url "${{ inputs.cloud_url }}" --json
+          node packages/cli/dist/bin.js knowledge sync --cloud-url "${{ inputs.cloud_url }}" --json
+          node packages/cli/dist/bin.js knowledge search "proof pack checksum" --cloud-url "${{ inputs.cloud_url }}" --json
+
       - name: Deployment summary
         run: |
           if [ "${{ inputs.deploy }}" != "true" ]; then
             echo "Deployment input was false; validation-only run completed." >> "$GITHUB_STEP_SUMMARY"
+          elif [ -n "${{ inputs.cloud_url }}" ]; then
+            echo "Knowledge Cloud deploy completed and validated: ${{ inputs.cloud_url }}" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Knowledge Cloud deploy completed." >> "$GITHUB_STEP_SUMMARY"
           fi

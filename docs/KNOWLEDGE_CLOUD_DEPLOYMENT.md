@@ -63,7 +63,10 @@ reference if a second deployment target is needed later.
    ```
 
 8. Run `.github/workflows/knowledge-cloud-deploy.yml` with `deploy=true`.
-9. Record the production URL and run cloud acceptance checks:
+9. If the production URL is already known, pass it as the workflow `cloud_url`
+   input so the deploy workflow runs the health/search/audit handoff checks
+   immediately after triggering EdgeOne.
+10. Record the production URL and run cloud acceptance checks:
 
    ```bash
    osstack release doctor --target knowledge-cloud --cloud-url <EdgeOne URL> --json
@@ -71,7 +74,7 @@ reference if a second deployment target is needed later.
    osstack knowledge search "proof pack checksum" --cloud-url <EdgeOne URL> --json
    ```
 
-10. Keep the EdgeOne production URL in the release evidence and use it as the
+11. Keep the EdgeOne production URL in the release evidence and use it as the
     default Knowledge Cloud endpoint once the acceptance checks pass.
 
 The EdgeOne deployment manifest is `deploy/knowledge-cloud/edgeone.json`. It records the health endpoint, Node runtime expectation, official pack include paths, and persisted audit/feedback/published-pack paths.
@@ -87,6 +90,8 @@ The manual workflow `.github/workflows/knowledge-cloud-deploy.yml` runs build, t
 - Run with `deploy=false` to validate the deploy bundle without publishing.
 - Set repository secret `EDGEONE_DEPLOY_HOOK_URL`.
 - Run with `deploy=true` to trigger the EdgeOne deployment hook.
+- Pass `cloud_url=<EdgeOne URL>` with `deploy=true` to run deployed
+  Knowledge Cloud health/search/audit acceptance checks inside the workflow.
 - Do not set `FLY_API_TOKEN` for the primary path; it is unrelated to the EdgeOne deployment.
 
 Preflight release and deploy credentials before a production run:

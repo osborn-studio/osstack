@@ -771,7 +771,7 @@ describe("product entry commands", () => {
       expect(result.validation_commands).toContain("osstack proof validate <run_id> --proof-dir release/osstack-proof-<run_id> --json");
       expect(result.validation_commands).toContain("pnpm smoke:knowledge-cloud:deploy");
       expect(result.validation_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false");
-      expect(result.deploy_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+      expect(result.deploy_commands).toContain(`gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${cloud.url}`);
       expect(result.deploy_commands).toContain(`osstack knowledge login --cloud-url ${cloud.url}`);
       expect(result.deploy_commands).toContain(`osstack knowledge sync --cloud-url ${cloud.url} --json`);
       expect(result.deploy_commands).toContain(`osstack knowledge search "proof pack checksum" --cloud-url ${cloud.url} --json`);
@@ -786,7 +786,7 @@ describe("product entry commands", () => {
       expect(markdown).toContain("Target: `knowledge-cloud`");
       expect(markdown).toContain("Safe to execute publish/deploy commands: `no`");
       expect(markdown).toContain("Do not run publish or deploy commands until blockers are resolved.");
-      expect(markdown).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+      expect(markdown).toContain(`gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${cloud.url}`);
       expect(markdown).toContain("## Post-Release Validation Commands");
       expect(markdown).toContain(`osstack release doctor --target knowledge-cloud --cloud-url ${cloud.url} --json`);
     } finally {

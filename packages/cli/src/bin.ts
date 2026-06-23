@@ -1278,11 +1278,16 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   expectAsset(render, "OSSTACK_KNOWLEDGE_FEEDBACK_LOG", "Render config must persist feedback JSONL.");
   expectAsset(render, "OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR", "Render config must persist published knowledge packs.");
   expectAsset(workflow, "workflow_dispatch:", "Knowledge Cloud deploy workflow must be manually triggerable.");
+  expectAsset(workflow, "cloud_url:", "Knowledge Cloud deploy workflow must accept a deployed cloud URL for validation.");
   expectAsset(workflow, "pnpm smoke:knowledge-cloud", "Knowledge Cloud deploy workflow must run service smoke.");
   expectAsset(workflow, "pnpm smoke:knowledge-cloud:deploy", "Knowledge Cloud deploy workflow must run deploy asset smoke.");
   expectAsset(workflow, "docker build -f Dockerfile.knowledge-cloud", "Knowledge Cloud deploy workflow must build the Docker image.");
   expectAsset(workflow, "secrets.EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must gate deploy on EDGEONE_DEPLOY_HOOK_URL.");
   expectAsset(workflow, 'curl -fsS -X POST "$EDGEONE_DEPLOY_HOOK_URL"', "Knowledge Cloud deploy workflow must trigger the EdgeOne deploy hook.");
+  expectAsset(workflow, "release doctor --target knowledge-cloud --cloud-url", "Knowledge Cloud deploy workflow must validate deployed health/search/audit gates when cloud_url is supplied.");
+  expectAsset(workflow, "knowledge sync --cloud-url", "Knowledge Cloud deploy workflow must sync from the deployed cloud URL when supplied.");
+  expectAsset(workflow, "knowledge search \"proof pack checksum\" --cloud-url", "Knowledge Cloud deploy workflow must search the deployed cloud URL when supplied.");
+  expectAsset(workflow, "inputs.cloud_url", "Knowledge Cloud deploy workflow must read the supplied cloud_url input.");
 
   const ok = missing.length === 0 && violations.length === 0;
   return {
@@ -2928,8 +2933,11 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
       : []),
   ];
   const knowledgeCloudUrl = options.cloudUrl ?? "https://knowledge.osstack.ai";
+  const knowledgeCloudDeployCommand = options.cloudUrl === undefined
+    ? "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true"
+    : `gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${options.cloudUrl}`;
   const deployCommands = result.target === "npm" || result.target === "single-binary" ? [] : [
-    "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true",
+    knowledgeCloudDeployCommand,
     `osstack knowledge login --cloud-url ${knowledgeCloudUrl}`,
     `osstack knowledge sync --cloud-url ${knowledgeCloudUrl} --json`,
     `osstack knowledge search "proof pack checksum" --cloud-url ${knowledgeCloudUrl} --json`,

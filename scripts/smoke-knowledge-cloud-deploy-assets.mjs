@@ -30,12 +30,16 @@ assertIncludes(render, "OSSTACK_KNOWLEDGE_FEEDBACK_LOG", "Render deploy config m
 assertIncludes(render, "OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR", "Render deploy config must persist published Knowledge Cloud packs");
 
 assertIncludes(workflow, "workflow_dispatch:", "Knowledge Cloud deploy workflow must be manually triggerable");
+assertIncludes(workflow, "cloud_url:", "Knowledge Cloud deploy workflow must accept a deployed cloud URL for validation");
 assertIncludes(workflow, "pnpm smoke:knowledge-cloud", "Knowledge Cloud deploy workflow must run service smoke");
 assertIncludes(workflow, "pnpm smoke:knowledge-cloud:deploy", "Knowledge Cloud deploy workflow must run deploy asset smoke");
 assertIncludes(workflow, "docker build -f Dockerfile.knowledge-cloud", "Knowledge Cloud deploy workflow must build the Docker image");
 assertIncludes(workflow, "secrets.EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must gate EdgeOne deploy on EDGEONE_DEPLOY_HOOK_URL");
 assertIncludes(workflow, "deploy=true requires repository secret EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy=true must fail when EDGEONE_DEPLOY_HOOK_URL is missing");
 assertIncludes(workflow, 'curl -fsS -X POST "$EDGEONE_DEPLOY_HOOK_URL"', "Knowledge Cloud deploy workflow must trigger the EdgeOne deploy hook");
+assertIncludes(workflow, "release doctor --target knowledge-cloud --cloud-url", "Knowledge Cloud deploy workflow must validate the deployed health/search/audit gates when cloud_url is supplied");
+assertIncludes(workflow, 'knowledge sync --cloud-url "${{ inputs.cloud_url }}" --json', "Knowledge Cloud deploy workflow must sync from the deployed cloud URL when supplied");
+assertIncludes(workflow, 'knowledge search "proof pack checksum" --cloud-url "${{ inputs.cloud_url }}" --json', "Knowledge Cloud deploy workflow must search the deployed cloud URL when supplied");
 
 console.log(JSON.stringify({
   ok: true,
