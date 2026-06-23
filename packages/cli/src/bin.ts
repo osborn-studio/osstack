@@ -331,7 +331,7 @@ Governance:
                                  List compliance mapping packs
   compliance render <run_id> --pack P [--proof-dir P]
                                  Render a compliance evidence mapping report
-  knowledge list --pack P|--official [--json]
+  knowledge list [--pack P|--official|--cache-dir P] [--json]
                                  List local, official, or cached Osstack knowledge packs
   knowledge login --cloud-url URL [--token T] [--json]
                                  Save Knowledge Cloud connection settings locally
@@ -345,7 +345,7 @@ Governance:
                                  Pin a cached knowledge pack version
   knowledge feedback <chunk_id> --useful|--bad [--cloud-url URL] [--json]
                                  Record local/cloud feedback for retrieval quality
-  knowledge sources --internal --pack P|--official [--json]
+  knowledge sources --internal [--pack P|--official|--cache-dir P] [--json]
                                  Show internal provenance/license records
   knowledge import P --scope team|project --output P
                                  Import local docs as an Osstack-native pack
@@ -4720,7 +4720,7 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack knowledge — Osstack knowledge pack bootstrap and cloud client
 
-  osstack knowledge list --pack P|--official [--json]
+  osstack knowledge list [--pack P|--official|--cache-dir P] [--json]
   osstack knowledge login --cloud-url URL [--token T] [--cache-dir P] [--json]
   osstack knowledge sync [--cloud-url URL] [--cache-dir P] [--private] [--tenant T] [--json]
   osstack knowledge search <query> [--pack P] [--official] [--cloud-url URL] [--tenant T] [--cache-dir P] [--limit N] [--stale-after-days N] [--stale-policy warn|strict] [--json]
@@ -4732,7 +4732,7 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   osstack knowledge prune [--cache-dir P] [--keep N] [--apply] [--json]
   osstack knowledge feedback <chunk_id> --useful|--bad [--tenant ID] [--cloud-url URL] [--cache-dir P] [--json]
   osstack knowledge eval --pack P|--official --fixtures P [--top-k N] [--json]
-  osstack knowledge sources --internal --pack P|--official [--json]
+  osstack knowledge sources --internal [--pack P|--official|--cache-dir P] [--json]
 
 Env:
   OSSTACK_KNOWLEDGE_URL  Default Knowledge Cloud base URL
@@ -5270,10 +5270,8 @@ Env:
 
   if (sub === "sources") {
     const packPath = flagValue(args, "--pack");
-    if (packPath === undefined && !args.includes("--official")) {
-      console.error("osstack: knowledge sources requires --pack or --official");
-      return 1;
-    }
+    const officialRequested = args.includes("--official");
+    const explicitSourceRequested = packPath !== undefined || officialRequested;
     if (!args.includes("--internal")) {
       console.error("osstack: knowledge sources requires --internal to show provenance");
       return 1;
@@ -5281,7 +5279,12 @@ Env:
     const packs = [
       ...(packPath === undefined ? [] : [await loadKnowledgePack(packPath)]),
       ...await officialKnowledgePacksIfRequested(args),
+      ...(explicitSourceRequested ? [] : await listCachedKnowledgePacks(knowledgeCacheDir(args))),
     ];
+    if (packs.length === 0) {
+      console.error("osstack: knowledge sources requires --pack, --official, or cached pack from `osstack knowledge sync`");
+      return 1;
+    }
     const packSources = packs.map((pack) => ({
       pack_id: pack.manifest.id,
       version: pack.manifest.version,
