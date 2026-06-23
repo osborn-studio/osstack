@@ -1,5 +1,11 @@
 # @osstack/knowledge
 
+## 0.7.0
+
+### Minor Changes
+
+- b611e6e: Add knowledge adaptation planning APIs for converting external MIT-style corpora into reviewed Osstack-native Knowledge Cloud pack candidates with provenance, taxonomy, and evaluation gates.
+
 ## 0.4.0
 
 ### Minor Changes
