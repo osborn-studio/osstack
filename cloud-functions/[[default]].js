@@ -1,10 +1,6 @@
 import { dirname, join } from "node:path";
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import {
-  loadKnowledgePack,
-  loadKnowledgePackIndex,
-  searchKnowledgePacks,
-} from "../packages/knowledge/dist/index.js";
 
 const rootDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const officialIndexPath = join(rootDir, "knowledge-packs", "official", "index.json");
@@ -17,9 +13,15 @@ async function officialPacks() {
 }
 
 async function loadOfficialPacks() {
-  const index = await loadKnowledgePackIndex(officialIndexPath);
+  const index = JSON.parse(await readFile(officialIndexPath, "utf-8"));
   const indexDir = dirname(officialIndexPath);
-  return Promise.all(index.packs.map((pack) => loadKnowledgePack(join(indexDir, pack.path))));
+  return Promise.all(index.packs.map(async (pack) => {
+    const manifestPath = join(indexDir, pack.path);
+    return {
+      manifest: JSON.parse(await readFile(manifestPath, "utf-8")),
+      path: manifestPath,
+    };
+  }));
 }
 
 function json(data, status = 200) {
@@ -46,6 +48,30 @@ function packSummary(manifest) {
     source_kind: manifest.source_kind,
     quality_score: manifest.quality_score,
   };
+}
+
+function searchPacks(packs, query, limit) {
+  const terms = query.toLowerCase().split(/[^a-z0-9_/-]+/).filter(Boolean);
+  const results = [];
+  for (const pack of packs) {
+    for (const chunk of pack.manifest.chunks ?? []) {
+      const haystack = `${chunk.title} ${chunk.body} ${(chunk.tags ?? []).join(" ")}`.toLowerCase();
+      const matchedTerms = terms.filter((term) => haystack.includes(term));
+      if (matchedTerms.length === 0) continue;
+      results.push({
+        pack_id: pack.manifest.id,
+        pack_version: pack.manifest.version,
+        chunk_id: chunk.chunk_id,
+        title: chunk.title,
+        snippet: chunk.body.slice(0, 260),
+        score: Number((matchedTerms.length / Math.max(1, terms.length)).toFixed(4)),
+        matched_terms: matchedTerms,
+      });
+    }
+  }
+  return results
+    .sort((a, b) => b.score - a.score || a.pack_id.localeCompare(b.pack_id) || a.chunk_id.localeCompare(b.chunk_id))
+    .slice(0, limit);
 }
 
 export default async function onRequest({ request }) {
@@ -78,7 +104,7 @@ export default async function onRequest({ request }) {
     const limit = Number.isFinite(body.limit) ? Math.max(1, Math.min(50, Math.trunc(body.limit))) : 5;
     return json({
       packs: packs.map((pack) => packSummary(pack.manifest)),
-      results: searchKnowledgePacks(packs, query, { limit }),
+      results: searchPacks(packs, query, limit),
     });
   }
 
