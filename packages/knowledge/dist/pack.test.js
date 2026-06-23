@@ -462,6 +462,47 @@ describe("knowledge packs", () => {
         const packs = await listCachedKnowledgePacks(cacheDir);
         expect(packs[0]?.manifest).toMatchObject({ id: "team/private-runbook", scope: "team" });
     });
+    it("rejects unsafe tenant ids before syncing private cloud packs", async () => {
+        const cacheDir = join(tmp, "private-cache");
+        let requested = false;
+        const evidence = await syncKnowledgeCache({
+            cacheDir,
+            cloudUrl: "https://knowledge.osstack.ai",
+            privatePacks: true,
+            tenantId: "../team_alpha",
+            fetchImpl: async () => {
+                requested = true;
+                return new Response(JSON.stringify({ packs: [] }), { status: 200 });
+            },
+        });
+        expect(evidence).toMatchObject({
+            status: "error",
+            reason: "tenant_id is invalid",
+            packs: [],
+        });
+        expect(requested).toBe(false);
+    });
+    it("falls back locally for cloud search with unsafe tenant ids", async () => {
+        let requested = false;
+        const evidence = await resolveKnowledgeSearch({
+            mode: "cloud",
+            query: "proof evidence",
+            cloudUrl: "https://knowledge.osstack.ai",
+            tenantId: "../team_alpha",
+            packs: [{ manifest: validateKnowledgePackManifest(samplePack({ id: "osstack-core/local-fallback" })), path: "local-fallback.json" }],
+            fetchImpl: async () => {
+                requested = true;
+                return new Response(JSON.stringify({ results: [] }), { status: 200 });
+            },
+        });
+        expect(evidence).toMatchObject({
+            mode: "local",
+            status: "recorded",
+            reason: "tenant_id is invalid",
+            results: expect.arrayContaining([expect.objectContaining({ pack_id: "osstack-core/local-fallback" })]),
+        });
+        expect(requested).toBe(false);
+    });
     it("pins pack versions in the local cache", async () => {
         const cacheDir = join(tmp, "cache");
         const pin = await pinKnowledgePack(cacheDir, "osstack-core/loop-engineering@2026.06.22");
@@ -500,6 +541,15 @@ describe("knowledge packs", () => {
         expect(feedbackLines).toMatchObject([
             expect.objectContaining({ chunk_id: "chunk-loop-proof", rating: "useful", status: "sent", tenant_id: "team_alpha" }),
         ]);
+    });
+    it("rejects unsafe tenant ids before caching feedback", async () => {
+        const cacheDir = join(tmp, "cache");
+        await expect(cacheKnowledgeFeedback({
+            cacheDir,
+            chunkId: "chunk-loop-proof",
+            rating: "useful",
+            tenantId: "../team_alpha",
+        })).rejects.toThrow(/tenant_id is invalid/);
     });
     it("rejects knowledge pack index paths that escape the index root", () => {
         expect(() => validateKnowledgePackIndex({

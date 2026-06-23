@@ -366,6 +366,7 @@ export async function syncKnowledgeCache(options: {
   fetchImpl?: typeof fetch;
 }): Promise<KnowledgeSyncEvidence> {
   try {
+    assertSafeOptionalTenantId(options.tenantId);
     const endpoint = options.privatePacks === true ? "/v1/private-packs" : "/v1/sync";
     const response = await (options.fetchImpl ?? fetch)(new URL(endpoint, withTrailingSlash(options.cloudUrl)), {
       method: "POST",
@@ -448,6 +449,7 @@ export async function cacheKnowledgeFeedback(options: {
   fetchImpl?: typeof fetch;
   createdAt?: string;
 }): Promise<KnowledgeFeedbackEntry> {
+  assertSafeOptionalTenantId(options.tenantId);
   await mkdir(options.cacheDir, { recursive: true });
   const baseEntry = {
     chunk_id: options.chunkId,
@@ -735,6 +737,7 @@ async function cloudKnowledgeEvidence(options: {
     return fallbackFromCloud(options, "cloudUrl is required for cloud knowledge search");
   }
   try {
+    assertSafeOptionalTenantId(options.tenantId);
     const response = await (options.fetchImpl ?? fetch)(new URL("/v1/search", withTrailingSlash(options.cloudUrl)), {
       method: "POST",
       headers: cloudHeaders(options.authToken),
@@ -758,6 +761,11 @@ function cloudHeaders(authToken?: string): Record<string, string> {
     "content-type": "application/json",
     ...(authToken === undefined || authToken.trim().length === 0 ? {} : { authorization: `Bearer ${authToken.trim()}` }),
   };
+}
+
+function assertSafeOptionalTenantId(tenantId: string | undefined): void {
+  if (tenantId === undefined) return;
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(tenantId)) throw new Error("tenant_id is invalid");
 }
 
 function fallbackFromCloud(
