@@ -8,6 +8,11 @@ Healthcheck: `/healthz`
 Deploy secret: `EDGEONE_API_TOKEN`
 Fallback deploy secret: `EDGEONE_DEPLOY_HOOK_URL`
 
+## Official References
+
+- EdgeOne CLI docs: https://pages.edgeone.ai/document/edgeone-cli
+- EdgeOne API token guide: https://pages.edgeone.ai/document/api-token
+
 ## Runtime
 
 - Node: `22`
