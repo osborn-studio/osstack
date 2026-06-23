@@ -1,28 +1,6 @@
-import { dirname, join } from "node:path";
-import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { officialPacks as officialPackManifests } from "./official-packs.js";
 
-const rootDir = dirname(dirname(fileURLToPath(import.meta.url)));
-const officialIndexPath = join(rootDir, "knowledge-packs", "official", "index.json");
-
-let officialPacksPromise;
-
-async function officialPacks() {
-  officialPacksPromise ??= loadOfficialPacks();
-  return officialPacksPromise;
-}
-
-async function loadOfficialPacks() {
-  const index = JSON.parse(await readFile(officialIndexPath, "utf-8"));
-  const indexDir = dirname(officialIndexPath);
-  return Promise.all(index.packs.map(async (pack) => {
-    const manifestPath = join(indexDir, pack.path);
-    return {
-      manifest: JSON.parse(await readFile(manifestPath, "utf-8")),
-      path: manifestPath,
-    };
-  }));
-}
+const officialPacks = officialPackManifests.map((manifest) => ({ manifest }));
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -76,7 +54,7 @@ function searchPacks(packs, query, limit) {
 
 export default async function onRequest({ request }) {
   const url = new URL(request.url);
-  const packs = await officialPacks();
+  const packs = officialPacks;
 
   if (request.method === "GET" && url.pathname === "/healthz") {
     return json({

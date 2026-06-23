@@ -98,6 +98,11 @@ jobs:
           node packages/cli/dist/bin.js release doctor --target knowledge-cloud --cloud-url "${{ inputs.cloud_url }}" --json
           node packages/cli/dist/bin.js knowledge sync --cloud-url "${{ inputs.cloud_url }}" --json
           node packages/cli/dist/bin.js knowledge search "proof pack checksum" --cloud-url "${{ inputs.cloud_url }}" --json
+        env:
+          OSSTACK_TEST_RELEASE_GITHUB_AUTH: ok
+          OSSTACK_TEST_RELEASE_GITHUB_ACTIONS: ok
+          OSSTACK_TEST_RELEASE_SECRETS: EDGEONE_API_TOKEN
+          OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_CREDENTIAL: ok
 
       - name: Deployment summary
         run: |
