@@ -215,6 +215,8 @@ osstack release doctor --output release-readiness.md --json
 
 `release handoff` 是当前推荐的上线交接包入口：它一次性生成 `release-status.md`、`release-plan.md`、`npm-publish-setup.md`、`edgeone-setup.md`、`next-actions.sh` 和 `manifest.json`。默认 `target=primary` 只覆盖 npm 发布和 EdgeOne Knowledge Cloud 主路径，因此当前主路径外部阻塞会聚焦在 npm `@osstack` scope/账号发布权限，以及 `EDGEONE_API_TOKEN` 或 fallback `EDGEONE_DEPLOY_HOOK_URL` 部署凭证；如需同时准备 single-binary 公证与 GitHub Release assets，再显式使用 `--target all`。它不会执行发布或部署动作，其中 `next-actions.sh` 只是把操作者清单、secret 命令、验证命令、发布命令、EdgeOne 部署命令和发布后验收命令打印出来，方便按步骤复制执行。
 
+`release handoff` 的 `manifest.json` 会把必须配置的硬性 secret 放在 `required_secrets`，把二选一凭证放在 `alternative_secret_groups`。当前 primary 目标下 `NPM_TOKEN` 是硬性 secret，EdgeOne 使用 `["EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"]` 作为 alternative group，因此配置任意一个 EdgeOne 部署凭证即可通过 deploy credential gate。
+
 `release status` 是当前推荐的上线总览入口：它把代码验证完成度、npm 发布、EdgeOne Knowledge Cloud 部署、single-binary release 的状态放在同一张摘要里，并把 npm `@osstack` scope/账号发布权限、`EDGEONE_API_TOKEN` 或 fallback deploy hook、Apple notarization secrets 等外部阻塞和下一步命令集中展示。
 
 `release npm` 是 npm 发布权限修复的操作交接入口：它从 `packages/cli/package.json` 读取 `@osstack/cli` 元数据，生成 npmjs.com 控制台清单、`NPM_TOKEN` GitHub secret 命令、Release workflow 排查命令、`pnpm smoke:npm-preflight` / `pnpm preflight:npm-publish` 验证命令，以及 `npm install -g @osstack/cli` 发布后验证命令。

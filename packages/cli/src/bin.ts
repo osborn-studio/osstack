@@ -994,6 +994,7 @@ interface ReleaseHandoffBundleSummary {
   output_dir: string;
   cloud_url: string;
   required_secrets: string[];
+  alternative_secret_groups: string[][];
   files: {
     manifest: string;
     release_status: string;
@@ -3183,7 +3184,10 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     ...(Array.isArray(missingSecrets)
       && missingSecrets.includes("EDGEONE_API_TOKEN")
       && missingSecrets.includes("EDGEONE_DEPLOY_HOOK_URL")
-      ? ["gh secret set EDGEONE_API_TOKEN --repo gilosbornhello/osstack --body \"$EDGEONE_API_TOKEN\""]
+      ? [
+        "gh secret set EDGEONE_API_TOKEN --repo gilosbornhello/osstack --body \"$EDGEONE_API_TOKEN\"",
+        "# Optional fallback: gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"",
+      ]
       : []),
     ...(Array.isArray(missingSecrets)
       ? SINGLE_BINARY_RELEASE_SECRETS
@@ -3366,6 +3370,7 @@ async function createReleaseHandoffBundle(
     output_dir: options.outputDir,
     cloud_url: options.cloudUrl,
     required_secrets: releaseHandoffRequiredSecrets(options.target),
+    alternative_secret_groups: releaseHandoffAlternativeSecretGroups(options.target),
     files,
     external_blockers: status.external_blockers,
     next_actions: status.next_actions,
@@ -3375,6 +3380,7 @@ async function createReleaseHandoffBundle(
     target: summary.target,
     cloud_url: summary.cloud_url,
     required_secrets: summary.required_secrets,
+    alternative_secret_groups: summary.alternative_secret_groups,
     files: {
       release_status: "release-status.md",
       release_plan: "release-plan.md",
@@ -3403,12 +3409,12 @@ function renderReleaseHandoffNextActionsScript(input: {
   ]);
   const secretCommands = uniqueStrings([
     ...input.npmSetup.github_commands,
-    ...input.edgeOneSetup.github_commands.filter((command) => command.startsWith("gh secret set ")),
+    ...input.edgeOneSetup.github_commands.filter(isGitHubSecretCommand),
     ...input.status.next_actions.operator.filter((command) => command.startsWith("gh secret set ")),
   ]);
   const workflowCommands = uniqueStrings([
     ...input.npmSetup.workflow_commands,
-    ...input.edgeOneSetup.github_commands.filter((command) => !command.startsWith("gh secret set ")),
+    ...input.edgeOneSetup.github_commands.filter((command) => !isGitHubSecretCommand(command)),
     ...input.edgeOneSetup.workflow_commands,
     ...input.plan.deploy_commands,
   ]);
@@ -3511,11 +3517,23 @@ function isRemoteWorkflowCommand(command: string): boolean {
     || command.startsWith("gh run rerun ");
 }
 
+function isGitHubSecretCommand(command: string): boolean {
+  return command.startsWith("gh secret set ")
+    || command.includes(" gh secret set ");
+}
+
 function releaseHandoffRequiredSecrets(target: ReleaseDoctorResult["target"]): string[] {
   return [
     ...(releaseTargetIncludesNpm(target) ? ["NPM_TOKEN"] : []),
-    ...(releaseTargetIncludesKnowledgeCloud(target) ? ["EDGEONE_API_TOKEN"] : []),
     ...(releaseTargetIncludesSingleBinary(target) ? SINGLE_BINARY_RELEASE_SECRETS : []),
+  ];
+}
+
+function releaseHandoffAlternativeSecretGroups(target: ReleaseDoctorResult["target"]): string[][] {
+  return [
+    ...(releaseTargetIncludesKnowledgeCloud(target)
+      ? [["EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"]]
+      : []),
   ];
 }
 
@@ -3533,7 +3551,15 @@ function renderReleaseHandoffBundleSummary(handoff: ReleaseHandoffBundleSummary)
     "",
     "## Required Secrets",
     "",
-    ...handoff.required_secrets.map((secret) => `- \`${secret}\``),
+    ...(handoff.required_secrets.length === 0
+      ? ["No hard-required repository secrets for this target."]
+      : handoff.required_secrets.map((secret) => `- \`${secret}\``)),
+    "",
+    "## Alternative Secret Groups",
+    "",
+    ...(handoff.alternative_secret_groups.length === 0
+      ? ["No alternative secret groups for this target."]
+      : handoff.alternative_secret_groups.map((group) => `- One of: ${group.map((secret) => `\`${secret}\``).join(", ")}`)),
     "",
     "## External Blockers",
     "",

@@ -212,8 +212,12 @@ try {
   assert(handoff.target === "primary", "release handoff default target must be primary");
   assert(handoff.output_dir === handoffOutputDir, "release handoff must expose its output directory");
   assertArrayIncludes(handoff.required_secrets, "NPM_TOKEN", "release handoff must include npm secret");
-  assertArrayIncludes(handoff.required_secrets, "EDGEONE_API_TOKEN", "release handoff must include EdgeOne secret");
+  assert(
+    JSON.stringify(handoff.alternative_secret_groups).includes("[\"EDGEONE_API_TOKEN\",\"EDGEONE_DEPLOY_HOOK_URL\"]"),
+    "release handoff must expose EdgeOne API token/deploy hook as alternative secrets",
+  );
   assert(!handoff.required_secrets.includes("APPLE_ID"), "primary release handoff must not require Apple notarization secrets");
+  assert(!handoff.required_secrets.includes("EDGEONE_API_TOKEN"), "primary release handoff must not hard-require EdgeOne API token when deploy hook fallback exists");
   assertIncludes(await readFile(handoff.files.manifest, "utf-8"), "osstack-release-handoff", "release handoff manifest must be written");
   assertIncludes(await readFile(handoff.files.release_status, "utf-8"), "# Osstack Release Status", "release handoff must write release status");
   assertIncludes(await readFile(handoff.files.release_plan, "utf-8"), "# Osstack Release Action Plan", "release handoff must write release plan");
@@ -229,6 +233,7 @@ try {
   assertIncludes(nextActions, "## Remote Workflow Commands", "next actions script must separate commands that consume Actions minutes");
   assertIncludes(nextActions, "gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\"", "next actions script must include npm secret setup");
   assertIncludes(nextActions, "gh secret set EDGEONE_API_TOKEN --repo gilosbornhello/osstack --body \"$EDGEONE_API_TOKEN\"", "next actions script must include EdgeOne API token setup");
+  assertIncludes(nextActions, "# Optional fallback: gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"", "next actions script must include EdgeOne deploy hook fallback setup");
   assertIncludes(nextActions, "pnpm smoke:npm-preflight", "next actions script must include npm preflight validation");
   assertIncludes(nextActions, `gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${cloudUrl}`, "next actions script must include EdgeOne deploy workflow command");
 

@@ -132,8 +132,9 @@ to finish the production setup without exposing hook URLs in chat or issue text.
    osstack release doctor --target knowledge-cloud --json
    ```
 
-9. Only after the project, hook, and secret are ready, decide whether to spend
-   Actions minutes on the remote deploy workflow:
+9. Only after the project and one deploy credential are ready
+   (`EDGEONE_API_TOKEN`, or fallback `EDGEONE_DEPLOY_HOOK_URL`), decide whether
+   to spend Actions minutes on the remote deploy workflow:
 
    ```bash
    gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=<EdgeOne URL>
@@ -155,9 +156,9 @@ Official references:
 The manual workflow `.github/workflows/knowledge-cloud-deploy.yml` runs build, tests, service smoke, deploy-asset smoke, and a Docker image build on `ubuntu-latest`.
 
 - Run with `deploy=false` to validate the deploy bundle without publishing.
-- Set repository secret `EDGEONE_API_TOKEN`.
-- Run with `deploy=true` to deploy through `edgeone makers deploy`.
+- Set repository secret `EDGEONE_API_TOKEN` to deploy through `edgeone makers deploy`.
 - `EDGEONE_DEPLOY_HOOK_URL` remains supported as a fallback when no API token is configured.
+- Run with `deploy=true` only after one of those deploy credentials is configured.
 - Pass `cloud_url=<EdgeOne URL>` with `deploy=true` to run deployed
   Knowledge Cloud health/search/audit acceptance checks inside the workflow.
 - Do not set `FLY_API_TOKEN` for the primary path; it is unrelated to the EdgeOne deployment.
