@@ -50,6 +50,11 @@ export type CockpitTuiKeyResult =
   | { type: "quit" }
   | { type: "none"; state: CockpitTuiFullscreenState };
 
+export type CockpitTuiFullscreenRunResult =
+  | { type: "select"; state: CockpitTuiFullscreenState; selection: CockpitTuiActionSelection }
+  | { type: "quit"; state: CockpitTuiFullscreenState }
+  | { type: "none"; state: CockpitTuiFullscreenState };
+
 export interface CockpitTuiInteractiveQuit {
   mode: "terminal-cockpit-interactive";
   status: "quit";
@@ -235,6 +240,22 @@ export function renderCockpitFullscreen(
   return clipped.map((line) => trimToWidth(line, innerWidth + 4)).join("\n").trimEnd();
 }
 
+export function runCockpitTuiFullscreenKeys(model: CockpitTuiModel, keys: CockpitTuiKey[]): CockpitTuiFullscreenRunResult {
+  let state = initialCockpitTuiFullscreenState(model);
+  for (const key of keys) {
+    const result = updateCockpitTuiFullscreenState(model, state, key);
+    if (result.type === "state" || result.type === "none") {
+      state = result.state;
+      continue;
+    }
+    if (result.type === "select") {
+      return { type: "select", state, selection: result.selection };
+    }
+    return { type: "quit", state };
+  }
+  return { type: "none", state };
+}
+
 export function selectCockpitTuiAction(model: CockpitTuiModel, selectedIndex: number): CockpitTuiActionSelection | undefined {
   const action = model.actions[selectedIndex - 1];
   if (action === undefined) return undefined;
@@ -271,6 +292,32 @@ export async function runInteractiveCockpitTui(model: CockpitTuiModel, options: 
   return 0;
 }
 
+export async function runInteractiveCockpitFullscreen(model: CockpitTuiModel, options: { json: boolean }): Promise<number> {
+  const scriptedKeys = readCockpitTuiFullscreenTestKeys();
+  if (scriptedKeys !== undefined) {
+    const result = runCockpitTuiFullscreenKeys(model, scriptedKeys);
+    if (result.type === "select") {
+      if (options.json) console.log(JSON.stringify(result.selection, null, 2));
+      else console.log(renderCockpitTuiAction(result.selection));
+      return 0;
+    }
+    const quit: CockpitTuiInteractiveQuit = { mode: "terminal-cockpit-interactive", status: "quit" };
+    if (options.json) console.log(JSON.stringify(quit, null, 2));
+    else console.log("cockpit_interactive=quit");
+    return 0;
+  }
+  if (!options.json) {
+    console.log(renderCockpitFullscreen(model));
+    console.log("");
+  }
+  if (process.stdin.isTTY !== true) {
+    console.error("osstack: cockpit tui --fullscreen --interactive requires a TTY; use --action N for scripts");
+    return 1;
+  }
+  console.error("osstack: cockpit tui --fullscreen --interactive raw-mode input is not enabled yet; use --action N or OSSTACK_TEST_COCKPIT_TUI_KEYS");
+  return 1;
+}
+
 export function renderCockpitTuiAction(selection: CockpitTuiActionSelection): string {
   return [
     `selected=${selection.selected_index}`,
@@ -278,6 +325,15 @@ export function renderCockpitTuiAction(selection: CockpitTuiActionSelection): st
     `label=${selection.action.label}`,
     `command=${selection.next_command}`,
   ].join("\n");
+}
+
+function readCockpitTuiFullscreenTestKeys(): CockpitTuiKey[] | undefined {
+  const testInput = process.env["OSSTACK_TEST_COCKPIT_TUI_KEYS"];
+  if (testInput === undefined) return undefined;
+  return testInput
+    .split(/[,\s]+/)
+    .map((key) => key.trim())
+    .filter((key) => key.length > 0);
 }
 
 async function readCockpitTuiInteractiveInput(model: CockpitTuiModel, options: { json: boolean }): Promise<string | undefined> {

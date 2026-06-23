@@ -44,6 +44,12 @@ execute it automatically, so the cockpit remains safe for review and copy/paste
 operation. `--interactive --json` returns the same action-selection object used
 by `--action N`, which keeps the behavior testable and automation-friendly.
 
+`osstack cockpit tui --fullscreen --interactive` uses the same full-screen state
+contract and supports deterministic key-sequence automation through
+`OSSTACK_TEST_COCKPIT_TUI_KEYS`, for example `down,enter` to move to the next
+action and select it. This keeps the full-screen interaction layer verifiable
+before a raw-mode terminal event loop is enabled by default.
+
 ## UI Requirements
 
 - Support `OSSTACK_LANG=en` and `OSSTACK_LANG=zh-CN`.
@@ -53,6 +59,8 @@ by `--action N`, which keeps the behavior testable and automation-friendly.
   for automation and future richer TUI clients.
 - Keep `cockpit tui --fullscreen` backed by the same model and tested keyboard
   intents: up/down move, Enter selects, and `q` exits.
+- Keep full-screen interactive automation deterministic with key sequences so
+  release smoke can verify navigation without requiring an attached TTY.
 - Let users generate reports from the cockpit surface via `osstack cockpit report`.
 - Let users see local Knowledge Cloud cache readiness from the same cockpit
   surface before running knowledge-backed loops.

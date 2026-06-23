@@ -380,6 +380,40 @@ describe("dashboard/cockpit CLI", () => {
     });
   });
 
+  it("selects a full-screen cockpit TUI action through deterministic key input", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace");
+    await mkdir(workspace, { recursive: true });
+    process.env["OSSTACK_TEST_COCKPIT_TUI_KEYS"] = "down,enter";
+
+    const exitCode = await main(["cockpit", "tui", "--workspace", workspace, "--fullscreen", "--interactive", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const selection = JSON.parse(logs.join("\n")) as {
+      mode: string;
+      selected_index: number;
+      next_command: string;
+    };
+    expect(selection).toMatchObject({
+      mode: "terminal-cockpit-action",
+      selected_index: 2,
+      next_command: "osstack deliver \"<task>\" --auto-agent --worktree --checkpoint",
+    });
+  });
+
+  it("exits the full-screen cockpit TUI through deterministic key input", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    process.env["OSSTACK_TEST_COCKPIT_TUI_KEYS"] = "q";
+
+    const exitCode = await main(["cockpit", "tui", "--fullscreen", "--interactive", "--json"]);
+
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toEqual({
+      mode: "terminal-cockpit-interactive",
+      status: "quit",
+    });
+  });
+
   it("exits the interactive cockpit TUI without selecting an action", async () => {
     daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
     process.env["OSSTACK_TEST_COCKPIT_TUI_INPUT"] = "q\n";

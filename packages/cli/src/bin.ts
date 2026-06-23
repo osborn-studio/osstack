@@ -78,6 +78,7 @@ import {
   renderCockpitFullscreen,
   renderCockpitTui,
   renderCockpitTuiAction,
+  runInteractiveCockpitFullscreen,
   runInteractiveCockpitTui,
   selectCockpitTuiAction,
   type CockpitKnowledgeSummary,
@@ -9696,6 +9697,9 @@ async function handleCockpitTuiCommand(args: string[]): Promise<number> {
   const knowledge = await cockpitKnowledgeSummary(args);
   const model = cockpitTuiModel(healthResp.result, snapshot, knowledge);
   if (args.includes("--interactive")) {
+    if (args.includes("--fullscreen")) {
+      return await runInteractiveCockpitFullscreen(model, { json: args.includes("--json") });
+    }
     return await runInteractiveCockpitTui(model, { json: args.includes("--json") });
   }
   if (actionIndex !== undefined) {
