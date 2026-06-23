@@ -8,6 +8,7 @@ import { join } from "node:path";
 const root = process.cwd();
 const tempRoot = await mkdtemp(join(tmpdir(), "osstack-release-plan-smoke-"));
 const output = join(tempRoot, "release-plan.md");
+const statusOutput = join(tempRoot, "release-status.md");
 const cacheDir = join(tempRoot, "knowledge-cache");
 let cloud;
 
@@ -68,6 +69,40 @@ try {
   assertIncludes(markdown, "pnpm smoke:release-plan", "markdown validation commands must include release plan smoke");
   assertIncludes(markdown, `osstack release doctor --target knowledge-cloud --cloud-url ${cloudUrl} --json`, "markdown post-release commands must include Knowledge Cloud doctor");
 
+  const statusResult = await runAsync(process.execPath, [
+    "packages/cli/dist/bin.js",
+    "release",
+    "status",
+    "--target",
+    "all",
+    "--cloud-url",
+    cloudUrl,
+    "--output",
+    statusOutput,
+    "--json",
+  ], {
+    cwd: root,
+    capture: true,
+    env: releasePlanEnv(),
+  });
+  const status = JSON.parse(statusResult.stdout);
+  assert(status.ready === true, "release status smoke expects ready under controlled overrides");
+  assert(status.completion?.code_verified === true, "release status must expose code verification completion");
+  assert(status.completion?.npm_publish === true, "release status must expose npm publish readiness");
+  assert(status.completion?.knowledge_cloud_deploy === true, "release status must expose Knowledge Cloud readiness");
+  assert(status.completion?.single_binary_release === true, "release status must expose single-binary readiness");
+  assert(Array.isArray(status.external_blockers), "release status must expose external blockers");
+  assertArrayIncludes(status.next_actions?.validation, "pnpm smoke:release-plan", "release status validation actions must include release plan smoke");
+  assertArrayIncludes(
+    status.next_actions?.deploy,
+    `gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${cloudUrl}`,
+    "release status deploy actions must include EdgeOne Knowledge Cloud deploy command",
+  );
+  const statusMarkdown = await readFile(statusOutput, "utf-8");
+  assertIncludes(statusMarkdown, "# Osstack Release Status", "release status markdown must render a title");
+  assertIncludes(statusMarkdown, "## External Blockers", "release status markdown must render external blockers");
+  assertIncludes(statusMarkdown, "## Next Actions", "release status markdown must render next actions");
+
   const sync = JSON.parse((await runAsync(process.execPath, [
     "packages/cli/dist/bin.js",
     "knowledge",
@@ -105,6 +140,7 @@ try {
     ok: true,
     kind: "release-plan-smoke",
     output,
+    status_output: statusOutput,
     cloud_url: cloudUrl,
     target: plan.target,
     validation_commands: plan.validation_commands.length,

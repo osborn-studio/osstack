@@ -188,6 +188,7 @@ GitHub push、PR、workflow 定义已恢复；GitHub Actions runner 已从账户
 发布前执行：
 
 ```sh
+osstack release status --target all --output release-status.md --json
 osstack release doctor --json
 ```
 
@@ -205,10 +206,13 @@ osstack release doctor --json
 也可以输出 Markdown handoff artifact：
 
 ```sh
+osstack release status --target all --output release-status.md --json
 osstack release doctor --output release-readiness.md --json
 ```
 
-该报告包含 readiness summary、检查表、检查详情和 next steps，适合贴到 PR、发布群或 CI artifact。
+`release status` 是当前推荐的上线交接入口：它把代码验证完成度、npm 发布、EdgeOne Knowledge Cloud 部署、single-binary release 的状态放在同一张摘要里，并把 `NPM_TOKEN` 发布权限、`EDGEONE_DEPLOY_HOOK_URL`、Apple notarization secrets 等外部阻塞和下一步命令集中展示。
+
+`release doctor` 是底层诊断入口：该报告包含 readiness summary、检查表、检查详情和 next steps，适合贴到 PR、发布群或 CI artifact。
 
 需要把状态转换成可执行 runbook 时，使用：
 

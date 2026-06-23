@@ -794,6 +794,59 @@ describe("product entry commands", () => {
     }
   });
 
+  it("prints an operator-focused release status summary", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_NPM_SCOPE_ACCESS"] = "error:forbidden";
+    process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"] = "warn";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const output = join(tmp, "release-status.md");
+
+    const exitCode = await main(["release", "status", "--target", "all", "--output", output, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      target: string;
+      ready: boolean;
+      completion: {
+        code_verified: boolean;
+        npm_publish: boolean;
+        knowledge_cloud_deploy: boolean;
+        single_binary_release: boolean;
+      };
+      external_blockers: string[];
+      next_actions: {
+        operator: string[];
+        validation: string[];
+        publish: string[];
+        deploy: string[];
+        post_release_validation: string[];
+      };
+      output: string;
+    };
+    expect(result.target).toBe("all");
+    expect(result.ready).toBe(false);
+    expect(result.completion.code_verified).toBe(true);
+    expect(result.completion.npm_publish).toBe(false);
+    expect(result.completion.knowledge_cloud_deploy).toBe(false);
+    expect(result.external_blockers.join("\n")).toContain("Confirm the npm account behind NPM_TOKEN can publish to @osstack");
+    expect(result.external_blockers.join("\n")).toContain("EDGEONE_DEPLOY_HOOK_URL");
+    expect(result.next_actions.operator).toContain("Invite the npm account used for NPM_TOKEN as an owner or publisher for @osstack.");
+    expect(result.next_actions.operator).toContain("gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"");
+    expect(result.next_actions.validation).toContain("pnpm smoke:release-plan");
+    expect(result.next_actions.deploy).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+    expect(result.output).toBe(output);
+    const markdown = await readFile(output, "utf-8");
+    expect(markdown).toContain("# Osstack Release Status");
+    expect(markdown).toContain("## External Blockers");
+    expect(markdown).toContain("NPM_TOKEN");
+    expect(markdown).toContain("EDGEONE_DEPLOY_HOOK_URL");
+    expect(markdown).toContain("## Next Actions");
+  });
+
   it("checks a deployed Knowledge Cloud health URL before deploy handoff", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL";

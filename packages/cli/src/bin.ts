@@ -105,6 +105,7 @@ function renderChineseMainHelp(): string {
   examples            输出可直接运行的工作流示例
   guide               输出或写入 5 分钟 Quickstart
   release doctor      检查 npm / Knowledge Cloud 发布前置条件
+  release status      输出面向上线交接的发布状态摘要
   deliver <需求>      从一句需求进入 task queue -> loop -> report/scorecard/proof
 
 Loop 工程：
@@ -235,6 +236,8 @@ Project commands:
                       secrets, npm auth, and EdgeOne deploy readiness
   release plan [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
                       Generate a blocker-aware publish/deploy runbook
+  release status [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
+                      Summarize completion, external blockers, and next actions
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
   deliver <prompt> [--verify CMD] [--auto-agent] [--worktree]
                       Product entry: task queue -> loop -> report/scorecard/proof
@@ -870,6 +873,7 @@ async function handleReleaseCommand(args: string[]): Promise<number> {
 
   osstack release doctor [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--json]
   osstack release plan [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--output P] [--json]
+  osstack release status [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--output P] [--json]
 
 Checks:
   - GitHub CLI authentication for repository operations
@@ -885,6 +889,7 @@ Checks:
   }
   if (sub === "doctor") return await handleReleaseDoctorCommand(args.slice(1));
   if (sub === "plan") return await handleReleasePlanCommand(args.slice(1));
+  if (sub === "status") return await handleReleaseStatusCommand(args.slice(1));
   console.error(`osstack: unknown release subcommand "${sub}"`);
   return 1;
 }
@@ -900,6 +905,64 @@ interface ReleaseActionPlan {
   deploy_commands: string[];
   post_release_validation_commands: string[];
   output?: string;
+}
+
+interface ReleaseStatusSummary {
+  target: ReleaseDoctorResult["target"];
+  ready: boolean;
+  completion: {
+    code_verified: boolean;
+    npm_publish: boolean;
+    knowledge_cloud_deploy: boolean;
+    single_binary_release: boolean;
+  };
+  external_blockers: string[];
+  checks: Array<{
+    id: string;
+    status: ReleaseDoctorStatus;
+    message: string;
+  }>;
+  next_actions: {
+    operator: string[];
+    validation: string[];
+    publish: string[];
+    deploy: string[];
+    post_release_validation: string[];
+  };
+  output?: string;
+}
+
+async function handleReleaseStatusCommand(args: string[]): Promise<number> {
+  const target = parseReleaseDoctorTarget(flagValue(args, "--target") ?? "all");
+  if (target === undefined) {
+    console.error("osstack: release status --target must be all, npm, knowledge-cloud, or single-binary");
+    return 1;
+  }
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const proofDir = flagValue(args, "--proof-dir");
+  const cloudUrl = flagValue(args, "--cloud-url");
+  const doctor = await releaseDoctor(target, {
+    workspacePath,
+    ...(proofDir === undefined ? {} : { proofDir }),
+    ...(cloudUrl === undefined ? {} : { cloudUrl }),
+  });
+  const plan = releaseActionPlan(doctor, {
+    ...(proofDir === undefined ? {} : { proofDir }),
+    ...(cloudUrl === undefined ? {} : { cloudUrl }),
+  });
+  const status = releaseStatusSummary(doctor, plan);
+  const output = flagValue(args, "--output");
+  if (output !== undefined) {
+    await mkdir(dirname(output), { recursive: true });
+    await writeFile(output, renderReleaseStatusSummary(status), "utf-8");
+    status.output = output;
+  }
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(status, null, 2));
+  } else {
+    console.log(renderReleaseStatusSummary(status));
+  }
+  return 0;
 }
 
 async function handleReleasePlanCommand(args: string[]): Promise<number> {
@@ -3045,6 +3108,124 @@ function renderReleaseActionPlan(plan: ReleaseActionPlan): string {
     ...plan.post_release_validation_commands.map((command) => `- \`${command}\``),
     "",
   ].join("\n");
+}
+
+function releaseStatusSummary(result: ReleaseDoctorResult, plan: ReleaseActionPlan): ReleaseStatusSummary {
+  const externalBlockers = uniqueStrings([
+    ...plan.blockers,
+    ...result.next_steps.filter(isExternalReleaseBlockerStep),
+  ]);
+  return {
+    target: result.target,
+    ready: result.ok,
+    completion: {
+      code_verified: releaseCodeVerified(result.checks),
+      npm_publish: result.readiness.npm_publish,
+      knowledge_cloud_deploy: result.readiness.knowledge_cloud_deploy,
+      single_binary_release: result.readiness.single_binary_release,
+    },
+    external_blockers: externalBlockers,
+    checks: result.checks.map((check) => ({
+      id: check.id,
+      status: check.status,
+      message: check.message,
+    })),
+    next_actions: {
+      operator: plan.operator_commands,
+      validation: plan.validation_commands,
+      publish: plan.publish_commands,
+      deploy: plan.deploy_commands,
+      post_release_validation: plan.post_release_validation_commands,
+    },
+  };
+}
+
+function releaseCodeVerified(checks: ReleaseDoctorCheck[]): boolean {
+  const codeGateIds = new Set([
+    "github_actions",
+    "npm_publish_assets",
+    "knowledge_cloud_deploy_assets",
+    "knowledge_cloud_workflow",
+    "single_binary_release_assets",
+    "single_binary_workflow",
+    "proof_validation",
+  ]);
+  return checks
+    .filter((check) => codeGateIds.has(check.id))
+    .every((check) => check.status !== "error");
+}
+
+function isExternalReleaseBlockerStep(step: string): boolean {
+  return step.startsWith("Add repository secret")
+    || step.startsWith("Add Apple notarization")
+    || step.startsWith("Confirm the npm account behind NPM_TOKEN")
+    || step.startsWith("Create or authorize the npm @osstack scope")
+    || step.startsWith("Fix GitHub Actions")
+    || step.startsWith("Refresh GitHub auth");
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
+function renderReleaseStatusSummary(status: ReleaseStatusSummary): string {
+  return [
+    "# Osstack Release Status",
+    "",
+    `Target: \`${status.target}\``,
+    `Ready: \`${status.ready ? "yes" : "no"}\``,
+    "",
+    "## Completion",
+    "",
+    "| Area | Status |",
+    "|---|---|",
+    `| code_verified | ${status.completion.code_verified ? "ready" : "not_ready"} |`,
+    `| npm_publish | ${status.completion.npm_publish ? "ready" : "not_ready"} |`,
+    `| knowledge_cloud_deploy | ${status.completion.knowledge_cloud_deploy ? "ready" : "not_ready"} |`,
+    `| single_binary_release | ${status.completion.single_binary_release ? "ready" : "not_ready"} |`,
+    "",
+    "## External Blockers",
+    "",
+    ...(status.external_blockers.length === 0
+      ? ["No external release blockers detected."]
+      : status.external_blockers.map((blocker) => `- ${blocker}`)),
+    "",
+    "## Checks",
+    "",
+    "| Check | Status | Message |",
+    "|---|---|---|",
+    ...status.checks.map((check) =>
+      `| ${markdownCell(check.id)} | ${check.status} | ${markdownCell(check.message)} |`
+    ),
+    "",
+    "## Next Actions",
+    "",
+    "### Operator",
+    "",
+    ...renderCommandList(status.next_actions.operator),
+    "",
+    "### Validation",
+    "",
+    ...renderCommandList(status.next_actions.validation),
+    "",
+    "### Publish",
+    "",
+    ...renderCommandList(status.next_actions.publish),
+    "",
+    "### Deploy",
+    "",
+    ...renderCommandList(status.next_actions.deploy),
+    "",
+    "### Post-Release Validation",
+    "",
+    ...renderCommandList(status.next_actions.post_release_validation),
+    "",
+  ].join("\n");
+}
+
+function renderCommandList(commands: string[]): string[] {
+  if (commands.length === 0) return ["No actions required."];
+  return commands.map((command) => command.startsWith("http") ? `- ${command}` : `- \`${command}\``);
 }
 
 function markdownCell(value: string): string {
