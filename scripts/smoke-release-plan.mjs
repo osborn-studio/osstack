@@ -9,6 +9,7 @@ const root = process.cwd();
 const tempRoot = await mkdtemp(join(tmpdir(), "osstack-release-plan-smoke-"));
 const output = join(tempRoot, "release-plan.md");
 const statusOutput = join(tempRoot, "release-status.md");
+const edgeoneOutput = join(tempRoot, "edgeone-setup.md");
 const cacheDir = join(tempRoot, "knowledge-cache");
 let cloud;
 
@@ -103,6 +104,37 @@ try {
   assertIncludes(statusMarkdown, "## External Blockers", "release status markdown must render external blockers");
   assertIncludes(statusMarkdown, "## Next Actions", "release status markdown must render next actions");
 
+  const edgeoneResult = await runAsync(process.execPath, [
+    "packages/cli/dist/bin.js",
+    "release",
+    "edgeone",
+    "--cloud-url",
+    cloudUrl,
+    "--output",
+    edgeoneOutput,
+    "--json",
+  ], {
+    cwd: root,
+    capture: true,
+    env: releasePlanEnv(),
+  });
+  const edgeone = JSON.parse(edgeoneResult.stdout);
+  assert(edgeone.provider === "tencent-edgeone", "EdgeOne setup must read the Tencent EdgeOne manifest");
+  assert(edgeone.deploy_secret === "EDGEONE_DEPLOY_HOOK_URL", "EdgeOne setup must expose the deploy hook secret");
+  assertArrayIncludes(
+    edgeone.workflow_commands,
+    `gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${cloudUrl}`,
+    "EdgeOne setup must include the deploy workflow command with cloud_url",
+  );
+  assertArrayIncludes(
+    edgeone.validation_commands,
+    `osstack release doctor --target knowledge-cloud --cloud-url ${cloudUrl} --json`,
+    "EdgeOne setup must include deployed release doctor validation",
+  );
+  const edgeoneMarkdown = await readFile(edgeoneOutput, "utf-8");
+  assertIncludes(edgeoneMarkdown, "# EdgeOne Knowledge Cloud Setup", "EdgeOne setup markdown must render a title");
+  assertIncludes(edgeoneMarkdown, "EDGEONE_DEPLOY_HOOK_URL", "EdgeOne setup markdown must include deploy hook secret");
+
   const sync = JSON.parse((await runAsync(process.execPath, [
     "packages/cli/dist/bin.js",
     "knowledge",
@@ -141,6 +173,7 @@ try {
     kind: "release-plan-smoke",
     output,
     status_output: statusOutput,
+    edgeone_output: edgeoneOutput,
     cloud_url: cloudUrl,
     target: plan.target,
     validation_commands: plan.validation_commands.length,

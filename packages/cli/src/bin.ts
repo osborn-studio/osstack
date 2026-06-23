@@ -106,6 +106,7 @@ function renderChineseMainHelp(): string {
   guide               输出或写入 5 分钟 Quickstart
   release doctor      检查 npm / Knowledge Cloud 发布前置条件
   release status      输出面向上线交接的发布状态摘要
+  release edgeone     输出 EdgeOne Knowledge Cloud 上线清单
   deliver <需求>      从一句需求进入 task queue -> loop -> report/scorecard/proof
 
 Loop 工程：
@@ -238,6 +239,8 @@ Project commands:
                       Generate a blocker-aware publish/deploy runbook
   release status [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
                       Summarize completion, external blockers, and next actions
+  release edgeone [--workspace P] [--cloud-url URL] [--output P] [--json]
+                      Generate the EdgeOne Knowledge Cloud setup handoff
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
   deliver <prompt> [--verify CMD] [--auto-agent] [--worktree]
                       Product entry: task queue -> loop -> report/scorecard/proof
@@ -874,6 +877,7 @@ async function handleReleaseCommand(args: string[]): Promise<number> {
   osstack release doctor [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--json]
   osstack release plan [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--output P] [--json]
   osstack release status [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--output P] [--json]
+  osstack release edgeone [--workspace P] [--cloud-url URL] [--output P] [--json]
 
 Checks:
   - GitHub CLI authentication for repository operations
@@ -890,6 +894,7 @@ Checks:
   if (sub === "doctor") return await handleReleaseDoctorCommand(args.slice(1));
   if (sub === "plan") return await handleReleasePlanCommand(args.slice(1));
   if (sub === "status") return await handleReleaseStatusCommand(args.slice(1));
+  if (sub === "edgeone") return await handleReleaseEdgeOneCommand(args.slice(1));
   console.error(`osstack: unknown release subcommand "${sub}"`);
   return 1;
 }
@@ -930,6 +935,46 @@ interface ReleaseStatusSummary {
     post_release_validation: string[];
   };
   output?: string;
+}
+
+interface EdgeOneSetupSummary {
+  provider: string;
+  service: string;
+  default_domain: string;
+  healthcheck_path: string;
+  runtime: {
+    node: string;
+    port: number;
+    entry: string;
+  };
+  deploy_secret: string;
+  environment: Record<string, string>;
+  include_files: string[];
+  console_checklist: string[];
+  github_commands: string[];
+  workflow_commands: string[];
+  validation_commands: string[];
+  output?: string;
+}
+
+async function handleReleaseEdgeOneCommand(args: string[]): Promise<number> {
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const cloudUrl = flagValue(args, "--cloud-url");
+  const setup = await createEdgeOneSetupSummary(workspacePath, {
+    ...(cloudUrl === undefined ? {} : { cloudUrl }),
+  });
+  const output = flagValue(args, "--output");
+  if (output !== undefined) {
+    await mkdir(dirname(output), { recursive: true });
+    await writeFile(output, renderEdgeOneSetupSummary(setup), "utf-8");
+    setup.output = output;
+  }
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(setup, null, 2));
+  } else {
+    console.log(renderEdgeOneSetupSummary(setup));
+  }
+  return 0;
 }
 
 async function handleReleaseStatusCommand(args: string[]): Promise<number> {
@@ -3106,6 +3151,153 @@ function renderReleaseActionPlan(plan: ReleaseActionPlan): string {
     "## Post-Release Validation Commands",
     "",
     ...plan.post_release_validation_commands.map((command) => `- \`${command}\``),
+    "",
+  ].join("\n");
+}
+
+async function createEdgeOneSetupSummary(
+  workspacePath: string,
+  options: { cloudUrl?: string } = {},
+): Promise<EdgeOneSetupSummary> {
+  const assetRoot = await findReleaseAssetRoot(workspacePath);
+  const manifestPath = join(assetRoot, "deploy/knowledge-cloud/edgeone.json");
+  const manifest = parseEdgeOneManifest(await readFile(manifestPath, "utf-8"), manifestPath);
+  const cloudUrl = options.cloudUrl ?? `https://${manifest.default_domain}`;
+  return {
+    provider: manifest.provider,
+    service: manifest.service,
+    default_domain: manifest.default_domain,
+    healthcheck_path: manifest.healthcheck_path,
+    runtime: manifest.runtime,
+    deploy_secret: manifest.deploy_secret,
+    environment: manifest.environment,
+    include_files: manifest.include_files,
+    console_checklist: [
+      "Create an EdgeOne Pages project connected to gilosbornhello/osstack.",
+      "Configure the EdgeOne project to build from main.",
+      `Use ${relative(assetRoot, manifestPath)} as the source of truth for runtime, healthcheck, storage paths, and official pack include paths.`,
+      ...Object.entries(manifest.environment).map(([key, value]) => `Set EdgeOne runtime env ${key}=${value}.`),
+      "Create an EdgeOne deploy hook and keep the hook URL private.",
+      `Record the production URL, expected default domain ${manifest.default_domain}, and health path ${manifest.healthcheck_path}.`,
+    ],
+    github_commands: [
+      `gh secret set ${manifest.deploy_secret} --repo gilosbornhello/osstack --body "$${manifest.deploy_secret}"`,
+      "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false",
+    ],
+    workflow_commands: [
+      `gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${cloudUrl}`,
+    ],
+    validation_commands: [
+      `osstack release doctor --target knowledge-cloud --cloud-url ${cloudUrl} --json`,
+      `osstack knowledge sync --cloud-url ${cloudUrl} --json`,
+      `osstack knowledge search "proof pack checksum" --cloud-url ${cloudUrl} --json`,
+    ],
+  };
+}
+
+function parseEdgeOneManifest(raw: string, manifestPath: string): {
+  provider: string;
+  service: string;
+  default_domain: string;
+  healthcheck_path: string;
+  runtime: EdgeOneSetupSummary["runtime"];
+  deploy_secret: string;
+  environment: Record<string, string>;
+  include_files: string[];
+} {
+  const parsed = JSON.parse(raw) as unknown;
+  if (!isRecord(parsed)) throw new Error(`EdgeOne manifest must be a JSON object: ${manifestPath}`);
+  const deployment = parsed["deployment"];
+  const runtime = parsed["runtime"];
+  const environment = parsed["environment"];
+  const provider = requiredString(parsed, "provider", manifestPath);
+  const service = requiredString(parsed, "service", manifestPath);
+  const deploySecret = requiredString(parsed, "deploy_secret", manifestPath);
+  if (!isRecord(deployment)) throw new Error(`EdgeOne manifest deployment must be an object: ${manifestPath}`);
+  if (!isRecord(runtime)) throw new Error(`EdgeOne manifest runtime must be an object: ${manifestPath}`);
+  if (!isRecord(environment)) throw new Error(`EdgeOne manifest environment must be an object: ${manifestPath}`);
+  return {
+    provider,
+    service,
+    default_domain: requiredString(deployment, "default_domain", manifestPath),
+    healthcheck_path: requiredString(deployment, "healthcheck_path", manifestPath),
+    runtime: {
+      node: requiredString(runtime, "node", manifestPath),
+      port: requiredNumber(runtime, "port", manifestPath),
+      entry: requiredString(runtime, "entry", manifestPath),
+    },
+    deploy_secret: deploySecret,
+    environment: stringRecord(environment, "environment", manifestPath),
+    include_files: stringArray(parsed["includeFiles"], "includeFiles", manifestPath),
+  };
+}
+
+function requiredString(record: Record<string, unknown>, key: string, source: string): string {
+  const value = record[key];
+  if (typeof value !== "string" || value.length === 0) throw new Error(`${source} missing string field ${key}`);
+  return value;
+}
+
+function requiredNumber(record: Record<string, unknown>, key: string, source: string): number {
+  const value = record[key];
+  if (typeof value !== "number") throw new Error(`${source} missing numeric field ${key}`);
+  return value;
+}
+
+function stringRecord(record: Record<string, unknown>, key: string, source: string): Record<string, string> {
+  const entries = Object.entries(record).map(([entryKey, entryValue]) => {
+    if (typeof entryValue !== "string") throw new Error(`${source} ${key}.${entryKey} must be a string`);
+    return [entryKey, entryValue] as const;
+  });
+  return Object.fromEntries(entries);
+}
+
+function stringArray(value: unknown, key: string, source: string): string[] {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+    throw new Error(`${source} ${key} must be a string array`);
+  }
+  return value;
+}
+
+function renderEdgeOneSetupSummary(setup: EdgeOneSetupSummary): string {
+  return [
+    "# EdgeOne Knowledge Cloud Setup",
+    "",
+    `Provider: \`${setup.provider}\``,
+    `Service: \`${setup.service}\``,
+    `Default domain: \`${setup.default_domain}\``,
+    `Healthcheck: \`${setup.healthcheck_path}\``,
+    `Deploy secret: \`${setup.deploy_secret}\``,
+    "",
+    "## Runtime",
+    "",
+    `- Node: \`${setup.runtime.node}\``,
+    `- Port: \`${setup.runtime.port}\``,
+    `- Entry: \`${setup.runtime.entry}\``,
+    "",
+    "## Environment",
+    "",
+    ...Object.entries(setup.environment).map(([key, value]) => `- \`${key}=${value}\``),
+    "",
+    "## Include Files",
+    "",
+    ...setup.include_files.map((path) => `- \`${path}\``),
+    "",
+    "## Console Checklist",
+    "",
+    ...setup.console_checklist.map((item) => `- ${item}`),
+    "",
+    "## GitHub Commands",
+    "",
+    ...setup.github_commands.map((command) => `- \`${command}\``),
+    "",
+    "## Workflow Commands",
+    "",
+    ...setup.workflow_commands.map((command) => `- \`${command}\``),
+    "",
+    "## Validation Commands",
+    "",
+    ...setup.validation_commands.map((command) => `- \`${command}\``),
     "",
   ].join("\n");
 }
