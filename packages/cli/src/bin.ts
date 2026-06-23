@@ -1545,12 +1545,16 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   expectAsset(render, "OSSTACK_KNOWLEDGE_FEEDBACK_LOG", "Render config must persist feedback JSONL.");
   expectAsset(render, "OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR", "Render config must persist published knowledge packs.");
   expectAsset(workflow, "workflow_dispatch:", "Knowledge Cloud deploy workflow must be manually triggerable.");
+  expectAsset(workflow, "cancel-in-progress: true", "Knowledge Cloud deploy workflow must cancel older in-progress deploy runs.");
   expectAsset(workflow, "cloud_url:", "Knowledge Cloud deploy workflow must accept a deployed cloud URL for validation.");
   expectAsset(workflow, "pnpm smoke:knowledge-cloud", "Knowledge Cloud deploy workflow must run service smoke.");
   expectAsset(workflow, "pnpm smoke:knowledge-cloud:deploy", "Knowledge Cloud deploy workflow must run deploy asset smoke.");
   expectAsset(workflow, "docker build -f Dockerfile.knowledge-cloud", "Knowledge Cloud deploy workflow must build the Docker image.");
   expectAsset(workflow, "secrets.EDGEONE_API_TOKEN", "Knowledge Cloud deploy workflow must gate deploy on EDGEONE_API_TOKEN.");
   expectAsset(workflow, "edgeone@latest makers deploy . -n osstack-knowledge-cloud", "Knowledge Cloud deploy workflow must use the EdgeOne Makers CLI.");
+  expectAsset(workflow, "timeout-minutes: 10", "Knowledge Cloud deploy workflow must bound the EdgeOne CLI step runtime.");
+  expectAsset(workflow, "timeout --foreground --kill-after=30s 8m npx edgeone@latest", "Knowledge Cloud deploy workflow must kill a hung EdgeOne CLI deploy command before the job timeout.");
+  expectAsset(workflow, "EdgeOne CLI deploy exceeded the 8 minute command timeout", "Knowledge Cloud deploy workflow must explain EdgeOne CLI timeout failures.");
   expectAsset(workflow, "EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must retain the deploy hook fallback.");
   expectAsset(workflow, "release doctor --target knowledge-cloud --cloud-url", "Knowledge Cloud deploy workflow must validate deployed health/search/sync/audit/feedback-summary gates when cloud_url is supplied.");
   expectAsset(workflow, "knowledge sync --cloud-url", "Knowledge Cloud deploy workflow must sync from the deployed cloud URL when supplied.");

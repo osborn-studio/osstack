@@ -13,7 +13,9 @@ on:
         required: false
         default: ""
 
-concurrency: knowledge-cloud-deploy
+concurrency:
+  group: knowledge-cloud-deploy
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -69,13 +71,18 @@ jobs:
 
       - name: Deploy with EdgeOne CLI
         if: ${{ inputs.deploy && steps.edgeone-deploy-credential.outputs.mode == 'cli' }}
+        timeout-minutes: 10
         run: |
           set +e
-          npx edgeone@latest makers deploy . -n osstack-knowledge-cloud -t "$EDGEONE_API_TOKEN" -e production 2>&1 | tee edgeone-deploy.log
+          timeout --foreground --kill-after=30s 8m npx edgeone@latest makers deploy . -n osstack-knowledge-cloud -t "$EDGEONE_API_TOKEN" -e production 2>&1 | tee edgeone-deploy.log
           status="${PIPESTATUS[0]}"
           set -e
           if [ "$status" -eq 0 ]; then
             exit 0
+          fi
+          if [ "$status" -eq 124 ]; then
+            echo "EdgeOne CLI deploy exceeded the 8 minute command timeout. Cancelled to protect GitHub Actions minutes; inspect EdgeOne Makers deployment state in the Tencent Cloud console before retrying." >> "$GITHUB_STEP_SUMMARY"
+            exit 124
           fi
           if grep -q "Deploy Success" edgeone-deploy.log && grep -q "Failed to retrieve project status information" edgeone-deploy.log; then
             echo "EdgeOne reported Deploy Success, but the post-deploy project status lookup failed. Treating deployment as successful and continuing validation." >> "$GITHUB_STEP_SUMMARY"
