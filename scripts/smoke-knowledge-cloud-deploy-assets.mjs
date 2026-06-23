@@ -65,9 +65,11 @@ assertIncludes(workflow, "Deploy Success", "Knowledge Cloud deploy workflow must
 assertIncludes(workflow, "EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must retain the deploy hook fallback");
 assertIncludes(workflow, "deploy=true requires repository secret EDGEONE_API_TOKEN or EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy=true must fail when no EdgeOne deploy credential is configured");
 assertIncludes(workflow, 'curl -fsS -X POST "$EDGEONE_DEPLOY_HOOK_URL"', "Knowledge Cloud deploy workflow must trigger the EdgeOne deploy hook fallback");
+assertIncludes(workflow, "if: $" + "{{ inputs.cloud_url != '' }}", "Knowledge Cloud deploy workflow must validate cloud_url even during validation-only runs");
 assertIncludes(workflow, "release doctor --target knowledge-cloud --cloud-url", "Knowledge Cloud deploy workflow must validate the deployed health/search/audit gates when cloud_url is supplied");
 assertIncludes(workflow, 'knowledge sync --cloud-url "${{ inputs.cloud_url }}" --json', "Knowledge Cloud deploy workflow must sync from the deployed cloud URL when supplied");
 assertIncludes(workflow, 'knowledge search "proof pack checksum" --cloud-url "${{ inputs.cloud_url }}" --json', "Knowledge Cloud deploy workflow must search the deployed cloud URL when supplied");
+assertIncludes(workflow, "validation-only run completed against", "Knowledge Cloud deploy workflow must summarize validation-only runs that check a cloud URL");
 assertIncludes(workflow, "OSSTACK_TEST_RELEASE_GITHUB_AUTH: ok", "Knowledge Cloud deploy workflow must keep post-deploy validation focused on the deployed URL inside CI");
 assertIncludes(workflow, "OSSTACK_TEST_RELEASE_SECRETS: EDGEONE_API_TOKEN", "Knowledge Cloud deploy workflow must provide release doctor CI secret evidence after the deploy gate has passed");
 
