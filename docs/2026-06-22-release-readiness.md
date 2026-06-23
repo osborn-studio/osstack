@@ -16,8 +16,8 @@
 
 尚未完成的部分不是代码验证，而是外部发布链路：
 
-- GitHub push/PR 已恢复；GitHub Actions runner 已能正常执行，最新 main CI 与 macOS Release Candidate 已通过。
-- npm 发布仍卡在 `@osstack` scope 发布权限：仓库 secret `NPM_TOKEN` 已存在，但 Release workflow 在 preflight 阶段暴露 scope/publish access 问题。
+- GitHub push/PR 已恢复；GitHub Actions runner 已能正常执行，main CI run `27999972409` 与 macOS Release Candidate run `27999972401` 已通过。
+- npm 发布仍卡在 `@osstack` scope 发布权限：仓库 secret `NPM_TOKEN` 已存在，但 Release workflow 在 preflight 阶段明确返回 `NPM_TOKEN account cannot publish to @osstack.` / npm `E403`。
 - Knowledge Cloud 正式上线选择 EdgeOne；`deploy=true` 仍需要仓库 secret `EDGEONE_DEPLOY_HOOK_URL`，并需要完成腾讯云 EdgeOne Pages 项目、deploy hook 与生产 URL 验收。
 - `FLY_API_TOKEN` 不再是当前 osstack 上线主路径的必需凭证；Fly.io 只保留为可选备份/参考。
 
@@ -36,7 +36,7 @@
 | Bun 单文件分发 | 已完成本地 release archive candidate smoke，已接 CI/release artifact | `pnpm build:single-binary` 生成 binary/manifest/checksum；`pnpm sbom:single-binary` 生成 SPDX 2.3 SBOM；`pnpm smoke:bun-single-binary` 验证 `--version`、`help`、`loop doctor --json`、sha256；`pnpm smoke:single-binary-signing` 验证 ad-hoc codesign；`pnpm smoke:single-binary-release-pack` 验证 tarball 可解包运行；release workflow 上传 candidate artifact |
 | 测试体系 | 已完成当前门禁 | lint、build、test、smoke 全部通过 |
 | 云端上线 | 未完成 | EdgeOne 已定为主路径；需要创建 EdgeOne Pages 项目、配置 `EDGEONE_DEPLOY_HOOK_URL`，然后运行 Knowledge Cloud `deploy=true` 并用生产 URL 复跑云端验收 |
-| npm 发布 | 未完成 | `NPM_TOKEN` 已进入阻塞排查范围；仍需修复 npmjs.com `@osstack` scope 和 token 背后账号的 publish 权限 |
+| npm 发布 | 未完成 | `NPM_TOKEN` 已进入阻塞排查范围；Release run `27999972440` 证明构建、测试、Knowledge Cloud、本地 npm install、single-binary artifact、`smoke:npm-preflight` 均通过，仅真实 npm access preflight 因 token 账号无 `@osstack` publish 权限失败 |
 
 ## 3. 本轮验证命令
 
@@ -180,7 +180,7 @@
 GitHub push、PR、workflow 定义已恢复；GitHub Actions runner 已从账户级阻塞中恢复。当前发布阻塞不是代码问题，而是 npm scope 权限与 EdgeOne 生产发布凭证尚未配置：
 
 - npm publish 需要可发布 `@osstack` scope 的仓库 secret `NPM_TOKEN`。
-- npmjs.com 上需要存在 `@osstack` scope，并且 `NPM_TOKEN` 背后的 npm 账号拥有该 scope 的 publish 权限；当前 Release workflow 已在真实 publish preflight 暴露 scope/publish access 问题。
+- npmjs.com 上需要存在 `@osstack` scope，并且 `NPM_TOKEN` 背后的 npm 账号拥有该 scope 的 publish 权限；当前 Release workflow 已在真实 publish preflight 暴露 `NPM_TOKEN account cannot publish to @osstack.` / npm `E403`。
 - Knowledge Cloud `deploy=true` 采用 EdgeOne 主路径，需要仓库 secret `EDGEONE_DEPLOY_HOOK_URL`。
 - 本机人工发布/排障还需要 `npm login` 与腾讯云/EdgeOne Pages 控制台权限。
 - Fly.io 不再作为当前上线主路径，因此 `FLY_API_TOKEN` 不是必需 blocker；如未来需要多云备份，再把 Fly.io 作为独立增强项处理。
@@ -193,8 +193,8 @@ osstack release doctor --json
 
 当前 `release doctor` 会额外检查发布列车状态：
 
-- `npm_publish_assets`：检查 `@osstack/cli` package 元数据、changeset 与 release workflow 的 publish/provenance/`NPM_TOKEN`/安装 smoke 约束，失败时会阻止 `npm_publish` ready。
-- `npm_scope_access`：检查 `@osstack` npm scope 是否可被当前 npm 账号访问/发布；Release workflow 也会在 changesets publish 前运行 `pnpm preflight:npm-publish`，把 `Scope not found` 提前转成可执行的修复提示。
+- `npm_publish_assets`：检查 `@osstack/cli` package 元数据、changeset 与 release workflow 的 publish/provenance/`NPM_TOKEN`/安装 smoke/`smoke:npm-preflight` 约束，失败时会阻止 `npm_publish` ready。
+- `npm_scope_access`：检查 `@osstack` npm scope 是否可被当前 npm 账号访问/发布；Release workflow 也会在 changesets publish 前运行 `pnpm preflight:npm-publish`，把 `Scope not found`、npm `E403` / `Forbidden` 提前转成可执行的修复提示。
 - `version_packages_pr`：识别 `changeset-release/main` 的 Version Packages PR，输出 PR number、URL、draft 状态和 `merge_state`。当前真实状态为 PR #5 `CLEAN / MERGEABLE`，CI run `27957659115` 已成功；仍需等 `NPM_TOKEN` 配好后再合并。
 - `knowledge_cloud_deploy_assets`：检查 Knowledge Cloud Dockerfile、EdgeOne/Render 配置和 GitHub Actions deploy workflow 的关键部署约束，失败时会阻止 `knowledge_cloud_deploy` ready。
 - `knowledge_cloud_workflow`：识别 `Knowledge Cloud Deploy` workflow 是否存在、是否 active，以及最近一次验证 run 的状态。当前最近一次 validation run 为 success，但 `deploy=true` 仍需要 `EDGEONE_DEPLOY_HOOK_URL`。
@@ -258,16 +258,18 @@ osstack release doctor --json
 验收：
 
 - `NPM_TOKEN` 显示 ready 后再合并 Version Packages PR。
+- `pnpm smoke:npm-preflight` 通过，确认 npm `E403` 会被解释成 `NPM_TOKEN` 账号权限问题。
 - `pnpm preflight:npm-publish` 在已登录/CI token 环境中通过，确认 `@osstack` scope 已创建且 token 有发布权限。
 - `EDGEONE_DEPLOY_HOOK_URL` 显示 ready 后再运行 Knowledge Cloud `deploy=true`。
 
-### Step 2：修复 GitHub Actions billing 并 rerun PR #26
+### Step 2：修复 npm `@osstack` scope 发布权限并 rerun Release
 
 验收：
 
-- GitHub Billing / spending limit 恢复正常。
-- PR #26 CI runner 能启动并执行 steps。
-- PR #26 CI 通过后合并。
+- npmjs.com 上 `@osstack` organization/scope 存在且可访问。
+- 生成 `NPM_TOKEN` 的 npm 账号被加入 `@osstack` owner 或 publisher。
+- 重新生成 automation/publish 权限的 `NPM_TOKEN` 并更新 GitHub repository secret。
+- rerun Release workflow 后 `pnpm preflight:npm-publish` 通过。
 
 ### Step 3：等待 CI 并修复差异
 
