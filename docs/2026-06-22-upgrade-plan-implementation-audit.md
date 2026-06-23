@@ -1,68 +1,64 @@
 # osstack 升级开发主计划实现审计
 
-> 日期：2026-06-22
+> 日期：2026-06-23
 > 目标文档：`/Users/gilbertchen/Documents/CODE/agentsteam/osstack/docs/2026-06-22-osstack-upgrade-development-plan.md`
-> 审计分支：`codex/releasing-operator-docs`
-> 审计 HEAD：`9fda27b ci: split macos release candidate smoke`
+> 审计分支：`main`
+> 审计 HEAD：`e1d994f feat(cli): show cached knowledge sources (#56)`
 
 ## 1. 审计结论
 
-当前分支已经把升级计划中的核心闭环推进到“本地可验证发布候选”状态：
+当前 main 已经把升级计划中的核心闭环推进到“主路径已发布、已部署、可验证”状态：
 
 - Phase 1 Evidence Layer、Phase 2 Product Entry、Phase 3 Governed Run、Phase 4 Learning Control Plane、Phase 6 的 Knowledge Cloud/Compliance 大部分已经有代码、命令和测试。
 - 最关键的端到端路径已经跑通：`deliver/loop -> report -> scorecard -> proof -> pr body -> knowledge trace -> compliance render`。
-- npm 安装后的真实用户路径已有 smoke：tarball pack/install、CLI 二进制、launchd dry-run、doctor、installed `release doctor --target npm` readiness、loop doctor、installed cockpit TUI、evidence commands、installed deliver/proof validate、proof zip archive integrity、official knowledge eval、Knowledge Cloud package loading、cloud sync cache、cloud outage local fallback。
-- Knowledge Cloud 已具备 official/private pack HTTP 服务、sync/search/feedback/publish endpoint、部署资产和本地 smoke；本地 smoke 会启动真实服务并调用构建后的 CLI 跑 `release doctor --target knowledge-cloud --cloud-url <local-url>`，覆盖 health/search/audit handoff gate。
+- npm 主路径已真实发布并验证：`@osstack/cli@0.2.0` 可从 npm registry 安装，安装后 `osstack --version` 返回 `osstack 0.2.0`，`release doctor --target npm` 通过。
+- Knowledge Cloud 已部署到 EdgeOne：生产 URL `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool`，`release doctor --target primary --cloud-url <EdgeOne URL> --json` 返回 `ok: true`，并验证 health、search、sync、audit。
+- npm 安装后的真实用户路径已有 smoke：registry install、tarball pack/install、CLI 二进制、launchd dry-run、doctor、installed `release doctor --target npm` readiness、loop doctor、installed cockpit TUI、evidence commands、installed deliver/proof validate、proof zip archive integrity、official knowledge eval、Knowledge Cloud package loading、cloud sync cache、cloud outage local fallback。
+- Knowledge Cloud 已具备 official/private pack HTTP 服务、sync/search/feedback/publish endpoint、部署资产、本地 smoke 和生产 EdgeOne smoke；生产云端可 sync 6 个 official Osstack-native packs，并可通过 `knowledge sources --internal` 查看缓存包 provenance。
 
-仍未完成的部分集中在外部发布和产品深化：
+仍未完成的部分集中在可选发布深化和产品深化：
 
-- GitHub push/PR 与 Actions runner 已恢复，已有 main CI 和 macOS Release Candidate 通过记录；为节省 Actions minutes，当前最新可检查 CI run 是 cancelled，但 `release doctor` 仍能访问 Actions 状态，并保留 `github_actions` 检查用于提前发现账户层 runner/billing 类问题。
-- npm publish 仍需要修复 npmjs.com 上 `@osstack` scope/账号发布权限；仓库 secret `NPM_TOKEN` 已存在，但当前 npm scope access preflight 仍返回 scope missing/unauthorized。Knowledge Cloud `deploy=true` 现在以 EdgeOne 为主路径，仍需要仓库 secret `EDGEONE_API_TOKEN`，也支持 `EDGEONE_DEPLOY_HOOK_URL` 作为 fallback。
+- GitHub push/PR 与 Actions runner 已恢复，PR #55/#56 合并后的 main CI、Release、macOS Release Candidate 均为 green；`release doctor` 仍保留 Actions 检查用于提前发现账户层 runner/billing 类问题。
+- npm publish 和 EdgeOne Knowledge Cloud 主路径已不再是外部阻塞；`release doctor --target primary --cloud-url https://osstack-knowledge-cloud-1grycf4k.edgeone.cool --json` 当前返回 `ok: true`，readiness 中 `npm_publish=true`、`knowledge_cloud_deploy=true`。
 - 日常 PR CI 已拆到 `ubuntu-latest`，macOS single-binary release-candidate smoke 已拆到独立 `.github/workflows/macos-release-candidate.yml`，正式 release workflow 仍保留 macOS archive candidate artifact。
-- `npm install -g @osstack/cli` 还没有从真实 npm registry 验证，只验证了本地 tarball 安装。
 - 可选单文件分发已有 portable CLI bundle smoke、Bun single executable smoke、本地 release asset manifest/checksum/SPDX SBOM、ad-hoc codesign 验证、`.tar.gz` release archive smoke、single-binary `release doctor` readiness，并已接入 CI/release workflow candidate artifact 与 tag/workflow_dispatch GitHub Release 上传路径；发布级 Developer ID 签名/公证/跨机器验证尚未完成。
 - Cockpit 当前是 dashboard/web cockpit + CLI summary，不是完整交互式 TUI。
-- Knowledge Cloud 已有本地 ingestion/rewrite/review、云端 `/v1/publish` 门禁、文件型 published-pack storage、tenant-scoped audit JSONL 与 `/v1/audit` 查询切片；审核后台、Postgres/object storage/vector index、正式云端运营流水线仍未完成。
+- Knowledge Cloud 已有本地 ingestion/rewrite/review、云端 `/v1/publish` 门禁、文件型 published-pack storage、tenant-scoped audit JSONL 与 `/v1/audit` 查询切片，并已上线 EdgeOne；审核后台、Postgres/object storage/vector index、正式云端运营流水线仍未完成。
 
 ## 2. Phase 完成矩阵
 
 | Phase | 计划目标 | 当前状态 | 证据 | 剩余工作 |
 |---|---|---:|---|---|
-| Phase 0 Distribution | 一行安装 + daemon install + 可选单文件分发 | 部分完成 | `scripts/smoke-npm-install.mjs` 验证本地 tarball install、安装后 deliver、proof validate file/archive integrity；`serve --install --no-load` 验证 launchd plist 生命周期；`scripts/smoke-portable-cli.mjs` 验证 portable bundle；`scripts/build-single-binary.mjs` 生成 Bun single executable release candidate；`scripts/generate-single-binary-sbom.mjs` 生成 SPDX SBOM；`scripts/smoke-bun-single-binary.mjs` 验证 manifest/checksum/runtime；`scripts/smoke-single-binary-signing.mjs` 验证 ad-hoc codesign；`scripts/smoke-single-binary-release-pack.mjs` 验证 release archive 可解包运行；`scripts/smoke-single-binary-release-publish.mjs` dry-run 验证 release upload inputs；CI/release workflow 已接 candidate artifact 与 formal upload path | 真实 npm publish；真实 `npm install -g @osstack/cli`；Developer ID 签名/公证/跨机器验证/远端正式 GitHub Release asset |
+| Phase 0 Distribution | 一行安装 + daemon install + 可选单文件分发 | 主路径完成，可选单文件深化中 | `@osstack/cli@0.2.0` 已发布到 npm；真实 registry `npm install -g @osstack/cli@0.2.0` smoke 通过并返回 `osstack 0.2.0`；`release doctor --target primary` 显示 `npm_publish=true`；`serve --install --no-load` 验证 launchd plist 生命周期；`scripts/smoke-portable-cli.mjs` 验证 portable bundle；`scripts/build-single-binary.mjs` 生成 Bun single executable release candidate；`scripts/generate-single-binary-sbom.mjs` 生成 SPDX SBOM；`scripts/smoke-bun-single-binary.mjs` 验证 manifest/checksum/runtime；`scripts/smoke-single-binary-signing.mjs` 验证 ad-hoc codesign；`scripts/smoke-single-binary-release-pack.mjs` 验证 release archive 可解包运行；`scripts/smoke-single-binary-release-publish.mjs` dry-run 验证 release upload inputs；CI/release workflow 已接 candidate artifact 与 formal upload path | Developer ID 签名/公证/跨机器验证/远端正式 GitHub Release asset |
 | Phase 1 Evidence Layer | report + scorecard + proof + subprocess-first adapters | 基本完成 | `report-cli.test.ts`、`scorecard-cli.test.ts`、`proof-cli.test.ts`、`agent-list-cli.test.ts`、npm install smoke | daemon event-rich report 仍需更多真实运行样本验证 |
 | Phase 2 Product Entry | `osstack deliver` + agent 角色化 | 基本完成 | `deliver-cli.test.ts`、`product-entry-cli.test.ts`、`agent-scorecard-cli.test.ts`、`smoke:npm-install` 安装后 deliver/worktree/proof smoke | 可继续在外部真实业务 repo 上扩展长任务 smoke |
 | Phase 3 Governed Run | Run Spec + governance verifier + PR evidence | 基本完成 | `docs/specs/OSSTACK_RUN_SPEC_V1.md`、`docs/specs/CONFORMANCE_MATRIX.md`、schemas/test vectors、`governance-cli.test.ts`、`pr-cli.test.ts` | 继续随新 MUST 条款补 runtime/schema/vector 覆盖 |
 | Phase 4 Learning Control Plane | Pitfall KB + Knowledge bootstrap + agent scorecard | 基本完成 | `lessons-cli.test.ts`、`knowledge-cli.test.ts`、`agent-scorecard-cli.test.ts` | 继续用更多真实项目运行样本校准 lesson family 与召回精度 |
 | Phase 5 Product Surface | Cockpit/TUI + examples/guide/doctor + i18n + checkpoint | 部分到基本完成 | `dashboard.ts`、`dashboard-cli.test.ts`、`product-entry-cli.test.ts`、`i18n-cli.test.ts`、`proof-cli.test.ts`、`compliance-cli.test.ts`、`checkpoint-cli.test.ts` | 完整交互式 TUI 未完成；更深层报告模板/运营内容本地化仍可扩展 |
-| Phase 6 Trust/Compliance/Knowledge Cloud | compliance packs + enterprise proof views + Osstack Knowledge Cloud | 部分到基本完成 | `compliance-packs/*`、`compliance-cli.test.ts`、`proof --compliance-pack` proof artifacts、`proof view`、`knowledge-cloud` package、`/v1/publish` gate、`/v1/audit` tenant audit events、deploy assets、smoke | 真实云端上线、生产 ingestion pipeline、tenant auth/storage/vector index |
+| Phase 6 Trust/Compliance/Knowledge Cloud | compliance packs + enterprise proof views + Osstack Knowledge Cloud | 主路径上线，生产运营深化中 | `compliance-packs/*`、`compliance-cli.test.ts`、`proof --compliance-pack` proof artifacts、`proof view`、`knowledge-cloud` package、`/v1/publish` gate、`/v1/audit` tenant audit events、deploy assets、local smoke、EdgeOne production URL `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool`、`release doctor --target primary --cloud-url <EdgeOne URL>` ok、生产云端 sync 6 packs、生产云端 search/audit ok、cached `knowledge list` 与 `knowledge sources --internal` PR #55/#56 | 生产 ingestion pipeline、审核后台、tenant auth/storage/vector index |
 
 ## 3. 任务级状态
 
 ### Task 0.1：发布 `@osstack/cli`
 
-状态：部分完成。
+状态：主路径完成。
 
 已完成：
 
 - `@osstack/cli` package 可 build/pack/install。
 - 本地 tarball 全局安装 smoke 通过。
+- `@osstack/cli@0.2.0` 已真实发布到 npm registry。
+- 真实 registry 安装 smoke 通过：`npm install -g @osstack/cli@0.2.0 --registry https://registry.npmjs.org/` 后 `osstack --version` 返回 `osstack 0.2.0`。
 - 安装后 `osstack --version` 通过。
 - 安装后 `doctor`、`release doctor --target npm`、`loop doctor`、evidence commands、knowledge commands 通过。
 - `.changeset/osstack-upgrade-knowledge-cloud.md`、`.github/workflows/release.yml` 已存在。
 - `release doctor --target npm` 已接入 `npm_publish_assets` 静态 preflight，检查 `@osstack/cli` package 元数据、changeset、release workflow 的 changesets action、`pnpm smoke:release-plan`、`pnpm smoke:npm-install`、npm provenance、`NPM_TOKEN` 与 `NODE_AUTH_TOKEN` 发布约束；`smoke:npm-install` 会用安装后的 CLI 执行 `release doctor --target npm --json` 并确认 npm publish readiness 与 publish assets gate；`smoke:release-plan` 会验证完整 JSON/Markdown runbook 的 validation、publish/deploy 与 post-release validation commands；`release plan` 的 npm validation commands 会列出 `pnpm smoke:npm-install`，`target=all` 还会列出 `pnpm smoke:release-plan`，post-release validation commands 会列出真实 registry 安装后的 `npm install -g @osstack/cli`、`osstack release doctor --target npm --json` 与 `osstack doctor --workspace . --json`。
-
-未完成：
-
-- 还没有真实 npm registry 发布。
-- 还没有从 npm registry 执行 `npm install -g @osstack/cli`。
-- GitHub push/CI/release workflow 已恢复；仓库 secret `NPM_TOKEN` 已存在，真实 npm publish 仍需要在 npmjs.com 创建/认领 `@osstack` scope，并让 token 背后的 npm 账号拥有 owner 或 publisher 权限；可用 `osstack release doctor --target npm --json` 做发布前置检查。
+- GitHub push/CI/release workflow 已恢复；仓库 secret `NPM_TOKEN` 存在，npm scope access preflight 当前通过。
 
 下一步：
 
-1. 创建/认领 npmjs.com `@osstack` scope，并确保生成 `NPM_TOKEN` 的 npm 账号拥有 publish/owner 权限；必要时重新生成并更新 `NPM_TOKEN`。
-2. 跑 `osstack release doctor --target npm --json`。
-3. CI 通过后跑 release workflow 或合并 changesets Version Packages PR。
-4. 用真实 npm registry 复跑安装 smoke。
+1. 后续版本发布时继续使用 Release workflow 和 `release doctor --target npm --json` 作为前置门禁。
+2. 每次发布后用真实 npm registry 复跑 `npm install -g @osstack/cli@<version>`、`osstack --version`、`osstack release doctor --target npm --json`。
 
 ### Task 0.2：`osstack serve --install`
 
@@ -383,7 +379,7 @@
 
 ### Task 6.3：Osstack Knowledge Cloud
 
-状态：部分到基本完成。
+状态：主路径上线，生产运营深化中。
 
 已完成：
 
@@ -404,12 +400,16 @@
 - Knowledge search result 会返回 `matched_terms`，本地检索和云端检索 validator 均已覆盖，prompt snippet 会携带命中词，便于 proof/report 解释 chunk 为什么被检索命中。
 - 本地与云端共用的 `searchKnowledgePacks` 已从简单词频排序升级为 BM25-style 排序：考虑 query term 文档频率、chunk 长度归一化和 pack quality score，并覆盖“稀有词完整命中优先于重复通用词”的回归测试。
 - CLI 支持 cloud login/sync/search/import/ingest/pin/feedback/sources。
+- `knowledge list` 与 `knowledge sources --internal` 已支持无显式 `--pack` / `--official` 时读取 `knowledge sync` 写入的本地缓存；PR #55 覆盖 sync -> list -> search，PR #56 覆盖 sync -> list -> sources -> search provenance 审计闭环。
 - 本地 smoke 验证 official/private packs、sync、search、feedback，并在真实本地服务上调用构建后的 `osstack release doctor --target knowledge-cloud --cloud-url <local-url> --json`，确认 health、search、audit 三道部署 handoff gate 通过且 public audit 不泄漏 tenant event。
 - deploy assets 存在：Dockerfile、EdgeOne、Render、GitHub Actions；`release doctor --target knowledge-cloud` 已接入 `knowledge_cloud_deploy_assets` 静态 preflight，检查 Dockerfile、EdgeOne/Render healthcheck、audit JSONL 持久化路径、feedback JSONL 持久化路径、published-pack storage 路径、workflow smoke、Docker build、`EDGEONE_API_TOKEN` gate 与 EdgeOne Makers CLI 命令；传入 `--cloud-url <url>` 时还会访问 `<url>/healthz` 并要求 HTTP 2xx、`ok=true`、`service=osstack-knowledge-cloud`，用默认 `proof pack checksum` 查询 `<url>/v1/search` 并要求至少 1 条结果，同时对 `<url>/v1/audit` 执行 public audit smoke，要求返回 JSON events 数组且不能泄漏 tenant event；`release plan` 的 Knowledge Cloud validation commands 会列出 `pnpm smoke:knowledge-cloud:deploy`，`smoke:release-plan` 会检查 full release runbook 中该命令与部署后云端验收命令都存在，post-release validation commands 默认使用生产 URL `https://knowledge.osstack.ai`，如果传入 `--cloud-url <url>` 则复用该 URL 执行 `release doctor`、`knowledge sync` 和 `knowledge search`。
+- EdgeOne 生产 URL 已上线：`https://osstack-knowledge-cloud-1grycf4k.edgeone.cool`。
+- `release doctor --target primary --cloud-url https://osstack-knowledge-cloud-1grycf4k.edgeone.cool --json` 当前返回 `ok: true`，并验证 npm publish readiness、Knowledge Cloud health/search/sync/audit、EdgeOne deploy credential。
+- 生产云端 `knowledge sync --cloud-url https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` 返回 6 个 official Osstack-native packs：agent-routing-policy、loop-engineering、pr-and-release、proof-and-scorecard、verifier-and-governance、worktree-safety。
+- 生产云端 sync 后，`knowledge sources --internal --cache-dir <cache>` 可看到每个官方 pack 的 source_provenance、license、scope 和 sha256。
 
 未完成：
 
-- 真实云端域名/URL 未上线；`--cloud-url` health + search gate 已具备，但尚无生产 URL 通过记录。
 - 文件型 published-pack storage 已实现并被 service/bin/smoke 覆盖；Postgres/object storage/vector index 未实现；BM25-style 本地/云端共享排序已作为 MVP 检索排序落地。
 - ingestion pipeline 仍是本地 MVP，不是完整云端 source intake -> rewrite -> review -> publish 运营系统；当前已有本地 source intake、Osstack rewrite、approved review metadata 与云端 `/v1/publish` gate，可检查 Osstack voice、provenance、source_refs、quality/review/taxonomy 与 processed license label，并把通过审核的包加入当前 Cloud 进程的 official/private 检索范围。
 - tenant auth/permissions 已有 global token、tenant-bound token、explicit tenant scope 的本地 HTTP gate，以及 tenant-scoped audit event 查询/落盘；但仍不是完整生产级账号、组织、角色、审计日志权限模型。
@@ -418,11 +418,9 @@
 
 | 优先级 | 项目 | 原因 | 完成证据 |
 |---:|---|---|---|
-| P0 | GitHub Actions runner 验证 | runner 已恢复并能完成主线 CI；继续保留 release doctor 作为账户层 blocker 早发现机制 | main CI 和 macOS Release Candidate 持续为 green |
-| P0 | 修复 npm `@osstack` scope/账号发布权限 | `NPM_TOKEN` secret 已存在，但 npm 当前返回 scope missing/unauthorized；需要创建/认领 `@osstack` scope，并确保 token 背后的 npm 账号有 publish/owner 权限；`osstack release npm --output npm-publish-setup.md --json` 可生成 npmjs.com、GitHub secret、workflow rerun 和发布后验证交接清单 | `osstack release npm --output npm-publish-setup.md --json` 生成清单；`osstack release doctor --target npm --json` ready；Release workflow 通过 npm preflight |
-| P0 | 配置 `EDGEONE_API_TOKEN` 或 fallback deploy hook | EdgeOne 是 Knowledge Cloud 主部署路径；没有 EdgeOne API Token secret 或 fallback deploy hook secret 不能运行 Knowledge Cloud `deploy=true` | `osstack release doctor --target knowledge-cloud --json` ready |
-| P0 | 部署 Knowledge Cloud 到真实云端 | Phase 6 需要“上线”而非本地 smoke | 生产 URL + `release doctor --target knowledge-cloud --cloud-url <url>` health/search/audit gate |
-| P0 | npm publish 并从 registry 安装 | Phase 0 一行安装的最终验收 | `npm install -g @osstack/cli` 成功 |
+| P0 | GitHub Actions runner 验证 | runner 已恢复并能完成主线 CI；继续保留 release doctor 作为账户层 blocker 早发现机制 | PR #55/#56 合并后的 main CI、Release、macOS Release Candidate 均为 success |
+| P0 | npm publish 并从 registry 安装 | Phase 0 一行安装的最终验收已完成，后续版本继续保持此门禁 | `@osstack/cli@0.2.0` 已发布；registry install smoke 后 `osstack --version` 返回 `osstack 0.2.0`；`release doctor --target primary` 显示 `npm_publish=true` |
+| P0 | 部署 Knowledge Cloud 到真实云端 | Phase 6 需要“上线”而非本地 smoke；EdgeOne 主路径已完成首个生产 URL 验收 | `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool`；`release doctor --target primary --cloud-url <EdgeOne URL>` ok；生产 `knowledge sync/search/sources` 通过 |
 | P1 | `CONFORMANCE_MATRIX.md` 持续维护 | 让 OSSTACK_RUN_SPEC_V1 的 MUST 条款可审计 | 每条新增/变更 MUST 同步 schema/test/vector/verifier/smoke 映射 |
 | P1 | 真实 repo deliver e2e smoke | 证明 Product Entry 可处理实际项目 | `pnpm smoke:real-repo-deliver` 在带 `package.json` 和 `node --test` 的临时 git repo 中跑 deliver/worktree/`npm test`/proof 成功，并断言 `proof validate` 的 file/archive integrity 通过，已接入 CI |
 | P1 | Compliance report 从 proof dir 渲染 smoke | 证明 enterprise proof 包装闭环 | 已覆盖真实 deliver proof dir 渲染 `engineering-readiness` 与 `soc2-lite`，且不声称外部认证 |
@@ -434,32 +432,32 @@
 当前执行：
 
 ```sh
-GitHub push、PR、release workflow 定义已恢复。当前阻塞点集中在 npm scope/账号权限与 EdgeOne 部署凭证：
+GitHub push、PR、release workflow、npm publish、EdgeOne Knowledge Cloud 主部署路径均已恢复并通过验收。
 
-- GitHub Actions runner 已恢复，已有主线 CI 和 macOS Release Candidate 通过记录；当前最新可检查 CI run 是 cancelled，属于节省 minutes 的停止记录，不等同于 runner 不可用。
-- npm registry publish 当前卡在 `@osstack` scope/账号权限：`NPM_TOKEN` 已存在，但 npm scope access preflight 仍返回 scope missing/unauthorized，需要创建/认领 `@osstack` scope，并把生成 token 的 npm 账号加入/设为 `@osstack` owner 或 publisher。
-- Knowledge Cloud `deploy=true` 采用 EdgeOne 主路径，需要仓库 secret `EDGEONE_API_TOKEN`；`EDGEONE_DEPLOY_HOOK_URL` 保留为 fallback。
+- GitHub Actions runner 已恢复，PR #55/#56 合并后的 main CI、Release、macOS Release Candidate 均为 success。
+- npm registry publish 已完成，`@osstack/cli@0.2.0` 可从 npm registry 安装。
+- Knowledge Cloud `deploy=true` 采用 EdgeOne 主路径，生产 URL 为 `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool`。
+- `release doctor --target primary --cloud-url https://osstack-knowledge-cloud-1grycf4k.edgeone.cool --json` 当前返回 `ok: true`，readiness 中 `npm_publish=true`、`knowledge_cloud_deploy=true`。
 - `FLY_API_TOKEN` 不再是当前 osstack 上线主路径的必需凭证；Fly.io 只保留为可选参考。
-- 本地人工排障继续需要 `npm login`；EdgeOne 排障需要腾讯云/EdgeOne Pages 控制台权限。
+- 本地人工排障仍可使用 `npm login`；EdgeOne 运营排障需要腾讯云/EdgeOne Pages 控制台权限。
 
 发布前检查：
 
 ```sh
-osstack release doctor --json
+osstack release doctor --target primary --cloud-url https://osstack-knowledge-cloud-1grycf4k.edgeone.cool --json
 ```
 
 ## 6. 下一步建议
 
-在发布凭证补齐前，建议继续做本地可验证的 P1：
+主路径 P0 已解除，建议继续做可验证的 P1/P2 深化：
 
 1. 继续给 `osstack proof validate` 增加更多 negative/malformed vectors；当前 proof/compliance 的结构级证据检查已抽成可复用 validator，proof view/compliance render 会把 malformed manifest、verify、policy、agent runtime、governance、worktree、knowledge evidence 标成 `MISSING`，CLI 还会拒绝 manifest artifact path 重复、artifact 缺失、hash/bytes 不一致、`sha256sums.txt` inventory 不一致和越界路径，release plan 已输出 proof validate 命令并支持 `--workspace` 自动 proof 检查和显式 `--proof-dir` 覆盖，release doctor 已支持显式 `--proof-dir` 和最新 proof dir 自动发现。
 2. 继续补更多 negative/malformed vectors，覆盖边界格式、旧版本兼容字段、外部 proof 目录导入场景。
 3. 继续强化 release doctor、Knowledge Cloud deploy preflight、npm publish preflight；当前 release doctor 已能识别 Version Packages PR #5 的 `CLEAN / MERGEABLE` 状态，检查 NPM publish assets、Knowledge Cloud deploy assets 和 single-binary release assets，显示 Knowledge Cloud Deploy workflow 最近一次 validation run，通过 `--output` 生成 Markdown 发布行动清单，通过 `release plan` 生成验证/发布/部署命令 runbook，通过 `release npm` 单独生成 npm 发布权限修复 handoff，并通过默认 `target=primary` 的 `release handoff` 一次性生成 status/plan/npm/EdgeOne/next-actions/manifest 主路径交接目录；`next-actions.sh` 只打印操作者下一步清单，不会执行 secret 写入、发布或部署；如需 single-binary 公证交接，再显式使用 `--target all`。
 
-授权解除后，立即转入 P0：
+下一轮可转入：
 
-1. 在 npm 创建/认领 `@osstack` scope，并确保生成 `NPM_TOKEN` 的账号拥有 publish/owner 权限；必要时重新生成并更新仓库 secret `NPM_TOKEN`。
-2. 运行 `osstack release handoff --cloud-url <EdgeOne URL> --output-dir release-handoff --json` 生成统一交接包；也可单独运行 `osstack release npm --output npm-publish-setup.md --json`，按清单修复 npm scope/账号权限后 rerun Release workflow。
-3. 在 EdgeOne Pages 创建 Knowledge Cloud 项目和 EdgeOne API Token，配置仓库 secret `EDGEONE_API_TOKEN`；如果先用 EdgeOne Deploy Hook，则配置 `EDGEONE_DEPLOY_HOOK_URL` fallback。
-4. 运行 Knowledge Cloud Deploy workflow，选择 `deploy=true`。
-5. 用生产 URL 执行 `osstack release doctor --target knowledge-cloud --cloud-url <EdgeOne URL> --json`、`osstack knowledge sync --cloud-url <EdgeOne URL> --json` 和 `osstack knowledge search "proof pack checksum" --cloud-url <EdgeOne URL> --json`。
+1. 完整交互式 TUI：在现有 `cockpit tui --json` 稳定数据契约上实现 Ink/blessed 交互层。
+2. 生产 Knowledge Cloud 运营：审核后台、object storage/Postgres/vector index、团队/组织权限模型。
+3. Single-binary 发布产品化：配置 Apple Developer ID secrets，跑通远端 notarization、跨机器 smoke 和正式 GitHub Release asset。
+4. 更多真实业务 repo deliver e2e 样本，持续校准 lessons、agent scorecard、governance strict mode 与 proof validate negative vectors。
