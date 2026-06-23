@@ -138,6 +138,11 @@ describe("pr CLI", () => {
       status: "error",
       summary: expect.stringContaining("default branch"),
     }));
+    expect(summary.readiness.checks).toContainEqual(expect.objectContaining({
+      id: "gh_auth",
+      status: "warn",
+      summary: expect.stringContaining("skipped"),
+    }));
   });
 });
 
