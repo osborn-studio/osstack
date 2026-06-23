@@ -4746,14 +4746,17 @@ Env:
 
   if (sub === "list") {
     const packPaths = flagValues(args, "--pack");
-    if (packPaths.length === 0 && !args.includes("--official")) {
-      console.error("osstack: knowledge list requires at least one --pack path or --official");
-      return 1;
-    }
+    const officialRequested = args.includes("--official");
+    const explicitSourceRequested = packPaths.length > 0 || officialRequested;
     const packs = [
       ...await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath))),
       ...await officialKnowledgePacksIfRequested(args),
+      ...(explicitSourceRequested ? [] : await listCachedKnowledgePacks(knowledgeCacheDir(args))),
     ];
+    if (packs.length === 0) {
+      console.error("osstack: knowledge list requires at least one --pack path, --official, or cached pack from `osstack knowledge sync`");
+      return 1;
+    }
     const summaries = packs.map((pack) => ({
       id: pack.manifest.id,
       version: pack.manifest.version,
