@@ -56,10 +56,11 @@ gh workflow run "macOS Release Candidate" --ref main
   only maintains the Version PR and skips publish.
 - The `@osstack` npm scope must exist and be owned by the publishing account
   (`npm org` / scope settings on npmjs.com).
-- **EDGEONE_DEPLOY_HOOK_URL secret** on the GitHub repo: the Tencent EdgeOne
-  Pages deploy hook URL for Knowledge Cloud. Until configured, Knowledge Cloud
-  deploy runs can validate build/smoke checks but must not be run with
-  `deploy=true`.
+- **EDGEONE_API_TOKEN secret** on the GitHub repo: the Tencent EdgeOne Makers
+  API token used by the Knowledge Cloud deploy workflow. Until either this
+  token or the optional `EDGEONE_DEPLOY_HOOK_URL` fallback is configured,
+  Knowledge Cloud deploy runs can validate build/smoke checks but must not be
+  run with `deploy=true`.
 
 Before the first npm publish, create or claim the npm organization/scope
 `@osstack`, add the npm account behind `NPM_TOKEN` as an owner or publisher,
@@ -127,10 +128,14 @@ Run a validation-only deployment check first:
 gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=false
 ```
 
-After `EDGEONE_DEPLOY_HOOK_URL` is configured and release readiness is clean,
+After `EDGEONE_API_TOKEN` is configured and release readiness is clean,
 deploy:
 
 ```bash
 gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true
 gh run watch <knowledge-cloud-deploy-run-id> --exit-status
 ```
+
+`EDGEONE_DEPLOY_HOOK_URL` is still supported as a fallback for projects that
+already use EdgeOne webhook deployment, but the primary path is the EdgeOne
+Makers CLI with `EDGEONE_API_TOKEN`.

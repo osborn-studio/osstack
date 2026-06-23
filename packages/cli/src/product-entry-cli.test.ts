@@ -367,6 +367,66 @@ describe("product entry commands", () => {
     expect(result.next_steps.join("\n")).toContain("EDGEONE_API_TOKEN");
   });
 
+  it("accepts EdgeOne API token as the primary Knowledge Cloud deploy credential", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+
+    const exitCode = await main(["release", "doctor", "--target", "knowledge-cloud", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      readiness: { knowledge_cloud_deploy: boolean };
+      checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+      next_steps: string[];
+    };
+    expect(result.ok).toBe(true);
+    expect(result.readiness.knowledge_cloud_deploy).toBe(true);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "repository_secrets",
+      status: "ok",
+      details: expect.objectContaining({ missing: [] }),
+    }));
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "edgeone_deploy_credential",
+      status: "ok",
+      details: expect.objectContaining({ mode: "cli" }),
+    }));
+    expect(result.next_steps.join("\n")).not.toContain("EDGEONE_DEPLOY_HOOK_URL");
+  });
+
+  it("accepts EdgeOne deploy hook as a fallback Knowledge Cloud deploy credential", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+
+    const exitCode = await main(["release", "doctor", "--target", "knowledge-cloud", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      readiness: { knowledge_cloud_deploy: boolean };
+      checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+      next_steps: string[];
+    };
+    expect(result.ok).toBe(true);
+    expect(result.readiness.knowledge_cloud_deploy).toBe(true);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "repository_secrets",
+      status: "ok",
+      details: expect.objectContaining({ missing: [] }),
+    }));
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "edgeone_deploy_credential",
+      status: "ok",
+      details: expect.objectContaining({ mode: "hook" }),
+    }));
+    expect(result.next_steps.join("\n")).not.toContain("EDGEONE_API_TOKEN");
+  });
+
   it("surfaces an unstable Version Packages PR in release doctor output", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
