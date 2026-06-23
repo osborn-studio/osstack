@@ -5713,6 +5713,14 @@ async function checkPrCreateReadiness(workspacePath: string): Promise<PrReadines
     checks.push({ id: "remote", status: "ok", summary: `GitHub remote: ${parseGitHubRepoSlug(remote.trim())}` });
   }
 
+  if (checks.some((check) => check.status === "error")) {
+    checks.push({ id: "gh_auth", status: "warn", summary: "GitHub CLI auth check skipped because PR create preflight already has blocking errors." });
+    return {
+      ok: false,
+      checks,
+    };
+  }
+
   const ghAuth = await execOutput("gh", ["auth", "status"], workspacePath);
   if (ghAuth instanceof Error) {
     checks.push({ id: "gh_auth", status: "warn", summary: "GitHub CLI auth is unavailable or not logged in; use manual PR steps." });
