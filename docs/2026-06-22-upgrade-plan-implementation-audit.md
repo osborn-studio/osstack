@@ -11,13 +11,13 @@
 
 - Phase 1 Evidence Layer、Phase 2 Product Entry、Phase 3 Governed Run、Phase 4 Learning Control Plane、Phase 6 的 Knowledge Cloud/Compliance 大部分已经有代码、命令和测试。
 - 最关键的端到端路径已经跑通：`deliver/loop -> report -> scorecard -> proof -> pr body -> knowledge trace -> compliance render`。
-- npm 安装后的真实用户路径已有 smoke：tarball pack/install、CLI 二进制、launchd dry-run、doctor、installed `release doctor --target npm` readiness、loop doctor、evidence commands、installed deliver/proof validate、proof zip archive integrity、official knowledge eval、Knowledge Cloud package loading、cloud sync cache、cloud outage local fallback。
+- npm 安装后的真实用户路径已有 smoke：tarball pack/install、CLI 二进制、launchd dry-run、doctor、installed `release doctor --target npm` readiness、loop doctor、installed cockpit TUI、evidence commands、installed deliver/proof validate、proof zip archive integrity、official knowledge eval、Knowledge Cloud package loading、cloud sync cache、cloud outage local fallback。
 - Knowledge Cloud 已具备 official/private pack HTTP 服务、sync/search/feedback/publish endpoint、部署资产和本地 smoke；本地 smoke 会启动真实服务并调用构建后的 CLI 跑 `release doctor --target knowledge-cloud --cloud-url <local-url>`，覆盖 health/search/audit handoff gate。
 
 仍未完成的部分集中在外部发布和产品深化：
 
-- GitHub push/PR 与 Actions runner 已恢复，main CI 和 macOS Release Candidate 可以正常完成；`release doctor` 保留 `github_actions` 检查，用于提前发现账户层 runner/billing 类问题。
-- npm publish 仍需要修复仓库 secret `NPM_TOKEN` 的 `@osstack` scope 发布权限；Knowledge Cloud `deploy=true` 现在以 EdgeOne 为主路径，仍需要仓库 secret `EDGEONE_DEPLOY_HOOK_URL`。
+- GitHub push/PR 与 Actions runner 已恢复，已有 main CI 和 macOS Release Candidate 通过记录；为节省 Actions minutes，当前最新可检查 CI run 是 cancelled，但 `release doctor` 仍能访问 Actions 状态，并保留 `github_actions` 检查用于提前发现账户层 runner/billing 类问题。
+- npm publish 仍需要修复 npmjs.com 上 `@osstack` scope/账号发布权限；仓库 secret `NPM_TOKEN` 已存在，但当前 npm scope access preflight 仍返回 scope missing/unauthorized。Knowledge Cloud `deploy=true` 现在以 EdgeOne 为主路径，仍需要仓库 secret `EDGEONE_API_TOKEN`，也支持 `EDGEONE_DEPLOY_HOOK_URL` 作为 fallback。
 - 日常 PR CI 已拆到 `ubuntu-latest`，macOS single-binary release-candidate smoke 已拆到独立 `.github/workflows/macos-release-candidate.yml`，正式 release workflow 仍保留 macOS archive candidate artifact。
 - `npm install -g @osstack/cli` 还没有从真实 npm registry 验证，只验证了本地 tarball 安装。
 - 可选单文件分发已有 portable CLI bundle smoke、Bun single executable smoke、本地 release asset manifest/checksum/SPDX SBOM、ad-hoc codesign 验证、`.tar.gz` release archive smoke、single-binary `release doctor` readiness，并已接入 CI/release workflow candidate artifact 与 tag/workflow_dispatch GitHub Release 上传路径；发布级 Developer ID 签名/公证/跨机器验证尚未完成。
@@ -32,7 +32,7 @@
 | Phase 1 Evidence Layer | report + scorecard + proof + subprocess-first adapters | 基本完成 | `report-cli.test.ts`、`scorecard-cli.test.ts`、`proof-cli.test.ts`、`agent-list-cli.test.ts`、npm install smoke | daemon event-rich report 仍需更多真实运行样本验证 |
 | Phase 2 Product Entry | `osstack deliver` + agent 角色化 | 基本完成 | `deliver-cli.test.ts`、`product-entry-cli.test.ts`、`agent-scorecard-cli.test.ts`、`smoke:npm-install` 安装后 deliver/worktree/proof smoke | 可继续在外部真实业务 repo 上扩展长任务 smoke |
 | Phase 3 Governed Run | Run Spec + governance verifier + PR evidence | 基本完成 | `docs/specs/OSSTACK_RUN_SPEC_V1.md`、`docs/specs/CONFORMANCE_MATRIX.md`、schemas/test vectors、`governance-cli.test.ts`、`pr-cli.test.ts` | 继续随新 MUST 条款补 runtime/schema/vector 覆盖 |
-| Phase 4 Learning Control Plane | Pitfall KB + Knowledge bootstrap + agent scorecard | 基本完成 | `lessons-cli.test.ts`、`knowledge-cli.test.ts`、`agent-scorecard-cli.test.ts` | pitfall 自动提升 verified_count 的真实 loop 闭环需继续增强 |
+| Phase 4 Learning Control Plane | Pitfall KB + Knowledge bootstrap + agent scorecard | 基本完成 | `lessons-cli.test.ts`、`knowledge-cli.test.ts`、`agent-scorecard-cli.test.ts` | 继续用更多真实项目运行样本校准 lesson family 与召回精度 |
 | Phase 5 Product Surface | Cockpit/TUI + examples/guide/doctor + i18n + checkpoint | 部分到基本完成 | `dashboard.ts`、`dashboard-cli.test.ts`、`product-entry-cli.test.ts`、`i18n-cli.test.ts`、`proof-cli.test.ts`、`compliance-cli.test.ts`、`checkpoint-cli.test.ts` | 完整交互式 TUI 未完成；更深层报告模板/运营内容本地化仍可扩展 |
 | Phase 6 Trust/Compliance/Knowledge Cloud | compliance packs + enterprise proof views + Osstack Knowledge Cloud | 部分到基本完成 | `compliance-packs/*`、`compliance-cli.test.ts`、`proof --compliance-pack` proof artifacts、`proof view`、`knowledge-cloud` package、`/v1/publish` gate、`/v1/audit` tenant audit events、deploy assets、smoke | 真实云端上线、生产 ingestion pipeline、tenant auth/storage/vector index |
 
@@ -55,11 +55,11 @@
 
 - 还没有真实 npm registry 发布。
 - 还没有从 npm registry 执行 `npm install -g @osstack/cli`。
-- GitHub push/CI/release workflow 已恢复；真实 npm publish 仍需要仓库 secret `NPM_TOKEN`，可用 `osstack release doctor --target npm --json` 做发布前置检查。
+- GitHub push/CI/release workflow 已恢复；仓库 secret `NPM_TOKEN` 已存在，真实 npm publish 仍需要在 npmjs.com 创建/认领 `@osstack` scope，并让 token 背后的 npm 账号拥有 owner 或 publisher 权限；可用 `osstack release doctor --target npm --json` 做发布前置检查。
 
 下一步：
 
-1. 配置仓库 secret `NPM_TOKEN`。
+1. 创建/认领 npmjs.com `@osstack` scope，并确保生成 `NPM_TOKEN` 的 npm 账号拥有 publish/owner 权限；必要时重新生成并更新 `NPM_TOKEN`。
 2. 跑 `osstack release doctor --target npm --json`。
 3. CI 通过后跑 release workflow 或合并 changesets Version Packages PR。
 4. 用真实 npm registry 复跑安装 smoke。
@@ -142,10 +142,12 @@
 - `osstack agent list` 显示 role、capability、auth mode。
 - `codex-cli` 等 subprocess/login-reuse 模式已进入测试。
 - agent scorecard 可显示成功率、失败、适合任务类型。
+- README / README.zh 已在 Agent 适配器章节加粗说明：osstack 默认不保存模型 API key，
+  默认 CLI 适配器复用本机已登录 CLI 会话，SDK/API-key 适配器属于明确 opt-in 路径。
 
 需增强：
 
-- README 中“默认不保存模型 API key”的说明可再加粗。
+- 后续新增具体 SDK/API-key adapter 时，为每个 adapter 补充 provider 级凭证配置说明与泄漏防护测试。
 
 ### Task 2.1：`osstack deliver`
 
@@ -228,11 +230,15 @@
 
 - SQLite pitfall lessons 存储存在。
 - `osstack lessons list` 存在。
+- `osstack lessons learn` 会从 failed/escalated loop state 写入 pitfall lesson；同一个 `source_run_id` 重复学习不会重复提升 `verified_count`。
+- 后续 successful loop state 会按 tech stack 验证已有 failed/escalated lesson，并把成功 run id 写入 `source_run_ids`，从而提升 `verified_count`。
+- pitfall family 已区分 `verify_failed`、`max_iter_escalation`、`agent_unavailable`、`reviewer_checker_failed`、`dependency_install_failure`、`governance_high_severity`、`merge_conflict`、`toolchain_mismatch`、`test_fixture_drift`、`network_outage`、`filesystem_permission`，避免把缺 agent、reviewer/checker gate、依赖安装、治理高危、合并冲突、工具链、fixture、网络或文件权限问题都混入通用 max-iter/verify failed。
 - dashboard/cockpit 可展示 lessons。
 
 需增强：
 
-- verify failed/reviewer failed/max-iter escalation 到 pitfall 的自动写入与 verified_count 增长还需要更多真实 loop 验证。
+- 更多项目特定 failure family、跨 run 合并/归档策略、以及团队自定义 family taxonomy 仍可继续补充。
+- 需要更多真实项目样本来校准 tech stack 召回，避免成功 run 过宽地验证不相关 lesson。
 
 ### Task 4.2：Knowledge Cloud bootstrap client
 
@@ -243,10 +249,21 @@
 - `osstack knowledge login/sync/list/search/inspect/import/ingest/pin/feedback/eval/sources` 存在。
 - local cache、cloud search、official packs、本地降级、provenance、retrieval eval 均有测试；安装后 smoke 也覆盖 cloud outage -> cached official packs fallback。
 - report/proof 可记录 knowledge mode、packs、chunks。
+- 本地 cache 已执行 pin enforcement：`knowledge sync` 会跳过与 `pins.json` 冲突的新版本并在
+  `skipped_pins` 中记录原因，`listCachedKnowledgePacks` / 本地 search 也只暴露 pinned 版本，
+  避免云端新版本悄悄改变本地知识检索结果。
+- 本地 cache 已支持旧版本清理：`knowledge prune --keep N` 默认 dry-run，`--apply` 才会删除
+  未 pinned 的旧版本；pinned 版本始终保留，避免清理破坏可复现知识检索。
+- 本地/离线 search 已支持 freshness evidence：`knowledge search --stale-after-days N` 会在本地
+  search 或 cloud fallback 到本地 cache 时输出 `cache_stale`、`cache_age_days` 与阈值，提醒用户当前
+  knowledge cache 是否超过可信 freshness window。
+- 本地/离线 search 已支持 stale cache policy：默认 `--stale-policy warn` 继续 fail-open，只输出 stale
+  evidence；自动化或发布前检查可使用 `--stale-policy strict`，在缓存超过 `--stale-after-days` 时保留
+  JSON evidence 但返回非零退出码，要求先 `knowledge sync` 或调整 freshness window。
 
 需增强：
 
-- 本地 cache 的版本清理、pin enforcement、离线策略可以继续产品化。
+- 后续可增加自动提示 sync / 自动 sync 的离线策略 profile。
 
 ### Task 4.3：Agent scorecard
 
@@ -275,10 +292,11 @@
 - Web dashboard 展示 active runs、queued tasks、active loops、agents、kanban、reports/proof packs、lessons、scorecards。
 - CLI cockpit summary 展示 actionable next steps，包含 ready/running/blocked 状态、下一步标签和执行路径说明。
 - 支持 `cockpit next` / `dashboard next` 单独输出 actionable next steps，并支持 `--status ready|running|blocked` 过滤与 `--json` 给后续 TUI/脚本复用；每条 next step 包含可复制建议命令。
+- 支持 `cockpit tui --workspace <path>` 输出终端 cockpit 面板，展示 Overview、Kanban、Evidence、Next Actions；`cockpit tui --json` 输出稳定的 sections/actions 数据契约，供后续 Ink/blessed 交互式 TUI 复用。
 
 未完成：
 
-- 还不是完整交互式 TUI；当前是 Web cockpit + script-friendly CLI summary + cockpit action commands。
+- 还不是完整交互式 TUI；当前是 Web cockpit + script-friendly CLI summary + terminal TUI preview + cockpit action commands。
 
 建议：
 
@@ -320,10 +338,14 @@
 已完成：
 
 - checkpoint CLI 与测试存在。
+- `osstack checkpoint restore <checkpoint_id|dir>` / `rewind` 已产品化；默认 dry-run，
+  只有传 `--apply` 才会写回 checkpoint metadata 中列出的文件。
+- restore 会校验 checkpoint metadata、相对路径边界、文件 SHA-256 与 byte count；
+  不写 `.git`，也不会删除工作区中 checkpoint 之后新增的文件。
 
 需增强：
 
-- rewind/restore 产品化仍是后续工作。
+- 后续可增加交互确认、diff preview 与按文件选择恢复。
 
 ### Task 6.1：Compliance mapping packs
 
@@ -351,10 +373,13 @@
 - `osstack proof view <run_id> --audience engineer|manager|auditor|customer` 存在。
 - 视图基于已有 proof evidence，不生成假证据。
 - proof/compliance 的结构级证据检查已抽成 `validateProofEvidence`，可复用地输出 `present` / `missing` 控制项，并由 `osstack proof validate` 作为上线前门禁使用；CLI 层还会对 manifest artifact 执行磁盘完整性校验，确认 artifact path 唯一、文件存在、byte count、sha256、`sha256sums.txt` inventory、proof zip 条目和路径边界。
+- proof view 与 compliance report 的 Markdown/HTML 兼容输出会把缺失证据渲染为红色
+  `<strong class="osstack-missing-evidence">MISSING</strong>`，缺失清单也会加粗
+  `REQUIRED EVIDENCE MISSING`，让审计人员在 GitHub Markdown 或 HTML 渲染中快速定位缺口。
 
 需增强：
 
-- 缺失证据的“红色/高亮”在 Markdown/HTML 视图中可继续增强。
+- 可继续增加 report-level CSS/theme，让导出的完整 HTML 报告对 `osstack-missing-evidence` 统一渲染图标、边框或摘要计数。
 
 ### Task 6.3：Osstack Knowledge Cloud
 
@@ -380,7 +405,7 @@
 - 本地与云端共用的 `searchKnowledgePacks` 已从简单词频排序升级为 BM25-style 排序：考虑 query term 文档频率、chunk 长度归一化和 pack quality score，并覆盖“稀有词完整命中优先于重复通用词”的回归测试。
 - CLI 支持 cloud login/sync/search/import/ingest/pin/feedback/sources。
 - 本地 smoke 验证 official/private packs、sync、search、feedback，并在真实本地服务上调用构建后的 `osstack release doctor --target knowledge-cloud --cloud-url <local-url> --json`，确认 health、search、audit 三道部署 handoff gate 通过且 public audit 不泄漏 tenant event。
-- deploy assets 存在：Dockerfile、EdgeOne、Render、GitHub Actions；`release doctor --target knowledge-cloud` 已接入 `knowledge_cloud_deploy_assets` 静态 preflight，检查 Dockerfile、EdgeOne/Render healthcheck、audit JSONL 持久化路径、feedback JSONL 持久化路径、published-pack storage 路径、workflow smoke、Docker build、`EDGEONE_DEPLOY_HOOK_URL` gate 与 EdgeOne deploy hook 命令；传入 `--cloud-url <url>` 时还会访问 `<url>/healthz` 并要求 HTTP 2xx、`ok=true`、`service=osstack-knowledge-cloud`，用默认 `proof pack checksum` 查询 `<url>/v1/search` 并要求至少 1 条结果，同时对 `<url>/v1/audit` 执行 public audit smoke，要求返回 JSON events 数组且不能泄漏 tenant event；`release plan` 的 Knowledge Cloud validation commands 会列出 `pnpm smoke:knowledge-cloud:deploy`，`smoke:release-plan` 会检查 full release runbook 中该命令与部署后云端验收命令都存在，post-release validation commands 默认使用生产 URL `https://knowledge.osstack.ai`，如果传入 `--cloud-url <url>` 则复用该 URL 执行 `release doctor`、`knowledge sync` 和 `knowledge search`。
+- deploy assets 存在：Dockerfile、EdgeOne、Render、GitHub Actions；`release doctor --target knowledge-cloud` 已接入 `knowledge_cloud_deploy_assets` 静态 preflight，检查 Dockerfile、EdgeOne/Render healthcheck、audit JSONL 持久化路径、feedback JSONL 持久化路径、published-pack storage 路径、workflow smoke、Docker build、`EDGEONE_API_TOKEN` gate 与 EdgeOne Makers CLI 命令；传入 `--cloud-url <url>` 时还会访问 `<url>/healthz` 并要求 HTTP 2xx、`ok=true`、`service=osstack-knowledge-cloud`，用默认 `proof pack checksum` 查询 `<url>/v1/search` 并要求至少 1 条结果，同时对 `<url>/v1/audit` 执行 public audit smoke，要求返回 JSON events 数组且不能泄漏 tenant event；`release plan` 的 Knowledge Cloud validation commands 会列出 `pnpm smoke:knowledge-cloud:deploy`，`smoke:release-plan` 会检查 full release runbook 中该命令与部署后云端验收命令都存在，post-release validation commands 默认使用生产 URL `https://knowledge.osstack.ai`，如果传入 `--cloud-url <url>` 则复用该 URL 执行 `release doctor`、`knowledge sync` 和 `knowledge search`。
 
 未完成：
 
@@ -394,8 +419,8 @@
 | 优先级 | 项目 | 原因 | 完成证据 |
 |---:|---|---|---|
 | P0 | GitHub Actions runner 验证 | runner 已恢复并能完成主线 CI；继续保留 release doctor 作为账户层 blocker 早发现机制 | main CI 和 macOS Release Candidate 持续为 green |
-| P0 | 修复 `NPM_TOKEN` 的 `@osstack` 发布权限 | secret 已存在但 npm 返回 `E403`，说明 token 对 `@osstack` scope 没有 publish/owner 权限；`osstack release npm --output npm-publish-setup.md --json` 可生成 npmjs.com、GitHub secret、workflow rerun 和发布后验证交接清单 | `osstack release npm --output npm-publish-setup.md --json` 生成清单；`osstack release doctor --target npm --json` ready；Release workflow 通过 npm preflight |
-| P0 | 配置 `EDGEONE_DEPLOY_HOOK_URL` | EdgeOne 是 Knowledge Cloud 主部署路径；没有 EdgeOne deploy hook secret 不能运行 Knowledge Cloud `deploy=true` | `osstack release doctor --target knowledge-cloud --json` ready |
+| P0 | 修复 npm `@osstack` scope/账号发布权限 | `NPM_TOKEN` secret 已存在，但 npm 当前返回 scope missing/unauthorized；需要创建/认领 `@osstack` scope，并确保 token 背后的 npm 账号有 publish/owner 权限；`osstack release npm --output npm-publish-setup.md --json` 可生成 npmjs.com、GitHub secret、workflow rerun 和发布后验证交接清单 | `osstack release npm --output npm-publish-setup.md --json` 生成清单；`osstack release doctor --target npm --json` ready；Release workflow 通过 npm preflight |
+| P0 | 配置 `EDGEONE_API_TOKEN` 或 fallback deploy hook | EdgeOne 是 Knowledge Cloud 主部署路径；没有 EdgeOne API Token secret 或 fallback deploy hook secret 不能运行 Knowledge Cloud `deploy=true` | `osstack release doctor --target knowledge-cloud --json` ready |
 | P0 | 部署 Knowledge Cloud 到真实云端 | Phase 6 需要“上线”而非本地 smoke | 生产 URL + `release doctor --target knowledge-cloud --cloud-url <url>` health/search/audit gate |
 | P0 | npm publish 并从 registry 安装 | Phase 0 一行安装的最终验收 | `npm install -g @osstack/cli` 成功 |
 | P1 | `CONFORMANCE_MATRIX.md` 持续维护 | 让 OSSTACK_RUN_SPEC_V1 的 MUST 条款可审计 | 每条新增/变更 MUST 同步 schema/test/vector/verifier/smoke 映射 |
@@ -409,11 +434,11 @@
 当前执行：
 
 ```sh
-GitHub push、PR、release workflow 定义已恢复。当前阻塞点集中在真实发布凭证与 EdgeOne deploy hook：
+GitHub push、PR、release workflow 定义已恢复。当前阻塞点集中在 npm scope/账号权限与 EdgeOne 部署凭证：
 
-- GitHub Actions runner 已恢复，主线 CI 和 macOS Release Candidate 可正常完成。
-- npm registry publish 当前卡在 `@osstack` scope 权限：`NPM_TOKEN` 已存在，但 npm preflight 返回 `E403`，需要把生成 token 的 npm 账号加入/设为 `@osstack` owner 或 publisher。
-- Knowledge Cloud `deploy=true` 采用 EdgeOne 主路径，需要仓库 secret `EDGEONE_DEPLOY_HOOK_URL`。
+- GitHub Actions runner 已恢复，已有主线 CI 和 macOS Release Candidate 通过记录；当前最新可检查 CI run 是 cancelled，属于节省 minutes 的停止记录，不等同于 runner 不可用。
+- npm registry publish 当前卡在 `@osstack` scope/账号权限：`NPM_TOKEN` 已存在，但 npm scope access preflight 仍返回 scope missing/unauthorized，需要创建/认领 `@osstack` scope，并把生成 token 的 npm 账号加入/设为 `@osstack` owner 或 publisher。
+- Knowledge Cloud `deploy=true` 采用 EdgeOne 主路径，需要仓库 secret `EDGEONE_API_TOKEN`；`EDGEONE_DEPLOY_HOOK_URL` 保留为 fallback。
 - `FLY_API_TOKEN` 不再是当前 osstack 上线主路径的必需凭证；Fly.io 只保留为可选参考。
 - 本地人工排障继续需要 `npm login`；EdgeOne 排障需要腾讯云/EdgeOne Pages 控制台权限。
 
@@ -429,12 +454,12 @@ osstack release doctor --json
 
 1. 继续给 `osstack proof validate` 增加更多 negative/malformed vectors；当前 proof/compliance 的结构级证据检查已抽成可复用 validator，proof view/compliance render 会把 malformed manifest、verify、policy、agent runtime、governance、worktree、knowledge evidence 标成 `MISSING`，CLI 还会拒绝 manifest artifact path 重复、artifact 缺失、hash/bytes 不一致、`sha256sums.txt` inventory 不一致和越界路径，release plan 已输出 proof validate 命令并支持 `--workspace` 自动 proof 检查和显式 `--proof-dir` 覆盖，release doctor 已支持显式 `--proof-dir` 和最新 proof dir 自动发现。
 2. 继续补更多 negative/malformed vectors，覆盖边界格式、旧版本兼容字段、外部 proof 目录导入场景。
-3. 继续强化 release doctor、Knowledge Cloud deploy preflight、npm publish preflight；当前 release doctor 已能识别 Version Packages PR #5 的 `CLEAN / MERGEABLE` 状态，检查 NPM publish assets、Knowledge Cloud deploy assets 和 single-binary release assets，显示 Knowledge Cloud Deploy workflow 最近一次 validation run，通过 `--output` 生成 Markdown 发布行动清单，通过 `release plan` 生成验证/发布/部署命令 runbook，通过 `release npm` 单独生成 npm 发布权限修复 handoff，并通过默认 `target=primary` 的 `release handoff` 一次性生成 status/plan/npm/EdgeOne/manifest 主路径交接目录；如需 single-binary 公证交接，再显式使用 `--target all`。
+3. 继续强化 release doctor、Knowledge Cloud deploy preflight、npm publish preflight；当前 release doctor 已能识别 Version Packages PR #5 的 `CLEAN / MERGEABLE` 状态，检查 NPM publish assets、Knowledge Cloud deploy assets 和 single-binary release assets，显示 Knowledge Cloud Deploy workflow 最近一次 validation run，通过 `--output` 生成 Markdown 发布行动清单，通过 `release plan` 生成验证/发布/部署命令 runbook，通过 `release npm` 单独生成 npm 发布权限修复 handoff，并通过默认 `target=primary` 的 `release handoff` 一次性生成 status/plan/npm/EdgeOne/next-actions/manifest 主路径交接目录；`next-actions.sh` 只打印操作者下一步清单，不会执行 secret 写入、发布或部署；如需 single-binary 公证交接，再显式使用 `--target all`。
 
 授权解除后，立即转入 P0：
 
-1. 在 npm 创建/认领 `@osstack` scope，并确保生成 `NPM_TOKEN` 的账号拥有 publish/owner 权限。
-2. 运行 `osstack release handoff --cloud-url <EdgeOne URL> --output-dir release-handoff --json` 生成统一交接包；也可单独运行 `osstack release npm --output npm-publish-setup.md --json`，按清单重新生成并配置仓库 secret `NPM_TOKEN`，rerun Release workflow。
-3. 在 EdgeOne Pages 创建 Knowledge Cloud 项目和 deploy hook，配置仓库 secret `EDGEONE_DEPLOY_HOOK_URL`。
+1. 在 npm 创建/认领 `@osstack` scope，并确保生成 `NPM_TOKEN` 的账号拥有 publish/owner 权限；必要时重新生成并更新仓库 secret `NPM_TOKEN`。
+2. 运行 `osstack release handoff --cloud-url <EdgeOne URL> --output-dir release-handoff --json` 生成统一交接包；也可单独运行 `osstack release npm --output npm-publish-setup.md --json`，按清单修复 npm scope/账号权限后 rerun Release workflow。
+3. 在 EdgeOne Pages 创建 Knowledge Cloud 项目和 EdgeOne API Token，配置仓库 secret `EDGEONE_API_TOKEN`；如果先用 EdgeOne Deploy Hook，则配置 `EDGEONE_DEPLOY_HOOK_URL` fallback。
 4. 运行 Knowledge Cloud Deploy workflow，选择 `deploy=true`。
 5. 用生产 URL 执行 `osstack release doctor --target knowledge-cloud --cloud-url <EdgeOne URL> --json`、`osstack knowledge sync --cloud-url <EdgeOne URL> --json` 和 `osstack knowledge search "proof pack checksum" --cloud-url <EdgeOne URL> --json`。

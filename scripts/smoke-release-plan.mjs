@@ -97,6 +97,21 @@ try {
   assert(Array.isArray(status.external_blockers), "release status must expose external blockers");
   assertArrayIncludes(status.next_actions?.validation, "pnpm smoke:release-plan", "release status validation actions must include release plan smoke");
   assertArrayIncludes(
+    status.next_actions?.github_readonly,
+    "gh run list --branch changeset-release/main --limit 5",
+    "release status GitHub read-only actions must include workflow inspection",
+  );
+  assertArrayIncludes(
+    status.next_actions?.remote_workflow,
+    "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false",
+    "release status remote workflow actions must include dry-run deploy workflow",
+  );
+  assertArrayIncludes(
+    status.next_actions?.remote_workflow,
+    `gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${cloudUrl}`,
+    "release status remote workflow actions must include EdgeOne deploy workflow with the supplied cloud URL",
+  );
+  assertArrayIncludes(
     status.next_actions?.deploy,
     `gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${cloudUrl}`,
     "release status deploy actions must include EdgeOne Knowledge Cloud deploy command",
@@ -105,6 +120,9 @@ try {
   assertIncludes(statusMarkdown, "# Osstack Release Status", "release status markdown must render a title");
   assertIncludes(statusMarkdown, "## External Blockers", "release status markdown must render external blockers");
   assertIncludes(statusMarkdown, "## Next Actions", "release status markdown must render next actions");
+  assertIncludes(statusMarkdown, "### GitHub Read-Only", "release status markdown must separate GitHub read-only commands");
+  assertIncludes(statusMarkdown, "### Remote Workflow", "release status markdown must separate remote workflow commands");
+  assertIncludes(statusMarkdown, "These commands can consume GitHub Actions minutes.", "release status markdown must warn about Actions minutes");
 
   const edgeoneResult = await runAsync(process.execPath, [
     "packages/cli/dist/bin.js",
@@ -122,7 +140,9 @@ try {
   });
   const edgeone = JSON.parse(edgeoneResult.stdout);
   assert(edgeone.provider === "tencent-edgeone", "EdgeOne setup must read the Tencent EdgeOne manifest");
-  assert(edgeone.deploy_secret === "EDGEONE_DEPLOY_HOOK_URL", "EdgeOne setup must expose the deploy hook secret");
+  assert(edgeone.deploy_secret === "EDGEONE_API_TOKEN", "EdgeOne setup must expose the EdgeOne API token secret");
+  assert(edgeone.fallback_deploy_secret === "EDGEONE_DEPLOY_HOOK_URL", "EdgeOne setup must expose the deploy hook fallback secret");
+  assert(edgeone.project_name === "osstack-knowledge-cloud", "EdgeOne setup must expose the Makers project name");
   assertArrayIncludes(
     edgeone.workflow_commands,
     `gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${cloudUrl}`,
@@ -135,7 +155,8 @@ try {
   );
   const edgeoneMarkdown = await readFile(edgeoneOutput, "utf-8");
   assertIncludes(edgeoneMarkdown, "# EdgeOne Knowledge Cloud Setup", "EdgeOne setup markdown must render a title");
-  assertIncludes(edgeoneMarkdown, "EDGEONE_DEPLOY_HOOK_URL", "EdgeOne setup markdown must include deploy hook secret");
+  assertIncludes(edgeoneMarkdown, "EDGEONE_API_TOKEN", "EdgeOne setup markdown must include EdgeOne API token secret");
+  assertIncludes(edgeoneMarkdown, "EDGEONE_DEPLOY_HOOK_URL", "EdgeOne setup markdown must include deploy hook fallback secret");
 
   const npmResult = await runAsync(process.execPath, [
     "packages/cli/dist/bin.js",
@@ -191,13 +212,30 @@ try {
   assert(handoff.target === "primary", "release handoff default target must be primary");
   assert(handoff.output_dir === handoffOutputDir, "release handoff must expose its output directory");
   assertArrayIncludes(handoff.required_secrets, "NPM_TOKEN", "release handoff must include npm secret");
-  assertArrayIncludes(handoff.required_secrets, "EDGEONE_DEPLOY_HOOK_URL", "release handoff must include EdgeOne secret");
+  assert(
+    JSON.stringify(handoff.alternative_secret_groups).includes("[\"EDGEONE_API_TOKEN\",\"EDGEONE_DEPLOY_HOOK_URL\"]"),
+    "release handoff must expose EdgeOne API token/deploy hook as alternative secrets",
+  );
   assert(!handoff.required_secrets.includes("APPLE_ID"), "primary release handoff must not require Apple notarization secrets");
+  assert(!handoff.required_secrets.includes("EDGEONE_API_TOKEN"), "primary release handoff must not hard-require EdgeOne API token when deploy hook fallback exists");
   assertIncludes(await readFile(handoff.files.manifest, "utf-8"), "osstack-release-handoff", "release handoff manifest must be written");
   assertIncludes(await readFile(handoff.files.release_status, "utf-8"), "# Osstack Release Status", "release handoff must write release status");
   assertIncludes(await readFile(handoff.files.release_plan, "utf-8"), "# Osstack Release Action Plan", "release handoff must write release plan");
   assertIncludes(await readFile(handoff.files.npm_setup, "utf-8"), "# NPM Publish Setup", "release handoff must write npm setup");
   assertIncludes(await readFile(handoff.files.edgeone_setup, "utf-8"), "# EdgeOne Knowledge Cloud Setup", "release handoff must write EdgeOne setup");
+  const nextActions = await readFile(handoff.files.next_actions, "utf-8");
+  assertIncludes(nextActions, "#!/usr/bin/env bash", "release handoff must write a shell-readable next actions script");
+  assertIncludes(nextActions, "This script prints the operator checklist only.", "next actions script must be non-mutating by default");
+  assertIncludes(nextActions, "Remote workflow commands consume GitHub Actions minutes.", "next actions script must warn before remote workflow commands");
+  assertIncludes(nextActions, "gh run cancel <run-id> --repo gilosbornhello/osstack", "next actions script must include the workflow cancel command");
+  assertIncludes(nextActions, "## Local Validation Commands", "next actions script must separate local validation commands");
+  assertIncludes(nextActions, "## GitHub Read-Only Commands", "next actions script must separate read-only GitHub commands");
+  assertIncludes(nextActions, "## Remote Workflow Commands", "next actions script must separate commands that consume Actions minutes");
+  assertIncludes(nextActions, "gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\"", "next actions script must include npm secret setup");
+  assertIncludes(nextActions, "gh secret set EDGEONE_API_TOKEN --repo gilosbornhello/osstack --body \"$EDGEONE_API_TOKEN\"", "next actions script must include EdgeOne API token setup");
+  assertIncludes(nextActions, "# Optional fallback: gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"", "next actions script must include EdgeOne deploy hook fallback setup");
+  assertIncludes(nextActions, "pnpm smoke:npm-preflight", "next actions script must include npm preflight validation");
+  assertIncludes(nextActions, `gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${cloudUrl}`, "next actions script must include EdgeOne deploy workflow command");
 
   const sync = JSON.parse((await runAsync(process.execPath, [
     "packages/cli/dist/bin.js",
@@ -265,6 +303,7 @@ function releasePlanEnv() {
     OSSTACK_TEST_RELEASE_GITHUB_ACTIONS: "ok",
     OSSTACK_TEST_RELEASE_SECRETS: [
       "NPM_TOKEN",
+      "EDGEONE_API_TOKEN",
       "EDGEONE_DEPLOY_HOOK_URL",
       "APPLE_ID",
       "APPLE_TEAM_ID",

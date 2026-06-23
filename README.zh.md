@@ -50,6 +50,8 @@ osstack 就是这一层：
   当某个 Agent 不再称职时触发熔断。
 - **Daemon + 自动升级** —— 一个常驻本地 daemon，配合干净的 `osstack upgrade` 流程
   （备份 → 排空 → 安装 → 健康检查 → 失败自动回滚）。
+- **Knowledge Cloud + proof packs** —— OSSTACK 原生、可云端部署的知识服务，包含官方知识包、
+  来源治理、质量元数据，以及 loop/report 证据钩子。
 
 一切以本地优先：状态保存在 `~/.osstack/` 下的单个 SQLite 文件中，daemon 监听 Unix socket，
 除非你接入会外呼的 Agent，否则数据不出本机。
@@ -100,22 +102,29 @@ osstack --version    # → osstack 0.1.0
 ## 快速上手
 
 ```bash
-# 1. 启动后台 daemon（Unix socket 位于 ~/.osstack/daemon.sock）
-osstack serve &
+# 1. 检查当前工作区是否准备好
+osstack doctor --workspace .
 
-# 2. 确认健康，并查看 CLI/daemon 版本握手
-osstack status
+# 2. 运行一个产品入口任务，并生成交付证据
+osstack deliver "Add one small verified change" \
+  --verify "pnpm test" \
+  --auto-agent \
+  --worktree \
+  --report \
+  --scorecard \
+  --proof
 
-# 3. 查看本机可用的编码 Agent
-osstack agent list
+# 3. 打开 cockpit 摘要和终端 TUI 预览
+osstack cockpit --workspace .
+osstack cockpit tui --workspace .
 
-# 4. 入队一个编码任务，并运行一个循环周期直到测试通过
-mkdir -p tasks
-osstack loop enqueue "修复失败的 auth 测试" --capability code.test --priority 80
-osstack loop run --source task_queue --execute "npm run fix" --verify "npm test"
+# 4. 重新渲染最新 proof 的工程师视图
+osstack proof view "$(node -e 'const s=require("./LOOP-STATE.json"); process.stdout.write(s.loop_id)')" \
+  --audience engineer
 
-# 5. 在看板上观察
+# 5. 继续使用看板或查看更多例子
 osstack kanban board
+osstack examples
 ```
 
 ---
@@ -228,6 +237,7 @@ osstack kanban board
 | `--stop-when-idle` | 关 | 某周期无任务即停止。 |
 | `--archive-completed` | 关 | 把成功的单任务队列文件移动到 `tasks/archive/YYYY-MM-DD/`。 |
 | `--worktree` | 关 | 在隔离 git worktree 中运行每个任务（见下）。 |
+| `--checkpoint` | 关 | 非 worktree 运行前创建 shadow checkpoint；用 `osstack checkpoint restore <id\|dir> --apply` 恢复。 |
 | `--state <path>` | `LOOP-STATE.json` | 机器可读状态文件。 |
 | `--markdown <path>` | `STATE.md` | 人类可读状态文件。 |
 | `--json` | 关 | 向 stdout 输出机器可读摘要。 |
@@ -249,6 +259,10 @@ osstack loop run --source task_queue --auto-agent --verify "pnpm test"
 # 用 DeepSeek 评审器审查工作区 diff
 osstack loop run --source git_diff --reviewer ds-review
 ```
+
+Shadow checkpoint 会写到 `$OSSTACK_HOME/checkpoints`，不在工作区内，也不写入
+`.git`。`osstack checkpoint restore <id|dir>` 默认只做 dry-run；传入 `--apply`
+后才会把 checkpoint metadata 中列出的文件写回。
 
 **退出码：** `0` 一切正常 · `1` 配置/命令错误 · `2` 有任务失败、升级或未通过验证。
 
@@ -431,6 +445,11 @@ osstack task observe run_9f8c2a11
 `osstack agent list` 列出已注册适配器、它们的能力，以及在本机是否可用
 （`isAvailable()` 会探测底层 SDK/二进制）。
 
+**凭证模型：** osstack 默认不保存模型 API key。默认 CLI 适配器使用
+`subprocess/login-reuse`，复用用户本机已经登录的 CLI 会话。SDK/API-key
+适配器属于明确选择的高级路径；不要把 provider key 粘贴到 prompt、任务、issue
+或 proof artifact 中。
+
 | 适配器 | 能力 | 备注 |
 |---|---|---|
 | `claude-code` | `code.write`、`code.refactor`、`code.test`、`code.debug` | 经 `@anthropic-ai/claude-agent-sdk`。 |
@@ -598,6 +617,25 @@ pnpm coverage:loop      # 对 @osstack/loop 强制 ≥80% 覆盖率门槛
 **发布** 用 [changesets](https://github.com/changesets/changesets) 管理：
 用 `pnpm changeset` 添加 changeset，发布工作流会打开一个 "Version Packages" PR，
 合并后发布到 npm。双周发布列车流程见 [RELEASING.md](RELEASING.md)。
+
+发布 npm、部署 Knowledge Cloud 或上传单文件 release assets 之前，先运行：
+
+```bash
+osstack release doctor --json
+osstack release plan --target all --output release-plan.md --json
+osstack release handoff --cloud-url <EdgeOne URL> --output-dir release-handoff --json
+```
+
+这些命令会检查 GitHub auth、仓库 secrets（`NPM_TOKEN`、`EDGEONE_API_TOKEN`）、
+本地 npm auth、npm 发布资产、EdgeOne Knowledge Cloud 部署资产，以及单文件 release
+资产，避免把部分发布/部署误认为生产就绪。当前 Knowledge Cloud 正式上线以 EdgeOne
+为主路径，首选部署凭证是 `EDGEONE_API_TOKEN`；`EDGEONE_DEPLOY_HOOK_URL` 仍作为
+hook 项目的 fallback 保留。Fly.io 只保留为可选参考，不再要求 `FLY_API_TOKEN`。
+
+当 GitHub Actions minutes 紧张时，优先使用 `release handoff` 生成的
+`next-actions.sh`。它只打印操作者清单，不会执行 secret 写入、Release rerun 或 EdgeOne
+部署；其中会把本地验证、GitHub 只读查询、会消耗 Actions minutes 的远端 workflow
+命令分开列出。
 
 ---
 

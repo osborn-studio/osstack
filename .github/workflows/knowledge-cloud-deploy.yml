@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       deploy:
-        description: "Trigger EdgeOne deployment when EDGEONE_DEPLOY_HOOK_URL is configured"
+        description: "Deploy to EdgeOne when EDGEONE_API_TOKEN or EDGEONE_DEPLOY_HOOK_URL is configured"
         type: boolean
         default: false
       cloud_url:
@@ -47,24 +47,35 @@ jobs:
       - name: Docker build
         run: docker build -f Dockerfile.knowledge-cloud -t osstack-knowledge-cloud:${{ github.sha }} .
 
-      - name: Detect EdgeOne deploy hook
-        id: edgeone-deploy-hook
+      - name: Detect EdgeOne deploy credential
+        id: edgeone-deploy-credential
         run: |
-          if [ -n "${{ secrets.EDGEONE_DEPLOY_HOOK_URL }}" ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
+          if [ -n "${{ secrets.EDGEONE_API_TOKEN }}" ]; then
+            echo "mode=cli" >> "$GITHUB_OUTPUT"
+            echo "EdgeOne CLI token is configured." >> "$GITHUB_STEP_SUMMARY"
+          elif [ -n "${{ secrets.EDGEONE_DEPLOY_HOOK_URL }}" ]; then
+            echo "mode=hook" >> "$GITHUB_OUTPUT"
+            echo "EdgeOne deploy hook is configured as fallback." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "EDGEONE_DEPLOY_HOOK_URL not configured." >> "$GITHUB_STEP_SUMMARY"
+            echo "mode=missing" >> "$GITHUB_OUTPUT"
+            echo "Neither EDGEONE_API_TOKEN nor EDGEONE_DEPLOY_HOOK_URL is configured." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Require EdgeOne deploy hook for deploy
-        if: ${{ inputs.deploy && steps.edgeone-deploy-hook.outputs.present != 'true' }}
+      - name: Require EdgeOne deploy credential for deploy
+        if: ${{ inputs.deploy && steps.edgeone-deploy-credential.outputs.mode == 'missing' }}
         run: |
-          echo "deploy=true requires repository secret EDGEONE_DEPLOY_HOOK_URL." >> "$GITHUB_STEP_SUMMARY"
+          echo "deploy=true requires repository secret EDGEONE_API_TOKEN or EDGEONE_DEPLOY_HOOK_URL." >> "$GITHUB_STEP_SUMMARY"
           exit 1
 
-      - name: Trigger EdgeOne deploy
-        if: ${{ inputs.deploy && steps.edgeone-deploy-hook.outputs.present == 'true' }}
+      - name: Deploy with EdgeOne CLI
+        if: ${{ inputs.deploy && steps.edgeone-deploy-credential.outputs.mode == 'cli' }}
+        run: |
+          npx edgeone@latest makers deploy . -n osstack-knowledge-cloud -t "$EDGEONE_API_TOKEN" -e production
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+
+      - name: Trigger EdgeOne deploy hook fallback
+        if: ${{ inputs.deploy && steps.edgeone-deploy-credential.outputs.mode == 'hook' }}
         run: |
           curl -fsS -X POST "$EDGEONE_DEPLOY_HOOK_URL"
         env:

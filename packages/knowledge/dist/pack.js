@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, extname, join, relative } from "node:path";
 export async function loadKnowledgePack(path) {
     const pathStat = await stat(path);
@@ -332,7 +332,10 @@ export async function syncKnowledgeCache(options) {
         if (!isRecord(payload) || !Array.isArray(payload["packs"])) {
             throw new Error("cloud sync response packs must be an array");
         }
-        const packs = payload["packs"].map(validateKnowledgePackManifest);
+        const pins = await readPins(join(options.cacheDir, "pins.json"));
+        const incomingPacks = payload["packs"].map(validateKnowledgePackManifest);
+        const skippedPinnedPacks = incomingPacks.filter((pack) => isBlockedByPin(pack, pins));
+        const packs = incomingPacks.filter((pack) => !isBlockedByPin(pack, pins));
         await mkdir(join(options.cacheDir, "packs"), { recursive: true });
         for (const pack of packs) {
             await writeCachedPack(options.cacheDir, pack);
@@ -341,6 +344,7 @@ export async function syncKnowledgeCache(options) {
             status: "synced",
             cache_dir: options.cacheDir,
             packs: packs.map(packSummaryFromManifest),
+            ...(skippedPinnedPacks.length === 0 ? {} : { skipped_pins: skippedPinnedPacks.map(packSummaryFromManifest) }),
         };
     }
     catch (error) {
@@ -354,6 +358,7 @@ export async function syncKnowledgeCache(options) {
 }
 export async function listCachedKnowledgePacks(cacheDir) {
     const packsDir = join(cacheDir, "packs");
+    const pins = await readPins(join(cacheDir, "pins.json"));
     let packDirs;
     try {
         packDirs = await readdir(packsDir);
@@ -373,7 +378,9 @@ export async function listCachedKnowledgePacks(cacheDir) {
         }
         for (const versionFile of versions.filter((name) => name.endsWith(".json")).sort((a, b) => a.localeCompare(b))) {
             const path = join(versionDir, versionFile);
-            packs.push(await loadKnowledgePack(path));
+            const pack = await loadKnowledgePack(path);
+            if (!isBlockedByPin(pack.manifest, pins))
+                packs.push(pack);
         }
     }
     return packs;
@@ -390,6 +397,47 @@ export async function pinKnowledgePack(cacheDir, spec) {
         .sort((a, b) => a.pack_id.localeCompare(b.pack_id));
     await writeFile(pinsPath, `${JSON.stringify({ pins }, null, 2)}\n`, "utf-8");
     return pin;
+}
+export async function pruneKnowledgeCache(options) {
+    const keepVersions = options.keepVersions ?? 1;
+    if (!Number.isInteger(keepVersions) || keepVersions < 1) {
+        throw new Error("knowledge cache prune keepVersions must be a positive integer");
+    }
+    const packsDir = join(options.cacheDir, "packs");
+    const pins = await readPins(join(options.cacheDir, "pins.json"));
+    const cached = await collectCachedKnowledgePackVersions(packsDir);
+    const byId = new Map();
+    for (const pack of cached) {
+        const group = byId.get(pack.manifest.id) ?? [];
+        group.push(pack);
+        byId.set(pack.manifest.id, group);
+    }
+    const kept = [];
+    const removed = [];
+    for (const group of byId.values()) {
+        const sorted = group.sort((a, b) => b.manifest.version.localeCompare(a.manifest.version));
+        const versionsToKeep = new Set(sorted.slice(0, keepVersions).map((pack) => pack.manifest.version));
+        const pin = pins.find((item) => item.pack_id === sorted[0]?.manifest.id);
+        if (pin !== undefined)
+            versionsToKeep.add(pin.version);
+        for (const pack of sorted) {
+            const summary = packSummaryFromManifest(pack.manifest);
+            if (versionsToKeep.has(pack.manifest.version)) {
+                kept.push(summary);
+                continue;
+            }
+            removed.push(summary);
+            if (options.apply === true)
+                await rm(pack.cache_path, { force: true });
+        }
+    }
+    return {
+        cache_dir: options.cacheDir,
+        mode: options.apply === true ? "applied" : "dry-run",
+        keep_versions: keepVersions,
+        removed: removed.sort(comparePackSummaries),
+        kept: kept.sort(comparePackSummaries),
+    };
 }
 export async function cacheKnowledgeFeedback(options) {
     assertSafeOptionalTenantId(options.tenantId);
@@ -429,6 +477,39 @@ async function writeCachedPack(cacheDir, pack) {
     const dir = join(cacheDir, "packs", safeCacheSegment(pack.id));
     await mkdir(dir, { recursive: true });
     await writeFile(join(dir, `${safeCacheSegment(pack.version)}.json`), `${JSON.stringify(pack, null, 2)}\n`, "utf-8");
+}
+async function collectCachedKnowledgePackVersions(packsDir) {
+    let packDirs;
+    try {
+        packDirs = await readdir(packsDir);
+    }
+    catch {
+        return [];
+    }
+    const packs = [];
+    for (const packDir of packDirs.sort((a, b) => a.localeCompare(b))) {
+        const versionDir = join(packsDir, packDir);
+        let versions;
+        try {
+            versions = await readdir(versionDir);
+        }
+        catch {
+            continue;
+        }
+        for (const versionFile of versions.filter((name) => name.endsWith(".json")).sort((a, b) => a.localeCompare(b))) {
+            const cachePath = join(versionDir, versionFile);
+            const pack = await loadKnowledgePack(cachePath);
+            packs.push({ ...pack, cache_path: cachePath });
+        }
+    }
+    return packs;
+}
+function comparePackSummaries(a, b) {
+    return a.id.localeCompare(b.id) || a.version.localeCompare(b.version);
+}
+function isBlockedByPin(pack, pins) {
+    const pin = pins.find((item) => item.pack_id === pack.id);
+    return pin !== undefined && pin.version !== pack.version;
 }
 async function readPins(path) {
     try {
@@ -603,7 +684,7 @@ export async function resolveKnowledgeSearch(options) {
         };
     }
     if (mode === "local") {
-        return localKnowledgeEvidence(query, options.packs ?? [], options.limit);
+        return localKnowledgeEvidence(query, options.packs ?? [], options.limit, freshnessOptions(options));
     }
     return cloudKnowledgeEvidence({
         query,
@@ -612,6 +693,7 @@ export async function resolveKnowledgeSearch(options) {
         ...(options.cloudUrl === undefined ? {} : { cloudUrl: options.cloudUrl }),
         ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
         ...(options.tenantId === undefined ? {} : { tenantId: options.tenantId }),
+        ...freshnessOptions(options),
         ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
     });
 }
@@ -632,7 +714,7 @@ function offKnowledgeEvidence(query, reason) {
         ...(reason === undefined ? {} : { reason }),
     };
 }
-function localKnowledgeEvidence(query, packs, limit = 5) {
+function localKnowledgeEvidence(query, packs, limit = 5, freshness) {
     if (packs.length === 0) {
         return offKnowledgeEvidence(query, "no local knowledge packs configured");
     }
@@ -642,6 +724,7 @@ function localKnowledgeEvidence(query, packs, limit = 5) {
         query,
         packs: packSummaries(packs),
         results: searchKnowledgePacks(packs, query, { limit }),
+        ...knowledgeFreshnessEvidence(packs, freshness),
     };
 }
 async function cloudKnowledgeEvidence(options) {
@@ -691,6 +774,7 @@ function fallbackFromCloud(options, reason) {
             results: searchKnowledgePacks(options.packs, options.query, options.limit === undefined ? {} : { limit: options.limit }),
             fallback_mode: "local",
             reason,
+            ...knowledgeFreshnessEvidence(options.packs, freshnessOptions(options)),
         };
     }
     return {
@@ -702,6 +786,40 @@ function fallbackFromCloud(options, reason) {
         reason,
         fallback_mode: "off",
     };
+}
+function freshnessOptions(options) {
+    if (options.staleAfterDays === undefined)
+        return undefined;
+    return {
+        staleAfterDays: options.staleAfterDays,
+        ...(options.now === undefined ? {} : { now: options.now }),
+    };
+}
+function knowledgeFreshnessEvidence(packs, options) {
+    if (options?.staleAfterDays === undefined)
+        return {};
+    const latest = latestKnowledgeTimestamp(packs);
+    if (latest === undefined)
+        return { cache_stale_after_days: options.staleAfterDays };
+    const now = options.now instanceof Date ? options.now : new Date(options.now ?? Date.now());
+    const ageMs = now.getTime() - latest.getTime();
+    if (!Number.isFinite(ageMs))
+        return { cache_stale_after_days: options.staleAfterDays };
+    const ageDays = Math.max(0, Math.floor(ageMs / 86_400_000));
+    return {
+        cache_stale: ageDays > options.staleAfterDays,
+        cache_age_days: ageDays,
+        cache_stale_after_days: options.staleAfterDays,
+    };
+}
+function latestKnowledgeTimestamp(packs) {
+    const timestamps = packs
+        .map((pack) => pack.manifest.last_reviewed_at ?? pack.manifest.generated_at)
+        .filter((value) => value !== undefined && value.length > 0)
+        .map((value) => new Date(value))
+        .filter((value) => Number.isFinite(value.getTime()))
+        .sort((a, b) => b.getTime() - a.getTime());
+    return timestamps[0];
 }
 function validateCloudKnowledgeResponse(query, value) {
     if (!isRecord(value))

@@ -606,7 +606,7 @@ describe("loop CLI", () => {
     expect(result.learned_lessons).toMatchObject({
       learned: 1,
       lessons: [expect.objectContaining({
-        family: "max_iter_escalation",
+        family: "agent_unavailable",
         source_run_ids: [result.loop_id],
       })],
     });
@@ -616,7 +616,7 @@ describe("loop CLI", () => {
 
     expect(listCode).toBe(0);
     expect(JSON.parse(logs.join("\n"))).toMatchObject({
-      lessons: [expect.objectContaining({ family: "max_iter_escalation" })],
+      lessons: [expect.objectContaining({ family: "agent_unavailable" })],
     });
   });
 

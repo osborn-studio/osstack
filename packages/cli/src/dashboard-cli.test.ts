@@ -151,6 +151,64 @@ describe("dashboard/cockpit CLI", () => {
     expect(new URL(output).searchParams.get("workspace")).toBe(workspace);
   });
 
+  it("renders a terminal cockpit TUI preview with stable sections", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace");
+    await mkdir(join(workspace, "reports"), { recursive: true });
+    await mkdir(join(workspace, "release", "osstack-proof-tui"), { recursive: true });
+    await writeFile(join(workspace, "reports", "osstack-report-tui.md"), "# report\n");
+    await writeFile(join(workspace, "release", "osstack-proof-tui", "manifest.json"), "{}\n");
+    expect(await main(["kanban", "create", "Ship TUI", "--assignee", "codex-cli"])).toBe(0);
+
+    logs = [];
+    const exitCode = await main(["cockpit", "tui", "--workspace", workspace, "--no-color"]);
+
+    expect(exitCode).toBe(0);
+    const output = logs.join("\n");
+    expect(output).toContain("+ Osstack Cockpit TUI");
+    expect(output).toContain("Workspace:");
+    expect(output).toContain("Daemon:");
+    expect(output).toContain("Overview");
+    expect(output).toContain("Kanban");
+    expect(output).toContain("Evidence");
+    expect(output).toContain("Next Actions");
+    expect(output).toContain("reports=1");
+    expect(output).toContain("proof_packs=1");
+    expect(output).toContain("triage=1");
+    expect(output).toContain("osstack cockpit run --workspace <path> --json");
+  });
+
+  it("prints terminal cockpit TUI data as JSON", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace");
+    await mkdir(workspace, { recursive: true });
+
+    const exitCode = await main(["cockpit", "tui", "--workspace", workspace, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      mode: string;
+      workspace: string;
+      sections: Array<{ title: string; lines: string[] }>;
+      actions: Array<{ label: string; command: string; status: string }>;
+    };
+    expect(summary.mode).toBe("terminal-cockpit");
+    expect(summary.workspace).toBe(workspace);
+    expect(summary.sections.map((section) => section.title)).toEqual([
+      "Overview",
+      "Kanban",
+      "Evidence",
+      "Next Actions",
+    ]);
+    expect(summary.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        label: "Loop Engineering",
+        command: "osstack cockpit run --workspace <path> --json",
+        status: "ready",
+      }),
+    ]));
+  });
+
   it("prints actionable cockpit next steps as a standalone command", async () => {
     daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
 

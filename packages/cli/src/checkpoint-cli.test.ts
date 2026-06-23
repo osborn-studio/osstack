@@ -77,4 +77,84 @@ describe("checkpoint CLI", () => {
       exclusions: expect.arrayContaining([".git", "node_modules"]),
     });
   });
+
+  it("dry-runs checkpoint restore by default without changing workspace files", async () => {
+    const workspace = join(tmp, "workspace");
+    await mkdir(join(workspace, "src"), { recursive: true });
+    await writeFile(join(workspace, "src", "app.ts"), "export const value = 1;\n");
+
+    const createExitCode = await main(["checkpoint", "create", "--workspace", workspace, "--json"]);
+    expect(createExitCode).toBe(0);
+    const created = JSON.parse(logs.join("\n")) as { checkpoint_id: string };
+
+    logs = [];
+    await writeFile(join(workspace, "src", "app.ts"), "export const value = 2;\n");
+    const restoreExitCode = await main(["checkpoint", "restore", created.checkpoint_id, "--json"]);
+
+    expect(restoreExitCode).toBe(0);
+    const restored = JSON.parse(logs.join("\n")) as {
+      mode: string;
+      restored_files: number;
+      files: Array<{ path: string; target: string }>;
+    };
+    expect(restored).toMatchObject({
+      mode: "dry-run",
+      restored_files: 1,
+      files: [expect.objectContaining({ path: "src/app.ts" })],
+    });
+    await expect(readFile(join(workspace, "src", "app.ts"), "utf-8"))
+      .resolves.toBe("export const value = 2;\n");
+  });
+
+  it("restores checkpoint files with --apply without deleting newer files", async () => {
+    const workspace = join(tmp, "workspace");
+    await mkdir(join(workspace, "src"), { recursive: true });
+    await writeFile(join(workspace, "src", "app.ts"), "export const value = 1;\n");
+
+    const createExitCode = await main(["checkpoint", "create", "--workspace", workspace, "--json"]);
+    expect(createExitCode).toBe(0);
+    const created = JSON.parse(logs.join("\n")) as { checkpoint_dir: string };
+
+    logs = [];
+    await writeFile(join(workspace, "src", "app.ts"), "export const value = 3;\n");
+    await writeFile(join(workspace, "src", "new.ts"), "export const newer = true;\n");
+    const restoreExitCode = await main(["checkpoint", "restore", created.checkpoint_dir, "--apply", "--json"]);
+
+    expect(restoreExitCode).toBe(0);
+    const restored = JSON.parse(logs.join("\n")) as {
+      mode: string;
+      workspace: string;
+      restored_files: number;
+      bytes: number;
+    };
+    expect(restored).toMatchObject({
+      mode: "applied",
+      workspace: realpathSync(workspace),
+      restored_files: 1,
+    });
+    expect(restored.bytes).toBeGreaterThan(0);
+    await expect(readFile(join(workspace, "src", "app.ts"), "utf-8"))
+      .resolves.toBe("export const value = 1;\n");
+    await expect(readFile(join(workspace, "src", "new.ts"), "utf-8"))
+      .resolves.toBe("export const newer = true;\n");
+  });
+
+  it("refuses to restore a tampered checkpoint file", async () => {
+    const workspace = join(tmp, "workspace");
+    await mkdir(join(workspace, "src"), { recursive: true });
+    await writeFile(join(workspace, "src", "app.ts"), "export const value = 1;\n");
+
+    const createExitCode = await main(["checkpoint", "create", "--workspace", workspace, "--json"]);
+    expect(createExitCode).toBe(0);
+    const created = JSON.parse(logs.join("\n")) as { checkpoint_dir: string };
+
+    logs = [];
+    await writeFile(join(created.checkpoint_dir, "files", "src", "app.ts"), "tampered\n");
+    await writeFile(join(workspace, "src", "app.ts"), "export const value = 4;\n");
+
+    await expect(main(["checkpoint", "restore", created.checkpoint_dir, "--apply", "--json"]))
+      .rejects.toThrow("checkpoint file sha256 mismatch: src/app.ts");
+    await expect(readFile(join(workspace, "src", "app.ts"), "utf-8"))
+      .resolves.toBe("export const value = 4;\n");
+  });
 });

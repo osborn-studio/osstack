@@ -9,6 +9,7 @@ import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "
 import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+import { inflateRawSync } from "node:zlib";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import { agentAuthMode, defaultAdapters, rolesForCapabilityKinds } from "@osstack/agents";
 import {
@@ -21,7 +22,7 @@ import {
   validateProofEvidence,
   type ProofAudience,
 } from "@osstack/compliance";
-import { getAgentScorecard, listAgentScorecards, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson } from "@osstack/core";
+import { getAgentScorecard, listAgentScorecards, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons } from "@osstack/core";
 import { scanFiles, type GovernanceFinding } from "@osstack/governance";
 import {
   renderBranchStewardReport,
@@ -54,6 +55,7 @@ import {
   loadKnowledgePackIndex,
   loadKnowledgePack,
   pinKnowledgePack,
+  pruneKnowledgeCache,
   resolveKnowledgeSearch,
   syncKnowledgeCache,
   validateKnowledgePublishGate,
@@ -250,6 +252,8 @@ Project commands:
                       Product entry: task queue -> loop -> report/scorecard/proof
   checkpoint create [--workspace P] [--json]
                       Create a shadow checkpoint outside .git for non-worktree recovery
+  checkpoint restore <checkpoint_id|dir> [--workspace P] [--apply] [--json]
+                      Restore tracked files from a shadow checkpoint (dry-run by default)
 
 Agent configuration (role-based; no daemon needed):
   config [show]         Show active profile + how coding/test-verify/design resolve
@@ -851,11 +855,14 @@ type ProofArchiveIntegrityIssueCode =
   | "proof_zip_missing_entry"
   | "proof_zip_extra_entry"
   | "proof_zip_duplicate_entry"
-  | "proof_zip_unsafe_entry";
+  | "proof_zip_unsafe_entry"
+  | "proof_zip_sha256_mismatch";
 
 interface ProofArchiveIntegrityIssue {
   path: string;
   code: ProofArchiveIntegrityIssueCode;
+  expected?: string;
+  actual?: string;
 }
 
 interface ProofArchiveIntegrityValidation {
@@ -889,12 +896,12 @@ async function handleReleaseCommand(args: string[]): Promise<number> {
 Checks:
   - GitHub CLI authentication for repository operations
   - GitHub Actions runner availability for release/deploy workflows
-  - repository secrets NPM_TOKEN and EDGEONE_DEPLOY_HOOK_URL
+  - repository secrets NPM_TOKEN and EDGEONE_API_TOKEN
   - Apple notarization and Developer ID secrets for single-binary release
   - optional proof-core evidence validation with --proof-dir
   - optional deployed Knowledge Cloud /healthz validation with --cloud-url
   - local npm login for manual publishing
-  - EdgeOne deploy hook readiness for Knowledge Cloud deploy
+  - EdgeOne deploy credential readiness for Knowledge Cloud deploy
 `);
     return 0;
   }
@@ -939,6 +946,8 @@ interface ReleaseStatusSummary {
   next_actions: {
     operator: string[];
     validation: string[];
+    github_readonly: string[];
+    remote_workflow: string[];
     publish: string[];
     deploy: string[];
     post_release_validation: string[];
@@ -957,6 +966,8 @@ interface EdgeOneSetupSummary {
     entry: string;
   };
   deploy_secret: string;
+  fallback_deploy_secret?: string;
+  project_name: string;
   environment: Record<string, string>;
   include_files: string[];
   console_checklist: string[];
@@ -986,12 +997,14 @@ interface ReleaseHandoffBundleSummary {
   output_dir: string;
   cloud_url: string;
   required_secrets: string[];
+  alternative_secret_groups: string[][];
   files: {
     manifest: string;
     release_status: string;
     release_plan: string;
     npm_setup: string;
     edgeone_setup: string;
+    next_actions: string;
   };
   external_blockers: string[];
   next_actions: ReleaseStatusSummary["next_actions"];
@@ -1186,13 +1199,16 @@ async function releaseDoctor(
   const githubActions = await releaseGitHubActionsCheck();
   checks.push(githubActions);
 
-  const requiredSecrets = target === "all" ? ["NPM_TOKEN", "EDGEONE_DEPLOY_HOOK_URL", ...SINGLE_BINARY_RELEASE_SECRETS]
+  const edgeOneDeploySecrets = ["EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"];
+  const requiredSecrets = target === "all" ? ["NPM_TOKEN", ...edgeOneDeploySecrets, ...SINGLE_BINARY_RELEASE_SECRETS]
     : [
       ...(releaseTargetIncludesNpm(target) ? ["NPM_TOKEN"] : []),
-      ...(releaseTargetIncludesKnowledgeCloud(target) ? ["EDGEONE_DEPLOY_HOOK_URL"] : []),
+      ...(releaseTargetIncludesKnowledgeCloud(target) ? edgeOneDeploySecrets : []),
       ...(releaseTargetIncludesSingleBinary(target) ? SINGLE_BINARY_RELEASE_SECRETS : []),
     ];
-  const secrets = await releaseSecretsCheck(requiredSecrets);
+  const secrets = await releaseSecretsCheck(requiredSecrets, {
+    alternativeGroups: releaseTargetIncludesKnowledgeCloud(target) ? [edgeOneDeploySecrets] : [],
+  });
   checks.push(secrets);
 
   if (releaseTargetIncludesNpm(target)) {
@@ -1219,7 +1235,7 @@ async function releaseDoctor(
       checks.push(await releaseKnowledgeCloudSyncCheck(options.cloudUrl));
       checks.push(await releaseKnowledgeCloudAuditCheck(options.cloudUrl));
     }
-    checks.push(releaseEdgeOneDeployHookCheck());
+    checks.push(releaseEdgeOneDeployCredentialCheck(secrets));
   }
   if (releaseTargetIncludesSingleBinary(target)) {
     checks.push(await releaseSingleBinaryReleaseAssetsCheck(process.cwd()));
@@ -1245,7 +1261,7 @@ async function releaseDoctor(
   const actionsReady = githubActions.status !== "error";
   const npmPublish = actionsReady && hasSecret(secrets, "NPM_TOKEN") && npmPublishAssetsReady && npmScopeAccessReady && versionPackagesPrReady;
   const knowledgeCloudDeploy = actionsReady
-    && hasSecret(secrets, "EDGEONE_DEPLOY_HOOK_URL")
+    && hasAnySecret(secrets, edgeOneDeploySecrets)
     && knowledgeDeployAssetsReady
     && knowledgeWorkflowReady
     && knowledgeHealthReady
@@ -1475,7 +1491,9 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   expectAsset(edgeone, '"mode": "pages-functions"', "EdgeOne config must use Pages Functions mode.");
   expectAsset(edgeone, '"healthcheck_path": "/healthz"', "EdgeOne config must healthcheck /healthz.");
   expectAsset(edgeone, '"knowledge-packs/official/**"', "EdgeOne config must include official knowledge packs.");
-  expectAsset(edgeone, '"deploy_secret": "EDGEONE_DEPLOY_HOOK_URL"', "EdgeOne config must declare the deploy hook secret.");
+  expectAsset(edgeone, '"deploy_secret": "EDGEONE_API_TOKEN"', "EdgeOne config must declare the EdgeOne API token secret.");
+  expectAsset(edgeone, '"fallback_deploy_secret": "EDGEONE_DEPLOY_HOOK_URL"', "EdgeOne config must retain the deploy hook fallback secret.");
+  expectAsset(edgeone, '"project_name": "osstack-knowledge-cloud"', "EdgeOne config must declare the Makers project name.");
   expectAsset(render, "dockerfilePath: ./Dockerfile.knowledge-cloud", "Render config must use Dockerfile.knowledge-cloud.");
   expectAsset(render, "healthCheckPath: /healthz", "Render config must healthcheck /healthz.");
   expectAsset(render, "OSSTACK_KNOWLEDGE_AUDIT_LOG", "Render config must persist audit JSONL.");
@@ -1486,8 +1504,9 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   expectAsset(workflow, "pnpm smoke:knowledge-cloud", "Knowledge Cloud deploy workflow must run service smoke.");
   expectAsset(workflow, "pnpm smoke:knowledge-cloud:deploy", "Knowledge Cloud deploy workflow must run deploy asset smoke.");
   expectAsset(workflow, "docker build -f Dockerfile.knowledge-cloud", "Knowledge Cloud deploy workflow must build the Docker image.");
-  expectAsset(workflow, "secrets.EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must gate deploy on EDGEONE_DEPLOY_HOOK_URL.");
-  expectAsset(workflow, 'curl -fsS -X POST "$EDGEONE_DEPLOY_HOOK_URL"', "Knowledge Cloud deploy workflow must trigger the EdgeOne deploy hook.");
+  expectAsset(workflow, "secrets.EDGEONE_API_TOKEN", "Knowledge Cloud deploy workflow must gate deploy on EDGEONE_API_TOKEN.");
+  expectAsset(workflow, "edgeone@latest makers deploy . -n osstack-knowledge-cloud", "Knowledge Cloud deploy workflow must use the EdgeOne Makers CLI.");
+  expectAsset(workflow, "EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must retain the deploy hook fallback.");
   expectAsset(workflow, "release doctor --target knowledge-cloud --cloud-url", "Knowledge Cloud deploy workflow must validate deployed health/search/audit gates when cloud_url is supplied.");
   expectAsset(workflow, "knowledge sync --cloud-url", "Knowledge Cloud deploy workflow must sync from the deployed cloud URL when supplied.");
   expectAsset(workflow, "knowledge search \"proof pack checksum\" --cloud-url", "Knowledge Cloud deploy workflow must search the deployed cloud URL when supplied.");
@@ -2170,13 +2189,13 @@ async function validateProofArchiveIntegrity(
   } catch {
     return { ok: true, checked: false, proof_zip: proofZip, issues: [] };
   }
-  const expectedPaths = proofArchiveExpectedPaths(manifestRaw);
-  if (expectedPaths === undefined) {
+  const expected = proofArchiveExpectedEntries(manifestRaw);
+  if (expected === undefined) {
     return { ok: true, checked: false, proof_zip: proofZip, issues: [] };
   }
-  let archivePaths: string[];
+  let archiveEntries: Array<{ path: string; content: Buffer }>;
   try {
-    archivePaths = readZipEntryNames(await readFile(proofZip));
+    archiveEntries = readZipEntries(await readFile(proofZip));
   } catch {
     return {
       ok: false,
@@ -2187,28 +2206,41 @@ async function validateProofArchiveIntegrity(
   }
 
   const issues: ProofArchiveIntegrityIssue[] = [];
-  const actualPaths = new Set<string>();
-  for (const path of archivePaths) {
+  const actualEntries = new Map<string, Buffer>();
+  for (const { path, content } of archiveEntries) {
     if (isUnsafeProofArtifactPath(path)) {
       issues.push({ path, code: "proof_zip_unsafe_entry" });
       continue;
     }
-    if (actualPaths.has(path)) {
+    if (actualEntries.has(path)) {
       issues.push({ path, code: "proof_zip_duplicate_entry" });
       continue;
     }
-    actualPaths.add(path);
+    actualEntries.set(path, content);
   }
-  for (const path of expectedPaths) {
-    if (!actualPaths.has(path)) issues.push({ path, code: "proof_zip_missing_entry" });
+  for (const path of expected.paths) {
+    if (!actualEntries.has(path)) issues.push({ path, code: "proof_zip_missing_entry" });
   }
-  for (const path of actualPaths) {
-    if (!expectedPaths.has(path)) issues.push({ path, code: "proof_zip_extra_entry" });
+  for (const path of actualEntries.keys()) {
+    if (!expected.paths.has(path)) issues.push({ path, code: "proof_zip_extra_entry" });
+  }
+  for (const [path, expectedSha256] of expected.shaByPath.entries()) {
+    const content = actualEntries.get(path);
+    if (content === undefined) continue;
+    const actualSha256 = sha256Buffer(content);
+    if (actualSha256 !== expectedSha256) {
+      issues.push({
+        path,
+        code: "proof_zip_sha256_mismatch",
+        expected: expectedSha256,
+        actual: actualSha256,
+      });
+    }
   }
   return { ok: issues.length === 0, checked: true, proof_zip: proofZip, issues };
 }
 
-function readZipEntryNames(data: Buffer): string[] {
+function readZipEntries(data: Buffer): Array<{ path: string; content: Buffer }> {
   const eocdOffset = findZipEndOfCentralDirectory(data);
   if (eocdOffset < 0 || eocdOffset + 22 > data.length) throw new Error("zip end of central directory not found");
   const entryCount = data.readUInt16LE(eocdOffset + 10);
@@ -2216,22 +2248,50 @@ function readZipEntryNames(data: Buffer): string[] {
   const centralDirectoryOffset = data.readUInt32LE(eocdOffset + 16);
   if (centralDirectoryOffset + centralDirectorySize > data.length) throw new Error("zip central directory is outside archive");
 
-  const names: string[] = [];
+  const entries: Array<{ path: string; content: Buffer }> = [];
   let offset = centralDirectoryOffset;
   for (let index = 0; index < entryCount; index += 1) {
     if (offset + 46 > data.length || data.readUInt32LE(offset) !== 0x02014b50) {
       throw new Error("zip central directory entry is malformed");
     }
+    const compressionMethod = data.readUInt16LE(offset + 10);
+    const compressedSize = data.readUInt32LE(offset + 20);
     const fileNameLength = data.readUInt16LE(offset + 28);
     const extraLength = data.readUInt16LE(offset + 30);
     const commentLength = data.readUInt16LE(offset + 32);
+    const localHeaderOffset = data.readUInt32LE(offset + 42);
     const nameStart = offset + 46;
     const nameEnd = nameStart + fileNameLength;
     if (nameEnd > data.length) throw new Error("zip entry name is outside archive");
-    names.push(data.subarray(nameStart, nameEnd).toString("utf-8"));
+    const path = data.subarray(nameStart, nameEnd).toString("utf-8");
+    const content = readZipEntryContent(data, {
+      compressionMethod,
+      compressedSize,
+      localHeaderOffset,
+    });
+    entries.push({ path, content });
     offset = nameEnd + extraLength + commentLength;
   }
-  return names;
+  return entries;
+}
+
+function readZipEntryContent(
+  data: Buffer,
+  entry: { compressionMethod: number; compressedSize: number; localHeaderOffset: number },
+): Buffer {
+  const localOffset = entry.localHeaderOffset;
+  if (localOffset + 30 > data.length || data.readUInt32LE(localOffset) !== 0x04034b50) {
+    throw new Error("zip local entry header is malformed");
+  }
+  const localFileNameLength = data.readUInt16LE(localOffset + 26);
+  const localExtraLength = data.readUInt16LE(localOffset + 28);
+  const contentStart = localOffset + 30 + localFileNameLength + localExtraLength;
+  const contentEnd = contentStart + entry.compressedSize;
+  if (contentEnd > data.length) throw new Error("zip entry content is outside archive");
+  const compressed = data.subarray(contentStart, contentEnd);
+  if (entry.compressionMethod === 0) return Buffer.from(compressed);
+  if (entry.compressionMethod === 8) return inflateRawSync(compressed);
+  throw new Error(`unsupported zip compression method ${entry.compressionMethod}`);
 }
 
 function findZipEndOfCentralDirectory(data: Buffer): number {
@@ -2243,14 +2303,24 @@ function findZipEndOfCentralDirectory(data: Buffer): number {
   return -1;
 }
 
-function proofArchiveExpectedPaths(manifestRaw: unknown): Set<string> | undefined {
+function proofArchiveExpectedEntries(manifestRaw: unknown): { paths: Set<string>; shaByPath: Map<string, string> } | undefined {
   if (!isRecord(manifestRaw) || !Array.isArray(manifestRaw["artifacts"])) return undefined;
   const paths = new Set<string>(["manifest.json"]);
+  const shaByPath = new Map<string, string>();
   for (const artifact of manifestRaw["artifacts"]) {
-    if (!isRecord(artifact) || typeof artifact["path"] !== "string" || artifact["path"].length === 0) return undefined;
+    if (
+      !isRecord(artifact)
+      || typeof artifact["path"] !== "string"
+      || artifact["path"].length === 0
+      || typeof artifact["sha256"] !== "string"
+      || !/^[a-f0-9]{64}$/.test(artifact["sha256"])
+    ) {
+      return undefined;
+    }
     paths.add(artifact["path"]);
+    shaByPath.set(artifact["path"], artifact["sha256"]);
   }
-  return paths;
+  return { paths, shaByPath };
 }
 
 async function releaseVersionPackagesPrCheck(): Promise<ReleaseDoctorCheck> {
@@ -2758,7 +2828,10 @@ function releaseGitHubActionsOverride(value: string): ReleaseDoctorCheck {
   };
 }
 
-async function releaseSecretsCheck(requiredSecrets: string[]): Promise<ReleaseDoctorCheck> {
+async function releaseSecretsCheck(
+  requiredSecrets: string[],
+  options: { alternativeGroups?: string[][] } = {},
+): Promise<ReleaseDoctorCheck> {
   const override = process.env["OSSTACK_TEST_RELEASE_SECRETS"];
   let present: string[];
   if (override !== undefined) {
@@ -2776,15 +2849,34 @@ async function releaseSecretsCheck(requiredSecrets: string[]): Promise<ReleaseDo
       };
     }
   }
-  const missing = requiredSecrets.filter((secret) => !present.includes(secret));
+  const alternativeSecrets = new Set((options.alternativeGroups ?? []).flat());
+  const missingRequired = requiredSecrets.filter((secret) => !alternativeSecrets.has(secret) && !present.includes(secret));
+  const missingAlternativeGroups = (options.alternativeGroups ?? [])
+    .filter((group) => !group.some((secret) => present.includes(secret)));
+  const missingAlternatives = missingAlternativeGroups.flat();
+  const missing = [...missingRequired, ...missingAlternatives];
+  const missingDescription = formatMissingReleaseSecrets(missingRequired, missingAlternativeGroups);
   return {
     id: "repository_secrets",
     status: missing.length === 0 ? "ok" : "error",
     message: missing.length === 0
       ? `Required repository secrets are configured: ${requiredSecrets.join(", ")}.`
-      : `Missing required repository secrets: ${missing.join(", ")}.`,
-    details: { required: requiredSecrets, present, missing },
+      : `Missing required repository secrets: ${missingDescription}.`,
+    details: {
+      required: requiredSecrets,
+      present,
+      missing,
+      ...(options.alternativeGroups === undefined || options.alternativeGroups.length === 0 ? {} : { alternative_groups: options.alternativeGroups }),
+      ...(missingAlternativeGroups.length === 0 ? {} : { missing_alternative_groups: missingAlternativeGroups }),
+    },
   };
+}
+
+function formatMissingReleaseSecrets(missingRequired: string[], missingAlternativeGroups: string[][]): string {
+  return [
+    ...missingRequired,
+    ...missingAlternativeGroups.map((group) => `one of (${group.join(", ")})`),
+  ].join(", ");
 }
 
 function parseSecretList(stdout: string): string[] {
@@ -2823,32 +2915,46 @@ async function releaseCommandCheck(options: {
   }
 }
 
-function releaseEdgeOneDeployHookCheck(): ReleaseDoctorCheck {
-  const override = process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"];
+function releaseEdgeOneDeployCredentialCheck(secrets: ReleaseDoctorCheck): ReleaseDoctorCheck {
+  const override = process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_CREDENTIAL"] ?? process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"];
   if (override === "ok") {
     return {
-      id: "edgeone_deploy_hook",
+      id: "edgeone_deploy_credential",
       status: "ok",
-      message: "EdgeOne deploy hook is configured for Knowledge Cloud deploy checks.",
+      message: "EdgeOne API token or deploy hook is configured for Knowledge Cloud deploy checks.",
     };
   }
   if (override === "error") {
     return {
-      id: "edgeone_deploy_hook",
+      id: "edgeone_deploy_credential",
       status: "error",
-      message: "EdgeOne deploy hook check failed.",
+      message: "EdgeOne deploy credential check failed.",
     };
   }
+  const mode = hasSecret(secrets, "EDGEONE_API_TOKEN")
+    ? "cli"
+    : hasSecret(secrets, "EDGEONE_DEPLOY_HOOK_URL")
+    ? "hook"
+    : "missing";
   return {
-    id: "edgeone_deploy_hook",
-    status: "warn",
-    message: "EdgeOne deployment is triggered through EDGEONE_DEPLOY_HOOK_URL in GitHub Actions.",
+    id: "edgeone_deploy_credential",
+    status: mode === "missing" ? "warn" : "ok",
+    message: mode === "cli"
+      ? "EdgeOne deployment will use EDGEONE_API_TOKEN with the EdgeOne Makers CLI in GitHub Actions."
+      : mode === "hook"
+      ? "EdgeOne deployment will use EDGEONE_DEPLOY_HOOK_URL as a fallback in GitHub Actions."
+      : "EdgeOne deployment requires EDGEONE_API_TOKEN, or EDGEONE_DEPLOY_HOOK_URL as a fallback.",
+    details: { mode },
   };
 }
 
 function hasSecret(check: ReleaseDoctorCheck, secret: string): boolean {
   const present = check.details?.["present"];
   return Array.isArray(present) && present.includes(secret);
+}
+
+function hasAnySecret(check: ReleaseDoctorCheck, secrets: string[]): boolean {
+  return secrets.some((secret) => hasSecret(check, secret));
 }
 
 function releaseDoctorNextSteps(options: {
@@ -2874,8 +2980,12 @@ function releaseDoctorNextSteps(options: {
   if (Array.isArray(missing) && missing.includes("NPM_TOKEN")) {
     steps.push("Add repository secret NPM_TOKEN before merging the Version Packages PR.");
   }
-  if (Array.isArray(missing) && missing.includes("EDGEONE_DEPLOY_HOOK_URL")) {
-    steps.push("Add repository secret EDGEONE_DEPLOY_HOOK_URL before running Knowledge Cloud deploy=true.");
+  if (
+    Array.isArray(missing)
+    && missing.includes("EDGEONE_API_TOKEN")
+    && missing.includes("EDGEONE_DEPLOY_HOOK_URL")
+  ) {
+    steps.push("Add repository secret EDGEONE_API_TOKEN before running Knowledge Cloud deploy=true; EDGEONE_DEPLOY_HOOK_URL remains supported as a fallback.");
   }
   if (releaseTargetIncludesSingleBinary(options.target) && Array.isArray(missing) && SINGLE_BINARY_RELEASE_SECRETS.some((secret) => missing.includes(secret))) {
     steps.push("Add Apple notarization and Developer ID repository secrets before running Single Binary Release dry_run=false.");
@@ -3074,8 +3184,13 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     ...(Array.isArray(missingSecrets) && missingSecrets.includes("NPM_TOKEN")
       ? ["gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\""]
       : []),
-    ...(Array.isArray(missingSecrets) && missingSecrets.includes("EDGEONE_DEPLOY_HOOK_URL")
-      ? ["gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\""]
+    ...(Array.isArray(missingSecrets)
+      && missingSecrets.includes("EDGEONE_API_TOKEN")
+      && missingSecrets.includes("EDGEONE_DEPLOY_HOOK_URL")
+      ? [
+        "gh secret set EDGEONE_API_TOKEN --repo gilosbornhello/osstack --body \"$EDGEONE_API_TOKEN\"",
+        "# Optional fallback: gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"",
+      ]
       : []),
     ...(Array.isArray(missingSecrets)
       ? SINGLE_BINARY_RELEASE_SECRETS
@@ -3237,17 +3352,28 @@ async function createReleaseHandoffBundle(
     release_plan: join(options.outputDir, "release-plan.md"),
     npm_setup: join(options.outputDir, "npm-publish-setup.md"),
     edgeone_setup: join(options.outputDir, "edgeone-setup.md"),
+    next_actions: join(options.outputDir, "next-actions.sh"),
   };
   await writeFile(files.release_status, renderReleaseStatusSummary(status), "utf-8");
   await writeFile(files.release_plan, renderReleaseActionPlan(plan), "utf-8");
   await writeFile(files.npm_setup, renderNpmPublishSetupSummary(npmSetup), "utf-8");
   await writeFile(files.edgeone_setup, renderEdgeOneSetupSummary(edgeOneSetup), "utf-8");
+  await writeFile(files.next_actions, renderReleaseHandoffNextActionsScript({
+    target: options.target,
+    cloudUrl: options.cloudUrl,
+    plan,
+    status,
+    npmSetup,
+    edgeOneSetup,
+  }), "utf-8");
+  await chmod(files.next_actions, 0o755);
   const summary: ReleaseHandoffBundleSummary = {
     kind: "osstack-release-handoff",
     target: options.target,
     output_dir: options.outputDir,
     cloud_url: options.cloudUrl,
     required_secrets: releaseHandoffRequiredSecrets(options.target),
+    alternative_secret_groups: releaseHandoffAlternativeSecretGroups(options.target),
     files,
     external_blockers: status.external_blockers,
     next_actions: status.next_actions,
@@ -3257,11 +3383,13 @@ async function createReleaseHandoffBundle(
     target: summary.target,
     cloud_url: summary.cloud_url,
     required_secrets: summary.required_secrets,
+    alternative_secret_groups: summary.alternative_secret_groups,
     files: {
       release_status: "release-status.md",
       release_plan: "release-plan.md",
       npm_setup: "npm-publish-setup.md",
       edgeone_setup: "edgeone-setup.md",
+      next_actions: "next-actions.sh",
     },
     external_blockers: summary.external_blockers,
     next_actions: summary.next_actions,
@@ -3269,11 +3397,146 @@ async function createReleaseHandoffBundle(
   return summary;
 }
 
+function renderReleaseHandoffNextActionsScript(input: {
+  target: ReleaseDoctorResult["target"];
+  cloudUrl: string;
+  plan: ReleaseActionPlan;
+  status: ReleaseStatusSummary;
+  npmSetup: NpmPublishSetupSummary;
+  edgeOneSetup: EdgeOneSetupSummary;
+}): string {
+  const manualSteps = uniqueStrings([
+    ...input.npmSetup.console_checklist,
+    ...input.edgeOneSetup.console_checklist,
+    ...input.status.external_blockers,
+  ]);
+  const secretCommands = uniqueStrings([
+    ...input.npmSetup.github_commands,
+    ...input.edgeOneSetup.github_commands.filter(isGitHubSecretCommand),
+    ...input.status.next_actions.operator.filter((command) => command.startsWith("gh secret set ")),
+  ]);
+  const workflowCommands = uniqueStrings([
+    ...input.npmSetup.workflow_commands,
+    ...input.edgeOneSetup.github_commands.filter((command) => !isGitHubSecretCommand(command)),
+    ...input.edgeOneSetup.workflow_commands,
+    ...input.plan.deploy_commands,
+  ]);
+  const allValidationCommands = uniqueStrings([
+    ...input.npmSetup.validation_commands,
+    ...input.edgeOneSetup.validation_commands,
+    ...input.plan.validation_commands,
+  ]);
+  const localValidationCommands = allValidationCommands.filter((command) =>
+    !isGitHubReadOnlyCommand(command) && !isRemoteWorkflowCommand(command)
+  );
+  const readOnlyCommands = uniqueStrings([
+    ...allValidationCommands.filter(isGitHubReadOnlyCommand),
+    ...workflowCommands.filter(isGitHubReadOnlyCommand),
+  ]);
+  const remoteWorkflowCommands = uniqueStrings([
+    ...allValidationCommands.filter(isRemoteWorkflowCommand),
+    ...workflowCommands.filter(isRemoteWorkflowCommand),
+  ]);
+  const deployCommands = workflowCommands.filter((command) =>
+    !isGitHubReadOnlyCommand(command) && !isRemoteWorkflowCommand(command)
+  );
+  const publishCommands = uniqueStrings(input.plan.publish_commands);
+  const postReleaseValidationCommands = uniqueStrings([
+    ...input.npmSetup.post_release_validation_commands,
+    ...input.plan.post_release_validation_commands,
+  ]);
+
+  return [
+    "#!/usr/bin/env bash",
+    "set -euo pipefail",
+    "",
+    "cat <<'OSSTACK_RELEASE_NEXT_ACTIONS'",
+    "# Osstack Release Next Actions",
+    "",
+    "This script prints the operator checklist only.",
+    "It does not execute secret writes, npm publishing, EdgeOne deployment, or validation commands.",
+    "Remote workflow commands consume GitHub Actions minutes.",
+    "Use local validation first, then trigger one remote workflow only when ready.",
+    "If a workflow was started by mistake, cancel it with: gh run cancel <run-id> --repo gilosbornhello/osstack",
+    "",
+    `Target: ${input.target}`,
+    `Cloud URL: ${input.cloudUrl}`,
+    `Safe to execute publish/deploy commands now: ${input.plan.safe_to_execute ? "yes" : "no"}`,
+    "",
+    "## Manual Console Steps",
+    "",
+    ...renderPlainChecklist(manualSteps),
+    "",
+    "## GitHub Secret Commands",
+    "",
+    ...renderPlainChecklist(secretCommands),
+    "",
+    "## Local Validation Commands",
+    "",
+    ...renderPlainChecklist(localValidationCommands),
+    "",
+    "## GitHub Read-Only Commands",
+    "",
+    "These commands inspect GitHub state and do not start workflow jobs.",
+    "",
+    ...renderPlainChecklist(readOnlyCommands),
+    "",
+    "## Publish Commands",
+    "",
+    ...renderPlainChecklist(publishCommands),
+    "",
+    "## Remote Workflow Commands",
+    "",
+    "Commands in this section can consume GitHub Actions minutes.",
+    "",
+    ...renderPlainChecklist(remoteWorkflowCommands),
+    "",
+    "## EdgeOne Runtime Commands",
+    "",
+    ...renderPlainChecklist(deployCommands),
+    "",
+    "## Post-Release Validation Commands",
+    "",
+    ...renderPlainChecklist(postReleaseValidationCommands),
+    "",
+    "OSSTACK_RELEASE_NEXT_ACTIONS",
+    "",
+  ].join("\n");
+}
+
+function renderPlainChecklist(items: string[]): string[] {
+  return items.length === 0 ? ["- None."] : items.map((item) => `- ${item}`);
+}
+
+function isGitHubReadOnlyCommand(command: string): boolean {
+  return command.startsWith("gh pr list ")
+    || command.startsWith("gh pr view ")
+    || command.startsWith("gh run list ")
+    || command.startsWith("gh run view ");
+}
+
+function isRemoteWorkflowCommand(command: string): boolean {
+  return command.startsWith("gh workflow run ")
+    || command.startsWith("gh run rerun ");
+}
+
+function isGitHubSecretCommand(command: string): boolean {
+  return command.startsWith("gh secret set ")
+    || command.includes(" gh secret set ");
+}
+
 function releaseHandoffRequiredSecrets(target: ReleaseDoctorResult["target"]): string[] {
   return [
     ...(releaseTargetIncludesNpm(target) ? ["NPM_TOKEN"] : []),
-    ...(releaseTargetIncludesKnowledgeCloud(target) ? ["EDGEONE_DEPLOY_HOOK_URL"] : []),
     ...(releaseTargetIncludesSingleBinary(target) ? SINGLE_BINARY_RELEASE_SECRETS : []),
+  ];
+}
+
+function releaseHandoffAlternativeSecretGroups(target: ReleaseDoctorResult["target"]): string[][] {
+  return [
+    ...(releaseTargetIncludesKnowledgeCloud(target)
+      ? [["EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"]]
+      : []),
   ];
 }
 
@@ -3291,7 +3554,15 @@ function renderReleaseHandoffBundleSummary(handoff: ReleaseHandoffBundleSummary)
     "",
     "## Required Secrets",
     "",
-    ...handoff.required_secrets.map((secret) => `- \`${secret}\``),
+    ...(handoff.required_secrets.length === 0
+      ? ["No hard-required repository secrets for this target."]
+      : handoff.required_secrets.map((secret) => `- \`${secret}\``)),
+    "",
+    "## Alternative Secret Groups",
+    "",
+    ...(handoff.alternative_secret_groups.length === 0
+      ? ["No alternative secret groups for this target."]
+      : handoff.alternative_secret_groups.map((group) => `- One of: ${group.map((secret) => `\`${secret}\``).join(", ")}`)),
     "",
     "## External Blockers",
     "",
@@ -3318,8 +3589,9 @@ async function createNpmPublishSetupSummary(workspacePath: string): Promise<NpmP
       "Sign in to npmjs.com with the account that will own the osstack release token.",
       `Create or claim the ${scope} organization/scope on npmjs.com.`,
       `Invite the npm account used for NPM_TOKEN as an owner or publisher for ${scope}.`,
+      "Confirm the token owner can publish the package itself; organization membership alone does not grant package publish access.",
       `Confirm ${packageSummary.name} uses public access before publishing.`,
-      "Generate an npm automation or publish token from the authorized account.",
+      "Generate a granular npm access token from the authorized account with publish access for the package scope.",
       "Do not paste NPM_TOKEN into chat, logs, issues, or pull requests.",
       "Update the GitHub repository secret after copying the token once.",
       "Rerun the Release workflow only after the local and CI npm preflight commands pass.",
@@ -3379,6 +3651,12 @@ function renderNpmPublishSetupSummary(setup: NpmPublishSetupSummary): string {
     `Repository: \`${setup.repository}\``,
     `Required secret: \`${setup.required_secret}\``,
     `Publish access: \`${setup.publish_access}\``,
+    "",
+    "## Official References",
+    "",
+    "- npm access token docs: https://docs.npmjs.com/creating-and-viewing-access-tokens",
+    "- npm scoped public package docs: https://docs.npmjs.com/creating-and-publishing-scoped-public-packages",
+    "- npm organization package access docs: https://docs.npmjs.com/managing-team-access-to-organization-packages",
     "",
     "## Console Checklist",
     "",
@@ -3459,6 +3737,8 @@ async function createEdgeOneSetupSummary(
     healthcheck_path: manifest.healthcheck_path,
     runtime: manifest.runtime,
     deploy_secret: manifest.deploy_secret,
+    ...(manifest.fallback_deploy_secret === undefined ? {} : { fallback_deploy_secret: manifest.fallback_deploy_secret }),
+    project_name: manifest.project_name,
     environment: manifest.environment,
     include_files: manifest.include_files,
     console_checklist: [
@@ -3466,14 +3746,18 @@ async function createEdgeOneSetupSummary(
       "Configure the EdgeOne project to build from main.",
       `Use ${relative(assetRoot, manifestPath)} as the source of truth for runtime, healthcheck, storage paths, and official pack include paths.`,
       ...Object.entries(manifest.environment).map(([key, value]) => `Set EdgeOne runtime env ${key}=${value}.`),
-      "Create an EdgeOne deploy hook and keep the hook URL private.",
+      `Create an EdgeOne API token for Makers project ${manifest.project_name} and keep it private.`,
+      ...(manifest.fallback_deploy_secret === undefined ? [] : ["Optionally create an EdgeOne deploy hook as a fallback and keep the hook URL private."]),
       `Record the production URL, expected default domain ${manifest.default_domain}, and health path ${manifest.healthcheck_path}.`,
     ],
     github_commands: [
       `gh secret set ${manifest.deploy_secret} --repo gilosbornhello/osstack --body "$${manifest.deploy_secret}"`,
-      "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false",
+      ...(manifest.fallback_deploy_secret === undefined
+        ? []
+        : [`# Optional fallback: gh secret set ${manifest.fallback_deploy_secret} --repo gilosbornhello/osstack --body "$${manifest.fallback_deploy_secret}"`]),
     ],
     workflow_commands: [
+      "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false",
       `gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${cloudUrl}`,
     ],
     validation_commands: [
@@ -3491,6 +3775,8 @@ function parseEdgeOneManifest(raw: string, manifestPath: string): {
   healthcheck_path: string;
   runtime: EdgeOneSetupSummary["runtime"];
   deploy_secret: string;
+  fallback_deploy_secret?: string;
+  project_name: string;
   environment: Record<string, string>;
   include_files: string[];
 } {
@@ -3502,6 +3788,8 @@ function parseEdgeOneManifest(raw: string, manifestPath: string): {
   const provider = requiredString(parsed, "provider", manifestPath);
   const service = requiredString(parsed, "service", manifestPath);
   const deploySecret = requiredString(parsed, "deploy_secret", manifestPath);
+  const fallbackDeploySecret = optionalString(parsed, "fallback_deploy_secret", manifestPath);
+  const projectName = requiredString(parsed, "project_name", manifestPath);
   if (!isRecord(deployment)) throw new Error(`EdgeOne manifest deployment must be an object: ${manifestPath}`);
   if (!isRecord(runtime)) throw new Error(`EdgeOne manifest runtime must be an object: ${manifestPath}`);
   if (!isRecord(environment)) throw new Error(`EdgeOne manifest environment must be an object: ${manifestPath}`);
@@ -3516,6 +3804,8 @@ function parseEdgeOneManifest(raw: string, manifestPath: string): {
       entry: requiredString(runtime, "entry", manifestPath),
     },
     deploy_secret: deploySecret,
+    ...(fallbackDeploySecret === undefined ? {} : { fallback_deploy_secret: fallbackDeploySecret }),
+    project_name: projectName,
     environment: stringRecord(environment, "environment", manifestPath),
     include_files: stringArray(parsed["includeFiles"], "includeFiles", manifestPath),
   };
@@ -3524,6 +3814,13 @@ function parseEdgeOneManifest(raw: string, manifestPath: string): {
 function requiredString(record: Record<string, unknown>, key: string, source: string): string {
   const value = record[key];
   if (typeof value !== "string" || value.length === 0) throw new Error(`${source} missing string field ${key}`);
+  return value;
+}
+
+function optionalString(record: Record<string, unknown>, key: string, source: string): string | undefined {
+  const value = record[key];
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || value.length === 0) throw new Error(`${source} field ${key} must be a non-empty string when present`);
   return value;
 }
 
@@ -3554,9 +3851,16 @@ function renderEdgeOneSetupSummary(setup: EdgeOneSetupSummary): string {
     "",
     `Provider: \`${setup.provider}\``,
     `Service: \`${setup.service}\``,
+    `Project: \`${setup.project_name}\``,
     `Default domain: \`${setup.default_domain}\``,
     `Healthcheck: \`${setup.healthcheck_path}\``,
     `Deploy secret: \`${setup.deploy_secret}\``,
+    ...(setup.fallback_deploy_secret === undefined ? [] : [`Fallback deploy secret: \`${setup.fallback_deploy_secret}\``]),
+    "",
+    "## Official References",
+    "",
+    "- EdgeOne CLI docs: https://pages.edgeone.ai/document/edgeone-cli",
+    "- EdgeOne API token guide: https://pages.edgeone.ai/document/api-token",
     "",
     "## Runtime",
     "",
@@ -3596,6 +3900,10 @@ function releaseStatusSummary(result: ReleaseDoctorResult, plan: ReleaseActionPl
     ...plan.blockers,
     ...result.next_steps.filter(isExternalReleaseBlockerStep),
   ]);
+  const actionCommands = uniqueStrings([
+    ...plan.validation_commands,
+    ...plan.deploy_commands,
+  ]);
   return {
     target: result.target,
     ready: result.ok,
@@ -3614,6 +3922,8 @@ function releaseStatusSummary(result: ReleaseDoctorResult, plan: ReleaseActionPl
     next_actions: {
       operator: plan.operator_commands,
       validation: plan.validation_commands,
+      github_readonly: actionCommands.filter(isGitHubReadOnlyCommand),
+      remote_workflow: actionCommands.filter(isRemoteWorkflowCommand),
       publish: plan.publish_commands,
       deploy: plan.deploy_commands,
       post_release_validation: plan.post_release_validation_commands,
@@ -3689,6 +3999,18 @@ function renderReleaseStatusSummary(status: ReleaseStatusSummary): string {
     "",
     ...renderCommandList(status.next_actions.validation),
     "",
+    "### GitHub Read-Only",
+    "",
+    "These commands inspect GitHub state and do not start workflow jobs.",
+    "",
+    ...renderCommandList(status.next_actions.github_readonly),
+    "",
+    "### Remote Workflow",
+    "",
+    "These commands can consume GitHub Actions minutes.",
+    "",
+    ...renderCommandList(status.next_actions.remote_workflow),
+    "",
     "### Publish",
     "",
     ...renderCommandList(status.next_actions.publish),
@@ -3724,9 +4046,33 @@ async function handleCheckpointCommand(args: string[]): Promise<number> {
     console.log(`osstack checkpoint — shadow recovery points for non-worktree runs
 
   osstack checkpoint create [--workspace P] [--json]
+  osstack checkpoint restore <checkpoint_id|dir> [--workspace P] [--apply] [--json]
 
 Checkpoints are written under $OSSTACK_HOME/checkpoints and never inside .git.
+Restore is a dry-run unless --apply is passed, and only writes files listed in
+the checkpoint metadata.
 `);
+    return 0;
+  }
+  if (sub === "restore" || sub === "rewind") {
+    const ref = args[1];
+    if (ref === undefined || ref.startsWith("-")) {
+      console.error("osstack: checkpoint restore requires a checkpoint id or directory");
+      return 1;
+    }
+    const workspaceOverride = flagValue(args, "--workspace");
+    const restoreOptions: { workspace?: string; apply: boolean } = { apply: args.includes("--apply") };
+    if (workspaceOverride !== undefined) restoreOptions.workspace = workspaceOverride;
+    const result = await restoreShadowCheckpoint(ref, restoreOptions);
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(`checkpoint=${result.checkpoint_id}`);
+      console.log(`workspace=${result.workspace}`);
+      console.log(`mode=${result.mode}`);
+      console.log(`restored=${result.restored_files} bytes=${result.bytes}`);
+      if (result.mode === "dry-run") console.log("pass --apply to write these files");
+    }
     return 0;
   }
   if (sub !== "create") {
@@ -3753,6 +4099,26 @@ interface ShadowCheckpointSummary {
   workspace: string;
   files: number;
   bytes: number;
+}
+
+interface ShadowCheckpointRestoreSummary {
+  checkpoint_id: string;
+  checkpoint_dir: string;
+  metadata_path: string;
+  workspace: string;
+  mode: "dry-run" | "applied";
+  restored_files: number;
+  bytes: number;
+  files: Array<{ path: string; sha256: string; bytes: number; target: string }>;
+}
+
+interface ShadowCheckpointMetadata {
+  kind: "osstack.shadow_checkpoint";
+  version: number;
+  checkpoint_id: string;
+  workspace: string;
+  files_root: string;
+  files: Array<{ path: string; sha256: string; bytes: number }>;
 }
 
 async function createShadowCheckpoint(workspacePath: string): Promise<ShadowCheckpointSummary> {
@@ -3788,7 +4154,7 @@ async function createShadowCheckpoint(workspacePath: string): Promise<ShadowChec
     exclusions,
     notes: [
       "Shadow checkpoints are stored outside the workspace and do not write to .git.",
-      "Restore/rewind commands can be layered on this metadata in a later release.",
+      "Restore is dry-run by default and only writes files listed in this metadata.",
     ],
   };
   const metadataPath = join(checkpointDir, "metadata.json");
@@ -3827,6 +4193,115 @@ async function collectCheckpointFiles(
     });
   }
   return files;
+}
+
+async function restoreShadowCheckpoint(
+  checkpointRef: string,
+  options: { workspace?: string; apply: boolean },
+): Promise<ShadowCheckpointRestoreSummary> {
+  const checkpointDir = await resolveCheckpointDir(checkpointRef);
+  const metadataPath = join(checkpointDir, "metadata.json");
+  const metadata = parseShadowCheckpointMetadata(JSON.parse(await readFile(metadataPath, "utf-8")) as unknown, metadataPath);
+  const workspace = realpathSync(options.workspace ?? metadata.workspace);
+  const filesRoot = realpathSync(resolve(checkpointDir, "files"));
+  if (realpathSync(metadata.files_root) !== filesRoot) {
+    throw new Error(`checkpoint files_root must point to its files directory: ${metadataPath}`);
+  }
+  const restored: ShadowCheckpointRestoreSummary["files"] = [];
+  let totalBytes = 0;
+  for (const file of metadata.files) {
+    const source = safeJoin(filesRoot, file.path);
+    const target = safeJoin(workspace, file.path);
+    const content = await readFile(source);
+    const actualSha256 = sha256Buffer(content);
+    if (actualSha256 !== file.sha256) {
+      throw new Error(`checkpoint file sha256 mismatch: ${file.path}`);
+    }
+    if (content.byteLength !== file.bytes) {
+      throw new Error(`checkpoint file size mismatch: ${file.path}`);
+    }
+    if (options.apply) {
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, content);
+    }
+    totalBytes += content.byteLength;
+    restored.push({ path: file.path, sha256: file.sha256, bytes: file.bytes, target });
+  }
+  return {
+    checkpoint_id: metadata.checkpoint_id,
+    checkpoint_dir: checkpointDir,
+    metadata_path: metadataPath,
+    workspace,
+    mode: options.apply ? "applied" : "dry-run",
+    restored_files: restored.length,
+    bytes: totalBytes,
+    files: restored,
+  };
+}
+
+async function resolveCheckpointDir(checkpointRef: string): Promise<string> {
+  const candidate = isAbsolute(checkpointRef) || checkpointRef.includes("/")
+    ? resolve(checkpointRef)
+    : join(osstackHome(), "checkpoints", checkpointRef);
+  const checkpointStat = await stat(candidate);
+  if (!checkpointStat.isDirectory()) throw new Error(`checkpoint is not a directory: ${candidate}`);
+  return realpathSync(candidate);
+}
+
+function parseShadowCheckpointMetadata(value: unknown, metadataPath: string): ShadowCheckpointMetadata {
+  if (!isRecord(value)) throw new Error(`checkpoint metadata must be an object: ${metadataPath}`);
+  if (value["kind"] !== "osstack.shadow_checkpoint") throw new Error(`unsupported checkpoint kind: ${metadataPath}`);
+  const version = value["version"];
+  if (version !== 1) throw new Error(`unsupported checkpoint metadata version: ${String(version)}`);
+  const checkpointId = value["checkpoint_id"];
+  const workspace = value["workspace"];
+  const filesRoot = value["files_root"];
+  const files = value["files"];
+  if (typeof checkpointId !== "string" || checkpointId.length === 0) throw new Error("checkpoint metadata missing checkpoint_id");
+  if (typeof workspace !== "string" || workspace.length === 0) throw new Error("checkpoint metadata missing workspace");
+  if (typeof filesRoot !== "string" || filesRoot.length === 0) throw new Error("checkpoint metadata missing files_root");
+  if (!Array.isArray(files)) throw new Error("checkpoint metadata files must be an array");
+  return {
+    kind: "osstack.shadow_checkpoint",
+    version,
+    checkpoint_id: checkpointId,
+    workspace,
+    files_root: filesRoot,
+    files: files.map((file, index) => parseCheckpointMetadataFile(file, index)),
+  };
+}
+
+function parseCheckpointMetadataFile(value: unknown, index: number): { path: string; sha256: string; bytes: number } {
+  if (!isRecord(value)) throw new Error(`checkpoint metadata files[${index}] must be an object`);
+  const path = value["path"];
+  const sha256Value = value["sha256"];
+  const bytes = value["bytes"];
+  if (typeof path !== "string" || path.length === 0) throw new Error(`checkpoint metadata files[${index}].path is required`);
+  assertSafeRelativePath(path);
+  if (typeof sha256Value !== "string" || !/^[a-f0-9]{64}$/.test(sha256Value)) {
+    throw new Error(`checkpoint metadata files[${index}].sha256 must be a 64-character lowercase hex checksum`);
+  }
+  if (!Number.isInteger(bytes) || typeof bytes !== "number" || bytes < 0) {
+    throw new Error(`checkpoint metadata files[${index}].bytes must be a non-negative integer`);
+  }
+  return { path, sha256: sha256Value, bytes };
+}
+
+function safeJoin(root: string, relativePath: string): string {
+  assertSafeRelativePath(relativePath);
+  const resolvedRoot = resolve(root);
+  const resolvedPath = resolve(resolvedRoot, relativePath);
+  const rel = relative(resolvedRoot, resolvedPath);
+  if (rel === "" || rel.startsWith("..") || isAbsolute(rel)) {
+    throw new Error(`unsafe checkpoint path: ${relativePath}`);
+  }
+  return resolvedPath;
+}
+
+function assertSafeRelativePath(path: string): void {
+  if (isAbsolute(path) || path.split(/[\\/]+/).includes("..")) {
+    throw new Error(`unsafe checkpoint path: ${path}`);
+  }
 }
 
 function osstackExamples(): Array<{ title: string; description: string; commands: string[] }> {
@@ -4228,12 +4703,13 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   osstack knowledge list --pack P|--official [--json]
   osstack knowledge login --cloud-url URL [--token T] [--cache-dir P] [--json]
   osstack knowledge sync [--cloud-url URL] [--cache-dir P] [--private] [--tenant T] [--json]
-  osstack knowledge search <query> [--pack P] [--official] [--cloud-url URL] [--tenant T] [--cache-dir P] [--limit N] [--json]
+  osstack knowledge search <query> [--pack P] [--official] [--cloud-url URL] [--tenant T] [--cache-dir P] [--limit N] [--stale-after-days N] [--stale-policy warn|strict] [--json]
   osstack knowledge inspect <chunk_id> [--pack P] [--official] [--cache-dir P] [--json]
   osstack knowledge import P --scope team|project --id ID --name NAME --license L --output P [--taxonomy T] [--json]
   osstack knowledge ingest P --scope official|team|project --id ID --name NAME --license L --output P [--taxonomy T] [--source-kind K] [--reviewer ID] [--review-status approved|changes_requested] [--review-note TEXT] [--json]
   osstack knowledge validate --pack P|--official [--json]
   osstack knowledge pin <pack_id>@<version> [--cache-dir P] [--json]
+  osstack knowledge prune [--cache-dir P] [--keep N] [--apply] [--json]
   osstack knowledge feedback <chunk_id> --useful|--bad [--tenant ID] [--cloud-url URL] [--cache-dir P] [--json]
   osstack knowledge eval --pack P|--official --fixtures P [--top-k N] [--json]
   osstack knowledge sources --internal --pack P|--official [--json]
@@ -4340,6 +4816,7 @@ Env:
       console.log(JSON.stringify(summary, null, 2));
     } else if (evidence.status === "synced") {
       console.log(`synced=${evidence.packs.length}`);
+      if (evidence.skipped_pins !== undefined && evidence.skipped_pins.length > 0) console.log(`skipped_pins=${evidence.skipped_pins.length}`);
       console.log(`cache=${evidence.cache_dir}`);
       if (privatePacks) console.log(`private=yes${tenantId === undefined ? "" : ` tenant=${tenantId}`}`);
     } else {
@@ -4358,7 +4835,7 @@ Env:
       console.error("osstack: --mode must be one of off, local, cloud");
       return 1;
     }
-    const query = positionalValues(args.slice(1), new Set(["--pack", "--limit", "--cloud-url", "--mode", "--cache-dir", "--tenant", "--token"])).join(" ");
+    const query = positionalValues(args.slice(1), new Set(["--pack", "--limit", "--cloud-url", "--mode", "--cache-dir", "--tenant", "--token", "--stale-after-days", "--stale-policy"])).join(" ");
     if (query.length === 0) {
       console.error("osstack: knowledge search requires a query");
       return 1;
@@ -4367,6 +4844,16 @@ Env:
     const limit = limitRaw === undefined ? 5 : Number.parseInt(limitRaw, 10);
     if (!Number.isInteger(limit) || limit <= 0) {
       console.error("osstack: --limit must be a positive integer");
+      return 1;
+    }
+    const staleAfterDays = parsePositiveIntegerFlag(flagValue(args, "--stale-after-days"), "--stale-after-days");
+    if (staleAfterDays instanceof Error) {
+      console.error(`osstack: ${staleAfterDays.message}`);
+      return 1;
+    }
+    const stalePolicy = flagValue(args, "--stale-policy") ?? "warn";
+    if (!["warn", "strict"].includes(stalePolicy)) {
+      console.error("osstack: --stale-policy must be one of warn, strict");
       return 1;
     }
     const packs = [
@@ -4388,19 +4875,31 @@ Env:
       cloudUrl,
       ...(authToken === undefined ? {} : { authToken }),
       ...(tenantId === undefined ? {} : { tenantId }),
+      ...(staleAfterDays === undefined ? {} : { staleAfterDays }),
     }));
+    const cacheIsStale = evidence.status === "recorded" && evidence.cache_stale === true;
+    const output = cacheIsStale
+      ? { ...evidence, cache_policy: stalePolicy }
+      : evidence;
     if (args.includes("--json")) {
-      console.log(JSON.stringify(evidence, null, 2));
+      console.log(JSON.stringify(output, null, 2));
     } else if (evidence.results.length === 0) {
       console.log("No knowledge chunks matched.");
     } else {
       if (evidence.fallback_mode !== undefined && evidence.reason !== undefined) {
         console.log(`Knowledge fallback: ${evidence.fallback_mode} (${evidence.reason})`);
       }
+      if (evidence.status === "recorded" && evidence.cache_stale === true) {
+        console.log(`Knowledge cache stale: age=${evidence.cache_age_days ?? "unknown"}d threshold=${evidence.cache_stale_after_days ?? "unknown"}d policy=${stalePolicy}`);
+      }
       for (const result of evidence.results) {
         console.log(`${result.pack_id}:${result.chunk_id} score=${result.score} ${result.title}`);
         console.log(result.snippet);
       }
+    }
+    if (cacheIsStale && stalePolicy === "strict") {
+      console.error("osstack: knowledge cache is stale under --stale-policy strict; run `osstack knowledge sync` or lower the freshness threshold");
+      return 1;
     }
     return 0;
   }
@@ -4661,6 +5160,29 @@ Env:
     }
   }
 
+  if (sub === "prune") {
+    const keep = parsePositiveIntegerFlag(flagValue(args, "--keep"), "--keep");
+    if (keep instanceof Error) {
+      console.error(`osstack: ${keep.message}`);
+      return 1;
+    }
+    const result = await pruneKnowledgeCache({
+      cacheDir: knowledgeCacheDir(args),
+      ...(keep === undefined ? {} : { keepVersions: keep }),
+      apply: args.includes("--apply"),
+    });
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({ prune: result }, null, 2));
+    } else {
+      console.log(`mode=${result.mode}`);
+      console.log(`removed=${result.removed.length}`);
+      console.log(`kept=${result.kept.length}`);
+      console.log(`cache=${result.cache_dir}`);
+      if (result.mode === "dry-run") console.log("pass --apply to remove old cached pack versions");
+    }
+    return 0;
+  }
+
   if (sub === "feedback") {
     const chunkId = firstPositionalValue(args.slice(1), new Set(["--cloud-url", "--cache-dir", "--tenant"]));
     if (chunkId === undefined) {
@@ -4870,6 +5392,7 @@ async function handleLessonsCommand(args: string[]): Promise<number> {
 
   osstack lessons list [--family F] [--limit N] [--json]
   osstack lessons learn [--workspace P] [--state P] [--json]
+                                 Learn failed/escalated pitfalls and verify matching lessons from successful loop state
 `);
     return 0;
   }
@@ -4918,11 +5441,21 @@ async function handleLessonsCommand(args: string[]): Promise<number> {
     const db = openDb({ path: dbPath });
     try {
       const lessons = candidates.map((candidate) => upsertPitfallLesson(db, dbPath, candidate));
+      const verifiedLessons = verifyPitfallLessonsFromState(db, dbPath, state);
       if (args.includes("--json")) {
-        console.log(JSON.stringify({ learned: lessons.length, lessons }, null, 2));
+        console.log(JSON.stringify({
+          learned: lessons.length,
+          verified: verifiedLessons.length,
+          lessons,
+          verified_lessons: verifiedLessons,
+        }, null, 2));
       } else {
         console.log(`learned=${lessons.length}`);
+        console.log(`verified=${verifiedLessons.length}`);
         for (const lesson of lessons) {
+          console.log(`${lesson.pitfall_id} ${lesson.family} verified=${lesson.verified_count}`);
+        }
+        for (const lesson of verifiedLessons) {
           console.log(`${lesson.pitfall_id} ${lesson.family} verified=${lesson.verified_count}`);
         }
       }
@@ -4945,35 +5478,177 @@ async function ensureLocalStateDbPath(): Promise<string> {
 function derivePitfallLessonsFromState(state: LoopState): Parameters<typeof upsertPitfallLesson>[2][] {
   return state.completed_tasks
     .filter((task) => task.outcome === "failed" || task.outcome === "escalated")
-    .map((task) => ({
-      family: task.outcome === "failed" ? "verify_failed" : "max_iter_escalation",
-      tech_stack: inferLessonTechStack(task.capability),
-      symptom: `${task.task_id} ended with ${task.outcome} after ${task.iterations} iteration${task.iterations === 1 ? "" : "s"}.`,
-      resolution: task.outcome === "failed"
-        ? "Inspect verifier output, rerun deterministic checks, and update the task or dependency setup before retrying."
-        : "Break the task into a smaller queue item, add a stronger verify gate, or route to a reviewer/checker before retrying.",
-      source_run_id: state.loop_id,
-    }));
+    .map((task) => {
+      const family = pitfallFamilyForCompletedTask(task);
+      return {
+        family,
+        tech_stack: inferLessonTechStack(task.capability),
+        symptom: pitfallSymptomForCompletedTask(task),
+        resolution: pitfallResolutionForFamily(family),
+        source_run_id: state.loop_id,
+      };
+    });
 }
 
 async function learnLessonsFromLoopState(state: LoopState): Promise<{
   learned: number;
   lessons: ReturnType<typeof upsertPitfallLesson>[];
+  verified: number;
+  verified_lessons: ReturnType<typeof verifyPitfallLessons>;
 } | undefined> {
   const candidates = derivePitfallLessonsFromState(state);
-  if (candidates.length === 0) return undefined;
   try {
     const dbPath = await ensureLocalStateDbPath();
     const db = openDb({ path: dbPath });
     try {
       const lessons = candidates.map((candidate) => upsertPitfallLesson(db, dbPath, candidate));
-      return { learned: lessons.length, lessons };
+      const verifiedLessons = verifyPitfallLessonsFromState(db, dbPath, state);
+      if (lessons.length === 0 && verifiedLessons.length === 0) return undefined;
+      return {
+        learned: lessons.length,
+        lessons,
+        verified: verifiedLessons.length,
+        verified_lessons: verifiedLessons,
+      };
     } finally {
       db.close();
     }
   } catch {
     return undefined;
   }
+}
+
+function verifyPitfallLessonsFromState(
+  db: Parameters<typeof verifyPitfallLessons>[0],
+  dbPath: string,
+  state: LoopState,
+): ReturnType<typeof verifyPitfallLessons> {
+  const verified: ReturnType<typeof verifyPitfallLessons> = [];
+  for (const task of state.completed_tasks) {
+    if (task.outcome !== "success") continue;
+    verified.push(...verifyPitfallLessons(db, dbPath, {
+      source_run_id: state.loop_id,
+      tech_stack: inferLessonTechStack(task.capability),
+    }));
+  }
+  return verified;
+}
+
+function pitfallFamilyForCompletedTask(task: LoopState["completed_tasks"][number]): string {
+  const text = [
+    task.error_summary,
+    task.execution_summary,
+    task.verify_summary,
+    ...(task.verify_issues ?? []).map((issue) => issue.message),
+  ].filter((item): item is string => item !== undefined).join("\n").toLowerCase();
+  if (text.includes("agent adapter not registered")
+    || text.includes("agent unavailable")
+    || text.includes("adapter unavailable")
+    || text.includes("not available")) {
+    return "agent_unavailable";
+  }
+  if (text.includes("governance-verifier")
+    || text.includes("governance")
+    || text.includes("high severity")
+    || text.includes("blocking=true")) {
+    return "governance_high_severity";
+  }
+  if (text.includes("merge conflict")
+    || text.includes("conflict marker")
+    || text.includes("automatic merge failed")
+    || text.includes("unmerged paths")
+    || text.includes("both modified")) {
+    return "merge_conflict";
+  }
+  if (text.includes("fixture drift")
+    || text.includes("snapshot obsolete")
+    || text.includes("snapshot failed")
+    || text.includes("snapshot mismatch")
+    || text.includes("golden file")
+    || text.includes("expected fixture")
+    || text.includes("received fixture")) {
+    return "test_fixture_drift";
+  }
+  if (text.includes("network timeout")
+    || text.includes("network outage")
+    || text.includes("econnreset")
+    || text.includes("etimedout")
+    || text.includes("enotfound")
+    || text.includes("temporary failure in name resolution")
+    || text.includes("fetch failed")) {
+    return "network_outage";
+  }
+  if (text.includes("permission denied")
+    || text.includes("eacces")
+    || text.includes("eperm")
+    || text.includes("read-only file system")
+    || text.includes("operation not permitted")) {
+    return "filesystem_permission";
+  }
+  if (text.includes("npm install")
+    || text.includes("pnpm install")
+    || text.includes("yarn install")
+    || text.includes("bun install")
+    || text.includes("missing dependency")
+    || text.includes("cannot find module")
+    || text.includes("module not found")
+    || text.includes("enoent")) {
+    return "dependency_install_failure";
+  }
+  if (text.includes("node version")
+    || text.includes("unsupported engine")
+    || text.includes("engine mismatch")
+    || text.includes("toolchain")
+    || text.includes("tsc version")
+    || text.includes("typescript version")) {
+    return "toolchain_mismatch";
+  }
+  if (text.includes("reviewer")
+    || text.includes("checker")
+    || task.verifier_agent_id !== undefined) {
+    return "reviewer_checker_failed";
+  }
+  return task.outcome === "failed" ? "verify_failed" : "max_iter_escalation";
+}
+
+function pitfallSymptomForCompletedTask(task: LoopState["completed_tasks"][number]): string {
+  const base = `${task.task_id} ended with ${task.outcome} after ${task.iterations} iteration${task.iterations === 1 ? "" : "s"}.`;
+  const detail = task.error_summary ?? task.verify_summary ?? task.execution_summary;
+  return detail === undefined ? base : `${base} ${detail}`;
+}
+
+function pitfallResolutionForFamily(family: string): string {
+  if (family === "agent_unavailable") {
+    return "Check that the requested agent adapter is installed and logged in, or reroute the task to an available fallback agent.";
+  }
+  if (family === "reviewer_checker_failed") {
+    return "Inspect reviewer/checker findings, fix the reported issues, and rerun the verifier before retrying the loop.";
+  }
+  if (family === "governance_high_severity") {
+    return "Inspect governance findings, fix high-severity safety issues, and rerun governance in the same mode before retrying.";
+  }
+  if (family === "dependency_install_failure") {
+    return "Install or repair project dependencies in the workspace, then rerun the deterministic verifier before retrying.";
+  }
+  if (family === "merge_conflict") {
+    return "Resolve the merge conflict in an isolated worktree, rerun verification, and preserve conflict context in the proof pack.";
+  }
+  if (family === "toolchain_mismatch") {
+    return "Align the local Node/package-manager/toolchain versions with the project requirements before rerunning the verifier.";
+  }
+  if (family === "test_fixture_drift") {
+    return "Regenerate or repair the affected fixture/snapshot only after confirming the behavior change is intended.";
+  }
+  if (family === "network_outage") {
+    return "Retry with network availability confirmed, prefer cached/offline fallbacks, and record any external service dependency in the proof.";
+  }
+  if (family === "filesystem_permission") {
+    return "Fix workspace file permissions or sandbox configuration, then rerun the same deterministic verifier.";
+  }
+  if (family === "max_iter_escalation") {
+    return "Break the task into a smaller queue item, add a stronger verify gate, or route to a reviewer/checker before retrying.";
+  }
+  return "Inspect verifier output, rerun deterministic checks, and update the task or dependency setup before retrying.";
 }
 
 function inferLessonTechStack(capability: string | undefined): string[] {
@@ -5124,6 +5799,7 @@ function knowledgeSearchOptions(options: {
   cloudUrl: string | undefined;
   authToken?: string;
   tenantId?: string;
+  staleAfterDays?: number;
 }): Parameters<typeof resolveKnowledgeSearch>[0] {
   return {
     ...(options.mode !== undefined ? { mode: options.mode } : {}),
@@ -5133,6 +5809,7 @@ function knowledgeSearchOptions(options: {
     ...(options.cloudUrl !== undefined ? { cloudUrl: options.cloudUrl } : {}),
     ...(options.authToken !== undefined ? { authToken: options.authToken } : {}),
     ...(options.tenantId !== undefined ? { tenantId: options.tenantId } : {}),
+    ...(options.staleAfterDays !== undefined ? { staleAfterDays: options.staleAfterDays } : {}),
   };
 }
 
@@ -8424,6 +9101,10 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
     return 0;
   }
 
+  if (sub === "tui") {
+    return await handleCockpitTuiCommand(args.slice(1));
+  }
+
   if (sub === "next") {
     return await handleCockpitNextCommand(args.slice(1));
   }
@@ -8459,6 +9140,8 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
                             Run queued work with report, scorecard, and proof defaults
   osstack cockpit next [--workspace P] [--status ready|running|blocked] [--json]
                             Print actionable next steps from the cockpit snapshot
+  osstack cockpit tui [--workspace P] [--json] [--no-color]
+                            Render a terminal cockpit panel for live workbench use
   osstack cockpit retry [task_id] [--workspace P] [--state P] [--json]
                             Requeue a failed or escalated task from loop state
   osstack cockpit approve <card_id> [--comment TEXT] [--json]
@@ -8516,6 +9199,111 @@ function workspaceScopedCockpitSnapshot(snapshot: unknown, args: string[]): unkn
       url: workspaceDashboardUrl(dashboard["url"], args),
     },
   };
+}
+
+async function handleCockpitTuiCommand(args: string[]): Promise<number> {
+  const [healthResp, snapshotResp] = await Promise.all([
+    rpc("health") as Promise<RpcResp>,
+    rpc("dashboard.snapshot", dashboardSnapshotParams(args)) as Promise<RpcResp>,
+  ]);
+  if (!healthResp.ok) {
+    console.error("osstack:", healthResp.error?.message ?? "health failed");
+    return 1;
+  }
+  if (!snapshotResp.ok) {
+    console.error("osstack:", snapshotResp.error?.message ?? "dashboard.snapshot failed");
+    return 1;
+  }
+  const snapshot = workspaceScopedCockpitSnapshot(snapshotResp.result, args);
+  const model = cockpitTuiModel(healthResp.result, snapshot);
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(model, null, 2));
+  } else {
+    console.log(renderCockpitTui(model));
+  }
+  return 0;
+}
+
+interface CockpitTuiModel {
+  mode: "terminal-cockpit";
+  title: string;
+  workspace: string;
+  daemon: string;
+  sections: Array<{ title: string; lines: string[] }>;
+  actions: Array<{ label: string; command: string; status: string }>;
+}
+
+function cockpitTuiModel(daemonRaw: unknown, snapshotRaw: unknown): CockpitTuiModel {
+  const daemon = isRecord(daemonRaw) ? daemonRaw : {};
+  const snapshot = isRecord(snapshotRaw) ? snapshotRaw : {};
+  const dashboard = isRecord(snapshot["dashboard"]) ? snapshot["dashboard"] : {};
+  const overview = isRecord(snapshot["overview"]) ? snapshot["overview"] : {};
+  const board = isRecord(snapshot["board"]) ? snapshot["board"] : {};
+  const evidence = isRecord(snapshot["evidence"]) ? snapshot["evidence"] : {};
+  const quality = isRecord(snapshot["quality"]) ? snapshot["quality"] : {};
+  const nextSteps = Array.isArray(snapshot["next_steps"]) ? snapshot["next_steps"] : [];
+  const byStatus = isRecord(board["by_status"]) ? board["by_status"] : {};
+  const latestReport = isRecord(evidence["latest_report"]) ? evidence["latest_report"] : {};
+  const latestProofPack = isRecord(evidence["latest_proof_pack"]) ? evidence["latest_proof_pack"] : {};
+  const actions = nextSteps
+    .filter(isRecord)
+    .map((step) => ({
+      label: String(step["label"] ?? "unknown"),
+      command: String(step["command"] ?? ""),
+      status: String(step["status"] ?? "unknown"),
+    }))
+    .filter((action) => action.command.length > 0);
+  return {
+    mode: "terminal-cockpit",
+    title: "Osstack Cockpit TUI",
+    workspace: String(dashboard["workspace_path"] ?? process.cwd()),
+    daemon: `${String(daemon["version"] ?? "unknown")} phase=${String(daemon["phase"] ?? "unknown")}`,
+    sections: [
+      {
+        title: "Overview",
+        lines: [
+          `runs=${String(overview["total_runs"] ?? 0)} active=${String(overview["active_runs"] ?? daemon["active_runs"] ?? 0)} queued=${String(overview["queued_tasks"] ?? 0)} loops=${String(overview["active_loops"] ?? daemon["active_loops"] ?? 0)}`,
+          `progress=${String(overview["progress_percent"] ?? 0)}% quality=${String(quality["grade"] ?? "unknown")} success_rate=${String(quality["success_rate"] ?? "unknown")}`,
+        ],
+      },
+      {
+        title: "Kanban",
+        lines: [
+          `triage=${String(byStatus["triage"] ?? 0)} todo=${String(byStatus["todo"] ?? 0)} ready=${String(byStatus["ready"] ?? 0)}`,
+          `running=${String(byStatus["running"] ?? 0)} blocked=${String(byStatus["blocked"] ?? 0)} done=${String(byStatus["done"] ?? 0)}`,
+        ],
+      },
+      {
+        title: "Evidence",
+        lines: [
+          `reports=${String(evidence["reports"] ?? 0)} proof_packs=${String(evidence["proof_packs"] ?? 0)}`,
+          `latest_report=${String(latestReport["path"] ?? "none")}`,
+          `latest_proof=${String(latestProofPack["path"] ?? "none")}`,
+        ],
+      },
+      {
+        title: "Next Actions",
+        lines: actions.slice(0, 5).map((action) => `[${action.status}] ${action.label}: ${action.command}`),
+      },
+    ],
+    actions,
+  };
+}
+
+function renderCockpitTui(model: CockpitTuiModel): string {
+  const width = 88;
+  const lines = [
+    `+ ${model.title} ${"-".repeat(Math.max(1, width - model.title.length - 4))}`,
+    `Workspace: ${model.workspace}`,
+    `Daemon: ${model.daemon}`,
+    "",
+    ...model.sections.flatMap((section) => [
+      `[${section.title}]`,
+      ...(section.lines.length === 0 ? ["  none"] : section.lines.map((line) => `  ${line}`)),
+      "",
+    ]),
+  ];
+  return lines.join("\n").trimEnd();
 }
 
 async function handleCockpitNextCommand(args: string[]): Promise<number> {

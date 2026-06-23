@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
+import { setTimeout as sleep } from "node:timers/promises";
 
 const root = process.cwd();
 const tempRoot = await mkdtemp(join(tmpdir(), "osstack-npm-smoke-"));
@@ -12,6 +13,7 @@ const workspace = join(tempRoot, "workspace");
 const osstackHome = join(tempRoot, "home");
 const launchAgentsDir = join(tempRoot, "LaunchAgents");
 let knowledgeCloudChild;
+let installedDaemon;
 
 try {
   run("pnpm", ["-r", "build"], { cwd: root });
@@ -117,6 +119,34 @@ try {
   const guide = run(osstackBin, ["guide"], { cwd: root, capture: true });
   assertIncludes(guide.stdout, "osstack doctor --workspace .", "guide must include product doctor");
   assertIncludes(guide.stdout, "osstack proof view", "guide must include proof view");
+
+  const cockpitEnv = {
+    ...process.env,
+    OSSTACK_HOME: join(tempRoot, "cockpit-home"),
+    OSSTACK_SOCKET: join(tempRoot, "cockpit.sock"),
+    OSSTACK_UPDATE_CHECK: "0",
+  };
+  installedDaemon = await startInstalledDaemon(osstackBin, cockpitEnv);
+  await mkdir(join(workspace, "reports"), { recursive: true });
+  await mkdir(join(workspace, "release", "osstack-proof-installed-tui"), { recursive: true });
+  await writeFile(join(workspace, "reports", "osstack-report-installed-tui.md"), "# installed tui report\n", "utf-8");
+  await writeFile(join(workspace, "release", "osstack-proof-installed-tui", "manifest.json"), "{}\n", "utf-8");
+  const cockpitTui = run(osstackBin, ["cockpit", "tui", "--workspace", workspace, "--json"], {
+    cwd: root,
+    capture: true,
+    env: cockpitEnv,
+  });
+  const cockpitTuiParsed = JSON.parse(cockpitTui.stdout);
+  if (
+    cockpitTuiParsed.mode !== "terminal-cockpit"
+    || cockpitTuiParsed.workspace !== workspace
+    || !cockpitTuiParsed.sections?.some((section) => section.title === "Evidence" && section.lines?.some((line) => line.includes("reports=1")))
+    || !cockpitTuiParsed.actions?.some((action) => action.command === "osstack cockpit run --workspace <path> --json")
+  ) {
+    throw new Error(`installed CLI cockpit tui did not render expected terminal model: ${cockpitTui.stdout}`);
+  }
+  await installedDaemon.stop();
+  installedDaemon = undefined;
 
   run("git", ["init", "-b", "main"], { cwd: workspace });
   run("git", ["config", "user.name", "osstack npm smoke"], { cwd: workspace });
@@ -347,6 +377,11 @@ try {
         archive_integrity: installedDeliverProofValidation.archive_integrity?.ok,
       },
     },
+    installed_cockpit_tui: {
+      mode: cockpitTuiParsed.mode,
+      sections: cockpitTuiParsed.sections.map((section) => section.title),
+      actions: cockpitTuiParsed.actions.length,
+    },
     examples: examplesParsed.examples.length,
     evidence_artifacts: {
       scorecard_markdown: scorecardMarkdown,
@@ -376,6 +411,9 @@ try {
     },
   }, null, 2));
 } finally {
+  if (installedDaemon !== undefined) {
+    await installedDaemon.stop();
+  }
   if (knowledgeCloudChild !== undefined) {
     knowledgeCloudChild.kill("SIGTERM");
   }
@@ -384,6 +422,54 @@ try {
   } else {
     console.error(`kept smoke directory: ${tempRoot}`);
   }
+}
+
+async function startInstalledDaemon(command, env) {
+  const child = spawn(command, ["serve"], {
+    cwd: root,
+    env,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.on("data", (chunk) => {
+    stdout += String(chunk);
+  });
+  child.stderr.on("data", (chunk) => {
+    stderr += String(chunk);
+  });
+  const deadline = Date.now() + 8_000;
+  while (Date.now() < deadline) {
+    if (child.exitCode !== null) {
+      throw new Error(`installed daemon exited early with ${child.exitCode}\nstdout:\n${stdout}\nstderr:\n${stderr}`);
+    }
+    const health = run(command, ["health"], {
+      cwd: root,
+      capture: true,
+      env,
+      allowFailure: true,
+    });
+    if (health.stdout.includes("\"ok\": true") || health.stdout.includes("osstack")) {
+      return {
+        stop: async () => stopChild(child, "installed daemon"),
+      };
+    }
+    await sleep(50);
+  }
+  child.kill("SIGKILL");
+  throw new Error(`installed daemon did not become ready\nstdout:\n${stdout}\nstderr:\n${stderr}`);
+}
+
+async function stopChild(child, label) {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  child.kill("SIGTERM");
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    if (child.exitCode !== null || child.signalCode !== null) return;
+    await sleep(50);
+  }
+  child.kill("SIGKILL");
+  throw new Error(`${label} did not stop after SIGTERM`);
 }
 
 function startKnowledgeCloud(command, args) {

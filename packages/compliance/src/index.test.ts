@@ -129,9 +129,9 @@ describe("compliance packs", () => {
       },
     });
 
-    expect(markdown).toContain("| Change validation | MISSING |");
-    expect(markdown).toContain("| Automated decision trace | MISSING |");
-    expect(markdown).toContain("| Evidence integrity | MISSING |");
+    expect(markdown).toContain("| Change validation | <strong class=\"osstack-missing-evidence\" style=\"color:#b00020\">MISSING</strong> |");
+    expect(markdown).toContain("| Automated decision trace | <strong class=\"osstack-missing-evidence\" style=\"color:#b00020\">MISSING</strong> |");
+    expect(markdown).toContain("| Evidence integrity | <strong class=\"osstack-missing-evidence\" style=\"color:#b00020\">MISSING</strong> |");
   });
 
   it("validates proof evidence into reusable present and missing controls", () => {
@@ -292,11 +292,11 @@ describe("compliance packs", () => {
     });
 
     expect(markdown).toContain("## Missing Evidence");
-    expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Change validation (`verify-results.json`) - delivery validation summary");
-    expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Secure coding control (`governance-results.json`) - safety checks summary");
-    expect(markdown).toContain("| Evidence integrity | <strong style=\"color:#b00020\">MISSING</strong> |");
-    expect(markdown).toContain("| Change validation | <strong style=\"color:#b00020\">MISSING</strong> |");
-    expect(markdown).toContain("| Secure coding control | <strong style=\"color:#b00020\">MISSING</strong> |");
+    expect(markdown).toContain("- **REQUIRED EVIDENCE MISSING**: Change validation (`verify-results.json`) - delivery validation summary");
+    expect(markdown).toContain("- **REQUIRED EVIDENCE MISSING**: Secure coding control (`governance-results.json`) - safety checks summary");
+    expect(markdown).toContain("| Evidence integrity | <strong class=\"osstack-missing-evidence\" style=\"color:#b00020\">MISSING</strong> |");
+    expect(markdown).toContain("| Change validation | <strong class=\"osstack-missing-evidence\" style=\"color:#b00020\">MISSING</strong> |");
+    expect(markdown).toContain("| Secure coding control | <strong class=\"osstack-missing-evidence\" style=\"color:#b00020\">MISSING</strong> |");
   });
 
   it("renders proof views from an existing proof directory", async () => {
@@ -356,12 +356,12 @@ describe("compliance packs", () => {
       proofDir,
     });
 
-    expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Evidence integrity (`manifest.json`) - checksumed artifact inventory");
-    expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Change validation (`verify-results.json`) - change validation evidence");
-    expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Automated decision trace (`policy-decision.json`) - automated decision record");
-    expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Secure coding control (`governance-results.json`) - secure coding evidence");
-    expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Worktree isolation evidence (`worktree-status.json`) - change isolation evidence");
-    expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Knowledge trace (`knowledge-results.json`) - knowledge source trace");
+    expect(markdown).toContain("- **REQUIRED EVIDENCE MISSING**: Evidence integrity (`manifest.json`) - checksumed artifact inventory");
+    expect(markdown).toContain("- **REQUIRED EVIDENCE MISSING**: Change validation (`verify-results.json`) - change validation evidence");
+    expect(markdown).toContain("- **REQUIRED EVIDENCE MISSING**: Automated decision trace (`policy-decision.json`) - automated decision record");
+    expect(markdown).toContain("- **REQUIRED EVIDENCE MISSING**: Secure coding control (`governance-results.json`) - secure coding evidence");
+    expect(markdown).toContain("- **REQUIRED EVIDENCE MISSING**: Worktree isolation evidence (`worktree-status.json`) - change isolation evidence");
+    expect(markdown).toContain("- **REQUIRED EVIDENCE MISSING**: Knowledge trace (`knowledge-results.json`) - knowledge source trace");
   });
 });
 

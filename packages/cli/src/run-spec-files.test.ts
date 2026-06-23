@@ -6,6 +6,19 @@ const repoRoot = join(__dirname, "..", "..", "..");
 const specDir = join(repoRoot, "docs", "specs");
 
 describe("OSSTACK_RUN_SPEC_V1 files", () => {
+  it("documents the subprocess-first credential model in both READMEs", async () => {
+    const english = await readFile(join(repoRoot, "README.md"), "utf-8");
+    const chinese = await readFile(join(repoRoot, "README.zh.md"), "utf-8");
+
+    expect(english).toContain("does not store model API keys by default");
+    expect(english).toContain("subprocess/login-reuse");
+    expect(english).toContain("SDK/API-key adapters are explicit");
+    expect(english).toContain("opt-in paths");
+    expect(chinese).toContain("默认不保存模型 API key");
+    expect(chinese).toContain("subprocess/login-reuse");
+    expect(chinese).toContain("SDK/API-key");
+  });
+
   it("defines stable clauses and L1-L4 conformance levels", async () => {
     const spec = await readFile(join(specDir, "OSSTACK_RUN_SPEC_V1.md"), "utf-8");
     const version = spec.match(/^Version:\s*(\S+)$/m)?.[1];

@@ -121,8 +121,9 @@ osstack deliver "Add one small verified change" \
   --scorecard \
   --proof
 
-# 3. Open the cockpit summary for latest report/proof paths
+# 3. Open the cockpit summary and terminal TUI preview
 osstack cockpit --workspace .
+osstack cockpit tui --workspace .
 
 # 4. Re-render the latest proof for an engineer view
 osstack proof view "$(node -e 'const s=require("./LOOP-STATE.json"); process.stdout.write(s.loop_id)')" \
@@ -245,6 +246,7 @@ Runs one (or `--cycles N`) full cycle locally, **no daemon required**.
 | `--stop-when-idle` | off | Stop after a cycle with no discovered tasks. |
 | `--archive-completed` | off | Move successful single-task queue files to `tasks/archive/YYYY-MM-DD/`. |
 | `--worktree` | off | Run each task in an isolated git worktree (see below). |
+| `--checkpoint` | off | Create a shadow checkpoint before non-worktree runs. Restore with `osstack checkpoint restore <id\|dir> --apply`. |
 | `--state <path>` | `LOOP-STATE.json` | Machine-readable state file. |
 | `--markdown <path>` | `STATE.md` | Human-readable state file. |
 | `--json` | off | Emit a machine-readable summary to stdout. |
@@ -266,6 +268,11 @@ osstack loop run --source task_queue --auto-agent --verify "pnpm test"
 # Review a working tree's diff with the DeepSeek reviewer
 osstack loop run --source git_diff --reviewer ds-review
 ```
+
+Shadow checkpoints are stored under `$OSSTACK_HOME/checkpoints`, outside the
+workspace and outside `.git`. `osstack checkpoint restore <id|dir>` is a dry-run
+by default; pass `--apply` to write back only the files listed in the checkpoint
+metadata.
 
 **Exit codes:** `0` all good · `1` config/command error · `2` a task failed,
 escalated, or verification did not pass.
@@ -475,6 +482,12 @@ improves over time.
 whether each is available on this machine (`isAvailable()` probes the underlying
 SDK/binary).
 
+**Credential model:** osstack does not store model API keys by default. The
+default CLI adapters use `subprocess/login-reuse`, which reuses the user's
+already authenticated local CLI session. SDK/API-key adapters are explicit
+opt-in paths; do not paste provider keys into prompts, tasks, issues, or proof
+artifacts.
+
 | Adapter | Capabilities | Notes |
 |---|---|---|
 | `claude-code` | `code.write`, `code.refactor`, `code.test`, `code.debug` | Via `@anthropic-ai/claude-agent-sdk`. |
@@ -659,12 +672,25 @@ assets, run:
 ```bash
 osstack release doctor --json
 osstack release plan --target all --output release-plan.md --json
+osstack release handoff --cloud-url <EdgeOne URL> --output-dir release-handoff --json
 ```
 
-It checks GitHub auth, repository secrets (`NPM_TOKEN`, `EDGEONE_DEPLOY_HOOK_URL`),
+It checks GitHub auth, repository secrets (`NPM_TOKEN`, `EDGEONE_API_TOKEN`),
 local npm auth, npm publish assets, EdgeOne Knowledge Cloud deploy assets, and
 single-binary release assets so the release train fails before a partial
 publish/deploy/upload is mistaken for production readiness.
+
+EdgeOne is the preferred production deployment target for Knowledge Cloud. The
+primary deploy credential is `EDGEONE_API_TOKEN`; `EDGEONE_DEPLOY_HOOK_URL`
+remains supported as a fallback for hook-based projects.
+Fly.io remains an optional reference path and `FLY_API_TOKEN` is not required
+for the primary release path.
+
+When GitHub Actions minutes are tight, start with the `next-actions.sh` generated
+by `release handoff`. It only prints the operator checklist; it does not write
+secrets, rerun Release, or trigger EdgeOne deployment. The script separates local
+validation, read-only GitHub inspection, and remote workflow commands that can
+consume Actions minutes.
 
 ---
 

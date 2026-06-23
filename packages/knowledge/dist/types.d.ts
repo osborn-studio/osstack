@@ -47,11 +47,19 @@ export interface KnowledgeSyncEvidence {
     status: "synced" | "error";
     packs: KnowledgePackSummary[];
     cache_dir: string;
+    skipped_pins?: KnowledgePackSummary[];
     reason?: string;
 }
 export interface KnowledgePin {
     pack_id: string;
     version: string;
+}
+export interface KnowledgeCachePruneResult {
+    cache_dir: string;
+    mode: "dry-run" | "applied";
+    keep_versions: number;
+    removed: KnowledgePackSummary[];
+    kept: KnowledgePackSummary[];
 }
 export interface KnowledgeFeedbackEntry {
     chunk_id: string;
@@ -138,6 +146,9 @@ export type KnowledgeSearchEvidence = {
     results: KnowledgeSearchResult[];
     reason?: string;
     fallback_mode?: "local";
+    cache_stale?: boolean;
+    cache_age_days?: number;
+    cache_stale_after_days?: number;
 } | {
     mode: "local" | "cloud";
     status: "error";
