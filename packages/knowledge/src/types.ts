@@ -197,6 +197,35 @@ export interface KnowledgePublishGateReport {
   issues: KnowledgePublishGateIssue[];
 }
 
+export interface KnowledgePublishCatalogPack {
+  id: string;
+  version: string;
+  path: string;
+  sha256: string;
+  bytes: number;
+  scope: KnowledgeScope;
+  source_kind: KnowledgeSourceKind;
+  quality_score: number;
+  taxonomy?: string[];
+  chunks: number;
+  last_reviewed_at?: string;
+  publish_gate: KnowledgePublishGateReport;
+}
+
+export interface KnowledgePublishCatalog {
+  generated_at: string;
+  channel: "official";
+  artifact_kind: "osstack_knowledge_publish_catalog";
+  packs: KnowledgePublishCatalogPack[];
+  retrieval_eval?: {
+    fixture_path: string;
+    total: number;
+    passed: number;
+    failed: number;
+    top_k: number;
+  };
+}
+
 export type KnowledgeSearchEvidence =
   | {
     mode: "off";

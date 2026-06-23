@@ -1,5 +1,8 @@
 #!/usr/bin/env node
-import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { mkdtemp, readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const dockerfile = await read("Dockerfile.knowledge-cloud");
 const edgeone = await read("deploy/knowledge-cloud/edgeone.json");
@@ -83,6 +86,30 @@ if (!Array.isArray(searchBody.results) || searchBody.results.length === 0) {
   throw new Error("EdgeOne Cloud Function /v1/search smoke must return matching knowledge chunks");
 }
 
+const tmp = await mkdtemp(join(tmpdir(), "osstack-knowledge-cloud-deploy-"));
+const catalogPath = join(tmp, "catalog.json");
+const catalogRun = spawnSync(process.execPath, [
+  "scripts/build-knowledge-cloud-publish-catalog.mjs",
+  "--output",
+  catalogPath,
+], { encoding: "utf-8" });
+if (catalogRun.status !== 0) {
+  throw new Error(`Knowledge Cloud publish catalog smoke failed:\n${catalogRun.stdout}\n${catalogRun.stderr}`);
+}
+const catalog = JSON.parse(await read(catalogPath));
+if (catalog.artifact_kind !== "osstack_knowledge_publish_catalog") {
+  throw new Error("Knowledge Cloud publish catalog must identify its artifact kind");
+}
+if (!Array.isArray(catalog.packs) || catalog.packs.length < 10) {
+  throw new Error("Knowledge Cloud publish catalog must include the official pack set");
+}
+if (catalog.packs.some((pack) => pack?.publish_gate?.ok !== true)) {
+  throw new Error("Knowledge Cloud publish catalog must only contain publish-gate passing official packs");
+}
+if (catalog.retrieval_eval?.failed !== 0 || catalog.retrieval_eval?.passed < 42) {
+  throw new Error("Knowledge Cloud publish catalog must include passing retrieval eval evidence");
+}
+
 console.log(JSON.stringify({
   ok: true,
   checked: [
@@ -94,6 +121,7 @@ console.log(JSON.stringify({
     "cloud-functions/healthz.js",
     "cloud-functions/official-packs.js",
     "cloud-functions/package.json",
+    "knowledge-cloud publish catalog",
   ],
 }, null, 2));
 

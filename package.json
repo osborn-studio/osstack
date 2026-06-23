@@ -22,6 +22,7 @@
     "sbom:single-binary": "node scripts/generate-single-binary-sbom.mjs",
     "package:single-binary": "node scripts/package-single-binary.mjs",
     "publish:single-binary": "node scripts/publish-single-binary-release.mjs",
+    "build:knowledge-cloud-catalog": "node scripts/build-knowledge-cloud-publish-catalog.mjs",
     "preflight:npm-publish": "node scripts/preflight-npm-publish-access.mjs",
     "smoke:npm-preflight": "node scripts/smoke-npm-preflight-access.mjs",
     "demo:loop": "pnpm build && node scripts/demo-loop.mjs",
