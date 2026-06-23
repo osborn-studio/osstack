@@ -1,0 +1,27 @@
+{
+  "id": "OS-PROOF-BAD-003",
+  "description": "External proof directories with duplicate or unsafe sha256sums.txt paths must fail proof integrity validation",
+  "proof_dir_mutation": {
+    "sha256sums_extra_lines": [
+      "<existing-report-sha256>  report.md",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  /tmp/osstack-proof-leak.txt",
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb  nested/../report.md"
+    ]
+  },
+  "expected_status": "reject",
+  "expected_integrity_issues": [
+    {
+      "path": "report.md",
+      "code": "sha256sums_duplicate_entry"
+    },
+    {
+      "path": "/tmp/osstack-proof-leak.txt",
+      "code": "sha256sums_unsafe_path"
+    },
+    {
+      "path": "nested/../report.md",
+      "code": "sha256sums_unsafe_path"
+    }
+  ],
+  "expected_reason": "Proof-core artifact integrity validation found missing, moved, or modified files."
+}

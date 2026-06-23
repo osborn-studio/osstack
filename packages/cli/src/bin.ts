@@ -817,6 +817,8 @@ type ProofFileIntegrityIssueCode =
   | "sha256_mismatch"
   | "sha256sums_missing"
   | "sha256sums_malformed"
+  | "sha256sums_duplicate_entry"
+  | "sha256sums_unsafe_path"
   | "sha256sums_missing_entry"
   | "sha256sums_extra_entry"
   | "sha256sums_mismatch";
@@ -1895,8 +1897,16 @@ function validateProofSha256Sums(
     const match = /^([a-f0-9]{64}) {2}(.+)$/.exec(line);
     const checksum = match?.[1];
     const path = match?.[2];
-    if (checksum === undefined || path === undefined || sums.has(path) || isUnsafeProofArtifactPath(path)) {
+    if (checksum === undefined || path === undefined) {
       issues.push({ path: "sha256sums.txt", code: "sha256sums_malformed" });
+      continue;
+    }
+    if (sums.has(path)) {
+      issues.push({ path, code: "sha256sums_duplicate_entry" });
+      continue;
+    }
+    if (isUnsafeProofArtifactPath(path)) {
+      issues.push({ path, code: "sha256sums_unsafe_path" });
       continue;
     }
     sums.set(path, checksum);
