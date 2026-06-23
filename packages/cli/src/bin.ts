@@ -9364,12 +9364,22 @@ function renderCockpitTui(model: CockpitTuiModel): string {
 function selectCockpitTuiAction(model: CockpitTuiModel, selectedIndex: number): CockpitTuiActionSelection | undefined {
   const action = model.actions[selectedIndex - 1];
   if (action === undefined) return undefined;
+  const command = concreteCockpitTuiCommand(action.command, model.workspace);
+  const concreteAction = { ...action, command };
   return {
     mode: "terminal-cockpit-action",
     selected_index: selectedIndex,
-    action,
-    next_command: action.command,
+    action: concreteAction,
+    next_command: command,
   };
+}
+
+function concreteCockpitTuiCommand(command: string, workspace: string): string {
+  return command.replaceAll("<path>", shellQuote(workspace));
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
 function renderCockpitTuiAction(selection: CockpitTuiActionSelection): string {
