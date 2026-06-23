@@ -22,7 +22,7 @@ import {
   validateProofEvidence,
   type ProofAudience,
 } from "@osstack/compliance";
-import { getAgentScorecard, listAgentScorecards, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson } from "@osstack/core";
+import { getAgentScorecard, listAgentScorecards, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons } from "@osstack/core";
 import { scanFiles, type GovernanceFinding } from "@osstack/governance";
 import {
   renderBranchStewardReport,
@@ -5177,6 +5177,7 @@ async function handleLessonsCommand(args: string[]): Promise<number> {
 
   osstack lessons list [--family F] [--limit N] [--json]
   osstack lessons learn [--workspace P] [--state P] [--json]
+                                 Learn failed/escalated pitfalls and verify matching lessons from successful loop state
 `);
     return 0;
   }
@@ -5225,11 +5226,21 @@ async function handleLessonsCommand(args: string[]): Promise<number> {
     const db = openDb({ path: dbPath });
     try {
       const lessons = candidates.map((candidate) => upsertPitfallLesson(db, dbPath, candidate));
+      const verifiedLessons = verifyPitfallLessonsFromState(db, dbPath, state);
       if (args.includes("--json")) {
-        console.log(JSON.stringify({ learned: lessons.length, lessons }, null, 2));
+        console.log(JSON.stringify({
+          learned: lessons.length,
+          verified: verifiedLessons.length,
+          lessons,
+          verified_lessons: verifiedLessons,
+        }, null, 2));
       } else {
         console.log(`learned=${lessons.length}`);
+        console.log(`verified=${verifiedLessons.length}`);
         for (const lesson of lessons) {
+          console.log(`${lesson.pitfall_id} ${lesson.family} verified=${lesson.verified_count}`);
+        }
+        for (const lesson of verifiedLessons) {
           console.log(`${lesson.pitfall_id} ${lesson.family} verified=${lesson.verified_count}`);
         }
       }
@@ -5266,21 +5277,45 @@ function derivePitfallLessonsFromState(state: LoopState): Parameters<typeof upse
 async function learnLessonsFromLoopState(state: LoopState): Promise<{
   learned: number;
   lessons: ReturnType<typeof upsertPitfallLesson>[];
+  verified: number;
+  verified_lessons: ReturnType<typeof verifyPitfallLessons>;
 } | undefined> {
   const candidates = derivePitfallLessonsFromState(state);
-  if (candidates.length === 0) return undefined;
   try {
     const dbPath = await ensureLocalStateDbPath();
     const db = openDb({ path: dbPath });
     try {
       const lessons = candidates.map((candidate) => upsertPitfallLesson(db, dbPath, candidate));
-      return { learned: lessons.length, lessons };
+      const verifiedLessons = verifyPitfallLessonsFromState(db, dbPath, state);
+      if (lessons.length === 0 && verifiedLessons.length === 0) return undefined;
+      return {
+        learned: lessons.length,
+        lessons,
+        verified: verifiedLessons.length,
+        verified_lessons: verifiedLessons,
+      };
     } finally {
       db.close();
     }
   } catch {
     return undefined;
   }
+}
+
+function verifyPitfallLessonsFromState(
+  db: Parameters<typeof verifyPitfallLessons>[0],
+  dbPath: string,
+  state: LoopState,
+): ReturnType<typeof verifyPitfallLessons> {
+  const verified: ReturnType<typeof verifyPitfallLessons> = [];
+  for (const task of state.completed_tasks) {
+    if (task.outcome !== "success") continue;
+    verified.push(...verifyPitfallLessons(db, dbPath, {
+      source_run_id: state.loop_id,
+      tech_stack: inferLessonTechStack(task.capability),
+    }));
+  }
+  return verified;
 }
 
 function inferLessonTechStack(capability: string | undefined): string[] {

@@ -39,16 +39,17 @@ export function upsertPitfallLesson(
   const existing = db.prepare("SELECT * FROM pitfall_lessons WHERE fingerprint = ?").get(fingerprint) as unknown;
   if (existing !== undefined) {
     const current = parsePitfallLesson(existing);
+    const alreadySeen = current.source_run_ids.includes(lesson.source_run_id);
     const sourceRunIds = [...new Set([...current.source_run_ids, lesson.source_run_id])];
     withWrite(db, dbPath, (d) => {
       d.prepare(`
         UPDATE pitfall_lessons
-        SET verified_count = verified_count + 1,
+        SET verified_count = verified_count + ?,
             source_run_ids_json = ?,
             updated_at = ?,
             last_seen_at = ?
         WHERE fingerprint = ?
-      `).run(JSON.stringify(sourceRunIds), now, now, fingerprint);
+      `).run(alreadySeen ? 0 : 1, JSON.stringify(sourceRunIds), now, now, fingerprint);
     });
     const updated = db.prepare("SELECT * FROM pitfall_lessons WHERE fingerprint = ?").get(fingerprint) as unknown;
     return parsePitfallLesson(updated);
@@ -113,6 +114,44 @@ export function listPitfallLessons(
   return rows.map(parsePitfallLesson);
 }
 
+export function verifyPitfallLessons(
+  db: Database.Database,
+  dbPath: string,
+  opts: { source_run_id: string; tech_stack: string[]; families?: string[]; limit?: number },
+): PitfallLessonView[] {
+  const families = opts.families ?? ["verify_failed", "max_iter_escalation"];
+  const candidates = listPitfallLessons(db, { limit: opts.limit ?? 50 })
+    .filter((lesson) => families.includes(lesson.family))
+    .filter((lesson) => hasTechStackOverlap(lesson.tech_stack, opts.tech_stack))
+    .filter((lesson) => !lesson.source_run_ids.includes(opts.source_run_id));
+  if (candidates.length === 0) return [];
+
+  const now = Date.now() / 1000;
+  withWrite(db, dbPath, (d) => {
+    const update = d.prepare(`
+      UPDATE pitfall_lessons
+      SET verified_count = verified_count + 1,
+          source_run_ids_json = ?,
+          updated_at = ?,
+          last_seen_at = ?
+      WHERE pitfall_id = ?
+    `);
+    for (const lesson of candidates) {
+      const sourceRunIds = [...new Set([...lesson.source_run_ids, opts.source_run_id])];
+      update.run(JSON.stringify(sourceRunIds), now, now, lesson.pitfall_id);
+    }
+  });
+
+  const ids = candidates.map((lesson) => lesson.pitfall_id);
+  const placeholders = ids.map(() => "?").join(", ");
+  const rows = db.prepare(`
+    SELECT * FROM pitfall_lessons
+    WHERE pitfall_id IN (${placeholders})
+    ORDER BY last_seen_at DESC, verified_count DESC
+  `).all(...ids) as unknown[];
+  return rows.map(parsePitfallLesson);
+}
+
 function lessonFingerprint(lesson: NewPitfallLesson): string {
   return createHash("sha256")
     .update(JSON.stringify({
@@ -122,6 +161,11 @@ function lessonFingerprint(lesson: NewPitfallLesson): string {
       resolution: lesson.resolution.trim().toLowerCase(),
     }))
     .digest("hex");
+}
+
+function hasTechStackOverlap(left: string[], right: string[]): boolean {
+  const rightSet = new Set(right);
+  return left.some((item) => rightSet.has(item));
 }
 
 function parsePitfallLesson(row: unknown): PitfallLessonView {

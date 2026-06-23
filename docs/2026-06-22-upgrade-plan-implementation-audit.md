@@ -32,7 +32,7 @@
 | Phase 1 Evidence Layer | report + scorecard + proof + subprocess-first adapters | 基本完成 | `report-cli.test.ts`、`scorecard-cli.test.ts`、`proof-cli.test.ts`、`agent-list-cli.test.ts`、npm install smoke | daemon event-rich report 仍需更多真实运行样本验证 |
 | Phase 2 Product Entry | `osstack deliver` + agent 角色化 | 基本完成 | `deliver-cli.test.ts`、`product-entry-cli.test.ts`、`agent-scorecard-cli.test.ts`、`smoke:npm-install` 安装后 deliver/worktree/proof smoke | 可继续在外部真实业务 repo 上扩展长任务 smoke |
 | Phase 3 Governed Run | Run Spec + governance verifier + PR evidence | 基本完成 | `docs/specs/OSSTACK_RUN_SPEC_V1.md`、`docs/specs/CONFORMANCE_MATRIX.md`、schemas/test vectors、`governance-cli.test.ts`、`pr-cli.test.ts` | 继续随新 MUST 条款补 runtime/schema/vector 覆盖 |
-| Phase 4 Learning Control Plane | Pitfall KB + Knowledge bootstrap + agent scorecard | 基本完成 | `lessons-cli.test.ts`、`knowledge-cli.test.ts`、`agent-scorecard-cli.test.ts` | pitfall 自动提升 verified_count 的真实 loop 闭环需继续增强 |
+| Phase 4 Learning Control Plane | Pitfall KB + Knowledge bootstrap + agent scorecard | 基本完成 | `lessons-cli.test.ts`、`knowledge-cli.test.ts`、`agent-scorecard-cli.test.ts` | 继续用更多真实项目运行样本校准 lesson family 与召回精度 |
 | Phase 5 Product Surface | Cockpit/TUI + examples/guide/doctor + i18n + checkpoint | 部分到基本完成 | `dashboard.ts`、`dashboard-cli.test.ts`、`product-entry-cli.test.ts`、`i18n-cli.test.ts`、`proof-cli.test.ts`、`compliance-cli.test.ts`、`checkpoint-cli.test.ts` | 完整交互式 TUI 未完成；更深层报告模板/运营内容本地化仍可扩展 |
 | Phase 6 Trust/Compliance/Knowledge Cloud | compliance packs + enterprise proof views + Osstack Knowledge Cloud | 部分到基本完成 | `compliance-packs/*`、`compliance-cli.test.ts`、`proof --compliance-pack` proof artifacts、`proof view`、`knowledge-cloud` package、`/v1/publish` gate、`/v1/audit` tenant audit events、deploy assets、smoke | 真实云端上线、生产 ingestion pipeline、tenant auth/storage/vector index |
 
@@ -228,11 +228,14 @@
 
 - SQLite pitfall lessons 存储存在。
 - `osstack lessons list` 存在。
+- `osstack lessons learn` 会从 failed/escalated loop state 写入 pitfall lesson；同一个 `source_run_id` 重复学习不会重复提升 `verified_count`。
+- 后续 successful loop state 会按 tech stack 验证已有 failed/escalated lesson，并把成功 run id 写入 `source_run_ids`，从而提升 `verified_count`。
 - dashboard/cockpit 可展示 lessons。
 
 需增强：
 
-- verify failed/reviewer failed/max-iter escalation 到 pitfall 的自动写入与 verified_count 增长还需要更多真实 loop 验证。
+- reviewer/checker failed、merge conflict、agent unavailable 等更多 failure family 的自动提取仍可继续补充。
+- 需要更多真实项目样本来校准 tech stack 召回，避免成功 run 过宽地验证不相关 lesson。
 
 ### Task 4.2：Knowledge Cloud bootstrap client
 

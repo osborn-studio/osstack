@@ -57,12 +57,72 @@ describe("lessons CLI", () => {
     expect(listed.lessons.every((lesson) => lesson.verified_count === 1)).toBe(true);
   });
 
+  it("increments verified_count when a later successful loop verifies an existing pitfall", async () => {
+    await writeState(join(tmp, "failed-state.json"), {
+      loop_id: "failed-loop",
+      tasks: [{
+        task_id: "failed-task",
+        capability: "code.test",
+        outcome: "failed",
+        iterations: 1,
+        agent_id: "codex-cli",
+        duration_ms: 1000,
+      }],
+    });
+
+    const firstLearnCode = await main(["lessons", "learn", "--workspace", tmp, "--state", "failed-state.json", "--json"]);
+    expect(firstLearnCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      learned: 1,
+      verified: 0,
+      lessons: [expect.objectContaining({ family: "verify_failed", verified_count: 1 })],
+    });
+
+    logs = [];
+    await writeState(join(tmp, "fixed-state.json"), {
+      loop_id: "fixed-loop",
+      tasks: [{
+        task_id: "fixed-task",
+        capability: "code.test",
+        outcome: "success",
+        iterations: 1,
+        agent_id: "codex-cli",
+        duration_ms: 1000,
+      }],
+    });
+
+    const verifyCode = await main(["lessons", "learn", "--workspace", tmp, "--state", "fixed-state.json", "--json"]);
+    expect(verifyCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      learned: 0,
+      verified: 1,
+      verified_lessons: [expect.objectContaining({ family: "verify_failed", verified_count: 2 })],
+    });
+
+    logs = [];
+    const repeatCode = await main(["lessons", "learn", "--workspace", tmp, "--state", "fixed-state.json", "--json"]);
+    expect(repeatCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      learned: 0,
+      verified: 0,
+      verified_lessons: [],
+    });
+
+    logs = [];
+    const listCode = await main(["lessons", "list", "--json"]);
+    expect(listCode).toBe(0);
+    const listed = JSON.parse(logs.join("\n")) as { lessons: Array<{ family: string; verified_count: number; source_run_ids: string[] }> };
+    expect(listed.lessons).toContainEqual(expect.objectContaining({
+      family: "verify_failed",
+      verified_count: 2,
+      source_run_ids: ["failed-loop", "fixed-loop"],
+    }));
+  });
+
   it("reports when no failed or escalated tasks can be learned", async () => {
-    await writeFile(join(tmp, "LOOP-STATE.json"), JSON.stringify({
+    await writeState(join(tmp, "LOOP-STATE.json"), {
       loop_id: "clean-loop",
-      started_at: "2026-06-22T02:00:00.000Z",
-      updated_at: "2026-06-22T02:05:00.000Z",
-      completed_tasks: [{
+      tasks: [{
         task_id: "clean-task",
         capability: "code.test",
         outcome: "success",
@@ -70,10 +130,7 @@ describe("lessons CLI", () => {
         agent_id: "codex-cli",
         duration_ms: 1000,
       }],
-      in_progress: [],
-      pending: [],
-      decisions: [],
-    }, null, 2));
+    });
 
     const exitCode = await main(["lessons", "learn", "--workspace", tmp]);
 
@@ -89,12 +146,25 @@ describe("lessons CLI", () => {
   });
 });
 
-async function writeState(path: string): Promise<void> {
+async function writeState(
+  path: string,
+  opts: {
+    loop_id?: string;
+    tasks?: Array<{
+      task_id: string;
+      capability: string;
+      outcome: "success" | "failed" | "escalated";
+      iterations: number;
+      agent_id: string;
+      duration_ms: number;
+    }>;
+  } = {},
+): Promise<void> {
   await writeFile(path, JSON.stringify({
-    loop_id: "cli-lessons-loop",
+    loop_id: opts.loop_id ?? "cli-lessons-loop",
     started_at: "2026-06-22T02:00:00.000Z",
     updated_at: "2026-06-22T02:05:00.000Z",
-    completed_tasks: [
+    completed_tasks: opts.tasks ?? [
       {
         task_id: "failed-task",
         capability: "code.test",
