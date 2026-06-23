@@ -1,5 +1,11 @@
 # @osstack/cli
 
+## 0.6.0
+
+### Minor Changes
+
+- fd7a88c: Add deterministic `osstack cockpit tui --fullscreen --interactive` key-sequence automation for selecting actions and quitting from the fullscreen cockpit state model.
+
 ## 0.5.0
 
 ### Minor Changes
