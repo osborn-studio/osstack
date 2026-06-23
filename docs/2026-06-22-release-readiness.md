@@ -1,8 +1,8 @@
 # osstack 发布就绪证据与上线阻塞记录
 
 > 日期：2026-06-22
-> 分支：`codex/releasing-operator-docs`
-> 本地验证 HEAD：`9fda27b ci: split macos release candidate smoke`
+> 最近更新：2026-06-23
+> 当前执行口径：EdgeOne 是 Knowledge Cloud 正式上线目标；Fly.io 仅保留为可选参考路径。
 
 ## 1. 结论
 
@@ -16,10 +16,10 @@
 
 尚未完成的部分不是代码验证，而是外部发布链路：
 
-- GitHub push/PR 已恢复，Version Packages PR #5 当前为 `CLEAN / MERGEABLE`。
-- GitHub Actions 当前被账户 billing/spending-limit 卡住，runner 在执行任何 step 前失败；PR #26 已记录本地验证证据，修复 billing 后需要 rerun CI；`release doctor` 已能自动识别该 blocker。
-- npm 发布仍需要仓库 secret `NPM_TOKEN`。
-- Knowledge Cloud `deploy=true` 仍需要仓库 secret `EDGEONE_DEPLOY_HOOK_URL`。
+- GitHub push/PR 已恢复；GitHub Actions runner 已能正常执行，最新 main CI 与 macOS Release Candidate 已通过。
+- npm 发布仍卡在 `@osstack` scope 发布权限：仓库 secret `NPM_TOKEN` 已存在，但 Release workflow 在 preflight 阶段暴露 scope/publish access 问题。
+- Knowledge Cloud 正式上线选择 EdgeOne；`deploy=true` 仍需要仓库 secret `EDGEONE_DEPLOY_HOOK_URL`，并需要完成腾讯云 EdgeOne Pages 项目、deploy hook 与生产 URL 验收。
+- `FLY_API_TOKEN` 不再是当前 osstack 上线主路径的必需凭证；Fly.io 只保留为可选备份/参考。
 
 ## 2. 已完成能力清单
 
@@ -35,8 +35,8 @@
 | Portable CLI 分发 | 已完成过渡 smoke | `pnpm smoke:portable-cli` 验证 workspace tarballs 可安装进 portable prefix，并输出 single executable 候选工具状态 |
 | Bun 单文件分发 | 已完成本地 release archive candidate smoke，已接 CI/release artifact | `pnpm build:single-binary` 生成 binary/manifest/checksum；`pnpm sbom:single-binary` 生成 SPDX 2.3 SBOM；`pnpm smoke:bun-single-binary` 验证 `--version`、`help`、`loop doctor --json`、sha256；`pnpm smoke:single-binary-signing` 验证 ad-hoc codesign；`pnpm smoke:single-binary-release-pack` 验证 tarball 可解包运行；release workflow 上传 candidate artifact |
 | 测试体系 | 已完成当前门禁 | lint、build、test、smoke 全部通过 |
-| 云端上线 | 未完成 | 需要修复 Actions billing、配置 `EDGEONE_DEPLOY_HOOK_URL`，然后运行 Knowledge Cloud `deploy=true` |
-| npm 发布 | 未完成 | PR #5 已 `CLEAN / MERGEABLE`，但合并前必须配置 `NPM_TOKEN` |
+| 云端上线 | 未完成 | EdgeOne 已定为主路径；需要创建 EdgeOne Pages 项目、配置 `EDGEONE_DEPLOY_HOOK_URL`，然后运行 Knowledge Cloud `deploy=true` 并用生产 URL 复跑云端验收 |
+| npm 发布 | 未完成 | `NPM_TOKEN` 已进入阻塞排查范围；仍需修复 npmjs.com `@osstack` scope 和 token 背后账号的 publish 权限 |
 
 ## 3. 本轮验证命令
 
@@ -177,14 +177,13 @@
 
 ## 9. GitHub / 上线阻塞
 
-GitHub push、PR、workflow 定义已恢复。当前发布阻塞不是代码问题，而是账户级 Actions 与生产发布凭证尚未配置：
+GitHub push、PR、workflow 定义已恢复；GitHub Actions runner 已从账户级阻塞中恢复。当前发布阻塞不是代码问题，而是 npm scope 权限与 EdgeOne 生产发布凭证尚未配置：
 
-- GitHub Actions runner 启动前失败：`recent account payments have failed or your spending limit needs to be increased`。
-- npm publish 需要仓库 secret `NPM_TOKEN`。
-- npm publish 还需要 npmjs.com 上存在 `@osstack` scope，并且 `NPM_TOKEN` 背后的 npm 账号拥有该 scope 的 publish 权限；当前 Release workflow 已在真实 publish 阶段暴露 `Scope not found`。
-- Knowledge Cloud `deploy=true` 需要仓库 secret `EDGEONE_DEPLOY_HOOK_URL`。
-- 本机人工发布/排障还需要 `npm login` 与 `EdgeOne Pages deploy hook`。
-- `release doctor` 会输出 `github_actions` error；`release plan` 会把修复 Billing / spending limit 放入 blockers 和 operator commands。
+- npm publish 需要可发布 `@osstack` scope 的仓库 secret `NPM_TOKEN`。
+- npmjs.com 上需要存在 `@osstack` scope，并且 `NPM_TOKEN` 背后的 npm 账号拥有该 scope 的 publish 权限；当前 Release workflow 已在真实 publish preflight 暴露 scope/publish access 问题。
+- Knowledge Cloud `deploy=true` 采用 EdgeOne 主路径，需要仓库 secret `EDGEONE_DEPLOY_HOOK_URL`。
+- 本机人工发布/排障还需要 `npm login` 与腾讯云/EdgeOne Pages 控制台权限。
+- Fly.io 不再作为当前上线主路径，因此 `FLY_API_TOKEN` 不是必需 blocker；如未来需要多云备份，再把 Fly.io 作为独立增强项处理。
 
 发布前执行：
 
@@ -332,10 +331,10 @@ osstack knowledge eval --official --fixtures knowledge-evals/retrieval/osstack-c
 
 优先级建议：
 
-1. 先解除 GitHub Actions billing 阻塞，并合并 PR #26。
-2. 创建/授权 npm `@osstack` scope，并配置可发布该 scope 的 `NPM_TOKEN`。
-3. 配置 `EDGEONE_DEPLOY_HOOK_URL`。
-4. 再真实部署 Knowledge Cloud，拿到 URL。
+1. 创建/授权 npm `@osstack` scope，并确认 `NPM_TOKEN` 背后的 npm 账号可以 publish。
+2. 在 EdgeOne Pages 创建 Knowledge Cloud 项目、连接 `gilosbornhello/osstack`，生成 deploy hook。
+3. 配置仓库 secret `EDGEONE_DEPLOY_HOOK_URL`，运行 Knowledge Cloud workflow `deploy=true`。
+4. 拿到 EdgeOne 生产 URL 后，执行 `release doctor --target knowledge-cloud --cloud-url <EdgeOne URL>`、`knowledge sync --cloud-url <EdgeOne URL>`、`knowledge search --cloud-url <EdgeOne URL>`。
 5. 再发布 npm package，并从 registry 复跑安装 smoke。
 6. 再做 TUI / Live Workbench，因为 UI 需要稳定后端能力支撑。
 7. 最后强化合规包装，让 osstack 的知识库与证据包可以进入团队/商业使用场景。
