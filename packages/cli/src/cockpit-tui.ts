@@ -256,6 +256,17 @@ export function runCockpitTuiFullscreenKeys(model: CockpitTuiModel, keys: Cockpi
   return { type: "none", state };
 }
 
+export function cockpitTuiKeyFromInput(value: string): CockpitTuiKey {
+  if (value === "\u0003") return "q";
+  if (value === "\u001b") return "escape";
+  if (value === "\r" || value === "\n") return "enter";
+  if (value === "\u001b[A") return "up";
+  if (value === "\u001b[B") return "down";
+  if (value === "\u001b[C") return "right";
+  if (value === "\u001b[D") return "left";
+  return value;
+}
+
 export function selectCockpitTuiAction(model: CockpitTuiModel, selectedIndex: number): CockpitTuiActionSelection | undefined {
   const action = model.actions[selectedIndex - 1];
   if (action === undefined) return undefined;
@@ -314,8 +325,59 @@ export async function runInteractiveCockpitFullscreen(model: CockpitTuiModel, op
     console.error("osstack: cockpit tui --fullscreen --interactive requires a TTY; use --action N for scripts");
     return 1;
   }
-  console.error("osstack: cockpit tui --fullscreen --interactive raw-mode input is not enabled yet; use --action N or OSSTACK_TEST_COCKPIT_TUI_KEYS");
-  return 1;
+  const result = await runCockpitTuiFullscreenRawMode(model, { json: options.json });
+  if (result.type === "select") {
+    if (options.json) console.log(JSON.stringify(result.selection, null, 2));
+    else console.log(renderCockpitTuiAction(result.selection));
+    return 0;
+  }
+  const quit: CockpitTuiInteractiveQuit = { mode: "terminal-cockpit-interactive", status: "quit" };
+  if (options.json) console.log(JSON.stringify(quit, null, 2));
+  else console.log("cockpit_interactive=quit");
+  return 0;
+}
+
+async function runCockpitTuiFullscreenRawMode(
+  model: CockpitTuiModel,
+  options: { json: boolean },
+): Promise<CockpitTuiFullscreenRunResult> {
+  const stdin = process.stdin as NodeJS.ReadStream & { setRawMode?: (mode: boolean) => void };
+  if (typeof stdin.setRawMode !== "function") {
+    console.error("osstack: cockpit tui --fullscreen --interactive raw-mode is unavailable in this terminal");
+    return { type: "quit", state: initialCockpitTuiFullscreenState(model) };
+  }
+  let state = initialCockpitTuiFullscreenState(model);
+  return await new Promise<CockpitTuiFullscreenRunResult>((resolve) => {
+    const render = () => {
+      if (options.json) return;
+      process.stdout.write(`\u001b[?25l\u001b[2J\u001b[H${renderCockpitFullscreen(model, { state })}\n`);
+    };
+    const finish = (result: CockpitTuiFullscreenRunResult) => {
+      stdin.off("data", onData);
+      stdin.setRawMode?.(false);
+      stdin.pause();
+      if (!options.json) process.stdout.write("\u001b[?25h\n");
+      resolve(result);
+    };
+    const onData = (chunk: Buffer) => {
+      const key = cockpitTuiKeyFromInput(chunk.toString("utf-8"));
+      const result = updateCockpitTuiFullscreenState(model, state, key);
+      if (result.type === "state" || result.type === "none") {
+        state = result.state;
+        render();
+        return;
+      }
+      if (result.type === "select") {
+        finish({ type: "select", state, selection: result.selection });
+        return;
+      }
+      finish({ type: "quit", state });
+    };
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.on("data", onData);
+    render();
+  });
 }
 
 export function renderCockpitTuiAction(selection: CockpitTuiActionSelection): string {

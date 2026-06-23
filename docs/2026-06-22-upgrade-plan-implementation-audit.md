@@ -23,7 +23,7 @@
 - EdgeOne deploy workflow 已补上 `cancel-in-progress`、EdgeOne CLI 8 分钟命令 timeout / 10 分钟步骤 timeout，并已修复 validation-only 不校验 `cloud_url` 的缺口；最新 Knowledge Cloud Deploy validation-only run `28064311003` 在 `deploy=false` 时成功执行并通过 `Validate deployed Knowledge Cloud URL`。
 - 日常 PR CI 已拆到 `ubuntu-latest`，macOS single-binary release-candidate smoke 已拆到独立 `.github/workflows/macos-release-candidate.yml`，正式 release workflow 仍保留 macOS archive candidate artifact。
 - 可选单文件分发已有 portable CLI bundle smoke、Bun single executable smoke、本地 release asset manifest/checksum/SPDX SBOM、ad-hoc codesign 验证、`.tar.gz` release archive smoke、single-binary `release doctor` readiness，并已接入 CI/release workflow candidate artifact 与 tag/workflow_dispatch GitHub Release 上传路径；发布级 Developer ID 签名/公证/跨机器验证尚未完成。
-- Cockpit 当前是 dashboard/web cockpit + CLI summary + terminal workbench preview + 受控 action 执行，不是完整 Ink/blessed 交互式 TUI。
+- Cockpit 当前是 dashboard/web cockpit + CLI summary + raw-mode terminal workbench + 受控 action 执行，不是 Ink/blessed 组件库 TUI。
 - Knowledge Cloud 已有本地 ingestion/rewrite/review、云端 `/v1/publish` 门禁、official/tenant `/v1/review/queue` 审核队列、文件型 published-pack storage、tenant-scoped audit JSONL 与 `/v1/audit` 查询切片，并已上线 EdgeOne；完整审核 UI、Postgres/object storage/vector index、正式云端运营流水线仍未完成。
 
 ## 2. Phase 完成矩阵
@@ -35,7 +35,7 @@
 | Phase 2 Product Entry | `osstack deliver` + agent 角色化 | 基本完成 | `deliver-cli.test.ts`、`product-entry-cli.test.ts`、`agent-scorecard-cli.test.ts`、`smoke:npm-install` 安装后 deliver/worktree/proof smoke | 可继续在外部真实业务 repo 上扩展长任务 smoke |
 | Phase 3 Governed Run | Run Spec + governance verifier + PR evidence | 基本完成 | `docs/specs/OSSTACK_RUN_SPEC_V1.md`、`docs/specs/CONFORMANCE_MATRIX.md`、schemas/test vectors、`governance-cli.test.ts`、`pr-cli.test.ts` | 继续随新 MUST 条款补 runtime/schema/vector 覆盖 |
 | Phase 4 Learning Control Plane | Pitfall KB + Knowledge bootstrap + agent scorecard | 基本完成 | `lessons-cli.test.ts`、`knowledge-cli.test.ts`、`agent-scorecard-cli.test.ts` | 继续用更多真实项目运行样本校准 lesson family 与召回精度 |
-| Phase 5 Product Surface | Cockpit/TUI + examples/guide/doctor + i18n + checkpoint | 部分到基本完成 | `dashboard.ts`、`dashboard-cli.test.ts`、`product-entry-cli.test.ts`、`i18n-cli.test.ts`、`proof-cli.test.ts`、`compliance-cli.test.ts`、`checkpoint-cli.test.ts`、terminal cockpit Overview/Kanban/Evidence/Knowledge/Next Actions sections、`cockpit tui --action N --execute-action` controlled execution | 完整 Ink/blessed 交互式 TUI 未完成；更深层报告模板/运营内容本地化仍可扩展 |
+| Phase 5 Product Surface | Cockpit/TUI + examples/guide/doctor + i18n + checkpoint | 基本完成，UI 可继续精修 | `dashboard.ts`、`dashboard-cli.test.ts`、`cockpit-tui.test.ts`、`product-entry-cli.test.ts`、`i18n-cli.test.ts`、`proof-cli.test.ts`、`compliance-cli.test.ts`、`checkpoint-cli.test.ts`、terminal cockpit Overview/Kanban/Evidence/Knowledge/Next Actions sections、`cockpit tui --fullscreen --interactive` raw-mode navigation、`cockpit tui --action N --execute-action` controlled execution | 还未采用 Ink/blessed 组件库；更深层报告模板/运营内容本地化仍可扩展 |
 | Phase 6 Trust/Compliance/Knowledge Cloud | compliance packs + enterprise proof views + Osstack Knowledge Cloud | 主路径上线，生产运营深化中 | `compliance-packs/*`、`compliance-cli.test.ts`、`proof --compliance-pack` proof artifacts、`proof view`、`knowledge-cloud` package、`/v1/publish` gate、`/v1/review/queue` official/tenant review queue、`/v1/audit` tenant audit events、deploy assets、local smoke、EdgeOne production URL `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool`、`release doctor --target primary --cloud-url <EdgeOne URL>` ok、生产云端 sync 10 packs、retrieval eval 42/42、生产云端 search/audit/feedback-summary ok、cached `knowledge list` 与 `knowledge sources --internal` provenance、Knowledge Cloud Deploy validation-only run `28064311003` 执行线上 URL 验收 | 生产 ingestion pipeline、完整审核 UI、tenant auth/storage/vector index |
 
 ## 3. 任务级状态
@@ -293,15 +293,16 @@
 - 支持 `cockpit tui --action N` / `--json` 从终端 cockpit actions 中选择一个动作并输出 workspace-aware `next_command`，让 TUI 从静态预览推进为可脚本化的 live workbench 入口；默认只选择/输出命令，不自动执行，避免误触发副作用。
 - 支持 `cockpit tui --action N --execute-action` 显式执行受控 action：仅允许 `osstack` 白名单命令，拒绝仍含 `<task>` / `<query>` 占位符的动作，返回 `terminal-cockpit-action-execution` JSON contract，并捕获被执行命令的 stdout/stderr/exit code；`dashboard-cli.test.ts` 已覆盖从 TUI action 生成 proof pack 的真实 live workbench 步骤。
 - 支持 `cockpit tui --interactive` 第一版键盘交互：终端中按编号选择 action 或输入 `q` 退出；`--interactive --json` 输出同一 action-selection 数据结构，安装后 smoke 会验证真实 npm 安装路径中的 interactive selection。
+- 支持 `cockpit tui --fullscreen --interactive` 真实 TTY raw-mode 全屏交互：方向键移动 section/action，Enter 选择 action，`q` / Esc / Ctrl-C 退出；`cockpit-tui.test.ts` 覆盖 raw terminal input 到 TUI key 的映射，脚本环境仍可用 `OSSTACK_TEST_COCKPIT_TUI_KEYS` 做确定性验证。
 
 未完成：
 
-- 还不是完整 Ink/blessed 全屏交互式 TUI；当前是 Web cockpit + script-friendly CLI summary + terminal TUI preview + Knowledge cache view + scriptable/interactive action selection + controlled action execution + cockpit action commands。
+- 还未引入 Ink/blessed 组件库；当前是 Web cockpit + script-friendly CLI summary + raw-mode terminal cockpit + Knowledge cache view + scriptable/interactive action selection + controlled action execution + cockpit action commands。
 
 建议：
 
 - 当前可作为 Cockpit MVP。
-- 后续再做 Ink/blessed 或增强 Web cockpit。
+- 后续可继续评估 Ink/blessed 组件化重写或增强 Web cockpit。
 
 ### Task 5.2：Examples / Guide / Doctor
 
@@ -431,7 +432,7 @@
 | P1 | Compliance report 从 proof dir 渲染 smoke | 证明 enterprise proof 包装闭环 | 已覆盖真实 deliver proof dir 渲染 `engineering-readiness` 与 `soc2-lite`，且不声称外部认证 |
 | P1 | UmaDev 代码级对标任务落地 | 从 UmaDev 学习 TUI、知识库、retrieval、contract validation、governance hook 的代码结构，但不 fork、不改名、不直接镜像上游知识库 | `docs/external/2026-06-23-umadev-code-benchmark.md` 与 `docs/product/10_TASK_BREAKDOWN.md` 的 P1/P2/P3 borrowing backlog |
 | P2 | 单文件 release asset 产品化 | 可选增强，不阻塞 npm 主路径；Bun single executable 本地 release archive candidate 已有 manifest/checksum/SPDX SBOM/ad-hoc signing/extract smoke，workflow artifact 与 formal upload path 已接入 | macOS arm64 Developer ID signed/notarized asset + cross-machine smoke + remote formal GitHub Release proof |
-| P2 | 交互式 TUI | 当前 cockpit 是 Web/summary + run/retry/approve/report/proof MVP | 提供完整交互式 TUI |
+| P2 | 交互式 TUI | 当前 cockpit 是 Web/summary + raw-mode terminal cockpit + run/retry/approve/report/proof/execute-action MVP | 继续精修组件化 TUI 与 Web cockpit |
 
 ## 5. 外部阻塞记录
 
@@ -464,7 +465,7 @@ osstack release doctor --target primary --cloud-url https://osstack-knowledge-cl
 
 下一轮可转入：
 
-1. Cockpit TUI 技术债拆分：先把 model/render/input 从 `packages/cli/src/bin.ts` 拆出，再决定 Ink/blessed/full-screen 交互层。
+1. Cockpit TUI 技术债拆分：model/render/input 已从 `packages/cli/src/bin.ts` 拆出，下一步决定是否用 Ink/blessed 做组件化重写，或继续深化当前 raw-mode terminal cockpit。
 2. Contract validation proof slice：参考 UmaDev contract layer 增加前后端 API 对齐检查，并把结果写入 proof evidence。
 3. Osstack-native Knowledge Cloud 扩容：用 UmaDev 语料目录做 taxonomy map，经 rewrite/provenance/review queue/publish gate 变成 Osstack 自有云端知识库。
 4. 生产 Knowledge Cloud 运营：完整审核 UI、object storage/Postgres/vector index、团队/组织权限模型。
