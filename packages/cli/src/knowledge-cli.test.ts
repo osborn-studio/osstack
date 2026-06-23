@@ -430,6 +430,24 @@ describe("knowledge CLI", () => {
       });
 
       logs = [];
+      const sourcesExitCode = await main([
+        "knowledge",
+        "sources",
+        "--internal",
+        "--cache-dir",
+        cacheDir,
+        "--json",
+      ]);
+
+      expect(sourcesExitCode).toBe(0);
+      expect(JSON.parse(logs.join("\n"))).toMatchObject({
+        packs: [expect.objectContaining({
+          pack_id: "osstack-cloud-cockpit",
+          sources: [expect.objectContaining({ source_id: "osstack-cloud-cockpit-v1", scope: "official" })],
+        })],
+      });
+
+      logs = [];
       const searchExitCode = await main([
         "knowledge",
         "search",
@@ -804,6 +822,14 @@ function cloudCockpitPack(overrides: Record<string, unknown> = {}) {
       body: "Knowledge Cloud should return Osstack-native cockpit and proof guidance.",
       tags: ["cockpit", "proof"],
       source_refs: ["osstack-cloud"],
+    }],
+    source_provenance: [{
+      source_id: "osstack-cloud-cockpit-v1",
+      path: "processed/osstack-cloud-cockpit.md",
+      sha256: "sha256-placeholder",
+      license: "Osstack Cloud Terms",
+      scope: "official",
+      imported_at: "2026-06-22T00:00:00.000Z",
     }],
     ...overrides,
   };
