@@ -35,6 +35,10 @@ assertIncludes(edgeOneFunction, "function searchPacks", "EdgeOne Cloud Function 
 assertIncludes(edgeOneHealthFunction, "osstack-knowledge-cloud", "EdgeOne /healthz function must return Knowledge Cloud service metadata");
 assertIncludes(edgeOneFunctionPackage, '"type": "module"', "EdgeOne Cloud Function package must opt into ESM");
 assertIncludes(edgeOneOfficialPacks, "proof-checksum-pack", "EdgeOne function bundle must include official proof knowledge pack data");
+assertIncludes(edgeOneOfficialPacks, "architecture-control-plane", "EdgeOne function bundle must include official architecture knowledge pack data");
+assertIncludes(edgeOneOfficialPacks, "contract-validation-proof", "EdgeOne function bundle must include official contract validation knowledge pack data");
+assertIncludes(edgeOneOfficialPacks, "testing-eval-gates", "EdgeOne function bundle must include official testing/eval knowledge pack data");
+assertIncludes(edgeOneOfficialPacks, "operations-release-runbook", "EdgeOne function bundle must include official operations knowledge pack data");
 
 assertIncludes(render, "dockerfilePath: ./Dockerfile.knowledge-cloud", "Render deploy config must use the Knowledge Cloud Dockerfile");
 assertIncludes(render, "healthCheckPath: /healthz", "Render deploy config must healthcheck /healthz");

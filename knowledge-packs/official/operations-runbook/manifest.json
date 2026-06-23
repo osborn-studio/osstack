@@ -1,0 +1,46 @@
+{
+  "id": "osstack-core/operations-runbook",
+  "version": "2026.06.23",
+  "name": "Osstack Operations Runbook",
+  "license": "Osstack-native",
+  "source_kind": "osstack_native",
+  "quality_score": 91,
+  "scope": "official",
+  "taxonomy": ["osstack-core/operations-runbook", "software-engineering/operations"],
+  "generated_at": "2026-06-23T00:00:00.000Z",
+  "last_reviewed_at": "2026-06-23T00:00:00.000Z",
+  "review": {
+    "status": "approved",
+    "reviewer_id": "osstack-knowledge-review",
+    "reviewed_at": "2026-06-23T00:00:00.000Z",
+    "summary": "Reviewed as Osstack-native operations knowledge for release, cloud health, and rollback guidance."
+  },
+  "source_attribution": ["osstack-native product knowledge"],
+  "source_provenance": [
+    {
+      "source_id": "osstack-runbook",
+      "path": "docs/product/12_RUNBOOK.md",
+      "sha256": "db5a46bfbb3733ca2364013ef4610169539353f4b6d3cf41d6d4fe12c0a18c10",
+      "license": "Osstack-native",
+      "scope": "official",
+      "imported_at": "2026-06-23T00:00:00.000Z"
+    },
+    {
+      "source_id": "osstack-umadev-code-benchmark",
+      "path": "docs/external/2026-06-23-umadev-code-benchmark.md",
+      "sha256": "f4b6e89dbf837f22a1297f449cacd84d46b09b2c4da0aa5f956bb978b5215ff2",
+      "license": "Osstack-native analysis",
+      "scope": "official",
+      "imported_at": "2026-06-23T00:00:00.000Z"
+    }
+  ],
+  "chunks": [
+    {
+      "chunk_id": "operations-release-runbook",
+      "title": "Release and Knowledge Cloud operations",
+      "body": "Osstack operations should use release doctor, release plan, release handoff, npm validation, EdgeOne Knowledge Cloud health checks, search checks, audit checks, feedback summaries, rollback notes, and proof packs as the standard release runbook.",
+      "tags": ["operations", "release", "edgeone", "runbook"],
+      "source_refs": ["osstack-runbook", "osstack-umadev-code-benchmark"]
+    }
+  ]
+}

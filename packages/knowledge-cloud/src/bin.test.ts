@@ -64,7 +64,7 @@ describe("osstack-knowledge-cloud bin", () => {
       private_auth_required: boolean;
     };
     expect(output).toMatchObject({
-      packs: 6,
+      packs: 10,
       private_packs: 0,
       private_auth_required: false,
     });
@@ -78,7 +78,7 @@ describe("osstack-knowledge-cloud bin", () => {
 
     expect(exitCode).toBe(0);
     expect(JSON.parse(logs.join("\n"))).toMatchObject({
-      packs: 6,
+      packs: 10,
       private_packs: 0,
       private_auth_required: true,
     });
@@ -278,7 +278,7 @@ describe("osstack-knowledge-cloud bin", () => {
 
     expect(exitCode).toBe(0);
     expect(JSON.parse(logs.join("\n"))).toMatchObject({
-      packs: 7,
+      packs: 11,
       published_pack_dir: publishedPackDir,
       published_packs_loaded: 1,
       published_private_packs_loaded: 0,

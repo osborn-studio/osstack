@@ -1,0 +1,46 @@
+{
+  "id": "osstack-core/architecture-control-plane",
+  "version": "2026.06.23",
+  "name": "Osstack Architecture Control Plane",
+  "license": "Osstack-native",
+  "source_kind": "osstack_native",
+  "quality_score": 93,
+  "scope": "official",
+  "taxonomy": ["osstack-core/architecture-control-plane", "software-engineering/architecture"],
+  "generated_at": "2026-06-23T00:00:00.000Z",
+  "last_reviewed_at": "2026-06-23T00:00:00.000Z",
+  "review": {
+    "status": "approved",
+    "reviewer_id": "osstack-knowledge-review",
+    "reviewed_at": "2026-06-23T00:00:00.000Z",
+    "summary": "Reviewed as Osstack-native architecture knowledge after translating the UmaDev reference taxonomy into Osstack control-plane language."
+  },
+  "source_attribution": ["osstack-native product knowledge"],
+  "source_provenance": [
+    {
+      "source_id": "osstack-system-architecture",
+      "path": "docs/product/04_SYSTEM_ARCHITECTURE.md",
+      "sha256": "93e961699d2643ffb459263026b9017593654e7161ca8fe9d98724ba392a15d8",
+      "license": "Osstack-native",
+      "scope": "official",
+      "imported_at": "2026-06-23T00:00:00.000Z"
+    },
+    {
+      "source_id": "osstack-umadev-code-benchmark",
+      "path": "docs/external/2026-06-23-umadev-code-benchmark.md",
+      "sha256": "f4b6e89dbf837f22a1297f449cacd84d46b09b2c4da0aa5f956bb978b5215ff2",
+      "license": "Osstack-native analysis",
+      "scope": "official",
+      "imported_at": "2026-06-23T00:00:00.000Z"
+    }
+  ],
+  "chunks": [
+    {
+      "chunk_id": "architecture-control-plane",
+      "title": "TypeScript control-plane architecture",
+      "body": "Osstack should keep its TypeScript control plane as the product center: CLI, daemon, loop engine, agent routing, worktree isolation, governance, proof packs, and Knowledge Cloud are one evidence-oriented architecture rather than a forked Rust shell.",
+      "tags": ["architecture", "control-plane", "daemon", "loop"],
+      "source_refs": ["osstack-system-architecture", "osstack-umadev-code-benchmark"]
+    }
+  ]
+}

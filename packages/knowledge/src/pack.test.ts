@@ -777,11 +777,21 @@ describe("knowledge packs", () => {
     expect(index).toMatchObject({
       channel: "official",
       packs: expect.arrayContaining([
+        expect.objectContaining({
+          id: "osstack-core/architecture-control-plane",
+          path: "architecture-control-plane/manifest.json",
+        }),
+        expect.objectContaining({
+          id: "osstack-core/contract-validation",
+          path: "contract-validation/manifest.json",
+        }),
         expect.objectContaining({ id: "osstack-core/loop-engineering", path: "loop-engineering/manifest.json" }),
+        expect.objectContaining({ id: "osstack-core/operations-runbook", path: "operations-runbook/manifest.json" }),
         expect.objectContaining({ id: "osstack-core/proof-and-scorecard", path: "proof-and-scorecard/manifest.json" }),
+        expect.objectContaining({ id: "osstack-core/testing-and-eval", path: "testing-and-eval/manifest.json" }),
       ]),
     });
-    expect(packs).toHaveLength(6);
+    expect(packs).toHaveLength(10);
     for (const [entryIndex, indexEntry] of index.packs.entries()) {
       const pack = packs[entryIndex];
       expect(pack).toBeDefined();
@@ -798,12 +808,12 @@ describe("knowledge packs", () => {
         source_kind: "osstack_native",
         scope: "official",
         license: "Osstack-native",
-        last_reviewed_at: "2026-06-22T00:00:00.000Z",
-        source_provenance: [expect.objectContaining({
+        last_reviewed_at: expect.stringMatching(/^2026-06-2[23]T00:00:00\.000Z$/),
+        source_provenance: expect.arrayContaining([expect.objectContaining({
           license: "Osstack-native",
           scope: "official",
-          imported_at: "2026-06-22T00:00:00.000Z",
-        })],
+          imported_at: expect.stringMatching(/^2026-06-2[23]T00:00:00\.000Z$/),
+        })]),
       });
       for (const source of pack.manifest.source_provenance ?? []) {
         const sourceBytes = await readFile(join(root, source.path));
@@ -812,10 +822,10 @@ describe("knowledge packs", () => {
       expect(pack.manifest.quality_score).toBeGreaterThanOrEqual(89);
       expect(validateKnowledgePublishGate(pack.manifest)).toMatchObject({ ok: true, issues: [] });
     }
-    expect(fixtures).toHaveLength(30);
+    expect(fixtures).toHaveLength(42);
     expect(evaluateKnowledgeRetrieval(packs, fixtures, { topK: 3 })).toMatchObject({
-      total: 30,
-      passed: 30,
+      total: 42,
+      passed: 42,
       failed: 0,
     });
   });

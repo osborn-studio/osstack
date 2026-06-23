@@ -54,8 +54,13 @@ describe("knowledge CLI", () => {
     const output = JSON.parse(logs.join("\n")) as {
       packs: Array<{ id: string; source_kind: string; chunks: number }>;
     };
-    expect(output.packs).toHaveLength(6);
+    expect(output.packs).toHaveLength(10);
     expect(output.packs).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: "osstack-core/architecture-control-plane",
+        source_kind: "osstack_native",
+        chunks: 1,
+      }),
       expect.objectContaining({
         id: "osstack-core/loop-engineering",
         source_kind: "osstack_native",
@@ -241,7 +246,7 @@ describe("knowledge CLI", () => {
         sources: Array<{ source_id: string; path: string; license: string; scope: string }>;
       }>;
     };
-    expect(output.packs).toHaveLength(6);
+    expect(output.packs).toHaveLength(10);
     const loopPack = output.packs.find((pack) => pack.pack_id === "osstack-core/loop-engineering");
     expect(loopPack).toMatchObject({
       version: "2026.06.22",
@@ -251,6 +256,18 @@ describe("knowledge CLI", () => {
         scope: "official",
         license: "Osstack-native",
       })],
+    });
+    const contractPack = output.packs.find((pack) => pack.pack_id === "osstack-core/contract-validation");
+    expect(contractPack).toMatchObject({
+      version: "2026.06.23",
+      sources: expect.arrayContaining([
+        expect.objectContaining({
+          source_id: "osstack-task-breakdown",
+          path: "docs/product/10_TASK_BREAKDOWN.md",
+          scope: "official",
+          license: "Osstack-native",
+        }),
+      ]),
     });
     expect(output.packs.every((pack) => pack.sources.length > 0)).toBe(true);
   });
@@ -353,9 +370,14 @@ describe("knowledge CLI", () => {
       packs: Array<{ pack_id: string; ok: boolean; issues: unknown[] }>;
     };
     expect(output.ok).toBe(true);
-    expect(output.packs).toHaveLength(6);
+    expect(output.packs).toHaveLength(10);
     expect(output.packs).toContainEqual(expect.objectContaining({
       pack_id: "osstack-core/loop-engineering",
+      ok: true,
+      issues: [],
+    }));
+    expect(output.packs).toContainEqual(expect.objectContaining({
+      pack_id: "osstack-core/architecture-control-plane",
       ok: true,
       issues: [],
     }));
@@ -474,8 +496,8 @@ describe("knowledge CLI", () => {
 
     expect(exitCode).toBe(0);
     expect(JSON.parse(logs.join("\n"))).toMatchObject({
-      total: 30,
-      passed: 30,
+      total: 42,
+      passed: 42,
       failed: 0,
       top_k: 3,
     });
