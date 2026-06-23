@@ -1916,7 +1916,7 @@ async function releaseSingleBinaryReleaseAssetsCheck(workspacePath: string): Pro
   expectAsset(workflow, "security import", "Single-binary release workflow must install the Developer ID certificate in a temporary keychain.");
   expectAsset(workflow, "GH_TOKEN:", "Single-binary release workflow must pass GH_TOKEN for upload.");
   expectAsset(workflow, "github.token", "Single-binary release workflow must use the workflow GitHub token.");
-  expectAsset(workflow, "actions/upload-artifact@v4", "Single-binary release workflow must retain workflow artifact copies.");
+  expectAsset(workflow, "actions/upload-artifact@v7", "Single-binary release workflow must retain workflow artifact copies.");
 
   const ok = missing.length === 0 && violations.length === 0;
   return {

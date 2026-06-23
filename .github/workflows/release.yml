@@ -30,14 +30,14 @@ jobs:
     runs-on: macos-14
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       # pnpm version comes from package.json's packageManager field
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -81,7 +81,7 @@ jobs:
           pnpm package:single-binary -- --manifest "$MANIFEST" --json
 
       - name: Upload single binary archive candidate
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: osstack-single-binary-darwin-arm64-candidate
           path: |
