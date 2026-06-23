@@ -1150,7 +1150,7 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   expectAsset(workflow, "secrets.NPM_TOKEN", "Release workflow must gate publishing on NPM_TOKEN.");
   expectAsset(workflow, "NODE_AUTH_TOKEN", "Release workflow must set NODE_AUTH_TOKEN for npm publish.");
   expectAsset(rootPackage, "\"preflight:npm-publish\"", "Root package scripts must expose preflight:npm-publish.");
-  expectAsset(npmPreflight, "npm\", [\"access\", \"ls-packages\", scope, \"--json\"]", "NPM preflight script must verify publish-scope access with npm access ls-packages.");
+  expectAsset(npmPreflight, "npm\", [\"access\", \"list\", \"packages\", scope, \"--json\"]", "NPM preflight script must verify publish-scope access with npm access list packages.");
   expectAsset(npmPreflight, "Scope not found", "NPM preflight script must explain missing npm scope failures.");
 
   const ok = missing.length === 0 && violations.length === 0;
@@ -1199,7 +1199,7 @@ async function releaseNpmScopeAccessCheck(): Promise<ReleaseDoctorCheck> {
     };
   }
   try {
-    await execFileAsync("npm", ["access", "ls-packages", scope, "--json"], { timeout: 10_000 });
+    await execFileAsync("npm", ["access", "list", "packages", scope, "--json"], { timeout: 10_000 });
     return {
       id: "npm_scope_access",
       status: "ok",

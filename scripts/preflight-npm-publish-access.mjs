@@ -8,7 +8,7 @@ const scope = process.env.OSSTACK_NPM_SCOPE ?? "@osstack";
 try {
   const whoami = await execFileAsync("npm", ["whoami"], { timeout: 10_000 });
   const user = whoami.stdout.trim();
-  const access = await execFileAsync("npm", ["access", "ls-packages", scope, "--json"], { timeout: 10_000 });
+  const access = await execFileAsync("npm", ["access", "list", "packages", scope, "--json"], { timeout: 10_000 });
   let packageCount = 0;
   try {
     const parsed = JSON.parse(access.stdout);
