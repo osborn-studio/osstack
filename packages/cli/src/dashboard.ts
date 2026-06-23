@@ -83,6 +83,8 @@ export interface DashboardSnapshot {
   evidence: {
     reports: number;
     proof_packs: number;
+    latest_report: DashboardArtifact | null;
+    latest_proof_pack: DashboardProofPackArtifact | null;
   };
   lessons: {
     total: number;
@@ -111,6 +113,16 @@ export interface DashboardSnapshot {
     status: "ready" | "running" | "blocked";
     blockers?: ReleaseReadinessBlocker[];
   }>;
+}
+
+export interface DashboardArtifact {
+  name: string;
+  path: string;
+  updated_at: number;
+}
+
+export interface DashboardProofPackArtifact extends DashboardArtifact {
+  manifest: string | null;
 }
 
 export interface ReleaseReadinessBlocker {
@@ -199,8 +211,12 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
     LIMIT 8
   `).all() as DashboardSnapshot["recent_runs"];
   const workspacePath = opts.workspacePath ?? dirnameOfDb(opts.dbPath);
-  const reportsCount = countMarkdownFiles(join(workspacePath, "reports"), "osstack-report-");
-  const proofPackCount = countProofPacks(join(workspacePath, "release"));
+  const reportDir = join(workspacePath, "reports");
+  const releaseDir = join(workspacePath, "release");
+  const reportsCount = countMarkdownFiles(reportDir, "osstack-report-");
+  const proofPackCount = countProofPacks(releaseDir);
+  const latestReport = latestMarkdownFile(reportDir, "osstack-report-");
+  const latestProofPack = latestProofPackArtifact(releaseDir);
   const releaseReadinessBlockers = readReleaseReadinessBlockers(join(workspacePath, "release-readiness.md"));
   const lessons = listPitfallLessons(opts.db, { limit: 5 });
   const lessonCount = countActivePitfallLessons(opts.db);
@@ -261,6 +277,8 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
     evidence: {
       reports: reportsCount,
       proof_packs: proofPackCount,
+      latest_report: latestReport,
+      latest_proof_pack: latestProofPack,
     },
     lessons: {
       total: lessonCount,
@@ -333,6 +351,57 @@ function countProofPacks(dir: string): number {
     }).length;
   } catch {
     return 0;
+  }
+}
+
+function latestMarkdownFile(dir: string, prefix: string): DashboardArtifact | null {
+  return latestDirectoryEntry(dir, (name) => name.startsWith(prefix) && name.endsWith(".md"));
+}
+
+function latestProofPackArtifact(dir: string): DashboardProofPackArtifact | null {
+  const artifact = latestDirectoryEntry(dir, (name, path) => {
+    if (!name.startsWith("osstack-proof-")) return false;
+    try {
+      return statSync(path).isDirectory();
+    } catch {
+      return false;
+    }
+  });
+  if (artifact === null) return null;
+  const manifest = join(artifact.path, "manifest.json");
+  try {
+    statSync(manifest);
+    return { ...artifact, manifest };
+  } catch {
+    return { ...artifact, manifest: null };
+  }
+}
+
+function latestDirectoryEntry(
+  dir: string,
+  accept: (name: string, path: string) => boolean,
+): DashboardArtifact | null {
+  try {
+    let latest: DashboardArtifact | null = null;
+    for (const name of readdirSync(dir)) {
+      const path = join(dir, name);
+      if (!accept(name, path)) continue;
+      let artifact: DashboardArtifact;
+      try {
+        const stats = statSync(path);
+        artifact = {
+          name,
+          path,
+          updated_at: stats.mtimeMs / 1000,
+        };
+      } catch {
+        continue;
+      }
+      if (latest === null || artifact.updated_at > latest.updated_at) latest = artifact;
+    }
+    return latest;
+  } catch {
+    return null;
   }
 }
 
@@ -658,6 +727,10 @@ function releaseBlockersHtml(n){
   const blockers = Array.isArray(n.blockers) ? n.blockers : [];
   return blockers.map(b => '<span class="release-blocker">blocker '+esc(b.id)+': '+esc(b.detail)+'</span>').join('');
 }
+function artifactRow(label, artifact){
+  if (!artifact || !artifact.path) return '';
+  return '<div class="row"><span class="dot ok"></span><span><b>'+esc(label)+'</b><br><small>'+esc(artifact.path)+'</small></span></div>';
+}
 const t = ${JSON.stringify(text)};
 async function load(){
   const res = await fetch('/api/dashboard' + window.location.search);
@@ -679,6 +752,8 @@ async function load(){
   document.getElementById('evidence').innerHTML = [
     '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.reports)+'</b><br><small>'+d.evidence.reports+' markdown report(s)</small></span></div>',
     '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.proofPacks)+'</b><br><small>'+d.evidence.proof_packs+' checksumed proof pack(s)</small></span></div>',
+    artifactRow('Latest report', d.evidence.latest_report),
+    artifactRow('Latest proof pack', d.evidence.latest_proof_pack),
     '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.commands)+'</b><br><small>osstack report · osstack proof · osstack pr</small></span></div>'
   ].join('');
   document.getElementById('scorecards').innerHTML = d.agent_scorecards.length ? d.agent_scorecards.map(s => '<div class="row"><span class="dot '+(s.recent_failures ? 'warn' : 'ok')+'"></span><span><b>'+esc(s.agent_id)+'</b><br><small>'+s.total_runs+' runs · '+Math.round(s.success_rate*100)+'% success · '+esc(s.capability_fit)+'</small></span></div>').join('') : '<div class="row"><span class="dot warn"></span><span>'+esc(t.noAgentHistory)+'</span></div>';
