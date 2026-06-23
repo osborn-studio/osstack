@@ -1083,8 +1083,11 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   const assetRoot = await findReleaseAssetRoot(workspacePath);
   const requiredAssets = [
     "packages/cli/package.json",
-    ".changeset/osstack-upgrade-knowledge-cloud.md",
     ".github/workflows/release.yml",
+  ];
+  const checkedAssets = [
+    ...requiredAssets,
+    ".changeset/osstack-upgrade-knowledge-cloud.md",
   ];
   const missing: string[] = [];
   const violations: string[] = [];
@@ -1096,20 +1099,30 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
       return "";
     }
   };
+  const readOptionalAsset = async (path: string): Promise<string> => {
+    try {
+      return await readFile(join(assetRoot, path), "utf-8");
+    } catch {
+      return "";
+    }
+  };
   const cliPackageRaw = await readAsset("packages/cli/package.json");
-  const changeset = await readAsset(".changeset/osstack-upgrade-knowledge-cloud.md");
+  const changeset = await readOptionalAsset(".changeset/osstack-upgrade-knowledge-cloud.md");
   const workflow = await readAsset(".github/workflows/release.yml");
+  let cliVersion = "";
 
   if (cliPackageRaw !== "") {
     try {
       const cliPackage = JSON.parse(cliPackageRaw) as {
         name?: string;
+        version?: string;
         bin?: Record<string, string>;
         files?: string[];
         publishConfig?: { access?: string };
         repository?: { directory?: string };
         engines?: { node?: string };
       };
+      cliVersion = cliPackage.version ?? "";
       if (cliPackage.name !== "@osstack/cli") violations.push("CLI package name must be @osstack/cli.");
       if (cliPackage.bin?.["osstack"] !== "./dist/bin.js") violations.push("CLI package must expose bin.osstack=./dist/bin.js.");
       if (!Array.isArray(cliPackage.files) || !cliPackage.files.includes("dist")) violations.push("CLI package files must include dist.");
@@ -1124,6 +1137,11 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   const expectAsset = (text: string, needle: string, message: string): void => {
     if (text !== "" && !text.includes(needle)) violations.push(message);
   };
+  const changesetPending = changeset.includes("\"@osstack/cli\": minor");
+  const versionedForPublish = cliVersion !== "" && cliVersion !== "0.1.0";
+  if (!changesetPending && !versionedForPublish) {
+    violations.push("NPM publish assets must include a pending CLI changeset or a versioned CLI package.");
+  }
   expectAsset(changeset, "\"@osstack/cli\": minor", "Changeset must version @osstack/cli.");
   expectAsset(workflow, "uses: changesets/action@v1", "Release workflow must use changesets/action.");
   expectAsset(workflow, "pnpm smoke:release-plan", "Release workflow must run release plan smoke.");
@@ -1140,10 +1158,12 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
       ? "NPM publish assets are present and internally consistent."
       : "NPM publish assets are missing or inconsistent.",
     details: {
-      checked: requiredAssets,
+      checked: checkedAssets,
       missing,
       violations,
       root: assetRoot,
+      changeset_pending: changesetPending,
+      versioned_for_publish: versionedForPublish,
     },
   };
 }
