@@ -1,5 +1,11 @@
 # @osstack/knowledge
 
+## 0.8.0
+
+### Minor Changes
+
+- 89ffb4b: Add Knowledge Cloud publish catalog generation with official pack checksums, publish-gate evidence, and retrieval-eval summary.
+
 ## 0.7.0
 
 ### Minor Changes
