@@ -89,6 +89,53 @@ workflow trigger command, and deployed URL validation commands.
 
 The EdgeOne deployment manifest is `deploy/knowledge-cloud/edgeone.json`. It records the health endpoint, Node runtime expectation, official pack include paths, and persisted audit/feedback/published-pack paths.
 
+### EdgeOne console walkthrough
+
+Use this flow when an operator is logged in to Tencent Cloud / EdgeOne and wants
+to finish the production setup without exposing hook URLs in chat or issue text.
+
+1. Open the EdgeOne Pages console and create a new project by importing a Git
+   repository.
+2. Authorize GitHub access if EdgeOne asks for it, then select
+   `gilosbornhello/osstack`.
+3. Select `main` as the production branch.
+4. In build settings, use the repository root as the project root. Keep the
+   runtime aligned with Node `22`.
+5. Add the runtime env vars listed in the checklist above. Do not add npm,
+   GitHub, EdgeOne hook, or private tenant tokens to public build logs.
+6. In project settings, create a WebHook/deploy hook for production deploys.
+   Copy it once into a local shell variable:
+
+   ```bash
+   export EDGEONE_DEPLOY_HOOK_URL='<paste EdgeOne hook URL locally>'
+   ```
+
+7. Store it in GitHub Secrets from the local terminal:
+
+   ```bash
+   gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body "$EDGEONE_DEPLOY_HOOK_URL"
+   ```
+
+8. Run local checks before spending GitHub Actions minutes:
+
+   ```bash
+   pnpm smoke:knowledge-cloud:deploy
+   osstack release doctor --target knowledge-cloud --json
+   ```
+
+9. Only after the project, hook, and secret are ready, decide whether to spend
+   Actions minutes on the remote deploy workflow:
+
+   ```bash
+   gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=<EdgeOne URL>
+   ```
+
+Official references:
+
+- EdgeOne Pages quick deploy from GitHub: <https://edgeone.ai/document/162227908259442688>
+- EdgeOne Pages build guide and environment variables: <https://edgeone.ai/document/162227908250005504>
+- EdgeOne Pages WebHook release note: <https://edgeone.ai/document/177158578324279296>
+
 ## Fly.io Optional Reference
 
 `deploy/knowledge-cloud/fly.toml` remains as an optional reference for teams that prefer Fly.io, but it is no longer the primary osstack production path.
