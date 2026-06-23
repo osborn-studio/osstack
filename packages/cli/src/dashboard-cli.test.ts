@@ -345,6 +345,63 @@ describe("dashboard/cockpit CLI", () => {
     );
   });
 
+  it("rejects executing placeholder cockpit TUI actions", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace");
+    await mkdir(workspace, { recursive: true });
+
+    const exitCode = await main(["cockpit", "tui", "--workspace", workspace, "--action", "2", "--execute-action", "--json"]);
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("cockpit action still contains an input placeholder");
+  });
+
+  it("executes a concrete cockpit TUI action as a controlled live workbench step", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace with spaces");
+    await mkdir(workspace, { recursive: true });
+    await writeFile(join(workspace, "LOOP-STATE.json"), JSON.stringify({
+      loop_id: "cockpit-action-proof-loop",
+      started_at: "2026-06-24T01:00:00.000Z",
+      updated_at: "2026-06-24T01:05:00.000Z",
+      completed_tasks: [{
+        task_id: "cockpit-action-proof-task",
+        capability: "code.test",
+        outcome: "success",
+        iterations: 1,
+        agent_id: "codex-cli",
+        duration_ms: 1000,
+      }],
+      in_progress: [],
+      pending: [],
+      decisions: ["Execute proof generation from the cockpit TUI action list."],
+    }, null, 2));
+
+    const exitCode = await main(["cockpit", "tui", "--workspace", workspace, "--action", "4", "--execute-action", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      mode: string;
+      argv: string[];
+      exit_code: number;
+      stdout: string[];
+      selection: { selected_index: number; next_command: string };
+    };
+    expect(result).toMatchObject({
+      mode: "terminal-cockpit-action-execution",
+      exit_code: 0,
+      selection: {
+        selected_index: 4,
+        next_command: `osstack cockpit proof --workspace '${workspace.replaceAll("'", "'\\''")}' --json`,
+      },
+      argv: ["osstack", "cockpit", "proof", "--workspace", workspace, "--json"],
+    });
+    const proofSummary = JSON.parse(result.stdout.join("\n")) as { manifest: string; proof_dir: string };
+    expect(proofSummary.manifest).toBe(join(workspace, "release", "osstack-proof-cockpit-action-proof-loop", "manifest.json"));
+    await expect(readFile(proofSummary.manifest, "utf-8")).resolves.toContain("\"run_id\": \"cockpit-action-proof-loop\"");
+    await expect(readFile(join(proofSummary.proof_dir, "report.md"), "utf-8")).resolves.toContain("Execute proof generation from the cockpit TUI action list.");
+  });
+
   it("rejects unavailable cockpit TUI actions", async () => {
     daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
 
