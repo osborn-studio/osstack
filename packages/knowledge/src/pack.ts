@@ -10,6 +10,8 @@ import type {
   KnowledgePackManifest,
   KnowledgePublishGateReport,
   KnowledgePin,
+  KnowledgeRetrieveOptions,
+  KnowledgeRetrievalMetadata,
   KnowledgeRetrievalEvalCase,
   KnowledgeRetrievalEvalSummary,
   KnowledgeScope,
@@ -705,6 +707,36 @@ export function searchKnowledgePacks(
     .slice(0, options.limit ?? 5);
 }
 
+export async function retrieveKnowledge(options: KnowledgeRetrieveOptions): Promise<KnowledgeSearchEvidence> {
+  const mode = options.mode ?? inferKnowledgeMode(options);
+  if (mode === "off") return offKnowledgeEvidence(options.query, "knowledge retrieval mode is off");
+  const query = options.query?.trim();
+  const packs = options.packs ?? [];
+  if (query === undefined || query.length === 0) {
+    return {
+      mode,
+      status: "error",
+      reason: "knowledge search requires a non-empty query",
+      packs: packSummaries(packs),
+      results: [],
+      retrieval: retrievalMetadata(query ?? "", packs),
+    };
+  }
+  if (mode === "local") {
+    return localKnowledgeEvidence(query, packs, options.limit, freshnessOptions(options));
+  }
+  return cloudKnowledgeEvidence({
+    query,
+    packs,
+    ...(options.limit === undefined ? {} : { limit: options.limit }),
+    ...(options.cloudUrl === undefined ? {} : { cloudUrl: options.cloudUrl }),
+    ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+    ...(options.tenantId === undefined ? {} : { tenantId: options.tenantId }),
+    ...freshnessOptions(options),
+    ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
+  });
+}
+
 export function evaluateKnowledgeRetrieval(
   packs: KnowledgePack[],
   cases: KnowledgeRetrievalEvalCase[],
@@ -757,31 +789,7 @@ export async function resolveKnowledgeSearch(options: {
   now?: string | Date;
   fetchImpl?: typeof fetch;
 }): Promise<KnowledgeSearchEvidence> {
-  const mode = options.mode ?? inferKnowledgeMode(options);
-  if (mode === "off") return offKnowledgeEvidence(options.query);
-  const query = options.query?.trim();
-  if (query === undefined || query.length === 0) {
-    return {
-      mode,
-      status: "error",
-      reason: "knowledge search requires a non-empty query",
-      packs: packSummaries(options.packs ?? []),
-      results: [],
-    };
-  }
-  if (mode === "local") {
-    return localKnowledgeEvidence(query, options.packs ?? [], options.limit, freshnessOptions(options));
-  }
-  return cloudKnowledgeEvidence({
-    query,
-    packs: options.packs ?? [],
-    ...(options.limit === undefined ? {} : { limit: options.limit }),
-    ...(options.cloudUrl === undefined ? {} : { cloudUrl: options.cloudUrl }),
-    ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
-    ...(options.tenantId === undefined ? {} : { tenantId: options.tenantId }),
-    ...freshnessOptions(options),
-    ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
-  });
+  return retrieveKnowledge(options);
 }
 
 function inferKnowledgeMode(options: { cloudUrl?: string; packs?: KnowledgePack[] }): KnowledgeMode {
@@ -816,6 +824,7 @@ function localKnowledgeEvidence(
     query,
     packs: packSummaries(packs),
     results: searchKnowledgePacks(packs, query, { limit }),
+    retrieval: retrievalMetadata(query, packs),
     ...knowledgeFreshnessEvidence(packs, freshness),
   };
 }
@@ -847,7 +856,10 @@ async function cloudKnowledgeEvidence(options: {
     });
     if (!response.ok) throw new Error(`cloud search failed with HTTP ${response.status}`);
     const payload = await response.json() as unknown;
-    return validateCloudKnowledgeResponse(options.query, payload);
+    return {
+      ...validateCloudKnowledgeResponse(options.query, payload),
+      retrieval: retrievalMetadata(options.query, options.packs),
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return fallbackFromCloud(options, message);
@@ -883,6 +895,7 @@ function fallbackFromCloud(
       ),
       fallback_mode: "local",
       reason,
+      retrieval: retrievalMetadata(options.query, options.packs, "local"),
       ...knowledgeFreshnessEvidence(options.packs, freshnessOptions(options)),
     };
   }
@@ -894,6 +907,17 @@ function fallbackFromCloud(
     query: options.query,
     reason,
     fallback_mode: "off",
+    retrieval: retrievalMetadata(options.query, [], "off"),
+  };
+}
+
+function retrievalMetadata(query: string, packs: KnowledgePack[], fallback?: "local" | "off"): KnowledgeRetrievalMetadata {
+  return {
+    engine: "bm25",
+    query_terms: tokenize(query),
+    searched_packs: packs.length,
+    searched_chunks: packs.reduce((sum, pack) => sum + pack.manifest.chunks.length, 0),
+    ...(fallback === undefined ? {} : { fallback }),
   };
 }
 

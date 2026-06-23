@@ -1,4 +1,4 @@
-import type { KnowledgeMode, KnowledgeFeedbackEntry, KnowledgePack, KnowledgeCachePruneResult, KnowledgePackIndex, KnowledgePackManifest, KnowledgePublishGateReport, KnowledgePin, KnowledgeRetrievalEvalCase, KnowledgeRetrievalEvalSummary, KnowledgeScope, KnowledgeSearchEvidence, KnowledgeSearchResult, KnowledgeSyncEvidence } from "./types.js";
+import type { KnowledgeMode, KnowledgeFeedbackEntry, KnowledgePack, KnowledgeCachePruneResult, KnowledgePackIndex, KnowledgePackManifest, KnowledgePublishGateReport, KnowledgePin, KnowledgeRetrieveOptions, KnowledgeRetrievalEvalCase, KnowledgeRetrievalEvalSummary, KnowledgeScope, KnowledgeSearchEvidence, KnowledgeSearchResult, KnowledgeSyncEvidence } from "./types.js";
 export declare function loadKnowledgePack(path: string): Promise<KnowledgePack>;
 export declare function validateKnowledgePackManifest(value: unknown): KnowledgePackManifest;
 export declare function validateKnowledgePublishGate(manifest: KnowledgePackManifest, options?: {
@@ -59,6 +59,7 @@ export declare function cacheKnowledgeFeedback(options: {
 export declare function searchKnowledgePacks(packs: KnowledgePack[], query: string, options?: {
     limit?: number;
 }): KnowledgeSearchResult[];
+export declare function retrieveKnowledge(options: KnowledgeRetrieveOptions): Promise<KnowledgeSearchEvidence>;
 export declare function evaluateKnowledgeRetrieval(packs: KnowledgePack[], cases: KnowledgeRetrievalEvalCase[], options?: {
     topK?: number;
 }): KnowledgeRetrievalEvalSummary;

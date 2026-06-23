@@ -15,6 +15,7 @@ import {
   loadKnowledgePack,
   pinKnowledgePack,
   pruneKnowledgeCache,
+  retrieveKnowledge,
   resolveKnowledgeSearch,
   searchKnowledgePacks,
   syncKnowledgeCache,
@@ -131,6 +132,78 @@ describe("knowledge packs", () => {
     ]);
     expect(results[0]?.matched_terms).toEqual(["proof", "checksum"]);
     expect(results[0]?.score).toBeGreaterThan(results[1]?.score ?? 0);
+  });
+
+  it("exposes a stable retrieval boundary with metadata for local BM25 search", async () => {
+    const path = join(tmp, "pack.json");
+    await writeFile(path, JSON.stringify(samplePack(), null, 2));
+    const pack = await loadKnowledgePack(path);
+
+    const evidence = await retrieveKnowledge({
+      mode: "local",
+      query: "a governance",
+      packs: [pack],
+      limit: 1,
+    });
+
+    expect(evidence).toMatchObject({
+      mode: "local",
+      status: "recorded",
+      query: "a governance",
+      packs: [expect.objectContaining({ id: "osstack-web-quality" })],
+      results: [expect.objectContaining({ chunk_id: "chunk-frontend-governance" })],
+      retrieval: {
+        engine: "bm25",
+        query_terms: ["governance"],
+        searched_packs: 1,
+        searched_chunks: 2,
+      },
+    });
+  });
+
+  it("handles CJK retrieval terms through the stable retrieval boundary", async () => {
+    const path = join(tmp, "cjk-pack.json");
+    await writeFile(path, JSON.stringify(samplePack({
+      chunks: [
+        {
+          chunk_id: "chunk-cjk-proof",
+          title: "中文证据链",
+          body: "Osstack 证据链 应该包含 proof pack、验证结果和回滚记录。",
+          tags: ["证据链", "proof"],
+          source_refs: ["cjk-fixture"],
+        },
+        {
+          chunk_id: "chunk-cjk-generic",
+          title: "中文通用说明",
+          body: "Osstack 工作流 应该保持清晰。",
+          tags: ["workflow"],
+          source_refs: ["cjk-fixture"],
+        },
+      ],
+    }), null, 2));
+    const pack = await loadKnowledgePack(path);
+
+    const evidence = await retrieveKnowledge({
+      mode: "local",
+      query: "证据链",
+      packs: [pack],
+      limit: 1,
+    });
+
+    expect(evidence).toMatchObject({
+      mode: "local",
+      status: "recorded",
+      retrieval: {
+        engine: "bm25",
+        query_terms: ["证据链"],
+        searched_packs: 1,
+        searched_chunks: 2,
+      },
+      results: [expect.objectContaining({
+        chunk_id: "chunk-cjk-proof",
+        matched_terms: ["证据链"],
+      })],
+    });
   });
 
   it("uses cloud search when a cloud endpoint returns osstack-native results", async () => {
