@@ -2,7 +2,7 @@
 import { readFile } from "node:fs/promises";
 
 const dockerfile = await read("Dockerfile.knowledge-cloud");
-const fly = await read("deploy/knowledge-cloud/fly.toml");
+const edgeone = await read("deploy/knowledge-cloud/edgeone.json");
 const render = await read("deploy/knowledge-cloud/render.yaml");
 const workflow = await read(".github/workflows/knowledge-cloud-deploy.yml");
 
@@ -12,13 +12,15 @@ assertIncludes(dockerfile, "tsconfig.base.json", "Dockerfile must copy the root 
 assertIncludes(dockerfile, "/healthz", "Dockerfile must include the health endpoint");
 assertIncludes(dockerfile, "packages/knowledge-cloud/dist/bin.js", "Dockerfile must start the Knowledge Cloud executable");
 
-assertIncludes(fly, 'dockerfile = "Dockerfile.knowledge-cloud"', "Fly deploy config must use the Knowledge Cloud Dockerfile");
-assertIncludes(fly, "internal_port = 8787", "Fly deploy config must route to port 8787");
-assertIncludes(fly, 'path = "/healthz"', "Fly deploy config must healthcheck /healthz");
-assertIncludes(fly, 'OSSTACK_KNOWLEDGE_CLOUD_HOST = "0.0.0.0"', "Fly deploy config must bind externally");
-assertIncludes(fly, 'OSSTACK_KNOWLEDGE_AUDIT_LOG = "/data/audit/knowledge-cloud-audit.jsonl"', "Fly deploy config must persist Knowledge Cloud audit JSONL");
-assertIncludes(fly, 'OSSTACK_KNOWLEDGE_FEEDBACK_LOG = "/data/feedback/feedback.jsonl"', "Fly deploy config must persist Knowledge Cloud feedback JSONL");
-assertIncludes(fly, 'OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR = "/data/published-packs"', "Fly deploy config must persist published Knowledge Cloud packs");
+assertIncludes(edgeone, '"provider": "tencent-edgeone"', "EdgeOne deploy config must identify Tencent EdgeOne");
+assertIncludes(edgeone, '"mode": "pages-functions"', "EdgeOne deploy config must use Pages Functions mode");
+assertIncludes(edgeone, '"healthcheck_path": "/healthz"', "EdgeOne deploy config must healthcheck /healthz");
+assertIncludes(edgeone, '"OSSTACK_KNOWLEDGE_CLOUD_HOST": "0.0.0.0"', "EdgeOne deploy config must bind externally");
+assertIncludes(edgeone, '"OSSTACK_KNOWLEDGE_AUDIT_LOG": "/data/audit/knowledge-cloud-audit.jsonl"', "EdgeOne deploy config must persist Knowledge Cloud audit JSONL");
+assertIncludes(edgeone, '"OSSTACK_KNOWLEDGE_FEEDBACK_LOG": "/data/feedback/feedback.jsonl"', "EdgeOne deploy config must persist Knowledge Cloud feedback JSONL");
+assertIncludes(edgeone, '"OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR": "/data/published-packs"', "EdgeOne deploy config must persist published Knowledge Cloud packs");
+assertIncludes(edgeone, '"knowledge-packs/official/**"', "EdgeOne deploy config must include official knowledge packs");
+assertIncludes(edgeone, '"deploy_secret": "EDGEONE_DEPLOY_HOOK_URL"', "EdgeOne deploy config must declare the deploy hook secret");
 
 assertIncludes(render, "dockerfilePath: ./Dockerfile.knowledge-cloud", "Render deploy config must use the Knowledge Cloud Dockerfile");
 assertIncludes(render, "healthCheckPath: /healthz", "Render deploy config must healthcheck /healthz");
@@ -31,15 +33,15 @@ assertIncludes(workflow, "workflow_dispatch:", "Knowledge Cloud deploy workflow 
 assertIncludes(workflow, "pnpm smoke:knowledge-cloud", "Knowledge Cloud deploy workflow must run service smoke");
 assertIncludes(workflow, "pnpm smoke:knowledge-cloud:deploy", "Knowledge Cloud deploy workflow must run deploy asset smoke");
 assertIncludes(workflow, "docker build -f Dockerfile.knowledge-cloud", "Knowledge Cloud deploy workflow must build the Docker image");
-assertIncludes(workflow, "secrets.FLY_API_TOKEN", "Knowledge Cloud deploy workflow must gate Fly deploy on FLY_API_TOKEN");
-assertIncludes(workflow, "deploy=true requires repository secret FLY_API_TOKEN", "Knowledge Cloud deploy=true must fail when FLY_API_TOKEN is missing");
-assertIncludes(workflow, "flyctl deploy --config deploy/knowledge-cloud/fly.toml", "Knowledge Cloud deploy workflow must deploy with the Fly config");
+assertIncludes(workflow, "secrets.EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must gate EdgeOne deploy on EDGEONE_DEPLOY_HOOK_URL");
+assertIncludes(workflow, "deploy=true requires repository secret EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy=true must fail when EDGEONE_DEPLOY_HOOK_URL is missing");
+assertIncludes(workflow, 'curl -fsS -X POST "$EDGEONE_DEPLOY_HOOK_URL"', "Knowledge Cloud deploy workflow must trigger the EdgeOne deploy hook");
 
 console.log(JSON.stringify({
   ok: true,
   checked: [
     "Dockerfile.knowledge-cloud",
-    "deploy/knowledge-cloud/fly.toml",
+    "deploy/knowledge-cloud/edgeone.json",
     "deploy/knowledge-cloud/render.yaml",
     ".github/workflows/knowledge-cloud-deploy.yml",
   ],
