@@ -34,12 +34,45 @@ curl http://127.0.0.1:8787/healthz
 ## EdgeOne
 
 EdgeOne is the preferred production deployment target for Osstack Knowledge Cloud.
+Fly.io is not required for the current production path; keep it only as an optional
+reference if a second deployment target is needed later.
+
+### EdgeOne production checklist
 
 1. Create an EdgeOne Pages project connected to `gilosbornhello/osstack`.
 2. Configure the project to build from `main`.
-3. Add the runtime env from `deploy/knowledge-cloud/edgeone.json`.
-4. Create an EdgeOne deploy hook and save it as GitHub repository secret `EDGEONE_DEPLOY_HOOK_URL`.
-5. Run the GitHub workflow with `deploy=true`.
+3. Use `deploy/knowledge-cloud/edgeone.json` as the source of truth for runtime
+   env, healthcheck, storage paths, and official pack include paths.
+4. Add at least these runtime env vars in EdgeOne:
+   - `OSSTACK_KNOWLEDGE_CLOUD_HOST=0.0.0.0`
+   - `OSSTACK_KNOWLEDGE_CLOUD_PORT=8787`
+   - `OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR=/data/published-packs`
+   - `OSSTACK_KNOWLEDGE_AUDIT_LOG=/data/audit/knowledge-cloud-audit.jsonl`
+   - `OSSTACK_KNOWLEDGE_FEEDBACK_LOG=/data/feedback/feedback.jsonl`
+5. Create an EdgeOne deploy hook.
+6. Save the hook URL as the GitHub repository secret:
+
+   ```bash
+   gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body "$EDGEONE_DEPLOY_HOOK_URL"
+   ```
+
+7. Validate release/deploy readiness before publishing:
+
+   ```bash
+   osstack release doctor --target knowledge-cloud --json
+   ```
+
+8. Run `.github/workflows/knowledge-cloud-deploy.yml` with `deploy=true`.
+9. Record the production URL and run cloud acceptance checks:
+
+   ```bash
+   osstack release doctor --target knowledge-cloud --cloud-url <EdgeOne URL> --json
+   osstack knowledge sync --cloud-url <EdgeOne URL> --json
+   osstack knowledge search "proof pack checksum" --cloud-url <EdgeOne URL> --json
+   ```
+
+10. Keep the EdgeOne production URL in the release evidence and use it as the
+    default Knowledge Cloud endpoint once the acceptance checks pass.
 
 The EdgeOne deployment manifest is `deploy/knowledge-cloud/edgeone.json`. It records the health endpoint, Node runtime expectation, official pack include paths, and persisted audit/feedback/published-pack paths.
 
@@ -54,6 +87,7 @@ The manual workflow `.github/workflows/knowledge-cloud-deploy.yml` runs build, t
 - Run with `deploy=false` to validate the deploy bundle without publishing.
 - Set repository secret `EDGEONE_DEPLOY_HOOK_URL`.
 - Run with `deploy=true` to trigger the EdgeOne deployment hook.
+- Do not set `FLY_API_TOKEN` for the primary path; it is unrelated to the EdgeOne deployment.
 
 Preflight release and deploy credentials before a production run:
 
