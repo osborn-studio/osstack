@@ -17,8 +17,9 @@ if (targetPlatform !== platform() || targetArch !== arch()) {
 const outputDir = resolve(flagValue("--output-dir") ?? join("dist", "single-binary", `${targetPlatform}-${targetArch}`));
 const json = args.includes("--json");
 const skipBuild = args.includes("--skip-build");
+const cliDir = join(root, "packages", "cli");
 
-const packageJson = JSON.parse(await readFile(join(root, "packages", "cli", "package.json"), "utf-8"));
+const packageJson = JSON.parse(await readFile(join(cliDir, "package.json"), "utf-8"));
 const version = packageJson.version;
 if (typeof version !== "string" || version.length === 0) {
   throw new Error("packages/cli/package.json must contain a version");
@@ -34,7 +35,7 @@ const binaryName = `osstack-${version}-${targetPlatform}-${targetArch}`;
 const binaryPath = join(outputDir, binaryName);
 const manifestPath = join(outputDir, `${binaryName}.manifest.json`);
 const checksumPath = join(outputDir, "sha256sums.txt");
-const entrypoint = join(root, "packages", "cli", "dist", "bin.js");
+const entrypoint = join("dist", "bin.js");
 
 run("bun", [
   "build",
@@ -45,7 +46,7 @@ run("bun", [
   "--outfile",
   binaryPath,
 ], {
-  cwd: root,
+  cwd: cliDir,
   env: { ...process.env, OSSTACK_VERSION: version },
   capture: json,
 });
