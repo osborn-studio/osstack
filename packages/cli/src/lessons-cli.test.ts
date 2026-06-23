@@ -102,6 +102,24 @@ describe("lessons CLI", () => {
           verify_summary: "governance high severity finding blocking=true",
           verify_issues: [{ severity: "error", message: "governance high severity unsafe eval" }],
         },
+        {
+          task_id: "merge-task",
+          capability: "git.merge",
+          outcome: "failed",
+          iterations: 1,
+          agent_id: "codex-cli",
+          duration_ms: 1000,
+          error_summary: "automatic merge failed: unmerged paths, both modified src/app.ts",
+        },
+        {
+          task_id: "toolchain-task",
+          capability: "node.toolchain",
+          outcome: "failed",
+          iterations: 1,
+          agent_id: "codex-cli",
+          duration_ms: 1000,
+          verify_summary: "unsupported engine: Node version 18 does not satisfy >=20",
+        },
       ],
     });
 
@@ -134,6 +152,18 @@ describe("lessons CLI", () => {
         family: "governance_high_severity",
         symptom: expect.stringContaining("governance high severity"),
         resolution: expect.stringContaining("governance"),
+        source_run_ids: ["failure-family-loop"],
+      }),
+      expect.objectContaining({
+        family: "merge_conflict",
+        symptom: expect.stringContaining("automatic merge failed"),
+        resolution: expect.stringContaining("merge conflict"),
+        source_run_ids: ["failure-family-loop"],
+      }),
+      expect.objectContaining({
+        family: "toolchain_mismatch",
+        symptom: expect.stringContaining("unsupported engine"),
+        resolution: expect.stringContaining("toolchain"),
         source_run_ids: ["failure-family-loop"],
       }),
     ]));

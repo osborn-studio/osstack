@@ -5338,6 +5338,13 @@ function pitfallFamilyForCompletedTask(task: LoopState["completed_tasks"][number
     || text.includes("blocking=true")) {
     return "governance_high_severity";
   }
+  if (text.includes("merge conflict")
+    || text.includes("conflict marker")
+    || text.includes("automatic merge failed")
+    || text.includes("unmerged paths")
+    || text.includes("both modified")) {
+    return "merge_conflict";
+  }
   if (text.includes("npm install")
     || text.includes("pnpm install")
     || text.includes("yarn install")
@@ -5347,6 +5354,14 @@ function pitfallFamilyForCompletedTask(task: LoopState["completed_tasks"][number
     || text.includes("module not found")
     || text.includes("enoent")) {
     return "dependency_install_failure";
+  }
+  if (text.includes("node version")
+    || text.includes("unsupported engine")
+    || text.includes("engine mismatch")
+    || text.includes("toolchain")
+    || text.includes("tsc version")
+    || text.includes("typescript version")) {
+    return "toolchain_mismatch";
   }
   if (text.includes("reviewer")
     || text.includes("checker")
@@ -5374,6 +5389,12 @@ function pitfallResolutionForFamily(family: string): string {
   }
   if (family === "dependency_install_failure") {
     return "Install or repair project dependencies in the workspace, then rerun the deterministic verifier before retrying.";
+  }
+  if (family === "merge_conflict") {
+    return "Resolve the merge conflict in an isolated worktree, rerun verification, and preserve conflict context in the proof pack.";
+  }
+  if (family === "toolchain_mismatch") {
+    return "Align the local Node/package-manager/toolchain versions with the project requirements before rerunning the verifier.";
   }
   if (family === "max_iter_escalation") {
     return "Break the task into a smaller queue item, add a stronger verify gate, or route to a reviewer/checker before retrying.";
