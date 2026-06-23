@@ -406,7 +406,7 @@ export function renderComplianceReport(options: ComplianceReportOptions): string
     const status = controlStatus(control, options.evidence);
     const title = localizedControlTitle(control, options.language ?? "en");
     const description = localizedControlDescription(control, options.language ?? "en");
-    return `| ${title} | ${status} | \`${control.evidence_path}\` | ${description} |`;
+    return `| ${title} | ${proofStatusCell(status)} | \`${control.evidence_path}\` | ${description} |`;
   });
   return [
     `# ${text.title} - ${pack.id}`,
@@ -614,7 +614,7 @@ function proofViewText(language: ProofViewLanguage): {
       statusHeader: "状态",
       sourceHeader: "来源",
       focusHeader: "关注点",
-      missingItem: (title, evidencePath, focus) => `- 缺失必需证据：${title}（\`${evidencePath}\`）- ${focus}`,
+      missingItem: (title, evidencePath, focus) => `- **缺失必需证据**：${title}（\`${evidencePath}\`）- ${focus}`,
     };
   }
   return {
@@ -630,7 +630,7 @@ function proofViewText(language: ProofViewLanguage): {
     statusHeader: "Status",
     sourceHeader: "Source",
     focusHeader: "Focus",
-    missingItem: (title, evidencePath, focus) => `- REQUIRED EVIDENCE MISSING: ${title} (\`${evidencePath}\`) - ${focus}`,
+    missingItem: (title, evidencePath, focus) => `- **REQUIRED EVIDENCE MISSING**: ${title} (\`${evidencePath}\`) - ${focus}`,
   };
 }
 
@@ -882,7 +882,7 @@ function isPositiveInteger(value: unknown): value is number {
 
 function proofStatusCell(status: "PRESENT" | "MISSING"): string {
   if (status === "PRESENT") return "PRESENT";
-  return "<strong style=\"color:#b00020\">MISSING</strong>";
+  return "<strong class=\"osstack-missing-evidence\" style=\"color:#b00020\">MISSING</strong>";
 }
 
 async function readJsonIfExists(path: string): Promise<unknown | undefined> {

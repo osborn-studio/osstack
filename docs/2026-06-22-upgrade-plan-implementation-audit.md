@@ -358,10 +358,13 @@
 - `osstack proof view <run_id> --audience engineer|manager|auditor|customer` 存在。
 - 视图基于已有 proof evidence，不生成假证据。
 - proof/compliance 的结构级证据检查已抽成 `validateProofEvidence`，可复用地输出 `present` / `missing` 控制项，并由 `osstack proof validate` 作为上线前门禁使用；CLI 层还会对 manifest artifact 执行磁盘完整性校验，确认 artifact path 唯一、文件存在、byte count、sha256、`sha256sums.txt` inventory、proof zip 条目和路径边界。
+- proof view 与 compliance report 的 Markdown/HTML 兼容输出会把缺失证据渲染为红色
+  `<strong class="osstack-missing-evidence">MISSING</strong>`，缺失清单也会加粗
+  `REQUIRED EVIDENCE MISSING`，让审计人员在 GitHub Markdown 或 HTML 渲染中快速定位缺口。
 
 需增强：
 
-- 缺失证据的“红色/高亮”在 Markdown/HTML 视图中可继续增强。
+- 可继续增加 report-level CSS/theme，让导出的完整 HTML 报告对 `osstack-missing-evidence` 统一渲染图标、边框或摘要计数。
 
 ### Task 6.3：Osstack Knowledge Cloud
 

@@ -294,8 +294,8 @@ describe("proof CLI", () => {
     const summary = JSON.parse(logs.join("\n")) as { output: string };
     const markdown = await readFile(summary.output, "utf-8");
     expect(markdown).toContain("## Missing Evidence");
-    expect(markdown).toContain("- REQUIRED EVIDENCE MISSING: Secure coding control (`governance-results.json`) - safety checks summary");
-    expect(markdown).toContain("| Secure coding control | <strong style=\"color:#b00020\">MISSING</strong> |");
+    expect(markdown).toContain("- **REQUIRED EVIDENCE MISSING**: Secure coding control (`governance-results.json`) - safety checks summary");
+    expect(markdown).toContain("| Secure coding control | <strong class=\"osstack-missing-evidence\" style=\"color:#b00020\">MISSING</strong> |");
   });
 
   it("validates proof evidence as a machine-readable release gate", async () => {
