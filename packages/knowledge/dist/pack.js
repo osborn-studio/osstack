@@ -684,7 +684,7 @@ export async function resolveKnowledgeSearch(options) {
         };
     }
     if (mode === "local") {
-        return localKnowledgeEvidence(query, options.packs ?? [], options.limit);
+        return localKnowledgeEvidence(query, options.packs ?? [], options.limit, freshnessOptions(options));
     }
     return cloudKnowledgeEvidence({
         query,
@@ -693,6 +693,7 @@ export async function resolveKnowledgeSearch(options) {
         ...(options.cloudUrl === undefined ? {} : { cloudUrl: options.cloudUrl }),
         ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
         ...(options.tenantId === undefined ? {} : { tenantId: options.tenantId }),
+        ...freshnessOptions(options),
         ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
     });
 }
@@ -713,7 +714,7 @@ function offKnowledgeEvidence(query, reason) {
         ...(reason === undefined ? {} : { reason }),
     };
 }
-function localKnowledgeEvidence(query, packs, limit = 5) {
+function localKnowledgeEvidence(query, packs, limit = 5, freshness) {
     if (packs.length === 0) {
         return offKnowledgeEvidence(query, "no local knowledge packs configured");
     }
@@ -723,6 +724,7 @@ function localKnowledgeEvidence(query, packs, limit = 5) {
         query,
         packs: packSummaries(packs),
         results: searchKnowledgePacks(packs, query, { limit }),
+        ...knowledgeFreshnessEvidence(packs, freshness),
     };
 }
 async function cloudKnowledgeEvidence(options) {
@@ -772,6 +774,7 @@ function fallbackFromCloud(options, reason) {
             results: searchKnowledgePacks(options.packs, options.query, options.limit === undefined ? {} : { limit: options.limit }),
             fallback_mode: "local",
             reason,
+            ...knowledgeFreshnessEvidence(options.packs, freshnessOptions(options)),
         };
     }
     return {
@@ -783,6 +786,40 @@ function fallbackFromCloud(options, reason) {
         reason,
         fallback_mode: "off",
     };
+}
+function freshnessOptions(options) {
+    if (options.staleAfterDays === undefined)
+        return undefined;
+    return {
+        staleAfterDays: options.staleAfterDays,
+        ...(options.now === undefined ? {} : { now: options.now }),
+    };
+}
+function knowledgeFreshnessEvidence(packs, options) {
+    if (options?.staleAfterDays === undefined)
+        return {};
+    const latest = latestKnowledgeTimestamp(packs);
+    if (latest === undefined)
+        return { cache_stale_after_days: options.staleAfterDays };
+    const now = options.now instanceof Date ? options.now : new Date(options.now ?? Date.now());
+    const ageMs = now.getTime() - latest.getTime();
+    if (!Number.isFinite(ageMs))
+        return { cache_stale_after_days: options.staleAfterDays };
+    const ageDays = Math.max(0, Math.floor(ageMs / 86_400_000));
+    return {
+        cache_stale: ageDays > options.staleAfterDays,
+        cache_age_days: ageDays,
+        cache_stale_after_days: options.staleAfterDays,
+    };
+}
+function latestKnowledgeTimestamp(packs) {
+    const timestamps = packs
+        .map((pack) => pack.manifest.last_reviewed_at ?? pack.manifest.generated_at)
+        .filter((value) => value !== undefined && value.length > 0)
+        .map((value) => new Date(value))
+        .filter((value) => Number.isFinite(value.getTime()))
+        .sort((a, b) => b.getTime() - a.getTime());
+    return timestamps[0];
 }
 function validateCloudKnowledgeResponse(query, value) {
     if (!isRecord(value))

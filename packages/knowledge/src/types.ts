@@ -169,6 +169,9 @@ export type KnowledgeSearchEvidence =
     results: KnowledgeSearchResult[];
     reason?: string;
     fallback_mode?: "local";
+    cache_stale?: boolean;
+    cache_age_days?: number;
+    cache_stale_after_days?: number;
   }
   | {
     mode: "local" | "cloud";

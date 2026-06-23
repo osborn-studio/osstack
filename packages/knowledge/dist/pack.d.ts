@@ -71,6 +71,8 @@ export declare function resolveKnowledgeSearch(options: {
     cloudUrl?: string;
     authToken?: string;
     tenantId?: string;
+    staleAfterDays?: number;
+    now?: string | Date;
     fetchImpl?: typeof fetch;
 }): Promise<KnowledgeSearchEvidence>;
 //# sourceMappingURL=pack.d.ts.map

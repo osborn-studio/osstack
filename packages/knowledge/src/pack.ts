@@ -753,6 +753,8 @@ export async function resolveKnowledgeSearch(options: {
   cloudUrl?: string;
   authToken?: string;
   tenantId?: string;
+  staleAfterDays?: number;
+  now?: string | Date;
   fetchImpl?: typeof fetch;
 }): Promise<KnowledgeSearchEvidence> {
   const mode = options.mode ?? inferKnowledgeMode(options);
@@ -768,7 +770,7 @@ export async function resolveKnowledgeSearch(options: {
     };
   }
   if (mode === "local") {
-    return localKnowledgeEvidence(query, options.packs ?? [], options.limit);
+    return localKnowledgeEvidence(query, options.packs ?? [], options.limit, freshnessOptions(options));
   }
   return cloudKnowledgeEvidence({
     query,
@@ -777,6 +779,7 @@ export async function resolveKnowledgeSearch(options: {
     ...(options.cloudUrl === undefined ? {} : { cloudUrl: options.cloudUrl }),
     ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
     ...(options.tenantId === undefined ? {} : { tenantId: options.tenantId }),
+    ...freshnessOptions(options),
     ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
   });
 }
@@ -798,7 +801,12 @@ function offKnowledgeEvidence(query?: string, reason?: string): KnowledgeSearchE
   };
 }
 
-function localKnowledgeEvidence(query: string, packs: KnowledgePack[], limit = 5): KnowledgeSearchEvidence {
+function localKnowledgeEvidence(
+  query: string,
+  packs: KnowledgePack[],
+  limit = 5,
+  freshness?: KnowledgeFreshnessOptions,
+): KnowledgeSearchEvidence {
   if (packs.length === 0) {
     return offKnowledgeEvidence(query, "no local knowledge packs configured");
   }
@@ -808,6 +816,7 @@ function localKnowledgeEvidence(query: string, packs: KnowledgePack[], limit = 5
     query,
     packs: packSummaries(packs),
     results: searchKnowledgePacks(packs, query, { limit }),
+    ...knowledgeFreshnessEvidence(packs, freshness),
   };
 }
 
@@ -818,6 +827,8 @@ async function cloudKnowledgeEvidence(options: {
   cloudUrl?: string;
   authToken?: string;
   tenantId?: string;
+  staleAfterDays?: number;
+  now?: string | Date;
   fetchImpl?: typeof fetch;
 }): Promise<KnowledgeSearchEvidence> {
   if (options.cloudUrl === undefined || options.cloudUrl.length === 0) {
@@ -856,7 +867,7 @@ function assertSafeOptionalTenantId(tenantId: string | undefined): void {
 }
 
 function fallbackFromCloud(
-  options: { query: string; packs: KnowledgePack[]; limit?: number },
+  options: { query: string; packs: KnowledgePack[]; limit?: number; staleAfterDays?: number; now?: string | Date },
   reason: string,
 ): KnowledgeSearchEvidence {
   if (options.packs.length > 0) {
@@ -872,6 +883,7 @@ function fallbackFromCloud(
       ),
       fallback_mode: "local",
       reason,
+      ...knowledgeFreshnessEvidence(options.packs, freshnessOptions(options)),
     };
   }
   return {
@@ -883,6 +895,47 @@ function fallbackFromCloud(
     reason,
     fallback_mode: "off",
   };
+}
+
+interface KnowledgeFreshnessOptions {
+  staleAfterDays?: number;
+  now?: string | Date;
+}
+
+function freshnessOptions(options: KnowledgeFreshnessOptions): KnowledgeFreshnessOptions | undefined {
+  if (options.staleAfterDays === undefined) return undefined;
+  return {
+    staleAfterDays: options.staleAfterDays,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  };
+}
+
+function knowledgeFreshnessEvidence(
+  packs: KnowledgePack[],
+  options: KnowledgeFreshnessOptions | undefined,
+): { cache_stale?: boolean; cache_age_days?: number; cache_stale_after_days?: number } {
+  if (options?.staleAfterDays === undefined) return {};
+  const latest = latestKnowledgeTimestamp(packs);
+  if (latest === undefined) return { cache_stale_after_days: options.staleAfterDays };
+  const now = options.now instanceof Date ? options.now : new Date(options.now ?? Date.now());
+  const ageMs = now.getTime() - latest.getTime();
+  if (!Number.isFinite(ageMs)) return { cache_stale_after_days: options.staleAfterDays };
+  const ageDays = Math.max(0, Math.floor(ageMs / 86_400_000));
+  return {
+    cache_stale: ageDays > options.staleAfterDays,
+    cache_age_days: ageDays,
+    cache_stale_after_days: options.staleAfterDays,
+  };
+}
+
+function latestKnowledgeTimestamp(packs: KnowledgePack[]): Date | undefined {
+  const timestamps = packs
+    .map((pack) => pack.manifest.last_reviewed_at ?? pack.manifest.generated_at)
+    .filter((value): value is string => value !== undefined && value.length > 0)
+    .map((value) => new Date(value))
+    .filter((value) => Number.isFinite(value.getTime()))
+    .sort((a, b) => b.getTime() - a.getTime());
+  return timestamps[0];
 }
 
 function validateCloudKnowledgeResponse(query: string, value: unknown): KnowledgeSearchEvidence {

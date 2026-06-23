@@ -503,6 +503,35 @@ describe("knowledge packs", () => {
         });
         expect(requested).toBe(false);
     });
+    it("marks local fallback evidence stale when cached packs exceed the freshness window", async () => {
+        const evidence = await resolveKnowledgeSearch({
+            mode: "cloud",
+            query: "proof evidence",
+            cloudUrl: "https://knowledge.osstack.ai",
+            staleAfterDays: 7,
+            now: "2026-06-23T00:00:00.000Z",
+            packs: [{
+                    manifest: validateKnowledgePackManifest(samplePack({
+                        id: "osstack-core/local-fallback",
+                        generated_at: "2026-06-01T00:00:00.000Z",
+                        last_reviewed_at: "2026-06-01T00:00:00.000Z",
+                    })),
+                    path: "local-fallback.json",
+                }],
+            fetchImpl: async () => {
+                throw new Error("cloud offline");
+            },
+        });
+        expect(evidence).toMatchObject({
+            mode: "local",
+            status: "recorded",
+            fallback_mode: "local",
+            reason: "cloud offline",
+            cache_stale: true,
+            cache_age_days: 22,
+            cache_stale_after_days: 7,
+        });
+    });
     it("pins pack versions in the local cache", async () => {
         const cacheDir = join(tmp, "cache");
         const pin = await pinKnowledgePack(cacheDir, "osstack-core/loop-engineering@2026.06.22");

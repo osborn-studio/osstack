@@ -4691,7 +4691,7 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   osstack knowledge list --pack P|--official [--json]
   osstack knowledge login --cloud-url URL [--token T] [--cache-dir P] [--json]
   osstack knowledge sync [--cloud-url URL] [--cache-dir P] [--private] [--tenant T] [--json]
-  osstack knowledge search <query> [--pack P] [--official] [--cloud-url URL] [--tenant T] [--cache-dir P] [--limit N] [--json]
+  osstack knowledge search <query> [--pack P] [--official] [--cloud-url URL] [--tenant T] [--cache-dir P] [--limit N] [--stale-after-days N] [--json]
   osstack knowledge inspect <chunk_id> [--pack P] [--official] [--cache-dir P] [--json]
   osstack knowledge import P --scope team|project --id ID --name NAME --license L --output P [--taxonomy T] [--json]
   osstack knowledge ingest P --scope official|team|project --id ID --name NAME --license L --output P [--taxonomy T] [--source-kind K] [--reviewer ID] [--review-status approved|changes_requested] [--review-note TEXT] [--json]
@@ -4823,7 +4823,7 @@ Env:
       console.error("osstack: --mode must be one of off, local, cloud");
       return 1;
     }
-    const query = positionalValues(args.slice(1), new Set(["--pack", "--limit", "--cloud-url", "--mode", "--cache-dir", "--tenant", "--token"])).join(" ");
+    const query = positionalValues(args.slice(1), new Set(["--pack", "--limit", "--cloud-url", "--mode", "--cache-dir", "--tenant", "--token", "--stale-after-days"])).join(" ");
     if (query.length === 0) {
       console.error("osstack: knowledge search requires a query");
       return 1;
@@ -4832,6 +4832,11 @@ Env:
     const limit = limitRaw === undefined ? 5 : Number.parseInt(limitRaw, 10);
     if (!Number.isInteger(limit) || limit <= 0) {
       console.error("osstack: --limit must be a positive integer");
+      return 1;
+    }
+    const staleAfterDays = parsePositiveIntegerFlag(flagValue(args, "--stale-after-days"), "--stale-after-days");
+    if (staleAfterDays instanceof Error) {
+      console.error(`osstack: ${staleAfterDays.message}`);
       return 1;
     }
     const packs = [
@@ -4853,6 +4858,7 @@ Env:
       cloudUrl,
       ...(authToken === undefined ? {} : { authToken }),
       ...(tenantId === undefined ? {} : { tenantId }),
+      ...(staleAfterDays === undefined ? {} : { staleAfterDays }),
     }));
     if (args.includes("--json")) {
       console.log(JSON.stringify(evidence, null, 2));
@@ -4861,6 +4867,9 @@ Env:
     } else {
       if (evidence.fallback_mode !== undefined && evidence.reason !== undefined) {
         console.log(`Knowledge fallback: ${evidence.fallback_mode} (${evidence.reason})`);
+      }
+      if (evidence.status === "recorded" && evidence.cache_stale === true) {
+        console.log(`Knowledge cache stale: age=${evidence.cache_age_days ?? "unknown"}d threshold=${evidence.cache_stale_after_days ?? "unknown"}d`);
       }
       for (const result of evidence.results) {
         console.log(`${result.pack_id}:${result.chunk_id} score=${result.score} ${result.title}`);
@@ -5765,6 +5774,7 @@ function knowledgeSearchOptions(options: {
   cloudUrl: string | undefined;
   authToken?: string;
   tenantId?: string;
+  staleAfterDays?: number;
 }): Parameters<typeof resolveKnowledgeSearch>[0] {
   return {
     ...(options.mode !== undefined ? { mode: options.mode } : {}),
@@ -5774,6 +5784,7 @@ function knowledgeSearchOptions(options: {
     ...(options.cloudUrl !== undefined ? { cloudUrl: options.cloudUrl } : {}),
     ...(options.authToken !== undefined ? { authToken: options.authToken } : {}),
     ...(options.tenantId !== undefined ? { tenantId: options.tenantId } : {}),
+    ...(options.staleAfterDays !== undefined ? { staleAfterDays: options.staleAfterDays } : {}),
   };
 }
 

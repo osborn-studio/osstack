@@ -254,10 +254,13 @@
   避免云端新版本悄悄改变本地知识检索结果。
 - 本地 cache 已支持旧版本清理：`knowledge prune --keep N` 默认 dry-run，`--apply` 才会删除
   未 pinned 的旧版本；pinned 版本始终保留，避免清理破坏可复现知识检索。
+- 本地/离线 search 已支持 freshness evidence：`knowledge search --stale-after-days N` 会在本地
+  search 或 cloud fallback 到本地 cache 时输出 `cache_stale`、`cache_age_days` 与阈值，提醒用户当前
+  knowledge cache 是否超过可信 freshness window。
 
 需增强：
 
-- 本地 cache 的离线 TTL/过期提示可以继续产品化。
+- 后续可增加离线策略 profile（例如 strict 阻断 stale cache、warn-only、自动提示 sync）。
 
 ### Task 4.3：Agent scorecard
 

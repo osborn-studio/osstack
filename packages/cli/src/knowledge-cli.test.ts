@@ -619,6 +619,40 @@ describe("knowledge CLI", () => {
       .resolves.toContain("2026.06.22");
   });
 
+  it("marks stale cached knowledge search evidence when a freshness window is supplied", async () => {
+    const cacheDir = join(tmp, "knowledge-cache");
+    const packsDir = join(cacheDir, "packs", "osstack-core__loop-engineering");
+    await mkdir(packsDir, { recursive: true });
+    await writeFile(join(packsDir, "2000.01.01.json"), JSON.stringify(cloudCockpitPack({
+      id: "osstack-core/loop-engineering",
+      version: "2000.01.01",
+      generated_at: "2000-01-01T00:00:00.000Z",
+      last_reviewed_at: "2000-01-01T00:00:00.000Z",
+    }), null, 2));
+
+    const exitCode = await main([
+      "knowledge",
+      "search",
+      "cockpit proof",
+      "--mode",
+      "local",
+      "--cache-dir",
+      cacheDir,
+      "--stale-after-days",
+      "1",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      mode: "local",
+      status: "recorded",
+      cache_stale: true,
+      cache_stale_after_days: 1,
+      results: [expect.objectContaining({ pack_id: "osstack-core/loop-engineering" })],
+    });
+  });
+
   it("runs retrieval eval fixtures against knowledge packs", async () => {
     const packPath = join(tmp, "pack.json");
     const fixturesPath = join(tmp, "fixtures.json");
