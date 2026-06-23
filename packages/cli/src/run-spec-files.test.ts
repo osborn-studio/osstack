@@ -96,6 +96,7 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       "test-vectors/OS-PROOF-BAD-001.json",
       "test-vectors/OS-PROOF-BAD-002.json",
       "test-vectors/OS-PROOF-BAD-003.json",
+      "test-vectors/OS-PROOF-BAD-004.json",
       "test-vectors/OS-AUDIT-001.json",
       "test-vectors/OS-KNOW-001.json",
     ];
@@ -238,6 +239,23 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       { path: "report.md", code: "sha256sums_duplicate_entry" },
       { path: "/tmp/osstack-proof-leak.txt", code: "sha256sums_unsafe_path" },
       { path: "nested/../report.md", code: "sha256sums_unsafe_path" },
+    ]));
+
+    const malformedArchiveVector = JSON.parse(
+      await readFile(join(specDir, "test-vectors", "OS-PROOF-BAD-004.json"), "utf-8"),
+    ) as {
+      expected_status: string;
+      proof_zip_mutation: { replaced_entry: string; unsafe_entry: string };
+      expected_archive_issues: Array<{ path: string; code: string }>;
+    };
+    expect(malformedArchiveVector.expected_status).toBe("reject");
+    expect(malformedArchiveVector.proof_zip_mutation).toMatchObject({
+      replaced_entry: "report.md",
+      unsafe_entry: "/tmp/x.md",
+    });
+    expect(malformedArchiveVector.expected_archive_issues).toEqual(expect.arrayContaining([
+      { path: "/tmp/x.md", code: "proof_zip_unsafe_entry" },
+      { path: "report.md", code: "proof_zip_missing_entry" },
     ]));
 
     const auditVector = JSON.parse(
