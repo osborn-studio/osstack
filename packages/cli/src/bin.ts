@@ -1201,6 +1201,14 @@ async function releaseNpmScopeAccessCheck(): Promise<ReleaseDoctorCheck> {
       details: { scope, reason: "scope_not_found_or_unauthorized" },
     };
   }
+  if (override === "error:forbidden") {
+    return {
+      id: "npm_scope_access",
+      status: "error",
+      message: `npm cannot publish to ${scope}; grant NPM_TOKEN publish rights.`,
+      details: { scope, reason: "scope_forbidden" },
+    };
+  }
   try {
     await execFileAsync("npm", ["access", "list", "packages", scope, "--json"], { timeout: 10_000 });
     return {
@@ -1212,15 +1220,18 @@ async function releaseNpmScopeAccessCheck(): Promise<ReleaseDoctorCheck> {
   } catch (error) {
     const message = releaseErrorMessage(error);
     const scopeMissing = /Scope not found|not found|E404/i.test(message);
+    const scopeForbidden = /E403|Forbidden|not authorized|not authorised|permission|access denied/i.test(message);
     return {
       id: "npm_scope_access",
-      status: scopeMissing ? "error" : "warn",
+      status: scopeMissing || scopeForbidden ? "error" : "warn",
       message: scopeMissing
         ? `npm cannot publish to ${scope}; create the scope or grant NPM_TOKEN publish rights.`
+        : scopeForbidden
+        ? `npm cannot publish to ${scope}; grant NPM_TOKEN publish rights.`
         : `Could not verify npm publish access to ${scope}; release CI will run the token-backed preflight.`,
       details: {
         scope,
-        reason: scopeMissing ? "scope_not_found_or_unauthorized" : "not_checked",
+        reason: scopeMissing ? "scope_not_found_or_unauthorized" : scopeForbidden ? "scope_forbidden" : "not_checked",
         error: message,
       },
     };
@@ -2678,7 +2689,10 @@ function releaseDoctorNextSteps(options: {
   }
   const npmScopeAccess = options.checks.find((check) => check.id === "npm_scope_access");
   if ((options.target === "all" || options.target === "npm") && npmScopeAccess?.status === "error") {
-    steps.push("Create or authorize the npm @osstack scope before rerunning the Release workflow.");
+    const reason = npmScopeAccess.details?.["reason"];
+    steps.push(reason === "scope_forbidden"
+      ? "Confirm the npm account behind NPM_TOKEN can publish to @osstack before rerunning the Release workflow."
+      : "Create or authorize the npm @osstack scope before rerunning the Release workflow.");
   } else if ((options.target === "all" || options.target === "npm") && npmScopeAccess?.status === "warn") {
     steps.push("Confirm the npm account behind NPM_TOKEN can publish to @osstack before merging release commits.");
   }

@@ -428,6 +428,36 @@ describe("product entry commands", () => {
     expect(result.next_steps.join("\n")).toContain("Create or authorize the npm @osstack scope");
   });
 
+  it("blocks npm release readiness when the npm scope exists but publish access is forbidden", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_NPM_SCOPE_ACCESS"] = "error:forbidden";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+
+    const exitCode = await main(["release", "doctor", "--target", "npm", "--json"]);
+
+    expect(exitCode).toBe(1);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      readiness: { npm_publish: boolean };
+      checks: Array<{ id: string; status: string; message: string; details?: Record<string, unknown> }>;
+      next_steps: string[];
+    };
+    expect(result.ok).toBe(false);
+    expect(result.readiness.npm_publish).toBe(false);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "npm_scope_access",
+      status: "error",
+      message: expect.stringContaining("publish rights"),
+      details: expect.objectContaining({
+        scope: "@osstack",
+        reason: "scope_forbidden",
+      }),
+    }));
+    expect(result.next_steps.join("\n")).toContain("Confirm the npm account behind NPM_TOKEN can publish to @osstack");
+  });
+
   it("blocks release readiness when GitHub Actions cannot start runners", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "billing";

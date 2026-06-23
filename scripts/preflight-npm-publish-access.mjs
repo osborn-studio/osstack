@@ -25,9 +25,12 @@ try {
 } catch (error) {
   const output = [error?.stdout, error?.stderr, error?.message].filter(Boolean).join("\n");
   const scopeMissing = /Scope not found|not found|E404/i.test(output);
-  const authMissing = /ENEEDAUTH|need auth|not logged in|code E401|code E403|Forbidden/i.test(output);
+  const scopeForbidden = /code E403|E403|Forbidden|not authorized|not authorised|permission|access denied/i.test(output);
+  const authMissing = /ENEEDAUTH|need auth|not logged in|code E401/i.test(output);
   const reason = scopeMissing
     ? `${scope} does not exist on npm, or this token cannot see/publish it.`
+    : scopeForbidden
+    ? `NPM_TOKEN account cannot publish to ${scope}.`
     : authMissing
     ? "npm authentication cannot prove publish rights for the osstack scope."
     : "npm publish access preflight failed.";
