@@ -28,7 +28,7 @@
     {
       "source_id": "osstack-umadev-code-benchmark",
       "path": "docs/external/2026-06-23-umadev-code-benchmark.md",
-      "sha256": "f4b6e89dbf837f22a1297f449cacd84d46b09b2c4da0aa5f956bb978b5215ff2",
+      "sha256": "302c01c0f5c0fdaa3112d7f4d1e0b838c5fcf368804096207dddfae2e0b5b32f",
       "license": "Osstack-native analysis",
       "scope": "official",
       "imported_at": "2026-06-23T00:00:00.000Z"

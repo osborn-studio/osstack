@@ -98,6 +98,13 @@ Suggested osstack task:
 | Cloud workflow | Use `/v1/review/queue` as the operator surface for adapted packs |
 | Eval | Add retrieval fixtures per new pack family before official publication |
 
+Implemented guardrail:
+
+- `@osstack/knowledge` now exposes `createKnowledgeAdaptationPlan()` for external MIT-style corpora.
+- The plan groups source files by family, assigns `osstack-corpus/*` target pack ids, maps known families to Osstack taxonomy, and requires four actions before publication: rewrite in Osstack voice, record provenance, review before official publish, and add retrieval evals.
+- `validateKnowledgeAdaptationPlan()` rejects upstream-branded target identities such as `umadev/*` or `UmaDev ...`, rejects missing taxonomy, and rejects raw `MIT` target labels for `processed_mit` publication.
+- This keeps UmaDev as an internal learning/reference source while making the eventual cloud knowledge base Osstack-owned, reviewed, and traceable.
+
 ### 3. Retrieval Engine Boundaries
 
 UmaDev separates retrieval into `umadev-knowledge`, with:

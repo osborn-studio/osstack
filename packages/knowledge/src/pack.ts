@@ -3,6 +3,7 @@ import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { basename, extname, join, relative } from "node:path";
 import type {
   KnowledgeMode,
+  KnowledgeAdaptationPlan,
   KnowledgeFeedbackEntry,
   KnowledgePack,
   KnowledgeCachePruneResult,
@@ -176,8 +177,149 @@ export function validateKnowledgePublishGate(
   return { ok: issues.length === 0, issues };
 }
 
+export async function createKnowledgeAdaptationPlan(options: {
+  path: string;
+  sourceName: string;
+  sourceLicense: string;
+  generatedAt?: string;
+  targetScope?: KnowledgeScope;
+  targetSourceKind?: KnowledgeAdaptationPlan["target_source_kind"];
+  taxonomyMap?: Record<string, string[]>;
+}): Promise<KnowledgeAdaptationPlan> {
+  const generatedAt = options.generatedAt ?? new Date().toISOString();
+  const sourceFiles = await collectKnowledgeSourceFiles(options.path);
+  const groups = new Map<string, string[]>();
+  for (const filePath of sourceFiles) {
+    const relPath = relative(options.path, filePath) || basename(filePath);
+    const familyId = sourceFamilyFromRelativePath(relPath);
+    groups.set(familyId, [...(groups.get(familyId) ?? []), relPath]);
+  }
+  const targetScope = options.targetScope ?? "official";
+  const targetSourceKind = options.targetSourceKind ?? (
+    /\bmit\b/i.test(options.sourceLicense) ? "processed_mit" : "curated_external"
+  );
+  return {
+    generated_at: generatedAt,
+    source_name: options.sourceName,
+    source_root: basename(options.path),
+    source_license: options.sourceLicense,
+    target_scope: targetScope,
+    target_source_kind: targetSourceKind,
+    families: [...groups.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([familyId, sourcePaths]) => {
+        const taxonomy = options.taxonomyMap?.[familyId] ?? defaultTaxonomyForSourceFamily(familyId);
+        return {
+          family_id: familyId,
+          source_paths: sourcePaths.sort((a, b) => a.localeCompare(b)),
+          source_count: sourcePaths.length,
+          target_pack_id: `osstack-corpus/${slugifyKnowledgeSegment(familyId)}`,
+          target_name: `Osstack ${titleCaseWords(familyId)}`,
+          target_taxonomy: taxonomy,
+          source_license: options.sourceLicense,
+          target_license: targetSourceKind === "processed_mit" ? "MIT-derived-processed" : "Osstack-processed-external",
+          status: "planned",
+          required_actions: [
+            "rewrite_in_osstack_voice",
+            "record_source_provenance",
+            "review_before_official_publish",
+            "add_retrieval_eval",
+          ],
+        };
+      }),
+  };
+}
+
+export function validateKnowledgeAdaptationPlan(plan: KnowledgeAdaptationPlan): KnowledgePublishGateReport {
+  const issues: KnowledgePublishGateReport["issues"] = [];
+  if (plan.families.length === 0) {
+    issues.push({ code: "adaptation_empty_source", message: "knowledge adaptation plan requires at least one source family" });
+  }
+  for (const family of plan.families) {
+    if (!family.target_pack_id.startsWith("osstack-corpus/")) {
+      issues.push({
+        code: "adaptation_target_pack_not_osstack",
+        message: `family ${family.family_id} target_pack_id must use the osstack-corpus/ namespace`,
+      });
+    }
+    if (/\buma(dev)?\b/i.test(`${family.target_pack_id} ${family.target_name}`)) {
+      issues.push({
+        code: "adaptation_target_keeps_upstream_identity",
+        message: `family ${family.family_id} target identity must remove upstream product naming`,
+      });
+    }
+    if (family.target_taxonomy.length === 0) {
+      issues.push({
+        code: "adaptation_missing_taxonomy",
+        message: `family ${family.family_id} requires at least one Osstack taxonomy target`,
+      });
+    }
+    if (family.source_count !== family.source_paths.length) {
+      issues.push({
+        code: "adaptation_source_count_mismatch",
+        message: `family ${family.family_id} source_count must equal source_paths length`,
+      });
+    }
+    if (plan.target_source_kind === "processed_mit" && !isProcessedLicenseLabel(family.target_license)) {
+      issues.push({
+        code: "adaptation_processed_license_not_osstack_derived",
+        message: `family ${family.family_id} target_license must mark Osstack processed or derived content`,
+      });
+    }
+    for (const action of ["rewrite_in_osstack_voice", "record_source_provenance", "review_before_official_publish", "add_retrieval_eval"]) {
+      if (!family.required_actions.includes(action)) {
+        issues.push({
+          code: "adaptation_missing_required_action",
+          message: `family ${family.family_id} requires action ${action}`,
+        });
+      }
+    }
+  }
+  return { ok: issues.length === 0, issues };
+}
+
 function isProcessedLicenseLabel(license: string): boolean {
   return /\b(processed|derived|osstack)\b/i.test(license);
+}
+
+function sourceFamilyFromRelativePath(path: string): string {
+  const segments = path.split(/[\\/]+/).filter((segment) => segment.length > 0);
+  if (segments.length > 1) return segments[0] ?? "general";
+  return basename(path, extname(path)) || "general";
+}
+
+function defaultTaxonomyForSourceFamily(familyId: string): string[] {
+  const normalized = slugifyKnowledgeSegment(familyId);
+  const known: Record<string, string[]> = {
+    ai: ["ai-agent-engineering/general"],
+    architecture: ["software-architecture/system-design"],
+    cicd: ["delivery/cicd-release"],
+    data: ["data-engineering/governance"],
+    design: ["product-design/ux-system"],
+    "design-systems": ["product-design/design-system"],
+    development: ["software-engineering/development-quality"],
+    incident: ["operations/incident-response"],
+    operations: ["operations/sre-runbook"],
+    product: ["product-management/discovery-and-prd"],
+    security: ["security/devsecops"],
+    testing: ["quality-engineering/testing-and-eval"],
+  };
+  return known[normalized] ?? [`software-engineering/${normalized}`];
+}
+
+function slugifyKnowledgeSegment(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "general";
+}
+
+function titleCaseWords(value: string): string {
+  return slugifyKnowledgeSegment(value)
+    .split("-")
+    .map((word) => `${word.slice(0, 1).toUpperCase()}${word.slice(1)}`)
+    .join(" ");
 }
 
 function isUnsafeKnowledgeSourcePath(path: string): boolean {
