@@ -427,6 +427,7 @@
 | P1 | `CONFORMANCE_MATRIX.md` 持续维护 | 让 OSSTACK_RUN_SPEC_V1 的 MUST 条款可审计 | 每条新增/变更 MUST 同步 schema/test/vector/verifier/smoke 映射 |
 | P1 | 真实 repo deliver e2e smoke | 证明 Product Entry 可处理实际项目 | `pnpm smoke:real-repo-deliver` 在带 `package.json` 和 `node --test` 的临时 git repo 中跑 deliver/worktree/`npm test`/proof 成功，并断言 `proof validate` 的 file/archive integrity 通过，已接入 CI |
 | P1 | Compliance report 从 proof dir 渲染 smoke | 证明 enterprise proof 包装闭环 | 已覆盖真实 deliver proof dir 渲染 `engineering-readiness` 与 `soc2-lite`，且不声称外部认证 |
+| P1 | UmaDev 代码级对标任务落地 | 从 UmaDev 学习 TUI、知识库、retrieval、contract validation、governance hook 的代码结构，但不 fork、不改名、不直接镜像上游知识库 | `docs/external/2026-06-23-umadev-code-benchmark.md` 与 `docs/product/10_TASK_BREAKDOWN.md` 的 P1/P2/P3 borrowing backlog |
 | P2 | 单文件 release asset 产品化 | 可选增强，不阻塞 npm 主路径；Bun single executable 本地 release archive candidate 已有 manifest/checksum/SPDX SBOM/ad-hoc signing/extract smoke，workflow artifact 与 formal upload path 已接入 | macOS arm64 Developer ID signed/notarized asset + cross-machine smoke + remote formal GitHub Release proof |
 | P2 | 交互式 TUI | 当前 cockpit 是 Web/summary + run/retry/approve/report/proof MVP | 提供完整交互式 TUI |
 
@@ -460,7 +461,9 @@ osstack release doctor --target primary --cloud-url https://osstack-knowledge-cl
 
 下一轮可转入：
 
-1. 完整交互式 TUI：在现有 `cockpit tui --json` 稳定数据契约上实现 Ink/blessed 交互层。
-2. 生产 Knowledge Cloud 运营：完整审核 UI、object storage/Postgres/vector index、团队/组织权限模型。
-3. Single-binary 发布产品化：配置 Apple Developer ID secrets，跑通远端 notarization、跨机器 smoke 和正式 GitHub Release asset。
-4. 更多真实业务 repo deliver e2e 样本，持续校准 lessons、agent scorecard、governance strict mode 与 proof validate negative vectors。
+1. Cockpit TUI 技术债拆分：先把 model/render/input 从 `packages/cli/src/bin.ts` 拆出，再决定 Ink/blessed/full-screen 交互层。
+2. Contract validation proof slice：参考 UmaDev contract layer 增加前后端 API 对齐检查，并把结果写入 proof evidence。
+3. Osstack-native Knowledge Cloud 扩容：用 UmaDev 语料目录做 taxonomy map，经 rewrite/provenance/review queue/publish gate 变成 Osstack 自有云端知识库。
+4. 生产 Knowledge Cloud 运营：完整审核 UI、object storage/Postgres/vector index、团队/组织权限模型。
+5. Single-binary 发布产品化：配置 Apple Developer ID secrets，跑通远端 notarization、跨机器 smoke 和正式 GitHub Release asset。
+6. 更多真实业务 repo deliver e2e 样本，持续校准 lessons、agent scorecard、governance strict mode 与 proof validate negative vectors。
