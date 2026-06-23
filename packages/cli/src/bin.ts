@@ -232,14 +232,14 @@ Project commands:
                       Product readiness check: loop + agents + next steps
   examples [--json]   Print runnable workflow examples
   guide [--output P]  Print or write the 5-minute quickstart
-  release doctor [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
+  release doctor [--target all|primary|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
                       Check publish/deploy prerequisites: GitHub auth, repo
                       secrets, npm auth, and EdgeOne deploy readiness
-  release plan [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
+  release plan [--target all|primary|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
                       Generate a blocker-aware publish/deploy runbook
-  release status [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
+  release status [--target all|primary|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
                       Summarize completion, external blockers, and next actions
-  release handoff [--workspace P] [--cloud-url URL] [--output-dir P] [--json]
+  release handoff [--target primary|all|npm|knowledge-cloud|single-binary] [--workspace P] [--cloud-url URL] [--output-dir P] [--json]
                       Generate a consolidated release handoff folder
   release npm [--workspace P] [--output P] [--json]
                       Generate the npm publish setup handoff
@@ -772,6 +772,7 @@ async function handleGuideCommand(args: string[]): Promise<number> {
 }
 
 type ReleaseDoctorStatus = "ok" | "warn" | "error";
+type ReleaseDoctorTarget = "all" | "primary" | "npm" | "knowledge-cloud" | "single-binary";
 
 interface ReleaseDoctorCheck {
   id: string;
@@ -782,7 +783,7 @@ interface ReleaseDoctorCheck {
 
 interface ReleaseDoctorResult {
   ok: boolean;
-  target: "all" | "npm" | "knowledge-cloud" | "single-binary";
+  target: ReleaseDoctorTarget;
   checks: ReleaseDoctorCheck[];
   readiness: {
     npm_publish: boolean;
@@ -878,10 +879,10 @@ async function handleReleaseCommand(args: string[]): Promise<number> {
   if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack release — publish/deploy readiness
 
-  osstack release doctor [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--json]
-  osstack release plan [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--output P] [--json]
-  osstack release status [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--output P] [--json]
-  osstack release handoff [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--output-dir P] [--json]
+  osstack release doctor [--target all|primary|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--json]
+  osstack release plan [--target all|primary|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--output P] [--json]
+  osstack release status [--target all|primary|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--output P] [--json]
+  osstack release handoff [--target primary|all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--output-dir P] [--json]
   osstack release npm [--workspace P] [--output P] [--json]
   osstack release edgeone [--workspace P] [--cloud-url URL] [--output P] [--json]
 
@@ -997,9 +998,9 @@ interface ReleaseHandoffBundleSummary {
 }
 
 async function handleReleaseHandoffCommand(args: string[]): Promise<number> {
-  const target = parseReleaseDoctorTarget(flagValue(args, "--target") ?? "all");
+  const target = parseReleaseDoctorTarget(flagValue(args, "--target") ?? "primary");
   if (target === undefined) {
-    console.error("osstack: release handoff --target must be all, npm, knowledge-cloud, or single-binary");
+    console.error("osstack: release handoff --target must be all, primary, npm, knowledge-cloud, or single-binary");
     return 1;
   }
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
@@ -1060,7 +1061,7 @@ async function handleReleaseEdgeOneCommand(args: string[]): Promise<number> {
 async function handleReleaseStatusCommand(args: string[]): Promise<number> {
   const target = parseReleaseDoctorTarget(flagValue(args, "--target") ?? "all");
   if (target === undefined) {
-    console.error("osstack: release status --target must be all, npm, knowledge-cloud, or single-binary");
+    console.error("osstack: release status --target must be all, primary, npm, knowledge-cloud, or single-binary");
     return 1;
   }
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
@@ -1093,7 +1094,7 @@ async function handleReleaseStatusCommand(args: string[]): Promise<number> {
 async function handleReleasePlanCommand(args: string[]): Promise<number> {
   const target = parseReleaseDoctorTarget(flagValue(args, "--target") ?? "all");
   if (target === undefined) {
-    console.error("osstack: release plan --target must be all, npm, knowledge-cloud, or single-binary");
+    console.error("osstack: release plan --target must be all, primary, npm, knowledge-cloud, or single-binary");
     return 1;
   }
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
@@ -1125,7 +1126,7 @@ async function handleReleasePlanCommand(args: string[]): Promise<number> {
 async function handleReleaseDoctorCommand(args: string[]): Promise<number> {
   const target = parseReleaseDoctorTarget(flagValue(args, "--target") ?? "all");
   if (target === undefined) {
-    console.error("osstack: release doctor --target must be all, npm, knowledge-cloud, or single-binary");
+    console.error("osstack: release doctor --target must be all, primary, npm, knowledge-cloud, or single-binary");
     return 1;
   }
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
@@ -1152,8 +1153,20 @@ async function handleReleaseDoctorCommand(args: string[]): Promise<number> {
 }
 
 function parseReleaseDoctorTarget(value: string): ReleaseDoctorResult["target"] | undefined {
-  if (value === "all" || value === "npm" || value === "knowledge-cloud" || value === "single-binary") return value;
+  if (value === "all" || value === "primary" || value === "npm" || value === "knowledge-cloud" || value === "single-binary") return value;
   return undefined;
+}
+
+function releaseTargetIncludesNpm(target: ReleaseDoctorTarget): boolean {
+  return target === "all" || target === "primary" || target === "npm";
+}
+
+function releaseTargetIncludesKnowledgeCloud(target: ReleaseDoctorTarget): boolean {
+  return target === "all" || target === "primary" || target === "knowledge-cloud";
+}
+
+function releaseTargetIncludesSingleBinary(target: ReleaseDoctorTarget): boolean {
+  return target === "all" || target === "single-binary";
 }
 
 async function releaseDoctor(
@@ -1173,14 +1186,16 @@ async function releaseDoctor(
   const githubActions = await releaseGitHubActionsCheck();
   checks.push(githubActions);
 
-  const requiredSecrets = target === "npm" ? ["NPM_TOKEN"]
-    : target === "knowledge-cloud" ? ["EDGEONE_DEPLOY_HOOK_URL"]
-      : target === "single-binary" ? SINGLE_BINARY_RELEASE_SECRETS
-      : ["NPM_TOKEN", "EDGEONE_DEPLOY_HOOK_URL", ...SINGLE_BINARY_RELEASE_SECRETS];
+  const requiredSecrets = target === "all" ? ["NPM_TOKEN", "EDGEONE_DEPLOY_HOOK_URL", ...SINGLE_BINARY_RELEASE_SECRETS]
+    : [
+      ...(releaseTargetIncludesNpm(target) ? ["NPM_TOKEN"] : []),
+      ...(releaseTargetIncludesKnowledgeCloud(target) ? ["EDGEONE_DEPLOY_HOOK_URL"] : []),
+      ...(releaseTargetIncludesSingleBinary(target) ? SINGLE_BINARY_RELEASE_SECRETS : []),
+    ];
   const secrets = await releaseSecretsCheck(requiredSecrets);
   checks.push(secrets);
 
-  if (target === "all" || target === "npm") {
+  if (releaseTargetIncludesNpm(target)) {
     checks.push(await releaseNpmPublishAssetsCheck(process.cwd()));
     checks.push(await releaseVersionPackagesPrCheck());
     checks.push(await releaseCommandCheck({
@@ -1195,7 +1210,7 @@ async function releaseDoctor(
     checks.push(await releaseNpmScopeAccessCheck());
   }
 
-  if (target === "all" || target === "knowledge-cloud") {
+  if (releaseTargetIncludesKnowledgeCloud(target)) {
     checks.push(await releaseKnowledgeCloudDeployAssetsCheck(process.cwd()));
     checks.push(await releaseKnowledgeCloudWorkflowCheck());
     if (options.cloudUrl !== undefined) {
@@ -1206,7 +1221,7 @@ async function releaseDoctor(
     }
     checks.push(releaseEdgeOneDeployHookCheck());
   }
-  if (target === "all" || target === "single-binary") {
+  if (releaseTargetIncludesSingleBinary(target)) {
     checks.push(await releaseSingleBinaryReleaseAssetsCheck(process.cwd()));
     checks.push(await releaseSingleBinaryWorkflowCheck());
   }
@@ -1241,7 +1256,8 @@ async function releaseDoctor(
     && SINGLE_BINARY_RELEASE_SECRETS.every((secret) => hasSecret(secrets, secret))
     && singleBinaryAssetsReady
     && singleBinaryWorkflowReady;
-  const ok = target === "npm" ? npmPublish
+  const ok = target === "primary" ? npmPublish && knowledgeCloudDeploy
+    : target === "npm" ? npmPublish
     : target === "knowledge-cloud" ? knowledgeCloudDeploy
       : target === "single-binary" ? singleBinaryRelease
       : npmPublish && knowledgeCloudDeploy && singleBinaryRelease;
@@ -2861,11 +2877,11 @@ function releaseDoctorNextSteps(options: {
   if (Array.isArray(missing) && missing.includes("EDGEONE_DEPLOY_HOOK_URL")) {
     steps.push("Add repository secret EDGEONE_DEPLOY_HOOK_URL before running Knowledge Cloud deploy=true.");
   }
-  if (Array.isArray(missing) && SINGLE_BINARY_RELEASE_SECRETS.some((secret) => missing.includes(secret))) {
+  if (releaseTargetIncludesSingleBinary(options.target) && Array.isArray(missing) && SINGLE_BINARY_RELEASE_SECRETS.some((secret) => missing.includes(secret))) {
     steps.push("Add Apple notarization and Developer ID repository secrets before running Single Binary Release dry_run=false.");
   }
   const versionPr = options.checks.find((check) => check.id === "version_packages_pr");
-  if ((options.target === "all" || options.target === "npm") && versionPr?.status === "warn") {
+  if (releaseTargetIncludesNpm(options.target) && versionPr?.status === "warn") {
     const number = typeof versionPr.details?.["number"] === "number" ? ` #${versionPr.details["number"]}` : "";
     const mergeable = versionPr.details?.["mergeable"];
     const checkCount = versionPr.details?.["check_count"];
@@ -2878,65 +2894,65 @@ function releaseDoctorNextSteps(options: {
     steps.push(`Review Version Packages PR${number}; ${checkContext} for npm publish.`);
   }
   const npmPublishAssets = options.checks.find((check) => check.id === "npm_publish_assets");
-  if ((options.target === "all" || options.target === "npm") && npmPublishAssets?.status === "error") {
+  if (releaseTargetIncludesNpm(options.target) && npmPublishAssets?.status === "error") {
     steps.push("Restore NPM publish assets before merging the Version Packages PR.");
   }
   const npmScopeAccess = options.checks.find((check) => check.id === "npm_scope_access");
-  if ((options.target === "all" || options.target === "npm") && npmScopeAccess?.status === "error") {
+  if (releaseTargetIncludesNpm(options.target) && npmScopeAccess?.status === "error") {
     const reason = npmScopeAccess.details?.["reason"];
     steps.push(reason === "scope_forbidden"
       ? "Confirm the npm account behind NPM_TOKEN can publish to @osstack before rerunning the Release workflow."
       : "Create or authorize the npm @osstack scope before rerunning the Release workflow.");
-  } else if ((options.target === "all" || options.target === "npm") && npmScopeAccess?.status === "warn") {
+  } else if (releaseTargetIncludesNpm(options.target) && npmScopeAccess?.status === "warn") {
     steps.push("Confirm the npm account behind NPM_TOKEN can publish to @osstack before merging release commits.");
   }
   const knowledgeDeployAssets = options.checks.find((check) => check.id === "knowledge_cloud_deploy_assets");
-  if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeDeployAssets?.status === "error") {
+  if (releaseTargetIncludesKnowledgeCloud(options.target) && knowledgeDeployAssets?.status === "error") {
     steps.push("Restore Knowledge Cloud deploy assets before running deploy=true.");
   }
   const knowledgeWorkflow = options.checks.find((check) => check.id === "knowledge_cloud_workflow");
-  if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeWorkflow?.status === "error") {
+  if (releaseTargetIncludesKnowledgeCloud(options.target) && knowledgeWorkflow?.status === "error") {
     steps.push("Restore the Knowledge Cloud Deploy workflow before running deploy=true.");
-  } else if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeWorkflow?.status === "warn") {
+  } else if (releaseTargetIncludesKnowledgeCloud(options.target) && knowledgeWorkflow?.status === "warn") {
     steps.push("Review the latest Knowledge Cloud Deploy workflow run before running deploy=true.");
   }
   const knowledgeHealth = options.checks.find((check) => check.id === "knowledge_cloud_health");
-  if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeHealth?.status === "error") {
+  if (releaseTargetIncludesKnowledgeCloud(options.target) && knowledgeHealth?.status === "error") {
     steps.push("Fix the deployed Knowledge Cloud /healthz endpoint before handoff.");
   }
   const knowledgeSearch = options.checks.find((check) => check.id === "knowledge_cloud_search");
-  if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeSearch?.status === "error") {
+  if (releaseTargetIncludesKnowledgeCloud(options.target) && knowledgeSearch?.status === "error") {
     steps.push("Fix deployed Knowledge Cloud search before handoff.");
   }
   const knowledgeSync = options.checks.find((check) => check.id === "knowledge_cloud_sync");
-  if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeSync?.status === "error") {
+  if (releaseTargetIncludesKnowledgeCloud(options.target) && knowledgeSync?.status === "error") {
     steps.push("Fix deployed Knowledge Cloud sync before handoff.");
   }
   const knowledgeAudit = options.checks.find((check) => check.id === "knowledge_cloud_audit");
-  if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeAudit?.status === "error") {
+  if (releaseTargetIncludesKnowledgeCloud(options.target) && knowledgeAudit?.status === "error") {
     steps.push("Fix deployed Knowledge Cloud audit endpoint before handoff.");
   }
   const singleBinaryAssets = options.checks.find((check) => check.id === "single_binary_release_assets");
-  if ((options.target === "all" || options.target === "single-binary") && singleBinaryAssets?.status === "error") {
+  if (releaseTargetIncludesSingleBinary(options.target) && singleBinaryAssets?.status === "error") {
     steps.push("Restore single-binary release assets before publishing release archives.");
   }
   const singleBinaryWorkflow = options.checks.find((check) => check.id === "single_binary_workflow");
-  if ((options.target === "all" || options.target === "single-binary") && singleBinaryWorkflow?.status === "error") {
+  if (releaseTargetIncludesSingleBinary(options.target) && singleBinaryWorkflow?.status === "error") {
     steps.push("Restore the Single Binary Release workflow before uploading release archives.");
-  } else if ((options.target === "all" || options.target === "single-binary") && singleBinaryWorkflow?.status === "warn") {
+  } else if (releaseTargetIncludesSingleBinary(options.target) && singleBinaryWorkflow?.status === "warn") {
     steps.push("Review the latest Single Binary Release workflow run before uploading release archives.");
   }
   const proofValidation = options.checks.find((check) => check.id === "proof_validation");
   if (proofValidation?.status === "error") {
     steps.push(releaseProofValidationNextStep(proofValidation));
   }
-  if ((options.target === "all" || options.target === "npm") && options.npmPublish) {
+  if (releaseTargetIncludesNpm(options.target) && options.npmPublish) {
     steps.push("NPM publish path is ready for the release workflow.");
   }
-  if ((options.target === "all" || options.target === "knowledge-cloud") && options.knowledgeCloudDeploy) {
+  if (releaseTargetIncludesKnowledgeCloud(options.target) && options.knowledgeCloudDeploy) {
     steps.push("Knowledge Cloud deploy=true is ready in GitHub Actions.");
   }
-  if ((options.target === "all" || options.target === "single-binary") && options.singleBinaryRelease) {
+  if (releaseTargetIncludesSingleBinary(options.target) && options.singleBinaryRelease) {
     steps.push("Single-binary GitHub Release asset path is ready.");
   }
   if (steps.length === 0) steps.push("Review failed checks above before publishing.");
@@ -3084,8 +3100,8 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
   const validationCommands = [
     `osstack release doctor --target ${result.target}${options.proofDir === undefined ? "" : ` --proof-dir ${options.proofDir}`}${options.cloudUrl === undefined ? "" : ` --cloud-url ${options.cloudUrl}`} --output release-readiness.md --json`,
     `osstack proof validate <run_id> --proof-dir ${options.proofDir ?? "release/osstack-proof-<run_id>"} --json`,
-    ...(result.target === "all" ? ["pnpm smoke:release-plan"] : []),
-    ...(result.target === "all" || result.target === "npm"
+    ...(result.target === "all" || result.target === "primary" ? ["pnpm smoke:release-plan"] : []),
+    ...(releaseTargetIncludesNpm(result.target)
       ? [
         "pnpm smoke:npm-preflight",
         "pnpm smoke:npm-install",
@@ -3095,13 +3111,13 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
         "gh run list --branch changeset-release/main --limit 5",
       ]
       : []),
-    ...(result.target === "all" || result.target === "knowledge-cloud"
+    ...(releaseTargetIncludesKnowledgeCloud(result.target)
       ? [
         "pnpm smoke:knowledge-cloud:deploy",
         "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false",
       ]
       : []),
-    ...(result.target === "all" || result.target === "single-binary"
+    ...(releaseTargetIncludesSingleBinary(result.target)
       ? [
         "pnpm smoke:single-binary-release-pack",
         "pnpm smoke:single-binary-release-publish",
@@ -3110,13 +3126,13 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
       : []),
   ];
   const publishCommands = [
-    ...(result.target === "knowledge-cloud" || result.target === "single-binary" ? [] : [
+    ...(!releaseTargetIncludesNpm(result.target) ? [] : [
       ...(versionPrNumber === undefined ? [] : [`gh pr merge ${versionPrNumber} --squash --delete-branch`]),
       "npm install -g @osstack/cli",
       "osstack --version",
       "osstack loop doctor --workspace .",
     ]),
-    ...(result.target === "all" || result.target === "single-binary"
+    ...(releaseTargetIncludesSingleBinary(result.target)
       ? ["gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false"]
       : []),
   ];
@@ -3124,29 +3140,29 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
   const knowledgeCloudDeployCommand = options.cloudUrl === undefined
     ? "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true"
     : `gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${options.cloudUrl}`;
-  const deployCommands = result.target === "npm" || result.target === "single-binary" ? [] : [
+  const deployCommands = !releaseTargetIncludesKnowledgeCloud(result.target) ? [] : [
     knowledgeCloudDeployCommand,
     `osstack knowledge login --cloud-url ${knowledgeCloudUrl}`,
     `osstack knowledge sync --cloud-url ${knowledgeCloudUrl} --json`,
     `osstack knowledge search "proof pack checksum" --cloud-url ${knowledgeCloudUrl} --json`,
   ];
   const postReleaseValidationCommands = [
-    ...(result.target === "knowledge-cloud" || result.target === "single-binary" ? [] : [
+    ...(!releaseTargetIncludesNpm(result.target) ? [] : [
       "npm view @osstack/cli version --json",
       "npm install -g @osstack/cli",
       "osstack --version",
       "osstack release doctor --target npm --json",
       "osstack doctor --workspace . --json",
     ]),
-    ...(result.target === "npm" || result.target === "single-binary" ? [] : [
+    ...(!releaseTargetIncludesKnowledgeCloud(result.target) ? [] : [
       `osstack release doctor --target knowledge-cloud --cloud-url ${knowledgeCloudUrl} --json`,
       `osstack knowledge sync --cloud-url ${knowledgeCloudUrl} --json`,
       `osstack knowledge search "proof pack checksum" --cloud-url ${knowledgeCloudUrl} --json`,
     ]),
-    ...(result.target === "all" || result.target === "single-binary"
+    ...(releaseTargetIncludesSingleBinary(result.target)
       ? ["osstack release doctor --target single-binary --json"]
       : []),
-    ...(result.target === "npm" || result.target === "knowledge-cloud" ? [] : [
+    ...(!releaseTargetIncludesSingleBinary(result.target) ? [] : [
       "gh release view v<version> --repo gilosbornhello/osstack",
       "gh release download v<version> --repo gilosbornhello/osstack --pattern 'osstack-*.tar.gz' --pattern 'osstack-*.archive.json' --pattern 'osstack-*.sbom.spdx.json' --pattern 'sha256sums.txt'",
       "test -s osstack-*.archive.json && test -s osstack-*.sbom.spdx.json",
@@ -3255,9 +3271,9 @@ async function createReleaseHandoffBundle(
 
 function releaseHandoffRequiredSecrets(target: ReleaseDoctorResult["target"]): string[] {
   return [
-    ...(target === "npm" || target === "all" ? ["NPM_TOKEN"] : []),
-    ...(target === "knowledge-cloud" || target === "all" ? ["EDGEONE_DEPLOY_HOOK_URL"] : []),
-    ...(target === "single-binary" || target === "all" ? SINGLE_BINARY_RELEASE_SECRETS : []),
+    ...(releaseTargetIncludesNpm(target) ? ["NPM_TOKEN"] : []),
+    ...(releaseTargetIncludesKnowledgeCloud(target) ? ["EDGEONE_DEPLOY_HOOK_URL"] : []),
+    ...(releaseTargetIncludesSingleBinary(target) ? SINGLE_BINARY_RELEASE_SECRETS : []),
   ];
 }
 

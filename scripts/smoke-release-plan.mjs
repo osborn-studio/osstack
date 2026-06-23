@@ -188,9 +188,11 @@ try {
   });
   const handoff = JSON.parse(handoffResult.stdout);
   assert(handoff.kind === "osstack-release-handoff", "release handoff must identify its artifact kind");
+  assert(handoff.target === "primary", "release handoff default target must be primary");
   assert(handoff.output_dir === handoffOutputDir, "release handoff must expose its output directory");
   assertArrayIncludes(handoff.required_secrets, "NPM_TOKEN", "release handoff must include npm secret");
   assertArrayIncludes(handoff.required_secrets, "EDGEONE_DEPLOY_HOOK_URL", "release handoff must include EdgeOne secret");
+  assert(!handoff.required_secrets.includes("APPLE_ID"), "primary release handoff must not require Apple notarization secrets");
   assertIncludes(await readFile(handoff.files.manifest, "utf-8"), "osstack-release-handoff", "release handoff manifest must be written");
   assertIncludes(await readFile(handoff.files.release_status, "utf-8"), "# Osstack Release Status", "release handoff must write release status");
   assertIncludes(await readFile(handoff.files.release_plan, "utf-8"), "# Osstack Release Action Plan", "release handoff must write release plan");
