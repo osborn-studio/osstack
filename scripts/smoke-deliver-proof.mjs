@@ -51,6 +51,7 @@ try {
     "verify-results.json",
     "worktree-status.json",
     "policy-decision.json",
+    "contract-validation.json",
     "git-diff.patch",
     "sha256sums.txt",
   ]) {

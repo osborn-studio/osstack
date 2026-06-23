@@ -22,6 +22,7 @@ import {
   validateProofEvidence,
   type ProofAudience,
 } from "@osstack/compliance";
+import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
 import { getAgentScorecard, listAgentScorecards, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons } from "@osstack/core";
 import { scanFiles, type GovernanceFinding } from "@osstack/governance";
 import {
@@ -131,6 +132,7 @@ Loop 工程：
 
 治理与知识：
   govern check        运行确定性治理检查
+  contracts check     检查前端调用与后端 API 契约是否对齐
   compliance list     列出合规映射包
   knowledge list       列出本地、官方或缓存的 Osstack 知识包
   knowledge login      保存 Knowledge Cloud URL/token 到本地缓存
@@ -341,6 +343,8 @@ Governance:
                                  Run deterministic governance checks over files
   compliance list [--json]
                                  List compliance mapping packs
+  contracts check [--workspace P] [--manifest P] [--json]
+                                 Validate frontend/backend API contract alignment
   compliance render <run_id> --pack P [--proof-dir P]
                                  Render a compliance evidence mapping report
   knowledge list [--pack P|--official|--cache-dir P] [--json]
@@ -527,6 +531,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "governance" || cmd === "govern") {
     return await handleGovernanceCommand(args.slice(1));
+  }
+
+  if (cmd === "contracts" || cmd === "contract") {
+    return await handleContractsCommand(args.slice(1));
   }
 
   if (cmd === "compliance") {
@@ -4719,6 +4727,74 @@ function printGovernanceScan(result: Awaited<ReturnType<typeof scanFiles>>): voi
   }
 }
 
+async function handleContractsCommand(args: string[]): Promise<number> {
+  const sub = args[0];
+  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack contracts — frontend/backend API contract validation
+
+  osstack contracts check [--workspace P] [--manifest P] [--json]
+
+Contract manifest:
+  osstack.contracts.json with kind=osstack.contract_manifest
+`);
+    return 0;
+  }
+  if (sub !== "check") {
+    console.error(`osstack: unknown contracts subcommand "${sub}"`);
+    return 1;
+  }
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const manifestPath = flagValue(args, "--manifest");
+  try {
+    const report = await validateWorkspaceContracts({
+      workspacePath,
+      ...(manifestPath === undefined ? {} : { manifestPath }),
+    });
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(report, null, 2));
+    } else {
+      printContractValidation(report);
+    }
+    return report.status === "pass" ? 0 : 2;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (args.includes("--json")) {
+      console.log(JSON.stringify({
+        schema_version: 1,
+        kind: "osstack.contract_validation",
+        status: "fail",
+        service: "unknown",
+        workspace_path: resolve(workspacePath),
+        manifest_path: manifestPath === undefined ? resolve(workspacePath, "osstack.contracts.json") : resolve(workspacePath, manifestPath),
+        checked_at: new Date().toISOString(),
+        endpoints: 0,
+        frontend_calls: [],
+        backend_routes: [],
+        findings: [{
+          rule_id: "contract.invalid_manifest",
+          severity: "error",
+          kind: "invalid_manifest",
+          message,
+        }],
+      }, null, 2));
+    } else {
+      console.error(`osstack: ${message}`);
+    }
+    return 1;
+  }
+}
+
+function printContractValidation(report: ContractValidationReport): void {
+  console.log(`contract_validation=${report.status}`);
+  console.log(`service=${report.service}`);
+  console.log(`endpoints=${report.endpoints}`);
+  console.log(`frontend_calls=${report.frontend_calls.length}`);
+  console.log(`backend_routes=${report.backend_routes.length}`);
+  for (const finding of report.findings) {
+    console.log(`- [${finding.severity}] ${finding.rule_id} ${finding.method ?? "?"} ${finding.path ?? "?"} - ${finding.message}`);
+  }
+}
+
 async function handleComplianceCommand(args: string[]): Promise<number> {
   const sub = args[0];
   if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
@@ -6123,6 +6199,23 @@ type LoopGovernanceEvidence = GovernanceProofEvidence & {
 
 type KnowledgeProofEvidence = KnowledgeSearchEvidence;
 
+type ContractProofEvidence =
+  | ContractValidationReport
+  | {
+    schema_version: 1;
+    kind: "osstack.contract_validation";
+    status: "unknown";
+    service: "unknown";
+    manifest_path: string;
+    workspace_path: string;
+    checked_at: string;
+    endpoints: 0;
+    frontend_calls: [];
+    backend_routes: [];
+    findings: [];
+    reason: string;
+  };
+
 function knowledgeSearchOptions(options: {
   mode: KnowledgeMode | undefined;
   query: string;
@@ -6920,6 +7013,7 @@ async function writeProofPack(
   const agentRuntime = createAgentRuntimeEvidence(events);
   const verifyResults = createVerifyResultsEvidence(scorecard, events);
   const worktreeStatus = createWorktreeStatusEvidence(events);
+  const contractValidation = await createContractProofEvidence(workspacePath);
   validateProofEvidenceArtifacts({ policyDecision, agentRuntime, verifyResults, worktreeStatus });
   const artifacts = [
     { path: "report.md", content: renderReportMarkdownForArtifacts(state, events) },
@@ -6933,6 +7027,7 @@ async function writeProofPack(
     { path: "worktree-status.json", content: `${JSON.stringify(worktreeStatus, null, 2)}\n` },
     { path: "governance-results.json", content: `${JSON.stringify(governance, null, 2)}\n` },
     { path: "knowledge-results.json", content: `${JSON.stringify(knowledge, null, 2)}\n` },
+    { path: "contract-validation.json", content: `${JSON.stringify(contractValidation, null, 2)}\n` },
     { path: "logs/events.log", content: renderProofEventsLog(events) },
   ];
   artifacts.push(...createVerifierOutputArtifacts(verifyResults));
@@ -7314,6 +7409,51 @@ function unknownGovernanceEvidence(reason: string): GovernanceProofEvidence {
     reason,
     findings: [],
   };
+}
+
+async function createContractProofEvidence(workspacePath: string | undefined): Promise<ContractProofEvidence> {
+  const resolvedWorkspace = resolve(workspacePath ?? process.cwd());
+  const manifestPath = join(resolvedWorkspace, "osstack.contracts.json");
+  try {
+    await stat(manifestPath);
+  } catch {
+    return {
+      schema_version: 1,
+      kind: "osstack.contract_validation",
+      status: "unknown",
+      service: "unknown",
+      manifest_path: manifestPath,
+      workspace_path: resolvedWorkspace,
+      checked_at: new Date().toISOString(),
+      endpoints: 0,
+      frontend_calls: [],
+      backend_routes: [],
+      findings: [],
+      reason: "No osstack.contracts.json manifest found.",
+    };
+  }
+  try {
+    return await validateWorkspaceContracts({ workspacePath: resolvedWorkspace, manifestPath });
+  } catch (error) {
+    return {
+      schema_version: 1,
+      kind: "osstack.contract_validation",
+      status: "fail",
+      service: "unknown",
+      manifest_path: manifestPath,
+      workspace_path: resolvedWorkspace,
+      checked_at: new Date().toISOString(),
+      endpoints: 0,
+      frontend_calls: [],
+      backend_routes: [],
+      findings: [{
+        rule_id: "contract.invalid_manifest",
+        severity: "error",
+        kind: "invalid_manifest",
+        message: error instanceof Error ? error.message : String(error),
+      }],
+    };
+  }
 }
 
 async function readProofEvidenceForPr(proofDir: string): Promise<{
