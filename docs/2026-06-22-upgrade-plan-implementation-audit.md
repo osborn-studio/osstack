@@ -275,10 +275,11 @@
 - Web dashboard 展示 active runs、queued tasks、active loops、agents、kanban、reports/proof packs、lessons、scorecards。
 - CLI cockpit summary 展示 actionable next steps，包含 ready/running/blocked 状态、下一步标签和执行路径说明。
 - 支持 `cockpit next` / `dashboard next` 单独输出 actionable next steps，并支持 `--status ready|running|blocked` 过滤与 `--json` 给后续 TUI/脚本复用；每条 next step 包含可复制建议命令。
+- 支持 `cockpit tui --workspace <path>` 输出终端 cockpit 面板，展示 Overview、Kanban、Evidence、Next Actions；`cockpit tui --json` 输出稳定的 sections/actions 数据契约，供后续 Ink/blessed 交互式 TUI 复用。
 
 未完成：
 
-- 还不是完整交互式 TUI；当前是 Web cockpit + script-friendly CLI summary + cockpit action commands。
+- 还不是完整交互式 TUI；当前是 Web cockpit + script-friendly CLI summary + terminal TUI preview + cockpit action commands。
 
 建议：
 

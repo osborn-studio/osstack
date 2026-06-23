@@ -8705,6 +8705,10 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
     return 0;
   }
 
+  if (sub === "tui") {
+    return await handleCockpitTuiCommand(args.slice(1));
+  }
+
   if (sub === "next") {
     return await handleCockpitNextCommand(args.slice(1));
   }
@@ -8740,6 +8744,8 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
                             Run queued work with report, scorecard, and proof defaults
   osstack cockpit next [--workspace P] [--status ready|running|blocked] [--json]
                             Print actionable next steps from the cockpit snapshot
+  osstack cockpit tui [--workspace P] [--json] [--no-color]
+                            Render a terminal cockpit panel for live workbench use
   osstack cockpit retry [task_id] [--workspace P] [--state P] [--json]
                             Requeue a failed or escalated task from loop state
   osstack cockpit approve <card_id> [--comment TEXT] [--json]
@@ -8797,6 +8803,111 @@ function workspaceScopedCockpitSnapshot(snapshot: unknown, args: string[]): unkn
       url: workspaceDashboardUrl(dashboard["url"], args),
     },
   };
+}
+
+async function handleCockpitTuiCommand(args: string[]): Promise<number> {
+  const [healthResp, snapshotResp] = await Promise.all([
+    rpc("health") as Promise<RpcResp>,
+    rpc("dashboard.snapshot", dashboardSnapshotParams(args)) as Promise<RpcResp>,
+  ]);
+  if (!healthResp.ok) {
+    console.error("osstack:", healthResp.error?.message ?? "health failed");
+    return 1;
+  }
+  if (!snapshotResp.ok) {
+    console.error("osstack:", snapshotResp.error?.message ?? "dashboard.snapshot failed");
+    return 1;
+  }
+  const snapshot = workspaceScopedCockpitSnapshot(snapshotResp.result, args);
+  const model = cockpitTuiModel(healthResp.result, snapshot);
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(model, null, 2));
+  } else {
+    console.log(renderCockpitTui(model));
+  }
+  return 0;
+}
+
+interface CockpitTuiModel {
+  mode: "terminal-cockpit";
+  title: string;
+  workspace: string;
+  daemon: string;
+  sections: Array<{ title: string; lines: string[] }>;
+  actions: Array<{ label: string; command: string; status: string }>;
+}
+
+function cockpitTuiModel(daemonRaw: unknown, snapshotRaw: unknown): CockpitTuiModel {
+  const daemon = isRecord(daemonRaw) ? daemonRaw : {};
+  const snapshot = isRecord(snapshotRaw) ? snapshotRaw : {};
+  const dashboard = isRecord(snapshot["dashboard"]) ? snapshot["dashboard"] : {};
+  const overview = isRecord(snapshot["overview"]) ? snapshot["overview"] : {};
+  const board = isRecord(snapshot["board"]) ? snapshot["board"] : {};
+  const evidence = isRecord(snapshot["evidence"]) ? snapshot["evidence"] : {};
+  const quality = isRecord(snapshot["quality"]) ? snapshot["quality"] : {};
+  const nextSteps = Array.isArray(snapshot["next_steps"]) ? snapshot["next_steps"] : [];
+  const byStatus = isRecord(board["by_status"]) ? board["by_status"] : {};
+  const latestReport = isRecord(evidence["latest_report"]) ? evidence["latest_report"] : {};
+  const latestProofPack = isRecord(evidence["latest_proof_pack"]) ? evidence["latest_proof_pack"] : {};
+  const actions = nextSteps
+    .filter(isRecord)
+    .map((step) => ({
+      label: String(step["label"] ?? "unknown"),
+      command: String(step["command"] ?? ""),
+      status: String(step["status"] ?? "unknown"),
+    }))
+    .filter((action) => action.command.length > 0);
+  return {
+    mode: "terminal-cockpit",
+    title: "Osstack Cockpit TUI",
+    workspace: String(dashboard["workspace_path"] ?? process.cwd()),
+    daemon: `${String(daemon["version"] ?? "unknown")} phase=${String(daemon["phase"] ?? "unknown")}`,
+    sections: [
+      {
+        title: "Overview",
+        lines: [
+          `runs=${String(overview["total_runs"] ?? 0)} active=${String(overview["active_runs"] ?? daemon["active_runs"] ?? 0)} queued=${String(overview["queued_tasks"] ?? 0)} loops=${String(overview["active_loops"] ?? daemon["active_loops"] ?? 0)}`,
+          `progress=${String(overview["progress_percent"] ?? 0)}% quality=${String(quality["grade"] ?? "unknown")} success_rate=${String(quality["success_rate"] ?? "unknown")}`,
+        ],
+      },
+      {
+        title: "Kanban",
+        lines: [
+          `triage=${String(byStatus["triage"] ?? 0)} todo=${String(byStatus["todo"] ?? 0)} ready=${String(byStatus["ready"] ?? 0)}`,
+          `running=${String(byStatus["running"] ?? 0)} blocked=${String(byStatus["blocked"] ?? 0)} done=${String(byStatus["done"] ?? 0)}`,
+        ],
+      },
+      {
+        title: "Evidence",
+        lines: [
+          `reports=${String(evidence["reports"] ?? 0)} proof_packs=${String(evidence["proof_packs"] ?? 0)}`,
+          `latest_report=${String(latestReport["path"] ?? "none")}`,
+          `latest_proof=${String(latestProofPack["path"] ?? "none")}`,
+        ],
+      },
+      {
+        title: "Next Actions",
+        lines: actions.slice(0, 5).map((action) => `[${action.status}] ${action.label}: ${action.command}`),
+      },
+    ],
+    actions,
+  };
+}
+
+function renderCockpitTui(model: CockpitTuiModel): string {
+  const width = 88;
+  const lines = [
+    `+ ${model.title} ${"-".repeat(Math.max(1, width - model.title.length - 4))}`,
+    `Workspace: ${model.workspace}`,
+    `Daemon: ${model.daemon}`,
+    "",
+    ...model.sections.flatMap((section) => [
+      `[${section.title}]`,
+      ...(section.lines.length === 0 ? ["  none"] : section.lines.map((line) => `  ${line}`)),
+      "",
+    ]),
+  ];
+  return lines.join("\n").trimEnd();
 }
 
 async function handleCockpitNextCommand(args: string[]): Promise<number> {
