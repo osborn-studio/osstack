@@ -171,7 +171,7 @@ describe("knowledge CLI", () => {
   });
 
   it("requires at least one pack path", async () => {
-    const exitCode = await main(["knowledge", "list"]);
+    const exitCode = await main(["knowledge", "list", "--cache-dir", join(tmp, "empty-cache")]);
 
     expect(exitCode).toBe(1);
     expect(errors.join("\n")).toContain("knowledge list requires at least one --pack path");
@@ -413,6 +413,20 @@ describe("knowledge CLI", () => {
       expect(JSON.parse(logs.join("\n"))).toMatchObject({
         status: "synced",
         packs: [expect.objectContaining({ id: "osstack-cloud-cockpit" })],
+      });
+
+      logs = [];
+      const listExitCode = await main([
+        "knowledge",
+        "list",
+        "--cache-dir",
+        cacheDir,
+        "--json",
+      ]);
+
+      expect(listExitCode).toBe(0);
+      expect(JSON.parse(logs.join("\n"))).toMatchObject({
+        packs: [expect.objectContaining({ id: "osstack-cloud-cockpit", source_kind: "osstack_native" })],
       });
 
       logs = [];
