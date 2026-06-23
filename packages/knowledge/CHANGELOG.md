@@ -1,5 +1,11 @@
 # @osstack/knowledge
 
+## 0.4.0
+
+### Minor Changes
+
+- 8cc4b41: Add a stable `retrieveKnowledge` API with retrieval metadata for BM25 local, cloud, and fallback searches.
+
 ## 0.2.0
 
 ### Minor Changes
