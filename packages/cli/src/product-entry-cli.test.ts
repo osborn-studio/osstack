@@ -999,21 +999,13 @@ describe("product entry commands", () => {
       };
       external_blockers: string[];
     };
-    expect(result.target).toBe("all");
+    expect(result.target).toBe("primary");
     expect(result.output_dir).toBe(outputDir);
     expect(result.cloud_url).toBe("https://knowledge.example.com");
-    expect(result.required_secrets).toEqual([
-      "NPM_TOKEN",
-      "EDGEONE_DEPLOY_HOOK_URL",
-      "APPLE_ID",
-      "APPLE_TEAM_ID",
-      "APPLE_APP_SPECIFIC_PASSWORD",
-      "DEVELOPER_ID_APPLICATION",
-      "MACOS_CERTIFICATE_P12",
-      "MACOS_CERTIFICATE_PASSWORD",
-    ]);
+    expect(result.required_secrets).toEqual(["NPM_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"]);
     expect(result.external_blockers.join("\n")).toContain("NPM_TOKEN");
     expect(result.external_blockers.join("\n")).toContain("EDGEONE_DEPLOY_HOOK_URL");
+    expect(result.external_blockers.join("\n")).not.toContain("Apple notarization");
     expect(result.files.release_status).toBe(join(outputDir, "release-status.md"));
     expect(result.files.release_plan).toBe(join(outputDir, "release-plan.md"));
     expect(result.files.npm_setup).toBe(join(outputDir, "npm-publish-setup.md"));
@@ -1032,6 +1024,45 @@ describe("product entry commands", () => {
     expect(await readFile(result.files.release_plan, "utf-8")).toContain("# Osstack Release Action Plan");
     expect(await readFile(result.files.npm_setup, "utf-8")).toContain("# NPM Publish Setup");
     expect(await readFile(result.files.edgeone_setup, "utf-8")).toContain("# EdgeOne Knowledge Cloud Setup");
+  });
+
+  it("generates a primary release plan for npm plus EdgeOne without single-binary notarization", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,EDGEONE_DEPLOY_HOOK_URL";
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_NPM_SCOPE_ACCESS"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+
+    const exitCode = await main([
+      "release",
+      "plan",
+      "--target",
+      "primary",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      target: string;
+      ready: boolean;
+      validation_commands: string[];
+      publish_commands: string[];
+      deploy_commands: string[];
+      post_release_validation_commands: string[];
+    };
+    expect(result.target).toBe("primary");
+    expect(result.ready).toBe(true);
+    expect(result.validation_commands).toContain("pnpm smoke:npm-preflight");
+    expect(result.validation_commands).toContain("pnpm smoke:knowledge-cloud:deploy");
+    expect(result.validation_commands.join("\n")).not.toContain("single-binary");
+    expect(result.publish_commands).toContain("npm install -g @osstack/cli");
+    expect(result.deploy_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+    expect(result.post_release_validation_commands).toContain("npm view @osstack/cli version --json");
+    expect(result.post_release_validation_commands).toContain("osstack release doctor --target knowledge-cloud --cloud-url https://knowledge.osstack.ai --json");
+    expect(result.post_release_validation_commands.join("\n")).not.toContain("gh release download");
   });
 
   it("checks a deployed Knowledge Cloud health URL before deploy handoff", async () => {
@@ -1444,7 +1475,7 @@ describe("product entry commands", () => {
     const exitCode = await main(["release", "doctor", "--target", "staging", "--json"]);
 
     expect(exitCode).toBe(1);
-    expect(errors.join("\n")).toContain("release doctor --target must be all, npm, knowledge-cloud, or single-binary");
+    expect(errors.join("\n")).toContain("release doctor --target must be all, primary, npm, knowledge-cloud, or single-binary");
   });
 });
 
