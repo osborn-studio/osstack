@@ -540,6 +540,13 @@ function dashboardText(language: DashboardLanguage): {
   blocked: string;
   reports: string;
   proofPacks: string;
+  latestReport: string;
+  latestProofPack: string;
+  markdownReports: string;
+  checksumedProofPacks: string;
+  runsLabel: string;
+  successLabel: string;
+  verifiedLabel: string;
   commands: string;
   noAgentHistory: string;
   noLessons: string;
@@ -555,8 +562,8 @@ function dashboardText(language: DashboardLanguage): {
       quality: "质量面板",
       nextSteps: "后续计划",
       evidence: "证据资产",
-      scorecards: "Agent Scorecards",
-      lessons: "Lessons",
+      scorecards: "Agent 评分卡",
+      lessons: "经验教训",
       kanban: "任务看板",
       recentRuns: "最近运行",
       codeMap: "代码地图",
@@ -565,6 +572,13 @@ function dashboardText(language: DashboardLanguage): {
       blocked: "阻塞",
       reports: "报告",
       proofPacks: "Proof packs",
+      latestReport: "最新报告",
+      latestProofPack: "最新 Proof pack",
+      markdownReports: "份 Markdown 报告",
+      checksumedProofPacks: "个带校验 Proof pack",
+      runsLabel: "次运行",
+      successLabel: "成功",
+      verifiedLabel: "已验证",
       commands: "命令",
       noAgentHistory: "暂无 agent 运行历史。",
       noLessons: "暂无 pitfall lessons。",
@@ -590,6 +604,13 @@ function dashboardText(language: DashboardLanguage): {
     blocked: "Blocked",
     reports: "Reports",
     proofPacks: "Proof packs",
+    latestReport: "Latest report",
+    latestProofPack: "Latest proof pack",
+    markdownReports: "markdown report(s)",
+    checksumedProofPacks: "checksumed proof pack(s)",
+    runsLabel: "runs",
+    successLabel: "success",
+    verifiedLabel: "verified",
     commands: "Commands",
     noAgentHistory: "No agent run history yet.",
     noLessons: "No pitfall lessons recorded.",
@@ -750,14 +771,14 @@ async function load(){
   document.getElementById('quality').innerHTML = '<div class="row"><div class="quality '+statusClass(d.quality.grade)+'">'+d.quality.grade+'</div><span>'+esc(t.successRate)+' '+Math.round(d.quality.success_rate*100)+'% · '+esc(t.blocked)+' '+d.quality.blocked_cards+'</span></div><div class="list" style="margin-top:12px">'+d.quality.dimensions.map(q => '<div class="row"><span class="tag">'+q.grade+'</span><span>'+esc(q.name)+'<br><small>'+esc(q.detail)+'</small></span></div>').join('')+'</div>';
   document.getElementById('next').innerHTML = d.next_steps.map(n => '<div class="row"><span class="dot '+statusClass(n.status)+'"></span><span><b>'+esc(n.label)+'</b><br><small>'+esc(n.detail)+'</small>'+releaseBlockersHtml(n)+(n.command ? '<br><code>'+esc(n.command)+'</code>' : '')+'</span></div>').join('');
   document.getElementById('evidence').innerHTML = [
-    '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.reports)+'</b><br><small>'+d.evidence.reports+' markdown report(s)</small></span></div>',
-    '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.proofPacks)+'</b><br><small>'+d.evidence.proof_packs+' checksumed proof pack(s)</small></span></div>',
-    artifactRow('Latest report', d.evidence.latest_report),
-    artifactRow('Latest proof pack', d.evidence.latest_proof_pack),
+    '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.reports)+'</b><br><small>'+d.evidence.reports+' '+esc(t.markdownReports)+'</small></span></div>',
+    '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.proofPacks)+'</b><br><small>'+d.evidence.proof_packs+' '+esc(t.checksumedProofPacks)+'</small></span></div>',
+    artifactRow(t.latestReport, d.evidence.latest_report),
+    artifactRow(t.latestProofPack, d.evidence.latest_proof_pack),
     '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.commands)+'</b><br><small>osstack report · osstack proof · osstack pr</small></span></div>'
   ].join('');
-  document.getElementById('scorecards').innerHTML = d.agent_scorecards.length ? d.agent_scorecards.map(s => '<div class="row"><span class="dot '+(s.recent_failures ? 'warn' : 'ok')+'"></span><span><b>'+esc(s.agent_id)+'</b><br><small>'+s.total_runs+' runs · '+Math.round(s.success_rate*100)+'% success · '+esc(s.capability_fit)+'</small></span></div>').join('') : '<div class="row"><span class="dot warn"></span><span>'+esc(t.noAgentHistory)+'</span></div>';
-  document.getElementById('lessons').innerHTML = d.lessons.recent.length ? d.lessons.recent.map(l => '<div class="row"><span class="dot warn"></span><span><b>'+esc(l.family)+'</b><br><small>'+esc(l.symptom)+' · verified '+l.verified_count+'</small></span></div>').join('') : '<div class="row"><span class="dot ok"></span><span>'+esc(t.noLessons)+'</span></div>';
+  document.getElementById('scorecards').innerHTML = d.agent_scorecards.length ? d.agent_scorecards.map(s => '<div class="row"><span class="dot '+(s.recent_failures ? 'warn' : 'ok')+'"></span><span><b>'+esc(s.agent_id)+'</b><br><small>'+s.total_runs+' '+esc(t.runsLabel)+' · '+Math.round(s.success_rate*100)+'% '+esc(t.successLabel)+' · '+esc(s.capability_fit)+'</small></span></div>').join('') : '<div class="row"><span class="dot warn"></span><span>'+esc(t.noAgentHistory)+'</span></div>';
+  document.getElementById('lessons').innerHTML = d.lessons.recent.length ? d.lessons.recent.map(l => '<div class="row"><span class="dot warn"></span><span><b>'+esc(l.family)+'</b><br><small>'+esc(l.symptom)+' · '+esc(t.verifiedLabel)+' '+l.verified_count+'</small></span></div>').join('') : '<div class="row"><span class="dot ok"></span><span>'+esc(t.noLessons)+'</span></div>';
   document.getElementById('board').innerHTML = lanes.map(lane => {
     const col = d.board.columns.find(c => c.name === lane) || { cards: [] };
     return '<div class="lane"><div class="lane-title"><span>'+lane+'</span><span>'+col.cards.length+'</span></div>'+col.cards.map(c => '<div class="card"><b>'+esc(c.title)+'</b><small>'+esc(c.assignee || t.unassigned)+(c.blocked_reason ? ' · '+esc(c.blocked_reason) : '')+'</small></div>').join('')+'</div>';

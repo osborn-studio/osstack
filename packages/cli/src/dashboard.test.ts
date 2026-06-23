@@ -271,7 +271,14 @@ describe("dashboard", () => {
     expect(chinese).toContain('<html lang="zh-CN">');
     expect(chinese).toContain("<title>osstack 开发驾驶舱</title>");
     expect(chinese).toContain("<h2>证据资产</h2>");
+    expect(chinese).toContain("<h2>Agent 评分卡</h2>");
+    expect(chinese).toContain("<h2>经验教训</h2>");
     expect(chinese).toContain("队列任务");
     expect(chinese).toContain("暂无运行记录");
+    expect(chinese).toContain("最新报告");
+    expect(chinese).toContain("最新 Proof pack");
+    expect(chinese).toContain("次运行");
+    expect(chinese).toContain("成功");
+    expect(chinese).toContain("已验证");
   });
 });
