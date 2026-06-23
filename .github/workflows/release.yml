@@ -91,6 +91,9 @@ jobs:
       - name: NPM install smoke
         run: pnpm smoke:npm-install
 
+      - name: NPM preflight smoke
+        run: pnpm smoke:npm-preflight
+
       - name: Detect npm token
         id: npm-token
         run: |
