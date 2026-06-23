@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cockpitTuiKeyFromInput,
   cockpitTuiModel,
   initialCockpitTuiFullscreenState,
   renderCockpitFullscreen,
@@ -218,5 +219,17 @@ describe("cockpit TUI model", () => {
       type: "quit",
       state: { active_section_index: 1, selected_action_index: 2 },
     });
+  });
+
+  it("maps raw terminal input to cockpit TUI keys", () => {
+    expect(cockpitTuiKeyFromInput("\u001b[A")).toBe("up");
+    expect(cockpitTuiKeyFromInput("\u001b[B")).toBe("down");
+    expect(cockpitTuiKeyFromInput("\u001b[C")).toBe("right");
+    expect(cockpitTuiKeyFromInput("\u001b[D")).toBe("left");
+    expect(cockpitTuiKeyFromInput("\r")).toBe("enter");
+    expect(cockpitTuiKeyFromInput("\n")).toBe("enter");
+    expect(cockpitTuiKeyFromInput("\u001b")).toBe("escape");
+    expect(cockpitTuiKeyFromInput("\u0003")).toBe("q");
+    expect(cockpitTuiKeyFromInput("x")).toBe("x");
   });
 });
