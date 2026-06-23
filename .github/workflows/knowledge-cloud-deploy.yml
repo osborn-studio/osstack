@@ -70,7 +70,18 @@ jobs:
       - name: Deploy with EdgeOne CLI
         if: ${{ inputs.deploy && steps.edgeone-deploy-credential.outputs.mode == 'cli' }}
         run: |
-          npx edgeone@latest makers deploy . -n osstack-knowledge-cloud -t "$EDGEONE_API_TOKEN" -e production
+          set +e
+          npx edgeone@latest makers deploy . -n osstack-knowledge-cloud -t "$EDGEONE_API_TOKEN" -e production 2>&1 | tee edgeone-deploy.log
+          status="${PIPESTATUS[0]}"
+          set -e
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+          if grep -q "Deploy Success" edgeone-deploy.log && grep -q "Failed to retrieve project status information" edgeone-deploy.log; then
+            echo "EdgeOne reported Deploy Success, but the post-deploy project status lookup failed. Treating deployment as successful and continuing validation." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          exit "$status"
         env:
           EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
 
