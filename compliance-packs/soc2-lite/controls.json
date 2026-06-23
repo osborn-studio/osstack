@@ -2,26 +2,36 @@
   {
     "id": "soc2-change-validation",
     "title": "Change validation",
-    "description": "Maps verification results to an internal change-management evidence view."
+    "description": "Maps verification results to an internal change-management evidence view.",
+    "title_zh": "变更验证",
+    "description_zh": "将验证结果映射到内部变更管理证据视图。"
   },
   {
     "id": "soc2-automated-decision-trace",
     "title": "Automated decision trace",
-    "description": "Records the agent selection and routing rationale for audit review."
+    "description": "Records the agent selection and routing rationale for audit review.",
+    "title_zh": "自动化决策追踪",
+    "description_zh": "记录 agent 选择和路由依据，供审计复核。"
   },
   {
     "id": "soc2-secure-development",
     "title": "Secure development checks",
-    "description": "Maps deterministic governance findings to secure-development evidence."
+    "description": "Maps deterministic governance findings to secure-development evidence.",
+    "title_zh": "安全开发检查",
+    "description_zh": "将确定性治理发现映射为安全开发证据。"
   },
   {
     "id": "soc2-evidence-integrity",
     "title": "Evidence integrity",
-    "description": "Uses proof manifest checksums as tamper-evident artifact inventory."
+    "description": "Uses proof manifest checksums as tamper-evident artifact inventory.",
+    "title_zh": "证据完整性",
+    "description_zh": "使用 proof manifest checksum 作为防篡改产物清单。"
   },
   {
     "id": "soc2-agent-runtime",
     "title": "Agent runtime trace",
-    "description": "Shows which agent runtime modes participated in the run."
+    "description": "Shows which agent runtime modes participated in the run.",
+    "title_zh": "Agent 运行时追踪",
+    "description_zh": "显示参与本次运行的 agent 运行时模式。"
   }
 ]

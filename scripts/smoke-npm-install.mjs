@@ -64,6 +64,31 @@ try {
   if (productDoctorParsed.ok !== true || productDoctorParsed.loop?.ok !== true) {
     throw new Error(`product doctor did not pass after npm install: ${productDoctor.stdout}`);
   }
+  const releaseDoctor = run(osstackBin, [
+    "release",
+    "doctor",
+    "--target",
+    "npm",
+    "--json",
+  ], {
+    cwd: root,
+    capture: true,
+    env: {
+      ...process.env,
+      OSSTACK_TEST_RELEASE_GITHUB_AUTH: "ok",
+      OSSTACK_TEST_RELEASE_GITHUB_ACTIONS: "ok",
+      OSSTACK_TEST_RELEASE_SECRETS: "NPM_TOKEN",
+      OSSTACK_TEST_RELEASE_NPM_AUTH: "ok",
+      OSSTACK_TEST_RELEASE_VERSION_PR: "none",
+    },
+  });
+  const releaseDoctorParsed = JSON.parse(releaseDoctor.stdout);
+  if (releaseDoctorParsed.ok !== true || releaseDoctorParsed.readiness?.npm_publish !== true) {
+    throw new Error(`installed CLI release doctor did not mark npm publish ready: ${releaseDoctor.stdout}`);
+  }
+  if (!releaseDoctorParsed.checks?.some((check) => check.id === "npm_publish_assets" && check.status === "ok")) {
+    throw new Error(`installed CLI release doctor did not validate npm publish assets: ${releaseDoctor.stdout}`);
+  }
 
   const doctor = run(osstackBin, ["loop", "doctor", "--workspace", workspace, "--json"], { cwd: root, capture: true });
   const parsed = JSON.parse(doctor.stdout);
@@ -88,6 +113,60 @@ try {
   const guide = run(osstackBin, ["guide"], { cwd: root, capture: true });
   assertIncludes(guide.stdout, "osstack doctor --workspace .", "guide must include product doctor");
   assertIncludes(guide.stdout, "osstack proof view", "guide must include proof view");
+
+  run("git", ["init", "-b", "main"], { cwd: workspace });
+  run("git", ["config", "user.name", "osstack npm smoke"], { cwd: workspace });
+  run("git", ["config", "user.email", "osstack-npm-smoke@example.invalid"], { cwd: workspace });
+  await writeFile(join(workspace, "README.md"), "osstack installed deliver smoke\n", "utf-8");
+  run("git", ["add", "README.md"], { cwd: workspace });
+  run("git", ["commit", "-m", "initial"], { cwd: workspace });
+  const installedDeliver = run(osstackBin, [
+    "deliver",
+    "Ship installed CLI deliver smoke",
+    "--workspace",
+    workspace,
+    "--execute",
+    "node -e \"require('fs').writeFileSync('installed-deliver.txt','ok')\"",
+    "--verify",
+    "node -e \"process.exit(require('fs').existsSync('installed-deliver.txt') ? 0 : 1)\"",
+    "--worktree",
+    "--worktree-root",
+    join(workspace, ".osstack-worktrees"),
+    "--auto-agent",
+    "--json",
+  ], { cwd: root, capture: true });
+  const installedDeliverParsed = JSON.parse(installedDeliver.stdout);
+  if (installedDeliverParsed.completed_tasks?.[0]?.outcome !== "success") {
+    throw new Error(`installed CLI deliver did not complete successfully: ${installedDeliver.stdout}`);
+  }
+  assertIncludes(
+    await readFile(installedDeliverParsed.artifacts.report, "utf-8"),
+    "Conformance: L4 Audited",
+    "installed CLI deliver report must prove L4 conformance",
+  );
+  assertIncludes(
+    await readFile(installedDeliverParsed.artifacts.proof_manifest, "utf-8"),
+    "\"kind\": \"osstack.proof_pack\"",
+    "installed CLI deliver must write a proof manifest",
+  );
+  if (typeof installedDeliverParsed.artifacts.proof_zip !== "string") {
+    throw new Error(`installed CLI deliver did not report a proof zip artifact: ${installedDeliver.stdout}`);
+  }
+  const installedDeliverVerify = JSON.parse(await readFile(join(installedDeliverParsed.artifacts.proof_dir, "verify-results.json"), "utf-8"));
+  if (installedDeliverVerify.status !== "pass") {
+    throw new Error(`installed CLI deliver verify-results did not pass: ${JSON.stringify(installedDeliverVerify)}`);
+  }
+  const installedDeliverWorktree = JSON.parse(await readFile(join(installedDeliverParsed.artifacts.proof_dir, "worktree-status.json"), "utf-8"));
+  if (!installedDeliverWorktree.entries?.some((entry) => entry.status === "merged")) {
+    throw new Error(`installed CLI deliver did not record a merged worktree: ${JSON.stringify(installedDeliverWorktree)}`);
+  }
+  const installedDeliverProofValidation = assertProofValidationPass({
+    command: osstackBin,
+    runId: installedDeliverParsed.loop_id,
+    proofDir: installedDeliverParsed.artifacts.proof_dir,
+    proofZip: installedDeliverParsed.artifacts.proof_zip,
+    message: "installed CLI deliver proof validate",
+  });
 
   await writeFile(join(workspace, "LOOP-STATE.json"), `${JSON.stringify({
     loop_id: "npm-smoke-loop",
@@ -123,6 +202,14 @@ try {
   if (proofZipStat.size <= 0) {
     throw new Error(`proof --loop wrote an empty zip: ${proofZip}`);
   }
+  const loopProofValidation = assertProofValidationPass({
+    command: osstackBin,
+    runId: "npm-smoke-loop",
+    proofDir: join(workspace, "release", "osstack-proof-npm-smoke-loop"),
+    proofZip,
+    message: "installed CLI proof --loop validation",
+    requireCoreEvidence: false,
+  });
 
   const knowledgeEval = run(osstackBin, [
     "knowledge",
@@ -242,11 +329,29 @@ try {
       load_skipped: installParsed.load_skipped,
     },
     product_doctor: productDoctorParsed.ok,
+    release_doctor: {
+      npm_publish: releaseDoctorParsed.readiness?.npm_publish,
+      npm_publish_assets: releaseDoctorParsed.checks.find((check) => check.id === "npm_publish_assets")?.status ?? null,
+    },
+    installed_deliver: {
+      loop_id: installedDeliverParsed.loop_id,
+      report: installedDeliverParsed.artifacts.report,
+      proof_manifest: installedDeliverParsed.artifacts.proof_manifest,
+      proof_zip: installedDeliverParsed.artifacts.proof_zip,
+      proof_validation: {
+        file_integrity: installedDeliverProofValidation.file_integrity?.ok,
+        archive_integrity: installedDeliverProofValidation.archive_integrity?.ok,
+      },
+    },
     examples: examplesParsed.examples.length,
     evidence_artifacts: {
       scorecard_markdown: scorecardMarkdown,
       proof_manifest: proofManifest,
       proof_zip: proofZip,
+      proof_validation: {
+        file_integrity: loopProofValidation.file_integrity?.ok,
+        archive_integrity: loopProofValidation.archive_integrity?.ok,
+      },
     },
     knowledge_eval: {
       total: knowledgeEvalParsed.total,
@@ -315,7 +420,7 @@ function run(command, args, options = {}) {
     encoding: "utf-8",
     stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit",
   });
-  if (result.status !== 0) {
+  if (result.status !== 0 && options.allowFailure !== true) {
     const output = [result.stdout, result.stderr].filter(Boolean).join("\n");
     throw new Error(`${command} ${args.join(" ")} failed with ${result.status}${output ? `\n${output}` : ""}`);
   }
@@ -329,4 +434,32 @@ function assertIncludes(text, expected, message) {
   if (!text.includes(expected)) {
     throw new Error(`${message}: missing ${JSON.stringify(expected)} in ${JSON.stringify(text)}`);
   }
+}
+
+function assertProofValidationPass({ command, runId, proofDir, proofZip, message, requireCoreEvidence = true }) {
+  const result = run(command, ["proof", "validate", runId, "--proof-dir", proofDir, "--json"], {
+    cwd: root,
+    capture: true,
+    allowFailure: !requireCoreEvidence,
+  });
+  const summary = JSON.parse(result.stdout);
+  if (requireCoreEvidence && summary.ok !== true) {
+    throw new Error(`${message} did not pass: ${result.stdout}`);
+  }
+  if (summary.file_integrity?.ok !== true) {
+    throw new Error(`${message} file integrity did not pass: ${result.stdout}`);
+  }
+  if (summary.archive_integrity?.checked !== true) {
+    throw new Error(`${message} did not inspect proof zip inventory: ${result.stdout}`);
+  }
+  if (summary.archive_integrity?.ok !== true) {
+    throw new Error(`${message} archive integrity did not pass: ${result.stdout}`);
+  }
+  if (summary.archive_integrity?.proof_zip !== proofZip) {
+    throw new Error(`${message} inspected the wrong proof zip: expected ${proofZip}, got ${summary.archive_integrity?.proof_zip}`);
+  }
+  if (summary.archive_integrity?.issues?.length !== 0) {
+    throw new Error(`${message} archive integrity reported issues: ${result.stdout}`);
+  }
+  return summary;
 }

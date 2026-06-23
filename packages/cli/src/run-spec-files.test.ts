@@ -68,6 +68,15 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
     expect(matrix).toContain("Status Legend");
     expect(matrix).toContain("Current Conformance Summary");
     expect(matrix).toContain("Required Follow-Up Tests");
+    expect(matrix).toContain("installed-CLI deliver");
+    expect(matrix).toContain("scripts/smoke-real-repo-deliver.mjs");
+    expect(matrix).toContain("real repo deliver");
+    expect(matrix).toContain("npm test");
+    expect(matrix).toContain("Conformance: L4 Audited");
+    expect(matrix).toContain("verify-results.json");
+    expect(matrix).toContain("worktree-status.json");
+    expect(matrix).toContain("GitHub Actions billing/spending-limit");
+    expect(matrix).not.toContain("workflow-scope push");
   });
 
   it("keeps schema and test vector JSON parseable with required anchors", async () => {
@@ -85,6 +94,7 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       "test-vectors/OS-EVID-001.json",
       "test-vectors/OS-EVID-BAD-001.json",
       "test-vectors/OS-PROOF-BAD-001.json",
+      "test-vectors/OS-PROOF-BAD-002.json",
       "test-vectors/OS-AUDIT-001.json",
       "test-vectors/OS-KNOW-001.json",
     ];
@@ -96,25 +106,62 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
 
     const proofManifestSchema = JSON.parse(
       await readFile(join(specDir, "schemas", "proof-pack-manifest.schema.json"), "utf-8"),
-    ) as { required: string[] };
+    ) as {
+      required: string[];
+      properties: {
+        compliance_reports?: {
+          items?: {
+            required?: string[];
+            properties?: {
+              certification_claim?: { const?: string };
+              path?: { pattern?: string };
+            };
+          };
+        };
+        artifacts?: {
+          items?: {
+            properties?: {
+              path?: { pattern?: string };
+            };
+          };
+        };
+      };
+    };
     expect(proofManifestSchema.required).toEqual(expect.arrayContaining([
       "schema_version",
       "kind",
+      "osstack_version",
+      "run_id",
       "loop_id",
+      "agent_id",
+      "agent_ids",
+      "created_at",
+      "generated_at",
       "artifacts",
     ]));
+    expect(proofManifestSchema.properties.compliance_reports?.items?.required).toEqual(expect.arrayContaining([
+      "pack_id",
+      "path",
+      "certification_claim",
+    ]));
+    const artifactPathPattern = proofManifestSchema.properties.artifacts?.items?.properties?.path?.pattern;
+    expect(artifactPathPattern).toBeTypeOf("string");
+    expect(artifactPathPattern).toContain("\\.\\.");
+    expect(proofManifestSchema.properties.compliance_reports?.items?.properties?.path?.pattern).toBe(artifactPathPattern);
+    expect(proofManifestSchema.properties.compliance_reports?.items?.properties?.certification_claim?.const).toBe("none");
 
     const evidenceVector = JSON.parse(
       await readFile(join(specDir, "test-vectors", "OS-EVID-001.json"), "utf-8"),
     ) as {
       expected_conformance: string;
-      proof_manifest: { kind: string };
+      proof_manifest: { kind: string; created_at: string; generated_at: string };
       agent_runtime: { status: string; agents: Array<{ auth_mode: string }> };
       verify_results: { status: string; results: Array<{ reviewer_agent_id: string }> };
       worktree_status: { status: string; entries: Array<{ status: string }> };
     };
     expect(evidenceVector.expected_conformance).toBe("L2");
     expect(evidenceVector.proof_manifest.kind).toBe("osstack.proof_pack");
+    expect(evidenceVector.proof_manifest.created_at).toBe(evidenceVector.proof_manifest.generated_at);
     expect(evidenceVector.agent_runtime.status).toBe("recorded");
     expect(evidenceVector.agent_runtime.agents[0]?.auth_mode).toBe("subprocess/login-reuse");
     expect(evidenceVector.verify_results.status).toBe("pass");
@@ -154,6 +201,25 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
       "knowledge-results.results[0].source_refs must contain at least one source reference",
     ]));
 
+    const malformedProofDirVector = JSON.parse(
+      await readFile(join(specDir, "test-vectors", "OS-PROOF-BAD-002.json"), "utf-8"),
+    ) as {
+      expected_status: string;
+      expected_reason: string;
+      proof_dir_artifacts: Record<string, unknown>;
+      expected_missing_controls: Array<{ control_id: string; evidence_path: string }>;
+    };
+    expect(malformedProofDirVector.expected_status).toBe("reject");
+    expect(malformedProofDirVector.proof_dir_artifacts["manifest.json"]).toBe("{");
+    expect(malformedProofDirVector.proof_dir_artifacts["verify-results.json"]).toEqual([]);
+    expect(malformedProofDirVector.proof_dir_artifacts["policy-decision.json"]).toBeNull();
+    expect(malformedProofDirVector.expected_reason).toBe("missing or malformed proof evidence");
+    expect(malformedProofDirVector.expected_missing_controls).toEqual(expect.arrayContaining([
+      { control_id: "evidence-integrity", evidence_path: "manifest.json" },
+      { control_id: "change-validation", evidence_path: "verify-results.json" },
+      { control_id: "automated-decision-trace", evidence_path: "policy-decision.json" },
+    ]));
+
     const auditVector = JSON.parse(
       await readFile(join(specDir, "test-vectors", "OS-AUDIT-001.json"), "utf-8"),
     ) as {
@@ -187,10 +253,46 @@ describe("OSSTACK_RUN_SPEC_V1 files", () => {
 
     const knowledgeVector = JSON.parse(
       await readFile(join(specDir, "test-vectors", "OS-KNOW-001.json"), "utf-8"),
-    ) as { expected_mode: string; knowledge_pack: { source_kind: string; quality_score: number } };
+    ) as {
+      expected_mode: string;
+      knowledge_pack: {
+        source_kind: string;
+        quality_score: number;
+        scope: string;
+        taxonomy: string[];
+        review: { status: string; reviewer_id: string };
+        source_provenance: Array<{ path: string; sha256: string; source_id: string }>;
+      };
+    };
     expect(knowledgeVector.expected_mode).toBe("local");
     expect(knowledgeVector.knowledge_pack.source_kind).toBe("processed_mit");
     expect(knowledgeVector.knowledge_pack.quality_score).toBeGreaterThan(0);
+    expect(knowledgeVector.knowledge_pack.scope).toBe("official");
+    expect(knowledgeVector.knowledge_pack.taxonomy).toContain("osstack-core/knowledge-cloud");
+    expect(knowledgeVector.knowledge_pack.review).toMatchObject({
+      status: "approved",
+      reviewer_id: "osstack-knowledge-review",
+    });
+    expect(knowledgeVector.knowledge_pack.source_provenance[0]?.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(knowledgeVector.knowledge_pack.source_provenance[0]?.source_id).toBe("osstack-knowledge-cloud-v1");
+    expect(knowledgeVector.knowledge_pack.source_provenance[0]?.path).toMatch(/^sources\/[^/]+\.md$/);
+
+    const knowledgePackSchema = JSON.parse(
+      await readFile(join(specDir, "schemas", "knowledge-pack.schema.json"), "utf-8"),
+    ) as {
+      properties: {
+        source_provenance: {
+          items: {
+            properties: {
+              path: { pattern?: string };
+            };
+          };
+        };
+      };
+    };
+    const sourcePathPattern = knowledgePackSchema.properties.source_provenance.items.properties.path.pattern;
+    expect(sourcePathPattern).toContain("\\.\\.");
+    expect(sourcePathPattern).toContain("[A-Za-z]");
   });
 
   it("ships product companion docs for the run spec", async () => {

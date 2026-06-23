@@ -4,7 +4,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { assembleKnowledgeSnippet, cacheKnowledgeFeedback, evaluateKnowledgeRetrieval, ingestKnowledgeSource, importKnowledgeSource, listCachedKnowledgePacks, loadKnowledgePackIndex, loadKnowledgePack, pinKnowledgePack, resolveKnowledgeSearch, searchKnowledgePacks, syncKnowledgeCache, validateKnowledgePackManifest, validateKnowledgePublishGate, } from "./index.js";
+import { assembleKnowledgeSnippet, cacheKnowledgeFeedback, evaluateKnowledgeRetrieval, ingestKnowledgeSource, importKnowledgeSource, listCachedKnowledgePacks, loadKnowledgePackIndex, loadKnowledgePack, pinKnowledgePack, resolveKnowledgeSearch, searchKnowledgePacks, syncKnowledgeCache, validateKnowledgePackIndex, validateKnowledgePackManifest, validateKnowledgePublishGate, } from "./index.js";
 let tmp;
 beforeEach(() => {
     tmp = mkdtempSync(join(tmpdir(), "osstack-knowledge-"));
@@ -34,6 +34,28 @@ describe("knowledge packs", () => {
             chunks: [],
         })).toThrow(/license/);
     });
+    it("rejects source provenance paths that escape the knowledge pack", () => {
+        expect(() => validateKnowledgePackManifest(samplePack({
+            source_provenance: [{
+                    source_id: "src_escape",
+                    path: "nested/../upstream.md",
+                    sha256: createHash("sha256").update("upstream").digest("hex"),
+                    license: "MIT-derived-processed",
+                    scope: "official",
+                    imported_at: "2026-06-22T00:00:00.000Z",
+                }],
+        }))).toThrow(/source_provenance path is unsafe/);
+        expect(() => validateKnowledgePackManifest(samplePack({
+            source_provenance: [{
+                    source_id: "src_absolute",
+                    path: "/tmp/upstream.md",
+                    sha256: createHash("sha256").update("upstream").digest("hex"),
+                    license: "MIT-derived-processed",
+                    scope: "official",
+                    imported_at: "2026-06-22T00:00:00.000Z",
+                }],
+        }))).toThrow(/source_provenance path is unsafe/);
+    });
     it("searches local packs and assembles prompt snippets", async () => {
         const path = join(tmp, "pack.json");
         await writeFile(path, JSON.stringify(samplePack(), null, 2));
@@ -43,8 +65,39 @@ describe("knowledge packs", () => {
             pack_id: "osstack-web-quality",
             chunk_id: "chunk-frontend-governance",
             title: "Frontend governance checks",
+            matched_terms: ["frontend", "governance"],
         });
         expect(assembleKnowledgeSnippet(results)).toContain("pack=osstack-web-quality@2026.06.22");
+        expect(assembleKnowledgeSnippet(results)).toContain("matched_terms=frontend,governance");
+    });
+    it("ranks chunks with rare query term coverage above repeated generic matches", async () => {
+        const path = join(tmp, "ranking-pack.json");
+        await writeFile(path, JSON.stringify(samplePack({
+            chunks: [
+                {
+                    chunk_id: "chunk-repeated-generic",
+                    title: "Proof repetition",
+                    body: "proof proof proof proof proof proof proof proof proof proof",
+                    tags: ["proof"],
+                    source_refs: ["ranking-fixture"],
+                },
+                {
+                    chunk_id: "chunk-specific-coverage",
+                    title: "Proof checksum manifest",
+                    body: "Proof evidence should include a checksum manifest for audit review.",
+                    tags: ["proof", "checksum"],
+                    source_refs: ["ranking-fixture"],
+                },
+            ],
+        }), null, 2));
+        const pack = await loadKnowledgePack(path);
+        const results = searchKnowledgePacks([pack], "proof checksum", { limit: 2 });
+        expect(results.map((result) => result.chunk_id)).toEqual([
+            "chunk-specific-coverage",
+            "chunk-repeated-generic",
+        ]);
+        expect(results[0]?.matched_terms).toEqual(["proof", "checksum"]);
+        expect(results[0]?.score).toBeGreaterThan(results[1]?.score ?? 0);
     });
     it("uses cloud search when a cloud endpoint returns osstack-native results", async () => {
         const requests = [];
@@ -65,6 +118,7 @@ describe("knowledge packs", () => {
                     snippet: "Use osstack-native cockpit guidance from the cloud pack.",
                     tags: ["ui"],
                     source_refs: ["osstack-cloud"],
+                    matched_terms: ["ui", "guidance"],
                 }],
         }), { status: 200 });
         const evidence = await resolveKnowledgeSearch({
@@ -85,7 +139,7 @@ describe("knowledge packs", () => {
             mode: "cloud",
             status: "recorded",
             packs: [expect.objectContaining({ id: "osstack-cloud-web", source_kind: "osstack_native" })],
-            results: [expect.objectContaining({ chunk_id: "chunk-cloud-ui" })],
+            results: [expect.objectContaining({ chunk_id: "chunk-cloud-ui", matched_terms: ["ui", "guidance"] })],
         });
         expect(requests).toEqual([{
                 authorization: "Bearer kst_search_token",
@@ -189,6 +243,12 @@ describe("knowledge packs", () => {
             qualityScore: 86,
             generatedAt: "2026-06-22T00:00:00.000Z",
             sourceAttribution: ["processed from MIT-compatible frontend quality notes"],
+            review: {
+                status: "approved",
+                reviewer_id: "knowledge-reviewer",
+                reviewed_at: "2026-06-22T00:00:00.000Z",
+                summary: "Processed notes use osstack-native terminology and source references.",
+            },
         });
         expect(manifest).toMatchObject({
             id: "osstack-core/frontend-quality",
@@ -196,6 +256,11 @@ describe("knowledge packs", () => {
             scope: "official",
             taxonomy: ["software-engineering/frontend-quality"],
             quality_score: 86,
+            review: {
+                status: "approved",
+                reviewer_id: "knowledge-reviewer",
+                reviewed_at: "2026-06-22T00:00:00.000Z",
+            },
             source_attribution: ["processed from MIT-compatible frontend quality notes"],
             source_provenance: [expect.objectContaining({
                     path: "quality.md",
@@ -234,10 +299,91 @@ describe("knowledge packs", () => {
                 expect.objectContaining({ code: "official_low_quality_score" }),
                 expect.objectContaining({ code: "official_missing_taxonomy" }),
                 expect.objectContaining({ code: "official_missing_review" }),
+                expect.objectContaining({ code: "official_review_not_approved" }),
                 expect.objectContaining({ code: "missing_source_attribution" }),
                 expect.objectContaining({ code: "missing_source_provenance" }),
                 expect.objectContaining({ code: "chunk_missing_osstack_voice" }),
                 expect.objectContaining({ code: "chunk_missing_source_refs" }),
+            ]),
+        });
+    });
+    it("rejects processed official packs that keep a raw upstream license label", () => {
+        const report = validateKnowledgePublishGate({
+            id: "osstack-core/raw-mit-label",
+            version: "2026.06.22",
+            name: "Raw MIT Label",
+            license: "MIT",
+            source_kind: "processed_mit",
+            quality_score: 90,
+            scope: "official",
+            taxonomy: ["software-engineering/release-quality"],
+            last_reviewed_at: "2026-06-22T00:00:00.000Z",
+            review: {
+                status: "approved",
+                reviewer_id: "knowledge-reviewer",
+                reviewed_at: "2026-06-22T00:00:00.000Z",
+                summary: "Reviewed as osstack-native processed guidance.",
+            },
+            source_attribution: ["processed from MIT-compatible upstream notes"],
+            source_provenance: [{
+                    source_id: "src_1",
+                    path: "upstream.md",
+                    sha256: createHash("sha256").update("upstream").digest("hex"),
+                    license: "MIT",
+                    scope: "official",
+                    imported_at: "2026-06-22T00:00:00.000Z",
+                }],
+            chunks: [{
+                    chunk_id: "raw_mit_1",
+                    title: "Release Quality",
+                    body: "Osstack release quality guidance should convert upstream notes into runs, loops, verifiers, and proof pack actions.",
+                    source_refs: ["src_1"],
+                }],
+        });
+        expect(report).toMatchObject({
+            ok: false,
+            issues: expect.arrayContaining([
+                expect.objectContaining({ code: "processed_license_not_osstack_derived" }),
+            ]),
+        });
+    });
+    it("rejects official knowledge packs that are not review-approved", () => {
+        const report = validateKnowledgePublishGate({
+            id: "osstack-core/review-needed",
+            version: "2026.06.22",
+            name: "Review Needed",
+            license: "Osstack-native",
+            source_kind: "osstack_native",
+            quality_score: 90,
+            scope: "official",
+            taxonomy: ["osstack-core/review-needed"],
+            last_reviewed_at: "2026-06-22T00:00:00.000Z",
+            review: {
+                status: "changes_requested",
+                reviewer_id: "knowledge-reviewer",
+                reviewed_at: "2026-06-22T00:00:00.000Z",
+                summary: "Needs source rewriting before publication.",
+            },
+            source_attribution: ["osstack-native product knowledge"],
+            source_provenance: [{
+                    source_id: "src_1",
+                    path: "notes.md",
+                    sha256: createHash("sha256").update("notes").digest("hex"),
+                    license: "Osstack-native",
+                    scope: "official",
+                    imported_at: "2026-06-22T00:00:00.000Z",
+                }],
+            chunks: [{
+                    chunk_id: "review_needed_1",
+                    title: "Review Needed",
+                    body: "Osstack review guidance should map source intake into runs, loops, proof packs, and Knowledge Cloud publication.",
+                    source_refs: ["src_1"],
+                }],
+        });
+        expect(report).toMatchObject({
+            ok: false,
+            issues: expect.arrayContaining([
+                expect.objectContaining({ code: "official_review_not_approved" }),
             ]),
         });
     });
@@ -316,6 +462,47 @@ describe("knowledge packs", () => {
         const packs = await listCachedKnowledgePacks(cacheDir);
         expect(packs[0]?.manifest).toMatchObject({ id: "team/private-runbook", scope: "team" });
     });
+    it("rejects unsafe tenant ids before syncing private cloud packs", async () => {
+        const cacheDir = join(tmp, "private-cache");
+        let requested = false;
+        const evidence = await syncKnowledgeCache({
+            cacheDir,
+            cloudUrl: "https://knowledge.osstack.ai",
+            privatePacks: true,
+            tenantId: "../team_alpha",
+            fetchImpl: async () => {
+                requested = true;
+                return new Response(JSON.stringify({ packs: [] }), { status: 200 });
+            },
+        });
+        expect(evidence).toMatchObject({
+            status: "error",
+            reason: "tenant_id is invalid",
+            packs: [],
+        });
+        expect(requested).toBe(false);
+    });
+    it("falls back locally for cloud search with unsafe tenant ids", async () => {
+        let requested = false;
+        const evidence = await resolveKnowledgeSearch({
+            mode: "cloud",
+            query: "proof evidence",
+            cloudUrl: "https://knowledge.osstack.ai",
+            tenantId: "../team_alpha",
+            packs: [{ manifest: validateKnowledgePackManifest(samplePack({ id: "osstack-core/local-fallback" })), path: "local-fallback.json" }],
+            fetchImpl: async () => {
+                requested = true;
+                return new Response(JSON.stringify({ results: [] }), { status: 200 });
+            },
+        });
+        expect(evidence).toMatchObject({
+            mode: "local",
+            status: "recorded",
+            reason: "tenant_id is invalid",
+            results: expect.arrayContaining([expect.objectContaining({ pack_id: "osstack-core/local-fallback" })]),
+        });
+        expect(requested).toBe(false);
+    });
     it("pins pack versions in the local cache", async () => {
         const cacheDir = join(tmp, "cache");
         const pin = await pinKnowledgePack(cacheDir, "osstack-core/loop-engineering@2026.06.22");
@@ -333,6 +520,7 @@ describe("knowledge packs", () => {
             rating: "useful",
             cloudUrl: "https://knowledge.osstack.ai",
             authToken: "kst_feedback_token",
+            tenantId: "team_alpha",
             fetchImpl: async (_url, init) => {
                 calls.push({
                     authorization: new Headers(init?.headers).get("authorization"),
@@ -344,15 +532,38 @@ describe("knowledge packs", () => {
         expect(entry).toMatchObject({ chunk_id: "chunk-loop-proof", rating: "useful", status: "sent" });
         expect(calls).toEqual([{
                 authorization: "Bearer kst_feedback_token",
-                body: expect.objectContaining({ chunk_id: "chunk-loop-proof", rating: "useful" }),
+                body: expect.objectContaining({ chunk_id: "chunk-loop-proof", rating: "useful", tenant_id: "team_alpha" }),
             }]);
         const feedbackLines = (await readFile(join(cacheDir, "feedback.jsonl"), "utf-8"))
             .trim()
             .split("\n")
             .map((line) => JSON.parse(line));
         expect(feedbackLines).toMatchObject([
-            expect.objectContaining({ chunk_id: "chunk-loop-proof", rating: "useful", status: "sent" }),
+            expect.objectContaining({ chunk_id: "chunk-loop-proof", rating: "useful", status: "sent", tenant_id: "team_alpha" }),
         ]);
+    });
+    it("rejects unsafe tenant ids before caching feedback", async () => {
+        const cacheDir = join(tmp, "cache");
+        await expect(cacheKnowledgeFeedback({
+            cacheDir,
+            chunkId: "chunk-loop-proof",
+            rating: "useful",
+            tenantId: "../team_alpha",
+        })).rejects.toThrow(/tenant_id is invalid/);
+    });
+    it("rejects knowledge pack index paths that escape the index root", () => {
+        expect(() => validateKnowledgePackIndex({
+            generated_at: "2026-06-22T00:00:00.000Z",
+            channel: "official",
+            packs: [{
+                    id: "osstack-core/escaped",
+                    version: "2026.06.22",
+                    path: "../escaped/manifest.json",
+                    scope: "official",
+                    source_kind: "osstack_native",
+                    quality_score: 90,
+                }],
+        })).toThrow(/knowledge pack index path is unsafe/);
     });
     it("ships official osstack packs with reviewed metadata and passing retrieval fixtures", async () => {
         const root = resolve(process.cwd(), "../..");

@@ -1,0 +1,51 @@
+name: macOS Release Candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/macos-release-candidate.yml"
+      - "scripts/build-single-binary.mjs"
+      - "scripts/sign-single-binary.mjs"
+      - "scripts/package-single-binary.mjs"
+      - "scripts/generate-single-binary-sbom.mjs"
+      - "scripts/smoke-single-binary-release-pack.mjs"
+      - "packages/cli/**"
+      - "packages/core/**"
+      - "packages/agents/**"
+      - "packages/config/**"
+      - "packages/github/**"
+      - "packages/hermes-adapter/**"
+      - "packages/knowledge/**"
+      - "packages/loop/**"
+      - "packages/skill-registry/**"
+      - "packages/skills/**"
+
+concurrency:
+  group: macos-release-candidate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  single-binary:
+    runs-on: macos-14
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Single binary release archive smoke
+        run: pnpm smoke:single-binary-release-pack

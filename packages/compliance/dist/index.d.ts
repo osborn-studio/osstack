@@ -9,8 +9,10 @@ export interface CompliancePack {
 export interface ComplianceControl {
     id: string;
     title: string;
+    title_zh?: string;
     evidence_path: string;
     description: string;
+    description_zh?: string;
 }
 export interface CompliancePackFileValidation {
     pack: CompliancePack;
@@ -31,12 +33,30 @@ export interface ComplianceReportOptions {
     packId: string;
     runId: string;
     evidence: ProofEvidence;
+    language?: ComplianceReportLanguage;
 }
+export type ComplianceReportLanguage = "en" | "zh-CN";
 export type ProofAudience = "engineer" | "manager" | "auditor" | "customer";
+export type ProofViewLanguage = "en" | "zh-CN";
 export interface ProofViewOptions {
     audience: ProofAudience;
     runId: string;
     evidence: ProofEvidence;
+    language?: ProofViewLanguage;
+}
+export interface ProofEvidenceValidationControl {
+    control_id: string;
+    title: string;
+    evidence_path: string;
+    status: "PRESENT" | "MISSING";
+    reason?: string;
+}
+export interface ProofEvidenceValidation {
+    ok: boolean;
+    scope: string;
+    present: ProofEvidenceValidationControl[];
+    missing: ProofEvidenceValidationControl[];
+    controls: ProofEvidenceValidationControl[];
 }
 export declare function listCompliancePacks(): CompliancePack[];
 export declare function getCompliancePack(packId: string): CompliancePack;
@@ -47,12 +67,20 @@ export declare function renderComplianceReportFromProofDir(options: {
     packId: string;
     runId: string;
     proofDir: string;
+    language?: ComplianceReportLanguage;
 }): Promise<string>;
 export declare function renderComplianceReport(options: ComplianceReportOptions): string;
 export declare function renderProofViewFromProofDir(options: {
     audience: ProofAudience;
     runId: string;
     proofDir: string;
+    language?: ProofViewLanguage;
 }): Promise<string>;
 export declare function renderProofView(options: ProofViewOptions): string;
+export declare function validateProofEvidence(options: {
+    evidence: ProofEvidence;
+    packId?: string;
+    audience?: ProofAudience;
+    language?: ProofViewLanguage;
+}): ProofEvidenceValidation;
 //# sourceMappingURL=index.d.ts.map

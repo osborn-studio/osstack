@@ -17,7 +17,9 @@ smooth cycles, tighten the cadence to weekly by just doing it every Friday.
    can skip it (`pnpm changeset --empty` if the bot insists).
 
 2. CI (`.github/workflows/ci.yml`) gates the merge: Biome lint, build,
-   typecheck, tests, and `pnpm smoke:npm-install`. The smoke packs every
+   typecheck, tests, and `pnpm smoke:npm-install`. This daily PR gate runs on
+   Ubuntu so ordinary development is not blocked by paid macOS runner
+   availability. The smoke packs every
    `@osstack/*` workspace package, installs the tarballs into a temporary
    global npm prefix, then verifies `osstack --version` and
    `osstack loop doctor --workspace <tmp> --json`.
@@ -32,6 +34,14 @@ smooth cycles, tighten the cadence to weekly by just doing it every Friday.
 
 5. Verify on a machine: `osstack upgrade --dry-run`, then `osstack upgrade`.
 
+The macOS single-binary release-candidate smoke lives in
+`.github/workflows/macos-release-candidate.yml`. It runs on `main` changes that
+touch the binary release path and can also be triggered manually:
+
+```bash
+gh workflow run "macOS Release Candidate" --ref main
+```
+
 ## Channels
 
 | dist-tag | audience | promotion |
@@ -44,8 +54,36 @@ smooth cycles, tighten the cadence to weekly by just doing it every Friday.
 - **NPM_TOKEN secret** on the GitHub repo: an npm automation token with
   publish rights to the `@osstack` scope. Until configured, release.yml
   only maintains the Version PR and skips publish.
+- **FLY_API_TOKEN secret** on the GitHub repo: a Fly.io token with deploy
+  rights to the `osstack-knowledge-cloud` app. Until configured,
+  Knowledge Cloud deploy runs can validate build/smoke checks but must not
+  be run with `deploy=true`.
 - The `@osstack` npm scope must exist and be owned by the publishing account
   (`npm org` / scope settings on npmjs.com).
+
+Before merging the Version Packages PR, run:
+
+```bash
+osstack release doctor --target all --json
+osstack release plan --json
+```
+
+The plan is safe to execute only when `safe_to_execute` is `true`.
+If GitHub Actions cannot start jobs because account billing or spending limits
+are blocked, `release doctor` reports `github_actions` as an error and the
+plan keeps publish/deploy commands unsafe.
+
+If GitHub marks the Version Packages PR CI as `action_required`, rerun the
+latest workflow before merging:
+
+```bash
+gh run list --branch changeset-release/main --limit 5
+gh run rerun <latest-ci-run-id>
+gh run watch <latest-ci-run-id> --exit-status
+```
+
+This is expected when GitHub requires an operator decision for the bot-created
+Version Packages PR workflow.
 
 ## Hotfix flow (between trains)
 
@@ -69,3 +107,18 @@ smooth cycles, tighten the cadence to weekly by just doing it every Friday.
 automatically. Manual rollback: `npm i -g @osstack/cli@<previous>` and
 restore the matching `~/.osstack/backups/state-v<previous>-*.db` snapshot
 only if the bad version migrated the schema.
+
+## Knowledge Cloud deploy
+
+Run a validation-only deployment check first:
+
+```bash
+gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=false
+```
+
+After `FLY_API_TOKEN` is configured and release readiness is clean, deploy:
+
+```bash
+gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true
+gh run watch <knowledge-cloud-deploy-run-id> --exit-status
+```

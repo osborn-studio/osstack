@@ -9,6 +9,7 @@ Status: deployable MVP for official Osstack knowledge packs.
 - Default port: `8787`
 - Health endpoint: `/healthz`
 - Official pack source: `knowledge-packs/official/index.json`
+- Published pack storage: `OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR`
 - Required runtime env:
   - `OSSTACK_KNOWLEDGE_CLOUD_HOST=0.0.0.0`
   - `OSSTACK_KNOWLEDGE_CLOUD_PORT=8787`
@@ -20,7 +21,7 @@ pnpm smoke:knowledge-cloud
 pnpm smoke:knowledge-cloud:deploy
 ```
 
-The first command starts the built service, checks `/healthz`, lists official packs, and searches the official proof pack. The second command verifies Docker/Fly/Render deployment assets agree on the executable, port, and healthcheck.
+The first command starts the built service, checks `/healthz`, lists official packs, searches the official proof pack, publishes an approved pack through `/v1/publish`, and verifies the manifest is persisted. The second command verifies Docker/Fly/Render deployment assets agree on the executable, port, healthcheck, feedback log, and published pack storage paths.
 
 ## Docker
 
@@ -79,4 +80,5 @@ If the cloud endpoint is unavailable, osstack knowledge search fails open to cac
 - Add private packs through the `/v1/private-packs` path or tenant-specific deployment config.
 - Set `OSSTACK_KNOWLEDGE_PRIVATE_TOKEN` for deployments that expose team/private packs; private sync/search requests must send `Authorization: Bearer <token>` and the matching `tenant_id`.
 - Persist feedback before using it for quality scoring.
-- Add object storage/Postgres/vector search when the in-memory MVP no longer fits the pack volume.
+- Set `OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR` to persist `/v1/publish` official packs under `official/` and tenant/private packs under `private/<tenant_id>/`.
+- Add object storage/Postgres/vector search when file-backed published packs and BM25-style search no longer fit the pack volume.

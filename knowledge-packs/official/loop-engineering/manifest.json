@@ -9,12 +9,18 @@
   "taxonomy": ["osstack-core/loop-engineering"],
   "generated_at": "2026-06-22T00:00:00.000Z",
   "last_reviewed_at": "2026-06-22T00:00:00.000Z",
+  "review": {
+    "status": "approved",
+    "reviewer_id": "osstack-knowledge-review",
+    "reviewed_at": "2026-06-22T00:00:00.000Z",
+    "summary": "Reviewed as osstack-native official knowledge for Knowledge Cloud publication."
+  },
   "source_attribution": ["osstack-native product knowledge"],
   "source_provenance": [
     {
       "source_id": "osstack-run-spec-v1",
       "path": "docs/specs/OSSTACK_RUN_SPEC_V1.md",
-      "sha256": "c89f6b08692b593e066d5b8a2e53456aad7017e129f9708d6a57a6f603090cc8",
+      "sha256": "2e462b514cb62a073c4ed720cbcfb5324233890c826d17cf813509809eb04223",
       "license": "Osstack-native",
       "scope": "official",
       "imported_at": "2026-06-22T00:00:00.000Z"

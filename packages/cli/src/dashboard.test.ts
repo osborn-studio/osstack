@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDb, KanbanRepository, upsertPitfallLesson } from "@osstack/core";
 import { insertRun, insertTask, finalizeRun } from "./store.js";
-import { createDashboardSnapshot, dashboardUrl, renderDashboardHtml } from "./dashboard.js";
+import { createDashboardSnapshot, dashboardUrl, renderDashboardHtml, startDashboardServer } from "./dashboard.js";
 
 let tmp: string;
 beforeEach(() => { tmp = mkdtempSync(join(tmpdir(), "osstack-dashboard-")); });
@@ -93,8 +93,19 @@ describe("dashboard", () => {
         agent_id: "codex-cli",
         total_runs: 1,
       });
+      expect(snapshot.next_steps).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          label: "Coding",
+          command: "osstack deliver \"<task>\" --auto-agent --worktree --checkpoint",
+        }),
+        expect.objectContaining({
+          label: "测试验证",
+          command: "osstack cockpit proof --workspace <path> --json",
+        }),
+      ]));
       expect(snapshot.recent_runs[0]?.run_id).toBe("r2");
       expect(snapshot.dashboard.url).toBe("http://127.0.0.1:8799/dashboard");
+      expect(snapshot.dashboard.workspace_path).toBe(tmp);
     } finally {
       db.close();
     }
@@ -105,12 +116,147 @@ describe("dashboard", () => {
       .toBe("http://localhost:8799/dashboard");
   });
 
+  it("surfaces release readiness blockers as cockpit next steps", () => {
+    const path = join(tmp, "state.db");
+    const db = openDb({ path });
+    try {
+      writeFileSync(join(tmp, "release-readiness.md"), [
+        "# Osstack Release Readiness",
+        "",
+        "## Blockers",
+        "",
+        "- [github_actions_check] Fix GitHub Actions runner allocation before publishing or deploying.",
+        "- [proof_validation] Remove external certification claims and repair compliance report references before publishing or deploying.",
+        "",
+        "## Next Steps",
+        "",
+        "- Open GitHub Actions settings/billing and confirm ubuntu-latest jobs can be assigned a runner.",
+      ].join("\n"));
+
+      const snapshot = createDashboardSnapshot({
+        db,
+        kanban: new KanbanRepository(db, path, () => 300),
+        dbPath: path,
+        workspacePath: tmp,
+        version: "0.0.0",
+        phase: "test",
+        dashboardUrl: "http://127.0.0.1:8799/dashboard",
+        adapters: [],
+        activeRuns: 0,
+        now: () => 300,
+      });
+
+      expect(snapshot.next_steps).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          label: "Release Readiness",
+          detail: "2 blocker(s): github_actions_check, proof_validation",
+          command: `osstack release doctor --target all --workspace ${tmp} --output release-readiness.md --json`,
+          status: "blocked",
+          blockers: [
+            {
+              id: "github_actions_check",
+              detail: "Fix GitHub Actions runner allocation before publishing or deploying.",
+            },
+            {
+              id: "proof_validation",
+              detail: "Remove external certification claims and repair compliance report references before publishing or deploying.",
+            },
+          ],
+        }),
+      ]));
+    } finally {
+      db.close();
+    }
+  });
+
+  it("serves workspace-scoped release readiness blockers from the dashboard API", async () => {
+    const path = join(tmp, "state.db");
+    const workspace = join(tmp, "workspace");
+    mkdirSync(workspace, { recursive: true });
+    writeFileSync(join(workspace, "release-readiness.md"), [
+      "# Osstack Release Readiness",
+      "",
+      "## Blockers",
+      "",
+      "- [github_actions_check] Fix GitHub Actions runner allocation before publishing or deploying.",
+    ].join("\n"));
+
+    const db = openDb({ path });
+    const kanban = new KanbanRepository(db, path, () => 300);
+    const server = await startDashboardServer((params) => createDashboardSnapshot({
+      db,
+      kanban,
+      dbPath: path,
+      ...(params?.workspacePath === undefined ? {} : { workspacePath: params.workspacePath }),
+      version: "0.0.0",
+      phase: "test",
+      dashboardUrl: "http://127.0.0.1:8799/dashboard",
+      adapters: [],
+      activeRuns: 0,
+      now: () => 300,
+    }), { host: "127.0.0.1", port: 0 });
+
+    try {
+      const response = await fetch(`${server.url.replace("/dashboard", "/api/dashboard")}?workspace=${encodeURIComponent(workspace)}`);
+      const snapshot = await response.json() as {
+        next_steps: Array<{ label: string; blockers?: Array<{ id: string; detail: string }> }>;
+      };
+
+      expect(snapshot.next_steps).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          label: "Release Readiness",
+          blockers: [{
+            id: "github_actions_check",
+            detail: "Fix GitHub Actions runner allocation before publishing or deploying.",
+          }],
+        }),
+      ]));
+    } finally {
+      await server.close();
+      db.close();
+    }
+  });
+
+  it("serves workspace-scoped dashboard URLs for integrations", async () => {
+    const path = join(tmp, "state.db");
+    const workspace = join(tmp, "workspace with spaces");
+    mkdirSync(workspace, { recursive: true });
+
+    const db = openDb({ path });
+    const kanban = new KanbanRepository(db, path, () => 300);
+    const server = await startDashboardServer(() => createDashboardSnapshot({
+      db,
+      kanban,
+      dbPath: path,
+      version: "0.0.0",
+      phase: "test",
+      dashboardUrl: "http://127.0.0.1:8799/dashboard",
+      adapters: [],
+      activeRuns: 0,
+      now: () => 300,
+    }), { host: "127.0.0.1", port: 0 });
+
+    try {
+      const response = await fetch(`${server.url.replace("/dashboard", "/dashboard/url")}?workspace=${encodeURIComponent(workspace)}`);
+      const body = await response.json() as { url: string };
+
+      expect(new URL(body.url).searchParams.get("workspace")).toBe(workspace);
+    } finally {
+      await server.close();
+      db.close();
+    }
+  });
+
   it("renders cockpit sections for evidence, lessons, and scorecards", () => {
     const html = renderDashboardHtml();
 
     expect(html).toContain('id="evidence"');
     expect(html).toContain('id="scorecards"');
     expect(html).toContain('id="lessons"');
+    expect(html).toContain("<code>'+esc(n.command)+'</code>");
+    expect(html).toContain("Array.isArray(n.blockers)");
+    expect(html).toContain("release-blocker");
+    expect(html).toContain("d.dashboard.workspace_path");
   });
 
   it("renders cockpit chrome in English and Chinese", () => {

@@ -45,6 +45,13 @@ for (const asset of assets) {
 }
 
 if (!dryRun) {
+  if (
+    archiveManifest.binary?.signed !== true
+    || archiveManifest.binary?.ad_hoc === true
+    || archiveManifest.binary?.notarized !== true
+  ) {
+    throw new Error("public single-binary upload requires a Developer ID signed and notarized archive");
+  }
   const releaseView = run("gh", ["release", "view", tag, "--repo", repo], { allowFailure: true, capture: true });
   if (releaseView.status !== 0) {
     run("gh", ["release", "create", tag, "--repo", repo, "--title", title, "--notes", notes], { capture: json });

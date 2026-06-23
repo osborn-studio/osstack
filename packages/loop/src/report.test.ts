@@ -162,6 +162,7 @@ describe("loop state report", () => {
           title: "Proof trace",
           score: 0.9,
           snippet: "Reports should show knowledge pack and chunk usage.",
+          matched_terms: ["proof"],
           tags: ["proof"],
           source_refs: [],
         }],
@@ -181,6 +182,7 @@ describe("loop state report", () => {
     expect(markdown).toContain("## Knowledge Trace");
     expect(markdown).toContain("osstack-core/proof-and-scorecard@2026.06.22");
     expect(markdown).toContain("chunk-proof-trace");
+    expect(markdown).toContain("matched_terms=proof");
     expect(markdown).toContain("## Risks");
     expect(markdown).toContain("- None");
   });

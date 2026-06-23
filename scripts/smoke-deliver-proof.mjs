@@ -80,6 +80,24 @@ try {
   const proofZipStat = await stat(summary.artifacts.proof_zip);
   assert(proofZipStat.size > 0, "proof zip must be non-empty");
 
+  const proofValidation = run(process.execPath, [
+    osstackBin,
+    "proof",
+    "validate",
+    summary.loop_id,
+    "--proof-dir",
+    proofDir,
+    "--json",
+  ], { cwd: root, capture: true });
+  const proofValidationSummary = JSON.parse(proofValidation.stdout);
+  assert(proofValidationSummary.ok === true, "proof validate must pass for deliver proof smoke");
+  assert(proofValidationSummary.scope === "proof-core", "proof validate must use proof-core by default");
+  assert(proofValidationSummary.missing?.length === 0, "proof validate must not report missing core evidence");
+  assert(proofValidationSummary.archive_integrity?.checked === true, "proof validate must inspect proof zip inventory");
+  assert(proofValidationSummary.archive_integrity?.ok === true, "proof zip inventory validation must pass");
+  assert(proofValidationSummary.archive_integrity?.proof_zip === summary.artifacts.proof_zip, "proof zip validation must inspect the deliver proof zip");
+  assert(proofValidationSummary.archive_integrity?.issues?.length === 0, "proof zip inventory validation must not report issues");
+
   const compliancePath = join(workspace, "release", "compliance-engineering-readiness.md");
   const compliance = run(process.execPath, [
     osstackBin,
@@ -107,6 +125,35 @@ try {
     complianceReport,
     "| Evidence integrity | PRESENT | `manifest.json` | Proof manifest artifacts carry SHA-256 checksums. |",
     "compliance report must map proof manifest evidence",
+  );
+
+  const soc2CompliancePath = join(workspace, "release", "compliance-soc2-lite.md");
+  const soc2Compliance = run(process.execPath, [
+    osstackBin,
+    "compliance",
+    "render",
+    summary.loop_id,
+    "--pack",
+    "soc2-lite",
+    "--proof-dir",
+    proofDir,
+    "--output",
+    soc2CompliancePath,
+    "--json",
+  ], { cwd: root, capture: true });
+  const soc2ComplianceSummary = JSON.parse(soc2Compliance.stdout);
+  assert(soc2ComplianceSummary.pack_id === "soc2-lite", "compliance render must support non-default lite packs from proof dir");
+  assert(soc2ComplianceSummary.output === soc2CompliancePath, "SOC 2 lite compliance render must write requested output");
+  const soc2ComplianceReport = await readFile(soc2CompliancePath, "utf-8");
+  assertIncludes(
+    soc2ComplianceReport,
+    "External certification claim: `none`",
+    "SOC 2 lite compliance report must avoid external certification claims",
+  );
+  assertIncludes(
+    soc2ComplianceReport,
+    "This report is not a SOC 2, ISO 27001, EU AI Act, or third-party certification.",
+    "SOC 2 lite compliance report must include the no-certification disclaimer",
   );
 
   const pr = run(process.execPath, [
@@ -137,7 +184,9 @@ try {
     scorecard: summary.artifacts.scorecard_markdown,
     proof_dir: proofDir,
     proof_zip: summary.artifacts.proof_zip,
+    proof_validation: "proof-core",
     compliance_report: compliancePath,
+    soc2_compliance_report: soc2CompliancePath,
     pr_body: prSummary.path,
     conformance: "L4 Audited",
   }, null, 2));

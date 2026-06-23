@@ -167,6 +167,7 @@ export const KnowledgeSearchResult = z.object({
   title: z.string(),
   score: z.number(),
   snippet: z.string(),
+  matched_terms: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
   source_refs: z.array(z.string()).default([]),
 });

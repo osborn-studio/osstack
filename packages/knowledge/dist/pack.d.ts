@@ -29,6 +29,7 @@ export declare function ingestKnowledgeSource(options: {
     generatedAt?: string;
     sourceKind?: KnowledgePackManifest["source_kind"];
     sourceAttribution?: string[];
+    review?: KnowledgePackManifest["review"];
 }): Promise<KnowledgePackManifest>;
 export declare function syncKnowledgeCache(options: {
     cacheDir: string;
@@ -46,6 +47,7 @@ export declare function cacheKnowledgeFeedback(options: {
     rating: "useful" | "bad";
     cloudUrl?: string;
     authToken?: string;
+    tenantId?: string;
     fetchImpl?: typeof fetch;
     createdAt?: string;
 }): Promise<KnowledgeFeedbackEntry>;

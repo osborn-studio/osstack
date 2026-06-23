@@ -57,6 +57,23 @@ try {
   if (archiveManifest.publishing?.github_release_uploaded !== false) {
     throw new Error("dry-run publish must not mutate archive manifest upload state");
   }
+  const blockedPublicUpload = runAllowFailure(process.execPath, [
+    "scripts/publish-single-binary-release.mjs",
+    "--archive-manifest",
+    packed.archive_manifest_path,
+    "--tag",
+    `v${build.version}-publish-smoke`,
+    "--repo",
+    "osstack-invalid/publish-smoke",
+    "--json",
+  ], { cwd: root, capture: true });
+  if (blockedPublicUpload.status === 0) {
+    throw new Error("public publish must reject ad-hoc or non-notarized archive candidates");
+  }
+  const blockedOutput = [blockedPublicUpload.stdout, blockedPublicUpload.stderr].filter(Boolean).join("\n");
+  if (!blockedOutput.includes("requires a Developer ID signed and notarized archive")) {
+    throw new Error(`public publish rejection must explain notarization requirement: ${blockedOutput}`);
+  }
 
   console.log(JSON.stringify({
     ok: true,
@@ -89,4 +106,12 @@ function run(command, args, options = {}) {
     stdout: result.stdout ?? "",
     stderr: result.stderr ?? "",
   };
+}
+
+function runAllowFailure(command, args, options = {}) {
+  return spawnSync(command, args, {
+    cwd: options.cwd,
+    encoding: "utf-8",
+    stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit",
+  });
 }

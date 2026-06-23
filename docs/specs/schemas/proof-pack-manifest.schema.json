@@ -3,20 +3,42 @@
   "$id": "https://osstack.dev/specs/schemas/proof-pack-manifest.schema.json",
   "title": "Osstack Proof Pack Manifest",
   "type": "object",
-  "required": ["schema_version", "kind", "loop_id", "generated_from", "generated_at", "artifacts"],
+  "required": ["schema_version", "kind", "osstack_version", "run_id", "loop_id", "agent_id", "agent_ids", "generated_from", "created_at", "generated_at", "artifacts"],
   "properties": {
     "schema_version": { "type": "integer", "minimum": 1 },
     "kind": { "type": "string", "const": "osstack.proof_pack" },
+    "osstack_version": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
     "loop_id": { "type": "string", "minLength": 1 },
+    "agent_id": { "type": "string", "minLength": 1 },
+    "agent_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "workspace": { "type": "string", "minLength": 1 },
     "generated_from": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "minLength": 1 },
     "generated_at": { "type": "string", "minLength": 1 },
+    "compliance_reports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pack_id", "path", "certification_claim"],
+        "properties": {
+          "pack_id": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1, "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)).+$" },
+          "certification_claim": { "type": "string", "const": "none" }
+        },
+        "additionalProperties": false
+      }
+    },
     "artifacts": {
       "type": "array",
       "items": {
         "type": "object",
         "required": ["path", "sha256", "bytes"],
         "properties": {
-          "path": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1, "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)).+$" },
           "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
           "bytes": { "type": "integer", "minimum": 0 }
         },

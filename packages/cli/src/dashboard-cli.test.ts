@@ -70,6 +70,8 @@ describe("dashboard/cockpit CLI", () => {
     expect(output).toContain("kanban:");
     expect(output).toContain("triage: 1");
     expect(output).toContain("recent runs:");
+    expect(output).toContain("next steps:");
+    expect(output).toContain("[ready] 产品设计 - google-stitch 2.0 primary, claude-design fallback");
   });
 
   it("prints daemon status and dashboard snapshot JSON with cockpit --json", async () => {
@@ -89,6 +91,214 @@ describe("dashboard/cockpit CLI", () => {
     expect(Array.isArray(summary.cockpit.board.columns)).toBe(true);
   });
 
+  it("prints a workspace-scoped cockpit URL in summary JSON", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace with spaces");
+    await mkdir(workspace, { recursive: true });
+
+    const exitCode = await main(["cockpit", "--workspace", workspace, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      cockpit: { dashboard: { url: string } };
+    };
+    expect(new URL(summary.cockpit.dashboard.url).searchParams.get("workspace")).toBe(workspace);
+  });
+
+  it("prints a workspace-scoped dashboard URL in snapshot JSON", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace with spaces");
+    await mkdir(workspace, { recursive: true });
+
+    const exitCode = await main(["dashboard", "snapshot", "--workspace", workspace]);
+
+    expect(exitCode).toBe(0);
+    const snapshot = JSON.parse(logs.join("\n")) as {
+      dashboard: { url: string; workspace_path: string };
+    };
+    expect(snapshot.dashboard.workspace_path).toBe(workspace);
+    expect(new URL(snapshot.dashboard.url).searchParams.get("workspace")).toBe(workspace);
+  });
+
+  it("prints a workspace-scoped cockpit URL", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace with spaces");
+    await mkdir(workspace, { recursive: true });
+
+    const exitCode = await main(["cockpit", "url", "--workspace", workspace]);
+
+    expect(exitCode).toBe(0);
+    const output = logs.join("\n");
+    expect(output).toContain("/dashboard?workspace=");
+    expect(new URL(output).searchParams.get("workspace")).toBe(workspace);
+  });
+
+  it("prints actionable cockpit next steps as a standalone command", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+
+    const exitCode = await main(["cockpit", "next"]);
+
+    expect(exitCode).toBe(0);
+    const output = logs.join("\n");
+    expect(output).toContain("next steps:");
+    expect(output).toContain("[ready] 产品设计 - google-stitch 2.0 primary, claude-design fallback");
+    expect(output).toContain("command: osstack guide --write");
+    expect(output).toContain("[ready] Coding - codex-cli primary, claude-code fallback");
+    expect(output).toContain("command: osstack deliver \"<task>\" --auto-agent --worktree --checkpoint");
+  });
+
+  it("prints cockpit next steps as JSON", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+
+    const exitCode = await main(["cockpit", "next", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      next_steps: Array<{ label: string; detail: string; status: string; command?: string }>;
+    };
+    expect(summary.next_steps).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        label: "产品设计",
+        detail: "google-stitch 2.0 primary, claude-design fallback",
+        command: "osstack guide --write",
+        status: "ready",
+      }),
+      expect.objectContaining({
+        label: "Coding",
+        detail: "codex-cli primary, claude-code fallback",
+        command: "osstack deliver \"<task>\" --auto-agent --worktree --checkpoint",
+        status: "ready",
+      }),
+    ]));
+  });
+
+  it("prints workspace release readiness blockers from cockpit next", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace with spaces");
+    await mkdir(workspace, { recursive: true });
+    await writeFile(join(workspace, "release-readiness.md"), [
+      "# Osstack Release Readiness",
+      "",
+      "## Blockers",
+      "",
+      "- [github_actions_check] Fix GitHub Actions runner allocation before publishing or deploying.",
+      "",
+      "## Next Steps",
+      "",
+      "- Open GitHub Actions settings/billing and confirm ubuntu-latest jobs can be assigned a runner.",
+    ].join("\n"));
+
+    const exitCode = await main(["cockpit", "next", "--workspace", workspace, "--status", "blocked", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      next_steps: Array<{
+        label: string;
+        detail: string;
+        status: string;
+        command?: string;
+        blockers?: Array<{ id: string; detail: string }>;
+      }>;
+    };
+    expect(summary.next_steps).toEqual([
+      expect.objectContaining({
+        label: "Release Readiness",
+        detail: "1 blocker(s): github_actions_check",
+        command: `osstack release doctor --target all --workspace '${workspace}' --output release-readiness.md --json`,
+        status: "blocked",
+        blockers: [{
+          id: "github_actions_check",
+          detail: "Fix GitHub Actions runner allocation before publishing or deploying.",
+        }],
+      }),
+    ]);
+  });
+
+  it("shell-quotes release readiness commands for workspace paths with apostrophes", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "Gilbert's workspace");
+    await mkdir(workspace, { recursive: true });
+    await writeFile(join(workspace, "release-readiness.md"), [
+      "# Osstack Release Readiness",
+      "",
+      "## Blockers",
+      "",
+      "- [github_actions_check] Fix GitHub Actions runner allocation before publishing or deploying.",
+      "",
+    ].join("\n"));
+
+    const exitCode = await main(["cockpit", "next", "--workspace", workspace, "--status", "blocked", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      next_steps: Array<{ command?: string }>;
+    };
+    expect(summary.next_steps[0]?.command).toBe(
+      `osstack release doctor --target all --workspace '${workspace.replaceAll("'", "'\\''")}' --output release-readiness.md --json`,
+    );
+  });
+
+  it("prints release readiness blocker details in cockpit next text output", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace");
+    await mkdir(workspace, { recursive: true });
+    await writeFile(join(workspace, "release-readiness.md"), [
+      "# Osstack Release Readiness",
+      "",
+      "## Blockers",
+      "",
+      "- [github_actions_check] Fix GitHub Actions runner allocation before publishing or deploying.",
+      "",
+    ].join("\n"));
+
+    const exitCode = await main(["cockpit", "next", "--workspace", workspace, "--status", "blocked"]);
+
+    expect(exitCode).toBe(0);
+    const output = logs.join("\n");
+    expect(output).toContain("[blocked] Release Readiness - 1 blocker(s): github_actions_check");
+    expect(output).toContain("blocker github_actions_check: Fix GitHub Actions runner allocation before publishing or deploying.");
+  });
+
+  it("filters cockpit next steps by status in JSON", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+
+    const exitCode = await main(["cockpit", "next", "--status", "ready", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      next_steps: Array<{ label: string; status: string; command?: string }>;
+    };
+    expect(summary.next_steps.length).toBeGreaterThan(0);
+    expect(summary.next_steps.every((step) => step.status === "ready")).toBe(true);
+    expect(summary.next_steps).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        label: "Coding",
+        command: "osstack deliver \"<task>\" --auto-agent --worktree --checkpoint",
+        status: "ready",
+      }),
+    ]));
+  });
+
+  it("filters cockpit next steps by status in text output", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+
+    const exitCode = await main(["cockpit", "next", "--status", "ready"]);
+
+    expect(exitCode).toBe(0);
+    const output = logs.join("\n");
+    expect(output).toContain("next steps:");
+    expect(output).toContain("[ready] Coding - codex-cli primary, claude-code fallback");
+    expect(output).not.toContain("[running]");
+    expect(output).not.toContain("[blocked]");
+  });
+
+  it("rejects unsupported cockpit next status filters before contacting the daemon", async () => {
+    const exitCode = await main(["cockpit", "next", "--status", "done"]);
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("requires --status ready|running|blocked");
+  });
+
   it("localizes the cockpit summary with OSSTACK_LANG", async () => {
     process.env["OSSTACK_LANG"] = "zh-CN";
     daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
@@ -100,6 +310,7 @@ describe("dashboard/cockpit CLI", () => {
     expect(output).toContain("Osstack 驾驶舱");
     expect(output).toContain("任务看板:");
     expect(output).toContain("最近运行:");
+    expect(output).toContain("下一步:");
   });
 
   it("generates a cockpit report from workspace loop evidence", async () => {

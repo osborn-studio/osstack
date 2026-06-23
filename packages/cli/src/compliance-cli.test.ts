@@ -68,6 +68,33 @@ describe("compliance CLI", () => {
     });
     await expect(readFile(join(tmp, "compliance.md"), "utf-8")).resolves.toContain("External certification claim: `none`");
   });
+
+  it("renders a Chinese engineering readiness report with --lang zh-CN", async () => {
+    const proofDir = join(tmp, "release", "osstack-proof-run_123");
+    await writeProofEvidence(proofDir);
+
+    const exitCode = await main([
+      "compliance",
+      "render",
+      "run_123",
+      "--pack",
+      "engineering-readiness",
+      "--proof-dir",
+      proofDir,
+      "--output",
+      join(tmp, "compliance-zh.md"),
+      "--lang",
+      "zh-CN",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const markdown = await readFile(join(tmp, "compliance-zh.md"), "utf-8");
+    expect(markdown).toContain("# Osstack 合规映射报告 - engineering-readiness");
+    expect(markdown).toContain("外部认证声明：`none`");
+    expect(markdown).toContain("| 控制项 | 状态 | 证据 | 映射 |");
+    expect(markdown).toContain("| 变更验证 | PRESENT | `verify-results.json` | 验证门禁或评分卡证据会显示本次变更是否已被验证。 |");
+  });
 });
 
 async function writeProofEvidence(proofDir: string): Promise<void> {

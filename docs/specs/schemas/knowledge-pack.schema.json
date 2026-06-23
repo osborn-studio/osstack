@@ -25,6 +25,20 @@
     },
     "generated_at": { "type": "string" },
     "last_reviewed_at": { "type": "string" },
+    "review": {
+      "type": "object",
+      "required": ["status", "reviewer_id", "reviewed_at", "summary"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["approved", "changes_requested"]
+        },
+        "reviewer_id": { "type": "string", "minLength": 1 },
+        "reviewed_at": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
     "source_attribution": {
       "type": "array",
       "items": { "type": "string" }
@@ -36,7 +50,11 @@
         "required": ["source_id", "path", "sha256", "license", "scope", "imported_at"],
         "properties": {
           "source_id": { "type": "string", "minLength": 1 },
-          "path": { "type": "string", "minLength": 1 },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)).+$"
+          },
           "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
           "license": { "type": "string", "minLength": 1 },
           "scope": {

@@ -24,9 +24,17 @@ export interface KnowledgePackManifest {
   taxonomy?: string[];
   generated_at?: string;
   last_reviewed_at?: string;
+  review?: KnowledgeReview;
   source_attribution?: string[];
   source_provenance?: KnowledgeSourceProvenance[];
   chunks: KnowledgeChunk[];
+}
+
+export interface KnowledgeReview {
+  status: "approved" | "changes_requested";
+  reviewer_id: string;
+  reviewed_at: string;
+  summary: string;
 }
 
 export interface KnowledgeSourceProvenance {
@@ -60,6 +68,8 @@ export interface KnowledgeFeedbackEntry {
   rating: "useful" | "bad";
   status: "recorded" | "sent";
   created_at: string;
+  tenant_id?: string;
+  authorized?: boolean;
   reason?: string;
 }
 
@@ -93,6 +103,7 @@ export interface KnowledgeSearchResult {
   title: string;
   score: number;
   snippet: string;
+  matched_terms: string[];
   tags: string[];
   source_refs: string[];
 }

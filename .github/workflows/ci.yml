@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   check:
-    runs-on: macos-14
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -44,6 +44,9 @@ jobs:
       - name: Test
         run: pnpm -r test
 
+      - name: Release plan smoke
+        run: pnpm smoke:release-plan
+
       - name: Knowledge Cloud smoke
         run: pnpm smoke:knowledge-cloud
 
@@ -53,8 +56,8 @@ jobs:
       - name: Deliver proof smoke
         run: pnpm smoke:deliver-proof
 
-      - name: Single binary release archive smoke
-        run: pnpm smoke:single-binary-release-pack
+      - name: Real repo deliver smoke
+        run: pnpm smoke:real-repo-deliver
 
       - name: NPM install smoke
         run: pnpm smoke:npm-install

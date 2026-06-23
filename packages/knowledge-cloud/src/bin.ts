@@ -1,17 +1,23 @@
 #!/usr/bin/env node
 
 import { realpathSync } from "node:fs";
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { loadKnowledgePack } from "@osstack/knowledge";
-import { loadKnowledgeCloudPacksFromIndex, startKnowledgeCloudServer } from "./index.js";
+import { loadKnowledgePack, type KnowledgeFeedbackEntry } from "@osstack/knowledge";
+import {
+  type KnowledgeCloudAuditEntry,
+  loadKnowledgeCloudPacksFromIndex,
+  loadPublishedKnowledgeCloudPacksFromDir,
+  startKnowledgeCloudServer,
+} from "./index.js";
 
 export async function main(argv = process.argv.slice(2)): Promise<number> {
   if (argv.includes("--help") || argv.includes("-h")) {
     console.log(`osstack-knowledge-cloud
 
 Usage:
-  osstack-knowledge-cloud [--host H] [--port N] [--official-index P] [--private-pack P] [--private-token T] [--json]
+  osstack-knowledge-cloud [--host H] [--port N] [--official-index P] [--private-pack P] [--private-token T] [--private-tenant-token tenant=token] [--published-pack-dir P] [--feedback-log P] [--audit-log P] [--json]
 
 Options:
   --host H              Host to bind. Default: 127.0.0.1
@@ -19,6 +25,11 @@ Options:
   --official-index P    Official Knowledge Cloud index.json path.
   --private-pack P      Team/private pack manifest path. Repeatable.
   --private-token T     Bearer token required for /v1/private-packs and private search.
+  --private-tenant-token tenant=token
+                         Tenant-bound bearer token for private packs. Repeatable.
+  --published-pack-dir P Persist /v1/publish packs and preload them on startup.
+  --feedback-log P      Append feedback entries as JSONL for audit/quality review.
+  --audit-log P         Append tenant-scoped publish/search/access audit events as JSONL.
   --json                Print startup metadata as JSON.
 
 Env:
@@ -26,6 +37,10 @@ Env:
   OSSTACK_KNOWLEDGE_CLOUD_PORT
   OSSTACK_OFFICIAL_KNOWLEDGE_INDEX
   OSSTACK_KNOWLEDGE_PRIVATE_TOKEN
+  OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON
+  OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR
+  OSSTACK_KNOWLEDGE_FEEDBACK_LOG
+  OSSTACK_KNOWLEDGE_AUDIT_LOG
 `);
     return 0;
   }
@@ -43,21 +58,78 @@ Env:
     ?? defaultOfficialIndexPath();
   const packs = await loadKnowledgeCloudPacksFromIndex(officialIndex);
   const privatePacks = await Promise.all(flagValues(argv, "--private-pack").map((path) => loadKnowledgePack(path)));
+  const publishedPackDir = flagValue(argv, "--published-pack-dir") ?? process.env["OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR"];
+  const publishedPacks = publishedPackDir === undefined || publishedPackDir.trim().length === 0
+    ? { packs: [], privatePacks: [] }
+    : await loadPublishedKnowledgeCloudPacksFromDir(publishedPackDir);
   const privateAuthToken = flagValue(argv, "--private-token") ?? process.env["OSSTACK_KNOWLEDGE_PRIVATE_TOKEN"];
+  const privateTenantTokens = parsePrivateTenantTokens(
+    flagValues(argv, "--private-tenant-token"),
+    process.env["OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON"],
+  );
+  const feedbackLog = flagValue(argv, "--feedback-log") ?? process.env["OSSTACK_KNOWLEDGE_FEEDBACK_LOG"];
+  const feedbackEntries = feedbackLog === undefined || feedbackLog.trim().length === 0
+    ? []
+    : await readFeedbackLog(feedbackLog);
+  if (feedbackLog !== undefined && feedbackLog.trim().length > 0) {
+    await mkdir(dirname(feedbackLog), { recursive: true });
+    await writeFile(feedbackLog, "", { flag: "a" });
+  }
+  const auditLog = flagValue(argv, "--audit-log") ?? process.env["OSSTACK_KNOWLEDGE_AUDIT_LOG"];
+  const auditEntries = auditLog === undefined || auditLog.trim().length === 0
+    ? []
+    : await readAuditLog(auditLog);
+  if (auditLog !== undefined && auditLog.trim().length > 0) {
+    await mkdir(dirname(auditLog), { recursive: true });
+    await writeFile(auditLog, "", { flag: "a" });
+  }
   const handle = await startKnowledgeCloudServer({
     host,
     port,
-    packs,
-    ...(privatePacks.length === 0 ? {} : { privatePacks }),
+    packs: [...packs, ...publishedPacks.packs],
+    ...([...privatePacks, ...publishedPacks.privatePacks].length === 0
+      ? {}
+      : { privatePacks: [...privatePacks, ...publishedPacks.privatePacks] }),
     ...(privateAuthToken === undefined || privateAuthToken.trim().length === 0 ? {} : { privateAuthToken: privateAuthToken.trim() }),
+    ...(Object.keys(privateTenantTokens).length === 0 ? {} : { privateTenantTokens }),
+    ...(publishedPackDir === undefined || publishedPackDir.trim().length === 0 ? {} : { publishedPackDir }),
+    ...(feedbackEntries.length === 0 ? {} : { feedbackLog: feedbackEntries }),
+    ...(auditEntries.length === 0 ? {} : { auditLog: auditEntries }),
+    ...(feedbackLog === undefined || feedbackLog.trim().length === 0
+      ? {}
+      : {
+        feedbackSink: async (entry) => {
+          await appendFile(feedbackLog, `${JSON.stringify(entry)}\n`, "utf-8");
+        },
+      }),
+    ...(auditLog === undefined || auditLog.trim().length === 0
+      ? {}
+      : {
+        auditSink: async (entry) => {
+          await appendFile(auditLog, `${JSON.stringify(entry)}\n`, "utf-8");
+        },
+      }),
   });
 
   const startup = {
     url: handle.url,
     official_index: officialIndex,
-    packs: packs.length,
-    private_packs: privatePacks.length,
-    private_auth_required: privateAuthToken !== undefined && privateAuthToken.trim().length > 0,
+    packs: packs.length + publishedPacks.packs.length,
+    private_packs: privatePacks.length + publishedPacks.privatePacks.length,
+    published_packs_loaded: publishedPacks.packs.length,
+    published_private_packs_loaded: publishedPacks.privatePacks.length,
+    private_auth_required: privateAuthToken !== undefined && privateAuthToken.trim().length > 0
+      || Object.keys(privateTenantTokens).length > 0,
+    private_tenant_tokens: Object.keys(privateTenantTokens).length,
+    ...(publishedPackDir === undefined || publishedPackDir.trim().length === 0
+      ? {}
+      : { published_pack_dir: publishedPackDir }),
+    ...(feedbackLog === undefined || feedbackLog.trim().length === 0
+      ? {}
+      : { feedback_log: feedbackLog, feedback_log_loaded: feedbackEntries.length }),
+    ...(auditLog === undefined || auditLog.trim().length === 0
+      ? {}
+      : { audit_log: auditLog, audit_log_loaded: auditEntries.length }),
   };
   if (argv.includes("--json")) {
     console.log(JSON.stringify(startup, null, 2));
@@ -69,6 +141,100 @@ Env:
   await waitForShutdown();
   await handle.close();
   return 0;
+}
+
+async function readFeedbackLog(path: string): Promise<KnowledgeFeedbackEntry[]> {
+  let raw = "";
+  try {
+    raw = await readFile(path, "utf-8");
+  } catch {
+    return [];
+  }
+  const entries: KnowledgeFeedbackEntry[] = [];
+  for (const line of raw.split(/\r?\n/)) {
+    if (line.trim().length === 0) continue;
+    try {
+      const parsed = JSON.parse(line) as unknown;
+      if (isFeedbackEntry(parsed)) entries.push(parsed);
+    } catch {
+    }
+  }
+  return entries;
+}
+
+async function readAuditLog(path: string): Promise<KnowledgeCloudAuditEntry[]> {
+  let raw = "";
+  try {
+    raw = await readFile(path, "utf-8");
+  } catch {
+    return [];
+  }
+  const entries: KnowledgeCloudAuditEntry[] = [];
+  for (const line of raw.split(/\r?\n/)) {
+    if (line.trim().length === 0) continue;
+    try {
+      const parsed = JSON.parse(line) as unknown;
+      if (isAuditEntry(parsed)) entries.push(parsed);
+    } catch {
+    }
+  }
+  return entries;
+}
+
+function isFeedbackEntry(value: unknown): value is KnowledgeFeedbackEntry {
+  if (!isRecord(value)) return false;
+  return typeof value["chunk_id"] === "string"
+    && (value["rating"] === "useful" || value["rating"] === "bad")
+    && (value["status"] === "recorded" || value["status"] === "sent")
+    && typeof value["created_at"] === "string"
+    && hasSafeOptionalTenantId(value);
+}
+
+function isAuditEntry(value: unknown): value is KnowledgeCloudAuditEntry {
+  if (!isRecord(value)) return false;
+  return typeof value["event_id"] === "string"
+    && (value["action"] === "publish" || value["action"] === "private_packs" || value["action"] === "search" || value["action"] === "feedback")
+    && (value["status"] === "ok" || value["status"] === "rejected" || value["status"] === "unauthorized")
+    && typeof value["created_at"] === "string"
+    && hasSafeOptionalTenantId(value);
+}
+
+function parsePrivateTenantTokens(values: string[], json?: string): Record<string, string> {
+  const tokens: Record<string, string> = {};
+  if (json !== undefined && json.trim().length > 0) {
+    const parsed = JSON.parse(json) as unknown;
+    if (!isRecord(parsed)) throw new Error("OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON must be a JSON object");
+    for (const [tenantId, token] of Object.entries(parsed)) {
+      if (typeof token === "string" && tenantId.trim().length > 0 && token.trim().length > 0) {
+        const normalizedTenantId = tenantId.trim();
+        if (!isSafeTenantId(normalizedTenantId)) throw new Error("tenant id is invalid");
+        tokens[normalizedTenantId] = token.trim();
+      }
+    }
+  }
+  for (const value of values) {
+    const separatorIndex = value.indexOf("=");
+    if (separatorIndex <= 0) throw new Error("--private-tenant-token must use tenant=token");
+    const tenantId = value.slice(0, separatorIndex).trim();
+    const token = value.slice(separatorIndex + 1).trim();
+    if (tenantId.length === 0 || token.length === 0) throw new Error("--private-tenant-token must use tenant=token");
+    if (!isSafeTenantId(tenantId)) throw new Error("tenant id is invalid");
+    tokens[tenantId] = token;
+  }
+  return tokens;
+}
+
+function isSafeTenantId(tenantId: string): boolean {
+  return /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(tenantId);
+}
+
+function hasSafeOptionalTenantId(value: Record<string, unknown>): boolean {
+  const tenantId = value["tenant_id"];
+  return tenantId === undefined || (typeof tenantId === "string" && isSafeTenantId(tenantId));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function defaultOfficialIndexPath(): string {

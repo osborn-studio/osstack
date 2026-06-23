@@ -11,6 +11,7 @@ import {
   renderComplianceReportFromProofDir,
   renderProofView,
   renderProofViewFromProofDir,
+  validateProofEvidence,
   validateCompliancePackFiles,
 } from "./index.js";
 
@@ -60,6 +61,17 @@ describe("compliance packs", () => {
     }
   });
 
+  it("keeps all built-in compliance controls bilingual", () => {
+    for (const pack of listCompliancePacks()) {
+      for (const control of pack.controls) {
+        expect(control.title_zh, `${pack.id}/${control.id} title_zh`).toEqual(expect.any(String));
+        expect(control.description_zh, `${pack.id}/${control.id} description_zh`).toEqual(expect.any(String));
+        expect(control.title_zh?.length).toBeGreaterThan(0);
+        expect(control.description_zh?.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
   it("renders evidence mappings without claiming external certification", () => {
     const markdown = renderComplianceReport({
       packId: "engineering-readiness",
@@ -76,6 +88,38 @@ describe("compliance packs", () => {
     expect(markdown).toContain("| Secure coding control | PRESENT |");
   });
 
+  it("renders Chinese evidence mappings without claiming external certification", () => {
+    const markdown = renderComplianceReport({
+      packId: "engineering-readiness",
+      runId: "run_123",
+      evidence: sampleEvidence(),
+      language: "zh-CN",
+    });
+
+    expect(markdown).toContain("# Osstack 合规映射报告 - engineering-readiness");
+    expect(markdown).toContain("运行：`run_123`");
+    expect(markdown).toContain("映射包：`engineering-readiness@2026.06.22`");
+    expect(markdown).toContain("外部认证声明：`none`");
+    expect(markdown).toContain("此报告不是 SOC 2、ISO 27001、EU AI Act 或第三方认证。");
+    expect(markdown).toContain("它会把 osstack proof 证据映射到内部 Engineering Readiness 视图。");
+    expect(markdown).toContain("| 控制项 | 状态 | 证据 | 映射 |");
+    expect(markdown).toContain("| 变更验证 | PRESENT | `verify-results.json` | 验证门禁或评分卡证据会显示本次变更是否已被验证。 |");
+    expect(markdown).toContain("| 证据完整性 | PRESENT | `manifest.json` | Proof manifest 中的产物会携带 SHA-256 checksum。 |");
+  });
+
+  it("renders Chinese evidence mappings for non-default lite packs", () => {
+    const markdown = renderComplianceReport({
+      packId: "soc2-lite",
+      runId: "run_123",
+      evidence: sampleEvidence(),
+      language: "zh-CN",
+    });
+
+    expect(markdown).toContain("# Osstack 合规映射报告 - soc2-lite");
+    expect(markdown).toContain("| 变更验证 | PRESENT | `verify-results.json` | 将验证结果映射到内部变更管理证据视图。 |");
+    expect(markdown).toContain("| Agent 运行时追踪 | PRESENT | `agent-runtime.json` | 显示参与本次运行的 agent 运行时模式。 |");
+  });
+
   it("marks missing proof evidence explicitly", () => {
     const markdown = renderComplianceReport({
       packId: "engineering-readiness",
@@ -88,6 +132,87 @@ describe("compliance packs", () => {
     expect(markdown).toContain("| Change validation | MISSING |");
     expect(markdown).toContain("| Automated decision trace | MISSING |");
     expect(markdown).toContain("| Evidence integrity | MISSING |");
+  });
+
+  it("validates proof evidence into reusable present and missing controls", () => {
+    const validation = validateProofEvidence({
+      packId: "engineering-readiness",
+      evidence: {
+        ...sampleEvidence(),
+        governance: { status: "unknown", reason: "not evaluated" },
+        knowledge: { mode: "local", status: "recorded", results: [{ chunk_id: "chunk-1" }] },
+      },
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.present.map((item) => item.evidence_path)).toEqual(expect.arrayContaining([
+      "manifest.json",
+      "verify-results.json",
+      "policy-decision.json",
+      "worktree-status.json",
+    ]));
+    expect(validation.missing).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        control_id: "secure-coding-control",
+        evidence_path: "governance-results.json",
+        reason: "missing or malformed proof evidence",
+      }),
+      expect.objectContaining({
+        control_id: "knowledge-trace",
+        evidence_path: "knowledge-results.json",
+      }),
+    ]));
+  });
+
+  it("rejects proof manifests with misleading compliance report certification claims", () => {
+    const validation = validateProofEvidence({
+      evidence: {
+        ...sampleEvidence(),
+        manifest: {
+          artifacts: [
+            { path: "report.md", sha256: "a".repeat(64), bytes: 12 },
+            { path: "compliance-soc2-lite.md", sha256: "b".repeat(64), bytes: 128 },
+          ],
+          compliance_reports: [{
+            pack_id: "soc2-lite",
+            path: "compliance-soc2-lite.md",
+            certification_claim: "soc2-certified",
+          }],
+        },
+      },
+    });
+
+    expect(validation.missing).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        control_id: "evidence-integrity",
+        evidence_path: "manifest.json",
+      }),
+    ]));
+  });
+
+  it("rejects proof manifests with compliance reports missing from the artifact inventory", () => {
+    const validation = validateProofEvidence({
+      evidence: {
+        ...sampleEvidence(),
+        manifest: {
+          artifacts: [
+            { path: "report.md", sha256: "a".repeat(64), bytes: 12 },
+          ],
+          compliance_reports: [{
+            pack_id: "engineering-readiness",
+            path: "compliance-engineering-readiness.md",
+            certification_claim: "none",
+          }],
+        },
+      },
+    });
+
+    expect(validation.missing).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        control_id: "evidence-integrity",
+        evidence_path: "manifest.json",
+      }),
+    ]));
   });
 
   it("renders SOC 2 lite evidence mapping without claiming certification", () => {
@@ -139,6 +264,24 @@ describe("compliance packs", () => {
     expect(markdown).toContain("| Automated decision trace | PRESENT |");
     expect(markdown).toContain("No required evidence is missing for this audience view.");
     expect(markdown).toContain("This view rearranges existing proof evidence and does not create new evidence.");
+  });
+
+  it("renders Chinese audience proof views", () => {
+    const markdown = renderProofView({
+      audience: "auditor",
+      runId: "run_123",
+      evidence: sampleEvidence(),
+      language: "zh-CN",
+    });
+
+    expect(markdown).toContain("# Osstack 证据视图 - auditor");
+    expect(markdown).toContain("运行：`run_123`");
+    expect(markdown).toContain("受众：`auditor`");
+    expect(markdown).toContain("此视图会重排已有 proof 证据，不会创建新证据。");
+    expect(markdown).toContain("此受众视图没有缺失必需证据。");
+    expect(markdown).toContain("| 证据 | 状态 | 来源 | 关注点 |");
+    expect(markdown).toContain("| 证据完整性 | PRESENT | `manifest.json` | 带 checksum 的证据清单 |");
+    expect(markdown).toContain("带 checksum 的证据清单");
   });
 
   it("marks missing evidence in proof views", () => {

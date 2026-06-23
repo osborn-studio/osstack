@@ -73,14 +73,19 @@ unless you wire in an agent that calls out.
   loop runtime themselves are cross-platform.
 - *(Optional)* a Hermes agent checkout for the Telegram/Kanban bridge.
 
-### From npm (once published)
+### From npm
 
 ```bash
 npm install -g @osstack/cli
 osstack --version
+osstack loop doctor --workspace .
 ```
 
-### From source (current canonical method)
+### From source (developer path)
+
+Use this path when you want to contribute to osstack itself, test an
+unreleased branch, or work on the monorepo packages directly. Product users
+should prefer the npm install above.
 
 ```bash
 git clone https://github.com/gilosbornhello/osstack.git ~/Developer/osstack
@@ -642,15 +647,18 @@ add a changeset with `pnpm changeset`, and the release workflow opens a "Version
 Packages" PR that publishes to npm on merge. See
 [RELEASING.md](RELEASING.md) for the bi-weekly release-train process.
 
-Before publishing or deploying Knowledge Cloud, run:
+Before publishing, deploying Knowledge Cloud, or uploading single-binary release
+assets, run:
 
 ```bash
 osstack release doctor --json
+osstack release plan --target all --output release-plan.md --json
 ```
 
 It checks GitHub auth, repository secrets (`NPM_TOKEN`, `FLY_API_TOKEN`), local
-npm auth, and local Fly.io auth so the release train fails before a partial
-publish/deploy is mistaken for production readiness.
+npm/Fly.io auth, npm publish assets, Knowledge Cloud deploy assets, and
+single-binary release assets so the release train fails before a partial
+publish/deploy/upload is mistaken for production readiness.
 
 ---
 

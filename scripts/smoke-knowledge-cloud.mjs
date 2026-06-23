@@ -1,12 +1,25 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { spawn, spawnSync } from "node:child_process";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const tmp = join(tmpdir(), `osstack-knowledge-cloud-smoke-${process.pid}`);
 await mkdir(tmp, { recursive: true });
 const privatePackPath = join(tmp, "team-private-pack.json");
+const auditLogPath = join(tmp, "audit", "knowledge-cloud-audit.jsonl");
+const feedbackLogPath = join(tmp, "feedback", "feedback.jsonl");
+const publishedPackDir = join(tmp, "published-packs");
+await mkdir(join(tmp, "audit"), { recursive: true });
+await mkdir(join(tmp, "feedback"), { recursive: true });
+await writeFile(feedbackLogPath, `${JSON.stringify({
+  chunk_id: "proof-checksum-pack",
+  rating: "bad",
+  status: "sent",
+  created_at: "2026-06-21T00:00:00.000Z",
+  tenant_id: "team_smoke",
+  authorized: true,
+})}\n`, "utf-8");
 await writeFile(privatePackPath, JSON.stringify({
   id: "team/private-release",
   version: "2026.06.22-smoke",
@@ -38,7 +51,12 @@ const child = spawn(
   ],
   {
     cwd: process.cwd(),
-    env: { ...process.env },
+    env: {
+      ...process.env,
+      OSSTACK_KNOWLEDGE_AUDIT_LOG: auditLogPath,
+      OSSTACK_KNOWLEDGE_FEEDBACK_LOG: feedbackLogPath,
+      OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR: publishedPackDir,
+    },
     stdio: ["ignore", "pipe", "pipe"],
   },
 );
@@ -96,6 +114,57 @@ try {
     "/v1/search must find official proof guidance",
   );
 
+  const publish = await fetchJson(`${url}/v1/publish`, {
+    pack: {
+      id: "osstack-core/smoke-published",
+      version: "2026.06.22-smoke",
+      name: "Smoke Published Pack",
+      license: "Osstack-native",
+      source_kind: "osstack_native",
+      quality_score: 91,
+      scope: "official",
+      taxonomy: ["osstack-core/knowledge-cloud"],
+      last_reviewed_at: "2026-06-22T00:00:00.000Z",
+      review: {
+        status: "approved",
+        reviewer_id: "knowledge-reviewer",
+        reviewed_at: "2026-06-22T00:00:00.000Z",
+        summary: "Approved during Knowledge Cloud smoke.",
+      },
+      source_attribution: ["osstack-native smoke knowledge"],
+      source_provenance: [{
+        source_id: "smoke-published",
+        path: "smoke-published.md",
+        sha256: "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        license: "Osstack-native",
+        scope: "official",
+        imported_at: "2026-06-22T00:00:00.000Z",
+      }],
+      chunks: [{
+        chunk_id: "smoke-published-review",
+        title: "Smoke published review",
+        body: "Osstack Knowledge Cloud smoke verifies approved publish persistence for restart-ready packs.",
+        tags: ["smoke", "publish", "persistence"],
+        source_refs: ["smoke-published"],
+      }],
+    },
+  });
+  assert(publish.ok === true, "/v1/publish must accept approved official packs");
+  const publishedSearch = await fetchJson(`${url}/v1/search`, {
+    query: "approved publish persistence restart-ready packs",
+    limit: 1,
+  });
+  assert(
+    publishedSearch.results.some((item) => item.pack_id === "osstack-core/smoke-published"
+      && item.chunk_id === "smoke-published-review"),
+    "/v1/search must find newly published official packs",
+  );
+  const publishedFiles = await readdir(join(publishedPackDir, "official"));
+  assert(
+    publishedFiles.includes("osstack-core%2Fsmoke-published.json"),
+    "published pack storage must persist approved official manifests",
+  );
+
   const privateSearch = await fetchJson(`${url}/v1/search`, {
     query: "private release approval rollback owner",
     limit: 3,
@@ -112,9 +181,115 @@ try {
   const feedback = await fetchJson(`${url}/v1/feedback`, {
     chunk_id: "proof-checksum-pack",
     rating: "useful",
+    tenant_id: "team_smoke",
+  }, {
+    authorization: "Bearer kst_smoke_private",
   });
   assert(feedback.ok === true, "/v1/feedback must accept useful/bad ratings");
   assert(feedback.feedback?.status === "sent", "/v1/feedback must return sent status");
+  assert(feedback.feedback?.tenant_id === "team_smoke", "/v1/feedback must record tenant scope");
+
+  const publicFeedbackSummary = await fetchJson(`${url}/v1/feedback/summary`, {});
+  assert(publicFeedbackSummary.total === 0, "/v1/feedback/summary without tenant scope must not leak tenant feedback");
+
+  const feedbackSummary = await fetchJson(`${url}/v1/feedback/summary`, {
+    tenant_id: "team_smoke",
+  }, {
+    authorization: "Bearer kst_smoke_private",
+  });
+  assert(feedbackSummary.total === 2, "/v1/feedback/summary must count preloaded and live tenant feedback");
+  assert(feedbackSummary.useful === 1, "/v1/feedback/summary must count useful tenant feedback");
+  assert(feedbackSummary.bad === 1, "/v1/feedback/summary must count bad tenant feedback");
+  const feedbackLog = await readFile(feedbackLogPath, "utf-8");
+  assert(feedbackLog.includes("\"chunk_id\":\"proof-checksum-pack\""), "feedback JSONL must record chunk ids");
+  assert(feedbackLog.includes("\"tenant_id\":\"team_smoke\""), "feedback JSONL must record tenant scope");
+  const publicAudit = await fetchJson(`${url}/v1/audit`, {});
+  assert(
+    publicAudit.events.some((item) => item.action === "publish"
+      && item.pack_id === "osstack-core/smoke-published"
+      && item.private === false),
+    "/v1/audit must expose official publish audit events",
+  );
+  assert(
+    !publicAudit.events.some((item) => item.tenant_id === "team_smoke"),
+    "/v1/audit without tenant scope must not leak tenant audit events",
+  );
+  const unauthorizedAudit = await fetch(`${url}/v1/audit`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ tenant_id: "team_smoke" }),
+  });
+  assert(unauthorizedAudit.status === 401, "/v1/audit must protect tenant audit events");
+  const tenantAudit = await fetchJson(`${url}/v1/audit`, {
+    tenant_id: "team_smoke",
+  }, {
+    authorization: "Bearer kst_smoke_private",
+  });
+  assert(
+    tenantAudit.events.some((item) => item.action === "private_packs" && item.authorized === true),
+    "/v1/audit must include authorized private pack access events",
+  );
+  assert(
+    tenantAudit.events.some((item) => item.action === "search" && item.result_count >= 1),
+    "/v1/audit must include tenant search events",
+  );
+  assert(
+    tenantAudit.events.some((item) => item.action === "feedback" && item.chunk_id === "proof-checksum-pack"),
+    "/v1/audit must include tenant feedback events",
+  );
+  const filteredTenantAudit = await fetchJson(`${url}/v1/audit`, {
+    tenant_id: "team_smoke",
+    action: "search",
+    status: "ok",
+    limit: 1,
+  }, {
+    authorization: "Bearer kst_smoke_private",
+  });
+  assert(filteredTenantAudit.filters?.action === "search", "/v1/audit must echo action filters");
+  assert(filteredTenantAudit.filters?.status === "ok", "/v1/audit must echo status filters");
+  assert(filteredTenantAudit.filters?.limit === 1, "/v1/audit must echo clamped limit filters");
+  assert(filteredTenantAudit.events.length === 1, "/v1/audit limit must constrain returned events");
+  assert(filteredTenantAudit.events[0]?.action === "search", "/v1/audit action filter must return matching events");
+  const auditLog = await readFile(auditLogPath, "utf-8");
+  assert(auditLog.includes("\"action\":\"publish\""), "audit JSONL must record publish events");
+  assert(auditLog.includes("\"action\":\"search\""), "audit JSONL must record search events");
+  assert(auditLog.includes("\"tenant_id\":\"team_smoke\""), "audit JSONL must record tenant scope");
+  const releaseDoctor = runBuiltCli([
+    "release",
+    "doctor",
+    "--target",
+    "knowledge-cloud",
+    "--cloud-url",
+    url,
+    "--json",
+  ]);
+  const releaseDoctorSummary = JSON.parse(releaseDoctor.stdout);
+  assert(releaseDoctorSummary.ok === true, "release doctor must pass against the smoke Knowledge Cloud service");
+  assert(
+    releaseDoctorSummary.readiness?.knowledge_cloud_deploy === true,
+    "release doctor must mark Knowledge Cloud deploy handoff as ready",
+  );
+  const releaseDoctorChecks = Array.isArray(releaseDoctorSummary.checks) ? releaseDoctorSummary.checks : [];
+  assert(
+    releaseDoctorChecks.some((item) => item.id === "knowledge_cloud_health" && item.status === "ok"),
+    "release doctor must pass the deployed health gate",
+  );
+  assert(
+    releaseDoctorChecks.some((item) => item.id === "knowledge_cloud_search" && item.status === "ok"),
+    "release doctor must pass the deployed search gate",
+  );
+  const releaseDoctorSync = releaseDoctorChecks.find((item) => item.id === "knowledge_cloud_sync");
+  assert(releaseDoctorSync?.status === "ok", "release doctor must pass the deployed sync gate");
+  assert(
+    releaseDoctorSync?.details?.pack_count >= 6,
+    "release doctor sync gate must see official Knowledge Cloud packs",
+  );
+  const releaseDoctorAudit = releaseDoctorChecks.find((item) => item.id === "knowledge_cloud_audit");
+  assert(releaseDoctorAudit?.status === "ok", "release doctor must pass the deployed audit gate");
+  assert(
+    releaseDoctorAudit?.details?.tenant_event_leak === false,
+    "release doctor audit gate must reject tenant audit leaks",
+  );
 
   console.log(JSON.stringify({
     ok: true,
@@ -126,6 +301,17 @@ try {
     top_result: search.results[0]?.chunk_id ?? null,
     private_result: privateSearch.results[0]?.chunk_id ?? null,
     feedback: feedback.feedback?.status ?? null,
+    feedback_summary_total: feedbackSummary.total,
+    feedback_log: feedbackLogPath,
+    audit_log: auditLogPath,
+    audit_events: tenantAudit.events.length + publicAudit.events.length,
+    release_doctor: {
+      ok: releaseDoctorSummary.ok,
+      knowledge_cloud_deploy: releaseDoctorSummary.readiness?.knowledge_cloud_deploy,
+      sync_gate: releaseDoctorSync?.status ?? null,
+      audit_gate: releaseDoctorAudit?.status ?? null,
+    },
+    published_pack_dir: publishedPackDir,
   }, null, 2));
 } finally {
   child.kill("SIGTERM");
@@ -176,4 +362,32 @@ async function fetchJson(url, body, headers = {}) {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function runBuiltCli(args) {
+  const result = spawnSync(process.execPath, ["packages/cli/dist/bin.js", ...args], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      OSSTACK_TEST_RELEASE_GITHUB_AUTH: "ok",
+      OSSTACK_TEST_RELEASE_GITHUB_ACTIONS: "ok",
+      OSSTACK_TEST_RELEASE_SECRETS: "FLY_API_TOKEN",
+      OSSTACK_TEST_RELEASE_FLY_AUTH: "ok",
+      OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW: "ok",
+    },
+    encoding: "utf-8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (result.status !== 0) {
+    throw new Error([
+      `built CLI failed: node packages/cli/dist/bin.js ${args.join(" ")}`,
+      `exit=${result.status}`,
+      `stdout:\n${result.stdout}`,
+      `stderr:\n${result.stderr}`,
+    ].join("\n"));
+  }
+  return {
+    stdout: result.stdout,
+    stderr: result.stderr,
+  };
 }

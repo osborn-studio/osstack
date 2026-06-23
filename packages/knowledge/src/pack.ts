@@ -70,6 +70,7 @@ export function validateKnowledgePackManifest(value: unknown): KnowledgePackMani
   });
   const generatedAt = optionalString(value, "generated_at");
   const lastReviewedAt = optionalString(value, "last_reviewed_at");
+  const review = value["review"] === undefined ? undefined : validateKnowledgeReview(value["review"]);
   const sourceAttribution = optionalStringArray(value, "source_attribution");
   const sourceProvenanceRaw = value["source_provenance"];
   const sourceProvenance = sourceProvenanceRaw === undefined
@@ -87,6 +88,7 @@ export function validateKnowledgePackManifest(value: unknown): KnowledgePackMani
     ...(taxonomy === undefined ? {} : { taxonomy }),
     ...(generatedAt === undefined ? {} : { generated_at: generatedAt }),
     ...(lastReviewedAt === undefined ? {} : { last_reviewed_at: lastReviewedAt }),
+    ...(review === undefined ? {} : { review }),
     ...(sourceAttribution === undefined ? {} : { source_attribution: sourceAttribution }),
     ...(sourceProvenance === undefined ? {} : { source_provenance: sourceProvenance }),
     chunks,
@@ -124,6 +126,12 @@ export function validateKnowledgePublishGate(
       message: "official knowledge packs require last_reviewed_at",
     });
   }
+  if (official && manifest.review?.status !== "approved") {
+    issues.push({
+      code: "official_review_not_approved",
+      message: "official knowledge packs require review.status=approved",
+    });
+  }
   if ((official || external) && (manifest.source_attribution ?? []).length === 0) {
     issues.push({
       code: "missing_source_attribution",
@@ -134,6 +142,12 @@ export function validateKnowledgePublishGate(
     issues.push({
       code: "missing_source_provenance",
       message: "official or externally processed knowledge requires source_provenance",
+    });
+  }
+  if ((official || external) && manifest.source_kind === "processed_mit" && !isProcessedLicenseLabel(manifest.license)) {
+    issues.push({
+      code: "processed_license_not_osstack_derived",
+      message: "processed_mit knowledge packs must use an Osstack processed or derived license label, not the raw upstream license",
     });
   }
   if (official && manifest.chunks.length === 0) {
@@ -157,6 +171,14 @@ export function validateKnowledgePublishGate(
     }
   }
   return { ok: issues.length === 0, issues };
+}
+
+function isProcessedLicenseLabel(license: string): boolean {
+  return /\b(processed|derived|osstack)\b/i.test(license);
+}
+
+function isUnsafeKnowledgeSourcePath(path: string): boolean {
+  return path.startsWith("/") || /^[A-Za-z]:[\\/]/.test(path) || path.split(/[\\/]+/).includes("..");
 }
 
 export async function loadKnowledgePackIndex(path: string): Promise<KnowledgePackIndex> {
@@ -189,11 +211,15 @@ export function validateKnowledgePackIndex(value: unknown): KnowledgePackIndex {
     if (qualityScore < 0 || qualityScore > 100) {
       throw new Error("knowledge pack index quality_score must be between 0 and 100");
     }
+    const path = requiredString(entry, "path");
+    if (isUnsafeKnowledgeSourcePath(path)) {
+      throw new Error("knowledge pack index path is unsafe");
+    }
     const taxonomy = optionalStringArray(entry, "taxonomy");
     return {
       id,
       version: requiredString(entry, "version"),
-      path: requiredString(entry, "path"),
+      path,
       scope: scope as KnowledgePackIndex["packs"][number]["scope"],
       source_kind: sourceKind as KnowledgePackIndex["packs"][number]["source_kind"],
       quality_score: qualityScore,
@@ -276,6 +302,7 @@ export async function ingestKnowledgeSource(options: {
   generatedAt?: string;
   sourceKind?: KnowledgePackManifest["source_kind"];
   sourceAttribution?: string[];
+  review?: KnowledgePackManifest["review"];
 }): Promise<KnowledgePackManifest> {
   const generatedAt = options.generatedAt ?? new Date().toISOString();
   const sourceFiles = await collectKnowledgeSourceFiles(options.path);
@@ -318,6 +345,7 @@ export async function ingestKnowledgeSource(options: {
     taxonomy: options.taxonomy ?? [],
     generated_at: generatedAt,
     last_reviewed_at: generatedAt,
+    ...(options.review === undefined ? {} : { review: options.review }),
     source_attribution: options.sourceAttribution ?? [`osstack-ingested from ${options.scope} source ${basename(options.path)}`],
     source_provenance: sourceProvenance,
     chunks,
@@ -338,6 +366,7 @@ export async function syncKnowledgeCache(options: {
   fetchImpl?: typeof fetch;
 }): Promise<KnowledgeSyncEvidence> {
   try {
+    assertSafeOptionalTenantId(options.tenantId);
     const endpoint = options.privatePacks === true ? "/v1/private-packs" : "/v1/sync";
     const response = await (options.fetchImpl ?? fetch)(new URL(endpoint, withTrailingSlash(options.cloudUrl)), {
       method: "POST",
@@ -416,14 +445,17 @@ export async function cacheKnowledgeFeedback(options: {
   rating: "useful" | "bad";
   cloudUrl?: string;
   authToken?: string;
+  tenantId?: string;
   fetchImpl?: typeof fetch;
   createdAt?: string;
 }): Promise<KnowledgeFeedbackEntry> {
+  assertSafeOptionalTenantId(options.tenantId);
   await mkdir(options.cacheDir, { recursive: true });
   const baseEntry = {
     chunk_id: options.chunkId,
     rating: options.rating,
     created_at: options.createdAt ?? new Date().toISOString(),
+    ...(options.tenantId === undefined ? {} : { tenant_id: options.tenantId }),
   };
   let entry: KnowledgeFeedbackEntry = { ...baseEntry, status: "recorded" };
   if (options.cloudUrl !== undefined && options.cloudUrl.length > 0) {
@@ -542,23 +574,44 @@ export function searchKnowledgePacks(
 ): KnowledgeSearchResult[] {
   const terms = tokenize(query);
   if (terms.length === 0) return [];
+  const documents = packs.flatMap((pack) => pack.manifest.chunks.map((chunk) => {
+    const haystack = `${chunk.title} ${chunk.body} ${(chunk.tags ?? []).join(" ")}`.toLowerCase();
+    return {
+      pack,
+      chunk,
+      haystack,
+      length: Math.max(1, tokenize(haystack).length),
+    };
+  }));
+  const averageLength = documents.reduce((sum, document) => sum + document.length, 0) / Math.max(1, documents.length);
+  const documentFrequencies = new Map(terms.map((term) => [
+    term,
+    documents.filter((document) => countOccurrences(document.haystack, term) > 0).length,
+  ]));
   const results: KnowledgeSearchResult[] = [];
-  for (const pack of packs) {
-    for (const chunk of pack.manifest.chunks) {
-      const haystack = `${chunk.title} ${chunk.body} ${(chunk.tags ?? []).join(" ")}`.toLowerCase();
-      const score = terms.reduce((sum, term) => sum + countOccurrences(haystack, term), 0);
-      if (score === 0) continue;
-      results.push({
-        pack_id: pack.manifest.id,
-        pack_version: pack.manifest.version,
-        chunk_id: chunk.chunk_id,
-        title: chunk.title,
-        score,
-        snippet: snippetFor(chunk.body, terms),
-        tags: chunk.tags ?? [],
-        source_refs: chunk.source_refs ?? [],
-      });
-    }
+  for (const document of documents) {
+    const termCounts = terms.map((term) => ({ term, count: countOccurrences(document.haystack, term) }));
+    const rawScore = termCounts.reduce((sum, termCount) => sum + bm25TermScore({
+      frequency: termCount.count,
+      documentFrequency: documentFrequencies.get(termCount.term) ?? 0,
+      documentCount: documents.length,
+      documentLength: document.length,
+      averageDocumentLength: averageLength,
+    }), 0);
+    if (rawScore === 0) continue;
+    const qualityMultiplier = 0.9 + (document.pack.manifest.quality_score / 500);
+    const score = Number((rawScore * qualityMultiplier).toFixed(4));
+    results.push({
+      pack_id: document.pack.manifest.id,
+      pack_version: document.pack.manifest.version,
+      chunk_id: document.chunk.chunk_id,
+      title: document.chunk.title,
+      score,
+      snippet: snippetFor(document.chunk.body, terms),
+      matched_terms: termCounts.filter((termCount) => termCount.count > 0).map((termCount) => termCount.term),
+      tags: document.chunk.tags ?? [],
+      source_refs: document.chunk.source_refs ?? [],
+    });
   }
   return results
     .sort((a, b) => b.score - a.score || a.pack_id.localeCompare(b.pack_id) || a.chunk_id.localeCompare(b.chunk_id))
@@ -595,7 +648,12 @@ export function evaluateKnowledgeRetrieval(
 export function assembleKnowledgeSnippet(results: KnowledgeSearchResult[]): string {
   return results.map((result) => [
     `# ${result.title}`,
-    `pack=${result.pack_id}@${result.pack_version} chunk=${result.chunk_id} score=${result.score}`,
+    [
+      `pack=${result.pack_id}@${result.pack_version}`,
+      `chunk=${result.chunk_id}`,
+      `score=${result.score}`,
+      result.matched_terms.length === 0 ? undefined : `matched_terms=${result.matched_terms.join(",")}`,
+    ].filter(Boolean).join(" "),
     result.snippet,
   ].join("\n")).join("\n\n");
 }
@@ -679,6 +737,7 @@ async function cloudKnowledgeEvidence(options: {
     return fallbackFromCloud(options, "cloudUrl is required for cloud knowledge search");
   }
   try {
+    assertSafeOptionalTenantId(options.tenantId);
     const response = await (options.fetchImpl ?? fetch)(new URL("/v1/search", withTrailingSlash(options.cloudUrl)), {
       method: "POST",
       headers: cloudHeaders(options.authToken),
@@ -702,6 +761,11 @@ function cloudHeaders(authToken?: string): Record<string, string> {
     "content-type": "application/json",
     ...(authToken === undefined || authToken.trim().length === 0 ? {} : { authorization: `Bearer ${authToken.trim()}` }),
   };
+}
+
+function assertSafeOptionalTenantId(tenantId: string | undefined): void {
+  if (tenantId === undefined) return;
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(tenantId)) throw new Error("tenant_id is invalid");
 }
 
 function fallbackFromCloud(
@@ -777,6 +841,7 @@ function validateSearchResult(value: unknown): KnowledgeSearchResult {
     title: requiredString(value, "title"),
     score: requiredNumber(value, "score"),
     snippet: requiredString(value, "snippet"),
+    matched_terms: optionalStringArray(value, "matched_terms") ?? [],
     tags: optionalStringArray(value, "tags") ?? [],
     source_refs: optionalStringArray(value, "source_refs") ?? [],
   };
@@ -804,15 +869,33 @@ function validateSourceProvenanceArray(value: unknown): KnowledgeSourceProvenanc
     if (!["official", "team", "project"].includes(scope)) {
       throw new Error("knowledge pack source_provenance scope is invalid");
     }
+    const path = requiredString(item, "path");
+    if (isUnsafeKnowledgeSourcePath(path)) {
+      throw new Error("knowledge pack source_provenance path is unsafe");
+    }
     return {
       source_id: requiredString(item, "source_id"),
-      path: requiredString(item, "path"),
+      path,
       sha256: requiredString(item, "sha256"),
       license: requiredString(item, "license"),
       scope: scope as KnowledgeScope,
       imported_at: requiredString(item, "imported_at"),
     };
   });
+}
+
+function validateKnowledgeReview(value: unknown): KnowledgePackManifest["review"] {
+  if (!isRecord(value)) throw new Error("knowledge pack review must be an object");
+  const status = requiredString(value, "status");
+  if (status !== "approved" && status !== "changes_requested") {
+    throw new Error("knowledge pack review.status is invalid");
+  }
+  return {
+    status,
+    reviewer_id: requiredString(value, "reviewer_id"),
+    reviewed_at: requiredString(value, "reviewed_at"),
+    summary: requiredString(value, "summary"),
+  };
 }
 
 function sha256(value: string): string {
@@ -835,6 +918,22 @@ function countOccurrences(text: string, term: string): number {
     index = text.indexOf(term, index + term.length);
   }
   return count;
+}
+
+function bm25TermScore(options: {
+  frequency: number;
+  documentFrequency: number;
+  documentCount: number;
+  documentLength: number;
+  averageDocumentLength: number;
+}): number {
+  if (options.frequency <= 0 || options.documentFrequency <= 0) return 0;
+  const k1 = 1.2;
+  const b = 0.75;
+  const idf = Math.log(1 + (options.documentCount - options.documentFrequency + 0.5) / (options.documentFrequency + 0.5));
+  const lengthRatio = options.documentLength / Math.max(1, options.averageDocumentLength);
+  const denominator = options.frequency + k1 * (1 - b + b * lengthRatio);
+  return idf * ((options.frequency * (k1 + 1)) / denominator);
 }
 
 function snippetFor(body: string, terms: string): string;

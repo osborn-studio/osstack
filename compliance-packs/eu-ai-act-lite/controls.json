@@ -2,26 +2,36 @@
   {
     "id": "eu-automated-decision-record",
     "title": "Automated decision record",
-    "description": "Policy decision evidence records automated agent selection rationale."
+    "description": "Policy decision evidence records automated agent selection rationale.",
+    "title_zh": "自动化决策记录",
+    "description_zh": "策略决策证据会记录自动化 agent 选择依据。"
   },
   {
     "id": "eu-agent-runtime-transparency",
     "title": "Agent runtime transparency",
-    "description": "Agent runtime evidence records auth/invocation mode and role tags."
+    "description": "Agent runtime evidence records auth/invocation mode and role tags.",
+    "title_zh": "Agent 运行时透明度",
+    "description_zh": "Agent 运行时证据会记录认证/调用模式和角色标签。"
   },
   {
     "id": "eu-technical-robustness",
     "title": "Technical robustness evidence",
-    "description": "Verification results show whether the run met its technical gates."
+    "description": "Verification results show whether the run met its technical gates.",
+    "title_zh": "技术稳健性证据",
+    "description_zh": "验证结果会显示本次运行是否满足技术门禁。"
   },
   {
     "id": "eu-risk-and-safety",
     "title": "Risk and safety checks",
-    "description": "Governance findings provide deterministic safety and secure-coding signals."
+    "description": "Governance findings provide deterministic safety and secure-coding signals.",
+    "title_zh": "风险与安全检查",
+    "description_zh": "治理发现提供确定性的安全与安全编码信号。"
   },
   {
     "id": "eu-knowledge-traceability",
     "title": "Knowledge traceability",
-    "description": "Knowledge evidence records pack and chunk ids used as retrieved context."
+    "description": "Knowledge evidence records pack and chunk ids used as retrieved context.",
+    "title_zh": "知识可追溯性",
+    "description_zh": "知识证据会记录作为检索上下文使用的 pack 和 chunk id。"
   }
 ]

@@ -1,5 +1,7 @@
 import { mkdtempSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,10 +11,22 @@ let tmp: string;
 let logs: string[];
 let errors: string[];
 
+const SINGLE_BINARY_RELEASE_SECRETS = [
+  "APPLE_ID",
+  "APPLE_TEAM_ID",
+  "APPLE_APP_SPECIFIC_PASSWORD",
+  "DEVELOPER_ID_APPLICATION",
+  "MACOS_CERTIFICATE_P12",
+  "MACOS_CERTIFICATE_PASSWORD",
+].join(",");
+const ALL_RELEASE_SECRETS = `NPM_TOKEN,FLY_API_TOKEN,${SINGLE_BINARY_RELEASE_SECRETS}`;
+
 beforeEach(() => {
   tmp = mkdtempSync(join(tmpdir(), "osstack-product-entry-"));
   logs = [];
   errors = [];
+  process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
+  process.env["OSSTACK_TEST_RELEASE_SINGLE_BINARY_WORKFLOW"] = "ok";
   vi.spyOn(console, "log").mockImplementation((...args) => {
     logs.push(args.map(String).join(" "));
   });
@@ -24,11 +38,13 @@ beforeEach(() => {
 afterEach(async () => {
   vi.restoreAllMocks();
   delete process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"];
+  delete process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"];
   delete process.env["OSSTACK_TEST_RELEASE_SECRETS"];
   delete process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"];
   delete process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"];
   delete process.env["OSSTACK_TEST_RELEASE_VERSION_PR"];
   delete process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"];
+  delete process.env["OSSTACK_TEST_RELEASE_SINGLE_BINARY_WORKFLOW"];
   await rm(tmp, { recursive: true, force: true });
 });
 
@@ -92,6 +108,7 @@ describe("product entry commands", () => {
     expect(exitCode).toBe(0);
     const output = logs.join("\n");
     expect(output).toContain("5-minute quickstart");
+    expect(output).toContain("npm install -g @osstack/cli");
     expect(output).toContain("osstack doctor");
     expect(output).toContain("osstack loop enqueue");
     expect(output).toContain("osstack loop run");
@@ -110,7 +127,7 @@ describe("product entry commands", () => {
 
   it("checks release publish and deploy prerequisites", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
     process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
@@ -123,7 +140,7 @@ describe("product entry commands", () => {
       ok: boolean;
       target: string;
       readiness: { npm_publish: boolean; knowledge_cloud_deploy: boolean };
-      checks: Array<{ id: string; status: string; details?: { missing?: string[] } }>;
+      checks: Array<{ id: string; status: string; details?: { missing?: string[]; published_pack_dir?: string } }>;
       next_steps: string[];
     };
     expect(result).toMatchObject({
@@ -136,14 +153,179 @@ describe("product entry commands", () => {
     });
     expect(result.checks).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: "github_auth", status: "ok" }),
+      expect.objectContaining({ id: "github_actions", status: "ok" }),
       expect.objectContaining({ id: "repository_secrets", status: "ok" }),
+      expect.objectContaining({ id: "npm_publish_assets", status: "ok" }),
       expect.objectContaining({ id: "version_packages_pr", status: "ok" }),
       expect.objectContaining({ id: "npm_auth", status: "ok" }),
+      expect.objectContaining({ id: "knowledge_cloud_deploy_assets", status: "ok" }),
       expect.objectContaining({ id: "knowledge_cloud_workflow", status: "ok" }),
       expect.objectContaining({ id: "fly_auth", status: "ok" }),
+      expect.objectContaining({ id: "single_binary_release_assets", status: "ok" }),
+      expect.objectContaining({ id: "single_binary_workflow", status: "ok" }),
     ]));
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "knowledge_cloud_deploy_assets",
+      details: expect.objectContaining({
+        published_pack_dir: "/data/published-packs",
+      }),
+    }));
     expect(result.next_steps.join("\n")).toContain("NPM publish path is ready");
     expect(result.next_steps.join("\n")).toContain("Knowledge Cloud deploy=true is ready");
+  });
+
+  it("can include proof-core validation in release doctor readiness", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const proofDir = join(tmp, "release", "osstack-proof-release-ready");
+    await writeReleaseProofEvidence(proofDir);
+
+    const exitCode = await main(["release", "doctor", "--proof-dir", proofDir, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+    };
+    expect(result.ok).toBe(true);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "proof_validation",
+      status: "ok",
+      details: expect.objectContaining({ proof_dir: proofDir, scope: "proof-core", missing: [] }),
+    }));
+  });
+
+  it("auto-detects the latest proof directory for release doctor readiness", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const staleProofDir = join(tmp, "release", "osstack-proof-stale");
+    const latestProofDir = join(tmp, "release", "osstack-proof-latest");
+    await writeReleaseProofEvidence(staleProofDir, { omitGovernance: true });
+    await writeReleaseProofEvidence(latestProofDir);
+
+    const exitCode = await main(["release", "doctor", "--workspace", tmp, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+    };
+    expect(result.ok).toBe(true);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "proof_validation",
+      status: "ok",
+      details: expect.objectContaining({ proof_dir: latestProofDir, discovered: true }),
+    }));
+  });
+
+  it("blocks release doctor when supplied proof-core evidence is malformed", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const proofDir = join(tmp, "release", "osstack-proof-release-bad");
+    await writeReleaseProofEvidence(proofDir, { omitGovernance: true });
+
+    const exitCode = await main(["release", "doctor", "--proof-dir", proofDir, "--json"]);
+
+    expect(exitCode).toBe(1);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      checks: Array<{ id: string; status: string; details?: { missing?: Array<{ control_id: string }> } }>;
+      next_steps: string[];
+    };
+    expect(result.ok).toBe(false);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "proof_validation",
+      status: "error",
+      details: expect.objectContaining({
+        missing: expect.arrayContaining([expect.objectContaining({ control_id: "secure-coding-control" })]),
+      }),
+    }));
+    expect(result.next_steps.join("\n")).toContain("Fix missing or malformed proof evidence before publishing or deploying.");
+  });
+
+  it("tells operators to regenerate proof artifacts when file integrity fails", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const proofDir = join(tmp, "release", "osstack-proof-release-tampered");
+    await writeReleaseProofEvidence(proofDir);
+    await writeFile(join(proofDir, "report.md"), "# Tampered release proof\n");
+
+    const exitCode = await main(["release", "doctor", "--proof-dir", proofDir, "--json"]);
+
+    expect(exitCode).toBe(1);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      checks: Array<{ id: string; status: string; details?: { file_integrity?: { issues?: Array<{ code: string }> } } }>;
+      next_steps: string[];
+    };
+    expect(result.ok).toBe(false);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "proof_validation",
+      status: "error",
+      details: expect.objectContaining({
+        file_integrity: expect.objectContaining({
+          issues: expect.arrayContaining([expect.objectContaining({ code: "sha256_mismatch" })]),
+        }),
+      }),
+    }));
+    expect(result.next_steps.join("\n")).toContain("Regenerate or repair proof pack artifacts before publishing or deploying.");
+  });
+
+  it("tells operators to repair compliance evidence when proof compliance claims are invalid", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const proofDir = join(tmp, "release", "osstack-proof-release-bad-compliance");
+    await writeReleaseProofEvidence(proofDir);
+    const manifestPath = join(proofDir, "manifest.json");
+    const manifest = JSON.parse(await readFile(manifestPath, "utf-8")) as {
+      compliance_reports?: Array<{ pack_id: string; path: string; certification_claim: string }>;
+    };
+    manifest.compliance_reports = [{
+      pack_id: "engineering-readiness",
+      path: "compliance-engineering-readiness.md",
+      certification_claim: "soc2",
+    }];
+    await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+
+    const exitCode = await main(["release", "doctor", "--proof-dir", proofDir, "--json"]);
+
+    expect(exitCode).toBe(1);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      checks: Array<{ id: string; status: string; details?: { file_integrity?: { issues?: Array<{ code: string }> } } }>;
+      next_steps: string[];
+    };
+    expect(result.ok).toBe(false);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "proof_validation",
+      status: "error",
+      details: expect.objectContaining({
+        file_integrity: expect.objectContaining({
+          issues: expect.arrayContaining([expect.objectContaining({ code: "compliance_report_invalid_certification_claim" })]),
+        }),
+      }),
+    }));
+    expect(result.next_steps.join("\n")).toContain("Remove external certification claims and repair compliance report references before publishing or deploying.");
   });
 
   it("reports missing Knowledge Cloud deploy secrets without blocking npm readiness", async () => {
@@ -206,6 +388,120 @@ describe("product entry commands", () => {
     expect(result.next_steps.join("\n")).toContain("Review Version Packages PR #5; approve or rerun its latest CI workflow");
   });
 
+  it("blocks release readiness when GitHub Actions cannot start runners", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "billing";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+
+    const exitCode = await main(["release", "plan", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ready: boolean;
+      safe_to_execute: boolean;
+      blockers: string[];
+      operator_commands: string[];
+      validation_commands: string[];
+    };
+    expect(result.ready).toBe(false);
+    expect(result.safe_to_execute).toBe(false);
+    expect(result.blockers).toContain("Fix GitHub Actions billing or spending limit before publishing or deploying.");
+    expect(result.operator_commands).toContain("Open GitHub Billing & plans and fix failed payments or increase the Actions spending limit.");
+    expect(result.validation_commands).toContain("pnpm smoke:single-binary-release-pack");
+    expect(result.validation_commands).toContain("pnpm smoke:single-binary-release-publish");
+  });
+
+  it("blocks release readiness when GitHub Actions fails before assigning a runner", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "allocation";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+
+    const exitCode = await main(["release", "plan", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ready: boolean;
+      safe_to_execute: boolean;
+      blockers: string[];
+      operator_commands: string[];
+    };
+    expect(result.ready).toBe(false);
+    expect(result.safe_to_execute).toBe(false);
+    expect(result.blockers).toContain("Fix GitHub Actions runner allocation before publishing or deploying.");
+    expect(result.operator_commands).toContain("Open GitHub Actions settings/billing and confirm ubuntu-latest jobs can be assigned a runner.");
+  });
+
+  it("includes auto-detected proof validation blockers in release plans", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    await writeReleaseProofEvidence(join(tmp, "release", "osstack-proof-latest"), { omitGovernance: true });
+
+    const exitCode = await main(["release", "plan", "--workspace", tmp, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ready: boolean;
+      safe_to_execute: boolean;
+      blockers: string[];
+      validation_commands: string[];
+    };
+    expect(result.ready).toBe(false);
+    expect(result.safe_to_execute).toBe(false);
+    expect(result.blockers).toContain("Fix missing or malformed proof evidence before publishing or deploying.");
+    expect(result.validation_commands).toContain("osstack proof validate <run_id> --proof-dir release/osstack-proof-<run_id> --json");
+  });
+
+  it("lets release plans validate an explicitly supplied proof directory", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    await writeReleaseProofEvidence(join(tmp, "release", "osstack-proof-latest"), { omitGovernance: true });
+    const explicitProofDir = join(tmp, "custom-proof", "osstack-proof-release-ready");
+    await writeReleaseProofEvidence(explicitProofDir);
+
+    const exitCode = await main([
+      "release",
+      "plan",
+      "--workspace",
+      tmp,
+      "--proof-dir",
+      explicitProofDir,
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ready: boolean;
+      safe_to_execute: boolean;
+      blockers: string[];
+      validation_commands: string[];
+    };
+    expect(result.ready).toBe(true);
+    expect(result.safe_to_execute).toBe(true);
+    expect(result.blockers).not.toContain("Fix missing or malformed proof evidence before publishing or deploying.");
+    expect(result.validation_commands).toContain(
+      `osstack release doctor --target all --proof-dir ${explicitProofDir} --output release-readiness.md --json`,
+    );
+    expect(result.validation_commands).toContain(
+      `osstack proof validate <run_id> --proof-dir ${explicitProofDir} --json`,
+    );
+  });
+
   it("surfaces missing Knowledge Cloud deploy workflow status", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
@@ -252,6 +548,25 @@ describe("product entry commands", () => {
     expect(markdown).toContain("| npm_publish | not_ready |");
   });
 
+  it("renders release readiness blockers for GitHub runner allocation failures", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "allocation";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const output = join(tmp, "release-readiness-runner.md");
+
+    const exitCode = await main(["release", "doctor", "--output", output, "--json"]);
+
+    expect(exitCode).toBe(1);
+    const markdown = await readFile(output, "utf-8");
+    expect(markdown).toContain("## Blockers");
+    expect(markdown).toContain("- Fix GitHub Actions runner allocation before publishing or deploying.");
+    expect(markdown).toContain("\"runner_allocation\": true");
+  });
+
   it("prints a release action plan from current readiness", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "";
@@ -269,6 +584,7 @@ describe("product entry commands", () => {
       operator_commands: string[];
       validation_commands: string[];
       publish_commands: string[];
+      post_release_validation_commands: string[];
     };
     expect(result.target).toBe("npm");
     expect(result.ready).toBe(false);
@@ -278,10 +594,60 @@ describe("product entry commands", () => {
     expect(result.operator_commands).toContain("gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\"");
     expect(result.operator_commands).toContain("Open the latest Version Packages PR CI run and approve or rerun it if GitHub requires manual action.");
     expect(result.validation_commands).toContain("osstack release doctor --target npm --output release-readiness.md --json");
+    expect(result.validation_commands).toContain("osstack proof validate <run_id> --proof-dir release/osstack-proof-<run_id> --json");
+    expect(result.validation_commands).toContain("pnpm smoke:npm-install");
     expect(result.validation_commands).toContain("gh pr view 5 --json mergeable,mergeStateStatus,statusCheckRollup,url");
     expect(result.validation_commands).toContain("gh run list --branch changeset-release/main --limit 5");
     expect(result.publish_commands).toContain("gh pr merge 5 --squash --delete-branch");
     expect(result.publish_commands).toContain("npm install -g @osstack/cli");
+    expect(result.post_release_validation_commands).toContain("npm view @osstack/cli version --json");
+    expect(result.post_release_validation_commands).toContain("npm install -g @osstack/cli");
+    expect(result.post_release_validation_commands).toContain("osstack release doctor --target npm --json");
+    expect(result.post_release_validation_commands).toContain("osstack doctor --workspace . --json");
+  });
+
+  it("writes a full release action plan with runbook smoke coverage", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = ALL_RELEASE_SECRETS;
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SINGLE_BINARY_WORKFLOW"] = "ok";
+    const output = join(tmp, "full-release-plan.md");
+
+    const exitCode = await main(["release", "plan", "--target", "all", "--output", output, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ready: boolean;
+      safe_to_execute: boolean;
+      validation_commands: string[];
+      publish_commands: string[];
+      deploy_commands: string[];
+      post_release_validation_commands: string[];
+    };
+    expect(result.ready).toBe(true);
+    expect(result.safe_to_execute).toBe(true);
+    expect(result.validation_commands).toContain("pnpm smoke:release-plan");
+    expect(result.validation_commands).toContain("pnpm smoke:npm-install");
+    expect(result.validation_commands).toContain("pnpm smoke:knowledge-cloud:deploy");
+    expect(result.validation_commands).toContain("pnpm smoke:single-binary-release-pack");
+    expect(result.publish_commands).toContain("npm install -g @osstack/cli");
+    expect(result.deploy_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+    expect(result.post_release_validation_commands).toContain("npm view @osstack/cli version --json");
+    expect(result.post_release_validation_commands).toContain("osstack release doctor --target npm --json");
+    expect(result.post_release_validation_commands).toContain(
+      "osstack release doctor --target knowledge-cloud --cloud-url https://knowledge.osstack.ai --json",
+    );
+    expect(result.post_release_validation_commands).toContain("osstack release doctor --target single-binary --json");
+    expect(result.post_release_validation_commands).toContain("shasum -a 256 -c sha256sums.txt");
+    const markdown = await readFile(output, "utf-8");
+    expect(markdown).toContain("## Validation Commands");
+    expect(markdown).toContain("pnpm smoke:release-plan");
+    expect(markdown).toContain("## Post-Release Validation Commands");
+    expect(markdown).toContain("osstack release doctor --target knowledge-cloud --cloud-url https://knowledge.osstack.ai --json");
   });
 
   it("writes a Knowledge Cloud release action plan", async () => {
@@ -290,36 +656,614 @@ describe("product entry commands", () => {
     process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "warn";
     process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
     const output = join(tmp, "knowledge-release-plan.md");
+    const cloud = await startKnowledgeCloudHandoffServer({
+      healthStatus: 200,
+      healthBody: { ok: true, service: "osstack-knowledge-cloud", packs: 6 },
+      searchStatus: 200,
+      searchBody: {
+        packs: [{ id: "proof-checksum-pack", version: "0.1.0" }],
+        results: [{ chunk_id: "proof-checksum-pack/checksum", pack_id: "proof-checksum-pack", score: 1 }],
+      },
+    });
 
-    const exitCode = await main(["release", "plan", "--target", "knowledge-cloud", "--output", output, "--json"]);
+    try {
+      const exitCode = await main([
+        "release",
+        "plan",
+        "--target",
+        "knowledge-cloud",
+        "--cloud-url",
+        cloud.url,
+        "--output",
+        output,
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(0);
+      const result = JSON.parse(logs.join("\n")) as {
+        ready: boolean;
+        safe_to_execute: boolean;
+        blockers: string[];
+        validation_commands: string[];
+        deploy_commands: string[];
+        post_release_validation_commands: string[];
+        output: string;
+      };
+      expect(result.ready).toBe(false);
+      expect(result.safe_to_execute).toBe(false);
+      expect(result.output).toBe(output);
+      expect(result.blockers.join("\n")).toContain("FLY_API_TOKEN");
+      expect(result.validation_commands).toContain(
+        `osstack release doctor --target knowledge-cloud --cloud-url ${cloud.url} --output release-readiness.md --json`,
+      );
+      expect(result.validation_commands).toContain("osstack proof validate <run_id> --proof-dir release/osstack-proof-<run_id> --json");
+      expect(result.validation_commands).toContain("pnpm smoke:knowledge-cloud:deploy");
+      expect(result.validation_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false");
+      expect(result.deploy_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+      expect(result.deploy_commands).toContain(`osstack knowledge login --cloud-url ${cloud.url}`);
+      expect(result.deploy_commands).toContain(`osstack knowledge sync --cloud-url ${cloud.url} --json`);
+      expect(result.deploy_commands).toContain(`osstack knowledge search "proof pack checksum" --cloud-url ${cloud.url} --json`);
+      expect(result.post_release_validation_commands).toContain(
+        `osstack release doctor --target knowledge-cloud --cloud-url ${cloud.url} --json`,
+      );
+      expect(result.post_release_validation_commands).toContain(
+        `osstack knowledge search "proof pack checksum" --cloud-url ${cloud.url} --json`,
+      );
+      const markdown = await readFile(output, "utf-8");
+      expect(markdown).toContain("# Osstack Release Action Plan");
+      expect(markdown).toContain("Target: `knowledge-cloud`");
+      expect(markdown).toContain("Safe to execute publish/deploy commands: `no`");
+      expect(markdown).toContain("Do not run publish or deploy commands until blockers are resolved.");
+      expect(markdown).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+      expect(markdown).toContain("## Post-Release Validation Commands");
+      expect(markdown).toContain(`osstack release doctor --target knowledge-cloud --cloud-url ${cloud.url} --json`);
+    } finally {
+      await cloud.close();
+    }
+  });
+
+  it("checks a deployed Knowledge Cloud health URL before deploy handoff", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const cloud = await startKnowledgeCloudHandoffServer({
+      healthStatus: 200,
+      healthBody: { ok: true, service: "osstack-knowledge-cloud", packs: 6 },
+      searchStatus: 200,
+      searchBody: {
+        packs: [{ id: "proof-checksum-pack", version: "0.1.0" }],
+        results: [{ chunk_id: "proof-checksum-pack/checksum", pack_id: "proof-checksum-pack", score: 1 }],
+      },
+    });
+
+    try {
+      const exitCode = await main([
+        "release",
+        "doctor",
+        "--target",
+        "knowledge-cloud",
+        "--cloud-url",
+        cloud.url,
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(0);
+      const result = JSON.parse(logs.join("\n")) as {
+        ok: boolean;
+        readiness: { knowledge_cloud_deploy: boolean };
+        checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+      };
+      expect(result.ok).toBe(true);
+      expect(result.readiness.knowledge_cloud_deploy).toBe(true);
+      expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_health",
+        status: "ok",
+        details: expect.objectContaining({ cloud_url: cloud.url, packs: 6 }),
+      }));
+      expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_search",
+        status: "ok",
+        details: expect.objectContaining({
+          cloud_url: cloud.url,
+          query: "proof pack checksum",
+          result_count: 1,
+        }),
+      }));
+      expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_sync",
+        status: "ok",
+        details: expect.objectContaining({
+          cloud_url: cloud.url,
+          pack_count: 1,
+          first_pack_id: "proof-checksum-pack",
+        }),
+      }));
+      expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_audit",
+        status: "ok",
+        details: expect.objectContaining({
+          cloud_url: cloud.url,
+          audit_event_count: 0,
+          tenant_event_leak: false,
+        }),
+      }));
+    } finally {
+      await cloud.close();
+    }
+  });
+
+  it("blocks Knowledge Cloud deploy handoff when the deployed health URL is unhealthy", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const cloud = await startKnowledgeCloudHandoffServer({
+      healthStatus: 503,
+      healthBody: { ok: false, service: "osstack-knowledge-cloud" },
+      searchStatus: 200,
+      searchBody: {
+        packs: [{ id: "proof-checksum-pack", version: "0.1.0" }],
+        results: [{ chunk_id: "proof-checksum-pack/checksum", pack_id: "proof-checksum-pack", score: 1 }],
+      },
+    });
+
+    try {
+      const exitCode = await main([
+        "release",
+        "doctor",
+        "--target",
+        "knowledge-cloud",
+        "--cloud-url",
+        cloud.url,
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(1);
+      const result = JSON.parse(logs.join("\n")) as {
+        ok: boolean;
+        readiness: { knowledge_cloud_deploy: boolean };
+        checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+        next_steps: string[];
+      };
+      expect(result.ok).toBe(false);
+      expect(result.readiness.knowledge_cloud_deploy).toBe(false);
+      expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_health",
+        status: "error",
+      }));
+      expect(result.next_steps.join("\n")).toContain("Fix the deployed Knowledge Cloud /healthz endpoint before handoff.");
+    } finally {
+      await cloud.close();
+    }
+  });
+
+  it("blocks Knowledge Cloud deploy handoff when deployed search returns no results", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const cloud = await startKnowledgeCloudHandoffServer({
+      healthStatus: 200,
+      healthBody: { ok: true, service: "osstack-knowledge-cloud", packs: 6 },
+      searchStatus: 200,
+      searchBody: { packs: [{ id: "proof-checksum-pack", version: "0.1.0" }], results: [] },
+    });
+
+    try {
+      const exitCode = await main([
+        "release",
+        "doctor",
+        "--target",
+        "knowledge-cloud",
+        "--cloud-url",
+        cloud.url,
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(1);
+      const result = JSON.parse(logs.join("\n")) as {
+        ok: boolean;
+        readiness: { knowledge_cloud_deploy: boolean };
+        checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+        next_steps: string[];
+      };
+      expect(result.ok).toBe(false);
+      expect(result.readiness.knowledge_cloud_deploy).toBe(false);
+      expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_search",
+        status: "error",
+        details: expect.objectContaining({ result_count: 0 }),
+      }));
+      expect(result.next_steps.join("\n")).toContain("Fix deployed Knowledge Cloud search before handoff.");
+    } finally {
+      await cloud.close();
+    }
+  });
+
+  it("blocks Knowledge Cloud deploy handoff when deployed sync returns no packs", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const cloud = await startKnowledgeCloudHandoffServer({
+      healthStatus: 200,
+      healthBody: { ok: true, service: "osstack-knowledge-cloud", packs: 6 },
+      searchStatus: 200,
+      searchBody: {
+        packs: [{ id: "proof-checksum-pack", version: "0.1.0" }],
+        results: [{ chunk_id: "proof-checksum-pack/checksum", pack_id: "proof-checksum-pack", score: 1 }],
+      },
+      syncStatus: 200,
+      syncBody: { packs: [] },
+    });
+
+    try {
+      const exitCode = await main([
+        "release",
+        "doctor",
+        "--target",
+        "knowledge-cloud",
+        "--cloud-url",
+        cloud.url,
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(1);
+      const result = JSON.parse(logs.join("\n")) as {
+        ok: boolean;
+        readiness: { knowledge_cloud_deploy: boolean };
+        checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+        next_steps: string[];
+      };
+      expect(result.ok).toBe(false);
+      expect(result.readiness.knowledge_cloud_deploy).toBe(false);
+      expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_sync",
+        status: "error",
+        details: expect.objectContaining({ pack_count: 0 }),
+      }));
+      expect(result.next_steps.join("\n")).toContain("Fix deployed Knowledge Cloud sync before handoff.");
+    } finally {
+      await cloud.close();
+    }
+  });
+
+  it("includes deployed Knowledge Cloud sync failures as release plan blockers", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const cloud = await startKnowledgeCloudHandoffServer({
+      healthStatus: 200,
+      healthBody: { ok: true, service: "osstack-knowledge-cloud", packs: 6 },
+      searchStatus: 200,
+      searchBody: {
+        packs: [{ id: "proof-checksum-pack", version: "0.1.0" }],
+        results: [{ chunk_id: "proof-checksum-pack/checksum", pack_id: "proof-checksum-pack", score: 1 }],
+      },
+      syncStatus: 200,
+      syncBody: { packs: [] },
+    });
+
+    try {
+      const exitCode = await main([
+        "release",
+        "plan",
+        "--target",
+        "knowledge-cloud",
+        "--cloud-url",
+        cloud.url,
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(0);
+      const result = JSON.parse(logs.join("\n")) as {
+        ready: boolean;
+        safe_to_execute: boolean;
+        blockers: string[];
+      };
+      expect(result.ready).toBe(false);
+      expect(result.safe_to_execute).toBe(false);
+      expect(result.blockers).toContain("Fix deployed Knowledge Cloud sync before handoff.");
+    } finally {
+      await cloud.close();
+    }
+  });
+
+  it("blocks Knowledge Cloud deploy handoff when deployed audit leaks tenant events", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "FLY_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_FLY_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const cloud = await startKnowledgeCloudHandoffServer({
+      healthStatus: 200,
+      healthBody: { ok: true, service: "osstack-knowledge-cloud", packs: 6 },
+      searchStatus: 200,
+      searchBody: {
+        packs: [{ id: "proof-checksum-pack", version: "0.1.0" }],
+        results: [{ chunk_id: "proof-checksum-pack/checksum", pack_id: "proof-checksum-pack", score: 1 }],
+      },
+      auditBody: {
+        filters: { action: "search", status: "ok", limit: 1 },
+        events: [{ event_id: "audit-leak", action: "search", status: "ok", tenant_id: "team_alpha" }],
+      },
+    });
+
+    try {
+      const exitCode = await main([
+        "release",
+        "doctor",
+        "--target",
+        "knowledge-cloud",
+        "--cloud-url",
+        cloud.url,
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(1);
+      const result = JSON.parse(logs.join("\n")) as {
+        ok: boolean;
+        readiness: { knowledge_cloud_deploy: boolean };
+        checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+        next_steps: string[];
+      };
+      expect(result.ok).toBe(false);
+      expect(result.readiness.knowledge_cloud_deploy).toBe(false);
+      expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_audit",
+        status: "error",
+        details: expect.objectContaining({ tenant_event_leak: true }),
+      }));
+      expect(result.next_steps.join("\n")).toContain("Fix deployed Knowledge Cloud audit endpoint before handoff.");
+    } finally {
+      await cloud.close();
+    }
+  });
+
+  it("checks single-binary release assets as an independent release target", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = SINGLE_BINARY_RELEASE_SECRETS;
+
+    const exitCode = await main(["release", "doctor", "--target", "single-binary", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      target: string;
+      readiness: { single_binary_release: boolean };
+      checks: Array<{ id: string; status: string }>;
+    };
+    expect(result.ok).toBe(true);
+    expect(result.target).toBe("single-binary");
+    expect(result.readiness.single_binary_release).toBe(true);
+    expect(result.checks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "github_auth", status: "ok" }),
+      expect.objectContaining({ id: "github_actions", status: "ok" }),
+      expect.objectContaining({ id: "single_binary_release_assets", status: "ok" }),
+      expect.objectContaining({ id: "single_binary_workflow", status: "ok" }),
+    ]));
+  });
+
+  it("requires notarization readiness for single-binary release assets", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = SINGLE_BINARY_RELEASE_SECRETS;
+
+    const exitCode = await main(["release", "doctor", "--target", "single-binary", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      checks: Array<{ id: string; status: string; details?: { checked?: string[]; violations?: string[] } }>;
+    };
+    const assetCheck = result.checks.find((check) => check.id === "single_binary_release_assets");
+    expect(assetCheck).toEqual(expect.objectContaining({ status: "ok" }));
+    expect(assetCheck?.details?.checked).toContain("scripts/notarize-single-binary.mjs");
+    expect(assetCheck?.details?.violations ?? []).toEqual([]);
+  });
+
+  it("blocks public single-binary release when Apple signing secrets are missing", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "";
+
+    const exitCode = await main(["release", "plan", "--target", "single-binary", "--json"]);
 
     expect(exitCode).toBe(0);
     const result = JSON.parse(logs.join("\n")) as {
       ready: boolean;
       safe_to_execute: boolean;
       blockers: string[];
-      validation_commands: string[];
-      deploy_commands: string[];
-      output: string;
+      operator_commands: string[];
     };
     expect(result.ready).toBe(false);
     expect(result.safe_to_execute).toBe(false);
+    expect(result.blockers).toContain(
+      "Add Apple notarization and Developer ID repository secrets before running Single Binary Release dry_run=false.",
+    );
+    expect(result.operator_commands).toContain("gh secret set APPLE_ID --repo gilosbornhello/osstack --body \"$APPLE_ID\"");
+    expect(result.operator_commands).toContain(
+      "gh secret set MACOS_CERTIFICATE_P12 --repo gilosbornhello/osstack --body \"$MACOS_CERTIFICATE_P12\"",
+    );
+  });
+
+  it("writes a single-binary release action plan", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = SINGLE_BINARY_RELEASE_SECRETS;
+    const output = join(tmp, "single-binary-release-plan.md");
+
+    const exitCode = await main(["release", "plan", "--target", "single-binary", "--output", output, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ready: boolean;
+      safe_to_execute: boolean;
+      validation_commands: string[];
+      publish_commands: string[];
+      deploy_commands: string[];
+      post_release_validation_commands: string[];
+      output: string;
+    };
+    expect(result.ready).toBe(true);
+    expect(result.safe_to_execute).toBe(true);
     expect(result.output).toBe(output);
-    expect(result.blockers.join("\n")).toContain("FLY_API_TOKEN");
-    expect(result.validation_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false");
-    expect(result.deploy_commands).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+    expect(result.validation_commands).toContain("pnpm smoke:single-binary-release-pack");
+    expect(result.validation_commands).toContain("pnpm smoke:single-binary-release-publish");
+    expect(result.validation_commands).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=true");
+    expect(result.publish_commands).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false");
+    expect(result.deploy_commands).toEqual([]);
+    expect(result.post_release_validation_commands).toContain("gh release view v<version> --repo gilosbornhello/osstack");
+    expect(result.post_release_validation_commands).toContain(
+      "gh release download v<version> --repo gilosbornhello/osstack --pattern 'osstack-*.tar.gz' --pattern 'osstack-*.archive.json' --pattern 'osstack-*.sbom.spdx.json' --pattern 'sha256sums.txt'",
+    );
+    expect(result.post_release_validation_commands).toContain("osstack release doctor --target single-binary --json");
+    expect(result.post_release_validation_commands).toContain("test -s osstack-*.archive.json && test -s osstack-*.sbom.spdx.json");
+    expect(result.post_release_validation_commands).toContain("tar -xzf osstack-*.tar.gz");
+    expect(result.post_release_validation_commands).toContain("shasum -a 256 -c sha256sums.txt");
     const markdown = await readFile(output, "utf-8");
-    expect(markdown).toContain("# Osstack Release Action Plan");
-    expect(markdown).toContain("Target: `knowledge-cloud`");
-    expect(markdown).toContain("Safe to execute publish/deploy commands: `no`");
-    expect(markdown).toContain("Do not run publish or deploy commands until blockers are resolved.");
-    expect(markdown).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true");
+    expect(markdown).toContain("Target: `single-binary`");
+    expect(markdown).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false");
+    expect(markdown).toContain("gh release view v<version> --repo gilosbornhello/osstack");
   });
 
   it("rejects unknown release doctor targets", async () => {
     const exitCode = await main(["release", "doctor", "--target", "staging", "--json"]);
 
     expect(exitCode).toBe(1);
-    expect(errors.join("\n")).toContain("release doctor --target must be all, npm, or knowledge-cloud");
+    expect(errors.join("\n")).toContain("release doctor --target must be all, npm, knowledge-cloud, or single-binary");
   });
 });
+
+async function writeReleaseProofEvidence(proofDir: string, options: { omitGovernance?: boolean } = {}): Promise<void> {
+  await mkdir(proofDir, { recursive: true });
+  const artifacts: Array<{ path: string; sha256: string; bytes: number }> = [];
+  const writeArtifact = async (path: string, content: string): Promise<void> => {
+    await writeFile(join(proofDir, path), content);
+    artifacts.push({
+      path,
+      sha256: createHash("sha256").update(content).digest("hex"),
+      bytes: Buffer.byteLength(content),
+    });
+  };
+
+  await writeArtifact("report.md", "# Release Proof\n");
+  await writeArtifact("verify-results.json", JSON.stringify({
+    status: "pass",
+    results: [{
+      task_id: "release-task",
+      pass: true,
+      score: 1,
+      reviewer_agent_id: "local-verifier",
+      summary: "release verification passed",
+      event_seq: 2,
+    }],
+  }, null, 2));
+  await writeArtifact("policy-decision.json", JSON.stringify({
+    status: "recorded",
+    decisions: [{
+      task_id: "release-task",
+      agent_id: "codex-cli",
+      auth_mode: "subprocess/login-reuse",
+      roles: ["coding", "test-verify", "release/proof"],
+      reason: "matched release capability",
+      event_seq: 1,
+    }],
+  }, null, 2));
+  await writeArtifact("agent-runtime.json", JSON.stringify({
+    status: "recorded",
+    agents: [{
+      agent_id: "codex-cli",
+      auth_mode: "subprocess/login-reuse",
+      roles: ["coding", "test-verify", "release/proof"],
+      plan_event_seqs: [1],
+    }],
+  }, null, 2));
+  if (options.omitGovernance !== true) {
+    await writeArtifact("governance-results.json", JSON.stringify({ status: "pass", findings: [] }, null, 2));
+  }
+  await writeArtifact("worktree-status.json", JSON.stringify({
+    status: "recorded",
+    entries: [{
+      task_id: "release-task",
+      status: "merged",
+      branch: "codex/release-task",
+      commit: "abc123",
+      path: join(proofDir, "..", "worktree"),
+      event_seq: 3,
+    }],
+  }, null, 2));
+  await writeArtifact("sha256sums.txt", artifacts.map((artifact) => `${artifact.sha256}  ${artifact.path}`).join("\n") + "\n");
+  await writeFile(join(proofDir, "manifest.json"), JSON.stringify({
+    schema_version: 1,
+    kind: "osstack.proof_pack",
+    osstack_version: "0.1.0",
+    run_id: "release-ready",
+    loop_id: "release-ready",
+    agent_id: "codex-cli",
+    agent_ids: ["codex-cli"],
+    generated_from: "LOOP-STATE.json",
+    created_at: "2026-06-22T00:00:00.000Z",
+    generated_at: "2026-06-22T00:00:00.000Z",
+    artifacts,
+  }, null, 2));
+}
+
+async function startKnowledgeCloudHandoffServer(options: {
+  healthStatus: number;
+  healthBody: unknown;
+  searchStatus: number;
+  searchBody: unknown;
+  syncStatus?: number;
+  syncBody?: unknown;
+  auditStatus?: number;
+  auditBody?: unknown;
+}): Promise<{ url: string; close: () => Promise<void> }> {
+  const server = createServer((req, res) => {
+    if (req.url === "/healthz") {
+      res.writeHead(options.healthStatus, { "content-type": "application/json" });
+      res.end(JSON.stringify(options.healthBody));
+      return;
+    }
+    if (req.url === "/v1/search" && req.method === "POST") {
+      res.writeHead(options.searchStatus, { "content-type": "application/json" });
+      res.end(JSON.stringify(options.searchBody));
+      return;
+    }
+    if (req.url === "/v1/sync" && req.method === "POST") {
+      res.writeHead(options.syncStatus ?? 200, { "content-type": "application/json" });
+      res.end(JSON.stringify(options.syncBody ?? { packs: [{ id: "proof-checksum-pack", version: "0.1.0" }] }));
+      return;
+    }
+    if (req.url === "/v1/audit" && req.method === "POST") {
+      res.writeHead(options.auditStatus ?? 200, { "content-type": "application/json" });
+      res.end(JSON.stringify(options.auditBody ?? { filters: {}, events: [] }));
+      return;
+    }
+    res.writeHead(404, { "content-type": "application/json" });
+    res.end(JSON.stringify({ error: "not found" }));
+  });
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      server.off("error", reject);
+      resolve();
+    });
+  });
+  const address = server.address();
+  if (address === null || typeof address === "string") throw new Error("test health server did not bind TCP");
+  return {
+    url: `http://127.0.0.1:${address.port}`,
+    close: () => closeServer(server),
+  };
+}
+
+function closeServer(server: Server): Promise<void> {
+  return new Promise((resolve, reject) => {
+    server.close((error) => {
+      if (error !== undefined) reject(error);
+      else resolve();
+    });
+  });
+}

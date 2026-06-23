@@ -6,7 +6,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { connect, type Socket } from "node:net";
 import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, extname, isAbsolute, join, relative } from "node:path";
+import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
@@ -14,9 +14,11 @@ import { agentAuthMode, defaultAdapters, rolesForCapabilityKinds } from "@osstac
 import {
   getCompliancePack,
   listCompliancePacks,
+  loadProofEvidence,
   renderComplianceReport,
   renderComplianceReportFromProofDir,
   renderProofViewFromProofDir,
+  validateProofEvidence,
   type ProofAudience,
 } from "@osstack/compliance";
 import { getAgentScorecard, listAgentScorecards, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson } from "@osstack/core";
@@ -228,9 +230,11 @@ Project commands:
                       Product readiness check: loop + agents + next steps
   examples [--json]   Print runnable workflow examples
   guide [--output P]  Print or write the 5-minute quickstart
-  release doctor [--target all|npm|knowledge-cloud] [--json]
+  release doctor [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
                       Check publish/deploy prerequisites: GitHub auth, repo
                       secrets, npm auth, and Fly.io deploy readiness
+  release plan [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
+                      Generate a blocker-aware publish/deploy runbook
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
   deliver <prompt> [--verify CMD] [--auto-agent] [--worktree]
                       Product entry: task queue -> loop -> report/scorecard/proof
@@ -768,27 +772,109 @@ interface ReleaseDoctorCheck {
 
 interface ReleaseDoctorResult {
   ok: boolean;
-  target: "all" | "npm" | "knowledge-cloud";
+  target: "all" | "npm" | "knowledge-cloud" | "single-binary";
   checks: ReleaseDoctorCheck[];
   readiness: {
     npm_publish: boolean;
     knowledge_cloud_deploy: boolean;
+    single_binary_release: boolean;
   };
   next_steps: string[];
   output?: string;
 }
+
+interface ReleaseDoctorOptions {
+  workspacePath?: string;
+  proofDir?: string;
+  cloudUrl?: string;
+}
+
+type ProofFileIntegrityIssueCode =
+  | "manifest_malformed"
+  | "manifest_invalid_kind"
+  | "manifest_invalid_schema_version"
+  | "manifest_unexpected_field"
+  | "manifest_missing_osstack_version"
+  | "manifest_missing_run_id"
+  | "manifest_missing_loop_id"
+  | "manifest_missing_agent_id"
+  | "manifest_missing_agent_ids"
+  | "manifest_missing_generated_from"
+  | "manifest_missing_created_at"
+  | "manifest_missing_generated_at"
+  | "artifact_malformed"
+  | "artifact_unexpected_field"
+  | "artifact_invalid_sha256"
+  | "artifact_invalid_bytes"
+  | "compliance_report_malformed"
+  | "compliance_report_unexpected_field"
+  | "compliance_report_invalid_certification_claim"
+  | "compliance_report_missing_artifact"
+  | "duplicate_artifact_path"
+  | "path_outside_proof_dir"
+  | "missing_artifact"
+  | "bytes_mismatch"
+  | "sha256_mismatch"
+  | "sha256sums_missing"
+  | "sha256sums_malformed"
+  | "sha256sums_missing_entry"
+  | "sha256sums_extra_entry"
+  | "sha256sums_mismatch";
+
+interface ProofFileIntegrityIssue {
+  path: string;
+  code: ProofFileIntegrityIssueCode;
+  expected?: string | number;
+  actual?: string | number;
+}
+
+interface ProofFileIntegrityValidation {
+  ok: boolean;
+  issues: ProofFileIntegrityIssue[];
+}
+
+type ProofArchiveIntegrityIssueCode =
+  | "proof_zip_unreadable"
+  | "proof_zip_missing_entry"
+  | "proof_zip_extra_entry"
+  | "proof_zip_duplicate_entry";
+
+interface ProofArchiveIntegrityIssue {
+  path: string;
+  code: ProofArchiveIntegrityIssueCode;
+}
+
+interface ProofArchiveIntegrityValidation {
+  ok: boolean;
+  checked: boolean;
+  proof_zip: string;
+  issues: ProofArchiveIntegrityIssue[];
+}
+
+const SINGLE_BINARY_RELEASE_SECRETS = [
+  "APPLE_ID",
+  "APPLE_TEAM_ID",
+  "APPLE_APP_SPECIFIC_PASSWORD",
+  "DEVELOPER_ID_APPLICATION",
+  "MACOS_CERTIFICATE_P12",
+  "MACOS_CERTIFICATE_PASSWORD",
+];
 
 async function handleReleaseCommand(args: string[]): Promise<number> {
   const sub = args[0];
   if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack release — publish/deploy readiness
 
-  osstack release doctor [--target all|npm|knowledge-cloud] [--json]
-  osstack release plan [--target all|npm|knowledge-cloud] [--output P] [--json]
+  osstack release doctor [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--json]
+  osstack release plan [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--output P] [--json]
 
 Checks:
   - GitHub CLI authentication for repository operations
+  - GitHub Actions runner availability for release/deploy workflows
   - repository secrets NPM_TOKEN and FLY_API_TOKEN
+  - Apple notarization and Developer ID secrets for single-binary release
+  - optional proof-core evidence validation with --proof-dir
+  - optional deployed Knowledge Cloud /healthz validation with --cloud-url
   - local npm login for manual publishing
   - local flyctl login for manual Knowledge Cloud deploy debugging
 `);
@@ -809,17 +895,28 @@ interface ReleaseActionPlan {
   validation_commands: string[];
   publish_commands: string[];
   deploy_commands: string[];
+  post_release_validation_commands: string[];
   output?: string;
 }
 
 async function handleReleasePlanCommand(args: string[]): Promise<number> {
   const target = parseReleaseDoctorTarget(flagValue(args, "--target") ?? "all");
   if (target === undefined) {
-    console.error("osstack: release plan --target must be all, npm, or knowledge-cloud");
+    console.error("osstack: release plan --target must be all, npm, knowledge-cloud, or single-binary");
     return 1;
   }
-  const doctor = await releaseDoctor(target);
-  const plan = releaseActionPlan(doctor);
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const proofDir = flagValue(args, "--proof-dir");
+  const cloudUrl = flagValue(args, "--cloud-url");
+  const doctor = await releaseDoctor(target, {
+    workspacePath,
+    ...(proofDir === undefined ? {} : { proofDir }),
+    ...(cloudUrl === undefined ? {} : { cloudUrl }),
+  });
+  const plan = releaseActionPlan(doctor, {
+    ...(proofDir === undefined ? {} : { proofDir }),
+    ...(cloudUrl === undefined ? {} : { cloudUrl }),
+  });
   const output = flagValue(args, "--output");
   if (output !== undefined) {
     await mkdir(dirname(output), { recursive: true });
@@ -837,10 +934,17 @@ async function handleReleasePlanCommand(args: string[]): Promise<number> {
 async function handleReleaseDoctorCommand(args: string[]): Promise<number> {
   const target = parseReleaseDoctorTarget(flagValue(args, "--target") ?? "all");
   if (target === undefined) {
-    console.error("osstack: release doctor --target must be all, npm, or knowledge-cloud");
+    console.error("osstack: release doctor --target must be all, npm, knowledge-cloud, or single-binary");
     return 1;
   }
-  const result = await releaseDoctor(target);
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const proofDir = flagValue(args, "--proof-dir");
+  const cloudUrl = flagValue(args, "--cloud-url");
+  const result = await releaseDoctor(target, {
+    workspacePath,
+    ...(proofDir === undefined ? {} : { proofDir }),
+    ...(cloudUrl === undefined ? {} : { cloudUrl }),
+  });
   const output = flagValue(args, "--output");
   if (output !== undefined) {
     await mkdir(dirname(output), { recursive: true });
@@ -857,11 +961,14 @@ async function handleReleaseDoctorCommand(args: string[]): Promise<number> {
 }
 
 function parseReleaseDoctorTarget(value: string): ReleaseDoctorResult["target"] | undefined {
-  if (value === "all" || value === "npm" || value === "knowledge-cloud") return value;
+  if (value === "all" || value === "npm" || value === "knowledge-cloud" || value === "single-binary") return value;
   return undefined;
 }
 
-async function releaseDoctor(target: ReleaseDoctorResult["target"]): Promise<ReleaseDoctorResult> {
+async function releaseDoctor(
+  target: ReleaseDoctorResult["target"],
+  options: ReleaseDoctorOptions = {},
+): Promise<ReleaseDoctorResult> {
   const checks: ReleaseDoctorCheck[] = [];
   const githubAuth = await releaseCommandCheck({
     id: "github_auth",
@@ -872,14 +979,18 @@ async function releaseDoctor(target: ReleaseDoctorResult["target"]): Promise<Rel
     errorMessage: "GitHub CLI is not authenticated; run gh auth login or gh auth refresh -h github.com -s workflow.",
   });
   checks.push(githubAuth);
+  const githubActions = await releaseGitHubActionsCheck();
+  checks.push(githubActions);
 
   const requiredSecrets = target === "npm" ? ["NPM_TOKEN"]
     : target === "knowledge-cloud" ? ["FLY_API_TOKEN"]
-      : ["NPM_TOKEN", "FLY_API_TOKEN"];
+      : target === "single-binary" ? SINGLE_BINARY_RELEASE_SECRETS
+      : ["NPM_TOKEN", "FLY_API_TOKEN", ...SINGLE_BINARY_RELEASE_SECRETS];
   const secrets = await releaseSecretsCheck(requiredSecrets);
   checks.push(secrets);
 
   if (target === "all" || target === "npm") {
+    checks.push(await releaseNpmPublishAssetsCheck(process.cwd()));
     checks.push(await releaseVersionPackagesPrCheck());
     checks.push(await releaseCommandCheck({
       id: "npm_auth",
@@ -893,7 +1004,14 @@ async function releaseDoctor(target: ReleaseDoctorResult["target"]): Promise<Rel
   }
 
   if (target === "all" || target === "knowledge-cloud") {
+    checks.push(await releaseKnowledgeCloudDeployAssetsCheck(process.cwd()));
     checks.push(await releaseKnowledgeCloudWorkflowCheck());
+    if (options.cloudUrl !== undefined) {
+      checks.push(await releaseKnowledgeCloudHealthCheck(options.cloudUrl));
+      checks.push(await releaseKnowledgeCloudSearchCheck(options.cloudUrl));
+      checks.push(await releaseKnowledgeCloudSyncCheck(options.cloudUrl));
+      checks.push(await releaseKnowledgeCloudAuditCheck(options.cloudUrl));
+    }
     checks.push(await releaseCommandCheck({
       id: "fly_auth",
       command: "flyctl",
@@ -904,14 +1022,44 @@ async function releaseDoctor(target: ReleaseDoctorResult["target"]): Promise<Rel
       missingSeverity: "warn",
     }));
   }
+  if (target === "all" || target === "single-binary") {
+    checks.push(await releaseSingleBinaryReleaseAssetsCheck(process.cwd()));
+    checks.push(await releaseSingleBinaryWorkflowCheck());
+  }
 
+  const proofDir = options.proofDir ?? await discoverLatestProofDir(options.workspacePath ?? process.cwd());
+  if (proofDir !== undefined) {
+    checks.push(await releaseProofValidationCheck(proofDir, { discovered: options.proofDir === undefined }));
+  }
+
+  const npmPublishAssetsReady = checks.find((check) => check.id === "npm_publish_assets")?.status !== "error";
   const versionPackagesPrReady = checks.find((check) => check.id === "version_packages_pr")?.status !== "warn";
+  const knowledgeDeployAssetsReady = checks.find((check) => check.id === "knowledge_cloud_deploy_assets")?.status !== "error";
   const knowledgeWorkflowReady = checks.find((check) => check.id === "knowledge_cloud_workflow")?.status !== "error";
-  const npmPublish = hasSecret(secrets, "NPM_TOKEN") && versionPackagesPrReady;
-  const knowledgeCloudDeploy = hasSecret(secrets, "FLY_API_TOKEN") && knowledgeWorkflowReady;
+  const knowledgeHealthReady = checks.find((check) => check.id === "knowledge_cloud_health")?.status !== "error";
+  const knowledgeSearchReady = checks.find((check) => check.id === "knowledge_cloud_search")?.status !== "error";
+  const knowledgeSyncReady = checks.find((check) => check.id === "knowledge_cloud_sync")?.status !== "error";
+  const knowledgeAuditReady = checks.find((check) => check.id === "knowledge_cloud_audit")?.status !== "error";
+  const singleBinaryAssetsReady = checks.find((check) => check.id === "single_binary_release_assets")?.status !== "error";
+  const singleBinaryWorkflowReady = checks.find((check) => check.id === "single_binary_workflow")?.status !== "error";
+  const actionsReady = githubActions.status !== "error";
+  const npmPublish = actionsReady && hasSecret(secrets, "NPM_TOKEN") && npmPublishAssetsReady && versionPackagesPrReady;
+  const knowledgeCloudDeploy = actionsReady
+    && hasSecret(secrets, "FLY_API_TOKEN")
+    && knowledgeDeployAssetsReady
+    && knowledgeWorkflowReady
+    && knowledgeHealthReady
+    && knowledgeSearchReady
+    && knowledgeSyncReady
+    && knowledgeAuditReady;
+  const singleBinaryRelease = actionsReady
+    && SINGLE_BINARY_RELEASE_SECRETS.every((secret) => hasSecret(secrets, secret))
+    && singleBinaryAssetsReady
+    && singleBinaryWorkflowReady;
   const ok = target === "npm" ? npmPublish
     : target === "knowledge-cloud" ? knowledgeCloudDeploy
-      : npmPublish && knowledgeCloudDeploy;
+      : target === "single-binary" ? singleBinaryRelease
+      : npmPublish && knowledgeCloudDeploy && singleBinaryRelease;
   const hardFailures = checks.some((check) =>
     check.status === "error"
     && check.id !== "repository_secrets"
@@ -925,9 +1073,873 @@ async function releaseDoctor(target: ReleaseDoctorResult["target"]): Promise<Rel
     readiness: {
       npm_publish: npmPublish,
       knowledge_cloud_deploy: knowledgeCloudDeploy,
+      single_binary_release: singleBinaryRelease,
     },
-    next_steps: releaseDoctorNextSteps({ target, npmPublish, knowledgeCloudDeploy, githubAuth, secrets, checks }),
+    next_steps: releaseDoctorNextSteps({ target, npmPublish, knowledgeCloudDeploy, singleBinaryRelease, githubAuth, secrets, checks }),
   };
+}
+
+async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<ReleaseDoctorCheck> {
+  const assetRoot = await findReleaseAssetRoot(workspacePath);
+  const requiredAssets = [
+    "packages/cli/package.json",
+    ".changeset/osstack-upgrade-knowledge-cloud.md",
+    ".github/workflows/release.yml",
+  ];
+  const missing: string[] = [];
+  const violations: string[] = [];
+  const readAsset = async (path: string): Promise<string> => {
+    try {
+      return await readFile(join(assetRoot, path), "utf-8");
+    } catch {
+      missing.push(path);
+      return "";
+    }
+  };
+  const cliPackageRaw = await readAsset("packages/cli/package.json");
+  const changeset = await readAsset(".changeset/osstack-upgrade-knowledge-cloud.md");
+  const workflow = await readAsset(".github/workflows/release.yml");
+
+  if (cliPackageRaw !== "") {
+    try {
+      const cliPackage = JSON.parse(cliPackageRaw) as {
+        name?: string;
+        bin?: Record<string, string>;
+        files?: string[];
+        publishConfig?: { access?: string };
+        repository?: { directory?: string };
+        engines?: { node?: string };
+      };
+      if (cliPackage.name !== "@osstack/cli") violations.push("CLI package name must be @osstack/cli.");
+      if (cliPackage.bin?.["osstack"] !== "./dist/bin.js") violations.push("CLI package must expose bin.osstack=./dist/bin.js.");
+      if (!Array.isArray(cliPackage.files) || !cliPackage.files.includes("dist")) violations.push("CLI package files must include dist.");
+      if (cliPackage.publishConfig?.access !== "public") violations.push("CLI package publishConfig.access must be public.");
+      if (cliPackage.repository?.directory !== "packages/cli") violations.push("CLI package repository.directory must be packages/cli.");
+      if (cliPackage.engines?.node !== ">=20") violations.push("CLI package engines.node must be >=20.");
+    } catch {
+      violations.push("packages/cli/package.json must be valid JSON.");
+    }
+  }
+
+  const expectAsset = (text: string, needle: string, message: string): void => {
+    if (text !== "" && !text.includes(needle)) violations.push(message);
+  };
+  expectAsset(changeset, "\"@osstack/cli\": minor", "Changeset must version @osstack/cli.");
+  expectAsset(workflow, "uses: changesets/action@v1", "Release workflow must use changesets/action.");
+  expectAsset(workflow, "pnpm smoke:release-plan", "Release workflow must run release plan smoke.");
+  expectAsset(workflow, "pnpm smoke:npm-install", "Release workflow must run npm install smoke.");
+  expectAsset(workflow, "pnpm changeset publish --provenance", "Release workflow must publish with npm provenance.");
+  expectAsset(workflow, "secrets.NPM_TOKEN", "Release workflow must gate publishing on NPM_TOKEN.");
+  expectAsset(workflow, "NODE_AUTH_TOKEN", "Release workflow must set NODE_AUTH_TOKEN for npm publish.");
+
+  const ok = missing.length === 0 && violations.length === 0;
+  return {
+    id: "npm_publish_assets",
+    status: ok ? "ok" : "error",
+    message: ok
+      ? "NPM publish assets are present and internally consistent."
+      : "NPM publish assets are missing or inconsistent.",
+    details: {
+      checked: requiredAssets,
+      missing,
+      violations,
+      root: assetRoot,
+    },
+  };
+}
+
+async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Promise<ReleaseDoctorCheck> {
+  const assetRoot = await findReleaseAssetRoot(workspacePath);
+  const requiredAssets = [
+    "Dockerfile.knowledge-cloud",
+    "deploy/knowledge-cloud/fly.toml",
+    "deploy/knowledge-cloud/render.yaml",
+    ".github/workflows/knowledge-cloud-deploy.yml",
+  ];
+  const missing: string[] = [];
+  const violations: string[] = [];
+  const readAsset = async (path: string): Promise<string> => {
+    try {
+      return await readFile(join(assetRoot, path), "utf-8");
+    } catch {
+      missing.push(path);
+      return "";
+    }
+  };
+  const dockerfile = await readAsset("Dockerfile.knowledge-cloud");
+  const fly = await readAsset("deploy/knowledge-cloud/fly.toml");
+  const render = await readAsset("deploy/knowledge-cloud/render.yaml");
+  const workflow = await readAsset(".github/workflows/knowledge-cloud-deploy.yml");
+  const expectAsset = (text: string, needle: string, message: string): void => {
+    if (text !== "" && !text.includes(needle)) violations.push(message);
+  };
+
+  expectAsset(dockerfile, "EXPOSE 8787", "Dockerfile must expose port 8787.");
+  expectAsset(dockerfile, "packages/knowledge-cloud/dist/bin.js", "Dockerfile must start the Knowledge Cloud executable.");
+  expectAsset(fly, 'dockerfile = "Dockerfile.knowledge-cloud"', "Fly config must use Dockerfile.knowledge-cloud.");
+  expectAsset(fly, "internal_port = 8787", "Fly config must route to port 8787.");
+  expectAsset(fly, 'path = "/healthz"', "Fly config must healthcheck /healthz.");
+  expectAsset(fly, 'OSSTACK_KNOWLEDGE_AUDIT_LOG = "/data/audit/knowledge-cloud-audit.jsonl"', "Fly config must persist audit JSONL.");
+  expectAsset(fly, 'OSSTACK_KNOWLEDGE_FEEDBACK_LOG = "/data/feedback/feedback.jsonl"', "Fly config must persist feedback JSONL.");
+  expectAsset(fly, 'OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR = "/data/published-packs"', "Fly config must persist published knowledge packs.");
+  expectAsset(render, "dockerfilePath: ./Dockerfile.knowledge-cloud", "Render config must use Dockerfile.knowledge-cloud.");
+  expectAsset(render, "healthCheckPath: /healthz", "Render config must healthcheck /healthz.");
+  expectAsset(render, "OSSTACK_KNOWLEDGE_AUDIT_LOG", "Render config must persist audit JSONL.");
+  expectAsset(render, "OSSTACK_KNOWLEDGE_FEEDBACK_LOG", "Render config must persist feedback JSONL.");
+  expectAsset(render, "OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR", "Render config must persist published knowledge packs.");
+  expectAsset(workflow, "workflow_dispatch:", "Knowledge Cloud deploy workflow must be manually triggerable.");
+  expectAsset(workflow, "pnpm smoke:knowledge-cloud", "Knowledge Cloud deploy workflow must run service smoke.");
+  expectAsset(workflow, "pnpm smoke:knowledge-cloud:deploy", "Knowledge Cloud deploy workflow must run deploy asset smoke.");
+  expectAsset(workflow, "docker build -f Dockerfile.knowledge-cloud", "Knowledge Cloud deploy workflow must build the Docker image.");
+  expectAsset(workflow, "secrets.FLY_API_TOKEN", "Knowledge Cloud deploy workflow must gate deploy on FLY_API_TOKEN.");
+  expectAsset(workflow, "flyctl deploy --config deploy/knowledge-cloud/fly.toml", "Knowledge Cloud deploy workflow must deploy with the Fly config.");
+
+  const ok = missing.length === 0 && violations.length === 0;
+  return {
+    id: "knowledge_cloud_deploy_assets",
+    status: ok ? "ok" : "error",
+    message: ok
+      ? "Knowledge Cloud deploy assets are present and internally consistent."
+      : "Knowledge Cloud deploy assets are missing or inconsistent.",
+    details: {
+      checked: requiredAssets,
+      missing,
+      violations,
+      root: assetRoot,
+      audit_log: "/data/audit/knowledge-cloud-audit.jsonl",
+      published_pack_dir: "/data/published-packs",
+    },
+  };
+}
+
+async function releaseKnowledgeCloudHealthCheck(cloudUrl: string): Promise<ReleaseDoctorCheck> {
+  const normalized = normalizeCloudUrl(cloudUrl);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  let healthUrl: URL | undefined;
+  try {
+    healthUrl = new URL("/healthz", normalized);
+    const response = await fetch(healthUrl, {
+      method: "GET",
+      headers: { accept: "application/json" },
+      signal: controller.signal,
+    });
+    const raw = await response.text();
+    const body = parseJsonObject(raw);
+    const service = typeof body?.["service"] === "string" ? body["service"] : undefined;
+    const packs = typeof body?.["packs"] === "number" ? body["packs"] : undefined;
+    const privatePacks = typeof body?.["private_packs"] === "number" ? body["private_packs"] : undefined;
+    const bodyOk = body?.["ok"] === true;
+    const ok = response.ok && bodyOk && service === "osstack-knowledge-cloud";
+    return {
+      id: "knowledge_cloud_health",
+      status: ok ? "ok" : "error",
+      message: ok
+        ? `Deployed Knowledge Cloud health check passed at ${healthUrl.toString()}.`
+        : `Deployed Knowledge Cloud health check failed at ${healthUrl.toString()}.`,
+      details: {
+        cloud_url: normalized,
+        health_url: healthUrl.toString(),
+        http_status: response.status,
+        ok: bodyOk,
+        service,
+        ...(packs === undefined ? {} : { packs }),
+        ...(privatePacks === undefined ? {} : { private_packs: privatePacks }),
+      },
+    };
+  } catch (error) {
+    const healthUrlString = healthUrl === undefined ? `${normalized.replace(/\/+$/, "")}/healthz` : healthUrl.toString();
+    return {
+      id: "knowledge_cloud_health",
+      status: "error",
+      message: `Could not reach deployed Knowledge Cloud health check at ${healthUrlString}.`,
+      details: {
+        cloud_url: normalized,
+        health_url: healthUrlString,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function releaseKnowledgeCloudSearchCheck(cloudUrl: string): Promise<ReleaseDoctorCheck> {
+  const normalized = normalizeCloudUrl(cloudUrl);
+  const query = "proof pack checksum";
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  let searchUrl: URL | undefined;
+  try {
+    searchUrl = new URL("/v1/search", normalized);
+    const response = await fetch(searchUrl, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ query, limit: 1 }),
+      signal: controller.signal,
+    });
+    const raw = await response.text();
+    const body = parseJsonObject(raw);
+    const packs = Array.isArray(body?.["packs"]) ? body["packs"] : [];
+    const results = Array.isArray(body?.["results"]) ? body["results"] : [];
+    const firstResult = isRecord(results[0]) ? results[0] : undefined;
+    const firstChunkId = typeof firstResult?.["chunk_id"] === "string" ? firstResult["chunk_id"] : undefined;
+    const firstPackId = typeof firstResult?.["pack_id"] === "string" ? firstResult["pack_id"] : undefined;
+    const ok = response.ok && results.length > 0;
+    return {
+      id: "knowledge_cloud_search",
+      status: ok ? "ok" : "error",
+      message: ok
+        ? `Deployed Knowledge Cloud search smoke passed at ${searchUrl.toString()}.`
+        : `Deployed Knowledge Cloud search smoke failed at ${searchUrl.toString()}.`,
+      details: {
+        cloud_url: normalized,
+        search_url: searchUrl.toString(),
+        http_status: response.status,
+        query,
+        pack_count: packs.length,
+        result_count: results.length,
+        ...(firstChunkId === undefined ? {} : { first_chunk_id: firstChunkId }),
+        ...(firstPackId === undefined ? {} : { first_pack_id: firstPackId }),
+      },
+    };
+  } catch (error) {
+    const searchUrlString = searchUrl === undefined ? `${normalized.replace(/\/+$/, "")}/v1/search` : searchUrl.toString();
+    return {
+      id: "knowledge_cloud_search",
+      status: "error",
+      message: `Could not run deployed Knowledge Cloud search smoke at ${searchUrlString}.`,
+      details: {
+        cloud_url: normalized,
+        search_url: searchUrlString,
+        query,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function releaseKnowledgeCloudSyncCheck(cloudUrl: string): Promise<ReleaseDoctorCheck> {
+  const normalized = normalizeCloudUrl(cloudUrl);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  let syncUrl: URL | undefined;
+  try {
+    syncUrl = new URL("/v1/sync", normalized);
+    const response = await fetch(syncUrl, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ private: false }),
+      signal: controller.signal,
+    });
+    const raw = await response.text();
+    const body = parseJsonObject(raw);
+    const packs = Array.isArray(body?.["packs"]) ? body["packs"] : [];
+    const firstPack = isRecord(packs[0]) ? packs[0] : undefined;
+    const firstPackId = typeof firstPack?.["id"] === "string" ? firstPack["id"] : undefined;
+    const ok = response.ok && packs.length > 0;
+    return {
+      id: "knowledge_cloud_sync",
+      status: ok ? "ok" : "error",
+      message: ok
+        ? `Deployed Knowledge Cloud sync smoke passed at ${syncUrl.toString()}.`
+        : `Deployed Knowledge Cloud sync smoke failed at ${syncUrl.toString()}.`,
+      details: {
+        cloud_url: normalized,
+        sync_url: syncUrl.toString(),
+        http_status: response.status,
+        pack_count: packs.length,
+        ...(firstPackId === undefined ? {} : { first_pack_id: firstPackId }),
+      },
+    };
+  } catch (error) {
+    const syncUrlString = syncUrl === undefined ? `${normalized.replace(/\/+$/, "")}/v1/sync` : syncUrl.toString();
+    return {
+      id: "knowledge_cloud_sync",
+      status: "error",
+      message: `Could not run deployed Knowledge Cloud sync smoke at ${syncUrlString}.`,
+      details: {
+        cloud_url: normalized,
+        sync_url: syncUrlString,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function releaseKnowledgeCloudAuditCheck(cloudUrl: string): Promise<ReleaseDoctorCheck> {
+  const normalized = normalizeCloudUrl(cloudUrl);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  let auditUrl: URL | undefined;
+  try {
+    auditUrl = new URL("/v1/audit", normalized);
+    const response = await fetch(auditUrl, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ action: "search", status: "ok", limit: 1 }),
+      signal: controller.signal,
+    });
+    const raw = await response.text();
+    const body = parseJsonObject(raw);
+    const events = Array.isArray(body?.["events"]) ? body["events"] : undefined;
+    const tenantEventLeak = (events ?? []).some((event) => isRecord(event) && typeof event["tenant_id"] === "string");
+    const ok = response.ok && events !== undefined && !tenantEventLeak;
+    return {
+      id: "knowledge_cloud_audit",
+      status: ok ? "ok" : "error",
+      message: ok
+        ? `Deployed Knowledge Cloud audit smoke passed at ${auditUrl.toString()}.`
+        : `Deployed Knowledge Cloud audit smoke failed at ${auditUrl.toString()}.`,
+      details: {
+        cloud_url: normalized,
+        audit_url: auditUrl.toString(),
+        http_status: response.status,
+        audit_event_count: events?.length ?? 0,
+        tenant_event_leak: tenantEventLeak,
+      },
+    };
+  } catch (error) {
+    const auditUrlString = auditUrl === undefined ? `${normalized.replace(/\/+$/, "")}/v1/audit` : auditUrl.toString();
+    return {
+      id: "knowledge_cloud_audit",
+      status: "error",
+      message: `Could not run deployed Knowledge Cloud audit smoke at ${auditUrlString}.`,
+      details: {
+        cloud_url: normalized,
+        audit_url: auditUrlString,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function normalizeCloudUrl(value: string): string {
+  return value.trim();
+}
+
+function parseJsonObject(raw: string): Record<string, unknown> | undefined {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return isRecord(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function releaseSingleBinaryReleaseAssetsCheck(workspacePath: string): Promise<ReleaseDoctorCheck> {
+  const assetRoot = await findReleaseAssetRoot(workspacePath);
+  const requiredAssets = [
+    "scripts/build-single-binary.mjs",
+    "scripts/sign-single-binary.mjs",
+    "scripts/notarize-single-binary.mjs",
+    "scripts/generate-single-binary-sbom.mjs",
+    "scripts/package-single-binary.mjs",
+    "scripts/publish-single-binary-release.mjs",
+    "scripts/smoke-single-binary-release-pack.mjs",
+    "scripts/smoke-single-binary-release-publish.mjs",
+    ".github/workflows/single-binary-release.yml",
+  ];
+  const missing: string[] = [];
+  const violations: string[] = [];
+  const readAsset = async (path: string): Promise<string> => {
+    try {
+      return await readFile(join(assetRoot, path), "utf-8");
+    } catch {
+      missing.push(path);
+      return "";
+    }
+  };
+  const publishScript = await readAsset("scripts/publish-single-binary-release.mjs");
+  const notarizeScript = await readAsset("scripts/notarize-single-binary.mjs");
+  const publishSmoke = await readAsset("scripts/smoke-single-binary-release-publish.mjs");
+  const workflow = await readAsset(".github/workflows/single-binary-release.yml");
+  for (const asset of requiredAssets.slice(0, 7)) await readAsset(asset);
+  const expectAsset = (text: string, needle: string, message: string): void => {
+    if (text !== "" && !text.includes(needle)) violations.push(message);
+  };
+
+  expectAsset(publishScript, "archive sha256 mismatch", "Single-binary publish script must verify archive SHA-256.");
+  expectAsset(publishScript, "public single-binary upload requires a Developer ID signed and notarized archive", "Single-binary publish script must reject public upload of non-notarized archives.");
+  expectAsset(publishScript, "archiveManifest.binary?.notarized !== true", "Single-binary publish script must inspect archive notarization metadata.");
+  expectAsset(publishScript, "gh\", [\"release\", \"upload\"", "Single-binary publish script must upload assets through gh release upload.");
+  expectAsset(publishScript, "github_release_uploaded: true", "Single-binary publish script must mark successful GitHub upload.");
+  expectAsset(notarizeScript, "xcrun\", [", "Single-binary notarization script must use xcrun for notarytool.");
+  expectAsset(notarizeScript, "notarytool", "Single-binary notarization script must submit assets to Apple notarytool.");
+  expectAsset(notarizeScript, "ditto", "Single-binary notarization script must submit a zipped command-line tool payload.");
+  expectAsset(notarizeScript, "spctl", "Single-binary notarization script must assess the notarized executable.");
+  expectAsset(publishSmoke, "--dry-run", "Single-binary release publish smoke must exercise dry-run upload.");
+  expectAsset(publishSmoke, "publish.assets.length !== 4", "Single-binary release publish smoke must require four release assets.");
+  expectAsset(workflow, "push:", "Single-binary release workflow must run for release tags.");
+  expectAsset(workflow, "tags:", "Single-binary release workflow must declare tag triggers.");
+  expectAsset(workflow, "workflow_dispatch:", "Single-binary release workflow must be manually triggerable.");
+  expectAsset(workflow, "pnpm smoke:single-binary-release-pack", "Single-binary release workflow must smoke release archives.");
+  expectAsset(workflow, "pnpm publish:single-binary", "Single-binary release workflow must call the publish script.");
+  expectAsset(workflow, "pnpm notarize:single-binary", "Single-binary release workflow must notarize public release assets.");
+  expectAsset(workflow, "APPLE_APP_SPECIFIC_PASSWORD", "Single-binary release workflow must gate notarization on Apple notary credentials.");
+  expectAsset(workflow, "DEVELOPER_ID_APPLICATION", "Single-binary release workflow must use a Developer ID identity for public release assets.");
+  expectAsset(workflow, "MACOS_CERTIFICATE_P12", "Single-binary release workflow must import a Developer ID certificate.");
+  expectAsset(workflow, "security import", "Single-binary release workflow must install the Developer ID certificate in a temporary keychain.");
+  expectAsset(workflow, "GH_TOKEN:", "Single-binary release workflow must pass GH_TOKEN for upload.");
+  expectAsset(workflow, "github.token", "Single-binary release workflow must use the workflow GitHub token.");
+  expectAsset(workflow, "actions/upload-artifact@v4", "Single-binary release workflow must retain workflow artifact copies.");
+
+  const ok = missing.length === 0 && violations.length === 0;
+  return {
+    id: "single_binary_release_assets",
+    status: ok ? "ok" : "error",
+    message: ok
+      ? "Single-binary release assets are present and internally consistent."
+      : "Single-binary release assets are missing or inconsistent.",
+    details: {
+      checked: requiredAssets,
+      missing,
+      violations,
+      root: assetRoot,
+    },
+  };
+}
+
+async function findReleaseAssetRoot(startPath: string): Promise<string> {
+  let current = startPath;
+  while (true) {
+    try {
+      await stat(join(current, "Dockerfile.knowledge-cloud"));
+      return current;
+    } catch {
+      const parent = dirname(current);
+      if (parent === current) return startPath;
+      current = parent;
+    }
+  }
+}
+
+async function discoverLatestProofDir(workspacePath: string): Promise<string | undefined> {
+  try {
+    const releaseDir = join(workspacePath, "release");
+    const entries = await readdir(releaseDir, { withFileTypes: true });
+    const candidates = await Promise.all(entries
+      .filter((entry) => entry.isDirectory() && entry.name.startsWith("osstack-proof-"))
+      .map(async (entry) => {
+        const path = join(releaseDir, entry.name);
+        const info = await stat(path);
+        return { path, mtimeMs: info.mtimeMs };
+      }));
+    return candidates.sort((a, b) => b.mtimeMs - a.mtimeMs || b.path.localeCompare(a.path))[0]?.path;
+  } catch {
+    return undefined;
+  }
+}
+
+async function releaseProofValidationCheck(
+  proofDir: string,
+  options: { discovered?: boolean } = {},
+): Promise<ReleaseDoctorCheck> {
+  try {
+    const evidence = await loadProofEvidence(proofDir);
+    const validation = validateProofEvidence({ evidence });
+    const fileIntegrity = await validateProofFileIntegrity(proofDir, evidence.manifest);
+    const archiveIntegrity = await validateProofArchiveIntegrity(proofDir, evidence.manifest);
+    const ok = validation.ok && fileIntegrity.ok && archiveIntegrity.ok;
+    return {
+      id: "proof_validation",
+      status: ok ? "ok" : "error",
+      message: ok
+        ? "Proof-core evidence validation passed, including artifact file and archive integrity."
+        : fileIntegrity.ok && archiveIntegrity.ok
+          ? "Proof-core evidence validation found missing or malformed evidence."
+          : "Proof-core artifact integrity validation found missing, moved, or modified files.",
+      details: {
+        proof_dir: proofDir,
+        discovered: options.discovered === true,
+        scope: validation.scope,
+        present: validation.present,
+        missing: validation.missing,
+        file_integrity: fileIntegrity,
+        archive_integrity: archiveIntegrity,
+      },
+    };
+  } catch (error) {
+    return {
+      id: "proof_validation",
+      status: "error",
+      message: `Proof-core evidence validation failed: ${error instanceof Error ? error.message : String(error)}`,
+      details: { proof_dir: proofDir, discovered: options.discovered === true },
+    };
+  }
+}
+
+async function validateProofFileIntegrity(
+  proofDir: string,
+  manifestRaw: unknown,
+): Promise<ProofFileIntegrityValidation> {
+  const issues: ProofFileIntegrityIssue[] = [];
+  if (!isRecord(manifestRaw) || !Array.isArray(manifestRaw["artifacts"])) {
+    return {
+      ok: false,
+      issues: [{ path: "manifest.json", code: "manifest_malformed" }],
+    };
+  }
+  for (const key of Object.keys(manifestRaw)) {
+    if (!PROOF_MANIFEST_ALLOWED_FIELDS.has(key)) {
+      issues.push({ path: "manifest.json", code: "manifest_unexpected_field", actual: key });
+    }
+  }
+  if (manifestRaw["kind"] !== "osstack.proof_pack") {
+    issues.push({ path: "manifest.json", code: "manifest_invalid_kind" });
+  }
+  if (typeof manifestRaw["schema_version"] !== "number" || !Number.isInteger(manifestRaw["schema_version"]) || manifestRaw["schema_version"] < 1) {
+    issues.push({ path: "manifest.json", code: "manifest_invalid_schema_version" });
+  }
+  if (missingManifestString(manifestRaw, "osstack_version")) {
+    issues.push({ path: "manifest.json", code: "manifest_missing_osstack_version" });
+  }
+  if (missingManifestString(manifestRaw, "run_id")) {
+    issues.push({ path: "manifest.json", code: "manifest_missing_run_id" });
+  }
+  if (missingManifestString(manifestRaw, "loop_id")) {
+    issues.push({ path: "manifest.json", code: "manifest_missing_loop_id" });
+  }
+  if (missingManifestString(manifestRaw, "agent_id")) {
+    issues.push({ path: "manifest.json", code: "manifest_missing_agent_id" });
+  }
+  if (!Array.isArray(manifestRaw["agent_ids"]) || !manifestRaw["agent_ids"].some((agentId) => typeof agentId === "string" && agentId.trim().length > 0)) {
+    issues.push({ path: "manifest.json", code: "manifest_missing_agent_ids" });
+  }
+  if (missingManifestString(manifestRaw, "generated_from")) {
+    issues.push({ path: "manifest.json", code: "manifest_missing_generated_from" });
+  }
+  if (missingManifestString(manifestRaw, "created_at")) {
+    issues.push({ path: "manifest.json", code: "manifest_missing_created_at" });
+  }
+  if (missingManifestString(manifestRaw, "generated_at")) {
+    issues.push({ path: "manifest.json", code: "manifest_missing_generated_at" });
+  }
+
+  const proofRoot = resolve(proofDir);
+  const manifestShaByPath = new Map<string, string>();
+  const invalidArtifactPaths = new Set<string>();
+  let sha256sumsContent: string | undefined;
+  for (const artifact of manifestRaw["artifacts"]) {
+    if (!isRecord(artifact)) {
+      issues.push({ path: "<unknown>", code: "artifact_malformed" });
+      continue;
+    }
+    const artifactPath = artifact["path"];
+    for (const key of Object.keys(artifact)) {
+      if (!PROOF_MANIFEST_ARTIFACT_ALLOWED_FIELDS.has(key)) {
+        issues.push({
+          path: typeof artifactPath === "string" && artifactPath.length > 0 ? artifactPath : "<unknown>",
+          code: "artifact_unexpected_field",
+          actual: key,
+        });
+      }
+    }
+    const expectedSha256 = artifact["sha256"];
+    const expectedBytes = artifact["bytes"];
+    if (
+      typeof artifactPath !== "string"
+      || artifactPath.length === 0
+      || typeof expectedSha256 !== "string"
+      || typeof expectedBytes !== "number"
+      || !Number.isInteger(expectedBytes)
+    ) {
+      issues.push({
+        path: typeof artifactPath === "string" && artifactPath.length > 0 ? artifactPath : "<unknown>",
+        code: "artifact_malformed",
+      });
+      continue;
+    }
+    let artifactInvalid = false;
+    if (!/^[a-f0-9]{64}$/.test(expectedSha256)) {
+      issues.push({ path: artifactPath, code: "artifact_invalid_sha256", expected: "64 lowercase hex characters", actual: expectedSha256 });
+      artifactInvalid = true;
+    }
+    if (expectedBytes < 0) {
+      issues.push({ path: artifactPath, code: "artifact_invalid_bytes", expected: "non-negative integer", actual: expectedBytes });
+      artifactInvalid = true;
+    }
+    if (artifactInvalid) {
+      invalidArtifactPaths.add(artifactPath);
+      continue;
+    }
+    if (isUnsafeProofArtifactPath(artifactPath)) {
+      issues.push({ path: artifactPath, code: "path_outside_proof_dir" });
+      invalidArtifactPaths.add(artifactPath);
+      continue;
+    }
+    if (manifestShaByPath.has(artifactPath)) {
+      issues.push({ path: artifactPath, code: "duplicate_artifact_path" });
+      continue;
+    }
+    manifestShaByPath.set(artifactPath, expectedSha256);
+
+    const artifactFile = resolve(proofRoot, artifactPath);
+    const artifactRelativePath = relative(proofRoot, artifactFile);
+    if (artifactRelativePath.startsWith("..") || isAbsolute(artifactRelativePath)) {
+      issues.push({ path: artifactPath, code: "path_outside_proof_dir" });
+      continue;
+    }
+
+    let content: Buffer;
+    try {
+      content = await readFile(artifactFile);
+    } catch {
+      issues.push({ path: artifactPath, code: "missing_artifact" });
+      continue;
+    }
+
+    if (content.length !== expectedBytes) {
+      issues.push({
+        path: artifactPath,
+        code: "bytes_mismatch",
+        expected: expectedBytes,
+        actual: content.length,
+      });
+    }
+    const actualSha256 = sha256Buffer(content);
+    if (actualSha256 !== expectedSha256) {
+      issues.push({
+        path: artifactPath,
+        code: "sha256_mismatch",
+        expected: expectedSha256,
+        actual: actualSha256,
+      });
+    }
+    if (artifactPath === "sha256sums.txt") {
+      sha256sumsContent = content.toString("utf-8");
+    }
+  }
+
+  issues.push(...validateProofComplianceReports(manifestRaw, manifestShaByPath));
+  issues.push(...validateProofSha256Sums(manifestShaByPath, sha256sumsContent, invalidArtifactPaths));
+  return { ok: issues.length === 0, issues };
+}
+
+function isUnsafeProofArtifactPath(artifactPath: string): boolean {
+  if (isAbsolute(artifactPath) || /^[A-Za-z]:[\\/]/.test(artifactPath)) return true;
+  return artifactPath.split(/[\\/]+/).includes("..");
+}
+
+const PROOF_MANIFEST_ALLOWED_FIELDS = new Set([
+  "schema_version",
+  "kind",
+  "osstack_version",
+  "run_id",
+  "loop_id",
+  "agent_id",
+  "agent_ids",
+  "workspace",
+  "generated_from",
+  "created_at",
+  "generated_at",
+  "compliance_reports",
+  "artifacts",
+]);
+
+const PROOF_MANIFEST_ARTIFACT_ALLOWED_FIELDS = new Set([
+  "path",
+  "sha256",
+  "bytes",
+]);
+
+const PROOF_MANIFEST_COMPLIANCE_REPORT_ALLOWED_FIELDS = new Set([
+  "pack_id",
+  "path",
+  "certification_claim",
+]);
+
+function missingManifestString(manifestRaw: Record<string, unknown>, key: string): boolean {
+  const value = manifestRaw[key];
+  return typeof value !== "string" || value.trim().length === 0;
+}
+
+function validateProofComplianceReports(
+  manifestRaw: Record<string, unknown>,
+  manifestShaByPath: Map<string, string>,
+): ProofFileIntegrityIssue[] {
+  const reports = manifestRaw["compliance_reports"];
+  if (reports === undefined) return [];
+  if (!Array.isArray(reports)) {
+    return [{ path: "manifest.json", code: "compliance_report_malformed" }];
+  }
+  const issues: ProofFileIntegrityIssue[] = [];
+  for (const report of reports) {
+    if (!isRecord(report)) {
+      issues.push({ path: "<unknown>", code: "compliance_report_malformed" });
+      continue;
+    }
+    const reportPath = report["path"];
+    const issuePath = typeof reportPath === "string" && reportPath.length > 0 ? reportPath : "<unknown>";
+    for (const key of Object.keys(report)) {
+      if (!PROOF_MANIFEST_COMPLIANCE_REPORT_ALLOWED_FIELDS.has(key)) {
+        issues.push({ path: issuePath, code: "compliance_report_unexpected_field", actual: key });
+      }
+    }
+    if (typeof report["pack_id"] !== "string" || report["pack_id"].trim().length === 0 || typeof reportPath !== "string" || reportPath.length === 0) {
+      issues.push({ path: issuePath, code: "compliance_report_malformed" });
+      continue;
+    }
+    if (report["certification_claim"] !== "none") {
+      issues.push({ path: issuePath, code: "compliance_report_invalid_certification_claim", expected: "none", actual: String(report["certification_claim"]) });
+    }
+    if (!manifestShaByPath.has(reportPath)) {
+      issues.push({ path: reportPath, code: "compliance_report_missing_artifact" });
+    }
+  }
+  return issues;
+}
+
+function validateProofSha256Sums(
+  manifestShaByPath: Map<string, string>,
+  content: string | undefined,
+  ignoredPaths = new Set<string>(),
+): ProofFileIntegrityIssue[] {
+  if (!manifestShaByPath.has("sha256sums.txt") || content === undefined) {
+    return [{ path: "sha256sums.txt", code: "sha256sums_missing" }];
+  }
+  const issues: ProofFileIntegrityIssue[] = [];
+  const sums = new Map<string, string>();
+  for (const line of content.split(/\r?\n/)) {
+    if (line.length === 0) continue;
+    const match = /^([a-f0-9]{64}) {2}(.+)$/.exec(line);
+    const checksum = match?.[1];
+    const path = match?.[2];
+    if (checksum === undefined || path === undefined || sums.has(path) || isUnsafeProofArtifactPath(path)) {
+      issues.push({ path: "sha256sums.txt", code: "sha256sums_malformed" });
+      continue;
+    }
+    sums.set(path, checksum);
+  }
+
+  for (const [path, manifestSha] of manifestShaByPath.entries()) {
+    if (path === "sha256sums.txt") continue;
+    const checksumSha = sums.get(path);
+    if (checksumSha === undefined) {
+      issues.push({ path, code: "sha256sums_missing_entry" });
+      continue;
+    }
+    if (checksumSha !== manifestSha) {
+      issues.push({
+        path,
+        code: "sha256sums_mismatch",
+        expected: manifestSha,
+        actual: checksumSha,
+      });
+    }
+  }
+
+  for (const path of sums.keys()) {
+    if (ignoredPaths.has(path)) continue;
+    if (!manifestShaByPath.has(path)) {
+      issues.push({ path, code: "sha256sums_extra_entry" });
+    }
+  }
+  return issues;
+}
+
+async function validateProofArchiveIntegrity(
+  proofDir: string,
+  manifestRaw: unknown,
+): Promise<ProofArchiveIntegrityValidation> {
+  const proofZip = `${proofDir}.zip`;
+  try {
+    await stat(proofZip);
+  } catch {
+    return { ok: true, checked: false, proof_zip: proofZip, issues: [] };
+  }
+  const expectedPaths = proofArchiveExpectedPaths(manifestRaw);
+  if (expectedPaths === undefined) {
+    return { ok: true, checked: false, proof_zip: proofZip, issues: [] };
+  }
+  let archivePaths: string[];
+  try {
+    archivePaths = readZipEntryNames(await readFile(proofZip));
+  } catch {
+    return {
+      ok: false,
+      checked: true,
+      proof_zip: proofZip,
+      issues: [{ path: proofZip, code: "proof_zip_unreadable" }],
+    };
+  }
+
+  const issues: ProofArchiveIntegrityIssue[] = [];
+  const actualPaths = new Set<string>();
+  for (const path of archivePaths) {
+    if (actualPaths.has(path)) {
+      issues.push({ path, code: "proof_zip_duplicate_entry" });
+      continue;
+    }
+    actualPaths.add(path);
+  }
+  for (const path of expectedPaths) {
+    if (!actualPaths.has(path)) issues.push({ path, code: "proof_zip_missing_entry" });
+  }
+  for (const path of actualPaths) {
+    if (!expectedPaths.has(path)) issues.push({ path, code: "proof_zip_extra_entry" });
+  }
+  return { ok: issues.length === 0, checked: true, proof_zip: proofZip, issues };
+}
+
+function readZipEntryNames(data: Buffer): string[] {
+  const eocdOffset = findZipEndOfCentralDirectory(data);
+  if (eocdOffset < 0 || eocdOffset + 22 > data.length) throw new Error("zip end of central directory not found");
+  const entryCount = data.readUInt16LE(eocdOffset + 10);
+  const centralDirectorySize = data.readUInt32LE(eocdOffset + 12);
+  const centralDirectoryOffset = data.readUInt32LE(eocdOffset + 16);
+  if (centralDirectoryOffset + centralDirectorySize > data.length) throw new Error("zip central directory is outside archive");
+
+  const names: string[] = [];
+  let offset = centralDirectoryOffset;
+  for (let index = 0; index < entryCount; index += 1) {
+    if (offset + 46 > data.length || data.readUInt32LE(offset) !== 0x02014b50) {
+      throw new Error("zip central directory entry is malformed");
+    }
+    const fileNameLength = data.readUInt16LE(offset + 28);
+    const extraLength = data.readUInt16LE(offset + 30);
+    const commentLength = data.readUInt16LE(offset + 32);
+    const nameStart = offset + 46;
+    const nameEnd = nameStart + fileNameLength;
+    if (nameEnd > data.length) throw new Error("zip entry name is outside archive");
+    names.push(data.subarray(nameStart, nameEnd).toString("utf-8"));
+    offset = nameEnd + extraLength + commentLength;
+  }
+  return names;
+}
+
+function findZipEndOfCentralDirectory(data: Buffer): number {
+  if (data.length < 22) return -1;
+  const minOffset = Math.max(0, data.length - 65_557);
+  for (let offset = data.length - 22; offset >= minOffset; offset -= 1) {
+    if (data.readUInt32LE(offset) === 0x06054b50) return offset;
+  }
+  return -1;
+}
+
+function proofArchiveExpectedPaths(manifestRaw: unknown): Set<string> | undefined {
+  if (!isRecord(manifestRaw) || !Array.isArray(manifestRaw["artifacts"])) return undefined;
+  const paths = new Set<string>(["manifest.json"]);
+  for (const artifact of manifestRaw["artifacts"]) {
+    if (!isRecord(artifact) || typeof artifact["path"] !== "string" || artifact["path"].length === 0) return undefined;
+    paths.add(artifact["path"]);
+  }
+  return paths;
 }
 
 async function releaseVersionPackagesPrCheck(): Promise<ReleaseDoctorCheck> {
@@ -1160,6 +2172,281 @@ function releaseKnowledgeCloudWorkflowOverride(value: string): ReleaseDoctorChec
   };
 }
 
+async function releaseSingleBinaryWorkflowCheck(): Promise<ReleaseDoctorCheck> {
+  const override = process.env["OSSTACK_TEST_RELEASE_SINGLE_BINARY_WORKFLOW"];
+  if (override !== undefined) return releaseSingleBinaryWorkflowOverride(override);
+  try {
+    const { stdout: workflows } = await execFileAsync("gh", ["workflow", "list", "--all"], { timeout: 10_000 });
+    const workflowLine = workflows.split(/\r?\n/).find((line) => line.startsWith("Single Binary Release\t"));
+    if (workflowLine === undefined) {
+      return {
+        id: "single_binary_workflow",
+        status: "error",
+        message: "Single Binary Release workflow is missing.",
+      };
+    }
+    const active = workflowLine.split(/\t/)[1] === "active";
+    if (!active) {
+      return {
+        id: "single_binary_workflow",
+        status: "error",
+        message: "Single Binary Release workflow is not active.",
+        details: { workflow: workflowLine },
+      };
+    }
+    const { stdout: runs } = await execFileAsync("gh", [
+      "run",
+      "list",
+      "--workflow",
+      "Single Binary Release",
+      "--limit",
+      "1",
+      "--json",
+      "databaseId,status,conclusion,displayTitle,url,headBranch",
+    ], { timeout: 10_000 });
+    const parsed = JSON.parse(runs) as Array<{
+      databaseId?: number;
+      status?: string;
+      conclusion?: string;
+      displayTitle?: string;
+      url?: string;
+      headBranch?: string;
+    }>;
+    const latest = parsed[0];
+    if (latest === undefined) {
+      return {
+        id: "single_binary_workflow",
+        status: "warn",
+        message: "Single Binary Release workflow is active but has no recorded validation runs.",
+      };
+    }
+    const success = latest.status === "completed" && latest.conclusion === "success";
+    return {
+      id: "single_binary_workflow",
+      status: success ? "ok" : "warn",
+      message: success
+        ? `Latest Single Binary Release validation succeeded: run ${latest.databaseId ?? "unknown"}.`
+        : `Latest Single Binary Release validation is not successful: run ${latest.databaseId ?? "unknown"}.`,
+      details: {
+        run_id: latest.databaseId,
+        status: latest.status,
+        conclusion: latest.conclusion,
+        title: latest.displayTitle,
+        branch: latest.headBranch,
+        url: latest.url,
+      },
+    };
+  } catch (error) {
+    return {
+      id: "single_binary_workflow",
+      status: "warn",
+      message: "Could not inspect Single Binary Release workflow with gh.",
+      details: { error: releaseErrorMessage(error) },
+    };
+  }
+}
+
+function releaseSingleBinaryWorkflowOverride(value: string): ReleaseDoctorCheck {
+  if (value === "ok") {
+    return {
+      id: "single_binary_workflow",
+      status: "ok",
+      message: "Latest Single Binary Release validation succeeded.",
+      details: { status: "completed", conclusion: "success" },
+    };
+  }
+  if (value === "missing") {
+    return {
+      id: "single_binary_workflow",
+      status: "error",
+      message: "Single Binary Release workflow is missing.",
+    };
+  }
+  if (value === "warn" || value === "error") {
+    return {
+      id: "single_binary_workflow",
+      status: value,
+      message: "Single Binary Release workflow needs attention.",
+    };
+  }
+  return {
+    id: "single_binary_workflow",
+    status: "warn",
+    message: "Could not parse OSSTACK_TEST_RELEASE_SINGLE_BINARY_WORKFLOW.",
+    details: { value },
+  };
+}
+
+async function releaseGitHubActionsCheck(): Promise<ReleaseDoctorCheck> {
+  const override = process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"];
+  if (override !== undefined) return releaseGitHubActionsOverride(override);
+  try {
+    const { stdout } = await execFileAsync("gh", [
+      "run",
+      "list",
+      "--limit",
+      "1",
+      "--json",
+      "databaseId,status,conclusion,workflowName,displayTitle,url",
+    ], { timeout: 10_000 });
+    const runs = JSON.parse(stdout) as Array<{
+      databaseId?: number;
+      status?: string;
+      conclusion?: string;
+      workflowName?: string;
+      displayTitle?: string;
+      url?: string;
+    }>;
+    const latest = runs[0];
+    if (latest === undefined) {
+      return {
+        id: "github_actions",
+        status: "warn",
+        message: "No recent GitHub Actions runs were found; trigger CI before publishing or deploying.",
+      };
+    }
+    const runnerBlock = latest.databaseId === undefined
+      ? undefined
+      : await releaseGitHubActionsRunnerBlock(latest.databaseId);
+    if (runnerBlock !== undefined) {
+      const allocationFailure = runnerBlock.kind === "allocation";
+      return {
+        id: "github_actions",
+        status: "error",
+        message: allocationFailure
+          ? "GitHub Actions failed before assigning a runner."
+          : "GitHub Actions runner is blocked by account billing or spending limits.",
+        details: {
+          run_id: latest.databaseId,
+          status: latest.status,
+          conclusion: latest.conclusion,
+          workflow: latest.workflowName,
+          title: latest.displayTitle,
+          url: latest.url,
+          ...(allocationFailure ? { runner_allocation: true } : {}),
+          ...(runnerBlock.jobId === undefined ? {} : { job_id: runnerBlock.jobId }),
+          annotation: runnerBlock.message,
+        },
+      };
+    }
+    return {
+      id: "github_actions",
+      status: "ok",
+      message: `GitHub Actions is reachable; latest run ${latest.databaseId ?? "unknown"} is inspectable.`,
+      details: {
+        run_id: latest.databaseId,
+        status: latest.status,
+        conclusion: latest.conclusion,
+        workflow: latest.workflowName,
+        title: latest.displayTitle,
+        url: latest.url,
+      },
+    };
+  } catch (error) {
+    return {
+      id: "github_actions",
+      status: "warn",
+      message: "Could not inspect GitHub Actions runs with gh.",
+      details: { error: releaseErrorMessage(error) },
+    };
+  }
+}
+
+async function releaseGitHubActionsRunnerBlock(runId: number): Promise<{ kind: "billing" | "allocation"; message: string; jobId?: number } | undefined> {
+  try {
+    const { stdout: jobsOutput } = await execFileAsync("gh", [
+      "api",
+      `repos/gilosbornhello/osstack/actions/runs/${runId}/jobs`,
+    ], { timeout: 10_000 });
+    const jobs = JSON.parse(jobsOutput) as {
+      jobs?: Array<{
+        id?: number;
+        conclusion?: string;
+        runner_id?: number;
+        runner_name?: string;
+        steps?: unknown[];
+      }>;
+    };
+    const failedJob = jobs.jobs?.find((job) =>
+      job.id !== undefined
+      && job.conclusion === "failure"
+      && Array.isArray(job.steps)
+      && job.steps.length === 0
+    );
+    if (failedJob?.id === undefined) return undefined;
+    try {
+      const { stdout: annotationsOutput } = await execFileAsync("gh", [
+        "api",
+        `repos/gilosbornhello/osstack/check-runs/${failedJob.id}/annotations`,
+      ], { timeout: 10_000 });
+      const annotations = JSON.parse(annotationsOutput) as Array<{ message?: string }>;
+      const annotation = annotations.find((item) =>
+        typeof item.message === "string"
+        && /payments have failed|spending limit/i.test(item.message)
+      );
+      if (annotation?.message !== undefined) {
+        return { kind: "billing", message: annotation.message, jobId: failedJob.id };
+      }
+    } catch {
+      // Fall through to the runner-allocation heuristic below.
+    }
+    if (failedJob.runner_id === 0 || failedJob.runner_name === "") {
+      return {
+        kind: "allocation",
+        message: "GitHub Actions failed before assigning a runner; the job completed with no steps and no runner identity.",
+        jobId: failedJob.id,
+      };
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function releaseGitHubActionsOverride(value: string): ReleaseDoctorCheck {
+  if (value === "ok") {
+    return {
+      id: "github_actions",
+      status: "ok",
+      message: "GitHub Actions is reachable.",
+    };
+  }
+  if (value === "billing") {
+    return {
+      id: "github_actions",
+      status: "error",
+      message: "GitHub Actions runner is blocked by account billing or spending limits.",
+      details: {
+        annotation: "The job was not started because recent account payments have failed or your spending limit needs to be increased.",
+      },
+    };
+  }
+  if (value === "allocation") {
+    return {
+      id: "github_actions",
+      status: "error",
+      message: "GitHub Actions failed before assigning a runner.",
+      details: {
+        runner_allocation: true,
+        annotation: "GitHub Actions job completed with steps=[] and runner_id=0 / runner_name=\"\".",
+      },
+    };
+  }
+  if (value === "warn" || value === "error") {
+    return {
+      id: "github_actions",
+      status: value,
+      message: "GitHub Actions needs attention before publishing or deploying.",
+    };
+  }
+  return {
+    id: "github_actions",
+    status: "warn",
+    message: "Could not parse OSSTACK_TEST_RELEASE_GITHUB_ACTIONS.",
+    details: { value },
+  };
+}
+
 async function releaseSecretsCheck(requiredSecrets: string[]): Promise<ReleaseDoctorCheck> {
   const override = process.env["OSSTACK_TEST_RELEASE_SECRETS"];
   let present: string[];
@@ -1234,6 +2521,7 @@ function releaseDoctorNextSteps(options: {
   target: ReleaseDoctorResult["target"];
   npmPublish: boolean;
   knowledgeCloudDeploy: boolean;
+  singleBinaryRelease: boolean;
   githubAuth: ReleaseDoctorCheck;
   secrets: ReleaseDoctorCheck;
   checks: ReleaseDoctorCheck[];
@@ -1242,12 +2530,21 @@ function releaseDoctorNextSteps(options: {
   if (options.githubAuth.status === "error") {
     steps.push("Refresh GitHub auth: gh auth refresh -h github.com -s workflow");
   }
+  const githubActions = options.checks.find((check) => check.id === "github_actions");
+  if (githubActions?.status === "error") {
+    steps.push(releaseGitHubActionsNextStep(githubActions));
+  } else if (githubActions?.status === "warn") {
+    steps.push("Confirm GitHub Actions can start workflow jobs before publishing or deploying.");
+  }
   const missing = options.secrets.details?.["missing"];
   if (Array.isArray(missing) && missing.includes("NPM_TOKEN")) {
     steps.push("Add repository secret NPM_TOKEN before merging the Version Packages PR.");
   }
   if (Array.isArray(missing) && missing.includes("FLY_API_TOKEN")) {
     steps.push("Add repository secret FLY_API_TOKEN before running Knowledge Cloud deploy=true.");
+  }
+  if (Array.isArray(missing) && SINGLE_BINARY_RELEASE_SECRETS.some((secret) => missing.includes(secret))) {
+    steps.push("Add Apple notarization and Developer ID repository secrets before running Single Binary Release dry_run=false.");
   }
   const versionPr = options.checks.find((check) => check.id === "version_packages_pr");
   if ((options.target === "all" || options.target === "npm") && versionPr?.status === "warn") {
@@ -1262,11 +2559,49 @@ function releaseDoctorNextSteps(options: {
       : "it is not currently clean";
     steps.push(`Review Version Packages PR${number}; ${checkContext} for npm publish.`);
   }
+  const npmPublishAssets = options.checks.find((check) => check.id === "npm_publish_assets");
+  if ((options.target === "all" || options.target === "npm") && npmPublishAssets?.status === "error") {
+    steps.push("Restore NPM publish assets before merging the Version Packages PR.");
+  }
+  const knowledgeDeployAssets = options.checks.find((check) => check.id === "knowledge_cloud_deploy_assets");
+  if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeDeployAssets?.status === "error") {
+    steps.push("Restore Knowledge Cloud deploy assets before running deploy=true.");
+  }
   const knowledgeWorkflow = options.checks.find((check) => check.id === "knowledge_cloud_workflow");
   if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeWorkflow?.status === "error") {
     steps.push("Restore the Knowledge Cloud Deploy workflow before running deploy=true.");
   } else if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeWorkflow?.status === "warn") {
     steps.push("Review the latest Knowledge Cloud Deploy workflow run before running deploy=true.");
+  }
+  const knowledgeHealth = options.checks.find((check) => check.id === "knowledge_cloud_health");
+  if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeHealth?.status === "error") {
+    steps.push("Fix the deployed Knowledge Cloud /healthz endpoint before handoff.");
+  }
+  const knowledgeSearch = options.checks.find((check) => check.id === "knowledge_cloud_search");
+  if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeSearch?.status === "error") {
+    steps.push("Fix deployed Knowledge Cloud search before handoff.");
+  }
+  const knowledgeSync = options.checks.find((check) => check.id === "knowledge_cloud_sync");
+  if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeSync?.status === "error") {
+    steps.push("Fix deployed Knowledge Cloud sync before handoff.");
+  }
+  const knowledgeAudit = options.checks.find((check) => check.id === "knowledge_cloud_audit");
+  if ((options.target === "all" || options.target === "knowledge-cloud") && knowledgeAudit?.status === "error") {
+    steps.push("Fix deployed Knowledge Cloud audit endpoint before handoff.");
+  }
+  const singleBinaryAssets = options.checks.find((check) => check.id === "single_binary_release_assets");
+  if ((options.target === "all" || options.target === "single-binary") && singleBinaryAssets?.status === "error") {
+    steps.push("Restore single-binary release assets before publishing release archives.");
+  }
+  const singleBinaryWorkflow = options.checks.find((check) => check.id === "single_binary_workflow");
+  if ((options.target === "all" || options.target === "single-binary") && singleBinaryWorkflow?.status === "error") {
+    steps.push("Restore the Single Binary Release workflow before uploading release archives.");
+  } else if ((options.target === "all" || options.target === "single-binary") && singleBinaryWorkflow?.status === "warn") {
+    steps.push("Review the latest Single Binary Release workflow run before uploading release archives.");
+  }
+  const proofValidation = options.checks.find((check) => check.id === "proof_validation");
+  if (proofValidation?.status === "error") {
+    steps.push(releaseProofValidationNextStep(proofValidation));
   }
   if ((options.target === "all" || options.target === "npm") && options.npmPublish) {
     steps.push("NPM publish path is ready for the release workflow.");
@@ -1274,8 +2609,42 @@ function releaseDoctorNextSteps(options: {
   if ((options.target === "all" || options.target === "knowledge-cloud") && options.knowledgeCloudDeploy) {
     steps.push("Knowledge Cloud deploy=true is ready in GitHub Actions.");
   }
+  if ((options.target === "all" || options.target === "single-binary") && options.singleBinaryRelease) {
+    steps.push("Single-binary GitHub Release asset path is ready.");
+  }
   if (steps.length === 0) steps.push("Review failed checks above before publishing.");
   return steps;
+}
+
+function releaseGitHubActionsNextStep(check: ReleaseDoctorCheck): string {
+  if (check.details?.["runner_allocation"] === true) {
+    return "Fix GitHub Actions runner allocation before publishing or deploying.";
+  }
+  return "Fix GitHub Actions billing or spending limit before publishing or deploying.";
+}
+
+function releaseProofValidationNextStep(check: ReleaseDoctorCheck): string {
+  const fileIntegrity = check.details?.["file_integrity"];
+  const archiveIntegrity = check.details?.["archive_integrity"];
+  if (proofIntegrityHasIssuePrefix(fileIntegrity, "compliance_report_")) {
+    return "Remove external certification claims and repair compliance report references before publishing or deploying.";
+  }
+  if (
+    (isRecord(fileIntegrity) && fileIntegrity["ok"] === false)
+    || (isRecord(archiveIntegrity) && archiveIntegrity["ok"] === false)
+  ) {
+    return "Regenerate or repair proof pack artifacts before publishing or deploying.";
+  }
+  return "Fix missing or malformed proof evidence before publishing or deploying.";
+}
+
+function proofIntegrityHasIssuePrefix(value: unknown, prefix: string): boolean {
+  if (!isRecord(value) || !Array.isArray(value["issues"])) return false;
+  return value["issues"].some((issue) =>
+    isRecord(issue)
+    && typeof issue["code"] === "string"
+    && issue["code"].startsWith(prefix)
+  );
 }
 
 function printReleaseDoctor(result: ReleaseDoctorResult): void {
@@ -1288,12 +2657,14 @@ function printReleaseDoctor(result: ReleaseDoctorResult): void {
   console.log("");
   console.log(`npm_publish=${result.readiness.npm_publish ? "ready" : "not_ready"}`);
   console.log(`knowledge_cloud_deploy=${result.readiness.knowledge_cloud_deploy ? "ready" : "not_ready"}`);
+  console.log(`single_binary_release=${result.readiness.single_binary_release ? "ready" : "not_ready"}`);
   console.log("");
   console.log("Next steps:");
   for (const step of result.next_steps) console.log(`- ${step}`);
 }
 
 function renderReleaseReadinessReport(result: ReleaseDoctorResult): string {
+  const blockers = result.next_steps.filter(isReleaseBlockerStep);
   return [
     "# Osstack Release Readiness",
     "",
@@ -1306,6 +2677,7 @@ function renderReleaseReadinessReport(result: ReleaseDoctorResult): string {
     "|---|---|",
     `| npm_publish | ${result.readiness.npm_publish ? "ready" : "not_ready"} |`,
     `| knowledge_cloud_deploy | ${result.readiness.knowledge_cloud_deploy ? "ready" : "not_ready"} |`,
+    `| single_binary_release | ${result.readiness.single_binary_release ? "ready" : "not_ready"} |`,
     "",
     "## Checks",
     "",
@@ -1328,6 +2700,14 @@ function renderReleaseReadinessReport(result: ReleaseDoctorResult): string {
         "",
       ];
     }),
+    ...(blockers.length === 0
+      ? []
+      : [
+        "## Blockers",
+        "",
+        ...blockers.map((step) => `- ${step}`),
+        "",
+      ]),
     "## Next Steps",
     "",
     ...result.next_steps.map((step) => `- ${step}`),
@@ -1335,17 +2715,12 @@ function renderReleaseReadinessReport(result: ReleaseDoctorResult): string {
   ].join("\n");
 }
 
-function releaseActionPlan(result: ReleaseDoctorResult): ReleaseActionPlan {
+function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: string; cloudUrl?: string } = {}): ReleaseActionPlan {
   const versionPr = result.checks.find((check) => check.id === "version_packages_pr");
   const versionPrNumber = typeof versionPr?.details?.["number"] === "number"
     ? versionPr.details["number"]
     : undefined;
-  const blockers = result.next_steps.filter((step) =>
-    step.startsWith("Add repository secret")
-    || step.startsWith("Refresh GitHub auth")
-    || step.startsWith("Restore the Knowledge Cloud Deploy workflow")
-    || step.startsWith("Review Version Packages PR")
-  );
+  const blockers = result.next_steps.filter(isReleaseBlockerStep);
   const repositorySecrets = result.checks.find((check) => check.id === "repository_secrets");
   const missingSecrets = repositorySecrets?.details?.["missing"];
   const latestVersionPrCiUrl = typeof versionPr?.details?.["latest_ci_url"] === "string"
@@ -1359,17 +2734,26 @@ function releaseActionPlan(result: ReleaseDoctorResult): ReleaseActionPlan {
     ...(Array.isArray(missingSecrets) && missingSecrets.includes("FLY_API_TOKEN")
       ? ["gh secret set FLY_API_TOKEN --repo gilosbornhello/osstack --body \"$FLY_API_TOKEN\""]
       : []),
+    ...(Array.isArray(missingSecrets)
+      ? SINGLE_BINARY_RELEASE_SECRETS
+        .filter((secret) => missingSecrets.includes(secret))
+        .map((secret) => `gh secret set ${secret} --repo gilosbornhello/osstack --body "$${secret}"`)
+      : []),
     ...(latestVersionPrCiConclusion === "action_required"
       ? [
         "Open the latest Version Packages PR CI run and approve or rerun it if GitHub requires manual action.",
         ...(latestVersionPrCiUrl === undefined ? [] : [latestVersionPrCiUrl]),
       ]
       : []),
+    ...releaseGitHubActionsOperatorCommands(result.checks.find((check) => check.id === "github_actions")),
   ];
   const validationCommands = [
-    `osstack release doctor --target ${result.target} --output release-readiness.md --json`,
+    `osstack release doctor --target ${result.target}${options.proofDir === undefined ? "" : ` --proof-dir ${options.proofDir}`}${options.cloudUrl === undefined ? "" : ` --cloud-url ${options.cloudUrl}`} --output release-readiness.md --json`,
+    `osstack proof validate <run_id> --proof-dir ${options.proofDir ?? "release/osstack-proof-<run_id>"} --json`,
+    ...(result.target === "all" ? ["pnpm smoke:release-plan"] : []),
     ...(result.target === "all" || result.target === "npm"
       ? [
+        "pnpm smoke:npm-install",
         versionPrNumber === undefined
           ? "gh pr list --state open --head changeset-release/main --json number,mergeable,mergeStateStatus,statusCheckRollup,url"
           : `gh pr view ${versionPrNumber} --json mergeable,mergeStateStatus,statusCheckRollup,url`,
@@ -1377,20 +2761,60 @@ function releaseActionPlan(result: ReleaseDoctorResult): ReleaseActionPlan {
       ]
       : []),
     ...(result.target === "all" || result.target === "knowledge-cloud"
-      ? ["gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false"]
+      ? [
+        "pnpm smoke:knowledge-cloud:deploy",
+        "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false",
+      ]
+      : []),
+    ...(result.target === "all" || result.target === "single-binary"
+      ? [
+        "pnpm smoke:single-binary-release-pack",
+        "pnpm smoke:single-binary-release-publish",
+        "gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=true",
+      ]
       : []),
   ];
-  const publishCommands = result.target === "knowledge-cloud" ? [] : [
-    ...(versionPrNumber === undefined ? [] : [`gh pr merge ${versionPrNumber} --squash --delete-branch`]),
-    "npm install -g @osstack/cli",
-    "osstack --version",
-    "osstack loop doctor --workspace .",
+  const publishCommands = [
+    ...(result.target === "knowledge-cloud" || result.target === "single-binary" ? [] : [
+      ...(versionPrNumber === undefined ? [] : [`gh pr merge ${versionPrNumber} --squash --delete-branch`]),
+      "npm install -g @osstack/cli",
+      "osstack --version",
+      "osstack loop doctor --workspace .",
+    ]),
+    ...(result.target === "all" || result.target === "single-binary"
+      ? ["gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false"]
+      : []),
   ];
-  const deployCommands = result.target === "npm" ? [] : [
+  const knowledgeCloudUrl = options.cloudUrl ?? "https://knowledge.osstack.ai";
+  const deployCommands = result.target === "npm" || result.target === "single-binary" ? [] : [
     "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true",
-    "osstack knowledge login --cloud-url https://knowledge.osstack.ai",
-    "osstack knowledge sync",
-    "osstack knowledge search \"proof pack checksum\"",
+    `osstack knowledge login --cloud-url ${knowledgeCloudUrl}`,
+    `osstack knowledge sync --cloud-url ${knowledgeCloudUrl} --json`,
+    `osstack knowledge search "proof pack checksum" --cloud-url ${knowledgeCloudUrl} --json`,
+  ];
+  const postReleaseValidationCommands = [
+    ...(result.target === "knowledge-cloud" || result.target === "single-binary" ? [] : [
+      "npm view @osstack/cli version --json",
+      "npm install -g @osstack/cli",
+      "osstack --version",
+      "osstack release doctor --target npm --json",
+      "osstack doctor --workspace . --json",
+    ]),
+    ...(result.target === "npm" || result.target === "single-binary" ? [] : [
+      `osstack release doctor --target knowledge-cloud --cloud-url ${knowledgeCloudUrl} --json`,
+      `osstack knowledge sync --cloud-url ${knowledgeCloudUrl} --json`,
+      `osstack knowledge search "proof pack checksum" --cloud-url ${knowledgeCloudUrl} --json`,
+    ]),
+    ...(result.target === "all" || result.target === "single-binary"
+      ? ["osstack release doctor --target single-binary --json"]
+      : []),
+    ...(result.target === "npm" || result.target === "knowledge-cloud" ? [] : [
+      "gh release view v<version> --repo gilosbornhello/osstack",
+      "gh release download v<version> --repo gilosbornhello/osstack --pattern 'osstack-*.tar.gz' --pattern 'osstack-*.archive.json' --pattern 'osstack-*.sbom.spdx.json' --pattern 'sha256sums.txt'",
+      "test -s osstack-*.archive.json && test -s osstack-*.sbom.spdx.json",
+      "tar -xzf osstack-*.tar.gz",
+      "shasum -a 256 -c sha256sums.txt",
+    ]),
   ];
   return {
     target: result.target,
@@ -1401,7 +2825,34 @@ function releaseActionPlan(result: ReleaseDoctorResult): ReleaseActionPlan {
     validation_commands: validationCommands,
     publish_commands: publishCommands,
     deploy_commands: deployCommands,
+    post_release_validation_commands: postReleaseValidationCommands,
   };
+}
+
+function isReleaseBlockerStep(step: string): boolean {
+  return step.startsWith("Add repository secret")
+    || step.startsWith("Refresh GitHub auth")
+    || step.startsWith("Fix GitHub Actions")
+    || step.startsWith("Add Apple notarization")
+    || step.startsWith("Fix missing or malformed proof evidence")
+    || step.startsWith("Regenerate or repair proof pack artifacts")
+    || step.startsWith("Remove external certification claims")
+    || step.startsWith("Restore NPM publish assets")
+    || step.startsWith("Restore Knowledge Cloud deploy assets")
+    || step.startsWith("Restore the Knowledge Cloud Deploy workflow")
+    || step.startsWith("Fix the deployed Knowledge Cloud")
+    || step.startsWith("Fix deployed Knowledge Cloud")
+    || step.startsWith("Restore single-binary release assets")
+    || step.startsWith("Restore the Single Binary Release workflow")
+    || step.startsWith("Review Version Packages PR");
+}
+
+function releaseGitHubActionsOperatorCommands(check: ReleaseDoctorCheck | undefined): string[] {
+  if (check?.status !== "error") return [];
+  if (check.details?.["runner_allocation"] === true) {
+    return ["Open GitHub Actions settings/billing and confirm ubuntu-latest jobs can be assigned a runner."];
+  }
+  return ["Open GitHub Billing & plans and fix failed payments or increase the Actions spending limit."];
 }
 
 function renderReleaseActionPlan(plan: ReleaseActionPlan): string {
@@ -1437,6 +2888,10 @@ function renderReleaseActionPlan(plan: ReleaseActionPlan): string {
     "## Deploy Commands",
     "",
     ...(plan.deploy_commands.length === 0 ? ["No Knowledge Cloud deploy commands for this target."] : plan.deploy_commands.map((command) => `- \`${command}\``)),
+    "",
+    "## Post-Release Validation Commands",
+    "",
+    ...plan.post_release_validation_commands.map((command) => `- \`${command}\``),
     "",
   ].join("\n");
 }
@@ -1875,7 +3330,7 @@ async function handleComplianceCommand(args: string[]): Promise<number> {
     console.log(`osstack compliance — evidence mapping reports
 
   osstack compliance list [--json]
-  osstack compliance render <run_id> --pack engineering-readiness [--proof-dir P] [--workspace P] [--output P] [--json]
+  osstack compliance render <run_id> --pack engineering-readiness [--proof-dir P] [--workspace P] [--output P] [--lang en|zh-CN] [--json]
 
 Notes:
   Compliance reports map osstack proof evidence to internal controls.
@@ -1903,7 +3358,7 @@ Notes:
   }
 
   if (sub === "render") {
-    const runId = firstPositionalValue(args.slice(1), new Set(["--pack", "--proof-dir", "--workspace", "--output"]));
+    const runId = firstPositionalValue(args.slice(1), new Set(["--pack", "--proof-dir", "--workspace", "--output", "--lang"]));
     if (runId === undefined) {
       console.error("osstack: compliance render requires a run_id");
       return 1;
@@ -1923,7 +3378,8 @@ Notes:
     const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
     const proofDir = flagValue(args, "--proof-dir") ?? join(workspacePath, "release", `osstack-proof-${safeFileSegment(runId)}`);
     const output = flagValue(args, "--output") ?? join(workspacePath, "reports", `compliance-${packId}-${safeFileSegment(runId)}.md`);
-    const markdown = await renderComplianceReportFromProofDir({ packId, runId, proofDir });
+    const language = resolveLanguage(flagValue(args, "--lang"));
+    const markdown = await renderComplianceReportFromProofDir({ packId, runId, proofDir, language });
     await mkdir(dirname(output), { recursive: true });
     await writeFile(output, markdown, "utf-8");
     if (args.includes("--json")) {
@@ -1950,10 +3406,10 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   osstack knowledge search <query> [--pack P] [--official] [--cloud-url URL] [--tenant T] [--cache-dir P] [--limit N] [--json]
   osstack knowledge inspect <chunk_id> [--pack P] [--official] [--cache-dir P] [--json]
   osstack knowledge import P --scope team|project --id ID --name NAME --license L --output P [--taxonomy T] [--json]
-  osstack knowledge ingest P --scope official|team|project --id ID --name NAME --license L --output P [--taxonomy T] [--source-kind K] [--json]
+  osstack knowledge ingest P --scope official|team|project --id ID --name NAME --license L --output P [--taxonomy T] [--source-kind K] [--reviewer ID] [--review-status approved|changes_requested] [--review-note TEXT] [--json]
   osstack knowledge validate --pack P|--official [--json]
   osstack knowledge pin <pack_id>@<version> [--cache-dir P] [--json]
-  osstack knowledge feedback <chunk_id> --useful|--bad [--cloud-url URL] [--cache-dir P] [--json]
+  osstack knowledge feedback <chunk_id> --useful|--bad [--tenant ID] [--cloud-url URL] [--cache-dir P] [--json]
   osstack knowledge eval --pack P|--official --fixtures P [--top-k N] [--json]
   osstack knowledge sources --internal --pack P|--official [--json]
 
@@ -2245,6 +3701,9 @@ Env:
       "--taxonomy",
       "--quality-score",
       "--source-kind",
+      "--reviewer",
+      "--review-status",
+      "--review-note",
     ]));
     if (sourcePath === undefined) {
       console.error("osstack: knowledge ingest requires a source path");
@@ -2279,6 +3738,17 @@ Env:
       console.error("osstack: --quality-score must be an integer from 0 to 100");
       return 1;
     }
+    const reviewStatus = parseKnowledgeReviewStatus(flagValue(args, "--review-status"));
+    if (reviewStatus === undefined && flagValue(args, "--review-status") !== undefined) {
+      console.error("osstack: --review-status must be approved or changes_requested");
+      return 1;
+    }
+    const reviewerId = flagValue(args, "--reviewer");
+    const reviewNote = flagValue(args, "--review-note");
+    if ((reviewerId === undefined) !== (reviewStatus === undefined)) {
+      console.error("osstack: knowledge ingest review metadata requires both --reviewer and --review-status");
+      return 1;
+    }
     const manifest = await ingestKnowledgeSource({
       path: sourcePath,
       id,
@@ -2288,6 +3758,16 @@ Env:
       taxonomy: flagValues(args, "--taxonomy"),
       ...(qualityScore === undefined ? {} : { qualityScore }),
       ...(sourceKind === undefined ? {} : { sourceKind }),
+      ...(reviewerId === undefined || reviewStatus === undefined
+        ? {}
+        : {
+          review: {
+            status: reviewStatus,
+            reviewer_id: reviewerId,
+            reviewed_at: new Date().toISOString(),
+            summary: reviewNote ?? "Knowledge source reviewed for Osstack publication.",
+          },
+        }),
     });
     await writeFile(output, `${JSON.stringify(manifest, null, 2)}\n`, "utf-8");
     if (args.includes("--json")) {
@@ -2296,6 +3776,7 @@ Env:
         output,
         source_kind: manifest.source_kind,
         taxonomy: manifest.taxonomy ?? [],
+        review_status: manifest.review?.status ?? "unknown",
         chunks: manifest.chunks.length,
         sources: manifest.source_provenance?.length ?? 0,
       }, null, 2));
@@ -2356,7 +3837,7 @@ Env:
   }
 
   if (sub === "feedback") {
-    const chunkId = firstPositionalValue(args.slice(1), new Set(["--cloud-url", "--cache-dir"]));
+    const chunkId = firstPositionalValue(args.slice(1), new Set(["--cloud-url", "--cache-dir", "--tenant"]));
     if (chunkId === undefined) {
       console.error("osstack: knowledge feedback requires <chunk_id>");
       return 1;
@@ -2370,12 +3851,14 @@ Env:
     const config = await readKnowledgeCloudConfig(knowledgeCacheDir(args));
     const cloudUrl = resolveKnowledgeCloudUrl(args, config);
     const authToken = resolveKnowledgeAuthToken(args, config);
+    const tenantId = flagValue(args, "--tenant");
     const feedback = await cacheKnowledgeFeedback({
       cacheDir: knowledgeCacheDir(args),
       chunkId,
       rating: useful ? "useful" : "bad",
       ...(cloudUrl !== undefined ? { cloudUrl } : {}),
       ...(authToken === undefined ? {} : { authToken }),
+      ...(tenantId === undefined ? {} : { tenantId }),
     });
     if (args.includes("--json")) {
       console.log(JSON.stringify({ feedback }, null, 2));
@@ -2471,6 +3954,12 @@ function parseKnowledgeSourceKind(
     || value === "curated_external"
     || value === "internal"
   ) return value;
+  return undefined;
+}
+
+function parseKnowledgeReviewStatus(value: string | undefined): "approved" | "changes_requested" | undefined {
+  if (value === undefined) return undefined;
+  if (value === "approved" || value === "changes_requested") return value;
   return undefined;
 }
 
@@ -2951,7 +4440,8 @@ async function handleProofCommand(args: string[]): Promise<number> {
     console.log(`osstack proof — local evidence proof pack
 
   osstack proof [run_id] [--loop loop_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-mode M] [--knowledge-cloud-url URL] [--knowledge-query Q] [--compliance-pack P] [--output-dir P] [--json]
-  osstack proof view <run_id> --audience engineer|manager|auditor|customer [--proof-dir P] [--workspace P] [--output P] [--json]
+  osstack proof validate <run_id> [--proof-dir P] [--workspace P] [--pack P] [--audience engineer|manager|auditor|customer] [--json]
+  osstack proof view <run_id> --audience engineer|manager|auditor|customer [--proof-dir P] [--workspace P] [--output P] [--lang en|zh-CN] [--json]
 
 Options:
   --loop ID           State-file loop id / artifact id when no persisted run_id is used
@@ -2966,6 +4456,8 @@ Options:
   --compliance-pack P
                       Optional compliance mapping pack to include
   --output-dir P      Directory for proof pack folders (default: <workspace>/release)
+  --pack P            Validate against a compliance mapping pack
+  --lang L            Proof view language: en or zh-CN (default: OSSTACK_LANG or en)
   --json              Print machine-readable summary
 `);
     return 0;
@@ -2973,6 +4465,9 @@ Options:
 
   if (args[0] === "view") {
     return await handleProofViewCommand(args.slice(1));
+  }
+  if (args[0] === "validate") {
+    return await handleProofValidateCommand(args.slice(1));
   }
 
   const runId = firstPositionalValue(args, new Set([
@@ -3045,8 +4540,68 @@ Options:
   return 0;
 }
 
+async function handleProofValidateCommand(args: string[]): Promise<number> {
+  const runId = firstPositionalValue(args, new Set(["--proof-dir", "--workspace", "--pack", "--audience", "--lang"]));
+  if (runId === undefined) {
+    console.error("osstack: proof validate requires a run_id");
+    return 1;
+  }
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const proofDir = flagValue(args, "--proof-dir") ?? join(workspacePath, "release", `osstack-proof-${safeFileSegment(runId)}`);
+  const audience = parseProofAudience(flagValue(args, "--audience"));
+  if (flagValue(args, "--audience") !== undefined && audience === undefined) {
+    console.error("osstack: proof validate requires --audience engineer|manager|auditor|customer");
+    return 1;
+  }
+  const packId = flagValue(args, "--pack");
+  const language = resolveLanguage(flagValue(args, "--lang"));
+  try {
+    const evidence = await loadProofEvidence(proofDir);
+    const validation = validateProofEvidence({
+      evidence,
+      ...(packId === undefined ? {} : { packId }),
+      ...(audience === undefined ? {} : { audience }),
+      language,
+    });
+    const fileIntegrity = await validateProofFileIntegrity(proofDir, evidence.manifest);
+    const archiveIntegrity = await validateProofArchiveIntegrity(proofDir, evidence.manifest);
+    const ok = validation.ok && fileIntegrity.ok && archiveIntegrity.ok;
+    const summary = {
+      run_id: runId,
+      proof_dir: proofDir,
+      ...validation,
+      file_integrity: fileIntegrity,
+      archive_integrity: archiveIntegrity,
+      ok,
+    };
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(summary, null, 2));
+    } else {
+      console.log(`proof_validation=${ok ? "pass" : "fail"}`);
+      console.log(`scope=${validation.scope}`);
+      console.log(`present=${validation.present.length}`);
+      console.log(`missing=${validation.missing.length}`);
+      console.log(`file_integrity=${fileIntegrity.ok ? "pass" : "fail"}`);
+      console.log(`archive_integrity=${archiveIntegrity.ok ? "pass" : "fail"}`);
+      for (const missing of validation.missing) {
+        console.log(`missing ${missing.control_id} ${missing.evidence_path}`);
+      }
+      for (const issue of fileIntegrity.issues) {
+        console.log(`integrity ${issue.code} ${issue.path}`);
+      }
+      for (const issue of archiveIntegrity.issues) {
+        console.log(`archive ${issue.code} ${issue.path}`);
+      }
+    }
+    return ok ? 0 : 1;
+  } catch (error) {
+    console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  }
+}
+
 async function handleProofViewCommand(args: string[]): Promise<number> {
-  const runId = firstPositionalValue(args, new Set(["--audience", "--proof-dir", "--workspace", "--output"]));
+  const runId = firstPositionalValue(args, new Set(["--audience", "--proof-dir", "--workspace", "--output", "--lang"]));
   if (runId === undefined) {
     console.error("osstack: proof view requires a run_id");
     return 1;
@@ -3059,7 +4614,8 @@ async function handleProofViewCommand(args: string[]): Promise<number> {
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
   const proofDir = flagValue(args, "--proof-dir") ?? join(workspacePath, "release", `osstack-proof-${safeFileSegment(runId)}`);
   const output = flagValue(args, "--output") ?? join(workspacePath, "reports", `proof-view-${audience}-${safeFileSegment(runId)}.md`);
-  const markdown = await renderProofViewFromProofDir({ audience, runId, proofDir });
+  const language = resolveLanguage(flagValue(args, "--lang"));
+  const markdown = await renderProofViewFromProofDir({ audience, runId, proofDir, language });
   await mkdir(dirname(output), { recursive: true });
   await writeFile(output, markdown, "utf-8");
   if (args.includes("--json")) {
@@ -3549,9 +5105,12 @@ async function writeProofPack(
   if (workspacePath !== undefined) {
     artifacts.push(await createGitDiffProofArtifact(workspacePath));
   }
+  const complianceReports: Array<{ pack_id: string; path: string; certification_claim: "none" }> = [];
   for (const packId of compliancePackIds) {
+    const path = `compliance-${safeFileSegment(packId)}.md`;
+    complianceReports.push({ pack_id: packId, path, certification_claim: "none" });
     artifacts.push({
-      path: `compliance-${safeFileSegment(packId)}.md`,
+      path,
       content: renderComplianceReport({
         packId,
         runId: artifactId,
@@ -3590,6 +5149,7 @@ async function writeProofPack(
     bytes: Buffer.byteLength(sha256sumsContent, "utf-8"),
   });
 
+  const createdAt = new Date().toISOString();
   const manifest = {
     schema_version: 1,
     kind: "osstack.proof_pack",
@@ -3600,7 +5160,9 @@ async function writeProofPack(
     agent_ids: proofAgentIds(state),
     ...(workspacePath !== undefined ? { workspace: workspacePath } : {}),
     generated_from: "LOOP-STATE.json",
-    generated_at: new Date().toISOString(),
+    created_at: createdAt,
+    generated_at: createdAt,
+    ...(complianceReports.length === 0 ? {} : { compliance_reports: complianceReports }),
     artifacts: manifestArtifacts,
   };
   const manifestContent = `${JSON.stringify(manifest, null, 2)}\n`;
@@ -4260,7 +5822,7 @@ function knowledgeProofFromTrace(trace: LoopKnowledgeTrace): KnowledgeProofEvide
       status: "recorded",
       query: trace.query ?? "",
       packs: trace.packs,
-      results: trace.results,
+      results: trace.results.map((result) => ({ ...result, matched_terms: result.matched_terms ?? [] })),
       ...(trace.reason !== undefined ? { reason: trace.reason } : {}),
       ...(trace.fallback_mode === "local" ? { fallback_mode: trace.fallback_mode } : {}),
     };
@@ -4352,6 +5914,7 @@ function createAgentRuntimeEvidence(events: LoopEvent[]): {
 }
 
 function rolesForAgentId(agentId: string): string[] {
+  if (agentId === "local-command") return ["coding", "test-verify", "release/proof"];
   const adapter = defaultAdapters().find((candidate) => candidate.id === agentId);
   return rolesForCapabilityKinds(adapter?.capabilities().map((capability) => capability.kind) ?? []);
 }
@@ -5963,11 +7526,12 @@ async function handleKanbanCommand(args: string[]): Promise<number> {
 
 async function handleDashboardCommand(args: string[]): Promise<number> {
   const sub = args[0]?.startsWith("--") ? "summary" : (args[0] ?? "summary");
+  const snapshotParams = dashboardSnapshotParams(args);
 
   if (sub === "summary") {
     const [healthResp, snapshotResp] = await Promise.all([
       rpc("health") as Promise<RpcResp>,
-      rpc("dashboard.snapshot") as Promise<RpcResp>,
+      rpc("dashboard.snapshot", snapshotParams) as Promise<RpcResp>,
     ]);
     if (!healthResp.ok) {
       console.error("osstack:", healthResp.error?.message ?? "health failed");
@@ -5979,7 +7543,7 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
     }
     const summary = {
       daemon: healthResp.result,
-      cockpit: snapshotResp.result,
+      cockpit: workspaceScopedCockpitSnapshot(snapshotResp.result, args),
     };
     if (args.includes("--json")) {
       console.log(JSON.stringify(summary, null, 2));
@@ -6000,7 +7564,7 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
       console.error("osstack: dashboard URL is not available yet; check `osstack health`");
       return 1;
     }
-    console.log(url);
+    console.log(workspaceDashboardUrl(url, args));
     return 0;
   }
 
@@ -6011,19 +7575,24 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
       return 1;
     }
     const { spawn } = await import("node:child_process");
-    spawn("open", [resp.result.url], { detached: true, stdio: "ignore" }).unref();
-    console.log(resp.result.url);
+    const url = workspaceDashboardUrl(resp.result.url, args);
+    spawn("open", [url], { detached: true, stdio: "ignore" }).unref();
+    console.log(url);
     return 0;
   }
 
   if (sub === "snapshot") {
-    const resp = (await rpc("dashboard.snapshot")) as { ok: boolean; result?: unknown; error?: { message: string } };
+    const resp = (await rpc("dashboard.snapshot", snapshotParams)) as { ok: boolean; result?: unknown; error?: { message: string } };
     if (!resp.ok) {
       console.error("osstack:", resp.error?.message ?? "dashboard.snapshot failed");
       return 1;
     }
-    console.log(JSON.stringify(resp.result, null, 2));
+    console.log(JSON.stringify(workspaceScopedCockpitSnapshot(resp.result, args), null, 2));
     return 0;
+  }
+
+  if (sub === "next") {
+    return await handleCockpitNextCommand(args.slice(1));
   }
 
   if (sub === "report") {
@@ -6051,8 +7620,12 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
 
   osstack cockpit           Show daemon, run, kanban, report, and proof summary
   osstack cockpit --json    Print daemon status + dashboard snapshot JSON
+  osstack cockpit --workspace P
+                            Include project-local release readiness evidence
   osstack cockpit run [loop run options]
                             Run queued work with report, scorecard, and proof defaults
+  osstack cockpit next [--workspace P] [--status ready|running|blocked] [--json]
+                            Print actionable next steps from the cockpit snapshot
   osstack cockpit retry [task_id] [--workspace P] [--state P] [--json]
                             Requeue a failed or escalated task from loop state
   osstack cockpit approve <card_id> [--comment TEXT] [--json]
@@ -6061,10 +7634,16 @@ async function handleDashboardCommand(args: string[]): Promise<number> {
                             Generate a cockpit report from loop evidence
   osstack cockpit proof [run_id] [--workspace P] [--state P] [--events P] [--output-dir P] [--open]
                             Generate a proof pack from loop evidence
-  osstack dashboard url       Print the URL for chat bots to return
-  osstack dashboard open      Open the dashboard locally
-  osstack dashboard snapshot  Print the JSON backing the dashboard
-  osstack dashboard summary   Show the same product cockpit summary
+  osstack dashboard url [--workspace P]
+                              Print the URL for chat bots to return
+  osstack dashboard open [--workspace P]
+                              Open the dashboard locally
+  osstack dashboard snapshot [--workspace P]
+                              Print the JSON backing the dashboard
+  osstack dashboard summary [--workspace P]
+                              Show the same product cockpit summary
+  osstack dashboard next [--workspace P] [--status ready|running|blocked]
+                            Show the same actionable next steps
   osstack cockpit url         Same as dashboard url
   osstack cockpit open        Same as dashboard open
 
@@ -6078,6 +7657,64 @@ Env:
 
   console.error(`osstack: unknown dashboard subcommand "${sub}"`);
   return 1;
+}
+
+function dashboardSnapshotParams(args: string[]): { workspacePath?: string } | undefined {
+  const workspacePath = flagValue(args, "--workspace");
+  return workspacePath === undefined ? undefined : { workspacePath: resolve(workspacePath) };
+}
+
+function workspaceDashboardUrl(url: string, args: string[]): string {
+  const workspacePath = flagValue(args, "--workspace");
+  if (workspacePath === undefined) return url;
+  const nextUrl = new URL(url);
+  nextUrl.searchParams.set("workspace", resolve(workspacePath));
+  return nextUrl.toString();
+}
+
+function workspaceScopedCockpitSnapshot(snapshot: unknown, args: string[]): unknown {
+  if (!isRecord(snapshot)) return snapshot;
+  const dashboard = isRecord(snapshot["dashboard"]) ? snapshot["dashboard"] : undefined;
+  if (dashboard === undefined || typeof dashboard["url"] !== "string") return snapshot;
+  return {
+    ...snapshot,
+    dashboard: {
+      ...dashboard,
+      url: workspaceDashboardUrl(dashboard["url"], args),
+    },
+  };
+}
+
+async function handleCockpitNextCommand(args: string[]): Promise<number> {
+  const statusRaw = flagValue(args, "--status");
+  const statusFilter = parseCockpitNextStatus(statusRaw);
+  if (statusRaw !== undefined && statusFilter === undefined) {
+    console.error("osstack: cockpit next requires --status ready|running|blocked");
+    return 1;
+  }
+  const resp = (await rpc("dashboard.snapshot", dashboardSnapshotParams(args))) as { ok: boolean; result?: unknown; error?: { message: string } };
+  if (!resp.ok) {
+    console.error("osstack:", resp.error?.message ?? "dashboard.snapshot failed");
+    return 1;
+  }
+  const cockpit = isRecord(resp.result) ? resp.result : {};
+  const rawNextSteps = Array.isArray(cockpit["next_steps"]) ? cockpit["next_steps"] : [];
+  const nextSteps = statusFilter === undefined
+    ? rawNextSteps
+    : rawNextSteps.filter((step) => isRecord(step) && step["status"] === statusFilter);
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({ next_steps: nextSteps }, null, 2));
+    return 0;
+  }
+  printCockpitNextSteps(nextSteps, cockpitSummaryText(resolveLanguage()));
+  return 0;
+}
+
+type CockpitNextStatus = "ready" | "running" | "blocked";
+
+function parseCockpitNextStatus(value: string | undefined): CockpitNextStatus | undefined {
+  if (value === "ready" || value === "running" || value === "blocked") return value;
+  return undefined;
 }
 
 async function handleCockpitReportCommand(args: string[]): Promise<number> {
@@ -6310,6 +7947,7 @@ function printCockpitSummary(summary: { daemon?: unknown; cockpit?: unknown }): 
   const evidence = isRecord(cockpit["evidence"]) ? cockpit["evidence"] : {};
   const quality = isRecord(cockpit["quality"]) ? cockpit["quality"] : {};
   const recentRuns = Array.isArray(cockpit["recent_runs"]) ? cockpit["recent_runs"] : [];
+  const nextSteps = Array.isArray(cockpit["next_steps"]) ? cockpit["next_steps"] : [];
   const columns = Array.isArray(board["columns"]) ? board["columns"] : [];
 
   console.log(text.title);
@@ -6330,12 +7968,14 @@ function printCockpitSummary(summary: { daemon?: unknown; cockpit?: unknown }): 
     console.log(`  ${String(run["run_id"] ?? "unknown")} ${String(run["phase"] ?? "unknown")} ${String(run["outcome"] ?? "running")} ${String(run["agent_id"] ?? "unknown")}`);
   }
   if (recentRuns.length === 0) console.log(`  ${text.none}`);
+  printCockpitNextSteps(nextSteps, text);
 }
 
 function cockpitSummaryText(language: LoopReportLanguage): {
   title: string;
   kanban: string;
   recentRuns: string;
+  nextSteps: string;
   none: string;
 } {
   if (language === "zh-CN") {
@@ -6343,6 +7983,7 @@ function cockpitSummaryText(language: LoopReportLanguage): {
       title: "Osstack 驾驶舱",
       kanban: "任务看板",
       recentRuns: "最近运行",
+      nextSteps: "下一步",
       none: "无",
     };
   }
@@ -6350,8 +7991,26 @@ function cockpitSummaryText(language: LoopReportLanguage): {
     title: "Osstack Cockpit",
     kanban: "kanban",
     recentRuns: "recent runs",
+    nextSteps: "next steps",
     none: "none",
   };
+}
+
+function printCockpitNextSteps(nextSteps: unknown[], text: ReturnType<typeof cockpitSummaryText>): void {
+  console.log(`${text.nextSteps}:`);
+  for (const step of nextSteps.slice(0, 5)) {
+    if (!isRecord(step)) continue;
+    console.log(`  [${String(step["status"] ?? "unknown")}] ${String(step["label"] ?? "unknown")} - ${String(step["detail"] ?? "")}`);
+    const blockers = Array.isArray(step["blockers"]) ? step["blockers"] : [];
+    for (const blocker of blockers) {
+      if (!isRecord(blocker)) continue;
+      console.log(`    blocker ${String(blocker["id"] ?? "unknown")}: ${String(blocker["detail"] ?? "")}`);
+    }
+    if (typeof step["command"] === "string" && step["command"].length > 0) {
+      console.log(`    command: ${step["command"]}`);
+    }
+  }
+  if (nextSteps.length === 0) console.log(`  ${text.none}`);
 }
 
 async function handleHermesCommand(args: string[]): Promise<number> {
