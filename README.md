@@ -662,12 +662,14 @@ osstack release plan --target all --output release-plan.md --json
 osstack release handoff --cloud-url <EdgeOne URL> --output-dir release-handoff --json
 ```
 
-It checks GitHub auth, repository secrets (`NPM_TOKEN`, `EDGEONE_DEPLOY_HOOK_URL`),
+It checks GitHub auth, repository secrets (`NPM_TOKEN`, `EDGEONE_API_TOKEN`),
 local npm auth, npm publish assets, EdgeOne Knowledge Cloud deploy assets, and
 single-binary release assets so the release train fails before a partial
 publish/deploy/upload is mistaken for production readiness.
 
-EdgeOne is the preferred production deployment target for Knowledge Cloud.
+EdgeOne is the preferred production deployment target for Knowledge Cloud. The
+primary deploy credential is `EDGEONE_API_TOKEN`; `EDGEONE_DEPLOY_HOOK_URL`
+remains supported as a fallback for hook-based projects.
 Fly.io remains an optional reference path and `FLY_API_TOKEN` is not required
 for the primary release path.
 

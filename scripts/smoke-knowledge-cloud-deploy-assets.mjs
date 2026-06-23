@@ -20,7 +20,9 @@ assertIncludes(edgeone, '"OSSTACK_KNOWLEDGE_AUDIT_LOG": "/data/audit/knowledge-c
 assertIncludes(edgeone, '"OSSTACK_KNOWLEDGE_FEEDBACK_LOG": "/data/feedback/feedback.jsonl"', "EdgeOne deploy config must persist Knowledge Cloud feedback JSONL");
 assertIncludes(edgeone, '"OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR": "/data/published-packs"', "EdgeOne deploy config must persist published Knowledge Cloud packs");
 assertIncludes(edgeone, '"knowledge-packs/official/**"', "EdgeOne deploy config must include official knowledge packs");
-assertIncludes(edgeone, '"deploy_secret": "EDGEONE_DEPLOY_HOOK_URL"', "EdgeOne deploy config must declare the deploy hook secret");
+assertIncludes(edgeone, '"deploy_secret": "EDGEONE_API_TOKEN"', "EdgeOne deploy config must declare the EdgeOne API token secret");
+assertIncludes(edgeone, '"fallback_deploy_secret": "EDGEONE_DEPLOY_HOOK_URL"', "EdgeOne deploy config must retain the deploy hook fallback secret");
+assertIncludes(edgeone, '"project_name": "osstack-knowledge-cloud"', "EdgeOne deploy config must declare the Makers project name");
 
 assertIncludes(render, "dockerfilePath: ./Dockerfile.knowledge-cloud", "Render deploy config must use the Knowledge Cloud Dockerfile");
 assertIncludes(render, "healthCheckPath: /healthz", "Render deploy config must healthcheck /healthz");
@@ -34,9 +36,11 @@ assertIncludes(workflow, "cloud_url:", "Knowledge Cloud deploy workflow must acc
 assertIncludes(workflow, "pnpm smoke:knowledge-cloud", "Knowledge Cloud deploy workflow must run service smoke");
 assertIncludes(workflow, "pnpm smoke:knowledge-cloud:deploy", "Knowledge Cloud deploy workflow must run deploy asset smoke");
 assertIncludes(workflow, "docker build -f Dockerfile.knowledge-cloud", "Knowledge Cloud deploy workflow must build the Docker image");
-assertIncludes(workflow, "secrets.EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must gate EdgeOne deploy on EDGEONE_DEPLOY_HOOK_URL");
-assertIncludes(workflow, "deploy=true requires repository secret EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy=true must fail when EDGEONE_DEPLOY_HOOK_URL is missing");
-assertIncludes(workflow, 'curl -fsS -X POST "$EDGEONE_DEPLOY_HOOK_URL"', "Knowledge Cloud deploy workflow must trigger the EdgeOne deploy hook");
+assertIncludes(workflow, "secrets.EDGEONE_API_TOKEN", "Knowledge Cloud deploy workflow must gate EdgeOne CLI deploy on EDGEONE_API_TOKEN");
+assertIncludes(workflow, "edgeone@latest makers deploy . -n osstack-knowledge-cloud", "Knowledge Cloud deploy workflow must deploy with the EdgeOne Makers CLI");
+assertIncludes(workflow, "EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must retain the deploy hook fallback");
+assertIncludes(workflow, "deploy=true requires repository secret EDGEONE_API_TOKEN or EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy=true must fail when no EdgeOne deploy credential is configured");
+assertIncludes(workflow, 'curl -fsS -X POST "$EDGEONE_DEPLOY_HOOK_URL"', "Knowledge Cloud deploy workflow must trigger the EdgeOne deploy hook fallback");
 assertIncludes(workflow, "release doctor --target knowledge-cloud --cloud-url", "Knowledge Cloud deploy workflow must validate the deployed health/search/audit gates when cloud_url is supplied");
 assertIncludes(workflow, 'knowledge sync --cloud-url "${{ inputs.cloud_url }}" --json', "Knowledge Cloud deploy workflow must sync from the deployed cloud URL when supplied");
 assertIncludes(workflow, 'knowledge search "proof pack checksum" --cloud-url "${{ inputs.cloud_url }}" --json', "Knowledge Cloud deploy workflow must search the deployed cloud URL when supplied");

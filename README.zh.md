@@ -615,10 +615,11 @@ osstack release plan --target all --output release-plan.md --json
 osstack release handoff --cloud-url <EdgeOne URL> --output-dir release-handoff --json
 ```
 
-这些命令会检查 GitHub auth、仓库 secrets（`NPM_TOKEN`、`EDGEONE_DEPLOY_HOOK_URL`）、
+这些命令会检查 GitHub auth、仓库 secrets（`NPM_TOKEN`、`EDGEONE_API_TOKEN`）、
 本地 npm auth、npm 发布资产、EdgeOne Knowledge Cloud 部署资产，以及单文件 release
 资产，避免把部分发布/部署误认为生产就绪。当前 Knowledge Cloud 正式上线以 EdgeOne
-为主路径；Fly.io 只保留为可选参考，不再要求 `FLY_API_TOKEN`。
+为主路径，首选部署凭证是 `EDGEONE_API_TOKEN`；`EDGEONE_DEPLOY_HOOK_URL` 仍作为
+hook 项目的 fallback 保留。Fly.io 只保留为可选参考，不再要求 `FLY_API_TOKEN`。
 
 当 GitHub Actions minutes 紧张时，优先使用 `release handoff` 生成的
 `next-actions.sh`。它只打印操作者清单，不会执行 secret 写入、Release rerun 或 EdgeOne

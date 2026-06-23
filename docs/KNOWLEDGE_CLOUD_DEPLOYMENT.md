@@ -59,12 +59,15 @@ workflow trigger command, and deployed URL validation commands.
    - `OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR=/data/published-packs`
    - `OSSTACK_KNOWLEDGE_AUDIT_LOG=/data/audit/knowledge-cloud-audit.jsonl`
    - `OSSTACK_KNOWLEDGE_FEEDBACK_LOG=/data/feedback/feedback.jsonl`
-5. Create an EdgeOne deploy hook.
-6. Save the hook URL as the GitHub repository secret:
+5. Create an EdgeOne API Token for Makers deployment.
+6. Save the token as the GitHub repository secret:
 
    ```bash
-   gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body "$EDGEONE_DEPLOY_HOOK_URL"
+   gh secret set EDGEONE_API_TOKEN --repo gilosbornhello/osstack --body "$EDGEONE_API_TOKEN"
    ```
+
+   `EDGEONE_DEPLOY_HOOK_URL` is still supported as a fallback if the project is
+   already configured around EdgeOne WebHook deployment.
 
 7. Validate release/deploy readiness before publishing:
 
@@ -103,14 +106,20 @@ to finish the production setup without exposing hook URLs in chat or issue text.
    runtime aligned with Node `22`.
 5. Add the runtime env vars listed in the checklist above. Do not add npm,
    GitHub, EdgeOne hook, or private tenant tokens to public build logs.
-6. In project settings, create a WebHook/deploy hook for production deploys.
+6. In the EdgeOne Makers API Token tab, create a production deployment token.
    Copy it once into a local shell variable:
 
    ```bash
-   export EDGEONE_DEPLOY_HOOK_URL='<paste EdgeOne hook URL locally>'
+   export EDGEONE_API_TOKEN='<paste EdgeOne API token locally>'
    ```
 
 7. Store it in GitHub Secrets from the local terminal:
+
+   ```bash
+   gh secret set EDGEONE_API_TOKEN --repo gilosbornhello/osstack --body "$EDGEONE_API_TOKEN"
+   ```
+
+   Optional fallback for existing hook-based projects:
 
    ```bash
    gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body "$EDGEONE_DEPLOY_HOOK_URL"
@@ -134,6 +143,7 @@ Official references:
 
 - EdgeOne Pages quick deploy from GitHub: <https://edgeone.ai/document/162227908259442688>
 - EdgeOne Pages build guide and environment variables: <https://edgeone.ai/document/162227908250005504>
+- EdgeOne CLI and API Token deployment: <https://edgeone.ai/document/162227908259442688>
 - EdgeOne Pages WebHook release note: <https://edgeone.ai/document/177158578324279296>
 
 ## Fly.io Optional Reference
@@ -145,8 +155,9 @@ Official references:
 The manual workflow `.github/workflows/knowledge-cloud-deploy.yml` runs build, tests, service smoke, deploy-asset smoke, and a Docker image build on `ubuntu-latest`.
 
 - Run with `deploy=false` to validate the deploy bundle without publishing.
-- Set repository secret `EDGEONE_DEPLOY_HOOK_URL`.
-- Run with `deploy=true` to trigger the EdgeOne deployment hook.
+- Set repository secret `EDGEONE_API_TOKEN`.
+- Run with `deploy=true` to deploy through `edgeone makers deploy`.
+- `EDGEONE_DEPLOY_HOOK_URL` remains supported as a fallback when no API token is configured.
 - Pass `cloud_url=<EdgeOne URL>` with `deploy=true` to run deployed
   Knowledge Cloud health/search/audit acceptance checks inside the workflow.
 - Do not set `FLY_API_TOKEN` for the primary path; it is unrelated to the EdgeOne deployment.
@@ -157,7 +168,7 @@ Preflight release and deploy credentials before a production run:
 osstack release doctor --target knowledge-cloud --json
 ```
 
-If `EDGEONE_DEPLOY_HOOK_URL` is missing and `deploy=true`, the workflow fails before deployment so a validation-only run cannot be mistaken for a published cloud service.
+If both `EDGEONE_API_TOKEN` and `EDGEONE_DEPLOY_HOOK_URL` are missing and `deploy=true`, the workflow fails before deployment so a validation-only run cannot be mistaken for a published cloud service.
 
 ## Render
 

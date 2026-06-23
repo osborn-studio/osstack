@@ -23,5 +23,7 @@
     "packages/knowledge-cloud/dist/**",
     "packages/knowledge/dist/**"
   ],
-  "deploy_secret": "EDGEONE_DEPLOY_HOOK_URL"
+  "deploy_secret": "EDGEONE_API_TOKEN",
+  "fallback_deploy_secret": "EDGEONE_DEPLOY_HOOK_URL",
+  "project_name": "osstack-knowledge-cloud"
 }

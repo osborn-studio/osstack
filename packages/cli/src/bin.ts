@@ -9,6 +9,7 @@ import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "
 import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+import { inflateRawSync } from "node:zlib";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import { agentAuthMode, defaultAdapters, rolesForCapabilityKinds } from "@osstack/agents";
 import {
@@ -851,11 +852,14 @@ type ProofArchiveIntegrityIssueCode =
   | "proof_zip_missing_entry"
   | "proof_zip_extra_entry"
   | "proof_zip_duplicate_entry"
-  | "proof_zip_unsafe_entry";
+  | "proof_zip_unsafe_entry"
+  | "proof_zip_sha256_mismatch";
 
 interface ProofArchiveIntegrityIssue {
   path: string;
   code: ProofArchiveIntegrityIssueCode;
+  expected?: string;
+  actual?: string;
 }
 
 interface ProofArchiveIntegrityValidation {
@@ -889,12 +893,12 @@ async function handleReleaseCommand(args: string[]): Promise<number> {
 Checks:
   - GitHub CLI authentication for repository operations
   - GitHub Actions runner availability for release/deploy workflows
-  - repository secrets NPM_TOKEN and EDGEONE_DEPLOY_HOOK_URL
+  - repository secrets NPM_TOKEN and EDGEONE_API_TOKEN
   - Apple notarization and Developer ID secrets for single-binary release
   - optional proof-core evidence validation with --proof-dir
   - optional deployed Knowledge Cloud /healthz validation with --cloud-url
   - local npm login for manual publishing
-  - EdgeOne deploy hook readiness for Knowledge Cloud deploy
+  - EdgeOne deploy credential readiness for Knowledge Cloud deploy
 `);
     return 0;
   }
@@ -959,6 +963,8 @@ interface EdgeOneSetupSummary {
     entry: string;
   };
   deploy_secret: string;
+  fallback_deploy_secret?: string;
+  project_name: string;
   environment: Record<string, string>;
   include_files: string[];
   console_checklist: string[];
@@ -1189,13 +1195,16 @@ async function releaseDoctor(
   const githubActions = await releaseGitHubActionsCheck();
   checks.push(githubActions);
 
-  const requiredSecrets = target === "all" ? ["NPM_TOKEN", "EDGEONE_DEPLOY_HOOK_URL", ...SINGLE_BINARY_RELEASE_SECRETS]
+  const edgeOneDeploySecrets = ["EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"];
+  const requiredSecrets = target === "all" ? ["NPM_TOKEN", ...edgeOneDeploySecrets, ...SINGLE_BINARY_RELEASE_SECRETS]
     : [
       ...(releaseTargetIncludesNpm(target) ? ["NPM_TOKEN"] : []),
-      ...(releaseTargetIncludesKnowledgeCloud(target) ? ["EDGEONE_DEPLOY_HOOK_URL"] : []),
+      ...(releaseTargetIncludesKnowledgeCloud(target) ? edgeOneDeploySecrets : []),
       ...(releaseTargetIncludesSingleBinary(target) ? SINGLE_BINARY_RELEASE_SECRETS : []),
     ];
-  const secrets = await releaseSecretsCheck(requiredSecrets);
+  const secrets = await releaseSecretsCheck(requiredSecrets, {
+    alternativeGroups: releaseTargetIncludesKnowledgeCloud(target) ? [edgeOneDeploySecrets] : [],
+  });
   checks.push(secrets);
 
   if (releaseTargetIncludesNpm(target)) {
@@ -1222,7 +1231,7 @@ async function releaseDoctor(
       checks.push(await releaseKnowledgeCloudSyncCheck(options.cloudUrl));
       checks.push(await releaseKnowledgeCloudAuditCheck(options.cloudUrl));
     }
-    checks.push(releaseEdgeOneDeployHookCheck());
+    checks.push(releaseEdgeOneDeployCredentialCheck(secrets));
   }
   if (releaseTargetIncludesSingleBinary(target)) {
     checks.push(await releaseSingleBinaryReleaseAssetsCheck(process.cwd()));
@@ -1248,7 +1257,7 @@ async function releaseDoctor(
   const actionsReady = githubActions.status !== "error";
   const npmPublish = actionsReady && hasSecret(secrets, "NPM_TOKEN") && npmPublishAssetsReady && npmScopeAccessReady && versionPackagesPrReady;
   const knowledgeCloudDeploy = actionsReady
-    && hasSecret(secrets, "EDGEONE_DEPLOY_HOOK_URL")
+    && hasAnySecret(secrets, edgeOneDeploySecrets)
     && knowledgeDeployAssetsReady
     && knowledgeWorkflowReady
     && knowledgeHealthReady
@@ -1478,7 +1487,9 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   expectAsset(edgeone, '"mode": "pages-functions"', "EdgeOne config must use Pages Functions mode.");
   expectAsset(edgeone, '"healthcheck_path": "/healthz"', "EdgeOne config must healthcheck /healthz.");
   expectAsset(edgeone, '"knowledge-packs/official/**"', "EdgeOne config must include official knowledge packs.");
-  expectAsset(edgeone, '"deploy_secret": "EDGEONE_DEPLOY_HOOK_URL"', "EdgeOne config must declare the deploy hook secret.");
+  expectAsset(edgeone, '"deploy_secret": "EDGEONE_API_TOKEN"', "EdgeOne config must declare the EdgeOne API token secret.");
+  expectAsset(edgeone, '"fallback_deploy_secret": "EDGEONE_DEPLOY_HOOK_URL"', "EdgeOne config must retain the deploy hook fallback secret.");
+  expectAsset(edgeone, '"project_name": "osstack-knowledge-cloud"', "EdgeOne config must declare the Makers project name.");
   expectAsset(render, "dockerfilePath: ./Dockerfile.knowledge-cloud", "Render config must use Dockerfile.knowledge-cloud.");
   expectAsset(render, "healthCheckPath: /healthz", "Render config must healthcheck /healthz.");
   expectAsset(render, "OSSTACK_KNOWLEDGE_AUDIT_LOG", "Render config must persist audit JSONL.");
@@ -1489,8 +1500,9 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   expectAsset(workflow, "pnpm smoke:knowledge-cloud", "Knowledge Cloud deploy workflow must run service smoke.");
   expectAsset(workflow, "pnpm smoke:knowledge-cloud:deploy", "Knowledge Cloud deploy workflow must run deploy asset smoke.");
   expectAsset(workflow, "docker build -f Dockerfile.knowledge-cloud", "Knowledge Cloud deploy workflow must build the Docker image.");
-  expectAsset(workflow, "secrets.EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must gate deploy on EDGEONE_DEPLOY_HOOK_URL.");
-  expectAsset(workflow, 'curl -fsS -X POST "$EDGEONE_DEPLOY_HOOK_URL"', "Knowledge Cloud deploy workflow must trigger the EdgeOne deploy hook.");
+  expectAsset(workflow, "secrets.EDGEONE_API_TOKEN", "Knowledge Cloud deploy workflow must gate deploy on EDGEONE_API_TOKEN.");
+  expectAsset(workflow, "edgeone@latest makers deploy . -n osstack-knowledge-cloud", "Knowledge Cloud deploy workflow must use the EdgeOne Makers CLI.");
+  expectAsset(workflow, "EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must retain the deploy hook fallback.");
   expectAsset(workflow, "release doctor --target knowledge-cloud --cloud-url", "Knowledge Cloud deploy workflow must validate deployed health/search/audit gates when cloud_url is supplied.");
   expectAsset(workflow, "knowledge sync --cloud-url", "Knowledge Cloud deploy workflow must sync from the deployed cloud URL when supplied.");
   expectAsset(workflow, "knowledge search \"proof pack checksum\" --cloud-url", "Knowledge Cloud deploy workflow must search the deployed cloud URL when supplied.");
@@ -2173,13 +2185,13 @@ async function validateProofArchiveIntegrity(
   } catch {
     return { ok: true, checked: false, proof_zip: proofZip, issues: [] };
   }
-  const expectedPaths = proofArchiveExpectedPaths(manifestRaw);
-  if (expectedPaths === undefined) {
+  const expected = proofArchiveExpectedEntries(manifestRaw);
+  if (expected === undefined) {
     return { ok: true, checked: false, proof_zip: proofZip, issues: [] };
   }
-  let archivePaths: string[];
+  let archiveEntries: Array<{ path: string; content: Buffer }>;
   try {
-    archivePaths = readZipEntryNames(await readFile(proofZip));
+    archiveEntries = readZipEntries(await readFile(proofZip));
   } catch {
     return {
       ok: false,
@@ -2190,28 +2202,41 @@ async function validateProofArchiveIntegrity(
   }
 
   const issues: ProofArchiveIntegrityIssue[] = [];
-  const actualPaths = new Set<string>();
-  for (const path of archivePaths) {
+  const actualEntries = new Map<string, Buffer>();
+  for (const { path, content } of archiveEntries) {
     if (isUnsafeProofArtifactPath(path)) {
       issues.push({ path, code: "proof_zip_unsafe_entry" });
       continue;
     }
-    if (actualPaths.has(path)) {
+    if (actualEntries.has(path)) {
       issues.push({ path, code: "proof_zip_duplicate_entry" });
       continue;
     }
-    actualPaths.add(path);
+    actualEntries.set(path, content);
   }
-  for (const path of expectedPaths) {
-    if (!actualPaths.has(path)) issues.push({ path, code: "proof_zip_missing_entry" });
+  for (const path of expected.paths) {
+    if (!actualEntries.has(path)) issues.push({ path, code: "proof_zip_missing_entry" });
   }
-  for (const path of actualPaths) {
-    if (!expectedPaths.has(path)) issues.push({ path, code: "proof_zip_extra_entry" });
+  for (const path of actualEntries.keys()) {
+    if (!expected.paths.has(path)) issues.push({ path, code: "proof_zip_extra_entry" });
+  }
+  for (const [path, expectedSha256] of expected.shaByPath.entries()) {
+    const content = actualEntries.get(path);
+    if (content === undefined) continue;
+    const actualSha256 = sha256Buffer(content);
+    if (actualSha256 !== expectedSha256) {
+      issues.push({
+        path,
+        code: "proof_zip_sha256_mismatch",
+        expected: expectedSha256,
+        actual: actualSha256,
+      });
+    }
   }
   return { ok: issues.length === 0, checked: true, proof_zip: proofZip, issues };
 }
 
-function readZipEntryNames(data: Buffer): string[] {
+function readZipEntries(data: Buffer): Array<{ path: string; content: Buffer }> {
   const eocdOffset = findZipEndOfCentralDirectory(data);
   if (eocdOffset < 0 || eocdOffset + 22 > data.length) throw new Error("zip end of central directory not found");
   const entryCount = data.readUInt16LE(eocdOffset + 10);
@@ -2219,22 +2244,50 @@ function readZipEntryNames(data: Buffer): string[] {
   const centralDirectoryOffset = data.readUInt32LE(eocdOffset + 16);
   if (centralDirectoryOffset + centralDirectorySize > data.length) throw new Error("zip central directory is outside archive");
 
-  const names: string[] = [];
+  const entries: Array<{ path: string; content: Buffer }> = [];
   let offset = centralDirectoryOffset;
   for (let index = 0; index < entryCount; index += 1) {
     if (offset + 46 > data.length || data.readUInt32LE(offset) !== 0x02014b50) {
       throw new Error("zip central directory entry is malformed");
     }
+    const compressionMethod = data.readUInt16LE(offset + 10);
+    const compressedSize = data.readUInt32LE(offset + 20);
     const fileNameLength = data.readUInt16LE(offset + 28);
     const extraLength = data.readUInt16LE(offset + 30);
     const commentLength = data.readUInt16LE(offset + 32);
+    const localHeaderOffset = data.readUInt32LE(offset + 42);
     const nameStart = offset + 46;
     const nameEnd = nameStart + fileNameLength;
     if (nameEnd > data.length) throw new Error("zip entry name is outside archive");
-    names.push(data.subarray(nameStart, nameEnd).toString("utf-8"));
+    const path = data.subarray(nameStart, nameEnd).toString("utf-8");
+    const content = readZipEntryContent(data, {
+      compressionMethod,
+      compressedSize,
+      localHeaderOffset,
+    });
+    entries.push({ path, content });
     offset = nameEnd + extraLength + commentLength;
   }
-  return names;
+  return entries;
+}
+
+function readZipEntryContent(
+  data: Buffer,
+  entry: { compressionMethod: number; compressedSize: number; localHeaderOffset: number },
+): Buffer {
+  const localOffset = entry.localHeaderOffset;
+  if (localOffset + 30 > data.length || data.readUInt32LE(localOffset) !== 0x04034b50) {
+    throw new Error("zip local entry header is malformed");
+  }
+  const localFileNameLength = data.readUInt16LE(localOffset + 26);
+  const localExtraLength = data.readUInt16LE(localOffset + 28);
+  const contentStart = localOffset + 30 + localFileNameLength + localExtraLength;
+  const contentEnd = contentStart + entry.compressedSize;
+  if (contentEnd > data.length) throw new Error("zip entry content is outside archive");
+  const compressed = data.subarray(contentStart, contentEnd);
+  if (entry.compressionMethod === 0) return Buffer.from(compressed);
+  if (entry.compressionMethod === 8) return inflateRawSync(compressed);
+  throw new Error(`unsupported zip compression method ${entry.compressionMethod}`);
 }
 
 function findZipEndOfCentralDirectory(data: Buffer): number {
@@ -2246,14 +2299,24 @@ function findZipEndOfCentralDirectory(data: Buffer): number {
   return -1;
 }
 
-function proofArchiveExpectedPaths(manifestRaw: unknown): Set<string> | undefined {
+function proofArchiveExpectedEntries(manifestRaw: unknown): { paths: Set<string>; shaByPath: Map<string, string> } | undefined {
   if (!isRecord(manifestRaw) || !Array.isArray(manifestRaw["artifacts"])) return undefined;
   const paths = new Set<string>(["manifest.json"]);
+  const shaByPath = new Map<string, string>();
   for (const artifact of manifestRaw["artifacts"]) {
-    if (!isRecord(artifact) || typeof artifact["path"] !== "string" || artifact["path"].length === 0) return undefined;
+    if (
+      !isRecord(artifact)
+      || typeof artifact["path"] !== "string"
+      || artifact["path"].length === 0
+      || typeof artifact["sha256"] !== "string"
+      || !/^[a-f0-9]{64}$/.test(artifact["sha256"])
+    ) {
+      return undefined;
+    }
     paths.add(artifact["path"]);
+    shaByPath.set(artifact["path"], artifact["sha256"]);
   }
-  return paths;
+  return { paths, shaByPath };
 }
 
 async function releaseVersionPackagesPrCheck(): Promise<ReleaseDoctorCheck> {
@@ -2761,7 +2824,10 @@ function releaseGitHubActionsOverride(value: string): ReleaseDoctorCheck {
   };
 }
 
-async function releaseSecretsCheck(requiredSecrets: string[]): Promise<ReleaseDoctorCheck> {
+async function releaseSecretsCheck(
+  requiredSecrets: string[],
+  options: { alternativeGroups?: string[][] } = {},
+): Promise<ReleaseDoctorCheck> {
   const override = process.env["OSSTACK_TEST_RELEASE_SECRETS"];
   let present: string[];
   if (override !== undefined) {
@@ -2779,14 +2845,24 @@ async function releaseSecretsCheck(requiredSecrets: string[]): Promise<ReleaseDo
       };
     }
   }
-  const missing = requiredSecrets.filter((secret) => !present.includes(secret));
+  const alternativeSecrets = new Set((options.alternativeGroups ?? []).flat());
+  const missingRequired = requiredSecrets.filter((secret) => !alternativeSecrets.has(secret) && !present.includes(secret));
+  const missingAlternatives = (options.alternativeGroups ?? [])
+    .filter((group) => !group.some((secret) => present.includes(secret)))
+    .flat();
+  const missing = [...missingRequired, ...missingAlternatives];
   return {
     id: "repository_secrets",
     status: missing.length === 0 ? "ok" : "error",
     message: missing.length === 0
       ? `Required repository secrets are configured: ${requiredSecrets.join(", ")}.`
       : `Missing required repository secrets: ${missing.join(", ")}.`,
-    details: { required: requiredSecrets, present, missing },
+    details: {
+      required: requiredSecrets,
+      present,
+      missing,
+      ...(options.alternativeGroups === undefined || options.alternativeGroups.length === 0 ? {} : { alternative_groups: options.alternativeGroups }),
+    },
   };
 }
 
@@ -2826,32 +2902,46 @@ async function releaseCommandCheck(options: {
   }
 }
 
-function releaseEdgeOneDeployHookCheck(): ReleaseDoctorCheck {
-  const override = process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"];
+function releaseEdgeOneDeployCredentialCheck(secrets: ReleaseDoctorCheck): ReleaseDoctorCheck {
+  const override = process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_CREDENTIAL"] ?? process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"];
   if (override === "ok") {
     return {
-      id: "edgeone_deploy_hook",
+      id: "edgeone_deploy_credential",
       status: "ok",
-      message: "EdgeOne deploy hook is configured for Knowledge Cloud deploy checks.",
+      message: "EdgeOne API token or deploy hook is configured for Knowledge Cloud deploy checks.",
     };
   }
   if (override === "error") {
     return {
-      id: "edgeone_deploy_hook",
+      id: "edgeone_deploy_credential",
       status: "error",
-      message: "EdgeOne deploy hook check failed.",
+      message: "EdgeOne deploy credential check failed.",
     };
   }
+  const mode = hasSecret(secrets, "EDGEONE_API_TOKEN")
+    ? "cli"
+    : hasSecret(secrets, "EDGEONE_DEPLOY_HOOK_URL")
+    ? "hook"
+    : "missing";
   return {
-    id: "edgeone_deploy_hook",
-    status: "warn",
-    message: "EdgeOne deployment is triggered through EDGEONE_DEPLOY_HOOK_URL in GitHub Actions.",
+    id: "edgeone_deploy_credential",
+    status: mode === "missing" ? "warn" : "ok",
+    message: mode === "cli"
+      ? "EdgeOne deployment will use EDGEONE_API_TOKEN with the EdgeOne Makers CLI in GitHub Actions."
+      : mode === "hook"
+      ? "EdgeOne deployment will use EDGEONE_DEPLOY_HOOK_URL as a fallback in GitHub Actions."
+      : "EdgeOne deployment requires EDGEONE_API_TOKEN, or EDGEONE_DEPLOY_HOOK_URL as a fallback.",
+    details: { mode },
   };
 }
 
 function hasSecret(check: ReleaseDoctorCheck, secret: string): boolean {
   const present = check.details?.["present"];
   return Array.isArray(present) && present.includes(secret);
+}
+
+function hasAnySecret(check: ReleaseDoctorCheck, secrets: string[]): boolean {
+  return secrets.some((secret) => hasSecret(check, secret));
 }
 
 function releaseDoctorNextSteps(options: {
@@ -2877,8 +2967,12 @@ function releaseDoctorNextSteps(options: {
   if (Array.isArray(missing) && missing.includes("NPM_TOKEN")) {
     steps.push("Add repository secret NPM_TOKEN before merging the Version Packages PR.");
   }
-  if (Array.isArray(missing) && missing.includes("EDGEONE_DEPLOY_HOOK_URL")) {
-    steps.push("Add repository secret EDGEONE_DEPLOY_HOOK_URL before running Knowledge Cloud deploy=true.");
+  if (
+    Array.isArray(missing)
+    && missing.includes("EDGEONE_API_TOKEN")
+    && missing.includes("EDGEONE_DEPLOY_HOOK_URL")
+  ) {
+    steps.push("Add repository secret EDGEONE_API_TOKEN before running Knowledge Cloud deploy=true; EDGEONE_DEPLOY_HOOK_URL remains supported as a fallback.");
   }
   if (releaseTargetIncludesSingleBinary(options.target) && Array.isArray(missing) && SINGLE_BINARY_RELEASE_SECRETS.some((secret) => missing.includes(secret))) {
     steps.push("Add Apple notarization and Developer ID repository secrets before running Single Binary Release dry_run=false.");
@@ -3077,8 +3171,10 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     ...(Array.isArray(missingSecrets) && missingSecrets.includes("NPM_TOKEN")
       ? ["gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\""]
       : []),
-    ...(Array.isArray(missingSecrets) && missingSecrets.includes("EDGEONE_DEPLOY_HOOK_URL")
-      ? ["gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\""]
+    ...(Array.isArray(missingSecrets)
+      && missingSecrets.includes("EDGEONE_API_TOKEN")
+      && missingSecrets.includes("EDGEONE_DEPLOY_HOOK_URL")
+      ? ["gh secret set EDGEONE_API_TOKEN --repo gilosbornhello/osstack --body \"$EDGEONE_API_TOKEN\""]
       : []),
     ...(Array.isArray(missingSecrets)
       ? SINGLE_BINARY_RELEASE_SECRETS
@@ -3409,7 +3505,7 @@ function isRemoteWorkflowCommand(command: string): boolean {
 function releaseHandoffRequiredSecrets(target: ReleaseDoctorResult["target"]): string[] {
   return [
     ...(releaseTargetIncludesNpm(target) ? ["NPM_TOKEN"] : []),
-    ...(releaseTargetIncludesKnowledgeCloud(target) ? ["EDGEONE_DEPLOY_HOOK_URL"] : []),
+    ...(releaseTargetIncludesKnowledgeCloud(target) ? ["EDGEONE_API_TOKEN"] : []),
     ...(releaseTargetIncludesSingleBinary(target) ? SINGLE_BINARY_RELEASE_SECRETS : []),
   ];
 }
@@ -3596,6 +3692,8 @@ async function createEdgeOneSetupSummary(
     healthcheck_path: manifest.healthcheck_path,
     runtime: manifest.runtime,
     deploy_secret: manifest.deploy_secret,
+    ...(manifest.fallback_deploy_secret === undefined ? {} : { fallback_deploy_secret: manifest.fallback_deploy_secret }),
+    project_name: manifest.project_name,
     environment: manifest.environment,
     include_files: manifest.include_files,
     console_checklist: [
@@ -3603,11 +3701,15 @@ async function createEdgeOneSetupSummary(
       "Configure the EdgeOne project to build from main.",
       `Use ${relative(assetRoot, manifestPath)} as the source of truth for runtime, healthcheck, storage paths, and official pack include paths.`,
       ...Object.entries(manifest.environment).map(([key, value]) => `Set EdgeOne runtime env ${key}=${value}.`),
-      "Create an EdgeOne deploy hook and keep the hook URL private.",
+      `Create an EdgeOne API token for Makers project ${manifest.project_name} and keep it private.`,
+      ...(manifest.fallback_deploy_secret === undefined ? [] : ["Optionally create an EdgeOne deploy hook as a fallback and keep the hook URL private."]),
       `Record the production URL, expected default domain ${manifest.default_domain}, and health path ${manifest.healthcheck_path}.`,
     ],
     github_commands: [
       `gh secret set ${manifest.deploy_secret} --repo gilosbornhello/osstack --body "$${manifest.deploy_secret}"`,
+      ...(manifest.fallback_deploy_secret === undefined
+        ? []
+        : [`# Optional fallback: gh secret set ${manifest.fallback_deploy_secret} --repo gilosbornhello/osstack --body "$${manifest.fallback_deploy_secret}"`]),
     ],
     workflow_commands: [
       "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false",
@@ -3628,6 +3730,8 @@ function parseEdgeOneManifest(raw: string, manifestPath: string): {
   healthcheck_path: string;
   runtime: EdgeOneSetupSummary["runtime"];
   deploy_secret: string;
+  fallback_deploy_secret?: string;
+  project_name: string;
   environment: Record<string, string>;
   include_files: string[];
 } {
@@ -3639,6 +3743,8 @@ function parseEdgeOneManifest(raw: string, manifestPath: string): {
   const provider = requiredString(parsed, "provider", manifestPath);
   const service = requiredString(parsed, "service", manifestPath);
   const deploySecret = requiredString(parsed, "deploy_secret", manifestPath);
+  const fallbackDeploySecret = optionalString(parsed, "fallback_deploy_secret", manifestPath);
+  const projectName = requiredString(parsed, "project_name", manifestPath);
   if (!isRecord(deployment)) throw new Error(`EdgeOne manifest deployment must be an object: ${manifestPath}`);
   if (!isRecord(runtime)) throw new Error(`EdgeOne manifest runtime must be an object: ${manifestPath}`);
   if (!isRecord(environment)) throw new Error(`EdgeOne manifest environment must be an object: ${manifestPath}`);
@@ -3653,6 +3759,8 @@ function parseEdgeOneManifest(raw: string, manifestPath: string): {
       entry: requiredString(runtime, "entry", manifestPath),
     },
     deploy_secret: deploySecret,
+    ...(fallbackDeploySecret === undefined ? {} : { fallback_deploy_secret: fallbackDeploySecret }),
+    project_name: projectName,
     environment: stringRecord(environment, "environment", manifestPath),
     include_files: stringArray(parsed["includeFiles"], "includeFiles", manifestPath),
   };
@@ -3661,6 +3769,13 @@ function parseEdgeOneManifest(raw: string, manifestPath: string): {
 function requiredString(record: Record<string, unknown>, key: string, source: string): string {
   const value = record[key];
   if (typeof value !== "string" || value.length === 0) throw new Error(`${source} missing string field ${key}`);
+  return value;
+}
+
+function optionalString(record: Record<string, unknown>, key: string, source: string): string | undefined {
+  const value = record[key];
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || value.length === 0) throw new Error(`${source} field ${key} must be a non-empty string when present`);
   return value;
 }
 
@@ -3691,9 +3806,11 @@ function renderEdgeOneSetupSummary(setup: EdgeOneSetupSummary): string {
     "",
     `Provider: \`${setup.provider}\``,
     `Service: \`${setup.service}\``,
+    `Project: \`${setup.project_name}\``,
     `Default domain: \`${setup.default_domain}\``,
     `Healthcheck: \`${setup.healthcheck_path}\``,
     `Deploy secret: \`${setup.deploy_secret}\``,
+    ...(setup.fallback_deploy_secret === undefined ? [] : [`Fallback deploy secret: \`${setup.fallback_deploy_secret}\``]),
     "",
     "## Runtime",
     "",

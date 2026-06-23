@@ -839,6 +839,42 @@ describe("proof CLI", () => {
     ]));
   });
 
+  it("rejects proof zips whose entry contents no longer match the manifest", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const proofExitCode = await main(["proof", "--workspace", tmp]);
+    expect(proofExitCode).toBe(0);
+    const proofZip = join(tmp, "release", "osstack-proof-cli-proof-loop.zip");
+    const zipBytes = await readFile(proofZip);
+    const original = Buffer.from("Osstack Loop Report");
+    const replacement = Buffer.from("Tampered Loop Proof");
+    expect(replacement.length).toBe(original.length);
+    const reportTitleOffset = zipBytes.indexOf(original);
+    expect(reportTitleOffset).toBeGreaterThanOrEqual(0);
+    replacement.copy(zipBytes, reportTitleOffset);
+    await writeFile(proofZip, zipBytes);
+
+    logs = [];
+    const invalidExitCode = await main([
+      "proof",
+      "validate",
+      "cli-proof-loop",
+      "--workspace",
+      tmp,
+      "--json",
+    ]);
+
+    expect(invalidExitCode).toBe(1);
+    const summary = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      archive_integrity: { ok: boolean; issues: Array<{ path: string; code: string }> };
+    };
+    expect(summary.ok).toBe(false);
+    expect(summary.archive_integrity).toMatchObject({ ok: false });
+    expect(summary.archive_integrity.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "report.md", code: "proof_zip_sha256_mismatch" }),
+    ]));
+  });
+
   it("rejects proof zips that contain unsafe archive entries", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
     const proofExitCode = await main(["proof", "--workspace", tmp]);

@@ -19,7 +19,7 @@ const SINGLE_BINARY_RELEASE_SECRETS = [
   "MACOS_CERTIFICATE_P12",
   "MACOS_CERTIFICATE_PASSWORD",
 ].join(",");
-const ALL_RELEASE_SECRETS = `NPM_TOKEN,EDGEONE_DEPLOY_HOOK_URL,${SINGLE_BINARY_RELEASE_SECRETS}`;
+const ALL_RELEASE_SECRETS = `NPM_TOKEN,EDGEONE_API_TOKEN,EDGEONE_DEPLOY_HOOK_URL,${SINGLE_BINARY_RELEASE_SECRETS}`;
 
 beforeEach(() => {
   tmp = mkdtempSync(join(tmpdir(), "osstack-product-entry-"));
@@ -170,7 +170,7 @@ describe("product entry commands", () => {
       expect.objectContaining({ id: "npm_scope_access", status: "ok" }),
       expect.objectContaining({ id: "knowledge_cloud_deploy_assets", status: "ok" }),
       expect.objectContaining({ id: "knowledge_cloud_workflow", status: "ok" }),
-      expect.objectContaining({ id: "edgeone_deploy_hook", status: "ok" }),
+      expect.objectContaining({ id: "edgeone_deploy_credential", status: "ok" }),
       expect.objectContaining({ id: "single_binary_release_assets", status: "ok" }),
       expect.objectContaining({ id: "single_binary_workflow", status: "ok" }),
     ]));
@@ -341,7 +341,7 @@ describe("product entry commands", () => {
   it("reports missing Knowledge Cloud deploy secrets without blocking npm readiness", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
-    process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"] = "warn";
+    process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_CREDENTIAL"] = "warn";
     process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
 
     const exitCode = await main(["release", "doctor", "--target", "knowledge-cloud", "--json"]);
@@ -361,10 +361,10 @@ describe("product entry commands", () => {
     expect(result.checks).toContainEqual(expect.objectContaining({
       id: "repository_secrets",
       status: "error",
-      details: expect.objectContaining({ missing: ["EDGEONE_DEPLOY_HOOK_URL"] }),
+      details: expect.objectContaining({ missing: ["EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"] }),
     }));
-    expect(result.checks).toContainEqual(expect.objectContaining({ id: "edgeone_deploy_hook", status: "warn" }));
-    expect(result.next_steps.join("\n")).toContain("EDGEONE_DEPLOY_HOOK_URL");
+    expect(result.checks).toContainEqual(expect.objectContaining({ id: "edgeone_deploy_credential", status: "warn" }));
+    expect(result.next_steps.join("\n")).toContain("EDGEONE_API_TOKEN");
   });
 
   it("surfaces an unstable Version Packages PR in release doctor output", async () => {
@@ -764,7 +764,7 @@ describe("product entry commands", () => {
       expect(result.ready).toBe(false);
       expect(result.safe_to_execute).toBe(false);
       expect(result.output).toBe(output);
-      expect(result.blockers.join("\n")).toContain("EDGEONE_DEPLOY_HOOK_URL");
+      expect(result.blockers.join("\n")).toContain("EDGEONE_API_TOKEN");
       expect(result.validation_commands).toContain(
         `osstack release doctor --target knowledge-cloud --cloud-url ${cloud.url} --output release-readiness.md --json`,
       );
@@ -835,9 +835,9 @@ describe("product entry commands", () => {
     expect(result.completion.npm_publish).toBe(false);
     expect(result.completion.knowledge_cloud_deploy).toBe(false);
     expect(result.external_blockers.join("\n")).toContain("Confirm the npm account behind NPM_TOKEN can publish to @osstack");
-    expect(result.external_blockers.join("\n")).toContain("EDGEONE_DEPLOY_HOOK_URL");
+    expect(result.external_blockers.join("\n")).toContain("EDGEONE_API_TOKEN");
     expect(result.next_actions.operator).toContain("Invite the npm account used for NPM_TOKEN as an owner or publisher for @osstack.");
-    expect(result.next_actions.operator).toContain("gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"");
+    expect(result.next_actions.operator).toContain("gh secret set EDGEONE_API_TOKEN --repo gilosbornhello/osstack --body \"$EDGEONE_API_TOKEN\"");
     expect(result.next_actions.validation).toContain("pnpm smoke:release-plan");
     expect(result.next_actions.github_readonly).toContain("gh run list --branch changeset-release/main --limit 5");
     expect(result.next_actions.remote_workflow).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false");
@@ -847,7 +847,7 @@ describe("product entry commands", () => {
     expect(markdown).toContain("# Osstack Release Status");
     expect(markdown).toContain("## External Blockers");
     expect(markdown).toContain("NPM_TOKEN");
-    expect(markdown).toContain("EDGEONE_DEPLOY_HOOK_URL");
+    expect(markdown).toContain("EDGEONE_API_TOKEN");
     expect(markdown).toContain("## Next Actions");
     expect(markdown).toContain("### GitHub Read-Only");
     expect(markdown).toContain("### Remote Workflow");
@@ -880,6 +880,8 @@ describe("product entry commands", () => {
         entry: string;
       };
       deploy_secret: string;
+      fallback_deploy_secret?: string;
+      project_name: string;
       environment: Record<string, string>;
       console_checklist: string[];
       github_commands: string[];
@@ -895,7 +897,9 @@ describe("product entry commands", () => {
       port: 8787,
       entry: "packages/knowledge-cloud/dist/bin.js",
     });
-    expect(result.deploy_secret).toBe("EDGEONE_DEPLOY_HOOK_URL");
+    expect(result.deploy_secret).toBe("EDGEONE_API_TOKEN");
+    expect(result.fallback_deploy_secret).toBe("EDGEONE_DEPLOY_HOOK_URL");
+    expect(result.project_name).toBe("osstack-knowledge-cloud");
     expect(result.environment).toMatchObject({
       OSSTACK_KNOWLEDGE_CLOUD_HOST: "0.0.0.0",
       OSSTACK_KNOWLEDGE_CLOUD_PORT: "8787",
@@ -904,7 +908,9 @@ describe("product entry commands", () => {
       OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR: "/data/published-packs",
     });
     expect(result.console_checklist.join("\n")).toContain("Create an EdgeOne Pages project connected to gilosbornhello/osstack.");
-    expect(result.github_commands).toContain("gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"");
+    expect(result.console_checklist.join("\n")).toContain("Create an EdgeOne API token for Makers project osstack-knowledge-cloud");
+    expect(result.github_commands).toContain("gh secret set EDGEONE_API_TOKEN --repo gilosbornhello/osstack --body \"$EDGEONE_API_TOKEN\"");
+    expect(result.github_commands).toContain("# Optional fallback: gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"");
     expect(result.github_commands.join("\n")).not.toContain("gh workflow run");
     expect(result.workflow_commands).toContain(
       "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false",
@@ -918,7 +924,8 @@ describe("product entry commands", () => {
     expect(result.output).toBe(output);
     const markdown = await readFile(output, "utf-8");
     expect(markdown).toContain("# EdgeOne Knowledge Cloud Setup");
-    expect(markdown).toContain("EDGEONE_DEPLOY_HOOK_URL");
+    expect(markdown).toContain("EDGEONE_API_TOKEN");
+    expect(markdown).toContain("Fallback deploy secret: `EDGEONE_DEPLOY_HOOK_URL`");
     expect(markdown).toContain("https://knowledge.example.com");
     expect(markdown).toContain("## Console Checklist");
     expect(markdown).toContain("## Validation Commands");
@@ -1014,9 +1021,9 @@ describe("product entry commands", () => {
     expect(result.target).toBe("primary");
     expect(result.output_dir).toBe(outputDir);
     expect(result.cloud_url).toBe("https://knowledge.example.com");
-    expect(result.required_secrets).toEqual(["NPM_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"]);
+    expect(result.required_secrets).toEqual(["NPM_TOKEN", "EDGEONE_API_TOKEN"]);
     expect(result.external_blockers.join("\n")).toContain("NPM_TOKEN");
-    expect(result.external_blockers.join("\n")).toContain("EDGEONE_DEPLOY_HOOK_URL");
+    expect(result.external_blockers.join("\n")).toContain("EDGEONE_API_TOKEN");
     expect(result.external_blockers.join("\n")).not.toContain("Apple notarization");
     expect(result.files.release_status).toBe(join(outputDir, "release-status.md"));
     expect(result.files.release_plan).toBe(join(outputDir, "release-plan.md"));
@@ -1048,7 +1055,7 @@ describe("product entry commands", () => {
     expect(nextActions).toContain("## GitHub Read-Only Commands");
     expect(nextActions).toContain("## Remote Workflow Commands");
     expect(nextActions).toContain("gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\"");
-    expect(nextActions).toContain("gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"");
+    expect(nextActions).toContain("gh secret set EDGEONE_API_TOKEN --repo gilosbornhello/osstack --body \"$EDGEONE_API_TOKEN\"");
     expect(nextActions).toContain("pnpm smoke:npm-preflight");
     expect(nextActions).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true -f cloud_url=https://knowledge.example.com");
   });
