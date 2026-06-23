@@ -20,6 +20,7 @@
     "@osstack/agents": "workspace:*",
     "@osstack/compliance": "workspace:*",
     "@osstack/config": "workspace:*",
+    "@osstack/contracts": "workspace:*",
     "@osstack/core": "workspace:*",
     "@osstack/governance": "workspace:*",
     "@osstack/github": "workspace:*",

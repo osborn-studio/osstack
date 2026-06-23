@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFile, rm, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, stat, unlink, writeFile } from "node:fs/promises";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -63,6 +63,7 @@ describe("proof CLI", () => {
       expect.objectContaining({ path: "agent-runtime.json", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
       expect.objectContaining({ path: "governance-results.json", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
       expect.objectContaining({ path: "knowledge-results.json", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
+      expect.objectContaining({ path: "contract-validation.json", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
       expect.objectContaining({ path: "sha256sums.txt", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
     ]));
     await expect(readFile(join(proofDir, "report.md"), "utf-8")).resolves.toContain("# Osstack Loop Report - cli-proof-loop");
@@ -70,6 +71,7 @@ describe("proof CLI", () => {
     const sha256sums = await readFile(join(proofDir, "sha256sums.txt"), "utf-8");
     expect(sha256sums).toContain("  report.md\n");
     expect(sha256sums).toContain("  governance-results.json\n");
+    expect(sha256sums).toContain("  contract-validation.json\n");
     expect(sha256sums).toContain("  git-diff.patch\n");
     expect(sha256sums).not.toContain("manifest.json");
     const governance = JSON.parse(await readFile(join(proofDir, "governance-results.json"), "utf-8")) as {
@@ -85,6 +87,46 @@ describe("proof CLI", () => {
     const governanceText = await readFile(join(proofDir, "governance-results.json"), "utf-8");
     expect(governanceText).toContain("[REDACTED:openai_key]");
     expect(governanceText).not.toContain("sk-test-secret-token");
+    const contracts = JSON.parse(await readFile(join(proofDir, "contract-validation.json"), "utf-8")) as {
+      status: string;
+      reason?: string;
+    };
+    expect(contracts).toMatchObject({
+      kind: "osstack.contract_validation",
+      status: "unknown",
+      reason: "No osstack.contracts.json manifest found.",
+    });
+  });
+
+  it("records contract validation evidence in the proof pack when a manifest exists", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    await mkdir(join(tmp, "src"), { recursive: true });
+    await writeFile(join(tmp, "osstack.contracts.json"), JSON.stringify({
+      schema_version: 1,
+      kind: "osstack.contract_manifest",
+      service: "demo",
+      endpoints: [{ id: "get-health", method: "GET", path: "/api/health" }],
+    }, null, 2));
+    await writeFile(join(tmp, "src", "client.ts"), "await fetch('/api/health');\n");
+    await writeFile(join(tmp, "src", "server.ts"), "router.get('/api/health', handler);\n");
+
+    const exitCode = await main(["proof", "--workspace", tmp]);
+
+    expect(exitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    const contracts = JSON.parse(await readFile(join(proofDir, "contract-validation.json"), "utf-8")) as {
+      status: string;
+      service: string;
+      endpoints: number;
+      findings: unknown[];
+    };
+    expect(contracts).toMatchObject({
+      kind: "osstack.contract_validation",
+      status: "pass",
+      service: "demo",
+      endpoints: 1,
+      findings: [],
+    });
   });
 
   it("includes a redacted git diff artifact in the proof pack", async () => {

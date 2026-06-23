@@ -60,6 +60,9 @@ importers:
       '@osstack/config':
         specifier: workspace:*
         version: link:../config
+      '@osstack/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@osstack/core':
         specifier: workspace:*
         version: link:../core
@@ -115,6 +118,12 @@ importers:
       zod:
         specifier: ^3.25.76
         version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
+
+  packages/contracts:
     devDependencies:
       '@types/node':
         specifier: ^22.19.19

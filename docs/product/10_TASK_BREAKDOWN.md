@@ -31,7 +31,7 @@ Use `docs/external/2026-06-23-umadev-code-benchmark.md` as the code-level refere
 | Priority | Task | Acceptance |
 |---:|---|---|
 | P1 | Split cockpit TUI model, render, and input handling out of `packages/cli/src/bin.ts`. | `cockpit tui --json`, `--action`, and `--interactive` keep current behavior; interactive input is covered by deterministic CLI tests. |
-| P1 | Add a contract-validation slice inspired by UmaDev's contract layer. | `osstack contracts check --json` or equivalent command produces proof-pack evidence for frontend/backend API alignment. |
+| P1 | Add a contract-validation slice inspired by UmaDev's contract layer. | Initial slice: `osstack contracts check --json` validates `osstack.contracts.json` against frontend fetch calls and backend routes, and proof packs include `contract-validation.json`. Next: broaden route adapters and OpenAPI output. |
 | P1 | Expand Knowledge Cloud taxonomy from the UmaDev reference corpus structure. | New Osstack-native pack families have internal provenance, rewritten Osstack terminology, review queue entries, and retrieval fixtures. |
 | P2 | Formalize the knowledge retrieval boundary. | Search/ranking internals are exposed through a stable retrieval interface with rare-term, common-term, CJK/token, cache, and fallback tests. |
 | P2 | Strengthen conformance matrix automation. | CI fails when a normative `OSSTACK_RUN_SPEC_V1` clause lacks a matrix row or evidence source. |
