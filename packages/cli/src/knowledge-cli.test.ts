@@ -621,6 +621,43 @@ describe("knowledge CLI", () => {
       .resolves.toContain("\"tenant_id\":\"team_alpha\"");
   });
 
+  it("prints Knowledge Cloud feedback summary for a tenant", async () => {
+    const requests: Array<{ authorization: string | null; body?: unknown }> = [];
+    const server = await startKnowledgeServer({ requests });
+    try {
+      const address = server.address() as AddressInfo;
+      const exitCode = await main([
+        "knowledge",
+        "feedback-summary",
+        "--cloud-url",
+        `http://127.0.0.1:${address.port}`,
+        "--token",
+        "kst_cli_summary",
+        "--tenant",
+        "team_alpha",
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(logs.join("\n"))).toMatchObject({
+        total: 3,
+        useful: 2,
+        bad: 1,
+        tenant_id: "team_alpha",
+        chunks: [
+          { chunk_id: "chunk-cockpit", total: 2, useful: 2, bad: 0 },
+          { chunk_id: "chunk-rollback", total: 1, useful: 0, bad: 1 },
+        ],
+      });
+      expect(requests).toContainEqual({
+        authorization: "Bearer kst_cli_summary",
+        body: { tenant_id: "team_alpha" },
+      });
+    } finally {
+      await closeServer(server);
+    }
+  });
+
   it("prunes old cached knowledge pack versions with an explicit apply step", async () => {
     const cacheDir = join(tmp, "knowledge-cache");
     const packsDir = join(cacheDir, "packs", "osstack-core__loop-engineering");
@@ -769,6 +806,19 @@ async function startKnowledgeServer(options: { requests?: Array<{ authorization:
       options.requests?.push({ authorization: req.headers.authorization ?? null, body: parsedBody });
       if (req.method === "POST" && req.url === "/v1/feedback") {
         res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ ok: true }));
+        return;
+      }
+      if (req.method === "POST" && req.url === "/v1/feedback/summary") {
+        res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({
+          total: 3,
+          useful: 2,
+          bad: 1,
+          tenant_id: "team_alpha",
+          chunks: [
+            { chunk_id: "chunk-cockpit", total: 2, useful: 2, bad: 0 },
+            { chunk_id: "chunk-rollback", total: 1, useful: 0, bad: 1 },
+          ],
+        }));
         return;
       }
       if (req.method === "POST" && req.url === "/v1/sync") {

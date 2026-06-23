@@ -242,7 +242,7 @@
 
 已完成：
 
-- `osstack knowledge login/sync/list/search/inspect/import/ingest/pin/feedback/eval/sources` 存在。
+- `osstack knowledge login/sync/list/search/inspect/import/ingest/pin/feedback/feedback-summary/eval/sources` 存在。
 - local cache、cloud search、official packs、本地降级、provenance、retrieval eval 均有测试；安装后 smoke 也覆盖 cloud outage -> cached official packs fallback。
 - report/proof 可记录 knowledge mode、packs、chunks。
 - 本地 cache 已执行 pin enforcement：`knowledge sync` 会跳过与 `pins.json` 冲突的新版本并在
@@ -395,12 +395,12 @@
 - 私有知识包 HTTP 访问要求 bearer token + 显式 `tenant_id`，无 tenant 的 `/v1/private-packs` 请求会被拒绝，私有 search 只有在授权且 tenant 明确时才合入 tenant-scoped private packs，避免未绑定 tenant 的私有包被泛授权搜索泄露。
 - Knowledge Cloud 支持 tenant-bound private tokens：`osstack-knowledge-cloud --private-tenant-token tenant=token` 和 `OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON` 可把私有知识包访问绑定到具体 tenant，错误 tenant token 无法读取目标 tenant 的 private packs；旧的 `--private-token` 仍作为兼容的全局 private token。
 - feedback entry 支持记录 `tenant_id` 与 `authorized`，CLI `knowledge feedback` 支持 `--tenant`，云端 `/v1/feedback` 会把 tenant/auth 范围写入 sink 与响应，便于后续做知识质量审计和租户级反馈分析。
-- 云端服务支持 `/v1/feedback/summary`，可按 `tenant_id` 聚合 useful/bad/total 和 chunk 级反馈计数；Knowledge Cloud smoke 已覆盖 tenant feedback summary。
+- 云端服务支持 `/v1/feedback/summary`，可按 `tenant_id` 聚合 useful/bad/total 和 chunk 级反馈计数；CLI `knowledge feedback-summary` 可使用登录配置或显式 `--cloud-url` / `--token` 查询租户反馈汇总，Knowledge Cloud smoke 与 CLI 测试已覆盖 tenant feedback summary。
 - `osstack-knowledge-cloud` 支持 `--feedback-log` / `OSSTACK_KNOWLEDGE_FEEDBACK_LOG` 将 feedback entry 追加写入 JSONL，并在启动时预加载既有 JSONL 作为 summary 初始状态；EdgeOne/Render 部署配置默认使用 `/data/feedback/feedback.jsonl` 和 `/data/published-packs`，deploy asset smoke 会检查这些落盘路径。
 - `osstack-knowledge-cloud` 支持 `--audit-log` / `OSSTACK_KNOWLEDGE_AUDIT_LOG` 将 publish、private pack access、search、feedback 审计事件追加写入 JSONL，并在启动时预加载既有 JSONL；`/v1/audit` 可查询 official audit events，tenant audit events 需要对应 tenant token，支持 `action` / `status` / `limit` 过滤，避免公共查询泄漏租户事件并让运营排障可控；EdgeOne/Render 部署配置默认使用 `/data/audit/knowledge-cloud-audit.jsonl`。
 - Knowledge search result 会返回 `matched_terms`，本地检索和云端检索 validator 均已覆盖，prompt snippet 会携带命中词，便于 proof/report 解释 chunk 为什么被检索命中。
 - 本地与云端共用的 `searchKnowledgePacks` 已从简单词频排序升级为 BM25-style 排序：考虑 query term 文档频率、chunk 长度归一化和 pack quality score，并覆盖“稀有词完整命中优先于重复通用词”的回归测试。
-- CLI 支持 cloud login/sync/search/import/ingest/pin/feedback/sources。
+- CLI 支持 cloud login/sync/search/import/ingest/pin/feedback/feedback-summary/sources。
 - `knowledge list` 与 `knowledge sources --internal` 已支持无显式 `--pack` / `--official` 时读取 `knowledge sync` 写入的本地缓存；PR #55 覆盖 sync -> list -> search，PR #56 覆盖 sync -> list -> sources -> search provenance 审计闭环。
 - 本地 smoke 验证 official/private packs、sync、search、feedback，并在真实本地服务上调用构建后的 `osstack release doctor --target knowledge-cloud --cloud-url <local-url> --json`，确认 health、search、audit 三道部署 handoff gate 通过且 public audit 不泄漏 tenant event。
 - deploy assets 存在：Dockerfile、EdgeOne、Render、GitHub Actions；`release doctor --target knowledge-cloud` 已接入 `knowledge_cloud_deploy_assets` 静态 preflight，检查 Dockerfile、EdgeOne/Render healthcheck、audit JSONL 持久化路径、feedback JSONL 持久化路径、published-pack storage 路径、workflow smoke、Docker build、`EDGEONE_API_TOKEN` gate 与 EdgeOne Makers CLI 命令；传入 `--cloud-url <url>` 时还会访问 `<url>/healthz` 并要求 HTTP 2xx、`ok=true`、`service=osstack-knowledge-cloud`，用默认 `proof pack checksum` 查询 `<url>/v1/search` 并要求至少 1 条结果，同时对 `<url>/v1/audit` 执行 public audit smoke，要求返回 JSON events 数组且不能泄漏 tenant event；`release plan` 的 Knowledge Cloud validation commands 会列出 `pnpm smoke:knowledge-cloud:deploy`，`smoke:release-plan` 会检查 full release runbook 中该命令与部署后云端验收命令都存在，post-release validation commands 默认使用生产 URL `https://knowledge.osstack.ai`，如果传入 `--cloud-url <url>` 则复用该 URL 执行 `release doctor`、`knowledge sync` 和 `knowledge search`。
