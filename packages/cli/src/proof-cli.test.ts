@@ -775,6 +775,46 @@ describe("proof CLI", () => {
     ]));
   });
 
+  it("rejects proof zips that contain unsafe archive entries", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const proofExitCode = await main(["proof", "--workspace", tmp]);
+    expect(proofExitCode).toBe(0);
+    const proofZip = join(tmp, "release", "osstack-proof-cli-proof-loop.zip");
+    const zipBytes = await readFile(proofZip);
+    const originalName = Buffer.from("report.md");
+    const unsafeName = Buffer.from("/tmp/x.md");
+    expect(unsafeName.length).toBe(originalName.length);
+    let replacements = 0;
+    for (let offset = zipBytes.indexOf(originalName); offset >= 0; offset = zipBytes.indexOf(originalName, offset + unsafeName.length)) {
+      unsafeName.copy(zipBytes, offset);
+      replacements += 1;
+    }
+    expect(replacements).toBeGreaterThan(0);
+    await writeFile(proofZip, zipBytes);
+
+    logs = [];
+    const invalidExitCode = await main([
+      "proof",
+      "validate",
+      "cli-proof-loop",
+      "--workspace",
+      tmp,
+      "--json",
+    ]);
+
+    expect(invalidExitCode).toBe(1);
+    const summary = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      archive_integrity: { ok: boolean; issues: Array<{ path: string; code: string }> };
+    };
+    expect(summary.ok).toBe(false);
+    expect(summary.archive_integrity).toMatchObject({ ok: false });
+    expect(summary.archive_integrity.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "/tmp/x.md", code: "proof_zip_unsafe_entry" }),
+      expect.objectContaining({ path: "report.md", code: "proof_zip_missing_entry" }),
+    ]));
+  });
+
   it("validates proof zip inventories without relying on an external unzip binary", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
     const eventsPath = join(tmp, "events.jsonl");

@@ -839,7 +839,8 @@ type ProofArchiveIntegrityIssueCode =
   | "proof_zip_unreadable"
   | "proof_zip_missing_entry"
   | "proof_zip_extra_entry"
-  | "proof_zip_duplicate_entry";
+  | "proof_zip_duplicate_entry"
+  | "proof_zip_unsafe_entry";
 
 interface ProofArchiveIntegrityIssue {
   path: string;
@@ -1967,6 +1968,10 @@ async function validateProofArchiveIntegrity(
   const issues: ProofArchiveIntegrityIssue[] = [];
   const actualPaths = new Set<string>();
   for (const path of archivePaths) {
+    if (isUnsafeProofArtifactPath(path)) {
+      issues.push({ path, code: "proof_zip_unsafe_entry" });
+      continue;
+    }
     if (actualPaths.has(path)) {
       issues.push({ path, code: "proof_zip_duplicate_entry" });
       continue;
