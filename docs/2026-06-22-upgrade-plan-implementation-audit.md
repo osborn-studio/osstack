@@ -429,12 +429,12 @@ osstack release doctor --json
 
 1. 继续给 `osstack proof validate` 增加更多 negative/malformed vectors；当前 proof/compliance 的结构级证据检查已抽成可复用 validator，proof view/compliance render 会把 malformed manifest、verify、policy、agent runtime、governance、worktree、knowledge evidence 标成 `MISSING`，CLI 还会拒绝 manifest artifact path 重复、artifact 缺失、hash/bytes 不一致、`sha256sums.txt` inventory 不一致和越界路径，release plan 已输出 proof validate 命令并支持 `--workspace` 自动 proof 检查和显式 `--proof-dir` 覆盖，release doctor 已支持显式 `--proof-dir` 和最新 proof dir 自动发现。
 2. 继续补更多 negative/malformed vectors，覆盖边界格式、旧版本兼容字段、外部 proof 目录导入场景。
-3. 继续强化 release doctor、Knowledge Cloud deploy preflight、npm publish preflight；当前 release doctor 已能识别 Version Packages PR #5 的 `CLEAN / MERGEABLE` 状态，检查 NPM publish assets、Knowledge Cloud deploy assets 和 single-binary release assets，显示 Knowledge Cloud Deploy workflow 最近一次 validation run，通过 `--output` 生成 Markdown 发布行动清单，通过 `release plan` 生成验证/发布/部署命令 runbook，并通过 `release npm` 单独生成 npm 发布权限修复 handoff。
+3. 继续强化 release doctor、Knowledge Cloud deploy preflight、npm publish preflight；当前 release doctor 已能识别 Version Packages PR #5 的 `CLEAN / MERGEABLE` 状态，检查 NPM publish assets、Knowledge Cloud deploy assets 和 single-binary release assets，显示 Knowledge Cloud Deploy workflow 最近一次 validation run，通过 `--output` 生成 Markdown 发布行动清单，通过 `release plan` 生成验证/发布/部署命令 runbook，通过 `release npm` 单独生成 npm 发布权限修复 handoff，并通过 `release handoff` 一次性生成 status/plan/npm/EdgeOne/manifest 交接目录。
 
 授权解除后，立即转入 P0：
 
 1. 在 npm 创建/认领 `@osstack` scope，并确保生成 `NPM_TOKEN` 的账号拥有 publish/owner 权限。
-2. 运行 `osstack release npm --output npm-publish-setup.md --json`，按清单重新生成并配置仓库 secret `NPM_TOKEN`，rerun Release workflow。
+2. 运行 `osstack release handoff --cloud-url <EdgeOne URL> --output-dir release-handoff --json` 生成统一交接包；也可单独运行 `osstack release npm --output npm-publish-setup.md --json`，按清单重新生成并配置仓库 secret `NPM_TOKEN`，rerun Release workflow。
 3. 在 EdgeOne Pages 创建 Knowledge Cloud 项目和 deploy hook，配置仓库 secret `EDGEONE_DEPLOY_HOOK_URL`。
 4. 运行 Knowledge Cloud Deploy workflow，选择 `deploy=true`。
 5. 用生产 URL 执行 `osstack release doctor --target knowledge-cloud --cloud-url <EdgeOne URL> --json`、`osstack knowledge sync --cloud-url <EdgeOne URL> --json` 和 `osstack knowledge search "proof pack checksum" --cloud-url <EdgeOne URL> --json`。
