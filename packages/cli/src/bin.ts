@@ -1556,9 +1556,11 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   expectAsset(workflow, "timeout --foreground --kill-after=30s 8m npx edgeone@latest", "Knowledge Cloud deploy workflow must kill a hung EdgeOne CLI deploy command before the job timeout.");
   expectAsset(workflow, "EdgeOne CLI deploy exceeded the 8 minute command timeout", "Knowledge Cloud deploy workflow must explain EdgeOne CLI timeout failures.");
   expectAsset(workflow, "EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must retain the deploy hook fallback.");
+  expectAsset(workflow, "if: $" + "{{ inputs.cloud_url != '' }}", "Knowledge Cloud deploy workflow must validate cloud_url even during validation-only runs.");
   expectAsset(workflow, "release doctor --target knowledge-cloud --cloud-url", "Knowledge Cloud deploy workflow must validate deployed health/search/sync/audit/feedback-summary gates when cloud_url is supplied.");
   expectAsset(workflow, "knowledge sync --cloud-url", "Knowledge Cloud deploy workflow must sync from the deployed cloud URL when supplied.");
   expectAsset(workflow, "knowledge search \"proof pack checksum\" --cloud-url", "Knowledge Cloud deploy workflow must search the deployed cloud URL when supplied.");
+  expectAsset(workflow, "validation-only run completed against", "Knowledge Cloud deploy workflow must summarize validation-only runs that check a cloud URL.");
   expectAsset(workflow, "inputs.cloud_url", "Knowledge Cloud deploy workflow must read the supplied cloud_url input.");
 
   const ok = missing.length === 0 && violations.length === 0;

@@ -8,7 +8,7 @@ on:
         type: boolean
         default: false
       cloud_url:
-        description: "Optional deployed Knowledge Cloud URL for post-deploy health/search/audit validation"
+        description: "Optional deployed Knowledge Cloud URL for validation-only or post-deploy health/search/audit validation"
         type: string
         required: false
         default: ""
@@ -100,7 +100,7 @@ jobs:
           EDGEONE_DEPLOY_HOOK_URL: ${{ secrets.EDGEONE_DEPLOY_HOOK_URL }}
 
       - name: Validate deployed Knowledge Cloud URL
-        if: ${{ inputs.deploy && inputs.cloud_url != '' }}
+        if: ${{ inputs.cloud_url != '' }}
         run: |
           node packages/cli/dist/bin.js release doctor --target knowledge-cloud --cloud-url "${{ inputs.cloud_url }}" --json
           node packages/cli/dist/bin.js knowledge sync --cloud-url "${{ inputs.cloud_url }}" --json
@@ -113,7 +113,9 @@ jobs:
 
       - name: Deployment summary
         run: |
-          if [ "${{ inputs.deploy }}" != "true" ]; then
+          if [ "${{ inputs.deploy }}" != "true" ] && [ -n "${{ inputs.cloud_url }}" ]; then
+            echo "Deployment input was false; validation-only run completed against: ${{ inputs.cloud_url }}" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ inputs.deploy }}" != "true" ]; then
             echo "Deployment input was false; validation-only run completed." >> "$GITHUB_STEP_SUMMARY"
           elif [ -n "${{ inputs.cloud_url }}" ]; then
             echo "Knowledge Cloud deploy completed and validated: ${{ inputs.cloud_url }}" >> "$GITHUB_STEP_SUMMARY"
