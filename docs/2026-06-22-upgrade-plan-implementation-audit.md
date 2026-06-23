@@ -327,10 +327,14 @@
 已完成：
 
 - checkpoint CLI 与测试存在。
+- `osstack checkpoint restore <checkpoint_id|dir>` / `rewind` 已产品化；默认 dry-run，
+  只有传 `--apply` 才会写回 checkpoint metadata 中列出的文件。
+- restore 会校验 checkpoint metadata、相对路径边界、文件 SHA-256 与 byte count；
+  不写 `.git`，也不会删除工作区中 checkpoint 之后新增的文件。
 
 需增强：
 
-- rewind/restore 产品化仍是后续工作。
+- 后续可增加交互确认、diff preview 与按文件选择恢复。
 
 ### Task 6.1：Compliance mapping packs
 

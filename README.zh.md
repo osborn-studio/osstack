@@ -237,6 +237,7 @@ osstack examples
 | `--stop-when-idle` | 关 | 某周期无任务即停止。 |
 | `--archive-completed` | 关 | 把成功的单任务队列文件移动到 `tasks/archive/YYYY-MM-DD/`。 |
 | `--worktree` | 关 | 在隔离 git worktree 中运行每个任务（见下）。 |
+| `--checkpoint` | 关 | 非 worktree 运行前创建 shadow checkpoint；用 `osstack checkpoint restore <id\|dir> --apply` 恢复。 |
 | `--state <path>` | `LOOP-STATE.json` | 机器可读状态文件。 |
 | `--markdown <path>` | `STATE.md` | 人类可读状态文件。 |
 | `--json` | 关 | 向 stdout 输出机器可读摘要。 |
@@ -258,6 +259,10 @@ osstack loop run --source task_queue --auto-agent --verify "pnpm test"
 # 用 DeepSeek 评审器审查工作区 diff
 osstack loop run --source git_diff --reviewer ds-review
 ```
+
+Shadow checkpoint 会写到 `$OSSTACK_HOME/checkpoints`，不在工作区内，也不写入
+`.git`。`osstack checkpoint restore <id|dir>` 默认只做 dry-run；传入 `--apply`
+后才会把 checkpoint metadata 中列出的文件写回。
 
 **退出码：** `0` 一切正常 · `1` 配置/命令错误 · `2` 有任务失败、升级或未通过验证。
 

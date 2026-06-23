@@ -251,6 +251,8 @@ Project commands:
                       Product entry: task queue -> loop -> report/scorecard/proof
   checkpoint create [--workspace P] [--json]
                       Create a shadow checkpoint outside .git for non-worktree recovery
+  checkpoint restore <checkpoint_id|dir> [--workspace P] [--apply] [--json]
+                      Restore tracked files from a shadow checkpoint (dry-run by default)
 
 Agent configuration (role-based; no daemon needed):
   config [show]         Show active profile + how coding/test-verify/design resolve
@@ -4031,9 +4033,33 @@ async function handleCheckpointCommand(args: string[]): Promise<number> {
     console.log(`osstack checkpoint — shadow recovery points for non-worktree runs
 
   osstack checkpoint create [--workspace P] [--json]
+  osstack checkpoint restore <checkpoint_id|dir> [--workspace P] [--apply] [--json]
 
 Checkpoints are written under $OSSTACK_HOME/checkpoints and never inside .git.
+Restore is a dry-run unless --apply is passed, and only writes files listed in
+the checkpoint metadata.
 `);
+    return 0;
+  }
+  if (sub === "restore" || sub === "rewind") {
+    const ref = args[1];
+    if (ref === undefined || ref.startsWith("-")) {
+      console.error("osstack: checkpoint restore requires a checkpoint id or directory");
+      return 1;
+    }
+    const workspaceOverride = flagValue(args, "--workspace");
+    const restoreOptions: { workspace?: string; apply: boolean } = { apply: args.includes("--apply") };
+    if (workspaceOverride !== undefined) restoreOptions.workspace = workspaceOverride;
+    const result = await restoreShadowCheckpoint(ref, restoreOptions);
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(`checkpoint=${result.checkpoint_id}`);
+      console.log(`workspace=${result.workspace}`);
+      console.log(`mode=${result.mode}`);
+      console.log(`restored=${result.restored_files} bytes=${result.bytes}`);
+      if (result.mode === "dry-run") console.log("pass --apply to write these files");
+    }
     return 0;
   }
   if (sub !== "create") {
@@ -4060,6 +4086,26 @@ interface ShadowCheckpointSummary {
   workspace: string;
   files: number;
   bytes: number;
+}
+
+interface ShadowCheckpointRestoreSummary {
+  checkpoint_id: string;
+  checkpoint_dir: string;
+  metadata_path: string;
+  workspace: string;
+  mode: "dry-run" | "applied";
+  restored_files: number;
+  bytes: number;
+  files: Array<{ path: string; sha256: string; bytes: number; target: string }>;
+}
+
+interface ShadowCheckpointMetadata {
+  kind: "osstack.shadow_checkpoint";
+  version: number;
+  checkpoint_id: string;
+  workspace: string;
+  files_root: string;
+  files: Array<{ path: string; sha256: string; bytes: number }>;
 }
 
 async function createShadowCheckpoint(workspacePath: string): Promise<ShadowCheckpointSummary> {
@@ -4095,7 +4141,7 @@ async function createShadowCheckpoint(workspacePath: string): Promise<ShadowChec
     exclusions,
     notes: [
       "Shadow checkpoints are stored outside the workspace and do not write to .git.",
-      "Restore/rewind commands can be layered on this metadata in a later release.",
+      "Restore is dry-run by default and only writes files listed in this metadata.",
     ],
   };
   const metadataPath = join(checkpointDir, "metadata.json");
@@ -4134,6 +4180,115 @@ async function collectCheckpointFiles(
     });
   }
   return files;
+}
+
+async function restoreShadowCheckpoint(
+  checkpointRef: string,
+  options: { workspace?: string; apply: boolean },
+): Promise<ShadowCheckpointRestoreSummary> {
+  const checkpointDir = await resolveCheckpointDir(checkpointRef);
+  const metadataPath = join(checkpointDir, "metadata.json");
+  const metadata = parseShadowCheckpointMetadata(JSON.parse(await readFile(metadataPath, "utf-8")) as unknown, metadataPath);
+  const workspace = realpathSync(options.workspace ?? metadata.workspace);
+  const filesRoot = realpathSync(resolve(checkpointDir, "files"));
+  if (realpathSync(metadata.files_root) !== filesRoot) {
+    throw new Error(`checkpoint files_root must point to its files directory: ${metadataPath}`);
+  }
+  const restored: ShadowCheckpointRestoreSummary["files"] = [];
+  let totalBytes = 0;
+  for (const file of metadata.files) {
+    const source = safeJoin(filesRoot, file.path);
+    const target = safeJoin(workspace, file.path);
+    const content = await readFile(source);
+    const actualSha256 = sha256Buffer(content);
+    if (actualSha256 !== file.sha256) {
+      throw new Error(`checkpoint file sha256 mismatch: ${file.path}`);
+    }
+    if (content.byteLength !== file.bytes) {
+      throw new Error(`checkpoint file size mismatch: ${file.path}`);
+    }
+    if (options.apply) {
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, content);
+    }
+    totalBytes += content.byteLength;
+    restored.push({ path: file.path, sha256: file.sha256, bytes: file.bytes, target });
+  }
+  return {
+    checkpoint_id: metadata.checkpoint_id,
+    checkpoint_dir: checkpointDir,
+    metadata_path: metadataPath,
+    workspace,
+    mode: options.apply ? "applied" : "dry-run",
+    restored_files: restored.length,
+    bytes: totalBytes,
+    files: restored,
+  };
+}
+
+async function resolveCheckpointDir(checkpointRef: string): Promise<string> {
+  const candidate = isAbsolute(checkpointRef) || checkpointRef.includes("/")
+    ? resolve(checkpointRef)
+    : join(osstackHome(), "checkpoints", checkpointRef);
+  const checkpointStat = await stat(candidate);
+  if (!checkpointStat.isDirectory()) throw new Error(`checkpoint is not a directory: ${candidate}`);
+  return realpathSync(candidate);
+}
+
+function parseShadowCheckpointMetadata(value: unknown, metadataPath: string): ShadowCheckpointMetadata {
+  if (!isRecord(value)) throw new Error(`checkpoint metadata must be an object: ${metadataPath}`);
+  if (value["kind"] !== "osstack.shadow_checkpoint") throw new Error(`unsupported checkpoint kind: ${metadataPath}`);
+  const version = value["version"];
+  if (version !== 1) throw new Error(`unsupported checkpoint metadata version: ${String(version)}`);
+  const checkpointId = value["checkpoint_id"];
+  const workspace = value["workspace"];
+  const filesRoot = value["files_root"];
+  const files = value["files"];
+  if (typeof checkpointId !== "string" || checkpointId.length === 0) throw new Error("checkpoint metadata missing checkpoint_id");
+  if (typeof workspace !== "string" || workspace.length === 0) throw new Error("checkpoint metadata missing workspace");
+  if (typeof filesRoot !== "string" || filesRoot.length === 0) throw new Error("checkpoint metadata missing files_root");
+  if (!Array.isArray(files)) throw new Error("checkpoint metadata files must be an array");
+  return {
+    kind: "osstack.shadow_checkpoint",
+    version,
+    checkpoint_id: checkpointId,
+    workspace,
+    files_root: filesRoot,
+    files: files.map((file, index) => parseCheckpointMetadataFile(file, index)),
+  };
+}
+
+function parseCheckpointMetadataFile(value: unknown, index: number): { path: string; sha256: string; bytes: number } {
+  if (!isRecord(value)) throw new Error(`checkpoint metadata files[${index}] must be an object`);
+  const path = value["path"];
+  const sha256Value = value["sha256"];
+  const bytes = value["bytes"];
+  if (typeof path !== "string" || path.length === 0) throw new Error(`checkpoint metadata files[${index}].path is required`);
+  assertSafeRelativePath(path);
+  if (typeof sha256Value !== "string" || !/^[a-f0-9]{64}$/.test(sha256Value)) {
+    throw new Error(`checkpoint metadata files[${index}].sha256 must be a 64-character lowercase hex checksum`);
+  }
+  if (!Number.isInteger(bytes) || typeof bytes !== "number" || bytes < 0) {
+    throw new Error(`checkpoint metadata files[${index}].bytes must be a non-negative integer`);
+  }
+  return { path, sha256: sha256Value, bytes };
+}
+
+function safeJoin(root: string, relativePath: string): string {
+  assertSafeRelativePath(relativePath);
+  const resolvedRoot = resolve(root);
+  const resolvedPath = resolve(resolvedRoot, relativePath);
+  const rel = relative(resolvedRoot, resolvedPath);
+  if (rel === "" || rel.startsWith("..") || isAbsolute(rel)) {
+    throw new Error(`unsafe checkpoint path: ${relativePath}`);
+  }
+  return resolvedPath;
+}
+
+function assertSafeRelativePath(path: string): void {
+  if (isAbsolute(path) || path.split(/[\\/]+/).includes("..")) {
+    throw new Error(`unsafe checkpoint path: ${path}`);
+  }
 }
 
 function osstackExamples(): Array<{ title: string; description: string; commands: string[] }> {

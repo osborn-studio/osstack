@@ -246,6 +246,7 @@ Runs one (or `--cycles N`) full cycle locally, **no daemon required**.
 | `--stop-when-idle` | off | Stop after a cycle with no discovered tasks. |
 | `--archive-completed` | off | Move successful single-task queue files to `tasks/archive/YYYY-MM-DD/`. |
 | `--worktree` | off | Run each task in an isolated git worktree (see below). |
+| `--checkpoint` | off | Create a shadow checkpoint before non-worktree runs. Restore with `osstack checkpoint restore <id\|dir> --apply`. |
 | `--state <path>` | `LOOP-STATE.json` | Machine-readable state file. |
 | `--markdown <path>` | `STATE.md` | Human-readable state file. |
 | `--json` | off | Emit a machine-readable summary to stdout. |
@@ -267,6 +268,11 @@ osstack loop run --source task_queue --auto-agent --verify "pnpm test"
 # Review a working tree's diff with the DeepSeek reviewer
 osstack loop run --source git_diff --reviewer ds-review
 ```
+
+Shadow checkpoints are stored under `$OSSTACK_HOME/checkpoints`, outside the
+workspace and outside `.git`. `osstack checkpoint restore <id|dir>` is a dry-run
+by default; pass `--apply` to write back only the files listed in the checkpoint
+metadata.
 
 **Exit codes:** `0` all good · `1` config/command error · `2` a task failed,
 escalated, or verification did not pass.
