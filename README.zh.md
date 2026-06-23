@@ -117,6 +117,7 @@ osstack deliver "Add one small verified change" \
 # 3. 打开 cockpit 摘要和终端 TUI 预览
 osstack cockpit --workspace .
 osstack cockpit tui --workspace .
+osstack cockpit tui --workspace . --fullscreen
 
 # 4. 重新渲染最新 proof 的工程师视图
 osstack proof view "$(node -e 'const s=require("./LOOP-STATE.json"); process.stdout.write(s.loop_id)')" \

@@ -29,6 +29,27 @@ export interface CockpitTuiActionSelection {
   next_command: string;
 }
 
+export interface CockpitTuiFullscreenState {
+  active_section_index: number;
+  selected_action_index: number;
+}
+
+export type CockpitTuiKey =
+  | "up"
+  | "down"
+  | "left"
+  | "right"
+  | "enter"
+  | "q"
+  | "escape"
+  | string;
+
+export type CockpitTuiKeyResult =
+  | { type: "state"; state: CockpitTuiFullscreenState }
+  | { type: "select"; selection: CockpitTuiActionSelection }
+  | { type: "quit" }
+  | { type: "none"; state: CockpitTuiFullscreenState };
+
 export interface CockpitTuiInteractiveQuit {
   mode: "terminal-cockpit-interactive";
   status: "quit";
@@ -128,6 +149,92 @@ export function renderCockpitTui(model: CockpitTuiModel): string {
   return lines.join("\n").trimEnd();
 }
 
+export function initialCockpitTuiFullscreenState(model: CockpitTuiModel): CockpitTuiFullscreenState {
+  return {
+    active_section_index: model.sections.length === 0 ? -1 : 0,
+    selected_action_index: model.actions.length === 0 ? 0 : 1,
+  };
+}
+
+export function updateCockpitTuiFullscreenState(
+  model: CockpitTuiModel,
+  state: CockpitTuiFullscreenState,
+  key: CockpitTuiKey,
+): CockpitTuiKeyResult {
+  const normalized = key.toLowerCase();
+  if (normalized === "q" || normalized === "escape") return { type: "quit" };
+  if (normalized === "enter") {
+    const selection = selectCockpitTuiAction(model, state.selected_action_index);
+    return selection === undefined ? { type: "none", state } : { type: "select", selection };
+  }
+
+  const nextState = { ...state };
+  if (normalized === "up") {
+    nextState.active_section_index = clamp(nextState.active_section_index - 1, 0, model.sections.length - 1);
+    nextState.selected_action_index = clamp(nextState.selected_action_index - 1, 1, model.actions.length);
+    return { type: "state", state: nextState };
+  }
+  if (normalized === "down") {
+    nextState.active_section_index = clamp(nextState.active_section_index + 1, 0, model.sections.length - 1);
+    nextState.selected_action_index = clamp(nextState.selected_action_index + 1, 1, model.actions.length);
+    return { type: "state", state: nextState };
+  }
+  if (normalized === "left") {
+    nextState.active_section_index = clamp(nextState.active_section_index - 1, 0, model.sections.length - 1);
+    return { type: "state", state: nextState };
+  }
+  if (normalized === "right") {
+    nextState.active_section_index = clamp(nextState.active_section_index + 1, 0, model.sections.length - 1);
+    return { type: "state", state: nextState };
+  }
+  return { type: "none", state };
+}
+
+export function renderCockpitFullscreen(
+  model: CockpitTuiModel,
+  options: { width?: number; height?: number; state?: Partial<CockpitTuiFullscreenState> } = {},
+): string {
+  const width = Math.max(72, Math.min(options.width ?? process.stdout.columns ?? 100, 140));
+  const height = Math.max(20, Math.min(options.height ?? process.stdout.rows ?? 34, 60));
+  const baseState = initialCockpitTuiFullscreenState(model);
+  const state = {
+    active_section_index: options.state?.active_section_index ?? baseState.active_section_index,
+    selected_action_index: options.state?.selected_action_index ?? baseState.selected_action_index,
+  };
+  const innerWidth = width - 4;
+  const rule = "-".repeat(width - 2);
+  const lines = [
+    `+${rule}+`,
+    frameLine("OSSTACK COCKPIT", width),
+    frameLine(`Workspace: ${model.workspace}`, width),
+    frameLine(`Daemon: ${model.daemon}`, width),
+    frameLine("", width),
+    ...model.sections.flatMap((section, index) => {
+      const marker = index === state.active_section_index ? ">" : " ";
+      return [
+        frameLine(`${marker} ${section.title}`, width),
+        ...section.lines.slice(0, 3).map((line) => frameLine(`  ${line}`, width)),
+      ];
+    }),
+    frameLine("", width),
+    frameLine("Actions", width),
+    ...(model.actions.length === 0
+      ? [frameLine("  none", width)]
+      : model.actions.slice(0, 9).map((action, index) => {
+        const selected = index + 1 === state.selected_action_index ? ">" : " ";
+        return frameLine(`${selected} ${index + 1}. [${action.status}] ${action.label}: ${action.command}`, width);
+      })),
+    frameLine("", width),
+    frameLine("Keys: up/down move | enter select | q quit", width),
+    `+${rule}+`,
+  ];
+  const clipped = lines.slice(0, height);
+  while (clipped.length < height) {
+    clipped.splice(clipped.length - 1, 0, frameLine("", width));
+  }
+  return clipped.map((line) => trimToWidth(line, innerWidth + 4)).join("\n").trimEnd();
+}
+
 export function selectCockpitTuiAction(model: CockpitTuiModel, selectedIndex: number): CockpitTuiActionSelection | undefined {
   const action = model.actions[selectedIndex - 1];
   if (action === undefined) return undefined;
@@ -196,6 +303,27 @@ async function readCockpitTuiInteractiveInput(model: CockpitTuiModel, options: {
 
 function concreteCockpitTuiCommand(command: string, workspace: string): string {
   return command.replaceAll("<path>", shellQuote(workspace));
+}
+
+function frameLine(value: string, width: number): string {
+  const innerWidth = width - 4;
+  const text = trimToWidth(value, innerWidth);
+  return `| ${text}${" ".repeat(Math.max(0, innerWidth - visibleLength(text)))} |`;
+}
+
+function trimToWidth(value: string, width: number): string {
+  if (visibleLength(value) <= width) return value;
+  if (width <= 1) return value.slice(0, width);
+  return `${value.slice(0, Math.max(0, width - 1))}~`;
+}
+
+function visibleLength(value: string): number {
+  return [...value].length;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  if (max < min) return 0;
+  return Math.min(Math.max(value, min), max);
 }
 
 function shellQuote(value: string): string {

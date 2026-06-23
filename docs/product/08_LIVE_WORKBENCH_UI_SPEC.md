@@ -18,6 +18,12 @@ panel. It is intentionally dependency-light and non-mutating: the text output is
 for operators, while `--json` returns stable `sections` and `actions` data that
 a richer Ink/blessed live workbench can reuse.
 
+`osstack cockpit tui --fullscreen` renders the same model as a framed workbench
+surface with a highlighted section, highlighted action, and stable keyboard
+intent model. The first implementation remains a pure renderer plus tested state
+transition functions; a future raw-mode event loop can reuse the same state
+contract instead of inventing a second cockpit model.
+
 The terminal cockpit sections are:
 
 - Overview
@@ -45,6 +51,8 @@ by `--action N`, which keeps the behavior testable and automation-friendly.
 - Keep cockpit summary script-friendly with stable labels.
 - Keep `cockpit tui --json` and `cockpit tui --interactive --json` stable enough
   for automation and future richer TUI clients.
+- Keep `cockpit tui --fullscreen` backed by the same model and tested keyboard
+  intents: up/down move, Enter selects, and `q` exits.
 - Let users generate reports from the cockpit surface via `osstack cockpit report`.
 - Let users see local Knowledge Cloud cache readiness from the same cockpit
   surface before running knowledge-backed loops.

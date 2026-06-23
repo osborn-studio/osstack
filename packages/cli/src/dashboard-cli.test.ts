@@ -220,6 +220,28 @@ describe("dashboard/cockpit CLI", () => {
     expect(output).toContain("osstack cockpit run --workspace <path> --json");
   });
 
+  it("renders a full-screen cockpit TUI frame for workbench use", async () => {
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
+    const workspace = join(tmp, "workspace");
+    await mkdir(join(workspace, "reports"), { recursive: true });
+    await mkdir(join(workspace, "release", "osstack-proof-fullscreen"), { recursive: true });
+    await writeFile(join(workspace, "reports", "osstack-report-fullscreen.md"), "# report\n");
+    await writeFile(join(workspace, "release", "osstack-proof-fullscreen", "manifest.json"), "{}\n");
+    expect(await main(["kanban", "create", "Ship fullscreen TUI", "--assignee", "codex-cli"])).toBe(0);
+
+    logs = [];
+    const exitCode = await main(["cockpit", "tui", "--workspace", workspace, "--fullscreen", "--no-color"]);
+
+    expect(exitCode).toBe(0);
+    const output = logs.join("\n");
+    expect(output).toContain("OSSTACK COCKPIT");
+    expect(output).toContain("Workspace:");
+    expect(output).toContain("Daemon:");
+    expect(output).toContain("> Overview");
+    expect(output).toContain("Actions");
+    expect(output).toContain("3. [ready] Loop Engineering");
+  });
+
   it("prints terminal cockpit TUI data as JSON", async () => {
     daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"]! });
     const workspace = join(tmp, "workspace");
