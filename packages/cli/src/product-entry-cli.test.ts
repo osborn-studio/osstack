@@ -665,6 +665,7 @@ describe("product entry commands", () => {
     expect(result.operator_commands).toContain("Open the latest Version Packages PR CI run and approve or rerun it if GitHub requires manual action.");
     expect(result.validation_commands).toContain("osstack release doctor --target npm --output release-readiness.md --json");
     expect(result.validation_commands).toContain("osstack proof validate <run_id> --proof-dir release/osstack-proof-<run_id> --json");
+    expect(result.validation_commands).toContain("pnpm smoke:npm-preflight");
     expect(result.validation_commands).toContain("pnpm smoke:npm-install");
     expect(result.validation_commands).toContain("gh pr view 5 --json mergeable,mergeStateStatus,statusCheckRollup,url");
     expect(result.validation_commands).toContain("gh run list --branch changeset-release/main --limit 5");
@@ -701,6 +702,7 @@ describe("product entry commands", () => {
     expect(result.ready).toBe(true);
     expect(result.safe_to_execute).toBe(true);
     expect(result.validation_commands).toContain("pnpm smoke:release-plan");
+    expect(result.validation_commands).toContain("pnpm smoke:npm-preflight");
     expect(result.validation_commands).toContain("pnpm smoke:npm-install");
     expect(result.validation_commands).toContain("pnpm smoke:knowledge-cloud:deploy");
     expect(result.validation_commands).toContain("pnpm smoke:single-binary-release-pack");

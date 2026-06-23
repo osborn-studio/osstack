@@ -1147,6 +1147,7 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   expectAsset(workflow, "uses: changesets/action@v1", "Release workflow must use changesets/action.");
   expectAsset(workflow, "pnpm smoke:release-plan", "Release workflow must run release plan smoke.");
   expectAsset(workflow, "pnpm smoke:npm-install", "Release workflow must run npm install smoke.");
+  expectAsset(workflow, "pnpm smoke:npm-preflight", "Release workflow must run npm preflight smoke.");
   expectAsset(workflow, "publish: pnpm changeset publish", "Release workflow must publish through changesets.");
   expectAsset(workflow, "pnpm preflight:npm-publish", "Release workflow must preflight npm scope publish access before changesets publish.");
   expectAsset(workflow, "NPM_CONFIG_PROVENANCE", "Release workflow must enable npm provenance for changesets publish.");
@@ -2893,6 +2894,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     ...(result.target === "all" ? ["pnpm smoke:release-plan"] : []),
     ...(result.target === "all" || result.target === "npm"
       ? [
+        "pnpm smoke:npm-preflight",
         "pnpm smoke:npm-install",
         versionPrNumber === undefined
           ? "gh pr list --state open --head changeset-release/main --json number,mergeable,mergeStateStatus,statusCheckRollup,url"
