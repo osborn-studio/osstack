@@ -27,7 +27,7 @@ if (typeof version !== "string" || version.length === 0) {
 
 const bunVersion = run("bun", ["--version"], { cwd: root, capture: true }).stdout.trim();
 if (!skipBuild) {
-  run("pnpm", ["--filter", "@osstack/cli", "build"], { cwd: root, capture: json });
+  run("pnpm", ["--filter", "@osstack/cli...", "build"], { cwd: root, capture: json });
 }
 
 await mkdir(outputDir, { recursive: true });
