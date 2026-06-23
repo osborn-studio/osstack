@@ -9418,7 +9418,8 @@ async function handleCockpitTuiCommand(args: string[]): Promise<number> {
     return 1;
   }
   const snapshot = workspaceScopedCockpitSnapshot(snapshotResp.result, args);
-  const model = cockpitTuiModel(healthResp.result, snapshot);
+  const knowledge = await cockpitKnowledgeSummary(args);
+  const model = cockpitTuiModel(healthResp.result, snapshot, knowledge);
   if (actionIndex !== undefined) {
     const selected = selectCockpitTuiAction(model, actionIndex);
     if (selected === undefined) {
@@ -9449,6 +9450,21 @@ interface CockpitTuiModel {
   actions: Array<{ label: string; command: string; status: string }>;
 }
 
+interface CockpitKnowledgeSummary {
+  cache_dir: string;
+  pack_count: number;
+  official: number;
+  team: number;
+  project: number;
+  internal: number;
+  top_pack?: {
+    id: string;
+    version: string;
+    quality_score: number;
+    sources: number;
+  };
+}
+
 interface CockpitTuiActionSelection {
   mode: "terminal-cockpit-action";
   selected_index: number;
@@ -9456,7 +9472,34 @@ interface CockpitTuiActionSelection {
   next_command: string;
 }
 
-function cockpitTuiModel(daemonRaw: unknown, snapshotRaw: unknown): CockpitTuiModel {
+async function cockpitKnowledgeSummary(args: string[]): Promise<CockpitKnowledgeSummary> {
+  const cacheDir = knowledgeCacheDir(args);
+  const packs = await listCachedKnowledgePacks(cacheDir);
+  const topPack = [...packs].sort((a, b) => (
+    b.manifest.quality_score - a.manifest.quality_score
+    || a.manifest.id.localeCompare(b.manifest.id)
+  ))[0];
+  return {
+    cache_dir: cacheDir,
+    pack_count: packs.length,
+    official: packs.filter((pack) => pack.manifest.scope === "official").length,
+    team: packs.filter((pack) => pack.manifest.scope === "team").length,
+    project: packs.filter((pack) => pack.manifest.scope === "project").length,
+    internal: packs.filter((pack) => pack.manifest.source_kind === "internal").length,
+    ...(topPack === undefined
+      ? {}
+      : {
+        top_pack: {
+          id: topPack.manifest.id,
+          version: topPack.manifest.version,
+          quality_score: topPack.manifest.quality_score,
+          sources: topPack.manifest.source_provenance?.length ?? 0,
+        },
+      }),
+  };
+}
+
+function cockpitTuiModel(daemonRaw: unknown, snapshotRaw: unknown, knowledge: CockpitKnowledgeSummary): CockpitTuiModel {
   const daemon = isRecord(daemonRaw) ? daemonRaw : {};
   const snapshot = isRecord(snapshotRaw) ? snapshotRaw : {};
   const dashboard = isRecord(snapshot["dashboard"]) ? snapshot["dashboard"] : {};
@@ -9476,6 +9519,13 @@ function cockpitTuiModel(daemonRaw: unknown, snapshotRaw: unknown): CockpitTuiMo
       status: String(step["status"] ?? "unknown"),
     }))
     .filter((action) => action.command.length > 0);
+  const knowledgeActions = knowledge.pack_count === 0
+    ? []
+    : [{
+      label: "Knowledge",
+      command: `osstack knowledge search "<query>" --cache-dir ${knowledge.cache_dir} --json`,
+      status: "ready",
+    }];
   return {
     mode: "terminal-cockpit",
     title: "Osstack Cockpit TUI",
@@ -9505,11 +9555,21 @@ function cockpitTuiModel(daemonRaw: unknown, snapshotRaw: unknown): CockpitTuiMo
         ],
       },
       {
+        title: "Knowledge",
+        lines: [
+          `cached_packs=${knowledge.pack_count} official=${knowledge.official} team=${knowledge.team} project=${knowledge.project} internal=${knowledge.internal}`,
+          knowledge.top_pack === undefined
+            ? "top_pack=none"
+            : `top_pack=${knowledge.top_pack.id}@${knowledge.top_pack.version} quality=${knowledge.top_pack.quality_score} sources=${knowledge.top_pack.sources}`,
+          `provenance=osstack knowledge sources --internal --cache-dir ${knowledge.cache_dir} --json`,
+        ],
+      },
+      {
         title: "Next Actions",
         lines: actions.slice(0, 5).map((action) => `[${action.status}] ${action.label}: ${action.command}`),
       },
     ],
-    actions,
+    actions: [...actions, ...knowledgeActions],
   };
 }
 
