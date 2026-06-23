@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       deploy:
-        description: "Deploy to Fly.io when FLY_API_TOKEN is configured"
+        description: "Trigger EdgeOne deployment when EDGEONE_DEPLOY_HOOK_URL is configured"
         type: boolean
         default: false
 
@@ -42,30 +42,28 @@ jobs:
       - name: Docker build
         run: docker build -f Dockerfile.knowledge-cloud -t osstack-knowledge-cloud:${{ github.sha }} .
 
-      - name: Detect Fly token
-        id: fly-token
+      - name: Detect EdgeOne deploy hook
+        id: edgeone-deploy-hook
         run: |
-          if [ -n "${{ secrets.FLY_API_TOKEN }}" ]; then
+          if [ -n "${{ secrets.EDGEONE_DEPLOY_HOOK_URL }}" ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "FLY_API_TOKEN not configured." >> "$GITHUB_STEP_SUMMARY"
+            echo "EDGEONE_DEPLOY_HOOK_URL not configured." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Require Fly token for deploy
-        if: ${{ inputs.deploy && steps.fly-token.outputs.present != 'true' }}
+      - name: Require EdgeOne deploy hook for deploy
+        if: ${{ inputs.deploy && steps.edgeone-deploy-hook.outputs.present != 'true' }}
         run: |
-          echo "deploy=true requires repository secret FLY_API_TOKEN." >> "$GITHUB_STEP_SUMMARY"
+          echo "deploy=true requires repository secret EDGEONE_DEPLOY_HOOK_URL." >> "$GITHUB_STEP_SUMMARY"
           exit 1
 
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-        if: ${{ inputs.deploy && steps.fly-token.outputs.present == 'true' }}
-
-      - name: Deploy to Fly.io
-        if: ${{ inputs.deploy && steps.fly-token.outputs.present == 'true' }}
-        run: flyctl deploy --config deploy/knowledge-cloud/fly.toml --remote-only
+      - name: Trigger EdgeOne deploy
+        if: ${{ inputs.deploy && steps.edgeone-deploy-hook.outputs.present == 'true' }}
+        run: |
+          curl -fsS -X POST "$EDGEONE_DEPLOY_HOOK_URL"
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          EDGEONE_DEPLOY_HOOK_URL: ${{ secrets.EDGEONE_DEPLOY_HOOK_URL }}
 
       - name: Deployment summary
         run: |

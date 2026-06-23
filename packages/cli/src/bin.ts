@@ -232,7 +232,7 @@ Project commands:
   guide [--output P]  Print or write the 5-minute quickstart
   release doctor [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
                       Check publish/deploy prerequisites: GitHub auth, repo
-                      secrets, npm auth, and Fly.io deploy readiness
+                      secrets, npm auth, and EdgeOne deploy readiness
   release plan [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
                       Generate a blocker-aware publish/deploy runbook
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
@@ -871,12 +871,12 @@ async function handleReleaseCommand(args: string[]): Promise<number> {
 Checks:
   - GitHub CLI authentication for repository operations
   - GitHub Actions runner availability for release/deploy workflows
-  - repository secrets NPM_TOKEN and FLY_API_TOKEN
+  - repository secrets NPM_TOKEN and EDGEONE_DEPLOY_HOOK_URL
   - Apple notarization and Developer ID secrets for single-binary release
   - optional proof-core evidence validation with --proof-dir
   - optional deployed Knowledge Cloud /healthz validation with --cloud-url
   - local npm login for manual publishing
-  - local flyctl login for manual Knowledge Cloud deploy debugging
+  - EdgeOne deploy hook readiness for Knowledge Cloud deploy
 `);
     return 0;
   }
@@ -983,9 +983,9 @@ async function releaseDoctor(
   checks.push(githubActions);
 
   const requiredSecrets = target === "npm" ? ["NPM_TOKEN"]
-    : target === "knowledge-cloud" ? ["FLY_API_TOKEN"]
+    : target === "knowledge-cloud" ? ["EDGEONE_DEPLOY_HOOK_URL"]
       : target === "single-binary" ? SINGLE_BINARY_RELEASE_SECRETS
-      : ["NPM_TOKEN", "FLY_API_TOKEN", ...SINGLE_BINARY_RELEASE_SECRETS];
+      : ["NPM_TOKEN", "EDGEONE_DEPLOY_HOOK_URL", ...SINGLE_BINARY_RELEASE_SECRETS];
   const secrets = await releaseSecretsCheck(requiredSecrets);
   checks.push(secrets);
 
@@ -1012,15 +1012,7 @@ async function releaseDoctor(
       checks.push(await releaseKnowledgeCloudSyncCheck(options.cloudUrl));
       checks.push(await releaseKnowledgeCloudAuditCheck(options.cloudUrl));
     }
-    checks.push(await releaseCommandCheck({
-      id: "fly_auth",
-      command: "flyctl",
-      args: ["auth", "whoami"],
-      envOverride: "OSSTACK_TEST_RELEASE_FLY_AUTH",
-      okMessage: "Local flyctl login is available for manual deploy checks.",
-      errorMessage: "Local flyctl login is missing; run flyctl auth login or rely on the FLY_API_TOKEN repository secret in CI.",
-      missingSeverity: "warn",
-    }));
+    checks.push(releaseEdgeOneDeployHookCheck());
   }
   if (target === "all" || target === "single-binary") {
     checks.push(await releaseSingleBinaryReleaseAssetsCheck(process.cwd()));
@@ -1045,7 +1037,7 @@ async function releaseDoctor(
   const actionsReady = githubActions.status !== "error";
   const npmPublish = actionsReady && hasSecret(secrets, "NPM_TOKEN") && npmPublishAssetsReady && versionPackagesPrReady;
   const knowledgeCloudDeploy = actionsReady
-    && hasSecret(secrets, "FLY_API_TOKEN")
+    && hasSecret(secrets, "EDGEONE_DEPLOY_HOOK_URL")
     && knowledgeDeployAssetsReady
     && knowledgeWorkflowReady
     && knowledgeHealthReady
@@ -1173,7 +1165,7 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   const assetRoot = await findReleaseAssetRoot(workspacePath);
   const requiredAssets = [
     "Dockerfile.knowledge-cloud",
-    "deploy/knowledge-cloud/fly.toml",
+    "deploy/knowledge-cloud/edgeone.json",
     "deploy/knowledge-cloud/render.yaml",
     ".github/workflows/knowledge-cloud-deploy.yml",
   ];
@@ -1188,7 +1180,7 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
     }
   };
   const dockerfile = await readAsset("Dockerfile.knowledge-cloud");
-  const fly = await readAsset("deploy/knowledge-cloud/fly.toml");
+  const edgeone = await readAsset("deploy/knowledge-cloud/edgeone.json");
   const render = await readAsset("deploy/knowledge-cloud/render.yaml");
   const workflow = await readAsset(".github/workflows/knowledge-cloud-deploy.yml");
   const expectAsset = (text: string, needle: string, message: string): void => {
@@ -1197,12 +1189,11 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
 
   expectAsset(dockerfile, "EXPOSE 8787", "Dockerfile must expose port 8787.");
   expectAsset(dockerfile, "packages/knowledge-cloud/dist/bin.js", "Dockerfile must start the Knowledge Cloud executable.");
-  expectAsset(fly, 'dockerfile = "Dockerfile.knowledge-cloud"', "Fly config must use Dockerfile.knowledge-cloud.");
-  expectAsset(fly, "internal_port = 8787", "Fly config must route to port 8787.");
-  expectAsset(fly, 'path = "/healthz"', "Fly config must healthcheck /healthz.");
-  expectAsset(fly, 'OSSTACK_KNOWLEDGE_AUDIT_LOG = "/data/audit/knowledge-cloud-audit.jsonl"', "Fly config must persist audit JSONL.");
-  expectAsset(fly, 'OSSTACK_KNOWLEDGE_FEEDBACK_LOG = "/data/feedback/feedback.jsonl"', "Fly config must persist feedback JSONL.");
-  expectAsset(fly, 'OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR = "/data/published-packs"', "Fly config must persist published knowledge packs.");
+  expectAsset(edgeone, '"provider": "tencent-edgeone"', "EdgeOne config must identify Tencent EdgeOne.");
+  expectAsset(edgeone, '"mode": "pages-functions"', "EdgeOne config must use Pages Functions mode.");
+  expectAsset(edgeone, '"healthcheck_path": "/healthz"', "EdgeOne config must healthcheck /healthz.");
+  expectAsset(edgeone, '"knowledge-packs/official/**"', "EdgeOne config must include official knowledge packs.");
+  expectAsset(edgeone, '"deploy_secret": "EDGEONE_DEPLOY_HOOK_URL"', "EdgeOne config must declare the deploy hook secret.");
   expectAsset(render, "dockerfilePath: ./Dockerfile.knowledge-cloud", "Render config must use Dockerfile.knowledge-cloud.");
   expectAsset(render, "healthCheckPath: /healthz", "Render config must healthcheck /healthz.");
   expectAsset(render, "OSSTACK_KNOWLEDGE_AUDIT_LOG", "Render config must persist audit JSONL.");
@@ -1212,8 +1203,8 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   expectAsset(workflow, "pnpm smoke:knowledge-cloud", "Knowledge Cloud deploy workflow must run service smoke.");
   expectAsset(workflow, "pnpm smoke:knowledge-cloud:deploy", "Knowledge Cloud deploy workflow must run deploy asset smoke.");
   expectAsset(workflow, "docker build -f Dockerfile.knowledge-cloud", "Knowledge Cloud deploy workflow must build the Docker image.");
-  expectAsset(workflow, "secrets.FLY_API_TOKEN", "Knowledge Cloud deploy workflow must gate deploy on FLY_API_TOKEN.");
-  expectAsset(workflow, "flyctl deploy --config deploy/knowledge-cloud/fly.toml", "Knowledge Cloud deploy workflow must deploy with the Fly config.");
+  expectAsset(workflow, "secrets.EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must gate deploy on EDGEONE_DEPLOY_HOOK_URL.");
+  expectAsset(workflow, 'curl -fsS -X POST "$EDGEONE_DEPLOY_HOOK_URL"', "Knowledge Cloud deploy workflow must trigger the EdgeOne deploy hook.");
 
   const ok = missing.length === 0 && violations.length === 0;
   return {
@@ -2533,6 +2524,29 @@ async function releaseCommandCheck(options: {
   }
 }
 
+function releaseEdgeOneDeployHookCheck(): ReleaseDoctorCheck {
+  const override = process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"];
+  if (override === "ok") {
+    return {
+      id: "edgeone_deploy_hook",
+      status: "ok",
+      message: "EdgeOne deploy hook is configured for Knowledge Cloud deploy checks.",
+    };
+  }
+  if (override === "error") {
+    return {
+      id: "edgeone_deploy_hook",
+      status: "error",
+      message: "EdgeOne deploy hook check failed.",
+    };
+  }
+  return {
+    id: "edgeone_deploy_hook",
+    status: "warn",
+    message: "EdgeOne deployment is triggered through EDGEONE_DEPLOY_HOOK_URL in GitHub Actions.",
+  };
+}
+
 function hasSecret(check: ReleaseDoctorCheck, secret: string): boolean {
   const present = check.details?.["present"];
   return Array.isArray(present) && present.includes(secret);
@@ -2561,8 +2575,8 @@ function releaseDoctorNextSteps(options: {
   if (Array.isArray(missing) && missing.includes("NPM_TOKEN")) {
     steps.push("Add repository secret NPM_TOKEN before merging the Version Packages PR.");
   }
-  if (Array.isArray(missing) && missing.includes("FLY_API_TOKEN")) {
-    steps.push("Add repository secret FLY_API_TOKEN before running Knowledge Cloud deploy=true.");
+  if (Array.isArray(missing) && missing.includes("EDGEONE_DEPLOY_HOOK_URL")) {
+    steps.push("Add repository secret EDGEONE_DEPLOY_HOOK_URL before running Knowledge Cloud deploy=true.");
   }
   if (Array.isArray(missing) && SINGLE_BINARY_RELEASE_SECRETS.some((secret) => missing.includes(secret))) {
     steps.push("Add Apple notarization and Developer ID repository secrets before running Single Binary Release dry_run=false.");
@@ -2752,8 +2766,8 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     ...(Array.isArray(missingSecrets) && missingSecrets.includes("NPM_TOKEN")
       ? ["gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\""]
       : []),
-    ...(Array.isArray(missingSecrets) && missingSecrets.includes("FLY_API_TOKEN")
-      ? ["gh secret set FLY_API_TOKEN --repo gilosbornhello/osstack --body \"$FLY_API_TOKEN\""]
+    ...(Array.isArray(missingSecrets) && missingSecrets.includes("EDGEONE_DEPLOY_HOOK_URL")
+      ? ["gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\""]
       : []),
     ...(Array.isArray(missingSecrets)
       ? SINGLE_BINARY_RELEASE_SECRETS

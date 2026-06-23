@@ -12,14 +12,14 @@
 - npm tarball 安装后的真实用户入口已经跑通，包括 `osstack --version`、`doctor`、`loop doctor`、`serve --install --no-load`、`deliver --worktree`、`report`、`scorecard`、`proof`、`knowledge eval`、`knowledge sources`、`osstack-knowledge-cloud --help`。
 - portable CLI bundle 与 Bun single executable release archive candidate 已有自动化 smoke，可作为 npm 主路径之外的分发基础；本地 ad-hoc signing、SPDX SBOM、archive 解包运行已验证，CI/release workflow 已接入候选 artifact 生成，tag/workflow_dispatch 的 GitHub Release 上传路径已接入 dry-run smoke；发布级 single executable 仍需 Developer ID 签名、公证、跨机器验证、远端实际运行。
 - 官方知识库已经从“借鉴 UmaDev 的 MIT 知识内容”升级为 osstack 自有官方知识包表达，包含来源治理、checksum、provenance 与检索评测。
-- Knowledge Cloud 已具备本地服务 smoke、Docker/Fly/Render/GitHub Actions 部署资产 smoke。
+- Knowledge Cloud 已具备本地服务 smoke、Docker/EdgeOne/Render/GitHub Actions 部署资产 smoke。
 
 尚未完成的部分不是代码验证，而是外部发布链路：
 
 - GitHub push/PR 已恢复，Version Packages PR #5 当前为 `CLEAN / MERGEABLE`。
 - GitHub Actions 当前被账户 billing/spending-limit 卡住，runner 在执行任何 step 前失败；PR #26 已记录本地验证证据，修复 billing 后需要 rerun CI；`release doctor` 已能自动识别该 blocker。
 - npm 发布仍需要仓库 secret `NPM_TOKEN`。
-- Knowledge Cloud `deploy=true` 仍需要仓库 secret `FLY_API_TOKEN`。
+- Knowledge Cloud `deploy=true` 仍需要仓库 secret `EDGEONE_DEPLOY_HOOK_URL`。
 
 ## 2. 已完成能力清单
 
@@ -30,12 +30,12 @@
 | Loop Engineering | 已完成本地闭环 | `pnpm smoke:loop` 通过；CLI 支持 `--loop` 读取 loop artifact，并校验 loop_id 防止误用 |
 | Evidence / Proof | 已完成本地链路 | `report --loop`、`scorecard --loop`、`proof --loop` 在 npm 安装 smoke 中生成 markdown、manifest、zip |
 | Knowledge Packs | 已完成官方包化 | 6 个 official packs 可加载、可列 source、可做 retrieval eval |
-| Knowledge Cloud | 已完成本地服务与部署资产 | 本地服务 smoke 返回 6 official packs、1 private pack，并验证 sync/search/private/feedback；部署资产 smoke 检查 Dockerfile、Fly、Render、GitHub Actions |
+| Knowledge Cloud | 已完成本地服务与部署资产 | 本地服务 smoke 返回 6 official packs、1 private pack，并验证 sync/search/private/feedback；部署资产 smoke 检查 Dockerfile、EdgeOne、Render、GitHub Actions |
 | macOS launchd 安装 | 已完成安全 smoke | `serve --install --no-load`、`serve --status --no-load`、`serve --uninstall --no-load` 使用临时目录验证 |
 | Portable CLI 分发 | 已完成过渡 smoke | `pnpm smoke:portable-cli` 验证 workspace tarballs 可安装进 portable prefix，并输出 single executable 候选工具状态 |
 | Bun 单文件分发 | 已完成本地 release archive candidate smoke，已接 CI/release artifact | `pnpm build:single-binary` 生成 binary/manifest/checksum；`pnpm sbom:single-binary` 生成 SPDX 2.3 SBOM；`pnpm smoke:bun-single-binary` 验证 `--version`、`help`、`loop doctor --json`、sha256；`pnpm smoke:single-binary-signing` 验证 ad-hoc codesign；`pnpm smoke:single-binary-release-pack` 验证 tarball 可解包运行；release workflow 上传 candidate artifact |
 | 测试体系 | 已完成当前门禁 | lint、build、test、smoke 全部通过 |
-| 云端上线 | 未完成 | 需要修复 Actions billing、配置 `FLY_API_TOKEN`，然后运行 Knowledge Cloud `deploy=true` |
+| 云端上线 | 未完成 | 需要修复 Actions billing、配置 `EDGEONE_DEPLOY_HOOK_URL`，然后运行 Knowledge Cloud `deploy=true` |
 | npm 发布 | 未完成 | PR #5 已 `CLEAN / MERGEABLE`，但合并前必须配置 `NPM_TOKEN` |
 
 ## 3. 本轮验证命令
@@ -47,7 +47,7 @@
 | `pnpm lint` | 通过 | `Checked 161 files ... No fixes applied.` |
 | `pnpm -r build` | 通过 | 15 of 16 workspace projects build succeeded |
 | `pnpm test` | 通过 | CLI 136 tests、Loop 58 tests、Core 71 tests 等全部通过 |
-| `pnpm smoke:knowledge-cloud:deploy` | 通过 | 检查 `Dockerfile.knowledge-cloud`、Fly、Render、GitHub Actions 部署资产 |
+| `pnpm smoke:knowledge-cloud:deploy` | 通过 | 检查 `Dockerfile.knowledge-cloud`、EdgeOne、Render、GitHub Actions 部署资产 |
 | `pnpm smoke:knowledge-cloud` | 通过 | health=`osstack-knowledge-cloud`，packs=`6`，private_packs=`1`，sync_packs=`6`，top_result=`proof-checksum-pack`，private_result=`private-release-approval`，feedback=`sent` |
 | `pnpm smoke:npm-install` | 通过 | 15 个 tarballs；安装后 CLI、launchd dry-run、evidence、knowledge eval、Knowledge Cloud load、sync cache、cloud outage local fallback 全部验证 |
 | `pnpm smoke:portable-cli` | 通过 | build `@osstack/cli`，生成临时 portable bundle，执行 `--version`、`help`、`loop doctor --json`，并报告 Node SEA/Bun/pkg/nexe/postject 候选状态 |
@@ -141,7 +141,7 @@
   - `deploy/knowledge-cloud/fly.toml`
   - `deploy/knowledge-cloud/render.yaml`
   - `.github/workflows/knowledge-cloud-deploy.yml`
-- `release doctor --target knowledge-cloud` 会静态检查部署资产是否完整：Dockerfile、Fly/Render healthcheck、feedback JSONL 持久化路径、workflow smoke、Docker build、`FLY_API_TOKEN` gate 与 Fly deploy 命令。
+- `release doctor --target knowledge-cloud` 会静态检查部署资产是否完整：Dockerfile、EdgeOne/Render healthcheck、feedback JSONL 持久化路径、workflow smoke、Docker build、`EDGEONE_DEPLOY_HOOK_URL` gate 与 EdgeOne deploy 命令。
 - `release doctor --target knowledge-cloud --cloud-url <url>` 会额外访问 `<url>/healthz` 与 `<url>/v1/search`，要求 health 为 HTTP 2xx、JSON `ok=true` 且 `service=osstack-knowledge-cloud`，并要求默认 `proof pack checksum` search smoke 至少返回 1 条结果；这些检查失败会阻止 `knowledge_cloud_deploy` ready。
 
 仍需上线后补齐：
@@ -181,8 +181,8 @@ GitHub push、PR、workflow 定义已恢复。当前发布阻塞不是代码问�
 
 - GitHub Actions runner 启动前失败：`recent account payments have failed or your spending limit needs to be increased`。
 - npm publish 需要仓库 secret `NPM_TOKEN`。
-- Knowledge Cloud `deploy=true` 需要仓库 secret `FLY_API_TOKEN`。
-- 本机人工发布/排障还需要 `npm login` 与 `flyctl auth login`。
+- Knowledge Cloud `deploy=true` 需要仓库 secret `EDGEONE_DEPLOY_HOOK_URL`。
+- 本机人工发布/排障还需要 `npm login` 与 `EdgeOne Pages deploy hook`。
 - `release doctor` 会输出 `github_actions` error；`release plan` 会把修复 Billing / spending limit 放入 blockers 和 operator commands。
 
 发布前执行：
@@ -195,8 +195,8 @@ osstack release doctor --json
 
 - `npm_publish_assets`：检查 `@osstack/cli` package 元数据、changeset 与 release workflow 的 publish/provenance/`NPM_TOKEN`/安装 smoke 约束，失败时会阻止 `npm_publish` ready。
 - `version_packages_pr`：识别 `changeset-release/main` 的 Version Packages PR，输出 PR number、URL、draft 状态和 `merge_state`。当前真实状态为 PR #5 `CLEAN / MERGEABLE`，CI run `27957659115` 已成功；仍需等 `NPM_TOKEN` 配好后再合并。
-- `knowledge_cloud_deploy_assets`：检查 Knowledge Cloud Dockerfile、Fly/Render 配置和 GitHub Actions deploy workflow 的关键部署约束，失败时会阻止 `knowledge_cloud_deploy` ready。
-- `knowledge_cloud_workflow`：识别 `Knowledge Cloud Deploy` workflow 是否存在、是否 active，以及最近一次验证 run 的状态。当前最近一次 validation run 为 success，但 `deploy=true` 仍需要 `FLY_API_TOKEN`。
+- `knowledge_cloud_deploy_assets`：检查 Knowledge Cloud Dockerfile、EdgeOne/Render 配置和 GitHub Actions deploy workflow 的关键部署约束，失败时会阻止 `knowledge_cloud_deploy` ready。
+- `knowledge_cloud_workflow`：识别 `Knowledge Cloud Deploy` workflow 是否存在、是否 active，以及最近一次验证 run 的状态。当前最近一次 validation run 为 success，但 `deploy=true` 仍需要 `EDGEONE_DEPLOY_HOOK_URL`。
 - `knowledge_cloud_health` / `knowledge_cloud_search`：当传入 `--cloud-url` 时访问部署后的 `/healthz` 和 `/v1/search`，把真实云端服务是否可用、检索是否可返回结果纳入 handoff gate。
 - `single_binary_release_assets`：在 `--target single-binary` 或 `--target all` 时检查单文件 GitHub Release 资产链路，包括公证脚本和 workflow 的 Apple/Developer ID gate，失败时会阻止对应发布行动计划。
 - `single_binary_workflow`：识别 `Single Binary Release` workflow 是否存在、是否 active，以及最近一次 dry-run / release run 的状态。
@@ -257,7 +257,7 @@ osstack release doctor --json
 验收：
 
 - `NPM_TOKEN` 显示 ready 后再合并 Version Packages PR。
-- `FLY_API_TOKEN` 显示 ready 后再运行 Knowledge Cloud `deploy=true`。
+- `EDGEONE_DEPLOY_HOOK_URL` 显示 ready 后再运行 Knowledge Cloud `deploy=true`。
 
 ### Step 2：修复 GitHub Actions billing 并 rerun PR #26
 
@@ -279,7 +279,7 @@ osstack release doctor --json
 
 根据选择的平台执行：
 
-- Fly.io：使用 `deploy/knowledge-cloud/fly.toml`。
+- EdgeOne：使用 `deploy/knowledge-cloud/edgeone.json` 与 EdgeOne Pages deploy hook。
 - Render：使用 `deploy/knowledge-cloud/render.yaml`。
 - GitHub Actions：使用 `.github/workflows/knowledge-cloud-deploy.yml`。
 
@@ -330,7 +330,7 @@ osstack knowledge eval --official --fixtures knowledge-evals/retrieval/osstack-c
 优先级建议：
 
 1. 先解除 GitHub Actions billing 阻塞，并合并 PR #26。
-2. 配置 `NPM_TOKEN` 与 `FLY_API_TOKEN`。
+2. 配置 `NPM_TOKEN` 与 `EDGEONE_DEPLOY_HOOK_URL`。
 3. 再真实部署 Knowledge Cloud，拿到 URL。
 4. 再发布 npm package，并从 registry 复跑安装 smoke。
 5. 再做 TUI / Live Workbench，因为 UI 需要稳定后端能力支撑。

@@ -21,7 +21,7 @@ pnpm smoke:knowledge-cloud
 pnpm smoke:knowledge-cloud:deploy
 ```
 
-The first command starts the built service, checks `/healthz`, lists official packs, searches the official proof pack, publishes an approved pack through `/v1/publish`, and verifies the manifest is persisted. The second command verifies Docker/Fly/Render deployment assets agree on the executable, port, healthcheck, feedback log, and published pack storage paths.
+The first command starts the built service, checks `/healthz`, lists official packs, searches the official proof pack, publishes an approved pack through `/v1/publish`, and verifies the manifest is persisted. The second command verifies Docker/EdgeOne/Render deployment assets agree on the executable, port, healthcheck, feedback log, and published pack storage paths.
 
 ## Docker
 
@@ -31,24 +31,29 @@ docker run --rm -p 8787:8787 osstack-knowledge-cloud
 curl http://127.0.0.1:8787/healthz
 ```
 
-## Fly.io
+## EdgeOne
 
-```bash
-fly launch --copy-config --config deploy/knowledge-cloud/fly.toml
-fly deploy --config deploy/knowledge-cloud/fly.toml
-fly status --config deploy/knowledge-cloud/fly.toml
-```
+EdgeOne is the preferred production deployment target for Osstack Knowledge Cloud.
 
-Set the final app name and region in `deploy/knowledge-cloud/fly.toml` before production deploy.
-The Fly workflow runs from the repository root, so the Fly `build.dockerfile` path is `Dockerfile.knowledge-cloud`.
+1. Create an EdgeOne Pages project connected to `gilosbornhello/osstack`.
+2. Configure the project to build from `main`.
+3. Add the runtime env from `deploy/knowledge-cloud/edgeone.json`.
+4. Create an EdgeOne deploy hook and save it as GitHub repository secret `EDGEONE_DEPLOY_HOOK_URL`.
+5. Run the GitHub workflow with `deploy=true`.
+
+The EdgeOne deployment manifest is `deploy/knowledge-cloud/edgeone.json`. It records the health endpoint, Node runtime expectation, official pack include paths, and persisted audit/feedback/published-pack paths.
+
+## Fly.io Optional Reference
+
+`deploy/knowledge-cloud/fly.toml` remains as an optional reference for teams that prefer Fly.io, but it is no longer the primary osstack production path.
 
 ## GitHub Actions Deploy
 
 The manual workflow `.github/workflows/knowledge-cloud-deploy.yml` runs build, tests, service smoke, deploy-asset smoke, and a Docker image build on `ubuntu-latest`.
 
 - Run with `deploy=false` to validate the deploy bundle without publishing.
-- Set repository secret `FLY_API_TOKEN`.
-- Run with `deploy=true` to publish through `flyctl deploy --config deploy/knowledge-cloud/fly.toml --remote-only`.
+- Set repository secret `EDGEONE_DEPLOY_HOOK_URL`.
+- Run with `deploy=true` to trigger the EdgeOne deployment hook.
 
 Preflight release and deploy credentials before a production run:
 
@@ -56,7 +61,7 @@ Preflight release and deploy credentials before a production run:
 osstack release doctor --target knowledge-cloud --json
 ```
 
-If `FLY_API_TOKEN` is missing and `deploy=true`, the workflow fails before deployment so a validation-only run cannot be mistaken for a published cloud service.
+If `EDGEONE_DEPLOY_HOOK_URL` is missing and `deploy=true`, the workflow fails before deployment so a validation-only run cannot be mistaken for a published cloud service.
 
 ## Render
 
