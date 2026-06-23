@@ -913,6 +913,54 @@ describe("product entry commands", () => {
     expect(markdown).toContain("## Validation Commands");
   });
 
+  it("prints an npm publish setup handoff from package metadata", async () => {
+    const output = join(tmp, "npm-publish-setup.md");
+
+    const exitCode = await main([
+      "release",
+      "npm",
+      "--workspace",
+      process.cwd(),
+      "--output",
+      output,
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      scope: string;
+      package_name: string;
+      repository: string;
+      required_secret: string;
+      console_checklist: string[];
+      github_commands: string[];
+      workflow_commands: string[];
+      validation_commands: string[];
+      post_release_validation_commands: string[];
+      output: string;
+    };
+    expect(result.scope).toBe("@osstack");
+    expect(result.package_name).toBe("@osstack/cli");
+    expect(result.repository).toBe("gilosbornhello/osstack");
+    expect(result.required_secret).toBe("NPM_TOKEN");
+    expect(result.console_checklist.join("\n")).toContain("Create or claim the @osstack organization/scope on npmjs.com.");
+    expect(result.console_checklist.join("\n")).toContain("Do not paste NPM_TOKEN into chat, logs, issues, or pull requests.");
+    expect(result.github_commands).toContain("gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\"");
+    expect(result.workflow_commands).toContain("gh run list --workflow Release --branch main --limit 5");
+    expect(result.validation_commands).toContain("pnpm smoke:npm-preflight");
+    expect(result.validation_commands).toContain("pnpm preflight:npm-publish");
+    expect(result.validation_commands).toContain("osstack release doctor --target npm --json");
+    expect(result.post_release_validation_commands).toContain("npm view @osstack/cli version --json");
+    expect(result.post_release_validation_commands).toContain("npm install -g @osstack/cli");
+    expect(result.post_release_validation_commands).toContain("osstack --version");
+    expect(result.output).toBe(output);
+    const markdown = await readFile(output, "utf-8");
+    expect(markdown).toContain("# NPM Publish Setup");
+    expect(markdown).toContain("@osstack/cli");
+    expect(markdown).toContain("NPM_TOKEN");
+    expect(markdown).toContain("## Post-Release Validation Commands");
+  });
+
   it("checks a deployed Knowledge Cloud health URL before deploy handoff", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL";

@@ -239,6 +239,8 @@ Project commands:
                       Generate a blocker-aware publish/deploy runbook
   release status [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--json]
                       Summarize completion, external blockers, and next actions
+  release npm [--workspace P] [--output P] [--json]
+                      Generate the npm publish setup handoff
   release edgeone [--workspace P] [--cloud-url URL] [--output P] [--json]
                       Generate the EdgeOne Knowledge Cloud setup handoff
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
@@ -877,6 +879,7 @@ async function handleReleaseCommand(args: string[]): Promise<number> {
   osstack release doctor [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--json]
   osstack release plan [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--output P] [--json]
   osstack release status [--target all|npm|knowledge-cloud|single-binary] [--workspace P] [--proof-dir P] [--cloud-url URL] [--output P] [--json]
+  osstack release npm [--workspace P] [--output P] [--json]
   osstack release edgeone [--workspace P] [--cloud-url URL] [--output P] [--json]
 
 Checks:
@@ -894,6 +897,7 @@ Checks:
   if (sub === "doctor") return await handleReleaseDoctorCommand(args.slice(1));
   if (sub === "plan") return await handleReleasePlanCommand(args.slice(1));
   if (sub === "status") return await handleReleaseStatusCommand(args.slice(1));
+  if (sub === "npm") return await handleReleaseNpmCommand(args.slice(1));
   if (sub === "edgeone") return await handleReleaseEdgeOneCommand(args.slice(1));
   console.error(`osstack: unknown release subcommand "${sub}"`);
   return 1;
@@ -955,6 +959,37 @@ interface EdgeOneSetupSummary {
   workflow_commands: string[];
   validation_commands: string[];
   output?: string;
+}
+
+interface NpmPublishSetupSummary {
+  scope: string;
+  package_name: string;
+  repository: string;
+  required_secret: string;
+  publish_access: string;
+  console_checklist: string[];
+  github_commands: string[];
+  workflow_commands: string[];
+  validation_commands: string[];
+  post_release_validation_commands: string[];
+  output?: string;
+}
+
+async function handleReleaseNpmCommand(args: string[]): Promise<number> {
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const setup = await createNpmPublishSetupSummary(workspacePath);
+  const output = flagValue(args, "--output");
+  if (output !== undefined) {
+    await mkdir(dirname(output), { recursive: true });
+    await writeFile(output, renderNpmPublishSetupSummary(setup), "utf-8");
+    setup.output = output;
+  }
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(setup, null, 2));
+  } else {
+    console.log(renderNpmPublishSetupSummary(setup));
+  }
+  return 0;
 }
 
 async function handleReleaseEdgeOneCommand(args: string[]): Promise<number> {
@@ -3112,6 +3147,107 @@ function releaseGitHubActionsOperatorCommands(check: ReleaseDoctorCheck | undefi
     return ["Open GitHub Actions settings/billing and confirm ubuntu-latest jobs can be assigned a runner."];
   }
   return ["Open GitHub Billing & plans and fix failed payments or increase the Actions spending limit."];
+}
+
+async function createNpmPublishSetupSummary(workspacePath: string): Promise<NpmPublishSetupSummary> {
+  const assetRoot = await findReleaseAssetRoot(workspacePath);
+  const packagePath = join(assetRoot, "packages/cli/package.json");
+  const packageSummary = parseNpmPackageSummary(await readFile(packagePath, "utf-8"), packagePath);
+  const scope = packageSummary.name.startsWith("@") ? packageSummary.name.split("/")[0] ?? "@osstack" : "@osstack";
+  const repository = packageSummary.repository.replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "");
+  return {
+    scope,
+    package_name: packageSummary.name,
+    repository,
+    required_secret: "NPM_TOKEN",
+    publish_access: packageSummary.publishAccess,
+    console_checklist: [
+      "Sign in to npmjs.com with the account that will own the osstack release token.",
+      `Create or claim the ${scope} organization/scope on npmjs.com.`,
+      `Invite the npm account used for NPM_TOKEN as an owner or publisher for ${scope}.`,
+      `Confirm ${packageSummary.name} uses public access before publishing.`,
+      "Generate an npm automation or publish token from the authorized account.",
+      "Do not paste NPM_TOKEN into chat, logs, issues, or pull requests.",
+      "Update the GitHub repository secret after copying the token once.",
+      "Rerun the Release workflow only after the local and CI npm preflight commands pass.",
+    ],
+    github_commands: [
+      `gh secret set NPM_TOKEN --repo ${repository} --body "$NPM_TOKEN"`,
+    ],
+    workflow_commands: [
+      "gh run list --workflow Release --branch main --limit 5",
+      `gh run rerun <failed-release-run-id> --repo ${repository}`,
+    ],
+    validation_commands: [
+      "pnpm smoke:npm-preflight",
+      "pnpm preflight:npm-publish",
+      "osstack release doctor --target npm --json",
+    ],
+    post_release_validation_commands: [
+      `npm view ${packageSummary.name} version --json`,
+      `npm install -g ${packageSummary.name}`,
+      "osstack --version",
+      "osstack loop doctor --workspace . --json",
+    ],
+  };
+}
+
+function parseNpmPackageSummary(raw: string, packagePath: string): {
+  name: string;
+  publishAccess: string;
+  repository: string;
+} {
+  const parsed = JSON.parse(raw) as unknown;
+  if (!isRecord(parsed)) throw new Error(`npm package metadata must be a JSON object: ${packagePath}`);
+  const name = requiredString(parsed, "name", packagePath);
+  const publishConfig = parsed["publishConfig"];
+  const repository = parsed["repository"];
+  let repositoryUrl = "https://github.com/gilosbornhello/osstack.git";
+  if (isRecord(repository) && typeof repository["url"] === "string" && repository["url"].length > 0) {
+    repositoryUrl = repository["url"];
+  } else if (typeof repository === "string" && repository.length > 0) {
+    repositoryUrl = repository;
+  }
+  return {
+    name,
+    publishAccess: isRecord(publishConfig) && typeof publishConfig["access"] === "string"
+      ? publishConfig["access"]
+      : "public",
+    repository: repositoryUrl,
+  };
+}
+
+function renderNpmPublishSetupSummary(setup: NpmPublishSetupSummary): string {
+  return [
+    "# NPM Publish Setup",
+    "",
+    `Scope: \`${setup.scope}\``,
+    `Package: \`${setup.package_name}\``,
+    `Repository: \`${setup.repository}\``,
+    `Required secret: \`${setup.required_secret}\``,
+    `Publish access: \`${setup.publish_access}\``,
+    "",
+    "## Console Checklist",
+    "",
+    ...setup.console_checklist.map((item) => `- ${item}`),
+    "",
+    "## GitHub Commands",
+    "",
+    ...setup.github_commands.map((command) => `- \`${command}\``),
+    "",
+    "## Workflow Commands",
+    "",
+    ...setup.workflow_commands.map((command) => `- \`${command}\``),
+    "",
+    "## Validation Commands",
+    "",
+    ...setup.validation_commands.map((command) => `- \`${command}\``),
+    "",
+    "## Post-Release Validation Commands",
+    "",
+    ...setup.post_release_validation_commands.map((command) => `- \`${command}\``),
+    "",
+  ].join("\n");
 }
 
 function renderReleaseActionPlan(plan: ReleaseActionPlan): string {

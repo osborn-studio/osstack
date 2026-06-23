@@ -189,6 +189,7 @@ GitHub push、PR、workflow 定义已恢复；GitHub Actions runner 已从账户
 
 ```sh
 osstack release status --target all --output release-status.md --json
+osstack release npm --output npm-publish-setup.md --json
 osstack release doctor --json
 ```
 
@@ -210,7 +211,9 @@ osstack release status --target all --output release-status.md --json
 osstack release doctor --output release-readiness.md --json
 ```
 
-`release status` 是当前推荐的上线交接入口：它把代码验证完成度、npm 发布、EdgeOne Knowledge Cloud 部署、single-binary release 的状态放在同一张摘要里，并把 `NPM_TOKEN` 发布权限、`EDGEONE_DEPLOY_HOOK_URL`、Apple notarization secrets 等外部阻塞和下一步命令集中展示。
+`release status` 是当前推荐的上线总览入口：它把代码验证完成度、npm 发布、EdgeOne Knowledge Cloud 部署、single-binary release 的状态放在同一张摘要里，并把 `NPM_TOKEN` 发布权限、`EDGEONE_DEPLOY_HOOK_URL`、Apple notarization secrets 等外部阻塞和下一步命令集中展示。
+
+`release npm` 是 npm 发布权限修复的操作交接入口：它从 `packages/cli/package.json` 读取 `@osstack/cli` 元数据，生成 npmjs.com 控制台清单、`NPM_TOKEN` GitHub secret 命令、Release workflow 排查命令、`pnpm smoke:npm-preflight` / `pnpm preflight:npm-publish` 验证命令，以及 `npm install -g @osstack/cli` 发布后验证命令。
 
 `release doctor` 是底层诊断入口：该报告包含 readiness summary、检查表、检查详情和 next steps，适合贴到 PR、发布群或 CI artifact。
 
@@ -268,11 +271,18 @@ osstack release doctor --json
 
 ### Step 2：修复 npm `@osstack` scope 发布权限并 rerun Release
 
+先生成 npm 发布操作清单：
+
+```sh
+osstack release npm --output npm-publish-setup.md --json
+```
+
 验收：
 
 - npmjs.com 上 `@osstack` organization/scope 存在且可访问。
 - 生成 `NPM_TOKEN` 的 npm 账号被加入 `@osstack` owner 或 publisher。
 - 重新生成 automation/publish 权限的 `NPM_TOKEN` 并更新 GitHub repository secret。
+- `pnpm smoke:npm-preflight`、`pnpm preflight:npm-publish`、`osstack release doctor --target npm --json` 通过。
 - rerun Release workflow 后 `pnpm preflight:npm-publish` 通过。
 
 ### Step 3：等待 CI 并修复差异
