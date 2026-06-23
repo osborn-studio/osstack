@@ -1,5 +1,12 @@
 # @osstack/cli
 
+## 0.7.0
+
+### Patch Changes
+
+- Updated dependencies [b611e6e]
+  - @osstack/knowledge@0.7.0
+
 ## 0.6.0
 
 ### Minor Changes
