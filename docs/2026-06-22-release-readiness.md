@@ -138,7 +138,7 @@
 - 有本地 smoke：启动服务、查询 health、加载 6 个 official packs、加载 1 个 team/private pack、验证 `/v1/sync`、验证 `/v1/private-packs`、验证 official/private 搜索、验证 `/v1/feedback`。
 - 有部署资产 smoke：
   - `Dockerfile.knowledge-cloud`
-  - `deploy/knowledge-cloud/fly.toml`
+  - `deploy/knowledge-cloud/edgeone.json`
   - `deploy/knowledge-cloud/render.yaml`
   - `.github/workflows/knowledge-cloud-deploy.yml`
 - `release doctor --target knowledge-cloud` 会静态检查部署资产是否完整：Dockerfile、EdgeOne/Render healthcheck、feedback JSONL 持久化路径、workflow smoke、Docker build、`EDGEONE_DEPLOY_HOOK_URL` gate 与 EdgeOne deploy 命令。
@@ -181,6 +181,7 @@ GitHub push、PR、workflow 定义已恢复。当前发布阻塞不是代码问�
 
 - GitHub Actions runner 启动前失败：`recent account payments have failed or your spending limit needs to be increased`。
 - npm publish 需要仓库 secret `NPM_TOKEN`。
+- npm publish 还需要 npmjs.com 上存在 `@osstack` scope，并且 `NPM_TOKEN` 背后的 npm 账号拥有该 scope 的 publish 权限；当前 Release workflow 已在真实 publish 阶段暴露 `Scope not found`。
 - Knowledge Cloud `deploy=true` 需要仓库 secret `EDGEONE_DEPLOY_HOOK_URL`。
 - 本机人工发布/排障还需要 `npm login` 与 `EdgeOne Pages deploy hook`。
 - `release doctor` 会输出 `github_actions` error；`release plan` 会把修复 Billing / spending limit 放入 blockers 和 operator commands。
@@ -194,6 +195,7 @@ osstack release doctor --json
 当前 `release doctor` 会额外检查发布列车状态：
 
 - `npm_publish_assets`：检查 `@osstack/cli` package 元数据、changeset 与 release workflow 的 publish/provenance/`NPM_TOKEN`/安装 smoke 约束，失败时会阻止 `npm_publish` ready。
+- `npm_scope_access`：检查 `@osstack` npm scope 是否可被当前 npm 账号访问/发布；Release workflow 也会在 changesets publish 前运行 `pnpm preflight:npm-publish`，把 `Scope not found` 提前转成可执行的修复提示。
 - `version_packages_pr`：识别 `changeset-release/main` 的 Version Packages PR，输出 PR number、URL、draft 状态和 `merge_state`。当前真实状态为 PR #5 `CLEAN / MERGEABLE`，CI run `27957659115` 已成功；仍需等 `NPM_TOKEN` 配好后再合并。
 - `knowledge_cloud_deploy_assets`：检查 Knowledge Cloud Dockerfile、EdgeOne/Render 配置和 GitHub Actions deploy workflow 的关键部署约束，失败时会阻止 `knowledge_cloud_deploy` ready。
 - `knowledge_cloud_workflow`：识别 `Knowledge Cloud Deploy` workflow 是否存在、是否 active，以及最近一次验证 run 的状态。当前最近一次 validation run 为 success，但 `deploy=true` 仍需要 `EDGEONE_DEPLOY_HOOK_URL`。
@@ -257,6 +259,7 @@ osstack release doctor --json
 验收：
 
 - `NPM_TOKEN` 显示 ready 后再合并 Version Packages PR。
+- `pnpm preflight:npm-publish` 在已登录/CI token 环境中通过，确认 `@osstack` scope 已创建且 token 有发布权限。
 - `EDGEONE_DEPLOY_HOOK_URL` 显示 ready 后再运行 Knowledge Cloud `deploy=true`。
 
 ### Step 2：修复 GitHub Actions billing 并 rerun PR #26
@@ -286,7 +289,7 @@ osstack release doctor --json
 验收：
 
 - 获得生产 URL。
-- `/health` 返回正常。
+- `/healthz` 返回正常。
 - official packs 数量为 6。
 - search 返回预期 top result。
 - 生产环境日志无启动错误。
@@ -330,8 +333,9 @@ osstack knowledge eval --official --fixtures knowledge-evals/retrieval/osstack-c
 优先级建议：
 
 1. 先解除 GitHub Actions billing 阻塞，并合并 PR #26。
-2. 配置 `NPM_TOKEN` 与 `EDGEONE_DEPLOY_HOOK_URL`。
-3. 再真实部署 Knowledge Cloud，拿到 URL。
-4. 再发布 npm package，并从 registry 复跑安装 smoke。
-5. 再做 TUI / Live Workbench，因为 UI 需要稳定后端能力支撑。
-6. 最后强化合规包装，让 osstack 的知识库与证据包可以进入团队/商业使用场景。
+2. 创建/授权 npm `@osstack` scope，并配置可发布该 scope 的 `NPM_TOKEN`。
+3. 配置 `EDGEONE_DEPLOY_HOOK_URL`。
+4. 再真实部署 Knowledge Cloud，拿到 URL。
+5. 再发布 npm package，并从 registry 复跑安装 smoke。
+6. 再做 TUI / Live Workbench，因为 UI 需要稳定后端能力支撑。
+7. 最后强化合规包装，让 osstack 的知识库与证据包可以进入团队/商业使用场景。

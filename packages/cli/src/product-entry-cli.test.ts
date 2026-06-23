@@ -27,6 +27,7 @@ beforeEach(() => {
   errors = [];
   process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
   process.env["OSSTACK_TEST_RELEASE_SINGLE_BINARY_WORKFLOW"] = "ok";
+  process.env["OSSTACK_TEST_RELEASE_NPM_SCOPE_ACCESS"] = "ok";
   vi.spyOn(console, "log").mockImplementation((...args) => {
     logs.push(args.map(String).join(" "));
   });
@@ -41,6 +42,7 @@ afterEach(async () => {
   delete process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"];
   delete process.env["OSSTACK_TEST_RELEASE_SECRETS"];
   delete process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"];
+  delete process.env["OSSTACK_TEST_RELEASE_NPM_SCOPE_ACCESS"];
   delete process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"];
   delete process.env["OSSTACK_TEST_RELEASE_VERSION_PR"];
   delete process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"];
@@ -158,6 +160,7 @@ describe("product entry commands", () => {
       expect.objectContaining({ id: "npm_publish_assets", status: "ok" }),
       expect.objectContaining({ id: "version_packages_pr", status: "ok" }),
       expect.objectContaining({ id: "npm_auth", status: "ok" }),
+      expect.objectContaining({ id: "npm_scope_access", status: "ok" }),
       expect.objectContaining({ id: "knowledge_cloud_deploy_assets", status: "ok" }),
       expect.objectContaining({ id: "knowledge_cloud_workflow", status: "ok" }),
       expect.objectContaining({ id: "edgeone_deploy_hook", status: "ok" }),
@@ -386,6 +389,36 @@ describe("product entry commands", () => {
       }),
     }));
     expect(result.next_steps.join("\n")).toContain("Review Version Packages PR #5; approve or rerun its latest CI workflow");
+  });
+
+  it("blocks npm release readiness when the npm scope cannot be published", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_NPM_SCOPE_ACCESS"] = "error:scope";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+
+    const exitCode = await main(["release", "doctor", "--target", "npm", "--json"]);
+
+    expect(exitCode).toBe(1);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      readiness: { npm_publish: boolean };
+      checks: Array<{ id: string; status: string; message: string; details?: Record<string, unknown> }>;
+      next_steps: string[];
+    };
+    expect(result.ok).toBe(false);
+    expect(result.readiness.npm_publish).toBe(false);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "npm_scope_access",
+      status: "error",
+      message: expect.stringContaining("@osstack"),
+      details: expect.objectContaining({
+        scope: "@osstack",
+        reason: "scope_not_found_or_unauthorized",
+      }),
+    }));
+    expect(result.next_steps.join("\n")).toContain("Create or authorize the npm @osstack scope");
   });
 
   it("blocks release readiness when GitHub Actions cannot start runners", async () => {

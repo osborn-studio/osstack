@@ -54,12 +54,23 @@ gh workflow run "macOS Release Candidate" --ref main
 - **NPM_TOKEN secret** on the GitHub repo: an npm automation token with
   publish rights to the `@osstack` scope. Until configured, release.yml
   only maintains the Version PR and skips publish.
-- **FLY_API_TOKEN secret** on the GitHub repo: a Fly.io token with deploy
-  rights to the `osstack-knowledge-cloud` app. Until configured,
-  Knowledge Cloud deploy runs can validate build/smoke checks but must not
-  be run with `deploy=true`.
 - The `@osstack` npm scope must exist and be owned by the publishing account
   (`npm org` / scope settings on npmjs.com).
+- **EDGEONE_DEPLOY_HOOK_URL secret** on the GitHub repo: the Tencent EdgeOne
+  Pages deploy hook URL for Knowledge Cloud. Until configured, Knowledge Cloud
+  deploy runs can validate build/smoke checks but must not be run with
+  `deploy=true`.
+
+Before the first npm publish, create or claim the npm organization/scope
+`@osstack`, add the npm account behind `NPM_TOKEN` as an owner or publisher,
+then run:
+
+```bash
+pnpm preflight:npm-publish
+```
+
+This preflight fails fast when npm would otherwise reject publish with
+`Scope not found`.
 
 Before merging the Version Packages PR, run:
 
@@ -116,7 +127,8 @@ Run a validation-only deployment check first:
 gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=false
 ```
 
-After `FLY_API_TOKEN` is configured and release readiness is clean, deploy:
+After `EDGEONE_DEPLOY_HOOK_URL` is configured and release readiness is clean,
+deploy:
 
 ```bash
 gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true

@@ -107,6 +107,12 @@ jobs:
           echo "Version package commits must publish to npm. Configure repository secret NPM_TOKEN and rerun." >> "$GITHUB_STEP_SUMMARY"
           exit 1
 
+      - name: Preflight npm publish access
+        if: "${{ steps.npm-token.outputs.present == 'true' }}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm preflight:npm-publish
+
       - name: Version PR / Publish
         uses: changesets/action@v1
         with:
