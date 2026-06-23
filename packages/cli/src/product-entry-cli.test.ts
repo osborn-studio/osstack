@@ -1249,6 +1249,17 @@ describe("product entry commands", () => {
           tenant_event_leak: false,
         }),
       }));
+      expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_feedback_summary",
+        status: "ok",
+        details: expect.objectContaining({
+          cloud_url: cloud.url,
+          total: 0,
+          useful: 0,
+          bad: 0,
+          chunk_count: 0,
+        }),
+      }));
     } finally {
       await cloud.close();
     }
@@ -1482,6 +1493,54 @@ describe("product entry commands", () => {
     }
   });
 
+  it("blocks Knowledge Cloud deploy handoff when deployed feedback summary is unavailable", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL";
+    process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
+    const cloud = await startKnowledgeCloudHandoffServer({
+      healthStatus: 200,
+      healthBody: { ok: true, service: "osstack-knowledge-cloud", packs: 6 },
+      searchStatus: 200,
+      searchBody: {
+        packs: [{ id: "proof-checksum-pack", version: "0.1.0" }],
+        results: [{ chunk_id: "proof-checksum-pack/checksum", pack_id: "proof-checksum-pack", score: 1 }],
+      },
+      feedbackSummaryStatus: 503,
+      feedbackSummaryBody: { error: "feedback storage unavailable" },
+    });
+
+    try {
+      const exitCode = await main([
+        "release",
+        "doctor",
+        "--target",
+        "knowledge-cloud",
+        "--cloud-url",
+        cloud.url,
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(1);
+      const result = JSON.parse(logs.join("\n")) as {
+        ok: boolean;
+        readiness: { knowledge_cloud_deploy: boolean };
+        checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+        next_steps: string[];
+      };
+      expect(result.ok).toBe(false);
+      expect(result.readiness.knowledge_cloud_deploy).toBe(false);
+      expect(result.checks).toContainEqual(expect.objectContaining({
+        id: "knowledge_cloud_feedback_summary",
+        status: "error",
+        details: expect.objectContaining({ http_status: 503 }),
+      }));
+      expect(result.next_steps.join("\n")).toContain("Fix deployed Knowledge Cloud feedback summary before handoff.");
+    } finally {
+      await cloud.close();
+    }
+  });
+
   it("checks single-binary release assets as an independent release target", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
@@ -1680,6 +1739,8 @@ async function startKnowledgeCloudHandoffServer(options: {
   syncBody?: unknown;
   auditStatus?: number;
   auditBody?: unknown;
+  feedbackSummaryStatus?: number;
+  feedbackSummaryBody?: unknown;
 }): Promise<{ url: string; close: () => Promise<void> }> {
   const server = createServer((req, res) => {
     if (req.url === "/healthz") {
@@ -1700,6 +1761,16 @@ async function startKnowledgeCloudHandoffServer(options: {
     if (req.url === "/v1/audit" && req.method === "POST") {
       res.writeHead(options.auditStatus ?? 200, { "content-type": "application/json" });
       res.end(JSON.stringify(options.auditBody ?? { filters: {}, events: [] }));
+      return;
+    }
+    if (req.url === "/v1/feedback/summary" && req.method === "POST") {
+      res.writeHead(options.feedbackSummaryStatus ?? 200, { "content-type": "application/json" });
+      res.end(JSON.stringify(options.feedbackSummaryBody ?? {
+        total: 0,
+        useful: 0,
+        bad: 0,
+        chunks: [],
+      }));
       return;
     }
     res.writeHead(404, { "content-type": "application/json" });

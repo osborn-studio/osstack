@@ -1256,6 +1256,7 @@ async function releaseDoctor(
       checks.push(await releaseKnowledgeCloudSearchCheck(options.cloudUrl));
       checks.push(await releaseKnowledgeCloudSyncCheck(options.cloudUrl));
       checks.push(await releaseKnowledgeCloudAuditCheck(options.cloudUrl));
+      checks.push(await releaseKnowledgeCloudFeedbackSummaryCheck(options.cloudUrl));
     }
     checks.push(releaseEdgeOneDeployCredentialCheck(secrets));
   }
@@ -1278,6 +1279,7 @@ async function releaseDoctor(
   const knowledgeSearchReady = checks.find((check) => check.id === "knowledge_cloud_search")?.status !== "error";
   const knowledgeSyncReady = checks.find((check) => check.id === "knowledge_cloud_sync")?.status !== "error";
   const knowledgeAuditReady = checks.find((check) => check.id === "knowledge_cloud_audit")?.status !== "error";
+  const knowledgeFeedbackSummaryReady = checks.find((check) => check.id === "knowledge_cloud_feedback_summary")?.status !== "error";
   const singleBinaryAssetsReady = checks.find((check) => check.id === "single_binary_release_assets")?.status !== "error";
   const singleBinaryWorkflowReady = checks.find((check) => check.id === "single_binary_workflow")?.status !== "error";
   const actionsReady = githubActions.status !== "error";
@@ -1289,7 +1291,8 @@ async function releaseDoctor(
     && knowledgeHealthReady
     && knowledgeSearchReady
     && knowledgeSyncReady
-    && knowledgeAuditReady;
+    && knowledgeAuditReady
+    && knowledgeFeedbackSummaryReady;
   const singleBinaryRelease = actionsReady
     && SINGLE_BINARY_RELEASE_SECRETS.every((secret) => hasSecret(secrets, secret))
     && singleBinaryAssetsReady
@@ -1529,7 +1532,7 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   expectAsset(workflow, "secrets.EDGEONE_API_TOKEN", "Knowledge Cloud deploy workflow must gate deploy on EDGEONE_API_TOKEN.");
   expectAsset(workflow, "edgeone@latest makers deploy . -n osstack-knowledge-cloud", "Knowledge Cloud deploy workflow must use the EdgeOne Makers CLI.");
   expectAsset(workflow, "EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must retain the deploy hook fallback.");
-  expectAsset(workflow, "release doctor --target knowledge-cloud --cloud-url", "Knowledge Cloud deploy workflow must validate deployed health/search/audit gates when cloud_url is supplied.");
+  expectAsset(workflow, "release doctor --target knowledge-cloud --cloud-url", "Knowledge Cloud deploy workflow must validate deployed health/search/sync/audit/feedback-summary gates when cloud_url is supplied.");
   expectAsset(workflow, "knowledge sync --cloud-url", "Knowledge Cloud deploy workflow must sync from the deployed cloud URL when supplied.");
   expectAsset(workflow, "knowledge search \"proof pack checksum\" --cloud-url", "Knowledge Cloud deploy workflow must search the deployed cloud URL when supplied.");
   expectAsset(workflow, "inputs.cloud_url", "Knowledge Cloud deploy workflow must read the supplied cloud_url input.");
@@ -1761,6 +1764,62 @@ async function releaseKnowledgeCloudAuditCheck(cloudUrl: string): Promise<Releas
       details: {
         cloud_url: normalized,
         audit_url: auditUrlString,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function releaseKnowledgeCloudFeedbackSummaryCheck(cloudUrl: string): Promise<ReleaseDoctorCheck> {
+  const normalized = normalizeCloudUrl(cloudUrl);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  let summaryUrl: URL | undefined;
+  try {
+    summaryUrl = new URL("/v1/feedback/summary", normalized);
+    const response = await fetch(summaryUrl, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({}),
+      signal: controller.signal,
+    });
+    const raw = await response.text();
+    const body = parseJsonObject(raw);
+    const total = typeof body?.["total"] === "number" && body["total"] >= 0 ? body["total"] : undefined;
+    const useful = typeof body?.["useful"] === "number" && body["useful"] >= 0 ? body["useful"] : undefined;
+    const bad = typeof body?.["bad"] === "number" && body["bad"] >= 0 ? body["bad"] : undefined;
+    const chunks = Array.isArray(body?.["chunks"]) ? body["chunks"] : undefined;
+    const ok = response.ok && total !== undefined && useful !== undefined && bad !== undefined && chunks !== undefined;
+    return {
+      id: "knowledge_cloud_feedback_summary",
+      status: ok ? "ok" : "error",
+      message: ok
+        ? `Deployed Knowledge Cloud feedback summary smoke passed at ${summaryUrl.toString()}.`
+        : `Deployed Knowledge Cloud feedback summary smoke failed at ${summaryUrl.toString()}.`,
+      details: {
+        cloud_url: normalized,
+        feedback_summary_url: summaryUrl.toString(),
+        http_status: response.status,
+        ...(total === undefined ? {} : { total }),
+        ...(useful === undefined ? {} : { useful }),
+        ...(bad === undefined ? {} : { bad }),
+        ...(chunks === undefined ? {} : { chunk_count: chunks.length }),
+      },
+    };
+  } catch (error) {
+    const summaryUrlString = summaryUrl === undefined ? `${normalized.replace(/\/+$/, "")}/v1/feedback/summary` : summaryUrl.toString();
+    return {
+      id: "knowledge_cloud_feedback_summary",
+      status: "error",
+      message: `Could not run deployed Knowledge Cloud feedback summary smoke at ${summaryUrlString}.`,
+      details: {
+        cloud_url: normalized,
+        feedback_summary_url: summaryUrlString,
         error: error instanceof Error ? error.message : String(error),
       },
     };
@@ -3063,6 +3122,10 @@ function releaseDoctorNextSteps(options: {
   const knowledgeAudit = options.checks.find((check) => check.id === "knowledge_cloud_audit");
   if (releaseTargetIncludesKnowledgeCloud(options.target) && knowledgeAudit?.status === "error") {
     steps.push("Fix deployed Knowledge Cloud audit endpoint before handoff.");
+  }
+  const knowledgeFeedbackSummary = options.checks.find((check) => check.id === "knowledge_cloud_feedback_summary");
+  if (releaseTargetIncludesKnowledgeCloud(options.target) && knowledgeFeedbackSummary?.status === "error") {
+    steps.push("Fix deployed Knowledge Cloud feedback summary before handoff.");
   }
   const singleBinaryAssets = options.checks.find((check) => check.id === "single_binary_release_assets");
   if (releaseTargetIncludesSingleBinary(options.target) && singleBinaryAssets?.status === "error") {

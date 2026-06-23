@@ -417,6 +417,10 @@ function startKnowledgeCloudHandoffServer() {
       writeJson(response, 200, { filters: { action: "search", status: "ok", limit: 1 }, events: [] });
       return;
     }
+    if (request.method === "POST" && url.pathname === "/v1/feedback/summary") {
+      writeJson(response, 200, { total: 0, useful: 0, bad: 0, chunks: [] });
+      return;
+    }
     writeJson(response, 404, { error: "not_found" });
   });
   return new Promise((resolve, reject) => {
