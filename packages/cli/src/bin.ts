@@ -3305,11 +3305,25 @@ function renderReleaseHandoffNextActionsScript(input: {
     ...input.edgeOneSetup.workflow_commands,
     ...input.plan.deploy_commands,
   ]);
-  const validationCommands = uniqueStrings([
+  const allValidationCommands = uniqueStrings([
     ...input.npmSetup.validation_commands,
     ...input.edgeOneSetup.validation_commands,
     ...input.plan.validation_commands,
   ]);
+  const localValidationCommands = allValidationCommands.filter((command) =>
+    !isGitHubReadOnlyCommand(command) && !isRemoteWorkflowCommand(command)
+  );
+  const readOnlyCommands = uniqueStrings([
+    ...allValidationCommands.filter(isGitHubReadOnlyCommand),
+    ...workflowCommands.filter(isGitHubReadOnlyCommand),
+  ]);
+  const remoteWorkflowCommands = uniqueStrings([
+    ...allValidationCommands.filter(isRemoteWorkflowCommand),
+    ...workflowCommands.filter(isRemoteWorkflowCommand),
+  ]);
+  const deployCommands = workflowCommands.filter((command) =>
+    !isGitHubReadOnlyCommand(command) && !isRemoteWorkflowCommand(command)
+  );
   const publishCommands = uniqueStrings(input.plan.publish_commands);
   const postReleaseValidationCommands = uniqueStrings([
     ...input.npmSetup.post_release_validation_commands,
@@ -3325,6 +3339,9 @@ function renderReleaseHandoffNextActionsScript(input: {
     "",
     "This script prints the operator checklist only.",
     "It does not execute secret writes, npm publishing, EdgeOne deployment, or validation commands.",
+    "Remote workflow commands consume GitHub Actions minutes.",
+    "Use local validation first, then trigger one remote workflow only when ready.",
+    "If a workflow was started by mistake, cancel it with: gh run cancel <run-id> --repo gilosbornhello/osstack",
     "",
     `Target: ${input.target}`,
     `Cloud URL: ${input.cloudUrl}`,
@@ -3338,17 +3355,29 @@ function renderReleaseHandoffNextActionsScript(input: {
     "",
     ...renderPlainChecklist(secretCommands),
     "",
-    "## Validation Commands",
+    "## Local Validation Commands",
     "",
-    ...renderPlainChecklist(validationCommands),
+    ...renderPlainChecklist(localValidationCommands),
+    "",
+    "## GitHub Read-Only Commands",
+    "",
+    "These commands inspect GitHub state and do not start workflow jobs.",
+    "",
+    ...renderPlainChecklist(readOnlyCommands),
     "",
     "## Publish Commands",
     "",
     ...renderPlainChecklist(publishCommands),
     "",
-    "## Workflow And Deploy Commands",
+    "## Remote Workflow Commands",
     "",
-    ...renderPlainChecklist(workflowCommands),
+    "Commands in this section can consume GitHub Actions minutes.",
+    "",
+    ...renderPlainChecklist(remoteWorkflowCommands),
+    "",
+    "## EdgeOne Runtime Commands",
+    "",
+    ...renderPlainChecklist(deployCommands),
     "",
     "## Post-Release Validation Commands",
     "",
@@ -3361,6 +3390,18 @@ function renderReleaseHandoffNextActionsScript(input: {
 
 function renderPlainChecklist(items: string[]): string[] {
   return items.length === 0 ? ["- None."] : items.map((item) => `- ${item}`);
+}
+
+function isGitHubReadOnlyCommand(command: string): boolean {
+  return command.startsWith("gh pr list ")
+    || command.startsWith("gh pr view ")
+    || command.startsWith("gh run list ")
+    || command.startsWith("gh run view ");
+}
+
+function isRemoteWorkflowCommand(command: string): boolean {
+  return command.startsWith("gh workflow run ")
+    || command.startsWith("gh run rerun ");
 }
 
 function releaseHandoffRequiredSecrets(target: ReleaseDoctorResult["target"]): string[] {
@@ -3565,9 +3606,9 @@ async function createEdgeOneSetupSummary(
     ],
     github_commands: [
       `gh secret set ${manifest.deploy_secret} --repo gilosbornhello/osstack --body "$${manifest.deploy_secret}"`,
-      "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false",
     ],
     workflow_commands: [
+      "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false",
       `gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${cloudUrl}`,
     ],
     validation_commands: [

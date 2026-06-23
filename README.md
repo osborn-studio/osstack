@@ -659,12 +659,23 @@ assets, run:
 ```bash
 osstack release doctor --json
 osstack release plan --target all --output release-plan.md --json
+osstack release handoff --cloud-url <EdgeOne URL> --output-dir release-handoff --json
 ```
 
 It checks GitHub auth, repository secrets (`NPM_TOKEN`, `EDGEONE_DEPLOY_HOOK_URL`),
 local npm auth, npm publish assets, EdgeOne Knowledge Cloud deploy assets, and
 single-binary release assets so the release train fails before a partial
 publish/deploy/upload is mistaken for production readiness.
+
+EdgeOne is the preferred production deployment target for Knowledge Cloud.
+Fly.io remains an optional reference path and `FLY_API_TOKEN` is not required
+for the primary release path.
+
+When GitHub Actions minutes are tight, start with the `next-actions.sh` generated
+by `release handoff`. It only prints the operator checklist; it does not write
+secrets, rerun Release, or trigger EdgeOne deployment. The script separates local
+validation, read-only GitHub inspection, and remote workflow commands that can
+consume Actions minutes.
 
 ---
 

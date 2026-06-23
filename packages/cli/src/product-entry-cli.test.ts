@@ -898,6 +898,10 @@ describe("product entry commands", () => {
     });
     expect(result.console_checklist.join("\n")).toContain("Create an EdgeOne Pages project connected to gilosbornhello/osstack.");
     expect(result.github_commands).toContain("gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"");
+    expect(result.github_commands.join("\n")).not.toContain("gh workflow run");
+    expect(result.workflow_commands).toContain(
+      "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=false",
+    );
     expect(result.workflow_commands).toContain(
       "gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true -f cloud_url=https://knowledge.example.com",
     );
@@ -1031,6 +1035,11 @@ describe("product entry commands", () => {
     expect(nextActions).toContain("#!/usr/bin/env bash");
     expect(nextActions).toContain("set -euo pipefail");
     expect(nextActions).toContain("This script prints the operator checklist only.");
+    expect(nextActions).toContain("Remote workflow commands consume GitHub Actions minutes.");
+    expect(nextActions).toContain("gh run cancel <run-id> --repo gilosbornhello/osstack");
+    expect(nextActions).toContain("## Local Validation Commands");
+    expect(nextActions).toContain("## GitHub Read-Only Commands");
+    expect(nextActions).toContain("## Remote Workflow Commands");
     expect(nextActions).toContain("gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\"");
     expect(nextActions).toContain("gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"");
     expect(nextActions).toContain("pnpm smoke:npm-preflight");

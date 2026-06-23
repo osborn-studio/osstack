@@ -221,6 +221,41 @@ osstack release doctor --output release-readiness.md --json
 
 `release doctor` 是底层诊断入口：该报告包含 readiness summary、检查表、检查详情和 next steps，适合贴到 PR、发布群或 CI artifact。
 
+## 9.1. GitHub Actions minutes 节省模式
+
+当前 Actions minutes 需要节省时，默认采用 **本地验证优先、远端 workflow 最少触发** 的上线策略。
+
+不消耗 GitHub Actions minutes 的本地验证命令：
+
+```sh
+pnpm lint
+pnpm --filter @osstack/cli typecheck
+pnpm --filter @osstack/cli build
+pnpm --filter @osstack/cli test
+pnpm smoke:release-plan
+pnpm smoke:npm-preflight
+pnpm smoke:knowledge-cloud:deploy
+osstack release handoff --cloud-url <EdgeOne URL> --output-dir release-handoff --json
+osstack release doctor --target primary --cloud-url <EdgeOne URL> --json
+```
+
+会消耗 GitHub Actions minutes 的远端命令：
+
+```sh
+gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=false
+gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=<EdgeOne URL>
+gh workflow run "Single Binary Release" --ref main -f tag=v<version> -f dry_run=true
+gh run rerun <failed-release-run-id> --repo gilosbornhello/osstack
+```
+
+节省策略：
+
+- PR 可以先保持 draft，并依赖本地验证结果推进开发。
+- 不为了重复确认而 rerun CI；只有在准备 merge、发布 npm、或正式部署 EdgeOne 前触发一次远端检查。
+- `release handoff` 生成的 `next-actions.sh` 只打印清单，不会执行 `gh secret set`、Release rerun、EdgeOne deploy 或其他会消耗 minutes 的动作。
+- `gh pr view`、`gh run view`、`gh run list` 是只读查询，不会消耗 Actions minutes。
+- 如误触发 workflow，可立即执行 `gh run cancel <run-id> --repo gilosbornhello/osstack` 停止继续消耗。
+
 需要把状态转换成可执行 runbook 时，使用：
 
 ```sh
@@ -241,18 +276,28 @@ NPM 目标的 validation commands 会包含：
 pnpm smoke:npm-install
 ```
 
-Knowledge Cloud 目标的 validation commands 会包含：
+Knowledge Cloud 目标的本地 validation commands 会包含：
 
 ```sh
 pnpm smoke:knowledge-cloud:deploy
+```
+
+Knowledge Cloud 的远端 workflow validation 需要单独确认 Actions minutes 后再运行：
+
+```sh
 gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=false
 ```
 
-`--target single-binary` 和 `--target all` 的 validation commands 还会包含：
+`--target single-binary` 和 `--target all` 的本地 validation commands 还会包含：
 
 ```sh
 pnpm smoke:single-binary-release-pack
 pnpm smoke:single-binary-release-publish
+```
+
+Single Binary 的远端 workflow dry-run 也会消耗 Actions minutes，需要单独确认后再运行：
+
+```sh
 gh workflow run "Single Binary Release" --ref main -f tag=v<version> -f dry_run=true
 ```
 

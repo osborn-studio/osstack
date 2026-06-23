@@ -201,6 +201,11 @@ try {
   const nextActions = await readFile(handoff.files.next_actions, "utf-8");
   assertIncludes(nextActions, "#!/usr/bin/env bash", "release handoff must write a shell-readable next actions script");
   assertIncludes(nextActions, "This script prints the operator checklist only.", "next actions script must be non-mutating by default");
+  assertIncludes(nextActions, "Remote workflow commands consume GitHub Actions minutes.", "next actions script must warn before remote workflow commands");
+  assertIncludes(nextActions, "gh run cancel <run-id> --repo gilosbornhello/osstack", "next actions script must include the workflow cancel command");
+  assertIncludes(nextActions, "## Local Validation Commands", "next actions script must separate local validation commands");
+  assertIncludes(nextActions, "## GitHub Read-Only Commands", "next actions script must separate read-only GitHub commands");
+  assertIncludes(nextActions, "## Remote Workflow Commands", "next actions script must separate commands that consume Actions minutes");
   assertIncludes(nextActions, "gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\"", "next actions script must include npm secret setup");
   assertIncludes(nextActions, "gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"", "next actions script must include EdgeOne deploy hook setup");
   assertIncludes(nextActions, "pnpm smoke:npm-preflight", "next actions script must include npm preflight validation");
