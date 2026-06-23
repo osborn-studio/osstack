@@ -47,6 +47,7 @@ export interface KnowledgeSyncEvidence {
     status: "synced" | "error";
     packs: KnowledgePackSummary[];
     cache_dir: string;
+    skipped_pins?: KnowledgePackSummary[];
     reason?: string;
 }
 export interface KnowledgePin {

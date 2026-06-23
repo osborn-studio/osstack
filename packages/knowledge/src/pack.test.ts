@@ -580,6 +580,56 @@ describe("knowledge packs", () => {
     });
   });
 
+  it("enforces pinned pack versions during sync and local listing", async () => {
+    const cacheDir = join(tmp, "cache");
+    const packId = "osstack-core/loop-engineering";
+
+    const initial = await syncKnowledgeCache({
+      cacheDir,
+      cloudUrl: "https://knowledge.osstack.ai",
+      fetchImpl: async () => new Response(JSON.stringify({
+        packs: [samplePack({ id: packId, version: "2026.06.22" })],
+      }), { status: 200 }),
+    });
+    expect(initial).toMatchObject({
+      status: "synced",
+      packs: [expect.objectContaining({ id: packId, version: "2026.06.22" })],
+    });
+
+    await pinKnowledgePack(cacheDir, `${packId}@2026.06.22`);
+
+    const afterPin = await syncKnowledgeCache({
+      cacheDir,
+      cloudUrl: "https://knowledge.osstack.ai",
+      fetchImpl: async () => new Response(JSON.stringify({
+        packs: [samplePack({
+          id: packId,
+          version: "2026.06.23",
+          chunks: [{
+            chunk_id: "chunk-new-version",
+            title: "New version only",
+            body: "This should not become visible while the old version is pinned.",
+            tags: ["pin"],
+          }],
+        })],
+      }), { status: 200 }),
+    });
+
+    expect(afterPin).toMatchObject({
+      status: "synced",
+      packs: [],
+      skipped_pins: [expect.objectContaining({ id: packId, version: "2026.06.23" })],
+    });
+    await expect(readFile(join(cacheDir, "packs", "osstack-core__loop-engineering", "2026.06.23.json"), "utf-8"))
+      .rejects.toThrow();
+
+    const packs = await listCachedKnowledgePacks(cacheDir);
+    expect(packs.map((pack) => `${pack.manifest.id}@${pack.manifest.version}`)).toEqual([
+      `${packId}@2026.06.22`,
+    ]);
+    expect(searchKnowledgePacks(packs, "new version only", { limit: 1 })).toEqual([]);
+  });
+
   it("records feedback locally and sends it to cloud when configured", async () => {
     const cacheDir = join(tmp, "cache");
     const calls: unknown[] = [];

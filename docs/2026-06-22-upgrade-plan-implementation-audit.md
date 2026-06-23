@@ -249,10 +249,13 @@
 - `osstack knowledge login/sync/list/search/inspect/import/ingest/pin/feedback/eval/sources` 存在。
 - local cache、cloud search、official packs、本地降级、provenance、retrieval eval 均有测试；安装后 smoke 也覆盖 cloud outage -> cached official packs fallback。
 - report/proof 可记录 knowledge mode、packs、chunks。
+- 本地 cache 已执行 pin enforcement：`knowledge sync` 会跳过与 `pins.json` 冲突的新版本并在
+  `skipped_pins` 中记录原因，`listCachedKnowledgePacks` / 本地 search 也只暴露 pinned 版本，
+  避免云端新版本悄悄改变本地知识检索结果。
 
 需增强：
 
-- 本地 cache 的版本清理、pin enforcement、离线策略可以继续产品化。
+- 本地 cache 的旧版本清理策略、离线 TTL/过期提示可以继续产品化。
 
 ### Task 4.3：Agent scorecard
 

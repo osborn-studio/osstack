@@ -381,7 +381,10 @@ export async function syncKnowledgeCache(options: {
     if (!isRecord(payload) || !Array.isArray(payload["packs"])) {
       throw new Error("cloud sync response packs must be an array");
     }
-    const packs = payload["packs"].map(validateKnowledgePackManifest);
+    const pins = await readPins(join(options.cacheDir, "pins.json"));
+    const incomingPacks = payload["packs"].map(validateKnowledgePackManifest);
+    const skippedPinnedPacks = incomingPacks.filter((pack) => isBlockedByPin(pack, pins));
+    const packs = incomingPacks.filter((pack) => !isBlockedByPin(pack, pins));
     await mkdir(join(options.cacheDir, "packs"), { recursive: true });
     for (const pack of packs) {
       await writeCachedPack(options.cacheDir, pack);
@@ -390,6 +393,7 @@ export async function syncKnowledgeCache(options: {
       status: "synced",
       cache_dir: options.cacheDir,
       packs: packs.map(packSummaryFromManifest),
+      ...(skippedPinnedPacks.length === 0 ? {} : { skipped_pins: skippedPinnedPacks.map(packSummaryFromManifest) }),
     };
   } catch (error) {
     return {
@@ -403,6 +407,7 @@ export async function syncKnowledgeCache(options: {
 
 export async function listCachedKnowledgePacks(cacheDir: string): Promise<KnowledgePack[]> {
   const packsDir = join(cacheDir, "packs");
+  const pins = await readPins(join(cacheDir, "pins.json"));
   let packDirs: string[];
   try {
     packDirs = await readdir(packsDir);
@@ -420,7 +425,8 @@ export async function listCachedKnowledgePacks(cacheDir: string): Promise<Knowle
     }
     for (const versionFile of versions.filter((name) => name.endsWith(".json")).sort((a, b) => a.localeCompare(b))) {
       const path = join(versionDir, versionFile);
-      packs.push(await loadKnowledgePack(path));
+      const pack = await loadKnowledgePack(path);
+      if (!isBlockedByPin(pack.manifest, pins)) packs.push(pack);
     }
   }
   return packs;
@@ -485,6 +491,11 @@ async function writeCachedPack(cacheDir: string, pack: KnowledgePackManifest): P
   const dir = join(cacheDir, "packs", safeCacheSegment(pack.id));
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, `${safeCacheSegment(pack.version)}.json`), `${JSON.stringify(pack, null, 2)}\n`, "utf-8");
+}
+
+function isBlockedByPin(pack: KnowledgePackManifest, pins: KnowledgePin[]): boolean {
+  const pin = pins.find((item) => item.pack_id === pack.id);
+  return pin !== undefined && pin.version !== pack.version;
 }
 
 async function readPins(path: string): Promise<KnowledgePin[]> {
