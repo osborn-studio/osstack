@@ -655,8 +655,8 @@ osstack release doctor --json
 osstack release plan --target all --output release-plan.md --json
 ```
 
-It checks GitHub auth, repository secrets (`NPM_TOKEN`, `FLY_API_TOKEN`), local
-npm/Fly.io auth, npm publish assets, Knowledge Cloud deploy assets, and
+It checks GitHub auth, repository secrets (`NPM_TOKEN`, `EDGEONE_DEPLOY_HOOK_URL`),
+local npm auth, npm publish assets, EdgeOne Knowledge Cloud deploy assets, and
 single-binary release assets so the release train fails before a partial
 publish/deploy/upload is mistaken for production readiness.
 
