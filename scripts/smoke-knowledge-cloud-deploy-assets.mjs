@@ -5,6 +5,8 @@ const dockerfile = await read("Dockerfile.knowledge-cloud");
 const edgeone = await read("deploy/knowledge-cloud/edgeone.json");
 const render = await read("deploy/knowledge-cloud/render.yaml");
 const workflow = await read(".github/workflows/knowledge-cloud-deploy.yml");
+const edgeOneFunction = await read("cloud-functions/[[default]].js");
+const edgeOneFunctionPackage = await read("cloud-functions/package.json");
 
 assertIncludes(dockerfile, "EXPOSE 8787", "Dockerfile must expose the Knowledge Cloud port");
 assertIncludes(dockerfile, "FROM node:22-slim", "Dockerfile must use Node 22 for pnpm and node:sqlite support");
@@ -23,6 +25,11 @@ assertIncludes(edgeone, '"knowledge-packs/official/**"', "EdgeOne deploy config 
 assertIncludes(edgeone, '"deploy_secret": "EDGEONE_API_TOKEN"', "EdgeOne deploy config must declare the EdgeOne API token secret");
 assertIncludes(edgeone, '"fallback_deploy_secret": "EDGEONE_DEPLOY_HOOK_URL"', "EdgeOne deploy config must retain the deploy hook fallback secret");
 assertIncludes(edgeone, '"project_name": "osstack-knowledge-cloud"', "EdgeOne deploy config must declare the Makers project name");
+assertIncludes(edgeOneFunction, "export default async function onRequest", "EdgeOne Cloud Function must export an onRequest handler");
+assertIncludes(edgeOneFunction, 'url.pathname === "/healthz"', "EdgeOne Cloud Function must serve /healthz");
+assertIncludes(edgeOneFunction, 'url.pathname === "/v1/search"', "EdgeOne Cloud Function must serve /v1/search");
+assertIncludes(edgeOneFunction, "searchKnowledgePacks", "EdgeOne Cloud Function must use osstack knowledge search");
+assertIncludes(edgeOneFunctionPackage, '"type": "module"', "EdgeOne Cloud Function package must opt into ESM");
 
 assertIncludes(render, "dockerfilePath: ./Dockerfile.knowledge-cloud", "Render deploy config must use the Knowledge Cloud Dockerfile");
 assertIncludes(render, "healthCheckPath: /healthz", "Render deploy config must healthcheck /healthz");
@@ -38,12 +45,32 @@ assertIncludes(workflow, "pnpm smoke:knowledge-cloud:deploy", "Knowledge Cloud d
 assertIncludes(workflow, "docker build -f Dockerfile.knowledge-cloud", "Knowledge Cloud deploy workflow must build the Docker image");
 assertIncludes(workflow, "secrets.EDGEONE_API_TOKEN", "Knowledge Cloud deploy workflow must gate EdgeOne CLI deploy on EDGEONE_API_TOKEN");
 assertIncludes(workflow, "edgeone@latest makers deploy . -n osstack-knowledge-cloud", "Knowledge Cloud deploy workflow must deploy with the EdgeOne Makers CLI");
+assertIncludes(workflow, "Deploy Success", "Knowledge Cloud deploy workflow must tolerate EdgeOne post-success status lookup failures");
 assertIncludes(workflow, "EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must retain the deploy hook fallback");
 assertIncludes(workflow, "deploy=true requires repository secret EDGEONE_API_TOKEN or EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy=true must fail when no EdgeOne deploy credential is configured");
 assertIncludes(workflow, 'curl -fsS -X POST "$EDGEONE_DEPLOY_HOOK_URL"', "Knowledge Cloud deploy workflow must trigger the EdgeOne deploy hook fallback");
 assertIncludes(workflow, "release doctor --target knowledge-cloud --cloud-url", "Knowledge Cloud deploy workflow must validate the deployed health/search/audit gates when cloud_url is supplied");
 assertIncludes(workflow, 'knowledge sync --cloud-url "${{ inputs.cloud_url }}" --json', "Knowledge Cloud deploy workflow must sync from the deployed cloud URL when supplied");
 assertIncludes(workflow, 'knowledge search "proof pack checksum" --cloud-url "${{ inputs.cloud_url }}" --json', "Knowledge Cloud deploy workflow must search the deployed cloud URL when supplied");
+
+const edgeOneHandler = await import(new URL("../cloud-functions/%5B%5Bdefault%5D%5D.js", import.meta.url));
+const health = await edgeOneHandler.default({ request: new Request("https://knowledge.osstack.ai/healthz") });
+if (health.status !== 200) throw new Error("EdgeOne Cloud Function /healthz smoke must return HTTP 200");
+const healthBody = await health.json();
+if (healthBody.ok !== true || healthBody.service !== "osstack-knowledge-cloud") {
+  throw new Error("EdgeOne Cloud Function /healthz smoke returned invalid service metadata");
+}
+const search = await edgeOneHandler.default({
+  request: new Request("https://knowledge.osstack.ai/v1/search", {
+    method: "POST",
+    body: JSON.stringify({ query: "proof pack checksum", limit: 5 }),
+  }),
+});
+if (search.status !== 200) throw new Error("EdgeOne Cloud Function /v1/search smoke must return HTTP 200");
+const searchBody = await search.json();
+if (!Array.isArray(searchBody.results) || searchBody.results.length === 0) {
+  throw new Error("EdgeOne Cloud Function /v1/search smoke must return matching knowledge chunks");
+}
 
 console.log(JSON.stringify({
   ok: true,
@@ -52,6 +79,8 @@ console.log(JSON.stringify({
     "deploy/knowledge-cloud/edgeone.json",
     "deploy/knowledge-cloud/render.yaml",
     ".github/workflows/knowledge-cloud-deploy.yml",
+    "cloud-functions/[[default]].js",
+    "cloud-functions/package.json",
   ],
 }, null, 2));
 
