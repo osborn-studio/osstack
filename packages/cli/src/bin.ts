@@ -1522,6 +1522,7 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
     "deploy/knowledge-cloud/render.yaml",
     ".github/workflows/knowledge-cloud-deploy.yml",
     "cloud-functions/[[default]].js",
+    "package.json",
   ];
   const missing: string[] = [];
   const violations: string[] = [];
@@ -1538,6 +1539,7 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   const render = await readAsset("deploy/knowledge-cloud/render.yaml");
   const workflow = await readAsset(".github/workflows/knowledge-cloud-deploy.yml");
   const edgeOneFunction = await readAsset("cloud-functions/[[default]].js");
+  const rootPackage = await readAsset("package.json");
   const expectAsset = (text: string, needle: string, message: string): void => {
     if (text !== "" && !text.includes(needle)) violations.push(message);
   };
@@ -1562,6 +1564,10 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   expectAsset(edgeOneFunction, "OSSTACK_KNOWLEDGE_PUBLISH_TOKEN", "EdgeOne function publish must require an explicit token.");
   expectAsset(edgeOneFunction, "osstack_knowledge_kv", "EdgeOne function must support the Osstack Knowledge KV binding.");
   expectAsset(edgeOneFunction, "edgeone-kv", "EdgeOne function must report durable EdgeOne KV publish persistence.");
+  expectAsset(edgeOneFunction, "@edgeone/pages-blob", "EdgeOne function must support zero-config Blob persistence fallback.");
+  expectAsset(edgeOneFunction, "edgeone-blob", "EdgeOne function must report durable EdgeOne Blob publish persistence.");
+  expectAsset(edgeOneFunction, "osstack-knowledge-cloud-packs", "EdgeOne function must use a stable Blob store name.");
+  expectAsset(rootPackage, '"@edgeone/pages-blob"', "Root package must include the EdgeOne Blob SDK for function deployment.");
   expectAsset(render, "dockerfilePath: ./Dockerfile.knowledge-cloud", "Render config must use Dockerfile.knowledge-cloud.");
   expectAsset(render, "healthCheckPath: /healthz", "Render config must healthcheck /healthz.");
   expectAsset(render, "OSSTACK_KNOWLEDGE_AUDIT_LOG", "Render config must persist audit JSONL.");

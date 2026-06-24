@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@edgeone/pages-blob':
+        specifier: 0.0.12
+        version: 0.0.12
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.4.16
@@ -469,6 +473,10 @@ packages:
 
   '@changesets/write@0.4.0':
     resolution: {integrity: sha512-CdTLvIOPiCNuH71pyDu3rA+Q0n65cmAbXnwWH84rKGiFumFzkmHNT8KHTMEchcxN+Kl8I54xGUhJ7l3E7X396Q==}
+
+  '@edgeone/pages-blob@0.0.12':
+    resolution: {integrity: sha512-HSrlwg8E9OpHhwQHwv6KW5REmyyKs81P+l01yU6LV7yrxjME5asnKdHMwIz0YAAncQf15CTDvhaGZenXDBz6Rg==}
+    engines: {node: '>=18.0.0'}
 
   '@esbuild/aix-ppc64@0.21.5':
     resolution: {integrity: sha512-1SDgH6ZSPTlggy1yI6+Dbkiz8xzpHJEVAlF/AM1tHPLsf5STom9rwtjE4hKAF20FfXXNTFqEYXyJNWh1GiZedQ==}
@@ -2750,6 +2758,8 @@ snapshots:
       fs-extra: 7.0.1
       human-id: 4.2.0
       prettier: 2.8.8
+
+  '@edgeone/pages-blob@0.0.12': {}
 
   '@esbuild/aix-ppc64@0.21.5':
     optional: true

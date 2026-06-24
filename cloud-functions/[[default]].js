@@ -4,6 +4,8 @@ const officialPacks = officialPackManifests.map((manifest) => ({ manifest }));
 const publishedOfficialPacks = [];
 const publishedPrivatePacks = [];
 const KNOWLEDGE_KV_BINDING = "osstack_knowledge_kv";
+const KNOWLEDGE_BLOB_BINDING = "osstack_knowledge_blob";
+const KNOWLEDGE_BLOB_STORE = "osstack-knowledge-cloud-packs";
 const OFFICIAL_KV_PREFIX = "osstack_official_pack_";
 const PRIVATE_KV_PREFIX = "osstack_private_pack_";
 
@@ -177,6 +179,54 @@ function knowledgeKv(env = {}) {
   ));
 }
 
+async function knowledgeBlobStore(env = {}) {
+  const candidates = [
+    env?.[KNOWLEDGE_BLOB_BINDING],
+    env?.OSSTACK_KNOWLEDGE_BLOB,
+    globalThis[KNOWLEDGE_BLOB_BINDING],
+    globalThis.OSSTACK_KNOWLEDGE_BLOB,
+  ];
+  const injected = candidates.find((candidate) => (
+    typeof candidate === "object"
+    && candidate !== null
+    && typeof candidate.get === "function"
+    && typeof candidate.list === "function"
+    && (typeof candidate.set === "function" || typeof candidate.setJSON === "function")
+  ));
+  if (injected !== undefined) return injected;
+  try {
+    const blob = await import("@edgeone/pages-blob");
+    if (typeof blob.getStore !== "function") return undefined;
+    return blob.getStore(KNOWLEDGE_BLOB_STORE, { consistency: "strong" });
+  } catch {
+    return undefined;
+  }
+}
+
+async function knowledgeStorage(env = {}) {
+  const kv = knowledgeKv(env);
+  if (kv !== undefined) {
+    return {
+      kind: "edgeone-kv",
+      binding: KNOWLEDGE_KV_BINDING,
+      getJson: (key) => kvGetJson(kv, key),
+      putJson: (key, value) => kvPutJson(kv, key, value),
+      listKeys: (prefix) => kvListKeys(kv, prefix),
+    };
+  }
+  const blob = await knowledgeBlobStore(env);
+  if (blob !== undefined) {
+    return {
+      kind: "edgeone-blob",
+      binding: KNOWLEDGE_BLOB_STORE,
+      getJson: (key) => blobGetJson(blob, key),
+      putJson: (key, value) => blobPutJson(blob, key, value),
+      listKeys: (prefix) => blobListKeys(blob, prefix),
+    };
+  }
+  return undefined;
+}
+
 function hexSegment(value) {
   return Array.from(new TextEncoder().encode(String(value)))
     .map((byte) => byte.toString(16).padStart(2, "0"))
@@ -218,12 +268,44 @@ async function kvListKeys(kv, prefix) {
   return keys;
 }
 
-async function kvPacksByPrefix(kv, prefix) {
-  if (kv === undefined) return [];
+async function blobPutJson(blob, key, value) {
+  if (typeof blob.setJSON === "function") {
+    await blob.setJSON(key, value);
+    return;
+  }
+  await blob.set(key, JSON.stringify(value));
+}
+
+async function blobGetJson(blob, key) {
+  const parsed = await blob.get(key, { type: "json", consistency: "strong" });
+  if (typeof parsed === "object" && parsed !== null) return parsed;
+  if (typeof parsed === "string" && parsed.trim().length > 0) return JSON.parse(parsed);
+  return undefined;
+}
+
+async function blobListKeys(blob, prefix) {
+  const keys = [];
+  let cursor;
+  do {
+    const listed = await blob.list({ prefix, ...(cursor === undefined || cursor === "" ? {} : { cursor }) });
+    const blobs = Array.isArray(listed?.blobs) ? listed.blobs : Array.isArray(listed?.keys) ? listed.keys : [];
+    for (const item of blobs) {
+      if (typeof item === "string") keys.push(item);
+      else if (typeof item?.key === "string") keys.push(item.key);
+      else if (typeof item?.name === "string") keys.push(item.name);
+      else if (typeof item?.path === "string") keys.push(item.path);
+    }
+    cursor = typeof listed?.cursor === "string" && listed.cursor.length > 0 ? listed.cursor : undefined;
+  } while (cursor !== undefined);
+  return keys;
+}
+
+async function storagePacksByPrefix(storage, prefix) {
+  if (storage === undefined) return [];
   try {
     const packs = [];
-    for (const key of await kvListKeys(kv, prefix)) {
-      const manifest = await kvGetJson(kv, key);
+    for (const key of await storage.listKeys(prefix)) {
+      const manifest = await storage.getJson(key);
       const validation = validatePublishManifest(manifest);
       if (validation.ok) packs.push({ manifest: validation.manifest });
     }
@@ -233,30 +315,30 @@ async function kvPacksByPrefix(kv, prefix) {
   }
 }
 
-async function publicPacks(kv) {
+async function publicPacks(storage) {
   return dedupePacks([
     ...officialPacks,
     ...publishedOfficialPacks,
-    ...await kvPacksByPrefix(kv, OFFICIAL_KV_PREFIX),
+    ...await storagePacksByPrefix(storage, OFFICIAL_KV_PREFIX),
   ]);
 }
 
-async function allPrivatePacks(kv) {
+async function allPrivatePacks(storage) {
   return dedupePacks([
     ...publishedPrivatePacks,
-    ...await kvPacksByPrefix(kv, PRIVATE_KV_PREFIX),
+    ...await storagePacksByPrefix(storage, PRIVATE_KV_PREFIX),
   ]);
 }
 
-async function tenantPrivatePacks(tenantId, kv) {
-  const privatePacks = await allPrivatePacks(kv);
+async function tenantPrivatePacks(tenantId, storage) {
+  const privatePacks = await allPrivatePacks(storage);
   return privatePacks.filter((pack) => pack.manifest.tenant_id === tenantId);
 }
 
-async function persistPublishedPack(kv, manifest, privatePack) {
-  if (kv === undefined) return "edgeone-function-memory";
-  await kvPutJson(kv, privatePack ? privatePackKey(manifest) : officialPackKey(manifest), manifest);
-  return "edgeone-kv";
+async function persistPublishedPack(storage, manifest, privatePack) {
+  if (storage === undefined) return "edgeone-function-memory";
+  await storage.putJson(privatePack ? privatePackKey(manifest) : officialPackKey(manifest), manifest);
+  return storage.kind;
 }
 
 function reviewStatus(manifest) {
@@ -404,19 +486,20 @@ function searchPacks(packs, query, limit) {
 
 export default async function onRequest({ request, env = {} }) {
   const url = new URL(request.url);
-  const kv = knowledgeKv(env);
-  const packs = await publicPacks(kv);
+  const storage = await knowledgeStorage(env);
+  const packs = await publicPacks(storage);
 
   if (request.method === "GET" && url.pathname === "/healthz") {
-    const privatePacks = await allPrivatePacks(kv);
+    const privatePacks = await allPrivatePacks(storage);
     return json({
       ok: true,
       service: "osstack-knowledge-cloud",
       runtime: "edgeone-cloud-functions",
       packs: packs.length,
       private_packs: privatePacks.length,
-      publish_storage: kv === undefined ? "edgeone-function-memory" : "edgeone-kv",
-      kv_binding: kv === undefined ? "missing" : KNOWLEDGE_KV_BINDING,
+      publish_storage: storage === undefined ? "edgeone-function-memory" : storage.kind,
+      storage_binding: storage === undefined ? "missing" : storage.binding,
+      kv_binding: knowledgeKv(env) === undefined ? "missing" : KNOWLEDGE_KV_BINDING,
     });
   }
 
@@ -445,7 +528,7 @@ export default async function onRequest({ request, env = {} }) {
     const tenantId = typeof body.tenant_id === "string" ? body.tenant_id : undefined;
     if (tenantId !== undefined && !isSafeTenantId(tenantId)) return json({ error: "tenant_id is invalid" }, 400);
     const visiblePacks = tenantId !== undefined && isAuthorizedPrivateRequest(request, tenantId, env)
-      ? dedupePacks([...packs, ...await tenantPrivatePacks(tenantId, kv)])
+      ? dedupePacks([...packs, ...await tenantPrivatePacks(tenantId, storage)])
       : packs;
     return json({
       packs: visiblePacks.map((pack) => packSummary(pack.manifest)),
@@ -458,7 +541,7 @@ export default async function onRequest({ request, env = {} }) {
     const tenantId = typeof body.tenant_id === "string" ? body.tenant_id : undefined;
     if (!isSafeTenantId(tenantId)) return json({ error: "private knowledge packs require tenant_id" }, 400);
     if (!isAuthorizedPrivateRequest(request, tenantId, env)) return json({ error: "private knowledge packs require authorization" }, 401);
-    return json({ packs: (await tenantPrivatePacks(tenantId, kv)).map((pack) => pack.manifest) });
+    return json({ packs: (await tenantPrivatePacks(tenantId, storage)).map((pack) => pack.manifest) });
   }
 
   if (request.method === "POST" && url.pathname === "/v1/publish") {
@@ -473,7 +556,7 @@ export default async function onRequest({ request, env = {} }) {
     if (privatePack) {
       if (!isSafeTenantId(manifest.tenant_id)) return json({ error: "private knowledge publish requires tenant_id" }, 400);
       if (!isAuthorizedPrivateRequest(request, manifest.tenant_id, env)) return json({ error: "private knowledge publish requires authorization" }, 401);
-      const persistence = await persistPublishedPack(kv, manifest, true);
+      const persistence = await persistPublishedPack(storage, manifest, true);
       upsertPack(publishedPrivatePacks, { manifest });
       return json({
         ok: true,
@@ -484,7 +567,7 @@ export default async function onRequest({ request, env = {} }) {
       });
     }
     if (!isAuthorizedPrivateRequest(request, undefined, env)) return json({ error: "official knowledge publish requires authorization" }, 401);
-    const persistence = await persistPublishedPack(kv, manifest, false);
+    const persistence = await persistPublishedPack(storage, manifest, false);
     upsertPack(publishedOfficialPacks, { manifest });
     return json({
       ok: true,

@@ -12,6 +12,7 @@ const edgeOneFunction = await read("cloud-functions/[[default]].js");
 const edgeOneHealthFunction = await read("cloud-functions/healthz.js");
 const edgeOneFunctionPackage = await read("cloud-functions/package.json");
 const edgeOneOfficialPacks = await read("cloud-functions/official-packs.js");
+const rootPackage = await read("package.json");
 
 assertIncludes(dockerfile, "EXPOSE 8787", "Dockerfile must expose the Knowledge Cloud port");
 assertIncludes(dockerfile, "FROM node:22-slim", "Dockerfile must use Node 22 for pnpm and node:sqlite support");
@@ -44,13 +45,19 @@ assertIncludes(edgeOneFunction, 'url.pathname === "/review"', "EdgeOne Cloud Fun
 assertIncludes(edgeOneFunction, "OSSTACK_KNOWLEDGE_PUBLISH_TOKEN", "EdgeOne Cloud Function publish must require an explicit token");
 assertIncludes(edgeOneFunction, "osstack_knowledge_kv", "EdgeOne Cloud Function must support the Osstack Knowledge KV binding");
 assertIncludes(edgeOneFunction, "edgeone-kv", "EdgeOne Cloud Function must report durable EdgeOne KV publish persistence");
+assertIncludes(edgeOneFunction, "@edgeone/pages-blob", "EdgeOne Cloud Function must support zero-config Blob persistence fallback");
+assertIncludes(edgeOneFunction, "edgeone-blob", "EdgeOne Cloud Function must report durable EdgeOne Blob publish persistence");
+assertIncludes(edgeOneFunction, "osstack-knowledge-cloud-packs", "EdgeOne Cloud Function must use a stable Blob store name");
 assertIncludes(edgeOneFunction, "function knowledgeKv", "EdgeOne Cloud Function must discover a bound KV namespace");
 assertIncludes(edgeOneFunction, "function searchPacks", "EdgeOne Cloud Function must include self-contained search");
 assertIncludes(edgeOneHealthFunction, "osstack-knowledge-cloud", "EdgeOne /healthz function must return Knowledge Cloud service metadata");
 assertIncludes(edgeOneFunctionPackage, '"type": "module"', "EdgeOne Cloud Function package must opt into ESM");
+assertIncludes(rootPackage, '"@edgeone/pages-blob"', "Root package must include the EdgeOne Blob SDK for function deployment");
 assertIncludes(edgeOneOfficialPacks, "proof-checksum-pack", "EdgeOne function bundle must include official proof knowledge pack data");
 assertIncludes(edgeOneHealthFunction, "publish_storage", "EdgeOne /healthz function must expose publish storage mode");
 assertIncludes(edgeOneHealthFunction, "osstack_knowledge_kv", "EdgeOne /healthz function must expose the Knowledge KV binding name");
+assertIncludes(edgeOneHealthFunction, "@edgeone/pages-blob", "EdgeOne /healthz function must detect Blob storage fallback");
+assertIncludes(edgeOneHealthFunction, "edgeone-blob", "EdgeOne /healthz function must expose Blob storage mode");
 assertIncludes(edgeOneOfficialPacks, "architecture-control-plane", "EdgeOne function bundle must include official architecture knowledge pack data");
 assertIncludes(edgeOneOfficialPacks, "contract-validation-proof", "EdgeOne function bundle must include official contract validation knowledge pack data");
 assertIncludes(edgeOneOfficialPacks, "testing-eval-gates", "EdgeOne function bundle must include official testing/eval knowledge pack data");
@@ -224,6 +231,62 @@ const kvSearchBody = await kvSearch.json();
 if (!kvSearchBody.results?.some((result) => result.pack_id === "team/edgeone-kv-smoke")) {
   throw new Error("EdgeOne Cloud Function KV private search smoke must include the published tenant pack across fresh module state");
 }
+const fakeBlob = createFakeBlobStore();
+const blobEnv = {
+  osstack_knowledge_blob: fakeBlob,
+  OSSTACK_KNOWLEDGE_PUBLISH_TOKEN: "kst_edgeone_blob_publish_smoke",
+};
+const blobPublish = await edgeOneHandler.default({
+  request: new Request("https://knowledge.osstack.ai/v1/publish", {
+    method: "POST",
+    headers: {
+      authorization: "Bearer kst_edgeone_blob_publish_smoke",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      pack: {
+        id: "team/edgeone-blob-smoke",
+        version: "2026.06.24",
+        name: "Team EdgeOne Blob Smoke",
+        license: "Internal",
+        source_kind: "internal",
+        quality_score: 84,
+        scope: "team",
+        tenant_id: "team_blob_alpha",
+        taxonomy: ["operations/edgeone-blob-smoke"],
+        chunks: [{
+          chunk_id: "team-edgeone-blob-smoke-1",
+          title: "Team EdgeOne Blob smoke",
+          body: "Durable Osstack Knowledge Cloud packs should persist through EdgeOne Blob without manual KV binding.",
+          tags: ["team", "edgeone", "blob"],
+        }],
+      },
+    }),
+  }),
+  env: blobEnv,
+});
+if (blobPublish.status !== 200) throw new Error("EdgeOne Cloud Function Blob /v1/publish smoke must return HTTP 200");
+const blobPublishBody = await blobPublish.json();
+if (blobPublishBody.persistence !== "edgeone-blob") {
+  throw new Error(`EdgeOne Cloud Function Blob publish must use edgeone-blob persistence: ${JSON.stringify(blobPublishBody)}`);
+}
+const freshBlobEdgeOneHandler = await import(new URL(`../cloud-functions/%5B%5Bdefault%5D%5D.js?blob-smoke=${Date.now()}`, import.meta.url));
+const blobSearch = await freshBlobEdgeOneHandler.default({
+  request: new Request("https://knowledge.osstack.ai/v1/search", {
+    method: "POST",
+    headers: {
+      authorization: "Bearer kst_edgeone_blob_publish_smoke",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ query: "manual KV binding", tenant_id: "team_blob_alpha", limit: 5 }),
+  }),
+  env: blobEnv,
+});
+if (blobSearch.status !== 200) throw new Error("EdgeOne Cloud Function Blob private search smoke must return HTTP 200");
+const blobSearchBody = await blobSearch.json();
+if (!blobSearchBody.results?.some((result) => result.pack_id === "team/edgeone-blob-smoke")) {
+  throw new Error("EdgeOne Cloud Function Blob private search smoke must include the published tenant pack across fresh module state");
+}
 
 const tmp = await mkdtemp(join(tmpdir(), "osstack-knowledge-cloud-deploy-"));
 const catalogPath = join(tmp, "catalog.json");
@@ -260,6 +323,7 @@ console.log(JSON.stringify({
     "cloud-functions/healthz.js",
     "cloud-functions/official-packs.js",
     "cloud-functions/package.json",
+    "package.json",
     "knowledge-cloud publish catalog",
   ],
 }, null, 2));
@@ -293,6 +357,32 @@ function createFakeKv() {
         .slice(0, limit)
         .map((name) => ({ name }));
       return { keys, cursor: "" };
+    },
+  };
+}
+
+function createFakeBlobStore() {
+  const values = new Map();
+  return {
+    async set(key, value) {
+      values.set(key, typeof value === "string" ? value : JSON.stringify(value));
+    },
+    async setJSON(key, value) {
+      values.set(key, JSON.stringify(value));
+    },
+    async get(key, options) {
+      const value = values.get(key);
+      if (value === undefined) return null;
+      if (options?.type === "json") return JSON.parse(value);
+      return value;
+    },
+    async list(options = {}) {
+      const prefix = typeof options.prefix === "string" ? options.prefix : "";
+      const blobs = Array.from(values.keys())
+        .filter((key) => key.startsWith(prefix))
+        .sort()
+        .map((key) => ({ key }));
+      return { blobs, directories: [] };
     },
   };
 }
