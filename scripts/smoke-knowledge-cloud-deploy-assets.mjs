@@ -34,6 +34,7 @@ assertIncludes(edgeOneFunction, "export default async function onRequest", "Edge
 assertIncludes(edgeOneFunction, 'from "./official-packs.js"', "EdgeOne Cloud Function must load official packs from the function bundle");
 assertIncludes(edgeOneFunction, 'url.pathname === "/healthz"', "EdgeOne Cloud Function must serve /healthz");
 assertIncludes(edgeOneFunction, 'url.pathname === "/v1/search"', "EdgeOne Cloud Function must serve /v1/search");
+assertIncludes(edgeOneFunction, 'url.pathname === "/review"', "EdgeOne Cloud Function must serve the review queue UI");
 assertIncludes(edgeOneFunction, "function searchPacks", "EdgeOne Cloud Function must include self-contained search");
 assertIncludes(edgeOneHealthFunction, "osstack-knowledge-cloud", "EdgeOne /healthz function must return Knowledge Cloud service metadata");
 assertIncludes(edgeOneFunctionPackage, '"type": "module"', "EdgeOne Cloud Function package must opt into ESM");
@@ -90,6 +91,12 @@ if (search.status !== 200) throw new Error("EdgeOne Cloud Function /v1/search sm
 const searchBody = await search.json();
 if (!Array.isArray(searchBody.results) || searchBody.results.length === 0) {
   throw new Error("EdgeOne Cloud Function /v1/search smoke must return matching knowledge chunks");
+}
+const review = await edgeOneHandler.default({ request: new Request("https://knowledge.osstack.ai/review?status=approved") });
+if (review.status !== 200) throw new Error("EdgeOne Cloud Function /review smoke must return HTTP 200");
+const reviewHtml = await review.text();
+if (!reviewHtml.includes("Osstack Knowledge Cloud Review Queue") || !reviewHtml.includes("Filter: approved")) {
+  throw new Error("EdgeOne Cloud Function /review smoke returned invalid review queue HTML");
 }
 
 const tmp = await mkdtemp(join(tmpdir(), "osstack-knowledge-cloud-deploy-"));
