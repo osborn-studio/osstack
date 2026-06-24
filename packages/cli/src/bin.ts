@@ -944,7 +944,7 @@ Checks:
   - GitHub CLI authentication for repository operations
   - GitHub Actions runner availability for release/deploy workflows
   - repository secrets NPM_TOKEN and EDGEONE_API_TOKEN
-  - Apple notarization and Developer ID secrets for single-binary release
+  - Optional Apple notarization and Developer ID secrets for notarized single-binary release
   - optional proof-core evidence validation with --proof-dir
   - optional deployed Knowledge Cloud /healthz validation with --cloud-url
   - local npm login for manual publishing
@@ -1249,11 +1249,10 @@ async function releaseDoctor(
 
   const edgeOneDeploySecrets = ["EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"];
   const knowledgeCloudPublishSecrets = ["OSSTACK_KNOWLEDGE_PUBLISH_TOKEN"];
-  const requiredSecrets = target === "all" ? ["NPM_TOKEN", ...edgeOneDeploySecrets, ...knowledgeCloudPublishSecrets, ...SINGLE_BINARY_RELEASE_SECRETS]
+  const requiredSecrets = target === "all" ? ["NPM_TOKEN", ...edgeOneDeploySecrets, ...knowledgeCloudPublishSecrets]
     : [
       ...(releaseTargetIncludesNpm(target) ? ["NPM_TOKEN"] : []),
       ...(releaseTargetIncludesKnowledgeCloud(target) ? [...edgeOneDeploySecrets, ...knowledgeCloudPublishSecrets] : []),
-      ...(releaseTargetIncludesSingleBinary(target) ? SINGLE_BINARY_RELEASE_SECRETS : []),
     ];
   const secrets = await releaseSecretsCheck(requiredSecrets, {
     alternativeGroups: releaseTargetIncludesKnowledgeCloud(target) ? [edgeOneDeploySecrets] : [],
@@ -1324,7 +1323,6 @@ async function releaseDoctor(
     && knowledgeFeedbackSummaryReady
     && knowledgeReviewUiReady;
   const singleBinaryRelease = actionsReady
-    && SINGLE_BINARY_RELEASE_SECRETS.every((secret) => hasSecret(secrets, secret))
     && singleBinaryAssetsReady
     && singleBinaryWorkflowReady;
   const ok = target === "primary" ? npmPublish && knowledgeCloudDeploy
@@ -1984,7 +1982,9 @@ async function releaseSingleBinaryReleaseAssetsCheck(workspacePath: string): Pro
   };
 
   expectAsset(publishScript, "archive sha256 mismatch", "Single-binary publish script must verify archive SHA-256.");
-  expectAsset(publishScript, "public single-binary upload requires a Developer ID signed and notarized archive", "Single-binary publish script must reject public upload of non-notarized archives.");
+  expectAsset(publishScript, "--allow-ad-hoc", "Single-binary publish script must require an explicit flag before uploading ad-hoc archives.");
+  expectAsset(publishScript, "public-ad-hoc", "Single-binary publish script must label ad-hoc GitHub Release uploads.");
+  expectAsset(publishScript, "public-notarized", "Single-binary publish script must label notarized GitHub Release uploads.");
   expectAsset(publishScript, "archiveManifest.binary?.notarized !== true", "Single-binary publish script must inspect archive notarization metadata.");
   expectAsset(publishScript, "gh\", [\"release\", \"upload\"", "Single-binary publish script must upload assets through gh release upload.");
   expectAsset(publishScript, "github_release_uploaded: true", "Single-binary publish script must mark successful GitHub upload.");
@@ -1997,6 +1997,8 @@ async function releaseSingleBinaryReleaseAssetsCheck(workspacePath: string): Pro
   expectAsset(workflow, "push:", "Single-binary release workflow must run for release tags.");
   expectAsset(workflow, "tags:", "Single-binary release workflow must declare tag triggers.");
   expectAsset(workflow, "workflow_dispatch:", "Single-binary release workflow must be manually triggerable.");
+  expectAsset(workflow, "notarize:", "Single-binary release workflow must expose an explicit notarization switch.");
+  expectAsset(workflow, "--allow-ad-hoc", "Single-binary release workflow must support explicit ad-hoc release uploads without Apple secrets.");
   expectAsset(workflow, "pnpm smoke:single-binary-release-pack", "Single-binary release workflow must smoke release archives.");
   expectAsset(workflow, "pnpm publish:single-binary", "Single-binary release workflow must call the publish script.");
   expectAsset(workflow, "pnpm notarize:single-binary", "Single-binary release workflow must notarize public release assets.");
@@ -3051,7 +3053,9 @@ async function releaseSecretsCheck(
     id: "repository_secrets",
     status: missing.length === 0 ? "ok" : "error",
     message: missing.length === 0
-      ? `Required repository secrets are configured: ${requiredSecrets.join(", ")}.`
+      ? requiredSecrets.length === 0
+        ? "No repository secrets are required for this release target."
+        : `Required repository secrets are configured: ${requiredSecrets.join(", ")}.`
       : `Missing required repository secrets: ${missingDescription}.`,
     details: {
       required: requiredSecrets,
@@ -3181,8 +3185,9 @@ function releaseDoctorNextSteps(options: {
   if (Array.isArray(missing) && missing.includes("OSSTACK_KNOWLEDGE_PUBLISH_TOKEN")) {
     steps.push("Add repository secret OSSTACK_KNOWLEDGE_PUBLISH_TOKEN before enabling Knowledge Cloud private publish.");
   }
-  if (releaseTargetIncludesSingleBinary(options.target) && Array.isArray(missing) && SINGLE_BINARY_RELEASE_SECRETS.some((secret) => missing.includes(secret))) {
-    steps.push("Add Apple notarization and Developer ID repository secrets before running Single Binary Release dry_run=false.");
+  const singleBinaryAppleSecretsPresent = SINGLE_BINARY_RELEASE_SECRETS.every((secret) => hasSecret(options.secrets, secret));
+  if (releaseTargetIncludesSingleBinary(options.target) && !singleBinaryAppleSecretsPresent) {
+    steps.push("Apple notarization secrets are not configured; Single Binary Release can publish an explicitly labeled ad-hoc asset, or add Apple Developer ID secrets and run with notarize=true.");
   }
   const versionPr = options.checks.find((check) => check.id === "version_packages_pr");
   if (releaseTargetIncludesNpm(options.target) && versionPr?.status === "warn") {
@@ -3208,7 +3213,7 @@ function releaseDoctorNextSteps(options: {
       ? "Confirm the npm account behind NPM_TOKEN can publish to @osstack before rerunning the Release workflow."
       : "Create or authorize the npm @osstack scope before rerunning the Release workflow.");
   } else if (releaseTargetIncludesNpm(options.target) && npmScopeAccess?.status === "warn") {
-    steps.push("Confirm the npm account behind NPM_TOKEN can publish to @osstack before merging release commits.");
+    steps.push("Local npm scope access could not be verified; release CI will use the NPM_TOKEN-backed preflight as the source of truth.");
   }
   const knowledgeDeployAssets = options.checks.find((check) => check.id === "knowledge_cloud_deploy_assets");
   if (releaseTargetIncludesKnowledgeCloud(options.target) && knowledgeDeployAssets?.status === "error") {
@@ -3438,7 +3443,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
       ? [
         "pnpm smoke:single-binary-release-pack",
         "pnpm smoke:single-binary-release-publish",
-        "gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=true",
+        "gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=true -f notarize=false",
       ]
       : []),
   ];
@@ -3450,7 +3455,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
       "osstack loop doctor --workspace .",
     ]),
     ...(releaseTargetIncludesSingleBinary(result.target)
-      ? ["gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false"]
+      ? ["gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false -f notarize=false"]
       : []),
   ];
   const knowledgeCloudUrl = options.cloudUrl ?? "https://knowledge.osstack.ai";
