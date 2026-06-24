@@ -57,14 +57,6 @@ if (!dryRun) {
   if (releaseChannel === "blocked") {
     throw new Error("public single-binary upload requires a Developer ID signed and notarized archive, or --allow-ad-hoc for a clearly labeled ad-hoc release candidate");
   }
-  const releaseNotes = releaseChannel === "public-ad-hoc"
-    ? `${notes}\n\nNote: this macOS single-binary asset is ad-hoc signed and not Apple notarized. Prefer npm for the default installation path; use this archive as a portable release candidate.`
-    : notes;
-  const releaseView = run("gh", ["release", "view", tag, "--repo", repo], { allowFailure: true, capture: true });
-  if (releaseView.status !== 0) {
-    run("gh", ["release", "create", tag, "--repo", repo, "--title", title, "--notes", releaseNotes], { capture: json });
-  }
-  run("gh", ["release", "upload", tag, ...assets, "--repo", repo, "--clobber"], { capture: json });
   archiveManifest.publishing = {
     ...(archiveManifest.publishing ?? {}),
     github_release_uploaded: true,
@@ -75,6 +67,15 @@ if (!dryRun) {
     uploaded_assets: assets,
   };
   await writeFile(archiveManifestPath, `${JSON.stringify(archiveManifest, null, 2)}\n`);
+
+  const releaseNotes = releaseChannel === "public-ad-hoc"
+    ? `${notes}\n\nNote: this macOS single-binary asset is ad-hoc signed and not Apple notarized. Prefer npm for the default installation path; use this archive as a portable release candidate.`
+    : notes;
+  const releaseView = run("gh", ["release", "view", tag, "--repo", repo], { allowFailure: true, capture: true });
+  if (releaseView.status !== 0) {
+    run("gh", ["release", "create", tag, "--repo", repo, "--title", title, "--notes", releaseNotes], { capture: json });
+  }
+  run("gh", ["release", "upload", tag, ...assets, "--repo", repo, "--clobber"], { capture: json });
 }
 
 const summary = {
