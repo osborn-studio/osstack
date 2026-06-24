@@ -61,6 +61,7 @@ import {
   syncKnowledgeCache,
   validateKnowledgePublishGate,
   type KnowledgePack,
+  type KnowledgePackManifest,
   type KnowledgeScope,
   type KnowledgeMode,
   type KnowledgeRetrievalEvalCase,
@@ -143,6 +144,7 @@ Loop 工程：
   knowledge search     搜索本地、缓存或云端 Osstack 知识库
   knowledge inspect    查看 chunk 内容、pack 元数据和来源引用
   knowledge pin        固定本地缓存中的 pack 版本
+  knowledge publish    发布本地 pack 到 Knowledge Cloud
   knowledge feedback   记录或上报 chunk 有用/无用反馈
   knowledge feedback-summary
                        查看 Knowledge Cloud 反馈汇总
@@ -362,6 +364,8 @@ Governance:
                                  Show chunk content, pack metadata, and source refs
   knowledge pin <pack_id>@<version> [--json]
                                  Pin a cached knowledge pack version
+  knowledge publish --pack P [--cloud-url URL] [--tenant T] [--json]
+                                 Publish a local pack to Knowledge Cloud
   knowledge feedback <chunk_id> --useful|--bad [--cloud-url URL] [--json]
                                  Record local/cloud feedback for retrieval quality
   knowledge sources --internal [--pack P|--official|--cache-dir P] [--json]
@@ -4946,6 +4950,7 @@ async function handleKnowledgeCommand(args: string[]): Promise<number> {
   osstack knowledge validate --pack P|--official [--json]
   osstack knowledge pin <pack_id>@<version> [--cache-dir P] [--json]
   osstack knowledge prune [--cache-dir P] [--keep N] [--apply] [--json]
+  osstack knowledge publish --pack P [--cloud-url URL] [--tenant T] [--cache-dir P] [--json]
   osstack knowledge feedback <chunk_id> --useful|--bad [--tenant ID] [--cloud-url URL] [--cache-dir P] [--json]
   osstack knowledge feedback-summary [--tenant ID] [--cloud-url URL] [--cache-dir P] [--json]
   osstack knowledge review-queue [--tenant ID] [--status needs_review|all|approved|changes_requested|missing] [--cloud-url URL] [--cache-dir P] [--json]
@@ -5381,6 +5386,41 @@ Env:
     return ok ? 0 : 1;
   }
 
+  if (sub === "publish") {
+    const packPath = flagValue(args, "--pack");
+    if (packPath === undefined) {
+      console.error("osstack: knowledge publish requires --pack");
+      return 1;
+    }
+    const config = await readKnowledgeCloudConfig(knowledgeCacheDir(args));
+    const cloudUrl = resolveKnowledgeCloudUrl(args, config);
+    if (cloudUrl === undefined) {
+      console.error("osstack: knowledge publish requires --cloud-url, OSSTACK_KNOWLEDGE_URL, or `osstack knowledge login`");
+      return 1;
+    }
+    const tenantId = flagValue(args, "--tenant");
+    const authToken = resolveKnowledgeAuthToken(args, config);
+    const pack = await loadKnowledgePack(packPath);
+    try {
+      const published = await publishKnowledgePack({
+        cloudUrl,
+        manifest: tenantId === undefined ? pack.manifest : { ...pack.manifest, tenant_id: tenantId },
+        ...(authToken === undefined ? {} : { authToken }),
+      });
+      if (args.includes("--json")) {
+        console.log(JSON.stringify(published, null, 2));
+      } else {
+        console.log(`published=${published.pack.id}@${published.pack.version}`);
+        console.log(`private=${published.private ? "yes" : "no"}`);
+        if (published.tenant_id !== undefined) console.log(`tenant=${published.tenant_id}`);
+      }
+      return 0;
+    } catch (error) {
+      console.error(`osstack: knowledge publish failed: ${error instanceof Error ? error.message : String(error)}`);
+      return 1;
+    }
+  }
+
   if (sub === "pin") {
     const spec = firstPositionalValue(args.slice(1), new Set(["--cache-dir"]));
     if (spec === undefined) {
@@ -5721,6 +5761,47 @@ interface KnowledgeReviewQueue {
   }>;
 }
 
+interface KnowledgePublishResponse {
+  ok: true;
+  private: boolean;
+  tenant_id?: string;
+  pack: {
+    id: string;
+    version: string;
+    license: string;
+    source_kind: string;
+    quality_score: number;
+  };
+}
+
+async function publishKnowledgePack(options: {
+  cloudUrl: string;
+  manifest: KnowledgePackManifest;
+  authToken?: string;
+}): Promise<KnowledgePublishResponse> {
+  const endpoint = new URL("/v1/publish", normalizeCloudUrl(options.cloudUrl));
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+      ...(options.authToken === undefined ? {} : { authorization: `Bearer ${options.authToken}` }),
+    },
+    body: JSON.stringify({ pack: options.manifest }),
+  });
+  const raw = await response.text();
+  if (!response.ok) {
+    const body = parseJsonObject(raw);
+    const detail = typeof body?.["error"] === "string"
+      ? body["error"]
+      : Array.isArray(body?.["issues"])
+        ? body["issues"].map((issue) => isRecord(issue) && typeof issue["code"] === "string" ? issue["code"] : "unknown_issue").join(", ")
+        : `HTTP ${response.status}`;
+    throw new Error(detail);
+  }
+  return parseKnowledgePublishResponse(raw);
+}
+
 async function fetchKnowledgeFeedbackSummary(options: {
   cloudUrl: string;
   authToken?: string;
@@ -5771,6 +5852,28 @@ async function fetchKnowledgeReviewQueue(options: {
     throw new Error(detail);
   }
   return parseKnowledgeReviewQueue(raw);
+}
+
+function parseKnowledgePublishResponse(raw: string): KnowledgePublishResponse {
+  const parsed = JSON.parse(raw) as unknown;
+  if (!isRecord(parsed)) throw new Error("publish response must be an object");
+  if (parsed["ok"] !== true) throw new Error("publish response ok must be true");
+  if (typeof parsed["private"] !== "boolean") throw new Error("publish response private must be a boolean");
+  const packRaw = parsed["pack"];
+  if (!isRecord(packRaw)) throw new Error("publish response pack must be an object");
+  const tenantId = typeof parsed["tenant_id"] === "string" ? parsed["tenant_id"] : undefined;
+  return {
+    ok: true,
+    private: parsed["private"],
+    ...(tenantId === undefined ? {} : { tenant_id: tenantId }),
+    pack: {
+      id: requiredKnowledgeString(packRaw, "id"),
+      version: requiredKnowledgeString(packRaw, "version"),
+      license: requiredKnowledgeString(packRaw, "license"),
+      source_kind: requiredKnowledgeString(packRaw, "source_kind"),
+      quality_score: requiredKnowledgeNumber(packRaw, "quality_score"),
+    },
+  };
 }
 
 function parseKnowledgeFeedbackSummary(raw: string): KnowledgeFeedbackSummary {

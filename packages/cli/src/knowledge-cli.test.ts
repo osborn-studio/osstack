@@ -574,6 +574,58 @@ describe("knowledge CLI", () => {
     }
   });
 
+  it("publishes a team knowledge pack to Knowledge Cloud with tenant authorization", async () => {
+    const requests: Array<{ authorization: string | null; body?: unknown }> = [];
+    const server = await startKnowledgeServer({ requests });
+    const packPath = join(tmp, "team-pack.json");
+    await writeFile(packPath, JSON.stringify({
+      id: "team/runbook",
+      version: "2026.06.24",
+      name: "Team Runbook",
+      license: "Internal",
+      source_kind: "internal",
+      quality_score: 82,
+      scope: "team",
+      taxonomy: ["operations/runbook"],
+      chunks: [{
+        chunk_id: "team-runbook-1",
+        title: "Team release runbook",
+        body: "Osstack team runbooks should preserve proof evidence, release owner, and rollback notes.",
+        tags: ["team", "runbook"],
+      }],
+    }, null, 2));
+    try {
+      const address = server.address() as AddressInfo;
+      const exitCode = await main([
+        "knowledge",
+        "publish",
+        "--pack",
+        packPath,
+        "--cloud-url",
+        `http://127.0.0.1:${address.port}`,
+        "--token",
+        "kst_team_publish",
+        "--tenant",
+        "team_alpha",
+        "--json",
+      ]);
+
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(logs.join("\n"))).toMatchObject({
+        ok: true,
+        private: true,
+        tenant_id: "team_alpha",
+        pack: { id: "team/runbook", version: "2026.06.24", source_kind: "internal" },
+      });
+      expect(requests).toContainEqual({
+        authorization: "Bearer kst_team_publish",
+        body: { pack: expect.objectContaining({ id: "team/runbook", scope: "team", tenant_id: "team_alpha" }) },
+      });
+    } finally {
+      await closeServer(server);
+    }
+  });
+
   it("logs in to Knowledge Cloud and reuses the saved config without printing the token", async () => {
     const requests: Array<{ authorization: string | null }> = [];
     const server = await startKnowledgeServer({ requests });
@@ -913,6 +965,22 @@ async function startKnowledgeServer(options: { requests?: Array<{ authorization:
         }));
         return;
       }
+      if (req.method === "POST" && req.url === "/v1/publish") {
+        const pack = isTestRecord(parsedBody) && isTestRecord(parsedBody["pack"]) ? parsedBody["pack"] : {};
+        res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({
+          ok: true,
+          private: true,
+          tenant_id: pack["tenant_id"],
+          pack: {
+            id: pack["id"],
+            version: pack["version"],
+            license: pack["license"],
+            source_kind: pack["source_kind"],
+            quality_score: pack["quality_score"],
+          },
+        }));
+        return;
+      }
       if (req.method !== "POST" || req.url !== "/v1/search") {
         res.writeHead(404).end();
         return;
@@ -940,6 +1008,10 @@ async function startKnowledgeServer(options: { requests?: Array<{ authorization:
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   return server;
+}
+
+function isTestRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function cloudCockpitPack(overrides: Record<string, unknown> = {}) {
