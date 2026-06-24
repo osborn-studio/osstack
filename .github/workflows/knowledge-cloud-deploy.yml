@@ -74,6 +74,16 @@ jobs:
           echo "deploy=true requires repository secret EDGEONE_API_TOKEN or EDGEONE_DEPLOY_HOOK_URL." >> "$GITHUB_STEP_SUMMARY"
           exit 1
 
+      - name: Configure EdgeOne publish token
+        if: ${{ inputs.deploy && steps.edgeone-deploy-credential.outputs.mode == 'cli' && secrets.OSSTACK_KNOWLEDGE_PUBLISH_TOKEN != '' }}
+        run: |
+          npx edgeone@latest makers link -n osstack-knowledge-cloud -t "$EDGEONE_API_TOKEN"
+          npx edgeone@latest makers env set OSSTACK_KNOWLEDGE_PUBLISH_TOKEN "$OSSTACK_KNOWLEDGE_PUBLISH_TOKEN" -t "$EDGEONE_API_TOKEN"
+          echo "Configured OSSTACK_KNOWLEDGE_PUBLISH_TOKEN for EdgeOne Knowledge Cloud." >> "$GITHUB_STEP_SUMMARY"
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          OSSTACK_KNOWLEDGE_PUBLISH_TOKEN: ${{ secrets.OSSTACK_KNOWLEDGE_PUBLISH_TOKEN }}
+
       - name: Deploy with EdgeOne CLI
         id: edgeone-cli-deploy
         if: ${{ inputs.deploy && steps.edgeone-deploy-credential.outputs.mode == 'cli' }}
@@ -119,7 +129,7 @@ jobs:
         env:
           OSSTACK_TEST_RELEASE_GITHUB_AUTH: ok
           OSSTACK_TEST_RELEASE_GITHUB_ACTIONS: ok
-          OSSTACK_TEST_RELEASE_SECRETS: EDGEONE_API_TOKEN
+          OSSTACK_TEST_RELEASE_SECRETS: EDGEONE_API_TOKEN,OSSTACK_KNOWLEDGE_PUBLISH_TOKEN
           OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_CREDENTIAL: ok
 
       - name: Deployment summary

@@ -19,7 +19,7 @@ const SINGLE_BINARY_RELEASE_SECRETS = [
   "MACOS_CERTIFICATE_P12",
   "MACOS_CERTIFICATE_PASSWORD",
 ].join(",");
-const ALL_RELEASE_SECRETS = `NPM_TOKEN,EDGEONE_API_TOKEN,EDGEONE_DEPLOY_HOOK_URL,${SINGLE_BINARY_RELEASE_SECRETS}`;
+const ALL_RELEASE_SECRETS = `NPM_TOKEN,EDGEONE_API_TOKEN,EDGEONE_DEPLOY_HOOK_URL,OSSTACK_KNOWLEDGE_PUBLISH_TOKEN,${SINGLE_BINARY_RELEASE_SECRETS}`;
 
 beforeEach(() => {
   tmp = mkdtempSync(join(tmpdir(), "osstack-product-entry-"));
@@ -361,9 +361,9 @@ describe("product entry commands", () => {
     expect(result.checks).toContainEqual(expect.objectContaining({
       id: "repository_secrets",
       status: "error",
-      message: "Missing required repository secrets: one of (EDGEONE_API_TOKEN, EDGEONE_DEPLOY_HOOK_URL).",
+      message: "Missing required repository secrets: OSSTACK_KNOWLEDGE_PUBLISH_TOKEN, one of (EDGEONE_API_TOKEN, EDGEONE_DEPLOY_HOOK_URL).",
       details: expect.objectContaining({
-        missing: ["EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"],
+        missing: ["OSSTACK_KNOWLEDGE_PUBLISH_TOKEN", "EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"],
         missing_alternative_groups: [["EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"]],
       }),
     }));
@@ -374,7 +374,7 @@ describe("product entry commands", () => {
   it("accepts EdgeOne API token as the primary Knowledge Cloud deploy credential", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_API_TOKEN";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_API_TOKEN,OSSTACK_KNOWLEDGE_PUBLISH_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
 
     const exitCode = await main(["release", "doctor", "--target", "knowledge-cloud", "--json"]);
@@ -404,7 +404,7 @@ describe("product entry commands", () => {
   it("accepts EdgeOne deploy hook as a fallback Knowledge Cloud deploy credential", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL,OSSTACK_KNOWLEDGE_PUBLISH_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
 
     const exitCode = await main(["release", "doctor", "--target", "knowledge-cloud", "--json"]);
@@ -638,7 +638,7 @@ describe("product entry commands", () => {
 
   it("surfaces missing Knowledge Cloud deploy workflow status", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL,OSSTACK_KNOWLEDGE_PUBLISH_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"] = "warn";
     process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "missing";
 
@@ -1147,7 +1147,7 @@ describe("product entry commands", () => {
   it("generates a primary release plan for npm plus EdgeOne without single-binary notarization", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,EDGEONE_DEPLOY_HOOK_URL";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN,EDGEONE_DEPLOY_HOOK_URL,OSSTACK_KNOWLEDGE_PUBLISH_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_NPM_SCOPE_ACCESS"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"] = "ok";
@@ -1185,7 +1185,7 @@ describe("product entry commands", () => {
 
   it("checks a deployed Knowledge Cloud health URL before deploy handoff", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL,OSSTACK_KNOWLEDGE_PUBLISH_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
     const cloud = await startKnowledgeCloudHandoffServer({
@@ -1278,7 +1278,7 @@ describe("product entry commands", () => {
 
   it("blocks Knowledge Cloud deploy handoff when the deployed health URL is unhealthy", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL,OSSTACK_KNOWLEDGE_PUBLISH_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
     const cloud = await startKnowledgeCloudHandoffServer({
@@ -1323,7 +1323,7 @@ describe("product entry commands", () => {
 
   it("blocks Knowledge Cloud deploy handoff when deployed search returns no results", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL,OSSTACK_KNOWLEDGE_PUBLISH_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
     const cloud = await startKnowledgeCloudHandoffServer({
@@ -1366,7 +1366,7 @@ describe("product entry commands", () => {
 
   it("blocks Knowledge Cloud deploy handoff when deployed sync returns no packs", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL,OSSTACK_KNOWLEDGE_PUBLISH_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
     const cloud = await startKnowledgeCloudHandoffServer({
@@ -1414,7 +1414,7 @@ describe("product entry commands", () => {
 
   it("includes deployed Knowledge Cloud sync failures as release plan blockers", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL,OSSTACK_KNOWLEDGE_PUBLISH_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
     const cloud = await startKnowledgeCloudHandoffServer({
@@ -1456,7 +1456,7 @@ describe("product entry commands", () => {
 
   it("blocks Knowledge Cloud deploy handoff when deployed audit leaks tenant events", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL,OSSTACK_KNOWLEDGE_PUBLISH_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
     const cloud = await startKnowledgeCloudHandoffServer({
@@ -1506,7 +1506,7 @@ describe("product entry commands", () => {
 
   it("blocks Knowledge Cloud deploy handoff when deployed feedback summary is unavailable", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL,OSSTACK_KNOWLEDGE_PUBLISH_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
     const cloud = await startKnowledgeCloudHandoffServer({
@@ -1554,7 +1554,7 @@ describe("product entry commands", () => {
 
   it("blocks Knowledge Cloud deploy handoff when deployed review UI is unavailable", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
-    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "EDGEONE_DEPLOY_HOOK_URL,OSSTACK_KNOWLEDGE_PUBLISH_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW"] = "ok";
     const cloud = await startKnowledgeCloudHandoffServer({
