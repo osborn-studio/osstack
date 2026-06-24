@@ -1247,10 +1247,11 @@ async function releaseDoctor(
   checks.push(githubActions);
 
   const edgeOneDeploySecrets = ["EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"];
-  const requiredSecrets = target === "all" ? ["NPM_TOKEN", ...edgeOneDeploySecrets, ...SINGLE_BINARY_RELEASE_SECRETS]
+  const knowledgeCloudPublishSecrets = ["OSSTACK_KNOWLEDGE_PUBLISH_TOKEN"];
+  const requiredSecrets = target === "all" ? ["NPM_TOKEN", ...edgeOneDeploySecrets, ...knowledgeCloudPublishSecrets, ...SINGLE_BINARY_RELEASE_SECRETS]
     : [
       ...(releaseTargetIncludesNpm(target) ? ["NPM_TOKEN"] : []),
-      ...(releaseTargetIncludesKnowledgeCloud(target) ? edgeOneDeploySecrets : []),
+      ...(releaseTargetIncludesKnowledgeCloud(target) ? [...edgeOneDeploySecrets, ...knowledgeCloudPublishSecrets] : []),
       ...(releaseTargetIncludesSingleBinary(target) ? SINGLE_BINARY_RELEASE_SECRETS : []),
     ];
   const secrets = await releaseSecretsCheck(requiredSecrets, {
@@ -1571,6 +1572,9 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   expectAsset(workflow, "timeout --foreground --kill-after=30s 8m npx edgeone@latest", "Knowledge Cloud deploy workflow must kill a hung EdgeOne CLI deploy command before the job timeout.");
   expectAsset(workflow, "EdgeOne CLI deploy exceeded the 8 minute command timeout", "Knowledge Cloud deploy workflow must explain EdgeOne CLI timeout failures.");
   expectAsset(workflow, "EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must retain the deploy hook fallback.");
+  expectAsset(workflow, "OSSTACK_KNOWLEDGE_PUBLISH_TOKEN", "Knowledge Cloud deploy workflow must configure the EdgeOne publish token when available.");
+  expectAsset(workflow, "makers link -n osstack-knowledge-cloud", "Knowledge Cloud deploy workflow must link the EdgeOne project before setting env vars.");
+  expectAsset(workflow, "makers env set OSSTACK_KNOWLEDGE_PUBLISH_TOKEN", "Knowledge Cloud deploy workflow must set the EdgeOne publish token env var.");
   expectAsset(workflow, "if: $" + "{{ inputs.cloud_url != '' }}", "Knowledge Cloud deploy workflow must validate cloud_url even during validation-only runs.");
   expectAsset(workflow, "release doctor --target knowledge-cloud --cloud-url", "Knowledge Cloud deploy workflow must validate deployed health/search/sync/audit/feedback-summary/review-ui gates when cloud_url is supplied.");
   expectAsset(workflow, "knowledge sync --cloud-url", "Knowledge Cloud deploy workflow must sync from the deployed cloud URL when supplied.");
@@ -3157,6 +3161,9 @@ function releaseDoctorNextSteps(options: {
     && missing.includes("EDGEONE_DEPLOY_HOOK_URL")
   ) {
     steps.push("Add repository secret EDGEONE_API_TOKEN before running Knowledge Cloud deploy=true; EDGEONE_DEPLOY_HOOK_URL remains supported as a fallback.");
+  }
+  if (Array.isArray(missing) && missing.includes("OSSTACK_KNOWLEDGE_PUBLISH_TOKEN")) {
+    steps.push("Add repository secret OSSTACK_KNOWLEDGE_PUBLISH_TOKEN before enabling Knowledge Cloud private publish.");
   }
   if (releaseTargetIncludesSingleBinary(options.target) && Array.isArray(missing) && SINGLE_BINARY_RELEASE_SECRETS.some((secret) => missing.includes(secret))) {
     steps.push("Add Apple notarization and Developer ID repository secrets before running Single Binary Release dry_run=false.");

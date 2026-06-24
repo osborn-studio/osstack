@@ -305,6 +305,7 @@ function releasePlanEnv() {
       "NPM_TOKEN",
       "EDGEONE_API_TOKEN",
       "EDGEONE_DEPLOY_HOOK_URL",
+      "OSSTACK_KNOWLEDGE_PUBLISH_TOKEN",
       "APPLE_ID",
       "APPLE_TEAM_ID",
       "APPLE_APP_SPECIFIC_PASSWORD",

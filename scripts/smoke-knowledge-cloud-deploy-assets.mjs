@@ -67,6 +67,9 @@ assertIncludes(workflow, "timeout --foreground --kill-after=30s 8m npx edgeone@l
 assertIncludes(workflow, "EdgeOne CLI deploy exceeded the 8 minute command timeout", "Knowledge Cloud deploy workflow must explain EdgeOne CLI timeout failures");
 assertIncludes(workflow, "Deploy Success", "Knowledge Cloud deploy workflow must tolerate EdgeOne post-success status lookup failures");
 assertIncludes(workflow, "EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must retain the deploy hook fallback");
+assertIncludes(workflow, "OSSTACK_KNOWLEDGE_PUBLISH_TOKEN", "Knowledge Cloud deploy workflow must configure the EdgeOne publish token when available");
+assertIncludes(workflow, "makers link -n osstack-knowledge-cloud", "Knowledge Cloud deploy workflow must link the EdgeOne project before setting env vars");
+assertIncludes(workflow, "makers env set OSSTACK_KNOWLEDGE_PUBLISH_TOKEN", "Knowledge Cloud deploy workflow must set the EdgeOne publish token env var");
 assertIncludes(workflow, "hook_available=true", "Knowledge Cloud deploy workflow must detect when the deploy hook fallback is available");
 assertIncludes(workflow, "cli_failed=true", "Knowledge Cloud deploy workflow must mark failed EdgeOne CLI deploys for hook fallback");
 assertIncludes(workflow, "triggering EDGEONE_DEPLOY_HOOK_URL fallback", "Knowledge Cloud deploy workflow must explain CLI-to-hook fallback");
