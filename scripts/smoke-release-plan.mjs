@@ -421,6 +421,17 @@ function startKnowledgeCloudHandoffServer() {
       writeJson(response, 200, { total: 0, useful: 0, bad: 0, chunks: [] });
       return;
     }
+    if (request.method === "GET" && url.pathname === "/review" && url.searchParams.get("status") === "approved") {
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      response.end([
+        "<!doctype html>",
+        "<title>Osstack Knowledge Cloud Review Queue</title>",
+        "<h1>Osstack Knowledge Cloud Review Queue</h1>",
+        "<p>Filter: approved</p>",
+        "<code>osstack-core/proof-and-scorecard</code>",
+      ].join("\n"));
+      return;
+    }
     writeJson(response, 404, { error: "not_found" });
   });
   return new Promise((resolve, reject) => {

@@ -1278,6 +1278,7 @@ async function releaseDoctor(
       checks.push(await releaseKnowledgeCloudSyncCheck(options.cloudUrl));
       checks.push(await releaseKnowledgeCloudAuditCheck(options.cloudUrl));
       checks.push(await releaseKnowledgeCloudFeedbackSummaryCheck(options.cloudUrl));
+      checks.push(await releaseKnowledgeCloudReviewUiCheck(options.cloudUrl));
     }
     checks.push(releaseEdgeOneDeployCredentialCheck(secrets));
   }
@@ -1301,6 +1302,7 @@ async function releaseDoctor(
   const knowledgeSyncReady = checks.find((check) => check.id === "knowledge_cloud_sync")?.status !== "error";
   const knowledgeAuditReady = checks.find((check) => check.id === "knowledge_cloud_audit")?.status !== "error";
   const knowledgeFeedbackSummaryReady = checks.find((check) => check.id === "knowledge_cloud_feedback_summary")?.status !== "error";
+  const knowledgeReviewUiReady = checks.find((check) => check.id === "knowledge_cloud_review_ui")?.status !== "error";
   const singleBinaryAssetsReady = checks.find((check) => check.id === "single_binary_release_assets")?.status !== "error";
   const singleBinaryWorkflowReady = checks.find((check) => check.id === "single_binary_workflow")?.status !== "error";
   const actionsReady = githubActions.status !== "error";
@@ -1313,7 +1315,8 @@ async function releaseDoctor(
     && knowledgeSearchReady
     && knowledgeSyncReady
     && knowledgeAuditReady
-    && knowledgeFeedbackSummaryReady;
+    && knowledgeFeedbackSummaryReady
+    && knowledgeReviewUiReady;
   const singleBinaryRelease = actionsReady
     && SINGLE_BINARY_RELEASE_SECRETS.every((secret) => hasSecret(secrets, secret))
     && singleBinaryAssetsReady
@@ -1558,7 +1561,7 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   expectAsset(workflow, "EdgeOne CLI deploy exceeded the 8 minute command timeout", "Knowledge Cloud deploy workflow must explain EdgeOne CLI timeout failures.");
   expectAsset(workflow, "EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must retain the deploy hook fallback.");
   expectAsset(workflow, "if: $" + "{{ inputs.cloud_url != '' }}", "Knowledge Cloud deploy workflow must validate cloud_url even during validation-only runs.");
-  expectAsset(workflow, "release doctor --target knowledge-cloud --cloud-url", "Knowledge Cloud deploy workflow must validate deployed health/search/sync/audit/feedback-summary gates when cloud_url is supplied.");
+  expectAsset(workflow, "release doctor --target knowledge-cloud --cloud-url", "Knowledge Cloud deploy workflow must validate deployed health/search/sync/audit/feedback-summary/review-ui gates when cloud_url is supplied.");
   expectAsset(workflow, "knowledge sync --cloud-url", "Knowledge Cloud deploy workflow must sync from the deployed cloud URL when supplied.");
   expectAsset(workflow, "knowledge search \"proof pack checksum\" --cloud-url", "Knowledge Cloud deploy workflow must search the deployed cloud URL when supplied.");
   expectAsset(workflow, "validation-only run completed against", "Knowledge Cloud deploy workflow must summarize validation-only runs that check a cloud URL.");
@@ -1847,6 +1850,55 @@ async function releaseKnowledgeCloudFeedbackSummaryCheck(cloudUrl: string): Prom
       details: {
         cloud_url: normalized,
         feedback_summary_url: summaryUrlString,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function releaseKnowledgeCloudReviewUiCheck(cloudUrl: string): Promise<ReleaseDoctorCheck> {
+  const normalized = normalizeCloudUrl(cloudUrl);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  let reviewUrl: URL | undefined;
+  try {
+    reviewUrl = new URL("/review?status=approved", normalized);
+    const response = await fetch(reviewUrl, {
+      method: "GET",
+      headers: { accept: "text/html" },
+      signal: controller.signal,
+    });
+    const html = await response.text();
+    const hasTitle = html.includes("Osstack Knowledge Cloud Review Queue");
+    const hasApprovedFilter = html.includes("Filter: approved");
+    const hasOfficialPack = html.includes("osstack-core/");
+    const ok = response.ok && hasTitle && hasApprovedFilter && hasOfficialPack;
+    return {
+      id: "knowledge_cloud_review_ui",
+      status: ok ? "ok" : "error",
+      message: ok
+        ? `Deployed Knowledge Cloud review UI smoke passed at ${reviewUrl.toString()}.`
+        : `Deployed Knowledge Cloud review UI smoke failed at ${reviewUrl.toString()}.`,
+      details: {
+        cloud_url: normalized,
+        review_url: reviewUrl.toString(),
+        http_status: response.status,
+        has_title: hasTitle,
+        has_approved_filter: hasApprovedFilter,
+        has_official_pack: hasOfficialPack,
+      },
+    };
+  } catch (error) {
+    const reviewUrlString = reviewUrl === undefined ? `${normalized.replace(/\/+$/, "")}/review?status=approved` : reviewUrl.toString();
+    return {
+      id: "knowledge_cloud_review_ui",
+      status: "error",
+      message: `Could not run deployed Knowledge Cloud review UI smoke at ${reviewUrlString}.`,
+      details: {
+        cloud_url: normalized,
+        review_url: reviewUrlString,
         error: error instanceof Error ? error.message : String(error),
       },
     };
@@ -3153,6 +3205,10 @@ function releaseDoctorNextSteps(options: {
   const knowledgeFeedbackSummary = options.checks.find((check) => check.id === "knowledge_cloud_feedback_summary");
   if (releaseTargetIncludesKnowledgeCloud(options.target) && knowledgeFeedbackSummary?.status === "error") {
     steps.push("Fix deployed Knowledge Cloud feedback summary before handoff.");
+  }
+  const knowledgeReviewUi = options.checks.find((check) => check.id === "knowledge_cloud_review_ui");
+  if (releaseTargetIncludesKnowledgeCloud(options.target) && knowledgeReviewUi?.status === "error") {
+    steps.push("Fix deployed Knowledge Cloud review UI before handoff.");
   }
   const singleBinaryAssets = options.checks.find((check) => check.id === "single_binary_release_assets");
   if (releaseTargetIncludesSingleBinary(options.target) && singleBinaryAssets?.status === "error") {
