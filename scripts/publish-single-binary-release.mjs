@@ -11,6 +11,7 @@ const repo = flagValue("--repo") ?? process.env.GITHUB_REPOSITORY;
 const title = flagValue("--title") ?? tag;
 const notes = flagValue("--notes") ?? "osstack single-binary release asset";
 const dryRun = args.includes("--dry-run");
+const allowAdHoc = args.includes("--allow-ad-hoc");
 const json = args.includes("--json");
 
 if (!dryRun && (typeof repo !== "string" || repo.length === 0)) {
@@ -44,17 +45,24 @@ for (const asset of assets) {
   await stat(asset);
 }
 
+const notarizedArchive = archiveManifest.binary?.signed === true
+  && archiveManifest.binary?.ad_hoc !== true
+  && archiveManifest.binary?.notarized === true;
+const adHocArchive = archiveManifest.binary?.signed === true
+  && archiveManifest.binary?.ad_hoc === true
+  && archiveManifest.binary?.notarized !== true;
+const releaseChannel = notarizedArchive ? "public-notarized" : adHocArchive && allowAdHoc ? "public-ad-hoc" : "blocked";
+
 if (!dryRun) {
-  if (
-    archiveManifest.binary?.signed !== true
-    || archiveManifest.binary?.ad_hoc === true
-    || archiveManifest.binary?.notarized !== true
-  ) {
-    throw new Error("public single-binary upload requires a Developer ID signed and notarized archive");
+  if (releaseChannel === "blocked") {
+    throw new Error("public single-binary upload requires a Developer ID signed and notarized archive, or --allow-ad-hoc for a clearly labeled ad-hoc release candidate");
   }
+  const releaseNotes = releaseChannel === "public-ad-hoc"
+    ? `${notes}\n\nNote: this macOS single-binary asset is ad-hoc signed and not Apple notarized. Prefer npm for the default installation path; use this archive as a portable release candidate.`
+    : notes;
   const releaseView = run("gh", ["release", "view", tag, "--repo", repo], { allowFailure: true, capture: true });
   if (releaseView.status !== 0) {
-    run("gh", ["release", "create", tag, "--repo", repo, "--title", title, "--notes", notes], { capture: json });
+    run("gh", ["release", "create", tag, "--repo", repo, "--title", title, "--notes", releaseNotes], { capture: json });
   }
   run("gh", ["release", "upload", tag, ...assets, "--repo", repo, "--clobber"], { capture: json });
   archiveManifest.publishing = {
@@ -62,6 +70,7 @@ if (!dryRun) {
     github_release_uploaded: true,
     github_release_tag: tag,
     github_release_repo: repo,
+    release_channel: releaseChannel,
     uploaded_at: new Date().toISOString(),
     uploaded_assets: assets,
   };
@@ -77,6 +86,7 @@ const summary = {
   archive_manifest_path: archiveManifestPath,
   archive_sha256: archiveSha256,
   assets,
+  release_channel: dryRun ? "dry-run" : releaseChannel,
   github_release_uploaded: dryRun ? false : true,
 };
 

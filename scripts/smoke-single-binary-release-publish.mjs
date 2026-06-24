@@ -46,9 +46,24 @@ try {
     "--dry-run",
     "--json",
   ], { cwd: root, capture: true }).stdout);
+  const adHocDryRun = JSON.parse(run(process.execPath, [
+    "scripts/publish-single-binary-release.mjs",
+    "--archive-manifest",
+    packed.archive_manifest_path,
+    "--tag",
+    `v${build.version}-adhoc-publish-smoke`,
+    "--repo",
+    "gilosbornhello/osstack",
+    "--allow-ad-hoc",
+    "--dry-run",
+    "--json",
+  ], { cwd: root, capture: true }).stdout);
 
   if (publish.dry_run !== true || publish.github_release_uploaded !== false) {
     throw new Error(`dry-run publish summary must not claim upload: ${JSON.stringify(publish)}`);
+  }
+  if (adHocDryRun.dry_run !== true || adHocDryRun.github_release_uploaded !== false || adHocDryRun.release_channel !== "dry-run") {
+    throw new Error(`ad-hoc dry-run publish summary must stay a dry run: ${JSON.stringify(adHocDryRun)}`);
   }
   if (!Array.isArray(publish.assets) || publish.assets.length !== 4) {
     throw new Error(`dry-run publish must include four assets: ${JSON.stringify(publish.assets)}`);
@@ -71,8 +86,8 @@ try {
     throw new Error("public publish must reject ad-hoc or non-notarized archive candidates");
   }
   const blockedOutput = [blockedPublicUpload.stdout, blockedPublicUpload.stderr].filter(Boolean).join("\n");
-  if (!blockedOutput.includes("requires a Developer ID signed and notarized archive")) {
-    throw new Error(`public publish rejection must explain notarization requirement: ${blockedOutput}`);
+  if (!blockedOutput.includes("--allow-ad-hoc")) {
+    throw new Error(`public publish rejection must explain explicit ad-hoc release option: ${blockedOutput}`);
   }
 
   console.log(JSON.stringify({
@@ -82,6 +97,7 @@ try {
     tag: publish.tag,
     repo: publish.repo,
     assets: publish.assets,
+    ad_hoc_dry_run: adHocDryRun.release_channel,
     github_release_uploaded: publish.github_release_uploaded,
   }, null, 2));
 } finally {

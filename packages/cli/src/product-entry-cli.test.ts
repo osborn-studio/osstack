@@ -898,7 +898,7 @@ describe("product entry commands", () => {
     expect(result.completion.code_verified).toBe(true);
     expect(result.completion.npm_publish).toBe(false);
     expect(result.completion.knowledge_cloud_deploy).toBe(false);
-    expect(result.external_blockers.join("\n")).toContain("Confirm the npm account behind NPM_TOKEN can publish to @osstack");
+    expect(result.external_blockers.join("\n")).not.toContain("Local npm scope access could not be verified");
     expect(result.external_blockers.join("\n")).toContain("EDGEONE_API_TOKEN");
     expect(result.next_actions.operator).toContain("Invite the npm account used for NPM_TOKEN as an owner or publisher for @osstack.");
     expect(result.next_actions.operator).toContain("gh secret set EDGEONE_API_TOKEN --repo gilosbornhello/osstack --body \"$EDGEONE_API_TOKEN\"");
@@ -1645,7 +1645,7 @@ describe("product entry commands", () => {
     expect(assetCheck?.details?.violations ?? []).toEqual([]);
   });
 
-  it("blocks public single-binary release when Apple signing secrets are missing", async () => {
+  it("allows explicit ad-hoc single-binary release when Apple signing secrets are missing", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "";
@@ -1658,16 +1658,13 @@ describe("product entry commands", () => {
       safe_to_execute: boolean;
       blockers: string[];
       operator_commands: string[];
+      publish_commands: string[];
     };
-    expect(result.ready).toBe(false);
-    expect(result.safe_to_execute).toBe(false);
-    expect(result.blockers).toContain(
-      "Add Apple notarization and Developer ID repository secrets before running Single Binary Release dry_run=false.",
-    );
-    expect(result.operator_commands).toContain("gh secret set APPLE_ID --repo gilosbornhello/osstack --body \"$APPLE_ID\"");
-    expect(result.operator_commands).toContain(
-      "gh secret set MACOS_CERTIFICATE_P12 --repo gilosbornhello/osstack --body \"$MACOS_CERTIFICATE_P12\"",
-    );
+    expect(result.ready).toBe(true);
+    expect(result.safe_to_execute).toBe(true);
+    expect(result.blockers.join("\n")).not.toContain("Apple notarization");
+    expect(result.operator_commands.join("\n")).not.toContain("gh secret set APPLE_ID");
+    expect(result.publish_commands).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false -f notarize=false");
   });
 
   it("writes a single-binary release action plan", async () => {
@@ -1693,8 +1690,8 @@ describe("product entry commands", () => {
     expect(result.output).toBe(output);
     expect(result.validation_commands).toContain("pnpm smoke:single-binary-release-pack");
     expect(result.validation_commands).toContain("pnpm smoke:single-binary-release-publish");
-    expect(result.validation_commands).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=true");
-    expect(result.publish_commands).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false");
+    expect(result.validation_commands).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=true -f notarize=false");
+    expect(result.publish_commands).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false -f notarize=false");
     expect(result.deploy_commands).toEqual([]);
     expect(result.post_release_validation_commands).toContain("gh release view v<version> --repo gilosbornhello/osstack");
     expect(result.post_release_validation_commands).toContain(
@@ -1706,7 +1703,7 @@ describe("product entry commands", () => {
     expect(result.post_release_validation_commands).toContain("shasum -a 256 -c sha256sums.txt");
     const markdown = await readFile(output, "utf-8");
     expect(markdown).toContain("Target: `single-binary`");
-    expect(markdown).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false");
+    expect(markdown).toContain("gh workflow run \"Single Binary Release\" --ref main -f tag=v<version> -f dry_run=false -f notarize=false");
     expect(markdown).toContain("gh release view v<version> --repo gilosbornhello/osstack");
   });
 
