@@ -34,7 +34,10 @@ assertIncludes(edgeOneFunction, "export default async function onRequest", "Edge
 assertIncludes(edgeOneFunction, 'from "./official-packs.js"', "EdgeOne Cloud Function must load official packs from the function bundle");
 assertIncludes(edgeOneFunction, 'url.pathname === "/healthz"', "EdgeOne Cloud Function must serve /healthz");
 assertIncludes(edgeOneFunction, 'url.pathname === "/v1/search"', "EdgeOne Cloud Function must serve /v1/search");
+assertIncludes(edgeOneFunction, 'url.pathname === "/v1/publish"', "EdgeOne Cloud Function must serve /v1/publish");
+assertIncludes(edgeOneFunction, 'url.pathname === "/v1/private-packs"', "EdgeOne Cloud Function must serve tenant private packs");
 assertIncludes(edgeOneFunction, 'url.pathname === "/review"', "EdgeOne Cloud Function must serve the review queue UI");
+assertIncludes(edgeOneFunction, "OSSTACK_KNOWLEDGE_PUBLISH_TOKEN", "EdgeOne Cloud Function publish must require an explicit token");
 assertIncludes(edgeOneFunction, "function searchPacks", "EdgeOne Cloud Function must include self-contained search");
 assertIncludes(edgeOneHealthFunction, "osstack-knowledge-cloud", "EdgeOne /healthz function must return Knowledge Cloud service metadata");
 assertIncludes(edgeOneFunctionPackage, '"type": "module"', "EdgeOne Cloud Function package must opt into ESM");
@@ -100,6 +103,55 @@ if (review.status !== 200) throw new Error("EdgeOne Cloud Function /review smoke
 const reviewHtml = await review.text();
 if (!reviewHtml.includes("Osstack Knowledge Cloud Review Queue") || !reviewHtml.includes("Filter: approved")) {
   throw new Error("EdgeOne Cloud Function /review smoke returned invalid review queue HTML");
+}
+process.env.OSSTACK_KNOWLEDGE_PUBLISH_TOKEN = "kst_edgeone_publish_smoke";
+const publish = await edgeOneHandler.default({
+  request: new Request("https://knowledge.osstack.ai/v1/publish", {
+    method: "POST",
+    headers: {
+      authorization: "Bearer kst_edgeone_publish_smoke",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      pack: {
+        id: "team/edgeone-smoke",
+        version: "2026.06.24",
+        name: "Team EdgeOne Smoke",
+        license: "Internal",
+        source_kind: "internal",
+        quality_score: 82,
+        scope: "team",
+        tenant_id: "team_alpha",
+        taxonomy: ["operations/edgeone-smoke"],
+        chunks: [{
+          chunk_id: "team-edgeone-smoke-1",
+          title: "Team EdgeOne smoke",
+          body: "Osstack team knowledge published through EdgeOne should stay tenant scoped.",
+          tags: ["team", "edgeone"],
+        }],
+      },
+    }),
+  }),
+});
+if (publish.status !== 200) throw new Error("EdgeOne Cloud Function /v1/publish smoke must return HTTP 200");
+const publishBody = await publish.json();
+if (publishBody.ok !== true || publishBody.private !== true || publishBody.tenant_id !== "team_alpha") {
+  throw new Error("EdgeOne Cloud Function /v1/publish smoke returned invalid publish metadata");
+}
+const privateSearch = await edgeOneHandler.default({
+  request: new Request("https://knowledge.osstack.ai/v1/search", {
+    method: "POST",
+    headers: {
+      authorization: "Bearer kst_edgeone_publish_smoke",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ query: "tenant scoped edgeone", tenant_id: "team_alpha", limit: 5 }),
+  }),
+});
+if (privateSearch.status !== 200) throw new Error("EdgeOne Cloud Function private search smoke must return HTTP 200");
+const privateSearchBody = await privateSearch.json();
+if (!privateSearchBody.results?.some((result) => result.pack_id === "team/edgeone-smoke")) {
+  throw new Error("EdgeOne Cloud Function private search smoke must include the published tenant pack");
 }
 
 const tmp = await mkdtemp(join(tmpdir(), "osstack-knowledge-cloud-deploy-"));
