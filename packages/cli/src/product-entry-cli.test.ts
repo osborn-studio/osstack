@@ -947,6 +947,7 @@ describe("product entry commands", () => {
       fallback_deploy_secret?: string;
       project_name: string;
       environment: Record<string, string>;
+      kv_bindings: string[];
       console_checklist: string[];
       github_commands: string[];
       workflow_commands: string[];
@@ -955,7 +956,7 @@ describe("product entry commands", () => {
     };
     expect(result.provider).toBe("tencent-edgeone");
     expect(result.service).toBe("osstack-knowledge-cloud");
-    expect(result.default_domain).toBe("knowledge.osstack.ai");
+    expect(result.default_domain).toBe("osstack-knowledge-cloud-1grycf4k.edgeone.cool");
     expect(result.runtime).toMatchObject({
       node: "22",
       port: 8787,
@@ -971,7 +972,9 @@ describe("product entry commands", () => {
       OSSTACK_KNOWLEDGE_FEEDBACK_LOG: "/data/feedback/feedback.jsonl",
       OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR: "/data/published-packs",
     });
+    expect(result.kv_bindings).toContain("osstack_knowledge_kv");
     expect(result.console_checklist.join("\n")).toContain("Create an EdgeOne Pages project connected to gilosbornhello/osstack.");
+    expect(result.console_checklist.join("\n")).toContain("bind it to the Function variable osstack_knowledge_kv");
     expect(result.console_checklist.join("\n")).toContain("Create an EdgeOne API token for Makers project osstack-knowledge-cloud");
     expect(result.github_commands).toContain("gh secret set EDGEONE_API_TOKEN --repo gilosbornhello/osstack --body \"$EDGEONE_API_TOKEN\"");
     expect(result.github_commands).toContain("# Optional fallback: gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"");

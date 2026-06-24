@@ -21,6 +21,8 @@ assertIncludes(dockerfile, "packages/knowledge-cloud/dist/bin.js", "Dockerfile m
 
 assertIncludes(edgeone, '"provider": "tencent-edgeone"', "EdgeOne deploy config must identify Tencent EdgeOne");
 assertIncludes(edgeone, '"mode": "pages-functions"', "EdgeOne deploy config must use Pages Functions mode");
+assertIncludes(edgeone, '"default_domain": "osstack-knowledge-cloud-1grycf4k.edgeone.cool"', "EdgeOne deploy config must use the reachable EdgeOne preset domain as the default domain");
+assertIncludes(edgeone, '"custom_domain": "knowledge.osstack.ai"', "EdgeOne deploy config must record the intended branded custom domain");
 assertIncludes(edgeone, '"healthcheck_path": "/healthz"', "EdgeOne deploy config must healthcheck /healthz");
 assertIncludes(edgeone, '"OSSTACK_KNOWLEDGE_CLOUD_HOST": "0.0.0.0"', "EdgeOne deploy config must bind externally");
 assertIncludes(edgeone, '"OSSTACK_KNOWLEDGE_AUDIT_LOG": "/data/audit/knowledge-cloud-audit.jsonl"', "EdgeOne deploy config must persist Knowledge Cloud audit JSONL");
@@ -47,6 +49,8 @@ assertIncludes(edgeOneFunction, "function searchPacks", "EdgeOne Cloud Function 
 assertIncludes(edgeOneHealthFunction, "osstack-knowledge-cloud", "EdgeOne /healthz function must return Knowledge Cloud service metadata");
 assertIncludes(edgeOneFunctionPackage, '"type": "module"', "EdgeOne Cloud Function package must opt into ESM");
 assertIncludes(edgeOneOfficialPacks, "proof-checksum-pack", "EdgeOne function bundle must include official proof knowledge pack data");
+assertIncludes(edgeOneHealthFunction, "publish_storage", "EdgeOne /healthz function must expose publish storage mode");
+assertIncludes(edgeOneHealthFunction, "osstack_knowledge_kv", "EdgeOne /healthz function must expose the Knowledge KV binding name");
 assertIncludes(edgeOneOfficialPacks, "architecture-control-plane", "EdgeOne function bundle must include official architecture knowledge pack data");
 assertIncludes(edgeOneOfficialPacks, "contract-validation-proof", "EdgeOne function bundle must include official contract validation knowledge pack data");
 assertIncludes(edgeOneOfficialPacks, "testing-eval-gates", "EdgeOne function bundle must include official testing/eval knowledge pack data");
@@ -69,6 +73,9 @@ assertIncludes(workflow, "secrets.EDGEONE_API_TOKEN", "Knowledge Cloud deploy wo
 assertIncludes(workflow, "edgeone@latest makers deploy . -n osstack-knowledge-cloud", "Knowledge Cloud deploy workflow must deploy with the EdgeOne Makers CLI");
 assertIncludes(workflow, "timeout-minutes: 10", "Knowledge Cloud deploy workflow must bound the EdgeOne CLI step runtime");
 assertIncludes(workflow, "timeout --foreground --kill-after=30s 8m npx edgeone@latest", "Knowledge Cloud deploy workflow must kill a hung EdgeOne CLI deploy command before the job timeout");
+assertIncludes(workflow, "EDGEONE_DEPLOY_URL=https?://", "Knowledge Cloud deploy workflow must parse the EdgeOne deploy URL from CLI output");
+assertIncludes(workflow, "deploy_url=$deploy_url", "Knowledge Cloud deploy workflow must expose the EdgeOne deploy URL as a step output");
+assertIncludes(workflow, "VALIDATION_CLOUD_URL", "Knowledge Cloud deploy workflow must validate against the resolved deployed URL");
 assertIncludes(workflow, "EdgeOne CLI deploy exceeded the 8 minute command timeout", "Knowledge Cloud deploy workflow must explain EdgeOne CLI timeout failures");
 assertIncludes(workflow, "Deploy Success", "Knowledge Cloud deploy workflow must tolerate EdgeOne post-success status lookup failures");
 assertIncludes(workflow, "EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must retain the deploy hook fallback");
@@ -80,10 +87,10 @@ assertIncludes(workflow, "cli_failed=true", "Knowledge Cloud deploy workflow mus
 assertIncludes(workflow, "triggering EDGEONE_DEPLOY_HOOK_URL fallback", "Knowledge Cloud deploy workflow must explain CLI-to-hook fallback");
 assertIncludes(workflow, "deploy=true requires repository secret EDGEONE_API_TOKEN or EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy=true must fail when no EdgeOne deploy credential is configured");
 assertIncludes(workflow, 'curl -fsS -X POST "$EDGEONE_DEPLOY_HOOK_URL"', "Knowledge Cloud deploy workflow must trigger the EdgeOne deploy hook fallback");
-assertIncludes(workflow, "if: $" + "{{ inputs.cloud_url != '' }}", "Knowledge Cloud deploy workflow must validate cloud_url even during validation-only runs");
+assertIncludes(workflow, "inputs.cloud_url != '' || steps.edgeone-cli-deploy.outputs.deploy_url != ''", "Knowledge Cloud deploy workflow must validate either an input cloud_url or the EdgeOne CLI deploy URL");
 assertIncludes(workflow, "release doctor --target knowledge-cloud --cloud-url", "Knowledge Cloud deploy workflow must validate the deployed health/search/audit gates when cloud_url is supplied");
-assertIncludes(workflow, 'knowledge sync --cloud-url "${{ inputs.cloud_url }}" --json', "Knowledge Cloud deploy workflow must sync from the deployed cloud URL when supplied");
-assertIncludes(workflow, 'knowledge search "proof pack checksum" --cloud-url "${{ inputs.cloud_url }}" --json', "Knowledge Cloud deploy workflow must search the deployed cloud URL when supplied");
+assertIncludes(workflow, 'knowledge sync --cloud-url "$VALIDATION_CLOUD_URL" --json', "Knowledge Cloud deploy workflow must sync from the resolved deployed cloud URL");
+assertIncludes(workflow, 'knowledge search "proof pack checksum" --cloud-url "$VALIDATION_CLOUD_URL" --json', "Knowledge Cloud deploy workflow must search the resolved deployed cloud URL");
 assertIncludes(workflow, "validation-only run completed against", "Knowledge Cloud deploy workflow must summarize validation-only runs that check a cloud URL");
 assertIncludes(workflow, "OSSTACK_TEST_RELEASE_GITHUB_AUTH: ok", "Knowledge Cloud deploy workflow must keep post-deploy validation focused on the deployed URL inside CI");
 assertIncludes(workflow, "OSSTACK_TEST_RELEASE_SECRETS: EDGEONE_API_TOKEN", "Knowledge Cloud deploy workflow must provide release doctor CI secret evidence after the deploy gate has passed");

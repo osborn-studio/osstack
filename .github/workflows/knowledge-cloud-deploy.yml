@@ -97,6 +97,11 @@ jobs:
           timeout --foreground --kill-after=30s 8m npx edgeone@latest makers deploy . -n osstack-knowledge-cloud -t "$EDGEONE_API_TOKEN" -e production 2>&1 | tee edgeone-deploy.log
           status="${PIPESTATUS[0]}"
           set -e
+          deploy_url="$(grep -Eo 'EDGEONE_DEPLOY_URL=https?://[^[:space:]]+' edgeone-deploy.log | tail -n 1 | cut -d= -f2- | sed 's/[?].*$//' || true)"
+          if [ -n "$deploy_url" ]; then
+            echo "deploy_url=$deploy_url" >> "$GITHUB_OUTPUT"
+            echo "EdgeOne deploy URL: $deploy_url" >> "$GITHUB_STEP_SUMMARY"
+          fi
           if [ "$status" -eq 0 ]; then
             exit 0
           fi
@@ -125,12 +130,13 @@ jobs:
           EDGEONE_DEPLOY_HOOK_URL: ${{ secrets.EDGEONE_DEPLOY_HOOK_URL }}
 
       - name: Validate deployed Knowledge Cloud URL
-        if: ${{ inputs.cloud_url != '' }}
+        if: ${{ inputs.cloud_url != '' || steps.edgeone-cli-deploy.outputs.deploy_url != '' }}
         run: |
-          node packages/cli/dist/bin.js release doctor --target knowledge-cloud --cloud-url "${{ inputs.cloud_url }}" --json
-          node packages/cli/dist/bin.js knowledge sync --cloud-url "${{ inputs.cloud_url }}" --json
-          node packages/cli/dist/bin.js knowledge search "proof pack checksum" --cloud-url "${{ inputs.cloud_url }}" --json
+          node packages/cli/dist/bin.js release doctor --target knowledge-cloud --cloud-url "$VALIDATION_CLOUD_URL" --json
+          node packages/cli/dist/bin.js knowledge sync --cloud-url "$VALIDATION_CLOUD_URL" --json
+          node packages/cli/dist/bin.js knowledge search "proof pack checksum" --cloud-url "$VALIDATION_CLOUD_URL" --json
         env:
+          VALIDATION_CLOUD_URL: ${{ steps.edgeone-cli-deploy.outputs.deploy_url || inputs.cloud_url }}
           OSSTACK_TEST_RELEASE_GITHUB_AUTH: ok
           OSSTACK_TEST_RELEASE_GITHUB_ACTIONS: ok
           OSSTACK_TEST_RELEASE_SECRETS: EDGEONE_API_TOKEN,OSSTACK_KNOWLEDGE_PUBLISH_TOKEN
@@ -142,6 +148,8 @@ jobs:
             echo "Deployment input was false; validation-only run completed against: ${{ inputs.cloud_url }}" >> "$GITHUB_STEP_SUMMARY"
           elif [ "${{ inputs.deploy }}" != "true" ]; then
             echo "Deployment input was false; validation-only run completed." >> "$GITHUB_STEP_SUMMARY"
+          elif [ -n "${{ steps.edgeone-cli-deploy.outputs.deploy_url }}" ]; then
+            echo "Knowledge Cloud deploy completed and validated: ${{ steps.edgeone-cli-deploy.outputs.deploy_url }}" >> "$GITHUB_STEP_SUMMARY"
           elif [ -n "${{ inputs.cloud_url }}" ]; then
             echo "Knowledge Cloud deploy completed and validated: ${{ inputs.cloud_url }}" >> "$GITHUB_STEP_SUMMARY"
           else
