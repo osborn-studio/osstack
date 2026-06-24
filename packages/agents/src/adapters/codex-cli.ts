@@ -64,6 +64,10 @@ const CAPABILITIES: readonly Capability[] = [
 
 function now(): number { return Date.now() / 1000; }
 
+function singleLine(value: string): string {
+  return value.replace(/\s+/g, " ").trim().slice(0, 240);
+}
+
 function envelope(task: AgentTask, seq: number, terminal: boolean): Omit<HermesEvent, "type" | "payload"> {
   return {
     event_id: `${task.run_id}:${seq}`,
@@ -228,6 +232,8 @@ interface CodexOptions {
   sandbox?: "read-only" | "workspace-write" | "danger-full-access";
   /** Working directory for the codex run. Default: $HOME. */
   cwd?: string;
+  /** Probe timeout for availability dry-runs. */
+  probeTimeoutMs?: number;
 }
 
 export class CodexCliAdapter extends BaseAgentAdapter {
@@ -238,12 +244,14 @@ export class CodexCliAdapter extends BaseAgentAdapter {
   private readonly bin: string;
   private readonly sandbox: NonNullable<CodexOptions["sandbox"]>;
   private readonly cwd: string;
+  private readonly probeTimeoutMs: number;
 
   constructor(opts: CodexOptions = {}) {
     super();
     this.bin = opts.bin ?? process.env["OSSTACK_CODEX_BIN"] ?? "codex";
     this.sandbox = opts.sandbox ?? "read-only";
     this.cwd = opts.cwd ?? process.env["HOME"] ?? process.cwd();
+    this.probeTimeoutMs = opts.probeTimeoutMs ?? Number(process.env["OSSTACK_CODEX_PROBE_TIMEOUT_MS"] ?? 15_000);
   }
 
   capabilities(): readonly Capability[] {
@@ -270,22 +278,42 @@ export class CodexCliAdapter extends BaseAgentAdapter {
     return new Promise((resolve) => {
       const codexDir = join(process.env["HOME"] ?? "", ".codex");
       const hasConfig = existsSync(codexDir);
-      const p = spawn(this.bin, ["--version"], { stdio: ["ignore", "pipe", "pipe"] });
+      if (!hasConfig) {
+        resolve({ ok: false, reason: `codex installed but ~/.codex not configured. Run \`codex login\`.` });
+        return;
+      }
+      const p = spawn(this.bin, [
+        "exec",
+        "--json",
+        "--skip-git-repo-check",
+        "-s",
+        this.sandbox,
+        "-C",
+        this.cwd,
+        "Dry-run health check. Reply exactly: ok",
+      ], { stdio: ["ignore", "pipe", "pipe"] });
+      let stdout = "";
       let stderr = "";
+      let settled = false;
+      const finish = (result: { ok: boolean; reason?: string }) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(result);
+      };
+      const timer = setTimeout(() => {
+        p.kill("SIGTERM");
+        finish({ ok: false, reason: `codex dry-run timed out after ${this.probeTimeoutMs}ms` });
+      }, this.probeTimeoutMs);
+      p.stdout.on("data", (c) => { stdout += String(c); });
       p.stderr.on("data", (c) => { stderr += String(c); });
       p.on("error", (err) => {
-        resolve({ ok: false, reason: `codex binary not found on PATH (${this.bin}): ${err.message}` });
+        finish({ ok: false, reason: `codex binary not found on PATH (${this.bin}): ${err.message}` });
       });
       p.on("exit", (code) => {
-        if (code === 0) {
-          if (!hasConfig) {
-            resolve({ ok: false, reason: `codex installed but ~/.codex not configured. Run \`codex login\`.` });
-          } else {
-            resolve({ ok: true });
-          }
-        } else {
-          resolve({ ok: false, reason: `codex --version exited ${code}: ${stderr.slice(0, 200)}` });
-        }
+        if (code === 0 && stdout.includes("turn.completed")) finish({ ok: true });
+        else if (code === 0) finish({ ok: false, reason: "codex dry-run exited 0 but did not emit a completed turn" });
+        else finish({ ok: false, reason: `codex dry-run exited ${code}: ${singleLine(stderr || stdout)}` });
       });
     });
   }

@@ -84,11 +84,14 @@ async function handleRun(args: string[]): Promise<number> {
   const goalCommand = flagValue(args, "--goal");
   const worktreeRoot = flagValue(args, "--worktree-root");
   const verifyCommands = flagValues(args, "--verify");
+  const artifactVerification = parseArtifactVerification(args);
   const sources = flagValues(args, "--source");
   const cycles = parsePositiveIntegerFlag(flagValue(args, "--cycles"), "--cycles");
   if (cycles instanceof Error) return printError(cycles);
   const intervalMs = parseNonNegativeIntegerFlag(flagValue(args, "--interval-ms"), "--interval-ms");
   if (intervalMs instanceof Error) return printError(intervalMs);
+  const commandTimeoutMs = parsePositiveIntegerFlag(flagValue(args, "--command-timeout-ms"), "--command-timeout-ms");
+  if (commandTimeoutMs instanceof Error) return printError(commandTimeoutMs);
   const maxIterations = parsePositiveIntegerFlag(flagValue(args, "--max-iter"), "--max-iter");
   if (maxIterations instanceof Error) return printError(maxIterations);
   const stopWhenIdle = args.includes("--stop-when-idle");
@@ -101,7 +104,9 @@ async function handleRun(args: string[]): Promise<number> {
     ...(executeCommand !== undefined ? { executeCommand } : {}),
     ...(goalCommand !== undefined ? { goalCommand } : {}),
     ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
+    ...(artifactVerification !== undefined ? { artifactVerification } : {}),
     ...(sources.length > 0 ? { sources } : {}),
+    ...(commandTimeoutMs !== undefined ? { commandTimeoutMs } : {}),
     ...(maxIterations !== undefined ? { maxIterations } : {}),
     ...(args.includes("--archive-completed") ? { archiveCompletedTasks: true } : {}),
     ...(args.includes("--worktree") ? { useWorktree: true } : {}),
@@ -350,7 +355,13 @@ Options:
   --source S          Discovery source; repeatable. git_diff | task_queue
   --execute CMD       Shell command to run for each task
   --verify CMD        Shell verifier; repeatable. Non-zero exit marks failure
+  --artifact-verification
+                      Require artifact gates in verification (git diff, target/forbidden paths)
+  --target-path P     Required changed path/prefix for artifact verification; repeatable
+  --forbid-path P     Forbidden changed path/prefix for artifact verification; repeatable
   --goal CMD          Global shell command; loop stops when it exits 0
+  --command-timeout-ms N
+                      Timeout in milliseconds for execute, verify, and goal commands
   --archive-completed Move successful single-task queue files into tasks/archive/
   --worktree          Run each task in an isolated git worktree, merge success back
   --worktree-root P   Directory for temporary isolated worktrees
@@ -430,6 +441,23 @@ function parseContextJson(value: string | undefined): Record<string, unknown> | 
 
 function resolveLoopPath(path: string, cwd: string): string {
   return isAbsolute(path) ? path : join(cwd, path);
+}
+
+function parseArtifactVerification(args: string[]): {
+  requireGitDiff?: boolean;
+  targetPaths?: string[];
+  forbiddenPaths?: string[];
+} | undefined {
+  const enabled = args.includes("--artifact-verification")
+    || process.env["OSSTACK_ARTIFACT_VERIFICATION"] === "1";
+  const targetPaths = flagValues(args, "--target-path");
+  const forbiddenPaths = flagValues(args, "--forbid-path");
+  if (!enabled && targetPaths.length === 0 && forbiddenPaths.length === 0) return undefined;
+  return {
+    requireGitDiff: enabled || targetPaths.length > 0,
+    ...(targetPaths.length > 0 ? { targetPaths } : {}),
+    ...(forbiddenPaths.length > 0 ? { forbiddenPaths } : {}),
+  };
 }
 
 function printError(error: Error): 1 {

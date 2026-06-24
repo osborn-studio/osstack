@@ -1,11 +1,12 @@
 import { mkdtempSync } from "node:fs";
-import { chmod, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { AgentTask } from "../base.js";
 import { ClaudeCliAdapter } from "./claude-cli.js";
+import { CodexCliAdapter } from "./codex-cli.js";
 import { OpenCodeCliAdapter } from "./opencode-cli.js";
 
 let tmp: string;
@@ -92,6 +93,53 @@ printf 'stdin:%s\\n' "$input"
       payload: expect.objectContaining({ delta: expect.stringContaining("hello from task") }),
     }));
     expect(doneStatus(events)).toBe("completed");
+  });
+});
+
+describe("CodexCliAdapter", () => {
+  it("uses a real exec --json dry-run for availability", async () => {
+    const previousHome = process.env["HOME"];
+    process.env["HOME"] = tmp;
+    await mkdir(join(tmp, ".codex"));
+    const argsLog = join(tmp, "codex-args.txt");
+    const bin = await fakeCommand("codex", `
+printf '%s\\n' "$*" > ${JSON.stringify(argsLog)}
+if [ "\${1:-}" = "exec" ]; then
+  printf '{"type":"thread.started","thread_id":"probe"}\\n'
+  printf '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}\\n'
+  exit 0
+fi
+exit 9
+`);
+    const adapter = new CodexCliAdapter({ bin, cwd: tmp, probeTimeoutMs: 1_000 });
+
+    try {
+      await expect(adapter.isAvailable()).resolves.toMatchObject({ available: true });
+      await expect(readFile(argsLog, "utf-8")).resolves.toContain(`exec --json --skip-git-repo-check -s read-only -C ${tmp}`);
+    } finally {
+      if (previousHome === undefined) delete process.env["HOME"];
+      else process.env["HOME"] = previousHome;
+    }
+  });
+
+  it("fails availability when dry-run exits 0 without a completed turn", async () => {
+    const previousHome = process.env["HOME"];
+    process.env["HOME"] = tmp;
+    await mkdir(join(tmp, ".codex"));
+    const bin = await fakeCommand("codex-no-turn", `
+printf '{"type":"thread.started","thread_id":"probe"}\\n'
+exit 0
+`);
+    const adapter = new CodexCliAdapter({ bin, cwd: tmp, probeTimeoutMs: 1_000 });
+
+    try {
+      const availability = await adapter.isAvailable();
+      expect(availability.available).toBe(false);
+      expect(availability.reason).toContain("did not emit a completed turn");
+    } finally {
+      if (previousHome === undefined) delete process.env["HOME"];
+      else process.env["HOME"] = previousHome;
+    }
   });
 });
 

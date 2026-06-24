@@ -5,13 +5,14 @@ import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { connect, type Socket } from "node:net";
-import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, copyFile, lstat, mkdir, readdir, readFile, readlink, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import { agentAuthMode, defaultAdapters, rolesForCapabilityKinds } from "@osstack/agents";
+import { loadConfig, resolveAll, selectProfile, type AgentRole } from "@osstack/config";
 import {
   getCompliancePack,
   listCompliancePacks,
@@ -23,7 +24,7 @@ import {
   type ProofAudience,
 } from "@osstack/compliance";
 import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
-import { getAgentScorecard, listAgentScorecards, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons } from "@osstack/core";
+import { getAgentScorecard, listAgentScorecards, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons, type RoutableAdapter } from "@osstack/core";
 import { scanFiles, type GovernanceFinding } from "@osstack/governance";
 import {
   renderBranchStewardReport,
@@ -90,6 +91,12 @@ import { PROTOCOL_VERSION, VERSION } from "./version.js";
 import { handleUpgradeCommand } from "./upgrade.js";
 
 const execFileAsync = promisify(execFile);
+
+interface ArtifactVerificationOptions {
+  requireGitDiff?: boolean;
+  targetPaths?: string[];
+  forbiddenPaths?: string[];
+}
 
 function socketPath(): string {
   return resolveSocketPath();
@@ -8749,22 +8756,38 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
     const markdownPath = flagValue(args, "--markdown");
     const executeCommand = flagValue(args, "--execute");
-    const agentId = flagValue(args, "--agent");
+    let agentId = flagValue(args, "--agent");
     const goalCommand = flagValue(args, "--goal");
     const schedule = flagValue(args, "--schedule");
     const worktreeRoot = flagValue(args, "--worktree-root");
     const verifyCommands = flagValues(args, "--verify");
-    const verifierAgentIds = [...flagValues(args, "--reviewer"), ...flagValues(args, "--checker")];
+    let verifierAgentIds = [...flagValues(args, "--reviewer"), ...flagValues(args, "--checker")];
+    const artifactVerification = parseArtifactVerification(args);
     const sources = flagValues(args, "--source");
     const maxIterRaw = flagValue(args, "--max-iter");
+    const commandTimeoutRaw = flagValue(args, "--command-timeout-ms");
     const cyclesRaw = flagValue(args, "--cycles");
     const intervalRaw = flagValue(args, "--interval-ms");
     const archiveCompletedTasks = args.includes("--archive-completed");
     const once = args.includes("--once");
     const autoAgent = args.includes("--auto-agent");
+    const profileRouting = await resolveLoopProfileRouting(args, agentId, verifierAgentIds);
+    if (profileRouting instanceof Error) {
+      console.error(`osstack: ${profileRouting.message}`);
+      return 1;
+    }
+    if (profileRouting !== undefined) {
+      agentId = agentId ?? profileRouting.agentId;
+      verifierAgentIds = verifierAgentIds.length > 0 ? verifierAgentIds : profileRouting.verifierAgentIds;
+    }
     const maxIterations = parsePositiveIntegerFlag(maxIterRaw, "--max-iter");
     if (maxIterations instanceof Error) {
       console.error(`osstack: ${maxIterations.message}`);
+      return 1;
+    }
+    const commandTimeoutMs = parsePositiveIntegerFlag(commandTimeoutRaw, "--command-timeout-ms");
+    if (commandTimeoutMs instanceof Error) {
+      console.error(`osstack: ${commandTimeoutMs.message}`);
       return 1;
     }
     const cycles = parsePositiveIntegerFlag(cyclesRaw, "--cycles");
@@ -8791,12 +8814,15 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(executeCommand !== undefined ? { executeCommand } : {}),
       ...(agentId !== undefined ? { agentId } : {}),
       ...(autoAgent ? { autoAgent } : {}),
+      ...(profileRouting !== undefined ? { enforceRoleSeparation: true } : {}),
       ...(goalCommand !== undefined ? { goalCommand } : {}),
       ...(schedule !== undefined ? { schedule } : {}),
       ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
       ...(verifierAgentIds.length > 0 ? { verifierAgentIds } : {}),
+      ...(artifactVerification !== undefined ? { artifactVerification } : {}),
       ...(sources.length > 0 ? { sources } : {}),
       ...(maxIterations !== undefined ? { maxIterations } : {}),
+      ...(commandTimeoutMs !== undefined ? { commandTimeoutMs } : {}),
       ...(effectiveCycles !== undefined ? { cycles: effectiveCycles } : {}),
       ...(intervalMs !== undefined ? { intervalMs } : {}),
       ...(archiveCompletedTasks ? { archiveCompletedTasks } : {}),
@@ -8808,7 +8834,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       console.error("osstack:", resp.error?.message ?? "loop.start failed");
       return 1;
     }
-    printLoopSession(resp.result as LoopSessionSummary, args.includes("--json"));
+    const result = resp.result as LoopSessionSummary;
+    if (profileRouting !== undefined) result.profile = profileRouting.summary;
+    printLoopSession(result, args.includes("--json"));
     return 0;
   }
 
@@ -8847,13 +8875,15 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
     const markdownPath = flagValue(args, "--markdown");
     const executeCommand = flagValue(args, "--execute");
-    const agentId = flagValue(args, "--agent");
+    let agentId = flagValue(args, "--agent");
     const goalCommand = flagValue(args, "--goal");
     const worktreeRoot = flagValue(args, "--worktree-root");
     const verifyCommands = flagValues(args, "--verify");
-    const verifierAgentIds = [...flagValues(args, "--reviewer"), ...flagValues(args, "--checker")];
+    let verifierAgentIds = [...flagValues(args, "--reviewer"), ...flagValues(args, "--checker")];
+    const artifactVerification = parseArtifactVerification(args);
     const sources = flagValues(args, "--source");
     const maxIterRaw = flagValue(args, "--max-iter");
+    const commandTimeoutRaw = flagValue(args, "--command-timeout-ms");
     const cyclesRaw = flagValue(args, "--cycles");
     const intervalRaw = flagValue(args, "--interval-ms");
     const json = args.includes("--json");
@@ -8861,6 +8891,15 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const stopWhenIdle = args.includes("--stop-when-idle");
     const archiveCompletedTasks = args.includes("--archive-completed");
     const autoAgent = args.includes("--auto-agent");
+    const profileRouting = await resolveLoopProfileRouting(args, agentId, verifierAgentIds);
+    if (profileRouting instanceof Error) {
+      console.error(`osstack: ${profileRouting.message}`);
+      return 1;
+    }
+    if (profileRouting !== undefined) {
+      agentId = agentId ?? profileRouting.agentId;
+      verifierAgentIds = verifierAgentIds.length > 0 ? verifierAgentIds : profileRouting.verifierAgentIds;
+    }
     const useWorktree = args.includes("--worktree");
     const checkpoint = args.includes("--checkpoint") && !useWorktree
       ? await createShadowCheckpoint(realpathSync(workspacePath))
@@ -8874,6 +8913,11 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const maxIterations = parsePositiveIntegerFlag(maxIterRaw, "--max-iter");
     if (maxIterations instanceof Error) {
       console.error(`osstack: ${maxIterations.message}`);
+      return 1;
+    }
+    const commandTimeoutMs = parsePositiveIntegerFlag(commandTimeoutRaw, "--command-timeout-ms");
+    if (commandTimeoutMs instanceof Error) {
+      console.error(`osstack: ${commandTimeoutMs.message}`);
       return 1;
     }
     const cycles = parsePositiveIntegerFlag(cyclesRaw, "--cycles");
@@ -8896,11 +8940,14 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ...(executeCommand !== undefined ? { executeCommand } : {}),
         ...(agentId !== undefined ? { agentId } : {}),
         ...(autoAgent ? { autoAgent } : {}),
+        ...(profileRouting !== undefined ? { enforceRoleSeparation: true } : {}),
         ...(goalCommand !== undefined ? { goalCommand } : {}),
         ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
         ...(verifierAgentIds.length > 0 ? { verifierAgentIds } : {}),
+        ...(artifactVerification !== undefined ? { artifactVerification } : {}),
         ...(sources.length > 0 ? { sources } : {}),
         ...(maxIterations !== undefined ? { maxIterations } : {}),
+        ...(commandTimeoutMs !== undefined ? { commandTimeoutMs } : {}),
         ...(cycles !== undefined ? { cycles } : {}),
         ...(intervalMs !== undefined ? { intervalMs } : {}),
         ...(archiveCompletedTasks ? { archiveCompletedTasks } : {}),
@@ -8935,6 +8982,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       }
       if (artifacts !== undefined) result.artifacts = artifacts;
       if (checkpoint !== undefined) result.checkpoint = checkpoint;
+      if (profileRouting !== undefined) result.profile = profileRouting.summary;
       const persistedState = await readLoopState(resolveLoopPath(stateFilePath, workspacePath));
       if (persistedState !== null) {
         const learnedLessons = await learnLessonsFromLoopState(persistedState);
@@ -8954,12 +9002,15 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(executeCommand !== undefined ? { executeCommand } : {}),
       ...(agentId !== undefined ? { agentId } : {}),
       ...(autoAgent ? { autoAgent } : {}),
+      ...(profileRouting !== undefined ? { enforceRoleSeparation: true } : {}),
       ...(adapters !== undefined ? { adapters } : {}),
       ...(verifierAgentIds.length > 0 ? { verifierAgentIds } : {}),
+      ...(artifactVerification !== undefined ? { artifactVerification } : {}),
       ...(goalCommand !== undefined ? { goalCommand } : {}),
       ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
       ...(sources.length > 0 ? { sources } : {}),
       ...(maxIterations !== undefined ? { maxIterations } : {}),
+      ...(commandTimeoutMs !== undefined ? { commandTimeoutMs } : {}),
       ...(archiveCompletedTasks ? { archiveCompletedTasks } : {}),
       ...(useWorktree ? { useWorktree: true } : {}),
       ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
@@ -8996,6 +9047,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(learnedLessons !== undefined ? { learned_lessons: learnedLessons } : {}),
       ...(governance !== undefined ? { governance } : {}),
       ...(checkpoint !== undefined ? { checkpoint } : {}),
+      ...(profileRouting !== undefined ? { profile: profileRouting.summary } : {}),
       ...(goal !== undefined ? { goal } : {}),
       ...(result.state.key_metrics !== undefined ? { metrics: result.state.key_metrics } : {}),
       ...("cycles" in result ? { cycles: result.cycles.map((cycle) => ({
@@ -9122,11 +9174,19 @@ Options:
   --source S          Discovery source; repeatable. git_diff | task_queue | github_branch
   --agent ID          Run tasks through a registered adapter (for example codex-cli)
   --auto-agent        Let router + policy choose an available adapter by capability
+  --profile P         Resolve Builder/Evaluator/Designer from a device profile
+  --role R=ID         Override one profile role: coder, evaluator, or designer; repeatable
   --execute CMD       Shell command to run for each task
   --verify CMD        Shell verifier; repeatable. Non-zero exit marks failure
   --reviewer ID       Adapter verifier to run after execution; repeatable
   --checker ID        Alias for --reviewer for checker/verifier agents
+  --artifact-verification
+                      Require artifact gates in verification (git diff, target/forbidden paths)
+  --target-path P     Required changed path/prefix for artifact verification; repeatable
+  --forbid-path P     Forbidden changed path/prefix for artifact verification; repeatable
   --goal CMD          Global shell command; loop stops when it exits 0
+  --command-timeout-ms N
+                      Timeout in milliseconds for execute, verify, and goal commands
   --schedule CRON     Cron schedule for daemon-managed loop start
   --archive-completed Move successful single-task queue files into tasks/archive/
   --checkpoint       Create a shadow checkpoint before non-worktree runs
@@ -9165,6 +9225,99 @@ Example:
 
 function resolveLoopPath(path: string, cwd: string): string {
   return isAbsolute(path) ? path : join(cwd, path);
+}
+
+function parseArtifactVerification(args: string[]): ArtifactVerificationOptions | undefined {
+  const enabled = args.includes("--artifact-verification")
+    || process.env["OSSTACK_ARTIFACT_VERIFICATION"] === "1";
+  const targetPaths = flagValues(args, "--target-path");
+  const forbiddenPaths = flagValues(args, "--forbid-path");
+  if (!enabled && targetPaths.length === 0 && forbiddenPaths.length === 0) return undefined;
+  return {
+    requireGitDiff: enabled || targetPaths.length > 0,
+    ...(targetPaths.length > 0 ? { targetPaths } : {}),
+    ...(forbiddenPaths.length > 0 ? { forbiddenPaths } : {}),
+  };
+}
+
+async function resolveLoopProfileRouting(
+  args: string[],
+  explicitAgentId: string | undefined,
+  explicitVerifierAgentIds: readonly string[],
+): Promise<{
+  agentId?: string;
+  verifierAgentIds: string[];
+  summary: LoopProfileSummary;
+} | undefined | Error> {
+  const profileOverride = flagValue(args, "--profile")
+    ?? process.env["OSSTACK_AGENT_PROFILE"]
+    ?? process.env["OSSTACK_PROFILE"];
+  const overrides = parseRoleOverrides(args);
+  if (overrides instanceof Error) return overrides;
+  if (profileOverride === undefined && Object.keys(overrides).length === 0) return undefined;
+
+  const config = loadConfig();
+  const profile = selectProfile(config, profileOverride !== undefined ? { override: profileOverride } : {});
+  const roles = {
+    coding: { ...profile.roles.coding, fallback: [...profile.roles.coding.fallback] },
+    "test-verify": { ...profile.roles["test-verify"], fallback: [...profile.roles["test-verify"].fallback] },
+    design: { ...profile.roles.design, fallback: [...profile.roles.design.fallback] },
+  };
+  for (const [role, agentId] of Object.entries(overrides) as Array<[AgentRole, string]>) {
+    roles[role] = {
+      primary: agentId,
+      fallback: roles[role].fallback.filter((candidate) => candidate !== agentId),
+    };
+  }
+
+  const adapters = defaultAdapters() as unknown as RoutableAdapter[];
+  const resolutions = await resolveAll(roles, adapters, { autoFallback: true });
+  const builder = explicitAgentId ?? resolutions.coding.chosen ?? undefined;
+  const evaluator = explicitVerifierAgentIds[0] ?? resolutions["test-verify"].chosen ?? undefined;
+  return {
+    ...(builder !== undefined ? { agentId: builder } : {}),
+    verifierAgentIds: evaluator !== undefined ? [evaluator] : [],
+    summary: {
+      profile_name: profile.name,
+      reason: profile.reason,
+      ...(builder !== undefined ? { builder_agent_id: builder } : {}),
+      ...(evaluator !== undefined ? { evaluator_agent_id: evaluator } : {}),
+      ...(resolutions.design.chosen !== null ? { designer_agent_id: resolutions.design.chosen } : {}),
+      overrides: Object.fromEntries(Object.entries(overrides)),
+      resolutions: Object.fromEntries(Object.entries(resolutions).map(([role, resolution]) => [
+        role,
+        {
+          chosen: resolution.chosen,
+          reason: resolution.reason,
+          tried: resolution.tried,
+        },
+      ])),
+    },
+  };
+}
+
+function parseRoleOverrides(args: string[]): Partial<Record<AgentRole, string>> | Error {
+  const overrides: Partial<Record<AgentRole, string>> = {};
+  for (const raw of flagValues(args, "--role")) {
+    const [roleRaw, agentId] = raw.split("=", 2);
+    if (roleRaw === undefined || agentId === undefined || agentId.trim() === "") {
+      return new Error(`--role must use role=agent-id, got "${raw}"`);
+    }
+    const role = normalizeLoopRole(roleRaw);
+    if (role === undefined) {
+      return new Error(`unknown --role "${roleRaw}"; use coder, evaluator, or designer`);
+    }
+    overrides[role] = agentId.trim();
+  }
+  return overrides;
+}
+
+function normalizeLoopRole(value: string): AgentRole | undefined {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "coder" || normalized === "builder" || normalized === "coding") return "coding";
+  if (normalized === "evaluator" || normalized === "judge" || normalized === "verifier" || normalized === "test-verify") return "test-verify";
+  if (normalized === "designer" || normalized === "design") return "design";
+  return undefined;
 }
 
 function safeFileSegment(value: string): string {
@@ -9226,6 +9379,7 @@ interface LoopRunSummary {
     summary: string;
   };
   events?: unknown[];
+  profile?: LoopProfileSummary;
   cycles?: Array<{
     discovered_task_count: number;
     executed_task_count: number;
@@ -9237,6 +9391,20 @@ interface LoopRunSummary {
       durationMs: number;
       summary: string;
     };
+  }>;
+}
+
+interface LoopProfileSummary {
+  profile_name: string;
+  reason: string;
+  builder_agent_id?: string;
+  evaluator_agent_id?: string;
+  designer_agent_id?: string;
+  overrides: Record<string, string>;
+  resolutions: Record<string, {
+    chosen: string | null;
+    reason: string;
+    tried: Array<{ id: string; ok: boolean; reason?: string }>;
   }>;
 }
 
@@ -9273,6 +9441,7 @@ interface LoopSessionSummary {
   max_cycles?: number;
   stop_reason?: string;
   last_error?: string;
+  profile?: LoopProfileSummary;
 }
 
 interface LoopDoctorResult {
@@ -9367,6 +9536,9 @@ function printLoopRun(result: LoopRunSummary, json: boolean): void {
   if (result.governance !== undefined) {
     console.log(`governance=${result.governance.status} mode=${result.governance.mode} blocking=${result.governance.blocking ? "yes" : "no"} findings=${result.governance.findings.length}`);
   }
+  if (result.profile !== undefined) {
+    console.log(`profile=${result.profile.profile_name} builder=${result.profile.builder_agent_id ?? "none"} evaluator=${result.profile.evaluator_agent_id ?? "none"}`);
+  }
   if (result.artifacts !== undefined) {
     if (result.artifacts.report !== undefined) console.log(`report=${result.artifacts.report}`);
     if (result.artifacts.scorecard_markdown !== undefined) console.log(`scorecard_markdown=${result.artifacts.scorecard_markdown}`);
@@ -9401,6 +9573,9 @@ function printLoopSession(result: LoopSessionSummary, json: boolean): void {
   console.log(`state_json=${result.state_json}`);
   console.log(`interval_ms=${result.interval_ms}`);
   if (result.schedule !== undefined) console.log(`schedule=${result.schedule}`);
+  if (result.profile !== undefined) {
+    console.log(`profile=${result.profile.profile_name} builder=${result.profile.builder_agent_id ?? "none"} evaluator=${result.profile.evaluator_agent_id ?? "none"}`);
+  }
   console.log(`cycles=${result.cycle_count} discovered=${result.discovered_task_count} executed=${result.executed_task_count} skipped=${result.skipped_task_count}`);
   console.log(`tasks_ok=${result.successful_task_count} failed=${result.failed_task_count} escalated=${result.escalated_task_count} tokens=${result.tokens_consumed}`);
   if (result.cycle_count > 0) {
@@ -9456,6 +9631,8 @@ async function loopDoctor(input: {
     await checkTaskQueue(input.workspacePath, add);
     await checkLoopState(input.stateFilePath, add);
     await checkGit(input.workspacePath, add);
+    await checkAgentInstructionDrift(input.workspacePath, add);
+    await checkProtectedConfigStatus(input.workspacePath, add);
   }
 
   if (input.checkDaemon) {
@@ -9573,6 +9750,102 @@ async function checkGit(
   } catch (error) {
     add("git", "warn", "git status failed in workspace", { error: errorMessage(error) });
   }
+}
+
+async function checkAgentInstructionDrift(
+  workspacePath: string,
+  add: (id: string, status: LoopDoctorCheck["status"], summary: string, details?: Record<string, unknown>) => void,
+): Promise<void> {
+  const agentsPath = join(workspacePath, "AGENTS.md");
+  const claudePath = join(workspacePath, "CLAUDE.md");
+  const agentsExists = await fileExists(agentsPath);
+  const claudeExists = await fileExists(claudePath);
+
+  if (!agentsExists && !claudeExists) {
+    add("agent_instructions", "warn", "no AGENTS.md or CLAUDE.md found at workspace root", {
+      expected_source: agentsPath,
+    });
+    return;
+  }
+  if (agentsExists && !claudeExists) {
+    add("agent_instructions", "ok", "AGENTS.md is the only root instruction source", {
+      source: agentsPath,
+    });
+    return;
+  }
+  if (!agentsExists && claudeExists) {
+    add("agent_instructions", "error", "CLAUDE.md exists without AGENTS.md; instruction source is not unified", {
+      claude: claudePath,
+      expected_source: agentsPath,
+    });
+    return;
+  }
+
+  const claudeReference = await classifyClaudeReference(claudePath);
+  if (claudeReference.ok) {
+    add("agent_instructions", "ok", "AGENTS.md is canonical and CLAUDE.md references it", {
+      source: agentsPath,
+      claude: claudePath,
+      mode: claudeReference.mode,
+    });
+    return;
+  }
+
+  add("agent_instructions", "error", "AGENTS.md and CLAUDE.md are both real instruction files; drift risk detected", {
+    source: agentsPath,
+    claude: claudePath,
+    reason: claudeReference.reason,
+    remediation: "replace CLAUDE.md with a one-line @AGENTS.md reference or a symlink to AGENTS.md",
+  });
+}
+
+async function classifyClaudeReference(path: string): Promise<
+  | { ok: true; mode: "symlink" | "one-line-reference" }
+  | { ok: false; reason: string }
+> {
+  try {
+    const meta = await lstat(path);
+    if (meta.isSymbolicLink()) {
+      const target = await readlink(path);
+      return target === "AGENTS.md" || target.endsWith("/AGENTS.md")
+        ? { ok: true, mode: "symlink" }
+        : { ok: false, reason: `CLAUDE.md symlink points to ${target}` };
+    }
+    const content = (await readFile(path, "utf-8")).trim();
+    if (content === "@AGENTS.md") return { ok: true, mode: "one-line-reference" };
+    return { ok: false, reason: "CLAUDE.md content is not exactly @AGENTS.md" };
+  } catch (error) {
+    return { ok: false, reason: errorMessage(error) };
+  }
+}
+
+async function checkProtectedConfigStatus(
+  workspacePath: string,
+  add: (id: string, status: LoopDoctorCheck["status"], summary: string, details?: Record<string, unknown>) => void,
+): Promise<void> {
+  const protectedFiles = ["AGENTS.md", "CLAUDE.md", ".codex/config.toml"];
+  const status = await execOutput("git", ["status", "--porcelain=v1", "--", ...protectedFiles], workspacePath);
+  if (status instanceof Error) {
+    add("protected_config", "warn", "could not check protected config file status", {
+      protected_files: protectedFiles,
+      error: status.message,
+    });
+    return;
+  }
+  const changed = status
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim() !== "");
+  if (changed.length === 0) {
+    add("protected_config", "ok", "core instruction/config files are unchanged", {
+      protected_files: protectedFiles,
+    });
+    return;
+  }
+  add("protected_config", "warn", "core instruction/config files have local changes; memory hooks must not write these paths", {
+    protected_files: protectedFiles,
+    changed,
+  });
 }
 
 async function checkLoopDaemon(

@@ -10,9 +10,16 @@ export interface LocalVerifierOptions {
   verifierAgentIds?: string[];
   adapters?: readonly AgentAdapter[];
   task?: Task;
+  artifactVerification?: ArtifactVerificationOptions;
   sessionId?: string;
   timeoutMs?: number;
   outputLimit?: number;
+}
+
+export interface ArtifactVerificationOptions {
+  requireGitDiff?: boolean;
+  targetPaths?: string[];
+  forbiddenPaths?: string[];
 }
 
 export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): Promise<Verdict> {
@@ -26,6 +33,7 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
     }));
   }
   const adapterResults = await runVerifierAdapters(run, options);
+  const artifactIssues = await verifyArtifacts(options);
 
   const executionIssues = run.command_results
     .filter((result) => result.exitCode !== 0)
@@ -34,7 +42,7 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
     .filter((result) => result.exitCode !== 0)
     .map((result) => commandIssue("verify.command_failed", result));
   const adapterIssues = adapterResults.flatMap((result) => result.issues);
-  const issues = [...executionIssues, ...verificationIssues, ...adapterIssues];
+  const issues = [...executionIssues, ...verificationIssues, ...adapterIssues, ...artifactIssues];
   const pass = issues.length === 0;
   const reviewerIds = adapterResults.length > 0
     ? adapterResults.map((result) => result.agentId).join(",")
@@ -46,7 +54,117 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
     issues,
     reviewer_agent_id: reviewerIds,
     summary: summarize(commandResults, adapterResults, issues),
+    ...(commandResults.length > 0 ? { verify_commands: commandResults.map(commandAudit) } : {}),
   };
+}
+
+function commandAudit(result: CommandResult): NonNullable<Verdict["verify_commands"]>[number] {
+  const summary = singleLine(result.stderr.trim() || result.stdout.trim());
+  return {
+    command: result.command,
+    exit_code: result.exitCode,
+    duration_ms: result.durationMs,
+    ...(summary !== "" ? { summary } : {}),
+  };
+}
+
+async function verifyArtifacts(options: LocalVerifierOptions): Promise<Issue[]> {
+  const artifactOptions = normalizeArtifactOptions(options);
+  if (artifactOptions === undefined) return [];
+
+  const diffResult = await runShellCommand("git diff --name-only -- . && git ls-files --others --exclude-standard", {
+    cwd: options.workspacePath,
+    timeoutMs: options.timeoutMs ?? 120_000,
+    outputLimit: options.outputLimit ?? 16_000,
+  });
+  if (diffResult.exitCode !== 0) {
+    return [commandIssue("verify.artifact_git_diff_failed", diffResult)];
+  }
+
+  const changedFiles = [...new Set(diffResult.stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0))];
+  const issues: Issue[] = [];
+  if (artifactOptions.requireGitDiff === true && changedFiles.length === 0) {
+    issues.push({
+      severity: "error",
+      message: "artifact verification failed: git diff is empty",
+      rule: "verify.artifact_empty_diff",
+    });
+  }
+
+  if (artifactOptions.targetPaths.length > 0) {
+    const hitTarget = changedFiles.some((file) =>
+      artifactOptions.targetPaths.some((target) => pathMatches(file, target))
+    );
+    if (!hitTarget) {
+      issues.push({
+        severity: "error",
+        message: `artifact verification failed: changed files did not hit target paths (${artifactOptions.targetPaths.join(", ")})`,
+        rule: "verify.artifact_target_miss",
+      });
+    }
+  }
+
+  const forbiddenHit = changedFiles.find((file) =>
+    artifactOptions.forbiddenPaths.some((target) => pathMatches(file, target))
+  );
+  if (forbiddenHit !== undefined) {
+    issues.push({
+      severity: "error",
+      file: forbiddenHit,
+      message: `artifact verification failed: changed forbidden path ${forbiddenHit}`,
+      rule: "verify.artifact_forbidden_path",
+    });
+  }
+
+  return issues;
+}
+
+function normalizeArtifactOptions(options: LocalVerifierOptions): Required<ArtifactVerificationOptions> | undefined {
+  const explicit = options.artifactVerification;
+  const context = options.task?.context ?? {};
+  const requireGitDiff = explicit?.requireGitDiff ?? Boolean(context["require_git_diff"]);
+  const targetPaths = [
+    ...(requireGitDiff ? stringArray(context["target_paths"]) : []),
+    ...(requireGitDiff ? stringArray(context["targetPaths"]) : []),
+    ...(requireGitDiff ? stringArray(context["files"]) : []),
+    ...(requireGitDiff ? stringArray(context["file"]) : []),
+    ...(explicit?.targetPaths ?? []),
+  ];
+  const forbiddenPaths = [
+    "node_modules",
+    ".pnpm-store",
+    "dist",
+    "build",
+    ".turbo",
+    ".cache",
+    "coverage",
+    ...(explicit?.forbiddenPaths ?? []),
+  ];
+  if (!requireGitDiff && targetPaths.length === 0 && explicit === undefined) return undefined;
+  return {
+    requireGitDiff,
+    targetPaths: [...new Set(targetPaths.map(normalizePathPattern).filter((path) => path.length > 0))],
+    forbiddenPaths: [...new Set(forbiddenPaths.map(normalizePathPattern).filter((path) => path.length > 0))],
+  };
+}
+
+function stringArray(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string");
+  return [];
+}
+
+function normalizePathPattern(value: string): string {
+  return value.replaceAll("\\", "/").replace(/^\.\/+/, "").replace(/\/+$/, "");
+}
+
+function pathMatches(file: string, pattern: string): boolean {
+  const normalizedFile = normalizePathPattern(file);
+  const normalizedPattern = normalizePathPattern(pattern);
+  return normalizedFile === normalizedPattern || normalizedFile.startsWith(`${normalizedPattern}/`);
 }
 
 interface VerifierAdapterResult {

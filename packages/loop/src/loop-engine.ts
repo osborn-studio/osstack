@@ -31,6 +31,7 @@ import {
 } from "./state-file.js";
 import { archiveCompletedTaskFile } from "./task-queue.js";
 import { verifyRun } from "./verifier.js";
+import type { ArtifactVerificationOptions } from "./verifier.js";
 import {
   DiscoverSource,
   LoopState,
@@ -61,6 +62,8 @@ export interface LoopRunOptions {
   agentId?: string;
   autoAgent?: boolean;
   verifierAgentIds?: string[];
+  enforceRoleSeparation?: boolean;
+  artifactVerification?: ArtifactVerificationOptions;
   adapters?: readonly AgentAdapter[];
   policyEngine?: PolicyEngine;
   policyHistory?: PolicyHistory;
@@ -362,6 +365,7 @@ export class LoopEngine {
     let worktree: WorktreeHandle | undefined;
     let preserveWorktreeBranch = false;
     let worktreeCommit: string | undefined;
+    let finalEvidence: TaskGitEvidence = { changedFiles: [], diffSummary: "no git evidence collected" };
 
     if (this.options.useWorktree === true) {
       worktree = await createWorktree({
@@ -418,16 +422,38 @@ export class LoopEngine {
           iteration,
         });
 
-        finalVerdict = await verifyRun(finalRun, {
+        const verifierAgentIds = this.options.verifierAgentIds ?? [];
+        if (
+          this.options.enforceRoleSeparation === true
+          && verifierAgentIds.includes(finalRun.agent_id)
+        ) {
+          finalVerdict = {
+            pass: false,
+            score: 0,
+            reviewer_agent_id: verifierAgentIds.join(","),
+            summary: "Role separation failed: builder and evaluator resolved to the same agent.",
+            issues: [{
+              severity: "error",
+              message: `builder ${finalRun.agent_id} cannot be its own final evaluator`,
+              rule: "verify.role_separation",
+            }],
+          };
+        } else {
+          finalVerdict = await verifyRun(finalRun, {
           workspacePath: runWorkspacePath,
           commands: this.options.verifyCommands ?? [],
-          verifierAgentIds: this.options.verifierAgentIds ?? [],
+          verifierAgentIds,
           task,
+          ...(this.options.artifactVerification !== undefined
+            ? { artifactVerification: this.options.artifactVerification }
+            : {}),
           sessionId: loopId,
           ...(this.options.commandTimeoutMs !== undefined ? { timeoutMs: this.options.commandTimeoutMs } : {}),
           ...(this.options.outputLimit !== undefined ? { outputLimit: this.options.outputLimit } : {}),
           ...(this.options.adapters !== undefined ? { adapters: this.options.adapters } : {}),
-        });
+          });
+        }
+        finalEvidence = await collectTaskGitEvidence(runWorkspacePath);
         this.emit(loopId, "loop.verify.done", {
           task_id: task.task_id,
           pass: finalVerdict.pass,
@@ -435,6 +461,9 @@ export class LoopEngine {
           issue_count: finalVerdict.issues.length,
           reviewer_agent_id: finalVerdict.reviewer_agent_id,
           summary: finalVerdict.summary,
+          changed_files: finalEvidence.changedFiles,
+          diff_summary: finalEvidence.diffSummary,
+          ...(finalEvidence.commitHash !== undefined ? { commit_hash: finalEvidence.commitHash } : {}),
           ...(worktree !== undefined ? { worktree_path: worktree.worktreePath } : {}),
           iteration,
         });
@@ -526,7 +555,13 @@ export class LoopEngine {
           verify_summary: finalVerdict.summary,
           verify_issue_count: finalVerdict.issues.length,
           ...(finalVerdict.issues.length > 0 ? { verify_issues: finalVerdict.issues.map(issueAudit) } : {}),
+          ...(finalVerdict.verify_commands !== undefined && finalVerdict.verify_commands.length > 0
+            ? { verify_commands: finalVerdict.verify_commands }
+            : {}),
         } : {}),
+        ...(finalEvidence.changedFiles.length > 0 ? { changed_files: finalEvidence.changedFiles } : {}),
+        ...(finalEvidence.diffSummary !== undefined ? { diff_summary: finalEvidence.diffSummary } : {}),
+        ...(finalEvidence.commitHash !== undefined ? { commit_hash: finalEvidence.commitHash } : {}),
         ...(outcome !== "success" ? { error_summary: completionErrorSummary(finalRun, finalVerdict) } : {}),
         ...(worktree !== undefined ? {
           worktree_path: worktree.worktreePath,
@@ -603,6 +638,57 @@ interface AgentSelection {
   agentId: string;
   reason: string;
   policyDecision?: PolicyDecision;
+}
+
+interface TaskGitEvidence {
+  changedFiles: string[];
+  diffSummary?: string;
+  commitHash?: string;
+}
+
+async function collectTaskGitEvidence(workspacePath: string): Promise<TaskGitEvidence> {
+  const status = await runShellCommand("git status --short --untracked-files=all", {
+    cwd: workspacePath,
+    timeoutMs: 10_000,
+    outputLimit: 32_000,
+  });
+  if (status.exitCode !== 0) {
+    return { changedFiles: [], diffSummary: `git status unavailable: ${singleLine(status.stderr || status.stdout)}` };
+  }
+
+  const changedFiles = parseGitStatusFiles(status.stdout);
+  const diffStat = await runShellCommand("git diff --stat -- .", {
+    cwd: workspacePath,
+    timeoutMs: 10_000,
+    outputLimit: 4_000,
+  });
+  const untrackedCount = changedFiles.filter((file) => file.startsWith("?? ")).length;
+  const statSummary = diffStat.exitCode === 0 && diffStat.stdout.trim() !== ""
+    ? singleLine(diffStat.stdout)
+    : changedFiles.length === 0
+      ? "no git changes"
+      : `${changedFiles.length} changed file(s), ${untrackedCount} untracked`;
+  const commit = await runShellCommand("git rev-parse --short HEAD", {
+    cwd: workspacePath,
+    timeoutMs: 10_000,
+    outputLimit: 1_000,
+  });
+  return {
+    changedFiles,
+    diffSummary: statSummary,
+    ...(commit.exitCode === 0 && commit.stdout.trim() !== "" ? { commitHash: commit.stdout.trim() } : {}),
+  };
+}
+
+function parseGitStatusFiles(stdout: string): string[] {
+  return stdout
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim() !== "")
+    .map((line) => {
+      const path = line.length > 3 ? line.slice(3) : line.trim();
+      return line.startsWith("?? ") ? `?? ${path}` : path;
+    });
 }
 
 async function availablePolicyCandidates(

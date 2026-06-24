@@ -43,6 +43,7 @@ describe("LoopEngine", () => {
         verify_issue_count: 0,
         verify_summary: expect.stringContaining("passed"),
         execution_commands: [expect.objectContaining({ exit_code: 0 })],
+        verify_commands: [expect.objectContaining({ command: expect.stringContaining("loop-output.txt"), exit_code: 0 })],
       }),
     ]);
     expect(result.events.map((event) => event.type)).toContain("loop.verify.done");
@@ -133,6 +134,50 @@ describe("LoopEngine", () => {
     }));
     await expect(readFile(join(workspace, "review-output.txt"), "utf-8"))
       .resolves.toContain("reviewed run_plan_");
+  });
+
+  it("records changed files, diff summary, and commit hash in task evidence", async () => {
+    const workspace = await makeGitQueuedWorkspace("initial\n");
+    const result = await new LoopEngine({
+      loopId: "loop-evidence",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('app.txt', 'evidence change\\n')\"",
+      verifyCommands: ["node -e \"process.exit(require('fs').readFileSync('app.txt','utf8').includes('evidence') ? 0 : 1)\""],
+    }).runOnce();
+
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      task_id: "task-1",
+      outcome: "success",
+      changed_files: expect.arrayContaining(["app.txt"]),
+      diff_summary: expect.stringContaining("app.txt"),
+      commit_hash: expect.any(String),
+      verify_commands: [expect.objectContaining({ exit_code: 0 })],
+    });
+    await expect(readFile(join(workspace, "STATE.md"), "utf-8")).resolves.toContain("Changed files: app.txt");
+  });
+
+  it("fails verification when builder and evaluator are the same enforced agent", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const adapter = new FakeLoopAdapter({ id: "same-agent" });
+    const result = await new LoopEngine({
+      loopId: "loop-role-separation",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      agentId: adapter.id,
+      verifierAgentIds: [adapter.id],
+      enforceRoleSeparation: true,
+      adapters: [adapter],
+      maxIterations: 1,
+    }).runOnce();
+
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      task_id: "task-1",
+      outcome: "escalated",
+      agent_id: "same-agent",
+      verifier_agent_id: "same-agent",
+      verify_issues: [expect.objectContaining({ rule: "verify.role_separation" })],
+    });
   });
 
   it("escalates after repeated failed verification", async () => {

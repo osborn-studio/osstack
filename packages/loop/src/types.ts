@@ -86,6 +86,12 @@ export const Verdict = z.object({
   issues: z.array(Issue).default([]),
   reviewer_agent_id: z.string(),
   summary: z.string(),
+  verify_commands: z.array(z.object({
+    command: z.string(),
+    exit_code: z.number(),
+    duration_ms: z.number(),
+    summary: z.string().optional(),
+  })).optional(),
 });
 export type Verdict = z.infer<typeof Verdict>;
 
@@ -136,6 +142,10 @@ export const CompletedTask = z.object({
   verify_summary: z.string().optional(),
   verify_issue_count: z.number().optional(),
   verify_issues: z.array(IssueAudit).optional(),
+  verify_commands: z.array(CommandAudit).optional(),
+  changed_files: z.array(z.string()).optional(),
+  diff_summary: z.string().optional(),
+  commit_hash: z.string().optional(),
   error_summary: z.string().optional(),
   worktree_path: z.string().optional(),
   worktree_branch: z.string().optional(),

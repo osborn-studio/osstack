@@ -29,7 +29,10 @@ export type RoleMap = z.infer<typeof RoleMap>;
 
 /** A per-machine profile: which hostnames it matches + its role bindings. */
 export const Profile = z.object({
-  match: z.object({ hostnames: z.array(z.string()).default([]) }).default({ hostnames: [] }),
+  match: z.object({
+    hostnames: z.array(z.string()).default([]),
+    model_hints: z.array(z.string()).default([]),
+  }).default({ hostnames: [], model_hints: [] }),
   roles: RoleMap,
 });
 export type Profile = z.infer<typeof Profile>;

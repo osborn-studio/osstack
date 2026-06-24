@@ -115,6 +115,14 @@ function renderCompletedTasks(tasks: CompletedTask[]): string[] {
     if (task.execution_commands !== undefined && task.execution_commands.length > 0) {
       lines.push(`  - Commands: ${task.execution_commands.map((command) => `${command.command} -> ${command.exit_code}`).join(", ")}`);
     }
+    if (task.verify_commands !== undefined && task.verify_commands.length > 0) {
+      lines.push(`  - Verify commands: ${task.verify_commands.map((command) => `${command.command} -> ${command.exit_code}`).join(", ")}`);
+    }
+    if (task.changed_files !== undefined && task.changed_files.length > 0) {
+      lines.push(`  - Changed files: ${task.changed_files.join(", ")}`);
+    }
+    if (task.diff_summary !== undefined) lines.push(`  - Diff: ${task.diff_summary}`);
+    if (task.commit_hash !== undefined) lines.push(`  - Commit: ${task.commit_hash}`);
     if (task.error_summary !== undefined) lines.push(`  - Error: ${task.error_summary}`);
     if (task.worktree_branch !== undefined) {
       const commit = task.worktree_commit === undefined ? "" : `, commit ${task.worktree_commit}`;

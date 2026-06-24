@@ -35,7 +35,7 @@ function flagValue(args: string[], name: string): string | undefined {
 }
 
 function overrideFrom(args: string[]): string | undefined {
-  return flagValue(args, "--profile") ?? process.env["OSSTACK_PROFILE"];
+  return flagValue(args, "--profile") ?? process.env["OSSTACK_AGENT_PROFILE"] ?? process.env["OSSTACK_PROFILE"];
 }
 
 function advertises(a: RoutableAdapter, role: AgentRole): boolean {

@@ -32,6 +32,12 @@ describe("selectProfile", () => {
     expect(r.roles.coding.primary).toBe("claude-code");
   });
 
+  it("matches by Mac hardware model hint when hostname is generic", () => {
+    const r = selectProfile(cfg, { hostname: "office-box", model: "Macmini15,12" });
+    expect(r.name).toBe("mac-mini");
+    expect(r.reason).toContain("model");
+  });
+
   it("honours an explicit override above hostname", () => {
     const r = selectProfile(cfg, { hostname: "OsborNs-Mac-mini.local", override: "macbook-pro" });
     expect(r.name).toBe("macbook-pro");

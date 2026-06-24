@@ -12,6 +12,10 @@ if [[ -n "${LOOP_EXECUTE:-}" ]]; then
   args+=(--execute "$LOOP_EXECUTE")
 fi
 
+if [[ -n "${LOOP_COMMAND_TIMEOUT_MS:-}" ]]; then
+  args+=(--command-timeout-ms "$LOOP_COMMAND_TIMEOUT_MS")
+fi
+
 if [[ -n "${LOOP_AGENT:-}" ]]; then
   args+=(--agent "$LOOP_AGENT")
 fi

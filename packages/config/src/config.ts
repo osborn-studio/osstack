@@ -4,6 +4,7 @@
 // missing, loadConfig() returns a built-in default (it is NOT written to disk
 // until `config init` / `config set` / saveConfig is called explicitly).
 
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { hostname as osHostname } from "node:os";
 import { dirname, join } from "node:path";
@@ -38,11 +39,17 @@ export function defaultConfig(): OsstackConfigT {
     active_profile: "auto",
     profiles: {
       "mac-mini": {
-        match: { hostnames: ["OsborNs-Mac-mini.local", "OsborNs-Mac-mini"] },
+        match: {
+          hostnames: ["OsborNs-Mac-mini.local", "OsborNs-Mac-mini"],
+          model_hints: ["Macmini"],
+        },
         roles: MAC_MINI_ROLES,
       },
       "macbook-pro": {
-        match: { hostnames: ["OsborNs-MacBook-Pro.local", "OsborNs-MacBook-Pro"] },
+        match: {
+          hostnames: ["OsborNs-MacBook-Pro.local", "OsborNs-MacBook-Pro"],
+          model_hints: ["MacBookPro"],
+        },
         roles: MACBOOK_ROLES,
       },
     },
@@ -77,7 +84,8 @@ export interface ResolvedProfile {
 
 export interface SelectOpts {
   hostname?: string;
-  /** Explicit override (CLI --profile or $OSSTACK_PROFILE). */
+  model?: string;
+  /** Explicit override (CLI --profile, $OSSTACK_AGENT_PROFILE, or $OSSTACK_PROFILE). */
   override?: string | undefined;
 }
 
@@ -90,6 +98,7 @@ export interface SelectOpts {
  */
 export function selectProfile(config: OsstackConfigT, opts: SelectOpts = {}): ResolvedProfile {
   const hostname = opts.hostname ?? osHostname();
+  const model = opts.model ?? currentMacModel();
   const pin =
     opts.override ??
     (config.active_profile !== "auto" ? config.active_profile : undefined);
@@ -105,9 +114,13 @@ export function selectProfile(config: OsstackConfigT, opts: SelectOpts = {}): Re
   }
 
   const target = hostname.toLowerCase();
+  const modelTarget = model.toLowerCase();
   for (const [name, p] of Object.entries(config.profiles)) {
     if (p.match.hostnames.some((h) => h.toLowerCase() === target)) {
       return { name, roles: p.roles, reason: `hostname "${hostname}" matched profile "${name}"` };
+    }
+    if (modelTarget !== "" && p.match.model_hints.some((hint) => modelTarget.includes(hint.toLowerCase()))) {
+      return { name, roles: p.roles, reason: `model "${model}" matched profile "${name}"` };
     }
   }
 
@@ -120,4 +133,15 @@ export function selectProfile(config: OsstackConfigT, opts: SelectOpts = {}): Re
 
 export function currentHostname(): string {
   return osHostname();
+}
+
+export function currentMacModel(): string {
+  try {
+    return execFileSync("sysctl", ["-n", "hw.model"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "";
+  }
 }

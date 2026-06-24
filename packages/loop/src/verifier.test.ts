@@ -1,5 +1,6 @@
+import { execFileSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
-import { rm } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentAdapter, AgentTask } from "@osstack/agents";
@@ -144,7 +145,76 @@ describe("verifyRun", () => {
       "verify.fallback",
     ]);
   });
+
+  it("fails artifact verification when a task reports success but produces no diff", async () => {
+    await initGitWorkspace();
+
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace,
+      artifactVerification: { requireGitDiff: true },
+    });
+
+    expect(verdict.pass).toBe(false);
+    expect(verdict.issues).toEqual([
+      expect.objectContaining({ rule: "verify.artifact_empty_diff" }),
+    ]);
+  });
+
+  it("fails artifact verification when changes miss target paths or hit forbidden paths", async () => {
+    await initGitWorkspace();
+    await mkdir(join(workspace, "node_modules"), { recursive: true });
+    await writeFile(join(workspace, "node_modules", "generated.txt"), "bad\n");
+
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace,
+      artifactVerification: {
+        requireGitDiff: true,
+        targetPaths: ["src"],
+      },
+    });
+
+    expect(verdict.pass).toBe(false);
+    expect(verdict.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ rule: "verify.artifact_target_miss" }),
+      expect.objectContaining({
+        rule: "verify.artifact_forbidden_path",
+        file: "node_modules/generated.txt",
+      }),
+    ]));
+  });
+
+  it("passes artifact verification when changed files hit the required target path", async () => {
+    await initGitWorkspace();
+    await mkdir(join(workspace, "src"), { recursive: true });
+    await writeFile(join(workspace, "src", "app.ts"), "export const value = 2;\n");
+
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace,
+      artifactVerification: {
+        requireGitDiff: true,
+        targetPaths: ["src"],
+      },
+    });
+
+    expect(verdict.pass).toBe(true);
+  });
 });
+
+async function initGitWorkspace(): Promise<void> {
+  execFileSync("git", ["init", "-b", "main"], { cwd: workspace, stdio: "ignore" });
+  await mkdir(join(workspace, "src"), { recursive: true });
+  await writeFile(join(workspace, "src", "app.ts"), "export const value = 1;\n");
+  execFileSync("git", ["add", "."], { cwd: workspace, stdio: "ignore" });
+  execFileSync("git", [
+    "-c",
+    "user.name=test",
+    "-c",
+    "user.email=test@example.invalid",
+    "commit",
+    "-m",
+    "initial",
+  ], { cwd: workspace, stdio: "ignore" });
+}
 
 function run(): AgentRun {
   return {

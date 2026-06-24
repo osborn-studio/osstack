@@ -45,6 +45,14 @@ describe("loop state file", () => {
           exit_code: 0,
           duration_ms: 500,
         }],
+        verify_commands: [{
+          command: "pnpm typecheck",
+          exit_code: 0,
+          duration_ms: 700,
+        }],
+        changed_files: ["src/app.ts"],
+        diff_summary: "src/app.ts | 2 +-",
+        commit_hash: "def456",
         worktree_branch: "osstack/loop/loop-test/task-1",
         worktree_commit: "abc123",
       }],
@@ -97,6 +105,10 @@ describe("loop state file", () => {
     expect(markdown).toContain("Run: run-1");
     expect(markdown).toContain("Verification: 1 verifier command passed.");
     expect(markdown).toContain("Commands: pnpm test -> 0");
+    expect(markdown).toContain("Verify commands: pnpm typecheck -> 0");
+    expect(markdown).toContain("Changed files: src/app.ts");
+    expect(markdown).toContain("Diff: src/app.ts | 2 +-");
+    expect(markdown).toContain("Commit: def456");
     expect(markdown).toContain("Worktree: osstack/loop/loop-test/task-1, commit abc123");
     expect(markdown).toContain("## Knowledge Trace");
     expect(markdown).toContain("chunk-loop-proof");

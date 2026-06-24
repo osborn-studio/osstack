@@ -20,6 +20,7 @@ export {
   saveConfig,
   selectProfile,
   currentHostname,
+  currentMacModel,
   type ResolvedProfile,
   type SelectOpts,
 } from "./config.js";

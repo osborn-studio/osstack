@@ -64,6 +64,12 @@ const DAEMON_VERSION = VERSION;
 const DAEMON_PHASE = "S1.5-controls";
 const LOOP_FAILURE_STREAK_THRESHOLD = 3;
 
+interface ArtifactVerificationOptions {
+  requireGitDiff?: boolean;
+  targetPaths?: string[];
+  forbiddenPaths?: string[];
+}
+
 interface DaemonRequest {
   id: string | number;
   method: string;
@@ -1253,12 +1259,16 @@ function parseLoopRunParams(
   if (autoAgent instanceof Error) return autoAgent;
   const useWorktree = optionalBoolean(p, "useWorktree");
   if (useWorktree instanceof Error) return useWorktree;
+  const enforceRoleSeparation = optionalBoolean(p, "enforceRoleSeparation");
+  if (enforceRoleSeparation instanceof Error) return enforceRoleSeparation;
   const sources = optionalStringArray(p, "sources");
   if (sources instanceof Error) return sources;
   const verifyCommands = optionalStringArray(p, "verifyCommands");
   if (verifyCommands instanceof Error) return verifyCommands;
   const verifierAgentIds = optionalStringArray(p, "verifierAgentIds");
   if (verifierAgentIds instanceof Error) return verifierAgentIds;
+  const artifactVerification = optionalArtifactVerification(p, "artifactVerification");
+  if (artifactVerification instanceof Error) return artifactVerification;
   const maxIterations = optionalPositiveInteger(p, "maxIterations");
   if (maxIterations instanceof Error) return maxIterations;
   const commandTimeoutMs = optionalPositiveInteger(p, "commandTimeoutMs");
@@ -1285,10 +1295,12 @@ function parseLoopRunParams(
     ...(goalCommand !== undefined ? { goalCommand } : {}),
     ...(archiveCompletedTasks !== undefined ? { archiveCompletedTasks } : {}),
     ...(useWorktree !== undefined ? { useWorktree } : {}),
+    ...(enforceRoleSeparation !== undefined ? { enforceRoleSeparation } : {}),
     ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
     ...(sources !== undefined ? { sources } : {}),
     ...(verifyCommands !== undefined ? { verifyCommands } : {}),
     ...(verifierAgentIds !== undefined ? { verifierAgentIds } : {}),
+    ...(artifactVerification !== undefined ? { artifactVerification } : {}),
     ...(maxIterations !== undefined ? { maxIterations } : {}),
     ...(commandTimeoutMs !== undefined ? { commandTimeoutMs } : {}),
     ...(outputLimit !== undefined ? { outputLimit } : {}),
@@ -1398,6 +1410,29 @@ function optionalStringArray(params: Record<string, unknown>, key: string): stri
     return new Error(`params.${key} must be an array of strings`);
   }
   return value;
+}
+
+function optionalArtifactVerification(
+  params: Record<string, unknown>,
+  key: string,
+): ArtifactVerificationOptions | undefined | Error {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  if (value === null || Array.isArray(value) || typeof value !== "object") {
+    return new Error(`${key} must be an object`);
+  }
+  const object = value as Record<string, unknown>;
+  const requireGitDiff = optionalBoolean(object, "requireGitDiff");
+  if (requireGitDiff instanceof Error) return requireGitDiff;
+  const targetPaths = optionalStringArray(object, "targetPaths");
+  if (targetPaths instanceof Error) return targetPaths;
+  const forbiddenPaths = optionalStringArray(object, "forbiddenPaths");
+  if (forbiddenPaths instanceof Error) return forbiddenPaths;
+  return {
+    ...(requireGitDiff !== undefined ? { requireGitDiff } : {}),
+    ...(targetPaths !== undefined ? { targetPaths } : {}),
+    ...(forbiddenPaths !== undefined ? { forbiddenPaths } : {}),
+  };
 }
 
 function optionalPositiveInteger(params: Record<string, unknown>, key: string): number | undefined | Error {

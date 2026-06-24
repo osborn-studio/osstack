@@ -436,6 +436,31 @@ describe("loop CLI", () => {
     }));
   });
 
+  it("reports AGENTS.md and CLAUDE.md drift in loop doctor", async () => {
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "doctor-drift-task",
+      capability: "code.test",
+      prompt: "Exercise instruction drift doctor",
+    }));
+    await writeFile(join(tmp, "AGENTS.md"), "# Canonical instructions\n");
+    await writeFile(join(tmp, "CLAUDE.md"), "# Divergent Claude instructions\n");
+
+    const exitCode = await main(["loop", "doctor", "--workspace", tmp, "--json"]);
+
+    expect(exitCode).toBe(1);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      checks: Array<{ id: string; status: string; summary: string }>;
+    };
+    expect(result.ok).toBe(false);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "agent_instructions",
+      status: "error",
+      summary: expect.stringContaining("drift risk"),
+    }));
+  });
+
   it("reports daemon readiness in loop doctor --daemon", async () => {
     process.env["OSSTACK_HOME"] = join(tmp, "home");
     process.env["OSSTACK_SOCKET"] = `/tmp/osstack-cli-loop-${randomUUID()}.sock`;
