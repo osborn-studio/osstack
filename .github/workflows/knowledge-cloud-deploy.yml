@@ -75,8 +75,12 @@ jobs:
           exit 1
 
       - name: Configure EdgeOne publish token
-        if: ${{ inputs.deploy && steps.edgeone-deploy-credential.outputs.mode == 'cli' && secrets.OSSTACK_KNOWLEDGE_PUBLISH_TOKEN != '' }}
+        if: ${{ inputs.deploy && steps.edgeone-deploy-credential.outputs.mode == 'cli' }}
         run: |
+          if [ -z "$OSSTACK_KNOWLEDGE_PUBLISH_TOKEN" ]; then
+            echo "OSSTACK_KNOWLEDGE_PUBLISH_TOKEN is not configured; skipping EdgeOne publish token env setup." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           npx edgeone@latest makers link -n osstack-knowledge-cloud -t "$EDGEONE_API_TOKEN"
           npx edgeone@latest makers env set OSSTACK_KNOWLEDGE_PUBLISH_TOKEN "$OSSTACK_KNOWLEDGE_PUBLISH_TOKEN" -t "$EDGEONE_API_TOKEN"
           echo "Configured OSSTACK_KNOWLEDGE_PUBLISH_TOKEN for EdgeOne Knowledge Cloud." >> "$GITHUB_STEP_SUMMARY"
