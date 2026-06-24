@@ -1546,7 +1546,11 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   expectAsset(dockerfile, "packages/knowledge-cloud/dist/bin.js", "Dockerfile must start the Knowledge Cloud executable.");
   expectAsset(edgeone, '"provider": "tencent-edgeone"', "EdgeOne config must identify Tencent EdgeOne.");
   expectAsset(edgeone, '"mode": "pages-functions"', "EdgeOne config must use Pages Functions mode.");
+  expectAsset(edgeone, '"default_domain": "osstack-knowledge-cloud-1grycf4k.edgeone.cool"', "EdgeOne config must use the reachable EdgeOne preset domain as the default domain.");
+  expectAsset(edgeone, '"custom_domain": "knowledge.osstack.ai"', "EdgeOne config must record the intended branded custom domain.");
   expectAsset(edgeone, '"healthcheck_path": "/healthz"', "EdgeOne config must healthcheck /healthz.");
+  expectAsset(edgeone, '"kv_bindings"', "EdgeOne config must declare Knowledge Cloud KV bindings.");
+  expectAsset(edgeone, '"osstack_knowledge_kv"', "EdgeOne config must declare the Osstack Knowledge KV binding name.");
   expectAsset(edgeone, '"knowledge-packs/official/**"', "EdgeOne config must include official knowledge packs.");
   expectAsset(edgeone, '"deploy_secret": "EDGEONE_API_TOKEN"', "EdgeOne config must declare the EdgeOne API token secret.");
   expectAsset(edgeone, '"fallback_deploy_secret": "EDGEONE_DEPLOY_HOOK_URL"', "EdgeOne config must retain the deploy hook fallback secret.");
@@ -1556,6 +1560,8 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   expectAsset(edgeOneFunction, 'url.pathname === "/v1/private-packs"', "EdgeOne function must serve /v1/private-packs.");
   expectAsset(edgeOneFunction, 'url.pathname === "/review"', "EdgeOne function must serve the review UI.");
   expectAsset(edgeOneFunction, "OSSTACK_KNOWLEDGE_PUBLISH_TOKEN", "EdgeOne function publish must require an explicit token.");
+  expectAsset(edgeOneFunction, "osstack_knowledge_kv", "EdgeOne function must support the Osstack Knowledge KV binding.");
+  expectAsset(edgeOneFunction, "edgeone-kv", "EdgeOne function must report durable EdgeOne KV publish persistence.");
   expectAsset(render, "dockerfilePath: ./Dockerfile.knowledge-cloud", "Render config must use Dockerfile.knowledge-cloud.");
   expectAsset(render, "healthCheckPath: /healthz", "Render config must healthcheck /healthz.");
   expectAsset(render, "OSSTACK_KNOWLEDGE_AUDIT_LOG", "Render config must persist audit JSONL.");
@@ -1571,12 +1577,15 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   expectAsset(workflow, "edgeone@latest makers deploy . -n osstack-knowledge-cloud", "Knowledge Cloud deploy workflow must use the EdgeOne Makers CLI.");
   expectAsset(workflow, "timeout-minutes: 10", "Knowledge Cloud deploy workflow must bound the EdgeOne CLI step runtime.");
   expectAsset(workflow, "timeout --foreground --kill-after=30s 8m npx edgeone@latest", "Knowledge Cloud deploy workflow must kill a hung EdgeOne CLI deploy command before the job timeout.");
+  expectAsset(workflow, "EDGEONE_DEPLOY_URL=https?://", "Knowledge Cloud deploy workflow must parse the EdgeOne deploy URL from CLI output.");
+  expectAsset(workflow, "deploy_url=$deploy_url", "Knowledge Cloud deploy workflow must expose the EdgeOne deploy URL as a step output.");
+  expectAsset(workflow, "VALIDATION_CLOUD_URL", "Knowledge Cloud deploy workflow must validate against the resolved deployed URL.");
   expectAsset(workflow, "EdgeOne CLI deploy exceeded the 8 minute command timeout", "Knowledge Cloud deploy workflow must explain EdgeOne CLI timeout failures.");
   expectAsset(workflow, "EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must retain the deploy hook fallback.");
   expectAsset(workflow, "OSSTACK_KNOWLEDGE_PUBLISH_TOKEN", "Knowledge Cloud deploy workflow must configure the EdgeOne publish token when available.");
   expectAsset(workflow, "makers link -n osstack-knowledge-cloud", "Knowledge Cloud deploy workflow must link the EdgeOne project before setting env vars.");
   expectAsset(workflow, "makers env set OSSTACK_KNOWLEDGE_PUBLISH_TOKEN", "Knowledge Cloud deploy workflow must set the EdgeOne publish token env var.");
-  expectAsset(workflow, "if: $" + "{{ inputs.cloud_url != '' }}", "Knowledge Cloud deploy workflow must validate cloud_url even during validation-only runs.");
+  expectAsset(workflow, "inputs.cloud_url != '' || steps.edgeone-cli-deploy.outputs.deploy_url != ''", "Knowledge Cloud deploy workflow must validate either an input cloud_url or the EdgeOne CLI deploy URL.");
   expectAsset(workflow, "release doctor --target knowledge-cloud --cloud-url", "Knowledge Cloud deploy workflow must validate deployed health/search/sync/audit/feedback-summary/review-ui gates when cloud_url is supplied.");
   expectAsset(workflow, "knowledge sync --cloud-url", "Knowledge Cloud deploy workflow must sync from the deployed cloud URL when supplied.");
   expectAsset(workflow, "knowledge search \"proof pack checksum\" --cloud-url", "Knowledge Cloud deploy workflow must search the deployed cloud URL when supplied.");

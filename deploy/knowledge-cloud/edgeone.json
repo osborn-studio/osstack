@@ -3,7 +3,8 @@
   "service": "osstack-knowledge-cloud",
   "deployment": {
     "mode": "pages-functions",
-    "default_domain": "knowledge.osstack.ai",
+    "default_domain": "osstack-knowledge-cloud-1grycf4k.edgeone.cool",
+    "custom_domain": "knowledge.osstack.ai",
     "healthcheck_path": "/healthz"
   },
   "runtime": {
