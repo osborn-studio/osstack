@@ -1,5 +1,11 @@
 # @osstack/cli
 
+## 0.8.1
+
+### Patch Changes
+
+- 1cc380a: Allow the Single Binary Release workflow to publish an explicitly labeled ad-hoc macOS archive when Apple notarization secrets are unavailable, while preserving the notarized release path.
+
 ## 0.8.0
 
 ### Patch Changes
