@@ -1519,6 +1519,7 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
     "deploy/knowledge-cloud/edgeone.json",
     "deploy/knowledge-cloud/render.yaml",
     ".github/workflows/knowledge-cloud-deploy.yml",
+    "cloud-functions/[[default]].js",
   ];
   const missing: string[] = [];
   const violations: string[] = [];
@@ -1534,6 +1535,7 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   const edgeone = await readAsset("deploy/knowledge-cloud/edgeone.json");
   const render = await readAsset("deploy/knowledge-cloud/render.yaml");
   const workflow = await readAsset(".github/workflows/knowledge-cloud-deploy.yml");
+  const edgeOneFunction = await readAsset("cloud-functions/[[default]].js");
   const expectAsset = (text: string, needle: string, message: string): void => {
     if (text !== "" && !text.includes(needle)) violations.push(message);
   };
@@ -1547,6 +1549,11 @@ async function releaseKnowledgeCloudDeployAssetsCheck(workspacePath: string): Pr
   expectAsset(edgeone, '"deploy_secret": "EDGEONE_API_TOKEN"', "EdgeOne config must declare the EdgeOne API token secret.");
   expectAsset(edgeone, '"fallback_deploy_secret": "EDGEONE_DEPLOY_HOOK_URL"', "EdgeOne config must retain the deploy hook fallback secret.");
   expectAsset(edgeone, '"project_name": "osstack-knowledge-cloud"', "EdgeOne config must declare the Makers project name.");
+  expectAsset(edgeOneFunction, 'url.pathname === "/v1/search"', "EdgeOne function must serve /v1/search.");
+  expectAsset(edgeOneFunction, 'url.pathname === "/v1/publish"', "EdgeOne function must serve /v1/publish.");
+  expectAsset(edgeOneFunction, 'url.pathname === "/v1/private-packs"', "EdgeOne function must serve /v1/private-packs.");
+  expectAsset(edgeOneFunction, 'url.pathname === "/review"', "EdgeOne function must serve the review UI.");
+  expectAsset(edgeOneFunction, "OSSTACK_KNOWLEDGE_PUBLISH_TOKEN", "EdgeOne function publish must require an explicit token.");
   expectAsset(render, "dockerfilePath: ./Dockerfile.knowledge-cloud", "Render config must use Dockerfile.knowledge-cloud.");
   expectAsset(render, "healthCheckPath: /healthz", "Render config must healthcheck /healthz.");
   expectAsset(render, "OSSTACK_KNOWLEDGE_AUDIT_LOG", "Render config must persist audit JSONL.");

@@ -1,6 +1,8 @@
 import { officialPacks as officialPackManifests } from "./official-packs.js";
 
 const officialPacks = officialPackManifests.map((manifest) => ({ manifest }));
+const publishedOfficialPacks = [];
+const publishedPrivatePacks = [];
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -36,6 +38,120 @@ function packSummary(manifest) {
     source_kind: manifest.source_kind,
     quality_score: manifest.quality_score,
   };
+}
+
+function envValue(key) {
+  const value = globalThis.process?.env?.[key];
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function privateTenantTokens() {
+  const raw = envValue("OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON");
+  if (raw === undefined) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
+    return Object.fromEntries(Object.entries(parsed).filter(([, token]) => typeof token === "string" && token.trim().length > 0));
+  } catch {
+    return {};
+  }
+}
+
+function authorizationToken(request) {
+  const authorization = request.headers.get("authorization") ?? "";
+  return authorization.startsWith("Bearer ") ? authorization.slice("Bearer ".length).trim() : undefined;
+}
+
+function isSafeTenantId(tenantId) {
+  return typeof tenantId === "string" && /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(tenantId);
+}
+
+function isAuthorizedPrivateRequest(request, tenantId) {
+  const token = authorizationToken(request);
+  if (token === undefined) return false;
+  const tenantToken = tenantId === undefined ? undefined : privateTenantTokens()[tenantId];
+  if (typeof tenantToken === "string" && tenantToken.trim().length > 0) return token === tenantToken.trim();
+  const publishToken = envValue("OSSTACK_KNOWLEDGE_PUBLISH_TOKEN");
+  if (publishToken !== undefined && token === publishToken) return true;
+  const globalPrivateToken = envValue("OSSTACK_KNOWLEDGE_PRIVATE_TOKEN");
+  if (globalPrivateToken !== undefined && token === globalPrivateToken) return true;
+  return false;
+}
+
+function isPublishConfigured() {
+  return envValue("OSSTACK_KNOWLEDGE_PUBLISH_TOKEN") !== undefined
+    || envValue("OSSTACK_KNOWLEDGE_PRIVATE_TOKEN") !== undefined
+    || Object.keys(privateTenantTokens()).length > 0;
+}
+
+function validatePublishManifest(value) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return { ok: false, error: "knowledge pack manifest must be an object" };
+  }
+  const requiredStrings = ["id", "version", "name", "license", "source_kind"];
+  for (const key of requiredStrings) {
+    if (typeof value[key] !== "string" || value[key].trim().length === 0) {
+      return { ok: false, error: `knowledge pack ${key} is required` };
+    }
+  }
+  if (!["osstack_native", "processed_mit", "curated_external", "internal"].includes(value.source_kind)) {
+    return { ok: false, error: "knowledge pack source_kind is invalid" };
+  }
+  if (typeof value.quality_score !== "number" || value.quality_score < 0 || value.quality_score > 100) {
+    return { ok: false, error: "knowledge pack quality_score must be between 0 and 100" };
+  }
+  if (!Array.isArray(value.chunks)) return { ok: false, error: "knowledge pack chunks must be an array" };
+  for (const [index, chunk] of value.chunks.entries()) {
+    if (typeof chunk !== "object" || chunk === null || Array.isArray(chunk)) {
+      return { ok: false, error: `knowledge chunk at index ${index} must be an object` };
+    }
+    for (const key of ["chunk_id", "title", "body"]) {
+      if (typeof chunk[key] !== "string" || chunk[key].trim().length === 0) {
+        return { ok: false, error: `knowledge chunk ${index} ${key} is required` };
+      }
+    }
+  }
+  if (value.scope !== undefined && !["official", "team", "project"].includes(value.scope)) {
+    return { ok: false, error: "knowledge pack scope is invalid" };
+  }
+  if (value.tenant_id !== undefined && !isSafeTenantId(value.tenant_id)) {
+    return { ok: false, error: "tenant_id is invalid" };
+  }
+  return { ok: true, manifest: value };
+}
+
+function validatePublishGate(manifest) {
+  const issues = [];
+  const official = manifest.scope === "official";
+  const external = manifest.source_kind === "processed_mit" || manifest.source_kind === "curated_external";
+  if (official && manifest.source_kind === "internal") issues.push({ code: "official_internal_source_kind" });
+  if (official && manifest.quality_score < 80) issues.push({ code: "official_low_quality_score" });
+  if (official && (manifest.taxonomy ?? []).length === 0) issues.push({ code: "official_missing_taxonomy" });
+  if (official && typeof manifest.last_reviewed_at !== "string") issues.push({ code: "official_missing_review" });
+  if (official && manifest.review?.status !== "approved") issues.push({ code: "official_review_not_approved" });
+  if ((official || external) && (manifest.source_attribution ?? []).length === 0) issues.push({ code: "missing_source_attribution" });
+  if ((official || external) && (manifest.source_provenance ?? []).length === 0) issues.push({ code: "missing_source_provenance" });
+  if (official && manifest.chunks.length === 0) issues.push({ code: "official_empty_chunks" });
+  return { ok: issues.length === 0, issues };
+}
+
+function packField(body) {
+  const candidate = typeof body === "object" && body !== null && "pack" in body ? body.pack : body;
+  return typeof candidate === "object" && candidate !== null && "manifest" in candidate ? candidate.manifest : candidate;
+}
+
+function isPrivateKnowledgePack(manifest) {
+  return manifest.scope === "team" || manifest.scope === "project" || manifest.tenant_id !== undefined;
+}
+
+function upsertPack(packs, pack) {
+  const index = packs.findIndex((candidate) => candidate.manifest.id === pack.manifest.id);
+  if (index >= 0) packs[index] = pack;
+  else packs.push(pack);
+}
+
+function tenantPrivatePacks(tenantId) {
+  return publishedPrivatePacks.filter((pack) => pack.manifest.tenant_id === tenantId);
 }
 
 function reviewStatus(manifest) {
@@ -183,7 +299,7 @@ function searchPacks(packs, query, limit) {
 
 export default async function onRequest({ request }) {
   const url = new URL(request.url);
-  const packs = officialPacks;
+  const packs = [...officialPacks, ...publishedOfficialPacks];
 
   if (request.method === "GET" && url.pathname === "/healthz") {
     return json({
@@ -191,7 +307,7 @@ export default async function onRequest({ request }) {
       service: "osstack-knowledge-cloud",
       runtime: "edgeone-cloud-functions",
       packs: packs.length,
-      private_packs: 0,
+      private_packs: publishedPrivatePacks.length,
     });
   }
 
@@ -217,9 +333,53 @@ export default async function onRequest({ request }) {
     const query = typeof body.query === "string" ? body.query.trim() : "";
     if (query.length === 0) return json({ error: "query is required" }, 400);
     const limit = Number.isFinite(body.limit) ? Math.max(1, Math.min(50, Math.trunc(body.limit))) : 5;
+    const tenantId = typeof body.tenant_id === "string" ? body.tenant_id : undefined;
+    if (tenantId !== undefined && !isSafeTenantId(tenantId)) return json({ error: "tenant_id is invalid" }, 400);
+    const visiblePacks = tenantId !== undefined && isAuthorizedPrivateRequest(request, tenantId)
+      ? [...packs, ...tenantPrivatePacks(tenantId)]
+      : packs;
     return json({
-      packs: packs.map((pack) => packSummary(pack.manifest)),
-      results: searchPacks(packs, query, limit),
+      packs: visiblePacks.map((pack) => packSummary(pack.manifest)),
+      results: searchPacks(visiblePacks, query, limit),
+    });
+  }
+
+  if (request.method === "POST" && url.pathname === "/v1/private-packs") {
+    const body = await readJson(request);
+    const tenantId = typeof body.tenant_id === "string" ? body.tenant_id : undefined;
+    if (!isSafeTenantId(tenantId)) return json({ error: "private knowledge packs require tenant_id" }, 400);
+    if (!isAuthorizedPrivateRequest(request, tenantId)) return json({ error: "private knowledge packs require authorization" }, 401);
+    return json({ packs: tenantPrivatePacks(tenantId).map((pack) => pack.manifest) });
+  }
+
+  if (request.method === "POST" && url.pathname === "/v1/publish") {
+    if (!isPublishConfigured()) return json({ error: "knowledge publish is not configured" }, 503);
+    const body = await readJson(request);
+    const validation = validatePublishManifest(packField(body));
+    if (!validation.ok) return json({ error: validation.error }, 400);
+    const manifest = validation.manifest;
+    const gate = validatePublishGate(manifest);
+    if (!gate.ok) return json({ ok: false, issues: gate.issues }, 400);
+    const privatePack = isPrivateKnowledgePack(manifest);
+    if (privatePack) {
+      if (!isSafeTenantId(manifest.tenant_id)) return json({ error: "private knowledge publish requires tenant_id" }, 400);
+      if (!isAuthorizedPrivateRequest(request, manifest.tenant_id)) return json({ error: "private knowledge publish requires authorization" }, 401);
+      upsertPack(publishedPrivatePacks, { manifest });
+      return json({
+        ok: true,
+        private: true,
+        tenant_id: manifest.tenant_id,
+        pack: packSummary(manifest),
+        persistence: "edgeone-function-memory",
+      });
+    }
+    if (!isAuthorizedPrivateRequest(request)) return json({ error: "official knowledge publish requires authorization" }, 401);
+    upsertPack(publishedOfficialPacks, { manifest });
+    return json({
+      ok: true,
+      private: false,
+      pack: packSummary(manifest),
+      persistence: "edgeone-function-memory",
     });
   }
 
