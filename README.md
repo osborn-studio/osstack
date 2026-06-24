@@ -364,8 +364,11 @@ Design defaults:
 
 - The daemon listens on a Unix socket.
 - State is stored in SQLite.
-- Model API keys are not stored by default.
-- Subprocess adapters can reuse already logged-in CLIs.
+- osstack does not store model API keys by default.
+- The default adapter model is subprocess/login-reuse: subprocess adapters can
+  reuse already logged-in CLIs such as Codex CLI or Claude Code.
+- SDK/API-key adapters are explicit opt-in paths, intended for controlled
+  automation where the operator has chosen to provide credentials.
 - Cloud knowledge features can be disabled or allowed to fail open.
 - Proof generation redacts common secret patterns.
 

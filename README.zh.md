@@ -397,7 +397,8 @@ osstack 不要求你相信一段聊天记录。它会记录工程证据：
 - daemon 监听 Unix socket；
 - 状态存储在 SQLite；
 - 默认不保存模型 API key；
-- subprocess adapter 可以复用用户已经登录的 CLI；
+- 默认 adapter 模型是 subprocess/login-reuse：subprocess adapter 可以复用用户已经登录的 CLI；
+- SDK/API-key adapter 属于明确 opt-in paths，适合用户主动选择提供凭据的受控自动化场景；
 - 云端知识能力可以关闭，也可以 fail-open 到本地；
 - proof 生成会 redaction 常见 secret pattern。
 
