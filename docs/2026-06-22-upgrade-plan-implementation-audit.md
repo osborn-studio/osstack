@@ -3,7 +3,7 @@
 > 日期：2026-06-24
 > 目标文档：`/Users/gilbertchen/Documents/CODE/agentsteam/osstack/docs/2026-06-22-osstack-upgrade-development-plan.md`
 > 审计分支：`main`
-> 审计 HEAD：`fec9301 ci: validate knowledge cloud url without deploy (#86)`
+> 审计 HEAD：`88a1b90 ci: fallback to edgeone deploy hook after cli failure (#94)`
 
 ## 1. 审计结论
 
@@ -24,7 +24,7 @@
 - 日常 PR CI 已拆到 `ubuntu-latest`，macOS single-binary release-candidate smoke 已拆到独立 `.github/workflows/macos-release-candidate.yml`，正式 release workflow 仍保留 macOS archive candidate artifact。
 - 可选单文件分发已有 portable CLI bundle smoke、Bun single executable smoke、本地 release asset manifest/checksum/SPDX SBOM、ad-hoc codesign 验证、`.tar.gz` release archive smoke、single-binary `release doctor` readiness，并已接入 CI/release workflow candidate artifact 与 tag/workflow_dispatch GitHub Release 上传路径；发布级 Developer ID 签名/公证/跨机器验证尚未完成。
 - Cockpit 当前是 dashboard/web cockpit + CLI summary + raw-mode terminal workbench + 受控 action 执行，不是 Ink/blessed 组件库 TUI。
-- Knowledge Cloud 已有本地 ingestion/rewrite/review、云端 `/v1/publish` 门禁、official/tenant `/v1/review/queue` 审核队列、official 只读 `/review` 审核 UI、文件型 published-pack storage、tenant-scoped audit JSONL 与 `/v1/audit` 查询切片，并已上线 EdgeOne；完整审核操作流、Postgres/object storage/vector index、正式云端运营流水线仍未完成。
+- Knowledge Cloud 已有本地 ingestion/rewrite/review、CLI `knowledge publish`、云端 `/v1/publish` 门禁、official/tenant `/v1/review/queue` 审核队列、official 只读 `/review` 审核 UI、文件型 published-pack storage、tenant-scoped audit JSONL 与 `/v1/audit` 查询切片，并已上线 EdgeOne；完整审核操作流、Postgres/object storage/vector index、正式云端运营流水线仍未完成。
 
 ## 2. Phase 完成矩阵
 
@@ -36,7 +36,7 @@
 | Phase 3 Governed Run | Run Spec + governance verifier + PR evidence | 基本完成 | `docs/specs/OSSTACK_RUN_SPEC_V1.md`、`docs/specs/CONFORMANCE_MATRIX.md`、schemas/test vectors、`governance-cli.test.ts`、`pr-cli.test.ts` | 继续随新 MUST 条款补 runtime/schema/vector 覆盖 |
 | Phase 4 Learning Control Plane | Pitfall KB + Knowledge bootstrap + agent scorecard | 基本完成 | `lessons-cli.test.ts`、`knowledge-cli.test.ts`、`agent-scorecard-cli.test.ts` | 继续用更多真实项目运行样本校准 lesson family 与召回精度 |
 | Phase 5 Product Surface | Cockpit/TUI + examples/guide/doctor + i18n + checkpoint | 基本完成，UI 可继续精修 | `dashboard.ts`、`dashboard-cli.test.ts`、`cockpit-tui.test.ts`、`product-entry-cli.test.ts`、`i18n-cli.test.ts`、`proof-cli.test.ts`、`compliance-cli.test.ts`、`checkpoint-cli.test.ts`、terminal cockpit Overview/Kanban/Evidence/Knowledge/Next Actions sections、`cockpit tui --fullscreen --interactive` raw-mode navigation、`cockpit tui --action N --execute-action` controlled execution | 还未采用 Ink/blessed 组件库；更深层报告模板/运营内容本地化仍可扩展 |
-| Phase 6 Trust/Compliance/Knowledge Cloud | compliance packs + enterprise proof views + Osstack Knowledge Cloud | 主路径上线，生产运营深化中 | `compliance-packs/*`、`compliance-cli.test.ts`、`proof --compliance-pack` proof artifacts、`proof view`、`knowledge-cloud` package、`/v1/publish` gate、`/v1/review/queue` official/tenant review queue、`/review` official read-only review UI、`/v1/audit` tenant audit events、deploy assets、local smoke、EdgeOne production URL `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool`、`release doctor --target primary --cloud-url <EdgeOne URL>` ok、生产云端 sync 10 packs、retrieval eval 42/42、生产云端 search/audit/feedback-summary ok、cached `knowledge list` 与 `knowledge sources --internal` provenance、Knowledge Cloud Deploy production run `28066256927` 执行线上 URL 验收，并且 production `/review?status=approved` 返回 10 个 approved official packs | 生产 ingestion pipeline、完整审核操作 UI、tenant auth/storage/vector index |
+| Phase 6 Trust/Compliance/Knowledge Cloud | compliance packs + enterprise proof views + Osstack Knowledge Cloud | 主路径上线，生产运营深化中 | `compliance-packs/*`、`compliance-cli.test.ts`、`proof --compliance-pack` proof artifacts、`proof view`、`knowledge-cloud` package、CLI `knowledge publish`、`/v1/publish` gate、`/v1/review/queue` official/tenant review queue、`/review` official read-only review UI、`/v1/audit` tenant audit events、deploy assets、local smoke、EdgeOne production URL `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool`、`release doctor --target primary --cloud-url <EdgeOne URL>` ok、生产云端 sync 10 packs、retrieval eval 42/42、生产云端 search/audit/feedback-summary ok、cached `knowledge list` 与 `knowledge sources --internal` provenance、Knowledge Cloud Deploy production run `28066256927` 执行线上 URL 验收，并且 production `/review?status=approved` 返回 10 个 approved official packs | 生产 ingestion pipeline、完整审核操作 UI、tenant auth/storage/vector index |
 
 ## 3. 任务级状态
 
@@ -406,7 +406,8 @@
 - `osstack-knowledge-cloud` 支持 `--audit-log` / `OSSTACK_KNOWLEDGE_AUDIT_LOG` 将 publish、private pack access、search、feedback 审计事件追加写入 JSONL，并在启动时预加载既有 JSONL；`/v1/audit` 可查询 official audit events，tenant audit events 需要对应 tenant token，支持 `action` / `status` / `limit` 过滤，避免公共查询泄漏租户事件并让运营排障可控；EdgeOne/Render 部署配置默认使用 `/data/audit/knowledge-cloud-audit.jsonl`。
 - Knowledge search result 会返回 `matched_terms`，本地检索和云端检索 validator 均已覆盖，prompt snippet 会携带命中词，便于 proof/report 解释 chunk 为什么被检索命中。
 - 本地与云端共用的 `searchKnowledgePacks` 已从简单词频排序升级为 BM25-style 排序：考虑 query term 文档频率、chunk 长度归一化和 pack quality score，并覆盖“稀有词完整命中优先于重复通用词”的回归测试。
-- CLI 支持 cloud login/sync/search/import/ingest/pin/feedback/feedback-summary/review-queue/sources。
+- CLI 支持 cloud login/sync/search/import/ingest/publish/pin/feedback/feedback-summary/review-queue/sources。
+- CLI `knowledge publish --pack P --cloud-url URL --tenant T` 会把本地 team/project pack 发布到 Knowledge Cloud `/v1/publish`，复用本地登录配置或显式 token；发布请求会在不改写本地文件的前提下附加 `tenant_id`，使团队/项目知识包进入云端私有租户边界。`knowledge-cli.test.ts` 已覆盖 team pack 发布、bearer token、tenant 注入和云端响应解析。
 - `knowledge list` 与 `knowledge sources --internal` 已支持无显式 `--pack` / `--official` 时读取 `knowledge sync` 写入的本地缓存；sync -> list -> search、sync -> list -> sources -> search provenance 审计闭环已进入 CI smoke。
 - 本地 smoke 验证 official/private packs、sync、search、feedback、official/tenant review queue，并在真实本地服务上调用构建后的 `osstack release doctor --target knowledge-cloud --cloud-url <local-url> --json`，确认 health、search、sync、audit、feedback-summary 部署 handoff gates 通过且 public audit 不泄漏 tenant event。
 - deploy assets 存在：Dockerfile、EdgeOne、Render、GitHub Actions；`release doctor --target knowledge-cloud` 已接入 `knowledge_cloud_deploy_assets` 静态 preflight，检查 Dockerfile、EdgeOne/Render healthcheck、audit JSONL 持久化路径、feedback JSONL 持久化路径、published-pack storage 路径、workflow smoke、Docker build、`EDGEONE_API_TOKEN` gate、EdgeOne Makers CLI 命令、deploy run `cancel-in-progress`、EdgeOne CLI timeout，以及 validation-only 场景下 `cloud_url` 必须触发线上 URL 验收；传入 `--cloud-url <url>` 时还会访问 `<url>/healthz` 并要求 HTTP 2xx、`ok=true`、`service=osstack-knowledge-cloud`，用默认 `proof pack checksum` 查询 `<url>/v1/search` 并要求至少 1 条结果，同时对 `<url>/v1/audit` 执行 public audit smoke，要求返回 JSON events 数组且不能泄漏 tenant event；`release plan` 的 Knowledge Cloud validation commands 会列出 `pnpm smoke:knowledge-cloud:deploy`，`smoke:release-plan` 会检查 full release runbook 中该命令与部署后云端验收命令都存在，post-release validation commands 默认使用生产 URL `https://knowledge.osstack.ai`，如果传入 `--cloud-url <url>` 则复用该 URL 执行 `release doctor`、`knowledge sync` 和 `knowledge search`。
@@ -418,7 +419,7 @@
 未完成：
 
 - 文件型 published-pack storage 已实现并被 service/bin/smoke 覆盖；Postgres/object storage/vector index 未实现；BM25-style 本地/云端共享排序已作为 MVP 检索排序落地。
-- ingestion pipeline 仍是本地 MVP，不是完整云端 source intake -> rewrite -> review -> publish 运营系统；当前已有本地 source intake、Osstack rewrite、approved review metadata、云端 `/v1/review/queue` 队列查询、official `/review` 只读 UI 与云端 `/v1/publish` gate，可检查 Osstack voice、provenance、source_refs、quality/review/taxonomy 与 processed license label，并把通过审核的包加入当前 Cloud 进程的 official/private 检索范围。
+- ingestion pipeline 仍是本地 MVP，不是完整云端 source intake -> rewrite -> review -> publish 运营系统；当前已有本地 source intake、Osstack rewrite、approved review metadata、CLI `knowledge publish`、云端 `/v1/review/queue` 队列查询、official `/review` 只读 UI 与云端 `/v1/publish` gate，可检查 Osstack voice、provenance、source_refs、quality/review/taxonomy 与 processed license label，并把通过审核的包加入当前 Cloud 进程的 official/private 检索范围。
 - tenant auth/permissions 已有 global token、tenant-bound token、explicit tenant scope 的本地 HTTP gate，以及 tenant-scoped audit event 查询/落盘；但仍不是完整生产级账号、组织、角色、审计日志权限模型。
 
 ## 4. 当前最高优先级 Backlog
