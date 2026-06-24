@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -90,6 +90,47 @@ try {
     throw new Error(`public publish rejection must explain explicit ad-hoc release option: ${blockedOutput}`);
   }
 
+  const fakeGhPath = join(tempRoot, "gh");
+  const fakeGhLog = join(tempRoot, "fake-gh.log");
+  await writeFile(fakeGhPath, [
+    "#!/usr/bin/env bash",
+    "set -euo pipefail",
+    `printf '%s\\n' "$*" >> ${JSON.stringify(fakeGhLog)}`,
+    "if [ \"$1 $2\" = \"release view\" ]; then exit 1; fi",
+    "exit 0",
+    "",
+  ].join("\n"));
+  await chmod(fakeGhPath, 0o755);
+  const adHocPublish = JSON.parse(run(process.execPath, [
+    "scripts/publish-single-binary-release.mjs",
+    "--archive-manifest",
+    packed.archive_manifest_path,
+    "--tag",
+    `v${build.version}-adhoc-publish-smoke`,
+    "--repo",
+    "gilosbornhello/osstack",
+    "--allow-ad-hoc",
+    "--json",
+  ], {
+    cwd: root,
+    capture: true,
+    env: { ...process.env, PATH: `${tempRoot}:${process.env.PATH ?? ""}` },
+  }).stdout);
+  if (adHocPublish.github_release_uploaded !== true || adHocPublish.release_channel !== "public-ad-hoc") {
+    throw new Error(`ad-hoc publish must claim public-ad-hoc upload after fake gh succeeds: ${JSON.stringify(adHocPublish)}`);
+  }
+  const uploadedArchiveManifest = JSON.parse(await readFile(packed.archive_manifest_path, "utf-8"));
+  if (
+    uploadedArchiveManifest.publishing?.github_release_uploaded !== true
+    || uploadedArchiveManifest.publishing?.release_channel !== "public-ad-hoc"
+  ) {
+    throw new Error(`ad-hoc publish must persist publishing metadata before upload: ${JSON.stringify(uploadedArchiveManifest.publishing)}`);
+  }
+  const fakeGhCalls = await readFile(fakeGhLog, "utf-8");
+  if (!fakeGhCalls.includes("release upload") || !fakeGhCalls.includes("release create")) {
+    throw new Error(`fake gh must observe release create and upload calls: ${fakeGhCalls}`);
+  }
+
   console.log(JSON.stringify({
     ok: true,
     kind: "single-binary-release-publish-smoke",
@@ -98,7 +139,8 @@ try {
     repo: publish.repo,
     assets: publish.assets,
     ad_hoc_dry_run: adHocDryRun.release_channel,
-    github_release_uploaded: publish.github_release_uploaded,
+    ad_hoc_publish: adHocPublish.release_channel,
+    github_release_uploaded: adHocPublish.github_release_uploaded,
   }, null, 2));
 } finally {
   if (process.env["OSSTACK_KEEP_BINARY_RELEASE_PUBLISH_SMOKE"] !== "1") {
@@ -111,6 +153,7 @@ try {
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd,
+    env: options.env,
     encoding: "utf-8",
     stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit",
   });
