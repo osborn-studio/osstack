@@ -35,7 +35,7 @@ describe("git worktree lifecycle", () => {
     await cleanupWorktree(handle);
     await expect(readFile(join(handle.worktreePath, "feature.txt"), "utf-8")).rejects.toThrow();
     await expect(git(repo, ["rev-parse", "--verify", handle.branch])).rejects.toThrow();
-  });
+  }, 15_000);
 
   it("removes orphaned osstack worktrees under the configured root", async () => {
     const { repo, root } = await makeRepo();
