@@ -3,6 +3,9 @@ import { officialPacks as officialPackManifests } from "./official-packs.js";
 const officialPacks = officialPackManifests.map((manifest) => ({ manifest }));
 const publishedOfficialPacks = [];
 const publishedPrivatePacks = [];
+const KNOWLEDGE_KV_BINDING = "osstack_knowledge_kv";
+const OFFICIAL_KV_PREFIX = "osstack_official_pack_";
+const PRIVATE_KV_PREFIX = "osstack_private_pack_";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -40,13 +43,15 @@ function packSummary(manifest) {
   };
 }
 
-function envValue(key) {
+function envValue(key, env = {}) {
+  const edgeValue = env?.[key];
+  if (typeof edgeValue === "string" && edgeValue.trim().length > 0) return edgeValue.trim();
   const value = globalThis.process?.env?.[key];
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
 
-function privateTenantTokens() {
-  const raw = envValue("OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON");
+function privateTenantTokens(env = {}) {
+  const raw = envValue("OSSTACK_KNOWLEDGE_PRIVATE_TENANT_TOKENS_JSON", env);
   if (raw === undefined) return {};
   try {
     const parsed = JSON.parse(raw);
@@ -66,22 +71,22 @@ function isSafeTenantId(tenantId) {
   return typeof tenantId === "string" && /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(tenantId);
 }
 
-function isAuthorizedPrivateRequest(request, tenantId) {
+function isAuthorizedPrivateRequest(request, tenantId, env = {}) {
   const token = authorizationToken(request);
   if (token === undefined) return false;
-  const tenantToken = tenantId === undefined ? undefined : privateTenantTokens()[tenantId];
+  const tenantToken = tenantId === undefined ? undefined : privateTenantTokens(env)[tenantId];
   if (typeof tenantToken === "string" && tenantToken.trim().length > 0) return token === tenantToken.trim();
-  const publishToken = envValue("OSSTACK_KNOWLEDGE_PUBLISH_TOKEN");
+  const publishToken = envValue("OSSTACK_KNOWLEDGE_PUBLISH_TOKEN", env);
   if (publishToken !== undefined && token === publishToken) return true;
-  const globalPrivateToken = envValue("OSSTACK_KNOWLEDGE_PRIVATE_TOKEN");
+  const globalPrivateToken = envValue("OSSTACK_KNOWLEDGE_PRIVATE_TOKEN", env);
   if (globalPrivateToken !== undefined && token === globalPrivateToken) return true;
   return false;
 }
 
-function isPublishConfigured() {
-  return envValue("OSSTACK_KNOWLEDGE_PUBLISH_TOKEN") !== undefined
-    || envValue("OSSTACK_KNOWLEDGE_PRIVATE_TOKEN") !== undefined
-    || Object.keys(privateTenantTokens()).length > 0;
+function isPublishConfigured(env = {}) {
+  return envValue("OSSTACK_KNOWLEDGE_PUBLISH_TOKEN", env) !== undefined
+    || envValue("OSSTACK_KNOWLEDGE_PRIVATE_TOKEN", env) !== undefined
+    || Object.keys(privateTenantTokens(env)).length > 0;
 }
 
 function validatePublishManifest(value) {
@@ -150,8 +155,108 @@ function upsertPack(packs, pack) {
   else packs.push(pack);
 }
 
-function tenantPrivatePacks(tenantId) {
-  return publishedPrivatePacks.filter((pack) => pack.manifest.tenant_id === tenantId);
+function dedupePacks(packs) {
+  const byId = new Map();
+  for (const pack of packs) byId.set(pack.manifest.id, pack);
+  return Array.from(byId.values());
+}
+
+function knowledgeKv(env = {}) {
+  const candidates = [
+    env?.[KNOWLEDGE_KV_BINDING],
+    env?.OSSTACK_KNOWLEDGE_KV,
+    globalThis[KNOWLEDGE_KV_BINDING],
+    globalThis.OSSTACK_KNOWLEDGE_KV,
+  ];
+  return candidates.find((candidate) => (
+    typeof candidate === "object"
+    && candidate !== null
+    && typeof candidate.put === "function"
+    && typeof candidate.get === "function"
+    && typeof candidate.list === "function"
+  ));
+}
+
+function hexSegment(value) {
+  return Array.from(new TextEncoder().encode(String(value)))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function officialPackKey(manifest) {
+  return `${OFFICIAL_KV_PREFIX}${hexSegment(manifest.id)}`;
+}
+
+function privatePackKey(manifest) {
+  return `${PRIVATE_KV_PREFIX}${hexSegment(manifest.tenant_id)}_${hexSegment(manifest.id)}`;
+}
+
+async function kvPutJson(kv, key, value) {
+  await kv.put(key, JSON.stringify(value));
+}
+
+async function kvGetJson(kv, key) {
+  const parsed = await kv.get(key, { type: "json" });
+  if (typeof parsed === "object" && parsed !== null) return parsed;
+  if (typeof parsed === "string" && parsed.trim().length > 0) return JSON.parse(parsed);
+  return undefined;
+}
+
+async function kvListKeys(kv, prefix) {
+  const keys = [];
+  let cursor;
+  do {
+    const listed = await kv.list({ prefix, limit: 256, ...(cursor === undefined || cursor === "" ? {} : { cursor }) });
+    const pageKeys = Array.isArray(listed?.keys) ? listed.keys : [];
+    for (const key of pageKeys) {
+      if (typeof key === "string") keys.push(key);
+      else if (typeof key?.name === "string") keys.push(key.name);
+      else if (typeof key?.key === "string") keys.push(key.key);
+    }
+    cursor = typeof listed?.cursor === "string" && listed.cursor.length > 0 ? listed.cursor : undefined;
+  } while (cursor !== undefined);
+  return keys;
+}
+
+async function kvPacksByPrefix(kv, prefix) {
+  if (kv === undefined) return [];
+  try {
+    const packs = [];
+    for (const key of await kvListKeys(kv, prefix)) {
+      const manifest = await kvGetJson(kv, key);
+      const validation = validatePublishManifest(manifest);
+      if (validation.ok) packs.push({ manifest: validation.manifest });
+    }
+    return packs;
+  } catch {
+    return [];
+  }
+}
+
+async function publicPacks(kv) {
+  return dedupePacks([
+    ...officialPacks,
+    ...publishedOfficialPacks,
+    ...await kvPacksByPrefix(kv, OFFICIAL_KV_PREFIX),
+  ]);
+}
+
+async function allPrivatePacks(kv) {
+  return dedupePacks([
+    ...publishedPrivatePacks,
+    ...await kvPacksByPrefix(kv, PRIVATE_KV_PREFIX),
+  ]);
+}
+
+async function tenantPrivatePacks(tenantId, kv) {
+  const privatePacks = await allPrivatePacks(kv);
+  return privatePacks.filter((pack) => pack.manifest.tenant_id === tenantId);
+}
+
+async function persistPublishedPack(kv, manifest, privatePack) {
+  if (kv === undefined) return "edgeone-function-memory";
+  await kvPutJson(kv, privatePack ? privatePackKey(manifest) : officialPackKey(manifest), manifest);
+  return "edgeone-kv";
 }
 
 function reviewStatus(manifest) {
@@ -297,17 +402,21 @@ function searchPacks(packs, query, limit) {
     .slice(0, limit);
 }
 
-export default async function onRequest({ request }) {
+export default async function onRequest({ request, env = {} }) {
   const url = new URL(request.url);
-  const packs = [...officialPacks, ...publishedOfficialPacks];
+  const kv = knowledgeKv(env);
+  const packs = await publicPacks(kv);
 
   if (request.method === "GET" && url.pathname === "/healthz") {
+    const privatePacks = await allPrivatePacks(kv);
     return json({
       ok: true,
       service: "osstack-knowledge-cloud",
       runtime: "edgeone-cloud-functions",
       packs: packs.length,
-      private_packs: publishedPrivatePacks.length,
+      private_packs: privatePacks.length,
+      publish_storage: kv === undefined ? "edgeone-function-memory" : "edgeone-kv",
+      kv_binding: kv === undefined ? "missing" : KNOWLEDGE_KV_BINDING,
     });
   }
 
@@ -335,8 +444,8 @@ export default async function onRequest({ request }) {
     const limit = Number.isFinite(body.limit) ? Math.max(1, Math.min(50, Math.trunc(body.limit))) : 5;
     const tenantId = typeof body.tenant_id === "string" ? body.tenant_id : undefined;
     if (tenantId !== undefined && !isSafeTenantId(tenantId)) return json({ error: "tenant_id is invalid" }, 400);
-    const visiblePacks = tenantId !== undefined && isAuthorizedPrivateRequest(request, tenantId)
-      ? [...packs, ...tenantPrivatePacks(tenantId)]
+    const visiblePacks = tenantId !== undefined && isAuthorizedPrivateRequest(request, tenantId, env)
+      ? dedupePacks([...packs, ...await tenantPrivatePacks(tenantId, kv)])
       : packs;
     return json({
       packs: visiblePacks.map((pack) => packSummary(pack.manifest)),
@@ -348,12 +457,12 @@ export default async function onRequest({ request }) {
     const body = await readJson(request);
     const tenantId = typeof body.tenant_id === "string" ? body.tenant_id : undefined;
     if (!isSafeTenantId(tenantId)) return json({ error: "private knowledge packs require tenant_id" }, 400);
-    if (!isAuthorizedPrivateRequest(request, tenantId)) return json({ error: "private knowledge packs require authorization" }, 401);
-    return json({ packs: tenantPrivatePacks(tenantId).map((pack) => pack.manifest) });
+    if (!isAuthorizedPrivateRequest(request, tenantId, env)) return json({ error: "private knowledge packs require authorization" }, 401);
+    return json({ packs: (await tenantPrivatePacks(tenantId, kv)).map((pack) => pack.manifest) });
   }
 
   if (request.method === "POST" && url.pathname === "/v1/publish") {
-    if (!isPublishConfigured()) return json({ error: "knowledge publish is not configured" }, 503);
+    if (!isPublishConfigured(env)) return json({ error: "knowledge publish is not configured" }, 503);
     const body = await readJson(request);
     const validation = validatePublishManifest(packField(body));
     if (!validation.ok) return json({ error: validation.error }, 400);
@@ -363,23 +472,25 @@ export default async function onRequest({ request }) {
     const privatePack = isPrivateKnowledgePack(manifest);
     if (privatePack) {
       if (!isSafeTenantId(manifest.tenant_id)) return json({ error: "private knowledge publish requires tenant_id" }, 400);
-      if (!isAuthorizedPrivateRequest(request, manifest.tenant_id)) return json({ error: "private knowledge publish requires authorization" }, 401);
+      if (!isAuthorizedPrivateRequest(request, manifest.tenant_id, env)) return json({ error: "private knowledge publish requires authorization" }, 401);
+      const persistence = await persistPublishedPack(kv, manifest, true);
       upsertPack(publishedPrivatePacks, { manifest });
       return json({
         ok: true,
         private: true,
         tenant_id: manifest.tenant_id,
         pack: packSummary(manifest),
-        persistence: "edgeone-function-memory",
+        persistence,
       });
     }
-    if (!isAuthorizedPrivateRequest(request)) return json({ error: "official knowledge publish requires authorization" }, 401);
+    if (!isAuthorizedPrivateRequest(request, undefined, env)) return json({ error: "official knowledge publish requires authorization" }, 401);
+    const persistence = await persistPublishedPack(kv, manifest, false);
     upsertPack(publishedOfficialPacks, { manifest });
     return json({
       ok: true,
       private: false,
       pack: packSummary(manifest),
-      persistence: "edgeone-function-memory",
+      persistence,
     });
   }
 

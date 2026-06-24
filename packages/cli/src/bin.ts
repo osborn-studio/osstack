@@ -1016,6 +1016,7 @@ interface EdgeOneSetupSummary {
   fallback_deploy_secret?: string;
   project_name: string;
   environment: Record<string, string>;
+  kv_bindings: string[];
   include_files: string[];
   console_checklist: string[];
   github_commands: string[];
@@ -3926,12 +3927,14 @@ async function createEdgeOneSetupSummary(
     ...(manifest.fallback_deploy_secret === undefined ? {} : { fallback_deploy_secret: manifest.fallback_deploy_secret }),
     project_name: manifest.project_name,
     environment: manifest.environment,
+    kv_bindings: manifest.kv_bindings,
     include_files: manifest.include_files,
     console_checklist: [
       "Create an EdgeOne Pages project connected to gilosbornhello/osstack.",
       "Configure the EdgeOne project to build from main.",
       `Use ${relative(assetRoot, manifestPath)} as the source of truth for runtime, healthcheck, storage paths, and official pack include paths.`,
       ...Object.entries(manifest.environment).map(([key, value]) => `Set EdgeOne runtime env ${key}=${value}.`),
+      ...manifest.kv_bindings.map((binding) => `Create or select an EdgeOne KV namespace and bind it to the Function variable ${binding}.`),
       `Create an EdgeOne API token for Makers project ${manifest.project_name} and keep it private.`,
       ...(manifest.fallback_deploy_secret === undefined ? [] : ["Optionally create an EdgeOne deploy hook as a fallback and keep the hook URL private."]),
       `Record the production URL, expected default domain ${manifest.default_domain}, and health path ${manifest.healthcheck_path}.`,
@@ -3964,6 +3967,7 @@ function parseEdgeOneManifest(raw: string, manifestPath: string): {
   fallback_deploy_secret?: string;
   project_name: string;
   environment: Record<string, string>;
+  kv_bindings: string[];
   include_files: string[];
 } {
   const parsed = JSON.parse(raw) as unknown;
@@ -3993,6 +3997,7 @@ function parseEdgeOneManifest(raw: string, manifestPath: string): {
     ...(fallbackDeploySecret === undefined ? {} : { fallback_deploy_secret: fallbackDeploySecret }),
     project_name: projectName,
     environment: stringRecord(environment, "environment", manifestPath),
+    kv_bindings: stringArray(parsed["kv_bindings"] ?? [], "kv_bindings", manifestPath),
     include_files: stringArray(parsed["includeFiles"], "includeFiles", manifestPath),
   };
 }
@@ -4057,6 +4062,10 @@ function renderEdgeOneSetupSummary(setup: EdgeOneSetupSummary): string {
     "## Environment",
     "",
     ...Object.entries(setup.environment).map(([key, value]) => `- \`${key}=${value}\``),
+    "",
+    "## KV Bindings",
+    "",
+    ...(setup.kv_bindings.length === 0 ? ["No KV bindings declared."] : setup.kv_bindings.map((binding) => `- \`${binding}\``)),
     "",
     "## Include Files",
     "",

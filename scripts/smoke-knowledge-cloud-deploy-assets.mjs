@@ -26,6 +26,8 @@ assertIncludes(edgeone, '"OSSTACK_KNOWLEDGE_CLOUD_HOST": "0.0.0.0"', "EdgeOne de
 assertIncludes(edgeone, '"OSSTACK_KNOWLEDGE_AUDIT_LOG": "/data/audit/knowledge-cloud-audit.jsonl"', "EdgeOne deploy config must persist Knowledge Cloud audit JSONL");
 assertIncludes(edgeone, '"OSSTACK_KNOWLEDGE_FEEDBACK_LOG": "/data/feedback/feedback.jsonl"', "EdgeOne deploy config must persist Knowledge Cloud feedback JSONL");
 assertIncludes(edgeone, '"OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR": "/data/published-packs"', "EdgeOne deploy config must persist published Knowledge Cloud packs");
+assertIncludes(edgeone, '"kv_bindings"', "EdgeOne deploy config must declare Knowledge Cloud KV bindings");
+assertIncludes(edgeone, '"osstack_knowledge_kv"', "EdgeOne deploy config must declare the Osstack Knowledge KV binding name");
 assertIncludes(edgeone, '"knowledge-packs/official/**"', "EdgeOne deploy config must include official knowledge packs");
 assertIncludes(edgeone, '"deploy_secret": "EDGEONE_API_TOKEN"', "EdgeOne deploy config must declare the EdgeOne API token secret");
 assertIncludes(edgeone, '"fallback_deploy_secret": "EDGEONE_DEPLOY_HOOK_URL"', "EdgeOne deploy config must retain the deploy hook fallback secret");
@@ -38,6 +40,9 @@ assertIncludes(edgeOneFunction, 'url.pathname === "/v1/publish"', "EdgeOne Cloud
 assertIncludes(edgeOneFunction, 'url.pathname === "/v1/private-packs"', "EdgeOne Cloud Function must serve tenant private packs");
 assertIncludes(edgeOneFunction, 'url.pathname === "/review"', "EdgeOne Cloud Function must serve the review queue UI");
 assertIncludes(edgeOneFunction, "OSSTACK_KNOWLEDGE_PUBLISH_TOKEN", "EdgeOne Cloud Function publish must require an explicit token");
+assertIncludes(edgeOneFunction, "osstack_knowledge_kv", "EdgeOne Cloud Function must support the Osstack Knowledge KV binding");
+assertIncludes(edgeOneFunction, "edgeone-kv", "EdgeOne Cloud Function must report durable EdgeOne KV publish persistence");
+assertIncludes(edgeOneFunction, "function knowledgeKv", "EdgeOne Cloud Function must discover a bound KV namespace");
 assertIncludes(edgeOneFunction, "function searchPacks", "EdgeOne Cloud Function must include self-contained search");
 assertIncludes(edgeOneHealthFunction, "osstack-knowledge-cloud", "EdgeOne /healthz function must return Knowledge Cloud service metadata");
 assertIncludes(edgeOneFunctionPackage, '"type": "module"', "EdgeOne Cloud Function package must opt into ESM");
@@ -156,6 +161,62 @@ const privateSearchBody = await privateSearch.json();
 if (!privateSearchBody.results?.some((result) => result.pack_id === "team/edgeone-smoke")) {
   throw new Error("EdgeOne Cloud Function private search smoke must include the published tenant pack");
 }
+const fakeKv = createFakeKv();
+const kvEnv = {
+  osstack_knowledge_kv: fakeKv,
+  OSSTACK_KNOWLEDGE_PUBLISH_TOKEN: "kst_edgeone_kv_publish_smoke",
+};
+const kvPublish = await edgeOneHandler.default({
+  request: new Request("https://knowledge.osstack.ai/v1/publish", {
+    method: "POST",
+    headers: {
+      authorization: "Bearer kst_edgeone_kv_publish_smoke",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      pack: {
+        id: "team/edgeone-kv-smoke",
+        version: "2026.06.24",
+        name: "Team EdgeOne KV Smoke",
+        license: "Internal",
+        source_kind: "internal",
+        quality_score: 84,
+        scope: "team",
+        tenant_id: "team_kv_alpha",
+        taxonomy: ["operations/edgeone-kv-smoke"],
+        chunks: [{
+          chunk_id: "team-edgeone-kv-smoke-1",
+          title: "Team EdgeOne KV smoke",
+          body: "Durable Osstack Knowledge Cloud packs should remain searchable across EdgeOne function instances.",
+          tags: ["team", "edgeone", "kv"],
+        }],
+      },
+    }),
+  }),
+  env: kvEnv,
+});
+if (kvPublish.status !== 200) throw new Error("EdgeOne Cloud Function KV /v1/publish smoke must return HTTP 200");
+const kvPublishBody = await kvPublish.json();
+if (kvPublishBody.persistence !== "edgeone-kv") {
+  throw new Error(`EdgeOne Cloud Function KV publish must use edgeone-kv persistence: ${JSON.stringify(kvPublishBody)}`);
+}
+const freshEdgeOneHandler = await import(new URL(`../cloud-functions/%5B%5Bdefault%5D%5D.js?kv-smoke=${Date.now()}`, import.meta.url));
+const kvSearch = await freshEdgeOneHandler.default({
+  request: new Request("https://knowledge.osstack.ai/v1/search", {
+    method: "POST",
+    headers: {
+      authorization: "Bearer kst_edgeone_kv_publish_smoke",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ query: "durable function instances", tenant_id: "team_kv_alpha", limit: 5 }),
+  }),
+  env: kvEnv,
+});
+if (kvSearch.status !== 200) throw new Error("EdgeOne Cloud Function KV private search smoke must return HTTP 200");
+const kvSearchBody = await kvSearch.json();
+if (!kvSearchBody.results?.some((result) => result.pack_id === "team/edgeone-kv-smoke")) {
+  throw new Error("EdgeOne Cloud Function KV private search smoke must include the published tenant pack across fresh module state");
+}
 
 const tmp = await mkdtemp(join(tmpdir(), "osstack-knowledge-cloud-deploy-"));
 const catalogPath = join(tmp, "catalog.json");
@@ -202,4 +263,29 @@ async function read(path) {
 
 function assertIncludes(text, needle, message) {
   if (!text.includes(needle)) throw new Error(message);
+}
+
+function createFakeKv() {
+  const values = new Map();
+  return {
+    async put(key, value) {
+      values.set(key, typeof value === "string" ? value : JSON.stringify(value));
+    },
+    async get(key, options) {
+      const value = values.get(key);
+      if (value === undefined) return null;
+      if (options === "json" || options?.type === "json") return JSON.parse(value);
+      return value;
+    },
+    async list(options = {}) {
+      const prefix = typeof options.prefix === "string" ? options.prefix : "";
+      const limit = Number.isFinite(options.limit) ? Math.max(1, Math.trunc(options.limit)) : 256;
+      const keys = Array.from(values.keys())
+        .filter((key) => key.startsWith(prefix))
+        .sort()
+        .slice(0, limit)
+        .map((name) => ({ name }));
+      return { keys, cursor: "" };
+    },
+  };
 }

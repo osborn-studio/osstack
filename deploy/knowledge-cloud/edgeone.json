@@ -18,6 +18,9 @@
     "OSSTACK_KNOWLEDGE_FEEDBACK_LOG": "/data/feedback/feedback.jsonl",
     "OSSTACK_KNOWLEDGE_PUBLISHED_PACK_DIR": "/data/published-packs"
   },
+  "kv_bindings": [
+    "osstack_knowledge_kv"
+  ],
   "includeFiles": [
     "knowledge-packs/official/**",
     "packages/knowledge-cloud/dist/**",
