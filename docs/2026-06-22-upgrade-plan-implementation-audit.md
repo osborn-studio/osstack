@@ -20,7 +20,7 @@
 
 - GitHub push/PR 与 Actions runner 已恢复，PR #85/#86 合并后的 main CI、Release、macOS Release Candidate 均为 green；`release doctor` 仍保留 Actions 检查用于提前发现账户层 runner/billing 类问题。
 - npm publish 和 EdgeOne Knowledge Cloud 主路径已不再是外部阻塞；`release doctor --target primary --cloud-url https://osstack-knowledge-cloud-1grycf4k.edgeone.cool --json` 当前返回 `ok: true`，readiness 中 `npm_publish=true`、`knowledge_cloud_deploy=true`、`single_binary_release=false`。
-- EdgeOne deploy workflow 已补上 `cancel-in-progress`、EdgeOne CLI 8 分钟命令 timeout / 10 分钟步骤 timeout，并已修复 validation-only 不校验 `cloud_url` 的缺口；最新 Knowledge Cloud Deploy production run `28066256927` 在 `deploy=true` 时成功执行 EdgeOne CLI 部署并通过 `Validate deployed Knowledge Cloud URL`；此前 validation-only run `28064311003` 已验证 `deploy=false` 也会检查线上 URL。
+- EdgeOne deploy workflow 已补上 `cancel-in-progress`、EdgeOne CLI 8 分钟命令 timeout / 10 分钟步骤 timeout、CLI 失败时的 deploy hook fallback 标记，并已修复 validation-only 不校验 `cloud_url` 的缺口；最新 Knowledge Cloud Deploy production run `28066256927` 在 `deploy=true` 时成功执行 EdgeOne CLI 部署并通过 `Validate deployed Knowledge Cloud URL`；此前 validation-only run `28064311003` 已验证 `deploy=false` 也会检查线上 URL。
 - 日常 PR CI 已拆到 `ubuntu-latest`，macOS single-binary release-candidate smoke 已拆到独立 `.github/workflows/macos-release-candidate.yml`，正式 release workflow 仍保留 macOS archive candidate artifact。
 - 可选单文件分发已有 portable CLI bundle smoke、Bun single executable smoke、本地 release asset manifest/checksum/SPDX SBOM、ad-hoc codesign 验证、`.tar.gz` release archive smoke、single-binary `release doctor` readiness，并已接入 CI/release workflow candidate artifact 与 tag/workflow_dispatch GitHub Release 上传路径；发布级 Developer ID 签名/公证/跨机器验证尚未完成。
 - Cockpit 当前是 dashboard/web cockpit + CLI summary + raw-mode terminal workbench + 受控 action 执行，不是 Ink/blessed 组件库 TUI。
@@ -446,7 +446,7 @@ GitHub push、PR、release workflow、npm publish、EdgeOne Knowledge Cloud 主�
 - npm registry publish 已完成，`@osstack/cli@0.8.0`、`@osstack/knowledge@0.8.0`、`@osstack/knowledge-cloud@0.8.0` 可从 npm registry 安装。
 - Knowledge Cloud `deploy=true` 采用 EdgeOne 主路径，生产 URL 为 `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool`。
 - `release doctor --target primary --cloud-url https://osstack-knowledge-cloud-1grycf4k.edgeone.cool --json` 当前返回 `ok: true`，readiness 中 `npm_publish=true`、`knowledge_cloud_deploy=true`、`single_binary_release=false`。
-- Knowledge Cloud Deploy workflow 已具备并发取消、EdgeOne CLI timeout 和 validation-only 线上 URL 验收；run `28066256927` 在 `deploy=true` 时成功执行 EdgeOne CLI 部署和 `Validate deployed Knowledge Cloud URL`；run `28064311003` 保留为 validation-only 线上 URL 验收证据。
+- Knowledge Cloud Deploy workflow 已具备并发取消、EdgeOne CLI timeout、CLI 失败转 deploy hook fallback 和 validation-only 线上 URL 验收；run `28066256927` 在 `deploy=true` 时成功执行 EdgeOne CLI 部署和 `Validate deployed Knowledge Cloud URL`；run `28064311003` 保留为 validation-only 线上 URL 验收证据。
 - `FLY_API_TOKEN` 不再是当前 osstack 上线主路径的必需凭证；Fly.io 只保留为可选参考。
 - 本地人工排障仍可使用 `npm login`；EdgeOne 运营排障需要腾讯云/EdgeOne Pages 控制台权限。
 

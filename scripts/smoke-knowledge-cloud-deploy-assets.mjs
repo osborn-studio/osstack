@@ -64,6 +64,9 @@ assertIncludes(workflow, "timeout --foreground --kill-after=30s 8m npx edgeone@l
 assertIncludes(workflow, "EdgeOne CLI deploy exceeded the 8 minute command timeout", "Knowledge Cloud deploy workflow must explain EdgeOne CLI timeout failures");
 assertIncludes(workflow, "Deploy Success", "Knowledge Cloud deploy workflow must tolerate EdgeOne post-success status lookup failures");
 assertIncludes(workflow, "EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy workflow must retain the deploy hook fallback");
+assertIncludes(workflow, "hook_available=true", "Knowledge Cloud deploy workflow must detect when the deploy hook fallback is available");
+assertIncludes(workflow, "cli_failed=true", "Knowledge Cloud deploy workflow must mark failed EdgeOne CLI deploys for hook fallback");
+assertIncludes(workflow, "triggering EDGEONE_DEPLOY_HOOK_URL fallback", "Knowledge Cloud deploy workflow must explain CLI-to-hook fallback");
 assertIncludes(workflow, "deploy=true requires repository secret EDGEONE_API_TOKEN or EDGEONE_DEPLOY_HOOK_URL", "Knowledge Cloud deploy=true must fail when no EdgeOne deploy credential is configured");
 assertIncludes(workflow, 'curl -fsS -X POST "$EDGEONE_DEPLOY_HOOK_URL"', "Knowledge Cloud deploy workflow must trigger the EdgeOne deploy hook fallback");
 assertIncludes(workflow, "if: $" + "{{ inputs.cloud_url != '' }}", "Knowledge Cloud deploy workflow must validate cloud_url even during validation-only runs");

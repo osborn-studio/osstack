@@ -62,6 +62,11 @@ jobs:
             echo "mode=missing" >> "$GITHUB_OUTPUT"
             echo "Neither EDGEONE_API_TOKEN nor EDGEONE_DEPLOY_HOOK_URL is configured." >> "$GITHUB_STEP_SUMMARY"
           fi
+          if [ -n "${{ secrets.EDGEONE_DEPLOY_HOOK_URL }}" ]; then
+            echo "hook_available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hook_available=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Require EdgeOne deploy credential for deploy
         if: ${{ inputs.deploy && steps.edgeone-deploy-credential.outputs.mode == 'missing' }}
@@ -70,6 +75,7 @@ jobs:
           exit 1
 
       - name: Deploy with EdgeOne CLI
+        id: edgeone-cli-deploy
         if: ${{ inputs.deploy && steps.edgeone-deploy-credential.outputs.mode == 'cli' }}
         timeout-minutes: 10
         run: |
@@ -88,12 +94,17 @@ jobs:
             echo "EdgeOne reported Deploy Success, but the post-deploy project status lookup failed. Treating deployment as successful and continuing validation." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
+          if [ "${{ steps.edgeone-deploy-credential.outputs.hook_available }}" = "true" ]; then
+            echo "cli_failed=true" >> "$GITHUB_OUTPUT"
+            echo "EdgeOne CLI deploy failed with status ${status}; triggering EDGEONE_DEPLOY_HOOK_URL fallback." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           exit "$status"
         env:
           EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
 
       - name: Trigger EdgeOne deploy hook fallback
-        if: ${{ inputs.deploy && steps.edgeone-deploy-credential.outputs.mode == 'hook' }}
+        if: ${{ inputs.deploy && (steps.edgeone-deploy-credential.outputs.mode == 'hook' || steps.edgeone-cli-deploy.outputs.cli_failed == 'true') }}
         run: |
           curl -fsS -X POST "$EDGEONE_DEPLOY_HOOK_URL"
         env:
