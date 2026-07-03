@@ -38,8 +38,8 @@ command whose path is configured, and depends only on that command's JSON output
                                           exec (local, same machine) │  JSON contract
                                                                      ▼
 ┌───────────────── osborn-studio-skill-hub (tooling/osstack_publish.mjs — Cmd A) ─┐
-│  lock → promote(gate) → deploy(surfaces) → API-verify(GET api.osbornhub.com) →  │
-│  emit JSON {status, id, score, gate, deployed, apiVerified, url, …}             │
+│  lock → promote(gate) → push data repo(→GHA deploys) → API-verify(GET api.osbornhub.com) →  │
+│  emit JSON {status, id, score, gate, pushed, apiVerified, url, …}             │
 └─────────────────────────────────────────────────────────────────────────────── ┘
 ```
 
@@ -88,7 +88,7 @@ verify-pass path (where `Verdict.pass === true` and the goal is met).
 - **isSkillTask(task):** true when `task.capability` matches `skill.publish` **or**
   `task.context.publish?.skillId` is present. `skillId` is resolved from `context.publish.skillId`.
 - **Action:** `runPublish(skillId, cfg)` → spawn `cfg.command` (default: the hub's
-  `osstack_publish.mjs` path) with `<skillId> --gate <cfg.gate> --surfaces <cfg.surfaces> --json`;
+  `osstack_publish.mjs` path) with `<skillId> --gate <cfg.gate> --json` (+`--no-push` when cfg.push=false);
   parse stdout as the JSON contract (validate with a zod schema; malformed → treated as error).
 - **Record (non-gating):**
   - `published` → emit `loop.skill.published`, append decision, kanban comment "✅ published to Hub
@@ -118,7 +118,7 @@ is a no-op.
 ## 5. Data flow (happy path)
 
 develop skill (in hub) → loop `Execute` → `Verify` returns `Verdict.pass=true` → **publisher hook** →
-`osstack_publish <id> --gate team --surfaces api,vercel` → promote(gate ok) → deploy(api,vercel) →
+`osstack_publish <id> --gate team` → promote(gate ok) → push data repo → GHA(merge→护栏→build→deploy) →
 API-verify 200 → JSON `status:"published"` → emit `loop.skill.published` + kanban comment + decision →
 loop task done.
 
