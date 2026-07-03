@@ -30,6 +30,7 @@ import {
   writeLoopState,
 } from "./state-file.js";
 import { archiveCompletedTaskFile } from "./task-queue.js";
+import { isSkillTask, runCommandReal, runPublish, skillIdOf, type PublishConfig, type RunPublishDeps } from "./publisher.js";
 import { verifyRun } from "./verifier.js";
 import type { ArtifactVerificationOptions } from "./verifier.js";
 import {
@@ -68,6 +69,10 @@ export interface LoopRunOptions {
   policyEngine?: PolicyEngine;
   policyHistory?: PolicyHistory;
   knowledge?: LoopKnowledgeTrace;
+  /** Post-verify skill auto-publish finalizer config (opt-in, non-gating). */
+  publish?: PublishConfig;
+  /** Injectable publish side-effects, for tests. Defaults to the real command runner. */
+  publishDeps?: RunPublishDeps;
 }
 
 export interface LoopGoalResult {
@@ -503,6 +508,10 @@ export class LoopEngine {
         outcome = "failed";
       }
 
+      if (outcome === "success") {
+        await this.runPublishHook(loopId, task, decisions);
+      }
+
       if (worktree !== undefined && outcome === "success") {
         const commit = await commitWorktreeChanges(worktree, `osstack loop task ${task.task_id}`);
         if (commit.committed) {
@@ -572,6 +581,55 @@ export class LoopEngine {
       }),
       decisions,
     };
+  }
+
+  /**
+   * Post-verify publish finalizer: fires once a task's outcome is finalized as "success".
+   * Non-gating — never reopens or fails the task. v1 记录不拦截: onFailure only affects the
+   * decision wording (a NEEDS-ATTENTION marker), it does not reopen the task for re-iteration.
+   */
+  private async runPublishHook(loopId: string, task: Task, decisions: string[]): Promise<void> {
+    const publishCfg = this.options.publish;
+    if (publishCfg?.enabled !== true || !isSkillTask(task)) return;
+
+    const skillId = skillIdOf(task);
+    if (skillId === undefined) {
+      decisions.push(`${task.task_id}: publish skipped: no skillId`);
+      this.emit(loopId, "loop.skill.publish_blocked", {
+        task_id: task.task_id,
+        status: "error",
+        reasons: ["no_skill_id"],
+      });
+      return;
+    }
+
+    const deps = this.options.publishDeps ?? { runCommand: runCommandReal };
+    const result = await runPublish(skillId, publishCfg, deps);
+
+    if (result.status === "published") {
+      this.emit(loopId, "loop.skill.published", {
+        task_id: task.task_id,
+        skill_id: skillId,
+        score: result.score ?? null,
+        gate: result.gate ?? publishCfg.gate,
+        apiVerified: result.apiVerified ?? false,
+      });
+      decisions.push(
+        `${task.task_id}: published ${skillId} to hub (score ${result.score ?? "n/a"}, gate ${result.gate ?? publishCfg.gate}, apiVerified ${result.apiVerified ?? false})`,
+      );
+      return;
+    }
+
+    this.emit(loopId, "loop.skill.publish_blocked", {
+      task_id: task.task_id,
+      skill_id: skillId,
+      status: result.status,
+      reasons: result.reasons ?? [],
+    });
+    const marker = publishCfg.onFailure === "block" ? " [NEEDS-ATTENTION]" : "";
+    decisions.push(
+      `${task.task_id}: publish ${result.status} for ${skillId} (reasons: ${(result.reasons ?? []).join(", ") || "none"})${marker}`,
+    );
   }
 
   private async checkGoal(loopId: string, workspacePath: string): Promise<LoopGoalResult | undefined> {

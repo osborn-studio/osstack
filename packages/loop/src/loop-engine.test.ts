@@ -5,8 +5,9 @@ import { mkdtempSync } from "node:fs";
 import { CapabilitySchema, type Capability, type CostTier } from "@osstack/core";
 import type { AgentAdapter, AgentAvailability, AgentTask } from "@osstack/agents";
 import type { HermesEvent } from "@osstack/hermes-adapter";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { LoopEngine } from "./loop-engine.js";
+import { PublishConfig, type RunPublishDeps } from "./publisher.js";
 
 async function makeQueuedWorkspace(): Promise<string> {
   const workspace = mkdtempSync(join(tmpdir(), "osstack-loop-engine-"));
@@ -362,6 +363,182 @@ describe("LoopEngine", () => {
       }),
     }));
     await expect(readFile(join(workspace, "tasks", "task.json"), "utf-8")).resolves.toContain('"task_id":"task-1"');
+  });
+
+  it("calls runPublish once and emits loop.skill.published when a skill task verifies green", async () => {
+    const workspace = mkdtempSync(join(tmpdir(), "osstack-loop-engine-publish-"));
+    await mkdir(join(workspace, "tasks"));
+    await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
+      task_id: "skill-task-1",
+      capability: "skill.publish",
+      prompt: "Publish the skill",
+      priority: 80,
+      context: { publish: { skillId: "signals.group-effect-ledger" } },
+    }));
+
+    const runCommand = vi.fn(async () => ({
+      stdout: JSON.stringify({
+        contract: "1.1",
+        status: "published",
+        id: "signals.group-effect-ledger",
+        score: 100,
+        gate: "team",
+        apiVerified: true,
+        durationMs: 1234,
+      }),
+      exitCode: 0,
+    }));
+    const publishDeps: RunPublishDeps = { runCommand, sleep: async () => {} };
+
+    const result = await new LoopEngine({
+      loopId: "loop-publish-success",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('loop-output.txt', 'ok')\"",
+      publish: PublishConfig.parse({ enabled: true }),
+      publishDeps,
+    }).runOnce();
+
+    expect(runCommand).toHaveBeenCalledTimes(1);
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      task_id: "skill-task-1",
+      outcome: "success",
+    });
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.skill.published",
+      payload: expect.objectContaining({
+        task_id: "skill-task-1",
+        skill_id: "signals.group-effect-ledger",
+        score: 100,
+        gate: "team",
+        apiVerified: true,
+      }),
+    }));
+    expect(result.state.decisions?.some((line) => line.includes("published signals.group-effect-ledger to hub"))).toBe(true);
+  });
+
+  it("emits loop.skill.publish_blocked and keeps the task success when publish is blocked", async () => {
+    const workspace = mkdtempSync(join(tmpdir(), "osstack-loop-engine-publish-blocked-"));
+    await mkdir(join(workspace, "tasks"));
+    await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
+      task_id: "skill-task-2",
+      capability: "skill.publish",
+      prompt: "Publish the skill",
+      priority: 80,
+      context: { publish: { skillId: "signals.blocked-skill" } },
+    }));
+
+    const runCommand = vi.fn(async () => ({
+      stdout: JSON.stringify({
+        contract: "1.1",
+        status: "blocked",
+        id: "signals.blocked-skill",
+        durationMs: 100,
+        reasons: ["score<gate"],
+      }),
+      exitCode: 2,
+    }));
+    const publishDeps: RunPublishDeps = { runCommand, sleep: async () => {} };
+
+    const result = await new LoopEngine({
+      loopId: "loop-publish-blocked",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('loop-output.txt', 'ok')\"",
+      publish: PublishConfig.parse({ enabled: true }),
+      publishDeps,
+    }).runOnce();
+
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      task_id: "skill-task-2",
+      outcome: "success",
+    });
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.skill.publish_blocked",
+      payload: expect.objectContaining({
+        task_id: "skill-task-2",
+        skill_id: "signals.blocked-skill",
+        status: "blocked",
+        reasons: ["score<gate"],
+      }),
+    }));
+    expect(result.state.decisions?.some((line) => line.includes("NEEDS-ATTENTION"))).toBe(true);
+  });
+
+  it("never calls runPublish when publish.enabled is false", async () => {
+    const workspace = mkdtempSync(join(tmpdir(), "osstack-loop-engine-publish-disabled-"));
+    await mkdir(join(workspace, "tasks"));
+    await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
+      task_id: "skill-task-3",
+      capability: "skill.publish",
+      prompt: "Publish the skill",
+      priority: 80,
+      context: { publish: { skillId: "signals.disabled-skill" } },
+    }));
+
+    const runCommand = vi.fn(async () => ({ stdout: "{}", exitCode: 0 }));
+    const publishDeps: RunPublishDeps = { runCommand, sleep: async () => {} };
+
+    const result = await new LoopEngine({
+      loopId: "loop-publish-disabled",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('loop-output.txt', 'ok')\"",
+      publish: PublishConfig.parse({ enabled: false }),
+      publishDeps,
+    }).runOnce();
+
+    expect(runCommand).not.toHaveBeenCalled();
+    expect(result.state.completed_tasks[0]).toMatchObject({ outcome: "success" });
+  });
+
+  it("never calls runPublish for a non-skill task even when publish is enabled", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const runCommand = vi.fn(async () => ({ stdout: "{}", exitCode: 0 }));
+    const publishDeps: RunPublishDeps = { runCommand, sleep: async () => {} };
+
+    const result = await new LoopEngine({
+      loopId: "loop-publish-non-skill",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('loop-output.txt', 'ok')\"",
+      publish: PublishConfig.parse({ enabled: true }),
+      publishDeps,
+    }).runOnce();
+
+    expect(runCommand).not.toHaveBeenCalled();
+    expect(result.state.completed_tasks[0]).toMatchObject({ task_id: "task-1", outcome: "success" });
+  });
+
+  it("never calls runPublish when verify fails", async () => {
+    const workspace = mkdtempSync(join(tmpdir(), "osstack-loop-engine-publish-verify-fail-"));
+    await mkdir(join(workspace, "tasks"));
+    await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
+      task_id: "skill-task-4",
+      capability: "skill.publish",
+      prompt: "Publish the skill",
+      priority: 80,
+      context: { publish: { skillId: "signals.verify-fail-skill" } },
+    }));
+
+    const runCommand = vi.fn(async () => ({ stdout: "{}", exitCode: 0 }));
+    const publishDeps: RunPublishDeps = { runCommand, sleep: async () => {} };
+
+    const result = await new LoopEngine({
+      loopId: "loop-publish-verify-fail",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      verifyCommands: ["node -e \"process.exit(1)\""],
+      maxIterations: 1,
+      publish: PublishConfig.parse({ enabled: true }),
+      publishDeps,
+    }).runOnce();
+
+    expect(runCommand).not.toHaveBeenCalled();
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      task_id: "skill-task-4",
+      outcome: "escalated",
+    });
   });
 
   it("can execute a successful task in an isolated git worktree and merge it back", async () => {
