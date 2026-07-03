@@ -1,6 +1,6 @@
 # Design — OSStack Skill Auto-Publish to OSBORN Studio Skill Hub
 
-- **Status:** Design (approved anchors; pending spec review → writing-plans)
+- **Status:** Design v1.1 — amended 2026-07-03 for the completed data/code decoupling (deploys are now GitHub-Actions-exclusive via the `osborn-skill-catalog` data repo; local deploys are refused). Approved anchors unchanged.
 - **Date:** 2026-07-01
 - **Owner:** Osborn
 - **Related:** `osborn-studio-skill-hub/tooling/promote.mjs`, `packages/loop/*`, `api.osbornhub.com`
@@ -48,8 +48,8 @@ command whose path is configured, and depends only on that command's JSON output
 `osborn-studio-skill-hub/tooling/osstack_publish.mjs <skill-id> [flags]` — the single, idempotent
 "publish a skill to osbornhub" command. Zero deps (Node ESM), reuses existing tooling.
 
-Flags: `--gate team|client|commercial` (default `team`), `--surfaces api,vercel[,store]`
-(default `api,vercel`), `--dry-run` (promote only, no deploy/verify), `--json` (default on).
+Flags: `--gate team|client|commercial` (default `team`), `--no-push` (promote only),
+`--dry-run` (alias of `--no-push`), `--json` (default on). (v1.0 的 `--surfaces` 已废弃 — 部署面由数据仓库 CI 统一持有。)
 
 Steps:
 1. **Resolve** `<skill-id>` in the hub. Not found → `status:"error", reason:"not_found"`, exit 1.
@@ -58,20 +58,22 @@ Steps:
    - promote exit **2** ⇒ `status:"blocked"` with parsed `reasons[]` (score<gate / TODO_FILL / invalid).
      **No deploy.** exit 2.
    - promote exit **0** (committed or nothing-to-commit) ⇒ continue.
-4. **Deploy** the chosen surfaces (skipped on `--dry-run`):
-   - `api` → `build_api.mjs` + EdgeOne `skill-hub-api`
-   - `vercel` → `build_vercel.mjs` + `vercel deploy --prod` (project `osborn-hub`, must relink first)
-   - `store` → `build_store.mjs`+`build_gated_deploy.mjs` + EdgeOne `osborn-skill-hub` (optional)
+4. **Push the data repo** (skipped on `--dry-run` / `--no-push`): promote has committed the skill
+   into `CATALOG_ROOT` (the `osborn-skill-catalog` repo); `git push` there triggers the repo's
+   GitHub Actions pipeline (merge → 双层护栏 → build → deploy → baseline ratchet), which is the
+   **sole deploy owner**. The publish command never deploys locally (that path is hard-refused).
 5. **API-verify**: poll `GET https://api.osbornhub.com/api/skills/<id>` with `Authorization: Bearer
-   $SKILL_HUB_KEY` until HTTP 200 **and** returned `version` == the skill's manifest version, timeout
-   `apiVerifyTimeoutMs` (default 60000; edge propagation ~10–15s). Miss → `apiVerified:false`.
+   <key>` (key from `$SKILL_HUB_KEY`, else `~/.osborn/secrets/skill_hub_key`) until HTTP 200 **and**
+   returned `version` == the skill's manifest version, timeout `apiVerifyTimeoutMs` (default 420000 —
+   the GHA pipeline takes ~2–4 min). Miss → `apiVerified:false` (pushed work is still safe; CI will
+   land it, re-run re-verifies).
 6. **Release lock**, print JSON, exit `0` published / `2` blocked / `1` error|busy.
 
 **JSON contract** (the seam — versioned as `contract:"1.0"`):
 ```jsonc
-{ "contract":"1.0", "status":"published"|"blocked"|"error"|"busy",
+{ "contract":"1.1", "status":"published"|"blocked"|"error"|"busy",
   "id":"signals.group-effect-ledger", "score":100, "gate":"team",
-  "committed":true, "deployed":["api","vercel"], "apiVerified":true,
+  "committed":true, "pushed":true, "pipeline":"github-actions", "apiVerified":true,
   "apiVersion":"0.1.0", "url":"https://api.osbornhub.com/api/skills/…",
   "durationMs":48213, "reasons":[], "message":"published" }
 ```
@@ -105,9 +107,9 @@ publish?: {
   enabled: boolean;                 // default false (opt-in)
   command: string;                  // default: "<HUB>/tooling/osstack_publish.mjs" (resolved abs path)
   gate: "team"|"client"|"commercial"; // default "team"
-  surfaces: string[];               // default ["api","vercel"]
+  push: boolean;                    // default true（false = promote-only，不触发 CI 部署）
   onFailure: "block"|"warn";        // default "block"
-  apiVerifyTimeoutMs: number;       // default 60000
+  apiVerifyTimeoutMs: number;       // default 420000（GHA 流水线 ~2–4 分钟）
 }
 ```
 Precedence: task `context.publish` overrides > loop config > defaults. Disabled or non-skill task ⇒ hook
