@@ -1,6 +1,6 @@
 ---
 name: loop-engineering
-description: "Use when Codex needs to run, diagnose, or integrate the osstack Loop Engineering runtime for iterative software work: discovering tasks from task queues or git diffs, executing commands or agent adapters, verifying with tests/checkers/reviewers, managing daemon loop sessions, using worktree isolation, or interpreting LOOP-STATE.json and STATE.md."
+description: "Use when Codex needs to run, diagnose, or integrate the osstack Loop Engineering runtime for iterative software work: discovering tasks from task queues or git diffs, executing commands or agent adapters, verifying with tests/checkers/reviewers/evaluation specs, iterating with structured feedback, governing discovered tasks, enforcing budgets, reviewing lesson drafts, managing daemon loop sessions, using worktree isolation, or interpreting LOOP-STATE.json and STATE.md."
 ---
 
 # Loop Engineering
@@ -106,18 +106,73 @@ For platform integration patterns, read `references/integration.md`.
 
 For the complete option reference, read `references/cli-options.md`.
 
+## Evaluation Specs (Acceptance Harness)
+
+Declare per-task acceptance criteria in the queue file's `evaluation` array
+(modes: `command`, `contract`, `property`, `e2e`, `artifact`,
+`semantic_review`, `governance`). The verifier runs every spec and reports
+per-spec results in the verdict, `LOOP-STATE.json`, and `STATE.md`. Legacy
+`--verify CMD` and artifact flags still work — they become implicit specs.
+`semantic_review` specs need a `--reviewer`/`--checker` adapter; ds-review and
+ds-verify judge each spec against its `acceptance` text and return per-spec
+verdicts. A required spec that fails blocks the task even when the adapter
+process exits 0. Schema details: `references/task-schema.md`.
+
+## Feedback-Carrying Iteration
+
+With `--max-iter N` above 1, each failed verdict becomes structured feedback
+for the next attempt: adapters receive it as `context.iteration_feedback`,
+and `--execute` commands can read the JSON file at
+`$OSSTACK_ITERATION_FEEDBACK_FILE`. Two consecutive attempts with identical
+blocking issues and changed files escalate as no-progress instead of burning
+iterations. Feedback history lands in `STATE.md` per attempt.
+
+## Discovery Governance
+
+`--discovery-policy default` (or a JSON policy file) separates discovering
+work from authorizing it: `task_queue` stays auto-execute, `git_diff`
+discoveries become suggestions, `github_branch` waits for approval, and
+blocked capabilities/paths never run. Deferred tasks appear in `STATE.md`
+under Needs Approval / Suggested / Blocked and in the loop report. Without
+the flag, behavior is unchanged.
+
+## Budgets And Stop Controls
+
+`--max-runtime-ms`, `--max-tokens`, `--max-cost-usd`, and
+`--no-progress-limit` stop the loop with a `loop.budget.exceeded` event and
+exit code `2` (not a CLI crash). Daemon sessions persist the stop reason and
+expose limits + usage in `loop list` and `osstack stats`. `STATE.md` gains a
+Budget section when a budget is configured.
+
+## Lesson Drafts (SOP Flywheel)
+
+A task that succeeds after failed attempts writes a reviewable draft to
+`loop-lessons/drafts/<task_id>.md` (disable with `--no-lesson-drafts`).
+Review with:
+
+```bash
+osstack loop lessons list
+osstack loop lessons show <id>
+osstack loop lessons promote <id> --to-skill path/to/SKILL.md
+osstack loop lessons discard <id>
+```
+
+Promotion into a skill file happens only with an explicit `--to-skill` path;
+the loop never modifies official skills on its own.
+
 ## State And Results
 
 Loop runs write:
 
-- `LOOP-STATE.json`: machine-readable durable state.
+- `LOOP-STATE.json`: machine-readable durable state (evaluations, feedback, deferred tasks, budget status).
 - `STATE.md`: human-readable summary.
 - `tasks/archive/`: successful single-task queue files when `--archive-completed` is used.
+- `loop-lessons/drafts/`: lesson drafts after successes that recovered from failures.
 
 Exit codes:
 
 - `0`: completed tasks succeeded.
 - `1`: command, configuration, or environment error.
-- `2`: task failed, escalated, or verification failed.
+- `2`: task failed, escalated, failed verification, or the loop budget was exceeded.
 
 Always inspect `STATE.md` or `loop status` before deciding a loop is complete.
