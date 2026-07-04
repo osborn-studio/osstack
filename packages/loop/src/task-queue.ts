@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { z } from "zod";
+import { EvaluationSpec } from "./evaluation-spec.js";
 import { Task, type CompletedTask, type Task as LoopTask } from "./types.js";
 
 export interface EnqueueTaskInput {
@@ -11,6 +12,7 @@ export interface EnqueueTaskInput {
   priority?: number;
   taskId?: string;
   context?: Record<string, unknown>;
+  evaluation?: EvaluationSpec[];
 }
 
 export interface EnqueuedTask {
@@ -38,6 +40,7 @@ export async function enqueueTask(input: EnqueueTaskInput): Promise<EnqueuedTask
     priority: input.priority ?? 50,
     source: "task_queue",
     ...(input.context !== undefined ? { context: input.context } : {}),
+    ...(input.evaluation !== undefined ? { evaluation: input.evaluation } : {}),
   });
   const taskDir = join(input.workspacePath, "tasks");
   await mkdir(taskDir, { recursive: true });
@@ -49,6 +52,7 @@ export async function enqueueTask(input: EnqueueTaskInput): Promise<EnqueuedTask
     priority: task.priority,
     source: task.source,
     ...(task.context !== undefined ? { context: task.context } : {}),
+    ...(task.evaluation !== undefined ? { evaluation: task.evaluation } : {}),
   }, null, 2)}\n`, "utf-8");
   return { task, path };
 }
@@ -66,6 +70,7 @@ export function parseTaskQueueFile(raw: unknown, options: ParseTaskQueueOptions 
       ...(item.context ?? {}),
       ...(options.taskFile === undefined ? {} : { task_file: options.taskFile }),
     },
+    ...(item.evaluation !== undefined ? { evaluation: item.evaluation } : {}),
   }));
 }
 
@@ -110,6 +115,7 @@ const TaskQueueItem = z.object({
   priority: z.number().min(0).max(100).optional(),
   source: z.literal("task_queue").optional(),
   context: z.record(z.unknown()).optional(),
+  evaluation: z.array(EvaluationSpec).optional(),
 }).strict();
 
 const TaskQueueFileItem = TaskQueueItem.extend({

@@ -32,6 +32,9 @@ import {
   type BranchStewardConfig,
 } from "@osstack/github";
 import {
+  DEFAULT_DISCOVERY_POLICY,
+  DiscoveryPolicy,
+  LoopBudget,
   LoopEngine,
   countTaskQueueTasks,
   enqueueTask,
@@ -43,6 +46,7 @@ import {
   createLoopStateScorecardFromState,
   renderLoopStateScorecardHtml,
   renderLoopStateScorecardMarkdown,
+  type LoopBudgetStatus,
   type LoopEvent,
   type LoopKnowledgeTrace,
   type LoopReportLanguage,
@@ -8763,6 +8767,17 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const verifyCommands = flagValues(args, "--verify");
     let verifierAgentIds = [...flagValues(args, "--reviewer"), ...flagValues(args, "--checker")];
     const artifactVerification = parseArtifactVerification(args);
+    const discoveryPolicy = await parseDiscoveryPolicyFlag(args, workspacePath);
+    if (discoveryPolicy instanceof Error) {
+      console.error(`osstack: ${discoveryPolicy.message}`);
+      return 1;
+    }
+    const budget = parseLoopBudgetFlags(args);
+    if (budget instanceof Error) {
+      console.error(`osstack: ${budget.message}`);
+      return 1;
+    }
+    const lessonDrafts = parseLessonDraftFlags(args);
     const sources = flagValues(args, "--source");
     const maxIterRaw = flagValue(args, "--max-iter");
     const commandTimeoutRaw = flagValue(args, "--command-timeout-ms");
@@ -8820,6 +8835,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
       ...(verifierAgentIds.length > 0 ? { verifierAgentIds } : {}),
       ...(artifactVerification !== undefined ? { artifactVerification } : {}),
+      ...(discoveryPolicy !== undefined ? { discoveryPolicy } : {}),
+      ...(budget !== undefined ? { budget } : {}),
+      ...(lessonDrafts !== undefined ? { lessonDrafts } : {}),
       ...(sources.length > 0 ? { sources } : {}),
       ...(maxIterations !== undefined ? { maxIterations } : {}),
       ...(commandTimeoutMs !== undefined ? { commandTimeoutMs } : {}),
@@ -8881,6 +8899,17 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const verifyCommands = flagValues(args, "--verify");
     let verifierAgentIds = [...flagValues(args, "--reviewer"), ...flagValues(args, "--checker")];
     const artifactVerification = parseArtifactVerification(args);
+    const discoveryPolicy = await parseDiscoveryPolicyFlag(args, workspacePath);
+    if (discoveryPolicy instanceof Error) {
+      console.error(`osstack: ${discoveryPolicy.message}`);
+      return 1;
+    }
+    const budget = parseLoopBudgetFlags(args);
+    if (budget instanceof Error) {
+      console.error(`osstack: ${budget.message}`);
+      return 1;
+    }
+    const lessonDrafts = parseLessonDraftFlags(args);
     const sources = flagValues(args, "--source");
     const maxIterRaw = flagValue(args, "--max-iter");
     const commandTimeoutRaw = flagValue(args, "--command-timeout-ms");
@@ -8945,6 +8974,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
         ...(verifierAgentIds.length > 0 ? { verifierAgentIds } : {}),
         ...(artifactVerification !== undefined ? { artifactVerification } : {}),
+        ...(discoveryPolicy !== undefined ? { discoveryPolicy } : {}),
+        ...(budget !== undefined ? { budget } : {}),
+        ...(lessonDrafts !== undefined ? { lessonDrafts } : {}),
         ...(sources.length > 0 ? { sources } : {}),
         ...(maxIterations !== undefined ? { maxIterations } : {}),
         ...(commandTimeoutMs !== undefined ? { commandTimeoutMs } : {}),
@@ -8989,7 +9021,11 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         if (learnedLessons !== undefined) result.learned_lessons = learnedLessons;
       }
       printLoopRun(result, json);
-      return result.completed_tasks.some((task) => task.outcome !== "success") || governance?.blocking === true ? 2 : 0;
+      return result.completed_tasks.some((task) => task.outcome !== "success")
+        || governance?.blocking === true
+        || result.budget?.exceeded === true
+        ? 2
+        : 0;
     }
 
     const adapters = agentId !== undefined || verifierAgentIds.length > 0 || autoAgent
@@ -9006,6 +9042,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(adapters !== undefined ? { adapters } : {}),
       ...(verifierAgentIds.length > 0 ? { verifierAgentIds } : {}),
       ...(artifactVerification !== undefined ? { artifactVerification } : {}),
+      ...(discoveryPolicy !== undefined ? { discoveryPolicy } : {}),
+      ...(budget !== undefined ? { budget } : {}),
+      ...(lessonDrafts !== undefined ? { lessonDrafts } : {}),
       ...(goalCommand !== undefined ? { goalCommand } : {}),
       ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
       ...(sources.length > 0 ? { sources } : {}),
@@ -9049,6 +9088,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(checkpoint !== undefined ? { checkpoint } : {}),
       ...(profileRouting !== undefined ? { profile: profileRouting.summary } : {}),
       ...(goal !== undefined ? { goal } : {}),
+      ...(result.budget !== undefined ? { budget: result.budget } : {}),
       ...(result.state.key_metrics !== undefined ? { metrics: result.state.key_metrics } : {}),
       ...("cycles" in result ? { cycles: result.cycles.map((cycle) => ({
         discovered_task_count: cycle.discoveredTaskCount,
@@ -9057,7 +9097,11 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ...(cycle.goal !== undefined ? { goal: cycle.goal } : {}),
       })) } : {}),
     }, json);
-    return result.state.completed_tasks.some((task) => task.outcome !== "success") || governance?.blocking === true ? 2 : 0;
+    return result.state.completed_tasks.some((task) => task.outcome !== "success")
+      || governance?.blocking === true
+      || result.budget?.exceeded === true
+      ? 2
+      : 0;
   }
 
   if (sub === "enqueue") {
@@ -9182,6 +9226,9 @@ Options:
   --checker ID        Alias for --reviewer for checker/verifier agents
   --artifact-verification
                       Require artifact gates in verification (git diff, target/forbidden paths)
+  --discovery-policy P
+                      Discovery governance: "default" or a JSON policy file. Non-auto tasks
+                      are recorded as needs_approval/suggest_only/blocked instead of executing
   --target-path P     Required changed path/prefix for artifact verification; repeatable
   --forbid-path P     Forbidden changed path/prefix for artifact verification; repeatable
   --goal CMD          Global shell command; loop stops when it exits 0
@@ -9193,6 +9240,13 @@ Options:
   --worktree         Run each task in an isolated git worktree, merge success back
   --worktree-root P  Directory for temporary isolated worktrees
   --max-iter N        Iterations before escalation (default: 1)
+  --max-runtime-ms N  Budget: stop after N ms total runtime (exit code 2)
+  --max-tokens N      Budget: stop after N adapter tokens consumed
+  --max-cost-usd X    Budget: stop after an estimated spend of X USD
+  --no-progress-limit N
+                      Budget: stop after N consecutive cycles without a successful task
+  --no-lesson-drafts  Disable SOP lesson drafts after recovered failures
+  --lessons-dir P     Directory for lesson drafts (default: loop-lessons/drafts)
   --cycles N          Run multiple cycles before exiting, or cap loop start
   --once              Alias for loop start --cycles 1 --stop-when-idle
   --interval-ms N     Delay between cycles in milliseconds (loop start default: 5000)
@@ -9225,6 +9279,68 @@ Example:
 
 function resolveLoopPath(path: string, cwd: string): string {
   return isAbsolute(path) ? path : join(cwd, path);
+}
+
+function parseLessonDraftFlags(args: string[]): { enabled?: boolean; dir?: string } | undefined {
+  const disabled = args.includes("--no-lesson-drafts");
+  const dir = flagValue(args, "--lessons-dir");
+  if (!disabled && dir === undefined) return undefined;
+  return {
+    ...(disabled ? { enabled: false } : {}),
+    ...(dir !== undefined ? { dir } : {}),
+  };
+}
+
+function parseLoopBudgetFlags(args: string[]): LoopBudget | undefined | Error {
+  const maxRuntimeMs = parsePositiveIntegerFlag(flagValue(args, "--max-runtime-ms"), "--max-runtime-ms");
+  if (maxRuntimeMs instanceof Error) return maxRuntimeMs;
+  const maxTokens = parsePositiveIntegerFlag(flagValue(args, "--max-tokens"), "--max-tokens");
+  if (maxTokens instanceof Error) return maxTokens;
+  const noProgressLimit = parsePositiveIntegerFlag(flagValue(args, "--no-progress-limit"), "--no-progress-limit");
+  if (noProgressLimit instanceof Error) return noProgressLimit;
+  const maxCostRaw = flagValue(args, "--max-cost-usd");
+  let maxCostUsd: number | undefined;
+  if (maxCostRaw !== undefined) {
+    maxCostUsd = Number(maxCostRaw);
+    if (!Number.isFinite(maxCostUsd) || maxCostUsd <= 0) {
+      return new Error("--max-cost-usd must be a positive number");
+    }
+  }
+  if (
+    maxRuntimeMs === undefined
+    && maxTokens === undefined
+    && noProgressLimit === undefined
+    && maxCostUsd === undefined
+  ) {
+    return undefined;
+  }
+  return LoopBudget.parse({
+    ...(maxRuntimeMs !== undefined ? { max_runtime_ms: maxRuntimeMs } : {}),
+    ...(maxTokens !== undefined ? { max_tokens: maxTokens } : {}),
+    ...(noProgressLimit !== undefined ? { no_progress_limit: noProgressLimit } : {}),
+    ...(maxCostUsd !== undefined ? { max_estimated_cost_usd: maxCostUsd } : {}),
+  });
+}
+
+async function parseDiscoveryPolicyFlag(
+  args: string[],
+  workspacePath: string,
+): Promise<DiscoveryPolicy | undefined | Error> {
+  const raw = flagValue(args, "--discovery-policy");
+  if (raw === undefined) return undefined;
+  if (raw === "default") return DEFAULT_DISCOVERY_POLICY;
+  const path = isAbsolute(raw) ? raw : join(workspacePath, raw);
+  let parsedJson: unknown;
+  try {
+    parsedJson = JSON.parse(await readFile(path, "utf-8")) as unknown;
+  } catch (error) {
+    return new Error(`--discovery-policy could not read ${raw}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  const parsed = DiscoveryPolicy.safeParse(parsedJson);
+  if (!parsed.success) {
+    return new Error(`--discovery-policy file ${raw} is not a valid discovery policy`);
+  }
+  return parsed.data;
 }
 
 function parseArtifactVerification(args: string[]): ArtifactVerificationOptions | undefined {
@@ -9380,6 +9496,7 @@ interface LoopRunSummary {
   };
   events?: unknown[];
   profile?: LoopProfileSummary;
+  budget?: LoopBudgetStatus;
   cycles?: Array<{
     discovered_task_count: number;
     executed_task_count: number;
@@ -9532,6 +9649,10 @@ function printLoopRun(result: LoopRunSummary, json: boolean): void {
   console.log(`tasks=${result.completed_tasks.length} success_rate=${Math.round((result.metrics?.success_rate ?? 1) * 100)}%`);
   if (result.goal !== undefined) {
     console.log(`goal=${result.goal.pass ? "passed" : "not_met"} exit_code=${result.goal.exitCode}`);
+  }
+  if (result.budget !== undefined) {
+    const detail = result.budget.exceeded ? ` limit=${result.budget.limit} reason=${result.budget.reason}` : "";
+    console.log(`budget=${result.budget.exceeded ? "exceeded" : "within"}${detail}`);
   }
   if (result.governance !== undefined) {
     console.log(`governance=${result.governance.status} mode=${result.governance.mode} blocking=${result.governance.blocking ? "yes" : "no"} findings=${result.governance.findings.length}`);

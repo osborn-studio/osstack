@@ -231,6 +231,42 @@ echo review ok
     });
   });
 
+  it("stops a polling loop session when its budget is exceeded and persists the reason", async () => {
+    const workspace = join(tmp, "budget-workspace");
+    await mkdir(join(workspace, "tasks"), { recursive: true });
+    await writeFile(join(workspace, "tasks", "budget.json"), JSON.stringify({
+      task_id: "daemon-budget-task",
+      capability: "code.test",
+      prompt: "Exercise session budget stop",
+    }));
+
+    daemon = await startDaemon({ socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock` });
+    const startResp = await daemonRpc(daemon.socketPath, "loop.start", {
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"process.exit(0)\"",
+      intervalMs: 20,
+      budget: { max_cycles: 1 },
+    });
+
+    expect(startResp.ok).toBe(true);
+    const loopSessionId = (startResp.result as { loop_session_id: string }).loop_session_id;
+    const loop = await waitForLoop(daemon.socketPath, loopSessionId, (candidate) => (
+      candidate.status === "stopped"
+    ));
+    expect(loop).toMatchObject({
+      loop_session_id: loopSessionId,
+      status: "stopped",
+      stop_reason: expect.stringContaining("budget exceeded"),
+    });
+
+    const persisted = JSON.parse(
+      await readFile(join(tmp, "home", "loop-sessions.json"), "utf-8"),
+    ) as { sessions: Array<{ loopSessionId: string; stopReason?: string }> };
+    const savedSession = persisted.sessions.find((session) => session.loopSessionId === loopSessionId);
+    expect(savedSession?.stopReason).toContain("budget exceeded");
+  });
+
   it("starts a cron-scheduled background loop", async () => {
     const workspace = join(tmp, "scheduled-workspace");
     await mkdir(join(workspace, "tasks"), { recursive: true });

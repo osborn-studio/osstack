@@ -1,7 +1,14 @@
 import { spawn } from "node:child_process";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { AgentAdapter, AgentTask } from "@osstack/agents";
 import type { HermesEvent } from "@osstack/hermes-adapter";
+import { ITERATION_FEEDBACK_CONTEXT_KEY } from "./feedback.js";
 import type { ExecutionPlan } from "./types.js";
+
+/** Env var pointing local execute commands at the previous-attempt feedback JSON. */
+export const ITERATION_FEEDBACK_FILE_ENV = "OSSTACK_ITERATION_FEEDBACK_FILE";
 
 export interface CommandResult {
   command: string;
@@ -47,10 +54,12 @@ export async function executePlan(plan: ExecutionPlan, options: LocalExecutorOpt
   const commandResults: CommandResult[] = [];
 
   if (options.command !== undefined && options.command.trim() !== "") {
+    const env = await iterationFeedbackEnv(plan);
     commandResults.push(await runShellCommand(options.command, {
       cwd: options.workspacePath,
       timeoutMs: options.timeoutMs ?? 120_000,
       outputLimit: options.outputLimit ?? 16_000,
+      ...(env !== undefined ? { env } : {}),
     }));
   }
 
@@ -181,6 +190,23 @@ function isLocalAgentId(agentId: string): boolean {
   return agentId === "local-command" || agentId === "local-noop";
 }
 
+/**
+ * Local commands cannot read structured task context, so persist the previous
+ * attempt's iteration feedback to a temp JSON file and point at it via env.
+ */
+async function iterationFeedbackEnv(plan: ExecutionPlan): Promise<Record<string, string> | undefined> {
+  const feedback = plan.task.context?.[ITERATION_FEEDBACK_CONTEXT_KEY];
+  if (feedback === undefined) return undefined;
+  try {
+    const dir = await mkdtemp(join(tmpdir(), "osstack-feedback-"));
+    const path = join(dir, `${plan.task.task_id.replace(/[^a-zA-Z0-9._-]+/g, "-")}.json`);
+    await writeFile(path, `${JSON.stringify(feedback, null, 2)}\n`, "utf-8");
+    return { [ITERATION_FEEDBACK_FILE_ENV]: path };
+  } catch {
+    return undefined;
+  }
+}
+
 function errorPayload(payload: HermesEvent["payload"]): { message: string } {
   return payload as { message: string };
 }
@@ -204,7 +230,7 @@ function selectCapabilityId(adapter: AgentAdapter, plan: ExecutionPlan): string 
 
 export async function runShellCommand(
   command: string,
-  options: { cwd: string; timeoutMs: number; outputLimit: number },
+  options: { cwd: string; timeoutMs: number; outputLimit: number; env?: Record<string, string> },
 ): Promise<CommandResult> {
   const started = Date.now();
   return await new Promise<CommandResult>((resolve) => {
@@ -212,6 +238,7 @@ export async function runShellCommand(
       cwd: options.cwd,
       shell: true,
       stdio: ["ignore", "pipe", "pipe"],
+      ...(options.env !== undefined ? { env: { ...process.env, ...options.env } } : {}),
     });
     let stdout = "";
     let stderr = "";

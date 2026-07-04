@@ -7,6 +7,8 @@
 //   Automations / Worktrees / Skills / Connectors / Sub-agents / State
 
 import { z } from "zod";
+import { TaskAuthorization } from "./discovery-policy.js";
+import { EvaluationResult, EvaluationSpec } from "./evaluation-spec.js";
 
 // ── Discover phase ────────────────────────────────────────────────────
 
@@ -31,6 +33,8 @@ export const Task = z.object({
   source: DiscoverSource,
   /** Optional structured context (file paths, line ranges, error messages) */
   context: z.record(z.unknown()).optional(),
+  /** First-class evaluation harness specs. Verifier emits per-spec results. */
+  evaluation: z.array(EvaluationSpec).optional(),
 });
 export type Task = z.infer<typeof Task>;
 
@@ -92,10 +96,28 @@ export const Verdict = z.object({
     duration_ms: z.number(),
     summary: z.string().optional(),
   })).optional(),
+  /** Per-evaluation-spec results (explicit task specs plus implicit legacy specs). */
+  evaluations: z.array(EvaluationResult).optional(),
 });
 export type Verdict = z.infer<typeof Verdict>;
 
 // ── Iterate phase ──────────────────────────────────────────────────────
+
+/**
+ * Structured feedback derived from a failed Verdict and handed to the next
+ * attempt through AgentTask.context.iteration_feedback.
+ */
+export const IterationFeedback = z.object({
+  /** 1-based attempt number the feedback was derived from. */
+  attempt: z.number(),
+  verdict_summary: z.string(),
+  blocking_issues: z.array(Issue).default([]),
+  /** Failed evaluation spec ids from the previous attempt. */
+  failed_evaluations: z.array(z.string()).default([]),
+  suggested_focus: z.array(z.string()).default([]),
+  previous_diff_summary: z.string().optional(),
+});
+export type IterationFeedback = z.infer<typeof IterationFeedback>;
 
 export const IterationAction = z.enum(["continue", "stop", "escalate"]);
 export type IterationAction = z.infer<typeof IterationAction>;
@@ -143,6 +165,9 @@ export const CompletedTask = z.object({
   verify_issue_count: z.number().optional(),
   verify_issues: z.array(IssueAudit).optional(),
   verify_commands: z.array(CommandAudit).optional(),
+  evaluations: z.array(EvaluationResult).optional(),
+  /** Feedback derived after each failed attempt, in attempt order. */
+  iteration_feedback: z.array(IterationFeedback).optional(),
   changed_files: z.array(z.string()).optional(),
   diff_summary: z.string().optional(),
   commit_hash: z.string().optional(),
@@ -151,6 +176,8 @@ export const CompletedTask = z.object({
   worktree_branch: z.string().optional(),
   worktree_commit: z.string().optional(),
   worktree_branch_preserved: z.boolean().optional(),
+  /** Lesson draft written after a success that recovered from failed attempts. */
+  lesson_draft_path: z.string().optional(),
 });
 export type CompletedTask = z.infer<typeof CompletedTask>;
 
@@ -194,6 +221,14 @@ export const LoopKnowledgeTrace = z.object({
 });
 export type LoopKnowledgeTrace = z.infer<typeof LoopKnowledgeTrace>;
 
+/** A discovered task the policy declined to execute this cycle. */
+export const DeferredTask = z.object({
+  task: Task,
+  authorization: TaskAuthorization,
+  reason: z.string(),
+});
+export type DeferredTask = z.infer<typeof DeferredTask>;
+
 /** The durable state of one loop session. Written to STATE.md + LOOP-STATE.json. */
 export const LoopState = z.object({
   loop_id: z.string(),
@@ -202,6 +237,8 @@ export const LoopState = z.object({
   completed_tasks: z.array(CompletedTask).default([]),
   in_progress: z.array(Task).optional(),
   pending: z.array(Task).optional(),
+  /** Discovered but not executed this cycle: needs_approval / suggest_only / blocked. */
+  deferred_tasks: z.array(DeferredTask).optional(),
   key_metrics: LoopMetrics.optional(),
   decisions: z.array(z.string()).optional(),
   knowledge: LoopKnowledgeTrace.optional(),
@@ -260,6 +297,7 @@ export const LoopEventType = z.enum([
   "loop.started",
   "loop.cycle.started",
   "loop.discover.done",
+  "loop.task.deferred",
   "loop.plan.done",
   "loop.execute.done",
   "loop.verify.done",
@@ -270,10 +308,12 @@ export const LoopEventType = z.enum([
   "loop.worktree.cleaned",
   "loop.worktree.orphans_cleaned",
   "loop.goal.checked",
+  "loop.budget.exceeded",
   "loop.knowledge.used",
   "loop.queue.archived",
   "loop.skill.published",
   "loop.skill.publish_blocked",
+  "loop.lesson.drafted",
   "loop.state.written",
   "loop.cycle.completed",
   "loop.stopped",

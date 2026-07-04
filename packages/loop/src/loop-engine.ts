@@ -19,9 +19,13 @@ import {
   type PolicyHistory,
   type RoutableAdapter,
 } from "@osstack/core";
+import { checkBudget, clampTaskIterations, type BudgetUsage, type LoopBudget, type LoopBudgetStatus } from "./budget.js";
 import { createScanner } from "./discover.js";
+import { authorizeTask, type DiscoveryPolicy } from "./discovery-policy.js";
 import { executePlan, runShellCommand, type AgentRun, type CommandResult } from "./executor.js";
+import { deriveIterationFeedback, issueFingerprint, withIterationFeedback } from "./feedback.js";
 import { evaluateIteration } from "./iterator.js";
+import { writeLessonDraft, type LessonDraftConfig } from "./lesson-draft.js";
 import { planTask } from "./planner.js";
 import {
   createInitialLoopState,
@@ -37,7 +41,9 @@ import {
   DiscoverSource,
   LoopState,
   CompletedTask,
+  type DeferredTask,
   type Issue,
+  type IterationFeedback,
   type LoopEvent,
   type LoopKnowledgeTrace,
   type Task,
@@ -65,6 +71,12 @@ export interface LoopRunOptions {
   verifierAgentIds?: string[];
   enforceRoleSeparation?: boolean;
   artifactVerification?: ArtifactVerificationOptions;
+  /** Discovery governance policy. When absent, all discovered tasks execute (legacy behavior). */
+  discoveryPolicy?: DiscoveryPolicy;
+  /** Cost and stop controls. When absent, no budget is enforced (legacy behavior). */
+  budget?: LoopBudget;
+  /** SOP flywheel: draft lessons after successes that recovered from failed attempts. Default on. */
+  lessonDrafts?: Partial<LessonDraftConfig>;
   adapters?: readonly AgentAdapter[];
   policyEngine?: PolicyEngine;
   policyHistory?: PolicyHistory;
@@ -94,6 +106,7 @@ export interface LoopRunResult {
   executedTaskCount: number;
   skippedTaskCount: number;
   goal?: LoopGoalResult;
+  budget?: LoopBudgetStatus;
 }
 
 export interface LoopRunCyclesOptions {
@@ -109,6 +122,7 @@ export interface LoopRunCyclesResult {
   events: LoopEvent[];
   jsonPath: string;
   markdownPath: string;
+  budget?: LoopBudgetStatus;
 }
 
 export class LoopEngine {
@@ -127,6 +141,9 @@ export class LoopEngine {
       throw new Error("runCycles.intervalMs must be a non-negative integer");
     }
     const results: LoopRunResult[] = [];
+    const runStartedAt = Date.now();
+    let noProgressCycles = 0;
+    let budgetStatus: LoopBudgetStatus | undefined;
 
     for (let cycle = 1; cycle <= cycles; cycle++) {
       const result = await this.runCycle(cycle, {
@@ -134,6 +151,15 @@ export class LoopEngine {
         emitStopped: false,
       });
       results.push(result);
+      noProgressCycles = nextNoProgressCycles(noProgressCycles, result);
+      budgetStatus = this.checkLoopBudget(result.loop_id, {
+        cycles: results.length,
+        runtime_ms: Date.now() - runStartedAt,
+        tokens: result.state.key_metrics?.tokens_consumed ?? 0,
+        estimated_cost_usd: 0,
+        no_progress_cycles: noProgressCycles,
+      });
+      if (budgetStatus?.exceeded === true) break;
       if (result.goal?.pass === true) break;
       if (options.stopWhenIdle === true && result.executedTaskCount === 0) break;
       if (cycle < cycles && intervalMs > 0) await sleep(intervalMs);
@@ -144,7 +170,11 @@ export class LoopEngine {
       throw new Error("runCycles requires at least one cycle");
     }
     this.emit(last.loop_id, "loop.stopped", {
-      reason: last.goal?.pass === true ? "goal command passed" : "manual run completed",
+      reason: budgetStatus?.exceeded === true
+        ? `budget exceeded: ${budgetStatus.reason}`
+        : last.goal?.pass === true
+          ? "goal command passed"
+          : "manual run completed",
       cycles: results.length,
     });
 
@@ -155,11 +185,51 @@ export class LoopEngine {
       events: [...this.events],
       jsonPath: last.jsonPath,
       markdownPath: last.markdownPath,
+      ...(budgetStatus !== undefined ? { budget: budgetStatus } : {}),
     };
   }
 
   async runOnce(): Promise<LoopRunResult> {
-    return await this.runCycle(1, { emitStarted: true, emitStopped: true });
+    const eventStartIndex = this.events.length;
+    const runStartedAt = Date.now();
+    const result = await this.runCycle(1, { emitStarted: true, emitStopped: false });
+    const budgetStatus = this.checkLoopBudget(result.loop_id, {
+      cycles: 1,
+      runtime_ms: Date.now() - runStartedAt,
+      tokens: result.state.key_metrics?.tokens_consumed ?? 0,
+      estimated_cost_usd: 0,
+      no_progress_cycles: nextNoProgressCycles(0, result),
+    });
+    this.emit(result.loop_id, "loop.stopped", {
+      reason: budgetStatus?.exceeded === true
+        ? `budget exceeded: ${budgetStatus.reason}`
+        : result.goal?.pass === true
+          ? "goal command passed"
+          : "manual run completed",
+    });
+    return {
+      ...result,
+      events: this.events.slice(eventStartIndex),
+      ...(budgetStatus !== undefined ? { budget: budgetStatus } : {}),
+    };
+  }
+
+  private checkLoopBudget(loopId: string, usage: BudgetUsage): LoopBudgetStatus | undefined {
+    const budget = this.options.budget;
+    if (budget === undefined) return undefined;
+    const check = checkBudget(budget, usage);
+    if (check.exceeded) {
+      this.emit(loopId, "loop.budget.exceeded", {
+        limit: check.limit,
+        reason: check.reason,
+        cycles: usage.cycles,
+        runtime_ms: usage.runtime_ms,
+        tokens: usage.tokens,
+        estimated_cost_usd: usage.estimated_cost_usd,
+        no_progress_cycles: usage.no_progress_cycles,
+      });
+    }
+    return { ...check, usage };
   }
 
   private async runCycle(
@@ -196,14 +266,19 @@ export class LoopEngine {
     await this.cleanupLoopWorktrees(loopId, workspacePath, cycle, "before_cycle", decisions);
     const discoveredTasks = await this.discover(workspacePath);
     const completedIds = new Set(state.completed_tasks.map((task) => task.task_id));
-    const tasks = this.options.skipCompletedTasks === false
+    const candidateTasks = this.options.skipCompletedTasks === false
       ? discoveredTasks
       : discoveredTasks.filter((task) => !completedIds.has(task.task_id));
-    const skippedTaskCount = discoveredTasks.length - tasks.length;
+    const skippedTaskCount = discoveredTasks.length - candidateTasks.length;
+    const governance = this.applyDiscoveryPolicy(loopId, candidateTasks, decisions);
+    const tasks = governance.executable;
     this.emit(loopId, "loop.discover.done", {
       task_count: tasks.length,
       discovered_task_count: discoveredTasks.length,
       skipped_task_count: skippedTaskCount,
+      ...(this.options.discoveryPolicy !== undefined
+        ? { deferred_task_count: governance.deferred.length }
+        : {}),
     });
 
     const previousCompletedCount = state.completed_tasks.length;
@@ -244,6 +319,7 @@ export class LoopEngine {
       completed_tasks: completed,
       in_progress: [],
       pending,
+      deferred_tasks: governance.deferred,
       key_metrics: {
         total_cycles: (state.key_metrics?.total_cycles ?? 0) + 1,
         avg_duration_ms: completed.length === 0
@@ -342,6 +418,36 @@ export class LoopEngine {
     };
   }
 
+  private applyDiscoveryPolicy(
+    loopId: string,
+    tasks: Task[],
+    decisions: string[],
+  ): { executable: Task[]; deferred: DeferredTask[] } {
+    const policy = this.options.discoveryPolicy;
+    if (policy === undefined) return { executable: tasks, deferred: [] };
+
+    const executable: Task[] = [];
+    const deferred: DeferredTask[] = [];
+    for (const task of tasks) {
+      const decision = authorizeTask(task, policy);
+      if (decision.authorization === "auto_execute") {
+        executable.push(task);
+        continue;
+      }
+      deferred.push({ task, authorization: decision.authorization, reason: decision.reason });
+      this.emit(loopId, "loop.task.deferred", {
+        task_id: task.task_id,
+        capability: task.capability,
+        source: task.source,
+        priority: task.priority,
+        authorization: decision.authorization,
+        reason: decision.reason,
+      });
+      decisions.push(`${task.task_id}: ${decision.authorization} - ${decision.reason}`);
+    }
+    return { executable, deferred };
+  }
+
   private async discover(workspacePath: string): Promise<Task[]> {
     const sources = this.options.sources ?? ["git_diff", "task_queue"];
     const tasks: Task[] = [];
@@ -360,7 +466,7 @@ export class LoopEngine {
     historyTasks: readonly CompletedTask[],
   ): Promise<{ completedTask: CompletedTask; decisions: string[] }> {
     const started = Date.now();
-    const maxIterations = this.options.maxIterations ?? 1;
+    const maxIterations = clampTaskIterations(this.options.maxIterations ?? 1, this.options.budget);
     const decisions: string[] = [];
     let finalRun: AgentRun | null = null;
     let finalVerdict: Verdict | null = null;
@@ -371,6 +477,10 @@ export class LoopEngine {
     let preserveWorktreeBranch = false;
     let worktreeCommit: string | undefined;
     let finalEvidence: TaskGitEvidence = { changedFiles: [], diffSummary: "no git evidence collected" };
+    let latestFeedback: IterationFeedback | undefined;
+    const feedbackHistory: IterationFeedback[] = [];
+    let previousFingerprint: string | undefined;
+    let lessonDraftPath: string | undefined;
 
     if (this.options.useWorktree === true) {
       worktree = await createWorktree({
@@ -391,8 +501,11 @@ export class LoopEngine {
     try {
       for (let iteration = 1; iteration <= maxIterations; iteration++) {
         iterations = iteration;
-        const agentSelection = await this.selectExecutionAgent(task, historyTasks);
-        const plan = planTask(task, {
+        const effectiveTask: Task = latestFeedback === undefined
+          ? task
+          : { ...task, context: withIterationFeedback(task.context, latestFeedback) };
+        const agentSelection = await this.selectExecutionAgent(effectiveTask, historyTasks);
+        const plan = planTask(effectiveTask, {
           maxIterations,
           agentId: agentSelection.agentId,
           ...(worktree !== undefined ? { worktreePath: worktree.worktreePath } : {}),
@@ -448,7 +561,7 @@ export class LoopEngine {
           workspacePath: runWorkspacePath,
           commands: this.options.verifyCommands ?? [],
           verifierAgentIds,
-          task,
+          task: effectiveTask,
           ...(this.options.artifactVerification !== undefined
             ? { artifactVerification: this.options.artifactVerification }
             : {}),
@@ -459,11 +572,18 @@ export class LoopEngine {
           });
         }
         finalEvidence = await collectTaskGitEvidence(runWorkspacePath);
+        const failedEvaluationIds = (finalVerdict.evaluations ?? [])
+          .filter((evaluation) => !evaluation.pass)
+          .map((evaluation) => evaluation.spec_id);
         this.emit(loopId, "loop.verify.done", {
           task_id: task.task_id,
           pass: finalVerdict.pass,
           score: finalVerdict.score,
           issue_count: finalVerdict.issues.length,
+          ...(finalVerdict.evaluations !== undefined ? {
+            evaluation_count: finalVerdict.evaluations.length,
+            failed_evaluation_ids: failedEvaluationIds,
+          } : {}),
           reviewer_agent_id: finalVerdict.reviewer_agent_id,
           summary: finalVerdict.summary,
           changed_files: finalEvidence.changedFiles,
@@ -473,16 +593,36 @@ export class LoopEngine {
           iteration,
         });
 
-        const decision = evaluateIteration({
+        let decision = evaluateIteration({
           verdict: finalVerdict,
           iteration,
           maxIterations,
         });
+        if (!finalVerdict.pass) {
+          const fingerprint = issueFingerprint(finalVerdict, finalEvidence.changedFiles);
+          if (decision.action === "continue" && fingerprint === previousFingerprint) {
+            decision = {
+              action: "escalate",
+              reason: `No progress: attempt ${iteration} repeated the same blocking issues and changed files as attempt ${iteration - 1}.`,
+              escalate_to: "hermes",
+            };
+          }
+          previousFingerprint = fingerprint;
+          latestFeedback = deriveIterationFeedback({
+            attempt: iteration,
+            verdict: finalVerdict,
+            changedFiles: finalEvidence.changedFiles,
+            ...(finalEvidence.diffSummary !== undefined ? { diffSummary: finalEvidence.diffSummary } : {}),
+          });
+          feedbackHistory.push(latestFeedback);
+        }
         this.emit(loopId, "loop.iterate.done", {
           task_id: task.task_id,
           action: decision.action,
           reason: decision.reason,
           iteration,
+          issue_count: finalVerdict.issues.length,
+          failed_evaluation_ids: failedEvaluationIds,
         });
         decisions.push(`${task.task_id}: ${decision.action} after iteration ${iteration} - ${decision.reason}`);
 
@@ -510,6 +650,14 @@ export class LoopEngine {
 
       if (outcome === "success") {
         await this.runPublishHook(loopId, task, decisions);
+        lessonDraftPath = await this.runLessonDraftHook(loopId, workspacePath, task, decisions, {
+          iterations,
+          feedback: feedbackHistory,
+          finalVerdict,
+          changedFiles: finalEvidence.changedFiles,
+          ...(finalEvidence.diffSummary !== undefined ? { diffSummary: finalEvidence.diffSummary } : {}),
+          ...(finalEvidence.commitHash !== undefined ? { commitHash: finalEvidence.commitHash } : {}),
+        });
       }
 
       if (worktree !== undefined && outcome === "success") {
@@ -567,7 +715,12 @@ export class LoopEngine {
           ...(finalVerdict.verify_commands !== undefined && finalVerdict.verify_commands.length > 0
             ? { verify_commands: finalVerdict.verify_commands }
             : {}),
+          ...(finalVerdict.evaluations !== undefined && finalVerdict.evaluations.length > 0
+            ? { evaluations: finalVerdict.evaluations }
+            : {}),
         } : {}),
+        ...(feedbackHistory.length > 0 ? { iteration_feedback: feedbackHistory } : {}),
+        ...(lessonDraftPath !== undefined ? { lesson_draft_path: lessonDraftPath } : {}),
         ...(finalEvidence.changedFiles.length > 0 ? { changed_files: finalEvidence.changedFiles } : {}),
         ...(finalEvidence.diffSummary !== undefined ? { diff_summary: finalEvidence.diffSummary } : {}),
         ...(finalEvidence.commitHash !== undefined ? { commit_hash: finalEvidence.commitHash } : {}),
@@ -630,6 +783,53 @@ export class LoopEngine {
     decisions.push(
       `${task.task_id}: publish ${result.status} for ${skillId} (reasons: ${(result.reasons ?? []).join(", ") || "none"})${marker}`,
     );
+  }
+
+  /**
+   * SOP flywheel hook: after a success that recovered from failed attempts,
+   * write a reviewable lesson draft into the main workspace. Never gates the
+   * task and never mutates official skill files.
+   */
+  private async runLessonDraftHook(
+    loopId: string,
+    workspacePath: string,
+    task: Task,
+    decisions: string[],
+    input: {
+      iterations: number;
+      feedback: IterationFeedback[];
+      finalVerdict: Verdict | null;
+      changedFiles: string[];
+      diffSummary?: string;
+      commitHash?: string;
+    },
+  ): Promise<string | undefined> {
+    if (input.feedback.length === 0) return undefined;
+    try {
+      const result = await writeLessonDraft({
+        task,
+        iterations: input.iterations,
+        feedback: input.feedback,
+        finalVerdict: input.finalVerdict,
+        changedFiles: input.changedFiles,
+        ...(input.diffSummary !== undefined ? { diffSummary: input.diffSummary } : {}),
+        ...(input.commitHash !== undefined ? { commitHash: input.commitHash } : {}),
+      }, {
+        workspacePath,
+        ...(this.options.lessonDrafts !== undefined ? { config: this.options.lessonDrafts } : {}),
+      });
+      if (!result.written || result.path === undefined) return undefined;
+      this.emit(loopId, "loop.lesson.drafted", {
+        task_id: task.task_id,
+        path: result.path,
+        failed_attempts: input.feedback.length,
+      });
+      decisions.push(`${task.task_id}: lesson draft written to ${result.path}`);
+      return result.path;
+    } catch (error) {
+      decisions.push(`${task.task_id}: lesson draft failed: ${error instanceof Error ? error.message : String(error)}`);
+      return undefined;
+    }
   }
 
   private async checkGoal(loopId: string, workspacePath: string): Promise<LoopGoalResult | undefined> {
@@ -696,6 +896,17 @@ interface AgentSelection {
   agentId: string;
   reason: string;
   policyDecision?: PolicyDecision;
+}
+
+/**
+ * A cycle counts against the no-progress budget only when it executed tasks
+ * and none succeeded. Idle cycles (nothing executed) leave the streak
+ * unchanged — stop-when-idle and cycle caps govern those.
+ */
+function nextNoProgressCycles(current: number, result: LoopRunResult): number {
+  if (result.executedTaskCount === 0) return current;
+  const madeProgress = result.completedTasks.some((task) => task.outcome === "success");
+  return madeProgress ? 0 : current + 1;
 }
 
 interface TaskGitEvidence {

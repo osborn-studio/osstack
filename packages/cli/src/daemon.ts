@@ -18,8 +18,12 @@ import { createHash, randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { encodeFrame, FrameDecoder, type HermesEvent } from "@osstack/hermes-adapter";
 import {
+  DiscoveryPolicy,
+  LessonDraftConfig,
+  LoopBudget,
   LoopEngine,
   LoopKnowledgeTrace,
+  checkBudget,
   nextCronDelayMs,
   validateCronExpression,
   readLoopState,
@@ -760,6 +764,7 @@ function loopRunSummary(result: LoopRunResult, runId?: string): Record<string, u
     events: result.events,
     state: result.state,
     ...(result.goal !== undefined ? { goal: result.goal } : {}),
+    ...(result.budget !== undefined ? { budget: result.budget } : {}),
   };
 }
 
@@ -774,6 +779,7 @@ function loopRunCyclesSummary(result: LoopRunCyclesResult, runId?: string): Reco
     events: result.events,
     state: result.state,
     ...(result.cycles.at(-1)?.goal !== undefined ? { goal: result.cycles.at(-1)?.goal } : {}),
+    ...(result.budget !== undefined ? { budget: result.budget } : {}),
     cycles: result.cycles.map((cycle) => ({
       discovered_task_count: cycle.discoveredTaskCount,
       executed_task_count: cycle.executedTaskCount,
@@ -877,6 +883,8 @@ async function startLoopSession(
 }
 
 async function runLoopSession(ctx: DaemonContext, session: LoopSession): Promise<void> {
+  const budget = session.runOptions.budget;
+  let noProgressCycles = 0;
   try {
     while (!session.abort.signal.aborted) {
       if (session.maxCycles !== undefined && session.cycleCount >= session.maxCycles) {
@@ -916,6 +924,24 @@ async function runLoopSession(ctx: DaemonContext, session: LoopSession): Promise
       session.lastMarkdownPath = result.markdownPath;
       session.updatedAt = Date.now();
       await persistLoopSessions(ctx);
+
+      if (budget !== undefined) {
+        if (result.executedTaskCount > 0) {
+          const madeProgress = result.completedTasks.some((task) => task.outcome === "success");
+          noProgressCycles = madeProgress ? 0 : noProgressCycles + 1;
+        }
+        const check = checkBudget(budget, {
+          cycles: session.cycleCount,
+          runtime_ms: Date.now() - session.startedAt,
+          tokens: session.tokensConsumed,
+          estimated_cost_usd: 0,
+          no_progress_cycles: noProgressCycles,
+        });
+        if (check.exceeded) {
+          await markLoopSessionStopped(ctx, session, `budget exceeded: ${check.reason}`);
+          return;
+        }
+      }
 
       if (result.goal?.pass === true) {
         await markLoopSessionStopped(ctx, session, "goal command passed");
@@ -1283,6 +1309,12 @@ function parseLoopRunParams(
   if (stopWhenIdle instanceof Error) return stopWhenIdle;
   const knowledge = optionalKnowledgeTrace(p, "knowledge");
   if (knowledge instanceof Error) return knowledge;
+  const discoveryPolicy = optionalDiscoveryPolicy(p, "discoveryPolicy");
+  if (discoveryPolicy instanceof Error) return discoveryPolicy;
+  const budget = optionalLoopBudget(p, "budget");
+  if (budget instanceof Error) return budget;
+  const lessonDrafts = optionalLessonDrafts(p, "lessonDrafts");
+  if (lessonDrafts instanceof Error) return lessonDrafts;
 
   const runOptions: LoopRunOptions = {
     workspacePath,
@@ -1301,6 +1333,9 @@ function parseLoopRunParams(
     ...(verifyCommands !== undefined ? { verifyCommands } : {}),
     ...(verifierAgentIds !== undefined ? { verifierAgentIds } : {}),
     ...(artifactVerification !== undefined ? { artifactVerification } : {}),
+    ...(discoveryPolicy !== undefined ? { discoveryPolicy } : {}),
+    ...(budget !== undefined ? { budget } : {}),
+    ...(lessonDrafts !== undefined ? { lessonDrafts } : {}),
     ...(maxIterations !== undefined ? { maxIterations } : {}),
     ...(commandTimeoutMs !== undefined ? { commandTimeoutMs } : {}),
     ...(outputLimit !== undefined ? { outputLimit } : {}),
@@ -1388,6 +1423,36 @@ function objectParams(params: unknown): Record<string, unknown> | Error {
     return new Error("params must be an object");
   }
   return params as Record<string, unknown>;
+}
+
+function optionalLessonDrafts(
+  params: Record<string, unknown>,
+  key: string,
+): Partial<LessonDraftConfig> | undefined | Error {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  const parsed = LessonDraftConfig.partial().safeParse(value);
+  if (!parsed.success) return new Error(`params.${key} must be a valid lesson draft config`);
+  return {
+    ...(parsed.data.enabled !== undefined ? { enabled: parsed.data.enabled } : {}),
+    ...(parsed.data.dir !== undefined ? { dir: parsed.data.dir } : {}),
+  };
+}
+
+function optionalLoopBudget(params: Record<string, unknown>, key: string): LoopBudget | undefined | Error {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  const parsed = LoopBudget.safeParse(value);
+  if (!parsed.success) return new Error(`params.${key} must be a valid loop budget`);
+  return parsed.data;
+}
+
+function optionalDiscoveryPolicy(params: Record<string, unknown>, key: string): DiscoveryPolicy | undefined | Error {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  const parsed = DiscoveryPolicy.safeParse(value);
+  if (!parsed.success) return new Error(`params.${key} must be a valid discovery policy`);
+  return parsed.data;
 }
 
 function optionalKnowledgeTrace(params: Record<string, unknown>, key: string): LoopKnowledgeTraceType | undefined | Error {

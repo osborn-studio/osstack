@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
-import { LoopState, type CompletedTask, type Task } from "./types.js";
+import { LoopState, type CompletedTask, type DeferredTask, type Task } from "./types.js";
 
 export interface LoopStateFilePaths {
   jsonPath: string;
@@ -69,6 +69,21 @@ export function renderLoopStateMarkdown(state: LoopState): string {
     ...renderTasks(state.pending ?? [], true),
   ];
 
+  const deferred = state.deferred_tasks ?? [];
+  if (deferred.length > 0) {
+    lines.push(
+      "",
+      "## Needs Approval",
+      ...renderDeferredTasks(deferred.filter((entry) => entry.authorization === "needs_approval")),
+      "",
+      "## Suggested",
+      ...renderDeferredTasks(deferred.filter((entry) => entry.authorization === "suggest_only")),
+      "",
+      "## Blocked",
+      ...renderDeferredTasks(deferred.filter((entry) => entry.authorization === "blocked")),
+    );
+  }
+
   if (state.key_metrics) {
     lines.push(
       "",
@@ -89,6 +104,13 @@ export function renderLoopStateMarkdown(state: LoopState): string {
   }
 
   return `${lines.join("\n")}\n`;
+}
+
+function renderDeferredTasks(entries: DeferredTask[]): string[] {
+  if (entries.length === 0) return ["- None"];
+  return entries.map((entry) => (
+    `- [ ] ${entry.task.task_id}: ${entry.task.prompt} (${entry.task.capability}, ${entry.task.source}, priority ${entry.task.priority}) - ${entry.reason}`
+  ));
 }
 
 function renderTasks(tasks: Task[], includePriority: boolean): string[] {
@@ -112,6 +134,16 @@ function renderCompletedTasks(tasks: CompletedTask[]): string[] {
     if (task.verify_summary !== undefined) {
       lines.push(`  - Verification: ${task.verify_summary} (${task.verify_issue_count ?? 0} issue${task.verify_issue_count === 1 ? "" : "s"})`);
     }
+    const failedEvaluations = (task.evaluations ?? []).filter((evaluation) => !evaluation.pass);
+    if (failedEvaluations.length > 0) {
+      lines.push(`  - Failed evaluations: ${failedEvaluations.map((evaluation) => `${evaluation.spec_id} (${evaluation.summary})`).join("; ")}`);
+    }
+    for (const feedback of task.iteration_feedback ?? []) {
+      const failed = feedback.failed_evaluations.length > 0
+        ? `, failed evaluations: ${feedback.failed_evaluations.join(", ")}`
+        : "";
+      lines.push(`  - Feedback (attempt ${feedback.attempt}): ${feedback.verdict_summary} (${feedback.blocking_issues.length} blocking issue${feedback.blocking_issues.length === 1 ? "" : "s"}${failed})`);
+    }
     if (task.execution_commands !== undefined && task.execution_commands.length > 0) {
       lines.push(`  - Commands: ${task.execution_commands.map((command) => `${command.command} -> ${command.exit_code}`).join(", ")}`);
     }
@@ -127,6 +159,9 @@ function renderCompletedTasks(tasks: CompletedTask[]): string[] {
     if (task.worktree_branch !== undefined) {
       const commit = task.worktree_commit === undefined ? "" : `, commit ${task.worktree_commit}`;
       lines.push(`  - Worktree: ${task.worktree_branch}${commit}`);
+    }
+    if (task.lesson_draft_path !== undefined) {
+      lines.push(`  - Lesson draft: ${task.lesson_draft_path}`);
     }
     return lines;
   });

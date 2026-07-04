@@ -97,6 +97,107 @@ describe("loop CLI", () => {
     expect(logs.join("\n")).toContain("cli-loop-task - success");
   });
 
+  it("defers tasks per --discovery-policy instead of executing them", async () => {
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-governed-task",
+      capability: "release.publish",
+      prompt: "Publish the release",
+    }));
+    await writeFile(join(tmp, "policy.json"), JSON.stringify({
+      default_authorization: "auto_execute",
+      blocked_capabilities: ["release.publish"],
+    }));
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--execute",
+      "node -e \"process.exit(0)\"",
+      "--discovery-policy",
+      "policy.json",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as { completed_tasks: unknown[] };
+    expect(summary.completed_tasks).toEqual([]);
+    const markdown = await readFile(join(tmp, "STATE.md"), "utf-8");
+    expect(markdown).toContain("## Blocked");
+    expect(markdown).toContain("cli-governed-task");
+  });
+
+  it("accepts --discovery-policy default and still executes task_queue tasks", async () => {
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-default-policy-task",
+      capability: "code.test",
+      prompt: "Exercise default discovery policy",
+    }));
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--execute",
+      "node -e \"process.exit(0)\"",
+      "--discovery-policy",
+      "default",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      completed_tasks: Array<{ task_id: string; outcome: string }>;
+    };
+    expect(summary.completed_tasks).toEqual([
+      expect.objectContaining({ task_id: "cli-default-policy-task", outcome: "success" }),
+    ]);
+  });
+
+  it("stops with exit code 2 when the loop budget is exceeded", async () => {
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-budget-task",
+      capability: "code.test",
+      prompt: "Exercise budget stop",
+    }));
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--execute",
+      "node -e \"setTimeout(() => {}, 25)\"",
+      "--cycles",
+      "3",
+      "--max-runtime-ms",
+      "1",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(2);
+    expect(errors).toEqual([]);
+    const summary = JSON.parse(logs.join("\n")) as {
+      budget?: { exceeded: boolean; limit?: string };
+      completed_tasks: Array<{ task_id: string; outcome: string }>;
+    };
+    expect(summary.budget).toMatchObject({ exceeded: true, limit: "max_runtime_ms" });
+    expect(summary.completed_tasks).toEqual([
+      expect.objectContaining({ task_id: "cli-budget-task", outcome: "success" }),
+    ]);
+  });
+
   it("generates report, scorecard, and proof artifacts during loop run", async () => {
     await mkdir(join(tmp, "tasks"));
     await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
