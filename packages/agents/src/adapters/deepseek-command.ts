@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { constants } from "node:fs";
-import { access } from "node:fs/promises";
+import { access, mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Capability, CostTier } from "@osstack/core";
@@ -30,6 +31,17 @@ interface CommandResult {
   stdout: string;
   stderr: string;
   timedOut: boolean;
+}
+
+/** Env var pointing the DeepSeek command at the loop's evaluation specs JSON. */
+export const EVALUATION_SPECS_FILE_ENV = "OSSTACK_EVALUATION_SPECS_FILE";
+/** Stdout line prefix a DeepSeek command uses to report per-spec judgments. */
+export const EVALUATION_JUDGMENTS_PREFIX = "OSSTACK_EVALUATIONS:";
+
+export interface EvaluationJudgment {
+  id: string;
+  pass: boolean;
+  summary?: string;
 }
 
 export abstract class DeepSeekCommandAdapter extends BaseAgentAdapter {
@@ -95,6 +107,21 @@ export abstract class DeepSeekCommandAdapter extends BaseAgentAdapter {
     const args = this.args(task);
     yield progressEvent(task, seq++, `${this.id}.start`, `${bin} ${args.join(" ")}`);
 
+    // Loop evaluation specs travel via a temp JSON file + env var so newer
+    // DeepSeek commands can judge acceptance criteria per spec while legacy
+    // binaries simply ignore the variable.
+    let env: Record<string, string> | undefined;
+    const specsFile = await this.writeEvaluationSpecsFile(task);
+    if (specsFile !== undefined) {
+      env = { [EVALUATION_SPECS_FILE_ENV]: specsFile.path };
+      yield progressEvent(
+        task,
+        seq++,
+        `${this.id}.evaluation_specs`,
+        `${specsFile.count} evaluation spec(s) via ${EVALUATION_SPECS_FILE_ENV}`,
+      );
+    }
+
     let input: string | undefined;
     if (this.config.commandKind === "review") {
       const diff = await runCommand("git", ["diff", "--no-ext-diff"], {
@@ -114,6 +141,7 @@ export abstract class DeepSeekCommandAdapter extends BaseAgentAdapter {
     const commandOptions: {
       cwd: string;
       input?: string;
+      env?: Record<string, string>;
       signal?: AbortSignal;
       timeoutMs: number;
       outputLimit: number;
@@ -124,6 +152,7 @@ export abstract class DeepSeekCommandAdapter extends BaseAgentAdapter {
       outputLimit: this.outputLimit(),
     };
     if (input !== undefined) commandOptions.input = input;
+    if (env !== undefined) commandOptions.env = env;
     const result = await runCommand(bin, args, commandOptions);
     if (result.stdout.trim() !== "") {
       yield tokenEvent(task, seq++, `${this.id}.stdout`, result.stdout);
@@ -131,9 +160,10 @@ export abstract class DeepSeekCommandAdapter extends BaseAgentAdapter {
     if (result.stderr.trim() !== "") {
       yield progressEvent(task, seq++, `${this.id}.stderr`, result.stderr);
     }
+    const judgments = extractEvaluationJudgments(result.stdout);
 
     if (result.exitCode === 0) {
-      yield doneEvent(task, seq, "completed", seq - 1, `${this.config.defaultBin} completed`);
+      yield doneEvent(task, seq, "completed", seq - 1, `${this.config.defaultBin} completed`, judgments);
       return;
     }
 
@@ -141,7 +171,20 @@ export abstract class DeepSeekCommandAdapter extends BaseAgentAdapter {
       ? `${this.config.defaultBin} timed out after ${this.timeoutMs()}ms`
       : `${this.config.defaultBin} exited ${result.exitCode}: ${singleLine(result.stderr || result.stdout)}`;
     yield errorEvent(task, seq++, "deepseek_command_failed", summary);
-    yield doneEvent(task, seq, "failed", seq - 1, summary);
+    yield doneEvent(task, seq, "failed", seq - 1, summary, judgments);
+  }
+
+  private async writeEvaluationSpecsFile(task: AgentTask): Promise<{ path: string; count: number } | undefined> {
+    const specs = task.context?.["evaluation_specs"];
+    if (!Array.isArray(specs) || specs.length === 0) return undefined;
+    try {
+      const dir = await mkdtemp(join(tmpdir(), "osstack-eval-specs-"));
+      const path = join(dir, `${task.run_id.replace(/[^a-zA-Z0-9._-]+/g, "-")}.json`);
+      await writeFile(path, `${JSON.stringify(specs, null, 2)}\n`, "utf-8");
+      return { path, count: specs.length };
+    } catch {
+      return undefined;
+    }
   }
 
   private args(task: AgentTask): string[] {
@@ -212,12 +255,46 @@ function doneEvent(
   status: "completed" | "failed" | "cancelled",
   lastSeq: number,
   summary: string,
+  judgments?: EvaluationJudgment[],
 ): HermesEvent {
   return {
     ...envelope(task, seq, true),
     type: "done",
-    payload: { status, last_seq: lastSeq, result_summary: summary },
+    payload: {
+      status,
+      last_seq: lastSeq,
+      result_summary: summary,
+      ...(judgments !== undefined && judgments.length > 0 ? { evaluation_judgments: judgments } : {}),
+    },
   };
+}
+
+/**
+ * Parse per-spec judgments from command stdout. Convention: the command may
+ * print one line `OSSTACK_EVALUATIONS: {"evaluations":[{"id":"x","pass":true,"summary":"..."}]}`.
+ * The last such line wins; malformed lines are ignored.
+ */
+export function extractEvaluationJudgments(stdout: string): EvaluationJudgment[] {
+  const lines = stdout.split(/\r?\n/).filter((line) => line.trimStart().startsWith(EVALUATION_JUDGMENTS_PREFIX));
+  const last = lines.at(-1);
+  if (last === undefined) return [];
+  const raw = last.trimStart().slice(EVALUATION_JUDGMENTS_PREFIX.length).trim();
+  try {
+    const parsed = JSON.parse(raw) as { evaluations?: unknown };
+    const entries = Array.isArray(parsed.evaluations) ? parsed.evaluations : [];
+    return entries.flatMap((entry) => {
+      if (entry === null || typeof entry !== "object") return [];
+      const candidate = entry as Record<string, unknown>;
+      if (typeof candidate["id"] !== "string" || typeof candidate["pass"] !== "boolean") return [];
+      return [{
+        id: candidate["id"],
+        pass: candidate["pass"],
+        ...(typeof candidate["summary"] === "string" ? { summary: candidate["summary"] } : {}),
+      }];
+    });
+  } catch {
+    return [];
+  }
 }
 
 function envelope(task: AgentTask, seq: number, terminal: boolean): Omit<HermesEvent, "type" | "payload"> {
@@ -268,6 +345,7 @@ function runCommand(
   options: {
     cwd: string;
     input?: string;
+    env?: Record<string, string>;
     signal?: AbortSignal;
     timeoutMs: number;
     outputLimit: number;
@@ -277,7 +355,7 @@ function runCommand(
     const child = spawn(command, args, {
       cwd: options.cwd,
       stdio: ["pipe", "pipe", "pipe"],
-      env: { ...process.env },
+      env: { ...process.env, ...(options.env ?? {}) },
     });
     let stdout = "";
     let stderr = "";

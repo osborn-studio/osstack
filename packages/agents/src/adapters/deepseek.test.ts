@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { AgentTask } from "../base.js";
+import { extractEvaluationJudgments } from "./deepseek-command.js";
 import { DeepSeekReviewAdapter } from "./ds-review.js";
 import { DeepSeekVerifyAdapter } from "./ds-verify.js";
 
@@ -85,6 +86,53 @@ printf 'verify ok\\n'
     expect(doneStatus(events)).toBe("completed");
     await expect(readFile(join(workspace, "reviews", "ds-verify", "latest.md"), "utf-8"))
       .resolves.toContain("strict=yes");
+  });
+
+  it("forwards evaluation specs via env file and reports per-spec judgments", async () => {
+    const workspace = await gitWorkspace();
+    const bin = await fakeCommand("ds-verify", `
+out=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --output) out="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+mkdir -p "$(dirname "$out")"
+cp "$OSSTACK_EVALUATION_SPECS_FILE" "$out"
+printf 'OSSTACK_EVALUATIONS: {"evaluations":[{"id":"no-bypass","pass":false,"summary":"constant allow found"},{"id":"docs-updated","pass":true}]}\\n'
+`);
+    const adapter = new DeepSeekVerifyAdapter({ bin });
+
+    const specs = [
+      { id: "no-bypass", mode: "semantic_review", description: "No authorization bypass.", acceptance: "Reject constant allow." },
+      { id: "docs-updated", mode: "semantic_review", description: "Docs updated." },
+    ];
+    const agentTask: AgentTask = {
+      ...task("ds-verify.verify.alignment", workspace),
+      context: { repo_path: workspace, evaluation_specs: specs },
+    };
+    const events = await drain(adapter.invoke(agentTask, new AbortController().signal));
+
+    expect(doneStatus(events)).toBe("completed");
+    const done = [...events].reverse().find((event) => event.type === "done");
+    expect((done?.payload as { evaluation_judgments?: unknown }).evaluation_judgments).toEqual([
+      { id: "no-bypass", pass: false, summary: "constant allow found" },
+      { id: "docs-updated", pass: true },
+    ]);
+    // The binary saw the full spec JSON through OSSTACK_EVALUATION_SPECS_FILE.
+    await expect(readFile(join(workspace, "reviews", "ds-verify", "latest.md"), "utf-8"))
+      .resolves.toContain("Reject constant allow.");
+  });
+
+  it("extracts only well-formed judgment lines from stdout", () => {
+    expect(extractEvaluationJudgments("no judgments here\n")).toEqual([]);
+    expect(extractEvaluationJudgments("OSSTACK_EVALUATIONS: not json\n")).toEqual([]);
+    expect(extractEvaluationJudgments([
+      "noise",
+      'OSSTACK_EVALUATIONS: {"evaluations":[{"id":"stale","pass":false}]}',
+      'OSSTACK_EVALUATIONS: {"evaluations":[{"id":"a","pass":true,"summary":"ok"},{"pass":true},{"id":"b","pass":"yes"}]}',
+    ].join("\n"))).toEqual([{ id: "a", pass: true, summary: "ok" }]);
   });
 
   it("maps command failures to terminal error and failed done events", async () => {

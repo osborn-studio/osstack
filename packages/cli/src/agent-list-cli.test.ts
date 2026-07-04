@@ -20,6 +20,8 @@ afterEach(() => {
 });
 
 describe("agent list CLI", () => {
+  // 20s timeout: see the human-list test below — real installed CLIs make
+  // availability probes slow on some machines.
   it("lists local agents with roles, capabilities, and auth modes", async () => {
     const exitCode = await main(["agent", "list", "--json"]);
 
@@ -61,8 +63,11 @@ describe("agent list CLI", () => {
         roles: expect.arrayContaining(["designer", "product/planning"]),
       }),
     ]));
-  });
+  }, 20_000);
 
+  // 20s timeout: availability probes spawn real installed CLIs (claude/codex)
+  // whose --help takes several seconds on some machines; the default 5s is
+  // borderline even though probes run in parallel.
   it("prints a role-oriented human list", async () => {
     const exitCode = await main(["agent", "list"]);
 
@@ -71,5 +76,5 @@ describe("agent list CLI", () => {
     expect(logs.join("\n")).toContain("roles=coding,test-verify,reviewer");
     expect(logs.join("\n")).toContain("auth_mode=subprocess/login-reuse");
     expect(errors).toEqual([]);
-  });
+  }, 20_000);
 });

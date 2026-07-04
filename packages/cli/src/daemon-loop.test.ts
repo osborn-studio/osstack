@@ -258,13 +258,36 @@ echo review ok
       loop_session_id: loopSessionId,
       status: "stopped",
       stop_reason: expect.stringContaining("budget exceeded"),
+      budget: expect.objectContaining({
+        exceeded: true,
+        limit: "max_cycles",
+        limits: expect.objectContaining({ max_cycles: 1 }),
+        usage: expect.objectContaining({ cycles: 1 }),
+      }),
+    });
+
+    const statsResp = await daemonRpc(daemon.socketPath, "stats");
+    expect(statsResp.ok).toBe(true);
+    const stats = statsResp.result as { loops: { per_loop: Array<{ loop_session_id: string; budget?: unknown }> } };
+    const perLoop = stats.loops.per_loop.find((entry) => entry.loop_session_id === loopSessionId);
+    expect(perLoop?.budget).toMatchObject({
+      exceeded: true,
+      limit: "max_cycles",
+      usage: expect.objectContaining({ cycles: 1 }),
     });
 
     const persisted = JSON.parse(
       await readFile(join(tmp, "home", "loop-sessions.json"), "utf-8"),
-    ) as { sessions: Array<{ loopSessionId: string; stopReason?: string }> };
+    ) as {
+      sessions: Array<{
+        loopSessionId: string;
+        stopReason?: string;
+        lastBudgetCheck?: { exceeded: boolean; limit?: string };
+      }>;
+    };
     const savedSession = persisted.sessions.find((session) => session.loopSessionId === loopSessionId);
     expect(savedSession?.stopReason).toContain("budget exceeded");
+    expect(savedSession?.lastBudgetCheck).toMatchObject({ exceeded: true, limit: "max_cycles" });
   });
 
   it("starts a cron-scheduled background loop", async () => {

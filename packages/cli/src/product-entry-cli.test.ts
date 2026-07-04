@@ -51,6 +51,8 @@ afterEach(async () => {
 });
 
 describe("product entry commands", () => {
+  // 20s timeout: agent availability probes spawn real installed CLIs
+  // (claude/codex) whose --help takes several seconds on some machines.
   it("runs a top-level product doctor across loop readiness and agent availability", async () => {
     await mkdir(join(tmp, "tasks"));
     await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
@@ -89,7 +91,7 @@ describe("product entry commands", () => {
     expect(result.agents.by_role["coding"]).toContain("codex-cli");
     expect(result.next_steps.join("\n")).toContain("osstack loop run");
     expect(errors.join("\n")).toBe("");
-  });
+  }, 20_000);
 
   it("prints runnable examples for common workflows", async () => {
     const exitCode = await main(["examples"]);

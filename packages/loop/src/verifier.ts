@@ -79,19 +79,33 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
   const unverifiedAdapterSpecIssues = adapterConfigured
     ? []
     : adapterSpecs.map((spec) => evaluationIssue(spec, "no verifier adapter configured for this evaluation"));
+  const judgmentsBySpec = collectJudgmentsBySpec(adapterResults);
+  const judgedFailureIssues = adapterSpecs.flatMap((spec) => {
+    const judgments = judgmentsBySpec.get(spec.id) ?? [];
+    const failing = judgments.find((judgment) => !judgment.pass);
+    if (failing === undefined) return [];
+    return [evaluationIssue(spec, singleLine(failing.summary ?? "verifier adapter judged this evaluation as failed"))];
+  });
 
   const issues = [
     ...executionIssues,
     ...verificationIssues,
     ...explicitCommandIssues,
     ...adapterIssues,
+    ...judgedFailureIssues,
     ...unverifiedAdapterSpecIssues,
     ...artifact.issues,
   ];
 
   const evaluations: EvaluationResult[] = [
     ...commandRuns.map(({ spec, implicit, result }) => commandEvaluationResult(spec, implicit, result)),
-    ...adapterSpecs.map((spec) => adapterEvaluationResult(spec, adapterConfigured, adapterHasIssues, adapterResults)),
+    ...adapterSpecs.map((spec) => adapterEvaluationResult(
+      spec,
+      adapterConfigured,
+      adapterHasIssues,
+      adapterResults,
+      judgmentsBySpec.get(spec.id) ?? [],
+    )),
     ...artifact.evaluations,
   ];
 
@@ -142,6 +156,7 @@ function adapterEvaluationResult(
   adapterConfigured: boolean,
   adapterHasIssues: boolean,
   adapterResults: readonly VerifierAdapterResult[],
+  judgments: readonly AdapterEvaluationJudgment[],
 ): EvaluationResult {
   if (!adapterConfigured) {
     return {
@@ -155,6 +170,25 @@ function adapterEvaluationResult(
       implicit: false,
     };
   }
+
+  // Per-spec judgments from the adapter beat the adapter-level pass/fail.
+  if (judgments.length > 0) {
+    const failing = judgments.find((judgment) => !judgment.pass);
+    const summary = failing !== undefined
+      ? failing.summary ?? "verifier adapter judged this evaluation as failed"
+      : judgments.find((judgment) => judgment.summary !== undefined)?.summary ?? "judged pass by verifier adapter";
+    return {
+      spec_id: spec.id,
+      mode: spec.mode,
+      description: spec.description,
+      required: spec.required,
+      weight: spec.weight,
+      pass: failing === undefined,
+      summary: singleLine(summary),
+      implicit: false,
+    };
+  }
+
   const summary = adapterHasIssues
     ? singleLine(adapterResults.flatMap((result) => result.issues)[0]?.message ?? "verifier adapter reported issues")
     : adapterResults.find((result) => result.summary !== undefined)?.summary
@@ -169,6 +203,20 @@ function adapterEvaluationResult(
     summary: singleLine(summary),
     implicit: false,
   };
+}
+
+function collectJudgmentsBySpec(
+  adapterResults: readonly VerifierAdapterResult[],
+): Map<string, AdapterEvaluationJudgment[]> {
+  const bySpec = new Map<string, AdapterEvaluationJudgment[]>();
+  for (const result of adapterResults) {
+    for (const judgment of result.judgments ?? []) {
+      const existing = bySpec.get(judgment.id);
+      if (existing === undefined) bySpec.set(judgment.id, [judgment]);
+      else existing.push(judgment);
+    }
+  }
+  return bySpec;
 }
 
 function evaluationIssue(spec: EvaluationSpec, detail: string): Issue {
@@ -379,11 +427,19 @@ function pathMatches(file: string, pattern: string): boolean {
   return normalizedFile === normalizedPattern || normalizedFile.startsWith(`${normalizedPattern}/`);
 }
 
+/** Per-spec judgment reported by a verifier adapter (e.g. via OSSTACK_EVALUATIONS stdout). */
+interface AdapterEvaluationJudgment {
+  id: string;
+  pass: boolean;
+  summary?: string;
+}
+
 interface VerifierAdapterResult {
   agentId: string;
   eventCount: number;
   issues: Issue[];
   summary?: string;
+  judgments?: AdapterEvaluationJudgment[];
 }
 
 async function runVerifierAdapters(
@@ -430,6 +486,7 @@ async function invokeVerifierAdapter(
   let summary: string | undefined;
   let status: "completed" | "failed" | "cancelled" | "expired" | undefined;
   let terminalError: string | undefined;
+  let judgments: AdapterEvaluationJudgment[] | undefined;
 
   try {
     const agentTask = verifierAgentTask(run, options, adapter, adapterSpecs);
@@ -442,6 +499,7 @@ async function invokeVerifierAdapter(
         const payload = donePayload(event.payload);
         status = payload.status;
         summary = payload.result_summary;
+        judgments = parseEvaluationJudgments(payload.evaluation_judgments);
       }
     }
   } catch (error) {
@@ -456,6 +514,7 @@ async function invokeVerifierAdapter(
       eventCount,
       issues: [],
       ...(summary !== undefined ? { summary } : {}),
+      ...(judgments !== undefined && judgments.length > 0 ? { judgments } : {}),
     };
   }
 
@@ -467,7 +526,23 @@ async function invokeVerifierAdapter(
     eventCount,
     issues: [adapterIssue(adapter.id, "verify.adapter_failed", message)],
     ...(summary !== undefined ? { summary } : {}),
+    ...(judgments !== undefined && judgments.length > 0 ? { judgments } : {}),
   };
+}
+
+function parseEvaluationJudgments(raw: unknown): AdapterEvaluationJudgment[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const judgments = raw.flatMap((entry) => {
+    if (entry === null || typeof entry !== "object") return [];
+    const candidate = entry as Record<string, unknown>;
+    if (typeof candidate["id"] !== "string" || typeof candidate["pass"] !== "boolean") return [];
+    return [{
+      id: candidate["id"],
+      pass: candidate["pass"],
+      ...(typeof candidate["summary"] === "string" ? { summary: candidate["summary"] } : {}),
+    }];
+  });
+  return judgments.length > 0 ? judgments : undefined;
 }
 
 function verifierAgentTask(
@@ -575,9 +650,11 @@ function errorPayload(payload: HermesEvent["payload"]): { message: string } {
 function donePayload(payload: HermesEvent["payload"]): {
   status: "completed" | "failed" | "cancelled" | "expired";
   result_summary?: string;
+  evaluation_judgments?: unknown;
 } {
   return payload as {
     status: "completed" | "failed" | "cancelled" | "expired";
     result_summary?: string;
+    evaluation_judgments?: unknown;
   };
 }

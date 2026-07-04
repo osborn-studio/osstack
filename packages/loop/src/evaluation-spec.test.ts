@@ -261,6 +261,65 @@ describe("verifier per-evaluation results", () => {
     ]);
   });
 
+  it("honors per-spec adapter judgments over adapter-level pass/fail", async () => {
+    const adapter = mockAdapter({
+      async *invoke(agentTask) {
+        yield {
+          event_id: `${agentTask.run_id}:1`,
+          seq: 1,
+          run_id: agentTask.run_id,
+          session_id: agentTask.session_id,
+          created_at: Date.now() / 1000,
+          terminal: true,
+          type: "done",
+          payload: {
+            status: "completed",
+            last_seq: 1,
+            result_summary: "review completed",
+            evaluation_judgments: [
+              { id: "no-bypass", pass: false, summary: "constant allow detected in auth guard" },
+              { id: "docs-updated", pass: true, summary: "docs cover the new flag" },
+            ],
+          },
+        } as unknown as HermesEvent;
+      },
+    });
+
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace,
+      verifierAgentIds: [adapter.id],
+      adapters: [adapter],
+      task: task({
+        evaluation: [
+          spec({ id: "no-bypass", mode: "semantic_review" }),
+          spec({ id: "docs-updated", mode: "semantic_review" }),
+        ],
+      }),
+    });
+
+    // Adapter completed, but the judged-failed spec still blocks the verdict.
+    expect(verdict.pass).toBe(false);
+    expect(verdict.evaluations).toEqual([
+      expect.objectContaining({
+        spec_id: "no-bypass",
+        pass: false,
+        summary: "constant allow detected in auth guard",
+      }),
+      expect.objectContaining({
+        spec_id: "docs-updated",
+        pass: true,
+        summary: "docs cover the new flag",
+      }),
+    ]);
+    expect(verdict.issues).toEqual([
+      expect.objectContaining({
+        rule: "verify.evaluation_failed",
+        message: expect.stringContaining("no-bypass"),
+      }),
+    ]);
+    expect(verdict.score).toBeCloseTo(0.5);
+  });
+
   it("fails semantic_review specs when the verifier adapter rejects", async () => {
     const adapter = mockAdapter({
       async *invoke(agentTask) {

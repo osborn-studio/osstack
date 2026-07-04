@@ -28,6 +28,7 @@ import {
   validateCronExpression,
   readLoopState,
   renderLoopStateMarkdown,
+  type LoopBudgetStatus,
   type LoopRunCyclesOptions,
   type LoopRunCyclesResult,
   type LoopRunOptions,
@@ -133,8 +134,12 @@ interface LoopSession {
   tokensConsumed: number;
   totalCycleDurationMs: number;
   failureStreaks: Record<string, LoopFailureStreak>;
+  /** Consecutive cycles that executed tasks without a success (budget input). */
+  noProgressCycles: number;
   abort: AbortController;
   maxCycles?: number;
+  /** Latest budget check when runOptions.budget is configured. */
+  lastBudgetCheck?: LoopBudgetStatus;
   lastCycleDurationMs?: number;
   lastJsonPath?: string;
   lastMarkdownPath?: string;
@@ -178,6 +183,8 @@ interface PersistedLoopSession {
   tokensConsumed?: number;
   totalCycleDurationMs?: number;
   failureStreaks?: Record<string, LoopFailureStreak>;
+  noProgressCycles?: number;
+  lastBudgetCheck?: LoopBudgetStatus;
   maxCycles?: number;
   lastCycleDurationMs?: number;
   lastJsonPath?: string;
@@ -669,10 +676,33 @@ interface LoopStat {
   total_cycle_duration_ms: number;
   avg_cycle_duration_ms: number | null;
   failure_streaks: LoopFailureStreak[];
+  budget?: LoopBudgetStat;
   last_cycle_duration_ms?: number;
   schedule?: string;
   stop_reason?: string;
   last_error?: string;
+}
+
+/** Budget limits + latest usage for one daemon loop session. */
+interface LoopBudgetStat {
+  limits: NonNullable<LoopRunOptions["budget"]>;
+  exceeded: boolean;
+  limit?: string;
+  reason?: string;
+  usage?: LoopBudgetStatus["usage"];
+}
+
+function loopBudgetStat(session: LoopSession): LoopBudgetStat | undefined {
+  const limits = session.runOptions.budget;
+  if (limits === undefined) return undefined;
+  const check = session.lastBudgetCheck;
+  return {
+    limits,
+    exceeded: check?.exceeded ?? false,
+    ...(check?.limit !== undefined ? { limit: check.limit } : {}),
+    ...(check?.reason !== undefined ? { reason: check.reason } : {}),
+    ...(check !== undefined ? { usage: check.usage } : {}),
+  };
 }
 
 function computeStats(db: Database.Database, loopSessions: Map<string, LoopSession>): DaemonStats {
@@ -727,6 +757,7 @@ function computeLoopStats(loopSessions: Map<string, LoopSession>): LoopStats {
 }
 
 function loopStat(session: LoopSession): LoopStat {
+  const budget = loopBudgetStat(session);
   return {
     loop_session_id: session.loopSessionId,
     status: session.status,
@@ -742,6 +773,7 @@ function loopStat(session: LoopSession): LoopStat {
     total_cycle_duration_ms: session.totalCycleDurationMs,
     avg_cycle_duration_ms: session.cycleCount === 0 ? null : session.totalCycleDurationMs / session.cycleCount,
     failure_streaks: Object.values(session.failureStreaks),
+    ...(budget !== undefined ? { budget } : {}),
     ...(session.lastCycleDurationMs !== undefined ? { last_cycle_duration_ms: session.lastCycleDurationMs } : {}),
     ...(session.scheduleExpression !== undefined ? { schedule: session.scheduleExpression } : {}),
     ...(session.stopReason !== undefined ? { stop_reason: session.stopReason } : {}),
@@ -871,6 +903,7 @@ async function startLoopSession(
     tokensConsumed: 0,
     totalCycleDurationMs: 0,
     failureStreaks: {},
+    noProgressCycles: 0,
     abort: new AbortController(),
     runOptions: normalizedRunOptions,
     ...(schedule.cycles !== undefined ? { maxCycles: schedule.cycles } : {}),
@@ -884,7 +917,6 @@ async function startLoopSession(
 
 async function runLoopSession(ctx: DaemonContext, session: LoopSession): Promise<void> {
   const budget = session.runOptions.budget;
-  let noProgressCycles = 0;
   try {
     while (!session.abort.signal.aborted) {
       if (session.maxCycles !== undefined && session.cycleCount >= session.maxCycles) {
@@ -928,15 +960,18 @@ async function runLoopSession(ctx: DaemonContext, session: LoopSession): Promise
       if (budget !== undefined) {
         if (result.executedTaskCount > 0) {
           const madeProgress = result.completedTasks.some((task) => task.outcome === "success");
-          noProgressCycles = madeProgress ? 0 : noProgressCycles + 1;
+          session.noProgressCycles = madeProgress ? 0 : session.noProgressCycles + 1;
         }
-        const check = checkBudget(budget, {
+        const usage = {
           cycles: session.cycleCount,
           runtime_ms: Date.now() - session.startedAt,
           tokens: session.tokensConsumed,
           estimated_cost_usd: 0,
-          no_progress_cycles: noProgressCycles,
-        });
+          no_progress_cycles: session.noProgressCycles,
+        };
+        const check = checkBudget(budget, usage);
+        session.lastBudgetCheck = { ...check, usage };
+        await persistLoopSessions(ctx);
         if (check.exceeded) {
           await markLoopSessionStopped(ctx, session, `budget exceeded: ${check.reason}`);
           return;
@@ -1141,6 +1176,7 @@ function activeLoopCount(ctx: DaemonContext): number {
 }
 
 function loopSessionSummary(session: LoopSession): Record<string, unknown> {
+  const budget = loopBudgetStat(session);
   return {
     loop_session_id: session.loopSessionId,
     workspace_path: session.workspacePath,
@@ -1162,6 +1198,7 @@ function loopSessionSummary(session: LoopSession): Record<string, unknown> {
     total_cycle_duration_ms: session.totalCycleDurationMs,
     avg_cycle_duration_ms: session.cycleCount === 0 ? null : session.totalCycleDurationMs / session.cycleCount,
     failure_streaks: Object.values(session.failureStreaks),
+    ...(budget !== undefined ? { budget } : {}),
     ...(session.lastCycleDurationMs !== undefined ? { last_cycle_duration_ms: session.lastCycleDurationMs } : {}),
     ...(session.maxCycles !== undefined ? { max_cycles: session.maxCycles } : {}),
     ...(session.lastJsonPath !== undefined ? { last_json_path: session.lastJsonPath } : {}),
@@ -1193,6 +1230,8 @@ async function persistLoopSessions(ctx: DaemonContext): Promise<void> {
       tokensConsumed: session.tokensConsumed,
       totalCycleDurationMs: session.totalCycleDurationMs,
       failureStreaks: session.failureStreaks,
+      noProgressCycles: session.noProgressCycles,
+      ...(session.lastBudgetCheck !== undefined ? { lastBudgetCheck: session.lastBudgetCheck } : {}),
       ...(session.maxCycles !== undefined ? { maxCycles: session.maxCycles } : {}),
       ...(session.lastCycleDurationMs !== undefined ? { lastCycleDurationMs: session.lastCycleDurationMs } : {}),
       ...(session.lastJsonPath !== undefined ? { lastJsonPath: session.lastJsonPath } : {}),
@@ -1249,8 +1288,10 @@ async function restoreLoopSessions(ctx: DaemonContext): Promise<void> {
       tokensConsumed: saved.tokensConsumed ?? 0,
       totalCycleDurationMs: saved.totalCycleDurationMs ?? 0,
       failureStreaks: saved.failureStreaks ?? {},
+      noProgressCycles: saved.noProgressCycles ?? 0,
       abort: new AbortController(),
       runOptions: restoredRunOptions,
+      ...(saved.lastBudgetCheck !== undefined ? { lastBudgetCheck: saved.lastBudgetCheck } : {}),
       ...(saved.maxCycles !== undefined ? { maxCycles: saved.maxCycles } : {}),
       ...(saved.lastCycleDurationMs !== undefined ? { lastCycleDurationMs: saved.lastCycleDurationMs } : {}),
       ...(saved.scheduleExpression !== undefined ? { scheduleExpression: saved.scheduleExpression } : {}),
