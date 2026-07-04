@@ -5,6 +5,10 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   LessonDraftConfig,
+  discardLessonDraft,
+  listLessonDrafts,
+  promoteLessonDraft,
+  readLessonDraft,
   renderLessonDraft,
   shouldDraftLesson,
   writeLessonDraft,
@@ -88,6 +92,73 @@ describe("writeLessonDraft", () => {
     const config = LessonDraftConfig.parse({});
     expect(config.enabled).toBe(true);
     expect(config.dir).toBe("loop-lessons/drafts");
+  });
+});
+
+describe("lesson draft review workflow", () => {
+  it("lists drafts with title and suggested skill", async () => {
+    const input = draftInput();
+    input.task = { ...input.task, context: { publish: { skillId: "auth-hardening" } } };
+    await writeLessonDraft(input, { workspacePath: workspace });
+
+    const drafts = await listLessonDrafts(workspace);
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0]).toMatchObject({
+      id: "auth-session-expiry",
+      title: "auth-session-expiry",
+      suggested_skill: "auth-hardening",
+    });
+
+    const read = await readLessonDraft(workspace, "auth-session-expiry");
+    expect(read?.content).toContain("## Reusable Rule");
+    expect(await readLessonDraft(workspace, "missing")).toBeNull();
+    expect(await listLessonDrafts(join(workspace, "nowhere"))).toEqual([]);
+  });
+
+  it("promotes a draft into loop-lessons/promoted without touching skills by default", async () => {
+    await writeLessonDraft(draftInput(), { workspacePath: workspace });
+
+    const result = await promoteLessonDraft(workspace, "auth-session-expiry");
+    expect(result.promoted).toBe(true);
+    expect(result.to).toBe(join(workspace, "loop-lessons", "promoted", "auth-session-expiry.md"));
+    expect(result.appended_to).toBeUndefined();
+    expect(await listLessonDrafts(workspace)).toEqual([]);
+    await expect(readFile(result.to ?? "", "utf-8")).resolves.toContain("# Lesson Draft: auth-session-expiry");
+  });
+
+  it("appends the reusable rule to a skill file only with an explicit --to-skill path", async () => {
+    await writeLessonDraft(draftInput(), { workspacePath: workspace });
+    await writeFile(join(workspace, "SKILL.md"), "# My Skill\n\nExisting content.\n", "utf-8");
+
+    const result = await promoteLessonDraft(workspace, "auth-session-expiry", { toSkillPath: "SKILL.md" });
+    expect(result).toMatchObject({ promoted: true, appended_to: "SKILL.md" });
+
+    const skill = await readFile(join(workspace, "SKILL.md"), "utf-8");
+    expect(skill).toContain("# My Skill");
+    expect(skill).toContain("## Lesson: auth-session-expiry");
+    expect(skill).toContain("auth-tests");
+    expect(skill).toContain("### Suggested Evaluation");
+  });
+
+  it("refuses to promote into a missing skill file and keeps the draft", async () => {
+    await writeLessonDraft(draftInput(), { workspacePath: workspace });
+
+    const result = await promoteLessonDraft(workspace, "auth-session-expiry", { toSkillPath: "nope/SKILL.md" });
+    expect(result.promoted).toBe(false);
+    expect(result.reason).toContain("not found");
+    expect(await listLessonDrafts(workspace)).toHaveLength(1);
+  });
+
+  it("discards a draft into loop-lessons/discarded", async () => {
+    await writeLessonDraft(draftInput(), { workspacePath: workspace });
+
+    const result = await discardLessonDraft(workspace, "auth-session-expiry");
+    expect(result.discarded).toBe(true);
+    expect(result.to).toBe(join(workspace, "loop-lessons", "discarded", "auth-session-expiry.md"));
+    expect(await listLessonDrafts(workspace)).toEqual([]);
+
+    const missing = await discardLessonDraft(workspace, "auth-session-expiry");
+    expect(missing.discarded).toBe(false);
   });
 });
 

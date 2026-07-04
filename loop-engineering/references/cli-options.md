@@ -6,6 +6,7 @@ Use `osstack loop help` for the authoritative runtime help. This reference captu
 
 - `loop doctor`: check workspace, queue, git, state path, and optional daemon readiness.
 - `loop enqueue <prompt>`: create a `tasks/*.json` task.
+- `loop lessons list|show|promote|discard`: review SOP lesson drafts under `loop-lessons/drafts/`. `promote <id> --to-skill PATH` is the only way a lesson reaches a skill file; the loop never modifies skills on its own.
 - `loop run`: run locally or through daemon RPC with `--daemon`.
 - `loop start`: start a daemon-managed polling session.
 - `loop status`: render `LOOP-STATE.json` as Markdown.

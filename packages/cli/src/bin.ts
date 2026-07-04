@@ -46,6 +46,10 @@ import {
   createLoopStateScorecardFromState,
   renderLoopStateScorecardHtml,
   renderLoopStateScorecardMarkdown,
+  discardLessonDraft,
+  listLessonDrafts,
+  promoteLessonDraft,
+  readLessonDraft,
   type LoopBudgetStatus,
   type LoopEvent,
   type LoopKnowledgeTrace,
@@ -9153,6 +9157,10 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     return 0;
   }
 
+  if (sub === "lessons") {
+    return await handleLoopLessonsCommand(args.slice(1));
+  }
+
   if (sub === "doctor") {
     const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
     const stateFilePath = resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
@@ -9208,6 +9216,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
   osstack loop run [options]       Run one discover→execute→verify→iterate cycle
   osstack loop start [options]     Start a daemon-managed polling loop
   osstack loop enqueue <prompt>    Add a task_queue JSON file
+  osstack loop lessons <action>    Review SOP lesson drafts (list/show/promote/discard)
   osstack loop doctor [options]    Check workspace, queue, git, and daemon readiness
   osstack loop list [--json]       List daemon-managed polling loops
   osstack loop stop <id> [--json]  Stop a daemon-managed polling loop
@@ -9275,6 +9284,112 @@ Example:
 
   console.error(`osstack: unknown loop subcommand "${sub}"`);
   return 1;
+}
+
+async function handleLoopLessonsCommand(args: string[]): Promise<number> {
+  const action = args[0];
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const lessonsDir = flagValue(args, "--lessons-dir") ?? "loop-lessons/drafts";
+  const json = args.includes("--json");
+
+  if (action === "list" || action === undefined) {
+    const drafts = await listLessonDrafts(workspacePath, lessonsDir);
+    if (json) {
+      console.log(JSON.stringify({ drafts }, null, 2));
+      return 0;
+    }
+    if (drafts.length === 0) {
+      console.log("No lesson drafts.");
+      return 0;
+    }
+    for (const draft of drafts) {
+      const skill = draft.suggested_skill !== undefined ? ` skill=${draft.suggested_skill}` : "";
+      console.log(`${draft.id}${skill}`);
+      console.log(`  ${draft.path}`);
+    }
+    return 0;
+  }
+
+  if (action === "show") {
+    const id = args[1];
+    if (id === undefined || id.startsWith("--")) {
+      console.error("osstack: loop lessons show requires a draft id");
+      return 1;
+    }
+    const draft = await readLessonDraft(workspacePath, id, lessonsDir);
+    if (draft === null) {
+      console.error(`osstack: no lesson draft found for id ${id}`);
+      return 1;
+    }
+    console.log(draft.content);
+    return 0;
+  }
+
+  if (action === "promote") {
+    const id = args[1];
+    if (id === undefined || id.startsWith("--")) {
+      console.error("osstack: loop lessons promote requires a draft id");
+      return 1;
+    }
+    const toSkillPath = flagValue(args, "--to-skill");
+    const result = await promoteLessonDraft(workspacePath, id, {
+      dir: lessonsDir,
+      ...(toSkillPath !== undefined ? { toSkillPath } : {}),
+    });
+    if (!result.promoted) {
+      console.error(`osstack: ${result.reason ?? "promote failed"}`);
+      return 1;
+    }
+    if (json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(`promoted=${result.to}`);
+      if (result.appended_to !== undefined) console.log(`appended_to=${result.appended_to}`);
+    }
+    return 0;
+  }
+
+  if (action === "discard") {
+    const id = args[1];
+    if (id === undefined || id.startsWith("--")) {
+      console.error("osstack: loop lessons discard requires a draft id");
+      return 1;
+    }
+    const result = await discardLessonDraft(workspacePath, id, { dir: lessonsDir });
+    if (!result.discarded) {
+      console.error(`osstack: ${result.reason ?? "discard failed"}`);
+      return 1;
+    }
+    if (json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(`discarded=${result.to}`);
+    }
+    return 0;
+  }
+
+  if (action === "help" || action === "--help" || action === "-h") {
+    printLoopLessonsHelp();
+    return 0;
+  }
+
+  console.error(`osstack: unknown loop lessons action "${action}"`);
+  printLoopLessonsHelp();
+  return 1;
+}
+
+function printLoopLessonsHelp(): void {
+  console.log(`osstack loop lessons — review SOP lesson drafts
+
+  osstack loop lessons list [--workspace P] [--lessons-dir P] [--json]
+  osstack loop lessons show <id> [--workspace P] [--lessons-dir P]
+  osstack loop lessons promote <id> [--to-skill PATH] [--json]
+  osstack loop lessons discard <id> [--json]
+
+Promoting moves the draft to loop-lessons/promoted/. Only with an explicit
+--to-skill PATH is the lesson appended to that skill file — the loop never
+modifies official skills on its own.
+`);
 }
 
 function resolveLoopPath(path: string, cwd: string): string {

@@ -169,6 +169,7 @@ export class LoopEngine {
     if (last === undefined) {
       throw new Error("runCycles requires at least one cycle");
     }
+    const finalState = await this.persistBudgetStatus(last, budgetStatus);
     this.emit(last.loop_id, "loop.stopped", {
       reason: budgetStatus?.exceeded === true
         ? `budget exceeded: ${budgetStatus.reason}`
@@ -181,7 +182,7 @@ export class LoopEngine {
     return {
       loop_id: last.loop_id,
       cycles: results,
-      state: last.state,
+      state: finalState,
       events: [...this.events],
       jsonPath: last.jsonPath,
       markdownPath: last.markdownPath,
@@ -200,6 +201,7 @@ export class LoopEngine {
       estimated_cost_usd: 0,
       no_progress_cycles: nextNoProgressCycles(0, result),
     });
+    const finalState = await this.persistBudgetStatus(result, budgetStatus);
     this.emit(result.loop_id, "loop.stopped", {
       reason: budgetStatus?.exceeded === true
         ? `budget exceeded: ${budgetStatus.reason}`
@@ -209,9 +211,34 @@ export class LoopEngine {
     });
     return {
       ...result,
+      state: finalState,
       events: this.events.slice(eventStartIndex),
       ...(budgetStatus !== undefined ? { budget: budgetStatus } : {}),
     };
+  }
+
+  /**
+   * When a budget is configured, fold its latest status back into the durable
+   * state so `loop status`, reports, and scorecards can explain budget stops.
+   */
+  private async persistBudgetStatus(
+    result: LoopRunResult,
+    budgetStatus: LoopBudgetStatus | undefined,
+  ): Promise<LoopState> {
+    if (budgetStatus === undefined) return result.state;
+    const decisions = [...(result.state.decisions ?? [])];
+    if (budgetStatus.exceeded && budgetStatus.reason !== undefined) {
+      decisions.push(`budget: ${budgetStatus.reason}`);
+    }
+    const nextState = LoopState.parse({
+      ...result.state,
+      updated_at: new Date().toISOString(),
+      budget_status: budgetStatus,
+      decisions,
+    });
+    const paths = await writeLoopState(result.jsonPath, nextState, { markdownPath: result.markdownPath });
+    this.emit(result.loop_id, "loop.state.written", { jsonPath: paths.jsonPath, markdownPath: paths.markdownPath });
+    return nextState;
   }
 
   private checkLoopBudget(loopId: string, usage: BudgetUsage): LoopBudgetStatus | undefined {

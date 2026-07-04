@@ -5,6 +5,12 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { LoopBudget, checkBudget, clampTaskIterations, type BudgetUsage } from "./budget.js";
 import { LoopEngine } from "./loop-engine.js";
+import { readLoopState } from "./state-file.js";
+import {
+  createLoopStateReport,
+  createLoopStateScorecardFromState,
+  renderLoopStateReportFromState,
+} from "./report.js";
 
 let workspace: string;
 
@@ -135,6 +141,56 @@ describe("LoopEngine budget enforcement", () => {
     expect(result.budget).toMatchObject({ exceeded: true, limit: "max_runtime_ms" });
     expect(result.events.some((event) => event.type === "loop.budget.exceeded")).toBe(true);
     expect(result.state.completed_tasks[0]?.outcome).toBe("success");
+  });
+
+  it("persists budget status into state, STATE.md, report, and scorecard", async () => {
+    await enqueue("surfaced-task");
+
+    const engine = new LoopEngine({
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "exit 1",
+      skipCompletedTasks: false,
+      budget: LoopBudget.parse({ no_progress_limit: 1 }),
+    });
+    const result = await engine.runCycles({ cycles: 3 });
+
+    // Durable state carries the budget status for `loop status`.
+    expect(result.state.budget_status).toMatchObject({ exceeded: true, limit: "no_progress_limit" });
+    const persisted = await readLoopState(result.jsonPath);
+    expect(persisted?.budget_status).toMatchObject({ exceeded: true, limit: "no_progress_limit" });
+    expect(persisted?.decisions?.some((decision) => decision.startsWith("budget:"))).toBe(true);
+
+    const markdown = engine.statusMarkdown(result.state);
+    expect(markdown).toContain("## Budget");
+    expect(markdown).toContain("exceeded (no_progress_limit)");
+
+    const report = createLoopStateReport(result.state);
+    expect(report.budget).toMatchObject({ exceeded: true, limit: "no_progress_limit" });
+    expect(report.risks.some((risk) => risk.includes("budget"))).toBe(true);
+    const reportMarkdown = renderLoopStateReportFromState(result.state);
+    expect(reportMarkdown).toContain("## Budget");
+    expect(reportMarkdown).toContain("no_progress_limit");
+
+    const scorecard = createLoopStateScorecardFromState(result.state);
+    const budgetItem = scorecard.items.find((item) => item.id === "budget_within_limits");
+    expect(budgetItem).toMatchObject({ status: "fail", earned: 0, max: 10 });
+    expect(scorecard.max_score).toBe(110);
+  });
+
+  it("keeps the legacy 100-point scorecard when no budget is configured", async () => {
+    await enqueue("legacy-scorecard-task");
+
+    const engine = new LoopEngine({
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "exit 0",
+    });
+    const result = await engine.runOnce();
+
+    const scorecard = createLoopStateScorecardFromState(result.state);
+    expect(scorecard.max_score).toBe(100);
+    expect(scorecard.items.some((item) => item.id === "budget_within_limits")).toBe(false);
   });
 
   it("does not enforce any budget when none is configured", async () => {

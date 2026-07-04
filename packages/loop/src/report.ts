@@ -1,5 +1,6 @@
 import { agentAuthMode, defaultAdapters, rolesForCapabilityKinds } from "@osstack/agents";
-import type { CompletedTask, LoopEvent, LoopKnowledgeTrace, LoopState, Task } from "./types.js";
+import type { LoopBudgetStatus } from "./budget.js";
+import type { CompletedTask, DeferredTask, LoopEvent, LoopKnowledgeTrace, LoopState, Task } from "./types.js";
 
 export interface LoopStateReportSummary {
   loop_id: string;
@@ -11,6 +12,7 @@ export interface LoopStateReportSummary {
   escalated_count: number;
   in_progress_count: number;
   pending_count: number;
+  deferred_count: number;
   success_rate: number;
   total_cycles?: number;
   avg_duration_ms?: number;
@@ -23,6 +25,8 @@ export interface LoopStateReport {
   completed_tasks: CompletedTask[];
   in_progress: Task[];
   pending: Task[];
+  deferred_tasks: DeferredTask[];
+  budget: LoopBudgetStatus | undefined;
   policy_decisions: LoopReportPolicyDecision[];
   verify_results: LoopReportVerifyResult[];
   worktree_status: LoopReportWorktreeStatus[];
@@ -112,6 +116,7 @@ export function createLoopStateReport(state: LoopState, options: LoopStateReport
   const escalatedCount = completedTasks.filter((task) => task.outcome === "escalated").length;
   const inProgress = state.in_progress ?? [];
   const pending = state.pending ?? [];
+  const deferredTasks = state.deferred_tasks ?? [];
   const derivedSuccessRate = completedTasks.length === 0 ? 0 : successCount / completedTasks.length;
   const summary: LoopStateReportSummary = {
     loop_id: state.loop_id,
@@ -123,6 +128,7 @@ export function createLoopStateReport(state: LoopState, options: LoopStateReport
     escalated_count: escalatedCount,
     in_progress_count: inProgress.length,
     pending_count: pending.length,
+    deferred_count: deferredTasks.length,
     success_rate: state.key_metrics?.success_rate ?? derivedSuccessRate,
     ...(state.key_metrics !== undefined ? {
       total_cycles: state.key_metrics.total_cycles,
@@ -142,13 +148,15 @@ export function createLoopStateReport(state: LoopState, options: LoopStateReport
     completed_tasks: completedTasks,
     in_progress: inProgress,
     pending,
+    deferred_tasks: deferredTasks,
+    budget: state.budget_status,
     policy_decisions: policyDecisions,
     verify_results: verifyResults,
     worktree_status: worktreeStatus,
     events_timeline: eventsTimeline,
     knowledge: state.knowledge,
     decisions: state.decisions ?? [],
-    risks: deriveRisks(summary),
+    risks: deriveRisks(summary, deferredTasks, state.budget_status),
     next_steps: deriveNextSteps(summary),
   };
 }
@@ -208,6 +216,17 @@ export function createLoopStateScorecard(report: LoopStateReport): LoopStateScor
       10,
       "Proof artifact manifest is not present in the state-only report.",
     ),
+    // Budget scoring only applies when a budget was configured; legacy runs
+    // without one keep the historical 100-point scale.
+    ...(report.budget !== undefined ? [scorecardItem({
+      id: "budget_within_limits",
+      label: "Budget within limits",
+      max: 10,
+      pass: !report.budget.exceeded,
+      evidence: report.budget.exceeded
+        ? [`Budget exceeded: ${report.budget.reason ?? report.budget.limit ?? "limit reached"}.`]
+        : [`Budget within limits after ${report.budget.usage.cycles} cycle(s) and ${report.budget.usage.runtime_ms} ms.`],
+    })] : []),
   ];
 
   return {
@@ -261,6 +280,16 @@ export function renderLoopStateReportMarkdown(
     "",
     `## ${text.pendingTasks}`,
     ...renderTasks(report.pending),
+  );
+
+  if (report.deferred_tasks.length > 0) {
+    lines.push("", `## ${text.deferredTasks}`, ...renderDeferredTasks(report.deferred_tasks));
+  }
+  if (report.budget !== undefined) {
+    lines.push("", `## ${text.budgetSection}`, ...renderBudgetStatus(report.budget));
+  }
+
+  lines.push(
     "",
     `## ${text.policyDecisions}`,
     ...renderPolicyDecisions(report.policy_decisions),
@@ -378,7 +407,11 @@ export function createLoopStateScorecardFromState(state: LoopState): LoopStateSc
   return createLoopStateScorecard(createLoopStateReport(state));
 }
 
-function deriveRisks(summary: LoopStateReportSummary): string[] {
+function deriveRisks(
+  summary: LoopStateReportSummary,
+  deferredTasks: DeferredTask[] = [],
+  budget?: LoopBudgetStatus,
+): string[] {
   const risks: string[] = [];
   if (summary.failed_count > 0) {
     risks.push(`${summary.failed_count} completed task${plural(summary.failed_count)} failed.`);
@@ -388,6 +421,17 @@ function deriveRisks(summary: LoopStateReportSummary): string[] {
   }
   if (summary.pending_count > 10) {
     risks.push(`${summary.pending_count} pending tasks may need prioritization.`);
+  }
+  if (budget?.exceeded === true) {
+    risks.push(`Loop stopped on budget: ${budget.reason ?? budget.limit ?? "limit exceeded"}.`);
+  }
+  const needsApproval = deferredTasks.filter((entry) => entry.authorization === "needs_approval").length;
+  if (needsApproval > 0) {
+    risks.push(`${needsApproval} discovered task${plural(needsApproval)} waiting for human approval.`);
+  }
+  const blocked = deferredTasks.filter((entry) => entry.authorization === "blocked").length;
+  if (blocked > 0) {
+    risks.push(`${blocked} discovered task${plural(blocked)} blocked by discovery policy.`);
   }
   return risks;
 }
@@ -463,6 +507,29 @@ function renderCompletedTasks(tasks: CompletedTask[]): string[] {
     "| Task | Capability | Outcome | Agent | Iterations | Duration |",
     "| --- | --- | --- | --- | ---: | ---: |",
     ...tasks.map((task) => `| ${task.task_id} | ${task.capability ?? "unknown"} | ${task.outcome} | ${task.agent_id} | ${task.iterations} | ${task.duration_ms} ms |`),
+  ];
+}
+
+function renderDeferredTasks(entries: DeferredTask[]): string[] {
+  if (entries.length === 0) return ["- None"];
+  return [
+    "| Task | Authorization | Capability | Source | Priority | Reason |",
+    "| --- | --- | --- | --- | ---: | --- |",
+    ...entries.map((entry) => (
+      `| ${entry.task.task_id} | ${entry.authorization} | ${entry.task.capability} | ${entry.task.source} | ${entry.task.priority} | ${entry.reason} |`
+    )),
+  ];
+}
+
+function renderBudgetStatus(budget: LoopBudgetStatus): string[] {
+  return [
+    `- Status: ${budget.exceeded ? `exceeded (${budget.limit ?? "unknown limit"})` : "within limits"}`,
+    ...(budget.reason !== undefined ? [`- Reason: ${budget.reason}`] : []),
+    `- Cycles: ${budget.usage.cycles}`,
+    `- Runtime: ${budget.usage.runtime_ms} ms`,
+    `- Tokens: ${budget.usage.tokens}`,
+    `- Estimated cost: $${budget.usage.estimated_cost_usd.toFixed(4)}`,
+    `- No-progress cycles: ${budget.usage.no_progress_cycles}`,
   ];
 }
 
@@ -661,6 +728,8 @@ function reportText(language: LoopReportLanguage): {
   completedTasks: string;
   inProgressSection: string;
   pendingTasks: string;
+  deferredTasks: string;
+  budgetSection: string;
   policyDecisions: string;
   verifyResults: string;
   worktreeStatus: string;
@@ -690,6 +759,8 @@ function reportText(language: LoopReportLanguage): {
       completedTasks: "已完成任务",
       inProgressSection: "进行中",
       pendingTasks: "待处理任务",
+      deferredTasks: "治理挂起任务",
+      budgetSection: "预算",
       policyDecisions: "策略决策",
       verifyResults: "验证结果",
       worktreeStatus: "Worktree 状态",
@@ -719,6 +790,8 @@ function reportText(language: LoopReportLanguage): {
     completedTasks: "Completed Tasks",
     inProgressSection: "In Progress",
     pendingTasks: "Pending Tasks",
+    deferredTasks: "Deferred Tasks (Governance)",
+    budgetSection: "Budget",
     policyDecisions: "Policy Decisions",
     verifyResults: "Verify Results",
     worktreeStatus: "Worktree Status",

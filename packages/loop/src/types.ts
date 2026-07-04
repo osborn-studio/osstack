@@ -7,6 +7,7 @@
 //   Automations / Worktrees / Skills / Connectors / Sub-agents / State
 
 import { z } from "zod";
+import { LoopBudgetStatus } from "./budget.js";
 import { TaskAuthorization } from "./discovery-policy.js";
 import { EvaluationResult, EvaluationSpec } from "./evaluation-spec.js";
 
@@ -239,6 +240,8 @@ export const LoopState = z.object({
   pending: z.array(Task).optional(),
   /** Discovered but not executed this cycle: needs_approval / suggest_only / blocked. */
   deferred_tasks: z.array(DeferredTask).optional(),
+  /** Last budget check when a LoopBudget is configured. */
+  budget_status: LoopBudgetStatus.optional(),
   key_metrics: LoopMetrics.optional(),
   decisions: z.array(z.string()).optional(),
   knowledge: LoopKnowledgeTrace.optional(),

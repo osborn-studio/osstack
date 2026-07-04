@@ -10,6 +10,7 @@ import {
   authorizeTask,
 } from "./discovery-policy.js";
 import { LoopEngine } from "./loop-engine.js";
+import { createLoopStateReport, renderLoopStateReportFromState } from "./report.js";
 import type { Task } from "./types.js";
 
 let workspace: string;
@@ -135,6 +136,31 @@ describe("LoopEngine discovery governance", () => {
     const markdown = engine.statusMarkdown(result.state);
     expect(markdown).toContain("## Blocked");
     expect(markdown).toContain("risky");
+  });
+
+  it("surfaces deferred tasks in the loop report and risks", async () => {
+    await enqueue({ task_id: "risky-report", prompt: "Touch the release pipeline", capability: "release.publish" });
+
+    const policy = DiscoveryPolicy.parse({
+      default_authorization: "auto_execute",
+      blocked_capabilities: ["release.publish"],
+    });
+    const engine = new LoopEngine({
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "true",
+      discoveryPolicy: policy,
+    });
+    const result = await engine.runOnce();
+
+    const report = createLoopStateReport(result.state);
+    expect(report.summary.deferred_count).toBe(1);
+    expect(report.deferred_tasks[0]).toMatchObject({ authorization: "blocked" });
+    expect(report.risks.some((risk) => risk.includes("blocked by discovery policy"))).toBe(true);
+
+    const markdown = renderLoopStateReportFromState(result.state);
+    expect(markdown).toContain("## Deferred Tasks (Governance)");
+    expect(markdown).toContain("risky-report");
   });
 
   it("keeps legacy behavior when no policy is configured", async () => {

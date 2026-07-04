@@ -198,6 +198,50 @@ describe("loop CLI", () => {
     ]);
   });
 
+  it("lists, promotes, and discards lesson drafts", async () => {
+    const draftsDir = join(tmp, "loop-lessons", "drafts");
+    await mkdir(draftsDir, { recursive: true });
+    const draft = [
+      "# Lesson Draft: cli-lesson",
+      "",
+      "## Reusable Rule",
+      "Always run the auth suite.",
+      "",
+      "## Suggested Target Skill",
+      "- auth-hardening",
+      "",
+    ].join("\n");
+    await writeFile(join(draftsDir, "cli-lesson.md"), draft);
+    await writeFile(join(tmp, "SKILL.md"), "# Skill\n");
+
+    const listCode = await main(["loop", "lessons", "list", "--workspace", tmp, "--json"]);
+    expect(listCode).toBe(0);
+    const listed = JSON.parse(logs.join("\n")) as { drafts: Array<{ id: string; suggested_skill?: string }> };
+    expect(listed.drafts).toEqual([
+      expect.objectContaining({ id: "cli-lesson", suggested_skill: "auth-hardening" }),
+    ]);
+
+    logs = [];
+    const promoteCode = await main([
+      "loop", "lessons", "promote", "cli-lesson", "--workspace", tmp, "--to-skill", "SKILL.md", "--json",
+    ]);
+    expect(promoteCode).toBe(0);
+    const promoted = JSON.parse(logs.join("\n")) as { promoted: boolean; appended_to?: string };
+    expect(promoted).toMatchObject({ promoted: true, appended_to: "SKILL.md" });
+    await expect(readFile(join(tmp, "SKILL.md"), "utf-8")).resolves.toContain("## Lesson: cli-lesson");
+
+    logs = [];
+    const emptyCode = await main(["loop", "lessons", "list", "--workspace", tmp]);
+    expect(emptyCode).toBe(0);
+    expect(logs.join("\n")).toContain("No lesson drafts.");
+
+    logs = [];
+    errors = [];
+    const missingCode = await main(["loop", "lessons", "discard", "cli-lesson", "--workspace", tmp]);
+    expect(missingCode).toBe(1);
+    expect(errors.join("\n")).toContain("no lesson draft found");
+  });
+
   it("generates report, scorecard, and proof artifacts during loop run", async () => {
     await mkdir(join(tmp, "tasks"));
     await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({

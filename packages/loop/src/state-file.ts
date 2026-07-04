@@ -69,6 +69,17 @@ export function renderLoopStateMarkdown(state: LoopState): string {
     ...renderTasks(state.pending ?? [], true),
   ];
 
+  if (state.budget_status !== undefined) {
+    const status = state.budget_status;
+    lines.push(
+      "",
+      "## Budget",
+      `- Status: ${status.exceeded ? `exceeded (${status.limit ?? "unknown limit"})` : "within limits"}`,
+      ...(status.reason !== undefined ? [`- Reason: ${status.reason}`] : []),
+      `- Usage: ${status.usage.cycles} cycle(s), ${status.usage.runtime_ms} ms, ${status.usage.tokens} tokens, $${status.usage.estimated_cost_usd.toFixed(4)}, ${status.usage.no_progress_cycles} no-progress cycle(s)`,
+    );
+  }
+
   const deferred = state.deferred_tasks ?? [];
   if (deferred.length > 0) {
     lines.push(

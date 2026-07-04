@@ -18,16 +18,17 @@ export const LoopBudget = z.object({
 });
 export type LoopBudget = z.infer<typeof LoopBudget>;
 
-export interface BudgetUsage {
-  cycles: number;
-  runtime_ms: number;
+export const BudgetUsage = z.object({
+  cycles: z.number(),
+  runtime_ms: z.number(),
   /** Adapter token usage when adapters expose it; stays 0 otherwise. */
-  tokens: number;
+  tokens: z.number(),
   /** Estimated spend when cost data is available; stays 0 otherwise. */
-  estimated_cost_usd: number;
+  estimated_cost_usd: z.number(),
   /** Consecutive cycles that completed no successful task. */
-  no_progress_cycles: number;
-}
+  no_progress_cycles: z.number(),
+});
+export type BudgetUsage = z.infer<typeof BudgetUsage>;
 
 export interface BudgetCheck {
   exceeded: boolean;
@@ -36,9 +37,14 @@ export interface BudgetCheck {
   reason?: string;
 }
 
-export interface LoopBudgetStatus extends BudgetCheck {
-  usage: BudgetUsage;
-}
+/** Budget status persisted into LoopState and surfaced in results/reports. */
+export const LoopBudgetStatus = z.object({
+  exceeded: z.boolean(),
+  limit: z.string().optional(),
+  reason: z.string().optional(),
+  usage: BudgetUsage,
+});
+export type LoopBudgetStatus = z.infer<typeof LoopBudgetStatus>;
 
 export function checkBudget(budget: LoopBudget, usage: BudgetUsage): BudgetCheck {
   if (budget.max_cycles !== undefined && usage.cycles >= budget.max_cycles) {

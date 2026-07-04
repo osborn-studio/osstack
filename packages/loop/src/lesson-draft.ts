@@ -4,8 +4,8 @@
 // draft to loop-lessons/drafts/<task_id>.md. Drafts are review material only:
 // official skill files are never modified automatically.
 
-import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, join } from "node:path";
+import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { basename, dirname, isAbsolute, join } from "node:path";
 import { z } from "zod";
 import { isSkillTask, skillIdOf } from "./publisher.js";
 import type { IterationFeedback, Task, Verdict } from "./types.js";
@@ -139,4 +139,156 @@ function suggestedEvaluationLines(input: LessonDraftInput, failedEvaluationIds: 
 function sanitizeFileName(value: string): string {
   const sanitized = value.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
   return sanitized === "" ? "lesson" : sanitized.slice(0, 80);
+}
+
+// ── Review workflow: list / read / promote / discard ────────────────────
+//
+// Drafts wait in loop-lessons/drafts/ until a human reviews them.
+// Promoting moves a draft to loop-lessons/promoted/ and, ONLY with an
+// explicit target skill path, appends the lesson to that file. Discarding
+// moves it to loop-lessons/discarded/. The loop itself never promotes.
+
+export interface LessonDraftEntry {
+  id: string;
+  path: string;
+  title: string;
+  suggested_skill?: string;
+}
+
+export interface PromoteLessonDraftResult {
+  promoted: boolean;
+  from?: string;
+  to?: string;
+  appended_to?: string;
+  reason?: string;
+}
+
+export interface DiscardLessonDraftResult {
+  discarded: boolean;
+  from?: string;
+  to?: string;
+  reason?: string;
+}
+
+export async function listLessonDrafts(
+  workspacePath: string,
+  dir = "loop-lessons/drafts",
+): Promise<LessonDraftEntry[]> {
+  const draftDir = resolveLessonDir(workspacePath, dir);
+  let entries: string[];
+  try {
+    entries = await readdir(draftDir);
+  } catch {
+    return [];
+  }
+  const drafts: LessonDraftEntry[] = [];
+  for (const entry of entries.sort()) {
+    if (!entry.endsWith(".md")) continue;
+    const path = join(draftDir, entry);
+    try {
+      drafts.push(parseLessonDraftEntry(path, await readFile(path, "utf-8")));
+    } catch {
+      // Skip unreadable drafts; listing must not fail on one bad file.
+    }
+  }
+  return drafts;
+}
+
+export async function readLessonDraft(
+  workspacePath: string,
+  id: string,
+  dir = "loop-lessons/drafts",
+): Promise<{ entry: LessonDraftEntry; content: string } | null> {
+  const path = join(resolveLessonDir(workspacePath, dir), `${sanitizeFileName(id)}.md`);
+  try {
+    const content = await readFile(path, "utf-8");
+    return { entry: parseLessonDraftEntry(path, content), content };
+  } catch {
+    return null;
+  }
+}
+
+export async function promoteLessonDraft(
+  workspacePath: string,
+  id: string,
+  options: { dir?: string; promotedDir?: string; toSkillPath?: string } = {},
+): Promise<PromoteLessonDraftResult> {
+  const draft = await readLessonDraft(workspacePath, id, options.dir ?? "loop-lessons/drafts");
+  if (draft === null) return { promoted: false, reason: `no lesson draft found for id ${id}` };
+
+  if (options.toSkillPath !== undefined) {
+    const skillPath = isAbsolute(options.toSkillPath)
+      ? options.toSkillPath
+      : join(workspacePath, options.toSkillPath);
+    let existing: string;
+    try {
+      existing = await readFile(skillPath, "utf-8");
+    } catch {
+      return { promoted: false, reason: `target skill file not found: ${options.toSkillPath}` };
+    }
+    const rule = extractLessonSection(draft.content, "## Reusable Rule");
+    const evaluation = extractLessonSection(draft.content, "## Suggested Evaluation");
+    const appended = [
+      existing.endsWith("\n") ? existing : `${existing}\n`,
+      `\n## Lesson: ${draft.entry.id}\n`,
+      "\n",
+      rule ?? "(no reusable rule recorded)",
+      "\n",
+      ...(evaluation !== undefined ? ["\n### Suggested Evaluation\n\n", evaluation, "\n"] : []),
+    ].join("");
+    await writeFile(skillPath, appended, "utf-8");
+  }
+
+  const promotedDir = resolveLessonDir(workspacePath, options.promotedDir ?? "loop-lessons/promoted");
+  await mkdir(promotedDir, { recursive: true });
+  const to = join(promotedDir, basename(draft.entry.path));
+  await rename(draft.entry.path, to);
+  return {
+    promoted: true,
+    from: draft.entry.path,
+    to,
+    ...(options.toSkillPath !== undefined ? { appended_to: options.toSkillPath } : {}),
+  };
+}
+
+export async function discardLessonDraft(
+  workspacePath: string,
+  id: string,
+  options: { dir?: string; discardedDir?: string } = {},
+): Promise<DiscardLessonDraftResult> {
+  const draft = await readLessonDraft(workspacePath, id, options.dir ?? "loop-lessons/drafts");
+  if (draft === null) return { discarded: false, reason: `no lesson draft found for id ${id}` };
+  const discardedDir = resolveLessonDir(workspacePath, options.discardedDir ?? "loop-lessons/discarded");
+  await mkdir(discardedDir, { recursive: true });
+  const to = join(discardedDir, basename(draft.entry.path));
+  await rename(draft.entry.path, to);
+  return { discarded: true, from: draft.entry.path, to };
+}
+
+function parseLessonDraftEntry(path: string, content: string): LessonDraftEntry {
+  const id = basename(path).replace(/\.md$/, "");
+  const titleMatch = content.match(/^# Lesson Draft: (.+)$/m);
+  const skillSection = extractLessonSection(content, "## Suggested Target Skill");
+  const skillLine = skillSection?.split("\n").find((line) => line.startsWith("- "));
+  const skill = skillLine?.slice(2).trim();
+  return {
+    id,
+    path,
+    title: titleMatch?.[1]?.trim() ?? id,
+    ...(skill !== undefined && !skill.startsWith("Not inferable") ? { suggested_skill: skill } : {}),
+  };
+}
+
+function extractLessonSection(content: string, heading: string): string | undefined {
+  const lines = content.split("\n");
+  const start = lines.findIndex((line) => line.trim() === heading);
+  if (start === -1) return undefined;
+  const rest = lines.slice(start + 1);
+  const end = rest.findIndex((line) => line.startsWith("## "));
+  const section = (end === -1 ? rest : rest.slice(0, end)).join("\n").trim();
+  return section === "" ? undefined : section;
+}
+
+function resolveLessonDir(workspacePath: string, dir: string): string {
+  return isAbsolute(dir) ? dir : join(workspacePath, dir);
 }
