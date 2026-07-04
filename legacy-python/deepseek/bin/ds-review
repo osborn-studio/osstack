@@ -31,6 +31,11 @@ HERE = Path(__file__).resolve().parent
 CAPABILITY_ROOT = HERE.parent
 DEFAULT_PROMPT_PATH = CAPABILITY_ROOT / "prompts" / "review.md"
 
+# Make lib importable when invoked through any symlink.
+sys.path.insert(0, str(CAPABILITY_ROOT / "lib"))
+
+import evaluation_specs  # noqa: E402
+
 STRICT_APPEND = (
     "\n\n--- ADDITIONAL CONSTRAINT (strict mode) ---\n"
     "Use a stricter standard. Mark FAIL if there are missing tests, "
@@ -228,6 +233,11 @@ def main(argv=None):
     # 4. Build prompt
     system_prompt = load_system_prompt(strict=args.strict, prompt_path=Path(args.prompt))
 
+    # Loop evaluation specs (osstack protocol): judge each criterion in-band.
+    specs = evaluation_specs.load_specs()
+    if specs:
+        system_prompt = system_prompt.rstrip() + evaluation_specs.judgment_prompt_appendix(specs)
+
     user_prefix = ""
     if truncated:
         user_prefix = (
@@ -242,6 +252,7 @@ def main(argv=None):
         + "```diff\n"
         + diff_text
         + "\n```\n"
+        + evaluation_specs.criteria_user_block(specs)
     )
 
     # 5. Call API
@@ -276,6 +287,14 @@ def main(argv=None):
         sys.stdout.write(output)
         if not output.endswith("\n"):
             sys.stdout.write("\n")
+
+    # 8. Per-spec judgments for the osstack adapter (single stdout line).
+    if specs:
+        judgment_line = evaluation_specs.emit_line(
+            evaluation_specs.extract_judgments(content, specs)
+        )
+        if judgment_line:
+            print(judgment_line)
 
     return 0
 

@@ -35,6 +35,7 @@ DEFAULT_PROMPT_PATH = CAPABILITY_ROOT / "prompts" / "verify.md"
 # Make lib importable when invoked through any symlink.
 sys.path.insert(0, str(LIB_DIR))
 
+import evaluation_specs  # noqa: E402
 import verify_engine  # noqa: E402
 from api import DeepSeekError  # noqa: E402
 
@@ -71,8 +72,10 @@ def main(argv=None):
     base_url = os.environ.get("DEEPSEEK_BASE_URL", DEFAULT_BASE_URL).strip() or DEFAULT_BASE_URL
     project_root = Path.cwd()
 
+    specs = evaluation_specs.load_specs()
+
     try:
-        report, findings = verify_engine.run(
+        report, findings, judgments = verify_engine.run(
             project_root=project_root,
             api_key=api_key,
             base_url=base_url,
@@ -83,6 +86,7 @@ def main(argv=None):
             timeout=args.timeout,
             max_doc_chars=args.max_doc_chars,
             max_diff_chars=args.max_diff_chars,
+            specs=specs,
         )
     except DeepSeekError as e:
         print(f"ds-verify: {e}", file=sys.stderr)
@@ -107,6 +111,11 @@ def main(argv=None):
             f"findings={len(findings)})",
             file=sys.stderr,
         )
+
+    # Per-spec judgments for the osstack adapter (single stdout line).
+    judgment_line = evaluation_specs.emit_line(judgments)
+    if judgment_line:
+        print(judgment_line)
 
     return 0
 

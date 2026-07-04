@@ -25,6 +25,28 @@ Input priority: `--file` > stdin > `git diff` in `$PWD`.
 | `DEEPSEEK_API_KEY`   | yes      | —                            | DeepSeek bearer token. Never logged.   |
 | `DEEPSEEK_BASE_URL`  | no       | `https://api.deepseek.com`   | Override for self-hosted / proxies.    |
 | `DEEPSEEK_MODEL`     | no       | `deepseek-reasoner`          | Override default model.                |
+| `OSSTACK_EVALUATION_SPECS_FILE` | no | — | Osstack loop evaluation specs JSON (see below). |
+
+## Osstack Loop Evaluation Protocol
+
+When the osstack loop runs ds-review/ds-verify as a verifier adapter, it sets
+`OSSTACK_EVALUATION_SPECS_FILE` to a JSON file of evaluation specs
+(id/mode/description/acceptance). Both commands then:
+
+1. Append the acceptance criteria to the DeepSeek prompt and require a fenced
+   JSON judgment block in the response.
+2. Print one stdout line the adapter parses into per-spec verdicts:
+
+   ```text
+   OSSTACK_EVALUATIONS: {"evaluations":[{"id":"no-bypass","pass":false,"summary":"..."}]}
+   ```
+
+Without the env var, behavior is exactly the legacy one. Logic lives in
+`lib/evaluation_specs.py`; offline tests (fake DeepSeek API included) run with:
+
+```bash
+python3 -m unittest discover legacy-python/deepseek/tests
+```
 
 ## Files
 

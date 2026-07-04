@@ -7,6 +7,7 @@ from pathlib import Path
 import api
 import consistency_rules as rules
 import doc_reader
+import evaluation_specs
 
 REQUIRED_HEADINGS = (
     "# DS Verify Report",
@@ -146,9 +147,15 @@ def run(
     timeout,
     max_doc_chars,
     max_diff_chars,
+    specs=None,
 ):
-    """High-level entry point used by the bin/ds-verify script."""
+    """High-level entry point used by the bin/ds-verify script.
+
+    ``specs`` are osstack loop evaluation specs (see lib/evaluation_specs).
+    Returns (report, findings, judgments); judgments is [] without specs.
+    """
     root = Path(project_root)
+    specs = specs or []
 
     docs = doc_reader.read_all(root)
     git = doc_reader.git_state(root)
@@ -165,8 +172,12 @@ def run(
         )
     if strict:
         system_prompt = system_prompt.rstrip() + STRICT_APPEND
+    if specs:
+        system_prompt = system_prompt.rstrip() + evaluation_specs.judgment_prompt_appendix(specs)
 
     user_content = build_user_content(docs, git, findings, max_doc_chars, max_diff_chars)
+    if specs:
+        user_content = user_content + evaluation_specs.criteria_user_block(specs)
 
     raw = api.call_chat(
         api_key=api_key,
@@ -177,4 +188,5 @@ def run(
         temperature=temperature,
         timeout=timeout,
     )
-    return normalize_output(raw, findings), findings
+    judgments = evaluation_specs.extract_judgments(raw, specs)
+    return normalize_output(raw, findings), findings, judgments
