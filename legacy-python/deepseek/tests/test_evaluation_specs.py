@@ -115,6 +115,32 @@ class ExtractJudgmentsTest(unittest.TestCase):
         judgments = evaluation_specs.extract_judgments(content, SPECS)
         self.assertEqual(judgments, [{"id": "no-bypass", "pass": False, "summary": "regressed"}])
 
+    def test_extracts_object_despite_stray_braces_before_the_key(self):
+        # A stray `{...}` before the "evaluations" key must not defeat extraction:
+        # the parser tries braces outward until a valid object is found.
+        content = (
+            '{"reasoning": "the plan is {simple} really", '
+            '"evaluations":[{"id":"no-bypass","pass":false,"summary":"nope"}]}'
+        )
+        self.assertEqual(
+            evaluation_specs.extract_judgments(content, SPECS),
+            [{"id": "no-bypass", "pass": False, "summary": "nope"}],
+        )
+
+    def test_pathological_braces_do_not_hang(self):
+        content = "{" * 5000 + '"evaluations":[{"id":"no-bypass","pass":true}]}'
+        # Bounded backward search → returns promptly (no O(n^2) hang).
+        self.assertIsInstance(evaluation_specs.extract_judgments(content, SPECS), list)
+
+    def test_summary_truncates_at_200(self):
+        content = (
+            'X {"evaluations":[{"id":"no-bypass","pass":false,"summary":"'
+            + ("a" * 300)
+            + '"}]}'
+        )
+        result = evaluation_specs.extract_judgments(content, SPECS)
+        self.assertEqual(len(result[0]["summary"]), 200)
+
     def test_no_judgments_or_no_specs_returns_empty(self):
         self.assertEqual(evaluation_specs.extract_judgments("nothing here", SPECS), [])
         self.assertEqual(evaluation_specs.extract_judgments('{"evaluations":[]}', SPECS), [])

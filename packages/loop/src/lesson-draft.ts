@@ -7,6 +7,13 @@
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import { z } from "zod";
+
+/** Write via temp file + rename so a crash never leaves a truncated target. */
+async function writeFileAtomic(targetPath: string, content: string): Promise<void> {
+  const tmpPath = join(dirname(targetPath), `.${basename(targetPath)}.${process.pid}.${Date.now()}.tmp`);
+  await writeFile(tmpPath, content, "utf-8");
+  await rename(tmpPath, targetPath);
+}
 import { isSkillTask, skillIdOf } from "./publisher.js";
 import type { IterationFeedback, Task, Verdict } from "./types.js";
 
@@ -236,7 +243,8 @@ export async function promoteLessonDraft(
       "\n",
       ...(evaluation !== undefined ? ["\n### Suggested Evaluation\n\n", evaluation, "\n"] : []),
     ].join("");
-    await writeFile(skillPath, appended, "utf-8");
+    // Atomic write: a crash mid-write must never truncate an official skill.
+    await writeFileAtomic(skillPath, appended);
   }
 
   const promotedDir = resolveLessonDir(workspacePath, options.promotedDir ?? "loop-lessons/promoted");

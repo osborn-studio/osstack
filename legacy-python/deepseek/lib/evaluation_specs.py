@@ -112,7 +112,7 @@ def extract_judgments(content, specs):
             judgment = {"id": spec_id, "pass": verdict}
             summary = entry.get("summary")
             if isinstance(summary, str) and summary.strip():
-                judgment["summary"] = summary.strip()[:240]
+                judgment["summary"] = summary.strip()[:200]
             judgments.append(judgment)
         if judgments:
             best = judgments
@@ -127,20 +127,31 @@ def emit_line(judgments):
 
 
 def _candidate_json_objects(content):
-    """Yield parsed JSON objects that contain an 'evaluations' key, in order."""
+    """Yield parsed JSON objects that contain an 'evaluations' key, in order.
+
+    For each marker, the enclosing object's opening brace is not necessarily the
+    nearest `{` before it — the reasoner may emit stray braces (prose, code
+    asides) between the object opener and the key. So try every `{` at or before
+    the marker, nearest-first, and yield the first that parses to a dict.
+    """
     marker = '"evaluations"'
+    # Bound the backward brace search per marker so pathological input (many
+    # stray `{`) stays linear rather than O(n^2).
+    max_attempts = 64
     start = 0
     while True:
         index = content.find(marker, start)
         if index == -1:
             return
         brace = content.rfind("{", 0, index)
-        if brace == -1:
-            start = index + len(marker)
-            continue
-        parsed = _parse_balanced(content, brace)
-        if parsed is not None:
-            yield parsed
+        attempts = 0
+        while brace != -1 and attempts < max_attempts:
+            parsed = _parse_balanced(content, brace)
+            if parsed is not None and "evaluations" in parsed:
+                yield parsed
+                break
+            brace = content.rfind("{", 0, brace)
+            attempts += 1
         start = index + len(marker)
 
 
