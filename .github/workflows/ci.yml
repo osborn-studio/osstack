@@ -85,6 +85,13 @@ jobs:
       - name: Test
         run: pnpm -r test
 
+      # DeepSeek ds-review/ds-verify evaluation-spec protocol. Stdlib-only
+      # unittest (no pip needed); ubuntu-latest ships python3. Guards against
+      # regressions in legacy-python/deepseek/lib/evaluation_specs.py that the
+      # JS suite cannot see.
+      - name: Python protocol tests
+        run: python3 -m unittest discover legacy-python/deepseek/tests
+
       - name: Release plan smoke
         if: steps.changes.outputs.heavy_smoke == 'true'
         run: pnpm smoke:release-plan
