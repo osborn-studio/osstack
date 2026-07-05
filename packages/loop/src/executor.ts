@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentAdapter, AgentTask } from "@osstack/agents";
@@ -54,13 +54,17 @@ export async function executePlan(plan: ExecutionPlan, options: LocalExecutorOpt
   const commandResults: CommandResult[] = [];
 
   if (options.command !== undefined && options.command.trim() !== "") {
-    const env = await iterationFeedbackEnv(plan);
-    commandResults.push(await runShellCommand(options.command, {
-      cwd: options.workspacePath,
-      timeoutMs: options.timeoutMs ?? 120_000,
-      outputLimit: options.outputLimit ?? 16_000,
-      ...(env !== undefined ? { env } : {}),
-    }));
+    const feedback = await writeIterationFeedbackFile(plan);
+    try {
+      commandResults.push(await runShellCommand(options.command, {
+        cwd: options.workspacePath,
+        timeoutMs: options.timeoutMs ?? 120_000,
+        outputLimit: options.outputLimit ?? 16_000,
+        ...(feedback !== undefined ? { env: { [ITERATION_FEEDBACK_FILE_ENV]: feedback.path } } : {}),
+      }));
+    } finally {
+      if (feedback !== undefined) await feedback.cleanup();
+    }
   }
 
   const failed = commandResults.some((result) => result.exitCode !== 0);
@@ -193,15 +197,25 @@ function isLocalAgentId(agentId: string): boolean {
 /**
  * Local commands cannot read structured task context, so persist the previous
  * attempt's iteration feedback to a temp JSON file and point at it via env.
+ * Returns a `cleanup` the caller MUST invoke once the command finishes — the
+ * loop reuses a persistent worktree across many iterations, so leaking one
+ * temp dir per feedback-carrying attempt would grow unbounded in a daemon run.
  */
-async function iterationFeedbackEnv(plan: ExecutionPlan): Promise<Record<string, string> | undefined> {
+async function writeIterationFeedbackFile(
+  plan: ExecutionPlan,
+): Promise<{ path: string; cleanup: () => Promise<void> } | undefined> {
   const feedback = plan.task.context?.[ITERATION_FEEDBACK_CONTEXT_KEY];
   if (feedback === undefined) return undefined;
   try {
     const dir = await mkdtemp(join(tmpdir(), "osstack-feedback-"));
     const path = join(dir, `${plan.task.task_id.replace(/[^a-zA-Z0-9._-]+/g, "-")}.json`);
     await writeFile(path, `${JSON.stringify(feedback, null, 2)}\n`, "utf-8");
-    return { [ITERATION_FEEDBACK_FILE_ENV]: path };
+    return {
+      path,
+      cleanup: async () => {
+        await rm(dir, { recursive: true, force: true });
+      },
+    };
   } catch {
     return undefined;
   }

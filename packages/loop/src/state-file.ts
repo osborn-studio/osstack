@@ -120,7 +120,7 @@ export function renderLoopStateMarkdown(state: LoopState): string {
 function renderDeferredTasks(entries: DeferredTask[]): string[] {
   if (entries.length === 0) return ["- None"];
   return entries.map((entry) => (
-    `- [ ] ${entry.task.task_id}: ${entry.task.prompt} (${entry.task.capability}, ${entry.task.source}, priority ${entry.task.priority}) - ${entry.reason}`
+    `- [ ] ${entry.task.task_id}: ${inlineText(entry.task.prompt)} (${entry.task.capability}, ${entry.task.source}, priority ${entry.task.priority}) - ${inlineText(entry.reason)}`
   ));
 }
 
@@ -129,8 +129,18 @@ function renderTasks(tasks: Task[], includePriority: boolean): string[] {
 
   return tasks.map((task) => {
     const priority = includePriority ? `, priority ${task.priority}` : "";
-    return `- [ ] ${task.prompt} (${task.capability}${priority})`;
+    return `- [ ] ${inlineText(task.prompt)} (${task.capability}${priority})`;
   });
+}
+
+/**
+ * Collapse a task-authored string to a single line for STATE.md. Prompts can
+ * originate from untrusted sources (GitHub issues, branch names); newlines
+ * would otherwise inject fake list items or headings into the human approval
+ * surface.
+ */
+function inlineText(value: string): string {
+  return value.replace(/\r?\n/g, " ").trim();
 }
 
 function renderCompletedTasks(tasks: CompletedTask[]): string[] {

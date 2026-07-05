@@ -171,22 +171,28 @@ function adapterEvaluationResult(
     };
   }
 
-  // Per-spec judgments from the adapter beat the adapter-level pass/fail.
+  // Per-spec judgments from the adapter beat the adapter-level pass/fail — but
+  // only when the adapter actually completed. If it failed/timed out/was
+  // unavailable (adapterHasIssues), its judgments are untrustworthy: honor a
+  // reported fail, but never let a stale "pass" judgment mark the spec passing
+  // while the run is blocked (which would yield pass=false with score=1.0).
   if (judgments.length > 0) {
     const failing = judgments.find((judgment) => !judgment.pass);
-    const summary = failing !== undefined
-      ? failing.summary ?? "verifier adapter judged this evaluation as failed"
-      : judgments.find((judgment) => judgment.summary !== undefined)?.summary ?? "judged pass by verifier adapter";
-    return {
-      spec_id: spec.id,
-      mode: spec.mode,
-      description: spec.description,
-      required: spec.required,
-      weight: spec.weight,
-      pass: failing === undefined,
-      summary: singleLine(summary),
-      implicit: false,
-    };
+    if (failing !== undefined || !adapterHasIssues) {
+      const summary = failing !== undefined
+        ? failing.summary ?? "verifier adapter judged this evaluation as failed"
+        : judgments.find((judgment) => judgment.summary !== undefined)?.summary ?? "judged pass by verifier adapter";
+      return {
+        spec_id: spec.id,
+        mode: spec.mode,
+        description: spec.description,
+        required: spec.required,
+        weight: spec.weight,
+        pass: failing === undefined,
+        summary: singleLine(summary),
+        implicit: false,
+      };
+    }
   }
 
   const summary = adapterHasIssues

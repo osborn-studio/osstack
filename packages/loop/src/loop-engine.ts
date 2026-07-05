@@ -225,9 +225,13 @@ export class LoopEngine {
     result: LoopRunResult,
     budgetStatus: LoopBudgetStatus | undefined,
   ): Promise<LoopState> {
-    if (budgetStatus === undefined) return result.state;
+    // Only re-persist when the budget actually stops the loop. A within-limits
+    // check every cycle would double-write LOOP-STATE.json and double-emit
+    // loop.state.written for no state change; the in-memory result.budget still
+    // carries the current status for the immediate CLI print.
+    if (budgetStatus === undefined || !budgetStatus.exceeded) return result.state;
     const decisions = [...(result.state.decisions ?? [])];
-    if (budgetStatus.exceeded && budgetStatus.reason !== undefined) {
+    if (budgetStatus.reason !== undefined) {
       decisions.push(`budget: ${budgetStatus.reason}`);
     }
     const nextState = LoopState.parse({
@@ -626,11 +630,11 @@ export class LoopEngine {
           maxIterations,
         });
         if (!finalVerdict.pass) {
-          const fingerprint = issueFingerprint(finalVerdict, finalEvidence.changedFiles);
+          const fingerprint = issueFingerprint(finalVerdict);
           if (decision.action === "continue" && fingerprint === previousFingerprint) {
             decision = {
               action: "escalate",
-              reason: `No progress: attempt ${iteration} repeated the same blocking issues and changed files as attempt ${iteration - 1}.`,
+              reason: `No progress: attempt ${iteration} produced the same blocking issues and failed evaluations as attempt ${iteration - 1}.`,
               escalate_to: "hermes",
             };
           }

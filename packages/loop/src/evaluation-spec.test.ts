@@ -243,6 +243,44 @@ describe("verifier per-evaluation results", () => {
     expect(captured?.prompt).toContain("Reject constant allow/deny values.");
   });
 
+  it("does not let a passing judgment mark a spec pass when the adapter itself failed", async () => {
+    // Adapter emits an all-pass judgment but then terminates with an error.
+    // The spec must NOT show pass=true (which would yield pass=false/score=1.0).
+    const adapter = mockAdapter({
+      async *invoke(agentTask) {
+        yield {
+          event_id: `${agentTask.run_id}:1`,
+          seq: 1,
+          run_id: agentTask.run_id,
+          session_id: agentTask.session_id,
+          created_at: Date.now() / 1000,
+          terminal: false,
+          type: "done",
+          payload: {
+            status: "failed",
+            last_seq: 1,
+            result_summary: "reviewer crashed after judging",
+            evaluation_judgments: [{ id: "no-bypass", pass: true, summary: "looked fine" }],
+          },
+        } as unknown as HermesEvent;
+      },
+    });
+
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace,
+      verifierAgentIds: [adapter.id],
+      adapters: [adapter],
+      task: task({ evaluation: [spec({ id: "no-bypass", mode: "semantic_review" })] }),
+    });
+
+    expect(verdict.pass).toBe(false);
+    expect(verdict.evaluations).toEqual([
+      expect.objectContaining({ spec_id: "no-bypass", pass: false }),
+    ]);
+    // pass=false must not coexist with a perfect score.
+    expect(verdict.score).toBeLessThan(1);
+  });
+
   it("fails required semantic_review specs when no verifier adapter is configured", async () => {
     const verdict = await verifyRun(run(), {
       workspacePath: workspace,

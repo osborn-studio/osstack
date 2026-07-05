@@ -60,6 +60,39 @@ describe("authorizeTask", () => {
     expect(decision.reason).toContain(".github/workflows");
   });
 
+  it("blocks a path referenced only through an evaluation spec", () => {
+    const policy = DiscoveryPolicy.parse({
+      default_authorization: "auto_execute",
+      blocked_paths: ["secrets"],
+    });
+    const decision = authorizeTask(
+      task({ evaluation: [{
+        id: "touch-secrets",
+        mode: "artifact",
+        description: "writes secrets",
+        required: true,
+        target_paths: ["secrets/prod.env"],
+        forbidden_paths: [],
+        weight: 1,
+      }] }),
+      policy,
+    );
+    expect(decision.authorization).toBe("blocked");
+  });
+
+  it("blocks regardless of leading-slash asymmetry between policy and task path", () => {
+    const policy = DiscoveryPolicy.parse({
+      default_authorization: "auto_execute",
+      blocked_paths: ["src/secrets"],
+    });
+    // Absolute context path vs repo-relative blocked path must still match.
+    const decision = authorizeTask(
+      task({ context: { file: "/src/secrets/key.ts" } }),
+      policy,
+    );
+    expect(decision.authorization).toBe("blocked");
+  });
+
   it("grants auto_execute to allowlisted capabilities but caps by priority", () => {
     const policy = DiscoveryPolicy.parse({
       auto_execute_capabilities: ["code.fix"],

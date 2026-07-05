@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentAdapter, AgentTask } from "@osstack/agents";
@@ -12,6 +12,7 @@ import {
   issueFingerprint,
   withIterationFeedback,
 } from "./feedback.js";
+import type { EvaluationResult } from "./evaluation-spec.js";
 import { LoopEngine } from "./loop-engine.js";
 import { planTask } from "./planner.js";
 import { IterationFeedback, type Task, type Verdict } from "./types.js";
@@ -67,47 +68,67 @@ describe("deriveIterationFeedback", () => {
 });
 
 describe("issueFingerprint", () => {
-  it("is stable across issue and file ordering", () => {
+  it("is stable across issue and evaluation ordering", () => {
     const a = issueFingerprint(verdict({
       issues: [
         { severity: "error", message: "one", rule: "r1" },
         { severity: "error", message: "two", rule: "r2" },
       ],
-    }), ["a.ts", "b.ts"]);
+      evaluations: [evalResult("b", false), evalResult("a", false)],
+    }));
     const b = issueFingerprint(verdict({
       issues: [
         { severity: "error", message: "two", rule: "r2" },
         { severity: "error", message: "one", rule: "r1" },
       ],
-    }), ["b.ts", "a.ts"]);
+      evaluations: [evalResult("a", false), evalResult("b", false)],
+    }));
     expect(a).toBe(b);
   });
 
-  it("changes when issues or changed files change", () => {
+  it("changes when blocking issues or failed evaluations change", () => {
     const base = issueFingerprint(verdict({
       issues: [{ severity: "error", message: "one", rule: "r1" }],
-    }), ["a.ts"]);
+    }));
     const differentIssue = issueFingerprint(verdict({
       issues: [{ severity: "error", message: "other", rule: "r1" }],
-    }), ["a.ts"]);
-    const differentFiles = issueFingerprint(verdict({
+    }));
+    const differentFailedEval = issueFingerprint(verdict({
       issues: [{ severity: "error", message: "one", rule: "r1" }],
-    }), ["a.ts", "c.ts"]);
+      evaluations: [evalResult("newly-failing", false)],
+    }));
     expect(differentIssue).not.toBe(base);
-    expect(differentFiles).not.toBe(base);
+    expect(differentFailedEval).not.toBe(base);
   });
 
-  it("ignores warning-severity issues", () => {
-    const withWarning = issueFingerprint(verdict({
+  it("does NOT change when only the changed-file set grows (worktree is cumulative)", () => {
+    // Regression guard: folding cumulative `git status` into the fingerprint
+    // defeated no-progress escalation. Same verdict must fingerprint the same
+    // even though the agent touched more files on the second attempt.
+    const attempt1 = issueFingerprint(verdict({
+      issues: [{ severity: "error", message: "still broken", rule: "verify.command_failed" }],
+      evaluations: [evalResult("tests", false)],
+    }));
+    const attempt2 = issueFingerprint(verdict({
+      issues: [{ severity: "error", message: "still broken", rule: "verify.command_failed" }],
+      evaluations: [evalResult("tests", false)],
+    }));
+    expect(attempt2).toBe(attempt1);
+  });
+
+  it("ignores warning-severity issues and passing evaluations", () => {
+    const withNoise = issueFingerprint(verdict({
       issues: [
         { severity: "error", message: "one", rule: "r1" },
         { severity: "warning", message: "nit", rule: "r3" },
       ],
-    }), []);
-    const withoutWarning = issueFingerprint(verdict({
+      evaluations: [evalResult("tests", false), evalResult("style", true)],
+    }));
+    const clean = issueFingerprint(verdict({
       issues: [{ severity: "error", message: "one", rule: "r1" }],
-    }), []);
-    expect(withWarning).toBe(withoutWarning);
+      evaluations: [evalResult("tests", false)],
+    }));
+    expect(withNoise).toBe(clean);
   });
 });
 
@@ -229,6 +250,34 @@ describe("local command feedback file", () => {
     expect(stdout).toContain("previous attempt failed the auth suite");
     expect(() => IterationFeedback.parse(JSON.parse(stdout))).not.toThrow();
   });
+
+  it("cleans up the temp feedback dir after the command runs (no leak)", async () => {
+    const before = (await readdir(tmpdir())).filter((entry) => entry.startsWith("osstack-feedback-"));
+    const feedback = deriveIterationFeedback({
+      attempt: 1,
+      verdict: verdict({ summary: "boom", issues: [{ severity: "error", message: "x", rule: "r" }] }),
+      changedFiles: [],
+    });
+    const task: Task = {
+      task_id: "t-cleanup",
+      capability: "code.fix",
+      prompt: "Fix it",
+      priority: 50,
+      source: "task_queue",
+      context: withIterationFeedback(undefined, feedback),
+    };
+    const plan = planTask(task, { agentId: "local-command" });
+
+    const run = await executePlan(plan, {
+      workspacePath: workspace,
+      // Prove the file existed during the run, then assert it's gone after.
+      command: 'test -f "$OSSTACK_ITERATION_FEEDBACK_FILE"',
+    });
+
+    expect(run.outcome).toBe("completed");
+    const after = (await readdir(tmpdir())).filter((entry) => entry.startsWith("osstack-feedback-"));
+    expect(after.length).toBeLessThanOrEqual(before.length);
+  });
 });
 
 async function enqueue(item: { task_id: string; prompt: string; capability: string }): Promise<void> {
@@ -248,6 +297,19 @@ function verdict(overrides: Partial<Verdict> = {}): Verdict {
     reviewer_agent_id: "local-verifier",
     summary: "verification failed",
     ...overrides,
+  };
+}
+
+function evalResult(specId: string, pass: boolean): EvaluationResult {
+  return {
+    spec_id: specId,
+    mode: "command",
+    description: specId,
+    required: true,
+    weight: 1,
+    pass,
+    summary: pass ? "ok" : "failed",
+    implicit: false,
   };
 }
 

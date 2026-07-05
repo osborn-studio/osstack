@@ -137,9 +137,20 @@ function taskContextPaths(task: Task): string[] {
       paths.push(...value.filter((item): item is string => typeof item === "string"));
     }
   }
+  // Evaluation specs carry first-class path fields; a blocked path reachable
+  // only through the evaluation harness must not bypass the guardrail.
+  for (const spec of task.evaluation ?? []) {
+    paths.push(...spec.target_paths, ...spec.forbidden_paths);
+  }
   return paths.map(normalizePath).filter((path) => path !== "");
 }
 
 function normalizePath(value: string): string {
-  return value.replaceAll("\\", "/").replace(/^\.\/+/, "").replace(/\/+$/, "");
+  return value
+    .replaceAll("\\", "/")
+    .replace(/^\.\/+/, "")
+    // Strip a leading slash so an absolute context path and a repo-relative
+    // blocked path compare on the same footing (both become repo-relative).
+    .replace(/^\/+/, "")
+    .replace(/\/+$/, "");
 }

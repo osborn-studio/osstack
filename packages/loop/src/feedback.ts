@@ -38,17 +38,27 @@ export function deriveIterationFeedback(input: DeriveIterationFeedbackInput): It
 }
 
 /**
- * Stable fingerprint of a failed attempt: blocking issues plus changed files.
- * Two consecutive attempts with the same fingerprint made no progress.
+ * Stable fingerprint of a failed attempt's *verdict*: blocking issues plus the
+ * ids of failed evaluations. Two consecutive attempts with the same fingerprint
+ * made no verification progress and should escalate.
+ *
+ * Deliberately excludes changed files: the loop reuses one persistent worktree
+ * across iterations and never resets it, so `git status` is cumulative and grows
+ * every attempt — folding it in makes the fingerprint almost never repeat and
+ * silently defeats no-progress escalation in the default worktree mode. The
+ * verdict (same blocking issues + same failed specs) is the real "stuck" signal.
  */
-export function issueFingerprint(verdict: Verdict, changedFiles: readonly string[]): string {
+export function issueFingerprint(verdict: Verdict): string {
   const issueKeys = verdict.issues
     .filter((issue) => issue.severity === "error")
     .map((issue) => `${issue.rule ?? ""}|${issue.file ?? ""}|${issue.line ?? ""}|${issue.message}`)
     .sort();
-  const fileKeys = [...changedFiles].sort();
+  const failedEvaluationKeys = (verdict.evaluations ?? [])
+    .filter((evaluation) => !evaluation.pass)
+    .map((evaluation) => evaluation.spec_id)
+    .sort();
   return createHash("sha1")
-    .update(JSON.stringify({ issues: issueKeys, files: fileKeys }))
+    .update(JSON.stringify({ issues: issueKeys, failedEvaluations: failedEvaluationKeys }))
     .digest("hex");
 }
 
