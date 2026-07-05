@@ -23,9 +23,9 @@ afterEach(async () => {
 });
 
 describe("LoopBudget schema", () => {
-  it("defaults no_progress_limit to 2 and keeps other limits optional", () => {
+  it("leaves no_progress_limit unset (opt-in) and all limits optional", () => {
     const budget = LoopBudget.parse({});
-    expect(budget.no_progress_limit).toBe(2);
+    expect(budget.no_progress_limit).toBeUndefined();
     expect(budget.max_cycles).toBeUndefined();
     expect(budget.max_runtime_ms).toBeUndefined();
   });
@@ -47,8 +47,13 @@ describe("checkBudget", () => {
       .toMatchObject({ exceeded: true, limit: "max_tokens" });
     expect(checkBudget(LoopBudget.parse({ max_estimated_cost_usd: 1 }), usage({ estimated_cost_usd: 1.5 })))
       .toMatchObject({ exceeded: true, limit: "max_estimated_cost_usd" });
-    expect(checkBudget(LoopBudget.parse({}), usage({ no_progress_cycles: 2 })))
+    expect(checkBudget(LoopBudget.parse({ no_progress_limit: 2 }), usage({ no_progress_cycles: 2 })))
       .toMatchObject({ exceeded: true, limit: "no_progress_limit" });
+  });
+
+  it("does not trip no-progress when the limit is unset (opt-in)", () => {
+    expect(checkBudget(LoopBudget.parse({ max_runtime_ms: 100 }), usage({ no_progress_cycles: 99 })))
+      .toEqual({ exceeded: false });
   });
 
   it("stays within budget when no limit is reached", () => {

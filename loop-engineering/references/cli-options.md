@@ -30,10 +30,10 @@ Use `osstack loop help` for the authoritative runtime help. This reference captu
 - `--interval-ms N`: wait between cycles.
 - `--stop-when-idle`: stop after a cycle executes no tasks.
 - `--archive-completed`: move successful single-task queue files into `tasks/archive/`.
-- `--max-runtime-ms N`: budget — stop after N ms total runtime.
-- `--max-tokens N`: budget — stop after N adapter tokens consumed.
-- `--max-cost-usd X`: budget — stop after an estimated spend of X USD.
-- `--no-progress-limit N`: budget — stop after N consecutive cycles that executed tasks without a success.
+- `--max-runtime-ms N`: budget — stop after N ms total runtime (exit code 2).
+- `--no-progress-limit N`: budget — opt in to stop after N consecutive cycles that executed tasks without a success (exit code 2). Unset means no no-progress stop, so a runtime cap does not silently become a stalled-cycle stop.
+
+Token and cost budgets exist in the `LoopBudget` schema (RPC-settable) but are not yet enforced — no adapter reports token/cost usage — so they are intentionally not exposed as CLI flags.
 - `--no-lesson-drafts`: disable SOP lesson drafts after recovered failures.
 - `--lessons-dir P`: lesson draft directory, default `loop-lessons/drafts`.
 - `--state P`: JSON state path, default `LOOP-STATE.json`.

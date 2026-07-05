@@ -11,10 +11,20 @@ export const LoopBudget = z.object({
   max_cycles: z.number().int().positive().optional(),
   max_task_iterations: z.number().int().positive().optional(),
   max_runtime_ms: z.number().int().positive().optional(),
+  /**
+   * Reserved: token/cost accounting is not yet wired (no adapter reports usage),
+   * so these do not enforce a stop today. Kept in the schema so RPC callers can
+   * set them ahead of accounting landing. The CLI deliberately does not expose
+   * them as flags to avoid promising a guardrail the runtime cannot deliver.
+   */
   max_tokens: z.number().int().positive().optional(),
   max_estimated_cost_usd: z.number().positive().optional(),
-  /** Consecutive cycles without a successful task before the loop stops. */
-  no_progress_limit: z.number().int().positive().default(2),
+  /**
+   * Consecutive cycles without a successful task before the loop stops.
+   * Opt-in: when unset there is no no-progress stop, so a `--max-runtime-ms`
+   * cap does not silently morph into a stalled-cycle stop.
+   */
+  no_progress_limit: z.number().int().positive().optional(),
 });
 export type LoopBudget = z.infer<typeof LoopBudget>;
 
@@ -78,7 +88,7 @@ export function checkBudget(budget: LoopBudget, usage: BudgetUsage): BudgetCheck
       reason: `cost budget exceeded: $${usage.estimated_cost_usd.toFixed(4)} of $${budget.max_estimated_cost_usd.toFixed(4)} used`,
     };
   }
-  if (usage.no_progress_cycles >= budget.no_progress_limit) {
+  if (budget.no_progress_limit !== undefined && usage.no_progress_cycles >= budget.no_progress_limit) {
     return {
       exceeded: true,
       limit: "no_progress_limit",

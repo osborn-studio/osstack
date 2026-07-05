@@ -9250,10 +9250,9 @@ Options:
   --worktree-root P  Directory for temporary isolated worktrees
   --max-iter N        Iterations before escalation (default: 1)
   --max-runtime-ms N  Budget: stop after N ms total runtime (exit code 2)
-  --max-tokens N      Budget: stop after N adapter tokens consumed
-  --max-cost-usd X    Budget: stop after an estimated spend of X USD
   --no-progress-limit N
-                      Budget: stop after N consecutive cycles without a successful task
+                      Budget: opt in to stop after N consecutive cycles that ran
+                      tasks without any success (exit code 2)
   --no-lesson-drafts  Disable SOP lesson drafts after recovered failures
   --lessons-dir P     Directory for lesson drafts (default: loop-lessons/drafts)
   --cycles N          Run multiple cycles before exiting, or cap loop start
@@ -9407,33 +9406,20 @@ function parseLessonDraftFlags(args: string[]): { enabled?: boolean; dir?: strin
 }
 
 function parseLoopBudgetFlags(args: string[]): LoopBudget | undefined | Error {
+  // Only runtime and no-progress are enforceable today. Token/cost accounting
+  // is not wired (no adapter reports usage), so those LoopBudget fields are not
+  // exposed as CLI flags — a flag that can never trip would be a false
+  // guardrail. RPC callers can still set them for when accounting lands.
   const maxRuntimeMs = parsePositiveIntegerFlag(flagValue(args, "--max-runtime-ms"), "--max-runtime-ms");
   if (maxRuntimeMs instanceof Error) return maxRuntimeMs;
-  const maxTokens = parsePositiveIntegerFlag(flagValue(args, "--max-tokens"), "--max-tokens");
-  if (maxTokens instanceof Error) return maxTokens;
   const noProgressLimit = parsePositiveIntegerFlag(flagValue(args, "--no-progress-limit"), "--no-progress-limit");
   if (noProgressLimit instanceof Error) return noProgressLimit;
-  const maxCostRaw = flagValue(args, "--max-cost-usd");
-  let maxCostUsd: number | undefined;
-  if (maxCostRaw !== undefined) {
-    maxCostUsd = Number(maxCostRaw);
-    if (!Number.isFinite(maxCostUsd) || maxCostUsd <= 0) {
-      return new Error("--max-cost-usd must be a positive number");
-    }
-  }
-  if (
-    maxRuntimeMs === undefined
-    && maxTokens === undefined
-    && noProgressLimit === undefined
-    && maxCostUsd === undefined
-  ) {
+  if (maxRuntimeMs === undefined && noProgressLimit === undefined) {
     return undefined;
   }
   return LoopBudget.parse({
     ...(maxRuntimeMs !== undefined ? { max_runtime_ms: maxRuntimeMs } : {}),
-    ...(maxTokens !== undefined ? { max_tokens: maxTokens } : {}),
     ...(noProgressLimit !== undefined ? { no_progress_limit: noProgressLimit } : {}),
-    ...(maxCostUsd !== undefined ? { max_estimated_cost_usd: maxCostUsd } : {}),
   });
 }
 

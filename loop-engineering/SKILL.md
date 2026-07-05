@@ -138,11 +138,13 @@ the flag, behavior is unchanged.
 
 ## Budgets And Stop Controls
 
-`--max-runtime-ms`, `--max-tokens`, `--max-cost-usd`, and
-`--no-progress-limit` stop the loop with a `loop.budget.exceeded` event and
-exit code `2` (not a CLI crash). Daemon sessions persist the stop reason and
-expose limits + usage in `loop list` and `osstack stats`. `STATE.md` gains a
-Budget section when a budget is configured.
+`--max-runtime-ms` and (opt-in) `--no-progress-limit` stop the loop with a
+`loop.budget.exceeded` event and exit code `2` (not a CLI crash). No-progress
+is opt-in so a runtime cap never silently becomes a stalled-cycle stop. Token
+and cost budgets exist in the schema but are not yet enforced (no adapter
+reports usage), so they are not exposed as CLI flags. Daemon sessions persist
+the stop reason and expose limits + usage in `loop list` and `osstack stats`.
+`STATE.md` gains a Budget section when a budget stop fires.
 
 ## Lesson Drafts (SOP Flywheel)
 
