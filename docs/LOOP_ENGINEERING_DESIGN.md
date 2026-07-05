@@ -566,6 +566,18 @@ daemon hot loop
 - `pnpm coverage:loop` 现在强制 `packages/loop` 的 lines/functions/branches/statements 全部 ≥ 80%；当前覆盖率为 statements/lines 94.63%、functions 95.29%、branches 81.79%。
 - 第 6 条已补进程级 `kill -9` smoke：在真实 daemon 进程中持久化 running session，`SIGKILL` 后重启同一 `OSSTACK_HOME`，确认原 session 继续处理新入队 task。
 
+### 2026-07 Loop Engineering 升级（Increment A–E，见 `docs/2026-07-04-loop-engineering-upgrade-spec.md`）
+
+以上骨架之上补齐了 loop 质量五要素，均为 opt-in / 向后兼容，不改动既有 CLI 行为：
+
+- **A. EvaluationSpec（验收工具）**：task queue 文件新增 `evaluation` 字段（`packages/loop/src/evaluation-spec.ts`，7 种 mode：command/contract/property/e2e/artifact/semantic_review/governance）。`--verify CMD` 降级为 implicit command spec，artifact 校验降级为 implicit artifact spec；verifier 产出 per-spec 结果并写入 `Verdict.evaluations` / `LOOP-STATE.json` / `STATE.md`。`semantic_review` spec 需要 `--reviewer`/`--checker` adapter；required spec 失败即使 adapter 进程 exit 0 也拦截 verdict。
+- **B. Feedback-Carrying Iteration**：失败 verdict 派生 `IterationFeedback`（`packages/loop/src/feedback.ts`），下一轮通过 `AgentTask.context.iteration_feedback` 注入 adapter，本地 `--execute` 命令经 `$OSSTACK_ITERATION_FEEDBACK_FILE` 读取；连续两轮 issue fingerprint + changed files 相同触发 no-progress escalation；`loop.iterate.done` 带 `failed_evaluation_ids`，feedback 逐轮写入 `STATE.md`。
+- **C. Discovery Governance**：`DiscoveryPolicy`（`packages/loop/src/discovery-policy.ts`）把 discovered task 分为 `auto_execute` / `needs_approval` / `suggest_only` / `blocked`。`--discovery-policy default|<file.json>`：`task_queue` 保持 auto，`git_diff` 默认 suggest_only，`github_branch` 默认 needs_approval；deferred task 写入 state/report 但不执行，`STATE.md` 分 Needs Approval / Suggested / Blocked 段。未配 policy 时行为不变。
+- **D. Budget And Stop Controls**：`LoopBudget`（`packages/loop/src/budget.ts`）支持 max_cycles/max_task_iterations/max_runtime_ms/max_tokens/max_estimated_cost_usd/no_progress_limit。超预算发 `loop.budget.exceeded` 事件并以 **退出码 2**（非 CLI crash 1）停止；`budget_status` 持久化进 `LOOP-STATE.json`，daemon session 记录 stop reason 并把 limits+usage 暴露到 `loop list` / `osstack stats` per-loop；`STATE.md` 增 Budget 段。CLI flag：`--max-runtime-ms` / `--max-tokens` / `--max-cost-usd` / `--no-progress-limit`。
+- **E. SOP Flywheel（lesson drafts）**：经历失败后成功的 task 生成 `loop-lessons/drafts/<task_id>.md`（`packages/loop/src/lesson-draft.ts`），含 task prompt / failed evaluations / verifier caught what / final fix / reusable rule / suggested evaluation / suggested skill；默认不改正式 SKILL.md。审核流：`osstack loop lessons list|show|promote|discard`，`promote --to-skill PATH` 是唯一写入 skill 文件的路径。`--no-lesson-drafts` / `--lessons-dir` 可控。
+- **DeepSeek adapter 判定协定**：TS adapter 把 evaluation specs 经 `OSSTACK_EVALUATION_SPECS_FILE` 传给外部二进制，二进制打一行 `OSSTACK_EVALUATIONS: {...}` 回传 per-spec 判定（`lib/evaluation_specs.py`）；`legacy-python/deepseek/bin/ds-review`、`ds-verify` 已实现该协定，把 acceptance 注入 prompt 并解析模型判定。无环境变量时逐字节等同 legacy。
+- **验证**：全部新增行为有 focused tests（loop 146 / cli 269 / agents 38），`packages/loop` 覆盖率保持 ≥ 80%（statements/lines 91.9%、functions 95.9%、branches 81.1%）；`scripts/smoke-loop.mjs` 与 built CLI dogfood 全链路通过；Python 协定测试 `python3 -m unittest discover legacy-python/deepseek/tests`（10 tests，含 fake DeepSeek API 的 subprocess e2e），并已接入 CI `Python protocol tests` 步骤。
+
 ---
 
 ## 附录 A：与 V2_REFACTOR_PLAN.md 的关系
