@@ -122,6 +122,31 @@ exit 9
     }
   });
 
+  it("emits usage.final with net tokens from turn.completed (loop budget contract)", async () => {
+    // Locks the emission end of the token-accounting chain: the loop budget
+    // reads usage.final tokens, so a change that stops emitting them (or gets
+    // the net-token math wrong) must fail here rather than silently zero out
+    // budget enforcement in production.
+    const bin = await fakeCommand("codex-usage", `
+if [ "\${1:-}" = "exec" ]; then
+  printf '{"type":"thread.started","thread_id":"t1"}\\n'
+  printf '{"type":"item.completed","item":{"id":"m1","type":"agent_message","text":"done"}}\\n'
+  printf '{"type":"turn.completed","usage":{"input_tokens":120,"cached_input_tokens":20,"output_tokens":50}}\\n'
+  exit 0
+fi
+exit 0
+`);
+    const adapter = new CodexCliAdapter({ bin, cwd: tmp, probeTimeoutMs: 1_000 });
+
+    const events = await drain(adapter.invoke(task("codex-cli.code.write"), new AbortController().signal));
+    const usage = events.find((event) => event.type === "usage.final");
+    expect(usage?.payload).toMatchObject({
+      tokens_in: 100, // input_tokens (120) - cached_input_tokens (20)
+      tokens_out: 50,
+    });
+    expect(doneStatus(events)).toBe("completed");
+  });
+
   it("fails availability when dry-run exits 0 without a completed turn", async () => {
     const previousHome = process.env["HOME"];
     process.env["HOME"] = tmp;
