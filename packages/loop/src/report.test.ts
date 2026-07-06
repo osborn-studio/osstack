@@ -102,6 +102,7 @@ describe("loop state report", () => {
         avg_duration_ms: 1_850,
         success_rate: 0.5,
         tokens_consumed: 0,
+        cost_consumed: 0,
       },
     };
 

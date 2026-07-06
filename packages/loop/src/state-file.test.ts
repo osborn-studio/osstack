@@ -93,6 +93,7 @@ describe("loop state file", () => {
         avg_duration_ms: 1200,
         success_rate: 1,
         tokens_consumed: 0,
+        cost_consumed: 0,
       },
     };
 

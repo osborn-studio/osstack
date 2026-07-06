@@ -2,6 +2,8 @@ import { mkdtempSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { AgentAdapter } from "@osstack/agents";
+import type { HermesEvent } from "@osstack/hermes-adapter";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { LoopBudget, checkBudget, clampTaskIterations, type BudgetUsage } from "./budget.js";
 import { LoopEngine } from "./loop-engine.js";
@@ -211,7 +213,105 @@ describe("LoopEngine budget enforcement", () => {
     expect(result.budget).toBeUndefined();
     expect(result.events.some((event) => event.type === "loop.budget.exceeded")).toBe(false);
   });
+
+  it("accumulates adapter-reported tokens/cost and trips max_tokens", async () => {
+    await enqueue("tokened-task");
+    // Adapter reports usage per run; two cycles push tokens over the cap.
+    const adapter = usageAdapter({ tokensIn: 400, tokensOut: 400, cost: 0.02 });
+
+    const engine = new LoopEngine({
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      agentId: "usage-agent",
+      adapters: [adapter],
+      skipCompletedTasks: false,
+      budget: LoopBudget.parse({ max_tokens: 1000 }),
+    });
+    const result = await engine.runCycles({ cycles: 3 });
+
+    // 800 tokens/cycle: cycle 1 = 800 (< 1000), cycle 2 = 1600 (>= 1000) → stop.
+    expect(result.cycles).toHaveLength(2);
+    expect(result.budget).toMatchObject({ exceeded: true, limit: "max_tokens" });
+    expect(result.state.key_metrics?.tokens_consumed).toBeGreaterThanOrEqual(1000);
+    expect(result.state.key_metrics?.cost_consumed).toBeGreaterThan(0);
+    const completed = result.state.completed_tasks[0];
+    expect(completed?.tokens_in).toBe(400);
+    expect(completed?.cost_usd).toBeCloseTo(0.02);
+  });
+
+  it("trips max_cost_usd against adapter-reported spend", async () => {
+    await enqueue("costed-task");
+    const adapter = usageAdapter({ tokensIn: 10, tokensOut: 10, cost: 0.5 });
+
+    const engine = new LoopEngine({
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      agentId: "usage-agent",
+      adapters: [adapter],
+      skipCompletedTasks: false,
+      budget: LoopBudget.parse({ max_estimated_cost_usd: 0.9 }),
+    });
+    const result = await engine.runCycles({ cycles: 3 });
+
+    expect(result.budget).toMatchObject({ exceeded: true, limit: "max_estimated_cost_usd" });
+  });
+
+  it("leaves usage at 0 for adapters that do not report it (cap never trips)", async () => {
+    await enqueue("silent-task");
+
+    const engine = new LoopEngine({
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "exit 0",
+      skipCompletedTasks: false,
+      budget: LoopBudget.parse({ max_tokens: 1 }),
+    });
+    const result = await engine.runCycles({ cycles: 2 });
+
+    expect(result.budget?.exceeded).toBe(false);
+    expect(result.state.key_metrics?.tokens_consumed).toBe(0);
+  });
 });
+
+function usageAdapter(u: { tokensIn: number; tokensOut: number; cost: number }): AgentAdapter {
+  return {
+    id: "usage-agent",
+    display_name: "Usage Agent",
+    cost_tier: "low",
+    capabilities: () => [{
+      id: "usage.code.test",
+      kind: "code.test",
+      agent_id: "usage-agent",
+      description: "reports usage",
+      cost_tier: "low",
+      hints: {},
+      version: "0.0.0",
+    }],
+    isAvailable: async () => ({ available: true, last_checked_at: 0 }),
+    async *invoke(task) {
+      yield {
+        event_id: `${task.run_id}:u`,
+        seq: 1,
+        run_id: task.run_id,
+        session_id: task.session_id,
+        created_at: Date.now() / 1000,
+        terminal: false,
+        type: "usage.final",
+        payload: { tokens_in: u.tokensIn, tokens_out: u.tokensOut, cost_usd: u.cost, duration_ms: 1 },
+      } as unknown as HermesEvent;
+      yield {
+        event_id: `${task.run_id}:d`,
+        seq: 2,
+        run_id: task.run_id,
+        session_id: task.session_id,
+        created_at: Date.now() / 1000,
+        terminal: true,
+        type: "done",
+        payload: { status: "completed", last_seq: 2, result_summary: "ok" },
+      } as unknown as HermesEvent;
+    },
+  };
+}
 
 async function enqueue(taskId: string): Promise<void> {
   await mkdir(join(workspace, "tasks"), { recursive: true });

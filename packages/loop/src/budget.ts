@@ -12,10 +12,9 @@ export const LoopBudget = z.object({
   max_task_iterations: z.number().int().positive().optional(),
   max_runtime_ms: z.number().int().positive().optional(),
   /**
-   * Reserved: token/cost accounting is not yet wired (no adapter reports usage),
-   * so these do not enforce a stop today. Kept in the schema so RPC callers can
-   * set them ahead of accounting landing. The CLI deliberately does not expose
-   * them as flags to avoid promising a guardrail the runtime cannot deliver.
+   * Enforced against adapter-reported usage (usage.final / done.usage events).
+   * Usage stays 0 for adapters that don't report it (e.g. local-command runs),
+   * so these caps trip only when there is real token/cost data to measure.
    */
   max_tokens: z.number().int().positive().optional(),
   max_estimated_cost_usd: z.number().positive().optional(),

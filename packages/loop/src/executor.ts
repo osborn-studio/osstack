@@ -30,6 +30,11 @@ export interface AgentRun {
   command_results: CommandResult[];
   adapter_event_count?: number;
   summary?: string;
+  /** Adapter-reported token usage for this run (undefined when not reported). */
+  tokens_in?: number;
+  tokens_out?: number;
+  /** Adapter/provider-reported spend for this run (undefined when not reported). */
+  cost_usd?: number;
 }
 
 export interface LocalExecutorOptions {
@@ -142,6 +147,7 @@ async function executeAdapterPlan(
   let outcome: AgentRun["outcome"] = "completed";
   let adapterEventCount = 0;
   let summary: string | undefined;
+  let usage: AgentUsage | undefined;
   try {
     const agentTask: AgentTask = {
       run_id: runId,
@@ -161,10 +167,16 @@ async function executeAdapterPlan(
         outcome = "failed";
         summary = errorPayload(event.payload).message;
       }
+      if (event.type === "usage.updated" || event.type === "usage.final") {
+        // usage events report running/final totals; the latest authoritative
+        // value wins (final supersedes updated, both supersede nothing).
+        usage = usagePayload(event.payload);
+      }
       if (event.type === "done") {
         const payload = donePayload(event.payload);
         outcome = payload.status === "expired" ? "failed" : payload.status;
         summary = payload.result_summary;
+        if (payload.usage !== undefined) usage = usagePayload(payload.usage);
       }
     }
   } catch (err) {
@@ -187,6 +199,24 @@ async function executeAdapterPlan(
     command_results: [],
     adapter_event_count: adapterEventCount,
     ...(summary !== undefined ? { summary } : {}),
+    ...(usage?.tokens_in !== undefined ? { tokens_in: usage.tokens_in } : {}),
+    ...(usage?.tokens_out !== undefined ? { tokens_out: usage.tokens_out } : {}),
+    ...(usage?.cost_usd !== undefined ? { cost_usd: usage.cost_usd } : {}),
+  };
+}
+
+interface AgentUsage {
+  tokens_in?: number;
+  tokens_out?: number;
+  cost_usd?: number;
+}
+
+function usagePayload(payload: HermesEvent["payload"]): AgentUsage {
+  const value = payload as { tokens_in?: unknown; tokens_out?: unknown; cost_usd?: unknown };
+  return {
+    ...(typeof value.tokens_in === "number" ? { tokens_in: value.tokens_in } : {}),
+    ...(typeof value.tokens_out === "number" ? { tokens_out: value.tokens_out } : {}),
+    ...(typeof value.cost_usd === "number" ? { cost_usd: value.cost_usd } : {}),
   };
 }
 
@@ -228,10 +258,12 @@ function errorPayload(payload: HermesEvent["payload"]): { message: string } {
 function donePayload(payload: HermesEvent["payload"]): {
   status: "completed" | "failed" | "cancelled" | "expired";
   result_summary?: string;
+  usage?: HermesEvent["payload"];
 } {
   return payload as {
     status: "completed" | "failed" | "cancelled" | "expired";
     result_summary?: string;
+    usage?: HermesEvent["payload"];
   };
 }
 

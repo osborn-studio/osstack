@@ -173,6 +173,10 @@ export const CompletedTask = z.object({
   diff_summary: z.string().optional(),
   commit_hash: z.string().optional(),
   error_summary: z.string().optional(),
+  /** Adapter-reported usage summed across this task's iterations. */
+  tokens_in: z.number().optional(),
+  tokens_out: z.number().optional(),
+  cost_usd: z.number().optional(),
   worktree_path: z.string().optional(),
   worktree_branch: z.string().optional(),
   worktree_commit: z.string().optional(),
@@ -187,6 +191,8 @@ export const LoopMetrics = z.object({
   avg_duration_ms: z.number(),
   success_rate: z.number(),
   tokens_consumed: z.number(),
+  /** Cumulative adapter/provider-reported spend. Default keeps old files valid. */
+  cost_consumed: z.number().default(0),
 });
 
 export const KnowledgePackSummary = z.object({

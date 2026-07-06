@@ -132,6 +132,7 @@ interface LoopSession {
   failedTaskCount: number;
   escalatedTaskCount: number;
   tokensConsumed: number;
+  costConsumed: number;
   totalCycleDurationMs: number;
   failureStreaks: Record<string, LoopFailureStreak>;
   /** Consecutive cycles that executed tasks without a success (budget input). */
@@ -181,6 +182,7 @@ interface PersistedLoopSession {
   failedTaskCount?: number;
   escalatedTaskCount?: number;
   tokensConsumed?: number;
+  costConsumed?: number;
   totalCycleDurationMs?: number;
   failureStreaks?: Record<string, LoopFailureStreak>;
   noProgressCycles?: number;
@@ -901,6 +903,7 @@ async function startLoopSession(
     failedTaskCount: 0,
     escalatedTaskCount: 0,
     tokensConsumed: 0,
+    costConsumed: 0,
     totalCycleDurationMs: 0,
     failureStreaks: {},
     noProgressCycles: 0,
@@ -950,6 +953,7 @@ async function runLoopSession(ctx: DaemonContext, session: LoopSession): Promise
         if (streak !== undefined) notifyLoopFailureStreak(ctx, session, streak);
       }
       session.tokensConsumed = result.state.key_metrics?.tokens_consumed ?? session.tokensConsumed;
+      session.costConsumed = result.state.key_metrics?.cost_consumed ?? session.costConsumed;
       session.totalCycleDurationMs += cycleDurationMs;
       session.lastCycleDurationMs = cycleDurationMs;
       session.lastJsonPath = result.jsonPath;
@@ -966,7 +970,7 @@ async function runLoopSession(ctx: DaemonContext, session: LoopSession): Promise
           cycles: session.cycleCount,
           runtime_ms: Date.now() - session.startedAt,
           tokens: session.tokensConsumed,
-          estimated_cost_usd: 0,
+          estimated_cost_usd: session.costConsumed,
           no_progress_cycles: session.noProgressCycles,
         };
         const check = checkBudget(budget, usage);
@@ -1228,6 +1232,7 @@ async function persistLoopSessions(ctx: DaemonContext): Promise<void> {
       failedTaskCount: session.failedTaskCount,
       escalatedTaskCount: session.escalatedTaskCount,
       tokensConsumed: session.tokensConsumed,
+      costConsumed: session.costConsumed,
       totalCycleDurationMs: session.totalCycleDurationMs,
       failureStreaks: session.failureStreaks,
       noProgressCycles: session.noProgressCycles,
@@ -1286,6 +1291,7 @@ async function restoreLoopSessions(ctx: DaemonContext): Promise<void> {
       failedTaskCount: saved.failedTaskCount ?? 0,
       escalatedTaskCount: saved.escalatedTaskCount ?? 0,
       tokensConsumed: saved.tokensConsumed ?? 0,
+      costConsumed: saved.costConsumed ?? 0,
       totalCycleDurationMs: saved.totalCycleDurationMs ?? 0,
       failureStreaks: saved.failureStreaks ?? {},
       noProgressCycles: saved.noProgressCycles ?? 0,

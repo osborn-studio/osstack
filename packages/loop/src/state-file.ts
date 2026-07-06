@@ -103,6 +103,9 @@ export function renderLoopStateMarkdown(state: LoopState): string {
       `- Average duration: ${state.key_metrics.avg_duration_ms} ms`,
       `- Success rate: ${Math.round(state.key_metrics.success_rate * 100)}%`,
       `- Tokens consumed: ${state.key_metrics.tokens_consumed}`,
+      ...(state.key_metrics.cost_consumed > 0
+        ? [`- Estimated cost: $${state.key_metrics.cost_consumed.toFixed(4)}`]
+        : []),
     );
   }
 

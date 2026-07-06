@@ -156,7 +156,7 @@ export class LoopEngine {
         cycles: results.length,
         runtime_ms: Date.now() - runStartedAt,
         tokens: result.state.key_metrics?.tokens_consumed ?? 0,
-        estimated_cost_usd: 0,
+        estimated_cost_usd: result.state.key_metrics?.cost_consumed ?? 0,
         no_progress_cycles: noProgressCycles,
       });
       if (budgetStatus?.exceeded === true) break;
@@ -198,7 +198,7 @@ export class LoopEngine {
       cycles: 1,
       runtime_ms: Date.now() - runStartedAt,
       tokens: result.state.key_metrics?.tokens_consumed ?? 0,
-      estimated_cost_usd: 0,
+      estimated_cost_usd: result.state.key_metrics?.cost_consumed ?? 0,
       no_progress_cycles: nextNoProgressCycles(0, result),
     });
     const finalState = await this.persistBudgetStatus(result, budgetStatus);
@@ -357,7 +357,13 @@ export class LoopEngine {
           ? 0
           : Math.round(completed.reduce((sum, task) => sum + task.duration_ms, 0) / completed.length),
         success_rate: completed.length === 0 ? 1 : successCount / completed.length,
-        tokens_consumed: state.key_metrics?.tokens_consumed ?? 0,
+        // Derived from all completed tasks so the total is idempotent across
+        // cycles. Adapters that don't report usage contribute 0.
+        tokens_consumed: completed.reduce(
+          (sum, task) => sum + (task.tokens_in ?? 0) + (task.tokens_out ?? 0),
+          0,
+        ),
+        cost_consumed: completed.reduce((sum, task) => sum + (task.cost_usd ?? 0), 0),
       },
       decisions,
       ...(this.options.knowledge !== undefined ? { knowledge: this.options.knowledge } : {}),
@@ -503,6 +509,8 @@ export class LoopEngine {
     let finalVerdict: Verdict | null = null;
     let outcome: CompletedTask["outcome"] = "failed";
     let iterations = 0;
+    // Usage accrues across every iteration of this task, not just the last run.
+    const taskUsage = { tokensIn: 0, tokensOut: 0, cost: 0, reported: false };
     let runWorkspacePath = workspacePath;
     let worktree: WorktreeHandle | undefined;
     let preserveWorktreeBranch = false;
@@ -560,6 +568,12 @@ export class LoopEngine {
           ...(this.options.commandTimeoutMs !== undefined ? { timeoutMs: this.options.commandTimeoutMs } : {}),
           ...(this.options.outputLimit !== undefined ? { outputLimit: this.options.outputLimit } : {}),
         });
+        if (finalRun.tokens_in !== undefined || finalRun.tokens_out !== undefined || finalRun.cost_usd !== undefined) {
+          taskUsage.reported = true;
+          taskUsage.tokensIn += finalRun.tokens_in ?? 0;
+          taskUsage.tokensOut += finalRun.tokens_out ?? 0;
+          taskUsage.cost += finalRun.cost_usd ?? 0;
+        }
         this.emit(loopId, "loop.execute.done", {
           task_id: task.task_id,
           run_id: finalRun.run_id,
@@ -567,6 +581,9 @@ export class LoopEngine {
           agent_id: finalRun.agent_id,
           ...(finalRun.adapter_event_count !== undefined ? { adapter_event_count: finalRun.adapter_event_count } : {}),
           ...(finalRun.summary !== undefined ? { summary: finalRun.summary } : {}),
+          ...(finalRun.tokens_in !== undefined ? { tokens_in: finalRun.tokens_in } : {}),
+          ...(finalRun.tokens_out !== undefined ? { tokens_out: finalRun.tokens_out } : {}),
+          ...(finalRun.cost_usd !== undefined ? { cost_usd: finalRun.cost_usd } : {}),
           ...(worktree !== undefined ? { worktree_path: worktree.worktreePath } : {}),
           iteration,
         });
@@ -752,6 +769,11 @@ export class LoopEngine {
         } : {}),
         ...(feedbackHistory.length > 0 ? { iteration_feedback: feedbackHistory } : {}),
         ...(lessonDraftPath !== undefined ? { lesson_draft_path: lessonDraftPath } : {}),
+        ...(taskUsage.reported ? {
+          tokens_in: taskUsage.tokensIn,
+          tokens_out: taskUsage.tokensOut,
+          cost_usd: taskUsage.cost,
+        } : {}),
         ...(finalEvidence.changedFiles.length > 0 ? { changed_files: finalEvidence.changedFiles } : {}),
         ...(finalEvidence.diffSummary !== undefined ? { diff_summary: finalEvidence.diffSummary } : {}),
         ...(finalEvidence.commitHash !== undefined ? { commit_hash: finalEvidence.commitHash } : {}),
