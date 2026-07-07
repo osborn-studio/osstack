@@ -33,6 +33,7 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
+    "@osstack/supervisor": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.19.19"
   },

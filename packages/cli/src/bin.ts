@@ -97,6 +97,14 @@ import {
 import { logsDir, osstackHome, resolveSocketPath } from "./paths.js";
 import { PROTOCOL_VERSION, VERSION } from "./version.js";
 import { handleUpgradeCommand } from "./upgrade.js";
+import {
+  handleAdversarialCommand,
+  handleFeedbackCommand,
+  handleMetaCommand,
+  handleSuperviseCommand,
+} from "./supervise-command.js";
+import { handleImproveCommand } from "./improve-command.js";
+import { handleEvaluatorCommand } from "./evaluator-command.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -168,6 +176,20 @@ Loop 工程：
   knowledge sources    查看内部 provenance/license 来源
   knowledge import     将团队或项目文档加工为 Osstack-native pack
   lessons list        查看本地 pitfall 知识库
+
+控制平面（recursive control plane）：
+  supervise register  将仓库登记进组合控制平面
+  supervise scan      扫描已登记仓库的闭环成熟度与风险
+  supervise report    渲染组合闭环报告
+  supervise init-loop-doc  为仓库生成 docs/LOOP.md 闭环契约
+  feedback assets     列出失败运行沉淀的反馈资产
+  improve propose     从反馈资产生成改进提案
+  improve apply       通过门禁后应用低风险提案（默认 dry-run，需 --yes）
+  evaluator list      列出评估器版本与当前冻结 epoch
+  evaluator challenge 用锚点用例评分挑战者评估器（仅建议）
+  evaluator promote   在 epoch 边界晋升挑战者（默认 dry-run，需 --yes）
+  adversarial list    列出评估器判错生成的对抗锚点用例
+  meta eval           评估评估器/路由/仓库健康趋势（只读建议）
 
 Agent：
   agent list          查看 agent 的 role/capability/auth mode
@@ -569,6 +591,30 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "lessons") {
     return await handleLessonsCommand(args.slice(1));
+  }
+
+  if (cmd === "supervise") {
+    return await handleSuperviseCommand(args.slice(1));
+  }
+
+  if (cmd === "feedback") {
+    return await handleFeedbackCommand(args.slice(1));
+  }
+
+  if (cmd === "improve") {
+    return await handleImproveCommand(args.slice(1));
+  }
+
+  if (cmd === "evaluator") {
+    return await handleEvaluatorCommand(args.slice(1));
+  }
+
+  if (cmd === "adversarial") {
+    return await handleAdversarialCommand(args.slice(1));
+  }
+
+  if (cmd === "meta") {
+    return await handleMetaCommand(args.slice(1));
   }
 
   if (cmd === "hermes") {

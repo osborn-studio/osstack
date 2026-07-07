@@ -98,6 +98,9 @@ importers:
         specifier: ^2.9.0
         version: 2.9.0
     devDependencies:
+      '@osstack/supervisor':
+        specifier: workspace:*
+        version: link:../supervisor
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
