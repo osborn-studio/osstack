@@ -1,7 +1,7 @@
-import { mkdtempSync } from "node:fs";
-import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
+import { existsSync, mkdtempSync } from "node:fs";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { AgentAdapter, AgentTask } from "@osstack/agents";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -252,7 +252,6 @@ describe("local command feedback file", () => {
   });
 
   it("cleans up the temp feedback dir after the command runs (no leak)", async () => {
-    const before = (await readdir(tmpdir())).filter((entry) => entry.startsWith("osstack-feedback-"));
     const feedback = deriveIterationFeedback({
       attempt: 1,
       verdict: verdict({ summary: "boom", issues: [{ severity: "error", message: "x", rule: "r" }] }),
@@ -270,13 +269,18 @@ describe("local command feedback file", () => {
 
     const run = await executePlan(plan, {
       workspacePath: workspace,
-      // Prove the file existed during the run, then assert it's gone after.
-      command: 'test -f "$OSSTACK_ITERATION_FEEDBACK_FILE"',
+      // Echo the exact feedback file path so we can assert *that* path is gone,
+      // rather than counting entries in the shared tmpdir (which races with
+      // other parallel test workers creating their own osstack-feedback-* dirs).
+      command: 'printf %s "$OSSTACK_ITERATION_FEEDBACK_FILE"',
     });
 
     expect(run.outcome).toBe("completed");
-    const after = (await readdir(tmpdir())).filter((entry) => entry.startsWith("osstack-feedback-"));
-    expect(after.length).toBeLessThanOrEqual(before.length);
+    const feedbackPath = run.command_results[0]?.stdout?.trim() ?? "";
+    expect(feedbackPath).toContain("osstack-feedback-");
+    // The file existed during the run (it was readable) and is removed after.
+    expect(existsSync(feedbackPath)).toBe(false);
+    expect(existsSync(dirname(feedbackPath))).toBe(false);
   });
 });
 
