@@ -105,6 +105,8 @@ import {
 } from "./supervise-command.js";
 import { handleImproveCommand } from "./improve-command.js";
 import { handleEvaluatorCommand } from "./evaluator-command.js";
+import { buildSelfImprovementConfig } from "./loop-self-improvement.js";
+import { resolveRegistryPath } from "./supervisor-cli-support.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -360,8 +362,11 @@ Loop engineering (local, testable hot-loop MVP):
   loop run [--workspace P] [--source S] [--execute CMD] [--verify CMD]
            [--reviewer ID] [--checker ID] [--goal CMD] [--max-iter N] [--cycles N] [--interval-ms N]
            [--state P] [--markdown P] [--worktree] [--knowledge off|local|cloud] [--govern [warn|strict]]
+           [--self-improvement --repo-id ID [--propose-improvements]]
            [--report] [--scorecard] [--proof] [--json] [--daemon]
                                  Run one discover→execute→verify→iterate cycle
+                                 (--self-improvement records traces/feedback assets from each
+                                  completed task into the local control plane; local-only, opt-in)
   loop start [--workspace P] [--source S] [--execute CMD] [--verify CMD]
              [--reviewer ID] [--checker ID] [--goal CMD] [--schedule CRON] [--interval-ms N] [--cycles N]
              [--stop-when-idle] [--once] [--worktree]
@@ -8970,6 +8975,17 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const stopWhenIdle = args.includes("--stop-when-idle");
     const archiveCompletedTasks = args.includes("--archive-completed");
     const autoAgent = args.includes("--auto-agent");
+    const selfImprovementEnabled = args.includes("--self-improvement");
+    const selfImprovementRepoId = flagValue(args, "--repo-id");
+    const proposeImprovements = args.includes("--propose-improvements");
+    if (selfImprovementEnabled && selfImprovementRepoId === undefined) {
+      console.error("osstack: --self-improvement requires --repo-id <id>");
+      return 1;
+    }
+    if (selfImprovementEnabled && useDaemon) {
+      console.error("osstack: --self-improvement is local-only and cannot be combined with --daemon");
+      return 1;
+    }
     const profileRouting = await resolveLoopProfileRouting(args, agentId, verifierAgentIds);
     if (profileRouting instanceof Error) {
       console.error(`osstack: ${profileRouting.message}`);
@@ -9081,6 +9097,13 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const adapters = agentId !== undefined || verifierAgentIds.length > 0 || autoAgent
       ? defaultAdapters()
       : undefined;
+    const selfImprovement = selfImprovementEnabled
+      ? buildSelfImprovementConfig({
+          repoId: selfImprovementRepoId!,
+          proposeImprovements,
+          registryPath: resolveRegistryPath(args),
+        })
+      : undefined;
     const engine = new LoopEngine({
       workspacePath,
       stateFilePath,
@@ -9103,6 +9126,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(archiveCompletedTasks ? { archiveCompletedTasks } : {}),
       ...(useWorktree ? { useWorktree: true } : {}),
       ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
+      ...(selfImprovement !== undefined ? { selfImprovement } : {}),
       ...(shouldRecordLoopKnowledge(args, knowledge) ? { knowledge } : {}),
     });
     const result = runCycles

@@ -627,6 +627,95 @@ describe("LoopEngine", () => {
     await expect(git(workspace, ["rev-parse", "--verify", "osstack/loop/loop-orphan-cycle/manual-orphan"])).rejects.toThrow();
   });
 
+  it("leaves the completed task unchanged when self-improvement is disabled", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const assetize = vi.fn();
+    const result = await new LoopEngine({
+      loopId: "loop-self-improve-off",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('loop-output.txt', 'ok')\"",
+      selfImprovement: { repoId: "demo", enabled: false, assetize },
+    }).runOnce();
+
+    expect(assetize).not.toHaveBeenCalled();
+    const task = result.state.completed_tasks[0]!;
+    expect(task).toMatchObject({ task_id: "task-1", outcome: "success" });
+    expect(task.trace_id).toBeUndefined();
+    expect(task.feedback_asset_ids).toBeUndefined();
+    expect(task.proposal_ids).toBeUndefined();
+    expect(task.self_improvement_level).toBeUndefined();
+    expect(result.events.map((event) => event.type)).not.toContain("loop.self_improvement.done");
+  });
+
+  it("attaches assetization ids and summary when self-improvement is enabled", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const assetize = vi.fn(async (input: { completedTask: { task_id: string }; loopId: string; repoId: string; proposeImprovements: boolean }) => {
+      expect(input.repoId).toBe("demo");
+      expect(input.loopId).toBe("loop-self-improve-on");
+      expect(input.proposeImprovements).toBe(true);
+      expect(input.completedTask.task_id).toBe("task-1");
+      return {
+        trace_id: "trace_demo_task-1_abc123",
+        feedback_asset_ids: ["asset_1", "asset_2"],
+        proposal_ids: ["prop_1"],
+        assetization_summary: "1 trace -> 2 assets -> 1 proposal",
+        self_improvement_level: 3,
+      };
+    });
+
+    const result = await new LoopEngine({
+      loopId: "loop-self-improve-on",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('loop-output.txt', 'ok')\"",
+      selfImprovement: { repoId: "demo", enabled: true, proposeImprovements: true, assetize },
+    }).runOnce();
+
+    expect(assetize).toHaveBeenCalledTimes(1);
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      task_id: "task-1",
+      outcome: "success",
+      trace_id: "trace_demo_task-1_abc123",
+      feedback_asset_ids: ["asset_1", "asset_2"],
+      proposal_ids: ["prop_1"],
+      assetization_summary: "1 trace -> 2 assets -> 1 proposal",
+      self_improvement_level: 3,
+    });
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.self_improvement.done",
+      payload: expect.objectContaining({
+        task_id: "task-1",
+        trace_id: "trace_demo_task-1_abc123",
+        feedback_asset_count: 2,
+        proposal_count: 1,
+        self_improvement_level: 3,
+      }),
+    }));
+  });
+
+  it("never fails a task when the self-improvement callback throws", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const assetize = vi.fn(async () => { throw new Error("assetizer exploded"); });
+
+    const result = await new LoopEngine({
+      loopId: "loop-self-improve-throws",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('loop-output.txt', 'ok')\"",
+      selfImprovement: { repoId: "demo", enabled: true, assetize },
+    }).runOnce();
+
+    expect(assetize).toHaveBeenCalledTimes(1);
+    const task = result.state.completed_tasks[0]!;
+    expect(task).toMatchObject({ task_id: "task-1", outcome: "success" });
+    expect(task.trace_id).toBeUndefined();
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.self_improvement.failed",
+      payload: expect.objectContaining({ task_id: "task-1", error: "assetizer exploded" }),
+    }));
+  });
+
   it("preserves the isolated branch when a successful task cannot fast-forward merge", async () => {
     const workspace = await makeGitQueuedWorkspace("base\n");
     const worktreeRoot = join(workspace, "..", "merge-conflict-worktrees");

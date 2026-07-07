@@ -85,6 +85,40 @@ export interface LoopRunOptions {
   publish?: PublishConfig;
   /** Injectable publish side-effects, for tests. Defaults to the real command runner. */
   publishDeps?: RunPublishDeps;
+  /**
+   * Opt-in self-improvement (Level 1-4). Default off. When enabled with an
+   * `assetize` callback, each completed task is handed to the callback, which
+   * (in the CLI) turns a failed run into a trace + feedback assets + optional
+   * proposals and returns their ids to attach. The loop stays supervisor- and
+   * storage-agnostic: the callback owns assetization and persistence.
+   */
+  selfImprovement?: SelfImprovementConfig;
+}
+
+/** Ids/summary the self-improvement callback returns for a completed task. */
+export interface SelfImprovementResult {
+  trace_id: string;
+  feedback_asset_ids: string[];
+  proposal_ids: string[];
+  assetization_summary: string;
+  self_improvement_level: number;
+}
+
+export interface SelfImprovementConfig {
+  repoId: string;
+  enabled: boolean;
+  proposeImprovements?: boolean;
+  /**
+   * Injected assetizer. Returns undefined when there is nothing to record
+   * (e.g. a passing task). Errors are swallowed by the loop — self-improvement
+   * is never allowed to fail a task.
+   */
+  assetize?: (input: {
+    repoId: string;
+    completedTask: CompletedTask;
+    loopId: string;
+    proposeImprovements: boolean;
+  }) => Promise<SelfImprovementResult | undefined> | SelfImprovementResult | undefined;
 }
 
 export interface LoopGoalResult {
@@ -740,8 +774,7 @@ export class LoopEngine {
       }
     }
 
-    return {
-      completedTask: CompletedTask.parse({
+    const completedTask = CompletedTask.parse({
         task_id: task.task_id,
         capability: task.capability,
         outcome,
@@ -784,7 +817,10 @@ export class LoopEngine {
           worktree_branch_preserved: preserveWorktreeBranch,
           ...(worktreeCommit !== undefined ? { worktree_commit: worktreeCommit } : {}),
         } : {}),
-      }),
+      });
+
+    return {
+      completedTask: await this.applySelfImprovement(loopId, completedTask, decisions),
       decisions,
     };
   }
@@ -836,6 +872,61 @@ export class LoopEngine {
     decisions.push(
       `${task.task_id}: publish ${result.status} for ${skillId} (reasons: ${(result.reasons ?? []).join(", ") || "none"})${marker}`,
     );
+  }
+
+  /**
+   * Self-improvement hook (opt-in). When enabled, hands the finalized
+   * CompletedTask to an injected `assetize` callback that turns it into a
+   * RunTrace -> FeedbackAsset[] -> optional ImprovementProposal[], then folds
+   * the returned ids/summary/level back onto the CompletedTask. The loop stays
+   * free of any @osstack/supervisor or SQLite dependency — all of that lives in
+   * the caller-provided callback. This never fails a task: any error is swallowed
+   * and the original CompletedTask is returned unchanged.
+   */
+  private async applySelfImprovement(
+    loopId: string,
+    completedTask: CompletedTask,
+    decisions: string[],
+  ): Promise<CompletedTask> {
+    const cfg = this.options.selfImprovement;
+    if (cfg?.enabled !== true || cfg.assetize === undefined) return completedTask;
+
+    try {
+      const result = await cfg.assetize({
+        repoId: cfg.repoId,
+        completedTask,
+        loopId,
+        proposeImprovements: cfg.proposeImprovements ?? false,
+      });
+      if (result === undefined) return completedTask;
+
+      const enriched = CompletedTask.parse({
+        ...completedTask,
+        trace_id: result.trace_id,
+        ...(result.feedback_asset_ids.length > 0 ? { feedback_asset_ids: result.feedback_asset_ids } : {}),
+        ...(result.proposal_ids.length > 0 ? { proposal_ids: result.proposal_ids } : {}),
+        assetization_summary: result.assetization_summary,
+        self_improvement_level: result.self_improvement_level,
+      });
+      this.emit(loopId, "loop.self_improvement.done", {
+        task_id: completedTask.task_id,
+        trace_id: result.trace_id,
+        feedback_asset_count: result.feedback_asset_ids.length,
+        proposal_count: result.proposal_ids.length,
+        self_improvement_level: result.self_improvement_level,
+      });
+      decisions.push(
+        `${completedTask.task_id}: self-improvement L${result.self_improvement_level} — ${result.feedback_asset_ids.length} asset(s), ${result.proposal_ids.length} proposal(s)`,
+      );
+      return enriched;
+    } catch (err) {
+      // Self-improvement is advisory: never let it fail a completed task.
+      this.emit(loopId, "loop.self_improvement.failed", {
+        task_id: completedTask.task_id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return completedTask;
+    }
   }
 
   /**

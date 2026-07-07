@@ -38,6 +38,9 @@ Use `osstack loop help` for the authoritative runtime help. This reference captu
 Token and cost caps enforce against adapter-reported usage (`usage.final` / `done.usage` events). Adapters that do not report usage (e.g. local `--execute` commands) contribute 0, so those caps trip only when there is real usage to measure.
 - `--no-lesson-drafts`: disable SOP lesson drafts after recovered failures.
 - `--lessons-dir P`: lesson draft directory, default `loop-lessons/drafts`.
+- `--self-improvement`: opt in to control-plane self-improvement. Each completed task is normalized into a run trace; failed runs also produce feedback assets recorded in the local osstack state DB. Requires `--repo-id`. Local-only — cannot be combined with `--daemon`. Never fails a task.
+- `--repo-id ID`: repository id the self-improvement assets are attributed to (required with `--self-improvement`).
+- `--propose-improvements`: with `--self-improvement`, also derive risk-rated improvement proposals from the feedback assets (drafts only; nothing is applied). Verify gates come from the repo registry entry.
 - `--state P`: JSON state path, default `LOOP-STATE.json`.
 - `--markdown P`: Markdown state path, default `STATE.md` beside the JSON.
 - `--json`: emit machine-readable summaries where supported.

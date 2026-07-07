@@ -183,6 +183,13 @@ export const CompletedTask = z.object({
   worktree_branch_preserved: z.boolean().optional(),
   /** Lesson draft written after a success that recovered from failed attempts. */
   lesson_draft_path: z.string().optional(),
+  // ── Self-improvement (opt-in; populated only when the loop is run with a
+  // selfImprovement assetizer). All optional so existing state stays valid.
+  trace_id: z.string().optional(),
+  feedback_asset_ids: z.array(z.string()).optional(),
+  proposal_ids: z.array(z.string()).optional(),
+  assetization_summary: z.string().optional(),
+  self_improvement_level: z.number().int().min(0).max(6).optional(),
 });
 export type CompletedTask = z.infer<typeof CompletedTask>;
 
@@ -323,6 +330,8 @@ export const LoopEventType = z.enum([
   "loop.skill.published",
   "loop.skill.publish_blocked",
   "loop.lesson.drafted",
+  "loop.self_improvement.done",
+  "loop.self_improvement.failed",
   "loop.state.written",
   "loop.cycle.completed",
   "loop.stopped",
