@@ -68,6 +68,11 @@ osstack answers those questions with a local-first control plane:
   proof packs, compliance mappings, and PR bodies.
 - **Governance verifier**: deterministic safety and quality checks that can run
   in warning mode or strict mode.
+- **Recursive control plane** (opt-in): supervise a portfolio of repos on an
+  L0–L6 closed-loop ladder, distill feedback assets from failed runs, raise
+  risk-rated improvement proposals under human-in-the-loop gates, and control
+  versioned evaluators with anchor-case epochs (Red Queen). See
+  [docs/product/14_RECURSIVE_CONTROL_PLANE.md](docs/product/14_RECURSIVE_CONTROL_PLANE.md).
 - **Knowledge Cloud**: osstack-native official/team/project knowledge packs with
   cloud sync, local cache fallback, provenance, feedback, and retrieval evals.
 - **Cockpit and Kanban**: inspect runs, tasks, evidence, knowledge, and next
@@ -192,6 +197,22 @@ osstack loop run --workspace . --source task_queue --verify "pnpm test" --report
 osstack loop run --workspace . --source git_diff --reviewer ds-review --json
 osstack loop start --workspace . --source task_queue --verify "pnpm test" --interval-ms 5000
 osstack loop status --workspace .
+```
+
+### Recursive Control Plane (opt-in)
+
+```bash
+osstack supervise register . --role business_product --priority 90 --verify "pnpm test"
+osstack supervise scan --json          # L0-L6 closed-loop maturity per repo
+osstack supervise report --json        # portfolio health (read-only)
+osstack supervise init-loop-doc --repo <id>
+osstack feedback assets --repo <id> --json
+osstack improve propose --repo <id> --json
+osstack improve apply --proposal <id>          # DRY RUN by default
+osstack improve apply --proposal <id> --yes    # low-risk only, after gates pass
+osstack evaluator challenge --repo <id> --incumbent A --challenger B ...   # advisory
+osstack evaluator promote  --repo <id> ... --yes   # blocked without anchor cases
+osstack loop run --workspace . --self-improvement --repo-id <id> --verify "pnpm test"
 ```
 
 ### Evidence
@@ -398,7 +419,9 @@ curl -fsS https://osstack-knowledge-cloud-1grycf4k.edgeone.cool/healthz
 ## Roadmap
 
 The current product has shipped the main control-plane, evidence, Knowledge
-Cloud, npm, and single-binary release paths. Next priorities:
+Cloud, npm, single-binary release paths, and the opt-in recursive control plane
+(repo supervision, feedback assets, gated improvement proposals, evaluator
+epochs, and the loop self-improvement hook). Next priorities:
 
 - richer full-screen cockpit;
 - broader official knowledge packs;
