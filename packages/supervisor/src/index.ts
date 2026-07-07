@@ -2,3 +2,8 @@ export * from "./types.js";
 export * from "./repo-registry.js";
 export * from "./repo-scanner.js";
 export * from "./portfolio.js";
+export * from "./trace-normalizer.js";
+export * from "./failure-taxonomy.js";
+export * from "./assetizer.js";
+export * from "./proposal.js";
+export * from "./gate.js";
