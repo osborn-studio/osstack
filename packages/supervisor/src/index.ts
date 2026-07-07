@@ -7,3 +7,5 @@ export * from "./failure-taxonomy.js";
 export * from "./assetizer.js";
 export * from "./proposal.js";
 export * from "./gate.js";
+export * from "./evaluator-epoch.js";
+export * from "./adversarial-pool.js";
