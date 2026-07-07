@@ -196,3 +196,91 @@ export const PitfallLessonRow = z.object({
   last_seen_at: z.number(),
 });
 export type PitfallLessonRow = z.infer<typeof PitfallLessonRow>;
+
+// ──────────────────────────────────────────────────────────────────────
+// Supervisor control plane (migration 6). Persisted rows for the recursive
+// control plane. Timestamps are REAL epoch seconds; arrays are JSON strings;
+// `adversarial` is stored 0/1 (SQLite has no boolean).
+// ──────────────────────────────────────────────────────────────────────
+
+export const FeedbackAssetRow = z.object({
+  asset_id: z.string().min(1),
+  repo_id: z.string().min(1),
+  source_trace_id: z.string().min(1),
+  kind: z.string().min(1),
+  failure_family: z.string().min(1),
+  summary: z.string().min(1),
+  evidence_json: z.string(),
+  suggested_storage_path: z.string().nullable().default(null),
+  status: z.enum(["proposed", "accepted", "rejected", "superseded"]).default("proposed"),
+  created_at: z.number(),
+  updated_at: z.number(),
+});
+export type FeedbackAssetRow = z.infer<typeof FeedbackAssetRow>;
+
+export const ImprovementProposalRow = z.object({
+  proposal_id: z.string().min(1),
+  repo_id: z.string().min(1),
+  source_asset_ids_json: z.string(),
+  target: z.string().min(1),
+  risk: z.enum(["low", "medium", "high"]),
+  title: z.string().min(1),
+  rationale: z.string().min(1),
+  proposed_changes_json: z.string(),
+  required_gates_json: z.string(),
+  status: z.enum(["draft", "needs_human", "approved", "applied", "rejected", "blocked"]).default("draft"),
+  created_at: z.number(),
+  updated_at: z.number(),
+});
+export type ImprovementProposalRow = z.infer<typeof ImprovementProposalRow>;
+
+export const EvaluatorVersionRow = z.object({
+  evaluator_id: z.string().min(1),
+  repo_id: z.string().min(1),
+  kind: z.string().min(1),
+  version: z.string().min(1),
+  title: z.string().min(1),
+  rubric: z.string().min(1),
+  implementation_ref: z.string().nullable().default(null),
+  status: z.enum(["candidate", "frozen", "retired", "rejected"]).default("candidate"),
+  created_at: z.number(),
+  updated_at: z.number(),
+});
+export type EvaluatorVersionRow = z.infer<typeof EvaluatorVersionRow>;
+
+export const EvaluatorEpochRow = z.object({
+  epoch_id: z.string().min(1),
+  repo_id: z.string().min(1),
+  frozen_evaluator_id: z.string().min(1),
+  started_at: z.number(),
+  ended_at: z.number().nullable().default(null),
+  anchor_case_ids_json: z.string(),
+  challenger_evaluator_ids_json: z.string(),
+  promotion_decision_json: z.string().nullable().default(null),
+});
+export type EvaluatorEpochRow = z.infer<typeof EvaluatorEpochRow>;
+
+export const AnchorCaseRow = z.object({
+  case_id: z.string().min(1),
+  repo_id: z.string().min(1),
+  source_trace_id: z.string().nullable().default(null),
+  input_summary: z.string().min(1),
+  expected_verdict: z.enum(["accept", "reject", "needs_human"]),
+  expected_failure_family: z.string().nullable().default(null),
+  evidence_refs_json: z.string(),
+  // Stored as 0/1 in SQLite; the repository layer coerces to boolean.
+  adversarial: z.number().int(),
+  created_at: z.number(),
+  updated_at: z.number(),
+});
+export type AnchorCaseRow = z.infer<typeof AnchorCaseRow>;
+
+export const ScoreQuarantineRow = z.object({
+  quarantine_id: z.string().min(1),
+  repo_id: z.string().min(1),
+  score_id: z.string().min(1),
+  evaluator_id: z.string().min(1),
+  reason: z.string().min(1),
+  created_at: z.number(),
+});
+export type ScoreQuarantineRow = z.infer<typeof ScoreQuarantineRow>;

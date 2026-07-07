@@ -261,6 +261,103 @@ export const MIGRATIONS: readonly Migration[] = [
         ON pitfall_lessons(tenant_id, status, last_seen_at DESC);
     `,
   },
+  {
+    id: 6,
+    name: "supervisor_control_plane",
+    // Recursive control plane: feedback assets, improvement proposals,
+    // versioned evaluators, evaluator epochs, anchor cases, and quarantined
+    // scores. Populated by @osstack/supervisor via the CLI; all deterministic.
+    sql: `
+      CREATE TABLE IF NOT EXISTS feedback_assets (
+        asset_id TEXT PRIMARY KEY,
+        repo_id TEXT NOT NULL,
+        source_trace_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        failure_family TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        evidence_json TEXT NOT NULL,
+        suggested_storage_path TEXT,
+        status TEXT NOT NULL,
+        created_at REAL NOT NULL,
+        updated_at REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_feedback_assets_repo_status
+        ON feedback_assets (repo_id, status);
+      CREATE INDEX IF NOT EXISTS idx_feedback_assets_trace
+        ON feedback_assets (source_trace_id);
+
+      CREATE TABLE IF NOT EXISTS improvement_proposals (
+        proposal_id TEXT PRIMARY KEY,
+        repo_id TEXT NOT NULL,
+        source_asset_ids_json TEXT NOT NULL,
+        target TEXT NOT NULL,
+        risk TEXT NOT NULL,
+        title TEXT NOT NULL,
+        rationale TEXT NOT NULL,
+        proposed_changes_json TEXT NOT NULL,
+        required_gates_json TEXT NOT NULL,
+        status TEXT NOT NULL,
+        created_at REAL NOT NULL,
+        updated_at REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_improvement_proposals_repo_status
+        ON improvement_proposals (repo_id, status);
+
+      CREATE TABLE IF NOT EXISTS evaluator_versions (
+        evaluator_id TEXT PRIMARY KEY,
+        repo_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        version TEXT NOT NULL,
+        title TEXT NOT NULL,
+        rubric TEXT NOT NULL,
+        implementation_ref TEXT,
+        status TEXT NOT NULL,
+        created_at REAL NOT NULL,
+        updated_at REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_evaluator_versions_repo_status
+        ON evaluator_versions (repo_id, status);
+
+      CREATE TABLE IF NOT EXISTS evaluator_epochs (
+        epoch_id TEXT PRIMARY KEY,
+        repo_id TEXT NOT NULL,
+        frozen_evaluator_id TEXT NOT NULL,
+        started_at REAL NOT NULL,
+        ended_at REAL,
+        anchor_case_ids_json TEXT NOT NULL,
+        challenger_evaluator_ids_json TEXT NOT NULL,
+        promotion_decision_json TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_evaluator_epochs_repo_started
+        ON evaluator_epochs (repo_id, started_at);
+
+      CREATE TABLE IF NOT EXISTS anchor_cases (
+        case_id TEXT PRIMARY KEY,
+        repo_id TEXT NOT NULL,
+        source_trace_id TEXT,
+        input_summary TEXT NOT NULL,
+        expected_verdict TEXT NOT NULL,
+        expected_failure_family TEXT,
+        evidence_refs_json TEXT NOT NULL,
+        adversarial INTEGER NOT NULL,
+        created_at REAL NOT NULL,
+        updated_at REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_anchor_cases_repo_adversarial
+        ON anchor_cases (repo_id, adversarial);
+
+      CREATE TABLE IF NOT EXISTS score_quarantine (
+        quarantine_id TEXT PRIMARY KEY,
+        repo_id TEXT NOT NULL,
+        score_id TEXT NOT NULL,
+        evaluator_id TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        created_at REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_score_quarantine_repo_evaluator
+        ON score_quarantine (repo_id, evaluator_id);
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;
