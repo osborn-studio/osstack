@@ -240,6 +240,16 @@ importers:
         specifier: ^3.23.8
         version: 3.25.76
 
+  packages/report:
+    dependencies:
+      '@osstack/loop':
+        specifier: workspace:*
+        version: link:../loop
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
+
   packages/runtime: {}
 
   packages/skill-registry:
@@ -270,6 +280,22 @@ importers:
       '@types/node':
         specifier: ^25.8.0
         version: 25.8.0
+
+  packages/supervisor:
+    dependencies:
+      '@osstack/core':
+        specifier: workspace:*
+        version: link:../core
+      '@osstack/loop':
+        specifier: workspace:*
+        version: link:../loop
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
 
 packages:
 
