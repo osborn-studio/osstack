@@ -3,7 +3,15 @@
 // tooling (board/move/check/timeline, added in later tasks) has a substrate
 // to work against.
 
-import { KanbanRepository, openDb } from "@osstack/core";
+import {
+  CardCheckNotFound,
+  CardNotFound,
+  CardStatus,
+  IllegalCardTransition,
+  KanbanRepository,
+  getBoard,
+  openDb,
+} from "@osstack/core";
 import { ingestStack, type CommandRunner } from "@osstack/github";
 
 export interface StackCliDeps {
@@ -21,12 +29,34 @@ export const PR_CARD_CHECKLIST: readonly string[] = [
   "suite green",
 ];
 
+const USAGE = "osstack: usage: stack <ingest|board|move|check|timeline> [...args]";
+
+/**
+ * Resolve a user-supplied card argument to a card id: a bare integer like
+ * "47" is shorthand for "pr-47" (matching the ids ingest creates); anything
+ * else is passed through unchanged so future non-PR card types still work.
+ */
+export function resolveCardId(arg: string): string {
+  return /^\d+$/.test(arg) ? `pr-${arg}` : arg;
+}
+
 export async function handleStackCommand(args: string[], deps?: StackCliDeps): Promise<number> {
   const sub = args[0];
-  if (sub === "ingest") return await stackIngest(args.slice(1), deps);
-
-  console.error(`osstack: unknown stack subcommand "${sub}"`);
-  return 1;
+  switch (sub) {
+    case "ingest":
+      return await stackIngest(args.slice(1), deps);
+    case "board":
+      return await stackBoard(args.slice(1), deps);
+    case "move":
+      return await stackMove(args.slice(1), deps);
+    case "check":
+      return await stackCheck(args.slice(1), deps);
+    case "timeline":
+      return await stackTimeline(args.slice(1), deps);
+    default:
+      console.error(USAGE);
+      return 1;
+  }
 }
 
 /**
@@ -165,6 +195,162 @@ async function stackIngest(args: string[], deps?: StackCliDeps): Promise<number>
     }
 
     out(`ingested ${model.order.length} PRs into board "${board}" (order: ${model.order.join(",")})`);
+    return 0;
+  } finally {
+    db.close();
+  }
+}
+
+function requireDbPath(deps: StackCliDeps | undefined): string {
+  if (!deps?.dbPath) {
+    throw new Error(
+      "stack-cli: handleStackCommand requires deps.dbPath (bin.ts must supply the resolved state DB path)",
+    );
+  }
+  return deps.dbPath;
+}
+
+async function stackBoard(args: string[], deps?: StackCliDeps): Promise<number> {
+  const out = deps?.out ?? console.log;
+  const board = flag(args, "--board") ?? "stack";
+  const dbPath = requireDbPath(deps);
+
+  const db = openDb({ path: dbPath });
+  try {
+    const repo = new KanbanRepository(db, dbPath, deps?.now);
+    const view = getBoard(repo, { board, includeArchived: true });
+
+    if (!view.changed) {
+      // getBoard() only returns `changed: false` when a `since` cursor was
+      // passed; we never pass one here, so this branch is unreachable in
+      // practice but handled for type-safety.
+      out(`[${view.board}] no changes`);
+      return 0;
+    }
+
+    out(`== ${view.board} (${view.stats.total}) ==`);
+    for (const column of view.columns) {
+      if (column.cards.length === 0) continue;
+      out(`== ${column.name.toUpperCase()} (${column.cards.length}) ==`);
+      for (const card of column.cards) {
+        const checks = repo.listChecks(card.card_id);
+        const passCount = checks.filter((c) => c.state === "pass").length;
+        out(
+          `  ${card.card_id}  ${card.title}  [${passCount}/${checks.length} checks]  ${card.card_type}`,
+        );
+      }
+    }
+    return 0;
+  } finally {
+    db.close();
+  }
+}
+
+async function stackMove(args: string[], deps?: StackCliDeps): Promise<number> {
+  const out = deps?.out ?? console.log;
+  const cardArg = args[0];
+  const statusArg = args[1];
+  const reason = flag(args, "--reason");
+
+  if (!cardArg || !statusArg) {
+    console.error("osstack: stack move requires <cardArg> <status>");
+    return 1;
+  }
+
+  const parsedStatus = CardStatus.safeParse(statusArg);
+  if (!parsedStatus.success) {
+    console.error(`osstack: invalid status "${statusArg}"`);
+    return 1;
+  }
+  const status = parsedStatus.data;
+
+  const dbPath = requireDbPath(deps);
+  const db = openDb({ path: dbPath });
+  try {
+    const repo = new KanbanRepository(db, dbPath, deps?.now);
+    const cardId = resolveCardId(cardArg);
+    try {
+      const updated = repo.moveCard(cardId, status, {
+        ...(reason !== undefined ? { blocked_reason: reason } : {}),
+        actor: "cli",
+      });
+      out(`moved ${updated.card_id} -> ${status}`);
+      return 0;
+    } catch (error) {
+      if (error instanceof CardNotFound || error instanceof IllegalCardTransition) {
+        console.error(`osstack: ${error.message}`);
+        return 1;
+      }
+      throw error;
+    }
+  } finally {
+    db.close();
+  }
+}
+
+async function stackCheck(args: string[], deps?: StackCliDeps): Promise<number> {
+  const out = deps?.out ?? console.log;
+  const cardArg = args[0];
+  const idxArg = args[1];
+  const detail = flag(args, "--detail");
+
+  if (!cardArg || idxArg === undefined) {
+    console.error("osstack: stack check requires <cardArg> <idx> (--pass|--fail|--pending)");
+    return 1;
+  }
+
+  if (!/^\d+$/.test(idxArg)) {
+    console.error(`osstack: check idx must be an integer, got "${idxArg}"`);
+    return 1;
+  }
+  const idx = Number(idxArg);
+
+  const flags = ["--pass", "--fail", "--pending"].filter((f) => args.includes(f));
+  if (flags.length !== 1) {
+    console.error("osstack: stack check requires exactly one of --pass, --fail, --pending");
+    return 1;
+  }
+  const state = flags[0]!.slice(2) as "pass" | "fail" | "pending";
+
+  const dbPath = requireDbPath(deps);
+  const db = openDb({ path: dbPath });
+  try {
+    const repo = new KanbanRepository(db, dbPath, deps?.now);
+    const cardId = resolveCardId(cardArg);
+    try {
+      repo.setCheckState(cardId, idx, state, detail);
+      out(`check ${cardId}#${idx} -> ${state}`);
+      return 0;
+    } catch (error) {
+      if (error instanceof CardCheckNotFound) {
+        console.error(`osstack: ${error.message}`);
+        return 1;
+      }
+      throw error;
+    }
+  } finally {
+    db.close();
+  }
+}
+
+async function stackTimeline(args: string[], deps?: StackCliDeps): Promise<number> {
+  const out = deps?.out ?? console.log;
+  const board = flag(args, "--board");
+  const cardArg = flag(args, "--card");
+
+  const dbPath = requireDbPath(deps);
+  const db = openDb({ path: dbPath });
+  try {
+    const repo = new KanbanRepository(db, dbPath, deps?.now);
+    const events = repo.eventsSince(0, {
+      ...(board !== undefined ? { board } : {}),
+      ...(cardArg !== undefined ? { card_id: resolveCardId(cardArg) } : {}),
+    });
+
+    for (const event of events) {
+      const iso = new Date(event.created_at * 1000).toISOString();
+      out(`${event.event_id}\t${iso}\t${event.card_id}\t${event.kind}\t${event.payload ?? ""}`);
+    }
     return 0;
   } finally {
     db.close();

@@ -320,3 +320,193 @@ describe("handleStackCommand: ingest", () => {
     }
   });
 });
+
+async function ingestThreePrBoard(dbPath: string): Promise<void> {
+  const exitCode = await handleStackCommand(["ingest", "--prs", "47,48,49", "--board", "stack"], {
+    runner: makeRunner(),
+    dbPath,
+  });
+  expect(exitCode).toBe(0);
+}
+
+describe("handleStackCommand: board", () => {
+  it("prints lane headers, card ids, and a [0/N checks] marker", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+    const out: string[] = [];
+
+    const exitCode = await handleStackCommand(["board", "--board", "stack"], {
+      dbPath,
+      out: (line) => out.push(line),
+    });
+
+    expect(exitCode).toBe(0);
+    const text = out.join("\n");
+    expect(text).toContain("pr-47");
+    expect(text).toContain("pr-48");
+    expect(text).toContain("pr-49");
+    expect(text).toMatch(/==\s*READY/i);
+    expect(text).toContain(`[0/${PR_CARD_CHECKLIST.length} checks]`);
+  });
+
+  it("reflects a passed check as [1/N checks] for that card", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+
+    const db = openDb({ path: dbPath });
+    try {
+      const repo = new KanbanRepository(db, dbPath);
+      repo.setCheckState("pr-47", 0, "pass");
+    } finally {
+      db.close();
+    }
+
+    const out: string[] = [];
+    const exitCode = await handleStackCommand(["board", "--board", "stack"], {
+      dbPath,
+      out: (line) => out.push(line),
+    });
+
+    expect(exitCode).toBe(0);
+    const lines = out.join("\n").split("\n");
+    const line47 = lines.find((l) => l.includes("pr-47"));
+    expect(line47).toBeDefined();
+    expect(line47).toContain(`[1/${PR_CARD_CHECKLIST.length} checks]`);
+  });
+});
+
+describe("handleStackCommand: move", () => {
+  it("moves a card to a new status and prints a confirmation", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+    const out: string[] = [];
+
+    const exitCode = await handleStackCommand(["move", "48", "running"], {
+      dbPath,
+      out: (line) => out.push(line),
+    });
+
+    expect(exitCode).toBe(0);
+    expect(out.join("\n")).toContain("moved pr-48 -> running");
+
+    const db = openDb({ path: dbPath });
+    try {
+      const repo = new KanbanRepository(db, dbPath);
+      expect(repo.getCard("pr-48")!.status).toBe("running");
+    } finally {
+      db.close();
+    }
+  });
+
+  it("returns 1 when moving a nonexistent card", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+
+    const exitCode = await handleStackCommand(["move", "999", "running"], { dbPath });
+
+    expect(exitCode).toBe(1);
+  });
+
+  it("returns 1 for an invalid status string", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+
+    const exitCode = await handleStackCommand(["move", "48", "not-a-status"], { dbPath });
+
+    expect(exitCode).toBe(1);
+  });
+});
+
+describe("handleStackCommand: check", () => {
+  it("sets a check to pass and emits a check event", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+    const out: string[] = [];
+
+    const exitCode = await handleStackCommand(["check", "47", "0", "--pass"], {
+      dbPath,
+      out: (line) => out.push(line),
+    });
+
+    expect(exitCode).toBe(0);
+    expect(out.join("\n")).toContain("check pr-47#0 -> pass");
+
+    const db = openDb({ path: dbPath });
+    try {
+      const repo = new KanbanRepository(db, dbPath);
+      const checks = repo.listChecks("pr-47");
+      expect(checks[0]!.state).toBe("pass");
+
+      const events = repo.eventsSince(0, { board: "stack", card_id: "pr-47" });
+      expect(events.some((e) => e.kind === "check")).toBe(true);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("returns 1 when the check idx does not exist", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+
+    const exitCode = await handleStackCommand(["check", "47", "99", "--pass"], { dbPath });
+
+    expect(exitCode).toBe(1);
+  });
+});
+
+describe("handleStackCommand: timeline", () => {
+  it("lists events in ascending order including created, moved, check kinds", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+    await handleStackCommand(["move", "48", "running"], { dbPath });
+    await handleStackCommand(["check", "47", "0", "--pass"], { dbPath });
+
+    const out: string[] = [];
+    const exitCode = await handleStackCommand(["timeline", "--board", "stack"], {
+      dbPath,
+      out: (line) => out.push(line),
+    });
+
+    expect(exitCode).toBe(0);
+    const lines = out.join("\n").split("\n").filter((l) => l.trim().length > 0);
+    expect(lines.length).toBeGreaterThan(0);
+
+    const eventIds = lines.map((l) => Number(l.split("\t")[0]));
+    const sorted = [...eventIds].sort((a, b) => a - b);
+    expect(eventIds).toEqual(sorted);
+
+    const text = out.join("\n");
+    expect(text).toContain("created");
+    expect(text).toContain("moved");
+    expect(text).toContain("check");
+  });
+
+  it("filters to a single card with --card", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+    await handleStackCommand(["move", "48", "running"], { dbPath });
+
+    const out: string[] = [];
+    const exitCode = await handleStackCommand(["timeline", "--card", "47"], {
+      dbPath,
+      out: (line) => out.push(line),
+    });
+
+    expect(exitCode).toBe(0);
+    const lines = out.join("\n").split("\n").filter((l) => l.trim().length > 0);
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) {
+      expect(line).toContain("pr-47");
+    }
+  });
+});
+
+describe("handleStackCommand: unknown subcommand", () => {
+  it("returns 1 with a usage message for an unknown subcommand", async () => {
+    const dbPath = makeTempDbPath();
+
+    const exitCode = await handleStackCommand(["bogus"], { dbPath });
+
+    expect(exitCode).toBe(1);
+  });
+});
