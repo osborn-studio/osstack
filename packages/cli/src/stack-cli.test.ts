@@ -1,10 +1,20 @@
 import { mkdtempSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { dirname, join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import { openDb, KanbanRepository } from "@osstack/core";
 import type { CommandRunner } from "@osstack/github";
 import { handleStackCommand, PR_CARD_CHECKLIST } from "./stack-cli.js";
+
+const tmpDirs: string[] = [];
+
+afterEach(async () => {
+  while (tmpDirs.length > 0) {
+    const dir = tmpDirs.pop()!;
+    await rm(dir, { recursive: true, force: true });
+  }
+});
 
 function prViewJson(pr: {
   number: number;
@@ -45,7 +55,9 @@ function makeRunner(): CommandRunner {
 
 function makeTempDbPath(): string {
   const dir = mkdtempSync(join(tmpdir(), "osstack-stack-cli-"));
-  return join(dir, "state.db");
+  const dbPath = join(dir, "state.db");
+  tmpDirs.push(dirname(dbPath));
+  return dbPath;
 }
 
 describe("handleStackCommand: ingest", () => {
@@ -183,5 +195,128 @@ describe("handleStackCommand: ingest", () => {
 
     expect(exitCode).toBe(0);
     expect(sawRepoFlag).toBe(true);
+  });
+
+  it("re-ingest is idempotent: comments stay at 1/card and no-op events do not grow", async () => {
+    const dbPath = makeTempDbPath();
+    const runner = makeRunner();
+
+    const first = await handleStackCommand(["ingest", "--prs", "47,48,49", "--board", "stack"], {
+      runner,
+      dbPath,
+    });
+    expect(first).toBe(0);
+
+    const countByKind = (): Record<string, number> => {
+      const db = openDb({ path: dbPath });
+      try {
+        const repo = new KanbanRepository(db, dbPath);
+        const events = repo.eventsSince(0, { board: "stack" });
+        const counts: Record<string, number> = {};
+        for (const e of events) counts[e.kind] = (counts[e.kind] ?? 0) + 1;
+        return counts;
+      } finally {
+        db.close();
+      }
+    };
+
+    const afterFirst = countByKind();
+
+    // Second ingest of the SAME chain must be a no-op for comments/checks/links.
+    const second = await handleStackCommand(["ingest", "--prs", "47,48,49", "--board", "stack"], {
+      runner,
+      dbPath,
+    });
+    expect(second).toBe(0);
+
+    const afterSecond = countByKind();
+
+    // Provenance comment count stays at exactly 1 per card.
+    const db = openDb({ path: dbPath });
+    try {
+      const repo = new KanbanRepository(db, dbPath);
+      for (const cardId of ["pr-47", "pr-48", "pr-49"]) {
+        expect(repo.listComments(cardId)).toHaveLength(1);
+      }
+    } finally {
+      db.close();
+    }
+
+    // The event log did not grow on the second run for these kinds.
+    expect(afterSecond.commented).toBe(afterFirst.commented);
+    expect(afterSecond.linked).toBe(afterFirst.linked);
+    expect(afterSecond.check).toBe(afterFirst.check);
+    expect(afterSecond.created).toBe(afterFirst.created);
+  });
+
+  it("returns 1 (not a thrown rejection) when ingestStack fails", async () => {
+    const dbPath = makeTempDbPath();
+    const errors: string[] = [];
+    const runner: CommandRunner = {
+      run: async () => {
+        throw new Error("gh exploded");
+      },
+    };
+
+    const exitCode = await handleStackCommand(["ingest", "--prs", "47"], {
+      runner,
+      dbPath,
+      out: (line) => errors.push(line),
+    });
+
+    expect(exitCode).toBe(1);
+  });
+
+  it("returns 1 with a non-numeric message when --prs has a garbage token", async () => {
+    const dbPath = makeTempDbPath();
+    const runner = makeRunner();
+
+    const exitCode = await handleStackCommand(["ingest", "--prs", "47,48,x"], {
+      runner,
+      dbPath,
+    });
+
+    expect(exitCode).toBe(1);
+  });
+
+  it("rejects trailing garbage like '47abc' rather than silently truncating to 47", async () => {
+    const dbPath = makeTempDbPath();
+    let ranGh = false;
+    const runner: CommandRunner = {
+      run: async () => {
+        ranGh = true;
+        return prViewJson({ number: 47, baseRefName: "main", headRefName: "feat/a" });
+      },
+    };
+
+    const exitCode = await handleStackCommand(["ingest", "--prs", "47abc"], {
+      runner,
+      dbPath,
+    });
+
+    expect(exitCode).toBe(1);
+    expect(ranGh).toBe(false);
+  });
+
+  it("dedups repeated PR numbers in --prs (47,47,48 -> two cards)", async () => {
+    const dbPath = makeTempDbPath();
+    const runner = makeRunner();
+
+    const exitCode = await handleStackCommand(["ingest", "--prs", "47,47,48", "--board", "stack"], {
+      runner,
+      dbPath,
+    });
+    expect(exitCode).toBe(0);
+
+    const db = openDb({ path: dbPath });
+    try {
+      const repo = new KanbanRepository(db, dbPath);
+      const cards = repo.listCards({ board: "stack" });
+      expect(cards).toHaveLength(2);
+      expect(repo.getCard("pr-47")).toBeDefined();
+      expect(repo.getCard("pr-48")).toBeDefined();
+    } finally {
+      db.close();
+    }
   });
 });
