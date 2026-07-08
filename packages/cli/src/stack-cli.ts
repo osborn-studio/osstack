@@ -132,7 +132,7 @@ async function stackIngest(args: string[], deps?: StackCliDeps): Promise<number>
   }
   const dbPath = deps.dbPath;
 
-  let model;
+  let model: Awaited<ReturnType<typeof ingestStack>>;
   try {
     model = await ingestStack(
       { prNumbers, ...(repoFlag !== undefined ? { repo: repoFlag } : {}) },
@@ -560,7 +560,7 @@ async function stackRetro(args: string[], deps?: StackCliDeps): Promise<number> 
   try {
     const repo = new KanbanRepository(db, dbPath, deps?.now);
 
-    let cards;
+    let cards: ReturnType<KanbanRepository["topoOrder"]>;
     try {
       cards = repo.topoOrder(board);
     } catch (error) {
