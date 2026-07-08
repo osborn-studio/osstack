@@ -5,7 +5,12 @@ import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { openDb, KanbanRepository } from "@osstack/core";
 import type { CommandRunner } from "@osstack/github";
-import { handleStackCommand, PR_CARD_CHECKLIST } from "./stack-cli.js";
+import {
+  handleStackCommand,
+  PR_CARD_CHECKLIST,
+  renderRunbook,
+  type RunbookCard,
+} from "./stack-cli.js";
 
 const tmpDirs: string[] = [];
 
@@ -508,5 +513,129 @@ describe("handleStackCommand: unknown subcommand", () => {
     const exitCode = await handleStackCommand(["bogus"], { dbPath });
 
     expect(exitCode).toBe(1);
+  });
+});
+
+describe("renderRunbook (pure)", () => {
+  function makeOrdered(): RunbookCard[] {
+    return [
+      {
+        cardId: "pr-47",
+        title: "#47 Add base layer",
+        meta: { pr_number: 47, base_ref: "main", head_ref: "feat/a", ci_state: "SUCCESS", mergeable: "MERGEABLE" },
+        checks: [
+          { label: "mergeable & clean", state: "pass" },
+          { label: "CI green", state: "pending" },
+        ],
+      },
+      {
+        cardId: "pr-48",
+        title: "#48 Add middle layer",
+        meta: { pr_number: 48, base_ref: "feat/a", head_ref: "feat/b", ci_state: "PENDING", mergeable: "MERGEABLE" },
+        checks: [
+          { label: "mergeable & clean", state: "fail" },
+        ],
+      },
+      {
+        cardId: "pr-49",
+        title: "#49 Add top layer",
+        meta: null,
+        checks: [
+          { label: "suite green", state: "pending" },
+        ],
+      },
+    ];
+  }
+
+  it("includes the bottom-up merge order list in the given order", () => {
+    const md = renderRunbook("stack", makeOrdered());
+    expect(md).toContain('# Merge runbook — board "stack"');
+    expect(md).toContain("Bottom-up merge order");
+
+    const idx47 = md.indexOf("1. pr-47 — #47 Add base layer");
+    const idx48 = md.indexOf("2. pr-48 — #48 Add middle layer");
+    const idx49 = md.indexOf("3. pr-49 — #49 Add top layer");
+    expect(idx47).toBeGreaterThanOrEqual(0);
+    expect(idx48).toBeGreaterThan(idx47);
+    expect(idx49).toBeGreaterThan(idx48);
+  });
+
+  it("renders a section per card with base<-head context and mixed checkbox states", () => {
+    const md = renderRunbook("stack", makeOrdered());
+
+    expect(md).toContain("## pr-47 — #47 Add base layer");
+    expect(md).toContain("base main ← head feat/a  (ci: SUCCESS, mergeable: MERGEABLE)");
+    expect(md).toContain("Verify before merge:");
+    expect(md).toContain("- [x] mergeable & clean");
+    expect(md).toContain("- [ ] CI green");
+
+    expect(md).toContain("## pr-48 — #48 Add middle layer");
+    expect(md).toContain("- [!] mergeable & clean");
+  });
+
+  it("uses ? for missing meta fields (null meta)", () => {
+    const md = renderRunbook("stack", makeOrdered());
+    expect(md).toContain("base ? ← head ?  (ci: ?, mergeable: ?)");
+  });
+
+  it("names the next card in the Retarget line, and 'none (top of stack)' for the last card", () => {
+    const md = renderRunbook("stack", makeOrdered());
+
+    const section47Start = md.indexOf("## pr-47");
+    const section48Start = md.indexOf("## pr-48");
+    const section49Start = md.indexOf("## pr-49");
+
+    const section47 = md.slice(section47Start, section48Start);
+    const section48 = md.slice(section48Start, section49Start);
+    const section49 = md.slice(section49Start);
+
+    expect(section47).toMatch(/Retarget:.*pr-48/);
+    expect(section48).toMatch(/Retarget:.*pr-49/);
+    expect(section49).toContain("Retarget: none (top of stack).");
+  });
+
+  it("includes the fixed Rollback note for every card", () => {
+    const md = renderRunbook("stack", makeOrdered());
+    const rollbackCount = md.split("Rollback: revert this merge commit; changes are additive/fail-safe.").length - 1;
+    expect(rollbackCount).toBe(3);
+  });
+
+  it("returns the title plus a 'No cards on this board.' line for an empty ordered list", () => {
+    const md = renderRunbook("stack", []);
+    expect(md).toContain('# Merge runbook — board "stack"');
+    expect(md).toContain("No cards on this board.");
+  });
+});
+
+describe("handleStackCommand: runbook", () => {
+  it("returns 0 and prints the 3 PRs in bottom-up order with a [x] for the passed check", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+
+    const db = openDb({ path: dbPath });
+    try {
+      const repo = new KanbanRepository(db, dbPath);
+      repo.setCheckState("pr-47", 0, "pass");
+    } finally {
+      db.close();
+    }
+
+    const out: string[] = [];
+    const exitCode = await handleStackCommand(["runbook", "--board", "stack"], {
+      dbPath,
+      out: (line) => out.push(line),
+    });
+
+    expect(exitCode).toBe(0);
+    const text = out.join("\n");
+
+    const idx47 = text.indexOf("pr-47");
+    const idx48 = text.indexOf("pr-48");
+    const idx49 = text.indexOf("pr-49");
+    expect(idx47).toBeGreaterThanOrEqual(0);
+    expect(idx48).toBeGreaterThan(idx47);
+    expect(idx49).toBeGreaterThan(idx48);
+
+    expect(text).toContain("- [x] " + PR_CARD_CHECKLIST[0]);
   });
 });

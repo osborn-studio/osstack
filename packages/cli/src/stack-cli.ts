@@ -29,7 +29,7 @@ export const PR_CARD_CHECKLIST: readonly string[] = [
   "suite green",
 ];
 
-const USAGE = "osstack: usage: stack <ingest|board|move|check|timeline> [...args]";
+const USAGE = "osstack: usage: stack <ingest|board|move|check|timeline|runbook> [...args]";
 
 /**
  * Resolve a user-supplied card argument to a card id: a bare integer like
@@ -53,6 +53,8 @@ export async function handleStackCommand(args: string[], deps?: StackCliDeps): P
       return await stackCheck(args.slice(1), deps);
     case "timeline":
       return await stackTimeline(args.slice(1), deps);
+    case "runbook":
+      return await stackRunbook(args.slice(1), deps);
     default:
       console.error(USAGE);
       return 1;
@@ -351,6 +353,103 @@ async function stackTimeline(args: string[], deps?: StackCliDeps): Promise<numbe
       const iso = new Date(event.created_at * 1000).toISOString();
       out(`${event.event_id}\t${iso}\t${event.card_id}\t${event.kind}\t${event.payload ?? ""}`);
     }
+    return 0;
+  } finally {
+    db.close();
+  }
+}
+
+export interface RunbookCard {
+  cardId: string;
+  title: string;
+  meta: {
+    pr_number?: number;
+    base_ref?: string;
+    head_ref?: string;
+    ci_state?: string;
+    mergeable?: string;
+  } | null;
+  checks: { label: string; state: "pending" | "pass" | "fail" }[];
+}
+
+/**
+ * Pure Markdown renderer for the merge runbook: a deterministic, human-readable
+ * playbook listing the bottom-up merge order plus, per card, the base/head
+ * context, the verification checklist as Markdown checkboxes, what retargets
+ * after it merges, and a fixed rollback note.
+ */
+export function renderRunbook(board: string, ordered: RunbookCard[]): string {
+  const lines: string[] = [];
+  lines.push(`# Merge runbook — board "${board}"`);
+  lines.push("");
+
+  if (ordered.length === 0) {
+    lines.push("No cards on this board.");
+    return lines.join("\n");
+  }
+
+  lines.push("Bottom-up merge order");
+  ordered.forEach((card, i) => {
+    lines.push(`${i + 1}. ${card.cardId} — ${card.title}`);
+  });
+  lines.push("");
+
+  ordered.forEach((card, i) => {
+    const baseRef = card.meta?.base_ref ?? "?";
+    const headRef = card.meta?.head_ref ?? "?";
+    const ciState = card.meta?.ci_state ?? "?";
+    const mergeable = card.meta?.mergeable ?? "?";
+
+    lines.push(`## ${card.cardId} — ${card.title}`);
+    lines.push(`base ${baseRef} ← head ${headRef}  (ci: ${ciState}, mergeable: ${mergeable})`);
+    lines.push("");
+    lines.push("Verify before merge:");
+    for (const check of card.checks) {
+      const box = check.state === "pass" ? "[x]" : check.state === "fail" ? "[!]" : "[ ]";
+      lines.push(`- ${box} ${check.label}`);
+    }
+    lines.push("");
+
+    const next = ordered[i + 1];
+    if (next) {
+      lines.push(`Retarget: ${next.cardId} auto-retargets onto this card's base after this merges.`);
+    } else {
+      lines.push("Retarget: none (top of stack).");
+    }
+    lines.push("Rollback: revert this merge commit; changes are additive/fail-safe.");
+    lines.push("");
+  });
+
+  return lines.join("\n").replace(/\n+$/, "");
+}
+
+function parseRunbookMeta(raw: string | null): RunbookCard["meta"] {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as RunbookCard["meta"];
+  } catch {
+    return null;
+  }
+}
+
+async function stackRunbook(args: string[], deps?: StackCliDeps): Promise<number> {
+  const out = deps?.out ?? console.log;
+  const board = flag(args, "--board") ?? "stack";
+
+  const dbPath = requireDbPath(deps);
+  const db = openDb({ path: dbPath });
+  try {
+    const repo = new KanbanRepository(db, dbPath, deps?.now);
+    const cards = repo.topoOrder(board);
+
+    const ordered: RunbookCard[] = cards.map((card) => ({
+      cardId: card.card_id,
+      title: card.title,
+      meta: parseRunbookMeta(card.meta),
+      checks: repo.listChecks(card.card_id).map((c) => ({ label: c.label, state: c.state })),
+    }));
+
+    out(renderRunbook(board, ordered));
     return 0;
   } finally {
     db.close();
