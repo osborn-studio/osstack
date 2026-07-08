@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDb } from "../state/db.js";
-import { KanbanRepository, IllegalCardTransition, CardNotFound } from "./repository.js";
+import { KanbanRepository, IllegalCardTransition, CardNotFound, CardCheckNotFound } from "./repository.js";
 import { getBoard, computeStats, renderBoardSummary, type BoardView } from "./board.js";
 import { KanbanNotifier, type OutboundMessage } from "./notify.js";
 import { BOARD_COLUMNS, isLegalCardTransition, CardRow, CardCheckRow } from "./schema.js";
@@ -159,6 +159,72 @@ describe("KanbanRepository — cards", () => {
     repo.createCard({ card_id: "c1", title: "x", task_id: "task_42" });
     expect(repo.getCardByTask("task_42")?.card_id).toBe("c1");
     expect(repo.getCardByTask("missing")).toBeUndefined();
+  });
+});
+
+describe("KanbanRepository — typed cards (migration 7 round-trip)", () => {
+  it("round-trips card_type and meta through createCard + getCard", () => {
+    repo.createCard({ card_id: "c1", title: "Ship PR", card_type: "pr", meta: JSON.stringify({ pr_number: 47 }) });
+    const c = repo.getCard("c1")!;
+    expect(c.card_type).toBe("pr");
+    expect(c.meta).toBe(JSON.stringify({ pr_number: 47 }));
+  });
+
+  it("defaults card_type to 'implementation' and meta to null when omitted", () => {
+    repo.createCard({ card_id: "c2", title: "Plain card" });
+    const c = repo.getCard("c2")!;
+    expect(c.card_type).toBe("implementation");
+    expect(c.meta).toBeNull();
+  });
+});
+
+describe("KanbanRepository — checklist ops", () => {
+  it("putCheck inserts a pending check and listChecks returns it", () => {
+    repo.createCard({ card_id: "c1", title: "x" });
+    const check = repo.putCheck("c1", 0, "Tests pass");
+    expect(check.state).toBe("pending");
+    expect(check.label).toBe("Tests pass");
+    const checks = repo.listChecks("c1");
+    expect(checks.length).toBe(1);
+    expect(checks[0]!.idx).toBe(0);
+  });
+
+  it("a second putCheck on the same (card_id, idx) updates in place, no duplicate row", () => {
+    repo.createCard({ card_id: "c1", title: "x" });
+    repo.putCheck("c1", 0, "Tests pass");
+    repo.putCheck("c1", 0, "Tests pass (renamed)", { state: "pass", detail: "vitest green" });
+    const checks = repo.listChecks("c1");
+    expect(checks.length).toBe(1);
+    expect(checks[0]!.label).toBe("Tests pass (renamed)");
+    expect(checks[0]!.state).toBe("pass");
+    expect(checks[0]!.detail).toBe("vitest green");
+  });
+
+  it("putCheck emits a 'check' event", () => {
+    repo.createCard({ card_id: "c1", title: "x" });
+    repo.putCheck("c1", 0, "Tests pass");
+    const evt = repo.eventsSince(0).find((e) => e.kind === "check");
+    expect(evt).toBeDefined();
+    expect(JSON.parse(evt!.payload!)).toMatchObject({ idx: 0, label: "Tests pass", state: "pending" });
+  });
+
+  it("putCheck on a nonexistent card throws CardNotFound", () => {
+    expect(() => repo.putCheck("nope", 0, "Tests pass")).toThrow(CardNotFound);
+  });
+
+  it("setCheckState transitions pending -> pass, updates state, and emits a 'check' event with from/to", () => {
+    repo.createCard({ card_id: "c1", title: "x" });
+    repo.putCheck("c1", 0, "Tests pass");
+    const updated = repo.setCheckState("c1", 0, "pass", "all green");
+    expect(updated.state).toBe("pass");
+    expect(updated.detail).toBe("all green");
+    const evt = repo.eventsSince(0).filter((e) => e.kind === "check").at(-1)!;
+    expect(JSON.parse(evt.payload!)).toMatchObject({ idx: 0, from: "pending", to: "pass" });
+  });
+
+  it("setCheckState on a missing check throws CardCheckNotFound", () => {
+    repo.createCard({ card_id: "c1", title: "x" });
+    expect(() => repo.setCheckState("c1", 99, "pass")).toThrow(CardCheckNotFound);
   });
 });
 

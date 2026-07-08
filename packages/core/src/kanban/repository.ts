@@ -11,6 +11,7 @@
 import type Database from "better-sqlite3";
 import { withWrite } from "../state/db.js";
 import {
+  CardCheckRow,
   CardCommentRow,
   CardEventRow,
   CardRow,
@@ -33,6 +34,13 @@ export class CardNotFound extends Error {
   }
 }
 
+export class CardCheckNotFound extends Error {
+  constructor(readonly cardId: string, readonly idx: number) {
+    super(`Kanban card check not found: ${cardId}#${idx}`);
+    this.name = "CardCheckNotFound";
+  }
+}
+
 export interface NewCard {
   card_id: string;
   board?: string;
@@ -43,6 +51,8 @@ export interface NewCard {
   priority?: number;
   assignee?: string | null;
   tenant_id?: string | null;
+  card_type?: "pr" | "implementation" | "review" | "merge";
+  meta?: string | null;
 }
 
 export class KanbanRepository {
@@ -76,6 +86,8 @@ export class KanbanRepository {
       assignee: input.assignee ?? null,
       blocked_reason: null,
       tenant_id: input.tenant_id ?? null,
+      card_type: input.card_type ?? "implementation",
+      meta: input.meta ?? null,
       created_at: ts,
       updated_at: ts,
       started_at: input.status === "running" ? ts : null,
@@ -85,10 +97,10 @@ export class KanbanRepository {
       d.prepare(`
         INSERT INTO kanban_cards (
           card_id, board, task_id, title, body, status, priority, assignee,
-          blocked_reason, tenant_id, created_at, updated_at, started_at, completed_at
+          blocked_reason, tenant_id, card_type, meta, created_at, updated_at, started_at, completed_at
         ) VALUES (
           @card_id, @board, @task_id, @title, @body, @status, @priority, @assignee,
-          @blocked_reason, @tenant_id, @created_at, @updated_at, @started_at, @completed_at
+          @blocked_reason, @tenant_id, @card_type, @meta, @created_at, @updated_at, @started_at, @completed_at
         )
       `).run(row);
       this.emit(row.card_id, row.board, "created", { title: row.title, status: row.status });
@@ -181,6 +193,76 @@ export class KanbanRepository {
     if (opts.assignee) { sql += " AND assignee = ?"; params.push(opts.assignee); }
     sql += " ORDER BY priority DESC, created_at ASC";
     return (this.db.prepare(sql).all(...params) as unknown[]).map((r) => CardRow.parse(r));
+  }
+
+  // ── checklist (per-card ordered verification steps, migration #7) ──────
+
+  /**
+   * Insert or update a checklist row at (card_id, idx). Upserts so re-running
+   * a checklist definition is idempotent. Emits "check". Throws CardNotFound
+   * if the card doesn't exist.
+   */
+  putCheck(
+    card_id: string,
+    idx: number,
+    label: string,
+    opts: { state?: "pending" | "pass" | "fail"; detail?: string | null } = {},
+  ): CardCheckRow {
+    const card = this.getCard(card_id);
+    if (!card) throw new CardNotFound(card_id);
+    const state = opts.state ?? "pending";
+    const detail = opts.detail ?? null;
+    const ts = this.now();
+    withWrite(this.db, this.dbPath, (d) => {
+      d.prepare(`
+        INSERT INTO kanban_card_checks (card_id, idx, label, state, detail, updated_at)
+        VALUES (@card_id, @idx, @label, @state, @detail, @updated_at)
+        ON CONFLICT(card_id, idx) DO UPDATE SET
+          label = excluded.label,
+          state = excluded.state,
+          detail = excluded.detail,
+          updated_at = excluded.updated_at
+      `).run({ card_id, idx, label, state, detail, updated_at: ts });
+      this.emit(card_id, card.board, "check", { idx, label, state });
+    });
+    return CardCheckRow.parse({ card_id, idx, label, state, detail, updated_at: ts });
+  }
+
+  /**
+   * Transition an existing check's state (e.g. pending -> pass). Emits
+   * "check" with from/to. Throws CardCheckNotFound if the row doesn't exist.
+   */
+  setCheckState(
+    card_id: string,
+    idx: number,
+    state: "pending" | "pass" | "fail",
+    detail?: string | null,
+  ): CardCheckRow {
+    const existing = this.db.prepare(
+      "SELECT * FROM kanban_card_checks WHERE card_id = ? AND idx = ?",
+    ).get(card_id, idx);
+    if (!existing) throw new CardCheckNotFound(card_id, idx);
+    const before = CardCheckRow.parse(existing);
+    const card = this.getCard(card_id);
+    const ts = this.now();
+    const nextDetail = detail !== undefined ? detail : before.detail;
+    withWrite(this.db, this.dbPath, (d) => {
+      d.prepare(`
+        UPDATE kanban_card_checks
+        SET state = ?, detail = ?, updated_at = ?
+        WHERE card_id = ? AND idx = ?
+      `).run(state, nextDetail, ts, card_id, idx);
+      if (card) {
+        this.emit(card_id, card.board, "check", { idx, from: before.state, to: state });
+      }
+    });
+    return CardCheckRow.parse({ ...before, state, detail: nextDetail, updated_at: ts });
+  }
+
+  listChecks(card_id: string): CardCheckRow[] {
+    return (this.db.prepare(
+      "SELECT * FROM kanban_card_checks WHERE card_id = ? ORDER BY idx",
+    ).all(card_id) as unknown[]).map((r) => CardCheckRow.parse(r));
   }
 
   // ── comments ──────────────────────────────────────────────────────────
