@@ -92,7 +92,9 @@ describe("recommendRouting: agent (memory-backed preference)", () => {
     expect(hint.reasons).not.toContain("learned preference from memory: bogus");
   });
 
-  it("uses the LAST matching prefer_agent fact when multiple are present", () => {
+  it("uses the FIRST (newest) matching prefer_agent fact when multiple are present", () => {
+    // facts are newest-first (readFactsForSubject: ORDER BY created_at DESC),
+    // so the newest preference (codex-cli) wins over the older claude-code one.
     const hint = recommendRouting(
       { card_type: "pr", meta: null },
       [
@@ -100,8 +102,20 @@ describe("recommendRouting: agent (memory-backed preference)", () => {
         { fact_type: "prefer_agent", fact_text: "claude-code" },
       ],
     );
-    expect(hint.agent).toBe("claude-code");
-    expect(hint.reasons).toContain("learned preference from memory: claude-code");
+    expect(hint.agent).toBe("codex-cli");
+    expect(hint.reasons).toContain("learned preference from memory: codex-cli");
+  });
+
+  it("skips a bogus newest fact and honors the next-newest valid one", () => {
+    const hint = recommendRouting(
+      { card_type: "pr", meta: null },
+      [
+        { fact_type: "prefer_agent", fact_text: "bogus" },
+        { fact_type: "prefer_agent", fact_text: "codex-cli" },
+      ],
+    );
+    expect(hint.agent).toBe("codex-cli");
+    expect(hint.reasons).toContain("learned preference from memory: codex-cli");
   });
 
   it("ignores facts with a different fact_type", () => {

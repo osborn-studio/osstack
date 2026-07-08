@@ -3,7 +3,7 @@ import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { openDb, KanbanRepository, writeFact } from "@osstack/core";
+import { openDb, KanbanRepository, writeFact, readFactsForSubject } from "@osstack/core";
 import type { CommandRunner } from "@osstack/github";
 import {
   handleStackCommand,
@@ -716,5 +716,53 @@ describe("handleStackCommand: recommend", () => {
     } finally {
       db.close();
     }
+  });
+
+  it("honors the NEWEST preference when two conflicting facts exist (newest-wins, end-to-end)", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+
+    const db = openDb({ path: dbPath });
+    try {
+      // Write the OLDER preference first, then the NEWER one. writeFact stamps
+      // created_at itself at second-resolution, so two rapid writes could tie;
+      // pin explicit, strictly-increasing created_at values afterward to make
+      // the ordering deterministic regardless of wall-clock timing.
+      writeFact(db, dbPath, {
+        fact_id: "fact-old-claude",
+        subject_type: "workflow",
+        subject_id: "pr",
+        fact_type: "preference",
+        fact_text: "claude-code",
+        source_type: "user_confirmation",
+      });
+      writeFact(db, dbPath, {
+        fact_id: "fact-new-codex",
+        subject_type: "workflow",
+        subject_id: "pr",
+        fact_type: "preference",
+        fact_text: "codex-cli",
+        source_type: "user_confirmation",
+      });
+      db.prepare("UPDATE memory_facts SET created_at = ? WHERE fact_id = ?").run(1000, "fact-old-claude");
+      db.prepare("UPDATE memory_facts SET created_at = ? WHERE fact_id = ?").run(2000, "fact-new-codex");
+
+      // Prove the DB ordering first: readFactsForSubject returns newest-first.
+      const facts = readFactsForSubject(db, "workflow", "pr");
+      expect(facts.map((f) => f.fact_text)).toEqual(["codex-cli", "claude-code"]);
+    } finally {
+      db.close();
+    }
+
+    const out: string[] = [];
+    const exitCode = await handleStackCommand(["recommend", "47"], {
+      dbPath,
+      out: (line) => out.push(line),
+    });
+
+    expect(exitCode).toBe(0);
+    const text = out.join("\n");
+    expect(text).toContain("agent: codex-cli");
+    expect(text).toContain("learned preference from memory: codex-cli");
   });
 });

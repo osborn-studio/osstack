@@ -498,6 +498,14 @@ async function stackRecommend(args: string[], deps?: StackCliDeps): Promise<numb
     // "which agent do we prefer" signal is instead a "preference" fact whose
     // fact_text is exactly an agent id; remap that convention onto the
     // fine-grained fact_type recommendRouting() expects.
+    //
+    // Accepted S1 risk: a legitimate "preference" fact whose fact_text happens
+    // to be exactly "claude-code"/"codex-cli" would be read as a routing
+    // directive. Narrow (those two literals only) and accepted for S1 — this
+    // command only recommends/assigns, it never auto-dispatches an agent.
+    //
+    // readFactsForSubject returns rows newest-first (created_at DESC), which is
+    // exactly the ordering recommendRouting() expects: first valid fact wins.
     const facts: RoutingFact[] = readFactsForSubject(db, "workflow", card.card_type).map((f) => ({
       fact_type:
         f.fact_type === "preference" && (f.fact_text === "claude-code" || f.fact_text === "codex-cli")
