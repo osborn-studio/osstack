@@ -216,8 +216,12 @@ export function createLoopStateScorecard(report: LoopStateReport): LoopStateScor
       10,
       "Proof artifact manifest is not present in the state-only report.",
     ),
-    // Budget scoring only applies when a budget was configured; legacy runs
-    // without one keep the historical 100-point scale.
+    // The scorecard is an additive weighted rubric — each dimension is worth 10
+    // points and the total is always rendered as `score / max_score`, never as a
+    // bare percentage. Budget scoring adds one 10-point dimension only when a
+    // budget was configured, so budgeted runs total /110 while legacy runs keep
+    // the historical /100. The denominator is always shown, so /110 cannot be
+    // misread as a percentage.
     ...(report.budget !== undefined ? [scorecardItem({
       id: "budget_within_limits",
       label: "Budget within limits",

@@ -227,6 +227,18 @@ export async function promoteLessonDraft(
     const skillPath = isAbsolute(options.toSkillPath)
       ? options.toSkillPath
       : join(workspacePath, options.toSkillPath);
+    // Minimal path hardening. Skills legitimately live outside the workspace, so
+    // we do NOT confine to the workspace — but we must not let a lesson be
+    // appended to an arbitrary file (e.g. /etc/hosts, ~/.zshrc, a random .md
+    // note). Require the target to be a SKILL.md: the canonical skill entry file
+    // every skill in this ecosystem uses. This blocks obvious misfires while
+    // preserving legitimate external skill targets.
+    if (basename(skillPath).toLowerCase() !== "skill.md") {
+      return {
+        promoted: false,
+        reason: `refusing to append a lesson to a non-skill target: ${options.toSkillPath}. --to-skill must point at a SKILL.md file.`,
+      };
+    }
     let existing: string;
     try {
       existing = await readFile(skillPath, "utf-8");

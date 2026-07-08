@@ -149,6 +149,22 @@ describe("lesson draft review workflow", () => {
     expect(await listLessonDrafts(workspace)).toHaveLength(1);
   });
 
+  it("refuses to append to a non-SKILL.md target even when the file exists", async () => {
+    // Path hardening: --to-skill must not be usable to write into arbitrary
+    // files (e.g. a notes.md, or something like /etc/hosts). Existence is not
+    // enough — the target must be a SKILL.md.
+    await writeLessonDraft(draftInput(), { workspacePath: workspace });
+    const notASkill = join(workspace, "notes.md");
+    await writeFile(notASkill, "# Not a skill\n\nImportant notes.\n", "utf-8");
+
+    const result = await promoteLessonDraft(workspace, "auth-session-expiry", { toSkillPath: "notes.md" });
+    expect(result.promoted).toBe(false);
+    expect(result.reason).toMatch(/non-skill target|SKILL\.md/);
+    // The unrelated file is untouched and the draft is preserved.
+    expect(await readFile(notASkill, "utf-8")).toBe("# Not a skill\n\nImportant notes.\n");
+    expect(await listLessonDrafts(workspace)).toHaveLength(1);
+  });
+
   it("discards a draft into loop-lessons/discarded", async () => {
     await writeLessonDraft(draftInput(), { workspacePath: workspace });
 

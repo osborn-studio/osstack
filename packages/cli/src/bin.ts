@@ -9459,7 +9459,8 @@ function printLoopLessonsHelp(): void {
 
 Promoting moves the draft to loop-lessons/promoted/. Only with an explicit
 --to-skill PATH is the lesson appended to that skill file — the loop never
-modifies official skills on its own.
+modifies official skills on its own. --to-skill must point at a SKILL.md file
+(may live outside the workspace); any other target is refused.
 `);
 }
 

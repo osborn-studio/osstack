@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   createLoopStateReport,
+  createLoopStateScorecard,
   renderLoopStateReportMarkdown,
+  renderLoopStateScorecardMarkdown,
 } from "./report.js";
 import type { LoopEvent, LoopState } from "./types.js";
 
@@ -42,6 +44,25 @@ describe("loop state report", () => {
       const report = createLoopStateReport(successState(testCase.name), { events: [...testCase.events] });
       expect(report.conformance).toMatchObject(testCase.expected);
     }
+  });
+
+  it("keeps the scorecard on a 100-point base and always renders the denominator", () => {
+    // The scorecard is an additive weighted rubric (each dimension = 10 pts),
+    // NOT a percentage. Without a budget it totals /100; a configured budget
+    // adds one 10-pt dimension → /110. The denominator is always rendered
+    // alongside the score so "N / 110" can never be misread as a percentage.
+    const noBudget = createLoopStateScorecard(createLoopStateReport(successState("no-budget"), {}));
+    expect(noBudget.max_score).toBe(100);
+
+    const budgeted = createLoopStateScorecard(
+      createLoopStateReport(successStateWithBudget("budgeted"), {}),
+    );
+    expect(budgeted.max_score).toBe(110);
+    expect(budgeted.items.some((item) => item.id === "budget_within_limits")).toBe(true);
+
+    const markdown = renderLoopStateScorecardMarkdown(budgeted);
+    expect(markdown).toMatch(/\d+ \/ 110/); // denominator shown; not a bare percent
+    expect(markdown).not.toMatch(/\b\d+%/); // never rendered as a percentage
   });
 
   it("does not promote a verified run to L4 without reviewer/checker evidence", () => {
@@ -303,6 +324,17 @@ function successState(loopId: string): LoopState {
     in_progress: [],
     pending: [],
     decisions: [],
+  };
+}
+
+function successStateWithBudget(loopId: string): LoopState {
+  return {
+    ...successState(loopId),
+    budget_status: {
+      exceeded: false,
+      limit: "max_cycles",
+      usage: { cycles: 1, runtime_ms: 900, tokens: 0, estimated_cost_usd: 0, no_progress_cycles: 0 },
+    },
   };
 }
 
