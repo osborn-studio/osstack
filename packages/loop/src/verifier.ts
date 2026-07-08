@@ -86,6 +86,13 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
     if (failing === undefined) return [];
     return [evaluationIssue(spec, singleLine(failing.summary ?? "verifier adapter judged this evaluation as failed"))];
   });
+  // Fail-closed on unknown judgment ids: an adapter judgment whose id matches no
+  // requested spec must never be silently dropped. A *failing* orphan judgment
+  // is an error (it may be a real failure reported under a mismatched id — losing
+  // it would let a broken run pass); a *passing* orphan is a warning (surfaced,
+  // non-blocking) so a spurious extra judgment can't fail an otherwise-green run.
+  const knownSpecIds = new Set(adapterSpecs.map((spec) => spec.id));
+  const unknownJudgmentIssues = collectUnknownJudgmentIssues(adapterResults, knownSpecIds);
 
   const issues = [
     ...executionIssues,
@@ -93,6 +100,7 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
     ...explicitCommandIssues,
     ...adapterIssues,
     ...judgedFailureIssues,
+    ...unknownJudgmentIssues,
     ...unverifiedAdapterSpecIssues,
     ...artifact.issues,
   ];
@@ -223,6 +231,32 @@ function collectJudgmentsBySpec(
     }
   }
   return bySpec;
+}
+
+/**
+ * Surface adapter judgments whose id matches no requested spec instead of
+ * dropping them. Failing orphans are errors (fail-closed); passing orphans are
+ * warnings. Deduplicated by id so a repeated orphan reports once.
+ */
+function collectUnknownJudgmentIssues(
+  adapterResults: readonly VerifierAdapterResult[],
+  knownSpecIds: ReadonlySet<string>,
+): Issue[] {
+  const issues: Issue[] = [];
+  const seen = new Set<string>();
+  for (const result of adapterResults) {
+    for (const judgment of result.judgments ?? []) {
+      if (knownSpecIds.has(judgment.id) || seen.has(judgment.id)) continue;
+      seen.add(judgment.id);
+      const detail = singleLine(judgment.summary ?? (judgment.pass ? "judged pass" : "judged fail"));
+      issues.push({
+        severity: judgment.pass ? "warning" : "error",
+        message: `verifier adapter ${result.agentId} returned judgment for unknown evaluation id "${judgment.id}"${detail === "" ? "" : `: ${detail}`}`,
+        rule: "verify.unknown_evaluation_id",
+      });
+    }
+  }
+  return issues;
 }
 
 function evaluationIssue(spec: EvaluationSpec, detail: string): Issue {

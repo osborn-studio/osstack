@@ -198,7 +198,97 @@ describe("verifyRun", () => {
 
     expect(verdict.pass).toBe(true);
   });
+
+  it("fails closed on a failing adapter judgment reported under an unknown evaluation id", async () => {
+    // The adapter judges a spec id we never requested. Dropping it would let a
+    // real failure pass silently, so an unknown *failing* judgment is an error.
+    const adapter = mockAdapter({
+      async *invoke(t) {
+        yield judgmentDoneEvent(t.run_id, t.session_id, "completed", "review ran", [
+          { id: "typo-review-id", pass: false, summary: "the auth flow is broken" },
+        ]);
+      },
+    });
+
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace,
+      verifierAgentIds: [adapter.id],
+      adapters: [adapter],
+      task: reviewTask("known-review"),
+    });
+
+    expect(verdict.pass).toBe(false);
+    expect(verdict.issues).toContainEqual(expect.objectContaining({
+      rule: "verify.unknown_evaluation_id",
+      severity: "error",
+      message: expect.stringContaining("typo-review-id"),
+    }));
+  });
+
+  it("warns but does not fail on a passing adapter judgment with an unknown id", async () => {
+    const adapter = mockAdapter({
+      async *invoke(t) {
+        yield judgmentDoneEvent(t.run_id, t.session_id, "completed", "review ran", [
+          { id: "known-review", pass: true, summary: "looks good" },
+          { id: "bonus-check", pass: true, summary: "extra passing judgment" },
+        ]);
+      },
+    });
+
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace,
+      verifierAgentIds: [adapter.id],
+      adapters: [adapter],
+      task: reviewTask("known-review"),
+    });
+
+    expect(verdict.pass).toBe(true);
+    const orphan = verdict.issues.find((issue) => issue.rule === "verify.unknown_evaluation_id");
+    expect(orphan).toMatchObject({ severity: "warning", message: expect.stringContaining("bonus-check") });
+  });
 });
+
+function reviewTask(specId: string): Task {
+  return {
+    task_id: "task-1",
+    capability: "code.write",
+    prompt: "Implement the change",
+    priority: 50,
+    source: "task_queue",
+    context: { file: "src/app.ts" },
+    evaluation: [{
+      id: specId,
+      mode: "semantic_review",
+      description: "Review the change semantically",
+      required: true,
+      target_paths: [],
+      forbidden_paths: [],
+      weight: 1,
+    }],
+  };
+}
+
+function judgmentDoneEvent(
+  runId: string,
+  sessionId: string,
+  status: "completed" | "failed",
+  resultSummary: string,
+  judgments: Array<{ id: string; pass: boolean; summary?: string }>,
+): HermesEvent {
+  // evaluation_judgments is carried on the done payload at runtime (read loosely
+  // by the verifier) but is not part of the typed payload union, so build the
+  // event untyped and cast the whole thing.
+  return {
+    event_id: `${runId}:1`,
+    seq: 1,
+    run_id: runId,
+    session_id: sessionId,
+    created_at: Date.now() / 1000,
+    terminal: true,
+    type: "done",
+    payload: { status, last_seq: 1, result_summary: resultSummary, evaluation_judgments: judgments },
+  } as unknown as HermesEvent;
+}
 
 async function initGitWorkspace(): Promise<void> {
   execFileSync("git", ["init", "-b", "main"], { cwd: workspace, stdio: "ignore" });

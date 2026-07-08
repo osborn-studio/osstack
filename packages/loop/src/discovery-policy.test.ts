@@ -37,6 +37,28 @@ describe("DiscoveryPolicy schema", () => {
     expect(DEFAULT_DISCOVERY_POLICY.source_authorization["git_diff"]).toBe("suggest_only");
     expect(DEFAULT_DISCOVERY_POLICY.source_authorization["github_branch"]).toBe("needs_approval");
   });
+
+  it("rejects a typo'd source_authorization key instead of silently ignoring it", () => {
+    // A typo like task_quee used to be accepted and then never matched at lookup,
+    // silently falling through to default_authorization. It must now fail loudly.
+    expect(() => DiscoveryPolicy.parse({
+      source_authorization: { task_quee: "auto_execute" },
+    })).toThrow(/unknown discovery source.*task_quee/);
+  });
+
+  it("accepts every valid discovery source as an authorization key", () => {
+    const policy = DiscoveryPolicy.parse({
+      source_authorization: {
+        git_diff: "suggest_only",
+        gh_issue: "needs_approval",
+        github_branch: "needs_approval",
+        ci_log: "blocked",
+        task_queue: "auto_execute",
+        manual: "auto_execute",
+      },
+    });
+    expect(policy.source_authorization["ci_log"]).toBe("blocked");
+  });
 });
 
 describe("authorizeTask", () => {

@@ -22,6 +22,20 @@ export const TaskAuthorization = z.enum([
 ]);
 export type TaskAuthorization = z.infer<typeof TaskAuthorization>;
 
+// Local mirror of DiscoverSource in ./types.ts. Kept as a literal here because
+// types.ts imports the TaskAuthorization *value* from this module at runtime;
+// importing the DiscoverSource value back would create a module cycle. Keep in
+// sync with DiscoverSource — the superRefine below validates policy keys against
+// it so a typo'd source is rejected instead of silently ignored.
+const DISCOVERY_SOURCE_KEYS = [
+  "git_diff",
+  "gh_issue",
+  "github_branch",
+  "ci_log",
+  "task_queue",
+  "manual",
+] as const;
+
 export const DiscoveryPolicy = z.object({
   default_authorization: TaskAuthorization.default("needs_approval"),
   /** Capabilities (exact or dotted prefix) that may execute automatically. */
@@ -34,6 +48,21 @@ export const DiscoveryPolicy = z.object({
   max_auto_priority: z.number().min(0).max(100).default(80),
   /** Per-discovery-source authorization overrides (e.g. git_diff -> suggest_only). */
   source_authorization: z.record(TaskAuthorization).default({}),
+}).superRefine((policy, ctx) => {
+  // Reject unknown source keys. z.record validates the values but leaves keys
+  // open, so a typo like `task_quee` used to be accepted and then silently never
+  // matched at lookup — the task would fall through to default_authorization
+  // with no signal. Fail-closed: a misconfigured policy must error loudly.
+  const known = new Set<string>(DISCOVERY_SOURCE_KEYS);
+  for (const key of Object.keys(policy.source_authorization)) {
+    if (!known.has(key)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["source_authorization", key],
+        message: `unknown discovery source "${key}"; valid sources: ${DISCOVERY_SOURCE_KEYS.join(", ")}`,
+      });
+    }
+  }
 });
 export type DiscoveryPolicy = z.infer<typeof DiscoveryPolicy>;
 
