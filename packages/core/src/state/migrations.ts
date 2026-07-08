@@ -358,6 +358,31 @@ export const MIGRATIONS: readonly Migration[] = [
         ON score_quarantine (repo_id, evaluator_id);
     `,
   },
+  {
+    id: 7,
+    name: "kanban_typed_cards",
+    // Typed cards + verification checks: lets a card declare what kind of
+    // work it represents (pr/implementation/review/merge) and carry a
+    // free-form JSON `meta` blob (e.g. PR number, branch, links), plus a
+    // per-card ordered checklist of verification steps (kanban_card_checks)
+    // used by the merge-orchestration loop to gate a card's progress.
+    sql: `
+      ALTER TABLE kanban_cards ADD COLUMN card_type TEXT NOT NULL DEFAULT 'implementation';
+      ALTER TABLE kanban_cards ADD COLUMN meta TEXT;
+      CREATE INDEX IF NOT EXISTS idx_kanban_cards_type ON kanban_cards(board, card_type);
+
+      CREATE TABLE IF NOT EXISTS kanban_card_checks (
+        card_id    TEXT    NOT NULL,
+        idx        INTEGER NOT NULL,
+        label      TEXT    NOT NULL,
+        state      TEXT    NOT NULL DEFAULT 'pending' CHECK (state IN ('pending','pass','fail')),
+        detail     TEXT,
+        updated_at REAL    NOT NULL,
+        PRIMARY KEY (card_id, idx)
+      );
+      CREATE INDEX IF NOT EXISTS idx_kanban_checks_card ON kanban_card_checks(card_id);
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

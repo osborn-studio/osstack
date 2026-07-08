@@ -6,7 +6,7 @@ import { openDb } from "../state/db.js";
 import { KanbanRepository, IllegalCardTransition, CardNotFound } from "./repository.js";
 import { getBoard, computeStats, renderBoardSummary, type BoardView } from "./board.js";
 import { KanbanNotifier, type OutboundMessage } from "./notify.js";
-import { BOARD_COLUMNS, isLegalCardTransition } from "./schema.js";
+import { BOARD_COLUMNS, isLegalCardTransition, CardRow, CardCheckRow } from "./schema.js";
 
 let tmp: string;
 let dbPath: string;
@@ -44,6 +44,51 @@ describe("schema — board columns + transitions", () => {
     expect(isLegalCardTransition("running", "blocked")).toBe(true);
     expect(isLegalCardTransition("archived", "triage")).toBe(true);
     expect(isLegalCardTransition("archived", "running")).toBe(false);
+  });
+});
+
+describe("schema — typed cards + verification checks (migration 7)", () => {
+  it("CardRow.parse accepts a row with card_type and meta", () => {
+    const parsed = CardRow.parse({
+      card_id: "c1",
+      title: "Write API",
+      card_type: "pr",
+      meta: JSON.stringify({ pr_number: 42 }),
+      created_at: 1,
+      updated_at: 1,
+    });
+    expect(parsed.card_type).toBe("pr");
+    expect(parsed.meta).toBe(JSON.stringify({ pr_number: 42 }));
+  });
+
+  it("CardRow.parse defaults card_type to 'implementation' and meta to null when omitted", () => {
+    const parsed = CardRow.parse({ card_id: "c1", title: "Write API", created_at: 1, updated_at: 1 });
+    expect(parsed.card_type).toBe("implementation");
+    expect(parsed.meta).toBeNull();
+  });
+
+  it("CardCheckRow.parse validates a well-formed check row", () => {
+    const parsed = CardCheckRow.parse({
+      card_id: "c1",
+      idx: 0,
+      label: "Tests pass",
+      state: "pass",
+      detail: "vitest green",
+      updated_at: 1,
+    });
+    expect(parsed.state).toBe("pass");
+  });
+
+  it("CardCheckRow.parse rejects an invalid state", () => {
+    expect(() =>
+      CardCheckRow.parse({
+        card_id: "c1",
+        idx: 0,
+        label: "Tests pass",
+        state: "bogus",
+        updated_at: 1,
+      }),
+    ).toThrow();
   });
 });
 
