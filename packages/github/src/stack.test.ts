@@ -104,6 +104,61 @@ describe("ingestStack", () => {
     await ingestStack({ prNumbers: [1], repo: "o/r" }, runner);
     expect(sawRepoFlag).toBe(true);
   });
+
+  it("builds a single-PR stack with order [1], no edges, no drift", async () => {
+    const runner: CommandRunner = {
+      run: async () => prViewJson({ number: 1, baseRefName: "main", headRefName: "feat/x" }),
+    };
+
+    const stack = await ingestStack({ prNumbers: [1] }, runner);
+
+    expect(stack.order).toEqual([1]);
+    expect(stack.edges).toEqual([]);
+    expect(detectDrift(stack)).toEqual({ clean: true, issues: [] });
+  });
+
+  it("rejects with PR context when gh output is not valid JSON", async () => {
+    const runner: CommandRunner = {
+      run: async (command, args) => {
+        const joined = `${command} ${args.join(" ")}`;
+        if (joined.startsWith("gh pr view 47")) {
+          return prViewJson({ number: 47, baseRefName: "main", headRefName: "feat/a" });
+        }
+        if (joined.startsWith("gh pr view 48")) return "not json";
+        throw new Error(`unexpected command: ${joined}`);
+      },
+    };
+
+    await expect(ingestStack({ prNumbers: [47, 48] }, runner)).rejects.toThrow(/#48/);
+  });
+
+  it("rejects on a dependency cycle among PRs", async () => {
+    const runner: CommandRunner = {
+      run: async (command, args) => {
+        const joined = `${command} ${args.join(" ")}`;
+        // 10's base is 11's head and 11's base is 10's head -> a 2-cycle.
+        if (joined.startsWith("gh pr view 10")) {
+          return prViewJson({ number: 10, baseRefName: "feat/b", headRefName: "feat/a" });
+        }
+        if (joined.startsWith("gh pr view 11")) {
+          return prViewJson({ number: 11, baseRefName: "feat/a", headRefName: "feat/b" });
+        }
+        throw new Error(`unexpected command: ${joined}`);
+      },
+    };
+
+    await expect(ingestStack({ prNumbers: [10, 11] }, runner)).rejects.toThrow(/cycle/i);
+  });
+
+  it("propagates a runner rejection out of ingestStack", async () => {
+    const runner: CommandRunner = {
+      run: async () => {
+        throw new Error("gh exploded");
+      },
+    };
+
+    await expect(ingestStack({ prNumbers: [1] }, runner)).rejects.toThrow("gh exploded");
+  });
 });
 
 describe("detectDrift", () => {
@@ -171,6 +226,58 @@ describe("detectDrift", () => {
     const report = detectDrift(stack);
     expect(report.issues).toContainEqual(
       expect.objectContaining({ number: 48, kind: "orphan_base" }),
+    );
+  });
+
+  it("flags a non-root PR based directly on the root ref as orphan_base", () => {
+    // Stack: 47(main->a), 48(a->b), 49(main->c). #47 is the true root; #49 is a
+    // mis-rebased non-root PR that bases directly on "main" and must be flagged.
+    const stack: StackModel = {
+      nodes: [
+        {
+          number: 47,
+          state: "OPEN",
+          base: "main",
+          head: "feat/a",
+          mergeable: "MERGEABLE",
+          mergeStateStatus: "CLEAN",
+          ciState: "success",
+          title: "PR 47",
+          url: "https://github.com/o/r/pull/47",
+        },
+        {
+          number: 48,
+          state: "OPEN",
+          base: "feat/a",
+          head: "feat/b",
+          mergeable: "MERGEABLE",
+          mergeStateStatus: "CLEAN",
+          ciState: "success",
+          title: "PR 48",
+          url: "https://github.com/o/r/pull/48",
+        },
+        {
+          number: 49,
+          state: "OPEN",
+          base: "main",
+          head: "feat/c",
+          mergeable: "MERGEABLE",
+          mergeStateStatus: "CLEAN",
+          ciState: "success",
+          title: "PR 49",
+          url: "https://github.com/o/r/pull/49",
+        },
+      ],
+      edges: [{ parent: 47, child: 48 }],
+      order: [47, 48, 49],
+    };
+
+    const report = detectDrift(stack);
+    expect(report.issues).toContainEqual(
+      expect.objectContaining({ number: 49, kind: "orphan_base" }),
+    );
+    expect(report.issues).not.toContainEqual(
+      expect.objectContaining({ number: 47, kind: "orphan_base" }),
     );
   });
 });

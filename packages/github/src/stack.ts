@@ -113,23 +113,33 @@ export async function ingestStack(
       ...(spec.repo ? ["--repo", spec.repo] : []),
     ];
     const stdout = await runner.run("gh", args);
-    const parsed = PrViewJson.parse(JSON.parse(stdout));
 
-    nodes.push(
-      StackNode.parse({
-        number: parsed.number,
-        state: parsed.state,
-        base: parsed.baseRefName,
-        head: parsed.headRefName,
-        mergeable: parsed.mergeable,
-        mergeStateStatus: parsed.mergeStateStatus,
-        ciState: mapRollupToCheckState(parsed.statusCheckRollup),
-        title: parsed.title,
-        url: parsed.url,
-      }),
-    );
+    try {
+      const parsed = PrViewJson.parse(JSON.parse(stdout));
+      nodes.push(
+        StackNode.parse({
+          number: parsed.number,
+          state: parsed.state,
+          base: parsed.baseRefName,
+          head: parsed.headRefName,
+          mergeable: parsed.mergeable,
+          mergeStateStatus: parsed.mergeStateStatus,
+          ciState: mapRollupToCheckState(parsed.statusCheckRollup),
+          title: parsed.title,
+          url: parsed.url,
+        }),
+      );
+    } catch (err) {
+      throw new Error(
+        `ingestStack: failed to parse gh output for PR #${number}${
+          spec.repo ? ` (${spec.repo})` : ""
+        }: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
+  // Edges are reconstructed purely from ref names (a node's base matching another
+  // node's head), so callers should pass PRs that belong to a single stack.
   const edges: StackEdge[] = [];
   for (const child of nodes) {
     const parent = nodes.find((candidate) => candidate.head === child.base);
@@ -142,6 +152,13 @@ export async function ingestStack(
     nodes.map((node) => node.number),
     edges,
   );
+
+  if (order.length !== nodes.length) {
+    const missing = nodes
+      .map((node) => node.number)
+      .filter((number) => !order.includes(number));
+    throw new Error(`ingestStack: dependency cycle among PRs: ${missing.join(", ")}`);
+  }
 
   return StackModel.parse({ nodes, edges, order });
 }
@@ -185,10 +202,11 @@ function topoOrderBottomUp(numbers: number[], edges: StackEdge[]): number[] {
 export function detectDrift(stack: StackModel): DriftReport {
   const heads = new Set(stack.nodes.map((node) => node.head));
 
-  // The stack's root base is the base of the bottom-most node in the stack's
-  // bottom-up order (stack.order[0]) — the one PR that legitimately targets a
-  // ref outside the stack (e.g. "main"). Any other node whose base doesn't
-  // match another node's head is drifted onto an unexpected/orphaned base.
+  // The stack's root is the bottom-most node in the stack's bottom-up order
+  // (stack.order[0]) — the one PR that legitimately targets a ref outside the
+  // stack (e.g. "main"). The exemption is tied to that specific node, not to the
+  // ref string: a non-root PR that (mis-)bases directly on the root ref is still
+  // drifted and must be flagged as orphan_base.
   const bottomNumbers = new Set(stack.order.slice(0, 1));
   const rootBases = new Set(
     stack.nodes
@@ -232,7 +250,8 @@ export function detectDrift(stack: StackModel): DriftReport {
       });
     }
 
-    if (!heads.has(node.base) && !rootBases.has(node.base)) {
+    const isRootExempt = bottomNumbers.has(node.number) && rootBases.has(node.base);
+    if (!heads.has(node.base) && !isRootExempt) {
       issues.push({
         number: node.number,
         kind: "orphan_base",
