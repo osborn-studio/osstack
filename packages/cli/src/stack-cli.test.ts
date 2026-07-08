@@ -3,7 +3,7 @@ import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { openDb, KanbanRepository } from "@osstack/core";
+import { openDb, KanbanRepository, writeFact } from "@osstack/core";
 import type { CommandRunner } from "@osstack/github";
 import {
   handleStackCommand,
@@ -637,5 +637,84 @@ describe("handleStackCommand: runbook", () => {
     expect(idx49).toBeGreaterThan(idx48);
 
     expect(text).toContain("- [x] " + PR_CARD_CHECKLIST[0]);
+  });
+});
+
+describe("handleStackCommand: recommend", () => {
+  it("returns 0 and prints role: merge-manager and agent: claude-code for a pr card with no learned preference", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+
+    const out: string[] = [];
+    const exitCode = await handleStackCommand(["recommend", "47"], {
+      dbPath,
+      out: (line) => out.push(line),
+    });
+
+    expect(exitCode).toBe(0);
+    const text = out.join("\n");
+    expect(text).toContain("role: merge-manager");
+    expect(text).toContain("agent: claude-code");
+  });
+
+  it("uses a learned prefer_agent fact for the card's subject (card_type) to recommend codex-cli", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+
+    const db = openDb({ path: dbPath });
+    try {
+      writeFact(db, dbPath, {
+        fact_id: "fact-prefer-agent-1",
+        subject_type: "workflow",
+        subject_id: "pr",
+        fact_type: "preference",
+        fact_text: "codex-cli",
+        source_type: "user_confirmation",
+      });
+    } finally {
+      db.close();
+    }
+
+    const out: string[] = [];
+    const exitCode = await handleStackCommand(["recommend", "47"], {
+      dbPath,
+      out: (line) => out.push(line),
+    });
+
+    expect(exitCode).toBe(0);
+    const text = out.join("\n");
+    expect(text).toContain("agent: codex-cli");
+    expect(text).toContain("learned preference from memory: codex-cli");
+  });
+
+  it("returns 1 for a missing card", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+
+    const exitCode = await handleStackCommand(["recommend", "999"], { dbPath });
+    expect(exitCode).toBe(1);
+  });
+
+  it("with --assign, persists the recommended agent as the card's assignee", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+
+    const out: string[] = [];
+    const exitCode = await handleStackCommand(["recommend", "47", "--assign"], {
+      dbPath,
+      out: (line) => out.push(line),
+    });
+
+    expect(exitCode).toBe(0);
+    expect(out.join("\n")).toContain("assigned pr-47 -> claude-code");
+
+    const db = openDb({ path: dbPath });
+    try {
+      const repo = new KanbanRepository(db, dbPath);
+      const card = repo.getCard("pr-47");
+      expect(card?.assignee).toBe("claude-code");
+    } finally {
+      db.close();
+    }
   });
 });

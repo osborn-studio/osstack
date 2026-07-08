@@ -11,8 +11,10 @@ import {
   KanbanRepository,
   getBoard,
   openDb,
+  readFactsForSubject,
 } from "@osstack/core";
 import { ingestStack, type CommandRunner } from "@osstack/github";
+import { recommendRouting, type RoutingFact } from "./stack-routing.js";
 
 export interface StackCliDeps {
   runner?: CommandRunner;
@@ -29,7 +31,7 @@ export const PR_CARD_CHECKLIST: readonly string[] = [
   "suite green",
 ];
 
-const USAGE = "osstack: usage: stack <ingest|board|move|check|timeline|runbook> [...args]";
+const USAGE = "osstack: usage: stack <ingest|board|move|check|timeline|runbook|recommend> [...args]";
 
 /**
  * Resolve a user-supplied card argument to a card id: a bare integer like
@@ -55,6 +57,8 @@ export async function handleStackCommand(args: string[], deps?: StackCliDeps): P
       return await stackTimeline(args.slice(1), deps);
     case "runbook":
       return await stackRunbook(args.slice(1), deps);
+    case "recommend":
+      return await stackRecommend(args.slice(1), deps);
     default:
       console.error(USAGE);
       return 1;
@@ -450,6 +454,74 @@ async function stackRunbook(args: string[], deps?: StackCliDeps): Promise<number
     }));
 
     out(renderRunbook(board, ordered));
+    return 0;
+  } finally {
+    db.close();
+  }
+}
+
+/** Guarded parse of a card's `meta` JSON blob down to the fields recommendRouting() cares about. */
+function parseRoutingMeta(raw: string | null): { migration?: boolean; ui?: boolean } | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { migration?: boolean; ui?: boolean };
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+async function stackRecommend(args: string[], deps?: StackCliDeps): Promise<number> {
+  const out = deps?.out ?? console.log;
+  const cardArg = args[0];
+  const assign = args.includes("--assign");
+
+  if (!cardArg) {
+    console.error("osstack: stack recommend requires <cardArg>");
+    return 1;
+  }
+
+  const dbPath = requireDbPath(deps);
+  const db = openDb({ path: dbPath });
+  try {
+    const repo = new KanbanRepository(db, dbPath, deps?.now);
+    const cardId = resolveCardId(cardArg);
+    const card = repo.getCard(cardId);
+    if (!card) {
+      console.error(`osstack: card not found: ${cardId}`);
+      return 1;
+    }
+
+    const meta = parseRoutingMeta(card.meta);
+    // memory_facts' fact_type is a fixed DB enum (preference/correction/
+    // constraint/observation) — it has no "prefer_agent" value. The specific
+    // "which agent do we prefer" signal is instead a "preference" fact whose
+    // fact_text is exactly an agent id; remap that convention onto the
+    // fine-grained fact_type recommendRouting() expects.
+    const facts: RoutingFact[] = readFactsForSubject(db, "workflow", card.card_type).map((f) => ({
+      fact_type:
+        f.fact_type === "preference" && (f.fact_text === "claude-code" || f.fact_text === "codex-cli")
+          ? "prefer_agent"
+          : f.fact_type,
+      fact_text: f.fact_text,
+    }));
+
+    const hint = recommendRouting({ card_type: card.card_type, meta }, facts);
+
+    out(`agent: ${hint.agent}`);
+    out(`role: ${hint.role}`);
+    out(`browserQa: ${hint.browserQa}`);
+    out(`tests: ${hint.tests}`);
+    out("reasons:");
+    for (const reason of hint.reasons) {
+      out(`  - ${reason}`);
+    }
+
+    if (assign) {
+      repo.patchCard(card.card_id, { assignee: hint.agent });
+      out(`assigned ${card.card_id} -> ${hint.agent}`);
+    }
+
     return 0;
   } finally {
     db.close();
