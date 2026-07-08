@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDb } from "../state/db.js";
-import { KanbanRepository, IllegalCardTransition, CardNotFound, CardCheckNotFound } from "./repository.js";
+import { KanbanRepository, IllegalCardTransition, CardNotFound, CardCheckNotFound, CardCycleError } from "./repository.js";
 import { getBoard, computeStats, renderBoardSummary, type BoardView } from "./board.js";
 import { KanbanNotifier, type OutboundMessage } from "./notify.js";
 import { BOARD_COLUMNS, isLegalCardTransition, CardRow, CardCheckRow } from "./schema.js";
@@ -250,6 +250,58 @@ describe("KanbanRepository — comments + links", () => {
   it("refuses self-link", () => {
     repo.createCard({ card_id: "c1", title: "x" });
     expect(() => repo.link("c1", "c1")).toThrow();
+  });
+});
+
+describe("KanbanRepository — linksForBoard + topoOrder (dependency DAG)", () => {
+  it("topoOrder returns parents before children for a stacked chain, breaking ties by priority", () => {
+    // A -> B -> C, A -> D. Give D higher priority than B so the B/D tie
+    // (both are only blocked by A) resolves deterministically: D before B.
+    repo.createCard({ card_id: "A", title: "A", board: "stack", priority: 0 });
+    tick();
+    repo.createCard({ card_id: "B", title: "B", board: "stack", priority: 0 });
+    tick();
+    repo.createCard({ card_id: "C", title: "C", board: "stack", priority: 0 });
+    tick();
+    repo.createCard({ card_id: "D", title: "D", board: "stack", priority: 5 });
+    repo.link("A", "B");
+    repo.link("B", "C");
+    repo.link("A", "D");
+
+    const order = repo.topoOrder("stack").map((c) => c.card_id);
+    expect(order).toEqual(["A", "D", "B", "C"]);
+  });
+
+  it("linksForBoard returns only intra-board edges", () => {
+    repo.createCard({ card_id: "A", title: "A", board: "stack" });
+    repo.createCard({ card_id: "B", title: "B", board: "stack" });
+    repo.createCard({ card_id: "X", title: "X", board: "other" });
+    repo.link("A", "B");
+    repo.link("A", "X"); // crosses boards — must be excluded
+
+    const links = repo.linksForBoard("stack");
+    expect(links).toEqual([{ parent_id: "A", child_id: "B" }]);
+  });
+
+  it("excludes cards on a different board from topoOrder", () => {
+    repo.createCard({ card_id: "A", title: "A", board: "stack" });
+    repo.createCard({ card_id: "B", title: "B", board: "stack" });
+    repo.createCard({ card_id: "X", title: "X", board: "other" });
+    repo.link("A", "B");
+    repo.link("A", "X");
+
+    const ids = repo.topoOrder("stack").map((c) => c.card_id);
+    expect(ids).toEqual(["A", "B"]);
+    expect(ids).not.toContain("X");
+  });
+
+  it("throws CardCycleError when the board's links form a cycle", () => {
+    repo.createCard({ card_id: "A", title: "A", board: "stack" });
+    repo.createCard({ card_id: "B", title: "B", board: "stack" });
+    repo.link("A", "B");
+    repo.link("B", "A");
+
+    expect(() => repo.topoOrder("stack")).toThrow(CardCycleError);
   });
 });
 

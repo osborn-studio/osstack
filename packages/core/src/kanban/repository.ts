@@ -41,6 +41,13 @@ export class CardCheckNotFound extends Error {
   }
 }
 
+export class CardCycleError extends Error {
+  constructor(readonly cardIds: string[]) {
+    super(`Kanban dependency cycle detected among cards: ${cardIds.join(", ")}`);
+    this.name = "CardCycleError";
+  }
+}
+
 export interface NewCard {
   card_id: string;
   board?: string;
@@ -312,6 +319,71 @@ export class KanbanRepository {
     const parents = (this.db.prepare("SELECT COUNT(*) AS n FROM kanban_card_links WHERE child_id = ?").get(card_id) as { n: number }).n;
     const children = (this.db.prepare("SELECT COUNT(*) AS n FROM kanban_card_links WHERE parent_id = ?").get(card_id) as { n: number }).n;
     return { parents, children };
+  }
+
+  /**
+   * All parent→child links whose BOTH endpoints are cards on `board`. A link
+   * that crosses boards (either endpoint elsewhere) is excluded.
+   */
+  linksForBoard(board: string): { parent_id: string; child_id: string }[] {
+    return this.db.prepare(`
+      SELECT l.parent_id AS parent_id, l.child_id AS child_id
+      FROM kanban_card_links l
+      JOIN kanban_cards p ON p.card_id = l.parent_id
+      JOIN kanban_cards c ON c.card_id = l.child_id
+      WHERE p.board = ? AND c.board = ?
+    `).all(board, board) as { parent_id: string; child_id: string }[];
+  }
+
+  /**
+   * Bottom-up merge order for a board's dependency DAG (Kahn's algorithm):
+   * every parent precedes all of its children. Ties among cards with no
+   * remaining ordering constraint break by priority DESC, created_at ASC,
+   * card_id ASC (deterministic). Throws CardCycleError if the board's links
+   * contain a cycle.
+   */
+  topoOrder(board: string): CardRow[] {
+    const cards = this.listCards({ board, includeArchived: true });
+    const byId = new Map(cards.map((c) => [c.card_id, c]));
+    const edges = this.linksForBoard(board);
+
+    const indegree = new Map<string, number>();
+    const children = new Map<string, string[]>();
+    for (const id of byId.keys()) { indegree.set(id, 0); children.set(id, []); }
+    for (const { parent_id, child_id } of edges) {
+      children.get(parent_id)!.push(child_id);
+      indegree.set(child_id, (indegree.get(child_id) ?? 0) + 1);
+    }
+
+    const tieBreak = (a: string, b: string): number => {
+      const ca = byId.get(a)!;
+      const cb = byId.get(b)!;
+      if (ca.priority !== cb.priority) return cb.priority - ca.priority; // DESC
+      if (ca.created_at !== cb.created_at) return ca.created_at - cb.created_at; // ASC
+      return a < b ? -1 : a > b ? 1 : 0; // card_id ASC
+    };
+
+    const ready = [...byId.keys()].filter((id) => indegree.get(id) === 0).sort(tieBreak);
+    const ordered: CardRow[] = [];
+    while (ready.length > 0) {
+      const id = ready.shift()!;
+      ordered.push(byId.get(id)!);
+      for (const child of children.get(id)!) {
+        const next = indegree.get(child)! - 1;
+        indegree.set(child, next);
+        if (next === 0) {
+          // Re-insert in sorted position to keep the ready set deterministic.
+          const idx = ready.findIndex((other) => tieBreak(child, other) < 0);
+          if (idx === -1) ready.push(child); else ready.splice(idx, 0, child);
+        }
+      }
+    }
+
+    if (ordered.length !== byId.size) {
+      const remaining = [...byId.keys()].filter((id) => !ordered.some((c) => c.card_id === id));
+      throw new CardCycleError(remaining);
+    }
+    return ordered;
   }
 
   // ── events ────────────────────────────────────────────────────────────
