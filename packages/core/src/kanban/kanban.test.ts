@@ -295,6 +295,22 @@ describe("KanbanRepository — linksForBoard + topoOrder (dependency DAG)", () =
     expect(ids).not.toContain("X");
   });
 
+  it("orders a converging diamond so D waits for both B and C", () => {
+    repo.createCard({ card_id: "A", title: "A", board: "diamond" });
+    repo.createCard({ card_id: "B", title: "B", board: "diamond" });
+    repo.createCard({ card_id: "C", title: "C", board: "diamond" });
+    repo.createCard({ card_id: "D", title: "D", board: "diamond" });
+    repo.link("A", "B");
+    repo.link("A", "C");
+    repo.link("B", "D");
+    repo.link("C", "D");
+    const order = repo.topoOrder("diamond").map((c) => c.card_id);
+    expect(order.indexOf("D")).toBeGreaterThan(order.indexOf("B"));
+    expect(order.indexOf("D")).toBeGreaterThan(order.indexOf("C"));
+    expect(order.indexOf("B")).toBeGreaterThan(order.indexOf("A"));
+    expect(order.indexOf("C")).toBeGreaterThan(order.indexOf("A"));
+  });
+
   it("throws CardCycleError when the board's links form a cycle", () => {
     repo.createCard({ card_id: "A", title: "A", board: "stack" });
     repo.createCard({ card_id: "B", title: "B", board: "stack" });
