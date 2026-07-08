@@ -107,6 +107,7 @@ import { handleImproveCommand } from "./improve-command.js";
 import { handleEvaluatorCommand } from "./evaluator-command.js";
 import { buildSelfImprovementConfig } from "./loop-self-improvement.js";
 import { resolveRegistryPath } from "./supervisor-cli-support.js";
+import { handleStackCommand } from "./stack-cli.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -576,6 +577,11 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "steward") {
     return await handleStewardCommand(args.slice(1));
+  }
+
+  if (cmd === "stack") {
+    const dbPath = await ensureLocalStateDbPath();
+    return handleStackCommand(args.slice(1), { dbPath });
   }
 
   if (cmd === "governance" || cmd === "govern") {
