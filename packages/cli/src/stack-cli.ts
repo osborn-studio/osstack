@@ -5,6 +5,7 @@
 
 import {
   CardCheckNotFound,
+  CardCycleError,
   CardNotFound,
   CardStatus,
   IllegalCardTransition,
@@ -12,9 +13,13 @@ import {
   getBoard,
   openDb,
   readFactsForSubject,
+  upsertImprovementProposal,
+  writeFact,
 } from "@osstack/core";
 import { ingestStack, type CommandRunner } from "@osstack/github";
+import { renderStackRetro, type StackRetroInput } from "@osstack/loop";
 import { recommendRouting, type RoutingFact } from "./stack-routing.js";
+import { writeFileSync } from "node:fs";
 
 export interface StackCliDeps {
   runner?: CommandRunner;
@@ -31,7 +36,7 @@ export const PR_CARD_CHECKLIST: readonly string[] = [
   "suite green",
 ];
 
-const USAGE = "osstack: usage: stack <ingest|board|move|check|timeline|runbook|recommend> [...args]";
+const USAGE = "osstack: usage: stack <ingest|board|move|check|timeline|runbook|recommend|retro> [...args]";
 
 /**
  * Resolve a user-supplied card argument to a card id: a bare integer like
@@ -59,6 +64,8 @@ export async function handleStackCommand(args: string[], deps?: StackCliDeps): P
       return await stackRunbook(args.slice(1), deps);
     case "recommend":
       return await stackRecommend(args.slice(1), deps);
+    case "retro":
+      return await stackRetro(args.slice(1), deps);
     default:
       console.error(USAGE);
       return 1;
@@ -528,6 +535,107 @@ async function stackRecommend(args: string[], deps?: StackCliDeps): Promise<numb
     if (assign) {
       repo.patchCard(card.card_id, { assignee: hint.agent });
       out(`assigned ${card.card_id} -> ${hint.agent}`);
+    }
+
+    return 0;
+  } finally {
+    db.close();
+  }
+}
+
+/**
+ * `osstack stack retro` — close the merge loop. Reads a board's cards + their
+ * checks + their events, renders a retrospective markdown doc that cites which
+ * checks caught issues, and (with --write) persists the outcome as an idempotent
+ * memory fact plus, when a smoke/UI gate was missing, an improvement proposal.
+ */
+async function stackRetro(args: string[], deps?: StackCliDeps): Promise<number> {
+  const out = deps?.out ?? console.log;
+  const board = flag(args, "--board") ?? "stack";
+  const write = args.includes("--write");
+  const outPath = flag(args, "--out");
+
+  const dbPath = requireDbPath(deps);
+  const db = openDb({ path: dbPath });
+  try {
+    const repo = new KanbanRepository(db, dbPath, deps?.now);
+
+    let cards;
+    try {
+      cards = repo.topoOrder(board);
+    } catch (error) {
+      if (error instanceof CardCycleError) {
+        console.error(`osstack: ${error.message}`);
+        return 1;
+      }
+      throw error;
+    }
+
+    const input: StackRetroInput = {
+      board,
+      cards: cards.map((card) => {
+        // reworkCount: a "moved" event whose payload mentions "blocked" is an
+        // attempts proxy for a card that bounced backward/out of blocked.
+        const events = repo.eventsSince(0, { card_id: card.card_id });
+        const reworkCount = events.filter(
+          (e) => e.kind === "moved" && (e.payload ?? "").includes("blocked"),
+        ).length;
+        return {
+          cardId: card.card_id,
+          title: card.title,
+          cardType: card.card_type,
+          status: card.status,
+          assignee: card.assignee,
+          checks: repo
+            .listChecks(card.card_id)
+            .map((c) => ({ label: c.label, state: c.state })),
+          reworkCount,
+        };
+      }),
+    };
+
+    const result = renderStackRetro(input);
+    out(result.markdown);
+
+    if (outPath !== undefined) {
+      writeFileSync(outPath, result.markdown, "utf-8");
+    }
+
+    if (write) {
+      // Memory fact (idempotent): skip if an active fact with the same text
+      // already exists so re-running retro does not accumulate duplicates.
+      const existing = readFactsForSubject(db, "workflow", "merge-orchestration");
+      if (existing.some((f) => f.fact_text === result.memoryFactText)) {
+        out("retro: memory fact already recorded");
+      } else {
+        const nowSecs = deps?.now?.() ?? Math.floor(Date.now() / 1000);
+        writeFact(db, dbPath, {
+          fact_id: `stack-retro-${board}-${nowSecs}`,
+          subject_type: "workflow",
+          subject_id: "merge-orchestration",
+          fact_type: "observation",
+          fact_text: result.memoryFactText,
+          source_type: "agent_inference",
+        });
+        out("retro: recorded memory fact");
+      }
+
+      // Improvement proposal (optional, idempotent via upsert on proposal_id).
+      if (result.missingGates.length > 0) {
+        upsertImprovementProposal(db, dbPath, {
+          proposal_id: `stack-retro-gate-${board}`,
+          repo_id: board,
+          source_asset_ids: [],
+          target: "merge-orchestration",
+          risk: "low",
+          title: `Add earlier gates for board ${board}`,
+          rationale: result.missingGates.join("; "),
+          proposed_changes: [],
+          required_gates: result.missingGates,
+          status: "draft",
+        });
+        out("retro: recorded improvement proposal");
+      }
     }
 
     return 0;

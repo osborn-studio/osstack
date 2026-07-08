@@ -3,7 +3,13 @@ import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { openDb, KanbanRepository, writeFact, readFactsForSubject } from "@osstack/core";
+import {
+  openDb,
+  KanbanRepository,
+  writeFact,
+  readFactsForSubject,
+  listImprovementProposals,
+} from "@osstack/core";
 import type { CommandRunner } from "@osstack/github";
 import {
   handleStackCommand,
@@ -513,6 +519,93 @@ describe("handleStackCommand: unknown subcommand", () => {
     const exitCode = await handleStackCommand(["bogus"], { dbPath });
 
     expect(exitCode).toBe(1);
+  });
+});
+
+describe("handleStackCommand: retro", () => {
+  it("prints a retro for a seeded board", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+
+    const out: string[] = [];
+    const exitCode = await handleStackCommand(["retro", "--board", "stack"], {
+      dbPath,
+      now: () => 1000,
+      out: (line) => out.push(line),
+    });
+
+    expect(exitCode).toBe(0);
+    const text = out.join("\n");
+    expect(text).toContain("# Merge retrospective");
+    expect(text).toContain('board "stack"');
+    expect(text).toContain("pr-47");
+  });
+
+  it("persists an idempotent memory fact under --write", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+
+    const run = () =>
+      handleStackCommand(["retro", "--board", "stack", "--write"], {
+        dbPath,
+        now: () => 1000,
+        out: () => {},
+      });
+
+    expect(await run()).toBe(0);
+    expect(await run()).toBe(0);
+
+    const db = openDb({ path: dbPath });
+    try {
+      const facts = readFactsForSubject(db, "workflow", "merge-orchestration");
+      expect(facts).toHaveLength(1);
+      expect(facts[0]!.fact_text.startsWith("retro(")).toBe(true);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("records an improvement proposal under --write when a gate was missing", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+
+    // Fail the "endpoint/UI smoke" check on a card so a smoke/UI gate is proposed.
+    const smokeIdx = PR_CARD_CHECKLIST.indexOf("endpoint/UI smoke");
+    const db0 = openDb({ path: dbPath });
+    try {
+      const repo = new KanbanRepository(db0, dbPath);
+      repo.setCheckState("pr-47", smokeIdx, "fail");
+    } finally {
+      db0.close();
+    }
+
+    const run = () =>
+      handleStackCommand(["retro", "--board", "stack", "--write"], {
+        dbPath,
+        now: () => 1000,
+        out: () => {},
+      });
+
+    expect(await run()).toBe(0);
+
+    const db = openDb({ path: dbPath });
+    try {
+      const proposals = listImprovementProposals(db, { repo_id: "stack" });
+      expect(proposals).toHaveLength(1);
+      expect(proposals[0]!.proposal_id).toBe("stack-retro-gate-stack");
+    } finally {
+      db.close();
+    }
+
+    // Second --write run keeps it at one (upsert keyed on proposal_id).
+    expect(await run()).toBe(0);
+    const db2 = openDb({ path: dbPath });
+    try {
+      const proposals = listImprovementProposals(db2, { repo_id: "stack" });
+      expect(proposals).toHaveLength(1);
+    } finally {
+      db2.close();
+    }
   });
 });
 
