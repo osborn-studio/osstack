@@ -63,13 +63,18 @@ export function renderStackRetro(input: StackRetroInput): StackRetroResult {
   }
 
   // Derive next-time gate suggestions deterministically: any failing check whose
-  // label mentions "smoke" or "UI" should have run earlier. Dedupe by label.
+  // label mentions the WORD "smoke" or "UI" should have run earlier. Use
+  // word-boundary matching (not substring) so "rebuild"/"build"/"guidance" don't
+  // spuriously match "ui"/"build"; "endpoint/UI smoke" still matches because
+  // "/" and whitespace are word boundaries. The "What To Change Next Time"
+  // section repeats a line per failing card (changeLines), while missingGates —
+  // which feeds the persisted improvement proposal — is deduped by label; this
+  // asymmetry is intentional.
   const missingGates: string[] = [];
   const changeLines: string[] = [];
   const seenGateLabels = new Set<string>();
   for (const issue of caughtIssues) {
-    const lower = issue.label.toLowerCase();
-    if (!lower.includes("smoke") && !lower.includes("ui")) continue;
+    if (!/\bsmoke\b/i.test(issue.label) && !/\bui\b/i.test(issue.label)) continue;
     const sentence = `Add an earlier gate so "${issue.label}" runs before ${issue.cardId} reaches review.`;
     changeLines.push(`- ${sentence}`);
     if (!seenGateLabels.has(issue.label)) {

@@ -574,12 +574,13 @@ async function stackRetro(args: string[], deps?: StackCliDeps): Promise<number> 
     const input: StackRetroInput = {
       board,
       cards: cards.map((card) => {
-        // reworkCount: a "moved" event whose payload mentions "blocked" is an
-        // attempts proxy for a card that bounced backward/out of blocked.
+        // reworkCount = number of times this card ENTERED the blocked lane, an
+        // attempts proxy. moveCard emits kind:"blocked" specifically for a move
+        // TO blocked (repository.ts:148), so count those events directly. (A
+        // "moved" + payload-substring check would false-match every move, since
+        // a moved event's payload always carries the literal key "blocked_reason".)
         const events = repo.eventsSince(0, { card_id: card.card_id });
-        const reworkCount = events.filter(
-          (e) => e.kind === "moved" && (e.payload ?? "").includes("blocked"),
-        ).length;
+        const reworkCount = events.filter((e) => e.kind === "blocked").length;
         return {
           cardId: card.card_id,
           title: card.title,
@@ -598,7 +599,16 @@ async function stackRetro(args: string[], deps?: StackCliDeps): Promise<number> 
     out(result.markdown);
 
     if (outPath !== undefined) {
-      writeFileSync(outPath, result.markdown, "utf-8");
+      try {
+        writeFileSync(outPath, result.markdown, "utf-8");
+      } catch (error) {
+        console.error(
+          `osstack: stack retro: could not write ${outPath}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+        return 1;
+      }
     }
 
     if (write) {
@@ -609,6 +619,9 @@ async function stackRetro(args: string[], deps?: StackCliDeps): Promise<number> 
         out("retro: memory fact already recorded");
       } else {
         const nowSecs = deps?.now?.() ?? Math.floor(Date.now() / 1000);
+        // fact_id embeds now() only for uniqueness; it assumes now()'s
+        // granularity is finer than the retro call frequency. Idempotency does
+        // NOT rely on it — the text-dedupe guard above is what prevents dupes.
         writeFact(db, dbPath, {
           fact_id: `stack-retro-${board}-${nowSecs}`,
           subject_type: "workflow",

@@ -103,4 +103,33 @@ describe("renderStackRetro (pure)", () => {
     expect(result.markdown).toContain("## Rework");
     expect(result.markdown).toContain("- pr-47 reworked 2×");
   });
+
+  it("gate match is word-boundary, not substring", () => {
+    // "rebuild cache" contains the substring "ui" (reb-UI-ld) and "build" but
+    // not the WORD "ui"/"smoke": no gate should be proposed.
+    const rebuild: StackRetroInput = {
+      board: "stack",
+      cards: [
+        card({
+          cardId: "pr-47",
+          status: "blocked",
+          checks: [{ label: "rebuild cache", state: "fail" }],
+        }),
+      ],
+    };
+    expect(renderStackRetro(rebuild).missingGates).toEqual([]);
+
+    // The real checklist label is bounded by "/" and space, so it still matches.
+    const smoke: StackRetroInput = {
+      board: "stack",
+      cards: [
+        card({
+          cardId: "pr-48",
+          status: "blocked",
+          checks: [{ label: "endpoint/UI smoke", state: "fail" }],
+        }),
+      ],
+    };
+    expect(renderStackRetro(smoke).missingGates.length).toBeGreaterThan(0);
+  });
 });

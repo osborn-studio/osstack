@@ -523,6 +523,42 @@ describe("handleStackCommand: unknown subcommand", () => {
 });
 
 describe("handleStackCommand: retro", () => {
+  it("counts reworkCount from REAL blocked-transition events (2× blocked shows 2×; never-blocked shows none)", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+
+    // Drive pr-48 into the blocked lane exactly twice via legal transitions:
+    // ready → running → blocked → running → blocked. pr-47 is never blocked.
+    const db = openDb({ path: dbPath });
+    try {
+      const repo = new KanbanRepository(db, dbPath);
+      repo.moveCard("pr-48", "running", { actor: "cli" });
+      repo.moveCard("pr-48", "blocked", { actor: "cli" });
+      repo.moveCard("pr-48", "running", { actor: "cli" });
+      repo.moveCard("pr-48", "blocked", { actor: "cli" });
+      // pr-47 just runs — it enters blocked zero times (guards against the
+      // old bug where every "moved" event false-matched on "blocked_reason").
+      repo.moveCard("pr-47", "running", { actor: "cli" });
+    } finally {
+      db.close();
+    }
+
+    const out: string[] = [];
+    const exitCode = await handleStackCommand(["retro", "--board", "stack"], {
+      dbPath,
+      now: () => 1000,
+      out: (line) => out.push(line),
+    });
+
+    expect(exitCode).toBe(0);
+    const text = out.join("\n");
+    expect(text).toContain("## Rework");
+    expect(text).toContain("- pr-48 reworked 2×");
+    // pr-47 (and pr-49) never entered blocked, so they must NOT appear in Rework.
+    expect(text).not.toContain("- pr-47 reworked");
+    expect(text).not.toContain("- pr-49 reworked");
+  });
+
   it("prints a retro for a seeded board", async () => {
     const dbPath = makeTempDbPath();
     await ingestThreePrBoard(dbPath);
