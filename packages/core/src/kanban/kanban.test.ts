@@ -3,10 +3,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDb } from "../state/db.js";
-import { KanbanRepository, IllegalCardTransition, CardNotFound } from "./repository.js";
+import { KanbanRepository, IllegalCardTransition, CardNotFound, CardCheckNotFound, CardCycleError } from "./repository.js";
 import { getBoard, computeStats, renderBoardSummary, type BoardView } from "./board.js";
 import { KanbanNotifier, type OutboundMessage } from "./notify.js";
-import { BOARD_COLUMNS, isLegalCardTransition } from "./schema.js";
+import { BOARD_COLUMNS, isLegalCardTransition, CardRow, CardCheckRow } from "./schema.js";
 
 let tmp: string;
 let dbPath: string;
@@ -44,6 +44,51 @@ describe("schema — board columns + transitions", () => {
     expect(isLegalCardTransition("running", "blocked")).toBe(true);
     expect(isLegalCardTransition("archived", "triage")).toBe(true);
     expect(isLegalCardTransition("archived", "running")).toBe(false);
+  });
+});
+
+describe("schema — typed cards + verification checks (migration 7)", () => {
+  it("CardRow.parse accepts a row with card_type and meta", () => {
+    const parsed = CardRow.parse({
+      card_id: "c1",
+      title: "Write API",
+      card_type: "pr",
+      meta: JSON.stringify({ pr_number: 42 }),
+      created_at: 1,
+      updated_at: 1,
+    });
+    expect(parsed.card_type).toBe("pr");
+    expect(parsed.meta).toBe(JSON.stringify({ pr_number: 42 }));
+  });
+
+  it("CardRow.parse defaults card_type to 'implementation' and meta to null when omitted", () => {
+    const parsed = CardRow.parse({ card_id: "c1", title: "Write API", created_at: 1, updated_at: 1 });
+    expect(parsed.card_type).toBe("implementation");
+    expect(parsed.meta).toBeNull();
+  });
+
+  it("CardCheckRow.parse validates a well-formed check row", () => {
+    const parsed = CardCheckRow.parse({
+      card_id: "c1",
+      idx: 0,
+      label: "Tests pass",
+      state: "pass",
+      detail: "vitest green",
+      updated_at: 1,
+    });
+    expect(parsed.state).toBe("pass");
+  });
+
+  it("CardCheckRow.parse rejects an invalid state", () => {
+    expect(() =>
+      CardCheckRow.parse({
+        card_id: "c1",
+        idx: 0,
+        label: "Tests pass",
+        state: "bogus",
+        updated_at: 1,
+      }),
+    ).toThrow();
   });
 });
 
@@ -117,6 +162,72 @@ describe("KanbanRepository — cards", () => {
   });
 });
 
+describe("KanbanRepository — typed cards (migration 7 round-trip)", () => {
+  it("round-trips card_type and meta through createCard + getCard", () => {
+    repo.createCard({ card_id: "c1", title: "Ship PR", card_type: "pr", meta: JSON.stringify({ pr_number: 47 }) });
+    const c = repo.getCard("c1")!;
+    expect(c.card_type).toBe("pr");
+    expect(c.meta).toBe(JSON.stringify({ pr_number: 47 }));
+  });
+
+  it("defaults card_type to 'implementation' and meta to null when omitted", () => {
+    repo.createCard({ card_id: "c2", title: "Plain card" });
+    const c = repo.getCard("c2")!;
+    expect(c.card_type).toBe("implementation");
+    expect(c.meta).toBeNull();
+  });
+});
+
+describe("KanbanRepository — checklist ops", () => {
+  it("putCheck inserts a pending check and listChecks returns it", () => {
+    repo.createCard({ card_id: "c1", title: "x" });
+    const check = repo.putCheck("c1", 0, "Tests pass");
+    expect(check.state).toBe("pending");
+    expect(check.label).toBe("Tests pass");
+    const checks = repo.listChecks("c1");
+    expect(checks.length).toBe(1);
+    expect(checks[0]!.idx).toBe(0);
+  });
+
+  it("a second putCheck on the same (card_id, idx) updates in place, no duplicate row", () => {
+    repo.createCard({ card_id: "c1", title: "x" });
+    repo.putCheck("c1", 0, "Tests pass");
+    repo.putCheck("c1", 0, "Tests pass (renamed)", { state: "pass", detail: "vitest green" });
+    const checks = repo.listChecks("c1");
+    expect(checks.length).toBe(1);
+    expect(checks[0]!.label).toBe("Tests pass (renamed)");
+    expect(checks[0]!.state).toBe("pass");
+    expect(checks[0]!.detail).toBe("vitest green");
+  });
+
+  it("putCheck emits a 'check' event", () => {
+    repo.createCard({ card_id: "c1", title: "x" });
+    repo.putCheck("c1", 0, "Tests pass");
+    const evt = repo.eventsSince(0).find((e) => e.kind === "check");
+    expect(evt).toBeDefined();
+    expect(JSON.parse(evt!.payload!)).toMatchObject({ idx: 0, label: "Tests pass", state: "pending" });
+  });
+
+  it("putCheck on a nonexistent card throws CardNotFound", () => {
+    expect(() => repo.putCheck("nope", 0, "Tests pass")).toThrow(CardNotFound);
+  });
+
+  it("setCheckState transitions pending -> pass, updates state, and emits a 'check' event with from/to", () => {
+    repo.createCard({ card_id: "c1", title: "x" });
+    repo.putCheck("c1", 0, "Tests pass");
+    const updated = repo.setCheckState("c1", 0, "pass", "all green");
+    expect(updated.state).toBe("pass");
+    expect(updated.detail).toBe("all green");
+    const evt = repo.eventsSince(0).filter((e) => e.kind === "check").at(-1)!;
+    expect(JSON.parse(evt.payload!)).toMatchObject({ idx: 0, from: "pending", to: "pass" });
+  });
+
+  it("setCheckState on a missing check throws CardCheckNotFound", () => {
+    repo.createCard({ card_id: "c1", title: "x" });
+    expect(() => repo.setCheckState("c1", 99, "pass")).toThrow(CardCheckNotFound);
+  });
+});
+
 describe("KanbanRepository — comments + links", () => {
   it("adds comments and counts them", () => {
     repo.createCard({ card_id: "c1", title: "x" });
@@ -139,6 +250,74 @@ describe("KanbanRepository — comments + links", () => {
   it("refuses self-link", () => {
     repo.createCard({ card_id: "c1", title: "x" });
     expect(() => repo.link("c1", "c1")).toThrow();
+  });
+});
+
+describe("KanbanRepository — linksForBoard + topoOrder (dependency DAG)", () => {
+  it("topoOrder returns parents before children for a stacked chain, breaking ties by priority", () => {
+    // A -> B -> C, A -> D. Give D higher priority than B so the B/D tie
+    // (both are only blocked by A) resolves deterministically: D before B.
+    repo.createCard({ card_id: "A", title: "A", board: "stack", priority: 0 });
+    tick();
+    repo.createCard({ card_id: "B", title: "B", board: "stack", priority: 0 });
+    tick();
+    repo.createCard({ card_id: "C", title: "C", board: "stack", priority: 0 });
+    tick();
+    repo.createCard({ card_id: "D", title: "D", board: "stack", priority: 5 });
+    repo.link("A", "B");
+    repo.link("B", "C");
+    repo.link("A", "D");
+
+    const order = repo.topoOrder("stack").map((c) => c.card_id);
+    expect(order).toEqual(["A", "D", "B", "C"]);
+  });
+
+  it("linksForBoard returns only intra-board edges", () => {
+    repo.createCard({ card_id: "A", title: "A", board: "stack" });
+    repo.createCard({ card_id: "B", title: "B", board: "stack" });
+    repo.createCard({ card_id: "X", title: "X", board: "other" });
+    repo.link("A", "B");
+    repo.link("A", "X"); // crosses boards — must be excluded
+
+    const links = repo.linksForBoard("stack");
+    expect(links).toEqual([{ parent_id: "A", child_id: "B" }]);
+  });
+
+  it("excludes cards on a different board from topoOrder", () => {
+    repo.createCard({ card_id: "A", title: "A", board: "stack" });
+    repo.createCard({ card_id: "B", title: "B", board: "stack" });
+    repo.createCard({ card_id: "X", title: "X", board: "other" });
+    repo.link("A", "B");
+    repo.link("A", "X");
+
+    const ids = repo.topoOrder("stack").map((c) => c.card_id);
+    expect(ids).toEqual(["A", "B"]);
+    expect(ids).not.toContain("X");
+  });
+
+  it("orders a converging diamond so D waits for both B and C", () => {
+    repo.createCard({ card_id: "A", title: "A", board: "diamond" });
+    repo.createCard({ card_id: "B", title: "B", board: "diamond" });
+    repo.createCard({ card_id: "C", title: "C", board: "diamond" });
+    repo.createCard({ card_id: "D", title: "D", board: "diamond" });
+    repo.link("A", "B");
+    repo.link("A", "C");
+    repo.link("B", "D");
+    repo.link("C", "D");
+    const order = repo.topoOrder("diamond").map((c) => c.card_id);
+    expect(order.indexOf("D")).toBeGreaterThan(order.indexOf("B"));
+    expect(order.indexOf("D")).toBeGreaterThan(order.indexOf("C"));
+    expect(order.indexOf("B")).toBeGreaterThan(order.indexOf("A"));
+    expect(order.indexOf("C")).toBeGreaterThan(order.indexOf("A"));
+  });
+
+  it("throws CardCycleError when the board's links form a cycle", () => {
+    repo.createCard({ card_id: "A", title: "A", board: "stack" });
+    repo.createCard({ card_id: "B", title: "B", board: "stack" });
+    repo.link("A", "B");
+    repo.link("B", "A");
+
+    expect(() => repo.topoOrder("stack")).toThrow(CardCycleError);
   });
 });
 

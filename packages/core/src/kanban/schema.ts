@@ -50,6 +50,10 @@ export const CardRow = z.object({
   assignee: z.string().nullable().default(null),
   blocked_reason: z.string().nullable().default(null),
   tenant_id: z.string().nullable().default(null),
+  /** What kind of work this card represents (migration #7). */
+  card_type: z.enum(["pr", "implementation", "review", "merge"]).default("implementation"),
+  /** Free-form JSON string, e.g. PR number/branch/links (migration #7). */
+  meta: z.string().nullable().default(null),
   created_at: z.number(),
   updated_at: z.number(),
   started_at: z.number().nullable().default(null),
@@ -65,6 +69,17 @@ export const CardCommentRow = z.object({
   created_at: z.number(),
 });
 export type CardCommentRow = z.infer<typeof CardCommentRow>;
+
+/** Per-card ordered verification checklist row (migration #7). */
+export const CardCheckRow = z.object({
+  card_id: z.string(),
+  idx: z.number().int(),
+  label: z.string(),
+  state: z.enum(["pending", "pass", "fail"]).default("pending"),
+  detail: z.string().nullable().default(null),
+  updated_at: z.number(),
+});
+export type CardCheckRow = z.infer<typeof CardCheckRow>;
 
 export const CardEventRow = z.object({
   event_id: z.number().int(),

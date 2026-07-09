@@ -11,6 +11,7 @@
 import type Database from "better-sqlite3";
 import { withWrite } from "../state/db.js";
 import {
+  CardCheckRow,
   CardCommentRow,
   CardEventRow,
   CardRow,
@@ -33,6 +34,20 @@ export class CardNotFound extends Error {
   }
 }
 
+export class CardCheckNotFound extends Error {
+  constructor(readonly cardId: string, readonly idx: number) {
+    super(`Kanban card check not found: ${cardId}#${idx}`);
+    this.name = "CardCheckNotFound";
+  }
+}
+
+export class CardCycleError extends Error {
+  constructor(readonly cardIds: string[]) {
+    super(`Kanban dependency cycle detected among cards: ${cardIds.join(", ")}`);
+    this.name = "CardCycleError";
+  }
+}
+
 export interface NewCard {
   card_id: string;
   board?: string;
@@ -43,6 +58,8 @@ export interface NewCard {
   priority?: number;
   assignee?: string | null;
   tenant_id?: string | null;
+  card_type?: "pr" | "implementation" | "review" | "merge";
+  meta?: string | null;
 }
 
 export class KanbanRepository {
@@ -76,6 +93,8 @@ export class KanbanRepository {
       assignee: input.assignee ?? null,
       blocked_reason: null,
       tenant_id: input.tenant_id ?? null,
+      card_type: input.card_type ?? "implementation",
+      meta: input.meta ?? null,
       created_at: ts,
       updated_at: ts,
       started_at: input.status === "running" ? ts : null,
@@ -85,10 +104,10 @@ export class KanbanRepository {
       d.prepare(`
         INSERT INTO kanban_cards (
           card_id, board, task_id, title, body, status, priority, assignee,
-          blocked_reason, tenant_id, created_at, updated_at, started_at, completed_at
+          blocked_reason, tenant_id, card_type, meta, created_at, updated_at, started_at, completed_at
         ) VALUES (
           @card_id, @board, @task_id, @title, @body, @status, @priority, @assignee,
-          @blocked_reason, @tenant_id, @created_at, @updated_at, @started_at, @completed_at
+          @blocked_reason, @tenant_id, @card_type, @meta, @created_at, @updated_at, @started_at, @completed_at
         )
       `).run(row);
       this.emit(row.card_id, row.board, "created", { title: row.title, status: row.status });
@@ -183,6 +202,76 @@ export class KanbanRepository {
     return (this.db.prepare(sql).all(...params) as unknown[]).map((r) => CardRow.parse(r));
   }
 
+  // ── checklist (per-card ordered verification steps, migration #7) ──────
+
+  /**
+   * Insert or update a checklist row at (card_id, idx). Upserts so re-running
+   * a checklist definition is idempotent. Emits "check". Throws CardNotFound
+   * if the card doesn't exist.
+   */
+  putCheck(
+    card_id: string,
+    idx: number,
+    label: string,
+    opts: { state?: "pending" | "pass" | "fail"; detail?: string | null } = {},
+  ): CardCheckRow {
+    const card = this.getCard(card_id);
+    if (!card) throw new CardNotFound(card_id);
+    const state = opts.state ?? "pending";
+    const detail = opts.detail ?? null;
+    const ts = this.now();
+    withWrite(this.db, this.dbPath, (d) => {
+      d.prepare(`
+        INSERT INTO kanban_card_checks (card_id, idx, label, state, detail, updated_at)
+        VALUES (@card_id, @idx, @label, @state, @detail, @updated_at)
+        ON CONFLICT(card_id, idx) DO UPDATE SET
+          label = excluded.label,
+          state = excluded.state,
+          detail = excluded.detail,
+          updated_at = excluded.updated_at
+      `).run({ card_id, idx, label, state, detail, updated_at: ts });
+      this.emit(card_id, card.board, "check", { idx, label, state });
+    });
+    return CardCheckRow.parse({ card_id, idx, label, state, detail, updated_at: ts });
+  }
+
+  /**
+   * Transition an existing check's state (e.g. pending -> pass). Emits
+   * "check" with from/to. Throws CardCheckNotFound if the row doesn't exist.
+   */
+  setCheckState(
+    card_id: string,
+    idx: number,
+    state: "pending" | "pass" | "fail",
+    detail?: string | null,
+  ): CardCheckRow {
+    const existing = this.db.prepare(
+      "SELECT * FROM kanban_card_checks WHERE card_id = ? AND idx = ?",
+    ).get(card_id, idx);
+    if (!existing) throw new CardCheckNotFound(card_id, idx);
+    const before = CardCheckRow.parse(existing);
+    const card = this.getCard(card_id);
+    const ts = this.now();
+    const nextDetail = detail !== undefined ? detail : before.detail;
+    withWrite(this.db, this.dbPath, (d) => {
+      d.prepare(`
+        UPDATE kanban_card_checks
+        SET state = ?, detail = ?, updated_at = ?
+        WHERE card_id = ? AND idx = ?
+      `).run(state, nextDetail, ts, card_id, idx);
+      if (card) {
+        this.emit(card_id, card.board, "check", { idx, from: before.state, to: state });
+      }
+    });
+    return CardCheckRow.parse({ ...before, state, detail: nextDetail, updated_at: ts });
+  }
+
+  listChecks(card_id: string): CardCheckRow[] {
+    return (this.db.prepare(
+      "SELECT * FROM kanban_card_checks WHERE card_id = ? ORDER BY idx",
+    ).all(card_id) as unknown[]).map((r) => CardCheckRow.parse(r));
+  }
+
   // ── comments ──────────────────────────────────────────────────────────
 
   addComment(card_id: string, author: string, body: string): CardCommentRow {
@@ -230,6 +319,71 @@ export class KanbanRepository {
     const parents = (this.db.prepare("SELECT COUNT(*) AS n FROM kanban_card_links WHERE child_id = ?").get(card_id) as { n: number }).n;
     const children = (this.db.prepare("SELECT COUNT(*) AS n FROM kanban_card_links WHERE parent_id = ?").get(card_id) as { n: number }).n;
     return { parents, children };
+  }
+
+  /**
+   * All parent→child links whose BOTH endpoints are cards on `board`. A link
+   * that crosses boards (either endpoint elsewhere) is excluded.
+   */
+  linksForBoard(board: string): { parent_id: string; child_id: string }[] {
+    return this.db.prepare(`
+      SELECT l.parent_id AS parent_id, l.child_id AS child_id
+      FROM kanban_card_links l
+      JOIN kanban_cards p ON p.card_id = l.parent_id
+      JOIN kanban_cards c ON c.card_id = l.child_id
+      WHERE p.board = ? AND c.board = ?
+    `).all(board, board) as { parent_id: string; child_id: string }[];
+  }
+
+  /**
+   * Bottom-up merge order for a board's dependency DAG (Kahn's algorithm):
+   * every parent precedes all of its children. Ties among cards with no
+   * remaining ordering constraint break by priority DESC, created_at ASC,
+   * card_id ASC (deterministic). Throws CardCycleError if the board's links
+   * contain a cycle.
+   */
+  topoOrder(board: string): CardRow[] {
+    const cards = this.listCards({ board, includeArchived: true });
+    const byId = new Map(cards.map((c) => [c.card_id, c]));
+    const edges = this.linksForBoard(board);
+
+    const indegree = new Map<string, number>();
+    const children = new Map<string, string[]>();
+    for (const id of byId.keys()) { indegree.set(id, 0); children.set(id, []); }
+    for (const { parent_id, child_id } of edges) {
+      children.get(parent_id)!.push(child_id);
+      indegree.set(child_id, (indegree.get(child_id) ?? 0) + 1);
+    }
+
+    const tieBreak = (a: string, b: string): number => {
+      const ca = byId.get(a)!;
+      const cb = byId.get(b)!;
+      if (ca.priority !== cb.priority) return cb.priority - ca.priority; // DESC
+      if (ca.created_at !== cb.created_at) return ca.created_at - cb.created_at; // ASC
+      return a < b ? -1 : a > b ? 1 : 0; // card_id ASC
+    };
+
+    const ready = [...byId.keys()].filter((id) => indegree.get(id) === 0).sort(tieBreak);
+    const ordered: CardRow[] = [];
+    while (ready.length > 0) {
+      const id = ready.shift()!;
+      ordered.push(byId.get(id)!);
+      for (const child of children.get(id)!) {
+        const next = indegree.get(child)! - 1;
+        indegree.set(child, next);
+        if (next === 0) {
+          // Re-insert in sorted position to keep the ready set deterministic.
+          const idx = ready.findIndex((other) => tieBreak(child, other) < 0);
+          if (idx === -1) ready.push(child); else ready.splice(idx, 0, child);
+        }
+      }
+    }
+
+    if (ordered.length !== byId.size) {
+      const remaining = [...byId.keys()].filter((id) => !ordered.some((c) => c.card_id === id));
+      throw new CardCycleError(remaining);
+    }
+    return ordered;
   }
 
   // ── events ────────────────────────────────────────────────────────────

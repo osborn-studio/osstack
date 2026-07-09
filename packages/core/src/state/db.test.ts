@@ -67,6 +67,65 @@ describe("preflightDiskSpace (G1)", () => {
   });
 });
 
+describe("kanban typed cards + verification checks (migration 7)", () => {
+  it("defaults kanban_cards.card_type to 'implementation' when not specified on insert", () => {
+    const path = join(tmp, "state.db");
+    const db = openDb({ path });
+    try {
+      db.prepare(
+        "INSERT INTO kanban_cards(card_id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
+      ).run("card-1", "Untyped card", 1, 1);
+      const row = db.prepare("SELECT card_type FROM kanban_cards WHERE card_id = ?").get("card-1") as {
+        card_type: string;
+      };
+      expect(row.card_type).toBe("implementation");
+    } finally {
+      db.close();
+    }
+  });
+
+  it("accepts an insert and read of a kanban_card_checks row with a valid state", () => {
+    const path = join(tmp, "state.db");
+    const db = openDb({ path });
+    try {
+      db.prepare(
+        "INSERT INTO kanban_cards(card_id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
+      ).run("card-2", "Card with checks", 1, 1);
+      db.prepare(
+        "INSERT INTO kanban_card_checks(card_id, idx, label, state, detail, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+      ).run("card-2", 0, "Tests pass", "pass", "vitest green", 1);
+      const row = db.prepare("SELECT * FROM kanban_card_checks WHERE card_id = ? AND idx = ?").get(
+        "card-2",
+        0,
+      ) as { card_id: string; idx: number; label: string; state: string; detail: string | null; updated_at: number };
+      expect(row.card_id).toBe("card-2");
+      expect(row.label).toBe("Tests pass");
+      expect(row.state).toBe("pass");
+    } finally {
+      db.close();
+    }
+  });
+
+  it("rejects a kanban_card_checks insert with an invalid state via the CHECK constraint", () => {
+    const path = join(tmp, "state.db");
+    const db = openDb({ path });
+    try {
+      db.prepare(
+        "INSERT INTO kanban_cards(card_id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
+      ).run("card-3", "Card with bad check", 1, 1);
+      expect(() =>
+        db
+          .prepare(
+            "INSERT INTO kanban_card_checks(card_id, idx, label, state, updated_at) VALUES (?, ?, ?, ?, ?)",
+          )
+          .run("card-3", 0, "Bad state", "bogus", 1),
+      ).toThrow();
+    } finally {
+      db.close();
+    }
+  });
+});
+
 describe("withWrite", () => {
   it("runs a transaction successfully on enough free space", () => {
     const path = join(tmp, "state.db");

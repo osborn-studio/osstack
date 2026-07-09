@@ -4,6 +4,7 @@ export * from "./discovery-policy.js";
 export * from "./evaluation-spec.js";
 export * from "./feedback.js";
 export * from "./lesson-draft.js";
+export * from "./stack-retro.js";
 export * from "./scheduler.js";
 export * from "./discover.js";
 export * from "./iterator.js";
