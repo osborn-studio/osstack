@@ -1,8 +1,8 @@
 # osstack 5.6 产品战略与技术架构
 
-状态：Proposed  
-日期：2026-07-11  
-目标读者：产品负责人、架构师、Claude Code / Codex 等开发 Agent  
+状态：Proposed
+日期：2026-07-11
+目标读者：产品负责人、架构师、Claude Code / Codex 等开发 Agent
 对应 PartnerOS 文档：`partneros-mvp-spec/20_OSSTACK_BASED_PRODUCT_AND_ARCHITECTURE.md`
 
 ## 1. 执行摘要
@@ -415,4 +415,3 @@ osstack 先 dogfood 新内核能力；能力只有满足版本、测试、文档
 - 系统能清楚区分观察、建议和执行权限。
 - 同类失败能形成资产并降低重复发生率。
 - PartnerOS 复用稳定内核，不复制 osstack 实现，也不暴露内部研发复杂度给客户。
-

@@ -1,8 +1,8 @@
 # GitHub-first 核心产品升级作战系统
 
-状态：Proposed  
-日期：2026-07-11  
-Owner：陈斌  
+状态：Proposed
+日期：2026-07-11
+Owner：陈斌
 执行平台：osstack + Codex + Claude 5.6 + GitHub
 
 ## 1. 当前最高优先级
