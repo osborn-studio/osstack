@@ -130,6 +130,22 @@ importers:
         specifier: ^22.19.19
         version: 22.19.19
 
+  packages/conformance:
+    dependencies:
+      '@osstack/agents':
+        specifier: workspace:*
+        version: link:../agents
+      '@osstack/core':
+        specifier: workspace:*
+        version: link:../core
+      '@osstack/loop':
+        specifier: workspace:*
+        version: link:../loop
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
+
   packages/contracts:
     devDependencies:
       '@types/node':
