@@ -24,7 +24,7 @@ import {
   type ProofAudience,
 } from "@osstack/compliance";
 import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
-import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons, type RoutableAdapter } from "@osstack/core";
+import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, loadPolicyProfile, openDb, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons, type RoutableAdapter } from "@osstack/core";
 import { scanFiles, type GovernanceFinding } from "@osstack/governance";
 import {
   renderBranchStewardReport,
@@ -105,6 +105,7 @@ import {
 } from "./supervise-command.js";
 import { handleImproveCommand } from "./improve-command.js";
 import { handleEvaluatorCommand } from "./evaluator-command.js";
+import { handlePolicyCommand } from "./policy-command.js";
 import { buildSelfImprovementConfig } from "./loop-self-improvement.js";
 import { resolveRegistryPath } from "./supervisor-cli-support.js";
 import { handleStackCommand } from "./stack-cli.js";
@@ -161,6 +162,7 @@ Loop 工程：
   pr                  生成 GitHub PR evidence body
 
 治理与知识：
+  policy check        校验 .osstack/repo.yaml 与 policy.yaml（只读；observe 模式拒绝执行）
   govern check        运行确定性治理检查
   contracts check     检查前端调用与后端 API 契约是否对齐
   compliance list     列出合规映射包
@@ -385,6 +387,8 @@ Branch Steward:
   steward scan [--repo O/R] [--base B] [--remote R] [--workspace P] [--json]
 
 Governance:
+  policy check [--repo-path P] [--json]
+                                 Validate .osstack/repo.yaml + policy.yaml (read-only; observe mode refuses execution)
   govern check [path...] [--workspace P] [--changed] [--json]
                                  Run deterministic governance checks over workspace files
   governance scan <path...> [--json]
@@ -618,6 +622,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "evaluator") {
     return await handleEvaluatorCommand(args.slice(1));
+  }
+
+  if (cmd === "policy") {
+    return await handlePolicyCommand(args.slice(1));
   }
 
   if (cmd === "adversarial") {
@@ -8643,6 +8651,35 @@ function parseContextJson(value: string | undefined): Record<string, unknown> | 
   return parsed as Record<string, unknown>;
 }
 
+// Observe-mode gate (R1.3, POLICY_PROFILE_V1). Load `.osstack/policy.yaml` for
+// the workspace and, when `mode: observe`, refuse execution before any daemon
+// RPC / worktree / task work. Absent / propose / execute => exactly current
+// behavior. An invalid file fails closed (the loader throws, reported cleanly
+// here as exit 1). Returns an exit code to stop with, or `undefined` to proceed.
+//
+// SCOPE NOTE — enforcement is currently CLI-layer only. This gate covers the
+// CLI execution entry points (deliver, loop run, loop start); direct daemon RPC
+// clients and the daemon's own scheduler BYPASS it. Kernel-level enforcement
+// (gating inside the daemon/engine so every execution path is covered) is a
+// tracked follow-up for R1.5+/R2 — later increments must NOT assume kernel
+// coverage already exists.
+async function enforceObservePolicyGate(workspacePath: string): Promise<number | undefined> {
+  let profile: Awaited<ReturnType<typeof loadPolicyProfile>>;
+  try {
+    profile = await loadPolicyProfile(workspacePath);
+  } catch (err) {
+    console.error(`osstack: ${err instanceof Error ? err.message : String(err)}`);
+    return 1;
+  }
+  if (profile?.mode === "observe") {
+    console.error(
+      "osstack: policy_denied: policy mode is observe — execution refused; see .osstack/policy.yaml",
+    );
+    return 2;
+  }
+  return undefined;
+}
+
 async function handleDeliverCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack deliver — product entry from one intent to proof
@@ -8672,6 +8709,8 @@ Stages:
     return 1;
   }
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const policyGate = await enforceObservePolicyGate(workspacePath);
+  if (policyGate !== undefined) return policyGate;
   const stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
   const executeCommand = flagValue(args, "--execute");
   const agentId = flagValue(args, "--agent");
@@ -8806,6 +8845,8 @@ async function handleLoopCommand(args: string[]): Promise<number> {
 
   if (sub === "start") {
     const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+    const policyGate = await enforceObservePolicyGate(workspacePath);
+    if (policyGate !== undefined) return policyGate;
     const stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
     const markdownPath = flagValue(args, "--markdown");
     const executeCommand = flagValue(args, "--execute");
@@ -8939,6 +8980,8 @@ async function handleLoopCommand(args: string[]): Promise<number> {
 
   if (sub === "run") {
     const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+    const policyGate = await enforceObservePolicyGate(workspacePath);
+    if (policyGate !== undefined) return policyGate;
     const stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
     const markdownPath = flagValue(args, "--markdown");
     const executeCommand = flagValue(args, "--execute");
