@@ -46,6 +46,7 @@
         "ci",
         "database_migrations",
         "production_deploy",
+        "production_config",
         "product_scope",
         "secrets",
         "destructive_git",

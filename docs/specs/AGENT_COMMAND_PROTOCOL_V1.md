@@ -8,8 +8,8 @@ Executable form: `@osstack/protocol` (planned; this document is normative until
 the package ships, then the package's Zod schemas + generated JSON Schemas are
 the executable source of truth and this document explains intent).
 
-The key words MUST, MUST NOT, SHOULD, and MAY are to be interpreted as
-described in RFC 2119.
+The key words MUST, MUST NOT, REQUIRED, SHOULD, and MAY are to be interpreted
+as described in RFC 2119.
 
 Relationship to `OSSTACK_RUN_SPEC_V1.md`: that spec defines the run *lifecycle*
 (discover → plan → execute → verify → iterate → persist) and its artifacts.
@@ -75,7 +75,15 @@ Every response MUST conform to `schemas/agent-command-result.schema.json`:
 }
 ```
 
-- `status` MUST be one of `ok`, `needs_approval`, `blocked`, `error`.
+- `status` MUST be one of `ok`, `needs_approval`, `blocked`, `error`, with
+  this exact mapping (enforced by the schema):
+
+  | status | Meaning | Constraint |
+  |---|---|---|
+  | `ok` | Command succeeded | — |
+  | `needs_approval` | Work prepared, human gate pending | `required_approvals` MUST be non-empty; NOT an error |
+  | `blocked` | Refused by policy or budget | `error` MUST be present with code `policy_denied` or `budget_exceeded` |
+  | `error` | Command failed | `error` MUST be present (any other code) |
 - `result` carries the command-specific payload. Markdown in `result` is for
   human display only; integrations MUST consume structured fields, never parse
   prose (ADR-001 D3: CLI/markdown text is not an API).
@@ -87,8 +95,8 @@ Every response MUST conform to `schemas/agent-command-result.schema.json`:
   MUST be `needs_approval` whenever this list is non-empty.
 - `next_actions[]` are suggested follow-up commands with reasons; they MUST be
   advisory only.
-- On `status: "error"`, `error` MUST be `{ code, message, retryable }` with
-  `code` from the taxonomy in A-006.
+- On `status: "error"` or `status: "blocked"`, `error` MUST be
+  `{ code, message, retryable }` with `code` from the taxonomy in A-006.
 
 ## A-004 Actor and Authority
 
@@ -100,8 +108,13 @@ Every response MUST conform to `schemas/agent-command-result.schema.json`:
 ## A-005 Approval Shapes
 
 ApprovalRequest: `{ approval_id, run_id?, action, risk, requested_at }` with
-`risk` ∈ `low | medium | high`. ApprovalDecision:
-`{ approval_id, approved, decided_by, decided_at, reason? }`.
+`risk` ∈ `low | medium | high`. ApprovalDecision
+(`schemas/approval-decision.schema.json`):
+`{ approval_id, approved, decided_by: { type, id }, decided_at, reason? }` —
+`decided_by` is the full actor shape (A-001), NOT a bare id string, so the
+A-004 human-actor rule is structurally checkable: a decision whose
+`decided_by.type` is `agent` MUST be rejected unless the policy profile
+delegates that category (`allowed_auto_changes`).
 A service MUST NOT execute an action whose ApprovalRequest is unanswered, and
 MUST record the decision with the same `approval_id`.
 
@@ -109,8 +122,11 @@ MUST record the decision with the same `approval_id`.
 
 `code` MUST be one of:
 `bad_request`, `unsupported_protocol_version`, `unknown_command`,
-`policy_denied`, `needs_approval`, `not_found`, `conflict` (idempotency or
-concurrent state), `budget_exceeded`, `internal`.
+`policy_denied`, `not_found`, `conflict` (idempotency or concurrent state),
+`budget_exceeded`, `internal`.
+`policy_denied` and `budget_exceeded` pair with `status: "blocked"` (A-003);
+all other codes pair with `status: "error"`. Approval pending is a *status*
+(`needs_approval`), never an error code.
 `retryable` MUST be `true` only for transient failures (`internal`,
 `conflict`).
 
@@ -118,10 +134,22 @@ concurrent state), `budget_exceeded`, `internal`.
 
 - Minor additions (new optional fields, new commands, new error codes) MUST
   NOT break existing consumers; consumers MUST ignore unknown fields.
-- Removing/renaming a field or changing semantics REQUIRES a major version and
-  a new fixture corpus. Released valid fixtures are frozen: every fixture
-  published for a protocol version MUST parse against all later minors of that
-  major (backward-compatibility test in `@osstack/protocol`).
+- **Producer-strict, consumer-lenient.** The `additionalProperties: false` in
+  the command/result schemas is the *producer/authoring* contract: a producer
+  MUST NOT emit fields outside its own protocol version (Zod `.strict()` on
+  outbound values, and same-version fixture validation). A *consumer* MUST
+  parse inbound envelopes leniently (Zod `.passthrough()` / ignoring
+  `additionalProperties`), so a v1.0 consumer accepts a v1.1 message whose
+  additions are optional. Without this split, strict validation on both ends
+  would contradict the forward-compatibility MUST above. This rule applies to
+  the command/result envelopes only — the YAML policy/repo config schemas are
+  deliberately fail-closed on BOTH ends (`POLICY_PROFILE_V1.md` P-001), because
+  there a silently ignored key is a policy hole, not a compatibility feature.
+- Removing/renaming a field or changing semantics is a MAJOR version change
+  and REQUIRED to ship a new fixture corpus. Released valid fixtures are
+  frozen: every fixture published for a protocol version MUST parse against
+  all later minors of that major (backward-compatibility test in
+  `@osstack/protocol`).
 
 ## A-008 Transport Neutrality
 

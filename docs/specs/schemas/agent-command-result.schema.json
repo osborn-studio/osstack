@@ -22,7 +22,7 @@
         "type": "object",
         "required": ["command", "reason"],
         "properties": {
-          "command": { "type": "string", "minLength": 1 },
+          "command": { "type": "string", "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$" },
           "reason": { "type": "string", "minLength": 1 }
         },
         "additionalProperties": false
@@ -31,34 +31,61 @@
     "error": {
       "oneOf": [
         { "type": "null" },
-        {
-          "type": "object",
-          "required": ["code", "message", "retryable"],
-          "properties": {
-            "code": {
-              "type": "string",
-              "enum": [
-                "bad_request",
-                "unsupported_protocol_version",
-                "unknown_command",
-                "policy_denied",
-                "needs_approval",
-                "not_found",
-                "conflict",
-                "budget_exceeded",
-                "internal"
-              ]
-            },
-            "message": { "type": "string", "minLength": 1 },
-            "retryable": { "type": "boolean" }
-          },
-          "additionalProperties": false
-        }
+        { "$ref": "#/$defs/errorObject" }
       ]
     }
   },
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "error" } }, "required": ["status"] },
+      "then": { "required": ["error"], "properties": { "error": { "$ref": "#/$defs/errorObject" } } }
+    },
+    {
+      "if": { "properties": { "status": { "const": "blocked" } }, "required": ["status"] },
+      "then": {
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "allOf": [
+              { "$ref": "#/$defs/errorObject" },
+              { "properties": { "code": { "enum": ["policy_denied", "budget_exceeded"] } } }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "needs_approval" } }, "required": ["status"] },
+      "then": {
+        "required": ["required_approvals"],
+        "properties": { "required_approvals": { "minItems": 1 } }
+      }
+    }
+  ],
   "$defs": {
+    "errorObject": {
+      "type": "object",
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "bad_request",
+            "unsupported_protocol_version",
+            "unknown_command",
+            "policy_denied",
+            "not_found",
+            "conflict",
+            "budget_exceeded",
+            "internal"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1 },
+        "retryable": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
     "evidenceRef": {
       "type": "object",
       "required": ["kind", "ref"],
@@ -78,7 +105,7 @@
         "run_id": { "type": "string", "minLength": 1 },
         "action": { "type": "string", "minLength": 1 },
         "risk": { "type": "string", "enum": ["low", "medium", "high"] },
-        "requested_at": { "type": "string", "minLength": 1 }
+        "requested_at": { "type": "string", "format": "date-time", "minLength": 1 }
       },
       "additionalProperties": false
     }

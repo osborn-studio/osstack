@@ -83,10 +83,26 @@ Semantics:
   everything in `requires_approval` still requires a human ApprovalDecision
   (AGENT_COMMAND_PROTOCOL_V1 A-005).
 - `forbidden` categories MUST be refused regardless of mode, approval, or
-  actor. They are not overridable by an agent actor.
-- Budgets map onto the loop budget primitives (`max_iterations`,
-  `max_runtime_minutes` → `max_runtime_ms`, `max_cost_usd`). Exceeding a
-  budget MUST stop work with `budget_exceeded`, never silently continue.
+  actor. They are not overridable at runtime, period; loosening `forbidden`
+  is only possible by editing the policy file itself (which is a `ci`-category
+  change requiring approval, P-006).
+- A category MUST NOT appear in more than one of `allowed_auto_changes`,
+  `requires_approval`, `forbidden`; validators MUST reject a profile with
+  cross-list duplicates (the resolution order would keep it safe, but a
+  fail-closed spec does not rely on precedence to mask a contradiction).
+- Budgets map onto the loop budget primitives exactly:
+
+  | policy.yaml | `@osstack/loop` `LoopBudget` | Semantics |
+  |---|---|---|
+  | `max_iterations` | `max_task_iterations` | fix iterations per task |
+  | `max_runtime_minutes` | `max_runtime_ms` (×60000) | wall clock for the run |
+  | `max_cost_usd` | `max_estimated_cost_usd` | adapter-reported spend |
+
+  Exceeding a budget MUST stop work with `budget_exceeded`, never silently
+  continue. Honesty note: `max_cost_usd` enforces against *adapter-reported*
+  usage; adapters that report nothing (e.g. local commands) contribute 0, so
+  the cost cap is NOT a guarantee for runs without usage reporting — pair it
+  with `max_runtime_minutes`, which always enforces.
 
 ## P-004 Resolution Order
 
@@ -98,15 +114,34 @@ Semantics:
 A change touching multiple categories MUST be governed by the strictest
 matching rule. When no category matches, the change requires approval.
 
+Categorization itself is the security boundary, so it MUST be
+defense-in-depth, not declaration-trust:
+
+- `secrets` and other `forbidden` categories MUST be detected by deterministic
+  content/path scanning of the actual diff (e.g. governance scan), never
+  solely by the declared category of the request — a change miscategorized as
+  `docs` MUST still trip the `secrets` gate if its content does.
+- When categorization is ambiguous (heuristics disagree, or a path maps to
+  multiple categories), the change MUST resolve to the strictest candidate
+  category.
+
 ## P-005 Category Vocabulary (v1, closed)
 
 `docs`, `tests`, `lint`, `source`, `dependencies`, `ci`,
-`database_migrations`, `production_deploy`, `product_scope`, `secrets`,
-`destructive_git`, `unreviewed_external_actions`.
+`database_migrations`, `production_deploy`, `production_config`,
+`product_scope`, `secrets`, `destructive_git`, `unreviewed_external_actions`.
 
 The vocabulary is CLOSED in v1: schemas MUST reject categories outside it.
 Extending the vocabulary is a minor version bump of this spec plus schema
 update — never an ad-hoc string.
+
+Provenance note: this vocabulary follows Doc 16 §7 (which supersedes
+Doc 15 §5.5 where they differ). Renames from Doc 15: `release` →
+`production_deploy`; `database_migration` → `database_migrations` (and it
+moved from `forbidden` to `requires_approval` — migrations are gated, not
+banned). Doc 15's `production_config` is retained here so production
+configuration edits keep a dedicated gate; profiles SHOULD list it under
+`forbidden` (as Doc 15 did) or at minimum `requires_approval`.
 
 ## P-006 Defaults and Onboarding
 
