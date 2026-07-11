@@ -85,6 +85,9 @@ importers:
       '@osstack/loop':
         specifier: workspace:*
         version: link:../loop
+      '@osstack/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       '@osstack/skill-registry':
         specifier: workspace:*
         version: link:../skill-registry

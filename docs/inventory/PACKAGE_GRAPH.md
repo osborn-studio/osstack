@@ -7,7 +7,7 @@ Workspace packages, publish status, and internal (workspace) dependencies.
 | Package | Version | Visibility | Internal deps |
 |---|---|---|---|
 | `@osstack/agents` | 0.9.0 | public | `core`, `hermes-adapter` |
-| `@osstack/cli` | 0.9.0 | public | `agents`, `compliance`, `config`, `contracts`, `core`, `github`, `governance`, `hermes-adapter`, `knowledge`, `loop`, `skill-registry`, `skills`, `supervisor` |
+| `@osstack/cli` | 0.9.0 | public | `agents`, `compliance`, `config`, `contracts`, `core`, `github`, `governance`, `hermes-adapter`, `knowledge`, `loop`, `protocol`, `skill-registry`, `skills`, `supervisor` |
 | `@osstack/compliance` | 0.2.0 | public | — |
 | `@osstack/config` | 0.2.0 | public | `core` |
 | `@osstack/conformance` | 0.0.0 | **private** | `agents`, `core`, `hermes-adapter`, `loop` |
@@ -30,7 +30,7 @@ Workspace packages, publish status, and internal (workspace) dependencies.
 
 ```text
 agents -> core, hermes-adapter
-cli -> agents, compliance, config, contracts, core, github, governance, hermes-adapter, knowledge, loop, skill-registry, skills, supervisor
+cli -> agents, compliance, config, contracts, core, github, governance, hermes-adapter, knowledge, loop, protocol, skill-registry, skills, supervisor
 config -> core
 conformance -> agents, core, hermes-adapter, loop
 core -> protocol
