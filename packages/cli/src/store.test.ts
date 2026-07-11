@@ -5,12 +5,17 @@ import { join } from "node:path";
 import { openDb } from "@osstack/core";
 import { appendEvent, finalizeRun, insertRun, insertTask } from "./store.js";
 
+// R1.1 compat test: the state repositories moved to @osstack/core, but the old
+// "./store.js" import path must keep working via the re-export shim. This proves
+// a full round-trip through the shim; the exhaustive matrix lives in
+// packages/core/src/state/run-store.test.ts.
+
 let tmp: string;
-beforeEach(() => { tmp = mkdtempSync(join(tmpdir(), "osstack-store-")); });
+beforeEach(() => { tmp = mkdtempSync(join(tmpdir(), "osstack-store-shim-")); });
 afterEach(() => { rmSync(tmp, { recursive: true, force: true }); });
 
-describe("store", () => {
-  it("inserts a task + run and appends events", () => {
+describe("store compat shim (re-exports @osstack/core)", () => {
+  it("round-trips insertTask + insertRun + appendEvent + finalizeRun via ./store.js", () => {
     const path = join(tmp, "state.db");
     const db = openDb({ path });
     try {
@@ -27,53 +32,16 @@ describe("store", () => {
           cancel: true, approval_pending: false, clarify_pending: false, queue: false, goal: false,
         } },
       });
-      const row = db.prepare("SELECT task_id, status FROM tasks").get() as { task_id: string; status: string };
-      expect(row.task_id).toBe("t1");
-      expect(row.status).toBe("running");
-
-      const ev = db.prepare("SELECT seq, type, terminal FROM events WHERE run_id = ?").get("r1") as
-        | { seq: number; type: string; terminal: number }
-        | undefined;
-      expect(ev?.seq).toBe(0);
-      expect(ev?.type).toBe("run.started");
-      expect(ev?.terminal).toBe(0);
-    } finally { db.close(); }
-  });
-
-  it("finalizeRun sets duration_ms correctly (regression for SQLite same-statement-read bug)", () => {
-    const path = join(tmp, "state.db");
-    const db = openDb({ path });
-    try {
-      insertTask(db, path, { task_id: "t1", title: "hello", created_at: 100.0 });
-      insertRun(db, path, {
-        run_id: "r1", task_id: "t1", session_id: "s1",
-        agent_id: "claude-code", capability_id: "x", phase: "code", started_at: 100.0,
-      });
       finalizeRun(db, path, "r1", "completed", 102.5);
-      const row = db.prepare("SELECT outcome, completed_at, duration_ms FROM runs WHERE run_id = ?").get("r1") as
-        | { outcome: string; completed_at: number; duration_ms: number }
-        | undefined;
-      expect(row?.outcome).toBe("completed");
-      expect(row?.completed_at).toBeCloseTo(102.5, 6);
-      // 2.5s = 2500ms
-      expect(row?.duration_ms).toBeCloseTo(2500, 6);
+
       const task = db.prepare("SELECT status FROM tasks WHERE task_id = ?").get("t1") as { status: string };
       expect(task.status).toBe("done");
-    } finally { db.close(); }
-  });
-
-  it("finalizeRun maps failed/cancelled outcomes to task.status", () => {
-    const path = join(tmp, "state.db");
-    const db = openDb({ path });
-    try {
-      insertTask(db, path, { task_id: "t1", title: "x", created_at: 0 });
-      insertRun(db, path, {
-        run_id: "r1", task_id: "t1", session_id: "s1",
-        agent_id: "claude-code", capability_id: "x", phase: "code", started_at: 0,
-      });
-      finalizeRun(db, path, "r1", "cancelled", 5);
-      const task = db.prepare("SELECT status FROM tasks").get() as { status: string };
-      expect(task.status).toBe("cancelled");
+      const run = db.prepare("SELECT outcome, duration_ms FROM runs WHERE run_id = ?").get("r1") as
+        { outcome: string; duration_ms: number };
+      expect(run.outcome).toBe("completed");
+      expect(run.duration_ms).toBeCloseTo(2500, 6);
+      const ev = db.prepare("SELECT type FROM events WHERE run_id = ?").get("r1") as { type: string };
+      expect(ev.type).toBe("run.started");
     } finally { db.close(); }
   });
 });

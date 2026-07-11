@@ -24,7 +24,7 @@ import {
   type ProofAudience,
 } from "@osstack/compliance";
 import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
-import { getAgentScorecard, listAgentScorecards, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons, type RoutableAdapter } from "@osstack/core";
+import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons, type RoutableAdapter } from "@osstack/core";
 import { scanFiles, type GovernanceFinding } from "@osstack/governance";
 import {
   renderBranchStewardReport,
@@ -7171,21 +7171,9 @@ async function readPersistedLoopRunEvidence(runId: string): Promise<{
   const dbPath = join(osstackHome(), "state.db");
   const db = openDb({ path: dbPath });
   try {
-    const run = db.prepare("SELECT run_id, session_id, phase FROM runs WHERE run_id = ?").get(runId) as
-      | { run_id: string; session_id: string; phase: string }
-      | undefined;
+    const run = getRun(db, runId);
     if (run === undefined) return new Error(`no persisted run found for run_id=${runId}`);
-    const rows = db.prepare(
-      "SELECT event_id, run_id, session_id, seq, type, created_at, payload_json FROM events WHERE run_id = ? ORDER BY seq ASC",
-    ).all(runId) as Array<{
-      event_id: string;
-      run_id: string;
-      session_id: string;
-      seq: number;
-      type: string;
-      created_at: number;
-      payload_json: string;
-    }>;
+    const rows = listEventsForRun(db, runId);
     const events = normalizeLoopEvents(rows.map((row) => ({
       event_id: persistedLoopEventId(row),
       loop_id: row.session_id,

@@ -42,6 +42,7 @@ import {
   HermesBridge, GBrainAdapter,
   initOtel, shutdownOtel, traceSpan, otelEnabled,
   KanbanRepository, KanbanNotifier, getBoard,
+  countRuns, countRunsSince, countEvents, listEventsForRun,
   type RoutableAdapter, type PolicyDecision,
   type CardStatus, type OutboundMessage,
 } from "@osstack/core";
@@ -422,9 +423,7 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       // "policy decision" proxy: runs with >=2 candidate adapters available
       // and an outcome recorded. For S5 we approximate by counting runs in
       // the window, since every recent task went through the policy engine.
-      const observed = (ctx.db.prepare(
-        "SELECT COUNT(*) AS c FROM runs WHERE started_at >= ?",
-      ).get(cutoff) as { c: number }).c;
+      const observed = countRunsSince(ctx.db, cutoff);
       const armed = observed >= minFires;
       const recommendation = armed
         ? "Policy is firing enough to learn from. Keep going."
@@ -708,8 +707,8 @@ function loopBudgetStat(session: LoopSession): LoopBudgetStat | undefined {
 }
 
 function computeStats(db: Database.Database, loopSessions: Map<string, LoopSession>): DaemonStats {
-  const total_runs = (db.prepare("SELECT COUNT(*) AS c FROM runs").get() as { c: number }).c;
-  const total_events = (db.prepare("SELECT COUNT(*) AS c FROM events").get() as { c: number }).c;
+  const total_runs = countRuns(db);
+  const total_events = countEvents(db);
   const rows = db.prepare(
     `SELECT agent_id, capability_id,
             COUNT(*) AS runs,
@@ -1916,12 +1915,7 @@ function handleTaskObserve(
   // Snapshot replay from the events log. S1 is snapshot-only; S2 will add
   // live subscription via an internal event bus. Snapshot still works for
   // terminal runs (Hermes RFC Slice-1 success criterion).
-  const rows = ctx.db.prepare(
-    "SELECT event_id, run_id, session_id, seq, type, created_at, terminal, payload_json FROM events WHERE run_id = ? AND seq > ? ORDER BY seq ASC",
-  ).all(params.run_id, afterSeq) as Array<{
-    event_id: string; run_id: string; session_id: string; seq: number;
-    type: string; created_at: number; terminal: number; payload_json: string;
-  }>;
+  const rows = listEventsForRun(ctx.db, params.run_id, { afterSeq });
 
   for (const row of rows) {
     const ev = {
