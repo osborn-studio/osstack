@@ -9,3 +9,6 @@ PolicyDecision, and the AgentCommand/AgentCommandResult envelope
 (AGENT_COMMAND_PROTOCOL_V1), with `PROTOCOL_VERSION = "1.0"`, producer-strict /
 consumer-lenient parsing (A-007), the A-003 status↔code mapping, and a frozen
 valid-fixture backward-compatibility corpus.
+
+Note: the npm package version is independent of the wire `PROTOCOL_VERSION`
+("1.0") — package releases may advance without a wire-protocol change.

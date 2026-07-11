@@ -158,6 +158,80 @@ describe("consumer-lenient vs producer-strict (A-007)", () => {
   });
 });
 
+describe("deep consumer leniency (A-007 — unknown fields in NESTED objects)", () => {
+  it("v1.1-style unknown field inside actor: lenient accepts, strict rejects", () => {
+    const command = {
+      protocol_version: "1.1",
+      command: "portfolio.daily",
+      actor: { type: "human", id: "osborn", display_name: "Osborn" },
+      input: {},
+    };
+    expect(AgentCommand.safeParse(command).success).toBe(false);
+    const parsed = parseInboundAgentCommand(command);
+    expect(parsed.actor.id).toBe("osborn");
+    expect((parsed.actor as Record<string, unknown>).display_name).toBe("Osborn");
+  });
+
+  it("unknown field inside scope: lenient accepts, strict rejects", () => {
+    const command = {
+      protocol_version: "1.1",
+      command: "delivery.start",
+      actor: { type: "agent", id: "claude-code" },
+      scope: { repo_id: "osborn-pa", branch: "main" },
+      input: {},
+    };
+    expect(AgentCommand.safeParse(command).success).toBe(false);
+    expect(() => parseInboundAgentCommand(command)).not.toThrow();
+  });
+
+  it("unknown field inside an ApprovalRequest item: lenient accepts, strict rejects", () => {
+    const result = {
+      protocol_version: "1.1",
+      status: "needs_approval",
+      required_approvals: [
+        {
+          approval_id: "appr_01",
+          action: "Deploy to production",
+          risk: "high",
+          requested_at: "2026-07-11T09:05:00.000Z",
+          expires_at: "2026-07-12T09:05:00.000Z",
+        },
+      ],
+    };
+    expect(AgentCommandResult.safeParse(result).success).toBe(false);
+    expect(() => parseInboundAgentCommandResult(result)).not.toThrow();
+  });
+
+  it("unknown field inside an EvidenceRef item: lenient accepts, strict rejects", () => {
+    const result = {
+      protocol_version: "1.1",
+      status: "ok",
+      evidence_refs: [{ kind: "proof", ref: "release/proof/", bytes: 1024 }],
+    };
+    expect(AgentCommandResult.safeParse(result).success).toBe(false);
+    expect(() => parseInboundAgentCommandResult(result)).not.toThrow();
+  });
+
+  it("unknown field inside the error object: lenient accepts, strict rejects", () => {
+    const result = {
+      protocol_version: "1.1",
+      status: "error",
+      error: { code: "internal", message: "boom", retryable: true, trace_id: "t_1" },
+    };
+    expect(AgentCommandResult.safeParse(result).success).toBe(false);
+    expect(() => parseInboundAgentCommandResult(result)).not.toThrow();
+  });
+
+  it("deep leniency does not weaken A-003: nested-lenient blocked result still needs a blocked code", () => {
+    const result = {
+      protocol_version: "1.1",
+      status: "blocked",
+      error: { code: "internal", message: "boom", retryable: true, trace_id: "t_1" },
+    };
+    expect(() => parseInboundAgentCommandResult(result)).toThrow();
+  });
+});
+
 describe("A-003 / A-006 status<->code mapping", () => {
   it("accepts status ok without an error object", () => {
     expect(
@@ -212,5 +286,28 @@ describe("A-003 / A-006 status<->code mapping", () => {
         required_approvals: [],
       }).success,
     ).toBe(false);
+  });
+
+  it("rejects retryable:true on a non-transient code (A-006), strict and lenient", () => {
+    const result = {
+      protocol_version: "1.0",
+      status: "error",
+      error: { code: "not_found", message: "no such run", retryable: true },
+    };
+    expect(AgentCommandResult.safeParse(result).success).toBe(false);
+    expect(() => parseInboundAgentCommandResult(result)).toThrow();
+  });
+
+  it("accepts retryable:true for the transient codes internal and conflict (A-006)", () => {
+    for (const code of ["internal", "conflict"]) {
+      expect(
+        AgentCommandResult.safeParse({
+          protocol_version: "1.0",
+          status: "error",
+          error: { code, message: "transient", retryable: true },
+        }).success,
+        `error+${code}+retryable should be accepted`,
+      ).toBe(true);
+    }
   });
 });

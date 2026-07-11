@@ -1,6 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Osstack Protocol Agent Command Result",
+  "$comment": "Conditional rules (A-003 status<->code mapping, A-006 retryable constraint) are enforced by @osstack/protocol superRefine and are NOT expressible in this JSON Schema; see AGENT_COMMAND_PROTOCOL_V1.md.",
   "type": "object",
   "properties": {
     "protocol_version": {

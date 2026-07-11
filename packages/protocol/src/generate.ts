@@ -28,6 +28,8 @@ interface SchemaEntry {
   key: string;
   /** Human-readable title embedded in the JSON Schema. */
   title: string;
+  /** Optional top-level $comment embedded in the generated JSON Schema. */
+  comment?: string;
   schema: ZodTypeAny;
 }
 
@@ -44,6 +46,8 @@ export const SCHEMA_MANIFEST: readonly SchemaEntry[] = [
   {
     key: "agent-command-result",
     title: "Osstack Protocol Agent Command Result",
+    comment:
+      "Conditional rules (A-003 status<->code mapping, A-006 retryable constraint) are enforced by @osstack/protocol superRefine and are NOT expressible in this JSON Schema; see AGENT_COMMAND_PROTOCOL_V1.md.",
     schema: AgentCommandResultObject,
   },
 ];
@@ -58,6 +62,7 @@ function renderSchema(entry: SchemaEntry): string {
   const withMeta: Record<string, unknown> = {
     $schema: "http://json-schema.org/draft-07/schema#",
     title: entry.title,
+    ...(entry.comment !== undefined ? { $comment: entry.comment } : {}),
     ...json,
   };
   return `${JSON.stringify(withMeta, null, 2)}\n`;

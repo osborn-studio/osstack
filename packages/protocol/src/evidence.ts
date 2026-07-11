@@ -16,17 +16,25 @@ export const EvidenceKind = z.enum([
 ]);
 export type EvidenceKind = z.infer<typeof EvidenceKind>;
 
-export const EvidenceRef = z
-  .object({
-    kind: EvidenceKind,
-    /** Path or URL to the evidence artifact. */
-    ref: z.string().min(1),
-    /** Lowercase hex SHA-256 of the artifact, when content-addressed. */
-    sha256: z
-      .string()
-      .regex(/^[a-f0-9]{64}$/, { message: "sha256 must be 64 lowercase hex chars" })
-      .optional(),
-    run_id: z.string().min(1).optional(),
-  })
-  .strict();
+const evidenceRefShape = {
+  kind: EvidenceKind,
+  /** Path or URL to the evidence artifact. */
+  ref: z.string().min(1),
+  /** Lowercase hex SHA-256 of the artifact, when content-addressed. */
+  sha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/, { message: "sha256 must be 64 lowercase hex chars" })
+    .optional(),
+  run_id: z.string().min(1).optional(),
+} as const;
+
+export const EvidenceRef = z.object(evidenceRefShape).strict();
 export type EvidenceRef = z.infer<typeof EvidenceRef>;
+
+/**
+ * Consumer-lenient EvidenceRef (A-007 deep leniency): the lenient envelope
+ * parsers must tolerate unknown fields inside nested objects too, so a v1.1
+ * addition to an evidence item does not break a v1.0 consumer. Producers keep
+ * using the strict `EvidenceRef`.
+ */
+export const EvidenceRefLenient = z.object(evidenceRefShape).passthrough();
