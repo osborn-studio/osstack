@@ -234,6 +234,11 @@ describe("loadRepoConfig / loadPolicyProfile", () => {
     await expect(loadPolicyProfile(tmp)).rejects.toThrow(/\.osstack\/policy\.yaml/);
   });
 
+  it("throws (fail-closed) for an empty (0-byte) policy.yaml instead of returning undefined", async () => {
+    await writeOsstackFile("policy.yaml", "");
+    await expect(loadPolicyProfile(tmp)).rejects.toThrow(/\.osstack\/policy\.yaml/);
+  });
+
   it("throws when repo.yaml has an unknown key (fail-closed)", async () => {
     await writeOsstackFile(
       "repo.yaml",

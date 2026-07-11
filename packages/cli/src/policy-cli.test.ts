@@ -1,20 +1,28 @@
 import { mkdtempSync } from "node:fs";
 import { mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PolicyProfile, profileBudgetToLoopBudget } from "@osstack/core";
 import { LoopBudget } from "@osstack/loop";
 import { main } from "./bin.js";
+import { startDaemon, type DaemonHandles } from "./daemon.js";
 
 let tmp: string;
 let logs: string[];
 let errors: string[];
+let oldSocket: string | undefined;
+let oldHome: string | undefined;
+let daemon: DaemonHandles | null;
 
 beforeEach(() => {
   tmp = mkdtempSync(join(tmpdir(), "osstack-policy-cli-"));
   logs = [];
   errors = [];
+  oldSocket = process.env["OSSTACK_SOCKET"];
+  oldHome = process.env["OSSTACK_HOME"];
+  daemon = null;
   vi.spyOn(console, "log").mockImplementation((...args) => {
     logs.push(args.map(String).join(" "));
   });
@@ -24,6 +32,11 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  if (daemon) await daemon.close();
+  if (oldSocket === undefined) delete process.env["OSSTACK_SOCKET"];
+  else process.env["OSSTACK_SOCKET"] = oldSocket;
+  if (oldHome === undefined) delete process.env["OSSTACK_HOME"];
+  else process.env["OSSTACK_HOME"] = oldHome;
   vi.restoreAllMocks();
   await rm(tmp, { recursive: true, force: true });
 });
@@ -130,7 +143,7 @@ describe("observe-mode gate", () => {
       "--json",
     ]);
     expect(code).toBe(2);
-    expect(errors.join("\n")).toMatch(/policy mode is observe — execution refused/);
+    expect(errors.join("\n")).toMatch(/policy_denied: policy mode is observe — execution refused/);
     // No task enqueued, no execution side effect, no state file written.
     await expect(stat(join(tmp, "tasks"))).rejects.toThrow();
     await expect(stat(join(tmp, "should-not-exist.txt"))).rejects.toThrow();
@@ -158,9 +171,43 @@ describe("observe-mode gate", () => {
       "--json",
     ]);
     expect(code).toBe(2);
-    expect(errors.join("\n")).toMatch(/policy mode is observe — execution refused/);
+    expect(errors.join("\n")).toMatch(/policy_denied: policy mode is observe — execution refused/);
     await expect(stat(join(tmp, "should-not-exist.txt"))).rejects.toThrow();
     await expect(stat(join(tmp, "LOOP-STATE.json"))).rejects.toThrow();
+  });
+
+  it("refuses `loop start` with exit 2 and creates no daemon session when mode is observe", async () => {
+    process.env["OSSTACK_HOME"] = join(tmp, "home");
+    process.env["OSSTACK_SOCKET"] = `/tmp/osstack-policy-cli-${randomUUID()}.sock`;
+    daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"] });
+    await mkdir(join(tmp, "tasks"), { recursive: true });
+    await writePolicyFiles(OBSERVE_POLICY);
+
+    const code = await main([
+      "loop",
+      "start",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--execute",
+      "node -e \"require('fs').writeFileSync('should-not-exist.txt', 'x')\"",
+      "--interval-ms",
+      "10",
+      "--cycles",
+      "2",
+      "--json",
+    ]);
+    expect(code).toBe(2);
+    expect(errors.join("\n")).toMatch(/policy_denied: policy mode is observe — execution refused/);
+
+    // The gate fired before the daemon RPC: no loop session was created.
+    logs = [];
+    const listCode = await main(["loop", "list", "--json"]);
+    expect(listCode).toBe(0);
+    const listed = JSON.parse(logs.join("\n")) as { loops: unknown[] };
+    expect(listed.loops).toEqual([]);
+    await expect(stat(join(tmp, "should-not-exist.txt"))).rejects.toThrow();
   });
 
   it("runs `loop run` exactly as before when mode is propose", async () => {
