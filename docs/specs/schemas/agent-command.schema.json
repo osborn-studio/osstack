@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://osstack.dev/specs/schemas/agent-command.schema.json",
+  "title": "Osstack Agent Command Envelope",
+  "type": "object",
+  "required": ["protocol_version", "command", "actor", "input"],
+  "properties": {
+    "protocol_version": { "type": "string", "pattern": "^1\\.[0-9]+$" },
+    "command": { "type": "string", "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$" },
+    "actor": {
+      "type": "object",
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "type": "string", "enum": ["human", "agent"] },
+        "id": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "portfolio_id": { "type": "string", "minLength": 1 },
+        "repo_id": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "input": { "type": "object" },
+    "policy_profile": { "type": "string", "minLength": 1 },
+    "idempotency_key": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

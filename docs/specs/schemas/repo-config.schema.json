@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://osstack.dev/specs/schemas/repo-config.schema.json",
+  "title": "Osstack Repo Config (.osstack/repo.yaml)",
+  "type": "object",
+  "required": ["schema_version", "product", "role", "default_branch", "verify_command"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "product": { "type": "string", "minLength": 1 },
+    "domain": { "type": "string", "minLength": 1 },
+    "role": { "type": "string", "enum": ["core_product", "tool", "library", "reference", "archive"] },
+    "priority": { "type": "number", "minimum": 0, "maximum": 100 },
+    "default_branch": { "type": "string", "minLength": 1 },
+    "verify_command": { "type": "string", "minLength": 1 },
+    "build_command": { "type": "string" },
+    "staging_command": { "type": "string" },
+    "production_environment": { "type": "string" }
+  },
+  "additionalProperties": false
+}
