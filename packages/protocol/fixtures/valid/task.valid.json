@@ -1,0 +1,9 @@
+{
+  "task_id": "task_001",
+  "capability": "code.fix",
+  "prompt": "Fix the null pointer dereference in src/parser.ts around line 42",
+  "source": "git_diff",
+  "priority": 70,
+  "context": { "file": "src/parser.ts", "line": 42 },
+  "evaluation": [{ "id": "tests_pass", "kind": "command", "run": "pnpm test" }]
+}

@@ -158,6 +158,19 @@ export * from "./loop-engine.js";
 export const PLUGINS_VERSION = "0.0.0";
 ```
 
+## `@osstack/protocol`
+
+```ts
+export { PROTOCOL_VERSION, ProtocolVersion } from "./version.js";
+export { Task, TaskSource } from "./task.js";
+export { RunOutcome, RunSummary } from "./run.js";
+export { EventEnvelope } from "./event.js";
+export { EvidenceKind, EvidenceRef } from "./evidence.js";
+export {
+export {
+export {
+```
+
 ## `@osstack/runtime`
 
 ```ts

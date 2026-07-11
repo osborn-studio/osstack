@@ -1,0 +1,12 @@
+{
+  "$reason": "seq must be a non-negative integer; -1 is rejected",
+  "value": {
+    "event_id": "run_abc123:-1",
+    "seq": -1,
+    "run_id": "run_abc123",
+    "session_id": "sess_9f2c",
+    "created_at": 1752224652.5,
+    "type": "tool.done",
+    "payload": {}
+  }
+}

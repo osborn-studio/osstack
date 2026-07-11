@@ -1,0 +1,9 @@
+{
+  "protocol_version": "1.0",
+  "command": "portfolio.daily",
+  "actor": { "type": "human", "id": "osborn" },
+  "scope": { "portfolio_id": "default", "repo_id": "osborn-pa" },
+  "input": {},
+  "policy_profile": "internal-default",
+  "idempotency_key": "b3f9e2a1c7d84f60"
+}

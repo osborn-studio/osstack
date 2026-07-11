@@ -1,0 +1,166 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Protocol Policy Decision",
+  "type": "object",
+  "properties": {
+    "winner": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "candidate": {
+              "type": "object",
+              "properties": {
+                "agent_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "cost_tier": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "mid",
+                    "high"
+                  ]
+                },
+                "capabilities": {
+                  "type": "array",
+                  "items": {}
+                }
+              },
+              "required": [
+                "agent_id",
+                "cost_tier",
+                "capabilities"
+              ],
+              "additionalProperties": false
+            },
+            "total": {
+              "type": "number"
+            },
+            "breakdown": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "rule_id": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "number"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "rule_id",
+                  "value",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "candidate",
+            "total",
+            "breakdown"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ranked": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "candidate": {
+            "type": "object",
+            "properties": {
+              "agent_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "cost_tier": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "mid",
+                  "high"
+                ]
+              },
+              "capabilities": {
+                "type": "array",
+                "items": {}
+              }
+            },
+            "required": [
+              "agent_id",
+              "cost_tier",
+              "capabilities"
+            ],
+            "additionalProperties": false
+          },
+          "total": {
+            "type": "number"
+          },
+          "breakdown": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rule_id": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "number"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "rule_id",
+                "value",
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "candidate",
+          "total",
+          "breakdown"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "handoff": {
+      "type": "object",
+      "properties": {
+        "triggered": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "triggered"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "winner",
+    "ranked",
+    "handoff"
+  ],
+  "additionalProperties": false
+}

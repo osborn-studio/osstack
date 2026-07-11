@@ -1,0 +1,7 @@
+{
+  "approval_id": "appr_01",
+  "run_id": "run_abc123",
+  "action": "Deploy osborn-pa to production",
+  "risk": "high",
+  "requested_at": "2026-07-11T09:05:00.000Z"
+}

@@ -1,0 +1,9 @@
+{
+  "protocol_version": "1.0",
+  "status": "blocked",
+  "error": {
+    "code": "policy_denied",
+    "message": "production_deploy is forbidden by the resolved policy profile",
+    "retryable": false
+  }
+}

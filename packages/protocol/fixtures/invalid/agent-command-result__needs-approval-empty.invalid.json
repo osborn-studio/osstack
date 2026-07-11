@@ -1,0 +1,8 @@
+{
+  "$reason": "status 'needs_approval' requires a non-empty required_approvals array (A-003); it is empty",
+  "value": {
+    "protocol_version": "1.0",
+    "status": "needs_approval",
+    "required_approvals": []
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Protocol Task",
+  "type": "object",
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "capability": {
+      "type": "string",
+      "minLength": 1
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "git_diff",
+        "gh_issue",
+        "github_branch",
+        "ci_log",
+        "task_queue",
+        "manual"
+      ]
+    },
+    "priority": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 50
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": {}
+    },
+    "evaluation": {
+      "type": "array",
+      "items": {}
+    }
+  },
+  "required": [
+    "task_id",
+    "capability",
+    "prompt",
+    "source"
+  ],
+  "additionalProperties": false
+}

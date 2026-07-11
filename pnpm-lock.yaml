@@ -262,6 +262,19 @@ importers:
         specifier: ^3.23.8
         version: 3.25.76
 
+  packages/protocol:
+    dependencies:
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
+      zod-to-json-schema:
+        specifier: ^3.25.2
+        version: 3.25.2(zod@3.25.76)
+
   packages/runtime: {}
 
   packages/skill-registry:

@@ -1,0 +1,10 @@
+{
+  "event_id": "run_abc123:7",
+  "seq": 7,
+  "run_id": "run_abc123",
+  "session_id": "sess_9f2c",
+  "created_at": 1752224652.5,
+  "terminal": false,
+  "type": "tool.done",
+  "payload": { "tool": "edit", "ok": true, "path": "src/parser.ts" }
+}

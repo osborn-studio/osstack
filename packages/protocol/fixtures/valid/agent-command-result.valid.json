@@ -1,0 +1,13 @@
+{
+  "protocol_version": "1.0",
+  "status": "ok",
+  "result": {},
+  "evidence_refs": [
+    { "kind": "proof", "ref": "release/osstack-proof-run_abc/", "run_id": "run_abc" }
+  ],
+  "required_approvals": [],
+  "next_actions": [
+    { "command": "control.approve", "reason": "production deploy gate" }
+  ],
+  "error": null
+}

@@ -1,0 +1,38 @@
+{
+  "name": "@osstack/protocol",
+  "version": "0.1.0",
+  "description": "Stable cross-product / cross-process / cross-agent kernel contracts for osstack (Task, Run, Event, Evidence, Approval, Policy, Agent command envelope) with JSON Schema artifacts and a versioned protocol.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "schemas"
+  ],
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "generate:schemas": "node scripts/generate-schemas.mjs",
+    "check:schemas": "node scripts/generate-schemas.mjs --check"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19",
+    "zod-to-json-schema": "^3.25.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gilosbornhello/osstack.git",
+    "directory": "packages/protocol"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

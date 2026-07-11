@@ -1,0 +1,10 @@
+{
+  "run_id": "run_abc123",
+  "task_id": "task_001",
+  "agent_id": "claude-code",
+  "outcome": "completed",
+  "started_at": "2026-07-11T09:00:00.000Z",
+  "completed_at": "2026-07-11T09:04:12.000Z",
+  "duration_ms": 252000,
+  "summary": "Fixed the null pointer dereference and added a regression test."
+}

@@ -1,0 +1,9 @@
+{
+  "$reason": "command 'portfoliodaily' is not <service>.<action> (missing the dot separator)",
+  "value": {
+    "protocol_version": "1.0",
+    "command": "portfoliodaily",
+    "actor": { "type": "human", "id": "osborn" },
+    "input": {}
+  }
+}

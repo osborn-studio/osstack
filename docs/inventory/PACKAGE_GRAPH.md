@@ -20,6 +20,7 @@ Workspace packages, publish status, and internal (workspace) dependencies.
 | `@osstack/knowledge-cloud` | 0.8.0 | public | `knowledge` |
 | `@osstack/loop` | 0.9.0 | public | `agents`, `core`, `github`, `hermes-adapter` |
 | `@osstack/plugins` | 0.2.0 | public | `core` |
+| `@osstack/protocol` | 0.1.0 | public | — |
 | `@osstack/runtime` | 0.1.0 | public | — |
 | `@osstack/skill-registry` | 0.2.0 | public | `core` |
 | `@osstack/skills` | 0.2.0 | public | `core` |
@@ -41,4 +42,4 @@ skills -> core
 supervisor -> core, loop
 ```
 
-Leaves (no internal deps): `compliance`, `contracts`, `core`, `github`, `governance`, `knowledge`, `runtime`
+Leaves (no internal deps): `compliance`, `contracts`, `core`, `github`, `governance`, `knowledge`, `protocol`, `runtime`

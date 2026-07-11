@@ -1,0 +1,9 @@
+{
+  "$reason": "source 'email' is not in the allowed DiscoverSource enum",
+  "value": {
+    "task_id": "task_001",
+    "capability": "code.fix",
+    "prompt": "Fix the bug",
+    "source": "email"
+  }
+}
