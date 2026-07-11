@@ -1,6 +1,6 @@
 import { mkdtempSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -222,6 +222,12 @@ describe("product entry commands", () => {
     const latestProofDir = join(tmp, "release", "osstack-proof-latest");
     await writeReleaseProofEvidence(staleProofDir, { omitGovernance: true });
     await writeReleaseProofEvidence(latestProofDir);
+    // Discovery picks the newest dir by mtime with a lexicographic tiebreak.
+    // Back-to-back writes can land in the same mtime tick on CI (and
+    // "…-stale" > "…-latest" lexicographically), so pin distinct mtimes
+    // instead of relying on write ordering.
+    const staleTime = new Date(Date.now() - 60_000);
+    await utimes(staleProofDir, staleTime, staleTime);
 
     const exitCode = await main(["release", "doctor", "--workspace", tmp, "--json"]);
 

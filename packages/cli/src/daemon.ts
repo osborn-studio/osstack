@@ -12,8 +12,8 @@
 
 import { createServer, type Socket } from "node:net";
 import { existsSync, unlinkSync, statSync, chmodSync, mkdirSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { readFile, rename, writeFile } from "node:fs/promises";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { encodeFrame, FrameDecoder, type HermesEvent } from "@osstack/hermes-adapter";
@@ -1245,8 +1245,28 @@ async function persistLoopSessions(ctx: DaemonContext): Promise<void> {
       ...(session.stopReason !== undefined ? { stopReason: session.stopReason } : {}),
     })),
   };
-  await writeFile(ctx.loopSessionsPath, `${JSON.stringify(payload, null, 2)}\n`, "utf-8");
+  // Atomic write (temp + rename): loop-sessions.json is read concurrently by
+  // tests and tooling while the daemon persists after every cycle; a plain
+  // writeFile lets readers observe a truncated file mid-write ("Unexpected end
+  // of JSON input"), and a crash mid-write would corrupt restore state. The
+  // monotonic counter keeps tmp names unique across same-millisecond persists
+  // (Date.now() alone can collide, making the second rename fail). Persistence
+  // is a best-effort snapshot — restore tolerates a missing file — so a failed
+  // write (e.g. home dir removed during shutdown) must never reject a loop
+  // session's completion promise.
+  const tmpPath = join(
+    dirname(ctx.loopSessionsPath),
+    `.${basename(ctx.loopSessionsPath)}.${process.pid}.${persistCounter++}.tmp`,
+  );
+  try {
+    await writeFile(tmpPath, `${JSON.stringify(payload, null, 2)}\n`, "utf-8");
+    await rename(tmpPath, ctx.loopSessionsPath);
+  } catch {
+    // best-effort: swallow snapshot failures (next persist will retry)
+  }
 }
+
+let persistCounter = 0;
 
 async function restoreLoopSessions(ctx: DaemonContext): Promise<void> {
   let parsed: PersistedLoopSessionsFile;

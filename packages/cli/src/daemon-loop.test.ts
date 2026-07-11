@@ -276,16 +276,14 @@ echo review ok
       usage: expect.objectContaining({ cycles: 1 }),
     });
 
-    const persisted = JSON.parse(
-      await readFile(join(tmp, "home", "loop-sessions.json"), "utf-8"),
-    ) as {
-      sessions: Array<{
-        loopSessionId: string;
-        stopReason?: string;
-        lastBudgetCheck?: { exceeded: boolean; limit?: string };
-      }>;
-    };
-    const savedSession = persisted.sessions.find((session) => session.loopSessionId === loopSessionId);
+    // Persistence lags the RPC status: the daemon may report "stopped" over RPC
+    // before the final loop-sessions.json write lands (and on slow CI runners
+    // that gap is real). Poll for the persisted stop instead of a single read.
+    const savedSession = await waitForPersistedSession(
+      join(tmp, "home", "loop-sessions.json"),
+      loopSessionId,
+      (session) => session.stopReason !== undefined,
+    );
     expect(savedSession?.stopReason).toContain("budget exceeded");
     expect(savedSession?.lastBudgetCheck).toMatchObject({ exceeded: true, limit: "max_cycles" });
   });
@@ -667,6 +665,38 @@ async function waitForLoop(
     await sleep(20);
   }
   throw new Error(`loop session did not reach expected state: ${JSON.stringify(last)}`);
+}
+
+interface PersistedSessionSummary {
+  loopSessionId: string;
+  stopReason?: string;
+  lastBudgetCheck?: { exceeded: boolean; limit?: string };
+}
+
+/**
+ * Poll loop-sessions.json until the session satisfies the predicate. The
+ * daemon persists after the RPC status flips, so a single read races the final
+ * write on slow runners. Parse failures are retried (the daemon writes
+ * atomically, but an older complete snapshot may still be current).
+ */
+async function waitForPersistedSession(
+  path: string,
+  loopSessionId: string,
+  predicate: (session: PersistedSessionSummary) => boolean,
+): Promise<PersistedSessionSummary> {
+  const deadline = Date.now() + 2_000;
+  let last: PersistedSessionSummary | undefined;
+  while (Date.now() < deadline) {
+    try {
+      const parsed = JSON.parse(await readFile(path, "utf-8")) as { sessions: PersistedSessionSummary[] };
+      last = parsed.sessions.find((session) => session.loopSessionId === loopSessionId);
+      if (last !== undefined && predicate(last)) return last;
+    } catch {
+      // missing or mid-rotation file — retry until deadline
+    }
+    await sleep(20);
+  }
+  throw new Error(`persisted loop session did not reach expected state: ${JSON.stringify(last)}`);
 }
 
 async function git(cwd: string, args: string[]): Promise<void> {
