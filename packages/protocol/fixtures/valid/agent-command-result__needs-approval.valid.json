@@ -1,0 +1,18 @@
+{
+  "protocol_version": "1.0",
+  "status": "needs_approval",
+  "result": {},
+  "required_approvals": [
+    {
+      "approval_id": "appr_01",
+      "run_id": "run_abc",
+      "action": "Deploy osborn-pa to production",
+      "risk": "high",
+      "requested_at": "2026-07-11T09:05:00.000Z"
+    }
+  ],
+  "next_actions": [
+    { "command": "control.approve", "reason": "production deploy gate" }
+  ],
+  "error": null
+}

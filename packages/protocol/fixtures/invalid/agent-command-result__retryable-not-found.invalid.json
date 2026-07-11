@@ -1,0 +1,8 @@
+{
+  "$reason": "retryable may be true only for transient codes internal/conflict (A-006); code 'not_found' with retryable:true is rejected",
+  "value": {
+    "protocol_version": "1.0",
+    "status": "error",
+    "error": { "code": "not_found", "message": "no such run", "retryable": true }
+  }
+}

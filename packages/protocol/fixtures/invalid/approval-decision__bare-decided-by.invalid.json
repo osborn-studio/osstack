@@ -1,0 +1,9 @@
+{
+  "$reason": "decided_by must be the full actor shape {type,id} (A-005), not a bare id string",
+  "value": {
+    "approval_id": "appr_01",
+    "approved": true,
+    "decided_by": "osborn",
+    "decided_at": "2026-07-11T09:06:30.000Z"
+  }
+}

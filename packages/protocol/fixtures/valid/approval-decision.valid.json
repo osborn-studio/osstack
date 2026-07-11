@@ -1,0 +1,7 @@
+{
+  "approval_id": "appr_01",
+  "approved": true,
+  "decided_by": { "type": "human", "id": "osborn" },
+  "decided_at": "2026-07-11T09:06:30.000Z",
+  "reason": "Reviewed the proof pack; ship it."
+}

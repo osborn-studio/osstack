@@ -1,0 +1,7 @@
+{
+  "$reason": "handoff is required on a PolicyDecision and is missing here",
+  "value": {
+    "winner": null,
+    "ranked": []
+  }
+}

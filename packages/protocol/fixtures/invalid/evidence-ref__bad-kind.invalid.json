@@ -1,0 +1,7 @@
+{
+  "$reason": "kind 'screenshot' is not in the allowed EvidenceKind enum",
+  "value": {
+    "kind": "screenshot",
+    "ref": "release/osstack-proof-run_abc123/"
+  }
+}

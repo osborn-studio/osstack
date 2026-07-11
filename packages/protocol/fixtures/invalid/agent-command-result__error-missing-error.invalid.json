@@ -1,0 +1,7 @@
+{
+  "$reason": "status 'error' requires an error object (A-003); none is present",
+  "value": {
+    "protocol_version": "1.0",
+    "status": "error"
+  }
+}

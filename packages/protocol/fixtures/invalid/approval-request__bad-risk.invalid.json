@@ -1,0 +1,10 @@
+{
+  "$reason": "risk 'critical' is not a valid Risk band (expected low|medium|high)",
+  "value": {
+    "approval_id": "appr_01",
+    "run_id": "run_abc123",
+    "action": "Deploy to production",
+    "risk": "critical",
+    "requested_at": "2026-07-11T09:05:00.000Z"
+  }
+}

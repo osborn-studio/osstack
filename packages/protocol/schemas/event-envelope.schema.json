@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Protocol Event Envelope",
+  "type": "object",
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "number"
+    },
+    "terminal": {
+      "type": "boolean",
+      "default": false
+    },
+    "type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": {}
+    }
+  },
+  "required": [
+    "event_id",
+    "seq",
+    "run_id",
+    "session_id",
+    "created_at",
+    "type",
+    "payload"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,8 @@
+{
+  "$reason": "status 'blocked' requires code policy_denied or budget_exceeded (A-003/A-006); 'internal' is not allowed",
+  "value": {
+    "protocol_version": "1.0",
+    "status": "blocked",
+    "error": { "code": "internal", "message": "boom", "retryable": true }
+  }
+}

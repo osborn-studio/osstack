@@ -1,0 +1,10 @@
+{
+  "$reason": "outcome 'succeeded' is not a valid RunOutcome (expected completed|failed|cancelled)",
+  "value": {
+    "run_id": "run_abc123",
+    "task_id": "task_001",
+    "agent_id": "claude-code",
+    "outcome": "succeeded",
+    "started_at": "2026-07-11T09:00:00.000Z"
+  }
+}

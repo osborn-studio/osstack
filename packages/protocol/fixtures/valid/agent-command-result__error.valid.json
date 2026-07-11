@@ -1,0 +1,9 @@
+{
+  "protocol_version": "1.0",
+  "status": "error",
+  "error": {
+    "code": "conflict",
+    "message": "another run already holds this idempotency key",
+    "retryable": true
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "$reason": "unknown top-level field 'debug' — rejected by the strict producer schema (A-007); a lenient consumer accepts it",
+  "value": {
+    "protocol_version": "1.0",
+    "command": "portfolio.daily",
+    "actor": { "type": "human", "id": "osborn" },
+    "input": {},
+    "debug": true
+  }
+}

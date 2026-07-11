@@ -1,0 +1,20 @@
+{
+  "winner": {
+    "candidate": { "agent_id": "claude-code", "cost_tier": "high", "capabilities": [] },
+    "total": 12.5,
+    "breakdown": [{ "rule_id": "capability-match", "value": 10, "reason": "exact capability match" }]
+  },
+  "ranked": [
+    {
+      "candidate": { "agent_id": "claude-code", "cost_tier": "high", "capabilities": [] },
+      "total": 12.5,
+      "breakdown": [{ "rule_id": "capability-match", "value": 10, "reason": "exact capability match" }]
+    },
+    {
+      "candidate": { "agent_id": "codex", "cost_tier": "mid", "capabilities": [] },
+      "total": 6,
+      "breakdown": [{ "rule_id": "cost", "value": 6, "reason": "cheaper cost tier" }]
+    }
+  ],
+  "handoff": { "triggered": false }
+}

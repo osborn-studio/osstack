@@ -1,0 +1,42 @@
+// Schema-generation drift guard: the committed schemas/*.schema.json MUST equal
+// what the Zod source of truth produces right now. Regenerating produces zero
+// diff — the same generateAll() runs here (against src) and in
+// scripts/generate-schemas.mjs (against dist).
+
+import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import { generateAll } from "./generate.js";
+
+const SCHEMAS_DIR = fileURLToPath(new URL("../schemas", import.meta.url));
+
+describe("generated JSON Schemas are committed and fresh", () => {
+  const expected = generateAll();
+  const filenames = Object.keys(expected).sort();
+
+  it("emits one schema per public protocol contract", () => {
+    expect(filenames).toEqual(
+      [
+        "agent-command-result.schema.json",
+        "agent-command.schema.json",
+        "approval-decision.schema.json",
+        "approval-request.schema.json",
+        "event-envelope.schema.json",
+        "evidence-ref.schema.json",
+        "policy-decision.schema.json",
+        "run-summary.schema.json",
+        "task.schema.json",
+      ].sort(),
+    );
+  });
+
+  for (const filename of filenames) {
+    it(`schemas/${filename} matches the Zod source (zero drift)`, () => {
+      const path = `${SCHEMAS_DIR}/${filename}`;
+      expect(existsSync(path), `schemas/${filename} is not committed — run generate:schemas`).toBe(
+        true,
+      );
+      expect(readFileSync(path, "utf-8")).toBe(expected[filename]);
+    });
+  }
+});
