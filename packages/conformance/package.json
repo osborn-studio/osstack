@@ -18,6 +18,7 @@
   "dependencies": {
     "@osstack/agents": "workspace:*",
     "@osstack/core": "workspace:*",
+    "@osstack/hermes-adapter": "workspace:*",
     "@osstack/loop": "workspace:*"
   },
   "devDependencies": {

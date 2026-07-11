@@ -138,6 +138,9 @@ importers:
       '@osstack/core':
         specifier: workspace:*
         version: link:../core
+      '@osstack/hermes-adapter':
+        specifier: workspace:*
+        version: link:../hermes-adapter
       '@osstack/loop':
         specifier: workspace:*
         version: link:../loop
