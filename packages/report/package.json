@@ -1,0 +1,23 @@
+{
+  "name": "@osstack/report",
+  "version": "0.1.0",
+  "description": "osstack delivery-evidence layer — turns a loop/run's state into a Markdown report, a self-contained scorecard (HTML + Markdown), and an auditable proof pack (zip + manifest + sha256, with secret redaction).",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@osstack/loop": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19"
+  }
+}
