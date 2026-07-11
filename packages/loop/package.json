@@ -23,6 +23,7 @@
     "@osstack/core": "workspace:*",
     "@osstack/github": "workspace:*",
     "@osstack/hermes-adapter": "workspace:*",
+    "@osstack/protocol": "workspace:*",
     "zod": "^3.25.76"
   },
   "devDependencies": {

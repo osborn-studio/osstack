@@ -12,13 +12,13 @@ Workspace packages, publish status, and internal (workspace) dependencies.
 | `@osstack/config` | 0.2.0 | public | `core` |
 | `@osstack/conformance` | 0.0.0 | **private** | `agents`, `core`, `hermes-adapter`, `loop` |
 | `@osstack/contracts` | 0.3.0 | public | — |
-| `@osstack/core` | 0.2.0 | public | — |
+| `@osstack/core` | 0.2.0 | public | `protocol` |
 | `@osstack/github` | 0.2.0 | public | — |
 | `@osstack/governance` | 0.2.0 | public | — |
 | `@osstack/hermes-adapter` | 0.2.0 | public | `core` |
 | `@osstack/knowledge` | 0.8.0 | public | — |
 | `@osstack/knowledge-cloud` | 0.8.0 | public | `knowledge` |
-| `@osstack/loop` | 0.9.0 | public | `agents`, `core`, `github`, `hermes-adapter` |
+| `@osstack/loop` | 0.9.0 | public | `agents`, `core`, `github`, `hermes-adapter`, `protocol` |
 | `@osstack/plugins` | 0.2.0 | public | `core` |
 | `@osstack/protocol` | 0.1.0 | public | — |
 | `@osstack/runtime` | 0.1.0 | public | — |
@@ -33,13 +33,14 @@ agents -> core, hermes-adapter
 cli -> agents, compliance, config, contracts, core, github, governance, hermes-adapter, knowledge, loop, skill-registry, skills, supervisor
 config -> core
 conformance -> agents, core, hermes-adapter, loop
+core -> protocol
 hermes-adapter -> core
 knowledge-cloud -> knowledge
-loop -> agents, core, github, hermes-adapter
+loop -> agents, core, github, hermes-adapter, protocol
 plugins -> core
 skill-registry -> core
 skills -> core
 supervisor -> core, loop
 ```
 
-Leaves (no internal deps): `compliance`, `contracts`, `core`, `github`, `governance`, `knowledge`, `protocol`, `runtime`
+Leaves (no internal deps): `compliance`, `contracts`, `github`, `governance`, `knowledge`, `protocol`, `runtime`

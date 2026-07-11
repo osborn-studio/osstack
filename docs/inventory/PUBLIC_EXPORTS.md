@@ -79,8 +79,10 @@ export * from "./validator.js";
 ## `@osstack/core`
 
 ```ts
+export * as protocol from "@osstack/protocol";
 export * from "./capability.js";
 export * from "./state/index.js";
+export * from "./state/protocol-mappers.js";
 export * from "./privacy/index.js";
 export * from "./orchestrator/index.js";
 export * from "./policy/index.js";
@@ -133,7 +135,9 @@ export * from "./server.js";
 ## `@osstack/loop`
 
 ```ts
+export * as protocol from "@osstack/protocol";
 export * from "./types.js";
+export * from "./protocol-mappers.js";
 export * from "./budget.js";
 export * from "./discovery-policy.js";
 export * from "./evaluation-spec.js";

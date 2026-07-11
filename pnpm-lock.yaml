@@ -172,6 +172,9 @@ importers:
       '@opentelemetry/semantic-conventions':
         specifier: ^1.41.1
         version: 1.41.1
+      '@osstack/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       better-sqlite3:
         specifier: ^12.10.0
         version: 12.10.0
@@ -245,6 +248,9 @@ importers:
       '@osstack/hermes-adapter':
         specifier: workspace:*
         version: link:../hermes-adapter
+      '@osstack/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       zod:
         specifier: ^3.25.76
         version: 3.25.76

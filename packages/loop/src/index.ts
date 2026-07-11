@@ -1,4 +1,9 @@
+// Namespaced adoption of the cross-process kernel contracts (R1.2). Namespaced
+// (not `export *`) so protocol's Task cannot collide with the loop's richer Task.
+export * as protocol from "@osstack/protocol";
+
 export * from "./types.js";
+export * from "./protocol-mappers.js";
 export * from "./budget.js";
 export * from "./discovery-policy.js";
 export * from "./evaluation-spec.js";
