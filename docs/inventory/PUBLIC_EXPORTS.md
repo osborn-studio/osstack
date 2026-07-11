@@ -63,6 +63,12 @@ export {
 export const CONFIG_VERSION = "0.0.0";
 ```
 
+## `@osstack/conformance` (private)
+
+```ts
+export const CONFORMANCE_VERSION = "0.0.0";
+```
+
 ## `@osstack/contracts`
 
 ```ts
