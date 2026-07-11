@@ -84,6 +84,11 @@ jobs:
       - name: Build
         run: pnpm -r build
 
+      # R0.2 inventory freshness: generated docs/inventory/* must match a
+      # regeneration (deterministic script; needs the built CLI for --help).
+      - name: Inventory freshness
+        run: node scripts/generate-inventory.mjs --check
+
       - name: Typecheck
         run: pnpm -r typecheck
 
