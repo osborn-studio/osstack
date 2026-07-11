@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://osstack.dev/specs/schemas/approval-decision.schema.json",
+  "title": "Osstack Approval Decision",
+  "type": "object",
+  "required": ["approval_id", "approved", "decided_by", "decided_at"],
+  "properties": {
+    "approval_id": { "type": "string", "minLength": 1 },
+    "approved": { "type": "boolean" },
+    "decided_by": {
+      "type": "object",
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "type": "string", "enum": ["human", "agent"] },
+        "id": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "decided_at": { "type": "string", "format": "date-time", "minLength": 1 },
+    "reason": { "type": "string" }
+  },
+  "additionalProperties": false
+}
