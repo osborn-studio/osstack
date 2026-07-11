@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import type { AddressInfo } from "node:net";
 import type Database from "better-sqlite3";
 import type { KanbanRepository, CardStatus, CostTier } from "@osstack/core";
-import { getBoard, listAgentScorecards, listPitfallLessons, type AgentScorecard } from "@osstack/core";
+import { getBoard, listAgentScorecards, listPitfallLessons, countEvents, countPendingTasks, type AgentScorecard } from "@osstack/core";
 
 export interface DashboardAdapter {
   id: string;
@@ -176,10 +176,8 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
     tokens_out: number | null;
     avg_duration_ms: number | null;
   };
-  const totalEvents = (opts.db.prepare("SELECT COUNT(*) AS c FROM events").get() as { c: number }).c;
-  const queuedTasks = (opts.db.prepare("SELECT COUNT(*) AS c FROM tasks WHERE status = 'pending'").get() as
-    | { c: number }
-    | undefined)?.c ?? 0;
+  const totalEvents = countEvents(opts.db);
+  const queuedTasks = countPendingTasks(opts.db);
   const boardOptions = opts.now
     ? { includeArchived: false, now: opts.now }
     : { includeArchived: false };
