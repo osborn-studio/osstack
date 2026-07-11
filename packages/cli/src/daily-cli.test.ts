@@ -6,7 +6,7 @@ import { KanbanRepository, openDb } from "@osstack/core";
 import type { CommandRunner } from "@osstack/github";
 import { AgentCommandResult } from "@osstack/protocol";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { computeDelta, handleDailyCommand, type DailyBrief } from "./daily-command.js";
+import { computeDelta, handleDailyCommand, repoCiStatus, type DailyBrief } from "./daily-command.js";
 
 let tmp: string;
 let logs: string[];
@@ -182,6 +182,79 @@ describe("daily CLI", () => {
       { runner: makeRunner([], "success"), now: () => new Date("2026-07-11T09:00:00Z"), out },
     );
     expect(logs.join("\n")).toContain("## Stack board");
+  });
+
+  it("a same-day re-run diffs against the PRIOR day's brief, not the earlier same-day run", async () => {
+    const registry = await seedRegistry();
+    // Day 1: PR #42 only.
+    await handleDailyCommand(
+      ["--registry", registry],
+      { runner: makeRunner([42], "success"), now: () => new Date("2026-07-10T09:00:00Z"), out },
+    );
+    // Day 2, run 1: PR #43 appears.
+    logs = [];
+    await handleDailyCommand(
+      ["--registry", registry],
+      { runner: makeRunner([42, 43], "success"), now: () => new Date("2026-07-11T09:00:00Z"), out },
+    );
+    expect(logs.join("\n")).toContain("New PRs: withgh#43");
+
+    // Day 2, run 2: PR #44 also appears. Baseline must still be day 1's brief,
+    // so BOTH #43 and #44 are new (not just #44 vs the same-day run 1).
+    logs = [];
+    await handleDailyCommand(
+      ["--registry", registry],
+      { runner: makeRunner([42, 43, 44], "success"), now: () => new Date("2026-07-11T17:00:00Z"), out },
+    );
+    const md = logs.join("\n");
+    expect(md).toContain("Delta since 2026-07-10");
+    expect(md).toContain("New PRs: withgh#43, withgh#44");
+  });
+
+  it("treats a corrupt previous brief as a first run without crashing", async () => {
+    const registry = await seedRegistry();
+    const briefsDir = join(tmp, "home", "daily-briefs");
+    await mkdir(briefsDir, { recursive: true });
+    await writeFile(join(briefsDir, "2026-07-10.json"), "{ not json !!", "utf8");
+
+    const code = await handleDailyCommand(
+      ["--registry", registry],
+      { runner: makeRunner([42], "success"), now: () => new Date("2026-07-11T09:00:00Z"), out },
+    );
+    expect(code).toBe(0);
+    expect(logs.join("\n")).toContain("First run");
+  });
+
+  it("renders 'No repos registered.' with exit 0 when the registry is missing", async () => {
+    const code = await handleDailyCommand(
+      ["--registry", join(tmp, "does-not-exist", "repos.json")],
+      { runner: makeRunner([], "success"), now: () => new Date("2026-07-11T09:00:00Z"), out },
+    );
+    expect(code).toBe(0);
+    expect(logs.join("\n")).toContain("No repos registered.");
+  });
+});
+
+describe("repoCiStatus (pure)", () => {
+  it("returns 'none' for a repo with zero CI runs", () => {
+    expect(repoCiStatus({ repo_id: "r", pull_requests: [], ci_runs: [] })).toBe("none");
+  });
+
+  it("prefers conclusion, falls back to status, lowercased", () => {
+    const run = {
+      databaseId: 1,
+      workflowName: "CI",
+      status: "in_progress",
+      conclusion: null,
+      headBranch: "main",
+      event: "push",
+      createdAt: "t",
+      url: "u",
+    };
+    expect(repoCiStatus({ repo_id: "r", pull_requests: [], ci_runs: [run] })).toBe("in_progress");
+    expect(
+      repoCiStatus({ repo_id: "r", pull_requests: [], ci_runs: [{ ...run, conclusion: "FAILURE" }] }),
+    ).toBe("failure");
   });
 });
 

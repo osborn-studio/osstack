@@ -3,9 +3,11 @@
 // CLI — using the same injectable-runner pattern as stack.ts (`runner.run(...)`)
 // so tests are offline fixtures with NO real `gh`/`git` calls.
 //
-// Degrade, never throw: a missing `gh` binary, a repo with no GitHub remote, or
-// any command/network failure collapses to a per-repo `warning` string with
-// empty result arrays. The daily brief surfaces the warning instead of failing.
+// Degrade, never throw: a missing `gh` binary or a repo with no GitHub remote
+// collapses to a whole-repo `warning` string with empty result arrays; a
+// command/network/parse failure in ONE facet (PRs, CI runs, release) degrades
+// only that facet while the other facets' data survives. The daily brief
+// surfaces the warning instead of failing.
 
 import { z } from "zod";
 import { defaultCommandRunner, type CommandRunner } from "./branch-scanner.js";
@@ -50,7 +52,11 @@ export interface RepoGithubStatus {
   pull_requests: PullRequestSummary[];
   ci_runs: CiRunSummary[];
   latest_release?: ReleaseSummary;
-  /** Present only when this repo degraded; result arrays are empty then. */
+  /**
+   * Present only when this repo degraded. Whole-repo degradation (no GitHub
+   * remote / git failure) leaves every facet empty; a facet-scoped gh failure
+   * empties only that facet while the others' data survives.
+   */
   warning?: string;
 }
 
@@ -143,28 +149,36 @@ export async function fetchRepoGithubStatus(
     return degraded("no GitHub remote (origin is not a github.com URL)");
   }
 
-  try {
-    const [prs, runs, release] = await Promise.all([
-      fetchPullRequests(slug, prLimit, runner),
-      fetchCiRuns(slug, runLimit, runner),
-      fetchLatestRelease(slug, runner),
-    ]);
-    return {
-      repo_id: input.repo_id,
-      remote: slug,
-      pull_requests: prs,
-      ci_runs: runs,
-      ...(release !== undefined ? { latest_release: release } : {}),
-    };
-  } catch (err) {
-    return {
-      repo_id: input.repo_id,
-      remote: slug,
-      pull_requests: [],
-      ci_runs: [],
-      warning: `gh query failed for ${slug}: ${errMessage(err)}`,
-    };
-  }
+  // Per-facet isolation: one facet failing (gh error, network, malformed JSON)
+  // must not throw away the other facets' successfully fetched data. Each
+  // failing facet contributes a facet-scoped warning instead.
+  const [prs, runs, release] = await Promise.allSettled([
+    fetchPullRequests(slug, prLimit, runner),
+    fetchCiRuns(slug, runLimit, runner),
+    fetchLatestRelease(slug, runner),
+  ]);
+
+  const facetWarnings: string[] = [];
+  const facet = <T>(name: string, settled: PromiseSettledResult<T>, fallback: T): T => {
+    if (settled.status === "fulfilled") return settled.value;
+    facetWarnings.push(`${name}: ${errMessage(settled.reason)}`);
+    return fallback;
+  };
+
+  const pull_requests = facet<PullRequestSummary[]>("pull requests", prs, []);
+  const ci_runs = facet<CiRunSummary[]>("ci runs", runs, []);
+  const latest_release = facet<ReleaseSummary | undefined>("latest release", release, undefined);
+
+  return {
+    repo_id: input.repo_id,
+    remote: slug,
+    pull_requests,
+    ci_runs,
+    ...(latest_release !== undefined ? { latest_release } : {}),
+    ...(facetWarnings.length > 0
+      ? { warning: `gh query failed for ${slug} — ${facetWarnings.join("; ")}` }
+      : {}),
+  };
 }
 
 /** Fetch GitHub status for every repo (sequential; each repo degrades independently). */

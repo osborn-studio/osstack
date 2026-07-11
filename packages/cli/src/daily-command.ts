@@ -78,6 +78,8 @@ export function repoCiStatus(status: RepoGithubStatus): string {
 export async function handleDailyCommand(args: string[], deps: DailyCliDeps = {}): Promise<number> {
   const out = deps.out ?? console.log;
   const now = deps.now?.() ?? new Date();
+  // UTC ISO date, intentionally: brief filenames and delta boundaries must be
+  // deterministic across machines/timezones (N4 ruling — determinism over local tz).
   const date = now.toISOString().slice(0, 10);
 
   const registryPath = resolveRegistryPath(args);
@@ -96,9 +98,10 @@ export async function handleDailyCommand(args: string[], deps: DailyCliDeps = {}
   );
 
   // 3. Stack board summary — included only when the board actually has cards.
-  const stack = readStackBoardSummary();
+  const { summary: stack, warning: stackWarning } = readStackBoardSummary();
 
   const warnings = github.filter((g) => g.warning !== undefined).map((g) => `${g.repo_id}: ${g.warning}`);
+  if (stackWarning !== undefined) warnings.push(stackWarning);
 
   // 4. Delta against the most recent previous brief.
   const briefsDir = join(osstackHome(), "daily-briefs");
@@ -131,24 +134,37 @@ export async function handleDailyCommand(args: string[], deps: DailyCliDeps = {}
 
 // ── Stack board ──────────────────────────────────────────────────────────────
 
-function readStackBoardSummary(board = "stack"): StackBoardSummary | undefined {
+/**
+ * Never-crash: a corrupt/locked state.db must not take `daily` down — the board
+ * is one facet of the brief, so any throw degrades to an omitted section plus a
+ * warning surfaced in `brief.warnings`.
+ */
+function readStackBoardSummary(board = "stack"): { summary?: StackBoardSummary; warning?: string } {
   const dbPath = join(osstackHome(), "state.db");
   // No state DB yet ⇒ no stack board; omit rather than create one as a side effect.
-  if (!existsSync(dbPath)) return undefined;
-  const db = openDb({ path: dbPath });
+  if (!existsSync(dbPath)) return {};
   try {
-    const repo = new KanbanRepository(db, dbPath);
-    const view = getBoard(repo, { board, includeArchived: true });
-    if (!view.changed || view.stats.total === 0) return undefined;
+    const db = openDb({ path: dbPath });
+    try {
+      const repo = new KanbanRepository(db, dbPath);
+      const view = getBoard(repo, { board, includeArchived: true });
+      if (!view.changed || view.stats.total === 0) return {};
+      return {
+        summary: {
+          board,
+          total: view.stats.total,
+          columns: view.columns
+            .filter((column) => column.cards.length > 0)
+            .map((column) => ({ name: column.name, count: column.cards.length })),
+        },
+      };
+    } finally {
+      db.close();
+    }
+  } catch (err) {
     return {
-      board,
-      total: view.stats.total,
-      columns: view.columns
-        .filter((column) => column.cards.length > 0)
-        .map((column) => ({ name: column.name, count: column.cards.length })),
+      warning: `stack board unavailable (${dbPath}): ${err instanceof Error ? err.message : String(err)}`,
     };
-  } finally {
-    db.close();
   }
 }
 
@@ -234,6 +250,10 @@ async function readPreviousBrief(briefsDir: string, today: string): Promise<Dail
  * repos with open non-draft PRs to review, then portfolio maturity gaps. The
  * `command` is a stable `<service>.<action>` protocol identifier (advisory — the
  * daily command never executes it), the `reason` is the human-facing decision.
+ *
+ * CTO ruling (R1.4): these ids are decision categories, not dispatchable
+ * commands; `reason` carries the actionable payload. When R1.5 `start`/`control`
+ * land, map fix_ci/review_prs to real `osstack start`/`control` invocations.
  */
 export function deriveOwnerDecisions(brief: DailyBrief): { command: string; reason: string }[] {
   const decisions: { command: string; reason: string }[] = [];

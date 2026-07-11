@@ -117,14 +117,73 @@ describe("fetchRepoGithubStatus", () => {
     expect(status.warning).toMatch(/could not read git remote/);
   });
 
-  it("degrades to a warning when a gh query fails (network/gh missing)", async () => {
+  it("degrades only the failing facet: PR fetch fails, CI runs + release survive", async () => {
     const { runner } = fakeRunner({
       remote: "git@github.com:owner/repo.git",
       prs: new Error("gh: command not found"),
+      runs: [
+        {
+          databaseId: 7,
+          workflowName: "CI",
+          status: "completed",
+          conclusion: "success",
+          headBranch: "main",
+          event: "push",
+          createdAt: "2026-07-10T00:00:00Z",
+          url: "https://github.com/owner/repo/actions/runs/7",
+        },
+      ],
+      releases: [{ tagName: "v2.0.0", name: "2.0.0", publishedAt: "2026-07-01T00:00:00Z" }],
     });
     const status = await fetchRepoGithubStatus({ repo_id: "owner/repo", path: "/tmp/r" }, runner);
     expect(status.remote).toBe("owner/repo");
+    // The failing facet is empty and named in the warning...
+    expect(status.pull_requests).toEqual([]);
     expect(status.warning).toMatch(/gh query failed/);
+    expect(status.warning).toMatch(/pull requests:/);
+    // ...while the other facets' data survives.
+    expect(status.ci_runs).toHaveLength(1);
+    expect(status.latest_release?.tagName).toBe("v2.0.0");
+    expect(status.warning).not.toMatch(/ci runs:|latest release:/);
+  });
+
+  it("degrades only the CI facet on malformed gh run output, keeping PRs + release", async () => {
+    const { runner } = fakeRunner({
+      remote: "https://github.com/owner/repo.git",
+      prs: [
+        {
+          number: 5,
+          title: "ok",
+          state: "OPEN",
+          headRefName: "f",
+          isDraft: false,
+          url: "https://github.com/owner/repo/pull/5",
+        },
+      ],
+      runs: [{ nonsense: true }], // fails the RunListJson zod parse
+      releases: [{ tagName: "v1.0.0", name: "1.0.0", publishedAt: "2026-07-01T00:00:00Z" }],
+    });
+    const status = await fetchRepoGithubStatus({ repo_id: "owner/repo", path: "/tmp/r" }, runner);
+    expect(status.pull_requests).toHaveLength(1);
+    expect(status.latest_release?.tagName).toBe("v1.0.0");
+    expect(status.ci_runs).toEqual([]);
+    expect(status.warning).toMatch(/ci runs:/);
+  });
+
+  it("collects every failing facet in one warning when all gh queries fail", async () => {
+    const { runner } = fakeRunner({
+      remote: "git@github.com:owner/repo.git",
+      prs: new Error("boom"),
+      runs: new Error("boom"),
+      releases: new Error("boom"),
+    });
+    const status = await fetchRepoGithubStatus({ repo_id: "owner/repo", path: "/tmp/r" }, runner);
+    expect(status.warning).toMatch(/pull requests:/);
+    expect(status.warning).toMatch(/ci runs:/);
+    expect(status.warning).toMatch(/latest release:/);
+    expect(status.pull_requests).toEqual([]);
+    expect(status.ci_runs).toEqual([]);
+    expect(status.latest_release).toBeUndefined();
   });
 
   it("handles a repo with no releases (empty release list => no latest_release)", async () => {
