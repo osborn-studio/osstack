@@ -49,11 +49,13 @@ export type ApprovalRequestRow = Pick<
  * - `payload_json` is the serialized payload -> parsed back to a record.
  *
  * Unparseable / non-object payload_json — DOCUMENTED CHOICE: ESCALATE (throw).
- * `appendEvent` always writes `JSON.stringify(payload)` where payload is a record,
- * so protocol's `EventEnvelope.payload` (an object) is a genuine invariant. A row
- * whose payload_json is not valid JSON, or is valid JSON but not an object, is a
- * corrupt row — coercing it would fabricate structure, so we throw instead. This
- * keeps the mapper total over every VALID row while surfacing corruption loudly.
+ * In practice every writer feeds `appendEvent` a HermesEvent whose payload is an
+ * object, but `StoredEventInput.payload` is typed `unknown`, so a scalar/array/
+ * null payload IS representable — this throw is a genuine defensive branch, not
+ * only corruption handling. protocol's `EventEnvelope.payload` requires an
+ * object; coercing anything else would fabricate structure, so we throw. This
+ * keeps the mapper total over every object-payload row while surfacing
+ * non-object rows loudly.
  */
 export function storedEventToEnvelope(row: StoredEventRow): protocol.EventEnvelope {
   return {

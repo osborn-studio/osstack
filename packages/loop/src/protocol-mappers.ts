@@ -67,8 +67,7 @@ export function completedTaskToRunSummary(t: CompletedTask): protocol.RunSummary
         "as a protocol RunSummary.",
     );
   }
-  const outcome: protocol.RunOutcome =
-    t.outcome === "success" ? "completed" : t.outcome === "failed" ? "failed" : "cancelled";
+  const outcome: protocol.RunOutcome = mapOutcome(t.outcome);
   return {
     run_id: t.run_id,
     task_id: t.task_id,
@@ -79,4 +78,24 @@ export function completedTaskToRunSummary(t: CompletedTask): protocol.RunSummary
     ...(t.completed_at !== undefined ? { completed_at: t.completed_at } : {}),
     ...(t.execution_summary !== undefined ? { summary: t.execution_summary } : {}),
   };
+}
+
+/**
+ * Exhaustive CompletedTask.outcome -> protocol.RunOutcome mapping. The switch
+ * (with a never-typed default) fails to COMPILE if CompletedTask.outcome gains
+ * a new value, instead of silently mapping it to "cancelled".
+ */
+function mapOutcome(outcome: CompletedTask["outcome"]): protocol.RunOutcome {
+  switch (outcome) {
+    case "success":
+      return "completed";
+    case "failed":
+      return "failed";
+    case "escalated":
+      return "cancelled";
+    default: {
+      const exhaustive: never = outcome;
+      throw new Error(`completedTaskToRunSummary: unmapped outcome ${String(exhaustive)}`);
+    }
+  }
 }
