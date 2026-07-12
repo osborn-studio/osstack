@@ -54,6 +54,7 @@ import {
   type AgentTask,
 } from "@osstack/agents";
 import { appendEvent, finalizeRun, insertRun, insertTask } from "./store.js";
+import { runDailyBrief } from "./daily-command.js";
 import { makePolicyGate } from "./policy-gate.js";
 import { osstackHome, pidFilePath, resolveSocketPath } from "./paths.js";
 import { PROTOCOL_VERSION, VERSION } from "./version.js";
@@ -70,6 +71,8 @@ import {
 const DAEMON_VERSION = VERSION;
 const DAEMON_PHASE = "S1.5-controls";
 const LOOP_FAILURE_STREAK_THRESHOLD = 3;
+/** Auto-stop a daily session after this many consecutive brief failures (R2.3). */
+const DAILY_FAILURE_STOP_THRESHOLD = 5;
 
 interface ArtifactVerificationOptions {
   requireGitDiff?: boolean;
@@ -93,6 +96,7 @@ interface SingleResponse {
 interface DaemonContext {
   dbPath: string;
   loopSessionsPath: string;
+  dailySessionsPath: string;
   db: Database.Database;
   redactor: PIIRedactor;
   adapters: Map<string, AgentAdapter>;
@@ -107,6 +111,8 @@ interface DaemonContext {
   activeRuns: Map<string, AbortController>;
   /** Daemon-managed polling loop sessions, keyed by loop_session_id. */
   loopSessions: Map<string, LoopSession>;
+  /** Daemon-managed daily-brief sessions, keyed by daily_session_id (R2.3). */
+  dailySessions: Map<string, DailySession>;
   /** Kanban task_ids per osstack run_id, set when bridge create succeeds. */
   hermesKanbanByRun: Map<string, string>;
   /** When true (set by daemon.drain), new task.submit calls are rejected. */
@@ -193,6 +199,58 @@ interface PersistedLoopSession {
   lastCycleDurationMs?: number;
   lastJsonPath?: string;
   lastMarkdownPath?: string;
+  lastError?: string;
+  stopReason?: string;
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Daily-brief sessions (R2.3) — a read-only composition scheduled through the
+// daemon, modeled on the loop-session pattern above (own map + JSON file +
+// atomic persist + restore-on-start). NOT a LoopEngine: daily just re-runs the
+// `runDailyBrief` core on an interval and records the latest result.
+// ──────────────────────────────────────────────────────────────────────
+
+type DailySessionStatus = "running" | "stopping" | "stopped" | "failed";
+
+interface DailySession {
+  dailySessionId: string;
+  /** Repo registry path, resolved at schedule time and stored (survives restart). */
+  registryPath: string;
+  intervalMs: number;
+  /** Recorded verbatim for humans; the interval is what drives execution. */
+  scheduleExpression?: string;
+  status: DailySessionStatus;
+  startedAt: number;
+  updatedAt: number;
+  tickCount: number;
+  lastBriefPath?: string;
+  /** Status field of the latest strict AgentCommandResult (e.g. "ok"), or "error". */
+  lastResultStatus?: string;
+  consecutiveFailureCount: number;
+  lastError?: string;
+  stopReason?: string;
+  abort: AbortController;
+  shutdownRequested?: boolean;
+  done?: Promise<void>;
+}
+
+interface PersistedDailySessionsFile {
+  version: 1;
+  sessions: PersistedDailySession[];
+}
+
+interface PersistedDailySession {
+  dailySessionId: string;
+  registryPath: string;
+  intervalMs: number;
+  scheduleExpression?: string;
+  status: DailySessionStatus;
+  startedAt: number;
+  updatedAt: number;
+  tickCount: number;
+  lastBriefPath?: string;
+  lastResultStatus?: string;
+  consecutiveFailureCount: number;
   lastError?: string;
   stopReason?: string;
 }
@@ -358,6 +416,29 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       stopLoopSession(session, "stopped by request");
       await persistLoopSessions(ctx);
       return singleOk(req.id, loopSessionSummary(session));
+    }
+
+    case "daily.schedule": {
+      const parsed = parseDailyScheduleParams(req.params);
+      if (parsed instanceof Error) return singleErr(req.id, "bad_request", parsed.message);
+      return singleOk(req.id, await startDailySession(ctx, parsed));
+    }
+
+    case "daily.list":
+      return singleOk(req.id, {
+        daily: Array.from(ctx.dailySessions.values()).map(dailySessionSummary),
+      });
+
+    case "daily.stop": {
+      const p = objectParams(req.params);
+      if (p instanceof Error) return singleErr(req.id, "bad_request", p.message);
+      const dailySessionId = optionalString(p, "dailySessionId");
+      if (dailySessionId === undefined) return singleErr(req.id, "bad_request", "params.dailySessionId required");
+      const session = ctx.dailySessions.get(dailySessionId);
+      if (session === undefined) return singleErr(req.id, "not_found", `no daily session with id=${dailySessionId}`);
+      stopDailySession(session, "stopped by request");
+      await persistDailySessions(ctx);
+      return singleOk(req.id, dailySessionSummary(session));
     }
 
     case "loop.status": {
@@ -1356,6 +1437,200 @@ async function restoreLoopSessions(ctx: DaemonContext): Promise<void> {
   await persistLoopSessions(ctx);
 }
 
+// ──────────────────────────────────────────────────────────────────────
+// Daily-brief session lifecycle (R2.3)
+// ──────────────────────────────────────────────────────────────────────
+
+interface DailySchedule {
+  registryPath: string;
+  intervalMs: number;
+  scheduleExpression?: string;
+}
+
+function parseDailyScheduleParams(params: unknown): DailySchedule | Error {
+  const p = objectParams(params);
+  if (p instanceof Error) return p;
+  const registryPath = optionalString(p, "registryPath");
+  if (registryPath === undefined) return new Error("params.registryPath required");
+  const intervalMs = optionalNonNegativeInteger(p, "intervalMs");
+  if (intervalMs instanceof Error) return intervalMs;
+  if (intervalMs === undefined) return new Error("params.intervalMs required");
+  const scheduleExpression = optionalString(p, "schedule");
+  return {
+    registryPath,
+    intervalMs,
+    ...(scheduleExpression !== undefined ? { scheduleExpression } : {}),
+  };
+}
+
+async function startDailySession(ctx: DaemonContext, schedule: DailySchedule): Promise<Record<string, unknown>> {
+  const now = Date.now();
+  const session: DailySession = {
+    dailySessionId: `daily_session_${randomUUID().slice(0, 8)}`,
+    registryPath: schedule.registryPath,
+    intervalMs: schedule.intervalMs,
+    status: "running",
+    startedAt: now,
+    updatedAt: now,
+    tickCount: 0,
+    consecutiveFailureCount: 0,
+    abort: new AbortController(),
+    ...(schedule.scheduleExpression !== undefined ? { scheduleExpression: schedule.scheduleExpression } : {}),
+  };
+  ctx.dailySessions.set(session.dailySessionId, session);
+  await persistDailySessions(ctx);
+  session.done = runDailySession(ctx, session);
+  return dailySessionSummary(session);
+}
+
+async function runDailySession(ctx: DaemonContext, session: DailySession): Promise<void> {
+  try {
+    while (!session.abort.signal.aborted) {
+      let stop = false;
+      // Policy (R2.3): daily is a READ-ONLY composition — its only write is the
+      // dated brief JSON — so it is intentionally NOT observe-gated. Observing
+      // is precisely what `mode: observe` permits, so no makePolicyGate consult
+      // happens here; a scheduled brief runs regardless of workspace policy.
+      try {
+        const run = await runDailyBrief({ registryPath: session.registryPath });
+        session.lastBriefPath = run.briefPath;
+        session.lastResultStatus = run.result.status;
+        session.consecutiveFailureCount = 0;
+        delete session.lastError;
+      } catch (err) {
+        // A tick failure must never crash the daemon or kill the session: record
+        // it, count it, keep ticking — until the consecutive-failure ceiling.
+        session.consecutiveFailureCount += 1;
+        session.lastResultStatus = "error";
+        session.lastError = err instanceof Error ? err.message : String(err);
+        if (session.consecutiveFailureCount >= DAILY_FAILURE_STOP_THRESHOLD) stop = true;
+      }
+      session.tickCount += 1;
+      session.updatedAt = Date.now();
+      await persistDailySessions(ctx);
+      if (stop) {
+        await markDailySessionStopped(
+          ctx,
+          session,
+          `stopped after ${DAILY_FAILURE_STOP_THRESHOLD} consecutive failures: ${session.lastError}`,
+        );
+        return;
+      }
+      await sleep(session.intervalMs, undefined, { signal: session.abort.signal });
+    }
+    if (!session.shutdownRequested) await markDailySessionStopped(ctx, session, session.stopReason ?? "stopped by request");
+  } catch (err) {
+    if (session.abort.signal.aborted || (err as Error).name === "AbortError") {
+      if (!session.shutdownRequested) await markDailySessionStopped(ctx, session, session.stopReason ?? "stopped by request");
+      return;
+    }
+    session.status = "failed";
+    session.lastError = err instanceof Error ? err.message : String(err);
+    session.updatedAt = Date.now();
+    await persistDailySessions(ctx);
+  }
+}
+
+function stopDailySession(session: DailySession, reason: string): void {
+  if (session.status === "running") session.status = "stopping";
+  session.stopReason = reason;
+  session.updatedAt = Date.now();
+  session.abort.abort();
+}
+
+async function markDailySessionStopped(ctx: DaemonContext, session: DailySession, reason: string): Promise<void> {
+  session.status = "stopped";
+  session.stopReason = reason;
+  session.updatedAt = Date.now();
+  await persistDailySessions(ctx);
+}
+
+function dailySessionSummary(session: DailySession): Record<string, unknown> {
+  return {
+    daily_session_id: session.dailySessionId,
+    registry_path: session.registryPath,
+    status: session.status,
+    interval_ms: session.intervalMs,
+    ...(session.scheduleExpression !== undefined ? { schedule: session.scheduleExpression } : {}),
+    started_at: session.startedAt,
+    updated_at: session.updatedAt,
+    tick_count: session.tickCount,
+    consecutive_failure_count: session.consecutiveFailureCount,
+    ...(session.lastBriefPath !== undefined ? { last_brief_path: session.lastBriefPath } : {}),
+    ...(session.lastResultStatus !== undefined ? { last_result_status: session.lastResultStatus } : {}),
+    ...(session.stopReason !== undefined ? { stop_reason: session.stopReason } : {}),
+    ...(session.lastError !== undefined ? { last_error: session.lastError } : {}),
+  };
+}
+
+async function persistDailySessions(ctx: DaemonContext): Promise<void> {
+  const payload: PersistedDailySessionsFile = {
+    version: 1,
+    sessions: Array.from(ctx.dailySessions.values()).map((session) => ({
+      dailySessionId: session.dailySessionId,
+      registryPath: session.registryPath,
+      intervalMs: session.intervalMs,
+      ...(session.scheduleExpression !== undefined ? { scheduleExpression: session.scheduleExpression } : {}),
+      status: session.status,
+      startedAt: session.startedAt,
+      updatedAt: session.updatedAt,
+      tickCount: session.tickCount,
+      consecutiveFailureCount: session.consecutiveFailureCount,
+      ...(session.lastBriefPath !== undefined ? { lastBriefPath: session.lastBriefPath } : {}),
+      ...(session.lastResultStatus !== undefined ? { lastResultStatus: session.lastResultStatus } : {}),
+      ...(session.lastError !== undefined ? { lastError: session.lastError } : {}),
+      ...(session.stopReason !== undefined ? { stopReason: session.stopReason } : {}),
+    })),
+  };
+  // Atomic write (temp + rename), same rationale as persistLoopSessions: readers
+  // (tests/tooling) must never observe a truncated daily-sessions.json, and a
+  // failed snapshot (e.g. home removed mid-shutdown) must never reject a tick.
+  const tmpPath = join(
+    dirname(ctx.dailySessionsPath),
+    `.${basename(ctx.dailySessionsPath)}.${process.pid}.${persistCounter++}.tmp`,
+  );
+  try {
+    await writeFile(tmpPath, `${JSON.stringify(payload, null, 2)}\n`, "utf-8");
+    await rename(tmpPath, ctx.dailySessionsPath);
+  } catch {
+    // best-effort snapshot (next persist will retry)
+  }
+}
+
+async function restoreDailySessions(ctx: DaemonContext): Promise<void> {
+  let parsed: PersistedDailySessionsFile;
+  try {
+    parsed = JSON.parse(await readFile(ctx.dailySessionsPath, "utf-8")) as PersistedDailySessionsFile;
+  } catch {
+    return;
+  }
+  if (parsed.version !== 1 || !Array.isArray(parsed.sessions)) return;
+
+  for (const saved of parsed.sessions) {
+    const session: DailySession = {
+      dailySessionId: saved.dailySessionId,
+      registryPath: saved.registryPath,
+      intervalMs: saved.intervalMs,
+      // An interrupted "stopping" session is treated as stopped on restore (its
+      // abort never completed), mirroring loop-session restore semantics.
+      status: saved.status === "running" ? "running" : saved.status === "stopping" ? "stopped" : saved.status,
+      startedAt: saved.startedAt,
+      updatedAt: Date.now(),
+      tickCount: saved.tickCount ?? 0,
+      consecutiveFailureCount: saved.consecutiveFailureCount ?? 0,
+      abort: new AbortController(),
+      ...(saved.scheduleExpression !== undefined ? { scheduleExpression: saved.scheduleExpression } : {}),
+      ...(saved.lastBriefPath !== undefined ? { lastBriefPath: saved.lastBriefPath } : {}),
+      ...(saved.lastResultStatus !== undefined ? { lastResultStatus: saved.lastResultStatus } : {}),
+      ...(saved.lastError !== undefined ? { lastError: saved.lastError } : {}),
+      ...(saved.stopReason !== undefined && saved.status !== "running" ? { stopReason: saved.stopReason } : {}),
+    };
+    ctx.dailySessions.set(session.dailySessionId, session);
+    if (session.status === "running") session.done = runDailySession(ctx, session);
+  }
+  await persistDailySessions(ctx);
+}
+
 function parseLoopRunParams(
   params: unknown,
 ): { runOptions: LoopRunOptions; cyclesOptions?: LoopRunCyclesOptions } | Error {
@@ -2009,6 +2284,7 @@ function buildContext(): DaemonContext {
   if (!existsSync(home)) mkdirSync(home, { recursive: true });
   const dbPath = join(home, "state.db");
   const loopSessionsPath = join(home, "loop-sessions.json");
+  const dailySessionsPath = join(home, "daily-sessions.json");
   if (!existsSync(dirname(dbPath))) mkdirSync(dirname(dbPath), { recursive: true });
   const db = openDb({ path: dbPath });
   const redactor = new PIIRedactor();
@@ -2027,10 +2303,11 @@ function buildContext(): DaemonContext {
   const gbrain = new GBrainAdapter();  // disabled unless OSSTACK_GBRAIN=1
   const kanban = new KanbanRepository(db, dbPath);
   return {
-    dbPath, loopSessionsPath, db, redactor, adapters, policy, hermes, gbrain, kanban,
+    dbPath, loopSessionsPath, dailySessionsPath, db, redactor, adapters, policy, hermes, gbrain, kanban,
     dashboardUrl: null,
     activeRuns: new Map(),
     loopSessions: new Map(),
+    dailySessions: new Map(),
     hermesKanbanByRun: new Map(),
     draining: false,
     requestShutdown: () => { /* wired up in startDaemon */ },
@@ -2107,7 +2384,7 @@ export async function startDaemon(opts: { socketPath?: string } = {}): Promise<D
 
   return new Promise((resolve, reject) => {
     server.once("error", reject);
-    void restoreLoopSessions(ctx).then(() => {
+    void Promise.all([restoreLoopSessions(ctx), restoreDailySessions(ctx)]).then(() => {
       server.listen(socketPath, () => {
       try { chmodSync(socketPath, 0o600); } catch { /* best effort */ }
 
@@ -2124,10 +2401,17 @@ export async function startDaemon(opts: { socketPath?: string } = {}): Promise<D
             session.shutdownRequested = true;
             session.abort.abort();
           }
+          for (const session of ctx.dailySessions.values()) {
+            session.shutdownRequested = true;
+            session.abort.abort();
+          }
           const loopCompletions = Array.from(ctx.loopSessions.values())
             .map((session) => session.done)
             .filter((done): done is Promise<void> => done !== undefined);
-          await Promise.allSettled(loopCompletions);
+          const dailyCompletions = Array.from(ctx.dailySessions.values())
+            .map((session) => session.done)
+            .filter((done): done is Promise<void> => done !== undefined);
+          await Promise.allSettled([...loopCompletions, ...dailyCompletions]);
           await new Promise<void>((resolveClose) => server.close(() => resolveClose()));
           if (dashboard !== null) await dashboard.close();
           try { ctx.db.close(); } catch { /* swallow */ }

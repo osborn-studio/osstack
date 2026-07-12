@@ -41,6 +41,25 @@ export interface DailyCliDeps {
   out?: (line: string) => void;
 }
 
+/** Inputs to the reusable brief core (`runDailyBrief`). */
+export interface RunDailyBriefDeps {
+  /** Resolved repo registry path (absolute). The daemon resolves + stores this. */
+  registryPath: string;
+  /** Injectable command runner for the GitHub adapter (offline in tests). */
+  runner?: CommandRunner;
+  /** Clock override (tests pin the ISO date + generated_at). */
+  now?: () => Date;
+}
+
+/** The full outcome of one brief composition: the brief, its write path, the
+ *  strict protocol result, and the enabled registry entries used. */
+export interface DailyBriefRun {
+  brief: DailyBrief;
+  briefPath: string;
+  result: AgentCommandResult;
+  entries: RepoRegistryEntry[];
+}
+
 export interface StackBoardSummary {
   board: string;
   total: number;
@@ -75,15 +94,21 @@ export function repoCiStatus(status: RepoGithubStatus): string {
   return (latest.conclusion ?? latest.status ?? "unknown").toLowerCase();
 }
 
-export async function handleDailyCommand(args: string[], deps: DailyCliDeps = {}): Promise<number> {
-  const out = deps.out ?? console.log;
+/**
+ * Compose one daily brief (steps 1–4 + persist + build the strict protocol
+ * result) with no CLI concerns: no arg parsing, no rendering, no stdout. The
+ * daemon runs this in-process each scheduled tick, and `handleDailyCommand`
+ * wraps it for the manual CLI path — so a scheduled brief is byte-compatible
+ * with a manual one (same registry read, same `$OSSTACK_HOME/daily-briefs/`
+ * write, same `AgentCommandResult`).
+ */
+export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBriefRun> {
   const now = deps.now?.() ?? new Date();
   // UTC ISO date, intentionally: brief filenames and delta boundaries must be
   // deterministic across machines/timezones (N4 ruling — determinism over local tz).
   const date = now.toISOString().slice(0, 10);
 
-  const registryPath = resolveRegistryPath(args);
-  const entries = await readRepoRegistry(registryPath);
+  const entries = await readRepoRegistry(deps.registryPath);
   const enabled = entries.filter((entry) => entry.enabled);
 
   // 1. Portfolio maturity scan (supervisor, existing).
@@ -123,11 +148,24 @@ export async function handleDailyCommand(args: string[], deps: DailyCliDeps = {}
   await mkdir(briefsDir, { recursive: true });
   await writeFile(briefPath, `${JSON.stringify(brief, null, 2)}\n`, "utf8");
 
-  // 5. Render.
+  return { brief, briefPath, result: buildDailyResult(brief, briefPath, enabled), entries: enabled };
+}
+
+export async function handleDailyCommand(args: string[], deps: DailyCliDeps = {}): Promise<number> {
+  const out = deps.out ?? console.log;
+
+  // Thin wrapper: parse flags → runDailyBrief → render. All composition lives
+  // in runDailyBrief so the daemon and the CLI produce identical briefs.
+  const run = await runDailyBrief({
+    registryPath: resolveRegistryPath(args),
+    ...(deps.runner !== undefined ? { runner: deps.runner } : {}),
+    ...(deps.now !== undefined ? { now: deps.now } : {}),
+  });
+
   if (hasFlag(args, "--json")) {
-    out(JSON.stringify(buildDailyResult(brief, briefPath, enabled), null, 2));
+    out(JSON.stringify(run.result, null, 2));
   } else {
-    out(renderDailyMarkdown(brief));
+    out(renderDailyMarkdown(run.brief));
   }
   return 0;
 }

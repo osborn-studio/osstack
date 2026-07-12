@@ -154,6 +154,9 @@ function renderChineseMainHelp(): string {
   release edgeone     输出 EdgeOne Knowledge Cloud 上线清单
   deliver <需求>      从一句需求进入 task queue -> loop -> report/scorecard/proof
   daily               只读组合简报：成熟度扫描 + GitHub PR/CI/release + 栈看板 + 增量对比
+  daily schedule      通过 daemon 按间隔调度简报（只读，不受 observe 模式限制）
+  daily sessions      列出 daemon 管理的每日简报会话
+  daily unschedule    停止某个每日简报会话
   start               生成受合同约束的交付：写入 Execution Contract 并登记待审批
   control             驱动合同审批生命周期：status/approve/revise/stop（approve 输出 deliver 命令但不执行）
 
@@ -328,6 +331,13 @@ Project commands:
   daily [--registry P] [--workspace P] [--json]
                       Read-only portfolio brief: maturity scan + GitHub PR/CI/release
                       + stack board + delta since the last brief (golden path)
+  daily schedule --interval-ms N [--registry P] [--workspace P] [--schedule EXPR] [--json]
+                      Schedule the brief on an interval via the daemon (read-only;
+                      not observe-gated). EXPR is recorded for humans; interval drives it
+  daily sessions [--json]
+                      List daemon-managed daily-brief sessions
+  daily unschedule <daily_session_id> [--json]
+                      Stop a daemon-managed daily-brief session
   start "<goal>" --repo-id <id> [--registry P] [--risk R] [--json]
                       Open a contract-gated delivery: writes an Execution Contract,
                       tracks it, and records a pending approval (needs_approval)
@@ -628,6 +638,12 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "daily") {
+    const sub = args[1];
+    // Scheduling subcommands run through the daemon; bare `daily` (and its
+    // flags like --json/--registry) stays the in-process manual brief.
+    if (sub === "schedule" || sub === "sessions" || sub === "unschedule") {
+      return await handleDailyScheduleCommand(args.slice(1));
+    }
     return await handleDailyCommand(args.slice(1));
   }
 
@@ -9976,6 +9992,122 @@ function printLoopSessionList(loops: LoopSessionSummary[]): void {
   }
   for (const loop of loops) {
     console.log(`${loop.loop_session_id}  ${loop.status}  cycles=${loop.cycle_count} executed=${loop.executed_task_count}  ${loop.workspace_path}`);
+  }
+}
+
+// ── daily scheduling (R2.3) — daemon-managed read-only brief sessions ─────────
+
+interface DailySessionSummary {
+  daily_session_id: string;
+  registry_path: string;
+  status: "running" | "stopping" | "stopped" | "failed";
+  interval_ms: number;
+  schedule?: string;
+  started_at: number;
+  updated_at: number;
+  tick_count: number;
+  consecutive_failure_count: number;
+  last_brief_path?: string;
+  last_result_status?: string;
+  stop_reason?: string;
+  last_error?: string;
+}
+
+/**
+ * `osstack daily schedule|sessions|unschedule` — the daemon-managed side of the
+ * read-only daily brief (bare `osstack daily` stays the in-process manual run).
+ * Mirrors `loop start|list|stop` conventions, and requires a running daemon
+ * (the shared `rpc` helper surfaces the standard "daemon not running" refusal).
+ */
+async function handleDailyScheduleCommand(args: string[]): Promise<number> {
+  const sub = args[0];
+
+  if (sub === "schedule") {
+    const intervalMs = parseNonNegativeIntegerFlag(flagValue(args, "--interval-ms"), "--interval-ms");
+    if (intervalMs instanceof Error) {
+      console.error(`osstack: ${intervalMs.message}`);
+      return 1;
+    }
+    if (intervalMs === undefined) {
+      console.error("osstack: daily schedule requires --interval-ms <ms>");
+      return 1;
+    }
+    // Resolve the registry path here (client cwd/OSSTACK_HOME) and hand the
+    // daemon an absolute path it stores verbatim — same resolution the manual
+    // `daily` run uses, so a scheduled brief reads the same registry.
+    const registryPath = resolveRegistryPath(args);
+    const scheduleExpression = flagValue(args, "--schedule");
+    const resp = await rpc("daily.schedule", {
+      intervalMs,
+      registryPath,
+      ...(scheduleExpression !== undefined ? { schedule: scheduleExpression } : {}),
+    }) as RpcResp;
+    if (!resp.ok) {
+      console.error("osstack:", resp.error?.message ?? "daily.schedule failed");
+      return 1;
+    }
+    printDailySession(resp.result as DailySessionSummary, args.includes("--json"));
+    return 0;
+  }
+
+  if (sub === "sessions") {
+    const resp = await rpc("daily.list") as RpcResp;
+    if (!resp.ok) {
+      console.error("osstack:", resp.error?.message ?? "daily.list failed");
+      return 1;
+    }
+    const result = resp.result as { daily: DailySessionSummary[] };
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(result, null, 2));
+      return 0;
+    }
+    printDailySessionList(result.daily);
+    return 0;
+  }
+
+  if (sub === "unschedule") {
+    const dailySessionId = args[1];
+    if (dailySessionId === undefined || dailySessionId.startsWith("--")) {
+      console.error("osstack: daily unschedule requires a daily_session_id");
+      return 1;
+    }
+    const resp = await rpc("daily.stop", { dailySessionId }) as RpcResp;
+    if (!resp.ok) {
+      console.error("osstack:", resp.error?.message ?? "daily.stop failed");
+      return 1;
+    }
+    printDailySession(resp.result as DailySessionSummary, args.includes("--json"));
+    return 0;
+  }
+
+  console.error(`osstack: unknown daily subcommand: ${sub ?? ""}`);
+  return 1;
+}
+
+function printDailySession(result: DailySessionSummary, json: boolean): void {
+  if (json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+  console.log(`daily_session_id=${result.daily_session_id}`);
+  console.log(`status=${result.status}`);
+  console.log(`registry=${result.registry_path}`);
+  console.log(`interval_ms=${result.interval_ms}`);
+  if (result.schedule !== undefined) console.log(`schedule=${result.schedule}`);
+  console.log(`ticks=${result.tick_count} consecutive_failures=${result.consecutive_failure_count}`);
+  if (result.last_result_status !== undefined) console.log(`last_result_status=${result.last_result_status}`);
+  if (result.last_brief_path !== undefined) console.log(`last_brief_path=${result.last_brief_path}`);
+  if (result.stop_reason !== undefined) console.log(`stop_reason=${result.stop_reason}`);
+  if (result.last_error !== undefined) console.log(`last_error=${result.last_error}`);
+}
+
+function printDailySessionList(sessions: DailySessionSummary[]): void {
+  if (sessions.length === 0) {
+    console.log("No daily sessions.");
+    return;
+  }
+  for (const session of sessions) {
+    console.log(`${session.daily_session_id}  ${session.status}  ticks=${session.tick_count} interval_ms=${session.interval_ms}  ${session.registry_path}`);
   }
 }
 
