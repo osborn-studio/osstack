@@ -7,10 +7,11 @@ R2.2 — kernel-level policy gate. Closes the R1.3 debt where observe-mode
 enforcement was CLI-layer only: direct daemon RPC clients and the daemon's own
 scheduler bypassed it.
 
-- `@osstack/loop`: `LoopEngineOptions` gains an optional injectable
+- `@osstack/loop`: `LoopRunOptions` gains an optional injectable
   `policyGate?: (ctx: { workspacePath }) => Promise<PolicyGateDecision>` (new
-  loop-local `PolicyGateDecision`/`PolicyGate`/`LoopPolicyStatus` types — no
-  `@osstack/core` import, ADR-001). The engine consults it once at
+  loop-local `PolicyGateDecision`/`PolicyGate`/`LoopPolicyStatus` structural
+  types — the loop never couples to the policy loader/schema, which lives in
+  the CLI product layer). The engine consults it once at
   `runOnce()`/`runCycles()` entry (refuse before ANY discovery/execution) and
   once per scheduled cycle tick inside `runCycles` (a mid-flight flip stops the
   loop cleanly with a `policy_denied` outcome — like a budget stop, never an

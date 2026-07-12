@@ -98,8 +98,10 @@ export interface LoopRunOptions {
    * run entry (before ANY discovery/execution) and once per scheduled cycle
    * tick. A deny refuses/stops the run cleanly with a `policy_denied` outcome —
    * exactly like a budget stop, never an exception. When ABSENT, behavior is
-   * byte-identical to a gate-free loop (the loop stays pure/standalone,
-   * core-free per ADR-001). Same capability-injection discipline as `assetize`:
+   * byte-identical to a gate-free loop (the loop stays usable standalone and
+   * never couples to the policy loader/schema — how policy files are located
+   * and parsed is the CLI product layer's business). Same capability-injection
+   * discipline as `assetize`:
    * a gate that throws counts as deny with the error message (fail-closed) —
    * the gate is never allowed to crash the engine.
    */
@@ -107,10 +109,10 @@ export interface LoopRunOptions {
 }
 
 /**
- * Loop-local policy-gate decision (R2.2). NO @osstack/core or protocol imports —
- * the CLI supplies an implementation backed by `loadPolicyProfile`, but the loop
- * only knows this structural shape (ADR-001: `@osstack/loop` must not depend on
- * core).
+ * Loop-local policy-gate decision (R2.2). Deliberately a structural type: the
+ * loop never imports the policy loader/schema (that lives in the CLI product
+ * layer), so it stays usable standalone; the CLI supplies an implementation
+ * backed by `loadPolicyProfile`.
  */
 export type PolicyGateDecision = { allow: true } | { allow: false; reason: string };
 
