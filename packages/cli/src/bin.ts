@@ -24,7 +24,7 @@ import {
   type ProofAudience,
 } from "@osstack/compliance";
 import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
-import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, loadPolicyProfile, openDb, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons, type RoutableAdapter } from "@osstack/core";
+import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons, type RoutableAdapter } from "@osstack/core";
 import { scanFiles, type GovernanceFinding } from "@osstack/governance";
 import {
   renderBranchStewardReport,
@@ -56,6 +56,7 @@ import {
   type LoopReportLanguage,
   type LoopState,
 } from "@osstack/loop";
+import { evaluatePolicyGate, makePolicyGate, OBSERVE_POLICY_DENIED_REASON } from "./policy-gate.js";
 import {
   cacheKnowledgeFeedback,
   evaluateKnowledgeRetrieval,
@@ -8677,33 +8678,34 @@ function parseContextJson(value: string | undefined): Record<string, unknown> | 
   return parsed as Record<string, unknown>;
 }
 
-// Observe-mode gate (R1.3, POLICY_PROFILE_V1). Load `.osstack/policy.yaml` for
-// the workspace and, when `mode: observe`, refuse execution before any daemon
-// RPC / worktree / task work. Absent / propose / execute => exactly current
-// behavior. An invalid file fails closed (the loader throws, reported cleanly
-// here as exit 1). Returns an exit code to stop with, or `undefined` to proceed.
+// Observe-mode gate (R1.3, POLICY_PROFILE_V1; kernel-wired in R2.2). Load
+// `.osstack/policy.yaml` for the workspace and, when `mode: observe`, refuse
+// execution before any daemon RPC / worktree / task work. Absent / propose /
+// execute => exactly current behavior. An invalid file fails closed (deny with
+// the loader's error, reported here as exit 1). Returns an exit code to stop
+// with, or `undefined` to proceed.
 //
-// SCOPE NOTE — enforcement is currently CLI-layer only. This gate covers the
-// CLI execution entry points (deliver, loop run, loop start); direct daemon RPC
-// clients and the daemon's own scheduler BYPASS it. Kernel-level enforcement
-// (gating inside the daemon/engine so every execution path is covered) is a
-// tracked follow-up for R1.5+/R2 — later increments must NOT assume kernel
-// coverage already exists.
+// This is the FAST-PATH gate: it delegates to the shared `makePolicyGate`
+// implementation (`evaluatePolicyGate`) so it stays byte-identical to the
+// kernel gate, and it fires before a daemon RPC round-trip for a snappy exit-2.
+//
+// SCOPE NOTE — enforcement is now kernel-level (R2.2). The same
+// `makePolicyGate` backing this gate is injected into every daemon-side
+// `LoopEngine` (the `loop.run` RPC and the persisted session scheduler in
+// daemon.ts, via `withLoopAdapters`), so direct daemon RPC clients and the
+// daemon's own scheduler are covered too — a mid-session flip to `mode:
+// observe` stops the session on its next tick with a `policy_denied`
+// stop_reason. This CLI gate is retained purely as fast exit-2 UX before the
+// RPC; it is no longer the only enforcement point. The only intentionally
+// ungated daemon path is the read-only `daily` composition (deferred to R2.3,
+// and read-only work is exactly what observe mode permits).
 async function enforceObservePolicyGate(workspacePath: string): Promise<number | undefined> {
-  let profile: Awaited<ReturnType<typeof loadPolicyProfile>>;
-  try {
-    profile = await loadPolicyProfile(workspacePath);
-  } catch (err) {
-    console.error(`osstack: ${err instanceof Error ? err.message : String(err)}`);
-    return 1;
-  }
-  if (profile?.mode === "observe") {
-    console.error(
-      "osstack: policy_denied: policy mode is observe — execution refused; see .osstack/policy.yaml",
-    );
-    return 2;
-  }
-  return undefined;
+  const decision = await evaluatePolicyGate(workspacePath);
+  if (decision.allow) return undefined;
+  console.error(`osstack: ${decision.reason}`);
+  // Observe-mode refusal is exit 2; a fail-closed invalid/unreadable file is
+  // exit 1 (its reason is the raw loader error, not the observe wording).
+  return decision.reason === OBSERVE_POLICY_DENIED_REASON ? 2 : 1;
 }
 
 async function handleDeliverCommand(args: string[]): Promise<number> {
@@ -8792,6 +8794,9 @@ Stages:
     ...(maxIterations !== undefined ? { maxIterations } : {}),
     ...(useWorktree ? { useWorktree: true } : {}),
     ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
+    // Kernel gate (R2.2): defense-in-depth over the upfront enforceObservePolicyGate
+    // above — also stops cleanly if policy flips to observe mid-run.
+    policyGate: makePolicyGate(workspacePath),
   });
   const result = await engine.runOnce();
   const artifactArgs = ensureFlags(args, ["--report", "--scorecard", "--proof"]);
@@ -9191,6 +9196,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
       ...(selfImprovement !== undefined ? { selfImprovement } : {}),
       ...(shouldRecordLoopKnowledge(args, knowledge) ? { knowledge } : {}),
+      // Kernel gate (R2.2): defense-in-depth over the upfront gate; a mid-run
+      // flip to observe stops `--cycles` runs cleanly on the next tick.
+      policyGate: makePolicyGate(workspacePath),
     });
     const result = runCycles
       ? await engine.runCycles({
