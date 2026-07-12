@@ -46,6 +46,57 @@ The main release gate currently reports:
 }
 ```
 
+## Current Capability Map
+
+The current `main` branch is no longer just a loop runner. It is a local-first
+control plane with these shipped surfaces:
+
+| Capability | Current implementation | Main commands / package |
+|---|---|---|
+| Product entry | One command can turn an intent into a verified local delivery run with reports, scorecards, proof packs, and optional worktree isolation. | `osstack deliver`, `@osstack/cli` |
+| Loop Engineering | Task discovery, execution, verification, iteration, budgets, stop reasons, reports, scorecards, lesson drafts, and daemon-managed loop sessions. | `osstack loop ...`, `@osstack/loop` |
+| Portfolio supervision | Repo registry, maturity scan, portfolio report, feedback assets, improvement proposals, evaluator epochs, and machine-actionable recommendations. | `osstack supervise`, `feedback`, `improve`, `evaluator`, `daily`; `@osstack/supervisor` |
+| Daily operating brief | Reads the repo registry, summarizes CI/PR/maturity deltas, emits owner decisions, and can run on a 24h daemon schedule. | `osstack daily`, `osstack daily schedule` |
+| Contract-gated execution | Creates execution contracts, blocks execution under observe policy, records approvals, and emits the exact follow-up command after approval. | `osstack start`, `osstack control` |
+| Policy kernel | Loads `.osstack/repo.yaml` and `.osstack/policy.yaml`, enforces `observe` / `propose` / `execute`, budgets, and approval categories. | `osstack policy check`, `@osstack/core` |
+| Agent routing | Routes to adapters such as Claude Code, Codex CLI, OpenCode, DeepSeek review/verify, shell subprocesses, and specialized design/research adapters. | `@osstack/agents`, `@osstack/core` |
+| Evidence and release trust | Persists run state, events, governance, diffs, proof manifests, PR body drafts, release handoff, and release readiness checks. | `report`, `scorecard`, `proof`, `pr`, `release` |
+| Cockpit and dashboard | Local dashboard/TUI snapshots for daemon health, recent runs, kanban, evidence, quality, and next actions. | `osstack cockpit`, `osstack dashboard` |
+| Remote gateway hook | Exposes dashboard URLs and transport-agnostic kanban subscriptions/events so a host bot can relay progress to Telegram, Feishu/Lark, Slack, webhooks, or another chat surface. | `dashboard url`, `kanban subscribe`, `kanban events`, `KanbanNotifier` |
+| Knowledge Cloud | Official/team/project knowledge packs, cloud sync, local cache fallback, search, publish, audit, feedback, and review UI. | `osstack knowledge`, `@osstack/knowledge-cloud` |
+| Protocol/conformance | Stable cross-process agent command, result, policy, evidence, approval, run, and event schemas with conformance tests. | `@osstack/protocol`, `@osstack/conformance` |
+
+### Remote Gateway Status
+
+osstack has the **control-plane side** of a remote progress gateway, but it does
+not currently ship a full Feishu/Lark or Telegram bot server in this repository.
+
+What exists today:
+
+- `osstack dashboard url` returns a local cockpit URL that a chat bot can send
+  back to the user.
+- `osstack kanban subscribe <card_id> <platform> <chat_id> [thread_id]`
+  records a chat subscription. `platform` is intentionally free-form, so it can
+  be `telegram`, `feishu`, `lark`, `slack`, or another relay.
+- `osstack kanban events --since <id>` exposes incremental card events.
+- `KanbanNotifier` in `@osstack/core` formats card progress and advances the
+  subscription cursor only after an injected transport reports successful
+  delivery.
+- The Hermes skill bridge has Telegram-facing commands and can act as the host
+  relay when Hermes owns the actual messaging integration.
+
+What does **not** exist in this repo yet:
+
+- a built-in Telegram Bot API process;
+- a built-in Feishu/Lark bot webhook or event-subscription service;
+- a public cloud tunnel/auth layer for accessing the local cockpit remotely;
+- a mobile-first approval UI.
+
+So if you remember a "gateway" being configured, that memory is mostly right:
+the osstack-side gateway primitives are present. The missing product slice is
+the concrete message transport and remote access wrapper that turns those
+primitives into "ask a bot from my phone and see project progress."
+
 ## Why osstack Exists
 
 AI coding tools are powerful, but most teams still lack the operational layer
@@ -77,6 +128,9 @@ osstack answers those questions with a local-first control plane:
   cloud sync, local cache fallback, provenance, feedback, and retrieval evals.
 - **Cockpit and Kanban**: inspect runs, tasks, evidence, knowledge, and next
   actions from CLI/TUI surfaces.
+- **Remote gateway hooks**: expose dashboard URLs, kanban subscriptions, and
+  incremental events that external bots can relay to Telegram, Feishu/Lark,
+  Slack, or webhooks.
 - **Release operations**: npm, EdgeOne Knowledge Cloud, and single-binary release
   readiness are checked by `osstack release doctor/status/plan/handoff`.
 
@@ -216,6 +270,26 @@ osstack evaluator promote  --repo <id> ... --yes   # blocked without anchor case
 osstack loop run --workspace . --self-improvement --repo-id <id> --verify "pnpm test"
 ```
 
+### Portfolio Daily and Contract Gates
+
+```bash
+# Read-only portfolio brief from the machine-level repo registry.
+osstack daily --json
+
+# Run the daily brief every 24h through the daemon; restored after daemon restart.
+osstack daily schedule --interval-ms 86400000 --schedule "every 24h"
+osstack daily sessions --json
+
+# Turn a goal into an execution contract. observe mode refuses execution;
+# propose/execute modes create a reviewable contract and approval request.
+osstack start "Refactor model run history" --repo-id osborn-model --json
+
+# Inspect, approve, revise, or stop a contract. Approval returns the exact
+# follow-up delivery command instead of silently executing it.
+osstack control <contract_id> status --json
+osstack control <contract_id> approve --actor owner --json
+```
+
 ### Evidence
 
 ```bash
@@ -253,12 +327,25 @@ osstack knowledge publish --pack ./team-knowledge-pack.json --cloud-url <url> --
 ```bash
 osstack cockpit snapshot --workspace . --json
 osstack cockpit tui --workspace .
+osstack cockpit next --workspace . --status blocked
+osstack dashboard url --workspace .
+osstack dashboard snapshot --workspace . --json
 osstack kanban board
 osstack kanban create "Review release proof" --priority 80 --assignee codex-cli
+osstack kanban move <card_id> running
+osstack kanban comment <card_id> "Waiting for CI"
+osstack kanban subscribe <card_id> telegram <chat_id> [thread_id]
+osstack kanban events --since 0
 osstack serve
 osstack serve --install
 osstack status
 ```
+
+The daemon is local-first. `osstack serve --install` installs a macOS launchd
+service that keeps the daemon alive across restarts. Chat and phone access should
+be layered through a separate trusted host such as Hermes, Feishu/Lark bot,
+Telegram bot, Slack app, webhook relay, or a named tunnel that can call the
+dashboard/kanban commands above.
 
 ### Release Operations
 
@@ -305,11 +392,13 @@ Package boundaries:
 | `@osstack/loop` | Loop state, scheduler, discovery, verifier, report model, scorecards. |
 | `@osstack/core` | Policy, state, kanban, lessons, telemetry, privacy redaction. |
 | `@osstack/agents` | Agent adapters and git worktree isolation. |
+| `@osstack/protocol` | Cross-process command/result/event/evidence/approval schemas. |
 | `@osstack/governance` | Deterministic scanner for quality and safety findings. |
 | `@osstack/contracts` | Frontend/backend contract validation evidence. |
 | `@osstack/compliance` | Compliance mapping packs and audience-specific evidence views. |
 | `@osstack/knowledge` | Knowledge pack contracts, local search, cache, sync client. |
 | `@osstack/knowledge-cloud` | HTTP service for official and tenant knowledge packs. |
+| `@osstack/supervisor` | Portfolio maturity, repo registry, feedback assets, proposals, evaluator epochs. |
 
 ## Knowledge Cloud
 
