@@ -60,6 +60,22 @@ describe("serve launchd installer", () => {
     expect(plist).toContain(`<string>${binPath}</string>`);
     expect(plist).toContain("<string>serve</string>");
     expect(plist).toContain(`<string>OSSTACK_HOME=${join(tmp, "home")}</string>`);
+    // Native binary binPath: launchd runs it directly, no interpreter injected.
+    expect(plist).not.toContain(`<string>${process.execPath}</string>`);
+  });
+
+  it("embeds the resolved Node runtime for a .js binPath (launchd PATH has no node)", async () => {
+    const binPath = join(tmp, "dist", "bin.js");
+
+    expect(await main(["serve", "--install", "--no-load", "--bin", binPath, "--json"])).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as { plist_path: string };
+    const plist = await readFile(result.plist_path, "utf-8");
+    // The shebang `#!/usr/bin/env node` fails with 127 under launchd's minimal
+    // PATH, so the plist must invoke the runtime explicitly, before the script.
+    expect(plist).toContain(`<string>${process.execPath}</string>`);
+    expect(plist.indexOf(`<string>${process.execPath}</string>`)).toBeLessThan(
+      plist.indexOf(`<string>${binPath}</string>`),
+    );
   });
 
   it("reports installed status and uninstalls the plist without launchctl when --no-load is set", async () => {

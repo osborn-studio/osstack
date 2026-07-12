@@ -7128,10 +7128,16 @@ function renderLaunchAgentPlist(options: {
   stdoutPath: string;
   stderrPath: string;
 }): string {
+  // launchd's default PATH has no /opt/homebrew/bin (or nvm shims), so a .js
+  // binPath's `#!/usr/bin/env node` shebang fails with exit 127 under launchd.
+  // Invoke the resolved runtime (process.execPath) explicitly for script
+  // binPaths; native single-binary builds keep running directly.
+  const runtime = options.binPath.endsWith(".js") ? [process.execPath] : [];
   const args = [
     "/usr/bin/env",
     `OSSTACK_HOME=${options.home}`,
     `OSSTACK_SOCKET=${options.socketPath}`,
+    ...runtime,
     options.binPath,
     "serve",
   ];
