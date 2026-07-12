@@ -31,6 +31,7 @@ import {
   type RepoRegistryEntry,
 } from "@osstack/supervisor";
 import { osstackHome } from "./paths.js";
+import { shQuote } from "./start-control-command.js";
 import { hasFlag, resolveRegistryPath } from "./supervisor-cli-support.js";
 
 export interface DailyCliDeps {
@@ -74,6 +75,33 @@ export interface DailyDelta {
   maturity_changes: { repo_id: string; from: number; to: number }[];
 }
 
+/**
+ * A concrete, paste-ready invocation for an owner decision (R2.4). Mirrors
+ * R1.5's `deliver_command` / `deliver_args` split:
+ *   - `command`: the shell-safe printable line — every interpolated value is
+ *     `shQuote`'d (the ONE audited quoting helper, reused from start/control),
+ *     so hostile CI-status / goal / slug text cannot execute on paste.
+ *   - `argv`: the raw args array for programmatic spawn (never re-parse the
+ *     shell string). `argv[0]` is the PROGRAM (`osstack` | `gh`) so the payload
+ *     is self-describing across the multiple binaries `daily` dispatches to
+ *     (deliberate divergence from `deliver_args`, whose program is implicitly
+ *     `osstack`; see the `deriveOwnerDecisions` docstring).
+ */
+export interface RunnableInvocation {
+  command: string;
+  argv: string[];
+}
+
+/** An owner decision plus its dispatchable invocation (R2.4). */
+export interface OwnerDecision {
+  /** Stable protocol `CommandName` category id (advisory; unchanged by R2.4). */
+  command: string;
+  /** Human-facing decision text. */
+  reason: string;
+  /** The REAL runnable invocation the owner can dispatch. */
+  run: RunnableInvocation;
+}
+
 export interface DailyBrief {
   generated_at: string;
   date: string;
@@ -81,6 +109,8 @@ export interface DailyBrief {
   github: RepoGithubStatus[];
   stack?: StackBoardSummary;
   delta: DailyDelta;
+  /** ≤3 owner decisions with dispatchable `run` payloads (R2.4). */
+  owner_decisions: OwnerDecision[];
   warnings: string[];
 }
 
@@ -140,8 +170,12 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
     github,
     ...(stack !== undefined ? { stack } : {}),
     delta,
+    // Computed from portfolio + github below, then stored so the dispatchable
+    // `run` payloads ride in `result` (= the brief) and are persisted verbatim.
+    owner_decisions: [],
     warnings,
   };
+  brief.owner_decisions = deriveOwnerDecisions(brief);
 
   // Persist the brief (the only write this command performs).
   const briefPath = join(briefsDir, `${date}.json`);
@@ -283,24 +317,52 @@ async function readPreviousBrief(briefsDir: string, today: string): Promise<Dail
 
 // ── Owner decisions (≤3 next_actions) ────────────────────────────────────────
 
+/** The exact supervisor recommendation wording that `init-loop-doc` remedies. */
+const LOOP_DOC_RECOMMENDATION = "add docs/LOOP.md to declare closed-loop contract";
+
 /**
  * Derive at most three owner decisions, prioritized: failing CI first, then
  * repos with open non-draft PRs to review, then portfolio maturity gaps. The
  * `command` is a stable `<service>.<action>` protocol identifier (advisory — the
- * daily command never executes it), the `reason` is the human-facing decision.
+ * daily command never executes it), the `reason` is the human-facing decision,
+ * and `run` is the REAL invocation the owner can dispatch (R2.4).
  *
- * CTO ruling (R1.4): these ids are decision categories, not dispatchable
- * commands; `reason` carries the actionable payload. When R1.5 `start`/`control`
- * land, map fix_ci/review_prs to real `osstack start`/`control` invocations.
+ * CTO ruling (R1.4) — FULFILLED by R2.4 now that R1.5 (`start`/`control`) has
+ * landed. The `command` ids stay decision CATEGORIES (unchanged, so no consumer
+ * breaks); the dispatchable payload rides alongside in `run { command, argv }`
+ * (structured data in `result`, mirroring R1.5's `deliver_command`/`deliver_args`
+ * — NOT in the strict `NextAction` protocol envelope). Mapping implemented:
+ *
+ *   repo.fix_ci          → `osstack start "fix failing CI on <repo_id>: latest
+ *                           run is <status>" --repo-id <repo_id>` (R1.5 surface).
+ *   repo.review_prs      → human review, not an osstack execution: the concrete
+ *                          `gh pr list --repo <slug> --state open` when the repo
+ *                          has a resolved GitHub remote, else the local repo path.
+ *   portfolio.raise_maturity → `osstack supervise init-loop-doc --repo <repo_id>`
+ *                          ONLY when the recommendation is the (single-repo-
+ *                          attributable) missing-LOOP.md gap that command fixes;
+ *                          every other free-text / unattributable recommendation
+ *                          stays portfolio-level: `osstack supervise report`.
+ *
+ * ALL interpolated values are `shQuote`'d via the shared start/control helper —
+ * CI status comes from `gh` output and repo ids/slugs are treated as untrusted
+ * for quoting, so nothing in a `run.command` can execute on paste.
  */
-export function deriveOwnerDecisions(brief: DailyBrief): { command: string; reason: string }[] {
-  const decisions: { command: string; reason: string }[] = [];
+export function deriveOwnerDecisions(brief: DailyBrief): OwnerDecision[] {
+  const decisions: OwnerDecision[] = [];
+  const pathById = new Map(brief.portfolio.repos.map((r) => [r.repo_id, r.path]));
 
   for (const g of brief.github) {
-    if (FAILING_CI.has(repoCiStatus(g))) {
+    const status = repoCiStatus(g);
+    if (FAILING_CI.has(status)) {
+      const goal = `fix failing CI on ${g.repo_id}: latest run is ${status}`;
       decisions.push({
         command: "repo.fix_ci",
-        reason: `${g.repo_id}: latest CI is ${repoCiStatus(g)} — investigate before shipping`,
+        reason: `${g.repo_id}: latest CI is ${status} — investigate before shipping`,
+        run: {
+          command: `osstack start ${shQuote(goal)} --repo-id ${shQuote(g.repo_id)}`,
+          argv: ["osstack", "start", goal, "--repo-id", g.repo_id],
+        },
       });
     }
   }
@@ -310,14 +372,60 @@ export function deriveOwnerDecisions(brief: DailyBrief): { command: string; reas
       decisions.push({
         command: "repo.review_prs",
         reason: `${g.repo_id}: ${openPrs.length} open PR(s) awaiting review`,
+        run: reviewPrsRun(g, pathById.get(g.repo_id)),
       });
     }
   }
   for (const rec of brief.portfolio.recommendations) {
-    decisions.push({ command: "portfolio.raise_maturity", reason: rec });
+    decisions.push({
+      command: "portfolio.raise_maturity",
+      reason: rec,
+      run: raiseMaturityRun(rec, brief.portfolio.repos),
+    });
   }
 
   return decisions.slice(0, 3);
+}
+
+/**
+ * review_prs is a human action, so it maps to a read-only `gh pr list` for the
+ * resolved remote. The no-remote branch is defensive: PRs only populate when a
+ * GitHub slug resolved, so in practice `g.remote` is always set here — but if it
+ * ever is not, we point the human at the local repo path rather than emit a
+ * broken `gh` line.
+ */
+function reviewPrsRun(g: RepoGithubStatus, repoPath: string | undefined): RunnableInvocation {
+  if (g.remote !== undefined) {
+    return {
+      command: `gh pr list --repo ${shQuote(g.remote)} --state open`,
+      argv: ["gh", "pr", "list", "--repo", g.remote, "--state", "open"],
+    };
+  }
+  const target = repoPath ?? g.repo_id;
+  return { command: shQuote(target), argv: [target] };
+}
+
+/**
+ * portfolio.raise_maturity → `init-loop-doc` ONLY for the missing-LOOP.md
+ * recommendation attributable to exactly one repo (the gap that command
+ * remedies). Recommendations are free-text with a `<name>: ` prefix; anything
+ * else — a different gap, a `consolidation:` hint, or a name that matches zero
+ * or multiple repos — stays portfolio-level `supervise report`.
+ */
+function raiseMaturityRun(rec: string, repos: PortfolioReport["repos"]): RunnableInvocation {
+  const idx = rec.indexOf(": ");
+  if (idx > 0 && rec.slice(idx + 2) === LOOP_DOC_RECOMMENDATION) {
+    const name = rec.slice(0, idx);
+    const matches = repos.filter((r) => r.name === name);
+    if (matches.length === 1) {
+      const repoId = matches[0]!.repo_id;
+      return {
+        command: `osstack supervise init-loop-doc --repo ${shQuote(repoId)}`,
+        argv: ["osstack", "supervise", "init-loop-doc", "--repo", repoId],
+      };
+    }
+  }
+  return { command: "osstack supervise report", argv: ["osstack", "supervise", "report"] };
 }
 
 // ── Protocol result ──────────────────────────────────────────────────────────
@@ -339,7 +447,10 @@ export function buildDailyResult(
     });
   }
 
-  const next_actions = deriveOwnerDecisions(brief);
+  // The strict `NextAction` envelope stays { command, reason } (A-003) — the
+  // dispatchable `run` payloads ride in `result` (= the brief), never in the
+  // protocol envelope, so no NextAction consumer breaks (R2.4 non-goal).
+  const next_actions = brief.owner_decisions.map((d) => ({ command: d.command, reason: d.reason }));
 
   const result: AgentCommandResult = {
     protocol_version: PROTOCOL_VERSION,
@@ -421,13 +532,14 @@ export function renderDailyMarkdown(brief: DailyBrief): string {
   }
   lines.push("");
 
-  const decisions = deriveOwnerDecisions(brief);
   lines.push("## Owner decisions");
-  if (decisions.length === 0) {
+  if (brief.owner_decisions.length === 0) {
     lines.push("- None — portfolio looks healthy.");
   } else {
-    decisions.forEach((d, i) => {
+    brief.owner_decisions.forEach((d, i) => {
       lines.push(`${i + 1}. [${d.command}] ${d.reason}`);
+      // The paste-ready runnable line under each decision (R2.4).
+      lines.push(`   run: ${d.run.command}`);
     });
   }
   return `${lines.join("\n")}\n`;
