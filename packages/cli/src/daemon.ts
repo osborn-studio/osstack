@@ -1455,6 +1455,10 @@ function parseDailyScheduleParams(params: unknown): DailySchedule | Error {
   const intervalMs = optionalNonNegativeInteger(p, "intervalMs");
   if (intervalMs instanceof Error) return intervalMs;
   if (intervalMs === undefined) return new Error("params.intervalMs required");
+  // Unlike loop sessions (where 0 means "run cycles back-to-back on purpose"),
+  // a 0-interval daily session would just hot-loop re-generating the same
+  // brief — always a mistake, so refuse it here.
+  if (intervalMs === 0) return new Error("params.intervalMs must be greater than 0");
   const scheduleExpression = optionalString(p, "schedule");
   return {
     registryPath,

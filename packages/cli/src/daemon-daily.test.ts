@@ -110,7 +110,10 @@ describe("daemon daily RPC (R2.3)", () => {
     const registry = await seedRegistry();
     // Pin the registered repo's workspace policy to observe — where a naive
     // gate would look. daily reads only, so the scheduled brief must still be
-    // produced, proving daily is intentionally NOT observe-gated.
+    // produced, proving daily is intentionally NOT observe-gated. Note this
+    // guards the "no gate at all on the daily tick" invariant; a future gate
+    // reading policy from a different location (cwd / OSSTACK_HOME) would need
+    // its own regression case.
     const policyDir = join(tmp, "repo-a", ".osstack");
     await mkdir(policyDir, { recursive: true });
     await writeFile(join(policyDir, "policy.yaml"), "mode: observe\n", "utf8");
