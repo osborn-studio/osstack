@@ -288,6 +288,11 @@ function printSuperviseHelp(): void {
   supervise init-loop-doc --repo <id> [--registry P] [--overwrite]
 
 Roles: ${RepoRole.options.join(", ")}
+
+Registry resolution: --registry, else --workspace/.osstack/repos.json, else
+cwd/.osstack/repos.json when present, else $OSSTACK_HOME/repos.json when
+present (machine-scoped). register WRITES to the resolved path — pass
+--workspace . to force a repo-local registry.
 `);
 }
 
