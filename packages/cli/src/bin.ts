@@ -109,6 +109,7 @@ import { handlePolicyCommand } from "./policy-command.js";
 import { buildSelfImprovementConfig } from "./loop-self-improvement.js";
 import { resolveRegistryPath } from "./supervisor-cli-support.js";
 import { handleStackCommand } from "./stack-cli.js";
+import { handleDailyCommand } from "./daily-command.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -150,6 +151,7 @@ function renderChineseMainHelp(): string {
   release status      输出面向上线交接的发布状态摘要
   release edgeone     输出 EdgeOne Knowledge Cloud 上线清单
   deliver <需求>      从一句需求进入 task queue -> loop -> report/scorecard/proof
+  daily               只读组合简报：成熟度扫描 + GitHub PR/CI/release + 栈看板 + 增量对比
 
 Loop 工程：
   loop run            运行 discover -> execute -> verify -> iterate 循环
@@ -319,6 +321,9 @@ Project commands:
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
   deliver <prompt> [--verify CMD] [--auto-agent] [--worktree]
                       Product entry: task queue -> loop -> report/scorecard/proof
+  daily [--registry P] [--workspace P] [--json]
+                      Read-only portfolio brief: maturity scan + GitHub PR/CI/release
+                      + stack board + delta since the last brief (golden path)
   checkpoint create [--workspace P] [--json]
                       Create a shadow checkpoint outside .git for non-worktree recovery
   checkpoint restore <checkpoint_id|dir> [--workspace P] [--apply] [--json]
@@ -610,6 +615,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "supervise") {
     return await handleSuperviseCommand(args.slice(1));
+  }
+
+  if (cmd === "daily") {
+    return await handleDailyCommand(args.slice(1));
   }
 
   if (cmd === "feedback") {

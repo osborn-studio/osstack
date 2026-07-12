@@ -27,6 +27,7 @@
     "@osstack/hermes-adapter": "workspace:*",
     "@osstack/knowledge": "workspace:*",
     "@osstack/loop": "workspace:*",
+    "@osstack/protocol": "workspace:*",
     "@osstack/skill-registry": "workspace:*",
     "@osstack/skills": "workspace:*",
     "better-sqlite3": "^12.10.0",
