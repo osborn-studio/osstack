@@ -133,7 +133,7 @@ describe("daily CLI", () => {
     }
     // The dispatchable `run` payload rides in `result` (= the brief) instead.
     const brief = parsed.result as unknown as DailyBrief;
-    const fixCi = brief.owner_decisions.find((d) => d.command === "repo.fix_ci");
+    const fixCi = brief.owner_decisions?.find((d) => d.command === "repo.fix_ci");
     expect(fixCi?.run.command).toBe("osstack start 'fix failing CI on withgh: latest run is failure' --repo-id 'withgh'");
     expect(fixCi?.run.argv).toEqual([
       "osstack", "start", "fix failing CI on withgh: latest run is failure", "--repo-id", "withgh",

@@ -6,6 +6,14 @@ import { PortfolioReport, type RepoHealth } from "./types.js";
 /** Roles excluded from the average maturity unless explicitly enabled elsewhere. */
 const NON_CORE_ROLES = new Set(["reference", "archive"]);
 
+/**
+ * The missing-LOOP.md recommendation wording (recommendations are rendered as
+ * `<repo.name>: <this>`). Exported because `osstack daily` maps EXACTLY this
+ * wording to a runnable `supervise init-loop-doc` dispatch — rewording it here
+ * without the shared constant would silently degrade that mapping.
+ */
+export const LOOP_DOC_RECOMMENDATION = "add docs/LOOP.md to declare closed-loop contract";
+
 export function buildPortfolioReport(repos: RepoHealth[], now = "2026-07-07T00:00:00.000Z"): PortfolioReport {
   // "Enabled" for averaging = repos that count toward portfolio maturity:
   // exclude reference/archive roles (they are dependencies/snapshots, not
@@ -41,7 +49,7 @@ function deriveRecommendations(repos: RepoHealth[]): string[] {
     // Important repos below L2 need a declared loop contract + verification.
     if (repo.closed_loop_level < 2) {
       if (!repo.has_loop_doc) {
-        recommendations.push(`${repo.name}: add docs/LOOP.md to declare closed-loop contract`);
+        recommendations.push(`${repo.name}: ${LOOP_DOC_RECOMMENDATION}`);
       }
       if (!repo.has_verify_command && !repo.has_tests) {
         recommendations.push(`${repo.name}: add a verify command so runs are traceable`);

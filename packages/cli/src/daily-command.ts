@@ -24,6 +24,7 @@ import { PROTOCOL_VERSION } from "@osstack/protocol";
 import type { AgentCommandResult } from "@osstack/protocol";
 import {
   buildPortfolioReport,
+  LOOP_DOC_RECOMMENDATION,
   readRepoRegistry,
   scanRepo,
   type PortfolioReport,
@@ -109,8 +110,12 @@ export interface DailyBrief {
   github: RepoGithubStatus[];
   stack?: StackBoardSummary;
   delta: DailyDelta;
-  /** ≤3 owner decisions with dispatchable `run` payloads (R2.4). */
-  owner_decisions: OwnerDecision[];
+  /**
+   * ≤3 owner decisions with dispatchable `run` payloads (R2.4). Optional
+   * because pre-R2.4 briefs on disk lack the field — always present on a
+   * freshly built brief, but readers of a PREVIOUS brief must not assume it.
+   */
+  owner_decisions?: OwnerDecision[];
   warnings: string[];
 }
 
@@ -316,9 +321,9 @@ async function readPreviousBrief(briefsDir: string, today: string): Promise<Dail
 }
 
 // ── Owner decisions (≤3 next_actions) ────────────────────────────────────────
-
-/** The exact supervisor recommendation wording that `init-loop-doc` remedies. */
-const LOOP_DOC_RECOMMENDATION = "add docs/LOOP.md to declare closed-loop contract";
+// The missing-LOOP.md wording that `init-loop-doc` remedies is imported from
+// @osstack/supervisor (LOOP_DOC_RECOMMENDATION) so a supervisor rewording can
+// never silently strand this mapping on a stale copy.
 
 /**
  * Derive at most three owner decisions, prioritized: failing CI first, then
@@ -450,7 +455,7 @@ export function buildDailyResult(
   // The strict `NextAction` envelope stays { command, reason } (A-003) — the
   // dispatchable `run` payloads ride in `result` (= the brief), never in the
   // protocol envelope, so no NextAction consumer breaks (R2.4 non-goal).
-  const next_actions = brief.owner_decisions.map((d) => ({ command: d.command, reason: d.reason }));
+  const next_actions = (brief.owner_decisions ?? []).map((d) => ({ command: d.command, reason: d.reason }));
 
   const result: AgentCommandResult = {
     protocol_version: PROTOCOL_VERSION,
@@ -533,10 +538,11 @@ export function renderDailyMarkdown(brief: DailyBrief): string {
   lines.push("");
 
   lines.push("## Owner decisions");
-  if (brief.owner_decisions.length === 0) {
+  const ownerDecisions = brief.owner_decisions ?? [];
+  if (ownerDecisions.length === 0) {
     lines.push("- None — portfolio looks healthy.");
   } else {
-    brief.owner_decisions.forEach((d, i) => {
+    ownerDecisions.forEach((d, i) => {
       lines.push(`${i + 1}. [${d.command}] ${d.reason}`);
       // The paste-ready runnable line under each decision (R2.4).
       lines.push(`   run: ${d.run.command}`);
