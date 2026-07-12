@@ -160,11 +160,13 @@ export function contractApprovalRowToRequest(
 /**
  * Lift a resolved `contract_approvals` row into a {@link protocol.ApprovalDecision}.
  *
- * Returns `undefined` while the row is still `pending` (no decision yet) — a
- * pending contract has an ApprovalRequest but not yet a decision, so the mapper
- * refuses to fabricate `decided_by`/`decided_at`. `approved` maps to
- * `approved: true`; `stopped` maps to `approved: false`. Callers filter the
- * undefined case.
+ * Returns `undefined` while the row is `pending` OR `revising` — neither has an
+ * approve/reject VERDICT yet (a revise sends the contract back for edits; the
+ * protocol ApprovalDecision's `approved` boolean cannot honestly represent it),
+ * so the mapper refuses to fabricate one. `approved` maps to `approved: true`;
+ * `stopped` maps to `approved: false`. Callers filter the undefined case. The
+ * full approve/revise/stop history lives in `contract_approval_decisions`
+ * (human-facing trail), not in this protocol shape.
  */
 export function contractApprovalRowToDecision(
   row: Pick<
@@ -172,7 +174,7 @@ export function contractApprovalRowToDecision(
     "approval_id" | "status" | "decided_by_type" | "decided_by_id" | "decided_at" | "reason"
   >,
 ): protocol.ApprovalDecision | undefined {
-  if (row.status === "pending") return undefined;
+  if (row.status === "pending" || row.status === "revising") return undefined;
   if (row.decided_by_type === null || row.decided_by_id === null || row.decided_at === null) {
     return undefined;
   }

@@ -7,8 +7,8 @@ import {
   getContractApproval,
   getContractApprovalByContract,
   insertContractApproval,
-  reopenContractApproval,
-  resolveContractApproval,
+  listContractDecisions,
+  recordContractDecision,
 } from "./contract-approvals.js";
 import { openDb } from "./db.js";
 import { contractApprovalRowToDecision, contractApprovalRowToRequest } from "./protocol-mappers.js";
@@ -46,27 +46,57 @@ describe("contract approvals persistence", () => {
     }
   });
 
-  it("resolves to approved with the deciding actor, then reopen returns it to pending", () => {
+  it("walks the full lifecycle via recordContractDecision, appending an immutable trail", () => {
     const path = join(tmp, "state.db");
     const db = openDb({ path });
     try {
       seed(db, path);
-      const approved = resolveContractApproval(db, path, "ap_1", {
-        status: "approved",
-        decided_by_type: "human",
-        decided_by_id: "owner",
+
+      const approved = recordContractDecision(db, path, {
+        approval_id: "ap_1",
+        contract_id: "ct_1",
+        action: "approve",
+        actor_type: "human",
+        actor_id: "owner",
         decided_at: 1_700_000_100,
         reason: "looks good",
+        decision_id: "cd_1",
       });
       expect(approved.status).toBe("approved");
       expect(approved.decided_by_type).toBe("human");
       expect(approved.reason).toBe("looks good");
 
-      const reopened = reopenContractApproval(db, path, "ap_1", "tighten scope");
-      expect(reopened.status).toBe("pending");
-      expect(reopened.decided_by_type).toBeNull();
-      expect(reopened.decided_at).toBeNull();
-      expect(reopened.reason).toBe("tighten scope");
+      const revising = recordContractDecision(db, path, {
+        approval_id: "ap_1",
+        contract_id: "ct_1",
+        action: "revise",
+        actor_type: "human",
+        actor_id: "owner",
+        decided_at: 1_700_000_200,
+        reason: "tighten scope",
+        decision_id: "cd_2",
+      });
+      expect(revising.status).toBe("revising");
+      expect(revising.reason).toBe("tighten scope");
+
+      const stopped = recordContractDecision(db, path, {
+        approval_id: "ap_1",
+        contract_id: "ct_1",
+        action: "stop",
+        actor_type: "human",
+        actor_id: "owner",
+        decided_at: 1_700_000_300,
+        reason: "descoped",
+        decision_id: "cd_3",
+      });
+      expect(stopped.status).toBe("stopped");
+
+      // Append-only trail preserved in order, one row per decision.
+      const trail = listContractDecisions(db, "ct_1");
+      expect(trail.map((d) => d.action)).toEqual(["approve", "revise", "stop"]);
+      expect(trail.map((d) => d.decision_id)).toEqual(["cd_1", "cd_2", "cd_3"]);
+      expect(trail[1]!.reason).toBe("tighten scope");
+      expect(listContractDecisions(db, "ct_other")).toEqual([]);
     } finally {
       db.close();
     }
@@ -90,17 +120,19 @@ describe("contract approval protocol mappers", () => {
     }
   });
 
-  it("returns undefined decision while pending; a strict ApprovalDecision once resolved", () => {
+  it("returns undefined decision while pending or revising; a strict ApprovalDecision once approved/stopped", () => {
     const path = join(tmp, "state.db");
     const db = openDb({ path });
     try {
       const pending = seed(db, path);
       expect(contractApprovalRowToDecision(pending)).toBeUndefined();
 
-      const approved = resolveContractApproval(db, path, "ap_1", {
-        status: "approved",
-        decided_by_type: "human",
-        decided_by_id: "owner",
+      const approved = recordContractDecision(db, path, {
+        approval_id: "ap_1",
+        contract_id: "ct_1",
+        action: "approve",
+        actor_type: "human",
+        actor_id: "owner",
         decided_at: 1_700_000_100,
       });
       const decision = contractApprovalRowToDecision(approved);
@@ -109,10 +141,24 @@ describe("contract approval protocol mappers", () => {
       expect(decision!.approved).toBe(true);
       expect(decision!.decided_by).toEqual({ type: "human", id: "owner" });
 
-      const stopped = resolveContractApproval(db, path, "ap_1", {
-        status: "stopped",
-        decided_by_type: "human",
-        decided_by_id: "owner",
+      // A revise is not an approve/reject verdict — no protocol decision.
+      const revising = recordContractDecision(db, path, {
+        approval_id: "ap_1",
+        contract_id: "ct_1",
+        action: "revise",
+        actor_type: "human",
+        actor_id: "owner",
+        decided_at: 1_700_000_150,
+        reason: "edits needed",
+      });
+      expect(contractApprovalRowToDecision(revising)).toBeUndefined();
+
+      const stopped = recordContractDecision(db, path, {
+        approval_id: "ap_1",
+        contract_id: "ct_1",
+        action: "stop",
+        actor_type: "human",
+        actor_id: "owner",
         decided_at: 1_700_000_200,
         reason: "descoped",
       });

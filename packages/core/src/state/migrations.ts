@@ -398,18 +398,26 @@ export const MIGRATIONS: readonly Migration[] = [
     // intent and pollute idx_approvals_run + the run-scoped daemon queries. So
     // contract approvals get their own minimal table, keyed by contract_id.
     //
-    // Single-row-per-contract state machine (see contract-approvals.ts):
-    //   pending --approve--> approved --revise--> pending ... --stop--> stopped
-    // The same approval_id lives for the contract's life so the protocol
-    // ApprovalRequest (emitted at `start`) and ApprovalDecision (emitted at
-    // `approve`) round-trip against one record.
+    // `contract_approvals` is the AUTHORITATIVE current lifecycle state of a
+    // contract (the kanban card is a best-effort projection). One row per
+    // contract; the same approval_id lives for the contract's life so the
+    // protocol ApprovalRequest (emitted at `start`) and ApprovalDecision
+    // (emitted at `approve`) round-trip against one record. State machine
+    // (see contract-approvals.ts):
+    //   pending --approve--> approved
+    //   pending|approved --revise--> revising --approve--> approved
+    //   any non-stopped --stop--> stopped (terminal)
+    //
+    // `contract_approval_decisions` is the APPEND-ONLY decision history: every
+    // approve/revise/stop appends a row. The current-state row stays for O(1)
+    // guards; the trail renders in `control status`.
     sql: `
       CREATE TABLE IF NOT EXISTS contract_approvals (
         approval_id      TEXT PRIMARY KEY,
         contract_id      TEXT NOT NULL,
         action           TEXT NOT NULL,
         risk             TEXT NOT NULL CHECK (risk IN ('low','medium','high')),
-        status           TEXT NOT NULL CHECK (status IN ('pending','approved','stopped')),
+        status           TEXT NOT NULL CHECK (status IN ('pending','approved','revising','stopped')),
         requested_at     REAL NOT NULL,
         decided_by_type  TEXT CHECK (decided_by_type IN ('human','agent')),
         decided_by_id    TEXT,
@@ -420,6 +428,20 @@ export const MIGRATIONS: readonly Migration[] = [
       );
       CREATE INDEX IF NOT EXISTS idx_contract_approvals_contract
         ON contract_approvals(contract_id);
+
+      CREATE TABLE IF NOT EXISTS contract_approval_decisions (
+        decision_id  TEXT PRIMARY KEY,
+        approval_id  TEXT NOT NULL,
+        contract_id  TEXT NOT NULL,
+        action       TEXT NOT NULL CHECK (action IN ('approve','revise','stop')),
+        actor_type   TEXT NOT NULL CHECK (actor_type IN ('human','agent')),
+        actor_id     TEXT NOT NULL,
+        reason       TEXT,
+        decided_at   REAL NOT NULL,
+        created_at   REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_contract_approval_decisions_contract
+        ON contract_approval_decisions(contract_id, decided_at);
     `,
   },
 ];

@@ -8,27 +8,32 @@
 //       Requires the repo registered + a valid .osstack/repo.yaml (verify
 //       command source). `mode: observe` ⇒ blocked (policy_denied, exit 2);
 //       an invalid policy file fails closed (exit 1). Writes an Execution
-//       Contract markdown into the target repo (.osstack/contracts/<id>.md),
-//       tracks it as a kanban card on the "contracts" board, and records a
-//       pending approval. `--json` ⇒ a strict protocol AgentCommandResult with
-//       status `needs_approval`, an ApprovalRequest, and the exact
-//       `control approve` invocation as next_actions[0].
+//       Contract markdown to a git-tracked path in the target repo
+//       (.osstack/contracts/<id>.md — review the TBDs and commit it), tracks
+//       it as a kanban card on the "contracts" board, and records a pending
+//       approval. `--json` ⇒ a strict protocol AgentCommandResult with status
+//       `needs_approval`, an ApprovalRequest, and the exact `control approve`
+//       invocation as next_actions[0].
 //
 //   osstack control <contract-id> status|approve|revise|stop [--json]
 //       approve: records a protocol ApprovalDecision (actor from --actor,
-//       default human:owner; AGENT actors rejected per A-004), flips the
-//       contract to approved, and emits the ready-to-run deliver command.
-//       revise/stop: update the contract status with a --reason.
-//       status: renders the contract + approval trail + linked evidence.
+//       default human:owner; AGENT actors are an authority denial per A-004 ⇒
+//       policy_denied / blocked / exit 2), flips the contract to approved, and
+//       emits the ready-to-run deliver command. revise/stop: update the
+//       contract status with a --reason. status: renders the contract + the
+//       full append-only approval trail + linked evidence.
 //
-// Contract lifecycle ⇄ kanban card status (the card is the tracking row so the
-// board and `control` can follow the contract — reusing KanbanRepository per
-// the R1.5 plan, no new contracts table):
-//   needs_approval ⇄ triage    approved ⇄ ready
-//   revising       ⇄ blocked   stopped  ⇄ archived
+// AUTHORITY MODEL (cross-review B2 ruling): the `contract_approvals` row is
+// the AUTHORITATIVE lifecycle state — every guard and every rendered status
+// derives SOLELY from it. The kanban card on the "contracts" board is a
+// best-effort PROJECTION for board visibility: a failed card move (e.g. the
+// card was dragged out-of-band) degrades to a warning, never a failure.
+// Projection mapping:
+//   pending ⇒ triage    approved ⇒ ready
+//   revising ⇒ blocked  stopped  ⇒ archived
 
-import { mkdir, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   KanbanRepository,
@@ -36,13 +41,15 @@ import {
   contractApprovalRowToRequest,
   getContractApprovalByContract,
   insertContractApproval,
+  listContractDecisions,
   loadPolicyProfile,
   loadRepoConfig,
   openDb,
-  reopenContractApproval,
-  resolveContractApproval,
+  recordContractDecision,
+  withWrite,
   type CardRow,
   type ContractApprovalRow,
+  type ContractApprovalStatus,
   type PolicyBudgets,
   type PolicyProfile,
   type RepoConfig,
@@ -56,12 +63,13 @@ const CONTRACTS_BOARD = "contracts";
 
 export interface StartControlDeps {
   now?: () => Date;
-  /** Contract/approval id generator (tests pin it for determinism). */
+  /** Contract/approval/decision id generator (tests pin it for determinism). */
   genId?: (prefix: string) => string;
   out?: (line: string) => void;
   err?: (line: string) => void;
 }
 
+/** Human/protocol-facing contract lifecycle names (approval row is the source). */
 type ContractStatus = "needs_approval" | "approved" | "revising" | "stopped";
 type CardStatus = CardRow["status"];
 
@@ -78,27 +86,26 @@ interface ContractMeta {
   forbidden_categories: string[];
 }
 
-// ── lifecycle mapping ────────────────────────────────────────────────────────
+// ── lifecycle (approval row = authority; card = projection) ──────────────────
 
+/** Approval-row status -> the lifecycle name rendered to humans/agents. */
+function contractStatus(approval: Pick<ContractApprovalRow, "status">): ContractStatus {
+  const map: Record<ContractApprovalStatus, ContractStatus> = {
+    pending: "needs_approval",
+    approved: "approved",
+    revising: "revising",
+    stopped: "stopped",
+  };
+  return map[approval.status];
+}
+
+/** Lifecycle -> the kanban card column the projection aims for. */
 const CONTRACT_TO_CARD: Record<ContractStatus, CardStatus> = {
   needs_approval: "triage",
   approved: "ready",
   revising: "blocked",
   stopped: "archived",
 };
-
-function contractStatusFromCard(status: CardStatus): ContractStatus {
-  switch (status) {
-    case "ready":
-      return "approved";
-    case "blocked":
-      return "revising";
-    case "archived":
-      return "stopped";
-    default:
-      return "needs_approval";
-  }
-}
 
 // ── shared helpers ───────────────────────────────────────────────────────────
 
@@ -118,6 +125,16 @@ function positionals(args: string[], flagsWithValues: Set<string>): string[] {
     out.push(token);
   }
   return out;
+}
+
+/**
+ * POSIX single-quote escaping (B1): inside '…' NOTHING is interpreted by the
+ * shell — no $(…), no backticks, no $VAR — so an embedded goal/verify string
+ * cannot execute on paste. An embedded single quote closes the quote, emits an
+ * escaped quote, and reopens: ' -> '\''.
+ */
+function shQuote(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
 /** Blocked codes pair with status "blocked" (A-006); everything else is error. */
@@ -152,7 +169,7 @@ function emitFailure(
   return failure.exit;
 }
 
-/** `--actor human:owner` -> { type, id }; enforces the A-004 human-actor rule. */
+/** `--actor human:owner` -> { type, id }. */
 function parseActor(raw: string): { type: "human" | "agent"; id: string } | { error: string } {
   const idx = raw.indexOf(":");
   if (idx <= 0 || idx === raw.length - 1) {
@@ -166,23 +183,38 @@ function parseActor(raw: string): { type: "human" | "agent"; id: string } | { er
   return { type, id };
 }
 
-function budgetIterations(budgets: PolicyBudgets | null | undefined): number | undefined {
-  return budgets?.max_iterations;
+/**
+ * The raw argv the approved contract authorizes (B1): agent consumers use this
+ * array verbatim (e.g. spawn("osstack", deliver_args)) and never parse a shell
+ * string. Element 0 is the osstack subcommand.
+ */
+function buildDeliverArgs(meta: ContractMeta): string[] {
+  const argv = [
+    "deliver",
+    meta.goal,
+    "--workspace",
+    meta.repo_path,
+    "--verify",
+    meta.verify_command,
+  ];
+  const iters = meta.budgets?.max_iterations;
+  if (iters !== undefined) argv.push("--max-iter", String(iters));
+  return argv;
 }
 
-/** The exact `osstack deliver …` invocation the approved contract authorizes. */
+/**
+ * The human-facing paste-safe `osstack deliver …` string: every interpolated
+ * field is POSIX single-quoted (B1) so hostile goal/verify text cannot execute.
+ */
 function buildDeliverCommand(meta: ContractMeta): string {
-  const parts = [
-    "osstack deliver",
-    JSON.stringify(meta.goal),
-    "--workspace",
-    JSON.stringify(meta.repo_path),
-    "--verify",
-    JSON.stringify(meta.verify_command),
-  ];
-  const iters = budgetIterations(meta.budgets);
-  if (iters !== undefined) parts.push("--max-iter", String(iters));
-  return parts.join(" ");
+  const argv = buildDeliverArgs(meta);
+  const rendered = argv.map((token, i) => {
+    // Flags and the subcommand are fixed vocabulary; values get quoted.
+    if (i === 0 || token.startsWith("--")) return token;
+    if (/^\d+$/.test(token)) return token;
+    return shQuote(token);
+  });
+  return ["osstack", ...rendered].join(" ");
 }
 
 function parseMeta(card: CardRow): ContractMeta | undefined {
@@ -197,6 +229,32 @@ function parseMeta(card: CardRow): ContractMeta | undefined {
   const m = parsed as Record<string, unknown>;
   if (m["kind"] !== "contract") return undefined;
   return parsed as ContractMeta;
+}
+
+/**
+ * Best-effort card projection (B2): the approval row already carries the
+ * authoritative state, so a failed card move (illegal transition after an
+ * out-of-band drag, missing card, DB hiccup) degrades to a warning string —
+ * it never fails the control action.
+ */
+function projectCard(
+  kanban: KanbanRepository,
+  contract_id: string,
+  to: CardStatus,
+  opts: { blocked_reason?: string; actor?: string },
+  comment: { author: string; body: string },
+): string | undefined {
+  try {
+    kanban.moveCard(contract_id, to, opts);
+    kanban.addComment(contract_id, comment.author, comment.body);
+    return undefined;
+  } catch (e) {
+    return `kanban card projection failed (${errMessage(e)}) — the approval record is authoritative; the board card may be out of sync`;
+  }
+}
+
+function errMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 // ── osstack start ────────────────────────────────────────────────────────────
@@ -277,7 +335,7 @@ export async function handleStartCommand(
     );
   }
 
-  // 4. Generate the contract.
+  // 4. Assemble the contract.
   const contractId = genId("ct");
   const approvalId = genId("ap");
   const budgets = policy?.budgets ?? null;
@@ -301,37 +359,57 @@ export async function handleStartCommand(
     forbidden_categories: forbiddenCategories,
   };
 
-  const markdown = renderContractMarkdown(meta, repoConfig, policy, now, approvalId);
-  await mkdir(join(entry.path, ".osstack", "contracts"), { recursive: true });
-  await writeFile(contractPath, markdown, "utf8");
-
-  // 5. Track it: kanban card (board "contracts", id = contract id) + pending approval.
-  const home = osstackHome();
-  await mkdir(home, { recursive: true });
-  const dbPath = join(home, "state.db");
-  const db = openDb({ path: dbPath });
+  // 5. Track it FIRST, atomically (S3): the kanban card and the pending
+  //    approval commit in ONE transaction (nested withWrite = savepoints), so a
+  //    crash cannot leave a card without an approval or vice versa. DB errors
+  //    become a clean `internal` result.
+  const warnings: string[] = [];
   try {
-    const kanban = new KanbanRepository(db, dbPath, () => now.getTime() / 1000);
-    kanban.createCard({
-      card_id: contractId,
-      board: CONTRACTS_BOARD,
-      title: goal,
-      body: `Execution Contract — ${contractPath}`,
-      status: CONTRACT_TO_CARD.needs_approval,
-      meta: JSON.stringify(meta),
-    });
-    insertContractApproval(db, dbPath, {
-      approval_id: approvalId,
-      contract_id: contractId,
-      action: `start: ${goal}`,
-      risk,
-      requested_at: now.getTime() / 1000,
-    });
-  } finally {
-    db.close();
+    const home = osstackHome();
+    await mkdir(home, { recursive: true });
+    const dbPath = join(home, "state.db");
+    const db = openDb({ path: dbPath });
+    try {
+      const kanban = new KanbanRepository(db, dbPath, () => now.getTime() / 1000);
+      withWrite(db, dbPath, () => {
+        kanban.createCard({
+          card_id: contractId,
+          board: CONTRACTS_BOARD,
+          title: goal,
+          body: `Execution Contract — ${contractPath}`,
+          status: CONTRACT_TO_CARD.needs_approval,
+          meta: JSON.stringify(meta),
+        });
+        insertContractApproval(db, dbPath, {
+          approval_id: approvalId,
+          contract_id: contractId,
+          action: `start: ${goal}`,
+          risk,
+          requested_at: now.getTime() / 1000,
+        });
+      });
+    } finally {
+      db.close();
+    }
+  } catch (e) {
+    return emitFailure(emit, json, "internal", `failed to record the contract: ${errMessage(e)}`);
   }
 
-  // 6. Output.
+  // 6. Write the human-editable markdown AFTER the DB commit. DOCUMENTED
+  //    CHOICE (S3): if this write fails, the contract record already exists
+  //    and is NOT rolled back — the DB is the authority; the markdown is the
+  //    human view. We degrade to a warning telling the user how to proceed.
+  try {
+    const markdown = renderContractMarkdown(meta, repoConfig, policy, now, approvalId);
+    await mkdir(join(entry.path, ".osstack", "contracts"), { recursive: true });
+    await writeFile(contractPath, markdown, "utf8");
+  } catch (e) {
+    warnings.push(
+      `contract record ${contractId} created, but writing ${contractPath} failed (${errMessage(e)}) — fix the path and re-run start, or 'osstack control ${contractId} stop --reason unwritable' to abandon it`,
+    );
+  }
+
+  // 7. Output.
   const approveInvocation = `osstack control ${contractId} approve`;
   if (json) {
     const request = contractApprovalRowToRequest({
@@ -350,6 +428,7 @@ export async function handleStartCommand(
         status: "needs_approval",
         verify_command: repoConfig.verify_command,
         budgets,
+        ...(warnings.length > 0 ? { warnings } : {}),
       },
       evidence_refs: [{ kind: "report", ref: contractPath }],
       required_approvals: [request],
@@ -362,8 +441,9 @@ export async function handleStartCommand(
     out(`  file:     ${contractPath}`);
     out(`  verify:   ${repoConfig.verify_command}`);
     out(`  status:   needs_approval`);
+    for (const w of warnings) out(`  warning:  ${w}`);
     out("");
-    out("Edit the TBD non-goals / acceptance criteria, then approve:");
+    out("Review the TBD non-goals / acceptance criteria, commit the contract file, then approve:");
     out(`  ${approveInvocation}`);
   }
   return 0;
@@ -381,6 +461,7 @@ export async function handleControlCommand(
   const err = deps.err ?? console.error;
   const emit = { out, err };
   const now = deps.now?.() ?? new Date();
+  const genId = deps.genId ?? defaultGenId;
   const json = hasFlag(args, "--json");
 
   if (args[0] === "help" || args.includes("--help") || args.includes("-h") || args.length === 0) {
@@ -401,86 +482,106 @@ export async function handleControlCommand(
     return emitFailure(emit, json, "bad_request", `unknown control action "${action}"; expected status|approve|revise|stop`);
   }
 
-  const home = osstackHome();
-  await mkdir(home, { recursive: true });
-  const dbPath = join(home, "state.db");
-  const db = openDb({ path: dbPath });
+  // B2: unexpected DB/kanban exceptions anywhere below become a clean
+  // `internal` AgentCommandResult + exit 1, never a stack trace.
   try {
-    const kanban = new KanbanRepository(db, dbPath, () => now.getTime() / 1000);
-    const card = kanban.getCard(contractId);
-    const meta = card ? parseMeta(card) : undefined;
-    if (card === undefined || meta === undefined) {
-      return emitFailure(emit, json, "not_found", `unknown contract id "${contractId}"`);
-    }
-    const approval = getContractApprovalByContract(db, contractId);
-    if (approval === undefined) {
-      return emitFailure(emit, json, "not_found", `contract "${contractId}" has no approval record`);
-    }
+    const home = osstackHome();
+    await mkdir(home, { recursive: true });
+    const dbPath = join(home, "state.db");
+    const db = openDb({ path: dbPath });
+    try {
+      const kanban = new KanbanRepository(db, dbPath, () => now.getTime() / 1000);
+      const card = kanban.getCard(contractId);
+      const meta = card ? parseMeta(card) : undefined;
+      if (card === undefined || meta === undefined) {
+        return emitFailure(emit, json, "not_found", `unknown contract id "${contractId}"`);
+      }
+      // The approval row is the authoritative lifecycle record (B2).
+      const approval = getContractApprovalByContract(db, contractId);
+      if (approval === undefined) {
+        return emitFailure(emit, json, "not_found", `contract "${contractId}" has no approval record`);
+      }
 
-    switch (action) {
-      case "status":
-        return renderStatus(emit, json, card, meta, approval);
-      case "approve":
-        return doApprove(emit, json, kanban, db, dbPath, now, card, meta, approval, args);
-      case "revise":
-        return doRevise(emit, json, kanban, db, dbPath, meta, approval, args);
-      case "stop":
-        return doStop(emit, json, kanban, db, dbPath, now, meta, approval, args);
+      const ctx: ControlContext = { emit, json, kanban, db, dbPath, now, genId, meta, approval };
+      switch (action) {
+        case "status":
+          return renderStatus(ctx);
+        case "approve":
+          return doApprove(ctx, args);
+        case "revise":
+          return doRevise(ctx, args);
+        case "stop":
+          return doStop(ctx, args);
+      }
+    } finally {
+      db.close();
     }
-  } finally {
-    db.close();
+  } catch (e) {
+    return emitFailure(emit, json, "internal", `control ${action} failed: ${errMessage(e)}`);
   }
   return 0;
 }
 
-function doApprove(
-  emit: Required<Pick<StartControlDeps, "out" | "err">>,
-  json: boolean,
-  kanban: KanbanRepository,
-  db: import("better-sqlite3").Database,
-  dbPath: string,
-  now: Date,
-  card: CardRow,
-  meta: ContractMeta,
-  approval: ContractApprovalRow,
-  args: string[],
-): number {
+interface ControlContext {
+  emit: Required<Pick<StartControlDeps, "out" | "err">>;
+  json: boolean;
+  kanban: KanbanRepository;
+  db: import("better-sqlite3").Database;
+  dbPath: string;
+  now: Date;
+  genId: (prefix: string) => string;
+  meta: ContractMeta;
+  approval: ContractApprovalRow;
+}
+
+function doApprove(ctx: ControlContext, args: string[]): number {
+  const { emit, json, meta, approval } = ctx;
   const actorRaw = flag(args, "--actor") ?? "human:owner";
   const actor = parseActor(actorRaw);
   if ("error" in actor) {
     return emitFailure(emit, json, "bad_request", actor.error);
   }
-  // A-004: only human actors may approve a contract in v1 (agent delegation via
+  // A-004: an agent actor approving a contract is an AUTHORITY denial, not a
+  // malformed request — policy_denied / blocked / exit 2 (agent delegation via
   // allowed_auto_changes is a later increment).
   if (actor.type === "agent") {
     return emitFailure(
       emit,
       json,
-      "bad_request",
+      "policy_denied",
       `agent actor "${actorRaw}" cannot approve a contract (A-004): approval requires a human actor`,
     );
   }
-  if (approval.status !== "pending") {
+  if (approval.status !== "pending" && approval.status !== "revising") {
     return emitFailure(
       emit,
       json,
       "conflict",
-      `contract "${meta.contract_id}" is not awaiting approval (status: ${contractStatusFromCard(card.status)})`,
+      `contract "${meta.contract_id}" is not awaiting approval (status: ${contractStatus(approval)})`,
     );
   }
 
   const reason = flag(args, "--reason");
-  const resolved = resolveContractApproval(db, dbPath, approval.approval_id, {
-    status: "approved",
-    decided_by_type: actor.type,
-    decided_by_id: actor.id,
-    decided_at: now.getTime() / 1000,
+  const resolved = recordContractDecision(ctx.db, ctx.dbPath, {
+    approval_id: approval.approval_id,
+    contract_id: meta.contract_id,
+    action: "approve",
+    actor_type: actor.type,
+    actor_id: actor.id,
+    decided_at: ctx.now.getTime() / 1000,
     reason: reason ?? null,
+    decision_id: ctx.genId("cd"),
   });
-  kanban.moveCard(meta.contract_id, CONTRACT_TO_CARD.approved, { actor: `${actor.type}:${actor.id}` });
-  kanban.addComment(meta.contract_id, `${actor.type}:${actor.id}`, `approved${reason ? `: ${reason}` : ""}`);
+  const warning = projectCard(
+    ctx.kanban,
+    meta.contract_id,
+    CONTRACT_TO_CARD.approved,
+    { actor: `${actor.type}:${actor.id}` },
+    { author: `${actor.type}:${actor.id}`, body: `approved${reason ? `: ${reason}` : ""}` },
+  );
 
   const deliverCommand = buildDeliverCommand(meta);
+  const deliverArgs = buildDeliverArgs(meta);
   const decision = contractApprovalRowToDecision(resolved);
   if (json) {
     const result: AgentCommandResult = {
@@ -491,6 +592,8 @@ function doApprove(
         status: "approved",
         ...(decision !== undefined ? { approval_decision: decision } : {}),
         deliver_command: deliverCommand,
+        deliver_args: deliverArgs,
+        ...(warning !== undefined ? { warnings: [warning] } : {}),
       },
       evidence_refs: [{ kind: "report", ref: meta.contract_path }],
       next_actions: [{ command: "deliver.run", reason: deliverCommand }],
@@ -498,101 +601,127 @@ function doApprove(
     emit.out(JSON.stringify(result, null, 2));
   } else {
     emit.out(`Contract ${meta.contract_id} approved by ${actor.type}:${actor.id}.`);
+    if (warning !== undefined) emit.out(`  warning: ${warning}`);
     emit.out("Run the authorized delivery when ready:");
     emit.out(`  ${deliverCommand}`);
   }
   return 0;
 }
 
-function doRevise(
-  emit: Required<Pick<StartControlDeps, "out" | "err">>,
-  json: boolean,
-  kanban: KanbanRepository,
-  db: import("better-sqlite3").Database,
-  dbPath: string,
-  meta: ContractMeta,
-  approval: ContractApprovalRow,
-  args: string[],
-): number {
+function doRevise(ctx: ControlContext, args: string[]): number {
+  const { emit, json, meta, approval } = ctx;
   const reason = flag(args, "--reason");
   if (reason === undefined || reason.trim() === "") {
     return emitFailure(emit, json, "bad_request", "revise requires --reason <text>");
   }
+  const actorRaw = flag(args, "--actor") ?? "human:owner";
+  const actor = parseActor(actorRaw);
+  if ("error" in actor) {
+    return emitFailure(emit, json, "bad_request", actor.error);
+  }
   if (approval.status === "stopped") {
     return emitFailure(emit, json, "conflict", `contract "${meta.contract_id}" is stopped and cannot be revised`);
   }
-  reopenContractApproval(db, dbPath, approval.approval_id, reason);
-  kanban.moveCard(meta.contract_id, CONTRACT_TO_CARD.revising, { blocked_reason: reason, actor: "human:owner" });
-  kanban.addComment(meta.contract_id, "human:owner", `revise requested: ${reason}`);
+  recordContractDecision(ctx.db, ctx.dbPath, {
+    approval_id: approval.approval_id,
+    contract_id: meta.contract_id,
+    action: "revise",
+    actor_type: actor.type,
+    actor_id: actor.id,
+    decided_at: ctx.now.getTime() / 1000,
+    reason,
+    decision_id: ctx.genId("cd"),
+  });
+  const warning = projectCard(
+    ctx.kanban,
+    meta.contract_id,
+    CONTRACT_TO_CARD.revising,
+    { blocked_reason: reason, actor: actorRaw },
+    { author: actorRaw, body: `revise requested: ${reason}` },
+  );
 
   if (json) {
     const result: AgentCommandResult = {
       protocol_version: PROTOCOL_VERSION,
       status: "ok",
-      result: { contract_id: meta.contract_id, status: "revising", reason },
+      result: {
+        contract_id: meta.contract_id,
+        status: "revising",
+        reason,
+        ...(warning !== undefined ? { warnings: [warning] } : {}),
+      },
       evidence_refs: [{ kind: "report", ref: meta.contract_path }],
       next_actions: [{ command: "control.approve", reason: `osstack control ${meta.contract_id} approve` }],
     };
     emit.out(JSON.stringify(result, null, 2));
   } else {
     emit.out(`Contract ${meta.contract_id} sent back for revision: ${reason}`);
+    if (warning !== undefined) emit.out(`  warning: ${warning}`);
     emit.out(`  edit ${meta.contract_path}, then: osstack control ${meta.contract_id} approve`);
   }
   return 0;
 }
 
-function doStop(
-  emit: Required<Pick<StartControlDeps, "out" | "err">>,
-  json: boolean,
-  kanban: KanbanRepository,
-  db: import("better-sqlite3").Database,
-  dbPath: string,
-  now: Date,
-  meta: ContractMeta,
-  approval: ContractApprovalRow,
-  args: string[],
-): number {
+function doStop(ctx: ControlContext, args: string[]): number {
+  const { emit, json, meta, approval } = ctx;
   const reason = flag(args, "--reason");
   if (reason === undefined || reason.trim() === "") {
     return emitFailure(emit, json, "bad_request", "stop requires --reason <text>");
   }
+  const actorRaw = flag(args, "--actor") ?? "human:owner";
+  const actor = parseActor(actorRaw);
+  if ("error" in actor) {
+    return emitFailure(emit, json, "bad_request", actor.error);
+  }
   if (approval.status === "stopped") {
     return emitFailure(emit, json, "conflict", `contract "${meta.contract_id}" is already stopped`);
   }
-  resolveContractApproval(db, dbPath, approval.approval_id, {
-    status: "stopped",
-    decided_by_type: "human",
-    decided_by_id: "owner",
-    decided_at: now.getTime() / 1000,
+  recordContractDecision(ctx.db, ctx.dbPath, {
+    approval_id: approval.approval_id,
+    contract_id: meta.contract_id,
+    action: "stop",
+    actor_type: actor.type,
+    actor_id: actor.id,
+    decided_at: ctx.now.getTime() / 1000,
     reason,
+    decision_id: ctx.genId("cd"),
   });
-  kanban.moveCard(meta.contract_id, CONTRACT_TO_CARD.stopped, { actor: "human:owner" });
-  kanban.addComment(meta.contract_id, "human:owner", `stopped: ${reason}`);
+  const warning = projectCard(
+    ctx.kanban,
+    meta.contract_id,
+    CONTRACT_TO_CARD.stopped,
+    { actor: actorRaw },
+    { author: actorRaw, body: `stopped: ${reason}` },
+  );
 
   if (json) {
     const result: AgentCommandResult = {
       protocol_version: PROTOCOL_VERSION,
       status: "ok",
-      result: { contract_id: meta.contract_id, status: "stopped", reason },
+      result: {
+        contract_id: meta.contract_id,
+        status: "stopped",
+        reason,
+        ...(warning !== undefined ? { warnings: [warning] } : {}),
+      },
       evidence_refs: [{ kind: "report", ref: meta.contract_path }],
     };
     emit.out(JSON.stringify(result, null, 2));
   } else {
     emit.out(`Contract ${meta.contract_id} stopped: ${reason}`);
+    if (warning !== undefined) emit.out(`  warning: ${warning}`);
   }
   return 0;
 }
 
-function renderStatus(
-  emit: Required<Pick<StartControlDeps, "out" | "err">>,
-  json: boolean,
-  card: CardRow,
-  meta: ContractMeta,
-  approval: ContractApprovalRow,
-): number {
-  const status = contractStatusFromCard(card.status);
+function renderStatus(ctx: ControlContext): number {
+  const { emit, json, meta, approval } = ctx;
+  const status = contractStatus(approval);
   const request = contractApprovalRowToRequest(approval);
   const decision = contractApprovalRowToDecision(approval);
+  // S1: the append-only decision history is the trail rendered here; the
+  // protocol surfaces above still emit only the LATEST decision.
+  const trail = listContractDecisions(ctx.db, meta.contract_id);
   if (json) {
     const result: AgentCommandResult = {
       protocol_version: PROTOCOL_VERSION,
@@ -608,6 +737,13 @@ function renderStatus(
         forbidden_categories: meta.forbidden_categories,
         approval_request: request,
         ...(decision !== undefined ? { approval_decision: decision } : {}),
+        approval_trail: trail.map((d) => ({
+          decision_id: d.decision_id,
+          action: d.action,
+          actor: `${d.actor_type}:${d.actor_id}`,
+          decided_at: new Date(d.decided_at * 1000).toISOString(),
+          ...(d.reason !== null ? { reason: d.reason } : {}),
+        })),
       },
       evidence_refs: [{ kind: "report", ref: meta.contract_path }],
     };
@@ -620,12 +756,10 @@ function renderStatus(
     emit.out(`  file:    ${meta.contract_path}`);
     emit.out("  approval trail:");
     emit.out(`    - requested (${approval.risk}) at ${new Date(approval.requested_at * 1000).toISOString()}`);
-    if (decision !== undefined) {
+    for (const d of trail) {
       emit.out(
-        `    - ${decision.approved ? "approved" : "stopped"} by ${decision.decided_by.type}:${decision.decided_by.id} at ${decision.decided_at}${decision.reason ? ` (${decision.reason})` : ""}`,
+        `    - ${d.action} by ${d.actor_type}:${d.actor_id} at ${new Date(d.decided_at * 1000).toISOString()}${d.reason !== null ? ` (${d.reason})` : ""}`,
       );
-    } else if (approval.reason) {
-      emit.out(`    - pending — last note: ${approval.reason}`);
     }
   }
   return 0;
@@ -635,8 +769,9 @@ function renderStatus(
 
 /**
  * Render the human-editable Execution Contract. Prose is human display only,
- * never an API surface (ADR-001 D3): the state DB card + contract_approvals
- * table are authoritative; this file is what a human reviews and edits.
+ * never an API surface (ADR-001 D3): the contract_approvals row + state DB
+ * card are authoritative; this file is written to a git-tracked path for the
+ * human to review, edit, and commit.
  */
 function renderContractMarkdown(
   meta: ContractMeta,
@@ -723,11 +858,13 @@ function printStartHelp(out: (line: string) => void): void {
 
   osstack start "<goal>" --repo-id <id> [--registry P] [--workspace P] [--risk low|medium|high] [--json]
 
-Requires the repo registered and a valid .osstack/repo.yaml. Writes an
-Execution Contract to .osstack/contracts/<id>.md in the target repo, tracks it
-on the "contracts" kanban board, and records a pending approval. Policy mode
-observe is refused (exit 2). --json emits a protocol AgentCommandResult with
-status needs_approval and the exact \`control approve\` next action.`);
+Requires the repo registered (registry from --registry, or
+<--workspace|cwd>/.osstack/repos.json) and a valid .osstack/repo.yaml in the
+target repo. Writes an Execution Contract to .osstack/contracts/<id>.md (a
+git-tracked path — review the TBDs and commit it), tracks it on the
+"contracts" kanban board, and records a pending approval. Policy mode observe
+is refused (exit 2). --json emits a protocol AgentCommandResult with status
+needs_approval and the exact \`control approve\` next action.`);
 }
 
 function printControlHelp(out: (line: string) => void): void {
@@ -739,10 +876,7 @@ function printControlHelp(out: (line: string) => void): void {
   osstack control <contract-id> stop --reason <text>         Abandon the contract
       [--json]
 
-approve records a protocol ApprovalDecision (human actors only, A-004) and
-emits the ready-to-run \`osstack deliver …\` — it does NOT spawn delivery.`);
-}
-
-function errMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
+approve records a protocol ApprovalDecision (human actors only — an agent
+actor is refused as policy_denied per A-004) and emits the ready-to-run
+\`osstack deliver …\` — it does NOT spawn delivery.`);
 }

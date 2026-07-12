@@ -2,6 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { KanbanRepository, openDb } from "@osstack/core";
 import { AgentCommandResult, ApprovalDecision, ApprovalRequest } from "@osstack/protocol";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -101,7 +102,8 @@ describe("osstack start", () => {
     expect(out).toContain("status:   needs_approval");
     expect(out).toContain("osstack control ct_1 approve");
 
-    // The contract markdown lands in the target repo, git-tracked.
+    // The contract markdown is written to a git-tracked path in the target
+    // repo (the human reviews the TBDs and commits it).
     const md = await readFile(join(repoPath, ".osstack", "contracts", "ct_1.md"), "utf8");
     expect(md).toContain("# Execution Contract — ct_1");
     expect(md).toContain("Add billing dashboard");
@@ -223,13 +225,88 @@ describe("osstack control", () => {
     expect(parsed.error?.code).toBe("conflict");
   });
 
-  it("rejects an agent actor per A-004", async () => {
+  it("refuses an agent actor as policy_denied / blocked / exit 2 (A-004)", async () => {
     const h = harness();
     await start(h.deps);
+    h.logs.length = 0;
+    const code = await handleControlCommand(
+      ["ct_1", "approve", "--actor", "agent:opus", "--json"],
+      h.deps,
+    );
+    expect(code).toBe(2);
+    const parsed = AgentCommandResult.parse(h.json());
+    expect(parsed.status).toBe("blocked");
+    expect(parsed.error?.code).toBe("policy_denied");
+    expect(parsed.error?.message).toContain("A-004");
+
+    // Human path: same denial, same exit code.
     h.errs.length = 0;
-    const code = await handleControlCommand(["ct_1", "approve", "--actor", "agent:opus"], h.deps);
-    expect(code).toBe(1);
-    expect(h.errs.join("\n")).toContain("A-004");
+    const humanCode = await handleControlCommand(["ct_1", "approve", "--actor", "agent:opus"], h.deps);
+    expect(humanCode).toBe(2);
+    expect(h.errs.join("\n")).toContain("policy_denied");
+  });
+
+  it("emits a shell-safe deliver command for a hostile goal, plus raw deliver_args (B1)", async () => {
+    const hostile = "fix $(id) `whoami` 'quote'";
+    const h = harness();
+    await writePolicyYaml(
+      ["schema_version: 1", "mode: propose", "budgets:", "  max_iterations: 7", ""].join("\n"),
+    );
+    await handleStartCommand([hostile, "--repo-id", "demo", ...REGISTRY_ARGS()], h.deps);
+    h.logs.length = 0;
+    const code = await handleControlCommand(["ct_1", "approve", "--json"], h.deps);
+    expect(code).toBe(0);
+    const parsed = AgentCommandResult.parse(h.json());
+    const result = parsed.result as Record<string, unknown>;
+
+    // The printed string single-quotes every value: $(…) and backticks are
+    // inert inside '…', and the embedded single quote is escaped as '\''.
+    const command = result["deliver_command"] as string;
+    expect(command).toContain("'fix $(id) `whoami` '\\''quote'\\'''");
+    expect(command).not.toContain('"fix'); // no live-substitution double quoting
+    expect(parsed.next_actions?.[0]?.reason).toBe(command);
+
+    // Structured argv carries the RAW text — agent consumers never parse shell.
+    const argv = result["deliver_args"] as string[];
+    expect(argv[0]).toBe("deliver");
+    expect(argv[1]).toBe(hostile);
+    expect(argv).toContain("--verify");
+    expect(argv).toContain("pnpm test");
+  });
+
+  it("approve succeeds against the approval row when the card was moved out-of-band (B2)", async () => {
+    const h = harness();
+    await start(h.deps);
+
+    // Simulate an out-of-band drag: archive the card directly. archived -> ready
+    // is an illegal card transition, so the projection must fail — but the
+    // approval row is authoritative and approve must still succeed.
+    const dbPath = join(tmp, "home", "state.db");
+    const db = openDb({ path: dbPath });
+    try {
+      new KanbanRepository(db, dbPath).moveCard("ct_1", "archived");
+    } finally {
+      db.close();
+    }
+
+    h.logs.length = 0;
+    const code = await handleControlCommand(["ct_1", "approve", "--json"], h.deps);
+    expect(code).toBe(0);
+    const parsed = AgentCommandResult.parse(h.json());
+    expect(parsed.status).toBe("ok");
+    const result = parsed.result as Record<string, unknown>;
+    expect(result["status"]).toBe("approved");
+    expect(() => ApprovalDecision.parse(result["approval_decision"])).not.toThrow();
+    // The failed card projection degrades to a warning, never a crash.
+    const warnings = result["warnings"] as string[];
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("projection failed");
+
+    // status also reports from the approval row, not the stale card.
+    h.logs.length = 0;
+    await handleControlCommand(["ct_1", "status", "--json"], h.deps);
+    const status = AgentCommandResult.parse(h.json());
+    expect((status.result as Record<string, unknown>)["status"]).toBe("approved");
   });
 
   it("revise re-opens the approval and a later approve succeeds (strict --json)", async () => {
@@ -244,7 +321,7 @@ describe("osstack control", () => {
     const revised = AgentCommandResult.parse(h.json());
     expect((revised.result as Record<string, unknown>)["status"]).toBe("revising");
 
-    // Re-approval after revise is allowed (approval returned to pending).
+    // Re-approval after revise is allowed (approval row moves revising -> approved).
     const okCode = await handleControlCommand(["ct_1", "approve"], h.deps);
     expect(okCode).toBe(0);
   });
@@ -275,21 +352,31 @@ describe("osstack control", () => {
     expect(approveCode).toBe(1);
   });
 
-  it("status renders the contract + approval trail (strict --json)", async () => {
+  it("status renders the contract + the full append-only approval trail (strict --json)", async () => {
     const h = harness();
     await start(h.deps);
+    await handleControlCommand(["ct_1", "revise", "--reason", "tighten"], h.deps);
     await handleControlCommand(["ct_1", "approve"], h.deps);
     h.logs.length = 0;
     const code = await handleControlCommand(["ct_1", "status", "--json"], h.deps);
     expect(code).toBe(0);
     const parsed = AgentCommandResult.parse(h.json());
-    expect((parsed.result as Record<string, unknown>)["status"]).toBe("approved");
-    expect(() =>
-      ApprovalRequest.parse((parsed.result as Record<string, unknown>)["approval_request"]),
-    ).not.toThrow();
-    expect(() =>
-      ApprovalDecision.parse((parsed.result as Record<string, unknown>)["approval_decision"]),
-    ).not.toThrow();
+    const result = parsed.result as Record<string, unknown>;
+    expect(result["status"]).toBe("approved");
+    expect(() => ApprovalRequest.parse(result["approval_request"])).not.toThrow();
+    // Protocol surface: only the LATEST decision.
+    expect(() => ApprovalDecision.parse(result["approval_decision"])).not.toThrow();
+    // Full history: every revise/approve appended in order (S1).
+    const trail = result["approval_trail"] as { action: string; reason?: string }[];
+    expect(trail.map((d) => d.action)).toEqual(["revise", "approve"]);
+    expect(trail[0]?.reason).toBe("tighten");
+
+    // Human output renders each trail entry too.
+    h.logs.length = 0;
+    await handleControlCommand(["ct_1", "status"], h.deps);
+    const human = h.logs.join("\n");
+    expect(human).toContain("revise by human:owner");
+    expect(human).toContain("approve by human:owner");
   });
 
   it("errors (not_found) for an unknown contract id", async () => {
