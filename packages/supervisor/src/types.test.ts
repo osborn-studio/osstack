@@ -93,6 +93,8 @@ describe("supervisor domain schemas", () => {
       repos: [health],
     });
     expect(report.recommendations).toEqual([]);
+    // Additive field: absent in old persisted data ⇒ defaults to [] (not strict).
+    expect(report.structured_recommendations).toEqual([]);
   });
 
   it("parses evaluator epoch contracts", () => {

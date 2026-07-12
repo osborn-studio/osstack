@@ -188,6 +188,36 @@ export const RepoHealth = z.object({
 });
 export type RepoHealth = z.infer<typeof RepoHealth>;
 
+/**
+ * Machine-actionable recommendation kinds. Each free-text entry in a portfolio
+ * report's `recommendations` has a parallel `structured_recommendations` entry
+ * carrying one of these `kind`s (plus a `repo_id` when the recommendation is
+ * attributable to a single repo). Consumers (e.g. `osstack daily`) dispatch on
+ * `kind` + `repo_id` instead of parsing the free text — brittle string matching
+ * and `<name>: ` prefix parsing are gone.
+ */
+export const RecommendationKind = z.enum([
+  "missing_path",
+  "add_loop_doc",
+  "add_verify_command",
+  "enable_failure_assetization",
+  "create_evaluator_anchor_set",
+  "freeze_evaluator",
+  "consolidation",
+]);
+export type RecommendationKind = z.infer<typeof RecommendationKind>;
+
+export const StructuredRecommendation = z.object({
+  kind: RecommendationKind,
+  /** The single repo this is about (registry-unique id, NOT display name).
+   *  Absent for portfolio-level kinds (e.g. `consolidation` spans repos). */
+  repo_id: z.string().optional(),
+  /** The exact free-text line — byte-identical to the matching
+   *  `recommendations[i]` entry, so renderers stay unchanged. */
+  text: z.string(),
+});
+export type StructuredRecommendation = z.infer<typeof StructuredRecommendation>;
+
 export const PortfolioReport = z.object({
   generated_at: z.string(),
   repo_count: z.number().int().nonnegative(),
@@ -195,6 +225,10 @@ export const PortfolioReport = z.object({
   average_closed_loop_level: z.number().min(0).max(6),
   repos: z.array(RepoHealth),
   recommendations: z.array(z.string()).default([]),
+  /** Machine-actionable mirror of `recommendations` (same order, same text).
+   *  Optional-with-default so pre-existing persisted reports lacking the field
+   *  still parse (the schema is not `.strict()`; default fills in []). */
+  structured_recommendations: z.array(StructuredRecommendation).default([]),
 });
 export type PortfolioReport = z.infer<typeof PortfolioReport>;
 
