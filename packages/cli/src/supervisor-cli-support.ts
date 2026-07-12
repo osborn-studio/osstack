@@ -2,6 +2,7 @@
 // / improve / evaluator / adversarial / meta). Kept small and local so the
 // command modules do not reach into bin.ts internals.
 
+import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { openDb } from "@osstack/core";
@@ -41,12 +42,27 @@ export function firstPositional(args: string[], flagsWithValues: Set<string>): s
   return undefined;
 }
 
-/** Default registry path: `.osstack/repos.json` under the given workspace (cwd by default). */
+/**
+ * Registry path resolution (R1.6, plan §R1.6 step 2 — the portfolio registry is
+ * machine-scoped, not repo-scoped):
+ *   1. explicit `--registry P` wins;
+ *   2. explicit `--workspace P` pins `P/.osstack/repos.json` (no fallback —
+ *      naming a workspace means that workspace, absent file included);
+ *   3. otherwise `cwd/.osstack/repos.json` when it exists (legacy repo-scoped);
+ *   4. otherwise `$OSSTACK_HOME/repos.json` when it exists (machine-scoped);
+ *   5. otherwise the legacy cwd default (callers treat an absent file as an
+ *      empty registry, so this preserves pre-R1.6 behavior byte-for-byte).
+ */
 export function resolveRegistryPath(args: string[]): string {
   const explicit = flag(args, "--registry");
   if (explicit !== undefined) return isAbsolute(explicit) ? explicit : join(process.cwd(), explicit);
-  const workspace = flag(args, "--workspace") ?? process.cwd();
-  return join(workspace, ".osstack", "repos.json");
+  const workspace = flag(args, "--workspace");
+  if (workspace !== undefined) return join(workspace, ".osstack", "repos.json");
+  const local = join(process.cwd(), ".osstack", "repos.json");
+  if (existsSync(local)) return local;
+  const machine = join(osstackHome(), "repos.json");
+  if (existsSync(machine)) return machine;
+  return local;
 }
 
 /** Open the local osstack state DB (creating the home dir), for read or write. */
