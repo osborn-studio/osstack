@@ -6,7 +6,7 @@ import { KanbanRepository, openDb } from "@osstack/core";
 import type { CommandRunner } from "@osstack/github";
 import { AgentCommandResult } from "@osstack/protocol";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { computeDelta, handleDailyCommand, repoCiStatus, type DailyBrief } from "./daily-command.js";
+import { computeDelta, handleDailyCommand, runDailyBrief, repoCiStatus, type DailyBrief } from "./daily-command.js";
 
 let tmp: string;
 let logs: string[];
@@ -232,6 +232,31 @@ describe("daily CLI", () => {
     );
     expect(code).toBe(0);
     expect(logs.join("\n")).toContain("No repos registered.");
+  });
+});
+
+describe("runDailyBrief (core extracted for the daemon)", () => {
+  it("writes the dated brief and returns a result byte-identical to `daily --json`", async () => {
+    const registry = await seedRegistry();
+    const runner = makeRunner([42], "failure");
+    const now = () => new Date("2026-07-11T09:00:00Z");
+
+    // The core the daemon calls each tick.
+    const run = await runDailyBrief({ registryPath: registry, runner, now });
+    expect(run.brief.date).toBe("2026-07-11");
+    const briefsDir = join(tmp, "home", "daily-briefs");
+    await expect(readFile(join(briefsDir, "2026-07-11.json"), "utf8")).resolves.toContain("withgh");
+    expect(run.briefPath).toBe(join(briefsDir, "2026-07-11.json"));
+
+    // The CLI wrapper is a pure pass-through: `daily --json` prints exactly the
+    // result runDailyBrief builds (proving the extraction is behavior-preserving).
+    logs = [];
+    await handleDailyCommand(
+      ["--registry", registry, "--json"],
+      { runner: makeRunner([42], "failure"), now, out },
+    );
+    // generated_at differs only if the clock advanced; both use the pinned `now`.
+    expect(JSON.parse(logs.join("\n"))).toEqual(run.result);
   });
 });
 
