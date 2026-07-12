@@ -54,6 +54,7 @@ import {
   type AgentTask,
 } from "@osstack/agents";
 import { appendEvent, finalizeRun, insertRun, insertTask } from "./store.js";
+import { makePolicyGate } from "./policy-gate.js";
 import { osstackHome, pidFilePath, resolveSocketPath } from "./paths.js";
 import { PROTOCOL_VERSION, VERSION } from "./version.js";
 import { readUpdateCache, startUpdateChecker } from "./update-check.js";
@@ -319,10 +320,19 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       const engine = new LoopEngine(withLoopAdapters(ctx, parsed.runOptions));
       if (parsed.cyclesOptions === undefined) {
         const raw = await engine.runOnce();
+        // Kernel gate (R2.2): the engine consulted the injected policy gate at
+        // entry. A deny (e.g. mode: observe) refuses before any work — surface
+        // it as a `policy_denied` RPC error (A-006 blocked code), no evidence.
+        if (raw.policy?.denied === true) {
+          return singleErr(req.id, "policy_denied", raw.policy.reason);
+        }
         const runId = persistLoopRunEvidence(ctx, raw);
         return singleOk(req.id, loopRunSummary(raw, runId));
       }
       const raw = await engine.runCycles(parsed.cyclesOptions);
+      if (raw.policy?.denied === true) {
+        return singleErr(req.id, "policy_denied", raw.policy.reason);
+      }
       const runId = persistLoopRunEvidence(ctx, raw);
       return singleOk(req.id, loopRunCyclesSummary(raw, runId));
     }
@@ -936,6 +946,21 @@ async function runLoopSession(ctx: DaemonContext, session: LoopSession): Promise
 
       const cycleStartedAt = Date.now();
       const result = await new LoopEngine(withLoopAdapters(ctx, session.runOptions)).runOnce();
+      // Kernel gate (R2.2): the per-tick engine consulted the policy gate at
+      // entry (the gate re-reads policy.yaml each consult). A mid-session flip
+      // to `mode: observe` denies here — stop the session cleanly with a
+      // `policy_denied` stop_reason, persisted exactly like a budget stop.
+      // Checked before counters advance so a refused tick is not counted.
+      if (result.policy?.denied === true) {
+        // The observe reason already carries the `policy_denied:` marker; a
+        // fail-closed reason (loader error) gets it prefixed so every policy
+        // stop is greppable, matching the loop's own loop.stopped wording.
+        const stopReason = result.policy.reason.startsWith("policy_denied")
+          ? result.policy.reason
+          : `policy_denied: ${result.policy.reason}`;
+        await markLoopSessionStopped(ctx, session, stopReason);
+        return;
+      }
       const cycleDurationMs = Date.now() - cycleStartedAt;
       session.cycleCount += 1;
       session.discoveredTaskCount += result.discoveredTaskCount;
@@ -1422,18 +1447,25 @@ function parseLoopRunParams(
 }
 
 function withLoopAdapters(ctx: DaemonContext, runOptions: LoopRunOptions): LoopRunOptions {
+  // Kernel policy gate (R2.2): injected fresh on EVERY engine construction. The
+  // gate re-reads `.osstack/policy.yaml` per consult (no caching), so a
+  // long-lived session honors a mid-flight flip to `mode: observe` on its next
+  // tick — the scheduler builds a new engine via this helper each cycle. Never
+  // persisted into runOptions (it is a function; see withoutRuntimeAdapters).
+  const policyGate = makePolicyGate(runOptions.workspacePath ?? process.cwd());
   if (
     runOptions.agentId === undefined
     && runOptions.autoAgent !== true
     && (runOptions.verifierAgentIds?.length ?? 0) === 0
   ) {
-    return runOptions;
+    return { ...runOptions, policyGate };
   }
   return {
     ...runOptions,
     adapters: Array.from(ctx.adapters.values()),
     policyEngine: ctx.policy,
     policyHistory: sqliteHistory(ctx.db),
+    policyGate,
   };
 }
 
@@ -1442,6 +1474,9 @@ function withoutRuntimeAdapters(runOptions: LoopRunOptions): LoopRunOptions {
   delete copy.adapters;
   delete copy.policyEngine;
   delete copy.policyHistory;
+  // Never persist the injected gate (a function): it is re-injected per engine
+  // construction by withLoopAdapters, and JSON.stringify would drop it anyway.
+  delete copy.policyGate;
   return copy;
 }
 

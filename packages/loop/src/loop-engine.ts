@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { isAbsolute, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import {
   cleanupOrphanedWorktrees,
@@ -93,6 +93,40 @@ export interface LoopRunOptions {
    * storage-agnostic: the callback owns assetization and persistence.
    */
   selfImprovement?: SelfImprovementConfig;
+  /**
+   * Kernel policy gate (R2.2). When injected, the engine consults it once at
+   * run entry (before ANY discovery/execution) and once per scheduled cycle
+   * tick. A deny refuses/stops the run cleanly with a `policy_denied` outcome —
+   * exactly like a budget stop, never an exception. When ABSENT, behavior is
+   * byte-identical to a gate-free loop (the loop stays usable standalone and
+   * never couples to the policy loader/schema — how policy files are located
+   * and parsed is the CLI product layer's business). Same capability-injection
+   * discipline as `assetize`:
+   * a gate that throws counts as deny with the error message (fail-closed) —
+   * the gate is never allowed to crash the engine.
+   */
+  policyGate?: PolicyGate;
+}
+
+/**
+ * Loop-local policy-gate decision (R2.2). Deliberately a structural type: the
+ * loop never imports the policy loader/schema (that lives in the CLI product
+ * layer), so it stays usable standalone; the CLI supplies an implementation
+ * backed by `loadPolicyProfile`.
+ */
+export type PolicyGateDecision = { allow: true } | { allow: false; reason: string };
+
+/** Injectable kernel policy gate (R2.2). See {@link LoopRunOptions.policyGate}. */
+export type PolicyGate = (ctx: { workspacePath: string }) => Promise<PolicyGateDecision>;
+
+/**
+ * Policy-gate status folded onto a run result when the gate denied the run/tick.
+ * Mirrors how {@link LoopBudgetStatus} surfaces a budget stop so callers (the
+ * daemon, the CLI) can distinguish a policy refusal from a normal completion.
+ */
+export interface LoopPolicyStatus {
+  denied: boolean;
+  reason: string;
 }
 
 /** Ids/summary the self-improvement callback returns for a completed task. */
@@ -141,6 +175,8 @@ export interface LoopRunResult {
   skippedTaskCount: number;
   goal?: LoopGoalResult;
   budget?: LoopBudgetStatus;
+  /** Present only when the policy gate denied this run (R2.2). */
+  policy?: LoopPolicyStatus;
 }
 
 export interface LoopRunCyclesOptions {
@@ -157,6 +193,8 @@ export interface LoopRunCyclesResult {
   jsonPath: string;
   markdownPath: string;
   budget?: LoopBudgetStatus;
+  /** Present only when the policy gate denied the run (at entry or a tick). */
+  policy?: LoopPolicyStatus;
 }
 
 export class LoopEngine {
@@ -174,12 +212,31 @@ export class LoopEngine {
     if (!Number.isInteger(intervalMs) || intervalMs < 0) {
       throw new Error("runCycles.intervalMs must be a non-negative integer");
     }
+    // Entry consult (R2.2): a deny refuses before ANY discovery/execution work,
+    // mirroring a budget stop — a distinguishable `policy_denied` outcome, not
+    // an exception. With no gate injected this is a no-op (byte-identical).
+    const entryGate = await this.consultPolicyGate();
+    if (entryGate.allow === false) {
+      return this.policyDeniedCyclesResult(entryGate.reason);
+    }
+
     const results: LoopRunResult[] = [];
     const runStartedAt = Date.now();
     let noProgressCycles = 0;
     let budgetStatus: LoopBudgetStatus | undefined;
+    let policyReason: string | undefined;
 
     for (let cycle = 1; cycle <= cycles; cycle++) {
+      // Per-tick consult (R2.2): cycle 1 is covered by the entry consult above;
+      // every subsequent scheduled tick re-consults so a human flipping
+      // `mode: observe` mid-flight stops the loop cleanly on the next tick.
+      if (cycle > 1) {
+        const tickGate = await this.consultPolicyGate();
+        if (tickGate.allow === false) {
+          policyReason = tickGate.reason;
+          break;
+        }
+      }
       const result = await this.runCycle(cycle, {
         emitStarted: cycle === 1,
         emitStopped: false,
@@ -205,11 +262,13 @@ export class LoopEngine {
     }
     const finalState = await this.persistBudgetStatus(last, budgetStatus);
     this.emit(last.loop_id, "loop.stopped", {
-      reason: budgetStatus?.exceeded === true
-        ? `budget exceeded: ${budgetStatus.reason}`
-        : last.goal?.pass === true
-          ? "goal command passed"
-          : "manual run completed",
+      reason: policyReason !== undefined
+        ? policyStopReason(policyReason)
+        : budgetStatus?.exceeded === true
+          ? `budget exceeded: ${budgetStatus.reason}`
+          : last.goal?.pass === true
+            ? "goal command passed"
+            : "manual run completed",
       cycles: results.length,
     });
 
@@ -221,11 +280,18 @@ export class LoopEngine {
       jsonPath: last.jsonPath,
       markdownPath: last.markdownPath,
       ...(budgetStatus !== undefined ? { budget: budgetStatus } : {}),
+      ...(policyReason !== undefined ? { policy: { denied: true, reason: policyReason } } : {}),
     };
   }
 
   async runOnce(): Promise<LoopRunResult> {
     const eventStartIndex = this.events.length;
+    // Entry consult (R2.2): refuse before ANY discovery/execution work. Covers
+    // the daemon session scheduler too, which drives each tick via runOnce().
+    const entryGate = await this.consultPolicyGate();
+    if (entryGate.allow === false) {
+      return this.policyDeniedRunResult(entryGate.reason, eventStartIndex);
+    }
     const runStartedAt = Date.now();
     const result = await this.runCycle(1, { emitStarted: true, emitStopped: false });
     const budgetStatus = this.checkLoopBudget(result.loop_id, {
@@ -248,6 +314,68 @@ export class LoopEngine {
       state: finalState,
       events: this.events.slice(eventStartIndex),
       ...(budgetStatus !== undefined ? { budget: budgetStatus } : {}),
+    };
+  }
+
+  /**
+   * Consult the injected policy gate (R2.2). No gate ⇒ always allow (the loop
+   * behaves exactly as before). Fail-closed: a gate that throws counts as a
+   * deny carrying the error message — the gate is never allowed to crash the
+   * engine, matching the `assetize` self-improvement hook's discipline.
+   */
+  private async consultPolicyGate(): Promise<PolicyGateDecision> {
+    const gate = this.options.policyGate;
+    if (gate === undefined) return { allow: true };
+    const workspacePath = this.options.workspacePath ?? process.cwd();
+    try {
+      return await gate({ workspacePath });
+    } catch (err) {
+      return { allow: false, reason: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  /**
+   * Build the refusal result for a policy-denied run. Mirrors a budget stop: a
+   * `loop.stopped` event with a `policy_denied` reason and a `policy` marker on
+   * the result. Performs NO discovery/execution and writes NO state file — the
+   * refusal happens before any side effect. Preserves the existing loop_id when
+   * a state file is already present so the refusal is attributed to the loop.
+   */
+  private async policyDeniedRunResult(reason: string, eventStartIndex: number): Promise<LoopRunResult> {
+    const workspacePath = this.options.workspacePath ?? process.cwd();
+    const jsonPath = resolvePath(this.options.stateFilePath ?? "LOOP-STATE.json", workspacePath);
+    const markdownPath = this.options.markdownPath !== undefined
+      ? resolvePath(this.options.markdownPath, workspacePath)
+      : join(dirname(jsonPath), "STATE.md");
+    const existingState = await readLoopState(jsonPath);
+    const loopId = existingState?.loop_id ?? this.options.loopId ?? `loop_${randomUUID()}`;
+    this.emit(loopId, "loop.stopped", { reason: policyStopReason(reason) });
+    return {
+      loop_id: loopId,
+      state: existingState ?? createInitialLoopState(loopId),
+      completedTasks: [],
+      events: this.events.slice(eventStartIndex),
+      jsonPath,
+      markdownPath,
+      discoveredTaskCount: 0,
+      executedTaskCount: 0,
+      skippedTaskCount: 0,
+      policy: { denied: true, reason },
+    };
+  }
+
+  /** runCycles counterpart of {@link policyDeniedRunResult} (entry deny, no cycles ran). */
+  private async policyDeniedCyclesResult(reason: string): Promise<LoopRunCyclesResult> {
+    const eventStartIndex = this.events.length;
+    const single = await this.policyDeniedRunResult(reason, eventStartIndex);
+    return {
+      loop_id: single.loop_id,
+      cycles: [],
+      state: single.state,
+      events: this.events.slice(eventStartIndex),
+      jsonPath: single.jsonPath,
+      markdownPath: single.markdownPath,
+      policy: { denied: true, reason },
     };
   }
 
@@ -1171,6 +1299,17 @@ function policyEventPayload(decision: PolicyDecision): Record<string, unknown> {
 
 function resolvePath(path: string, cwd: string): string {
   return isAbsolute(path) ? path : join(cwd, path);
+}
+
+/**
+ * Normalize a policy-gate deny reason into a `loop.stopped` reason carrying
+ * exactly one `policy_denied:` marker. The CLI observe-mode reason already
+ * begins with the marker (kept byte-identical for the R1.3 stderr contract), so
+ * it passes through unchanged; a fail-closed reason (e.g. a loader error) gets
+ * the marker prefixed so every policy stop is greppable as `policy_denied`.
+ */
+function policyStopReason(reason: string): string {
+  return reason.startsWith("policy_denied") ? reason : `policy_denied: ${reason}`;
 }
 
 function commandAudit(result: CommandResult): NonNullable<CompletedTask["execution_commands"]>[number] {
