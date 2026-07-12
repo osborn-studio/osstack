@@ -7,7 +7,7 @@ export default defineConfig({
     // explicitly so introducing this config file cannot silently change the
     // pool/isolation behavior those tests depend on.
     pool: "forks",
-    // R2.1 hermeticity guard: point OSSTACK_HOME at a per-run tmp dir before any
+    // R2.1 hermeticity guard: point OSSTACK_HOME at a per-test-file tmp dir before any
     // test module loads so no suite can touch the real ~/.osstack.
     setupFiles: ["./src/test-setup-hermetic-home.ts"],
   },

@@ -14,9 +14,15 @@
 // from OSSTACK_HOME (see src/paths.ts), so pinning the home pins the socket too.
 // The assignment is unconditional so an external OSSTACK_HOME export (e.g. left
 // over in a shell) can never leak the real home into the suite.
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+// One fresh home per test FILE (setupFiles runs per isolated worker/file),
+// which also gives each file cross-file isolation for free.
 const hermeticHome = mkdtempSync(join(tmpdir(), "osstack-vitest-home-"));
 process.env["OSSTACK_HOME"] = hermeticHome;
+
+process.on("exit", () => {
+  rmSync(hermeticHome, { recursive: true, force: true });
+});
