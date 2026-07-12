@@ -115,6 +115,50 @@ export const ApprovalRow = z.object({
 });
 export type ApprovalRow = z.infer<typeof ApprovalRow>;
 
+// ──────────────────────────────────────────────────────────────────────
+// Contract approval (R1.5) — approval record for an Execution Contract.
+// A dedicated table (migration #8), NOT the run-coupled `approvals` above:
+// a contract has no run at approval time. This row is the AUTHORITATIVE
+// current lifecycle state (the kanban card is a best-effort projection).
+// One row per contract; the same approval_id lives for the contract's
+// whole lifecycle so the protocol ApprovalRequest / ApprovalDecision
+// round-trip against one record. State machine:
+//   pending --approve--> approved
+//   pending|approved --revise--> revising --approve--> approved
+//   any non-stopped --stop--> stopped (terminal)
+// Every approve/revise/stop ALSO appends a ContractApprovalDecisionRow —
+// the append-only history behind the `control status` trail.
+// ──────────────────────────────────────────────────────────────────────
+
+export const ContractApprovalRow = z.object({
+  approval_id: z.string().min(1),
+  contract_id: z.string().min(1),
+  action: z.string().min(1),
+  risk: z.enum(["low", "medium", "high"]),
+  status: z.enum(["pending", "approved", "revising", "stopped"]),
+  requested_at: z.number(),
+  decided_by_type: z.enum(["human", "agent"]).nullable().default(null),
+  decided_by_id: z.string().nullable().default(null),
+  decided_at: z.number().nullable().default(null),
+  reason: z.string().nullable().default(null),
+  created_at: z.number(),
+  updated_at: z.number(),
+});
+export type ContractApprovalRow = z.infer<typeof ContractApprovalRow>;
+
+export const ContractApprovalDecisionRow = z.object({
+  decision_id: z.string().min(1),
+  approval_id: z.string().min(1),
+  contract_id: z.string().min(1),
+  action: z.enum(["approve", "revise", "stop"]),
+  actor_type: z.enum(["human", "agent"]),
+  actor_id: z.string().min(1),
+  reason: z.string().nullable().default(null),
+  decided_at: z.number(),
+  created_at: z.number(),
+});
+export type ContractApprovalDecisionRow = z.infer<typeof ContractApprovalDecisionRow>;
+
 export const ClarifyRow = z.object({
   clarify_id: z.string(),
   run_id: RunIdSchema,

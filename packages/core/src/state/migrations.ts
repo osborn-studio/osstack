@@ -383,6 +383,67 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_kanban_checks_card ON kanban_card_checks(card_id);
     `,
   },
+  {
+    id: 8,
+    name: "contract_approvals",
+    // R1.5 contract-gated delivery: approval records for Execution Contracts.
+    //
+    // Why a DEDICATED table and NOT the existing `approvals` table: `approvals`
+    // is `run_id NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE` — it is
+    // structurally coupled to a run in the daemon hot loop (populated by the
+    // approval.requested/approval.resolved event double-write in run-store.ts,
+    // and read by approvalRowToRequest as a non-null run_id). A contract has NO
+    // run at approval time (control v1 does NOT spawn deliver; deliver runs
+    // later, if ever). Forcing a synthetic run row would violate that FK's
+    // intent and pollute idx_approvals_run + the run-scoped daemon queries. So
+    // contract approvals get their own minimal table, keyed by contract_id.
+    //
+    // `contract_approvals` is the AUTHORITATIVE current lifecycle state of a
+    // contract (the kanban card is a best-effort projection). One row per
+    // contract; the same approval_id lives for the contract's life so the
+    // protocol ApprovalRequest (emitted at `start`) and ApprovalDecision
+    // (emitted at `approve`) round-trip against one record. State machine
+    // (see contract-approvals.ts):
+    //   pending --approve--> approved
+    //   pending|approved --revise--> revising --approve--> approved
+    //   any non-stopped --stop--> stopped (terminal)
+    //
+    // `contract_approval_decisions` is the APPEND-ONLY decision history: every
+    // approve/revise/stop appends a row. The current-state row stays for O(1)
+    // guards; the trail renders in `control status`.
+    sql: `
+      CREATE TABLE IF NOT EXISTS contract_approvals (
+        approval_id      TEXT PRIMARY KEY,
+        contract_id      TEXT NOT NULL,
+        action           TEXT NOT NULL,
+        risk             TEXT NOT NULL CHECK (risk IN ('low','medium','high')),
+        status           TEXT NOT NULL CHECK (status IN ('pending','approved','revising','stopped')),
+        requested_at     REAL NOT NULL,
+        decided_by_type  TEXT CHECK (decided_by_type IN ('human','agent')),
+        decided_by_id    TEXT,
+        decided_at       REAL,
+        reason           TEXT,
+        created_at       REAL NOT NULL,
+        updated_at       REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_contract_approvals_contract
+        ON contract_approvals(contract_id);
+
+      CREATE TABLE IF NOT EXISTS contract_approval_decisions (
+        decision_id  TEXT PRIMARY KEY,
+        approval_id  TEXT NOT NULL,
+        contract_id  TEXT NOT NULL,
+        action       TEXT NOT NULL CHECK (action IN ('approve','revise','stop')),
+        actor_type   TEXT NOT NULL CHECK (actor_type IN ('human','agent')),
+        actor_id     TEXT NOT NULL,
+        reason       TEXT,
+        decided_at   REAL NOT NULL,
+        created_at   REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_contract_approval_decisions_contract
+        ON contract_approval_decisions(contract_id, decided_at);
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

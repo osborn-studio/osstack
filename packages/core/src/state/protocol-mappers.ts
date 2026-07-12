@@ -16,7 +16,7 @@
 //     — every timestamp is converted with {@link epochSecondsToIso}.
 
 import type * as protocol from "@osstack/protocol";
-import type { ApprovalRow, RunRow } from "./schema.js";
+import type { ApprovalRow, ContractApprovalRow, RunRow } from "./schema.js";
 import type { StoredEventRow } from "./run-store.js";
 
 /** Unix seconds (float ok) -> ISO-8601 UTC string accepted by z.string().datetime(). */
@@ -137,5 +137,52 @@ export function approvalRowToRequest(row: ApprovalRequestRow): protocol.Approval
     action: row.action_summary,
     risk: row.risk,
     requested_at: epochSecondsToIso(row.requested_at),
+  };
+}
+
+/**
+ * Lift a `contract_approvals` row (R1.5) into a {@link protocol.ApprovalRequest}.
+ * Contract approvals have no run (control does not spawn deliver in v1), so
+ * `run_id` is omitted — protocol makes it optional. `action` / `risk` pass
+ * through; `requested_at` epoch seconds -> ISO.
+ */
+export function contractApprovalRowToRequest(
+  row: Pick<ContractApprovalRow, "approval_id" | "action" | "risk" | "requested_at">,
+): protocol.ApprovalRequest {
+  return {
+    approval_id: row.approval_id,
+    action: row.action,
+    risk: row.risk,
+    requested_at: epochSecondsToIso(row.requested_at),
+  };
+}
+
+/**
+ * Lift a resolved `contract_approvals` row into a {@link protocol.ApprovalDecision}.
+ *
+ * Returns `undefined` while the row is `pending` OR `revising` — neither has an
+ * approve/reject VERDICT yet (a revise sends the contract back for edits; the
+ * protocol ApprovalDecision's `approved` boolean cannot honestly represent it),
+ * so the mapper refuses to fabricate one. `approved` maps to `approved: true`;
+ * `stopped` maps to `approved: false`. Callers filter the undefined case. The
+ * full approve/revise/stop history lives in `contract_approval_decisions`
+ * (human-facing trail), not in this protocol shape.
+ */
+export function contractApprovalRowToDecision(
+  row: Pick<
+    ContractApprovalRow,
+    "approval_id" | "status" | "decided_by_type" | "decided_by_id" | "decided_at" | "reason"
+  >,
+): protocol.ApprovalDecision | undefined {
+  if (row.status === "pending" || row.status === "revising") return undefined;
+  if (row.decided_by_type === null || row.decided_by_id === null || row.decided_at === null) {
+    return undefined;
+  }
+  return {
+    approval_id: row.approval_id,
+    approved: row.status === "approved",
+    decided_by: { type: row.decided_by_type, id: row.decided_by_id },
+    decided_at: epochSecondsToIso(row.decided_at),
+    ...(row.reason !== null ? { reason: row.reason } : {}),
   };
 }

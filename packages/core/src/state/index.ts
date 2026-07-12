@@ -6,4 +6,5 @@ export * from "./lessons.js";
 export * from "./feedback-assets.js";
 export * from "./improvement-proposals.js";
 export * from "./evaluator-epochs.js";
+export * from "./contract-approvals.js";
 export * from "./run-store.js";
