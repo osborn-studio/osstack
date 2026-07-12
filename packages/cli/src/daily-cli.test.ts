@@ -6,7 +6,7 @@ import { KanbanRepository, openDb } from "@osstack/core";
 import type { CommandRunner } from "@osstack/github";
 import { AgentCommandResult } from "@osstack/protocol";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { computeDelta, handleDailyCommand, runDailyBrief, repoCiStatus, type DailyBrief } from "./daily-command.js";
+import { computeDelta, deriveOwnerDecisions, handleDailyCommand, runDailyBrief, repoCiStatus, type DailyBrief } from "./daily-command.js";
 
 let tmp: string;
 let logs: string[];
@@ -126,6 +126,18 @@ describe("daily CLI", () => {
     expect(parsed.next_actions).toBeDefined();
     expect(parsed.next_actions!.length).toBeLessThanOrEqual(3);
     expect(parsed.next_actions!.some((a) => a.command === "repo.fix_ci")).toBe(true);
+    // R2.4: the strict NextAction envelope stays { command, reason } — no `run`
+    // leaks into the protocol envelope (would fail the strict schema otherwise).
+    for (const a of parsed.next_actions!) {
+      expect(a).not.toHaveProperty("run");
+    }
+    // The dispatchable `run` payload rides in `result` (= the brief) instead.
+    const brief = parsed.result as unknown as DailyBrief;
+    const fixCi = brief.owner_decisions?.find((d) => d.command === "repo.fix_ci");
+    expect(fixCi?.run.command).toBe("osstack start 'fix failing CI on withgh: latest run is failure' --repo-id 'withgh'");
+    expect(fixCi?.run.argv).toEqual([
+      "osstack", "start", "fix failing CI on withgh: latest run is failure", "--repo-id", "withgh",
+    ]);
   });
 
   it("persists a dated brief and the second run diffs against the first (delta)", async () => {
@@ -313,6 +325,7 @@ describe("computeDelta (pure)", () => {
     portfolio: portfolioOf(1),
     github: [{ repo_id: "r", remote: "o/r", pull_requests: [{ number: 1, title: "a", state: "OPEN", head: "h", isDraft: false, url: "u" }], ci_runs: [{ databaseId: 1, workflowName: "CI", status: "completed", conclusion: "success", headBranch: "main", event: "push", createdAt: "t", url: "u" }] }],
     delta: { is_first_run: true, new_prs: [], ci_flips: [], maturity_changes: [] },
+    owner_decisions: [],
     warnings: [],
   };
 
@@ -331,5 +344,115 @@ describe("computeDelta (pure)", () => {
     expect(d.new_prs).toEqual([{ repo_id: "r", number: 2, title: "b" }]);
     expect(d.ci_flips).toEqual([{ repo_id: "r", from: "success", to: "failure" }]);
     expect(d.maturity_changes).toEqual([{ repo_id: "r", from: 1, to: 2 }]);
+  });
+});
+
+// ── R2.4 dispatchable next_actions ──────────────────────────────────────────
+
+describe("deriveOwnerDecisions (R2.4 dispatchable run payloads)", () => {
+  const repoHealth = (over: Partial<DailyBrief["portfolio"]["repos"][number]>) => ({
+    repo_id: "r", name: "r", path: "/r", role: "app", exists: true, has_readme: true,
+    has_loop_doc: false, has_tests: true, has_verify_command: true, closed_loop_level: 1,
+    findings: [], ...over,
+  });
+  const briefOf = (over: {
+    github?: DailyBrief["github"];
+    repos?: DailyBrief["portfolio"]["repos"];
+    recommendations?: string[];
+  }): DailyBrief => ({
+    generated_at: "2026-07-11T00:00:00Z",
+    date: "2026-07-11",
+    portfolio: {
+      generated_at: "2026-07-11T00:00:00Z",
+      repo_count: 1, enabled_repo_count: 1, average_closed_loop_level: 1,
+      repos: over.repos ?? [repoHealth({})],
+      recommendations: over.recommendations ?? [],
+    },
+    github: over.github ?? [],
+    delta: { is_first_run: true, new_prs: [], ci_flips: [], maturity_changes: [] },
+    owner_decisions: [],
+    warnings: [],
+  });
+  const ciRun = (conclusion: string) => ({
+    databaseId: 1, workflowName: "CI", status: "completed", conclusion,
+    headBranch: "main", event: "push", createdAt: "t", url: "u",
+  });
+
+  it("repo.fix_ci maps to a shell-safe `osstack start … --repo-id` invocation", () => {
+    const brief = briefOf({
+      github: [{ repo_id: "svc", remote: "o/svc", pull_requests: [], ci_runs: [ciRun("failure")] }],
+      repos: [repoHealth({ repo_id: "svc", name: "svc" })],
+    });
+    const [d] = deriveOwnerDecisions(brief);
+    expect(d!.command).toBe("repo.fix_ci");
+    expect(d!.run.argv).toEqual(["osstack", "start", "fix failing CI on svc: latest run is failure", "--repo-id", "svc"]);
+    expect(d!.run.command).toBe("osstack start 'fix failing CI on svc: latest run is failure' --repo-id 'svc'");
+  });
+
+  it("repo.review_prs maps to `gh pr list` for the resolved remote", () => {
+    const brief = briefOf({
+      github: [{
+        repo_id: "svc", remote: "acme/svc",
+        pull_requests: [{ number: 7, title: "t", state: "OPEN", head: "h", isDraft: false, url: "u" }],
+        ci_runs: [],
+      }],
+      repos: [repoHealth({ repo_id: "svc", name: "svc" })],
+    });
+    const d = deriveOwnerDecisions(brief).find((x) => x.command === "repo.review_prs");
+    expect(d!.run.argv).toEqual(["gh", "pr", "list", "--repo", "acme/svc", "--state", "open"]);
+    expect(d!.run.command).toBe("gh pr list --repo 'acme/svc' --state open");
+  });
+
+  it("portfolio.raise_maturity → init-loop-doc ONLY for the attributable missing-LOOP.md gap", () => {
+    const brief = briefOf({
+      repos: [repoHealth({ repo_id: "svc-id", name: "svc" })],
+      recommendations: [
+        "svc: add docs/LOOP.md to declare closed-loop contract",
+        "svc: add a verify command so runs are traceable",
+        "consolidation: a, b share name \"svc\"",
+      ],
+    });
+    const decisions = deriveOwnerDecisions(brief).filter((d) => d.command === "portfolio.raise_maturity");
+    // The LOOP.md rec resolves to the repo_id (not the display name) → init-loop-doc.
+    expect(decisions[0]!.run.argv).toEqual(["osstack", "supervise", "init-loop-doc", "--repo", "svc-id"]);
+    expect(decisions[0]!.run.command).toBe("osstack supervise init-loop-doc --repo 'svc-id'");
+    // A different gap (verify command) stays portfolio-level.
+    expect(decisions[1]!.run.argv).toEqual(["osstack", "supervise", "report"]);
+    // consolidation: is portfolio-level (not attributable to one repo) — but it's
+    // sliced out of the top-3 here; the verify-command case already proves the fallback.
+  });
+
+  it("raise_maturity falls back to `supervise report` when the LOOP.md name is ambiguous", () => {
+    // Two repos share the display name "dup" → the LOOP.md rec is not uniquely
+    // attributable, so init-loop-doc (which needs one --repo id) is unsafe.
+    const brief = briefOf({
+      repos: [repoHealth({ repo_id: "dup-1", name: "dup" }), repoHealth({ repo_id: "dup-2", name: "dup" })],
+      recommendations: ["dup: add docs/LOOP.md to declare closed-loop contract"],
+    });
+    const d = deriveOwnerDecisions(brief).find((x) => x.command === "portfolio.raise_maturity");
+    expect(d!.run.argv).toEqual(["osstack", "supervise", "report"]);
+  });
+
+  it("shell-quotes a hostile repo id embedded in the goal AND the --repo-id value", () => {
+    // repo_id comes from the registry (untrusted for quoting); it lands in the
+    // goal text twice AND in --repo-id. A ' / $(…) / ; payload must not break out.
+    // (The CI status is enum-constrained by FAILING_CI to reach fix_ci at all,
+    //  but is shQuote'd anyway as defense-in-depth — see the goal assertion.)
+    const hostileId = "svc'; rm -rf / #$(touch pwned)";
+    const brief = briefOf({
+      github: [{ repo_id: hostileId, remote: "o/svc", pull_requests: [], ci_runs: [ciRun("failure")] }],
+      repos: [repoHealth({ repo_id: hostileId, name: hostileId })],
+    });
+    const [d] = deriveOwnerDecisions(brief);
+    // argv stays raw (spawn never re-parses a shell string).
+    expect(d!.run.argv).toEqual([
+      "osstack", "start", `fix failing CI on ${hostileId}: latest run is failure`, "--repo-id", hostileId,
+    ]);
+    // The printable line wraps every interpolated field in single quotes with the
+    // ' → '\'' escape, so no metacharacter ($(…), ;, the closing ') reaches a shell.
+    const quotedId = "'svc'\\''; rm -rf / #$(touch pwned)'";
+    expect(d!.run.command).toBe(
+      `osstack start 'fix failing CI on svc'\\''; rm -rf / #$(touch pwned): latest run is failure' --repo-id ${quotedId}`,
+    );
   });
 });

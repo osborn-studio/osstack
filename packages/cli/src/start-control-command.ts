@@ -132,8 +132,11 @@ function positionals(args: string[], flagsWithValues: Set<string>): string[] {
  * shell — no $(…), no backticks, no $VAR — so an embedded goal/verify string
  * cannot execute on paste. An embedded single quote closes the quote, emits an
  * escaped quote, and reopens: ' -> '\''.
+ *
+ * Exported so other command surfaces (R2.4 `daily` dispatchable next_actions)
+ * reuse the ONE audited quoting helper instead of re-implementing it.
  */
-function shQuote(value: string): string {
+export function shQuote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
