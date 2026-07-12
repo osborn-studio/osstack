@@ -383,6 +383,45 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_kanban_checks_card ON kanban_card_checks(card_id);
     `,
   },
+  {
+    id: 8,
+    name: "contract_approvals",
+    // R1.5 contract-gated delivery: approval records for Execution Contracts.
+    //
+    // Why a DEDICATED table and NOT the existing `approvals` table: `approvals`
+    // is `run_id NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE` — it is
+    // structurally coupled to a run in the daemon hot loop (populated by the
+    // approval.requested/approval.resolved event double-write in run-store.ts,
+    // and read by approvalRowToRequest as a non-null run_id). A contract has NO
+    // run at approval time (control v1 does NOT spawn deliver; deliver runs
+    // later, if ever). Forcing a synthetic run row would violate that FK's
+    // intent and pollute idx_approvals_run + the run-scoped daemon queries. So
+    // contract approvals get their own minimal table, keyed by contract_id.
+    //
+    // Single-row-per-contract state machine (see contract-approvals.ts):
+    //   pending --approve--> approved --revise--> pending ... --stop--> stopped
+    // The same approval_id lives for the contract's life so the protocol
+    // ApprovalRequest (emitted at `start`) and ApprovalDecision (emitted at
+    // `approve`) round-trip against one record.
+    sql: `
+      CREATE TABLE IF NOT EXISTS contract_approvals (
+        approval_id      TEXT PRIMARY KEY,
+        contract_id      TEXT NOT NULL,
+        action           TEXT NOT NULL,
+        risk             TEXT NOT NULL CHECK (risk IN ('low','medium','high')),
+        status           TEXT NOT NULL CHECK (status IN ('pending','approved','stopped')),
+        requested_at     REAL NOT NULL,
+        decided_by_type  TEXT CHECK (decided_by_type IN ('human','agent')),
+        decided_by_id    TEXT,
+        decided_at       REAL,
+        reason           TEXT,
+        created_at       REAL NOT NULL,
+        updated_at       REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_contract_approvals_contract
+        ON contract_approvals(contract_id);
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

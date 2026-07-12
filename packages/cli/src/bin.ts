@@ -110,6 +110,7 @@ import { buildSelfImprovementConfig } from "./loop-self-improvement.js";
 import { resolveRegistryPath } from "./supervisor-cli-support.js";
 import { handleStackCommand } from "./stack-cli.js";
 import { handleDailyCommand } from "./daily-command.js";
+import { handleControlCommand, handleStartCommand } from "./start-control-command.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -152,6 +153,8 @@ function renderChineseMainHelp(): string {
   release edgeone     输出 EdgeOne Knowledge Cloud 上线清单
   deliver <需求>      从一句需求进入 task queue -> loop -> report/scorecard/proof
   daily               只读组合简报：成熟度扫描 + GitHub PR/CI/release + 栈看板 + 增量对比
+  start               生成受合同约束的交付：写入 Execution Contract 并登记待审批
+  control             驱动合同审批生命周期：status/approve/revise/stop（approve 输出 deliver 命令但不执行）
 
 Loop 工程：
   loop run            运行 discover -> execute -> verify -> iterate 循环
@@ -324,6 +327,12 @@ Project commands:
   daily [--registry P] [--workspace P] [--json]
                       Read-only portfolio brief: maturity scan + GitHub PR/CI/release
                       + stack board + delta since the last brief (golden path)
+  start "<goal>" --repo-id <id> [--registry P] [--risk R] [--json]
+                      Open a contract-gated delivery: writes an Execution Contract,
+                      tracks it, and records a pending approval (needs_approval)
+  control <contract-id> status|approve|revise|stop [--actor A] [--reason R] [--json]
+                      Drive a contract's approval lifecycle; approve emits the
+                      ready-to-run deliver command (does not spawn it)
   checkpoint create [--workspace P] [--json]
                       Create a shadow checkpoint outside .git for non-worktree recovery
   checkpoint restore <checkpoint_id|dir> [--workspace P] [--apply] [--json]
@@ -619,6 +628,14 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "daily") {
     return await handleDailyCommand(args.slice(1));
+  }
+
+  if (cmd === "start") {
+    return await handleStartCommand(args.slice(1));
+  }
+
+  if (cmd === "control") {
+    return await handleControlCommand(args.slice(1));
   }
 
   if (cmd === "feedback") {
