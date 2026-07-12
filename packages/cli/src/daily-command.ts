@@ -24,12 +24,12 @@ import { PROTOCOL_VERSION } from "@osstack/protocol";
 import type { AgentCommandResult } from "@osstack/protocol";
 import {
   buildPortfolioReport,
-  LOOP_DOC_RECOMMENDATION,
   readRepoRegistry,
   scanRepo,
   type PortfolioReport,
   type RepoHealth,
   type RepoRegistryEntry,
+  type StructuredRecommendation,
 } from "@osstack/supervisor";
 import { osstackHome } from "./paths.js";
 import { shQuote } from "./start-control-command.js";
@@ -321,9 +321,9 @@ async function readPreviousBrief(briefsDir: string, today: string): Promise<Dail
 }
 
 // ── Owner decisions (≤3 next_actions) ────────────────────────────────────────
-// The missing-LOOP.md wording that `init-loop-doc` remedies is imported from
-// @osstack/supervisor (LOOP_DOC_RECOMMENDATION) so a supervisor rewording can
-// never silently strand this mapping on a stale copy.
+// The missing-LOOP.md dispatch reads `structured_recommendations` from the
+// portfolio report (kind === "add_loop_doc" + a repo_id) — no free-text wording
+// coupling, no `<name>: ` prefix parsing, and no display-name ambiguity.
 
 /**
  * Derive at most three owner decisions, prioritized: failing CI first, then
@@ -344,10 +344,14 @@ async function readPreviousBrief(briefsDir: string, today: string): Promise<Dail
  *                          `gh pr list --repo <slug> --state open` when the repo
  *                          has a resolved GitHub remote, else the local repo path.
  *   portfolio.raise_maturity → `osstack supervise init-loop-doc --repo <repo_id>`
- *                          ONLY when the recommendation is the (single-repo-
- *                          attributable) missing-LOOP.md gap that command fixes;
- *                          every other free-text / unattributable recommendation
- *                          stays portfolio-level: `osstack supervise report`.
+ *                          ONLY when the structured recommendation is an
+ *                          `add_loop_doc` kind carrying a `repo_id` (the gap that
+ *                          command fixes); every other kind (or a kind without a
+ *                          repo_id, e.g. `consolidation`) stays portfolio-level:
+ *                          `osstack supervise report`. Because dispatch keys on
+ *                          the unique `repo_id` rather than the display name,
+ *                          duplicate-named repos are no longer ambiguous — they
+ *                          now dispatch (an improvement over the R2.4 name-match).
  *
  * ALL interpolated values are `shQuote`'d via the shared start/control helper —
  * CI status comes from `gh` output and repo ids/slugs are treated as untrusted
@@ -381,11 +385,15 @@ export function deriveOwnerDecisions(brief: DailyBrief): OwnerDecision[] {
       });
     }
   }
-  for (const rec of brief.portfolio.recommendations) {
+  // Prefer the structured list (dispatch on kind + repo_id). Fresh briefs always
+  // carry it; a previous brief read from disk that predates the field simply has
+  // no raise_maturity decisions here (deriveOwnerDecisions only runs on the fresh
+  // brief in practice, so this fallback is defensive).
+  for (const rec of brief.portfolio.structured_recommendations ?? []) {
     decisions.push({
       command: "portfolio.raise_maturity",
-      reason: rec,
-      run: raiseMaturityRun(rec, brief.portfolio.repos),
+      reason: rec.text,
+      run: raiseMaturityRun(rec),
     });
   }
 
@@ -411,24 +419,19 @@ function reviewPrsRun(g: RepoGithubStatus, repoPath: string | undefined): Runnab
 }
 
 /**
- * portfolio.raise_maturity → `init-loop-doc` ONLY for the missing-LOOP.md
- * recommendation attributable to exactly one repo (the gap that command
- * remedies). Recommendations are free-text with a `<name>: ` prefix; anything
- * else — a different gap, a `consolidation:` hint, or a name that matches zero
- * or multiple repos — stays portfolio-level `supervise report`.
+ * portfolio.raise_maturity → `init-loop-doc` ONLY for an `add_loop_doc`
+ * structured recommendation that carries a `repo_id` (the gap that command
+ * remedies). The `repo_id` is registry-unique, so duplicate display names are no
+ * longer ambiguous. Every other kind — or an `add_loop_doc` without a repo_id —
+ * stays portfolio-level `supervise report`.
  */
-function raiseMaturityRun(rec: string, repos: PortfolioReport["repos"]): RunnableInvocation {
-  const idx = rec.indexOf(": ");
-  if (idx > 0 && rec.slice(idx + 2) === LOOP_DOC_RECOMMENDATION) {
-    const name = rec.slice(0, idx);
-    const matches = repos.filter((r) => r.name === name);
-    if (matches.length === 1) {
-      const repoId = matches[0]!.repo_id;
-      return {
-        command: `osstack supervise init-loop-doc --repo ${shQuote(repoId)}`,
-        argv: ["osstack", "supervise", "init-loop-doc", "--repo", repoId],
-      };
-    }
+function raiseMaturityRun(rec: StructuredRecommendation): RunnableInvocation {
+  if (rec.kind === "add_loop_doc" && rec.repo_id !== undefined) {
+    const repoId = rec.repo_id;
+    return {
+      command: `osstack supervise init-loop-doc --repo ${shQuote(repoId)}`,
+      argv: ["osstack", "supervise", "init-loop-doc", "--repo", repoId],
+    };
   }
   return { command: "osstack supervise report", argv: ["osstack", "supervise", "report"] };
 }

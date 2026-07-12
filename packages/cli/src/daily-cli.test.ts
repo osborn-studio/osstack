@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { KanbanRepository, openDb } from "@osstack/core";
 import type { CommandRunner } from "@osstack/github";
 import { AgentCommandResult } from "@osstack/protocol";
+import type { StructuredRecommendation } from "@osstack/supervisor";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { computeDelta, deriveOwnerDecisions, handleDailyCommand, runDailyBrief, repoCiStatus, type DailyBrief } from "./daily-command.js";
 
@@ -317,6 +318,7 @@ describe("computeDelta (pure)", () => {
       },
     ],
     recommendations: [],
+    structured_recommendations: [],
   });
 
   const prev: DailyBrief = {
@@ -358,7 +360,7 @@ describe("deriveOwnerDecisions (R2.4 dispatchable run payloads)", () => {
   const briefOf = (over: {
     github?: DailyBrief["github"];
     repos?: DailyBrief["portfolio"]["repos"];
-    recommendations?: string[];
+    structured_recommendations?: StructuredRecommendation[];
   }): DailyBrief => ({
     generated_at: "2026-07-11T00:00:00Z",
     date: "2026-07-11",
@@ -366,7 +368,9 @@ describe("deriveOwnerDecisions (R2.4 dispatchable run payloads)", () => {
       generated_at: "2026-07-11T00:00:00Z",
       repo_count: 1, enabled_repo_count: 1, average_closed_loop_level: 1,
       repos: over.repos ?? [repoHealth({})],
-      recommendations: over.recommendations ?? [],
+      // Free-text stays byte-identical to the structured `text` (as the report builds it).
+      recommendations: (over.structured_recommendations ?? []).map((r) => r.text),
+      structured_recommendations: over.structured_recommendations ?? [],
     },
     github: over.github ?? [],
     delta: { is_first_run: true, new_prs: [], ci_flips: [], maturity_changes: [] },
@@ -403,34 +407,39 @@ describe("deriveOwnerDecisions (R2.4 dispatchable run payloads)", () => {
     expect(d!.run.command).toBe("gh pr list --repo 'acme/svc' --state open");
   });
 
-  it("portfolio.raise_maturity → init-loop-doc ONLY for the attributable missing-LOOP.md gap", () => {
+  it("portfolio.raise_maturity → init-loop-doc ONLY for an add_loop_doc kind carrying a repo_id", () => {
     const brief = briefOf({
       repos: [repoHealth({ repo_id: "svc-id", name: "svc" })],
-      recommendations: [
-        "svc: add docs/LOOP.md to declare closed-loop contract",
-        "svc: add a verify command so runs are traceable",
-        "consolidation: a, b share name \"svc\"",
+      structured_recommendations: [
+        { kind: "add_loop_doc", repo_id: "svc-id", text: "svc: add docs/LOOP.md to declare closed-loop contract" },
+        { kind: "add_verify_command", repo_id: "svc-id", text: "svc: add a verify command so runs are traceable" },
+        { kind: "consolidation", text: "consolidation: a, b share name \"svc\"" },
       ],
     });
     const decisions = deriveOwnerDecisions(brief).filter((d) => d.command === "portfolio.raise_maturity");
-    // The LOOP.md rec resolves to the repo_id (not the display name) → init-loop-doc.
+    // The add_loop_doc kind dispatches on its repo_id (not the display name) → init-loop-doc.
     expect(decisions[0]!.run.argv).toEqual(["osstack", "supervise", "init-loop-doc", "--repo", "svc-id"]);
     expect(decisions[0]!.run.command).toBe("osstack supervise init-loop-doc --repo 'svc-id'");
-    // A different gap (verify command) stays portfolio-level.
+    // A different kind (add_verify_command) stays portfolio-level.
     expect(decisions[1]!.run.argv).toEqual(["osstack", "supervise", "report"]);
-    // consolidation: is portfolio-level (not attributable to one repo) — but it's
+    // consolidation carries no repo_id, so it too stays portfolio-level — but it's
     // sliced out of the top-3 here; the verify-command case already proves the fallback.
   });
 
-  it("raise_maturity falls back to `supervise report` when the LOOP.md name is ambiguous", () => {
-    // Two repos share the display name "dup" → the LOOP.md rec is not uniquely
-    // attributable, so init-loop-doc (which needs one --repo id) is unsafe.
+  it("raise_maturity DISPATCHES on duplicate display names (repo_id disambiguates)", () => {
+    // Two repos share display name "dup" but each has a unique repo_id, so the
+    // structured add_loop_doc rec carries an unambiguous repo_id → init-loop-doc
+    // now dispatches. Behavior improvement over R2.4, where name-matching two
+    // "dup" repos was ambiguous and fell back to `supervise report`.
     const brief = briefOf({
       repos: [repoHealth({ repo_id: "dup-1", name: "dup" }), repoHealth({ repo_id: "dup-2", name: "dup" })],
-      recommendations: ["dup: add docs/LOOP.md to declare closed-loop contract"],
+      structured_recommendations: [
+        { kind: "add_loop_doc", repo_id: "dup-1", text: "dup: add docs/LOOP.md to declare closed-loop contract" },
+      ],
     });
     const d = deriveOwnerDecisions(brief).find((x) => x.command === "portfolio.raise_maturity");
-    expect(d!.run.argv).toEqual(["osstack", "supervise", "report"]);
+    expect(d!.run.argv).toEqual(["osstack", "supervise", "init-loop-doc", "--repo", "dup-1"]);
+    expect(d!.run.command).toBe("osstack supervise init-loop-doc --repo 'dup-1'");
   });
 
   it("shell-quotes a hostile repo id embedded in the goal AND the --repo-id value", () => {
