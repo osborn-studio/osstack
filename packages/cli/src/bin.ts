@@ -7128,11 +7128,30 @@ function renderLaunchAgentPlist(options: {
   stdoutPath: string;
   stderrPath: string;
 }): string {
-  // launchd's default PATH has no /opt/homebrew/bin (or nvm shims), so a .js
+  // launchd's default PATH has no /opt/homebrew/bin (or nvm shims), so a JS
   // binPath's `#!/usr/bin/env node` shebang fails with exit 127 under launchd.
-  // Invoke the resolved runtime (process.execPath) explicitly for script
-  // binPaths; native single-binary builds keep running directly.
-  const runtime = options.binPath.endsWith(".js") ? [process.execPath] : [];
+  // Two subtleties (cross-review B1/S1):
+  //  - npm-global installs expose an EXTENSIONLESS symlink shim
+  //    (/opt/homebrew/bin/osstack -> …/dist/bin.js), so the .js check must run
+  //    on the realpath, not the raw binPath. Single-binary builds stay native.
+  //  - embedding the absolute process.execPath would go stale on the next
+  //    brew/nvm node upgrade (Cellar paths are version-stamped) and `osstack
+  //    upgrade` never re-renders the plist. Instead, extend PATH (current
+  //    runtime's dir first, then the standard install dirs) and invoke `node`
+  //    by name so a future node survives.
+  const resolvedBinPath = (() => {
+    try {
+      return realpathSync(options.binPath);
+    } catch {
+      return options.binPath;
+    }
+  })();
+  const runtime = resolvedBinPath.endsWith(".js")
+    ? [
+        `PATH=${dirname(process.execPath)}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`,
+        "node",
+      ]
+    : [];
   const args = [
     "/usr/bin/env",
     `OSSTACK_HOME=${options.home}`,
