@@ -39,13 +39,43 @@ import {
   type LoopProfileRoutingEvidence as LoopProfileRoutingEvidenceType,
   type CompletedTask,
 } from "@osstack/loop";
-import { PIIRedactor, routeCapability, AgentOverrideError, PolicyEngine, DEFAULT_RULES, sqliteHistory, HermesBridge, GBrainAdapter, initOtel, shutdownOtel, traceSpan, otelEnabled, KanbanRepository, KanbanNotifier, getBoard, countRuns, countRunsSince, countEvents, listEventsForRun, type RoutableAdapter, type PolicyDecision, type CardStatus, type OutboundMessage } from "@osstack/core";
+import {
+  AgentOverrideError,
+  countEvents,
+  countRuns,
+  countRunsSince,
+  DEFAULT_RULES,
+  GBrainAdapter,
+  getBoard,
+  HermesBridge,
+  initOtel,
+  KanbanNotifier,
+  KanbanRepository,
+  listEventsForRun,
+  otelEnabled,
+  PIIRedactor,
+  PolicyEngine,
+  routeCapability,
+  SessionMessageIdConflict,
+  SessionRepository,
+  SessionVersionConflict,
+  shutdownOtel,
+  sqliteHistory,
+  traceSpan,
+  type CardStatus,
+  type OutboundMessage,
+  type PolicyDecision,
+  type RoutableAdapter,
+} from "@osstack/core";
 import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import type Database from "better-sqlite3";
 import {
   cleanupOrphanedWorktrees,
   defaultAdapters,
+  isSessionCapableAdapter,
   type AgentAdapter,
+  type AgentSessionEvent,
+  type AgentSessionInput,
   type AgentTask,
 } from "@osstack/agents";
 import { appendEvent, finalizeRun, insertRun, insertTask } from "./store.js";
@@ -134,10 +164,14 @@ interface DaemonContext {
   gbrain: GBrainAdapter;
   /** osstack's own kanban board (borrowed from Hermes; see core/src/kanban). */
   kanban: KanbanRepository;
+  /** Durable, versioned control plane for resumable agent conversations. */
+  sessions: SessionRepository;
   /** Local browser dashboard, returned to chat bridges as a shareable URL. */
   dashboardUrl: string | null;
   /** Active runs by run_id → AbortController for cancellation. */
   activeRuns: Map<string, AbortController>;
+  /** Sessions currently applying a non-duplicate inbound message. */
+  activeSessionSends: Set<string>;
   /** Daemon-managed polling loop sessions, keyed by loop_session_id. */
   loopSessions: Map<string, LoopSession>;
   /** Daemon-managed daily-brief sessions, keyed by daily_session_id (R2.3). */
@@ -309,6 +343,216 @@ function singleErr(id: DaemonRequest["id"], code: string, message: string): Sing
   return { id, ok: false, error: { code, message } };
 }
 
+const TERMINAL_SESSION_STATES = new Set(["completed", "failed", "cancelled"]);
+
+function publicSession(row: ReturnType<SessionRepository["getSession"]>): Record<string, unknown> | null {
+  if (row === undefined) return null;
+  return {
+    session_id: row.session_id,
+    task_id: row.task_id,
+    run_id: row.run_id,
+    agent_id: row.agent_id,
+    state: row.state,
+    resume_supported: row.resume_supported,
+    resume_ready: row.resume_supported
+      && row.native_session_id !== null
+      && !TERMINAL_SESSION_STATES.has(row.state),
+    version: row.version,
+    updated_at: row.updated_at,
+  };
+}
+
+interface SessionSendParams {
+  session_id: string;
+  turn_id: string;
+  message_id: string;
+  expected_version: number;
+  text: string;
+  requested_by?: string;
+}
+
+function parseSessionSendParams(value: unknown): SessionSendParams | Error {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return new Error("params must be an object");
+  }
+  const p = value as Record<string, unknown>;
+  for (const key of ["session_id", "turn_id", "message_id"] as const) {
+    if (typeof p[key] !== "string" || p[key].trim() === "" || p[key].length > 256) {
+      return new Error(`params.${key} must be a non-empty string of at most 256 characters`);
+    }
+  }
+  if (!Number.isInteger(p["expected_version"]) || (p["expected_version"] as number) < 1) {
+    return new Error("params.expected_version must be a positive integer");
+  }
+  if (typeof p["text"] !== "string" || p["text"].trim() === "" || p["text"].length > 16_000) {
+    return new Error("params.text must be between 1 and 16000 characters");
+  }
+  if (p["requested_by"] !== undefined && (
+    typeof p["requested_by"] !== "string"
+    || p["requested_by"].trim() === ""
+    || p["requested_by"].length > 256
+  )) {
+    return new Error("params.requested_by must be a non-empty string of at most 256 characters");
+  }
+  return {
+    session_id: p["session_id"] as string,
+    turn_id: p["turn_id"] as string,
+    message_id: p["message_id"] as string,
+    expected_version: p["expected_version"] as number,
+    text: p["text"] as string,
+    ...(p["requested_by"] === undefined ? {} : { requested_by: p["requested_by"] as string }),
+  };
+}
+
+async function handleSessionSend(
+  ctx: DaemonContext,
+  req: DaemonRequest,
+): Promise<SingleResponse> {
+  const p = parseSessionSendParams(req.params);
+  if (p instanceof Error) return singleErr(req.id, "bad_request", p.message);
+
+  const session = ctx.sessions.getSession(p.session_id);
+  if (session === undefined) return singleErr(req.id, "not_found", "session not found");
+  // Idempotency wins over moving state: a retry may arrive after the first
+  // delivery already appended a newer turn or completed the conversation.
+  // Let the repository compare the complete canonical envelope before any
+  // current-turn/current-state guards reject it.
+  if (ctx.sessions.getMessage(p.message_id) !== undefined) {
+    try {
+      const replay = ctx.sessions.applyInbound({
+        message_id: p.message_id,
+        session_id: p.session_id,
+        turn_id: p.turn_id,
+        direction: "inbound",
+        kind: "instruction.send",
+        payload: { text: p.text, ...(p.requested_by === undefined ? {} : { requested_by: p.requested_by }) },
+        state: "accepted",
+        created_at: Date.now() / 1000,
+      }, p.expected_version, Date.now() / 1000);
+      return singleOk(req.id, { state: replay.outcome, session_version: replay.session_version });
+    } catch (err) {
+      if (err instanceof SessionMessageIdConflict) {
+        return singleErr(req.id, "message_id_conflict", "message_id was already used for different content");
+      }
+      throw err;
+    }
+  }
+  if (TERMINAL_SESSION_STATES.has(session.state)) {
+    return singleErr(req.id, "session_terminal", `session state=${session.state}`);
+  }
+  if (!session.resume_supported || session.native_session_id === null) {
+    return singleErr(req.id, "resume_unsupported", "session cannot be resumed");
+  }
+  const snapshot = ctx.sessions.latestSnapshot(p.session_id);
+  if (snapshot.turn_id !== p.turn_id) {
+    return singleErr(req.id, "turn_conflict", "message does not target the current turn");
+  }
+  const adapter = ctx.adapters.get(session.agent_id);
+  if (adapter === undefined || !isSessionCapableAdapter(adapter) || !adapter.sessionCapabilities().resume) {
+    return singleErr(req.id, "resume_unsupported", "agent does not support resume");
+  }
+  if (ctx.activeSessionSends.has(session.session_id)) {
+    return singleErr(req.id, "session_busy", "session is already applying another instruction");
+  }
+
+  let applied;
+  const now = Date.now() / 1000;
+  try {
+    applied = ctx.sessions.applyInbound({
+      message_id: p.message_id,
+      session_id: p.session_id,
+      turn_id: p.turn_id,
+      direction: "inbound",
+      kind: "instruction.send",
+      payload: { text: p.text, ...(p.requested_by === undefined ? {} : { requested_by: p.requested_by }) },
+      state: "accepted",
+      created_at: now,
+    }, p.expected_version, now);
+  } catch (err) {
+    if (err instanceof SessionVersionConflict) {
+      return singleErr(req.id, "version_conflict", "session version changed; refresh before retrying");
+    }
+    if (err instanceof SessionMessageIdConflict) {
+      return singleErr(req.id, "message_id_conflict", "message_id was already used for different content");
+    }
+    throw err;
+  }
+  if (applied.outcome === "duplicate") {
+    return singleOk(req.id, { state: "duplicate", session_version: applied.session_version });
+  }
+
+  ctx.activeSessionSends.add(session.session_id);
+  try {
+    const input: AgentSessionInput = {
+    session_id: session.session_id,
+    task_id: session.task_id,
+    run_id: session.run_id,
+    turn_id: p.turn_id,
+    native_session_id: session.native_session_id,
+    expected_version: applied.session_version,
+    message_id: p.message_id,
+    prompt: p.text,
+    ...(p.requested_by === undefined ? {} : { context: { requested_by: p.requested_by } }),
+    };
+    const controller = new AbortController();
+    const publicEvents: AgentSessionEvent[] = [];
+    let assistantText = "";
+    let decision: unknown = null;
+    try {
+      for await (const event of adapter.resumeSession(input, controller.signal)) {
+        if (event.type === "native_session.started") {
+          if (event.native_session_id !== session.native_session_id) {
+            return singleErr(req.id, "adapter_protocol", "agent resumed an unexpected native session");
+          }
+          continue;
+        }
+        if (JSON.stringify(event).includes(session.native_session_id)) {
+          return singleErr(req.id, "adapter_protocol", "agent output contained protected session metadata");
+        }
+        publicEvents.push(event);
+        if (event.type === "assistant.message") assistantText += event.text;
+        if (event.type === "decision.requested") decision = {
+          decision_id: event.decision_id,
+          question: event.question,
+          choices: event.choices,
+        };
+      }
+    } catch {
+      return singleErr(req.id, "agent_failed", "agent failed while applying the instruction");
+    }
+
+    const finalState = publicEvents.some((event) => event.type === "decision.requested")
+      ? "awaiting_decision"
+      : "idle";
+    ctx.sessions.appendTurn({
+      turn_id: `turn_${randomUUID()}`,
+      session_id: session.session_id,
+      ordinal: (ctx.db.prepare(
+        "SELECT COALESCE(MAX(ordinal), 0) + 1 AS ordinal FROM session_turns WHERE session_id = ?",
+      ).get(session.session_id) as { ordinal: number }).ordinal,
+      state: finalState,
+      assistant_text: assistantText,
+      decision,
+      created_at: now,
+      updated_at: Date.now() / 1000,
+    });
+    const updatedSession = ctx.sessions.setState(
+      session.session_id,
+      finalState,
+      applied.session_version,
+      Date.now() / 1000,
+    );
+    ctx.sessions.markMessageApplied(p.message_id, Date.now() / 1000);
+    return singleOk(req.id, {
+      state: "applied",
+      session_version: updatedSession.version,
+      events: publicEvents,
+    });
+  } finally {
+    ctx.activeSessionSends.delete(session.session_id);
+  }
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // Single-shot methods
 // ──────────────────────────────────────────────────────────────────────
@@ -419,6 +663,42 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       const active = ctx.activeRuns.has(p.run_id);
       return singleOk(req.id, { ...(row as object), active });
     }
+
+    case "session.list": {
+      const p = (req.params ?? {}) as { limit?: number };
+      const limit = p.limit ?? 100;
+      if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+        return singleErr(req.id, "bad_request", "params.limit must be an integer between 1 and 200");
+      }
+      return singleOk(req.id, {
+        sessions: ctx.sessions.listSessions({ limit }).map((row) => publicSession(row)),
+      });
+    }
+
+    case "session.status": {
+      const p = (req.params ?? {}) as { session_id?: string };
+      if (typeof p.session_id !== "string" || p.session_id.trim() === "") {
+        return singleErr(req.id, "bad_request", "params.session_id required");
+      }
+      const session = publicSession(ctx.sessions.getSession(p.session_id));
+      return session === null
+        ? singleErr(req.id, "not_found", "session not found")
+        : singleOk(req.id, session);
+    }
+
+    case "session.snapshot": {
+      const p = (req.params ?? {}) as { session_id?: string };
+      if (typeof p.session_id !== "string" || p.session_id.trim() === "") {
+        return singleErr(req.id, "bad_request", "params.session_id required");
+      }
+      if (ctx.sessions.getSession(p.session_id) === undefined) {
+        return singleErr(req.id, "not_found", "session not found");
+      }
+      return singleOk(req.id, ctx.sessions.latestSnapshot(p.session_id));
+    }
+
+    case "session.send":
+      return await handleSessionSend(ctx, req);
 
     case "task.cancel": {
       const p = (req.params ?? {}) as { run_id?: string };
@@ -2748,6 +3028,7 @@ function buildContext(
     writeConcurrency?: number;
     readConcurrency?: number;
     socketPath?: string;
+    adapters?: readonly AgentAdapter[];
   } = {},
 ): DaemonContext {
   const home = osstackHome();
@@ -2764,7 +3045,7 @@ function buildContext(
   // Deck CLI, so daemon and `osstack deck` agree on which agents exist). Order
   // doesn't matter once policy ranks them; each adapter's isAvailable() gates
   // whether it's a viable route on this machine.
-  for (const a of defaultAdapters()) {
+  for (const a of options.adapters ?? defaultAdapters()) {
     adapters.set(a.id, a);
   }
 
@@ -2772,10 +3053,12 @@ function buildContext(
   const hermes = new HermesBridge();   // disabled unless HERMES_KANBAN_BOARD is set
   const gbrain = new GBrainAdapter();  // disabled unless OSSTACK_GBRAIN=1
   const kanban = new KanbanRepository(db, dbPath);
+  const sessions = new SessionRepository(db, dbPath);
   return {
-    dbPath, loopSessionsPath, dailySessionsPath, db, redactor, adapters, policy, hermes, gbrain, kanban,
+    dbPath, loopSessionsPath, dailySessionsPath, db, redactor, adapters, policy, hermes, gbrain, kanban, sessions,
     dashboardUrl: null,
     activeRuns: new Map(),
+    activeSessionSends: new Set(),
     loopSessions: new Map(),
     dailySessions: new Map(),
     hermesKanbanByRun: new Map(),
@@ -2820,6 +3103,8 @@ export interface DaemonHandles {
 
 export interface StartDaemonOptions {
   socketPath?: string;
+  /** Test/embedding hook; production continues to use the default registry. */
+  adapters?: readonly AgentAdapter[];
   writeConcurrency?: number;
   readConcurrency?: number;
   autonomyHealth?: () => Promise<AutonomyHealthReport>;
@@ -2977,6 +3262,7 @@ export async function startDaemon(
   initOtel({ serviceVersion: DAEMON_VERSION });
   const ctx = buildContext({
     socketPath,
+    ...(opts.adapters === undefined ? {} : { adapters: opts.adapters }),
     ...(opts.writeConcurrency === undefined
       ? {}
       : { writeConcurrency: opts.writeConcurrency }),

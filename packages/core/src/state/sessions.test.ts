@@ -142,6 +142,9 @@ describe("SessionRepository", () => {
         outcome: "applied",
         session_version: 3,
       });
+      expect(repo.getMessage("msg_01")).toMatchObject({ state: "accepted", applied_at: null });
+      repo.markMessageApplied("msg_01", 4.5);
+      expect(repo.getMessage("msg_01")).toMatchObject({ state: "applied", applied_at: 4.5 });
       expect(repo.applyInbound(inboundMessage(), 2, 5)).toEqual({
         outcome: "duplicate",
         session_version: 3,

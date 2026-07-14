@@ -1,0 +1,273 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { connect } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { openDb, SessionRepository, insertRun, insertTask } from "@osstack/core";
+import {
+  type AgentSessionEvent,
+  type AgentSessionInput,
+  type SessionCapableAdapter,
+} from "@osstack/agents";
+import { encodeFrame, FrameDecoder, type HermesEvent } from "@osstack/hermes-adapter";
+import { startDaemon, type DaemonHandles } from "./daemon.js";
+import { main } from "./bin.js";
+
+type RpcResponse = {
+  ok: boolean;
+  result?: Record<string, unknown>;
+  error?: { code: string; message: string };
+};
+
+class FakeSessionAdapter implements SessionCapableAdapter {
+  readonly id = "fake-session";
+  readonly display_name = "Fake Session";
+  readonly cost_tier = "low" as const;
+  readonly resumed: AgentSessionInput[] = [];
+
+  capabilities() { return []; }
+  async isAvailable() {
+    return { available: true, status: "available" as const, last_checked_at: Date.now() / 1000 };
+  }
+  async *invoke(): AsyncIterable<HermesEvent> { return; }
+  sessionCapabilities() { return { resume: true, snapshot: true }; }
+  async *startSession(): AsyncIterable<AgentSessionEvent> { return; }
+  async *resumeSession(input: AgentSessionInput): AsyncIterable<AgentSessionEvent> {
+    this.resumed.push(input);
+    yield { type: "native_session.started", native_session_id: input.native_session_id };
+    yield { type: "session.state", state: "running" };
+    if (input.prompt === "leak") {
+      yield { type: "assistant.message", message_id: `reply_${input.message_id}`, text: input.native_session_id };
+      return;
+    }
+    yield { type: "assistant.message", message_id: `reply_${input.message_id}`, text: `收到：${input.prompt}` };
+    yield { type: "session.terminal", state: "completed" };
+  }
+}
+
+let home: string;
+let socketPath: string;
+let handle: DaemonHandles;
+let adapter: FakeSessionAdapter;
+
+function rpc(method: string, params?: unknown, timeoutMs = 5_000): Promise<RpcResponse> {
+  return new Promise((resolve, reject) => {
+    const sock = connect(socketPath);
+    const decoder = new FrameDecoder();
+    const timer = setTimeout(() => { sock.destroy(); reject(new Error("rpc timeout")); }, timeoutMs);
+    sock.on("connect", () => sock.write(encodeFrame({ id: 1, method, params })));
+    sock.on("data", (chunk) => {
+      const frames = decoder.push(chunk);
+      if (frames.length === 0) return;
+      clearTimeout(timer);
+      sock.end();
+      resolve(frames[0] as RpcResponse);
+    });
+    sock.on("error", (err) => { clearTimeout(timer); reject(err); });
+  });
+}
+
+function seedSession(
+  id: string,
+  state: "idle" | "completed" = "idle",
+  resumeSupported = true,
+): void {
+  const db = openDb({ path: handle.dbPath });
+  try {
+    const taskId = `task_${id}`;
+    const runId = `run_${id}`;
+    insertTask(db, handle.dbPath, { task_id: taskId, title: `Relay ${id}`, created_at: 1 });
+    insertRun(db, handle.dbPath, {
+      run_id: runId,
+      task_id: taskId,
+      session_id: id,
+      agent_id: adapter.id,
+      capability_id: "fake.resume",
+      phase: "code",
+      started_at: 1,
+    });
+    const repo = new SessionRepository(db, handle.dbPath);
+    repo.createSession({
+      session_id: id,
+      task_id: taskId,
+      run_id: runId,
+      agent_id: adapter.id,
+      native_session_id: `native-secret-${id}`,
+      state,
+      resume_supported: resumeSupported,
+      version: 2,
+      updated_at: 2,
+    });
+    repo.appendTurn({
+      turn_id: `turn_${id}`,
+      session_id: id,
+      ordinal: 1,
+      state: "awaiting_decision",
+      assistant_text: "请选择方向",
+      decision: { choices: ["A", "B"] },
+      created_at: 2,
+      updated_at: 2,
+    });
+  } finally {
+    db.close();
+  }
+}
+
+beforeAll(async () => {
+  home = mkdtempSync(join(tmpdir(), "osstack-session-rpc-"));
+  socketPath = join(home, "d.sock");
+  process.env["OSSTACK_HOME"] = home;
+  process.env["OSSTACK_SOCKET"] = socketPath;
+  process.env["OSSTACK_UPDATE_CHECK"] = "0";
+  adapter = new FakeSessionAdapter();
+  handle = await startDaemon({ socketPath, adapters: [adapter] });
+});
+
+afterAll(async () => {
+  await handle.close();
+  rmSync(home, { recursive: true, force: true });
+  delete process.env["OSSTACK_HOME"];
+  delete process.env["OSSTACK_SOCKET"];
+  delete process.env["OSSTACK_UPDATE_CHECK"];
+});
+
+describe("governed session RPC", () => {
+  it("lists and snapshots sessions without exposing native ids", async () => {
+    seedSession("sess_list");
+    const listed = await rpc("session.list");
+    const snapshot = await rpc("session.snapshot", { session_id: "sess_list" });
+
+    expect(listed.ok).toBe(true);
+    expect(JSON.stringify(listed)).not.toContain("native-secret");
+    expect(snapshot).toMatchObject({
+      ok: true,
+      result: { session_id: "sess_list", turn_id: "turn_sess_list", assistant_text: "请选择方向" },
+    });
+    expect(JSON.stringify(snapshot)).not.toContain("native-secret");
+    expect(await rpc("session.list", { limit: 201 })).toMatchObject({
+      ok: false, error: { code: "bad_request" },
+    });
+  });
+
+  it("applies an instruction once and reports an identical replay as duplicate", async () => {
+    seedSession("sess_apply");
+    const params = {
+      session_id: "sess_apply",
+      turn_id: "turn_sess_apply",
+      message_id: "msg_apply",
+      expected_version: 2,
+      text: "采用方案 B",
+      requested_by: "owner",
+    };
+
+    const first = await rpc("session.send", params);
+    const replay = await rpc("session.send", params);
+    const snapshot = await rpc("session.snapshot", { session_id: "sess_apply" });
+
+    expect(first).toMatchObject({ ok: true, result: { state: "applied", session_version: 4 } });
+    expect(replay).toMatchObject({ ok: true, result: { state: "duplicate", session_version: 4 } });
+    expect(snapshot).toMatchObject({
+      ok: true,
+      result: { state: "idle", version: 4, assistant_text: "收到：采用方案 B" },
+    });
+    const db = openDb({ path: handle.dbPath });
+    try {
+      expect(new SessionRepository(db, handle.dbPath).getMessage("msg_apply")).toMatchObject({
+        state: "applied",
+      });
+    } finally {
+      db.close();
+    }
+    expect(adapter.resumed.filter((input) => input.session_id === "sess_apply")).toHaveLength(1);
+    expect(JSON.stringify(first)).not.toContain("native-secret");
+  });
+
+  it("rejects stale versions, wrong turns, terminal sessions and oversized messages", async () => {
+    seedSession("sess_guards");
+    seedSession("sess_terminal", "completed");
+    seedSession("sess_unsupported", "idle", false);
+    const base = {
+      session_id: "sess_guards",
+      turn_id: "turn_sess_guards",
+      message_id: "msg_guard",
+      expected_version: 2,
+      text: "继续",
+    };
+
+    expect(await rpc("session.send", { ...base, expected_version: 1 })).toMatchObject({
+      ok: false, error: { code: "version_conflict" },
+    });
+    expect(await rpc("session.send", { ...base, turn_id: "turn_wrong" })).toMatchObject({
+      ok: false, error: { code: "turn_conflict" },
+    });
+    expect(await rpc("session.send", {
+      ...base,
+      session_id: "sess_terminal",
+      turn_id: "turn_sess_terminal",
+    })).toMatchObject({ ok: false, error: { code: "session_terminal" } });
+    expect(await rpc("session.send", { ...base, text: "x".repeat(16_001) })).toMatchObject({
+      ok: false, error: { code: "bad_request" },
+    });
+    expect(await rpc("session.send", {
+      ...base,
+      session_id: "sess_unsupported",
+      turn_id: "turn_sess_unsupported",
+    })).toMatchObject({ ok: false, error: { code: "resume_unsupported" } });
+    expect(await rpc("session.status", { session_id: "sess_missing" })).toMatchObject({
+      ok: false, error: { code: "not_found" },
+    });
+  });
+
+  it("collapses concurrent duplicate delivery into one adapter resume", async () => {
+    seedSession("sess_concurrent");
+    const params = {
+      session_id: "sess_concurrent",
+      turn_id: "turn_sess_concurrent",
+      message_id: "msg_concurrent",
+      expected_version: 2,
+      text: "继续执行",
+    };
+    const responses = await Promise.all([
+      rpc("session.send", params),
+      rpc("session.send", params),
+    ]);
+
+    expect(responses.map((item) => item.result?.["state"]).sort()).toEqual(["applied", "duplicate"]);
+    expect(adapter.resumed.filter((input) => input.session_id === "sess_concurrent")).toHaveLength(1);
+  });
+
+  it("exposes list, status, snapshot and send through the CLI", async () => {
+    seedSession("sess_cli");
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    try {
+      expect(await main(["session", "list", "--json"])).toBe(0);
+      expect(await main(["session", "status", "sess_cli", "--json"])).toBe(0);
+      expect(await main(["session", "snapshot", "sess_cli", "--json"])).toBe(0);
+      expect(await main([
+        "session", "send", "sess_cli",
+        "--turn", "turn_sess_cli",
+        "--message-id", "msg_cli",
+        "--expected-version", "2",
+        "--text", "按批准方案继续",
+        "--json",
+      ])).toBe(0);
+      expect(log.mock.calls.map((call) => String(call[0])).join("\n")).not.toContain("native-secret");
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("fails closed when an adapter tries to expose protected native metadata", async () => {
+    seedSession("sess_leak");
+    const response = await rpc("session.send", {
+      session_id: "sess_leak",
+      turn_id: "turn_sess_leak",
+      message_id: "msg_leak",
+      expected_version: 2,
+      text: "leak",
+    });
+
+    expect(response).toMatchObject({ ok: false, error: { code: "adapter_protocol" } });
+    expect(JSON.stringify(response)).not.toContain("native-secret");
+  });
+});
