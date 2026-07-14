@@ -289,6 +289,57 @@ function publicSession(row: ReturnType<SessionRepository["getSession"]>): Record
   };
 }
 
+type DecisionRequestedEvent = Extract<AgentSessionEvent, { type: "decision.requested" }>;
+
+function parseDecisionDirective(text: string): DecisionRequestedEvent | undefined {
+  let root: unknown;
+  try {
+    root = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  if (typeof root !== "object" || root === null || Array.isArray(root)) return undefined;
+  const outer = root as Record<string, unknown>;
+  if (Object.keys(outer).length !== 1 || !("ostag_decision" in outer)) return undefined;
+  const value = outer["ostag_decision"];
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+  const decision = value as Record<string, unknown>;
+  if (
+    Object.keys(decision).sort().join(",") !== "choices,decision_id,question"
+    || typeof decision["decision_id"] !== "string"
+    || decision["decision_id"].trim() === ""
+    || decision["decision_id"].length > 256
+    || typeof decision["question"] !== "string"
+    || decision["question"].trim() === ""
+    || decision["question"].length > 1_000
+    || !Array.isArray(decision["choices"])
+    || decision["choices"].length < 1
+    || decision["choices"].length > 8
+  ) return undefined;
+  const choices: Array<{ choice_id: string; label: string }> = [];
+  for (const item of decision["choices"]) {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) return undefined;
+    const choice = item as Record<string, unknown>;
+    if (
+      Object.keys(choice).sort().join(",") !== "choice_id,label"
+      || typeof choice["choice_id"] !== "string"
+      || choice["choice_id"].trim() === ""
+      || choice["choice_id"].length > 256
+      || typeof choice["label"] !== "string"
+      || choice["label"].trim() === ""
+      || choice["label"].length > 160
+    ) return undefined;
+    choices.push({ choice_id: choice["choice_id"], label: choice["label"] });
+  }
+  if (new Set(choices.map((choice) => choice.choice_id)).size !== choices.length) return undefined;
+  return {
+    type: "decision.requested",
+    decision_id: decision["decision_id"],
+    question: decision["question"],
+    choices,
+  };
+}
+
 interface SessionSendParams {
   session_id: string;
   turn_id: string;
@@ -431,8 +482,21 @@ async function handleSessionStart(
       if (nativeSessionId !== undefined && JSON.stringify(event).includes(nativeSessionId)) {
         throw new Error("adapter output contained protected session metadata");
       }
+      if (event.type === "assistant.message") {
+        const directive = parseDecisionDirective(event.text);
+        if (directive !== undefined) {
+          publicEvents.push(directive);
+          decision = {
+            decision_id: directive.decision_id,
+            question: directive.question,
+            choices: directive.choices,
+          };
+          assistantText = directive.question;
+          continue;
+        }
+        assistantText += event.text;
+      }
       publicEvents.push(event);
-      if (event.type === "assistant.message") assistantText += event.text;
       if (assistantText.length > 4_000) throw new Error("assistant output exceeded relay bound");
       if (event.type === "decision.requested") decision = {
         decision_id: event.decision_id,
@@ -632,8 +696,21 @@ async function handleSessionSend(
         if (JSON.stringify(event).includes(session.native_session_id)) {
           return singleErr(req.id, "adapter_protocol", "agent output contained protected session metadata");
         }
+        if (event.type === "assistant.message") {
+          const directive = parseDecisionDirective(event.text);
+          if (directive !== undefined) {
+            publicEvents.push(directive);
+            decision = {
+              decision_id: directive.decision_id,
+              question: directive.question,
+              choices: directive.choices,
+            };
+            assistantText = directive.question;
+            continue;
+          }
+          assistantText += event.text;
+        }
         publicEvents.push(event);
-        if (event.type === "assistant.message") assistantText += event.text;
         if (event.type === "decision.requested") decision = {
           decision_id: event.decision_id,
           question: event.question,

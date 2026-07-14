@@ -46,6 +46,24 @@ class FakeSessionAdapter implements SessionCapableAdapter {
       yield { type: "assistant.message", message_id: `reply_${input.message_id}`, text: input.native_session_id };
       return;
     }
+    if (input.prompt === "decision") {
+      yield {
+        type: "assistant.message",
+        message_id: `reply_${input.message_id}`,
+        text: JSON.stringify({
+          ostag_decision: {
+            decision_id: "decision_canary",
+            question: "请选择灰度方向",
+            choices: [
+              { choice_id: "a", label: "方案 A" },
+              { choice_id: "b", label: "方案 B" },
+            ],
+          },
+        }),
+      };
+      yield { type: "session.terminal", state: "completed" };
+      return;
+    }
     yield { type: "assistant.message", message_id: `reply_${input.message_id}`, text: `收到：${input.prompt}` };
     yield { type: "session.terminal", state: "completed" };
   }
@@ -225,6 +243,47 @@ describe("governed session RPC", () => {
     }
     expect(adapter.resumed.filter((input) => input.session_id === "sess_apply")).toHaveLength(1);
     expect(JSON.stringify(first)).not.toContain("native-secret");
+  });
+
+  it("turns an exact bounded OStag decision directive into awaiting_decision", async () => {
+    seedSession("sess_decision");
+    const response = await rpc("session.send", {
+      session_id: "sess_decision",
+      turn_id: "turn_sess_decision",
+      message_id: "msg_decision",
+      expected_version: 2,
+      text: "decision",
+    });
+
+    expect(response).toMatchObject({
+      ok: true,
+      result: {
+        state: "applied",
+        events: [{
+          type: "session.state",
+          state: "running",
+        }, {
+          type: "decision.requested",
+          decision_id: "decision_canary",
+          question: "请选择灰度方向",
+          choices: [
+            { choice_id: "a", label: "方案 A" },
+            { choice_id: "b", label: "方案 B" },
+          ],
+        }, {
+          type: "session.terminal",
+          state: "completed",
+        }],
+      },
+    });
+    expect(await rpc("session.snapshot", { session_id: "sess_decision" })).toMatchObject({
+      ok: true,
+      result: {
+        state: "awaiting_decision",
+        assistant_text: "请选择灰度方向",
+        decision: { decision_id: "decision_canary" },
+      },
+    });
   });
 
   it("rejects stale versions, wrong turns, terminal sessions and oversized messages", async () => {
