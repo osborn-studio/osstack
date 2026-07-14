@@ -16,6 +16,8 @@ export type AgentId = string;
 
 export interface AgentAvailability {
   available: boolean;
+  /** Stable preflight classification for control-plane decisions. */
+  status?: "available" | "not_authenticated" | "installed_but_broken" | "not_installed";
   /** Human-readable reason when unavailable (missing key, bin not on PATH, ...). */
   reason?: string;
   /** Last successful probe time (unix seconds). */

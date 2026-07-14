@@ -75,6 +75,9 @@ describe("resumable agent session contracts", () => {
       ...ordinary,
       id: "resumable",
       sessionCapabilities: () => ({ resume: true, snapshot: true }),
+      startSession: async function* () {
+        yield { type: "native_session.started", native_session_id: "native-1" } as const;
+      },
       resumeSession: async function* () {
         yield { type: "session.state", state: "running" } as const;
       },

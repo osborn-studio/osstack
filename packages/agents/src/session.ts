@@ -90,6 +90,10 @@ export type AgentSessionEvent = z.infer<typeof AgentSessionEventSchema>;
 
 export interface SessionCapableAdapter extends AgentAdapter {
   sessionCapabilities(): AgentSessionCapabilities;
+  startSession(
+    task: import("./base.js").AgentTask,
+    signal: AbortSignal,
+  ): AsyncIterable<AgentSessionEvent>;
   resumeSession(
     input: AgentSessionInput,
     signal: AbortSignal,
@@ -99,5 +103,6 @@ export interface SessionCapableAdapter extends AgentAdapter {
 export function isSessionCapableAdapter(adapter: AgentAdapter): adapter is SessionCapableAdapter {
   const candidate = adapter as Partial<SessionCapableAdapter>;
   return typeof candidate.sessionCapabilities === "function"
+    && typeof candidate.startSession === "function"
     && typeof candidate.resumeSession === "function";
 }
