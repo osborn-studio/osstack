@@ -11482,7 +11482,11 @@ async function handleSessionCommand(args: string[]): Promise<number> {
     return 1;
   }
 
-  const response = (await rpc(method, params, sub === "send" ? 300_000 : 10_000)) as RpcResp;
+  const response = (await rpc(
+    method,
+    params,
+    sub === "send" || sub === "start" ? 300_000 : 10_000,
+  )) as RpcResp;
   if (!response.ok) {
     console.error("osstack:", response.error?.message ?? `${method} failed`);
     return 1;
