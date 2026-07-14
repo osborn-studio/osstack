@@ -4,10 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { openDb, SessionRepository, insertRun, insertTask } from "@osstack/core";
-import {
-  type AgentSessionEvent,
-  type AgentSessionInput,
-  type SessionCapableAdapter,
+import type {
+  AgentSessionEvent,
+  AgentSessionInput,
+  SessionCapableAdapter,
 } from "@osstack/agents";
 import { encodeFrame, FrameDecoder, type HermesEvent } from "@osstack/hermes-adapter";
 import { startDaemon, type DaemonHandles } from "./daemon.js";
@@ -29,9 +29,9 @@ class FakeSessionAdapter implements SessionCapableAdapter {
   async isAvailable() {
     return { available: true, status: "available" as const, last_checked_at: Date.now() / 1000 };
   }
-  async *invoke(): AsyncIterable<HermesEvent> { return; }
+  async *invoke(): AsyncIterable<HermesEvent> { yield* []; }
   sessionCapabilities() { return { resume: true, snapshot: true }; }
-  async *startSession(): AsyncIterable<AgentSessionEvent> { return; }
+  async *startSession(): AsyncIterable<AgentSessionEvent> { yield* []; }
   async *resumeSession(input: AgentSessionInput): AsyncIterable<AgentSessionEvent> {
     this.resumed.push(input);
     yield { type: "native_session.started", native_session_id: input.native_session_id };

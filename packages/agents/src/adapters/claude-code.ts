@@ -56,6 +56,7 @@ const CAPABILITIES: readonly Capability[] = [
 function now(): number { return Date.now() / 1000; }
 
 function sanitizeAssistantText(value: string): string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: relay text must remove ASCII controls before transport
   return value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "").slice(0, 4_000);
 }
 
