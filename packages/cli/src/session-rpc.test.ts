@@ -236,6 +236,36 @@ describe("governed session RPC", () => {
     expect(adapter.resumed.filter((input) => input.session_id === "sess_concurrent")).toHaveLength(1);
   });
 
+  it("recovers an accepted reservation after daemon interruption without losing the turn", async () => {
+    seedSession("sess_recover");
+    const db = openDb({ path: handle.dbPath });
+    try {
+      new SessionRepository(db, handle.dbPath).applyInbound({
+        message_id: "msg_recover",
+        session_id: "sess_recover",
+        turn_id: "turn_sess_recover",
+        direction: "inbound",
+        kind: "instruction.send",
+        payload: { text: "恢复后继续" },
+        state: "accepted",
+        created_at: 3,
+      }, 2, 3);
+    } finally {
+      db.close();
+    }
+
+    const response = await rpc("session.send", {
+      session_id: "sess_recover",
+      turn_id: "turn_sess_recover",
+      message_id: "msg_recover",
+      expected_version: 2,
+      text: "恢复后继续",
+    });
+
+    expect(response).toMatchObject({ ok: true, result: { state: "applied", session_version: 4 } });
+    expect(adapter.resumed.filter((input) => input.session_id === "sess_recover")).toHaveLength(1);
+  });
+
   it("exposes list, status, snapshot and send through the CLI", async () => {
     seedSession("sess_cli");
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);

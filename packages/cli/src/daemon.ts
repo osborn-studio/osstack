@@ -417,7 +417,9 @@ async function handleSessionSend(
   // delivery already appended a newer turn or completed the conversation.
   // Let the repository compare the complete canonical envelope before any
   // current-turn/current-state guards reject it.
-  if (ctx.sessions.getMessage(p.message_id) !== undefined) {
+  const existingMessage = ctx.sessions.getMessage(p.message_id);
+  let recoveredReservationVersion: number | undefined;
+  if (existingMessage !== undefined) {
     try {
       const replay = ctx.sessions.applyInbound({
         message_id: p.message_id,
@@ -429,7 +431,13 @@ async function handleSessionSend(
         state: "accepted",
         created_at: Date.now() / 1000,
       }, p.expected_version, Date.now() / 1000);
-      return singleOk(req.id, { state: replay.outcome, session_version: replay.session_version });
+      if (existingMessage.state === "applied") {
+        return singleOk(req.id, { state: replay.outcome, session_version: replay.session_version });
+      }
+      if (existingMessage.state !== "accepted" || replay.session_version !== p.expected_version + 1) {
+        return singleErr(req.id, "version_conflict", "accepted message cannot be recovered safely");
+      }
+      recoveredReservationVersion = replay.session_version;
     } catch (err) {
       if (err instanceof SessionMessageIdConflict) {
         return singleErr(req.id, "message_id_conflict", "message_id was already used for different content");
@@ -437,14 +445,14 @@ async function handleSessionSend(
       throw err;
     }
   }
-  if (TERMINAL_SESSION_STATES.has(session.state)) {
+  if (recoveredReservationVersion === undefined && TERMINAL_SESSION_STATES.has(session.state)) {
     return singleErr(req.id, "session_terminal", `session state=${session.state}`);
   }
   if (!session.resume_supported || session.native_session_id === null) {
     return singleErr(req.id, "resume_unsupported", "session cannot be resumed");
   }
   const snapshot = ctx.sessions.latestSnapshot(p.session_id);
-  if (snapshot.turn_id !== p.turn_id) {
+  if (recoveredReservationVersion === undefined && snapshot.turn_id !== p.turn_id) {
     return singleErr(req.id, "turn_conflict", "message does not target the current turn");
   }
   const adapter = ctx.adapters.get(session.agent_id);
@@ -455,27 +463,31 @@ async function handleSessionSend(
     return singleErr(req.id, "session_busy", "session is already applying another instruction");
   }
 
-  let applied;
+  let applied: { outcome: "applied" | "duplicate"; session_version: number };
   const now = Date.now() / 1000;
-  try {
-    applied = ctx.sessions.applyInbound({
-      message_id: p.message_id,
-      session_id: p.session_id,
-      turn_id: p.turn_id,
-      direction: "inbound",
-      kind: "instruction.send",
-      payload: { text: p.text, ...(p.requested_by === undefined ? {} : { requested_by: p.requested_by }) },
-      state: "accepted",
-      created_at: now,
-    }, p.expected_version, now);
-  } catch (err) {
-    if (err instanceof SessionVersionConflict) {
-      return singleErr(req.id, "version_conflict", "session version changed; refresh before retrying");
+  if (recoveredReservationVersion !== undefined) {
+    applied = { outcome: "applied", session_version: recoveredReservationVersion };
+  } else {
+    try {
+      applied = ctx.sessions.applyInbound({
+        message_id: p.message_id,
+        session_id: p.session_id,
+        turn_id: p.turn_id,
+        direction: "inbound",
+        kind: "instruction.send",
+        payload: { text: p.text, ...(p.requested_by === undefined ? {} : { requested_by: p.requested_by }) },
+        state: "accepted",
+        created_at: now,
+      }, p.expected_version, now);
+    } catch (err) {
+      if (err instanceof SessionVersionConflict) {
+        return singleErr(req.id, "version_conflict", "session version changed; refresh before retrying");
+      }
+      if (err instanceof SessionMessageIdConflict) {
+        return singleErr(req.id, "message_id_conflict", "message_id was already used for different content");
+      }
+      throw err;
     }
-    if (err instanceof SessionMessageIdConflict) {
-      return singleErr(req.id, "message_id_conflict", "message_id was already used for different content");
-    }
-    throw err;
   }
   if (applied.outcome === "duplicate") {
     return singleOk(req.id, { state: "duplicate", session_version: applied.session_version });
