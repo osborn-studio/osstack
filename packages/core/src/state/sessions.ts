@@ -26,6 +26,7 @@ export interface SessionFilter {
   agent_id?: string;
   state?: AgentSessionStateType;
   task_id?: string;
+  limit?: number;
 }
 
 export interface ApplyMessageResult {
@@ -196,9 +197,22 @@ export class SessionRepository {
         ) VALUES (?,?,?,?,?,?,?,?,?)
       `).run(
         row.message_id, row.session_id, row.turn_id, row.direction, row.kind,
-        payloadJson, "applied", row.created_at, appliedAt,
+        payloadJson, row.state, row.created_at, row.applied_at,
       );
       return { outcome: "applied", session_version: expectedVersion + 1 };
+    });
+  }
+
+  markMessageApplied(messageId: string, appliedAt: number): void {
+    withWrite(this.db, this.path, (db) => {
+      const result = db.prepare(`
+        UPDATE session_messages
+        SET state = 'applied', applied_at = ?
+        WHERE message_id = ? AND state = 'accepted'
+      `).run(appliedAt, messageId);
+      if (result.changes !== 1) {
+        throw new Error(`message ${messageId} is missing or is not accepted`);
+      }
     });
   }
 
@@ -230,7 +244,7 @@ export class SessionRepository {
 
   listSessions(filter: SessionFilter = {}): AgentSessionRowType[] {
     const where: string[] = [];
-    const values: string[] = [];
+    const values: Array<string | number> = [];
     if (filter.agent_id !== undefined) {
       where.push("agent_id = ?");
       values.push(filter.agent_id);
@@ -244,7 +258,12 @@ export class SessionRepository {
       where.push("task_id = ?");
       values.push(filter.task_id);
     }
-    const sql = `SELECT * FROM agent_sessions${where.length > 0 ? ` WHERE ${where.join(" AND ")}` : ""} ORDER BY updated_at DESC, session_id`;
+    const limit = filter.limit ?? 200;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+      throw new Error("session list limit must be an integer between 1 and 200");
+    }
+    values.push(limit);
+    const sql = `SELECT * FROM agent_sessions${where.length > 0 ? ` WHERE ${where.join(" AND ")}` : ""} ORDER BY updated_at DESC, session_id LIMIT ?`;
     return (this.db.prepare(sql).all(...values) as RawSessionRow[]).map(parseSession);
   }
 

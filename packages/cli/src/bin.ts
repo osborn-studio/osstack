@@ -300,6 +300,8 @@ Daemon commands:
   agent list          List registered sub-agents and their capabilities
   agent scorecard [agent_id]
                       Show agent run-history scorecards
+  session list|status|snapshot|send
+                      Inspect and resume governed agent conversations
 
 Self-update:
   upgrade [--channel latest|canary] [--dry-run] [--auto]
@@ -570,6 +572,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "task") {
     return await handleTaskCommand(args.slice(1));
+  }
+
+  if (cmd === "session") {
+    return await handleSessionCommand(args.slice(1));
   }
 
   if (cmd === "kanban") {
@@ -11375,6 +11381,83 @@ async function handleTaskCommand(args: string[]): Promise<number> {
   }
   console.error(`osstack: unknown task subcommand "${sub}"`);
   return 1;
+}
+
+async function handleSessionCommand(args: string[]): Promise<number> {
+  const sub = args[0];
+  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack session — governed resumable conversations
+
+  osstack session list [--json]
+  osstack session status <session_id> [--json]
+  osstack session snapshot <session_id> [--json]
+  osstack session send <session_id> --turn <turn_id> --message-id <id> \\
+    --expected-version <n> --text <instruction> [--requested-by <actor>] [--json]
+`);
+    return 0;
+  }
+
+  let method: string;
+  let params: Record<string, unknown> | undefined;
+  if (sub === "list") {
+    method = "session.list";
+  } else if (sub === "status" || sub === "snapshot") {
+    const sessionId = args[1];
+    if (sessionId === undefined || sessionId.startsWith("--")) {
+      console.error(`osstack: session ${sub} requires a session_id`);
+      return 1;
+    }
+    method = `session.${sub}`;
+    params = { session_id: sessionId };
+  } else if (sub === "send") {
+    const sessionId = args[1];
+    if (sessionId === undefined || sessionId.startsWith("--")) {
+      console.error("osstack: session send requires a session_id");
+      return 1;
+    }
+    const flags: Record<string, string> = {};
+    for (let i = 2; i < args.length; i++) {
+      const item = args[i]!;
+      if (item === "--json") continue;
+      if (!item.startsWith("--") || args[i + 1] === undefined || args[i + 1]!.startsWith("--")) {
+        console.error(`osstack: invalid session send argument: ${item}`);
+        return 1;
+      }
+      flags[item.slice(2)] = args[i + 1]!;
+      i++;
+    }
+    const expectedVersion = Number(flags["expected-version"]);
+    if (
+      flags["turn"] === undefined
+      || flags["message-id"] === undefined
+      || flags["text"] === undefined
+      || !Number.isInteger(expectedVersion)
+      || expectedVersion < 1
+    ) {
+      console.error("osstack: session send requires --turn, --message-id, --expected-version, and --text");
+      return 1;
+    }
+    method = "session.send";
+    params = {
+      session_id: sessionId,
+      turn_id: flags["turn"],
+      message_id: flags["message-id"],
+      expected_version: expectedVersion,
+      text: flags["text"],
+      ...(flags["requested-by"] === undefined ? {} : { requested_by: flags["requested-by"] }),
+    };
+  } else {
+    console.error(`osstack: unknown session subcommand "${sub}"`);
+    return 1;
+  }
+
+  const response = (await rpc(method, params, sub === "send" ? 300_000 : 10_000)) as RpcResp;
+  if (!response.ok) {
+    console.error("osstack:", response.error?.message ?? `${method} failed`);
+    return 1;
+  }
+  console.log(JSON.stringify(response.result, null, 2));
+  return 0;
 }
 
 function streamFrames(method: string, params: unknown): Promise<number> {
