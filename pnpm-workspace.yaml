@@ -4,3 +4,8 @@ allowBuilds:
   better-sqlite3: true
   esbuild: true
   protobufjs: true
+overrides:
+  "@grpc/grpc-js": "1.14.4"
+  hono: "4.12.25"
+  protobufjs: "7.6.1"
+  vite: "6.4.3"

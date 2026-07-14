@@ -22,9 +22,9 @@ class RelayAdapter implements SessionCapableAdapter {
   async isAvailable() {
     return { available: true, status: "available" as const, last_checked_at: 1 };
   }
-  async *invoke(): AsyncIterable<HermesEvent> { return; }
+  async *invoke(): AsyncIterable<HermesEvent> { yield* []; }
   sessionCapabilities() { return { resume: true, snapshot: true }; }
-  async *startSession(): AsyncIterable<AgentSessionEvent> { return; }
+  async *startSession(): AsyncIterable<AgentSessionEvent> { yield* []; }
   async *resumeSession(input: AgentSessionInput): AsyncIterable<AgentSessionEvent> {
     this.resumed.push(input);
     yield { type: "native_session.started", native_session_id: input.native_session_id };
