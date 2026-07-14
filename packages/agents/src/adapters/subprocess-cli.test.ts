@@ -97,7 +97,7 @@ printf 'stdin:%s\\n' "$input"
 });
 
 describe("CodexCliAdapter", () => {
-  it("uses a real exec --json dry-run for availability", async () => {
+  it("uses an exec resume help preflight for availability", async () => {
     const previousHome = process.env["HOME"];
     process.env["HOME"] = tmp;
     await mkdir(join(tmp, ".codex"));
@@ -115,7 +115,7 @@ exit 9
 
     try {
       await expect(adapter.isAvailable()).resolves.toMatchObject({ available: true });
-      await expect(readFile(argsLog, "utf-8")).resolves.toContain(`exec --json --skip-git-repo-check -s read-only -C ${tmp}`);
+      await expect(readFile(argsLog, "utf-8")).resolves.toBe("exec resume --help\n");
     } finally {
       if (previousHome === undefined) delete process.env["HOME"];
       else process.env["HOME"] = previousHome;
@@ -147,20 +147,21 @@ exit 0
     expect(doneStatus(events)).toBe("completed");
   });
 
-  it("fails availability when dry-run exits 0 without a completed turn", async () => {
+  it("classifies a broken resume preflight", async () => {
     const previousHome = process.env["HOME"];
     process.env["HOME"] = tmp;
     await mkdir(join(tmp, ".codex"));
     const bin = await fakeCommand("codex-no-turn", `
 printf '{"type":"thread.started","thread_id":"probe"}\\n'
-exit 0
+exit 9
 `);
     const adapter = new CodexCliAdapter({ bin, cwd: tmp, probeTimeoutMs: 1_000 });
 
     try {
       const availability = await adapter.isAvailable();
       expect(availability.available).toBe(false);
-      expect(availability.reason).toContain("did not emit a completed turn");
+      expect(availability.status).toBe("installed_but_broken");
+      expect(availability.reason).toContain("resume preflight exited 9");
     } finally {
       if (previousHome === undefined) delete process.env["HOME"];
       else process.env["HOME"] = previousHome;
