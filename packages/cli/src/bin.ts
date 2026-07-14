@@ -11389,6 +11389,7 @@ async function handleSessionCommand(args: string[]): Promise<number> {
     console.log(`osstack session — governed resumable conversations
 
   osstack session list [--json]
+  osstack session start --request-id <id> --agent <id> --repo <path> --title <title> --text <prompt> [--json]
   osstack session status <session_id> [--json]
   osstack session snapshot <session_id> [--json]
   osstack session send <session_id> --turn <turn_id> --message-id <id> \\
@@ -11401,6 +11402,36 @@ async function handleSessionCommand(args: string[]): Promise<number> {
   let params: Record<string, unknown> | undefined;
   if (sub === "list") {
     method = "session.list";
+  } else if (sub === "start") {
+    const flags: Record<string, string> = {};
+    for (let i = 1; i < args.length; i++) {
+      const item = args[i]!;
+      if (item === "--json") continue;
+      if (!item.startsWith("--") || args[i + 1] === undefined || args[i + 1]!.startsWith("--")) {
+        console.error(`osstack: invalid session start argument: ${item}`);
+        return 1;
+      }
+      flags[item.slice(2)] = args[i + 1]!;
+      i++;
+    }
+    if (
+      flags["request-id"] === undefined
+      || flags["agent"] === undefined
+      || flags["repo"] === undefined
+      || flags["title"] === undefined
+      || flags["text"] === undefined
+    ) {
+      console.error("osstack: session start requires --request-id, --agent, --repo, --title, and --text");
+      return 1;
+    }
+    method = "session.start";
+    params = {
+      request_id: flags["request-id"],
+      agent_id: flags["agent"],
+      repo_path: flags["repo"],
+      title: flags["title"],
+      prompt: flags["text"],
+    };
   } else if (sub === "status" || sub === "snapshot") {
     const sessionId = args[1];
     if (sessionId === undefined || sessionId.startsWith("--")) {

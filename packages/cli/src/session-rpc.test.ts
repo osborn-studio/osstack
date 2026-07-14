@@ -24,6 +24,7 @@ class FakeSessionAdapter implements SessionCapableAdapter {
   readonly display_name = "Fake Session";
   readonly cost_tier = "low" as const;
   readonly resumed: AgentSessionInput[] = [];
+  readonly started: string[] = [];
 
   capabilities() { return []; }
   async isAvailable() {
@@ -31,7 +32,12 @@ class FakeSessionAdapter implements SessionCapableAdapter {
   }
   async *invoke(): AsyncIterable<HermesEvent> { yield* []; }
   sessionCapabilities() { return { resume: true, snapshot: true }; }
-  async *startSession(): AsyncIterable<AgentSessionEvent> { yield* []; }
+  async *startSession(task: { prompt: string }): AsyncIterable<AgentSessionEvent> {
+    this.started.push(task.prompt);
+    yield { type: "native_session.started", native_session_id: "native-secret-started" };
+    yield { type: "assistant.message", message_id: "reply_started", text: "CANARY_READY" };
+    yield { type: "session.terminal", state: "completed" };
+  }
   async *resumeSession(input: AgentSessionInput): AsyncIterable<AgentSessionEvent> {
     this.resumed.push(input);
     yield { type: "native_session.started", native_session_id: input.native_session_id };
@@ -132,6 +138,45 @@ afterAll(async () => {
 });
 
 describe("governed session RPC", () => {
+  it("starts and persists a real resumable session without exposing its native id", async () => {
+    const started = await rpc("session.start", {
+      request_id: "request_rpc_start",
+      prompt: "只回复 CANARY_READY",
+      title: "Relay canary",
+      agent_id: adapter.id,
+      repo_path: home,
+    });
+
+    expect(started).toMatchObject({
+      ok: true,
+      result: {
+        state: "idle",
+        version: 3,
+        resume_supported: true,
+        resume_ready: true,
+        assistant_text: "CANARY_READY",
+      },
+    });
+    expect(adapter.started).toContain("只回复 CANARY_READY");
+    expect(JSON.stringify(started)).not.toContain("native-secret-started");
+    const sessionId = String(started.result?.["session_id"]);
+    expect(await rpc("session.snapshot", { session_id: sessionId })).toMatchObject({
+      ok: true,
+      result: { assistant_text: "CANARY_READY" },
+    });
+    expect(await rpc("session.start", {
+      request_id: "request_rpc_start",
+      prompt: "只回复 CANARY_READY",
+      title: "Relay canary",
+      agent_id: adapter.id,
+      repo_path: home,
+    })).toMatchObject({
+      ok: true,
+      result: { session_id: sessionId, assistant_text: "CANARY_READY", version: 3 },
+    });
+    expect(adapter.started.filter((prompt) => prompt === "只回复 CANARY_READY")).toHaveLength(1);
+  });
+
   it("lists and snapshots sessions without exposing native ids", async () => {
     seedSession("sess_list");
     const listed = await rpc("session.list");
@@ -282,6 +327,26 @@ describe("governed session RPC", () => {
         "--json",
       ])).toBe(0);
       expect(log.mock.calls.map((call) => String(call[0])).join("\n")).not.toContain("native-secret");
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("starts a resumable session through the CLI without exposing its native id", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    try {
+      expect(await main([
+        "session", "start",
+        "--request-id", "request_cli_start",
+        "--agent", adapter.id,
+        "--repo", home,
+        "--title", "CLI relay canary",
+        "--text", "只回复 CANARY_READY",
+        "--json",
+      ])).toBe(0);
+      const output = log.mock.calls.map((call) => String(call[0])).join("\n");
+      expect(output).toContain("CANARY_READY");
+      expect(output).not.toContain("native-secret-started");
     } finally {
       log.mockRestore();
     }
