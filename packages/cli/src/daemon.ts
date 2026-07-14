@@ -371,6 +371,190 @@ interface SessionSendParams {
   requested_by?: string;
 }
 
+interface SessionStartParams {
+  request_id: string;
+  prompt: string;
+  title: string;
+  agent_id: string;
+  repo_path: string;
+}
+
+function parseSessionStartParams(value: unknown): SessionStartParams | Error {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return new Error("params must be an object");
+  }
+  const p = value as Record<string, unknown>;
+  if (typeof p["request_id"] !== "string" || p["request_id"].trim() === "" || p["request_id"].length > 256) {
+    return new Error("params.request_id must be a non-empty string of at most 256 characters");
+  }
+  if (typeof p["prompt"] !== "string" || p["prompt"].trim() === "" || p["prompt"].length > 16_000) {
+    return new Error("params.prompt must be between 1 and 16000 characters");
+  }
+  if (typeof p["title"] !== "string" || p["title"].trim() === "" || p["title"].length > 160) {
+    return new Error("params.title must be between 1 and 160 characters");
+  }
+  if (typeof p["agent_id"] !== "string" || p["agent_id"].trim() === "" || p["agent_id"].length > 256) {
+    return new Error("params.agent_id must be a non-empty string of at most 256 characters");
+  }
+  if (typeof p["repo_path"] !== "string" || !isAbsolute(p["repo_path"]) || p["repo_path"].length > 4096) {
+    return new Error("params.repo_path must be an absolute path of at most 4096 characters");
+  }
+  return {
+    request_id: p["request_id"],
+    prompt: p["prompt"],
+    title: p["title"],
+    agent_id: p["agent_id"],
+    repo_path: p["repo_path"],
+  };
+}
+
+async function handleSessionStart(
+  ctx: DaemonContext,
+  req: DaemonRequest,
+): Promise<SingleResponse> {
+  const p = parseSessionStartParams(req.params);
+  if (p instanceof Error) return singleErr(req.id, "bad_request", p.message);
+  if (ctx.draining) return singleErr(req.id, "draining", "daemon is not accepting new sessions");
+
+  const adapter = ctx.adapters.get(p.agent_id);
+  if (adapter === undefined || !isSessionCapableAdapter(adapter)) {
+    return singleErr(req.id, "resume_unsupported", "agent does not support resumable sessions");
+  }
+  const capabilities = adapter.sessionCapabilities();
+  if (!capabilities.resume) {
+    return singleErr(req.id, "resume_unsupported", "agent does not support resume");
+  }
+  const availability = await adapter.isAvailable();
+  if (!availability.available) {
+    return singleErr(req.id, "agent_unavailable", "agent is unavailable");
+  }
+
+  const now = Date.now() / 1000;
+  const stableId = createHash("sha256").update(p.request_id).digest("hex").slice(0, 24);
+  const taskId = `task_${stableId}`;
+  const runId = `run_${stableId}`;
+  const sessionId = `sess_${stableId}`;
+  const turnId = `turn_${randomUUID()}`;
+  const existing = ctx.sessions.getSession(sessionId);
+  if (existing !== undefined) {
+    const snapshot = ctx.sessions.latestSnapshot(sessionId);
+    return singleOk(req.id, {
+      ...publicSession(existing),
+      ...snapshot,
+      events: [],
+    });
+  }
+  try {
+    insertTask(ctx.db, ctx.dbPath, { task_id: taskId, title: p.title, created_at: now });
+    insertRun(ctx.db, ctx.dbPath, {
+      run_id: runId,
+      task_id: taskId,
+      session_id: sessionId,
+      agent_id: adapter.id,
+      capability_id: `${adapter.id}.session`,
+      phase: "code",
+      started_at: now,
+    });
+    ctx.sessions.createSession({
+      session_id: sessionId,
+      task_id: taskId,
+      run_id: runId,
+      agent_id: adapter.id,
+      native_session_id: null,
+      state: "starting",
+      resume_supported: true,
+      version: 1,
+      updated_at: now,
+    });
+    ctx.kanban.createCard({
+      card_id: `card_${runId}`,
+      task_id: taskId,
+      title: p.title,
+      body: `agent: ${adapter.id}\ncapability: resumable-session`,
+      status: "running",
+      assignee: adapter.id,
+    });
+  } catch {
+    return singleErr(req.id, "store_write_failed", "could not create resumable session");
+  }
+
+  const controller = new AbortController();
+  ctx.activeRuns.set(runId, controller);
+  const task: AgentTask = {
+    run_id: runId,
+    task_id: taskId,
+    session_id: sessionId,
+    capability_id: `${adapter.id}.session`,
+    prompt: p.prompt,
+    context: { repo_path: p.repo_path },
+  };
+  const publicEvents: AgentSessionEvent[] = [];
+  let nativeSessionId: string | undefined;
+  let assistantText = "";
+  let decision: unknown = null;
+  try {
+    for await (const event of adapter.startSession(task, controller.signal)) {
+      if (event.type === "native_session.started") {
+        if (nativeSessionId !== undefined && nativeSessionId !== event.native_session_id) {
+          throw new Error("adapter changed native session id");
+        }
+        nativeSessionId = event.native_session_id;
+        continue;
+      }
+      if (nativeSessionId !== undefined && JSON.stringify(event).includes(nativeSessionId)) {
+        throw new Error("adapter output contained protected session metadata");
+      }
+      publicEvents.push(event);
+      if (event.type === "assistant.message") assistantText += event.text;
+      if (assistantText.length > 4_000) throw new Error("assistant output exceeded relay bound");
+      if (event.type === "decision.requested") decision = {
+        decision_id: event.decision_id,
+        question: event.question,
+        choices: event.choices,
+      };
+      if (event.type === "session.terminal" && event.state !== "completed") {
+        throw new Error("adapter terminated while starting the session");
+      }
+    }
+    if (nativeSessionId === undefined) throw new Error("adapter did not return a native session id");
+
+    const recorded = ctx.sessions.recordNativeSession(sessionId, nativeSessionId, 1, Date.now() / 1000);
+    const finalState = decision === null ? "idle" : "awaiting_decision";
+    ctx.sessions.appendTurn({
+      turn_id: turnId,
+      session_id: sessionId,
+      ordinal: 1,
+      state: finalState,
+      assistant_text: assistantText,
+      decision,
+      created_at: now,
+      updated_at: Date.now() / 1000,
+    });
+    const updated = ctx.sessions.setState(sessionId, finalState, recorded.version, Date.now() / 1000);
+    finalizeRun(ctx.db, ctx.dbPath, runId, "completed", Date.now() / 1000);
+    ctx.kanban.moveCard(`card_${runId}`, "done", { actor: adapter.id });
+    return singleOk(req.id, {
+      ...publicSession(updated),
+      turn_id: turnId,
+      assistant_text: assistantText,
+      decision,
+      events: publicEvents,
+    });
+  } catch {
+    try {
+      const current = ctx.sessions.getSession(sessionId);
+      if (current !== undefined) {
+        ctx.sessions.setState(sessionId, "failed", current.version, Date.now() / 1000);
+      }
+      finalizeRun(ctx.db, ctx.dbPath, runId, "failed", Date.now() / 1000);
+      ctx.kanban.moveCard(`card_${runId}`, "blocked", { actor: adapter.id, blocked_reason: "session start failed" });
+    } catch { /* preserve the original bounded failure */ }
+    return singleErr(req.id, "agent_failed", "agent failed while starting the session");
+  } finally {
+    ctx.activeRuns.delete(runId);
+  }
+}
+
 function parseSessionSendParams(value: unknown): SessionSendParams | Error {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return new Error("params must be an object");
@@ -686,6 +870,9 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
         sessions: ctx.sessions.listSessions({ limit }).map((row) => publicSession(row)),
       });
     }
+
+    case "session.start":
+      return await handleSessionStart(ctx, req);
 
     case "session.status": {
       const p = (req.params ?? {}) as { session_id?: string };
