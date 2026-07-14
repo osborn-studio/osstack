@@ -409,3 +409,50 @@ export const AutonomyDeployFreezeRow = z
 export type AutonomyDeployFreezeRow = z.infer<
   typeof AutonomyDeployFreezeRow
 >;
+// ──────────────────────────────────────────────────────────────────────
+// Resumable native-agent sessions (migration #21)
+// ──────────────────────────────────────────────────────────────────────
+
+export const AgentSessionState = z.enum([
+  "starting", "running", "awaiting_decision", "idle",
+  "completed", "failed", "cancelled",
+]);
+export type AgentSessionState = z.infer<typeof AgentSessionState>;
+
+export const AgentSessionRow = z.object({
+  session_id: z.string().min(1),
+  task_id: TaskIdSchema,
+  run_id: RunIdSchema,
+  agent_id: AgentIdSchema,
+  native_session_id: z.string().min(1).nullable(),
+  state: AgentSessionState,
+  resume_supported: z.boolean(),
+  version: z.number().int().positive(),
+  updated_at: z.number().nonnegative(),
+}).strict();
+export type AgentSessionRow = z.infer<typeof AgentSessionRow>;
+
+export const SessionTurnRow = z.object({
+  turn_id: z.string().min(1),
+  session_id: z.string().min(1),
+  ordinal: z.number().int().positive(),
+  state: AgentSessionState,
+  assistant_text: z.string(),
+  decision_json: z.string().nullable(),
+  created_at: z.number().nonnegative(),
+  updated_at: z.number().nonnegative(),
+}).strict();
+export type SessionTurnRow = z.infer<typeof SessionTurnRow>;
+
+export const SessionMessageRow = z.object({
+  message_id: z.string().min(1),
+  session_id: z.string().min(1),
+  turn_id: z.string().min(1),
+  direction: z.enum(["inbound", "outbound"]),
+  kind: z.string().min(1),
+  payload_json: z.string(),
+  state: z.enum(["pending", "accepted", "applied", "failed"]),
+  created_at: z.number().nonnegative(),
+  applied_at: z.number().nonnegative().nullable(),
+}).strict();
+export type SessionMessageRow = z.infer<typeof SessionMessageRow>;

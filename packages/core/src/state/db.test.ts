@@ -23,6 +23,9 @@ describe("openDb + runMigrations", () => {
       for (const t of ["tasks", "runs", "events", "agents", "approvals", "clarifies", "memory_facts"]) {
         expect(names).toContain(t);
       }
+      for (const t of ["agent_sessions", "session_turns", "session_messages"]) {
+        expect(names).toContain(t);
+      }
     } finally {
       db.close();
     }

@@ -1222,6 +1222,63 @@ export const MIGRATIONS: readonly Migration[] = [
         END;
     `,
   },
+  {
+    id: 21,
+    name: "resumable_agent_sessions",
+    // Durable native-agent session identity and exactly-once remote input.
+    // Tool arguments, command output and reasoning never enter these tables.
+    sql: `
+      CREATE TABLE IF NOT EXISTS agent_sessions (
+        session_id        TEXT PRIMARY KEY,
+        task_id           TEXT NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,
+        run_id            TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
+        agent_id          TEXT NOT NULL,
+        native_session_id TEXT,
+        state             TEXT NOT NULL CHECK (state IN (
+          'starting','running','awaiting_decision','idle','completed','failed','cancelled'
+        )),
+        resume_supported  INTEGER NOT NULL CHECK (resume_supported IN (0,1)),
+        version           INTEGER NOT NULL CHECK (version > 0),
+        updated_at        REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_agent_sessions_task
+        ON agent_sessions(task_id, updated_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_agent_sessions_agent_state
+        ON agent_sessions(agent_id, state, updated_at DESC);
+
+      CREATE TABLE IF NOT EXISTS session_turns (
+        turn_id        TEXT PRIMARY KEY,
+        session_id     TEXT NOT NULL REFERENCES agent_sessions(session_id) ON DELETE CASCADE,
+        ordinal        INTEGER NOT NULL CHECK (ordinal > 0),
+        state          TEXT NOT NULL CHECK (state IN (
+          'starting','running','awaiting_decision','idle','completed','failed','cancelled'
+        )),
+        assistant_text TEXT NOT NULL DEFAULT '',
+        decision_json  TEXT,
+        created_at     REAL NOT NULL,
+        updated_at     REAL NOT NULL,
+        UNIQUE(session_id, ordinal)
+      );
+      CREATE INDEX IF NOT EXISTS idx_session_turns_session_ordinal
+        ON session_turns(session_id, ordinal DESC);
+
+      CREATE TABLE IF NOT EXISTS session_messages (
+        message_id   TEXT PRIMARY KEY,
+        session_id   TEXT NOT NULL REFERENCES agent_sessions(session_id) ON DELETE CASCADE,
+        turn_id      TEXT NOT NULL,
+        direction    TEXT NOT NULL CHECK (direction IN ('inbound','outbound')),
+        kind         TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        state        TEXT NOT NULL CHECK (state IN ('pending','accepted','applied','failed')),
+        created_at   REAL NOT NULL,
+        applied_at   REAL
+      );
+      CREATE INDEX IF NOT EXISTS idx_session_messages_session_state
+        ON session_messages(session_id, state, created_at);
+      CREATE INDEX IF NOT EXISTS idx_session_messages_turn
+        ON session_messages(turn_id, created_at);
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;
