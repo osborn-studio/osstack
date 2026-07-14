@@ -78,6 +78,10 @@ export interface AgentAdapter {
   invoke(task: AgentTask, signal: AbortSignal): AsyncIterable<HermesEvent>;
 }
 
+// Resumable conversation support is deliberately a separate structural
+// capability. See session.ts and isSessionCapableAdapter(): existing one-shot
+// adapters continue to satisfy AgentAdapter without implementing fake resume.
+
 /**
  * Helper base class: keeps the common fields and forces subclasses to
  * implement the streaming method. Adapters don't HAVE to subclass this —
