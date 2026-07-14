@@ -18,6 +18,7 @@ import { GoogleStitchAdapter } from "./adapters/google-stitch.js";
 
 export * from "./base.js";
 export * from "./metadata.js";
+export * from "./session.js";
 export { ClaudeCodeAdapter } from "./adapters/claude-code.js";
 export { ClaudeCliAdapter } from "./adapters/claude-cli.js";
 export { CodexCliAdapter } from "./adapters/codex-cli.js";
