@@ -1014,7 +1014,8 @@ export class LoopEngine {
     });
     const marker = publishCfg.onFailure === "block" ? " [NEEDS-ATTENTION]" : "";
     decisions.push(
-      `${task.task_id}: publish ${result.status} for ${skillId} (reasons: ${(result.reasons ?? []).join(", ") || "none"})${marker}`,
+      // use the REDACTED evidence.reasons — never the raw Hub-controlled reasons.
+      `${task.task_id}: publish ${result.status} for ${skillId} (reasons: ${evidence.reasons.join(", ") || "none"})${marker}`,
     );
     return evidence; // status blocked/error, no release identity
   }

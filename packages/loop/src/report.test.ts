@@ -446,7 +446,7 @@ describe("published assets rendering", () => {
     });
     const md = renderLoopStateReportMarkdown(report);
     expect(md).toContain("## Published Assets");
-    expect(md).toContain("| task-blocked | client.secret | blocked | client | unknown | unknown | unknown | missing client_restrictions |");
+    expect(md).toContain("| task-blocked | client.secret | blocked | client | unknown | unknown | unknown | unknown | missing client_restrictions |");
   });
 
   it("shows None when no task attempted a publish", () => {

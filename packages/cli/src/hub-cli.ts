@@ -175,7 +175,7 @@ async function runCandidate(hubRoot: string, flags: ParsedFlags, deps: HubCliDep
     namespace: `${namespace.kind}/${namespace.id}`,
     reuse_scope: flags.reuseScope,
     source_dirty: source.dirty === true,
-    ...(typeof p["candidate_id"] === "string" ? { candidate_id: p["candidate_id"] } : {}),
+    ...(safeCandidateId(p["candidate_id"]) !== undefined ? { candidate_id: safeCandidateId(p["candidate_id"]) } : {}),
   };
   return { exitCode: 0, stdout: flags.json ? JSON.stringify(result) : `registered candidate for ${result.namespace} (dirty: ${result.source_dirty})` };
 }
@@ -195,14 +195,14 @@ async function runPublish(hubRoot: string, flags: ParsedFlags, deps: HubCliDeps)
     return fail(flags.json, 1, { status: "error", reasons: ["malformed_output"] });
   }
   const status = String(parsed["status"] ?? "error");
-  // Sanitize the Hub-controlled id: use it only if it is a safe asset id, else
-  // fall back to the caller's assetId (never echo an absolute/dist path).
-  const id = safeAssetId(parsed["id"]) ?? assetId;
+  // Sanitize the Hub-controlled id AND the caller's assetId (either could be a
+  // path); reasons are redacted. Never echo an absolute/dist path or a secret.
+  const id = safeAssetId(parsed["id"]) ?? safeAssetId(assetId) ?? "redacted";
   const out: Record<string, unknown> = {
     status,
     id,
     gate: GATES.has(String(parsed["gate"])) ? parsed["gate"] : flags.gate,
-    reasons: Array.isArray(parsed["reasons"]) ? parsed["reasons"] : [],
+    reasons: redactReasons(parsed["reasons"]),
   };
   if (status === "published") {
     // Release identity ONLY on success; identity is logical (never a dist/
@@ -236,8 +236,23 @@ function safeReleaseId(value: unknown): string | undefined {
   return typeof value === "string" && RELEASE_ID_RE.test(value) ? value : undefined;
 }
 const ASSET_ID_RE = /^[a-z0-9][a-z0-9._-]+$/;
+const CANDIDATE_ID_RE = /^cand-[a-z0-9-]+$/;
 function safeAssetId(value: unknown): string | undefined {
   return typeof value === "string" && ASSET_ID_RE.test(value) ? value : undefined;
+}
+function safeCandidateId(value: unknown): string | undefined {
+  return typeof value === "string" && CANDIDATE_ID_RE.test(value) ? value : undefined;
+}
+/** Mask absolute paths / dist-packages / secrets in Hub-controlled free text. */
+function redactText(s: string): string {
+  return String(s)
+    .replace(/\/(?:Volumes|Users|home|private|etc|opt|var|tmp|root|mnt|srv)\/\S*/gi, "[redacted-path]")
+    .replace(/[A-Za-z]:[\\/]\S*/g, "[redacted-path]")
+    .replace(/dist\/packages\/\S*/gi, "[redacted-path]")
+    .replace(/\b(?:sb_secret_[A-Za-z0-9]+|sk-[A-Za-z0-9-]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,})\b/g, "[redacted-secret]");
+}
+function redactReasons(r: unknown): string[] {
+  return Array.isArray(r) ? r.map((x) => redactText(String(x))) : [];
 }
 function safeNamespace(value: unknown): string | undefined {
   return typeof value === "string" && NAMESPACE_RE.test(value) ? value : undefined;
@@ -255,7 +270,7 @@ function safeJson(stdout: string): Record<string, unknown> | undefined {
 function parseReasons(stdout: string): string[] {
   const parsed = safeJson(stdout);
   const reasons = parsed?.["reasons"];
-  return Array.isArray(reasons) ? reasons.map(String) : ["hub_error"];
+  return Array.isArray(reasons) && reasons.length > 0 ? redactReasons(reasons) : ["hub_error"];
 }
 
 // ── real deps (spawn + git) ────────────────────────────────────────────────

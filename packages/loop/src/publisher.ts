@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 import { z } from "zod";
 import type { PublishedAssetEvidence, Task } from "./types.js";
+import { safeAssetId, safeReleaseId, safeNamespace, safeStorageKey, redactReasons } from "./types.js";
 
 const DEFAULT_COMMAND =
   "/Volumes/AIMATE_WORK/Developer/ClaudeCode/01_active/osborn-studio-skill-hub/tooling/osstack_publish.mjs";
@@ -130,32 +131,9 @@ function parsePublishOutput(skillId: string, stdout: string): PublishResult {
 // ── Durable release evidence mapping (Phase 2B) ──────────────────────────
 
 const DIGEST_RE = /^sha256:[a-f0-9]{64}$/;
-// release_id = <ns-kind>__<ns-id>/<asset-id>@<version>; namespace = <kind>/<id>.
-const RELEASE_ID_RE = /^[a-z0-9][a-z0-9-]*__[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9._-]*@[0-9][0-9A-Za-z.-]*$/;
-const NAMESPACE_RE = /^(personal|organization)\/[a-z0-9][a-z0-9-]*$/;
-
-/** Accept only a logical, relative locator — never a dist/packages path or an
- *  absolute/drive path. Rejects ANY drive prefix (incl. drive-relative like
- *  "C:x"), backslashes, a leading "/", and dist/packages CASE-INSENSITIVELY
- *  (case-insensitive filesystems alias DIST/PACKAGES). */
-export function safeStorageKey(value: unknown): string | undefined {
-  if (typeof value !== "string" || value.length === 0) return undefined;
-  if (value.startsWith("/") || /^[A-Za-z]:/.test(value) || value.includes("\\")) return undefined;
-  if (/(^|\/)dist\/packages(\/|$)/i.test(value) || /^dist\//i.test(value)) return undefined;
-  if (value.split("/").some((seg) => seg === "" || seg === "." || seg === "..")) return undefined;
-  return value;
-}
-
-/** Accept a release_id only if it matches the logical identity shape (never an
- *  absolute path / dist path masquerading as an id). */
-export function safeReleaseId(value: unknown): string | undefined {
-  return typeof value === "string" && RELEASE_ID_RE.test(value) ? value : undefined;
-}
-
-/** Accept a namespace only in <kind>/<id> logical form. */
-export function safeNamespace(value: unknown): string | undefined {
-  return typeof value === "string" && NAMESPACE_RE.test(value) ? value : undefined;
-}
+// Identity validators + redaction are shared with the persisted schema (one
+// source of truth — a value kept here always passes PublishedAssetEvidence).
+export { safeStorageKey, safeReleaseId, safeNamespace } from "./types.js";
 
 const PUBLISH_GATES = ["team", "client", "commercial"] as const;
 function normalizeGate(value: unknown, fallback: PublishConfig["gate"]): PublishConfig["gate"] {
@@ -179,9 +157,11 @@ export function toPublishedAssetEvidence(
     result.status === "published" ? "published" : result.status === "blocked" ? "blocked" : "error";
   const base: PublishedAssetEvidence = {
     status,
-    asset_id: result.id,
+    // asset_id is shape-bound; a Hub-returned path/garbage id is redacted so it
+    // is never persisted/rendered verbatim (and never crashes schema parse).
+    asset_id: safeAssetId(result.id) ?? "redacted",
     gate: normalizeGate(result.gate ?? undefined, defaultGate),
-    reasons: result.reasons ?? [],
+    reasons: redactReasons(result.reasons),
   };
   if (status !== "published") return base;
 

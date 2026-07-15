@@ -71,6 +71,12 @@ describe("toPublishedAssetEvidence", () => {
     expect(e.namespace).toBeUndefined();
   });
 
+  it("redacts an absolute/secret path in reasons and a garbage asset_id", () => {
+    const e = toPublishedAssetEvidence(PublishResult.parse({ contract: "1.1", status: "blocked", id: "/Volumes/AIMATE_WORK/private/id", gate: "team", durationMs: 1, reasons: ["client-secret at /Volumes/AIMATE_WORK/osborn-hub-store/v1/x"] }), "team");
+    expect(e.asset_id).toBe("redacted");
+    expect(JSON.stringify(e.reasons)).not.toContain("/Volumes/");
+  });
+
   it("emits NO release identity on a blocked/error result", () => {
     const blocked = PublishResult.parse({ contract: "1.1", status: "blocked", id: "research.alpha", gate: "team", durationMs: 1, reasons: ["score<gate"] });
     const e = toPublishedAssetEvidence(blocked, "team");

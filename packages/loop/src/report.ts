@@ -524,12 +524,12 @@ function renderPublishedAssets(tasks: CompletedTask[]): string[] {
   const rows = tasks.filter((t) => t.published_asset !== undefined);
   if (rows.length === 0) return ["- None"];
   return [
-    "| Task | Asset | Status | Gate | Namespace | Release ID | Digest | Reasons |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    "| Task | Asset | Status | Gate | Namespace | Release ID | Digest | Storage Key | Reasons |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...rows.map((t) => {
       const e = t.published_asset!;
       const reasons = e.reasons.length > 0 ? e.reasons.join("; ") : "-";
-      return `| ${t.task_id} | ${e.asset_id} | ${e.status} | ${e.gate} | ${e.namespace ?? "unknown"} | ${e.release_id ?? "unknown"} | ${e.digest ?? "unknown"} | ${reasons} |`;
+      return `| ${t.task_id} | ${e.asset_id} | ${e.status} | ${e.gate} | ${e.namespace ?? "unknown"} | ${e.release_id ?? "unknown"} | ${e.digest ?? "unknown"} | ${e.storage_key ?? "unknown"} | ${reasons} |`;
     }),
   ];
 }
