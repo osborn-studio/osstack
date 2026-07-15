@@ -8,7 +8,7 @@ function deps(overrides: Partial<HubCliDeps> = {}): HubCliDeps {
   return {
     env: { OSSTACK_HUB_ROOT: "/hub" },
     resolveSource: vi.fn(async () => cleanSource),
-    runNode: vi.fn(async () => ({ stdout: JSON.stringify({ candidate_id: "cand-123" }), stderr: "", exitCode: 0 })),
+    runNode: vi.fn(async () => ({ stdout: JSON.stringify({ status: "registered", candidate_id: "cand-123" }), stderr: "", exitCode: 0 })),
     ...overrides,
   };
 }
@@ -76,6 +76,39 @@ describe("osstack hub publish", () => {
     expect(out).toMatchObject({ status: "blocked", reasons: ["score<gate"] });
     expect(out.release_id).toBeUndefined();
     expect(out.digest).toBeUndefined();
+  });
+});
+
+describe("osstack hub option-injection + exit mapping + leak safety", () => {
+  it("rejects an option-injected flag value (--surfaces --no-push)", async () => {
+    const r = await handleHubCommand(["publish", "a", "--surfaces", "--no-push", "--json"], deps());
+    expect(r.exitCode).toBe(1);
+    expect(JSON.parse(r.stdout)).toMatchObject({ status: "error", reasons: ["invalid_flag"] });
+  });
+
+  it("refuses a dirty source at client/commercial scope even with --allow-dirty", async () => {
+    const dirty: ResolvedSource = { repository: "r", commit: "abcdef1234567", path: "p", dirty: true };
+    const r = await handleHubCommand(["candidate", "./s", "--namespace", "organization/acme", "--reuse-scope", "client", "--allow-dirty", "--json"], deps({ resolveSource: vi.fn(async () => dirty) }));
+    expect(r.exitCode).toBe(2);
+    expect(JSON.parse(r.stdout).reasons).toContain("dirty_source_elevated_scope");
+  });
+
+  it("maps malformed child output to error(1), not blocked(2), for publish AND candidate", async () => {
+    const pub = await handleHubCommand(["publish", "a", "--json"], deps({ runNode: vi.fn(async () => ({ stdout: "garbage", stderr: "", exitCode: 2 })) }));
+    expect(pub.exitCode).toBe(1);
+    expect(JSON.parse(pub.stdout)).toMatchObject({ status: "error", reasons: ["malformed_output"] });
+    const cand = await handleHubCommand(["candidate", "./s", "--namespace", "organization/acme", "--json"], deps({ runNode: vi.fn(async () => ({ stdout: "garbage", stderr: "", exitCode: 0 })) }));
+    expect(cand.exitCode).toBe(1);
+    expect(JSON.parse(cand.stdout).status).toBe("error");
+  });
+
+  it("sanitizes a Hub-controlled id that is an absolute/dist path", async () => {
+    const runNode = vi.fn(async () => ({ stdout: JSON.stringify({ status: "published", id: "/tmp/dist/packages/secret", gate: "team", releaseId: "organization__acme/a@0.1.0", digest: DIGEST }), stderr: "", exitCode: 0 }));
+    const r = await handleHubCommand(["publish", "a", "--json"], deps({ runNode }));
+    const out = JSON.parse(r.stdout);
+    expect(out.id).toBe("a"); // fell back to the caller's assetId
+    expect(JSON.stringify(out)).not.toContain("dist/packages");
+    expect(JSON.stringify(out)).not.toContain("/tmp/");
   });
 });
 

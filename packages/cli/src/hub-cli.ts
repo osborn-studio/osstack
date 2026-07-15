@@ -52,20 +52,39 @@ interface ParsedFlags {
   allowDirty: boolean;
 }
 
-function parseFlags(args: string[]): ParsedFlags {
-  const out: ParsedFlags = { positional: [], reuseScope: "team", gate: "team", surfaces: "api", json: false, allowDirty: false };
+const REUSE_SCOPES = new Set(["personal", "team", "client", "commercial"]);
+const GATES = new Set(["draft", "team", "client", "commercial", "embedded"]);
+const SURFACES = new Set(["api", "store", "none"]);
+
+/** A flag value must exist and NOT itself be an option token (blocks
+ *  `--surfaces --no-push` style option injection into the child arg array). */
+function flagValue(args: string[], i: number): string | undefined {
+  const v = args[i];
+  if (v === undefined || v.startsWith("--")) return undefined;
+  return v;
+}
+
+function parseFlags(args: string[]): ParsedFlags & { invalid?: string } {
+  const out: ParsedFlags & { invalid?: string } = { positional: [], reuseScope: "team", gate: "team", surfaces: "api", json: false, allowDirty: false };
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     switch (a) {
-      case "--namespace": { const v = args[++i]; if (v !== undefined) out.namespace = v; break; }
-      case "--reuse-scope": out.reuseScope = args[++i] ?? out.reuseScope; break;
-      case "--gate": out.gate = args[++i] ?? out.gate; break;
-      case "--surfaces": out.surfaces = args[++i] ?? out.surfaces; break;
+      case "--namespace": { const v = flagValue(args, ++i); if (v === undefined) out.invalid ??= "--namespace"; else out.namespace = v; break; }
+      case "--reuse-scope": { const v = flagValue(args, ++i); if (v === undefined) out.invalid ??= "--reuse-scope"; else out.reuseScope = v; break; }
+      case "--gate": { const v = flagValue(args, ++i); if (v === undefined) out.invalid ??= "--gate"; else out.gate = v; break; }
+      case "--surfaces": { const v = flagValue(args, ++i); if (v === undefined) out.invalid ??= "--surfaces"; else out.surfaces = v; break; }
       case "--json": out.json = true; break;
       case "--allow-dirty": out.allowDirty = true; break;
       default:
         if (a !== undefined && !a.startsWith("--")) out.positional.push(a);
+        else if (a !== undefined) out.invalid ??= a; // unknown flag
     }
+  }
+  // enum validation (rejects injected option tokens masquerading as values)
+  if (out.invalid === undefined) {
+    if (!REUSE_SCOPES.has(out.reuseScope)) out.invalid = "--reuse-scope";
+    else if (!GATES.has(out.gate)) out.invalid = "--gate";
+    else if (!SURFACES.has(out.surfaces)) out.invalid = "--surfaces";
   }
   return out;
 }
@@ -92,6 +111,9 @@ export async function handleHubCommand(args: string[], deps: HubCliDeps): Promis
   const env = deps.env ?? process.env;
   const sub = args[0];
   const flags = parseFlags(args.slice(1));
+  if (flags.invalid !== undefined) {
+    return fail(flags.json, 1, { status: "error", reasons: ["invalid_flag"], message: `invalid or option-injected value for ${flags.invalid}` });
+  }
   const hubRoot = resolveHubRoot(env);
   if (hubRoot === undefined) {
     return fail(flags.json, 1, { status: "error", reasons: ["no_hub_root"], message: "set OSSTACK_HUB_ROOT (or HUB_ROOT)" });
@@ -117,11 +139,18 @@ async function runCandidate(hubRoot: string, flags: ParsedFlags, deps: HubCliDep
     // Refuse a dirty external source unless explicitly allowed.
     return fail(flags.json, 2, { status: "blocked", reasons: ["dirty_source"], message: "source has uncommitted changes; re-run with --allow-dirty to register a dirty reference" });
   }
+  // A dirty source can NEVER pass a client/commercial gate — refuse it outright
+  // (even with --allow-dirty), rather than record a claim the Hub can't enforce.
+  if (source.dirty && (flags.reuseScope === "client" || flags.reuseScope === "commercial")) {
+    return fail(flags.json, 2, { status: "blocked", reasons: ["dirty_source_elevated_scope"], message: `a dirty source cannot be registered at reuse_scope=${flags.reuseScope}` });
+  }
 
-  // Register ONLY the external source reference — never copy working source.
+  // Register ONLY the external source reference — never copy working source. The
+  // Hub companion CLI derives asset identity from the asset manifest and calls
+  // registerCandidate (source reference only, no promotion).
   const script = pathResolve(hubRoot, "tooling", "register_candidate_cli.mjs");
   const argv = [
-    assetPath,
+    "--asset-path", assetPath,
     "--namespace", `${namespace.kind}/${namespace.id}`,
     "--reuse-scope", flags.reuseScope,
     "--repository", source.repository,
@@ -131,16 +160,22 @@ async function runCandidate(hubRoot: string, flags: ParsedFlags, deps: HubCliDep
     "--json",
   ];
   const { stdout, exitCode } = await deps.runNode(script, argv);
-  if (exitCode !== 0) {
-    return fail(flags.json, exitCode === 2 ? 2 : 1, { status: exitCode === 2 ? "blocked" : "error", reasons: parseReasons(stdout) });
-  }
   const parsed = safeJson(stdout);
+  // STRICT mapping: registered -> 0; explicit blocked -> 2; everything else
+  // (including exit 0 with malformed output) -> error (1). Never trust an
+  // arbitrary child exit code.
+  const status = parsed !== undefined ? String(parsed["status"] ?? "") : "";
+  if (exitCode !== 0 || status !== "registered") {
+    const code = status === "blocked" ? 2 : 1;
+    return fail(flags.json, code, { status: status === "blocked" ? "blocked" : "error", reasons: parsed !== undefined ? parseReasons(stdout) : ["malformed_output"] });
+  }
+  const p = parsed as Record<string, unknown>; // defined: status === "registered"
   const result = {
     status: "registered" as const,
     namespace: `${namespace.kind}/${namespace.id}`,
     reuse_scope: flags.reuseScope,
     source_dirty: source.dirty === true,
-    ...(parsed !== undefined && typeof parsed["candidate_id"] === "string" ? { candidate_id: parsed["candidate_id"] } : {}),
+    ...(typeof p["candidate_id"] === "string" ? { candidate_id: p["candidate_id"] } : {}),
   };
   return { exitCode: 0, stdout: flags.json ? JSON.stringify(result) : `registered candidate for ${result.namespace} (dirty: ${result.source_dirty})` };
 }
@@ -153,18 +188,21 @@ async function runPublish(hubRoot: string, flags: ParsedFlags, deps: HubCliDeps)
   // Route to the Hub publish command (contract 1.1). Argument array, no shell.
   const script = pathResolve(hubRoot, "tooling", "osstack_publish.mjs");
   const argv = [assetId, "--gate", flags.gate, "--surfaces", flags.surfaces, "--json"];
-  const { stdout, exitCode } = await deps.runNode(script, argv);
+  const { stdout } = await deps.runNode(script, argv);
 
   const parsed = safeJson(stdout);
   if (parsed === undefined) {
-    return fail(flags.json, exitCode === 0 ? 1 : exitCode, { status: "error", reasons: ["malformed_output"] });
+    return fail(flags.json, 1, { status: "error", reasons: ["malformed_output"] });
   }
   const status = String(parsed["status"] ?? "error");
+  // Sanitize the Hub-controlled id: use it only if it is a safe asset id, else
+  // fall back to the caller's assetId (never echo an absolute/dist path).
+  const id = safeAssetId(parsed["id"]) ?? assetId;
   const out: Record<string, unknown> = {
     status,
-    id: parsed["id"] ?? assetId,
-    gate: parsed["gate"] ?? flags.gate,
-    reasons: parsed["reasons"] ?? [],
+    id,
+    gate: GATES.has(String(parsed["gate"])) ? parsed["gate"] : flags.gate,
+    reasons: Array.isArray(parsed["reasons"]) ? parsed["reasons"] : [],
   };
   if (status === "published") {
     // Release identity ONLY on success; identity is logical (never a dist/
@@ -196,6 +234,10 @@ function safeStorageKey(value: unknown): string | undefined {
 }
 function safeReleaseId(value: unknown): string | undefined {
   return typeof value === "string" && RELEASE_ID_RE.test(value) ? value : undefined;
+}
+const ASSET_ID_RE = /^[a-z0-9][a-z0-9._-]+$/;
+function safeAssetId(value: unknown): string | undefined {
+  return typeof value === "string" && ASSET_ID_RE.test(value) ? value : undefined;
 }
 function safeNamespace(value: unknown): string | undefined {
   return typeof value === "string" && NAMESPACE_RE.test(value) ? value : undefined;
