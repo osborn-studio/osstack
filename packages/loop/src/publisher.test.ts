@@ -58,6 +58,19 @@ describe("toPublishedAssetEvidence", () => {
     expect(e.storage_key).toBe("organization__osborn/research.alpha/0.1.0");
   });
 
+  it("rejects drive-relative + case-insensitive dist/packages storage keys", () => {
+    const drive = toPublishedAssetEvidence(publishedResult({ storage_key: "C:relative/secret" }), "team");
+    expect(drive.storage_key).toBeUndefined();
+    const upper = toPublishedAssetEvidence(publishedResult({ storage_key: undefined, packagePath: "DIST/PACKAGES/x" }), "team");
+    expect(upper.storage_key).toBeUndefined();
+  });
+
+  it("DROPS an absolute/dist path smuggled via releaseId or namespace", () => {
+    const e = toPublishedAssetEvidence(publishedResult({ releaseId: "/Volumes/AIMATE_WORK/private/release", namespace: "dist/packages/private" }), "team");
+    expect(e.release_id).toBeUndefined();
+    expect(e.namespace).toBeUndefined();
+  });
+
   it("emits NO release identity on a blocked/error result", () => {
     const blocked = PublishResult.parse({ contract: "1.1", status: "blocked", id: "research.alpha", gate: "team", durationMs: 1, reasons: ["score<gate"] });
     const e = toPublishedAssetEvidence(blocked, "team");

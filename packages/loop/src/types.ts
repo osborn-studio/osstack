@@ -157,10 +157,12 @@ export const PublishedAssetEvidence = z.object({
   status: z.enum(["published", "blocked", "error"]),
   asset_id: z.string(),
   gate: z.enum(["team", "client", "commercial"]),
-  release_id: z.string().optional(),
+  // Identity fields are shape-bound so an absolute/dist path can never be
+  // persisted as a "release id"/"namespace"/"locator" and rendered verbatim.
+  release_id: z.string().regex(/^[a-z0-9][a-z0-9-]*__[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9._-]*@[0-9][0-9A-Za-z.-]*$/).optional(),
   digest: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional(),
-  namespace: z.string().optional(),
-  storage_key: z.string().optional(),
+  namespace: z.string().regex(/^(personal|organization)\/[a-z0-9][a-z0-9-]*$/).optional(),
+  storage_key: z.string().regex(/^[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._@-]*)+$/).optional(),
   reasons: z.array(z.string()).default([]),
 });
 export type PublishedAssetEvidence = z.infer<typeof PublishedAssetEvidence>;

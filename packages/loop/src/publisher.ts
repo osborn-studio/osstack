@@ -130,15 +130,31 @@ function parsePublishOutput(skillId: string, stdout: string): PublishResult {
 // ── Durable release evidence mapping (Phase 2B) ──────────────────────────
 
 const DIGEST_RE = /^sha256:[a-f0-9]{64}$/;
+// release_id = <ns-kind>__<ns-id>/<asset-id>@<version>; namespace = <kind>/<id>.
+const RELEASE_ID_RE = /^[a-z0-9][a-z0-9-]*__[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9._-]*@[0-9][0-9A-Za-z.-]*$/;
+const NAMESPACE_RE = /^(personal|organization)\/[a-z0-9][a-z0-9-]*$/;
 
 /** Accept only a logical, relative locator — never a dist/packages path or an
- *  absolute Mac-mini store path. Returns undefined if the value is unsafe. */
-function safeStorageKey(value: unknown): string | undefined {
+ *  absolute/drive path. Rejects ANY drive prefix (incl. drive-relative like
+ *  "C:x"), backslashes, a leading "/", and dist/packages CASE-INSENSITIVELY
+ *  (case-insensitive filesystems alias DIST/PACKAGES). */
+export function safeStorageKey(value: unknown): string | undefined {
   if (typeof value !== "string" || value.length === 0) return undefined;
-  if (value.startsWith("/") || /^[A-Za-z]:[\\/]/.test(value) || value.includes("\\")) return undefined;
-  if (value.startsWith("dist/") || value.includes("dist/packages")) return undefined;
+  if (value.startsWith("/") || /^[A-Za-z]:/.test(value) || value.includes("\\")) return undefined;
+  if (/(^|\/)dist\/packages(\/|$)/i.test(value) || /^dist\//i.test(value)) return undefined;
   if (value.split("/").some((seg) => seg === "" || seg === "." || seg === "..")) return undefined;
   return value;
+}
+
+/** Accept a release_id only if it matches the logical identity shape (never an
+ *  absolute path / dist path masquerading as an id). */
+export function safeReleaseId(value: unknown): string | undefined {
+  return typeof value === "string" && RELEASE_ID_RE.test(value) ? value : undefined;
+}
+
+/** Accept a namespace only in <kind>/<id> logical form. */
+export function safeNamespace(value: unknown): string | undefined {
+  return typeof value === "string" && NAMESPACE_RE.test(value) ? value : undefined;
 }
 
 const PUBLISH_GATES = ["team", "client", "commercial"] as const;
@@ -169,10 +185,12 @@ export function toPublishedAssetEvidence(
   };
   if (status !== "published") return base;
 
-  const releaseId = typeof extra["releaseId"] === "string" ? (extra["releaseId"] as string) : undefined;
+  // Validate EVERY identity field — never persist an absolute/dist path smuggled
+  // in via releaseId or namespace (they are rendered verbatim in report/events).
+  const releaseId = safeReleaseId(extra["releaseId"]);
   const digestRaw = typeof extra["digest"] === "string" ? (extra["digest"] as string) : undefined;
   const digest = digestRaw !== undefined && DIGEST_RE.test(digestRaw) ? digestRaw : undefined;
-  const namespace = typeof extra["namespace"] === "string" ? (extra["namespace"] as string) : undefined;
+  const namespace = safeNamespace(extra["namespace"]);
   const storageKey = safeStorageKey(extra["storage_key"]) ?? safeStorageKey(extra["packagePath"]);
 
   return {
