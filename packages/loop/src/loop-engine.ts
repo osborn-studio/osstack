@@ -1010,7 +1010,7 @@ export class LoopEngine {
       task_id: task.task_id,
       skill_id: skillId,
       status: result.status,
-      reasons: result.reasons ?? [],
+      reasons: evidence.reasons, // REDACTED — never the raw Hub reasons (leaks to events.jsonl)
     });
     const marker = publishCfg.onFailure === "block" ? " [NEEDS-ATTENTION]" : "";
     decisions.push(

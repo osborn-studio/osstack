@@ -495,7 +495,7 @@ describe("LoopEngine", () => {
         status: "blocked",
         id: "signals.blocked-skill",
         durationMs: 100,
-        reasons: ["score<gate"],
+        reasons: ["score<gate", "leak at /Volumes/AIMATE_WORK/osborn-hub-store/v1/client-secret"],
       }),
       exitCode: 2,
     }));
@@ -514,16 +514,13 @@ describe("LoopEngine", () => {
       task_id: "skill-task-2",
       outcome: "success",
     });
-    expect(result.events).toContainEqual(expect.objectContaining({
-      type: "loop.skill.publish_blocked",
-      payload: expect.objectContaining({
-        task_id: "skill-task-2",
-        skill_id: "signals.blocked-skill",
-        status: "blocked",
-        reasons: ["score<gate"],
-      }),
-    }));
+    const blockedEvent = result.events.find((e) => e.type === "loop.skill.publish_blocked");
+    expect(blockedEvent?.payload).toMatchObject({ task_id: "skill-task-2", skill_id: "signals.blocked-skill", status: "blocked" });
+    // the event payload reasons are REDACTED — no absolute store path leaks to events.jsonl
+    expect(JSON.stringify(blockedEvent?.payload)).not.toContain("/Volumes/");
+    expect((blockedEvent?.payload as { reasons: string[] }).reasons).toContain("score<gate");
     expect(result.state.decisions?.some((line) => line.includes("NEEDS-ATTENTION"))).toBe(true);
+    expect(result.state.decisions?.some((line) => line.includes("/Volumes/"))).toBe(false);
   });
 
   it("never calls runPublish when publish.enabled is false", async () => {
