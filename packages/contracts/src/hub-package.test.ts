@@ -54,4 +54,44 @@ describe("Hub Package v1 contract (osstack consumer mirror)", () => {
     bad.files = [];
     expect(() => parseHubPackage(bad)).toThrow();
   });
+
+  it("enforces asset.id and namespace.id patterns", async () => {
+    const badAsset = (await vector("team-skill-package.json")) as Record<string, unknown>;
+    (badAsset.asset as Record<string, unknown>).id = "Not Valid ID";
+    expect(() => parseHubPackage(badAsset)).toThrow();
+    const badNs = (await vector("team-skill-package.json")) as Record<string, unknown>;
+    (badNs.namespace as Record<string, unknown>).id = "Bad_NS";
+    expect(() => parseHubPackage(badNs)).toThrow();
+  });
+
+  it("rejects unknown keys on the CLOSED asset / namespace objects", async () => {
+    const badAsset = (await vector("team-skill-package.json")) as Record<string, unknown>;
+    (badAsset.asset as Record<string, unknown>).sneaky = true;
+    expect(() => parseHubPackage(badAsset)).toThrow();
+    const badNs = (await vector("team-skill-package.json")) as Record<string, unknown>;
+    (badNs.namespace as Record<string, unknown>).sneaky = true;
+    expect(() => parseHubPackage(badNs)).toThrow();
+  });
+
+  it("rejects empty evidence fields and empty file paths", async () => {
+    const badEv = (await vector("team-skill-package.json")) as Record<string, unknown>;
+    (badEv.evidence as Record<string, unknown>).evals = "";
+    expect(() => parseHubPackage(badEv)).toThrow();
+    const badPath = (await vector("team-skill-package.json")) as Record<string, unknown>;
+    const files = badPath.files as Record<string, unknown>[];
+    files[0] = { ...files[0], path: "" };
+    expect(() => parseHubPackage(badPath)).toThrow();
+  });
+
+  it("rejects a non-date-time release.created_at", async () => {
+    const bad = (await vector("team-skill-package.json")) as Record<string, unknown>;
+    (bad.release as Record<string, unknown>).created_at = "yesterday";
+    expect(() => parseHubPackage(bad)).toThrow();
+  });
+
+  it("requires >=1 client_restriction for a client-scope release", async () => {
+    const bad = (await vector("client-restricted-package.json")) as Record<string, unknown>;
+    (bad.rights as Record<string, unknown>).client_restrictions = [];
+    expect(() => parseHubPackage(bad)).toThrow(/client_restriction/);
+  });
 });
