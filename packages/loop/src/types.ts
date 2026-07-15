@@ -149,6 +149,22 @@ export const IssueAudit = z.object({
 });
 export type IssueAudit = z.infer<typeof IssueAudit>;
 
+// Durable, auditable evidence of a Hub publication attempt (Phase 2B). Identity
+// is the logical release digest + storage_key — NEVER a dist/packages path or a
+// Mac-mini absolute store path. release_id/digest appear ONLY on a successful
+// published result; blocked/error carry status + reasons but no release identity.
+export const PublishedAssetEvidence = z.object({
+  status: z.enum(["published", "blocked", "error"]),
+  asset_id: z.string(),
+  gate: z.enum(["team", "client", "commercial"]),
+  release_id: z.string().optional(),
+  digest: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional(),
+  namespace: z.string().optional(),
+  storage_key: z.string().optional(),
+  reasons: z.array(z.string()).default([]),
+});
+export type PublishedAssetEvidence = z.infer<typeof PublishedAssetEvidence>;
+
 export const CompletedTask = z.object({
   task_id: z.string(),
   capability: z.string().optional(),
@@ -190,6 +206,8 @@ export const CompletedTask = z.object({
   proposal_ids: z.array(z.string()).optional(),
   assetization_summary: z.string().optional(),
   self_improvement_level: z.number().int().min(0).max(6).optional(),
+  /** Immutable Hub release evidence, attached only after a publish attempt. */
+  published_asset: PublishedAssetEvidence.optional(),
 });
 export type CompletedTask = z.infer<typeof CompletedTask>;
 
@@ -329,6 +347,7 @@ export const LoopEventType = z.enum([
   "loop.queue.archived",
   "loop.skill.published",
   "loop.skill.publish_blocked",
+  "loop.skill.release_recorded",
   "loop.lesson.drafted",
   "loop.self_improvement.done",
   "loop.self_improvement.failed",

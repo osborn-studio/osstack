@@ -417,6 +417,67 @@ describe("LoopEngine", () => {
     expect(result.state.decisions?.some((line) => line.includes("published signals.group-effect-ledger to hub"))).toBe(true);
   });
 
+  it("attaches published_asset evidence and emits loop.skill.release_recorded with the immutable release identity", async () => {
+    const workspace = mkdtempSync(join(tmpdir(), "osstack-loop-engine-release-"));
+    await mkdir(join(workspace, "tasks"));
+    await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
+      task_id: "skill-task-rel",
+      capability: "skill.publish",
+      prompt: "Publish the skill",
+      priority: 80,
+      context: { publish: { skillId: "signals.group-effect-ledger" } },
+    }));
+
+    const DIGEST = `sha256:${"a".repeat(64)}`;
+    const runCommand = vi.fn(async () => ({
+      stdout: JSON.stringify({
+        contract: "1.1",
+        status: "published",
+        id: "signals.group-effect-ledger",
+        score: 100,
+        gate: "team",
+        apiVerified: true,
+        durationMs: 1234,
+        releaseId: "organization__osborn/signals.group-effect-ledger@0.1.0",
+        digest: DIGEST,
+        namespace: "organization/osborn",
+        storage_key: "organization__osborn/signals.group-effect-ledger/0.1.0",
+      }),
+      exitCode: 0,
+    }));
+    const publishDeps: RunPublishDeps = { runCommand, sleep: async () => {} };
+
+    const result = await new LoopEngine({
+      loopId: "loop-release-recorded",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('loop-output.txt', 'ok')\"",
+      publish: PublishConfig.parse({ enabled: true }),
+      publishDeps,
+    }).runOnce();
+
+    // release identity persisted on the completed task
+    expect(result.state.completed_tasks[0]?.published_asset).toMatchObject({
+      status: "published",
+      asset_id: "signals.group-effect-ledger",
+      gate: "team",
+      release_id: "organization__osborn/signals.group-effect-ledger@0.1.0",
+      digest: DIGEST,
+      namespace: "organization/osborn",
+      storage_key: "organization__osborn/signals.group-effect-ledger/0.1.0",
+    });
+    // distinct additive event carrying the release identity
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.skill.release_recorded",
+      payload: expect.objectContaining({
+        release_id: "organization__osborn/signals.group-effect-ledger@0.1.0",
+        digest: DIGEST,
+      }),
+    }));
+    // both events present (existing + new), not a replacement
+    expect(result.events.some((e) => e.type === "loop.skill.published")).toBe(true);
+  });
+
   it("emits loop.skill.publish_blocked and keeps the task success when publish is blocked", async () => {
     const workspace = mkdtempSync(join(tmpdir(), "osstack-loop-engine-publish-blocked-"));
     await mkdir(join(workspace, "tasks"));

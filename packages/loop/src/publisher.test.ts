@@ -5,9 +5,69 @@ import {
   PublishResult,
   runPublish,
   skillIdOf,
+  toPublishedAssetEvidence,
   type RunPublishDeps,
 } from "./publisher.js";
 import type { Task } from "./types.js";
+
+const DIGEST = `sha256:${"a".repeat(64)}`;
+
+function publishedResult(extra: Record<string, unknown> = {}): PublishResult {
+  return PublishResult.parse({
+    contract: "1.1",
+    status: "published",
+    id: "research.alpha",
+    gate: "team",
+    durationMs: 1,
+    releaseId: "organization__osborn/research.alpha@0.1.0",
+    digest: DIGEST,
+    namespace: "organization/osborn",
+    storage_key: "organization__osborn/research.alpha/0.1.0",
+    ...extra,
+  });
+}
+
+describe("toPublishedAssetEvidence", () => {
+  it("preserves release identity + safe storage_key on a published result", () => {
+    const e = toPublishedAssetEvidence(publishedResult(), "team");
+    expect(e).toMatchObject({
+      status: "published",
+      asset_id: "research.alpha",
+      gate: "team",
+      release_id: "organization__osborn/research.alpha@0.1.0",
+      digest: DIGEST,
+      namespace: "organization/osborn",
+      storage_key: "organization__osborn/research.alpha/0.1.0",
+    });
+  });
+
+  it("drops a malformed digest instead of persisting it", () => {
+    const e = toPublishedAssetEvidence(publishedResult({ digest: "sha256:not-hex" }), "team");
+    expect(e.digest).toBeUndefined();
+  });
+
+  it("NEVER records a dist/packages path or an absolute path as storage_key", () => {
+    const dist = toPublishedAssetEvidence(publishedResult({ storage_key: undefined, packagePath: "dist/packages/organization__osborn/research.alpha/0.1.0" }), "team");
+    expect(dist.storage_key).toBeUndefined();
+    const abs = toPublishedAssetEvidence(publishedResult({ storage_key: "/Volumes/AIMATE_WORK/osborn-hub-store/v1/x" }), "team");
+    expect(abs.storage_key).toBeUndefined();
+  });
+
+  it("falls back to a SAFE packagePath (relative locator) when storage_key absent", () => {
+    const e = toPublishedAssetEvidence(publishedResult({ storage_key: undefined, packagePath: "organization__osborn/research.alpha/0.1.0" }), "team");
+    expect(e.storage_key).toBe("organization__osborn/research.alpha/0.1.0");
+  });
+
+  it("emits NO release identity on a blocked/error result", () => {
+    const blocked = PublishResult.parse({ contract: "1.1", status: "blocked", id: "research.alpha", gate: "team", durationMs: 1, reasons: ["score<gate"] });
+    const e = toPublishedAssetEvidence(blocked, "team");
+    expect(e.status).toBe("blocked");
+    expect(e.release_id).toBeUndefined();
+    expect(e.digest).toBeUndefined();
+    expect(e.storage_key).toBeUndefined();
+    expect(e.reasons).toEqual(["score<gate"]);
+  });
+});
 
 function baseConfig(overrides: Partial<PublishConfig> = {}): PublishConfig {
   return PublishConfig.parse(overrides);

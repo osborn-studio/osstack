@@ -384,3 +384,83 @@ function worktreeEvent(): LoopEvent {
     },
   };
 }
+
+describe("published assets rendering", () => {
+  const DIGEST = `sha256:${"a".repeat(64)}`;
+  it("renders a Published Assets table with release identity from evidence", () => {
+    const report = createLoopStateReport({
+      loop_id: "loop-pub",
+      started_at: "2026-07-15T00:00:00.000Z",
+      updated_at: "2026-07-15T00:05:00.000Z",
+      completed_tasks: [{
+        task_id: "task-pub",
+        outcome: "success",
+        iterations: 1,
+        agent_id: "claude-code",
+        duration_ms: 100,
+        published_asset: {
+          status: "published",
+          asset_id: "research.alpha",
+          gate: "team",
+          release_id: "organization__osborn/research.alpha@0.1.0",
+          digest: DIGEST,
+          namespace: "organization/osborn",
+          storage_key: "organization__osborn/research.alpha/0.1.0",
+          reasons: [],
+        },
+      }],
+      in_progress: [],
+      pending: [],
+      decisions: [],
+    });
+    const md = renderLoopStateReportMarkdown(report);
+    expect(md).toContain("## Published Assets");
+    expect(md).toContain("organization__osborn/research.alpha@0.1.0");
+    expect(md).toContain(DIGEST);
+    // never leaks a dist path or absolute store path
+    expect(md).not.toContain("dist/packages");
+    expect(md).not.toContain("/Volumes/");
+  });
+
+  it("renders `unknown` for a blocked publish and never invents a release", () => {
+    const report = createLoopStateReport({
+      loop_id: "loop-pub-blocked",
+      started_at: "2026-07-15T00:00:00.000Z",
+      updated_at: "2026-07-15T00:05:00.000Z",
+      completed_tasks: [{
+        task_id: "task-blocked",
+        outcome: "success",
+        iterations: 1,
+        agent_id: "claude-code",
+        duration_ms: 100,
+        published_asset: {
+          status: "blocked",
+          asset_id: "client.secret",
+          gate: "client",
+          reasons: ["missing client_restrictions"],
+        },
+      }],
+      in_progress: [],
+      pending: [],
+      decisions: [],
+    });
+    const md = renderLoopStateReportMarkdown(report);
+    expect(md).toContain("## Published Assets");
+    expect(md).toContain("| task-blocked | client.secret | blocked | client | unknown | unknown | unknown | missing client_restrictions |");
+  });
+
+  it("shows None when no task attempted a publish", () => {
+    const report = createLoopStateReport({
+      loop_id: "loop-nopub",
+      started_at: "2026-07-15T00:00:00.000Z",
+      updated_at: "2026-07-15T00:05:00.000Z",
+      completed_tasks: [{ task_id: "t", outcome: "success", iterations: 1, agent_id: "x", duration_ms: 1 }],
+      in_progress: [],
+      pending: [],
+      decisions: [],
+    });
+    const md = renderLoopStateReportMarkdown(report);
+    const section = md.split("## Published Assets")[1]?.split("##")[0] ?? "";
+    expect(section).toContain("- None");
+  });
+});

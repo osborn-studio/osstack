@@ -5,7 +5,7 @@
 import { spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 import { z } from "zod";
-import type { Task } from "./types.js";
+import type { PublishedAssetEvidence, Task } from "./types.js";
 
 const DEFAULT_COMMAND =
   "/Volumes/AIMATE_WORK/Developer/ClaudeCode/01_active/osborn-studio-skill-hub/tooling/osstack_publish.mjs";
@@ -124,6 +124,63 @@ function parsePublishOutput(skillId: string, stdout: string): PublishResult {
     durationMs: 0,
     reasons: ["malformed_output"],
     message: stdout.trim().slice(-300),
+  };
+}
+
+// ── Durable release evidence mapping (Phase 2B) ──────────────────────────
+
+const DIGEST_RE = /^sha256:[a-f0-9]{64}$/;
+
+/** Accept only a logical, relative locator — never a dist/packages path or an
+ *  absolute Mac-mini store path. Returns undefined if the value is unsafe. */
+function safeStorageKey(value: unknown): string | undefined {
+  if (typeof value !== "string" || value.length === 0) return undefined;
+  if (value.startsWith("/") || /^[A-Za-z]:[\\/]/.test(value) || value.includes("\\")) return undefined;
+  if (value.startsWith("dist/") || value.includes("dist/packages")) return undefined;
+  if (value.split("/").some((seg) => seg === "" || seg === "." || seg === "..")) return undefined;
+  return value;
+}
+
+const PUBLISH_GATES = ["team", "client", "commercial"] as const;
+function normalizeGate(value: unknown, fallback: PublishConfig["gate"]): PublishConfig["gate"] {
+  return (PUBLISH_GATES as readonly string[]).includes(value as string)
+    ? (value as PublishConfig["gate"]) : fallback;
+}
+
+/**
+ * Map a Hub publish result into durable, auditable PublishedAssetEvidence.
+ * release_id/digest are attached ONLY on a successful `published` result; a
+ * malformed digest is dropped. storage_key comes from the safe locator
+ * (`storage_key`, or a `packagePath` only if it is a safe relative locator —
+ * never dist/packages). blocked/error carry status + reasons, no release identity.
+ */
+export function toPublishedAssetEvidence(
+  result: PublishResult,
+  defaultGate: PublishConfig["gate"],
+): PublishedAssetEvidence {
+  const extra = result as Record<string, unknown>;
+  const status: PublishedAssetEvidence["status"] =
+    result.status === "published" ? "published" : result.status === "blocked" ? "blocked" : "error";
+  const base: PublishedAssetEvidence = {
+    status,
+    asset_id: result.id,
+    gate: normalizeGate(result.gate ?? undefined, defaultGate),
+    reasons: result.reasons ?? [],
+  };
+  if (status !== "published") return base;
+
+  const releaseId = typeof extra["releaseId"] === "string" ? (extra["releaseId"] as string) : undefined;
+  const digestRaw = typeof extra["digest"] === "string" ? (extra["digest"] as string) : undefined;
+  const digest = digestRaw !== undefined && DIGEST_RE.test(digestRaw) ? digestRaw : undefined;
+  const namespace = typeof extra["namespace"] === "string" ? (extra["namespace"] as string) : undefined;
+  const storageKey = safeStorageKey(extra["storage_key"]) ?? safeStorageKey(extra["packagePath"]);
+
+  return {
+    ...base,
+    ...(releaseId !== undefined ? { release_id: releaseId } : {}),
+    ...(digest !== undefined ? { digest } : {}),
+    ...(namespace !== undefined ? { namespace } : {}),
+    ...(storageKey !== undefined ? { storage_key: storageKey } : {}),
   };
 }
 
