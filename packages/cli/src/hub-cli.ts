@@ -194,7 +194,10 @@ async function runPublish(hubRoot: string, flags: ParsedFlags, deps: HubCliDeps)
   if (parsed === undefined) {
     return fail(flags.json, 1, { status: "error", reasons: ["malformed_output"] });
   }
-  const status = String(parsed["status"] ?? "error");
+  // Normalize the Hub-controlled status to the supported contract values — a
+  // raw status string could carry a path/secret into JSON + text output.
+  const rawStatus = String(parsed["status"] ?? "");
+  const status = rawStatus === "published" ? "published" : rawStatus === "blocked" ? "blocked" : "error";
   // Sanitize the Hub-controlled id AND the caller's assetId (either could be a
   // path); reasons are redacted. Never echo an absolute/dist path or a secret.
   const id = safeAssetId(parsed["id"]) ?? safeAssetId(assetId) ?? "redacted";

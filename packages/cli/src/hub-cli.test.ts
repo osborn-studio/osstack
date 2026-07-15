@@ -102,6 +102,14 @@ describe("osstack hub option-injection + exit mapping + leak safety", () => {
     expect(JSON.parse(cand.stdout).status).toBe("error");
   });
 
+  it("normalizes a malicious Hub-controlled status to a contract value", async () => {
+    const runNode = vi.fn(async () => ({ stdout: JSON.stringify({ status: "published /Volumes/AIMATE_WORK/secret", id: "research.alpha", gate: "team" }), stderr: "", exitCode: 0 }));
+    const r = await handleHubCommand(["publish", "research.alpha", "--json"], deps({ runNode }));
+    const out = JSON.parse(r.stdout);
+    expect(["published", "blocked", "error"]).toContain(out.status);
+    expect(JSON.stringify(out)).not.toContain("/Volumes/");
+  });
+
   it("sanitizes a Hub-controlled id that is an absolute/dist path (+ redacts reasons)", async () => {
     const runNode = vi.fn(async () => ({ stdout: JSON.stringify({ status: "published", id: "/tmp/dist/packages/secret", gate: "team", releaseId: "organization__acme/research.alpha@0.1.0", digest: DIGEST, reasons: ["see /Volumes/AIMATE_WORK/osborn-hub-store/v1/client-secret"] }), stderr: "", exitCode: 0 }));
     const r = await handleHubCommand(["publish", "research.alpha", "--json"], deps({ runNode }));

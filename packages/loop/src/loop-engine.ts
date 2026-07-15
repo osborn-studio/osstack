@@ -986,7 +986,7 @@ export class LoopEngine {
         task_id: task.task_id,
         skill_id: skillId,
         score: result.score ?? null,
-        gate: result.gate ?? publishCfg.gate,
+        gate: evidence.gate, // normalized enum — never the raw Hub-controlled gate string
         apiVerified: result.apiVerified ?? false,
       });
       // Record immutable release identity as a distinct, additive event.
