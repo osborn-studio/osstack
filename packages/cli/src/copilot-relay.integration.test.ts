@@ -98,7 +98,8 @@ describe("Copilot Relay daemon restart contract", () => {
 
     daemon = await startDaemon({ socketPath, adapters: [adapter] });
     const params = {
-      session_id: "session-relay", turn_id: "turn-relay", message_id: "feishu-message-1",
+      session_id: "session-relay", runtime_id: adapter.id,
+      turn_id: "turn-relay", message_id: "feishu-message-1",
       expected_version: 2, text: "采用方案 A",
     };
     const applied = await rpc(socketPath, "session.send", params);
@@ -113,7 +114,10 @@ describe("Copilot Relay daemon restart contract", () => {
     expect(replay).toMatchObject({ ok: true, result: { state: "duplicate", session_version: 4 } });
     expect(snapshot).toMatchObject({
       ok: true,
-      result: { session_id: "session-relay", version: 4, assistant_text: "继续完成测试" },
+      result: {
+        session_id: "session-relay", runtime_id: adapter.id,
+        version: 4, assistant_text: "继续完成测试",
+      },
     });
     expect(adapter.resumed).toHaveLength(1);
     expect(adapter.resumed[0]?.native_session_id).toBe("native-codex-thread-secret");

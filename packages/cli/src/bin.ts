@@ -13219,7 +13219,7 @@ async function handleSessionCommand(args: string[]): Promise<number> {
   osstack session start --request-id <id> --agent <id> --repo <path> --title <title> --text <prompt> [--json]
   osstack session status <session_id> [--json]
   osstack session snapshot <session_id> [--json]
-  osstack session send <session_id> --turn <turn_id> --message-id <id> \\
+  osstack session send <session_id> --runtime <id> --turn <turn_id> --message-id <id> \\
     --expected-version <n> --text <instruction> [--requested-by <actor>] [--json]
 `);
     return 0;
@@ -13286,18 +13286,20 @@ async function handleSessionCommand(args: string[]): Promise<number> {
     }
     const expectedVersion = Number(flags["expected-version"]);
     if (
-      flags["turn"] === undefined
+      flags["runtime"] === undefined
+      || flags["turn"] === undefined
       || flags["message-id"] === undefined
       || flags["text"] === undefined
       || !Number.isInteger(expectedVersion)
       || expectedVersion < 1
     ) {
-      console.error("osstack: session send requires --turn, --message-id, --expected-version, and --text");
+      console.error("osstack: session send requires --runtime, --turn, --message-id, --expected-version, and --text");
       return 1;
     }
     method = "session.send";
     params = {
       session_id: sessionId,
+      runtime_id: flags["runtime"],
       turn_id: flags["turn"],
       message_id: flags["message-id"],
       expected_version: expectedVersion,

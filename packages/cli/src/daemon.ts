@@ -352,6 +352,7 @@ function publicSession(row: ReturnType<SessionRepository["getSession"]>): Record
     task_id: row.task_id,
     run_id: row.run_id,
     agent_id: row.agent_id,
+    runtime_id: row.agent_id,
     state: row.state,
     resume_supported: row.resume_supported,
     resume_ready: row.resume_supported
@@ -415,6 +416,7 @@ function parseDecisionDirective(text: string): DecisionRequestedEvent | undefine
 
 interface SessionSendParams {
   session_id: string;
+  runtime_id: string;
   turn_id: string;
   message_id: string;
   expected_version: number;
@@ -624,7 +626,7 @@ function parseSessionSendParams(value: unknown): SessionSendParams | Error {
     return new Error("params must be an object");
   }
   const p = value as Record<string, unknown>;
-  for (const key of ["session_id", "turn_id", "message_id"] as const) {
+  for (const key of ["session_id", "runtime_id", "turn_id", "message_id"] as const) {
     if (typeof p[key] !== "string" || p[key].trim() === "" || p[key].length > 256) {
       return new Error(`params.${key} must be a non-empty string of at most 256 characters`);
     }
@@ -644,6 +646,7 @@ function parseSessionSendParams(value: unknown): SessionSendParams | Error {
   }
   return {
     session_id: p["session_id"] as string,
+    runtime_id: p["runtime_id"] as string,
     turn_id: p["turn_id"] as string,
     message_id: p["message_id"] as string,
     expected_version: p["expected_version"] as number,
@@ -661,6 +664,9 @@ async function handleSessionSend(
 
   const session = ctx.sessions.getSession(p.session_id);
   if (session === undefined) return singleErr(req.id, "not_found", "session not found");
+  if (p.runtime_id !== session.agent_id) {
+    return singleErr(req.id, "runtime_mismatch", "session belongs to another runtime");
+  }
   // Idempotency wins over moving state: a retry may arrive after the first
   // delivery already appended a newer turn or completed the conversation.
   // Let the repository compare the complete canonical envelope before any
