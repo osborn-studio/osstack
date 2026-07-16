@@ -39,6 +39,7 @@ export interface SessionSnapshot {
   task_id: string;
   run_id: string;
   agent_id: string;
+  runtime_id: string;
   state: AgentSessionStateType;
   version: number;
   turn_id: string | null;
@@ -233,6 +234,7 @@ export class SessionRepository {
       task_id: session.task_id,
       run_id: session.run_id,
       agent_id: session.agent_id,
+      runtime_id: session.agent_id,
       state: session.state,
       version: session.version,
       turn_id: parsedTurn?.turn_id ?? null,

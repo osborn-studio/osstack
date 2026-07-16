@@ -168,6 +168,7 @@ describe("governed session RPC", () => {
     expect(started).toMatchObject({
       ok: true,
       result: {
+        runtime_id: adapter.id,
         state: "idle",
         version: 3,
         resume_supported: true,
@@ -180,7 +181,7 @@ describe("governed session RPC", () => {
     const sessionId = String(started.result?.["session_id"]);
     expect(await rpc("session.snapshot", { session_id: sessionId })).toMatchObject({
       ok: true,
-      result: { assistant_text: "CANARY_READY" },
+      result: { runtime_id: adapter.id, assistant_text: "CANARY_READY" },
     });
     expect(await rpc("session.start", {
       request_id: "request_rpc_start",
@@ -201,10 +202,18 @@ describe("governed session RPC", () => {
     const snapshot = await rpc("session.snapshot", { session_id: "sess_list" });
 
     expect(listed.ok).toBe(true);
+    expect(listed.result?.["sessions"]).toEqual(expect.arrayContaining([
+      expect.objectContaining({ session_id: "sess_list", runtime_id: adapter.id }),
+    ]));
     expect(JSON.stringify(listed)).not.toContain("native-secret");
     expect(snapshot).toMatchObject({
       ok: true,
-      result: { session_id: "sess_list", turn_id: "turn_sess_list", assistant_text: "请选择方向" },
+      result: {
+        session_id: "sess_list",
+        runtime_id: adapter.id,
+        turn_id: "turn_sess_list",
+        assistant_text: "请选择方向",
+      },
     });
     expect(JSON.stringify(snapshot)).not.toContain("native-secret");
     expect(await rpc("session.list", { limit: 201 })).toMatchObject({
@@ -216,6 +225,7 @@ describe("governed session RPC", () => {
     seedSession("sess_apply");
     const params = {
       session_id: "sess_apply",
+      runtime_id: adapter.id,
       turn_id: "turn_sess_apply",
       message_id: "msg_apply",
       expected_version: 2,
@@ -249,6 +259,7 @@ describe("governed session RPC", () => {
     seedSession("sess_decision");
     const response = await rpc("session.send", {
       session_id: "sess_decision",
+      runtime_id: adapter.id,
       turn_id: "turn_sess_decision",
       message_id: "msg_decision",
       expected_version: 2,
@@ -292,6 +303,7 @@ describe("governed session RPC", () => {
     seedSession("sess_unsupported", "idle", false);
     const base = {
       session_id: "sess_guards",
+      runtime_id: adapter.id,
       turn_id: "turn_sess_guards",
       message_id: "msg_guard",
       expected_version: 2,
@@ -326,6 +338,7 @@ describe("governed session RPC", () => {
     seedSession("sess_concurrent");
     const params = {
       session_id: "sess_concurrent",
+      runtime_id: adapter.id,
       turn_id: "turn_sess_concurrent",
       message_id: "msg_concurrent",
       expected_version: 2,
@@ -360,6 +373,7 @@ describe("governed session RPC", () => {
 
     const response = await rpc("session.send", {
       session_id: "sess_recover",
+      runtime_id: adapter.id,
       turn_id: "turn_sess_recover",
       message_id: "msg_recover",
       expected_version: 2,
@@ -379,6 +393,7 @@ describe("governed session RPC", () => {
       expect(await main(["session", "snapshot", "sess_cli", "--json"])).toBe(0);
       expect(await main([
         "session", "send", "sess_cli",
+        "--runtime", adapter.id,
         "--turn", "turn_sess_cli",
         "--message-id", "msg_cli",
         "--expected-version", "2",
@@ -415,6 +430,7 @@ describe("governed session RPC", () => {
     seedSession("sess_leak");
     const response = await rpc("session.send", {
       session_id: "sess_leak",
+      runtime_id: adapter.id,
       turn_id: "turn_sess_leak",
       message_id: "msg_leak",
       expected_version: 2,
@@ -423,5 +439,22 @@ describe("governed session RPC", () => {
 
     expect(response).toMatchObject({ ok: false, error: { code: "adapter_protocol" } });
     expect(JSON.stringify(response)).not.toContain("native-secret");
+  });
+
+  it("rejects instructions addressed to a different runtime before invoking the adapter", async () => {
+    seedSession("sess_runtime_guard");
+    const resumesBefore = adapter.resumed.length;
+
+    const response = await rpc("session.send", {
+      session_id: "sess_runtime_guard",
+      runtime_id: "another-runtime",
+      turn_id: "turn_sess_runtime_guard",
+      message_id: "msg_runtime_guard",
+      expected_version: 2,
+      text: "继续",
+    });
+
+    expect(response).toMatchObject({ ok: false, error: { code: "runtime_mismatch" } });
+    expect(adapter.resumed).toHaveLength(resumesBefore);
   });
 });
