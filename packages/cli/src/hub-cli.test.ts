@@ -8,7 +8,7 @@ function deps(overrides: Partial<HubCliDeps> = {}): HubCliDeps {
   return {
     env: { OSSTACK_HUB_ROOT: "/hub" },
     resolveSource: vi.fn(async () => cleanSource),
-    runNode: vi.fn(async () => ({ stdout: JSON.stringify({ status: "registered", candidate_id: "cand-123" }), stderr: "", exitCode: 0 })),
+    runNode: vi.fn(async () => ({ stdout: JSON.stringify({ status: "registered", candidate_id: "candidate_abcdef0123456789" }), stderr: "", exitCode: 0 })),
     ...overrides,
   };
 }
@@ -18,7 +18,7 @@ describe("osstack hub candidate", () => {
     const d = deps();
     const result = await handleHubCommand(["candidate", "./skills/alpha", "--namespace", "organization/acme", "--json"], d);
     expect(result.exitCode).toBe(0);
-    expect(JSON.parse(result.stdout)).toMatchObject({ status: "registered", namespace: "organization/acme", source_dirty: false, candidate_id: "cand-123" });
+    expect(JSON.parse(result.stdout)).toMatchObject({ status: "registered", namespace: "organization/acme", source_dirty: false, candidate_id: "candidate_abcdef0123456789" });
     // invoked Node with an ARGUMENT ARRAY carrying the resolved source triple
     const [, argv] = (d.runNode as ReturnType<typeof vi.fn>).mock.calls[0]!;
     expect(argv).toEqual(expect.arrayContaining(["--repository", "git@github.com:acme/x.git", "--commit", "abcdef1234567", "--path", "skills/alpha", "--json"]));
@@ -119,6 +119,24 @@ describe("osstack hub option-injection + exit mapping + leak safety", () => {
     expect(s).not.toContain("dist/packages");
     expect(s).not.toContain("/tmp/");
     expect(s).not.toContain("/Volumes/"); // reasons redacted
+  });
+});
+
+describe("osstack hub candidate — real companion contract", () => {
+  it("treats 'existing' as idempotent success (exit 0) with the Hub candidate id", async () => {
+    const runNode = vi.fn(async () => ({ stdout: JSON.stringify({ status: "existing", candidate_id: "candidate_abcdef0123456789", source_dirty: false }), stderr: "", exitCode: 0 }));
+    const r = await handleHubCommand(["candidate", "./skills/alpha", "--namespace", "organization/acme", "--json"], deps({ runNode }));
+    expect(r.exitCode).toBe(0);
+    expect(JSON.parse(r.stdout)).toMatchObject({ status: "existing", candidate_id: "candidate_abcdef0123456789" });
+  });
+
+  it("drops a candidate_id that does not match the Hub's candidate_<16hex> format", async () => {
+    const runNode = vi.fn(async () => ({ stdout: JSON.stringify({ status: "registered", candidate_id: "/Volumes/evil/path" }), stderr: "", exitCode: 0 }));
+    const r = await handleHubCommand(["candidate", "./skills/alpha", "--namespace", "organization/acme", "--json"], deps({ runNode }));
+    expect(r.exitCode).toBe(0);
+    const out = JSON.parse(r.stdout);
+    expect(out.candidate_id).toBeUndefined();
+    expect(JSON.stringify(out)).not.toContain("/Volumes/");
   });
 });
 

@@ -161,17 +161,18 @@ async function runCandidate(hubRoot: string, flags: ParsedFlags, deps: HubCliDep
   ];
   const { stdout, exitCode } = await deps.runNode(script, argv);
   const parsed = safeJson(stdout);
-  // STRICT mapping: registered -> 0; explicit blocked -> 2; everything else
-  // (including exit 0 with malformed output) -> error (1). Never trust an
+  // STRICT mapping: registered/existing -> 0 ("existing" = idempotent
+  // re-registration of the SAME identity); explicit blocked -> 2; everything
+  // else (including exit 0 with malformed output) -> error (1). Never trust an
   // arbitrary child exit code.
   const status = parsed !== undefined ? String(parsed["status"] ?? "") : "";
-  if (exitCode !== 0 || status !== "registered") {
+  if (exitCode !== 0 || (status !== "registered" && status !== "existing")) {
     const code = status === "blocked" ? 2 : 1;
     return fail(flags.json, code, { status: status === "blocked" ? "blocked" : "error", reasons: parsed !== undefined ? parseReasons(stdout) : ["malformed_output"] });
   }
-  const p = parsed as Record<string, unknown>; // defined: status === "registered"
+  const p = parsed as Record<string, unknown>; // defined: registered|existing
   const result = {
-    status: "registered" as const,
+    status: status as "registered" | "existing",
     namespace: `${namespace.kind}/${namespace.id}`,
     reuse_scope: flags.reuseScope,
     source_dirty: source.dirty === true,
@@ -239,7 +240,8 @@ function safeReleaseId(value: unknown): string | undefined {
   return typeof value === "string" && RELEASE_ID_RE.test(value) ? value : undefined;
 }
 const ASSET_ID_RE = /^[a-z0-9][a-z0-9._-]+$/;
-const CANDIDATE_ID_RE = /^cand-[a-z0-9-]+$/;
+// The Hub companion emits deterministic ids of the form candidate_<16 hex>.
+const CANDIDATE_ID_RE = /^candidate_[a-f0-9]{16}$/;
 function safeAssetId(value: unknown): string | undefined {
   return typeof value === "string" && ASSET_ID_RE.test(value) ? value : undefined;
 }
