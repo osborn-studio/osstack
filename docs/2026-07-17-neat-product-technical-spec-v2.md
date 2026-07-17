@@ -463,7 +463,10 @@ backslashes are rejected. All matching uses normalized POSIX separators.
 
 All public domain schemas are Zod-first and exported by
 `@osstack/governance`. JSON field names use snake_case to match osstack's
-existing protocol artifacts.
+existing protocol artifacts. Governance exports an evidence-reference schema
+that is structurally identical to protocol v1 `EvidenceRef`; this keeps the
+engine independently buildable while the CLI validates the final envelope with
+`@osstack/protocol`.
 
 ### 8.1 Report
 
@@ -568,7 +571,37 @@ interface KnowledgeHygieneResolutionV1 {
 An artifact whose `diff_id` does not match the current report is rejected,
 preventing stale approval from closing a new change.
 
-### 8.4 Rule specification
+### 8.4 Surface metric and check input
+
+```ts
+interface KnowledgeSurfaceMetricV1 {
+  surface: "instruction" | "documentation" | "memory";
+  path: string;
+  kind: "file" | "directory";
+  exists: boolean;
+  bytes?: number;
+  lines?: number;
+  sha256?: string;
+}
+
+interface KnowledgeHygieneCheckInputV1 {
+  repo_root: string;
+  mode: "all" | "worktree" | "range" | "base_to_worktree";
+  base_ref?: string;
+  head_ref?: string;
+  config_path?: string;
+  checks?: KnowledgeHygieneRuleIdV1[];
+  skip_checks?: KnowledgeHygieneRuleIdV1[];
+}
+```
+
+Metric byte and line counts are non-negative integers. A SHA-256, when
+present, is lowercase hexadecimal. `base_ref` is required for `range` and
+`base_to_worktree`; `head_ref` is required only for `range`. `checks` and
+`skip_checks` are mutually exclusive and contain no duplicates. These
+cross-field constraints are enforced by the schema, not deferred to the CLI.
+
+### 8.5 Rule specification
 
 ```ts
 interface KnowledgeHygieneRuleV1 {
@@ -582,7 +615,7 @@ interface KnowledgeHygieneRuleV1 {
 Rules are registered in one immutable table. Unknown configured rule ids are
 boundary errors. Consumer switches are exhaustive.
 
-### 8.5 Engine interface
+### 8.6 Engine interface
 
 ```ts
 interface KnowledgeHygieneEngineV1 {

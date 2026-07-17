@@ -210,6 +210,10 @@ importers:
         version: 22.19.19
 
   packages/governance:
+    dependencies:
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^22.19.19
