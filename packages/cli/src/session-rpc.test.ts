@@ -281,7 +281,13 @@ describe("governed session RPC", () => {
     const afterFailure = await rpc("session.snapshot", { session_id: "sess_retry" });
     const retried = await rpc("session.send", params);
 
-    expect(failed).toMatchObject({ ok: false, error: { code: "agent_failed" } });
+    expect(failed).toMatchObject({
+      ok: false,
+      error: {
+        code: "agent_failed",
+        message: "agent failed while applying the instruction (auth_unavailable)",
+      },
+    });
     expect(afterFailure).toMatchObject({
       ok: true,
       result: {

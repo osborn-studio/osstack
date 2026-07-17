@@ -32,6 +32,19 @@ afterEach(() => {
 });
 
 describe("ClaudeCodeAdapter resumable sessions", () => {
+  it("recognizes a dedicated Claude OAuth token as available headless auth", async () => {
+    const previous = process.env["CLAUDE_CODE_OAUTH_TOKEN"];
+    process.env["CLAUDE_CODE_OAUTH_TOKEN"] = "test-oauth-token";
+    try {
+      await expect(new ClaudeCodeAdapter().isAvailable()).resolves.toMatchObject({
+        available: true,
+      });
+    } finally {
+      if (previous === undefined) delete process.env["CLAUDE_CODE_OAUTH_TOKEN"];
+      else process.env["CLAUDE_CODE_OAUTH_TOKEN"] = previous;
+    }
+  });
+
   it("captures the SDK session id and resumes it without reconstructing context", async () => {
     sdk.messages = [
       { type: "system", subtype: "init", session_id: "claude-session-uuid" },
