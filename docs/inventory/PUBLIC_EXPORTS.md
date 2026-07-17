@@ -74,6 +74,7 @@ export const CONFORMANCE_VERSION = "0.0.0";
 ```ts
 export * from "./types.js";
 export * from "./validator.js";
+export * from "./hub-package.js";
 ```
 
 ## `@osstack/core`

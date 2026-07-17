@@ -5,9 +5,88 @@ import {
   PublishResult,
   runPublish,
   skillIdOf,
+  toPublishedAssetEvidence,
   type RunPublishDeps,
 } from "./publisher.js";
 import type { Task } from "./types.js";
+
+const DIGEST = `sha256:${"a".repeat(64)}`;
+
+function publishedResult(extra: Record<string, unknown> = {}): PublishResult {
+  return PublishResult.parse({
+    contract: "1.1",
+    status: "published",
+    id: "research.alpha",
+    gate: "team",
+    durationMs: 1,
+    releaseId: "organization__osborn/research.alpha@0.1.0",
+    digest: DIGEST,
+    namespace: "organization/osborn",
+    storage_key: "organization__osborn/research.alpha/0.1.0",
+    ...extra,
+  });
+}
+
+describe("toPublishedAssetEvidence", () => {
+  it("preserves release identity + safe storage_key on a published result", () => {
+    const e = toPublishedAssetEvidence(publishedResult(), "team");
+    expect(e).toMatchObject({
+      status: "published",
+      asset_id: "research.alpha",
+      gate: "team",
+      release_id: "organization__osborn/research.alpha@0.1.0",
+      digest: DIGEST,
+      namespace: "organization/osborn",
+      storage_key: "organization__osborn/research.alpha/0.1.0",
+    });
+  });
+
+  it("drops a malformed digest instead of persisting it", () => {
+    const e = toPublishedAssetEvidence(publishedResult({ digest: "sha256:not-hex" }), "team");
+    expect(e.digest).toBeUndefined();
+  });
+
+  it("NEVER records a dist/packages path or an absolute path as storage_key", () => {
+    const dist = toPublishedAssetEvidence(publishedResult({ storage_key: undefined, packagePath: "dist/packages/organization__osborn/research.alpha/0.1.0" }), "team");
+    expect(dist.storage_key).toBeUndefined();
+    const abs = toPublishedAssetEvidence(publishedResult({ storage_key: "/Volumes/AIMATE_WORK/osborn-hub-store/v1/x" }), "team");
+    expect(abs.storage_key).toBeUndefined();
+  });
+
+  it("falls back to a SAFE packagePath (relative locator) when storage_key absent", () => {
+    const e = toPublishedAssetEvidence(publishedResult({ storage_key: undefined, packagePath: "organization__osborn/research.alpha/0.1.0" }), "team");
+    expect(e.storage_key).toBe("organization__osborn/research.alpha/0.1.0");
+  });
+
+  it("rejects drive-relative + case-insensitive dist/packages storage keys", () => {
+    const drive = toPublishedAssetEvidence(publishedResult({ storage_key: "C:relative/secret" }), "team");
+    expect(drive.storage_key).toBeUndefined();
+    const upper = toPublishedAssetEvidence(publishedResult({ storage_key: undefined, packagePath: "DIST/PACKAGES/x" }), "team");
+    expect(upper.storage_key).toBeUndefined();
+  });
+
+  it("DROPS an absolute/dist path smuggled via releaseId or namespace", () => {
+    const e = toPublishedAssetEvidence(publishedResult({ releaseId: "/Volumes/AIMATE_WORK/private/release", namespace: "dist/packages/private" }), "team");
+    expect(e.release_id).toBeUndefined();
+    expect(e.namespace).toBeUndefined();
+  });
+
+  it("redacts an absolute/secret path in reasons and a garbage asset_id", () => {
+    const e = toPublishedAssetEvidence(PublishResult.parse({ contract: "1.1", status: "blocked", id: "/Volumes/AIMATE_WORK/private/id", gate: "team", durationMs: 1, reasons: ["client-secret at /Volumes/AIMATE_WORK/osborn-hub-store/v1/x"] }), "team");
+    expect(e.asset_id).toBe("redacted");
+    expect(JSON.stringify(e.reasons)).not.toContain("/Volumes/");
+  });
+
+  it("emits NO release identity on a blocked/error result", () => {
+    const blocked = PublishResult.parse({ contract: "1.1", status: "blocked", id: "research.alpha", gate: "team", durationMs: 1, reasons: ["score<gate"] });
+    const e = toPublishedAssetEvidence(blocked, "team");
+    expect(e.status).toBe("blocked");
+    expect(e.release_id).toBeUndefined();
+    expect(e.digest).toBeUndefined();
+    expect(e.storage_key).toBeUndefined();
+    expect(e.reasons).toEqual(["score<gate"]);
+  });
+});
 
 function baseConfig(overrides: Partial<PublishConfig> = {}): PublishConfig {
   return PublishConfig.parse(overrides);
@@ -194,5 +273,22 @@ describe("PublishResult schema", () => {
     if (parsed.success) {
       expect((parsed.data as Record<string, unknown>)["deployedSurfaces"]).toEqual(["api", "vercel"]);
     }
+  });
+});
+
+describe("runCommandReal", () => {
+  it("runs a .mjs command via the Node binary (non-executable script files work)", async () => {
+    const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const dir = mkdtempSync(join(tmpdir(), "runreal-"));
+    try {
+      const script = join(dir, "emit.mjs");
+      writeFileSync(script, 'console.log(JSON.stringify({ ok: true, argv: process.argv.slice(2) }));\n'); // mode 644
+      const { runCommandReal } = await import("./publisher.js");
+      const r = await runCommandReal([script, "--gate", "team"]);
+      expect(r.exitCode).toBe(0);
+      expect(JSON.parse(r.stdout.trim())).toMatchObject({ ok: true, argv: ["--gate", "team"] });
+    } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 });

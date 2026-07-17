@@ -110,6 +110,7 @@ import { handlePolicyCommand } from "./policy-command.js";
 import { buildSelfImprovementConfig } from "./loop-self-improvement.js";
 import { resolveRegistryPath } from "./supervisor-cli-support.js";
 import { handleStackCommand } from "./stack-cli.js";
+import { handleHubCommand, buildRealHubCliDeps } from "./hub-cli.js";
 import { handleDailyCommand } from "./daily-command.js";
 import { handleControlCommand, handleStartCommand } from "./start-control-command.js";
 
@@ -174,6 +175,12 @@ Loop 工程：
   policy check        校验 .osstack/repo.yaml 与 policy.yaml（只读；observe 模式拒绝执行）
   govern check        运行确定性治理检查
   contracts check     检查前端调用与后端 API 契约是否对齐
+
+私有 Hub（可选；Hub 为发布权威，经 OSSTACK_HUB_ROOT 解析）：
+  hub candidate <资产路径> --namespace organization/<id> [--allow-dirty] [--json]
+                      只登记外部源引用（不复制源码、不发布）；脏工作区需 --allow-dirty
+  hub publish <资产ID> --gate team [--json]
+                      发布 Hub 托管资产；打印逻辑发布身份（release_id+digest+storage_key），绝不打印 dist 路径
   compliance list     列出合规映射包
   knowledge list       列出本地、官方或缓存的 Osstack 知识包
   knowledge login      保存 Knowledge Cloud URL/token 到本地缓存
@@ -422,6 +429,14 @@ Governance:
                                  List compliance mapping packs
   contracts check [--workspace P] [--manifest P] [--json]
                                  Validate frontend/backend API contract alignment
+
+Private Hub (optional; Hub is the release authority via OSSTACK_HUB_ROOT):
+  hub candidate <asset-path> --namespace organization/<id> [--reuse-scope team] [--allow-dirty] [--json]
+                                 Register an EXTERNAL source reference (no source copy, no release);
+                                 refuses a dirty source unless --allow-dirty
+  hub publish <asset-id> --gate team [--surfaces api] [--json]
+                                 Publish a Hub-managed asset; prints logical release identity
+                                 (release_id + digest + storage_key), never a dist path
   compliance render <run_id> --pack P [--proof-dir P]
                                  Render a compliance evidence mapping report
   knowledge list [--pack P|--official|--cache-dir P] [--json]
@@ -544,6 +559,14 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "release") {
     return await handleReleaseCommand(args.slice(1));
+  }
+
+  if (cmd === "hub") {
+    // Private Hub candidate/publish (Phase 2B). Prints the command's own JSON/
+    // text result and returns its exit code. No dashboard routes.
+    const result = await handleHubCommand(args.slice(1), buildRealHubCliDeps());
+    if (result.stdout !== "") process.stdout.write(result.stdout + "\n");
+    return result.exitCode;
   }
 
   if (cmd === "stats") {
