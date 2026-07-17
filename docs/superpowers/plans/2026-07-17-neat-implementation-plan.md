@@ -266,14 +266,14 @@ changing the existing source-scanner types or behavior.
 
 **Acceptance criteria:**
 
-- [ ] Existing `scanText`, `scanFiles`, and `GovernanceFinding` imports compile.
-- [ ] New types import from `@osstack/governance` without deep paths.
-- [ ] Changeset describes additive public API.
+- [x] Existing `scanText`, `scanFiles`, and `GovernanceFinding` imports compile.
+- [x] New types import from `@osstack/governance` without deep paths.
+- [x] Changeset describes additive public API.
 
 **Verification:**
 
-- [ ] `pnpm --filter @osstack/governance test`
-- [ ] `pnpm --filter @osstack/governance build`
+- [x] `pnpm --filter @osstack/governance test`
+- [x] `pnpm --filter @osstack/governance build`
 
 **Dependencies:** R0.1.1, R0.1.2.
 
