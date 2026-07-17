@@ -305,6 +305,7 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
     const stream = query({ prompt, options });
     let nativeSessionId: string | undefined;
     let terminalEmitted = false;
+    let assistantTextEmitted = false;
     try {
       for await (const message of stream) {
         if (signal.aborted) {
@@ -339,10 +340,13 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
           } | undefined;
           for (const block of sdkMessage?.content ?? []) {
             if (block.type === "text" && typeof block.text === "string") {
+              const text = sanitizeAssistantText(block.text);
+              if (text.length === 0) continue;
+              assistantTextEmitted = true;
               yield {
                 type: "assistant.message",
                 message_id: typeof sdkMessage?.id === "string" ? sdkMessage.id : "assistant",
-                text: sanitizeAssistantText(block.text),
+                text,
               };
             }
           }
@@ -354,6 +358,14 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
           terminalEmitted = true;
           if (success) {
             const result = typeof raw["result"] === "string" ? raw["result"] : undefined;
+            const fallbackText = result === undefined ? "" : sanitizeAssistantText(result);
+            if (!assistantTextEmitted && fallbackText.length > 0) {
+              yield {
+                type: "assistant.message",
+                message_id: "result",
+                text: fallbackText,
+              };
+            }
             yield {
               type: "session.terminal",
               state: "completed",

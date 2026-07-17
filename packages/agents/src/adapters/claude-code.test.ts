@@ -71,6 +71,29 @@ describe("ClaudeCodeAdapter resumable sessions", () => {
     });
   });
 
+  it("uses the successful result text when a resumed SDK stream omits assistant blocks", async () => {
+    sdk.messages = [
+      { type: "system", subtype: "init", session_id: "claude-session-uuid" },
+      {
+        type: "result",
+        subtype: "success",
+        session_id: "claude-session-uuid",
+        result: "继续只读验证。",
+      },
+    ];
+    const adapter = new ClaudeCodeAdapter();
+
+    const resumed = await drainSession(
+      adapter.resumeSession(claudeSessionInput(), new AbortController().signal),
+    );
+
+    expect(resumed).toContainEqual({
+      type: "assistant.message",
+      message_id: "result",
+      text: "继续只读验证。",
+    });
+  });
+
   it("fails closed when the resumed SDK stream changes session id", async () => {
     sdk.messages = [
       { type: "system", subtype: "init", session_id: "wrong-session" },
