@@ -441,6 +441,7 @@ async function handleSessionStart(
       run_id: runId,
       agent_id: adapter.id,
       native_session_id: null,
+      repo_path: p.repo_path,
       state: "starting",
       resume_supported: true,
       version: 1,
@@ -676,16 +677,19 @@ async function handleSessionSend(
 
   ctx.activeSessionSends.add(session.session_id);
   try {
+    const context: Record<string, unknown> = {};
+    if (session.repo_path !== "") context["repo_path"] = session.repo_path;
+    if (p.requested_by !== undefined) context["requested_by"] = p.requested_by;
     const input: AgentSessionInput = {
-    session_id: session.session_id,
-    task_id: session.task_id,
-    run_id: session.run_id,
-    turn_id: p.turn_id,
-    native_session_id: session.native_session_id,
-    expected_version: applied.session_version,
-    message_id: p.message_id,
-    prompt: p.text,
-    ...(p.requested_by === undefined ? {} : { context: { requested_by: p.requested_by } }),
+      session_id: session.session_id,
+      task_id: session.task_id,
+      run_id: session.run_id,
+      turn_id: p.turn_id,
+      native_session_id: session.native_session_id,
+      expected_version: applied.session_version,
+      message_id: p.message_id,
+      prompt: p.text,
+      ...(Object.keys(context).length === 0 ? {} : { context }),
     };
     const controller = new AbortController();
     const publicEvents: AgentSessionEvent[] = [];

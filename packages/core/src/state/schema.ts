@@ -345,6 +345,7 @@ export const AgentSessionRow = z.object({
   run_id: RunIdSchema,
   agent_id: AgentIdSchema,
   native_session_id: z.string().min(1).nullable(),
+  repo_path: z.string().max(4096),
   state: AgentSessionState,
   resume_supported: z.boolean(),
   version: z.number().int().positive(),

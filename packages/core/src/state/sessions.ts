@@ -92,13 +92,13 @@ export class SessionRepository {
     withWrite(this.db, this.path, (db) => {
       db.prepare(`
         INSERT INTO agent_sessions(
-          session_id,task_id,run_id,agent_id,native_session_id,state,
+          session_id,task_id,run_id,agent_id,native_session_id,repo_path,state,
           resume_supported,version,updated_at
-        ) VALUES (?,?,?,?,?,?,?,?,?)
+        ) VALUES (?,?,?,?,?,?,?,?,?,?)
       `).run(
         parsed.session_id, parsed.task_id, parsed.run_id, parsed.agent_id,
-        parsed.native_session_id, parsed.state, parsed.resume_supported ? 1 : 0,
-        parsed.version, parsed.updated_at,
+        parsed.native_session_id, parsed.repo_path, parsed.state,
+        parsed.resume_supported ? 1 : 0, parsed.version, parsed.updated_at,
       );
     });
   }
