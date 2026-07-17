@@ -1,4 +1,12 @@
-import { chmod, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  mkdir,
+  readdir,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -14,6 +22,33 @@ let errors: string[];
 let oldSocket: string | undefined;
 let oldHome: string | undefined;
 let daemon: DaemonHandles | null;
+
+interface InstructionDoctorCheck {
+  id: string;
+  status: string;
+  summary: string;
+  details?: Record<string, unknown>;
+}
+
+async function runInstructionDoctor(): Promise<{
+  exitCode: number;
+  check: InstructionDoctorCheck;
+}> {
+  await mkdir(join(tmp, "tasks"));
+  await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+    task_id: "doctor-instruction-task",
+    capability: "code.test",
+    prompt: "Freeze instruction doctor behavior",
+  }));
+
+  const exitCode = await main(["loop", "doctor", "--workspace", tmp, "--json"]);
+  const result = JSON.parse(logs.join("\n")) as {
+    checks: InstructionDoctorCheck[];
+  };
+  const check = result.checks.find((candidate) => candidate.id === "agent_instructions");
+  if (!check) throw new Error("agent_instructions check missing");
+  return { exitCode, check };
+}
 
 beforeEach(() => {
   tmp = mkdtempSync(join(tmpdir(), "osstack-cli-loop-"));
@@ -604,6 +639,87 @@ describe("loop CLI", () => {
       status: "error",
       summary: expect.stringContaining("drift risk"),
     }));
+  });
+
+  it("preserves loop doctor output when root instructions are absent", async () => {
+    const { exitCode, check } = await runInstructionDoctor();
+
+    expect(exitCode).toBe(0);
+    expect(check).toEqual({
+      id: "agent_instructions",
+      status: "warn",
+      summary: "no AGENTS.md or CLAUDE.md found at workspace root",
+      details: { expected_source: join(tmp, "AGENTS.md") },
+    });
+  });
+
+  it("preserves loop doctor output when AGENTS.md is the only source", async () => {
+    await writeFile(join(tmp, "AGENTS.md"), "# Canonical\n");
+
+    const { exitCode, check } = await runInstructionDoctor();
+
+    expect(exitCode).toBe(0);
+    expect(check).toEqual({
+      id: "agent_instructions",
+      status: "ok",
+      summary: "AGENTS.md is the only root instruction source",
+      details: { source: join(tmp, "AGENTS.md") },
+    });
+  });
+
+  it("preserves loop doctor output when CLAUDE.md has no canonical source", async () => {
+    await writeFile(join(tmp, "CLAUDE.md"), "@AGENTS.md\n");
+
+    const { exitCode, check } = await runInstructionDoctor();
+
+    expect(exitCode).toBe(1);
+    expect(check).toEqual({
+      id: "agent_instructions",
+      status: "error",
+      summary: "CLAUDE.md exists without AGENTS.md; instruction source is not unified",
+      details: {
+        claude: join(tmp, "CLAUDE.md"),
+        expected_source: join(tmp, "AGENTS.md"),
+      },
+    });
+  });
+
+  it("preserves loop doctor output for a one-line CLAUDE.md reference", async () => {
+    await writeFile(join(tmp, "AGENTS.md"), "# Canonical\n");
+    await writeFile(join(tmp, "CLAUDE.md"), "@AGENTS.md\n");
+
+    const { exitCode, check } = await runInstructionDoctor();
+
+    expect(exitCode).toBe(0);
+    expect(check).toEqual({
+      id: "agent_instructions",
+      status: "ok",
+      summary: "AGENTS.md is canonical and CLAUDE.md references it",
+      details: {
+        source: join(tmp, "AGENTS.md"),
+        claude: join(tmp, "CLAUDE.md"),
+        mode: "one-line-reference",
+      },
+    });
+  });
+
+  it("preserves loop doctor output for a CLAUDE.md symlink", async () => {
+    await writeFile(join(tmp, "AGENTS.md"), "# Canonical\n");
+    await symlink("AGENTS.md", join(tmp, "CLAUDE.md"));
+
+    const { exitCode, check } = await runInstructionDoctor();
+
+    expect(exitCode).toBe(0);
+    expect(check).toEqual({
+      id: "agent_instructions",
+      status: "ok",
+      summary: "AGENTS.md is canonical and CLAUDE.md references it",
+      details: {
+        source: join(tmp, "AGENTS.md"),
+        claude: join(tmp, "CLAUDE.md"),
+        mode: "symlink",
+      },
+    });
   });
 
   it("reports daemon readiness in loop doctor --daemon", async () => {

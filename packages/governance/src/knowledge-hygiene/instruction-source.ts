@@ -1,5 +1,5 @@
 import type { Stats } from "node:fs";
-import { lstat, readFile, readlink, realpath } from "node:fs/promises";
+import { lstat, readFile, readlink, realpath, stat } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 
 export type InstructionMirrorModeV1 =
@@ -79,7 +79,7 @@ function errorCode(error: unknown): string | undefined {
 
 async function pathExists(path: string): Promise<boolean> {
   try {
-    await lstat(path);
+    await stat(path);
     return true;
   } catch (error) {
     if (errorCode(error) === "ENOENT") return false;

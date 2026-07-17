@@ -5,7 +5,7 @@ import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { connect, type Socket } from "node:net";
-import { chmod, copyFile, lstat, mkdir, readdir, readFile, readlink, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
@@ -25,7 +25,11 @@ import {
 } from "@osstack/compliance";
 import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
 import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons, type RoutableAdapter } from "@osstack/core";
-import { scanFiles, type GovernanceFinding } from "@osstack/governance";
+import {
+  inspectInstructionSource,
+  scanFiles,
+  type GovernanceFinding,
+} from "@osstack/governance";
 import {
   renderBranchStewardReport,
   scanBranchStewardCandidates,
@@ -10193,7 +10197,7 @@ async function loopDoctor(input: {
     await checkTaskQueue(input.workspacePath, add);
     await checkLoopState(input.stateFilePath, add);
     await checkGit(input.workspacePath, add);
-    await checkAgentInstructionDrift(input.workspacePath, add);
+    await addInstructionSourceDoctorCheck(input.workspacePath, add);
     await checkProtectedConfigStatus(input.workspacePath, add);
   }
 
@@ -10314,28 +10318,32 @@ async function checkGit(
   }
 }
 
-async function checkAgentInstructionDrift(
+async function addInstructionSourceDoctorCheck(
   workspacePath: string,
   add: (id: string, status: LoopDoctorCheck["status"], summary: string, details?: Record<string, unknown>) => void,
 ): Promise<void> {
   const agentsPath = join(workspacePath, "AGENTS.md");
   const claudePath = join(workspacePath, "CLAUDE.md");
-  const agentsExists = await fileExists(agentsPath);
-  const claudeExists = await fileExists(claudePath);
+  const observation = await inspectInstructionSource({
+    repo_root: workspacePath,
+    canonical_path: "AGENTS.md",
+    mirror_path: "CLAUDE.md",
+    mirror_mode: "import_or_symlink",
+  });
 
-  if (!agentsExists && !claudeExists) {
+  if (observation.status === "both_missing") {
     add("agent_instructions", "warn", "no AGENTS.md or CLAUDE.md found at workspace root", {
       expected_source: agentsPath,
     });
     return;
   }
-  if (agentsExists && !claudeExists) {
+  if (observation.status === "mirror_missing") {
     add("agent_instructions", "ok", "AGENTS.md is the only root instruction source", {
       source: agentsPath,
     });
     return;
   }
-  if (!agentsExists && claudeExists) {
+  if (observation.status === "canonical_missing") {
     add("agent_instructions", "error", "CLAUDE.md exists without AGENTS.md; instruction source is not unified", {
       claude: claudePath,
       expected_source: agentsPath,
@@ -10343,12 +10351,11 @@ async function checkAgentInstructionDrift(
     return;
   }
 
-  const claudeReference = await classifyClaudeReference(claudePath);
-  if (claudeReference.ok) {
+  if (observation.status === "valid_mirror") {
     add("agent_instructions", "ok", "AGENTS.md is canonical and CLAUDE.md references it", {
       source: agentsPath,
       claude: claudePath,
-      mode: claudeReference.mode,
+      mode: observation.mirror_kind === "import" ? "one-line-reference" : "symlink",
     });
     return;
   }
@@ -10356,29 +10363,9 @@ async function checkAgentInstructionDrift(
   add("agent_instructions", "error", "AGENTS.md and CLAUDE.md are both real instruction files; drift risk detected", {
     source: agentsPath,
     claude: claudePath,
-    reason: claudeReference.reason,
+    reason: observation.reason,
     remediation: "replace CLAUDE.md with a one-line @AGENTS.md reference or a symlink to AGENTS.md",
   });
-}
-
-async function classifyClaudeReference(path: string): Promise<
-  | { ok: true; mode: "symlink" | "one-line-reference" }
-  | { ok: false; reason: string }
-> {
-  try {
-    const meta = await lstat(path);
-    if (meta.isSymbolicLink()) {
-      const target = await readlink(path);
-      return target === "AGENTS.md" || target.endsWith("/AGENTS.md")
-        ? { ok: true, mode: "symlink" }
-        : { ok: false, reason: `CLAUDE.md symlink points to ${target}` };
-    }
-    const content = (await readFile(path, "utf-8")).trim();
-    if (content === "@AGENTS.md") return { ok: true, mode: "one-line-reference" };
-    return { ok: false, reason: "CLAUDE.md content is not exactly @AGENTS.md" };
-  } catch (error) {
-    return { ok: false, reason: errorMessage(error) };
-  }
 }
 
 async function checkProtectedConfigStatus(

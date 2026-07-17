@@ -326,16 +326,16 @@ API and map typed observations back to the exact existing doctor messages.
 
 **Acceptance criteria:**
 
-- [ ] Existing doctor JSON and human messages are byte-identical for all
+- [x] Existing doctor JSON and human messages are byte-identical for all
   instruction cases.
-- [ ] Private `checkAgentInstructionDrift` and classifier implementation are
+- [x] Private `checkAgentInstructionDrift` and classifier implementation are
   removed from `bin.ts`.
-- [ ] No other loop doctor check changes.
+- [x] No other loop doctor check changes.
 
 **Verification:**
 
-- [ ] `pnpm --filter @osstack/cli test -- loop-cli`
-- [ ] Add frozen regression cases before deleting private logic.
+- [x] `pnpm --filter @osstack/cli test -- loop-cli`
+- [x] Add frozen regression cases before deleting private logic.
 
 **Dependencies:** R0.2.1.
 

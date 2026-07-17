@@ -4,4 +4,5 @@
 
 Add the versioned knowledge-hygiene report, finding, metric, check-input, and
 configuration contracts. Publish strict YAML loading, repository path
-confinement, and stable finding fingerprints as additive governance APIs.
+confinement, stable finding fingerprints, and a read-only canonical instruction
+source inspector as additive governance APIs.
