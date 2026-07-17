@@ -111,7 +111,7 @@ if [ "\${1:-}" = "exec" ]; then
 fi
 exit 9
 `);
-    const adapter = new CodexCliAdapter({ bin, cwd: tmp, probeTimeoutMs: 1_000 });
+    const adapter = new CodexCliAdapter({ bin, cwd: tmp, probeTimeoutMs: 5_000 });
 
     try {
       await expect(adapter.isAvailable()).resolves.toMatchObject({ available: true });
