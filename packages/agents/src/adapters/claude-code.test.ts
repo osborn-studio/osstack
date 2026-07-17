@@ -47,6 +47,8 @@ describe("ClaudeCodeAdapter resumable sessions", () => {
 
   it("captures the SDK session id and resumes it without reconstructing context", async () => {
     sdk.messages = [
+      { type: "system", subtype: "hook_started", session_id: "hook-ephemeral-id" },
+      { type: "system", subtype: "hook_response", session_id: "hook-ephemeral-id" },
       { type: "system", subtype: "init", session_id: "claude-session-uuid" },
       {
         type: "assistant",
