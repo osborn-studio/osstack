@@ -7,6 +7,10 @@ import {
   KnowledgeHygieneRuleIdV1,
   KnowledgeHygieneSeverityV1,
 } from "./types.js";
+import {
+  assertKnowledgeHygienePathPatternV1,
+  assertKnowledgeHygieneRepositoryPathV1,
+} from "./path-pattern.js";
 
 const DEFAULT_CONFIG_PATH = ".osstack/neat.yaml";
 const MAX_CONFIG_BYTES = 1024 * 1024;
@@ -33,51 +37,20 @@ export class KnowledgeHygieneConfigError extends Error {
   }
 }
 
-function validateRepositoryPath(value: string, allowPattern: boolean): string[] {
-  const issues: string[] = [];
-  if (value.includes("\\")) {
-    issues.push("must use POSIX separators");
-  }
-  if (isAbsolute(value) || /^[A-Za-z]:[\\/]/.test(value)) {
-    issues.push("must be repository-relative");
-  }
-  if (value.split("/").includes("..")) {
-    issues.push("must not contain '..' segments");
-  }
-  if (
-    value === "." ||
-    value.startsWith("./") ||
-    value.endsWith("/") ||
-    value.includes("//") ||
-    value.split("/").includes(".")
-  ) {
-    issues.push("must be normalized without './' or a trailing slash");
-  }
-  if (!allowPattern && value.includes("*")) {
-    issues.push("must not contain wildcards");
-  }
-  if (allowPattern) {
-    if (/[?[\]{}()]/.test(value) || value.startsWith("!")) {
-      issues.push("contains unsupported pattern syntax");
-    }
-    for (const segment of value.split("/")) {
-      if (segment.includes("**") && segment !== "**") {
-        issues.push("'**' must occupy a complete path segment");
-        break;
-      }
-    }
-  }
-  return issues;
-}
-
 function repositoryPathSchema(allowPattern: boolean) {
   return z
     .string()
     .trim()
     .min(1)
     .superRefine((value, context) => {
-      for (const message of validateRepositoryPath(value, allowPattern)) {
-        context.addIssue({ code: z.ZodIssueCode.custom, message });
+      try {
+        if (allowPattern) assertKnowledgeHygienePathPatternV1(value);
+        else assertKnowledgeHygieneRepositoryPathV1(value);
+      } catch (error) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: error instanceof Error ? error.message : String(error),
+        });
       }
     });
 }

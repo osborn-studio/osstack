@@ -361,14 +361,14 @@ of unsupported glob syntax.
 
 **Acceptance criteria:**
 
-- [ ] Pattern behavior matches spec §7.3.
-- [ ] Backslashes, braces, extglobs, character classes, and negation fail
+- [x] Pattern behavior matches spec §7.3.
+- [x] Backslashes, braces, extglobs, character classes, and negation fail
   validation rather than being interpreted inconsistently.
-- [ ] Matching is deterministic across macOS/Linux path separators.
+- [x] Matching is deterministic across macOS/Linux path separators.
 
 **Verification:**
 
-- [ ] `pnpm --filter @osstack/governance test -- path-pattern`
+- [x] `pnpm --filter @osstack/governance test -- path-pattern`
 
 **Dependencies:** R0.1.
 
