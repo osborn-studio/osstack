@@ -317,7 +317,9 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
         }
 
         const raw = message as unknown as Record<string, unknown>;
-        const candidate = raw["session_id"];
+        const candidate = raw["type"] === "system" && raw["subtype"] === "init"
+          ? raw["session_id"]
+          : undefined;
         if (nativeSessionId === undefined && typeof candidate === "string" && candidate.length > 0) {
           if (expectedNativeSessionId !== undefined && candidate !== expectedNativeSessionId) {
             stream.close?.();
