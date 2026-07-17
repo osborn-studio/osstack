@@ -210,14 +210,14 @@ and supporting schemas without I/O or CLI dependencies.
 
 **Acceptance criteria:**
 
-- [ ] `KnowledgeHygieneReportV1` and `KnowledgeHygieneFindingV1` match spec §8.
-- [ ] Rule ids are a closed enum containing only accepted R0 ids.
-- [ ] Finding fingerprints exclude line number and human message fields.
+- [x] `KnowledgeHygieneReportV1` and `KnowledgeHygieneFindingV1` match spec §8.
+- [x] Rule ids are a closed enum containing only accepted R0 ids.
+- [x] Finding fingerprints exclude line number and human message fields.
 
 **Verification:**
 
-- [ ] `pnpm --filter @osstack/governance test -- knowledge-hygiene`
-- [ ] `pnpm --filter @osstack/governance typecheck`
+- [x] `pnpm --filter @osstack/governance test -- knowledge-hygiene`
+- [x] `pnpm --filter @osstack/governance typecheck`
 
 **Dependencies:** P0 checkpoint.
 
@@ -237,16 +237,16 @@ path confinement, path-pattern validation, and fail-closed errors.
 
 **Acceptance criteria:**
 
-- [ ] Good example config parses exactly.
-- [ ] Unknown version, duplicate id, absolute path, `..` escape, broad ignore,
+- [x] Good example config parses exactly.
+- [x] Unknown version, duplicate id, absolute path, `..` escape, broad ignore,
   unsupported pattern, and invalid budget ordering are rejected.
-- [ ] Missing config returns explicit zero-config mode; invalid config never
+- [x] Missing config returns explicit zero-config mode; invalid config never
   falls back.
 
 **Verification:**
 
-- [ ] `pnpm --filter @osstack/governance test -- config`
-- [ ] Config tests use temporary paths and do not read the real home directory.
+- [x] `pnpm --filter @osstack/governance test -- config`
+- [x] Config tests use temporary paths and do not read the real home directory.
 
 **Dependencies:** R0.1.1.
 

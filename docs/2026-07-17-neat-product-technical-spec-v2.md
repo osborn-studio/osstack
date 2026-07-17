@@ -451,6 +451,7 @@ backslashes are rejected. All matching uses normalized POSIX separators.
 ### 7.4 Boundary validation
 
 - Config YAML is parsed once at the package boundary and validated with Zod.
+- Config input is capped at 1 MiB and YAML alias expansion is bounded.
 - Duplicate ids are rejected.
 - Absolute paths and paths escaping the repository via `..` are rejected.
 - Symlink directories are not recursively traversed.
