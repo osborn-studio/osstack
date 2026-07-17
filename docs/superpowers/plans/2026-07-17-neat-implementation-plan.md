@@ -299,15 +299,15 @@ typed observation that supports canonical direction and allowed mirror modes.
 
 **Acceptance criteria:**
 
-- [ ] Detects missing canonical, missing mirror, valid import, valid symlink,
+- [x] Detects missing canonical, missing mirror, valid import, valid symlink,
   wrong symlink, and independent-file drift.
-- [ ] Does not merge, write, or delete any file.
-- [ ] Symlink resolution remains confined and reports outside-root targets.
+- [x] Does not merge, write, or delete any file.
+- [x] Symlink resolution remains confined and reports outside-root targets.
 
 **Verification:**
 
-- [ ] `pnpm --filter @osstack/governance test -- instruction-source`
-- [ ] macOS/Linux symlink test and portable import test pass.
+- [x] `pnpm --filter @osstack/governance test -- instruction-source`
+- [x] macOS/Linux symlink test and portable import test pass.
 
 **Dependencies:** R0.1.
 
