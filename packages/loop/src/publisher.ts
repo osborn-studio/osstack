@@ -189,8 +189,15 @@ export async function runCommandReal(argv: string[]): Promise<{ stdout: string; 
   if (command === undefined) {
     return { stdout: "", exitCode: 1 };
   }
+  // A Node script command (.mjs/.cjs/.js — e.g. the Hub's osstack_publish.mjs,
+  // tracked non-executable 100644) is run via the CURRENT Node binary with an
+  // argument array; spawning the file directly would fail with EACCES and
+  // surface as malformed_output. Found by the real cross-repo E2E.
+  const isNodeScript = /\.(mjs|cjs|js)$/.test(command);
+  const spawnCmd = isNodeScript ? process.execPath : command;
+  const spawnArgs = isNodeScript ? [command, ...args] : args;
   return await new Promise((resolve) => {
-    const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(spawnCmd, spawnArgs, { stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "";
     child.stdout.on("data", (chunk: Buffer) => {
       stdout += chunk.toString("utf-8");

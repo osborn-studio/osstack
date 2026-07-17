@@ -275,3 +275,20 @@ describe("PublishResult schema", () => {
     }
   });
 });
+
+describe("runCommandReal", () => {
+  it("runs a .mjs command via the Node binary (non-executable script files work)", async () => {
+    const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const dir = mkdtempSync(join(tmpdir(), "runreal-"));
+    try {
+      const script = join(dir, "emit.mjs");
+      writeFileSync(script, 'console.log(JSON.stringify({ ok: true, argv: process.argv.slice(2) }));\n'); // mode 644
+      const { runCommandReal } = await import("./publisher.js");
+      const r = await runCommandReal([script, "--gate", "team"]);
+      expect(r.exitCode).toBe(0);
+      expect(JSON.parse(r.stdout.trim())).toMatchObject({ ok: true, argv: ["--gate", "team"] });
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+});
