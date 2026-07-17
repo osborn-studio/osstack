@@ -691,6 +691,7 @@ async function handleSessionSend(
     const publicEvents: AgentSessionEvent[] = [];
     let assistantText = "";
     let decision: unknown = null;
+    let terminalCompleted = false;
     try {
       for await (const event of adapter.resumeSession(input, controller.signal)) {
         if (event.type === "native_session.started") {
@@ -701,6 +702,12 @@ async function handleSessionSend(
         }
         if (JSON.stringify(event).includes(session.native_session_id)) {
           return singleErr(req.id, "adapter_protocol", "agent output contained protected session metadata");
+        }
+        if (event.type === "session.terminal") {
+          if (event.state !== "completed") {
+            return singleErr(req.id, "agent_failed", "agent failed while applying the instruction");
+          }
+          terminalCompleted = true;
         }
         if (event.type === "assistant.message") {
           const directive = parseDecisionDirective(event.text);
@@ -722,6 +729,9 @@ async function handleSessionSend(
           question: event.question,
           choices: event.choices,
         };
+      }
+      if (!terminalCompleted) {
+        return singleErr(req.id, "agent_failed", "agent ended without completing the instruction");
       }
     } catch {
       return singleErr(req.id, "agent_failed", "agent failed while applying the instruction");

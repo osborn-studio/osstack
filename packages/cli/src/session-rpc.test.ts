@@ -25,6 +25,7 @@ class FakeSessionAdapter implements SessionCapableAdapter {
   readonly cost_tier = "low" as const;
   readonly resumed: AgentSessionInput[] = [];
   readonly started: string[] = [];
+  readonly failedOnce = new Set<string>();
 
   capabilities() { return []; }
   async isAvailable() {
@@ -44,6 +45,16 @@ class FakeSessionAdapter implements SessionCapableAdapter {
     yield { type: "session.state", state: "running" };
     if (input.prompt === "leak") {
       yield { type: "assistant.message", message_id: `reply_${input.message_id}`, text: input.native_session_id };
+      return;
+    }
+    if (input.prompt === "fail-once" && !this.failedOnce.has(input.session_id)) {
+      this.failedOnce.add(input.session_id);
+      yield {
+        type: "session.terminal",
+        state: "failed",
+        error_code: "auth_unavailable",
+        summary: "agent authentication is unavailable",
+      };
       return;
     }
     if (input.prompt === "decision") {
@@ -253,6 +264,45 @@ describe("governed session RPC", () => {
     }
     expect(adapter.resumed.filter((input) => input.session_id === "sess_apply")).toHaveLength(1);
     expect(JSON.stringify(first)).not.toContain("native-secret");
+  });
+
+  it("keeps a failed adapter instruction recoverable instead of applying an empty turn", async () => {
+    seedSession("sess_retry");
+    const params = {
+      session_id: "sess_retry",
+      runtime_id: adapter.id,
+      turn_id: "turn_sess_retry",
+      message_id: "msg_retry",
+      expected_version: 2,
+      text: "fail-once",
+    };
+
+    const failed = await rpc("session.send", params);
+    const afterFailure = await rpc("session.snapshot", { session_id: "sess_retry" });
+    const retried = await rpc("session.send", params);
+
+    expect(failed).toMatchObject({ ok: false, error: { code: "agent_failed" } });
+    expect(afterFailure).toMatchObject({
+      ok: true,
+      result: {
+        state: "idle",
+        version: 3,
+        turn_id: "turn_sess_retry",
+        assistant_text: "请选择方向",
+      },
+    });
+    expect(retried).toMatchObject({
+      ok: true,
+      result: { state: "applied", session_version: 4 },
+    });
+    const db = openDb({ path: handle.dbPath });
+    try {
+      expect(new SessionRepository(db, handle.dbPath).getMessage("msg_retry")).toMatchObject({
+        state: "applied",
+      });
+    } finally {
+      db.close();
+    }
   });
 
   it("turns an exact bounded OStag decision directive into awaiting_decision", async () => {
