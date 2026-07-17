@@ -128,6 +128,7 @@ function seedSession(
       run_id: runId,
       agent_id: adapter.id,
       native_session_id: `native-secret-${id}`,
+      repo_path: `/tmp/repo-${id}`,
       state,
       resume_supported: resumeSupported,
       version: 2,
@@ -263,6 +264,10 @@ describe("governed session RPC", () => {
       db.close();
     }
     expect(adapter.resumed.filter((input) => input.session_id === "sess_apply")).toHaveLength(1);
+    expect(adapter.resumed.find((input) => input.session_id === "sess_apply")?.context).toMatchObject({
+      repo_path: "/tmp/repo-sess_apply",
+      requested_by: "owner",
+    });
     expect(JSON.stringify(first)).not.toContain("native-secret");
   });
 

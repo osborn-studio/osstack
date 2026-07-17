@@ -1279,6 +1279,16 @@ export const MIGRATIONS: readonly Migration[] = [
         ON session_messages(turn_id, created_at);
     `,
   },
+  {
+    id: 10,
+    name: "agent_session_repo_path",
+    // Claude Code resolves persisted native sessions within the original cwd.
+    // Existing rows remain empty until an operator performs a verified local
+    // backfill; all newly created governed sessions persist the absolute path.
+    sql: `
+      ALTER TABLE agent_sessions ADD COLUMN repo_path TEXT NOT NULL DEFAULT '';
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

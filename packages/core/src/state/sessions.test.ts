@@ -43,6 +43,7 @@ function createSession(repo: SessionRepository): void {
     run_id: "run_01",
     agent_id: "codex-cli",
     native_session_id: null,
+    repo_path: "/tmp/osstack-session-repo",
     state: "starting",
     resume_supported: true,
     version: 1,
@@ -95,7 +96,11 @@ describe("session persistence migration", () => {
     const reopened = openDb({ path });
     try {
       const restored = new SessionRepository(reopened, path).getSession("sess_01");
-      expect(restored).toMatchObject({ session_id: "sess_01", version: 1 });
+      expect(restored).toMatchObject({
+        session_id: "sess_01",
+        repo_path: "/tmp/osstack-session-repo",
+        version: 1,
+      });
     } finally {
       reopened.close();
     }
