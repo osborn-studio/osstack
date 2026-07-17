@@ -259,14 +259,15 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
   async isAvailable(): Promise<AgentAvailability> {
     const hermes_home = process.env["HERMES_HOME"] ?? join(process.env["HOME"] ?? "", ".hermes");
     const has_anthropic_key = Boolean(process.env["ANTHROPIC_API_KEY"]);
+    const has_claude_oauth = Boolean(process.env["CLAUDE_CODE_OAUTH_TOKEN"]);
     const has_hermes_auth = existsSync(join(hermes_home, "config.yaml"))
                          || existsSync(join(hermes_home, "auth.json"));
-    if (has_anthropic_key || has_hermes_auth) {
+    if (has_anthropic_key || has_claude_oauth || has_hermes_auth) {
       return { available: true, last_checked_at: Math.floor(now()) };
     }
     return {
       available: false,
-      reason: "No ANTHROPIC_API_KEY in env and no Hermes auth found. Run `hermes login anthropic` or export ANTHROPIC_API_KEY.",
+      reason: "No ANTHROPIC_API_KEY, CLAUDE_CODE_OAUTH_TOKEN, or Hermes auth found.",
       last_checked_at: Math.floor(now()),
     };
   }

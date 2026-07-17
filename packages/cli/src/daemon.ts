@@ -705,7 +705,13 @@ async function handleSessionSend(
         }
         if (event.type === "session.terminal") {
           if (event.state !== "completed") {
-            return singleErr(req.id, "agent_failed", "agent failed while applying the instruction");
+            const rawCode = event.error_code ?? "unknown";
+            const safeCode = /^[a-z0-9_]{1,64}$/.test(rawCode) ? rawCode : "unknown";
+            return singleErr(
+              req.id,
+              "agent_failed",
+              `agent failed while applying the instruction (${safeCode})`,
+            );
           }
           terminalCompleted = true;
         }
