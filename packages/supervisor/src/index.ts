@@ -2,6 +2,7 @@ export * from "./types.js";
 export * from "./repo-registry.js";
 export * from "./repo-scanner.js";
 export * from "./hygiene-scanner.js";
+export * from "./hygiene-proposal.js";
 export * from "./portfolio.js";
 export * from "./trace-normalizer.js";
 export * from "./failure-taxonomy.js";
