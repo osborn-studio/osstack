@@ -879,13 +879,13 @@ report `diff_id`.
 
 **Acceptance criteria:**
 
-- [ ] All five outcomes from spec §8.3 validate.
-- [ ] Empty reason, unknown fingerprint, and mismatched `diff_id` are rejected.
-- [ ] Existing report/finding schema v1 remains backward compatible.
+- [x] All five outcomes from spec §8.3 validate.
+- [x] Empty reason, unknown fingerprint, and mismatched `diff_id` are rejected.
+- [x] Existing report/finding schema v1 remains backward compatible.
 
 **Verification:**
 
-- [ ] Governance schema/unit tests pass.
+- [x] Governance schema/unit tests pass.
 
 **Dependencies:** R0 gate.
 

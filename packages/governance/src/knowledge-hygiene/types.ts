@@ -79,9 +79,12 @@ export type KnowledgeHygieneEvidenceRefV1 = z.infer<
   typeof KnowledgeHygieneEvidenceRefV1
 >;
 
+const knowledgeHygieneFingerprint = z.string().regex(/^khf_[a-f0-9]{64}$/);
+const knowledgeHygieneDiffId = z.string().regex(/^diff_[a-f0-9]{64}$/);
+
 export const KnowledgeHygieneFindingV1 = z
   .object({
-    fingerprint: z.string().regex(/^khf_[a-f0-9]{64}$/),
+    fingerprint: knowledgeHygieneFingerprint,
     rule_id: KnowledgeHygieneRuleIdV1,
     rule_version: z.string().min(1),
     surface: KnowledgeHygieneSurfaceV1,
@@ -152,7 +155,7 @@ export const KnowledgeHygieneReportInputV1 = z
     base_sha: gitObjectId.optional(),
     head_ref: z.string().min(1).optional(),
     head_sha: gitObjectId.optional(),
-    diff_id: z.string().min(1).optional(),
+    diff_id: knowledgeHygieneDiffId.optional(),
     config_path: z.string().min(1).optional(),
     config_sha256: sha256.optional(),
   })
@@ -193,6 +196,65 @@ export const KnowledgeHygieneReportV1 = z
   .strict();
 export type KnowledgeHygieneReportV1 = z.infer<
   typeof KnowledgeHygieneReportV1
+>;
+
+export const KnowledgeHygieneResolutionV1 = z
+  .object({
+    schema_version: z.literal("1"),
+    diff_id: knowledgeHygieneDiffId,
+    fingerprint: knowledgeHygieneFingerprint,
+    outcome: z.enum([
+      "fixed",
+      "reviewed_no_change",
+      "accepted_risk",
+      "suppressed",
+      "obsolete",
+    ]),
+    actor: z
+      .object({
+        kind: z.enum(["human", "agent"]),
+        id: z.string().trim().min(1),
+      })
+      .strict(),
+    reason: z.string().trim().min(1),
+    evidence_refs: z.array(KnowledgeHygieneEvidenceRefV1),
+    resolved_at: z.string().datetime(),
+  })
+  .strict();
+export type KnowledgeHygieneResolutionV1 = z.infer<
+  typeof KnowledgeHygieneResolutionV1
+>;
+
+export const KnowledgeHygieneReviewArtifactV1 = z
+  .object({
+    schema_version: z.literal("1"),
+    diff_id: knowledgeHygieneDiffId,
+    resolutions: z.array(KnowledgeHygieneResolutionV1).min(1),
+  })
+  .strict()
+  .superRefine((artifact, context) => {
+    const fingerprints = artifact.resolutions.map(
+      (resolution) => resolution.fingerprint,
+    );
+    if (new Set(fingerprints).size !== fingerprints.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "resolutions must have unique fingerprints",
+      });
+    }
+    if (
+      artifact.resolutions.some(
+        (resolution) => resolution.diff_id !== artifact.diff_id,
+      )
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "resolution diff_id must match artifact diff_id",
+      });
+    }
+  });
+export type KnowledgeHygieneReviewArtifactV1 = z.infer<
+  typeof KnowledgeHygieneReviewArtifactV1
 >;
 
 function hasDuplicates<T>(values: readonly T[]): boolean {
@@ -316,7 +378,7 @@ export const KnowledgeHygieneChangeSetV1 = z
     config_sha256: sha256.optional(),
     changes: z.array(KnowledgeHygieneChangeV1),
     changed_paths: z.array(z.string().min(1)),
-    diff_id: z.string().regex(/^diff_[a-f0-9]{64}$/),
+    diff_id: knowledgeHygieneDiffId,
   })
   .strict()
   .superRefine((changeSet, context) => {

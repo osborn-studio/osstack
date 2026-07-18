@@ -9,6 +9,8 @@ import {
 import {
   KnowledgeHygieneFindingV1,
   KnowledgeHygieneReportV1,
+  KnowledgeHygieneResolutionV1,
+  KnowledgeHygieneReviewArtifactV1,
   KnowledgeHygieneRuleIdV1,
 } from "./types.js";
 
@@ -30,8 +32,10 @@ describe("knowledge hygiene public schemas", () => {
     expect(Object.keys(generated).sort()).toEqual([
       "knowledge-hygiene-finding-v1.schema.json",
       "knowledge-hygiene-report-v1.schema.json",
+      "knowledge-hygiene-resolution-v1.schema.json",
+      "knowledge-hygiene-review-artifact-v1.schema.json",
     ]);
-    expect(KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V1).toHaveLength(2);
+    expect(KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V1).toHaveLength(4);
   });
 
   for (const [filename, content] of Object.entries(generated)) {
@@ -59,6 +63,18 @@ describe("knowledge hygiene public schemas", () => {
       schema: KnowledgeHygieneReportV1,
       valid: "valid/report-v1.valid.json",
       invalid: "invalid/report-v1.invalid.json",
+    },
+    {
+      name: "resolution-v1",
+      schema: KnowledgeHygieneResolutionV1,
+      valid: "valid/resolution-v1.valid.json",
+      invalid: "invalid/resolution-v1.invalid.json",
+    },
+    {
+      name: "review-artifact-v1",
+      schema: KnowledgeHygieneReviewArtifactV1,
+      valid: "valid/review-artifact-v1.valid.json",
+      invalid: "invalid/review-artifact-v1.invalid.json",
     },
   ];
 
@@ -120,5 +136,14 @@ describe("knowledge hygiene public schemas", () => {
       "contract.review_required",
       "scan.incomplete",
     ]));
+    expect(KnowledgeHygieneResolutionV1.shape.outcome.options).toEqual(
+      expect.arrayContaining([
+        "fixed",
+        "reviewed_no_change",
+        "accepted_risk",
+        "suppressed",
+        "obsolete",
+      ]),
+    );
   });
 });

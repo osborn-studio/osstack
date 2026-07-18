@@ -58,7 +58,7 @@
         },
         "diff_id": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^diff_[a-f0-9]{64}$"
         },
         "config_path": {
           "type": "string",

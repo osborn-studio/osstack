@@ -3,11 +3,14 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import {
   KnowledgeHygieneFindingV1,
   KnowledgeHygieneReportV1,
+  KnowledgeHygieneResolutionV1,
+  KnowledgeHygieneReviewArtifactV1,
 } from "./types.js";
 
 interface KnowledgeHygieneSchemaEntryV1 {
   key: string;
   title: string;
+  comment?: string;
   schema: ZodTypeAny;
 }
 
@@ -22,6 +25,18 @@ export const KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V1 = Object.freeze([
     title: "Osstack Knowledge Hygiene Report v1",
     schema: KnowledgeHygieneReportV1,
   },
+  {
+    key: "knowledge-hygiene-resolution-v1",
+    title: "Osstack Knowledge Hygiene Resolution v1",
+    schema: KnowledgeHygieneResolutionV1,
+  },
+  {
+    key: "knowledge-hygiene-review-artifact-v1",
+    title: "Osstack Knowledge Hygiene Review Artifact v1",
+    comment:
+      "Resolution diff_id equality and fingerprint uniqueness are enforced by @osstack/governance Zod validation and are not expressible in this generated JSON Schema.",
+    schema: KnowledgeHygieneReviewArtifactV1,
+  },
 ] satisfies readonly KnowledgeHygieneSchemaEntryV1[]);
 
 function renderSchema(entry: KnowledgeHygieneSchemaEntryV1): string {
@@ -32,6 +47,7 @@ function renderSchema(entry: KnowledgeHygieneSchemaEntryV1): string {
   return `${JSON.stringify({
     $schema: "http://json-schema.org/draft-07/schema#",
     title: entry.title,
+    ...(entry.comment === undefined ? {} : { $comment: entry.comment }),
     ...generated,
   }, null, 2)}\n`;
 }
