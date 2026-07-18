@@ -424,14 +424,14 @@ completeness state.
 
 **Acceptance criteria:**
 
-- [ ] Recognized surfaces and exclusions match spec §10.
-- [ ] Limit and read failures create `scan.incomplete` instead of silent skips.
-- [ ] Inventory does not read external user memory or arbitrary home paths.
+- [x] Recognized surfaces and exclusions match spec §10.
+- [x] Limit and read failures create `scan.incomplete` instead of silent skips.
+- [x] Inventory does not read external user memory or arbitrary home paths.
 
 **Verification:**
 
-- [ ] `pnpm --filter @osstack/governance test -- repository-reader`
-- [ ] Fixture proves no traversal through a symlinked directory.
+- [x] `pnpm --filter @osstack/governance test -- repository-reader`
+- [x] Fixture proves no traversal through a symlinked directory.
 
 **Dependencies:** R0.1, R0.3.
 

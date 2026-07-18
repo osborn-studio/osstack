@@ -121,6 +121,30 @@ export type KnowledgeSurfaceMetricV1 = z.infer<
   typeof KnowledgeSurfaceMetricV1
 >;
 
+export const KnowledgeSurfaceInventoryEntryV1 = KnowledgeSurfaceMetricV1.extend({
+  content: z.string().optional(),
+  link_target: z.string().optional(),
+}).strict();
+export type KnowledgeSurfaceInventoryEntryV1 = z.infer<
+  typeof KnowledgeSurfaceInventoryEntryV1
+>;
+
+export const KnowledgeSurfaceInventoryV1 = z
+  .object({
+    surfaces: z.array(KnowledgeSurfaceInventoryEntryV1),
+    completeness: z
+      .object({
+        complete: z.boolean(),
+        skipped_files: z.number().int().nonnegative(),
+        reasons: z.array(z.string().min(1)),
+      })
+      .strict(),
+  })
+  .strict();
+export type KnowledgeSurfaceInventoryV1 = z.infer<
+  typeof KnowledgeSurfaceInventoryV1
+>;
+
 export const KnowledgeHygieneReportInputV1 = z
   .object({
     mode: z.enum(["all", "worktree", "range", "base_to_worktree"]),
