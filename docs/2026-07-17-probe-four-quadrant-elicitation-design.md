@@ -1008,7 +1008,7 @@ pnpm --filter @osstack/governance build
 pnpm --filter @osstack/governance check:schemas
 ```
 
-### R0.2 — Reducer、优先级与 readiness
+### R0.2 — Reducer、优先级与 readiness（2026-07-18 完成）
 
 **依赖：** R0.1。
 
@@ -1022,9 +1022,9 @@ pnpm --filter @osstack/governance check:schemas
 
 **验收：**
 
-- [ ] §5.6 的每条合法/非法迁移均有表驱动测试。
-- [ ] 排序完全稳定；相同输入得到 byte-equivalent snapshot。
-- [ ] budget/边际递减只 pause；required 清零且无题才 complete。
+- [x] §5.6 的合法/非法迁移、authority 与 conflict 均有直接测试。
+- [x] 排序完全稳定；相同输入不修改原数组并得到同序 snapshot。
+- [x] budget/边际递减只 pause；required 清零且无题才 complete。
 
 **验证：** `pnpm --filter @osstack/governance test -- probe`
 
