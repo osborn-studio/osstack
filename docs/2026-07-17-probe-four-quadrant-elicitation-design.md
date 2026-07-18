@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | **Implementation complete v2.0** — P0–R3.4 与本地发布矩阵全绿；远端 CI、合并与发布进行中 |
+| 状态 | **Production deployed v2.0** — P0–R3.4、远端 CI、Changesets/OIDC 发布与 registry 回装全绿；经验性 checkpoint 仍按计划观察 |
 | 日期 | 2026-07-18 |
 | 产品 owner | Osborn |
 | 初稿 | Claude Fable 5（CTO 席）+ Osborn |
@@ -1346,12 +1346,22 @@ Hermes 只保留对象数组，Loop 再按 strict `ImplementationDeviation` 校�
 - block gate 默认关闭；紧急回滚只需将 `.osstack/probe.yaml` 改为 `enforcement: report` 或取消 guard 注册，不删除台账。
 - 破坏 portable schema 的变更必须发布 v2 schema，并保留 v1 reader 至少一个 minor release。
 
-2026-07-18 本地发布证据：
+2026-07-18 发布证据：
 
 - [x] 全仓 lint、typecheck、build、test、Python protocol tests 与 inventory freshness 通过。
 - [x] governance JSON Schema、Probe CLI/skill smoke、Knowledge Cloud、deliver、npm tarball 安装与 single-binary pack smoke 通过。
 - [x] `pnpm audit --audit-level low` 为零已知漏洞，peer dependency 与 secret scan 无发现。
-- [ ] 远端 PR CI、合并、Changesets publish 与安装后版本核验完成。
+- [x] 远端 PR CI、合并、Changesets publish 与安装后版本核验完成。
+
+生产链路与可追溯证据：
+
+- 实现经 [PR #141](https://github.com/gilosbornhello/osstack/pull/141) 合并；npm OIDC/Trusted Publisher 迁移经 [PR #140](https://github.com/gilosbornhello/osstack/pull/140) 合并；首轮 Version PR 为 [#142](https://github.com/gilosbornhello/osstack/pull/142)。
+- registry 回装发现 `probe next` 帮助遗漏强制 `--question` 参数后，以测试先行的 [PR #143](https://github.com/gilosbornhello/osstack/pull/143) 修复；补丁 Version PR [#144](https://github.com/gilosbornhello/osstack/pull/144) 同步 changelog、README release facts 与生成的 package inventory。
+- 首轮 [Release run 29641565092](https://github.com/gilosbornhello/osstack/actions/runs/29641565092) 和补丁 [Release run 29657093476](https://github.com/gilosbornhello/osstack/actions/runs/29657093476) 的 `Version PR / Publish` 均通过；最终发布提交的 [main CI](https://github.com/gilosbornhello/osstack/actions/runs/29657093491) 与 [macOS Release Candidate](https://github.com/gilosbornhello/osstack/actions/runs/29657093484) 也全绿。发布使用 GitHub Actions OIDC，不依赖长期 npm publish token。
+- npm registry 当前关键版本为 `@osstack/cli@0.11.1`、`@osstack/governance@0.11.0`、`@osstack/core@0.11.0`、`@osstack/agents@0.11.0`、`@osstack/loop@0.11.0` 与 `@osstack/skills@0.11.0`；最终 CLI 对应 [GitHub Release/tag](https://github.com/gilosbornhello/osstack/releases/tag/%40osstack/cli%400.11.1)。
+- 独立空目录从公网 registry 安装 `@osstack/cli@0.11.1` 后，`osstack --version`、`probe --help` 与真实 `probe start → probe next` 全部成功；会话 revision 从 1 原子递增到 2，readiness 从 0% 更新为 12.5%。
+
+R1/R2/R3 中仍未勾选的两周观察、五份真实粗糙 spec 与人工抽查属于时间/真实语料驱动的效果验证，不是发布门禁；它们保持开放，禁止用合成测试或单日数据伪造完成。
 
 ---
 
