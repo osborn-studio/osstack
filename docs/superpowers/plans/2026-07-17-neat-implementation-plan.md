@@ -598,14 +598,14 @@ whether at least one declared review target changed.
 
 **Acceptance criteria:**
 
-- [ ] Untriggered contracts emit nothing.
-- [ ] Triggered/satisfied contracts emit nothing.
-- [ ] Triggered/unresolved contracts emit configured warning/error.
-- [ ] Finding evidence lists triggering paths and candidate review targets.
+- [x] Untriggered contracts emit nothing.
+- [x] Triggered/satisfied contracts emit nothing.
+- [x] Triggered/unresolved contracts emit configured warning/error.
+- [x] Finding evidence lists triggering paths and candidate review targets.
 
 **Verification:**
 
-- [ ] `pnpm --filter @osstack/governance test -- change-contract`
+- [x] `pnpm --filter @osstack/governance test -- change-contract`
 
 **Dependencies:** R0.3, R0.4.
 

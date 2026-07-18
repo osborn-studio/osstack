@@ -209,6 +209,7 @@ export async function checkKnowledgeHygiene(
       config,
       inventory: surfaceInventory,
       instruction_observations: observations,
+      change_set: changeSet,
     },
     selectedRules(input, ports.rules ?? KNOWLEDGE_HYGIENE_RULES_V1),
   );

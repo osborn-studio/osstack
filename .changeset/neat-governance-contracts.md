@@ -11,4 +11,5 @@ Git worktree/range change sets with portable content-addressed diff IDs. Add a
 bounded, symlink-safe inventory of recognized repository knowledge surfaces
 and a closed rule registry for instruction, required-surface, budget, and
 incomplete-scan findings. Compose these boundaries into a deterministic,
-injectable, read-only report engine with suppression accounting.
+injectable, read-only report engine with suppression accounting. Evaluate
+configured change-review contracts against structured Git change sets.

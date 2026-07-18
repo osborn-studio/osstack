@@ -8,6 +8,7 @@ import {
   type KnowledgeHygieneRuleIdV1,
   type KnowledgeHygieneSeverityV1,
   type KnowledgeHygieneSurfaceV1,
+  type KnowledgeHygieneChangeSetV1,
   type KnowledgeSurfaceInventoryEntryV1,
   type KnowledgeSurfaceInventoryV1,
 } from "../types.js";
@@ -17,6 +18,7 @@ export interface KnowledgeHygieneRuleInputV1 {
   config: KnowledgeHygieneConfigV1 | undefined;
   inventory: KnowledgeSurfaceInventoryV1;
   instruction_observations: readonly InstructionSourceObservationV1[];
+  change_set: KnowledgeHygieneChangeSetV1 | undefined;
 }
 
 export interface KnowledgeHygieneRuleV1 {

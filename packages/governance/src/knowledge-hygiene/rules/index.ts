@@ -4,6 +4,7 @@ import {
   type KnowledgeHygieneFindingV1,
 } from "../types.js";
 import { BUDGET_RULES_V1 } from "./budget-rule.js";
+import { CHANGE_CONTRACT_RULE_V1 } from "./change-contract-rule.js";
 import { INSTRUCTION_RULES_V1 } from "./instruction-rule.js";
 import { REQUIRED_SURFACE_RULE_V1 } from "./required-surface-rule.js";
 import {
@@ -17,7 +18,6 @@ export type { KnowledgeHygieneRuleInputV1, KnowledgeHygieneRuleV1 } from "./rule
 const defaultSeverities = {
   "reference.markdown_target_missing": "warning",
   "reference.instruction_import_missing": "error",
-  "contract.review_required": "warning",
 } as const;
 
 const deferredRules = Object.entries(defaultSeverities).map(
@@ -68,6 +68,7 @@ const unorderedRules: readonly KnowledgeHygieneRuleV1[] = [
   REQUIRED_SURFACE_RULE_V1,
   ...BUDGET_RULES_V1,
   ...deferredRules,
+  CHANGE_CONTRACT_RULE_V1,
   scanIncompleteRule,
 ];
 const rulesById = new Map(unorderedRules.map((rule) => [rule.id, rule]));
