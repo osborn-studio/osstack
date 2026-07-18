@@ -32,6 +32,7 @@ import {
   type NeatRecordingResultV1,
 } from "./neat-record.js";
 import { handleNeatTrendCommand } from "./neat-trend-command.js";
+import { handleNeatProposalCommand } from "./neat-proposal-command.js";
 
 export type NeatFailOn = "error" | "warning" | "none";
 type NeatFormat = "human" | "json";
@@ -44,6 +45,10 @@ export interface NeatCommandDependencies {
   engine_ports?: KnowledgeHygieneEnginePortsV1;
   now?: () => Date;
   fix?: NeatFixCommandOverrides;
+  authorize_write?: (workspacePath: string) => Promise<{
+    allow: boolean;
+    reason?: string;
+  }>;
 }
 
 interface ParsedNeatCommand {
@@ -72,6 +77,7 @@ Usage:
   osstack neat review [review options]
   osstack neat fix [fix options]
   osstack neat trend [trend options]
+  osstack neat propose [proposal options]
 
 Options:
   --repo <path>                  Repository root (default: cwd)
@@ -93,6 +99,11 @@ Options:
 
 Trend options:
   --repo-id <id>                 Persisted repository id (default: cwd basename)
+
+Proposal options:
+  --min-occurrences <n>          Per-finding threshold (default: 3)
+  --min-repositories <n>         Same-rule repository threshold (default: 2)
+  --yes                          Persist high-risk drafts; preview otherwise
 
 Exit codes:
   0  Check completed and threshold was not met
@@ -448,6 +459,17 @@ export async function handleNeatCommand(
   args: readonly string[],
   deps: NeatCommandDependencies,
 ): Promise<number> {
+  if (args[0] === "propose") {
+    return handleNeatProposalCommand(args.slice(1), {
+      cwd: deps.cwd,
+      stdout: deps.stdout,
+      stderr: deps.stderr,
+      now: deps.now ?? deps.engine_ports?.now ?? (() => new Date()),
+      ...(deps.authorize_write === undefined
+        ? {}
+        : { authorize_write: deps.authorize_write }),
+    });
+  }
   if (args[0] === "trend") {
     return handleNeatTrendCommand(args.slice(1), {
       cwd: deps.cwd,

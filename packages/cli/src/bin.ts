@@ -657,6 +657,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       cwd: () => process.cwd(),
       stdout: (value) => console.log(value),
       stderr: (value) => console.error(value),
+      authorize_write: evaluatePolicyGate,
     });
   }
 
