@@ -111,6 +111,7 @@ export * from "./portfolio-status.js";
 export * from "./types.js";
 export * from "./scanner.js";
 export * from "./knowledge-hygiene/index.js";
+export * from "./probe/index.js";
 ```
 
 ## `@osstack/hermes-adapter`
@@ -216,4 +217,5 @@ export * from "./gate.js";
 export * from "./evaluator-epoch.js";
 export * from "./adversarial-pool.js";
 export * from "./loop-doc.js";
+export * from "./probe-outcomes.js";
 ```

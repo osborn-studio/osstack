@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | **Implementation complete v2.0** — P0–R3.4 代码与聚焦测试完成；全仓发布验证进行中 |
+| 状态 | **Implementation complete v2.0** — P0–R3.4 与本地发布矩阵全绿；远端 CI、合并与发布进行中 |
 | 日期 | 2026-07-18 |
 | 产品 owner | Osborn |
 | 初稿 | Claude Fable 5（CTO 席）+ Osborn |
@@ -1346,6 +1346,13 @@ Hermes 只保留对象数组，Loop 再按 strict `ImplementationDeviation` 校�
 - block gate 默认关闭；紧急回滚只需将 `.osstack/probe.yaml` 改为 `enforcement: report` 或取消 guard 注册，不删除台账。
 - 破坏 portable schema 的变更必须发布 v2 schema，并保留 v1 reader 至少一个 minor release。
 
+2026-07-18 本地发布证据：
+
+- [x] 全仓 lint、typecheck、build、test、Python protocol tests 与 inventory freshness 通过。
+- [x] governance JSON Schema、Probe CLI/skill smoke、Knowledge Cloud、deliver、npm tarball 安装与 single-binary pack smoke 通过。
+- [x] `pnpm audit --audit-level low` 为零已知漏洞，peer dependency 与 secret scan 无发现。
+- [ ] 远端 PR CI、合并、Changesets publish 与安装后版本核验完成。
+
 ---
 
 ## 14. 已关闭默认项与远期问题
@@ -1427,15 +1434,15 @@ quick/standard/deep 不对应固定题目列表；引擎按风险与熟悉度选
 
 一个 release 只有在以下全部成立时才可标记完成：
 
-- [ ] 规范、Zod、JSON Schema、fixtures、CLI help 和实际行为一致。
-- [ ] 所有写命令幂等并带 revision conflict 测试。
-- [ ] portable artifact 在 fresh home 可验证。
-- [ ] human 与 JSON 输出都经过测试，consumer 不解析 human 文本。
-- [ ] 无绝对本机路径、secret 或未解释的网络依赖进入 ledger。
-- [ ] 聚焦测试、full test、typecheck、build、lint、diff-check 全绿。
-- [ ] changeset、CONFORMANCE_MATRIX、用户文档和 smoke 同步。
-- [ ] 新集成保持 ADR-001 import boundary。
-- [ ] 未完成项留在本文或 issue/plan 中，带 owner 与触发条件，不以“以后再说”消失。
+- [x] 规范、Zod、JSON Schema、fixtures、CLI help 和实际行为一致。
+- [x] 所有写命令幂等并带 revision conflict 测试。
+- [x] portable artifact 在 fresh home 可验证。
+- [x] human 与 JSON 输出都经过测试，consumer 不解析 human 文本。
+- [x] 无绝对本机路径、secret 或未解释的网络依赖进入 ledger。
+- [x] 聚焦测试、full test、typecheck、build、lint、diff-check 全绿。
+- [x] changeset、CONFORMANCE_MATRIX、用户文档和 smoke 同步。
+- [x] 新集成保持 ADR-001 import boundary。
+- [x] 未完成项留在本文或 issue/plan 中，带 owner 与触发条件，不以“以后再说”消失。
 
 ---
 

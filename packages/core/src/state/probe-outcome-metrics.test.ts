@@ -90,6 +90,21 @@ function fact(input: {
 }
 
 describe("queryProbeOutcomeMetrics", () => {
+  it("treats an empty repository filter as an empty outcome report", async () => {
+    const db = openDb({ path: await databasePath(), minFreeBytes: 0 });
+    insertSession(db, { sessionId: "probe_metrics00" });
+
+    expect(queryProbeOutcomeMetrics(db, {
+      as_of_ms: dayMs,
+      repo_ids: [],
+    })).toEqual({
+      schema_version: "1",
+      as_of_ms: dayMs,
+      repos: [],
+    });
+    db.close();
+  });
+
   it("rebuilds section 10 outcome rates from replayable events and reports legacy coverage", async () => {
     const db = openDb({ path: await databasePath(), minFreeBytes: 0 });
     insertSession(db, { sessionId: "probe_metrics01" });

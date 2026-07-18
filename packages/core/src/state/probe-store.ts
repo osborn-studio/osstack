@@ -679,21 +679,31 @@ export function queryProbePortfolioSummary(
 ): ProbePortfolioSummaryV1 {
   const input = QueryProbePortfolioSummaryInputV1.parse(rawInput);
   const asOf = input.as_of_ms ?? Date.now();
-  const repoFilter = input.repo_ids === undefined
+  const repoIds = input.repo_ids === undefined
     ? undefined
-    : new Set(input.repo_ids);
+    : [...new Set(input.repo_ids)];
+  if (repoIds?.length === 0) {
+    return ProbePortfolioSummaryV1.parse({
+      schema_version: "1",
+      as_of_ms: asOf,
+      repos: [],
+    });
+  }
   const deferredAgeMs = (input.max_deferred_age_days ?? 14) * 86_400_000;
   const waiverAgeMs = (input.max_waiver_age_days ?? 30) * 86_400_000;
+  const sessionRepoClause = repoIds === undefined
+    ? ""
+    : `WHERE repo_id IN (${repoIds.map(() => "?").join(", ")})`;
   const sessions = db.prepare(`
     SELECT session_id, repo_id, state, snapshot_json
     FROM probe_sessions
+    ${sessionRepoClause}
     ORDER BY repo_id, created_at_ms, session_id
-  `).all() as ProbePortfolioSessionRow[];
+  `).all(...(repoIds ?? [])) as ProbePortfolioSessionRow[];
   const inProgressSessions = new Map<string, string>();
   const summaries = new Map<string, MutableProbeRepoPortfolioSummary>();
 
   for (const session of sessions) {
-    if (repoFilter !== undefined && !repoFilter.has(session.repo_id)) continue;
     const summary = summaries.get(session.repo_id) ?? {
       repo_id: session.repo_id,
       session_count: 0,
@@ -723,12 +733,20 @@ export function queryProbePortfolioSummary(
     summaries.set(session.repo_id, summary);
   }
 
+  const itemRepoClause = repoIds === undefined
+    ? ""
+    : `AND sessions.repo_id IN (${repoIds.map(() => "?").join(", ")})`;
   const items = db.prepare(`
-    SELECT session_id, item_id, question_id, state, current_quadrant,
-           severity, updated_at_ms, item_json
-    FROM probe_items
-    ORDER BY session_id, item_id
-  `).all() as ProbeItemRowV1[];
+    SELECT items.session_id, items.item_id, items.question_id, items.state,
+           items.current_quadrant, items.severity, items.updated_at_ms,
+           items.item_json
+    FROM probe_items AS items
+    JOIN probe_sessions AS sessions
+      ON sessions.session_id = items.session_id
+    WHERE sessions.state IN ('active', 'paused')
+    ${itemRepoClause}
+    ORDER BY items.session_id, items.item_id
+  `).all(...(repoIds ?? [])) as ProbeItemRowV1[];
   for (const row of items) {
     const repoId = inProgressSessions.get(row.session_id);
     if (repoId === undefined) continue;

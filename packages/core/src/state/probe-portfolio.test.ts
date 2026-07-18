@@ -157,6 +157,22 @@ describe("queryProbePortfolioSummary", () => {
     db.close();
   });
 
+  it("treats an empty repository filter as an empty portfolio", async () => {
+    const nowMs = 50 * dayMs;
+    const db = openDb({ path: await databasePath(), minFreeBytes: 0 });
+    createProbeSession(db, createSummarySession(nowMs));
+
+    expect(queryProbePortfolioSummary(db, {
+      as_of_ms: nowMs,
+      repo_ids: [],
+    })).toEqual({
+      schema_version: "1",
+      as_of_ms: nowMs,
+      repos: [],
+    });
+    db.close();
+  });
+
   it("aggregates current obligations without letting completed history inflate completion", async () => {
     const nowMs = 50 * dayMs;
     const db = openDb({ path: await databasePath(), minFreeBytes: 0 });

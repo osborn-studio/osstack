@@ -436,21 +436,39 @@ export function queryProbeOutcomeMetrics(
 ): ProbeOutcomeMetricsReportV1 {
   const input = QueryProbeOutcomeMetricsInputV1.parse(rawInput);
   const asOfMs = input.as_of_ms ?? Date.now();
-  const repoFilter = input.repo_ids === undefined
+  const repoIds = input.repo_ids === undefined
     ? undefined
-    : new Set(input.repo_ids);
+    : [...new Set(input.repo_ids)];
+  if (repoIds?.length === 0) {
+    return ProbeOutcomeMetricsReportV1.parse({
+      schema_version: "1",
+      as_of_ms: asOfMs,
+      repos: [],
+    });
+  }
   const deferredAgeMs = (input.max_deferred_age_days ?? 14) * dayMs;
   const waiverAgeMs = (input.max_waiver_age_days ?? 30) * dayMs;
+  const sessionRepoClause = repoIds === undefined
+    ? ""
+    : `WHERE repo_id IN (${repoIds.map(() => "?").join(", ")})`;
   const sessions = db.prepare(`
     SELECT session_id, repo_id
     FROM probe_sessions
+    ${sessionRepoClause}
     ORDER BY repo_id, created_at_ms, session_id
-  `).all() as ProbeMetricSessionRow[];
+  `).all(...(repoIds ?? [])) as ProbeMetricSessionRow[];
+  const eventRepoClause = repoIds === undefined
+    ? ""
+    : `WHERE sessions.repo_id IN (${repoIds.map(() => "?").join(", ")})`;
   const eventRows = db.prepare(`
-    SELECT session_id, revision, type, event_json, occurred_at_ms
-    FROM probe_events
-    ORDER BY session_id, revision
-  `).all() as ProbeMetricEventRow[];
+    SELECT events.session_id, events.revision, events.type,
+           events.event_json, events.occurred_at_ms
+    FROM probe_events AS events
+    JOIN probe_sessions AS sessions
+      ON sessions.session_id = events.session_id
+    ${eventRepoClause}
+    ORDER BY events.session_id, events.revision
+  `).all(...(repoIds ?? [])) as ProbeMetricEventRow[];
   const eventsBySession = new Map<string, ProbeMetricEventRow[]>();
   for (const row of eventRows) {
     const bucket = eventsBySession.get(row.session_id);
@@ -460,7 +478,6 @@ export function queryProbeOutcomeMetrics(
   const repos = new Map<string, MutableRepoMetrics>();
 
   for (const session of sessions) {
-    if (repoFilter !== undefined && !repoFilter.has(session.repo_id)) continue;
     const aggregate = repos.get(session.repo_id) ?? {
       repo_id: session.repo_id,
       counts: emptyCounts(),
