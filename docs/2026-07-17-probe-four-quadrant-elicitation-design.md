@@ -1270,7 +1270,7 @@ Hermes 只保留对象数组，Loop 再按 strict `ImplementationDeviation` 校�
 
 **验证：** CLI observer 测试 + loop 全套测试。
 
-### R3.3 — 通用 kanban transition guard
+### R3.3 — 通用 kanban transition guard（2026-07-18 完成）
 
 **依赖：** R1.2。
 
@@ -1284,9 +1284,9 @@ Hermes 只保留对象数组，Loop 再按 strict `ImplementationDeviation` 校�
 
 **验收：**
 
-- [ ] 无 guard 时现有行为字节兼容。
-- [ ] guards 全部先评估，拒绝时不产生 move event。
-- [ ] stack 源码不含 probe import 或 probe-specific branch。
+- [x] 无 guard 时现有行为字节兼容。
+- [x] guards 全部先评估，拒绝时不产生 move event。
+- [x] stack 源码不含 probe import 或 probe-specific branch。
 
 **验证：** core kanban + stack CLI tests。
 

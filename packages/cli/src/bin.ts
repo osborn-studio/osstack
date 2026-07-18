@@ -126,6 +126,7 @@ import {
   observeLoopImplementationDeviations,
   type LoopProbeObservationResultV1,
 } from "./loop-probe-observer.js";
+import { createProbeKanbanTransitionGuard } from "./probe-kanban-guard.js";
 import {
   runLoopNeatFinalizer,
   type LoopNeatFinalizerResultV1,
@@ -656,7 +657,11 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "stack") {
     const dbPath = await ensureLocalStateDbPath();
-    return handleStackCommand(args.slice(1), { dbPath });
+    return handleStackCommand(args.slice(1), {
+      dbPath,
+      workspacePath: process.cwd(),
+      transitionGuards: [createProbeKanbanTransitionGuard({ db_path: dbPath })],
+    });
   }
 
   if (cmd === "governance" || cmd === "govern") {
