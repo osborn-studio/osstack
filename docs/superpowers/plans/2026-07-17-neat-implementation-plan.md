@@ -1008,13 +1008,13 @@ preview. Apply validates policy, action allowlist, and current before state.
 
 **Acceptance criteria:**
 
-- [ ] No flags means preview only.
-- [ ] `--apply` without `--yes` refuses.
-- [ ] Observe/propose policy refuses apply; invalid policy refuses apply.
-- [ ] Changed target state refuses with conflict.
-- [ ] Applied action records before/after hashes and is idempotent.
+- [x] No flags means preview only.
+- [x] `--apply` without `--yes` refuses.
+- [x] Observe/propose policy refuses apply; invalid policy refuses apply.
+- [x] Changed target state refuses with conflict.
+- [x] Applied action records before/after hashes and is idempotent.
 
-**Verification:** CLI and policy tests cover every refusal and success path.
+**Verification:** CLI and policy tests cover every refusal and success path. ✅
 
 **Dependencies:** R1.2.2 and explicit owner approval for action policy semantics.
 
@@ -1025,11 +1025,11 @@ changeset.
 
 ### R1 release gate
 
-- [ ] Review artifacts cannot close a different diff.
-- [ ] Preview is the default for every write-related command.
-- [ ] Only one safe action exists.
-- [ ] Apply precondition/idempotency/policy tests pass.
-- [ ] Skill workflow supports `reviewed_no_change` without fake doc edits.
+- [x] Review artifacts cannot close a different diff.
+- [x] Preview is the default for every write-related command.
+- [x] Only one safe action exists.
+- [x] Apply precondition/idempotency/policy tests pass.
+- [x] Skill workflow supports `reviewed_no_change` without fake doc edits.
 
 ---
 

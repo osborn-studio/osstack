@@ -39,7 +39,8 @@ when a maintained document already owns the detail.
   game the limit by moving duplicate text to an arbitrary new file.
 - Change-review contract: update a declared review target only when the change
   actually changes user or maintainer knowledge. If review produces no edit,
-  report the pending R0 limitation rather than adding meaningless text.
+  record an authorized `reviewed_no_change` artifact rather than adding
+  meaningless text.
 - Instruction drift: preserve the configured canonical direction. Existing
   independent files require a human decision.
 

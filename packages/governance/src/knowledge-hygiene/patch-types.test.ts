@@ -8,7 +8,7 @@ const fingerprint = `khf_${"a".repeat(64)}`;
 const diffId = `diff_${"b".repeat(64)}`;
 const actionId = `kha_${"c".repeat(64)}`;
 const patchId = `khp_${"d".repeat(64)}`;
-const afterSha = "e".repeat(64);
+const afterSha = "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49";
 
 function sourceFinding() {
   return {
@@ -88,6 +88,21 @@ describe("knowledge hygiene patch contracts", () => {
     expect(KnowledgeHygienePatchActionV1.safeParse({
       ...action(),
       source_fingerprint: `khf_${"f".repeat(64)}`,
+    }).success).toBe(false);
+  });
+
+  it("rejects non-import content, outside imports, and false after hashes", () => {
+    expect(KnowledgeHygienePatchActionV1.safeParse({
+      ...action(),
+      after: { content: "arbitrary prose\n", sha256: afterSha },
+    }).success).toBe(false);
+    expect(KnowledgeHygienePatchActionV1.safeParse({
+      ...action(),
+      after: { content: "@../outside.md\n", sha256: afterSha },
+    }).success).toBe(false);
+    expect(KnowledgeHygienePatchActionV1.safeParse({
+      ...action(),
+      after: { content: "@AGENTS.md\n", sha256: "f".repeat(64) },
     }).success).toBe(false);
   });
 });

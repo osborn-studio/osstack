@@ -70,6 +70,44 @@ and evidence-preserving `{ finding, resolution }` entries in
 `resolved_findings`; `summary.resolved` reports their count. `--fail-on` uses
 only unresolved severity counts.
 
+## Safe patch preview and apply
+
+`neat fix` supports one closed low-risk action: create a missing instruction
+mirror containing exactly one confined import line. Preview is always the
+default and does not require write policy:
+
+```bash
+osstack neat fix --from "$report_file"
+osstack neat fix --from "$report_file" --json
+```
+
+The preview includes the absent-target precondition, final content hash, source
+finding, evidence, and stable patch/action IDs. It refuses existing targets,
+symlink-only mirror mode, a missing canonical source, stale config hash, and
+reports without a `diff_id`.
+
+Apply requires both confirmation flags and a complete source report:
+
+```yaml
+# .osstack/policy.yaml
+schema_version: 1
+mode: execute
+auto_apply: true
+allowed_auto_changes: [docs]
+```
+
+```bash
+osstack neat fix --from "$report_file" --apply --yes
+```
+
+`observe` and `propose` modes, missing/invalid policy, `requires_approval`,
+forbidden docs, and a missing docs allowlist all fail closed. `--yes` confirms
+the command but is not approval evidence. Apply rechecks the target immediately
+before writing, resolves parent symlinks inside the repository, and uses an
+atomic no-replace create. A concurrent different target is preserved and
+reported as a conflict; repeating the exact applied action reports
+`already_applied`.
+
 ## Exit codes
 
 | Code | Meaning |
@@ -177,6 +215,8 @@ are skipped.
 
 - [finding v1 schema](../../packages/governance/schemas/knowledge-hygiene-finding-v1.schema.json)
 - [report v1 schema](../../packages/governance/schemas/knowledge-hygiene-report-v1.schema.json)
+- [patch action v1 schema](../../packages/governance/schemas/knowledge-hygiene-patch-action-v1.schema.json)
+- [patch plan v1 schema](../../packages/governance/schemas/knowledge-hygiene-patch-plan-v1.schema.json)
 
 ## Companion skill
 

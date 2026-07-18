@@ -202,6 +202,13 @@ function parseReport(value: unknown): KnowledgeHygieneReportV1 {
   return parsed.data;
 }
 
+export async function loadNeatReport(
+  path: string,
+  label = "--report",
+): Promise<KnowledgeHygieneReportV1> {
+  return parseReport(parseJson(await readRegularFile(path, label), label));
+}
+
 async function readExistingArtifact(
   path: string,
 ): Promise<KnowledgeHygieneReviewArtifactV1 | undefined> {
@@ -305,10 +312,7 @@ export async function handleNeatReviewCommand(
     return 0;
   }
 
-  const report = parseReport(parseJson(
-    await readRegularFile(parsed.report_path as string, "--report"),
-    "--report",
-  ));
+  const report = await loadNeatReport(parsed.report_path as string);
   const outputPath = parsed.output_path as string;
   const existing = await readExistingArtifact(outputPath);
   try {

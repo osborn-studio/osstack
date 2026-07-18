@@ -5,6 +5,7 @@ import {
   KnowledgeHygieneConfigError,
   KnowledgeHygieneGitError,
   KnowledgeHygieneRuleIdV1,
+  KnowledgeHygienePatchConflictError,
   KnowledgeHygieneReviewError,
   type KnowledgeHygieneEnginePortsV1,
   type KnowledgeHygieneReportV1,
@@ -20,6 +21,11 @@ import {
   loadNeatReviewArtifact,
   NeatReviewInputError,
 } from "./neat-review-command.js";
+import {
+  handleNeatFixCommand,
+  NeatFixInputError,
+  type NeatFixCommandOverrides,
+} from "./neat-fix-command.js";
 
 export type NeatFailOn = "error" | "warning" | "none";
 type NeatFormat = "human" | "json";
@@ -31,6 +37,7 @@ export interface NeatCommandDependencies {
   check?: typeof checkKnowledgeHygiene;
   engine_ports?: KnowledgeHygieneEnginePortsV1;
   now?: () => Date;
+  fix?: NeatFixCommandOverrides;
 }
 
 interface ParsedNeatCommand {
@@ -55,6 +62,7 @@ Usage:
   osstack neat [options]
   osstack neat check [options]
   osstack neat review [review options]
+  osstack neat fix [fix options]
 
 Options:
   --repo <path>                  Repository root (default: cwd)
@@ -360,6 +368,28 @@ export async function handleNeatCommand(
   args: readonly string[],
   deps: NeatCommandDependencies,
 ): Promise<number> {
+  if (args[0] === "fix") {
+    try {
+      return await handleNeatFixCommand(args.slice(1), {
+        cwd: deps.cwd,
+        stdout: deps.stdout,
+        now: deps.now ?? deps.engine_ports?.now ?? (() => new Date()),
+        ...deps.fix,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (error instanceof NeatFixInputError) {
+        emitError(deps, wantsJson(args), "bad_request", message, false);
+        return 2;
+      }
+      if (error instanceof KnowledgeHygienePatchConflictError) {
+        emitError(deps, wantsJson(args), "conflict", message, true);
+        return 3;
+      }
+      emitError(deps, wantsJson(args), "internal", message, true);
+      return 3;
+    }
+  }
   if (args[0] === "review") {
     try {
       return await handleNeatReviewCommand(args.slice(1), {

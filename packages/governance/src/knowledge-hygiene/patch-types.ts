@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { assertKnowledgeHygieneRepositoryPathV1 } from "./path-pattern.js";
 import {
@@ -74,6 +75,34 @@ export const KnowledgeHygienePatchActionV1 = z
         code: z.ZodIssueCode.custom,
         path: ["target_path"],
         message: "target_path must match source finding location",
+      });
+    }
+    const importMatch = /^@([^\r\n]+)\n$/u.exec(action.after.content);
+    if (!importMatch) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["after", "content"],
+        message: "after.content must be exactly one instruction import line",
+      });
+    } else {
+      try {
+        assertKnowledgeHygieneRepositoryPathV1(importMatch[1] as string);
+      } catch (error) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["after", "content"],
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+    const contentSha = createHash("sha256")
+      .update(action.after.content)
+      .digest("hex");
+    if (contentSha !== action.after.sha256) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["after", "sha256"],
+        message: "after.sha256 must match after.content bytes",
       });
     }
   });

@@ -256,12 +256,17 @@ osstack neat review --report /tmp/neat-report.json --finding khf_... \
   --outcome reviewed_no_change --reason "Reviewed" --actor osborn \
   --output /tmp/neat-review.json
 osstack neat check --review-file /tmp/neat-review.json --fail-on warning
+
+# Preview first; apply only under an execute/docs auto-apply policy.
+osstack neat fix --from /tmp/neat-report.json
+osstack neat fix --from /tmp/neat-report.json --apply --yes
 ```
 
 The optional `.osstack/neat.yaml` declares canonical instruction sources,
 required docs, budgets, and change-review contracts. Checks are read-only and
 make no semantic prose guesses; `neat review` writes only an explicit portable
-artifact. See the [neat user and config guide](docs/guides/neat.md).
+artifact, and `neat fix` defaults to a closed safe-patch preview. See the
+[neat user and config guide](docs/guides/neat.md).
 
 ### Knowledge
 

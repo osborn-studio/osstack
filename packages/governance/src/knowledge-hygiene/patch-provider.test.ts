@@ -96,6 +96,19 @@ describe("knowledge hygiene patch provider", () => {
     } as KnowledgeHygienePatchProviderError);
   });
 
+  it("may reproduce an exact already-applied action only for apply idempotency", async () => {
+    const root = await mkdtemp(join(tmpdir(), "osstack-neat-patch-"));
+    await writeFile(join(root, "AGENTS.md"), "# Canonical\n");
+    await writeFile(join(root, "CLAUDE.md"), "@AGENTS.md\n");
+
+    await expect(planKnowledgeHygienePatches({
+      report: report(root),
+      config: config(),
+    }, { now, allow_already_applied: true })).resolves.toMatchObject({
+      actions: [{ target_path: "CLAUDE.md" }],
+    });
+  });
+
   it("refuses unsupported symlink mode and a missing canonical source", async () => {
     const root = await mkdtemp(join(tmpdir(), "osstack-neat-patch-"));
     await writeFile(join(root, "AGENTS.md"), "# Canonical\n");

@@ -258,10 +258,14 @@ osstack neat review --report /tmp/neat-report.json --finding khf_... \
   --outcome reviewed_no_change --reason "已审阅" --actor osborn \
   --output /tmp/neat-review.json
 osstack neat check --review-file /tmp/neat-review.json --fail-on warning
+
+# 默认只预览；仅在 execute/docs 自动应用策略下显式写入。
+osstack neat fix --from /tmp/neat-report.json
+osstack neat fix --from /tmp/neat-report.json --apply --yes
 ```
 
 可选的 `.osstack/neat.yaml` 用来声明权威指令文件、必备文档、预算和变更审阅合同。
-检查全程只读且不猜测一般散文的语义；`neat review` 只写入调用方显式指定的便携证据文件。完整字段、规则与边界见
+检查全程只读且不猜测一般散文的语义；`neat review` 只写入调用方显式指定的便携证据文件，`neat fix` 默认仅生成封闭的安全补丁预览。完整字段、规则与边界见
 [neat 使用与配置指南](docs/guides/neat.md)。
 
 ### Knowledge Cloud

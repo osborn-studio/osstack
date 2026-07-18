@@ -16,7 +16,8 @@ session recorder.
   Git classification, limits, and fingerprints.
 - Do not recreate those checks with `find`, `grep`, `wc`, custom link scans, or
   hand-written Git classification.
-- Do not inspect or edit external agent memory in R0.
+- Do not inspect or edit external agent memory unless a later explicit neat
+  surface supplies bounded evidence and the user placed it in scope.
 - Do not delete files, rename paths, replace an existing instruction source,
   create symlinks, or perform other destructive actions.
 - Read [references/editorial-playbook.md](references/editorial-playbook.md)
@@ -44,9 +45,12 @@ session recorder.
    - `agent_edit`: inspect cited evidence and edit only when the correction is
      supported by current repository facts and within user scope.
    - `human_decision`: present observed, expected, evidence, and the smallest
-     concrete choice; do not decide on the user's behalf.
-   - `safe_patch`: leave pending in R0 because the CLI has no authorized apply
-     path yet; do not imitate a future patch provider.
+     concrete choice; do not decide on the user's behalf. After the user chooses
+     a resolution, use `neat review` and rerun with `--review-file`; never add a
+     meaningless documentation edit to silence a review contract.
+   - `safe_patch`: run `neat fix --from <report>` and show the preview. Apply
+     only when the user explicitly authorizes it and repository policy permits
+     `neat fix --from <report> --apply --yes`; never reproduce the write by hand.
 6. Keep each edit focused. Preserve established tone and audience. Update the
    maintained source instead of creating a parallel explanation.
 7. Rerun the exact same check command after edits. Never substitute a partial
@@ -57,7 +61,7 @@ session recorder.
 Report:
 
 - edited files and the evidence that justified each edit;
-- current error/warning/info/suppressed counts;
+- current error/warning/info/suppressed/resolved counts;
 - inventory completeness;
 - unresolved `human_decision`, `safe_patch`, or skipped findings;
 - the rerun command and exit result.

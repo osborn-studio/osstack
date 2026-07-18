@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
-import { lstat } from "node:fs/promises";
-import { resolve } from "node:path";
+import { constants } from "node:fs";
+import { lstat, open, realpath } from "node:fs/promises";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { KnowledgeHygieneConfigV1 } from "./config.js";
 import {
   KnowledgeHygienePatchActionV1,
@@ -39,10 +40,12 @@ export type KnowledgeHygienePatchPathStateV1 = "missing" | "regular_file" | "oth
 
 export interface KnowledgeHygienePatchProviderPortsV1 {
   now?: () => Date;
+  allow_already_applied?: boolean;
   inspect_path?: (
     repoRoot: string,
     repositoryPath: string,
   ) => Promise<KnowledgeHygienePatchPathStateV1>;
+  read_path?: (repoRoot: string, repositoryPath: string) => Promise<string>;
 }
 
 function errorCode(error: unknown): string | undefined {
@@ -62,6 +65,32 @@ async function inspectPath(
   } catch (error) {
     if (errorCode(error) === "ENOENT") return "missing";
     throw error;
+  }
+}
+
+function isInsideRoot(root: string, candidate: string): boolean {
+  const pathFromRoot = relative(root, candidate);
+  return pathFromRoot === "" || (
+    !pathFromRoot.startsWith(`..${sep}`) &&
+    pathFromRoot !== ".." &&
+    !isAbsolute(pathFromRoot)
+  );
+}
+
+async function readPath(repoRoot: string, repositoryPath: string): Promise<string> {
+  const root = await realpath(resolve(repoRoot));
+  const target = await realpath(resolve(root, repositoryPath));
+  if (!isInsideRoot(root, target)) {
+    throw new KnowledgeHygienePatchProviderError(
+      "target_exists",
+      `refusing existing instruction mirror outside repository: ${repositoryPath}`,
+    );
+  }
+  const handle = await open(target, constants.O_RDONLY | constants.O_NOFOLLOW);
+  try {
+    return await handle.readFile("utf8");
+  } finally {
+    await handle.close();
   }
 }
 
@@ -101,6 +130,7 @@ export async function planKnowledgeHygienePatches(
   }
   const findings = eligibleFindings(input.report);
   const inspect = ports.inspect_path ?? inspectPath;
+  const read = ports.read_path ?? readPath;
   const actions = [];
 
   for (const finding of findings) {
@@ -126,13 +156,6 @@ export async function planKnowledgeHygienePatches(
         `create_instruction_import does not support symlink-only mirror ${mirror.path}`,
       );
     }
-    const targetState = await inspect(input.report.repo.root, mirror.path);
-    if (targetState !== "missing") {
-      throw new KnowledgeHygienePatchProviderError(
-        "target_exists",
-        `refusing to replace existing instruction mirror ${mirror.path}`,
-      );
-    }
     const canonicalState = await inspect(
       input.report.repo.root,
       instructions.canonical,
@@ -145,6 +168,19 @@ export async function planKnowledgeHygienePatches(
     }
 
     const content = `@${instructions.canonical}\n`;
+    const targetState = await inspect(input.report.repo.root, mirror.path);
+    if (targetState !== "missing") {
+      const alreadyApplied =
+        ports.allow_already_applied === true &&
+        targetState === "regular_file" &&
+        await read(input.report.repo.root, mirror.path) === content;
+      if (!alreadyApplied) {
+        throw new KnowledgeHygienePatchProviderError(
+          "target_exists",
+          `refusing to replace existing instruction mirror ${mirror.path}`,
+        );
+      }
+    }
     const afterSha = digestContent(content);
     const actionId = `kha_${digestJson([
       "1",

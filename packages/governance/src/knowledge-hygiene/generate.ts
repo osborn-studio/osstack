@@ -45,7 +45,7 @@ export const KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V1 = Object.freeze([
     key: "knowledge-hygiene-patch-action-v1",
     title: "Osstack Knowledge Hygiene Patch Action v1",
     comment:
-      "Source fingerprint/finding equality and target/finding equality are enforced by @osstack/governance Zod validation.",
+      "Source/target equality, exact one-line confined import content, and content SHA equality are enforced by @osstack/governance Zod validation.",
     schema: KnowledgeHygienePatchActionV1,
   },
   {
