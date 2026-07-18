@@ -53,8 +53,8 @@
 - 安装后 `osstack --version` 通过。
 - 安装后 `doctor`、`release doctor --target npm`、`loop doctor`、evidence commands、knowledge commands 通过。
 - `.changeset/osstack-upgrade-knowledge-cloud.md`、`.github/workflows/release.yml` 已存在。
-- `release doctor --target npm` 已接入 `npm_publish_assets` 静态 preflight，检查 `@osstack/cli` package 元数据、changeset、release workflow 的 changesets action、`pnpm smoke:release-plan`、`pnpm smoke:npm-install`、npm provenance、`NPM_TOKEN` 与 `NODE_AUTH_TOKEN` 发布约束；`smoke:npm-install` 会用安装后的 CLI 执行 `release doctor --target npm --json` 并确认 npm publish readiness 与 publish assets gate；`smoke:release-plan` 会验证完整 JSON/Markdown runbook 的 validation、publish/deploy 与 post-release validation commands；`release plan` 的 npm validation commands 会列出 `pnpm smoke:npm-install`，`target=all` 还会列出 `pnpm smoke:release-plan`，post-release validation commands 会列出真实 registry 安装后的 `npm install -g @osstack/cli`、`osstack release doctor --target npm --json` 与 `osstack doctor --workspace . --json`。
-- GitHub push/CI/release workflow 已恢复；仓库 secret `NPM_TOKEN` 存在，npm scope access preflight 当前通过。
+- `release doctor --target npm` 已接入 `npm_publish_assets` 静态 preflight，检查 `@osstack/cli` package 元数据、changeset、release workflow 的 changesets action、`pnpm smoke:release-plan`、`pnpm smoke:npm-install`、GitHub OIDC 权限与 Trusted Publishing 兼容 Node/npm 客户端；`smoke:npm-install` 会用安装后的 CLI 执行 `release doctor --target npm --json` 并确认 npm publish readiness 与 publish assets gate；`smoke:release-plan` 会验证完整 JSON/Markdown runbook 的 validation、publish/deploy 与 post-release validation commands；`release plan` 的 npm validation commands 会列出 `pnpm smoke:npm-install`，`target=all` 还会列出 `pnpm smoke:release-plan`，post-release validation commands 会列出真实 registry 安装后的 `npm install -g @osstack/cli`、`osstack release doctor --target npm --json` 与 `osstack doctor --workspace . --json`。
+- GitHub push/CI/release workflow 已恢复；常规 npm 发布迁移到 Trusted Publishing，`NPM_TOKEN` 仅保留为首次发包和人工恢复凭证。
 
 下一步：
 
