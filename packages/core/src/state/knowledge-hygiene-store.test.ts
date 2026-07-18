@@ -8,6 +8,7 @@ import {
   getKnowledgeHygieneFinding,
   getKnowledgeHygieneRunByReportSha,
   listKnowledgeHygieneOccurrences,
+  queryKnowledgeHygieneTrend,
   recordKnowledgeHygieneRun,
   type RecordKnowledgeHygieneRunInputV1,
 } from "./knowledge-hygiene-store.js";
@@ -28,6 +29,7 @@ function input(
     resolved?: RecordKnowledgeHygieneRunInputV1["resolved_findings"];
     complete?: boolean;
     generatedAt?: number;
+    suppressed?: number;
   } = {},
 ): RecordKnowledgeHygieneRunInputV1 {
   return {
@@ -45,7 +47,7 @@ function input(
       error: 0,
       warning: options.findings?.length ?? 0,
       info: 0,
-      suppressed: 0,
+      suppressed: options.suppressed ?? 0,
       resolved: options.resolved?.length ?? 0,
     },
     findings: options.findings ?? [],
@@ -53,12 +55,15 @@ function input(
   };
 }
 
-function finding(): RecordKnowledgeHygieneRunInputV1["findings"][number] {
+function finding(
+  findingFingerprint = fingerprint,
+  findingSeverity: "error" | "warning" | "info" = "warning",
+): RecordKnowledgeHygieneRunInputV1["findings"][number] {
   return {
-    fingerprint,
+    fingerprint: findingFingerprint,
     rule_id: "contract.review_required",
     surface: "documentation",
-    severity: "warning",
+    severity: findingSeverity,
     location_path: "README.md",
     rationale: "Review evidence is required.",
   };
@@ -200,6 +205,82 @@ describe("knowledge hygiene store", () => {
     });
     expect(db.prepare("SELECT outcome, actor_id FROM knowledge_hygiene_resolutions")
       .get()).toEqual({ outcome: "reviewed_no_change", actor_id: "osborn" });
+    db.close();
+  });
+
+  it("derives score-free trends from occurrence history", async () => {
+    const path = await databasePath();
+    const db = openDb({ path, minFreeBytes: 0 });
+    const day = 86_400_000;
+    const absent = `khf_${"d".repeat(64)}`;
+    const resolved = `khf_${"e".repeat(64)}`;
+    const recurring = `khf_${"f".repeat(64)}`;
+    const added = `khf_${"1".repeat(64)}`;
+    recordKnowledgeHygieneRun(db, input("7".repeat(64), {
+      generatedAt: 10 * day,
+      findings: [
+        finding(absent),
+        finding(resolved, "info"),
+        finding(recurring),
+      ],
+      suppressed: 1,
+    }));
+    recordKnowledgeHygieneRun(db, input("8".repeat(64), {
+      generatedAt: 12 * day,
+      findings: [
+        finding(absent),
+        finding(resolved, "info"),
+        finding(recurring),
+      ],
+    }));
+    recordKnowledgeHygieneRun(db, input("9".repeat(64), {
+      generatedAt: 14 * day,
+      findings: [finding(recurring), finding(added, "error")],
+      resolved: [{
+        finding: finding(resolved, "info"),
+        resolution: {
+          diff_id: diffId,
+          fingerprint: resolved,
+          outcome: "fixed",
+          actor_kind: "agent",
+          actor_id: "neat-test",
+          reason: "Verified by fixture.",
+          evidence_refs: [],
+          resolved_at: 14 * day,
+        },
+      }],
+      suppressed: 2,
+    }));
+
+    const trend = queryKnowledgeHygieneTrend(db, "repo", {
+      as_of: 15 * day,
+    });
+
+    expect(trend).toEqual({
+      schema_version: "1",
+      repo_id: "repo",
+      as_of: 15 * day,
+      report_count: 3,
+      open: {
+        total: 2,
+        error: 1,
+        warning: 1,
+        info: 0,
+        oldest_age_days: 5,
+      },
+      recurrence: { total: 1, warning: 1 },
+      closure: { tracked: 4, closed: 2, rate: 0.5 },
+      delta: { new: 1, resolved: 2 },
+      suppressed: { latest: 2 },
+    });
+    expect(trend).not.toHaveProperty("score");
+    db.prepare(`
+      UPDATE knowledge_hygiene_findings
+      SET current_state = 'closed_absent', occurrence_count = 999
+      WHERE repo_id = 'repo'
+    `).run();
+    expect(queryKnowledgeHygieneTrend(db, "repo", { as_of: 15 * day }))
+      .toEqual(trend);
     db.close();
   });
 });

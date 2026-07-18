@@ -116,6 +116,43 @@ export interface KnowledgeHygieneOccurrenceRowV1 {
   resolution_outcome: string | null;
 }
 
+export const KnowledgeHygieneTrendReportV1 = z.object({
+  schema_version: z.literal("1"),
+  repo_id: z.string().min(1),
+  as_of: z.number().finite(),
+  report_count: z.number().int().nonnegative(),
+  open: z.object({
+    total: z.number().int().nonnegative(),
+    error: z.number().int().nonnegative(),
+    warning: z.number().int().nonnegative(),
+    info: z.number().int().nonnegative(),
+    oldest_age_days: z.number().int().nonnegative().nullable(),
+  }).strict(),
+  recurrence: z.object({
+    total: z.number().int().nonnegative(),
+    warning: z.number().int().nonnegative(),
+  }).strict(),
+  closure: z.object({
+    tracked: z.number().int().nonnegative(),
+    closed: z.number().int().nonnegative(),
+    rate: z.number().min(0).max(1),
+  }).strict(),
+  delta: z.object({
+    new: z.number().int().nonnegative(),
+    resolved: z.number().int().nonnegative(),
+  }).strict(),
+  suppressed: z.object({
+    latest: z.number().int().nonnegative(),
+  }).strict(),
+}).strict();
+export type KnowledgeHygieneTrendReportV1 = z.infer<
+  typeof KnowledgeHygieneTrendReportV1
+>;
+
+export interface QueryKnowledgeHygieneTrendOptionsV1 {
+  as_of?: number;
+}
+
 interface RawRunRow extends Omit<KnowledgeHygieneRunRowV1, "complete"> {
   complete: number;
 }
@@ -332,4 +369,112 @@ export function listKnowledgeHygieneOccurrences(
     WHERE repo_id = ?
     ORDER BY observed_at, run_id, fingerprint, state
   `).all(repoId) as KnowledgeHygieneOccurrenceRowV1[];
+}
+
+interface TrendRunRow {
+  run_id: string;
+  suppressed_count: number;
+}
+
+interface TrendFindingState {
+  state: KnowledgeHygieneOccurrenceRowV1["state"];
+  severity: KnowledgeHygieneOccurrenceRowV1["severity"];
+  active_occurrences: number;
+  open_since: number | null;
+}
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Rebuild the current trend from append-only occurrence events. The aggregate
+ * findings table is deliberately not consulted: this keeps historical reports
+ * reproducible and makes event replay the testable source of truth.
+ */
+export function queryKnowledgeHygieneTrend(
+  db: Database.Database,
+  repoId: string,
+  options: QueryKnowledgeHygieneTrendOptionsV1 = {},
+): KnowledgeHygieneTrendReportV1 {
+  const parsedRepoId = z.string().min(1).parse(repoId);
+  const asOf = z.number().finite().parse(options.as_of ?? Date.now());
+  const runs = db.prepare(`
+    SELECT run_id, suppressed_count
+    FROM knowledge_hygiene_runs
+    WHERE repo_id = ?
+    ORDER BY generated_at, recorded_at, run_id
+  `).all(parsedRepoId) as TrendRunRow[];
+  const events = listKnowledgeHygieneOccurrences(db, parsedRepoId);
+  const eventsByRun = new Map<string, KnowledgeHygieneOccurrenceRowV1[]>();
+  for (const event of events) {
+    const group = eventsByRun.get(event.run_id) ?? [];
+    group.push(event);
+    eventsByRun.set(event.run_id, group);
+  }
+
+  const states = new Map<string, TrendFindingState>();
+  const latestRun = runs.at(-1);
+  let newCount = 0;
+  let resolvedCount = 0;
+  for (const run of runs) {
+    for (const event of eventsByRun.get(run.run_id) ?? []) {
+      const previous = states.get(event.fingerprint);
+      if (run.run_id === latestRun?.run_id) {
+        if (event.state === "active" && previous === undefined) newCount += 1;
+        if (event.state !== "active") resolvedCount += 1;
+      }
+      if (event.state === "active") {
+        states.set(event.fingerprint, {
+          state: event.state,
+          severity: event.severity,
+          active_occurrences: (previous?.active_occurrences ?? 0) + 1,
+          open_since: previous?.state === "active"
+            ? previous.open_since
+            : event.observed_at,
+        });
+      } else {
+        states.set(event.fingerprint, {
+          state: event.state,
+          severity: event.severity,
+          active_occurrences: previous?.active_occurrences ?? 0,
+          open_since: null,
+        });
+      }
+    }
+  }
+
+  const active = [...states.values()].filter((state) => state.state === "active");
+  const recurring = active.filter((state) => state.active_occurrences > 1);
+  const oldestOpen = active.reduce<number | null>((oldest, state) => {
+    if (state.open_since === null) return oldest;
+    return oldest === null ? state.open_since : Math.min(oldest, state.open_since);
+  }, null);
+  const closed = [...states.values()].filter((state) => state.state !== "active").length;
+  const tracked = states.size;
+
+  return KnowledgeHygieneTrendReportV1.parse({
+    schema_version: "1",
+    repo_id: parsedRepoId,
+    as_of: asOf,
+    report_count: runs.length,
+    open: {
+      total: active.length,
+      error: active.filter((state) => state.severity === "error").length,
+      warning: active.filter((state) => state.severity === "warning").length,
+      info: active.filter((state) => state.severity === "info").length,
+      oldest_age_days: oldestOpen === null
+        ? null
+        : Math.max(0, Math.floor((asOf - oldestOpen) / DAY_MS)),
+    },
+    recurrence: {
+      total: recurring.length,
+      warning: recurring.filter((state) => state.severity === "warning").length,
+    },
+    closure: {
+      tracked,
+      closed,
+      rate: tracked === 0 ? 0 : closed / tracked,
+    },
+    delta: { new: newCount, resolved: resolvedCount },
+    suppressed: { latest: latestRun?.suppressed_count ?? 0 },
+  });
 }
