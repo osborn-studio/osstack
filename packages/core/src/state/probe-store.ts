@@ -189,6 +189,58 @@ export interface ProbeEventRowV1 {
   occurred_at_ms: number;
 }
 
+export const ProbeRepoPortfolioSummaryV1 = z
+  .object({
+    repo_id: z.string().trim().min(1).max(256),
+    session_count: z.number().int().nonnegative(),
+    in_progress_session_count: z.number().int().nonnegative(),
+    completed_session_count: z.number().int().nonnegative(),
+    open_by_severity: z
+      .object({
+        high: z.number().int().nonnegative(),
+        medium: z.number().int().nonnegative(),
+        low: z.number().int().nonnegative(),
+      })
+      .strict(),
+    oldest_open_age_days: z.number().int().nonnegative().nullable(),
+    deferred_due: z.number().int().nonnegative(),
+    waived_active: z.number().int().nonnegative(),
+    waived_expired: z.number().int().nonnegative(),
+    required_total: z.number().int().nonnegative(),
+    required_disposed: z.number().int().nonnegative(),
+    completion_percent: z.number().min(0).max(100).finite(),
+  })
+  .strict();
+export type ProbeRepoPortfolioSummaryV1 = z.infer<
+  typeof ProbeRepoPortfolioSummaryV1
+>;
+
+export const ProbePortfolioSummaryV1 = z
+  .object({
+    schema_version: z.literal("1"),
+    as_of_ms: epochMilliseconds,
+    repos: z.array(ProbeRepoPortfolioSummaryV1),
+  })
+  .strict();
+export type ProbePortfolioSummaryV1 = z.infer<
+  typeof ProbePortfolioSummaryV1
+>;
+
+export const QueryProbePortfolioSummaryInputV1 = z
+  .object({
+    as_of_ms: epochMilliseconds.optional(),
+    repo_ids: z
+      .array(z.string().trim().min(1).max(256))
+      .max(10_000)
+      .optional(),
+    max_deferred_age_days: z.number().int().positive().max(3_650).optional(),
+    max_waiver_age_days: z.number().int().positive().max(3_650).optional(),
+  })
+  .strict();
+export type QueryProbePortfolioSummaryInputV1 = z.infer<
+  typeof QueryProbePortfolioSummaryInputV1
+>;
+
 export interface ProbeStoreCommandResultV1 {
   replayed: boolean;
   result_json: string;
@@ -545,4 +597,212 @@ export function listProbeEvents(
       ORDER BY revision, event_id
     `)
     .all(parsedId) as ProbeEventRowV1[];
+}
+
+const probePortfolioSessionJson = z
+  .object({
+    unselected_required_question_ids: z.array(z.string()).optional(),
+  })
+  .passthrough();
+
+const probePortfolioItemJson = z
+  .object({
+    required: z.boolean(),
+    created_at_ms: epochMilliseconds,
+    deferral: z
+      .object({
+        deferred_at_ms: epochMilliseconds,
+        review_after_ms: epochMilliseconds.optional(),
+      })
+      .passthrough()
+      .optional(),
+    waiver: z
+      .object({
+        approved_at_ms: epochMilliseconds,
+        expires_at_ms: epochMilliseconds.optional(),
+      })
+      .passthrough()
+      .optional(),
+    invalidation: z
+      .object({
+        actor: z.object({ type: z.enum(["human", "agent"]) }).passthrough(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
+interface ProbePortfolioSessionRow {
+  session_id: string;
+  repo_id: string;
+  state: ProbeSessionRowV1["state"];
+  snapshot_json: string;
+}
+
+interface MutableProbeRepoPortfolioSummary {
+  repo_id: string;
+  session_count: number;
+  in_progress_session_count: number;
+  completed_session_count: number;
+  open_by_severity: { high: number; medium: number; low: number };
+  oldest_open_at_ms: number | null;
+  deferred_due: number;
+  waived_active: number;
+  waived_expired: number;
+  required_total: number;
+  required_disposed: number;
+}
+
+function parseStoredJson<T>(
+  json: string,
+  schema: z.ZodType<T>,
+  context: string,
+): T {
+  try {
+    return schema.parse(JSON.parse(json) as unknown);
+  } catch (error) {
+    throw new Error(
+      `invalid ${context}: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
+  }
+}
+
+/**
+ * Read-only portfolio projection for daily/supervisor consumers. Historical
+ * sessions are counted, while readiness obligations and completion are scoped
+ * to active/paused sessions so completed history cannot inflate current work.
+ */
+export function queryProbePortfolioSummary(
+  db: Database.Database,
+  rawInput: QueryProbePortfolioSummaryInputV1 = {},
+): ProbePortfolioSummaryV1 {
+  const input = QueryProbePortfolioSummaryInputV1.parse(rawInput);
+  const asOf = input.as_of_ms ?? Date.now();
+  const repoFilter = input.repo_ids === undefined
+    ? undefined
+    : new Set(input.repo_ids);
+  const deferredAgeMs = (input.max_deferred_age_days ?? 14) * 86_400_000;
+  const waiverAgeMs = (input.max_waiver_age_days ?? 30) * 86_400_000;
+  const sessions = db.prepare(`
+    SELECT session_id, repo_id, state, snapshot_json
+    FROM probe_sessions
+    ORDER BY repo_id, created_at_ms, session_id
+  `).all() as ProbePortfolioSessionRow[];
+  const inProgressSessions = new Map<string, string>();
+  const summaries = new Map<string, MutableProbeRepoPortfolioSummary>();
+
+  for (const session of sessions) {
+    if (repoFilter !== undefined && !repoFilter.has(session.repo_id)) continue;
+    const summary = summaries.get(session.repo_id) ?? {
+      repo_id: session.repo_id,
+      session_count: 0,
+      in_progress_session_count: 0,
+      completed_session_count: 0,
+      open_by_severity: { high: 0, medium: 0, low: 0 },
+      oldest_open_at_ms: null,
+      deferred_due: 0,
+      waived_active: 0,
+      waived_expired: 0,
+      required_total: 0,
+      required_disposed: 0,
+    };
+    summary.session_count += 1;
+    if (session.state === "completed") summary.completed_session_count += 1;
+    if (session.state === "active" || session.state === "paused") {
+      summary.in_progress_session_count += 1;
+      inProgressSessions.set(session.session_id, session.repo_id);
+      const snapshot = parseStoredJson(
+        session.snapshot_json,
+        probePortfolioSessionJson,
+        `probe session ${session.session_id} snapshot`,
+      );
+      summary.required_total +=
+        snapshot.unselected_required_question_ids?.length ?? 0;
+    }
+    summaries.set(session.repo_id, summary);
+  }
+
+  const items = db.prepare(`
+    SELECT session_id, item_id, question_id, state, current_quadrant,
+           severity, updated_at_ms, item_json
+    FROM probe_items
+    ORDER BY session_id, item_id
+  `).all() as ProbeItemRowV1[];
+  for (const row of items) {
+    const repoId = inProgressSessions.get(row.session_id);
+    if (repoId === undefined) continue;
+    const summary = summaries.get(repoId);
+    if (summary === undefined) continue;
+    const item = parseStoredJson(
+      row.item_json,
+      probePortfolioItemJson,
+      `probe item ${row.item_id}`,
+    );
+    if (item.required) summary.required_total += 1;
+    if (row.state === "open") {
+      summary.open_by_severity[row.severity] += 1;
+      summary.oldest_open_at_ms = summary.oldest_open_at_ms === null
+        ? item.created_at_ms
+        : Math.min(summary.oldest_open_at_ms, item.created_at_ms);
+    } else if (row.state === "deferred") {
+      if (item.deferral === undefined) {
+        throw new Error(`invalid probe item ${row.item_id}: deferred item lacks deferral`);
+      }
+      const due =
+        (item.deferral.review_after_ms !== undefined &&
+          item.deferral.review_after_ms <= asOf) ||
+        asOf - item.deferral.deferred_at_ms >= deferredAgeMs;
+      if (due) summary.deferred_due += 1;
+    } else if (row.state === "waived") {
+      if (item.waiver === undefined) {
+        throw new Error(`invalid probe item ${row.item_id}: waived item lacks waiver`);
+      }
+      const expired =
+        (item.waiver.expires_at_ms !== undefined &&
+          item.waiver.expires_at_ms <= asOf) ||
+        asOf - item.waiver.approved_at_ms >= waiverAgeMs;
+      if (expired) summary.waived_expired += 1;
+      else {
+        summary.waived_active += 1;
+        if (item.required) summary.required_disposed += 1;
+      }
+    } else if (row.state === "resolved") {
+      if (item.required) summary.required_disposed += 1;
+    } else if (
+      row.state === "invalidated" &&
+      item.required &&
+      item.invalidation?.actor.type === "human"
+    ) {
+      summary.required_disposed += 1;
+    }
+  }
+
+  const repos = [...summaries.values()]
+    .sort((left, right) => left.repo_id.localeCompare(right.repo_id))
+    .map((summary) => ProbeRepoPortfolioSummaryV1.parse({
+      repo_id: summary.repo_id,
+      session_count: summary.session_count,
+      in_progress_session_count: summary.in_progress_session_count,
+      completed_session_count: summary.completed_session_count,
+      open_by_severity: summary.open_by_severity,
+      oldest_open_age_days: summary.oldest_open_at_ms === null
+        ? null
+        : Math.max(0, Math.floor((asOf - summary.oldest_open_at_ms) / 86_400_000)),
+      deferred_due: summary.deferred_due,
+      waived_active: summary.waived_active,
+      waived_expired: summary.waived_expired,
+      required_total: summary.required_total,
+      required_disposed: summary.required_disposed,
+      completion_percent: summary.required_total === 0
+        ? 100
+        : Math.round(
+          (summary.required_disposed / summary.required_total) * 10_000,
+        ) / 100,
+    }));
+  return ProbePortfolioSummaryV1.parse({
+    schema_version: "1",
+    as_of_ms: asOf,
+    repos,
+  });
 }

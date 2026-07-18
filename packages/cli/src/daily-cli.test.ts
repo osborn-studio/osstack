@@ -1,9 +1,10 @@
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   KanbanRepository,
+  createProbeSession,
   openDb,
   recordKnowledgeHygieneRun,
   type RecordKnowledgeHygieneRunInputV1,
@@ -95,6 +96,59 @@ async function writeRegistry(path: string, entries: unknown[]): Promise<void> {
   await writeFile(path, JSON.stringify(entries, null, 2), "utf8");
 }
 
+function seedDailyProbeSession(input: { corruptDeferred?: boolean } = {}): void {
+  const nowMs = Date.parse("2026-07-11T09:00:00Z");
+  mkdirSync(join(tmp, "home"), { recursive: true });
+  const db = openDb({
+    path: join(tmp, "home", "state.db"),
+    minFreeBytes: 0,
+  });
+  try {
+    createProbeSession(db, {
+      session: {
+        session_id: "probe_daily001",
+        repo_id: "withgh",
+        state: "active",
+        revision: 1,
+        snapshot_json: JSON.stringify({
+          unselected_required_question_ids: ["tech.missing.v1"],
+        }),
+        created_at_ms: nowMs - 10 * 86_400_000,
+        updated_at_ms: nowMs,
+      },
+      items: [{
+        item_id: "pi_dailyopen1",
+        question_id: "tech.daily_open.v1",
+        state: input.corruptDeferred ? "deferred" : "open",
+        current_quadrant: "ku",
+        severity: "high",
+        updated_at_ms: nowMs - 5 * 86_400_000,
+        item_json: JSON.stringify({
+          required: true,
+          created_at_ms: nowMs - 5 * 86_400_000,
+        }),
+      }],
+      event: {
+        event_id: "pe_daily001",
+        revision: 1,
+        type: "session_started",
+        idempotency_key: "daily-start",
+        event_json: JSON.stringify({ type: "session_started" }),
+        occurred_at_ms: nowMs - 10 * 86_400_000,
+      },
+      receipt: {
+        scope_key: "repo:withgh",
+        idempotency_key: "daily-start",
+        request_sha256: "c".repeat(64),
+        result_json: JSON.stringify({ session_id: "probe_daily001" }),
+        created_at_ms: nowMs - 10 * 86_400_000,
+      },
+    });
+  } finally {
+    db.close();
+  }
+}
+
 function recordedWarning(
   reportSha: string,
   generatedAt: number,
@@ -146,6 +200,58 @@ describe("daily CLI", () => {
     expect(md).toContain("no GitHub remote");
     // First run => delta says so.
     expect(md).toContain("First run");
+    expect(md).not.toContain("## Probe readiness");
+  });
+
+  it("includes probe open age and completion only when sessions exist", async () => {
+    const registry = await seedRegistry();
+    seedDailyProbeSession();
+
+    expect(await handleDailyCommand(
+      ["--registry", registry],
+      {
+        runner: makeRunner([], "success"),
+        now: () => new Date("2026-07-11T09:00:00Z"),
+        out,
+      },
+    )).toBe(0);
+
+    const markdown = logs.join("\n");
+    expect(markdown).toContain("## Probe readiness");
+    expect(markdown).toContain("withgh: 1 in progress / 1 total session(s)");
+    expect(markdown).toContain("open high 1, medium 0, low 0; oldest 5d");
+    expect(markdown).toContain("completion 0% (0/2 required disposed)");
+    const persisted = JSON.parse(await readFile(
+      join(tmp, "home", "daily-briefs", "2026-07-11.json"),
+      "utf8",
+    )) as DailyBrief;
+    expect(persisted.probe?.repos[0]).toMatchObject({
+      repo_id: "withgh",
+      completion_percent: 0,
+      oldest_open_age_days: 5,
+    });
+  });
+
+  it("degrades a corrupt probe projection to a warning instead of failing daily", async () => {
+    const registry = await seedRegistry();
+    seedDailyProbeSession({ corruptDeferred: true });
+
+    expect(await handleDailyCommand(
+      ["--registry", registry],
+      {
+        runner: makeRunner([], "success"),
+        now: () => new Date("2026-07-11T09:00:00Z"),
+        out,
+      },
+    )).toBe(0);
+    expect(logs.join("\n")).not.toContain("## Probe readiness");
+    const persisted = JSON.parse(await readFile(
+      join(tmp, "home", "daily-briefs", "2026-07-11.json"),
+      "utf8",
+    )) as DailyBrief;
+    expect(persisted.warnings).toEqual(expect.arrayContaining([
+      expect.stringContaining("probe portfolio unavailable"),
+    ]));
   });
 
   it("--json emits a protocol AgentCommandResult that parses under the STRICT schema", async () => {

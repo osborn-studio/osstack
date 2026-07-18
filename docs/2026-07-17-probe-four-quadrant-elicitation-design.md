@@ -1297,13 +1297,13 @@ Hermes 只保留对象数组，Loop 再按 strict `ImplementationDeviation` 校�
 此阶段拆成三个小任务/提交，不得一个提交横跨所有消费者：
 
 1. [x] neat adapter：ledger hash、dead destination、stale deferred/waiver；
-2. [ ] core query + daily：开放数、老化和 completion；
+2. [x] core query + daily：开放数、老化和 completion；
 3. [ ] supervisor 聚合 + metrics：按 §10 从事件派生，不读 CLI 文本。
 
 **验收：**
 
 - [ ] 每个消费者只通过 package API 或 portable schema。
-- [ ] 默认 neat/daily 行为在没有 probe 工件时保持兼容。
+- [x] 默认 neat/daily 行为在没有 probe 工件时保持兼容。
 - [ ] outcome 指标可从 event replay 重建。
 
 **验证：** 各 package 聚焦测试、`pnpm smoke:probe`、全仓 build/test/typecheck。
