@@ -13,6 +13,10 @@ import {
   KnowledgeHygieneReviewArtifactV1,
   KnowledgeHygieneRuleIdV1,
 } from "./types.js";
+import {
+  KnowledgeHygienePatchActionV1,
+  KnowledgeHygienePatchPlanV1,
+} from "./patch-types.js";
 
 const schemasDirectory = fileURLToPath(
   new URL("../../schemas", import.meta.url),
@@ -31,11 +35,13 @@ describe("knowledge hygiene public schemas", () => {
   it("has one deterministic artifact per public v1 schema", () => {
     expect(Object.keys(generated).sort()).toEqual([
       "knowledge-hygiene-finding-v1.schema.json",
+      "knowledge-hygiene-patch-action-v1.schema.json",
+      "knowledge-hygiene-patch-plan-v1.schema.json",
       "knowledge-hygiene-report-v1.schema.json",
       "knowledge-hygiene-resolution-v1.schema.json",
       "knowledge-hygiene-review-artifact-v1.schema.json",
     ]);
-    expect(KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V1).toHaveLength(4);
+    expect(KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V1).toHaveLength(6);
   });
 
   for (const [filename, content] of Object.entries(generated)) {
@@ -75,6 +81,18 @@ describe("knowledge hygiene public schemas", () => {
       schema: KnowledgeHygieneReviewArtifactV1,
       valid: "valid/review-artifact-v1.valid.json",
       invalid: "invalid/review-artifact-v1.invalid.json",
+    },
+    {
+      name: "patch-action-v1",
+      schema: KnowledgeHygienePatchActionV1,
+      valid: "valid/patch-action-v1.valid.json",
+      invalid: "invalid/patch-action-v1.invalid.json",
+    },
+    {
+      name: "patch-plan-v1",
+      schema: KnowledgeHygienePatchPlanV1,
+      valid: "valid/patch-plan-v1.valid.json",
+      invalid: "invalid/patch-plan-v1.invalid.json",
     },
   ];
 

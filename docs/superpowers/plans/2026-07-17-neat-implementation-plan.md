@@ -970,11 +970,11 @@ risk, source fingerprint, and evidence.
 
 **Acceptance criteria:**
 
-- [ ] Action cannot target an absolute/outside-root path.
-- [ ] Before existence/hash precondition is mandatory.
-- [ ] Only the approved `create_instruction_import` action exists initially.
+- [x] Action cannot target an absolute/outside-root path.
+- [x] Before existence/hash precondition is mandatory.
+- [x] Only the approved `create_instruction_import` action exists initially.
 
-**Verification:** Governance tests and frozen vectors pass.
+**Verification:** Governance tests and frozen vectors pass. ✅
 
 **Dependencies:** R1.1.
 

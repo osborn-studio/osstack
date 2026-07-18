@@ -6,6 +6,10 @@ import {
   KnowledgeHygieneResolutionV1,
   KnowledgeHygieneReviewArtifactV1,
 } from "./types.js";
+import {
+  KnowledgeHygienePatchActionV1,
+  KnowledgeHygienePatchPlanV1,
+} from "./patch-types.js";
 
 interface KnowledgeHygieneSchemaEntryV1 {
   key: string;
@@ -36,6 +40,20 @@ export const KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V1 = Object.freeze([
     comment:
       "Resolution diff_id equality and fingerprint uniqueness are enforced by @osstack/governance Zod validation and are not expressible in this generated JSON Schema.",
     schema: KnowledgeHygieneReviewArtifactV1,
+  },
+  {
+    key: "knowledge-hygiene-patch-action-v1",
+    title: "Osstack Knowledge Hygiene Patch Action v1",
+    comment:
+      "Source fingerprint/finding equality and target/finding equality are enforced by @osstack/governance Zod validation.",
+    schema: KnowledgeHygienePatchActionV1,
+  },
+  {
+    key: "knowledge-hygiene-patch-plan-v1",
+    title: "Osstack Knowledge Hygiene Patch Plan v1",
+    comment:
+      "Action-id uniqueness is enforced by @osstack/governance Zod validation.",
+    schema: KnowledgeHygienePatchPlanV1,
   },
 ] satisfies readonly KnowledgeHygieneSchemaEntryV1[]);
 

@@ -22,3 +22,6 @@ portable resolution and review-artifact v1 contracts with stale-diff and
 unknown-fingerprint validation, schemas, and compatibility vectors. Apply
 matching review artifacts into separate active and evidence-preserving resolved
 report views without mutating the source report.
+Publish closed low-risk patch action/plan v1 contracts: the only action is
+`create_instruction_import`, with confined paths, mandatory absent-target
+preconditions, content hashes, source findings, and frozen compatibility vectors.
