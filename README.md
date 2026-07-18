@@ -148,6 +148,9 @@ osstack knowledge search "proof pack checksum" \
 # Run a local readiness check for the loop engine.
 osstack loop doctor --workspace . --json
 
+# Audit repository knowledge without writing files.
+osstack neat check --fail-on none
+
 # Run one delivery flow in a git worktree and produce evidence.
 osstack deliver "Make a small verified change" \
   --verify "pnpm test" \
@@ -235,6 +238,23 @@ osstack contracts check --workspace . --manifest api-contracts.json --json
 osstack compliance list --json
 osstack compliance render <run_id> --pack engineering-readiness --proof-dir release/osstack-proof-<run_id>
 ```
+
+### Knowledge Hygiene
+
+```bash
+# Current worktree; report findings without changing the exit status.
+osstack neat check --fail-on none
+
+# CI range; fail on warnings or errors and emit a strict JSON envelope.
+osstack neat check --base origin/main --head HEAD --json --fail-on warning
+
+# Full repository audit, including non-Git repositories.
+osstack neat check --all --fail-on none
+```
+
+The optional `.osstack/neat.yaml` declares canonical instruction sources,
+required docs, budgets, and change-review contracts. R0 is read-only and makes
+no semantic prose guesses. See the [neat user and config guide](docs/guides/neat.md).
 
 ### Knowledge
 
@@ -402,6 +422,8 @@ pnpm install
 pnpm lint
 pnpm -r build
 pnpm test
+pnpm smoke:neat
+pnpm eval:neat-goldens
 pnpm smoke:release-plan
 pnpm smoke:knowledge-cloud
 pnpm smoke:knowledge-cloud:deploy

@@ -833,14 +833,14 @@ generated CLI inventory, and changesets.
 
 **Acceptance criteria:**
 
-- [ ] README shows local, CI, and full-audit examples.
-- [ ] Config reference matches schema exactly.
-- [ ] Generated inventory has no manual edits.
-- [ ] R0 non-goals are visible to users.
+- [x] README shows local, CI, and full-audit examples.
+- [x] Config reference matches schema exactly.
+- [x] Generated inventory has no manual edits.
+- [x] R0 non-goals are visible to users.
 
 **Verification:**
 
-- [ ] Documentation commands and links are validated.
+- [x] Documentation commands and links are validated.
 - [ ] Full release commands pass.
 
 **Dependencies:** R0.8.2.
