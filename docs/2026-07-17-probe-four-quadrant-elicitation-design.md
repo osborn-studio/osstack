@@ -1028,7 +1028,7 @@ pnpm --filter @osstack/governance check:schemas
 
 **验证：** `pnpm --filter @osstack/governance test -- probe`
 
-### R0.3 — Core SQLite persistence
+### R0.3 — Core SQLite persistence（2026-07-18 完成）
 
 **依赖：** R0.1。
 
@@ -1042,9 +1042,9 @@ pnpm --filter @osstack/governance check:schemas
 
 **验收：**
 
-- [ ] additive migration 创建 sessions/items/events/artifacts/command-receipts 与约束/索引。
-- [ ] compare-and-swap revision 与事件追加在同一事务。
-- [ ] crash/reopen、stale revision、同键同/异 payload 均有测试。
+- [x] additive migration 创建 sessions/items/events/artifacts/command-receipts 与约束/索引。
+- [x] compare-and-swap revision、item 投影、事件与 receipt 在同一 `BEGIN IMMEDIATE` 事务。
+- [x] crash/reopen、stale revision、同键同/异 payload 与失败回滚均有测试。
 
 **验证：**
 

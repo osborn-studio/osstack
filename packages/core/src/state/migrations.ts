@@ -549,6 +549,80 @@ export const MIGRATIONS: readonly Migration[] = [
         ON knowledge_hygiene_occurrences(confidence, state, repo_id, fingerprint);
     `,
   },
+  {
+    id: 11,
+    name: "probe_sessions",
+    // ADR-004: live probe sessions are core-owned transactional projections.
+    // Governance validates domain JSON before this store receives it; these
+    // tables keep only bounded indexes plus the canonical validated snapshots.
+    sql: `
+      CREATE TABLE IF NOT EXISTS probe_sessions (
+        session_id      TEXT PRIMARY KEY,
+        repo_id         TEXT NOT NULL,
+        state           TEXT NOT NULL CHECK (state IN ('active','paused','completed','abandoned')),
+        revision        INTEGER NOT NULL CHECK (revision >= 1),
+        snapshot_json   TEXT NOT NULL,
+        created_at_ms   INTEGER NOT NULL,
+        updated_at_ms   INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_probe_sessions_repo_state_updated
+        ON probe_sessions(repo_id, state, updated_at_ms);
+
+      CREATE TABLE IF NOT EXISTS probe_items (
+        session_id       TEXT NOT NULL REFERENCES probe_sessions(session_id) ON DELETE CASCADE,
+        item_id          TEXT NOT NULL,
+        question_id      TEXT NOT NULL,
+        state            TEXT NOT NULL CHECK (state IN ('open','deferred','resolved','waived','invalidated')),
+        current_quadrant TEXT NOT NULL CHECK (current_quadrant IN ('kk','ku','uk','uu')),
+        severity         TEXT NOT NULL CHECK (severity IN ('high','medium','low')),
+        updated_at_ms    INTEGER NOT NULL,
+        item_json        TEXT NOT NULL,
+        PRIMARY KEY (session_id, item_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_probe_items_session_state_severity
+        ON probe_items(session_id, state, severity);
+      CREATE INDEX IF NOT EXISTS idx_probe_items_session_question
+        ON probe_items(session_id, question_id);
+
+      CREATE TABLE IF NOT EXISTS probe_events (
+        event_id        TEXT PRIMARY KEY,
+        session_id      TEXT NOT NULL REFERENCES probe_sessions(session_id) ON DELETE CASCADE,
+        revision        INTEGER NOT NULL CHECK (revision >= 1),
+        type            TEXT NOT NULL,
+        idempotency_key TEXT NOT NULL,
+        event_json      TEXT NOT NULL,
+        occurred_at_ms  INTEGER NOT NULL,
+        UNIQUE (session_id, revision)
+      );
+      CREATE INDEX IF NOT EXISTS idx_probe_events_session_time
+        ON probe_events(session_id, occurred_at_ms, revision);
+
+      CREATE TABLE IF NOT EXISTS probe_artifacts (
+        receipt_id        TEXT PRIMARY KEY,
+        session_id        TEXT NOT NULL REFERENCES probe_sessions(session_id) ON DELETE CASCADE,
+        exported_revision INTEGER NOT NULL CHECK (exported_revision >= 1),
+        idempotency_key   TEXT NOT NULL,
+        actor_kind        TEXT NOT NULL CHECK (actor_kind IN ('human','agent')),
+        actor_id          TEXT NOT NULL,
+        manifest_json     TEXT NOT NULL,
+        rendered_at_ms    INTEGER NOT NULL,
+        UNIQUE (session_id, idempotency_key)
+      );
+      CREATE INDEX IF NOT EXISTS idx_probe_artifacts_session_revision
+        ON probe_artifacts(session_id, exported_revision, rendered_at_ms);
+
+      CREATE TABLE IF NOT EXISTS probe_command_receipts (
+        scope_key        TEXT NOT NULL,
+        idempotency_key  TEXT NOT NULL,
+        request_sha256   TEXT NOT NULL,
+        result_json      TEXT NOT NULL,
+        created_at_ms    INTEGER NOT NULL,
+        PRIMARY KEY (scope_key, idempotency_key)
+      );
+      CREATE INDEX IF NOT EXISTS idx_probe_command_receipts_created
+        ON probe_command_receipts(created_at_ms, scope_key);
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;
