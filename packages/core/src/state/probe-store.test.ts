@@ -12,6 +12,7 @@ import {
   listProbeItems,
   mutateProbeSession,
   ProbeStoreConflictError,
+  replayProbeCommand,
 } from "./probe-store.js";
 
 const temporaryDirectories: string[] = [];
@@ -191,6 +192,13 @@ describe("probe store", () => {
     const db = openDb({ path, minFreeBytes: 0 });
     const input = createInput();
     const first = createProbeSession(db, input);
+    expect(
+      replayProbeCommand(db, {
+        scope_key: input.receipt.scope_key,
+        idempotency_key: input.receipt.idempotency_key,
+        request_sha256: input.receipt.request_sha256,
+      }),
+    ).toEqual({ replayed: true, result_json: input.receipt.result_json });
     const replay = createProbeSession(db, input);
     expect(first.replayed).toBe(false);
     expect(replay).toEqual({

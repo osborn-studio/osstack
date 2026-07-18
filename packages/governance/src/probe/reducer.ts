@@ -7,6 +7,7 @@ import {
   type ProbeCompilationV1,
   type ProbeDestinationV1,
   type ProbeReadinessV1,
+  type ProbeSessionBaseV1,
 } from "./types.js";
 import { deriveProbeSeverity } from "./priority.js";
 
@@ -67,6 +68,8 @@ export type ProbeMutationV1 = ProbeMutationMetadataV1 &
         type: "resume";
         extend_budget?: number;
         revisit_item_ids: readonly string[];
+        added_items?: readonly ProbeItemV1[];
+        unselected_required_question_ids?: readonly string[];
       }
     | {
         type: "destination";
@@ -104,13 +107,45 @@ function requireRevision(
   }
 }
 
-function requireMutableSession(session: ProbeSessionV1): void {
+type MutableProbeSessionV1 = Extract<
+  ProbeSessionV1,
+  { state: "active" | "paused" }
+>;
+
+function requireMutableSession(
+  session: ProbeSessionV1,
+): asserts session is MutableProbeSessionV1 {
   if (session.state === "completed" || session.state === "abandoned") {
     throw new ProbeReducerError(
       "invalid_transition",
       `session ${session.session_id} is ${session.state}`,
     );
   }
+}
+
+function mutableSessionBase(
+  session: MutableProbeSessionV1,
+): ProbeSessionBaseV1 {
+  if (session.state === "active") {
+    const {
+      state: sessionState,
+      current_question_id: currentQuestionId,
+      ...base
+    } = session;
+    void sessionState;
+    void currentQuestionId;
+    return base;
+  }
+  const {
+    state: sessionState,
+    current_question_id: currentQuestionId,
+    pause_reason: pauseReason,
+    ...base
+  } = session;
+  void sessionState;
+  void currentQuestionId;
+  void pauseReason;
+  return base;
 }
 
 function requireHuman(actor: ProbeActorV1, operation: string): void {
@@ -121,6 +156,19 @@ function requireHuman(actor: ProbeActorV1, operation: string): void {
     );
   }
 }
+
+const HUMAN_RESOLUTION_CATEGORIES = new Set<ProbeItemV1["category"]>([
+  "user",
+  "outcome",
+  "scope",
+  "data_model",
+  "interface",
+  "user_flow",
+  "security",
+  "migration",
+  "rollback",
+  "acceptance",
+]);
 
 function requireCurrentItem(
   state: ProbeDomainStateV1,
@@ -161,6 +209,12 @@ function advanceAfterDisposition(
   items: readonly ProbeItemV1[],
   occurredAtMs: number,
 ): ProbeSessionV1 {
+  if (session.state !== "active") {
+    throw new ProbeReducerError(
+      "invalid_transition",
+      "only an active session can advance after a disposition",
+    );
+  }
   const nextRevision = session.revision + 1;
   const nextItem = sortProbeItems(
     items.filter((item) => item.state === "open"),
@@ -186,20 +240,27 @@ function advanceAfterDisposition(
     };
   }
 
+  const { current_question_id: currentQuestionId, ...sessionWithoutCurrent } =
+    session;
+  void currentQuestionId;
+
   const requiredOutstanding =
     session.unselected_required_question_ids.length > 0 ||
     items.some((item) => item.required && item.state === "deferred");
   if (requiredOutstanding) {
     return {
-      ...session,
+      ...sessionWithoutCurrent,
       state: "paused",
-      pause_reason: "user",
+      pause_reason:
+        session.unselected_required_question_ids.length > 0
+          ? "budget"
+          : "user",
       revision: nextRevision,
       updated_at_ms: occurredAtMs,
     };
   }
   return {
-    ...session,
+    ...sessionWithoutCurrent,
     state: "completed",
     completed_at_ms: occurredAtMs,
     revision: nextRevision,
@@ -268,6 +329,9 @@ function resolveItem(
   mutation: Extract<ProbeMutationV1, { type: "resolve" }>,
 ): ProbeMutationResultV1 {
   const { item, index } = requireCurrentItem(state, mutation.item_id);
+  if (HUMAN_RESOLUTION_CATEGORIES.has(item.category)) {
+    requireHuman(mutation.actor, `${item.category} resolution`);
+  }
   const resolved = ProbeItemV1.parse({
     ...item,
     state: "resolved",
@@ -527,7 +591,7 @@ function abandonSession(
   requireHuman(mutation.actor, "abandonment");
   requireMutableSession(state.session);
   const session: ProbeSessionV1 = {
-    ...state.session,
+    ...mutableSessionBase(state.session),
     state: "abandoned",
     abandoned_at_ms: mutation.occurred_at_ms,
     reason: mutation.reason,
@@ -578,6 +642,26 @@ function resumeSession(
     );
   }
 
+  const addedItems = [...(mutation.added_items ?? [])];
+  const existingItemIds = new Set(state.items.map((item) => item.item_id));
+  const existingQuestionIds = new Set(
+    state.items.map((item) => item.question_id),
+  );
+  for (const item of addedItems) {
+    if (
+      item.session_id !== state.session.session_id ||
+      item.state !== "open" ||
+      existingItemIds.has(item.item_id) ||
+      existingQuestionIds.has(item.question_id)
+    ) {
+      throw new ProbeReducerError(
+        "invalid_item",
+        "added resume items must be new, open, and belong to the session",
+      );
+    }
+    existingItemIds.add(item.item_id);
+    existingQuestionIds.add(item.question_id);
+  }
   const revisitIds = new Set(mutation.revisit_item_ids);
   if (revisitIds.size !== mutation.revisit_item_ids.length) {
     throw new ProbeReducerError(
@@ -585,7 +669,7 @@ function resumeSession(
       "revisited item ids must be unique",
     );
   }
-  const items = state.items.map((item) => {
+  const items = [...state.items, ...addedItems].map((item) => {
     if (!revisitIds.has(item.item_id)) return item;
     if (item.state !== "deferred") {
       throw new ProbeReducerError(
@@ -632,11 +716,19 @@ function resumeSession(
   }
 
   const session: ProbeSessionV1 = {
-    ...state.session,
+    ...mutableSessionBase(state.session),
     state: "active",
     current_question_id: currentId,
     question_budget: questionBudget,
     questions_presented: questionsPresented,
+    selected_question_ids: [
+      ...state.session.selected_question_ids,
+      ...addedItems.map((item) => item.question_id),
+    ],
+    unselected_required_question_ids:
+      mutation.unselected_required_question_ids === undefined
+        ? state.session.unselected_required_question_ids
+        : [...mutation.unselected_required_question_ids],
     revision: state.session.revision + 1,
     updated_at_ms: mutation.occurred_at_ms,
   };

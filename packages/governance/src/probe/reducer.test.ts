@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import type {
   ProbeActorV1,
   ProbeItemV1,
-  ProbeSessionV1,
 } from "./types.js";
+import { ProbeSessionV1 } from "./types.js";
 import {
   applyProbeMutation,
   deriveProbeReadiness,
@@ -123,6 +123,7 @@ describe("probe reducer", () => {
     });
 
     expect(result.session.state).toBe("completed");
+    expect(ProbeSessionV1.safeParse(result.session).success).toBe(true);
     expect(result.session.revision).toBe(2);
     expect(result.items[0]).toMatchObject({
       state: "resolved",
@@ -219,6 +220,60 @@ describe("probe reducer", () => {
       questions_presented: 2,
       revision: 3,
     });
+    expect(ProbeSessionV1.safeParse(resumed.session).success).toBe(true);
+  });
+
+  it("materializes a finite extension before resuming an exhausted queue", () => {
+    const initial = state(
+      activeSession({
+        question_budget: 1,
+        unselected_required_question_ids: [
+          "tech.interface_contract.v1",
+        ],
+      }),
+    );
+    const paused = applyProbeMutation(initial, {
+      type: "resolve",
+      item_id: "pi_12345678",
+      answer: "Use the core state database.",
+      destination: {
+        role: "technical_design",
+        path: "docs/technical-design.md",
+        write_state: "pending",
+      },
+      compilation: { state: "not_eligible" },
+      ...metadata(),
+    });
+    expect(paused.session).toMatchObject({
+      state: "paused",
+      pause_reason: "budget",
+    });
+
+    const added = openItem(
+      "pi_87654321",
+      "tech.interface_contract.v1",
+      { category: "interface", created_at_ms: 3, updated_at_ms: 3 },
+    );
+    const resumed = applyProbeMutation(paused, {
+      type: "resume",
+      extend_budget: 1,
+      revisit_item_ids: [],
+      added_items: [added],
+      unselected_required_question_ids: [],
+      ...metadata(2),
+    });
+    expect(resumed.session).toMatchObject({
+      state: "active",
+      current_question_id: added.item_id,
+      question_budget: 2,
+      questions_presented: 2,
+      selected_question_ids: [
+        "tech.data_model.v1",
+        "tech.interface_contract.v1",
+      ],
+      unselected_required_question_ids: [],
+    });
+    expect(resumed.items).toHaveLength(2);
   });
 
   it("only permits diminishing-return pauses after a qualifying five-item window", () => {
@@ -353,6 +408,50 @@ describe("probe reducer", () => {
           ...metadata(1, agent),
         }),
       "authority_required",
+    );
+  });
+
+  it("requires human authority for architecture-changing answer categories", () => {
+    expectReducerError(
+      () =>
+        applyProbeMutation(state(), {
+          type: "resolve",
+          item_id: "pi_12345678",
+          answer: "Persist the decision.",
+          destination: {
+            role: "technical_design",
+            path: "docs/technical-design.md",
+            write_state: "pending",
+          },
+          compilation: { state: "not_eligible" },
+          ...metadata(1, agent),
+        }),
+      "authority_required",
+    );
+  });
+
+  it("abandons active and paused sessions without leaking state-only fields", () => {
+    const activeAbandoned = applyProbeMutation(state(), {
+      type: "abandon",
+      reason: "Cancelled",
+      ...metadata(),
+    });
+    expect(ProbeSessionV1.safeParse(activeAbandoned.session).success).toBe(
+      true,
+    );
+
+    const paused = applyProbeMutation(state(), {
+      type: "pause",
+      reason: "Review later",
+      ...metadata(),
+    });
+    const pausedAbandoned = applyProbeMutation(paused, {
+      type: "abandon",
+      reason: "Superseded",
+      ...metadata(2),
+    });
+    expect(ProbeSessionV1.safeParse(pausedAbandoned.session).success).toBe(
+      true,
     );
   });
 

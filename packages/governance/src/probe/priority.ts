@@ -50,6 +50,8 @@ export function compareProbeItems(
   right: ProbeItemV1,
   context: ProbePriorityContextV1 = {},
 ): number {
+  if (left.origin === "calibration" && right.origin !== "calibration") return -1;
+  if (right.origin === "calibration" && left.origin !== "calibration") return 1;
   const priorityDifference =
     computeProbePriority(right) - computeProbePriority(left);
   if (priorityDifference !== 0) return priorityDifference;

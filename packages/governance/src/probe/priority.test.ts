@@ -88,4 +88,18 @@ describe("probe priority", () => {
       "pi_aaaaaaaa",
     ]);
   });
+
+  it("keeps missing calibration ahead of higher-risk document questions", () => {
+    const calibration = openItem({
+      item_id: "pi_calibrat",
+      question_id: "cal.domain_familiarity.v1",
+      origin: "calibration",
+      impact: 1,
+      irreversibility: 1,
+    });
+    const documentQuestion = openItem({ item_id: "pi_document" });
+    expect(sortProbeItems([documentQuestion, calibration])[0]?.item_id).toBe(
+      calibration.item_id,
+    );
+  });
 });

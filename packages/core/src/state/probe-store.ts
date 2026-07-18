@@ -172,6 +172,12 @@ export interface ProbeStoreCommandResultV1 {
   result_json: string;
 }
 
+export interface ReplayProbeCommandInputV1 {
+  scope_key: string;
+  idempotency_key: string;
+  request_sha256: string;
+}
+
 export type ProbeStoreConflictCodeV1 =
   | "idempotency_conflict"
   | "revision_conflict"
@@ -211,6 +217,32 @@ function replayReceipt(
     .get(receipt.scope_key, receipt.idempotency_key) as ReceiptRow | undefined;
   if (existing === undefined) return undefined;
   if (existing.request_sha256 !== receipt.request_sha256) {
+    throw new ProbeStoreConflictError(
+      "idempotency_conflict",
+      "idempotency key was already used for a different request",
+    );
+  }
+  return { replayed: true, result_json: existing.result_json };
+}
+
+export function replayProbeCommand(
+  db: Database.Database,
+  rawInput: ReplayProbeCommandInputV1,
+): ProbeStoreCommandResultV1 | undefined {
+  const input = ProbeCommandReceiptV1.pick({
+    scope_key: true,
+    idempotency_key: true,
+    request_sha256: true,
+  }).parse(rawInput);
+  const existing = db
+    .prepare(`
+      SELECT request_sha256, result_json
+      FROM probe_command_receipts
+      WHERE scope_key = ? AND idempotency_key = ?
+    `)
+    .get(input.scope_key, input.idempotency_key) as ReceiptRow | undefined;
+  if (existing === undefined) return undefined;
+  if (existing.request_sha256 !== input.request_sha256) {
     throw new ProbeStoreConflictError(
       "idempotency_conflict",
       "idempotency key was already used for a different request",
@@ -383,6 +415,20 @@ export function getProbeSession(
   return db
     .prepare("SELECT * FROM probe_sessions WHERE session_id = ?")
     .get(parsedId) as ProbeSessionRowV1 | undefined;
+}
+
+export function listProbeSessionsByRepo(
+  db: Database.Database,
+  repoId: string,
+): ProbeSessionRowV1[] {
+  const parsedRepoId = z.string().trim().min(1).max(256).parse(repoId);
+  return db
+    .prepare(`
+      SELECT * FROM probe_sessions
+      WHERE repo_id = ?
+      ORDER BY updated_at_ms DESC, session_id
+    `)
+    .all(parsedRepoId) as ProbeSessionRowV1[];
 }
 
 export function listProbeItems(

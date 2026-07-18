@@ -118,6 +118,7 @@ import { handleHubCommand, buildRealHubCliDeps } from "./hub-cli.js";
 import { handleDailyCommand } from "./daily-command.js";
 import { handleControlCommand, handleStartCommand } from "./start-control-command.js";
 import { handleNeatCommand } from "./neat-command.js";
+import { handleProbeCommand } from "./probe-command.js";
 import {
   runLoopNeatFinalizer,
   type LoopNeatFinalizerResultV1,
@@ -181,6 +182,7 @@ Loop 工程：
   pr                  生成 GitHub PR evidence body
 
 治理与知识：
+  probe start         对需求或规格逐题探询，并持久化四象限未知项台账
   policy check        校验 .osstack/repo.yaml 与 policy.yaml（只读；observe 模式拒绝执行）
   govern check        运行确定性治理检查
   neat check          只读检查项目指令、文档合同与知识面完整性
@@ -429,6 +431,8 @@ Branch Steward:
   steward scan [--repo O/R] [--base B] [--remote R] [--workspace P] [--json]
 
 Governance:
+  probe start --input P [--repo P] [--doc-type product|tech|test] [--json]
+                                  Start a persistent four-quadrant elicitation session
   policy check [--repo-path P] [--json]
                                   Validate .osstack/repo.yaml + policy.yaml (read-only; observe mode refuses execution)
   govern check [path...] [--workspace P] [--changed] [--json]
@@ -658,6 +662,14 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       stdout: (value) => console.log(value),
       stderr: (value) => console.error(value),
       authorize_write: evaluatePolicyGate,
+    });
+  }
+
+  if (cmd === "probe") {
+    return await handleProbeCommand(args.slice(1), {
+      cwd: () => process.cwd(),
+      stdout: (value) => console.log(value),
+      stderr: (value) => console.error(value),
     });
   }
 

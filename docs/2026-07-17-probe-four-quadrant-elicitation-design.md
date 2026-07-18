@@ -1073,7 +1073,7 @@ pnpm --filter @osstack/core typecheck
 
 **验证：** `pnpm --filter @osstack/governance test -- question-pack`
 
-### R0.5 — CLI 纵向切片
+### R0.5 — CLI 纵向切片（2026-07-18 完成）
 
 **依赖：** R0.2、R0.3、R0.4。
 
@@ -1086,9 +1086,9 @@ pnpm --filter @osstack/core typecheck
 
 **验收：**
 
-- [ ] `start/next/resume/status/ledger` 完全符合 §6。
-- [ ] 所有 JSON 输出通过 strict AgentCommandResult；stdout 无额外文本。
-- [ ] 未答重复 next、重复 answer、stale revision 和无 implicit latest 有测试。
+- [x] `start/next/resume/status/ledger` 完全符合 §6。
+- [x] 所有 JSON 输出通过 strict AgentCommandResult；stdout 无额外文本。
+- [x] 未答重复 next、重复 answer、stale revision 和无 implicit latest 有测试。
 
 **验证：**
 
