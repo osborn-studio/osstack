@@ -1,5 +1,45 @@
 # @osstack/cli
 
+## 0.11.0
+
+### Minor Changes
+
+- f041063: Add canonical portable probe ledgers, manifest-last repository rendering, artifact receipts, and destination attestations.
+- 4a6c00b: Add generic fail-closed kanban transition guards and register the probe readiness adapter at the CLI composition root before execution moves.
+- 83aac82: Expose read-only probe portfolio summaries and include current open-item aging and required-item completion in daily briefs when probe sessions exist.
+
+  Push repository filters into the SQLite projection queries so scoped daily and supervisor reads do not scan unrelated probe history.
+
+- a90f3a5: Add evidence-bound dynamic probe questions plus standalone and session-attached registration of skill-produced restatement findings.
+- 73f89fd: Compile resolved probe decisions into reviewable Loop EvaluationSpec deltas through a closed registry of parameter-validated templates.
+- 223a240: Emit replayable probe metric facts, derive all section 10 outcome rates from append-only events with explicit legacy coverage, and surface baseline-only aggregation in supervisor reports.
+- 9f1aa1b: Carry strict verifier-reported implementation deviations through Loop events and idempotently register evidence-bound `mid_build` probe items for linked tasks.
+- 61f05ba: Add the persistent `osstack probe` elicitation workflow with strict start, next, resume, status, and ledger command contracts.
+- 92249dc: Add strict probe readiness policies and a `probe gate` command for live sessions and independently verifiable portable ledgers.
+
+### Patch Changes
+
+- Updated dependencies [48ad63d]
+- Updated dependencies [f041063]
+- Updated dependencies [a483f6e]
+- Updated dependencies [4a6c00b]
+- Updated dependencies [83aac82]
+- Updated dependencies [a90f3a5]
+- Updated dependencies [73f89fd]
+- Updated dependencies [53db533]
+- Updated dependencies [223a240]
+- Updated dependencies [ac50008]
+- Updated dependencies [9f1aa1b]
+- Updated dependencies [92249dc]
+  - @osstack/governance@0.11.0
+  - @osstack/core@0.11.0
+  - @osstack/agents@0.11.0
+  - @osstack/skill-registry@0.11.0
+  - @osstack/hermes-adapter@0.11.0
+  - @osstack/loop@0.11.0
+  - @osstack/config@0.11.0
+  - @osstack/skills@0.11.0
+
 ## 0.10.0
 
 ### Minor Changes

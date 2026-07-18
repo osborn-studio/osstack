@@ -1,5 +1,19 @@
 # @osstack/core
 
+## 0.11.0
+
+### Minor Changes
+
+- f041063: Add canonical portable probe ledgers, manifest-last repository rendering, artifact receipts, and destination attestations.
+- a483f6e: Add transactional SQLite persistence for live probe sessions and command receipts.
+- 4a6c00b: Add generic fail-closed kanban transition guards and register the probe readiness adapter at the CLI composition root before execution moves.
+- 83aac82: Expose read-only probe portfolio summaries and include current open-item aging and required-item completion in daily briefs when probe sessions exist.
+
+  Push repository filters into the SQLite projection queries so scoped daily and supervisor reads do not scan unrelated probe history.
+
+- 223a240: Emit replayable probe metric facts, derive all section 10 outcome rates from append-only events with explicit legacy coverage, and surface baseline-only aggregation in supervisor reports.
+- 9f1aa1b: Carry strict verifier-reported implementation deviations through Loop events and idempotently register evidence-bound `mid_build` probe items for linked tasks.
+
 ## 0.10.0
 
 ### Minor Changes

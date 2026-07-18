@@ -1,5 +1,17 @@
 # @osstack/governance
 
+## 0.11.0
+
+### Minor Changes
+
+- 48ad63d: Publish the strict probe v1 domain contracts and generated JSON Schemas.
+- f041063: Add canonical portable probe ledgers, manifest-last repository rendering, artifact receipts, and destination attestations.
+- a90f3a5: Add evidence-bound dynamic probe questions plus standalone and session-attached registration of skill-produced restatement findings.
+- 73f89fd: Compile resolved probe decisions into reviewable Loop EvaluationSpec deltas through a closed registry of parameter-validated templates.
+- 53db533: Inspect portable probe artifact sets during knowledge hygiene checks for ledger integrity, missing decision destinations, stale deferrals, and expired waivers.
+- 223a240: Emit replayable probe metric facts, derive all section 10 outcome rates from append-only events with explicit legacy coverage, and surface baseline-only aggregation in supervisor reports.
+- 92249dc: Add strict probe readiness policies and a `probe gate` command for live sessions and independently verifiable portable ledgers.
+
 ## 0.10.0
 
 ### Minor Changes
