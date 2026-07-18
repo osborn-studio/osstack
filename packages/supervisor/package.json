@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@osstack/core": "workspace:*",
+    "@osstack/governance": "workspace:*",
     "@osstack/loop": "workspace:*",
     "zod": "^3.25.76"
   },

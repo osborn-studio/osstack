@@ -1113,10 +1113,10 @@ metadata as required.
 **Description:** Reuse the governance engine for enabled registry entries with
 bounded concurrency and per-repo failure isolation.
 
-**Acceptance criteria:** One failure does not abort others; ordering follows
+**Acceptance criteria:** ✅ One failure does not abort others; ordering follows
 registry order; no user memory is inspected.
 
-**Verification:** 20-repo temporary portfolio test completes under target and
+**Verification:** ✅ 20-repo temporary portfolio test completes under target and
 contains deterministic summaries.
 
 **Dependencies:** R2.2.1.
