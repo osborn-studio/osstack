@@ -3,6 +3,7 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import Database from "better-sqlite3";
 import { openDb } from "./db.js";
 import {
   queryKnowledgeHygieneRecurrenceCandidates,
@@ -11,6 +12,7 @@ import {
   recordKnowledgeHygieneRun,
   type RecordKnowledgeHygieneRunInputV1,
 } from "./knowledge-hygiene-store.js";
+import { MIGRATIONS } from "./migrations.js";
 
 function hash(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -59,6 +61,21 @@ function run(
 }
 
 describe("knowledge hygiene recurrence policy", () => {
+  it("treats pre-confidence history as ineligible during read-only preview", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "osstack-neat-recurrence-"));
+    const db = new Database(join(directory, "state.db"));
+    for (const migration of MIGRATIONS.filter((candidate) => candidate.id <= 9)) {
+      db.exec(migration.sql);
+      db.pragma(`user_version = ${migration.id}`);
+    }
+
+    expect(queryKnowledgeHygieneRecurrenceCandidates(db, {
+      min_occurrences: 2,
+      min_repositories: 1,
+    })).toEqual([]);
+    db.close();
+  });
+
   it("never proposes a one-off or a single-repository recurrence", async () => {
     const directory = await mkdtemp(join(tmpdir(), "osstack-neat-recurrence-"));
     const db = openDb({ path: join(directory, "state.db"), minFreeBytes: 0 });

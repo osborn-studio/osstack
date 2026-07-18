@@ -88,6 +88,16 @@ export function queryKnowledgeHygieneRecurrenceCandidates(
   rawPolicy: KnowledgeHygieneRecurrencePolicyInputV1 = {},
 ): KnowledgeHygieneRecurrenceCandidateV1[] {
   const policy = KnowledgeHygieneRecurrencePolicyV1.parse(rawPolicy);
+  const occurrenceColumns = db.prepare(
+    "PRAGMA table_info(knowledge_hygiene_occurrences)",
+  ).all() as Array<{ name: string }>;
+  const findingColumns = db.prepare(
+    "PRAGMA table_info(knowledge_hygiene_findings)",
+  ).all() as Array<{ name: string }>;
+  if (
+    !occurrenceColumns.some((column) => column.name === "confidence")
+    || !findingColumns.some((column) => column.name === "confidence")
+  ) return [];
   const events = db.prepare(`
     SELECT o.run_id, o.repo_id, o.fingerprint, o.state, o.severity,
            o.confidence, o.observed_at, f.rule_id, f.surface, f.rationale
