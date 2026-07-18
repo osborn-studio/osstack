@@ -198,8 +198,8 @@ osstack release doctor --target primary --cloud-url https://osstack-knowledge-cl
 
 当前 `release doctor` 会额外检查发布列车状态：
 
-- `npm_publish_assets`：检查 `@osstack/cli` package 元数据、changeset 与 release workflow 的 publish/provenance/`NPM_TOKEN`/安装 smoke/`smoke:npm-preflight` 约束，失败时会阻止 `npm_publish` ready。
-- `npm_scope_access`：检查 `@osstack` npm scope 是否可被当前 npm 账号访问/发布；Release workflow 也会在 changesets publish 前运行 `pnpm preflight:npm-publish`，把 `Scope not found`、npm `E403` / `Forbidden` 提前转成可执行的修复提示。
+- `npm_publish_assets`：检查 `@osstack/cli` package 元数据、changeset 与 release workflow 的 changesets publish、GitHub OIDC 权限、Trusted Publishing 兼容 Node/npm 客户端、安装 smoke/`smoke:npm-preflight` 约束，失败时会阻止 `npm_publish` ready。
+- `npm_scope_access`：检查 `@osstack` npm scope 是否可被当前 npm 账号访问/发布；令牌预检保留为首次发包和人工恢复路径，常规 Release workflow 使用短期 GitHub OIDC 凭证发布。
 - `version_packages_pr`：识别 `changeset-release/main` 的 Version Packages PR，输出 PR number、URL、draft 状态和 `merge_state`，避免在 publish 权限或 CI 状态不清楚时误合并。
 - `knowledge_cloud_deploy_assets`：检查 Knowledge Cloud Dockerfile、EdgeOne/Render 配置和 GitHub Actions deploy workflow 的关键部署约束，失败时会阻止 `knowledge_cloud_deploy` ready。
 - `knowledge_cloud_workflow`：识别 `Knowledge Cloud Deploy` workflow 是否存在、是否 active，以及最近一次验证 run 的状态。当前已存在成功的 Knowledge Cloud Deploy validation/deploy 记录。

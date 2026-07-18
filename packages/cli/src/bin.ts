@@ -1613,10 +1613,10 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   expectAsset(workflow, "pnpm smoke:npm-install", "Release workflow must run npm install smoke.");
   expectAsset(workflow, "pnpm smoke:npm-preflight", "Release workflow must run npm preflight smoke.");
   expectAsset(workflow, "publish: pnpm changeset publish", "Release workflow must publish through changesets.");
-  expectAsset(workflow, "pnpm preflight:npm-publish", "Release workflow must preflight npm scope publish access before changesets publish.");
-  expectAsset(workflow, "NPM_CONFIG_PROVENANCE", "Release workflow must enable npm provenance for changesets publish.");
-  expectAsset(workflow, "secrets.NPM_TOKEN", "Release workflow must gate publishing on NPM_TOKEN.");
-  expectAsset(workflow, "NODE_AUTH_TOKEN", "Release workflow must set NODE_AUTH_TOKEN for npm publish.");
+  expectAsset(workflow, "id-token: write", "Release workflow must allow npm Trusted Publishing through GitHub OIDC.");
+  expectAsset(workflow, "node-version: 24", "Release workflow must use a Node version compatible with npm Trusted Publishing.");
+  expectAsset(workflow, "npm@11.17.0", "Release workflow must pin an npm client compatible with Trusted Publishing.");
+  violations.push(...trustedPublishingWorkflowViolations(workflow));
   expectAsset(rootPackage, "\"preflight:npm-publish\"", "Root package scripts must expose preflight:npm-publish.");
   expectAsset(npmPreflight, "npm\", [\"access\", \"list\", \"packages\", scope, \"--json\"]", "NPM preflight script must verify publish-scope access with npm access list packages.");
   expectAsset(npmPreflight, "Scope not found", "NPM preflight script must explain missing npm scope failures.");
@@ -1637,6 +1637,14 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
       versioned_for_publish: versionedForPublish,
     },
   };
+}
+
+export function trustedPublishingWorkflowViolations(workflow: string): string[] {
+  const publishStep = workflow.split("- name: Version PR / Publish")[1] ?? "";
+  if (publishStep.includes("NPM_TOKEN") || publishStep.includes("NODE_AUTH_TOKEN")) {
+    return ["Release publish step must not expose long-lived npm tokens when using Trusted Publishing."];
+  }
+  return [];
 }
 
 async function releaseNpmScopeAccessCheck(): Promise<ReleaseDoctorCheck> {
