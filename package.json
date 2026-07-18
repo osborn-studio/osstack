@@ -35,6 +35,8 @@
     "smoke:npm-install": "node scripts/smoke-npm-install.mjs",
     "smoke:release-plan": "pnpm --filter @osstack/cli build && node scripts/smoke-release-plan.mjs",
     "smoke:neat": "pnpm --filter @osstack/cli build && node scripts/smoke-neat.mjs",
+    "smoke:probe": "pnpm --filter @osstack/cli... build && node scripts/smoke-probe.mjs",
+    "smoke:probe-skill": "pnpm --filter @osstack/cli... build && node scripts/smoke-probe-skill.mjs",
     "smoke:bun-single-binary": "node scripts/smoke-bun-single-binary.mjs",
     "smoke:single-binary-signing": "node scripts/smoke-single-binary-signing.mjs",
     "smoke:single-binary-release-pack": "node scripts/smoke-single-binary-release-pack.mjs",
@@ -45,10 +47,10 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
     "@changesets/cli": "^2.31.0",
-    "@vitest/coverage-v8": "2.1.9",
+    "@vitest/coverage-v8": "3.2.6",
     "tsup": "^8.3.5",
     "typescript": "^5.6.3",
-    "vitest": "^2.1.5",
+    "vitest": "3.2.6",
     "zod": "^3.23.8"
   },
   "dependencies": {

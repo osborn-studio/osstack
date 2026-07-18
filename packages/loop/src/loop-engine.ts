@@ -804,6 +804,14 @@ export class LoopEngine {
           ...(worktree !== undefined ? { worktree_path: worktree.worktreePath } : {}),
           iteration,
         });
+        for (const deviation of finalVerdict.implementation_deviations ?? []) {
+          this.emit(loopId, "loop.implementation.deviation", {
+            task_id: task.task_id,
+            iteration,
+            reviewer_agent_id: finalVerdict.reviewer_agent_id,
+            ...deviation,
+          });
+        }
 
         let decision = evaluateIteration({
           verdict: finalVerdict,

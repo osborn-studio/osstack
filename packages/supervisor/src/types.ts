@@ -7,6 +7,10 @@
 //   L6 recursive portfolio optimization.
 
 import { z } from "zod";
+import {
+  ProbeOutcomeCountsV1,
+  ProbeOutcomeRatesV1,
+} from "@osstack/core";
 
 // ── Repo registry ───────────────────────────────────────────────────────
 
@@ -231,6 +235,19 @@ export const StructuredRecommendation = z.object({
 });
 export type StructuredRecommendation = z.infer<typeof StructuredRecommendation>;
 
+export const PortfolioProbeOutcomesV1 = z
+  .object({
+    schema_version: z.literal("1"),
+    as_of_ms: z.number().int().nonnegative(),
+    baseline_status: z.literal("collecting"),
+    counts: ProbeOutcomeCountsV1,
+    rates: ProbeOutcomeRatesV1,
+  })
+  .strict();
+export type PortfolioProbeOutcomesV1 = z.infer<
+  typeof PortfolioProbeOutcomesV1
+>;
+
 export const PortfolioReport = z.object({
   generated_at: z.string(),
   repo_count: z.number().int().nonnegative(),
@@ -242,6 +259,7 @@ export const PortfolioReport = z.object({
    *  Optional-with-default so pre-existing persisted reports lacking the field
    *  still parse (the schema is not `.strict()`; default fills in []). */
   structured_recommendations: z.array(StructuredRecommendation).default([]),
+  probe_outcomes: PortfolioProbeOutcomesV1.optional(),
 });
 export type PortfolioReport = z.infer<typeof PortfolioReport>;
 

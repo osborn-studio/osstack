@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Probe Event v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^pe_[a-z0-9][a-z0-9_-]{7,63}$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^probe_[a-z0-9][a-z0-9_-]{7,63}$"
+    },
+    "revision": {
+      "type": "integer",
+      "exclusiveMinimum": 0
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "session_started",
+        "answer_recorded",
+        "item_deferred",
+        "item_waived",
+        "item_invalidated",
+        "items_added",
+        "items_compiled",
+        "session_paused",
+        "session_resumed",
+        "session_abandoned",
+        "destination_updated"
+      ]
+    },
+    "actor": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "human",
+            "agent"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "item_id": {
+      "type": "string",
+      "pattern": "^pi_[a-z0-9][a-z0-9_-]{7,63}$"
+    },
+    "occurred_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": {}
+    }
+  },
+  "required": [
+    "schema_version",
+    "event_id",
+    "session_id",
+    "revision",
+    "type",
+    "actor",
+    "idempotency_key",
+    "occurred_at_ms",
+    "payload"
+  ],
+  "additionalProperties": false
+}

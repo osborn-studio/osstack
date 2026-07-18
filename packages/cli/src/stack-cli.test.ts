@@ -426,6 +426,48 @@ describe("handleStackCommand: move", () => {
 
     expect(exitCode).toBe(1);
   });
+
+  it("evaluates every transition guard and emits no move event when one denies", async () => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+    const evaluated: string[] = [];
+    const before = openDb({ path: dbPath });
+    const beforeEvents = new KanbanRepository(before, dbPath)
+      .eventsSince(0, { card_id: "pr-48" }).length;
+    before.close();
+
+    const exitCode = await handleStackCommand(["move", "48", "running"], {
+      dbPath,
+      workspacePath: "/workspace",
+      transitionGuards: [
+        {
+          id: "probe-readiness",
+          evaluate: async (input) => {
+            evaluated.push(`probe:${input.cardId}:${input.from}:${input.to}`);
+            return { allow: false, reason: "readiness denied", evidenceRefs: ["ledger.json"] };
+          },
+        },
+        {
+          id: "audit",
+          evaluate: async () => {
+            evaluated.push("audit");
+            return { allow: true, reason: "recorded", evidenceRefs: [] };
+          },
+        },
+      ],
+    });
+
+    expect(exitCode).toBe(1);
+    expect(evaluated.sort()).toEqual(["audit", "probe:pr-48:ready:running"]);
+    const after = openDb({ path: dbPath });
+    try {
+      const repo = new KanbanRepository(after, dbPath);
+      expect(repo.getCard("pr-48")!.status).toBe("ready");
+      expect(repo.eventsSince(0, { card_id: "pr-48" })).toHaveLength(beforeEvents);
+    } finally {
+      after.close();
+    }
+  });
 });
 
 describe("handleStackCommand: check", () => {

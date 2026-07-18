@@ -10,11 +10,13 @@ import {
   CardStatus,
   IllegalCardTransition,
   KanbanRepository,
+  evaluateKanbanTransitionGuards,
   getBoard,
   openDb,
   readFactsForSubject,
   upsertImprovementProposal,
   writeFact,
+  type KanbanTransitionGuard,
 } from "@osstack/core";
 import { ingestStack, type CommandRunner } from "@osstack/github";
 import { renderStackRetro, type StackRetroInput } from "@osstack/loop";
@@ -26,6 +28,8 @@ export interface StackCliDeps {
   dbPath?: string;
   now?: () => number;
   out?: (line: string) => void;
+  workspacePath?: string;
+  transitionGuards?: readonly KanbanTransitionGuard[];
 }
 
 export const PR_CARD_CHECKLIST: readonly string[] = [
@@ -283,6 +287,25 @@ async function stackMove(args: string[], deps?: StackCliDeps): Promise<number> {
     const repo = new KanbanRepository(db, dbPath, deps?.now);
     const cardId = resolveCardId(cardArg);
     try {
+      const card = repo.getCard(cardId);
+      if (card === undefined) throw new CardNotFound(cardId);
+      const guardResult = await evaluateKanbanTransitionGuards(
+        deps?.transitionGuards ?? [],
+        {
+          cardId,
+          from: card.status,
+          to: status,
+          workspacePath: deps?.workspacePath ?? process.cwd(),
+        },
+      );
+      if (!guardResult.allow) {
+        for (const decision of guardResult.decisions.filter((entry) => !entry.allow)) {
+          console.error(
+            `osstack: transition denied by ${decision.guardId}: ${decision.reason}`,
+          );
+        }
+        return 1;
+      }
       const updated = repo.moveCard(cardId, status, {
         ...(reason !== undefined ? { blocked_reason: reason } : {}),
         actor: "cli",

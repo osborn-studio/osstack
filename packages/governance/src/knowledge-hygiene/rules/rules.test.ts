@@ -250,6 +250,10 @@ describe("knowledge hygiene rule registry", () => {
       "reference.instruction_import_missing",
       "contract.review_required",
       "memory.platform_limit_exceeded",
+      "probe.artifact_integrity",
+      "probe.destination_missing",
+      "probe.deferred_stale",
+      "probe.waiver_expired",
       "scan.incomplete",
     ]);
     expect(Object.isFrozen(KNOWLEDGE_HYGIENE_RULES_V1)).toBe(true);

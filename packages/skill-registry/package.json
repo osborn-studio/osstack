@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@osstack/core": "workspace:*",
-    "js-yaml": "^4.1.1",
+    "js-yaml": "^4.3.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

@@ -19,6 +19,7 @@ const builtGenerator = join(
   "knowledge-hygiene",
   "generate.js",
 );
+const builtProbeGenerator = join(packageRoot, "dist", "probe", "generate.js");
 const check = process.argv.includes("--check");
 
 if (!existsSync(builtGenerator)) {
@@ -27,11 +28,23 @@ if (!existsSync(builtGenerator)) {
   );
   process.exit(2);
 }
+if (!existsSync(builtProbeGenerator)) {
+  console.error(
+    "packages/governance/dist/probe/generate.js not found — run the package build first",
+  );
+  process.exit(2);
+}
 
 const { generateAllKnowledgeHygieneSchemasV1 } = await import(
   pathToFileURL(builtGenerator).href
 );
-const expected = generateAllKnowledgeHygieneSchemasV1();
+const { generateAllProbeSchemasV1 } = await import(
+  pathToFileURL(builtProbeGenerator).href
+);
+const expected = {
+  ...generateAllKnowledgeHygieneSchemasV1(),
+  ...generateAllProbeSchemasV1(),
+};
 mkdirSync(schemasDirectory, { recursive: true });
 
 let stale = 0;
@@ -66,4 +79,4 @@ if (check && stale > 0) {
   console.error(`schema check FAILED: ${stale} stale or unexpected file(s)`);
   process.exit(1);
 }
-if (check) console.log("knowledge hygiene schemas up to date");
+if (check) console.log("governance schemas up to date");

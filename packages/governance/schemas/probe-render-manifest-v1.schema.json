@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Probe Render Manifest v1",
+  "$comment": "File paths must be unique and must exclude render-manifest.json; @osstack/governance Zod validation enforces this constraint.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^probe_[a-z0-9][a-z0-9_-]{7,63}$"
+    },
+    "exported_revision": {
+      "type": "integer",
+      "exclusiveMinimum": 0
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "path",
+          "sha256",
+          "bytes"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 2
+    },
+    "generator_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "completed_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "schema_version",
+    "session_id",
+    "exported_revision",
+    "files",
+    "generator_version",
+    "completed_at_ms"
+  ],
+  "additionalProperties": false
+}

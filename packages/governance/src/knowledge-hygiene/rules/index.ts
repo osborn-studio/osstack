@@ -49,6 +49,18 @@ const scanIncompleteRule: KnowledgeHygieneRuleV1 = {
   },
 };
 
+function externalAdapterRule(
+  id: Extract<KnowledgeHygieneRuleIdV1, `probe.${string}`>,
+  defaultSeverity: KnowledgeHygieneRuleV1["default_severity"],
+): KnowledgeHygieneRuleV1 {
+  return {
+    id,
+    version: "1",
+    default_severity: defaultSeverity,
+    evaluate: () => [],
+  };
+}
+
 export function createKnowledgeHygieneRuleRegistry(
   rules: readonly KnowledgeHygieneRuleV1[],
 ): readonly KnowledgeHygieneRuleV1[] {
@@ -67,6 +79,10 @@ const unorderedRules: readonly KnowledgeHygieneRuleV1[] = [
   ...REFERENCE_RULES_V1,
   CHANGE_CONTRACT_RULE_V1,
   CLAUDE_CODE_MEMORY_LIMIT_RULE_V1,
+  externalAdapterRule("probe.artifact_integrity", "error"),
+  externalAdapterRule("probe.destination_missing", "warning"),
+  externalAdapterRule("probe.deferred_stale", "warning"),
+  externalAdapterRule("probe.waiver_expired", "error"),
   scanIncompleteRule,
 ];
 const rulesById = new Map(unorderedRules.map((rule) => [rule.id, rule]));

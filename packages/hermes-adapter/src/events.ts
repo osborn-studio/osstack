@@ -154,6 +154,9 @@ export const DonePayload = z.object({
   last_seq: z.number().int().nonnegative(),
   usage: UsageFinalPayload.optional(),
   result_summary: z.string().optional(),
+  /** Optional application-neutral structured verifier extensions. */
+  evaluation_judgments: z.unknown().optional(),
+  implementation_deviations: z.array(z.record(z.unknown())).max(100).optional(),
 });
 
 // ──────────────────────────────────────────────────────────────────────
