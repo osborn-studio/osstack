@@ -1,5 +1,11 @@
 # @osstack/cli
 
+## 0.11.1
+
+### Patch Changes
+
+- 671aa87: Document the required `--question <item-id>` guard in Probe CLI help.
+
 ## 0.11.0
 
 ### Minor Changes
