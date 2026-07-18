@@ -1296,9 +1296,9 @@ Hermes 只保留对象数组，Loop 再按 strict `ImplementationDeviation` 校�
 
 此阶段拆成三个小任务/提交，不得一个提交横跨所有消费者：
 
-1. neat adapter：ledger hash、dead destination、stale deferred/waiver；
-2. core query + daily：开放数、老化和 completion；
-3. supervisor 聚合 + metrics：按 §10 从事件派生，不读 CLI 文本。
+1. [x] neat adapter：ledger hash、dead destination、stale deferred/waiver；
+2. [ ] core query + daily：开放数、老化和 completion；
+3. [ ] supervisor 聚合 + metrics：按 §10 从事件派生，不读 CLI 文本。
 
 **验收：**
 

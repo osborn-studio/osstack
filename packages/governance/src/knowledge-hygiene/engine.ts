@@ -44,6 +44,11 @@ import {
   type KnowledgeSurfaceAdapterRunResultV1,
   type KnowledgeSurfaceAdapterV1,
 } from "./adapters/index.js";
+import {
+  inspectProbeKnowledgeHygiene,
+  type InspectProbeKnowledgeHygieneInputV1,
+  type ProbeKnowledgeHygieneInspectionV1,
+} from "./adapters/probe-artifacts.js";
 
 export interface KnowledgeHygieneEnginePortsV1 {
   now?: () => Date;
@@ -67,6 +72,9 @@ export interface KnowledgeHygieneEnginePortsV1 {
   rules?: readonly KnowledgeHygieneRuleV1[];
   adapters?: readonly KnowledgeSurfaceAdapterV1[];
   home_directory?: () => string | undefined;
+  inspect_probe_artifacts?: (
+    input: InspectProbeKnowledgeHygieneInputV1,
+  ) => Promise<ProbeKnowledgeHygieneInspectionV1>;
 }
 
 const severityOrder = { error: 0, warning: 1, info: 2 } as const;
@@ -252,6 +260,7 @@ export async function checkKnowledgeHygiene(
   const inspect = ports.inspect_instruction ?? inspectInstructionSource;
   const inspectReferences = ports.inspect_references ?? inspectKnowledgeReferences;
   const now = ports.now ?? (() => new Date());
+  const checkedAt = now();
   const adapters = ports.adapters ?? [CLAUDE_CODE_MEMORY_ADAPTER_V1];
   const homeDirectory = ports.home_directory
     ?? (() => process.env["HOME"]);
@@ -295,10 +304,21 @@ export async function checkKnowledgeHygiene(
   const surfaceInventory = mergeInventories(repositoryInventory, adapterRuns);
   const repoIdentity = await (ports.repo_identity?.(repoRoot)
     ?? basename(repoRoot));
-  const referenceObservations = await inspectReferences({
-    repo_root: repoRoot,
-    inventory: surfaceInventory,
-  });
+  const [referenceObservations, probeInspection] = await Promise.all([
+    inspectReferences({
+      repo_root: repoRoot,
+      inventory: surfaceInventory,
+    }),
+    (ports.inspect_probe_artifacts ?? inspectProbeKnowledgeHygiene)({
+      repo_root: repoRoot,
+      now_ms: checkedAt.getTime(),
+    }),
+  ]);
+  const activeRules = selectedRules(
+    input,
+    ports.rules ?? KNOWLEDGE_HYGIENE_RULES_V1,
+  );
+  const activeRuleIds = new Set(activeRules.map((rule) => rule.id));
   const evaluated = evaluateKnowledgeHygieneRules(
     {
       repo_identity: repoIdentity,
@@ -308,9 +328,14 @@ export async function checkKnowledgeHygiene(
       reference_observations: referenceObservations,
       change_set: changeSet,
     },
-    selectedRules(input, ports.rules ?? KNOWLEDGE_HYGIENE_RULES_V1),
+    activeRules,
   );
-  const filtered = filterSuppressedKnowledgeHygieneFindings(evaluated, config);
+  const filtered = filterSuppressedKnowledgeHygieneFindings([
+    ...evaluated,
+    ...probeInspection.findings.filter((finding) =>
+      activeRuleIds.has(finding.rule_id),
+    ),
+  ], config);
   const findings = sortFindings(filtered.active);
   const reportInput = {
     mode: input.mode,
@@ -337,7 +362,7 @@ export async function checkKnowledgeHygiene(
 
   return KnowledgeHygieneReportV1.parse({
     schema_version: "1",
-    generated_at: now().toISOString(),
+    generated_at: checkedAt.toISOString(),
     repo: { root: repoRoot, repo_id: repoIdentity },
     input: reportInput,
     completeness: surfaceInventory.completeness,
