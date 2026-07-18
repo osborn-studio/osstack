@@ -779,15 +779,15 @@ authorized editorial work, requests decisions, and reruns the check.
 
 **Acceptance criteria:**
 
-- [ ] Trigger description covers `/neat`, tidy/sync/close-out phrases.
-- [ ] Mechanical checks are never reimplemented in shell instructions.
-- [ ] Human decisions and incomplete scans block success claims.
-- [ ] Source attribution is present.
+- [x] Trigger description covers `/neat`, tidy/sync/close-out phrases.
+- [x] Mechanical checks are never reimplemented in shell instructions.
+- [x] Human decisions and incomplete scans block success claims.
+- [x] Source attribution is present.
 
 **Verification:**
 
-- [ ] Skill validates under the Agent Skills validator when available.
-- [ ] Manual clean and finding scenarios follow the same CLI path.
+- [x] Skill validates under the Agent Skills validator when available.
+- [x] Manual clean and finding scenarios follow the same CLI path.
 
 **Dependencies:** R0.7.
 
