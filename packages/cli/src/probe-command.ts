@@ -166,6 +166,7 @@ Write options:
   --actor-kind <human|agent> --actor-id <id>
   --idempotency-key <key>
   --if-revision <n>                Required for writes to an existing session
+  --question <item-id>             Required for probe next dispositions; must equal current item
 
 Next dispositions (mutually exclusive):
   --answer <text> | --answer-file <path|->
