@@ -565,14 +565,14 @@ and a CLI changeset.
 
 **Acceptance criteria:**
 
-- [ ] Existing top-level command dispatch behavior is unchanged.
-- [ ] `osstack neat --help` documents all R0 flags and exit codes.
-- [ ] Help does not advertise R1-R4 features.
+- [x] Existing top-level command dispatch behavior is unchanged.
+- [x] `osstack neat --help` documents all R0 flags and exit codes.
+- [x] Help does not advertise R1-R4 features.
 
 **Verification:**
 
-- [ ] `pnpm --filter @osstack/cli test`
-- [ ] `pnpm --filter @osstack/cli build`
+- [x] `pnpm --filter @osstack/cli test`
+- [x] `pnpm --filter @osstack/cli build`
 
 **Dependencies:** R0.5.1, R0.5.2.
 

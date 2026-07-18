@@ -117,6 +117,7 @@ import { handleStackCommand } from "./stack-cli.js";
 import { handleHubCommand, buildRealHubCliDeps } from "./hub-cli.js";
 import { handleDailyCommand } from "./daily-command.js";
 import { handleControlCommand, handleStartCommand } from "./start-control-command.js";
+import { handleNeatCommand } from "./neat-command.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -178,6 +179,7 @@ Loop 工程：
 治理与知识：
   policy check        校验 .osstack/repo.yaml 与 policy.yaml（只读；observe 模式拒绝执行）
   govern check        运行确定性治理检查
+  neat check          只读检查项目指令、文档合同与知识面完整性
   contracts check     检查前端调用与后端 API 契约是否对齐
 
 私有 Hub（可选；Hub 为发布权威，经 OSSTACK_HUB_ROOT 解析）：
@@ -424,9 +426,11 @@ Branch Steward:
 
 Governance:
   policy check [--repo-path P] [--json]
-                                 Validate .osstack/repo.yaml + policy.yaml (read-only; observe mode refuses execution)
+                                  Validate .osstack/repo.yaml + policy.yaml (read-only; observe mode refuses execution)
   govern check [path...] [--workspace P] [--changed] [--json]
-                                 Run deterministic governance checks over workspace files
+                                  Run deterministic governance checks over workspace files
+  neat check [--repo P] [--all|--base REF [--head REF]] [--json]
+                                  Check repository knowledge contracts (read-only)
   governance scan <path...> [--json]
                                  Run deterministic governance checks over files
   compliance list [--json]
@@ -642,6 +646,14 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "governance" || cmd === "govern") {
     return await handleGovernanceCommand(args.slice(1));
+  }
+
+  if (cmd === "neat") {
+    return await handleNeatCommand(args.slice(1), {
+      cwd: () => process.cwd(),
+      stdout: (value) => console.log(value),
+      stderr: (value) => console.error(value),
+    });
   }
 
   if (cmd === "contracts" || cmd === "contract") {
