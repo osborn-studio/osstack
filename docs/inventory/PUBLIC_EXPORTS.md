@@ -110,6 +110,7 @@ export * from "./portfolio-status.js";
 ```ts
 export * from "./types.js";
 export * from "./scanner.js";
+export * from "./knowledge-hygiene/index.js";
 ```
 
 ## `@osstack/hermes-adapter`
@@ -204,6 +205,8 @@ export const SKILLS_VERSION = "0.0.0";
 export * from "./types.js";
 export * from "./repo-registry.js";
 export * from "./repo-scanner.js";
+export * from "./hygiene-scanner.js";
+export * from "./hygiene-proposal.js";
 export * from "./portfolio.js";
 export * from "./trace-normalizer.js";
 export * from "./failure-taxonomy.js";

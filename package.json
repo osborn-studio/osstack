@@ -34,11 +34,13 @@
     "smoke:knowledge-cloud:deploy": "node scripts/smoke-knowledge-cloud-deploy-assets.mjs",
     "smoke:npm-install": "node scripts/smoke-npm-install.mjs",
     "smoke:release-plan": "pnpm --filter @osstack/cli build && node scripts/smoke-release-plan.mjs",
+    "smoke:neat": "pnpm --filter @osstack/cli build && node scripts/smoke-neat.mjs",
     "smoke:bun-single-binary": "node scripts/smoke-bun-single-binary.mjs",
     "smoke:single-binary-signing": "node scripts/smoke-single-binary-signing.mjs",
     "smoke:single-binary-release-pack": "node scripts/smoke-single-binary-release-pack.mjs",
     "smoke:single-binary-release-publish": "node scripts/smoke-single-binary-release-publish.mjs",
-    "smoke:portable-cli": "node scripts/smoke-portable-cli.mjs"
+    "smoke:portable-cli": "node scripts/smoke-portable-cli.mjs",
+    "eval:neat-goldens": "pnpm --filter @osstack/cli build && node scripts/eval-neat-goldens.mjs --check"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",

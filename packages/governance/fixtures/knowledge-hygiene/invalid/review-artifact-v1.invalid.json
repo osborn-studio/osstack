@@ -1,0 +1,19 @@
+{
+  "schema_version": "1",
+  "diff_id": "diff_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "resolutions": [
+    {
+      "schema_version": "1",
+      "diff_id": "diff_cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "fingerprint": "khf_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "outcome": "reviewed_no_change",
+      "actor": {
+        "kind": "human",
+        "id": "osborn"
+      },
+      "reason": "Stale diff id.",
+      "evidence_refs": [],
+      "resolved_at": "2026-07-17T00:00:00.000Z"
+    }
+  ]
+}

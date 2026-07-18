@@ -1,0 +1,23 @@
+{
+  "fingerprint": "khf_0000000000000000000000000000000000000000000000000000000000000000",
+  "rule_id": "instruction.canonical_missing",
+  "rule_version": "1",
+  "surface": "instruction",
+  "severity": "error",
+  "confidence": "high",
+  "location": {
+    "path": "AGENTS.md",
+    "anchor": "canonical"
+  },
+  "observed": {
+    "exists": false
+  },
+  "expected": {
+    "exists": true
+  },
+  "rationale": "The configured canonical instruction file is missing.",
+  "evidence_refs": [],
+  "remediation": {
+    "mode": "agent_edit"
+  }
+}

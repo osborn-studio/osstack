@@ -5,7 +5,7 @@ import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { connect, type Socket } from "node:net";
-import { chmod, copyFile, lstat, mkdir, readdir, readFile, readlink, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
@@ -25,7 +25,11 @@ import {
 } from "@osstack/compliance";
 import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
 import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons, type RoutableAdapter } from "@osstack/core";
-import { scanFiles, type GovernanceFinding } from "@osstack/governance";
+import {
+  inspectInstructionSource,
+  scanFiles,
+  type GovernanceFinding,
+} from "@osstack/governance";
 import {
   renderBranchStewardReport,
   scanBranchStewardCandidates,
@@ -113,6 +117,11 @@ import { handleStackCommand } from "./stack-cli.js";
 import { handleHubCommand, buildRealHubCliDeps } from "./hub-cli.js";
 import { handleDailyCommand } from "./daily-command.js";
 import { handleControlCommand, handleStartCommand } from "./start-control-command.js";
+import { handleNeatCommand } from "./neat-command.js";
+import {
+  runLoopNeatFinalizer,
+  type LoopNeatFinalizerResultV1,
+} from "./loop-neat-finalizer.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -174,6 +183,7 @@ Loop 工程：
 治理与知识：
   policy check        校验 .osstack/repo.yaml 与 policy.yaml（只读；observe 模式拒绝执行）
   govern check        运行确定性治理检查
+  neat check          只读检查项目指令、文档合同与知识面完整性
   contracts check     检查前端调用与后端 API 契约是否对齐
 
 私有 Hub（可选；Hub 为发布权威，经 OSSTACK_HUB_ROOT 解析）：
@@ -420,9 +430,11 @@ Branch Steward:
 
 Governance:
   policy check [--repo-path P] [--json]
-                                 Validate .osstack/repo.yaml + policy.yaml (read-only; observe mode refuses execution)
+                                  Validate .osstack/repo.yaml + policy.yaml (read-only; observe mode refuses execution)
   govern check [path...] [--workspace P] [--changed] [--json]
-                                 Run deterministic governance checks over workspace files
+                                  Run deterministic governance checks over workspace files
+  neat check [--repo P] [--all|--base REF [--head REF]] [--json]
+                                  Check repository knowledge contracts (read-only)
   governance scan <path...> [--json]
                                  Run deterministic governance checks over files
   compliance list [--json]
@@ -638,6 +650,15 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "governance" || cmd === "govern") {
     return await handleGovernanceCommand(args.slice(1));
+  }
+
+  if (cmd === "neat") {
+    return await handleNeatCommand(args.slice(1), {
+      cwd: () => process.cwd(),
+      stdout: (value) => console.log(value),
+      stderr: (value) => console.error(value),
+      authorize_write: evaluatePolicyGate,
+    });
   }
 
   if (cmd === "contracts" || cmd === "contract") {
@@ -9108,6 +9129,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const archiveCompletedTasks = args.includes("--archive-completed");
     const autoAgent = args.includes("--auto-agent");
     const selfImprovementEnabled = args.includes("--self-improvement");
+    const neatFinalize = args.includes("--neat-finalize");
     const selfImprovementRepoId = flagValue(args, "--repo-id");
     const proposeImprovements = args.includes("--propose-improvements");
     if (selfImprovementEnabled && selfImprovementRepoId === undefined) {
@@ -9185,6 +9207,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ...(useWorktree ? { useWorktree: true } : {}),
         ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
         ...(shouldRecordLoopKnowledge(args, knowledge) ? { knowledge } : {}),
+        ...(neatFinalize ? { neatFinalize: true } : {}),
       }) as RpcResp;
       if (!resp.ok) {
         console.error("osstack:", resp.error?.message ?? "loop.run failed");
@@ -9285,6 +9308,14 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       : appendGovernanceVerifyEvent(result.events, result.loop_id, governance);
     const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, args, events, governance);
     const learnedLessons = await learnLessonsFromLoopState(result.state);
+    const knowledgeHygiene = await runLoopNeatFinalizer({
+      enabled: neatFinalize,
+      loop_succeeded: result.state.completed_tasks.length > 0
+        && result.state.completed_tasks.every((task) => task.outcome === "success")
+        && governance?.blocking !== true
+        && result.budget?.exceeded !== true,
+      workspace_path: workspacePath,
+    });
     printLoopRun({
       loop_id: result.loop_id,
       json_path: result.jsonPath,
@@ -9299,6 +9330,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(goal !== undefined ? { goal } : {}),
       ...(result.budget !== undefined ? { budget: result.budget } : {}),
       ...(result.state.key_metrics !== undefined ? { metrics: result.state.key_metrics } : {}),
+      ...(knowledgeHygiene !== undefined ? { knowledge_hygiene: knowledgeHygiene } : {}),
       ...("cycles" in result ? { cycles: result.cycles.map((cycle) => ({
         discovered_task_count: cycle.discoveredTaskCount,
         executed_task_count: cycle.executedTaskCount,
@@ -9477,6 +9509,7 @@ Options:
                       Knowledge Cloud URL; unavailable cloud fails open to local/off
   --knowledge-query Q Query used for knowledge trace search
   --govern [M]        Run governance checks after loop run; M=warn or strict
+  --neat-finalize     After a successful run, attach non-gating neat evidence
   --json              Emit machine-readable summary
   --daemon            Run through the osstack daemon RPC socket
 
@@ -9822,6 +9855,7 @@ interface LoopRunSummary {
   events?: unknown[];
   profile?: LoopProfileSummary;
   budget?: LoopBudgetStatus;
+  knowledge_hygiene?: LoopNeatFinalizerResultV1;
   cycles?: Array<{
     discovered_task_count: number;
     executed_task_count: number;
@@ -9981,6 +10015,14 @@ function printLoopRun(result: LoopRunSummary, json: boolean): void {
   }
   if (result.governance !== undefined) {
     console.log(`governance=${result.governance.status} mode=${result.governance.mode} blocking=${result.governance.blocking ? "yes" : "no"} findings=${result.governance.findings.length}`);
+  }
+  if (result.knowledge_hygiene !== undefined) {
+    if (result.knowledge_hygiene.status === "error") {
+      console.log(`knowledge_hygiene=error message=${result.knowledge_hygiene.error}`);
+    } else {
+      const report = result.knowledge_hygiene.report;
+      console.log(`knowledge_hygiene=${report.completeness.complete ? "complete" : "incomplete"} findings=${report.findings.length}`);
+    }
   }
   if (result.profile !== undefined) {
     console.log(`profile=${result.profile.profile_name} builder=${result.profile.builder_agent_id ?? "none"} evaluator=${result.profile.evaluator_agent_id ?? "none"}`);
@@ -10193,7 +10235,7 @@ async function loopDoctor(input: {
     await checkTaskQueue(input.workspacePath, add);
     await checkLoopState(input.stateFilePath, add);
     await checkGit(input.workspacePath, add);
-    await checkAgentInstructionDrift(input.workspacePath, add);
+    await addInstructionSourceDoctorCheck(input.workspacePath, add);
     await checkProtectedConfigStatus(input.workspacePath, add);
   }
 
@@ -10314,28 +10356,32 @@ async function checkGit(
   }
 }
 
-async function checkAgentInstructionDrift(
+async function addInstructionSourceDoctorCheck(
   workspacePath: string,
   add: (id: string, status: LoopDoctorCheck["status"], summary: string, details?: Record<string, unknown>) => void,
 ): Promise<void> {
   const agentsPath = join(workspacePath, "AGENTS.md");
   const claudePath = join(workspacePath, "CLAUDE.md");
-  const agentsExists = await fileExists(agentsPath);
-  const claudeExists = await fileExists(claudePath);
+  const observation = await inspectInstructionSource({
+    repo_root: workspacePath,
+    canonical_path: "AGENTS.md",
+    mirror_path: "CLAUDE.md",
+    mirror_mode: "import_or_symlink",
+  });
 
-  if (!agentsExists && !claudeExists) {
+  if (observation.status === "both_missing") {
     add("agent_instructions", "warn", "no AGENTS.md or CLAUDE.md found at workspace root", {
       expected_source: agentsPath,
     });
     return;
   }
-  if (agentsExists && !claudeExists) {
+  if (observation.status === "mirror_missing") {
     add("agent_instructions", "ok", "AGENTS.md is the only root instruction source", {
       source: agentsPath,
     });
     return;
   }
-  if (!agentsExists && claudeExists) {
+  if (observation.status === "canonical_missing") {
     add("agent_instructions", "error", "CLAUDE.md exists without AGENTS.md; instruction source is not unified", {
       claude: claudePath,
       expected_source: agentsPath,
@@ -10343,12 +10389,11 @@ async function checkAgentInstructionDrift(
     return;
   }
 
-  const claudeReference = await classifyClaudeReference(claudePath);
-  if (claudeReference.ok) {
+  if (observation.status === "valid_mirror") {
     add("agent_instructions", "ok", "AGENTS.md is canonical and CLAUDE.md references it", {
       source: agentsPath,
       claude: claudePath,
-      mode: claudeReference.mode,
+      mode: observation.mirror_kind === "import" ? "one-line-reference" : "symlink",
     });
     return;
   }
@@ -10356,29 +10401,9 @@ async function checkAgentInstructionDrift(
   add("agent_instructions", "error", "AGENTS.md and CLAUDE.md are both real instruction files; drift risk detected", {
     source: agentsPath,
     claude: claudePath,
-    reason: claudeReference.reason,
+    reason: observation.reason,
     remediation: "replace CLAUDE.md with a one-line @AGENTS.md reference or a symlink to AGENTS.md",
   });
-}
-
-async function classifyClaudeReference(path: string): Promise<
-  | { ok: true; mode: "symlink" | "one-line-reference" }
-  | { ok: false; reason: string }
-> {
-  try {
-    const meta = await lstat(path);
-    if (meta.isSymbolicLink()) {
-      const target = await readlink(path);
-      return target === "AGENTS.md" || target.endsWith("/AGENTS.md")
-        ? { ok: true, mode: "symlink" }
-        : { ok: false, reason: `CLAUDE.md symlink points to ${target}` };
-    }
-    const content = (await readFile(path, "utf-8")).trim();
-    if (content === "@AGENTS.md") return { ok: true, mode: "one-line-reference" };
-    return { ok: false, reason: "CLAUDE.md content is not exactly @AGENTS.md" };
-  } catch (error) {
-    return { ok: false, reason: errorMessage(error) };
-  }
 }
 
 async function checkProtectedConfigStatus(

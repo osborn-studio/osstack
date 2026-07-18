@@ -1,0 +1,192 @@
+{
+  "schema_version": "1",
+  "label_source": "Accepted neat product specification section 15.4, frozen before final tuning",
+  "scenarios": [
+    {
+      "id": "01-clean-agents-canonical",
+      "class": "clean osstack-style AGENTS canonical repository",
+      "mode": "all",
+      "files": {
+        "AGENTS.md": "# Canonical instructions\n"
+      },
+      "expected_findings": []
+    },
+    {
+      "id": "02-valid-claude-import",
+      "class": "valid one-line CLAUDE import",
+      "mode": "all",
+      "files": {
+        "AGENTS.md": "# Canonical instructions\n",
+        "CLAUDE.md": "@AGENTS.md\n"
+      },
+      "expected_findings": []
+    },
+    {
+      "id": "03-valid-symlink-mirror",
+      "class": "valid symlink mirror",
+      "mode": "all",
+      "files": {
+        "AGENTS.md": "# Canonical instructions\n"
+      },
+      "symlinks": {
+        "CLAUDE.md": "AGENTS.md"
+      },
+      "expected_findings": []
+    },
+    {
+      "id": "04-conflicting-instructions",
+      "class": "independent conflicting instruction files",
+      "mode": "all",
+      "files": {
+        "AGENTS.md": "# Canonical instructions\n",
+        "CLAUDE.md": "# Divergent instructions\n",
+        ".osstack/neat.yaml": "version: 1\ninstructions:\n  canonical: AGENTS.md\n  mirrors:\n    - { path: CLAUDE.md, mode: import_or_symlink }\n"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "instruction.mirror_drift",
+          "severity": "error",
+          "path": "CLAUDE.md",
+          "label": "true_positive"
+        }
+      ]
+    },
+    {
+      "id": "05-docs-only",
+      "class": "docs-only repository with no instructions",
+      "mode": "all",
+      "files": {
+        "README.md": "# Docs only\n",
+        "docs/guide.md": "No instruction source is required in zero-config mode.\n"
+      },
+      "expected_findings": []
+    },
+    {
+      "id": "06-missing-required-surface",
+      "class": "missing configured required surface",
+      "mode": "all",
+      "files": {
+        "README.md": "# Missing architecture fixture\n",
+        ".osstack/neat.yaml": "version: 1\nrequired_surfaces:\n  - { id: architecture, path: docs/architecture.md, severity: warning }\n"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "surface.required_missing",
+          "severity": "warning",
+          "path": "docs/architecture.md",
+          "label": "true_positive"
+        }
+      ]
+    },
+    {
+      "id": "07-relative-links",
+      "class": "valid and broken relative Markdown links",
+      "mode": "all",
+      "files": {
+        "README.md": "# Link fixture\n",
+        "docs/guide.md": "[valid](../README.md)\n[missing](missing-guide.md)\n",
+        "docs/other.md": "[also missing](missing-other.md)\n"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "reference.markdown_target_missing",
+          "severity": "warning",
+          "path": "docs/guide.md",
+          "label": "true_positive"
+        },
+        {
+          "rule_id": "reference.markdown_target_missing",
+          "severity": "warning",
+          "path": "docs/other.md",
+          "label": "true_positive"
+        }
+      ]
+    },
+    {
+      "id": "08-code-fence-paths",
+      "class": "code fences containing path-like text",
+      "mode": "all",
+      "files": {
+        "README.md": "# Fence fixture\n",
+        "docs/example.md": "```md\n[example](missing.md)\n```\nSee docs/missing.md in prose.\n"
+      },
+      "expected_findings": []
+    },
+    {
+      "id": "09-advisory-contract",
+      "class": "TypeScript change triggering an advisory contract",
+      "mode": "worktree",
+      "git": true,
+      "files": {
+        "README.md": "# Contract fixture\n",
+        "src/app.ts": "export const value = 1;\n",
+        ".osstack/neat.yaml": "version: 1\ncontracts:\n  - id: source-review\n    when: { any_path: [src/**] }\n    review: { any_path: [README.md] }\n    enforcement: advisory\n"
+      },
+      "post_commit_files": {
+        "src/app.ts": "export const value = 2;\n"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "contract.review_required",
+          "severity": "warning",
+          "path": "src/app.ts",
+          "label": "true_positive"
+        }
+      ]
+    },
+    {
+      "id": "10-reviewed-no-target-edit",
+      "class": "triggered contract reviewed with no target edit",
+      "mode": "worktree",
+      "git": true,
+      "human_reviewed": true,
+      "files": {
+        "README.md": "# Reviewed contract fixture\n",
+        "src/app.ts": "export const value = 1;\n",
+        ".osstack/neat.yaml": "version: 1\ncontracts:\n  - id: source-review\n    when: { any_path: [src/**] }\n    review: { any_path: [README.md] }\n    enforcement: advisory\n"
+      },
+      "post_commit_files": {
+        "src/app.ts": "export const value = 2;\n"
+      },
+      "expected_findings": [],
+      "expected_false_positives": [
+        {
+          "rule_id": "contract.review_required",
+          "severity": "warning",
+          "path": "src/app.ts",
+          "reason": "Human review completed without a target edit; R0 cannot yet consume reviewed_no_change evidence."
+        }
+      ]
+    },
+    {
+      "id": "11-non-git-full-audit",
+      "class": "non-Git full audit",
+      "mode": "all",
+      "git": false,
+      "files": {
+        "README.md": "# Non-Git repository\n",
+        "docs/guide.md": "[root](../README.md)\n"
+      },
+      "expected_findings": []
+    },
+    {
+      "id": "12-scan-limit-incomplete",
+      "class": "scan-limit/incomplete repository",
+      "mode": "all",
+      "files": {
+        "README.md": "# Incomplete fixture\n"
+      },
+      "large_files": {
+        "docs/oversized.md": 2097153
+      },
+      "expected_findings": [
+        {
+          "rule_id": "scan.incomplete",
+          "severity": "error",
+          "path": ".",
+          "label": "true_positive"
+        }
+      ]
+    }
+  ]
+}

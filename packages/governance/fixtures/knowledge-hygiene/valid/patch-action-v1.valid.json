@@ -1,0 +1,43 @@
+{
+  "schema_version": "1",
+  "action_id": "kha_cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "kind": "create_instruction_import",
+  "risk": "low",
+  "policy_category": "docs",
+  "target_path": "CLAUDE.md",
+  "before": {
+    "exists": false,
+    "sha256": null
+  },
+  "after": {
+    "content": "@AGENTS.md\n",
+    "sha256": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49"
+  },
+  "source_fingerprint": "khf_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "source_finding": {
+    "fingerprint": "khf_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "rule_id": "instruction.mirror_missing",
+    "rule_version": "1",
+    "surface": "instruction",
+    "severity": "warning",
+    "confidence": "high",
+    "location": {
+      "path": "CLAUDE.md",
+      "anchor": "mirror:CLAUDE.md"
+    },
+    "observed": {
+      "exists": false
+    },
+    "expected": {
+      "exists": true,
+      "mode": "import"
+    },
+    "rationale": "The configured instruction mirror is missing.",
+    "evidence_refs": [],
+    "remediation": {
+      "mode": "safe_patch",
+      "action_id": "create_import_mirror:CLAUDE.md"
+    }
+  },
+  "evidence_refs": []
+}

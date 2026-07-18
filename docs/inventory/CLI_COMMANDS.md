@@ -2,7 +2,7 @@
 
 # CLI Commands
 
-Top-level `osstack` commands parsed from `--help` (41 total).
+Top-level `osstack` commands parsed from `--help` (42 total).
 
 - `agent`
 - `checkpoint`
@@ -29,6 +29,7 @@ Top-level `osstack` commands parsed from `--help` (41 total).
 - `knowledge`
 - `lessons`
 - `loop`
+- `neat`
 - `osstack`
 - `policy`
 - `pr`

@@ -1,0 +1,52 @@
+version: 1
+
+instructions:
+  canonical: AGENTS.md
+  mirrors:
+    - path: CLAUDE.md
+      mode: import_or_symlink
+
+required_surfaces:
+  - id: readme
+    path: README.md
+    severity: error
+  - id: architecture-decisions
+    path: docs/decisions
+    kind: directory
+    severity: warning
+  - id: cli-command-inventory
+    path: docs/inventory/CLI_COMMANDS.md
+    severity: warning
+
+budgets:
+  - id: agent-context
+    path: AGENTS.md
+    warn:
+      lines: 120
+      bytes: 16384
+    error:
+      lines: 200
+      bytes: 32768
+
+contracts:
+  - id: cli-public-surface
+    when:
+      any_path:
+        - packages/cli/src/**
+    review:
+      any_path:
+        - README.md
+        - docs/inventory/CLI_COMMANDS.md
+    enforcement: advisory
+  - id: neat-governance-surface
+    when:
+      any_path:
+        - packages/governance/src/knowledge-hygiene/**
+    review:
+      any_path:
+        - docs/2026-07-17-neat-product-technical-spec-v2.md
+        - docs/decisions/ADR-002-neat-knowledge-hygiene-boundary.md
+        - docs/superpowers/plans/2026-07-17-neat-implementation-plan.md
+    enforcement: advisory
+
+ignore: []

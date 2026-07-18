@@ -521,7 +521,7 @@ CEO Review 完成（v0.2）。接下来：
 ## 11. PartnerOS 垂直整合 — Milestone 1 完成（2026-05-24）
 
 > 上游：[gilosbornhello/partneros-mvp](https://github.com/gilosbornhello/partneros-mvp) commit `4dbca76`
-> 完整分析：[docs/external/partneros-analysis.md](external/partneros-analysis.md)
+> 当前边界：[docs/product/15_OSSTACK_5_6_PRODUCT_AND_ARCHITECTURE.md](product/15_OSSTACK_5_6_PRODUCT_AND_ARCHITECTURE.md)
 > 整合路径：**路径 A** — PartnerOS 作为 osstack 的垂直 skill 包族
 
 ### 11.1 已交付的包
@@ -565,7 +565,7 @@ CEO Review 完成（v0.2）。接下来：
 
 ### 11.5 还没做的（剩下的 7 项）
 
-从 [partneros-analysis.md §五](external/partneros-analysis.md) 的 12 项清单看，已完成 1-5 + 11，剩下：
+从历史 `partneros-analysis.md` §五的 12 项清单看，已完成 1-5 + 11，剩下：
 
 | # | 项 | 优先级 |
 |---|---|---|
@@ -626,7 +626,7 @@ CEO Review 完成（v0.2）。接下来：
 
 ### 12.4 路径 A 状态总结
 
-[partneros-analysis.md §五](external/partneros-analysis.md) 12 项清单 → 完成 11 / 12：
+历史 `partneros-analysis.md` §五的 12 项清单 → 完成 11 / 12：
 
 | # | 项 | 状态 |
 |---|---|---|

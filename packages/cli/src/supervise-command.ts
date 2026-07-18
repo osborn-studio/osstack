@@ -14,10 +14,12 @@ import {
 import {
   RepoRole,
   addRepoRegistryEntry,
+  attachKnowledgeHygieneSummaries,
   buildPortfolioReport,
   readRepoRegistry,
   renderLoopDoc,
   scanRepo,
+  scanPortfolioKnowledgeHygiene,
   type PortfolioReport,
   type RepoHealth,
 } from "@osstack/supervisor";
@@ -121,7 +123,11 @@ async function scanPortfolio(args: string[]): Promise<PortfolioReport> {
   const enabled = entries.filter((entry) => entry.enabled);
   const healths: RepoHealth[] = [];
   for (const entry of enabled) healths.push(await scanRepo(entry));
-  return buildPortfolioReport(healths, new Date().toISOString());
+  const hygiene = await scanPortfolioKnowledgeHygiene(enabled);
+  return buildPortfolioReport(
+    attachKnowledgeHygieneSummaries(healths, hygiene),
+    new Date().toISOString(),
+  );
 }
 
 async function superviseInitLoopDoc(args: string[]): Promise<number> {

@@ -1,0 +1,73 @@
+{
+  "schema_version": "1",
+  "scenario": "explicit Claude Code MEMORY.md line limit",
+  "expected_report": {
+    "adapters": [
+      {
+        "id": "claude-code",
+        "version": "1",
+        "status": "available",
+        "source": "https://code.claude.com/docs/en/memory"
+      }
+    ],
+    "metrics": [
+      {
+        "surface": "memory",
+        "path": "claude-code://auto-memory/MEMORY.md",
+        "kind": "file",
+        "exists": true,
+        "bytes": 1005,
+        "lines": 201,
+        "sha256": "fa88e96d567f25d78ebb5b64a17d7e0ac7fab7b5694b58fbc0ec07be0c595cd2",
+        "adapter": {
+          "id": "claude-code",
+          "version": "1",
+          "source": "https://code.claude.com/docs/en/memory"
+        }
+      }
+    ],
+    "findings": [
+      {
+        "fingerprint": "khf_40fbacce23bc401c70f9493b19a9b72cf7d080339ad2fc61cc2253d6825c772f",
+        "rule_id": "memory.platform_limit_exceeded",
+        "rule_version": "1",
+        "surface": "memory",
+        "severity": "warning",
+        "confidence": "high",
+        "location": {
+          "path": "claude-code://auto-memory/MEMORY.md",
+          "anchor": "claude-code:memory-index-limit"
+        },
+        "observed": {
+          "adapter_id": "claude-code",
+          "adapter_version": "1",
+          "evidence_source": "https://code.claude.com/docs/en/memory",
+          "lines": 201,
+          "bytes": 1005
+        },
+        "expected": {
+          "platform": "claude-code",
+          "maximum": {
+            "lines": 200,
+            "bytes": 25600
+          }
+        },
+        "rationale": "Claude Code loads only the first 200 lines or 25KB of MEMORY.md at conversation start.",
+        "evidence_refs": [
+          {
+            "kind": "proof",
+            "ref": "claude-code://auto-memory/MEMORY.md",
+            "sha256": "fa88e96d567f25d78ebb5b64a17d7e0ac7fab7b5694b58fbc0ec07be0c595cd2"
+          },
+          {
+            "kind": "external",
+            "ref": "https://code.claude.com/docs/en/memory"
+          }
+        ],
+        "remediation": {
+          "mode": "human_decision"
+        }
+      }
+    ]
+  }
+}

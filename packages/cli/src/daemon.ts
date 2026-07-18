@@ -67,6 +67,10 @@ import {
   startDashboardServer,
   type DashboardServerHandle,
 } from "./dashboard.js";
+import {
+  runLoopNeatFinalizer,
+  type LoopNeatFinalizerResultV1,
+} from "./loop-neat-finalizer.js";
 
 const DAEMON_VERSION = VERSION;
 const DAEMON_PHASE = "S1.5-controls";
@@ -384,15 +388,25 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
         if (raw.policy?.denied === true) {
           return singleErr(req.id, "policy_denied", raw.policy.reason);
         }
+        const knowledgeHygiene = await finalizeLoopKnowledgeHygiene(
+          parsed.neatFinalize,
+          parsed.runOptions.workspacePath ?? process.cwd(),
+          raw,
+        );
         const runId = persistLoopRunEvidence(ctx, raw);
-        return singleOk(req.id, loopRunSummary(raw, runId));
+        return singleOk(req.id, loopRunSummary(raw, runId, knowledgeHygiene));
       }
       const raw = await engine.runCycles(parsed.cyclesOptions);
       if (raw.policy?.denied === true) {
         return singleErr(req.id, "policy_denied", raw.policy.reason);
       }
+      const knowledgeHygiene = await finalizeLoopKnowledgeHygiene(
+        parsed.neatFinalize,
+        parsed.runOptions.workspacePath ?? process.cwd(),
+        raw,
+      );
       const runId = persistLoopRunEvidence(ctx, raw);
-      return singleOk(req.id, loopRunCyclesSummary(raw, runId));
+      return singleOk(req.id, loopRunCyclesSummary(raw, runId, knowledgeHygiene));
     }
 
     case "loop.start": {
@@ -877,7 +891,11 @@ function loopStat(session: LoopSession): LoopStat {
 // loop.run / loop.status
 // ──────────────────────────────────────────────────────────────────────
 
-function loopRunSummary(result: LoopRunResult, runId?: string): Record<string, unknown> {
+function loopRunSummary(
+  result: LoopRunResult,
+  runId?: string,
+  knowledgeHygiene?: LoopNeatFinalizerResultV1,
+): Record<string, unknown> {
   return {
     ...(runId !== undefined ? { run_id: runId } : {}),
     loop_id: result.loop_id,
@@ -889,10 +907,15 @@ function loopRunSummary(result: LoopRunResult, runId?: string): Record<string, u
     state: result.state,
     ...(result.goal !== undefined ? { goal: result.goal } : {}),
     ...(result.budget !== undefined ? { budget: result.budget } : {}),
+    ...(knowledgeHygiene !== undefined ? { knowledge_hygiene: knowledgeHygiene } : {}),
   };
 }
 
-function loopRunCyclesSummary(result: LoopRunCyclesResult, runId?: string): Record<string, unknown> {
+function loopRunCyclesSummary(
+  result: LoopRunCyclesResult,
+  runId?: string,
+  knowledgeHygiene?: LoopNeatFinalizerResultV1,
+): Record<string, unknown> {
   return {
     ...(runId !== undefined ? { run_id: runId } : {}),
     loop_id: result.loop_id,
@@ -904,6 +927,7 @@ function loopRunCyclesSummary(result: LoopRunCyclesResult, runId?: string): Reco
     state: result.state,
     ...(result.cycles.at(-1)?.goal !== undefined ? { goal: result.cycles.at(-1)?.goal } : {}),
     ...(result.budget !== undefined ? { budget: result.budget } : {}),
+    ...(knowledgeHygiene !== undefined ? { knowledge_hygiene: knowledgeHygiene } : {}),
     cycles: result.cycles.map((cycle) => ({
       discovered_task_count: cycle.discoveredTaskCount,
       executed_task_count: cycle.executedTaskCount,
@@ -911,6 +935,20 @@ function loopRunCyclesSummary(result: LoopRunCyclesResult, runId?: string): Reco
       ...(cycle.goal !== undefined ? { goal: cycle.goal } : {}),
     })),
   };
+}
+
+async function finalizeLoopKnowledgeHygiene(
+  enabled: boolean,
+  workspacePath: string,
+  result: LoopRunResult | LoopRunCyclesResult,
+): Promise<LoopNeatFinalizerResultV1 | undefined> {
+  return runLoopNeatFinalizer({
+    enabled,
+    loop_succeeded: result.state.completed_tasks.length > 0
+      && result.state.completed_tasks.every((task) => task.outcome === "success")
+      && result.budget?.exceeded !== true,
+    workspace_path: workspacePath,
+  });
 }
 
 function persistLoopRunEvidence(ctx: DaemonContext, result: LoopRunResult | LoopRunCyclesResult): string {
@@ -1637,7 +1675,7 @@ async function restoreDailySessions(ctx: DaemonContext): Promise<void> {
 
 function parseLoopRunParams(
   params: unknown,
-): { runOptions: LoopRunOptions; cyclesOptions?: LoopRunCyclesOptions } | Error {
+): { runOptions: LoopRunOptions; cyclesOptions?: LoopRunCyclesOptions; neatFinalize: boolean } | Error {
   const p = objectParams(params);
   if (p instanceof Error) return p;
 
@@ -1685,6 +1723,8 @@ function parseLoopRunParams(
   if (budget instanceof Error) return budget;
   const lessonDrafts = optionalLessonDrafts(p, "lessonDrafts");
   if (lessonDrafts instanceof Error) return lessonDrafts;
+  const neatFinalize = optionalBoolean(p, "neatFinalize");
+  if (neatFinalize instanceof Error) return neatFinalize;
 
   const runOptions: LoopRunOptions = {
     workspacePath,
@@ -1721,6 +1761,7 @@ function parseLoopRunParams(
 
   return {
     runOptions,
+    neatFinalize: neatFinalize === true,
     ...(cyclesOptions !== undefined ? { cyclesOptions } : {}),
   };
 }

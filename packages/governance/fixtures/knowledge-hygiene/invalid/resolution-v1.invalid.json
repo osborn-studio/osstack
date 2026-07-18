@@ -1,0 +1,13 @@
+{
+  "schema_version": "1",
+  "diff_id": "diff_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "fingerprint": "khf_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "outcome": "ignored",
+  "actor": {
+    "kind": "human",
+    "id": "osborn"
+  },
+  "reason": " ",
+  "evidence_refs": [],
+  "resolved_at": "2026-07-17T00:00:00.000Z"
+}

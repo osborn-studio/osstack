@@ -148,6 +148,9 @@ osstack knowledge search "proof pack checksum" \
 # Run a local readiness check for the loop engine.
 osstack loop doctor --workspace . --json
 
+# Audit repository knowledge without writing files.
+osstack neat check --fail-on none
+
 # Run one delivery flow in a git worktree and produce evidence.
 osstack deliver "Make a small verified change" \
   --verify "pnpm test" \
@@ -235,6 +238,53 @@ osstack contracts check --workspace . --manifest api-contracts.json --json
 osstack compliance list --json
 osstack compliance render <run_id> --pack engineering-readiness --proof-dir release/osstack-proof-<run_id>
 ```
+
+### Knowledge Hygiene
+
+```bash
+# Current worktree; report findings without changing the exit status.
+osstack neat check --fail-on none
+
+# CI range; fail on warnings or errors and emit a strict JSON envelope.
+osstack neat check --base origin/main --head HEAD --json --fail-on warning
+
+# Full repository audit, including non-Git repositories.
+osstack neat check --all --fail-on none
+
+# Record and apply explicit review evidence for an exact report diff.
+osstack neat review --report /tmp/neat-report.json --finding khf_... \
+  --outcome reviewed_no_change --reason "Reviewed" --actor osborn \
+  --output /tmp/neat-review.json
+osstack neat check --review-file /tmp/neat-review.json --fail-on warning
+
+# Preview first; apply only under an execute/docs auto-apply policy.
+osstack neat fix --from /tmp/neat-report.json
+osstack neat fix --from /tmp/neat-report.json --apply --yes
+
+# Persist normalized history only when explicitly requested.
+osstack neat check --record --json --fail-on none
+
+# Explicit, read-only Claude Code auto-memory audit for one directory.
+osstack neat check --all --adapter claude-code \
+  --claude-memory-dir "$HOME/.claude/projects/PROJECT/memory"
+
+# Event-derived history (no composite score).
+osstack neat trend --repo-id osstack
+
+# Optional non-gating close-out evidence after a successful loop.
+osstack loop run --workspace . --source task_queue --neat-finalize --json
+
+# Preview repeated high-confidence findings as stable human-reviewed drafts.
+osstack neat propose --db "$OSSTACK_HOME/state.db" --json
+# Persist drafts only after explicit confirmation and policy authorization.
+osstack neat propose --db "$OSSTACK_HOME/state.db" --yes
+```
+
+The optional `.osstack/neat.yaml` declares canonical instruction sources,
+required docs, budgets, and change-review contracts. Checks are read-only and
+make no semantic prose guesses; `neat review` writes only an explicit portable
+artifact, and `neat fix` defaults to a closed safe-patch preview. See the
+[neat user and config guide](docs/guides/neat.md).
 
 ### Knowledge
 
@@ -402,6 +452,8 @@ pnpm install
 pnpm lint
 pnpm -r build
 pnpm test
+pnpm smoke:neat
+pnpm eval:neat-goldens
 pnpm smoke:release-plan
 pnpm smoke:knowledge-cloud
 pnpm smoke:knowledge-cloud:deploy

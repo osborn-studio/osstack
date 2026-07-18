@@ -136,7 +136,10 @@ osstack knowledge search "proof pack checksum" \
 # 4. 检查 Loop Engineering runtime 是否可用。
 osstack loop doctor --workspace . --json
 
-# 5. 运行一次带 worktree 隔离和证据输出的交付流程。
+# 5. 只读审计当前仓库的知识卫生。
+osstack neat check --fail-on none
+
+# 6. 运行一次带 worktree 隔离和证据输出的交付流程。
 osstack deliver "Make a small verified change" \
   --verify "pnpm test" \
   --auto-agent \
@@ -237,6 +240,36 @@ osstack compliance render <run_id> --pack engineering-readiness --proof-dir rele
 ```
 
 说明：osstack 的 compliance pack 是证据映射，不是外部认证声明。它可以帮助工程团队、管理者、审计人员和客户更好地理解一次 run 的证据，但不自动声明 SOC 2、ISO 27001、EU AI Act 或任何第三方认证。
+
+### 知识卫生（neat）
+
+```bash
+# 检查当前工作树；完整展示 finding，但不因 finding 改变退出码。
+osstack neat check --fail-on none
+
+# CI 比较范围；warning/error 都阻断，并输出严格 JSON envelope。
+osstack neat check --base origin/main --head HEAD --json --fail-on warning
+
+# 全仓审计，也支持非 Git 仓库。
+osstack neat check --all --fail-on none
+
+# 为精确的报告 diff 记录并应用显式审阅证据。
+osstack neat review --report /tmp/neat-report.json --finding khf_... \
+  --outcome reviewed_no_change --reason "已审阅" --actor osborn \
+  --output /tmp/neat-review.json
+osstack neat check --review-file /tmp/neat-review.json --fail-on warning
+
+# 默认只预览；仅在 execute/docs 自动应用策略下显式写入。
+osstack neat fix --from /tmp/neat-report.json
+osstack neat fix --from /tmp/neat-report.json --apply --yes
+
+# 仅在显式请求时记录规范化历史。
+osstack neat check --record --json --fail-on none
+```
+
+可选的 `.osstack/neat.yaml` 用来声明权威指令文件、必备文档、预算和变更审阅合同。
+检查全程只读且不猜测一般散文的语义；`neat review` 只写入调用方显式指定的便携证据文件，`neat fix` 默认仅生成封闭的安全补丁预览。完整字段、规则与边界见
+[neat 使用与配置指南](docs/guides/neat.md)。
 
 ### Knowledge Cloud
 
@@ -411,6 +444,8 @@ pnpm install
 pnpm lint
 pnpm -r build
 pnpm test
+pnpm smoke:neat
+pnpm eval:neat-goldens
 pnpm smoke:release-plan
 pnpm smoke:knowledge-cloud
 pnpm smoke:knowledge-cloud:deploy
