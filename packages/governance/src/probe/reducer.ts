@@ -7,6 +7,7 @@ import {
   type ProbeCompilationV1,
   type ProbeDestinationV1,
   type ProbeReadinessV1,
+  type ProbeRestatementFindingV1,
   type ProbeSessionBaseV1,
 } from "./types.js";
 import { deriveProbeSeverity } from "./priority.js";
@@ -70,6 +71,14 @@ export type ProbeMutationV1 = ProbeMutationMetadataV1 &
         revisit_item_ids: readonly string[];
         added_items?: readonly ProbeItemV1[];
         unselected_required_question_ids?: readonly string[];
+      }
+    | {
+        type: "add";
+        items: readonly ProbeItemV1[];
+        batch_id: string;
+        origin: ProbeItemV1["origin"];
+        source_revision: string;
+        restatement_findings?: readonly ProbeRestatementFindingV1[];
       }
     | {
         type: "destination";
@@ -749,6 +758,82 @@ function resumeSession(
   };
 }
 
+function addItems(
+  state: ProbeDomainStateV1,
+  mutation: Extract<ProbeMutationV1, { type: "add" }>,
+): ProbeMutationResultV1 {
+  if (state.session.state !== "active") {
+    throw new ProbeReducerError(
+      "invalid_transition",
+      "dynamic items can only be added to an active session",
+    );
+  }
+  if (mutation.items.length === 0) {
+    throw new ProbeReducerError(
+      "invalid_item",
+      "at least one dynamic item is required",
+    );
+  }
+  if (state.items.length + mutation.items.length > 100) {
+    throw new ProbeReducerError(
+      "invalid_item",
+      "a probe session cannot contain more than 100 items",
+    );
+  }
+  const itemIds = new Set(state.items.map((item) => item.item_id));
+  const questionIds = new Set(
+    state.items.map((item) => item.question_id),
+  );
+  const additions: ProbeItemV1[] = [];
+  for (const rawItem of mutation.items) {
+    const item = ProbeItemV1.parse(rawItem);
+    if (
+      item.session_id !== state.session.session_id ||
+      item.state !== "open" ||
+      item.origin !== mutation.origin ||
+      itemIds.has(item.item_id) ||
+      questionIds.has(item.question_id)
+    ) {
+      throw new ProbeReducerError(
+        "invalid_item",
+        "added items must be new, open, and belong to the active session",
+      );
+    }
+    itemIds.add(item.item_id);
+    questionIds.add(item.question_id);
+    additions.push(item);
+  }
+  const session = ProbeSessionV1.parse({
+    ...state.session,
+    selected_question_ids: [
+      ...state.session.selected_question_ids,
+      ...additions.map((item) => item.question_id),
+    ],
+    revision: state.session.revision + 1,
+    updated_at_ms: mutation.occurred_at_ms,
+  });
+  return {
+    session,
+    items: [...state.items, ...additions],
+    event: eventFor(
+      session.session_id,
+      session.revision,
+      mutation,
+      "items_added",
+      {
+        batch_id: mutation.batch_id,
+        item_ids: additions.map((item) => item.item_id),
+        origin: mutation.origin,
+        question_ids: additions.map((item) => item.question_id),
+        source_revision: mutation.source_revision,
+        ...(mutation.restatement_findings === undefined
+          ? {}
+          : { restatement_findings: mutation.restatement_findings }),
+      },
+    ),
+  };
+}
+
 function attestDestination(
   state: ProbeDomainStateV1,
   mutation: Extract<ProbeMutationV1, { type: "destination" }>,
@@ -844,6 +929,8 @@ export function applyProbeMutation(
       return abandonSession(state, mutation);
     case "resume":
       return resumeSession(state, mutation);
+    case "add":
+      return addItems(state, mutation);
     case "destination":
       return attestDestination(state, mutation);
   }

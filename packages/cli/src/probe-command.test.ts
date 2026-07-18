@@ -9,6 +9,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AgentCommandResult } from "@osstack/protocol";
+import { probeSha256 } from "@osstack/governance";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   handleProbeCommand,
@@ -987,6 +988,276 @@ describe("handleProbeCommand", () => {
     ).toBe(0);
     expect(json(command.stdout)).toMatchObject({
       result: { session: { depth: "quick", question_budget: 3 } },
+    });
+  });
+
+  it("adds an evidence-bound dynamic batch atomically and idempotently", async () => {
+    const command = await harness();
+    const evidenceContent = "export const migrationVersion = 11;\n";
+    await writeFile(
+      join(command.repo, "evidence.ts"),
+      evidenceContent,
+      "utf8",
+    );
+    const questionId = `dynamic.${"b".repeat(64)}.v1`;
+    const batch = {
+      schema_version: "1",
+      batch_id: "pqb_12345678",
+      origin: "blindspot",
+      generated_by: { type: "agent", id: "probe-skill" },
+      source_revision: "a".repeat(40),
+      questions: [
+        {
+          schema_version: "1",
+          question_id: questionId,
+          item_kind: "risk",
+          initial_quadrant: "uu",
+          current_quadrant: "ku",
+          doc_type: "tech",
+          category: "migration",
+          origin: "blindspot",
+          prompt: "How must the existing state be migrated?",
+          options: [],
+          impact: 3,
+          irreversibility: 3,
+          uncertainty: 3,
+          required: true,
+          evidence_refs: [
+            {
+              kind: "file",
+              ref: "evidence.ts",
+              sha256: probeSha256(evidenceContent),
+            },
+          ],
+          destination_hint: "technical_design",
+        },
+      ],
+    };
+    await writeFile(
+      join(command.repo, "questions.json"),
+      JSON.stringify(batch),
+      "utf8",
+    );
+    await handleProbeCommand(
+      startArgs([
+        "--domain-familiarity",
+        "expert",
+        "--repo-familiarity",
+        "maintainer",
+        "--intent-maturity",
+        "review_ready",
+      ]),
+      command.deps,
+    );
+    const started = json(command.stdout);
+    const session = started.result?.session as {
+      session_id: string;
+      revision: number;
+      current_question_id: string;
+    };
+    const currentItemId = (
+      started.result?.current_item as { item_id: string }
+    ).item_id;
+
+    const addArgs = [
+      "add",
+      "--session",
+      session.session_id,
+      "--if-revision",
+      "1",
+      "--from",
+      "questions.json",
+      "--actor-kind",
+      "agent",
+      "--actor-id",
+      "probe-skill",
+      "--idempotency-key",
+      "add-dynamic-1",
+      "--json",
+    ];
+    command.stdout.length = 0;
+    expect(await handleProbeCommand(addArgs, command.deps)).toBe(0);
+    const added = json(command.stdout);
+    expect(added).toMatchObject({
+      status: "ok",
+      result: {
+        command: "probe.add",
+        session: {
+          revision: 2,
+          current_question_id: currentItemId,
+          questions_presented: 1,
+          selected_question_ids: expect.arrayContaining([questionId]),
+        },
+      },
+    });
+
+    command.stdout.length = 0;
+    expect(await handleProbeCommand(addArgs, command.deps)).toBe(0);
+    expect(json(command.stdout).result).toEqual(added.result);
+
+    command.stdout.length = 0;
+    expect(
+      await handleProbeCommand(
+        addArgs.map((value) =>
+          value === "add-dynamic-1" ? "add-dynamic-2" : value,
+        ).map((value, index, values) =>
+          values[index - 1] === "--if-revision" ? "2" : value,
+        ),
+        command.deps,
+      ),
+    ).toBe(2);
+    expect(json(command.stdout)).toMatchObject({
+      status: "error",
+      error: { code: "bad_request" },
+    });
+  });
+
+  it("registers standalone and attached skill restatements without inventing findings", async () => {
+    const command = await harness();
+    const specContent = await readFile(join(command.repo, "spec.md"), "utf8");
+    const restatementContent = "# Restatement\nImplement probe safely.\n";
+    await writeFile(
+      join(command.repo, "restatement.md"),
+      restatementContent,
+      "utf8",
+    );
+    const findings = [
+      {
+        schema_version: "1",
+        finding_id: "prf_12345678",
+        kind: "ambiguous",
+        spec_evidence: {
+          sha256: probeSha256(specContent),
+          path: "spec.md",
+          line: 1,
+          anchor: "Probe feature",
+        },
+        restatement_evidence: {
+          sha256: probeSha256(restatementContent),
+          path: "restatement.md",
+          line: 2,
+          anchor: "safely",
+        },
+        explanation: "The skill found a guarantee requiring owner confirmation.",
+        proposed_question: "Which safety guarantee must the implementation preserve?",
+        impact: 3,
+        irreversibility: 3,
+        uncertainty: 2,
+        destination_hint: "technical_design",
+      },
+    ];
+    await writeFile(
+      join(command.repo, "findings.json"),
+      JSON.stringify(findings),
+      "utf8",
+    );
+    const standaloneArgs = [
+      "restate",
+      "--spec",
+      "spec.md",
+      "--restatement",
+      "restatement.md",
+      "--findings",
+      "findings.json",
+      "--actor-kind",
+      "agent",
+      "--actor-id",
+      "probe-skill",
+      "--idempotency-key",
+      "restate-standalone",
+      "--json",
+    ];
+    expect(await handleProbeCommand(standaloneArgs, command.deps)).toBe(0);
+    const standalone = json(command.stdout);
+    expect(standalone).toMatchObject({
+      status: "ok",
+      result: {
+        command: "probe.restate",
+        session: {
+          state: "active",
+          revision: 1,
+          question_pack_refs: [],
+          selected_question_ids: [expect.stringMatching(/^dynamic\./)],
+        },
+        current_item: {
+          origin: "restatement_diff",
+          prompt: findings[0]?.proposed_question,
+        },
+      },
+    });
+    expect(JSON.stringify(standalone)).not.toContain("is wrong");
+
+    command.stdout.length = 0;
+    await handleProbeCommand(
+      startArgs([
+        "--domain-familiarity",
+        "expert",
+        "--repo-familiarity",
+        "maintainer",
+        "--intent-maturity",
+        "review_ready",
+      ]),
+      command.deps,
+    );
+    const target = json(command.stdout).result?.session as {
+      session_id: string;
+    };
+    command.stdout.length = 0;
+    expect(
+      await handleProbeCommand(
+        [
+          ...standaloneArgs.slice(0, -1),
+          "--session",
+          target.session_id,
+          "--if-revision",
+          "1",
+          "--json",
+        ].map((value) =>
+          value === "restate-standalone" ? "restate-attached" : value,
+        ),
+        command.deps,
+      ),
+    ).toBe(0);
+    expect(json(command.stdout)).toMatchObject({
+      status: "ok",
+      result: {
+        command: "probe.restate",
+        session: { session_id: target.session_id, revision: 2 },
+      },
+    });
+
+    command.stdout.length = 0;
+    expect(
+      await handleProbeCommand(
+        ["ledger", "--session", target.session_id, "--json"],
+        command.deps,
+      ),
+    ).toBe(0);
+    expect(json(command.stdout).result).toMatchObject({
+      events: [
+        expect.anything(),
+        {
+          type: "items_added",
+          payload: {
+            origin: "restatement_diff",
+            restatement_findings: findings,
+          },
+        },
+      ],
+    });
+
+    command.stdout.length = 0;
+    expect(
+      await handleProbeCommand(
+        standaloneArgs.filter((value, index, values) =>
+          value !== "findings.json" && values[index - 1] !== "--findings",
+        ),
+        command.deps,
+      ),
+    ).toBe(2);
+    expect(json(command.stdout)).toMatchObject({
+      status: "error",
+      error: { code: "bad_request" },
     });
   });
 });

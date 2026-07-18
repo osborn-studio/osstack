@@ -1189,9 +1189,9 @@ pnpm smoke:probe
 
 **验收：**
 
-- [ ] `add` 拒绝无证据 blindspot、repo 外路径、重复 item 和坏 hash。
-- [ ] `restate` 不生成语义结论，只登记 skill finding。
-- [ ] 独立与 session-attached restate 都有测试。
+- [x] `add` 拒绝无证据 blindspot、repo 外路径、重复 item 和坏 hash。
+- [x] `restate` 不生成语义结论，只登记 skill finding。
+- [x] 独立与 session-attached restate 都有测试。
 
 **验证：**
 

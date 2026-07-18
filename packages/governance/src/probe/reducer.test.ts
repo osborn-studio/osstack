@@ -276,6 +276,91 @@ describe("probe reducer", () => {
     expect(resumed.items).toHaveLength(2);
   });
 
+  it("atomically adds dynamic items without advancing the current question", () => {
+    const dynamic = openItem(
+      "pi_87654321",
+      `dynamic.${"b".repeat(64)}.v1`,
+      {
+        origin: "blindspot",
+        initial_quadrant: "uu",
+        current_quadrant: "ku",
+        evidence_refs: [
+          {
+            kind: "file",
+            ref: "packages/core/src/state/migrations.ts",
+            sha256: "c".repeat(64),
+          },
+        ],
+      },
+    );
+    const result = applyProbeMutation(state(), {
+      type: "add",
+      items: [dynamic],
+      batch_id: "pqb_12345678",
+      origin: "blindspot",
+      source_revision: "a".repeat(40),
+      ...metadata(1, agent),
+    });
+
+    expect(result.session).toMatchObject({
+      revision: 2,
+      current_question_id: "pi_12345678",
+      questions_presented: 1,
+      selected_question_ids: [
+        "tech.data_model.v1",
+        dynamic.question_id,
+      ],
+    });
+    expect(result.items).toHaveLength(2);
+    expect(result.event).toMatchObject({
+      type: "items_added",
+      revision: 2,
+      actor: agent,
+      payload: {
+        batch_id: "pqb_12345678",
+        item_ids: [dynamic.item_id],
+        origin: "blindspot",
+        question_ids: [dynamic.question_id],
+        source_revision: "a".repeat(40),
+      },
+    });
+  });
+
+  it("rejects duplicate, foreign, and non-open dynamic items", () => {
+    const valid = openItem(
+      "pi_87654321",
+      `dynamic.${"b".repeat(64)}.v1`,
+      { origin: "blindspot" },
+    );
+    for (const item of [
+      { ...valid, question_id: "tech.data_model.v1" },
+      { ...valid, item_id: "pi_12345678" },
+      { ...valid, session_id: "probe_87654321" },
+      {
+        ...valid,
+        state: "deferred" as const,
+        deferral: {
+          owner: "owner",
+          revisit_trigger: "later",
+          deferred_at_ms: 1,
+        },
+      },
+    ]) {
+      expectReducerError(
+        () =>
+          applyProbeMutation(state(), {
+            type: "add",
+            items: [item as ProbeItemV1],
+            batch_id: "pqb_12345678",
+            origin: "blindspot",
+            source_revision: "a".repeat(40),
+            ...metadata(1, agent),
+          }),
+        "invalid_item",
+      );
+    }
+  });
+
   it("only permits diminishing-return pauses after a qualifying five-item window", () => {
     const lowInformationWindow = Array.from({ length: 5 }, () => ({
       low_information: true,

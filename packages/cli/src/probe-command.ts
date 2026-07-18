@@ -12,12 +12,14 @@ import {
 } from "@osstack/core";
 import {
   applyProbeMutation,
+  createRestatementQuestionBatch,
   createProbeRenderBundle,
   deriveProbeReadiness,
   deriveProbeSeverity,
   evaluateProbeGate,
   getCurrentProbeItem,
   materializeProbeQuestions,
+  materializeProbeQuestionBatch,
   ProbeActorV1,
   ProbeDestinationRoleV1,
   ProbeDocTypeV1,
@@ -29,6 +31,8 @@ import {
   ProbeSessionV1,
   ProbeSeverityV1,
   selectProbeQuestions,
+  sortProbeItems,
+  ProbeDynamicInputError,
   type ProbeDomainStateV1,
   type ProbeEventV1,
   type ProbeFamiliarityV1,
@@ -51,6 +55,13 @@ import {
 import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { osstackHome } from "./paths.js";
+import {
+  ProbeDynamicFileError,
+  readProbeQuestionBatch,
+  readProbeRestatementFindings,
+  verifyProbeDynamicEvidence,
+  verifyProbeRestatementEvidence,
+} from "./probe-dynamic.js";
 import {
   ProbeGateInputError,
   collectProbeDestinationContent,
@@ -125,6 +136,8 @@ Usage:
   osstack probe ledger destination --session <id> --item <id> [write options]
   osstack probe render --session <id> --if-revision <n> --target <target>
   osstack probe gate (--session <id> | --ledger <path>) [--config <path>]
+  osstack probe add --session <id> --if-revision <n> --from <questions.json>
+  osstack probe restate --spec <path> --restatement <path> --findings <path>
 
 Start options:
   --repo <path>                    Repository root (default: cwd)
@@ -162,6 +175,10 @@ Resume options:
 Render options:
   --target <ledger|product-delta|technical-delta|test-matrix|all>
   --out <repo-relative-dir>        Default: docs/probe/sessions/<session-id>
+
+Dynamic input options:
+  --from <repo-relative-path>      Strict ProbeQuestionBatchV1 JSON
+  --findings <repo-relative-path>  Skill-produced restatement findings JSON
 
 Output:
   --format <human|json> | --json
@@ -1727,6 +1744,375 @@ async function handleGate(
   return 0;
 }
 
+async function requireRepositoryRevision(
+  repoRoot: string,
+  deps: ProbeCommandDependencies,
+): Promise<ProbeRepositoryInspectionV1 & { source_revision: string }> {
+  const inspection = await (
+    deps.inspect_repository ?? inspectRepositoryDefault
+  )(repoRoot);
+  if (inspection.source_revision === undefined) {
+    throw new ProbeUsageError(
+      "dynamic probe inputs require a Git repository source revision",
+    );
+  }
+  return { ...inspection, source_revision: inspection.source_revision };
+}
+
+async function handleAdd(
+  args: readonly string[],
+  deps: ProbeCommandDependencies,
+): Promise<number> {
+  const flags = commonExistingSessionFlags(args, {
+    value_flags: [
+      "--if-revision",
+      "--from",
+      "--actor-kind",
+      "--actor-id",
+      "--idempotency-key",
+    ],
+  });
+  const format = parseFormat(flags);
+  const sessionId = required(flags, "--session");
+  const ifRevision = parseInteger(
+    required(flags, "--if-revision"),
+    "--if-revision",
+    { min: 1, max: Number.MAX_SAFE_INTEGER },
+  );
+  const actor = parseActor(flags);
+  const idempotencyKey = required(flags, "--idempotency-key");
+  const repoRoot = await realpath(deps.cwd());
+  const batch = await readProbeQuestionBatch(
+    repoRoot,
+    required(flags, "--from"),
+  );
+  const inspection = await requireRepositoryRevision(repoRoot, deps);
+  for (const question of batch.questions) {
+    rejectSensitiveAnswer(question.prompt);
+    for (const option of question.options) {
+      rejectSensitiveAnswer(`${option.label}\n${option.description}`);
+    }
+  }
+  const requestSha = digest({
+    command: "probe.add",
+    session_id: sessionId,
+    if_revision: ifRevision,
+    batch,
+    actor,
+  });
+  const db = await openProbeDb(deps);
+  try {
+    const replay = replayProbeCommand(db, {
+      scope_key: `session:${sessionId}`,
+      idempotency_key: idempotencyKey,
+      request_sha256: requestSha,
+    });
+    if (replay !== undefined) {
+      emitResult(
+        deps,
+        format,
+        JSON.parse(replay.result_json) as Record<string, unknown>,
+      );
+      return 0;
+    }
+    const state = loadDomainState(db, sessionId);
+    const nowMs = (deps.now_ms ?? Date.now)();
+    const dynamic = await materializeProbeQuestionBatch({
+      batch,
+      session_id: sessionId,
+      source_revision: inspection.source_revision,
+      actor,
+      existing_items: state.items,
+      created_at_ms: nowMs,
+      create_item_id: () => (deps.create_id ?? createIdDefault)("pi"),
+      verify_evidence: (evidence) =>
+        verifyProbeDynamicEvidence(repoRoot, evidence),
+    });
+    const result = await persistMutation(
+      db,
+      state,
+      {
+        type: "add",
+        items: dynamic.items,
+        batch_id: batch.batch_id,
+        origin: batch.origin,
+        source_revision: batch.source_revision,
+        if_revision: ifRevision,
+        actor,
+        idempotency_key: idempotencyKey,
+        event_id: (deps.create_id ?? createIdDefault)("pe"),
+        occurred_at_ms: nowMs,
+      },
+      requestSha,
+      "probe.add",
+      nowMs,
+    );
+    emitResult(deps, format, result);
+    return 0;
+  } finally {
+    db.close();
+  }
+}
+
+async function handleRestate(
+  args: readonly string[],
+  deps: ProbeCommandDependencies,
+): Promise<number> {
+  const flags = parseFlags(args, {
+    value_flags: [
+      "--spec",
+      "--restatement",
+      "--findings",
+      "--repo",
+      "--repo-id",
+      "--session",
+      "--if-revision",
+      "--actor-kind",
+      "--actor-id",
+      "--idempotency-key",
+      "--format",
+    ],
+    boolean_flags: ["--json"],
+  });
+  const format = parseFormat(flags);
+  const actor = parseActor(flags);
+  if (actor.type !== "agent") {
+    throw new ProbeUsageError("restate findings must be registered by an agent");
+  }
+  const idempotencyKey = required(flags, "--idempotency-key");
+  const sessionId = one(flags, "--session");
+  const rawRevision = one(flags, "--if-revision");
+  if ((sessionId === undefined) !== (rawRevision === undefined)) {
+    throw new ProbeUsageError(
+      "attached restate requires both --session and --if-revision",
+    );
+  }
+  const ifRevision =
+    rawRevision === undefined
+      ? undefined
+      : parseInteger(rawRevision, "--if-revision", {
+          min: 1,
+          max: Number.MAX_SAFE_INTEGER,
+        });
+  const repoRoot = await realpath(
+    resolve(deps.cwd(), one(flags, "--repo") ?? "."),
+  );
+  const spec = await buildInputRef(
+    required(flags, "--spec"),
+    "input",
+    repoRoot,
+    deps,
+  );
+  const restatement = await buildInputRef(
+    required(flags, "--restatement"),
+    "reference",
+    repoRoot,
+    deps,
+  );
+  const findings = await readProbeRestatementFindings(
+    repoRoot,
+    required(flags, "--findings"),
+  );
+  const evidenceRefs = verifyProbeRestatementEvidence(
+    findings,
+    {
+      label: "spec",
+      content: spec.content,
+      ...(spec.ref.repo_relative_path === undefined
+        ? {}
+        : { repo_relative_path: spec.ref.repo_relative_path }),
+    },
+    {
+      label: "restatement",
+      content: restatement.content,
+      ...(restatement.ref.repo_relative_path === undefined
+        ? {}
+        : { repo_relative_path: restatement.ref.repo_relative_path }),
+    },
+  );
+  for (const finding of findings) {
+    rejectSensitiveAnswer(
+      `${finding.explanation}\n${finding.proposed_question}`,
+    );
+  }
+  const inspection = await requireRepositoryRevision(repoRoot, deps);
+  const batch = createRestatementQuestionBatch({
+    findings,
+    generated_by: actor,
+    source_revision: inspection.source_revision,
+    evidence_refs: evidenceRefs,
+  });
+  const repoId = await resolveRepoId(
+    repoRoot,
+    one(flags, "--repo-id"),
+    deps,
+  );
+  const requestSha = digest({
+    command: "probe.restate",
+    repo_id: repoId,
+    session_id: sessionId,
+    if_revision: ifRevision,
+    spec_ref: spec.ref,
+    restatement_ref: restatement.ref,
+    findings,
+    actor,
+  });
+  const nowMs = (deps.now_ms ?? Date.now)();
+  const createId = deps.create_id ?? createIdDefault;
+
+  if (sessionId !== undefined && ifRevision !== undefined) {
+    const db = await openProbeDb(deps);
+    try {
+      const replay = replayProbeCommand(db, {
+        scope_key: `session:${sessionId}`,
+        idempotency_key: idempotencyKey,
+        request_sha256: requestSha,
+      });
+      if (replay !== undefined) {
+        emitResult(
+          deps,
+          format,
+          JSON.parse(replay.result_json) as Record<string, unknown>,
+        );
+        return 0;
+      }
+      const state = loadDomainState(db, sessionId);
+      if (state.session.repo_id !== repoId) {
+        throw new ProbeUsageError(
+          "attached restate repository does not match the session",
+        );
+      }
+      const dynamic = await materializeProbeQuestionBatch({
+        batch,
+        session_id: sessionId,
+        source_revision: inspection.source_revision,
+        actor,
+        existing_items: state.items,
+        created_at_ms: nowMs,
+        create_item_id: () => createId("pi"),
+        verify_evidence: async () => ({ verifiable: true }),
+      });
+      const result = await persistMutation(
+        db,
+        state,
+        {
+          type: "add",
+          items: dynamic.items,
+          batch_id: batch.batch_id,
+          origin: batch.origin,
+          source_revision: batch.source_revision,
+          restatement_findings: findings,
+          if_revision: ifRevision,
+          actor,
+          idempotency_key: idempotencyKey,
+          event_id: createId("pe"),
+          occurred_at_ms: nowMs,
+        },
+        requestSha,
+        "probe.restate",
+        nowMs,
+      );
+      emitResult(deps, format, result);
+      return 0;
+    } finally {
+      db.close();
+    }
+  }
+
+  const newSessionId = createId("probe");
+  const dynamic = await materializeProbeQuestionBatch({
+    batch,
+    session_id: newSessionId,
+    source_revision: inspection.source_revision,
+    actor,
+    existing_items: [],
+    created_at_ms: nowMs,
+    create_item_id: () => createId("pi"),
+    verify_evidence: async () => ({ verifiable: true }),
+  });
+  const current = sortProbeItems(dynamic.items)[0];
+  if (current === undefined) {
+    throw new ProbeUsageError("restate produced no questions");
+  }
+  const { policy } = await loadProbeGatePolicy(repoRoot);
+  const session = ProbeSessionV1.parse({
+    schema_version: "1",
+    session_id: newSessionId,
+    repo_id: repoId,
+    source_revision: inspection.source_revision,
+    worktree_state: inspection.worktree_state,
+    input_refs: [spec.ref, restatement.ref],
+    doc_types: ["tech"],
+    question_pack_refs: [],
+    selected_question_ids: dynamic.items.map((item) => item.question_id),
+    unselected_required_question_ids: [],
+    depth: "standard",
+    question_budget: policy.budgets.standard,
+    questions_presented: 1,
+    revision: 1,
+    created_at_ms: nowMs,
+    updated_at_ms: nowMs,
+    state: "active",
+    current_question_id: current.item_id,
+  });
+  const event: ProbeEventV1 = {
+    schema_version: "1",
+    event_id: createId("pe"),
+    session_id: newSessionId,
+    revision: 1,
+    type: "session_started",
+    actor,
+    idempotency_key: idempotencyKey,
+    occurred_at_ms: nowMs,
+    payload: {
+      source: "skill_restatement_findings",
+      finding_ids: findings.map((finding) => finding.finding_id),
+      restatement_findings: findings,
+      selected_question_ids: session.selected_question_ids,
+    },
+  };
+  const state = { session, items: dynamic.items };
+  const result = resultForState("probe.restate", state, nowMs);
+  const db = await openProbeDb(deps);
+  try {
+    const stored = createProbeSession(db, {
+      session: {
+        session_id: session.session_id,
+        repo_id: session.repo_id,
+        state: session.state,
+        revision: session.revision,
+        snapshot_json: JSON.stringify(session),
+        created_at_ms: session.created_at_ms,
+        updated_at_ms: session.updated_at_ms,
+      },
+      items: storedItems(dynamic.items),
+      event: {
+        event_id: event.event_id,
+        revision: event.revision,
+        type: event.type,
+        idempotency_key: event.idempotency_key,
+        event_json: JSON.stringify(event),
+        occurred_at_ms: event.occurred_at_ms,
+      },
+      receipt: {
+        scope_key: `repo:${repoId}`,
+        idempotency_key: idempotencyKey,
+        request_sha256: requestSha,
+        result_json: JSON.stringify(result),
+        created_at_ms: nowMs,
+      },
+    });
+    emitResult(
+      deps,
+      format,
+      JSON.parse(stored.result_json) as Record<string, unknown>,
+    );
+    return 0;
+  } finally {
+    db.close();
+  }
+}
+
 export async function handleProbeCommand(
   args: readonly string[],
   deps: ProbeCommandDependencies,
@@ -1749,6 +2135,8 @@ export async function handleProbeCommand(
     if (command === "ledger") return await handleLedger(rest, deps);
     if (command === "render") return await handleRender(rest, deps);
     if (command === "gate") return await handleGate(rest, deps);
+    if (command === "add") return await handleAdd(rest, deps);
+    if (command === "restate") return await handleRestate(rest, deps);
     throw new ProbeUsageError(`unknown subcommand: ${command}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -1780,6 +2168,13 @@ export async function handleProbeCommand(
       return conflict ? 3 : 2;
     }
     if (error instanceof ProbeGateInputError) {
+      emitError(deps, json, "bad_request", message, false);
+      return 2;
+    }
+    if (
+      error instanceof ProbeDynamicInputError ||
+      error instanceof ProbeDynamicFileError
+    ) {
       emitError(deps, json, "bad_request", message, false);
       return 2;
     }
