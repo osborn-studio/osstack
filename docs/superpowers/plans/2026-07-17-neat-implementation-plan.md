@@ -989,11 +989,11 @@ patch that creates an exact one-line import; never replace a path.
 
 **Acceptance criteria:**
 
-- [ ] Provider refuses existing targets and unsupported mirror modes.
-- [ ] Preview contains target, before state, after hash, and source finding.
-- [ ] Repeated preview is byte-stable after timestamp normalization.
+- [x] Provider refuses existing targets and unsupported mirror modes.
+- [x] Preview contains target, before state, after hash, and source finding.
+- [x] Repeated preview is byte-stable after timestamp normalization.
 
-**Verification:** Governance patch-provider tests pass.
+**Verification:** Governance patch-provider tests pass. ✅
 
 **Dependencies:** R1.2.1.
 

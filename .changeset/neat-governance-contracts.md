@@ -25,3 +25,5 @@ report views without mutating the source report.
 Publish closed low-risk patch action/plan v1 contracts: the only action is
 `create_instruction_import`, with confined paths, mandatory absent-target
 preconditions, content hashes, source findings, and frozen compatibility vectors.
+Plan byte-stable previews for eligible missing instruction mirrors, refusing
+existing targets, symlink-only modes, and unavailable canonical sources.
