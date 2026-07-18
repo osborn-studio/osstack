@@ -1053,7 +1053,7 @@ pnpm --filter @osstack/core test -- probe
 pnpm --filter @osstack/core typecheck
 ```
 
-### R0.4 — 版本化静态问题包
+### R0.4 — 版本化静态问题包（2026-07-18 完成）
 
 **依赖：** R0.1、R0.2。
 
@@ -1067,9 +1067,9 @@ pnpm --filter @osstack/core typecheck
 
 **验收：**
 
-- [ ] 附录 A 的稳定 id、required、风险参数和 destination hint 全部编码。
-- [ ] pack 文案为本项目原创表达，外部题源只保留 provenance，不复制受限文本。
-- [ ] 重复 id、超过 4 options、未知 category 和缺 hint 被拒绝。
+- [x] 附录 A 的稳定 id、required、风险参数和 destination hint 全部编码。
+- [x] pack 文案为本项目原创表达，外部思想来源只保留 provenance URL。
+- [x] 重复 id、超过 4 options、未知 category 和缺 hint 被拒绝。
 
 **验证：** `pnpm --filter @osstack/governance test -- question-pack`
 
