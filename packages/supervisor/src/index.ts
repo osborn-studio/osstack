@@ -12,3 +12,4 @@ export * from "./gate.js";
 export * from "./evaluator-epoch.js";
 export * from "./adversarial-pool.js";
 export * from "./loop-doc.js";
+export * from "./probe-outcomes.js";

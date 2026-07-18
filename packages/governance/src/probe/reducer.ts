@@ -6,6 +6,7 @@ import {
   ProbeSessionV1,
   type ProbeActorV1,
   type ProbeDestinationV1,
+  type ProbeMetricItemFactV1,
   type ProbeReadinessV1,
   type ProbeRestatementFindingV1,
   type ProbeSessionBaseV1,
@@ -109,6 +110,18 @@ export class ProbeReducerError extends Error {
     this.name = "ProbeReducerError";
     this.code = code;
   }
+}
+
+export function toProbeMetricItemFact(
+  item: ProbeItemV1,
+): ProbeMetricItemFactV1 {
+  return {
+    item_id: item.item_id,
+    required: item.required,
+    severity: deriveProbeSeverity(item),
+    impact: item.impact,
+    origin: item.origin,
+  };
 }
 
 function requireRevision(
@@ -386,6 +399,14 @@ function resolveItem(
       {
         destination_role: mutation.destination.role,
         resulting_session_state: session.state,
+        metric_facts: {
+          answer_effective:
+            item.current_quadrant !== "kk" ||
+            mutation.destination.role !== "session_profile",
+          destination_state: mutation.destination.role === "session_profile"
+            ? "verified"
+            : mutation.destination.write_state,
+        },
       },
       item.item_id,
     ),
@@ -424,7 +445,14 @@ function deferItem(
       session.revision,
       mutation,
       "item_deferred",
-      { resulting_session_state: session.state },
+      {
+        resulting_session_state: session.state,
+        metric_facts: {
+          ...(mutation.review_after_ms === undefined
+            ? {}
+            : { review_after_ms: mutation.review_after_ms }),
+        },
+      },
       item.item_id,
     ),
   };
@@ -463,7 +491,14 @@ function waiveItem(
       session.revision,
       mutation,
       "item_waived",
-      { resulting_session_state: session.state },
+      {
+        resulting_session_state: session.state,
+        metric_facts: {
+          ...(mutation.expires_at_ms === undefined
+            ? {}
+            : { expires_at_ms: mutation.expires_at_ms }),
+        },
+      },
       item.item_id,
     ),
   };
@@ -760,6 +795,9 @@ function resumeSession(
         extended_budget: extension,
         revisited_item_ids: mutation.revisit_item_ids,
         current_question_id: currentId,
+        metric_facts: {
+          item_facts: addedItems.map(toProbeMetricItemFact),
+        },
       },
     ),
   };
@@ -833,6 +871,9 @@ function addItems(
         origin: mutation.origin,
         question_ids: additions.map((item) => item.question_id),
         source_revision: mutation.source_revision,
+        metric_facts: {
+          item_facts: additions.map(toProbeMetricItemFact),
+        },
         ...(mutation.restatement_findings === undefined
           ? {}
           : { restatement_findings: mutation.restatement_findings }),

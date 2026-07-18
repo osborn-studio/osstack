@@ -133,6 +133,12 @@ describe("probe reducer", () => {
       type: "answer_recorded",
       revision: 2,
       item_id: "pi_12345678",
+      payload: {
+        metric_facts: {
+          answer_effective: true,
+          destination_state: "pending",
+        },
+      },
     });
   });
 
@@ -322,6 +328,15 @@ describe("probe reducer", () => {
         origin: "blindspot",
         question_ids: [dynamic.question_id],
         source_revision: "a".repeat(40),
+        metric_facts: {
+          item_facts: [{
+            item_id: dynamic.item_id,
+            required: true,
+            severity: "high",
+            impact: 3,
+            origin: "blindspot",
+          }],
+        },
       },
     });
   });

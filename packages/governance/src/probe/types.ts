@@ -522,6 +522,19 @@ export type ProbeEventV1 = z.infer<typeof ProbeEventV1>;
 export const ProbeSeverityV1 = z.enum(["high", "medium", "low"]);
 export type ProbeSeverityV1 = z.infer<typeof ProbeSeverityV1>;
 
+export const ProbeMetricItemFactV1 = z
+  .object({
+    item_id: itemId,
+    required: z.boolean(),
+    severity: ProbeSeverityV1,
+    impact: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    origin: ProbeOriginV1,
+  })
+  .strict();
+export type ProbeMetricItemFactV1 = z.infer<
+  typeof ProbeMetricItemFactV1
+>;
+
 export const ProbeGateViolationV1 = z
   .object({
     code: identifier,

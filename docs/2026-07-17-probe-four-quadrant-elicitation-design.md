@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | **Implementation in progress v2.0** — 外部对抗审计完成；ADR-004 已接受；按 P0–R3.4 实施 |
+| 状态 | **Implementation complete v2.0** — P0–R3.4 代码与聚焦测试完成；全仓发布验证进行中 |
 | 日期 | 2026-07-18 |
 | 产品 owner | Osborn |
 | 初稿 | Claude Fable 5（CTO 席）+ Osborn |
@@ -421,6 +421,8 @@ interface ProbeEventV1 {
 ```
 
 一个领域状态写命令恰好产生一个 event/revision。选择并返回下一题、自动转 completed、或在 resume 时重开 deferred item，均编码在该事件 payload 与新 snapshot 中，不额外制造第二个事件。render 不修改领域 revision，而是写独立 artifact receipt。幂等性由独立 command receipt 保证：start 的 scope 是 `repo:<repo-id>`，其他命令是 `session:<session-id>`。重复 scope/key 且 payload 相同返回原结果；payload 不同返回 `conflict`。
+
+`payload.metric_facts` 是 outcome 重放的保留字段，只记录最小结构化事实，不记录原始回答：`session_started`、`items_added` 与 `session_resumed` 记录 item id、required、severity、impact、origin（start 另带可选 task ref）；回答记录 effective 判定与 destination state；defer/waive 记录可选到期时间。`@osstack/core` 必须校验连续 revision 和 item 引用后再派生 §10 指标。缺少该字段的旧会话计入 `sessions_skipped`，不得当成零效果样本。
 
 ### 5.5 `ProbeLedgerV1`
 
@@ -1298,13 +1300,13 @@ Hermes 只保留对象数组，Loop 再按 strict `ImplementationDeviation` 校�
 
 1. [x] neat adapter：ledger hash、dead destination、stale deferred/waiver；
 2. [x] core query + daily：开放数、老化和 completion；
-3. [ ] supervisor 聚合 + metrics：按 §10 从事件派生，不读 CLI 文本。
+3. [x] supervisor 聚合 + metrics：按 §10 从事件派生，不读 CLI 文本。
 
 **验收：**
 
-- [ ] 每个消费者只通过 package API 或 portable schema。
+- [x] 每个消费者只通过 package API 或 portable schema。
 - [x] 默认 neat/daily 行为在没有 probe 工件时保持兼容。
-- [ ] outcome 指标可从 event replay 重建。
+- [x] outcome 指标可从 event replay 重建。
 
 **验证：** 各 package 聚焦测试、`pnpm smoke:probe`、全仓 build/test/typecheck。
 
@@ -1333,8 +1335,8 @@ Hermes 只保留对象数组，Loop 再按 strict `ImplementationDeviation` 校�
 
 ### R3 checkpoint
 
-- [ ] EvaluationSpec 无 raw answer→shell 路径。
-- [ ] kanban、loop、neat、daily 无 CLI-private import。
+- [x] EvaluationSpec 无 raw answer→shell 路径。
+- [x] kanban、loop、neat、daily 无 CLI-private import。
 - [ ] 两周 baseline 数据足以由 owner 冻结 outcome target；不足则继续观察，不伪造结论。
 
 ### 发布与回滚

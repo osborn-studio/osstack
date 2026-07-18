@@ -33,6 +33,7 @@ import {
   ProbeSeverityV1,
   selectProbeQuestions,
   sortProbeItems,
+  toProbeMetricItemFact,
   ProbeDynamicInputError,
   ProbeEvaluationCompilerError,
   type ProbeDomainStateV1,
@@ -866,6 +867,12 @@ async function handleStart(
       selected_question_ids: session.selected_question_ids,
       unselected_required_question_ids:
         session.unselected_required_question_ids,
+      metric_facts: {
+        item_facts: items.map(toProbeMetricItemFact),
+        ...(session.task_ref === undefined
+          ? {}
+          : { task_ref: session.task_ref }),
+      },
     },
   };
   const state = { session, items };
@@ -2092,6 +2099,9 @@ async function handleRestate(
       finding_ids: findings.map((finding) => finding.finding_id),
       restatement_findings: findings,
       selected_question_ids: session.selected_question_ids,
+      metric_facts: {
+        item_facts: dynamic.items.map(toProbeMetricItemFact),
+      },
     },
   };
   const state = { session, items: dynamic.items };

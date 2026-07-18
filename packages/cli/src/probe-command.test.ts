@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { AgentCommandResult } from "@osstack/protocol";
 import { probeSha256 } from "@osstack/governance";
 import { EvaluationSpec } from "@osstack/loop";
+import { listProbeEvents, openDb } from "@osstack/core";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   handleProbeCommand,
@@ -100,6 +101,32 @@ describe("handleProbeCommand", () => {
       },
     });
     expect(command.stderr).toEqual([]);
+    const sessionId = (envelope.result?.session as { session_id: string })
+      .session_id;
+    const db = openDb({
+      path: join(command.home, "state.db"),
+      minFreeBytes: 0,
+    });
+    try {
+      const event = JSON.parse(
+        listProbeEvents(db, sessionId)[0]?.event_json ?? "{}",
+      ) as { payload?: Record<string, unknown> };
+      expect(event.payload).toMatchObject({
+        metric_facts: {
+          item_facts: expect.arrayContaining([
+            expect.objectContaining({
+              item_id: expect.stringMatching(/^pi_/),
+              required: true,
+              severity: expect.stringMatching(/^(high|medium|low)$/),
+              impact: expect.any(Number),
+              origin: "calibration",
+            }),
+          ]),
+        },
+      });
+    } finally {
+      db.close();
+    }
   });
 
   it("rejects destination flags on calibration answers", async () => {
