@@ -1,5 +1,21 @@
 # @osstack/hermes-adapter
 
+## 0.11.0
+
+### Minor Changes
+
+- 9f1aa1b: Carry strict verifier-reported implementation deviations through Loop events and idempotently register evidence-bound `mid_build` probe items for linked tasks.
+
+### Patch Changes
+
+- Updated dependencies [f041063]
+- Updated dependencies [a483f6e]
+- Updated dependencies [4a6c00b]
+- Updated dependencies [83aac82]
+- Updated dependencies [223a240]
+- Updated dependencies [9f1aa1b]
+  - @osstack/core@0.11.0
+
 ## 0.10.0
 
 ### Patch Changes
