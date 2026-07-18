@@ -2,7 +2,12 @@ import { mkdtempSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { KanbanRepository, openDb } from "@osstack/core";
+import {
+  KanbanRepository,
+  openDb,
+  recordKnowledgeHygieneRun,
+  type RecordKnowledgeHygieneRunInputV1,
+} from "@osstack/core";
 import type { CommandRunner } from "@osstack/github";
 import { AgentCommandResult } from "@osstack/protocol";
 import type { StructuredRecommendation } from "@osstack/supervisor";
@@ -88,6 +93,38 @@ async function seedRegistry(): Promise<string> {
 
 async function writeRegistry(path: string, entries: unknown[]): Promise<void> {
   await writeFile(path, JSON.stringify(entries, null, 2), "utf8");
+}
+
+function recordedWarning(
+  reportSha: string,
+  generatedAt: number,
+): RecordKnowledgeHygieneRunInputV1 {
+  return {
+    report_sha256: reportSha,
+    schema_version: "1",
+    repo_id: "withgh",
+    repo_root: join(tmp, "withgh"),
+    mode: "all",
+    generated_at: generatedAt,
+    complete: true,
+    skipped_files: 0,
+    summary: {
+      error: 0,
+      warning: 1,
+      info: 0,
+      suppressed: 0,
+      resolved: 0,
+    },
+    findings: [{
+      fingerprint: `khf_${"a".repeat(64)}`,
+      rule_id: "surface.required_missing",
+      surface: "documentation",
+      severity: "warning",
+      location_path: "MISSING.md",
+      rationale: "A configured knowledge surface is missing.",
+    }],
+    resolved_findings: [],
+  };
 }
 
 describe("daily CLI", () => {
@@ -195,6 +232,47 @@ describe("daily CLI", () => {
       { runner: makeRunner([], "success"), now: () => new Date("2026-07-11T09:00:00Z"), out },
     );
     expect(logs.join("\n")).toContain("## Stack board");
+  });
+
+  it("adds event-derived recurrence and age only when the current scan is actionable", async () => {
+    const registry = await seedRegistry();
+    const repo = join(tmp, "withgh");
+    await mkdir(join(repo, ".osstack"), { recursive: true });
+    await writeFile(join(repo, ".osstack", "neat.yaml"), [
+      "version: 1",
+      "required_surfaces:",
+      "  - id: missing",
+      "    path: MISSING.md",
+      "    severity: warning",
+      "",
+    ].join("\n"));
+    const home = join(tmp, "home");
+    await mkdir(home, { recursive: true });
+    const db = openDb({ path: join(home, "state.db"), minFreeBytes: 0 });
+    recordKnowledgeHygieneRun(
+      db,
+      recordedWarning("1".repeat(64), Date.UTC(2026, 6, 8, 9)),
+    );
+    recordKnowledgeHygieneRun(
+      db,
+      recordedWarning("2".repeat(64), Date.UTC(2026, 6, 10, 9)),
+    );
+    db.close();
+
+    expect(await handleDailyCommand(
+      ["--registry", registry],
+      {
+        runner: makeRunner([], "success"),
+        now: () => new Date("2026-07-11T09:00:00Z"),
+        out,
+      },
+    )).toBe(0);
+
+    const markdown = logs.join("\n");
+    expect(markdown).toContain(
+      "knowledge hygiene: complete; 0 error; 1 warning; 1 recurring; oldest 3d",
+    );
+    expect(markdown).toContain("knowledge_hygiene.check");
   });
 
   it("a same-day re-run diffs against the PRIOR day's brief, not the earlier same-day run", async () => {

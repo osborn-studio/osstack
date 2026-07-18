@@ -1152,10 +1152,10 @@ or mapping if required.
 **Description:** Report count, age, recurrence, closure rate, and new/resolved
 delta from persisted events.
 
-**Acceptance criteria:** Trends are reproducible from event history; suppressed
+**Acceptance criteria:** ✅ Trends are reproducible from event history; suppressed
 findings are separated; no composite score.
 
-**Verification:** Core query tests and CLI/report snapshots pass.
+**Verification:** ✅ Core query tests and CLI/report snapshots pass.
 
 **Dependencies:** R2.1, R2.3.1.
 
@@ -1165,10 +1165,10 @@ findings are separated; no composite score.
 
 ### R2 release gate
 
-- [ ] Default single-repo check is still stateless.
-- [ ] Portfolio scans are bounded and isolated.
-- [ ] Daily shows action, not routine clean metrics.
-- [ ] Trend data is event-derived and score-free.
+- [x] Default single-repo check is still stateless.
+- [x] Portfolio scans are bounded and isolated.
+- [x] Daily shows action, not routine clean metrics.
+- [x] Trend data is event-derived and score-free.
 
 ---
 

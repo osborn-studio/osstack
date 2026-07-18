@@ -14,7 +14,12 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { KanbanRepository, getBoard, openDb } from "@osstack/core";
+import {
+  KanbanRepository,
+  getBoard,
+  openDb,
+  queryKnowledgeHygieneTrend,
+} from "@osstack/core";
 import {
   fetchPortfolioGithubStatus,
   type CommandRunner,
@@ -151,8 +156,15 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
   // 1. Portfolio maturity scan (supervisor, existing).
   const healths: RepoHealth[] = [];
   for (const entry of enabled) healths.push(await scanRepo(entry));
+  const hygieneHistory = readPortfolioKnowledgeHygieneHistory(
+    enabled,
+    now.getTime(),
+  );
   const hygieneScans = await scanPortfolioKnowledgeHygiene(enabled, {
     now: () => now,
+    history: async (repoId) => hygieneHistory.byRepo.get(repoId) ?? {
+      recurring_count: 0,
+    },
   });
   const portfolio = buildPortfolioReport(
     attachKnowledgeHygieneSummaries(healths, hygieneScans),
@@ -170,6 +182,9 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
 
   const warnings = github.filter((g) => g.warning !== undefined).map((g) => `${g.repo_id}: ${g.warning}`);
   if (stackWarning !== undefined) warnings.push(stackWarning);
+  if (hygieneHistory.warning !== undefined) {
+    warnings.push(hygieneHistory.warning);
+  }
   warnings.push(...knowledgeHygieneWarnings(portfolio));
 
   // 4. Delta against the most recent previous brief.
@@ -250,6 +265,51 @@ function readStackBoardSummary(board = "stack"): { summary?: StackBoardSummary; 
   } catch (err) {
     return {
       warning: `stack board unavailable (${dbPath}): ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
+interface PortfolioKnowledgeHygieneHistory {
+  byRepo: Map<string, {
+    recurring_count: number;
+    oldest_open_days?: number;
+  }>;
+  warning?: string;
+}
+
+/** Read-only from the caller's perspective: no reports are recorded here. */
+function readPortfolioKnowledgeHygieneHistory(
+  entries: readonly RepoRegistryEntry[],
+  asOf: number,
+): PortfolioKnowledgeHygieneHistory {
+  const byRepo = new Map<string, {
+    recurring_count: number;
+    oldest_open_days?: number;
+  }>();
+  const dbPath = join(osstackHome(), "state.db");
+  if (!existsSync(dbPath)) return { byRepo };
+  try {
+    const db = openDb({ path: dbPath });
+    try {
+      for (const entry of entries) {
+        const trend = queryKnowledgeHygieneTrend(db, entry.repo_id, {
+          as_of: asOf,
+        });
+        byRepo.set(entry.repo_id, {
+          recurring_count: trend.recurrence.warning,
+          ...(trend.open.oldest_age_days === null
+            ? {}
+            : { oldest_open_days: trend.open.oldest_age_days }),
+        });
+      }
+    } finally {
+      db.close();
+    }
+    return { byRepo };
+  } catch (error) {
+    return {
+      byRepo,
+      warning: `knowledge hygiene history unavailable (${dbPath}): ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }
@@ -565,7 +625,7 @@ export function renderDailyMarkdown(brief: DailyBrief): string {
     const hygieneIssues = knowledgeHygieneIssues(repo);
     if (hygiene !== undefined && hygieneIssues.length > 0) {
       lines.push(
-        `- knowledge hygiene: ${hygiene.complete ? "complete" : "incomplete"}; ${hygiene.error_count} error; ${hygiene.warning_count} warning; ${hygiene.recurring_count} recurring`,
+        `- knowledge hygiene: ${hygiene.complete ? "complete" : "incomplete"}; ${hygiene.error_count} error; ${hygiene.warning_count} warning; ${hygiene.recurring_count} recurring${hygiene.oldest_open_days === undefined ? "" : `; oldest ${hygiene.oldest_open_days}d`}`,
       );
     } else if (hygieneIssues.length > 0) {
       lines.push(`- knowledge hygiene: ${hygieneIssues.join(", ")}`);
