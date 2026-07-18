@@ -982,7 +982,7 @@ flowchart LR
 
 **验证：** `git diff --check`
 
-### R0.1 — Domain contracts、schema 与 fixtures
+### R0.1 — Domain contracts、schema 与 fixtures（2026-07-18 完成）
 
 **依赖：** P0。
 
@@ -996,9 +996,9 @@ flowchart LR
 
 **验收：**
 
-- [ ] §5 全部公共对象有严格 Zod schema 与导出类型。
-- [ ] valid/invalid vectors 冻结；generated schemas 可重复生成且无 diff。
-- [ ] 判别联合拒绝 missing destination、混装 disposition 字段和无界 budget。
+- [x] §5 全部公共对象有严格 Zod schema 与导出类型。
+- [x] valid/invalid vectors 冻结；generated schemas 可重复生成且无 diff。
+- [x] 判别联合拒绝 missing destination、混装 disposition 字段和无界 budget。
 
 **验证：**
 

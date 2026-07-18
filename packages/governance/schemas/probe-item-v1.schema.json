@@ -1,0 +1,1960 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Probe Item v1",
+  "$comment": "Option uniqueness, selected-option membership, and calibration destination constraints are additionally enforced by @osstack/governance Zod validation.",
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "1"
+        },
+        "item_id": {
+          "type": "string",
+          "pattern": "^pi_[a-z0-9][a-z0-9_-]{7,63}$"
+        },
+        "question_id": {
+          "type": "string",
+          "pattern": "^(?:[a-z][a-z0-9_-]*\\.)+[a-z0-9_-]+\\.v[1-9][0-9]*$"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^probe_[a-z0-9][a-z0-9_-]{7,63}$"
+        },
+        "supersedes_item_id": {
+          "type": "string",
+          "pattern": "^pi_[a-z0-9][a-z0-9_-]{7,63}$"
+        },
+        "source_pack": {
+          "type": "object",
+          "properties": {
+            "pack_id": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "pack_id",
+            "version"
+          ],
+          "additionalProperties": false
+        },
+        "item_kind": {
+          "type": "string",
+          "enum": [
+            "fact",
+            "assumption",
+            "question",
+            "risk"
+          ]
+        },
+        "initial_quadrant": {
+          "type": "string",
+          "enum": [
+            "kk",
+            "ku",
+            "uk",
+            "uu"
+          ]
+        },
+        "current_quadrant": {
+          "type": "string",
+          "enum": [
+            "kk",
+            "ku",
+            "uk",
+            "uu"
+          ]
+        },
+        "doc_type": {
+          "type": "string",
+          "enum": [
+            "product",
+            "tech",
+            "test"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "user",
+            "outcome",
+            "scope",
+            "data_model",
+            "interface",
+            "user_flow",
+            "failure_mode",
+            "performance",
+            "security",
+            "dependency",
+            "migration",
+            "rollback",
+            "observability",
+            "acceptance",
+            "test_data",
+            "environment",
+            "tacit_convention"
+          ]
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "calibration",
+            "static_pack",
+            "blindspot",
+            "interview_followup",
+            "prototype_reaction",
+            "restatement_diff",
+            "mid_build",
+            "manual"
+          ]
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "option_id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "option_id",
+              "label",
+              "description"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 4
+        },
+        "impact": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "irreversibility": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "uncertainty": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "file",
+                      "artifact"
+                    ]
+                  },
+                  "ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1024
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ref"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "url"
+                  },
+                  "ref": {
+                    "type": "string",
+                    "format": "uri",
+                    "maxLength": 2048
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ref"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "symbol",
+                      "command_output",
+                      "user_statement"
+                    ]
+                  },
+                  "ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ref"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "maxItems": 32
+        },
+        "destination_hint": {
+          "type": "string",
+          "enum": [
+            "session_profile",
+            "prd",
+            "technical_design",
+            "test_plan",
+            "adr",
+            "instruction",
+            "evaluation_spec",
+            "open_questions"
+          ]
+        },
+        "created_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updated_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": {
+          "type": "string",
+          "const": "open"
+        }
+      },
+      "required": [
+        "schema_version",
+        "item_id",
+        "question_id",
+        "session_id",
+        "item_kind",
+        "initial_quadrant",
+        "current_quadrant",
+        "doc_type",
+        "category",
+        "origin",
+        "prompt",
+        "options",
+        "impact",
+        "irreversibility",
+        "uncertainty",
+        "required",
+        "evidence_refs",
+        "created_at_ms",
+        "updated_at_ms",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "1"
+        },
+        "item_id": {
+          "type": "string",
+          "pattern": "^pi_[a-z0-9][a-z0-9_-]{7,63}$"
+        },
+        "question_id": {
+          "type": "string",
+          "pattern": "^(?:[a-z][a-z0-9_-]*\\.)+[a-z0-9_-]+\\.v[1-9][0-9]*$"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^probe_[a-z0-9][a-z0-9_-]{7,63}$"
+        },
+        "supersedes_item_id": {
+          "type": "string",
+          "pattern": "^pi_[a-z0-9][a-z0-9_-]{7,63}$"
+        },
+        "source_pack": {
+          "type": "object",
+          "properties": {
+            "pack_id": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "pack_id",
+            "version"
+          ],
+          "additionalProperties": false
+        },
+        "item_kind": {
+          "type": "string",
+          "enum": [
+            "fact",
+            "assumption",
+            "question",
+            "risk"
+          ]
+        },
+        "initial_quadrant": {
+          "type": "string",
+          "enum": [
+            "kk",
+            "ku",
+            "uk",
+            "uu"
+          ]
+        },
+        "current_quadrant": {
+          "type": "string",
+          "enum": [
+            "kk",
+            "ku",
+            "uk",
+            "uu"
+          ]
+        },
+        "doc_type": {
+          "type": "string",
+          "enum": [
+            "product",
+            "tech",
+            "test"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "user",
+            "outcome",
+            "scope",
+            "data_model",
+            "interface",
+            "user_flow",
+            "failure_mode",
+            "performance",
+            "security",
+            "dependency",
+            "migration",
+            "rollback",
+            "observability",
+            "acceptance",
+            "test_data",
+            "environment",
+            "tacit_convention"
+          ]
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "calibration",
+            "static_pack",
+            "blindspot",
+            "interview_followup",
+            "prototype_reaction",
+            "restatement_diff",
+            "mid_build",
+            "manual"
+          ]
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "option_id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "option_id",
+              "label",
+              "description"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 4
+        },
+        "impact": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "irreversibility": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "uncertainty": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "file",
+                      "artifact"
+                    ]
+                  },
+                  "ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1024
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ref"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "url"
+                  },
+                  "ref": {
+                    "type": "string",
+                    "format": "uri",
+                    "maxLength": 2048
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ref"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "symbol",
+                      "command_output",
+                      "user_statement"
+                    ]
+                  },
+                  "ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ref"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "maxItems": 32
+        },
+        "destination_hint": {
+          "type": "string",
+          "enum": [
+            "session_profile",
+            "prd",
+            "technical_design",
+            "test_plan",
+            "adr",
+            "instruction",
+            "evaluation_spec",
+            "open_questions"
+          ]
+        },
+        "created_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updated_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": {
+          "type": "string",
+          "const": "deferred"
+        },
+        "deferral": {
+          "type": "object",
+          "properties": {
+            "owner": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "revisit_trigger": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "deferred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "review_after_ms": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "owner",
+            "revisit_trigger",
+            "deferred_at_ms"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "item_id",
+        "question_id",
+        "session_id",
+        "item_kind",
+        "initial_quadrant",
+        "current_quadrant",
+        "doc_type",
+        "category",
+        "origin",
+        "prompt",
+        "options",
+        "impact",
+        "irreversibility",
+        "uncertainty",
+        "required",
+        "evidence_refs",
+        "created_at_ms",
+        "updated_at_ms",
+        "state",
+        "deferral"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "1"
+        },
+        "item_id": {
+          "type": "string",
+          "pattern": "^pi_[a-z0-9][a-z0-9_-]{7,63}$"
+        },
+        "question_id": {
+          "type": "string",
+          "pattern": "^(?:[a-z][a-z0-9_-]*\\.)+[a-z0-9_-]+\\.v[1-9][0-9]*$"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^probe_[a-z0-9][a-z0-9_-]{7,63}$"
+        },
+        "supersedes_item_id": {
+          "type": "string",
+          "pattern": "^pi_[a-z0-9][a-z0-9_-]{7,63}$"
+        },
+        "source_pack": {
+          "type": "object",
+          "properties": {
+            "pack_id": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "pack_id",
+            "version"
+          ],
+          "additionalProperties": false
+        },
+        "item_kind": {
+          "type": "string",
+          "enum": [
+            "fact",
+            "assumption",
+            "question",
+            "risk"
+          ]
+        },
+        "initial_quadrant": {
+          "type": "string",
+          "enum": [
+            "kk",
+            "ku",
+            "uk",
+            "uu"
+          ]
+        },
+        "current_quadrant": {
+          "type": "string",
+          "enum": [
+            "kk",
+            "ku",
+            "uk",
+            "uu"
+          ]
+        },
+        "doc_type": {
+          "type": "string",
+          "enum": [
+            "product",
+            "tech",
+            "test"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "user",
+            "outcome",
+            "scope",
+            "data_model",
+            "interface",
+            "user_flow",
+            "failure_mode",
+            "performance",
+            "security",
+            "dependency",
+            "migration",
+            "rollback",
+            "observability",
+            "acceptance",
+            "test_data",
+            "environment",
+            "tacit_convention"
+          ]
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "calibration",
+            "static_pack",
+            "blindspot",
+            "interview_followup",
+            "prototype_reaction",
+            "restatement_diff",
+            "mid_build",
+            "manual"
+          ]
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "option_id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "option_id",
+              "label",
+              "description"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 4
+        },
+        "impact": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "irreversibility": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "uncertainty": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "file",
+                      "artifact"
+                    ]
+                  },
+                  "ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1024
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ref"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "url"
+                  },
+                  "ref": {
+                    "type": "string",
+                    "format": "uri",
+                    "maxLength": 2048
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ref"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "symbol",
+                      "command_output",
+                      "user_statement"
+                    ]
+                  },
+                  "ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ref"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "maxItems": 32
+        },
+        "destination_hint": {
+          "type": "string",
+          "enum": [
+            "session_profile",
+            "prd",
+            "technical_design",
+            "test_plan",
+            "adr",
+            "instruction",
+            "evaluation_spec",
+            "open_questions"
+          ]
+        },
+        "created_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updated_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": {
+          "type": "string",
+          "const": "resolved"
+        },
+        "resolution": {
+          "type": "object",
+          "properties": {
+            "answer": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20000
+            },
+            "actor": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "human",
+                    "agent"
+                  ]
+                },
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                }
+              },
+              "required": [
+                "type",
+                "id"
+              ],
+              "additionalProperties": false
+            },
+            "resolved_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "selected_option_id": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+            }
+          },
+          "required": [
+            "answer",
+            "actor",
+            "resolved_at_ms"
+          ],
+          "additionalProperties": false
+        },
+        "destination": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "type": "string",
+                  "const": "session_profile"
+                },
+                "profile_key": {
+                  "type": "string",
+                  "enum": [
+                    "domain",
+                    "repository",
+                    "intent"
+                  ]
+                },
+                "write_state": {
+                  "type": "string",
+                  "const": "verified"
+                }
+              },
+              "required": [
+                "role",
+                "profile_key",
+                "write_state"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "prd",
+                    "technical_design",
+                    "test_plan",
+                    "adr",
+                    "instruction",
+                    "evaluation_spec",
+                    "open_questions"
+                  ]
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                "anchor": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "write_state": {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "applied",
+                    "verified"
+                  ]
+                },
+                "content_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "role",
+                "path",
+                "write_state"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "compilation": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "const": "not_eligible"
+                }
+              },
+              "required": [
+                "state"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "const": "manual_required"
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 20000
+                }
+              },
+              "required": [
+                "state",
+                "reason"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "const": "compiled"
+                },
+                "spec_ref": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                "template_id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+                }
+              },
+              "required": [
+                "state",
+                "spec_ref",
+                "template_id"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "item_id",
+        "question_id",
+        "session_id",
+        "item_kind",
+        "initial_quadrant",
+        "current_quadrant",
+        "doc_type",
+        "category",
+        "origin",
+        "prompt",
+        "options",
+        "impact",
+        "irreversibility",
+        "uncertainty",
+        "required",
+        "evidence_refs",
+        "created_at_ms",
+        "updated_at_ms",
+        "state",
+        "resolution",
+        "destination",
+        "compilation"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "1"
+        },
+        "item_id": {
+          "type": "string",
+          "pattern": "^pi_[a-z0-9][a-z0-9_-]{7,63}$"
+        },
+        "question_id": {
+          "type": "string",
+          "pattern": "^(?:[a-z][a-z0-9_-]*\\.)+[a-z0-9_-]+\\.v[1-9][0-9]*$"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^probe_[a-z0-9][a-z0-9_-]{7,63}$"
+        },
+        "supersedes_item_id": {
+          "type": "string",
+          "pattern": "^pi_[a-z0-9][a-z0-9_-]{7,63}$"
+        },
+        "source_pack": {
+          "type": "object",
+          "properties": {
+            "pack_id": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "pack_id",
+            "version"
+          ],
+          "additionalProperties": false
+        },
+        "item_kind": {
+          "type": "string",
+          "enum": [
+            "fact",
+            "assumption",
+            "question",
+            "risk"
+          ]
+        },
+        "initial_quadrant": {
+          "type": "string",
+          "enum": [
+            "kk",
+            "ku",
+            "uk",
+            "uu"
+          ]
+        },
+        "current_quadrant": {
+          "type": "string",
+          "enum": [
+            "kk",
+            "ku",
+            "uk",
+            "uu"
+          ]
+        },
+        "doc_type": {
+          "type": "string",
+          "enum": [
+            "product",
+            "tech",
+            "test"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "user",
+            "outcome",
+            "scope",
+            "data_model",
+            "interface",
+            "user_flow",
+            "failure_mode",
+            "performance",
+            "security",
+            "dependency",
+            "migration",
+            "rollback",
+            "observability",
+            "acceptance",
+            "test_data",
+            "environment",
+            "tacit_convention"
+          ]
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "calibration",
+            "static_pack",
+            "blindspot",
+            "interview_followup",
+            "prototype_reaction",
+            "restatement_diff",
+            "mid_build",
+            "manual"
+          ]
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "option_id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "option_id",
+              "label",
+              "description"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 4
+        },
+        "impact": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "irreversibility": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "uncertainty": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "file",
+                      "artifact"
+                    ]
+                  },
+                  "ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1024
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ref"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "url"
+                  },
+                  "ref": {
+                    "type": "string",
+                    "format": "uri",
+                    "maxLength": 2048
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ref"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "symbol",
+                      "command_output",
+                      "user_statement"
+                    ]
+                  },
+                  "ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ref"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "maxItems": 32
+        },
+        "destination_hint": {
+          "type": "string",
+          "enum": [
+            "session_profile",
+            "prd",
+            "technical_design",
+            "test_plan",
+            "adr",
+            "instruction",
+            "evaluation_spec",
+            "open_questions"
+          ]
+        },
+        "created_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updated_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": {
+          "type": "string",
+          "const": "waived"
+        },
+        "waiver": {
+          "type": "object",
+          "properties": {
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20000
+            },
+            "approved_by": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "approved_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "expires_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "reason",
+            "approved_by",
+            "approved_at_ms"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "item_id",
+        "question_id",
+        "session_id",
+        "item_kind",
+        "initial_quadrant",
+        "current_quadrant",
+        "doc_type",
+        "category",
+        "origin",
+        "prompt",
+        "options",
+        "impact",
+        "irreversibility",
+        "uncertainty",
+        "required",
+        "evidence_refs",
+        "created_at_ms",
+        "updated_at_ms",
+        "state",
+        "waiver"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "1"
+        },
+        "item_id": {
+          "type": "string",
+          "pattern": "^pi_[a-z0-9][a-z0-9_-]{7,63}$"
+        },
+        "question_id": {
+          "type": "string",
+          "pattern": "^(?:[a-z][a-z0-9_-]*\\.)+[a-z0-9_-]+\\.v[1-9][0-9]*$"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^probe_[a-z0-9][a-z0-9_-]{7,63}$"
+        },
+        "supersedes_item_id": {
+          "type": "string",
+          "pattern": "^pi_[a-z0-9][a-z0-9_-]{7,63}$"
+        },
+        "source_pack": {
+          "type": "object",
+          "properties": {
+            "pack_id": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "pack_id",
+            "version"
+          ],
+          "additionalProperties": false
+        },
+        "item_kind": {
+          "type": "string",
+          "enum": [
+            "fact",
+            "assumption",
+            "question",
+            "risk"
+          ]
+        },
+        "initial_quadrant": {
+          "type": "string",
+          "enum": [
+            "kk",
+            "ku",
+            "uk",
+            "uu"
+          ]
+        },
+        "current_quadrant": {
+          "type": "string",
+          "enum": [
+            "kk",
+            "ku",
+            "uk",
+            "uu"
+          ]
+        },
+        "doc_type": {
+          "type": "string",
+          "enum": [
+            "product",
+            "tech",
+            "test"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "user",
+            "outcome",
+            "scope",
+            "data_model",
+            "interface",
+            "user_flow",
+            "failure_mode",
+            "performance",
+            "security",
+            "dependency",
+            "migration",
+            "rollback",
+            "observability",
+            "acceptance",
+            "test_data",
+            "environment",
+            "tacit_convention"
+          ]
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "calibration",
+            "static_pack",
+            "blindspot",
+            "interview_followup",
+            "prototype_reaction",
+            "restatement_diff",
+            "mid_build",
+            "manual"
+          ]
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "option_id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "option_id",
+              "label",
+              "description"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 4
+        },
+        "impact": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "irreversibility": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "uncertainty": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "file",
+                      "artifact"
+                    ]
+                  },
+                  "ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1024
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ref"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "url"
+                  },
+                  "ref": {
+                    "type": "string",
+                    "format": "uri",
+                    "maxLength": 2048
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ref"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "symbol",
+                      "command_output",
+                      "user_statement"
+                    ]
+                  },
+                  "ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ref"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "maxItems": 32
+        },
+        "destination_hint": {
+          "type": "string",
+          "enum": [
+            "session_profile",
+            "prd",
+            "technical_design",
+            "test_plan",
+            "adr",
+            "instruction",
+            "evaluation_spec",
+            "open_questions"
+          ]
+        },
+        "created_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updated_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": {
+          "type": "string",
+          "const": "invalidated"
+        },
+        "invalidation": {
+          "type": "object",
+          "properties": {
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20000
+            },
+            "actor": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "human",
+                    "agent"
+                  ]
+                },
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                }
+              },
+              "required": [
+                "type",
+                "id"
+              ],
+              "additionalProperties": false
+            },
+            "invalidated_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "reason",
+            "actor",
+            "invalidated_at_ms"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "item_id",
+        "question_id",
+        "session_id",
+        "item_kind",
+        "initial_quadrant",
+        "current_quadrant",
+        "doc_type",
+        "category",
+        "origin",
+        "prompt",
+        "options",
+        "impact",
+        "irreversibility",
+        "uncertainty",
+        "required",
+        "evidence_refs",
+        "created_at_ms",
+        "updated_at_ms",
+        "state",
+        "invalidation"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

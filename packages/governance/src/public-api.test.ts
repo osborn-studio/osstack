@@ -3,6 +3,7 @@ import {
   createKnowledgeHygieneFingerprint,
   KnowledgeHygieneFindingV1,
   loadKnowledgeHygieneConfig,
+  ProbeLedgerV1,
   scanFiles,
   scanText,
 } from "./index.js";
@@ -14,5 +15,6 @@ describe("governance public API", () => {
     expect(loadKnowledgeHygieneConfig).toBeTypeOf("function");
     expect(createKnowledgeHygieneFingerprint).toBeTypeOf("function");
     expect(KnowledgeHygieneFindingV1.safeParse({}).success).toBe(false);
+    expect(ProbeLedgerV1.safeParse({}).success).toBe(false);
   });
 });
