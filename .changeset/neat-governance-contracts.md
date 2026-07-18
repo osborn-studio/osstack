@@ -14,4 +14,6 @@ incomplete-scan findings. Compose these boundaries into a deterministic,
 injectable, read-only report engine with suppression accounting. Evaluate
 configured change-review contracts against structured Git change sets. Check
 plain relative Markdown links and exact-line instruction imports with
-conservative parsing and repository-confined symlink handling.
+conservative parsing and repository-confined symlink handling. Publish frozen
+JSON Schema artifacts and labelled compatibility vectors for the finding and
+report v1 contracts.

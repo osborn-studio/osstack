@@ -684,14 +684,14 @@ version string and domain report under `result.report`.
 
 **Acceptance criteria:**
 
-- [ ] Clean and finding reports both use `status: ok` when the check completes.
-- [ ] Invalid input/config uses `bad_request` and exit 2.
-- [ ] Runtime failure uses the accepted protocol error code and exit 3.
-- [ ] Output parses with strict `AgentCommandResult`.
+- [x] Clean and finding reports both use `status: ok` when the check completes.
+- [x] Invalid input/config uses `bad_request` and exit 2.
+- [x] Runtime failure uses the accepted protocol error code and exit 3.
+- [x] Output parses with strict `AgentCommandResult`.
 
 **Verification:**
 
-- [ ] `pnpm --filter @osstack/cli test -- neat-command`
+- [x] `pnpm --filter @osstack/cli test -- neat-command`
 
 **Dependencies:** R0.5, R0.6.
 
@@ -709,15 +709,15 @@ governance package, and add good/bad vectors and drift checks.
 
 **Acceptance criteria:**
 
-- [ ] Generated schema is reproducible and `--check` reports zero diff.
-- [ ] Package publishes schema artifacts.
-- [ ] At least one good and one bad vector per public domain schema.
-- [ ] Additive compatibility test protects v1.
+- [x] Generated schema is reproducible and `--check` reports zero diff.
+- [x] Package publishes schema artifacts.
+- [x] At least one good and one bad vector per public domain schema.
+- [x] Additive compatibility test protects v1.
 
 **Verification:**
 
-- [ ] `pnpm --filter @osstack/governance check:schemas`
-- [ ] `pnpm --filter @osstack/governance test -- schema`
+- [x] `pnpm --filter @osstack/governance check:schemas`
+- [x] `pnpm --filter @osstack/governance test -- schema`
 
 **Dependencies:** R0.1, R0.7.1.
 

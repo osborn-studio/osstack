@@ -1,0 +1,18 @@
+{
+  "fingerprint": "not-a-fingerprint",
+  "rule_id": "instruction.canonical_missing",
+  "rule_version": "1",
+  "surface": "instruction",
+  "severity": "critical",
+  "confidence": "high",
+  "location": {
+    "path": "AGENTS.md"
+  },
+  "observed": {},
+  "expected": {},
+  "rationale": "Invalid severity and fingerprint.",
+  "evidence_refs": [],
+  "remediation": {
+    "mode": "agent_edit"
+  }
+}
