@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, mkdir, readdir, writeFile } from "node:fs/promises";
+import { access, mkdtemp, mkdir, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -8,6 +8,7 @@ import {
   type KnowledgeHygieneReportV1 as KnowledgeHygieneReport,
 } from "@osstack/governance";
 import { AgentCommandResult } from "@osstack/protocol";
+import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import {
   handleNeatCommand,
@@ -265,6 +266,61 @@ describe("handleNeatCommand", () => {
 
     expect(exitCode).toBe(0);
     await expect(snapshotPaths(repoRoot)).resolves.toEqual(before);
+  });
+
+  it("records only when explicit and deduplicates the same report", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "osstack-neat-record-"));
+    const dbPath = join(cwd, "state", "neat.db");
+    const first = commandHarness({ cwd, check: async () => warningReport() });
+
+    expect(await handleNeatCommand([
+      "--all",
+      "--record",
+      "--db",
+      dbPath,
+      "--json",
+    ], first.deps)).toBe(0);
+    const firstEnvelope = AgentCommandResult.parse(
+      JSON.parse(first.stdout[0] ?? ""),
+    );
+    expect(firstEnvelope.result?.recording).toMatchObject({ inserted: true });
+    const firstRecording = firstEnvelope.result?.recording as { run_id: string };
+
+    const second = commandHarness({ cwd, check: async () => warningReport() });
+    expect(await handleNeatCommand([
+      "--all",
+      "--record",
+      "--db",
+      dbPath,
+      "--json",
+    ], second.deps)).toBe(0);
+    const secondEnvelope = AgentCommandResult.parse(
+      JSON.parse(second.stdout[0] ?? ""),
+    );
+    expect(secondEnvelope.result?.recording).toEqual({
+      run_id: firstRecording.run_id,
+      inserted: false,
+      db_path: dbPath,
+    });
+    const db = new Database(dbPath, { readonly: true });
+    expect(db.prepare("SELECT COUNT(*) AS count FROM knowledge_hygiene_runs").get())
+      .toEqual({ count: 1 });
+    expect(db.prepare("SELECT COUNT(*) AS count FROM knowledge_hygiene_occurrences").get())
+      .toEqual({ count: 1 });
+    db.close();
+  });
+
+  it("rejects --db without --record and does not create it", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "osstack-neat-record-"));
+    const dbPath = join(cwd, "state.db");
+    const command = commandHarness({ cwd, check: async () => warningReport() });
+
+    expect(await handleNeatCommand([
+      "--all",
+      "--db",
+      dbPath,
+    ], command.deps)).toBe(2);
+    await expect(access(dbPath)).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("fails closed on an invalid present config", async () => {

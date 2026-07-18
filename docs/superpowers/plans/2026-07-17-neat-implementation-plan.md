@@ -1076,10 +1076,10 @@ tests, changeset.
 
 **Description:** CLI records only when requested, using core repositories.
 
-**Acceptance criteria:** Default remains zero-write; repeated same run upserts
+**Acceptance criteria:** ✅ Default remains zero-write; repeated same run upserts
 occurrences without duplication.
 
-**Verification:** CLI temp-DB tests pass.
+**Verification:** ✅ CLI temp-DB tests pass.
 
 **Dependencies:** R2.1.2.
 

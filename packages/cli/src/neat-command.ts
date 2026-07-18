@@ -15,7 +15,7 @@ import {
   PROTOCOL_VERSION as AGENT_COMMAND_PROTOCOL_VERSION,
   type ErrorCode,
 } from "@osstack/protocol";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import {
   handleNeatReviewCommand,
   loadNeatReviewArtifact,
@@ -26,6 +26,11 @@ import {
   NeatFixInputError,
   type NeatFixCommandOverrides,
 } from "./neat-fix-command.js";
+import { osstackHome } from "./paths.js";
+import {
+  recordNeatReport,
+  type NeatRecordingResultV1,
+} from "./neat-record.js";
 
 export type NeatFailOn = "error" | "warning" | "none";
 type NeatFormat = "human" | "json";
@@ -46,6 +51,8 @@ interface ParsedNeatCommand {
   fail_on: NeatFailOn;
   input: KnowledgeHygieneCheckInputV1;
   review_file?: string;
+  record: boolean;
+  db_path?: string;
 }
 
 class NeatUsageError extends Error {
@@ -73,6 +80,8 @@ Options:
   --checks <id,...>              Run only listed rule ids
   --skip-checks <id,...>         Exclude listed rule ids
   --review-file <path>           Apply matching portable review evidence
+  --record                       Persist normalized history explicitly
+  --db <path>                    State DB override; requires --record
   --format <human|json>          Output format (default: human)
   --json                         Alias for --format json
   --fail-on <error|warning|none> Exit threshold (default: none)
@@ -122,6 +131,7 @@ function parseNeatCommand(
       format: "human",
       fail_on: "none",
       input: { repo_root: cwd, mode: "worktree" },
+      record: false,
     };
   }
 
@@ -133,6 +143,8 @@ function parseNeatCommand(
   let checks: KnowledgeHygieneRuleIdV1[] | undefined;
   let skipChecks: KnowledgeHygieneRuleIdV1[] | undefined;
   let reviewFile: string | undefined;
+  let record = false;
+  let dbPath: string | undefined;
   let format: NeatFormat = "human";
   let formatFlag: NeatFormat | undefined;
   let jsonAlias = false;
@@ -178,6 +190,13 @@ function parseNeatCommand(
       markSeen(flag);
       reviewFile = resolve(cwd, requireValue(args, index, flag));
       index += 1;
+    } else if (flag === "--record") {
+      markSeen(flag);
+      record = true;
+    } else if (flag === "--db") {
+      markSeen(flag);
+      dbPath = resolve(cwd, requireValue(args, index, flag));
+      index += 1;
     } else if (flag === "--format") {
       markSeen(flag);
       const value = requireValue(args, index, flag);
@@ -216,6 +235,9 @@ function parseNeatCommand(
   if (checks && skipChecks) {
     throw new NeatUsageError("--checks and --skip-checks are mutually exclusive");
   }
+  if (dbPath !== undefined && !record) {
+    throw new NeatUsageError("--db requires --record");
+  }
 
   const mode = all
     ? "all"
@@ -241,7 +263,9 @@ function parseNeatCommand(
     format,
     fail_on: failOn,
     input: parsed.data,
+    record,
     ...(reviewFile === undefined ? {} : { review_file: reviewFile }),
+    ...(dbPath === undefined ? {} : { db_path: dbPath }),
   };
 }
 
@@ -326,12 +350,19 @@ function uniqueEvidence(report: KnowledgeHygieneReportV1) {
   return [...evidence.values()];
 }
 
-function successEnvelope(report: KnowledgeHygieneReportV1) {
+function successEnvelope(
+  report: KnowledgeHygieneReportV1,
+  recording?: NeatRecordingResultV1,
+) {
   const evidence = uniqueEvidence(report);
   return AgentCommandResult.parse({
     protocol_version: AGENT_COMMAND_PROTOCOL_VERSION,
     status: "ok",
-    result: { command: "knowledge_hygiene.check", report },
+    result: {
+      command: "knowledge_hygiene.check",
+      report,
+      ...(recording === undefined ? {} : { recording }),
+    },
     ...(evidence.length === 0 ? {} : { evidence_refs: evidence }),
   });
 }
@@ -469,10 +500,28 @@ export async function handleNeatCommand(
     }
   }
 
+  let recording: NeatRecordingResultV1 | undefined;
+  if (parsed.record) {
+    try {
+      recording = await recordNeatReport(
+        report,
+        parsed.db_path ?? join(osstackHome(), "state.db"),
+        (deps.now ?? deps.engine_ports?.now ?? (() => new Date()))().getTime(),
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      emitError(deps, parsed.format === "json", "internal", message, true);
+      return 3;
+    }
+  }
+
   if (parsed.format === "json") {
-    deps.stdout(JSON.stringify(successEnvelope(report), null, 2));
+    deps.stdout(JSON.stringify(successEnvelope(report, recording), null, 2));
   } else {
-    deps.stdout(renderKnowledgeHygieneReport(report, parsed.fail_on));
+    const rendered = renderKnowledgeHygieneReport(report, parsed.fail_on);
+    deps.stdout(recording === undefined
+      ? rendered
+      : `${rendered}\nRecorded: ${recording.run_id} (${recording.inserted ? "inserted" : "existing"}) at ${recording.db_path}`);
   }
   return exitCodeForReport(report, parsed.fail_on);
 }

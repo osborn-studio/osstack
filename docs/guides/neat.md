@@ -108,6 +108,22 @@ atomic no-replace create. A concurrent different target is preserved and
 reported as a conflict; repeating the exact applied action reports
 `already_applied`.
 
+## Explicit history recording
+
+Checks remain stateless unless `--record` is present. To append normalized run,
+finding occurrence, closure, and resolution events to the core state DB:
+
+```bash
+osstack neat check --record --json --fail-on none
+osstack neat check --record --db /absolute/path/to/state.db --json
+```
+
+The default is `$OSSTACK_HOME/state.db` (or `~/.osstack/state.db`). `--db`
+requires `--record`. The DB stores report SHA identity and bounded normalized
+metadata, not duplicate report JSON blobs. Recording the identical report again
+returns `inserted: false` and does not increase occurrence counts. Only a
+complete report can infer `closed_absent` for a previously active finding.
+
 ## Exit codes
 
 | Code | Meaning |
@@ -227,7 +243,8 @@ after an incomplete scan.
 
 ## R0 non-goals
 
-The R0 checker does not write files, inspect external agent memory, perform semantic prose
+Without explicit `review`, `fix --apply`, or `--record`, the checker does not
+write files, inspect external agent memory, perform semantic prose
 linting, infer rules from arbitrary prose, check external URLs, persist finding
 history, produce a composite score, or auto-fix findings. It never deletes,
 renames, merges, or rewrites instruction files.

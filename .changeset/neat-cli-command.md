@@ -11,3 +11,6 @@ findings only, plus local/CI/full-audit user documentation.
 Add preview-first `neat fix`; apply requires `--apply --yes`, a complete report,
 matching config hash, and execute/auto-apply/docs policy. Emit strict conflict
 and before/after hash evidence without replacing existing targets.
+Add explicit `--record` with an optional `--db` override; default checks remain
+stateless, while repeated identical reports converge without duplicate runs or
+occurrences.

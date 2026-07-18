@@ -260,6 +260,9 @@ osstack neat check --review-file /tmp/neat-review.json --fail-on warning
 # Preview first; apply only under an execute/docs auto-apply policy.
 osstack neat fix --from /tmp/neat-report.json
 osstack neat fix --from /tmp/neat-report.json --apply --yes
+
+# Persist normalized history only when explicitly requested.
+osstack neat check --record --json --fail-on none
 ```
 
 The optional `.osstack/neat.yaml` declares canonical instruction sources,

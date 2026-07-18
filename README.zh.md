@@ -262,6 +262,9 @@ osstack neat check --review-file /tmp/neat-review.json --fail-on warning
 # 默认只预览；仅在 execute/docs 自动应用策略下显式写入。
 osstack neat fix --from /tmp/neat-report.json
 osstack neat fix --from /tmp/neat-report.json --apply --yes
+
+# 仅在显式请求时记录规范化历史。
+osstack neat check --record --json --fail-on none
 ```
 
 可选的 `.osstack/neat.yaml` 用来声明权威指令文件、必备文档、预算和变更审阅合同。
