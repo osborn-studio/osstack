@@ -18,7 +18,18 @@ export interface KnowledgeHygieneRuleInputV1 {
   config: KnowledgeHygieneConfigV1 | undefined;
   inventory: KnowledgeSurfaceInventoryV1;
   instruction_observations: readonly InstructionSourceObservationV1[];
+  reference_observations: readonly KnowledgeHygieneReferenceObservationV1[];
   change_set: KnowledgeHygieneChangeSetV1 | undefined;
+}
+
+export interface KnowledgeHygieneReferenceObservationV1 {
+  kind: "markdown_link" | "instruction_import";
+  source_path: string;
+  line: number;
+  target: string;
+  resolved_path: string;
+  exists: boolean;
+  unsafe_symlink?: boolean;
 }
 
 export interface KnowledgeHygieneRuleV1 {
@@ -32,6 +43,7 @@ export interface KnowledgeHygieneRuleV1 {
 
 interface FindingDraftV1 {
   path: string;
+  line?: number;
   anchor?: string;
   surface: KnowledgeHygieneSurfaceV1;
   severity: KnowledgeHygieneSeverityV1;
@@ -57,6 +69,7 @@ export function createRuleFinding(
 ): KnowledgeHygieneFindingV1 {
   const location = {
     path: draft.path,
+    ...(draft.line === undefined ? {} : { line: draft.line }),
     ...(draft.anchor === undefined ? {} : { anchor: draft.anchor }),
   };
   return KnowledgeHygieneFindingV1.parse({

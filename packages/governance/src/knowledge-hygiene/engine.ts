@@ -21,6 +21,9 @@ import {
 import {
   evaluateKnowledgeHygieneRules,
   filterSuppressedKnowledgeHygieneFindings,
+  type InspectKnowledgeReferencesInputV1,
+  inspectKnowledgeReferences,
+  type KnowledgeHygieneReferenceObservationV1,
   KNOWLEDGE_HYGIENE_RULES_V1,
   type KnowledgeHygieneRuleV1,
 } from "./rules/index.js";
@@ -51,6 +54,9 @@ export interface KnowledgeHygieneEnginePortsV1 {
   inspect_instruction?: (
     input: InspectInstructionSourceInputV1,
   ) => Promise<InstructionSourceObservationV1>;
+  inspect_references?: (
+    input: InspectKnowledgeReferencesInputV1,
+  ) => Promise<KnowledgeHygieneReferenceObservationV1[]>;
   rules?: readonly KnowledgeHygieneRuleV1[];
 }
 
@@ -173,6 +179,7 @@ export async function checkKnowledgeHygiene(
   const buildChangeSet = ports.build_change_set ?? buildKnowledgeHygieneChangeSet;
   const inventory = ports.inventory ?? inventoryKnowledgeSurfaces;
   const inspect = ports.inspect_instruction ?? inspectInstructionSource;
+  const inspectReferences = ports.inspect_references ?? inspectKnowledgeReferences;
   const now = ports.now ?? (() => new Date());
 
   let repoRoot = await resolveRepoRoot(input.repo_root);
@@ -203,12 +210,17 @@ export async function checkKnowledgeHygiene(
   ]);
   const repoIdentity = await (ports.repo_identity?.(repoRoot)
     ?? basename(repoRoot));
+  const referenceObservations = await inspectReferences({
+    repo_root: repoRoot,
+    inventory: surfaceInventory,
+  });
   const evaluated = evaluateKnowledgeHygieneRules(
     {
       repo_identity: repoIdentity,
       config,
       inventory: surfaceInventory,
       instruction_observations: observations,
+      reference_observations: referenceObservations,
       change_set: changeSet,
     },
     selectedRules(input, ports.rules ?? KNOWLEDGE_HYGIENE_RULES_V1),

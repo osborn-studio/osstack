@@ -12,4 +12,6 @@ bounded, symlink-safe inventory of recognized repository knowledge surfaces
 and a closed rule registry for instruction, required-surface, budget, and
 incomplete-scan findings. Compose these boundaries into a deterministic,
 injectable, read-only report engine with suppression accounting. Evaluate
-configured change-review contracts against structured Git change sets.
+configured change-review contracts against structured Git change sets. Check
+plain relative Markdown links and exact-line instruction imports with
+conservative parsing and repository-confined symlink handling.

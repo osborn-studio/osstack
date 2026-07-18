@@ -37,6 +37,7 @@ function evaluate(input: {
     config: input.config,
     inventory: inventory(input.surfaces ?? [], input.complete ?? true),
     instruction_observations: input.observations ?? [],
+    reference_observations: [],
     change_set: undefined,
   });
 }

@@ -7,27 +7,23 @@ import { BUDGET_RULES_V1 } from "./budget-rule.js";
 import { CHANGE_CONTRACT_RULE_V1 } from "./change-contract-rule.js";
 import { INSTRUCTION_RULES_V1 } from "./instruction-rule.js";
 import { REQUIRED_SURFACE_RULE_V1 } from "./required-surface-rule.js";
+import { REFERENCE_RULES_V1 } from "./reference-rule.js";
 import {
   createRuleFinding,
   type KnowledgeHygieneRuleInputV1,
   type KnowledgeHygieneRuleV1,
 } from "./rule-types.js";
 
-export type { KnowledgeHygieneRuleInputV1, KnowledgeHygieneRuleV1 } from "./rule-types.js";
-
-const defaultSeverities = {
-  "reference.markdown_target_missing": "warning",
-  "reference.instruction_import_missing": "error",
-} as const;
-
-const deferredRules = Object.entries(defaultSeverities).map(
-  ([id, severity]) => ({
-    id: KnowledgeHygieneRuleIdV1.parse(id),
-    version: "1",
-    default_severity: severity,
-    evaluate: () => [],
-  }) satisfies KnowledgeHygieneRuleV1,
-);
+export type {
+  KnowledgeHygieneReferenceObservationV1,
+  KnowledgeHygieneRuleInputV1,
+  KnowledgeHygieneRuleV1,
+} from "./rule-types.js";
+export {
+  inspectKnowledgeReferences,
+  type InspectKnowledgeReferencesInputV1,
+  REFERENCE_RULES_V1,
+} from "./reference-rule.js";
 
 const scanIncompleteRule: KnowledgeHygieneRuleV1 = {
   id: "scan.incomplete",
@@ -67,7 +63,7 @@ const unorderedRules: readonly KnowledgeHygieneRuleV1[] = [
   ...INSTRUCTION_RULES_V1,
   REQUIRED_SURFACE_RULE_V1,
   ...BUDGET_RULES_V1,
-  ...deferredRules,
+  ...REFERENCE_RULES_V1,
   CHANGE_CONTRACT_RULE_V1,
   scanIncompleteRule,
 ];

@@ -625,14 +625,14 @@ syntax.
 
 **Acceptance criteria:**
 
-- [ ] Parser behavior matches spec §11.2.
-- [ ] Path-like prose and code examples do not create findings.
-- [ ] Missing relative targets include source line evidence.
-- [ ] Unsupported syntax is skipped without failing the scan.
+- [x] Parser behavior matches spec §11.2.
+- [x] Path-like prose and code examples do not create findings.
+- [x] Missing relative targets include source line evidence.
+- [x] Unsupported syntax is skipped without failing the scan.
 
 **Verification:**
 
-- [ ] `pnpm --filter @osstack/governance test -- reference-rule`
+- [x] `pnpm --filter @osstack/governance test -- reference-rule`
 
 **Dependencies:** R0.4.
 

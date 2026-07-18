@@ -45,6 +45,7 @@ function evaluate(paths: string[], enforcement?: "advisory" | "required") {
     config: config(enforcement),
     inventory: emptyInventory,
     instruction_observations: [],
+    reference_observations: [],
     change_set: changeSet(paths),
   });
 }
