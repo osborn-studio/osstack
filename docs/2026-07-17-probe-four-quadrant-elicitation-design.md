@@ -1122,7 +1122,7 @@ pnpm --filter @osstack/conformance test
 pnpm typecheck && pnpm test && pnpm build
 ```
 
-### R1.1 — Portable render 与 artifact pair
+### R1.1 — Portable render 与 artifact pair（2026-07-18 完成）
 
 **依赖：** R0.6。
 
@@ -1137,10 +1137,10 @@ pnpm typecheck && pnpm test && pnpm build
 
 **验收：**
 
-- [ ] canonical JSON、Markdown hash frontmatter、目录布局符合 §4/§5。
-- [ ] manifest-last、崩溃半套 fail-closed、same-session rerender、人工改写冲突、path escape 有测试。
-- [ ] `ledger destination` 只记录 applied/verified attestation，不编辑目标文档，且 stale content hash 可被识别。
-- [ ] fresh home 可只凭 ledger.json 与同目录 render-manifest 验证 schema/hash。
+- [x] canonical JSON、Markdown hash frontmatter、目录布局符合 §4/§5。
+- [x] manifest-last、崩溃半套 fail-closed、same-session rerender、人工改写冲突、path escape 有测试。
+- [x] `ledger destination` 只记录 applied/verified attestation，不编辑目标文档；content hash 已进入 portable ledger，供 R1.2 gate 识别 stale。
+- [x] fresh home 可只凭 ledger.json 与同目录 render-manifest 验证 schema/hash。
 
 **验证：**
 

@@ -1,4 +1,11 @@
-import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AgentCommandResult } from "@osstack/protocol";
@@ -215,6 +222,228 @@ describe("handleProbeCommand", () => {
       status: "error",
       error: { code: "bad_request" },
     });
+  });
+
+  it("renders a manifest-last portable ledger and detects later manual edits", async () => {
+    const command = await harness();
+    await handleProbeCommand(
+      startArgs([
+        "--domain-familiarity",
+        "expert",
+        "--repo-familiarity",
+        "maintainer",
+        "--intent-maturity",
+        "review_ready",
+      ]),
+      command.deps,
+    );
+    const started = json(command.stdout);
+    const session = started.result?.session as {
+      session_id: string;
+      revision: number;
+    };
+
+    const renderArgs = [
+      "render",
+      "--session",
+      session.session_id,
+      "--if-revision",
+      String(session.revision),
+      "--target",
+      "all",
+      "--actor-kind",
+      "agent",
+      "--actor-id",
+      "codex",
+      "--idempotency-key",
+      "render-001",
+      "--json",
+    ];
+    command.stdout.length = 0;
+    expect(await handleProbeCommand(renderArgs, command.deps)).toBe(0);
+    const rendered = json(command.stdout);
+    const artifact = rendered.result?.artifact as {
+      out_dir: string;
+      manifest: { files: Array<{ path: string }> };
+    };
+    expect(artifact.manifest.files.map((file) => file.path)).toEqual([
+      "ledger.json",
+      "ledger.md",
+      "product-delta.md",
+      "technical-delta.md",
+      "test-matrix.md",
+    ]);
+    const output = join(command.repo, artifact.out_dir);
+    await expect(
+      readFile(join(output, "render-manifest.json"), "utf8"),
+    ).resolves.toContain(`"session_id":"${session.session_id}"`);
+
+    command.stdout.length = 0;
+    expect(await handleProbeCommand(renderArgs, command.deps)).toBe(0);
+    expect(json(command.stdout).result).toEqual(rendered.result);
+
+    await writeFile(join(output, "ledger.md"), "manual edit\n", "utf8");
+    command.stdout.length = 0;
+    expect(await handleProbeCommand(renderArgs, command.deps)).toBe(3);
+    expect(json(command.stdout)).toMatchObject({
+      status: "error",
+      error: { code: "conflict" },
+    });
+  });
+
+  it("attests destination content without editing it and reserves verification for humans", async () => {
+    const command = await harness();
+    await handleProbeCommand(
+      startArgs([
+        "--domain-familiarity",
+        "expert",
+        "--repo-familiarity",
+        "maintainer",
+        "--intent-maturity",
+        "review_ready",
+      ]),
+      command.deps,
+    );
+    const started = json(command.stdout);
+    const session = started.result?.session as { session_id: string };
+    const first = started.result?.current_item as { item_id: string };
+    command.stdout.length = 0;
+    await handleProbeCommand(
+      [
+        "next",
+        "--session",
+        session.session_id,
+        "--question",
+        first.item_id,
+        "--if-revision",
+        "1",
+        "--answer",
+        "Use a versioned model.",
+        "--destination-role",
+        "technical_design",
+        "--destination-path",
+        "docs/technical-design.md",
+        "--actor-kind",
+        "human",
+        "--actor-id",
+        "owner",
+        "--idempotency-key",
+        "answer-for-attestation",
+        "--json",
+      ],
+      command.deps,
+    );
+
+    const appliedArgs = [
+      "ledger",
+      "destination",
+      "--session",
+      session.session_id,
+      "--item",
+      first.item_id,
+      "--state",
+      "applied",
+      "--content-sha256",
+      "a".repeat(64),
+      "--if-revision",
+      "2",
+      "--actor-kind",
+      "agent",
+      "--actor-id",
+      "codex",
+      "--idempotency-key",
+      "destination-applied",
+      "--json",
+    ];
+    command.stdout.length = 0;
+    expect(await handleProbeCommand(appliedArgs, command.deps)).toBe(0);
+    expect(json(command.stdout).result).toMatchObject({
+      command: "probe.ledger.destination",
+      session: { revision: 3 },
+    });
+    command.stdout.length = 0;
+    await handleProbeCommand(
+      ["ledger", "--session", session.session_id, "--state", "resolved", "--json"],
+      command.deps,
+    );
+    expect(json(command.stdout).result?.items).toEqual([
+      expect.objectContaining({
+        item_id: first.item_id,
+        destination: {
+          role: "technical_design",
+          path: "docs/technical-design.md",
+          write_state: "applied",
+          content_sha256: "a".repeat(64),
+        },
+      }),
+    ]);
+    await expect(
+      readFile(join(command.repo, "docs/technical-design.md"), "utf8"),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+
+    command.stdout.length = 0;
+    expect(
+      await handleProbeCommand(
+        [
+          ...appliedArgs.slice(0, appliedArgs.indexOf("--state") + 1),
+          "verified",
+          "--content-sha256",
+          "a".repeat(64),
+          "--if-revision",
+          "3",
+          "--actor-kind",
+          "agent",
+          "--actor-id",
+          "codex",
+          "--idempotency-key",
+          "destination-agent-verified",
+          "--json",
+        ],
+        command.deps,
+      ),
+    ).toBe(2);
+
+    command.stdout.length = 0;
+    expect(
+      await handleProbeCommand(
+        [
+          "ledger",
+          "destination",
+          "--session",
+          session.session_id,
+          "--item",
+          first.item_id,
+          "--state",
+          "verified",
+          "--content-sha256",
+          "a".repeat(64),
+          "--if-revision",
+          "3",
+          "--actor-kind",
+          "human",
+          "--actor-id",
+          "owner",
+          "--idempotency-key",
+          "destination-human-verified",
+          "--json",
+        ],
+        command.deps,
+      ),
+    ).toBe(0);
+    expect(json(command.stdout).result).toMatchObject({
+      session: { revision: 4 },
+    });
+    command.stdout.length = 0;
+    await handleProbeCommand(
+      ["ledger", "--session", session.session_id, "--state", "resolved", "--json"],
+      command.deps,
+    );
+    expect(json(command.stdout).result?.items).toEqual([
+      expect.objectContaining({
+        item_id: first.item_id,
+        destination: expect.objectContaining({ write_state: "verified" }),
+      }),
+    ]);
   });
 
   it("replays start and answer idempotently without duplicating events", async () => {

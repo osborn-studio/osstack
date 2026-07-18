@@ -12,6 +12,7 @@ import {
   listProbeItems,
   mutateProbeSession,
   ProbeStoreConflictError,
+  recordProbeArtifact,
   replayProbeCommand,
 } from "./probe-store.js";
 
@@ -110,6 +111,28 @@ function mutationInput() {
       result_json: JSON.stringify({ session_id: "probe_12345678", revision: 2 }),
       created_at_ms: 2,
     },
+  };
+}
+
+function artifactInput() {
+  return {
+    receipt_id: "par_12345678",
+    session_id: "probe_12345678",
+    exported_revision: 1,
+    idempotency_key: "render-001",
+    actor: { type: "agent" as const, id: "codex" },
+    manifest_json: JSON.stringify({
+      schema_version: "1",
+      session_id: "probe_12345678",
+      exported_revision: 1,
+    }),
+    rendered_at_ms: 2,
+    request_sha256: "d".repeat(64),
+    result_json: JSON.stringify({
+      command: "probe.render",
+      session_id: "probe_12345678",
+      exported_revision: 1,
+    }),
   };
 }
 
@@ -242,6 +265,59 @@ describe("probe store", () => {
       replayed: true,
       result_json: mutationInput().receipt.result_json,
     });
+    db.close();
+  });
+
+  it("records artifact and command receipts atomically without changing revision", async () => {
+    const path = await databasePath();
+    const db = openDb({ path, minFreeBytes: 0 });
+    createProbeSession(db, createInput());
+
+    expect(recordProbeArtifact(db, artifactInput())).toEqual({
+      replayed: false,
+      result_json: artifactInput().result_json,
+    });
+    expect(getProbeSession(db, "probe_12345678")?.revision).toBe(1);
+    expect(
+      db.prepare(
+        "SELECT exported_revision, manifest_json FROM probe_artifacts WHERE receipt_id = ?",
+      ).get("par_12345678"),
+    ).toEqual({
+      exported_revision: 1,
+      manifest_json: artifactInput().manifest_json,
+    });
+    expect(recordProbeArtifact(db, artifactInput())).toEqual({
+      replayed: true,
+      result_json: artifactInput().result_json,
+    });
+    expect(
+      db.prepare("SELECT COUNT(*) AS count FROM probe_artifacts").get(),
+    ).toEqual({ count: 1 });
+
+    expectConflict(
+      () =>
+        recordProbeArtifact(db, {
+          ...artifactInput(),
+          request_sha256: "e".repeat(64),
+        }),
+      "idempotency_conflict",
+    );
+    db.close();
+  });
+
+  it("rejects rendering a stale session revision", async () => {
+    const path = await databasePath();
+    const db = openDb({ path, minFreeBytes: 0 });
+    createProbeSession(db, createInput());
+    mutateProbeSession(db, mutationInput());
+
+    expectConflict(
+      () => recordProbeArtifact(db, artifactInput()),
+      "revision_conflict",
+    );
+    expect(
+      db.prepare("SELECT COUNT(*) AS count FROM probe_artifacts").get(),
+    ).toEqual({ count: 0 });
     db.close();
   });
 

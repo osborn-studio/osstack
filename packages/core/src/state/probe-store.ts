@@ -62,6 +62,28 @@ const ProbeCommandReceiptV1 = z
   })
   .strict();
 
+export const RecordProbeArtifactInputV1 = z
+  .object({
+    receipt_id: z.string().regex(/^par_[a-z0-9][a-z0-9_-]{7,63}$/),
+    session_id: sessionId,
+    exported_revision: z.number().int().positive(),
+    idempotency_key: z.string().trim().min(1).max(256),
+    actor: z
+      .object({
+        type: z.enum(["human", "agent"]),
+        id: z.string().trim().min(1).max(256),
+      })
+      .strict(),
+    manifest_json: jsonText,
+    rendered_at_ms: epochMilliseconds,
+    request_sha256: sha256,
+    result_json: jsonText,
+  })
+  .strict();
+export type RecordProbeArtifactInputV1 = z.infer<
+  typeof RecordProbeArtifactInputV1
+>;
+
 export const CreateProbeSessionInputV1 = z
   .object({
     session: ProbeStoredSessionCreateV1,
@@ -403,6 +425,54 @@ export function mutateProbeSession(
     }
     insertReceipt(db, input.receipt);
     return { replayed: false, result_json: input.receipt.result_json };
+  });
+  return transaction.immediate();
+}
+
+export function recordProbeArtifact(
+  db: Database.Database,
+  rawInput: RecordProbeArtifactInputV1,
+): ProbeStoreCommandResultV1 {
+  const input = RecordProbeArtifactInputV1.parse(rawInput);
+  const commandReceipt = ProbeCommandReceiptV1.parse({
+    scope_key: `session:${input.session_id}`,
+    idempotency_key: input.idempotency_key,
+    request_sha256: input.request_sha256,
+    result_json: input.result_json,
+    created_at_ms: input.rendered_at_ms,
+  });
+  const transaction = db.transaction(() => {
+    const replay = replayReceipt(db, commandReceipt);
+    if (replay !== undefined) return replay;
+    const current = db
+      .prepare("SELECT revision FROM probe_sessions WHERE session_id = ?")
+      .get(input.session_id) as { revision: number } | undefined;
+    if (current?.revision !== input.exported_revision) {
+      throw new ProbeStoreConflictError(
+        "revision_conflict",
+        current === undefined
+          ? `session ${input.session_id} does not exist`
+          : `expected revision ${input.exported_revision}, found ${current.revision}`,
+        current?.revision,
+      );
+    }
+    db.prepare(`
+      INSERT INTO probe_artifacts (
+        receipt_id, session_id, exported_revision, idempotency_key,
+        actor_kind, actor_id, manifest_json, rendered_at_ms
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      input.receipt_id,
+      input.session_id,
+      input.exported_revision,
+      input.idempotency_key,
+      input.actor.type,
+      input.actor.id,
+      input.manifest_json,
+      input.rendered_at_ms,
+    );
+    insertReceipt(db, commandReceipt);
+    return { replayed: false, result_json: input.result_json };
   });
   return transaction.immediate();
 }

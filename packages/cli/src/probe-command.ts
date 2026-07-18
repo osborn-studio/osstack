@@ -7,10 +7,12 @@ import {
   mutateProbeSession,
   openDb,
   ProbeStoreConflictError,
+  recordProbeArtifact,
   replayProbeCommand,
 } from "@osstack/core";
 import {
   applyProbeMutation,
+  createProbeRenderBundle,
   deriveProbeReadiness,
   deriveProbeSeverity,
   getCurrentProbeItem,
@@ -42,11 +44,18 @@ import {
   mkdir,
   readFile,
   realpath,
+  rm,
   stat,
 } from "node:fs/promises";
 import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { osstackHome } from "./paths.js";
+import {
+  ProbeRenderWriteError,
+  readProbeRenderDirectory,
+  writeProbeRenderBundle,
+} from "./probe-render.js";
+import { VERSION } from "./version.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -62,7 +71,7 @@ export interface ProbeCommandDependencies {
   stdout: (value: string) => void;
   stderr: (value: string) => void;
   now_ms?: () => number;
-  create_id?: (prefix: "probe" | "pi" | "pe") => string;
+  create_id?: (prefix: "probe" | "pi" | "pe" | "par") => string;
   state_db_path?: () => Promise<string>;
   inspect_repository?: (
     repoPath: string,
@@ -106,6 +115,8 @@ Usage:
   osstack probe resume --session <id> --if-revision <n> [resume options]
   osstack probe status (--session <id> | --repo <path>)
   osstack probe ledger --session <id> [filters]
+  osstack probe ledger destination --session <id> --item <id> [write options]
+  osstack probe render --session <id> --if-revision <n> --target <target>
 
 Start options:
   --repo <path>                    Repository root (default: cwd)
@@ -139,6 +150,10 @@ Document answers also require:
 Resume options:
   --extend-budget <1..100>         Required after a budget pause
   --revisit <deferred-item-id>     Repeatable
+
+Render options:
+  --target <ledger|product-delta|technical-delta|test-matrix|all>
+  --out <repo-relative-dir>        Default: docs/probe/sessions/<session-id>
 
 Output:
   --format <human|json> | --json
@@ -441,7 +456,7 @@ async function validateDestinationPath(
   return parsed.data;
 }
 
-function createIdDefault(prefix: "probe" | "pi" | "pe"): string {
+function createIdDefault(prefix: "probe" | "pi" | "pe" | "par"): string {
   return `${prefix}_${randomUUID()}`;
 }
 
@@ -1373,6 +1388,233 @@ async function handleLedger(
   }
 }
 
+async function handleLedgerDestination(
+  args: readonly string[],
+  deps: ProbeCommandDependencies,
+): Promise<number> {
+  const flags = commonExistingSessionFlags(args, {
+    value_flags: [
+      "--item",
+      "--state",
+      "--content-sha256",
+      "--if-revision",
+      "--actor-kind",
+      "--actor-id",
+      "--idempotency-key",
+    ],
+  });
+  const format = parseFormat(flags);
+  const sessionId = required(flags, "--session");
+  const itemId = required(flags, "--item");
+  const destinationState = required(flags, "--state");
+  if (destinationState !== "applied" && destinationState !== "verified") {
+    throw new ProbeUsageError("destination state must be applied or verified");
+  }
+  const actor = parseActor(flags);
+  const idempotencyKey = required(flags, "--idempotency-key");
+  const ifRevision = parseInteger(
+    required(flags, "--if-revision"),
+    "--if-revision",
+    { min: 1, max: Number.MAX_SAFE_INTEGER },
+  );
+  const contentSha256 = required(flags, "--content-sha256");
+  const requestSha = digest({
+    command: "probe.ledger.destination",
+    session_id: sessionId,
+    item_id: itemId,
+    destination_state: destinationState,
+    content_sha256: contentSha256,
+    if_revision: ifRevision,
+    actor,
+  });
+  const db = await openProbeDb(deps);
+  try {
+    const replay = replayProbeCommand(db, {
+      scope_key: `session:${sessionId}`,
+      idempotency_key: idempotencyKey,
+      request_sha256: requestSha,
+    });
+    if (replay !== undefined) {
+      emitResult(
+        deps,
+        format,
+        JSON.parse(replay.result_json) as Record<string, unknown>,
+      );
+      return 0;
+    }
+    const state = loadDomainState(db, sessionId);
+    const nowMs = (deps.now_ms ?? Date.now)();
+    const result = await persistMutation(
+      db,
+      state,
+      {
+        type: "destination",
+        item_id: itemId,
+        destination_state: destinationState,
+        content_sha256: contentSha256,
+        if_revision: ifRevision,
+        actor,
+        idempotency_key: idempotencyKey,
+        event_id: (deps.create_id ?? createIdDefault)("pe"),
+        occurred_at_ms: nowMs,
+      },
+      requestSha,
+      "probe.ledger.destination",
+      nowMs,
+    );
+    emitResult(deps, format, result);
+    return 0;
+  } finally {
+    db.close();
+  }
+}
+
+function parseRenderTargets(value: string) {
+  if (value === "all") {
+    return [
+      "ledger",
+      "product-delta",
+      "technical-delta",
+      "test-matrix",
+    ] as const;
+  }
+  if (
+    value === "ledger" ||
+    value === "product-delta" ||
+    value === "technical-delta" ||
+    value === "test-matrix"
+  ) {
+    return [value] as const;
+  }
+  throw new ProbeUsageError(`unsupported render target: ${value}`);
+}
+
+async function handleRender(
+  args: readonly string[],
+  deps: ProbeCommandDependencies,
+): Promise<number> {
+  const flags = commonExistingSessionFlags(args, {
+    value_flags: [
+      "--if-revision",
+      "--target",
+      "--out",
+      "--actor-kind",
+      "--actor-id",
+      "--idempotency-key",
+    ],
+  });
+  const format = parseFormat(flags);
+  const sessionId = required(flags, "--session");
+  const ifRevision = parseInteger(
+    required(flags, "--if-revision"),
+    "--if-revision",
+    { min: 1, max: Number.MAX_SAFE_INTEGER },
+  );
+  const targets = parseRenderTargets(required(flags, "--target"));
+  const outDir =
+    one(flags, "--out") ?? `docs/probe/sessions/${sessionId}`;
+  const actor = parseActor(flags);
+  const idempotencyKey = required(flags, "--idempotency-key");
+  const requestSha = digest({
+    command: "probe.render",
+    session_id: sessionId,
+    if_revision: ifRevision,
+    targets,
+    out_dir: outDir,
+    actor,
+  });
+  const repoRoot = await realpath(deps.cwd());
+  const db = await openProbeDb(deps);
+  try {
+    const replay = replayProbeCommand(db, {
+      scope_key: `session:${sessionId}`,
+      idempotency_key: idempotencyKey,
+      request_sha256: requestSha,
+    });
+    if (replay !== undefined) {
+      const replayedResult = JSON.parse(replay.result_json) as Record<
+        string,
+        unknown
+      >;
+      try {
+        await readProbeRenderDirectory(resolve(repoRoot, outDir));
+      } catch {
+        throw new ProbeRenderWriteError(
+          "artifact_conflict",
+          "render receipt exists but its artifact set is missing or modified",
+        );
+      }
+      emitResult(deps, format, replayedResult);
+      return 0;
+    }
+    const state = loadDomainState(db, sessionId);
+    if (state.session.revision !== ifRevision) {
+      throw new ProbeStoreConflictError(
+        "revision_conflict",
+        `expected revision ${ifRevision}, found ${state.session.revision}`,
+        state.session.revision,
+      );
+    }
+    const nowMs = (deps.now_ms ?? Date.now)();
+    const events = listProbeEvents(db, sessionId).map((event) =>
+      JSON.parse(event.event_json),
+    );
+    const bundle = createProbeRenderBundle({
+      state,
+      events,
+      exported_at_ms: nowMs,
+      generator_version: VERSION,
+      targets,
+    });
+    const protectedInputPaths = state.session.input_refs.flatMap((input) =>
+      input.repo_relative_path === undefined
+        ? []
+        : [resolve(repoRoot, input.repo_relative_path)],
+    );
+    const written = await writeProbeRenderBundle({
+      repo_root: repoRoot,
+      out_dir: outDir,
+      bundle,
+      protected_input_paths: protectedInputPaths,
+    });
+    const result = {
+      command: "probe.render",
+      session: state.session,
+      artifact: {
+        out_dir: outDir,
+        manifest_path: `${outDir}/render-manifest.json`,
+        ledger_sha256: bundle.ledger_sha256,
+        manifest: bundle.manifest,
+      },
+      readiness: bundle.ledger.readiness,
+    };
+    try {
+      const stored = recordProbeArtifact(db, {
+        receipt_id: (deps.create_id ?? createIdDefault)("par"),
+        session_id: sessionId,
+        exported_revision: ifRevision,
+        idempotency_key: idempotencyKey,
+        actor,
+        manifest_json: bundle.manifest_content,
+        rendered_at_ms: nowMs,
+        request_sha256: requestSha,
+        result_json: JSON.stringify(result),
+      });
+      emitResult(
+        deps,
+        format,
+        JSON.parse(stored.result_json) as Record<string, unknown>,
+      );
+      return 0;
+    } catch (error) {
+      await rm(written.manifest_path, { force: true });
+      throw error;
+    }
+  } finally {
+    db.close();
+  }
+}
+
 export async function handleProbeCommand(
   args: readonly string[],
   deps: ProbeCommandDependencies,
@@ -1389,7 +1631,11 @@ export async function handleProbeCommand(
     if (command === "next") return await handleNext(rest, deps);
     if (command === "resume") return await handleResume(rest, deps);
     if (command === "status") return await handleStatus(rest, deps);
+    if (command === "ledger" && rest[0] === "destination") {
+      return await handleLedgerDestination(rest.slice(1), deps);
+    }
     if (command === "ledger") return await handleLedger(rest, deps);
+    if (command === "render") return await handleRender(rest, deps);
     throw new ProbeUsageError(`unknown subcommand: ${command}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -1408,6 +1654,17 @@ export async function handleProbeCommand(
     if (error instanceof ProbeNotFoundError) {
       emitError(deps, json, "not_found", message, false);
       return 2;
+    }
+    if (error instanceof ProbeRenderWriteError) {
+      const conflict = error.code === "artifact_conflict";
+      emitError(
+        deps,
+        json,
+        conflict ? "conflict" : "bad_request",
+        message,
+        conflict,
+      );
+      return conflict ? 3 : 2;
     }
     if (
       error instanceof ProbeUsageError ||
