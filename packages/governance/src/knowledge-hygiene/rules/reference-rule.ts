@@ -63,6 +63,17 @@ function extractReferences(
   inventory: KnowledgeSurfaceInventoryV1,
 ): ExtractedReferenceV1[] {
   const references: ExtractedReferenceV1[] = [];
+  const seen = new Set<string>();
+  const addReference = (reference: ExtractedReferenceV1): void => {
+    const key = [
+      reference.kind,
+      reference.source_path,
+      reference.resolved_path,
+    ].join("\0");
+    if (seen.has(key)) return;
+    seen.add(key);
+    references.push(reference);
+  };
   for (const surface of inventory.surfaces) {
     if (surface.kind !== "file" || surface.content === undefined) continue;
     const lines = surface.content.replace(/\r\n?/g, "\n").split("\n");
@@ -85,7 +96,7 @@ function extractReferences(
           "markdown_link",
         );
         if (!target) continue;
-        references.push({
+        addReference({
           kind: "markdown_link",
           source_path: surface.path,
           line: index + 1,
@@ -103,7 +114,7 @@ function extractReferences(
             "instruction_import",
           );
           if (target) {
-            references.push({
+            addReference({
               kind: "instruction_import",
               source_path: surface.path,
               line: index + 1,

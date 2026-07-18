@@ -74,6 +74,22 @@ describe("conservative reference rules", () => {
     ]);
   });
 
+  it("reports a repeated source-target pair once at its first line", async () => {
+    const repoRoot = await mkdtemp(join(tmpdir(), "osstack-neat-reference-"));
+    const findings = await evaluate(repoRoot, [{
+      path: "docs/guide.md",
+      surface: "documentation",
+      content: "[first](missing.md)\n[second](missing.md)\n",
+    }]);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.location).toEqual({
+      path: "docs/guide.md",
+      line: 1,
+      anchor: "target:docs/missing.md",
+    });
+  });
+
   it("ignores URLs, images, fragments, code fences, wikilinks, variables, and prose", async () => {
     const repoRoot = await mkdtemp(join(tmpdir(), "osstack-neat-reference-"));
     const findings = await evaluate(repoRoot, [{
