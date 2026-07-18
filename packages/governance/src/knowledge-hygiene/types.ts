@@ -236,3 +236,91 @@ export const KnowledgeHygieneCheckInputV1 = z
 export type KnowledgeHygieneCheckInputV1 = z.infer<
   typeof KnowledgeHygieneCheckInputV1
 >;
+
+export const KnowledgeHygieneChangeStatusV1 = z.enum([
+  "added",
+  "modified",
+  "deleted",
+  "renamed",
+  "untracked",
+]);
+export type KnowledgeHygieneChangeStatusV1 = z.infer<
+  typeof KnowledgeHygieneChangeStatusV1
+>;
+
+export const KnowledgeHygieneChangeV1 = z
+  .object({
+    path: z.string().min(1),
+    status: KnowledgeHygieneChangeStatusV1,
+    old_path: z.string().min(1).optional(),
+    content_sha256: sha256.optional(),
+  })
+  .strict()
+  .superRefine((change, context) => {
+    if (change.status === "renamed" && change.old_path === undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "renamed change requires old_path",
+      });
+    }
+    if (change.status !== "renamed" && change.old_path !== undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "old_path is valid only for renamed changes",
+      });
+    }
+    if (change.status === "deleted" && change.content_sha256 !== undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "deleted change cannot have content_sha256",
+      });
+    }
+  });
+export type KnowledgeHygieneChangeV1 = z.infer<
+  typeof KnowledgeHygieneChangeV1
+>;
+
+export const KnowledgeHygieneChangeSetV1 = z
+  .object({
+    schema_version: z.literal("1"),
+    repo_root: z.string().min(1),
+    mode: z.enum(["worktree", "range", "base_to_worktree"]),
+    base_ref: z.string().min(1),
+    base_sha: gitObjectId,
+    head_ref: z.string().min(1).optional(),
+    head_sha: gitObjectId.optional(),
+    config_sha256: sha256.optional(),
+    changes: z.array(KnowledgeHygieneChangeV1),
+    changed_paths: z.array(z.string().min(1)),
+    diff_id: z.string().regex(/^diff_[a-f0-9]{64}$/),
+  })
+  .strict()
+  .superRefine((changeSet, context) => {
+    if (
+      changeSet.mode === "range" &&
+      (!changeSet.head_ref || !changeSet.head_sha)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "range change set requires head_ref and head_sha",
+      });
+    }
+    if (
+      changeSet.mode !== "range" &&
+      (changeSet.head_ref !== undefined || changeSet.head_sha !== undefined)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "head_ref and head_sha are valid only for range mode",
+      });
+    }
+    if (new Set(changeSet.changed_paths).size !== changeSet.changed_paths.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "changed_paths must not contain duplicates",
+      });
+    }
+  });
+export type KnowledgeHygieneChangeSetV1 = z.infer<
+  typeof KnowledgeHygieneChangeSetV1
+>;

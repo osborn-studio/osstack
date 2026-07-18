@@ -602,7 +602,38 @@ present, is lowercase hexadecimal. `base_ref` is required for `range` and
 `skip_checks` are mutually exclusive and contain no duplicates. These
 cross-field constraints are enforced by the schema, not deferred to the CLI.
 
-### 8.5 Rule specification
+### 8.5 Git change set
+
+```ts
+interface KnowledgeHygieneChangeV1 {
+  path: string;
+  status: "added" | "modified" | "deleted" | "renamed" | "untracked";
+  old_path?: string;
+  content_sha256?: string;
+}
+
+interface KnowledgeHygieneChangeSetV1 {
+  schema_version: "1";
+  repo_root: string;
+  mode: "worktree" | "range" | "base_to_worktree";
+  base_ref: string;
+  base_sha: string;
+  head_ref?: string;
+  head_sha?: string;
+  config_sha256?: string;
+  changes: KnowledgeHygieneChangeV1[];
+  changed_paths: string[];
+  diff_id: string;
+}
+```
+
+Renames contribute both `old_path` and `path` to `changed_paths`. Worktree
+content hashes describe the final visible content (symlinks are hashed as link
+text by Git); deleted content is identified by the resolved base SHA. Range
+mode is content-addressed by its resolved base and head SHAs. The deterministic
+`diff_id` covers the normalized change set and optional config SHA-256.
+
+### 8.6 Rule specification
 
 ```ts
 interface KnowledgeHygieneRuleV1 {
@@ -616,7 +647,7 @@ interface KnowledgeHygieneRuleV1 {
 Rules are registered in one immutable table. Unknown configured rule ids are
 boundary errors. Consumer switches are exhaustive.
 
-### 8.6 Engine interface
+### 8.7 Engine interface
 
 ```ts
 interface KnowledgeHygieneEngineV1 {

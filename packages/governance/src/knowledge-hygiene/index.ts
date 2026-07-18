@@ -1,3 +1,4 @@
+export * from "./change-set.js";
 export * from "./config.js";
 export * from "./fingerprint.js";
 export * from "./instruction-source.js";

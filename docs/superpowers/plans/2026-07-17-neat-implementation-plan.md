@@ -388,15 +388,15 @@ of unsupported glob syntax.
 
 **Acceptance criteria:**
 
-- [ ] Default includes staged, unstaged, deleted, renamed, and untracked paths.
-- [ ] Range mode requires valid explicit refs and records resolved SHAs.
-- [ ] Git timeout and command failure produce typed boundary errors.
-- [ ] `diff_id` changes when relevant content or config changes.
+- [x] Default includes staged, unstaged, deleted, renamed, and untracked paths.
+- [x] Range mode requires valid explicit refs and records resolved SHAs.
+- [x] Git timeout and command failure produce typed boundary errors.
+- [x] `diff_id` changes when relevant content or config changes.
 
 **Verification:**
 
-- [ ] `pnpm --filter @osstack/governance test -- change-set`
-- [ ] Tests initialize temporary Git repositories without network access.
+- [x] `pnpm --filter @osstack/governance test -- change-set`
+- [x] Tests initialize temporary Git repositories without network access.
 
 **Dependencies:** R0.3.1.
 
