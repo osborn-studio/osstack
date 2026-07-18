@@ -1042,10 +1042,11 @@ changeset.
 **Description:** Write a focused migration design for runs, finding occurrences,
 and resolutions before changing the DB.
 
-**Acceptance criteria:** Schema supports first/last seen, recurrence, closure,
+**Acceptance criteria:** ✅ Schema supports first/last seen, recurrence, closure,
 and report identity without storing duplicate report blobs by default.
 
-**Verification:** Owner approves migration and rollback plan.
+**Verification:** ✅ Owner-approved all-phase execution; ADR-003 records the
+migration and rollback plan.
 
 **Dependencies:** R0; may be designed in parallel with R1 but not implemented
 without approval.
