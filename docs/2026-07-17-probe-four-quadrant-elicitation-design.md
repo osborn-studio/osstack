@@ -1214,9 +1214,9 @@ pnpm --filter @osstack/cli test -- probe-dynamic
 
 **验收：**
 
-- [ ] skill 必须调 CLI，不能徒手维护 ledger 或 gate。
-- [ ] 一次一题、熟悉度、prototype reaction、reference 与 evidence 规则写清。
-- [ ] 恶意仓库文本测试证明其被当作数据，不改变权限/工作流。
+- [x] skill 必须调 CLI，不能徒手维护 ledger 或 gate。
+- [x] 一次一题、熟悉度、prototype reaction、reference 与 evidence 规则写清。
+- [x] 恶意仓库文本测试证明其被当作数据，不改变权限/工作流。
 
 **验证：** skill fixture E2E + `pnpm smoke:probe`。
 
@@ -1310,15 +1310,15 @@ pnpm --filter @osstack/cli test -- probe-dynamic
 
 ### R1 checkpoint
 
-- [ ] fresh-home portable gate smoke 通过。
+- [x] fresh-home portable gate smoke 通过。
 - [ ] report-only dogfood 至少两周，无误阻断。
-- [ ] block mode 仍需 repo 显式配置，不自动启用。
+- [x] block mode 仍需 repo 显式配置，不自动启用。
 
 ### R2 checkpoint
 
 - [ ] 至少 5 个真实粗糙 spec 的 skill E2E；每个 dynamic item 有可核验证据。
 - [ ] restate 人工抽查无“文本差异=语义错误”的系统性误报。
-- [ ] skill 第三方来源/许可说明齐全。
+- [x] skill 第三方来源/许可说明齐全。
 
 ### R3 checkpoint
 

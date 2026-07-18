@@ -1,0 +1,4 @@
+interface:
+  display_name: "Probe Elicitation"
+  short_description: "Expose implementation-changing unknowns"
+  default_prompt: "Use $probe-skill to probe this rough specification one question at a time and persist the decisions."
