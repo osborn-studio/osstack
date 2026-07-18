@@ -215,6 +215,32 @@ function quadrantAfterResolution(
   return quadrant;
 }
 
+function recordCalibrationAnswer(
+  session: ProbeSessionV1,
+  item: ProbeItemV1,
+  mutation: Extract<ProbeMutationV1, { type: "resolve" }>,
+): ProbeSessionV1 {
+  if (item.origin !== "calibration") return session;
+  if (mutation.destination.role !== "session_profile") {
+    throw new ProbeReducerError(
+      "invalid_item",
+      "calibration answers must target the session profile",
+    );
+  }
+  const value = mutation.selected_option_id ?? mutation.answer;
+  if (!item.options.some((option) => option.option_id === value)) {
+    throw new ProbeReducerError(
+      "invalid_item",
+      "calibration answer must select one of the declared options",
+    );
+  }
+  const familiarity = {
+    ...(session.familiarity ?? {}),
+    [mutation.destination.profile_key]: value,
+  };
+  return ProbeSessionV1.parse({ ...session, familiarity });
+}
+
 function eventFor(
   sessionId: string,
   revision: number,
@@ -259,8 +285,13 @@ function resolveItem(
     updated_at_ms: mutation.occurred_at_ms,
   });
   const items = replaceItem(state.items, index, resolved);
-  const session = advanceAfterDisposition(
+  const calibratedSession = recordCalibrationAnswer(
     state.session,
+    item,
+    mutation,
+  );
+  const session = advanceAfterDisposition(
+    calibratedSession,
     items,
     mutation.occurred_at_ms,
   );

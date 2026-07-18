@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   ProbeEventV1,
+  ProbeFamiliarityV1,
   ProbeItemV1,
   ProbeLedgerV1,
   ProbeQuestionBatchV1,
@@ -98,6 +99,13 @@ describe("probe v1 domain contracts", () => {
         question_budget: Number.POSITIVE_INFINITY,
       }).success,
     ).toBe(false);
+  });
+
+  it("preserves partial familiarity while rejecting an empty profile", () => {
+    expect(ProbeFamiliarityV1.parse({ domain: "working" })).toEqual({
+      domain: "working",
+    });
+    expect(ProbeFamiliarityV1.safeParse({}).success).toBe(false);
   });
 
   it("keeps event, question-batch, and restatement objects strict", () => {

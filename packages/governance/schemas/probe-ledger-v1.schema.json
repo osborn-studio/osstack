@@ -178,11 +178,6 @@
                   ]
                 }
               },
-              "required": [
-                "domain",
-                "repository",
-                "intent"
-              ],
               "additionalProperties": false
             },
             "revision": {
@@ -395,11 +390,6 @@
                   ]
                 }
               },
-              "required": [
-                "domain",
-                "repository",
-                "intent"
-              ],
               "additionalProperties": false
             },
             "revision": {
@@ -620,11 +610,6 @@
                   ]
                 }
               },
-              "required": [
-                "domain",
-                "repository",
-                "intent"
-              ],
               "additionalProperties": false
             },
             "revision": {
@@ -837,11 +822,6 @@
                   ]
                 }
               },
-              "required": [
-                "domain",
-                "repository",
-                "intent"
-              ],
               "additionalProperties": false
             },
             "revision": {

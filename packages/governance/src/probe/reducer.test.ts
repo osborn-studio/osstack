@@ -135,6 +135,42 @@ describe("probe reducer", () => {
     });
   });
 
+  it("writes calibration answers into a partial familiarity profile", () => {
+    const calibration = openItem(
+      "pi_12345678",
+      "cal.domain_familiarity.v1",
+      {
+        origin: "calibration",
+        category: "tacit_convention",
+        destination_hint: "session_profile",
+        options: [
+          {
+            option_id: "working",
+            label: "Working",
+            description: "Working familiarity",
+          },
+        ],
+        impact: 1,
+        irreversibility: 1,
+      },
+    );
+    const result = applyProbeMutation(state(activeSession(), [calibration]), {
+      type: "resolve",
+      item_id: calibration.item_id,
+      answer: "working",
+      selected_option_id: "working",
+      destination: {
+        role: "session_profile",
+        profile_key: "domain",
+        write_state: "verified",
+      },
+      compilation: { state: "not_eligible" },
+      ...metadata(),
+    });
+
+    expect(result.session.familiarity).toEqual({ domain: "working" });
+  });
+
   it("pauses at budget instead of completing and resumes the same next item", () => {
     const first = openItem("pi_12345678", "tech.data_model.v1");
     const second = openItem("pi_87654321", "tech.interface_contract.v1", {

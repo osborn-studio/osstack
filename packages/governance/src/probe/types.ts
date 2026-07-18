@@ -370,11 +370,19 @@ export type ProbeItemV1 = z.infer<typeof ProbeItemV1>;
 
 export const ProbeFamiliarityV1 = z
   .object({
-    domain: z.enum(["novice", "working", "expert"]),
-    repository: z.enum(["new", "familiar", "maintainer"]),
-    intent: z.enum(["sketch", "draft", "review_ready"]),
+    domain: z.enum(["novice", "working", "expert"]).optional(),
+    repository: z.enum(["new", "familiar", "maintainer"]).optional(),
+    intent: z.enum(["sketch", "draft", "review_ready"]).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((familiarity, context) => {
+    if (Object.values(familiarity).every((value) => value === undefined)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "familiarity must record at least one calibrated dimension",
+      });
+    }
+  });
 export type ProbeFamiliarityV1 = z.infer<typeof ProbeFamiliarityV1>;
 
 export const ProbeInputRefV1 = z
