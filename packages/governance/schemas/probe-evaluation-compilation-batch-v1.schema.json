@@ -1,0 +1,230 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Probe Evaluation Compilation Batch v1",
+  "$comment": "Only registered evaluation templates and strict parameter objects are accepted.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1"
+    },
+    "requests": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "item_id": {
+                "type": "string",
+                "pattern": "^pi_[a-z0-9][a-z0-9_-]{7,63}$"
+              },
+              "template_id": {
+                "type": "string",
+                "const": "package-script.v1"
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "required": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "weight": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "default": 1
+                  },
+                  "package_path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1024
+                  },
+                  "script": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,127}$"
+                  }
+                },
+                "required": [
+                  "description",
+                  "package_path",
+                  "script"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "item_id",
+              "template_id",
+              "params"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "item_id": {
+                "type": "string",
+                "pattern": "^pi_[a-z0-9][a-z0-9_-]{7,63}$"
+              },
+              "template_id": {
+                "type": "string",
+                "const": "artifact-path.v1"
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "required": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "weight": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "default": 1
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1024
+                  },
+                  "expectation": {
+                    "type": "string",
+                    "enum": [
+                      "exists",
+                      "absent"
+                    ]
+                  }
+                },
+                "required": [
+                  "description",
+                  "path",
+                  "expectation"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "item_id",
+              "template_id",
+              "params"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "item_id": {
+                "type": "string",
+                "pattern": "^pi_[a-z0-9][a-z0-9_-]{7,63}$"
+              },
+              "template_id": {
+                "type": "string",
+                "const": "contract-manifest.v1"
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "required": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "weight": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "default": 1
+                  },
+                  "manifest_path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1024
+                  },
+                  "manifest_id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+                  }
+                },
+                "required": [
+                  "description",
+                  "manifest_path",
+                  "manifest_id"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "item_id",
+              "template_id",
+              "params"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "item_id": {
+                "type": "string",
+                "pattern": "^pi_[a-z0-9][a-z0-9_-]{7,63}$"
+              },
+              "template_id": {
+                "type": "string",
+                "const": "manual-acceptance.v1"
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "acceptance": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "acceptance",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "item_id",
+              "template_id",
+              "params"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 100
+    }
+  },
+  "required": [
+    "schema_version",
+    "requests"
+  ],
+  "additionalProperties": false
+}

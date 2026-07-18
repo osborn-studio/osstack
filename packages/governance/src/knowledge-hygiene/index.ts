@@ -12,3 +12,4 @@ export * from "./resolution.js";
 export * from "./rules/index.js";
 export * from "./types.js";
 export * from "./adapters/index.js";
+export * from "./adapters/probe-artifacts.js";

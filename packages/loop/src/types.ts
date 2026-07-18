@@ -85,6 +85,38 @@ export const Issue = z.object({
 });
 export type Issue = z.infer<typeof Issue>;
 
+/**
+ * A verifier-reported difference between the agreed design and the observed
+ * implementation. This stays deliberately product-neutral: consumers decide
+ * whether and how to turn the signal into follow-up work.
+ */
+export const ImplementationDeviation = z
+  .object({
+    deviation_id: z.string().regex(/^[a-z0-9][a-z0-9._-]{1,127}$/),
+    question: z.string().trim().min(1).max(4_000),
+    category: z.string().trim().min(1).max(128),
+    doc_type: z.enum(["product", "tech", "test"]),
+    impact: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    irreversibility: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    uncertainty: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    required: z.boolean(),
+    destination_hint: z.string().trim().min(1).max(128),
+    evidence: z
+      .array(
+        z
+          .object({
+            path: z.string().trim().min(1).max(1_024),
+            line: z.number().int().positive().optional(),
+            symbol: z.string().trim().min(1).max(512).optional(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(32),
+  })
+  .strict();
+export type ImplementationDeviation = z.infer<typeof ImplementationDeviation>;
+
 export const Verdict = z.object({
   pass: z.boolean(),
   score: z.number().min(0).max(1),
@@ -99,6 +131,7 @@ export const Verdict = z.object({
   })).optional(),
   /** Per-evaluation-spec results (explicit task specs plus implicit legacy specs). */
   evaluations: z.array(EvaluationResult).optional(),
+  implementation_deviations: z.array(ImplementationDeviation).max(100).optional(),
 });
 export type Verdict = z.infer<typeof Verdict>;
 
@@ -376,6 +409,7 @@ export const LoopEventType = z.enum([
   "loop.plan.done",
   "loop.execute.done",
   "loop.verify.done",
+  "loop.implementation.deviation",
   "loop.iterate.done",
   "loop.escalated",
   "loop.worktree.created",

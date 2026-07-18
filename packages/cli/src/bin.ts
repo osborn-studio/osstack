@@ -119,6 +119,15 @@ import { handleDailyCommand } from "./daily-command.js";
 import { handleControlCommand, handleStartCommand } from "./start-control-command.js";
 import { handleNeatCommand } from "./neat-command.js";
 import {
+  handleProbeCommand,
+  resolveProbeRepositoryId,
+} from "./probe-command.js";
+import {
+  observeLoopImplementationDeviations,
+  type LoopProbeObservationResultV1,
+} from "./loop-probe-observer.js";
+import { createProbeKanbanTransitionGuard } from "./probe-kanban-guard.js";
+import {
   runLoopNeatFinalizer,
   type LoopNeatFinalizerResultV1,
 } from "./loop-neat-finalizer.js";
@@ -181,6 +190,7 @@ Loop 工程：
   pr                  生成 GitHub PR evidence body
 
 治理与知识：
+  probe start         对需求或规格逐题探询，并持久化四象限未知项台账
   policy check        校验 .osstack/repo.yaml 与 policy.yaml（只读；observe 模式拒绝执行）
   govern check        运行确定性治理检查
   neat check          只读检查项目指令、文档合同与知识面完整性
@@ -429,6 +439,8 @@ Branch Steward:
   steward scan [--repo O/R] [--base B] [--remote R] [--workspace P] [--json]
 
 Governance:
+  probe start --input P [--repo P] [--doc-type product|tech|test] [--json]
+                                  Start a persistent four-quadrant elicitation session
   policy check [--repo-path P] [--json]
                                   Validate .osstack/repo.yaml + policy.yaml (read-only; observe mode refuses execution)
   govern check [path...] [--workspace P] [--changed] [--json]
@@ -645,7 +657,11 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "stack") {
     const dbPath = await ensureLocalStateDbPath();
-    return handleStackCommand(args.slice(1), { dbPath });
+    return handleStackCommand(args.slice(1), {
+      dbPath,
+      workspacePath: process.cwd(),
+      transitionGuards: [createProbeKanbanTransitionGuard({ db_path: dbPath })],
+    });
   }
 
   if (cmd === "governance" || cmd === "govern") {
@@ -658,6 +674,14 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       stdout: (value) => console.log(value),
       stderr: (value) => console.error(value),
       authorize_write: evaluatePolicyGate,
+    });
+  }
+
+  if (cmd === "probe") {
+    return await handleProbeCommand(args.slice(1), {
+      cwd: () => process.cwd(),
+      stdout: (value) => console.log(value),
+      stderr: (value) => console.error(value),
     });
   }
 
@@ -6261,6 +6285,45 @@ async function ensureLocalStateDbPath(): Promise<string> {
   return join(home, "state.db");
 }
 
+async function observeLoopProbeEvents(
+  workspacePath: string,
+  events: readonly unknown[],
+): Promise<LoopProbeObservationSummaryV1 | undefined> {
+  if (!events.some((event) =>
+    isRecord(event) && event["type"] === "loop.implementation.deviation"
+  )) {
+    return undefined;
+  }
+  try {
+    const sourceRevision = await gitOutput(workspacePath, ["rev-parse", "HEAD"]);
+    if (sourceRevision instanceof Error || sourceRevision.trim() === "") {
+      throw new Error("structured implementation deviations require a Git source revision");
+    }
+    const repoRoot = realpathSync(workspacePath);
+    const db = openDb({ path: await ensureLocalStateDbPath() });
+    try {
+      const observation = await observeLoopImplementationDeviations({
+        db,
+        repo_root: repoRoot,
+        repo_id: await resolveProbeRepositoryId(repoRoot),
+        source_revision: sourceRevision.trim(),
+        events,
+        now_ms: Date.now(),
+        create_item_id: () => `pi_${randomUUID()}`,
+        create_event_id: () => `pe_${randomUUID()}`,
+      });
+      return { status: "ok", ...observation };
+    } finally {
+      db.close();
+    }
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 function derivePitfallLessonsFromState(state: LoopState): Parameters<typeof upsertPitfallLesson>[2][] {
   return state.completed_tasks
     .filter((task) => task.outcome === "failed" || task.outcome === "escalated")
@@ -8891,6 +8954,7 @@ Stages:
   const events = governance === undefined
     ? result.events
     : appendGovernanceVerifyEvent(result.events, result.loop_id, governance);
+  const probeObservation = await observeLoopProbeEvents(workspacePath, events);
   const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, artifactArgs, events, governance);
   const learnedLessons = await learnLessonsFromLoopState(result.state);
   const summary = {
@@ -8905,6 +8969,7 @@ Stages:
     markdown_path: result.markdownPath,
     completed_tasks: result.state.completed_tasks,
     events,
+    ...(probeObservation === undefined ? {} : { probe_observation: probeObservation }),
     ...(checkpoint !== undefined ? { checkpoint } : {}),
     ...(artifacts !== undefined ? { artifacts } : {}),
     ...(governance !== undefined ? { governance } : {}),
@@ -9222,6 +9287,8 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         : appendGovernanceVerifyEvent(normalizeLoopEvents(result.events), result.loop_id, governance);
       if (events.length > 0) result.events = events;
       if (governance !== undefined) result.governance = governance;
+      const probeObservation = await observeLoopProbeEvents(workspacePath, events);
+      if (probeObservation !== undefined) result.probe_observation = probeObservation;
       const artifacts = await writeRequestedLoopArtifactsFromStateFile({
         args,
         workspacePath,
@@ -9306,6 +9373,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const events = governance === undefined
       ? result.events
       : appendGovernanceVerifyEvent(result.events, result.loop_id, governance);
+    const probeObservation = await observeLoopProbeEvents(workspacePath, events);
     const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, args, events, governance);
     const learnedLessons = await learnLessonsFromLoopState(result.state);
     const knowledgeHygiene = await runLoopNeatFinalizer({
@@ -9322,6 +9390,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       markdown_path: result.markdownPath,
       completed_tasks: result.state.completed_tasks,
       events,
+      ...(probeObservation === undefined ? {} : { probe_observation: probeObservation }),
       ...(artifacts !== undefined ? { artifacts } : {}),
       ...(learnedLessons !== undefined ? { learned_lessons: learnedLessons } : {}),
       ...(governance !== undefined ? { governance } : {}),
@@ -9856,6 +9925,7 @@ interface LoopRunSummary {
   profile?: LoopProfileSummary;
   budget?: LoopBudgetStatus;
   knowledge_hygiene?: LoopNeatFinalizerResultV1;
+  probe_observation?: LoopProbeObservationSummaryV1;
   cycles?: Array<{
     discovered_task_count: number;
     executed_task_count: number;
@@ -9869,6 +9939,10 @@ interface LoopRunSummary {
     };
   }>;
 }
+
+type LoopProbeObservationSummaryV1 =
+  | ({ status: "ok" } & LoopProbeObservationResultV1)
+  | { status: "error"; message: string };
 
 interface LoopProfileSummary {
   profile_name: string;
@@ -10022,6 +10096,13 @@ function printLoopRun(result: LoopRunSummary, json: boolean): void {
     } else {
       const report = result.knowledge_hygiene.report;
       console.log(`knowledge_hygiene=${report.completeness.complete ? "complete" : "incomplete"} findings=${report.findings.length}`);
+    }
+  }
+  if (result.probe_observation !== undefined) {
+    if (result.probe_observation.status === "error") {
+      console.log(`probe_observation=error message=${result.probe_observation.message}`);
+    } else {
+      console.log(`probe_observation=ok observed=${result.probe_observation.observed} added=${result.probe_observation.added} replayed=${result.probe_observation.replayed}`);
     }
   }
   if (result.profile !== undefined) {

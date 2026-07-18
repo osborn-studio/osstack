@@ -7,7 +7,10 @@ import { promisify } from "node:util";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { AgentTask } from "../base.js";
-import { extractEvaluationJudgments } from "./deepseek-command.js";
+import {
+  extractEvaluationJudgments,
+  extractImplementationDeviations,
+} from "./deepseek-command.js";
 import { DeepSeekReviewAdapter } from "./ds-review.js";
 import { DeepSeekVerifyAdapter } from "./ds-verify.js";
 
@@ -101,6 +104,7 @@ done
 mkdir -p "$(dirname "$out")"
 cp "$OSSTACK_EVALUATION_SPECS_FILE" "$out"
 printf 'OSSTACK_EVALUATIONS: {"evaluations":[{"id":"no-bypass","pass":false,"summary":"constant allow found"},{"id":"docs-updated","pass":true}]}\\n'
+printf 'OSSTACK_IMPLEMENTATION_DEVIATIONS: {"deviations":[{"deviation_id":"boundary-drift"}]}\\n'
 `);
     const adapter = new DeepSeekVerifyAdapter({ bin });
 
@@ -120,6 +124,9 @@ printf 'OSSTACK_EVALUATIONS: {"evaluations":[{"id":"no-bypass","pass":false,"sum
       { id: "no-bypass", pass: false, summary: "constant allow found" },
       { id: "docs-updated", pass: true },
     ]);
+    expect((done?.payload as { implementation_deviations?: unknown }).implementation_deviations).toEqual([
+      { deviation_id: "boundary-drift" },
+    ]);
     // The binary saw the full spec JSON through OSSTACK_EVALUATION_SPECS_FILE.
     await expect(readFile(join(workspace, "reviews", "ds-verify", "latest.md"), "utf-8"))
       .resolves.toContain("Reject constant allow.");
@@ -133,6 +140,15 @@ printf 'OSSTACK_EVALUATIONS: {"evaluations":[{"id":"no-bypass","pass":false,"sum
       'OSSTACK_EVALUATIONS: {"evaluations":[{"id":"stale","pass":false}]}',
       'OSSTACK_EVALUATIONS: {"evaluations":[{"id":"a","pass":true,"summary":"ok"},{"pass":true},{"id":"b","pass":"yes"}]}',
     ].join("\n"))).toEqual([{ id: "a", pass: true, summary: "ok" }]);
+  });
+
+  it("transports only explicitly enveloped implementation deviation objects", () => {
+    expect(extractImplementationDeviations("ordinary review failure\n")).toEqual([]);
+    expect(extractImplementationDeviations([
+      "noise",
+      "OSSTACK_IMPLEMENTATION_DEVIATIONS: not-json",
+      'OSSTACK_IMPLEMENTATION_DEVIATIONS: {"deviations":[{"deviation_id":"boundary-drift"},null,"prose"]}',
+    ].join("\n"))).toEqual([{ deviation_id: "boundary-drift" }]);
   });
 
   it("maps command failures to terminal error and failed done events", async () => {

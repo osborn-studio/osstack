@@ -1,5 +1,14 @@
 packages:
   - "packages/*"
+overrides:
+  "@grpc/grpc-js": "1.14.4"
+  "@opentelemetry/core": "2.8.0"
+  "@changesets/parse>js-yaml": "4.3.0"
+  "hono": "4.12.30"
+  "protobufjs": "7.6.3"
+  "read-yaml-file>js-yaml": "3.15.0"
+  "tsup>esbuild": "0.28.1"
+  "vite": "6.4.3"
 allowBuilds:
   better-sqlite3: true
   esbuild: true

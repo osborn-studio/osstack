@@ -1,0 +1,102 @@
+{
+  "schema_version": "1",
+  "session": {
+    "schema_version": "1",
+    "session_id": "probe_12345678",
+    "repo_id": "osstack",
+    "source_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "worktree_state": "dirty",
+    "input_refs": [
+      {
+        "kind": "input",
+        "label": "probe design",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "external": false,
+        "repo_relative_path": "docs/probe-design.md"
+      }
+    ],
+    "doc_types": ["tech"],
+    "question_pack_refs": [{ "pack_id": "probe.tech", "version": "1" }],
+    "selected_question_ids": ["tech.data_model.v1"],
+    "unselected_required_question_ids": [],
+    "depth": "quick",
+    "question_budget": 8,
+    "questions_presented": 1,
+    "familiarity": {
+      "domain": "working",
+      "repository": "maintainer",
+      "intent": "review_ready"
+    },
+    "revision": 1,
+    "created_at_ms": 1,
+    "updated_at_ms": 1,
+    "state": "active",
+    "current_question_id": "pi_12345678"
+  },
+  "items": [
+    {
+      "schema_version": "1",
+      "item_id": "pi_12345678",
+      "question_id": "tech.data_model.v1",
+      "session_id": "probe_12345678",
+      "source_pack": { "pack_id": "probe.tech", "version": "1" },
+      "item_kind": "question",
+      "initial_quadrant": "ku",
+      "current_quadrant": "ku",
+      "doc_type": "tech",
+      "category": "data_model",
+      "origin": "static_pack",
+      "prompt": "Which data model decisions would be costly to reverse?",
+      "options": [],
+      "impact": 3,
+      "irreversibility": 3,
+      "uncertainty": 3,
+      "required": true,
+      "evidence_refs": [],
+      "destination_hint": "technical_design",
+      "created_at_ms": 1,
+      "updated_at_ms": 1,
+      "state": "open"
+    }
+  ],
+  "events": [
+    {
+      "schema_version": "1",
+      "event_id": "pe_12345678",
+      "session_id": "probe_12345678",
+      "revision": 1,
+      "type": "session_started",
+      "actor": { "type": "human", "id": "owner" },
+      "idempotency_key": "start-001",
+      "occurred_at_ms": 1,
+      "payload": { "selected_question_ids": ["tech.data_model.v1"] }
+    }
+  ],
+  "readiness": {
+    "required_total": 1,
+    "required_disposed": 0,
+    "open_by_severity": { "high": 1, "medium": 0, "low": 0 },
+    "deferred_due": 0,
+    "waived_active": 0,
+    "waived_expired": 0,
+    "resolved_destination_pending": 0,
+    "resolved_destination_applied": 0,
+    "compilation_manual_required": 0,
+    "completion_percent": 0,
+    "eligible": false,
+    "violations": [
+      {
+        "code": "open_required",
+        "severity": "high",
+        "message": "A required high-risk question remains open.",
+        "item_id": "pi_12345678"
+      }
+    ]
+  },
+  "artifact": {
+    "exported_revision": 1,
+    "exported_at_ms": 2,
+    "generator_version": "0.10.0"
+  },
+  "redactions": []
+}

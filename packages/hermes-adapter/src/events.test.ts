@@ -38,6 +38,26 @@ describe("HermesEventSchema", () => {
     expect(ev.type).toBe("tool.done");
   });
 
+  it("preserves structured verifier extensions on done events", () => {
+    const event = HermesEventSchema.parse({
+      event_id: "run_1:8",
+      seq: 8,
+      run_id: "run_1",
+      session_id: "sess_1",
+      created_at: 1778750101,
+      terminal: true,
+      type: "done",
+      payload: {
+        status: "completed",
+        last_seq: 7,
+        implementation_deviations: [{ deviation_id: "boundary-drift" }],
+      },
+    });
+    expect(event.payload).toMatchObject({
+      implementation_deviations: [{ deviation_id: "boundary-drift" }],
+    });
+  });
+
   it("rejects an event with an unknown type", () => {
     expect(() => HermesEventSchema.parse({
       event_id: "x", seq: 0, run_id: "r", session_id: "s",

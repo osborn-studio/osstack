@@ -11,7 +11,13 @@ import {
 } from "./evaluation-spec.js";
 import type { AgentRun, CommandResult } from "./executor.js";
 import { runShellCommand } from "./executor.js";
-import type { Issue, Task, Verdict } from "./types.js";
+import {
+  ImplementationDeviation,
+  type ImplementationDeviation as ImplementationDeviationValue,
+  type Issue,
+  type Task,
+  type Verdict,
+} from "./types.js";
 
 export interface LocalVerifierOptions {
   workspacePath: string;
@@ -122,6 +128,9 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
     ? adapterResults.map((result) => result.agentId).join(",")
     : "local-verifier";
   const commandResults = commandRuns.map(({ result }) => result);
+  const implementationDeviations = deduplicateImplementationDeviations(
+    adapterResults.flatMap((result) => result.implementationDeviations ?? []),
+  );
 
   return {
     pass,
@@ -131,7 +140,21 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
     summary: summarize(commandResults, adapterResults, issues, evaluations),
     ...(commandResults.length > 0 ? { verify_commands: commandResults.map(commandAudit) } : {}),
     ...(evaluations.length > 0 ? { evaluations } : {}),
+    ...(implementationDeviations.length > 0
+      ? { implementation_deviations: implementationDeviations }
+      : {}),
   };
+}
+
+function deduplicateImplementationDeviations(
+  deviations: readonly ImplementationDeviationValue[],
+): ImplementationDeviationValue[] {
+  const seen = new Set<string>();
+  return deviations.filter((deviation) => {
+    if (seen.has(deviation.deviation_id)) return false;
+    seen.add(deviation.deviation_id);
+    return true;
+  });
 }
 
 async function runSpecCommand(spec: EvaluationSpec, options: LocalVerifierOptions): Promise<CommandResult> {
@@ -480,6 +503,7 @@ interface VerifierAdapterResult {
   issues: Issue[];
   summary?: string;
   judgments?: AdapterEvaluationJudgment[];
+  implementationDeviations?: ImplementationDeviationValue[];
 }
 
 async function runVerifierAdapters(
@@ -527,6 +551,7 @@ async function invokeVerifierAdapter(
   let status: "completed" | "failed" | "cancelled" | "expired" | undefined;
   let terminalError: string | undefined;
   let judgments: AdapterEvaluationJudgment[] | undefined;
+  let implementationDeviations: ImplementationDeviationValue[] | undefined;
 
   try {
     const agentTask = verifierAgentTask(run, options, adapter, adapterSpecs);
@@ -540,6 +565,9 @@ async function invokeVerifierAdapter(
         status = payload.status;
         summary = payload.result_summary;
         judgments = parseEvaluationJudgments(payload.evaluation_judgments);
+        implementationDeviations = parseImplementationDeviations(
+          payload.implementation_deviations,
+        );
       }
     }
   } catch (error) {
@@ -555,6 +583,9 @@ async function invokeVerifierAdapter(
       issues: [],
       ...(summary !== undefined ? { summary } : {}),
       ...(judgments !== undefined && judgments.length > 0 ? { judgments } : {}),
+      ...(implementationDeviations !== undefined && implementationDeviations.length > 0
+        ? { implementationDeviations }
+        : {}),
     };
   }
 
@@ -567,7 +598,21 @@ async function invokeVerifierAdapter(
     issues: [adapterIssue(adapter.id, "verify.adapter_failed", message)],
     ...(summary !== undefined ? { summary } : {}),
     ...(judgments !== undefined && judgments.length > 0 ? { judgments } : {}),
+    ...(implementationDeviations !== undefined && implementationDeviations.length > 0
+      ? { implementationDeviations }
+      : {}),
   };
+}
+
+function parseImplementationDeviations(
+  raw: unknown,
+): ImplementationDeviationValue[] | undefined {
+  if (!Array.isArray(raw) || raw.length > 100) return undefined;
+  const parsed = raw.flatMap((entry) => {
+    const result = ImplementationDeviation.safeParse(entry);
+    return result.success ? [result.data] : [];
+  });
+  return parsed.length > 0 ? parsed : undefined;
 }
 
 function parseEvaluationJudgments(raw: unknown): AdapterEvaluationJudgment[] | undefined {
@@ -691,10 +736,12 @@ function donePayload(payload: HermesEvent["payload"]): {
   status: "completed" | "failed" | "cancelled" | "expired";
   result_summary?: string;
   evaluation_judgments?: unknown;
+  implementation_deviations?: unknown;
 } {
   return payload as {
     status: "completed" | "failed" | "cancelled" | "expired";
     result_summary?: string;
     evaluation_judgments?: unknown;
+    implementation_deviations?: unknown;
   };
 }

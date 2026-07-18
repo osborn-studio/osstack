@@ -3,8 +3,9 @@
 //   1. Scan   — the supervisor portfolio maturity report over `.osstack/repos.json`.
 //   2. GitHub — the read-only `@osstack/github` portfolio-status adapter (PRs/CI/release).
 //   3. Stack  — the existing kanban "stack" board summary, when any cards exist.
-//   4. Delta  — diff against the previous brief (new PRs / CI flips / maturity changes).
-//   5. Render — Markdown for humans by default; `--json` emits a protocol
+//   4. Probe  — current open obligations, aging, and required-item completion.
+//   5. Delta  — diff against the previous brief (new PRs / CI flips / maturity changes).
+//   6. Render — Markdown for humans by default; `--json` emits a protocol
 //               AgentCommandResult (status ok, brief in `result`, per-repo
 //               evidence_refs, ≤3 owner decisions in next_actions).
 //
@@ -19,6 +20,8 @@ import {
   getBoard,
   openDb,
   queryKnowledgeHygieneTrend,
+  queryProbePortfolioSummary,
+  type ProbePortfolioSummaryV1,
 } from "@osstack/core";
 import {
   fetchPortfolioGithubStatus,
@@ -116,6 +119,7 @@ export interface DailyBrief {
   portfolio: PortfolioReport;
   github: RepoGithubStatus[];
   stack?: StackBoardSummary;
+  probe?: ProbePortfolioSummaryV1;
   delta: DailyDelta;
   /**
    * ≤3 owner decisions with dispatchable `run` payloads (R2.4). Optional
@@ -179,9 +183,12 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
 
   // 3. Stack board summary — included only when the board actually has cards.
   const { summary: stack, warning: stackWarning } = readStackBoardSummary();
+  const { summary: probe, warning: probeWarning } =
+    readProbePortfolioSummary(enabled, now.getTime());
 
   const warnings = github.filter((g) => g.warning !== undefined).map((g) => `${g.repo_id}: ${g.warning}`);
   if (stackWarning !== undefined) warnings.push(stackWarning);
+  if (probeWarning !== undefined) warnings.push(probeWarning);
   if (hygieneHistory.warning !== undefined) {
     warnings.push(hygieneHistory.warning);
   }
@@ -198,6 +205,7 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
     portfolio,
     github,
     ...(stack !== undefined ? { stack } : {}),
+    ...(probe !== undefined ? { probe } : {}),
     delta,
     // Computed from portfolio + github below, then stored so the dispatchable
     // `run` payloads ride in `result` (= the brief) and are persisted verbatim.
@@ -265,6 +273,31 @@ function readStackBoardSummary(board = "stack"): { summary?: StackBoardSummary; 
   } catch (err) {
     return {
       warning: `stack board unavailable (${dbPath}): ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
+/** Probe state is optional context: no DB/session preserves the old brief. */
+function readProbePortfolioSummary(
+  entries: readonly RepoRegistryEntry[],
+  asOfMs: number,
+): { summary?: ProbePortfolioSummaryV1; warning?: string } {
+  const dbPath = join(osstackHome(), "state.db");
+  if (!existsSync(dbPath)) return {};
+  try {
+    const db = openDb({ path: dbPath });
+    try {
+      const summary = queryProbePortfolioSummary(db, {
+        as_of_ms: asOfMs,
+        repo_ids: entries.map((entry) => entry.repo_id),
+      });
+      return summary.repos.length === 0 ? {} : { summary };
+    } finally {
+      db.close();
+    }
+  } catch (error) {
+    return {
+      warning: `probe portfolio unavailable (${dbPath}): ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }
@@ -637,6 +670,25 @@ export function renderDailyMarkdown(brief: DailyBrief): string {
     lines.push("## Stack board");
     lines.push(`- board "${brief.stack.board}": ${brief.stack.total} card(s)`);
     for (const column of brief.stack.columns) lines.push(`  - ${column.name}: ${column.count}`);
+    lines.push("");
+  }
+
+  if (brief.probe !== undefined) {
+    lines.push("## Probe readiness");
+    for (const repo of brief.probe.repos) {
+      lines.push(
+        `- ${repo.repo_id}: ${repo.in_progress_session_count} in progress / ${repo.session_count} total session(s)`,
+      );
+      const openAge = repo.oldest_open_age_days === null
+        ? "oldest n/a"
+        : `oldest ${repo.oldest_open_age_days}d`;
+      lines.push(
+        `  - open high ${repo.open_by_severity.high}, medium ${repo.open_by_severity.medium}, low ${repo.open_by_severity.low}; ${openAge}`,
+      );
+      lines.push(
+        `  - completion ${repo.completion_percent}% (${repo.required_disposed}/${repo.required_total} required disposed); deferred due ${repo.deferred_due}; waivers active ${repo.waived_active}, expired ${repo.waived_expired}`,
+      );
+    }
     lines.push("");
   }
 

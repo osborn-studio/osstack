@@ -1,0 +1,206 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Probe Evaluation Compilation Delta v1",
+  "$comment": "Reviewable output only; consumers must not treat this delta as an automatically authorized task queue mutation.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^probe_[a-z0-9][a-z0-9_-]{7,63}$"
+    },
+    "exported_revision": {
+      "type": "integer",
+      "exclusiveMinimum": 0
+    },
+    "generated_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "spec_ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "evaluations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "command",
+              "contract",
+              "property",
+              "e2e",
+              "artifact",
+              "semantic_review",
+              "governance"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "command": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "target_paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            },
+            "maxItems": 32
+          },
+          "forbidden_paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            },
+            "maxItems": 32
+          },
+          "acceptance": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "id",
+          "mode",
+          "description",
+          "required",
+          "target_paths",
+          "forbidden_paths",
+          "weight"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 100
+    },
+    "compilations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "pattern": "^pi_[a-z0-9][a-z0-9_-]{7,63}$"
+          },
+          "template_id": {
+            "type": "string",
+            "enum": [
+              "package-script.v1",
+              "artifact-path.v1",
+              "contract-manifest.v1",
+              "manual-acceptance.v1"
+            ]
+          },
+          "compilation": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "type": "string",
+                    "const": "manual_required"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20000
+                  }
+                },
+                "required": [
+                  "state",
+                  "reason"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "type": "string",
+                    "const": "compiled"
+                  },
+                  "spec_ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1024
+                  },
+                  "template_id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+                  }
+                },
+                "required": [
+                  "state",
+                  "spec_ref",
+                  "template_id"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "manual_acceptance": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "evaluation_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "maxItems": 8
+          }
+        },
+        "required": [
+          "item_id",
+          "template_id",
+          "compilation",
+          "evaluation_ids"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 100
+    }
+  },
+  "required": [
+    "schema_version",
+    "session_id",
+    "exported_revision",
+    "generated_at_ms",
+    "spec_ref",
+    "evaluations",
+    "compilations"
+  ],
+  "additionalProperties": false
+}

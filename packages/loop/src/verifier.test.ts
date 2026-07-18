@@ -54,6 +54,43 @@ describe("verifyRun", () => {
     expect(captured?.prompt).toContain("Review or verify the completed loop task.");
   });
 
+  it("accepts only strict structured implementation deviations from a completed verifier", async () => {
+    const adapter = mockAdapter({
+      async *invoke(agentTask) {
+        const event = doneEvent(agentTask.run_id, agentTask.session_id, "completed", "review found drift");
+        yield {
+          ...event,
+          payload: {
+            ...event.payload,
+            implementation_deviations: [{
+              deviation_id: "architecture-drift-1",
+              question: "Should the implementation retain the documented adapter boundary?",
+              category: "interface",
+              doc_type: "tech",
+              impact: 3,
+              irreversibility: 2,
+              uncertainty: 2,
+              required: true,
+              destination_hint: "technical_design",
+              evidence: [{ path: "src/app.ts", line: 1 }],
+            }],
+          },
+        } as unknown as HermesEvent;
+      },
+    });
+
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace,
+      verifierAgentIds: [adapter.id],
+      adapters: [adapter],
+      task: task(),
+    });
+
+    expect(verdict.implementation_deviations).toEqual([
+      expect.objectContaining({ deviation_id: "architecture-drift-1" }),
+    ]);
+  });
+
   it("fails when a verifier adapter is missing, unavailable, or reports failure", async () => {
     const unavailable = mockAdapter({ id: "unavailable", available: false, reason: "missing binary" });
     const failing = mockAdapter({
