@@ -1134,10 +1134,10 @@ contains deterministic summaries.
 **Description:** Surface incomplete scans, errors, repeated warnings, and at
 most three owner decisions using structured recommendations.
 
-**Acceptance criteria:** Clean repos add no noise; no score; next actions use
+**Acceptance criteria:** ✅ Clean repos add no noise; no score; next actions use
 machine command identifiers rather than parsed prose.
 
-**Verification:** Daily JSON strict parse, Markdown snapshots, and delta tests
+**Verification:** ✅ Daily JSON strict parse, Markdown snapshots, and delta tests
 pass.
 
 **Dependencies:** R2.2.

@@ -31,6 +31,7 @@ describe("portfolio knowledge hygiene scanner", () => {
 
     const results = await scanPortfolioKnowledgeHygiene(entries, {
       concurrency: 4,
+      now: () => new Date("2026-07-17T00:00:00.000Z"),
     });
 
     expect(Date.now() - started).toBeLessThan(5_000);
@@ -40,6 +41,10 @@ describe("portfolio knowledge hygiene scanner", () => {
     expect(results).toHaveLength(20);
     expect(results.every(
       (result) => result.status === "ok" && result.hygiene.complete,
+    )).toBe(true);
+    expect(results.every(
+      (result) => result.status === "ok"
+        && result.hygiene.checked_at === "2026-07-17T00:00:00.000Z",
     )).toBe(true);
   });
 

@@ -24,8 +24,10 @@ import { PROTOCOL_VERSION } from "@osstack/protocol";
 import type { AgentCommandResult } from "@osstack/protocol";
 import {
   buildPortfolioReport,
+  attachKnowledgeHygieneSummaries,
   readRepoRegistry,
   scanRepo,
+  scanPortfolioKnowledgeHygiene,
   type PortfolioReport,
   type RepoHealth,
   type RepoRegistryEntry,
@@ -149,7 +151,13 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
   // 1. Portfolio maturity scan (supervisor, existing).
   const healths: RepoHealth[] = [];
   for (const entry of enabled) healths.push(await scanRepo(entry));
-  const portfolio = buildPortfolioReport(healths, now.toISOString());
+  const hygieneScans = await scanPortfolioKnowledgeHygiene(enabled, {
+    now: () => now,
+  });
+  const portfolio = buildPortfolioReport(
+    attachKnowledgeHygieneSummaries(healths, hygieneScans),
+    now.toISOString(),
+  );
 
   // 2. GitHub read adapter (degrades per-repo, never throws).
   const github = await fetchPortfolioGithubStatus(
@@ -162,6 +170,7 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
 
   const warnings = github.filter((g) => g.warning !== undefined).map((g) => `${g.repo_id}: ${g.warning}`);
   if (stackWarning !== undefined) warnings.push(stackWarning);
+  warnings.push(...knowledgeHygieneWarnings(portfolio));
 
   // 4. Delta against the most recent previous brief.
   const briefsDir = join(osstackHome(), "daily-briefs");
@@ -375,6 +384,28 @@ export function deriveOwnerDecisions(brief: DailyBrief): OwnerDecision[] {
       });
     }
   }
+  for (const repo of brief.portfolio.repos) {
+    const reasons = knowledgeHygieneIssues(repo);
+    if (reasons.length === 0) continue;
+    const argv = [
+      "osstack",
+      "neat",
+      "check",
+      "--repo",
+      repo.path,
+      "--all",
+      "--fail-on",
+      "warning",
+    ];
+    decisions.push({
+      command: "knowledge_hygiene.check",
+      reason: `${repo.repo_id}: knowledge hygiene ${reasons.join(", ")}`,
+      run: {
+        command: `osstack neat check --repo ${shQuote(repo.path)} --all --fail-on warning`,
+        argv,
+      },
+    });
+  }
   for (const g of brief.github) {
     const openPrs = g.pull_requests.filter((pr) => !pr.isDraft);
     if (openPrs.length > 0) {
@@ -398,6 +429,32 @@ export function deriveOwnerDecisions(brief: DailyBrief): OwnerDecision[] {
   }
 
   return decisions.slice(0, 3);
+}
+
+function knowledgeHygieneWarnings(portfolio: PortfolioReport): string[] {
+  return portfolio.repos.flatMap((repo) => {
+    const issues = knowledgeHygieneIssues(repo);
+    return issues.length === 0
+      ? []
+      : [`${repo.repo_id}: knowledge hygiene ${issues.join(", ")}`];
+  });
+}
+
+function knowledgeHygieneIssues(
+  repo: PortfolioReport["repos"][number],
+): string[] {
+  const scanFailed = repo.findings.some((finding) =>
+    finding.startsWith("knowledge hygiene scan failed:")
+  );
+  const hygiene = repo.hygiene;
+  if (hygiene === undefined) return scanFailed ? ["scan failed"] : [];
+  return [
+    ...(!hygiene.complete ? ["scan incomplete"] : []),
+    ...(hygiene.error_count > 0 ? [`${hygiene.error_count} open error(s)`] : []),
+    ...(hygiene.warning_count > 0 && hygiene.recurring_count > 0
+      ? [`${hygiene.recurring_count} recurring warning(s)`]
+      : []),
+  ];
 }
 
 /**
@@ -503,6 +560,15 @@ export function renderDailyMarkdown(brief: DailyBrief): string {
           ? `- latest release: ${g.latest_release.tagName} (${g.latest_release.publishedAt})`
           : "- latest release: none",
       );
+    }
+    const hygiene = repo.hygiene;
+    const hygieneIssues = knowledgeHygieneIssues(repo);
+    if (hygiene !== undefined && hygieneIssues.length > 0) {
+      lines.push(
+        `- knowledge hygiene: ${hygiene.complete ? "complete" : "incomplete"}; ${hygiene.error_count} error; ${hygiene.warning_count} warning; ${hygiene.recurring_count} recurring`,
+      );
+    } else if (hygieneIssues.length > 0) {
+      lines.push(`- knowledge hygiene: ${hygieneIssues.join(", ")}`);
     }
   }
   lines.push("");

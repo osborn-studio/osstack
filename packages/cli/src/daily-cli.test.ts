@@ -7,7 +7,7 @@ import type { CommandRunner } from "@osstack/github";
 import { AgentCommandResult } from "@osstack/protocol";
 import type { StructuredRecommendation } from "@osstack/supervisor";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { computeDelta, deriveOwnerDecisions, handleDailyCommand, runDailyBrief, repoCiStatus, type DailyBrief } from "./daily-command.js";
+import { computeDelta, deriveOwnerDecisions, handleDailyCommand, renderDailyMarkdown, runDailyBrief, repoCiStatus, type DailyBrief } from "./daily-command.js";
 
 let tmp: string;
 let logs: string[];
@@ -405,6 +405,59 @@ describe("deriveOwnerDecisions (R2.4 dispatchable run payloads)", () => {
     const d = deriveOwnerDecisions(brief).find((x) => x.command === "repo.review_prs");
     expect(d!.run.argv).toEqual(["gh", "pr", "list", "--repo", "acme/svc", "--state", "open"]);
     expect(d!.run.command).toBe("gh pr list --repo 'acme/svc' --state open");
+  });
+
+  it("emits a machine-command hygiene decision only for actionable hygiene", () => {
+    const actionable = briefOf({
+      repos: [repoHealth({
+        repo_id: "svc",
+        path: "/repos/svc",
+        hygiene: {
+          complete: false,
+          error_count: 1,
+          warning_count: 2,
+          recurring_count: 1,
+          checked_at: "2026-07-17T00:00:00.000Z",
+        },
+      })],
+    });
+    const decision = deriveOwnerDecisions(actionable).find(
+      (candidate) => candidate.command === "knowledge_hygiene.check",
+    );
+    expect(decision).toMatchObject({
+      command: "knowledge_hygiene.check",
+      run: {
+        argv: [
+          "osstack",
+          "neat",
+          "check",
+          "--repo",
+          "/repos/svc",
+          "--all",
+          "--fail-on",
+          "warning",
+        ],
+      },
+    });
+    expect(renderDailyMarkdown(actionable)).toContain(
+      "knowledge hygiene: incomplete; 1 error; 2 warning; 1 recurring",
+    );
+
+    const clean = briefOf({
+      repos: [repoHealth({
+        hygiene: {
+          complete: true,
+          error_count: 0,
+          warning_count: 0,
+          recurring_count: 0,
+          checked_at: "2026-07-17T00:00:00.000Z",
+        },
+      })],
+    });
+    expect(deriveOwnerDecisions(clean).some(
+      (candidate) => candidate.command === "knowledge_hygiene.check",
+    )).toBe(false);
+    expect(renderDailyMarkdown(clean)).not.toContain("knowledge hygiene:");
   });
 
   it("portfolio.raise_maturity → init-loop-doc ONLY for an add_loop_doc kind carrying a repo_id", () => {

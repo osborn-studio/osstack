@@ -29,6 +29,7 @@ export interface RepoKnowledgeHygieneHistorySummaryV1 {
 export interface ScanPortfolioKnowledgeHygieneOptionsV1 {
   concurrency?: number;
   check?: typeof checkKnowledgeHygiene;
+  now?: () => Date;
   history?: (
     repoId: string,
   ) => Promise<RepoKnowledgeHygieneHistorySummaryV1>;
@@ -65,7 +66,10 @@ export async function scanPortfolioKnowledgeHygiene(
   const entries = registry.filter((entry) => entry.enabled);
   if (entries.length === 0) return [];
   const results = new Array<RepoKnowledgeHygieneScanResultV1>(entries.length);
-  const check = options.check ?? checkKnowledgeHygiene;
+  const check = options.check ?? ((input) => checkKnowledgeHygiene(
+    input,
+    options.now === undefined ? {} : { now: options.now },
+  ));
   const history = options.history ?? (async () => ({ recurring_count: 0 }));
   let nextIndex = 0;
 
