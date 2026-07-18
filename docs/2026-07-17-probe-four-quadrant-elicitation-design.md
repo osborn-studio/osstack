@@ -1097,7 +1097,7 @@ pnpm --filter @osstack/cli test -- probe-command
 pnpm --filter @osstack/cli typecheck
 ```
 
-### R0.6 — Conformance、smoke 与 R0 checkpoint
+### R0.6 — Conformance、smoke 与 R0 checkpoint（2026-07-18 完成）
 
 **依赖：** R0.5。
 
@@ -1110,9 +1110,9 @@ pnpm --filter @osstack/cli typecheck
 
 **验收：**
 
-- [ ] hermetic home smoke 覆盖 restart/resume 和幂等重试。
-- [ ] import boundary 证明 kernel 不依赖 CLI。
-- [ ] R0 的五条成功定义均有直接证据。
+- [x] hermetic home smoke 覆盖 restart/resume 和幂等重试。
+- [x] import boundary 证明 kernel 不依赖 CLI。
+- [x] R0 的五条成功定义均有直接证据。
 
 **验证：**
 
@@ -1303,10 +1303,10 @@ pnpm --filter @osstack/cli test -- probe-dynamic
 
 ### R0 checkpoint
 
-- [ ] §1.3 R0 五项全部有测试证据。
-- [ ] 10 次本仓 dogfood 会话无状态损坏、错题写入或不可恢复会话。
-- [ ] full `pnpm test/typecheck/build` 通过。
-- [ ] CLI/help/changeset/CONFORMANCE_MATRIX 同步。
+- [x] §1.3 R0 五项全部有测试证据。
+- [x] 10 次本仓 dogfood 会话无状态损坏、错题写入或不可恢复会话。
+- [x] full `pnpm test/typecheck/build` 通过。
+- [x] CLI/help/changeset/CONFORMANCE_MATRIX 同步。
 
 ### R1 checkpoint
 

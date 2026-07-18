@@ -35,6 +35,7 @@
     "smoke:npm-install": "node scripts/smoke-npm-install.mjs",
     "smoke:release-plan": "pnpm --filter @osstack/cli build && node scripts/smoke-release-plan.mjs",
     "smoke:neat": "pnpm --filter @osstack/cli build && node scripts/smoke-neat.mjs",
+    "smoke:probe": "pnpm --filter @osstack/cli... build && node scripts/smoke-probe.mjs",
     "smoke:bun-single-binary": "node scripts/smoke-bun-single-binary.mjs",
     "smoke:single-binary-signing": "node scripts/smoke-single-binary-signing.mjs",
     "smoke:single-binary-release-pack": "node scripts/smoke-single-binary-release-pack.mjs",

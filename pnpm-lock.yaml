@@ -141,6 +141,9 @@ importers:
       '@osstack/core':
         specifier: workspace:*
         version: link:../core
+      '@osstack/governance':
+        specifier: workspace:*
+        version: link:../governance
       '@osstack/hermes-adapter':
         specifier: workspace:*
         version: link:../hermes-adapter
