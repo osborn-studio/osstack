@@ -1199,10 +1199,10 @@ write; platform limits are adapter-owned.
 **Description:** Read only the documented project auto-memory directory and
 `MEMORY.md` limit after explicit enablement.
 
-**Acceptance criteria:** Custom configured memory directory is respected; no
+**Acceptance criteria:** ✅ Custom configured memory directory is respected; no
 other projects are scanned; 200-line/25KB rule is labelled Claude-specific.
 
-**Verification:** Tests use a fake home/settings directory and never touch real
+**Verification:** ✅ Tests use a fake home/settings directory and never touch real
 Claude memory.
 
 **Dependencies:** R3.1.

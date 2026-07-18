@@ -109,6 +109,15 @@ const gitObjectId = z
   .string()
   .regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/, "invalid Git object id");
 
+export const KnowledgeSurfaceAdapterMetadataV1 = z.object({
+  id: z.string().regex(/^[a-z0-9][a-z0-9._-]*$/),
+  version: z.string().min(1),
+  source: z.string().url(),
+}).strict();
+export type KnowledgeSurfaceAdapterMetadataV1 = z.infer<
+  typeof KnowledgeSurfaceAdapterMetadataV1
+>;
+
 export const KnowledgeSurfaceMetricV1 = z
   .object({
     surface: KnowledgeHygieneSurfaceV1,
@@ -118,6 +127,7 @@ export const KnowledgeSurfaceMetricV1 = z
     bytes: z.number().int().nonnegative().optional(),
     lines: z.number().int().nonnegative().optional(),
     sha256: sha256.optional(),
+    adapter: KnowledgeSurfaceAdapterMetadataV1.optional(),
   })
   .strict();
 export type KnowledgeSurfaceMetricV1 = z.infer<
