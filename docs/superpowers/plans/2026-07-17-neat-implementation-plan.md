@@ -916,13 +916,13 @@ osstack neat review \
 
 **Acceptance criteria:**
 
-- [ ] No implicit output path or DB write.
-- [ ] Artifact update is atomic and deterministic.
-- [ ] Unknown/mismatched finding is rejected with exit 2.
+- [x] No implicit output path or DB write.
+- [x] Artifact update is atomic and deterministic.
+- [x] Unknown/mismatched finding is rejected with exit 2.
 
 **Verification:**
 
-- [ ] CLI tests cover create, replace, mismatch, and malformed input.
+- [x] CLI tests cover create, replace, mismatch, and malformed input.
 
 **Dependencies:** R1.1.1.
 

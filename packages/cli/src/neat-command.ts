@@ -13,6 +13,10 @@ import {
   type ErrorCode,
 } from "@osstack/protocol";
 import { resolve } from "node:path";
+import {
+  handleNeatReviewCommand,
+  NeatReviewInputError,
+} from "./neat-review-command.js";
 
 export type NeatFailOn = "error" | "warning" | "none";
 type NeatFormat = "human" | "json";
@@ -23,6 +27,7 @@ export interface NeatCommandDependencies {
   stderr: (value: string) => void;
   check?: typeof checkKnowledgeHygiene;
   engine_ports?: KnowledgeHygieneEnginePortsV1;
+  now?: () => Date;
 }
 
 interface ParsedNeatCommand {
@@ -45,6 +50,7 @@ export function renderNeatHelp(): string {
 Usage:
   osstack neat [options]
   osstack neat check [options]
+  osstack neat review [review options]
 
 Options:
   --repo <path>                  Repository root (default: cwd)
@@ -335,6 +341,23 @@ export async function handleNeatCommand(
   args: readonly string[],
   deps: NeatCommandDependencies,
 ): Promise<number> {
+  if (args[0] === "review") {
+    try {
+      return await handleNeatReviewCommand(args.slice(1), {
+        cwd: deps.cwd,
+        stdout: deps.stdout,
+        now: deps.now ?? deps.engine_ports?.now ?? (() => new Date()),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (error instanceof NeatReviewInputError) {
+        emitError(deps, false, "bad_request", message, false);
+        return 2;
+      }
+      emitError(deps, false, "internal", message, true);
+      return 3;
+    }
+  }
   const jsonRequested = wantsJson(args);
   let parsed: ParsedNeatCommand;
   try {

@@ -100,7 +100,7 @@ describe("handleNeatCommand", () => {
     ["bad threshold", ["--fail-on", "info"]],
     ["json human conflict", ["--json", "--format", "human"]],
     ["missing value", ["--repo"]],
-    ["unknown subcommand", ["review"]],
+    ["unknown subcommand", ["archive"]],
     ["unknown flag", ["--wat"]],
   ])("returns exit 2 for %s", async (_label, args) => {
     const harness = commandHarness({ cwd: "/repo" });
