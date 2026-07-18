@@ -80,6 +80,41 @@ describe("daemon loop RPC", () => {
     expect((statusResp.result as { markdown: string }).markdown).toContain("daemon-loop-task - success");
   });
 
+  it("attaches neat evidence to a successful daemon loop without gating it", async () => {
+    const workspace = join(tmp, "neat-workspace");
+    await mkdir(join(workspace, "tasks"), { recursive: true });
+    await mkdir(join(workspace, ".osstack"));
+    await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
+      task_id: "daemon-loop-neat-task",
+      capability: "code.test",
+      prompt: "Exercise daemon neat finalization",
+    }));
+    await writeFile(join(workspace, ".osstack", "neat.yaml"), `version: 1
+required_surfaces:
+  - id: missing-readme
+    path: README.md
+    kind: file
+    severity: warning
+`);
+
+    daemon = await startDaemon({ socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock` });
+    const runResp = await daemonRpc(daemon.socketPath, "loop.run", {
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"process.exit(0)\"",
+      neatFinalize: true,
+    });
+
+    expect(runResp.ok).toBe(true);
+    expect(runResp.result).toMatchObject({
+      completed_tasks: [expect.objectContaining({ outcome: "success" })],
+      knowledge_hygiene: {
+        status: "ok",
+        report: { findings: [expect.objectContaining({ rule_id: "surface.required_missing" })] },
+      },
+    });
+  });
+
   it("runs finite multi-cycle loops through daemon RPC", async () => {
     const workspace = join(tmp, "cycle-workspace");
     await mkdir(join(workspace, "tasks"), { recursive: true });

@@ -118,6 +118,10 @@ import { handleHubCommand, buildRealHubCliDeps } from "./hub-cli.js";
 import { handleDailyCommand } from "./daily-command.js";
 import { handleControlCommand, handleStartCommand } from "./start-control-command.js";
 import { handleNeatCommand } from "./neat-command.js";
+import {
+  runLoopNeatFinalizer,
+  type LoopNeatFinalizerResultV1,
+} from "./loop-neat-finalizer.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -9124,6 +9128,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const archiveCompletedTasks = args.includes("--archive-completed");
     const autoAgent = args.includes("--auto-agent");
     const selfImprovementEnabled = args.includes("--self-improvement");
+    const neatFinalize = args.includes("--neat-finalize");
     const selfImprovementRepoId = flagValue(args, "--repo-id");
     const proposeImprovements = args.includes("--propose-improvements");
     if (selfImprovementEnabled && selfImprovementRepoId === undefined) {
@@ -9201,6 +9206,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ...(useWorktree ? { useWorktree: true } : {}),
         ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
         ...(shouldRecordLoopKnowledge(args, knowledge) ? { knowledge } : {}),
+        ...(neatFinalize ? { neatFinalize: true } : {}),
       }) as RpcResp;
       if (!resp.ok) {
         console.error("osstack:", resp.error?.message ?? "loop.run failed");
@@ -9301,6 +9307,14 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       : appendGovernanceVerifyEvent(result.events, result.loop_id, governance);
     const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, args, events, governance);
     const learnedLessons = await learnLessonsFromLoopState(result.state);
+    const knowledgeHygiene = await runLoopNeatFinalizer({
+      enabled: neatFinalize,
+      loop_succeeded: result.state.completed_tasks.length > 0
+        && result.state.completed_tasks.every((task) => task.outcome === "success")
+        && governance?.blocking !== true
+        && result.budget?.exceeded !== true,
+      workspace_path: workspacePath,
+    });
     printLoopRun({
       loop_id: result.loop_id,
       json_path: result.jsonPath,
@@ -9315,6 +9329,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(goal !== undefined ? { goal } : {}),
       ...(result.budget !== undefined ? { budget: result.budget } : {}),
       ...(result.state.key_metrics !== undefined ? { metrics: result.state.key_metrics } : {}),
+      ...(knowledgeHygiene !== undefined ? { knowledge_hygiene: knowledgeHygiene } : {}),
       ...("cycles" in result ? { cycles: result.cycles.map((cycle) => ({
         discovered_task_count: cycle.discoveredTaskCount,
         executed_task_count: cycle.executedTaskCount,
@@ -9493,6 +9508,7 @@ Options:
                       Knowledge Cloud URL; unavailable cloud fails open to local/off
   --knowledge-query Q Query used for knowledge trace search
   --govern [M]        Run governance checks after loop run; M=warn or strict
+  --neat-finalize     After a successful run, attach non-gating neat evidence
   --json              Emit machine-readable summary
   --daemon            Run through the osstack daemon RPC socket
 
@@ -9838,6 +9854,7 @@ interface LoopRunSummary {
   events?: unknown[];
   profile?: LoopProfileSummary;
   budget?: LoopBudgetStatus;
+  knowledge_hygiene?: LoopNeatFinalizerResultV1;
   cycles?: Array<{
     discovered_task_count: number;
     executed_task_count: number;
@@ -9997,6 +10014,14 @@ function printLoopRun(result: LoopRunSummary, json: boolean): void {
   }
   if (result.governance !== undefined) {
     console.log(`governance=${result.governance.status} mode=${result.governance.mode} blocking=${result.governance.blocking ? "yes" : "no"} findings=${result.governance.findings.length}`);
+  }
+  if (result.knowledge_hygiene !== undefined) {
+    if (result.knowledge_hygiene.status === "error") {
+      console.log(`knowledge_hygiene=error message=${result.knowledge_hygiene.error}`);
+    } else {
+      const report = result.knowledge_hygiene.report;
+      console.log(`knowledge_hygiene=${report.completeness.complete ? "complete" : "incomplete"} findings=${report.findings.length}`);
+    }
   }
   if (result.profile !== undefined) {
     console.log(`profile=${result.profile.profile_name} builder=${result.profile.builder_agent_id ?? "none"} evaluator=${result.profile.evaluator_agent_id ?? "none"}`);

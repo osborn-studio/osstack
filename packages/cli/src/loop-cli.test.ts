@@ -87,6 +87,7 @@ describe("loop CLI", () => {
     expect(output).toContain("--proof");
     expect(output).toContain("--knowledge M");
     expect(output).toContain("--govern [M]");
+    expect(output).toContain("--neat-finalize");
     expect(errors).toEqual([]);
   });
 
@@ -130,6 +131,65 @@ describe("loop CLI", () => {
 
     expect(statusCode).toBe(0);
     expect(logs.join("\n")).toContain("cli-loop-task - success");
+  });
+
+  it("attaches non-gating neat evidence after a successful direct run", async () => {
+    await mkdir(join(tmp, "tasks"));
+    await mkdir(join(tmp, ".osstack"));
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-loop-neat-task",
+      capability: "code.test",
+      prompt: "Exercise the neat finalizer",
+    }));
+    await writeFile(join(tmp, ".osstack", "neat.yaml"), `version: 1
+required_surfaces:
+  - id: missing-guide
+    path: docs/guide.md
+    kind: file
+    severity: warning
+`);
+
+    const exitCode = await main([
+      "loop", "run", "--workspace", tmp, "--source", "task_queue",
+      "--execute", "node -e \"process.exit(0)\"", "--neat-finalize", "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      knowledge_hygiene: {
+        status: string;
+        report: { findings: Array<{ rule_id: string }> };
+      };
+    };
+    expect(summary.knowledge_hygiene).toMatchObject({
+      status: "ok",
+      report: { findings: [expect.objectContaining({ rule_id: "surface.required_missing" })] },
+    });
+  });
+
+  it("does not rewrite direct loop success when neat finalization fails", async () => {
+    await mkdir(join(tmp, "tasks"));
+    await mkdir(join(tmp, ".osstack"));
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-loop-neat-error-task",
+      capability: "code.test",
+      prompt: "Exercise neat failure isolation",
+    }));
+    await writeFile(join(tmp, ".osstack", "neat.yaml"), "version: 2\n");
+
+    const exitCode = await main([
+      "loop", "run", "--workspace", tmp, "--source", "task_queue",
+      "--execute", "node -e \"process.exit(0)\"", "--neat-finalize", "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      completed_tasks: Array<{ outcome: string }>;
+      knowledge_hygiene: { status: string; error: string };
+    };
+    expect(summary.completed_tasks).toEqual([expect.objectContaining({ outcome: "success" })]);
+    expect(summary.knowledge_hygiene).toMatchObject({ status: "error" });
+    expect(summary.knowledge_hygiene.error).toBe("invalid neat config");
   });
 
   it("defers tasks per --discovery-policy instead of executing them", async () => {
