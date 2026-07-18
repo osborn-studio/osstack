@@ -38,6 +38,7 @@ function runInput(
       rule_id: "contract.review_required",
       surface: "documentation",
       severity: "warning",
+      confidence: "high",
       location_path: "AGENTS.md",
       rationale: "Review evidence is required.",
     }],

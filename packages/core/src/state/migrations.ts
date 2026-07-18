@@ -533,6 +533,22 @@ export const MIGRATIONS: readonly Migration[] = [
         ON knowledge_hygiene_resolutions(repo_id, resolved_at, fingerprint);
     `,
   },
+  {
+    id: 10,
+    name: "knowledge_hygiene_confidence",
+    // R4 recurrence proposals require per-occurrence high-confidence evidence.
+    // Historical rows predate this field and remain deliberately ineligible.
+    sql: `
+      ALTER TABLE knowledge_hygiene_findings
+        ADD COLUMN confidence TEXT NOT NULL DEFAULT 'unknown'
+        CHECK (confidence IN ('high','medium','low','unknown'));
+      ALTER TABLE knowledge_hygiene_occurrences
+        ADD COLUMN confidence TEXT NOT NULL DEFAULT 'unknown'
+        CHECK (confidence IN ('high','medium','low','unknown'));
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_occurrences_confidence
+        ON knowledge_hygiene_occurrences(confidence, state, repo_id, fingerprint);
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

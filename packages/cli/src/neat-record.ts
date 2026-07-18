@@ -28,6 +28,7 @@ function finding(
     rule_id: value.rule_id,
     surface: value.surface,
     severity: value.severity,
+    confidence: value.confidence,
     location_path: value.location.path,
     rationale: value.rationale,
   };

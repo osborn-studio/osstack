@@ -120,6 +120,7 @@ function recordedWarning(
       rule_id: "surface.required_missing",
       surface: "documentation",
       severity: "warning",
+      confidence: "high",
       location_path: "MISSING.md",
       rationale: "A configured knowledge surface is missing.",
     }],

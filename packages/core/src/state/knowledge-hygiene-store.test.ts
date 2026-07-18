@@ -64,6 +64,7 @@ function finding(
     rule_id: "contract.review_required",
     surface: "documentation",
     severity: findingSeverity,
+    confidence: "high",
     location_path: "README.md",
     rationale: "Review evidence is required.",
   };
@@ -91,6 +92,45 @@ describe("knowledge hygiene persistence migration", () => {
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'knowledge_hygiene_runs'",
     ).get()).toBeTruthy();
     expect(() => runMigrations(upgraded)).not.toThrow();
+    upgraded.close();
+  });
+
+  it("keeps pre-R4 confidence unknown so old history cannot auto-propose", async () => {
+    const path = await databasePath();
+    const old = new Database(path);
+    for (const migration of MIGRATIONS.filter((candidate) => candidate.id <= 9)) {
+      old.exec(migration.sql);
+      old.pragma(`user_version = ${migration.id}`);
+    }
+    old.prepare(`
+      INSERT INTO knowledge_hygiene_runs (
+        run_id, report_sha256, schema_version, repo_id, repo_root, mode,
+        generated_at, recorded_at, complete, skipped_files, error_count,
+        warning_count, info_count, suppressed_count, resolved_count
+      ) VALUES (?, ?, '1', 'repo', '/repo', 'all', 1, 1, 1, 0, 0, 1, 0, 0, 0)
+    `).run(`khr_${"a".repeat(64)}`, "a".repeat(64));
+    old.prepare(`
+      INSERT INTO knowledge_hygiene_findings (
+        repo_id, fingerprint, rule_id, surface, severity, location_path,
+        rationale, first_seen_at, last_seen_at, occurrence_count,
+        current_state, last_run_id
+      ) VALUES ('repo', ?, 'contract.review_required', 'documentation',
+        'warning', 'README.md', 'legacy', 1, 1, 1, 'active', ?)
+    `).run(fingerprint, `khr_${"a".repeat(64)}`);
+    old.prepare(`
+      INSERT INTO knowledge_hygiene_occurrences (
+        run_id, repo_id, fingerprint, state, severity, observed_at
+      ) VALUES (?, 'repo', ?, 'active', 'warning', 1)
+    `).run(`khr_${"a".repeat(64)}`, fingerprint);
+    old.close();
+
+    const upgraded = openDb({ path, minFreeBytes: 0 });
+    expect(upgraded.prepare(
+      "SELECT confidence FROM knowledge_hygiene_findings WHERE repo_id = 'repo'",
+    ).get()).toEqual({ confidence: "unknown" });
+    expect(upgraded.prepare(
+      "SELECT confidence FROM knowledge_hygiene_occurrences WHERE repo_id = 'repo'",
+    ).get()).toEqual({ confidence: "unknown" });
     upgraded.close();
   });
 });

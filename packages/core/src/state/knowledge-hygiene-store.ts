@@ -6,12 +6,14 @@ const sha256 = z.string().regex(/^[a-f0-9]{64}$/);
 const fingerprint = z.string().regex(/^khf_[a-f0-9]{64}$/);
 const diffId = z.string().regex(/^diff_[a-f0-9]{64}$/);
 const severity = z.enum(["error", "warning", "info"]);
+const confidence = z.enum(["high", "medium", "low"]);
 
 const storedFinding = z.object({
   fingerprint,
   rule_id: z.string().min(1),
   surface: z.string().min(1),
   severity,
+  confidence,
   location_path: z.string().min(1),
   rationale: z.string().min(1),
 }).strict();
@@ -96,6 +98,7 @@ export interface KnowledgeHygieneFindingRowV1 {
   rule_id: string;
   surface: string;
   severity: "error" | "warning" | "info";
+  confidence: "high" | "medium" | "low" | "unknown";
   location_path: string;
   rationale: string;
   first_seen_at: number;
@@ -112,6 +115,7 @@ export interface KnowledgeHygieneOccurrenceRowV1 {
   fingerprint: string;
   state: "active" | "resolved" | "closed_absent";
   severity: "error" | "warning" | "info";
+  confidence: "high" | "medium" | "low" | "unknown";
   observed_at: number;
   resolution_outcome: string | null;
 }
@@ -182,16 +186,17 @@ const insertRunSql = `
 
 const upsertFindingSql = `
   INSERT INTO knowledge_hygiene_findings (
-    repo_id, fingerprint, rule_id, surface, severity, location_path, rationale,
+    repo_id, fingerprint, rule_id, surface, severity, confidence, location_path, rationale,
     first_seen_at, last_seen_at, occurrence_count, current_state, closed_at, last_run_id
   ) VALUES (
-    @repo_id, @fingerprint, @rule_id, @surface, @severity, @location_path, @rationale,
+    @repo_id, @fingerprint, @rule_id, @surface, @severity, @confidence, @location_path, @rationale,
     @first_seen_at, @last_seen_at, 1, @current_state, @closed_at, @last_run_id
   )
   ON CONFLICT(repo_id, fingerprint) DO UPDATE SET
     rule_id = excluded.rule_id,
     surface = excluded.surface,
     severity = excluded.severity,
+    confidence = excluded.confidence,
     location_path = excluded.location_path,
     rationale = excluded.rationale,
     first_seen_at = MIN(knowledge_hygiene_findings.first_seen_at, excluded.first_seen_at),
@@ -204,9 +209,9 @@ const upsertFindingSql = `
 
 const insertOccurrenceSql = `
   INSERT OR IGNORE INTO knowledge_hygiene_occurrences (
-    run_id, repo_id, fingerprint, state, severity, observed_at, resolution_outcome
+    run_id, repo_id, fingerprint, state, severity, confidence, observed_at, resolution_outcome
   ) VALUES (
-    @run_id, @repo_id, @fingerprint, @state, @severity, @observed_at, @resolution_outcome
+    @run_id, @repo_id, @fingerprint, @state, @severity, @confidence, @observed_at, @resolution_outcome
   )
 `;
 
@@ -263,6 +268,7 @@ export function recordKnowledgeHygieneRun(
         fingerprint: finding.fingerprint,
         state: "active",
         severity: finding.severity,
+        confidence: finding.confidence,
         observed_at: input.generated_at,
         resolution_outcome: null,
       });
@@ -292,6 +298,7 @@ export function recordKnowledgeHygieneRun(
         fingerprint: finding.fingerprint,
         state: "resolved",
         severity: finding.severity,
+        confidence: finding.confidence,
         observed_at: input.generated_at,
         resolution_outcome: resolution.outcome,
       });
@@ -329,6 +336,7 @@ export function recordKnowledgeHygieneRun(
           fingerprint: finding.fingerprint,
           state: "closed_absent",
           severity: finding.severity,
+          confidence: finding.confidence,
           observed_at: input.generated_at,
           resolution_outcome: null,
         });
