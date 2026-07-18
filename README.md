@@ -270,6 +270,14 @@ osstack neat check --all --adapter claude-code \
 
 # Event-derived history (no composite score).
 osstack neat trend --repo-id osstack
+
+# Optional non-gating close-out evidence after a successful loop.
+osstack loop run --workspace . --source task_queue --neat-finalize --json
+
+# Preview repeated high-confidence findings as stable human-reviewed drafts.
+osstack neat propose --db "$OSSTACK_HOME/state.db" --json
+# Persist drafts only after explicit confirmation and policy authorization.
+osstack neat propose --db "$OSSTACK_HOME/state.db" --yes
 ```
 
 The optional `.osstack/neat.yaml` declares canonical instruction sources,

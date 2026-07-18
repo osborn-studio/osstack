@@ -2,7 +2,7 @@
 
 | Item | Value |
 |---|---|
-| Status | In progress — P0 accepted; R0-R4 authorized 2026-07-17 |
+| Status | Complete — P0 and R0-R4 release gates verified 2026-07-17 |
 | Date | 2026-07-17 |
 | Product spec | `docs/2026-07-17-neat-product-technical-spec-v2.md` |
 | Architecture decision | `docs/decisions/ADR-002-neat-knowledge-hygiene-boundary.md` |
@@ -1276,10 +1276,10 @@ proposal remains human-reviewed; no hook is installed automatically.
 
 ### R4 release gate
 
-- [ ] Automation remains opt-in.
-- [ ] Loop kernel has no governance dependency.
-- [ ] Proposals are drafts, deduplicated, and evidence-backed.
-- [ ] No hook or policy is modified automatically.
+- [x] Automation remains opt-in.
+- [x] Loop kernel has no governance dependency.
+- [x] Proposals are drafts, deduplicated, and evidence-backed.
+- [x] No hook or policy is modified automatically.
 
 ---
 
@@ -1335,19 +1335,19 @@ and publishes the contract before the dependent branch rebases.
 
 The full upgrade is complete only when:
 
-- [ ] R0-R4 release gates are met or later releases are explicitly descoped in
+- [x] R0-R4 release gates are met or later releases are explicitly descoped in
   an accepted spec amendment.
-- [ ] Every public command, config, schema, and adapter is documented.
-- [ ] Every write action has preview, confirmation, policy, precondition,
+- [x] Every public command, config, schema, and adapter is documented.
+- [x] Every write action has preview, confirmation, policy, precondition,
   idempotency, and evidence.
-- [ ] Default local `neat` remains read-only and fast.
-- [ ] Portfolio/daily aggregation uses the governance API, never CLI text.
-- [ ] External memory requires explicit consent and remains source-faithful.
-- [ ] No composite score is shipped without a separately accepted evaluation
+- [x] Default local `neat` remains read-only and fast.
+- [x] Portfolio/daily aggregation uses the governance API, never CLI text.
+- [x] External memory requires explicit consent and remains source-faithful.
+- [x] No composite score is shipped without a separately accepted evaluation
   design.
-- [ ] Full tests, build, typecheck, smoke, schemas, changesets, inventories, and
+- [x] Full tests, build, typecheck, smoke, schemas, changesets, inventories, and
   attribution are green/current.
-- [ ] Release handoff names remaining non-goals and operational rollback.
+- [x] Release handoff names remaining non-goals and operational rollback.
 
 P0 was approved on 2026-07-17. The next authorized action is R0.1
 implementation.

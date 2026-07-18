@@ -24,7 +24,7 @@ Workspace packages, publish status, and internal (workspace) dependencies.
 | `@osstack/runtime` | 0.1.0 | public | — |
 | `@osstack/skill-registry` | 0.2.0 | public | `core` |
 | `@osstack/skills` | 0.2.0 | public | `core` |
-| `@osstack/supervisor` | 0.9.0 | **private** | `core`, `loop` |
+| `@osstack/supervisor` | 0.9.0 | **private** | `core`, `governance`, `loop` |
 
 ## Edge list
 
@@ -40,7 +40,7 @@ loop -> agents, core, github, hermes-adapter, protocol
 plugins -> core
 skill-registry -> core
 skills -> core
-supervisor -> core, loop
+supervisor -> core, governance, loop
 ```
 
 Leaves (no internal deps): `compliance`, `contracts`, `github`, `governance`, `knowledge`, `protocol`, `runtime`

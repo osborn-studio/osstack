@@ -2,7 +2,7 @@
 
 | Item | Value |
 |---|---|
-| Status | Accepted — implementation authorized 2026-07-17 |
+| Status | Implemented — P0 and R0-R4 release gates verified 2026-07-17 |
 | Date | 2026-07-17 |
 | Product | `osstack neat` knowledge hygiene |
 | Source draft | `docs/2026-07-17-neat-knowledge-hygiene-design.md` |
@@ -169,12 +169,14 @@ Claude-specific limits by default.
 
 ### 4.5 R4 — automation and improvement proposals
 
-R4 may add:
+R4 includes:
 
-- an application-layer finalizer after a successful loop run;
-- repeated-finding proposals for a hook or deterministic gate;
+- an opt-in application-layer finalizer after a successful loop run via
+  `loop run --neat-finalize`;
+- preview-first repeated-finding drafts via `neat propose`, with explicit
+  confirmation and policy authorization before persistence;
 - dependency-aware cross-repository knowledge obligations after the registry
-  has explicit dependency edges.
+  has explicit dependency edges remains a non-goal until those edges exist.
 
 ### 4.6 Explicit non-goals
 

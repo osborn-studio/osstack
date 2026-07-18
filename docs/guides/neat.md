@@ -135,6 +135,58 @@ The trend reports count, current open age, recurrence, closure rate, latest
 new/resolved delta, and the latest suppression count as a separate value. It
 does not calculate a composite score.
 
+## Optional loop close-out evidence
+
+Loop integration is application-owned and disabled unless explicitly requested:
+
+```bash
+osstack loop run --workspace . --source task_queue --neat-finalize --json
+osstack loop run --daemon --workspace . --source task_queue --neat-finalize --json
+```
+
+After a non-idle successful loop whose budget was not exceeded, the direct CLI
+or daemon calls the governance API once and attaches
+`result.knowledge_hygiene`. A complete or incomplete report is preserved in
+that field for later review. A neat configuration/runtime error is represented
+as `knowledge_hygiene.status: error`, but never changes a successful task,
+loop exit code, or Loop state. Failed and idle loops do not invoke the
+finalizer. `LoopEngine` has no governance dependency, and the finalizer calls
+the API directly rather than invoking another CLI or loop.
+
+## Repeated-finding proposal workflow
+
+Recorded history can be converted into high-risk improvement drafts. Preview
+is the default:
+
+```bash
+osstack neat propose --db /absolute/path/to/state.db
+osstack neat propose \
+  --db /absolute/path/to/state.db \
+  --min-occurrences 3 \
+  --min-repositories 2 \
+  --json
+```
+
+Only currently active findings with explicit `high` confidence are eligible.
+Each fingerprint must meet the per-repository occurrence threshold, and the
+same rule must meet the repository threshold. History written before the R4
+confidence migration is `unknown` and cannot propose. One-off, medium/low
+confidence, resolved, and closed findings are excluded.
+
+Persist the previewed drafts only with explicit confirmation:
+
+```bash
+osstack neat propose --db /absolute/path/to/state.db --yes
+```
+
+The write consults `.osstack/policy.yaml`; `observe` denies it, while
+`propose` and `execute` allow proposal preparation. Proposal IDs are stable per
+repository and rule, source run IDs remain attached as evidence, and repeat
+runs are idempotent. Existing human-advanced states are preserved. Every new
+proposal is `draft`, `high` risk, has no proposed file changes, and therefore
+cannot install a hook or modify policy automatically. The existing improvement
+gate routes it to human review.
+
 ## Explicit Claude Code memory audit
 
 External memory is never inspected because a directory happens to exist. Enable
@@ -171,7 +223,7 @@ last recall. See the [Claude Code memory contract](https://code.claude.com/docs/
 |---:|---|
 | 0 | Check completed and the selected `--fail-on` threshold was not met. |
 | 1 | Check completed and findings met the threshold. |
-| 2 | Arguments or `.osstack/neat.yaml` are invalid. |
+| 2 | Arguments/config are invalid, or a confirmed proposal write is denied by policy. |
 | 3 | A runtime, Git, filesystem, or environment failure prevented a complete check. |
 
 `--fail-on none` never hides findings; it only makes a completed check exit 0.
