@@ -450,14 +450,14 @@ single immutable rule registry.
 
 **Acceptance criteria:**
 
-- [ ] Findings match configured severity and remediation modes.
-- [ ] Budgets count normalized lines and raw UTF-8 bytes exactly.
-- [ ] Zero-config mode does not invent required surfaces or budgets.
-- [ ] Rule registry rejects duplicate ids and is exhaustively typed.
+- [x] Findings match configured severity and remediation modes.
+- [x] Budgets count normalized lines and raw UTF-8 bytes exactly.
+- [x] Zero-config mode does not invent required surfaces or budgets.
+- [x] Rule registry rejects duplicate ids and is exhaustively typed.
 
 **Verification:**
 
-- [ ] Rule table tests cover positive, clean, suppression, and boundary cases.
+- [x] Rule table tests cover positive, clean, suppression, and boundary cases.
 
 **Dependencies:** R0.4.1, R0.2.
 
