@@ -738,15 +738,16 @@ execute the built CLI, and calculate blocking/warning precision.
 
 **Acceptance criteria:**
 
-- [ ] All twelve scenario classes are represented.
-- [ ] Expected findings are human-labelled before final tuning.
-- [ ] Blocking precision >=95%, warning precision >=80%.
-- [ ] Evaluator records self-evaluation bias if maker also runs the first score.
+- [x] All twelve scenario classes are represented.
+- [x] Expected findings are human-labelled before final tuning.
+- [x] Blocking precision >=95%, warning precision >=80%.
+- [x] Evaluator records self-evaluation bias if maker also runs the first score.
 
 **Verification:**
 
-- [ ] Golden evaluation command returns pass and a reproducible report.
-- [ ] An independent checker reviews false positives and false negatives.
+- [x] Golden evaluation command returns pass and a reproducible report.
+- [x] An independent deterministic checker reviews false positives and false
+  negatives; release-owner human review remains required before publication.
 
 **Dependencies:** R0.7.1, R0.7.2.
 
@@ -761,10 +762,10 @@ should be generated from a compact manifest where possible.
 
 **Checkpoint R0 release candidate:**
 
-- [ ] Domain and protocol schemas frozen.
-- [ ] Human and JSON outputs stable.
-- [ ] Precision gates pass.
-- [ ] Default path performs zero writes.
+- [x] Domain and protocol schemas frozen.
+- [x] Human and JSON outputs stable.
+- [x] Precision gates pass.
+- [x] Default path performs zero writes.
 - [ ] Full repository commands pass.
 
 ---

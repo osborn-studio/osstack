@@ -16,4 +16,5 @@ configured change-review contracts against structured Git change sets. Check
 plain relative Markdown links and exact-line instruction imports with
 conservative parsing and repository-confined symlink handling. Publish frozen
 JSON Schema artifacts and labelled compatibility vectors for the finding and
-report v1 contracts.
+report v1 contracts. Add a hermetic twelve-scenario golden evaluation with
+explicit false-positive accounting and reproducible precision gates.
