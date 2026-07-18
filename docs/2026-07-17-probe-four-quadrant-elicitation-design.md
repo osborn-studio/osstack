@@ -1163,9 +1163,9 @@ pnpm --filter @osstack/cli test -- probe-render
 
 **验收：**
 
-- [ ] missing config=report、invalid config=hard error、block violations=exit 1。
-- [ ] session 与 portable ledger 得出相同 readiness vector。
-- [ ] expired waiver、due deferral、pending destination 与 required gaps 均覆盖。
+- [x] missing config=report、invalid config=hard error、block violations=exit 1。
+- [x] session 与 portable ledger 得出相同 readiness vector。
+- [x] expired waiver、due deferral、pending destination 与 required gaps 均覆盖。
 
 **验证：**
 

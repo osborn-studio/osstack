@@ -9,6 +9,7 @@ import {
   ProbeRestatementFindingV1,
   ProbeSessionV1,
 } from "./types.js";
+import { ProbeGatePolicyV1 } from "./gate.js";
 
 interface ProbeSchemaEntryV1 {
   key: string;
@@ -57,6 +58,13 @@ export const PROBE_SCHEMA_MANIFEST_V1 = Object.freeze([
     comment:
       "At least one side of the restatement comparison must carry evidence; @osstack/governance Zod validation enforces this constraint.",
     schema: ProbeRestatementFindingV1,
+  },
+  {
+    key: "probe-policy-v1",
+    title: "Osstack Probe Readiness Policy v1",
+    comment:
+      "YAML policy uses numeric schema_version 1; defaults are applied by @osstack/governance Zod validation.",
+    schema: ProbeGatePolicyV1,
   },
   {
     key: "probe-render-manifest-v1",

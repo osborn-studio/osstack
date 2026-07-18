@@ -18,12 +18,13 @@ describe("probe public schemas", () => {
       "probe-event-v1.schema.json",
       "probe-item-v1.schema.json",
       "probe-ledger-v1.schema.json",
+      "probe-policy-v1.schema.json",
       "probe-question-batch-v1.schema.json",
       "probe-render-manifest-v1.schema.json",
       "probe-restatement-finding-v1.schema.json",
       "probe-session-v1.schema.json",
     ]);
-    expect(PROBE_SCHEMA_MANIFEST_V1).toHaveLength(7);
+    expect(PROBE_SCHEMA_MANIFEST_V1).toHaveLength(8);
   });
 
   for (const [filename, content] of Object.entries(generated)) {

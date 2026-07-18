@@ -20,8 +20,10 @@ if (!existsSync(cliPath)) {
 const fixtureRoot = await mkdtemp(join(tmpdir(), "osstack-probe-smoke-"));
 const workspace = join(fixtureRoot, "repo");
 const home = join(fixtureRoot, "home");
+const freshHome = join(fixtureRoot, "fresh-home");
 await mkdir(join(workspace, "docs"), { recursive: true });
 await mkdir(home, { recursive: true });
+await mkdir(freshHome, { recursive: true });
 await writeFile(
   join(workspace, "docs", "intent.md"),
   "# Probe smoke intent\n\nPersist architecture decisions before implementation.\n",
@@ -33,7 +35,7 @@ try {
     await exerciseSession(index);
   }
   console.log(
-    "probe smoke PASS: 10 restart-safe sessions, stable questions, idempotent writes, and valid ledgers",
+    "probe smoke PASS: 10 restart-safe sessions, idempotent writes, portable rendering, and fresh-home gate parity",
   );
 } finally {
   await rm(fixtureRoot, { recursive: true, force: true });
@@ -197,9 +199,48 @@ async function exerciseSession(index) {
   ]);
   assert(ledger.events.length === 4, `expected 4 events, got ${ledger.events.length}`);
   assert(ledger.session.revision === 4, "ledger revision mismatch");
+
+  if (index === 1) {
+    await probe([
+      "render",
+      "--session",
+      sessionId,
+      "--if-revision",
+      "4",
+      "--target",
+      "ledger",
+      "--actor-kind",
+      "agent",
+      "--actor-id",
+      "probe-smoke",
+      "--idempotency-key",
+      "render-1",
+      "--json",
+    ]);
+    const liveGate = await probe([
+      "gate",
+      "--session",
+      sessionId,
+      "--json",
+    ]);
+    const portableGate = await probe(
+      [
+        "gate",
+        "--ledger",
+        `docs/probe/sessions/${sessionId}/ledger.json`,
+        "--json",
+      ],
+      freshHome,
+    );
+    assert(
+      JSON.stringify(liveGate.readiness) ===
+        JSON.stringify(portableGate.readiness),
+      "fresh-home portable gate differs from live session gate",
+    );
+  }
 }
 
-async function probe(args) {
+async function probe(args, commandHome = home) {
   const { stdout, stderr } = await execFileAsync(
     process.execPath,
     [cliPath, "probe", ...args],
@@ -209,7 +250,7 @@ async function probe(args) {
       timeout: 20_000,
       env: {
         ...process.env,
-        OSSTACK_HOME: home,
+        OSSTACK_HOME: commandHome,
       },
     },
   );

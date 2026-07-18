@@ -1,4 +1,5 @@
 export * from "./generate.js";
+export * from "./gate.js";
 export * from "./priority.js";
 export * from "./question-pack.js";
 export * from "./render.js";

@@ -753,4 +753,240 @@ describe("handleProbeCommand", () => {
       ]),
     );
   });
+
+  it("gates a live session and the same portable ledger identically from a fresh home", async () => {
+    const command = await harness();
+    command.deps.now_ms = () => 1_000;
+    await handleProbeCommand(
+      startArgs([
+        "--domain-familiarity",
+        "expert",
+        "--repo-familiarity",
+        "maintainer",
+        "--intent-maturity",
+        "review_ready",
+      ]),
+      command.deps,
+    );
+    const started = json(command.stdout);
+    const session = started.result?.session as {
+      session_id: string;
+      revision: number;
+    };
+
+    command.stdout.length = 0;
+    expect(
+      await handleProbeCommand(
+        ["gate", "--session", session.session_id, "--json"],
+        command.deps,
+      ),
+    ).toBe(0);
+    const live = json(command.stdout);
+    expect(live).toMatchObject({
+      status: "ok",
+      result: {
+        command: "probe.gate",
+        source: { kind: "session", ref: session.session_id },
+        policy_source: "built_in",
+        enforcement: "report",
+        eligible: false,
+      },
+    });
+
+    command.stdout.length = 0;
+    expect(
+      await handleProbeCommand(
+        [
+          "render",
+          "--session",
+          session.session_id,
+          "--if-revision",
+          String(session.revision),
+          "--target",
+          "ledger",
+          "--actor-kind",
+          "agent",
+          "--actor-id",
+          "codex",
+          "--idempotency-key",
+          "render-for-gate",
+          "--json",
+        ],
+        command.deps,
+      ),
+    ).toBe(0);
+    json(command.stdout);
+
+    const freshHome = join(command.home, "fresh");
+    await mkdir(freshHome, { recursive: true });
+    command.stdout.length = 0;
+    expect(
+      await handleProbeCommand(
+        [
+          "gate",
+          "--ledger",
+          `docs/probe/sessions/${session.session_id}/ledger.json`,
+          "--json",
+        ],
+        {
+          ...command.deps,
+          state_db_path: async () => join(freshHome, "state.db"),
+        },
+      ),
+    ).toBe(0);
+    const portable = json(command.stdout);
+    expect(portable).toMatchObject({
+      status: "ok",
+      result: {
+        source: {
+          kind: "ledger",
+          ref: `docs/probe/sessions/${session.session_id}/ledger.json`,
+        },
+      },
+    });
+    expect(portable.result?.readiness).toEqual(live.result?.readiness);
+  });
+
+  it("returns a policy_denied blocked envelope and exit 1 in block mode", async () => {
+    const command = await harness();
+    await handleProbeCommand(
+      startArgs([
+        "--domain-familiarity",
+        "expert",
+        "--repo-familiarity",
+        "maintainer",
+        "--intent-maturity",
+        "review_ready",
+      ]),
+      command.deps,
+    );
+    const sessionId = (
+      json(command.stdout).result?.session as { session_id: string }
+    ).session_id;
+    await mkdir(join(command.repo, ".osstack"), { recursive: true });
+    await writeFile(
+      join(command.repo, ".osstack", "probe.yaml"),
+      "schema_version: 1\nenforcement: block\n",
+      "utf8",
+    );
+
+    command.stdout.length = 0;
+    expect(
+      await handleProbeCommand(
+        ["gate", "--session", sessionId, "--json"],
+        command.deps,
+      ),
+    ).toBe(1);
+    expect(json(command.stdout)).toMatchObject({
+      status: "blocked",
+      result: { command: "probe.gate", eligible: false },
+      error: { code: "policy_denied", retryable: false },
+    });
+  });
+
+  it("fails closed on an invalid gate config and portable artifact tampering", async () => {
+    const command = await harness();
+    await mkdir(join(command.repo, ".osstack"), { recursive: true });
+    await writeFile(
+      join(command.repo, ".osstack", "probe.yaml"),
+      "schema_version: 2\nenforcement: silent\n",
+      "utf8",
+    );
+    expect(await handleProbeCommand(startArgs(), command.deps)).toBe(2);
+    expect(json(command.stdout)).toMatchObject({
+      status: "error",
+      error: { code: "bad_request" },
+    });
+
+    await rm(join(command.repo, ".osstack", "probe.yaml"));
+    command.stdout.length = 0;
+    await handleProbeCommand(
+      startArgs([
+        "--domain-familiarity",
+        "expert",
+        "--repo-familiarity",
+        "maintainer",
+        "--intent-maturity",
+        "review_ready",
+      ]),
+      command.deps,
+    );
+    const session = json(command.stdout).result?.session as {
+      session_id: string;
+      revision: number;
+    };
+    command.stdout.length = 0;
+    await handleProbeCommand(
+      [
+        "render",
+        "--session",
+        session.session_id,
+        "--if-revision",
+        String(session.revision),
+        "--target",
+        "ledger",
+        "--actor-kind",
+        "agent",
+        "--actor-id",
+        "codex",
+        "--idempotency-key",
+        "render-tamper",
+        "--json",
+      ],
+      command.deps,
+    );
+    await writeFile(
+      join(
+        command.repo,
+        "docs",
+        "probe",
+        "sessions",
+        session.session_id,
+        "ledger.json",
+      ),
+      "{}\n",
+      "utf8",
+    );
+
+    command.stdout.length = 0;
+    expect(
+      await handleProbeCommand(
+        [
+          "gate",
+          "--ledger",
+          `docs/probe/sessions/${session.session_id}/ledger.json`,
+          "--json",
+        ],
+        command.deps,
+      ),
+    ).toBe(2);
+    expect(json(command.stdout)).toMatchObject({
+      status: "error",
+      error: { code: "bad_request" },
+    });
+  });
+
+  it("uses repository gate budgets when selecting start questions", async () => {
+    const command = await harness();
+    await mkdir(join(command.repo, ".osstack"), { recursive: true });
+    await writeFile(
+      join(command.repo, ".osstack", "probe.yaml"),
+      [
+        "schema_version: 1",
+        "budgets:",
+        "  quick: 3",
+        "  standard: 12",
+        "  deep: 30",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    expect(
+      await handleProbeCommand(startArgs(["--depth", "quick"]), command.deps),
+    ).toBe(0);
+    expect(json(command.stdout)).toMatchObject({
+      result: { session: { depth: "quick", question_budget: 3 } },
+    });
+  });
 });

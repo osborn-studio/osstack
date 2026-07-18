@@ -15,6 +15,7 @@ import {
   createProbeRenderBundle,
   deriveProbeReadiness,
   deriveProbeSeverity,
+  evaluateProbeGate,
   getCurrentProbeItem,
   materializeProbeQuestions,
   ProbeActorV1,
@@ -50,6 +51,12 @@ import {
 import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { osstackHome } from "./paths.js";
+import {
+  ProbeGateInputError,
+  collectProbeDestinationContent,
+  loadProbeGatePolicy,
+  readPortableProbeLedger,
+} from "./probe-gate.js";
 import {
   ProbeRenderWriteError,
   readProbeRenderDirectory,
@@ -117,6 +124,7 @@ Usage:
   osstack probe ledger --session <id> [filters]
   osstack probe ledger destination --session <id> --item <id> [write options]
   osstack probe render --session <id> --if-revision <n> --target <target>
+  osstack probe gate (--session <id> | --ledger <path>) [--config <path>]
 
 Start options:
   --repo <path>                    Repository root (default: cwd)
@@ -160,6 +168,7 @@ Output:
 
 Exit codes:
   0  Command completed
+  1  Block-mode gate found readiness violations
   2  Invalid arguments, schema, or transition
   3  Conflict, I/O, SQLite, or runtime failure`;
 }
@@ -476,6 +485,18 @@ function errorEnvelope(code: ErrorCode, message: string, retryable: boolean) {
   });
 }
 
+function blockedEnvelope(
+  result: Record<string, unknown>,
+  message: string,
+) {
+  return AgentCommandResult.parse({
+    protocol_version: PROTOCOL_VERSION,
+    status: "blocked",
+    result,
+    error: { code: "policy_denied", message, retryable: false },
+  });
+}
+
 function renderHuman(result: Record<string, unknown>): string {
   const session = result["session"] as
     | { session_id?: string; state?: string; revision?: number }
@@ -523,6 +544,20 @@ function emitError(
     deps.stdout(JSON.stringify(errorEnvelope(code, message, retryable), null, 2));
   } else {
     deps.stderr(`osstack probe: ${message}`);
+  }
+}
+
+function emitBlocked(
+  deps: ProbeCommandDependencies,
+  format: ProbeFormat,
+  result: Record<string, unknown>,
+): void {
+  const message = "probe readiness policy denied execution";
+  if (format === "json") {
+    deps.stdout(JSON.stringify(blockedEnvelope(result, message), null, 2));
+  } else {
+    deps.stdout(renderHuman(result));
+    deps.stderr(`osstack probe: policy_denied: ${message}`);
   }
 }
 
@@ -727,10 +762,12 @@ async function handleStart(
     throw new ProbeUsageError(`unsupported depth: ${depth}`);
   }
   const familiarity = parseFamiliarity(flags);
+  const { policy } = await loadProbeGatePolicy(repoRoot);
   const selection = selectProbeQuestions({
     doc_types: uniqueDocTypes,
     depth,
     familiarity,
+    question_budget: policy.budgets[depth],
   });
   const nowMs = (deps.now_ms ?? Date.now)();
   const createId = deps.create_id ?? createIdDefault;
@@ -1615,6 +1652,81 @@ async function handleRender(
   }
 }
 
+async function handleGate(
+  args: readonly string[],
+  deps: ProbeCommandDependencies,
+): Promise<number> {
+  const flags = parseFlags(args, {
+    value_flags: ["--session", "--ledger", "--config", "--format"],
+    boolean_flags: ["--json"],
+  });
+  const format = parseFormat(flags);
+  const sessionId = one(flags, "--session");
+  const ledgerPath = one(flags, "--ledger");
+  if ((sessionId === undefined) === (ledgerPath === undefined)) {
+    throw new ProbeUsageError(
+      "gate requires exactly one of --session or --ledger",
+    );
+  }
+  const repoRoot = await realpath(deps.cwd());
+  const loadedPolicy = await loadProbeGatePolicy(
+    repoRoot,
+    one(flags, "--config"),
+  );
+  let source: { kind: "session" | "ledger"; ref: string };
+  let state: ProbeDomainStateV1;
+  let events: ProbeEventV1[];
+  if (sessionId !== undefined) {
+    const db = await openProbeDb(deps);
+    try {
+      state = loadDomainState(db, sessionId);
+      events = listProbeEvents(db, sessionId).map((event) =>
+        JSON.parse(event.event_json),
+      );
+    } finally {
+      db.close();
+    }
+    source = { kind: "session", ref: sessionId };
+  } else {
+    const portable = await readPortableProbeLedger(
+      repoRoot,
+      ledgerPath ?? "",
+    );
+    state = {
+      session: portable.ledger.session,
+      items: portable.ledger.items,
+    };
+    events = portable.ledger.events;
+    source = { kind: "ledger", ref: ledgerPath ?? "" };
+  }
+  const destinationContent = await collectProbeDestinationContent(
+    repoRoot,
+    state.items,
+  );
+  const gate = evaluateProbeGate({
+    session: state.session,
+    items: state.items,
+    events,
+    policy: loadedPolicy.policy,
+    now_ms: (deps.now_ms ?? Date.now)(),
+    destination_content: destinationContent,
+  });
+  const result = {
+    command: "probe.gate",
+    source,
+    policy_source: loadedPolicy.source,
+    enforcement: gate.enforcement,
+    eligible: gate.readiness.eligible,
+    readiness: gate.readiness,
+  };
+  if (gate.blocked) {
+    emitBlocked(deps, format, result);
+    return 1;
+  }
+  emitResult(deps, format, result);
+  return 0;
+}
+
 export async function handleProbeCommand(
   args: readonly string[],
   deps: ProbeCommandDependencies,
@@ -1636,6 +1748,7 @@ export async function handleProbeCommand(
     }
     if (command === "ledger") return await handleLedger(rest, deps);
     if (command === "render") return await handleRender(rest, deps);
+    if (command === "gate") return await handleGate(rest, deps);
     throw new ProbeUsageError(`unknown subcommand: ${command}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -1665,6 +1778,10 @@ export async function handleProbeCommand(
         conflict,
       );
       return conflict ? 3 : 2;
+    }
+    if (error instanceof ProbeGateInputError) {
+      emitError(deps, json, "bad_request", message, false);
+      return 2;
     }
     if (
       error instanceof ProbeUsageError ||
