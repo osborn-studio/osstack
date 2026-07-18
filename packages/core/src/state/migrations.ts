@@ -444,6 +444,95 @@ export const MIGRATIONS: readonly Migration[] = [
         ON contract_approval_decisions(contract_id, decided_at);
     `,
   },
+  {
+    id: 9,
+    name: "knowledge_hygiene_history",
+    // ADR-003: normalized event history. Full report blobs remain caller-owned;
+    // core stores report identity, bounded finding metadata, occurrences, and
+    // explicit resolutions only.
+    sql: `
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_runs (
+        run_id            TEXT PRIMARY KEY,
+        report_sha256     TEXT NOT NULL UNIQUE,
+        schema_version    TEXT NOT NULL,
+        repo_id           TEXT NOT NULL,
+        repo_root         TEXT NOT NULL,
+        mode              TEXT NOT NULL CHECK (mode IN ('all','worktree','range','base_to_worktree')),
+        diff_id           TEXT,
+        config_sha256     TEXT,
+        generated_at      REAL NOT NULL,
+        recorded_at       REAL NOT NULL,
+        complete          INTEGER NOT NULL CHECK (complete IN (0,1)),
+        skipped_files     INTEGER NOT NULL,
+        error_count       INTEGER NOT NULL,
+        warning_count     INTEGER NOT NULL,
+        info_count        INTEGER NOT NULL,
+        suppressed_count  INTEGER NOT NULL,
+        resolved_count    INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_runs_repo_generated
+        ON knowledge_hygiene_runs(repo_id, generated_at, run_id);
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_runs_diff
+        ON knowledge_hygiene_runs(diff_id);
+
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_findings (
+        repo_id            TEXT NOT NULL,
+        fingerprint        TEXT NOT NULL,
+        rule_id            TEXT NOT NULL,
+        surface            TEXT NOT NULL,
+        severity           TEXT NOT NULL CHECK (severity IN ('error','warning','info')),
+        location_path      TEXT NOT NULL,
+        rationale          TEXT NOT NULL,
+        first_seen_at      REAL NOT NULL,
+        last_seen_at       REAL NOT NULL,
+        occurrence_count   INTEGER NOT NULL CHECK (occurrence_count >= 1),
+        current_state      TEXT NOT NULL CHECK (current_state IN ('active','resolved','closed_absent')),
+        closed_at          REAL,
+        last_run_id        TEXT NOT NULL REFERENCES knowledge_hygiene_runs(run_id),
+        PRIMARY KEY (repo_id, fingerprint)
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_findings_repo_state
+        ON knowledge_hygiene_findings(repo_id, current_state, severity, last_seen_at);
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_findings_rule
+        ON knowledge_hygiene_findings(repo_id, rule_id, current_state);
+
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_occurrences (
+        run_id              TEXT NOT NULL REFERENCES knowledge_hygiene_runs(run_id) ON DELETE CASCADE,
+        repo_id              TEXT NOT NULL,
+        fingerprint          TEXT NOT NULL,
+        state                TEXT NOT NULL CHECK (state IN ('active','resolved','closed_absent')),
+        severity             TEXT NOT NULL CHECK (severity IN ('error','warning','info')),
+        observed_at          REAL NOT NULL,
+        resolution_outcome   TEXT,
+        PRIMARY KEY (run_id, repo_id, fingerprint, state),
+        FOREIGN KEY (repo_id, fingerprint)
+          REFERENCES knowledge_hygiene_findings(repo_id, fingerprint)
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_occurrences_repo_time
+        ON knowledge_hygiene_occurrences(repo_id, observed_at, run_id);
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_occurrences_state
+        ON knowledge_hygiene_occurrences(repo_id, state, observed_at);
+
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_resolutions (
+        resolution_id      TEXT PRIMARY KEY,
+        run_id             TEXT NOT NULL REFERENCES knowledge_hygiene_runs(run_id) ON DELETE CASCADE,
+        repo_id            TEXT NOT NULL,
+        diff_id            TEXT NOT NULL,
+        fingerprint        TEXT NOT NULL,
+        outcome            TEXT NOT NULL CHECK (outcome IN ('fixed','reviewed_no_change','accepted_risk','suppressed','obsolete')),
+        actor_kind         TEXT NOT NULL CHECK (actor_kind IN ('human','agent')),
+        actor_id           TEXT NOT NULL,
+        reason             TEXT NOT NULL,
+        evidence_refs_json TEXT NOT NULL,
+        resolved_at        REAL NOT NULL,
+        UNIQUE (diff_id, fingerprint),
+        FOREIGN KEY (repo_id, fingerprint)
+          REFERENCES knowledge_hygiene_findings(repo_id, fingerprint)
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_resolutions_repo_time
+        ON knowledge_hygiene_resolutions(repo_id, resolved_at, fingerprint);
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

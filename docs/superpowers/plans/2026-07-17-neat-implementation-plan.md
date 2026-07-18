@@ -1060,10 +1060,10 @@ without approval.
 **Description:** Add core-owned storage APIs and tests; governance remains DB
 independent.
 
-**Acceptance criteria:** Migration round-trip, idempotency, concurrent upsert,
+**Acceptance criteria:** ✅ Migration round-trip, idempotency, concurrent upsert,
 and older DB compatibility pass.
 
-**Verification:** Core migration/repository tests and full suite pass.
+**Verification:** ✅ Core migration/repository tests and full suite pass.
 
 **Dependencies:** R2.1.1.
 
