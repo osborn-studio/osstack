@@ -1181,10 +1181,10 @@ findings are separated; no composite score.
 **Description:** Add the adapter contract from spec §17, explicit enablement,
 version/evidence fields, and no-op behavior for absent platforms.
 
-**Acceptance criteria:** Presence alone never enables scanning; adapter cannot
+**Acceptance criteria:** ✅ Presence alone never enables scanning; adapter cannot
 write; platform limits are adapter-owned.
 
-**Verification:** Contract tests with fake adapters pass.
+**Verification:** ✅ Contract tests with fake adapters pass.
 
 **Dependencies:** R0 gate; schedule after R2 unless owner reprioritizes.
 

@@ -125,10 +125,35 @@ describe("parseKnowledgeHygieneConfigV1", () => {
       "unknown field",
       `version: 1\nsecret_mode: permissive`,
     ],
+    [
+      "implicit adapter enablement",
+      `version: 1\nadapters:\n  claude_code:\n    memory_dir: ~/memory`,
+    ],
+    [
+      "relative external memory path",
+      `version: 1\nadapters:\n  claude_code:\n    enabled: true\n    memory_dir: relative/memory`,
+    ],
   ])("rejects %s", (_label, source) => {
     expect(() => parseKnowledgeHygieneConfigV1(source)).toThrow(
       KnowledgeHygieneConfigError,
     );
+  });
+
+  it("parses explicit Claude Code adapter consent and an exact memory directory", () => {
+    expect(parseKnowledgeHygieneConfigV1(`
+version: 1
+adapters:
+  claude_code:
+    enabled: true
+    memory_dir: ~/claude-memory
+`)).toMatchObject({
+      adapters: {
+        claude_code: {
+          enabled: true,
+          memory_dir: "~/claude-memory",
+        },
+      },
+    });
   });
 
   it("rejects direct parser input above the size limit", () => {

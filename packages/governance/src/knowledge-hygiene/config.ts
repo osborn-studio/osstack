@@ -59,6 +59,16 @@ const repositoryPath = repositoryPathSchema(false);
 const repositoryPattern = repositoryPathSchema(true);
 const identifier = z.string().trim().min(1).regex(/^[a-z0-9][a-z0-9._-]*$/);
 const positiveLimit = z.number().int().positive();
+const externalMemoryDirectory = z.string().trim().min(1).superRefine(
+  (value, context) => {
+    if (!isAbsolute(value) && !value.startsWith("~/")) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "memory_dir must be absolute or start with ~/",
+      });
+    }
+  },
+);
 
 const budgetThreshold = z
   .object({
@@ -156,6 +166,12 @@ const knowledgeHygieneConfigV1Schema = z
           .strict(),
       )
       .default([]),
+    adapters: z.object({
+      claude_code: z.object({
+        enabled: z.boolean(),
+        memory_dir: externalMemoryDirectory.optional(),
+      }).strict().optional(),
+    }).strict().optional(),
     ignore: z
       .array(
         z

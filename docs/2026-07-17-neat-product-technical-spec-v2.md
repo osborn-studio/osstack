@@ -378,6 +378,13 @@ contracts:
         - docs/inventory/CLI_COMMANDS.md
     enforcement: advisory
 
+# External memory is never enabled by filesystem presence alone. R3 v1 uses
+# one exact directory because Claude Code's project-key encoding is not public.
+adapters:
+  claude_code:
+    enabled: false
+    # memory_dir: ~/my-custom-memory-dir
+
 ignore:
   - rule_id: reference.markdown_target_missing
     paths:
@@ -417,6 +424,15 @@ ignore:
 - Budgets measure raw UTF-8 bytes and logical lines using `\n` normalization.
 - No universal AGENTS.md or docs limit exists without config or a platform
   adapter.
+
+#### `adapters`
+
+- Every adapter entry requires an explicit `enabled` boolean; omitting the
+  entire block preserves repository-only behavior.
+- `claude_code.memory_dir`, when set, must be absolute or begin with `~/` and
+  denotes the one directory the adapter may inspect.
+- `enabled: false` is a strict no-op even when `memory_dir` exists.
+- No repository may redirect an adapter through an implicit filesystem probe.
 
 #### `contracts`
 
@@ -1077,6 +1093,7 @@ Memory is a separate optional surface adapter:
 interface KnowledgeSurfaceAdapterV1 {
   id: string;
   version: string;
+  capabilities: readonly ["read"];
   detect(input: AdapterDetectionInputV1): Promise<AdapterDetectionV1>;
   inventory(input: AdapterInventoryInputV1): Promise<KnowledgeSurfaceInventoryV1>;
   rules(): readonly KnowledgeHygieneRuleV1[];
@@ -1093,6 +1110,21 @@ Requirements:
 - Missing platform is a clean skip, not an error.
 - No "last referenced" metric until osstack has an actual read/recall event
   source; file timestamps are not used as a proxy.
+
+R3 v1 consent and path ruling (2026-07-17):
+
+- The contract executor returns `disabled` without invoking `detect`,
+  `inventory`, or `rules` when explicit consent is absent.
+- Adapter detections carry `adapter_id`, `adapter_version`, and one official
+  documentation evidence source; identity drift fails at the boundary.
+- Claude Code documents the default shape
+  `~/.claude/projects/<project>/memory/` and the `autoMemoryDirectory` user
+  override, but does not document how `<project>` is encoded. The v1 adapter
+  therefore accepts one exact configured/CLI memory directory and never guesses
+  the key or enumerates sibling projects.
+- The authoritative source for the Claude Code adapter is
+  <https://code.claude.com/docs/en/memory>. It documents absolute or `~/`
+  custom directories and the first-200-lines-or-25KB `MEMORY.md` load limit.
 
 The first adapter targets Claude Code because its auto-memory limit and storage
 contract are documented. Codex/OpenCode/OpenClaw adapters require their own
