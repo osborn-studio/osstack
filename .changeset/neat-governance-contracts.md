@@ -10,4 +10,5 @@ pattern matching for exact paths, `*`, and complete-segment `**`, plus explicit
 Git worktree/range change sets with portable content-addressed diff IDs. Add a
 bounded, symlink-safe inventory of recognized repository knowledge surfaces
 and a closed rule registry for instruction, required-surface, budget, and
-incomplete-scan findings.
+incomplete-scan findings. Compose these boundaries into a deterministic,
+injectable, read-only report engine with suppression accounting.

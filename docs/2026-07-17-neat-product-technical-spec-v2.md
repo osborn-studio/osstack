@@ -546,6 +546,10 @@ schema version + rule id + rule version + repo identity
 Line numbers and human messages are excluded so moving a paragraph does not
 create a new logical finding.
 
+The application may inject a stable repository id. When none is available,
+the standalone engine uses the resolved repository directory basename; it
+never includes the absolute root path in the fingerprint input.
+
 ### 8.3 Resolution, introduced in R1
 
 ```ts

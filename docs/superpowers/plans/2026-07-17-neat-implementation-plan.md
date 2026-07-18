@@ -478,15 +478,15 @@ suppressions, sorting, metrics, and report construction through injected ports.
 
 **Acceptance criteria:**
 
-- [ ] Pipeline order matches spec §10.
-- [ ] Same input/config produces the same normalized JSON and ordering.
-- [ ] Suppressed findings are excluded from active findings and counted.
-- [ ] Engine has no CLI, DB, supervisor, or home-memory dependency.
+- [x] Pipeline order matches spec §10.
+- [x] Same input/config produces the same normalized JSON and ordering.
+- [x] Suppressed findings are excluded from active findings and counted.
+- [x] Engine has no CLI, DB, supervisor, or home-memory dependency.
 
 **Verification:**
 
-- [ ] `pnpm --filter @osstack/governance test -- engine`
-- [ ] `pnpm --filter @osstack/governance typecheck`
+- [x] `pnpm --filter @osstack/governance test -- engine`
+- [x] `pnpm --filter @osstack/governance typecheck`
 
 **Dependencies:** R0.4.1, R0.4.2.
 
@@ -500,10 +500,10 @@ suppressions, sorting, metrics, and report construction through injected ports.
 
 **Checkpoint R0 foundation:**
 
-- [ ] Governance package tests and typecheck pass.
-- [ ] Existing source scanner remains compatible.
-- [ ] Loop doctor behavior remains compatible.
-- [ ] Engine can produce a report from a temporary repository with zero writes.
+- [x] Governance package tests and typecheck pass.
+- [x] Existing source scanner remains compatible.
+- [x] Loop doctor behavior remains compatible.
+- [x] Engine can produce a report from a temporary repository with zero writes.
 
 ---
 
