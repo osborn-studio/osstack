@@ -31,6 +31,7 @@ import {
   recordNeatReport,
   type NeatRecordingResultV1,
 } from "./neat-record.js";
+import { handleNeatTrendCommand } from "./neat-trend-command.js";
 
 export type NeatFailOn = "error" | "warning" | "none";
 type NeatFormat = "human" | "json";
@@ -70,6 +71,7 @@ Usage:
   osstack neat check [options]
   osstack neat review [review options]
   osstack neat fix [fix options]
+  osstack neat trend [trend options]
 
 Options:
   --repo <path>                  Repository root (default: cwd)
@@ -81,11 +83,14 @@ Options:
   --skip-checks <id,...>         Exclude listed rule ids
   --review-file <path>           Apply matching portable review evidence
   --record                       Persist normalized history explicitly
-  --db <path>                    State DB override; requires --record
+  --db <path>                    State DB override; requires --record for check
   --format <human|json>          Output format (default: human)
   --json                         Alias for --format json
   --fail-on <error|warning|none> Exit threshold (default: none)
   --help                         Show this help
+
+Trend options:
+  --repo-id <id>                 Persisted repository id (default: cwd basename)
 
 Exit codes:
   0  Check completed and threshold was not met
@@ -399,6 +404,14 @@ export async function handleNeatCommand(
   args: readonly string[],
   deps: NeatCommandDependencies,
 ): Promise<number> {
+  if (args[0] === "trend") {
+    return handleNeatTrendCommand(args.slice(1), {
+      cwd: deps.cwd,
+      stdout: deps.stdout,
+      stderr: deps.stderr,
+      now: deps.now ?? deps.engine_ports?.now ?? (() => new Date()),
+    });
+  }
   if (args[0] === "fix") {
     try {
       return await handleNeatFixCommand(args.slice(1), {
