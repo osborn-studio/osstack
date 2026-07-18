@@ -1240,12 +1240,17 @@ pnpm --filter @osstack/cli test -- probe-dynamic
 
 **验证：** governance/CLI 聚焦测试 + loop EvaluationSpec schema 测试。
 
-### R3.2 — loop implementation deviation 回流
+### R3.2 — loop implementation deviation 回流（2026-07-18 完成）
 
 **依赖：** R2.2。
 
 **主要文件：**
 
+- `packages/hermes-adapter/src/events.ts`
+- `packages/agents/src/adapters/deepseek-command.ts`
+- `packages/loop/src/types.ts`
+- `packages/loop/src/verifier.ts`
+- `packages/loop/src/loop-engine.ts`
 - `packages/cli/src/loop-probe-observer.ts`
 - `packages/cli/src/loop-probe-observer.test.ts`
 - `packages/cli/src/bin.ts`
@@ -1253,9 +1258,15 @@ pnpm --filter @osstack/cli test -- probe-dynamic
 
 **验收：**
 
-- [ ] 只有结构化 deviation 进入 `mid_build`；普通失败不自动计数。
-- [ ] 重放 loop event 不重复创建 item。
-- [ ] loop package 不 import governance/probe。
+- [x] 只有结构化 deviation 进入 `mid_build`；普通失败不自动计数。
+- [x] 重放 loop event 不重复创建 item。
+- [x] loop package 不 import governance/probe。
+
+Verifier 命令只可通过单行
+`OSSTACK_IMPLEMENTATION_DEVIATIONS: {"deviations":[...]}` 传输候选信号；
+Hermes 只保留对象数组，Loop 再按 strict `ImplementationDeviation` 校验并发出
+`loop.implementation.deviation`。CLI observer 逐项验证 repo 内真实文件证据后，
+按 `(repo_id, task_ref)` 唯一匹配 active session；无匹配、多匹配或非法证据均不写入。
 
 **验证：** CLI observer 测试 + loop 全套测试。
 

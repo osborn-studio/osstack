@@ -7,6 +7,7 @@ import { openDb, runMigrations } from "./db.js";
 import { CURRENT_SCHEMA_VERSION, MIGRATIONS } from "./migrations.js";
 import {
   createProbeSession,
+  findActiveProbeSessionsByTaskRef,
   getProbeSession,
   listProbeEvents,
   listProbeItems,
@@ -208,6 +209,26 @@ describe("probe store", () => {
       JSON.stringify({ revision: 1, state: "active" }),
     );
     reopened.close();
+  });
+
+  it("finds only active sessions linked to an exact repository task reference", async () => {
+    const path = await databasePath();
+    const db = openDb({ path, minFreeBytes: 0 });
+    const matching = createInput();
+    matching.session.snapshot_json = JSON.stringify({
+      repo_id: "osstack",
+      task_ref: "task-1",
+      revision: 1,
+      state: "active",
+    });
+    createProbeSession(db, matching);
+
+    expect(findActiveProbeSessionsByTaskRef(db, "osstack", "task-1")).toEqual([
+      expect.objectContaining({ session_id: "probe_12345678", state: "active" }),
+    ]);
+    expect(findActiveProbeSessionsByTaskRef(db, "other", "task-1")).toEqual([]);
+    expect(findActiveProbeSessionsByTaskRef(db, "osstack", "task-2")).toEqual([]);
+    db.close();
   });
 
   it("replays identical command receipts and rejects key reuse with new payload", async () => {

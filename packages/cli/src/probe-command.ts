@@ -446,6 +446,13 @@ async function resolveRegisteredRepoIdDefault(
   return matchingIds.size === 1 ? [...matchingIds][0] : undefined;
 }
 
+export async function resolveProbeRepositoryId(
+  repoRoot: string,
+): Promise<string> {
+  const resolvedRoot = await realpath(repoRoot);
+  return (await resolveRegisteredRepoIdDefault(resolvedRoot)) ?? basename(resolvedRoot);
+}
+
 async function resolveRepoId(
   repoRoot: string,
   explicit: string | undefined,
@@ -458,8 +465,9 @@ async function resolveRepoId(
     return explicit;
   }
   return (
-    (await (deps.resolve_repo_id ?? resolveRegisteredRepoIdDefault)(repoRoot)) ??
-    basename(repoRoot)
+    deps.resolve_repo_id === undefined
+      ? await resolveProbeRepositoryId(repoRoot)
+      : (await deps.resolve_repo_id(repoRoot)) ?? basename(repoRoot)
   );
 }
 

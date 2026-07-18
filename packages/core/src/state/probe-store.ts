@@ -501,6 +501,24 @@ export function listProbeSessionsByRepo(
     .all(parsedRepoId) as ProbeSessionRowV1[];
 }
 
+export function findActiveProbeSessionsByTaskRef(
+  db: Database.Database,
+  repoId: string,
+  taskRef: string,
+): ProbeSessionRowV1[] {
+  const parsedRepoId = z.string().trim().min(1).max(256).parse(repoId);
+  const parsedTaskRef = z.string().trim().min(1).max(512).parse(taskRef);
+  return db
+    .prepare(`
+      SELECT * FROM probe_sessions
+      WHERE repo_id = ?
+        AND state = 'active'
+        AND json_extract(snapshot_json, '$.task_ref') = ?
+      ORDER BY updated_at_ms DESC, session_id
+    `)
+    .all(parsedRepoId, parsedTaskRef) as ProbeSessionRowV1[];
+}
+
 export function listProbeItems(
   db: Database.Database,
   id: string,

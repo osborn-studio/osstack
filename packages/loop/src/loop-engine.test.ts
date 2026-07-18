@@ -137,6 +137,34 @@ describe("LoopEngine", () => {
       .resolves.toContain("reviewed run_plan_");
   });
 
+  it("emits a dedicated event only for a verifier's structured implementation deviation", async () => {
+    const workspace = await makeQueuedWorkspace();
+    await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
+      task_id: "task-1",
+      capability: "code.test",
+      prompt: "Exercise structured deviation reporting",
+      priority: 80,
+      context: { emit_deviation: true },
+    }));
+    const reviewer = new FakeReviewAdapter();
+    const result = await new LoopEngine({
+      loopId: "loop-deviation",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('agent-output.txt', 'drift')\"",
+      verifierAgentIds: [reviewer.id],
+      adapters: [reviewer],
+    }).runOnce();
+
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.implementation.deviation",
+      payload: expect.objectContaining({
+        task_id: "task-1",
+        deviation_id: "architecture-drift-1",
+      }),
+    }));
+  });
+
   it("records changed files, diff summary, and commit hash in task evidence", async () => {
     const workspace = await makeGitQueuedWorkspace("initial\n");
     const result = await new LoopEngine({
@@ -945,6 +973,20 @@ class FakeReviewAdapter implements AgentAdapter {
       status: "completed",
       last_seq: 0,
       result_summary: "fake review passed",
+      implementation_deviations: task.context?.["emit_deviation"] === true
+        ? [{
+            deviation_id: "architecture-drift-1",
+            question: "Should the implementation retain the documented adapter boundary?",
+            category: "interface",
+            doc_type: "tech",
+            impact: 3,
+            irreversibility: 2,
+            uncertainty: 2,
+            required: true,
+            destination_hint: "technical_design",
+            evidence: [{ path: "agent-output.txt", line: 1 }],
+          }]
+        : undefined,
     }, true);
   }
 }
