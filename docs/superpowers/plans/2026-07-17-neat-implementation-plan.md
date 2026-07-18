@@ -807,14 +807,14 @@ touching the real home directory.
 
 **Acceptance criteria:**
 
-- [ ] Smoke starts from a hermetic temporary repo.
-- [ ] First check finds expected issues.
-- [ ] Second check closes the edited issue and retains human-decision issues.
-- [ ] No external memory or network access occurs.
+- [x] Smoke starts from a hermetic temporary repo.
+- [x] First check finds expected issues.
+- [x] Second check closes the edited issue and retains human-decision issues.
+- [x] No external memory or network access occurs.
 
 **Verification:**
 
-- [ ] `pnpm smoke:neat`
+- [x] `pnpm smoke:neat`
 
 **Dependencies:** R0.8.1.
 
