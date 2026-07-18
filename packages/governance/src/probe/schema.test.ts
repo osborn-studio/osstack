@@ -15,6 +15,8 @@ describe("probe public schemas", () => {
 
   it("publishes one deterministic artifact per public root object", () => {
     expect(Object.keys(generated).sort()).toEqual([
+      "probe-evaluation-compilation-batch-v1.schema.json",
+      "probe-evaluation-compilation-delta-v1.schema.json",
       "probe-event-v1.schema.json",
       "probe-item-v1.schema.json",
       "probe-ledger-v1.schema.json",
@@ -24,7 +26,7 @@ describe("probe public schemas", () => {
       "probe-restatement-finding-v1.schema.json",
       "probe-session-v1.schema.json",
     ]);
-    expect(PROBE_SCHEMA_MANIFEST_V1).toHaveLength(8);
+    expect(PROBE_SCHEMA_MANIFEST_V1).toHaveLength(10);
   });
 
   for (const [filename, content] of Object.entries(generated)) {

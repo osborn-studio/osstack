@@ -504,6 +504,7 @@ export const ProbeEventV1 = z
       "item_waived",
       "item_invalidated",
       "items_added",
+      "items_compiled",
       "session_paused",
       "session_resumed",
       "session_abandoned",

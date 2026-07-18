@@ -1,10 +1,10 @@
 import { sortProbeItems } from "./priority.js";
 import {
+  ProbeCompilationV1,
   ProbeEventV1,
   ProbeItemV1,
   ProbeSessionV1,
   type ProbeActorV1,
-  type ProbeCompilationV1,
   type ProbeDestinationV1,
   type ProbeReadinessV1,
   type ProbeRestatementFindingV1,
@@ -79,6 +79,13 @@ export type ProbeMutationV1 = ProbeMutationMetadataV1 &
         origin: ProbeItemV1["origin"];
         source_revision: string;
         restatement_findings?: readonly ProbeRestatementFindingV1[];
+      }
+    | {
+        type: "compile";
+        compilations: readonly {
+          item_id: string;
+          compilation: ProbeCompilationV1;
+        }[];
       }
     | {
         type: "destination";
@@ -834,6 +841,86 @@ function addItems(
   };
 }
 
+function compileItems(
+  state: ProbeDomainStateV1,
+  mutation: Extract<ProbeMutationV1, { type: "compile" }>,
+): ProbeMutationResultV1 {
+  if (mutation.actor.type !== "agent") {
+    throw new ProbeReducerError(
+      "authority_required",
+      "evaluation compilation requires an agent actor",
+    );
+  }
+  if (mutation.compilations.length === 0) {
+    throw new ProbeReducerError(
+      "invalid_item",
+      "at least one compilation is required",
+    );
+  }
+  const updates = new Map<string, ProbeCompilationV1>();
+  for (const update of mutation.compilations) {
+    if (updates.has(update.item_id)) {
+      throw new ProbeReducerError(
+        "invalid_item",
+        `duplicate compilation item: ${update.item_id}`,
+      );
+    }
+    updates.set(update.item_id, ProbeCompilationV1.parse(update.compilation));
+  }
+  const seen = new Set<string>();
+  const items = state.items.map((item) => {
+    const compilation = updates.get(item.item_id);
+    if (compilation === undefined) return item;
+    if (item.state !== "resolved") {
+      throw new ProbeReducerError(
+        "invalid_item",
+        `compilation requires a resolved item: ${item.item_id}`,
+      );
+    }
+    seen.add(item.item_id);
+    return ProbeItemV1.parse({
+      ...item,
+      compilation,
+      updated_at_ms: mutation.occurred_at_ms,
+    });
+  });
+  for (const itemIdValue of updates.keys()) {
+    if (!seen.has(itemIdValue)) {
+      throw new ProbeReducerError(
+        "invalid_item",
+        `compilation item does not exist: ${itemIdValue}`,
+      );
+    }
+  }
+  const session = ProbeSessionV1.parse({
+    ...state.session,
+    revision: state.session.revision + 1,
+    updated_at_ms: mutation.occurred_at_ms,
+  });
+  return {
+    session,
+    items,
+    event: eventFor(
+      session.session_id,
+      session.revision,
+      mutation,
+      "items_compiled",
+      {
+        compilations: mutation.compilations.map((update) => ({
+          item_id: update.item_id,
+          state: update.compilation.state,
+          ...(update.compilation.state === "compiled"
+            ? {
+                spec_ref: update.compilation.spec_ref,
+                template_id: update.compilation.template_id,
+              }
+            : {}),
+        })),
+      },
+    ),
+  };
+}
+
 function attestDestination(
   state: ProbeDomainStateV1,
   mutation: Extract<ProbeMutationV1, { type: "destination" }>,
@@ -910,7 +997,9 @@ export function applyProbeMutation(
   mutation: ProbeMutationV1,
 ): ProbeMutationResultV1 {
   requireRevision(state.session, mutation);
-  if (mutation.type !== "destination") requireMutableSession(state.session);
+  if (mutation.type !== "destination" && mutation.type !== "compile") {
+    requireMutableSession(state.session);
+  }
 
   switch (mutation.type) {
     case "resolve":
@@ -931,6 +1020,8 @@ export function applyProbeMutation(
       return resumeSession(state, mutation);
     case "add":
       return addItems(state, mutation);
+    case "compile":
+      return compileItems(state, mutation);
     case "destination":
       return attestDestination(state, mutation);
   }

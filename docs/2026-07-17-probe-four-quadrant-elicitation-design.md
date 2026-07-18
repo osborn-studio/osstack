@@ -1234,9 +1234,9 @@ pnpm --filter @osstack/cli test -- probe-dynamic
 
 **验收：**
 
-- [ ] 只有注册模板可输出 spec；参数通过专用 schema。
-- [ ] raw shell、未知 script、repo 外 artifact path 全部拒绝或 manual_required。
-- [ ] 输出只是 delta，不自动修改 task queue。
+- [x] 只有注册模板可输出 spec；参数通过专用 schema。
+- [x] raw shell、未知 script、repo 外 artifact path 全部拒绝或 manual_required。
+- [x] 输出只是 delta，不自动修改 task queue。
 
 **验证：** governance/CLI 聚焦测试 + loop EvaluationSpec schema 测试。
 

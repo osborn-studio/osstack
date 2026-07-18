@@ -10,6 +10,10 @@ import {
   ProbeSessionV1,
 } from "./types.js";
 import { ProbeGatePolicyV1 } from "./gate.js";
+import {
+  ProbeEvaluationCompilationBatchV1,
+  ProbeEvaluationCompilationDeltaV1,
+} from "./evaluation-compiler.js";
 
 interface ProbeSchemaEntryV1 {
   key: string;
@@ -19,6 +23,20 @@ interface ProbeSchemaEntryV1 {
 }
 
 export const PROBE_SCHEMA_MANIFEST_V1 = Object.freeze([
+  {
+    key: "probe-evaluation-compilation-batch-v1",
+    title: "Osstack Probe Evaluation Compilation Batch v1",
+    comment:
+      "Only registered evaluation templates and strict parameter objects are accepted.",
+    schema: ProbeEvaluationCompilationBatchV1,
+  },
+  {
+    key: "probe-evaluation-compilation-delta-v1",
+    title: "Osstack Probe Evaluation Compilation Delta v1",
+    comment:
+      "Reviewable output only; consumers must not treat this delta as an automatically authorized task queue mutation.",
+    schema: ProbeEvaluationCompilationDeltaV1,
+  },
   {
     key: "probe-item-v1",
     title: "Osstack Probe Item v1",

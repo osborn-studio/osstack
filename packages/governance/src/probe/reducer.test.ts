@@ -515,6 +515,47 @@ describe("probe reducer", () => {
     );
   });
 
+  it("records agent compilation on resolved items, including completed sessions", () => {
+    const completed = applyProbeMutation(state(), {
+      type: "resolve",
+      item_id: "pi_12345678",
+      answer: "Run the registered package test.",
+      destination: {
+        role: "evaluation_spec",
+        path: "docs/probe/evaluation-spec-delta.json",
+        write_state: "pending",
+      },
+      compilation: { state: "not_eligible" },
+      ...metadata(),
+    });
+    const compiled = applyProbeMutation(completed, {
+      type: "compile",
+      compilations: [
+        {
+          item_id: "pi_12345678",
+          compilation: {
+            state: "compiled",
+            spec_ref: "docs/probe/evaluation-spec-delta.json",
+            template_id: "package-script.v1",
+          },
+        },
+      ],
+      ...metadata(2, agent),
+    });
+    expect(compiled.session).toMatchObject({ state: "completed", revision: 3 });
+    expect(compiled.items[0]).toMatchObject({
+      state: "resolved",
+      compilation: {
+        state: "compiled",
+        template_id: "package-script.v1",
+      },
+    });
+    expect(compiled.event).toMatchObject({
+      type: "items_compiled",
+      revision: 3,
+    });
+  });
+
   it("abandons active and paused sessions without leaking state-only fields", () => {
     const activeAbandoned = applyProbeMutation(state(), {
       type: "abandon",

@@ -12,6 +12,7 @@ import {
 } from "@osstack/core";
 import {
   applyProbeMutation,
+  compileProbeEvaluations,
   createRestatementQuestionBatch,
   createProbeRenderBundle,
   deriveProbeReadiness,
@@ -33,6 +34,7 @@ import {
   selectProbeQuestions,
   sortProbeItems,
   ProbeDynamicInputError,
+  ProbeEvaluationCompilerError,
   type ProbeDomainStateV1,
   type ProbeEventV1,
   type ProbeFamiliarityV1,
@@ -55,6 +57,13 @@ import {
 import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { osstackHome } from "./paths.js";
+import {
+  ProbeCompileFileError,
+  createProbeCompilerEnvironment,
+  readProbeCompilationBatch,
+  verifyProbeCompilationDelta,
+  writeProbeCompilationDelta,
+} from "./probe-compile.js";
 import {
   ProbeDynamicFileError,
   readProbeQuestionBatch,
@@ -138,6 +147,7 @@ Usage:
   osstack probe gate (--session <id> | --ledger <path>) [--config <path>]
   osstack probe add --session <id> --if-revision <n> --from <questions.json>
   osstack probe restate --spec <path> --restatement <path> --findings <path>
+  osstack probe compile --session <id> --if-revision <n> --from <requests.json>
 
 Start options:
   --repo <path>                    Repository root (default: cwd)
@@ -179,6 +189,10 @@ Render options:
 Dynamic input options:
   --from <repo-relative-path>      Strict ProbeQuestionBatchV1 JSON
   --findings <repo-relative-path>  Skill-produced restatement findings JSON
+
+Compile options:
+  --from <repo-relative-path>      Strict registered-template requests JSON
+  --out <repo-relative-path>       Default: docs/probe/evaluations/<session>-r<n>.json
 
 Output:
   --format <human|json> | --json
@@ -951,6 +965,7 @@ async function persistMutation(
   requestSha: string,
   command: string,
   nowMs: number,
+  extraResult: Record<string, unknown> = {},
 ): Promise<Record<string, unknown>> {
   const scopeKey = `session:${state.session.session_id}`;
   const replay = replayProbeCommand(db, {
@@ -962,7 +977,7 @@ async function persistMutation(
     return JSON.parse(replay.result_json) as Record<string, unknown>;
   }
   const next = applyProbeMutation(state, mutation);
-  const result = resultForState(command, next, nowMs);
+  const result = { ...resultForState(command, next, nowMs), ...extraResult };
   const stored = mutateProbeSession(db, {
     session_id: next.session.session_id,
     expected_revision: state.session.revision,
@@ -2113,6 +2128,143 @@ async function handleRestate(
   }
 }
 
+async function handleCompile(
+  args: readonly string[],
+  deps: ProbeCommandDependencies,
+): Promise<number> {
+  const flags = commonExistingSessionFlags(args, {
+    value_flags: [
+      "--if-revision",
+      "--from",
+      "--out",
+      "--actor-kind",
+      "--actor-id",
+      "--idempotency-key",
+    ],
+  });
+  const format = parseFormat(flags);
+  const sessionId = required(flags, "--session");
+  const ifRevision = parseInteger(
+    required(flags, "--if-revision"),
+    "--if-revision",
+    { min: 1, max: Number.MAX_SAFE_INTEGER },
+  );
+  const actor = parseActor(flags);
+  if (actor.type !== "agent") {
+    throw new ProbeUsageError("evaluation compilation requires an agent actor");
+  }
+  const idempotencyKey = required(flags, "--idempotency-key");
+  const fromPath = required(flags, "--from");
+  const outPath =
+    one(flags, "--out") ??
+    `docs/probe/evaluations/${sessionId}-r${ifRevision}.json`;
+  const repoRoot = await realpath(deps.cwd());
+  const batch = await readProbeCompilationBatch(repoRoot, fromPath);
+  for (const request of batch.requests) {
+    if (request.template_id === "manual-acceptance.v1") {
+      rejectSensitiveAnswer(
+        `${request.params.acceptance}\n${request.params.reason}`,
+      );
+    } else {
+      rejectSensitiveAnswer(request.params.description);
+    }
+  }
+  const requestSha = digest({
+    command: "probe.compile",
+    session_id: sessionId,
+    if_revision: ifRevision,
+    batch,
+    out_path: outPath,
+    actor,
+  });
+  const db = await openProbeDb(deps);
+  try {
+    const replay = replayProbeCommand(db, {
+      scope_key: `session:${sessionId}`,
+      idempotency_key: idempotencyKey,
+      request_sha256: requestSha,
+    });
+    if (replay !== undefined) {
+      const result = JSON.parse(replay.result_json) as Record<string, unknown>;
+      const artifact = result["artifact"] as
+        | { path?: string; sha256?: string }
+        | undefined;
+      if (artifact?.path === undefined || artifact.sha256 === undefined) {
+        throw new ProbeCompileFileError(
+          "artifact_conflict",
+          "compile receipt is missing its artifact identity",
+        );
+      }
+      await verifyProbeCompilationDelta(
+        repoRoot,
+        artifact.path,
+        artifact.sha256,
+      );
+      emitResult(deps, format, result);
+      return 0;
+    }
+    const state = loadDomainState(db, sessionId);
+    if (state.session.revision !== ifRevision) {
+      throw new ProbeStoreConflictError(
+        "revision_conflict",
+        `expected revision ${ifRevision}, found ${state.session.revision}`,
+        state.session.revision,
+      );
+    }
+    const nowMs = (deps.now_ms ?? Date.now)();
+    const delta = await compileProbeEvaluations({
+      batch,
+      session_id: sessionId,
+      exported_revision: ifRevision,
+      generated_at_ms: nowMs,
+      spec_ref: outPath,
+      items: state.items,
+      environment: createProbeCompilerEnvironment(repoRoot),
+    });
+    const written = await writeProbeCompilationDelta(
+      repoRoot,
+      outPath,
+      delta,
+      [fromPath],
+    );
+    try {
+      const result = await persistMutation(
+        db,
+        state,
+        {
+          type: "compile",
+          compilations: delta.compilations.map((entry) => ({
+            item_id: entry.item_id,
+            compilation: entry.compilation,
+          })),
+          if_revision: ifRevision,
+          actor,
+          idempotency_key: idempotencyKey,
+          event_id: (deps.create_id ?? createIdDefault)("pe"),
+          occurred_at_ms: nowMs,
+        },
+        requestSha,
+        "probe.compile",
+        nowMs,
+        {
+          evaluation_delta: delta,
+          artifact: {
+            path: written.portable_path,
+            sha256: written.sha256,
+          },
+        },
+      );
+      emitResult(deps, format, result);
+      return 0;
+    } catch (error) {
+      if (written.created) await rm(written.path, { force: true });
+      throw error;
+    }
+  } finally {
+    db.close();
+  }
+}
+
 export async function handleProbeCommand(
   args: readonly string[],
   deps: ProbeCommandDependencies,
@@ -2137,6 +2289,7 @@ export async function handleProbeCommand(
     if (command === "gate") return await handleGate(rest, deps);
     if (command === "add") return await handleAdd(rest, deps);
     if (command === "restate") return await handleRestate(rest, deps);
+    if (command === "compile") return await handleCompile(rest, deps);
     throw new ProbeUsageError(`unknown subcommand: ${command}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -2177,6 +2330,21 @@ export async function handleProbeCommand(
     ) {
       emitError(deps, json, "bad_request", message, false);
       return 2;
+    }
+    if (error instanceof ProbeEvaluationCompilerError) {
+      emitError(deps, json, "bad_request", message, false);
+      return 2;
+    }
+    if (error instanceof ProbeCompileFileError) {
+      const conflict = error.code === "artifact_conflict";
+      emitError(
+        deps,
+        json,
+        conflict ? "conflict" : "bad_request",
+        message,
+        conflict,
+      );
+      return conflict ? 3 : 2;
     }
     if (
       error instanceof ProbeUsageError ||

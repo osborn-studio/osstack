@@ -10,6 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AgentCommandResult } from "@osstack/protocol";
 import { probeSha256 } from "@osstack/governance";
+import { EvaluationSpec } from "@osstack/loop";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   handleProbeCommand,
@@ -1258,6 +1259,158 @@ describe("handleProbeCommand", () => {
     expect(json(command.stdout)).toMatchObject({
       status: "error",
       error: { code: "bad_request" },
+    });
+  });
+
+  it("compiles a registered package script into a loop-compatible delta only", async () => {
+    const command = await harness();
+    await mkdir(join(command.repo, "packages", "app"), { recursive: true });
+    await writeFile(
+      join(command.repo, "packages", "app", "package.json"),
+      JSON.stringify({ scripts: { test: "vitest run" } }),
+      "utf8",
+    );
+    await handleProbeCommand(
+      startArgs([
+        "--doc-type",
+        "test",
+        "--domain-familiarity",
+        "expert",
+        "--repo-familiarity",
+        "maintainer",
+        "--intent-maturity",
+        "review_ready",
+      ]),
+      command.deps,
+    );
+    const started = json(command.stdout);
+    const session = started.result?.session as {
+      session_id: string;
+    };
+    const item = started.result?.current_item as {
+      item_id: string;
+      category: string;
+    };
+    expect(item.category).toBe("acceptance");
+
+    command.stdout.length = 0;
+    expect(
+      await handleProbeCommand(
+        [
+          "next",
+          "--session",
+          session.session_id,
+          "--question",
+          item.item_id,
+          "--if-revision",
+          "1",
+          "--answer",
+          "Run the app package test script.",
+          "--destination-role",
+          "evaluation_spec",
+          "--destination-path",
+          "docs/probe/evaluations.md",
+          "--actor-kind",
+          "human",
+          "--actor-id",
+          "owner",
+          "--idempotency-key",
+          "answer-for-compile",
+          "--json",
+        ],
+        command.deps,
+      ),
+    ).toBe(0);
+    json(command.stdout);
+
+    const requests = {
+      schema_version: "1",
+      requests: [
+        {
+          item_id: item.item_id,
+          template_id: "package-script.v1",
+          params: {
+            description: "App package tests pass.",
+            package_path: "packages/app",
+            script: "test",
+          },
+        },
+      ],
+    };
+    await writeFile(
+      join(command.repo, "compile-requests.json"),
+      JSON.stringify(requests),
+      "utf8",
+    );
+    const compileArgs = [
+      "compile",
+      "--session",
+      session.session_id,
+      "--if-revision",
+      "2",
+      "--from",
+      "compile-requests.json",
+      "--actor-kind",
+      "agent",
+      "--actor-id",
+      "probe-compiler",
+      "--idempotency-key",
+      "compile-1",
+      "--json",
+    ];
+    command.stdout.length = 0;
+    expect(await handleProbeCommand(compileArgs, command.deps)).toBe(0);
+    const compiled = json(command.stdout);
+    expect(compiled).toMatchObject({
+      status: "ok",
+      result: {
+        command: "probe.compile",
+        session: { revision: 3 },
+        evaluation_delta: {
+          exported_revision: 2,
+          evaluations: [
+            {
+              mode: "command",
+              command: "pnpm --dir 'packages/app' run test",
+            },
+          ],
+        },
+        artifact: {
+          path: `docs/probe/evaluations/${session.session_id}-r2.json`,
+        },
+      },
+    });
+    const evaluation = (
+      compiled.result?.evaluation_delta as {
+        evaluations: unknown[];
+      }
+    ).evaluations[0];
+    expect(EvaluationSpec.safeParse(evaluation).success).toBe(true);
+    await expect(
+      readFile(join(command.repo, "tasks", "queue.json"), "utf8"),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+
+    command.stdout.length = 0;
+    expect(await handleProbeCommand(compileArgs, command.deps)).toBe(0);
+    expect(json(command.stdout).result).toEqual(compiled.result);
+
+    const artifactPath = join(
+      command.repo,
+      "docs",
+      "probe",
+      "evaluations",
+      `${session.session_id}-r2.json`,
+    );
+    await writeFile(
+      artifactPath,
+      `${await readFile(artifactPath, "utf8")} `,
+      "utf8",
+    );
+    command.stdout.length = 0;
+    expect(await handleProbeCommand(compileArgs, command.deps)).toBe(3);
+    expect(json(command.stdout)).toMatchObject({
+      status: "error",
+      error: { code: "conflict" },
     });
   });
 });
