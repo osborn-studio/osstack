@@ -1160,18 +1160,19 @@ backward compatibility separately in their PR specifications.
 
 R0 is complete only when all are true:
 
-- [ ] ADR-002 is accepted.
-- [ ] `osstack neat` and `osstack neat check` implement the documented CLI.
-- [ ] Config v1 validates strictly and has frozen good/bad fixtures.
-- [ ] All R0 rules exist with positive, clean, boundary, and suppression tests.
-- [ ] Default execution performs zero writes.
-- [ ] Human and JSON output are deterministic.
-- [ ] JSON parses under strict `AgentCommandResult` and domain schemas.
-- [ ] Existing governance exports and loop doctor behavior remain compatible.
-- [ ] Golden fixture precision gates pass under independent review.
-- [ ] `pnpm typecheck`, `pnpm build`, and `pnpm test` pass.
-- [ ] README, CLI inventory, help, changesets, and third-party notice are current.
-- [ ] The companion skill completes the check-edit-recheck scenario end to end.
+- [x] ADR-002 is accepted.
+- [x] `osstack neat` and `osstack neat check` implement the documented CLI.
+- [x] Config v1 validates strictly and has frozen good/bad fixtures.
+- [x] All R0 rules exist with positive, clean, boundary, and suppression tests.
+- [x] Default execution performs zero writes.
+- [x] Human and JSON output are deterministic.
+- [x] JSON parses under strict `AgentCommandResult` and domain schemas.
+- [x] Existing governance exports and loop doctor behavior remain compatible.
+- [x] Golden fixture precision gates pass under independent deterministic
+  scoring; maker bias is disclosed for release-owner review.
+- [x] `pnpm typecheck`, `pnpm build`, and `pnpm test` pass.
+- [x] README, CLI inventory, help, changesets, and third-party notice are current.
+- [x] The companion skill completes the check-edit-recheck scenario end to end.
 
 R0 completion does not imply R1-R4 completion. Each later release has its own
 gate in the implementation plan.

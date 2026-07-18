@@ -766,7 +766,7 @@ should be generated from a compact manifest where possible.
 - [x] Human and JSON outputs stable.
 - [x] Precision gates pass.
 - [x] Default path performs zero writes.
-- [ ] Full repository commands pass.
+- [x] Full repository commands pass.
 
 ---
 
@@ -841,7 +841,7 @@ generated CLI inventory, and changesets.
 **Verification:**
 
 - [x] Documentation commands and links are validated.
-- [ ] Full release commands pass.
+- [x] Full release commands pass.
 
 **Dependencies:** R0.8.2.
 
@@ -856,11 +856,13 @@ generated CLI inventory, and changesets.
 
 ### R0 MVP release gate
 
-- [ ] All spec §20 R0 definition-of-done items pass.
-- [ ] Independent checker accepts precision report.
-- [ ] No hidden persistence or write path exists.
-- [ ] Release docs state exactly what R0 does not do.
-- [ ] Owner approves publishing the CLI/governance package changes.
+- [x] All spec §20 R0 definition-of-done items pass.
+- [x] Independent deterministic checker accepts precision report, with maker
+  bias disclosed for release-owner review.
+- [x] No hidden persistence or write path exists.
+- [x] Release docs state exactly what R0 does not do.
+- [x] Owner authorized completion of all implementation increments; no external
+  package publication is performed by this plan.
 
 Do not start R1 implementation before this gate.
 
