@@ -651,15 +651,15 @@ clear owners and low expected noise.
 
 **Acceptance criteria:**
 
-- [ ] Canonical/mirror direction matches current loop doctor policy.
-- [ ] Required surfaces are limited to real repository obligations.
-- [ ] Change contracts reference existing canonical docs.
-- [ ] Initial full audit is reviewed and every expected finding is labelled.
+- [x] Canonical/mirror direction matches current loop doctor policy.
+- [x] Required surfaces are limited to real repository obligations.
+- [x] Change contracts reference existing canonical docs.
+- [x] Initial full audit is reviewed and every expected finding is labelled.
 
 **Verification:**
 
-- [ ] `osstack neat check --all --fail-on none` after the CLI build.
-- [ ] Checker signs off on every warning/error as true or false positive.
+- [x] `osstack neat check --all --fail-on none` after the CLI build.
+- [x] Checker signs off on every warning/error as true or false positive.
 
 **Dependencies:** R0.6.1, R0.6.2, R0.5.
 
