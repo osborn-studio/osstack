@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyKnowledgeHygieneReviewArtifact,
   assertKnowledgeHygieneReviewArtifactMatchesReport,
   type KnowledgeHygieneReviewError,
 } from "./resolution.js";
@@ -137,5 +138,57 @@ describe("knowledge hygiene review artifacts", () => {
       report(),
       artifact,
     )).not.toThrow();
+  });
+
+  it("moves resolved findings into an evidence-preserving resolved view", () => {
+    const source = report();
+    const artifact = KnowledgeHygieneReviewArtifactV1.parse({
+      schema_version: "1",
+      diff_id: diffId,
+      resolutions: [resolution("reviewed_no_change")],
+    });
+
+    const applied = applyKnowledgeHygieneReviewArtifact(source, artifact);
+
+    expect(applied).toMatchObject({
+      summary: { error: 0, warning: 0, info: 0, suppressed: 0, resolved: 1 },
+      findings: [],
+      resolved_findings: [{
+        finding: source.findings[0],
+        resolution: artifact.resolutions[0],
+      }],
+    });
+    expect(source.findings).toHaveLength(1);
+    expect(source).not.toHaveProperty("resolved_findings");
+  });
+
+  it("recounts only unresolved severities and preserves prior suppression", () => {
+    const first = report().findings[0];
+    const unresolved = KnowledgeHygieneFindingV1.parse({
+      ...first,
+      fingerprint: `khf_${"e".repeat(64)}`,
+      severity: "error",
+      location: { path: "AGENTS.md" },
+    });
+    const source = report({
+      summary: { error: 1, warning: 1, info: 0, suppressed: 2 },
+      findings: [first, unresolved],
+    });
+    const artifact = KnowledgeHygieneReviewArtifactV1.parse({
+      schema_version: "1",
+      diff_id: diffId,
+      resolutions: [resolution("accepted_risk")],
+    });
+
+    const applied = applyKnowledgeHygieneReviewArtifact(source, artifact);
+
+    expect(applied.summary).toEqual({
+      error: 1,
+      warning: 0,
+      info: 0,
+      suppressed: 2,
+      resolved: 1,
+    });
+    expect(applied.findings).toEqual([unresolved]);
   });
 });

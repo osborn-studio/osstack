@@ -164,40 +164,6 @@ export type KnowledgeHygieneReportInputV1 = z.infer<
   typeof KnowledgeHygieneReportInputV1
 >;
 
-export const KnowledgeHygieneReportV1 = z
-  .object({
-    schema_version: z.literal("1"),
-    generated_at: z.string().datetime(),
-    repo: z
-      .object({
-        root: z.string().min(1),
-        repo_id: z.string().min(1).optional(),
-      })
-      .strict(),
-    input: KnowledgeHygieneReportInputV1,
-    completeness: z
-      .object({
-        complete: z.boolean(),
-        skipped_files: z.number().int().nonnegative(),
-        reasons: z.array(z.string().min(1)),
-      })
-      .strict(),
-    summary: z
-      .object({
-        error: z.number().int().nonnegative(),
-        warning: z.number().int().nonnegative(),
-        info: z.number().int().nonnegative(),
-        suppressed: z.number().int().nonnegative(),
-      })
-      .strict(),
-    findings: z.array(KnowledgeHygieneFindingV1),
-    metrics: z.array(KnowledgeSurfaceMetricV1),
-  })
-  .strict();
-export type KnowledgeHygieneReportV1 = z.infer<
-  typeof KnowledgeHygieneReportV1
->;
-
 export const KnowledgeHygieneResolutionV1 = z
   .object({
     schema_version: z.literal("1"),
@@ -255,6 +221,52 @@ export const KnowledgeHygieneReviewArtifactV1 = z
   });
 export type KnowledgeHygieneReviewArtifactV1 = z.infer<
   typeof KnowledgeHygieneReviewArtifactV1
+>;
+
+export const KnowledgeHygieneResolvedFindingV1 = z
+  .object({
+    finding: KnowledgeHygieneFindingV1,
+    resolution: KnowledgeHygieneResolutionV1,
+  })
+  .strict();
+export type KnowledgeHygieneResolvedFindingV1 = z.infer<
+  typeof KnowledgeHygieneResolvedFindingV1
+>;
+
+export const KnowledgeHygieneReportV1 = z
+  .object({
+    schema_version: z.literal("1"),
+    generated_at: z.string().datetime(),
+    repo: z
+      .object({
+        root: z.string().min(1),
+        repo_id: z.string().min(1).optional(),
+      })
+      .strict(),
+    input: KnowledgeHygieneReportInputV1,
+    completeness: z
+      .object({
+        complete: z.boolean(),
+        skipped_files: z.number().int().nonnegative(),
+        reasons: z.array(z.string().min(1)),
+      })
+      .strict(),
+    summary: z
+      .object({
+        error: z.number().int().nonnegative(),
+        warning: z.number().int().nonnegative(),
+        info: z.number().int().nonnegative(),
+        suppressed: z.number().int().nonnegative(),
+        resolved: z.number().int().nonnegative().optional(),
+      })
+      .strict(),
+    findings: z.array(KnowledgeHygieneFindingV1),
+    resolved_findings: z.array(KnowledgeHygieneResolvedFindingV1).optional(),
+    metrics: z.array(KnowledgeSurfaceMetricV1),
+  })
+  .strict();
+export type KnowledgeHygieneReportV1 = z.infer<
+  typeof KnowledgeHygieneReportV1
 >;
 
 function hasDuplicates<T>(values: readonly T[]): boolean {

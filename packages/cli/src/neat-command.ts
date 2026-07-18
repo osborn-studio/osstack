@@ -1,9 +1,11 @@
 import {
+  applyKnowledgeHygieneReviewArtifact,
   checkKnowledgeHygiene,
   KnowledgeHygieneCheckInputV1,
   KnowledgeHygieneConfigError,
   KnowledgeHygieneGitError,
   KnowledgeHygieneRuleIdV1,
+  KnowledgeHygieneReviewError,
   type KnowledgeHygieneEnginePortsV1,
   type KnowledgeHygieneReportV1,
 } from "@osstack/governance";
@@ -15,6 +17,7 @@ import {
 import { resolve } from "node:path";
 import {
   handleNeatReviewCommand,
+  loadNeatReviewArtifact,
   NeatReviewInputError,
 } from "./neat-review-command.js";
 
@@ -35,6 +38,7 @@ interface ParsedNeatCommand {
   format: NeatFormat;
   fail_on: NeatFailOn;
   input: KnowledgeHygieneCheckInputV1;
+  review_file?: string;
 }
 
 class NeatUsageError extends Error {
@@ -60,6 +64,7 @@ Options:
   --config <path>                Config path (default: .osstack/neat.yaml)
   --checks <id,...>              Run only listed rule ids
   --skip-checks <id,...>         Exclude listed rule ids
+  --review-file <path>           Apply matching portable review evidence
   --format <human|json>          Output format (default: human)
   --json                         Alias for --format json
   --fail-on <error|warning|none> Exit threshold (default: none)
@@ -119,6 +124,7 @@ function parseNeatCommand(
   let configPath: string | undefined;
   let checks: KnowledgeHygieneRuleIdV1[] | undefined;
   let skipChecks: KnowledgeHygieneRuleIdV1[] | undefined;
+  let reviewFile: string | undefined;
   let format: NeatFormat = "human";
   let formatFlag: NeatFormat | undefined;
   let jsonAlias = false;
@@ -159,6 +165,10 @@ function parseNeatCommand(
     } else if (flag === "--skip-checks") {
       markSeen(flag);
       skipChecks = parseRuleIds(requireValue(args, index, flag), flag);
+      index += 1;
+    } else if (flag === "--review-file") {
+      markSeen(flag);
+      reviewFile = resolve(cwd, requireValue(args, index, flag));
       index += 1;
     } else if (flag === "--format") {
       markSeen(flag);
@@ -218,7 +228,13 @@ function parseNeatCommand(
   if (!parsed.success) {
     throw new NeatUsageError(parsed.error.issues.map((issue) => issue.message).join("; "));
   }
-  return { help: false, format, fail_on: failOn, input: parsed.data };
+  return {
+    help: false,
+    format,
+    fail_on: failOn,
+    input: parsed.data,
+    ...(reviewFile === undefined ? {} : { review_file: reviewFile }),
+  };
 }
 
 function exitCodeForReport(
@@ -284,6 +300,9 @@ export function renderKnowledgeHygieneReport(
   }
   lines.push(
     `Suppressed: ${report.summary.suppressed}`,
+    ...(report.summary.resolved === undefined
+      ? []
+      : [`Resolved: ${report.summary.resolved}`]),
     `Exit policy: --fail-on ${failOn} (exit ${exitCodeForReport(report, failOn)})`,
   );
   return lines.join("\n");
@@ -400,6 +419,24 @@ export async function handleNeatCommand(
     }
     emitError(deps, parsed.format === "json", "internal", message, true);
     return 3;
+  }
+
+  if (parsed.review_file !== undefined) {
+    try {
+      const artifact = await loadNeatReviewArtifact(parsed.review_file);
+      report = applyKnowledgeHygieneReviewArtifact(report, artifact);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (
+        error instanceof NeatReviewInputError ||
+        error instanceof KnowledgeHygieneReviewError
+      ) {
+        emitError(deps, parsed.format === "json", "bad_request", message, false);
+        return 2;
+      }
+      emitError(deps, parsed.format === "json", "internal", message, true);
+      return 3;
+    }
   }
 
   if (parsed.format === "json") {

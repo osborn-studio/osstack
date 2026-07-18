@@ -46,3 +46,37 @@ export function assertKnowledgeHygieneReviewArtifactMatchesReport(
     );
   }
 }
+
+export function applyKnowledgeHygieneReviewArtifact(
+  report: KnowledgeHygieneReportV1,
+  artifact: KnowledgeHygieneReviewArtifactV1,
+): KnowledgeHygieneReportV1 {
+  assertKnowledgeHygieneReviewArtifactMatchesReport(report, artifact);
+  const resolutions = new Map(
+    artifact.resolutions.map((resolution) => [resolution.fingerprint, resolution]),
+  );
+  const findings = report.findings.filter(
+    (finding) => !resolutions.has(finding.fingerprint),
+  );
+  const newlyResolved = report.findings.flatMap((finding) => {
+    const resolution = resolutions.get(finding.fingerprint);
+    return resolution === undefined ? [] : [{ finding, resolution }];
+  });
+  const resolvedFindings = [
+    ...(report.resolved_findings ?? []),
+    ...newlyResolved,
+  ];
+
+  return {
+    ...report,
+    summary: {
+      error: findings.filter((finding) => finding.severity === "error").length,
+      warning: findings.filter((finding) => finding.severity === "warning").length,
+      info: findings.filter((finding) => finding.severity === "info").length,
+      suppressed: report.summary.suppressed,
+      resolved: resolvedFindings.length,
+    },
+    findings,
+    resolved_findings: resolvedFindings,
+  };
+}

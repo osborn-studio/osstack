@@ -19,4 +19,6 @@ JSON Schema artifacts and labelled compatibility vectors for the finding and
 report v1 contracts. Add a hermetic twelve-scenario golden evaluation with
 explicit false-positive accounting and reproducible precision gates. Add
 portable resolution and review-artifact v1 contracts with stale-diff and
-unknown-fingerprint validation, schemas, and compatibility vectors.
+unknown-fingerprint validation, schemas, and compatibility vectors. Apply
+matching review artifacts into separate active and evidence-preserving resolved
+report views without mutating the source report.

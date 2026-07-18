@@ -941,13 +941,13 @@ without deleting original findings from evidence.
 
 **Acceptance criteria:**
 
-- [ ] Only matching diff/fingerprint resolutions apply.
-- [ ] Active and resolved views are both available in JSON.
-- [ ] `--fail-on` considers unresolved findings only.
+- [x] Only matching diff/fingerprint resolutions apply.
+- [x] Active and resolved views are both available in JSON.
+- [x] `--fail-on` considers unresolved findings only.
 
 **Verification:**
 
-- [ ] End-to-end review-no-change scenario passes.
+- [x] End-to-end review-no-change scenario passes.
 
 **Dependencies:** R1.1.2.
 

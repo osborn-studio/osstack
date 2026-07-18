@@ -227,6 +227,18 @@ async function readExistingArtifact(
   }
 }
 
+export async function loadNeatReviewArtifact(
+  path: string,
+): Promise<KnowledgeHygieneReviewArtifactV1> {
+  const value = parseJson(
+    await readRegularFile(path, "--review-file"),
+    "--review-file",
+  );
+  const parsed = KnowledgeHygieneReviewArtifactV1.safeParse(value);
+  if (!parsed.success) return inputError("--review-file is not a valid review artifact");
+  return parsed.data;
+}
+
 async function writeAtomic(path: string, content: string): Promise<void> {
   const tempPath = join(
     dirname(path),

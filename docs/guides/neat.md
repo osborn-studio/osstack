@@ -1,9 +1,11 @@
 # `osstack neat` knowledge hygiene
 
-`osstack neat` is a deterministic, read-only repository check for instruction
-sources, required knowledge surfaces, configured budgets, conservative relative
-references, and change-review obligations. It does not use a model to invent
-findings or rewrite prose.
+`osstack neat check` is a deterministic, read-only repository check for
+instruction sources, required knowledge surfaces, configured budgets,
+conservative relative references, and change-review obligations. It does not
+use a model to invent findings or rewrite prose. `osstack neat review` is a
+separate, explicit write command that only creates or updates the output path
+provided by the caller.
 
 ## Quick start
 
@@ -32,6 +34,41 @@ node packages/cli/dist/bin.js neat check --all --fail-on none
 ```
 
 `osstack neat` is an alias of `osstack neat check`.
+
+## Portable review evidence
+
+Use a review artifact when a finding has been checked but should no longer be
+active for exactly the report diff that produced it. In worktree mode, keep the
+report and review artifact outside the repository: adding either file inside
+the worktree changes the content-addressed `diff_id`.
+
+```bash
+neat_artifacts="$(mktemp -d -t neat-review)"
+report_file="$neat_artifacts/report.json"
+review_file="$neat_artifacts/review.json"
+
+osstack neat check --json --fail-on none > "$report_file"
+osstack neat review \
+  --report "$report_file" \
+  --finding khf_... \
+  --outcome reviewed_no_change \
+  --reason "No maintained documentation changed" \
+  --actor osborn \
+  --output "$review_file"
+osstack neat check --review-file "$review_file" --json --fail-on warning
+```
+
+`--report` accepts either the raw v1 domain report or the successful strict CLI
+JSON envelope. Review outcomes are `fixed`, `reviewed_no_change`,
+`accepted_risk`, `suppressed`, and `obsolete`; `--actor-kind` defaults to
+`human` and also accepts `agent`. Creation has no implicit output or database,
+rejects symbolic-link outputs, and updates a regular output file atomically.
+
+`--review-file` fails with exit 2 unless its `diff_id` and every fingerprint
+match the newly generated report. JSON keeps unresolved findings in `findings`
+and evidence-preserving `{ finding, resolution }` entries in
+`resolved_findings`; `summary.resolved` reports their count. `--fail-on` uses
+only unresolved severity counts.
 
 ## Exit codes
 
@@ -150,7 +187,7 @@ after an incomplete scan.
 
 ## R0 non-goals
 
-R0 does not write files, inspect external agent memory, perform semantic prose
+The R0 checker does not write files, inspect external agent memory, perform semantic prose
 linting, infer rules from arbitrary prose, check external URLs, persist finding
 history, produce a composite score, or auto-fix findings. It never deletes,
 renames, merges, or rewrites instruction files.

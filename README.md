@@ -250,11 +250,18 @@ osstack neat check --base origin/main --head HEAD --json --fail-on warning
 
 # Full repository audit, including non-Git repositories.
 osstack neat check --all --fail-on none
+
+# Record and apply explicit review evidence for an exact report diff.
+osstack neat review --report /tmp/neat-report.json --finding khf_... \
+  --outcome reviewed_no_change --reason "Reviewed" --actor osborn \
+  --output /tmp/neat-review.json
+osstack neat check --review-file /tmp/neat-review.json --fail-on warning
 ```
 
 The optional `.osstack/neat.yaml` declares canonical instruction sources,
-required docs, budgets, and change-review contracts. R0 is read-only and makes
-no semantic prose guesses. See the [neat user and config guide](docs/guides/neat.md).
+required docs, budgets, and change-review contracts. Checks are read-only and
+make no semantic prose guesses; `neat review` writes only an explicit portable
+artifact. See the [neat user and config guide](docs/guides/neat.md).
 
 ### Knowledge
 

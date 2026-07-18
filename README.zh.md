@@ -252,10 +252,16 @@ osstack neat check --base origin/main --head HEAD --json --fail-on warning
 
 # 全仓审计，也支持非 Git 仓库。
 osstack neat check --all --fail-on none
+
+# 为精确的报告 diff 记录并应用显式审阅证据。
+osstack neat review --report /tmp/neat-report.json --finding khf_... \
+  --outcome reviewed_no_change --reason "已审阅" --actor osborn \
+  --output /tmp/neat-review.json
+osstack neat check --review-file /tmp/neat-review.json --fail-on warning
 ```
 
 可选的 `.osstack/neat.yaml` 用来声明权威指令文件、必备文档、预算和变更审阅合同。
-R0 全程只读，不猜测一般散文的语义。完整字段、规则与边界见
+检查全程只读且不猜测一般散文的语义；`neat review` 只写入调用方显式指定的便携证据文件。完整字段、规则与边界见
 [neat 使用与配置指南](docs/guides/neat.md)。
 
 ### Knowledge Cloud

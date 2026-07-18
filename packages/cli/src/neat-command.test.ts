@@ -147,6 +147,83 @@ describe("handleNeatCommand", () => {
     expect(permissiveEnvelope.result.report).toEqual(blockingEnvelope.result.report);
   });
 
+  it("applies a matching review file and excludes resolved findings from fail-on", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "osstack-neat-cli-"));
+    const diffId = `diff_${"b".repeat(64)}`;
+    const report = KnowledgeHygieneReportV1.parse({
+      ...warningReport(),
+      input: { mode: "worktree", base_ref: "HEAD", diff_id: diffId },
+    });
+    await writeFile(join(cwd, "review.json"), JSON.stringify({
+      schema_version: "1",
+      diff_id: diffId,
+      resolutions: [{
+        schema_version: "1",
+        diff_id: diffId,
+        fingerprint: report.findings[0]?.fingerprint,
+        outcome: "reviewed_no_change",
+        actor: { kind: "human", id: "osborn" },
+        reason: "No maintained documentation changed.",
+        evidence_refs: [],
+        resolved_at: "2026-07-17T23:30:00.000Z",
+      }],
+    }));
+    const harness = commandHarness({ cwd, check: async () => report });
+
+    const exitCode = await handleNeatCommand([
+      "--review-file",
+      "review.json",
+      "--json",
+      "--fail-on",
+      "warning",
+    ], harness.deps);
+
+    expect(exitCode).toBe(0);
+    const envelope = AgentCommandResult.parse(
+      JSON.parse(harness.stdout[0] ?? ""),
+    );
+    const reviewed = KnowledgeHygieneReportV1.parse(envelope.result?.report);
+    expect(reviewed.findings).toEqual([]);
+    expect(reviewed.summary).toMatchObject({ warning: 0, resolved: 1 });
+    expect(reviewed.resolved_findings).toEqual([{
+      finding: report.findings[0],
+      resolution: expect.objectContaining({ outcome: "reviewed_no_change" }),
+    }]);
+  });
+
+  it("rejects a stale review file with exit 2", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "osstack-neat-cli-"));
+    const report = KnowledgeHygieneReportV1.parse({
+      ...warningReport(),
+      input: {
+        mode: "worktree",
+        diff_id: `diff_${"b".repeat(64)}`,
+      },
+    });
+    const staleDiff = `diff_${"c".repeat(64)}`;
+    await writeFile(join(cwd, "review.json"), JSON.stringify({
+      schema_version: "1",
+      diff_id: staleDiff,
+      resolutions: [{
+        schema_version: "1",
+        diff_id: staleDiff,
+        fingerprint: report.findings[0]?.fingerprint,
+        outcome: "obsolete",
+        actor: { kind: "human", id: "osborn" },
+        reason: "Stale review.",
+        evidence_refs: [],
+        resolved_at: "2026-07-17T23:30:00.000Z",
+      }],
+    }));
+    const harness = commandHarness({ cwd, check: async () => report });
+
+    expect(await handleNeatCommand([
+      "--review-file",
+      "review.json",
+    ], harness.deps)).toBe(2);
+    expect(harness.stdout).toEqual([]);
+  });
+
   it("resolves an explicit relative repo against the injected cwd", async () => {
     const cwd = "/workspace";
     let receivedRepo: string | undefined;
