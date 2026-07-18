@@ -1096,10 +1096,10 @@ occurrences without duplication.
 **Description:** Extend supervisor schemas additively with the summary defined
 in spec §16.
 
-**Acceptance criteria:** Old reports parse; missing hygiene block remains valid;
-no change to L0-L6 calculation.
+**Acceptance criteria:** ✅ Old reports parse; missing hygiene block remains
+valid; no change to L0-L6 calculation.
 
-**Verification:** Supervisor schema compatibility tests pass.
+**Verification:** ✅ Supervisor schema compatibility tests pass.
 
 **Dependencies:** R2.1.
 

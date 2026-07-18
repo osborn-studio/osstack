@@ -168,6 +168,18 @@ export type ImprovementProposal = z.infer<typeof ImprovementProposal>;
 
 // ── Repo health + portfolio ───────────────────────────────────────────────
 
+export const RepoKnowledgeHygieneSummaryV1 = z.object({
+  complete: z.boolean(),
+  error_count: z.number().int().nonnegative(),
+  warning_count: z.number().int().nonnegative(),
+  recurring_count: z.number().int().nonnegative(),
+  oldest_open_days: z.number().nonnegative().optional(),
+  checked_at: z.string().datetime(),
+});
+export type RepoKnowledgeHygieneSummaryV1 = z.infer<
+  typeof RepoKnowledgeHygieneSummaryV1
+>;
+
 export const RepoHealth = z.object({
   repo_id: z.string(),
   name: z.string(),
@@ -184,6 +196,7 @@ export const RepoHealth = z.object({
   evaluator_epoch_id: z.string().optional(),
   evaluator_anchor_accuracy: z.number().min(0).max(1).optional(),
   adversarial_case_count: z.number().int().nonnegative().optional(),
+  hygiene: RepoKnowledgeHygieneSummaryV1.optional(),
   findings: z.array(z.string()).default([]),
 });
 export type RepoHealth = z.infer<typeof RepoHealth>;
