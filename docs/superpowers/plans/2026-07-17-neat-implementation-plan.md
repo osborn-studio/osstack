@@ -516,14 +516,14 @@ standalone command module with injected output, runner, clock, and cwd.
 
 **Acceptance criteria:**
 
-- [ ] Bare `neat` and `neat check` are equivalent.
-- [ ] All invalid flag combinations exit 2 with actionable errors.
-- [ ] `--fail-on` affects exit code but not report content.
-- [ ] Default check performs no writes.
+- [x] Bare `neat` and `neat check` are equivalent.
+- [x] All invalid flag combinations exit 2 with actionable errors.
+- [x] `--fail-on` affects exit code but not report content.
+- [x] Default check performs no writes.
 
 **Verification:**
 
-- [ ] `pnpm --filter @osstack/cli test -- neat-command`
+- [x] `pnpm --filter @osstack/cli test -- neat-command`
 
 **Dependencies:** R0.4.
 
@@ -541,13 +541,13 @@ policy in the order specified by the product contract.
 
 **Acceptance criteria:**
 
-- [ ] Rendering uses repository-relative locations.
-- [ ] No finding/evidence is silently truncated.
-- [ ] Snapshot tests cover clean, finding, incomplete, and bad-config cases.
+- [x] Rendering uses repository-relative locations.
+- [x] No finding/evidence is silently truncated.
+- [x] Snapshot tests cover clean, finding, incomplete, and bad-config cases.
 
 **Verification:**
 
-- [ ] Focused CLI snapshot tests pass on repeated runs.
+- [x] Focused CLI snapshot tests pass on repeated runs.
 
 **Dependencies:** R0.5.1.
 
