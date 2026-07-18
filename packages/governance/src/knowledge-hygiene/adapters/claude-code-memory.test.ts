@@ -46,7 +46,7 @@ describe("Claude Code read-only memory adapter", () => {
         exists: true,
         lines: 201,
         adapter: {
-          id: "claude-code-auto-memory",
+          id: "claude-code",
           version: "1",
           source: "https://code.claude.com/docs/en/memory",
         },
@@ -108,7 +108,7 @@ describe("Claude Code read-only memory adapter", () => {
 
     expect(result).toMatchObject({
       status: "absent",
-      adapter_id: "claude-code-auto-memory",
+      adapter_id: "claude-code",
       adapter_version: "1",
     });
   });

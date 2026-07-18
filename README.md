@@ -263,6 +263,13 @@ osstack neat fix --from /tmp/neat-report.json --apply --yes
 
 # Persist normalized history only when explicitly requested.
 osstack neat check --record --json --fail-on none
+
+# Explicit, read-only Claude Code auto-memory audit for one directory.
+osstack neat check --all --adapter claude-code \
+  --claude-memory-dir "$HOME/.claude/projects/PROJECT/memory"
+
+# Event-derived history (no composite score).
+osstack neat trend --repo-id osstack
 ```
 
 The optional `.osstack/neat.yaml` declares canonical instruction sources,

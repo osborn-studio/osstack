@@ -142,6 +142,7 @@ describe("knowledge hygiene public schemas", () => {
         "metrics",
       ]),
     );
+    expect(Object.keys(reportSchema.properties ?? {})).toContain("adapters");
     expect(KnowledgeHygieneRuleIdV1.options).toEqual(expect.arrayContaining([
       "instruction.canonical_missing",
       "instruction.mirror_missing",
@@ -152,6 +153,7 @@ describe("knowledge hygiene public schemas", () => {
       "reference.markdown_target_missing",
       "reference.instruction_import_missing",
       "contract.review_required",
+      "memory.platform_limit_exceeded",
       "scan.incomplete",
     ]));
     expect(KnowledgeHygieneResolutionV1.shape.outcome.options).toEqual(

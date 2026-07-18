@@ -1216,10 +1216,10 @@ Claude memory.
 **Description:** Add memory surface metrics and hard-limit findings without
 graduation, stale-topic, or last-reference heuristics.
 
-**Acceptance criteria:** Disabled adapter changes nothing; absent platform is a
+**Acceptance criteria:** ✅ Disabled adapter changes nothing; absent platform is a
 clean skip; findings include adapter id/version/source.
 
-**Verification:** CLI human/JSON and golden adapter scenarios pass.
+**Verification:** ✅ CLI human/JSON and golden adapter scenarios pass.
 
 **Dependencies:** R3.2.1.
 
@@ -1229,10 +1229,10 @@ clean skip; findings include adapter id/version/source.
 
 ### R3 release gate
 
-- [ ] Explicit consent required.
-- [ ] Adapter is read-only.
-- [ ] No platform limit is generalized.
-- [ ] No real user memory appears in tests or fixtures.
+- [x] Explicit consent required.
+- [x] Adapter is read-only.
+- [x] No platform limit is generalized.
+- [x] No real user memory appears in tests or fixtures.
 
 ---
 

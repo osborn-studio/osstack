@@ -124,6 +124,7 @@
                   "reference.markdown_target_missing",
                   "reference.instruction_import_missing",
                   "contract.review_required",
+                  "memory.platform_limit_exceeded",
                   "scan.incomplete"
                 ]
               },

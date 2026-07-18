@@ -249,6 +249,7 @@ describe("knowledge hygiene rule registry", () => {
       "reference.markdown_target_missing",
       "reference.instruction_import_missing",
       "contract.review_required",
+      "memory.platform_limit_exceeded",
       "scan.incomplete",
     ]);
     expect(Object.isFrozen(KNOWLEDGE_HYGIENE_RULES_V1)).toBe(true);

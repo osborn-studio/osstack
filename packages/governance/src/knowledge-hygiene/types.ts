@@ -10,6 +10,7 @@ export const KnowledgeHygieneRuleIdV1 = z.enum([
   "reference.markdown_target_missing",
   "reference.instruction_import_missing",
   "contract.review_required",
+  "memory.platform_limit_exceeded",
   "scan.incomplete",
 ]);
 export type KnowledgeHygieneRuleIdV1 = z.infer<
@@ -273,6 +274,12 @@ export const KnowledgeHygieneReportV1 = z
     findings: z.array(KnowledgeHygieneFindingV1),
     resolved_findings: z.array(KnowledgeHygieneResolvedFindingV1).optional(),
     metrics: z.array(KnowledgeSurfaceMetricV1),
+    adapters: z.array(z.object({
+      id: z.string().regex(/^[a-z0-9][a-z0-9._-]*$/),
+      version: z.string().min(1),
+      status: z.enum(["available", "absent"]),
+      source: z.string().url(),
+    }).strict()).optional(),
   })
   .strict();
 export type KnowledgeHygieneReportV1 = z.infer<
@@ -292,6 +299,10 @@ export const KnowledgeHygieneCheckInputV1 = z
     config_path: z.string().min(1).optional(),
     checks: z.array(KnowledgeHygieneRuleIdV1).optional(),
     skip_checks: z.array(KnowledgeHygieneRuleIdV1).optional(),
+    adapters: z.array(z.object({
+      id: z.literal("claude-code"),
+      memory_dir: z.string().min(1).optional(),
+    }).strict()).optional(),
   })
   .strict()
   .superRefine((input, context) => {
@@ -338,6 +349,15 @@ export const KnowledgeHygieneCheckInputV1 = z
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "skip_checks contains duplicate rule ids",
+      });
+    }
+    if (
+      input.adapters
+      && hasDuplicates(input.adapters.map((adapter) => adapter.id))
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "adapters contains duplicate adapter ids",
       });
     }
   });

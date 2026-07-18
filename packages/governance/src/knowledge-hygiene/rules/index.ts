@@ -5,6 +5,7 @@ import {
 } from "../types.js";
 import { BUDGET_RULES_V1 } from "./budget-rule.js";
 import { CHANGE_CONTRACT_RULE_V1 } from "./change-contract-rule.js";
+import { CLAUDE_CODE_MEMORY_LIMIT_RULE_V1 } from "../adapters/claude-code-memory.js";
 import { INSTRUCTION_RULES_V1 } from "./instruction-rule.js";
 import { REQUIRED_SURFACE_RULE_V1 } from "./required-surface-rule.js";
 import { REFERENCE_RULES_V1 } from "./reference-rule.js";
@@ -65,6 +66,7 @@ const unorderedRules: readonly KnowledgeHygieneRuleV1[] = [
   ...BUDGET_RULES_V1,
   ...REFERENCE_RULES_V1,
   CHANGE_CONTRACT_RULE_V1,
+  CLAUDE_CODE_MEMORY_LIMIT_RULE_V1,
   scanIncompleteRule,
 ];
 const rulesById = new Map(unorderedRules.map((rule) => [rule.id, rule]));

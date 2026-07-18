@@ -1,8 +1,17 @@
 import { mkdir, mkdtemp, readdir, writeFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { checkKnowledgeHygiene } from "./engine.js";
+
+const claudeLimitGolden = JSON.parse(readFileSync(
+  new URL(
+    "../../fixtures/knowledge-hygiene/adapters/claude-code-limit.golden.json",
+    import.meta.url,
+  ),
+  "utf8",
+)) as { expected_report: Record<string, unknown> };
 
 async function snapshotPaths(root: string): Promise<string[]> {
   const paths: string[] = [];
@@ -114,5 +123,124 @@ ignore:
       info: 0,
       suppressed: 1,
     });
+  });
+
+  it("keeps a configured but disabled memory adapter as a strict no-op", async () => {
+    const repoRoot = await mkdtemp(join(tmpdir(), "osstack-neat-engine-"));
+    const memoryRoot = await mkdtemp(join(tmpdir(), "osstack-neat-memory-"));
+    await writeFile(join(memoryRoot, "MEMORY.md"), `${"line\n".repeat(201)}`);
+    await mkdir(join(repoRoot, ".osstack"));
+    await writeFile(join(repoRoot, ".osstack", "neat.yaml"), `
+version: 1
+adapters:
+  claude_code:
+    enabled: false
+    memory_dir: ${JSON.stringify(memoryRoot)}
+`);
+
+    const report = await checkKnowledgeHygiene(
+      { repo_root: repoRoot, mode: "all" },
+      {
+        now: () => new Date("2026-07-17T23:00:00.000Z"),
+        repo_identity: () => "repo-1",
+        home_directory: () => {
+          throw new Error("disabled adapter must not request home");
+        },
+      },
+    );
+
+    expect(report.findings).toEqual([]);
+    expect(report.metrics).toEqual([]);
+    expect(report.adapters).toBeUndefined();
+  });
+
+  it("adds Claude-specific metrics and an evidence-backed hard-limit finding", async () => {
+    const repoRoot = await mkdtemp(join(tmpdir(), "osstack-neat-engine-"));
+    const memoryRoot = await mkdtemp(join(tmpdir(), "osstack-neat-memory-"));
+    await writeFile(join(memoryRoot, "MEMORY.md"), `${"line\n".repeat(201)}`);
+    await mkdir(join(repoRoot, ".osstack"));
+    await writeFile(join(repoRoot, ".osstack", "neat.yaml"), `
+version: 1
+adapters:
+  claude_code:
+    enabled: true
+    memory_dir: ${JSON.stringify(memoryRoot)}
+`);
+
+    const report = await checkKnowledgeHygiene(
+      { repo_root: repoRoot, mode: "all" },
+      {
+        now: () => new Date("2026-07-17T23:00:00.000Z"),
+        repo_identity: () => "repo-1",
+        home_directory: () => repoRoot,
+      },
+    );
+
+    expect(report.adapters).toEqual([{
+      id: "claude-code",
+      version: "1",
+      status: "available",
+      source: "https://code.claude.com/docs/en/memory",
+    }]);
+    expect(report.metrics).toEqual([
+      expect.objectContaining({
+        path: "claude-code://auto-memory/MEMORY.md",
+        surface: "memory",
+        lines: 201,
+        adapter: {
+          id: "claude-code",
+          version: "1",
+          source: "https://code.claude.com/docs/en/memory",
+        },
+      }),
+    ]);
+    expect(report.findings).toEqual([
+      expect.objectContaining({
+        rule_id: "memory.platform_limit_exceeded",
+        surface: "memory",
+        severity: "warning",
+        observed: expect.objectContaining({
+          adapter_id: "claude-code",
+          adapter_version: "1",
+          evidence_source: "https://code.claude.com/docs/en/memory",
+          lines: 201,
+        }),
+        evidence_refs: expect.arrayContaining([{
+          kind: "external",
+          ref: "https://code.claude.com/docs/en/memory",
+        }]),
+      }),
+    ]);
+    expect(report).toMatchObject(claudeLimitGolden.expected_report);
+  });
+
+  it("reports an explicitly enabled but absent Claude platform as a clean skip", async () => {
+    const repoRoot = await mkdtemp(join(tmpdir(), "osstack-neat-engine-"));
+    await mkdir(join(repoRoot, ".osstack"));
+    await writeFile(join(repoRoot, ".osstack", "neat.yaml"), `
+version: 1
+adapters:
+  claude_code:
+    enabled: true
+    memory_dir: ${JSON.stringify(join(repoRoot, "missing-memory"))}
+`);
+
+    const report = await checkKnowledgeHygiene(
+      { repo_root: repoRoot, mode: "all" },
+      {
+        now: () => new Date("2026-07-17T23:00:00.000Z"),
+        repo_identity: () => "repo-1",
+        home_directory: () => repoRoot,
+      },
+    );
+
+    expect(report.adapters).toEqual([{
+      id: "claude-code",
+      version: "1",
+      status: "absent",
+      source: "https://code.claude.com/docs/en/memory",
+    }]);
+    expect(report.findings).toEqual([]);
+    expect(report.metrics).toEqual([]);
   });
 });

@@ -124,6 +124,47 @@ metadata, not duplicate report JSON blobs. Recording the identical report again
 returns `inserted: false` and does not increase occurrence counts. Only a
 complete report can infer `closed_absent` for a previously active finding.
 
+Query the event-derived history without recording a new run:
+
+```bash
+osstack neat trend --repo-id osstack
+osstack neat trend --repo-id osstack --db /absolute/path/to/state.db --json
+```
+
+The trend reports count, current open age, recurrence, closure rate, latest
+new/resolved delta, and the latest suppression count as a separate value. It
+does not calculate a composite score.
+
+## Explicit Claude Code memory audit
+
+External memory is never inspected because a directory happens to exist. Enable
+the read-only Claude Code adapter for one exact directory:
+
+```bash
+osstack neat check --all \
+  --adapter claude-code \
+  --claude-memory-dir "$HOME/.claude/projects/PROJECT/memory" \
+  --json
+```
+
+Or declare the same consent in `.osstack/neat.yaml`:
+
+```yaml
+version: 1
+adapters:
+  claude_code:
+    enabled: true
+    memory_dir: ~/my-custom-memory-dir
+```
+
+The adapter reads only immediate Markdown files in that directory, never
+enumerates sibling projects, and never writes. A missing directory is a clean
+`absent` result. Claude Code documents the default directory shape but not its
+project-key encoding, so `neat` v1 requires an exact directory instead of
+guessing it. `memory.platform_limit_exceeded` is a Claude-specific warning when
+`MEMORY.md` exceeds 200 lines or 25KB; no timestamp is treated as evidence of a
+last recall. See the [Claude Code memory contract](https://code.claude.com/docs/en/memory).
+
 ## Exit codes
 
 | Code | Meaning |
@@ -170,6 +211,11 @@ contracts:
       any_path: [README.md, docs/inventory/CLI_COMMANDS.md]
     enforcement: advisory
 
+adapters:
+  claude_code:
+    enabled: false
+    # memory_dir: ~/my-custom-memory-dir
+
 ignore:
   - rule_id: reference.markdown_target_missing
     paths: [docs/generated/**]
@@ -195,6 +241,8 @@ ignore:
 | `contracts[].when.any_path` | per entry | Non-empty v1 path-pattern list. |
 | `contracts[].review.any_path` | per entry | Non-empty v1 path-pattern list. |
 | `contracts[].enforcement` | no | `advisory` (warning) or `required` (error). |
+| `adapters.claude_code.enabled` | when the adapter entry exists | Explicit boolean consent; `false` is a strict no-op. |
+| `adapters.claude_code.memory_dir` | no | One absolute or `~/` Claude auto-memory directory. |
 | `ignore[].rule_id` | per entry | A known rule id. |
 | `ignore[].paths` | per entry | Non-empty v1 path-pattern list; broad `**` is forbidden. |
 | `ignore[].reason` | per entry | Non-empty explanation. |
@@ -216,6 +264,7 @@ support exact paths, `*` within one segment, and `**` as a complete segment.
 | `reference.markdown_target_missing` | warning |
 | `reference.instruction_import_missing` | error |
 | `contract.review_required` | advisory warning or required error |
+| `memory.platform_limit_exceeded` | Claude Code-specific warning above 200 lines or 25KB |
 | `scan.incomplete` | error |
 
 Reference checks intentionally recognize only plain relative inline Markdown
@@ -243,8 +292,8 @@ after an incomplete scan.
 
 ## R0 non-goals
 
-Without explicit `review`, `fix --apply`, or `--record`, the checker does not
-write files, inspect external agent memory, perform semantic prose
+Without explicit `review`, `fix --apply`, `--record`, or an enabled adapter, the
+checker does not write files, inspect external agent memory, perform semantic prose
 linting, infer rules from arbitrary prose, check external URLs, persist finding
 history, produce a composite score, or auto-fix findings. It never deletes,
 renames, merges, or rewrites instruction files.

@@ -6,6 +6,7 @@ import {
 } from "./change-set.js";
 import {
   loadKnowledgeHygieneConfig,
+  type KnowledgeHygieneConfigV1,
   type LoadKnowledgeHygieneConfigInput,
   type LoadedKnowledgeHygieneConfig,
 } from "./config.js";
@@ -35,8 +36,14 @@ import {
   type KnowledgeHygieneFindingV1,
   type KnowledgeHygieneReportV1 as KnowledgeHygieneReport,
   type KnowledgeSurfaceInventoryEntryV1,
-  type KnowledgeSurfaceInventoryV1,
+  KnowledgeSurfaceInventoryV1,
 } from "./types.js";
+import {
+  CLAUDE_CODE_MEMORY_ADAPTER_V1,
+  runKnowledgeSurfaceAdapter,
+  type KnowledgeSurfaceAdapterRunResultV1,
+  type KnowledgeSurfaceAdapterV1,
+} from "./adapters/index.js";
 
 export interface KnowledgeHygieneEnginePortsV1 {
   now?: () => Date;
@@ -58,6 +65,8 @@ export interface KnowledgeHygieneEnginePortsV1 {
     input: InspectKnowledgeReferencesInputV1,
   ) => Promise<KnowledgeHygieneReferenceObservationV1[]>;
   rules?: readonly KnowledgeHygieneRuleV1[];
+  adapters?: readonly KnowledgeSurfaceAdapterV1[];
+  home_directory?: () => string | undefined;
 }
 
 const severityOrder = { error: 0, warning: 1, info: 2 } as const;
@@ -161,6 +170,68 @@ function toMetric(
     ...(surface.bytes === undefined ? {} : { bytes: surface.bytes }),
     ...(surface.lines === undefined ? {} : { lines: surface.lines }),
     ...(surface.sha256 === undefined ? {} : { sha256: surface.sha256 }),
+    ...(surface.adapter === undefined ? {} : { adapter: surface.adapter }),
+  });
+}
+
+function configuredAdapterInput(
+  adapter: KnowledgeSurfaceAdapterV1,
+  repoRoot: string,
+  input: KnowledgeHygieneCheckInputV1,
+  config: KnowledgeHygieneConfigV1 | undefined,
+  homeDirectory: () => string | undefined,
+) {
+  const cli = input.adapters?.find((candidate) => candidate.id === adapter.id);
+  const configured = adapter.id === "claude-code"
+    ? config?.adapters?.claude_code
+    : undefined;
+  const enabled = cli !== undefined || configured?.enabled === true;
+  const memoryDirectory = cli?.memory_dir ?? configured?.memory_dir;
+  const home = enabled && memoryDirectory?.startsWith("~/")
+    ? homeDirectory()
+    : undefined;
+  return {
+    repo_root: repoRoot,
+    enabled,
+    options: {
+      ...(memoryDirectory === undefined
+        ? {}
+        : { memory_directory: memoryDirectory }),
+      ...(home === undefined ? {} : { home_directory: home }),
+    },
+  };
+}
+
+function mergeInventories(
+  repository: KnowledgeSurfaceInventoryV1,
+  adapterRuns: readonly KnowledgeSurfaceAdapterRunResultV1[],
+): KnowledgeSurfaceInventoryV1 {
+  const available = adapterRuns.filter(
+    (run): run is Extract<
+      KnowledgeSurfaceAdapterRunResultV1,
+      { status: "available" }
+    > => run.status === "available",
+  );
+  return KnowledgeSurfaceInventoryV1.parse({
+    surfaces: [
+      ...repository.surfaces,
+      ...available.flatMap((run) => run.inventory.surfaces),
+    ],
+    completeness: {
+      complete: repository.completeness.complete
+        && available.every((run) => run.inventory.completeness.complete),
+      skipped_files: repository.completeness.skipped_files
+        + available.reduce(
+          (total, run) => total + run.inventory.completeness.skipped_files,
+          0,
+        ),
+      reasons: [
+        ...repository.completeness.reasons,
+        ...available.flatMap((run) => run.inventory.completeness.reasons.map(
+          (reason) => `${run.adapter_id}: ${reason}`,
+        )),
+      ],
+    },
   });
 }
 
@@ -181,6 +252,9 @@ export async function checkKnowledgeHygiene(
   const inspect = ports.inspect_instruction ?? inspectInstructionSource;
   const inspectReferences = ports.inspect_references ?? inspectKnowledgeReferences;
   const now = ports.now ?? (() => new Date());
+  const adapters = ports.adapters ?? [CLAUDE_CODE_MEMORY_ADAPTER_V1];
+  const homeDirectory = ports.home_directory
+    ?? (() => process.env["HOME"]);
 
   let repoRoot = await resolveRepoRoot(input.repo_root);
   const loadedConfig = await loadConfig({
@@ -201,13 +275,24 @@ export async function checkKnowledgeHygiene(
     : await buildChangeSet(changeSetInput);
   if (changeSet) repoRoot = changeSet.repo_root;
 
-  const [surfaceInventory, observations] = await Promise.all([
+  const [repositoryInventory, observations, adapterRuns] = await Promise.all([
     inventory({
       repo_root: repoRoot,
       ...(config === undefined ? {} : { config }),
     }),
     instructionObservations(repoRoot, loadedConfig, inspect),
+    Promise.all(adapters.map((adapter) => runKnowledgeSurfaceAdapter(
+      adapter,
+      configuredAdapterInput(
+        adapter,
+        repoRoot,
+        input,
+        config,
+        homeDirectory,
+      ),
+    ))),
   ]);
+  const surfaceInventory = mergeInventories(repositoryInventory, adapterRuns);
   const repoIdentity = await (ports.repo_identity?.(repoRoot)
     ?? basename(repoRoot));
   const referenceObservations = await inspectReferences({
@@ -264,5 +349,17 @@ export async function checkKnowledgeHygiene(
     },
     findings,
     metrics: surfaceInventory.surfaces.map(toMetric),
+    ...(adapterRuns.every((run) => run.status === "disabled")
+      ? {}
+      : {
+          adapters: adapterRuns.flatMap((run) => run.status === "disabled"
+            ? []
+            : [{
+                id: run.adapter_id,
+                version: run.adapter_version,
+                status: run.status,
+                source: run.detection.evidence_source.ref,
+              }]),
+        }),
   });
 }

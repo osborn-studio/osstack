@@ -103,6 +103,12 @@ describe("handleNeatCommand", () => {
     ["missing value", ["--repo"]],
     ["unknown subcommand", ["archive"]],
     ["unknown flag", ["--wat"]],
+    ["unknown adapter", ["--adapter", "codex"]],
+    ["memory directory without consent", ["--claude-memory-dir", "/memory"]],
+    [
+      "relative memory directory",
+      ["--adapter", "claude-code", "--claude-memory-dir", "relative/memory"],
+    ],
   ])("returns exit 2 for %s", async (_label, args) => {
     const harness = commandHarness({ cwd: "/repo" });
 
@@ -115,6 +121,59 @@ describe("handleNeatCommand", () => {
     } else {
       expect(harness.stderr.join("\n")).toContain("osstack neat:");
     }
+  });
+
+  it("explicitly enables Claude Code memory in strict JSON", async () => {
+    const repoRoot = await mkdtemp(join(tmpdir(), "osstack-neat-cli-"));
+    const memoryRoot = await mkdtemp(join(tmpdir(), "osstack-neat-memory-"));
+    await writeFile(join(memoryRoot, "MEMORY.md"), "line\n".repeat(201));
+    const harness = commandHarness({ cwd: repoRoot });
+
+    const exitCode = await handleNeatCommand([
+      "check",
+      "--all",
+      "--adapter",
+      "claude-code",
+      "--claude-memory-dir",
+      memoryRoot,
+      "--json",
+    ], harness.deps);
+
+    expect(exitCode).toBe(0);
+    const envelope = AgentCommandResult.parse(
+      JSON.parse(harness.stdout.join("\n")),
+    );
+    const report = (envelope.result as { report: KnowledgeHygieneReport }).report;
+    expect(report.adapters).toEqual([expect.objectContaining({
+      id: "claude-code",
+      version: "1",
+      status: "available",
+    })]);
+    expect(report.findings).toEqual([expect.objectContaining({
+      rule_id: "memory.platform_limit_exceeded",
+    })]);
+  });
+
+  it("renders explicit adapter status and source for humans", async () => {
+    const repoRoot = await mkdtemp(join(tmpdir(), "osstack-neat-cli-"));
+    const memoryRoot = await mkdtemp(join(tmpdir(), "osstack-neat-memory-"));
+    await writeFile(join(memoryRoot, "MEMORY.md"), "line\n".repeat(201));
+    const harness = commandHarness({ cwd: repoRoot });
+
+    expect(await handleNeatCommand([
+      "--all",
+      "--adapter",
+      "claude-code",
+      "--claude-memory-dir",
+      memoryRoot,
+    ], harness.deps)).toBe(0);
+
+    expect(harness.stdout.join("\n")).toContain(
+      "Adapters: claude-code@1 available (https://code.claude.com/docs/en/memory)",
+    );
+    expect(harness.stdout.join("\n")).toContain(
+      "WARNING memory.platform_limit_exceeded",
+    );
   });
 
   it("changes only the exit code when fail-on changes", async () => {

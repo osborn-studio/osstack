@@ -15,7 +15,7 @@ import {
   PROTOCOL_VERSION as AGENT_COMMAND_PROTOCOL_VERSION,
   type ErrorCode,
 } from "@osstack/protocol";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import {
   handleNeatReviewCommand,
   loadNeatReviewArtifact,
@@ -82,6 +82,8 @@ Options:
   --checks <id,...>              Run only listed rule ids
   --skip-checks <id,...>         Exclude listed rule ids
   --review-file <path>           Apply matching portable review evidence
+  --adapter <claude-code>        Explicitly enable one read-only memory adapter
+  --claude-memory-dir <path>     Exact Claude memory dir (absolute or ~/)
   --record                       Persist normalized history explicitly
   --db <path>                    State DB override; requires --record for check
   --format <human|json>          Output format (default: human)
@@ -148,6 +150,8 @@ function parseNeatCommand(
   let checks: KnowledgeHygieneRuleIdV1[] | undefined;
   let skipChecks: KnowledgeHygieneRuleIdV1[] | undefined;
   let reviewFile: string | undefined;
+  let adapter: "claude-code" | undefined;
+  let claudeMemoryDir: string | undefined;
   let record = false;
   let dbPath: string | undefined;
   let format: NeatFormat = "human";
@@ -194,6 +198,18 @@ function parseNeatCommand(
     } else if (flag === "--review-file") {
       markSeen(flag);
       reviewFile = resolve(cwd, requireValue(args, index, flag));
+      index += 1;
+    } else if (flag === "--adapter") {
+      markSeen(flag);
+      const value = requireValue(args, index, flag);
+      if (value !== "claude-code") {
+        throw new NeatUsageError(`unsupported adapter: ${value}`);
+      }
+      adapter = value;
+      index += 1;
+    } else if (flag === "--claude-memory-dir") {
+      markSeen(flag);
+      claudeMemoryDir = requireValue(args, index, flag);
       index += 1;
     } else if (flag === "--record") {
       markSeen(flag);
@@ -243,6 +259,20 @@ function parseNeatCommand(
   if (dbPath !== undefined && !record) {
     throw new NeatUsageError("--db requires --record");
   }
+  if (claudeMemoryDir !== undefined && adapter !== "claude-code") {
+    throw new NeatUsageError(
+      "--claude-memory-dir requires --adapter claude-code",
+    );
+  }
+  if (
+    claudeMemoryDir !== undefined
+    && !isAbsolute(claudeMemoryDir)
+    && !claudeMemoryDir.startsWith("~/")
+  ) {
+    throw new NeatUsageError(
+      "--claude-memory-dir must be absolute or start with ~/",
+    );
+  }
 
   const mode = all
     ? "all"
@@ -259,6 +289,16 @@ function parseNeatCommand(
     ...(configPath === undefined ? {} : { config_path: configPath }),
     ...(checks === undefined ? {} : { checks }),
     ...(skipChecks === undefined ? {} : { skip_checks: skipChecks }),
+    ...(adapter === undefined
+      ? {}
+      : {
+          adapters: [{
+            id: adapter,
+            ...(claudeMemoryDir === undefined
+              ? {}
+              : { memory_dir: claudeMemoryDir }),
+          }],
+        }),
   });
   if (!parsed.success) {
     throw new NeatUsageError(parsed.error.issues.map((issue) => issue.message).join("; "));
@@ -298,6 +338,10 @@ export function renderKnowledgeHygieneReport(
 ): string {
   const lines = [
     `Knowledge hygiene: ${report.summary.error} error, ${report.summary.warning} warning, ${report.summary.info} info`,
+    ...(report.adapters === undefined
+      ? []
+      : [`Adapters: ${report.adapters.map((adapter) =>
+        `${adapter.id}@${adapter.version} ${adapter.status} (${adapter.source})`).join(", ")}`]),
     "",
   ];
   if (report.findings.length === 0) {

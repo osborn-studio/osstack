@@ -7,6 +7,11 @@ import {
   KnowledgeSurfaceInventoryV1,
   type KnowledgeSurfaceInventoryEntryV1,
 } from "../types.js";
+import {
+  createRuleFinding,
+  findingEvidence,
+  type KnowledgeHygieneRuleV1,
+} from "../rules/rule-types.js";
 import type {
   AdapterDetectionInputV1,
   AdapterDetectionV1,
@@ -16,7 +21,7 @@ import type {
 
 export const CLAUDE_CODE_MEMORY_DOCUMENTATION =
   "https://code.claude.com/docs/en/memory";
-export const CLAUDE_CODE_MEMORY_ADAPTER_ID = "claude-code-auto-memory";
+export const CLAUDE_CODE_MEMORY_ADAPTER_ID = "claude-code";
 export const CLAUDE_CODE_MEMORY_ADAPTER_VERSION = "1";
 export const CLAUDE_CODE_MEMORY_INDEX_MAX_LINES = 200;
 export const CLAUDE_CODE_MEMORY_INDEX_MAX_BYTES = 25 * 1024;
@@ -66,6 +71,54 @@ const adapterMetadata = {
   version: CLAUDE_CODE_MEMORY_ADAPTER_VERSION,
   source: CLAUDE_CODE_MEMORY_DOCUMENTATION,
 } as const;
+
+export const CLAUDE_CODE_MEMORY_LIMIT_RULE_V1: KnowledgeHygieneRuleV1 = {
+  id: "memory.platform_limit_exceeded",
+  version: "1",
+  default_severity: "warning",
+  evaluate(input) {
+    const index = input.inventory.surfaces.find(
+      (surface) => surface.adapter?.id === CLAUDE_CODE_MEMORY_ADAPTER_ID
+        && surface.path === portablePath("MEMORY.md"),
+    );
+    if (!index?.exists) return [];
+    const exceeded = (
+      index.lines !== undefined
+      && index.lines > CLAUDE_CODE_MEMORY_INDEX_MAX_LINES
+    ) || (
+      index.bytes !== undefined
+      && index.bytes > CLAUDE_CODE_MEMORY_INDEX_MAX_BYTES
+    );
+    if (!exceeded) return [];
+    return [createRuleFinding(this, input, {
+      path: index.path,
+      anchor: "claude-code:memory-index-limit",
+      surface: "memory",
+      severity: "warning",
+      confidence: "high",
+      observed: {
+        adapter_id: CLAUDE_CODE_MEMORY_ADAPTER_ID,
+        adapter_version: CLAUDE_CODE_MEMORY_ADAPTER_VERSION,
+        evidence_source: CLAUDE_CODE_MEMORY_DOCUMENTATION,
+        lines: index.lines ?? null,
+        bytes: index.bytes ?? null,
+      },
+      expected: {
+        platform: "claude-code",
+        maximum: {
+          lines: CLAUDE_CODE_MEMORY_INDEX_MAX_LINES,
+          bytes: CLAUDE_CODE_MEMORY_INDEX_MAX_BYTES,
+        },
+      },
+      rationale: "Claude Code loads only the first 200 lines or 25KB of MEMORY.md at conversation start.",
+      evidence_refs: [
+        ...findingEvidence(index),
+        { kind: "external", ref: CLAUDE_CODE_MEMORY_DOCUMENTATION },
+      ],
+      remediation: { mode: "human_decision" },
+    })];
+  },
+};
 
 async function detect(
   input: AdapterDetectionInputV1,
@@ -194,5 +247,5 @@ export const CLAUDE_CODE_MEMORY_ADAPTER_V1: KnowledgeSurfaceAdapterV1 =
     capabilities: ["read"] as const,
     detect,
     inventory,
-    rules: () => [],
+    rules: () => [CLAUDE_CODE_MEMORY_LIMIT_RULE_V1],
   });

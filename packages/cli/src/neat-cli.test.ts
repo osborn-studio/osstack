@@ -51,13 +51,15 @@ describe("top-level neat CLI", () => {
     }
   });
 
-  it("documents only R0 flags in neat help", async () => {
+  it("documents current read-only check and adapter flags in neat help", async () => {
     const exitCode = await main(["neat", "--help"]);
     const output = stdout.join("\n");
 
     expect(exitCode).toBe(0);
     expect(output).toContain("osstack neat check [options]");
     expect(output).toContain("--fail-on <error|warning|none>");
+    expect(output).toContain("--adapter <claude-code>");
+    expect(output).toContain("osstack neat trend [trend options]");
     expect(output).not.toContain("--apply");
     expect(output).not.toContain("reviewed_no_change");
   });
