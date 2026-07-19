@@ -195,6 +195,8 @@ Loop 工程：
   govern check        运行确定性治理检查
   neat check          只读检查项目指令、文档合同与知识面完整性
   neat semantic       显式运行证据受限的语义知识卫生审计（V2、默认关闭）
+  neat memory         计划、批准、施行或恢复可审计的记忆毕业事务
+  neat narrative      计划、批准、施行或恢复可审计的叙事手术
   contracts check     检查前端调用与后端 API 契约是否对齐
 
 私有 Hub（可选；Hub 为发布权威，经 OSSTACK_HUB_ROOT 解析）：
@@ -450,6 +452,10 @@ Governance:
                                   Check repository knowledge contracts (read-only)
   neat semantic [--repo P] [--dimensions D] [--judge ID] [--json]
                                   Run an explicit evidence-bound V2 semantic audit
+  neat memory <plan|approve|apply|recover> [options]
+                                  Run an approved, recoverable memory transaction
+  neat narrative <plan|approve|apply|recover> [options]
+                                  Run an approved, recoverable narrative surgery
   governance scan <path...> [--json]
                                  Run deterministic governance checks over files
   compliance list [--json]

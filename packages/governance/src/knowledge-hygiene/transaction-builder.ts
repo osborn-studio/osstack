@@ -28,6 +28,7 @@ export interface KnowledgeHygieneTargetSelectionV1 {
   root_id: "repo" | "memory";
   path: string;
   placement: "before" | "after" | "replace";
+  purpose: "documentation" | "instruction_canonical" | "memory_original";
 }
 
 export type KnowledgeHygieneActionDraftV1 =
@@ -50,7 +51,7 @@ export type KnowledgeHygieneActionDraftV1 =
 
 export interface BuildKnowledgeHygieneTransactionPlanInputV1 extends Omit<
   CreateKnowledgeHygieneTransactionPlanInputV1,
-  "actions" | "write_set"
+  "actions" | "write_set" | "target_allowlist"
 > {
   snapshots: KnowledgeHygieneFileSnapshotV1[];
   drafts: KnowledgeHygieneActionDraftV1[];
@@ -354,6 +355,16 @@ export function buildKnowledgeHygieneTransactionPlanV1(
     ...(input.memory_root === undefined ? {} : { memory_root: input.memory_root }),
     actions,
     write_set: writeSet,
+    target_allowlist: [...new Map(input.drafts.flatMap((draft) =>
+      draft.kind === "delete" ? [] : [[
+        fileKey(draft.target.root_id, draft.target.path),
+        {
+          root_id: draft.target.root_id,
+          path: draft.target.path,
+          purpose: draft.target.purpose,
+        },
+      ] as const]
+    )).values()],
     evidence_refs: input.evidence_refs,
   });
 }

@@ -643,6 +643,39 @@
       },
       "minItems": 1
     },
+    "target_allowlist": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "root_id": {
+            "type": "string",
+            "enum": [
+              "repo",
+              "memory"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "documentation",
+              "instruction_canonical",
+              "memory_original"
+            ]
+          }
+        },
+        "required": [
+          "root_id",
+          "path",
+          "purpose"
+        ],
+        "additionalProperties": false
+      }
+    },
     "evidence_refs": {
       "type": "array",
       "items": {
@@ -736,6 +769,20 @@
           }
         ]
       }
+    },
+    "closure_conditions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "write_set_after_images_match",
+          "move_bytes_present_at_target",
+          "claim_ledger_complete",
+          "discard_ledger_complete",
+          "selected_findings_absent"
+        ]
+      },
+      "minItems": 1
     },
     "approvals": {
       "type": "array",
@@ -865,7 +912,9 @@
     "repo",
     "actions",
     "write_set",
+    "target_allowlist",
     "evidence_refs",
+    "closure_conditions",
     "approvals",
     "receipts"
   ],

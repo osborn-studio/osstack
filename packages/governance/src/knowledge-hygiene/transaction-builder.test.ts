@@ -35,7 +35,12 @@ describe("knowledge hygiene transaction builder", () => {
       drafts: [{
         kind: "move",
         source: { root_id: "memory", path: "MEMORY.md", start_line: 1, end_line: 1 },
-        target: { root_id: "repo", path: "docs/knowledge.md", placement: "after" },
+        target: {
+          root_id: "repo",
+          path: "docs/knowledge.md",
+          placement: "after",
+          purpose: "documentation",
+        },
       }],
     });
 
@@ -60,7 +65,12 @@ describe("knowledge hygiene transaction builder", () => {
       drafts: [{
         kind: "compress",
         sources: [{ root_id: "repo", path: "AGENTS.md", start_line: 1, end_line: 1 }],
-        target: { root_id: "repo", path: "AGENTS.md", placement: "replace" },
+        target: {
+          root_id: "repo",
+          path: "AGENTS.md",
+          placement: "replace",
+          purpose: "instruction_canonical",
+        },
         replacement_utf8: "Keep decisions durable, not session history.\n",
       }],
     });

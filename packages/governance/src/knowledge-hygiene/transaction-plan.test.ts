@@ -69,6 +69,11 @@ function plan() {
         mode: 0o644,
       },
     ],
+    target_allowlist: [{
+      root_id: "repo",
+      path: "docs/knowledge.md",
+      purpose: "documentation",
+    }],
     evidence_refs: [],
   });
 }

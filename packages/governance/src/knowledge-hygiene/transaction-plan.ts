@@ -214,6 +214,25 @@ export type KnowledgeHygieneWriteSetEntryV1 = z.infer<
   typeof KnowledgeHygieneWriteSetEntryV1
 >;
 
+export const KnowledgeHygieneTransactionTargetV1 = z.object({
+  root_id: z.enum(["repo", "memory"]),
+  path: portablePath,
+  purpose: z.enum(["documentation", "instruction_canonical", "memory_original"]),
+}).strict().superRefine((target, context) => {
+  if (
+    (target.purpose === "memory_original") !== (target.root_id === "memory")
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["purpose"],
+      message: "memory_original targets require the memory root; other targets require repo",
+    });
+  }
+});
+export type KnowledgeHygieneTransactionTargetV1 = z.infer<
+  typeof KnowledgeHygieneTransactionTargetV1
+>;
+
 export const KnowledgeHygieneTransactionReceiptV1 = z.object({
   receipt_id: receiptId,
   kind: z.enum(["dry_run", "apply", "recovery"]),
@@ -234,6 +253,14 @@ const repoDescriptor = rootDescriptor.extend({
   repo_id: z.string().min(1),
   base_revision: z.string().min(1),
 }).strict();
+
+const closureCondition = z.enum([
+  "write_set_after_images_match",
+  "move_bytes_present_at_target",
+  "claim_ledger_complete",
+  "discard_ledger_complete",
+  "selected_findings_absent",
+]);
 
 const planObject = z.object({
   schema_version: z.literal("1"),
@@ -257,7 +284,9 @@ const planObject = z.object({
   memory_root: rootDescriptor.optional(),
   actions: z.array(KnowledgeHygienePlanActionV1).min(1),
   write_set: z.array(KnowledgeHygieneWriteSetEntryV1).min(1),
+  target_allowlist: z.array(KnowledgeHygieneTransactionTargetV1),
   evidence_refs: z.array(KnowledgeHygieneEvidenceRefV2),
+  closure_conditions: z.array(closureCondition).min(1),
   approvals: z.array(KnowledgeHygienePlanApprovalV1),
   receipts: z.array(KnowledgeHygieneTransactionReceiptV1),
 });
@@ -286,6 +315,31 @@ export const KnowledgeHygieneTransactionPlanV1 = planObject.strict()
         code: z.ZodIssueCode.custom,
         path: ["actions"],
         message: "action_id values must be unique",
+      });
+    }
+    const requiredConditions = new Set([
+      "write_set_after_images_match",
+      ...(plan.actions.some((action) => action.kind === "move")
+        ? ["move_bytes_present_at_target"]
+        : []),
+      ...(plan.actions.some((action) => action.kind === "compress")
+        ? ["claim_ledger_complete"]
+        : []),
+      ...(plan.actions.some((action) => action.kind === "delete")
+        ? ["discard_ledger_complete"]
+        : []),
+      ...(plan.kind === "narrative" ? ["selected_findings_absent"] : []),
+    ]);
+    if (
+      new Set(plan.closure_conditions).size !== plan.closure_conditions.length
+      || [...requiredConditions].some((condition) =>
+        !plan.closure_conditions.includes(condition as z.infer<typeof closureCondition>)
+      )
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["closure_conditions"],
+        message: "plan closure conditions must be unique and complete",
       });
     }
     const sources = plan.actions.flatMap(actionSources)
@@ -320,6 +374,23 @@ export const KnowledgeHygieneTransactionPlanV1 = planObject.strict()
       `${entry.root_id}:${entry.path}`,
       entry,
     ]));
+    const allowlistKeys = plan.target_allowlist.map((target) =>
+      `${target.root_id}:${target.path}`
+    );
+    if (new Set(allowlistKeys).size !== allowlistKeys.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["target_allowlist"],
+        message: "target allowlist paths must be unique",
+      });
+    }
+    const allowlist = new Map(plan.target_allowlist.map((target) => [
+      `${target.root_id}:${target.path}`,
+      target,
+    ]));
+    const memorySourcePaths = new Set(plan.actions.flatMap(actionSources)
+      .filter((source) => source.root_id === "memory")
+      .map((source) => source.path));
     for (const [index, action] of plan.actions.entries()) {
       for (const source of actionSources(action)) {
         const entry = writeSet.get(`${source.root_id}:${source.path}`);
@@ -339,6 +410,18 @@ export const KnowledgeHygieneTransactionPlanV1 = planObject.strict()
             code: z.ZodIssueCode.custom,
             path: ["actions", index, "target"],
             message: "target preimage must match its write-set entry",
+          });
+        }
+        const allowed = allowlist.get(`${target.root_id}:${target.path}`);
+        if (
+          allowed === undefined
+          || (allowed.purpose === "memory_original"
+            && !memorySourcePaths.has(allowed.path))
+        ) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["actions", index, "target"],
+            message: "action target is not an allowlisted destination",
           });
         }
       }
@@ -400,7 +483,12 @@ export type KnowledgeHygieneTransactionPlanV1 = z.infer<
 
 export type CreateKnowledgeHygieneTransactionPlanInputV1 = Omit<
   z.input<typeof planObject>,
-  "schema_version" | "plan_id" | "state" | "approvals" | "receipts"
+  | "schema_version"
+  | "plan_id"
+  | "state"
+  | "closure_conditions"
+  | "approvals"
+  | "receipts"
 >;
 
 export interface ApproveKnowledgeHygieneTransactionPlanInputV1 {
@@ -443,7 +531,9 @@ function immutablePlan(plan: z.input<typeof planObject>) {
     ...(plan.memory_root === undefined ? {} : { memory_root: plan.memory_root }),
     actions: plan.actions,
     write_set: plan.write_set,
+    target_allowlist: plan.target_allowlist,
     evidence_refs: plan.evidence_refs,
+    closure_conditions: plan.closure_conditions,
   };
 }
 
@@ -454,12 +544,26 @@ function planIdentity(plan: z.input<typeof planObject>): string {
 export function createKnowledgeHygieneTransactionPlanV1(
   input: CreateKnowledgeHygieneTransactionPlanInputV1,
 ): KnowledgeHygieneTransactionPlanV1 {
+  const closureConditions = [
+    "write_set_after_images_match" as const,
+    ...(input.actions.some((action) => action.kind === "move")
+      ? ["move_bytes_present_at_target" as const]
+      : []),
+    ...(input.actions.some((action) => action.kind === "compress")
+      ? ["claim_ledger_complete" as const]
+      : []),
+    ...(input.actions.some((action) => action.kind === "delete")
+      ? ["discard_ledger_complete" as const]
+      : []),
+    ...(input.kind === "narrative" ? ["selected_findings_absent" as const] : []),
+  ];
   const raw = {
     schema_version: "1" as const,
     plan_id: `khtp_${"0".repeat(64)}`,
     state: "draft" as const,
     approvals: [],
     receipts: [],
+    closure_conditions: closureConditions,
     ...input,
   };
   const normalized = planObject.strict().parse(raw);
@@ -553,6 +657,14 @@ export function renderKnowledgeHygieneTransactionPlanMarkdownV1(
     lines.push(
       `- ${entry.root_id}:${entry.path} — ${entry.preimage_sha256 ?? "absent"} → ${entry.after_sha256}`,
     );
+  }
+  lines.push("", "## Closure conditions", "");
+  for (const condition of plan.closure_conditions) {
+    lines.push(`- ${condition}`);
+  }
+  lines.push("", "## Target allowlist", "");
+  for (const target of plan.target_allowlist) {
+    lines.push(`- ${target.root_id}:${target.path} (${target.purpose})`);
   }
   return `${lines.join("\n")}\n`;
 }

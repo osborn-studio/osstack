@@ -31,8 +31,10 @@ const transitions: Readonly<
     "cancelled",
   ]),
   approved: new Set(["approved", "applying", "stale", "cancelled"]),
-  applying: new Set(["applied", "recovery_required"]),
+  applying: new Set(["applied", "recovery_required", "stale", "cancelled"]),
   recovery_required: new Set(["recovered"]),
+  applied: new Set(["applied", "recovery_required"]),
+  recovered: new Set(["recovered"]),
 };
 
 export const KnowledgeHygienePlanEventV1Core = z.object({
