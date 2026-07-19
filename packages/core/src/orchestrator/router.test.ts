@@ -154,3 +154,37 @@ describe("agent_id override fail-closed (Phase 2 closure G1.1)", () => {
     expect(d?.adapter.id).toBe("ds-review");
   });
 });
+
+describe("override fail-closed hardening (review round 2)", () => {
+  const reviewCaps2 = [{ kind: "code.review" as const, suffix: "code.review" }];
+  const okA = makeAdapter({ id: "codex-cli", cost_tier: "mid", caps: reviewCaps2 });
+
+  it("empty-string agent_id fails closed (never treated as no-override)", async () => {
+    await expect(routeCapability({ agent_id: "", kind: "code.review" }, [okA]))
+      .rejects.toMatchObject({ code: "agent_not_found" });
+  });
+
+  it("override with ZERO adapters fails closed", async () => {
+    await expect(routeCapability({ agent_id: "codex-cli", kind: "code.review" }, []))
+      .rejects.toMatchObject({ code: "agent_not_found" });
+  });
+
+  it("capability_id-only override with a mismatching id fails closed (no first-capability fallback)", async () => {
+    const multi = makeAdapter({ id: "codex-cli", cost_tier: "mid", caps: [
+      { kind: "code.write", suffix: "code.write" }, { kind: "code.review", suffix: "code.review" }] });
+    await expect(routeCapability({ agent_id: "codex-cli", capability_id: "codex-cli.code.debug" }, [multi]))
+      .rejects.toMatchObject({ code: "agent_capability_mismatch" });
+    const d = await routeCapability({ agent_id: "codex-cli", capability_id: "codex-cli.code.review" }, [multi]);
+    expect(d?.capability.id).toBe("codex-cli.code.review");
+  });
+
+  it("clears the probe timer when the probe settles first (no 10s retention)", async () => {
+    const spy = { cleared: 0 };
+    const origClear = globalThis.clearTimeout;
+    globalThis.clearTimeout = ((t: Parameters<typeof origClear>[0]) => { spy.cleared++; return origClear(t); }) as typeof origClear;
+    try {
+      await routeCapability({ agent_id: "codex-cli", kind: "code.review" }, [okA]);
+      expect(spy.cleared).toBeGreaterThan(0);
+    } finally { globalThis.clearTimeout = origClear; }
+  });
+});

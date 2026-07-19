@@ -72,8 +72,11 @@ export async function routeCapability(
   adapters: ReadonlyArray<RoutableAdapter>,
   options: RouteOptions = {},
 ): Promise<RoutingDecision | null> {
+  if (request.agent_id !== undefined && request.agent_id.length === 0) {
+    throw new AgentOverrideError("agent_not_found", "(empty)", "agent_id must be a non-empty string");
+  }
   if (adapters.length === 0) {
-    if (request.agent_id) throw new AgentOverrideError("agent_not_found", request.agent_id, "no adapters registered");
+    if (request.agent_id !== undefined) throw new AgentOverrideError("agent_not_found", request.agent_id, "no adapters registered");
     return null;
   }
 
@@ -85,21 +88,34 @@ export async function routeCapability(
     if (!adapter) throw new AgentOverrideError("agent_not_found", request.agent_id);
     const timeoutMs = options.probeTimeoutMs ?? DEFAULT_PROBE_TIMEOUT_MS;
     let avail: RouterAvailability;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       avail = await Promise.race([
         adapter.isAvailable(),
         new Promise<never>((_, reject) => {
-          const t = setTimeout(() => reject(new Error(`availability probe timed out after ${timeoutMs}ms`)), timeoutMs);
-          (t as { unref?: () => void }).unref?.();
+          timer = setTimeout(() => reject(new Error(`availability probe timed out after ${timeoutMs}ms`)), timeoutMs);
+          (timer as { unref?: () => void }).unref?.();
         }),
       ]);
     } catch (err) {
       throw new AgentOverrideError("agent_unavailable", request.agent_id, err instanceof Error ? err.message : String(err));
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
     }
     if (!avail.available) {
       throw new AgentOverrideError("agent_unavailable", request.agent_id, avail.reason ?? "adapter reports unavailable");
     }
-    const cap = pickCapability(adapter, request);
+    // STRICT capability selection under an override: a supplied capability_id
+    // must match exactly; a supplied kind must match a capability of that kind;
+    // only a fully unspecified request may take the adapter's first capability.
+    let cap: Capability | undefined;
+    if (request.capability_id !== undefined) {
+      cap = adapter.capabilities().find((c) => c.id === request.capability_id);
+    } else if (request.kind !== undefined) {
+      cap = adapter.capabilities().find((c) => c.kind === request.kind);
+    } else {
+      cap = adapter.capabilities()[0];
+    }
     if (!cap) {
       throw new AgentOverrideError("agent_capability_mismatch", request.agent_id, `no capability matching ${request.capability_id ?? request.kind ?? "(unspecified)"}`);
     }
@@ -155,16 +171,6 @@ async function isAvailable(adapter: RoutableAdapter): Promise<boolean> {
   }
 }
 
-function pickCapability(adapter: RoutableAdapter, request: RoutingRequest): Capability | undefined {
-  if (request.capability_id) {
-    const exact = adapter.capabilities().find((c) => c.id === request.capability_id);
-    if (exact) return exact;
-  }
-  if (request.kind) {
-    return adapter.capabilities().find((c) => c.kind === request.kind);
-  }
-  return adapter.capabilities()[0];
-}
 
 // Known CapabilityKind values, hand-mirrored from capability.ts. Kept here
 // (rather than re-extracted from the Zod enum) so this module stays a leaf
