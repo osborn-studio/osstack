@@ -587,6 +587,12 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "doctor") {
+    if (args.includes("--control-plane")) {
+      const { runControlPlaneChecks, renderControlPlaneFindings } = await import("./control-plane-doctor.js");
+      const out = renderControlPlaneFindings(runControlPlaneChecks());
+      console.log(out.text);
+      return out.exitCode;
+    }
     return await handleProductDoctorCommand(args.slice(1));
   }
 
