@@ -175,7 +175,7 @@ required_surfaces:
       capability: "code.test",
       prompt: "Exercise neat failure isolation",
     }));
-    await writeFile(join(tmp, ".osstack", "neat.yaml"), "version: 2\n");
+    await writeFile(join(tmp, ".osstack", "neat.yaml"), "version: 3\n");
 
     const exitCode = await main([
       "loop", "run", "--workspace", tmp, "--source", "task_queue",

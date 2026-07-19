@@ -1,0 +1,22 @@
+{
+  "schema_version": "2",
+  "event_id": "khev_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "repo_id": "repo-1",
+  "fingerprint": "khf_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "from_state": "open",
+  "to_state": "mechanically_applied",
+  "actor": {
+    "kind": "system",
+    "id": "system:governance"
+  },
+  "reason": "Approved plan applied.",
+  "evidence_refs": [
+    {
+      "kind": "evidence_pack",
+      "ref": "pack-1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "run_id": "run-1"
+    }
+  ],
+  "occurred_at": "2026-07-18T00:00:00.000Z"
+}

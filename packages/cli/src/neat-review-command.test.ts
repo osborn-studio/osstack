@@ -1,9 +1,11 @@
-import { mkdtemp, readFile, readdir, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   KnowledgeHygieneReportV1,
   KnowledgeHygieneReviewArtifactV1,
+  KnowledgeHygieneReviewArtifactV2,
+  checkKnowledgeHygieneV2,
 } from "@osstack/governance";
 import { AgentCommandResult, PROTOCOL_VERSION } from "@osstack/protocol";
 import { describe, expect, it } from "vitest";
@@ -71,7 +73,73 @@ function reviewArgs(reportPath: string, outputPath: string) {
   ];
 }
 
+async function v2Report(cwd: string) {
+  await mkdir(join(cwd, ".osstack"));
+  await writeFile(join(cwd, ".osstack", "neat.yaml"), `
+version: 2
+instructions:
+  canonical: AGENTS.md
+`);
+  await writeFile(join(cwd, "AGENTS.md"), `
+<claude-mem-context>
+Session summary.
+</claude-mem-context>
+`);
+  return checkKnowledgeHygieneV2({
+    schema_version: "2",
+    repo_root: cwd,
+    mode: "all",
+  }, { v1: { repo_identity: () => "repo-v2" } });
+}
+
 describe("neat review", () => {
+  it("creates and reapplies an append-only V2 lifecycle artifact", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "osstack-neat-review-v2-"));
+    const source = await v2Report(cwd);
+    const finding = source.findings.find((item) =>
+      item.rule_id === "rulebook.managed_context_block"
+    );
+    expect(finding).toBeDefined();
+    await writeFile(join(cwd, "report.json"), JSON.stringify(source));
+    const command = harness(cwd);
+    const args = reviewArgs("report.json", "review.json");
+    args[args.indexOf("--finding") + 1] = finding?.fingerprint ?? "";
+    args[args.indexOf("--outcome") + 1] = "accepted_risk";
+
+    expect(await handleNeatCommand(args, command.deps)).toBe(0);
+    const artifact = KnowledgeHygieneReviewArtifactV2.parse(
+      JSON.parse(await readFile(join(cwd, "review.json"), "utf8")),
+    );
+    expect(artifact).toMatchObject({
+      schema_version: "2",
+      repo_id: "repo-v2",
+      resolution_events: [{
+        fingerprint: finding?.fingerprint,
+        from_state: "open",
+        to_state: "accepted_risk",
+      }],
+    });
+
+    const apply = harness(cwd);
+    expect(await handleNeatCommand([
+      "check",
+      "--all",
+      "--schema-version",
+      "2",
+      "--review-file",
+      "review.json",
+      "--json",
+    ], {
+      ...apply.deps,
+      check_v2: async () => source,
+    })).toBe(0);
+    const envelope = AgentCommandResult.parse(JSON.parse(apply.stdout[0] ?? ""));
+    expect((envelope.result?.report as {
+      findings: unknown[];
+      resolved_findings: unknown[];
+    })).toMatchObject({ findings: [], resolved_findings: [expect.any(Object)] });
+  });
+
   it("creates an atomic artifact from a strict CLI report envelope", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "osstack-neat-review-"));
     const reportPath = join(cwd, "report.json");

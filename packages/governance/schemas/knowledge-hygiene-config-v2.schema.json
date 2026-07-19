@@ -1,0 +1,509 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Knowledge Hygiene Config v2",
+  "$comment": "Semantic scheduling, uniqueness, common-config, and dependency-time refinements are enforced by @osstack/governance Zod validation.",
+  "type": "object",
+  "properties": {
+    "instructions": {
+      "type": "object",
+      "properties": {
+        "canonical": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mirrors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "import",
+                  "symlink",
+                  "import_or_symlink"
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "mode"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        }
+      },
+      "required": [
+        "canonical"
+      ],
+      "additionalProperties": false
+    },
+    "required_surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9._-]*$"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "file",
+              "directory"
+            ],
+            "default": "file"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "error",
+              "warning",
+              "info"
+            ],
+            "default": "warning"
+          }
+        },
+        "required": [
+          "id",
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "default": []
+    },
+    "budgets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9._-]*$"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "warn": {
+            "type": "object",
+            "properties": {
+              "lines": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "bytes": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              }
+            },
+            "additionalProperties": false
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "lines": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "bytes": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "default": []
+    },
+    "contracts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9._-]*$"
+          },
+          "when": {
+            "type": "object",
+            "properties": {
+              "any_path": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1
+              }
+            },
+            "required": [
+              "any_path"
+            ],
+            "additionalProperties": false
+          },
+          "review": {
+            "type": "object",
+            "properties": {
+              "any_path": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1
+              }
+            },
+            "required": [
+              "any_path"
+            ],
+            "additionalProperties": false
+          },
+          "enforcement": {
+            "type": "string",
+            "enum": [
+              "advisory",
+              "required"
+            ],
+            "default": "advisory"
+          }
+        },
+        "required": [
+          "id",
+          "when",
+          "review"
+        ],
+        "additionalProperties": false
+      },
+      "default": []
+    },
+    "adapters": {
+      "type": "object",
+      "properties": {
+        "claude_code": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "memory_dir": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "enabled"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "version": {
+      "type": "number",
+      "const": 2
+    },
+    "ignore": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "enum": [
+              "instruction.canonical_missing",
+              "instruction.mirror_missing",
+              "instruction.mirror_drift",
+              "surface.required_missing",
+              "budget.warn_exceeded",
+              "budget.error_exceeded",
+              "reference.markdown_target_missing",
+              "reference.instruction_import_missing",
+              "contract.review_required",
+              "memory.platform_limit_exceeded",
+              "probe.artifact_integrity",
+              "probe.destination_missing",
+              "probe.deferred_stale",
+              "probe.waiver_expired",
+              "scan.incomplete",
+              "rulebook.managed_context_block",
+              "rulebook.narrative_block",
+              "rulebook.narrative_density",
+              "rulebook.invalid_waiver",
+              "dependency.review_due",
+              "semantic.narrative",
+              "semantic.contradiction",
+              "semantic.drift",
+              "semantic.memory_overlap",
+              "semantic.cross_repository_impact"
+            ]
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "rule_id",
+          "paths",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "default": []
+    },
+    "semantic": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "judge_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dimensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "narrative",
+              "contradiction",
+              "drift",
+              "memory_overlap"
+            ]
+          },
+          "minItems": 1,
+          "default": [
+            "narrative"
+          ]
+        },
+        "schedule": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "daily"
+          ],
+          "default": "manual"
+        },
+        "max_input_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 250000,
+          "default": 32000
+        },
+        "max_output_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32000,
+          "default": 4000
+        },
+        "max_calls": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64,
+          "default": 8
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "additionalProperties": false,
+      "default": {
+        "enabled": false,
+        "dimensions": [
+          "narrative"
+        ],
+        "schedule": "manual",
+        "max_input_tokens": 32000,
+        "max_output_tokens": 4000,
+        "max_calls": 8
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "edge_id": {
+            "type": "string",
+            "pattern": "^khe_[a-f0-9]{64}$"
+          },
+          "upstream_repo_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "direction": {
+            "type": "string",
+            "const": "depends_on"
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "api",
+                "sdk",
+                "env_name",
+                "url",
+                "symbol",
+                "path"
+              ]
+            },
+            "minItems": 1
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "report",
+                        "scorecard",
+                        "proof",
+                        "loop_state",
+                        "external"
+                      ]
+                    },
+                    "ref": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "run_id": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "ref"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "evidence_pack"
+                    },
+                    "ref": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "run_id": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "ref",
+                    "sha256",
+                    "run_id"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "obligation"
+                    },
+                    "ref": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "run_id": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "ref",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "minItems": 1
+          },
+          "confirmed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "review_after": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "edge_id",
+          "upstream_repo_id",
+          "direction",
+          "kinds",
+          "owner",
+          "evidence_refs",
+          "confirmed_at",
+          "review_after"
+        ],
+        "additionalProperties": false
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "version"
+  ],
+  "additionalProperties": false
+}

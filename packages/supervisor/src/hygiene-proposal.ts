@@ -1,8 +1,15 @@
 import {
   KnowledgeHygieneRecurrenceCandidateV1,
-  type KnowledgeHygieneRecurrenceCandidateV1 as RecurrenceCandidate,
+  KnowledgeHygieneRecurrenceCandidateV2,
 } from "@osstack/core";
 import { ImprovementProposal, type ImprovementProposal as Proposal } from "./types.js";
+
+type RecurrenceCandidate =
+  | KnowledgeHygieneRecurrenceCandidateV1
+  | KnowledgeHygieneRecurrenceCandidateV2;
+const recurrenceCandidate = KnowledgeHygieneRecurrenceCandidateV1.or(
+  KnowledgeHygieneRecurrenceCandidateV2,
+);
 
 export interface ProposeKnowledgeHygieneImprovementsInputV1 {
   candidates: readonly RecurrenceCandidate[];
@@ -23,7 +30,7 @@ export function proposeKnowledgeHygieneImprovements(
 ): Proposal[] {
   const merged = new Map<string, MergedCandidate>();
   for (const rawCandidate of input.candidates) {
-    const candidate = KnowledgeHygieneRecurrenceCandidateV1.parse(rawCandidate);
+    const candidate = recurrenceCandidate.parse(rawCandidate);
     const proposalId = `prop_neat_${candidate.candidate_key.slice("khc_".length)}`;
     const previous = merged.get(proposalId);
     if (previous === undefined) {

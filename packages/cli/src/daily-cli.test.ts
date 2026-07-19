@@ -1,9 +1,12 @@
+import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync } from "node:fs";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  appendDependencyObligationEventV2,
   KanbanRepository,
+  registerDependencyRegistryScopeV2,
   createProbeSession,
   openDb,
   recordKnowledgeHygieneRun,
@@ -456,6 +459,63 @@ describe("runDailyBrief (core extracted for the daemon)", () => {
     // generated_at differs only if the clock advanced; both use the pinned `now`.
     expect(JSON.parse(logs.join("\n"))).toEqual(run.result);
   });
+
+  it("surfaces registry-scoped unread dependency obligations without changing repos", async () => {
+    const registry = await seedRegistry();
+    const statePath = join(tmp, "home", "state.db");
+    await mkdir(join(tmp, "home"), { recursive: true });
+    const canonicalRegistry = await realpath(registry);
+    const registryScope = createHash("sha256")
+      .update(canonicalRegistry)
+      .digest("hex");
+    const database = openDb({ path: statePath, minFreeBytes: 0 });
+    try {
+      registerDependencyRegistryScopeV2(database, {
+        registry_scope: registryScope,
+        registry_path: canonicalRegistry,
+        updated_at: "2026-07-11T08:00:00.000Z",
+      });
+      const obligationId = `kho_${"1".repeat(64)}`;
+      const body = {
+        schema_version: "2" as const,
+        obligation_id: obligationId,
+        registry_scope: registryScope,
+        downstream_repo_id: "withgh",
+        revision: 1,
+        from_state: null,
+        to_state: "candidate" as const,
+        snapshot_json: JSON.stringify({
+          obligation_id: obligationId,
+          registry_scope: registryScope,
+          downstream_repo_id: "withgh",
+          revision: 1,
+          state: "candidate",
+        }),
+        actor: "system:test",
+        reason: "test obligation",
+        occurred_at: "2026-07-11T08:00:00.000Z",
+      };
+      appendDependencyObligationEventV2(database, {
+        ...body,
+        event_id: `khoe_${createHash("sha256").update(JSON.stringify(body)).digest("hex")}`,
+      });
+    } finally {
+      database.close();
+    }
+
+    const run = await runDailyBrief({
+      registryPath: registry,
+      runner: makeRunner([], "success"),
+      now: () => new Date("2026-07-11T09:00:00Z"),
+    });
+    expect(run.brief.dependency_obligations).toEqual({
+      registry_scope: registryScope,
+      open_count: 1,
+    });
+    expect(renderDailyMarkdown(run.brief)).toContain(
+      "Dependency obligations\n- unread: 1",
+    );
+  });
 });
 
 describe("repoCiStatus (pure)", () => {
@@ -599,6 +659,8 @@ describe("deriveOwnerDecisions (R2.4 dispatchable run payloads)", () => {
         path: "/repos/svc",
         hygiene: {
           complete: false,
+          health_claim: "assessment_incomplete",
+          coverage: [{ dimension: "mechanical", state: "failed" }],
           error_count: 1,
           warning_count: 2,
           recurring_count: 1,
@@ -632,6 +694,8 @@ describe("deriveOwnerDecisions (R2.4 dispatchable run payloads)", () => {
       repos: [repoHealth({
         hygiene: {
           complete: true,
+          health_claim: "assessed_scope_clean",
+          coverage: [{ dimension: "mechanical", state: "complete" }],
           error_count: 0,
           warning_count: 0,
           recurring_count: 0,

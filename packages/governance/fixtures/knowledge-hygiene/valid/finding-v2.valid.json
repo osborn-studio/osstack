@@ -1,0 +1,42 @@
+{
+  "fingerprint": "khf_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "rule_id": "rulebook.managed_context_block",
+  "rule_version": "1",
+  "surface": "instruction",
+  "severity": "warning",
+  "confidence": "high",
+  "location": {
+    "kind": "repository",
+    "repo_id": "repo-1",
+    "path": "AGENTS.md",
+    "line": 2
+  },
+  "observed": {
+    "marker": "<claude-mem-context>"
+  },
+  "expected": {
+    "absent": true
+  },
+  "rationale": "Managed session context does not belong in instructions.",
+  "evidence_refs": [],
+  "remediation": {
+    "mode": "agent_edit"
+  },
+  "origin": "mechanical",
+  "dimension": "narrative",
+  "closure_policy": "mechanical_sufficient",
+  "citations": [
+    {
+      "source": {
+        "kind": "repository",
+        "repo_id": "repo-1",
+        "path": "AGENTS.md"
+      },
+      "blob_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "start_line": 2,
+      "end_line": 4,
+      "text_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "excerpt": "<claude-mem-context>"
+    }
+  ]
+}

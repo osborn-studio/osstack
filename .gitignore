@@ -16,6 +16,7 @@ coverage/
 *.db-shm
 *.db-wal
 *.sock
+.osstack/eval-cache/
 
 # Logs
 logs/

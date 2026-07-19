@@ -1,6 +1,8 @@
 import {
-  checkKnowledgeHygiene,
+  type checkKnowledgeHygiene,
+  checkKnowledgeHygieneV2,
   type KnowledgeHygieneReportV1,
+  type KnowledgeHygieneReportV2,
 } from "@osstack/governance";
 import {
   RepoHealth,
@@ -28,7 +30,9 @@ export interface RepoKnowledgeHygieneHistorySummaryV1 {
 
 export interface ScanPortfolioKnowledgeHygieneOptionsV1 {
   concurrency?: number;
-  check?: typeof checkKnowledgeHygiene;
+  check?: (
+    input: Parameters<typeof checkKnowledgeHygiene>[0],
+  ) => Promise<KnowledgeHygieneReportV1 | KnowledgeHygieneReportV2>;
   now?: () => Date;
   history?: (
     repoId: string,
@@ -44,11 +48,21 @@ function concurrency(value: number | undefined, size: number): number {
 }
 
 function summary(
-  report: KnowledgeHygieneReportV1,
+  report: KnowledgeHygieneReportV1 | KnowledgeHygieneReportV2,
   history: RepoKnowledgeHygieneHistorySummaryV1,
 ): RepoKnowledgeHygieneSummaryV1 {
   return {
     complete: report.completeness.complete,
+    health_claim: report.schema_version === "2"
+      ? report.health_claim
+      : "assessment_incomplete",
+    coverage: report.schema_version === "2"
+      ? report.coverage.map((coverage) => ({ ...coverage }))
+      : [{
+          dimension: "semantic",
+          state: "not_assessed",
+          reason_codes: ["legacy_v1_report"],
+        }],
     error_count: report.summary.error,
     warning_count: report.summary.warning,
     recurring_count: history.recurring_count,
@@ -66,9 +80,9 @@ export async function scanPortfolioKnowledgeHygiene(
   const entries = registry.filter((entry) => entry.enabled);
   if (entries.length === 0) return [];
   const results = new Array<RepoKnowledgeHygieneScanResultV1>(entries.length);
-  const check = options.check ?? ((input) => checkKnowledgeHygiene(
-    input,
-    options.now === undefined ? {} : { now: options.now },
+  const check = options.check ?? ((input) => checkKnowledgeHygieneV2(
+    { ...input, schema_version: "2" },
+    options.now === undefined ? {} : { v1: { now: options.now } },
   ));
   const history = options.history ?? (async () => ({ recurring_count: 0 }));
   let nextIndex = 0;

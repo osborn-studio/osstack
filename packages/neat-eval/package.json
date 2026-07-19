@@ -1,0 +1,27 @@
+{
+  "name": "@osstack/neat-eval",
+  "version": "0.1.0",
+  "description": "Private, fail-closed semantic parity corpus, runner, and scorer for osstack neat.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "osstack-neat-eval": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

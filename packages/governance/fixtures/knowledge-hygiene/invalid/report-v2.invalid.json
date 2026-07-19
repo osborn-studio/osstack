@@ -1,0 +1,27 @@
+{
+  "schema_version": "2",
+  "generated_at": "2026-07-18T00:00:00.000Z",
+  "repo": {
+    "root": "/repo",
+    "repo_id": "repo-1"
+  },
+  "input": {
+    "mode": "all"
+  },
+  "completeness": {
+    "complete": true,
+    "skipped_files": 0,
+    "reasons": []
+  },
+  "summary": {
+    "error": 0,
+    "warning": 0,
+    "info": 0,
+    "suppressed": 0
+  },
+  "findings": [],
+  "metrics": [],
+  "coverage": [],
+  "health_claim": "findings_present",
+  "rejection_counts": {}
+}

@@ -623,6 +623,240 @@ export const MIGRATIONS: readonly Migration[] = [
         ON probe_command_receipts(created_at_ms, scope_key);
     `,
   },
+  {
+    id: 12,
+    name: "knowledge_hygiene_v2_history",
+    // V2 is deliberately additive. The V1 finding-state CHECK remains intact;
+    // append-only lifecycle events and their rebuildable projection live here.
+    sql: `
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_runs_v2 (
+        run_id             TEXT PRIMARY KEY,
+        report_sha256      TEXT NOT NULL UNIQUE,
+        schema_version     TEXT NOT NULL CHECK (schema_version = '2'),
+        repo_id            TEXT NOT NULL,
+        repo_root          TEXT NOT NULL,
+        mode               TEXT NOT NULL CHECK (mode IN ('all','worktree','range','base_to_worktree')),
+        diff_id            TEXT,
+        config_sha256      TEXT,
+        generated_at       REAL NOT NULL,
+        recorded_at        REAL NOT NULL,
+        inventory_complete INTEGER NOT NULL CHECK (inventory_complete IN (0,1)),
+        coverage_json      TEXT NOT NULL,
+        health_claim       TEXT NOT NULL CHECK (health_claim IN ('findings_present','assessed_scope_clean','assessment_incomplete')),
+        error_count        INTEGER NOT NULL,
+        warning_count      INTEGER NOT NULL,
+        info_count         INTEGER NOT NULL,
+        suppressed_count   INTEGER NOT NULL,
+        resolved_count     INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_runs_v2_repo_time
+        ON knowledge_hygiene_runs_v2(repo_id, generated_at, run_id);
+
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_findings_v2 (
+        repo_id           TEXT NOT NULL,
+        fingerprint       TEXT NOT NULL,
+        finding_json      TEXT NOT NULL,
+        first_seen_at     REAL NOT NULL,
+        last_seen_at      REAL NOT NULL,
+        occurrence_count INTEGER NOT NULL CHECK (occurrence_count >= 1),
+        last_run_id       TEXT NOT NULL REFERENCES knowledge_hygiene_runs_v2(run_id),
+        PRIMARY KEY (repo_id, fingerprint)
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_findings_v2_last_seen
+        ON knowledge_hygiene_findings_v2(repo_id, last_seen_at, fingerprint);
+
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_occurrences_v2 (
+        run_id       TEXT NOT NULL REFERENCES knowledge_hygiene_runs_v2(run_id) ON DELETE CASCADE,
+        repo_id       TEXT NOT NULL,
+        fingerprint   TEXT NOT NULL,
+        observed_at   REAL NOT NULL,
+        PRIMARY KEY (run_id, repo_id, fingerprint),
+        FOREIGN KEY (repo_id, fingerprint)
+          REFERENCES knowledge_hygiene_findings_v2(repo_id, fingerprint)
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_occurrences_v2_repo_time
+        ON knowledge_hygiene_occurrences_v2(repo_id, observed_at, run_id);
+
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_resolution_events_v2 (
+        event_id      TEXT PRIMARY KEY,
+        repo_id       TEXT NOT NULL,
+        fingerprint   TEXT NOT NULL,
+        from_state    TEXT NOT NULL,
+        to_state      TEXT NOT NULL,
+        event_json    TEXT NOT NULL,
+        occurred_at   REAL NOT NULL,
+        FOREIGN KEY (repo_id, fingerprint)
+          REFERENCES knowledge_hygiene_findings_v2(repo_id, fingerprint)
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_resolution_events_v2_finding
+        ON knowledge_hygiene_resolution_events_v2(repo_id, fingerprint, occurred_at, event_id);
+
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_finding_state_v2 (
+        repo_id        TEXT NOT NULL,
+        fingerprint    TEXT NOT NULL,
+        current_state  TEXT NOT NULL CHECK (current_state IN (
+          'open','mechanically_applied','mechanically_resolved','semantically_resolved',
+          'reviewed_no_change','accepted_risk','suppressed','obsolete','closed_absent','resolved_legacy'
+        )),
+        last_event_id  TEXT,
+        updated_at     REAL NOT NULL,
+        PRIMARY KEY (repo_id, fingerprint),
+        FOREIGN KEY (repo_id, fingerprint)
+          REFERENCES knowledge_hygiene_findings_v2(repo_id, fingerprint),
+        FOREIGN KEY (last_event_id)
+          REFERENCES knowledge_hygiene_resolution_events_v2(event_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_finding_state_v2_state
+        ON knowledge_hygiene_finding_state_v2(repo_id, current_state, updated_at);
+    `,
+  },
+  {
+    id: 13,
+    name: "knowledge_hygiene_v2_assessment_scope",
+    sql: `
+      ALTER TABLE knowledge_hygiene_runs_v2
+        ADD COLUMN assessment_scope_json TEXT NOT NULL
+        DEFAULT '{"selected_rule_ids":[]}';
+    `,
+  },
+  {
+    id: 14,
+    name: "knowledge_hygiene_plan_events",
+    sql: `
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_plan_events (
+        event_id     TEXT PRIMARY KEY,
+        plan_id      TEXT NOT NULL,
+        revision     INTEGER NOT NULL CHECK (revision >= 1),
+        from_state   TEXT,
+        to_state     TEXT NOT NULL,
+        event_json   TEXT NOT NULL,
+        occurred_at  REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_plan_events_plan
+        ON knowledge_hygiene_plan_events(plan_id, occurred_at, event_id);
+
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_plan_projection (
+        plan_id          TEXT PRIMARY KEY,
+        kind             TEXT NOT NULL CHECK (kind IN ('memory','narrative','dependency')),
+        repo_id          TEXT NOT NULL,
+        revision         INTEGER NOT NULL CHECK (revision >= 1),
+        state            TEXT NOT NULL CHECK (state IN (
+          'draft','partially_approved','approved','applying','applied',
+          'recovery_required','recovered','stale','cancelled'
+        )),
+        artifact_path    TEXT NOT NULL,
+        artifact_sha256  TEXT NOT NULL,
+        last_event_id    TEXT NOT NULL REFERENCES knowledge_hygiene_plan_events(event_id),
+        updated_at       REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_plan_projection_repo
+        ON knowledge_hygiene_plan_projection(repo_id, state, updated_at);
+    `,
+  },
+  {
+    id: 15,
+    name: "dependency_obligation_inbox",
+    sql: `
+      CREATE TABLE IF NOT EXISTS dependency_registry_scopes (
+        registry_scope  TEXT PRIMARY KEY,
+        registry_path   TEXT NOT NULL UNIQUE,
+        updated_at      REAL NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS dependency_obligation_events (
+        event_id       TEXT PRIMARY KEY,
+        obligation_id  TEXT NOT NULL,
+        revision       INTEGER NOT NULL CHECK (revision >= 1),
+        from_state     TEXT,
+        to_state       TEXT NOT NULL,
+        event_json     TEXT NOT NULL,
+        occurred_at    REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_dependency_obligation_events_obligation
+        ON dependency_obligation_events(obligation_id, revision, event_id);
+
+      CREATE TABLE IF NOT EXISTS dependency_obligation_projection (
+        obligation_id       TEXT PRIMARY KEY,
+        registry_scope      TEXT NOT NULL,
+        downstream_repo_id  TEXT NOT NULL,
+        revision            INTEGER NOT NULL CHECK (revision >= 1),
+        state               TEXT NOT NULL CHECK (state IN (
+          'candidate','advisory','promoted','dismissed','expired'
+        )),
+        snapshot_json       TEXT NOT NULL,
+        last_event_id       TEXT NOT NULL REFERENCES dependency_obligation_events(event_id),
+        updated_at          REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_dependency_obligation_inbox
+        ON dependency_obligation_projection(
+          registry_scope, downstream_repo_id, state, updated_at
+        );
+
+      CREATE TABLE IF NOT EXISTS declared_dependency_edge_events (
+        event_id      TEXT PRIMARY KEY,
+        edge_id       TEXT NOT NULL,
+        revision      INTEGER NOT NULL CHECK (revision >= 1),
+        from_state    TEXT,
+        to_state      TEXT NOT NULL,
+        event_json    TEXT NOT NULL,
+        occurred_at   REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_declared_dependency_edge_events_edge
+        ON declared_dependency_edge_events(edge_id, revision, event_id);
+
+      CREATE TABLE IF NOT EXISTS declared_dependency_edge_projection (
+        edge_id                 TEXT PRIMARY KEY,
+        registry_scope          TEXT NOT NULL,
+        downstream_repo_id      TEXT NOT NULL,
+        revision                INTEGER NOT NULL CHECK (revision >= 1),
+        state                   TEXT NOT NULL CHECK (state IN (
+          'confirmed','review_due','revoked'
+        )),
+        source_config_sha256    TEXT NOT NULL,
+        edge_json               TEXT NOT NULL,
+        last_event_id           TEXT NOT NULL REFERENCES declared_dependency_edge_events(event_id),
+        updated_at              REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_declared_dependency_edge_repo
+        ON declared_dependency_edge_projection(
+          registry_scope, downstream_repo_id, state, updated_at
+        );
+    `,
+  },
+  {
+    id: 16,
+    name: "knowledge_hygiene_dependency_plan_kind",
+    sql: `
+      ALTER TABLE knowledge_hygiene_plan_projection
+        RENAME TO knowledge_hygiene_plan_projection_v14;
+      CREATE TABLE knowledge_hygiene_plan_projection (
+        plan_id          TEXT PRIMARY KEY,
+        kind             TEXT NOT NULL CHECK (kind IN (
+          'memory','narrative','dependency'
+        )),
+        repo_id          TEXT NOT NULL,
+        revision         INTEGER NOT NULL CHECK (revision >= 1),
+        state            TEXT NOT NULL CHECK (state IN (
+          'draft','partially_approved','approved','applying','applied',
+          'recovery_required','recovered','stale','cancelled'
+        )),
+        artifact_path    TEXT NOT NULL,
+        artifact_sha256  TEXT NOT NULL,
+        last_event_id    TEXT NOT NULL REFERENCES knowledge_hygiene_plan_events(event_id),
+        updated_at       REAL NOT NULL
+      );
+      INSERT INTO knowledge_hygiene_plan_projection (
+        plan_id, kind, repo_id, revision, state, artifact_path,
+        artifact_sha256, last_event_id, updated_at
+      ) SELECT
+        plan_id, kind, repo_id, revision, state, artifact_path,
+        artifact_sha256, last_event_id, updated_at
+      FROM knowledge_hygiene_plan_projection_v14;
+      DROP TABLE knowledge_hygiene_plan_projection_v14;
+      CREATE INDEX idx_knowledge_hygiene_plan_projection_repo
+        ON knowledge_hygiene_plan_projection(repo_id, state, updated_at);
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

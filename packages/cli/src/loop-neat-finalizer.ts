@@ -1,6 +1,8 @@
 import {
-  checkKnowledgeHygiene,
+  type checkKnowledgeHygiene,
+  checkKnowledgeHygieneV2,
   type KnowledgeHygieneReportV1,
+  type KnowledgeHygieneReportV2,
 } from "@osstack/governance";
 
 export interface LoopNeatFinalizerInputV1 {
@@ -13,7 +15,7 @@ export type LoopNeatFinalizerResultV1 =
   | {
       command: "knowledge_hygiene.check";
       status: "ok";
-      report: KnowledgeHygieneReportV1;
+      report: KnowledgeHygieneReportV1 | KnowledgeHygieneReportV2;
     }
   | {
       command: "knowledge_hygiene.check";
@@ -22,7 +24,9 @@ export type LoopNeatFinalizerResultV1 =
     };
 
 export interface LoopNeatFinalizerDepsV1 {
-  check?: typeof checkKnowledgeHygiene;
+  check?: (
+    input: Parameters<typeof checkKnowledgeHygiene>[0],
+  ) => Promise<KnowledgeHygieneReportV1 | KnowledgeHygieneReportV2>;
 }
 
 /**
@@ -36,10 +40,16 @@ export async function runLoopNeatFinalizer(
 ): Promise<LoopNeatFinalizerResultV1 | undefined> {
   if (!input.enabled || !input.loop_succeeded) return undefined;
   try {
-    const report = await (deps.check ?? checkKnowledgeHygiene)({
-      repo_root: input.workspace_path,
-      mode: "all",
-    });
+    const report = deps.check === undefined
+      ? await checkKnowledgeHygieneV2({
+          schema_version: "2",
+          repo_root: input.workspace_path,
+          mode: "all",
+        })
+      : await deps.check({
+          repo_root: input.workspace_path,
+          mode: "all",
+        });
     return {
       command: "knowledge_hygiene.check",
       status: "ok",

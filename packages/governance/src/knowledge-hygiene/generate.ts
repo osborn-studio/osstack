@@ -10,6 +10,22 @@ import {
   KnowledgeHygienePatchActionV1,
   KnowledgeHygienePatchPlanV1,
 } from "./patch-types.js";
+import {
+  KnowledgeHygienePlanActionV1,
+  KnowledgeHygieneTransactionPlanV1,
+} from "./transaction-plan.js";
+import { KnowledgeHygieneConfigV2Schema } from "./config-v2.js";
+import {
+  DependencyCandidateV2,
+  DependencyObligationV2,
+} from "./dependency.js";
+import {
+  CoverageDimensionV2,
+  KnowledgeHygieneFindingV2,
+  KnowledgeHygieneReportV2,
+  KnowledgeHygieneResolutionEventV2,
+  KnowledgeHygieneRuleIdV2,
+} from "./types-v2.js";
 
 interface KnowledgeHygieneSchemaEntryV1 {
   key: string;
@@ -55,6 +71,77 @@ export const KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V1 = Object.freeze([
       "Action-id uniqueness is enforced by @osstack/governance Zod validation.",
     schema: KnowledgeHygienePatchPlanV1,
   },
+  {
+    key: "knowledge-hygiene-transaction-action-v1",
+    title: "Osstack Knowledge Hygiene Transaction Action v1",
+    comment:
+      "Byte-span, content-conservation, claim-ledger, and discard-ledger invariants are enforced by @osstack/governance Zod validation.",
+    schema: KnowledgeHygienePlanActionV1,
+  },
+  {
+    key: "knowledge-hygiene-transaction-plan-v1",
+    title: "Osstack Knowledge Hygiene Transaction Plan v1",
+    comment:
+      "Content-addressed identity, non-overlap, approval, write-set, expiry, and state invariants are enforced by @osstack/governance Zod validation.",
+    schema: KnowledgeHygieneTransactionPlanV1,
+  },
+] satisfies readonly KnowledgeHygieneSchemaEntryV1[]);
+
+export const KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V2 = Object.freeze([
+  {
+    key: "knowledge-hygiene-rule-id-v2",
+    title: "Osstack Knowledge Hygiene Rule ID v2",
+    schema: KnowledgeHygieneRuleIdV2,
+  },
+  {
+    key: "knowledge-hygiene-finding-v2",
+    title: "Osstack Knowledge Hygiene Finding v2",
+    comment:
+      "Portable-path, surface/location, rule/dimension, and closure-policy refinements are enforced by @osstack/governance Zod validation.",
+    schema: KnowledgeHygieneFindingV2,
+  },
+  {
+    key: "knowledge-hygiene-coverage-v2",
+    title: "Osstack Knowledge Hygiene Coverage Dimension v2",
+    comment:
+      "Coverage count and state invariants are enforced by @osstack/governance Zod validation.",
+    schema: CoverageDimensionV2,
+  },
+  {
+    key: "knowledge-hygiene-report-v2",
+    title: "Osstack Knowledge Hygiene Report v2",
+    comment:
+      "Assessment-scope ordering, coverage order/completeness, and health-claim precedence are enforced by @osstack/governance Zod validation.",
+    schema: KnowledgeHygieneReportV2,
+  },
+  {
+    key: "knowledge-hygiene-resolution-event-v2",
+    title: "Osstack Knowledge Hygiene Resolution Event v2",
+    comment:
+      "Lifecycle transitions and suppression/coverage evidence requirements are enforced by @osstack/governance Zod validation.",
+    schema: KnowledgeHygieneResolutionEventV2,
+  },
+  {
+    key: "knowledge-hygiene-config-v2",
+    title: "Osstack Knowledge Hygiene Config v2",
+    comment:
+      "Semantic scheduling, uniqueness, common-config, and dependency-time refinements are enforced by @osstack/governance Zod validation.",
+    schema: KnowledgeHygieneConfigV2Schema,
+  },
+  {
+    key: "knowledge-hygiene-dependency-candidate-v2",
+    title: "Osstack Knowledge Hygiene Dependency Candidate v2",
+    comment:
+      "Candidate identity, sorted kinds, evidence identity, and non-self-edge invariants are enforced by @osstack/governance Zod validation.",
+    schema: DependencyCandidateV2,
+  },
+  {
+    key: "knowledge-hygiene-dependency-obligation-v2",
+    title: "Osstack Knowledge Hygiene Dependency Obligation v2",
+    comment:
+      "Obligation identity, expiry, advisory rationale, and promoted-edge invariants are enforced by @osstack/governance Zod validation.",
+    schema: DependencyObligationV2,
+  },
 ] satisfies readonly KnowledgeHygieneSchemaEntryV1[]);
 
 function renderSchema(entry: KnowledgeHygieneSchemaEntryV1): string {
@@ -73,6 +160,15 @@ function renderSchema(entry: KnowledgeHygieneSchemaEntryV1): string {
 export function generateAllKnowledgeHygieneSchemasV1(): Record<string, string> {
   return Object.fromEntries(
     KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V1.map((entry) => [
+      `${entry.key}.schema.json`,
+      renderSchema(entry),
+    ]),
+  );
+}
+
+export function generateAllKnowledgeHygieneSchemasV2(): Record<string, string> {
+  return Object.fromEntries(
+    KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V2.map((entry) => [
       `${entry.key}.schema.json`,
       renderSchema(entry),
     ]),

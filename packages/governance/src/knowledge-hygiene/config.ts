@@ -122,7 +122,7 @@ const patternList = z
   .object({ any_path: z.array(repositoryPattern).min(1) })
   .strict();
 
-const knowledgeHygieneConfigV1Schema = z
+export const KnowledgeHygieneConfigV1Schema = z
   .object({
     version: z.literal(1),
     instructions: z
@@ -220,7 +220,7 @@ const knowledgeHygieneConfigV1Schema = z
   });
 
 export type KnowledgeHygieneConfigV1 = z.infer<
-  typeof knowledgeHygieneConfigV1Schema
+  typeof KnowledgeHygieneConfigV1Schema
 >;
 
 function zodDetails(error: ZodError): string[] {
@@ -260,7 +260,7 @@ export function parseKnowledgeHygieneConfigV1(
   }
 
   try {
-    return knowledgeHygieneConfigV1Schema.parse(value);
+    return KnowledgeHygieneConfigV1Schema.parse(value);
   } catch (error) {
     if (error instanceof ZodError) {
       throw new KnowledgeHygieneConfigError(
@@ -290,6 +290,18 @@ export type LoadedKnowledgeHygieneConfig =
       config: KnowledgeHygieneConfigV1;
     };
 
+export type LoadedKnowledgeHygieneConfigSource =
+  | {
+      mode: "zero_config";
+      path: string;
+    }
+  | {
+      mode: "configured";
+      path: string;
+      sha256: string;
+      source: string;
+    };
+
 function isInsideRoot(root: string, candidate: string): boolean {
   const pathFromRoot = relative(root, candidate);
   return (
@@ -305,9 +317,9 @@ function errorCode(error: unknown): string | undefined {
   return typeof error.code === "string" ? error.code : undefined;
 }
 
-export async function loadKnowledgeHygieneConfig(
+export async function loadKnowledgeHygieneConfigSource(
   input: LoadKnowledgeHygieneConfigInput,
-): Promise<LoadedKnowledgeHygieneConfig> {
+): Promise<LoadedKnowledgeHygieneConfigSource> {
   const requestedRoot = resolve(input.repo_root);
   let resolvedRoot: string;
   try {
@@ -383,6 +395,19 @@ export async function loadKnowledgeHygieneConfig(
     mode: "configured",
     path: configPath,
     sha256: createHash("sha256").update(source).digest("hex"),
-    config: parseKnowledgeHygieneConfigV1(source),
+    source,
+  };
+}
+
+export async function loadKnowledgeHygieneConfig(
+  input: LoadKnowledgeHygieneConfigInput,
+): Promise<LoadedKnowledgeHygieneConfig> {
+  const loaded = await loadKnowledgeHygieneConfigSource(input);
+  if (loaded.mode === "zero_config") return loaded;
+  return {
+    mode: "configured",
+    path: loaded.path,
+    sha256: loaded.sha256,
+    config: parseKnowledgeHygieneConfigV1(loaded.source),
   };
 }

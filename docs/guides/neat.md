@@ -335,6 +335,11 @@ are skipped.
 - [patch action v1 schema](../../packages/governance/schemas/knowledge-hygiene-patch-action-v1.schema.json)
 - [patch plan v1 schema](../../packages/governance/schemas/knowledge-hygiene-patch-plan-v1.schema.json)
 
+V1 human output is deliberately scope-limited: zero findings means no current
+mechanical V1 rule fired, not that prose semantics were audited. Every human
+report therefore states `Semantic coverage: not assessed`; the V1 JSON schema
+remains byte-compatible and does not gain a synthetic coverage field.
+
 ## Companion skill
 
 Use [`neat-skill`](../../neat-skill/SKILL.md) for an evidence-led

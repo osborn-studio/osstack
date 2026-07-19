@@ -174,6 +174,12 @@ export type ImprovementProposal = z.infer<typeof ImprovementProposal>;
 
 export const RepoKnowledgeHygieneSummaryV1 = z.object({
   complete: z.boolean(),
+  health_claim: z.enum([
+    "findings_present",
+    "assessed_scope_clean",
+    "assessment_incomplete",
+  ]),
+  coverage: z.array(z.record(z.unknown())),
   error_count: z.number().int().nonnegative(),
   warning_count: z.number().int().nonnegative(),
   recurring_count: z.number().int().nonnegative(),

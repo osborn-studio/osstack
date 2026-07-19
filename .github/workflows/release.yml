@@ -59,6 +59,13 @@ jobs:
       - name: Test
         run: pnpm -r test
 
+      - name: Neat semantic beta contract gates
+        run: |
+          pnpm smoke:neat
+          pnpm eval:neat-goldens
+          pnpm eval:neat-parity:corpus
+          pnpm eval:neat-parity:offline
+
       - name: Release plan smoke
         run: pnpm smoke:release-plan
 

@@ -5,7 +5,7 @@ import {
   KnowledgeHygieneRecurrencePolicyV1,
   listImprovementProposals,
   openDb,
-  queryKnowledgeHygieneRecurrenceCandidates,
+  queryKnowledgeHygieneRecurrenceCandidatesV2,
   upsertImprovementProposal,
 } from "@osstack/core";
 import { AgentCommandResult, PROTOCOL_VERSION } from "@osstack/protocol";
@@ -213,7 +213,7 @@ export async function handleNeatProposalCommand(
   }
 
   try {
-    const candidates = queryKnowledgeHygieneRecurrenceCandidates(db, {
+    const candidates = queryKnowledgeHygieneRecurrenceCandidatesV2(db, {
       min_occurrences: parsed.minOccurrences,
       min_repositories: parsed.minRepositories,
     });
