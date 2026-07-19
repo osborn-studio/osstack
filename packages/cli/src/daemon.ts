@@ -37,7 +37,7 @@ import {
   type CompletedTask,
 } from "@osstack/loop";
 import {
-  openDb, PIIRedactor, routeCapability,
+  openDb, PIIRedactor, routeCapability, AgentOverrideError,
   PolicyEngine, DEFAULT_RULES, sqliteHistory,
   HermesBridge, GBrainAdapter,
   initOtel, shutdownOtel, traceSpan, otelEnabled,
@@ -1983,11 +1983,30 @@ async function handleTaskSubmit(
   const routeReq: RouteReq = {};
   if (params.capability_id !== undefined) routeReq.capability_id = params.capability_id;
   if (typeof params.kind === "string") routeReq.kind = params.kind as RouteKind;
-  if (params.agent_id !== undefined) routeReq.agent_id = params.agent_id;
-  const routerPick = await routeCapability(
-    routeReq,
-    Array.from(ctx.adapters.values()) as readonly RoutableAdapter[],
-  );
+  if (params.agent_id !== undefined) {
+    // FAIL-CLOSED type boundary: a non-string/empty agent_id is a client bug,
+    // never a reason to fall back to default routing (G1.1 review F3).
+    if (typeof params.agent_id !== "string" || params.agent_id.length === 0) {
+      sock.write(encodeFrame(singleErr(req.id, "bad_request", "params.agent_id must be a non-empty string when provided")));
+      return;
+    }
+    routeReq.agent_id = params.agent_id;
+  }
+  let routerPick: Awaited<ReturnType<typeof routeCapability>>;
+  try {
+    routerPick = await routeCapability(
+      routeReq,
+      Array.from(ctx.adapters.values()) as readonly RoutableAdapter[],
+    );
+  } catch (err) {
+    // Explicit agent_id override could not be honored — FAIL-CLOSED to the
+    // client; no run is created and no silent fallback occurs (G1.1).
+    if (err instanceof AgentOverrideError) {
+      sock.write(encodeFrame(singleErr(req.id, "agent_override_failed", err.message)));
+      return;
+    }
+    throw err;
+  }
   if (routerPick === null) {
     sock.write(encodeFrame(singleErr(req.id, "no_route", "no available adapter can serve this task")));
     return;

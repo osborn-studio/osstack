@@ -92,6 +92,7 @@ export * from "./kanban/index.js";
 export * from "./kg/index.js";
 export * from "./observability/index.js";
 export const CORE_VERSION = "0.0.0";
+export { CURRENT_SCHEMA_VERSION } from "./state/migrations.js";
 ```
 
 ## `@osstack/github`

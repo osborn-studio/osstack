@@ -104,3 +104,87 @@ describe("routeCapability", () => {
       .resolves.toMatchObject({ adapter: { id: "ds-verify" } });
   });
 });
+
+describe("agent_id override fail-closed (Phase 2 closure G1.1)", () => {
+  const reviewCaps = [{ kind: "code.review" as const, suffix: "code.review" }];
+  const mk = (id: string, avail: () => Promise<{ available: boolean; reason?: string }>): RoutableAdapter => ({
+    ...makeAdapter({ id, cost_tier: "mid", caps: reviewCaps }),
+    isAvailable: avail,
+  });
+  const ok = mk("codex-cli", async () => ({ available: true }));
+  const cheap = makeAdapter({ id: "ds-review", cost_tier: "low", caps: reviewCaps });
+
+  it("routes to the requested agent when available (no fallback consulted)", async () => {
+    const d = await routeCapability({ agent_id: "codex-cli", kind: "code.review" }, [cheap, ok]);
+    expect(d?.adapter.id).toBe("codex-cli");
+    expect(d?.reason).toBe("agent_id override");
+  });
+
+  it("FAILS CLOSED when the requested agent does not exist — never lowest-cost fallback", async () => {
+    await expect(routeCapability({ agent_id: "nope", kind: "code.review" }, [cheap, ok]))
+      .rejects.toMatchObject({ name: "AgentOverrideError", code: "agent_not_found", agent_id: "nope" });
+  });
+
+  it("FAILS CLOSED when the requested agent reports unavailable", async () => {
+    const down = mk("codex-cli", async () => ({ available: false, reason: "probe failed" }));
+    await expect(routeCapability({ agent_id: "codex-cli", kind: "code.review" }, [cheap, down]))
+      .rejects.toMatchObject({ name: "AgentOverrideError", code: "agent_unavailable" });
+  });
+
+  it("FAILS CLOSED when the availability probe throws", async () => {
+    const boom = mk("codex-cli", async () => { throw new Error("probe crashed"); });
+    await expect(routeCapability({ agent_id: "codex-cli", kind: "code.review" }, [cheap, boom]))
+      .rejects.toMatchObject({ code: "agent_unavailable" });
+  });
+
+  it("FAILS CLOSED when the availability probe hangs past the timeout", async () => {
+    const hang = mk("codex-cli", () => new Promise(() => {}));
+    await expect(routeCapability({ agent_id: "codex-cli", kind: "code.review" }, [cheap, hang], { probeTimeoutMs: 50 }))
+      .rejects.toMatchObject({ code: "agent_unavailable" });
+  });
+
+  it("FAILS CLOSED when the agent exists but lacks the requested kind", async () => {
+    const wrongCap = makeAdapter({ id: "codex-cli", cost_tier: "mid", caps: [{ kind: "code.write", suffix: "code.write" }] });
+    await expect(routeCapability({ agent_id: "codex-cli", kind: "code.review" }, [cheap, wrongCap]))
+      .rejects.toMatchObject({ code: "agent_capability_mismatch" });
+  });
+
+  it("non-override requests keep the existing kind-based lowest-cost behavior", async () => {
+    const d = await routeCapability({ kind: "code.review" }, [cheap, ok]);
+    expect(d?.adapter.id).toBe("ds-review");
+  });
+});
+
+describe("override fail-closed hardening (review round 2)", () => {
+  const reviewCaps2 = [{ kind: "code.review" as const, suffix: "code.review" }];
+  const okA = makeAdapter({ id: "codex-cli", cost_tier: "mid", caps: reviewCaps2 });
+
+  it("empty-string agent_id fails closed (never treated as no-override)", async () => {
+    await expect(routeCapability({ agent_id: "", kind: "code.review" }, [okA]))
+      .rejects.toMatchObject({ code: "agent_not_found" });
+  });
+
+  it("override with ZERO adapters fails closed", async () => {
+    await expect(routeCapability({ agent_id: "codex-cli", kind: "code.review" }, []))
+      .rejects.toMatchObject({ code: "agent_not_found" });
+  });
+
+  it("capability_id-only override with a mismatching id fails closed (no first-capability fallback)", async () => {
+    const multi = makeAdapter({ id: "codex-cli", cost_tier: "mid", caps: [
+      { kind: "code.write", suffix: "code.write" }, { kind: "code.review", suffix: "code.review" }] });
+    await expect(routeCapability({ agent_id: "codex-cli", capability_id: "codex-cli.code.debug" }, [multi]))
+      .rejects.toMatchObject({ code: "agent_capability_mismatch" });
+    const d = await routeCapability({ agent_id: "codex-cli", capability_id: "codex-cli.code.review" }, [multi]);
+    expect(d?.capability.id).toBe("codex-cli.code.review");
+  });
+
+  it("clears the probe timer when the probe settles first (no 10s retention)", async () => {
+    const spy = { cleared: 0 };
+    const origClear = globalThis.clearTimeout;
+    globalThis.clearTimeout = ((t: Parameters<typeof origClear>[0]) => { spy.cleared++; return origClear(t); }) as typeof origClear;
+    try {
+      await routeCapability({ agent_id: "codex-cli", kind: "code.review" }, [okA]);
+      expect(spy.cleared).toBeGreaterThan(0);
+    } finally { globalThis.clearTimeout = origClear; }
+  });
+});

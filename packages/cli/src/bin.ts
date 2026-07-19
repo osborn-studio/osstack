@@ -7,6 +7,7 @@ import { realpathSync } from "node:fs";
 import { connect, type Socket } from "node:net";
 import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
+import { assertServeAllowed, ControlPlaneGuardError, defaultOsstackHome } from "./control-plane-guard.js";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
@@ -517,6 +518,26 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     if (args.includes("--install") || args.includes("--uninstall") || args.includes("--status")) {
       return await handleServeManagementCommand(args.slice(1));
     }
+    // Control-plane boot guard (G1.2): an undeclared checkout must never serve
+    // the default (stable) home; a declared checkout only its allowlisted homes.
+    {
+      // Start the role-file search at the running bin's own directory; the
+      // guard walks a bounded number of ancestors (covers monorepo roots and
+      // npm prefixes alike, and matches where serve --install provisions it).
+      let checkoutRoot = dirname(fileURLToPath(import.meta.url));
+      try { checkoutRoot = dirname(realpathSync(fileURLToPath(import.meta.url))); } catch { /* keep lexical */ }
+      const guardHome = process.env.OSSTACK_HOME ?? defaultOsstackHome();
+      try {
+        const verdict = assertServeAllowed({ checkoutRoot, osstackHome: guardHome });
+        console.log(`control-plane guard: role=${verdict.role} home=${verdict.homeCategory}${verdict.schema ? ` schema=[${verdict.schema.min},${verdict.schema.max}]` : ""}`);
+      } catch (err) {
+        if (err instanceof ControlPlaneGuardError) {
+          console.error(`osstack: refusing to serve — ${err.message}`);
+          return 78; // EX_CONFIG
+        }
+        throw err;
+      }
+    }
     const handle = await startDaemon();
     console.log(`osstack daemon listening on ${handle.socketPath}`);
     console.log(`db_path=${handle.dbPath}  pid=${process.pid}`);
@@ -570,6 +591,12 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "doctor") {
+    if (args.includes("--control-plane")) {
+      const { runControlPlaneChecks, renderControlPlaneFindings } = await import("./control-plane-doctor.js");
+      const out = renderControlPlaneFindings(runControlPlaneChecks());
+      console.log(out.text);
+      return out.exitCode;
+    }
     return await handleProductDoctorCommand(args.slice(1));
   }
 
@@ -7134,6 +7161,19 @@ Options:
   const binPath = flagValue(args, "--bin") ?? defaultOsstackBinPath();
   try {
     if (args.includes("--install")) {
+      // Provision the control-plane role authority for THIS deployment: an
+      // installed launchd daemon serves the default home, which the boot guard
+      // only permits for a declared stable-serving root (review F1).
+      try {
+        const { CURRENT_SCHEMA_VERSION } = await import("@osstack/core");
+        const { provisionStableServing } = await import("./control-plane-guard.js");
+        provisionStableServing(binPath, process.env.OSSTACK_HOME ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: !noLoad });
+        if (!json) console.log("control-plane guard: stable-serving role declaration provisioned and verified");
+      } catch (err) {
+        // A daemon the guard would refuse must not be installed (round-4 F2).
+        console.error(`osstack: serve --install aborted — control-plane provisioning failed: ${err instanceof Error ? err.message : String(err)}`);
+        return 78;
+      }
       const result = await installLaunchAgent({ binPath, noLoad });
       printServeLaunchdResult(result, json);
       return 0;
