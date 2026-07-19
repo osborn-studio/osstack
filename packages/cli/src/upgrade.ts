@@ -185,7 +185,25 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
     provisionStableServing(newBin, process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
   } catch (err) {
     log(`control-plane provisioning after upgrade FAILED: ${err instanceof Error ? err.message : String(err)}`);
-    log("restarting the PREVIOUS daemon (upgrade not activated)…");
+    // npm has ALREADY replaced the global package — restarting now would launch
+    // the new, unprovisioned binary (round-6). Roll back to the previous
+    // version, re-provision it, then restart that.
+    log(`ROLLING BACK to ${PKG}@${VERSION} before restart…`);
+    const rb = await run("npm", ["install", "-g", `${PKG}@${VERSION}`]);
+    if (!rb.ok) {
+      log(`rollback install ALSO failed:\n${rb.output}`);
+      log(`manual recovery: npm i -g ${PKG}@${VERSION}; backups in ${backupsDir()}`);
+      return 1;
+    }
+    try {
+      const rootResp = await run("npm", ["root", "-g"]);
+      if (rootResp.ok) {
+        provisionStableServing(`${rootResp.output.trim()}/@osstack/cli/dist/bin.js`,
+          process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
+      }
+    } catch (provErr) {
+      log(`WARN: re-provisioning the rolled-back binary failed: ${provErr instanceof Error ? provErr.message : String(provErr)}`);
+    }
     if (wasRunning) await startDaemonAgain(viaLaunchd);
     return 1;
   }
