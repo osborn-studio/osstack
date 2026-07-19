@@ -158,3 +158,50 @@ describe("withWrite", () => {
     }
   });
 });
+
+import Database from "better-sqlite3";
+
+describe("schema incident hardening (G1.4, incident 2026-07-18)", () => {
+  it("REFUSES to open a DB whose user_version is above this binary's supported schema", () => {
+    const dir = mkdtempSync(join(tmpdir(), "g14-"));
+    const p = join(dir, "state.db");
+    const db1 = openDb({ path: p });
+    db1.close();
+    const raw = new Database(p);
+    raw.pragma(`user_version = ${CURRENT_SCHEMA_VERSION + 3}`);
+    raw.close();
+    expect(() => openDb({ path: p })).toThrowError(/Migration state inconsistent/);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("tolerates FOREIGN additive residue tables at the correct user_version (incident residue is harmless)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "g14b-"));
+    const p = join(dir, "state.db");
+    openDb({ path: p }).close();
+    const raw = new Database(p);
+    raw.exec("CREATE TABLE IF NOT EXISTS probe_sessions (session_id TEXT PRIMARY KEY, repo_id TEXT NOT NULL)");
+    raw.exec("CREATE TABLE IF NOT EXISTS knowledge_hygiene_runs (run_id TEXT PRIMARY KEY)");
+    raw.close();
+    const db = openDb({ path: p });
+    expect((db.prepare("SELECT count(*) c FROM tasks").get() as { c: number }).c).toBe(0);
+    expect((db.prepare("SELECT count(*) c FROM runs").get() as { c: number }).c).toBe(0);
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("re-applying identical IF-NOT-EXISTS DDL over incident residue is idempotent (future official adoption path)", () => {
+    // A future official migration may ADOPT the incident's additive tables.
+    // That is safe ONLY with byte-identical DDL using IF NOT EXISTS on both
+    // tables and indexes — verified here by applying the DDL twice.
+    const dir = mkdtempSync(join(tmpdir(), "g14c-"));
+    const p = join(dir, "state.db");
+    const ddl = `
+      CREATE TABLE IF NOT EXISTS probe_sessions (session_id TEXT PRIMARY KEY, repo_id TEXT NOT NULL, state TEXT NOT NULL);
+      CREATE INDEX IF NOT EXISTS idx_probe_sessions_repo_state ON probe_sessions(repo_id, state);`;
+    const db = openDb({ path: p });
+    db.exec(ddl);
+    expect(() => db.exec(ddl)).not.toThrow();
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
