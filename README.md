@@ -151,6 +151,12 @@ osstack loop doctor --workspace . --json
 # Audit repository knowledge without writing files.
 osstack neat check --fail-on none
 
+# Opt-in, evidence-bound semantic audit (requires an isolated judge provider).
+osstack neat semantic --dimensions narrative,contradiction,drift,memory-overlap
+
+# Build a reviewable remediation transaction; writes still require approval.
+osstack neat narrative plan --repo . --findings FINDING_FINGERPRINT
+
 # Run one delivery flow in a git worktree and produce evidence.
 osstack deliver "Make a small verified change" \
   --verify "pnpm test" \
@@ -158,6 +164,14 @@ osstack deliver "Make a small verified change" \
   --worktree \
   --json
 ```
+
+`neat` now ships honest V2 coverage, isolated semantic review, recoverable
+memory/narrative transactions, and cross-repository obligation tracking as an
+**auditable semantic hygiene beta**. The frozen Khazix parity protocol remains
+fail-closed until an independent custodian supplies the hidden corpus, pinned
+model adapters, and blind quality judgments; current releases do not claim
+Khazix semantic parity. See
+[`eval/neat-parity/README.md`](eval/neat-parity/README.md) for the evidence gate.
 
 The `deliver` command is the product entry point. It creates a task queue,
 executes the loop, verifies the result, and produces evidence artifacts such as:

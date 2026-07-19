@@ -152,7 +152,9 @@ async function runGit(cwd, args) {
 }
 
 function findingKey(finding) {
-  return `${finding.severity}|${finding.rule_id}|${finding.path ?? finding.location?.path}`;
+  const path = finding.path
+    ?? (finding.location?.kind === "repository_scope" ? "." : finding.location?.path);
+  return `${finding.severity}|${finding.rule_id}|${path}`;
 }
 
 function fixturePath(root, path) {

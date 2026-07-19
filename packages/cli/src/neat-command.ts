@@ -467,6 +467,7 @@ export function renderKnowledgeHygieneReport(
 }
 
 function v2Location(finding: KnowledgeHygieneReportV2["findings"][number]): string {
+  if (finding.location.kind === "repository_scope") return `repo:${finding.location.repo_id}`;
   if (finding.location.kind === "repository") return finding.location.path;
   if (finding.location.kind === "adapter") return finding.location.uri;
   return `registry:${finding.location.registry_scope}`;
@@ -488,7 +489,7 @@ export function renderKnowledgeHygieneReportV2(
     lines.push("No findings in the assessed scope shown below.", "");
   }
   for (const finding of report.findings) {
-    const lineSuffix = finding.location.kind !== "registry"
+    const lineSuffix = "line" in finding.location
         && finding.location.line !== undefined
       ? `:${finding.location.line}`
       : "";

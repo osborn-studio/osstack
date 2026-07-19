@@ -130,6 +130,15 @@ describe("knowledge hygiene v2 contracts", () => {
     ).toBe(false);
   });
 
+  it("represents whole-repository findings without a fake path", () => {
+    expect(KnowledgeHygieneFindingV2.parse({
+      ...findingV2(),
+      rule_id: "scan.incomplete",
+      dimension: "mechanical",
+      location: { kind: "repository_scope", repo_id: "repo-1" },
+    }).location).toEqual({ kind: "repository_scope", repo_id: "repo-1" });
+  });
+
   it("enforces coverage state and count invariants", () => {
     expect(CoverageDimensionV2.parse(mechanicalCoverage())).toEqual(
       mechanicalCoverage(),

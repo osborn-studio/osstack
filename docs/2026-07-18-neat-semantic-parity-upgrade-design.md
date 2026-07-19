@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | **Approved v2.0 — Implementation contract**；八项阻断已在设计层关闭；U0a 立即 GO，U0b–U5 按 §10 依赖门顺序实施 |
+| 状态 | **Implemented v2.0 — Auditable semantic hygiene beta release candidate**；U0–U4 能力与 U5 工具链已实现；Khazix parity claim 因外部 hidden evidence 未就绪保持 No-Go |
 | 日期 | 2026-07-18 |
 | 作者 | Claude Fable 5（CTO 席）+ Osborn；v2.0 contract checker/editor：Codex |
 | 前置文档 | v2 规格 `2026-07-17-neat-product-technical-spec-v2.md`（Implemented，R0–R4 已验收）；v1 设计稿（Historical）；ADR-002 |
@@ -168,6 +168,10 @@ type KnowledgeHygieneSurfaceV2 =
   | "dependency";
 
 type KnowledgeHygieneLocationV2 =
+  | {
+      kind: "repository_scope"; // whole-repository findings such as scan.incomplete
+      repo_id: string;
+    }
   | {
       kind: "repository";
       repo_id: string;
@@ -714,7 +718,7 @@ interface DependencyObligationV2 {
 
 ### 7.2 双跑对照协议
 
-同一快照三臂运行：**A 臂** 原版 neat-freak——基准冻结为**固定提交** `5a963d9` 的 [Khazix SKILL.md](https://github.com/KKKKhazix/khazix-skills/blob/5a963d91f772e0d4f6659c43a36876a74c468143/neat-freak/SKILL.md)；**B 臂** osstack neat（U 系列全开）；**C 臂**当前 v2。每次运行使用 fresh session + disposable copy、网络关闭、相同模型/推理档/总 token 与 wall-clock budget。A/B 在主模型每 case 独立运行 3 次，在第二模型家族各运行 2 次；C 确定性运行 1 次。
+同一快照三臂运行：**A 臂** 原版 neat-freak——基准冻结为**固定提交** `5a963d9` 的 [Khazix SKILL.md](https://github.com/KKKKhazix/khazix-skills/blob/5a963d91f772e0d4f6659c43a36876a74c468143/neat-freak/SKILL.md)；**B 臂** osstack neat（U 系列全开）；**C 臂**当前 v2。每次运行使用 fresh session + disposable copy、网络关闭、相同模型/推理档/总 token 与 wall-clock budget。A/B 在主模型每 case 独立运行 3 次，在第二模型家族各运行 2 次；C 为满足 bit-for-bit gate 每 case 确定性运行 2 次。
 
 B 臂 production approval 不得被绕过。eval harness 在 disposable copy 中以明确 `actor=eval-harness` 生成批准事件后施行 plan，仅为得到 diff；这些 receipt 标记 `evaluation_only`，不能导入真实 history。统一采集 findings、coverage、plan、diff、拒收原因、运行时间、tokens/calls 与失败。
 
@@ -1014,7 +1018,7 @@ provider live smoke 是手动、显式凭据、非 CI gate；fake-provider 与�
 
 每波次先在本仓和一个非关键在册仓 canary；观察至少连续 48 小时且累计 20 次成功运行，7 天内不足 20 次则延长而不是降低门槛。期间 provider failure、recovery_required、schema rejection、false-positive appeal 均进入发布报告。出现数据丢失、write-set 越界、权限绕过或无法恢复 journal 为立即回滚条件；语义质量/成本不达门槛则关闭对应 opt-in，不影响 mechanical channel。
 
-### 11.4 2026-07-18 preflight 实测快照
+### 11.4 2026-07-18 实施前 preflight 快照（Historical）
 
 | 命令 | 结果 |
 |---|---|
@@ -1029,6 +1033,24 @@ provider live smoke 是手动、显式凭据、非 CI gate；fake-provider 与�
 | 当前仓 `neat check --all` | exit 0、0 findings，仍漏掉 `<claude-mem-context>`；按 §0 冻结为 U0 regression |
 
 本快照不是对尚未实现的 U 系列宣称测试通过；它只证明当前代码基线和本文实现入口可复现。B0 修复后必须用相同命令更新为全绿，才允许首个实现 PR 合并。
+
+### 11.5 2026-07-19 实施后 release-candidate 验证
+
+| 门 | 结果 |
+|---|---|
+| U0–U4 package tests | PASS；governance 280、Core 190、Agents 46、CLI 560 |
+| `pnpm lint` | PASS（451 files） |
+| `pnpm typecheck` | PASS（20 workspace projects） |
+| `pnpm build` | PASS（20 workspace projects） |
+| `pnpm test` | PASS |
+| public V2 schemas + generated artifact freshness | PASS |
+| `pnpm smoke:neat` | PASS；默认 V2 coverage/health claim、显式 V1 compatibility、read-only 均已验证 |
+| `pnpm eval:neat-goldens` | PASS（12 scenarios；blocking 100%；warning 80%；0 false negatives） |
+| `pnpm eval:neat-parity:corpus` | PASS（5 profiles / 30 cases / 120 defects） |
+| `pnpm eval:neat-parity:offline` | PASS（C 臂 60/60；逐 case 两次 bit-for-bit） |
+| `pnpm eval:neat-parity:doctor` | **预期 No-Go**；外部 hidden bundle/custody、冻结模型、四 adapter 与 production semantic credential 未提供 |
+
+No-Go 不回滚已验证能力；它把发布声明锁定在 **auditable semantic hygiene beta release candidate**，并阻止 Khazix parity 文案。production semantic live smoke 与 48 小时/20 次 canary 仍是公开 beta 波次的外部门，不能由离线测试替代。
 
 ---
 

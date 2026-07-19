@@ -112,6 +112,41 @@ describe("checkKnowledgeHygieneV2", () => {
     });
   });
 
+  it("represents an incomplete whole-repository scan without inventing a path", async () => {
+    const repoRoot = await fixtureRepo();
+    const report = await checkKnowledgeHygieneV2({
+      schema_version: "2",
+      repo_root: repoRoot,
+      mode: "all",
+      checks: ["scan.incomplete"],
+    }, {
+      v1: {
+        repo_identity: () => "repo-1",
+        adapters: [],
+        inventory: async () => ({
+          surfaces: [],
+          completeness: {
+            complete: false,
+            skipped_files: 1,
+            reasons: ["fixture scan limit"],
+          },
+        }),
+      },
+    });
+
+    expect(report.findings).toEqual([
+      expect.objectContaining({
+        rule_id: "scan.incomplete",
+        location: { kind: "repository_scope", repo_id: "repo-1" },
+      }),
+    ]);
+    expect(report.coverage[0]).toMatchObject({
+      dimension: "mechanical",
+      state: "failed",
+      reason_codes: ["scan_incomplete"],
+    });
+  });
+
   it("emits review_due for expired declared dependencies without mutating config", async () => {
     const repoRoot = await fixtureRepo();
     await writeFile(join(repoRoot, ".osstack", "neat.yaml"), `

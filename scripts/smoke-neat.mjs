@@ -54,6 +54,12 @@ try {
     "the first read-only check changed the fixture",
   );
 
+  const legacy = await check("1");
+  assertFinding(legacy, "instruction.mirror_drift", "human_decision");
+  if (legacy.schema_version !== "1") {
+    throw new Error("explicit V1 compatibility smoke did not return schema version 1");
+  }
+
   await write("README.md", "# Sick repository\n\n[guide](docs/guide.md)\n");
 
   const beforeSecondCheck = await snapshot(workspace);
@@ -95,7 +101,10 @@ async function write(path, content) {
   await writeFile(target, content, "utf8");
 }
 
-async function check() {
+async function check(schemaVersion = "2") {
+  const schemaArgs = schemaVersion === "2"
+    ? []
+    : ["--schema-version", schemaVersion];
   const { stdout } = await execFileAsync(
     process.execPath,
     [
@@ -109,6 +118,7 @@ async function check() {
       "json",
       "--fail-on",
       "none",
+      ...schemaArgs,
     ],
     { cwd: workspace, encoding: "utf8", timeout: 10_000 },
   );
@@ -116,9 +126,18 @@ async function check() {
   if (
     envelope.status !== "ok" ||
     envelope.result?.command !== "knowledge_hygiene.check" ||
-    envelope.result?.report?.schema_version !== "1"
+    envelope.result?.report?.schema_version !== schemaVersion
   ) {
     throw new Error("smoke received an invalid knowledge hygiene envelope");
+  }
+  if (
+    schemaVersion === "2"
+    && (
+      !Array.isArray(envelope.result.report.coverage)
+      || typeof envelope.result.report.health_claim !== "string"
+    )
+  ) {
+    throw new Error("V2 smoke report omitted coverage or health claim");
   }
   return envelope.result.report;
 }

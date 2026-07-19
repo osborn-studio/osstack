@@ -149,6 +149,13 @@ const repositoryLocation = z
   })
   .strict();
 
+const repositoryScopeLocation = z
+  .object({
+    kind: z.literal("repository_scope"),
+    repo_id: z.string().min(1),
+  })
+  .strict();
+
 const adapterLocation = z
   .object({
     kind: z.literal("adapter"),
@@ -178,6 +185,7 @@ const registryLocation = z
   });
 
 export const KnowledgeHygieneLocationV2 = z.union([
+  repositoryScopeLocation,
   repositoryLocation,
   adapterLocation,
   registryLocation,

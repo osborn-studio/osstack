@@ -1,0 +1,72 @@
+{
+  "schema_version": "1",
+  "protocol_id": "osstack-neat-semantic-parity-v1",
+  "status": "preregistered_waiting_external_hidden_bundle",
+  "registered_at": "2026-07-18T00:00:00.000Z",
+  "random_seed": 20260718,
+  "baseline": {
+    "repository": "KKKKhazix/khazix-skills",
+    "commit": "5a963d91f772e0d4f6659c43a36876a74c468143",
+    "path": "neat-freak/SKILL.md",
+    "sha256": "31ab2058d60664799af767e46c985a59025934315bee1b9c20d7ff442b0af687",
+    "license": "MIT"
+  },
+  "primary_model_id": null,
+  "secondary_model_id": null,
+  "hidden_bundle_sha256": null,
+  "runs_per_case": {
+    "A_primary": 3,
+    "B_primary": 3,
+    "A_secondary": 2,
+    "B_secondary": 2,
+    "C_deterministic": 2
+  },
+  "budgets": {
+    "max_input_tokens": 32000,
+    "max_output_tokens": 4000,
+    "max_calls": 8,
+    "max_wall_clock_ms": 300000
+  },
+  "thresholds": {
+    "recall_precision_margin": -0.05,
+    "edit_quality_margin": -0.25,
+    "alpha_minimum": 0.67,
+    "median_jaccard_minimum": 0.8,
+    "dimension_jaccard_minimum": 0.7,
+    "systemic_failure_maximum": 0.05
+  },
+  "bootstrap": {
+    "unit": "case_cluster",
+    "iterations": 10000,
+    "confidence": 0.95
+  },
+  "power_analysis": {
+    "method": "paired_case_normal_approximation",
+    "alpha": 0.05,
+    "target_power": 0.8,
+    "assumed_case_sd": 0.12,
+    "noninferiority_margin": 0.05,
+    "required_cases": 46,
+    "required_defects": 184
+  },
+  "edit_rubric": {
+    "scale": [1, 2, 3, 4, 5],
+    "dimensions": [
+      "knowledge_preservation",
+      "rule_accuracy",
+      "reader_clarity",
+      "scope_discipline",
+      "operational_safety"
+    ],
+    "blinding": "arm labels removed and pair order seeded",
+    "judges": 2,
+    "human_adjudication": "all disagreements plus 20 percent of agreements"
+  },
+  "claim_policy": {
+    "all_gates_required": true,
+    "insufficient_power_is_failure": true,
+    "missing_or_failed_runs_stay_in_denominator": true,
+    "development_results_cannot_authorize_parity_claim": true,
+    "self_custody_cannot_authorize_parity_claim": true
+  }
+}

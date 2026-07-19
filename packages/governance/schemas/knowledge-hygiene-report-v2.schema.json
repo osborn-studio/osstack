@@ -346,6 +346,24 @@
                 "properties": {
                   "kind": {
                     "type": "string",
+                    "const": "repository_scope"
+                  },
+                  "repo_id": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "kind",
+                  "repo_id"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
                     "const": "repository"
                   },
                   "repo_id": {
@@ -769,6 +787,24 @@
               },
               "location": {
                 "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "repository_scope"
+                      },
+                      "repo_id": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "repo_id"
+                    ],
+                    "additionalProperties": false
+                  },
                   {
                     "type": "object",
                     "properties": {

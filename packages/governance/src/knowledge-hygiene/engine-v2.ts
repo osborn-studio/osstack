@@ -168,6 +168,9 @@ function v1Location(
   finding: KnowledgeHygieneFindingV1,
   repoId: string,
 ): KnowledgeHygieneFinding["location"] {
+  if (finding.location.path === ".") {
+    return { kind: "repository_scope", repo_id: repoId };
+  }
   const adapterDelimiter = finding.location.path.indexOf("://");
   if (adapterDelimiter > 0) {
     return {
@@ -202,7 +205,9 @@ function projectV1Finding(
     || finding.remediation.mode === "human_decision"
     ? "semantic_confirmation_required"
     : "mechanical_sufficient";
-  const subject = location.kind === "repository"
+  const subject = location.kind === "repository_scope"
+    ? location.repo_id
+    : location.kind === "repository"
     ? location.path
     : location.kind === "adapter"
       ? location.uri
@@ -401,6 +406,7 @@ function compareText(left: string, right: string): number {
 }
 
 function locationKey(finding: KnowledgeHygieneFinding): string {
+  if (finding.location.kind === "repository_scope") return finding.location.repo_id;
   if (finding.location.kind === "repository") return finding.location.path;
   if (finding.location.kind === "adapter") return finding.location.uri;
   return finding.location.obligation_id ?? finding.location.edge_id ?? "";
