@@ -35,7 +35,10 @@ if (!existsSync(builtProbeGenerator)) {
   process.exit(2);
 }
 
-const { generateAllKnowledgeHygieneSchemasV1 } = await import(
+const {
+  generateAllKnowledgeHygieneSchemasV1,
+  generateAllKnowledgeHygieneSchemasV2,
+} = await import(
   pathToFileURL(builtGenerator).href
 );
 const { generateAllProbeSchemasV1 } = await import(
@@ -43,6 +46,7 @@ const { generateAllProbeSchemasV1 } = await import(
 );
 const expected = {
   ...generateAllKnowledgeHygieneSchemasV1(),
+  ...generateAllKnowledgeHygieneSchemasV2(),
   ...generateAllProbeSchemasV1(),
 };
 mkdirSync(schemasDirectory, { recursive: true });

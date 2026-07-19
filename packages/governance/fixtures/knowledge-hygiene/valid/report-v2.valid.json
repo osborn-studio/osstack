@@ -1,0 +1,82 @@
+{
+  "schema_version": "2",
+  "generated_at": "2026-07-18T00:00:00.000Z",
+  "repo": {
+    "root": "/repo",
+    "repo_id": "repo-1"
+  },
+  "input": {
+    "mode": "all"
+  },
+  "completeness": {
+    "complete": true,
+    "skipped_files": 0,
+    "reasons": []
+  },
+  "summary": {
+    "error": 0,
+    "warning": 0,
+    "info": 0,
+    "suppressed": 0
+  },
+  "findings": [],
+  "metrics": [],
+  "coverage": [
+    {
+      "dimension": "mechanical",
+      "state": "complete",
+      "source_units_total": 1,
+      "candidates_generated": 0,
+      "candidates_assessed": 0,
+      "candidates_skipped": 0,
+      "reason_codes": []
+    },
+    {
+      "dimension": "narrative",
+      "state": "not_assessed",
+      "source_units_total": 0,
+      "candidates_generated": 0,
+      "candidates_assessed": 0,
+      "candidates_skipped": 0,
+      "reason_codes": ["not_requested"]
+    },
+    {
+      "dimension": "contradiction",
+      "state": "not_assessed",
+      "source_units_total": 0,
+      "candidates_generated": 0,
+      "candidates_assessed": 0,
+      "candidates_skipped": 0,
+      "reason_codes": ["not_requested"]
+    },
+    {
+      "dimension": "drift",
+      "state": "not_assessed",
+      "source_units_total": 0,
+      "candidates_generated": 0,
+      "candidates_assessed": 0,
+      "candidates_skipped": 0,
+      "reason_codes": ["not_requested"]
+    },
+    {
+      "dimension": "memory_overlap",
+      "state": "not_assessed",
+      "source_units_total": 0,
+      "candidates_generated": 0,
+      "candidates_assessed": 0,
+      "candidates_skipped": 0,
+      "reason_codes": ["not_requested"]
+    },
+    {
+      "dimension": "cross_repository",
+      "state": "not_assessed",
+      "source_units_total": 0,
+      "candidates_generated": 0,
+      "candidates_assessed": 0,
+      "candidates_skipped": 0,
+      "reason_codes": ["not_requested"]
+    }
+  ],
+  "health_claim": "assessed_scope_clean",
+  "rejection_counts": {}
+}

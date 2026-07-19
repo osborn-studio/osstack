@@ -1,0 +1,213 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Knowledge Hygiene Resolution Event v2",
+  "$comment": "Lifecycle transitions and suppression/coverage evidence requirements are enforced by @osstack/governance Zod validation.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "2"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^khev_[a-f0-9]{64}$"
+    },
+    "repo_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^khf_[a-f0-9]{64}$"
+    },
+    "from_state": {
+      "type": "string",
+      "enum": [
+        "open",
+        "mechanically_applied",
+        "mechanically_resolved",
+        "semantically_resolved",
+        "reviewed_no_change",
+        "accepted_risk",
+        "suppressed",
+        "obsolete",
+        "closed_absent",
+        "resolved_legacy"
+      ]
+    },
+    "to_state": {
+      "type": "string",
+      "enum": [
+        "open",
+        "mechanically_applied",
+        "mechanically_resolved",
+        "semantically_resolved",
+        "reviewed_no_change",
+        "accepted_risk",
+        "suppressed",
+        "obsolete",
+        "closed_absent",
+        "resolved_legacy"
+      ]
+    },
+    "actor": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "human",
+            "agent",
+            "system"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "report",
+                  "scorecard",
+                  "proof",
+                  "loop_state",
+                  "external"
+                ]
+              },
+              "ref": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "run_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "kind",
+              "ref"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "evidence_pack"
+              },
+              "ref": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "run_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "kind",
+              "ref",
+              "sha256",
+              "run_id"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "obligation"
+              },
+              "ref": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "run_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "kind",
+              "ref",
+              "sha256"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "minItems": 1
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "plan_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "suppression": {
+      "type": "object",
+      "properties": {
+        "scope": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "scope"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "event_id",
+    "repo_id",
+    "fingerprint",
+    "from_state",
+    "to_state",
+    "actor",
+    "reason",
+    "evidence_refs",
+    "occurred_at"
+  ],
+  "additionalProperties": false
+}

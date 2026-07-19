@@ -1,5 +1,6 @@
 export * from "./change-set.js";
 export * from "./config.js";
+export * from "./config-v2.js";
 export * from "./engine.js";
 export * from "./fingerprint.js";
 export * from "./instruction-source.js";
@@ -11,5 +12,6 @@ export * from "./repository-reader.js";
 export * from "./resolution.js";
 export * from "./rules/index.js";
 export * from "./types.js";
+export * from "./types-v2.js";
 export * from "./adapters/index.js";
 export * from "./adapters/probe-artifacts.js";

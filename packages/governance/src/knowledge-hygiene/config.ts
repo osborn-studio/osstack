@@ -122,7 +122,7 @@ const patternList = z
   .object({ any_path: z.array(repositoryPattern).min(1) })
   .strict();
 
-const knowledgeHygieneConfigV1Schema = z
+export const KnowledgeHygieneConfigV1Schema = z
   .object({
     version: z.literal(1),
     instructions: z
@@ -220,7 +220,7 @@ const knowledgeHygieneConfigV1Schema = z
   });
 
 export type KnowledgeHygieneConfigV1 = z.infer<
-  typeof knowledgeHygieneConfigV1Schema
+  typeof KnowledgeHygieneConfigV1Schema
 >;
 
 function zodDetails(error: ZodError): string[] {
@@ -260,7 +260,7 @@ export function parseKnowledgeHygieneConfigV1(
   }
 
   try {
-    return knowledgeHygieneConfigV1Schema.parse(value);
+    return KnowledgeHygieneConfigV1Schema.parse(value);
   } catch (error) {
     if (error instanceof ZodError) {
       throw new KnowledgeHygieneConfigError(

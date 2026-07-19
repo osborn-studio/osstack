@@ -10,6 +10,14 @@ import {
   KnowledgeHygienePatchActionV1,
   KnowledgeHygienePatchPlanV1,
 } from "./patch-types.js";
+import { KnowledgeHygieneConfigV2Schema } from "./config-v2.js";
+import {
+  CoverageDimensionV2,
+  KnowledgeHygieneFindingV2,
+  KnowledgeHygieneReportV2,
+  KnowledgeHygieneResolutionEventV2,
+  KnowledgeHygieneRuleIdV2,
+} from "./types-v2.js";
 
 interface KnowledgeHygieneSchemaEntryV1 {
   key: string;
@@ -57,6 +65,49 @@ export const KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V1 = Object.freeze([
   },
 ] satisfies readonly KnowledgeHygieneSchemaEntryV1[]);
 
+export const KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V2 = Object.freeze([
+  {
+    key: "knowledge-hygiene-rule-id-v2",
+    title: "Osstack Knowledge Hygiene Rule ID v2",
+    schema: KnowledgeHygieneRuleIdV2,
+  },
+  {
+    key: "knowledge-hygiene-finding-v2",
+    title: "Osstack Knowledge Hygiene Finding v2",
+    comment:
+      "Portable-path, surface/location, rule/dimension, and closure-policy refinements are enforced by @osstack/governance Zod validation.",
+    schema: KnowledgeHygieneFindingV2,
+  },
+  {
+    key: "knowledge-hygiene-coverage-v2",
+    title: "Osstack Knowledge Hygiene Coverage Dimension v2",
+    comment:
+      "Coverage count and state invariants are enforced by @osstack/governance Zod validation.",
+    schema: CoverageDimensionV2,
+  },
+  {
+    key: "knowledge-hygiene-report-v2",
+    title: "Osstack Knowledge Hygiene Report v2",
+    comment:
+      "Coverage order/completeness and health-claim precedence are enforced by @osstack/governance Zod validation.",
+    schema: KnowledgeHygieneReportV2,
+  },
+  {
+    key: "knowledge-hygiene-resolution-event-v2",
+    title: "Osstack Knowledge Hygiene Resolution Event v2",
+    comment:
+      "Lifecycle transitions and suppression/coverage evidence requirements are enforced by @osstack/governance Zod validation.",
+    schema: KnowledgeHygieneResolutionEventV2,
+  },
+  {
+    key: "knowledge-hygiene-config-v2",
+    title: "Osstack Knowledge Hygiene Config v2",
+    comment:
+      "Semantic scheduling, uniqueness, common-config, and dependency-time refinements are enforced by @osstack/governance Zod validation.",
+    schema: KnowledgeHygieneConfigV2Schema,
+  },
+] satisfies readonly KnowledgeHygieneSchemaEntryV1[]);
+
 function renderSchema(entry: KnowledgeHygieneSchemaEntryV1): string {
   const generated = zodToJsonSchema(entry.schema, {
     target: "jsonSchema7",
@@ -73,6 +124,15 @@ function renderSchema(entry: KnowledgeHygieneSchemaEntryV1): string {
 export function generateAllKnowledgeHygieneSchemasV1(): Record<string, string> {
   return Object.fromEntries(
     KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V1.map((entry) => [
+      `${entry.key}.schema.json`,
+      renderSchema(entry),
+    ]),
+  );
+}
+
+export function generateAllKnowledgeHygieneSchemasV2(): Record<string, string> {
+  return Object.fromEntries(
+    KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V2.map((entry) => [
       `${entry.key}.schema.json`,
       renderSchema(entry),
     ]),
