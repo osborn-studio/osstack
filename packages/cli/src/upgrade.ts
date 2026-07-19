@@ -171,6 +171,23 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
     return 1;
   }
 
+  // Re-provision the control-plane role next to the NEWLY installed binary
+  // BEFORE restarting: a fresh npm install carries no role file and the boot
+  // guard would refuse the default home (round-4 F1). Failure aborts the
+  // restart path loudly rather than kickstarting a daemon that cannot boot.
+  try {
+    const { provisionStableServing } = await import("./control-plane-guard.js");
+    const { CURRENT_SCHEMA_VERSION } = await import("@osstack/core");
+    const which = await run("npm", ["root", "-g"]);
+    const newBin = which.ok
+      ? `${which.output.trim()}/@osstack/cli/dist/bin.js`
+      : "";
+    if (newBin) provisionStableServing(newBin, process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION);
+  } catch (err) {
+    log(`control-plane provisioning after upgrade FAILED: ${err instanceof Error ? err.message : String(err)}`);
+    return 1;
+  }
+
   if (wasRunning || viaLaunchd) {
     await startDaemonAgain(viaLaunchd);
     const healthy = await waitForDaemon(opts.rpc, target);

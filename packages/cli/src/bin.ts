@@ -7165,19 +7165,15 @@ Options:
       // installed launchd daemon serves the default home, which the boot guard
       // only permits for a declared stable-serving root (review F1).
       try {
-        let realBin = binPath;
-        try { realBin = realpathSync(binPath); } catch { /* keep as-is */ }
-        const roleFile = resolve(dirname(realBin), "control-plane.json");
-        if (!fsExistsSync(roleFile)) {
-          const { CURRENT_SCHEMA_VERSION } = await import("@osstack/core");
-          fsWriteFileSync(roleFile, `${JSON.stringify({
-            role: "stable-serving",
-            allowed_osstack_homes: [process.env.OSSTACK_HOME ?? "~/.osstack"],
-            schema: { min: CURRENT_SCHEMA_VERSION, max: CURRENT_SCHEMA_VERSION },
-          }, null, 2)}\n`);
-          if (!json) console.log("control-plane guard: wrote stable-serving role declaration next to the installed binary");
-        }
-      } catch { /* best-effort provisioning; the boot guard still enforces at serve */ }
+        const { CURRENT_SCHEMA_VERSION } = await import("@osstack/core");
+        const { provisionStableServing } = await import("./control-plane-guard.js");
+        provisionStableServing(binPath, process.env.OSSTACK_HOME ?? "~/.osstack", CURRENT_SCHEMA_VERSION);
+        if (!json) console.log("control-plane guard: stable-serving role declaration provisioned and verified");
+      } catch (err) {
+        // A daemon the guard would refuse must not be installed (round-4 F2).
+        console.error(`osstack: serve --install aborted — control-plane provisioning failed: ${err instanceof Error ? err.message : String(err)}`);
+        return 78;
+      }
       const result = await installLaunchAgent({ binPath, noLoad });
       printServeLaunchdResult(result, json);
       return 0;

@@ -12,9 +12,9 @@
 // Log output reports only CATEGORIES (role, home-category, schema version) —
 // never raw values beyond what the operator already passed on the command line.
 
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 
 export interface ControlPlaneRole {
   /** Declared role of this checkout. Only "stable-serving" may serve the default home. */
@@ -132,4 +132,30 @@ export function assertServeAllowed(opts: {
     homeCategory: home === defaultHome ? "default-stable" : "declared",
     ...(declared.schema ? { schema: declared.schema } : {}),
   };
+}
+
+/**
+ * Provision (or verify) the stable-serving role declaration next to the REAL
+ * binary, then PROVE the guard accepts the requested home. Used by
+ * `serve --install` and the self-upgrade path (round-4 F1/F2): an install that
+ * would produce a daemon the guard refuses must fail loudly, never silently.
+ * Returns the role-file path. Throws ControlPlaneGuardError on any mismatch.
+ */
+export function provisionStableServing(binPath: string, osstackHome: string, schemaVersion: number): string {
+  let realBin = binPath;
+  try { realBin = realpathSync(binPath); } catch { /* not yet existing */ }
+  const dir = dirname(realBin);
+  const file = resolve(dir, "control-plane.json");
+  mkdirSync(dir, { recursive: true });
+  if (!existsSync(file)) {
+    writeFileSync(file, `${JSON.stringify({
+      role: "stable-serving",
+      allowed_osstack_homes: [osstackHome],
+      schema: { min: schemaVersion, max: schemaVersion },
+    }, null, 2)}\n`);
+  }
+  // Verify: the guard MUST accept this exact deployment; otherwise the install
+  // is broken (pre-existing mismatched declaration, write failure, etc.).
+  assertServeAllowed({ checkoutRoot: dir, osstackHome });
+  return file;
 }
