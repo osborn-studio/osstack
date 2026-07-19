@@ -17,8 +17,9 @@
 import { spawn } from "node:child_process";
 import { provisionStableServing } from "./control-plane-guard.js";
 import { CURRENT_SCHEMA_VERSION } from "@osstack/core";
+import { homedir } from "node:os";
 import {
-  copyFileSync, existsSync, mkdirSync, openSync, readdirSync, rmSync,
+  copyFileSync, existsSync, mkdirSync, openSync, readdirSync, rmSync, unlinkSync,
 } from "node:fs";
 import { join } from "node:path";
 import { backupsDir, logsDir, osstackHome, resolveSocketPath } from "./paths.js";
@@ -94,10 +95,17 @@ export function backupStateDb(fromVersion: string): string | null {
   return join(dir, `${base}.db`);
 }
 
-async function stopDaemon(rpc: UpgradeOptions["rpc"]): Promise<void> {
+async function stopDaemon(rpc: UpgradeOptions["rpc"], viaLaunchd = false): Promise<void> {
   log("draining daemon (waiting for active runs, max 60s)…");
   try { await rpc("daemon.drain", { timeout_ms: 60_000 }, 70_000); } catch { /* daemon may be gone */ }
-  try { await rpc("daemon.shutdown", undefined, 5_000); } catch { /* expected if it exits fast */ }
+  if (viaLaunchd) {
+    // KeepAlive quiescence (Phase 2.1-D/F2): a plain shutdown would be
+    // RESPAWNED by launchd mid-swap — boot the job OUT for the upgrade window.
+    const uid = process.getuid?.() ?? 501;
+    await run("launchctl", ["bootout", `gui/${uid}/${LAUNCHD_LABEL}`], 15_000);
+  } else {
+    try { await rpc("daemon.shutdown", undefined, 5_000); } catch { /* expected if it exits fast */ }
+  }
   // Wait for the socket to disappear.
   const sock = resolveSocketPath();
   const deadline = Date.now() + 10_000;
@@ -108,9 +116,13 @@ async function stopDaemon(rpc: UpgradeOptions["rpc"]): Promise<void> {
 
 async function startDaemonAgain(viaLaunchd: boolean): Promise<void> {
   if (viaLaunchd) {
-    log("restarting via launchd kickstart…");
+    // Counterpart of the bootout-based stop: re-bootstrap the plist (kickstart
+    // as fallback when the job is still loaded).
+    log("restarting via launchd bootstrap…");
     const uid = process.getuid?.() ?? 501;
-    await run("launchctl", ["kickstart", "-k", `gui/${uid}/${LAUNCHD_LABEL}`], 15_000);
+    const plist = `${homedir()}/Library/LaunchAgents/${LAUNCHD_LABEL}.plist`;
+    const boot = await run("launchctl", ["bootstrap", `gui/${uid}`, plist], 15_000);
+    if (!boot.ok) await run("launchctl", ["kickstart", "-k", `gui/${uid}/${LAUNCHD_LABEL}`], 15_000);
     return;
   }
   log("starting daemon (detached `osstack serve`)…");
@@ -175,7 +187,7 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
 
   const wasRunning = (await daemonVersion(opts.rpc)) !== null;
   const viaLaunchd = await launchdManaged();
-  if (wasRunning) await stopDaemon(opts.rpc);
+  if (wasRunning || viaLaunchd) await stopDaemon(opts.rpc, viaLaunchd);
 
   const backup = backupStateDb(VERSION);
   log(backup ? `state.db backed up → ${backup}` : "no state.db yet; skipping backup");
@@ -184,7 +196,13 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
   const install = await run("npm", ["install", "-g", `${PKG}@${target}`]);
   if (!install.ok) {
     log(`npm install failed:\n${install.output}`);
-    if (wasRunning) await startDaemonAgain(viaLaunchd);
+    // The previous package remains installed (no swap happened) — restart it
+    // and VERIFY health rather than assuming (F5).
+    if (wasRunning || viaLaunchd) {
+      await startDaemonAgain(viaLaunchd);
+      const ok = await waitForDaemon(opts.rpc, VERSION);
+      log(ok ? `previous daemon ${VERSION} healthy again.` : `previous daemon did NOT come back healthy — check ${join(logsDir(), "daemon.error.log")}`);
+    }
     return 1;
   }
 
@@ -236,6 +254,20 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
         log(`rollback install ALSO failed:\n${rollback.output}`);
         log(`manual recovery: npm i -g ${PKG}@${VERSION}; backups in ${backupsDir()}`);
         return 1;
+      }
+      // The NEW version may have MIGRATED the DB on its failed boot — the old
+      // code would refuse it. Restore the pre-upgrade snapshot (F3).
+      if (backup) {
+        try {
+          const dbP = join(osstackHome(), "state.db");
+          copyFileSync(backup, dbP);
+          for (const side of ["-wal", "-shm"]) { try { unlinkSync(`${dbP}${side}`); } catch { /* absent */ } }
+          log("pre-upgrade state.db snapshot restored");
+        } catch (err) {
+          log(`WARN: could not restore the pre-upgrade DB snapshot: ${err instanceof Error ? err.message : String(err)}`);
+          log(`daemon left STOPPED (old code may refuse a migrated DB). Manual recovery from ${backupsDir()}`);
+          return 1;
+        }
       }
       // The reinstalled package's tarball never contains the role file — the
       // restored binary must be re-provisioned or the guard refuses the boot
