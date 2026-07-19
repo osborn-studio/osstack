@@ -1,15 +1,5 @@
-import {
-  createProbeSession,
-  getProbeSession,
-  listProbeEvents,
-  listProbeItems,
-  listProbeSessionsByRepo,
-  mutateProbeSession,
-  openDb,
-  ProbeStoreConflictError,
-  recordProbeArtifact,
-  replayProbeCommand,
-} from "@osstack/core";
+import { createProbeSession, getProbeSession, listProbeEvents, listProbeItems, listProbeSessionsByRepo, mutateProbeSession, ProbeStoreConflictError, recordProbeArtifact, replayProbeCommand } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import {
   applyProbeMutation,
   compileProbeEvaluations,

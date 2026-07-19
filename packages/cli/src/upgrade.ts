@@ -95,14 +95,20 @@ export function backupStateDb(fromVersion: string): string | null {
   return join(dir, `${base}.db`);
 }
 
-async function stopDaemon(rpc: UpgradeOptions["rpc"], viaLaunchd = false): Promise<void> {
+async function stopDaemon(rpc: UpgradeOptions["rpc"], viaLaunchd = false): Promise<boolean> {
   log("draining daemon (waiting for active runs, max 60s)…");
   try { await rpc("daemon.drain", { timeout_ms: 60_000 }, 70_000); } catch { /* daemon may be gone */ }
   if (viaLaunchd) {
     // KeepAlive quiescence (Phase 2.1-D/F2): a plain shutdown would be
     // RESPAWNED by launchd mid-swap — boot the job OUT for the upgrade window.
+    // FAIL-CLOSED (review F3): a failed bootout or a still-present socket means
+    // the daemon may still be running — the caller must ABORT, not swap.
     const uid = process.getuid?.() ?? 501;
-    await run("launchctl", ["bootout", `gui/${uid}/${LAUNCHD_LABEL}`], 15_000);
+    const out = await run("launchctl", ["bootout", `gui/${uid}/${LAUNCHD_LABEL}`], 15_000);
+    if (!out.ok && !/no such process|not find/i.test(out.output)) {
+      log(`launchctl bootout FAILED: ${out.output.slice(0, 120)}`);
+      return false;
+    }
   } else {
     try { await rpc("daemon.shutdown", undefined, 5_000); } catch { /* expected if it exits fast */ }
   }
@@ -112,6 +118,8 @@ async function stopDaemon(rpc: UpgradeOptions["rpc"], viaLaunchd = false): Promi
   while (existsSync(sock) && Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 200));
   }
+  if (existsSync(sock)) { log("daemon socket still present after stop window"); return false; }
+  return true;
 }
 
 async function startDaemonAgain(viaLaunchd: boolean): Promise<void> {
@@ -187,7 +195,10 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
 
   const wasRunning = (await daemonVersion(opts.rpc)) !== null;
   const viaLaunchd = await launchdManaged();
-  if (wasRunning || viaLaunchd) await stopDaemon(opts.rpc, viaLaunchd);
+  if (wasRunning || viaLaunchd) {
+    const stopped = await stopDaemon(opts.rpc, viaLaunchd);
+    if (!stopped) { log("ABORT: could not quiesce the daemon — nothing was swapped."); return 1; }
+  }
 
   const backup = backupStateDb(VERSION);
   log(backup ? `state.db backed up → ${backup}` : "no state.db yet; skipping backup");
@@ -198,6 +209,20 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
     log(`npm install failed:\n${install.output}`);
     // The previous package remains installed (no swap happened) — restart it
     // and VERIFY health rather than assuming (F5).
+    // npm may have left a PARTIAL swap (review F5): restore the known-good
+    // version explicitly, re-verify provisioning, then restart and check.
+    const restore = await run("npm", ["install", "-g", `${PKG}@${VERSION}`]);
+    if (!restore.ok) {
+      log(`restore install of ${VERSION} ALSO failed — daemon left STOPPED. Manual recovery: npm i -g ${PKG}@${VERSION}; backups in ${backupsDir()}`);
+      return 1;
+    }
+    try {
+      const rr = await run("npm", ["root", "-g"]);
+      if (rr.ok) provisionStableServing(`${rr.output.trim()}/@osstack/cli/dist/bin.js`, process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
+    } catch (err) {
+      log(`re-provisioning after restore FAILED: ${err instanceof Error ? err.message : String(err)} — daemon left STOPPED (manual: osstack serve --install)`);
+      return 1;
+    }
     if (wasRunning || viaLaunchd) {
       await startDaemonAgain(viaLaunchd);
       const ok = await waitForDaemon(opts.rpc, VERSION);
@@ -240,7 +265,7 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
       log(`daemon left STOPPED. Manual recovery: osstack serve --install (provisions + verifies), or fix the role file next to the global dist/bin.js; backups in ${backupsDir()}`);
       return 1;
     }
-    if (wasRunning) await startDaemonAgain(viaLaunchd);
+    if (wasRunning || viaLaunchd) await startDaemonAgain(viaLaunchd);
     return 1;
   }
 
@@ -249,6 +274,9 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
     const healthy = await waitForDaemon(opts.rpc, target);
     if (!healthy) {
       log(`daemon failed health check on ${target} — ROLLING BACK to ${VERSION}…`);
+      // Quiesce before mutating package/DB (review F4): the unhealthy daemon
+      // may still be flapping under KeepAlive.
+      await stopDaemon(opts.rpc, viaLaunchd);
       const rollback = await run("npm", ["install", "-g", `${PKG}@${VERSION}`]);
       if (!rollback.ok) {
         log(`rollback install ALSO failed:\n${rollback.output}`);
@@ -257,6 +285,13 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
       }
       // The NEW version may have MIGRATED the DB on its failed boot — the old
       // code would refuse it. Restore the pre-upgrade snapshot (F3).
+      if (backup === null) {
+        // No DB existed pre-upgrade (review F6): the failed new version may
+        // have CREATED one at its own schema — remove it so the restored old
+        // version starts fresh instead of refusing a newer schema.
+        const dbP = join(osstackHome(), "state.db");
+        for (const f of [dbP, `${dbP}-wal`, `${dbP}-shm`]) { try { unlinkSync(f); } catch { /* absent */ } }
+      }
       if (backup) {
         try {
           const dbP = join(osstackHome(), "state.db");

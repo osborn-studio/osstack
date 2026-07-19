@@ -35,25 +35,8 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import {
-  KanbanRepository,
-  contractApprovalRowToDecision,
-  contractApprovalRowToRequest,
-  getContractApprovalByContract,
-  insertContractApproval,
-  listContractDecisions,
-  loadPolicyProfile,
-  loadRepoConfig,
-  openDb,
-  recordContractDecision,
-  withWrite,
-  type CardRow,
-  type ContractApprovalRow,
-  type ContractApprovalStatus,
-  type PolicyBudgets,
-  type PolicyProfile,
-  type RepoConfig,
-} from "@osstack/core";
+import { KanbanRepository, contractApprovalRowToDecision, contractApprovalRowToRequest, getContractApprovalByContract, insertContractApproval, listContractDecisions, loadPolicyProfile, loadRepoConfig, recordContractDecision, withWrite, type CardRow, type ContractApprovalRow, type ContractApprovalStatus, type PolicyBudgets, type PolicyProfile, type RepoConfig } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import { PROTOCOL_VERSION, type AgentCommandResult } from "@osstack/protocol";
 import { readRepoRegistry } from "@osstack/supervisor";
 import { osstackHome } from "./paths.js";

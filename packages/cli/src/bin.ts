@@ -3,7 +3,7 @@
 
 import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { realpathSync } from "node:fs";
+import { existsSync as fsExistsSync, readFileSync, realpathSync, writeFileSync as fsWriteFileSync } from "node:fs";
 import { connect, type Socket } from "node:net";
 import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
@@ -25,7 +25,8 @@ import {
   type ProofAudience,
 } from "@osstack/compliance";
 import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
-import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons, type RoutableAdapter } from "@osstack/core";
+import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons, type RoutableAdapter } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import {
   inspectInstructionSource,
   scanFiles,
@@ -7195,6 +7196,17 @@ Options:
         return 78;
       }
       const result = await installLaunchAgent({ binPath, noLoad });
+      // Record the plist content baseline for doctor's drift check (2.1-C/F2).
+      try {
+        const { createHash } = await import("node:crypto");
+        const plistPath = `${process.env.HOME}/Library/LaunchAgents/${LAUNCHD_LABEL}.plist`;
+        if (fsExistsSync(plistPath)) {
+          const h = createHash("sha256").update(readFileSync(plistPath)).digest("hex");
+          const home = process.env.OSSTACK_HOME ?? defaultOsstackHome();
+          await mkdir(home, { recursive: true });
+          fsWriteFileSync(`${home}/plist.sha256.baseline`, `${h}\n`);
+        }
+      } catch { /* baseline is best-effort; doctor warns when absent */ }
       printServeLaunchdResult(result, json);
       return 0;
     }

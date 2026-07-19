@@ -8,18 +8,8 @@ import {
   realpath,
 } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
-import {
-  appendDependencyObligationEventV2,
-  appendDeclaredDependencyEdgeEventV2,
-  getDeclaredDependencyEdgeProjectionV2,
-  getDependencyObligationProjectionV2,
-  getDependencyRegistryPathV2,
-  getKnowledgeHygienePlanProjectionV1,
-  listDeclaredDependencyEdgeProjectionsV2,
-  listDependencyObligationInboxV2,
-  openDb,
-  registerDependencyRegistryScopeV2,
-} from "@osstack/core";
+import { appendDependencyObligationEventV2, appendDeclaredDependencyEdgeEventV2, getDeclaredDependencyEdgeProjectionV2, getDependencyObligationProjectionV2, getDependencyRegistryPathV2, getKnowledgeHygienePlanProjectionV1, listDeclaredDependencyEdgeProjectionsV2, listDependencyObligationInboxV2, registerDependencyRegistryScopeV2 } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import { AnthropicNoToolsSemanticJudge } from "@osstack/agents";
 import {
   applyKnowledgeHygieneTransactionPlanV1,

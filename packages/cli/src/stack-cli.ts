@@ -3,21 +3,8 @@
 // tooling (board/move/check/timeline, added in later tasks) has a substrate
 // to work against.
 
-import {
-  CardCheckNotFound,
-  CardCycleError,
-  CardNotFound,
-  CardStatus,
-  IllegalCardTransition,
-  KanbanRepository,
-  evaluateKanbanTransitionGuards,
-  getBoard,
-  openDb,
-  readFactsForSubject,
-  upsertImprovementProposal,
-  writeFact,
-  type KanbanTransitionGuard,
-} from "@osstack/core";
+import { CardCheckNotFound, CardCycleError, CardNotFound, CardStatus, IllegalCardTransition, KanbanRepository, evaluateKanbanTransitionGuards, getBoard, readFactsForSubject, upsertImprovementProposal, writeFact, type KanbanTransitionGuard } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import { ingestStack, type CommandRunner } from "@osstack/github";
 import { renderStackRetro, type StackRetroInput } from "@osstack/loop";
 import { recommendRouting, type RoutingFact } from "./stack-routing.js";

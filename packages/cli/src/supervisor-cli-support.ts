@@ -5,7 +5,8 @@
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
-import { openDb } from "@osstack/core";
+
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import type Database from "better-sqlite3";
 import { osstackHome } from "./paths.js";
 

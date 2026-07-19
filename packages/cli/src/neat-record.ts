@@ -1,10 +1,5 @@
-import {
-  openDb,
-  recordKnowledgeHygieneRun,
-  recordKnowledgeHygieneRunV2,
-  type RecordKnowledgeHygieneRunInputV1,
-  type RecordKnowledgeHygieneRunInputV2,
-} from "@osstack/core";
+import { recordKnowledgeHygieneRun, recordKnowledgeHygieneRunV2, type RecordKnowledgeHygieneRunInputV1, type RecordKnowledgeHygieneRunInputV2 } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import type {
   KnowledgeHygieneReportV1,
   KnowledgeHygieneReportV2,

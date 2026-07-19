@@ -6,14 +6,8 @@
 import { existsSync } from "node:fs";
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join } from "node:path";
-import {
-  listAnchorCases,
-  listEvaluatorVersions,
-  listFeedbackAssets,
-  listImprovementProposals,
-  openDb,
-  queryProbeOutcomeMetrics,
-} from "@osstack/core";
+import { listAnchorCases, listEvaluatorVersions, listFeedbackAssets, listImprovementProposals, queryProbeOutcomeMetrics } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import {
   RepoRole,
   addRepoRegistryEntry,
