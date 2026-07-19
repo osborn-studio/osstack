@@ -356,7 +356,10 @@ export function renderKnowledgeHygieneReport(
     "",
   ];
   if (report.findings.length === 0) {
-    lines.push("No active findings.", "");
+    lines.push(
+      "No findings in the mechanical V1 rule set; semantic dimensions were not assessed.",
+      "",
+    );
   }
   for (const finding of report.findings) {
     const lineSuffix = finding.location.line === undefined
@@ -391,6 +394,7 @@ export function renderKnowledgeHygieneReport(
     for (const reason of report.completeness.reasons) lines.push(`  - ${reason}`);
   }
   lines.push(
+    "Semantic coverage: not assessed (V1 mechanical rule set only)",
     `Suppressed: ${report.summary.suppressed}`,
     ...(report.summary.resolved === undefined
       ? []

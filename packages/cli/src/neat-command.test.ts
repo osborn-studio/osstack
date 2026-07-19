@@ -410,9 +410,10 @@ describe("renderKnowledgeHygieneReport", () => {
     expect(renderKnowledgeHygieneReport(report, "none")).toMatchInlineSnapshot(`
       "Knowledge hygiene: 0 error, 0 warning, 0 info
 
-      No active findings.
+      No findings in the mechanical V1 rule set; semantic dimensions were not assessed.
 
       Completeness: complete
+      Semantic coverage: not assessed (V1 mechanical rule set only)
       Suppressed: 0
       Exit policy: --fail-on none (exit 0)"
     `);
@@ -433,6 +434,7 @@ describe("renderKnowledgeHygieneReport", () => {
         Fingerprint: khf_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
       Completeness: complete
+      Semantic coverage: not assessed (V1 mechanical rule set only)
       Suppressed: 0
       Exit policy: --fail-on warning (exit 1)"
     `);
@@ -465,6 +467,7 @@ describe("renderKnowledgeHygieneReport", () => {
       Completeness: incomplete (2 skipped)
         - first reason
         - second reason
+      Semantic coverage: not assessed (V1 mechanical rule set only)
       Suppressed: 0
       Exit policy: --fail-on none (exit 0)"
     `);
