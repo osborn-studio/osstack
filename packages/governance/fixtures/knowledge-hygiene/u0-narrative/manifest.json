@@ -1,0 +1,38 @@
+{
+  "cases": [
+    { "id": "current-agents-sanitized", "file": "current-agents-sanitized.md", "expected_rule_ids": ["rulebook.managed_context_block"], "explicit_marker": true },
+    { "id": "managed-context-closed", "file": "managed-context-closed.md", "expected_rule_ids": ["rulebook.managed_context_block"], "explicit_marker": true },
+    { "id": "managed-context-unclosed", "file": "managed-context-unclosed.md", "expected_rule_ids": ["rulebook.managed_context_block"], "explicit_marker": true },
+    { "id": "ecc-summary-plain", "file": "ecc-summary-plain.md", "expected_rule_ids": ["rulebook.managed_context_block"], "explicit_marker": true },
+    { "id": "ecc-summary-start", "file": "ecc-summary-start.md", "expected_rule_ids": ["rulebook.managed_context_block"], "explicit_marker": true },
+    { "id": "session-hook-start", "file": "session-hook-start.md", "expected_rule_ids": ["rulebook.managed_context_block"], "explicit_marker": true },
+    { "id": "observation-block", "file": "observation-block.md", "expected_rule_ids": ["rulebook.narrative_block"], "explicit_marker": false },
+    { "id": "nested-observation-block", "file": "nested-observation-block.md", "expected_rule_ids": ["rulebook.narrative_block"], "explicit_marker": false },
+    { "id": "iso-event-block", "file": "iso-event-block.md", "expected_rule_ids": ["rulebook.narrative_block"], "explicit_marker": false },
+    { "id": "invalid-waiver", "file": "invalid-waiver.md", "expected_rule_ids": ["rulebook.invalid_waiver"], "explicit_marker": false },
+    { "id": "invalid-waiver-missing-reason", "file": "invalid-waiver-missing-reason.md", "expected_rule_ids": ["rulebook.invalid_waiver"], "explicit_marker": false },
+    { "id": "invalid-waiver-orphan", "file": "invalid-waiver-orphan.md", "expected_rule_ids": ["rulebook.invalid_waiver"], "explicit_marker": false },
+    { "id": "density-boundary", "file": "density-boundary.md", "expected_rule_ids": ["rulebook.narrative_density"], "explicit_marker": false },
+
+    { "id": "fenced-managed", "file": "fenced-managed.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "fenced-observations", "file": "fenced-observations.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "four-observations", "file": "four-observations.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "four-iso-events", "file": "four-iso-events.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "density-seven", "file": "density-seven.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "density-below-ratio", "file": "density-below-ratio.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "inline-iso-prose", "file": "inline-iso-prose.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "valid-managed-waiver", "file": "valid-managed-waiver.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "lowercase-marker", "file": "lowercase-marker.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "unknown-marker", "file": "unknown-marker.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "session-prose", "file": "session-prose.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "one-observation", "file": "one-observation.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "date-headings", "file": "date-headings.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "frontmatter-dates", "file": "frontmatter-dates.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "inline-legend", "file": "inline-legend.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "tilde-fence", "file": "tilde-fence.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "first-person-rules", "file": "first-person-rules.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "empty", "file": "empty.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "valid-narrative-waiver", "file": "valid-narrative-waiver.md", "expected_rule_ids": [], "explicit_marker": false },
+    { "id": "marker-in-inline-code", "file": "marker-in-inline-code.md", "expected_rule_ids": [], "explicit_marker": false }
+  ]
+}
