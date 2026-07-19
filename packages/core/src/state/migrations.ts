@@ -623,6 +623,93 @@ export const MIGRATIONS: readonly Migration[] = [
         ON probe_command_receipts(created_at_ms, scope_key);
     `,
   },
+  {
+    id: 12,
+    name: "knowledge_hygiene_v2_history",
+    // V2 is deliberately additive. The V1 finding-state CHECK remains intact;
+    // append-only lifecycle events and their rebuildable projection live here.
+    sql: `
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_runs_v2 (
+        run_id             TEXT PRIMARY KEY,
+        report_sha256      TEXT NOT NULL UNIQUE,
+        schema_version     TEXT NOT NULL CHECK (schema_version = '2'),
+        repo_id            TEXT NOT NULL,
+        repo_root          TEXT NOT NULL,
+        mode               TEXT NOT NULL CHECK (mode IN ('all','worktree','range','base_to_worktree')),
+        diff_id            TEXT,
+        config_sha256      TEXT,
+        generated_at       REAL NOT NULL,
+        recorded_at        REAL NOT NULL,
+        inventory_complete INTEGER NOT NULL CHECK (inventory_complete IN (0,1)),
+        coverage_json      TEXT NOT NULL,
+        health_claim       TEXT NOT NULL CHECK (health_claim IN ('findings_present','assessed_scope_clean','assessment_incomplete')),
+        error_count        INTEGER NOT NULL,
+        warning_count      INTEGER NOT NULL,
+        info_count         INTEGER NOT NULL,
+        suppressed_count   INTEGER NOT NULL,
+        resolved_count     INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_runs_v2_repo_time
+        ON knowledge_hygiene_runs_v2(repo_id, generated_at, run_id);
+
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_findings_v2 (
+        repo_id           TEXT NOT NULL,
+        fingerprint       TEXT NOT NULL,
+        finding_json      TEXT NOT NULL,
+        first_seen_at     REAL NOT NULL,
+        last_seen_at      REAL NOT NULL,
+        occurrence_count INTEGER NOT NULL CHECK (occurrence_count >= 1),
+        last_run_id       TEXT NOT NULL REFERENCES knowledge_hygiene_runs_v2(run_id),
+        PRIMARY KEY (repo_id, fingerprint)
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_findings_v2_last_seen
+        ON knowledge_hygiene_findings_v2(repo_id, last_seen_at, fingerprint);
+
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_occurrences_v2 (
+        run_id       TEXT NOT NULL REFERENCES knowledge_hygiene_runs_v2(run_id) ON DELETE CASCADE,
+        repo_id       TEXT NOT NULL,
+        fingerprint   TEXT NOT NULL,
+        observed_at   REAL NOT NULL,
+        PRIMARY KEY (run_id, repo_id, fingerprint),
+        FOREIGN KEY (repo_id, fingerprint)
+          REFERENCES knowledge_hygiene_findings_v2(repo_id, fingerprint)
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_occurrences_v2_repo_time
+        ON knowledge_hygiene_occurrences_v2(repo_id, observed_at, run_id);
+
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_resolution_events_v2 (
+        event_id      TEXT PRIMARY KEY,
+        repo_id       TEXT NOT NULL,
+        fingerprint   TEXT NOT NULL,
+        from_state    TEXT NOT NULL,
+        to_state      TEXT NOT NULL,
+        event_json    TEXT NOT NULL,
+        occurred_at   REAL NOT NULL,
+        FOREIGN KEY (repo_id, fingerprint)
+          REFERENCES knowledge_hygiene_findings_v2(repo_id, fingerprint)
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_resolution_events_v2_finding
+        ON knowledge_hygiene_resolution_events_v2(repo_id, fingerprint, occurred_at, event_id);
+
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_finding_state_v2 (
+        repo_id        TEXT NOT NULL,
+        fingerprint    TEXT NOT NULL,
+        current_state  TEXT NOT NULL CHECK (current_state IN (
+          'open','mechanically_applied','mechanically_resolved','semantically_resolved',
+          'reviewed_no_change','accepted_risk','suppressed','obsolete','closed_absent','resolved_legacy'
+        )),
+        last_event_id  TEXT,
+        updated_at     REAL NOT NULL,
+        PRIMARY KEY (repo_id, fingerprint),
+        FOREIGN KEY (repo_id, fingerprint)
+          REFERENCES knowledge_hygiene_findings_v2(repo_id, fingerprint),
+        FOREIGN KEY (last_event_id)
+          REFERENCES knowledge_hygiene_resolution_events_v2(event_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_finding_state_v2_state
+        ON knowledge_hygiene_finding_state_v2(repo_id, current_state, updated_at);
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;
