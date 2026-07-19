@@ -1,5 +1,23 @@
 # @osstack/supervisor
 
+## 0.12.0
+
+### Minor Changes
+
+- 4a3dffd: Make knowledge-hygiene ReportV2 the default `neat check` contract, add honest
+  coverage and assessment scope, evidence-bound semantic auditing, recoverable
+  memory and narrative transactions, append-only V2 lifecycle history, and
+  cross-repository dependency obligations with an isolated no-tools judge.
+  Explicit `--schema-version 1` remains available for one minor release and now
+  emits a deprecation warning.
+
+### Patch Changes
+
+- Updated dependencies [4a3dffd]
+  - @osstack/core@0.12.0
+  - @osstack/governance@0.12.0
+  - @osstack/loop@0.12.0
+
 ## 0.11.0
 
 ### Patch Changes

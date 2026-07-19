@@ -1,5 +1,14 @@
 # @osstack/loop
 
+## 0.12.0
+
+### Patch Changes
+
+- Updated dependencies [4a3dffd]
+  - @osstack/agents@0.12.0
+  - @osstack/core@0.12.0
+  - @osstack/hermes-adapter@0.12.0
+
 ## 0.11.0
 
 ### Minor Changes
