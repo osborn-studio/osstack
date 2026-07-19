@@ -224,17 +224,17 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
       }
       // The reinstalled package's tarball never contains the role file — the
       // restored binary must be re-provisioned or the guard refuses the boot
-      // we are rolling back TO (round-5 F4).
+      // we are rolling back TO (round-5 F4; round-8: failure STOPS, never a
+      // kickstart into a guard-refused binary).
       try {
         const rootResp = await run("npm", ["root", "-g"]);
-        if (rootResp.ok) {
-          provisionStableServing(`${rootResp.output.trim()}/@osstack/cli/dist/bin.js`,
-            process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
-        } else {
-          log("WARN: could not re-provision the rolled-back binary (npm root -g failed) — run `osstack serve --install` manually if the daemon refuses to boot");
-        }
+        if (!rootResp.ok) throw new Error(`npm root -g failed: ${rootResp.output.slice(0, 120)}`);
+        provisionStableServing(`${rootResp.output.trim()}/@osstack/cli/dist/bin.js`,
+          process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
       } catch (err) {
-        log(`WARN: re-provisioning the rolled-back binary failed: ${err instanceof Error ? err.message : String(err)}`);
+        log(`re-provisioning the rolled-back binary FAILED: ${err instanceof Error ? err.message : String(err)}`);
+        log(`daemon left STOPPED. Manual recovery: osstack serve --install (provisions + verifies); backups in ${backupsDir()}`);
+        return 1;
       }
       await startDaemonAgain(viaLaunchd);
       const recovered = await waitForDaemon(opts.rpc, VERSION);
