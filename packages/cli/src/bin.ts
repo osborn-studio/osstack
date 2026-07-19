@@ -3,7 +3,7 @@
 
 import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { realpathSync } from "node:fs";
+import { existsSync as fsExistsSync, realpathSync, writeFileSync as fsWriteFileSync } from "node:fs";
 import { connect, type Socket } from "node:net";
 import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
@@ -521,7 +521,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     // Control-plane boot guard (G1.2): an undeclared checkout must never serve
     // the default (stable) home; a declared checkout only its allowlisted homes.
     {
-      const checkoutRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+      // Start the role-file search at the running bin's own directory; the
+      // guard walks a bounded number of ancestors (covers monorepo roots and
+      // npm prefixes alike, and matches where serve --install provisions it).
+      const checkoutRoot = dirname(fileURLToPath(import.meta.url));
       const guardHome = process.env.OSSTACK_HOME ?? defaultOsstackHome();
       try {
         const verdict = assertServeAllowed({ checkoutRoot, osstackHome: guardHome });
@@ -7160,19 +7163,18 @@ Options:
       // Provision the control-plane role authority for THIS deployment: an
       // installed launchd daemon serves the default home, which the boot guard
       // only permits for a declared stable-serving root (review F1).
-      {
-        const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-        const roleFile = resolve(rootDir, "control-plane.json");
-        if (!existsSync(roleFile)) {
+      try {
+        const roleFile = resolve(dirname(binPath), "control-plane.json");
+        if (!fsExistsSync(roleFile)) {
           const { CURRENT_SCHEMA_VERSION } = await import("@osstack/core");
-          writeFileSync(roleFile, `${JSON.stringify({
+          fsWriteFileSync(roleFile, `${JSON.stringify({
             role: "stable-serving",
             allowed_osstack_homes: ["~/.osstack"],
             schema: { min: CURRENT_SCHEMA_VERSION, max: CURRENT_SCHEMA_VERSION },
           }, null, 2)}\n`);
-          console.log("control-plane guard: wrote stable-serving role declaration for this installation");
+          if (!json) console.log("control-plane guard: wrote stable-serving role declaration next to the installed binary");
         }
-      }
+      } catch { /* best-effort provisioning; the boot guard still enforces at serve */ }
       const result = await installLaunchAgent({ binPath, noLoad });
       printServeLaunchdResult(result, json);
       return 0;
