@@ -2,6 +2,7 @@ export * from "./change-set.js";
 export * from "./config.js";
 export * from "./config-v2.js";
 export * from "./engine.js";
+export * from "./engine-v2.js";
 export * from "./fingerprint.js";
 export * from "./instruction-source.js";
 export * from "./path-pattern.js";

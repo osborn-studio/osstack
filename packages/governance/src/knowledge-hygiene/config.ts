@@ -290,6 +290,18 @@ export type LoadedKnowledgeHygieneConfig =
       config: KnowledgeHygieneConfigV1;
     };
 
+export type LoadedKnowledgeHygieneConfigSource =
+  | {
+      mode: "zero_config";
+      path: string;
+    }
+  | {
+      mode: "configured";
+      path: string;
+      sha256: string;
+      source: string;
+    };
+
 function isInsideRoot(root: string, candidate: string): boolean {
   const pathFromRoot = relative(root, candidate);
   return (
@@ -305,9 +317,9 @@ function errorCode(error: unknown): string | undefined {
   return typeof error.code === "string" ? error.code : undefined;
 }
 
-export async function loadKnowledgeHygieneConfig(
+export async function loadKnowledgeHygieneConfigSource(
   input: LoadKnowledgeHygieneConfigInput,
-): Promise<LoadedKnowledgeHygieneConfig> {
+): Promise<LoadedKnowledgeHygieneConfigSource> {
   const requestedRoot = resolve(input.repo_root);
   let resolvedRoot: string;
   try {
@@ -383,6 +395,19 @@ export async function loadKnowledgeHygieneConfig(
     mode: "configured",
     path: configPath,
     sha256: createHash("sha256").update(source).digest("hex"),
-    config: parseKnowledgeHygieneConfigV1(source),
+    source,
+  };
+}
+
+export async function loadKnowledgeHygieneConfig(
+  input: LoadKnowledgeHygieneConfigInput,
+): Promise<LoadedKnowledgeHygieneConfig> {
+  const loaded = await loadKnowledgeHygieneConfigSource(input);
+  if (loaded.mode === "zero_config") return loaded;
+  return {
+    mode: "configured",
+    path: loaded.path,
+    sha256: loaded.sha256,
+    config: parseKnowledgeHygieneConfigV1(loaded.source),
   };
 }

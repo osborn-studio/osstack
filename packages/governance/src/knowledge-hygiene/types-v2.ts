@@ -3,6 +3,7 @@ import { z } from "zod";
 import { assertKnowledgeHygieneRepositoryPathV1 } from "./path-pattern.js";
 import {
   KnowledgeHygieneEvidenceRefV1,
+  KnowledgeHygieneCheckInputV1,
   KnowledgeHygieneFindingV1,
   KnowledgeHygieneReportV1,
   KnowledgeHygieneRuleIdV1,
@@ -45,6 +46,55 @@ export const KnowledgeHygieneRuleIdV2 = z.enum([
 ]);
 export type KnowledgeHygieneRuleIdV2 = z.infer<
   typeof KnowledgeHygieneRuleIdV2
+>;
+
+const checkInputV1Object = KnowledgeHygieneCheckInputV1.innerType();
+export const KnowledgeHygieneCheckInputV2 = checkInputV1Object
+  .omit({ checks: true, skip_checks: true })
+  .extend({
+    schema_version: z.literal("2"),
+    checks: z.array(KnowledgeHygieneRuleIdV2).optional(),
+    skip_checks: z.array(KnowledgeHygieneRuleIdV2).optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    const projected: Record<string, unknown> = { ...input };
+    delete projected.schema_version;
+    if (input.checks !== undefined) {
+      projected.checks = input.checks.filter(
+        (ruleId) => KnowledgeHygieneRuleIdV1.safeParse(ruleId).success,
+      );
+    }
+    if (input.skip_checks !== undefined) {
+      projected.skip_checks = input.skip_checks.filter(
+        (ruleId) => KnowledgeHygieneRuleIdV1.safeParse(ruleId).success,
+      );
+    }
+    const v1Result = KnowledgeHygieneCheckInputV1.safeParse(projected);
+    if (!v1Result.success) {
+      for (const issue of v1Result.error.issues) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: issue.path,
+          message: issue.message,
+        });
+      }
+    }
+    for (const [field, values] of [
+      ["checks", input.checks],
+      ["skip_checks", input.skip_checks],
+    ] as const) {
+      if (values !== undefined && new Set(values).size !== values.length) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [field],
+          message: `${field} contains duplicate rule ids`,
+        });
+      }
+    }
+  });
+export type KnowledgeHygieneCheckInputV2 = z.infer<
+  typeof KnowledgeHygieneCheckInputV2
 >;
 
 export const KnowledgeHygieneSurfaceV2 = z.enum([

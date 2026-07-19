@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CoverageDimensionV2,
   KnowledgeHygieneFindingV2,
+  KnowledgeHygieneCheckInputV2,
   KnowledgeHygieneReportV2,
   KnowledgeHygieneResolutionEventV2,
   KnowledgeHygieneRuleIdV2,
@@ -87,6 +88,29 @@ describe("knowledge hygiene v2 contracts", () => {
     expect(KnowledgeHygieneRuleIdV2.options).toContain(
       "semantic.cross_repository_impact",
     );
+  });
+
+  it("accepts V2-only rule selection without weakening input grammar", () => {
+    expect(KnowledgeHygieneCheckInputV2.parse({
+      schema_version: "2",
+      repo_root: "/repo",
+      mode: "all",
+      checks: ["rulebook.managed_context_block"],
+    })).toMatchObject({
+      schema_version: "2",
+      checks: ["rulebook.managed_context_block"],
+    });
+    expect(KnowledgeHygieneCheckInputV2.safeParse({
+      schema_version: "2",
+      repo_root: "/repo",
+      mode: "range",
+    }).success).toBe(false);
+    expect(KnowledgeHygieneCheckInputV2.safeParse({
+      schema_version: "2",
+      repo_root: "/repo",
+      mode: "all",
+      checks: ["rulebook.managed_context_block", "rulebook.managed_context_block"],
+    }).success).toBe(false);
   });
 
   it("accepts a strict portable V2 finding", () => {

@@ -4,13 +4,17 @@ import { z, ZodError } from "zod";
 import {
   KnowledgeHygieneConfigError,
   KnowledgeHygieneConfigV1Schema,
+  loadKnowledgeHygieneConfigSource,
+  parseKnowledgeHygieneConfigV1,
   type KnowledgeHygieneConfigV1,
+  type LoadKnowledgeHygieneConfigInput,
 } from "./config.js";
 import { assertKnowledgeHygienePathPatternV1 } from "./path-pattern.js";
 import {
   KnowledgeHygieneEvidenceRefV2,
   KnowledgeHygieneRuleIdV2,
 } from "./types-v2.js";
+import { KnowledgeHygieneRuleIdV1 } from "./types.js";
 
 const MAX_CONFIG_BYTES = 1024 * 1024;
 
@@ -285,4 +289,82 @@ export function projectKnowledgeHygieneConfigV1ToV2(
     semantic: defaultSemanticConfig,
     dependencies: [],
   });
+}
+
+export function projectKnowledgeHygieneConfigV2ToV1(
+  config: KnowledgeHygieneConfigV2,
+): KnowledgeHygieneConfigV1 {
+  const v1RuleIds = new Set<string>(KnowledgeHygieneRuleIdV1.options);
+  const projected: Record<string, unknown> = {
+    ...config,
+    version: 1,
+    ignore: config.ignore.filter((entry) => v1RuleIds.has(entry.rule_id)),
+  };
+  delete projected.semantic;
+  delete projected.dependencies;
+  return KnowledgeHygieneConfigV1Schema.parse(projected);
+}
+
+export type LoadedKnowledgeHygieneConfigV2 =
+  | {
+      mode: "zero_config";
+      path: string;
+      config: KnowledgeHygieneConfigV2;
+    }
+  | {
+      mode: "configured";
+      path: string;
+      sha256: string;
+      source_version: 1 | 2;
+      config: KnowledgeHygieneConfigV2;
+    };
+
+export async function loadKnowledgeHygieneConfigV2(
+  input: LoadKnowledgeHygieneConfigInput,
+): Promise<LoadedKnowledgeHygieneConfigV2> {
+  const loaded = await loadKnowledgeHygieneConfigSource(input);
+  if (loaded.mode === "zero_config") {
+    return {
+      ...loaded,
+      config: KnowledgeHygieneConfigV2Schema.parse({ version: 2 }),
+    };
+  }
+
+  const document = parseDocument(loaded.source, { uniqueKeys: true });
+  if (document.errors.length > 0) {
+    throw new KnowledgeHygieneConfigError(
+      "parse",
+      "invalid neat YAML",
+      document.errors.map((error) => error.message),
+    );
+  }
+  const raw = document.toJS({ maxAliasCount: 50 }) as unknown;
+  const version = typeof raw === "object" && raw !== null && "version" in raw
+    ? (raw as { version?: unknown }).version
+    : undefined;
+  if (version === 1) {
+    return {
+      mode: "configured",
+      path: loaded.path,
+      sha256: loaded.sha256,
+      source_version: 1,
+      config: projectKnowledgeHygieneConfigV1ToV2(
+        parseKnowledgeHygieneConfigV1(loaded.source),
+      ),
+    };
+  }
+  if (version === 2) {
+    return {
+      mode: "configured",
+      path: loaded.path,
+      sha256: loaded.sha256,
+      source_version: 2,
+      config: parseKnowledgeHygieneConfigV2(loaded.source),
+    };
+  }
+  throw new KnowledgeHygieneConfigError(
+    "validation",
+    "invalid neat config",
+    ["version: expected 1 or 2"],
+  );
 }
