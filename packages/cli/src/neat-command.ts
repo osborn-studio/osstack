@@ -38,6 +38,10 @@ import {
 } from "./neat-record.js";
 import { handleNeatTrendCommand } from "./neat-trend-command.js";
 import { handleNeatProposalCommand } from "./neat-proposal-command.js";
+import {
+  handleNeatSemanticCommand,
+  type NeatSemanticCommandOverrides,
+} from "./neat-semantic-command.js";
 
 export type NeatFailOn = "error" | "warning" | "none";
 type NeatFormat = "human" | "json";
@@ -51,6 +55,7 @@ export interface NeatCommandDependencies {
   engine_ports?: KnowledgeHygieneEnginePortsV1;
   now?: () => Date;
   fix?: NeatFixCommandOverrides;
+  semantic?: NeatSemanticCommandOverrides;
   authorize_write?: (workspacePath: string) => Promise<{
     allow: boolean;
     reason?: string;
@@ -83,6 +88,7 @@ Usage:
   osstack neat check [options]
   osstack neat review [review options]
   osstack neat fix [fix options]
+  osstack neat semantic [semantic options]
   osstack neat trend [trend options]
   osstack neat propose [proposal options]
 
@@ -578,6 +584,17 @@ export async function handleNeatCommand(
   args: readonly string[],
   deps: NeatCommandDependencies,
 ): Promise<number> {
+  if (args[0] === "semantic") {
+    return handleNeatSemanticCommand(args.slice(1), {
+      cwd: deps.cwd,
+      stdout: deps.stdout,
+      stderr: deps.stderr,
+      render_report: renderKnowledgeHygieneReportV2,
+      ...(deps.engine_ports === undefined ? {} : { engine_ports: deps.engine_ports }),
+      ...(deps.now === undefined ? {} : { now: deps.now }),
+      ...deps.semantic,
+    });
+  }
   if (args[0] === "propose") {
     return handleNeatProposalCommand(args.slice(1), {
       cwd: deps.cwd,

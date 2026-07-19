@@ -194,6 +194,7 @@ Loop 工程：
   policy check        校验 .osstack/repo.yaml 与 policy.yaml（只读；observe 模式拒绝执行）
   govern check        运行确定性治理检查
   neat check          只读检查项目指令、文档合同与知识面完整性
+  neat semantic       显式运行证据受限的语义知识卫生审计（V2、默认关闭）
   contracts check     检查前端调用与后端 API 契约是否对齐
 
 私有 Hub（可选；Hub 为发布权威，经 OSSTACK_HUB_ROOT 解析）：
@@ -447,6 +448,8 @@ Governance:
                                   Run deterministic governance checks over workspace files
   neat check [--repo P] [--all|--base REF [--head REF]] [--json]
                                   Check repository knowledge contracts (read-only)
+  neat semantic [--repo P] [--dimensions D] [--judge ID] [--json]
+                                  Run an explicit evidence-bound V2 semantic audit
   governance scan <path...> [--json]
                                  Run deterministic governance checks over files
   compliance list [--json]
