@@ -39,8 +39,10 @@ export function runControlPlaneChecks(deps: ControlPlaneDoctorDeps = {}): Contro
       // answer; any OTHER failure must surface as a warning, not a false green.
       try { return execFileSync("/usr/sbin/lsof", ["-t", p], { encoding: "utf8" }); }
       catch (err) {
-        const e = err as { status?: number; stdout?: string };
-        if (e.status === 1 && !(e.stdout ?? "").trim()) return "";
+        const e = err as { status?: number; stdout?: string; stderr?: string };
+        // status 1 + empty stdout + empty stderr = genuinely no holders; any
+        // stderr diagnostics (permissions etc.) is a FAILURE, not a pass (F4).
+        if (e.status === 1 && !(e.stdout ?? "").trim() && !(e.stderr ?? "").toString().trim()) return "";
         throw err;
       }
     });

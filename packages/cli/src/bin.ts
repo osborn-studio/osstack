@@ -7157,6 +7157,22 @@ Options:
   const binPath = flagValue(args, "--bin") ?? defaultOsstackBinPath();
   try {
     if (args.includes("--install")) {
+      // Provision the control-plane role authority for THIS deployment: an
+      // installed launchd daemon serves the default home, which the boot guard
+      // only permits for a declared stable-serving root (review F1).
+      {
+        const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+        const roleFile = resolve(rootDir, "control-plane.json");
+        if (!existsSync(roleFile)) {
+          const { CURRENT_SCHEMA_VERSION } = await import("@osstack/core");
+          writeFileSync(roleFile, `${JSON.stringify({
+            role: "stable-serving",
+            allowed_osstack_homes: ["~/.osstack"],
+            schema: { min: CURRENT_SCHEMA_VERSION, max: CURRENT_SCHEMA_VERSION },
+          }, null, 2)}\n`);
+          console.log("control-plane guard: wrote stable-serving role declaration for this installation");
+        }
+      }
       const result = await installLaunchAgent({ binPath, noLoad });
       printServeLaunchdResult(result, json);
       return 0;

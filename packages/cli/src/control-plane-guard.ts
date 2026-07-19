@@ -12,7 +12,7 @@
 // Log output reports only CATEGORIES (role, home-category, schema version) —
 // never raw values beyond what the operator already passed on the command line.
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 
@@ -34,14 +34,43 @@ export class ControlPlaneGuardError extends Error {
   }
 }
 
-const expand = (p: string): string => resolve(p.replace(/^~(?=$|\/)/, homedir()));
+const expand = (p: string): string => {
+  const lexical = resolve(p.replace(/^~(?=$|\/)/, homedir()));
+  // Canonicalize through symlinks so an alias to the stable home cannot be
+  // classified as "custom" (review F2). Walk up to the nearest existing
+  // ancestor for not-yet-created homes.
+  let probe = lexical;
+  let suffix = "";
+  while (!existsSync(probe)) {
+    const parent = resolve(probe, "..");
+    if (parent === probe) return lexical;
+    suffix = `/${probe.slice(parent.length + 1)}${suffix}`;
+    probe = parent;
+  }
+  try { return realpathSync(probe) + suffix; } catch { return lexical; }
+};
 
 export function defaultOsstackHome(): string {
   return resolve(homedir(), ".osstack");
 }
 
+/** Find control-plane.json at startRoot or a bounded number of ancestors —
+ *  covers monorepo checkouts (repo root) AND packaged/npm installs where the
+ *  bin lives under a prefix (review F1). */
+export function findRoleFile(startRoot: string, maxUp = 6): string | null {
+  let cur = resolve(startRoot);
+  for (let i = 0; i <= maxUp; i++) {
+    const file = resolve(cur, "control-plane.json");
+    if (existsSync(file)) return file;
+    const parent = resolve(cur, "..");
+    if (parent === cur) break;
+    cur = parent;
+  }
+  return null;
+}
+
 export function loadRoleFile(checkoutRoot: string): ControlPlaneRole | null {
-  const file = resolve(checkoutRoot, "control-plane.json");
+  const file = findRoleFile(checkoutRoot) ?? resolve(checkoutRoot, "control-plane.json");
   if (!existsSync(file)) return null;
   let raw: unknown;
   try {
@@ -99,6 +128,14 @@ export function assertServeAllowed(opts: {
     throw new ControlPlaneGuardError(
       "home_not_allowed",
       `this checkout's control-plane.json (role=${declared.role}) does not allow the requested OSSTACK_HOME`,
+    );
+  }
+  // The DEFAULT (stable) home is reserved for role stable-serving even when a
+  // candidate/dev declaration lists it (review F3): the role IS the boundary.
+  if (home === defaultHome && declared.role !== "stable-serving") {
+    throw new ControlPlaneGuardError(
+      "home_not_allowed",
+      `role ${declared.role} may not serve the default (stable) OSSTACK_HOME; only stable-serving may`,
     );
   }
   return {

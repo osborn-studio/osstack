@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { assertServeAllowed, ControlPlaneGuardError, loadRoleFile } from "./control-plane-guard.js";
@@ -52,5 +52,31 @@ describe("control-plane boot guard (G1.2, incident 2026-07-18)", () => {
     expect(() => loadRoleFile(root)).toThrowError(/must declare role/);
     declare({ role: "dev", allowed_osstack_homes: ["x"], schema: { min: 9, max: 8 } });
     expect(() => loadRoleFile(root)).toThrowError(/min <= max/);
+  });
+});
+
+describe("guard hardening (review round 2)", () => {
+  it("a SYMLINK alias to the default home is refused for an undeclared checkout (F2)", () => {
+    const base = mkdtempSync(join(tmpdir(), "cpg2-"));
+    const real = join(base, "stable-home"); const alias = join(base, "alias");
+    mkdirSync(real);
+    symlinkSync(real, alias);
+    expect(() => assertServeAllowed({ checkoutRoot: root, osstackHome: alias, defaultHome: real }))
+      .toThrowError(ControlPlaneGuardError);
+    rmSync(base, { recursive: true, force: true });
+  });
+
+  it("a candidate/dev declaration listing the default home is still refused (F3 — role IS the boundary)", () => {
+    declare({ role: "candidate", allowed_osstack_homes: [DEFAULT] });
+    try { assertServeAllowed({ checkoutRoot: root, osstackHome: DEFAULT, defaultHome: DEFAULT }); throw new Error("unreachable"); }
+    catch (e) { expect((e as ControlPlaneGuardError).code).toBe("home_not_allowed"); }
+  });
+
+  it("role file is discovered a bounded number of levels above the start root (F1 — packaged installs)", () => {
+    const nested = join(root, "a", "b", "c");
+    mkdirSync(nested, { recursive: true });
+    declare({ role: "dev", allowed_osstack_homes: [join(root, "dev-home")] });
+    const v = assertServeAllowed({ checkoutRoot: nested, osstackHome: join(root, "dev-home"), defaultHome: DEFAULT });
+    expect(v.role).toBe("dev");
   });
 });
