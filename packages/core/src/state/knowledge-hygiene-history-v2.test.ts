@@ -62,6 +62,9 @@ function v2Run(input: {
     mode: "all",
     generated_at: input.generated_at,
     inventory_complete: true,
+    assessment_scope: {
+      selected_rule_ids: ["rulebook.managed_context_block"],
+    },
     coverage: [
       { dimension: "mechanical", state: "complete" },
       { dimension: "narrative", state: "partial" },

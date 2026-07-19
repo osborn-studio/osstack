@@ -48,6 +48,40 @@ export type KnowledgeHygieneRuleIdV2 = z.infer<
   typeof KnowledgeHygieneRuleIdV2
 >;
 
+const ruleOrderV2 = new Map(
+  KnowledgeHygieneRuleIdV2.options.map((ruleId, index) => [ruleId, index]),
+);
+
+export const KnowledgeHygieneAssessmentScopeV2 = z
+  .object({
+    selected_rule_ids: z.array(KnowledgeHygieneRuleIdV2),
+  })
+  .strict()
+  .superRefine((scope, context) => {
+    const selected = scope.selected_rule_ids;
+    if (new Set(selected).size !== selected.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["selected_rule_ids"],
+        message: "selected_rule_ids must be unique",
+      });
+    }
+    if (selected.some((ruleId, index) =>
+      index > 0
+      && (ruleOrderV2.get(selected[index - 1]!) ?? -1)
+        >= (ruleOrderV2.get(ruleId) ?? -1)
+    )) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["selected_rule_ids"],
+        message: "selected_rule_ids must follow canonical registry order",
+      });
+    }
+  });
+export type KnowledgeHygieneAssessmentScopeV2 = z.infer<
+  typeof KnowledgeHygieneAssessmentScopeV2
+>;
+
 const checkInputV1Object = KnowledgeHygieneCheckInputV1.innerType();
 export const KnowledgeHygieneCheckInputV2 = checkInputV1Object
   .omit({ checks: true, skip_checks: true })
@@ -623,6 +657,7 @@ export const KnowledgeHygieneReportV2 = KnowledgeHygieneReportV1.omit({
     schema_version: z.literal("2"),
     findings: z.array(KnowledgeHygieneFindingV2),
     resolved_findings: z.array(KnowledgeHygieneResolvedFindingV2).optional(),
+    assessment_scope: KnowledgeHygieneAssessmentScopeV2,
     coverage: z.array(CoverageDimensionV2).min(1),
     health_claim: KnowledgeHygieneHealthClaimV2,
     rejection_counts: rejectionCounts,

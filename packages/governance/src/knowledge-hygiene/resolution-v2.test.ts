@@ -35,6 +35,9 @@ function report() {
       citations: [],
     }],
     metrics: [],
+    assessment_scope: {
+      selected_rule_ids: ["rulebook.managed_context_block"],
+    },
     coverage: [
       {
         dimension: "mechanical",

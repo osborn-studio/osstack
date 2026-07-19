@@ -26,15 +26,16 @@ import {
   KnowledgeHygieneCheckInputV2,
   KnowledgeHygieneFindingV2,
   KnowledgeHygieneReportV2,
+  KnowledgeHygieneRuleIdV2,
   type KnowledgeHygieneCheckInputV2 as KnowledgeHygieneCheckInput,
   type KnowledgeHygieneFindingV2 as KnowledgeHygieneFinding,
   type KnowledgeHygieneReportV2 as KnowledgeHygieneReport,
-  type KnowledgeHygieneRuleIdV2,
+  type KnowledgeHygieneRuleIdV2 as KnowledgeHygieneRuleId,
 } from "./types-v2.js";
 
 const MAX_INSTRUCTION_BYTES = 1024 * 1024;
 const severityOrder = { error: 0, warning: 1, info: 2 } as const;
-const narrativeRuleIds: readonly KnowledgeHygieneRuleIdV2[] = [
+const narrativeRuleIds: readonly KnowledgeHygieneRuleId[] = [
   "rulebook.managed_context_block",
   "rulebook.narrative_block",
   "rulebook.narrative_density",
@@ -324,7 +325,7 @@ function narrativeFinding(
 
 function selected(
   input: KnowledgeHygieneCheckInput,
-  ruleId: KnowledgeHygieneRuleIdV2,
+  ruleId: KnowledgeHygieneRuleId,
 ): boolean {
   if (input.checks !== undefined) return input.checks.includes(ruleId);
   if (input.skip_checks !== undefined) return !input.skip_checks.includes(ruleId);
@@ -498,6 +499,11 @@ export async function checkKnowledgeHygieneV2(
       suppressed: mechanicalReport.summary.suppressed + suppressedV2,
     },
     findings: active,
+    assessment_scope: {
+      selected_rule_ids: KnowledgeHygieneRuleIdV2.options.filter((ruleId) =>
+        selected(input, ruleId)
+      ),
+    },
     coverage,
     health_claim: expectedHealthClaim(
       active,

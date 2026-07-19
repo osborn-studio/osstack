@@ -112,6 +112,7 @@ function truncatedReport(repo: string) {
     summary: { error: 0, warning: 0, info: 0, suppressed: 0 },
     findings: [],
     metrics: [],
+    assessment_scope: { selected_rule_ids: ["semantic.narrative"] },
     coverage: [
       {
         dimension: "mechanical",

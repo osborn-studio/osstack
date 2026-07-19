@@ -504,6 +504,7 @@ export function renderKnowledgeHygieneReportV2(
     report.completeness.complete
       ? "Inventory completeness: complete"
       : `Inventory completeness: incomplete (${report.completeness.skipped_files} skipped)`,
+    `Selected rules: ${report.assessment_scope.selected_rule_ids.length === 0 ? "none" : report.assessment_scope.selected_rule_ids.join(",")}`,
     "Coverage:",
   );
   for (const coverage of report.coverage) {

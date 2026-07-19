@@ -176,6 +176,9 @@ describe("knowledge hygiene v2 contracts", () => {
       summary: { error: 0, warning: 1, info: 0, suppressed: 0 },
       findings: [findingV2()],
       metrics: [],
+      assessment_scope: {
+        selected_rule_ids: ["rulebook.managed_context_block"],
+      },
       coverage: fullCoverage(),
       health_claim: "findings_present",
       rejection_counts: {},
@@ -196,6 +199,15 @@ describe("knowledge hygiene v2 contracts", () => {
     expect(KnowledgeHygieneReportV2.safeParse({
       ...report,
       coverage: [mechanicalCoverage()],
+    }).success).toBe(false);
+    expect(KnowledgeHygieneReportV2.safeParse({
+      ...report,
+      assessment_scope: {
+        selected_rule_ids: [
+          "rulebook.narrative_block",
+          "rulebook.managed_context_block",
+        ],
+      },
     }).success).toBe(false);
   });
 

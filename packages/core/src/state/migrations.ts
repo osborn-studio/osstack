@@ -710,6 +710,15 @@ export const MIGRATIONS: readonly Migration[] = [
         ON knowledge_hygiene_finding_state_v2(repo_id, current_state, updated_at);
     `,
   },
+  {
+    id: 13,
+    name: "knowledge_hygiene_v2_assessment_scope",
+    sql: `
+      ALTER TABLE knowledge_hygiene_runs_v2
+        ADD COLUMN assessment_scope_json TEXT NOT NULL
+        DEFAULT '{"selected_rule_ids":[]}';
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

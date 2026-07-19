@@ -42,6 +42,7 @@ describe("checkKnowledgeHygieneV2", () => {
     });
 
     expect(report.schema_version).toBe("2");
+    expect(report).toHaveProperty("assessment_scope.selected_rule_ids");
     expect(report.findings).toEqual([
       expect.objectContaining({
         rule_id: "rulebook.managed_context_block",
@@ -105,6 +106,9 @@ describe("checkKnowledgeHygieneV2", () => {
       dimension: "narrative",
       state: "not_assessed",
       reason_codes: ["not_requested"],
+    });
+    expect(report).toMatchObject({
+      assessment_scope: { selected_rule_ids: ["budget.warn_exceeded"] },
     });
   });
 });

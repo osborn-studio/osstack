@@ -89,7 +89,7 @@ export const KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V2 = Object.freeze([
     key: "knowledge-hygiene-report-v2",
     title: "Osstack Knowledge Hygiene Report v2",
     comment:
-      "Coverage order/completeness and health-claim precedence are enforced by @osstack/governance Zod validation.",
+      "Assessment-scope ordering, coverage order/completeness, and health-claim precedence are enforced by @osstack/governance Zod validation.",
     schema: KnowledgeHygieneReportV2,
   },
   {

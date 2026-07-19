@@ -123,6 +123,9 @@ function recordInputV2(
       : { config_sha256: report.input.config_sha256 }),
     generated_at: epoch(report.generated_at, "report generated_at"),
     inventory_complete: report.completeness.complete,
+    assessment_scope: {
+      selected_rule_ids: [...report.assessment_scope.selected_rule_ids],
+    },
     coverage: report.coverage.map((coverage) => ({ ...coverage })),
     health_claim: report.health_claim,
     summary: {

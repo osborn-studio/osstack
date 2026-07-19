@@ -161,8 +161,8 @@ describe("probe persistence migration", () => {
     old.close();
 
     const upgraded = openDb({ path, minFreeBytes: 0 });
-    expect(CURRENT_SCHEMA_VERSION).toBe(12);
-    expect(upgraded.pragma("user_version", { simple: true })).toBe(12);
+    expect(CURRENT_SCHEMA_VERSION).toBe(13);
+    expect(upgraded.pragma("user_version", { simple: true })).toBe(13);
     expect(
       upgraded.prepare("SELECT title FROM tasks WHERE task_id = ?").get("task-old"),
     ).toEqual({ title: "Preserved" });

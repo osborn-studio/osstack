@@ -29,6 +29,9 @@ function runInput(): RecordKnowledgeHygieneRunInputV2 {
     mode: "all",
     generated_at: Date.parse("2026-07-18T00:00:00.000Z"),
     inventory_complete: true,
+    assessment_scope: {
+      selected_rule_ids: ["rulebook.managed_context_block"],
+    },
     coverage: [{ dimension: "mechanical", state: "complete" }],
     health_claim: "findings_present",
     summary: { error: 0, warning: 1, info: 0, suppressed: 0, resolved: 0 },
@@ -37,6 +40,8 @@ function runInput(): RecordKnowledgeHygieneRunInputV2 {
       finding: {
         fingerprint,
         rule_id: "rulebook.managed_context_block",
+        origin: "mechanical",
+        dimension: "narrative",
         severity: "warning",
       },
     }],
@@ -111,5 +116,75 @@ describe("knowledge hygiene V2 store", () => {
       db,
       { ...event("mechanically_resolved"), event_id: `khev_${"c".repeat(64)}` },
     )).toThrow(KnowledgeHygieneV2ConflictError);
+    expect(() => appendKnowledgeHygieneResolutionEventV2(db, {
+      ...event("mechanically_applied"),
+      event_id: `khev_${"d".repeat(64)}`,
+      from_state: "open",
+      to_state: "closed_absent",
+    } as KnowledgeHygieneResolutionEventV2Core)).toThrow(
+      "closed_absent requires coverage evidence",
+    );
+  });
+
+  it("closes an absent finding only when its mechanical rule was fully assessed", () => {
+    const db = openDatabase();
+    recordKnowledgeHygieneRunV2(db, {
+      ...runInput(),
+      assessment_scope: { selected_rule_ids: ["budget.warn_exceeded"] },
+      findings: [{
+        fingerprint,
+        finding: {
+          fingerprint,
+          rule_id: "budget.warn_exceeded",
+          origin: "mechanical",
+          dimension: "mechanical",
+          severity: "warning",
+        },
+      }],
+    } as RecordKnowledgeHygieneRunInputV2);
+    recordKnowledgeHygieneRunV2(db, {
+      ...runInput(),
+      report_sha256: "b".repeat(64),
+      generated_at: Date.parse("2026-07-18T00:01:00.000Z"),
+      health_claim: "assessed_scope_clean",
+      assessment_scope: { selected_rule_ids: ["budget.warn_exceeded"] },
+      findings: [],
+    } as RecordKnowledgeHygieneRunInputV2);
+
+    expect(getKnowledgeHygieneFindingStateV2(db, "repo-1", fingerprint))
+      .toMatchObject({ current_state: "closed_absent" });
+  });
+
+  it("never closes by absence when coverage is partial or the rule was not selected", () => {
+    for (const next of [
+      {
+        assessment_scope: {
+          selected_rule_ids: ["rulebook.managed_context_block"],
+        },
+        coverage: [{ dimension: "narrative", state: "partial" }],
+      },
+      {
+        assessment_scope: { selected_rule_ids: ["budget.error_exceeded"] },
+        coverage: [{ dimension: "mechanical", state: "complete" }],
+      },
+    ]) {
+      const db = openDatabase();
+      recordKnowledgeHygieneRunV2(db, {
+        ...runInput(),
+        assessment_scope: {
+          selected_rule_ids: ["rulebook.managed_context_block"],
+        },
+      } as RecordKnowledgeHygieneRunInputV2);
+      recordKnowledgeHygieneRunV2(db, {
+        ...runInput(),
+        report_sha256: "c".repeat(64),
+        generated_at: Date.parse("2026-07-18T00:01:00.000Z"),
+        health_claim: "assessed_scope_clean",
+        findings: [],
+        ...next,
+      } as RecordKnowledgeHygieneRunInputV2);
+      expect(getKnowledgeHygieneFindingStateV2(db, "repo-1", fingerprint))
+        .toMatchObject({ current_state: "open" });
+    }
   });
 });

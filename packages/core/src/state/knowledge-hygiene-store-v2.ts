@@ -88,6 +88,30 @@ export const KnowledgeHygieneResolutionEventV2Core = z
         message: "suppression metadata is required only for suppressed events",
       });
     }
+    if (
+      event.suppression?.expires_at !== undefined
+      && Date.parse(event.suppression.expires_at) <= Date.parse(event.occurred_at)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["suppression", "expires_at"],
+        message: "suppression expiry must be after the event time",
+      });
+    }
+    if (
+      event.to_state === "closed_absent"
+      && !event.evidence_refs.some((reference) =>
+        (reference["kind"] === "report" || reference["kind"] === "evidence_pack")
+        && typeof reference["run_id"] === "string"
+        && reference["run_id"].length > 0
+      )
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["evidence_refs"],
+        message: "closed_absent requires coverage evidence for the current run",
+      });
+    }
   });
 export type KnowledgeHygieneResolutionEventV2Core = z.infer<
   typeof KnowledgeHygieneResolutionEventV2Core
@@ -120,6 +144,20 @@ export const RecordKnowledgeHygieneRunInputV2 = z
     config_sha256: sha256.optional(),
     generated_at: z.number().finite(),
     inventory_complete: z.boolean(),
+    assessment_scope: z
+      .object({
+        selected_rule_ids: z.array(z.string().min(1)),
+      })
+      .strict()
+      .superRefine((scope, context) => {
+        if (new Set(scope.selected_rule_ids).size !== scope.selected_rule_ids.length) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["selected_rule_ids"],
+            message: "selected_rule_ids must be unique",
+          });
+        }
+      }),
     coverage: z.array(z.record(z.unknown())).min(1),
     health_claim: z.enum([
       "findings_present",
@@ -199,6 +237,23 @@ function runId(reportSha256: string): string {
 
 function canonicalJson(value: unknown): string {
   return JSON.stringify(value);
+}
+
+function stableAbsenceEventId(runIdValue: string, findingFingerprint: string): string {
+  const digest = createHash("sha256")
+    .update(canonicalJson(["closed_absent", runIdValue, findingFingerprint]))
+    .digest("hex");
+  return `khev_${digest}`;
+}
+
+function completeDimensions(
+  coverage: readonly Record<string, unknown>[],
+): ReadonlySet<string> {
+  return new Set(coverage.flatMap((entry) =>
+    entry["state"] === "complete" && entry["dimension"] === "mechanical"
+      ? [entry["dimension"]]
+      : []
+  ));
 }
 
 function applyResolutionEvent(
@@ -297,12 +352,12 @@ export function recordKnowledgeHygieneRunV2(
       INSERT INTO knowledge_hygiene_runs_v2 (
         run_id, report_sha256, schema_version, repo_id, repo_root, mode,
         diff_id, config_sha256, generated_at, recorded_at, inventory_complete,
-        coverage_json, health_claim, error_count, warning_count, info_count,
+        assessment_scope_json, coverage_json, health_claim, error_count, warning_count, info_count,
         suppressed_count, resolved_count
       ) VALUES (
         @run_id, @report_sha256, @schema_version, @repo_id, @repo_root, @mode,
         @diff_id, @config_sha256, @generated_at, @recorded_at, @inventory_complete,
-        @coverage_json, @health_claim, @error_count, @warning_count, @info_count,
+        @assessment_scope_json, @coverage_json, @health_claim, @error_count, @warning_count, @info_count,
         @suppressed_count, @resolved_count
       )
     `).run({
@@ -317,6 +372,7 @@ export function recordKnowledgeHygieneRunV2(
       generated_at: input.generated_at,
       recorded_at: options.recorded_at ?? Date.now(),
       inventory_complete: input.inventory_complete ? 1 : 0,
+      assessment_scope_json: canonicalJson(input.assessment_scope),
       coverage_json: canonicalJson(input.coverage),
       health_claim: input.health_claim,
       error_count: input.summary.error,
@@ -367,6 +423,57 @@ export function recordKnowledgeHygieneRunV2(
     }
     for (const event of input.resolution_events) {
       applyResolutionEvent(db, event);
+    }
+    const assessedRules = new Set(input.assessment_scope.selected_rule_ids);
+    const complete = completeDimensions(input.coverage);
+    const absent = db.prepare(`
+      SELECT f.fingerprint, f.finding_json, s.updated_at
+      FROM knowledge_hygiene_findings_v2 AS f
+      JOIN knowledge_hygiene_finding_state_v2 AS s
+        ON s.repo_id = f.repo_id AND s.fingerprint = f.fingerprint
+      WHERE f.repo_id = ? AND s.current_state = 'open'
+        AND NOT EXISTS (
+          SELECT 1 FROM knowledge_hygiene_occurrences_v2 AS occurrence
+          WHERE occurrence.run_id = ?
+            AND occurrence.repo_id = f.repo_id
+            AND occurrence.fingerprint = f.fingerprint
+        )
+      ORDER BY f.fingerprint
+    `).all(input.repo_id, id) as Array<{
+      fingerprint: string;
+      finding_json: string;
+      updated_at: number;
+    }>;
+    for (const candidate of absent) {
+      if (candidate.updated_at > input.generated_at) continue;
+      const findingValue = JSON.parse(candidate.finding_json) as Record<string, unknown>;
+      const ruleId = findingValue["rule_id"];
+      const dimension = findingValue["dimension"];
+      const origin = findingValue["origin"];
+      if (
+        typeof ruleId !== "string"
+        || typeof dimension !== "string"
+        || origin !== "mechanical"
+        || !assessedRules.has(ruleId)
+        || !complete.has(dimension)
+      ) continue;
+      applyResolutionEvent(db, {
+        schema_version: "2",
+        event_id: stableAbsenceEventId(id, candidate.fingerprint),
+        repo_id: input.repo_id,
+        fingerprint: candidate.fingerprint,
+        from_state: "open",
+        to_state: "closed_absent",
+        actor: { kind: "system", id: "system:governance" },
+        reason: `Finding absent after complete ${dimension} assessment of selected rule ${ruleId}.`,
+        evidence_refs: [{
+          kind: "report",
+          ref: `knowledge-hygiene-run:${id}`,
+          sha256: input.report_sha256,
+          run_id: id,
+        }],
+        occurred_at: new Date(input.generated_at).toISOString(),
+      });
     }
     return { run_id: id, inserted: true };
   }).immediate();

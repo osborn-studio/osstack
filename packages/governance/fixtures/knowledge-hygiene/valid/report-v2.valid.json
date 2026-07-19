@@ -21,6 +21,9 @@
   },
   "findings": [],
   "metrics": [],
+  "assessment_scope": {
+    "selected_rule_ids": []
+  },
   "coverage": [
     {
       "dimension": "mechanical",
