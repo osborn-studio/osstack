@@ -15,6 +15,8 @@
 // to be quiet and always safe to run unattended.
 
 import { spawn } from "node:child_process";
+import { provisionStableServing } from "./control-plane-guard.js";
+import { CURRENT_SCHEMA_VERSION } from "@osstack/core";
 import {
   copyFileSync, existsSync, mkdirSync, openSync, readdirSync, rmSync,
 } from "node:fs";
@@ -172,19 +174,19 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
   }
 
   // Re-provision the control-plane role next to the NEWLY installed binary
-  // BEFORE restarting: a fresh npm install carries no role file and the boot
-  // guard would refuse the default home (round-4 F1). Failure aborts the
-  // restart path loudly rather than kickstarting a daemon that cannot boot.
+  // BEFORE restarting (round-4 F1; round-5: guard code is STATICALLY imported
+  // so npm's replacement of this package's chunks cannot break the call, and
+  // an npm-root failure or provisioning failure restores the previous daemon
+  // instead of leaving it stopped).
   try {
-    const { provisionStableServing } = await import("./control-plane-guard.js");
-    const { CURRENT_SCHEMA_VERSION } = await import("@osstack/core");
     const which = await run("npm", ["root", "-g"]);
-    const newBin = which.ok
-      ? `${which.output.trim()}/@osstack/cli/dist/bin.js`
-      : "";
-    if (newBin) provisionStableServing(newBin, process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION);
+    if (!which.ok) throw new Error(`npm root -g failed: ${which.output.slice(0, 120)}`);
+    const newBin = `${which.output.trim()}/@osstack/cli/dist/bin.js`;
+    provisionStableServing(newBin, process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
   } catch (err) {
     log(`control-plane provisioning after upgrade FAILED: ${err instanceof Error ? err.message : String(err)}`);
+    log("restarting the PREVIOUS daemon (upgrade not activated)…");
+    if (wasRunning) await startDaemonAgain(viaLaunchd);
     return 1;
   }
 
@@ -198,6 +200,20 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
         log(`rollback install ALSO failed:\n${rollback.output}`);
         log(`manual recovery: npm i -g ${PKG}@${VERSION}; backups in ${backupsDir()}`);
         return 1;
+      }
+      // The reinstalled package's tarball never contains the role file — the
+      // restored binary must be re-provisioned or the guard refuses the boot
+      // we are rolling back TO (round-5 F4).
+      try {
+        const rootResp = await run("npm", ["root", "-g"]);
+        if (rootResp.ok) {
+          provisionStableServing(`${rootResp.output.trim()}/@osstack/cli/dist/bin.js`,
+            process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
+        } else {
+          log("WARN: could not re-provision the rolled-back binary (npm root -g failed) — run `osstack serve --install` manually if the daemon refuses to boot");
+        }
+      } catch (err) {
+        log(`WARN: re-provisioning the rolled-back binary failed: ${err instanceof Error ? err.message : String(err)}`);
       }
       await startDaemonAgain(viaLaunchd);
       const recovered = await waitForDaemon(opts.rpc, VERSION);

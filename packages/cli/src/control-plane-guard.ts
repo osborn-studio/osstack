@@ -141,9 +141,20 @@ export function assertServeAllowed(opts: {
  * would produce a daemon the guard refuses must fail loudly, never silently.
  * Returns the role-file path. Throws ControlPlaneGuardError on any mismatch.
  */
-export function provisionStableServing(binPath: string, osstackHome: string, schemaVersion: number): string {
+export function provisionStableServing(
+  binPath: string,
+  osstackHome: string,
+  schemaVersion: number,
+  opts: { requireBinary?: boolean } = {},
+): string {
   let realBin = binPath;
   try { realBin = realpathSync(binPath); } catch { /* not yet existing */ }
+  if (opts.requireBinary !== false && !existsSync(realBin)) {
+    // Never "verify" a phantom location (round-5 F3): callers that will LOAD
+    // the daemon must provision against a real binary. Plist-only flows
+    // (--no-load) may opt out.
+    throw new ControlPlaneGuardError("invalid_role_file", "cannot provision: target binary does not exist");
+  }
   const dir = dirname(realBin);
   const file = resolve(dir, "control-plane.json");
   mkdirSync(dir, { recursive: true });

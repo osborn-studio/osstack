@@ -23,7 +23,7 @@ export interface ControlPlaneDoctorDeps {
   knownLabels?: string[];
 }
 
-const KNOWN_LABELS = ["ai.osstack.daemon", "ai.osstack.copilot-daemon", "ai.ostag.copilot-relay"];
+const KNOWN_LABELS = ["ai.osstack.daemon", "ai.osstack.autoupgrade", "ai.osstack.copilot-daemon", "ai.ostag.copilot-relay"];
 
 export function runControlPlaneChecks(deps: ControlPlaneDoctorDeps = {}): ControlPlaneFinding[] {
   const home = deps.home ?? process.env["OSSTACK_HOME"] ?? resolve(homedir(), ".osstack");

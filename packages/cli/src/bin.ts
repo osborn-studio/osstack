@@ -3,7 +3,7 @@
 
 import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { existsSync as fsExistsSync, realpathSync, writeFileSync as fsWriteFileSync } from "node:fs";
+import { realpathSync } from "node:fs";
 import { connect, type Socket } from "node:net";
 import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
@@ -7167,7 +7167,7 @@ Options:
       try {
         const { CURRENT_SCHEMA_VERSION } = await import("@osstack/core");
         const { provisionStableServing } = await import("./control-plane-guard.js");
-        provisionStableServing(binPath, process.env.OSSTACK_HOME ?? "~/.osstack", CURRENT_SCHEMA_VERSION);
+        provisionStableServing(binPath, process.env.OSSTACK_HOME ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: !noLoad });
         if (!json) console.log("control-plane guard: stable-serving role declaration provisioned and verified");
       } catch (err) {
         // A daemon the guard would refuse must not be installed (round-4 F2).
