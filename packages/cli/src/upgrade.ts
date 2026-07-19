@@ -132,6 +132,21 @@ async function waitForDaemon(rpc: UpgradeOptions["rpc"], expectVersion: string |
 }
 
 export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions["rpc"]): Promise<number> {
+  // Checkout-based deployments (launchd bin.js outside npm-global) must NOT
+  // self-upgrade via npm: the swap would not affect the serving binary and the
+  // npm-path recovery branches do not apply (release-review F2-F5 exposure
+  // closed operationally; full npm-path hardening tracked for Phase 2.1).
+  try {
+    const { readFileSync: rfs } = await import("node:fs");
+    const { homedir: hd } = await import("node:os");
+    const plist = rfs(`${hd()}/Library/LaunchAgents/ai.osstack.daemon.plist`, "utf8");
+    const rootResp0 = await run("npm", ["root", "-g"]);
+    const npmRoot = rootResp0.ok ? rootResp0.output.trim() : "";
+    if (plist.includes("bin.js") && (npmRoot === "" || !plist.includes(npmRoot))) {
+      log("this deployment serves a CHECKOUT dist (not the npm-global package); `osstack upgrade` does not apply — use the checkout deploy flow in PHASE2-RUNBOOK.md");
+      return 1;
+    }
+  } catch { /* no plist — not a launchd deployment; continue */ }
   const channel = args.includes("--channel")
     ? (args[args.indexOf("--channel") + 1] ?? "latest")
     : "latest";

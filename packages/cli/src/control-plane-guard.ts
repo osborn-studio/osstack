@@ -83,6 +83,21 @@ export function loadRoleFile(checkoutRoot: string): ControlPlaneRole | null {
   return { role: r.role, allowed_osstack_homes: [...r.allowed_osstack_homes], ...(r.schema ? { schema: { min: r.schema.min, max: r.schema.max } } : {}) };
 }
 
+/** A home directory can carry its own reservation marker: any osstack code
+ *  with this guard refuses to serve it unless a declared role file explicitly
+ *  allows it (release-review F1: a MOVED stable home is no longer the default,
+ *  so the default-home rule alone cannot protect it — the home itself must). */
+export function homeIsReserved(home: string): boolean {
+  return existsSync(resolve(expand(home), "control-plane-reserved.json"));
+}
+
+export function reserveHome(home: string): void {
+  const h = expand(home);
+  mkdirSync(h, { recursive: true });
+  const f = resolve(h, "control-plane-reserved.json");
+  if (!existsSync(f)) writeFileSync(f, `${JSON.stringify({ reserved: true, note: "serving this home requires a declared role file allowing it" }, null, 2)}\n`);
+}
+
 export interface GuardVerdict {
   role: ControlPlaneRole["role"] | "undeclared-dev";
   homeCategory: "default-stable" | "declared" | "custom";
@@ -103,6 +118,12 @@ export function assertServeAllowed(opts: {
   const declared = loadRoleFile(opts.checkoutRoot);
 
   if (declared === null) {
+    if (home !== defaultHome && homeIsReserved(home)) {
+      throw new ControlPlaneGuardError(
+        "home_not_allowed",
+        "the requested OSSTACK_HOME is RESERVED (control-plane-reserved.json present); serving it requires a declared role file that allows it",
+      );
+    }
     if (home === defaultHome) {
       throw new ControlPlaneGuardError(
         "undeclared_checkout_on_default_home",
