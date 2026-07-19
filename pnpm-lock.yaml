@@ -47,11 +47,14 @@ importers:
   packages/agents:
     dependencies:
       '@anthropic-ai/claude-agent-sdk':
-        specifier: ^0.3.143
+        specifier: 0.3.143
         version: 0.3.143(@anthropic-ai/sdk@0.96.0(zod@4.4.3))(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(zod@4.4.3)
       '@osstack/core':
         specifier: workspace:*
         version: link:../core
+      '@osstack/governance':
+        specifier: workspace:*
+        version: link:../governance
       '@osstack/hermes-adapter':
         specifier: workspace:*
         version: link:../hermes-adapter
