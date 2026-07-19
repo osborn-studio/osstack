@@ -100,7 +100,7 @@ Options:
   --base <git-ref>               Base ref for range/base-to-worktree mode
   --head <git-ref>               Head ref; valid only with --base
   --config <path>                Config path (default: .osstack/neat.yaml)
-  --schema-version <1|2>         Report contract (default: 1 during migration)
+  --schema-version <1|2>         Report contract (default: 2; V1 deprecated)
   --checks <id,...>              Run only listed rule ids
   --skip-checks <id,...>         Exclude listed rule ids
   --review-file <path>           Apply matching portable review evidence
@@ -175,8 +175,8 @@ function parseNeatCommand(
       help: true,
       format: "human",
       fail_on: "none",
-      schema_version: "1",
-      input: { repo_root: cwd, mode: "worktree" },
+      schema_version: "2",
+      input: { schema_version: "2", repo_root: cwd, mode: "worktree" },
       record: false,
     };
   }
@@ -188,7 +188,7 @@ function parseNeatCommand(
   let configPath: string | undefined;
   let rawChecks: string[] | undefined;
   let rawSkipChecks: string[] | undefined;
-  let schemaVersion: "1" | "2" = "1";
+  let schemaVersion: "1" | "2" = "2";
   let reviewFile: string | undefined;
   let adapter: "claude-code" | undefined;
   let claudeMemoryDir: string | undefined;
@@ -668,6 +668,11 @@ export async function handleNeatCommand(
   if (parsed.help) {
     deps.stdout(renderNeatHelp());
     return 0;
+  }
+  if (parsed.schema_version === "1") {
+    deps.stderr(
+      "osstack neat: --schema-version 1 is deprecated and will be removed in the next minor release; migrate consumers to V2",
+    );
   }
 
   let report: KnowledgeHygieneReportV1 | KnowledgeHygieneReportV2;

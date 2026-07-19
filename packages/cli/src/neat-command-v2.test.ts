@@ -41,14 +41,12 @@ Session summary.
 }
 
 describe("neat check V2", () => {
-  it("runs explicit V2, exposes honest coverage, and detects managed context", async () => {
+  it("defaults to V2, exposes honest coverage, and detects managed context", async () => {
     const repo = await v2Repo();
     const command = harness(repo);
     const exitCode = await handleNeatCommand([
       "check",
       "--all",
-      "--schema-version",
-      "2",
       "--json",
     ], command.deps);
     expect(command.stderr).toEqual([]);
@@ -99,5 +97,22 @@ describe("neat check V2", () => {
       "--checks",
       "rulebook.managed_context_block",
     ], command.deps)).toBe(2);
+  });
+
+  it("keeps explicit V1 for one minor and emits a deprecation warning", async () => {
+    const repo = await mkdtemp(join(tmpdir(), "osstack-neat-cli-v1-"));
+    const command = harness(repo);
+    expect(await handleNeatCommand([
+      "--all",
+      "--schema-version",
+      "1",
+      "--json",
+    ], command.deps)).toBe(0);
+    const envelope = AgentCommandResult.parse(JSON.parse(command.stdout[0] ?? ""));
+    expect((envelope.result?.report as { schema_version: string }).schema_version)
+      .toBe("1");
+    expect(command.stderr.join("\n")).toContain(
+      "--schema-version 1 is deprecated",
+    );
   });
 });

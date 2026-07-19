@@ -188,11 +188,11 @@ describe("handleNeatCommand", () => {
     });
 
     const permissiveCode = await handleNeatCommand(
-      ["--all", "--json", "--fail-on", "none"],
+      ["--all", "--schema-version", "1", "--json", "--fail-on", "none"],
       permissive.deps,
     );
     const blockingCode = await handleNeatCommand(
-      ["--all", "--json", "--fail-on", "warning"],
+      ["--all", "--schema-version", "1", "--json", "--fail-on", "warning"],
       blocking.deps,
     );
 
@@ -231,6 +231,8 @@ describe("handleNeatCommand", () => {
     const harness = commandHarness({ cwd, check: async () => report });
 
     const exitCode = await handleNeatCommand([
+      "--schema-version",
+      "1",
       "--review-file",
       "review.json",
       "--json",
@@ -278,6 +280,8 @@ describe("handleNeatCommand", () => {
     const harness = commandHarness({ cwd, check: async () => report });
 
     expect(await handleNeatCommand([
+      "--schema-version",
+      "1",
       "--review-file",
       "review.json",
     ], harness.deps)).toBe(2);
@@ -296,7 +300,7 @@ describe("handleNeatCommand", () => {
     });
 
     const exitCode = await handleNeatCommand(
-      ["--repo", "packages/example", "--all"],
+      ["--repo", "packages/example", "--all", "--schema-version", "1"],
       harness.deps,
     );
 
@@ -334,6 +338,8 @@ describe("handleNeatCommand", () => {
 
     expect(await handleNeatCommand([
       "--all",
+      "--schema-version",
+      "1",
       "--record",
       "--db",
       dbPath,
@@ -348,6 +354,8 @@ describe("handleNeatCommand", () => {
     const second = commandHarness({ cwd, check: async () => warningReport() });
     expect(await handleNeatCommand([
       "--all",
+      "--schema-version",
+      "1",
       "--record",
       "--db",
       dbPath,
@@ -385,7 +393,7 @@ describe("handleNeatCommand", () => {
   it("fails closed on an invalid present config", async () => {
     const repoRoot = await mkdtemp(join(tmpdir(), "osstack-neat-cli-"));
     await mkdir(join(repoRoot, ".osstack"));
-    await writeFile(join(repoRoot, ".osstack", "neat.yaml"), "version: 2\n");
+    await writeFile(join(repoRoot, ".osstack", "neat.yaml"), "version: 3\n");
     const harness = commandHarness({ cwd: repoRoot });
 
     const exitCode = await handleNeatCommand(["--all"], harness.deps);
@@ -393,7 +401,7 @@ describe("handleNeatCommand", () => {
     expect(exitCode).toBe(2);
     expect(harness.stderr).toMatchInlineSnapshot(`
       [
-        "osstack neat: invalid neat config: version: Invalid literal value, expected 1",
+        "osstack neat: invalid neat config: version: expected 1 or 2",
       ]
     `);
   });
