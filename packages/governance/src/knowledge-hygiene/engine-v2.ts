@@ -71,7 +71,7 @@ function isInsideRoot(root: string, candidate: string): boolean {
     );
 }
 
-async function readInstruction(
+export async function readKnowledgeHygieneInstructionV2(
   repoRoot: string,
   path: string,
 ): Promise<InstructionReadResultV2> {
@@ -409,7 +409,7 @@ export async function checkKnowledgeHygieneV2(
   );
   const repoId = mechanicalReport.repo.repo_id ?? mechanicalReport.repo.root;
   const canonicalPath = loadedConfig.config.instructions?.canonical ?? "AGENTS.md";
-  const read = ports.read_instruction ?? readInstruction;
+  const read = ports.read_instruction ?? readKnowledgeHygieneInstructionV2;
   const narrativeRequested = narrativeRuleIds.some((ruleId) =>
     selected(input, ruleId)
   );

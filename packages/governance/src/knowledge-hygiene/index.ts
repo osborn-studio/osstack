@@ -12,6 +12,7 @@ export * from "./patch-applier.js";
 export * from "./repository-reader.js";
 export * from "./resolution.js";
 export * from "./semantic-judge.js";
+export * from "./semantic-engine.js";
 export * from "./rules/index.js";
 export * from "./types.js";
 export * from "./types-v2.js";
