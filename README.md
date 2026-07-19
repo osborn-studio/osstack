@@ -24,8 +24,8 @@ surface that makes AI coding work visible and auditable.
 
 | Area | Status |
 |---|---|
-| npm package | Published: `@osstack/cli@0.10.0` |
-| GitHub release | npm packages: `@osstack/cli@0.10.0`; latest single binary: [`v0.8.1`](https://github.com/gilosbornhello/osstack/releases/tag/v0.8.1) |
+| npm package | Published: `@osstack/cli@0.11.1` |
+| GitHub release | npm packages: `@osstack/cli@0.11.1`; latest single binary: [`v0.8.1`](https://github.com/gilosbornhello/osstack/releases/tag/v0.8.1) |
 | macOS single binary | Published as explicit `public-ad-hoc` archive for `darwin-arm64` |
 | Knowledge Cloud | Live on EdgeOne: `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | License | MIT |
@@ -93,7 +93,7 @@ osstack doctor --workspace .
 Expected:
 
 ```text
-osstack 0.10.0
+osstack 0.11.1
 ```
 
 ### macOS Single-Binary Archive

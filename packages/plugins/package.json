@@ -1,6 +1,6 @@
 {
   "name": "@osstack/plugins",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "7 plugin slots (runtime / agent / workspace / tracker / notifier / reviewer / verifier). Each defines a TS interface + PluginModule.",
   "license": "MIT",
   "type": "module",

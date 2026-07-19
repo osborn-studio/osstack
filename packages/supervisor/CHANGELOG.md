@@ -1,5 +1,24 @@
 # @osstack/supervisor
 
+## 0.11.0
+
+### Patch Changes
+
+- Updated dependencies [48ad63d]
+- Updated dependencies [f041063]
+- Updated dependencies [a483f6e]
+- Updated dependencies [4a6c00b]
+- Updated dependencies [83aac82]
+- Updated dependencies [a90f3a5]
+- Updated dependencies [73f89fd]
+- Updated dependencies [53db533]
+- Updated dependencies [223a240]
+- Updated dependencies [9f1aa1b]
+- Updated dependencies [92249dc]
+  - @osstack/governance@0.11.0
+  - @osstack/core@0.11.0
+  - @osstack/loop@0.11.0
+
 ## 0.10.0
 
 ### Minor Changes

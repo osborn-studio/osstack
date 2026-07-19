@@ -5,9 +5,9 @@ name: Release
 # see RELEASING.md) versions + publishes every changed package to npm and
 # tags the release.
 #
-# Publishing requires the NPM_TOKEN secret (npm automation token with publish
-# rights to the @osstack scope). Until that secret is configured the publish
-# step is skipped and the workflow only manages the Version PR.
+# Publishing uses npm Trusted Publishing (OIDC), bound to this workflow in each
+# public package's npm settings. No long-lived npm publish token is exposed to
+# the publish step.
 
 on:
   push:
@@ -39,9 +39,12 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org
+
+      - name: Pin npm OIDC client
+        run: npm install --global npm@11.17.0
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -106,28 +109,6 @@ jobs:
       - name: NPM preflight smoke
         run: pnpm smoke:npm-preflight
 
-      - name: Detect npm token
-        id: npm-token
-        run: |
-          if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "NPM_TOKEN not configured — will manage the Version PR but skip publish." >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: Require npm token for version package commits
-        if: "${{ steps.npm-token.outputs.present != 'true' && startsWith(github.event.head_commit.message, 'chore(release): version packages') }}"
-        run: |
-          echo "Version package commits must publish to npm. Configure repository secret NPM_TOKEN and rerun." >> "$GITHUB_STEP_SUMMARY"
-          exit 1
-
-      - name: Preflight npm publish access
-        if: "${{ steps.npm-token.outputs.present == 'true' }}"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: pnpm preflight:npm-publish
-
       - name: Version PR / Publish
         uses: changesets/action@v1
         with:
@@ -137,6 +118,3 @@ jobs:
           title: "chore(release): version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ steps.npm-token.outputs.present == 'true' && secrets.NPM_TOKEN || '' }}
-          NODE_AUTH_TOKEN: ${{ steps.npm-token.outputs.present == 'true' && secrets.NPM_TOKEN || '' }}
-          NPM_CONFIG_PROVENANCE: "true"

@@ -1,14 +1,15 @@
 {
   "name": "@osstack/cli",
-  "version": "0.10.0",
-  "description": "OSBORN stack CLI binary — orchestrates dev sub-agents under Hermes.",
+  "version": "0.11.1",
+  "description": "OSBORN stack CLI binary \u2014 orchestrates dev sub-agents under Hermes.",
   "license": "MIT",
   "type": "module",
   "bin": {
     "osstack": "./dist/bin.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/control-plane.json"
   ],
   "scripts": {
     "build": "tsup",

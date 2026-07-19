@@ -15,6 +15,7 @@ import { listProbeEvents, openDb } from "@osstack/core";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   handleProbeCommand,
+  renderProbeHelp,
   type ProbeCommandDependencies,
 } from "./probe-command.js";
 
@@ -78,6 +79,12 @@ function startArgs(extra: readonly string[] = []): string[] {
 }
 
 describe("handleProbeCommand", () => {
+  it("documents the current-item guard required by next dispositions", () => {
+    expect(renderProbeHelp()).toContain(
+      "--question <item-id>             Required for probe next dispositions; must equal current item",
+    );
+  });
+
   it("starts a strict, persisted one-question-at-a-time session", async () => {
     const command = await harness();
 

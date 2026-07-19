@@ -22,8 +22,8 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 
 | 领域 | 状态 |
 |---|---|
-| npm 包 | 已发布：`@osstack/cli@0.10.0` |
-| GitHub Release | npm 包：`@osstack/cli@0.10.0`；最新单文件二进制：[`v0.8.1`](https://github.com/gilosbornhello/osstack/releases/tag/v0.8.1) |
+| npm 包 | 已发布：`@osstack/cli@0.11.1` |
+| GitHub Release | npm 包：`@osstack/cli@0.11.1`；最新单文件二进制：[`v0.8.1`](https://github.com/gilosbornhello/osstack/releases/tag/v0.8.1) |
 | macOS 单文件二进制 | 已发布 `darwin-arm64` 的显式 `public-ad-hoc` archive |
 | Knowledge Cloud | 已部署到 EdgeOne：`https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | License | MIT |
@@ -82,7 +82,7 @@ osstack doctor --workspace .
 期望输出：
 
 ```text
-osstack 0.10.0
+osstack 0.11.1
 ```
 
 ### 使用 macOS 单文件 archive

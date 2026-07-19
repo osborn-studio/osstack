@@ -5,7 +5,7 @@
   "description": "OSBORN stack (osstack) \u2014 Hermes-resident project manager agent for software development lifecycle. TypeScript daemon + Python Hermes skill wrapper.",
   "repository": "https://github.com/gilosbornhello/osstack",
   "license": "MIT",
-  "packageManager": "pnpm@11.1.2",
+  "packageManager": "pnpm@11.4.0",
   "engines": {
     "node": ">=20"
   },

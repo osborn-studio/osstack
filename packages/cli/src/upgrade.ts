@@ -15,6 +15,8 @@
 // to be quiet and always safe to run unattended.
 
 import { spawn } from "node:child_process";
+import { provisionStableServing } from "./control-plane-guard.js";
+import { CURRENT_SCHEMA_VERSION } from "@osstack/core";
 import {
   copyFileSync, existsSync, mkdirSync, openSync, readdirSync, rmSync,
 } from "node:fs";
@@ -171,6 +173,44 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
     return 1;
   }
 
+  // Re-provision the control-plane role next to the NEWLY installed binary
+  // BEFORE restarting (round-4 F1; round-5: guard code is STATICALLY imported
+  // so npm's replacement of this package's chunks cannot break the call, and
+  // an npm-root failure or provisioning failure restores the previous daemon
+  // instead of leaving it stopped).
+  try {
+    const which = await run("npm", ["root", "-g"]);
+    if (!which.ok) throw new Error(`npm root -g failed: ${which.output.slice(0, 120)}`);
+    const newBin = `${which.output.trim()}/@osstack/cli/dist/bin.js`;
+    provisionStableServing(newBin, process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
+  } catch (err) {
+    log(`control-plane provisioning after upgrade FAILED: ${err instanceof Error ? err.message : String(err)}`);
+    // npm has ALREADY replaced the global package — restarting now would launch
+    // the new, unprovisioned binary (round-6). Roll back to the previous
+    // version, re-provision it, then restart that.
+    log(`ROLLING BACK to ${PKG}@${VERSION} before restart…`);
+    const rb = await run("npm", ["install", "-g", `${PKG}@${VERSION}`]);
+    if (!rb.ok) {
+      log(`rollback install ALSO failed:\n${rb.output}`);
+      log(`manual recovery: npm i -g ${PKG}@${VERSION}; backups in ${backupsDir()}`);
+      return 1;
+    }
+    try {
+      const rootResp = await run("npm", ["root", "-g"]);
+      if (!rootResp.ok) throw new Error(`npm root -g failed: ${rootResp.output.slice(0, 120)}`);
+      provisionStableServing(`${rootResp.output.trim()}/@osstack/cli/dist/bin.js`,
+        process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
+    } catch (provErr) {
+      // Never restart into a binary the guard will refuse (round-7): stop here
+      // with explicit manual recovery instead of a doomed kickstart.
+      log(`re-provisioning the rolled-back binary FAILED: ${provErr instanceof Error ? provErr.message : String(provErr)}`);
+      log(`daemon left STOPPED. Manual recovery: osstack serve --install (provisions + verifies), or fix the role file next to the global dist/bin.js; backups in ${backupsDir()}`);
+      return 1;
+    }
+    if (wasRunning) await startDaemonAgain(viaLaunchd);
+    return 1;
+  }
+
   if (wasRunning || viaLaunchd) {
     await startDaemonAgain(viaLaunchd);
     const healthy = await waitForDaemon(opts.rpc, target);
@@ -180,6 +220,20 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
       if (!rollback.ok) {
         log(`rollback install ALSO failed:\n${rollback.output}`);
         log(`manual recovery: npm i -g ${PKG}@${VERSION}; backups in ${backupsDir()}`);
+        return 1;
+      }
+      // The reinstalled package's tarball never contains the role file — the
+      // restored binary must be re-provisioned or the guard refuses the boot
+      // we are rolling back TO (round-5 F4; round-8: failure STOPS, never a
+      // kickstart into a guard-refused binary).
+      try {
+        const rootResp = await run("npm", ["root", "-g"]);
+        if (!rootResp.ok) throw new Error(`npm root -g failed: ${rootResp.output.slice(0, 120)}`);
+        provisionStableServing(`${rootResp.output.trim()}/@osstack/cli/dist/bin.js`,
+          process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
+      } catch (err) {
+        log(`re-provisioning the rolled-back binary FAILED: ${err instanceof Error ? err.message : String(err)}`);
+        log(`daemon left STOPPED. Manual recovery: osstack serve --install (provisions + verifies); backups in ${backupsDir()}`);
         return 1;
       }
       await startDaemonAgain(viaLaunchd);
