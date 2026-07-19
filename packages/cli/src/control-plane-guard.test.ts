@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { assertServeAllowed, ControlPlaneGuardError, loadRoleFile } from "./control-plane-guard.js";
+import { assertServeAllowed, ControlPlaneGuardError, loadRoleFile, reserveHome } from "./control-plane-guard.js";
 
 let root: string;
 const DEFAULT = "/fake/home/.osstack";
@@ -84,5 +84,27 @@ describe("guard hardening (review round 2)", () => {
     declare({ role: "dev", allowed_osstack_homes: ["/nonexistent-a/home"] });
     try { assertServeAllowed({ checkoutRoot: root, osstackHome: "/nonexistent-b/home", defaultHome: DEFAULT }); throw new Error("unreachable"); }
     catch (e) { expect((e as ControlPlaneGuardError).code).toBe("home_not_allowed"); }
+  });
+});
+
+describe("home reservation (release-review F1)", () => {
+  it("an UNDECLARED checkout cannot serve a RESERVED non-default home", () => {
+    const home = join(root, "moved-stable-home");
+    reserveHome(home);
+    try { assertServeAllowed({ checkoutRoot: root, osstackHome: home, defaultHome: DEFAULT }); throw new Error("unreachable"); }
+    catch (e) { expect((e as ControlPlaneGuardError).code).toBe("home_not_allowed"); }
+  });
+
+  it("a DECLARED role allowing the reserved home may serve it", () => {
+    const home = join(root, "moved-stable-home");
+    reserveHome(home);
+    declare({ role: "stable-serving", allowed_osstack_homes: [home] });
+    const v = assertServeAllowed({ checkoutRoot: root, osstackHome: home, defaultHome: DEFAULT });
+    expect(v.role).toBe("stable-serving");
+  });
+
+  it("unreserved custom homes keep working for undeclared dev checkouts", () => {
+    const v = assertServeAllowed({ checkoutRoot: root, osstackHome: join(root, "plain-dev-home"), defaultHome: DEFAULT });
+    expect(v.role).toBe("undeclared-dev");
   });
 });
