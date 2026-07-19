@@ -197,12 +197,15 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
     }
     try {
       const rootResp = await run("npm", ["root", "-g"]);
-      if (rootResp.ok) {
-        provisionStableServing(`${rootResp.output.trim()}/@osstack/cli/dist/bin.js`,
-          process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
-      }
+      if (!rootResp.ok) throw new Error(`npm root -g failed: ${rootResp.output.slice(0, 120)}`);
+      provisionStableServing(`${rootResp.output.trim()}/@osstack/cli/dist/bin.js`,
+        process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
     } catch (provErr) {
-      log(`WARN: re-provisioning the rolled-back binary failed: ${provErr instanceof Error ? provErr.message : String(provErr)}`);
+      // Never restart into a binary the guard will refuse (round-7): stop here
+      // with explicit manual recovery instead of a doomed kickstart.
+      log(`re-provisioning the rolled-back binary FAILED: ${provErr instanceof Error ? provErr.message : String(provErr)}`);
+      log(`daemon left STOPPED. Manual recovery: osstack serve --install (provisions + verifies), or fix the role file next to the global dist/bin.js; backups in ${backupsDir()}`);
+      return 1;
     }
     if (wasRunning) await startDaemonAgain(viaLaunchd);
     return 1;
