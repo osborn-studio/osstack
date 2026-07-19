@@ -10,6 +10,10 @@ import {
   KnowledgeHygienePatchActionV1,
   KnowledgeHygienePatchPlanV1,
 } from "./patch-types.js";
+import {
+  KnowledgeHygienePlanActionV1,
+  KnowledgeHygieneTransactionPlanV1,
+} from "./transaction-plan.js";
 import { KnowledgeHygieneConfigV2Schema } from "./config-v2.js";
 import {
   CoverageDimensionV2,
@@ -62,6 +66,20 @@ export const KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V1 = Object.freeze([
     comment:
       "Action-id uniqueness is enforced by @osstack/governance Zod validation.",
     schema: KnowledgeHygienePatchPlanV1,
+  },
+  {
+    key: "knowledge-hygiene-transaction-action-v1",
+    title: "Osstack Knowledge Hygiene Transaction Action v1",
+    comment:
+      "Byte-span, content-conservation, claim-ledger, and discard-ledger invariants are enforced by @osstack/governance Zod validation.",
+    schema: KnowledgeHygienePlanActionV1,
+  },
+  {
+    key: "knowledge-hygiene-transaction-plan-v1",
+    title: "Osstack Knowledge Hygiene Transaction Plan v1",
+    comment:
+      "Content-addressed identity, non-overlap, approval, write-set, expiry, and state invariants are enforced by @osstack/governance Zod validation.",
+    schema: KnowledgeHygieneTransactionPlanV1,
   },
 ] satisfies readonly KnowledgeHygieneSchemaEntryV1[]);
 

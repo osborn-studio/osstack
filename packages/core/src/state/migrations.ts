@@ -719,6 +719,40 @@ export const MIGRATIONS: readonly Migration[] = [
         DEFAULT '{"selected_rule_ids":[]}';
     `,
   },
+  {
+    id: 14,
+    name: "knowledge_hygiene_plan_events",
+    sql: `
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_plan_events (
+        event_id     TEXT PRIMARY KEY,
+        plan_id      TEXT NOT NULL,
+        revision     INTEGER NOT NULL CHECK (revision >= 1),
+        from_state   TEXT,
+        to_state     TEXT NOT NULL,
+        event_json   TEXT NOT NULL,
+        occurred_at  REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_plan_events_plan
+        ON knowledge_hygiene_plan_events(plan_id, occurred_at, event_id);
+
+      CREATE TABLE IF NOT EXISTS knowledge_hygiene_plan_projection (
+        plan_id          TEXT PRIMARY KEY,
+        kind             TEXT NOT NULL CHECK (kind IN ('memory','narrative')),
+        repo_id          TEXT NOT NULL,
+        revision         INTEGER NOT NULL CHECK (revision >= 1),
+        state            TEXT NOT NULL CHECK (state IN (
+          'draft','partially_approved','approved','applying','applied',
+          'recovery_required','recovered','stale','cancelled'
+        )),
+        artifact_path    TEXT NOT NULL,
+        artifact_sha256  TEXT NOT NULL,
+        last_event_id    TEXT NOT NULL REFERENCES knowledge_hygiene_plan_events(event_id),
+        updated_at       REAL NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_hygiene_plan_projection_repo
+        ON knowledge_hygiene_plan_projection(repo_id, state, updated_at);
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

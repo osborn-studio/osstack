@@ -40,8 +40,10 @@ describe("knowledge hygiene public schemas", () => {
       "knowledge-hygiene-report-v1.schema.json",
       "knowledge-hygiene-resolution-v1.schema.json",
       "knowledge-hygiene-review-artifact-v1.schema.json",
+      "knowledge-hygiene-transaction-action-v1.schema.json",
+      "knowledge-hygiene-transaction-plan-v1.schema.json",
     ]);
-    expect(KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V1).toHaveLength(6);
+    expect(KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V1).toHaveLength(8);
   });
 
   for (const [filename, content] of Object.entries(generated)) {
