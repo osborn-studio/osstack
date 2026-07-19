@@ -6,26 +6,26 @@ Workspace packages, publish status, and internal (workspace) dependencies.
 
 | Package | Version | Visibility | Internal deps |
 |---|---|---|---|
-| `@osstack/agents` | 0.11.0 | public | `core`, `governance`, `hermes-adapter` |
-| `@osstack/cli` | 0.11.1 | public | `agents`, `compliance`, `config`, `contracts`, `core`, `github`, `governance`, `hermes-adapter`, `knowledge`, `loop`, `protocol`, `skill-registry`, `skills`, `supervisor` |
+| `@osstack/agents` | 0.12.0 | public | `core`, `governance`, `hermes-adapter` |
+| `@osstack/cli` | 0.12.0 | public | `agents`, `compliance`, `config`, `contracts`, `core`, `github`, `governance`, `hermes-adapter`, `knowledge`, `loop`, `protocol`, `skill-registry`, `skills`, `supervisor` |
 | `@osstack/compliance` | 0.2.0 | public | — |
-| `@osstack/config` | 0.11.0 | public | `core` |
-| `@osstack/conformance` | 0.11.0 | **private** | `agents`, `core`, `governance`, `hermes-adapter`, `loop` |
+| `@osstack/config` | 0.12.0 | public | `core` |
+| `@osstack/conformance` | 0.12.0 | **private** | `agents`, `core`, `governance`, `hermes-adapter`, `loop` |
 | `@osstack/contracts` | 0.3.0 | public | — |
-| `@osstack/core` | 0.11.0 | public | `protocol` |
+| `@osstack/core` | 0.12.0 | public | `protocol` |
 | `@osstack/github` | 0.10.0 | public | — |
-| `@osstack/governance` | 0.11.0 | public | — |
-| `@osstack/hermes-adapter` | 0.11.0 | public | `core` |
+| `@osstack/governance` | 0.12.0 | public | — |
+| `@osstack/hermes-adapter` | 0.12.0 | public | `core` |
 | `@osstack/knowledge` | 0.8.0 | public | — |
 | `@osstack/knowledge-cloud` | 0.8.0 | public | `knowledge` |
-| `@osstack/loop` | 0.11.0 | public | `agents`, `core`, `github`, `hermes-adapter`, `protocol` |
+| `@osstack/loop` | 0.12.0 | public | `agents`, `core`, `github`, `hermes-adapter`, `protocol` |
 | `@osstack/neat-eval` | 0.1.0 | **private** | — |
-| `@osstack/plugins` | 0.11.0 | public | `core` |
+| `@osstack/plugins` | 0.12.0 | public | `core` |
 | `@osstack/protocol` | 0.10.0 | public | — |
 | `@osstack/runtime` | 0.1.0 | public | — |
-| `@osstack/skill-registry` | 0.11.0 | public | `core` |
-| `@osstack/skills` | 0.11.0 | public | `core` |
-| `@osstack/supervisor` | 0.11.0 | **private** | `core`, `governance`, `loop` |
+| `@osstack/skill-registry` | 0.12.0 | public | `core` |
+| `@osstack/skills` | 0.12.0 | public | `core` |
+| `@osstack/supervisor` | 0.12.0 | **private** | `core`, `governance`, `loop` |
 
 ## Edge list
 
