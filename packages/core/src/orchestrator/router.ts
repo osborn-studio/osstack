@@ -43,19 +43,67 @@ export interface RoutingDecision {
 
 const TIER_ORDER: Record<CostTier, number> = { low: 0, mid: 1, high: 2 };
 
+/** Explicit agent_id override could not be honored. FAIL-CLOSED: the caller
+ *  asked for a specific agent, so silently substituting a different (often
+ *  cheaper) agent is never acceptable — a review "performed" by the wrong
+ *  engine is worse than an error (Phase 2 closure G1.1; incident 2026-07-18). */
+export class AgentOverrideError extends Error {
+  readonly code: "agent_not_found" | "agent_unavailable" | "agent_capability_mismatch";
+  readonly agent_id: string;
+  constructor(code: AgentOverrideError["code"], agentId: string, detail?: string) {
+    super(`agent override failed (${code}): ${agentId}${detail ? ` — ${detail}` : ""}`);
+    this.name = "AgentOverrideError";
+    this.code = code;
+    this.agent_id = agentId;
+  }
+}
+
+export interface RouteOptions {
+  /** Bound on a single adapter availability probe when honoring an explicit
+   *  agent_id override. A hanging probe becomes agent_unavailable, never a
+   *  silent fallback. */
+  probeTimeoutMs?: number;
+}
+
+const DEFAULT_PROBE_TIMEOUT_MS = 10_000;
+
 export async function routeCapability(
   request: RoutingRequest,
   adapters: ReadonlyArray<RoutableAdapter>,
+  options: RouteOptions = {},
 ): Promise<RoutingDecision | null> {
-  if (adapters.length === 0) return null;
+  if (adapters.length === 0) {
+    if (request.agent_id) throw new AgentOverrideError("agent_not_found", request.agent_id, "no adapters registered");
+    return null;
+  }
 
-  // 1. Exact agent + capability override.
+  // 1. Exact agent override — FAIL-CLOSED. When agent_id is set the ONLY
+  //    outcomes are (a) that agent, or (b) AgentOverrideError. Never fall
+  //    through to capability/kind routing.
   if (request.agent_id) {
     const adapter = adapters.find((a) => a.id === request.agent_id);
-    if (adapter && await isAvailable(adapter)) {
-      const cap = pickCapability(adapter, request);
-      if (cap) return { adapter, capability: cap, reason: "agent_id override" };
+    if (!adapter) throw new AgentOverrideError("agent_not_found", request.agent_id);
+    const timeoutMs = options.probeTimeoutMs ?? DEFAULT_PROBE_TIMEOUT_MS;
+    let avail: RouterAvailability;
+    try {
+      avail = await Promise.race([
+        adapter.isAvailable(),
+        new Promise<never>((_, reject) => {
+          const t = setTimeout(() => reject(new Error(`availability probe timed out after ${timeoutMs}ms`)), timeoutMs);
+          (t as { unref?: () => void }).unref?.();
+        }),
+      ]);
+    } catch (err) {
+      throw new AgentOverrideError("agent_unavailable", request.agent_id, err instanceof Error ? err.message : String(err));
     }
+    if (!avail.available) {
+      throw new AgentOverrideError("agent_unavailable", request.agent_id, avail.reason ?? "adapter reports unavailable");
+    }
+    const cap = pickCapability(adapter, request);
+    if (!cap) {
+      throw new AgentOverrideError("agent_capability_mismatch", request.agent_id, `no capability matching ${request.capability_id ?? request.kind ?? "(unspecified)"}`);
+    }
+    return { adapter, capability: cap, reason: "agent_id override" };
   }
 
   // 2. Exact capability_id match.

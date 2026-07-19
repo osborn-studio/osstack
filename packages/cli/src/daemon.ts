@@ -37,7 +37,7 @@ import {
   type CompletedTask,
 } from "@osstack/loop";
 import {
-  openDb, PIIRedactor, routeCapability,
+  openDb, PIIRedactor, routeCapability, AgentOverrideError,
   PolicyEngine, DEFAULT_RULES, sqliteHistory,
   HermesBridge, GBrainAdapter,
   initOtel, shutdownOtel, traceSpan, otelEnabled,
@@ -1984,10 +1984,21 @@ async function handleTaskSubmit(
   if (params.capability_id !== undefined) routeReq.capability_id = params.capability_id;
   if (typeof params.kind === "string") routeReq.kind = params.kind as RouteKind;
   if (params.agent_id !== undefined) routeReq.agent_id = params.agent_id;
-  const routerPick = await routeCapability(
-    routeReq,
-    Array.from(ctx.adapters.values()) as readonly RoutableAdapter[],
-  );
+  let routerPick: Awaited<ReturnType<typeof routeCapability>>;
+  try {
+    routerPick = await routeCapability(
+      routeReq,
+      Array.from(ctx.adapters.values()) as readonly RoutableAdapter[],
+    );
+  } catch (err) {
+    // Explicit agent_id override could not be honored — FAIL-CLOSED to the
+    // client; no run is created and no silent fallback occurs (G1.1).
+    if (err instanceof AgentOverrideError) {
+      sock.write(encodeFrame(singleErr(req.id, "agent_override_failed", err.message)));
+      return;
+    }
+    throw err;
+  }
   if (routerPick === null) {
     sock.write(encodeFrame(singleErr(req.id, "no_route", "no available adapter can serve this task")));
     return;
