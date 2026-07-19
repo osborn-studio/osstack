@@ -156,6 +156,28 @@ export function assertServeAllowed(opts: {
 }
 
 /**
+ * Guard for ANY command that opens a control-plane DB directly (loop run,
+ * daily, stats, kanban …) — the 2026-07-18/19 incidents were all direct-DB
+ * opens that bypassed the serve guard and auto-migrated the stable DB
+ * (Phase 2.1-B). Same rules as serving: an undeclared checkout may not touch
+ * the default home or a reserved home; a declared checkout only its allowlist.
+ */
+export function assertDbAccessAllowed(opts: {
+  checkoutRoot: string;
+  osstackHome: string;
+  defaultHome?: string;
+}): GuardVerdict {
+  try {
+    return assertServeAllowed(opts);
+  } catch (err) {
+    if (err instanceof ControlPlaneGuardError) {
+      throw new ControlPlaneGuardError(err.code, `refusing to open the control-plane DB — ${err.message}`);
+    }
+    throw err;
+  }
+}
+
+/**
  * Provision (or verify) the stable-serving role declaration next to the REAL
  * binary, then PROVE the guard accepts the requested home. Used by
  * `serve --install` and the self-upgrade path (round-4 F1/F2): an install that

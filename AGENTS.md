@@ -95,3 +95,12 @@ Stats: 45 obs (21,409t read) | 3,892,984t work | 99% savings
 
 Access 3893k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
+## Control-plane DB discipline (Phase 2.1-B, incidents 2026-07-18/19)
+
+NEVER invoke `packages/cli/dist/bin.js` (or any osstack CLI) against the
+default (`~/.osstack`) or a reserved OSSTACK_HOME from a development checkout —
+opening the DB auto-migrates it. The guard now refuses this at runtime for both
+`serve` AND direct-DB commands (loop run, daily, agent scorecard, stack, …).
+Always set an explicit per-workspace `OSSTACK_HOME` (see the ihiking wrapper
+`tools/osstack/osstack.sh` for the reference pattern), or use the installed
+`osstack` shim which targets the declared serving home.

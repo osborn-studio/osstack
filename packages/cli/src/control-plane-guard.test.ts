@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { assertServeAllowed, ControlPlaneGuardError, loadRoleFile, reserveHome } from "./control-plane-guard.js";
+import { assertServeAllowed, ControlPlaneGuardError, loadRoleFile, reserveHome, assertDbAccessAllowed } from "./control-plane-guard.js";
 
 let root: string;
 const DEFAULT = "/fake/home/.osstack";
@@ -106,5 +106,23 @@ describe("home reservation (release-review F1)", () => {
   it("unreserved custom homes keep working for undeclared dev checkouts", () => {
     const v = assertServeAllowed({ checkoutRoot: root, osstackHome: join(root, "plain-dev-home"), defaultHome: DEFAULT });
     expect(v.role).toBe("undeclared-dev");
+  });
+});
+
+describe("direct DB access guard (Phase 2.1-B)", () => {
+  it("refuses an undeclared checkout opening the DEFAULT home DB (incident vector)", () => {
+    expect(() => assertDbAccessAllowed({ checkoutRoot: root, osstackHome: DEFAULT, defaultHome: DEFAULT }))
+      .toThrowError(/refusing to open the control-plane DB/);
+  });
+  it("refuses an undeclared checkout opening a RESERVED home DB", () => {
+    const home = join(root, "reserved-home");
+    reserveHome(home);
+    expect(() => assertDbAccessAllowed({ checkoutRoot: root, osstackHome: home, defaultHome: DEFAULT }))
+      .toThrowError(/refusing to open the control-plane DB/);
+  });
+  it("allows dev custom homes and declared allowlisted homes", () => {
+    expect(assertDbAccessAllowed({ checkoutRoot: root, osstackHome: join(root, "dev-home"), defaultHome: DEFAULT }).role).toBe("undeclared-dev");
+    declare({ role: "stable-serving", allowed_osstack_homes: ["~/.osstack"] });
+    expect(assertDbAccessAllowed({ checkoutRoot: root, osstackHome: "~/.osstack" }).role).toBe("stable-serving");
   });
 });

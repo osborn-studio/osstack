@@ -7,7 +7,7 @@ import { realpathSync } from "node:fs";
 import { connect, type Socket } from "node:net";
 import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
-import { assertServeAllowed, ControlPlaneGuardError, defaultOsstackHome } from "./control-plane-guard.js";
+import { assertDbAccessAllowed, assertServeAllowed, ControlPlaneGuardError, defaultOsstackHome } from "./control-plane-guard.js";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
@@ -6328,6 +6328,14 @@ async function handleLessonsCommand(args: string[]): Promise<number> {
 
 async function ensureLocalStateDbPath(): Promise<string> {
   const home = osstackHome();
+  // Phase 2.1-B: direct-DB commands pass the SAME control-plane guard as
+  // serving — opening the DB auto-migrates it, so an undeclared checkout must
+  // never touch the default or a reserved home (the 2026-07-18/19 incidents).
+  {
+    let checkoutRoot = dirname(fileURLToPath(import.meta.url));
+    try { checkoutRoot = dirname(realpathSync(fileURLToPath(import.meta.url))); } catch { /* lexical */ }
+    assertDbAccessAllowed({ checkoutRoot, osstackHome: home });
+  }
   await mkdir(home, { recursive: true });
   return join(home, "state.db");
 }
@@ -7411,7 +7419,7 @@ async function readPersistedLoopRunEvidence(runId: string): Promise<{
   state_json: string;
   events: LoopEvent[];
 } | Error> {
-  const dbPath = join(osstackHome(), "state.db");
+  const dbPath = await ensureLocalStateDbPath();
   const db = openDb({ path: dbPath });
   try {
     const run = getRun(db, runId);
