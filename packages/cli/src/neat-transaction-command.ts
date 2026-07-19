@@ -86,7 +86,7 @@ interface ParsedArguments {
   flags: Set<string>;
 }
 
-interface StoredPlan {
+export interface StoredPlan {
   plan: TransactionPlan;
   artifact_path: string;
 }
@@ -206,7 +206,10 @@ function repoKey(repoRoot: string): string {
   return `repo_${digest(repoRoot)}`;
 }
 
-async function savePlan(home: string, plan: TransactionPlan): Promise<StoredPlan> {
+export async function savePlan(
+  home: string,
+  plan: TransactionPlan,
+): Promise<StoredPlan> {
   const parsed = KnowledgeHygieneTransactionPlanV1.parse(plan);
   const directory = join(planRoot(home), repoKey(parsed.repo.root_realpath), parsed.plan_id);
   const artifactPath = join(directory, "plan.json");
@@ -240,7 +243,10 @@ async function readPlanFile(path: string): Promise<TransactionPlan | undefined> 
   }
 }
 
-async function loadPlan(home: string, planId: string): Promise<StoredPlan> {
+export async function loadPlan(
+  home: string,
+  planId: string,
+): Promise<StoredPlan> {
   if (!PLAN_ID.test(planId)) throw new NeatTransactionUsageError("invalid --plan id");
   const root = planRoot(home);
   let entries: Dirent[];
@@ -295,7 +301,7 @@ async function snapshot(
   }
 }
 
-async function gitIdentity(repo: string): Promise<{
+export async function gitIdentity(repo: string): Promise<{
   base_revision: string;
   fingerprint: string;
 }> {
@@ -347,7 +353,9 @@ async function memoryIdentity(repo: string, memoryDir: string): Promise<{
   };
 }
 
-async function assertRootFingerprints(plan: TransactionPlan): Promise<void> {
+export async function assertRootFingerprints(
+  plan: TransactionPlan,
+): Promise<void> {
   const repo = await realpath(plan.repo.root_realpath);
   const currentRepo = await gitIdentity(repo);
   if (
@@ -377,7 +385,7 @@ function eventId(body: object): string {
   return `khte_${digest(JSON.stringify(body))}`;
 }
 
-async function recordEvent(
+export async function recordEvent(
   deps: NeatTransactionCommandDependencies,
   home: string,
   stored: StoredPlan,
@@ -447,7 +455,10 @@ function ensureKind(expected: "memory" | "narrative", plan: TransactionPlan): vo
   }
 }
 
-function requireTty(deps: NeatTransactionCommandDependencies, operation: string): void {
+export function requireTty(
+  deps: NeatTransactionCommandDependencies,
+  operation: string,
+): void {
   const isTty = deps.is_tty ?? (() => Boolean(process.stdin.isTTY && process.stdout.isTTY));
   if (!isTty()) {
     throw new NeatTransactionUsageError(`${operation} requires a local interactive TTY`);

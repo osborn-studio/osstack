@@ -16,7 +16,8 @@
       "type": "string",
       "enum": [
         "memory",
-        "narrative"
+        "narrative",
+        "dependency"
       ]
     },
     "revision": {
@@ -664,7 +665,8 @@
             "enum": [
               "documentation",
               "instruction_canonical",
-              "memory_original"
+              "memory_original",
+              "governance_config"
             ]
           }
         },

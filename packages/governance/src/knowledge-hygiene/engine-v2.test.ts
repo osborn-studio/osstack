@@ -69,7 +69,7 @@ describe("checkKnowledgeHygieneV2", () => {
         ["contradiction", "not_assessed"],
         ["drift", "not_assessed"],
         ["memory_overlap", "not_assessed"],
-        ["cross_repository", "not_assessed"],
+        ["cross_repository", "partial"],
       ]);
     expect(report.health_claim).toBe("findings_present");
   });
@@ -109,6 +109,56 @@ describe("checkKnowledgeHygieneV2", () => {
     });
     expect(report).toMatchObject({
       assessment_scope: { selected_rule_ids: ["budget.warn_exceeded"] },
+    });
+  });
+
+  it("emits review_due for expired declared dependencies without mutating config", async () => {
+    const repoRoot = await fixtureRepo();
+    await writeFile(join(repoRoot, ".osstack", "neat.yaml"), `
+version: 2
+instructions:
+  canonical: AGENTS.md
+dependencies:
+  - edge_id: khe_${"a".repeat(64)}
+    upstream_repo_id: upstream
+    direction: depends_on
+    kinds: [api]
+    owner: platform-owner
+    evidence_refs:
+      - kind: obligation
+        ref: kho_fixture
+        sha256: ${"b".repeat(64)}
+    confirmed_at: 2026-06-01T00:00:00.000Z
+    review_after: 2026-07-01T00:00:00.000Z
+`);
+    const report = await checkKnowledgeHygieneV2({
+      schema_version: "2",
+      repo_root: repoRoot,
+      mode: "all",
+      checks: ["dependency.review_due"],
+    }, {
+      v1: {
+        now: () => new Date("2026-07-18T00:00:00.000Z"),
+        repo_identity: () => "downstream",
+      },
+    });
+
+    expect(report.findings).toEqual([
+      expect.objectContaining({
+        rule_id: "dependency.review_due",
+        dimension: "cross_repository",
+        location: expect.objectContaining({
+          kind: "registry",
+          edge_id: `khe_${"a".repeat(64)}`,
+        }),
+      }),
+    ]);
+    expect(report.coverage[5]).toMatchObject({
+      dimension: "cross_repository",
+      state: "partial",
+      source_units_total: 1,
+      candidates_generated: 1,
+      candidates_assessed: 1,
     });
   });
 });

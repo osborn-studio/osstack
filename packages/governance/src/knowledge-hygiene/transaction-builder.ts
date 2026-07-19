@@ -28,7 +28,11 @@ export interface KnowledgeHygieneTargetSelectionV1 {
   root_id: "repo" | "memory";
   path: string;
   placement: "before" | "after" | "replace";
-  purpose: "documentation" | "instruction_canonical" | "memory_original";
+  purpose:
+    | "documentation"
+    | "instruction_canonical"
+    | "memory_original"
+    | "governance_config";
 }
 
 export type KnowledgeHygieneActionDraftV1 =

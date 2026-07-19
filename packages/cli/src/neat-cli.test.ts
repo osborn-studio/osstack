@@ -60,6 +60,7 @@ describe("top-level neat CLI", () => {
     expect(output).toContain("osstack neat semantic [semantic options]");
     expect(output).toContain("osstack neat memory <plan|approve|apply|recover>");
     expect(output).toContain("osstack neat narrative <plan|approve|apply|recover>");
+    expect(output).toContain("osstack neat dependencies <scan|inbox|confirm|revoke|recover>");
     expect(output).toContain("--fail-on <error|warning|none>");
     expect(output).toContain("--adapter <claude-code>");
     expect(output).toContain("osstack neat trend [trend options]");

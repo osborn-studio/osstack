@@ -600,6 +600,7 @@ const semanticRuleId: Readonly<Record<SemanticAuditDimensionV1, KnowledgeHygiene
   contradiction: "semantic.contradiction",
   drift: "semantic.drift",
   memory_overlap: "semantic.memory_overlap",
+  cross_repository: "semantic.cross_repository_impact",
 };
 
 function semanticFinding(

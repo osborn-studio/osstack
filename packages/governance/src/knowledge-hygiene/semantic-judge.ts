@@ -10,6 +10,7 @@ export const SemanticAuditDimensionV1 = z.enum([
   "contradiction",
   "drift",
   "memory_overlap",
+  "cross_repository",
 ]);
 export type SemanticAuditDimensionV1 = z.infer<
   typeof SemanticAuditDimensionV1

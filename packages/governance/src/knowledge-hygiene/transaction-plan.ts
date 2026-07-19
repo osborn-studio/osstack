@@ -217,7 +217,12 @@ export type KnowledgeHygieneWriteSetEntryV1 = z.infer<
 export const KnowledgeHygieneTransactionTargetV1 = z.object({
   root_id: z.enum(["repo", "memory"]),
   path: portablePath,
-  purpose: z.enum(["documentation", "instruction_canonical", "memory_original"]),
+  purpose: z.enum([
+    "documentation",
+    "instruction_canonical",
+    "memory_original",
+    "governance_config",
+  ]),
 }).strict().superRefine((target, context) => {
   if (
     (target.purpose === "memory_original") !== (target.root_id === "memory")
@@ -265,7 +270,7 @@ const closureCondition = z.enum([
 const planObject = z.object({
   schema_version: z.literal("1"),
   plan_id: planId,
-  kind: z.enum(["memory", "narrative"]),
+  kind: z.enum(["memory", "narrative", "dependency"]),
   revision: z.number().int().positive(),
   state: z.enum([
     "draft",

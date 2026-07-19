@@ -16,6 +16,10 @@ import {
 } from "./transaction-plan.js";
 import { KnowledgeHygieneConfigV2Schema } from "./config-v2.js";
 import {
+  DependencyCandidateV2,
+  DependencyObligationV2,
+} from "./dependency.js";
+import {
   CoverageDimensionV2,
   KnowledgeHygieneFindingV2,
   KnowledgeHygieneReportV2,
@@ -123,6 +127,20 @@ export const KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V2 = Object.freeze([
     comment:
       "Semantic scheduling, uniqueness, common-config, and dependency-time refinements are enforced by @osstack/governance Zod validation.",
     schema: KnowledgeHygieneConfigV2Schema,
+  },
+  {
+    key: "knowledge-hygiene-dependency-candidate-v2",
+    title: "Osstack Knowledge Hygiene Dependency Candidate v2",
+    comment:
+      "Candidate identity, sorted kinds, evidence identity, and non-self-edge invariants are enforced by @osstack/governance Zod validation.",
+    schema: DependencyCandidateV2,
+  },
+  {
+    key: "knowledge-hygiene-dependency-obligation-v2",
+    title: "Osstack Knowledge Hygiene Dependency Obligation v2",
+    comment:
+      "Obligation identity, expiry, advisory rationale, and promoted-edge invariants are enforced by @osstack/governance Zod validation.",
+    schema: DependencyObligationV2,
   },
 ] satisfies readonly KnowledgeHygieneSchemaEntryV1[]);
 

@@ -41,7 +41,7 @@ export const KnowledgeHygienePlanEventV1Core = z.object({
   schema_version: z.literal("1"),
   event_id: eventId,
   plan_id: planId,
-  kind: z.enum(["memory", "narrative"]),
+  kind: z.enum(["memory", "narrative", "dependency"]),
   repo_id: z.string().min(1),
   revision: z.number().int().positive(),
   from_state: KnowledgeHygienePlanStateV1Core.nullable(),
@@ -76,7 +76,7 @@ export type KnowledgeHygienePlanEventV1Core = z.infer<
 
 export interface KnowledgeHygienePlanProjectionV1 {
   plan_id: string;
-  kind: "memory" | "narrative";
+  kind: "memory" | "narrative" | "dependency";
   repo_id: string;
   revision: number;
   state: KnowledgeHygienePlanStateV1Core;

@@ -13,10 +13,12 @@
 // $OSSTACK_HOME/daily-briefs/ (delta substrate). No apply, no execution.
 
 import { existsSync } from "node:fs";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, readFile, readdir, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   KanbanRepository,
+  countOpenDependencyObligationsV2,
   getBoard,
   openDb,
   queryKnowledgeHygieneTrendV2,
@@ -120,6 +122,10 @@ export interface DailyBrief {
   github: RepoGithubStatus[];
   stack?: StackBoardSummary;
   probe?: ProbePortfolioSummaryV1;
+  dependency_obligations?: {
+    registry_scope: string;
+    open_count: number;
+  };
   delta: DailyDelta;
   /**
    * ≤3 owner decisions with dispatchable `run` payloads (R2.4). Optional
@@ -185,10 +191,13 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
   const { summary: stack, warning: stackWarning } = readStackBoardSummary();
   const { summary: probe, warning: probeWarning } =
     readProbePortfolioSummary(enabled, now.getTime());
+  const { summary: dependencyObligations, warning: dependencyWarning } =
+    await readDependencyObligationSummary(deps.registryPath);
 
   const warnings = github.filter((g) => g.warning !== undefined).map((g) => `${g.repo_id}: ${g.warning}`);
   if (stackWarning !== undefined) warnings.push(stackWarning);
   if (probeWarning !== undefined) warnings.push(probeWarning);
+  if (dependencyWarning !== undefined) warnings.push(dependencyWarning);
   if (hygieneHistory.warning !== undefined) {
     warnings.push(hygieneHistory.warning);
   }
@@ -206,6 +215,9 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
     github,
     ...(stack !== undefined ? { stack } : {}),
     ...(probe !== undefined ? { probe } : {}),
+    ...(dependencyObligations !== undefined
+      ? { dependency_obligations: dependencyObligations }
+      : {}),
     delta,
     // Computed from portfolio + github below, then stored so the dispatchable
     // `run` payloads ride in `result` (= the brief) and are persisted verbatim.
@@ -220,6 +232,33 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
   await writeFile(briefPath, `${JSON.stringify(brief, null, 2)}\n`, "utf8");
 
   return { brief, briefPath, result: buildDailyResult(brief, briefPath, enabled), entries: enabled };
+}
+
+async function readDependencyObligationSummary(
+  registryPath: string,
+): Promise<{
+  summary?: { registry_scope: string; open_count: number };
+  warning?: string;
+}> {
+  const dbPath = join(osstackHome(), "state.db");
+  if (!existsSync(dbPath)) return {};
+  try {
+    const canonical = await realpath(registryPath);
+    const registryScope = createHash("sha256").update(canonical).digest("hex");
+    const database = openDb({ path: dbPath, readwrite: false });
+    try {
+      const openCount = countOpenDependencyObligationsV2(database, registryScope);
+      return openCount === 0
+        ? {}
+        : { summary: { registry_scope: registryScope, open_count: openCount } };
+    } finally {
+      database.close();
+    }
+  } catch (error) {
+    return {
+      warning: `dependency obligations unavailable (${dbPath}): ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
 }
 
 export async function handleDailyCommand(args: string[], deps: DailyCliDeps = {}): Promise<number> {
@@ -692,6 +731,12 @@ export function renderDailyMarkdown(brief: DailyBrief): string {
         `  - completion ${repo.completion_percent}% (${repo.required_disposed}/${repo.required_total} required disposed); deferred due ${repo.deferred_due}; waivers active ${repo.waived_active}, expired ${repo.waived_expired}`,
       );
     }
+    lines.push("");
+  }
+
+  if (brief.dependency_obligations !== undefined) {
+    lines.push("## Dependency obligations");
+    lines.push(`- unread: ${brief.dependency_obligations.open_count}`);
     lines.push("");
   }
 

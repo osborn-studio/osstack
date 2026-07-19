@@ -48,6 +48,10 @@ import {
   handleNeatTransactionCommand,
   type NeatTransactionCommandDependencies,
 } from "./neat-transaction-command.js";
+import {
+  handleNeatDependencyCommand,
+  type NeatDependencyCommandDependencies,
+} from "./neat-dependency-command.js";
 
 export type NeatFailOn = "error" | "warning" | "none";
 type NeatFormat = "human" | "json";
@@ -63,6 +67,7 @@ export interface NeatCommandDependencies {
   fix?: NeatFixCommandOverrides;
   semantic?: NeatSemanticCommandOverrides;
   transaction?: Partial<NeatTransactionCommandDependencies>;
+  dependency?: Partial<NeatDependencyCommandDependencies>;
   authorize_write?: (workspacePath: string) => Promise<{
     allow: boolean;
     reason?: string;
@@ -98,6 +103,7 @@ Usage:
   osstack neat semantic [semantic options]
   osstack neat memory <plan|approve|apply|recover> [options]
   osstack neat narrative <plan|approve|apply|recover> [options]
+  osstack neat dependencies <scan|inbox|confirm|revoke|recover> [options]
   osstack neat trend [trend options]
   osstack neat propose [proposal options]
 
@@ -594,6 +600,15 @@ export async function handleNeatCommand(
   args: readonly string[],
   deps: NeatCommandDependencies,
 ): Promise<number> {
+  if (args[0] === "dependencies") {
+    return handleNeatDependencyCommand(args.slice(1), {
+      cwd: deps.cwd,
+      stdout: deps.stdout,
+      stderr: deps.stderr,
+      ...(deps.now === undefined ? {} : { now: deps.now }),
+      ...deps.dependency,
+    });
+  }
   if (args[0] === "memory" || args[0] === "narrative") {
     return handleNeatTransactionCommand(args[0], args.slice(1), {
       cwd: deps.cwd,

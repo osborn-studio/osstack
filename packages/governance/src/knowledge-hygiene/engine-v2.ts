@@ -323,6 +323,56 @@ function narrativeFinding(
   });
 }
 
+function dependencyReviewFindings(
+  loaded: LoadedKnowledgeHygieneConfigV2,
+  repoId: string,
+  generatedAt: string,
+): KnowledgeHygieneFinding[] {
+  return loaded.config.dependencies.flatMap((dependency) => {
+    if (Date.parse(dependency.review_after) > Date.parse(generatedAt)) return [];
+    const registryScope = dependency.evidence_refs.find((reference) =>
+      reference.kind === "obligation" && reference.sha256 !== undefined
+    )?.sha256 ?? sha(loaded.path);
+    return [KnowledgeHygieneFindingV2.parse({
+      fingerprint: findingFingerprint({
+        ruleId: "dependency.review_due",
+        dimension: "cross_repository",
+        repoId,
+        subject: dependency.edge_id,
+        citationHashes: dependency.evidence_refs.flatMap((reference) =>
+          reference.sha256 === undefined ? [] : [reference.sha256]
+        ),
+      }),
+      rule_id: "dependency.review_due",
+      rule_version: "1",
+      surface: "dependency",
+      severity: "warning",
+      confidence: "high",
+      location: {
+        kind: "registry",
+        registry_scope: registryScope,
+        repo_id: repoId,
+        edge_id: dependency.edge_id,
+      },
+      observed: {
+        upstream_repo_id: dependency.upstream_repo_id,
+        confirmed_at: dependency.confirmed_at,
+        review_after: dependency.review_after,
+        generated_at: generatedAt,
+      },
+      expected: { review_due: false },
+      rationale:
+        "A declared cross-repository dependency reached its explicit review date.",
+      evidence_refs: dependency.evidence_refs,
+      remediation: { mode: "human_decision" },
+      origin: "mechanical",
+      dimension: "cross_repository",
+      closure_policy: "mechanical_sufficient",
+      citations: [],
+    })];
+  });
+}
+
 function selected(
   input: KnowledgeHygieneCheckInput,
   ruleId: KnowledgeHygieneRuleId,
@@ -432,7 +482,15 @@ export async function checkKnowledgeHygieneV2(
         narrativeFinding(signal, instruction.content, canonicalPath, repoId)
       )
     : [];
-  const combined = [...projectedMechanical, ...narrative];
+  const dependencyReviewRequested = selected(input, "dependency.review_due");
+  const dependencyReviews = dependencyReviewRequested
+    ? dependencyReviewFindings(
+        loadedConfig,
+        repoId,
+        mechanicalReport.generated_at,
+      )
+    : [];
+  const combined = [...projectedMechanical, ...narrative, ...dependencyReviews];
   const active = sortFindings(combined.filter((finding) =>
     !suppressed(finding, loadedConfig)
   ));
@@ -486,7 +544,17 @@ export async function checkKnowledgeHygieneV2(
     notRequestedCoverage("contradiction"),
     notRequestedCoverage("drift"),
     notRequestedCoverage("memory_overlap"),
-    notRequestedCoverage("cross_repository"),
+    !dependencyReviewRequested
+      ? notRequestedCoverage("cross_repository")
+      : {
+          dimension: "cross_repository" as const,
+          state: "partial" as const,
+          source_units_total: loadedConfig.config.dependencies.length,
+          candidates_generated: dependencyReviews.length,
+          candidates_assessed: dependencyReviews.length,
+          candidates_skipped: 0,
+          reason_codes: ["bounded_candidate_generator" as const],
+        },
   ];
 
   return KnowledgeHygieneReportV2.parse({

@@ -33,12 +33,14 @@ describe("knowledge hygiene V2 public schemas", () => {
     expect(Object.keys(generated).sort()).toEqual([
       "knowledge-hygiene-config-v2.schema.json",
       "knowledge-hygiene-coverage-v2.schema.json",
+      "knowledge-hygiene-dependency-candidate-v2.schema.json",
+      "knowledge-hygiene-dependency-obligation-v2.schema.json",
       "knowledge-hygiene-finding-v2.schema.json",
       "knowledge-hygiene-report-v2.schema.json",
       "knowledge-hygiene-resolution-event-v2.schema.json",
       "knowledge-hygiene-rule-id-v2.schema.json",
     ]);
-    expect(KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V2).toHaveLength(6);
+    expect(KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V2).toHaveLength(8);
   });
 
   for (const [filename, content] of Object.entries(generated)) {

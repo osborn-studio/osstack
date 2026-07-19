@@ -197,6 +197,7 @@ Loop 工程：
   neat semantic       显式运行证据受限的语义知识卫生审计（V2、默认关闭）
   neat memory         计划、批准、施行或恢复可审计的记忆毕业事务
   neat narrative      计划、批准、施行或恢复可审计的叙事手术
+  neat dependencies   扫描、确认或撤销跨仓依赖义务
   contracts check     检查前端调用与后端 API 契约是否对齐
 
 私有 Hub（可选；Hub 为发布权威，经 OSSTACK_HUB_ROOT 解析）：
@@ -456,6 +457,8 @@ Governance:
                                   Run an approved, recoverable memory transaction
   neat narrative <plan|approve|apply|recover> [options]
                                   Run an approved, recoverable narrative surgery
+  neat dependencies <scan|inbox|confirm|revoke|recover> [options]
+                                  Manage cross-repository dependency obligations
   governance scan <path...> [--json]
                                  Run deterministic governance checks over files
   compliance list [--json]

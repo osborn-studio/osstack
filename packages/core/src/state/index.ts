@@ -13,5 +13,6 @@ export * from "./knowledge-hygiene-store-v2.js";
 export * from "./knowledge-hygiene-recurrence.js";
 export * from "./knowledge-hygiene-history-v2.js";
 export * from "./knowledge-hygiene-plan-store.js";
+export * from "./dependency-obligation-store.js";
 export * from "./probe-store.js";
 export * from "./probe-metrics.js";

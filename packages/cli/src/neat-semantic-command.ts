@@ -3,7 +3,6 @@ import {
   auditKnowledgeHygieneSemantics,
   KnowledgeHygieneConfigError,
   loadKnowledgeHygieneConfigV2,
-  SemanticAuditDimensionV1,
   SemanticAuditInputV1,
   type KnowledgeHygieneEnginePortsV1,
   type KnowledgeHygieneReportV2,
@@ -162,7 +161,7 @@ function parseDimensions(value: string): ParsedNeatSemanticCommand["dimensions"]
     if (mapped === undefined) {
       throw new NeatSemanticUsageError(`unknown semantic dimension: ${value}`);
     }
-    return SemanticAuditDimensionV1.parse(mapped);
+    return mapped;
   });
 }
 
