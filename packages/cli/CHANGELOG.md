@@ -1,5 +1,29 @@
 # @osstack/cli
 
+## 0.12.0
+
+### Minor Changes
+
+- 4a3dffd: Make knowledge-hygiene ReportV2 the default `neat check` contract, add honest
+  coverage and assessment scope, evidence-bound semantic auditing, recoverable
+  memory and narrative transactions, append-only V2 lifecycle history, and
+  cross-repository dependency obligations with an isolated no-tools judge.
+  Explicit `--schema-version 1` remains available for one minor release and now
+  emits a deprecation warning.
+
+### Patch Changes
+
+- 8314e99: Make V1 human knowledge-hygiene reports state that semantic dimensions were not assessed instead of presenting zero mechanical findings as global health.
+- Updated dependencies [4a3dffd]
+  - @osstack/agents@0.12.0
+  - @osstack/core@0.12.0
+  - @osstack/governance@0.12.0
+  - @osstack/loop@0.12.0
+  - @osstack/config@0.12.0
+  - @osstack/hermes-adapter@0.12.0
+  - @osstack/skill-registry@0.12.0
+  - @osstack/skills@0.12.0
+
 ## 0.11.1
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @osstack/config
 
+## 0.12.0
+
+### Patch Changes
+
+- Updated dependencies [4a3dffd]
+  - @osstack/core@0.12.0
+
 ## 0.11.0
 
 ### Patch Changes
