@@ -2,6 +2,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  realpath,
   rm,
   symlink,
   writeFile,
@@ -84,7 +85,7 @@ describe("probe manifest-last filesystem writer", () => {
     });
 
     expect(result.out_dir).toBe(
-      join(repo, "docs/probe/sessions/probe_writer01"),
+      await realpath(join(repo, "docs/probe/sessions/probe_writer01")),
     );
     await expect(
       readFile(join(result.out_dir, "render-manifest.json"), "utf8"),
