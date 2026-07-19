@@ -7,6 +7,7 @@ import { realpathSync } from "node:fs";
 import { connect, type Socket } from "node:net";
 import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
+import { assertServeAllowed, ControlPlaneGuardError, defaultOsstackHome } from "./control-plane-guard.js";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
@@ -516,6 +517,22 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   if (cmd === "serve") {
     if (args.includes("--install") || args.includes("--uninstall") || args.includes("--status")) {
       return await handleServeManagementCommand(args.slice(1));
+    }
+    // Control-plane boot guard (G1.2): an undeclared checkout must never serve
+    // the default (stable) home; a declared checkout only its allowlisted homes.
+    {
+      const checkoutRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+      const guardHome = process.env.OSSTACK_HOME ?? defaultOsstackHome();
+      try {
+        const verdict = assertServeAllowed({ checkoutRoot, osstackHome: guardHome });
+        console.log(`control-plane guard: role=${verdict.role} home=${verdict.homeCategory}${verdict.schema ? ` schema=[${verdict.schema.min},${verdict.schema.max}]` : ""}`);
+      } catch (err) {
+        if (err instanceof ControlPlaneGuardError) {
+          console.error(`osstack: refusing to serve — ${err.message}`);
+          return 78; // EX_CONFIG
+        }
+        throw err;
+      }
     }
     const handle = await startDaemon();
     console.log(`osstack daemon listening on ${handle.socketPath}`);
