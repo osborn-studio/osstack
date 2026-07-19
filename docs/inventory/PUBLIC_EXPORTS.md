@@ -20,6 +20,7 @@ export { DeepSeekVerifyAdapter } from "./adapters/ds-verify.js";
 export { GoogleStitchAdapter } from "./adapters/google-stitch.js";
 export {
 export {
+export {
 export function defaultAdapters(): AgentAdapter[] {
 export const AGENTS_VERSION = "0.0.0";
 ```
@@ -158,6 +159,15 @@ export * from "./planner.js";
 export * from "./executor.js";
 export * from "./verifier.js";
 export * from "./loop-engine.js";
+```
+
+## `@osstack/neat-eval` (private)
+
+```ts
+export * from "./types.js";
+export * from "./corpus.js";
+export * from "./scorer.js";
+export * from "./runner.js";
 ```
 
 ## `@osstack/plugins`

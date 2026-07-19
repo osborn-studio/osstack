@@ -6,7 +6,7 @@ Workspace packages, publish status, and internal (workspace) dependencies.
 
 | Package | Version | Visibility | Internal deps |
 |---|---|---|---|
-| `@osstack/agents` | 0.10.0 | public | `core`, `hermes-adapter` |
+| `@osstack/agents` | 0.10.0 | public | `core`, `governance`, `hermes-adapter` |
 | `@osstack/cli` | 0.10.0 | public | `agents`, `compliance`, `config`, `contracts`, `core`, `github`, `governance`, `hermes-adapter`, `knowledge`, `loop`, `protocol`, `skill-registry`, `skills`, `supervisor` |
 | `@osstack/compliance` | 0.2.0 | public | — |
 | `@osstack/config` | 0.10.0 | public | `core` |
@@ -19,6 +19,7 @@ Workspace packages, publish status, and internal (workspace) dependencies.
 | `@osstack/knowledge` | 0.8.0 | public | — |
 | `@osstack/knowledge-cloud` | 0.8.0 | public | `knowledge` |
 | `@osstack/loop` | 0.10.0 | public | `agents`, `core`, `github`, `hermes-adapter`, `protocol` |
+| `@osstack/neat-eval` | 0.1.0 | **private** | — |
 | `@osstack/plugins` | 0.10.0 | public | `core` |
 | `@osstack/protocol` | 0.10.0 | public | — |
 | `@osstack/runtime` | 0.1.0 | public | — |
@@ -29,7 +30,7 @@ Workspace packages, publish status, and internal (workspace) dependencies.
 ## Edge list
 
 ```text
-agents -> core, hermes-adapter
+agents -> core, governance, hermes-adapter
 cli -> agents, compliance, config, contracts, core, github, governance, hermes-adapter, knowledge, loop, protocol, skill-registry, skills, supervisor
 config -> core
 conformance -> agents, core, governance, hermes-adapter, loop
@@ -43,4 +44,4 @@ skills -> core
 supervisor -> core, governance, loop
 ```
 
-Leaves (no internal deps): `compliance`, `contracts`, `github`, `governance`, `knowledge`, `protocol`, `runtime`
+Leaves (no internal deps): `compliance`, `contracts`, `github`, `governance`, `knowledge`, `neat-eval`, `protocol`, `runtime`
