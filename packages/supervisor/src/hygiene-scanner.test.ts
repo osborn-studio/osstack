@@ -110,6 +110,8 @@ describe("portfolio knowledge hygiene scanner", () => {
       status: "ok",
       hygiene: {
         complete: true,
+        health_claim: "findings_present",
+        coverage: [{ dimension: "mechanical", state: "complete" }],
         error_count: 0,
         warning_count: 1,
         recurring_count: 1,

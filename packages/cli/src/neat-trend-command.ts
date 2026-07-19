@@ -1,7 +1,7 @@
 import {
-  type KnowledgeHygieneTrendReportV1,
+  type KnowledgeHygieneTrendReportV2Core,
   openDb,
-  queryKnowledgeHygieneTrend,
+  queryKnowledgeHygieneTrendV2,
 } from "@osstack/core";
 import {
   AgentCommandResult,
@@ -104,7 +104,7 @@ Trend options:
 }
 
 export function renderKnowledgeHygieneTrend(
-  trend: KnowledgeHygieneTrendReportV1,
+  trend: KnowledgeHygieneTrendReportV2Core,
 ): string {
   return [
     `Knowledge hygiene trend: ${trend.repo_id}`,
@@ -115,6 +115,8 @@ export function renderKnowledgeHygieneTrend(
     `Closure: ${trend.closure.closed}/${trend.closure.tracked} (${(trend.closure.rate * 100).toFixed(1)}%)`,
     `Latest delta: +${trend.delta.new} new, ${trend.delta.resolved} resolved`,
     `Suppressed (latest, separate): ${trend.suppressed.latest}`,
+    `History sources: ${trend.sources.v1_reports} V1, ${trend.sources.v2_reports} V2`,
+    `Latest assessment: ${trend.latest_assessment?.health_claim ?? "none"} (${trend.latest_assessment?.schema_version ?? "no report"})`,
     `As of: ${new Date(trend.as_of).toISOString()}`,
   ].join("\n");
 }
@@ -171,7 +173,7 @@ export function handleNeatTrendCommand(
   try {
     const db = openDb({ path: parsed.db_path });
     try {
-      const trend = queryKnowledgeHygieneTrend(db, parsed.repo_id, {
+      const trend = queryKnowledgeHygieneTrendV2(db, parsed.repo_id, {
         as_of: deps.now().getTime(),
       });
       if (parsed.json) {

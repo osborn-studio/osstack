@@ -1,19 +1,27 @@
 import {
   assertKnowledgeHygieneReviewArtifactMatchesReport,
+  knowledgeHygieneReportSha256V2,
   KnowledgeHygieneReportV1,
+  KnowledgeHygieneReportV2,
   KnowledgeHygieneResolutionV1,
+  KnowledgeHygieneResolutionEventV2,
   KnowledgeHygieneReviewArtifactV1,
+  KnowledgeHygieneReviewArtifactV2,
   KnowledgeHygieneReviewError,
   type KnowledgeHygieneEvidenceRefV1,
+  type KnowledgeHygieneReportV2 as KnowledgeHygieneReportV2Value,
 } from "@osstack/governance";
 import { AgentCommandResult } from "@osstack/protocol";
 import { constants } from "node:fs";
 import { open, rename, unlink, type FileHandle } from "node:fs/promises";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { basename, dirname, join, resolve } from "node:path";
 
 const outcomes = [
   "fixed",
+  "mechanically_applied",
+  "mechanically_resolved",
+  "semantically_resolved",
   "reviewed_no_change",
   "accepted_risk",
   "suppressed",
@@ -32,6 +40,8 @@ interface ParsedReviewCommand {
   actor_kind: ActorKind;
   output_path?: string;
   output_label?: string;
+  suppression_scope?: string;
+  suppression_expires_at?: string;
 }
 
 export interface NeatReviewCommandDependencies {
@@ -57,11 +67,13 @@ Usage:
 Options:
   --report <path>                JSON report or successful CLI JSON envelope
   --finding <fingerprint>        Finding fingerprint from the report
-  --outcome <outcome>            fixed|reviewed_no_change|accepted_risk|suppressed|obsolete
+  --outcome <outcome>            V1 outcome or explicit V2 lifecycle target
   --reason <text>                Required resolution rationale
   --actor <id>                   Human or agent identifier
   --actor-kind <human|agent>     Actor kind (default: human)
   --output <path>                Review artifact to create or update atomically
+  --suppression-scope <scope>    Required for a V2 suppressed event
+  --suppression-expires-at <ts>  Optional RFC 3339 V2 suppression expiry
   --help                         Show this help`;
 }
 
@@ -98,6 +110,8 @@ function parseReviewCommand(
       "--actor",
       "--actor-kind",
       "--output",
+      "--suppression-scope",
+      "--suppression-expires-at",
     ].includes(flag)) {
       return inputError(`unknown review option: ${flag}`);
     }
@@ -145,6 +159,14 @@ function parseReviewCommand(
     actor_kind: rawActorKind,
     output_path: outputPath,
     output_label: outputLabel,
+    ...(values.get("--suppression-scope") === undefined
+      ? {}
+      : { suppression_scope: values.get("--suppression-scope") as string }),
+    ...(values.get("--suppression-expires-at") === undefined
+      ? {}
+      : {
+          suppression_expires_at: values.get("--suppression-expires-at") as string,
+        }),
   };
 }
 
@@ -202,6 +224,35 @@ function parseReport(value: unknown): KnowledgeHygieneReportV1 {
   return parsed.data;
 }
 
+type ReviewableReport =
+  | ReturnType<typeof KnowledgeHygieneReportV1.parse>
+  | ReturnType<typeof KnowledgeHygieneReportV2.parse>;
+
+function parseReviewableReport(value: unknown): ReviewableReport {
+  const directV1 = KnowledgeHygieneReportV1.safeParse(value);
+  if (directV1.success) return directV1.data;
+  const directV2 = KnowledgeHygieneReportV2.safeParse(value);
+  if (directV2.success) return directV2.data;
+  const envelope = AgentCommandResult.safeParse(value);
+  const command = envelope.success ? envelope.data.result?.command : undefined;
+  const nestedReport = envelope.success ? envelope.data.result?.report : undefined;
+  if (
+    !envelope.success
+    || envelope.data.status !== "ok"
+    || (command !== "knowledge_hygiene.check"
+      && command !== "knowledge_hygiene.semantic")
+  ) {
+    return inputError(
+      "--report must contain a V1/V2 knowledge hygiene report or successful check/semantic envelope",
+    );
+  }
+  const nestedV1 = KnowledgeHygieneReportV1.safeParse(nestedReport);
+  if (nestedV1.success) return nestedV1.data;
+  const nestedV2 = KnowledgeHygieneReportV2.safeParse(nestedReport);
+  if (nestedV2.success) return nestedV2.data;
+  return inputError("knowledge hygiene envelope contains an invalid V1/V2 report");
+}
+
 export async function loadNeatReport(
   path: string,
   label = "--report",
@@ -209,9 +260,19 @@ export async function loadNeatReport(
   return parseReport(parseJson(await readRegularFile(path, label), label));
 }
 
+async function loadNeatReportForReview(path: string): Promise<ReviewableReport> {
+  return parseReviewableReport(
+    parseJson(await readRegularFile(path, "--report"), "--report"),
+  );
+}
+
 async function readExistingArtifact(
   path: string,
-): Promise<KnowledgeHygieneReviewArtifactV1 | undefined> {
+): Promise<
+  | ReturnType<typeof KnowledgeHygieneReviewArtifactV1.parse>
+  | ReturnType<typeof KnowledgeHygieneReviewArtifactV2.parse>
+  | undefined
+> {
   let handle: FileHandle;
   try {
     handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
@@ -226,9 +287,11 @@ async function readExistingArtifact(
     const stat = await handle.stat();
     if (!stat.isFile()) return inputError(`--output must be a regular file: ${path}`);
     const value = parseJson(await handle.readFile("utf8"), "existing review artifact");
-    const parsed = KnowledgeHygieneReviewArtifactV1.safeParse(value);
-    if (!parsed.success) return inputError("existing --output is not a valid review artifact");
-    return parsed.data;
+    const v1 = KnowledgeHygieneReviewArtifactV1.safeParse(value);
+    if (v1.success) return v1.data;
+    const v2 = KnowledgeHygieneReviewArtifactV2.safeParse(value);
+    if (v2.success) return v2.data;
+    return inputError("existing --output is not a valid V1/V2 review artifact");
   } finally {
     await handle.close();
   }
@@ -236,14 +299,19 @@ async function readExistingArtifact(
 
 export async function loadNeatReviewArtifact(
   path: string,
-): Promise<KnowledgeHygieneReviewArtifactV1> {
+): Promise<
+  | ReturnType<typeof KnowledgeHygieneReviewArtifactV1.parse>
+  | ReturnType<typeof KnowledgeHygieneReviewArtifactV2.parse>
+> {
   const value = parseJson(
     await readRegularFile(path, "--review-file"),
     "--review-file",
   );
-  const parsed = KnowledgeHygieneReviewArtifactV1.safeParse(value);
-  if (!parsed.success) return inputError("--review-file is not a valid review artifact");
-  return parsed.data;
+  const v1 = KnowledgeHygieneReviewArtifactV1.safeParse(value);
+  if (v1.success) return v1.data;
+  const v2 = KnowledgeHygieneReviewArtifactV2.safeParse(value);
+  if (v2.success) return v2.data;
+  return inputError("--review-file is not a valid V1/V2 review artifact");
 }
 
 async function writeAtomic(path: string, content: string): Promise<void> {
@@ -302,6 +370,74 @@ function createResolution(
   return resolution.data;
 }
 
+function createResolutionEventV2(
+  parsed: ParsedReviewCommand,
+  report: KnowledgeHygieneReportV2Value,
+  existing: ReturnType<typeof KnowledgeHygieneReviewArtifactV2.parse> | undefined,
+  now: Date,
+) {
+  const finding = [
+    ...report.findings,
+    ...(report.resolved_findings ?? []).map((item) => item.finding),
+  ].find((candidate) => candidate.fingerprint === parsed.finding);
+  if (finding === undefined) return inputError(`report has no finding ${parsed.finding}`);
+  if (parsed.outcome === "fixed") {
+    return inputError(
+      "V2 review does not accept ambiguous 'fixed'; use an explicit lifecycle outcome",
+    );
+  }
+  const prior = existing?.resolution_events.filter(
+    (event) => event.fingerprint === finding.fingerprint,
+  ).at(-1);
+  const fromState = prior?.to_state ?? "open";
+  const reportSha = knowledgeHygieneReportSha256V2(report);
+  if (parsed.outcome === "suppressed" && parsed.suppression_scope === undefined) {
+    return inputError("V2 suppressed events require --suppression-scope");
+  }
+  if (
+    parsed.outcome !== "suppressed"
+    && (parsed.suppression_scope !== undefined
+      || parsed.suppression_expires_at !== undefined)
+  ) {
+    return inputError("suppression flags require --outcome suppressed");
+  }
+  const body = {
+    schema_version: "2" as const,
+    repo_id: report.repo.repo_id ?? report.repo.root,
+    fingerprint: finding.fingerprint,
+    from_state: fromState,
+    to_state: parsed.outcome,
+    actor: { kind: parsed.actor_kind, id: parsed.actor as string },
+    reason: parsed.reason as string,
+    evidence_refs: [{
+      kind: "report" as const,
+      ref: `inline-report:${reportSha}`,
+      sha256: reportSha,
+    }],
+    occurred_at: now.toISOString(),
+    ...(parsed.outcome !== "suppressed"
+      ? {}
+      : {
+          suppression: {
+            scope: parsed.suppression_scope as string,
+            ...(parsed.suppression_expires_at === undefined
+              ? {}
+              : { expires_at: parsed.suppression_expires_at }),
+          },
+        }),
+  };
+  const event = KnowledgeHygieneResolutionEventV2.safeParse({
+    ...body,
+    event_id: `khev_${createHash("sha256").update(JSON.stringify(body)).digest("hex")}`,
+  });
+  if (!event.success) {
+    return inputError(
+      `invalid V2 lifecycle event: ${event.error.issues.map((issue) => issue.message).join("; ")}`,
+    );
+  }
+  return event.data;
+}
+
 export async function handleNeatReviewCommand(
   args: readonly string[],
   deps: NeatReviewCommandDependencies,
@@ -312,9 +448,44 @@ export async function handleNeatReviewCommand(
     return 0;
   }
 
-  const report = await loadNeatReport(parsed.report_path as string);
+  const report = await loadNeatReportForReview(parsed.report_path as string);
   const outputPath = parsed.output_path as string;
   const existing = await readExistingArtifact(outputPath);
+  if (report.schema_version === "2") {
+    if (existing?.schema_version === "1") {
+      return inputError("a V1 review artifact cannot be updated from a V2 report");
+    }
+    const reportSha = knowledgeHygieneReportSha256V2(report);
+    if (
+      existing !== undefined
+      && (existing.report_sha256 !== reportSha
+        || existing.repo_id !== (report.repo.repo_id ?? report.repo.root))
+    ) {
+      return inputError("existing V2 review artifact does not match the report");
+    }
+    const event = createResolutionEventV2(parsed, report, existing, deps.now());
+    const artifact = KnowledgeHygieneReviewArtifactV2.parse({
+      schema_version: "2",
+      report_sha256: reportSha,
+      repo_id: report.repo.repo_id ?? report.repo.root,
+      resolution_events: [
+        ...(existing?.resolution_events ?? []),
+        event,
+      ],
+    });
+    await writeAtomic(outputPath, `${JSON.stringify(artifact, null, 2)}\n`);
+    deps.stdout(`created ${parsed.output_label}`);
+    return 0;
+  }
+  if (existing?.schema_version === "2") {
+    return inputError("a V2 review artifact cannot be updated from a V1 report");
+  }
+  if (
+    parsed.suppression_scope !== undefined
+    || parsed.suppression_expires_at !== undefined
+  ) {
+    return inputError("suppression metadata flags are available only for V2 reports");
+  }
   try {
     if (existing) assertKnowledgeHygieneReviewArtifactMatchesReport(report, existing);
   } catch (error) {

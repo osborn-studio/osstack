@@ -112,6 +112,8 @@ describe("supervisor domain schemas", () => {
       closed_loop_level: 4,
       hygiene: {
         complete: false,
+        health_claim: "assessment_incomplete",
+        coverage: [{ dimension: "mechanical", state: "failed" }],
         error_count: 2,
         warning_count: 3,
         recurring_count: 1,

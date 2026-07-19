@@ -89,10 +89,11 @@ describe("neat trend", () => {
       result: {
         command: "knowledge_hygiene.trend",
         trend: {
-          schema_version: "1",
+          schema_version: "2",
           repo_id: "repo-1",
           as_of: 13 * 86_400_000,
           report_count: 2,
+          sources: { v1_reports: 2, v2_reports: 0 },
           open: {
             total: 1,
             error: 0,
@@ -104,6 +105,15 @@ describe("neat trend", () => {
           closure: { tracked: 1, closed: 0, rate: 0 },
           delta: { new: 0, resolved: 0 },
           suppressed: { latest: 3 },
+          latest_assessment: {
+            schema_version: "1",
+            health_claim: "assessment_incomplete",
+            coverage: [{
+              dimension: "semantic",
+              state: "not_assessed",
+              reason_codes: ["legacy_v1_report"],
+            }],
+          },
         },
       },
     });
@@ -130,6 +140,8 @@ describe("neat trend", () => {
       "Closure: 0/1 (0.0%)",
       "Latest delta: +0 new, 0 resolved",
       "Suppressed (latest, separate): 3",
+      "History sources: 2 V1, 0 V2",
+      "Latest assessment: assessment_incomplete (1)",
       "As of: 1970-01-14T00:00:00.000Z",
     ].join("\n")]);
   });

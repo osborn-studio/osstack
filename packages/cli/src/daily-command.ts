@@ -19,7 +19,7 @@ import {
   KanbanRepository,
   getBoard,
   openDb,
-  queryKnowledgeHygieneTrend,
+  queryKnowledgeHygieneTrendV2,
   queryProbePortfolioSummary,
   type ProbePortfolioSummaryV1,
 } from "@osstack/core";
@@ -325,7 +325,7 @@ function readPortfolioKnowledgeHygieneHistory(
     const db = openDb({ path: dbPath });
     try {
       for (const entry of entries) {
-        const trend = queryKnowledgeHygieneTrend(db, entry.repo_id, {
+        const trend = queryKnowledgeHygieneTrendV2(db, entry.repo_id, {
           as_of: asOf,
         });
         byRepo.set(entry.repo_id, {
@@ -543,6 +543,9 @@ function knowledgeHygieneIssues(
   if (hygiene === undefined) return scanFailed ? ["scan failed"] : [];
   return [
     ...(!hygiene.complete ? ["scan incomplete"] : []),
+    ...(hygiene.health_claim === "assessment_incomplete"
+      ? ["assessment incomplete"]
+      : []),
     ...(hygiene.error_count > 0 ? [`${hygiene.error_count} open error(s)`] : []),
     ...(hygiene.warning_count > 0 && hygiene.recurring_count > 0
       ? [`${hygiene.recurring_count} recurring warning(s)`]

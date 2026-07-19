@@ -1,4 +1,7 @@
-import type { KnowledgeHygieneRecurrenceCandidateV1 } from "@osstack/core";
+import type {
+  KnowledgeHygieneRecurrenceCandidateV1,
+  KnowledgeHygieneRecurrenceCandidateV2,
+} from "@osstack/core";
 import { describe, expect, it } from "vitest";
 import { decideProposalGate } from "./gate.js";
 import { proposeKnowledgeHygieneImprovements } from "./hygiene-proposal.js";
@@ -24,6 +27,18 @@ function candidate(
 }
 
 describe("knowledge hygiene improvement proposal adapter", () => {
+  it("accepts V2 recurrence evidence without projecting away its run ids", () => {
+    const v2: KnowledgeHygieneRecurrenceCandidateV2 = {
+      ...candidate(),
+      schema_version: "2",
+      evidence_run_ids: [`khr2_${"e".repeat(64)}`],
+    };
+    expect(proposeKnowledgeHygieneImprovements({
+      candidates: [v2],
+      created_at: "2026-07-18T23:00:00.000Z",
+    })[0]?.source_asset_ids).toEqual([`khr2_${"e".repeat(64)}`]);
+  });
+
   it("creates an evidence-backed draft that cannot auto-apply", async () => {
     const [proposal] = proposeKnowledgeHygieneImprovements({
       candidates: [candidate()],

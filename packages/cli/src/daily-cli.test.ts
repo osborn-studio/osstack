@@ -599,6 +599,8 @@ describe("deriveOwnerDecisions (R2.4 dispatchable run payloads)", () => {
         path: "/repos/svc",
         hygiene: {
           complete: false,
+          health_claim: "assessment_incomplete",
+          coverage: [{ dimension: "mechanical", state: "failed" }],
           error_count: 1,
           warning_count: 2,
           recurring_count: 1,
@@ -632,6 +634,8 @@ describe("deriveOwnerDecisions (R2.4 dispatchable run payloads)", () => {
       repos: [repoHealth({
         hygiene: {
           complete: true,
+          health_claim: "assessed_scope_clean",
+          coverage: [{ dimension: "mechanical", state: "complete" }],
           error_count: 0,
           warning_count: 0,
           recurring_count: 0,

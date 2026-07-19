@@ -11,6 +11,7 @@ export * from "./patch-provider.js";
 export * from "./patch-applier.js";
 export * from "./repository-reader.js";
 export * from "./resolution.js";
+export * from "./resolution-v2.js";
 export * from "./semantic-judge.js";
 export * from "./semantic-engine.js";
 export * from "./semantic-evidence.js";

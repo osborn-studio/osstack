@@ -1,5 +1,6 @@
 import {
   applyKnowledgeHygieneReviewArtifact,
+  applyKnowledgeHygieneReviewArtifactV2,
   checkKnowledgeHygiene,
   checkKnowledgeHygieneV2,
   KnowledgeHygieneCheckInputV1,
@@ -10,6 +11,7 @@ import {
   KnowledgeHygieneRuleIdV2,
   KnowledgeHygienePatchConflictError,
   KnowledgeHygieneReviewError,
+  KnowledgeHygieneReviewV2Error,
   type KnowledgeHygieneEnginePortsV1,
   type KnowledgeHygieneReportV1,
   type KnowledgeHygieneReportV2,
@@ -703,24 +705,27 @@ export async function handleNeatCommand(
   }
 
   if (parsed.review_file !== undefined) {
-    if (report.schema_version === "2") {
-      emitError(
-        deps,
-        parsed.format === "json",
-        "bad_request",
-        "--review-file currently accepts V1 artifacts only; use 'neat review' lifecycle events for V2",
-        false,
-      );
-      return 2;
-    }
     try {
       const artifact = await loadNeatReviewArtifact(parsed.review_file);
-      report = applyKnowledgeHygieneReviewArtifact(report, artifact);
+      if (report.schema_version === "2") {
+        if (artifact.schema_version !== "2") {
+          throw new NeatReviewInputError(
+            "V2 reports require a V2 lifecycle review artifact",
+          );
+        }
+        report = applyKnowledgeHygieneReviewArtifactV2(report, artifact);
+      } else {
+        if (artifact.schema_version !== "1") {
+          throw new NeatReviewInputError("V1 reports require a V1 review artifact");
+        }
+        report = applyKnowledgeHygieneReviewArtifact(report, artifact);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (
         error instanceof NeatReviewInputError ||
-        error instanceof KnowledgeHygieneReviewError
+        error instanceof KnowledgeHygieneReviewError ||
+        error instanceof KnowledgeHygieneReviewV2Error
       ) {
         emitError(deps, parsed.format === "json", "bad_request", message, false);
         return 2;
