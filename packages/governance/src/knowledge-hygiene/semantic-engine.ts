@@ -1,13 +1,25 @@
 import { createHash } from "node:crypto";
+import { constants } from "node:fs";
+import { lstat, open, readdir, realpath } from "node:fs/promises";
+import { homedir } from "node:os";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { loadKnowledgeHygieneConfigV2 } from "./config-v2.js";
+import {
+  loadKnowledgeHygieneConfigV2,
+  type KnowledgeHygieneConfigV2,
+} from "./config-v2.js";
 import {
   checkKnowledgeHygieneV2,
   readKnowledgeHygieneInstructionV2,
   type KnowledgeHygieneEnginePortsV2,
 } from "./engine-v2.js";
 import { detectNarrativeSignals } from "./narrative-detector.js";
+import {
+  SEMANTIC_REDACTOR_VERSION_V1,
+  composeSemanticCacheKeyV1,
+  redactSemanticEvidenceSourcesV1,
+} from "./semantic-evidence.js";
 import {
   SemanticDecisionV1,
   SemanticEvidencePackV1,
@@ -84,6 +96,14 @@ export interface SemanticAuditPortsV1 {
   judge: SemanticJudgePort;
   v2?: KnowledgeHygieneEnginePortsV2;
   signal?: AbortSignal;
+  decision_cache?: {
+    read: (key: string) => Promise<unknown | undefined>;
+    write: (key: string, decision: z.infer<typeof SemanticDecisionV1>) => Promise<void>;
+  };
+  observe_evidence_pack?: (
+    pack: SemanticEvidencePack,
+    cacheKey: string,
+  ) => Promise<void>;
 }
 
 interface Candidate {
@@ -91,10 +111,17 @@ interface Candidate {
   sources: SemanticEvidencePack["sources"];
 }
 
+interface CandidateBuild {
+  candidates: Candidate[];
+  source_units_total: number;
+  status: "available" | "unavailable" | "failed";
+}
+
 interface DimensionRun {
   findings: KnowledgeHygieneFinding[];
   coverage: CoverageDimensionV2;
   rejections: Partial<Record<RejectionCode, number>>;
+  usage: { input_tokens: number; output_tokens: number; calls: number };
 }
 
 type RejectionCode =
@@ -143,6 +170,19 @@ function sourceForExcerpt(
 ): SemanticEvidencePack["sources"][number] {
   return {
     source: { kind: "repository", repo_id: repoId, path },
+    blob_sha256: blobSha,
+    excerpts: [selected],
+  };
+}
+
+function sourceForAdapterExcerpt(
+  adapterId: string,
+  uri: string,
+  blobSha: string,
+  selected: { start_line: number; end_line: number; text: string },
+): SemanticEvidencePack["sources"][number] {
+  return {
+    source: { kind: "adapter", adapter_id: adapterId, uri },
     blob_sha256: blobSha,
     excerpts: [selected],
   };
@@ -224,7 +264,235 @@ function contradictionCandidates(
   return candidates;
 }
 
-function candidatesForDimension(
+function firstDifferenceExcerpt(
+  content: string,
+  other: string,
+): { start_line: number; end_line: number; text: string } | undefined {
+  const lines = content.split(/\r?\n/);
+  const otherLines = other.split(/\r?\n/);
+  const maximum = Math.max(lines.length, otherLines.length);
+  let differentLine = 1;
+  for (let index = 0; index < maximum; index += 1) {
+    if (lines[index] !== otherLines[index]) {
+      differentLine = index + 1;
+      break;
+    }
+  }
+  return excerpt(content, Math.max(1, differentLine - 2), differentLine + 2);
+}
+
+async function driftCandidates(input: {
+  repo_root: string;
+  repo_id: string;
+  canonical_path: string;
+  canonical_content: string;
+  mirror_paths: readonly string[];
+  read: typeof readKnowledgeHygieneInstructionV2;
+}): Promise<CandidateBuild> {
+  const canonicalSha = sha(input.canonical_content);
+  const candidates: Candidate[] = [];
+  let sourceUnits = 1;
+  for (const mirrorPath of [...input.mirror_paths].sort()) {
+    const mirror = await input.read(input.repo_root, mirrorPath);
+    if (mirror.status === "failed") {
+      return { candidates: [], source_units_total: sourceUnits, status: "failed" };
+    }
+    if (mirror.status !== "available") continue;
+    sourceUnits += 1;
+    if (mirror.content === input.canonical_content) continue;
+    const canonicalExcerpt = firstDifferenceExcerpt(
+      input.canonical_content,
+      mirror.content,
+    );
+    const mirrorExcerpt = firstDifferenceExcerpt(
+      mirror.content,
+      input.canonical_content,
+    );
+    if (canonicalExcerpt === undefined || mirrorExcerpt === undefined) continue;
+    candidates.push({
+      id: `drift:${mirrorPath}:${canonicalSha}:${sha(mirror.content)}`,
+      sources: [
+        sourceForExcerpt(
+          input.repo_id,
+          input.canonical_path,
+          canonicalSha,
+          canonicalExcerpt,
+        ),
+        sourceForExcerpt(
+          input.repo_id,
+          mirrorPath,
+          sha(mirror.content),
+          mirrorExcerpt,
+        ),
+      ],
+    });
+  }
+  return { candidates, source_units_total: sourceUnits, status: "available" };
+}
+
+interface MemoryEntry {
+  id: string;
+  uri: string;
+  blob_sha256: string;
+  excerpt: { start_line: number; end_line: number; text: string };
+  terms: Set<string>;
+}
+
+function isInsideRoot(root: string, candidate: string): boolean {
+  const fromRoot = relative(root, candidate);
+  return fromRoot === ""
+    || (fromRoot !== ".."
+      && !fromRoot.startsWith(`..${sep}`)
+      && !isAbsolute(fromRoot));
+}
+
+function semanticTerms(value: string): Set<string> {
+  return new Set(
+    (value.toLowerCase().match(/[\p{L}\p{N}_-]{3,}/gu) ?? [])
+      .filter((term) => !["the", "and", "with", "that", "this", "from"].includes(term)),
+  );
+}
+
+function memoryEntry(
+  relativePath: string,
+  content: string,
+): MemoryEntry | undefined {
+  const lines = content.split(/\r?\n/);
+  const startIndex = lines.findIndex((line) => line.trim().length > 0);
+  if (startIndex < 0) return undefined;
+  let endIndex = startIndex;
+  let nonEmpty = 0;
+  for (let index = startIndex; index < lines.length && index < startIndex + 30; index += 1) {
+    const line = lines[index];
+    if (line === undefined) break;
+    if (line.trim().length > 0) nonEmpty += 1;
+    endIndex = index;
+    if (nonEmpty >= 2 && line.trim().length === 0) break;
+  }
+  const selected = excerpt(content, startIndex + 1, endIndex + 1);
+  if (selected === undefined) return undefined;
+  const terms = semanticTerms(selected.text);
+  if (terms.size === 0) return undefined;
+  return {
+    id: relativePath,
+    uri: `claude-code://auto-memory/${relativePath}`,
+    blob_sha256: sha(content),
+    excerpt: selected,
+    terms,
+  };
+}
+
+function overlap(left: Set<string>, right: Set<string>): {
+  shared: number;
+  score: number;
+} {
+  const shared = [...left].filter((term) => right.has(term)).length;
+  const union = new Set([...left, ...right]).size;
+  return { shared, score: union === 0 ? 0 : shared / union };
+}
+
+async function readMemoryEntries(
+  configuredRoot: string,
+): Promise<{ status: "available" | "failed"; entries: MemoryEntry[] }> {
+  const expanded = configuredRoot.startsWith("~/")
+    ? resolve(homedir(), configuredRoot.slice(2))
+    : resolve(configuredRoot);
+  if (!isAbsolute(configuredRoot) && !configuredRoot.startsWith("~/")) {
+    return { status: "failed", entries: [] };
+  }
+  try {
+    const root = await realpath(expanded);
+    const pending = [root];
+    const files: string[] = [];
+    let entriesInspected = 0;
+    while (pending.length > 0 && files.length < 1_000) {
+      const directory = pending.shift();
+      if (directory === undefined) break;
+      const entries = await readdir(directory, { withFileTypes: true });
+      for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+        entriesInspected += 1;
+        if (entriesInspected > 5_000) {
+          return { status: "failed", entries: [] };
+        }
+        const path = resolve(directory, entry.name);
+        if (entry.isSymbolicLink()) continue;
+        if (entry.isDirectory()) pending.push(path);
+        if (entry.isFile() && /\.md$/iu.test(entry.name)) files.push(path);
+        if (files.length >= 1_000) break;
+      }
+    }
+    const memoryEntries: MemoryEntry[] = [];
+    for (const path of files.sort()) {
+      const resolved = await realpath(path);
+      if (!isInsideRoot(root, resolved)) return { status: "failed", entries: [] };
+      const stats = await lstat(resolved);
+      if (!stats.isFile() || stats.size > 2 * 1024 * 1024) continue;
+      const handle = await open(resolved, constants.O_RDONLY | constants.O_NOFOLLOW);
+      let content: string;
+      try {
+        const opened = await handle.stat();
+        if (!opened.isFile() || opened.size > 2 * 1024 * 1024) continue;
+        content = await handle.readFile("utf8");
+      } finally {
+        await handle.close();
+      }
+      const parsed = memoryEntry(relative(root, resolved).split(sep).join("/"), content);
+      if (parsed !== undefined) memoryEntries.push(parsed);
+    }
+    return { status: "available", entries: memoryEntries };
+  } catch {
+    return { status: "failed", entries: [] };
+  }
+}
+
+async function memoryOverlapCandidates(
+  enabled: boolean,
+  memoryDirectory: string | undefined,
+): Promise<CandidateBuild> {
+  if (!enabled || memoryDirectory === undefined) {
+    return { candidates: [], source_units_total: 0, status: "unavailable" };
+  }
+  const read = await readMemoryEntries(memoryDirectory);
+  if (read.status === "failed") {
+    return { candidates: [], source_units_total: 0, status: "failed" };
+  }
+  const candidates: Candidate[] = [];
+  for (let leftIndex = 0; leftIndex < read.entries.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < read.entries.length; rightIndex += 1) {
+      const left = read.entries[leftIndex];
+      const right = read.entries[rightIndex];
+      if (left === undefined || right === undefined) continue;
+      const similarity = overlap(left.terms, right.terms);
+      if (similarity.shared < 3 || similarity.score < 0.35) continue;
+      candidates.push({
+        id: `memory_overlap:${left.id}:${right.id}`,
+        sources: [
+          sourceForAdapterExcerpt(
+            "claude-code",
+            left.uri,
+            left.blob_sha256,
+            left.excerpt,
+          ),
+          sourceForAdapterExcerpt(
+            "claude-code",
+            right.uri,
+            right.blob_sha256,
+            right.excerpt,
+          ),
+        ],
+      });
+      if (candidates.length >= 64) break;
+    }
+    if (candidates.length >= 64) break;
+  }
+  return {
+    candidates,
+    source_units_total: read.entries.length,
+    status: "available",
+  };
+}
+
+function localCandidatesForDimension(
   dimension: SemanticAuditDimensionV1,
   content: string,
   repoId: string,
@@ -236,8 +504,6 @@ function candidatesForDimension(
   if (dimension === "contradiction") {
     return contradictionCandidates(content, repoId, path);
   }
-  // Drift requires mechanical history and memory-overlap requires an enabled
-  // external memory adapter. An empty bounded candidate set is honest here.
   return [];
 }
 
@@ -247,17 +513,18 @@ function buildPack(
   sourceUnitsTotal: number,
   budget: z.infer<typeof SemanticJudgeBudgetV1>,
 ): SemanticEvidencePack {
+  const redacted = redactSemanticEvidenceSourcesV1(candidate.sources);
   const body = {
-    pack_id: `khep_${sha(JSON.stringify([dimension, candidate.id, candidate.sources]))}`,
+    pack_id: `khep_${sha(JSON.stringify([dimension, candidate.id, redacted.sources]))}`,
     dimension,
     source_units_total: sourceUnitsTotal,
     candidate_generator: { id: `${dimension}-bounded-candidates`, version: "1" },
-    sources: candidate.sources,
+    sources: redacted.sources,
     candidates: [{
       candidate_id: candidate.id,
-      source_indexes: candidate.sources.map((_source, index) => index),
+      source_indexes: redacted.sources.map((_source, index) => index),
     }],
-    redaction_count: 0,
+    redaction_count: redacted.redaction_count,
     prompt_version: "1",
     output_schema_sha256: outputSchemaSha,
     budget,
@@ -265,6 +532,42 @@ function buildPack(
   return SemanticEvidencePackV1.parse({
     ...body,
     pack_sha256: jsonSha256(body),
+  });
+}
+
+function semanticCacheKey(
+  pack: SemanticEvidencePack,
+  candidate: Candidate,
+  configSha: string,
+  port: SemanticJudgePort,
+) {
+  return composeSemanticCacheKeyV1({
+    evidence_pack_sha256: pack.pack_sha256,
+    candidate_index_sha256: sha(JSON.stringify({
+      id: candidate.id,
+      sources: candidate.sources.map((source) => ({
+        source: source.source,
+        excerpts: source.excerpts.map((selected) => ({
+          start_line: selected.start_line,
+          end_line: selected.end_line,
+        })),
+      })),
+    })),
+    config_sha256: configSha,
+    rule_versions_sha256: sha(JSON.stringify({
+      rule_id: semanticRuleId[pack.dimension],
+      rule_version: "1",
+      candidate_generator: pack.candidate_generator,
+    })),
+    prompt_version: port.prompt_version,
+    output_schema_sha256: pack.output_schema_sha256,
+    model_id: port.model_id,
+    judge_id: port.id,
+    budget: pack.budget,
+    redactor_version: SEMANTIC_REDACTOR_VERSION_V1,
+    associated_blob_sha256: [...new Set(
+      candidate.sources.map((source) => source.blob_sha256),
+    )],
   });
 }
 
@@ -376,6 +679,9 @@ async function auditDimension(
   repoId: string,
   runId: string,
   signal: AbortSignal,
+  configSha: string,
+  cache: SemanticAuditPortsV1["decision_cache"],
+  observeEvidencePack: SemanticAuditPortsV1["observe_evidence_pack"],
 ): Promise<DimensionRun> {
   const findings: KnowledgeHygieneFinding[] = [];
   const rejections: Partial<Record<RejectionCode, number>> = {};
@@ -409,6 +715,10 @@ async function auditDimension(
       break;
     }
     const pack = buildPack(dimension, candidate, sourceUnitsTotal, remaining);
+    const cacheKey = semanticCacheKey(pack, candidate, configSha, port);
+    if (observeEvidencePack !== undefined) {
+      await observeEvidencePack(pack, cacheKey);
+    }
     const estimatedInput = Math.ceil(Buffer.byteLength(JSON.stringify(pack), "utf8") / 4);
     if (estimatedInput > remaining.max_input_tokens) {
       truncation = "input_budget_exhausted";
@@ -424,12 +734,34 @@ async function auditDimension(
       budget: remaining,
     });
     try {
-      const judged = await invokeSemanticJudge(port, request, signal);
-      calls += judged.response.usage.calls;
-      inputTokens += judged.response.usage.input_tokens;
-      outputTokens += judged.response.usage.output_tokens;
+      let decision: z.infer<typeof SemanticDecisionV1> | undefined;
+      if (cache !== undefined) {
+        try {
+          const cached = SemanticDecisionV1.safeParse(await cache.read(cacheKey));
+          if (cached.success && cached.data.dimension === dimension) {
+            decision = cached.data;
+          }
+        } catch {
+          // A cache is an optimization. Corrupt or unavailable cache state must
+          // never become a finding or prevent a fresh evidence-bound decision.
+        }
+      }
+      if (decision === undefined) {
+        calls += 1;
+        const judged = await invokeSemanticJudge(port, request, signal);
+        calls += Math.max(1, judged.response.usage.calls) - 1;
+        inputTokens += judged.response.usage.input_tokens;
+        outputTokens += judged.response.usage.output_tokens;
+        decision = judged.decision;
+        if (cache !== undefined) {
+          try {
+            await cache.write(cacheKey, decision);
+          } catch {
+            // See cache-read comment above: cache I/O is never authoritative.
+          }
+        }
+      }
       assessed += 1;
-      const decision = judged.decision;
       if (!citationsMatchPack(decision.citations, pack)) {
         increment(rejections, "quote_mismatch");
         continue;
@@ -490,7 +822,104 @@ async function auditDimension(
           candidates_skipped: skipped,
           reason_codes: ["bounded_candidate_generator"],
         };
-  return { findings, coverage, rejections };
+  return {
+    findings,
+    coverage,
+    rejections,
+    usage: { input_tokens: inputTokens, output_tokens: outputTokens, calls },
+  };
+}
+
+async function buildCandidatesForDimension(input: {
+  dimension: SemanticAuditDimensionV1;
+  instruction: Awaited<ReturnType<typeof readKnowledgeHygieneInstructionV2>>;
+  config: KnowledgeHygieneConfigV2;
+  repo_root: string;
+  repo_id: string;
+  canonical_path: string;
+  read: typeof readKnowledgeHygieneInstructionV2;
+}): Promise<CandidateBuild> {
+  if (input.dimension === "memory_overlap") {
+    const adapter = input.config.adapters?.claude_code;
+    return memoryOverlapCandidates(
+      adapter?.enabled ?? false,
+      adapter?.memory_dir,
+    );
+  }
+  if (input.instruction.status === "failed") {
+    return { candidates: [], source_units_total: 0, status: "failed" };
+  }
+  if (input.instruction.status !== "available") {
+    return { candidates: [], source_units_total: 0, status: "available" };
+  }
+  if (input.dimension === "drift") {
+    return driftCandidates({
+      repo_root: input.repo_root,
+      repo_id: input.repo_id,
+      canonical_path: input.canonical_path,
+      canonical_content: input.instruction.content,
+      mirror_paths: (input.config.instructions?.mirrors ?? []).map(
+        (mirror) => mirror.path,
+      ),
+      read: input.read,
+    });
+  }
+  return {
+    candidates: localCandidatesForDimension(
+      input.dimension,
+      input.instruction.content,
+      input.repo_id,
+      input.canonical_path,
+    ),
+    source_units_total: 1,
+    status: "available",
+  };
+}
+
+function unavailableDimension(
+  dimension: SemanticAuditDimensionV1,
+  state: "failed" | "not_assessed",
+): DimensionRun {
+  return {
+    findings: [],
+    rejections: {},
+    usage: { input_tokens: 0, output_tokens: 0, calls: 0 },
+    coverage: {
+      dimension,
+      state,
+      source_units_total: 0,
+      candidates_generated: 0,
+      candidates_assessed: 0,
+      candidates_skipped: 0,
+      reason_codes: state === "failed"
+        ? ["scan_incomplete"]
+        : ["judge_unavailable"],
+    },
+  };
+}
+
+function exhaustedDimension(
+  dimension: SemanticAuditDimensionV1,
+  build: CandidateBuild,
+  reason:
+    | "input_budget_exhausted"
+    | "output_budget_exhausted"
+    | "call_budget_exhausted",
+): DimensionRun {
+  return {
+    findings: [],
+    rejections: {},
+    usage: { input_tokens: 0, output_tokens: 0, calls: 0 },
+    coverage: {
+      dimension,
+      state: "truncated",
+      source_units_total: build.source_units_total,
+      candidates_generated: build.candidates.length,
+      candidates_assessed: 0,
+      candidates_skipped: build.candidates.length,
+      reason_codes: [reason],
+    },
+  };
 }
 
 function reportHealthClaim(
@@ -527,7 +956,9 @@ export async function auditKnowledgeHygieneSemantics(
     ...(input.config_path === undefined ? {} : { config_path: input.config_path }),
   });
   const canonicalPath = loadedConfig.config.instructions?.canonical ?? "AGENTS.md";
-  const instruction = await readKnowledgeHygieneInstructionV2(
+  const readInstruction = ports.v2?.read_instruction
+    ?? readKnowledgeHygieneInstructionV2;
+  const instruction = await readInstruction(
     baseline.repo.root,
     canonicalPath,
   );
@@ -538,41 +969,79 @@ export async function auditKnowledgeHygieneSemantics(
     input.dimensions,
     ports.judge.id,
   ]))}`;
+  const configSha = loadedConfig.mode === "configured"
+    ? loadedConfig.sha256
+    : sha(JSON.stringify(loadedConfig.config));
   const dimensionResults = new Map<SemanticAuditDimensionV1, DimensionRun>();
+  const consumed = { input_tokens: 0, output_tokens: 0, calls: 0 };
   for (const dimension of input.dimensions) {
-    if (instruction.status === "failed") {
-      dimensionResults.set(dimension, {
-        findings: [],
-        rejections: {},
-        coverage: {
-          dimension,
-          state: "failed",
-          source_units_total: 0,
-          candidates_generated: 0,
-          candidates_assessed: 0,
-          candidates_skipped: 0,
-          reason_codes: ["scan_incomplete"],
-        },
-      });
+    const build = await buildCandidatesForDimension({
+      dimension,
+      instruction,
+      config: loadedConfig.config,
+      repo_root: baseline.repo.root,
+      repo_id: repoId,
+      canonical_path: canonicalPath,
+      read: readInstruction,
+    });
+    if (build.status === "failed") {
+      dimensionResults.set(dimension, unavailableDimension(dimension, "failed"));
       continue;
     }
-    const content = instruction.status === "available" ? instruction.content : "";
-    const candidates = candidatesForDimension(
+    if (build.status === "unavailable") {
+      dimensionResults.set(
+        dimension,
+        unavailableDimension(dimension, "not_assessed"),
+      );
+      continue;
+    }
+    const remaining = {
+      max_input_tokens: input.budget.max_input_tokens - consumed.input_tokens,
+      max_output_tokens: input.budget.max_output_tokens - consumed.output_tokens,
+      max_calls: input.budget.max_calls - consumed.calls,
+    };
+    if (build.candidates.length > 0 && remaining.max_calls < 1) {
+      dimensionResults.set(
+        dimension,
+        exhaustedDimension(dimension, build, "call_budget_exhausted"),
+      );
+      continue;
+    }
+    if (build.candidates.length > 0 && remaining.max_input_tokens < 1) {
+      dimensionResults.set(
+        dimension,
+        exhaustedDimension(dimension, build, "input_budget_exhausted"),
+      );
+      continue;
+    }
+    if (build.candidates.length > 0 && remaining.max_output_tokens < 1) {
+      dimensionResults.set(
+        dimension,
+        exhaustedDimension(dimension, build, "output_budget_exhausted"),
+      );
+      continue;
+    }
+    const result = await auditDimension(
       dimension,
-      content,
-      repoId,
-      canonicalPath,
-    );
-    dimensionResults.set(dimension, await auditDimension(
-      dimension,
-      candidates,
-      instruction.status === "available" ? 1 : 0,
-      input.budget,
+      build.candidates,
+      build.source_units_total,
+      {
+        max_input_tokens: Math.max(1, remaining.max_input_tokens),
+        max_output_tokens: Math.max(1, remaining.max_output_tokens),
+        max_calls: Math.max(1, remaining.max_calls),
+      },
       ports.judge,
       repoId,
       runId,
       signal,
-    ));
+      configSha,
+      ports.decision_cache,
+      ports.observe_evidence_pack,
+    );
+    consumed.input_tokens += result.usage.input_tokens;
+    consumed.output_tokens += result.usage.output_tokens;
+    consumed.calls += result.usage.calls;
+    dimensionResults.set(dimension, result);
   }
 
   const coverage = baseline.coverage.map((entry) =>

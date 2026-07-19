@@ -25,6 +25,48 @@ Session summary from yesterday.
   return root;
 }
 
+async function fourDimensionRepo(): Promise<{
+  root: string;
+  mirror: string;
+}> {
+  const root = await mkdtemp(join(tmpdir(), "osstack-semantic-four-"));
+  const memory = join(root, "explicit-memory");
+  await mkdir(join(root, ".osstack"));
+  await mkdir(memory);
+  await writeFile(join(root, ".osstack", "neat.yaml"), `
+version: 2
+instructions:
+  canonical: AGENTS.md
+  mirrors:
+    - path: CLAUDE.md
+      mode: import
+adapters:
+  claude_code:
+    enabled: true
+    memory_dir: ${JSON.stringify(memory)}
+`);
+  await writeFile(join(root, "AGENTS.md"), `# Durable rules
+
+Deployments must always use the release gate.
+Deployments must never use the release gate.
+
+<claude-mem-context>
+ANTHROPIC_API_KEY=sk-ant-secret-value
+</claude-mem-context>
+`);
+  const mirror = join(root, "CLAUDE.md");
+  await writeFile(mirror, "# Drifted mirror\nDeployments should bypass the release gate.\n");
+  await writeFile(join(memory, "alpha.md"), `# Release checklist
+
+Use the release gate and verify the production smoke test.
+`);
+  await writeFile(join(memory, "beta.md"), `# Release checklist duplicate
+
+Use the release gate and verify the production smoke test before shipping.
+`);
+  return { root, mirror };
+}
+
 function judge(options: { quoteMismatch?: boolean; fail?: boolean } = {}): SemanticJudgePort {
   return {
     id: "fake-no-tools",
@@ -126,5 +168,96 @@ describe("auditKnowledgeHygieneSemantics", () => {
       reason_codes: ["provider_error"],
     });
     expect(report.health_claim).toBe("assessment_incomplete");
+  });
+
+  it("builds bounded, redacted candidates for all four semantic dimensions", async () => {
+    const fixture = await fourDimensionRepo();
+    const seenPacks: string[] = [];
+    const semanticJudge = judge();
+    const report = await auditKnowledgeHygieneSemantics({
+      repo_root: fixture.root,
+      mode: "all",
+      dimensions: ["narrative", "contradiction", "drift", "memory_overlap"],
+      budget: { max_input_tokens: 20_000, max_output_tokens: 4_000, max_calls: 16 },
+    }, {
+      judge: {
+        ...semanticJudge,
+        async judge(input, signal) {
+          seenPacks.push(JSON.stringify(input.evidence_pack));
+          return semanticJudge.judge(input, signal);
+        },
+      },
+      v2: { v1: { repo_identity: () => "repo-four" } },
+    });
+
+    expect(report.findings.map((finding) => finding.rule_id)).toEqual(
+      expect.arrayContaining([
+        "semantic.narrative",
+        "semantic.contradiction",
+        "semantic.drift",
+        "semantic.memory_overlap",
+      ]),
+    );
+    for (const dimension of [
+      "narrative",
+      "contradiction",
+      "drift",
+      "memory_overlap",
+    ]) {
+      expect(report.coverage).toContainEqual(expect.objectContaining({
+        dimension,
+        state: "partial",
+        candidates_generated: expect.any(Number),
+      }));
+      expect(report.coverage.find((entry) => entry.dimension === dimension)
+        ?.candidates_generated).toBeGreaterThan(0);
+    }
+    expect(seenPacks.join("\n")).not.toContain("sk-ant-secret-value");
+    expect(report.coverage.filter((entry) =>
+      ["narrative", "contradiction", "drift", "memory_overlap"].includes(
+        entry.dimension,
+      )
+    ).reduce((sum, entry) => sum + entry.candidates_assessed, 0)).toBeLessThanOrEqual(16);
+  });
+
+  it("reuses a compound cache key but invalidates when the paired mirror changes", async () => {
+    const fixture = await fourDimensionRepo();
+    const cache = new Map<string, unknown>();
+    let calls = 0;
+    const baseJudge = judge();
+    const ports = {
+      judge: {
+        ...baseJudge,
+        async judge(input: Parameters<SemanticJudgePort["judge"]>[0], signal: AbortSignal) {
+          calls += 1;
+          return baseJudge.judge(input, signal);
+        },
+      },
+      decision_cache: {
+        read: async (key: string) => cache.get(key),
+        write: async (key: string, value: unknown) => {
+          cache.set(key, value);
+        },
+      },
+      v2: { v1: { repo_identity: () => "repo-cache" } },
+    };
+    const input = {
+      repo_root: fixture.root,
+      mode: "all" as const,
+      dimensions: ["drift" as const],
+      budget: { max_input_tokens: 10_000, max_output_tokens: 2_000, max_calls: 4 },
+    };
+
+    await auditKnowledgeHygieneSemantics(input, ports);
+    expect(calls).toBe(1);
+    await auditKnowledgeHygieneSemantics(input, ports);
+    expect(calls).toBe(1);
+
+    await writeFile(
+      fixture.mirror,
+      "# Drifted mirror\nDeployments must bypass every release gate.\n",
+    );
+    await auditKnowledgeHygieneSemantics(input, ports);
+    expect(calls).toBe(2);
   });
 });
