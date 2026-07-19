@@ -1,14 +1,19 @@
 import {
   applyKnowledgeHygieneReviewArtifact,
   checkKnowledgeHygiene,
+  checkKnowledgeHygieneV2,
   KnowledgeHygieneCheckInputV1,
+  KnowledgeHygieneCheckInputV2,
   KnowledgeHygieneConfigError,
   KnowledgeHygieneGitError,
   KnowledgeHygieneRuleIdV1,
+  KnowledgeHygieneRuleIdV2,
   KnowledgeHygienePatchConflictError,
   KnowledgeHygieneReviewError,
   type KnowledgeHygieneEnginePortsV1,
   type KnowledgeHygieneReportV1,
+  type KnowledgeHygieneReportV2,
+  type KnowledgeHygieneEvidenceRefV2,
 } from "@osstack/governance";
 import {
   AgentCommandResult,
@@ -42,6 +47,7 @@ export interface NeatCommandDependencies {
   stdout: (value: string) => void;
   stderr: (value: string) => void;
   check?: typeof checkKnowledgeHygiene;
+  check_v2?: typeof checkKnowledgeHygieneV2;
   engine_ports?: KnowledgeHygieneEnginePortsV1;
   now?: () => Date;
   fix?: NeatFixCommandOverrides;
@@ -55,7 +61,8 @@ interface ParsedNeatCommand {
   help: boolean;
   format: NeatFormat;
   fail_on: NeatFailOn;
-  input: KnowledgeHygieneCheckInputV1;
+  schema_version: "1" | "2";
+  input: KnowledgeHygieneCheckInputV1 | KnowledgeHygieneCheckInputV2;
   review_file?: string;
   record: boolean;
   db_path?: string;
@@ -85,6 +92,7 @@ Options:
   --base <git-ref>               Base ref for range/base-to-worktree mode
   --head <git-ref>               Head ref; valid only with --base
   --config <path>                Config path (default: .osstack/neat.yaml)
+  --schema-version <1|2>         Report contract (default: 1 during migration)
   --checks <id,...>              Run only listed rule ids
   --skip-checks <id,...>         Exclude listed rule ids
   --review-file <path>           Apply matching portable review evidence
@@ -120,7 +128,7 @@ function requireValue(args: readonly string[], index: number, flag: string): str
   return value;
 }
 
-function parseRuleIds(value: string, flag: string): KnowledgeHygieneRuleIdV1[] {
+function parseRuleIds(value: string, flag: string): string[] {
   const rawIds = value.split(",").map((id) => id.trim());
   if (rawIds.length === 0 || rawIds.some((id) => id.length === 0)) {
     throw new NeatUsageError(`${flag} requires a comma-separated rule list`);
@@ -128,8 +136,19 @@ function parseRuleIds(value: string, flag: string): KnowledgeHygieneRuleIdV1[] {
   if (new Set(rawIds).size !== rawIds.length) {
     throw new NeatUsageError(`${flag} contains duplicate rule ids`);
   }
-  return rawIds.map((id) => {
-    const parsed = KnowledgeHygieneRuleIdV1.safeParse(id);
+  return rawIds;
+}
+
+function validateRuleIds(
+  ids: readonly string[] | undefined,
+  schemaVersion: "1" | "2",
+): KnowledgeHygieneRuleIdV1[] | KnowledgeHygieneRuleIdV2[] | undefined {
+  if (ids === undefined) return undefined;
+  const schema = schemaVersion === "1"
+    ? KnowledgeHygieneRuleIdV1
+    : KnowledgeHygieneRuleIdV2;
+  return ids.map((id) => {
+    const parsed = schema.safeParse(id);
     if (!parsed.success) throw new NeatUsageError(`unknown rule id: ${id}`);
     return parsed.data;
   });
@@ -148,6 +167,7 @@ function parseNeatCommand(
       help: true,
       format: "human",
       fail_on: "none",
+      schema_version: "1",
       input: { repo_root: cwd, mode: "worktree" },
       record: false,
     };
@@ -158,8 +178,9 @@ function parseNeatCommand(
   let baseRef: string | undefined;
   let headRef: string | undefined;
   let configPath: string | undefined;
-  let checks: KnowledgeHygieneRuleIdV1[] | undefined;
-  let skipChecks: KnowledgeHygieneRuleIdV1[] | undefined;
+  let rawChecks: string[] | undefined;
+  let rawSkipChecks: string[] | undefined;
+  let schemaVersion: "1" | "2" = "1";
   let reviewFile: string | undefined;
   let adapter: "claude-code" | undefined;
   let claudeMemoryDir: string | undefined;
@@ -198,13 +219,21 @@ function parseNeatCommand(
       markSeen(flag);
       configPath = requireValue(args, index, flag);
       index += 1;
+    } else if (flag === "--schema-version") {
+      markSeen(flag);
+      const value = requireValue(args, index, flag);
+      if (value !== "1" && value !== "2") {
+        throw new NeatUsageError(`unsupported schema version: ${value}`);
+      }
+      schemaVersion = value;
+      index += 1;
     } else if (flag === "--checks") {
       markSeen(flag);
-      checks = parseRuleIds(requireValue(args, index, flag), flag);
+      rawChecks = parseRuleIds(requireValue(args, index, flag), flag);
       index += 1;
     } else if (flag === "--skip-checks") {
       markSeen(flag);
-      skipChecks = parseRuleIds(requireValue(args, index, flag), flag);
+      rawSkipChecks = parseRuleIds(requireValue(args, index, flag), flag);
       index += 1;
     } else if (flag === "--review-file") {
       markSeen(flag);
@@ -264,7 +293,7 @@ function parseNeatCommand(
   if (headRef !== undefined && baseRef === undefined) {
     throw new NeatUsageError("--head requires --base");
   }
-  if (checks && skipChecks) {
+  if (rawChecks && rawSkipChecks) {
     throw new NeatUsageError("--checks and --skip-checks are mutually exclusive");
   }
   if (dbPath !== undefined && !record) {
@@ -292,7 +321,9 @@ function parseNeatCommand(
       : headRef === undefined
         ? "base_to_worktree"
         : "range";
-  const parsed = KnowledgeHygieneCheckInputV1.safeParse({
+  const checks = validateRuleIds(rawChecks, schemaVersion);
+  const skipChecks = validateRuleIds(rawSkipChecks, schemaVersion);
+  const rawInput = {
     repo_root: repoRoot,
     mode,
     ...(baseRef === undefined ? {} : { base_ref: baseRef }),
@@ -310,7 +341,13 @@ function parseNeatCommand(
               : { memory_dir: claudeMemoryDir }),
           }],
         }),
-  });
+  };
+  const parsed = schemaVersion === "1"
+    ? KnowledgeHygieneCheckInputV1.safeParse(rawInput)
+    : KnowledgeHygieneCheckInputV2.safeParse({
+        ...rawInput,
+        schema_version: "2",
+      });
   if (!parsed.success) {
     throw new NeatUsageError(parsed.error.issues.map((issue) => issue.message).join("; "));
   }
@@ -318,6 +355,7 @@ function parseNeatCommand(
     help: false,
     format,
     fail_on: failOn,
+    schema_version: schemaVersion,
     input: parsed.data,
     record,
     ...(reviewFile === undefined ? {} : { review_file: reviewFile }),
@@ -326,7 +364,7 @@ function parseNeatCommand(
 }
 
 function exitCodeForReport(
-  report: KnowledgeHygieneReportV1,
+  report: KnowledgeHygieneReportV1 | KnowledgeHygieneReportV2,
   failOn: NeatFailOn,
 ): 0 | 1 {
   if (failOn === "none") return 0;
@@ -335,7 +373,7 @@ function exitCodeForReport(
 }
 
 function evidenceLine(
-  evidence: KnowledgeHygieneReportV1["findings"][number]["evidence_refs"][number],
+  evidence: KnowledgeHygieneEvidenceRefV2,
 ): string {
   const details = [evidence.kind, evidence.ref];
   if (evidence.sha256) details.push(`sha256=${evidence.sha256}`);
@@ -344,9 +382,12 @@ function evidenceLine(
 }
 
 export function renderKnowledgeHygieneReport(
-  report: KnowledgeHygieneReportV1,
+  report: KnowledgeHygieneReportV1 | KnowledgeHygieneReportV2,
   failOn: NeatFailOn,
 ): string {
+  if (report.schema_version === "2") {
+    return renderKnowledgeHygieneReportV2(report, failOn);
+  }
   const lines = [
     `Knowledge hygiene: ${report.summary.error} error, ${report.summary.warning} warning, ${report.summary.info} info`,
     ...(report.adapters === undefined
@@ -404,8 +445,82 @@ export function renderKnowledgeHygieneReport(
   return lines.join("\n");
 }
 
-function uniqueEvidence(report: KnowledgeHygieneReportV1) {
-  const evidence = new Map<string, KnowledgeHygieneReportV1["findings"][number]["evidence_refs"][number]>();
+function v2Location(finding: KnowledgeHygieneReportV2["findings"][number]): string {
+  if (finding.location.kind === "repository") return finding.location.path;
+  if (finding.location.kind === "adapter") return finding.location.uri;
+  return `registry:${finding.location.registry_scope}`;
+}
+
+export function renderKnowledgeHygieneReportV2(
+  report: KnowledgeHygieneReportV2,
+  failOn: NeatFailOn,
+): string {
+  const lines = [
+    `Knowledge hygiene V2: ${report.summary.error} error, ${report.summary.warning} warning, ${report.summary.info} info`,
+    ...(report.adapters === undefined
+      ? []
+      : [`Adapters: ${report.adapters.map((adapter) =>
+        `${adapter.id}@${adapter.version} ${adapter.status} (${adapter.source})`).join(", ")}`]),
+    "",
+  ];
+  if (report.findings.length === 0) {
+    lines.push("No findings in the assessed scope shown below.", "");
+  }
+  for (const finding of report.findings) {
+    const lineSuffix = finding.location.kind !== "registry"
+        && finding.location.line !== undefined
+      ? `:${finding.location.line}`
+      : "";
+    lines.push(
+      `${finding.severity.toUpperCase()} ${finding.rule_id}  ${v2Location(finding)}${lineSuffix}`,
+      `  Origin: ${finding.origin}; dimension: ${finding.dimension}`,
+      `  Rationale: ${finding.rationale}`,
+      `  Observed: ${JSON.stringify(finding.observed)}`,
+      `  Expected: ${JSON.stringify(finding.expected)}`,
+    );
+    if (finding.evidence_refs.length === 0) {
+      lines.push("  Evidence: citations only");
+    } else {
+      finding.evidence_refs.forEach((evidence) => {
+        lines.push(`  Evidence: ${evidenceLine(evidence)}`);
+      });
+    }
+    lines.push(
+      `  Citations: ${finding.citations.length}`,
+      `  Closure: ${finding.closure_policy}`,
+      `  Fingerprint: ${finding.fingerprint}`,
+      "",
+    );
+  }
+  lines.push(
+    report.completeness.complete
+      ? "Inventory completeness: complete"
+      : `Inventory completeness: incomplete (${report.completeness.skipped_files} skipped)`,
+    "Coverage:",
+  );
+  for (const coverage of report.coverage) {
+    const reasons = coverage.reason_codes.length === 0
+      ? ""
+      : `; reasons=${coverage.reason_codes.join(",")}`;
+    lines.push(
+      `  - ${coverage.dimension}: ${coverage.state} (${coverage.candidates_assessed}/${coverage.candidates_generated} assessed${reasons})`,
+    );
+  }
+  lines.push(
+    `Health claim: ${report.health_claim} (limited to the coverage above)`,
+    `Suppressed: ${report.summary.suppressed}`,
+    ...(report.summary.resolved === undefined
+      ? []
+      : [`Resolved: ${report.summary.resolved}`]),
+    `Exit policy: --fail-on ${failOn} (exit ${exitCodeForReport(report, failOn)})`,
+  );
+  return lines.join("\n");
+}
+
+function uniqueEvidence(
+  report: KnowledgeHygieneReportV1 | KnowledgeHygieneReportV2,
+) {
+  const evidence = new Map<string, KnowledgeHygieneEvidenceRefV2>();
   for (const finding of report.findings) {
     for (const ref of finding.evidence_refs) {
       evidence.set(JSON.stringify(ref), ref);
@@ -415,7 +530,7 @@ function uniqueEvidence(report: KnowledgeHygieneReportV1) {
 }
 
 function successEnvelope(
-  report: KnowledgeHygieneReportV1,
+  report: KnowledgeHygieneReportV1 | KnowledgeHygieneReportV2,
   recording?: NeatRecordingResultV1,
 ) {
   const evidence = uniqueEvidence(report);
@@ -535,12 +650,17 @@ export async function handleNeatCommand(
     return 0;
   }
 
-  let report: KnowledgeHygieneReportV1;
+  let report: KnowledgeHygieneReportV1 | KnowledgeHygieneReportV2;
   try {
-    report = await (deps.check ?? checkKnowledgeHygiene)(
-      parsed.input,
-      deps.engine_ports,
-    );
+    report = parsed.schema_version === "1"
+      ? await (deps.check ?? checkKnowledgeHygiene)(
+          parsed.input as KnowledgeHygieneCheckInputV1,
+          deps.engine_ports,
+        )
+      : await (deps.check_v2 ?? checkKnowledgeHygieneV2)(
+          parsed.input as KnowledgeHygieneCheckInputV2,
+          deps.engine_ports === undefined ? {} : { v1: deps.engine_ports },
+        );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (error instanceof KnowledgeHygieneConfigError) {
@@ -566,6 +686,16 @@ export async function handleNeatCommand(
   }
 
   if (parsed.review_file !== undefined) {
+    if (report.schema_version === "2") {
+      emitError(
+        deps,
+        parsed.format === "json",
+        "bad_request",
+        "--review-file currently accepts V1 artifacts only; use 'neat review' lifecycle events for V2",
+        false,
+      );
+      return 2;
+    }
     try {
       const artifact = await loadNeatReviewArtifact(parsed.review_file);
       report = applyKnowledgeHygieneReviewArtifact(report, artifact);

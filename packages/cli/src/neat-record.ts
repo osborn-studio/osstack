@@ -1,9 +1,14 @@
 import {
   openDb,
   recordKnowledgeHygieneRun,
+  recordKnowledgeHygieneRunV2,
   type RecordKnowledgeHygieneRunInputV1,
+  type RecordKnowledgeHygieneRunInputV2,
 } from "@osstack/core";
-import type { KnowledgeHygieneReportV1 } from "@osstack/governance";
+import type {
+  KnowledgeHygieneReportV1,
+  KnowledgeHygieneReportV2,
+} from "@osstack/governance";
 import { createHash } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
@@ -34,7 +39,7 @@ function finding(
   };
 }
 
-function recordInput(
+function recordInputV1(
   report: KnowledgeHygieneReportV1,
 ): RecordKnowledgeHygieneRunInputV1 {
   return {
@@ -76,18 +81,79 @@ function recordInput(
   };
 }
 
+function recordInputV2(
+  report: KnowledgeHygieneReportV2,
+): RecordKnowledgeHygieneRunInputV2 {
+  const findings = new Map<
+    string,
+    RecordKnowledgeHygieneRunInputV2["findings"][number]
+  >();
+  for (const findingValue of report.findings) {
+    findings.set(findingValue.fingerprint, {
+      fingerprint: findingValue.fingerprint,
+      finding: { ...findingValue },
+    });
+  }
+  const resolutionEvents: RecordKnowledgeHygieneRunInputV2["resolution_events"] = [];
+  for (const item of report.resolved_findings ?? []) {
+    findings.set(item.finding.fingerprint, {
+      fingerprint: item.finding.fingerprint,
+      finding: { ...item.finding },
+    });
+    resolutionEvents.push(...item.resolution_events.map((event) => ({
+      ...event,
+      actor: { ...event.actor },
+      evidence_refs: event.evidence_refs.map((reference) => ({ ...reference })),
+      ...(event.suppression === undefined
+        ? {}
+        : { suppression: { ...event.suppression } }),
+    })));
+  }
+  return {
+    report_sha256: createHash("sha256")
+      .update(JSON.stringify(report))
+      .digest("hex"),
+    schema_version: "2",
+    repo_id: report.repo.repo_id ?? report.repo.root,
+    repo_root: report.repo.root,
+    mode: report.input.mode,
+    ...(report.input.diff_id === undefined ? {} : { diff_id: report.input.diff_id }),
+    ...(report.input.config_sha256 === undefined
+      ? {}
+      : { config_sha256: report.input.config_sha256 }),
+    generated_at: epoch(report.generated_at, "report generated_at"),
+    inventory_complete: report.completeness.complete,
+    coverage: report.coverage.map((coverage) => ({ ...coverage })),
+    health_claim: report.health_claim,
+    summary: {
+      error: report.summary.error,
+      warning: report.summary.warning,
+      info: report.summary.info,
+      suppressed: report.summary.suppressed,
+      resolved: report.summary.resolved ?? report.resolved_findings?.length ?? 0,
+    },
+    findings: [...findings.values()],
+    resolution_events: resolutionEvents,
+  };
+}
+
 export async function recordNeatReport(
-  report: KnowledgeHygieneReportV1,
+  report: KnowledgeHygieneReportV1 | KnowledgeHygieneReportV2,
   dbPath: string,
   recordedAt = Date.now(),
 ): Promise<NeatRecordingResultV1> {
   await mkdir(dirname(dbPath), { recursive: true });
   const db = openDb({ path: dbPath });
   try {
+    const recorded = report.schema_version === "1"
+      ? recordKnowledgeHygieneRun(db, recordInputV1(report), {
+          recorded_at: recordedAt,
+        })
+      : recordKnowledgeHygieneRunV2(db, recordInputV2(report), {
+          recorded_at: recordedAt,
+        });
     return {
-      ...recordKnowledgeHygieneRun(db, recordInput(report), {
-        recorded_at: recordedAt,
-      }),
+      ...recorded,
       db_path: dbPath,
     };
   } finally {
