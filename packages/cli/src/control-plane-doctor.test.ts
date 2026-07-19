@@ -37,3 +37,14 @@ describe("control-plane doctor (G1.3)", () => {
     expect(f.find((x) => x.check === "launch_agents")?.detail).toContain("com.rogue.osstack-starter");
   });
 });
+
+describe("lsof edge cases (round-3)", () => {
+  it("status-1 WITH stderr diagnostics is a warning, never a pass", () => {
+    const root = mkdtempSync(join(tmpdir(), "cpd3-"));
+    const home = join(root, "home"); const la = join(root, "la");
+    mkdirSync(home); mkdirSync(la);
+    const f = runControlPlaneChecks({ home, launchAgentsDir: la, lsof: () => { const e = new Error("perm") as Error & { status: number; stdout: string; stderr: string }; e.status = 1; e.stdout = ""; e.stderr = "lsof: permission denied"; throw e; } });
+    expect(f.find((x) => x.check === "db_writers")?.level).toBe("warn");
+    expect(renderControlPlaneFindings(f).exitCode).not.toBe(0);
+  });
+});

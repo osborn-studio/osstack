@@ -14,7 +14,7 @@
 
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 
 export interface ControlPlaneRole {
   /** Declared role of this checkout. Only "stable-serving" may serve the default home. */
@@ -40,37 +40,26 @@ const expand = (p: string): string => {
   // classified as "custom" (review F2). Walk up to the nearest existing
   // ancestor for not-yet-created homes.
   let probe = lexical;
-  let suffix = "";
+  const segments: string[] = [];
   while (!existsSync(probe)) {
     const parent = resolve(probe, "..");
     if (parent === probe) return lexical;
-    suffix = `/${probe.slice(parent.length + 1)}${suffix}`;
+    segments.unshift(basename(probe));
     probe = parent;
   }
-  try { return realpathSync(probe) + suffix; } catch { return lexical; }
+  try { return resolve(realpathSync(probe), ...segments); } catch { return lexical; }
 };
 
 export function defaultOsstackHome(): string {
   return resolve(homedir(), ".osstack");
 }
 
-/** Find control-plane.json at startRoot or a bounded number of ancestors —
- *  covers monorepo checkouts (repo root) AND packaged/npm installs where the
- *  bin lives under a prefix (review F1). */
-export function findRoleFile(startRoot: string, maxUp = 6): string | null {
-  let cur = resolve(startRoot);
-  for (let i = 0; i <= maxUp; i++) {
-    const file = resolve(cur, "control-plane.json");
-    if (existsSync(file)) return file;
-    const parent = resolve(cur, "..");
-    if (parent === cur) break;
-    cur = parent;
-  }
-  return null;
-}
-
 export function loadRoleFile(checkoutRoot: string): ControlPlaneRole | null {
-  const file = findRoleFile(checkoutRoot) ?? resolve(checkoutRoot, "control-plane.json");
+  // EXACTLY ONE authoritative location: control-plane.json in the running
+  // module's own directory (round-3 F1/F2: no ancestor search — an unrelated
+  // parent directory must never be able to grant stable authority, and the
+  // provisioning path is computed identically via realpath of the binary).
+  const file = resolve(checkoutRoot, "control-plane.json");
   if (!existsSync(file)) return null;
   let raw: unknown;
   try {

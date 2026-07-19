@@ -524,7 +524,8 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       // Start the role-file search at the running bin's own directory; the
       // guard walks a bounded number of ancestors (covers monorepo roots and
       // npm prefixes alike, and matches where serve --install provisions it).
-      const checkoutRoot = dirname(fileURLToPath(import.meta.url));
+      let checkoutRoot = dirname(fileURLToPath(import.meta.url));
+      try { checkoutRoot = dirname(realpathSync(fileURLToPath(import.meta.url))); } catch { /* keep lexical */ }
       const guardHome = process.env.OSSTACK_HOME ?? defaultOsstackHome();
       try {
         const verdict = assertServeAllowed({ checkoutRoot, osstackHome: guardHome });
@@ -7164,12 +7165,14 @@ Options:
       // installed launchd daemon serves the default home, which the boot guard
       // only permits for a declared stable-serving root (review F1).
       try {
-        const roleFile = resolve(dirname(binPath), "control-plane.json");
+        let realBin = binPath;
+        try { realBin = realpathSync(binPath); } catch { /* keep as-is */ }
+        const roleFile = resolve(dirname(realBin), "control-plane.json");
         if (!fsExistsSync(roleFile)) {
           const { CURRENT_SCHEMA_VERSION } = await import("@osstack/core");
           fsWriteFileSync(roleFile, `${JSON.stringify({
             role: "stable-serving",
-            allowed_osstack_homes: ["~/.osstack"],
+            allowed_osstack_homes: [process.env.OSSTACK_HOME ?? "~/.osstack"],
             schema: { min: CURRENT_SCHEMA_VERSION, max: CURRENT_SCHEMA_VERSION },
           }, null, 2)}\n`);
           if (!json) console.log("control-plane guard: wrote stable-serving role declaration next to the installed binary");

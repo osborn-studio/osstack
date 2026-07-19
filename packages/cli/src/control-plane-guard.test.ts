@@ -72,11 +72,17 @@ describe("guard hardening (review round 2)", () => {
     catch (e) { expect((e as ControlPlaneGuardError).code).toBe("home_not_allowed"); }
   });
 
-  it("role file is discovered a bounded number of levels above the start root (F1 — packaged installs)", () => {
+  it("an ANCESTOR role file grants NOTHING — only the module's own dir counts (round-3 F1)", () => {
     const nested = join(root, "a", "b", "c");
     mkdirSync(nested, { recursive: true });
-    declare({ role: "dev", allowed_osstack_homes: [join(root, "dev-home")] });
-    const v = assertServeAllowed({ checkoutRoot: nested, osstackHome: join(root, "dev-home"), defaultHome: DEFAULT });
-    expect(v.role).toBe("dev");
+    declare({ role: "stable-serving", allowed_osstack_homes: [DEFAULT] }); // at root (ancestor)
+    expect(() => assertServeAllowed({ checkoutRoot: nested, osstackHome: DEFAULT, defaultHome: DEFAULT }))
+      .toThrowError(ControlPlaneGuardError);
+  });
+
+  it("distinct NONEXISTENT root-level homes do not canonicalize to the same path (round-3 F4)", () => {
+    declare({ role: "dev", allowed_osstack_homes: ["/nonexistent-a/home"] });
+    try { assertServeAllowed({ checkoutRoot: root, osstackHome: "/nonexistent-b/home", defaultHome: DEFAULT }); throw new Error("unreachable"); }
+    catch (e) { expect((e as ControlPlaneGuardError).code).toBe("home_not_allowed"); }
   });
 });
