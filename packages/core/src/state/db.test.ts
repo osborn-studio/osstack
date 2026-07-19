@@ -174,33 +174,31 @@ describe("schema incident hardening (G1.4, incident 2026-07-18)", () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it("tolerates FOREIGN additive residue tables at the correct user_version (incident residue is harmless)", () => {
-    const dir = mkdtempSync(join(tmpdir(), "g14b-"));
+  it("version-rollback-then-reopen is UNSAFE with ALTER-based migrations (documented anti-pattern)", () => {
+    // The 2026-07-18 incident was first mitigated by PRAGMA user_version
+    // rollback. That is only survivable when the re-run migrations are fully
+    // idempotent. CREATE ... IF NOT EXISTS is; ALTER TABLE ADD COLUMN is NOT:
+    // re-running migration 10 over its own residue fails. Therefore the ONLY
+    // supported rollback is a full DB snapshot restore — this test pins that
+    // contract so nobody "just resets user_version" again.
+    const dir = mkdtempSync(join(tmpdir(), "g14-replay-"));
     const p = join(dir, "state.db");
-    openDb({ path: p }).close();
+    openDb({ path: p }).close(); // full schema at CURRENT
     const raw = new Database(p);
-    raw.exec("CREATE TABLE IF NOT EXISTS probe_sessions (session_id TEXT PRIMARY KEY, repo_id TEXT NOT NULL)");
-    raw.exec("CREATE TABLE IF NOT EXISTS knowledge_hygiene_runs (run_id TEXT PRIMARY KEY)");
+    raw.pragma("user_version = 8");
     raw.close();
-    const db = openDb({ path: p });
-    expect((db.prepare("SELECT count(*) c FROM tasks").get() as { c: number }).c).toBe(0);
-    expect((db.prepare("SELECT count(*) c FROM runs").get() as { c: number }).c).toBe(0);
-    db.close();
+    expect(() => openDb({ path: p })).toThrowError(/duplicate column|already exists/);
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it("re-applying identical IF-NOT-EXISTS DDL over incident residue is idempotent (future official adoption path)", () => {
-    // A future official migration may ADOPT the incident's additive tables.
-    // That is safe ONLY with byte-identical DDL using IF NOT EXISTS on both
-    // tables and indexes — verified here by applying the DDL twice.
-    const dir = mkdtempSync(join(tmpdir(), "g14c-"));
+  it("a DB already at CURRENT with the full incident residue opens with NO migration and intact integrity (the final-deploy path)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "g14-final-"));
     const p = join(dir, "state.db");
-    const ddl = `
-      CREATE TABLE IF NOT EXISTS probe_sessions (session_id TEXT PRIMARY KEY, repo_id TEXT NOT NULL, state TEXT NOT NULL);
-      CREATE INDEX IF NOT EXISTS idx_probe_sessions_repo_state ON probe_sessions(repo_id, state);`;
+    openDb({ path: p }).close();
     const db = openDb({ path: p });
-    db.exec(ddl);
-    expect(() => db.exec(ddl)).not.toThrow();
+    expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
+    expect(db.pragma("integrity_check", { simple: true })).toBe("ok");
+    expect((db.prepare("SELECT count(*) c FROM sqlite_master WHERE name LIKE 'probe_%' AND type='table'").get() as { c: number }).c).toBeGreaterThan(0);
     db.close();
     rmSync(dir, { recursive: true, force: true });
   });

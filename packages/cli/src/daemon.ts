@@ -1983,7 +1983,15 @@ async function handleTaskSubmit(
   const routeReq: RouteReq = {};
   if (params.capability_id !== undefined) routeReq.capability_id = params.capability_id;
   if (typeof params.kind === "string") routeReq.kind = params.kind as RouteKind;
-  if (params.agent_id !== undefined) routeReq.agent_id = params.agent_id;
+  if (params.agent_id !== undefined) {
+    // FAIL-CLOSED type boundary: a non-string/empty agent_id is a client bug,
+    // never a reason to fall back to default routing (G1.1 review F3).
+    if (typeof params.agent_id !== "string" || params.agent_id.length === 0) {
+      sock.write(encodeFrame(singleErr(req.id, "bad_request", "params.agent_id must be a non-empty string when provided")));
+      return;
+    }
+    routeReq.agent_id = params.agent_id;
+  }
   let routerPick: Awaited<ReturnType<typeof routeCapability>>;
   try {
     routerPick = await routeCapability(

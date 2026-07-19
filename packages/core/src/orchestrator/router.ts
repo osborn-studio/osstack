@@ -72,8 +72,8 @@ export async function routeCapability(
   adapters: ReadonlyArray<RoutableAdapter>,
   options: RouteOptions = {},
 ): Promise<RoutingDecision | null> {
-  if (request.agent_id !== undefined && request.agent_id.length === 0) {
-    throw new AgentOverrideError("agent_not_found", "(empty)", "agent_id must be a non-empty string");
+  if (request.agent_id !== undefined && (typeof request.agent_id !== "string" || request.agent_id.length === 0)) {
+    throw new AgentOverrideError("agent_not_found", "(invalid)", "agent_id must be a non-empty string");
   }
   if (adapters.length === 0) {
     if (request.agent_id !== undefined) throw new AgentOverrideError("agent_not_found", request.agent_id, "no adapters registered");
@@ -83,7 +83,7 @@ export async function routeCapability(
   // 1. Exact agent override — FAIL-CLOSED. When agent_id is set the ONLY
   //    outcomes are (a) that agent, or (b) AgentOverrideError. Never fall
   //    through to capability/kind routing.
-  if (request.agent_id) {
+  if (request.agent_id !== undefined) {
     const adapter = adapters.find((a) => a.id === request.agent_id);
     if (!adapter) throw new AgentOverrideError("agent_not_found", request.agent_id);
     const timeoutMs = options.probeTimeoutMs ?? DEFAULT_PROBE_TIMEOUT_MS;
