@@ -21,6 +21,10 @@ import {
   recordNeatReport,
   type NeatRecordingResultV1,
 } from "./neat-record.js";
+import {
+  createFileSemanticDecisionCacheV1,
+  createSemanticEvidenceObserverV1,
+} from "./neat-semantic-artifacts.js";
 
 type NeatSemanticFormat = "human" | "json";
 type NeatSemanticFailOn = "error" | "warning" | "none";
@@ -29,6 +33,8 @@ export interface NeatSemanticCommandOverrides {
   audit?: typeof auditKnowledgeHygieneSemantics;
   judge_factory?: (judgeId: string) => SemanticJudgePort;
   load_config?: typeof loadKnowledgeHygieneConfigV2;
+  decision_cache?: SemanticAuditPortsV1["decision_cache"];
+  observe_evidence_pack?: SemanticAuditPortsV1["observe_evidence_pack"];
 }
 
 export interface NeatSemanticCommandDependencies
@@ -478,6 +484,18 @@ export async function handleNeatSemanticCommand(
     });
     const ports: SemanticAuditPortsV1 = {
       judge,
+      decision_cache: deps.decision_cache
+        ?? createFileSemanticDecisionCacheV1(osstackHome()),
+      ...(deps.observe_evidence_pack !== undefined
+        ? { observe_evidence_pack: deps.observe_evidence_pack }
+        : process.env["OSSTACK_NEAT_DEBUG_EVIDENCE"] === "1"
+          ? {
+              observe_evidence_pack: createSemanticEvidenceObserverV1(
+                osstackHome(),
+                deps.now === undefined ? {} : { now: deps.now },
+              ),
+            }
+          : {}),
       ...(deps.engine_ports === undefined ? {} : { v2: { v1: deps.engine_ports } }),
     };
     report = await (deps.audit ?? auditKnowledgeHygieneSemantics)(input, ports);

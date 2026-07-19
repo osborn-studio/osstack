@@ -103,6 +103,7 @@ export interface SemanticAuditPortsV1 {
   observe_evidence_pack?: (
     pack: SemanticEvidencePack,
     cacheKey: string,
+    runId: string,
   ) => Promise<void>;
 }
 
@@ -717,7 +718,7 @@ async function auditDimension(
     const pack = buildPack(dimension, candidate, sourceUnitsTotal, remaining);
     const cacheKey = semanticCacheKey(pack, candidate, configSha, port);
     if (observeEvidencePack !== undefined) {
-      await observeEvidencePack(pack, cacheKey);
+      await observeEvidencePack(pack, cacheKey, runId);
     }
     const estimatedInput = Math.ceil(Buffer.byteLength(JSON.stringify(pack), "utf8") / 4);
     if (estimatedInput > remaining.max_input_tokens) {
