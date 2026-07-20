@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runControlPlaneChecks, renderControlPlaneFindings } from "./control-plane-doctor.js";
@@ -46,5 +46,35 @@ describe("lsof edge cases (round-3)", () => {
     const f = runControlPlaneChecks({ home, launchAgentsDir: la, lsof: () => { const e = new Error("perm") as Error & { status: number; stdout: string; stderr: string }; e.status = 1; e.stdout = ""; e.stderr = "lsof: permission denied"; throw e; } });
     expect(f.find((x) => x.check === "db_writers")?.level).toBe("warn");
     expect(renderControlPlaneFindings(f).exitCode).not.toBe(0);
+  });
+});
+
+describe("plist content drift (Phase 2.1-C)", () => {
+  function setup2() {
+    const r = mkdtempSync(join(tmpdir(), "cpd-p21-"));
+    const home = join(r, "home"); const la = join(r, "la");
+    mkdirSync(home); mkdirSync(la);
+    return { r, home, la };
+  }
+  const { createHash } = require("node:crypto") as typeof import("node:crypto");
+
+  it("alerts when the daemon plist differs from the recorded baseline (failure reproduction of 2026-07-19 rewrite)", () => {
+    const { r, home, la } = setup2();
+    const plist = join(r, "d.plist");
+    writeFileSync(plist, "<plist>original osstack daemon</plist>");
+    writeFileSync(join(home, "plist.sha256.baseline"), createHash("sha256").update("<plist>original osstack daemon</plist>").digest("hex"));
+    writeFileSync(plist, "<plist>REWRITTEN by unknown process</plist>");
+    const f = runControlPlaneChecks({ home, launchAgentsDir: la, lsof: () => "", daemonPlistPath: plist });
+    expect(f.find((x) => x.check === "plist_drift")?.level).toBe("alert");
+  });
+
+  it("ok when plist matches baseline; warn when no baseline", () => {
+    const { r, home, la } = setup2();
+    const plist = join(r, "d.plist");
+    writeFileSync(plist, "<plist>x</plist>");
+    writeFileSync(join(home, "plist.sha256.baseline"), createHash("sha256").update("<plist>x</plist>").digest("hex"));
+    expect(runControlPlaneChecks({ home, launchAgentsDir: la, lsof: () => "", daemonPlistPath: plist }).find((x) => x.check === "plist_drift")?.level).toBe("ok");
+    rmSync(join(home, "plist.sha256.baseline"));
+    expect(runControlPlaneChecks({ home, launchAgentsDir: la, lsof: () => "", daemonPlistPath: plist }).find((x) => x.check === "plist_drift")?.level).toBe("warn");
   });
 });

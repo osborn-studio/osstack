@@ -1,8 +1,5 @@
-import {
-  type KnowledgeHygieneTrendReportV2Core,
-  openDb,
-  queryKnowledgeHygieneTrendV2,
-} from "@osstack/core";
+import { type KnowledgeHygieneTrendReportV2Core, queryKnowledgeHygieneTrendV2 } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import {
   AgentCommandResult,
   PROTOCOL_VERSION,

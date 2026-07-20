@@ -25,12 +25,8 @@ import {
   sep,
 } from "node:path";
 import { promisify } from "node:util";
-import {
-  appendKnowledgeHygienePlanEventV1,
-  getKnowledgeHygienePlanProjectionV1,
-  openDb,
-  type KnowledgeHygienePlanStateV1Core,
-} from "@osstack/core";
+import { appendKnowledgeHygienePlanEventV1, getKnowledgeHygienePlanProjectionV1, type KnowledgeHygienePlanStateV1Core } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import {
   applyKnowledgeHygieneTransactionPlanV1,
   approveKnowledgeHygieneTransactionPlanV1,

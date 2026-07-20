@@ -4,6 +4,7 @@
 // and a DB whose schema version does not match this binary.
 
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
@@ -11,7 +12,7 @@ import Database from "better-sqlite3";
 import { CURRENT_SCHEMA_VERSION } from "@osstack/core";
 
 export interface ControlPlaneFinding {
-  check: "multi_daemon" | "db_writers" | "launch_agents" | "schema_version";
+  check: "multi_daemon" | "db_writers" | "launch_agents" | "schema_version" | "plist_drift";
   level: "ok" | "warn" | "alert";
   detail: string;
 }
@@ -21,6 +22,10 @@ export interface ControlPlaneDoctorDeps {
   lsof?: (path: string) => string;
   launchAgentsDir?: string;
   knownLabels?: string[];
+  /** Path to the serving daemon plist (default ~/Library/LaunchAgents/ai.osstack.daemon.plist). */
+  daemonPlistPath?: string;
+  /** Path to the plist sha256 baseline file (default: plist path + ".sha256.baseline" beside the serving dist role file is impractical for doctor; we use <home>/plist.sha256.baseline). */
+  plistBaselinePath?: string;
 }
 
 const KNOWN_LABELS = ["ai.osstack.daemon", "ai.osstack.autoupgrade", "ai.osstack.copilot-daemon", "ai.ostag.copilot-relay"];
@@ -112,6 +117,28 @@ export function runControlPlaneChecks(deps: ControlPlaneDoctorDeps = {}): Contro
     }
   } else {
     findings.push({ check: "schema_version", level: "ok", detail: "no control-plane DB present" });
+  }
+
+  // 5. Daemon plist content drift (Phase 2.1-C; 2026-07-19: the plist was
+  // found silently REWRITTEN by an unidentified process before final deploy).
+  const plistPath = deps.daemonPlistPath ?? resolve(homedir(), "Library", "LaunchAgents", "ai.osstack.daemon.plist");
+  const baselinePath = deps.plistBaselinePath ?? join(home, "plist.sha256.baseline");
+  if (existsSync(plistPath)) {
+    try {
+      const actual = createHash("sha256").update(readFileSync(plistPath)).digest("hex");
+      if (!existsSync(baselinePath)) {
+        findings.push({ check: "plist_drift", level: "warn", detail: "no plist baseline recorded — run the deploy step (writes <home>/plist.sha256.baseline); drift cannot be verified" });
+      } else {
+        const expected = readFileSync(baselinePath, "utf8").trim();
+        findings.push(actual === expected
+          ? { check: "plist_drift", level: "ok", detail: "daemon plist matches the recorded baseline" }
+          : { check: "plist_drift", level: "alert", detail: "daemon plist CONTENT DIFFERS from the recorded baseline — it may have been rewritten (2026-07-19 pattern); re-verify before the next daemon restart" });
+      }
+    } catch (err) {
+      findings.push({ check: "plist_drift", level: "warn", detail: `could not verify plist drift: ${err instanceof Error ? err.message : String(err)}` });
+    }
+  } else {
+    findings.push({ check: "plist_drift", level: "warn", detail: "no daemon plist found — not a launchd deployment or plist missing" });
   }
 
   return findings;

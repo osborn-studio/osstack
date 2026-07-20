@@ -1,13 +1,8 @@
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { isAbsolute, dirname, resolve } from "node:path";
-import {
-  KnowledgeHygieneRecurrencePolicyV1,
-  listImprovementProposals,
-  openDb,
-  queryKnowledgeHygieneRecurrenceCandidatesV2,
-  upsertImprovementProposal,
-} from "@osstack/core";
+import { KnowledgeHygieneRecurrencePolicyV1, listImprovementProposals, queryKnowledgeHygieneRecurrenceCandidatesV2, upsertImprovementProposal } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import { AgentCommandResult, PROTOCOL_VERSION } from "@osstack/protocol";
 import { proposeKnowledgeHygieneImprovements } from "@osstack/supervisor";
 import Database from "better-sqlite3";

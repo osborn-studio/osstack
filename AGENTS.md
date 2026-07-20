@@ -36,13 +36,13 @@ Do not commit local Hermes paths, secrets, socket data, or generated databases. 
 <claude-mem-context>
 # Memory Context
 
-# [osstack/osstack-closure] recent context, 2026-07-18 5:50pm PDT
+# [osstack/osstack-p21] recent context, 2026-07-19 5:04pm PDT
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 45 obs (21,409t read) | 3,892,984t work | 99% savings
+Stats: 43 obs (19,916t read) | 3,753,802t work | 99% savings
 
 ### Jul 16, 2026
 3658 11:18p ✅ osstack Local Repo Synced from GitHub Remote (fast-forward)
@@ -90,8 +90,15 @@ Stats: 45 obs (21,409t read) | 3,892,984t work | 99% savings
 4045 " 🟣 deepseek.test.ts — `OSSTACK_IMPLEMENTATION_DEVIATIONS` Protocol Line Added (Patch Failed)
 4046 2:13a 🟣 R3.2 Full Test Suite Green and Committed to Branch
 4047 " 🔵 R3.3 Kanban Guard Target — `stackMove` in stack-cli.ts Calls `repo.moveCard` Directly
-4311 5:22p ⚖️ Security Code Review — Commit f18fdc4 Fail-Closed Agent ID Override Routing
-4312 5:25p 🔵 Commit f18fdc4 — Fail-Closed Agent Override: Full Code-Path Audit Findings
 
-Access 3893k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 3754k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
+## Control-plane DB discipline (Phase 2.1-B, incidents 2026-07-18/19)
+
+NEVER invoke `packages/cli/dist/bin.js` (or any osstack CLI) against the
+default (`~/.osstack`) or a reserved OSSTACK_HOME from a development checkout —
+opening the DB auto-migrates it. The guard now refuses this at runtime for both
+`serve` AND direct-DB commands (loop run, daily, agent scorecard, stack, …).
+Always set an explicit per-workspace `OSSTACK_HOME` (see the ihiking wrapper
+`tools/osstack/osstack.sh` for the reference pattern), or use the installed
+`osstack` shim which targets the declared serving home.

@@ -36,16 +36,8 @@ import {
   type LoopKnowledgeTrace as LoopKnowledgeTraceType,
   type CompletedTask,
 } from "@osstack/loop";
-import {
-  openDb, PIIRedactor, routeCapability, AgentOverrideError,
-  PolicyEngine, DEFAULT_RULES, sqliteHistory,
-  HermesBridge, GBrainAdapter,
-  initOtel, shutdownOtel, traceSpan, otelEnabled,
-  KanbanRepository, KanbanNotifier, getBoard,
-  countRuns, countRunsSince, countEvents, listEventsForRun,
-  type RoutableAdapter, type PolicyDecision,
-  type CardStatus, type OutboundMessage,
-} from "@osstack/core";
+import { PIIRedactor, routeCapability, AgentOverrideError, PolicyEngine, DEFAULT_RULES, sqliteHistory, HermesBridge, GBrainAdapter, initOtel, shutdownOtel, traceSpan, otelEnabled, KanbanRepository, KanbanNotifier, getBoard, countRuns, countRunsSince, countEvents, listEventsForRun, type RoutableAdapter, type PolicyDecision, type CardStatus, type OutboundMessage } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import type Database from "better-sqlite3";
 import {
   cleanupOrphanedWorktrees,

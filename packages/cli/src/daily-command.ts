@@ -16,15 +16,8 @@ import { existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import {
-  KanbanRepository,
-  countOpenDependencyObligationsV2,
-  getBoard,
-  openDb,
-  queryKnowledgeHygieneTrendV2,
-  queryProbePortfolioSummary,
-  type ProbePortfolioSummaryV1,
-} from "@osstack/core";
+import { KanbanRepository, countOpenDependencyObligationsV2, getBoard, queryKnowledgeHygieneTrendV2, queryProbePortfolioSummary, type ProbePortfolioSummaryV1 } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import {
   fetchPortfolioGithubStatus,
   type CommandRunner,

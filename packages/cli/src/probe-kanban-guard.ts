@@ -1,11 +1,5 @@
-import {
-  getProbeSession,
-  listProbeEvents,
-  listProbeItems,
-  listProbeSessionsByRepo,
-  openDb,
-  type KanbanTransitionGuard,
-} from "@osstack/core";
+import { getProbeSession, listProbeEvents, listProbeItems, listProbeSessionsByRepo, type KanbanTransitionGuard } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import {
   evaluateProbeGate,
   ProbeEventV1,
