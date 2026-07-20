@@ -218,7 +218,8 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
     }
     try {
       const rr = await run("npm", ["root", "-g"]);
-      if (rr.ok) provisionStableServing(`${rr.output.trim()}/@osstack/cli/dist/bin.js`, process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
+      if (!rr.ok) throw new Error(`npm root -g failed: ${rr.output.slice(0, 120)}`);
+      provisionStableServing(`${rr.output.trim()}/@osstack/cli/dist/bin.js`, process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
     } catch (err) {
       log(`re-provisioning after restore FAILED: ${err instanceof Error ? err.message : String(err)} — daemon left STOPPED (manual: osstack serve --install)`);
       return 1;
@@ -275,8 +276,13 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
     if (!healthy) {
       log(`daemon failed health check on ${target} — ROLLING BACK to ${VERSION}…`);
       // Quiesce before mutating package/DB (review F4): the unhealthy daemon
-      // may still be flapping under KeepAlive.
-      await stopDaemon(opts.rpc, viaLaunchd);
+      // may still be flapping under KeepAlive. If it will NOT quiesce, do not
+      // mutate anything under it — stop with manual recovery (round-3 #1).
+      const quiesced = await stopDaemon(opts.rpc, viaLaunchd);
+      if (!quiesced) {
+        log(`could not quiesce the unhealthy daemon — NOT touching package or DB while it may be live. Manual recovery: launchctl bootout gui/$UID/${LAUNCHD_LABEL}; npm i -g ${PKG}@${VERSION}; restore ${backup ?? "(no snapshot — delete state.db)"}; osstack serve --install`);
+        return 1;
+      }
       const rollback = await run("npm", ["install", "-g", `${PKG}@${VERSION}`]);
       if (!rollback.ok) {
         log(`rollback install ALSO failed:\n${rollback.output}`);
@@ -288,9 +294,18 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
       if (backup === null) {
         // No DB existed pre-upgrade (review F6): the failed new version may
         // have CREATED one at its own schema — remove it so the restored old
-        // version starts fresh instead of refusing a newer schema.
+        // version starts fresh instead of refusing a newer schema. Only ENOENT
+        // counts as absent; a real I/O failure would leave the foreign-schema
+        // DB in place, so STOP instead of restarting over it (round-3 #3).
         const dbP = join(osstackHome(), "state.db");
-        for (const f of [dbP, `${dbP}-wal`, `${dbP}-shm`]) { try { unlinkSync(f); } catch { /* absent */ } }
+        for (const f of [dbP, `${dbP}-wal`, `${dbP}-shm`]) {
+          try { unlinkSync(f); } catch (err) {
+            if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+              log(`could not remove ${f === dbP ? "the newly created state.db" : "a state.db sidecar"} (${(err as Error).message}) — daemon left STOPPED to avoid booting old code on a newer-schema DB. Manual recovery: remove ${dbP}* then osstack serve --install`);
+              return 1;
+            }
+          }
+        }
       }
       if (backup) {
         try {

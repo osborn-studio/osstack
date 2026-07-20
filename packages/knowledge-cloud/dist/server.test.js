@@ -452,6 +452,56 @@ describe("Knowledge Cloud HTTP service", () => {
         });
         expect(JSON.stringify(queue)).not.toContain("team/private-runbook");
     });
+    it("serves a read-only official review queue UI without leaking private packs", async () => {
+        const url = await startCloud({
+            packs: [
+                packFromManifest(reviewedOfficialPack()),
+                packFromManifest(reviewedOfficialPack({
+                    id: "osstack-core/needs-rewrite",
+                    name: "Needs Rewrite",
+                    review: {
+                        status: "changes_requested",
+                        reviewer_id: "knowledge-reviewer",
+                        reviewed_at: "2026-06-22T00:00:00.000Z",
+                        summary: "Rewrite upstream phrasing before publication.",
+                    },
+                })),
+                packFromManifest(unreviewedOfficialPack({
+                    id: "osstack-core/missing-review",
+                    name: "Missing Review",
+                })),
+            ],
+            privatePacks: [teamPack()],
+        });
+        const response = await fetch(`${url}/review`);
+        expect(response.status).toBe(200);
+        expect(response.headers.get("content-type")).toContain("text/html");
+        const html = await response.text();
+        expect(html).toContain("Osstack Knowledge Cloud Review Queue");
+        expect(html).toContain("Scope: official");
+        expect(html).toContain("Filter: needs_review");
+        expect(html).toContain("osstack-core/missing-review");
+        expect(html).toContain("osstack-core/needs-rewrite");
+        expect(html).toContain("Rewrite upstream phrasing before publication.");
+        expect(html).not.toContain("team/private-runbook");
+    });
+    it("filters the official review queue UI by status", async () => {
+        const url = await startCloud({
+            packs: [
+                packFromManifest(reviewedOfficialPack()),
+                packFromManifest(unreviewedOfficialPack({
+                    id: "osstack-core/missing-review",
+                    name: "Missing Review",
+                })),
+            ],
+        });
+        const response = await fetch(`${url}/review?status=approved`);
+        expect(response.status).toBe(200);
+        const html = await response.text();
+        expect(html).toContain("Filter: approved");
+        expect(html).toContain("osstack-core/cloud-publish");
+        expect(html).not.toContain("osstack-core/missing-review");
+    });
     it("serves tenant review queues only to authorized tenant tokens", async () => {
         const url = await startCloud({
             packs: await officialPacks(),

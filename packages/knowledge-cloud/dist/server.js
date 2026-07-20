@@ -85,6 +85,17 @@ async function routeKnowledgeCloudRequest(options, req, res) {
         });
         return;
     }
+    if (method === "GET" && (url.pathname === "/review" || url.pathname === "/review/queue")) {
+        const status = reviewQueueStatusParam(url.searchParams.get("status"));
+        const items = reviewQueueItems(options.packs, status);
+        sendHtml(res, 200, renderReviewQueueHtml({
+            scope: "official",
+            status,
+            total: items.length,
+            items,
+        }));
+        return;
+    }
     if (method === "POST" && url.pathname === "/v1/sync") {
         await readJsonBody(req);
         sendJson(res, 200, {
@@ -414,6 +425,65 @@ function reviewQueueItems(packs, status) {
         || a.pack_id.localeCompare(b.pack_id)
         || a.version.localeCompare(b.version)));
 }
+function renderReviewQueueHtml(queue) {
+    const filters = ["needs_review", "missing", "changes_requested", "approved", "all"];
+    const rows = queue.items.map((item) => [
+        "<tr>",
+        `<td><code>${escapeHtml(item.pack_id)}</code><br><small>${escapeHtml(item.name)} @ ${escapeHtml(item.version)}</small></td>`,
+        `<td><span class="status status-${escapeHtml(item.review_status)}">${escapeHtml(item.review_status)}</span></td>`,
+        `<td>${escapeHtml(String(item.quality_score))}</td>`,
+        `<td>${escapeHtml(item.reviewer_id ?? "unassigned")}<br><small>${escapeHtml(item.reviewed_at ?? "not reviewed")}</small></td>`,
+        `<td>${escapeHtml(item.review_summary ?? "No review summary recorded.")}</td>`,
+        `<td>${escapeHtml(String(item.chunk_count))}</td>`,
+        `<td>${escapeHtml(String(item.source_count))}</td>`,
+        "</tr>",
+    ].join("")).join("\n");
+    return [
+        "<!doctype html>",
+        '<html lang="en">',
+        "<head>",
+        '<meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        "<title>Osstack Knowledge Cloud Review Queue</title>",
+        "<style>",
+        "body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;background:#f7f8fa;color:#16181d}",
+        "main{max-width:1180px;margin:0 auto;padding:32px 20px}",
+        "h1{font-size:28px;margin:0 0 6px}",
+        "p{margin:0 0 18px;color:#596171}",
+        ".filters{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0}",
+        ".filters a{border:1px solid #d9dde5;border-radius:6px;color:#222;text-decoration:none;padding:7px 10px;background:white}",
+        ".filters a.active{background:#16181d;color:white;border-color:#16181d}",
+        "table{width:100%;border-collapse:collapse;background:white;border:1px solid #d9dde5;border-radius:8px;overflow:hidden}",
+        "th,td{text-align:left;vertical-align:top;border-bottom:1px solid #edf0f4;padding:10px;font-size:14px}",
+        "th{background:#f0f2f5;color:#3a4050;font-size:12px;text-transform:uppercase;letter-spacing:.04em}",
+        "tr:last-child td{border-bottom:0}",
+        "code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}",
+        "small{color:#6b7280}",
+        ".status{display:inline-block;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:700}",
+        ".status-missing{background:#fff1f2;color:#be123c}",
+        ".status-changes_requested{background:#fff7ed;color:#c2410c}",
+        ".status-approved{background:#ecfdf5;color:#047857}",
+        ".empty{background:white;border:1px solid #d9dde5;border-radius:8px;padding:24px}",
+        "</style>",
+        "</head>",
+        "<body>",
+        "<main>",
+        "<h1>Osstack Knowledge Cloud Review Queue</h1>",
+        `<p>Scope: ${escapeHtml(queue.scope)} · Filter: ${escapeHtml(queue.status)} · Total: ${queue.total}</p>`,
+        `<nav class="filters">${filters.map((filter) => `<a class="${filter === queue.status ? "active" : ""}" href="/review?status=${filter}">${escapeHtml(filter)}</a>`).join("")}</nav>`,
+        queue.items.length === 0
+            ? '<div class="empty">No review queue items match this filter.</div>'
+            : [
+                "<table>",
+                "<thead><tr><th>Pack</th><th>Status</th><th>Quality</th><th>Reviewer</th><th>Summary</th><th>Chunks</th><th>Sources</th></tr></thead>",
+                `<tbody>${rows}</tbody>`,
+                "</table>",
+            ].join(""),
+        "</main>",
+        "</body>",
+        "</html>",
+    ].join("\n");
+}
 function reviewQueuePriority(status) {
     if (status === "missing")
         return 0;
@@ -591,6 +661,9 @@ function auditLimitField(value) {
 }
 function reviewQueueStatusField(value) {
     const status = stringField(value, "status");
+    return reviewQueueStatusParam(status);
+}
+function reviewQueueStatusParam(status) {
     if (status === "all"
         || status === "approved"
         || status === "changes_requested"
@@ -614,6 +687,17 @@ function isNodeError(error) {
 function sendJson(res, status, payload) {
     res.writeHead(status, { "content-type": "application/json" });
     res.end(`${JSON.stringify(payload)}\n`);
+}
+function sendHtml(res, status, html) {
+    res.writeHead(status, { "content-type": "text/html; charset=utf-8" });
+    res.end(html);
+}
+function escapeHtml(value) {
+    return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
 }
 class BadRequestError extends Error {
 }

@@ -7199,7 +7199,8 @@ Options:
       // Record the plist content baseline for doctor's drift check (2.1-C/F2).
       try {
         const { createHash } = await import("node:crypto");
-        const plistPath = `${process.env.HOME}/Library/LaunchAgents/${LAUNCHD_LABEL}.plist`;
+        const plistPath = (result as { plist_path?: string }).plist_path
+          ?? `${process.env.HOME}/Library/LaunchAgents/${LAUNCHD_LABEL}.plist`;
         if (fsExistsSync(plistPath)) {
           const h = createHash("sha256").update(readFileSync(plistPath)).digest("hex");
           const home = process.env.OSSTACK_HOME ?? defaultOsstackHome();
