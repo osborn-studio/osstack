@@ -280,7 +280,10 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
       // mutate anything under it — stop with manual recovery (round-3 #1).
       const quiesced = await stopDaemon(opts.rpc, viaLaunchd);
       if (!quiesced) {
-        log(`could not quiesce the unhealthy daemon — NOT touching package or DB while it may be live. Manual recovery: launchctl bootout gui/$UID/${LAUNCHD_LABEL}; npm i -g ${PKG}@${VERSION}; restore ${backup ?? "(no snapshot — delete state.db)"}; osstack serve --install`);
+        log("could not quiesce the unhealthy daemon — NOT touching package or DB while it may be live.");
+        log(`Manual recovery — do NOT mutate anything until the daemon is VERIFIED stopped: ${viaLaunchd
+          ? `launchctl bootout gui/$UID/${LAUNCHD_LABEL} (repeat until 'no such process')`
+          : "stop the daemon process (kill the pid in daemon.pid)"}, confirm the daemon socket is gone AND lsof shows no state.db holders; ONLY THEN: npm i -g ${PKG}@${VERSION}; ${backup ? `restore the snapshot ${backup}` : "delete the newly created state.db(+wal/shm)"}; osstack serve --install.`);
         return 1;
       }
       const rollback = await run("npm", ["install", "-g", `${PKG}@${VERSION}`]);
