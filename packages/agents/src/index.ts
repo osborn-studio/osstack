@@ -37,6 +37,17 @@ export {
   type AnthropicNoToolsSemanticJudgeOptions,
 } from "./semantic/anthropic-no-tools.js";
 export {
+  BUILT_IN_SEMANTIC_JUDGE_IDS,
+  createBuiltInSemanticJudge,
+  type BuiltInSemanticJudgeFactoryOptions,
+  type BuiltInSemanticJudgeId,
+} from "./semantic/built-in-judges.js";
+export {
+  DeepSeekNoToolsSemanticJudge,
+  QwenNoToolsSemanticJudge,
+  type OpenAICompatibleNoToolsSemanticJudgeOptions,
+} from "./semantic/openai-compatible-no-tools.js";
+export {
   cleanupOrphanedWorktrees,
   cleanupWorktree,
   commitWorktreeChanges,
