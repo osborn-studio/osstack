@@ -30,18 +30,24 @@ interface ProviderProfile {
   id: "deepseek-no-tools" | "qwen-no-tools";
   endpoint: string;
   credentialEnvironmentVariable: "DEEPSEEK_API_KEY" | "DASHSCOPE_API_KEY";
+  outputTokenParameter: "max_tokens" | "max_completion_tokens";
+  requestDefaults: Readonly<Record<string, unknown>>;
 }
 
 const deepSeekProfile: ProviderProfile = {
   id: "deepseek-no-tools",
   endpoint: "https://api.deepseek.com/chat/completions",
   credentialEnvironmentVariable: "DEEPSEEK_API_KEY",
+  outputTokenParameter: "max_tokens",
+  requestDefaults: { thinking: { type: "enabled" } },
 };
 
 const qwenProfile: ProviderProfile = {
   id: "qwen-no-tools",
   endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
   credentialEnvironmentVariable: "DASHSCOPE_API_KEY",
+  outputTokenParameter: "max_completion_tokens",
+  requestDefaults: { enable_thinking: false },
 };
 
 async function readBoundedResponseText(
@@ -79,6 +85,7 @@ export interface OpenAICompatibleNoToolsSemanticJudgeOptions {
   model_id: string;
   environment?: NodeJS.ProcessEnv;
   fetch?: typeof globalThis.fetch;
+  request_timeout_ms?: number;
 }
 
 class OpenAICompatibleNoToolsSemanticJudge implements SemanticJudgePort {
@@ -88,8 +95,9 @@ class OpenAICompatibleNoToolsSemanticJudge implements SemanticJudgePort {
   readonly supports_no_tools = true as const;
 
   readonly #apiKey: string;
-  readonly #endpoint: string;
   readonly #fetch: typeof globalThis.fetch;
+  readonly #profile: ProviderProfile;
+  readonly #requestTimeoutMs: number;
 
   constructor(
     profile: ProviderProfile,
@@ -97,6 +105,14 @@ class OpenAICompatibleNoToolsSemanticJudge implements SemanticJudgePort {
   ) {
     if (options.model_id.trim().length === 0) {
       throw new Error("semantic judge model_id must not be empty");
+    }
+    const requestTimeoutMs = options.request_timeout_ms ?? 120_000;
+    if (
+      Number.isSafeInteger(requestTimeoutMs) === false
+      || requestTimeoutMs < 1
+      || requestTimeoutMs > 300_000
+    ) {
+      throw new Error("semantic judge request_timeout_ms must be 1..300000");
     }
     const environment = options.environment ?? process.env;
     const apiKey = environment[profile.credentialEnvironmentVariable];
@@ -106,10 +122,11 @@ class OpenAICompatibleNoToolsSemanticJudge implements SemanticJudgePort {
       );
     }
     this.id = profile.id;
-    this.model_id = options.model_id;
-    this.#apiKey = apiKey;
-    this.#endpoint = profile.endpoint;
+    this.model_id = options.model_id.trim();
+    this.#apiKey = apiKey.trim();
     this.#fetch = options.fetch ?? globalThis.fetch;
+    this.#profile = profile;
+    this.#requestTimeoutMs = requestTimeoutMs;
   }
 
   async judge(
@@ -117,94 +134,119 @@ class OpenAICompatibleNoToolsSemanticJudge implements SemanticJudgePort {
     signal: AbortSignal,
   ): Promise<SemanticJudgeResponseV1> {
     if (signal.aborted) throw new Error("semantic judge call cancelled");
-    const response = await this.#fetch(this.#endpoint, {
-      method: "POST",
-      headers: {
-        accept: "application/json",
-        authorization: `Bearer ${this.#apiKey}`,
-        "content-type": "application/json",
-        "user-agent": "osstack-neat-semantic/1",
-      },
-      body: JSON.stringify({
-        model: this.model_id,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: JSON.stringify({
-              protocol: "osstack.semantic-judge.v1",
-              nonce: input.nonce,
-              evidence_pack: input.evidence_pack,
-              output_schema: input.output_schema,
-            }),
+    const requestController = new AbortController();
+    let timedOut = false;
+    const cancel = (): void => requestController.abort();
+    signal.addEventListener("abort", cancel, { once: true });
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      requestController.abort();
+    }, this.#requestTimeoutMs);
+    timeout.unref();
+    try {
+      let response: Response;
+      try {
+        response = await this.#fetch(this.#profile.endpoint, {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            authorization: `Bearer ${this.#apiKey}`,
+            "content-type": "application/json",
+            "user-agent": "osstack-neat-semantic/1",
           },
-        ],
-        max_tokens: input.budget.max_output_tokens,
-        response_format: { type: "json_object" },
-        stream: false,
-      }),
-      signal,
-    });
-    if (!response.ok) {
-      throw new Error(`${this.id} provider failed: HTTP ${response.status}`);
-    }
-
-    const maximumResponseBytes = Math.max(
-      16_384,
-      input.budget.max_output_tokens * 16,
-    );
-    let rawProviderResponse: unknown;
-    try {
-      rawProviderResponse = JSON.parse(await readBoundedResponseText(
-        response,
-        maximumResponseBytes,
-        this.id,
-      ));
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("response exceeds")) {
-        throw error;
+          body: JSON.stringify({
+            model: this.model_id,
+            messages: [
+              { role: "system", content: SYSTEM_PROMPT },
+              {
+                role: "user",
+                content: JSON.stringify({
+                  protocol: "osstack.semantic-judge.v1",
+                  nonce: input.nonce,
+                  evidence_pack: input.evidence_pack,
+                  output_schema: input.output_schema,
+                }),
+              },
+            ],
+            [this.#profile.outputTokenParameter]: input.budget.max_output_tokens,
+            response_format: { type: "json_object" },
+            stream: false,
+            ...this.#profile.requestDefaults,
+          }),
+          signal: requestController.signal,
+        });
+      } catch {
+        if (signal.aborted) throw new Error("semantic judge call cancelled");
+        if (timedOut) throw new Error(`${this.id} provider request timed out`);
+        throw new Error(`${this.id} provider request failed`);
       }
-      throw new Error(`${this.id} returned invalid provider JSON`);
-    }
-    const parsed = providerResponse.safeParse(rawProviderResponse);
-    if (!parsed.success) {
-      throw new Error(`${this.id} returned an invalid provider response schema`);
-    }
-    const choice = parsed.data.choices[0];
-    if (choice === undefined) {
-      throw new Error(`${this.id} returned no completion choice`);
-    }
-    if (
-      choice.finish_reason === "tool_calls"
-      || (choice.message.tool_calls?.length ?? 0) > 0
-    ) {
-      throw new Error(`${this.id} reported tool activity`);
-    }
-    if (choice.finish_reason !== "stop") {
-      throw new Error(
-        `${this.id} failed closed: finish_reason=${choice.finish_reason ?? "null"}`,
-      );
-    }
-    if (choice.message.content === null) {
-      throw new Error(`${this.id} returned no JSON content`);
-    }
+      if (!response.ok) {
+        throw new Error(`${this.id} provider failed: HTTP ${response.status}`);
+      }
 
-    let rawOutput: unknown;
-    try {
-      rawOutput = JSON.parse(choice.message.content);
-    } catch {
-      throw new Error(`${this.id} returned invalid JSON content`);
+      const maximumResponseBytes = Math.max(
+        16_384,
+        input.budget.max_output_tokens * 16,
+      );
+      let rawProviderResponse: unknown;
+      try {
+        rawProviderResponse = JSON.parse(await readBoundedResponseText(
+          response,
+          maximumResponseBytes,
+          this.id,
+        ));
+      } catch (error) {
+        if (signal.aborted) throw new Error("semantic judge call cancelled");
+        if (timedOut) throw new Error(`${this.id} provider request timed out`);
+        if (error instanceof Error && error.message.includes("response exceeds")) {
+          throw error;
+        }
+        throw new Error(`${this.id} returned invalid provider JSON`);
+      }
+      const parsed = providerResponse.safeParse(rawProviderResponse);
+      if (!parsed.success) {
+        throw new Error(`${this.id} returned an invalid provider response schema`);
+      }
+      const choice = parsed.data.choices[0];
+      if (choice === undefined) {
+        throw new Error(`${this.id} returned no completion choice`);
+      }
+      if (
+        choice.finish_reason === "tool_calls"
+        || (choice.message.tool_calls?.length ?? 0) > 0
+      ) {
+        throw new Error(`${this.id} reported tool activity`);
+      }
+      if (choice.finish_reason !== "stop") {
+        throw new Error(
+          `${this.id} failed closed: finish_reason=${choice.finish_reason ?? "null"}`,
+        );
+      }
+      if (choice.message.content === null) {
+        throw new Error(`${this.id} returned no JSON content`);
+      }
+
+      let rawOutput: unknown;
+      try {
+        rawOutput = JSON.parse(choice.message.content);
+      } catch {
+        throw new Error(`${this.id} returned invalid JSON content`);
+      }
+      return {
+        nonce: input.nonce,
+        raw_output: rawOutput,
+        usage: {
+          input_tokens: parsed.data.usage.prompt_tokens,
+          output_tokens: parsed.data.usage.completion_tokens,
+          calls: 1,
+        },
+        provider_request_id: parsed.data.id,
+      };
+    } finally {
+      clearTimeout(timeout);
+      signal.removeEventListener("abort", cancel);
+      requestController.abort();
     }
-    return {
-      nonce: input.nonce,
-      raw_output: rawOutput,
-      usage: {
-        input_tokens: parsed.data.usage.prompt_tokens,
-        output_tokens: parsed.data.usage.completion_tokens,
-        calls: 1,
-      },
-      provider_request_id: parsed.data.id,
-    };
   }
 }
 

@@ -130,7 +130,10 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
     expect(JSON.parse(String(init?.body))).toMatchObject({
       model: "qwen3.7-plus",
       response_format: { type: "json_object" },
+      enable_thinking: false,
+      max_completion_tokens: 100,
     });
+    expect(JSON.parse(String(init?.body))).not.toHaveProperty("max_tokens");
   });
 
   it("requires the provider-specific credential", () => {
@@ -199,11 +202,19 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
     }
   });
 
-  it("passes the caller's cancellation signal to the provider request", async () => {
+  it("propagates caller cancellation through its bounded request signal", async () => {
     const controller = new AbortController();
+    const requestSignals: AbortSignal[] = [];
     const fetchMock = vi.fn<typeof fetch>(async (_url, init) => {
-      expect(init?.signal).toBe(controller.signal);
-      return providerResponse();
+      const requestSignal = init?.signal;
+      if (requestSignal !== undefined && requestSignal !== null) {
+        requestSignals.push(requestSignal);
+      }
+      return await new Promise<Response>((_resolve, reject) => {
+        requestSignal?.addEventListener("abort", () => reject(
+          requestSignal.reason ?? new Error("aborted"),
+        ), { once: true });
+      });
     });
     const provider = new DeepSeekNoToolsSemanticJudge({
       model_id: "deepseek-v4-pro",
@@ -211,8 +222,55 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
       fetch: fetchMock,
     });
 
-    await provider.judge(request(), controller.signal);
+    const pending = provider.judge(request(), controller.signal);
+    controller.abort();
+    await expect(pending).rejects.toThrow(/cancelled/i);
     expect(fetchMock).toHaveBeenCalledOnce();
+    expect(requestSignals[0]?.aborted).toBe(true);
+  });
+
+  it("times out a stalled request and sanitizes transport failures", async () => {
+    vi.useFakeTimers();
+    try {
+      const provider = new DeepSeekNoToolsSemanticJudge({
+        model_id: "deepseek-v4-pro",
+        environment: { DEEPSEEK_API_KEY: "secret-sentinel" },
+        request_timeout_ms: 50,
+        fetch: vi.fn<typeof fetch>(async (_url, init) =>
+          await new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => reject(
+              new Error("transport leaked secret-sentinel"),
+            ), { once: true });
+          })),
+      });
+
+      const pending = provider.judge(request(), new AbortController().signal);
+      const captured = pending.catch((error: unknown) => error);
+      await vi.advanceTimersByTimeAsync(50);
+      const error = await captured;
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toMatch(/timed out/i);
+      expect((error as Error).message).not.toContain("secret-sentinel");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not disclose provider transport errors", async () => {
+    const provider = new QwenNoToolsSemanticJudge({
+      model_id: "qwen3.7-plus",
+      environment: { DASHSCOPE_API_KEY: "secret-sentinel" },
+      fetch: vi.fn<typeof fetch>(async () => {
+        throw new Error("TLS failure included secret-sentinel");
+      }),
+    });
+
+    const error = await provider
+      .judge(request(), new AbortController().signal)
+      .catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/provider request failed/i);
+    expect((error as Error).message).not.toContain("secret-sentinel");
   });
 
   it("rejects an oversized provider response before parsing untrusted content", async () => {

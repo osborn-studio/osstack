@@ -81,10 +81,23 @@ is ready only when both its credential and complete model ID are present:
 | `deepseek-no-tools` | `DEEPSEEK_API_KEY` | `OSSTACK_NEAT_DEEPSEEK_MODEL` |
 | `qwen-no-tools` | `DASHSCOPE_API_KEY` | `OSSTACK_NEAT_QWEN_MODEL` |
 
+Recommended explicit model IDs for the first canary are
+`deepseek-v4-pro` and `qwen3.7-plus`. Model IDs remain environment-owned so a
+provider alias change cannot silently alter the cache fingerprint or evaluation
+record.
+
 The DeepSeek and Qwen endpoints are fixed in the trusted provider registry;
 repository configuration cannot supply a Base URL. The doctor passes the
 `production_semantic_provider` check when at least one profile is complete and
 reports partial configuration only by variable name, never by value.
+
+Before invoking a canary from the terminal where the credentials are already
+loaded, configure the corresponding immutable model identity:
+
+```sh
+export OSSTACK_NEAT_DEEPSEEK_MODEL=deepseek-v4-pro
+export OSSTACK_NEAT_QWEN_MODEL=qwen3.7-plus
+```
 
 For a live smoke, use a disposable sanitized repository with ConfigV2
 `semantic.enabled: true`, invoke one profile explicitly with `--judge`, retain
