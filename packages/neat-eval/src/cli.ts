@@ -29,6 +29,7 @@ import {
   scoreParityEvaluationV1,
   type ParityEvaluationInputV1,
 } from "./scorer.js";
+import { inspectProductionSemanticProviders } from "./provider-readiness.js";
 
 function digest(value: string | Buffer): string {
   return createHash("sha256").update(value).digest("hex");
@@ -200,13 +201,13 @@ async function doctor(args: readonly string[]): Promise<number> {
     passed: adapterMatrixValid,
     detail: `${adapters.length}/4 adapters; attestations must be independent of builder`,
   });
+  const productionProviders = inspectProductionSemanticProviders();
   checks.push({
     check: "production_semantic_provider",
-    passed: typeof process.env["ANTHROPIC_API_KEY"] === "string"
-      && process.env["ANTHROPIC_API_KEY"]!.length > 0
-      && typeof process.env["OSSTACK_NEAT_ANTHROPIC_MODEL"] === "string"
-      && process.env["OSSTACK_NEAT_ANTHROPIC_MODEL"]!.length > 0,
-    detail: "ANTHROPIC_API_KEY and OSSTACK_NEAT_ANTHROPIC_MODEL are required; logged-in general agents are not accepted as SemanticJudgePort",
+    passed: productionProviders.passed,
+    detail: productionProviders.passed
+      ? `ready=${productionProviders.ready_judge_ids.join(",")}`
+      : `no complete no-tools provider; partial=${JSON.stringify(productionProviders.partially_configured)}`,
   });
   const output = {
     schema_version: "1",
