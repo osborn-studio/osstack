@@ -99,6 +99,21 @@ export OSSTACK_NEAT_DEEPSEEK_MODEL=deepseek-v4-pro
 export OSSTACK_NEAT_QWEN_MODEL=qwen3.7-plus
 ```
 
+Build once, then invoke either provider through the disposable live-smoke
+runner. A receipt path must be absolute and must not already exist; the runner
+creates it with mode `0600` and never stores raw findings or credentials.
+
+```sh
+pnpm --filter @osstack/cli build
+node scripts/smoke-neat-semantic-live.mjs \
+  --provider deepseek-no-tools \
+  --receipt /tmp/osstack-deepseek-live-smoke.json
+
+node scripts/smoke-neat-semantic-live.mjs \
+  --provider qwen-no-tools \
+  --receipt /tmp/osstack-qwen-live-smoke.json
+```
+
 For a live smoke, use a disposable sanitized repository with ConfigV2
 `semantic.enabled: true`, invoke one profile explicitly with `--judge`, retain
 the JSON ReportV2 in a private location, and verify that requested coverage is
