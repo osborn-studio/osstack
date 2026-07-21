@@ -69,3 +69,25 @@ future hidden runs use the v3 rebaseline files whose names end in `-v3.json`.
 
 Logged-in general code agents are not acceptable substitutes for the isolated
 `SemanticJudgePort`, independent hidden custody, or blind judges.
+
+## Built-in production semantic providers
+
+`osstack neat semantic` accepts three fixed no-tools judge profiles. A profile
+is ready only when both its credential and complete model ID are present:
+
+| Judge ID | Credential | Model ID |
+|---|---|---|
+| `anthropic-no-tools` | `ANTHROPIC_API_KEY` | `OSSTACK_NEAT_ANTHROPIC_MODEL` |
+| `deepseek-no-tools` | `DEEPSEEK_API_KEY` | `OSSTACK_NEAT_DEEPSEEK_MODEL` |
+| `qwen-no-tools` | `DASHSCOPE_API_KEY` | `OSSTACK_NEAT_QWEN_MODEL` |
+
+The DeepSeek and Qwen endpoints are fixed in the trusted provider registry;
+repository configuration cannot supply a Base URL. The doctor passes the
+`production_semantic_provider` check when at least one profile is complete and
+reports partial configuration only by variable name, never by value.
+
+For a live smoke, use a disposable sanitized repository with ConfigV2
+`semantic.enabled: true`, invoke one profile explicitly with `--judge`, retain
+the JSON ReportV2 in a private location, and verify that requested coverage is
+neither `failed` nor `not_assessed`. A live smoke is integration evidence only;
+it does not replace the independently held hidden A/B experiment.
