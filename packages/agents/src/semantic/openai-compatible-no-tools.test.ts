@@ -214,4 +214,18 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
     await provider.judge(request(), controller.signal);
     expect(fetchMock).toHaveBeenCalledOnce();
   });
+
+  it("rejects an oversized provider response before parsing untrusted content", async () => {
+    const provider = new DeepSeekNoToolsSemanticJudge({
+      model_id: "deepseek-v4-pro",
+      environment: { DEEPSEEK_API_KEY: "key" },
+      fetch: vi.fn<typeof fetch>(async () => new Response("x".repeat(20_000), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })),
+    });
+
+    await expect(provider.judge(request(), new AbortController().signal))
+      .rejects.toThrow(/response exceeds/i);
+  });
 });

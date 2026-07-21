@@ -44,6 +44,37 @@ const qwenProfile: ProviderProfile = {
   credentialEnvironmentVariable: "DASHSCOPE_API_KEY",
 };
 
+async function readBoundedResponseText(
+  response: Response,
+  maximumBytes: number,
+  judgeId: string,
+): Promise<string> {
+  const advertisedLength = response.headers.get("content-length");
+  if (
+    advertisedLength !== null
+    && /^\d+$/u.test(advertisedLength)
+    && Number(advertisedLength) > maximumBytes
+  ) {
+    throw new Error(`${judgeId} response exceeds the configured byte limit`);
+  }
+  if (response.body === null) return "";
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let bytesRead = 0;
+  let text = "";
+  while (true) {
+    const chunk = await reader.read();
+    if (chunk.done) break;
+    bytesRead += chunk.value.byteLength;
+    if (bytesRead > maximumBytes) {
+      await reader.cancel();
+      throw new Error(`${judgeId} response exceeds the configured byte limit`);
+    }
+    text += decoder.decode(chunk.value, { stream: true });
+  }
+  return text + decoder.decode();
+}
+
 export interface OpenAICompatibleNoToolsSemanticJudgeOptions {
   model_id: string;
   environment?: NodeJS.ProcessEnv;
@@ -118,10 +149,21 @@ class OpenAICompatibleNoToolsSemanticJudge implements SemanticJudgePort {
       throw new Error(`${this.id} provider failed: HTTP ${response.status}`);
     }
 
+    const maximumResponseBytes = Math.max(
+      16_384,
+      input.budget.max_output_tokens * 16,
+    );
     let rawProviderResponse: unknown;
     try {
-      rawProviderResponse = JSON.parse(await response.text());
-    } catch {
+      rawProviderResponse = JSON.parse(await readBoundedResponseText(
+        response,
+        maximumResponseBytes,
+        this.id,
+      ));
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("response exceeds")) {
+        throw error;
+      }
       throw new Error(`${this.id} returned invalid provider JSON`);
     }
     const parsed = providerResponse.safeParse(rawProviderResponse);
