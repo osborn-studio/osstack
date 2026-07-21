@@ -8,9 +8,18 @@ import {
   realpath,
 } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
-import { appendDependencyObligationEventV2, appendDeclaredDependencyEdgeEventV2, getDeclaredDependencyEdgeProjectionV2, getDependencyObligationProjectionV2, getDependencyRegistryPathV2, getKnowledgeHygienePlanProjectionV1, listDeclaredDependencyEdgeProjectionsV2, listDependencyObligationInboxV2, registerDependencyRegistryScopeV2 } from "@osstack/core";
-import { guardedOpenDb as openDb } from "./guarded-open-db.js";
-import { AnthropicNoToolsSemanticJudge } from "@osstack/agents";
+import { createBuiltInSemanticJudge } from "@osstack/agents";
+import {
+  appendDependencyObligationEventV2,
+  appendDeclaredDependencyEdgeEventV2,
+  getDeclaredDependencyEdgeProjectionV2,
+  getDependencyObligationProjectionV2,
+  getDependencyRegistryPathV2,
+  getKnowledgeHygienePlanProjectionV1,
+  listDeclaredDependencyEdgeProjectionsV2,
+  listDependencyObligationInboxV2,
+  registerDependencyRegistryScopeV2,
+} from "@osstack/core";
 import {
   applyKnowledgeHygieneTransactionPlanV1,
   approveKnowledgeHygieneTransactionPlanV1,
@@ -33,6 +42,7 @@ import {
 } from "@osstack/governance";
 import { readRepoRegistry } from "@osstack/supervisor";
 import { parseDocument } from "yaml";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import {
   assertRootFingerprints,
   gitIdentity,
@@ -130,16 +140,13 @@ function stateDatabase(
 }
 
 function defaultJudgeFactory(judgeId: string): SemanticJudgePort {
-  if (judgeId !== "anthropic-no-tools") {
-    throw new NeatDependencyUsageError(`unsupported dependency judge: ${judgeId}`);
-  }
-  const model = process.env["OSSTACK_NEAT_ANTHROPIC_MODEL"];
-  if (model === undefined || model.trim().length === 0) {
+  try {
+    return createBuiltInSemanticJudge(judgeId);
+  } catch (error) {
     throw new NeatDependencyUsageError(
-      "anthropic-no-tools requires OSSTACK_NEAT_ANTHROPIC_MODEL",
+      error instanceof Error ? error.message : String(error),
     );
   }
-  return new AnthropicNoToolsSemanticJudge({ model_id: model });
 }
 
 async function scan(
