@@ -1,7 +1,7 @@
 ---
 name: osstack
 description: "Use when running a software development task that benefits from explicit project-manager-style orchestration: deciding which sub-agent (Claude Code, Codex, ...) handles it, tracking cross-task memory, learning from past outcomes, or routing through the full design→code→test→ship lifecycle. Bridges Hermes to the osstack daemon."
-version: 0.0.0
+version: 0.12.0
 author: Osborn (gilosbornhello)
 license: MIT
 platforms: [macos]
@@ -9,11 +9,11 @@ metadata:
   hermes:
     tags: [orchestration, project-manager, software-development, osstack, claude-code, codex]
     related_skills: [writing-plans, requesting-code-review, plan, subagent-driven-development]
-    daemon_npm_version: "@osstack/cli@0.0.0"
+    daemon_npm_version: "@osstack/cli@0.12.0"
     hermes_min_version: "0.12.0"
 ---
 
-# osstack — Project Manager Agent (S0 scaffold)
+# osstack — Project Manager Agent
 
 ## Overview
 
@@ -40,9 +40,9 @@ This skill itself is just a wrapper.
 - Tasks fully outside software development (use the appropriate Hermes skill)
 - Anything that requires Hermes-side messaging, cron, or memory directly (those stay in Hermes)
 
-## Status: S0 Scaffold
+## Status: Production Stable Control Plane (v0.12.0)
 
-osstack v0.0.0 is in S0 (scaffold) — only `version` and `health` commands work. Full S1 functionality (claude-code adapter, Hermes Run Adapter event stream, PII redaction, SQLite memory) lands shortly.
+osstack is no longer a scaffold. The daemon runs as a launchd service (`ai.osstack.daemon`) on a versioned Node runtime, serving from a dedicated stable home (`OSSTACK_HOME`, default `~/.osstack-stable`) with a control-plane guard on every DB entry point, a 5-check `doctor` (including plist drift), fail-closed routing, and schema-governed migrations. Working today: agent routing + policy engine, loop sessions (`loop enqueue/run`), daily sessions, task memory (SQLite), kanban board + Telegram subscription relay, hub candidate/publish, stack CLI family, release train commands, and self-upgrade with health rollback.
 
 ## Quick Usage
 
@@ -54,16 +54,15 @@ python3 ~/.hermes/skills/software-development/osstack/scripts/osstack_bridge.py 
 python3 ~/.hermes/skills/software-development/osstack/scripts/osstack_bridge.py version
 ```
 
-Both commands run the `osstack` binary directly via subprocess. Once S1 ships, the bridge will connect to a long-running daemon via Unix socket at `~/.osstack/daemon.sock`.
+Both commands run the `osstack` binary directly via subprocess. Daemon-backed commands talk to the long-running launchd daemon over the Unix socket at `$OSSTACK_HOME/daemon.sock` (default `~/.osstack-stable/daemon.sock`).
 
-## How It Works (S0)
+## How It Works
 
 1. Hermes session loads this skill (`SKILL.md`).
 2. To do work, Hermes calls `osstack_bridge.py` via subprocess.
-3. `osstack_bridge.py` shells out to the `osstack` CLI (must be on `$PATH`).
-4. Output is returned to Hermes for rendering.
-
-In S1 this changes: the bridge will speak length-prefixed JSON over a Unix socket to a launchctl-managed daemon. Hermes never sees the daemon directly — only the wrapper.
+3. `osstack_bridge.py` shells out to the `osstack` CLI (must be on `$PATH`; the shim exports `OSSTACK_HOME`).
+4. Daemon RPCs (kanban, stats, health, routing) go over the Unix socket to the launchd-managed daemon; Hermes never sees the daemon directly — only the wrapper.
+5. Output is returned to Hermes for rendering.
 
 ## Kanban board (Telegram-facing)
 
@@ -120,12 +119,13 @@ Borrowed from Hermes Agent's own kanban: the 6-lane column model, per-card event
 
 ```bash
 # Required:
-node --version     # ≥ 20
-which osstack || echo "osstack binary not on PATH — install with: pnpm -g add @osstack/cli (when published)"
+node --version     # ≥ 20 (daemon itself runs on a pinned versioned Node runtime)
+which osstack || echo "osstack binary not on PATH — /opt/homebrew/bin/osstack shim expected"
 
-# Optional Sprint-1+:
+# Daemon (production stable control plane):
 launchctl list | grep ai.osstack.daemon
-ls ~/.osstack/daemon.sock
+ls ~/.osstack-stable/daemon.sock
+osstack doctor          # 5-check health incl. plist drift
 ```
 
 ## References
@@ -137,11 +137,11 @@ ls ~/.osstack/daemon.sock
 ## Common Pitfalls
 
 1. **Calling osstack for trivial tasks.** osstack adds project-manager overhead. For a single one-shot question, Claude Code direct is faster.
-2. **Expecting full S1+ behavior on S0.** Right now this is a scaffold; the daemon is not yet built. The bridge handles `version` and `health` only.
+2. **Talking to the wrong home.** The stable daemon serves `~/.osstack-stable` (exported as `OSSTACK_HOME` by the shim); `~/.osstack` is a sacrificial sandbox. If a command reports schema/guard refusal, check `OSSTACK_HOME` before assuming the daemon is down.
 3. **Hardcoding paths.** The bridge auto-detects `osstack` on `$PATH` and falls back to a clear error if missing.
 
 ## Verification Checklist
 
-- [ ] `python3 osstack_bridge.py version` prints `osstack 0.0.0`
+- [ ] `python3 osstack_bridge.py version` prints the current CLI version (0.12.x)
 - [ ] `python3 osstack_bridge.py health` prints a JSON status block
 - [ ] If `osstack` is missing from `$PATH`, the bridge prints a clear install hint, not a Python traceback
