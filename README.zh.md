@@ -44,6 +44,46 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 }
 ```
 
+## 当前能力范围
+
+当前 `main` 已经不只是一个 loop runner，而是一个本地优先的研发控制平面：
+
+| 能力 | 当前实现 | 主要命令 / package |
+|---|---|---|
+| 产品入口 | 一条命令把目标变成带验证、report、scorecard、proof pack 和可选 worktree 隔离的交付流程。 | `osstack deliver`, `@osstack/cli` |
+| Loop Engineering | 任务发现、执行、验证、迭代、预算、停止原因、报告、分数卡、lesson draft、daemon 托管 loop session。 | `osstack loop ...`, `@osstack/loop` |
+| 多 repo 监督 | repo registry、成熟度扫描、portfolio report、feedback assets、改进 proposal、evaluator epoch、结构化 recommendation。 | `osstack supervise`, `feedback`, `improve`, `evaluator`, `daily`; `@osstack/supervisor` |
+| 每日运营简报 | 读取 repo registry，总结 CI/PR/maturity 变化，生成 owner decisions，并可由 daemon 每 24h 定时运行。 | `osstack daily`, `osstack daily schedule` |
+| 合同门控执行 | 创建 execution contract，在 observe policy 下阻断执行，记录 approval，批准后返回精确后续命令。 | `osstack start`, `osstack control` |
+| Policy kernel | 读取 `.osstack/repo.yaml` 和 `.osstack/policy.yaml`，执行 `observe` / `propose` / `execute`、预算和审批类别。 | `osstack policy check`, `@osstack/core` |
+| Agent 路由 | 接入 Claude Code、Codex CLI、OpenCode、DeepSeek review/verify、shell subprocess、design/research adapter。 | `@osstack/agents`, `@osstack/core` |
+| 证据与发布可信 | 持久化 run state、events、governance、diff、proof manifest、PR body draft、release handoff、release readiness。 | `report`, `scorecard`, `proof`, `pr`, `release` |
+| Cockpit / Dashboard | 本地 dashboard/TUI 展示 daemon、recent runs、kanban、evidence、quality、next actions。 | `osstack cockpit`, `osstack dashboard` |
+| 远程 gateway hook | 提供 dashboard URL、kanban subscription/events，方便外部 bot 把进展转发到 Telegram、飞书/Lark、Slack、webhook 或其他 IM。 | `dashboard url`, `kanban subscribe`, `kanban events`, `KanbanNotifier` |
+| Knowledge Cloud | 官方/团队/项目知识包、cloud sync、本地 cache fallback、search、publish、audit、feedback、review UI。 | `osstack knowledge`, `@osstack/knowledge-cloud` |
+| Protocol / Conformance | 跨进程 agent command、result、policy、evidence、approval、run、event schema 和 conformance tests。 | `@osstack/protocol`, `@osstack/conformance` |
+
+### 远程 Gateway 状态
+
+osstack 现在已经有**控制平面侧的远程进展 gateway 底座**，但这个仓库目前还没有内置完整的飞书/Lark 或 Telegram bot 服务端。
+
+现在已经存在：
+
+- `osstack dashboard url` 可以返回本地 cockpit URL，外部 chat bot 可以把它发回给用户。
+- `osstack kanban subscribe <card_id> <platform> <chat_id> [thread_id]` 可以记录一个聊天订阅。`platform` 是 free-form，所以可以是 `telegram`、`feishu`、`lark`、`slack` 或其他 relay。
+- `osstack kanban events --since <id>` 可以增量读取卡片事件。
+- `@osstack/core` 里的 `KanbanNotifier` 会格式化卡片进展，并且只在外部 transport 成功投递后推进 subscription cursor。
+- Hermes skill bridge 里有 Telegram-facing 命令；如果 Hermes 拥有真实消息集成，它可以作为 relay host。
+
+现在还没有：
+
+- 内置 Telegram Bot API 常驻进程；
+- 内置飞书/Lark bot webhook 或 event subscription 服务；
+- 面向公网访问本地 cockpit 的 tunnel/auth 层；
+- 手机端优先的审批 UI。
+
+所以你印象里的 “gateway 已经配置好” 大方向是对的：osstack 侧的 gateway primitives 已经在。真正缺的是把这些 primitives 接到具体消息通道上的 product slice，也就是“我在手机上问 bot，它能告诉我项目进展并给我可点击证据”的那一层。
+
 ## 为什么需要 osstack
 
 AI 编码工具越来越强，但很多团队仍然缺一层“工程控制面”：
@@ -61,8 +101,10 @@ osstack 把这些问题变成一套本地优先、可自动化验证的工程流
 - **Agent 路由**：基于 capability、role、cost、可用性和历史成功率选择合适的适配器。
 - **证据层**：生成 Markdown report、HTML scorecard、checksum proof pack、合规映射和 GitHub PR body。
 - **治理检查**：不用模型裁判，而是用确定性规则扫描 secret、危险 shell、前端低质模式、TypeScript 质量问题等。
+- **递归控制平面**：监督多个 repo 的 L0-L6 闭环成熟度，把失败 run 提炼成 feedback assets，生成需人工门控的改进 proposal，并管理 evaluator epoch。
 - **Knowledge Cloud**：osstack 自有知识包体系，支持官方/团队/项目知识、云端 sync、本地 cache、provenance、feedback 和 retrieval eval。
 - **Cockpit + Kanban**：从 CLI/TUI 查看 run、task、证据、知识和下一步行动。
+- **远程 gateway hook**：暴露 dashboard URL、kanban subscription 和增量事件，方便外部 bot 转发到 Telegram、飞书/Lark、Slack 或 webhook。
 - **Release 操作系统**：通过 `release doctor/status/plan/handoff` 检查 npm、EdgeOne Knowledge Cloud、GitHub Release 和单文件二进制发布状态。
 
 一句话：
@@ -205,6 +247,25 @@ discover -> execute -> verify -> iterate
 - `--goal "<cmd>"`：直到某个命令通过才停止。
 - `--max-iter <n>`：失败 N 次后升级，避免无限循环。
 
+### Portfolio Daily 与合同门控
+
+```bash
+# 从 machine-level repo registry 生成只读 portfolio brief。
+osstack daily --json
+
+# 通过 daemon 每 24h 自动跑 daily brief；daemon 重启后会恢复 session。
+osstack daily schedule --interval-ms 86400000 --schedule "every 24h"
+osstack daily sessions --json
+
+# 把目标转成 execution contract。observe mode 会拒绝执行；
+# propose/execute mode 会生成可审查合同和 approval request。
+osstack start "Refactor model run history" --repo-id osborn-model --json
+
+# 查看、批准、修订或停止合同。批准后返回精确 delivery 命令，而不是静默执行。
+osstack control <contract_id> status --json
+osstack control <contract_id> approve --actor owner --json
+```
+
 ### 证据与 PR
 
 ```bash
@@ -321,14 +382,21 @@ Knowledge Cloud 支持：
 ```bash
 osstack cockpit snapshot --workspace . --json
 osstack cockpit tui --workspace .
+osstack cockpit next --workspace . --status blocked
+osstack dashboard url --workspace .
+osstack dashboard snapshot --workspace . --json
 osstack kanban board
 osstack kanban create "Review release proof" --priority 80 --assignee codex-cli
+osstack kanban move <card_id> running
+osstack kanban comment <card_id> "Waiting for CI"
+osstack kanban subscribe <card_id> telegram <chat_id> [thread_id]
+osstack kanban events --since 0
 osstack serve
 osstack serve --install
 osstack status
 ```
 
-Kanban 是 osstack 内置的本地看板。它可以跟踪卡片、状态、评论、事件，并可通过 Hermes/relay 类工具把事件转发到外部消息系统。
+Kanban 是 osstack 内置的本地看板。它可以跟踪卡片、状态、评论、事件，并可通过 Hermes/relay 类工具把事件转发到外部消息系统。daemon 默认本地优先；`osstack serve --install` 会安装 macOS launchd 服务，让 daemon 跨重启存活。手机/远程访问应由独立可信 host 承担，例如 Hermes、飞书/Lark bot、Telegram bot、Slack app、webhook relay 或 named tunnel，再调用上面的 dashboard/kanban 命令。
 
 ### Release 操作
 
@@ -388,11 +456,13 @@ Package 边界：
 | `@osstack/loop` | loop state、scheduler、discovery、verifier、report model、scorecard。 |
 | `@osstack/core` | policy、state、kanban、lessons、telemetry、privacy redaction。 |
 | `@osstack/agents` | Agent adapters 与 git worktree isolation。 |
+| `@osstack/protocol` | 跨进程 command/result/event/evidence/approval schema。 |
 | `@osstack/governance` | 确定性的质量/安全扫描器。 |
 | `@osstack/contracts` | 前后端 API contract alignment evidence。 |
 | `@osstack/compliance` | compliance mapping packs 与 audience-specific evidence views。 |
 | `@osstack/knowledge` | knowledge pack contracts、本地搜索、cache、sync client。 |
 | `@osstack/knowledge-cloud` | official/team knowledge packs 的 HTTP 服务。 |
+| `@osstack/supervisor` | portfolio maturity、repo registry、feedback assets、proposal、evaluator epoch。 |
 
 ## 证据与可信模型
 
