@@ -7,6 +7,10 @@
 //   L6 recursive portfolio optimization.
 
 import { z } from "zod";
+import {
+  ProbeOutcomeCountsV1,
+  ProbeOutcomeRatesV1,
+} from "@osstack/core";
 
 // ── Repo registry ───────────────────────────────────────────────────────
 
@@ -168,6 +172,24 @@ export type ImprovementProposal = z.infer<typeof ImprovementProposal>;
 
 // ── Repo health + portfolio ───────────────────────────────────────────────
 
+export const RepoKnowledgeHygieneSummaryV1 = z.object({
+  complete: z.boolean(),
+  health_claim: z.enum([
+    "findings_present",
+    "assessed_scope_clean",
+    "assessment_incomplete",
+  ]),
+  coverage: z.array(z.record(z.unknown())),
+  error_count: z.number().int().nonnegative(),
+  warning_count: z.number().int().nonnegative(),
+  recurring_count: z.number().int().nonnegative(),
+  oldest_open_days: z.number().nonnegative().optional(),
+  checked_at: z.string().datetime(),
+});
+export type RepoKnowledgeHygieneSummaryV1 = z.infer<
+  typeof RepoKnowledgeHygieneSummaryV1
+>;
+
 export const RepoHealth = z.object({
   repo_id: z.string(),
   name: z.string(),
@@ -184,6 +206,7 @@ export const RepoHealth = z.object({
   evaluator_epoch_id: z.string().optional(),
   evaluator_anchor_accuracy: z.number().min(0).max(1).optional(),
   adversarial_case_count: z.number().int().nonnegative().optional(),
+  hygiene: RepoKnowledgeHygieneSummaryV1.optional(),
   findings: z.array(z.string()).default([]),
 });
 export type RepoHealth = z.infer<typeof RepoHealth>;
@@ -218,6 +241,19 @@ export const StructuredRecommendation = z.object({
 });
 export type StructuredRecommendation = z.infer<typeof StructuredRecommendation>;
 
+export const PortfolioProbeOutcomesV1 = z
+  .object({
+    schema_version: z.literal("1"),
+    as_of_ms: z.number().int().nonnegative(),
+    baseline_status: z.literal("collecting"),
+    counts: ProbeOutcomeCountsV1,
+    rates: ProbeOutcomeRatesV1,
+  })
+  .strict();
+export type PortfolioProbeOutcomesV1 = z.infer<
+  typeof PortfolioProbeOutcomesV1
+>;
+
 export const PortfolioReport = z.object({
   generated_at: z.string(),
   repo_count: z.number().int().nonnegative(),
@@ -229,6 +265,7 @@ export const PortfolioReport = z.object({
    *  Optional-with-default so pre-existing persisted reports lacking the field
    *  still parse (the schema is not `.strict()`; default fills in []). */
   structured_recommendations: z.array(StructuredRecommendation).default([]),
+  probe_outcomes: PortfolioProbeOutcomesV1.optional(),
 });
 export type PortfolioReport = z.infer<typeof PortfolioReport>;
 

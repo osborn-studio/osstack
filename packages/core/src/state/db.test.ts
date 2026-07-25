@@ -158,3 +158,48 @@ describe("withWrite", () => {
     }
   });
 });
+
+import Database from "better-sqlite3";
+
+describe("schema incident hardening (G1.4, incident 2026-07-18)", () => {
+  it("REFUSES to open a DB whose user_version is above this binary's supported schema", () => {
+    const dir = mkdtempSync(join(tmpdir(), "g14-"));
+    const p = join(dir, "state.db");
+    const db1 = openDb({ path: p });
+    db1.close();
+    const raw = new Database(p);
+    raw.pragma(`user_version = ${CURRENT_SCHEMA_VERSION + 3}`);
+    raw.close();
+    expect(() => openDb({ path: p })).toThrowError(/Migration state inconsistent/);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("version-rollback-then-reopen is UNSAFE with ALTER-based migrations (documented anti-pattern)", () => {
+    // The 2026-07-18 incident was first mitigated by PRAGMA user_version
+    // rollback. That is only survivable when the re-run migrations are fully
+    // idempotent. CREATE ... IF NOT EXISTS is; ALTER TABLE ADD COLUMN is NOT:
+    // re-running migration 10 over its own residue fails. Therefore the ONLY
+    // supported rollback is a full DB snapshot restore — this test pins that
+    // contract so nobody "just resets user_version" again.
+    const dir = mkdtempSync(join(tmpdir(), "g14-replay-"));
+    const p = join(dir, "state.db");
+    openDb({ path: p }).close(); // full schema at CURRENT
+    const raw = new Database(p);
+    raw.pragma("user_version = 8");
+    raw.close();
+    expect(() => openDb({ path: p })).toThrowError(/duplicate column|already exists/);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("a DB already at CURRENT with the full incident residue opens with NO migration and intact integrity (the final-deploy path)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "g14-final-"));
+    const p = join(dir, "state.db");
+    openDb({ path: p }).close();
+    const db = openDb({ path: p });
+    expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
+    expect(db.pragma("integrity_check", { simple: true })).toBe("ok");
+    expect((db.prepare("SELECT count(*) c FROM sqlite_master WHERE name LIKE 'probe_%' AND type='table'").get() as { c: number }).c).toBeGreaterThan(0);
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+});

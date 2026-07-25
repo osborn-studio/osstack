@@ -1,0 +1,25 @@
+[
+  {
+    "schema_version": "1",
+    "finding_id": "prf_12345678",
+    "kind": "omitted",
+    "spec_evidence": {
+      "sha256": "660bfaecd3544f20a385c1df90793b70b3a1ac65ee35a2f8e59c7e526433199a",
+      "path": "packages/governance/fixtures/probe/restatement/spec.md",
+      "line": 2,
+      "anchor": "Rollback"
+    },
+    "restatement_evidence": {
+      "sha256": "998123999f922dcc81bb19a1a1cd5d24806cce32882f82873ea6ceea8820e520",
+      "path": "packages/governance/fixtures/probe/restatement/restatement.md",
+      "line": 2,
+      "anchor": "safely"
+    },
+    "explanation": "The restatement does not preserve an explicit rollback guarantee and needs owner confirmation.",
+    "proposed_question": "Which rollback guarantee must the implementation preserve?",
+    "impact": 3,
+    "irreversibility": 3,
+    "uncertainty": 2,
+    "destination_hint": "technical_design"
+  }
+]

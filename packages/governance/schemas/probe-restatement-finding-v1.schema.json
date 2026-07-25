@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Probe Restatement Finding v1",
+  "$comment": "At least one side of the restatement comparison must carry evidence; @osstack/governance Zod validation enforces this constraint.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1"
+    },
+    "finding_id": {
+      "type": "string",
+      "pattern": "^prf_[a-z0-9][a-z0-9_-]{7,63}$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "omitted",
+        "added",
+        "changed",
+        "ambiguous"
+      ]
+    },
+    "spec_evidence": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            },
+            "line": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "anchor": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          },
+          "required": [
+            "sha256"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "restatement_evidence": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            },
+            "line": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "anchor": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          },
+          "required": [
+            "sha256"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "explanation": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "proposed_question": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "impact": {
+      "type": "number",
+      "enum": [
+        1,
+        2,
+        3
+      ]
+    },
+    "irreversibility": {
+      "type": "number",
+      "enum": [
+        1,
+        2,
+        3
+      ]
+    },
+    "uncertainty": {
+      "type": "number",
+      "enum": [
+        1,
+        2,
+        3
+      ]
+    },
+    "destination_hint": {
+      "type": "string",
+      "enum": [
+        "session_profile",
+        "prd",
+        "technical_design",
+        "test_plan",
+        "adr",
+        "instruction",
+        "evaluation_spec",
+        "open_questions"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "finding_id",
+    "kind",
+    "spec_evidence",
+    "restatement_evidence",
+    "explanation",
+    "proposed_question",
+    "impact",
+    "irreversibility",
+    "uncertainty",
+    "destination_hint"
+  ],
+  "additionalProperties": false
+}

@@ -1,6 +1,6 @@
 {
   "name": "@osstack/supervisor",
-  "version": "0.9.0",
+  "version": "0.12.0",
   "description": "Portfolio repo supervision and closed-loop maturity control plane for osstack.",
   "license": "MIT",
   "private": true,
@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@osstack/core": "workspace:*",
+    "@osstack/governance": "workspace:*",
     "@osstack/loop": "workspace:*",
     "zod": "^3.25.76"
   },

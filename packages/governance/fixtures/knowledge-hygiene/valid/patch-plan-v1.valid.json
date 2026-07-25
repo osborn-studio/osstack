@@ -1,0 +1,11 @@
+{
+  "schema_version": "1",
+  "patch_id": "khp_dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "generated_at": "2026-07-17T00:00:00.000Z",
+  "repo": {
+    "root": "/repo",
+    "repo_id": "repo"
+  },
+  "diff_id": "diff_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "actions": []
+}

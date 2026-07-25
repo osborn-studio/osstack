@@ -3,8 +3,9 @@
 //   1. Scan   — the supervisor portfolio maturity report over `.osstack/repos.json`.
 //   2. GitHub — the read-only `@osstack/github` portfolio-status adapter (PRs/CI/release).
 //   3. Stack  — the existing kanban "stack" board summary, when any cards exist.
-//   4. Delta  — diff against the previous brief (new PRs / CI flips / maturity changes).
-//   5. Render — Markdown for humans by default; `--json` emits a protocol
+//   4. Probe  — current open obligations, aging, and required-item completion.
+//   5. Delta  — diff against the previous brief (new PRs / CI flips / maturity changes).
+//   6. Render — Markdown for humans by default; `--json` emits a protocol
 //               AgentCommandResult (status ok, brief in `result`, per-repo
 //               evidence_refs, ≤3 owner decisions in next_actions).
 //
@@ -12,9 +13,11 @@
 // $OSSTACK_HOME/daily-briefs/ (delta substrate). No apply, no execution.
 
 import { existsSync } from "node:fs";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, readFile, readdir, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { KanbanRepository, getBoard, openDb } from "@osstack/core";
+import { KanbanRepository, countOpenDependencyObligationsV2, getBoard, queryKnowledgeHygieneTrendV2, queryProbePortfolioSummary, type ProbePortfolioSummaryV1 } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import {
   fetchPortfolioGithubStatus,
   type CommandRunner,
@@ -24,8 +27,10 @@ import { PROTOCOL_VERSION } from "@osstack/protocol";
 import type { AgentCommandResult } from "@osstack/protocol";
 import {
   buildPortfolioReport,
+  attachKnowledgeHygieneSummaries,
   readRepoRegistry,
   scanRepo,
+  scanPortfolioKnowledgeHygiene,
   type PortfolioReport,
   type RepoHealth,
   type RepoRegistryEntry,
@@ -109,6 +114,11 @@ export interface DailyBrief {
   portfolio: PortfolioReport;
   github: RepoGithubStatus[];
   stack?: StackBoardSummary;
+  probe?: ProbePortfolioSummaryV1;
+  dependency_obligations?: {
+    registry_scope: string;
+    open_count: number;
+  };
   delta: DailyDelta;
   /**
    * ≤3 owner decisions with dispatchable `run` payloads (R2.4). Optional
@@ -149,7 +159,20 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
   // 1. Portfolio maturity scan (supervisor, existing).
   const healths: RepoHealth[] = [];
   for (const entry of enabled) healths.push(await scanRepo(entry));
-  const portfolio = buildPortfolioReport(healths, now.toISOString());
+  const hygieneHistory = readPortfolioKnowledgeHygieneHistory(
+    enabled,
+    now.getTime(),
+  );
+  const hygieneScans = await scanPortfolioKnowledgeHygiene(enabled, {
+    now: () => now,
+    history: async (repoId) => hygieneHistory.byRepo.get(repoId) ?? {
+      recurring_count: 0,
+    },
+  });
+  const portfolio = buildPortfolioReport(
+    attachKnowledgeHygieneSummaries(healths, hygieneScans),
+    now.toISOString(),
+  );
 
   // 2. GitHub read adapter (degrades per-repo, never throws).
   const github = await fetchPortfolioGithubStatus(
@@ -159,9 +182,19 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
 
   // 3. Stack board summary — included only when the board actually has cards.
   const { summary: stack, warning: stackWarning } = readStackBoardSummary();
+  const { summary: probe, warning: probeWarning } =
+    readProbePortfolioSummary(enabled, now.getTime());
+  const { summary: dependencyObligations, warning: dependencyWarning } =
+    await readDependencyObligationSummary(deps.registryPath);
 
   const warnings = github.filter((g) => g.warning !== undefined).map((g) => `${g.repo_id}: ${g.warning}`);
   if (stackWarning !== undefined) warnings.push(stackWarning);
+  if (probeWarning !== undefined) warnings.push(probeWarning);
+  if (dependencyWarning !== undefined) warnings.push(dependencyWarning);
+  if (hygieneHistory.warning !== undefined) {
+    warnings.push(hygieneHistory.warning);
+  }
+  warnings.push(...knowledgeHygieneWarnings(portfolio));
 
   // 4. Delta against the most recent previous brief.
   const briefsDir = join(osstackHome(), "daily-briefs");
@@ -174,6 +207,10 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
     portfolio,
     github,
     ...(stack !== undefined ? { stack } : {}),
+    ...(probe !== undefined ? { probe } : {}),
+    ...(dependencyObligations !== undefined
+      ? { dependency_obligations: dependencyObligations }
+      : {}),
     delta,
     // Computed from portfolio + github below, then stored so the dispatchable
     // `run` payloads ride in `result` (= the brief) and are persisted verbatim.
@@ -188,6 +225,33 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
   await writeFile(briefPath, `${JSON.stringify(brief, null, 2)}\n`, "utf8");
 
   return { brief, briefPath, result: buildDailyResult(brief, briefPath, enabled), entries: enabled };
+}
+
+async function readDependencyObligationSummary(
+  registryPath: string,
+): Promise<{
+  summary?: { registry_scope: string; open_count: number };
+  warning?: string;
+}> {
+  const dbPath = join(osstackHome(), "state.db");
+  if (!existsSync(dbPath)) return {};
+  try {
+    const canonical = await realpath(registryPath);
+    const registryScope = createHash("sha256").update(canonical).digest("hex");
+    const database = openDb({ path: dbPath, readwrite: false });
+    try {
+      const openCount = countOpenDependencyObligationsV2(database, registryScope);
+      return openCount === 0
+        ? {}
+        : { summary: { registry_scope: registryScope, open_count: openCount } };
+    } finally {
+      database.close();
+    }
+  } catch (error) {
+    return {
+      warning: `dependency obligations unavailable (${dbPath}): ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
 }
 
 export async function handleDailyCommand(args: string[], deps: DailyCliDeps = {}): Promise<number> {
@@ -241,6 +305,76 @@ function readStackBoardSummary(board = "stack"): { summary?: StackBoardSummary; 
   } catch (err) {
     return {
       warning: `stack board unavailable (${dbPath}): ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
+/** Probe state is optional context: no DB/session preserves the old brief. */
+function readProbePortfolioSummary(
+  entries: readonly RepoRegistryEntry[],
+  asOfMs: number,
+): { summary?: ProbePortfolioSummaryV1; warning?: string } {
+  const dbPath = join(osstackHome(), "state.db");
+  if (!existsSync(dbPath)) return {};
+  try {
+    const db = openDb({ path: dbPath });
+    try {
+      const summary = queryProbePortfolioSummary(db, {
+        as_of_ms: asOfMs,
+        repo_ids: entries.map((entry) => entry.repo_id),
+      });
+      return summary.repos.length === 0 ? {} : { summary };
+    } finally {
+      db.close();
+    }
+  } catch (error) {
+    return {
+      warning: `probe portfolio unavailable (${dbPath}): ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
+interface PortfolioKnowledgeHygieneHistory {
+  byRepo: Map<string, {
+    recurring_count: number;
+    oldest_open_days?: number;
+  }>;
+  warning?: string;
+}
+
+/** Read-only from the caller's perspective: no reports are recorded here. */
+function readPortfolioKnowledgeHygieneHistory(
+  entries: readonly RepoRegistryEntry[],
+  asOf: number,
+): PortfolioKnowledgeHygieneHistory {
+  const byRepo = new Map<string, {
+    recurring_count: number;
+    oldest_open_days?: number;
+  }>();
+  const dbPath = join(osstackHome(), "state.db");
+  if (!existsSync(dbPath)) return { byRepo };
+  try {
+    const db = openDb({ path: dbPath });
+    try {
+      for (const entry of entries) {
+        const trend = queryKnowledgeHygieneTrendV2(db, entry.repo_id, {
+          as_of: asOf,
+        });
+        byRepo.set(entry.repo_id, {
+          recurring_count: trend.recurrence.warning,
+          ...(trend.open.oldest_age_days === null
+            ? {}
+            : { oldest_open_days: trend.open.oldest_age_days }),
+        });
+      }
+    } finally {
+      db.close();
+    }
+    return { byRepo };
+  } catch (error) {
+    return {
+      byRepo,
+      warning: `knowledge hygiene history unavailable (${dbPath}): ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }
@@ -375,6 +509,28 @@ export function deriveOwnerDecisions(brief: DailyBrief): OwnerDecision[] {
       });
     }
   }
+  for (const repo of brief.portfolio.repos) {
+    const reasons = knowledgeHygieneIssues(repo);
+    if (reasons.length === 0) continue;
+    const argv = [
+      "osstack",
+      "neat",
+      "check",
+      "--repo",
+      repo.path,
+      "--all",
+      "--fail-on",
+      "warning",
+    ];
+    decisions.push({
+      command: "knowledge_hygiene.check",
+      reason: `${repo.repo_id}: knowledge hygiene ${reasons.join(", ")}`,
+      run: {
+        command: `osstack neat check --repo ${shQuote(repo.path)} --all --fail-on warning`,
+        argv,
+      },
+    });
+  }
   for (const g of brief.github) {
     const openPrs = g.pull_requests.filter((pr) => !pr.isDraft);
     if (openPrs.length > 0) {
@@ -398,6 +554,35 @@ export function deriveOwnerDecisions(brief: DailyBrief): OwnerDecision[] {
   }
 
   return decisions.slice(0, 3);
+}
+
+function knowledgeHygieneWarnings(portfolio: PortfolioReport): string[] {
+  return portfolio.repos.flatMap((repo) => {
+    const issues = knowledgeHygieneIssues(repo);
+    return issues.length === 0
+      ? []
+      : [`${repo.repo_id}: knowledge hygiene ${issues.join(", ")}`];
+  });
+}
+
+function knowledgeHygieneIssues(
+  repo: PortfolioReport["repos"][number],
+): string[] {
+  const scanFailed = repo.findings.some((finding) =>
+    finding.startsWith("knowledge hygiene scan failed:")
+  );
+  const hygiene = repo.hygiene;
+  if (hygiene === undefined) return scanFailed ? ["scan failed"] : [];
+  return [
+    ...(!hygiene.complete ? ["scan incomplete"] : []),
+    ...(hygiene.health_claim === "assessment_incomplete"
+      ? ["assessment incomplete"]
+      : []),
+    ...(hygiene.error_count > 0 ? [`${hygiene.error_count} open error(s)`] : []),
+    ...(hygiene.warning_count > 0 && hygiene.recurring_count > 0
+      ? [`${hygiene.recurring_count} recurring warning(s)`]
+      : []),
+  ];
 }
 
 /**
@@ -504,6 +689,15 @@ export function renderDailyMarkdown(brief: DailyBrief): string {
           : "- latest release: none",
       );
     }
+    const hygiene = repo.hygiene;
+    const hygieneIssues = knowledgeHygieneIssues(repo);
+    if (hygiene !== undefined && hygieneIssues.length > 0) {
+      lines.push(
+        `- knowledge hygiene: ${hygiene.complete ? "complete" : "incomplete"}; ${hygiene.error_count} error; ${hygiene.warning_count} warning; ${hygiene.recurring_count} recurring${hygiene.oldest_open_days === undefined ? "" : `; oldest ${hygiene.oldest_open_days}d`}`,
+      );
+    } else if (hygieneIssues.length > 0) {
+      lines.push(`- knowledge hygiene: ${hygieneIssues.join(", ")}`);
+    }
   }
   lines.push("");
 
@@ -511,6 +705,31 @@ export function renderDailyMarkdown(brief: DailyBrief): string {
     lines.push("## Stack board");
     lines.push(`- board "${brief.stack.board}": ${brief.stack.total} card(s)`);
     for (const column of brief.stack.columns) lines.push(`  - ${column.name}: ${column.count}`);
+    lines.push("");
+  }
+
+  if (brief.probe !== undefined) {
+    lines.push("## Probe readiness");
+    for (const repo of brief.probe.repos) {
+      lines.push(
+        `- ${repo.repo_id}: ${repo.in_progress_session_count} in progress / ${repo.session_count} total session(s)`,
+      );
+      const openAge = repo.oldest_open_age_days === null
+        ? "oldest n/a"
+        : `oldest ${repo.oldest_open_age_days}d`;
+      lines.push(
+        `  - open high ${repo.open_by_severity.high}, medium ${repo.open_by_severity.medium}, low ${repo.open_by_severity.low}; ${openAge}`,
+      );
+      lines.push(
+        `  - completion ${repo.completion_percent}% (${repo.required_disposed}/${repo.required_total} required disposed); deferred due ${repo.deferred_due}; waivers active ${repo.waived_active}, expired ${repo.waived_expired}`,
+      );
+    }
+    lines.push("");
+  }
+
+  if (brief.dependency_obligations !== undefined) {
+    lines.push("## Dependency obligations");
+    lines.push(`- unread: ${brief.dependency_obligations.open_count}`);
     lines.push("");
   }
 

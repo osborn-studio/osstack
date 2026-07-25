@@ -137,6 +137,34 @@ describe("LoopEngine", () => {
       .resolves.toContain("reviewed run_plan_");
   });
 
+  it("emits a dedicated event only for a verifier's structured implementation deviation", async () => {
+    const workspace = await makeQueuedWorkspace();
+    await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
+      task_id: "task-1",
+      capability: "code.test",
+      prompt: "Exercise structured deviation reporting",
+      priority: 80,
+      context: { emit_deviation: true },
+    }));
+    const reviewer = new FakeReviewAdapter();
+    const result = await new LoopEngine({
+      loopId: "loop-deviation",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('agent-output.txt', 'drift')\"",
+      verifierAgentIds: [reviewer.id],
+      adapters: [reviewer],
+    }).runOnce();
+
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.implementation.deviation",
+      payload: expect.objectContaining({
+        task_id: "task-1",
+        deviation_id: "architecture-drift-1",
+      }),
+    }));
+  });
+
   it("records changed files, diff summary, and commit hash in task evidence", async () => {
     const workspace = await makeGitQueuedWorkspace("initial\n");
     const result = await new LoopEngine({
@@ -417,6 +445,67 @@ describe("LoopEngine", () => {
     expect(result.state.decisions?.some((line) => line.includes("published signals.group-effect-ledger to hub"))).toBe(true);
   });
 
+  it("attaches published_asset evidence and emits loop.skill.release_recorded with the immutable release identity", async () => {
+    const workspace = mkdtempSync(join(tmpdir(), "osstack-loop-engine-release-"));
+    await mkdir(join(workspace, "tasks"));
+    await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
+      task_id: "skill-task-rel",
+      capability: "skill.publish",
+      prompt: "Publish the skill",
+      priority: 80,
+      context: { publish: { skillId: "signals.group-effect-ledger" } },
+    }));
+
+    const DIGEST = `sha256:${"a".repeat(64)}`;
+    const runCommand = vi.fn(async () => ({
+      stdout: JSON.stringify({
+        contract: "1.1",
+        status: "published",
+        id: "signals.group-effect-ledger",
+        score: 100,
+        gate: "team",
+        apiVerified: true,
+        durationMs: 1234,
+        releaseId: "organization__osborn/signals.group-effect-ledger@0.1.0",
+        digest: DIGEST,
+        namespace: "organization/osborn",
+        storage_key: "organization__osborn/signals.group-effect-ledger/0.1.0",
+      }),
+      exitCode: 0,
+    }));
+    const publishDeps: RunPublishDeps = { runCommand, sleep: async () => {} };
+
+    const result = await new LoopEngine({
+      loopId: "loop-release-recorded",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('loop-output.txt', 'ok')\"",
+      publish: PublishConfig.parse({ enabled: true }),
+      publishDeps,
+    }).runOnce();
+
+    // release identity persisted on the completed task
+    expect(result.state.completed_tasks[0]?.published_asset).toMatchObject({
+      status: "published",
+      asset_id: "signals.group-effect-ledger",
+      gate: "team",
+      release_id: "organization__osborn/signals.group-effect-ledger@0.1.0",
+      digest: DIGEST,
+      namespace: "organization/osborn",
+      storage_key: "organization__osborn/signals.group-effect-ledger/0.1.0",
+    });
+    // distinct additive event carrying the release identity
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.skill.release_recorded",
+      payload: expect.objectContaining({
+        release_id: "organization__osborn/signals.group-effect-ledger@0.1.0",
+        digest: DIGEST,
+      }),
+    }));
+    // both events present (existing + new), not a replacement
+    expect(result.events.some((e) => e.type === "loop.skill.published")).toBe(true);
+  });
+
   it("emits loop.skill.publish_blocked and keeps the task success when publish is blocked", async () => {
     const workspace = mkdtempSync(join(tmpdir(), "osstack-loop-engine-publish-blocked-"));
     await mkdir(join(workspace, "tasks"));
@@ -434,7 +523,7 @@ describe("LoopEngine", () => {
         status: "blocked",
         id: "signals.blocked-skill",
         durationMs: 100,
-        reasons: ["score<gate"],
+        reasons: ["score<gate", "leak at /Volumes/AIMATE_WORK/osborn-hub-store/v1/client-secret"],
       }),
       exitCode: 2,
     }));
@@ -453,16 +542,13 @@ describe("LoopEngine", () => {
       task_id: "skill-task-2",
       outcome: "success",
     });
-    expect(result.events).toContainEqual(expect.objectContaining({
-      type: "loop.skill.publish_blocked",
-      payload: expect.objectContaining({
-        task_id: "skill-task-2",
-        skill_id: "signals.blocked-skill",
-        status: "blocked",
-        reasons: ["score<gate"],
-      }),
-    }));
+    const blockedEvent = result.events.find((e) => e.type === "loop.skill.publish_blocked");
+    expect(blockedEvent?.payload).toMatchObject({ task_id: "skill-task-2", skill_id: "signals.blocked-skill", status: "blocked" });
+    // the event payload reasons are REDACTED — no absolute store path leaks to events.jsonl
+    expect(JSON.stringify(blockedEvent?.payload)).not.toContain("/Volumes/");
+    expect((blockedEvent?.payload as { reasons: string[] }).reasons).toContain("score<gate");
     expect(result.state.decisions?.some((line) => line.includes("NEEDS-ATTENTION"))).toBe(true);
+    expect(result.state.decisions?.some((line) => line.includes("/Volumes/"))).toBe(false);
   });
 
   it("never calls runPublish when publish.enabled is false", async () => {
@@ -887,6 +973,20 @@ class FakeReviewAdapter implements AgentAdapter {
       status: "completed",
       last_seq: 0,
       result_summary: "fake review passed",
+      implementation_deviations: task.context?.["emit_deviation"] === true
+        ? [{
+            deviation_id: "architecture-drift-1",
+            question: "Should the implementation retain the documented adapter boundary?",
+            category: "interface",
+            doc_type: "tech",
+            impact: 3,
+            irreversibility: 2,
+            uncertainty: 2,
+            required: true,
+            destination_hint: "technical_design",
+            evidence: [{ path: "agent-output.txt", line: 1 }],
+          }]
+        : undefined,
     }, true);
   }
 }

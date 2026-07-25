@@ -1,0 +1,19 @@
+{
+  "schema_version": "1",
+  "diff_id": "diff_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "resolutions": [
+    {
+      "schema_version": "1",
+      "diff_id": "diff_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "fingerprint": "khf_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "outcome": "reviewed_no_change",
+      "actor": {
+        "kind": "human",
+        "id": "osborn"
+      },
+      "reason": "No public behavior or maintained documentation changed.",
+      "evidence_refs": [],
+      "resolved_at": "2026-07-17T00:00:00.000Z"
+    }
+  ]
+}

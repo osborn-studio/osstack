@@ -27,6 +27,10 @@ export { DeepSeekReviewAdapter } from "./adapters/ds-review.js";
 export { DeepSeekVerifyAdapter } from "./adapters/ds-verify.js";
 export { GoogleStitchAdapter } from "./adapters/google-stitch.js";
 export {
+  AnthropicNoToolsSemanticJudge,
+  type AnthropicNoToolsSemanticJudgeOptions,
+} from "./semantic/anthropic-no-tools.js";
+export {
   cleanupOrphanedWorktrees,
   cleanupWorktree,
   commitWorktreeChanges,

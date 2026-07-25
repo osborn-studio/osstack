@@ -37,6 +37,8 @@ interface CommandResult {
 export const EVALUATION_SPECS_FILE_ENV = "OSSTACK_EVALUATION_SPECS_FILE";
 /** Stdout line prefix a DeepSeek command uses to report per-spec judgments. */
 export const EVALUATION_JUDGMENTS_PREFIX = "OSSTACK_EVALUATIONS:";
+/** Stdout line prefix used to report structured design/implementation drift. */
+export const IMPLEMENTATION_DEVIATIONS_PREFIX = "OSSTACK_IMPLEMENTATION_DEVIATIONS:";
 
 export interface EvaluationJudgment {
   id: string;
@@ -161,9 +163,18 @@ export abstract class DeepSeekCommandAdapter extends BaseAgentAdapter {
       yield progressEvent(task, seq++, `${this.id}.stderr`, result.stderr);
     }
     const judgments = extractEvaluationJudgments(result.stdout);
+    const deviations = extractImplementationDeviations(result.stdout);
 
     if (result.exitCode === 0) {
-      yield doneEvent(task, seq, "completed", seq - 1, `${this.config.defaultBin} completed`, judgments);
+      yield doneEvent(
+        task,
+        seq,
+        "completed",
+        seq - 1,
+        `${this.config.defaultBin} completed`,
+        judgments,
+        deviations,
+      );
       return;
     }
 
@@ -171,7 +182,7 @@ export abstract class DeepSeekCommandAdapter extends BaseAgentAdapter {
       ? `${this.config.defaultBin} timed out after ${this.timeoutMs()}ms`
       : `${this.config.defaultBin} exited ${result.exitCode}: ${singleLine(result.stderr || result.stdout)}`;
     yield errorEvent(task, seq++, "deepseek_command_failed", summary);
-    yield doneEvent(task, seq, "failed", seq - 1, summary, judgments);
+    yield doneEvent(task, seq, "failed", seq - 1, summary, judgments, deviations);
   }
 
   private async writeEvaluationSpecsFile(task: AgentTask): Promise<{ path: string; count: number } | undefined> {
@@ -256,6 +267,7 @@ function doneEvent(
   lastSeq: number,
   summary: string,
   judgments?: EvaluationJudgment[],
+  deviations?: Record<string, unknown>[],
 ): HermesEvent {
   return {
     ...envelope(task, seq, true),
@@ -265,6 +277,9 @@ function doneEvent(
       last_seq: lastSeq,
       result_summary: summary,
       ...(judgments !== undefined && judgments.length > 0 ? { evaluation_judgments: judgments } : {}),
+      ...(deviations !== undefined && deviations.length > 0
+        ? { implementation_deviations: deviations }
+        : {}),
     },
   };
 }
@@ -292,6 +307,39 @@ export function extractEvaluationJudgments(stdout: string): EvaluationJudgment[]
         ...(typeof candidate["summary"] === "string" ? { summary: candidate["summary"] } : {}),
       }];
     });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Parse an explicit JSON envelope from command stdout. Shape validation remains
+ * the consumer's responsibility; this transport only admits JSON objects and
+ * never infers a deviation from prose or a non-zero exit code.
+ */
+export function extractImplementationDeviations(
+  stdout: string,
+): Record<string, unknown>[] {
+  const lines = stdout
+    .split(/\r?\n/)
+    .filter((line) =>
+      line.trimStart().startsWith(IMPLEMENTATION_DEVIATIONS_PREFIX),
+    );
+  const last = lines.at(-1);
+  if (last === undefined) return [];
+  const raw = last
+    .trimStart()
+    .slice(IMPLEMENTATION_DEVIATIONS_PREFIX.length)
+    .trim();
+  try {
+    const parsed = JSON.parse(raw) as { deviations?: unknown };
+    if (!Array.isArray(parsed.deviations) || parsed.deviations.length > 100) {
+      return [];
+    }
+    return parsed.deviations.filter(
+      (entry): entry is Record<string, unknown> =>
+        entry !== null && typeof entry === "object" && !Array.isArray(entry),
+    );
   } catch {
     return [];
   }

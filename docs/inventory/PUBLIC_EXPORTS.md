@@ -20,6 +20,7 @@ export { DeepSeekVerifyAdapter } from "./adapters/ds-verify.js";
 export { GoogleStitchAdapter } from "./adapters/google-stitch.js";
 export {
 export {
+export {
 export function defaultAdapters(): AgentAdapter[] {
 export const AGENTS_VERSION = "0.0.0";
 ```
@@ -74,6 +75,7 @@ export const CONFORMANCE_VERSION = "0.0.0";
 ```ts
 export * from "./types.js";
 export * from "./validator.js";
+export * from "./hub-package.js";
 ```
 
 ## `@osstack/core`
@@ -91,6 +93,7 @@ export * from "./kanban/index.js";
 export * from "./kg/index.js";
 export * from "./observability/index.js";
 export const CORE_VERSION = "0.0.0";
+export { CURRENT_SCHEMA_VERSION } from "./state/migrations.js";
 ```
 
 ## `@osstack/github`
@@ -109,6 +112,8 @@ export * from "./portfolio-status.js";
 ```ts
 export * from "./types.js";
 export * from "./scanner.js";
+export * from "./knowledge-hygiene/index.js";
+export * from "./probe/index.js";
 ```
 
 ## `@osstack/hermes-adapter`
@@ -157,6 +162,15 @@ export * from "./verifier.js";
 export * from "./loop-engine.js";
 ```
 
+## `@osstack/neat-eval` (private)
+
+```ts
+export * from "./types.js";
+export * from "./corpus.js";
+export * from "./scorer.js";
+export * from "./runner.js";
+```
+
 ## `@osstack/plugins`
 
 ```ts
@@ -203,6 +217,8 @@ export const SKILLS_VERSION = "0.0.0";
 export * from "./types.js";
 export * from "./repo-registry.js";
 export * from "./repo-scanner.js";
+export * from "./hygiene-scanner.js";
+export * from "./hygiene-proposal.js";
 export * from "./portfolio.js";
 export * from "./trace-normalizer.js";
 export * from "./failure-taxonomy.js";
@@ -212,4 +228,5 @@ export * from "./gate.js";
 export * from "./evaluator-epoch.js";
 export * from "./adversarial-pool.js";
 export * from "./loop-doc.js";
+export * from "./probe-outcomes.js";
 ```

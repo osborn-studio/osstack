@@ -1,0 +1,44 @@
+{
+  "schema_version": "1",
+  "session": {
+    "schema_version": "1",
+    "session_id": "probe_12345678",
+    "repo_id": "osstack",
+    "worktree_state": "clean",
+    "input_refs": [],
+    "doc_types": ["tech"],
+    "question_pack_refs": [],
+    "selected_question_ids": [],
+    "unselected_required_question_ids": [],
+    "depth": "quick",
+    "question_budget": 0,
+    "questions_presented": 0,
+    "revision": 1,
+    "created_at_ms": 1,
+    "updated_at_ms": 1,
+    "state": "completed",
+    "completed_at_ms": 1
+  },
+  "items": [],
+  "events": [],
+  "readiness": {
+    "required_total": 0,
+    "required_disposed": 0,
+    "open_by_severity": { "high": 0, "medium": 0, "low": 0 },
+    "deferred_due": 0,
+    "waived_active": 0,
+    "waived_expired": 0,
+    "resolved_destination_pending": 0,
+    "resolved_destination_applied": 0,
+    "compilation_manual_required": 0,
+    "completion_percent": 100,
+    "eligible": true,
+    "violations": []
+  },
+  "artifact": {
+    "exported_revision": 1,
+    "exported_at_ms": 2,
+    "generator_version": "0.10.0"
+  },
+  "redactions": []
+}

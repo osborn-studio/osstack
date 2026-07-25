@@ -1,0 +1,40 @@
+{
+  "schema_version": "1",
+  "action_id": "kha_cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "kind": "create_instruction_import",
+  "risk": "low",
+  "policy_category": "docs",
+  "target_path": "../CLAUDE.md",
+  "before": {
+    "exists": false,
+    "sha256": null
+  },
+  "after": {
+    "content": "@AGENTS.md\n",
+    "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "source_fingerprint": "khf_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "source_finding": {
+    "fingerprint": "khf_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "rule_id": "instruction.mirror_missing",
+    "rule_version": "1",
+    "surface": "instruction",
+    "severity": "warning",
+    "confidence": "high",
+    "location": {
+      "path": "../CLAUDE.md"
+    },
+    "observed": {
+      "exists": false
+    },
+    "expected": {
+      "exists": true
+    },
+    "rationale": "Invalid outside-root target.",
+    "evidence_refs": [],
+    "remediation": {
+      "mode": "safe_patch"
+    }
+  },
+  "evidence_refs": []
+}

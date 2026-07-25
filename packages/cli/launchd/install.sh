@@ -43,6 +43,15 @@ if [ -z "$OSSTACK_JS" ] || [ ! -f "$OSSTACK_JS" ]; then
   exit 1
 fi
 
+# Control-plane role provisioning (G1.2 round-3 F5): the boot guard refuses an
+# undeclared module dir on the default home; declare this deployment.
+ROLE_FILE="$(dirname "$OSSTACK_JS")/control-plane.json"
+if [ ! -f "$ROLE_FILE" ]; then
+  SCHEMA_V="$("$NODE_BIN" -e "import('@osstack/core').then(m=>console.log(m.CURRENT_SCHEMA_VERSION)).catch(()=>process.exit(1))" 2>/dev/null || echo 11)"
+  printf '{\n  "role": "stable-serving",\n  "allowed_osstack_homes": ["%s"],\n  "schema": { "min": %s, "max": %s }\n}\n' "${OSSTACK_HOME:-~/.osstack}" "$SCHEMA_V" "$SCHEMA_V" > "$ROLE_FILE"
+  echo "control-plane guard: wrote stable-serving role declaration at $ROLE_FILE"
+fi
+
 PLIST_DIR="${HOME}/Library/LaunchAgents"
 PLIST_PATH="${PLIST_DIR}/${LABEL}.plist"
 mkdir -p "${OSSTACK_HOME}/logs" "${PLIST_DIR}"

@@ -15,8 +15,11 @@
 // to be quiet and always safe to run unattended.
 
 import { spawn } from "node:child_process";
+import { provisionStableServing } from "./control-plane-guard.js";
+import { CURRENT_SCHEMA_VERSION } from "@osstack/core";
+import { homedir } from "node:os";
 import {
-  copyFileSync, existsSync, mkdirSync, openSync, readdirSync, rmSync,
+  copyFileSync, existsSync, mkdirSync, openSync, readdirSync, rmSync, unlinkSync,
 } from "node:fs";
 import { join } from "node:path";
 import { backupsDir, logsDir, osstackHome, resolveSocketPath } from "./paths.js";
@@ -92,23 +95,42 @@ export function backupStateDb(fromVersion: string): string | null {
   return join(dir, `${base}.db`);
 }
 
-async function stopDaemon(rpc: UpgradeOptions["rpc"]): Promise<void> {
+async function stopDaemon(rpc: UpgradeOptions["rpc"], viaLaunchd = false): Promise<boolean> {
   log("draining daemon (waiting for active runs, max 60s)…");
   try { await rpc("daemon.drain", { timeout_ms: 60_000 }, 70_000); } catch { /* daemon may be gone */ }
-  try { await rpc("daemon.shutdown", undefined, 5_000); } catch { /* expected if it exits fast */ }
+  if (viaLaunchd) {
+    // KeepAlive quiescence (Phase 2.1-D/F2): a plain shutdown would be
+    // RESPAWNED by launchd mid-swap — boot the job OUT for the upgrade window.
+    // FAIL-CLOSED (review F3): a failed bootout or a still-present socket means
+    // the daemon may still be running — the caller must ABORT, not swap.
+    const uid = process.getuid?.() ?? 501;
+    const out = await run("launchctl", ["bootout", `gui/${uid}/${LAUNCHD_LABEL}`], 15_000);
+    if (!out.ok && !/no such process|not find/i.test(out.output)) {
+      log(`launchctl bootout FAILED: ${out.output.slice(0, 120)}`);
+      return false;
+    }
+  } else {
+    try { await rpc("daemon.shutdown", undefined, 5_000); } catch { /* expected if it exits fast */ }
+  }
   // Wait for the socket to disappear.
   const sock = resolveSocketPath();
   const deadline = Date.now() + 10_000;
   while (existsSync(sock) && Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 200));
   }
+  if (existsSync(sock)) { log("daemon socket still present after stop window"); return false; }
+  return true;
 }
 
 async function startDaemonAgain(viaLaunchd: boolean): Promise<void> {
   if (viaLaunchd) {
-    log("restarting via launchd kickstart…");
+    // Counterpart of the bootout-based stop: re-bootstrap the plist (kickstart
+    // as fallback when the job is still loaded).
+    log("restarting via launchd bootstrap…");
     const uid = process.getuid?.() ?? 501;
-    await run("launchctl", ["kickstart", "-k", `gui/${uid}/${LAUNCHD_LABEL}`], 15_000);
+    const plist = `${homedir()}/Library/LaunchAgents/${LAUNCHD_LABEL}.plist`;
+    const boot = await run("launchctl", ["bootstrap", `gui/${uid}`, plist], 15_000);
+    if (!boot.ok) await run("launchctl", ["kickstart", "-k", `gui/${uid}/${LAUNCHD_LABEL}`], 15_000);
     return;
   }
   log("starting daemon (detached `osstack serve`)…");
@@ -130,6 +152,21 @@ async function waitForDaemon(rpc: UpgradeOptions["rpc"], expectVersion: string |
 }
 
 export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions["rpc"]): Promise<number> {
+  // Checkout-based deployments (launchd bin.js outside npm-global) must NOT
+  // self-upgrade via npm: the swap would not affect the serving binary and the
+  // npm-path recovery branches do not apply (release-review F2-F5 exposure
+  // closed operationally; full npm-path hardening tracked for Phase 2.1).
+  try {
+    const { readFileSync: rfs } = await import("node:fs");
+    const { homedir: hd } = await import("node:os");
+    const plist = rfs(`${hd()}/Library/LaunchAgents/ai.osstack.daemon.plist`, "utf8");
+    const rootResp0 = await run("npm", ["root", "-g"]);
+    const npmRoot = rootResp0.ok ? rootResp0.output.trim() : "";
+    if (plist.includes("bin.js") && (npmRoot === "" || !plist.includes(npmRoot))) {
+      log("this deployment serves a CHECKOUT dist (not the npm-global package); `osstack upgrade` does not apply — use the checkout deploy flow in PHASE2-RUNBOOK.md");
+      return 1;
+    }
+  } catch { /* no plist — not a launchd deployment; continue */ }
   const channel = args.includes("--channel")
     ? (args[args.indexOf("--channel") + 1] ?? "latest")
     : "latest";
@@ -158,7 +195,10 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
 
   const wasRunning = (await daemonVersion(opts.rpc)) !== null;
   const viaLaunchd = await launchdManaged();
-  if (wasRunning) await stopDaemon(opts.rpc);
+  if (wasRunning || viaLaunchd) {
+    const stopped = await stopDaemon(opts.rpc, viaLaunchd);
+    if (!stopped) { log("ABORT: could not quiesce the daemon — nothing was swapped."); return 1; }
+  }
 
   const backup = backupStateDb(VERSION);
   log(backup ? `state.db backed up → ${backup}` : "no state.db yet; skipping backup");
@@ -167,7 +207,66 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
   const install = await run("npm", ["install", "-g", `${PKG}@${target}`]);
   if (!install.ok) {
     log(`npm install failed:\n${install.output}`);
-    if (wasRunning) await startDaemonAgain(viaLaunchd);
+    // The previous package remains installed (no swap happened) — restart it
+    // and VERIFY health rather than assuming (F5).
+    // npm may have left a PARTIAL swap (review F5): restore the known-good
+    // version explicitly, re-verify provisioning, then restart and check.
+    const restore = await run("npm", ["install", "-g", `${PKG}@${VERSION}`]);
+    if (!restore.ok) {
+      log(`restore install of ${VERSION} ALSO failed — daemon left STOPPED. Manual recovery: npm i -g ${PKG}@${VERSION}; backups in ${backupsDir()}`);
+      return 1;
+    }
+    try {
+      const rr = await run("npm", ["root", "-g"]);
+      if (!rr.ok) throw new Error(`npm root -g failed: ${rr.output.slice(0, 120)}`);
+      provisionStableServing(`${rr.output.trim()}/@osstack/cli/dist/bin.js`, process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
+    } catch (err) {
+      log(`re-provisioning after restore FAILED: ${err instanceof Error ? err.message : String(err)} — daemon left STOPPED (manual: osstack serve --install)`);
+      return 1;
+    }
+    if (wasRunning || viaLaunchd) {
+      await startDaemonAgain(viaLaunchd);
+      const ok = await waitForDaemon(opts.rpc, VERSION);
+      log(ok ? `previous daemon ${VERSION} healthy again.` : `previous daemon did NOT come back healthy — check ${join(logsDir(), "daemon.error.log")}`);
+    }
+    return 1;
+  }
+
+  // Re-provision the control-plane role next to the NEWLY installed binary
+  // BEFORE restarting (round-4 F1; round-5: guard code is STATICALLY imported
+  // so npm's replacement of this package's chunks cannot break the call, and
+  // an npm-root failure or provisioning failure restores the previous daemon
+  // instead of leaving it stopped).
+  try {
+    const which = await run("npm", ["root", "-g"]);
+    if (!which.ok) throw new Error(`npm root -g failed: ${which.output.slice(0, 120)}`);
+    const newBin = `${which.output.trim()}/@osstack/cli/dist/bin.js`;
+    provisionStableServing(newBin, process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
+  } catch (err) {
+    log(`control-plane provisioning after upgrade FAILED: ${err instanceof Error ? err.message : String(err)}`);
+    // npm has ALREADY replaced the global package — restarting now would launch
+    // the new, unprovisioned binary (round-6). Roll back to the previous
+    // version, re-provision it, then restart that.
+    log(`ROLLING BACK to ${PKG}@${VERSION} before restart…`);
+    const rb = await run("npm", ["install", "-g", `${PKG}@${VERSION}`]);
+    if (!rb.ok) {
+      log(`rollback install ALSO failed:\n${rb.output}`);
+      log(`manual recovery: npm i -g ${PKG}@${VERSION}; backups in ${backupsDir()}`);
+      return 1;
+    }
+    try {
+      const rootResp = await run("npm", ["root", "-g"]);
+      if (!rootResp.ok) throw new Error(`npm root -g failed: ${rootResp.output.slice(0, 120)}`);
+      provisionStableServing(`${rootResp.output.trim()}/@osstack/cli/dist/bin.js`,
+        process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
+    } catch (provErr) {
+      // Never restart into a binary the guard will refuse (round-7): stop here
+      // with explicit manual recovery instead of a doomed kickstart.
+      log(`re-provisioning the rolled-back binary FAILED: ${provErr instanceof Error ? provErr.message : String(provErr)}`);
+      log(`daemon left STOPPED. Manual recovery: osstack serve --install (provisions + verifies), or fix the role file next to the global dist/bin.js; backups in ${backupsDir()}`);
+      return 1;
+    }
+    if (wasRunning || viaLaunchd) await startDaemonAgain(viaLaunchd);
     return 1;
   }
 
@@ -176,10 +275,65 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
     const healthy = await waitForDaemon(opts.rpc, target);
     if (!healthy) {
       log(`daemon failed health check on ${target} — ROLLING BACK to ${VERSION}…`);
+      // Quiesce before mutating package/DB (review F4): the unhealthy daemon
+      // may still be flapping under KeepAlive. If it will NOT quiesce, do not
+      // mutate anything under it — stop with manual recovery (round-3 #1).
+      const quiesced = await stopDaemon(opts.rpc, viaLaunchd);
+      if (!quiesced) {
+        log("could not quiesce the unhealthy daemon — NOT touching package or DB while it may be live.");
+        log(`Manual recovery — do NOT mutate anything until the daemon is VERIFIED stopped: ${viaLaunchd
+          ? `launchctl bootout gui/$UID/${LAUNCHD_LABEL} (repeat until 'no such process')`
+          : "stop the daemon process (kill the pid in daemon.pid)"}, confirm the daemon socket is gone AND lsof shows no state.db holders; ONLY THEN: npm i -g ${PKG}@${VERSION}; ${backup ? `restore the snapshot ${backup}` : "delete the newly created state.db(+wal/shm)"}; osstack serve --install.`);
+        return 1;
+      }
       const rollback = await run("npm", ["install", "-g", `${PKG}@${VERSION}`]);
       if (!rollback.ok) {
         log(`rollback install ALSO failed:\n${rollback.output}`);
         log(`manual recovery: npm i -g ${PKG}@${VERSION}; backups in ${backupsDir()}`);
+        return 1;
+      }
+      // The NEW version may have MIGRATED the DB on its failed boot — the old
+      // code would refuse it. Restore the pre-upgrade snapshot (F3).
+      if (backup === null) {
+        // No DB existed pre-upgrade (review F6): the failed new version may
+        // have CREATED one at its own schema — remove it so the restored old
+        // version starts fresh instead of refusing a newer schema. Only ENOENT
+        // counts as absent; a real I/O failure would leave the foreign-schema
+        // DB in place, so STOP instead of restarting over it (round-3 #3).
+        const dbP = join(osstackHome(), "state.db");
+        for (const f of [dbP, `${dbP}-wal`, `${dbP}-shm`]) {
+          try { unlinkSync(f); } catch (err) {
+            if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+              log(`could not remove ${f === dbP ? "the newly created state.db" : "a state.db sidecar"} (${(err as Error).message}) — daemon left STOPPED to avoid booting old code on a newer-schema DB. Manual recovery: remove ${dbP}* then osstack serve --install`);
+              return 1;
+            }
+          }
+        }
+      }
+      if (backup) {
+        try {
+          const dbP = join(osstackHome(), "state.db");
+          copyFileSync(backup, dbP);
+          for (const side of ["-wal", "-shm"]) { try { unlinkSync(`${dbP}${side}`); } catch { /* absent */ } }
+          log("pre-upgrade state.db snapshot restored");
+        } catch (err) {
+          log(`WARN: could not restore the pre-upgrade DB snapshot: ${err instanceof Error ? err.message : String(err)}`);
+          log(`daemon left STOPPED (old code may refuse a migrated DB). Manual recovery from ${backupsDir()}`);
+          return 1;
+        }
+      }
+      // The reinstalled package's tarball never contains the role file — the
+      // restored binary must be re-provisioned or the guard refuses the boot
+      // we are rolling back TO (round-5 F4; round-8: failure STOPS, never a
+      // kickstart into a guard-refused binary).
+      try {
+        const rootResp = await run("npm", ["root", "-g"]);
+        if (!rootResp.ok) throw new Error(`npm root -g failed: ${rootResp.output.slice(0, 120)}`);
+        provisionStableServing(`${rootResp.output.trim()}/@osstack/cli/dist/bin.js`,
+          process.env["OSSTACK_HOME"] ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: true });
+      } catch (err) {
+        log(`re-provisioning the rolled-back binary FAILED: ${err instanceof Error ? err.message : String(err)}`);
+        log(`daemon left STOPPED. Manual recovery: osstack serve --install (provisions + verifies); backups in ${backupsDir()}`);
         return 1;
       }
       await startDaemonAgain(viaLaunchd);

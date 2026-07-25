@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Knowledge Hygiene Coverage Dimension v2",
+  "$comment": "Coverage count and state invariants are enforced by @osstack/governance Zod validation.",
+  "type": "object",
+  "properties": {
+    "dimension": {
+      "type": "string",
+      "enum": [
+        "mechanical",
+        "narrative",
+        "contradiction",
+        "drift",
+        "memory_overlap",
+        "cross_repository"
+      ]
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "partial",
+        "not_assessed",
+        "truncated",
+        "failed"
+      ]
+    },
+    "source_units_total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "candidates_generated": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "candidates_assessed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "candidates_skipped": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "not_requested",
+          "bounded_candidate_generator",
+          "input_budget_exhausted",
+          "output_budget_exhausted",
+          "call_budget_exhausted",
+          "judge_unavailable",
+          "scan_incomplete",
+          "provider_error"
+        ]
+      }
+    }
+  },
+  "required": [
+    "dimension",
+    "state",
+    "source_units_total",
+    "candidates_generated",
+    "candidates_assessed",
+    "candidates_skipped",
+    "reason_codes"
+  ],
+  "additionalProperties": false
+}

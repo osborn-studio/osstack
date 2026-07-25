@@ -36,16 +36,8 @@ import {
   type LoopKnowledgeTrace as LoopKnowledgeTraceType,
   type CompletedTask,
 } from "@osstack/loop";
-import {
-  openDb, PIIRedactor, routeCapability,
-  PolicyEngine, DEFAULT_RULES, sqliteHistory,
-  HermesBridge, GBrainAdapter,
-  initOtel, shutdownOtel, traceSpan, otelEnabled,
-  KanbanRepository, KanbanNotifier, getBoard,
-  countRuns, countRunsSince, countEvents, listEventsForRun,
-  type RoutableAdapter, type PolicyDecision,
-  type CardStatus, type OutboundMessage,
-} from "@osstack/core";
+import { PIIRedactor, routeCapability, AgentOverrideError, PolicyEngine, DEFAULT_RULES, sqliteHistory, HermesBridge, GBrainAdapter, initOtel, shutdownOtel, traceSpan, otelEnabled, KanbanRepository, KanbanNotifier, getBoard, countRuns, countRunsSince, countEvents, listEventsForRun, type RoutableAdapter, type PolicyDecision, type CardStatus, type OutboundMessage } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import type Database from "better-sqlite3";
 import {
   cleanupOrphanedWorktrees,
@@ -67,6 +59,10 @@ import {
   startDashboardServer,
   type DashboardServerHandle,
 } from "./dashboard.js";
+import {
+  runLoopNeatFinalizer,
+  type LoopNeatFinalizerResultV1,
+} from "./loop-neat-finalizer.js";
 
 const DAEMON_VERSION = VERSION;
 const DAEMON_PHASE = "S1.5-controls";
@@ -384,15 +380,25 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
         if (raw.policy?.denied === true) {
           return singleErr(req.id, "policy_denied", raw.policy.reason);
         }
+        const knowledgeHygiene = await finalizeLoopKnowledgeHygiene(
+          parsed.neatFinalize,
+          parsed.runOptions.workspacePath ?? process.cwd(),
+          raw,
+        );
         const runId = persistLoopRunEvidence(ctx, raw);
-        return singleOk(req.id, loopRunSummary(raw, runId));
+        return singleOk(req.id, loopRunSummary(raw, runId, knowledgeHygiene));
       }
       const raw = await engine.runCycles(parsed.cyclesOptions);
       if (raw.policy?.denied === true) {
         return singleErr(req.id, "policy_denied", raw.policy.reason);
       }
+      const knowledgeHygiene = await finalizeLoopKnowledgeHygiene(
+        parsed.neatFinalize,
+        parsed.runOptions.workspacePath ?? process.cwd(),
+        raw,
+      );
       const runId = persistLoopRunEvidence(ctx, raw);
-      return singleOk(req.id, loopRunCyclesSummary(raw, runId));
+      return singleOk(req.id, loopRunCyclesSummary(raw, runId, knowledgeHygiene));
     }
 
     case "loop.start": {
@@ -877,7 +883,11 @@ function loopStat(session: LoopSession): LoopStat {
 // loop.run / loop.status
 // ──────────────────────────────────────────────────────────────────────
 
-function loopRunSummary(result: LoopRunResult, runId?: string): Record<string, unknown> {
+function loopRunSummary(
+  result: LoopRunResult,
+  runId?: string,
+  knowledgeHygiene?: LoopNeatFinalizerResultV1,
+): Record<string, unknown> {
   return {
     ...(runId !== undefined ? { run_id: runId } : {}),
     loop_id: result.loop_id,
@@ -889,10 +899,15 @@ function loopRunSummary(result: LoopRunResult, runId?: string): Record<string, u
     state: result.state,
     ...(result.goal !== undefined ? { goal: result.goal } : {}),
     ...(result.budget !== undefined ? { budget: result.budget } : {}),
+    ...(knowledgeHygiene !== undefined ? { knowledge_hygiene: knowledgeHygiene } : {}),
   };
 }
 
-function loopRunCyclesSummary(result: LoopRunCyclesResult, runId?: string): Record<string, unknown> {
+function loopRunCyclesSummary(
+  result: LoopRunCyclesResult,
+  runId?: string,
+  knowledgeHygiene?: LoopNeatFinalizerResultV1,
+): Record<string, unknown> {
   return {
     ...(runId !== undefined ? { run_id: runId } : {}),
     loop_id: result.loop_id,
@@ -904,6 +919,7 @@ function loopRunCyclesSummary(result: LoopRunCyclesResult, runId?: string): Reco
     state: result.state,
     ...(result.cycles.at(-1)?.goal !== undefined ? { goal: result.cycles.at(-1)?.goal } : {}),
     ...(result.budget !== undefined ? { budget: result.budget } : {}),
+    ...(knowledgeHygiene !== undefined ? { knowledge_hygiene: knowledgeHygiene } : {}),
     cycles: result.cycles.map((cycle) => ({
       discovered_task_count: cycle.discoveredTaskCount,
       executed_task_count: cycle.executedTaskCount,
@@ -911,6 +927,20 @@ function loopRunCyclesSummary(result: LoopRunCyclesResult, runId?: string): Reco
       ...(cycle.goal !== undefined ? { goal: cycle.goal } : {}),
     })),
   };
+}
+
+async function finalizeLoopKnowledgeHygiene(
+  enabled: boolean,
+  workspacePath: string,
+  result: LoopRunResult | LoopRunCyclesResult,
+): Promise<LoopNeatFinalizerResultV1 | undefined> {
+  return runLoopNeatFinalizer({
+    enabled,
+    loop_succeeded: result.state.completed_tasks.length > 0
+      && result.state.completed_tasks.every((task) => task.outcome === "success")
+      && result.budget?.exceeded !== true,
+    workspace_path: workspacePath,
+  });
 }
 
 function persistLoopRunEvidence(ctx: DaemonContext, result: LoopRunResult | LoopRunCyclesResult): string {
@@ -1637,7 +1667,7 @@ async function restoreDailySessions(ctx: DaemonContext): Promise<void> {
 
 function parseLoopRunParams(
   params: unknown,
-): { runOptions: LoopRunOptions; cyclesOptions?: LoopRunCyclesOptions } | Error {
+): { runOptions: LoopRunOptions; cyclesOptions?: LoopRunCyclesOptions; neatFinalize: boolean } | Error {
   const p = objectParams(params);
   if (p instanceof Error) return p;
 
@@ -1685,6 +1715,8 @@ function parseLoopRunParams(
   if (budget instanceof Error) return budget;
   const lessonDrafts = optionalLessonDrafts(p, "lessonDrafts");
   if (lessonDrafts instanceof Error) return lessonDrafts;
+  const neatFinalize = optionalBoolean(p, "neatFinalize");
+  if (neatFinalize instanceof Error) return neatFinalize;
 
   const runOptions: LoopRunOptions = {
     workspacePath,
@@ -1721,6 +1753,7 @@ function parseLoopRunParams(
 
   return {
     runOptions,
+    neatFinalize: neatFinalize === true,
     ...(cyclesOptions !== undefined ? { cyclesOptions } : {}),
   };
 }
@@ -1942,11 +1975,30 @@ async function handleTaskSubmit(
   const routeReq: RouteReq = {};
   if (params.capability_id !== undefined) routeReq.capability_id = params.capability_id;
   if (typeof params.kind === "string") routeReq.kind = params.kind as RouteKind;
-  if (params.agent_id !== undefined) routeReq.agent_id = params.agent_id;
-  const routerPick = await routeCapability(
-    routeReq,
-    Array.from(ctx.adapters.values()) as readonly RoutableAdapter[],
-  );
+  if (params.agent_id !== undefined) {
+    // FAIL-CLOSED type boundary: a non-string/empty agent_id is a client bug,
+    // never a reason to fall back to default routing (G1.1 review F3).
+    if (typeof params.agent_id !== "string" || params.agent_id.length === 0) {
+      sock.write(encodeFrame(singleErr(req.id, "bad_request", "params.agent_id must be a non-empty string when provided")));
+      return;
+    }
+    routeReq.agent_id = params.agent_id;
+  }
+  let routerPick: Awaited<ReturnType<typeof routeCapability>>;
+  try {
+    routerPick = await routeCapability(
+      routeReq,
+      Array.from(ctx.adapters.values()) as readonly RoutableAdapter[],
+    );
+  } catch (err) {
+    // Explicit agent_id override could not be honored — FAIL-CLOSED to the
+    // client; no run is created and no silent fallback occurs (G1.1).
+    if (err instanceof AgentOverrideError) {
+      sock.write(encodeFrame(singleErr(req.id, "agent_override_failed", err.message)));
+      return;
+    }
+    throw err;
+  }
   if (routerPick === null) {
     sock.write(encodeFrame(singleErr(req.id, "no_route", "no available adapter can serve this task")));
     return;

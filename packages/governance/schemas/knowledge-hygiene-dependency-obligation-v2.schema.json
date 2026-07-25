@@ -1,0 +1,187 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Knowledge Hygiene Dependency Obligation v2",
+  "$comment": "Obligation identity, expiry, advisory rationale, and promoted-edge invariants are enforced by @osstack/governance Zod validation.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "2"
+    },
+    "obligation_id": {
+      "type": "string",
+      "pattern": "^kho_[a-f0-9]{64}$"
+    },
+    "registry_scope": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source_repo_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "upstream_repo_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "downstream_repo_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kinds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "api",
+          "sdk",
+          "env_name",
+          "url",
+          "symbol",
+          "path"
+        ]
+      },
+      "minItems": 1
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "candidate",
+        "advisory",
+        "promoted",
+        "dismissed",
+        "expired"
+      ]
+    },
+    "revision": {
+      "type": "integer",
+      "exclusiveMinimum": 0
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "report",
+                  "scorecard",
+                  "proof",
+                  "loop_state",
+                  "external"
+                ]
+              },
+              "ref": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "run_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "kind",
+              "ref"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "evidence_pack"
+              },
+              "ref": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "run_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "kind",
+              "ref",
+              "sha256",
+              "run_id"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "obligation"
+              },
+              "ref": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "run_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "kind",
+              "ref",
+              "sha256"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "minItems": 1
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "promoted_edge_id": {
+      "type": "string",
+      "pattern": "^khe_[a-f0-9]{64}$"
+    }
+  },
+  "required": [
+    "schema_version",
+    "obligation_id",
+    "registry_scope",
+    "source_repo_id",
+    "upstream_repo_id",
+    "downstream_repo_id",
+    "kinds",
+    "state",
+    "revision",
+    "evidence_refs",
+    "created_at",
+    "expires_at"
+  ],
+  "additionalProperties": false
+}

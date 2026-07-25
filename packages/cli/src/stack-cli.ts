@@ -3,19 +3,8 @@
 // tooling (board/move/check/timeline, added in later tasks) has a substrate
 // to work against.
 
-import {
-  CardCheckNotFound,
-  CardCycleError,
-  CardNotFound,
-  CardStatus,
-  IllegalCardTransition,
-  KanbanRepository,
-  getBoard,
-  openDb,
-  readFactsForSubject,
-  upsertImprovementProposal,
-  writeFact,
-} from "@osstack/core";
+import { CardCheckNotFound, CardCycleError, CardNotFound, CardStatus, IllegalCardTransition, KanbanRepository, evaluateKanbanTransitionGuards, getBoard, readFactsForSubject, upsertImprovementProposal, writeFact, type KanbanTransitionGuard } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import { ingestStack, type CommandRunner } from "@osstack/github";
 import { renderStackRetro, type StackRetroInput } from "@osstack/loop";
 import { recommendRouting, type RoutingFact } from "./stack-routing.js";
@@ -26,6 +15,8 @@ export interface StackCliDeps {
   dbPath?: string;
   now?: () => number;
   out?: (line: string) => void;
+  workspacePath?: string;
+  transitionGuards?: readonly KanbanTransitionGuard[];
 }
 
 export const PR_CARD_CHECKLIST: readonly string[] = [
@@ -283,6 +274,25 @@ async function stackMove(args: string[], deps?: StackCliDeps): Promise<number> {
     const repo = new KanbanRepository(db, dbPath, deps?.now);
     const cardId = resolveCardId(cardArg);
     try {
+      const card = repo.getCard(cardId);
+      if (card === undefined) throw new CardNotFound(cardId);
+      const guardResult = await evaluateKanbanTransitionGuards(
+        deps?.transitionGuards ?? [],
+        {
+          cardId,
+          from: card.status,
+          to: status,
+          workspacePath: deps?.workspacePath ?? process.cwd(),
+        },
+      );
+      if (!guardResult.allow) {
+        for (const decision of guardResult.decisions.filter((entry) => !entry.allow)) {
+          console.error(
+            `osstack: transition denied by ${decision.guardId}: ${decision.reason}`,
+          );
+        }
+        return 1;
+      }
       const updated = repo.moveCard(cardId, status, {
         ...(reason !== undefined ? { blocked_reason: reason } : {}),
         actor: "cli",

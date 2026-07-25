@@ -1,0 +1,215 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Probe Readiness Policy v1",
+  "$comment": "YAML policy uses numeric schema_version 1; defaults are applied by @osstack/governance Zod validation.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "number",
+      "const": 1
+    },
+    "enforcement": {
+      "type": "string",
+      "enum": [
+        "report",
+        "block"
+      ],
+      "default": "report"
+    },
+    "blocking_severities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "high",
+          "medium",
+          "low"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 3,
+      "default": [
+        "high"
+      ]
+    },
+    "accepted_dispositions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "resolved",
+          "waived",
+          "invalidated"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 3,
+      "default": [
+        "resolved",
+        "waived",
+        "invalidated"
+      ]
+    },
+    "require_destination_state": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "applied",
+        "verified"
+      ],
+      "default": "applied"
+    },
+    "max_deferred_age_days": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 36500,
+      "default": 14
+    },
+    "required_question_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(?:[a-z][a-z0-9_-]*\\.)+[a-z0-9_-]+\\.v[1-9][0-9]*$"
+      },
+      "maxItems": 100,
+      "default": []
+    },
+    "waiver": {
+      "type": "object",
+      "properties": {
+        "require_human": {
+          "type": "boolean",
+          "default": true
+        },
+        "max_age_days": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 36500,
+          "default": 30
+        }
+      },
+      "additionalProperties": false,
+      "default": {
+        "require_human": true,
+        "max_age_days": 30
+      }
+    },
+    "resolution": {
+      "type": "object",
+      "properties": {
+        "require_human_categories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "user",
+              "outcome",
+              "scope",
+              "data_model",
+              "interface",
+              "user_flow",
+              "failure_mode",
+              "performance",
+              "security",
+              "dependency",
+              "migration",
+              "rollback",
+              "observability",
+              "acceptance",
+              "test_data",
+              "environment",
+              "tacit_convention"
+            ]
+          },
+          "maxItems": 32,
+          "default": [
+            "user",
+            "outcome",
+            "scope",
+            "data_model",
+            "interface",
+            "user_flow",
+            "security",
+            "migration",
+            "rollback",
+            "acceptance"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "default": {
+        "require_human_categories": [
+          "user",
+          "outcome",
+          "scope",
+          "data_model",
+          "interface",
+          "user_flow",
+          "security",
+          "migration",
+          "rollback",
+          "acceptance"
+        ]
+      }
+    },
+    "destination": {
+      "type": "object",
+      "properties": {
+        "verified_require_human": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false,
+      "default": {
+        "verified_require_human": true
+      }
+    },
+    "invalidation": {
+      "type": "object",
+      "properties": {
+        "required_requires_human": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false,
+      "default": {
+        "required_requires_human": true
+      }
+    },
+    "budgets": {
+      "type": "object",
+      "properties": {
+        "quick": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 8
+        },
+        "standard": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20
+        },
+        "deep": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 40
+        }
+      },
+      "additionalProperties": false,
+      "default": {
+        "quick": 8,
+        "standard": 20,
+        "deep": 40
+      }
+    }
+  },
+  "required": [
+    "schema_version"
+  ],
+  "additionalProperties": false
+}

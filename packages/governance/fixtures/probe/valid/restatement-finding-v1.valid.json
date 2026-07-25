@@ -1,0 +1,17 @@
+{
+  "schema_version": "1",
+  "finding_id": "prf_12345678",
+  "kind": "omitted",
+  "spec_evidence": {
+    "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "path": "docs/spec.md",
+    "line": 18
+  },
+  "restatement_evidence": null,
+  "explanation": "The restatement does not mention the rollback obligation.",
+  "proposed_question": "Which rollback guarantee must the implementation preserve?",
+  "impact": 3,
+  "irreversibility": 3,
+  "uncertainty": 2,
+  "destination_hint": "technical_design"
+}

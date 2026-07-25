@@ -1,13 +1,22 @@
-import { mkdtempSync } from "node:fs";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdirSync, mkdtempSync } from "node:fs";
+import { mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { KanbanRepository, openDb } from "@osstack/core";
+import {
+  appendDependencyObligationEventV2,
+  KanbanRepository,
+  registerDependencyRegistryScopeV2,
+  createProbeSession,
+  openDb,
+  recordKnowledgeHygieneRun,
+  type RecordKnowledgeHygieneRunInputV1,
+} from "@osstack/core";
 import type { CommandRunner } from "@osstack/github";
 import { AgentCommandResult } from "@osstack/protocol";
 import type { StructuredRecommendation } from "@osstack/supervisor";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { computeDelta, deriveOwnerDecisions, handleDailyCommand, runDailyBrief, repoCiStatus, type DailyBrief } from "./daily-command.js";
+import { computeDelta, deriveOwnerDecisions, handleDailyCommand, renderDailyMarkdown, runDailyBrief, repoCiStatus, type DailyBrief } from "./daily-command.js";
 
 let tmp: string;
 let logs: string[];
@@ -90,6 +99,92 @@ async function writeRegistry(path: string, entries: unknown[]): Promise<void> {
   await writeFile(path, JSON.stringify(entries, null, 2), "utf8");
 }
 
+function seedDailyProbeSession(input: { corruptDeferred?: boolean } = {}): void {
+  const nowMs = Date.parse("2026-07-11T09:00:00Z");
+  mkdirSync(join(tmp, "home"), { recursive: true });
+  const db = openDb({
+    path: join(tmp, "home", "state.db"),
+    minFreeBytes: 0,
+  });
+  try {
+    createProbeSession(db, {
+      session: {
+        session_id: "probe_daily001",
+        repo_id: "withgh",
+        state: "active",
+        revision: 1,
+        snapshot_json: JSON.stringify({
+          unselected_required_question_ids: ["tech.missing.v1"],
+        }),
+        created_at_ms: nowMs - 10 * 86_400_000,
+        updated_at_ms: nowMs,
+      },
+      items: [{
+        item_id: "pi_dailyopen1",
+        question_id: "tech.daily_open.v1",
+        state: input.corruptDeferred ? "deferred" : "open",
+        current_quadrant: "ku",
+        severity: "high",
+        updated_at_ms: nowMs - 5 * 86_400_000,
+        item_json: JSON.stringify({
+          required: true,
+          created_at_ms: nowMs - 5 * 86_400_000,
+        }),
+      }],
+      event: {
+        event_id: "pe_daily001",
+        revision: 1,
+        type: "session_started",
+        idempotency_key: "daily-start",
+        event_json: JSON.stringify({ type: "session_started" }),
+        occurred_at_ms: nowMs - 10 * 86_400_000,
+      },
+      receipt: {
+        scope_key: "repo:withgh",
+        idempotency_key: "daily-start",
+        request_sha256: "c".repeat(64),
+        result_json: JSON.stringify({ session_id: "probe_daily001" }),
+        created_at_ms: nowMs - 10 * 86_400_000,
+      },
+    });
+  } finally {
+    db.close();
+  }
+}
+
+function recordedWarning(
+  reportSha: string,
+  generatedAt: number,
+): RecordKnowledgeHygieneRunInputV1 {
+  return {
+    report_sha256: reportSha,
+    schema_version: "1",
+    repo_id: "withgh",
+    repo_root: join(tmp, "withgh"),
+    mode: "all",
+    generated_at: generatedAt,
+    complete: true,
+    skipped_files: 0,
+    summary: {
+      error: 0,
+      warning: 1,
+      info: 0,
+      suppressed: 0,
+      resolved: 0,
+    },
+    findings: [{
+      fingerprint: `khf_${"a".repeat(64)}`,
+      rule_id: "surface.required_missing",
+      surface: "documentation",
+      severity: "warning",
+      confidence: "high",
+      location_path: "MISSING.md",
+      rationale: "A configured knowledge surface is missing.",
+    }],
+    resolved_findings: [],
+  };
+}
+
 describe("daily CLI", () => {
   it("renders a Markdown brief with per-repo github status + degradation warning", async () => {
     const registry = await seedRegistry();
@@ -108,6 +203,58 @@ describe("daily CLI", () => {
     expect(md).toContain("no GitHub remote");
     // First run => delta says so.
     expect(md).toContain("First run");
+    expect(md).not.toContain("## Probe readiness");
+  });
+
+  it("includes probe open age and completion only when sessions exist", async () => {
+    const registry = await seedRegistry();
+    seedDailyProbeSession();
+
+    expect(await handleDailyCommand(
+      ["--registry", registry],
+      {
+        runner: makeRunner([], "success"),
+        now: () => new Date("2026-07-11T09:00:00Z"),
+        out,
+      },
+    )).toBe(0);
+
+    const markdown = logs.join("\n");
+    expect(markdown).toContain("## Probe readiness");
+    expect(markdown).toContain("withgh: 1 in progress / 1 total session(s)");
+    expect(markdown).toContain("open high 1, medium 0, low 0; oldest 5d");
+    expect(markdown).toContain("completion 0% (0/2 required disposed)");
+    const persisted = JSON.parse(await readFile(
+      join(tmp, "home", "daily-briefs", "2026-07-11.json"),
+      "utf8",
+    )) as DailyBrief;
+    expect(persisted.probe?.repos[0]).toMatchObject({
+      repo_id: "withgh",
+      completion_percent: 0,
+      oldest_open_age_days: 5,
+    });
+  });
+
+  it("degrades a corrupt probe projection to a warning instead of failing daily", async () => {
+    const registry = await seedRegistry();
+    seedDailyProbeSession({ corruptDeferred: true });
+
+    expect(await handleDailyCommand(
+      ["--registry", registry],
+      {
+        runner: makeRunner([], "success"),
+        now: () => new Date("2026-07-11T09:00:00Z"),
+        out,
+      },
+    )).toBe(0);
+    expect(logs.join("\n")).not.toContain("## Probe readiness");
+    const persisted = JSON.parse(await readFile(
+      join(tmp, "home", "daily-briefs", "2026-07-11.json"),
+      "utf8",
+    )) as DailyBrief;
+    expect(persisted.warnings).toEqual(expect.arrayContaining([
+      expect.stringContaining("probe portfolio unavailable"),
+    ]));
   });
 
   it("--json emits a protocol AgentCommandResult that parses under the STRICT schema", async () => {
@@ -197,6 +344,47 @@ describe("daily CLI", () => {
     expect(logs.join("\n")).toContain("## Stack board");
   });
 
+  it("adds event-derived recurrence and age only when the current scan is actionable", async () => {
+    const registry = await seedRegistry();
+    const repo = join(tmp, "withgh");
+    await mkdir(join(repo, ".osstack"), { recursive: true });
+    await writeFile(join(repo, ".osstack", "neat.yaml"), [
+      "version: 1",
+      "required_surfaces:",
+      "  - id: missing",
+      "    path: MISSING.md",
+      "    severity: warning",
+      "",
+    ].join("\n"));
+    const home = join(tmp, "home");
+    await mkdir(home, { recursive: true });
+    const db = openDb({ path: join(home, "state.db"), minFreeBytes: 0 });
+    recordKnowledgeHygieneRun(
+      db,
+      recordedWarning("1".repeat(64), Date.UTC(2026, 6, 8, 9)),
+    );
+    recordKnowledgeHygieneRun(
+      db,
+      recordedWarning("2".repeat(64), Date.UTC(2026, 6, 10, 9)),
+    );
+    db.close();
+
+    expect(await handleDailyCommand(
+      ["--registry", registry],
+      {
+        runner: makeRunner([], "success"),
+        now: () => new Date("2026-07-11T09:00:00Z"),
+        out,
+      },
+    )).toBe(0);
+
+    const markdown = logs.join("\n");
+    expect(markdown).toContain(
+      "knowledge hygiene: complete; 0 error; 1 warning; 1 recurring; oldest 3d",
+    );
+    expect(markdown).toContain("knowledge_hygiene.check");
+  });
+
   it("a same-day re-run diffs against the PRIOR day's brief, not the earlier same-day run", async () => {
     const registry = await seedRegistry();
     // Day 1: PR #42 only.
@@ -270,6 +458,63 @@ describe("runDailyBrief (core extracted for the daemon)", () => {
     );
     // generated_at differs only if the clock advanced; both use the pinned `now`.
     expect(JSON.parse(logs.join("\n"))).toEqual(run.result);
+  });
+
+  it("surfaces registry-scoped unread dependency obligations without changing repos", async () => {
+    const registry = await seedRegistry();
+    const statePath = join(tmp, "home", "state.db");
+    await mkdir(join(tmp, "home"), { recursive: true });
+    const canonicalRegistry = await realpath(registry);
+    const registryScope = createHash("sha256")
+      .update(canonicalRegistry)
+      .digest("hex");
+    const database = openDb({ path: statePath, minFreeBytes: 0 });
+    try {
+      registerDependencyRegistryScopeV2(database, {
+        registry_scope: registryScope,
+        registry_path: canonicalRegistry,
+        updated_at: "2026-07-11T08:00:00.000Z",
+      });
+      const obligationId = `kho_${"1".repeat(64)}`;
+      const body = {
+        schema_version: "2" as const,
+        obligation_id: obligationId,
+        registry_scope: registryScope,
+        downstream_repo_id: "withgh",
+        revision: 1,
+        from_state: null,
+        to_state: "candidate" as const,
+        snapshot_json: JSON.stringify({
+          obligation_id: obligationId,
+          registry_scope: registryScope,
+          downstream_repo_id: "withgh",
+          revision: 1,
+          state: "candidate",
+        }),
+        actor: "system:test",
+        reason: "test obligation",
+        occurred_at: "2026-07-11T08:00:00.000Z",
+      };
+      appendDependencyObligationEventV2(database, {
+        ...body,
+        event_id: `khoe_${createHash("sha256").update(JSON.stringify(body)).digest("hex")}`,
+      });
+    } finally {
+      database.close();
+    }
+
+    const run = await runDailyBrief({
+      registryPath: registry,
+      runner: makeRunner([], "success"),
+      now: () => new Date("2026-07-11T09:00:00Z"),
+    });
+    expect(run.brief.dependency_obligations).toEqual({
+      registry_scope: registryScope,
+      open_count: 1,
+    });
+    expect(renderDailyMarkdown(run.brief)).toContain(
+      "Dependency obligations\n- unread: 1",
+    );
   });
 });
 
@@ -405,6 +650,63 @@ describe("deriveOwnerDecisions (R2.4 dispatchable run payloads)", () => {
     const d = deriveOwnerDecisions(brief).find((x) => x.command === "repo.review_prs");
     expect(d!.run.argv).toEqual(["gh", "pr", "list", "--repo", "acme/svc", "--state", "open"]);
     expect(d!.run.command).toBe("gh pr list --repo 'acme/svc' --state open");
+  });
+
+  it("emits a machine-command hygiene decision only for actionable hygiene", () => {
+    const actionable = briefOf({
+      repos: [repoHealth({
+        repo_id: "svc",
+        path: "/repos/svc",
+        hygiene: {
+          complete: false,
+          health_claim: "assessment_incomplete",
+          coverage: [{ dimension: "mechanical", state: "failed" }],
+          error_count: 1,
+          warning_count: 2,
+          recurring_count: 1,
+          checked_at: "2026-07-17T00:00:00.000Z",
+        },
+      })],
+    });
+    const decision = deriveOwnerDecisions(actionable).find(
+      (candidate) => candidate.command === "knowledge_hygiene.check",
+    );
+    expect(decision).toMatchObject({
+      command: "knowledge_hygiene.check",
+      run: {
+        argv: [
+          "osstack",
+          "neat",
+          "check",
+          "--repo",
+          "/repos/svc",
+          "--all",
+          "--fail-on",
+          "warning",
+        ],
+      },
+    });
+    expect(renderDailyMarkdown(actionable)).toContain(
+      "knowledge hygiene: incomplete; 1 error; 2 warning; 1 recurring",
+    );
+
+    const clean = briefOf({
+      repos: [repoHealth({
+        hygiene: {
+          complete: true,
+          health_claim: "assessed_scope_clean",
+          coverage: [{ dimension: "mechanical", state: "complete" }],
+          error_count: 0,
+          warning_count: 0,
+          recurring_count: 0,
+          checked_at: "2026-07-17T00:00:00.000Z",
+        },
+      })],
+    });
+    expect(deriveOwnerDecisions(clean).some(
+      (candidate) => candidate.command === "knowledge_hygiene.check",
+    )).toBe(false);
+    expect(renderDailyMarkdown(clean)).not.toContain("knowledge hygiene:");
   });
 
   it("portfolio.raise_maturity → init-loop-doc ONLY for an add_loop_doc kind carrying a repo_id", () => {

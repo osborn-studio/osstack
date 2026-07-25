@@ -3,10 +3,11 @@
 
 import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { realpathSync } from "node:fs";
+import { existsSync as fsExistsSync, readFileSync, realpathSync, writeFileSync as fsWriteFileSync } from "node:fs";
 import { connect, type Socket } from "node:net";
-import { chmod, copyFile, lstat, mkdir, readdir, readFile, readlink, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
+import { assertDbAccessAllowed, assertServeAllowed, ControlPlaneGuardError, defaultOsstackHome } from "./control-plane-guard.js";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
@@ -24,8 +25,13 @@ import {
   type ProofAudience,
 } from "@osstack/compliance";
 import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
-import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, openDb, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons, type RoutableAdapter } from "@osstack/core";
-import { scanFiles, type GovernanceFinding } from "@osstack/governance";
+import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons, type RoutableAdapter } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
+import {
+  inspectInstructionSource,
+  scanFiles,
+  type GovernanceFinding,
+} from "@osstack/governance";
 import {
   renderBranchStewardReport,
   scanBranchStewardCandidates,
@@ -110,8 +116,23 @@ import { handlePolicyCommand } from "./policy-command.js";
 import { buildSelfImprovementConfig } from "./loop-self-improvement.js";
 import { resolveRegistryPath } from "./supervisor-cli-support.js";
 import { handleStackCommand } from "./stack-cli.js";
+import { handleHubCommand, buildRealHubCliDeps } from "./hub-cli.js";
 import { handleDailyCommand } from "./daily-command.js";
 import { handleControlCommand, handleStartCommand } from "./start-control-command.js";
+import { handleNeatCommand } from "./neat-command.js";
+import {
+  handleProbeCommand,
+  resolveProbeRepositoryId,
+} from "./probe-command.js";
+import {
+  observeLoopImplementationDeviations,
+  type LoopProbeObservationResultV1,
+} from "./loop-probe-observer.js";
+import { createProbeKanbanTransitionGuard } from "./probe-kanban-guard.js";
+import {
+  runLoopNeatFinalizer,
+  type LoopNeatFinalizerResultV1,
+} from "./loop-neat-finalizer.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -171,9 +192,21 @@ Loop 工程：
   pr                  生成 GitHub PR evidence body
 
 治理与知识：
+  probe start         对需求或规格逐题探询，并持久化四象限未知项台账
   policy check        校验 .osstack/repo.yaml 与 policy.yaml（只读；observe 模式拒绝执行）
   govern check        运行确定性治理检查
+  neat check          只读检查项目指令、文档合同与知识面完整性
+  neat semantic       显式运行证据受限的语义知识卫生审计（V2、默认关闭）
+  neat memory         计划、批准、施行或恢复可审计的记忆毕业事务
+  neat narrative      计划、批准、施行或恢复可审计的叙事手术
+  neat dependencies   扫描、确认或撤销跨仓依赖义务
   contracts check     检查前端调用与后端 API 契约是否对齐
+
+私有 Hub（可选；Hub 为发布权威，经 OSSTACK_HUB_ROOT 解析）：
+  hub candidate <资产路径> --namespace organization/<id> [--allow-dirty] [--json]
+                      只登记外部源引用（不复制源码、不发布）；脏工作区需 --allow-dirty
+  hub publish <资产ID> --gate team [--json]
+                      发布 Hub 托管资产；打印逻辑发布身份（release_id+digest+storage_key），绝不打印 dist 路径
   compliance list     列出合规映射包
   knowledge list       列出本地、官方或缓存的 Osstack 知识包
   knowledge login      保存 Knowledge Cloud URL/token 到本地缓存
@@ -412,16 +445,36 @@ Branch Steward:
   steward scan [--repo O/R] [--base B] [--remote R] [--workspace P] [--json]
 
 Governance:
+  probe start --input P [--repo P] [--doc-type product|tech|test] [--json]
+                                  Start a persistent four-quadrant elicitation session
   policy check [--repo-path P] [--json]
-                                 Validate .osstack/repo.yaml + policy.yaml (read-only; observe mode refuses execution)
+                                  Validate .osstack/repo.yaml + policy.yaml (read-only; observe mode refuses execution)
   govern check [path...] [--workspace P] [--changed] [--json]
-                                 Run deterministic governance checks over workspace files
+                                  Run deterministic governance checks over workspace files
+  neat check [--repo P] [--all|--base REF [--head REF]] [--json]
+                                  Check repository knowledge contracts (read-only)
+  neat semantic [--repo P] [--dimensions D] [--judge ID] [--json]
+                                  Run an explicit evidence-bound V2 semantic audit
+  neat memory <plan|approve|apply|recover> [options]
+                                  Run an approved, recoverable memory transaction
+  neat narrative <plan|approve|apply|recover> [options]
+                                  Run an approved, recoverable narrative surgery
+  neat dependencies <scan|inbox|confirm|revoke|recover> [options]
+                                  Manage cross-repository dependency obligations
   governance scan <path...> [--json]
                                  Run deterministic governance checks over files
   compliance list [--json]
                                  List compliance mapping packs
   contracts check [--workspace P] [--manifest P] [--json]
                                  Validate frontend/backend API contract alignment
+
+Private Hub (optional; Hub is the release authority via OSSTACK_HUB_ROOT):
+  hub candidate <asset-path> --namespace organization/<id> [--reuse-scope team] [--allow-dirty] [--json]
+                                 Register an EXTERNAL source reference (no source copy, no release);
+                                 refuses a dirty source unless --allow-dirty
+  hub publish <asset-id> --gate team [--surfaces api] [--json]
+                                 Publish a Hub-managed asset; prints logical release identity
+                                 (release_id + digest + storage_key), never a dist path
   compliance render <run_id> --pack P [--proof-dir P]
                                  Render a compliance evidence mapping report
   knowledge list [--pack P|--official|--cache-dir P] [--json]
@@ -478,6 +531,26 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     if (args.includes("--install") || args.includes("--uninstall") || args.includes("--status")) {
       return await handleServeManagementCommand(args.slice(1));
     }
+    // Control-plane boot guard (G1.2): an undeclared checkout must never serve
+    // the default (stable) home; a declared checkout only its allowlisted homes.
+    {
+      // Start the role-file search at the running bin's own directory; the
+      // guard walks a bounded number of ancestors (covers monorepo roots and
+      // npm prefixes alike, and matches where serve --install provisions it).
+      let checkoutRoot = dirname(fileURLToPath(import.meta.url));
+      try { checkoutRoot = dirname(realpathSync(fileURLToPath(import.meta.url))); } catch { /* keep lexical */ }
+      const guardHome = process.env.OSSTACK_HOME ?? defaultOsstackHome();
+      try {
+        const verdict = assertServeAllowed({ checkoutRoot, osstackHome: guardHome });
+        console.log(`control-plane guard: role=${verdict.role} home=${verdict.homeCategory}${verdict.schema ? ` schema=[${verdict.schema.min},${verdict.schema.max}]` : ""}`);
+      } catch (err) {
+        if (err instanceof ControlPlaneGuardError) {
+          console.error(`osstack: refusing to serve — ${err.message}`);
+          return 78; // EX_CONFIG
+        }
+        throw err;
+      }
+    }
     const handle = await startDaemon();
     console.log(`osstack daemon listening on ${handle.socketPath}`);
     console.log(`db_path=${handle.dbPath}  pid=${process.pid}`);
@@ -531,6 +604,12 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "doctor") {
+    if (args.includes("--control-plane")) {
+      const { runControlPlaneChecks, renderControlPlaneFindings } = await import("./control-plane-doctor.js");
+      const out = renderControlPlaneFindings(runControlPlaneChecks());
+      console.log(out.text);
+      return out.exitCode;
+    }
     return await handleProductDoctorCommand(args.slice(1));
   }
 
@@ -544,6 +623,14 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "release") {
     return await handleReleaseCommand(args.slice(1));
+  }
+
+  if (cmd === "hub") {
+    // Private Hub candidate/publish (Phase 2B). Prints the command's own JSON/
+    // text result and returns its exit code. No dashboard routes.
+    const result = await handleHubCommand(args.slice(1), buildRealHubCliDeps());
+    if (result.stdout !== "") process.stdout.write(result.stdout + "\n");
+    return result.exitCode;
   }
 
   if (cmd === "stats") {
@@ -610,11 +697,32 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "stack") {
     const dbPath = await ensureLocalStateDbPath();
-    return handleStackCommand(args.slice(1), { dbPath });
+    return handleStackCommand(args.slice(1), {
+      dbPath,
+      workspacePath: process.cwd(),
+      transitionGuards: [createProbeKanbanTransitionGuard({ db_path: dbPath })],
+    });
   }
 
   if (cmd === "governance" || cmd === "govern") {
     return await handleGovernanceCommand(args.slice(1));
+  }
+
+  if (cmd === "neat") {
+    return await handleNeatCommand(args.slice(1), {
+      cwd: () => process.cwd(),
+      stdout: (value) => console.log(value),
+      stderr: (value) => console.error(value),
+      authorize_write: evaluatePolicyGate,
+    });
+  }
+
+  if (cmd === "probe") {
+    return await handleProbeCommand(args.slice(1), {
+      cwd: () => process.cwd(),
+      stdout: (value) => console.log(value),
+      stderr: (value) => console.error(value),
+    });
   }
 
   if (cmd === "contracts" || cmd === "contract") {
@@ -1545,10 +1653,10 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   expectAsset(workflow, "pnpm smoke:npm-install", "Release workflow must run npm install smoke.");
   expectAsset(workflow, "pnpm smoke:npm-preflight", "Release workflow must run npm preflight smoke.");
   expectAsset(workflow, "publish: pnpm changeset publish", "Release workflow must publish through changesets.");
-  expectAsset(workflow, "pnpm preflight:npm-publish", "Release workflow must preflight npm scope publish access before changesets publish.");
-  expectAsset(workflow, "NPM_CONFIG_PROVENANCE", "Release workflow must enable npm provenance for changesets publish.");
-  expectAsset(workflow, "secrets.NPM_TOKEN", "Release workflow must gate publishing on NPM_TOKEN.");
-  expectAsset(workflow, "NODE_AUTH_TOKEN", "Release workflow must set NODE_AUTH_TOKEN for npm publish.");
+  expectAsset(workflow, "id-token: write", "Release workflow must allow npm Trusted Publishing through GitHub OIDC.");
+  expectAsset(workflow, "node-version: 24", "Release workflow must use a Node version compatible with npm Trusted Publishing.");
+  expectAsset(workflow, "npm@11.17.0", "Release workflow must pin an npm client compatible with Trusted Publishing.");
+  violations.push(...trustedPublishingWorkflowViolations(workflow));
   expectAsset(rootPackage, "\"preflight:npm-publish\"", "Root package scripts must expose preflight:npm-publish.");
   expectAsset(npmPreflight, "npm\", [\"access\", \"list\", \"packages\", scope, \"--json\"]", "NPM preflight script must verify publish-scope access with npm access list packages.");
   expectAsset(npmPreflight, "Scope not found", "NPM preflight script must explain missing npm scope failures.");
@@ -1569,6 +1677,14 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
       versioned_for_publish: versionedForPublish,
     },
   };
+}
+
+export function trustedPublishingWorkflowViolations(workflow: string): string[] {
+  const publishStep = workflow.split("- name: Version PR / Publish")[1] ?? "";
+  if (publishStep.includes("NPM_TOKEN") || publishStep.includes("NODE_AUTH_TOKEN")) {
+    return ["Release publish step must not expose long-lived npm tokens when using Trusted Publishing."];
+  }
+  return [];
 }
 
 async function releaseNpmScopeAccessCheck(): Promise<ReleaseDoctorCheck> {
@@ -6213,8 +6329,55 @@ async function handleLessonsCommand(args: string[]): Promise<number> {
 
 async function ensureLocalStateDbPath(): Promise<string> {
   const home = osstackHome();
+  // Phase 2.1-B: direct-DB commands pass the SAME control-plane guard as
+  // serving — opening the DB auto-migrates it, so an undeclared checkout must
+  // never touch the default or a reserved home (the 2026-07-18/19 incidents).
+  {
+    let checkoutRoot = dirname(fileURLToPath(import.meta.url));
+    try { checkoutRoot = dirname(realpathSync(fileURLToPath(import.meta.url))); } catch { /* lexical */ }
+    assertDbAccessAllowed({ checkoutRoot, osstackHome: home });
+  }
   await mkdir(home, { recursive: true });
   return join(home, "state.db");
+}
+
+async function observeLoopProbeEvents(
+  workspacePath: string,
+  events: readonly unknown[],
+): Promise<LoopProbeObservationSummaryV1 | undefined> {
+  if (!events.some((event) =>
+    isRecord(event) && event["type"] === "loop.implementation.deviation"
+  )) {
+    return undefined;
+  }
+  try {
+    const sourceRevision = await gitOutput(workspacePath, ["rev-parse", "HEAD"]);
+    if (sourceRevision instanceof Error || sourceRevision.trim() === "") {
+      throw new Error("structured implementation deviations require a Git source revision");
+    }
+    const repoRoot = realpathSync(workspacePath);
+    const db = openDb({ path: await ensureLocalStateDbPath() });
+    try {
+      const observation = await observeLoopImplementationDeviations({
+        db,
+        repo_root: repoRoot,
+        repo_id: await resolveProbeRepositoryId(repoRoot),
+        source_revision: sourceRevision.trim(),
+        events,
+        now_ms: Date.now(),
+        create_item_id: () => `pi_${randomUUID()}`,
+        create_event_id: () => `pe_${randomUUID()}`,
+      });
+      return { status: "ok", ...observation };
+    } finally {
+      db.close();
+    }
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 function derivePitfallLessonsFromState(state: LoopState): Parameters<typeof upsertPitfallLesson>[2][] {
@@ -7019,7 +7182,32 @@ Options:
   const binPath = flagValue(args, "--bin") ?? defaultOsstackBinPath();
   try {
     if (args.includes("--install")) {
+      // Provision the control-plane role authority for THIS deployment: an
+      // installed launchd daemon serves the default home, which the boot guard
+      // only permits for a declared stable-serving root (review F1).
+      try {
+        const { CURRENT_SCHEMA_VERSION } = await import("@osstack/core");
+        const { provisionStableServing } = await import("./control-plane-guard.js");
+        provisionStableServing(binPath, process.env.OSSTACK_HOME ?? "~/.osstack", CURRENT_SCHEMA_VERSION, { requireBinary: !noLoad });
+        if (!json) console.log("control-plane guard: stable-serving role declaration provisioned and verified");
+      } catch (err) {
+        // A daemon the guard would refuse must not be installed (round-4 F2).
+        console.error(`osstack: serve --install aborted — control-plane provisioning failed: ${err instanceof Error ? err.message : String(err)}`);
+        return 78;
+      }
       const result = await installLaunchAgent({ binPath, noLoad });
+      // Record the plist content baseline for doctor's drift check (2.1-C/F2).
+      try {
+        const { createHash } = await import("node:crypto");
+        const plistPath = (result as { plist_path?: string }).plist_path
+          ?? `${process.env.HOME}/Library/LaunchAgents/${LAUNCHD_LABEL}.plist`;
+        if (fsExistsSync(plistPath)) {
+          const h = createHash("sha256").update(readFileSync(plistPath)).digest("hex");
+          const home = process.env.OSSTACK_HOME ?? defaultOsstackHome();
+          await mkdir(home, { recursive: true });
+          fsWriteFileSync(`${home}/plist.sha256.baseline`, `${h}\n`);
+        }
+      } catch { /* baseline is best-effort; doctor warns when absent */ }
       printServeLaunchdResult(result, json);
       return 0;
     }
@@ -7244,7 +7432,7 @@ async function readPersistedLoopRunEvidence(runId: string): Promise<{
   state_json: string;
   events: LoopEvent[];
 } | Error> {
-  const dbPath = join(osstackHome(), "state.db");
+  const dbPath = await ensureLocalStateDbPath();
   const db = openDb({ path: dbPath });
   try {
     const run = getRun(db, runId);
@@ -8847,6 +9035,7 @@ Stages:
   const events = governance === undefined
     ? result.events
     : appendGovernanceVerifyEvent(result.events, result.loop_id, governance);
+  const probeObservation = await observeLoopProbeEvents(workspacePath, events);
   const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, artifactArgs, events, governance);
   const learnedLessons = await learnLessonsFromLoopState(result.state);
   const summary = {
@@ -8861,6 +9050,7 @@ Stages:
     markdown_path: result.markdownPath,
     completed_tasks: result.state.completed_tasks,
     events,
+    ...(probeObservation === undefined ? {} : { probe_observation: probeObservation }),
     ...(checkpoint !== undefined ? { checkpoint } : {}),
     ...(artifacts !== undefined ? { artifacts } : {}),
     ...(governance !== undefined ? { governance } : {}),
@@ -9085,6 +9275,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const archiveCompletedTasks = args.includes("--archive-completed");
     const autoAgent = args.includes("--auto-agent");
     const selfImprovementEnabled = args.includes("--self-improvement");
+    const neatFinalize = args.includes("--neat-finalize");
     const selfImprovementRepoId = flagValue(args, "--repo-id");
     const proposeImprovements = args.includes("--propose-improvements");
     if (selfImprovementEnabled && selfImprovementRepoId === undefined) {
@@ -9162,6 +9353,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ...(useWorktree ? { useWorktree: true } : {}),
         ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
         ...(shouldRecordLoopKnowledge(args, knowledge) ? { knowledge } : {}),
+        ...(neatFinalize ? { neatFinalize: true } : {}),
       }) as RpcResp;
       if (!resp.ok) {
         console.error("osstack:", resp.error?.message ?? "loop.run failed");
@@ -9176,6 +9368,8 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         : appendGovernanceVerifyEvent(normalizeLoopEvents(result.events), result.loop_id, governance);
       if (events.length > 0) result.events = events;
       if (governance !== undefined) result.governance = governance;
+      const probeObservation = await observeLoopProbeEvents(workspacePath, events);
+      if (probeObservation !== undefined) result.probe_observation = probeObservation;
       const artifacts = await writeRequestedLoopArtifactsFromStateFile({
         args,
         workspacePath,
@@ -9260,14 +9454,24 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const events = governance === undefined
       ? result.events
       : appendGovernanceVerifyEvent(result.events, result.loop_id, governance);
+    const probeObservation = await observeLoopProbeEvents(workspacePath, events);
     const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, args, events, governance);
     const learnedLessons = await learnLessonsFromLoopState(result.state);
+    const knowledgeHygiene = await runLoopNeatFinalizer({
+      enabled: neatFinalize,
+      loop_succeeded: result.state.completed_tasks.length > 0
+        && result.state.completed_tasks.every((task) => task.outcome === "success")
+        && governance?.blocking !== true
+        && result.budget?.exceeded !== true,
+      workspace_path: workspacePath,
+    });
     printLoopRun({
       loop_id: result.loop_id,
       json_path: result.jsonPath,
       markdown_path: result.markdownPath,
       completed_tasks: result.state.completed_tasks,
       events,
+      ...(probeObservation === undefined ? {} : { probe_observation: probeObservation }),
       ...(artifacts !== undefined ? { artifacts } : {}),
       ...(learnedLessons !== undefined ? { learned_lessons: learnedLessons } : {}),
       ...(governance !== undefined ? { governance } : {}),
@@ -9276,6 +9480,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(goal !== undefined ? { goal } : {}),
       ...(result.budget !== undefined ? { budget: result.budget } : {}),
       ...(result.state.key_metrics !== undefined ? { metrics: result.state.key_metrics } : {}),
+      ...(knowledgeHygiene !== undefined ? { knowledge_hygiene: knowledgeHygiene } : {}),
       ...("cycles" in result ? { cycles: result.cycles.map((cycle) => ({
         discovered_task_count: cycle.discoveredTaskCount,
         executed_task_count: cycle.executedTaskCount,
@@ -9454,6 +9659,7 @@ Options:
                       Knowledge Cloud URL; unavailable cloud fails open to local/off
   --knowledge-query Q Query used for knowledge trace search
   --govern [M]        Run governance checks after loop run; M=warn or strict
+  --neat-finalize     After a successful run, attach non-gating neat evidence
   --json              Emit machine-readable summary
   --daemon            Run through the osstack daemon RPC socket
 
@@ -9799,6 +10005,8 @@ interface LoopRunSummary {
   events?: unknown[];
   profile?: LoopProfileSummary;
   budget?: LoopBudgetStatus;
+  knowledge_hygiene?: LoopNeatFinalizerResultV1;
+  probe_observation?: LoopProbeObservationSummaryV1;
   cycles?: Array<{
     discovered_task_count: number;
     executed_task_count: number;
@@ -9812,6 +10020,10 @@ interface LoopRunSummary {
     };
   }>;
 }
+
+type LoopProbeObservationSummaryV1 =
+  | ({ status: "ok" } & LoopProbeObservationResultV1)
+  | { status: "error"; message: string };
 
 interface LoopProfileSummary {
   profile_name: string;
@@ -9958,6 +10170,21 @@ function printLoopRun(result: LoopRunSummary, json: boolean): void {
   }
   if (result.governance !== undefined) {
     console.log(`governance=${result.governance.status} mode=${result.governance.mode} blocking=${result.governance.blocking ? "yes" : "no"} findings=${result.governance.findings.length}`);
+  }
+  if (result.knowledge_hygiene !== undefined) {
+    if (result.knowledge_hygiene.status === "error") {
+      console.log(`knowledge_hygiene=error message=${result.knowledge_hygiene.error}`);
+    } else {
+      const report = result.knowledge_hygiene.report;
+      console.log(`knowledge_hygiene=${report.completeness.complete ? "complete" : "incomplete"} findings=${report.findings.length}`);
+    }
+  }
+  if (result.probe_observation !== undefined) {
+    if (result.probe_observation.status === "error") {
+      console.log(`probe_observation=error message=${result.probe_observation.message}`);
+    } else {
+      console.log(`probe_observation=ok observed=${result.probe_observation.observed} added=${result.probe_observation.added} replayed=${result.probe_observation.replayed}`);
+    }
   }
   if (result.profile !== undefined) {
     console.log(`profile=${result.profile.profile_name} builder=${result.profile.builder_agent_id ?? "none"} evaluator=${result.profile.evaluator_agent_id ?? "none"}`);
@@ -10170,7 +10397,7 @@ async function loopDoctor(input: {
     await checkTaskQueue(input.workspacePath, add);
     await checkLoopState(input.stateFilePath, add);
     await checkGit(input.workspacePath, add);
-    await checkAgentInstructionDrift(input.workspacePath, add);
+    await addInstructionSourceDoctorCheck(input.workspacePath, add);
     await checkProtectedConfigStatus(input.workspacePath, add);
   }
 
@@ -10291,28 +10518,32 @@ async function checkGit(
   }
 }
 
-async function checkAgentInstructionDrift(
+async function addInstructionSourceDoctorCheck(
   workspacePath: string,
   add: (id: string, status: LoopDoctorCheck["status"], summary: string, details?: Record<string, unknown>) => void,
 ): Promise<void> {
   const agentsPath = join(workspacePath, "AGENTS.md");
   const claudePath = join(workspacePath, "CLAUDE.md");
-  const agentsExists = await fileExists(agentsPath);
-  const claudeExists = await fileExists(claudePath);
+  const observation = await inspectInstructionSource({
+    repo_root: workspacePath,
+    canonical_path: "AGENTS.md",
+    mirror_path: "CLAUDE.md",
+    mirror_mode: "import_or_symlink",
+  });
 
-  if (!agentsExists && !claudeExists) {
+  if (observation.status === "both_missing") {
     add("agent_instructions", "warn", "no AGENTS.md or CLAUDE.md found at workspace root", {
       expected_source: agentsPath,
     });
     return;
   }
-  if (agentsExists && !claudeExists) {
+  if (observation.status === "mirror_missing") {
     add("agent_instructions", "ok", "AGENTS.md is the only root instruction source", {
       source: agentsPath,
     });
     return;
   }
-  if (!agentsExists && claudeExists) {
+  if (observation.status === "canonical_missing") {
     add("agent_instructions", "error", "CLAUDE.md exists without AGENTS.md; instruction source is not unified", {
       claude: claudePath,
       expected_source: agentsPath,
@@ -10320,12 +10551,11 @@ async function checkAgentInstructionDrift(
     return;
   }
 
-  const claudeReference = await classifyClaudeReference(claudePath);
-  if (claudeReference.ok) {
+  if (observation.status === "valid_mirror") {
     add("agent_instructions", "ok", "AGENTS.md is canonical and CLAUDE.md references it", {
       source: agentsPath,
       claude: claudePath,
-      mode: claudeReference.mode,
+      mode: observation.mirror_kind === "import" ? "one-line-reference" : "symlink",
     });
     return;
   }
@@ -10333,29 +10563,9 @@ async function checkAgentInstructionDrift(
   add("agent_instructions", "error", "AGENTS.md and CLAUDE.md are both real instruction files; drift risk detected", {
     source: agentsPath,
     claude: claudePath,
-    reason: claudeReference.reason,
+    reason: observation.reason,
     remediation: "replace CLAUDE.md with a one-line @AGENTS.md reference or a symlink to AGENTS.md",
   });
-}
-
-async function classifyClaudeReference(path: string): Promise<
-  | { ok: true; mode: "symlink" | "one-line-reference" }
-  | { ok: false; reason: string }
-> {
-  try {
-    const meta = await lstat(path);
-    if (meta.isSymbolicLink()) {
-      const target = await readlink(path);
-      return target === "AGENTS.md" || target.endsWith("/AGENTS.md")
-        ? { ok: true, mode: "symlink" }
-        : { ok: false, reason: `CLAUDE.md symlink points to ${target}` };
-    }
-    const content = (await readFile(path, "utf-8")).trim();
-    if (content === "@AGENTS.md") return { ok: true, mode: "one-line-reference" };
-    return { ok: false, reason: "CLAUDE.md content is not exactly @AGENTS.md" };
-  } catch (error) {
-    return { ok: false, reason: errorMessage(error) };
-  }
 }
 
 async function checkProtectedConfigStatus(

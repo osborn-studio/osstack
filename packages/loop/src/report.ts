@@ -279,6 +279,9 @@ export function renderLoopStateReportMarkdown(
     `## ${text.completedTasks}`,
     ...renderCompletedTasks(report.completed_tasks),
     "",
+    `## ${text.publishedAssets}`,
+    ...renderPublishedAssets(report.completed_tasks),
+    "",
     `## ${text.inProgressSection}`,
     ...renderTasks(report.in_progress),
     "",
@@ -514,6 +517,23 @@ function renderCompletedTasks(tasks: CompletedTask[]): string[] {
   ];
 }
 
+// Published Assets: one row per task that ATTEMPTED a Hub publish (has
+// published_asset evidence). Release id/digest render `unknown` when absent —
+// a release is NEVER inferred from a task capability alone.
+function renderPublishedAssets(tasks: CompletedTask[]): string[] {
+  const rows = tasks.filter((t) => t.published_asset !== undefined);
+  if (rows.length === 0) return ["- None"];
+  return [
+    "| Task | Asset | Status | Gate | Namespace | Release ID | Digest | Storage Key | Reasons |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ...rows.map((t) => {
+      const e = t.published_asset!;
+      const reasons = e.reasons.length > 0 ? e.reasons.join("; ") : "-";
+      return `| ${t.task_id} | ${e.asset_id} | ${e.status} | ${e.gate} | ${e.namespace ?? "unknown"} | ${e.release_id ?? "unknown"} | ${e.digest ?? "unknown"} | ${e.storage_key ?? "unknown"} | ${reasons} |`;
+    }),
+  ];
+}
+
 function renderDeferredTasks(entries: DeferredTask[]): string[] {
   if (entries.length === 0) return ["- None"];
   return [
@@ -730,6 +750,7 @@ function reportText(language: LoopReportLanguage): {
   averageDuration: string;
   tokensConsumed: string;
   completedTasks: string;
+  publishedAssets: string;
   inProgressSection: string;
   pendingTasks: string;
   deferredTasks: string;
@@ -761,6 +782,7 @@ function reportText(language: LoopReportLanguage): {
       averageDuration: "平均耗时",
       tokensConsumed: "Token 消耗",
       completedTasks: "已完成任务",
+      publishedAssets: "已发布资产",
       inProgressSection: "进行中",
       pendingTasks: "待处理任务",
       deferredTasks: "治理挂起任务",
@@ -792,6 +814,7 @@ function reportText(language: LoopReportLanguage): {
     averageDuration: "Average duration",
     tokensConsumed: "Tokens consumed",
     completedTasks: "Completed Tasks",
+    publishedAssets: "Published Assets",
     inProgressSection: "In Progress",
     pendingTasks: "Pending Tasks",
     deferredTasks: "Deferred Tasks (Governance)",

@@ -95,6 +95,38 @@ describe("supervisor domain schemas", () => {
     expect(report.recommendations).toEqual([]);
     // Additive field: absent in old persisted data ⇒ defaults to [] (not strict).
     expect(report.structured_recommendations).toEqual([]);
+    expect(health.hygiene).toBeUndefined();
+  });
+
+  it("adds optional hygiene without changing the closed-loop level", () => {
+    const health = RepoHealth.parse({
+      repo_id: "osstack",
+      name: "osstack",
+      path: "/tmp/osstack",
+      role: "core_platform",
+      exists: true,
+      has_readme: true,
+      has_loop_doc: true,
+      has_tests: true,
+      has_verify_command: true,
+      closed_loop_level: 4,
+      hygiene: {
+        complete: false,
+        health_claim: "assessment_incomplete",
+        coverage: [{ dimension: "mechanical", state: "failed" }],
+        error_count: 2,
+        warning_count: 3,
+        recurring_count: 1,
+        oldest_open_days: 7.5,
+        checked_at: "2026-07-17T00:00:00.000Z",
+      },
+    });
+
+    expect(health.closed_loop_level).toBe(4);
+    expect(health.hygiene).toMatchObject({
+      complete: false,
+      recurring_count: 1,
+    });
   });
 
   it("parses evaluator epoch contracts", () => {

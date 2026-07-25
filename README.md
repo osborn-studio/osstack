@@ -24,8 +24,8 @@ surface that makes AI coding work visible and auditable.
 
 | Area | Status |
 |---|---|
-| npm package | Published: `@osstack/cli@0.9.0` |
-| GitHub release | npm packages: `@osstack/cli@0.9.0`; latest single binary: [`v0.8.1`](https://github.com/gilosbornhello/osstack/releases/tag/v0.8.1) |
+| npm package | Published: `@osstack/cli@0.12.0` |
+| GitHub release | npm packages: `@osstack/cli@0.12.0`; latest single binary: [`v0.8.1`](https://github.com/gilosbornhello/osstack/releases/tag/v0.8.1) |
 | macOS single binary | Published as explicit `public-ad-hoc` archive for `darwin-arm64` |
 | Knowledge Cloud | Live on EdgeOne: `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | License | MIT |
@@ -147,7 +147,7 @@ osstack doctor --workspace .
 Expected:
 
 ```text
-osstack 0.9.0
+osstack 0.12.0
 ```
 
 ### macOS Single-Binary Archive
@@ -202,6 +202,15 @@ osstack knowledge search "proof pack checksum" \
 # Run a local readiness check for the loop engine.
 osstack loop doctor --workspace . --json
 
+# Audit repository knowledge without writing files.
+osstack neat check --fail-on none
+
+# Opt-in, evidence-bound semantic audit (requires an isolated judge provider).
+osstack neat semantic --dimensions narrative,contradiction,drift,memory-overlap
+
+# Build a reviewable remediation transaction; writes still require approval.
+osstack neat narrative plan --repo . --findings FINDING_FINGERPRINT
+
 # Run one delivery flow in a git worktree and produce evidence.
 osstack deliver "Make a small verified change" \
   --verify "pnpm test" \
@@ -209,6 +218,14 @@ osstack deliver "Make a small verified change" \
   --worktree \
   --json
 ```
+
+`neat` now ships honest V2 coverage, isolated semantic review, recoverable
+memory/narrative transactions, and cross-repository obligation tracking as an
+**auditable semantic hygiene beta**. The frozen Khazix parity protocol remains
+fail-closed until an independent custodian supplies the hidden corpus, pinned
+model adapters, and blind quality judgments; current releases do not claim
+Khazix semantic parity. See
+[`eval/neat-parity/README.md`](eval/neat-parity/README.md) for the evidence gate.
 
 The `deliver` command is the product entry point. It creates a task queue,
 executes the loop, verifies the result, and produces evidence artifacts such as:
@@ -309,6 +326,53 @@ osstack contracts check --workspace . --manifest api-contracts.json --json
 osstack compliance list --json
 osstack compliance render <run_id> --pack engineering-readiness --proof-dir release/osstack-proof-<run_id>
 ```
+
+### Knowledge Hygiene
+
+```bash
+# Current worktree; report findings without changing the exit status.
+osstack neat check --fail-on none
+
+# CI range; fail on warnings or errors and emit a strict JSON envelope.
+osstack neat check --base origin/main --head HEAD --json --fail-on warning
+
+# Full repository audit, including non-Git repositories.
+osstack neat check --all --fail-on none
+
+# Record and apply explicit review evidence for an exact report diff.
+osstack neat review --report /tmp/neat-report.json --finding khf_... \
+  --outcome reviewed_no_change --reason "Reviewed" --actor osborn \
+  --output /tmp/neat-review.json
+osstack neat check --review-file /tmp/neat-review.json --fail-on warning
+
+# Preview first; apply only under an execute/docs auto-apply policy.
+osstack neat fix --from /tmp/neat-report.json
+osstack neat fix --from /tmp/neat-report.json --apply --yes
+
+# Persist normalized history only when explicitly requested.
+osstack neat check --record --json --fail-on none
+
+# Explicit, read-only Claude Code auto-memory audit for one directory.
+osstack neat check --all --adapter claude-code \
+  --claude-memory-dir "$HOME/.claude/projects/PROJECT/memory"
+
+# Event-derived history (no composite score).
+osstack neat trend --repo-id osstack
+
+# Optional non-gating close-out evidence after a successful loop.
+osstack loop run --workspace . --source task_queue --neat-finalize --json
+
+# Preview repeated high-confidence findings as stable human-reviewed drafts.
+osstack neat propose --db "$OSSTACK_HOME/state.db" --json
+# Persist drafts only after explicit confirmation and policy authorization.
+osstack neat propose --db "$OSSTACK_HOME/state.db" --yes
+```
+
+The optional `.osstack/neat.yaml` declares canonical instruction sources,
+required docs, budgets, and change-review contracts. Checks are read-only and
+make no semantic prose guesses; `neat review` writes only an explicit portable
+artifact, and `neat fix` defaults to a closed safe-patch preview. See the
+[neat user and config guide](docs/guides/neat.md).
 
 ### Knowledge
 
@@ -491,6 +555,8 @@ pnpm install
 pnpm lint
 pnpm -r build
 pnpm test
+pnpm smoke:neat
+pnpm eval:neat-goldens
 pnpm smoke:release-plan
 pnpm smoke:knowledge-cloud
 pnpm smoke:knowledge-cloud:deploy

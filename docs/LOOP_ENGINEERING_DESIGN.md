@@ -592,7 +592,7 @@ daemon hot loop
 ## 附录 B：参考阅读
 
 - [docs/V2_REFACTOR_PLAN.md](V2_REFACTOR_PLAN.md) — 20 个 CEO 决策 + S0-S6 交付计划
-- [docs/external/partneros-analysis.md](external/partneros-analysis.md) — PartnerOS maker/checker 实践
+- [docs/product/15_OSSTACK_5_6_PRODUCT_AND_ARCHITECTURE.md](product/15_OSSTACK_5_6_PRODUCT_AND_ARCHITECTURE.md) — osstack 与 PartnerOS 的共享内核边界
 - [legacy-python/runtime/bin/osb-loop](../legacy-python/runtime/bin/osb-loop) — V1 循环的 bash 实现
 - `/Users/merry/wiki/Clippings/Loop Engineering.md` — Cobus Greyling 5+1 框架
 - `/Users/merry/wiki/Clippings/读懂 Loop Engineering：所有 xx engineering 其实是同一回事.md` — 卜寒兮「被动解锁」观点

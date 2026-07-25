@@ -1,0 +1,33 @@
+{
+  "schema_version": "1",
+  "batch_id": "pqb_12345678",
+  "origin": "blindspot",
+  "generated_by": { "type": "agent", "id": "probe-skill" },
+  "source_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "questions": [
+    {
+      "schema_version": "1",
+      "question_id": "dynamic.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.v1",
+      "item_kind": "risk",
+      "initial_quadrant": "uu",
+      "current_quadrant": "ku",
+      "doc_type": "tech",
+      "category": "migration",
+      "origin": "blindspot",
+      "prompt": "How should existing state be migrated if the schema changes?",
+      "options": [],
+      "impact": 3,
+      "irreversibility": 3,
+      "uncertainty": 3,
+      "required": true,
+      "evidence_refs": [
+        {
+          "kind": "file",
+          "ref": "packages/core/src/state/migrations.ts",
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        }
+      ],
+      "destination_hint": "technical_design"
+    }
+  ]
+}

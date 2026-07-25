@@ -1,0 +1,499 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Knowledge Hygiene Transaction Action v1",
+  "$comment": "Byte-span, content-conservation, claim-ledger, and discard-ledger invariants are enforced by @osstack/governance Zod validation.",
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "action_id": {
+          "type": "string",
+          "pattern": "^khta_[a-f0-9]{64}$"
+        },
+        "kind": {
+          "type": "string",
+          "const": "move"
+        },
+        "risk": {
+          "type": "string",
+          "const": "medium"
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "root_id": {
+              "type": "string",
+              "enum": [
+                "repo",
+                "memory"
+              ]
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "blob_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "start_byte": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "end_byte": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "bytes_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "start_line": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "end_line": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "root_id",
+            "path",
+            "blob_sha256",
+            "start_byte",
+            "end_byte",
+            "bytes_sha256",
+            "start_line",
+            "end_line"
+          ],
+          "additionalProperties": false
+        },
+        "target": {
+          "type": "object",
+          "properties": {
+            "root_id": {
+              "type": "string",
+              "enum": [
+                "repo",
+                "memory"
+              ]
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "preimage_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "anchor_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "placement": {
+              "type": "string",
+              "enum": [
+                "before",
+                "after",
+                "replace"
+              ]
+            }
+          },
+          "required": [
+            "root_id",
+            "path",
+            "preimage_sha256",
+            "placement"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "action_id",
+        "kind",
+        "risk",
+        "source",
+        "target"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "action_id": {
+          "type": "string",
+          "pattern": "^khta_[a-f0-9]{64}$"
+        },
+        "kind": {
+          "type": "string",
+          "const": "compress"
+        },
+        "risk": {
+          "type": "string",
+          "const": "high"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "root_id": {
+                "type": "string",
+                "enum": [
+                  "repo",
+                  "memory"
+                ]
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "blob_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "start_byte": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "end_byte": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "bytes_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "start_line": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "end_line": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": [
+              "root_id",
+              "path",
+              "blob_sha256",
+              "start_byte",
+              "end_byte",
+              "bytes_sha256",
+              "start_line",
+              "end_line"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "target": {
+          "type": "object",
+          "properties": {
+            "root_id": {
+              "type": "string",
+              "enum": [
+                "repo",
+                "memory"
+              ]
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "preimage_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "anchor_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "placement": {
+              "type": "string",
+              "enum": [
+                "before",
+                "after",
+                "replace"
+              ]
+            }
+          },
+          "required": [
+            "root_id",
+            "path",
+            "preimage_sha256",
+            "placement"
+          ],
+          "additionalProperties": false
+        },
+        "replacement_utf8": {
+          "type": "string"
+        },
+        "claims": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "claim_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source": {
+                "type": "object",
+                "properties": {
+                  "root_id": {
+                    "type": "string",
+                    "enum": [
+                      "repo",
+                      "memory"
+                    ]
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "blob_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "start_byte": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "end_byte": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "bytes_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "start_line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "end_line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "root_id",
+                  "path",
+                  "blob_sha256",
+                  "start_byte",
+                  "end_byte",
+                  "bytes_sha256",
+                  "start_line",
+                  "end_line"
+                ],
+                "additionalProperties": false
+              },
+              "disposition": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "preserved"
+                      },
+                      "target_bytes_sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "target_bytes_sha256"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "merged"
+                      },
+                      "target_claim_id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "source_claim_ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "minItems": 1
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "target_claim_id",
+                      "source_claim_ids"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "explicitly_discarded"
+                      },
+                      "reason": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "reason"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "claim_id",
+              "source",
+              "disposition"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "action_id",
+        "kind",
+        "risk",
+        "sources",
+        "target",
+        "replacement_utf8",
+        "claims"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "action_id": {
+          "type": "string",
+          "pattern": "^khta_[a-f0-9]{64}$"
+        },
+        "kind": {
+          "type": "string",
+          "const": "delete"
+        },
+        "risk": {
+          "type": "string",
+          "const": "high"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "root_id": {
+                "type": "string",
+                "enum": [
+                  "repo",
+                  "memory"
+                ]
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "blob_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "start_byte": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "end_byte": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "bytes_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "start_line": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "end_line": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": [
+              "root_id",
+              "path",
+              "blob_sha256",
+              "start_byte",
+              "end_byte",
+              "bytes_sha256",
+              "start_line",
+              "end_line"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "discards": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_bytes_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "source_bytes_sha256",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "action_id",
+        "kind",
+        "risk",
+        "sources",
+        "discards"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

@@ -5,7 +5,7 @@
   "description": "OSBORN stack (osstack) \u2014 Hermes-resident project manager agent for software development lifecycle. TypeScript daemon + Python Hermes skill wrapper.",
   "repository": "https://github.com/gilosbornhello/osstack",
   "license": "MIT",
-  "packageManager": "pnpm@11.1.2",
+  "packageManager": "pnpm@11.4.0",
   "engines": {
     "node": ">=20"
   },
@@ -34,19 +34,26 @@
     "smoke:knowledge-cloud:deploy": "node scripts/smoke-knowledge-cloud-deploy-assets.mjs",
     "smoke:npm-install": "node scripts/smoke-npm-install.mjs",
     "smoke:release-plan": "pnpm --filter @osstack/cli build && node scripts/smoke-release-plan.mjs",
+    "smoke:neat": "pnpm --filter @osstack/cli build && node scripts/smoke-neat.mjs",
+    "smoke:probe": "pnpm --filter @osstack/cli... build && node scripts/smoke-probe.mjs",
+    "smoke:probe-skill": "pnpm --filter @osstack/cli... build && node scripts/smoke-probe-skill.mjs",
     "smoke:bun-single-binary": "node scripts/smoke-bun-single-binary.mjs",
     "smoke:single-binary-signing": "node scripts/smoke-single-binary-signing.mjs",
     "smoke:single-binary-release-pack": "node scripts/smoke-single-binary-release-pack.mjs",
     "smoke:single-binary-release-publish": "node scripts/smoke-single-binary-release-publish.mjs",
-    "smoke:portable-cli": "node scripts/smoke-portable-cli.mjs"
+    "smoke:portable-cli": "node scripts/smoke-portable-cli.mjs",
+    "eval:neat-goldens": "pnpm --filter @osstack/cli build && node scripts/eval-neat-goldens.mjs --check",
+    "eval:neat-parity:corpus": "pnpm --filter @osstack/neat-eval build && node packages/neat-eval/dist/cli.js corpus check --lock eval/neat-parity/corpus-lock-v1.json",
+    "eval:neat-parity:doctor": "pnpm --filter @osstack/neat-eval build && node packages/neat-eval/dist/cli.js doctor --protocol eval/neat-parity/protocol-v1.json --corpus-lock eval/neat-parity/corpus-lock-v1.json --baseline .osstack/eval-cache/neat-freak-5a963d9.md",
+    "eval:neat-parity:offline": "pnpm --filter @osstack/cli build && pnpm --filter @osstack/neat-eval build && node scripts/eval-neat-parity-offline.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
     "@changesets/cli": "^2.31.0",
-    "@vitest/coverage-v8": "2.1.9",
+    "@vitest/coverage-v8": "3.2.6",
     "tsup": "^8.3.5",
     "typescript": "^5.6.3",
-    "vitest": "^2.1.5",
+    "vitest": "3.2.6",
     "zod": "^3.23.8"
   },
   "dependencies": {

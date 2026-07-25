@@ -1,5 +1,47 @@
 # @osstack/github
 
+## 0.10.0
+
+### Minor Changes
+
+- 0355f62: R1.4 — `osstack daily`, a read-only portfolio brief and the first Agent Command
+  Protocol dogfood surface. Composes existing kernel capability over the repo
+  registry: the supervisor maturity scan, a new GitHub read adapter, the stack
+  kanban board summary, and a day-over-day delta.
+
+  - `@osstack/github`: new `portfolio-status.ts` (`fetchPortfolioGithubStatus` /
+    `fetchRepoGithubStatus` / `parseGithubSlug`) following stack.ts's injectable
+    runner pattern. Per repo with a GitHub remote it reads open PRs, recent CI
+    runs, and the latest release via `gh`. No `gh` / no remote / network failure
+    degrades to a per-repo warning string — it never throws.
+  - `@osstack/cli`: new `daily` command
+    (`daily [--registry P] [--workspace P] [--json]`). Human Markdown by default;
+    `--json` emits a strict protocol `AgentCommandResult` (`status: ok`, the brief
+    in `result`, per-repo `evidence_refs`, and ≤3 owner decisions in
+    `next_actions`). Persists each brief to
+    `$OSSTACK_HOME/daily-briefs/<ISO-date>.json` and diffs against the previous
+    one (new PRs, CI status flips, maturity changes). Read-only apart from that
+    brief file.
+
+- 1b48a7d: Merge-orchestration closed loop (S1). A new `osstack stack` command family turns a
+  stack of GitHub PRs into a driveable, self-reflecting workflow — extension-only over
+  the existing kanban/loop/github/cli primitives.
+
+  - `@osstack/core`: additive migration #7 — typed kanban cards (`card_type`, `meta`)
+    plus a `kanban_card_checks` table; repository gains typed-card + checklist ops
+    (`putCheck`/`setCheckState`/`listChecks`), dependency links, and deterministic
+    bottom-up `topoOrder` (cycle throws). Existing kanban/event/memory semantics are
+    backward-compatible (new columns default; event `kind` stays free-form).
+  - `@osstack/github`: `stack.ts` — `ingestStack` (read-only `gh pr view` → dependency
+    DAG) and `detectDrift` (conflicting/ci_failing/ci_pending/not_mergeable/orphan_base).
+  - `@osstack/loop`: pure `renderStackRetro` — a retrospective that cites which checks
+    caught issues and derives missing-gate suggestions.
+  - `@osstack/cli`: `stack ingest|board|move|check|timeline|runbook|recommend|retro`,
+    memory-backed routing recommendation, and an offline dry-run fixture.
+
+  S1 records and drives; humans still merge. No auto-merge, no auto-agent-dispatch, no
+  CI webhook/daemon.
+
 ## 0.2.0
 
 ### Minor Changes

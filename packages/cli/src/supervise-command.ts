@@ -3,24 +3,25 @@
 // build the portfolio maturity view; init-loop-doc scaffolds a LOOP contract;
 // feedback/adversarial/meta list persisted control-plane state.
 
+import { existsSync } from "node:fs";
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join } from "node:path";
-import {
-  listAnchorCases,
-  listEvaluatorVersions,
-  listFeedbackAssets,
-  listImprovementProposals,
-} from "@osstack/core";
+import { listAnchorCases, listEvaluatorVersions, listFeedbackAssets, listImprovementProposals, queryProbeOutcomeMetrics } from "@osstack/core";
+import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import {
   RepoRole,
   addRepoRegistryEntry,
+  attachProbeOutcomeMetrics,
+  attachKnowledgeHygieneSummaries,
   buildPortfolioReport,
   readRepoRegistry,
   renderLoopDoc,
   scanRepo,
+  scanPortfolioKnowledgeHygiene,
   type PortfolioReport,
   type RepoHealth,
 } from "@osstack/supervisor";
+import { osstackHome } from "./paths.js";
 import {
   firstPositional,
   flag,
@@ -121,7 +122,27 @@ async function scanPortfolio(args: string[]): Promise<PortfolioReport> {
   const enabled = entries.filter((entry) => entry.enabled);
   const healths: RepoHealth[] = [];
   for (const entry of enabled) healths.push(await scanRepo(entry));
-  return buildPortfolioReport(healths, new Date().toISOString());
+  const hygiene = await scanPortfolioKnowledgeHygiene(enabled);
+  const now = new Date();
+  const report = buildPortfolioReport(
+    attachKnowledgeHygieneSummaries(healths, hygiene),
+    now.toISOString(),
+  );
+  const dbPath = join(osstackHome(), "state.db");
+  if (!existsSync(dbPath)) return report;
+  try {
+    const db = openDb({ path: dbPath });
+    try {
+      return attachProbeOutcomeMetrics(report, queryProbeOutcomeMetrics(db, {
+        as_of_ms: now.getTime(),
+        repo_ids: enabled.map((entry) => entry.repo_id),
+      }));
+    } finally {
+      db.close();
+    }
+  } catch {
+    return report;
+  }
 }
 
 async function superviseInitLoopDoc(args: string[]): Promise<number> {
@@ -260,8 +281,8 @@ export async function handleMetaCommand(args: string[]): Promise<number> {
 
 function renderPortfolioMarkdown(report: PortfolioReport, lang: "en" | "zh-CN"): string {
   const t = lang === "zh-CN"
-    ? { title: "Osstack 组合闭环报告", summary: "摘要", repos: "仓库", recs: "建议", level: "闭环级别" }
-    : { title: "Osstack Portfolio Closed-Loop Report", summary: "Summary", repos: "Repos", recs: "Recommendations", level: "closed-loop level" };
+    ? { title: "Osstack 组合闭环报告", summary: "摘要", repos: "仓库", probe: "Probe 结果指标", recs: "建议", level: "闭环级别" }
+    : { title: "Osstack Portfolio Closed-Loop Report", summary: "Summary", repos: "Repos", probe: "Probe outcomes", recs: "Recommendations", level: "closed-loop level" };
   const lines = [
     `# ${t.title}`,
     "",
@@ -273,10 +294,28 @@ function renderPortfolioMarkdown(report: PortfolioReport, lang: "en" | "zh-CN"):
     `## ${t.repos}`,
     ...report.repos.map((repo) => `- ${repo.name} [${repo.role}] L${repo.closed_loop_level}${repo.exists ? "" : " (missing)"}`),
     "",
+    ...(report.probe_outcomes === undefined
+      ? []
+      : [
+          `## ${t.probe}`,
+          `- baseline status: ${report.probe_outcomes.baseline_status}`,
+          `- replay coverage: ${report.probe_outcomes.counts.sessions_replayed}/${report.probe_outcomes.counts.sessions_total} sessions (${report.probe_outcomes.counts.sessions_skipped} skipped)`,
+          `- effective question rate: ${formatOutcomeRate(report.probe_outcomes.rates.effective_question_rate)}`,
+          `- decision integration rate: ${formatOutcomeRate(report.probe_outcomes.rates.decision_integration_rate)}`,
+          `- mid-build architecture deviation rate: ${formatOutcomeRate(report.probe_outcomes.rates.mid_build_architecture_deviation_rate)}`,
+          `- stale deferral rate: ${formatOutcomeRate(report.probe_outcomes.rates.stale_deferral_rate)}`,
+          `- waiver rate: ${formatOutcomeRate(report.probe_outcomes.rates.waiver_rate)}`,
+          `- completion rate: ${formatOutcomeRate(report.probe_outcomes.rates.completion_rate)}`,
+          "",
+        ]),
     `## ${t.recs}`,
     ...(report.recommendations.length > 0 ? report.recommendations.map((rec) => `- ${rec}`) : ["- None"]),
   ];
   return `${lines.join("\n")}\n`;
+}
+
+function formatOutcomeRate(value: number | null): string {
+  return value === null ? "n/a" : `${Math.round(value * 10_000) / 100}%`;
 }
 
 function printSuperviseHelp(): void {

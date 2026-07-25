@@ -122,7 +122,11 @@ try {
 
   const cockpitEnv = {
     ...process.env,
-    OSSTACK_HOME: join(tempRoot, "cockpit-home"),
+    // The install step provisioned this packaged binary for exactly this
+    // temporary control plane. Reuse it so the smoke exercises the deployed
+    // authorization contract instead of asking the binary to serve an
+    // undeclared second home.
+    OSSTACK_HOME: osstackHome,
     OSSTACK_SOCKET: join(tempRoot, "cockpit.sock"),
     OSSTACK_UPDATE_CHECK: "0",
   };

@@ -85,6 +85,38 @@ export const Issue = z.object({
 });
 export type Issue = z.infer<typeof Issue>;
 
+/**
+ * A verifier-reported difference between the agreed design and the observed
+ * implementation. This stays deliberately product-neutral: consumers decide
+ * whether and how to turn the signal into follow-up work.
+ */
+export const ImplementationDeviation = z
+  .object({
+    deviation_id: z.string().regex(/^[a-z0-9][a-z0-9._-]{1,127}$/),
+    question: z.string().trim().min(1).max(4_000),
+    category: z.string().trim().min(1).max(128),
+    doc_type: z.enum(["product", "tech", "test"]),
+    impact: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    irreversibility: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    uncertainty: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    required: z.boolean(),
+    destination_hint: z.string().trim().min(1).max(128),
+    evidence: z
+      .array(
+        z
+          .object({
+            path: z.string().trim().min(1).max(1_024),
+            line: z.number().int().positive().optional(),
+            symbol: z.string().trim().min(1).max(512).optional(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(32),
+  })
+  .strict();
+export type ImplementationDeviation = z.infer<typeof ImplementationDeviation>;
+
 export const Verdict = z.object({
   pass: z.boolean(),
   score: z.number().min(0).max(1),
@@ -99,6 +131,7 @@ export const Verdict = z.object({
   })).optional(),
   /** Per-evaluation-spec results (explicit task specs plus implicit legacy specs). */
   evaluations: z.array(EvaluationResult).optional(),
+  implementation_deviations: z.array(ImplementationDeviation).max(100).optional(),
 });
 export type Verdict = z.infer<typeof Verdict>;
 
@@ -149,6 +182,63 @@ export const IssueAudit = z.object({
 });
 export type IssueAudit = z.infer<typeof IssueAudit>;
 
+// Durable, auditable evidence of a Hub publication attempt (Phase 2B). Identity
+// is the logical release digest + storage_key — NEVER a dist/packages path or a
+// Mac-mini absolute store path. release_id/digest appear ONLY on a successful
+// published result; blocked/error carry status + reasons but no release identity.
+// ── Shared identity validators + redaction (Phase 2B) ────────────────────
+// One source of truth so the evidence MAPPER and the persisted SCHEMA can never
+// disagree (a value the mapper keeps always passes the schema — otherwise a
+// malformed Hub field would crash the non-gating publish finalizer).
+export const ASSET_ID_RE = /^[a-z0-9][a-z0-9._-]+$/;
+export const RELEASE_ID_RE = /^[a-z0-9][a-z0-9-]*__[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9._-]*@[0-9][0-9A-Za-z.-]*$/;
+export const NAMESPACE_STR_RE = /^(personal|organization)\/[a-z0-9][a-z0-9-]*$/;
+const LOCATOR_SHAPE_RE = /^[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._-]*){2}$/;
+
+/** A logical relative locator: correct shape AND not a dist/packages path. */
+export function isSafeLocator(v: unknown): v is string {
+  return typeof v === "string" && LOCATOR_SHAPE_RE.test(v) && !/(^|\/)dist\/packages(\/|$)/i.test(v) && !/^dist\//i.test(v);
+}
+export const safeAssetId = (v: unknown): string | undefined => (typeof v === "string" && ASSET_ID_RE.test(v) ? v : undefined);
+export const safeReleaseId = (v: unknown): string | undefined => (typeof v === "string" && RELEASE_ID_RE.test(v) ? v : undefined);
+export const safeNamespace = (v: unknown): string | undefined => (typeof v === "string" && NAMESPACE_STR_RE.test(v) ? v : undefined);
+export const safeStorageKey = (v: unknown): string | undefined => (isSafeLocator(v) ? v : undefined);
+
+/** Mask absolute paths, dist/packages, and common secret tokens in free text so
+ *  Hub-controlled `reasons`/messages can never leak them into evidence/reports. */
+export function redactText(s: string): string {
+  return String(s)
+    .replace(/\/(?:Volumes|Users|home|private|etc|opt|var|tmp|root|mnt|srv)\/\S*/gi, "[redacted-path]")
+    .replace(/[A-Za-z]:[\\/]\S*/g, "[redacted-path]")
+    .replace(/dist\/packages\/\S*/gi, "[redacted-path]")
+    .replace(/\b(?:sb_secret_[A-Za-z0-9]+|sk-[A-Za-z0-9-]{20,}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,})\b/g, "[redacted-secret]");
+}
+export const redactReasons = (r: unknown): string[] => (Array.isArray(r) ? r.map((x) => redactText(String(x))) : []);
+
+export const PublishedAssetEvidence = z.object({
+  status: z.enum(["published", "blocked", "error"]),
+  asset_id: z.string().regex(ASSET_ID_RE),
+  gate: z.enum(["team", "client", "commercial"]),
+  // Identity fields are shape-bound (mapper + schema share the SAME validators),
+  // so an absolute/dist path can never be persisted as a release id/namespace/
+  // locator and rendered verbatim.
+  release_id: z.string().regex(RELEASE_ID_RE).optional(),
+  digest: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional(),
+  namespace: z.string().regex(NAMESPACE_STR_RE).optional(),
+  storage_key: z.string().refine(isSafeLocator, "unsafe storage_key").optional(),
+  reasons: z.array(z.string()).default([]),
+}).superRefine((e, ctx) => {
+  // Release identity is legal ONLY on a published result — a blocked/error
+  // record can never carry release_id/digest/namespace/storage_key, even in
+  // recovered state.
+  if (e.status !== "published") {
+    for (const k of ["release_id", "digest", "namespace", "storage_key"] as const) {
+      if (e[k] !== undefined) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [k], message: `${k} is not allowed on a non-published result` });
+    }
+  }
+});
+export type PublishedAssetEvidence = z.infer<typeof PublishedAssetEvidence>;
+
 export const CompletedTask = z.object({
   task_id: z.string(),
   capability: z.string().optional(),
@@ -190,6 +280,8 @@ export const CompletedTask = z.object({
   proposal_ids: z.array(z.string()).optional(),
   assetization_summary: z.string().optional(),
   self_improvement_level: z.number().int().min(0).max(6).optional(),
+  /** Immutable Hub release evidence, attached only after a publish attempt. */
+  published_asset: PublishedAssetEvidence.optional(),
 });
 export type CompletedTask = z.infer<typeof CompletedTask>;
 
@@ -317,6 +409,7 @@ export const LoopEventType = z.enum([
   "loop.plan.done",
   "loop.execute.done",
   "loop.verify.done",
+  "loop.implementation.deviation",
   "loop.iterate.done",
   "loop.escalated",
   "loop.worktree.created",
@@ -329,6 +422,7 @@ export const LoopEventType = z.enum([
   "loop.queue.archived",
   "loop.skill.published",
   "loop.skill.publish_blocked",
+  "loop.skill.release_recorded",
   "loop.lesson.drafted",
   "loop.self_improvement.done",
   "loop.self_improvement.failed",

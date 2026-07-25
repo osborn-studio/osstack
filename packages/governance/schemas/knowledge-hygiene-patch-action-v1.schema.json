@@ -1,0 +1,281 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Knowledge Hygiene Patch Action v1",
+  "$comment": "Source/target equality, exact one-line confined import content, and content SHA equality are enforced by @osstack/governance Zod validation.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1"
+    },
+    "action_id": {
+      "type": "string",
+      "pattern": "^kha_[a-f0-9]{64}$"
+    },
+    "kind": {
+      "type": "string",
+      "const": "create_instruction_import"
+    },
+    "risk": {
+      "type": "string",
+      "const": "low"
+    },
+    "policy_category": {
+      "type": "string",
+      "const": "docs"
+    },
+    "target_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "before": {
+      "type": "object",
+      "properties": {
+        "exists": {
+          "type": "boolean",
+          "const": false
+        },
+        "sha256": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "exists",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "after": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "content",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "source_fingerprint": {
+      "type": "string",
+      "pattern": "^khf_[a-f0-9]{64}$"
+    },
+    "source_finding": {
+      "type": "object",
+      "properties": {
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^khf_[a-f0-9]{64}$"
+        },
+        "rule_id": {
+          "type": "string",
+          "enum": [
+            "instruction.canonical_missing",
+            "instruction.mirror_missing",
+            "instruction.mirror_drift",
+            "surface.required_missing",
+            "budget.warn_exceeded",
+            "budget.error_exceeded",
+            "reference.markdown_target_missing",
+            "reference.instruction_import_missing",
+            "contract.review_required",
+            "memory.platform_limit_exceeded",
+            "probe.artifact_integrity",
+            "probe.destination_missing",
+            "probe.deferred_stale",
+            "probe.waiver_expired",
+            "scan.incomplete"
+          ]
+        },
+        "rule_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "surface": {
+          "type": "string",
+          "enum": [
+            "instruction",
+            "documentation",
+            "memory"
+          ]
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "info"
+          ]
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "location": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "line": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "anchor": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false
+        },
+        "observed": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "expected": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "report",
+                  "scorecard",
+                  "proof",
+                  "loop_state",
+                  "external"
+                ]
+              },
+              "ref": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "run_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "kind",
+              "ref"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "remediation": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "safe_patch",
+                "agent_edit",
+                "human_decision"
+              ]
+            },
+            "action_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "fingerprint",
+        "rule_id",
+        "rule_version",
+        "surface",
+        "severity",
+        "confidence",
+        "location",
+        "observed",
+        "expected",
+        "rationale",
+        "evidence_refs",
+        "remediation"
+      ],
+      "additionalProperties": false
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "report",
+              "scorecard",
+              "proof",
+              "loop_state",
+              "external"
+            ]
+          },
+          "ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "run_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "kind",
+          "ref"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "action_id",
+    "kind",
+    "risk",
+    "policy_category",
+    "target_path",
+    "before",
+    "after",
+    "source_fingerprint",
+    "source_finding",
+    "evidence_refs"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,357 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Probe Dynamic Question Batch v1",
+  "$comment": "Question-id uniqueness and batch/question origin equality are additionally enforced by @osstack/governance Zod validation.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1"
+    },
+    "batch_id": {
+      "type": "string",
+      "pattern": "^pqb_[a-z0-9][a-z0-9_-]{7,63}$"
+    },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "blindspot",
+        "interview_followup",
+        "prototype_reaction",
+        "restatement_diff",
+        "mid_build",
+        "manual"
+      ]
+    },
+    "generated_by": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "human",
+            "agent"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "source_revision": {
+      "type": "string",
+      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1"
+          },
+          "question_id": {
+            "type": "string",
+            "pattern": "^dynamic\\.[a-f0-9]{64}\\.v1$"
+          },
+          "supersedes_item_id": {
+            "type": "string",
+            "pattern": "^pi_[a-z0-9][a-z0-9_-]{7,63}$"
+          },
+          "item_kind": {
+            "type": "string",
+            "enum": [
+              "fact",
+              "assumption",
+              "question",
+              "risk"
+            ]
+          },
+          "initial_quadrant": {
+            "type": "string",
+            "enum": [
+              "kk",
+              "ku",
+              "uk",
+              "uu"
+            ]
+          },
+          "current_quadrant": {
+            "type": "string",
+            "enum": [
+              "kk",
+              "ku",
+              "uk",
+              "uu"
+            ]
+          },
+          "doc_type": {
+            "type": "string",
+            "enum": [
+              "product",
+              "tech",
+              "test"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "user",
+              "outcome",
+              "scope",
+              "data_model",
+              "interface",
+              "user_flow",
+              "failure_mode",
+              "performance",
+              "security",
+              "dependency",
+              "migration",
+              "rollback",
+              "observability",
+              "acceptance",
+              "test_data",
+              "environment",
+              "tacit_convention"
+            ]
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "blindspot",
+              "interview_followup",
+              "prototype_reaction",
+              "restatement_diff",
+              "mid_build",
+              "manual"
+            ]
+          },
+          "prompt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "option_id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                }
+              },
+              "required": [
+                "option_id",
+                "label",
+                "description"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 4
+          },
+          "impact": {
+            "type": "number",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "irreversibility": {
+            "type": "number",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "uncertainty": {
+            "type": "number",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "file",
+                        "artifact"
+                      ]
+                    },
+                    "ref": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1024
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "line": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "symbol": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "ref"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "url"
+                    },
+                    "ref": {
+                      "type": "string",
+                      "format": "uri",
+                      "maxLength": 2048
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "line": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "symbol": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "ref"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "symbol",
+                        "command_output",
+                        "user_statement"
+                      ]
+                    },
+                    "ref": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "line": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "symbol": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "ref"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 32
+          },
+          "destination_hint": {
+            "type": "string",
+            "enum": [
+              "session_profile",
+              "prd",
+              "technical_design",
+              "test_plan",
+              "adr",
+              "instruction",
+              "evaluation_spec",
+              "open_questions"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "question_id",
+          "item_kind",
+          "initial_quadrant",
+          "current_quadrant",
+          "doc_type",
+          "category",
+          "origin",
+          "prompt",
+          "options",
+          "impact",
+          "irreversibility",
+          "uncertainty",
+          "required",
+          "evidence_refs",
+          "destination_hint"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 100
+    }
+  },
+  "required": [
+    "schema_version",
+    "batch_id",
+    "origin",
+    "generated_by",
+    "source_revision",
+    "questions"
+  ],
+  "additionalProperties": false
+}

@@ -47,3 +47,14 @@ This matrix maps every stable clause in `OSSTACK_RUN_SPEC_V1` to the current evi
 1. Add full runtime JSON Schema validation only if osstack later accepts externally supplied derived proof files such as `verify-results.json`, `worktree-status.json`, or `agent-runtime.json` as trusted inputs.
 2. Add more negative/malformed vectors as runtime validators mature.
 3. Rerun PR CI after GitHub Actions billing/spending-limit is fixed; `release doctor` currently detects that blocker as `github_actions`.
+
+## Probe R0 Conformance Matrix
+
+| Clause | Requirement Summary | Current Evidence | Status |
+|---|---|---|---:|
+| P-R0-001 | Static elicitation runs without an LLM, network, or TUI. | `packages/governance/src/probe/question-pack.test.ts`; `packages/cli/src/probe-command.test.ts`; `scripts/smoke-probe.mjs`. | Covered |
+| P-R0-002 | Sessions survive process restart and command retries do not duplicate questions or events. | `packages/core/src/state/probe-store.test.ts`; `packages/conformance/src/probe-conformance.test.ts`; `scripts/smoke-probe.mjs` exercises ten restart-safe sessions. | Covered |
+| P-R0-003 | Optimistic revisions reject stale writers without overwriting newer answers. | `packages/governance/src/probe/reducer.test.ts`; `packages/core/src/state/probe-store.test.ts`; `packages/cli/src/probe-command.test.ts`. | Covered |
+| P-R0-004 | Every disposition is explicit and every resolution has a typed destination/write state. | `packages/governance/src/probe/types.test.ts`; generated `packages/governance/schemas/probe-item-v1.schema.json`; `packages/governance/src/probe/reducer.test.ts`. | Covered |
+| P-R0-005 | CLI JSON is a strict `AgentCommandResult` containing strict probe domain values. | `packages/cli/src/probe-command.test.ts`; `packages/cli/src/probe-cli.test.ts`; `packages/conformance/src/probe-conformance.test.ts`. | Covered |
+| P-BOUNDARY-001 | External consumers use public governance/core APIs; neither kernel requires the CLI product. | `packages/conformance/src/import-boundary.test.ts`; `packages/conformance/src/probe-conformance.test.ts`; `docs/decisions/ADR-004-probe-boundary.md`. | Covered |

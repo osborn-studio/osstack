@@ -1,0 +1,24 @@
+{
+  "fingerprint": "khf_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "rule_id": "rulebook.managed_context_block",
+  "rule_version": "1",
+  "surface": "instruction",
+  "severity": "warning",
+  "confidence": "high",
+  "location": {
+    "kind": "repository",
+    "repo_id": "repo-1",
+    "path": "../AGENTS.md"
+  },
+  "observed": {},
+  "expected": {},
+  "rationale": "Invalid portable path.",
+  "evidence_refs": [],
+  "remediation": {
+    "mode": "agent_edit"
+  },
+  "origin": "mechanical",
+  "dimension": "narrative",
+  "closure_policy": "mechanical_sufficient",
+  "citations": []
+}

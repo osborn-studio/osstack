@@ -6,33 +6,34 @@ Workspace packages, publish status, and internal (workspace) dependencies.
 
 | Package | Version | Visibility | Internal deps |
 |---|---|---|---|
-| `@osstack/agents` | 0.9.0 | public | `core`, `hermes-adapter` |
-| `@osstack/cli` | 0.9.0 | public | `agents`, `compliance`, `config`, `contracts`, `core`, `github`, `governance`, `hermes-adapter`, `knowledge`, `loop`, `protocol`, `skill-registry`, `skills`, `supervisor` |
+| `@osstack/agents` | 0.12.0 | public | `core`, `governance`, `hermes-adapter` |
+| `@osstack/cli` | 0.12.0 | public | `agents`, `compliance`, `config`, `contracts`, `core`, `github`, `governance`, `hermes-adapter`, `knowledge`, `loop`, `protocol`, `skill-registry`, `skills`, `supervisor` |
 | `@osstack/compliance` | 0.2.0 | public | — |
-| `@osstack/config` | 0.2.0 | public | `core` |
-| `@osstack/conformance` | 0.0.0 | **private** | `agents`, `core`, `hermes-adapter`, `loop` |
+| `@osstack/config` | 0.12.0 | public | `core` |
+| `@osstack/conformance` | 0.12.0 | **private** | `agents`, `core`, `governance`, `hermes-adapter`, `loop` |
 | `@osstack/contracts` | 0.3.0 | public | — |
-| `@osstack/core` | 0.2.0 | public | `protocol` |
-| `@osstack/github` | 0.2.0 | public | — |
-| `@osstack/governance` | 0.2.0 | public | — |
-| `@osstack/hermes-adapter` | 0.2.0 | public | `core` |
+| `@osstack/core` | 0.12.0 | public | `protocol` |
+| `@osstack/github` | 0.10.0 | public | — |
+| `@osstack/governance` | 0.12.0 | public | — |
+| `@osstack/hermes-adapter` | 0.12.0 | public | `core` |
 | `@osstack/knowledge` | 0.8.0 | public | — |
 | `@osstack/knowledge-cloud` | 0.8.0 | public | `knowledge` |
-| `@osstack/loop` | 0.9.0 | public | `agents`, `core`, `github`, `hermes-adapter`, `protocol` |
-| `@osstack/plugins` | 0.2.0 | public | `core` |
-| `@osstack/protocol` | 0.1.0 | public | — |
+| `@osstack/loop` | 0.12.0 | public | `agents`, `core`, `github`, `hermes-adapter`, `protocol` |
+| `@osstack/neat-eval` | 0.1.0 | **private** | — |
+| `@osstack/plugins` | 0.12.0 | public | `core` |
+| `@osstack/protocol` | 0.10.0 | public | — |
 | `@osstack/runtime` | 0.1.0 | public | — |
-| `@osstack/skill-registry` | 0.2.0 | public | `core` |
-| `@osstack/skills` | 0.2.0 | public | `core` |
-| `@osstack/supervisor` | 0.9.0 | **private** | `core`, `loop` |
+| `@osstack/skill-registry` | 0.12.0 | public | `core` |
+| `@osstack/skills` | 0.12.0 | public | `core` |
+| `@osstack/supervisor` | 0.12.0 | **private** | `core`, `governance`, `loop` |
 
 ## Edge list
 
 ```text
-agents -> core, hermes-adapter
+agents -> core, governance, hermes-adapter
 cli -> agents, compliance, config, contracts, core, github, governance, hermes-adapter, knowledge, loop, protocol, skill-registry, skills, supervisor
 config -> core
-conformance -> agents, core, hermes-adapter, loop
+conformance -> agents, core, governance, hermes-adapter, loop
 core -> protocol
 hermes-adapter -> core
 knowledge-cloud -> knowledge
@@ -40,7 +41,7 @@ loop -> agents, core, github, hermes-adapter, protocol
 plugins -> core
 skill-registry -> core
 skills -> core
-supervisor -> core, loop
+supervisor -> core, governance, loop
 ```
 
-Leaves (no internal deps): `compliance`, `contracts`, `github`, `governance`, `knowledge`, `protocol`, `runtime`
+Leaves (no internal deps): `compliance`, `contracts`, `github`, `governance`, `knowledge`, `neat-eval`, `protocol`, `runtime`

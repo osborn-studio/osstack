@@ -1,5 +1,55 @@
 # @osstack/agents
 
+## 0.12.0
+
+### Minor Changes
+
+- 4a3dffd: Make knowledge-hygiene ReportV2 the default `neat check` contract, add honest
+  coverage and assessment scope, evidence-bound semantic auditing, recoverable
+  memory and narrative transactions, append-only V2 lifecycle history, and
+  cross-repository dependency obligations with an isolated no-tools judge.
+  Explicit `--schema-version 1` remains available for one minor release and now
+  emits a deprecation warning.
+
+### Patch Changes
+
+- Updated dependencies [4a3dffd]
+  - @osstack/core@0.12.0
+  - @osstack/governance@0.12.0
+  - @osstack/hermes-adapter@0.12.0
+
+## 0.11.0
+
+### Minor Changes
+
+- 9f1aa1b: Carry strict verifier-reported implementation deviations through Loop events and idempotently register evidence-bound `mid_build` probe items for linked tasks.
+
+### Patch Changes
+
+- ac50008: Align the Claude agent adapter with its Zod 4 peer contract and update the skill registry YAML parser to a patched release.
+- Updated dependencies [f041063]
+- Updated dependencies [a483f6e]
+- Updated dependencies [4a6c00b]
+- Updated dependencies [83aac82]
+- Updated dependencies [223a240]
+- Updated dependencies [9f1aa1b]
+  - @osstack/core@0.11.0
+  - @osstack/hermes-adapter@0.11.0
+
+## 0.10.0
+
+### Patch Changes
+
+- Updated dependencies [1b48a7d]
+- Updated dependencies [daeb3c4]
+- Updated dependencies [7396e6f]
+- Updated dependencies [6a4a9d4]
+- Updated dependencies [3223420]
+- Updated dependencies [392f8b0]
+- Updated dependencies [99ca3b4]
+  - @osstack/core@0.10.0
+  - @osstack/hermes-adapter@0.10.0
+
 ## 0.9.0
 
 ### Minor Changes

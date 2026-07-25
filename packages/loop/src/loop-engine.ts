@@ -34,7 +34,7 @@ import {
   writeLoopState,
 } from "./state-file.js";
 import { archiveCompletedTaskFile } from "./task-queue.js";
-import { isSkillTask, runCommandReal, runPublish, skillIdOf, type PublishConfig, type RunPublishDeps } from "./publisher.js";
+import { isSkillTask, runCommandReal, runPublish, skillIdOf, toPublishedAssetEvidence, type PublishConfig, type RunPublishDeps } from "./publisher.js";
 import { verifyRun } from "./verifier.js";
 import type { ArtifactVerificationOptions } from "./verifier.js";
 import {
@@ -46,6 +46,7 @@ import {
   type IterationFeedback,
   type LoopEvent,
   type LoopKnowledgeTrace,
+  type PublishedAssetEvidence,
   type Task,
   type Verdict,
 } from "./types.js";
@@ -682,6 +683,7 @@ export class LoopEngine {
     const feedbackHistory: IterationFeedback[] = [];
     let previousFingerprint: string | undefined;
     let lessonDraftPath: string | undefined;
+    let publishedAsset: PublishedAssetEvidence | undefined;
 
     if (this.options.useWorktree === true) {
       worktree = await createWorktree({
@@ -802,6 +804,14 @@ export class LoopEngine {
           ...(worktree !== undefined ? { worktree_path: worktree.worktreePath } : {}),
           iteration,
         });
+        for (const deviation of finalVerdict.implementation_deviations ?? []) {
+          this.emit(loopId, "loop.implementation.deviation", {
+            task_id: task.task_id,
+            iteration,
+            reviewer_agent_id: finalVerdict.reviewer_agent_id,
+            ...deviation,
+          });
+        }
 
         let decision = evaluateIteration({
           verdict: finalVerdict,
@@ -859,7 +869,7 @@ export class LoopEngine {
       }
 
       if (outcome === "success") {
-        await this.runPublishHook(loopId, task, decisions);
+        publishedAsset = await this.runPublishHook(loopId, task, decisions);
         lessonDraftPath = await this.runLessonDraftHook(loopId, workspacePath, task, decisions, {
           iterations,
           feedback: feedbackHistory,
@@ -930,6 +940,7 @@ export class LoopEngine {
         } : {}),
         ...(feedbackHistory.length > 0 ? { iteration_feedback: feedbackHistory } : {}),
         ...(lessonDraftPath !== undefined ? { lesson_draft_path: lessonDraftPath } : {}),
+        ...(publishedAsset !== undefined ? { published_asset: publishedAsset } : {}),
         ...(taskUsage.reported ? {
           tokens_in: taskUsage.tokensIn,
           tokens_out: taskUsage.tokensOut,
@@ -958,9 +969,9 @@ export class LoopEngine {
    * Non-gating — never reopens or fails the task. v1 记录不拦截: onFailure only affects the
    * decision wording (a NEEDS-ATTENTION marker), it does not reopen the task for re-iteration.
    */
-  private async runPublishHook(loopId: string, task: Task, decisions: string[]): Promise<void> {
+  private async runPublishHook(loopId: string, task: Task, decisions: string[]): Promise<PublishedAssetEvidence | undefined> {
     const publishCfg = this.options.publish;
-    if (publishCfg?.enabled !== true || !isSkillTask(task)) return;
+    if (publishCfg?.enabled !== true || !isSkillTask(task)) return undefined;
 
     const skillId = skillIdOf(task);
     if (skillId === undefined) {
@@ -970,36 +981,51 @@ export class LoopEngine {
         status: "error",
         reasons: ["no_skill_id"],
       });
-      return;
+      return undefined;
     }
 
     const deps = this.options.publishDeps ?? { runCommand: runCommandReal };
     const result = await runPublish(skillId, publishCfg, deps);
+    // Durable, auditable release evidence — release identity only on success.
+    const evidence = toPublishedAssetEvidence(result, publishCfg.gate);
 
     if (result.status === "published") {
       this.emit(loopId, "loop.skill.published", {
         task_id: task.task_id,
         skill_id: skillId,
         score: result.score ?? null,
-        gate: result.gate ?? publishCfg.gate,
+        gate: evidence.gate, // normalized enum — never the raw Hub-controlled gate string
         apiVerified: result.apiVerified ?? false,
       });
+      // Record immutable release identity as a distinct, additive event.
+      this.emit(loopId, "loop.skill.release_recorded", {
+        task_id: task.task_id,
+        skill_id: skillId,
+        status: evidence.status,
+        gate: evidence.gate,
+        ...(evidence.release_id !== undefined ? { release_id: evidence.release_id } : {}),
+        ...(evidence.digest !== undefined ? { digest: evidence.digest } : {}),
+        ...(evidence.namespace !== undefined ? { namespace: evidence.namespace } : {}),
+        ...(evidence.storage_key !== undefined ? { storage_key: evidence.storage_key } : {}),
+      });
       decisions.push(
-        `${task.task_id}: published ${skillId} to hub (score ${result.score ?? "n/a"}, gate ${result.gate ?? publishCfg.gate}, apiVerified ${result.apiVerified ?? false})`,
+        `${task.task_id}: published ${skillId} to hub (release ${evidence.release_id ?? "unknown"}, digest ${evidence.digest ?? "unknown"}, gate ${evidence.gate})`,
       );
-      return;
+      return evidence;
     }
 
     this.emit(loopId, "loop.skill.publish_blocked", {
       task_id: task.task_id,
       skill_id: skillId,
       status: result.status,
-      reasons: result.reasons ?? [],
+      reasons: evidence.reasons, // REDACTED — never the raw Hub reasons (leaks to events.jsonl)
     });
     const marker = publishCfg.onFailure === "block" ? " [NEEDS-ATTENTION]" : "";
     decisions.push(
-      `${task.task_id}: publish ${result.status} for ${skillId} (reasons: ${(result.reasons ?? []).join(", ") || "none"})${marker}`,
+      // use the REDACTED evidence.reasons — never the raw Hub-controlled reasons.
+      `${task.task_id}: publish ${result.status} for ${skillId} (reasons: ${evidence.reasons.join(", ") || "none"})${marker}`,
     );
+    return evidence; // status blocked/error, no release identity
   }
 
   /**
