@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { HermesEvent } from "@osstack/hermes-adapter";
@@ -97,6 +97,36 @@ printf 'stdin:%s\\n' "$input"
 });
 
 describe("CodexCliAdapter", () => {
+  it("runs in task.context.repo_path instead of the adapter fallback directory", async () => {
+    const fallback = join(tmp, "fallback");
+    const worktree = join(tmp, "worktree");
+    const initialPwdLog = join(tmp, "codex-initial-pwd.txt");
+    await mkdir(fallback);
+    await mkdir(worktree);
+    const bin = await fakeCommand("codex-cwd", `
+printf '%s\\n' "$PWD" > ${JSON.stringify(initialPwdLog)}
+target=""
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "-C" ]; then target="$2"; break; fi
+  shift
+done
+cd "$target"
+printf 'created by codex\\n' > codex-artifact.txt
+printf '{"type":"thread.started","thread_id":"t-cwd"}\\n'
+printf '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}\\n'
+`);
+    const adapter = new CodexCliAdapter({ bin, cwd: fallback, probeTimeoutMs: 1_000 });
+    const repoTask = task("codex-cli.code.write");
+    repoTask.context = { repo_path: worktree };
+
+    const events = await drain(adapter.invoke(repoTask, new AbortController().signal));
+
+    await expect(readFile(initialPwdLog, "utf-8")).resolves.toBe(`${await realpath(worktree)}\n`);
+    await expect(readFile(join(worktree, "codex-artifact.txt"), "utf-8")).resolves.toBe("created by codex\n");
+    await expect(readFile(join(fallback, "codex-artifact.txt"), "utf-8")).rejects.toMatchObject({ code: "ENOENT" });
+    expect(doneStatus(events)).toBe("completed");
+  });
+
   it("uses a real exec --json dry-run for availability", async () => {
     const previousHome = process.env["HOME"];
     process.env["HOME"] = tmp;
