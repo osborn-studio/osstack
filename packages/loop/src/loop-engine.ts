@@ -53,6 +53,7 @@ import {
   Task,
   type Verdict,
 } from "./types.js";
+import { truncateUnicodeSafe } from "./unicode.js";
 
 export interface LoopRunOptions {
   loopId?: string;
@@ -1432,11 +1433,11 @@ function completionErrorSummary(run: AgentRun | null, verdict: Verdict | null): 
 }
 
 function singleLine(value: string): string {
-  return value.replace(/\s+/g, " " ).trim().slice(0, 240);
+  return truncateUnicodeSafe(value.replace(/\s+/g, " ").trim(), 240);
 }
 
 function summarizeGoalResult(exitCode: number, stdout: string, stderr: string): string {
-  const output = (stderr.trim() || stdout.trim()).replace(/\s+/g, " ").slice(0, 240);
+  const output = truncateUnicodeSafe((stderr.trim() || stdout.trim()).replace(/\s+/g, " "), 240);
   if (exitCode === 0) return output === "" ? "goal command exited 0" : output;
   return output === "" ? `goal command exited ${exitCode}` : output;
 }

@@ -324,6 +324,29 @@ describe("LoopEngine", () => {
     expect(result.state.decisions?.at(-1)).toContain("escalate after iteration 2");
   });
 
+  it("keeps truncated verifier output Unicode-safe for state and proof JSON", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const result = await new LoopEngine({
+      loopId: "loop-unicode-summary",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      verifyCommands: [
+        "node -e \"process.stderr.write('x'.repeat(239) + '🚀'); process.exit(1)\"",
+      ],
+      maxIterations: 1,
+    }).runOnce();
+
+    const issue = result.state.completed_tasks[0]?.verify_issues?.[0]?.message ?? "";
+    const stateJson = await readFile(join(workspace, "LOOP-STATE.json"), "utf-8");
+    const proofJson = `${JSON.stringify(result.state, null, 2)}\n`;
+
+    expect(hasUnpairedSurrogate(issue)).toBe(false);
+    expect(stateJson).not.toMatch(/\\ud[89ab][0-9a-f]{2}(?!\\ud[c-f][0-9a-f]{2})/iu);
+    expect(proofJson).not.toMatch(/\\ud[89ab][0-9a-f]{2}(?!\\ud[c-f][0-9a-f]{2})/iu);
+    expect(() => JSON.parse(stateJson)).not.toThrow();
+    expect(() => JSON.parse(proofJson)).not.toThrow();
+  });
+
   it("reuses the persisted loop id when running against an existing state file", async () => {
     const workspace = await makeQueuedWorkspace();
     const first = await new LoopEngine({
@@ -989,6 +1012,21 @@ async function git(cwd: string, args: string[]): Promise<string> {
       else reject(new Error(`git ${args.join(" ")} failed: ${stderr.trim() || stdout.trim()}`));
     });
   });
+}
+
+function hasUnpairedSurrogate(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    const codeUnit = value.charCodeAt(index);
+    if (codeUnit >= 0xd800 && codeUnit <= 0xdbff) {
+      if (index + 1 >= value.length) return true;
+      const next = value.charCodeAt(index + 1);
+      if (next < 0xdc00 || next > 0xdfff) return true;
+      index += 1;
+    } else if (codeUnit >= 0xdc00 && codeUnit <= 0xdfff) {
+      return true;
+    }
+  }
+  return false;
 }
 
 class FakeLoopAdapter implements AgentAdapter {
