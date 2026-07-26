@@ -382,6 +382,7 @@ osstack pr <run_id> --dry-run --workspace .
 
 ```bash
 osstack govern check --workspace . --changed --json
+osstack loop run --workspace . --govern strict --govern-scope baseline --proof
 osstack governance scan src/**/*.ts --json
 osstack contracts check --workspace . --manifest api-contracts.json --json
 osstack compliance list --json
@@ -431,6 +432,11 @@ CLI package. Install or link that skill separately before invoking
 `$probe-skill`. The two-week report-only dogfood, five real rough-spec runs, and
 manual `restate` review remain empirical checkpoints rather than release claims;
 see the [Probe v2 design and checkpoint record](docs/2026-07-17-probe-four-quadrant-elicitation-design.md#13-checkpoints发布与回滚).
+`--govern-scope baseline` records a full scan of the pre-run Git revision as
+non-blocking evidence, then applies the selected `--govern` mode only to
+changed-file findings that were not present in that baseline. The changed set
+includes working-tree, staged, untracked, and commits created since the run
+started, including isolated-worktree merges.
 
 ### Knowledge Hygiene
 

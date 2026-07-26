@@ -69,6 +69,7 @@ import {
 import {
   inspectInstructionSource,
   scanFiles,
+  scanText,
   type GovernanceFinding,
 } from "@osstack/governance";
 import {
@@ -7010,12 +7011,32 @@ type GovernanceProofEvidence =
   };
 
 type LoopGovernanceMode = "warn" | "strict";
+type LoopGovernanceScope = "workspace" | "changed" | "baseline";
 
-type LoopGovernanceEvidence = GovernanceProofEvidence & {
-  mode: LoopGovernanceMode;
-  blocking: boolean;
+type GovernanceScanEvidence = GovernanceProofEvidence & {
   error_findings: number;
 };
+
+type LoopGovernanceEvidence = GovernanceScanEvidence & {
+  mode: LoopGovernanceMode;
+  scope: LoopGovernanceScope;
+  blocking: boolean;
+  baseline_evidence?: GovernanceScanEvidence & {
+    mode: "warn";
+    scope: "workspace";
+    blocking: false;
+  };
+  changed_evidence?: GovernanceScanEvidence & {
+    scope: "changed";
+  };
+  baseline_revision?: string;
+  baseline_suppressed_findings?: number;
+};
+
+interface LoopGovernanceBaselineSnapshot {
+  evidence?: GovernanceProofEvidence;
+  revision?: string;
+}
 
 type KnowledgeProofEvidence = KnowledgeSearchEvidence;
 
@@ -8543,24 +8564,115 @@ function hasRequestedLoopArtifacts(args: string[]): boolean {
 async function scanWorkspaceGovernance(workspacePath: string): Promise<GovernanceProofEvidence> {
   try {
     const files = await collectGovernanceScanFiles(workspacePath);
-    if (files.length === 0) {
-      return {
-        status: "pass",
-        ok: true,
-        scanned_files: 0,
-        findings: [],
-      };
-    }
-    const result = await scanFiles(files);
-    return {
-      status: result.ok ? "pass" : "fail",
-      ok: result.ok,
-      scanned_files: files.length,
-      findings: result.findings,
-    };
+    return await scanGovernanceFiles(files);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return unknownGovernanceEvidence(`Governance scan failed: ${message}`);
+  }
+}
+
+async function scanChangedWorkspaceGovernance(
+  workspacePath: string,
+  baselineRevision?: string,
+): Promise<GovernanceProofEvidence> {
+  const files = await collectChangedGovernanceScanFiles(workspacePath, baselineRevision);
+  if (files instanceof Error) {
+    return unknownGovernanceEvidence(`Governance changed-files scan failed: ${files.message}`);
+  }
+  try {
+    return await scanGovernanceFiles(files);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return unknownGovernanceEvidence(`Governance changed-files scan failed: ${message}`);
+  }
+}
+
+async function scanGovernanceFiles(files: string[]): Promise<GovernanceProofEvidence> {
+  if (files.length === 0) {
+    return {
+      status: "pass",
+      ok: true,
+      scanned_files: 0,
+      findings: [],
+    };
+  }
+  const result = await scanFiles(files);
+  return {
+    status: result.ok ? "pass" : "fail",
+    ok: result.ok,
+    scanned_files: files.length,
+    findings: result.findings,
+  };
+}
+
+async function captureLoopGovernanceBaseline(
+  workspacePath: string,
+  includeEvidence: boolean,
+): Promise<LoopGovernanceBaselineSnapshot> {
+  try {
+    const revisionResult = await execFileAsync(
+      "git",
+      ["-C", workspacePath, "rev-parse", "--verify", "HEAD"],
+      { timeout: 10_000 },
+    );
+    const revision = revisionResult.stdout.trim();
+    if (revision === "") {
+      return includeEvidence
+        ? { evidence: unknownGovernanceEvidence("Governance baseline failed: Git HEAD is empty.") }
+        : {};
+    }
+    return {
+      revision,
+      ...(includeEvidence
+        ? { evidence: await scanGovernanceRevision(workspacePath, revision) }
+        : {}),
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return includeEvidence
+      ? { evidence: unknownGovernanceEvidence(`Governance baseline failed: ${message}`) }
+      : {};
+  }
+}
+
+async function scanGovernanceRevision(
+  workspacePath: string,
+  revision: string,
+): Promise<GovernanceProofEvidence> {
+  try {
+    const listing = await execFileAsync(
+      "git",
+      ["-C", workspacePath, "ls-tree", "-r", "--name-only", revision],
+      { timeout: 10_000 },
+    );
+    const relativePaths = uniqueNonEmptyLines(listing.stdout)
+      .filter((path) => isGovernanceScannableFile(path))
+      .filter((path) => !path.split(/[\\/]/).some((part) => isGovernanceExcludedDir(part)))
+      .slice(0, 500);
+    const findings: GovernanceFinding[] = [];
+    for (let offset = 0; offset < relativePaths.length; offset += 16) {
+      const batch = relativePaths.slice(offset, offset + 16);
+      const contents = await Promise.all(batch.map(async (path) => {
+        const result = await execFileAsync(
+          "git",
+          ["-C", workspacePath, "show", `${revision}:${path}`],
+          { timeout: 10_000, maxBuffer: 4 * 1024 * 1024 },
+        );
+        return { path, content: result.stdout };
+      }));
+      for (const { path, content } of contents) {
+        findings.push(...scanText(content, { file: join(workspacePath, path) }).findings);
+      }
+    }
+    return {
+      status: findings.length === 0 ? "pass" : "fail",
+      ok: findings.length === 0,
+      scanned_files: relativePaths.length,
+      findings,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return unknownGovernanceEvidence(`Governance baseline revision scan failed: ${message}`);
   }
 }
 
@@ -8573,18 +8685,136 @@ function parseLoopGovernanceMode(args: string[]): LoopGovernanceMode | undefined
   return new Error("--govern must be warn or strict");
 }
 
+function parseLoopGovernanceScope(
+  args: string[],
+  mode: LoopGovernanceMode | undefined,
+): LoopGovernanceScope | undefined | Error {
+  const index = args.indexOf("--govern-scope");
+  if (index < 0) return mode === undefined ? undefined : "workspace";
+  if (mode === undefined) return new Error("--govern-scope requires --govern");
+  const value = args[index + 1];
+  if (value === "workspace" || value === "changed" || value === "baseline") return value;
+  return new Error("--govern-scope must be workspace, changed, or baseline");
+}
+
+function governanceScanEvidence(evidence: GovernanceProofEvidence): GovernanceScanEvidence {
+  return {
+    ...evidence,
+    error_findings: evidence.findings.filter((finding) => finding.severity === "error").length,
+  };
+}
+
 async function createLoopGovernanceEvidence(
   mode: LoopGovernanceMode,
   workspacePath: string,
+  scope: LoopGovernanceScope,
+  baselineSnapshot?: LoopGovernanceBaselineSnapshot,
 ): Promise<LoopGovernanceEvidence> {
-  const evidence = await scanWorkspaceGovernance(workspacePath);
-  const errorFindings = evidence.findings.filter((finding) => finding.severity === "error").length;
+  if (scope === "baseline") {
+    if (baselineSnapshot?.evidence === undefined) {
+      const evidence = governanceScanEvidence(unknownGovernanceEvidence(
+        "Governance baseline scope requires pre-run workspace evidence.",
+      ));
+      return {
+        ...evidence,
+        mode,
+        scope,
+        blocking: false,
+      };
+    }
+
+    const baseline = governanceScanEvidence(baselineSnapshot.evidence);
+    const changed = governanceScanEvidence(await scanChangedWorkspaceGovernance(
+      workspacePath,
+      baselineSnapshot.revision,
+    ));
+    if (changed.status === "unknown") {
+      return {
+        ...changed,
+        mode,
+        scope,
+        blocking: false,
+        baseline_evidence: {
+          ...baseline,
+          mode: "warn",
+          scope: "workspace",
+          blocking: false,
+        },
+        changed_evidence: {
+          ...changed,
+          scope: "changed",
+        },
+        ...(baselineSnapshot.revision === undefined
+          ? {}
+          : { baseline_revision: baselineSnapshot.revision }),
+        baseline_suppressed_findings: 0,
+      };
+    }
+
+    const findings = subtractBaselineFindings(changed.findings, baseline.findings, workspacePath);
+    const errorFindings = findings.filter((finding) => finding.severity === "error").length;
+    return {
+      status: findings.length === 0 ? "pass" : "fail",
+      ok: findings.length === 0,
+      scanned_files: changed.scanned_files,
+      findings,
+      error_findings: errorFindings,
+      mode,
+      scope,
+      blocking: mode === "strict" && errorFindings > 0,
+      baseline_evidence: {
+        ...baseline,
+        mode: "warn",
+        scope: "workspace",
+        blocking: false,
+      },
+      changed_evidence: {
+        ...changed,
+        scope: "changed",
+      },
+      ...(baselineSnapshot.revision === undefined
+        ? {}
+        : { baseline_revision: baselineSnapshot.revision }),
+      baseline_suppressed_findings: changed.findings.length - findings.length,
+    };
+  }
+
+  const evidence = governanceScanEvidence(scope === "changed"
+    ? await scanChangedWorkspaceGovernance(workspacePath, baselineSnapshot?.revision)
+    : await scanWorkspaceGovernance(workspacePath));
   return {
     ...evidence,
     mode,
-    blocking: mode === "strict" && errorFindings > 0,
-    error_findings: errorFindings,
+    scope,
+    blocking: mode === "strict" && evidence.error_findings > 0,
   };
+}
+
+function subtractBaselineFindings(
+  changedFindings: GovernanceFinding[],
+  baselineFindings: GovernanceFinding[],
+  workspacePath: string,
+): GovernanceFinding[] {
+  const baselineCounts = new Map<string, number>();
+  for (const finding of baselineFindings) {
+    const fingerprint = governanceFindingFingerprint(finding, workspacePath);
+    baselineCounts.set(fingerprint, (baselineCounts.get(fingerprint) ?? 0) + 1);
+  }
+
+  return changedFindings.filter((finding) => {
+    const fingerprint = governanceFindingFingerprint(finding, workspacePath);
+    const remaining = baselineCounts.get(fingerprint) ?? 0;
+    if (remaining === 0) return true;
+    baselineCounts.set(fingerprint, remaining - 1);
+    return false;
+  });
+}
+
+function governanceFindingFingerprint(finding: GovernanceFinding, workspacePath: string): string {
+  const file = finding.file === undefined
+    ? "<inline>"
+    : relative(workspacePath, finding.file).replaceAll("\\", "/");
+  return `${finding.rule_id}\u0000${file}\u0000${finding.excerpt}`;
 }
 
 function appendGovernanceVerifyEvent(
@@ -8596,7 +8826,7 @@ function appendGovernanceVerifyEvent(
   const pass = !governance.blocking;
   const summary = governance.status === "unknown"
     ? "governance scan unknown; fail-open"
-    : `${governance.status}; findings=${governance.findings.length}; errors=${governance.error_findings}; mode=${governance.mode}`;
+    : `${governance.status}; findings=${governance.findings.length}; errors=${governance.error_findings}; mode=${governance.mode}; scope=${governance.scope}`;
   return [
     ...events,
     {
@@ -8627,13 +8857,25 @@ async function collectGovernanceScanFiles(workspacePath: string): Promise<string
   return files;
 }
 
-async function collectChangedGovernanceScanFiles(workspacePath: string): Promise<string[] | Error> {
+async function collectChangedGovernanceScanFiles(
+  workspacePath: string,
+  baselineRevision?: string,
+): Promise<string[] | Error> {
   try {
-    const [workingTree, staged] = await Promise.all([
+    const [workingTree, staged, sinceBaseline] = await Promise.all([
       execFileAsync("git", ["-C", workspacePath, "ls-files", "--modified", "--others", "--exclude-standard"], { timeout: 10_000 }),
       execFileAsync("git", ["-C", workspacePath, "diff", "--name-only", "--cached", "--diff-filter=ACMRT"], { timeout: 10_000 }),
+      baselineRevision === undefined
+        ? Promise.resolve({ stdout: "" })
+        : execFileAsync(
+            "git",
+            ["-C", workspacePath, "diff", "--name-only", "--diff-filter=ACMRT", baselineRevision, "HEAD"],
+            { timeout: 10_000 },
+          ),
     ]);
-    const relativePaths = uniqueNonEmptyLines(`${workingTree.stdout}\n${staged.stdout}`);
+    const relativePaths = uniqueNonEmptyLines(
+      `${workingTree.stdout}\n${staged.stdout}\n${sinceBaseline.stdout}`,
+    );
     const files: string[] = [];
     for (const relativePath of relativePaths) {
       if (!isGovernanceScannableFile(relativePath)) continue;
@@ -9643,6 +9885,7 @@ export function createDeliverCommandDeps(): DeliverCommandDeps {
     enforceObservePolicyGate,
     createShadowCheckpoint,
     createLoopGovernanceEvidence,
+    captureLoopGovernanceBaseline,
     appendGovernanceVerifyEvent,
     observeLoopProbeEvents,
     writeRequestedLoopArtifacts,
@@ -10200,6 +10443,7 @@ function createGuardedGitRuntimeForDb(
       const evidence = await createLoopGovernanceEvidence(
         "strict",
         workspacePath,
+        "workspace",
       );
       return {
         blocking:
@@ -10604,6 +10848,14 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       console.error(`osstack: ${governanceMode.message}`);
       return 1;
     }
+    const governanceScope = parseLoopGovernanceScope(args, governanceMode);
+    if (governanceScope instanceof Error) {
+      console.error(`osstack: ${governanceScope.message}`);
+      return 1;
+    }
+    const governanceBaseline = governanceScope === "baseline" || governanceScope === "changed"
+      ? await captureLoopGovernanceBaseline(workspacePath, governanceScope === "baseline")
+      : undefined;
     const maxIterations = parsePositiveIntegerFlag(maxIterRaw, "--max-iter");
     if (maxIterations instanceof Error) {
       console.error(`osstack: ${maxIterations.message}`);
@@ -10664,7 +10916,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       const result = resp.result as LoopRunSummary;
       const governance = governanceMode === undefined
         ? undefined
-        : await createLoopGovernanceEvidence(governanceMode, workspacePath);
+        : await createLoopGovernanceEvidence(governanceMode, workspacePath, governanceScope!, governanceBaseline);
       const events = governance === undefined
         ? normalizeLoopEvents(result.events)
         : appendGovernanceVerifyEvent(normalizeLoopEvents(result.events), result.loop_id, governance);
@@ -10755,7 +11007,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
 
     const governance = governanceMode === undefined
       ? undefined
-      : await createLoopGovernanceEvidence(governanceMode, workspacePath);
+      : await createLoopGovernanceEvidence(governanceMode, workspacePath, governanceScope!, governanceBaseline);
     const events = governance === undefined
       ? result.events
       : appendGovernanceVerifyEvent(result.events, result.loop_id, governance);
@@ -10964,6 +11216,9 @@ Options:
                       Knowledge Cloud URL; unavailable cloud fails open to local/off
   --knowledge-query Q Query used for knowledge trace search
   --govern [M]        Run governance checks after loop run; M=warn or strict
+  --govern-scope S    Governance scope: workspace (legacy), changed, or baseline.
+                      baseline records pre-run full-workspace warn evidence and
+                      gates only changed-file findings not present in that baseline
   --neat-finalize     After a successful run, attach non-gating neat evidence
   --json              Emit machine-readable summary
   --daemon            Run through the osstack daemon RPC socket

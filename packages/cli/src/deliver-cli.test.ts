@@ -164,6 +164,53 @@ describe("deliver CLI", () => {
     await expect(readFile(join(summary.artifacts.proof_dir, "governance-results.json"), "utf-8")).resolves.toContain("secret.api_key");
   });
 
+  it("records legacy findings as baseline evidence and gates only new findings", async () => {
+    execFileSync("git", ["init", "-b", "main"], { cwd: tmp });
+    await writeFile(
+      join(tmp, "legacy-unsafe.ts"),
+      "const api_key = \"sk-test-secret-token\";\n",
+    );
+    commitFixture(tmp);
+
+    const exitCode = await main([
+      "deliver",
+      "Govern only changes from the accepted baseline",
+      "--workspace",
+      tmp,
+      "--execute",
+      "node -e \"process.exit(0)\"",
+      "--govern",
+      "strict",
+      "--govern-scope",
+      "baseline",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      governance: {
+        scope: string;
+        blocking: boolean;
+        findings: Array<{ rule_id: string }>;
+        baseline_evidence: {
+          blocking: boolean;
+          findings: Array<{ rule_id: string }>;
+        };
+      };
+    };
+    expect(summary.governance).toMatchObject({
+      scope: "baseline",
+      blocking: false,
+      findings: [],
+      baseline_evidence: {
+        blocking: false,
+        findings: [
+          expect.objectContaining({ rule_id: "secret.api_key" }),
+        ],
+      },
+    });
+  });
+
   it("creates a shadow checkpoint before a non-worktree delivery run", async () => {
     process.env["OSSTACK_HOME"] = join(tmp, "home");
     await writeFile(join(tmp, "app.txt"), "before\n");

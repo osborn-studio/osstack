@@ -50,12 +50,33 @@ type DeliverGovernanceProofEvidence =
   };
 
 export type DeliverGovernanceMode = "warn" | "strict";
+export type DeliverGovernanceScope = "workspace" | "changed" | "baseline";
+
+export interface DeliverGovernanceBaselineSnapshot {
+  evidence?: DeliverGovernanceProofEvidence;
+  revision?: string;
+}
+
+type DeliverGovernanceScanEvidence =
+  DeliverGovernanceProofEvidence & {
+    error_findings: number;
+  };
 
 export type DeliverGovernanceEvidence =
-  DeliverGovernanceProofEvidence & {
+  DeliverGovernanceScanEvidence & {
     mode: DeliverGovernanceMode;
+    scope: DeliverGovernanceScope;
     blocking: boolean;
-    error_findings: number;
+    baseline_evidence?: DeliverGovernanceScanEvidence & {
+      mode: "warn";
+      scope: "workspace";
+      blocking: false;
+    };
+    changed_evidence?: DeliverGovernanceScanEvidence & {
+      scope: "changed";
+    };
+    baseline_revision?: string;
+    baseline_suppressed_findings?: number;
   };
 
 export interface DeliverEvidenceArtifacts {
@@ -77,7 +98,13 @@ export interface DeliverCommandDeps {
   createLoopGovernanceEvidence: (
     mode: DeliverGovernanceMode,
     workspacePath: string,
+    scope: DeliverGovernanceScope,
+    baselineSnapshot?: DeliverGovernanceBaselineSnapshot,
   ) => Promise<DeliverGovernanceEvidence>;
+  captureLoopGovernanceBaseline?: (
+    workspacePath: string,
+    includeEvidence: boolean,
+  ) => Promise<DeliverGovernanceBaselineSnapshot>;
   appendGovernanceVerifyEvent: (
     events: LoopEvent[],
     loopId: string,
@@ -125,7 +152,7 @@ export async function handleDeliverCommand(
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack deliver — product entry from one intent to proof
 
-  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--checkpoint] [--govern [warn|strict]] [--autonomy legacy|guarded-local|guarded-git|guarded-deploy] [--deploy-policy project] [--profile NAME] [--expected-path P] [--action A] [--command-timeout-ms N] [--json]
+  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--checkpoint] [--govern [warn|strict]] [--govern-scope workspace|changed|baseline] [--autonomy legacy|guarded-local|guarded-git|guarded-deploy] [--deploy-policy project] [--profile NAME] [--expected-path P] [--action A] [--command-timeout-ms N] [--json]
 
 Stages:
   intake -> plan -> execute-loop -> verify-review -> proof
@@ -151,6 +178,7 @@ guarded-deploy adds after merge:
     "--command-timeout-ms",
     "--worktree-root",
     "--govern",
+    "--govern-scope",
     "--autonomy",
     "--deploy-policy",
     "--profile",
@@ -268,6 +296,31 @@ guarded-deploy adds after merge:
   const governanceMode = guarded
     ? "strict"
     : requestedGovernanceMode;
+  const governanceScope = parseDeliverGovernanceScope(
+    args,
+    governanceMode,
+  );
+  if (governanceScope instanceof Error) {
+    console.error(`osstack: ${governanceScope.message}`);
+    return 1;
+  }
+  if (
+    governanceScope !== undefined
+    && governanceScope !== "workspace"
+    && deps.captureLoopGovernanceBaseline === undefined
+  ) {
+    console.error(
+      "osstack: changed and baseline governance scopes are unavailable",
+    );
+    return 1;
+  }
+  const governanceBaseline =
+    governanceScope === "baseline" || governanceScope === "changed"
+      ? await deps.captureLoopGovernanceBaseline!(
+          workspacePath,
+          governanceScope === "baseline",
+        )
+      : undefined;
   const autoAgent = args.includes("--auto-agent");
   const useWorktree = guardedLocal || args.includes("--worktree");
   const checkpoint = args.includes("--checkpoint") && !useWorktree
@@ -444,6 +497,8 @@ guarded-deploy adds after merge:
     : await deps.createLoopGovernanceEvidence(
       governanceMode,
       workspacePath,
+      governanceScope ?? "workspace",
+      governanceBaseline,
     );
   const events = governance === undefined
     ? result.events
@@ -625,6 +680,28 @@ function parseDeliverGovernanceMode(
   if (value === undefined || value.startsWith("--")) return "warn";
   if (value === "warn" || value === "strict") return value;
   return new Error("--govern must be warn or strict");
+}
+
+function parseDeliverGovernanceScope(
+  args: string[],
+  mode: DeliverGovernanceMode | undefined,
+): DeliverGovernanceScope | undefined | Error {
+  const index = args.indexOf("--govern-scope");
+  if (index < 0) return mode === undefined ? undefined : "workspace";
+  if (mode === undefined) {
+    return new Error("--govern-scope requires --govern");
+  }
+  const value = args[index + 1];
+  if (
+    value === "workspace"
+    || value === "changed"
+    || value === "baseline"
+  ) {
+    return value;
+  }
+  return new Error(
+    "--govern-scope must be workspace, changed, or baseline",
+  );
 }
 
 function parsePositiveIntegerFlag(
