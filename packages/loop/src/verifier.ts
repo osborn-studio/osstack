@@ -18,6 +18,7 @@ import {
   type Task,
   type Verdict,
 } from "./types.js";
+import { truncateUnicodeSafe } from "./unicode.js";
 
 export interface LocalVerifierOptions {
   workspacePath: string;
@@ -721,7 +722,7 @@ function summarize(
 }
 
 function singleLine(value: string): string {
-  return value.replace(/\s+/g, " ").slice(0, 240);
+  return truncateUnicodeSafe(value.replace(/\s+/g, " "), 240);
 }
 
 function sanitizeId(value: string): string {
