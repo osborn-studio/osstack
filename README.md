@@ -247,11 +247,18 @@ osstack pr <run_id> --dry-run --workspace .
 
 ```bash
 osstack govern check --workspace . --changed --json
+osstack loop run --workspace . --govern strict --govern-scope baseline --proof
 osstack governance scan src/**/*.ts --json
 osstack contracts check --workspace . --manifest api-contracts.json --json
 osstack compliance list --json
 osstack compliance render <run_id> --pack engineering-readiness --proof-dir release/osstack-proof-<run_id>
 ```
+
+`--govern-scope baseline` records a full scan of the pre-run Git revision as
+non-blocking evidence, then applies the selected `--govern` mode only to
+changed-file findings that were not present in that baseline. The changed set
+includes working-tree, staged, untracked, and commits created since the run
+started, including isolated-worktree merges.
 
 ### Knowledge Hygiene
 
