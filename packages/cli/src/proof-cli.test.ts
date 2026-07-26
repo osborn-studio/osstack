@@ -1323,6 +1323,102 @@ describe("proof CLI", () => {
     });
   });
 
+  it("keeps retry verifier artifacts unique and produces a valid proof pack", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const eventsPath = join(tmp, "retry-events.jsonl");
+    await writeFile(eventsPath, [
+      JSON.stringify({
+        event_id: "evt-retry-plan",
+        loop_id: "cli-proof-loop",
+        type: "loop.plan.done",
+        seq: 1,
+        created_at: 1782090000000,
+        payload: {
+          task_id: "proof-task",
+          agent_id: "local-command",
+          routing_reason: "matched code.fix capability",
+        },
+      }),
+      JSON.stringify({
+        event_id: "evt-retry-fail",
+        loop_id: "cli-proof-loop",
+        type: "loop.verify.done",
+        seq: 2,
+        created_at: 1782090001000,
+        payload: {
+          task_id: "proof-task",
+          pass: false,
+          score: 0,
+          reviewer_agent_id: "local-verifier",
+          summary: "Attempt one failed.",
+        },
+      }),
+      JSON.stringify({
+        event_id: "evt-retry-success",
+        loop_id: "cli-proof-loop",
+        type: "loop.verify.done",
+        seq: 3,
+        created_at: 1782090002000,
+        payload: {
+          task_id: "proof-task",
+          pass: true,
+          score: 1,
+          reviewer_agent_id: "local-verifier",
+          summary: "Attempt two passed.",
+        },
+      }),
+      JSON.stringify({
+        event_id: "evt-retry-merged",
+        loop_id: "cli-proof-loop",
+        type: "loop.worktree.merged",
+        seq: 4,
+        created_at: 1782090003000,
+        payload: {
+          task_id: "proof-task",
+          branch: "osstack/loop/proof-retry",
+          commit: "abc123",
+          worktree_path: join(tmp, ".osstack-worktrees", "proof-task"),
+        },
+      }),
+    ].join("\n") + "\n");
+
+    const proofExitCode = await main(["proof", "--workspace", tmp, "--events", eventsPath]);
+
+    expect(proofExitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    const manifest = JSON.parse(await readFile(join(proofDir, "manifest.json"), "utf-8")) as {
+      artifacts: Array<{ path: string; sha256: string }>;
+    };
+    const artifactPaths = manifest.artifacts.map((artifact) => artifact.path);
+    expect(new Set(artifactPaths).size).toBe(artifactPaths.length);
+    expect(artifactPaths).toEqual(expect.arrayContaining([
+      "checker-output/proof-task-local-verifier-event-2.txt",
+      "checker-output/proof-task-local-verifier-event-3.txt",
+    ]));
+    await expect(
+      readFile(join(proofDir, "checker-output", "proof-task-local-verifier-event-2.txt"), "utf-8"),
+    ).resolves.toContain("Attempt one failed.");
+    await expect(
+      readFile(join(proofDir, "checker-output", "proof-task-local-verifier-event-3.txt"), "utf-8"),
+    ).resolves.toContain("Attempt two passed.");
+
+    logs = [];
+    const validateExitCode = await main([
+      "proof",
+      "validate",
+      "cli-proof-loop",
+      "--workspace",
+      tmp,
+      "--json",
+    ]);
+    expect(validateExitCode).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      ok: true,
+      file_integrity: { ok: true },
+      archive_integrity: { ok: true },
+    });
+  });
+
   it("rejects malformed external proof event evidence", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
     const eventsPath = join(tmp, "bad-events.jsonl");

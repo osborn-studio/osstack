@@ -8417,10 +8417,21 @@ function rolesForAgentId(agentId: string): string[] {
 
 function createVerifierOutputArtifacts(verifyResults: ReturnType<typeof createVerifyResultsEvidence>): Array<{ path: string; content: string }> {
   if (verifyResults.results === undefined) return [];
-  return verifyResults.results.map((result) => {
+  const basePaths = verifyResults.results.map((result) => {
     const agentId = result.reviewer_agent_id === "" ? "unknown-verifier" : result.reviewer_agent_id;
     const dir = verifierOutputDir(agentId);
-    const path = `${dir}/${safeFileSegment(result.task_id)}-${safeFileSegment(agentId)}.txt`;
+    return `${dir}/${safeFileSegment(result.task_id)}-${safeFileSegment(agentId)}`;
+  });
+  const pathCounts = new Map<string, number>();
+  for (const path of basePaths) {
+    pathCounts.set(path, (pathCounts.get(path) ?? 0) + 1);
+  }
+  return verifyResults.results.map((result, index) => {
+    const agentId = result.reviewer_agent_id === "" ? "unknown-verifier" : result.reviewer_agent_id;
+    const basePath = basePaths[index]!;
+    const path = pathCounts.get(basePath) === 1
+      ? `${basePath}.txt`
+      : `${basePath}-event-${String(result.event_seq)}.txt`;
     const content = [
       `task_id: ${result.task_id}`,
       `reviewer_agent_id: ${agentId}`,
