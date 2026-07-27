@@ -1,5 +1,12 @@
 # Kimi Code Mac Mini Autonomy Implementation Plan
 
+> **Superseded for execution.** This v1 plan is retained as the pinned audit
+> baseline. Execute
+> [`2026-07-27-kimi-code-mac-mini-autonomy.v2.md`](2026-07-27-kimi-code-mac-mini-autonomy.v2.md)
+> under
+> [`2026-07-27-kimi-autonomy-execution-control-v3.md`](2026-07-27-kimi-autonomy-execution-control-v3.md).
+> When this historical text conflicts with either document, v3 control wins.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Turn the approved Kimi Code + Mac Mini design into a guarded osstack delivery path where R0–R2 work runs unattended, R3 pauses for the Owner, R4 is permanently blocked, and Kimi Code is the default independent evaluator.
@@ -68,10 +75,12 @@ The Phase A branch starts with:
 
 ```bash
 git fetch origin --prune
+: "${OSSTACK_WORKTREES_ROOT:=$HOME/Developer/worktrees}"
+mkdir -p "$OSSTACK_WORKTREES_ROOT"
 git worktree add -b feat/kimi-adapter-verifier \
-  /Users/gilbertchen/Documents/CODE/worktrees/osstack-kimi-adapter-verifier \
+  "$OSSTACK_WORKTREES_ROOT/osstack-kimi-adapter-verifier" \
   origin/main
-cd /Users/gilbertchen/Documents/CODE/worktrees/osstack-kimi-adapter-verifier
+cd "$OSSTACK_WORKTREES_ROOT/osstack-kimi-adapter-verifier"
 corepack enable pnpm
 pnpm install --frozen-lockfile
 ```

@@ -8,6 +8,15 @@
 
 **Tech Stack:** TypeScript ESM, Zod, Vitest, pnpm/Changesets, npm packaging, Bun single binary, GitHub Actions, osstack release doctor/proof, Kimi Code CLI.
 
+> **v3 execution amendment.** This plan is executable only together with
+> `2026-07-27-kimi-autonomy-execution-control-v3.md` and ledger items E-01/E-02
+> plus X-05/X-06. The amendment section at the end of this file overrides
+> conflicting task text.
+
+**Execution hosts:** packaging and fake-platform work may run on development
+hosts and CI. Final qualification uses the registered Mac Mini and exact
+release artifacts. Public publication requires the named Owner authority gate.
+
 ---
 
 ## Task 1: Prove the productization gate before creating a release branch
@@ -60,10 +69,12 @@ Use the actual completion month in the filename if the soak finishes after Augus
 
 ```bash
 git fetch origin --prune
+: "${OSSTACK_WORKTREES_ROOT:=$HOME/Developer/worktrees}"
+mkdir -p "$OSSTACK_WORKTREES_ROOT"
 git worktree add -b feat/kimi-productization \
-  /Users/gilbertchen/Documents/CODE/worktrees/osstack-kimi-productization \
+  "$OSSTACK_WORKTREES_ROOT/osstack-kimi-productization" \
   origin/main
-cd /Users/gilbertchen/Documents/CODE/worktrees/osstack-kimi-productization
+cd "$OSSTACK_WORKTREES_ROOT/osstack-kimi-productization"
 corepack enable pnpm
 pnpm install --frozen-lockfile
 mkdir -p "$PWD/.tmp/osstack-dev-home"
@@ -196,8 +207,8 @@ profiles: {
 
 - [ ] Add tests that scan default YAML/JSON for:
 
-- `/Users/`;
-- actual Owner hostnames;
+- absolute user-home paths from the external privacy pattern file;
+- actual Owner hostnames from the external privacy pattern file;
 - API-key/token assignments;
 - local router ports;
 - private repo paths.
@@ -620,7 +631,11 @@ guarded-git -> guarded-deploy
 
 ```bash
 pnpm lint
-rg -n 'OsborNs-|/Users/gilbertchen|sk-[A-Za-z0-9-]{20,}' README.md docs
+test -n "$OSSTACK_PRIVACY_PATTERN_FILE"
+if rg -n -f "$OSSTACK_PRIVACY_PATTERN_FILE" README.md README.zh.md docs; then
+  echo "private identifier found" >&2
+  exit 1
+fi
 git diff --check
 ```
 
@@ -811,3 +826,75 @@ osstack config show --profile mac-mini
 ```
 
 Expected: published CLI detects Kimi, resolves Kimi as Evaluator, and emits no private path or credential.
+
+---
+
+## v3 mandatory amendments
+
+### E.1 Portable publisher configuration
+
+Task 3 additionally modifies:
+
+```text
+packages/loop/src/publisher.ts
+packages/loop/src/publisher.test.ts
+scripts/README.md
+```
+
+Remove the machine-specific default publisher command. When publishing is
+disabled, no command is required. When `enabled=true`, an explicit portable
+command is required and missing configuration fails closed.
+
+### E.2 Artifact-first privacy gate
+
+Privacy qualification scans the exact:
+
+- unpacked npm tarballs;
+- single-binary strings/resources and source maps;
+- shipped Markdown/fixtures/templates;
+- serialized runtime defaults;
+- public README, bilingual README, guides, runbooks, and release notes;
+- generated launchd templates.
+
+These shipped scopes have zero tolerance and no allowlist.
+
+Non-shipped redaction tests may use a reviewed allowlist entry containing path,
+pattern ID, reason, reviewer, and expiry. Runtime defaults and shipped artifacts
+cannot be allowlisted. The scanner runs in CI and fails closed.
+
+Source-level scanning must include all owner/private identifiers discovered by
+repository inventory rather than one assumed username. Do not rewrite Git
+history; qualify the new release artifact and current tree.
+
+### E.3 Kimi setup state model
+
+Use one shared three-state result across setup, doctor, and runtime:
+
+```text
+kimi_not_installed
+kimi_not_authenticated
+kimi_available
+```
+
+Do not treat an executable on `PATH` as authenticated. Non-macOS diagnostics
+also include platform support status.
+
+### E.4 Platform claims
+
+Release notes and doctor output use:
+
+- macOS: supported after real Kimi and Mac Mini soak;
+- Linux: experimental until equivalent real-provider evidence exists;
+- Windows: unsupported until qualified.
+
+Fake binary CI is contract evidence, not proof of production platform support.
+
+### E.5 Packaging, migration, and TDD
+
+- Add an explicit asset-copy/build step for agent Markdown and test installed
+  package discovery.
+- Upgrade smoke proves the new CLI can verify an old proof.
+- Include `README.zh.md`.
+- Tasks 3, 6, 7, and 8 begin with failing tests before implementation.
+- Inspect the exact release candidate artifacts after the final build; do not
+  scan stale output.

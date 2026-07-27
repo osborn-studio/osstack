@@ -8,6 +8,15 @@
 
 **Tech Stack:** TypeScript ESM, Zod, Vitest, SQLite, Node subprocesses, launchd, Unix sockets, GitHub delivery evidence, osstack daemon and proof packs.
 
+> **v3 execution amendment.** This plan is executable only together with
+> `2026-07-27-kimi-autonomy-execution-control-v3.md` and ledger items D-01
+> through D-04 plus X-03/X-07. The amendment section at the end of this file
+> overrides conflicting task text.
+
+**Execution hosts:** deterministic package and fake-runner work may run on any
+development host. launchd, power-policy evidence, real rollback drills,
+notifications, and the seven-day soak run only on the registered Mac Mini.
+
 ---
 
 ## Task 1: Create the Phase D worktree
@@ -20,10 +29,12 @@
 
 ```bash
 git fetch origin --prune
+: "${OSSTACK_WORKTREES_ROOT:=$HOME/Developer/worktrees}"
+mkdir -p "$OSSTACK_WORKTREES_ROOT"
 git worktree add -b feat/guarded-deploy-operations \
-  /Users/gilbertchen/Documents/CODE/worktrees/osstack-guarded-deploy-operations \
+  "$OSSTACK_WORKTREES_ROOT/osstack-guarded-deploy-operations" \
   origin/main
-cd /Users/gilbertchen/Documents/CODE/worktrees/osstack-guarded-deploy-operations
+cd "$OSSTACK_WORKTREES_ROOT/osstack-guarded-deploy-operations"
 corepack enable pnpm
 pnpm install --frozen-lockfile
 mkdir -p "$PWD/.tmp/osstack-dev-home"
@@ -1042,3 +1053,104 @@ gh pr create \
 ```
 
 Expected: a PR URL. Plan E must not start until this PR is merged and the real Mac Mini soak gate is green.
+
+---
+
+## v3 mandatory amendments
+
+### D.1 Closed deploy policy
+
+Replace free-form `allowed_change_types` with a closed enum and a deterministic
+pure function:
+
+```text
+deriveChangeTypes(changedPaths, diffStats)
+```
+
+Unknown classification produces no allowed type and denies deployment. LLM
+signals are not inputs.
+
+Private overlay rules:
+
+- omitted target means repository policy remains effective;
+- a private overlay that supplies a command is a schema error;
+- allowed path merge is a prefix-aware intersection that can only narrow;
+- path comparison observes segment boundaries;
+- timezone is valid IANA data;
+- cross-midnight freeze windows have explicit semantics.
+
+### D.2 Deployment script authority and rollback drill
+
+Resolve every repository-local command/verify/health/rollback path referenced
+by effective policy. Changing one is RISK-R3. Eligibility records current
+SHA-256 digests and requires a successful drill no older than 30 days with the
+same digests.
+
+Add:
+
+```text
+osstack autonomy drill rollback --repo <repo-id> --json
+```
+
+The drill executes rollback and post-rollback health, persists timestamps,
+digests and result in SQLite, and is safe for a controlled non-production
+target unless production authority is separately granted.
+
+### D.3 Deploy runner environment
+
+Do not forward `process.env`. Start with `PATH`, `HOME`, `LANG`, and `TMPDIR`,
+then add only policy-approved names through the stricter overlay. Approval
+private material, notification credentials, CI tokens, and unrelated secrets
+are never passed. A fake secret injection test must prove the child cannot read
+it.
+
+### D.4 Trusted freeze control
+
+Production freeze-clear uses the same externally signed decision contract as
+RISK-R3 approval. Non-TTY rejection remains defense in depth but is not human
+authentication. TTY-only development/break-glass mode cannot clear production.
+
+### D.5 Durable notification outbox
+
+Insert a task after scorecard state exists:
+
+**Files:**
+
+- Create: `packages/core/src/state/notification-outbox.ts`
+- Create: `packages/core/src/state/notification-outbox.test.ts`
+- Create: `packages/cli/src/autonomy-notification.ts`
+- Create: `packages/cli/src/autonomy-notification.test.ts`
+- Modify: `packages/cli/src/autonomy-health.ts`
+- Modify: `packages/cli/src/autonomy-scorecard.ts`
+
+Entering `awaiting_approval`, `escalated`, `deploy_frozen`,
+`rollback_failed`, or `delivery_evidence_failed` persists a redacted,
+idempotent outbox item before delivery. Delivery uses bounded backoff and
+dead-letter state. Failure does not rewrite the primary run result, but pending
+and dead-letter counts/age remain visible until acknowledged.
+
+Never include raw diff, credentials, webhook URL, or approval material. Test
+success, timeout, retry, duplicate suppression, restart recovery, redaction,
+and dead-letter visibility.
+
+### D.6 Power, clock, log, and host evidence
+
+Do not hardcode or automatically apply a machine-wide power policy. The Owner
+selects bounded power assertion or persistent settings under the named machine
+authority gate. Record prior/current settings and rollback instructions.
+`autonomy health` verifies the selected policy. Detect clock jumps and run the
+network/recovery probes again.
+
+Add log rotation and proof retention so daemon output cannot trigger its own
+disk brake. Real host acceptance includes `launchctl print` evidence.
+
+### D.7 Real task supply and soak
+
+Before soak, freeze a checksummed manifest with at least 30 real, distinct
+RISK-R1/R2 tasks across two repositories, each with acceptance criteria and a
+unique prompt digest. Workspaces cannot be fixtures. If supply is insufficient,
+extend the window.
+
+The soak additionally exercises one notification outage with durable retry,
+one stale signed-decision rejection, and one mismatched deploy-script digest
+rejection.

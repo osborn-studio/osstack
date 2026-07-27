@@ -1289,3 +1289,62 @@ P2 不能早于 P1；不能用旁路脚本冒充一等 verifier。
 - [Kimi Code CLI：kimi command](https://www.kimi.com/code/docs/en/kimi-code-cli/reference/kimi-command.html)
 - [Kimi Code：Claude Code integration](https://www.kimi.com/code/docs/en/third-party-tools/claude-code.html)
 - [Kimi Code：Codex integration](https://www.kimi.com/code/docs/en/third-party-tools/codex.html)
+
+## 20. v3 安全勘误（执行时具有规范效力）
+
+本节由最终执行审计加入，不改变 KD-01 至 KD-08，只把原设计中的
+"只读""人工批准""通知""仓库保护"落实为可验证边界。
+
+### 20.1 Reviewer 隔离
+
+linked/detached Git worktree 共享 common Git directory，不能作为安全隔离。
+Reviewer 必须满足以下二选一：
+
+1. Kimi 原生只读/工具禁用策略，并由真实对抗探针证明无法写 Builder
+   仓库；或
+2. OS 级隔离或独立 principal，无法写 Builder 仓库及其 common Git
+   directory。
+
+仅把 diff 放入无 `.git` 的临时目录属于输入最小化，不足以阻止同用户
+shell 遍历文件系统。before/after snapshot 仍保留为纵深检测，并覆盖
+tracked、staged、untracked、ignored、Git config 与 hooks；快照不完整即
+fail closed。
+
+### 20.2 人工批准信任域
+
+TTY 是交互体验，不是身份认证；同机同用户进程可以创建伪终端。
+production 的 RISK-R3 批准与 freeze-clear 必须由 Builder/Reviewer 信任域
+之外的服务签名。签名内容绑定：
+
+- run ID；
+- contract 与 staged diff digest；
+- 精确 action scope；
+- decision；
+- nonce；
+- issued/expiry 时间。
+
+Mac Mini/daemon 只持有验证公钥。TTY-only 仅可作为明确标注的开发或
+break-glass 模式，不能授权 production。
+
+### 20.3 GitHub 有效保护
+
+Git 交付同时核验 legacy branch protection 与适用于目标分支的 repository
+rulesets。没有保护、查询权限不足、结果歧义或 required checks 为零时，
+一律 `blocked_delivery`。required check 必须对应当前 pushed SHA，merge
+必须绑定该 SHA，禁止 admin bypass。
+
+### 20.4 通知可靠性
+
+进入 `awaiting_approval`、`escalated`、`deploy_frozen`、
+`rollback_failed`、`delivery_evidence_failed` 时，先持久化脱敏 outbox
+事件，再尝试发送。发送失败不改写主 run 结果，但必须重试、幂等、
+dead-letter 可见，并在 health/scorecard 中持续提示。
+
+### 20.5 私密环境与发布产物
+
+Builder、Reviewer、deploy runner 使用中央最小环境 allowlist，不继承
+批准签名材料、通知凭据、CI token 或无关 parent secrets。
+
+隐私合格判定以实际 npm tarball、单二进制、runtime defaults、templates
+及公共文档为最高权威，发布范围零容忍。仅非发布测试 fixture 可以通过
+包含 reason、reviewer 与 expiry 的显式 allowlist。

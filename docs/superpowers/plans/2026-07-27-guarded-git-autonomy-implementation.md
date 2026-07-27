@@ -8,6 +8,16 @@
 
 **Tech Stack:** TypeScript ESM, Zod, Vitest, SQLite, SHA-256 canonical JSON, Git, GitHub CLI, osstack proof packs and loop engine.
 
+> **v3 execution amendment.** This plan is executable only together with
+> `2026-07-27-kimi-autonomy-execution-control-v3.md` and ledger items C-01
+> through C-04 plus X-02/X-04/X-07. The amendment section at the end of this
+> file overrides conflicting task text.
+
+**Execution hosts:** deterministic package and fake-GitHub work may run on any
+development host. Real GitHub protection/ruleset and SHA-bound merge
+qualification uses disposable protected repositories under the registered
+Owner account.
+
 ---
 
 ## Task 1: Create the Phase C worktree
@@ -20,10 +30,12 @@
 
 ```bash
 git fetch origin --prune
+: "${OSSTACK_WORKTREES_ROOT:=$HOME/Developer/worktrees}"
+mkdir -p "$OSSTACK_WORKTREES_ROOT"
 git worktree add -b feat/guarded-git-autonomy \
-  /Users/gilbertchen/Documents/CODE/worktrees/osstack-guarded-git-autonomy \
+  "$OSSTACK_WORKTREES_ROOT/osstack-guarded-git-autonomy" \
   origin/main
-cd /Users/gilbertchen/Documents/CODE/worktrees/osstack-guarded-git-autonomy
+cd "$OSSTACK_WORKTREES_ROOT/osstack-guarded-git-autonomy"
 corepack enable pnpm
 pnpm install --frozen-lockfile
 mkdir -p "$PWD/.tmp/osstack-dev-home"
@@ -1320,3 +1332,104 @@ gh pr create \
 ```
 
 Expected: a PR URL. Plan D begins only after CI is green and this PR is merged.
+
+---
+
+## v3 mandatory amendments
+
+### C.1 State machine and two-stage approval
+
+Add a legal `awaiting_approval -> candidate_proof` transition only when the
+signed post-diff decision matches the current run, contract digest, staged diff
+digest, action scope, nonce, and expiry. Resume must not call Builder again.
+
+Preflight approval binds the empty-diff sentinel and authorizes build/verify
+only. Commit, push, PR, merge, and deploy require the post-diff decision.
+
+Required red test:
+
+```text
+resumes approved post-diff RISK-R3 directly at candidate proof without runLocal
+```
+
+### C.2 Production human decisions
+
+`process.stdin.isTTY` is UX, not authentication; a same-user process can create
+a pseudo-terminal. Production RISK-R3 approval and freeze-clear use a signed
+decision issued outside the Builder/Reviewer trust domain. The daemon stores
+only the verification public key. The signed payload binds:
+
+```text
+run_id
+contract_sha256
+diff_sha256
+action_scope
+decision
+nonce
+issued_at
+expires_at
+```
+
+Reject invalid signatures, replayed nonces, expired decisions, mismatched
+digests, and mismatched scope. TTY approval may exist only as an explicitly
+reported development/break-glass mode and cannot authorize production.
+Governance denies `osstack autonomy approve|reject|freeze clear` to Builder and
+Reviewer.
+
+### C.3 Authoritative staged diff
+
+On a dedicated clean implementation worktree:
+
+1. run `git add -A`;
+2. collect `git diff --cached --binary` and `git status --porcelain=v1 -z`;
+3. compute risk, approval digest, and candidate proof from that exact material;
+4. recompute immediately before commit;
+5. on mismatch, persist evidence and transition to `escalated`.
+
+Untracked files must be present in risk and proof. Add a test where an untracked
+auth file becomes RISK-R3 and cannot be auto-merged.
+
+Read governing repository policy from the base commit with
+`git show <base>:.osstack/repo.yaml`; the builder worktree cannot weaken its own
+policy.
+
+### C.4 GitHub protection and merge atomicity
+
+`@osstack/github` checks effective protection from both legacy branch
+protection and applicable repository rulesets. Absent/ambiguous/unauthorized
+protection metadata fails closed. At least one required check must apply to the
+current pushed SHA; zero checks is failure.
+
+Merge uses:
+
+```text
+gh pr merge --squash --match-head-commit <pushedSha>
+```
+
+Never use `--admin`. Re-read PR head evidence immediately before merge. Add
+tests for ruleset-only protection, no protection, unauthorized lookup, zero
+checks, stale-SHA checks, changed PR head, and current-SHA success.
+
+### C.5 Scope, recovery, and idempotency
+
+- Check `action_scope` membership immediately before every external write.
+- Link autonomy approval decisions to `contract_approval_decisions` audit rows.
+- Map human-readable `needs_approval` to protocol status `"n"` with non-empty
+  `required_approvals`.
+- Make `opening_pr` idempotent by reusing an existing PR for the same head.
+- Add bounded retry for push/PR/check polling and a legal, state-verified resume
+  from `blocked_delivery`; do not retry policy, digest, or permission failures.
+- Move the per-repository single-writer constraint into migration 17.
+- Validate generated branch names with `git check-ref-format`.
+- SIGKILL tests must use actual abrupt process termination.
+- Task 8 adds the required `packages/loop/package.json` dependency.
+
+### C.6 Risk rules and child environment
+
+RISK-R3 covers `.env` and `.env.*`, SQL DDL, `sudo`/privilege escalation, new
+network destinations, effective policy files, referenced deployment scripts,
+and—when osstack is the target—risk, approval, and state-machine source files.
+LLM output is structurally absent from risk inputs.
+
+All Builder/Reviewer child environments come from a minimal allowlist and
+exclude approval, notification, CI, and unrelated parent secrets.

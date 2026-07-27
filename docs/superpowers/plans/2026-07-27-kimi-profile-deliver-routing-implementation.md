@@ -8,6 +8,15 @@
 
 **Tech Stack:** TypeScript ESM, Zod, Vitest, osstack config YAML, agent adapters, loop events, CLI JSON contracts.
 
+> **v3 execution amendment.** This plan is executable only together with
+> `2026-07-27-kimi-autonomy-execution-control-v3.md` and ledger items B-01
+> through B-03. The amendment section at the end of this file overrides
+> conflicting task text.
+
+**Execution hosts:** package and CLI work may run on any development host. The
+installed-profile smoke runs on the registered Mac Mini with an isolated
+development `OSSTACK_HOME`.
+
 ---
 
 ## Task 1: Create the Phase B worktree
@@ -20,10 +29,12 @@
 
 ```bash
 git fetch origin --prune
+: "${OSSTACK_WORKTREES_ROOT:=$HOME/Developer/worktrees}"
+mkdir -p "$OSSTACK_WORKTREES_ROOT"
 git worktree add -b feat/kimi-profile-deliver \
-  /Users/gilbertchen/Documents/CODE/worktrees/osstack-kimi-profile-deliver \
+  "$OSSTACK_WORKTREES_ROOT/osstack-kimi-profile-deliver" \
   origin/main
-cd /Users/gilbertchen/Documents/CODE/worktrees/osstack-kimi-profile-deliver
+cd "$OSSTACK_WORKTREES_ROOT/osstack-kimi-profile-deliver"
 corepack enable pnpm
 pnpm install --frozen-lockfile
 mkdir -p "$PWD/.tmp/osstack-dev-home"
@@ -761,3 +772,80 @@ gh pr create \
 ```
 
 Expected: a PR URL. Plan C starts only after CI is green and the PR is merged.
+
+---
+
+## v3 mandatory amendments
+
+### B.1 Legacy snapshot before extraction
+
+Before Task 5, add a red/characterization task that freezes:
+
+- bare `deliver`, `loop run`, and `loop start` JSON, exit status, and command
+  construction;
+- zero profile resolution and zero adapter probes for bare `legacy` calls.
+
+The guarded-routing activation predicate is exactly:
+
+```text
+explicitProfile || roleOverrides || guardedAutonomy ||
+(autoAgent && !executeCommand)
+```
+
+Do not use `|| !input.executeCommand`.
+
+### B.2 Evidence-graded runtime identity
+
+Runtime identity contains `reported`, `configured`, or `inferred`
+`evidence_source`. Adapter-reported values may override configuration for
+observed runtime evidence, but configured/inferred values cannot prove
+RISK-R2 provider/model independence.
+
+Required resolver result when either side is not reported:
+
+```ts
+{
+  pass: false,
+  reason: "configured/inferred identity cannot prove provider independence",
+}
+```
+
+Proof records both evidence sources and the independence reason. Keep
+`enforceRoleSeparation` in `@osstack/loop` as defense in depth; guarded modes
+also fail during routing when independence cannot be proven.
+
+### B.3 Missing config diagnostics task
+
+Insert a task after routing extraction:
+
+**Files:**
+
+- Modify: `packages/cli/src/config.ts`
+- Create or modify: `packages/cli/src/config-cli.test.ts`
+
+`config show` and `config doctor` display adapter, provider, model, profile, and
+evidence source for each role without emitting credentials or arbitrary
+environment values.
+
+### B.4 Deliver fixture and verification parity
+
+The guarded-local fixture is zero-dependency and uses `node --test` plus a
+committed lockfile when needed. Preserve the existing fifth inference rule:
+when `package.json` defines a test script, infer the package-manager test
+command.
+
+### B.5 Events, proof, and daemon
+
+- Use actual `LoopRunOptions`, not `LoopEngineOptions`.
+- Keep new profile summary fields optional for old callers or introduce a
+  compatible subtype.
+- Task 7 additionally modifies `packages/cli/src/daemon.ts` and
+  `packages/cli/src/daemon-loop.test.ts`.
+- Persist `profileRouting` in daemon RPC/run state; restart recovery reuses it
+  and never silently resolves a different adapter.
+- Store the selected profile name in contract metadata. Approval/resume argv
+  uses `--profile <meta.profile_name>`; an old card with no profile name fails
+  closed and requests re-signing.
+- Build current `dist` before every CLI smoke.
+- Any cross-package config-to-agent dependency uses type-only imports where
+  possible and must not introduce a second Zod runtime boundary.

@@ -8,6 +8,16 @@
 
 **Tech Stack:** TypeScript ESM, Zod, Vitest, Node child processes, Git plumbing, SHA-256, Kimi Code CLI prompt mode and stream JSON, osstack Hermes events.
 
+> **v3 execution amendment.** This plan is executable only together with
+> `2026-07-27-kimi-autonomy-execution-control-v3.md` and ledger items A-01
+> through A-05 plus X-01/X-07. The amendment section at the end of this file
+> overrides conflicting task text.
+
+**Execution hosts:** TypeScript, fake-binary, and package work may run on any
+development host. Real Kimi probes, authentication checks, live corpus scoring,
+and isolation attacks run on the registered Mac Mini and produce sanitized
+evidence.
+
 ---
 
 ## Task 1: Create the Phase A worktree and prove the baseline
@@ -22,10 +32,12 @@
 
 ```bash
 git fetch origin --prune
+: "${OSSTACK_WORKTREES_ROOT:=$HOME/Developer/worktrees}"
+mkdir -p "$OSSTACK_WORKTREES_ROOT"
 git worktree add -b feat/kimi-adapter-verifier \
-  /Users/gilbertchen/Documents/CODE/worktrees/osstack-kimi-adapter-verifier \
+  "$OSSTACK_WORKTREES_ROOT/osstack-kimi-adapter-verifier" \
   origin/main
-cd /Users/gilbertchen/Documents/CODE/worktrees/osstack-kimi-adapter-verifier
+cd "$OSSTACK_WORKTREES_ROOT/osstack-kimi-adapter-verifier"
 corepack enable pnpm
 pnpm install --frozen-lockfile
 mkdir -p "$PWD/.tmp/osstack-dev-home"
@@ -1101,3 +1113,117 @@ gh pr create \
 ```
 
 Expected: GitHub returns a PR URL. Do not start Plan B until required CI is green and the PR is merged.
+
+---
+
+## v3 mandatory amendments
+
+These amendments are part of the plan, not follow-up suggestions.
+
+### A.1 Task 1 probe contract
+
+Add read-only probes for:
+
+- `--agent-file` and any native tool allowlist/read-only policy;
+- observed stream JSON field names and ordering;
+- installed-but-unauthenticated behavior;
+- timeout and cancellation;
+- token/usage telemetry, or explicit `usage_unavailable`;
+- an adversarial instruction to modify the builder repository.
+
+Fixture fields are derived from the real probe. If the observed CLI conflicts
+with sample code later in this plan, update tests and parser schema to the
+observed sanitized fixture before implementation.
+
+### A.2 Structured review transport
+
+Task 4 additionally modifies:
+
+```text
+packages/hermes-adapter/src/events.ts
+packages/hermes-adapter/src/events.test.ts
+```
+
+`DonePayload` gains a versioned optional `review` object containing verdict,
+judgments, findings, Markdown/evidence references, and reported runtime
+identity. A configured structured reviewer whose `done` event lacks this
+object is an error. It must never fall back to legacy text approval.
+
+Required red test:
+
+```text
+preserves structured review through DonePayload parse and event round trip
+```
+
+### A.3 Adapter scope, prompt, timeout, and environment
+
+- Phase A capabilities are `code.review` and `release.verify`; do not advertise
+  `code.debug` or a Builder/coding role.
+- `buildKimiPrompt` receives only boundary-approved changed paths, a bounded
+  sanitized diff, deterministic result summaries, and the review contract.
+  The reviewer is not instructed to discover content outside that envelope.
+- `subject_run_id` means the adapter task run ID received by the reviewer. If a
+  second identifier is required, name it `review_run_id`.
+- Kimi's per-adapter timeout is passed through the verifier and defaults to
+  `600_000` ms unless the real probe justifies another value. The verifier's
+  old `120_000` ms default must not silently override it.
+- Build all agent child environments from a central minimal allowlist. Tests
+  inject fake approval and notification secrets and prove Kimi cannot read
+  them.
+
+### A.4 Reviewer isolation
+
+A linked or detached `git worktree` is not an isolation boundary because it
+shares the common Git directory. Task 6 must select one of:
+
+1. a Kimi-native read-only/tool-denial policy proven by the real adversarial
+   probe; or
+2. an OS-enforced sandbox or separate principal that cannot write the builder
+   repository or its common Git directory.
+
+A diff-only temporary directory without `.git` is useful input minimization but
+does not alone stop a same-user shell process from traversing the filesystem.
+
+Before/after evidence remains mandatory and covers:
+
+- tracked and untracked content;
+- staged/index-only changes;
+- ignored paths from
+  `git ls-files --others --ignored --exclude-standard -z`;
+- the resolved common Git directory's `config`, `hooks/**`, and relevant
+  worktree metadata.
+
+Any incomplete snapshot or observed mutation blocks delivery. Add red tests
+named:
+
+```text
+rejects reviewer write to git hook
+rejects reviewer write to git config
+rejects reviewer write to ignored file
+does not execute reviewer-created hook during commit
+```
+
+### A.5 Verifier semantics
+
+The existing passing-orphan warning is intentionally tightened only for a
+configured structured reviewer. Update the old assertions and design comment
+explicitly. Fingerprints use normalized rule/severity/path/line data, not
+free-form model prose.
+
+### A.6 Evaluator corpus
+
+Task 10 is two layers:
+
+- offline fake corpus: always runs in CI and proves parsing/fail-closed plumbing;
+- live corpus: `node scripts/eval-kimi-review.mjs --live --json` runs on the
+  Mac Mini against at least 10 cases and scores deterministic
+  `expected_finding_rules`.
+
+A-to-B requires live false passes equal to zero. Record false alarms, reported
+identity, usage/availability, prompt digest, and result digest in
+`docs/reports/kimi-autonomy/phase-a-live-kimi-scorecard.json`.
+
+### A.7 Correct CLI diagnostics target
+
+Task 9 modifies `packages/cli/src/config.ts` and config CLI tests. It does not
+modify `control-plane-doctor.ts` for agent availability.
