@@ -26,6 +26,7 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 | GitHub Release | npm 包：`@osstack/cli@0.12.0`；最新单文件二进制：[`v0.8.1`](https://github.com/gilosbornhello/osstack/releases/tag/v0.8.1) |
 | macOS 单文件二进制 | 已发布 `darwin-arm64` 的显式 `public-ad-hoc` archive |
 | Knowledge Cloud | 已部署到 EdgeOne：`https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
+| Probe | CLI 生命周期已随 `@osstack/cli@0.12.0` 发布；report-only 是 gate 行为，不是后台任务。两周真实使用 checkpoint 仍未完成。 |
 | License | MIT |
 | Monorepo | 16 个 package |
 
@@ -61,6 +62,7 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 | Cockpit / Dashboard | 本地 dashboard/TUI 展示 daemon、recent runs、kanban、evidence、quality、next actions。 | `osstack cockpit`, `osstack dashboard` |
 | 远程 gateway hook | 提供 dashboard URL、kanban subscription/events，方便外部 bot 把进展转发到 Telegram、飞书/Lark、Slack、webhook 或其他 IM。 | `dashboard url`, `kanban subscribe`, `kanban events`, `KanbanNotifier` |
 | Knowledge Cloud | 官方/团队/项目知识包、cloud sync、本地 cache fallback、search、publish、audit、feedback、review UI。 | `osstack knowledge`, `@osstack/knowledge-cloud` |
+| 四象限需求探询 | 持久化会改变实施的未知项、一次一题、导出 portable ledger、评估 readiness，并把人审后的决策接入实施门禁。 | `osstack probe ...`、`@osstack/governance`、`@osstack/core`；可选 repo-local `probe-skill` |
 | Protocol / Conformance | 跨进程 agent command、result、policy、evidence、approval、run、event schema 和 conformance tests。 | `@osstack/protocol`, `@osstack/conformance` |
 
 ### 远程 Gateway 状态
@@ -178,10 +180,13 @@ osstack knowledge search "proof pack checksum" \
 # 4. 检查 Loop Engineering runtime 是否可用。
 osstack loop doctor --workspace . --json
 
-# 5. 只读审计当前仓库的知识卫生。
+# 5. 查看显式 Probe session 工作流；Probe 不会自动启动。
+osstack probe --help
+
+# 6. 只读审计当前仓库的知识卫生。
 osstack neat check --fail-on none
 
-# 6. 运行一次带 worktree 隔离和证据输出的交付流程。
+# 7. 运行一次带 worktree 隔离和证据输出的交付流程。
 osstack deliver "Make a small verified change" \
   --verify "pnpm test" \
   --auto-agent \
@@ -208,6 +213,7 @@ osstack deliver "Make a small verified change" \
 | Capability（能力） | 类型化技能，例如 `code.write`、`code.test`、`code.review`、`design.prd`、`release.proof`、`research.ml`。 |
 | Policy（策略） | 根据能力、成本、匹配度和历史表现选择 Agent 的决策层。 |
 | Governance（治理） | 确定性的安全/质量检查，不是模型裁判。 |
+| Probe（探询） | 持久化的四象限探询会话，把未知项转成可审阅的决策、目标文档和 readiness 证据。 |
 | Proof pack（证据包） | 带 SHA-256 checksum 的证据集合，包含 report、state、events、verify、governance、diff、manifest 等。 |
 | Knowledge pack（知识包） | osstack 原生知识资产，包含 version、license、source provenance、quality metadata、chunks 和 retrieval eval。 |
 
@@ -301,6 +307,46 @@ osstack compliance render <run_id> --pack engineering-readiness --proof-dir rele
 ```
 
 说明：osstack 的 compliance pack 是证据映射，不是外部认证声明。它可以帮助工程团队、管理者、审计人员和客户更好地理解一次 run 的证据，但不自动声明 SOC 2、ISO 27001、EU AI Act 或任何第三方认证。
+
+### 四象限需求探询（Probe）
+
+Probe 是显式、持久化的开发前/开发中工作流，不会在后台自动创建 session。
+每个真实 spec 都要主动启动，并通过 `--task` 关联对应任务，kanban readiness
+guard 才能找到它。运行前请替换下面的示例路径和标识：
+
+```bash
+osstack probe start \
+  --input docs/spec.md \
+  --task TASK-123 \
+  --doc-type tech \
+  --depth standard \
+  --actor-kind human \
+  --actor-id owner \
+  --idempotency-key TASK-123-probe-start \
+  --json
+
+osstack probe status --repo . --json
+osstack probe gate --session <session_id> --json
+```
+
+建议在仓库中显式提交 rollout policy，方便 PR 审阅：
+
+```yaml
+# .osstack/probe.yaml
+schema_version: 1
+enforcement: report
+```
+
+即使没有 `.osstack/probe.yaml`，内置策略也已经是 `enforcement: report`。
+但 **report-only 的含义只是：gate 被执行时报告 readiness violation、但不阻断**。
+它不是 daemon、scheduler 或自动 dogfood 开关；没有 Probe session 时就没有可评估内容。
+
+确定性的 CLI 生命周期已经包含在 npm 版本中。一次一题的自然语言 Agent 体验位于
+[`probe-skill/`](probe-skill/)，CLI 不会自动把它安装进 Codex/Agent 的 skills
+目录；调用 `$probe-skill` 前必须另行安装或链接。两周 report-only dogfood、
+5 个真实粗糙 spec 和 `restate` 人工抽查仍是经验性 checkpoint，不能当作已完成的
+发布结论。详见
+[Probe v2 设计与 checkpoint 记录](docs/2026-07-17-probe-four-quadrant-elicitation-design.md#13-checkpoints发布与回滚)。
 
 ### 知识卫生（neat）
 
