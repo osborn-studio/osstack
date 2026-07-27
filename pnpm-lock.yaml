@@ -281,6 +281,9 @@ importers:
       '@osstack/github':
         specifier: workspace:*
         version: link:../github
+      '@osstack/governance':
+        specifier: workspace:*
+        version: link:../governance
       '@osstack/hermes-adapter':
         specifier: workspace:*
         version: link:../hermes-adapter
