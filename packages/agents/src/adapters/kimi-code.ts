@@ -75,6 +75,18 @@ interface ProbeResult {
   timedOut: boolean;
 }
 
+export type KimiReadinessState =
+  | "kimi_not_installed"
+  | "kimi_not_authenticated"
+  | "kimi_available";
+
+export interface KimiReadiness {
+  state: KimiReadinessState;
+  reason: string;
+  version?: string;
+  last_checked_at: number;
+}
+
 const CAPABILITIES: readonly Capability[] = [
   CapabilitySchema.parse({
     id: "kimi-code.code.review",
@@ -110,18 +122,58 @@ export class KimiCodeAdapter extends BaseAgentAdapter {
   }
 
   async isAvailable(): Promise<AgentAvailability> {
-    const result = await runProbe(this.bin(), ["--version"], 5_000);
-    const lastChecked = Math.floor(Date.now() / 1000);
-    if (result.exitCode === 0) {
-      this.cachedVersion = parseVersion(result.stdout || result.stderr);
-      return { available: true, last_checked_at: lastChecked };
-    }
-    const detail = singleLine(result.stderr || result.stdout);
+    const readiness = await this.readiness();
     return {
-      available: false,
-      reason: result.timedOut
-        ? "kimi --version timed out"
-        : `kimi --version failed: ${detail || `exit ${result.exitCode}`}`,
+      available: readiness.state === "kimi_available",
+      ...(readiness.state === "kimi_available"
+        ? {}
+        : { reason: readiness.reason }),
+      last_checked_at: readiness.last_checked_at,
+    };
+  }
+
+  async readiness(): Promise<KimiReadiness> {
+    const lastChecked = Math.floor(Date.now() / 1000);
+    const versionProbe = await runProbe(this.bin(), ["--version"], 5_000);
+    if (versionProbe.exitCode !== 0) {
+      return {
+        state: "kimi_not_installed",
+        reason: versionProbe.timedOut
+          ? "kimi unavailable (not installed): version probe timed out"
+          : `kimi unavailable (not installed): version probe exited ${versionProbe.exitCode}`,
+        last_checked_at: lastChecked,
+      };
+    }
+
+    const version = parseVersion(versionProbe.stdout || versionProbe.stderr);
+    this.cachedVersion = version;
+    const providerProbe = await runProbe(
+      this.bin(),
+      ["provider", "list"],
+      5_000,
+    );
+    if (
+      providerProbe.exitCode !== 0
+      || !hasAuthenticatedKimiProvider(
+        providerProbe.stdout || providerProbe.stderr,
+      )
+    ) {
+      return {
+        state: "kimi_not_authenticated",
+        reason: providerProbe.timedOut
+          ? "kimi unavailable (not authenticated): provider probe timed out"
+          : providerProbe.exitCode !== 0
+            ? `kimi unavailable (not authenticated): provider probe exited ${providerProbe.exitCode}`
+            : "kimi unavailable (not authenticated): no authenticated Kimi provider is configured",
+        version,
+        last_checked_at: lastChecked,
+      };
+    }
+
+    return {
+      state: "kimi_available",
+      reason: "kimi available: CLI and authenticated provider detected",
+      version,
       last_checked_at: lastChecked,
     };
   }
@@ -646,6 +698,14 @@ function envelope(
 function isSafeRelativePath(value: string): boolean {
   if (isAbsolute(value) || /^[A-Za-z]:[\\/]/.test(value)) return false;
   return !value.replaceAll("\\", "/").split("/").includes("..");
+}
+
+function hasAuthenticatedKimiProvider(output: string): boolean {
+  return output.split(/\r?\n/).some((line) => (
+    /\btype=kimi\b/i.test(line)
+    && /\bmodels=[1-9][0-9]*\b/i.test(line)
+    && /\bsource=[a-z0-9._/-]+\b/i.test(line)
+  ));
 }
 
 function positiveInteger(

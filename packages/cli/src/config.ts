@@ -8,7 +8,11 @@
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { stringify as stringifyYaml } from "yaml";
-import { defaultAdapters } from "@osstack/agents";
+import {
+  defaultAdapters,
+  rolesForCapabilityKinds,
+  type AgentRuntimeIdentity,
+} from "@osstack/agents";
 import type { RoutableAdapter } from "@osstack/core";
 import {
   ALL_ROLES,
@@ -25,7 +29,16 @@ import {
   type RoleMap,
 } from "@osstack/config";
 
-function adapters(): RoutableAdapter[] {
+type ConfigAdapter = RoutableAdapter & {
+  runtimeIdentity?: () => Promise<AgentRuntimeIdentity>;
+};
+
+export interface ConfigCommandDeps {
+  adapters?: () => ConfigAdapter[];
+}
+
+function adapters(deps: ConfigCommandDeps = {}): ConfigAdapter[] {
+  if (deps.adapters !== undefined) return deps.adapters();
   return defaultAdapters() as unknown as RoutableAdapter[];
 }
 
@@ -43,16 +56,19 @@ function advertises(a: RoutableAdapter, role: AgentRole): boolean {
   return a.capabilities().some((c) => kinds.includes(c.kind));
 }
 
-export async function handleConfigCommand(args: string[]): Promise<number> {
+export async function handleConfigCommand(
+  args: string[],
+  deps: ConfigCommandDeps = {},
+): Promise<number> {
   const sub = args[0];
   switch (sub) {
     case undefined:
     case "show":
-      return await configShow(args.slice(1));
+      return await configShow(args.slice(1), deps);
     case "doctor":
-      return await configDoctor();
+      return await configDoctor(deps);
     case "pick":
-      return await configPick(args.slice(1));
+      return await configPick(args.slice(1), deps);
     case "init":
       return configInit();
     case "use":
@@ -95,11 +111,18 @@ Examples:
   osstack config set defaults.design.fallback claude-design,google-stitch`);
 }
 
-async function configShow(args: string[]): Promise<number> {
+async function configShow(
+  args: string[],
+  deps: ConfigCommandDeps,
+): Promise<number> {
   const cfg = loadConfig();
   const override = overrideFrom(args);
   const prof = selectProfile(cfg, override !== undefined ? { override } : {});
-  const res = await resolveAll(prof.roles, adapters(), { autoFallback: true });
+  const res = await resolveAll(
+    prof.roles,
+    adapters(deps),
+    { autoFallback: true },
+  );
 
   console.log(`Osstack — profile: ${prof.name}`);
   console.log(`  (${prof.reason})`);
@@ -123,8 +146,8 @@ async function configShow(args: string[]): Promise<number> {
   return 0;
 }
 
-async function configDoctor(): Promise<number> {
-  const list = adapters();
+async function configDoctor(deps: ConfigCommandDeps): Promise<number> {
+  const list = adapters(deps);
   console.log("Osstack doctor — agent availability on this machine\n");
   for (const a of list) {
     let mark = "✗";
@@ -136,9 +159,24 @@ async function configDoctor(): Promise<number> {
     } catch (err) {
       detail = `probe threw — ${err instanceof Error ? err.message : String(err)}`;
     }
-    const roles = ALL_ROLES.filter((r) => advertises(a, r));
-    console.log(`  ${mark} ${a.id.padEnd(14)} ${detail}`);
+    const roles = rolesForCapabilityKinds(
+      a.capabilities().map((capability) => capability.kind),
+    );
+    const state = kimiReadinessState(a.id, detail);
+    console.log(`  ${mark} ${a.id.padEnd(14)} ${state} — ${detail}`);
     console.log(`    roles: ${roles.length ? roles.join(", ") : "(none)"}`);
+    if (a.runtimeIdentity !== undefined) {
+      try {
+        const identity = await a.runtimeIdentity();
+        console.log(
+          `    provider: ${identity.provider_id}  model: ${identity.model_id}`,
+        );
+      } catch (err) {
+        console.log(
+          `    runtime identity unavailable — ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
   }
   console.log("\nBy role:");
   for (const role of ALL_ROLES) {
@@ -148,7 +186,10 @@ async function configDoctor(): Promise<number> {
   return 0;
 }
 
-async function configPick(args: string[]): Promise<number> {
+async function configPick(
+  args: string[],
+  deps: ConfigCommandDeps,
+): Promise<number> {
   const cfg = loadConfig();
   const override = overrideFrom(args);
   const prof = selectProfile(cfg, override !== undefined ? { override } : {});
@@ -162,7 +203,7 @@ async function configPick(args: string[]): Promise<number> {
 
   const rl = createInterface({ input: stdin, output: stdout });
   try {
-    const list = adapters();
+    const list = adapters(deps);
     for (const role of ALL_ROLES) {
       const candidates = list.filter((a) => advertises(a, role));
       const avail = await Promise.all(
@@ -199,6 +240,13 @@ async function configPick(args: string[]): Promise<number> {
   const path = saveConfig(cfg);
   console.log(`Saved ${path}`);
   return 0;
+}
+
+function kimiReadinessState(agentId: string, detail: string): string {
+  if (agentId !== "kimi-code") return "agent_probe";
+  if (detail.includes("not installed")) return "kimi_not_installed";
+  if (detail.includes("not authenticated")) return "kimi_not_authenticated";
+  return detail === "available" ? "kimi_available" : "kimi_unavailable";
 }
 
 function configInit(): number {

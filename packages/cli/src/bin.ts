@@ -13,7 +13,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
-import { agentAuthMode, defaultAdapters, rolesForCapabilityKinds } from "@osstack/agents";
+import {
+  agentAuthMode,
+  defaultAdapters,
+  rolesForCapabilityKinds,
+  type AgentRuntimeIdentity,
+} from "@osstack/agents";
 import { loadConfig, resolveAll, selectProfile, type AgentRole } from "@osstack/config";
 import {
   getCompliancePack,
@@ -851,6 +856,9 @@ async function handleAgentCommand(args: string[]): Promise<number> {
           console.log(`${agent.id} — ${agent.display_name}`);
           console.log(`  roles=${agent.roles.join(",") || "(none)"}`);
           console.log(`  auth_mode=${agent.auth_mode} cost_tier=${agent.cost_tier} available=${agent.available.available}`);
+          if (agent.runtime_identity !== undefined) {
+            console.log(`  provider=${agent.runtime_identity.provider_id} model=${agent.runtime_identity.model_id}`);
+          }
           if (!agent.available.available && agent.available.reason !== undefined) {
             console.log(`  unavailable_reason=${agent.available.reason}`);
           }
@@ -4875,9 +4883,19 @@ async function listLocalAgentProfiles(): Promise<Array<{
   roles: string[];
   capabilities: Array<{ id: string; kind: string; description: string; cost_tier: string }>;
   available: { available: boolean; reason?: string; last_checked_at: number };
+  runtime_identity?: AgentRuntimeIdentity;
 }>> {
   return await Promise.all(defaultAdapters().map(async (adapter) => {
     const capabilities = adapter.capabilities();
+    const available = await adapter.isAvailable();
+    let runtimeIdentity: AgentRuntimeIdentity | undefined;
+    if (adapter.runtimeIdentity !== undefined) {
+      try {
+        runtimeIdentity = await adapter.runtimeIdentity();
+      } catch {
+        runtimeIdentity = undefined;
+      }
+    }
     return {
       id: adapter.id,
       display_name: adapter.display_name,
@@ -4890,7 +4908,10 @@ async function listLocalAgentProfiles(): Promise<Array<{
         description: capability.description,
         cost_tier: capability.cost_tier,
       })),
-      available: await adapter.isAvailable(),
+      available,
+      ...(runtimeIdentity !== undefined
+        ? { runtime_identity: runtimeIdentity }
+        : {}),
     };
   }));
 }

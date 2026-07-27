@@ -41,10 +41,18 @@ if [ "\${1:-}" = "--version" ]; then
   printf 'Kimi Code CLI 0.29.1\\n'
   exit 0
 fi
+if [ "\${1:-}" = "provider" ] && [ "\${2:-}" = "list" ]; then
+  printf 'managed:kimi-code  type=kimi  models=4  source=oauth\\n\\nDefault model: kimi-code/k3\\n'
+  exit 0
+fi
 exit 91
 `);
     const adapter = adapterFor(bin);
 
+    await expect(adapter.readiness()).resolves.toMatchObject({
+      state: "kimi_available",
+      version: "0.29.1",
+    });
     await expect(adapter.isAvailable()).resolves.toMatchObject({
       available: true,
     });
@@ -65,7 +73,29 @@ exit 91
     const availability = await adapter.isAvailable();
 
     expect(availability.available).toBe(false);
-    expect(availability.reason).toMatch(/spawn|ENOENT/);
+    expect(availability.reason).toContain("not installed");
+  });
+
+  it("distinguishes installed but unauthenticated from a missing binary", async () => {
+    const bin = await fakeCommand("kimi-unauthenticated", `
+if [ "\${1:-}" = "--version" ]; then printf '0.29.1\\n'; exit 0; fi
+if [ "\${1:-}" = "provider" ] && [ "\${2:-}" = "list" ]; then
+  printf 'login required\\n' >&2
+  exit 17
+fi
+exit 91
+`);
+    const adapter = adapterFor(bin);
+
+    await expect(adapter.readiness()).resolves.toMatchObject({
+      state: "kimi_not_authenticated",
+      version: "0.29.1",
+      reason: expect.stringContaining("not authenticated"),
+    });
+    await expect(adapter.isAvailable()).resolves.toMatchObject({
+      available: false,
+      reason: expect.stringContaining("not authenticated"),
+    });
   });
 
   it("emits a schema-valid approved structured review", async () => {
