@@ -32,7 +32,7 @@ const KimiReviewInputSchema = z.object({
   evaluation_criteria: z.array(z.object({
     id: z.string().min(1).max(200),
     requirement: z.string().min(1).max(4_000),
-  }).strict()).min(1).max(100),
+  }).strict()).max(100),
   changed_paths: z.array(z.string().min(1).max(1_000).refine(isSafeRelativePath, {
     message: "changed path must be repository-relative",
   })).max(500),
@@ -395,7 +395,7 @@ export function buildKimiPrompt(
     "Do not wrap the sentinel or JSON in a Markdown code fence.",
     "Use exactly these keys and value types; do not rename or add keys:",
     JSON.stringify(resultShape),
-    "Return exactly one evaluation_judgments item for every supplied criterion id.",
+    "Return exactly one evaluation_judgments item for every supplied criterion id, or an empty array when no criteria were supplied.",
     "Each judgment requires id, pass (boolean), severity (warning or error), and summary.",
     "Each finding requires rule_id, severity, and message; file, line, and evidence are optional.",
     "Omit fingerprint from findings; osstack computes it deterministically.",

@@ -49,6 +49,10 @@ Recorded on 2026-07-27 before Phase A implementation.
 - The same end-to-end path failed closed when Kimi first returned judgment keys
   outside the strict contract; after the prompt was made schema-exact, the next
   real run passed without weakening validation.
+- The complete verifier path was then exercised against a disposable Git
+  repository: deterministic boundary, before snapshot, real Kimi review, after
+  snapshot, judgment reconciliation, and final verdict all passed with score
+  `1`, no issues, and one structured `approved` review artifact.
 - Sanitized fixtures contain no credentials, personal identifiers, session
   values, or machine-specific absolute paths.
 

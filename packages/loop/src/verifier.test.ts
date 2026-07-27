@@ -262,7 +262,7 @@ describe("verifyRun", () => {
     }));
   });
 
-  it("warns but does not fail on a passing adapter judgment with an unknown id", async () => {
+  it("fails closed on a passing adapter judgment with an unknown id", async () => {
     const adapter = mockAdapter({
       async *invoke(t) {
         yield judgmentDoneEvent(t.run_id, t.session_id, "completed", "review ran", [
@@ -279,9 +279,191 @@ describe("verifyRun", () => {
       task: reviewTask("known-review"),
     });
 
-    expect(verdict.pass).toBe(true);
+    expect(verdict.pass).toBe(false);
     const orphan = verdict.issues.find((issue) => issue.rule === "verify.unknown_evaluation_id");
-    expect(orphan).toMatchObject({ severity: "warning", message: expect.stringContaining("bonus-check") });
+    expect(orphan).toMatchObject({
+      severity: "error",
+      message: expect.stringContaining("bonus-check"),
+    });
+  });
+
+  it("blocks at the pre-review boundary without invoking Kimi", async () => {
+    await initGitWorkspace();
+    await writeFile(join(workspace, ".env"), "TOKEN=must-not-cross\n");
+    let invokeCount = 0;
+    const adapter = kimiAdapter(async function* (agentTask) {
+      invokeCount += 1;
+      yield structuredReviewDoneEvent(agentTask, "approved", []);
+    });
+
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace,
+      verifierAgentIds: [adapter.id],
+      adapters: [adapter],
+      task: reviewTask("correctness"),
+    });
+
+    expect(invokeCount).toBe(0);
+    expect(verdict.pass).toBe(false);
+    expect(verdict.issues).toContainEqual(expect.objectContaining({
+      rule: "review.forbidden_path",
+    }));
+  });
+
+  it("blocks a structured changes_requested verdict and preserves the artifact", async () => {
+    await initChangedGitWorkspace();
+    const adapter = kimiAdapter(async function* (agentTask) {
+      yield structuredReviewDoneEvent(
+        agentTask,
+        "changes_requested",
+        [structuredJudgment("correctness", false)],
+      );
+    });
+
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace,
+      verifierAgentIds: [adapter.id],
+      adapters: [adapter],
+      task: reviewTask("correctness"),
+    });
+
+    expect(verdict.pass).toBe(false);
+    expect(verdict.issues).toContainEqual(expect.objectContaining({
+      rule: "verify.review_not_approved",
+    }));
+    expect(verdict.review_artifacts).toEqual([
+      expect.objectContaining({ verdict: "changes_requested" }),
+    ]);
+  });
+
+  it("blocks missing, unknown, and duplicate structured judgments", async () => {
+    for (const [label, judgments, expectedRule] of [
+      ["missing", [], "verify.evaluation_failed"],
+      [
+        "unknown",
+        [structuredJudgment("other-id", true)],
+        "verify.unknown_evaluation_id",
+      ],
+      [
+        "duplicate",
+        [
+          structuredJudgment("correctness", true),
+          structuredJudgment("correctness", true),
+        ],
+        "verify.duplicate_evaluation_id",
+      ],
+    ] as const) {
+      await rm(workspace, { recursive: true, force: true });
+      workspace = mkdtempSync(join(tmpdir(), `osstack-verifier-${label}-`));
+      await initChangedGitWorkspace();
+      const adapter = kimiAdapter(async function* (agentTask) {
+        yield structuredReviewDoneEvent(agentTask, "approved", [...judgments]);
+      });
+
+      const verdict = await verifyRun(run(), {
+        workspacePath: workspace,
+        verifierAgentIds: [adapter.id],
+        adapters: [adapter],
+        task: reviewTask("correctness"),
+      });
+
+      expect(verdict.pass, label).toBe(false);
+      expect(verdict.issues, label).toContainEqual(expect.objectContaining({
+        rule: expectedRule,
+      }));
+    }
+  });
+
+  it("blocks malformed structured review artifacts", async () => {
+    await initChangedGitWorkspace();
+    const adapter = kimiAdapter(async function* (agentTask) {
+      const event = structuredReviewDoneEvent(
+        agentTask,
+        "approved",
+        [structuredJudgment("correctness", true)],
+      );
+      yield {
+        ...event,
+        payload: {
+          ...event.payload,
+          review: { schema_version: 1, verdict: "approved" },
+        },
+      } as unknown as HermesEvent;
+    });
+
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace,
+      verifierAgentIds: [adapter.id],
+      adapters: [adapter],
+      task: reviewTask("correctness"),
+    });
+
+    expect(verdict.pass).toBe(false);
+    expect(verdict.issues).toContainEqual(expect.objectContaining({
+      rule: "verify.review_artifact_invalid",
+    }));
+  });
+
+  it("blocks reviewer mutation after a valid approval", async () => {
+    await initChangedGitWorkspace();
+    const adapter = kimiAdapter(async function* (agentTask) {
+      await writeFile(
+        join(workspace, ".git/hooks/pre-commit"),
+        "#!/bin/sh\nexit 0\n",
+      );
+      yield structuredReviewDoneEvent(
+        agentTask,
+        "approved",
+        [structuredJudgment("correctness", true)],
+      );
+    });
+
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace,
+      verifierAgentIds: [adapter.id],
+      adapters: [adapter],
+      task: reviewTask("correctness"),
+    });
+
+    expect(verdict.pass).toBe(false);
+    expect(verdict.issues).toContainEqual(expect.objectContaining({
+      rule: "verify.reviewer_mutation",
+    }));
+  });
+
+  it("passes an approved complete structured review without mutation", async () => {
+    await initChangedGitWorkspace();
+    let captured: AgentTask | undefined;
+    const adapter = kimiAdapter(async function* (agentTask) {
+      captured = agentTask;
+      yield structuredReviewDoneEvent(
+        agentTask,
+        "approved",
+        [structuredJudgment("correctness", true)],
+      );
+    });
+
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace,
+      verifierAgentIds: [adapter.id],
+      adapters: [adapter],
+      task: reviewTask("correctness"),
+    });
+
+    expect(verdict.pass).toBe(true);
+    expect(verdict.review_artifacts).toEqual([
+      expect.objectContaining({
+        reviewer_agent_id: "kimi-code",
+        verdict: "approved",
+      }),
+    ]);
+    expect(captured?.context?.["kimi_review_input"]).toMatchObject({
+      schema_version: 1,
+      changed_paths: ["src/app.ts"],
+      evaluation_criteria: [{
+        id: "correctness",
+      }],
+    });
   });
 });
 
@@ -343,6 +525,11 @@ async function initGitWorkspace(): Promise<void> {
   ], { cwd: workspace, stdio: "ignore" });
 }
 
+async function initChangedGitWorkspace(): Promise<void> {
+  await initGitWorkspace();
+  await writeFile(join(workspace, "src", "app.ts"), "export const value = 2;\n");
+}
+
 function run(): AgentRun {
   return {
     run_id: "run-plan-1",
@@ -399,6 +586,70 @@ function mockAdapter(options: {
     invoke: options.invoke ?? (async function* (task) {
       yield doneEvent(task.run_id, task.session_id, "completed", "ok");
     }),
+  };
+}
+
+function kimiAdapter(invoke: AgentAdapter["invoke"]): AgentAdapter {
+  return mockAdapter({
+    id: "kimi-code",
+    capability: capability(
+      "kimi-code.code.review",
+      "code.review",
+      "Kimi review",
+    ),
+    invoke,
+  });
+}
+
+function structuredJudgment(
+  id: string,
+  pass: boolean,
+): { id: string; pass: boolean; severity: "error"; summary: string } {
+  return {
+    id,
+    pass,
+    severity: "error",
+    summary: pass ? "Criterion passed." : "Criterion failed.",
+  };
+}
+
+function structuredReviewDoneEvent(
+  taskInput: AgentTask,
+  verdict: "approved" | "changes_requested",
+  judgments: Array<ReturnType<typeof structuredJudgment>>,
+): HermesEvent {
+  return {
+    event_id: `${taskInput.run_id}:1`,
+    seq: 1,
+    run_id: taskInput.run_id,
+    session_id: taskInput.session_id,
+    created_at: Date.now() / 1000,
+    terminal: true,
+    type: "done",
+    payload: {
+      status: verdict === "approved" ? "completed" : "failed",
+      last_seq: 0,
+      result_summary: verdict,
+      review: {
+        schema_version: 1,
+        verdict,
+        risk: "read_only",
+        markdown: `# Review\n\n${verdict}`,
+        judgments,
+        findings: [],
+        recommended_actions: verdict === "approved" ? [] : ["Fix the issue."],
+        evidence_refs: [],
+        runtime_identity: {
+          adapter_id: "kimi-code",
+          adapter_version: "0.29.1",
+          auth_mode: "subprocess/login-reuse",
+          provider_id: "kimi",
+          model_id: "kimi-code/k3",
+          agent_profile: "osstack-reviewer",
+          evidence_source: "configured",
+        },
+      },
+    },
   };
 }
 
