@@ -9,7 +9,10 @@ packages are listed for completeness but are not a consumable API.
 
 ```ts
 export * from "./base.js";
+export * from "./child-env.js";
 export * from "./metadata.js";
+export * from "./adapters/kimi-contract.js";
+export * from "./adapters/kimi-stream.js";
 export { ClaudeCodeAdapter } from "./adapters/claude-code.js";
 export { ClaudeCliAdapter } from "./adapters/claude-cli.js";
 export { CodexCliAdapter } from "./adapters/codex-cli.js";
@@ -18,6 +21,7 @@ export { ClaudeDesignAdapter } from "./adapters/claude-design.js";
 export { DeepSeekReviewAdapter } from "./adapters/ds-review.js";
 export { DeepSeekVerifyAdapter } from "./adapters/ds-verify.js";
 export { GoogleStitchAdapter } from "./adapters/google-stitch.js";
+export { KimiCodeAdapter } from "./adapters/kimi-code.js";
 export {
 export {
 export {
@@ -112,6 +116,7 @@ export * from "./portfolio-status.js";
 ```ts
 export * from "./types.js";
 export * from "./scanner.js";
+export * from "./review-boundary.js";
 export * from "./knowledge-hygiene/index.js";
 export * from "./probe/index.js";
 ```
@@ -147,6 +152,8 @@ export * from "./protocol-mappers.js";
 export * from "./budget.js";
 export * from "./discovery-policy.js";
 export * from "./evaluation-spec.js";
+export * from "./review-boundary.js";
+export * from "./reviewer-isolation.js";
 export * from "./feedback.js";
 export * from "./lesson-draft.js";
 export * from "./stack-retro.js";

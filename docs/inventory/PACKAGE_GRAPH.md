@@ -18,7 +18,7 @@ Workspace packages, publish status, and internal (workspace) dependencies.
 | `@osstack/hermes-adapter` | 0.12.0 | public | `core` |
 | `@osstack/knowledge` | 0.8.0 | public | — |
 | `@osstack/knowledge-cloud` | 0.8.0 | public | `knowledge` |
-| `@osstack/loop` | 0.12.0 | public | `agents`, `core`, `github`, `hermes-adapter`, `protocol` |
+| `@osstack/loop` | 0.12.0 | public | `agents`, `core`, `github`, `governance`, `hermes-adapter`, `protocol` |
 | `@osstack/neat-eval` | 0.1.0 | **private** | — |
 | `@osstack/plugins` | 0.12.0 | public | `core` |
 | `@osstack/protocol` | 0.10.0 | public | — |
@@ -37,7 +37,7 @@ conformance -> agents, core, governance, hermes-adapter, loop
 core -> protocol
 hermes-adapter -> core
 knowledge-cloud -> knowledge
-loop -> agents, core, github, hermes-adapter, protocol
+loop -> agents, core, github, governance, hermes-adapter, protocol
 plugins -> core
 skill-registry -> core
 skills -> core
