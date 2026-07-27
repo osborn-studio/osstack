@@ -608,11 +608,11 @@ git commit -m "test(release): verify Kimi clean install and rollback upgrade"
 agent_runtime:
   claude-code:
     provider_id: kimi
-    model_id: k3-256k
+    model_id: kimi-code/k3
     agent_profile: claude-code-k3
   kimi-code:
     provider_id: kimi
-    model_id: k3-256k
+    model_id: kimi-code/k3
     agent_profile: osstack-kimi-review
 ```
 

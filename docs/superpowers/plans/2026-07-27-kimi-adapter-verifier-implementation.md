@@ -148,7 +148,7 @@ describe("KimiReviewResult", () => {
       reviewer: {
         adapter: "kimi-code",
         provider: "kimi",
-        model: "k3-256k",
+        model: "kimi-code/k3",
       },
       verdict: "approved",
       risk: "medium",
@@ -169,7 +169,7 @@ describe("KimiReviewResult", () => {
         schema_version: 1,
         review_id: "review_1",
         subject_run_id: "run_1",
-        reviewer: { adapter: "kimi-code", provider: "kimi", model: "k3-256k" },
+        reviewer: { adapter: "kimi-code", provider: "kimi", model: "kimi-code/k3" },
         verdict,
         risk: "high",
         markdown: "# Review",
@@ -338,7 +338,7 @@ describe("KimiStreamAccumulator", () => {
         schema_version: 1,
         review_id: "review_1",
         subject_run_id: "run_1",
-        reviewer: { adapter: "kimi-code", provider: "kimi", model: "k3-256k" },
+        reviewer: { adapter: "kimi-code", provider: "kimi", model: "kimi-code/k3" },
         verdict: "approved",
         risk: "low",
         markdown: "# Review",
@@ -464,7 +464,7 @@ export interface AgentAdapter {
 The approved-result fake must write one stream line whose display text contains:
 
 ```text
-OSSTACK_REVIEW_RESULT={"schema_version":1,"review_id":"review_1","subject_run_id":"run_1_verify_kimi-code","reviewer":{"adapter":"kimi-code","provider":"kimi","model":"k3-256k"},"verdict":"approved","risk":"low","markdown":"# Review\n\nApproved.","evaluation_judgments":[{"id":"correctness","pass":true,"severity":"error","summary":"No blocking defect."}],"findings":[],"recommended_actions":[]}
+OSSTACK_REVIEW_RESULT={"schema_version":1,"review_id":"review_1","subject_run_id":"run_1_verify_kimi-code","reviewer":{"adapter":"kimi-code","provider":"kimi","model":"kimi-code/k3"},"verdict":"approved","risk":"low","markdown":"# Review\n\nApproved.","evaluation_judgments":[{"id":"correctness","pass":true,"severity":"error","summary":"No blocking defect."}],"findings":[],"recommended_actions":[]}
 ```
 
 - [ ] Confirm red:
@@ -498,7 +498,8 @@ Required defaults:
 
 ```text
 bin: OSSTACK_KIMI_BIN or kimi
-model: OSSTACK_KIMI_MODEL or k3-256k
+model: OSSTACK_KIMI_MODEL or the adapter-reported default (`kimi-code/k3` on
+the Phase A execution host)
 timeout: OSSTACK_KIMI_TIMEOUT_MS or 120000
 output limit: OSSTACK_KIMI_OUTPUT_LIMIT or 262144
 agent file: OSSTACK_KIMI_REVIEW_AGENT_FILE or packaged kimi-review-agent.md
@@ -919,7 +920,7 @@ agent_id=kimi-code
 roles=test-verify,reviewer,release/proof
 auth_mode=subprocess/login-reuse
 provider=kimi
-model=k3-256k
+model=kimi-code/k3
 ```
 
 For a missing fake binary, doctor must print a non-secret reason containing `kimi` and `unavailable`.

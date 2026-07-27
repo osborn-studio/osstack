@@ -323,7 +323,7 @@ Kimi 输出必须经过两层处理：
   "reviewer": {
     "adapter": "kimi-code",
     "provider": "kimi",
-    "model": "k3-256k"
+    "model": "kimi-code/k3"
   },
   "verdict": "approved",
   "risk": "medium",
@@ -380,10 +380,10 @@ binary_path_digest
 | 运行 | Adapter | Provider | Model |
 |---|---|---|---|
 | Claude Code 原生 | `claude-cli` | `anthropic` | `claude-*` |
-| Claude Code + K3 | `claude-cli` | `kimi` | `k3-256k` |
+| Claude Code + K3 | `claude-cli` | `kimi` | adapter-reported model ID |
 | Codex 原生 | `codex-cli` | `openai` | `gpt-*` |
-| Codex + K3 | `codex-cli` | `kimi-via-router` | `k3-256k` |
-| Kimi 独立审查 | `kimi-code` | `kimi` | `k3-256k` |
+| Codex + K3 | `codex-cli` | `kimi-via-router` | adapter-reported model ID |
+| Kimi 独立审查 | `kimi-code` | `kimi` | `kimi-code/k3` |
 
 角色分离规则：
 
