@@ -1323,6 +1323,71 @@ describe("proof CLI", () => {
     });
   });
 
+  it("includes checksummed redacted structured Kimi review evidence", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const eventsPath = join(tmp, "kimi-events.jsonl");
+    await writeFile(eventsPath, `${JSON.stringify({
+      event_id: "evt-kimi-review",
+      loop_id: "cli-proof-loop",
+      type: "loop.verify.done",
+      seq: 1,
+      created_at: 1782090000000,
+      payload: {
+        task_id: "proof/task",
+        pass: true,
+        score: 1,
+        reviewer_agent_id: "kimi-code",
+        summary: "Kimi review approved.",
+        review_artifacts: [{
+          schema_version: 1,
+          reviewer_agent_id: "kimi-code",
+          verdict: "approved",
+          risk: "read_only",
+          markdown: "# Kimi review\n\nApproved sk-test-secret-token-12345678901234567890",
+          judgments: [],
+          findings: [],
+          recommended_actions: [],
+          evidence_refs: ["src/app.ts"],
+          runtime_identity: {
+            adapter_id: "kimi-code",
+            provider_id: "kimi",
+            model_id: "kimi-code/k3",
+          },
+        }],
+      },
+    })}\n`);
+
+    const exitCode = await main(["proof", "--workspace", tmp, "--events", eventsPath]);
+
+    expect(exitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    const markdownPath = "reviewer-output/proof-task-kimi-code.md";
+    const jsonPath = "reviewer-output/proof-task-kimi-code.json";
+    const manifest = JSON.parse(await readFile(join(proofDir, "manifest.json"), "utf-8")) as {
+      artifacts: Array<{ path: string; sha256: string }>;
+    };
+    expect(manifest.artifacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: markdownPath,
+        sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
+      expect.objectContaining({
+        path: jsonPath,
+        sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
+    ]));
+    const markdown = await readFile(join(proofDir, markdownPath), "utf-8");
+    const json = await readFile(join(proofDir, jsonPath), "utf-8");
+    const sums = await readFile(join(proofDir, "sha256sums.txt"), "utf-8");
+    expect(markdown).toContain("[REDACTED:");
+    expect(json).toContain("\"verdict\": \"approved\"");
+    expect(json).toContain("[REDACTED:");
+    expect(markdown).not.toContain("sk-test-secret-token");
+    expect(json).not.toContain("sk-test-secret-token");
+    expect(sums).toContain(`  ${markdownPath}`);
+    expect(sums).toContain(`  ${jsonPath}`);
+  });
+
   it("rejects malformed external proof event evidence", async () => {
     await writeState(join(tmp, "LOOP-STATE.json"));
     const eventsPath = join(tmp, "bad-events.jsonl");
