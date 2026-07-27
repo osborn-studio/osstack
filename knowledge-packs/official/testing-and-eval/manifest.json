@@ -20,7 +20,7 @@
     {
       "source_id": "osstack-test-and-eval-plan",
       "path": "docs/product/11_TEST_AND_EVAL_PLAN.md",
-      "sha256": "0c2defcbfd10ff455e880e480d6745985e450b04f0070c1744f947a27d5716d7",
+      "sha256": "f76d926ff9a3e015202e665d376b07a7c72919c7484dcaa0128c3748e3d3a3ff",
       "license": "Osstack-native",
       "scope": "official",
       "imported_at": "2026-06-23T00:00:00.000Z"
