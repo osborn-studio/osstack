@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { createReadStream } from "node:fs";
+import { createReadStream, type BigIntStats } from "node:fs";
 import {
   lstat,
   readFile,
@@ -175,7 +175,7 @@ async function hashTreeEntry(
   relativePath: string,
 ): Promise<void> {
   const absolute = relativePath === "" ? root : join(root, relativePath);
-  let metadata;
+  let metadata: BigIntStats;
   try {
     metadata = await lstat(absolute, { bigint: true });
   } catch (error) {

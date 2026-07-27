@@ -104,6 +104,7 @@ function fakeKimiAdapter(
       signal: AbortSignal,
     ): AsyncIterable<HermesEvent> {
       invoke(task, signal);
+      for (const event of [] as HermesEvent[]) yield event;
     },
   };
 }

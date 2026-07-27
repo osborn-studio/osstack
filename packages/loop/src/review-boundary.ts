@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import type { Stats } from "node:fs";
 import {
   lstat,
   readFile,
@@ -137,7 +138,7 @@ async function collectFile(
     };
   }
 
-  let metadata;
+  let metadata: Stats;
   try {
     metadata = await lstat(lexical);
   } catch (error) {
