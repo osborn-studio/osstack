@@ -2,7 +2,6 @@ import { spawn } from "node:child_process";
 import { CapabilitySchema, type Capability, type CostTier } from "@osstack/core";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { BaseAgentAdapter, type AgentAvailability, type AgentTask } from "../base.js";
-import { buildAgentChildEnv } from "../child-env.js";
 
 export interface SubprocessCliCapability {
   kind: string;
@@ -222,7 +221,7 @@ function runCommand(
     const child = spawn(command, args, {
       cwd: options.cwd,
       stdio: ["pipe", "pipe", "pipe"],
-      env: buildAgentChildEnv(),
+      env: { ...process.env },
     });
     let stdout = "";
     let stderr = "";
