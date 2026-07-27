@@ -1,5 +1,13 @@
 # @osstack/loop
 
+## Unreleased
+
+### Minor Changes
+
+- Add a bounded review-input boundary, reviewer workspace mutation detection,
+  fail-closed structured Kimi judgments, and redacted review artifacts on loop
+  events and completed tasks.
+
 ## 0.12.0
 
 ### Patch Changes

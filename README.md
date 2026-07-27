@@ -60,7 +60,7 @@ control plane with these shipped surfaces:
 | Daily operating brief | Reads the repo registry, summarizes CI/PR/maturity deltas, emits owner decisions, and can run on a 24h daemon schedule. | `osstack daily`, `osstack daily schedule` |
 | Contract-gated execution | Creates execution contracts, blocks execution under observe policy, records approvals, and emits the exact follow-up command after approval. | `osstack start`, `osstack control` |
 | Policy kernel | Loads `.osstack/repo.yaml` and `.osstack/policy.yaml`, enforces `observe` / `propose` / `execute`, budgets, and approval categories. | `osstack policy check`, `@osstack/core` |
-| Agent routing | Routes to adapters such as Claude Code, Codex CLI, OpenCode, DeepSeek review/verify, shell subprocesses, and specialized design/research adapters. | `@osstack/agents`, `@osstack/core` |
+| Agent routing | Routes to adapters such as Claude Code, Codex CLI, OpenCode, Kimi Code review/verify, DeepSeek review/verify, shell subprocesses, and specialized design/research adapters. | `@osstack/agents`, `@osstack/core` |
 | Evidence and release trust | Persists run state, events, governance, diffs, proof manifests, PR body drafts, release handoff, and release readiness checks. | `report`, `scorecard`, `proof`, `pr`, `release` |
 | Cockpit and dashboard | Local dashboard/TUI snapshots for daemon health, recent runs, kanban, evidence, quality, and next actions. | `osstack cockpit`, `osstack dashboard` |
 | Remote gateway hook | Exposes dashboard URLs and transport-agnostic kanban subscriptions/events so a host bot can relay progress to Telegram, Feishu/Lark, Slack, webhooks, or another chat surface. | `dashboard url`, `kanban subscribe`, `kanban events`, `KanbanNotifier` |
@@ -276,6 +276,32 @@ osstack loop run --workspace . --source git_diff --reviewer ds-review --json
 osstack loop start --workspace . --source task_queue --verify "pnpm test" --interval-ms 5000
 osstack loop status --workspace .
 ```
+
+### Kimi Code Reviewer (Experimental)
+
+Kimi Code is initially available only as a reviewer and release verifier; it
+is not a Builder and does not advertise code-writing or debugging capability.
+Install Kimi Code, complete its local login, then check the non-model readiness
+probes:
+
+```bash
+osstack agent list
+osstack config doctor
+```
+
+`config doctor` distinguishes `kimi_not_installed`,
+`kimi_not_authenticated`, and `kimi_available`. The `OSSTACK_KIMI_BIN`,
+`OSSTACK_KIMI_MODEL`, `OSSTACK_KIMI_PROVIDER`, `OSSTACK_KIMI_TIMEOUT_MS`,
+`OSSTACK_KIMI_OUTPUT_LIMIT`, and `OSSTACK_KIMI_REVIEW_AGENT_FILE` variables
+select binary/model/runtime behavior only. Do not put API keys or login
+credentials in osstack configuration or these variables; authentication is
+reused from Kimi's own local login.
+
+Only a schema-valid `approved` review can pass the Kimi gate. Deterministic
+tests remain authoritative, while malformed output, a non-approved verdict,
+secret/forbidden review input, timeout, or any detected reviewer workspace
+mutation blocks delivery. Structured review Markdown and JSON are redacted and
+checksummed in the proof pack.
 
 ### Recursive Control Plane (opt-in)
 

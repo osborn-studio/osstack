@@ -1,5 +1,13 @@
 # @osstack/agents
 
+## Unreleased
+
+### Minor Changes
+
+- Add a first-class, no-tool Kimi Code reviewer/release verifier with strict
+  structured output, authenticated three-state readiness diagnostics, bounded
+  execution, minimal child environments, and runtime identity evidence.
+
 ## 0.12.0
 
 ### Minor Changes
