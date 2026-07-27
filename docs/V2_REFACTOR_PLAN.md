@@ -326,7 +326,10 @@ Reconnect：`Last-Event-ID` / `after_seq` cursor、at-least-once replay、dedup 
 | **S4** | 3 天 | Hermes 高级集成 | 注册 Hermes cron 任务、Hermes kanban 同步、Hermes dashboard 嵌入 | S3 |
 | **S5** | 1.5 周 | 学习层 + V1 迁移 + shim + 杀手开关 + 可观测 + 知识图谱 | failure learning + V1 11 个命令的 TS skill 实现 + 老命令名 shim + F4 kill switch + **OTel sdk-node 集成（D14）** + **GBrainAdapter（D20，每 run 写 page）** | S4 |
 | **S6** | 1.5 周 | Skill 集成与升级机制（全量） | skill-registry 6 个子模块：watcher / ingester (TS→Python SKILL.md normalize) / proposer / batcher / manifest / compat | S5 |
-| **S7+** | TBD | 按需扩展 | 中文 CLI adapter（DeepSeek/MiniMax/Kimi/DeepCode）按真实需求加 | 真实使用证据 |
+| **S7+** | TBD | 按需扩展 | 中文 CLI adapter（DeepSeek/MiniMax/Kimi/DeepCode）按真实需求加；Kimi 已进入专题设计评审 | 真实使用证据 |
+
+> 2026-07-27 更新：Kimi 不再只是未定义的远期 Adapter。独立 Kimi Code verifier、K3 Provider 身份分离、Mac Mini 中低风险自治、生产部署白名单与回滚的详细设计见
+> [`docs/superpowers/specs/2026-07-27-kimi-code-mac-mini-autonomous-development-design.md`](superpowers/specs/2026-07-27-kimi-code-mac-mini-autonomous-development-design.md)。
 
 **关键变更说明（v0.4 修订）**：
 - **新增** S0 双形态脚手架：Python bridge skill + TS daemon
