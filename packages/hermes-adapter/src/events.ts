@@ -149,6 +149,53 @@ export const ErrorPayload = z.object({
   terminal: z.boolean(),
 });
 
+export const ReviewRuntimeIdentitySchema = z.object({
+  adapter_id: z.string().min(1),
+  adapter_version: z.string().min(1),
+  auth_mode: z.string().min(1),
+  provider_id: z.string().min(1),
+  model_id: z.string().min(1),
+  model_context_window: z.number().int().positive().optional(),
+  reasoning_effort: z.string().min(1).optional(),
+  agent_profile: z.string().min(1).optional(),
+  binary_path_sha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  evidence_source: z.enum(["reported", "configured", "inferred"]),
+}).strict();
+
+export const ReviewJudgmentSchema = z.object({
+  id: z.string().min(1),
+  pass: z.boolean(),
+  severity: z.enum(["warning", "error"]),
+  summary: z.string().min(1),
+}).strict();
+
+export const ReviewFindingSchema = z.object({
+  rule_id: z.string().min(1),
+  fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+  severity: z.enum(["info", "warning", "error"]),
+  message: z.string().min(1),
+  file: z.string().min(1).optional(),
+  line: z.number().int().positive().optional(),
+  evidence: z.string().min(1).optional(),
+}).strict();
+
+export const StructuredReviewSchema = z.object({
+  schema_version: z.literal(1),
+  verdict: z.enum([
+    "approved",
+    "changes_requested",
+    "blocked",
+    "inconclusive",
+  ]),
+  risk: z.enum(["read_only", "low", "medium", "high", "forbidden"]),
+  markdown: z.string().min(1),
+  judgments: z.array(ReviewJudgmentSchema).max(100),
+  findings: z.array(ReviewFindingSchema).max(100),
+  recommended_actions: z.array(z.string().min(1)).max(100),
+  evidence_refs: z.array(z.string().min(1)).max(100),
+  runtime_identity: ReviewRuntimeIdentitySchema,
+}).strict();
+
 export const DonePayload = z.object({
   status: z.enum(["completed", "failed", "cancelled", "expired"]),
   last_seq: z.number().int().nonnegative(),
@@ -157,6 +204,7 @@ export const DonePayload = z.object({
   /** Optional application-neutral structured verifier extensions. */
   evaluation_judgments: z.unknown().optional(),
   implementation_deviations: z.array(z.record(z.unknown())).max(100).optional(),
+  review: StructuredReviewSchema.optional(),
 });
 
 // ──────────────────────────────────────────────────────────────────────
