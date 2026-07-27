@@ -28,6 +28,7 @@ surface that makes AI coding work visible and auditable.
 | GitHub release | npm packages: `@osstack/cli@0.12.0`; latest single binary: [`v0.8.1`](https://github.com/gilosbornhello/osstack/releases/tag/v0.8.1) |
 | macOS single binary | Published as explicit `public-ad-hoc` archive for `darwin-arm64` |
 | Knowledge Cloud | Live on EdgeOne: `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
+| Probe | CLI lifecycle shipped in `@osstack/cli@0.12.0`; report-only is gate behavior, not a background job. The two-week real-use checkpoint remains open. |
 | License | MIT |
 | Monorepo | 16 packages |
 
@@ -64,6 +65,7 @@ control plane with these shipped surfaces:
 | Cockpit and dashboard | Local dashboard/TUI snapshots for daemon health, recent runs, kanban, evidence, quality, and next actions. | `osstack cockpit`, `osstack dashboard` |
 | Remote gateway hook | Exposes dashboard URLs and transport-agnostic kanban subscriptions/events so a host bot can relay progress to Telegram, Feishu/Lark, Slack, webhooks, or another chat surface. | `dashboard url`, `kanban subscribe`, `kanban events`, `KanbanNotifier` |
 | Knowledge Cloud | Official/team/project knowledge packs, cloud sync, local cache fallback, search, publish, audit, feedback, and review UI. | `osstack knowledge`, `@osstack/knowledge-cloud` |
+| Four-quadrant elicitation | Persists implementation-changing unknowns, asks one question at a time, renders portable ledgers, evaluates readiness, and feeds reviewed decisions into implementation gates. | `osstack probe ...`, `@osstack/governance`, `@osstack/core`; optional repo-local `probe-skill` |
 | Protocol/conformance | Stable cross-process agent command, result, policy, evidence, approval, run, and event schemas with conformance tests. | `@osstack/protocol`, `@osstack/conformance` |
 
 ### Remote Gateway Status
@@ -202,6 +204,9 @@ osstack knowledge search "proof pack checksum" \
 # Run a local readiness check for the loop engine.
 osstack loop doctor --workspace . --json
 
+# Inspect the explicit Probe session workflow; Probe does not auto-start.
+osstack probe --help
+
 # Audit repository knowledge without writing files.
 osstack neat check --fail-on none
 
@@ -247,6 +252,7 @@ executes the loop, verifies the result, and produces evidence artifacts such as:
 | Capability | A typed skill such as `code.write`, `code.test`, `code.review`, `design.prd`, `release.proof`, or `research.ml`. |
 | Policy | The routing decision layer that selects an agent based on capability, cost, fit, and history. |
 | Governance | Deterministic safety/quality checks. It is a verifier, not a model-based judge. |
+| Probe | A persistent four-quadrant elicitation session that turns unknowns into reviewable decisions, destinations, and readiness evidence. |
 | Proof pack | A checksumed evidence bundle containing reports, state, events, verification results, governance findings, diffs, and manifests. |
 | Knowledge pack | An osstack-native knowledge artifact with version, license, source provenance, quality metadata, chunks, and retrieval evaluation. |
 
@@ -326,6 +332,50 @@ osstack contracts check --workspace . --manifest api-contracts.json --json
 osstack compliance list --json
 osstack compliance render <run_id> --pack engineering-readiness --proof-dir release/osstack-proof-<run_id>
 ```
+
+### Four-Quadrant Elicitation (Probe)
+
+Probe is an explicit, persistent pre-build and mid-build workflow. It does not
+create sessions in the background. Start one for each real specification and
+link it to the corresponding task so the kanban readiness guard can find it.
+Replace the example paths and identifiers before running:
+
+```bash
+osstack probe start \
+  --input docs/spec.md \
+  --task TASK-123 \
+  --doc-type tech \
+  --depth standard \
+  --actor-kind human \
+  --actor-id owner \
+  --idempotency-key TASK-123-probe-start \
+  --json
+
+osstack probe status --repo . --json
+osstack probe gate --session <session_id> --json
+```
+
+The optional repository policy makes the rollout state visible in review:
+
+```yaml
+# .osstack/probe.yaml
+schema_version: 1
+enforcement: report
+```
+
+If `.osstack/probe.yaml` is absent, the built-in policy is already
+`enforcement: report`. In both cases, **report-only means that an evaluated
+gate reports readiness violations without blocking**. It is not a daemon,
+scheduler, or automatic dogfood switch; with no Probe session there is nothing
+to evaluate.
+
+The deterministic CLI lifecycle is included in the npm release. The natural
+one-question-at-a-time agent experience lives in [`probe-skill/`](probe-skill/)
+and is not automatically installed into a Codex/agent skill directory by the
+CLI package. Install or link that skill separately before invoking
+`$probe-skill`. The two-week report-only dogfood, five real rough-spec runs, and
+manual `restate` review remain empirical checkpoints rather than release claims;
+see the [Probe v2 design and checkpoint record](docs/2026-07-17-probe-four-quadrant-elicitation-design.md#13-checkpoints发布与回滚).
 
 ### Knowledge Hygiene
 
