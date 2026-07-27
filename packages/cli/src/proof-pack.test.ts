@@ -62,4 +62,32 @@ describe("createVerifierOutputArtifacts", () => {
       }),
     ]);
   });
+
+  it("rejects duplicate structured reviewer paths instead of overwriting evidence", () => {
+    const review = {
+      schema_version: 1 as const,
+      reviewer_agent_id: "kimi-code",
+      verdict: "approved" as const,
+      risk: "read_only" as const,
+      markdown: "# Review\n\nApproved.",
+      judgments: [],
+      findings: [],
+      recommended_actions: [],
+      evidence_refs: [],
+      runtime_identity: {},
+    };
+
+    expect(() => createVerifierOutputArtifacts({
+      status: "pass",
+      results: [{
+        task_id: "task-one",
+        pass: true,
+        score: 1,
+        reviewer_agent_id: "kimi-code",
+        summary: "Approved.",
+        event_seq: 7,
+        review_artifacts: [review, review],
+      }],
+    })).toThrow(/duplicate proof artifact path/);
+  });
 });

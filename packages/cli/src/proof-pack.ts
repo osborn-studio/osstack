@@ -26,7 +26,7 @@ export function createVerifierOutputArtifacts(
   verifyResults: VerifyResultsEvidence,
 ): ProofArtifact[] {
   if (verifyResults.results === undefined) return [];
-  return verifyResults.results.flatMap((result) => {
+  const artifacts = verifyResults.results.flatMap((result) => {
     if (
       result.review_artifacts !== undefined
       && result.review_artifacts.length > 0
@@ -69,6 +69,8 @@ export function createVerifierOutputArtifacts(
     ].join("\n");
     return [{ path, content: redactText(content) }];
   });
+  assertUniqueArtifactPaths(artifacts);
+  return artifacts;
 }
 
 function redactReviewArtifact(artifact: ReviewArtifact): ReviewArtifact {
@@ -112,4 +114,14 @@ function safeFileSegment(value: string): string {
 
 function ensureTrailingNewline(value: string): string {
   return value.endsWith("\n") ? value : `${value}\n`;
+}
+
+function assertUniqueArtifactPaths(artifacts: readonly ProofArtifact[]): void {
+  const paths = new Set<string>();
+  for (const artifact of artifacts) {
+    if (paths.has(artifact.path)) {
+      throw new Error(`duplicate proof artifact path: ${artifact.path}`);
+    }
+    paths.add(artifact.path);
+  }
 }
