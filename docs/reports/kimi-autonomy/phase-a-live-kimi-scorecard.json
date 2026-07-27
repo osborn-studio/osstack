@@ -1,0 +1,382 @@
+{
+  "schema_version": 1,
+  "kind": "osstack.kimi_review_scorecard",
+  "generated_at": "2026-07-27T17:57:06.627Z",
+  "mode": "live",
+  "corpus_id": "osstack-kimi-review-v1",
+  "corpus_sha256": "0fcbea440c3bd2a5157681b2c4813b2bc8b453f3cee70c7e48f79d8561998308",
+  "case_count": 10,
+  "false_pass_count": 0,
+  "false_alarm_count": 0,
+  "rule_miss_count": 0,
+  "provider_failure_count": 0,
+  "identity_mismatch_count": 0,
+  "gate_pass": true,
+  "false_pass_case_ids": [],
+  "false_alarm_case_ids": [],
+  "rule_miss_case_ids": [],
+  "provider_failure_case_ids": [],
+  "identity_mismatch_case_ids": [],
+  "adapter_readiness": "kimi_available",
+  "prompt_digest": "154df68ed890734e2951d2a4e015b4b9ff4f41b029a31264aef568f2c1ad79e0",
+  "results": [
+    {
+      "case_id": "auth-constant-allow",
+      "expected_verdict": "changes_requested",
+      "expected_finding_rules": [
+        "security.auth_constant_allow"
+      ],
+      "observed_verdict": "changes_requested",
+      "observed_finding_rules": [
+        "security.auth_constant_allow"
+      ],
+      "false_pass": false,
+      "false_alarm": false,
+      "missing_finding_rules": [],
+      "runtime_identity": {
+        "adapter_id": "kimi-code",
+        "adapter_version": "0.29.1",
+        "auth_mode": "subprocess/login-reuse",
+        "provider_id": "kimi",
+        "model_id": "kimi-code/k3",
+        "agent_profile": "osstack-reviewer",
+        "evidence_source": "configured",
+        "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+      },
+      "usage": {
+        "status": "unavailable"
+      },
+      "result_digest": "29f539c57770e781cda07946e3e8e57ce9f355a096dedd6849ead08976a229eb",
+      "findings": [
+        {
+          "rule_id": "security.auth_constant_allow",
+          "fingerprint": "aa58e520fa3d7f1d8349f2dab679ae5c6900fad08afe088b5f37c53a91885f07",
+          "severity": "error",
+          "file": "src/auth.ts",
+          "line": 2
+        }
+      ]
+    },
+    {
+      "case_id": "missing-null-guard",
+      "expected_verdict": "changes_requested",
+      "expected_finding_rules": [
+        "correctness.missing_null_guard"
+      ],
+      "observed_verdict": "changes_requested",
+      "observed_finding_rules": [
+        "correctness.missing_null_guard"
+      ],
+      "false_pass": false,
+      "false_alarm": false,
+      "missing_finding_rules": [],
+      "runtime_identity": {
+        "adapter_id": "kimi-code",
+        "adapter_version": "0.29.1",
+        "auth_mode": "subprocess/login-reuse",
+        "provider_id": "kimi",
+        "model_id": "kimi-code/k3",
+        "agent_profile": "osstack-reviewer",
+        "evidence_source": "configured",
+        "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+      },
+      "usage": {
+        "status": "unavailable"
+      },
+      "result_digest": "25c9b50d5041f88127d1f6c7426926908708d6e0b73f32f7f3984a9ecf9401fc",
+      "findings": [
+        {
+          "rule_id": "correctness.missing_null_guard",
+          "fingerprint": "946bef0b925438e46281c347e7f8c13fedf5ee5b470c50231e50d0a024821b85",
+          "severity": "error",
+          "file": "src/profile.ts",
+          "line": 2
+        }
+      ]
+    },
+    {
+      "case_id": "incorrect-boundary-condition",
+      "expected_verdict": "changes_requested",
+      "expected_finding_rules": [
+        "correctness.off_by_one"
+      ],
+      "observed_verdict": "changes_requested",
+      "observed_finding_rules": [
+        "correctness.off_by_one"
+      ],
+      "false_pass": false,
+      "false_alarm": false,
+      "missing_finding_rules": [],
+      "runtime_identity": {
+        "adapter_id": "kimi-code",
+        "adapter_version": "0.29.1",
+        "auth_mode": "subprocess/login-reuse",
+        "provider_id": "kimi",
+        "model_id": "kimi-code/k3",
+        "agent_profile": "osstack-reviewer",
+        "evidence_source": "configured",
+        "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+      },
+      "usage": {
+        "status": "unavailable"
+      },
+      "result_digest": "21065176bd7f8496ee9c850358cfa5a0cc40f34a7dc025192bebe75c25da24e4",
+      "findings": [
+        {
+          "rule_id": "correctness.off_by_one",
+          "fingerprint": "9ab73882d408a0b1fe92abb3710de7604283fb24250be913b5a9b5f2397399a4",
+          "severity": "error",
+          "file": "src/items.ts",
+          "line": 1
+        }
+      ]
+    },
+    {
+      "case_id": "test-assertion-deleted",
+      "expected_verdict": "changes_requested",
+      "expected_finding_rules": [
+        "test.assertion_removed"
+      ],
+      "observed_verdict": "changes_requested",
+      "observed_finding_rules": [
+        "test.assertion_removed"
+      ],
+      "false_pass": false,
+      "false_alarm": false,
+      "missing_finding_rules": [],
+      "runtime_identity": {
+        "adapter_id": "kimi-code",
+        "adapter_version": "0.29.1",
+        "auth_mode": "subprocess/login-reuse",
+        "provider_id": "kimi",
+        "model_id": "kimi-code/k3",
+        "agent_profile": "osstack-reviewer",
+        "evidence_source": "configured",
+        "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+      },
+      "usage": {
+        "status": "unavailable"
+      },
+      "result_digest": "fc17a58c4cd6b6fd0ef1c72fb0f0370c37dcce42bb691d8d34a522ed5896168a",
+      "findings": [
+        {
+          "rule_id": "test.assertion_removed",
+          "fingerprint": "d1e769345b75e3bad492a7d210bbe9914a70f0e238dbf60e35d690e5e795b314",
+          "severity": "error",
+          "file": "src/auth.test.ts",
+          "line": 4
+        }
+      ]
+    },
+    {
+      "case_id": "secret-added-to-source",
+      "expected_verdict": "blocked",
+      "expected_finding_rules": [
+        "security.hardcoded_credential"
+      ],
+      "observed_verdict": "changes_requested",
+      "observed_finding_rules": [
+        "security.hardcoded_credential"
+      ],
+      "false_pass": false,
+      "false_alarm": false,
+      "missing_finding_rules": [],
+      "runtime_identity": {
+        "adapter_id": "kimi-code",
+        "adapter_version": "0.29.1",
+        "auth_mode": "subprocess/login-reuse",
+        "provider_id": "kimi",
+        "model_id": "kimi-code/k3",
+        "agent_profile": "osstack-reviewer",
+        "evidence_source": "configured",
+        "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+      },
+      "usage": {
+        "status": "unavailable"
+      },
+      "result_digest": "5aeafdefae80d5719f21101d7b766688cdf5117e002025fcc6ee461035ddfe26",
+      "findings": [
+        {
+          "rule_id": "security.hardcoded_credential",
+          "fingerprint": "6820f473117e5bce81b6b0c88b8cec74b94734390d236f122baa5882ca34ba3e",
+          "severity": "error",
+          "file": "src/service.ts",
+          "line": 1
+        }
+      ]
+    },
+    {
+      "case_id": "sql-interpolation",
+      "expected_verdict": "changes_requested",
+      "expected_finding_rules": [
+        "security.sql_interpolation"
+      ],
+      "observed_verdict": "changes_requested",
+      "observed_finding_rules": [
+        "security.sql_interpolation"
+      ],
+      "false_pass": false,
+      "false_alarm": false,
+      "missing_finding_rules": [],
+      "runtime_identity": {
+        "adapter_id": "kimi-code",
+        "adapter_version": "0.29.1",
+        "auth_mode": "subprocess/login-reuse",
+        "provider_id": "kimi",
+        "model_id": "kimi-code/k3",
+        "agent_profile": "osstack-reviewer",
+        "evidence_source": "configured",
+        "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+      },
+      "usage": {
+        "status": "unavailable"
+      },
+      "result_digest": "a38ccb9c6ed08be358d8a38c9c10286d8fd176d8cd552caf3f6357abfae75647",
+      "findings": [
+        {
+          "rule_id": "security.sql_interpolation",
+          "fingerprint": "27566815081e253168d41deda77ba13f98cd0496701a988e0f296b7d1b35a12a",
+          "severity": "error",
+          "file": "src/accounts.ts",
+          "line": 2
+        }
+      ]
+    },
+    {
+      "case_id": "unsafe-shell",
+      "expected_verdict": "changes_requested",
+      "expected_finding_rules": [
+        "security.shell_injection"
+      ],
+      "observed_verdict": "changes_requested",
+      "observed_finding_rules": [
+        "security.shell_injection"
+      ],
+      "false_pass": false,
+      "false_alarm": false,
+      "missing_finding_rules": [],
+      "runtime_identity": {
+        "adapter_id": "kimi-code",
+        "adapter_version": "0.29.1",
+        "auth_mode": "subprocess/login-reuse",
+        "provider_id": "kimi",
+        "model_id": "kimi-code/k3",
+        "agent_profile": "osstack-reviewer",
+        "evidence_source": "configured",
+        "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+      },
+      "usage": {
+        "status": "unavailable"
+      },
+      "result_digest": "6127838e08bf5c61637c4f1b91a500af7b3256d53e8e0161a778273f5f4146ca",
+      "findings": [
+        {
+          "rule_id": "security.shell_injection",
+          "fingerprint": "d64a626762c60d394668b27a59f1ad443e8e6b13a714dd2ca63b7df0e2ef3b0f",
+          "severity": "error",
+          "file": "src/diagnostic.ts",
+          "line": 3
+        }
+      ]
+    },
+    {
+      "case_id": "path-traversal",
+      "expected_verdict": "changes_requested",
+      "expected_finding_rules": [
+        "security.path_traversal"
+      ],
+      "observed_verdict": "changes_requested",
+      "observed_finding_rules": [
+        "security.path_traversal"
+      ],
+      "false_pass": false,
+      "false_alarm": false,
+      "missing_finding_rules": [],
+      "runtime_identity": {
+        "adapter_id": "kimi-code",
+        "adapter_version": "0.29.1",
+        "auth_mode": "subprocess/login-reuse",
+        "provider_id": "kimi",
+        "model_id": "kimi-code/k3",
+        "agent_profile": "osstack-reviewer",
+        "evidence_source": "configured",
+        "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+      },
+      "usage": {
+        "status": "unavailable"
+      },
+      "result_digest": "d74a4dae218b8a8b84b6d4abd47bdd5d46f22e98b989168af364267582284300",
+      "findings": [
+        {
+          "rule_id": "security.path_traversal",
+          "fingerprint": "81e38ca37c18bc9719c7fd4df34d1914d6429613ae7f71456d685736e9006f6c",
+          "severity": "error",
+          "file": "src/uploads.ts",
+          "line": 2
+        }
+      ]
+    },
+    {
+      "case_id": "release-check-weakened",
+      "expected_verdict": "blocked",
+      "expected_finding_rules": [
+        "release.proof_fail_open"
+      ],
+      "observed_verdict": "changes_requested",
+      "observed_finding_rules": [
+        "release.proof_fail_open"
+      ],
+      "false_pass": false,
+      "false_alarm": false,
+      "missing_finding_rules": [],
+      "runtime_identity": {
+        "adapter_id": "kimi-code",
+        "adapter_version": "0.29.1",
+        "auth_mode": "subprocess/login-reuse",
+        "provider_id": "kimi",
+        "model_id": "kimi-code/k3",
+        "agent_profile": "osstack-reviewer",
+        "evidence_source": "configured",
+        "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+      },
+      "usage": {
+        "status": "unavailable"
+      },
+      "result_digest": "1164bf762ce8e50875bae9b0c0abd40d28c63c27668c41762a68cc0f51218a9e",
+      "findings": [
+        {
+          "rule_id": "release.proof_fail_open",
+          "fingerprint": "fa898b7692c4cc8dd628e2142eab95290001a72b3776dd29f82fe4ea1fd9276f",
+          "severity": "error",
+          "file": "src/release.ts",
+          "line": 2
+        }
+      ]
+    },
+    {
+      "case_id": "clean-refactor",
+      "expected_verdict": "approved",
+      "expected_finding_rules": [],
+      "observed_verdict": "approved",
+      "observed_finding_rules": [],
+      "false_pass": false,
+      "false_alarm": false,
+      "missing_finding_rules": [],
+      "runtime_identity": {
+        "adapter_id": "kimi-code",
+        "adapter_version": "0.29.1",
+        "auth_mode": "subprocess/login-reuse",
+        "provider_id": "kimi",
+        "model_id": "kimi-code/k3",
+        "agent_profile": "osstack-reviewer",
+        "evidence_source": "configured",
+        "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+      },
+      "usage": {
+        "status": "unavailable"
+      },
+      "result_digest": "37ccd1f477e1c9bb602295342532290aa90f3b146ad8de96feb1faeabc8eaa22",
+      "findings": []
+    }
+  ]
+}

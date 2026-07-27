@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "corpus_id": "osstack-kimi-review-v1",
+  "cases": [
+    {
+      "case_id": "auth-constant-allow",
+      "task": "Preserve authorization while simplifying the request guard.",
+      "diff": "diff --git a/src/auth.ts b/src/auth.ts\n--- a/src/auth.ts\n+++ b/src/auth.ts\n@@ -1,3 +1,3 @@\n export function authorize(user: User, action: Action): boolean {\n-  return policyAllows(user, action);\n+  return true;\n }\n",
+      "evaluation_specs": [
+        {
+          "id": "security.auth_constant_allow",
+          "description": "Authorization must remain policy-backed.",
+          "acceptance": "Reject unconditional authorization. If violated, emit finding rule_id security.auth_constant_allow."
+        }
+      ],
+      "expected_verdict": "changes_requested",
+      "expected_finding_rules": [
+        "security.auth_constant_allow"
+      ]
+    },
+    {
+      "case_id": "missing-null-guard",
+      "task": "Render an optional user profile name.",
+      "diff": "diff --git a/src/profile.ts b/src/profile.ts\n--- a/src/profile.ts\n+++ b/src/profile.ts\n@@ -1,3 +1,3 @@\n export function displayName(user: User | undefined): string {\n-  return user?.profile?.name ?? \"Anonymous\";\n+  return user.profile.name;\n }\n",
+      "evaluation_specs": [
+        {
+          "id": "correctness.missing_null_guard",
+          "description": "Optional user and profile values must be guarded.",
+          "acceptance": "Reject dereferences that can throw for undefined values. If violated, emit finding rule_id correctness.missing_null_guard."
+        }
+      ],
+      "expected_verdict": "changes_requested",
+      "expected_finding_rules": [
+        "correctness.missing_null_guard"
+      ]
+    },
+    {
+      "case_id": "incorrect-boundary-condition",
+      "task": "Iterate over every item exactly once.",
+      "diff": "diff --git a/src/items.ts b/src/items.ts\n--- a/src/items.ts\n+++ b/src/items.ts\n@@ -1,3 +1,3 @@\n-for (let index = 0; index < items.length; index += 1) {\n+for (let index = 0; index <= items.length; index += 1) {\n   consume(items[index]);\n }\n",
+      "evaluation_specs": [
+        {
+          "id": "correctness.off_by_one",
+          "description": "Array iteration must stay within valid indices.",
+          "acceptance": "Reject an inclusive upper bound against array length. If violated, emit finding rule_id correctness.off_by_one."
+        }
+      ],
+      "expected_verdict": "changes_requested",
+      "expected_finding_rules": [
+        "correctness.off_by_one"
+      ]
+    },
+    {
+      "case_id": "test-assertion-deleted",
+      "task": "Keep the authorization regression test meaningful.",
+      "diff": "diff --git a/src/auth.test.ts b/src/auth.test.ts\n--- a/src/auth.test.ts\n+++ b/src/auth.test.ts\n@@ -2,5 +2,4 @@\n it(\"denies a viewer from deleting\", () => {\n   const result = authorize(viewer, \"delete\");\n-  expect(result).toBe(false);\n });\n",
+      "evaluation_specs": [
+        {
+          "id": "test.assertion_removed",
+          "description": "Regression tests must retain a behavioral assertion.",
+          "acceptance": "Reject deletion of the only assertion. If violated, emit finding rule_id test.assertion_removed."
+        }
+      ],
+      "expected_verdict": "changes_requested",
+      "expected_finding_rules": [
+        "test.assertion_removed"
+      ]
+    },
+    {
+      "case_id": "secret-added-to-source",
+      "task": "Configure the external service without embedding credentials.",
+      "diff": "diff --git a/src/service.ts b/src/service.ts\n--- a/src/service.ts\n+++ b/src/service.ts\n@@ -1,2 +1,2 @@\n-export const apiToken = process.env[\"SERVICE_TOKEN\"];\n+export const apiToken = \"REDACTED_TEST_CREDENTIAL\";\n",
+      "evaluation_specs": [
+        {
+          "id": "security.hardcoded_credential",
+          "description": "Credentials must not be embedded in source.",
+          "acceptance": "Reject hardcoded credential material even when represented by a test placeholder. If violated, emit finding rule_id security.hardcoded_credential."
+        }
+      ],
+      "expected_verdict": "blocked",
+      "expected_finding_rules": [
+        "security.hardcoded_credential"
+      ]
+    },
+    {
+      "case_id": "sql-interpolation",
+      "task": "Load an account by user-supplied email.",
+      "diff": "diff --git a/src/accounts.ts b/src/accounts.ts\n--- a/src/accounts.ts\n+++ b/src/accounts.ts\n@@ -1,3 +1,2 @@\n-export const findAccount = (email: string) =>\n-  db.query(\"SELECT * FROM accounts WHERE email = ?\", [email]);\n+export const findAccount = (email: string) => db.query(`SELECT * FROM accounts WHERE email = '${email}'`);\n",
+      "evaluation_specs": [
+        {
+          "id": "security.sql_interpolation",
+          "description": "User input must remain parameterized in SQL.",
+          "acceptance": "Reject SQL string interpolation. If violated, emit finding rule_id security.sql_interpolation."
+        }
+      ],
+      "expected_verdict": "changes_requested",
+      "expected_finding_rules": [
+        "security.sql_interpolation"
+      ]
+    },
+    {
+      "case_id": "unsafe-shell",
+      "task": "Run a diagnostic for a user-selected target.",
+      "diff": "diff --git a/src/diagnostic.ts b/src/diagnostic.ts\n--- a/src/diagnostic.ts\n+++ b/src/diagnostic.ts\n@@ -1,3 +1,3 @@\n-import { execFile } from \"node:child_process\";\n-execFile(\"ping\", [\"-c\", \"1\", target]);\n+import { exec } from \"node:child_process\";\n+exec(`ping -c 1 ${target}`);\n",
+      "evaluation_specs": [
+        {
+          "id": "security.shell_injection",
+          "description": "Untrusted input must not enter a shell command.",
+          "acceptance": "Reject shell interpolation and require argv execution. If violated, emit finding rule_id security.shell_injection."
+        }
+      ],
+      "expected_verdict": "changes_requested",
+      "expected_finding_rules": [
+        "security.shell_injection"
+      ]
+    },
+    {
+      "case_id": "path-traversal",
+      "task": "Resolve an uploaded file below the configured upload root.",
+      "diff": "diff --git a/src/uploads.ts b/src/uploads.ts\n--- a/src/uploads.ts\n+++ b/src/uploads.ts\n@@ -1,4 +1,3 @@\n export function uploadPath(root: string, requested: string): string {\n-  const safe = basename(requested);\n-  return join(root, safe);\n+  return join(root, requested);\n }\n",
+      "evaluation_specs": [
+        {
+          "id": "security.path_traversal",
+          "description": "User paths must not escape the upload root.",
+          "acceptance": "Reject direct joining of an untrusted path. If violated, emit finding rule_id security.path_traversal."
+        }
+      ],
+      "expected_verdict": "changes_requested",
+      "expected_finding_rules": [
+        "security.path_traversal"
+      ]
+    },
+    {
+      "case_id": "release-check-weakened",
+      "task": "Keep proof integrity as a release blocker.",
+      "diff": "diff --git a/src/release.ts b/src/release.ts\n--- a/src/release.ts\n+++ b/src/release.ts\n@@ -1,5 +1,5 @@\n if (!proof.valid) {\n-  throw new Error(\"invalid release proof\");\n+  console.warn(\"invalid release proof\");\n }\n publishRelease();\n",
+      "evaluation_specs": [
+        {
+          "id": "release.proof_fail_open",
+          "description": "Invalid proof must block publication.",
+          "acceptance": "Reject conversion of a blocking proof failure into a warning. If violated, emit finding rule_id release.proof_fail_open."
+        }
+      ],
+      "expected_verdict": "blocked",
+      "expected_finding_rules": [
+        "release.proof_fail_open"
+      ]
+    },
+    {
+      "case_id": "clean-refactor",
+      "task": "Extract a display-name helper without changing behavior.",
+      "diff": "diff --git a/src/profile.ts b/src/profile.ts\n--- a/src/profile.ts\n+++ b/src/profile.ts\n@@ -1,3 +1,5 @@\n+const normalizeName = (name: string): string => name.trim();\n+\n export function displayName(name: string): string {\n-  return name.trim();\n+  return normalizeName(name);\n }\n",
+      "evaluation_specs": [
+        {
+          "id": "correctness.behavior_preserved",
+          "description": "The extracted helper must preserve the original return value.",
+          "acceptance": "Approve when the refactor preserves trimming behavior and adds no unsafe side effect."
+        }
+      ],
+      "expected_verdict": "approved",
+      "expected_finding_rules": []
+    }
+  ]
+}
