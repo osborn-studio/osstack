@@ -437,9 +437,9 @@ The `PLAN_CLOSED` rows above are implemented in the planning suite as follows:
 | E-01..E-02, X-05, X-06 | `2026-07-27-kimi-productization-release-implementation.md`, `v3 mandatory amendments` E.1–E.5 |
 | X-01..X-07 cross-phase authority | `2026-07-27-kimi-code-mac-mini-autonomy.v2.md` invariants 16–20, the design §20 errata, and `2026-07-27-kimi-autonomy-execution-control-v3.md` |
 
-The final audit verdict records the commit SHA after these documents are
-committed. Implementation states remain `NOT_STARTED` until code/test evidence
-exists.
+Plan closure commit:
+`b9698984c0244f39049360135d2f88bf8c25062f`.
+Implementation states remain `NOT_STARTED` until code/test evidence exists.
 
 ## 6. Final ledger gate
 
@@ -448,7 +448,7 @@ Before Phase A begins:
 - [x] A-01 through E-02 are `PLAN_CLOSED`.
 - [x] X-01 through X-07 are `PLAN_CLOSED`.
 - [x] every Medium/Low item is assigned or explicitly waived.
-- [ ] the amended plan commit is recorded in the final audit verdict.
+- [x] the amended plan commit is recorded in the final audit verdict.
 
 Before public release:
 
