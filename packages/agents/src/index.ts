@@ -15,8 +15,10 @@ import { ClaudeDesignAdapter } from "./adapters/claude-design.js";
 import { DeepSeekReviewAdapter } from "./adapters/ds-review.js";
 import { DeepSeekVerifyAdapter } from "./adapters/ds-verify.js";
 import { GoogleStitchAdapter } from "./adapters/google-stitch.js";
+import { KimiCodeAdapter } from "./adapters/kimi-code.js";
 
 export * from "./base.js";
+export * from "./child-env.js";
 export * from "./metadata.js";
 export * from "./adapters/kimi-contract.js";
 export * from "./adapters/kimi-stream.js";
@@ -28,6 +30,7 @@ export { ClaudeDesignAdapter } from "./adapters/claude-design.js";
 export { DeepSeekReviewAdapter } from "./adapters/ds-review.js";
 export { DeepSeekVerifyAdapter } from "./adapters/ds-verify.js";
 export { GoogleStitchAdapter } from "./adapters/google-stitch.js";
+export { KimiCodeAdapter } from "./adapters/kimi-code.js";
 export {
   AnthropicNoToolsSemanticJudge,
   type AnthropicNoToolsSemanticJudgeOptions,
@@ -66,6 +69,7 @@ export function defaultAdapters(): AgentAdapter[] {
     new AutoResearchAdapter(),
     new ClaudeDesignAdapter(),
     new GoogleStitchAdapter(),
+    new KimiCodeAdapter(),
   ];
 }
 

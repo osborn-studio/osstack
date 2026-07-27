@@ -57,6 +57,9 @@ export const KimiReviewResult = z.object({
 
 export type KimiReviewResult = z.infer<typeof KimiReviewResult>;
 export type KimiReviewFinding = z.infer<typeof KimiReviewFinding>;
+export type ParsedKimiReviewResult = Omit<KimiReviewResult, "findings"> & {
+  findings: Array<KimiReviewFinding & { fingerprint: string }>;
+};
 
 export interface KimiFindingFingerprintInput {
   rule_id: string;
@@ -66,7 +69,7 @@ export interface KimiFindingFingerprintInput {
   line?: number | undefined;
 }
 
-export function parseKimiReviewResult(raw: unknown): KimiReviewResult {
+export function parseKimiReviewResult(raw: unknown): ParsedKimiReviewResult {
   const parsed = KimiReviewResult.parse(raw);
   return {
     ...parsed,

@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { AgentAdapter, AgentTask } from "./base.js";
 import { ClaudeCliAdapter } from "./adapters/claude-cli.js";
 import { DeepSeekVerifyAdapter } from "./adapters/ds-verify.js";
+import { KimiCodeAdapter } from "./adapters/kimi-code.js";
 import { defaultAdapters } from "./index.js";
 
 let tmp: string;
@@ -22,7 +23,10 @@ afterEach(async () => {
 
 describe("adapter conformance", () => {
   it("keeps the default registry capability metadata self-consistent", () => {
-    for (const adapter of defaultAdapters()) {
+    const adapters = defaultAdapters();
+    expect(adapters).toHaveLength(10);
+
+    for (const adapter of adapters) {
       expect(adapter.id).toMatch(/^[a-z0-9][a-z0-9-]*$/);
       expect(adapter.display_name.trim()).not.toEqual("");
       expect(["low", "mid", "high"]).toContain(adapter.cost_tier);
@@ -51,6 +55,10 @@ if [ "\${1:-}" = "--help" ]; then echo help; exit 0; fi
 echo "verify failure" >&2
 exit 7
 `);
+    const kimiBin = await fakeCommand("kimi", `
+if [ "\${1:-}" = "--version" ]; then echo "0.29.1"; exit 0; fi
+echo "not a structured review"
+`);
 
     await expectConformingFailure(
       new ClaudeCliAdapter({ bin: claudeBin }),
@@ -61,6 +69,11 @@ exit 7
       new DeepSeekVerifyAdapter({ bin: dsVerifyBin }),
       task("ds-verify.verify.alignment"),
       "deepseek_command_failed",
+    );
+    await expectConformingFailure(
+      new KimiCodeAdapter({ bin: kimiBin, timeoutMs: 5_000 }),
+      kimiTask(),
+      "kimi_review_invalid",
     );
   });
 });
@@ -122,6 +135,27 @@ function task(capabilityId: string): AgentTask {
     capability_id: capabilityId,
     prompt: "adapter conformance failure fixture",
     context: { repo_path: tmp },
+  };
+}
+
+function kimiTask(): AgentTask {
+  return {
+    ...task("kimi-code.code.review"),
+    context: {
+      repo_path: tmp,
+      kimi_review_input: {
+        schema_version: 1,
+        task: "Review the bounded fixture.",
+        evaluation_criteria: [{
+          id: "correctness",
+          requirement: "The fixture is correct.",
+        }],
+        changed_paths: [],
+        diff: "",
+        deterministic_results: [],
+        evidence_refs: [],
+      },
+    },
   };
 }
 

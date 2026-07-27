@@ -36,6 +36,19 @@ export interface AgentTask {
   context?: Record<string, unknown>;
 }
 
+export interface AgentRuntimeIdentity {
+  adapter_id: string;
+  adapter_version: string;
+  auth_mode: string;
+  provider_id: string;
+  model_id: string;
+  model_context_window?: number;
+  reasoning_effort?: string;
+  agent_profile?: string;
+  binary_path_sha256?: string;
+  evidence_source: "reported" | "configured" | "inferred";
+}
+
 export interface AgentAdapter {
   readonly id: AgentId;
   readonly display_name: string;
@@ -49,6 +62,9 @@ export interface AgentAdapter {
    * that we have credentials + the CLI/SDK is present. < 2s expected.
    */
   isAvailable(): Promise<AgentAvailability>;
+
+  /** Runtime/provider evidence used by review and proof artifacts. */
+  runtimeIdentity?(): Promise<AgentRuntimeIdentity>;
 
   /**
    * Execute the task and stream Hermes-shaped events until terminal. The

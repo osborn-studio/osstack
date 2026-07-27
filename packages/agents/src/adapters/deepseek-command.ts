@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import type { Capability, CostTier } from "@osstack/core";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { BaseAgentAdapter, type AgentAvailability, type AgentTask } from "../base.js";
+import { buildAgentChildEnv } from "../child-env.js";
 
 export interface DeepSeekCommandOptions {
   bin?: string;
@@ -403,7 +404,7 @@ function runCommand(
     const child = spawn(command, args, {
       cwd: options.cwd,
       stdio: ["pipe", "pipe", "pipe"],
-      env: { ...process.env, ...(options.env ?? {}) },
+      env: buildAgentChildEnv(options.env),
     });
     let stdout = "";
     let stderr = "";

@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import {
   parseKimiReviewResult,
-  type KimiReviewResult,
+  type ParsedKimiReviewResult,
 } from "./kimi-contract.js";
 
 const REVIEW_RESULT_PREFIX = "OSSTACK_REVIEW_RESULT=";
@@ -61,7 +61,7 @@ export class KimiStreamAccumulator {
     return [...this.unknownEventTypes];
   }
 
-  reviewResult(subjectRunId: string): KimiReviewResult {
+  reviewResult(subjectRunId: string): ParsedKimiReviewResult {
     if (this.resultPayloads.length === 0) {
       throw new Error(`missing ${REVIEW_RESULT_PREFIX.slice(0, -1)}`);
     }

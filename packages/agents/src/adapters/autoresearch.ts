@@ -30,6 +30,7 @@ import { join } from "node:path";
 import { CapabilitySchema, type Capability, type CostTier } from "@osstack/core";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { BaseAgentAdapter, type AgentAvailability, type AgentId, type AgentTask } from "../base.js";
+import { buildAgentChildEnv } from "../child-env.js";
 
 // ── metric parsing ──────────────────────────────────────────────────────
 
@@ -131,7 +132,11 @@ function defaultGit(uvUnused?: string): GitFn {
   void uvUnused;
   return (repo_path, args) =>
     new Promise((resolve) => {
-      const p = spawn("git", args, { cwd: repo_path, stdio: ["ignore", "pipe", "pipe"] });
+      const p = spawn("git", args, {
+        cwd: repo_path,
+        stdio: ["ignore", "pipe", "pipe"],
+        env: buildAgentChildEnv(),
+      });
       let stdout = "";
       p.stdout.on("data", (c) => { stdout += String(c); });
       p.on("error", () => resolve({ ok: false, stdout: "" }));
@@ -144,7 +149,11 @@ function defaultTrain(uvBin: string): TrainFn {
     new Promise((resolve) => {
       // `uv run train.py > run.log 2>&1` — capture, don't flood.
       const logPath = join(repo_path, "run.log");
-      const p = spawn(uvBin, ["run", "train.py"], { cwd: repo_path, stdio: ["ignore", "pipe", "pipe"] });
+      const p = spawn(uvBin, ["run", "train.py"], {
+        cwd: repo_path,
+        stdio: ["ignore", "pipe", "pipe"],
+        env: buildAgentChildEnv(),
+      });
       let buf = "";
       const onAbort = (): void => { p.kill("SIGTERM"); };
       signal.addEventListener("abort", onAbort, { once: true });
@@ -184,7 +193,11 @@ function defaultPropose(): ProposeFn {
         "Make ONE experimental edit to train.py to try to lower val_bpb.",
         "Edit the file directly. Then reply with a one-line description of what you changed.",
       ].filter(Boolean).join(" ");
-      const p = spawn("claude", ["-p", prompt], { cwd: ctx.repo_path, stdio: ["ignore", "pipe", "pipe"] });
+      const p = spawn("claude", ["-p", prompt], {
+        cwd: ctx.repo_path,
+        stdio: ["ignore", "pipe", "pipe"],
+        env: buildAgentChildEnv(),
+      });
       let out = "";
       const onAbort = (): void => { p.kill("SIGTERM"); };
       ctx.signal.addEventListener("abort", onAbort, { once: true });

@@ -29,6 +29,7 @@ import { join } from "node:path";
 import { CapabilitySchema, type Capability, type CostTier } from "@osstack/core";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { BaseAgentAdapter, type AgentAvailability, type AgentTask } from "../base.js";
+import { buildAgentChildEnv } from "../child-env.js";
 
 const CAPABILITIES: readonly Capability[] = [
   CapabilitySchema.parse({
@@ -291,7 +292,10 @@ export class CodexCliAdapter extends BaseAgentAdapter {
         "-C",
         this.cwd,
         "Dry-run health check. Reply exactly: ok",
-      ], { stdio: ["ignore", "pipe", "pipe"] });
+      ], {
+        stdio: ["ignore", "pipe", "pipe"],
+        env: buildAgentChildEnv(),
+      });
       let stdout = "";
       let stderr = "";
       let settled = false;
@@ -336,7 +340,7 @@ export class CodexCliAdapter extends BaseAgentAdapter {
     ];
     const proc = spawn(this.bin, args, {
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env },
+      env: buildAgentChildEnv(),
     });
 
     // Honor AbortSignal — SIGTERM, then SIGKILL after 2s.
