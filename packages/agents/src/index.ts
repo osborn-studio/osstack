@@ -19,6 +19,7 @@ import { GoogleStitchAdapter } from "./adapters/google-stitch.js";
 export * from "./base.js";
 export * from "./metadata.js";
 export * from "./adapters/kimi-contract.js";
+export * from "./adapters/kimi-stream.js";
 export { ClaudeCodeAdapter } from "./adapters/claude-code.js";
 export { ClaudeCliAdapter } from "./adapters/claude-cli.js";
 export { CodexCliAdapter } from "./adapters/codex-cli.js";
