@@ -390,6 +390,45 @@ describe("deliver CLI", () => {
     expect(builderInvoke).not.toHaveBeenCalled();
   });
 
+  it("fails closed at delivery execution when no independent Evaluator is available", async () => {
+    const workspace = await initGuardedFixture();
+    const builderInvoke = vi.fn(async function* (
+      task: AgentTask,
+    ): AsyncIterable<HermesEvent> {
+      yield doneEvent(task, "completed", "unexpected");
+    });
+
+    const exitCode = await handleDeliverCommand([
+      "Attempt guarded delivery without Kimi",
+      "--workspace",
+      workspace,
+      "--verify",
+      "node --test",
+      "--profile",
+      "mac-mini",
+      "--autonomy",
+      "guarded-local",
+      "--worktree",
+      "--json",
+    ], {
+      ...createDeliverCommandDeps(),
+      adapters: () => guardedAdapters(builderInvoke).filter(
+        (adapter) => adapter.id !== "kimi-code",
+      ),
+    });
+
+    expect(exitCode).toBe(2);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      error: {
+        code: "profile_routing_failed",
+        message: expect.stringContaining(
+          "no independent Evaluator is available",
+        ),
+      },
+    });
+    expect(builderInvoke).not.toHaveBeenCalled();
+  });
+
   it("keeps explicit legacy mode on the frozen no-profile path", async () => {
     const kimiProbe = vi.spyOn(
       KimiCodeAdapter.prototype,

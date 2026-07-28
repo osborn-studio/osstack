@@ -3,8 +3,9 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { KanbanRepository, openDb } from "@osstack/core";
+import { KimiCodeAdapter } from "@osstack/agents";
 import { AgentCommandResult, ApprovalDecision, ApprovalRequest } from "@osstack/protocol";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   handleControlCommand,
   handleStartCommand,
@@ -83,6 +84,7 @@ function harness(): {
       counters[prefix] = next;
       return `${prefix}_${next}`;
     },
+    resolveProfileName: (override) => override ?? "mac-mini",
   };
   return { deps, logs, errs, json: () => JSON.parse(logs.join("\n")) };
 }
@@ -108,6 +110,7 @@ describe("osstack start", () => {
     expect(md).toContain("# Execution Contract — ct_1");
     expect(md).toContain("Add billing dashboard");
     expect(md).toContain("pnpm test"); // verify command from repo.yaml
+    expect(md).toContain("| profile_name | mac-mini |");
     expect(md).toContain("TBD"); // non-goals / acceptance left for the human
   });
 
@@ -197,6 +200,12 @@ describe("osstack control", () => {
   }
 
   it("approve records an ApprovalDecision and emits the deliver command (strict --json)", async () => {
+    const kimiProbe = vi.spyOn(KimiCodeAdapter.prototype, "isAvailable")
+      .mockResolvedValue({
+        available: false,
+        reason: "kimi unavailable in approval environment",
+        last_checked_at: 1,
+      });
     const h = harness();
     await start(h.deps);
     h.logs.length = 0;
@@ -211,6 +220,7 @@ describe("osstack control", () => {
     expect(parsed.next_actions?.[0]?.reason).toContain("osstack deliver");
     expect(parsed.next_actions?.[0]?.reason).toContain("--verify");
     expect(parsed.next_actions?.[0]?.reason).toContain("--max-iter 7");
+    expect(kimiProbe).not.toHaveBeenCalled();
   });
 
   it("rejects a double-approve with a conflict", async () => {
@@ -268,10 +278,83 @@ describe("osstack control", () => {
 
     // Structured argv carries the RAW text — agent consumers never parse shell.
     const argv = result["deliver_args"] as string[];
-    expect(argv[0]).toBe("deliver");
-    expect(argv[1]).toBe(hostile);
-    expect(argv).toContain("--verify");
-    expect(argv).toContain("pnpm test");
+    expect(argv).toEqual([
+      "deliver",
+      hostile,
+      "--workspace",
+      repoPath,
+      "--verify",
+      "pnpm test",
+      "--autonomy",
+      "guarded-local",
+      "--worktree",
+      "--profile",
+      "mac-mini",
+      "--max-iter",
+      "7",
+    ]);
+    expect(argv).not.toContain("legacy");
+  });
+
+  it("stores an explicit profile and replays that exact profile after approval", async () => {
+    const hostileProfile = "--staging; $(id)";
+    const h = harness();
+    await writePolicyYaml(
+      ["schema_version: 1", "mode: propose", ""].join("\n"),
+    );
+    await handleStartCommand([
+      "Route with selected profile",
+      "--repo-id",
+      "demo",
+      "--profile",
+      hostileProfile,
+      ...REGISTRY_ARGS(),
+    ], h.deps);
+    h.logs.length = 0;
+
+    expect(await handleControlCommand(["ct_1", "approve", "--json"], h.deps))
+      .toBe(0);
+    const parsed = AgentCommandResult.parse(h.json());
+    const result = parsed.result as Record<
+      string,
+      unknown
+    >;
+    expect(result["deliver_args"]).toEqual([
+      "deliver",
+      "Route with selected profile",
+      "--workspace",
+      repoPath,
+      "--verify",
+      "pnpm test",
+      "--autonomy",
+      "guarded-local",
+      "--worktree",
+      "--profile",
+      hostileProfile,
+    ]);
+    expect(result["deliver_command"]).toContain("'--staging; $(id)'");
+    expect(parsed.next_actions?.[0]?.reason).toBe(result["deliver_command"]);
+  });
+
+  it("fails closed and requests re-signing for an old contract with no profile", async () => {
+    const h = harness();
+    await start(h.deps);
+    const dbPath = join(tmp, "home", "state.db");
+    const db = openDb({ path: dbPath });
+    try {
+      db.prepare(
+        "UPDATE kanban_cards SET meta = json_remove(meta, '$.profile_name') WHERE card_id = ?",
+      ).run("ct_1");
+    } finally {
+      db.close();
+    }
+    h.logs.length = 0;
+
+    expect(await handleControlCommand(["ct_1", "approve", "--json"], h.deps))
+      .toBe(1);
+    const parsed = AgentCommandResult.parse(h.json());
+    expect(parsed.error?.code).toBe("bad_request");
+    expect(parsed.error?.message).toContain("re-sign");
   });
 
   it("approve succeeds against the approval row when the card was moved out-of-band (B2)", async () => {
