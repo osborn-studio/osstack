@@ -16,6 +16,7 @@ describe("defaultConfig", () => {
     const cfg = defaultConfig();
     expect(cfg.version).toBe(1);
     expect(cfg.active_profile).toBe("auto");
+    expect(cfg.agent_runtime).toEqual({});
     expect(Object.keys(cfg.profiles).sort()).toEqual(["mac-mini", "macbook-pro"]);
     expect(cfg.defaults.roles.coding.primary).toBe("claude-code");
     expect(cfg.profiles["macbook-pro"]!.roles.coding.primary).toBe("codex-cli");
@@ -86,11 +87,21 @@ describe("save / load round-trip", () => {
   it("writes YAML and reads it back identically", () => {
     const cfg = defaultConfig();
     cfg.profiles["mac-mini"]!.roles.coding.primary = "codex-cli";
+    cfg.agent_runtime["kimi-code"] = {
+      provider_id: "kimi",
+      model_id: "kimi-code/k3",
+      agent_profile: "osstack-kimi-review",
+    };
     const path = saveConfig(cfg);
     expect(path).toBe(configPath());
     expect(configExists()).toBe(true);
     const back = loadConfig();
     expect(back.profiles["mac-mini"]!.roles.coding.primary).toBe("codex-cli");
     expect(back.defaults.roles.design.primary).toBe("claude-design");
+    expect(back.agent_runtime["kimi-code"]).toEqual({
+      provider_id: "kimi",
+      model_id: "kimi-code/k3",
+      agent_profile: "osstack-kimi-review",
+    });
   });
 });

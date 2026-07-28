@@ -37,10 +37,25 @@ export const Profile = z.object({
 });
 export type Profile = z.infer<typeof Profile>;
 
+export const AgentRuntimeIdentityOverride = z.object({
+  provider_id: z.string().trim().min(1),
+  model_id: z.string().trim().min(1),
+  model_context_window: z.number().int().positive().optional(),
+  reasoning_effort: z.string().trim().min(1).optional(),
+  agent_profile: z.string().trim().min(1).optional(),
+}).strict();
+export type AgentRuntimeIdentityOverride = z.infer<
+  typeof AgentRuntimeIdentityOverride
+>;
+
 export const OsstackConfig = z.object({
   version: z.literal(1).default(1),
   /** "auto" = pick by hostname; otherwise a profile name to force. */
   active_profile: z.string().default("auto"),
+  agent_runtime: z.record(
+    z.string(),
+    AgentRuntimeIdentityOverride,
+  ).default({}),
   profiles: z.record(z.string(), Profile).default({}),
   /** Used when no profile matches (or a pinned profile is missing). */
   defaults: z.object({ roles: RoleMap }),
