@@ -20,7 +20,7 @@
     {
       "source_id": "osstack-product-skills-and-agent-registry",
       "path": "docs/product/06_SKILLS_AND_AGENT_REGISTRY.md",
-      "sha256": "444fad67a4e00b503b76cb01c5b2a035b58e90d545f54682375394e912a8b9ad",
+      "sha256": "d0b190f6c8c1e66571df105b4a6a73fe68798474a81ffe3f5e5e35166cc39e5a",
       "license": "Osstack-native",
       "scope": "official",
       "imported_at": "2026-06-22T00:00:00.000Z"

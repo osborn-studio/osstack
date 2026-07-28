@@ -13,6 +13,7 @@ import {
 import {
   DEFAULT_RULES,
   PolicyEngine,
+  PIIRedactor,
   routeCapability,
   type PolicyCandidate,
   type PolicyDecision,
@@ -47,6 +48,7 @@ import {
   type LoopEvent,
   type LoopKnowledgeTrace,
   type PublishedAssetEvidence,
+  type ReviewArtifact,
   type Task,
   type Verdict,
 } from "./types.js";
@@ -670,6 +672,7 @@ export class LoopEngine {
     const decisions: string[] = [];
     let finalRun: AgentRun | null = null;
     let finalVerdict: Verdict | null = null;
+    let finalReviewArtifacts: ReviewArtifact[] | undefined;
     let outcome: CompletedTask["outcome"] = "failed";
     let iterations = 0;
     // Usage accrues across every iteration of this task, not just the last run.
@@ -784,6 +787,7 @@ export class LoopEngine {
           });
         }
         finalEvidence = await collectTaskGitEvidence(runWorkspacePath);
+        finalReviewArtifacts = redactReviewArtifacts(finalVerdict.review_artifacts);
         const failedEvaluationIds = (finalVerdict.evaluations ?? [])
           .filter((evaluation) => !evaluation.pass)
           .map((evaluation) => evaluation.spec_id);
@@ -798,6 +802,9 @@ export class LoopEngine {
           } : {}),
           reviewer_agent_id: finalVerdict.reviewer_agent_id,
           summary: finalVerdict.summary,
+          ...(finalReviewArtifacts !== undefined
+            ? { review_artifacts: finalReviewArtifacts }
+            : {}),
           changed_files: finalEvidence.changedFiles,
           diff_summary: finalEvidence.diffSummary,
           ...(finalEvidence.commitHash !== undefined ? { commit_hash: finalEvidence.commitHash } : {}),
@@ -936,6 +943,9 @@ export class LoopEngine {
             : {}),
           ...(finalVerdict.evaluations !== undefined && finalVerdict.evaluations.length > 0
             ? { evaluations: finalVerdict.evaluations }
+            : {}),
+          ...(finalReviewArtifacts !== undefined
+            ? { review_artifacts: finalReviewArtifacts }
             : {}),
         } : {}),
         ...(feedbackHistory.length > 0 ? { iteration_feedback: feedbackHistory } : {}),
@@ -1356,6 +1366,21 @@ function issueAudit(issue: Issue): NonNullable<CompletedTask["verify_issues"]>[n
     ...(issue.line !== undefined ? { line: issue.line } : {}),
     ...(issue.rule !== undefined ? { rule: issue.rule } : {}),
   };
+}
+
+function redactReviewArtifacts(
+  artifacts: Verdict["review_artifacts"],
+): ReviewArtifact[] | undefined {
+  if (artifacts === undefined || artifacts.length === 0) return undefined;
+  const redacted = new PIIRedactor().redactDeep(artifacts);
+  if (redacted.stats.timed_out) {
+    throw new Error(
+      `review artifact redaction timed out${redacted.stats.timed_out_on !== undefined
+        ? ` on ${redacted.stats.timed_out_on}`
+        : ""}`,
+    );
+  }
+  return redacted.value;
 }
 
 function completionErrorSummary(run: AgentRun | null, verdict: Verdict | null): string {

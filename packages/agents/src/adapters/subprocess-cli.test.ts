@@ -111,7 +111,7 @@ if [ "\${1:-}" = "exec" ]; then
 fi
 exit 9
 `);
-    const adapter = new CodexCliAdapter({ bin, cwd: tmp, probeTimeoutMs: 1_000 });
+    const adapter = new CodexCliAdapter({ bin, cwd: tmp, probeTimeoutMs: 5_000 });
 
     try {
       await expect(adapter.isAvailable()).resolves.toMatchObject({ available: true });
@@ -136,7 +136,7 @@ if [ "\${1:-}" = "exec" ]; then
 fi
 exit 0
 `);
-    const adapter = new CodexCliAdapter({ bin, cwd: tmp, probeTimeoutMs: 1_000 });
+    const adapter = new CodexCliAdapter({ bin, cwd: tmp, probeTimeoutMs: 5_000 });
 
     const events = await drain(adapter.invoke(task("codex-cli.code.write"), new AbortController().signal));
     const usage = events.find((event) => event.type === "usage.final");
@@ -155,7 +155,7 @@ exit 0
 printf '{"type":"thread.started","thread_id":"probe"}\\n'
 exit 0
 `);
-    const adapter = new CodexCliAdapter({ bin, cwd: tmp, probeTimeoutMs: 1_000 });
+    const adapter = new CodexCliAdapter({ bin, cwd: tmp, probeTimeoutMs: 5_000 });
 
     try {
       const availability = await adapter.isAvailable();

@@ -8,11 +8,17 @@ import { connect, type Socket } from "node:net";
 import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { assertDbAccessAllowed, assertServeAllowed, ControlPlaneGuardError, defaultOsstackHome } from "./control-plane-guard.js";
+import { createVerifierOutputArtifacts } from "./proof-pack.js";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
-import { agentAuthMode, defaultAdapters, rolesForCapabilityKinds } from "@osstack/agents";
+import {
+  agentAuthMode,
+  defaultAdapters,
+  rolesForCapabilityKinds,
+  type AgentRuntimeIdentity,
+} from "@osstack/agents";
 import { loadConfig, resolveAll, selectProfile, type AgentRole } from "@osstack/config";
 import {
   getCompliancePack,
@@ -52,6 +58,7 @@ import {
   createLoopStateScorecardFromState,
   renderLoopStateScorecardHtml,
   renderLoopStateScorecardMarkdown,
+  ReviewArtifact,
   discardLessonDraft,
   listLessonDrafts,
   promoteLessonDraft,
@@ -849,6 +856,9 @@ async function handleAgentCommand(args: string[]): Promise<number> {
           console.log(`${agent.id} — ${agent.display_name}`);
           console.log(`  roles=${agent.roles.join(",") || "(none)"}`);
           console.log(`  auth_mode=${agent.auth_mode} cost_tier=${agent.cost_tier} available=${agent.available.available}`);
+          if (agent.runtime_identity !== undefined) {
+            console.log(`  provider=${agent.runtime_identity.provider_id} model=${agent.runtime_identity.model_id}`);
+          }
           if (!agent.available.available && agent.available.reason !== undefined) {
             console.log(`  unavailable_reason=${agent.available.reason}`);
           }
@@ -4873,9 +4883,19 @@ async function listLocalAgentProfiles(): Promise<Array<{
   roles: string[];
   capabilities: Array<{ id: string; kind: string; description: string; cost_tier: string }>;
   available: { available: boolean; reason?: string; last_checked_at: number };
+  runtime_identity?: AgentRuntimeIdentity;
 }>> {
   return await Promise.all(defaultAdapters().map(async (adapter) => {
     const capabilities = adapter.capabilities();
+    const available = await adapter.isAvailable();
+    let runtimeIdentity: AgentRuntimeIdentity | undefined;
+    if (adapter.runtimeIdentity !== undefined) {
+      try {
+        runtimeIdentity = await adapter.runtimeIdentity();
+      } catch {
+        runtimeIdentity = undefined;
+      }
+    }
     return {
       id: adapter.id,
       display_name: adapter.display_name,
@@ -4888,7 +4908,10 @@ async function listLocalAgentProfiles(): Promise<Array<{
         description: capability.description,
         cost_tier: capability.cost_tier,
       })),
-      available: await adapter.isAvailable(),
+      available,
+      ...(runtimeIdentity !== undefined
+        ? { runtime_identity: runtimeIdentity }
+        : {}),
     };
   }));
 }
@@ -8436,33 +8459,6 @@ function rolesForAgentId(agentId: string): string[] {
   return rolesForCapabilityKinds(adapter?.capabilities().map((capability) => capability.kind) ?? []);
 }
 
-function createVerifierOutputArtifacts(verifyResults: ReturnType<typeof createVerifyResultsEvidence>): Array<{ path: string; content: string }> {
-  if (verifyResults.results === undefined) return [];
-  return verifyResults.results.map((result) => {
-    const agentId = result.reviewer_agent_id === "" ? "unknown-verifier" : result.reviewer_agent_id;
-    const dir = verifierOutputDir(agentId);
-    const path = `${dir}/${safeFileSegment(result.task_id)}-${safeFileSegment(agentId)}.txt`;
-    const content = [
-      `task_id: ${result.task_id}`,
-      `reviewer_agent_id: ${agentId}`,
-      `pass: ${result.pass ? "true" : "false"}`,
-      `score: ${String(result.score)}`,
-      `event_seq: ${result.event_seq}`,
-      "",
-      result.summary,
-      "",
-    ].join("\n");
-    return { path, content: new PIIRedactor().redact(content).text };
-  });
-}
-
-function verifierOutputDir(agentId: string): "checker-output" | "reviewer-output" {
-  const normalized = agentId.toLowerCase();
-  return normalized.includes("checker") || normalized.includes("verify") || normalized.includes("verifier")
-    ? "checker-output"
-    : "reviewer-output";
-}
-
 function renderProofEventsLog(events: LoopEvent[]): string {
   const lines = events.map((event) => `${event.seq} ${event.type} ${proofEventSummary(event)}`);
   const content = lines.length === 0
@@ -8498,6 +8494,7 @@ function createVerifyResultsEvidence(
     reviewer_agent_id: string;
     summary: string;
     event_seq: number;
+    review_artifacts?: ReviewArtifact[];
   }>;
   reason?: string;
 } {
@@ -8508,16 +8505,23 @@ function createVerifyResultsEvidence(
     reviewer_agent_id: string;
     summary: string;
     event_seq: number;
+    review_artifacts?: ReviewArtifact[];
   }> = events
     .filter((event) => event.type === "loop.verify.done")
-    .map((event) => ({
-      task_id: stringEventPayload(event, "task_id"),
-      pass: booleanEventPayload(event, "pass"),
-      score: numberEventPayload(event, "score") ?? "unknown",
-      reviewer_agent_id: stringEventPayload(event, "reviewer_agent_id"),
-      summary: stringEventPayload(event, "summary"),
-      event_seq: event.seq,
-    }));
+    .map((event) => {
+      const reviewArtifacts = reviewArtifactsEventPayload(event);
+      return {
+        task_id: stringEventPayload(event, "task_id"),
+        pass: booleanEventPayload(event, "pass"),
+        score: numberEventPayload(event, "score") ?? "unknown",
+        reviewer_agent_id: stringEventPayload(event, "reviewer_agent_id"),
+        summary: stringEventPayload(event, "summary"),
+        event_seq: event.seq,
+        ...(reviewArtifacts !== undefined
+          ? { review_artifacts: reviewArtifacts }
+          : {}),
+      };
+    });
   if (results.length === 0) {
     return {
       status: scorecard.items.find((item) => item.id === "verify_gates_passed")?.status ?? "unknown",
@@ -8528,6 +8532,20 @@ function createVerifyResultsEvidence(
     status: results.every((result) => result.pass) ? "pass" : "fail",
     results,
   };
+}
+
+function reviewArtifactsEventPayload(
+  event: LoopEvent,
+): ReviewArtifact[] | undefined {
+  const value = event.payload?.["review_artifacts"];
+  if (value === undefined) return undefined;
+  const parsed = ReviewArtifact.array().max(100).safeParse(value);
+  if (!parsed.success) {
+    throw new Error(
+      `invalid review_artifacts in loop.verify.done event seq=${event.seq}: ${parsed.error.message}`,
+    );
+  }
+  return parsed.data.length > 0 ? parsed.data : undefined;
 }
 
 function createWorktreeStatusEvidence(events: LoopEvent[]): {

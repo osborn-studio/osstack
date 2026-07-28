@@ -1,5 +1,13 @@
 # @osstack/cli
 
+## Unreleased
+
+### Minor Changes
+
+- Surface Kimi readiness and runtime identity in agent/config diagnostics,
+  preserve checksummed structured review Markdown/JSON in proof packs, and add
+  offline plus live seeded-defect evaluation commands.
+
 ## 0.12.0
 
 ### Minor Changes

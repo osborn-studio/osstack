@@ -137,6 +137,49 @@ describe("LoopEngine", () => {
       .resolves.toContain("reviewed run_plan_");
   });
 
+  it("persists redacted structured Kimi review evidence in events and completed tasks", async () => {
+    const workspace = await makeGitQueuedWorkspace("stable\n");
+    await git(workspace, ["mv", "app.txt", "app.ts"]);
+    await git(workspace, [
+      "-c",
+      "user.name=test",
+      "-c",
+      "user.email=test@example.invalid",
+      "commit",
+      "-m",
+      "use TypeScript fixture",
+    ]);
+    const reviewer = new FakeKimiReviewAdapter();
+    const result = await new LoopEngine({
+      loopId: "loop-kimi-review",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('app.ts', 'review me\\n')\"",
+      verifierAgentIds: [reviewer.id],
+      adapters: [reviewer],
+    }).runOnce();
+
+    const expectedReview = expect.objectContaining({
+      schema_version: 1,
+      reviewer_agent_id: "kimi-code",
+      verdict: "approved",
+      markdown: expect.stringContaining("[REDACTED:"),
+    });
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.verify.done",
+      payload: expect.objectContaining({
+        pass: true,
+        review_artifacts: [expectedReview],
+      }),
+    }));
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      outcome: "success",
+      review_artifacts: [expectedReview],
+    });
+    expect(JSON.stringify(result.events)).not.toContain("sk-test-secret-token");
+    expect(JSON.stringify(result.state.completed_tasks[0])).not.toContain("sk-test-secret-token");
+  });
+
   it("emits a dedicated event only for a verifier's structured implementation deviation", async () => {
     const workspace = await makeQueuedWorkspace();
     await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
@@ -987,6 +1030,55 @@ class FakeReviewAdapter implements AgentAdapter {
             evidence: [{ path: "agent-output.txt", line: 1 }],
           }]
         : undefined,
+    }, true);
+  }
+}
+
+class FakeKimiReviewAdapter implements AgentAdapter {
+  readonly id = "kimi-code";
+  readonly display_name = "Fake Kimi Reviewer";
+  readonly cost_tier: CostTier = "low";
+
+  capabilities(): readonly Capability[] {
+    return [
+      CapabilitySchema.parse({
+        id: "kimi-code.code.review",
+        kind: "code.review",
+        agent_id: this.id,
+        description: "Fake structured Kimi reviewer for tests",
+        cost_tier: this.cost_tier,
+      }),
+    ];
+  }
+
+  async isAvailable(): Promise<AgentAvailability> {
+    return { available: true, last_checked_at: Math.floor(Date.now() / 1000) };
+  }
+
+  async *invoke(task: AgentTask): AsyncIterable<HermesEvent> {
+    yield fakeEvent(task, 1, "done", {
+      status: "completed",
+      last_seq: 0,
+      result_summary: "structured Kimi review approved",
+      review: {
+        schema_version: 1,
+        verdict: "approved",
+        risk: "read_only",
+        markdown: "# Review\n\nApproved with token sk-test-secret-token-12345678901234567890",
+        judgments: [],
+        findings: [],
+        recommended_actions: [],
+        evidence_refs: ["app.ts"],
+        runtime_identity: {
+          adapter_id: "kimi-code",
+          adapter_version: "0.29.1",
+          auth_mode: "subprocess/login-reuse",
+          provider_id: "kimi",
+          model_id: "kimi-code/k3",
+          agent_profile: "osstack-reviewer",
+          evidence_source: "configured",
+        },
+      },
     }, true);
   }
 }

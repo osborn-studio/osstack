@@ -22,6 +22,7 @@
     "@osstack/agents": "workspace:*",
     "@osstack/core": "workspace:*",
     "@osstack/github": "workspace:*",
+    "@osstack/governance": "workspace:*",
     "@osstack/hermes-adapter": "workspace:*",
     "@osstack/protocol": "workspace:*",
     "zod": "^3.25.76"
