@@ -8,7 +8,11 @@ import { connect, type Socket } from "node:net";
 import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { assertDbAccessAllowed, assertServeAllowed, ControlPlaneGuardError, defaultOsstackHome } from "./control-plane-guard.js";
-import { createVerifierOutputArtifacts } from "./proof-pack.js";
+import {
+  createAgentRuntimeEvidence,
+  createPolicyDecisionEvidence,
+  createVerifierOutputArtifacts,
+} from "./proof-pack.js";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
@@ -8399,76 +8403,6 @@ function knowledgeProofFromTrace(trace: LoopKnowledgeTrace): KnowledgeProofEvide
   };
 }
 
-function createPolicyDecisionEvidence(events: LoopEvent[]): {
-  status: "recorded" | "unknown";
-  decisions?: Array<{
-    task_id: string;
-    agent_id: string;
-    auth_mode: string;
-    roles: string[];
-    reason: string;
-    event_seq: number;
-  }>;
-  reason?: string;
-} {
-  const decisions = events
-    .filter((event) => event.type === "loop.plan.done")
-    .map((event) => ({
-      task_id: stringEventPayload(event, "task_id"),
-      agent_id: stringEventPayload(event, "agent_id"),
-      auth_mode: agentAuthMode(stringEventPayload(event, "agent_id")),
-      roles: rolesForAgentId(stringEventPayload(event, "agent_id")),
-      reason: stringEventPayload(event, "routing_reason"),
-      event_seq: event.seq,
-    }));
-  if (decisions.length === 0) {
-    return {
-      status: "unknown",
-      reason: "No loop.plan.done policy decision evidence found.",
-    };
-  }
-  return { status: "recorded", decisions };
-}
-
-function createAgentRuntimeEvidence(events: LoopEvent[]): {
-  status: "recorded" | "unknown";
-  agents?: Array<{
-    agent_id: string;
-    auth_mode: string;
-    roles: string[];
-    plan_event_seqs: number[];
-  }>;
-  reason?: string;
-} {
-  const byAgent = new Map<string, number[]>();
-  for (const event of events) {
-    if (event.type !== "loop.plan.done") continue;
-    const agentId = stringEventPayload(event, "agent_id");
-    byAgent.set(agentId, [...(byAgent.get(agentId) ?? []), event.seq]);
-  }
-  if (byAgent.size === 0) {
-    return {
-      status: "unknown",
-      reason: "No loop.plan.done event evidence found.",
-    };
-  }
-  return {
-    status: "recorded",
-    agents: [...byAgent.entries()].map(([agentId, seqs]) => ({
-      agent_id: agentId,
-      auth_mode: agentAuthMode(agentId),
-      roles: rolesForAgentId(agentId),
-      plan_event_seqs: seqs,
-    })),
-  };
-}
-
-function rolesForAgentId(agentId: string): string[] {
-  if (agentId === "local-command") return ["coding", "test-verify", "release/proof"];
-  const adapter = defaultAdapters().find((candidate) => candidate.id === agentId);
-  return rolesForCapabilityKinds(adapter?.capabilities().map((capability) => capability.kind) ?? []);
-}
-
 function renderProofEventsLog(events: LoopEvent[]): string {
   const lines = events.map((event) => `${event.seq} ${event.type} ${proofEventSummary(event)}`);
   const content = lines.length === 0
@@ -9074,6 +9008,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(agentId !== undefined ? { agentId } : {}),
       ...(autoAgent ? { autoAgent } : {}),
       ...(profileRouting !== undefined ? { enforceRoleSeparation: true } : {}),
+      ...(profileRouting !== undefined
+        ? { profileRouting: profileRouting.summary }
+        : {}),
       ...(goalCommand !== undefined ? { goalCommand } : {}),
       ...(schedule !== undefined ? { schedule } : {}),
       ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
@@ -9228,6 +9165,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ...(agentId !== undefined ? { agentId } : {}),
         ...(autoAgent ? { autoAgent } : {}),
         ...(profileRouting !== undefined ? { enforceRoleSeparation: true } : {}),
+        ...(profileRouting !== undefined
+          ? { profileRouting: profileRouting.summary }
+          : {}),
         ...(goalCommand !== undefined ? { goalCommand } : {}),
         ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
         ...(verifierAgentIds.length > 0 ? { verifierAgentIds } : {}),
@@ -9307,6 +9247,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(agentId !== undefined ? { agentId } : {}),
       ...(autoAgent ? { autoAgent } : {}),
       ...(profileRouting !== undefined ? { enforceRoleSeparation: true } : {}),
+      ...(profileRouting !== undefined
+        ? { profileRouting: profileRouting.summary }
+        : {}),
       ...(adapters !== undefined ? { adapters } : {}),
       ...(verifierAgentIds.length > 0 ? { verifierAgentIds } : {}),
       ...(artifactVerification !== undefined ? { artifactVerification } : {}),

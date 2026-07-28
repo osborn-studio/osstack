@@ -137,6 +137,48 @@ describe("LoopEngine", () => {
       .resolves.toContain("reviewed run_plan_");
   });
 
+  it("emits the frozen profile and role identities at plan and verify boundaries", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const builder = new FakeLoopAdapter({
+      id: "claude-code",
+      outputFile: "profile-output.txt",
+    });
+    const evaluator = new FakeReviewAdapter();
+    const result = await new LoopEngine({
+      loopId: "loop-profile-evidence",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      agentId: builder.id,
+      verifierAgentIds: [evaluator.id],
+      adapters: [builder, evaluator],
+      profileRouting: profileRoutingFixture(),
+    }).runOnce();
+
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.plan.done",
+      payload: expect.objectContaining({
+        profile_name: "mac-mini",
+        builder_identity: expect.objectContaining({
+          adapter_id: "claude-code",
+          provider_id: "anthropic",
+          model_id: "claude-current",
+        }),
+      }),
+    }));
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.verify.done",
+      payload: expect.objectContaining({
+        profile_name: "mac-mini",
+        evaluator_identity: expect.objectContaining({
+          adapter_id: "fake-reviewer",
+          provider_id: "review-provider",
+          model_id: "review-current",
+        }),
+        independence_reason: "reported provider or model differs",
+      }),
+    }));
+  });
+
   it("persists redacted structured Kimi review evidence in events and completed tasks", async () => {
     const workspace = await makeGitQueuedWorkspace("stable\n");
     await git(workspace, ["mv", "app.txt", "app.ts"]);
@@ -1100,4 +1142,31 @@ function fakeEvent(
     type,
     payload,
   } as HermesEvent;
+}
+
+function profileRoutingFixture() {
+  return {
+    profile_name: "mac-mini",
+    reason: "pinned profile \"mac-mini\"",
+    builder_agent_id: "claude-code",
+    evaluator_agent_id: "fake-reviewer",
+    builder_identity: {
+      adapter_id: "claude-code",
+      adapter_version: "1.0.0",
+      auth_mode: "login-reuse",
+      provider_id: "anthropic",
+      model_id: "claude-current",
+      evidence_source: "reported",
+    },
+    evaluator_identity: {
+      adapter_id: "fake-reviewer",
+      adapter_version: "1.0.0",
+      auth_mode: "test",
+      provider_id: "review-provider",
+      model_id: "review-current",
+      evidence_source: "reported",
+    },
+    independent: true,
+    independence_reason: "reported provider or model differs",
+  };
 }

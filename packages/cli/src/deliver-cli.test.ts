@@ -320,6 +320,36 @@ describe("deliver CLI", () => {
     expect(summary.artifacts.proof_dir).toEqual(expect.any(String));
     await expect(stat(summary.artifacts.proof_manifest!)).resolves
       .toMatchObject({ size: expect.any(Number) });
+    await expect(
+      readFile(
+        join(summary.artifacts.proof_dir!, "policy-decision.json"),
+        "utf-8",
+      ),
+    ).resolves.toContain("\"profile_name\": \"mac-mini\"");
+    const runtimeEvidence = JSON.parse(
+      await readFile(
+        join(summary.artifacts.proof_dir!, "agent-runtime.json"),
+        "utf-8",
+      ),
+    ) as {
+      agents: Array<{
+        adapter_id?: string;
+        provider_id?: string;
+        model_id?: string;
+      }>;
+    };
+    expect(runtimeEvidence.agents).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        adapter_id: "claude-code",
+        provider_id: "anthropic",
+        model_id: "claude-current",
+      }),
+      expect.objectContaining({
+        adapter_id: "kimi-code",
+        provider_id: "kimi",
+        model_id: "kimi-code/k3",
+      }),
+    ]));
     expect(remotePorts.push).not.toHaveBeenCalled();
     expect(remotePorts.createPullRequest).not.toHaveBeenCalled();
     expect(remotePorts.merge).not.toHaveBeenCalled();

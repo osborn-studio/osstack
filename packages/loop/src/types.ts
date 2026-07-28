@@ -435,6 +435,31 @@ export type LoopEngineConfig = z.infer<typeof LoopEngineConfig>;
 
 // ── Loop events (Hermes-compatible) ────────────────────────────────────
 
+export const LoopProfileRoutingEvidence = z.object({
+  profile_name: z.string().min(1),
+  reason: z.string().min(1),
+  builder_agent_id: z.string().min(1),
+  evaluator_agent_id: z.string().min(1),
+  designer_agent_id: z.string().min(1).optional(),
+  builder_identity: z.record(z.unknown()),
+  evaluator_identity: z.record(z.unknown()),
+  designer_identity: z.record(z.unknown()).optional(),
+  independent: z.boolean(),
+  independence_reason: z.string().min(1),
+}).passthrough();
+export interface LoopProfileRoutingEvidence {
+  profile_name: string;
+  reason: string;
+  builder_agent_id: string;
+  evaluator_agent_id: string;
+  designer_agent_id?: string;
+  builder_identity: object;
+  evaluator_identity: object;
+  designer_identity?: object;
+  independent: boolean;
+  independence_reason: string;
+}
+
 export const LoopEventType = z.enum([
   "loop.started",
   "loop.cycle.started",

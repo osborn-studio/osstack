@@ -274,6 +274,9 @@ Stages:
       ? {
           verifierAgentIds,
           enforceRoleSeparation: true,
+          ...(profileRouting !== undefined
+            ? { profileRouting: profileRouting.summary }
+            : {}),
           artifactVerification: { requireGitDiff: true },
         }
       : {}),

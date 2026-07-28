@@ -1,5 +1,10 @@
+import {
+  agentAuthMode,
+  defaultAdapters,
+  rolesForCapabilityKinds,
+} from "@osstack/agents";
 import { PIIRedactor } from "@osstack/core";
-import type { ReviewArtifact } from "@osstack/loop";
+import type { LoopEvent, ReviewArtifact } from "@osstack/loop";
 
 export interface VerifyResultEvidence {
   task_id: string;
@@ -20,6 +25,191 @@ export interface VerifyResultsEvidence {
 export interface ProofArtifact {
   path: string;
   content: string;
+}
+
+export interface PolicyDecisionEvidence {
+  status: "recorded" | "unknown";
+  decisions?: Array<{
+    task_id: string;
+    agent_id: string;
+    auth_mode: string;
+    roles: string[];
+    reason: string;
+    event_seq: number;
+    profile_name?: string;
+    independent?: boolean;
+    independence_reason?: string;
+  }>;
+  reason?: string;
+}
+
+export interface AgentRuntimeEvidence {
+  status: "recorded" | "unknown";
+  agents?: Array<{
+    agent_id: string;
+    auth_mode: string;
+    roles: string[];
+    plan_event_seqs: number[];
+    verify_event_seqs?: number[];
+    adapter_id?: string;
+    provider_id?: string;
+    model_id?: string;
+    evidence_source?: string;
+    runtime_identity?: Record<string, unknown>;
+  }>;
+  reason?: string;
+}
+
+export function createPolicyDecisionEvidence(
+  events: LoopEvent[],
+): PolicyDecisionEvidence {
+  const decisions = events
+    .filter((event) => event.type === "loop.plan.done")
+    .map((event) => {
+      const agentId = stringEventPayload(event, "agent_id");
+      const builderIdentity = recordEventPayload(
+        event,
+        "builder_identity",
+      );
+      const profileName = optionalStringEventPayload(
+        event,
+        "profile_name",
+      );
+      const independent = optionalBooleanEventPayload(
+        event,
+        "independent",
+      );
+      const independenceReason = optionalStringEventPayload(
+        event,
+        "independence_reason",
+      );
+      return {
+        task_id: stringEventPayload(event, "task_id"),
+        agent_id: agentId,
+        auth_mode: stringRecordValue(builderIdentity, "auth_mode")
+          ?? agentAuthMode(agentId),
+        roles: builderIdentity === undefined
+          ? rolesForAgentId(agentId)
+          : ["coding"],
+        reason: stringEventPayload(event, "routing_reason"),
+        event_seq: event.seq,
+        ...(profileName !== undefined
+          ? { profile_name: profileName }
+          : {}),
+        ...(independent !== undefined ? { independent } : {}),
+        ...(independenceReason !== undefined
+          ? { independence_reason: independenceReason }
+          : {}),
+      };
+    });
+  if (decisions.length === 0) {
+    return {
+      status: "unknown",
+      reason: "No loop.plan.done policy decision evidence found.",
+    };
+  }
+  return redactEvidence({ status: "recorded", decisions });
+}
+
+export function createAgentRuntimeEvidence(
+  events: LoopEvent[],
+): AgentRuntimeEvidence {
+  interface RuntimeEntry {
+    agent_id: string;
+    auth_mode: string;
+    roles: Set<string>;
+    plan_event_seqs: number[];
+    verify_event_seqs: number[];
+    identity?: Record<string, unknown>;
+  }
+
+  const byAgent = new Map<string, RuntimeEntry>();
+  const upsert = (
+    agentId: string,
+    role: string,
+    eventSeq: number,
+    eventKind: "plan" | "verify",
+    identity?: Record<string, unknown>,
+  ): void => {
+    const existing = byAgent.get(agentId) ?? {
+      agent_id: agentId,
+      auth_mode: stringRecordValue(identity, "auth_mode")
+        ?? agentAuthMode(agentId),
+      roles: new Set<string>(),
+      plan_event_seqs: [],
+      verify_event_seqs: [],
+      ...(identity !== undefined ? { identity } : {}),
+    };
+    existing.roles.add(role);
+    if (eventKind === "plan") {
+      existing.plan_event_seqs.push(eventSeq);
+    } else {
+      existing.verify_event_seqs.push(eventSeq);
+    }
+    if (existing.identity === undefined && identity !== undefined) {
+      existing.identity = identity;
+      existing.auth_mode = stringRecordValue(identity, "auth_mode")
+        ?? existing.auth_mode;
+    }
+    byAgent.set(agentId, existing);
+  };
+
+  for (const event of events) {
+    if (event.type === "loop.plan.done") {
+      const identity = recordEventPayload(event, "builder_identity");
+      const agentId = stringRecordValue(identity, "adapter_id")
+        ?? stringEventPayload(event, "agent_id");
+      if (identity === undefined) {
+        for (const role of rolesForAgentId(agentId)) {
+          upsert(agentId, role, event.seq, "plan");
+        }
+      } else {
+        upsert(agentId, "coding", event.seq, "plan", identity);
+      }
+    }
+    if (event.type === "loop.verify.done") {
+      const identity = recordEventPayload(event, "evaluator_identity");
+      if (identity === undefined) continue;
+      const agentId = stringRecordValue(identity, "adapter_id")
+        ?? stringEventPayload(event, "reviewer_agent_id");
+      upsert(agentId, "test-verify", event.seq, "verify", identity);
+    }
+  }
+  if (byAgent.size === 0) {
+    return {
+      status: "unknown",
+      reason: "No loop.plan.done event evidence found.",
+    };
+  }
+  const agents = [...byAgent.values()].map((entry) => {
+    const identity = entry.identity;
+    const adapterId = stringRecordValue(identity, "adapter_id");
+    const providerId = stringRecordValue(identity, "provider_id");
+    const modelId = stringRecordValue(identity, "model_id");
+    const evidenceSource = stringRecordValue(
+      identity,
+      "evidence_source",
+    );
+    return {
+      agent_id: entry.agent_id,
+      auth_mode: entry.auth_mode,
+      roles: [...entry.roles],
+      plan_event_seqs: entry.plan_event_seqs,
+      ...(entry.verify_event_seqs.length > 0
+        ? { verify_event_seqs: entry.verify_event_seqs }
+        : {}),
+      ...(adapterId !== undefined ? { adapter_id: adapterId } : {}),
+      ...(providerId !== undefined ? { provider_id: providerId } : {}),
+      ...(modelId !== undefined ? { model_id: modelId } : {}),
+      ...(evidenceSource !== undefined
+        ? { evidence_source: evidenceSource }
+        : {}),
+      ...(identity !== undefined
+        ? { runtime_identity: identity }
+        : {}),
+    };
+  });
+  return redactEvidence({ status: "recorded", agents });
 }
 
 export function createVerifierOutputArtifacts(
@@ -124,4 +314,73 @@ function assertUniqueArtifactPaths(artifacts: readonly ProofArtifact[]): void {
     }
     paths.add(artifact.path);
   }
+}
+
+function rolesForAgentId(agentId: string): string[] {
+  if (agentId === "local-command") {
+    return ["coding", "test-verify", "release/proof"];
+  }
+  const adapter = defaultAdapters().find(
+    (candidate) => candidate.id === agentId,
+  );
+  return rolesForCapabilityKinds(
+    adapter?.capabilities().map((capability) => capability.kind) ?? [],
+  );
+}
+
+function stringEventPayload(
+  event: LoopEvent,
+  key: string,
+): string {
+  return optionalStringEventPayload(event, key) ?? "unknown";
+}
+
+function optionalStringEventPayload(
+  event: LoopEvent,
+  key: string,
+): string | undefined {
+  const value = event.payload?.[key];
+  return typeof value === "string" && value.length > 0
+    ? value
+    : undefined;
+}
+
+function optionalBooleanEventPayload(
+  event: LoopEvent,
+  key: string,
+): boolean | undefined {
+  const value = event.payload?.[key];
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function recordEventPayload(
+  event: LoopEvent,
+  key: string,
+): Record<string, unknown> | undefined {
+  const value = event.payload?.[key];
+  return isRecord(value) ? value : undefined;
+}
+
+function stringRecordValue(
+  record: Record<string, unknown> | undefined,
+  key: string,
+): string | undefined {
+  const value = record?.[key];
+  return typeof value === "string" && value.length > 0
+    ? value
+    : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object"
+    && value !== null
+    && !Array.isArray(value);
+}
+
+function redactEvidence<T>(value: T): T {
+  const redacted = new PIIRedactor().redactDeep(value);
+  if (redacted.stats.timed_out) {
+    throw new Error("profile proof evidence redaction timed out");
+  }
+  return redacted.value;
 }
