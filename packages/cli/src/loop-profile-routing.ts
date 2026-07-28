@@ -1,18 +1,28 @@
-import { defaultAdapters } from "@osstack/agents";
+import {
+  defaultAdapters,
+  type AgentAdapter,
+  type AgentRuntimeIdentity,
+} from "@osstack/agents";
 import {
   loadConfig,
-  resolveAll,
+  resolveDeliveryRoles,
   selectProfile,
   type AgentRole,
+  type OsstackConfig,
+  type ResolvedProfile,
 } from "@osstack/config";
-import type { RoutableAdapter } from "@osstack/core";
 
 export interface LoopProfileSummary {
   profile_name: string;
   reason: string;
-  builder_agent_id?: string;
-  evaluator_agent_id?: string;
+  builder_agent_id: string;
+  evaluator_agent_id: string;
   designer_agent_id?: string;
+  builder_identity: AgentRuntimeIdentity;
+  evaluator_identity: AgentRuntimeIdentity;
+  designer_identity?: AgentRuntimeIdentity;
+  independent: boolean;
+  independence_reason: string;
   overrides: Record<string, string>;
   resolutions: Record<string, {
     chosen: string | null;
@@ -22,30 +32,70 @@ export interface LoopProfileSummary {
 }
 
 export interface LoopProfileRoutingResult {
-  agentId?: string;
+  agentId: string;
   verifierAgentIds: string[];
   summary: LoopProfileSummary;
+}
+
+export interface LoopProfileRoutingDeps {
+  loadConfig?: () => OsstackConfig;
+  selectProfile?: (
+    config: OsstackConfig,
+    opts?: { override?: string | undefined },
+  ) => ResolvedProfile;
+  adapters?: () => AgentAdapter[];
+}
+
+export function shouldResolveExecutionProfile(input: {
+  explicitProfile: boolean;
+  roleOverrides: boolean;
+  guardedAutonomy: boolean;
+  autoAgent: boolean;
+  executeCommand: boolean;
+}): boolean {
+  return input.explicitProfile
+    || input.roleOverrides
+    || input.guardedAutonomy
+    || (input.autoAgent && !input.executeCommand);
 }
 
 export async function resolveLoopProfileRouting(
   args: string[],
   explicitAgentId: string | undefined,
   explicitVerifierAgentIds: readonly string[],
+  deps: LoopProfileRoutingDeps = {},
 ): Promise<LoopProfileRoutingResult | undefined | Error> {
   const profileOverride = flagValue(args, "--profile")
     ?? process.env["OSSTACK_AGENT_PROFILE"]
     ?? process.env["OSSTACK_PROFILE"];
   const overrides = parseRoleOverrides(args);
   if (overrides instanceof Error) return overrides;
-  if (
-    profileOverride === undefined
-    && Object.keys(overrides).length === 0
-  ) {
+  const autonomy = flagValue(args, "--autonomy");
+  const shouldResolve = shouldResolveExecutionProfile({
+    explicitProfile: profileOverride !== undefined,
+    roleOverrides: Object.keys(overrides).length > 0,
+    guardedAutonomy: autonomy !== undefined && autonomy !== "legacy",
+    autoAgent: args.includes("--auto-agent"),
+    executeCommand: flagValue(args, "--execute") !== undefined,
+  });
+  if (!shouldResolve) {
     return undefined;
   }
 
-  const config = loadConfig();
-  const profile = selectProfile(
+  const requestedBuilder = explicitAgentId ?? overrides.coding;
+  const requestedEvaluator = explicitVerifierAgentIds[0]
+    ?? overrides["test-verify"];
+  if (
+    requestedBuilder !== undefined
+    && requestedBuilder === requestedEvaluator
+  ) {
+    return new Error(
+      "explicit Builder and Evaluator must use different adapters",
+    );
+  }
+
+  const config = deps.loadConfig?.() ?? loadConfig();
+  const profile = (deps.selectProfile ?? selectProfile)(
     config,
     profileOverride !== undefined ? { override: profileOverride } : {},
   );
@@ -74,40 +124,110 @@ export async function resolveLoopProfileRouting(
       ),
     };
   }
+  if (explicitAgentId !== undefined) {
+    roles.coding = {
+      primary: explicitAgentId,
+      fallback: roles.coding.fallback.filter(
+        (candidate) => candidate !== explicitAgentId,
+      ),
+    };
+  }
+  const explicitEvaluatorId = explicitVerifierAgentIds[0];
+  if (explicitEvaluatorId !== undefined) {
+    roles["test-verify"] = {
+      primary: explicitEvaluatorId,
+      fallback: roles["test-verify"].fallback.filter(
+        (candidate) => candidate !== explicitEvaluatorId,
+      ),
+    };
+  }
 
-  const adapters = defaultAdapters() as unknown as RoutableAdapter[];
-  const resolutions = await resolveAll(
+  const adapters = deps.adapters?.() ?? defaultAdapters();
+  const resolution = await resolveDeliveryRoles(
     roles,
     adapters,
-    { autoFallback: true },
+    {
+      autoFallback: true,
+      identityOverrides: config.agent_runtime,
+      independenceLevel: "adapter",
+    },
   );
-  const builder = explicitAgentId
-    ?? resolutions.coding.chosen
-    ?? undefined;
-  const evaluator = explicitVerifierAgentIds[0]
-    ?? resolutions["test-verify"].chosen
-    ?? undefined;
+  const builder = resolution.builder.chosen;
+  const evaluator = resolution.evaluator.chosen;
+  if (builder === null) {
+    return new Error("no Builder is available");
+  }
+  if (evaluator === null) {
+    return new Error("no independent Evaluator is available");
+  }
+  if (
+    explicitAgentId !== undefined
+    && builder !== explicitAgentId
+  ) {
+    return new Error(
+      `explicit Builder "${explicitAgentId}" is unavailable`,
+    );
+  }
+  if (
+    explicitEvaluatorId !== undefined
+    && evaluator !== explicitEvaluatorId
+  ) {
+    return new Error(
+      `explicit Evaluator "${explicitEvaluatorId}" is unavailable or conflicts with the Builder`,
+    );
+  }
+  if (!resolution.independent) {
+    return new Error(
+      `Builder/Evaluator separation failed: ${resolution.independence_reason}`,
+    );
+  }
+  const builderIdentity = resolution.identities.builder;
+  const evaluatorIdentity = resolution.identities.evaluator;
+  if (
+    builderIdentity === undefined
+    || evaluatorIdentity === undefined
+  ) {
+    return new Error("Builder or Evaluator runtime identity is unavailable");
+  }
+  const summaryOverrides = {
+    ...Object.fromEntries(Object.entries(overrides)),
+    ...(explicitAgentId !== undefined
+      ? { coding: explicitAgentId }
+      : {}),
+    ...(explicitEvaluatorId !== undefined
+      ? { "test-verify": explicitEvaluatorId }
+      : {}),
+  };
   return {
-    ...(builder !== undefined ? { agentId: builder } : {}),
-    verifierAgentIds: evaluator !== undefined ? [evaluator] : [],
+    agentId: builder,
+    verifierAgentIds: [evaluator],
     summary: {
       profile_name: profile.name,
       reason: profile.reason,
-      ...(builder !== undefined ? { builder_agent_id: builder } : {}),
-      ...(evaluator !== undefined
-        ? { evaluator_agent_id: evaluator }
+      builder_agent_id: builder,
+      evaluator_agent_id: evaluator,
+      ...(resolution.designer.chosen !== null
+        ? { designer_agent_id: resolution.designer.chosen }
         : {}),
-      ...(resolutions.design.chosen !== null
-        ? { designer_agent_id: resolutions.design.chosen }
+      builder_identity: builderIdentity,
+      evaluator_identity: evaluatorIdentity,
+      ...(resolution.identities.designer !== undefined
+        ? { designer_identity: resolution.identities.designer }
         : {}),
-      overrides: Object.fromEntries(Object.entries(overrides)),
+      independent: resolution.independent,
+      independence_reason: resolution.independence_reason,
+      overrides: summaryOverrides,
       resolutions: Object.fromEntries(
-        Object.entries(resolutions).map(([role, resolution]) => [
+        Object.entries({
+          coding: resolution.builder,
+          "test-verify": resolution.evaluator,
+          design: resolution.designer,
+        }).map(([role, roleResolution]) => [
           role,
           {
-            chosen: resolution.chosen,
-            reason: resolution.reason,
-            tried: resolution.tried,
+            chosen: roleResolution.chosen,
+            reason: roleResolution.reason,
+            tried: roleResolution.tried,
           },
         ]),
       ),
