@@ -22,6 +22,26 @@ afterEach(async () => {
 });
 
 describe("verifyRun", () => {
+  it.each(["failed", "cancelled"] as const)(
+    "fails closed when Builder execution is %s even if verification has no other issue",
+    async (outcome) => {
+      const verdict = await verifyRun({
+        ...run(),
+        outcome,
+        summary: `${outcome} after writing`,
+      }, {
+        workspacePath: workspace,
+      });
+
+      expect(verdict.pass).toBe(false);
+      expect(verdict.score).toBe(0);
+      expect(verdict.issues).toContainEqual(expect.objectContaining({
+        rule: "execute.outcome_not_completed",
+        message: expect.stringContaining(outcome),
+      }));
+    },
+  );
+
   it("runs verifier adapters with repo and subject context", async () => {
     let captured: AgentTask | undefined;
     const adapter = mockAdapter({

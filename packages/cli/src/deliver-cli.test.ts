@@ -429,6 +429,39 @@ describe("deliver CLI", () => {
     expect(builderInvoke).not.toHaveBeenCalled();
   });
 
+  it("rejects an invalid guarded-local command timeout before Builder invoke", async () => {
+    const workspace = await initGuardedFixture();
+    const builderInvoke = vi.fn(async function* (
+      task: AgentTask,
+    ): AsyncIterable<HermesEvent> {
+      yield doneEvent(task, "completed", "unexpected");
+    });
+
+    const exitCode = await handleDeliverCommand([
+      "Attempt guarded delivery with an invalid timeout",
+      "--workspace",
+      workspace,
+      "--verify",
+      "node --test",
+      "--profile",
+      "mac-mini",
+      "--autonomy",
+      "guarded-local",
+      "--command-timeout-ms",
+      "0",
+      "--json",
+    ], {
+      ...createDeliverCommandDeps(),
+      adapters: () => guardedAdapters(builderInvoke),
+    });
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("\n")).toContain(
+      "--command-timeout-ms must be a positive integer",
+    );
+    expect(builderInvoke).not.toHaveBeenCalled();
+  });
+
   it("keeps explicit legacy mode on the frozen no-profile path", async () => {
     const kimiProbe = vi.spyOn(
       KimiCodeAdapter.prototype,

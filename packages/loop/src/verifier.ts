@@ -90,6 +90,15 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
   const executionIssues = run.command_results
     .filter((result) => result.exitCode !== 0)
     .map((result) => commandIssue("execute.command_failed", result));
+  const executionOutcomeIssues: Issue[] = run.outcome === "completed"
+    ? []
+    : [{
+        severity: "error",
+        message: `Builder execution ended ${run.outcome}${
+          run.summary === undefined ? "" : `: ${singleLine(run.summary)}`
+        }`,
+        rule: "execute.outcome_not_completed",
+      }];
   const verificationIssues = commandRuns
     .filter(({ implicit, result }) => implicit && result.exitCode !== 0)
     .map(({ result }) => commandIssue("verify.command_failed", result));
@@ -122,6 +131,7 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
   // it would let a broken run pass); a *passing* orphan is a warning (surfaced,
   // non-blocking) so a spurious extra judgment can't fail an otherwise-green run.
   const issues = [
+    ...executionOutcomeIssues,
     ...executionIssues,
     ...verificationIssues,
     ...explicitCommandIssues,

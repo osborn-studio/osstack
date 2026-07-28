@@ -764,6 +764,45 @@ describe("LoopEngine", () => {
     expect(await git(workspace, ["worktree", "list", "--porcelain"])).not.toContain("osstack/loop/");
   });
 
+  it("does not promote cancelled Builder changes when deterministic verification passes", async () => {
+    const workspace = await makeGitQueuedWorkspace("stable\n");
+    const adapter = new FakeLoopAdapter({
+      outputFile: "cancelled-output.txt",
+      terminalStatus: "cancelled",
+    });
+    const result = await new LoopEngine({
+      loopId: "loop-worktree-cancelled",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      agentId: adapter.id,
+      adapters: [adapter],
+      verifyCommands: [
+        "node -e \"process.exit(require('fs').existsSync('cancelled-output.txt') ? 0 : 1)\"",
+      ],
+      maxIterations: 1,
+      useWorktree: true,
+      worktreeRoot: join(workspace, "..", "cancelled-worktrees"),
+    }).runOnce();
+
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      task_id: "task-1",
+      outcome: "escalated",
+      verify_issues: [
+        expect.objectContaining({
+          rule: "execute.outcome_not_completed",
+        }),
+      ],
+    });
+    expect(result.events.map((event) => event.type)).toContain(
+      "loop.worktree.cleaned",
+    );
+    expect(result.events.map((event) => event.type)).not.toContain(
+      "loop.worktree.merged",
+    );
+    await expect(readFile(join(workspace, "cancelled-output.txt"), "utf-8"))
+      .rejects.toThrow();
+  });
+
   it("cleans loop-scoped orphaned worktrees after each cycle", async () => {
     const workspace = await makeGitQueuedWorkspace("base\n");
     const loopId = "loop-orphan-cycle";
@@ -957,11 +996,18 @@ class FakeLoopAdapter implements AgentAdapter {
   readonly display_name = "Fake Loop Agent";
   readonly cost_tier: CostTier;
   private readonly outputFile: string;
+  private readonly terminalStatus: "completed" | "cancelled";
 
-  constructor(options: { id?: string; costTier?: CostTier; outputFile?: string } = {}) {
+  constructor(options: {
+    id?: string;
+    costTier?: CostTier;
+    outputFile?: string;
+    terminalStatus?: "completed" | "cancelled";
+  } = {}) {
     this.id = options.id ?? "fake-loop-agent";
     this.cost_tier = options.costTier ?? "low";
     this.outputFile = options.outputFile ?? "agent-output.txt";
+    this.terminalStatus = options.terminalStatus ?? "completed";
   }
 
   capabilities(): readonly Capability[] {
@@ -1013,9 +1059,9 @@ class FakeLoopAdapter implements AgentAdapter {
 
     await writeFile(join(repoPath, this.outputFile), `adapter wrote: ${task.prompt}\n`);
     yield fakeEvent(task, 1, "done", {
-      status: "completed",
+      status: this.terminalStatus,
       last_seq: 0,
-      result_summary: "fake adapter completed",
+      result_summary: `fake adapter ${this.terminalStatus}`,
     }, true);
   }
 }

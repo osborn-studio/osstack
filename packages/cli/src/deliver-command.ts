@@ -22,6 +22,7 @@ import {
 import { makePolicyGate } from "./policy-gate.js";
 
 const execFileAsync = promisify(execFile);
+const GUARDED_LOCAL_COMMAND_TIMEOUT_MS = 600_000;
 
 export const DeliverAutonomyMode = z.enum([
   "legacy",
@@ -108,7 +109,7 @@ export async function handleDeliverCommand(
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack deliver — product entry from one intent to proof
 
-  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--checkpoint] [--govern [warn|strict]] [--json]
+  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--checkpoint] [--govern [warn|strict]] [--command-timeout-ms N] [--json]
 
 Stages:
   intake -> plan -> execute-loop -> verify-review -> proof
@@ -125,6 +126,7 @@ Stages:
     "--capability",
     "--priority",
     "--max-iter",
+    "--command-timeout-ms",
     "--worktree-root",
     "--govern",
     "--autonomy",
@@ -175,6 +177,16 @@ Stages:
     console.error(`osstack: ${maxIterations.message}`);
     return 1;
   }
+  const commandTimeoutMs = parsePositiveIntegerFlag(
+    flagValue(args, "--command-timeout-ms"),
+    "--command-timeout-ms",
+  );
+  if (commandTimeoutMs instanceof Error) {
+    console.error(`osstack: ${commandTimeoutMs.message}`);
+    return 1;
+  }
+  const effectiveCommandTimeoutMs = commandTimeoutMs
+    ?? (guardedLocal ? GUARDED_LOCAL_COMMAND_TIMEOUT_MS : undefined);
   const explicitVerifyCommands = flagValues(args, "--verify");
   const suggestedVerify = await suggestVerifyCommand(
     workspacePath,
@@ -251,6 +263,9 @@ Stages:
         stages,
         suggested_verify: suggestedVerify,
         verify_commands: verifyCommands,
+        ...(effectiveCommandTimeoutMs !== undefined
+          ? { command_timeout_ms: effectiveCommandTimeoutMs }
+          : {}),
         auto_agent: autoAgent,
         ...(guardedLocal
           ? {
@@ -282,6 +297,9 @@ Stages:
       : {}),
     sources: ["task_queue"],
     ...(maxIterations !== undefined ? { maxIterations } : {}),
+    ...(effectiveCommandTimeoutMs !== undefined
+      ? { commandTimeoutMs: effectiveCommandTimeoutMs }
+      : {}),
     ...(useWorktree ? { useWorktree: true } : {}),
     ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
     policyGate: makePolicyGate(workspacePath),
