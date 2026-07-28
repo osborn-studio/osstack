@@ -100,7 +100,10 @@ import {
 } from "@osstack/skill-registry";
 import { startDaemon } from "./daemon.js";
 import { handleConfigCommand } from "./config.js";
-import { handleDeliverCommand } from "./deliver-command.js";
+import {
+  handleDeliverCommand,
+  type DeliverCommandDeps,
+} from "./deliver-command.js";
 import {
   cockpitTuiModel,
   renderCockpitFullscreen,
@@ -679,15 +682,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "deliver") {
-    return await handleDeliverCommand(args.slice(1), {
-      enforceObservePolicyGate,
-      createShadowCheckpoint,
-      createLoopGovernanceEvidence,
-      appendGovernanceVerifyEvent,
-      observeLoopProbeEvents,
-      writeRequestedLoopArtifacts,
-      learnLessonsFromLoopState,
-    });
+    return await handleDeliverCommand(
+      args.slice(1),
+      createDeliverCommandDeps(),
+    );
   }
 
   if (cmd === "checkpoint") {
@@ -8965,6 +8963,18 @@ async function enforceObservePolicyGate(workspacePath: string): Promise<number |
   // Observe-mode refusal is exit 2; a fail-closed invalid/unreadable file is
   // exit 1 (its reason is the raw loader error, not the observe wording).
   return decision.reason === OBSERVE_POLICY_DENIED_REASON ? 2 : 1;
+}
+
+export function createDeliverCommandDeps(): DeliverCommandDeps {
+  return {
+    enforceObservePolicyGate,
+    createShadowCheckpoint,
+    createLoopGovernanceEvidence,
+    appendGovernanceVerifyEvent,
+    observeLoopProbeEvents,
+    writeRequestedLoopArtifacts,
+    learnLessonsFromLoopState,
+  };
 }
 
 function ensureFlags(args: string[], flags: string[]): string[] {

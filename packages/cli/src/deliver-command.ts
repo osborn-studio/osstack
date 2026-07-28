@@ -1,7 +1,12 @@
+import { execFile } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { defaultAdapters } from "@osstack/agents";
+import { promisify } from "node:util";
+import {
+  defaultAdapters,
+  type AgentAdapter,
+} from "@osstack/agents";
 import type { GovernanceFinding } from "@osstack/governance";
 import {
   enqueueTask,
@@ -9,7 +14,20 @@ import {
   type LoopEvent,
   type LoopState,
 } from "@osstack/loop";
+import { z } from "zod";
+import {
+  resolveLoopProfileRouting,
+  type LoopProfileRoutingResult,
+} from "./loop-profile-routing.js";
 import { makePolicyGate } from "./policy-gate.js";
+
+const execFileAsync = promisify(execFile);
+
+export const DeliverAutonomyMode = z.enum([
+  "legacy",
+  "guarded-local",
+]);
+export type DeliverAutonomyMode = z.infer<typeof DeliverAutonomyMode>;
 
 type DeliverGovernanceProofEvidence =
   | {
@@ -74,6 +92,13 @@ export interface DeliverCommandDeps {
   learnLessonsFromLoopState: (
     state: LoopState,
   ) => Promise<unknown>;
+  adapters?: () => AgentAdapter[];
+  remotePorts?: {
+    push: () => Promise<unknown>;
+    createPullRequest: () => Promise<unknown>;
+    merge: () => Promise<unknown>;
+    deploy: () => Promise<unknown>;
+  };
 }
 
 export async function handleDeliverCommand(
@@ -102,6 +127,11 @@ Stages:
     "--max-iter",
     "--worktree-root",
     "--govern",
+    "--autonomy",
+    "--profile",
+    "--role",
+    "--reviewer",
+    "--checker",
   ]));
   if (prompt === undefined) {
     console.error("osstack: deliver requires a prompt");
@@ -110,9 +140,24 @@ Stages:
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
   const policyGate = await deps.enforceObservePolicyGate(workspacePath);
   if (policyGate !== undefined) return policyGate;
+  const autonomyResult = DeliverAutonomyMode.safeParse(
+    flagValue(args, "--autonomy") ?? "legacy",
+  );
+  if (!autonomyResult.success) {
+    console.error(
+      "osstack: --autonomy must be legacy or guarded-local",
+    );
+    return 1;
+  }
+  const autonomy = autonomyResult.data;
+  const guardedLocal = autonomy === "guarded-local";
   const stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
   const executeCommand = flagValue(args, "--execute");
-  const agentId = flagValue(args, "--agent");
+  let agentId = flagValue(args, "--agent");
+  let verifierAgentIds = [
+    ...flagValues(args, "--reviewer"),
+    ...flagValues(args, "--checker"),
+  ];
   const capability = flagValue(args, "--capability") ?? "code.write";
   const priority = parsePositiveIntegerFlag(
     flagValue(args, "--priority"),
@@ -130,18 +175,65 @@ Stages:
     console.error(`osstack: ${maxIterations.message}`);
     return 1;
   }
-  const verifyCommands = flagValues(args, "--verify");
-  const suggestedVerify = await suggestVerifyCommand(workspacePath);
-  const governanceMode = parseDeliverGovernanceMode(args);
-  if (governanceMode instanceof Error) {
-    console.error(`osstack: ${governanceMode.message}`);
+  const explicitVerifyCommands = flagValues(args, "--verify");
+  const suggestedVerify = await suggestVerifyCommand(
+    workspacePath,
+    { includeYarn: guardedLocal },
+  );
+  const verifyCommands = guardedLocal
+    && explicitVerifyCommands.length === 0
+    && suggestedVerify !== undefined
+    ? [suggestedVerify]
+    : explicitVerifyCommands;
+  if (guardedLocal && verifyCommands.length === 0) {
+    return deliverBlocked(
+      args,
+      "verify_profile_missing",
+      "guarded-local requires --verify or a detected project test command",
+    );
+  }
+  if (guardedLocal && !await isGitWorktree(workspacePath)) {
+    return deliverBlocked(
+      args,
+      "git_worktree_required",
+      "guarded-local requires a Git worktree",
+    );
+  }
+  const requestedGovernanceMode = parseDeliverGovernanceMode(args);
+  if (requestedGovernanceMode instanceof Error) {
+    console.error(`osstack: ${requestedGovernanceMode.message}`);
     return 1;
   }
+  const governanceMode = guardedLocal
+    ? "strict"
+    : requestedGovernanceMode;
   const autoAgent = args.includes("--auto-agent");
-  const useWorktree = args.includes("--worktree");
+  const useWorktree = guardedLocal || args.includes("--worktree");
   const checkpoint = args.includes("--checkpoint") && !useWorktree
     ? await deps.createShadowCheckpoint(realpathSync(workspacePath))
     : undefined;
+  const adapters = guardedLocal || agentId !== undefined || autoAgent
+    ? deps.adapters?.() ?? defaultAdapters()
+    : undefined;
+  const profileRouting = guardedLocal
+    ? await resolveGuardedProfileRouting(
+      args,
+      agentId,
+      verifierAgentIds,
+      adapters!,
+    )
+    : undefined;
+  if (profileRouting instanceof Error) {
+    return deliverBlocked(
+      args,
+      "profile_routing_failed",
+      profileRouting.message,
+    );
+  }
+  if (profileRouting !== undefined) {
+    agentId = profileRouting.agentId;
+    verifierAgentIds = profileRouting.verifierAgentIds;
+  }
   const stages = [
     "intake",
     "plan",
@@ -160,12 +252,15 @@ Stages:
         suggested_verify: suggestedVerify,
         verify_commands: verifyCommands,
         auto_agent: autoAgent,
+        ...(guardedLocal
+          ? {
+              autonomy_mode: autonomy,
+              profile_routing: profileRouting?.summary,
+            }
+          : {}),
       },
     },
   });
-  const adapters = agentId !== undefined || autoAgent
-    ? defaultAdapters()
-    : undefined;
   const worktreeRoot = flagValue(args, "--worktree-root");
   const engine = new LoopEngine({
     workspacePath,
@@ -175,6 +270,13 @@ Stages:
     ...(autoAgent ? { autoAgent } : {}),
     ...(adapters !== undefined ? { adapters } : {}),
     ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
+    ...(guardedLocal
+      ? {
+          verifierAgentIds,
+          enforceRoleSeparation: true,
+          artifactVerification: { requireGitDiff: true },
+        }
+      : {}),
     sources: ["task_queue"],
     ...(maxIterations !== undefined ? { maxIterations } : {}),
     ...(useWorktree ? { useWorktree: true } : {}),
@@ -223,6 +325,12 @@ Stages:
     markdown_path: result.markdownPath,
     completed_tasks: result.state.completed_tasks,
     events,
+    ...(guardedLocal
+      ? {
+          autonomy,
+          profile: profileRouting?.summary,
+        }
+      : {}),
     ...(probeObservation === undefined
       ? {}
       : { probe_observation: probeObservation }),
@@ -273,6 +381,7 @@ function ensureFlags(args: string[], flags: string[]): string[] {
 
 export async function suggestVerifyCommand(
   workspacePath: string,
+  options: { includeYarn?: boolean } = {},
 ): Promise<string | undefined> {
   if (await fileExists(join(workspacePath, "pnpm-lock.yaml"))) {
     return "pnpm test";
@@ -285,6 +394,12 @@ export async function suggestVerifyCommand(
   }
   if (await fileExists(join(workspacePath, "package-lock.json"))) {
     return "npm test";
+  }
+  if (
+    options.includeYarn === true
+    && await fileExists(join(workspacePath, "yarn.lock"))
+  ) {
+    return "yarn test";
   }
   try {
     const packageJson = JSON.parse(
@@ -301,6 +416,53 @@ export async function suggestVerifyCommand(
     // No package.json or unreadable package metadata.
   }
   return undefined;
+}
+
+async function resolveGuardedProfileRouting(
+  args: string[],
+  agentId: string | undefined,
+  verifierAgentIds: readonly string[],
+  adapters: AgentAdapter[],
+): Promise<LoopProfileRoutingResult | Error> {
+  const resolution = await resolveLoopProfileRouting(
+    args,
+    agentId,
+    verifierAgentIds,
+    { adapters: () => adapters },
+  );
+  return resolution
+    ?? new Error("guarded-local did not resolve an execution profile");
+}
+
+function deliverBlocked(
+  args: string[],
+  code: string,
+  message: string,
+): 2 {
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({
+      error: {
+        code,
+        message,
+      },
+    }, null, 2));
+  } else {
+    console.error(`osstack: [${code}] ${message}`);
+  }
+  return 2;
+}
+
+async function isGitWorktree(workspacePath: string): Promise<boolean> {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-C", workspacePath, "rev-parse", "--is-inside-work-tree"],
+      { timeout: 10_000 },
+    );
+    return stdout.trim() === "true";
+  } catch {
+    return false;
+  }
 }
 
 function parseDeliverGovernanceMode(
