@@ -11,9 +11,9 @@ import { stringify as stringifyYaml } from "yaml";
 import {
   defaultAdapters,
   rolesForCapabilityKinds,
+  type AgentAdapter,
   type AgentRuntimeIdentity,
 } from "@osstack/agents";
-import type { RoutableAdapter } from "@osstack/core";
 import {
   ALL_ROLES,
   ROLE_KINDS,
@@ -23,15 +23,14 @@ import {
   defaultConfig,
   loadConfig,
   resolveAll,
+  resolveRuntimeIdentity,
   saveConfig,
   selectProfile,
   type AgentRole,
   type RoleMap,
 } from "@osstack/config";
 
-type ConfigAdapter = RoutableAdapter & {
-  runtimeIdentity?: () => Promise<AgentRuntimeIdentity>;
-};
+type ConfigAdapter = AgentAdapter;
 
 export interface ConfigCommandDeps {
   adapters?: () => ConfigAdapter[];
@@ -39,7 +38,7 @@ export interface ConfigCommandDeps {
 
 function adapters(deps: ConfigCommandDeps = {}): ConfigAdapter[] {
   if (deps.adapters !== undefined) return deps.adapters();
-  return defaultAdapters() as unknown as RoutableAdapter[];
+  return defaultAdapters();
 }
 
 function flagValue(args: string[], name: string): string | undefined {
@@ -51,7 +50,7 @@ function overrideFrom(args: string[]): string | undefined {
   return flagValue(args, "--profile") ?? process.env["OSSTACK_AGENT_PROFILE"] ?? process.env["OSSTACK_PROFILE"];
 }
 
-function advertises(a: RoutableAdapter, role: AgentRole): boolean {
+function advertises(a: AgentAdapter, role: AgentRole): boolean {
   const kinds = ROLE_KINDS[role];
   return a.capabilities().some((c) => kinds.includes(c.kind));
 }
@@ -66,7 +65,7 @@ export async function handleConfigCommand(
     case "show":
       return await configShow(args.slice(1), deps);
     case "doctor":
-      return await configDoctor(deps);
+      return await configDoctor(args.slice(1), deps);
     case "pick":
       return await configPick(args.slice(1), deps);
     case "init":
@@ -118,10 +117,14 @@ async function configShow(
   const cfg = loadConfig();
   const override = overrideFrom(args);
   const prof = selectProfile(cfg, override !== undefined ? { override } : {});
+  const list = adapters(deps);
   const res = await resolveAll(
     prof.roles,
-    adapters(deps),
+    list,
     { autoFallback: true },
+  );
+  const byId = new Map(
+    list.map((adapter) => [adapter.id, adapter]),
   );
 
   console.log(`Osstack — profile: ${prof.name}`);
@@ -136,6 +139,15 @@ async function configShow(
       console.log(`  ${role.padEnd(12)} ${r.chosen}`);
       console.log(`  ${"".padEnd(12)} configured: ${chain}`);
       console.log(`  ${"".padEnd(12)} ${r.reason}`);
+      const identity = await safeRuntimeIdentity(
+        byId.get(r.chosen),
+        cfg.agent_runtime[r.chosen],
+      );
+      console.log(
+        identity === undefined
+          ? `  ${"".padEnd(12)} runtime identity unavailable`
+          : `  ${"".padEnd(12)} ${formatRoleIdentity(identity, prof.name)}`,
+      );
     } else {
       console.log(`  ${role.padEnd(12)} ⚠ UNAVAILABLE`);
       console.log(`  ${"".padEnd(12)} configured: ${chain}`);
@@ -146,9 +158,23 @@ async function configShow(
   return 0;
 }
 
-async function configDoctor(deps: ConfigCommandDeps): Promise<number> {
+async function configDoctor(
+  args: string[],
+  deps: ConfigCommandDeps,
+): Promise<number> {
   const list = adapters(deps);
-  console.log("Osstack doctor — agent availability on this machine\n");
+  const cfg = loadConfig();
+  const override = overrideFrom(args);
+  const prof = selectProfile(
+    cfg,
+    override !== undefined ? { override } : {},
+  );
+  const identities = new Map<
+    string,
+    AgentRuntimeIdentity | undefined
+  >();
+  console.log("Osstack doctor — agent availability on this machine");
+  console.log(`Active profile: ${prof.name} (${prof.reason})\n`);
   for (const a of list) {
     let mark = "✗";
     let detail = "";
@@ -156,8 +182,8 @@ async function configDoctor(deps: ConfigCommandDeps): Promise<number> {
       const av = await a.isAvailable();
       mark = av.available ? "✓" : "✗";
       detail = av.available ? "available" : `unavailable — ${av.reason ?? "no reason"}`;
-    } catch (err) {
-      detail = `probe threw — ${err instanceof Error ? err.message : String(err)}`;
+    } catch {
+      detail = "probe threw — details withheld";
     }
     const roles = rolesForCapabilityKinds(
       a.capabilities().map((capability) => capability.kind),
@@ -165,25 +191,65 @@ async function configDoctor(deps: ConfigCommandDeps): Promise<number> {
     const state = kimiReadinessState(a.id, detail);
     console.log(`  ${mark} ${a.id.padEnd(14)} ${state} — ${detail}`);
     console.log(`    roles: ${roles.length ? roles.join(", ") : "(none)"}`);
-    if (a.runtimeIdentity !== undefined) {
-      try {
-        const identity = await a.runtimeIdentity();
-        console.log(
-          `    provider: ${identity.provider_id}  model: ${identity.model_id}`,
-        );
-      } catch (err) {
-        console.log(
-          `    runtime identity unavailable — ${err instanceof Error ? err.message : String(err)}`,
-        );
-      }
-    }
+    const identity = await safeRuntimeIdentity(
+      a,
+      cfg.agent_runtime[a.id],
+    );
+    identities.set(a.id, identity);
+    console.log(
+      identity === undefined
+        ? "    runtime identity unavailable"
+        : `    ${formatRoleIdentity(identity, prof.name)}`,
+    );
   }
   console.log("\nBy role:");
+  const resolved = await resolveAll(
+    prof.roles,
+    list,
+    { autoFallback: true },
+  );
   for (const role of ALL_ROLES) {
-    const serving = list.filter((a) => advertises(a, role)).map((a) => a.id);
-    console.log(`  ${role.padEnd(12)} ${serving.join(", ") || "(no agents)"}`);
+    const roleResolution = resolved[role];
+    const chosen = roleResolution.chosen;
+    if (chosen === null) {
+      console.log(
+        `  ${role.padEnd(12)} adapter=(unavailable) provider=unknown model=unknown profile=${prof.name} evidence=unavailable`,
+      );
+      continue;
+    }
+    const identity = identities.get(chosen);
+    console.log(
+      identity === undefined
+        ? `  ${role.padEnd(12)} adapter=${chosen} provider=unknown model=unknown profile=${prof.name} evidence=unavailable`
+        : `  ${role.padEnd(12)} ${formatRoleIdentity(identity, prof.name)}`,
+    );
   }
   return 0;
+}
+
+async function safeRuntimeIdentity(
+  adapter: ConfigAdapter | undefined,
+  override: Parameters<typeof resolveRuntimeIdentity>[1],
+): Promise<AgentRuntimeIdentity | undefined> {
+  if (adapter === undefined) return undefined;
+  try {
+    return await resolveRuntimeIdentity(adapter, override);
+  } catch {
+    return undefined;
+  }
+}
+
+function formatRoleIdentity(
+  identity: AgentRuntimeIdentity,
+  profileName: string,
+): string {
+  return [
+    `adapter=${identity.adapter_id}`,
+    `provider=${identity.provider_id}`,
+    `model=${identity.model_id}`,
+    `profile=${profileName}`,
+    `evidence=${identity.evidence_source}`,
+  ].join(" ");
 }
 
 async function configPick(
