@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -20,6 +20,28 @@ afterEach(async () => {
 });
 
 describe("git worktree lifecycle", () => {
+  it("does not execute repository hooks while creating isolation", async () => {
+    const { repo, root } = await makeRepo();
+    const marker = join(root, "checkout-hook-ran");
+    const hook = join(repo, ".git", "hooks", "post-checkout");
+    await writeFile(
+      hook,
+      `#!/bin/sh\nprintf pwned > ${shellQuote(marker)}\n`,
+    );
+    await chmod(hook, 0o755);
+
+    const handle = await createWorktree({
+      repoPath: repo,
+      runId: "checkout-hook",
+      rootPath: root,
+    });
+
+    await expect(readFile(marker, "utf-8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await cleanupWorktree(handle);
+  });
+
   it("commits isolated changes, fast-forwards the repo, and cleans up", async () => {
     const { repo, root } = await makeRepo();
     const handle = await createWorktree({ repoPath: repo, runId: "run-1", rootPath: root });
@@ -58,6 +80,57 @@ describe("git worktree lifecycle", () => {
 
     await expect(commitWorktreeChanges(handle, "nothing to commit")).resolves.toEqual({ committed: false });
 
+    await cleanupWorktree(handle);
+  });
+
+  it("does not execute repository hooks while committing isolated changes", async () => {
+    const { repo, root } = await makeRepo();
+    const handle = await createWorktree({
+      repoPath: repo,
+      runId: "commit-hook",
+      rootPath: root,
+    });
+    const marker = join(root, "commit-hook-ran");
+    const hook = join(repo, ".git", "hooks", "pre-commit");
+    await writeFile(
+      hook,
+      `#!/bin/sh\nprintf pwned > ${shellQuote(marker)}\nexit 99\n`,
+    );
+    await chmod(hook, 0o755);
+    await writeFile(join(handle.worktreePath, "feature.txt"), "safe\n");
+
+    await expect(
+      commitWorktreeChanges(handle, "loop task commit-hook"),
+    ).resolves.toMatchObject({ committed: true });
+    await expect(readFile(marker, "utf-8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+
+    await cleanupWorktree(handle);
+  });
+
+  it("does not execute repository hooks while fast-forwarding verified changes", async () => {
+    const { repo, root } = await makeRepo();
+    const handle = await createWorktree({
+      repoPath: repo,
+      runId: "merge-hook",
+      rootPath: root,
+    });
+    await writeFile(join(handle.worktreePath, "feature.txt"), "safe\n");
+    await commitWorktreeChanges(handle, "loop task merge-hook");
+    const marker = join(root, "merge-hook-ran");
+    const hook = join(repo, ".git", "hooks", "post-merge");
+    await writeFile(
+      hook,
+      `#!/bin/sh\nprintf pwned > ${shellQuote(marker)}\n`,
+    );
+    await chmod(hook, 0o755);
+
+    await mergeWorktree(handle);
+
+    await expect(readFile(marker, "utf-8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
     await cleanupWorktree(handle);
   });
 
@@ -114,4 +187,8 @@ async function git(cwd: string, args: string[]): Promise<string> {
       else reject(new Error(`git ${args.join(" ")} failed: ${stderr.trim() || stdout.trim()}`));
     });
   });
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replaceAll("'", "'\"'\"'")}'`;
 }

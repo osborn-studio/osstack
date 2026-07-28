@@ -147,6 +147,20 @@ node packages/cli/dist/bin.js deliver \
   --json
 ```
 
+## Final adversarial audit closure
+
+The pre-merge Codex audit found one inherited hook-execution gap in the
+worktree lifecycle. Reviewer snapshots already detect writes to Git metadata,
+ignored files, and hooks, but the later `git worktree add`, `git commit`, and
+fast-forward `git merge` operations still honored repository hooks. A
+reviewer-controlled process racing the final snapshot could therefore attempt
+to execute a `post-checkout`, `pre-commit`, or `post-merge` hook.
+
+The worktree lifecycle now passes `core.hooksPath=/dev/null` to all three
+promotion operations. Regression tests install executable marker hooks and
+prove that creating isolation, committing verified changes, and
+fast-forwarding them never execute repository hook code.
+
 ## Promotion boundary
 
 Phase B may merge only after:
