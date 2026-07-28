@@ -303,6 +303,17 @@ secret/forbidden review input, timeout, or any detected reviewer workspace
 mutation blocks delivery. Structured review Markdown and JSON are redacted and
 checksummed in the proof pack.
 
+The built-in Mac profiles prefer `kimi-code` for the `test-verify` role, with
+Claude Code or Codex CLI retaining the Builder role. Public defaults match Mac
+hardware model hints and do not embed private hostnames; use `osstack config
+bind` for a machine-specific hostname.
+
+Adapter separation is only the baseline independence check. If Claude Code or
+Codex is routed through Kimi, record its provider and model honestly in
+`agent_runtime`. Configured or inferred identity is useful diagnostics but
+cannot prove RISK-R2 provider/model independence; that requires identities
+reported by both runtimes.
+
 ### Recursive Control Plane (opt-in)
 
 ```bash

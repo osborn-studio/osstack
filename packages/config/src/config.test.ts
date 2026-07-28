@@ -20,7 +20,22 @@ describe("defaultConfig", () => {
     expect(Object.keys(cfg.profiles).sort()).toEqual(["mac-mini", "macbook-pro"]);
     expect(cfg.defaults.roles.coding.primary).toBe("claude-code");
     expect(cfg.profiles["macbook-pro"]!.roles.coding.primary).toBe("codex-cli");
+    expect(cfg.profiles["mac-mini"]!.roles["test-verify"]).toEqual({
+      primary: "kimi-code",
+      fallback: ["codex-cli", "claude-cli"],
+    });
+    expect(cfg.profiles["macbook-pro"]!.roles["test-verify"]).toEqual({
+      primary: "kimi-code",
+      fallback: ["claude-code", "codex-cli"],
+    });
+    expect(cfg.defaults.roles["test-verify"]).toEqual({
+      primary: "kimi-code",
+      fallback: ["codex-cli", "claude-cli"],
+    });
     expect(cfg.profiles["mac-mini"]!.roles.design.fallback).toContain("google-stitch");
+    expect(Object.values(cfg.profiles).every(
+      (profile) => profile.match.hostnames.length === 0,
+    )).toBe(true);
   });
 });
 
@@ -28,7 +43,13 @@ describe("selectProfile", () => {
   const cfg = defaultConfig();
 
   it("matches by hostname (case-insensitive)", () => {
-    const r = selectProfile(cfg, { hostname: "osborns-mac-mini.local" });
+    const withPublicFixture = structuredClone(cfg);
+    withPublicFixture.profiles["mac-mini"]!.match.hostnames = [
+      "build-host.local",
+    ];
+    const r = selectProfile(withPublicFixture, {
+      hostname: "BUILD-HOST.LOCAL",
+    });
     expect(r.name).toBe("mac-mini");
     expect(r.roles.coding.primary).toBe("claude-code");
   });
@@ -40,14 +61,17 @@ describe("selectProfile", () => {
   });
 
   it("honours an explicit override above hostname", () => {
-    const r = selectProfile(cfg, { hostname: "OsborNs-Mac-mini.local", override: "macbook-pro" });
+    const r = selectProfile(cfg, {
+      hostname: "build-host.local",
+      override: "macbook-pro",
+    });
     expect(r.name).toBe("macbook-pro");
     expect(r.roles.coding.primary).toBe("codex-cli");
   });
 
   it("honours active_profile when not auto", () => {
     const pinned = { ...cfg, active_profile: "macbook-pro" };
-    const r = selectProfile(pinned, { hostname: "OsborNs-Mac-mini.local" });
+    const r = selectProfile(pinned, { hostname: "build-host.local" });
     expect(r.name).toBe("macbook-pro");
   });
 
