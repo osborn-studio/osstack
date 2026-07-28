@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
+import { KimiCodeAdapter } from "@osstack/agents";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { main } from "./bin.js";
 import { startDaemon, type DaemonHandles } from "./daemon.js";
@@ -76,6 +77,42 @@ afterEach(async () => {
 });
 
 describe("loop CLI", () => {
+  it("preserves bare loop run legacy output without probing adapters", async () => {
+    const kimiProbe = vi.spyOn(KimiCodeAdapter.prototype, "isAvailable");
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "tasks", "legacy.json"), JSON.stringify({
+      task_id: "legacy-loop-task",
+      capability: "code.test",
+      prompt: "Freeze legacy loop routing",
+    }));
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--execute",
+      "node -e \"process.exit(0)\"",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as Record<string, unknown>;
+    expect(summary).toMatchObject({
+      completed_tasks: [
+        expect.objectContaining({
+          task_id: "legacy-loop-task",
+          outcome: "success",
+        }),
+      ],
+    });
+    expect(summary).not.toHaveProperty("profile");
+    expect(kimiProbe).not.toHaveBeenCalled();
+    expect(errors).toEqual([]);
+  });
+
   it("prints loop help from --help", async () => {
     const exitCode = await main(["loop", "--help"]);
 
@@ -1193,6 +1230,7 @@ echo review ok
   });
 
   it("treats loop start --once as a single daemon-managed cycle", async () => {
+    const kimiProbe = vi.spyOn(KimiCodeAdapter.prototype, "isAvailable");
     process.env["OSSTACK_HOME"] = join(tmp, "home");
     process.env["OSSTACK_SOCKET"] = `/tmp/osstack-cli-loop-${randomUUID()}.sock`;
     daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"] });
@@ -1225,10 +1263,13 @@ echo review ok
       interval_ms: number;
       max_cycles: number;
       stop_when_idle: boolean;
+      profile?: unknown;
     };
     expect(started.interval_ms).toBe(0);
     expect(started.max_cycles).toBe(1);
     expect(started.stop_when_idle).toBe(true);
+    expect(started).not.toHaveProperty("profile");
+    expect(kimiProbe).not.toHaveBeenCalled();
     const session = await waitForCliLoop(started.loop_session_id, (candidate) => (
       candidate.status === "stopped" && candidate.executed_task_count === 1
     ));

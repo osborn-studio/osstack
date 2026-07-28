@@ -2,6 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { KimiCodeAdapter } from "@osstack/agents";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { main } from "./bin.js";
 
@@ -27,6 +28,32 @@ afterEach(async () => {
 });
 
 describe("deliver CLI", () => {
+  it("preserves bare deliver legacy output without probing adapters", async () => {
+    const kimiProbe = vi.spyOn(KimiCodeAdapter.prototype, "isAvailable");
+
+    const exitCode = await main([
+      "deliver",
+      "Freeze legacy delivery",
+      "--workspace",
+      tmp,
+      "--execute",
+      "node -e \"process.exit(0)\"",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as Record<string, unknown>;
+    expect(summary).toMatchObject({
+      prompt: "Freeze legacy delivery",
+      stages: ["intake", "plan", "execute-loop", "verify-review", "proof"],
+      verify_commands: [],
+      completed_tasks: [expect.objectContaining({ outcome: "success" })],
+    });
+    expect(summary).not.toHaveProperty("profile");
+    expect(kimiProbe).not.toHaveBeenCalled();
+    expect(errors).toEqual([]);
+  });
+
   it("runs a product-entry delivery flow and writes report, scorecard, and proof", async () => {
     const exitCode = await main([
       "deliver",
