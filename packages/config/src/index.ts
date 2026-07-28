@@ -33,8 +33,13 @@ export {
 export {
   resolveRole,
   resolveAll,
+  resolveDeliveryRoles,
+  runtimeIdentitiesIndependent,
   type RoleResolution,
   type ResolveOpts,
+  type ResolveDeliveryRolesOpts,
+  type DeliveryRoleResolution,
+  type RuntimeIndependenceLevel,
 } from "./resolver.js";
 
 export const CONFIG_VERSION = "0.0.0";
