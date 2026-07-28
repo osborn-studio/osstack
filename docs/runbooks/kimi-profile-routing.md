@@ -160,6 +160,7 @@ git -C "$OSSTACK_FIXTURE" \
   -c user.email="osstack-smoke@example.invalid" \
   commit -m "test: seed guarded-local fixture"
 OSSTACK_HOME="$OSSTACK_SMOKE_HOME" \
+OSSTACK_AUTOAPPROVE=1 \
   node packages/cli/dist/bin.js deliver \
   "Add a tested greeting helper" \
   --workspace "$OSSTACK_FIXTURE" \
@@ -169,6 +170,12 @@ OSSTACK_HOME="$OSSTACK_SMOKE_HOME" \
   --worktree \
   --json
 ```
+
+`OSSTACK_AUTOAPPROVE=1` grants the headless Claude Builder permission to edit
+and run the verification command. Set it only on the single guarded-local
+invocation after human approval, never as a persistent shell or daemon
+environment variable. Without it, Claude's SDK runs with tools disabled and
+cannot implement the contract.
 
 Pass only when:
 
