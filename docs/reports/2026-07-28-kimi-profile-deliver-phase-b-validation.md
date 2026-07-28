@@ -1,7 +1,9 @@
 # Kimi Profile Delivery — Phase B Validation
 
-Date: 2026-07-28  
-Branch: `feat/kimi-profile-deliver`  
+Date: 2026-07-28
+
+Branch: `feat/kimi-profile-deliver`
+
 Phase A merge baseline: `16ec9145cbc31c012a20b9c0246fe90240d746f6`
 
 ## Decision
