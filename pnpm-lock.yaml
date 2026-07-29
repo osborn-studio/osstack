@@ -66,6 +66,22 @@ importers:
         specifier: ^25.8.0
         version: 25.8.0
 
+  packages/autonomy:
+    dependencies:
+      '@osstack/core':
+        specifier: workspace:*
+        version: link:../core
+      '@osstack/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
+
   packages/cli:
     dependencies:
       '@osstack/agents':
