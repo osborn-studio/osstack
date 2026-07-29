@@ -17,6 +17,13 @@ import {
   AgentCommandResultObject,
 } from "./envelope.js";
 import { ApprovalDecision, ApprovalRequest } from "./approval.js";
+import {
+  AutonomyRiskDecision,
+  AutonomyRiskLevel,
+  AutonomyRunState,
+  ScopedApprovalDecision,
+  ScopedApprovalRequest,
+} from "./autonomy.js";
 import { EvidenceRef } from "./evidence.js";
 import { EventEnvelope } from "./event.js";
 import { PolicyDecision } from "./policy.js";
@@ -33,7 +40,7 @@ interface SchemaEntry {
   schema: ZodTypeAny;
 }
 
-/** The 9 public protocol contracts emitted as JSON Schema. Order is stable. */
+/** Public protocol contracts emitted as JSON Schema. Order is stable. */
 export const SCHEMA_MANIFEST: readonly SchemaEntry[] = [
   { key: "task", title: "Osstack Protocol Task", schema: Task },
   { key: "run-summary", title: "Osstack Protocol Run Summary", schema: RunSummary },
@@ -41,6 +48,37 @@ export const SCHEMA_MANIFEST: readonly SchemaEntry[] = [
   { key: "evidence-ref", title: "Osstack Protocol Evidence Ref", schema: EvidenceRef },
   { key: "approval-request", title: "Osstack Protocol Approval Request", schema: ApprovalRequest },
   { key: "approval-decision", title: "Osstack Protocol Approval Decision", schema: ApprovalDecision },
+  {
+    key: "autonomy-risk-level",
+    title: "Osstack Guarded Autonomy Risk Level",
+    schema: AutonomyRiskLevel,
+  },
+  {
+    key: "autonomy-risk-decision",
+    title: "Osstack Guarded Autonomy Risk Decision",
+    comment:
+      "Canonical signal ordering and maximum-level consistency are additionally enforced by @osstack/protocol Zod refinements.",
+    schema: AutonomyRiskDecision,
+  },
+  {
+    key: "autonomy-run-state",
+    title: "Osstack Guarded Autonomy Run State",
+    schema: AutonomyRunState,
+  },
+  {
+    key: "scoped-approval-request",
+    title: "Osstack Guarded Autonomy Scoped Approval Request",
+    comment:
+      "Preflight empty-diff binding, build/verify-only scope, canonical action ordering, and validity windows are additionally enforced by @osstack/protocol Zod refinements.",
+    schema: ScopedApprovalRequest,
+  },
+  {
+    key: "scoped-approval-decision",
+    title: "Osstack Guarded Autonomy Signed Scoped Approval Decision",
+    comment:
+      "Human-actor and validity-window constraints are additionally enforced by @osstack/protocol Zod refinements; signature verification and replay defense belong to the runtime autonomy verifier.",
+    schema: ScopedApprovalDecision,
+  },
   { key: "policy-decision", title: "Osstack Protocol Policy Decision", schema: PolicyDecision },
   { key: "agent-command", title: "Osstack Protocol Agent Command", schema: AgentCommand },
   {

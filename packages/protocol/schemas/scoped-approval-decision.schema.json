@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Guarded Autonomy Signed Scoped Approval Decision",
+  "$comment": "Human-actor and validity-window constraints are additionally enforced by @osstack/protocol Zod refinements; signature verification and replay defense belong to the runtime autonomy verifier.",
+  "type": "object",
+  "properties": {
+    "payload": {
+      "type": "object",
+      "properties": {
+        "approval_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "request_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "autonomy_run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "preflight",
+            "post_diff"
+          ]
+        },
+        "contract_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "diff_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "action_scope": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "approve",
+            "reject"
+          ]
+        },
+        "nonce": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "decided_by": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "human",
+                "agent"
+              ]
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "type",
+            "id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "approval_id",
+        "request_sha256",
+        "autonomy_run_id",
+        "phase",
+        "contract_sha256",
+        "diff_sha256",
+        "action_scope",
+        "decision",
+        "nonce",
+        "issued_at",
+        "expires_at",
+        "decided_by"
+      ],
+      "additionalProperties": false
+    },
+    "signature": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "const": "Ed25519"
+        },
+        "key_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value_base64url": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{86}$"
+        }
+      },
+      "required": [
+        "algorithm",
+        "key_id",
+        "value_base64url"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "payload",
+    "signature"
+  ],
+  "additionalProperties": false
+}
