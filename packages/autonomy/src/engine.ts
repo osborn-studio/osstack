@@ -3,9 +3,11 @@ import {
   AUTONOMY_EMPTY_DIFF_SHA256,
   AutonomyRiskDecision,
   type AutonomyRiskPhase,
+  type AutonomyRiskSignal,
   type AutonomyRunState,
   ScopedApprovalDecision,
   ScopedApprovalRequest,
+  validateScopedApprovalDecisionForRequest,
 } from "@osstack/protocol";
 import type {
   GitHubDeliveryInput,
@@ -14,6 +16,7 @@ import type {
 import { z } from "zod";
 import {
   createScopedApprovalRequest,
+  scopedApprovalDigest,
   verifyScopedApprovalDecision,
 } from "./approval.js";
 import {
@@ -245,6 +248,44 @@ function requiresIndependentEvaluator(
       decision?.level === "R2"
       || decision?.level === "R3",
   );
+}
+
+function riskSignalKey(signal: AutonomyRiskSignal): string {
+  return [
+    signal.rule_id,
+    signal.path ?? "",
+    signal.command ?? "",
+    signal.level,
+    signal.message,
+  ].join("\u0000");
+}
+
+function carryPreflightR3IntoPostDiff(
+  preflight: AutonomyRiskDecision,
+  postDiff: AutonomyRiskDecision,
+): AutonomyRiskDecision {
+  if (
+    preflight.level !== "R3"
+    || postDiff.level === "R3"
+    || postDiff.level === "R4"
+  ) {
+    return postDiff;
+  }
+  const carrySignal: AutonomyRiskSignal = {
+    rule_id: "risk.preflight-r3-carry-forward",
+    level: "R3",
+    message:
+      "preflight R3 authority requires a diff-bound post-diff approval",
+  };
+  return AutonomyRiskDecision.parse({
+    ...postDiff,
+    level: "R3",
+    signals: [...postDiff.signals, carrySignal].sort((left, right) => {
+      const leftKey = riskSignalKey(left);
+      const rightKey = riskSignalKey(right);
+      return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+    }),
+  });
 }
 
 export class GuardedDeliveryEngine {
@@ -588,12 +629,15 @@ export class GuardedDeliveryEngine {
   ): Promise<GuardedDeliveryResult> {
     const intent = this.requireIntent(reviewing);
     let run = await this.transition(reviewing, "post_classifying");
-    const risk = classifyPostDiffRisk(localResult.post_diff, {
-      policy_sha256: this.policy.policy_sha256,
-      now: () => this.ports.now().toISOString(),
-      repo_id: intent.repo_id,
-      protected_policy_paths: this.policy.protected_policy_paths,
-    });
+    const risk = carryPreflightR3IntoPostDiff(
+      this.requirePreflightRisk(reviewing),
+      classifyPostDiffRisk(localResult.post_diff, {
+        policy_sha256: this.policy.policy_sha256,
+        now: () => this.ports.now().toISOString(),
+        repo_id: intent.repo_id,
+        protected_policy_paths: this.policy.protected_policy_paths,
+      }),
+    );
     if (
       requiresIndependentEvaluator(risk)
       && !hasIndependentReportedEvaluator(localResult)
@@ -727,6 +771,7 @@ export class GuardedDeliveryEngine {
     const diffSha256 = stagedDiffSha256(localResult.post_diff);
     let commit: { commit: string };
     try {
+      this.assertPostDiffActionAuthorized(run, "commit");
       commit = await this.ports.commit({
         autonomy_run_id: run.autonomy_run_id,
         workspace_path: intent.workspace_path,
@@ -756,6 +801,15 @@ export class GuardedDeliveryEngine {
       return await this.escalate(
         run,
         "Git delivery has no persisted candidate commit",
+      );
+    }
+    try {
+      this.assertPostDiffActionAuthorized(run, "push");
+      this.assertPostDiffActionAuthorized(run, "merge");
+    } catch (error) {
+      return await this.escalate(
+        run,
+        `Git delivery scope check failed: ${errorMessage(error)}`,
       );
     }
     let gitDelivery: GitHubDeliveryResult;
@@ -985,5 +1039,47 @@ export class GuardedDeliveryEngine {
       throw new Error("autonomy run is missing post-diff risk evidence");
     }
     return risk;
+  }
+
+  private assertPostDiffActionAuthorized(
+    run: AutonomyRunProjection,
+    action: "commit" | "push" | "merge",
+  ): void {
+    const preflight = this.requirePreflightRisk(run);
+    const postDiff = this.requirePostDiffRisk(run);
+    if (preflight.level !== "R3" && postDiff.level !== "R3") return;
+
+    const request = ScopedApprovalRequest.parse(
+      run.context.approval_request,
+    );
+    const decision = ScopedApprovalDecision.parse(
+      run.context.approval_decision,
+    );
+    if (request.phase !== "post_diff") {
+      throw new Error(`${action} requires a post-diff approval scope`);
+    }
+    if (
+      !request.action_scope.includes(action)
+      || !decision.payload.action_scope.includes(action)
+    ) {
+      throw new Error(
+        `${action} is absent from the signed post-diff approval scope`,
+      );
+    }
+    if (decision.payload.decision !== "approve") {
+      throw new Error(`${action} requires an approved decision`);
+    }
+    const requestDigest = scopedApprovalDigest({
+      autonomy_run_id: request.autonomy_run_id,
+      contract_sha256: request.contract_sha256,
+      diff_sha256: request.diff_sha256,
+      action_scope: request.action_scope,
+    });
+    if (request.request_sha256 !== requestDigest) {
+      throw new Error(
+        `${action} approval request digest no longer matches its scope`,
+      );
+    }
+    validateScopedApprovalDecisionForRequest(request, decision);
   }
 }

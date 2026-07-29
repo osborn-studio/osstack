@@ -14,6 +14,7 @@ const GitCommitSha = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/;
 
 export interface StageCandidateInput {
   workspace_path: string;
+  expected_base_commit_sha?: string;
   commands: string[];
 }
 
@@ -23,6 +24,12 @@ export interface CommitStagedCandidateInput {
   expected_diff_sha256: string;
   idempotency_key: string;
   message: string;
+}
+
+export interface AssertGuardedCandidateBaseInput {
+  workspace_path: string;
+  remote: string;
+  base: string;
 }
 
 function digest(value: string): string {
@@ -72,16 +79,111 @@ async function head(workspacePath: string): Promise<string> {
   return value;
 }
 
-async function gitBlob(
-  workspacePath: string,
-  spec: string,
-): Promise<string | undefined> {
-  try {
-    await git(workspacePath, ["cat-file", "-e", spec]);
-  } catch {
-    return undefined;
+async function cleanStatus(workspacePath: string): Promise<string> {
+  return await git(workspacePath, [
+    "status",
+    "--porcelain=v1",
+    "-z",
+    "--untracked-files=all",
+  ]);
+}
+
+export async function assertGuardedCandidateBase(
+  input: AssertGuardedCandidateBaseInput,
+): Promise<{ base_commit_sha: string }> {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(input.remote)) {
+    throw new Error("guarded candidate remote name is invalid");
   }
-  return await git(workspacePath, ["show", spec]);
+  await git(input.workspace_path, [
+    "check-ref-format",
+    "--branch",
+    input.base,
+  ]);
+  if (await cleanStatus(input.workspace_path) !== "") {
+    throw new Error(
+      "guarded candidate requires a clean initial worktree",
+    );
+  }
+  await git(input.workspace_path, [
+    "fetch",
+    "--no-tags",
+    "--no-recurse-submodules",
+    input.remote,
+    `refs/heads/${input.base}`,
+  ]);
+  const fetchedBase = (
+    await git(input.workspace_path, [
+      "rev-parse",
+      "--verify",
+      "FETCH_HEAD^{commit}",
+    ])
+  ).trim();
+  if (!GitCommitSha.test(fetchedBase)) {
+    throw new Error("fetched guarded base is not a full commit SHA");
+  }
+  const currentHead = await head(input.workspace_path);
+  if (currentHead !== fetchedBase) {
+    throw new Error(
+      "guarded candidate HEAD is not the exact fetched base commit",
+    );
+  }
+  if (await cleanStatus(input.workspace_path) !== "") {
+    throw new Error(
+      "guarded candidate worktree changed during base verification",
+    );
+  }
+  return { base_commit_sha: fetchedBase };
+}
+
+export async function assertGuardedCandidateHead(
+  workspacePath: string,
+  expectedBaseCommitSha: string,
+): Promise<void> {
+  if (!GitCommitSha.test(expectedBaseCommitSha)) {
+    throw new Error("expected guarded base is not a full commit SHA");
+  }
+  if (await head(workspacePath) !== expectedBaseCommitSha) {
+    throw new Error(
+      "candidate HEAD changed after exact remote-base verification",
+    );
+  }
+  if (await cleanStatus(workspacePath) !== "") {
+    throw new Error(
+      "guarded Builder requires a clean base worktree",
+    );
+  }
+}
+
+async function baseGitBlob(
+  workspacePath: string,
+  baseCommitSha: string,
+  path: string,
+): Promise<string | undefined> {
+  const entry = await git(workspacePath, [
+    "ls-tree",
+    "-z",
+    "--full-tree",
+    baseCommitSha,
+    "--",
+    path,
+  ]);
+  if (entry === "") return undefined;
+  return await git(workspacePath, ["show", `${baseCommitSha}:${path}`]);
+}
+
+async function stagedGitBlob(
+  workspacePath: string,
+  path: string,
+): Promise<string | undefined> {
+  const entry = await git(workspacePath, [
+    "ls-files",
+    "--stage",
+    "-z",
+    "--",
+    path,
+  ]);
+  if (entry === "") return undefined;
+  return await git(workspacePath, ["show", `:${path}`]);
 }
 
 const DEPENDENCY_SECTIONS = [
@@ -181,8 +283,8 @@ async function dependencyChanges(
       continue;
     }
     const [beforeRaw, afterRaw] = await Promise.all([
-      gitBlob(workspacePath, `${baseCommitSha}:${path}`),
-      gitBlob(workspacePath, `:${path}`),
+      baseGitBlob(workspacePath, baseCommitSha, path),
+      stagedGitBlob(workspacePath, path),
     ]);
     const before = dependencyVersions(beforeRaw, path);
     const after = dependencyVersions(afterRaw, path);
@@ -244,6 +346,14 @@ export async function stageGuardedCandidate(
   input: StageCandidateInput,
 ): Promise<PostDiffInputType> {
   const baseCommitSha = await head(input.workspace_path);
+  if (
+    input.expected_base_commit_sha !== undefined
+    && baseCommitSha !== input.expected_base_commit_sha
+  ) {
+    throw new Error(
+      "candidate base changed after exact remote-base verification",
+    );
+  }
   await git(input.workspace_path, ["add", "-A", "--"]);
   const material = await stagedMaterial(input.workspace_path);
   const dependencies = await dependencyChanges(

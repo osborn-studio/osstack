@@ -354,6 +354,76 @@ describe("GuardedDeliveryEngine", () => {
     expect(harness.calls).toContain("runLocal");
   });
 
+  it("requires post-diff approval when preflight was R3 even if the diff is lower risk", async () => {
+    const harness = new Harness();
+    harness.localResults = [localSuccess(["docs/readme.md"])];
+    const waiting = await harness.engine().start(
+      intent(["src/auth/login.ts"]),
+    );
+
+    const resumed = await harness.engine().resume(
+      "run-1",
+      signDecision(waiting.approval_request!),
+    );
+
+    expect(resumed.status).toBe("needs_approval");
+    expect(resumed.run.state).toBe("awaiting_approval");
+    expect(resumed.approval_request).toMatchObject({
+      phase: "post_diff",
+      action_scope: ["commit", "merge", "push"],
+    });
+    expect(resumed.run.context.post_diff_risk).toMatchObject({
+      phase: "post_diff",
+      level: "R3",
+      signals: expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "risk.preflight-r3-carry-forward",
+          level: "R3",
+        }),
+      ]),
+    });
+    expect(harness.calls).not.toContain("writeCandidateProof");
+    expect(harness.calls).not.toContain("commit");
+  });
+
+  it("rechecks post-diff approval scope immediately before commit", async () => {
+    const harness = new Harness();
+    harness.localResults = [localSuccess(["src/auth/login.ts"])];
+    const preflight = await harness.engine().start(
+      intent(["src/auth/login.ts"]),
+    );
+    const postDiff = await harness.engine().resume(
+      "run-1",
+      signDecision(preflight.approval_request!),
+    );
+    harness.ports.writeCandidateProof = async () => {
+      const context = harness.projection?.context;
+      if (
+        context?.approval_request === undefined
+        || context.approval_decision === undefined
+      ) {
+        throw new Error("approval evidence is required");
+      }
+      context.approval_request.action_scope = ["merge", "push"];
+      context.approval_decision.payload.action_scope = ["merge", "push"];
+      return {
+        manifest_path: "/tmp/candidate/manifest.json",
+        manifest_sha256: SHA_C,
+      };
+    };
+
+    const result = await harness.engine().resume(
+      "run-1",
+      signDecision(postDiff.approval_request!),
+    );
+
+    expect(result.status).toBe("blocked");
+    expect(result.run.state).toBe("escalated");
+    expect(result.reason).toMatch(/commit.*scope|scope.*commit/i);
+    expect(harness.calls).not.toContain("commit");
+    expect(harness.calls).not.toContain("deliverGit");
+  });
+
   it("pauses post-diff R3 before candidate proof and commit", async () => {
     const harness = new Harness();
     harness.localResults = [localSuccess(["src/auth/login.ts"])];

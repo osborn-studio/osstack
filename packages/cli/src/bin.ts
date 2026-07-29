@@ -19,6 +19,7 @@ import {
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
+import { parse as parseYaml } from "yaml";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import {
   agentAuthMode,
@@ -37,7 +38,7 @@ import {
   type ProofAudience,
 } from "@osstack/compliance";
 import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
-import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, loadPolicyProfile, loadRepoConfig, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons } from "@osstack/core";
+import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, type loadRepoConfig, PolicyProfile as PolicyProfileSchema, PIIRedactor, RepoConfig as RepoConfigSchema, upsertPitfallLesson, verifyPitfallLessons } from "@osstack/core";
 import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import {
   resolveLoopProfileRouting,
@@ -160,6 +161,7 @@ import {
   GuardedGitRouting,
   type GuardedGitProofInput,
 } from "./guarded-git-runtime.js";
+import { assertGuardedCandidateBase } from "@osstack/autonomy";
 
 const execFileAsync = promisify(execFile);
 
@@ -440,8 +442,9 @@ Project commands:
   release edgeone [--workspace P] [--cloud-url URL] [--output P] [--json]
                       Generate the EdgeOne Knowledge Cloud setup handoff
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
-  deliver <prompt> [--verify CMD] [--auto-agent] [--worktree]
-                      Product entry: task queue -> loop -> report/scorecard/proof
+  deliver <prompt> [--verify CMD] [--auto-agent] [--worktree] [--autonomy legacy|guarded-local|guarded-git]
+                      Product entry: task queue -> loop -> report/scorecard/proof;
+                      guarded-git adds risk, signed approval, PR/CI/merge, final proof
   autonomy list|status|approve|reject|resume
                       Inspect and control guarded Git autonomy runs. High-risk
                       decisions require an externally signed decision file.
@@ -9327,7 +9330,9 @@ function canonicalGuardedJson(value: unknown): string {
     if (isRecord(input)) {
       return Object.fromEntries(
         Object.entries(input)
-          .sort(([left], [right]) => left.localeCompare(right))
+          .sort(([left], [right]) =>
+            left < right ? -1 : left > right ? 1 : 0
+          )
           .map(([key, child]) => [key, normalize(child)]),
       );
     }
@@ -9418,10 +9423,30 @@ async function guardedPolicySnapshot(workspacePath: string): Promise<{
   policySha256: string;
   protectedPolicyPaths: string[];
 }> {
-  const [repoConfig, policyProfile] = await Promise.all([
-    loadRepoConfig(workspacePath),
-    loadPolicyProfile(workspacePath),
+  const [repoRaw, policyRaw] = await Promise.all([
+    guardedGitText(workspacePath, [
+      "show",
+      "HEAD:.osstack/repo.yaml",
+    ]),
+    guardedGitText(workspacePath, [
+      "show",
+      "HEAD:.osstack/policy.yaml",
+    ]),
   ]);
+  let repoValue: unknown;
+  let policyValue: unknown;
+  try {
+    repoValue = parseYaml(repoRaw);
+    policyValue = parseYaml(policyRaw);
+  } catch (error) {
+    throw new Error(
+      `guarded-git base policy is invalid YAML: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+  const repoConfig = RepoConfigSchema.parse(repoValue);
+  const policyProfile = PolicyProfileSchema.parse(policyValue);
   if (repoConfig?.schema_version !== 2) {
     throw new Error(
       "guarded-git requires strict .osstack/repo.yaml schema_version 2",
@@ -9624,6 +9649,11 @@ const startGuardedGitDelivery: NonNullable<
       `guarded-git requires a ${policy.repoConfig.git.branch_prefix}/ feature branch; found ${branch || "(detached)"}`,
     );
   }
+  const verifiedBase = await assertGuardedCandidateBase({
+    workspace_path: input.workspacePath,
+    remote: policy.repoConfig.git.remote,
+    base: policy.repoConfig.default_branch,
+  });
   const remoteUrl = await guardedGitText(input.workspacePath, [
     "remote",
     "get-url",
@@ -9665,6 +9695,7 @@ const startGuardedGitDelivery: NonNullable<
     verify_commands: verifyCommands,
     command_timeout_ms: input.commandTimeoutMs,
     evidence_root: evidenceRoot,
+    base_commit_sha: verifiedBase.base_commit_sha,
     policy_sha256: policy.policySha256,
     max_auto_risk: policy.repoConfig.autonomy.max_auto_risk,
     protected_policy_paths: policy.protectedPolicyPaths,
@@ -9696,6 +9727,7 @@ const startGuardedGitDelivery: NonNullable<
       goal: input.prompt,
       expected_paths: expectedPaths,
       requested_actions: requestedActions,
+      base_commit_sha: verifiedBase.base_commit_sha,
       policy_sha256: policy.policySha256,
       profile: input.profileRouting.summary,
       verify_commands: verifyCommands,

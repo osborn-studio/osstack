@@ -2615,6 +2615,7 @@ export async function startDaemon(
       server.listen(socketPath, () => {
       try { chmodSync(socketPath, 0o600); } catch { /* best effort */ }
 
+      const guardedRecovery = restoreGuardedAutonomy(ctx);
       let shutdownPromise: Promise<void> | undefined;
       const shutdown = async (): Promise<void> => {
         if (shutdownPromise !== undefined) return await shutdownPromise;
@@ -2638,7 +2639,11 @@ export async function startDaemon(
           const dailyCompletions = Array.from(ctx.dailySessions.values())
             .map((session) => session.done)
             .filter((done): done is Promise<void> => done !== undefined);
-          await Promise.allSettled([...loopCompletions, ...dailyCompletions]);
+          await Promise.allSettled([
+            ...loopCompletions,
+            ...dailyCompletions,
+            guardedRecovery,
+          ]);
           await new Promise<void>((resolveClose) => server.close(() => resolveClose()));
           if (dashboard !== null) await dashboard.close();
           try { ctx.db.close(); } catch { /* swallow */ }
@@ -2678,7 +2683,6 @@ export async function startDaemon(
         process.stderr.write(`osstack: dashboard server failed: ${(err as Error).message}\n`);
       });
 
-      void restoreGuardedAutonomy(ctx);
       resolve({ close: shutdown, socketPath, dbPath: ctx.dbPath });
       });
     }).catch(reject);

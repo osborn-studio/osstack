@@ -99,14 +99,30 @@ describe("deterministic guarded-autonomy risk", () => {
     ["test only", { paths: ["src/example.test.ts"] }, "R1"],
     ["ordinary source", { paths: ["src/feature.ts"] }, "R2"],
     ["auth path", { paths: ["src/auth/session.ts"] }, "R3"],
+    ["login path", { paths: ["src/login.ts"] }, "R3"],
+    ["OAuth path", { paths: ["src/oauth/callback.ts"] }, "R3"],
     ["billing path", { paths: ["src/payments/charge.ts"] }, "R3"],
     ["migration path", { paths: ["migrations/001-add-user.sql"] }, "R3"],
     [".env variant", { paths: [".env.production"] }, "R3"],
     ["certificate file", { paths: ["config/server.pem"] }, "R3"],
     ["workflow", { paths: [".github/workflows/release.yml"] }, "R3"],
+    ["composite action", { paths: [".github/actions/release/action.yml"] }, "R3"],
     ["repo policy", { paths: [".osstack/repo.yaml"] }, "R3"],
     ["policy profile", { paths: [".osstack/policy.yml"] }, "R3"],
     ["major dependency", { paths: ["package.json"], majorDependency: true }, "R3"],
+    [
+      "verification script change",
+      {
+        paths: ["package.json"],
+        diff:
+          "diff --git a/package.json b/package.json\n" +
+          "--- a/package.json\n" +
+          "+++ b/package.json\n" +
+          "+    \"test\": \"true\"\n",
+        commands: ["pnpm test"],
+      },
+      "R3",
+    ],
     [
       "force push",
       { paths: ["scripts/release.sh"], commands: ["git push --force origin main"] },
@@ -238,6 +254,18 @@ describe("deterministic guarded-autonomy risk", () => {
     expect(
       classifyPost(
         { paths: ["packages/autonomy/src/state-machine.ts"] },
+        { repo_id: "gilosbornhello/osstack" },
+      ).level,
+    ).toBe("R3");
+    expect(
+      classifyPost(
+        { paths: ["packages/autonomy/src/git-candidate.ts"] },
+        { repo_id: "gilosbornhello/osstack" },
+      ).level,
+    ).toBe("R3");
+    expect(
+      classifyPost(
+        { paths: ["packages/github/src/delivery.ts"] },
         { repo_id: "gilosbornhello/osstack" },
       ).level,
     ).toBe("R3");

@@ -15,7 +15,10 @@ const SafeRef = z
   .max(255)
   .refine((value) => !value.startsWith("-"), "unsafe ref starts with '-'")
   .refine(
-    (value) => !/[\u0000-\u0020\u007f]/.test(value),
+    (value) => ![...value].some((character) => {
+      const code = character.charCodeAt(0);
+      return code <= 0x20 || code === 0x7f;
+    }),
     "ref contains whitespace or control characters",
   );
 
@@ -171,7 +174,10 @@ const PullRequestIdentity = z
     state: z.literal("OPEN"),
   })
   .strict();
-type PullRequestIdentity = z.infer<typeof PullRequestIdentity>;
+const PullRequestLookup = PullRequestIdentity.extend({
+  state: z.enum(["OPEN", "MERGED"]),
+}).strict();
+type PullRequestLookup = z.infer<typeof PullRequestLookup>;
 
 const CheckRollup = z
   .object({
@@ -199,6 +205,13 @@ const MergedPullRequest = z
     headRefOid: GitCommitSha,
   })
   .strict();
+
+const RecoveredMergedPullRequest = MergedPullRequest.extend({
+  number: z.number().int().positive(),
+  baseRefName: z.string().min(1),
+  headRefName: z.string().min(1),
+  statusCheckRollup: z.array(CheckRollup),
+}).strict();
 
 const RulesetRule = z
   .object({
@@ -262,7 +275,7 @@ function pullRequestUrl(
 }
 
 async function assertCandidateBody(bodyFile: string): Promise<void> {
-  let stats;
+  let stats: Awaited<ReturnType<typeof lstat>>;
   try {
     stats = await lstat(bodyFile);
   } catch {
@@ -320,7 +333,7 @@ async function resolvePullRequest(
   repo: string,
   pushedCommit: string,
   retryMissing = false,
-): Promise<PullRequestIdentity | undefined> {
+): Promise<PullRequestLookup | undefined> {
   let lastHead: string | undefined;
   for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt += 1) {
     const completed = await runner.run(
@@ -344,7 +357,7 @@ async function resolvePullRequest(
       }
       throw commandFailure("GitHub PR lookup", completed);
     }
-    const parsed = PullRequestIdentity.safeParse(
+    const parsed = PullRequestLookup.safeParse(
       parseJson(completed.stdout, "GitHub PR lookup"),
     );
     if (!parsed.success) {
@@ -383,7 +396,7 @@ async function createPullRequest(
   input: GitHubDeliveryInput,
   repo: string,
   pushedCommit: string,
-): Promise<PullRequestIdentity> {
+): Promise<PullRequestLookup> {
   let last: DeliveryCommandResult | undefined;
   for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt += 1) {
     last = await runner.run(
@@ -594,6 +607,72 @@ function assertRequiredChecks(
   }
 }
 
+async function recoverMergedDelivery(
+  runner: DeliveryCommandRunner,
+  input: GitHubDeliveryInput,
+  repo: string,
+  pushedCommit: string,
+  pr: PullRequestLookup,
+): Promise<GitHubDeliveryResult> {
+  if (pr.state !== "MERGED") {
+    throw new Error("merged delivery recovery requires a merged PR");
+  }
+  const baseProtection = await readEffectiveProtection(
+    runner,
+    input,
+    repo,
+    input.base,
+  );
+  if (!baseProtection.protected) {
+    throw new Error("base branch has no effective protection");
+  }
+  const merged = RecoveredMergedPullRequest.parse(
+    parseJson(
+      (
+        await runOrThrow(
+          runner,
+          input,
+          "gh",
+          [
+            "pr",
+            "view",
+            String(pr.number),
+            "--json",
+            "number,state,mergedAt,mergeCommit,url,headRefOid,baseRefName,headRefName,statusCheckRollup",
+          ],
+          "recovered merged PR proof",
+        )
+      ).stdout,
+      "recovered merged PR proof",
+    ),
+  );
+  pullRequestUrl(merged.url, repo, pr.number);
+  if (
+    merged.number !== pr.number
+    || merged.headRefOid !== pushedCommit
+    || merged.baseRefName !== input.base
+    || merged.headRefName !== input.branch
+  ) {
+    throw new Error(
+      "recovered merged PR does not match the exact candidate scope",
+    );
+  }
+  assertRequiredChecks(
+    baseProtection.requiredChecks,
+    merged.statusCheckRollup,
+  );
+  return {
+    pushedCommit,
+    pr: {
+      number: pr.number,
+      url: merged.url,
+      reused: true,
+    },
+    mergeCommit: merged.mergeCommit.oid,
+    mergedAt: merged.mergedAt,
+  };
+}
+
 export async function deliverToGitHub(
   value: GitHubDeliveryInput,
   runner: DeliveryCommandRunner = defaultDeliveryCommandRunner,
@@ -707,6 +786,22 @@ export async function deliverToGitHub(
       )
     ).stdout.trim(),
   );
+  let pr = await resolvePullRequest(
+    runner,
+    input,
+    repo,
+    pushedCommit,
+  );
+  if (pr?.state === "MERGED") {
+    return await recoverMergedDelivery(
+      runner,
+      input,
+      repo,
+      pushedCommit,
+      pr,
+    );
+  }
+
   await pushCandidate(runner, input);
   const afterPushCommit = GitCommitSha.parse(
     (
@@ -723,15 +818,28 @@ export async function deliverToGitHub(
     throw new Error("local HEAD changed after push; refusing PR delivery");
   }
 
-  let pr = await resolvePullRequest(
-    runner,
-    input,
-    repo,
-    pushedCommit,
-  );
-  const reused = pr !== undefined;
+  let reused = pr !== undefined;
   if (pr === undefined) {
-    pr = await createPullRequest(runner, input, repo, pushedCommit);
+    pr = await resolvePullRequest(
+      runner,
+      input,
+      repo,
+      pushedCommit,
+    );
+    reused = pr !== undefined;
+    if (pr === undefined) {
+      pr = await createPullRequest(runner, input, repo, pushedCommit);
+      reused = false;
+    }
+  }
+  if (pr.state === "MERGED") {
+    return await recoverMergedDelivery(
+      runner,
+      input,
+      repo,
+      pushedCommit,
+      pr,
+    );
   }
 
   const checks = await runner.run(

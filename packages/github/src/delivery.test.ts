@@ -313,6 +313,65 @@ describe("guarded GitHub delivery", () => {
     )).toBe(false);
   });
 
+  it("recovers an already merged exact-head PR without repeating GitHub writes", async () => {
+    const runner = new ScenarioRunner((call) => {
+      const [first, second, third] = call.args;
+      if (
+        call.command === "gh"
+        && first === "pr"
+        && second === "view"
+        && third === "osstack/task-123"
+      ) {
+        return result(JSON.stringify({
+          number: 42,
+          url: "https://github.com/gilosbornhello/osstack/pull/42",
+          headRefOid: HEAD_SHA,
+          state: "MERGED",
+        }));
+      }
+      if (
+        call.command === "gh"
+        && first === "pr"
+        && second === "view"
+        && third === "42"
+        && call.args.includes(
+          "number,state,mergedAt,mergeCommit,url,headRefOid,baseRefName,headRefName,statusCheckRollup",
+        )
+      ) {
+        return result(JSON.stringify({
+          number: 42,
+          state: "MERGED",
+          mergedAt: "2026-07-28T22:30:00Z",
+          mergeCommit: { oid: OTHER_SHA },
+          url: "https://github.com/gilosbornhello/osstack/pull/42",
+          headRefOid: HEAD_SHA,
+          baseRefName: "main",
+          headRefName: "osstack/task-123",
+          statusCheckRollup: [{
+            name: "ci",
+            status: "COMPLETED",
+            conclusion: "SUCCESS",
+          }],
+        }));
+      }
+      return undefined;
+    });
+
+    await expect(deliverToGitHub(input(), runner)).resolves.toMatchObject({
+      pushedCommit: HEAD_SHA,
+      pr: {
+        number: 42,
+        url: "https://github.com/gilosbornhello/osstack/pull/42",
+        reused: true,
+      },
+      mergeCommit: OTHER_SHA,
+    });
+    const commands = commandStrings(runner);
+    expect(commands.some((command) => command.startsWith("git push "))).toBe(false);
+    expect(commands.some((command) => command.startsWith("gh pr create "))).toBe(false);
+    expect(commands.some((command) => command.startsWith("gh pr merge "))).toBe(false);
+  });
+
   it("retries bounded PR resolution after a creation acknowledgement", async () => {
     const runner = new ScenarioRunner((call, scenario) => {
       if (

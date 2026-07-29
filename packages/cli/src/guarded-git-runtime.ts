@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
+  assertGuardedCandidateBase,
+  assertGuardedCandidateHead,
   commitGuardedCandidate,
   contractDecisionIdForApprovalNonce,
   GuardedDeliveryEngine,
@@ -41,6 +43,7 @@ import { z } from "zod";
 import { makePolicyGate } from "./policy-gate.js";
 
 const Sha256 = z.string().regex(/^[a-f0-9]{64}$/);
+const GitCommitSha = z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/);
 const AbsolutePath = z.string().min(1).refine(
   (value) => value.startsWith("/"),
   "path must be absolute",
@@ -58,6 +61,7 @@ export const GuardedGitRouting = z
     verify_commands: z.array(z.string().min(1)).min(1),
     command_timeout_ms: z.number().int().min(1_000),
     evidence_root: AbsolutePath,
+    base_commit_sha: GitCommitSha,
     policy_sha256: Sha256,
     max_auto_risk: z.enum(["R1", "R2"]),
     protected_policy_paths: z.array(z.string().min(1)),
@@ -218,6 +222,16 @@ export class GuardedGitRuntime {
 
   async start(input: GuardedGitStartInput): Promise<GuardedDeliveryResult> {
     const routing = GuardedGitRouting.parse(input.routing);
+    const verifiedBase = await assertGuardedCandidateBase({
+      workspace_path: input.workspace_path,
+      remote: routing.git.remote,
+      base: routing.git.base,
+    });
+    if (verifiedBase.base_commit_sha !== routing.base_commit_sha) {
+      throw new Error(
+        "guarded routing base commit does not match the fetched base",
+      );
+    }
     await this.assertPolicy(routing, input.workspace_path);
     return await this.engine(routing, input.budget).start({
       autonomy_run_id: input.autonomy_run_id,
@@ -336,6 +350,10 @@ export class GuardedGitRuntime {
     workspacePath: string,
     routing: GuardedGitRouting,
   ): Promise<LocalDeliveryResult> {
+    await assertGuardedCandidateHead(
+      workspacePath,
+      routing.base_commit_sha,
+    );
     await this.assertPolicy(routing, workspacePath);
     await mkdir(routing.evidence_root, { recursive: true });
     const stateFilePath = join(
@@ -396,6 +414,7 @@ export class GuardedGitRuntime {
     );
     const postDiff = await stageGuardedCandidate({
       workspace_path: workspacePath,
+      expected_base_commit_sha: routing.base_commit_sha,
       commands: routing.verify_commands,
     });
     const governance = await this.deps.evaluateGovernance?.(

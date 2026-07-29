@@ -8,10 +8,10 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  type AgentAdapter,
-  type AgentRuntimeIdentity,
-  type AgentTask,
+import type {
+  AgentAdapter,
+  AgentRuntimeIdentity,
+  AgentTask,
 } from "@osstack/agents";
 import {
   CapabilitySchema,
@@ -311,6 +311,8 @@ describe("GuardedGitRuntime", () => {
 
 async function fixtureRepo(): Promise<string> {
   const workspace = join(root, "repo");
+  const remote = join(root, "remote.git");
+  execFileSync("git", ["init", "--bare", remote]);
   await mkdir(join(workspace, "docs"), { recursive: true });
   await writeFile(join(workspace, "README.md"), "# fixture\n");
   execFileSync("git", ["init", "-b", "main"], { cwd: workspace });
@@ -328,6 +330,8 @@ async function fixtureRepo(): Promise<string> {
     ],
     { cwd: workspace },
   );
+  git(workspace, ["remote", "add", "origin", remote]);
+  git(workspace, ["push", "origin", "main"]);
   git(workspace, ["checkout", "-b", "codex/guarded-test"]);
   return workspace;
 }
@@ -367,6 +371,7 @@ function startInput(options: {
     verify_commands: ["node -e \"process.exit(0)\""],
     command_timeout_ms: 10_000,
     evidence_root: options.evidenceRoot,
+    base_commit_sha: git(options.workspace, ["rev-parse", "HEAD"]),
     policy_sha256: SHA_A,
     max_auto_risk: "R2",
     protected_policy_paths: [

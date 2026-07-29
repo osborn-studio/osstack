@@ -1,19 +1,29 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { chmodSync, mkdtempSync } from "node:fs";
-import { readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  assertGuardedCandidateBase,
   commitGuardedCandidate,
   stageGuardedCandidate,
 } from "./git-candidate.js";
 
 let directory: string;
+let remoteDirectory: string;
 
 beforeEach(async () => {
   directory = mkdtempSync(join(tmpdir(), "osstack-candidate-"));
+  remoteDirectory = mkdtempSync(join(tmpdir(), "osstack-remote-"));
+  execFileSync("git", ["init", "--bare", remoteDirectory]);
   execFileSync("git", ["init", "-b", "osstack/test"], {
     cwd: directory,
   });
@@ -36,6 +46,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await rm(directory, { recursive: true, force: true });
+  await rm(remoteDirectory, { recursive: true, force: true });
 });
 
 function sha256(value: string): string {
@@ -43,6 +54,63 @@ function sha256(value: string): string {
 }
 
 describe("guarded staged candidate", () => {
+  it("requires a clean candidate at the exact fetched base commit", async () => {
+    execFileSync("git", ["remote", "add", "origin", remoteDirectory], {
+      cwd: directory,
+    });
+    execFileSync(
+      "git",
+      ["push", "origin", "HEAD:refs/heads/main"],
+      { cwd: directory },
+    );
+    execFileSync("git", ["checkout", "-b", "osstack/feature"], {
+      cwd: directory,
+    });
+
+    const verifiedBase = await assertGuardedCandidateBase({
+      workspace_path: directory,
+      remote: "origin",
+      base: "main",
+    });
+    expect(verifiedBase).toMatchObject({
+      base_commit_sha: expect.stringMatching(/^[a-f0-9]{40}$/),
+    });
+
+    await writeFile(join(directory, "README.md"), "# dirty\n");
+    await expect(assertGuardedCandidateBase({
+      workspace_path: directory,
+      remote: "origin",
+      base: "main",
+    })).rejects.toThrow(/clean|dirty|worktree/i);
+
+    await writeFile(join(directory, "README.md"), "# before\n");
+    await writeFile(join(directory, "preexisting.md"), "hidden candidate\n");
+    execFileSync("git", ["add", "preexisting.md"], { cwd: directory });
+    execFileSync(
+      "git",
+      [
+        "-c",
+        "user.name=test",
+        "-c",
+        "user.email=test@example.invalid",
+        "commit",
+        "-m",
+        "preexisting candidate",
+      ],
+      { cwd: directory },
+    );
+    await expect(assertGuardedCandidateBase({
+      workspace_path: directory,
+      remote: "origin",
+      base: "main",
+    })).rejects.toThrow(/exact.*base|HEAD.*base/i);
+    await expect(stageGuardedCandidate({
+      workspace_path: directory,
+      expected_base_commit_sha: verifiedBase.base_commit_sha,
+      commands: ["pnpm test"],
+    })).rejects.toThrow(/expected.*base|base.*changed/i);
+  });
+
   it("commits exactly the classified staged bytes and reuses the commit idempotently", async () => {
     await writeFile(join(directory, "README.md"), "# after\n");
     const staged = await stageGuardedCandidate({
@@ -153,5 +221,67 @@ describe("guarded staged candidate", () => {
         major: false,
       },
     ]);
+  });
+
+  it("fails closed when Git cannot inspect a changed dependency manifest", async () => {
+    await writeFile(
+      join(directory, "package.json"),
+      `${JSON.stringify({ dependencies: { alpha: "^1.0.0" } }, null, 2)}\n`,
+    );
+    execFileSync("git", ["add", "package.json"], { cwd: directory });
+    execFileSync(
+      "git",
+      [
+        "-c",
+        "user.name=test",
+        "-c",
+        "user.email=test@example.invalid",
+        "commit",
+        "-m",
+        "seed dependencies",
+      ],
+      { cwd: directory },
+    );
+    await writeFile(
+      join(directory, "package.json"),
+      `${JSON.stringify({ dependencies: { alpha: "^2.0.0" } }, null, 2)}\n`,
+    );
+
+    const realGit = execFileSync("which", ["git"], {
+      encoding: "utf8",
+    }).trim();
+    const fakeBin = join(directory, "fake-bin");
+    await writeFile(
+      join(directory, "fake-git"),
+      [
+        "#!/bin/sh",
+        "for arg in \"$@\"; do",
+        "  case \"$arg\" in",
+        "    cat-file|ls-tree)",
+        "      printf '%s\\n' 'simulated object database failure' >&2",
+        "      exit 2",
+        "      ;;",
+        "  esac",
+        "done",
+        `exec "${realGit}" "$@"`,
+        "",
+      ].join("\n"),
+    );
+    chmodSync(join(directory, "fake-git"), 0o755);
+    await mkdir(fakeBin);
+    await symlink(join(directory, "fake-git"), join(fakeBin, "git"));
+    const priorPath = process.env["PATH"];
+    process.env["PATH"] = `${fakeBin}:${priorPath ?? ""}`;
+    try {
+      await expect(
+        stageGuardedCandidate({
+          workspace_path: directory,
+          commands: ["pnpm test"],
+        }),
+      ).rejects.toThrow(/object database failure|git .* failed/i);
+    } finally {
+      if (priorPath === undefined) delete process.env["PATH"];
+      else process.env["PATH"] = priorPath;
+    }
   });
 });

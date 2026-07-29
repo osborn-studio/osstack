@@ -32,7 +32,8 @@ const R3_PATH_RULES: ReadonlyArray<{
 }> = [
   {
     ruleId: "risk.auth",
-    pattern: /(^|\/)(auth|authentication|authorization|permissions?)(\/|\.|$)/i,
+    pattern:
+      /(^|\/)(?:auth|authentication|authorization|permissions?|login|logout|oauth|oidc|sso|sessions?|jwt|rbac|acl|iam)(?:\/|\.|$)/i,
     message: "authentication or authorization surface changed",
   },
   {
@@ -68,13 +69,28 @@ const R3_PATH_RULES: ReadonlyArray<{
   },
   {
     ruleId: "risk.workflow",
-    pattern: /^\.github\/workflows\//i,
+    pattern: /^\.github\/(?:workflows|actions)\//i,
     message: "GitHub workflow permissions or execution changed",
   },
 ];
 
 const OSSTACK_TRUST_KERNEL_PATH =
-  /^packages\/(?:autonomy\/src\/(?:risk|approval|state-machine)|protocol\/src\/autonomy)\.(?:ts|js)$/;
+  /^packages\/(?:(?:autonomy\/src\/(?:approval|core-persistence|engine|git-candidate|progress-budget|risk|state-machine|types|index))|(?:protocol\/src\/autonomy)|(?:github\/src\/delivery)|(?:cli\/src\/(?:autonomy-command|guarded-git-runtime|guarded-open-db))|(?:core\/src\/(?:policy\/profile|state\/(?:autonomy-runs|contract-approvals|migrations|schema)))|(?:agents\/src\/adapters\/kimi-code)|(?:loop\/src\/(?:review-boundary|reviewer-isolation)))\.(?:ts|js)$/;
+
+const SENSITIVE_PACKAGE_SCRIPTS = new Set([
+  "build",
+  "check",
+  "ci",
+  "install",
+  "lint",
+  "postinstall",
+  "prepack",
+  "prepare",
+  "prepublishOnly",
+  "test",
+  "typecheck",
+  "verify",
+]);
 
 const R4_TEXT_RULES: ReadonlyArray<{
   ruleId: string;
@@ -220,6 +236,7 @@ export function classifyPostDiffRisk(
     [...addedDiffLines(postDiff.staged_diff_binary), ...postDiff.commands],
     "staged diff or command",
   );
+  addPackageScriptSignals(signals, postDiff);
 
   return decision(
     "post_diff",
@@ -233,6 +250,55 @@ export function classifyPostDiffRisk(
       ),
     },
   );
+}
+
+function configuredPackageScripts(commands: readonly string[]): Set<string> {
+  const names = new Set(SENSITIVE_PACKAGE_SCRIPTS);
+  for (const command of commands) {
+    const tokens = command.trim().split(/\s+/);
+    const managerIndex = tokens.findIndex((token) =>
+      ["pnpm", "npm", "yarn", "bun"].includes(token)
+    );
+    if (managerIndex < 0) continue;
+    let candidate: string | undefined;
+    for (let index = managerIndex + 1; index < tokens.length; index += 1) {
+      const token = tokens[index]!;
+      if (token === "--") break;
+      if (token === "run") {
+        candidate = tokens[index + 1];
+        break;
+      }
+      if (!token.startsWith("-")) candidate = token;
+    }
+    if (candidate !== undefined && /^[A-Za-z0-9_.:-]+$/.test(candidate)) {
+      names.add(candidate);
+    }
+  }
+  return names;
+}
+
+function addPackageScriptSignals(
+  signals: AutonomyRiskSignal[],
+  postDiff: ReturnType<typeof PostDiffInput.parse>,
+): void {
+  const manifests = postDiff.changed_paths.filter(
+    (path) => path === "package.json" || path.endsWith("/package.json"),
+  );
+  if (manifests.length === 0) return;
+  const scriptNames = configuredPackageScripts(postDiff.commands);
+  for (const line of addedDiffLines(postDiff.staged_diff_binary)) {
+    const match = line.match(/^\s*"([^"]+)"\s*:/);
+    const script = match?.[1];
+    if (script === undefined || !scriptNames.has(script)) continue;
+    for (const path of manifests) {
+      signals.push({
+        rule_id: "risk.verification-script",
+        level: "R3",
+        message: `verification or lifecycle package script changed: ${script}`,
+        path,
+      });
+    }
+  }
 }
 
 function addBaselineSignal(

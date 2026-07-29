@@ -7,6 +7,8 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
+import { createAutonomyRun } from "@osstack/core";
+import { guardedOpenDb } from "./guarded-open-db.js";
 import { startDaemon, type DaemonHandles } from "./daemon.js";
 
 let tmp: string;
@@ -63,6 +65,73 @@ describe("daemon loop RPC", () => {
       },
     });
     expect(resumed).toEqual(["run-daemon-restart"]);
+  });
+
+  it("waits for guarded autonomy boot recovery before closing its database", async () => {
+    const home = process.env["OSSTACK_HOME"];
+    if (home === undefined) throw new Error("OSSTACK_HOME is required");
+    await mkdir(home, { recursive: true });
+    const dbPath = join(home, "state.db");
+    const seedDb = guardedOpenDb({ path: dbPath });
+    createAutonomyRun(seedDb, dbPath, {
+      autonomy_run_id: "run-boot-recovery",
+      transition_id: "run-boot-recovery:queued",
+      task_id: "task-boot-recovery",
+      repo_id: "owner/repo",
+      workspace_path: join(tmp, "workspace"),
+      contract_sha256: "a".repeat(64),
+      routing: {},
+      budget: {
+        max_builder_iterations: 1,
+        max_review_rounds: 1,
+        max_wall_time_ms: 60_000,
+        max_no_progress_rounds: 1,
+      },
+      attempt: {},
+      event: { kind: "queued" },
+      occurred_at: 1,
+    });
+    seedDb.close();
+
+    let releaseRecovery!: () => void;
+    const recoveryGate = new Promise<void>((resolve) => {
+      releaseRecovery = resolve;
+    });
+    let markRecoveryStarted!: () => void;
+    const recoveryStarted = new Promise<void>((resolve) => {
+      markRecoveryStarted = resolve;
+    });
+    daemon = await startDaemon({
+      socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock`,
+      guardedAutonomyFactory: () => ({
+        resume: async (autonomyRunId) => {
+          markRecoveryStarted();
+          await recoveryGate;
+          return {
+            status: "completed",
+            run: {
+              autonomy_run_id: autonomyRunId,
+              state: "completed",
+              revision: 2,
+              context: {},
+            },
+          };
+        },
+      }),
+    });
+    await recoveryStarted;
+
+    let closed = false;
+    const closing = daemon.close().then(() => {
+      closed = true;
+    });
+    await sleep(20);
+    expect(closed).toBe(false);
+
+    releaseRecovery();
+    await closing;
+    daemon = null;
+    expect(closed).toBe(true);
   });
 
   it("removes process signal handlers when closed", async () => {
