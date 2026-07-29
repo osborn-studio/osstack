@@ -280,6 +280,11 @@ See [Guarded Git Autonomy Runbook](docs/runbooks/guarded-git-autonomy.md) for
 the risk matrix, external signed R3 approval, recovery, proof stages, and
 rollback to `guarded-local`.
 
+For project-allowlisted staging/production deployment, automatic rollback and
+freeze, Mac Mini LaunchAgent operation, named machine/production authority
+gates, and the seven-day real-task soak, see the
+[Kimi Mac Mini 24x7 Autonomy Runbook](docs/runbooks/kimi-mac-mini-autonomy.md).
+
 ### Loop Engineering
 
 ```bash
@@ -501,15 +506,20 @@ osstack kanban comment <card_id> "Waiting for CI"
 osstack kanban subscribe <card_id> telegram <chat_id> [thread_id]
 osstack kanban events --since 0
 osstack serve
-osstack serve --install
+osstack serve --install --profile mac-mini \
+  --write-concurrency 2 \
+  --read-concurrency 8 \
+  --power-policy none
 osstack status
 ```
 
 The daemon is local-first. `osstack serve --install` installs a macOS launchd
-service that keeps the daemon alive across restarts. Chat and phone access should
-be layered through a separate trusted host such as Hermes, Feishu/Lark bot,
-Telegram bot, Slack app, webhook relay, or a named tunnel that can call the
-dashboard/kanban commands above.
+service that keeps the daemon alive across restarts. A process-bound
+`--power-policy process_assertion` is available only after explicit Owner
+machine authorization; OSStack never changes persistent `pmset` settings.
+Chat and phone access should be layered through a separate trusted host such as
+Hermes, Feishu/Lark bot, Telegram bot, Slack app, webhook relay, or a named
+tunnel that can call the dashboard/kanban commands above.
 
 ### Release Operations
 
