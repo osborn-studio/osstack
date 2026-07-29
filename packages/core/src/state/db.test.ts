@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDb, preflightDiskSpace, withWrite, DiskFullError } from "./db.js";
-import { CURRENT_SCHEMA_VERSION } from "./migrations.js";
+import { CURRENT_SCHEMA_VERSION, MIGRATIONS } from "./migrations.js";
 
 let tmp: string;
 beforeEach(() => { tmp = mkdtempSync(join(tmpdir(), "osstack-db-")); });
@@ -53,12 +53,12 @@ describe("openDb + runMigrations", () => {
   });
 });
 
-describe("guarded autonomy persistence (migration 17)", () => {
-  it("creates the projection, append-only trail, and one-active-writer index", () => {
+describe("guarded autonomy persistence (migration 18)", () => {
+  it("creates deploy-aware projection, append-only trail, freeze table, and writer index", () => {
     const path = join(tmp, "state.db");
     const db = openDb({ path });
     try {
-      expect(Number(db.pragma("user_version", { simple: true }))).toBe(17);
+      expect(Number(db.pragma("user_version", { simple: true }))).toBe(18);
       const objects = db
         .prepare(
           `SELECT name, type
@@ -66,6 +66,7 @@ describe("guarded autonomy persistence (migration 17)", () => {
            WHERE name IN (
              'autonomy_run_projection',
              'autonomy_run_transitions',
+             'autonomy_deploy_freezes',
              'idx_autonomy_run_projection_one_active_repo',
              'autonomy_run_transitions_no_update',
              'autonomy_run_transitions_no_delete'
@@ -74,6 +75,10 @@ describe("guarded autonomy persistence (migration 17)", () => {
         )
         .all() as Array<{ name: string; type: string }>;
       expect(objects).toEqual([
+        {
+          name: "autonomy_deploy_freezes",
+          type: "table",
+        },
         {
           name: "autonomy_run_projection",
           type: "table",
@@ -95,8 +100,122 @@ describe("guarded autonomy persistence (migration 17)", () => {
           type: "index",
         },
       ]);
+      const projectionColumns = db
+        .prepare("PRAGMA table_info(autonomy_run_projection)")
+        .all() as Array<{ name: string }>;
+      expect(projectionColumns.map((column) => column.name)).toEqual(
+        expect.arrayContaining(["deploy_json", "rollback_json"]),
+      );
     } finally {
       db.close();
+    }
+  });
+
+  it("upgrades a populated v17 autonomy database without losing history", () => {
+    const path = join(tmp, "state.db");
+    const legacy = new Database(path);
+    legacy.pragma("foreign_keys = ON");
+    for (const migration of MIGRATIONS.filter((item) => item.id <= 17)) {
+      legacy.exec(migration.sql);
+    }
+    legacy.pragma("user_version = 17");
+    legacy
+      .prepare(
+        `INSERT INTO autonomy_run_transitions (
+           transition_id, autonomy_run_id, seq, from_state, to_state,
+           event_json, contract_decision_id, occurred_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        "transition_001",
+        "run_001",
+        1,
+        null,
+        "merging",
+        '{"type":"merge.completed"}',
+        null,
+        100,
+      );
+    legacy
+      .prepare(
+        `INSERT INTO autonomy_run_projection (
+           autonomy_run_id, task_id, repo_id, workspace_path, state, revision,
+           contract_sha256, diff_sha256, preflight_risk_json,
+           post_diff_risk_json, approval_json, routing_json, budget_json,
+           attempt_json, candidate_proof_json, git_delivery_json,
+           final_proof_json, last_transition_id, created_at, updated_at
+         ) VALUES (
+           ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+         )`,
+      )
+      .run(
+        "run_001",
+        "task_001",
+        "example-web",
+        "/workspace/example-web",
+        "merging",
+        1,
+        "a".repeat(64),
+        null,
+        null,
+        null,
+        null,
+        null,
+        "{}",
+        "{}",
+        null,
+        '{"merged":true}',
+        null,
+        "transition_001",
+        100,
+        100,
+      );
+    legacy.close();
+
+    const upgraded = openDb({ path, minFreeBytes: 0 });
+    try {
+      expect(upgraded.pragma("user_version", { simple: true })).toBe(18);
+      expect(
+        upgraded
+          .prepare(
+            `SELECT state, git_delivery_json, deploy_json, rollback_json
+             FROM autonomy_run_projection
+             WHERE autonomy_run_id = ?`,
+          )
+          .get("run_001"),
+      ).toEqual({
+        state: "merging",
+        git_delivery_json: '{"merged":true}',
+        deploy_json: null,
+        rollback_json: null,
+      });
+      upgraded
+        .prepare(
+          `INSERT INTO autonomy_run_transitions (
+             transition_id, autonomy_run_id, seq, from_state, to_state,
+             event_json, contract_decision_id, occurred_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          "transition_002",
+          "run_001",
+          2,
+          "merging",
+          "deploying_staging",
+          '{"type":"deploy.staging.started"}',
+          null,
+          101,
+        );
+      expect(() =>
+        upgraded
+          .prepare(
+            "UPDATE autonomy_run_transitions SET event_json = ? WHERE transition_id = ?",
+          )
+          .run("{}", "transition_001"),
+      ).toThrow(/append-only/);
+      expect(upgraded.pragma("integrity_check", { simple: true })).toBe("ok");
+    } finally {
+      upgraded.close();
     }
   });
 });

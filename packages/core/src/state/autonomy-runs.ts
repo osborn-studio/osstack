@@ -39,6 +39,8 @@ const JsonPatch = z
     attempt: JsonObjectSchema.nullable().optional(),
     candidate_proof: JsonObjectSchema.nullable().optional(),
     git_delivery: JsonObjectSchema.nullable().optional(),
+    deploy: JsonObjectSchema.nullable().optional(),
+    rollback: JsonObjectSchema.nullable().optional(),
     final_proof: JsonObjectSchema.nullable().optional(),
   })
   .strict();
@@ -212,6 +214,8 @@ export function createAutonomyRun(
           attempt_json: encodeJsonObject(input.attempt),
           candidate_proof_json: null,
           git_delivery_json: null,
+          deploy_json: null,
+          rollback_json: null,
           final_proof_json: null,
           last_transition_id: transition.transition_id,
           created_at: input.occurred_at,
@@ -224,13 +228,15 @@ export function createAutonomyRun(
                contract_sha256, diff_sha256, preflight_risk_json,
                post_diff_risk_json, approval_json, routing_json, budget_json,
                attempt_json, candidate_proof_json, git_delivery_json,
-               final_proof_json, last_transition_id, created_at, updated_at
+               deploy_json, rollback_json, final_proof_json,
+               last_transition_id, created_at, updated_at
              ) VALUES (
                @autonomy_run_id, @task_id, @repo_id, @workspace_path, @state,
                @revision, @contract_sha256, @diff_sha256, @preflight_risk_json,
                @post_diff_risk_json, @approval_json, @routing_json, @budget_json,
                @attempt_json, @candidate_proof_json, @git_delivery_json,
-               @final_proof_json, @last_transition_id, @created_at, @updated_at
+               @deploy_json, @rollback_json, @final_proof_json,
+               @last_transition_id, @created_at, @updated_at
              )`,
           )
           .run(projection);
@@ -336,6 +342,8 @@ export function transitionAutonomyRun(
           current.git_delivery_json,
           patch?.git_delivery,
         ),
+        deploy_json: patchedJson(current.deploy_json, patch?.deploy),
+        rollback_json: patchedJson(current.rollback_json, patch?.rollback),
         final_proof_json: patchedJson(
           current.final_proof_json,
           patch?.final_proof,
@@ -357,6 +365,8 @@ export function transitionAutonomyRun(
                attempt_json = @attempt_json,
                candidate_proof_json = @candidate_proof_json,
                git_delivery_json = @git_delivery_json,
+               deploy_json = @deploy_json,
+               rollback_json = @rollback_json,
                final_proof_json = @final_proof_json,
                last_transition_id = @last_transition_id,
                updated_at = @updated_at
