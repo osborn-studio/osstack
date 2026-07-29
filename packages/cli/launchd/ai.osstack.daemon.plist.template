@@ -8,6 +8,10 @@
     {{NODE_BIN}}    absolute path to the Node 20+ binary
     {{OSSTACK_JS}}  absolute path to @osstack/cli's dist/bin.js
     {{OSSTACK_HOME}} default ~/.osstack
+    {{OSSTACK_SOCKET}} daemon Unix socket
+    {{AGENT_PROFILE}} pinned agent profile
+    {{WRITE_CONCURRENCY}} machine-wide write slots
+    {{READ_CONCURRENCY}} machine-wide read slots
     {{HERMES_HOME}}  default ~/.hermes
     {{HERMES_AGENT_HOME}} hermes-agent repo root (for the kanban bridge binary)
     {{PATH}}         PATH the daemon should inherit
@@ -28,6 +32,14 @@
   <dict>
     <key>OSSTACK_HOME</key>
     <string>{{OSSTACK_HOME}}</string>
+    <key>OSSTACK_SOCKET</key>
+    <string>{{OSSTACK_SOCKET}}</string>
+    <key>OSSTACK_AGENT_PROFILE</key>
+    <string>{{AGENT_PROFILE}}</string>
+    <key>OSSTACK_WRITE_CONCURRENCY</key>
+    <string>{{WRITE_CONCURRENCY}}</string>
+    <key>OSSTACK_READ_CONCURRENCY</key>
+    <string>{{READ_CONCURRENCY}}</string>
     <key>HERMES_HOME</key>
     <string>{{HERMES_HOME}}</string>
     <key>HERMES_AGENT_HOME</key>

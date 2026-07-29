@@ -6,8 +6,15 @@ import { createHash, randomUUID } from "node:crypto";
 import { existsSync as fsExistsSync, readFileSync, realpathSync, writeFileSync as fsWriteFileSync } from "node:fs";
 import { connect, type Socket } from "node:net";
 import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
-import { assertDbAccessAllowed, assertServeAllowed, ControlPlaneGuardError, defaultOsstackHome } from "./control-plane-guard.js";
+import {
+  assertDbAccessAllowed,
+  assertServeAllowed,
+  ControlPlaneGuardError,
+  defaultOsstackHome,
+  loadRoleFile,
+} from "./control-plane-guard.js";
 import {
   createAgentRuntimeEvidence,
   createPolicyDecisionEvidence,
@@ -345,6 +352,9 @@ interface ServeLaunchdStatus {
   installed: boolean;
   loaded: boolean;
   socket_path: string;
+  profile: string | null;
+  write_concurrency: number | null;
+  read_concurrency: number | null;
 }
 
 interface ServeLaunchdInstallResult extends ServeLaunchdStatus {
@@ -643,7 +653,25 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
         throw err;
       }
     }
+    let profile: string | undefined;
+    let writeConcurrency: number | undefined;
+    let readConcurrency: number | undefined;
+    try {
+      profile = optionalStringFlag(args, "--profile");
+      writeConcurrency = positiveIntegerFlag(args, "--write-concurrency");
+      readConcurrency = positiveIntegerFlag(args, "--read-concurrency");
+    } catch (error) {
+      console.error(`osstack: ${errorMessage(error)}`);
+      return 1;
+    }
+    if (profile !== undefined) process.env["OSSTACK_AGENT_PROFILE"] = profile;
     const handle = await startDaemon({
+      ...(writeConcurrency === undefined
+        ? {}
+        : { writeConcurrency }),
+      ...(readConcurrency === undefined
+        ? {}
+        : { readConcurrency }),
       guardedAutonomyFactory: async (db, dbPath) =>
         createGuardedGitRuntimeForDb(
           db,
@@ -7615,7 +7643,8 @@ async function handleServeManagementCommand(args: string[]): Promise<number> {
 
 Usage:
   osstack serve
-  osstack serve --install [--bin PATH] [--no-load] [--json]
+  osstack serve --install [--bin PATH] [--profile NAME]
+    [--write-concurrency N] [--read-concurrency N] [--no-load] [--json]
   osstack serve --status [--json]
   osstack serve --uninstall [--no-load] [--json]
 
@@ -7624,6 +7653,9 @@ Options:
   --uninstall     Boot out the LaunchAgent and remove its plist
   --status        Show plist/launchd status
   --bin PATH      osstack binary path to put in the plist
+  --profile NAME  Agent profile for daemon work (default: mac-mini)
+  --write-concurrency N  Machine-wide write slots (default: 2)
+  --read-concurrency N   Machine-wide read slots (default: 8)
   --no-load       Only write/remove plist; skip launchctl calls
   --json          Print machine-readable output
 `);
@@ -7635,6 +7667,50 @@ Options:
   const binPath = flagValue(args, "--bin") ?? defaultOsstackBinPath();
   try {
     if (args.includes("--install")) {
+      if (!isAbsolute(binPath)) {
+        throw new Error("--bin must be an absolute stable-serving binary path");
+      }
+      const profile = optionalStringFlag(
+        args,
+        "--profile",
+        process.env["OSSTACK_AGENT_PROFILE"] ?? "mac-mini",
+      ) ?? "mac-mini";
+      const writeConcurrency = positiveIntegerFlag(
+        args,
+        "--write-concurrency",
+        2,
+      ) ?? 2;
+      const readConcurrency = positiveIntegerFlag(
+        args,
+        "--read-concurrency",
+        8,
+      ) ?? 8;
+      if (
+        !args.includes("--bin")
+        && isDevelopmentCliDist(binPath)
+      ) {
+        let explicitlyStable = false;
+        try {
+          const checkoutRoot = dirname(realpathSync(binPath));
+          if (loadRoleFile(checkoutRoot)?.role !== "stable-serving") {
+            throw new Error("development dist is not stable-serving");
+          }
+          assertServeAllowed({
+            checkoutRoot,
+            osstackHome: process.env.OSSTACK_HOME ?? defaultOsstackHome(),
+          });
+          explicitlyStable = true;
+        } catch {
+          // The default checkout remains development-only until an operator
+          // names it explicitly with --bin or a deployment provisions it.
+        }
+        if (!explicitlyStable) {
+          console.error(
+            "osstack: serve --install aborted — default development dist/bin.js is not stable-serving; pass an explicit absolute --bin to provision this checkout",
+          );
+          return 78;
+        }
+      }
       // Provision the control-plane role authority for THIS deployment: an
       // installed launchd daemon serves the default home, which the boot guard
       // only permits for a declared stable-serving root (review F1).
@@ -7648,7 +7724,13 @@ Options:
         console.error(`osstack: serve --install aborted — control-plane provisioning failed: ${err instanceof Error ? err.message : String(err)}`);
         return 78;
       }
-      const result = await installLaunchAgent({ binPath, noLoad });
+      const result = await installLaunchAgent({
+        binPath,
+        noLoad,
+        profile,
+        writeConcurrency,
+        readConcurrency,
+      });
       // Record the plist content baseline for doctor's drift check (2.1-C/F2).
       try {
         const { createHash } = await import("node:crypto");
@@ -7683,7 +7765,13 @@ Options:
   return 1;
 }
 
-async function installLaunchAgent(options: { binPath: string; noLoad: boolean }): Promise<ServeLaunchdInstallResult> {
+async function installLaunchAgent(options: {
+  binPath: string;
+  noLoad: boolean;
+  profile: string;
+  writeConcurrency: number;
+  readConcurrency: number;
+}): Promise<ServeLaunchdInstallResult> {
   const plistPath = launchAgentPlistPath();
   const logDir = logsDir();
   await mkdir(dirname(plistPath), { recursive: true });
@@ -7695,6 +7783,9 @@ async function installLaunchAgent(options: { binPath: string; noLoad: boolean })
     socketPath: resolveSocketPath(),
     stdoutPath: join(logDir, "daemon.log"),
     stderrPath: join(logDir, "daemon.error.log"),
+    profile: options.profile,
+    writeConcurrency: options.writeConcurrency,
+    readConcurrency: options.readConcurrency,
   });
   await writeFile(plistPath, plist, "utf-8");
 
@@ -7715,6 +7806,9 @@ async function installLaunchAgent(options: { binPath: string; noLoad: boolean })
     socket_path: resolveSocketPath(),
     home: osstackHome(),
     logs_dir: logDir,
+    profile: options.profile,
+    write_concurrency: options.writeConcurrency,
+    read_concurrency: options.readConcurrency,
   };
 }
 
@@ -7734,17 +7828,31 @@ async function uninstallLaunchAgent(options: { noLoad: boolean }): Promise<Serve
     loaded: false,
     unloaded,
     socket_path: resolveSocketPath(),
+    profile: null,
+    write_concurrency: null,
+    read_concurrency: null,
   };
 }
 
 async function readLaunchAgentStatus(options: { noLoad: boolean } = { noLoad: false }): Promise<ServeLaunchdStatus> {
   const plistPath = launchAgentPlistPath();
+  const installed = await fileExists(plistPath);
+  const plist = installed ? await readFile(plistPath, "utf-8") : "";
   return {
     label: LAUNCHD_LABEL,
     plist_path: plistPath,
-    installed: await fileExists(plistPath),
+    installed,
     loaded: options.noLoad ? false : await isLaunchAgentLoaded(),
     socket_path: resolveSocketPath(),
+    profile: plistEnvironmentValue(plist, "OSSTACK_AGENT_PROFILE") ?? null,
+    write_concurrency: plistEnvironmentInteger(
+      plist,
+      "OSSTACK_WRITE_CONCURRENCY",
+    ),
+    read_concurrency: plistEnvironmentInteger(
+      plist,
+      "OSSTACK_READ_CONCURRENCY",
+    ),
   };
 }
 
@@ -7758,6 +7866,9 @@ function printServeLaunchdResult(result: ServeLaunchdStatus | ServeLaunchdInstal
   console.log(`installed=${result.installed}`);
   console.log(`loaded=${result.loaded}`);
   console.log(`socket=${result.socket_path}`);
+  console.log(`profile=${result.profile ?? "unknown"}`);
+  console.log(`write_concurrency=${result.write_concurrency ?? "unknown"}`);
+  console.log(`read_concurrency=${result.read_concurrency ?? "unknown"}`);
   if ("load_skipped" in result) console.log(`load_skipped=${result.load_skipped}`);
   if ("unloaded" in result) console.log(`unloaded=${result.unloaded}`);
 }
@@ -7768,6 +7879,9 @@ function renderLaunchAgentPlist(options: {
   socketPath: string;
   stdoutPath: string;
   stderrPath: string;
+  profile: string;
+  writeConcurrency: number;
+  readConcurrency: number;
 }): string {
   // launchd's default PATH has no /opt/homebrew/bin (or nvm shims), so a JS
   // binPath's `#!/usr/bin/env node` shebang fails with exit 127 under launchd.
@@ -7787,20 +7901,19 @@ function renderLaunchAgentPlist(options: {
       return options.binPath;
     }
   })();
-  const runtime = resolvedBinPath.endsWith(".js")
-    ? [
-        `PATH=${dirname(process.execPath)}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`,
-        "node",
-      ]
-    : [];
-  const args = [
-    "/usr/bin/env",
-    `OSSTACK_HOME=${options.home}`,
-    `OSSTACK_SOCKET=${options.socketPath}`,
-    ...runtime,
-    options.binPath,
-    "serve",
-  ];
+  const args = resolvedBinPath.endsWith(".js")
+    ? ["/usr/bin/env", "node", options.binPath, "serve"]
+    : [options.binPath, "serve"];
+  const daemonPath = [
+    dirname(process.execPath),
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+    "/usr/bin",
+    "/bin",
+    "/usr/sbin",
+    "/sbin",
+    join(homedir(), ".local", "bin"),
+  ].join(":");
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -7811,16 +7924,36 @@ function renderLaunchAgentPlist(options: {
   <array>
 ${args.map((arg) => `    <string>${xmlEscape(arg)}</string>`).join("\n")}
   </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>OSSTACK_HOME</key>
+    <string>${xmlEscape(options.home)}</string>
+    <key>OSSTACK_SOCKET</key>
+    <string>${xmlEscape(options.socketPath)}</string>
+    <key>OSSTACK_AGENT_PROFILE</key>
+    <string>${xmlEscape(options.profile)}</string>
+    <key>OSSTACK_WRITE_CONCURRENCY</key>
+    <string>${options.writeConcurrency}</string>
+    <key>OSSTACK_READ_CONCURRENCY</key>
+    <string>${options.readConcurrency}</string>
+    <key>PATH</key>
+    <string>${xmlEscape(daemonPath)}</string>
+  </dict>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
-  <true/>
+  <dict>
+    <key>SuccessfulExit</key>
+      <false/>
+  </dict>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
   <key>StandardOutPath</key>
   <string>${xmlEscape(options.stdoutPath)}</string>
   <key>StandardErrorPath</key>
   <string>${xmlEscape(options.stderrPath)}</string>
   <key>WorkingDirectory</key>
-  <string>${xmlEscape(process.cwd())}</string>
+  <string>${xmlEscape(options.home)}</string>
 </dict>
 </plist>
 `;
@@ -7862,6 +7995,37 @@ function defaultOsstackBinPath(): string {
   return process.env["OSSTACK_CLI"] ?? process.argv[1] ?? "osstack";
 }
 
+function isDevelopmentCliDist(binPath: string): boolean {
+  const resolved = (() => {
+    try {
+      return realpathSync(binPath);
+    } catch {
+      return resolve(binPath);
+    }
+  })();
+  return resolved.endsWith(join("packages", "cli", "dist", "bin.js"));
+}
+
+function plistEnvironmentValue(
+  plist: string,
+  name: string,
+): string | undefined {
+  const match = plist.match(
+    new RegExp(`<key>${name}</key>\\s*<string>([^<]*)</string>`),
+  );
+  return match?.[1];
+}
+
+function plistEnvironmentInteger(
+  plist: string,
+  name: string,
+): number | null {
+  const value = plistEnvironmentValue(plist, name);
+  if (value === undefined || !/^[1-9]\d*$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
 function xmlEscape(value: string): string {
   return value
     .replaceAll("&", "&amp;")
@@ -7874,6 +8038,41 @@ function xmlEscape(value: string): string {
 function flagValue(args: string[], name: string): string | undefined {
   const i = args.indexOf(name);
   return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined;
+}
+
+function optionalStringFlag(
+  args: string[],
+  name: string,
+  fallback?: string,
+): string | undefined {
+  const value = flagValue(args, name);
+  if (args.includes(name) && (value === undefined || value.startsWith("--"))) {
+    throw new Error(`${name} requires a value`);
+  }
+  if (value !== undefined && !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value)) {
+    throw new Error(`${name} must be a profile identifier`);
+  }
+  return value ?? fallback;
+}
+
+function positiveIntegerFlag(
+  args: string[],
+  name: string,
+  fallback?: number,
+): number | undefined {
+  const value = flagValue(args, name);
+  if (value === undefined) {
+    if (args.includes(name)) throw new Error(`${name} requires a positive integer`);
+    return fallback;
+  }
+  if (!/^[1-9]\d*$/.test(value)) {
+    throw new Error(`${name} requires a positive integer`);
+  }
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed > 64) {
+    throw new Error(`${name} requires a positive integer no greater than 64`);
+  }
+  return parsed;
 }
 
 function firstPositionalValue(args: string[], flagsWithValues: Set<string>): string | undefined {
