@@ -7,13 +7,38 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
-import { createAutonomyRun } from "@osstack/core";
+import {
+  createAutonomyRun,
+  transitionAutonomyRun,
+} from "@osstack/core";
 import { guardedOpenDb } from "./guarded-open-db.js";
 import { startDaemon, type DaemonHandles } from "./daemon.js";
+import type { AutonomyHealthReport } from "./autonomy-health.js";
 
 let tmp: string;
 let oldHome: string | undefined;
 let daemon: DaemonHandles | null;
+
+function healthyAutonomyHealth(
+  overrides: Partial<AutonomyHealthReport> = {},
+): AutonomyHealthReport {
+  return {
+    ok: true,
+    can_run_local: true,
+    can_merge: true,
+    can_push_deploy: true,
+    drain_required: false,
+    disk_free_bytes: 20 * 1024 ** 3,
+    checks: [],
+    active_freezes: [],
+    resumable_runs: [],
+    proof_failures: [],
+    external_blockers: [],
+    write_blockers: [],
+    next_actions: [],
+    ...overrides,
+  };
+}
 
 beforeEach(() => {
   tmp = mkdtempSync(join(tmpdir(), "osstack-daemon-loop-"));
@@ -34,6 +59,7 @@ describe("daemon loop RPC", () => {
     const resumed: string[] = [];
     daemon = await startDaemon({
       socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock`,
+      autonomyHealth: async () => healthyAutonomyHealth(),
       guardedAutonomyFactory: () => ({
         resume: async (autonomyRunId) => {
           resumed.push(autonomyRunId);
@@ -123,6 +149,7 @@ describe("daemon loop RPC", () => {
     });
     daemon = await startDaemon({
       socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock`,
+      autonomyHealth: async () => healthyAutonomyHealth(),
       guardedAutonomyFactory: () => ({
         resume: async (autonomyRunId) => {
           markRecoveryStarted();
@@ -202,6 +229,7 @@ describe("daemon loop RPC", () => {
     daemon = await startDaemon({
       socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock`,
       writeConcurrency: 2,
+      autonomyHealth: async () => healthyAutonomyHealth(),
       guardedAutonomyFactory: () => ({
         resume: async (autonomyRunId) => {
           started.push(autonomyRunId);
@@ -272,6 +300,174 @@ describe("daemon loop RPC", () => {
     expect(maxActive).toBe(2);
 
     for (const release of releases.values()) release();
+  });
+
+  it("keeps blocked delivery queued offline and resumes after network recovery", async () => {
+    const home = process.env["OSSTACK_HOME"];
+    if (home === undefined) throw new Error("OSSTACK_HOME is required");
+    await mkdir(home, { recursive: true });
+    const dbPath = join(home, "state.db");
+    const seedDb = guardedOpenDb({ path: dbPath });
+    const runId = "run-network-recovery";
+    createAutonomyRun(seedDb, dbPath, {
+      autonomy_run_id: runId,
+      transition_id: `${runId}:queued`,
+      task_id: "task-network-recovery",
+      repo_id: "owner/network-repo",
+      workspace_path: join(tmp, "network-repo"),
+      contract_sha256: "a".repeat(64),
+      routing: {},
+      budget: {
+        max_builder_iterations: 1,
+        max_review_rounds: 1,
+        max_wall_time_ms: 60_000,
+        max_no_progress_rounds: 1,
+      },
+      attempt: {},
+      event: { kind: "queued" },
+      occurred_at: 1,
+    });
+    const states = [
+      "classifying",
+      "preparing",
+      "building",
+      "verifying",
+      "reviewing",
+      "post_classifying",
+      "candidate_proof",
+      "committing",
+      "pushing",
+      "blocked_delivery",
+    ] as const;
+    for (const [index, state] of states.entries()) {
+      transitionAutonomyRun(seedDb, dbPath, {
+        autonomy_run_id: runId,
+        transition_id: `${runId}:${state}`,
+        expected_revision: index + 1,
+        to_state: state,
+        event: { kind: state },
+        occurred_at: index + 2,
+      });
+    }
+    seedDb.close();
+
+    let networkAvailable = false;
+    const resumed: string[] = [];
+    daemon = await startDaemon({
+      socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock`,
+      healthPollIntervalMs: 20,
+      autonomyHealth: async () => healthyAutonomyHealth(
+        networkAvailable
+          ? {}
+          : {
+              ok: false,
+              can_merge: false,
+              can_push_deploy: false,
+              external_blockers: ["github_network"],
+            },
+      ),
+      guardedAutonomyFactory: () => ({
+        resume: async (autonomyRunId) => {
+          resumed.push(autonomyRunId);
+          return {
+            status: "completed",
+            run: {
+              autonomy_run_id: autonomyRunId,
+              state: "completed",
+              revision: 12,
+              context: {},
+            },
+          };
+        },
+      }),
+    });
+    await sleep(60);
+    expect(resumed).toEqual([]);
+    const inspectDb = guardedOpenDb({ path: dbPath });
+    expect(
+      inspectDb.prepare(
+        "SELECT state FROM autonomy_run_projection WHERE autonomy_run_id = ?",
+      ).get(runId),
+    ).toEqual({ state: "blocked_delivery" });
+    inspectDb.close();
+
+    networkAvailable = true;
+    const deadline = Date.now() + 2_000;
+    while (resumed.length === 0 && Date.now() < deadline) {
+      await sleep(20);
+    }
+    expect(resumed).toEqual([runId]);
+  });
+
+  it("drains and refuses guarded writes when autonomy disk health is critical", async () => {
+    const home = process.env["OSSTACK_HOME"];
+    if (home === undefined) throw new Error("OSSTACK_HOME is required");
+    await mkdir(home, { recursive: true });
+    const dbPath = join(home, "state.db");
+    const seedDb = guardedOpenDb({ path: dbPath });
+    createAutonomyRun(seedDb, dbPath, {
+      autonomy_run_id: "run-low-disk",
+      transition_id: "run-low-disk:queued",
+      task_id: "task-low-disk",
+      repo_id: "owner/low-disk",
+      workspace_path: join(tmp, "low-disk"),
+      contract_sha256: "a".repeat(64),
+      routing: {},
+      budget: {
+        max_builder_iterations: 1,
+        max_review_rounds: 1,
+        max_wall_time_ms: 60_000,
+        max_no_progress_rounds: 1,
+      },
+      attempt: {},
+      event: { kind: "queued" },
+      occurred_at: 1,
+    });
+    seedDb.close();
+
+    let resumeCalls = 0;
+    daemon = await startDaemon({
+      socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock`,
+      autonomyHealth: async () => healthyAutonomyHealth({
+        ok: false,
+        can_run_local: false,
+        can_merge: false,
+        can_push_deploy: false,
+        drain_required: true,
+        disk_free_bytes: 2 * 1024 ** 3 - 1,
+        write_blockers: ["disk_free"],
+      }),
+      guardedAutonomyFactory: () => ({
+        resume: async (autonomyRunId) => {
+          resumeCalls += 1;
+          return {
+            status: "completed",
+            run: {
+              autonomy_run_id: autonomyRunId,
+              state: "completed",
+              revision: 2,
+              context: {},
+            },
+          };
+        },
+      }),
+    });
+    const health = await daemonRpc(daemon.socketPath, "autonomy.health");
+    expect(health.result).toMatchObject({
+      can_run_local: false,
+      drain_required: true,
+      write_blockers: ["disk_free"],
+    });
+    const daemonHealth = await daemonRpc(daemon.socketPath, "health");
+    expect(daemonHealth.result).toMatchObject({ draining: true });
+    const resume = await daemonRpc(
+      daemon.socketPath,
+      "autonomy.resume",
+      { autonomy_run_id: "run-low-disk" },
+    );
+    expect(resume.ok).toBe(false);
+    expect(resume.error?.message).toContain("disk_free");
+    expect(resumeCalls).toBe(0);
   });
 
   it("removes process signal handlers when closed", async () => {

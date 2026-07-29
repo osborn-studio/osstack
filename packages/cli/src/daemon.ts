@@ -73,6 +73,10 @@ import { PROTOCOL_VERSION, VERSION } from "./version.js";
 import { readUpdateCache, startUpdateChecker } from "./update-check.js";
 import { acquireDaemonLock } from "./daemon-lock.js";
 import {
+  runAutonomyHealth,
+  type AutonomyHealthReport,
+} from "./autonomy-health.js";
+import {
   createDashboardSnapshot,
   dashboardUrl,
   dashboardUrlFromEnv,
@@ -142,6 +146,9 @@ interface DaemonContext {
   readSemaphore: FifoSemaphore;
   /** Per-repository writer queues; file locks enforce cross-process ownership. */
   repoWriteSemaphores: Map<string, FifoSemaphore>;
+  /** Latest operational gate and the probe used to refresh it. */
+  autonomyHealth: () => Promise<AutonomyHealthReport>;
+  lastAutonomyHealth: AutonomyHealthReport | undefined;
 }
 
 export interface GuardedAutonomyDaemonRuntime {
@@ -435,6 +442,21 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
             `no autonomy run with id=${params.autonomy_run_id}`,
           )
         : singleOk(req.id, row);
+    }
+
+    case "autonomy.health": {
+      try {
+        const report = await ctx.autonomyHealth();
+        ctx.lastAutonomyHealth = report;
+        if (report.drain_required) ctx.draining = true;
+        return singleOk(req.id, report);
+      } catch (error) {
+        return singleErr(
+          req.id,
+          "autonomy_health_failed",
+          error instanceof Error ? error.message : String(error),
+        );
+      }
     }
 
     case "autonomy.resume": {
@@ -2170,6 +2192,13 @@ async function acquireDaemonRunSlot(
       },
     };
   }
+  if (ctx.lastAutonomyHealth?.can_run_local === false) {
+    throw new Error(
+      `autonomy writes are blocked by ${
+        ctx.lastAutonomyHealth.write_blockers.join(",")
+      }`,
+    );
+  }
 
   let repoSemaphore: FifoSemaphore | undefined;
   let repoLease: SemaphoreLease | undefined;
@@ -2698,6 +2727,7 @@ function buildContext(
   options: {
     writeConcurrency?: number;
     readConcurrency?: number;
+    socketPath?: string;
   } = {},
 ): DaemonContext {
   const home = osstackHome();
@@ -2743,6 +2773,13 @@ function buildContext(
       DEFAULT_READ_CONCURRENCY,
     )),
     repoWriteSemaphores: new Map(),
+    autonomyHealth: async () => await runAutonomyHealth({
+      db,
+      db_path: dbPath,
+      home,
+      socket_path: options.socketPath ?? resolveSocketPath(),
+    }),
+    lastAutonomyHealth: undefined,
   };
 }
 
@@ -2756,6 +2793,8 @@ export interface StartDaemonOptions {
   socketPath?: string;
   writeConcurrency?: number;
   readConcurrency?: number;
+  autonomyHealth?: () => Promise<AutonomyHealthReport>;
+  healthPollIntervalMs?: number;
   guardedAutonomyFactory?: (
     db: Database.Database,
     dbPath: string,
@@ -2766,11 +2805,30 @@ export interface StartDaemonOptions {
 
 async function restoreGuardedAutonomy(
   ctx: DaemonContext,
+  health: AutonomyHealthReport | undefined = ctx.lastAutonomyHealth,
 ): Promise<void> {
   if (ctx.guardedAutonomy === undefined) return;
+  if (health?.can_run_local === false) return;
+  const externalStates = new Set([
+    "blocked_delivery",
+    "pushing",
+    "opening_pr",
+    "waiting_ci",
+    "merging",
+    "deploying_staging",
+    "verifying_staging",
+    "deploying_production",
+    "health_checking",
+    "rolling_back",
+  ]);
   await Promise.all(
     listResumableAutonomyRuns(ctx.db)
       .filter((row) => row.state !== "awaiting_approval")
+      .filter(
+        (row) =>
+          health?.can_push_deploy !== false
+          || !externalStates.has(row.state),
+      )
       .map(async (row) => {
         try {
           await resumeGuardedAutonomy(ctx, row.autonomy_run_id);
@@ -2785,6 +2843,34 @@ async function restoreGuardedAutonomy(
   );
 }
 
+async function refreshAutonomyHealthAndRecover(
+  ctx: DaemonContext,
+  recover: boolean,
+): Promise<void> {
+  if (ctx.guardedAutonomy === undefined) return;
+  const previous = ctx.lastAutonomyHealth;
+  let current: AutonomyHealthReport;
+  try {
+    current = await ctx.autonomyHealth();
+  } catch (error) {
+    process.stderr.write(
+      `osstack: autonomy health probe failed: ${
+        error instanceof Error ? error.message : String(error)
+      }\n`,
+    );
+    return;
+  }
+  ctx.lastAutonomyHealth = current;
+  if (current.drain_required) ctx.draining = true;
+  const externalRecovered =
+    previous !== undefined
+    && !previous.can_push_deploy
+    && current.can_push_deploy;
+  if (recover || externalRecovered) {
+    await restoreGuardedAutonomy(ctx, current);
+  }
+}
+
 export async function startDaemon(
   opts: StartDaemonOptions = {},
 ): Promise<DaemonHandles> {
@@ -2796,6 +2882,7 @@ export async function startDaemon(
   // Bring up OTel before the daemon context so spans capture everything.
   initOtel({ serviceVersion: DAEMON_VERSION });
   const ctx = buildContext({
+    socketPath,
     ...(opts.writeConcurrency === undefined
       ? {}
       : { writeConcurrency: opts.writeConcurrency }),
@@ -2803,6 +2890,9 @@ export async function startDaemon(
       ? {}
       : { readConcurrency: opts.readConcurrency }),
   });
+  if (opts.autonomyHealth !== undefined) {
+    ctx.autonomyHealth = opts.autonomyHealth;
+  }
   if (opts.guardedAutonomyFactory !== undefined) {
     ctx.guardedAutonomy = await opts.guardedAutonomyFactory(
       ctx.db,
@@ -2868,13 +2958,41 @@ export async function startDaemon(
       server.listen(socketPath, () => {
       try { chmodSync(socketPath, 0o600); } catch { /* best effort */ }
 
-      const guardedRecovery = restoreGuardedAutonomy(ctx);
+      let healthPollPending = true;
+      let guardedRecovery = refreshAutonomyHealthAndRecover(ctx, true)
+        .finally(() => {
+          healthPollPending = false;
+        });
+      const healthPollIntervalMs = Math.max(
+        10,
+        opts.healthPollIntervalMs ?? 30_000,
+      );
+      const healthMonitor =
+        ctx.guardedAutonomy === undefined
+          ? undefined
+          : setInterval(() => {
+              if (healthPollPending) return;
+              healthPollPending = true;
+              guardedRecovery = refreshAutonomyHealthAndRecover(ctx, false)
+                .catch((error) => {
+                  process.stderr.write(
+                    `osstack: autonomy recovery monitor failed: ${
+                      error instanceof Error ? error.message : String(error)
+                    }\n`,
+                  );
+                })
+                .finally(() => {
+                  healthPollPending = false;
+                });
+            }, healthPollIntervalMs);
+      healthMonitor?.unref();
       let shutdownPromise: Promise<void> | undefined;
       const shutdown = async (): Promise<void> => {
         if (shutdownPromise !== undefined) return await shutdownPromise;
         process.off("SIGTERM", onSig);
         process.off("SIGINT", onSig);
         stopUpdateChecker();
+        if (healthMonitor !== undefined) clearInterval(healthMonitor);
         shutdownPromise = (async () => {
           // Abort any active runs so adapters get a chance to clean up.
           for (const ac of ctx.activeRuns.values()) ac.abort();

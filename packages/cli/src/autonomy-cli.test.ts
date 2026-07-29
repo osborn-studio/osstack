@@ -248,6 +248,49 @@ function deps(
 }
 
 describe("autonomy CLI", () => {
+  it("returns structured degraded health while preserving local availability", async () => {
+    const exitCode = await handleAutonomyCommand(
+      ["health", "--json"],
+      {
+        ...deps(),
+        health: async () => ({
+          ok: false,
+          can_run_local: true,
+          can_merge: false,
+          can_push_deploy: false,
+          drain_required: false,
+          disk_free_bytes: 20 * 1024 ** 3,
+          checks: [{
+            id: "github_network",
+            status: "blocked",
+            scope: "external",
+            detail: "GitHub network probe failed",
+          }],
+          active_freezes: [],
+          resumable_runs: [],
+          proof_failures: [],
+          external_blockers: ["github_network"],
+          write_blockers: [],
+          next_actions: [
+            "Wait for GitHub network recovery; local work may continue",
+          ],
+        }),
+      },
+    );
+
+    expect(exitCode).toBe(2);
+    const envelope = AgentCommandResult.parse(
+      JSON.parse(stdout.join("\n")),
+    );
+    expect(envelope.status).toBe("ok");
+    expect(envelope.result).toMatchObject({
+      health_status: "degraded",
+      can_run_local: true,
+      can_push_deploy: false,
+      external_blockers: ["github_network"],
+    });
+  });
+
   it("shows risk, digests, actions, proof, Git, and transition status", async () => {
     seedRun();
 

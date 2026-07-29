@@ -624,6 +624,11 @@ describe("GuardedDeliveryEngine", () => {
     expect(result.status).toBe("blocked");
     expect(result.run.state).toBe("blocked_delivery");
     expect(result.run.context.blocked_delivery_resume_state).toBe("pushing");
+    expect(harness.calls).toContain("runLocal");
+    expect(harness.calls).toContain("writeCandidateProof");
+    expect(harness.calls).toContain("commit");
+    expect(harness.calls).toContain("deliverGit");
+    expect(harness.calls).not.toContain("deploy");
   });
 
   it("leaves final proof failures in delivery_evidence_failed", async () => {

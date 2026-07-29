@@ -156,6 +156,7 @@ import {
   type LoopNeatFinalizerResultV1,
 } from "./loop-neat-finalizer.js";
 import { handleAutonomyCommand } from "./autonomy-command.js";
+import { runAutonomyHealth } from "./autonomy-health.js";
 import {
   GuardedGitRuntime,
   GuardedGitRouting,
@@ -792,6 +793,12 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
           db,
           dbPath,
           trustedApprovalPublicKeys,
+          health: () => runAutonomyHealth({
+            db,
+            db_path: dbPath,
+            home: osstackHome(),
+            socket_path: resolveSocketPath(),
+          }),
           resume: (runId, decision) =>
             runtime.resume(runId, decision),
         });

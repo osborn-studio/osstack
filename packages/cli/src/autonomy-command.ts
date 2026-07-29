@@ -27,6 +27,7 @@ import {
   verifyScopedApprovalDecision,
   type GuardedDeliveryResult,
 } from "@osstack/autonomy";
+import type { AutonomyHealthReport } from "./autonomy-health.js";
 
 type AutonomyDatabase = Parameters<typeof getAutonomyRun>[0];
 
@@ -38,6 +39,7 @@ export interface AutonomyCommandDeps {
     autonomyRunId: string,
     decision?: ScopedApprovalDecision,
   ) => Promise<GuardedDeliveryResult>;
+  health?: () => Promise<AutonomyHealthReport>;
   now?: () => Date;
   stdout?: (line: string) => void;
   stderr?: (line: string) => void;
@@ -388,6 +390,7 @@ export async function handleAutonomyCommand(
   osstack autonomy approve RUN_ID --decision FILE [--reason TEXT] [--json]
   osstack autonomy reject RUN_ID --decision FILE [--reason TEXT] [--json]
   osstack autonomy resume RUN_ID [--json]
+  osstack autonomy health [--json]
   osstack autonomy freeze list [--repo ID] [--json]
   osstack autonomy freeze request REPO_ID [--json]
   osstack autonomy freeze clear REPO_ID --request FILE --decision FILE --reason TEXT [--json]
@@ -397,6 +400,65 @@ self-assertion is not accepted. Approval records authority only; resume executes
 Production freeze clear requires a current scoped request plus an externally
 signed Ed25519 decision. TTY or --actor self-assertion cannot clear production.`);
     return 0;
+  }
+
+  if (subcommand === "health") {
+    if (deps.health === undefined) {
+      return failure(
+        deps,
+        args,
+        "internal",
+        "autonomy health probes are not configured",
+      );
+    }
+    let report: AutonomyHealthReport;
+    try {
+      report = await deps.health();
+    } catch (error) {
+      return failure(
+        deps,
+        args,
+        "internal",
+        `autonomy health failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+    const envelope = {
+      protocol_version: PROTOCOL_VERSION,
+      status: report.can_run_local ? "ok" as const : "blocked" as const,
+      result: {
+        health_status: report.ok ? "ok" : "degraded",
+        ...report,
+      },
+      ...(!report.can_run_local
+        ? {
+            error: {
+              code: "policy_denied" as const,
+              message:
+                `autonomy writes are blocked by ${report.write_blockers.join(",")}`,
+              retryable: false,
+            },
+          }
+        : {}),
+    };
+    output(
+      deps,
+      args,
+      envelope,
+      [
+        `health_status=${report.ok ? "ok" : "degraded"}`,
+        `can_run_local=${report.can_run_local}`,
+        `can_merge=${report.can_merge}`,
+        `can_push_deploy=${report.can_push_deploy}`,
+        `drain_required=${report.drain_required}`,
+        ...report.checks.map(
+          (candidate) =>
+            `${candidate.id}=${candidate.status} ${candidate.detail}`,
+        ),
+      ].join("\n"),
+    );
+    return report.ok ? 0 : 2;
   }
 
   if (subcommand === "freeze") {
