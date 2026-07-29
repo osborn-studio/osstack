@@ -1,5 +1,15 @@
 # @osstack/github
 
+## Unreleased
+
+### Minor Changes
+
+- Add guarded GitHub delivery with safe argv execution, exact-head push, pull
+  request reuse, required-check waiting, match-head merge protection, and
+  structured Git delivery evidence.
+- Recover an already merged exact-head pull request by revalidating protected
+  base checks and merge evidence without repeating push, PR creation, or merge.
+
 ## 0.10.0
 
 ### Minor Changes

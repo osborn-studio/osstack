@@ -1,5 +1,12 @@
 # @osstack/protocol
 
+## Unreleased
+
+### Minor Changes
+
+- Add strict autonomy risk, transition, scoped approval request, and externally
+  signed Ed25519 decision contracts for durable R0-R4 delivery.
+
 ## 0.10.0
 
 ### Minor Changes

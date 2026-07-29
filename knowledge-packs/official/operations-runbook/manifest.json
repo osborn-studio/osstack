@@ -20,7 +20,7 @@
     {
       "source_id": "osstack-runbook",
       "path": "docs/product/12_RUNBOOK.md",
-      "sha256": "db5a46bfbb3733ca2364013ef4610169539353f4b6d3cf41d6d4fe12c0a18c10",
+      "sha256": "f1b1679dc7fc7b86b1ec49224c91efd3ffb880beef0a3a6e5a5c529f080978b7",
       "license": "Osstack-native",
       "scope": "official",
       "imported_at": "2026-06-23T00:00:00.000Z"

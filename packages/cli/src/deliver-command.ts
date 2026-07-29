@@ -123,10 +123,13 @@ export async function handleDeliverCommand(
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack deliver — product entry from one intent to proof
 
-  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--checkpoint] [--govern [warn|strict]] [--command-timeout-ms N] [--json]
+  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--checkpoint] [--govern [warn|strict]] [--autonomy legacy|guarded-local|guarded-git] [--profile NAME] [--expected-path P] [--action A] [--command-timeout-ms N] [--json]
 
 Stages:
   intake -> plan -> execute-loop -> verify-review -> proof
+
+guarded-git additionally performs:
+  preflight risk -> local verification/review -> post-diff risk -> candidate proof -> commit -> PR/CI/merge -> final proof
 `);
     return 0;
   }

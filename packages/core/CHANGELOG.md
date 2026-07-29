@@ -1,5 +1,12 @@
 # @osstack/core
 
+## Unreleased
+
+### Minor Changes
+
+- Add repository policy schema v2 plus append-only autonomy run, transition,
+  approval, and decision persistence with deterministic restart replay.
+
 ## 0.12.0
 
 ### Minor Changes
