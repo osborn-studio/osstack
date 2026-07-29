@@ -6,6 +6,7 @@ export {
   RoleBinding,
   RoleMap,
   Profile,
+  AgentRuntimeIdentityOverride,
   OsstackConfig,
   ROLE_KINDS,
   ALL_ROLES,
@@ -26,10 +27,19 @@ export {
 } from "./config.js";
 
 export {
+  resolveRuntimeIdentity,
+} from "./runtime-identity.js";
+
+export {
   resolveRole,
   resolveAll,
+  resolveDeliveryRoles,
+  runtimeIdentitiesIndependent,
   type RoleResolution,
   type ResolveOpts,
+  type ResolveDeliveryRolesOpts,
+  type DeliveryRoleResolution,
+  type RuntimeIndependenceLevel,
 } from "./resolver.js";
 
 export const CONFIG_VERSION = "0.0.0";

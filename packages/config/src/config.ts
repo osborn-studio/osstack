@@ -19,17 +19,23 @@ export function configPath(): string {
   return process.env["OSSTACK_CONFIG"] ?? join(osstackHome(), "config.yaml");
 }
 
-// Mac Mini: code with Claude Code, verify with Codex, design with Claude Design.
+// Mac Mini: code with Claude Code, verify with Kimi, design with Claude Design.
 const MAC_MINI_ROLES: RoleMap = {
   coding: { primary: "claude-code", fallback: ["codex-cli"] },
-  "test-verify": { primary: "codex-cli", fallback: ["claude-code"] },
+  "test-verify": {
+    primary: "kimi-code",
+    fallback: ["codex-cli", "claude-cli"],
+  },
   design: { primary: "claude-design", fallback: ["google-stitch"] },
 };
 
-// MacBook Pro: code with Codex, verify with Claude Code, design with Stitch.
+// MacBook Pro: code with Codex, verify with Kimi, design with Stitch.
 const MACBOOK_ROLES: RoleMap = {
   coding: { primary: "codex-cli", fallback: ["claude-code"] },
-  "test-verify": { primary: "claude-code", fallback: ["codex-cli"] },
+  "test-verify": {
+    primary: "kimi-code",
+    fallback: ["claude-code", "codex-cli"],
+  },
   design: { primary: "google-stitch", fallback: ["claude-design"] },
 };
 
@@ -40,14 +46,14 @@ export function defaultConfig(): OsstackConfigT {
     profiles: {
       "mac-mini": {
         match: {
-          hostnames: ["OsborNs-Mac-mini.local", "OsborNs-Mac-mini"],
+          hostnames: [],
           model_hints: ["Macmini"],
         },
         roles: MAC_MINI_ROLES,
       },
       "macbook-pro": {
         match: {
-          hostnames: ["OsborNs-MacBook-Pro.local", "OsborNs-MacBook-Pro"],
+          hostnames: [],
           model_hints: ["MacBookPro"],
         },
         roles: MACBOOK_ROLES,

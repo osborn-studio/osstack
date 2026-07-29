@@ -566,6 +566,7 @@ echo review ok
       sources: ["task_queue"],
       executeCommand: "node -e \"require('fs').writeFileSync('daemon-restart-done.txt', 'ok')\"",
       intervalMs: 20,
+      profileRouting: daemonProfileRoutingFixture(),
     });
 
     expect(startResp.ok).toBe(true);
@@ -574,6 +575,23 @@ echo review ok
 
     await daemon.close();
     daemon = null;
+
+    const persistedBeforeRestart = JSON.parse(
+      await readFile(
+        join(tmp, "home", "loop-sessions.json"),
+        "utf-8",
+      ),
+    ) as {
+      sessions: Array<{
+        loopSessionId: string;
+        runOptions: { profileRouting?: unknown };
+      }>;
+    };
+    expect(
+      persistedBeforeRestart.sessions.find(
+        (session) => session.loopSessionId === loopSessionId,
+      )?.runOptions.profileRouting,
+    ).toEqual(daemonProfileRoutingFixture());
 
     await writeFile(join(workspace, "tasks", "restart.json"), JSON.stringify({
       task_id: "daemon-restart-task",
@@ -589,6 +607,7 @@ echo review ok
       loop_session_id: loopSessionId,
       status: "running",
       executed_task_count: 1,
+      profile: daemonProfileRoutingFixture(),
     });
 
     const statusResp = await daemonRpc(daemon.socketPath, "loop.status", {
@@ -752,4 +771,27 @@ async function git(cwd: string, args: string[]): Promise<void> {
       else reject(new Error(`git ${args.join(" ")} failed: ${stderr.trim() || stdout.trim()}`));
     });
   });
+}
+
+function daemonProfileRoutingFixture() {
+  return {
+    profile_name: "mac-mini",
+    reason: "pinned profile \"mac-mini\"",
+    builder_agent_id: "claude-code",
+    evaluator_agent_id: "kimi-code",
+    builder_identity: {
+      adapter_id: "claude-code",
+      provider_id: "anthropic",
+      model_id: "claude-current",
+      evidence_source: "reported",
+    },
+    evaluator_identity: {
+      adapter_id: "kimi-code",
+      provider_id: "kimi",
+      model_id: "kimi-code/k3",
+      evidence_source: "reported",
+    },
+    independent: true,
+    independence_reason: "reported provider or model differs",
+  };
 }

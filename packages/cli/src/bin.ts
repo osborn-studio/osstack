@@ -8,7 +8,11 @@ import { connect, type Socket } from "node:net";
 import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { assertDbAccessAllowed, assertServeAllowed, ControlPlaneGuardError, defaultOsstackHome } from "./control-plane-guard.js";
-import { createVerifierOutputArtifacts } from "./proof-pack.js";
+import {
+  createAgentRuntimeEvidence,
+  createPolicyDecisionEvidence,
+  createVerifierOutputArtifacts,
+} from "./proof-pack.js";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
@@ -19,7 +23,6 @@ import {
   rolesForCapabilityKinds,
   type AgentRuntimeIdentity,
 } from "@osstack/agents";
-import { loadConfig, resolveAll, selectProfile, type AgentRole } from "@osstack/config";
 import {
   getCompliancePack,
   listCompliancePacks,
@@ -31,8 +34,12 @@ import {
   type ProofAudience,
 } from "@osstack/compliance";
 import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
-import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons, type RoutableAdapter } from "@osstack/core";
+import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons } from "@osstack/core";
 import { guardedOpenDb as openDb } from "./guarded-open-db.js";
+import {
+  resolveLoopProfileRouting,
+  type LoopProfileSummary,
+} from "./loop-profile-routing.js";
 import {
   inspectInstructionSource,
   scanFiles,
@@ -97,6 +104,10 @@ import {
 } from "@osstack/skill-registry";
 import { startDaemon } from "./daemon.js";
 import { handleConfigCommand } from "./config.js";
+import {
+  handleDeliverCommand,
+  type DeliverCommandDeps,
+} from "./deliver-command.js";
 import {
   cockpitTuiModel,
   renderCockpitFullscreen,
@@ -675,7 +686,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "deliver") {
-    return await handleDeliverCommand(args.slice(1));
+    return await handleDeliverCommand(
+      args.slice(1),
+      createDeliverCommandDeps(),
+    );
   }
 
   if (cmd === "checkpoint") {
@@ -8389,76 +8403,6 @@ function knowledgeProofFromTrace(trace: LoopKnowledgeTrace): KnowledgeProofEvide
   };
 }
 
-function createPolicyDecisionEvidence(events: LoopEvent[]): {
-  status: "recorded" | "unknown";
-  decisions?: Array<{
-    task_id: string;
-    agent_id: string;
-    auth_mode: string;
-    roles: string[];
-    reason: string;
-    event_seq: number;
-  }>;
-  reason?: string;
-} {
-  const decisions = events
-    .filter((event) => event.type === "loop.plan.done")
-    .map((event) => ({
-      task_id: stringEventPayload(event, "task_id"),
-      agent_id: stringEventPayload(event, "agent_id"),
-      auth_mode: agentAuthMode(stringEventPayload(event, "agent_id")),
-      roles: rolesForAgentId(stringEventPayload(event, "agent_id")),
-      reason: stringEventPayload(event, "routing_reason"),
-      event_seq: event.seq,
-    }));
-  if (decisions.length === 0) {
-    return {
-      status: "unknown",
-      reason: "No loop.plan.done policy decision evidence found.",
-    };
-  }
-  return { status: "recorded", decisions };
-}
-
-function createAgentRuntimeEvidence(events: LoopEvent[]): {
-  status: "recorded" | "unknown";
-  agents?: Array<{
-    agent_id: string;
-    auth_mode: string;
-    roles: string[];
-    plan_event_seqs: number[];
-  }>;
-  reason?: string;
-} {
-  const byAgent = new Map<string, number[]>();
-  for (const event of events) {
-    if (event.type !== "loop.plan.done") continue;
-    const agentId = stringEventPayload(event, "agent_id");
-    byAgent.set(agentId, [...(byAgent.get(agentId) ?? []), event.seq]);
-  }
-  if (byAgent.size === 0) {
-    return {
-      status: "unknown",
-      reason: "No loop.plan.done event evidence found.",
-    };
-  }
-  return {
-    status: "recorded",
-    agents: [...byAgent.entries()].map(([agentId, seqs]) => ({
-      agent_id: agentId,
-      auth_mode: agentAuthMode(agentId),
-      roles: rolesForAgentId(agentId),
-      plan_event_seqs: seqs,
-    })),
-  };
-}
-
-function rolesForAgentId(agentId: string): string[] {
-  if (agentId === "local-command") return ["coding", "test-verify", "release/proof"];
-  const adapter = defaultAdapters().find((candidate) => candidate.id === agentId);
-  return rolesForCapabilityKinds(adapter?.capabilities().map((capability) => capability.kind) ?? []);
-}
-
 function renderProofEventsLog(events: LoopEvent[]): string {
   const lines = events.map((event) => `${event.seq} ${event.type} ${proofEventSummary(event)}`);
   const content = lines.length === 0
@@ -8955,137 +8899,16 @@ async function enforceObservePolicyGate(workspacePath: string): Promise<number |
   return decision.reason === OBSERVE_POLICY_DENIED_REASON ? 2 : 1;
 }
 
-async function handleDeliverCommand(args: string[]): Promise<number> {
-  if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
-    console.log(`osstack deliver — product entry from one intent to proof
-
-  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--checkpoint] [--govern [warn|strict]] [--json]
-
-Stages:
-  intake -> plan -> execute-loop -> verify-review -> proof
-`);
-    return 0;
-  }
-
-  const prompt = firstPositionalValue(args, new Set([
-    "--workspace",
-    "--state",
-    "--execute",
-    "--verify",
-    "--agent",
-    "--capability",
-    "--priority",
-    "--max-iter",
-    "--worktree-root",
-    "--govern",
-  ]));
-  if (prompt === undefined) {
-    console.error("osstack: deliver requires a prompt");
-    return 1;
-  }
-  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
-  const policyGate = await enforceObservePolicyGate(workspacePath);
-  if (policyGate !== undefined) return policyGate;
-  const stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
-  const executeCommand = flagValue(args, "--execute");
-  const agentId = flagValue(args, "--agent");
-  const capability = flagValue(args, "--capability") ?? "code.write";
-  const priority = parsePositiveIntegerFlag(flagValue(args, "--priority"), "--priority");
-  if (priority instanceof Error) {
-    console.error(`osstack: ${priority.message}`);
-    return 1;
-  }
-  const maxIterations = parsePositiveIntegerFlag(flagValue(args, "--max-iter"), "--max-iter");
-  if (maxIterations instanceof Error) {
-    console.error(`osstack: ${maxIterations.message}`);
-    return 1;
-  }
-  const verifyCommands = flagValues(args, "--verify");
-  const suggestedVerify = await suggestVerifyCommand(workspacePath);
-  const governanceMode = parseLoopGovernanceMode(args);
-  if (governanceMode instanceof Error) {
-    console.error(`osstack: ${governanceMode.message}`);
-    return 1;
-  }
-  const autoAgent = args.includes("--auto-agent");
-  const useWorktree = args.includes("--worktree");
-  const checkpoint = args.includes("--checkpoint") && !useWorktree
-    ? await createShadowCheckpoint(realpathSync(workspacePath))
-    : undefined;
-  const stages = ["intake", "plan", "execute-loop", "verify-review", "proof"];
-  const task = await enqueueTask({
-    workspacePath,
-    prompt,
-    capability,
-    ...(priority !== undefined ? { priority } : {}),
-    context: {
-      deliver_pipeline: {
-        stages,
-        suggested_verify: suggestedVerify,
-        verify_commands: verifyCommands,
-        auto_agent: autoAgent,
-      },
-    },
-  });
-  const adapters = agentId !== undefined || autoAgent ? defaultAdapters() : undefined;
-  const worktreeRoot = flagValue(args, "--worktree-root");
-  const engine = new LoopEngine({
-    workspacePath,
-    stateFilePath,
-    ...(executeCommand !== undefined ? { executeCommand } : {}),
-    ...(agentId !== undefined ? { agentId } : {}),
-    ...(autoAgent ? { autoAgent } : {}),
-    ...(adapters !== undefined ? { adapters } : {}),
-    ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
-    sources: ["task_queue"],
-    ...(maxIterations !== undefined ? { maxIterations } : {}),
-    ...(useWorktree ? { useWorktree: true } : {}),
-    ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
-    // Kernel gate (R2.2): defense-in-depth over the upfront enforceObservePolicyGate
-    // above — also stops cleanly if policy flips to observe mid-run.
-    policyGate: makePolicyGate(workspacePath),
-  });
-  const result = await engine.runOnce();
-  const artifactArgs = ensureFlags(args, ["--report", "--scorecard", "--proof"]);
-  const governance = governanceMode === undefined
-    ? undefined
-    : await createLoopGovernanceEvidence(governanceMode, workspacePath);
-  const events = governance === undefined
-    ? result.events
-    : appendGovernanceVerifyEvent(result.events, result.loop_id, governance);
-  const probeObservation = await observeLoopProbeEvents(workspacePath, events);
-  const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, artifactArgs, events, governance);
-  const learnedLessons = await learnLessonsFromLoopState(result.state);
-  const summary = {
-    prompt,
-    stages,
-    suggested_verify: suggestedVerify,
-    verify_commands: verifyCommands,
-    task: task.task,
-    task_path: task.path,
-    loop_id: result.loop_id,
-    json_path: result.jsonPath,
-    markdown_path: result.markdownPath,
-    completed_tasks: result.state.completed_tasks,
-    events,
-    ...(probeObservation === undefined ? {} : { probe_observation: probeObservation }),
-    ...(checkpoint !== undefined ? { checkpoint } : {}),
-    ...(artifacts !== undefined ? { artifacts } : {}),
-    ...(governance !== undefined ? { governance } : {}),
-    ...(learnedLessons !== undefined ? { learned_lessons: learnedLessons } : {}),
-    ...(result.state.key_metrics !== undefined ? { metrics: result.state.key_metrics } : {}),
+export function createDeliverCommandDeps(): DeliverCommandDeps {
+  return {
+    enforceObservePolicyGate,
+    createShadowCheckpoint,
+    createLoopGovernanceEvidence,
+    appendGovernanceVerifyEvent,
+    observeLoopProbeEvents,
+    writeRequestedLoopArtifacts,
+    learnLessonsFromLoopState,
   };
-  if (args.includes("--json")) {
-    console.log(JSON.stringify(summary, null, 2));
-  } else {
-    console.log(`deliver=${result.loop_id}`);
-    console.log(`task=${task.path}`);
-    if (suggestedVerify !== undefined) console.log(`suggested_verify=${suggestedVerify}`);
-    if (governance !== undefined) console.log(`governance=${governance.status} mode=${governance.mode} blocking=${governance.blocking ? "yes" : "no"}`);
-    if (artifacts?.report !== undefined) console.log(`report=${artifacts.report}`);
-    if (artifacts?.proof_dir !== undefined) console.log(`proof=${artifacts.proof_dir}`);
-  }
-  return result.state.completed_tasks.some((completed) => completed.outcome !== "success") || governance?.blocking === true ? 2 : 0;
 }
 
 function ensureFlags(args: string[], flags: string[]): string[] {
@@ -9094,21 +8917,6 @@ function ensureFlags(args: string[], flags: string[]): string[] {
     if (!next.includes(flag)) next.push(flag);
   }
   return next;
-}
-
-async function suggestVerifyCommand(workspacePath: string): Promise<string | undefined> {
-  if (await fileExists(join(workspacePath, "pnpm-lock.yaml"))) return "pnpm test";
-  if (await fileExists(join(workspacePath, "bun.lockb")) || await fileExists(join(workspacePath, "bun.lock"))) return "bun test";
-  if (await fileExists(join(workspacePath, "package-lock.json"))) return "npm test";
-  try {
-    const packageJson = JSON.parse(await readFile(join(workspacePath, "package.json"), "utf-8")) as unknown;
-    if (isRecord(packageJson) && isRecord(packageJson["scripts"]) && typeof packageJson["scripts"]["test"] === "string") {
-      return "npm test";
-    }
-  } catch {
-    // No package.json or unreadable package metadata.
-  }
-  return undefined;
 }
 
 async function fileExists(path: string): Promise<boolean> {
@@ -9200,6 +9008,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(agentId !== undefined ? { agentId } : {}),
       ...(autoAgent ? { autoAgent } : {}),
       ...(profileRouting !== undefined ? { enforceRoleSeparation: true } : {}),
+      ...(profileRouting !== undefined
+        ? { profileRouting: profileRouting.summary }
+        : {}),
       ...(goalCommand !== undefined ? { goalCommand } : {}),
       ...(schedule !== undefined ? { schedule } : {}),
       ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
@@ -9354,6 +9165,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ...(agentId !== undefined ? { agentId } : {}),
         ...(autoAgent ? { autoAgent } : {}),
         ...(profileRouting !== undefined ? { enforceRoleSeparation: true } : {}),
+        ...(profileRouting !== undefined
+          ? { profileRouting: profileRouting.summary }
+          : {}),
         ...(goalCommand !== undefined ? { goalCommand } : {}),
         ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
         ...(verifierAgentIds.length > 0 ? { verifierAgentIds } : {}),
@@ -9433,6 +9247,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(agentId !== undefined ? { agentId } : {}),
       ...(autoAgent ? { autoAgent } : {}),
       ...(profileRouting !== undefined ? { enforceRoleSeparation: true } : {}),
+      ...(profileRouting !== undefined
+        ? { profileRouting: profileRouting.summary }
+        : {}),
       ...(adapters !== undefined ? { adapters } : {}),
       ...(verifierAgentIds.length > 0 ? { verifierAgentIds } : {}),
       ...(artifactVerification !== undefined ? { artifactVerification } : {}),
@@ -9882,86 +9699,6 @@ function parseArtifactVerification(args: string[]): ArtifactVerificationOptions 
   };
 }
 
-async function resolveLoopProfileRouting(
-  args: string[],
-  explicitAgentId: string | undefined,
-  explicitVerifierAgentIds: readonly string[],
-): Promise<{
-  agentId?: string;
-  verifierAgentIds: string[];
-  summary: LoopProfileSummary;
-} | undefined | Error> {
-  const profileOverride = flagValue(args, "--profile")
-    ?? process.env["OSSTACK_AGENT_PROFILE"]
-    ?? process.env["OSSTACK_PROFILE"];
-  const overrides = parseRoleOverrides(args);
-  if (overrides instanceof Error) return overrides;
-  if (profileOverride === undefined && Object.keys(overrides).length === 0) return undefined;
-
-  const config = loadConfig();
-  const profile = selectProfile(config, profileOverride !== undefined ? { override: profileOverride } : {});
-  const roles = {
-    coding: { ...profile.roles.coding, fallback: [...profile.roles.coding.fallback] },
-    "test-verify": { ...profile.roles["test-verify"], fallback: [...profile.roles["test-verify"].fallback] },
-    design: { ...profile.roles.design, fallback: [...profile.roles.design.fallback] },
-  };
-  for (const [role, agentId] of Object.entries(overrides) as Array<[AgentRole, string]>) {
-    roles[role] = {
-      primary: agentId,
-      fallback: roles[role].fallback.filter((candidate) => candidate !== agentId),
-    };
-  }
-
-  const adapters = defaultAdapters() as unknown as RoutableAdapter[];
-  const resolutions = await resolveAll(roles, adapters, { autoFallback: true });
-  const builder = explicitAgentId ?? resolutions.coding.chosen ?? undefined;
-  const evaluator = explicitVerifierAgentIds[0] ?? resolutions["test-verify"].chosen ?? undefined;
-  return {
-    ...(builder !== undefined ? { agentId: builder } : {}),
-    verifierAgentIds: evaluator !== undefined ? [evaluator] : [],
-    summary: {
-      profile_name: profile.name,
-      reason: profile.reason,
-      ...(builder !== undefined ? { builder_agent_id: builder } : {}),
-      ...(evaluator !== undefined ? { evaluator_agent_id: evaluator } : {}),
-      ...(resolutions.design.chosen !== null ? { designer_agent_id: resolutions.design.chosen } : {}),
-      overrides: Object.fromEntries(Object.entries(overrides)),
-      resolutions: Object.fromEntries(Object.entries(resolutions).map(([role, resolution]) => [
-        role,
-        {
-          chosen: resolution.chosen,
-          reason: resolution.reason,
-          tried: resolution.tried,
-        },
-      ])),
-    },
-  };
-}
-
-function parseRoleOverrides(args: string[]): Partial<Record<AgentRole, string>> | Error {
-  const overrides: Partial<Record<AgentRole, string>> = {};
-  for (const raw of flagValues(args, "--role")) {
-    const [roleRaw, agentId] = raw.split("=", 2);
-    if (roleRaw === undefined || agentId === undefined || agentId.trim() === "") {
-      return new Error(`--role must use role=agent-id, got "${raw}"`);
-    }
-    const role = normalizeLoopRole(roleRaw);
-    if (role === undefined) {
-      return new Error(`unknown --role "${roleRaw}"; use coder, evaluator, or designer`);
-    }
-    overrides[role] = agentId.trim();
-  }
-  return overrides;
-}
-
-function normalizeLoopRole(value: string): AgentRole | undefined {
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "coder" || normalized === "builder" || normalized === "coding") return "coding";
-  if (normalized === "evaluator" || normalized === "judge" || normalized === "verifier" || normalized === "test-verify") return "test-verify";
-  if (normalized === "designer" || normalized === "design") return "design";
-  return undefined;
-}
-
 function safeFileSegment(value: string): string {
   return value.replaceAll(/[^a-zA-Z0-9._-]/g, "-");
 }
@@ -10042,20 +9779,6 @@ interface LoopRunSummary {
 type LoopProbeObservationSummaryV1 =
   | ({ status: "ok" } & LoopProbeObservationResultV1)
   | { status: "error"; message: string };
-
-interface LoopProfileSummary {
-  profile_name: string;
-  reason: string;
-  builder_agent_id?: string;
-  evaluator_agent_id?: string;
-  designer_agent_id?: string;
-  overrides: Record<string, string>;
-  resolutions: Record<string, {
-    chosen: string | null;
-    reason: string;
-    tried: Array<{ id: string; ok: boolean; reason?: string }>;
-  }>;
-}
 
 interface LoopEvidenceArtifacts {
   report?: string;

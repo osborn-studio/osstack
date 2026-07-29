@@ -137,6 +137,48 @@ describe("LoopEngine", () => {
       .resolves.toContain("reviewed run_plan_");
   });
 
+  it("emits the frozen profile and role identities at plan and verify boundaries", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const builder = new FakeLoopAdapter({
+      id: "claude-code",
+      outputFile: "profile-output.txt",
+    });
+    const evaluator = new FakeReviewAdapter();
+    const result = await new LoopEngine({
+      loopId: "loop-profile-evidence",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      agentId: builder.id,
+      verifierAgentIds: [evaluator.id],
+      adapters: [builder, evaluator],
+      profileRouting: profileRoutingFixture(),
+    }).runOnce();
+
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.plan.done",
+      payload: expect.objectContaining({
+        profile_name: "mac-mini",
+        builder_identity: expect.objectContaining({
+          adapter_id: "claude-code",
+          provider_id: "anthropic",
+          model_id: "claude-current",
+        }),
+      }),
+    }));
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.verify.done",
+      payload: expect.objectContaining({
+        profile_name: "mac-mini",
+        evaluator_identity: expect.objectContaining({
+          adapter_id: "fake-reviewer",
+          provider_id: "review-provider",
+          model_id: "review-current",
+        }),
+        independence_reason: "reported provider or model differs",
+      }),
+    }));
+  });
+
   it("persists redacted structured Kimi review evidence in events and completed tasks", async () => {
     const workspace = await makeGitQueuedWorkspace("stable\n");
     await git(workspace, ["mv", "app.txt", "app.ts"]);
@@ -722,6 +764,45 @@ describe("LoopEngine", () => {
     expect(await git(workspace, ["worktree", "list", "--porcelain"])).not.toContain("osstack/loop/");
   });
 
+  it("does not promote cancelled Builder changes when deterministic verification passes", async () => {
+    const workspace = await makeGitQueuedWorkspace("stable\n");
+    const adapter = new FakeLoopAdapter({
+      outputFile: "cancelled-output.txt",
+      terminalStatus: "cancelled",
+    });
+    const result = await new LoopEngine({
+      loopId: "loop-worktree-cancelled",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      agentId: adapter.id,
+      adapters: [adapter],
+      verifyCommands: [
+        "node -e \"process.exit(require('fs').existsSync('cancelled-output.txt') ? 0 : 1)\"",
+      ],
+      maxIterations: 1,
+      useWorktree: true,
+      worktreeRoot: join(workspace, "..", "cancelled-worktrees"),
+    }).runOnce();
+
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      task_id: "task-1",
+      outcome: "escalated",
+      verify_issues: [
+        expect.objectContaining({
+          rule: "execute.outcome_not_completed",
+        }),
+      ],
+    });
+    expect(result.events.map((event) => event.type)).toContain(
+      "loop.worktree.cleaned",
+    );
+    expect(result.events.map((event) => event.type)).not.toContain(
+      "loop.worktree.merged",
+    );
+    await expect(readFile(join(workspace, "cancelled-output.txt"), "utf-8"))
+      .rejects.toThrow();
+  });
+
   it("cleans loop-scoped orphaned worktrees after each cycle", async () => {
     const workspace = await makeGitQueuedWorkspace("base\n");
     const loopId = "loop-orphan-cycle";
@@ -915,11 +996,18 @@ class FakeLoopAdapter implements AgentAdapter {
   readonly display_name = "Fake Loop Agent";
   readonly cost_tier: CostTier;
   private readonly outputFile: string;
+  private readonly terminalStatus: "completed" | "cancelled";
 
-  constructor(options: { id?: string; costTier?: CostTier; outputFile?: string } = {}) {
+  constructor(options: {
+    id?: string;
+    costTier?: CostTier;
+    outputFile?: string;
+    terminalStatus?: "completed" | "cancelled";
+  } = {}) {
     this.id = options.id ?? "fake-loop-agent";
     this.cost_tier = options.costTier ?? "low";
     this.outputFile = options.outputFile ?? "agent-output.txt";
+    this.terminalStatus = options.terminalStatus ?? "completed";
   }
 
   capabilities(): readonly Capability[] {
@@ -971,9 +1059,9 @@ class FakeLoopAdapter implements AgentAdapter {
 
     await writeFile(join(repoPath, this.outputFile), `adapter wrote: ${task.prompt}\n`);
     yield fakeEvent(task, 1, "done", {
-      status: "completed",
+      status: this.terminalStatus,
       last_seq: 0,
-      result_summary: "fake adapter completed",
+      result_summary: `fake adapter ${this.terminalStatus}`,
     }, true);
   }
 }
@@ -1100,4 +1188,31 @@ function fakeEvent(
     type,
     payload,
   } as HermesEvent;
+}
+
+function profileRoutingFixture() {
+  return {
+    profile_name: "mac-mini",
+    reason: "pinned profile \"mac-mini\"",
+    builder_agent_id: "claude-code",
+    evaluator_agent_id: "fake-reviewer",
+    builder_identity: {
+      adapter_id: "claude-code",
+      adapter_version: "1.0.0",
+      auth_mode: "login-reuse",
+      provider_id: "anthropic",
+      model_id: "claude-current",
+      evidence_source: "reported",
+    },
+    evaluator_identity: {
+      adapter_id: "fake-reviewer",
+      adapter_version: "1.0.0",
+      auth_mode: "test",
+      provider_id: "review-provider",
+      model_id: "review-current",
+      evidence_source: "reported",
+    },
+    independent: true,
+    independence_reason: "reported provider or model differs",
+  };
 }

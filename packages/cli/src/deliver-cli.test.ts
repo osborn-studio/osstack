@@ -1,9 +1,36 @@
+import { execFileSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
-import { readFile, rm, stat, writeFile } from "node:fs/promises";
+import {
+  cp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  KimiCodeAdapter,
+  type AgentAdapter,
+  type AgentRuntimeIdentity,
+  type AgentTask,
+} from "@osstack/agents";
+import {
+  CapabilitySchema,
+  type Capability,
+  type CapabilityKind,
+} from "@osstack/core";
+import type { HermesEvent } from "@osstack/hermes-adapter";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { main } from "./bin.js";
+import {
+  createDeliverCommandDeps,
+  main,
+} from "./bin.js";
+import {
+  DeliverAutonomyMode,
+  handleDeliverCommand,
+} from "./deliver-command.js";
 
 let tmp: string;
 let logs: string[];
@@ -27,6 +54,42 @@ afterEach(async () => {
 });
 
 describe("deliver CLI", () => {
+  it("accepts only Phase B autonomy modes", () => {
+    expect(DeliverAutonomyMode.options).toEqual([
+      "legacy",
+      "guarded-local",
+    ]);
+    expect(DeliverAutonomyMode.safeParse("guarded-git").success).toBe(
+      false,
+    );
+  });
+
+  it("preserves bare deliver legacy output without probing adapters", async () => {
+    const kimiProbe = vi.spyOn(KimiCodeAdapter.prototype, "isAvailable");
+
+    const exitCode = await main([
+      "deliver",
+      "Freeze legacy delivery",
+      "--workspace",
+      tmp,
+      "--execute",
+      "node -e \"process.exit(0)\"",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as Record<string, unknown>;
+    expect(summary).toMatchObject({
+      prompt: "Freeze legacy delivery",
+      stages: ["intake", "plan", "execute-loop", "verify-review", "proof"],
+      verify_commands: [],
+      completed_tasks: [expect.objectContaining({ outcome: "success" })],
+    });
+    expect(summary).not.toHaveProperty("profile");
+    expect(kimiProbe).not.toHaveBeenCalled();
+    expect(errors).toEqual([]);
+  });
+
   it("runs a product-entry delivery flow and writes report, scorecard, and proof", async () => {
     const exitCode = await main([
       "deliver",
@@ -185,4 +248,388 @@ describe("deliver CLI", () => {
     };
     expect(task.context.deliver_pipeline.suggested_verify).toBe("npm test");
   });
+
+  it("runs guarded-local with separated profile roles and local-only evidence", async () => {
+    const workspace = await initGuardedFixture();
+    const builderInvoke = vi.fn(async function* (
+      task: AgentTask,
+    ): AsyncIterable<HermesEvent> {
+      const repoPath = task.context?.["repo_path"];
+      if (typeof repoPath !== "string") {
+        throw new Error("builder task did not include repo_path");
+      }
+      await writeFile(
+        join(repoPath, "src/greeting.ts"),
+        "\nexport const guarded = true;\n",
+        { flag: "a" },
+      );
+      yield doneEvent(task, "completed", "builder completed");
+    });
+    const adapters = guardedAdapters(builderInvoke);
+    const remotePorts = {
+      push: vi.fn(async () => undefined),
+      createPullRequest: vi.fn(async () => undefined),
+      merge: vi.fn(async () => undefined),
+      deploy: vi.fn(async () => undefined),
+    };
+
+    const exitCode = await handleDeliverCommand([
+      "Add guarded fixture marker",
+      "--workspace",
+      workspace,
+      "--profile",
+      "mac-mini",
+      "--autonomy",
+      "guarded-local",
+      "--json",
+    ], {
+      ...createDeliverCommandDeps(),
+      adapters: () => adapters,
+      remotePorts,
+    });
+
+    expect(
+      exitCode,
+      `logs=${logs.join("\n")}\nerrors=${errors.join("\n")}`,
+    ).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      autonomy: string;
+      profile: {
+        builder_agent_id: string;
+        evaluator_agent_id: string;
+        independent: boolean;
+      };
+      verify_commands: string[];
+      events: Array<{ type: string }>;
+      artifacts: { proof_dir?: string; proof_manifest?: string };
+      governance: { mode: string; blocking: boolean };
+    };
+    expect(summary).toMatchObject({
+      autonomy: "guarded-local",
+      profile: {
+        builder_agent_id: "claude-code",
+        evaluator_agent_id: "kimi-code",
+        independent: true,
+      },
+      verify_commands: ["pnpm test"],
+      governance: { mode: "strict", blocking: false },
+    });
+    expect(summary.events).toContainEqual(
+      expect.objectContaining({ type: "loop.worktree.created" }),
+    );
+    expect(summary.artifacts.proof_dir).toEqual(expect.any(String));
+    await expect(stat(summary.artifacts.proof_manifest!)).resolves
+      .toMatchObject({ size: expect.any(Number) });
+    await expect(
+      readFile(
+        join(summary.artifacts.proof_dir!, "policy-decision.json"),
+        "utf-8",
+      ),
+    ).resolves.toContain("\"profile_name\": \"mac-mini\"");
+    const runtimeEvidence = JSON.parse(
+      await readFile(
+        join(summary.artifacts.proof_dir!, "agent-runtime.json"),
+        "utf-8",
+      ),
+    ) as {
+      agents: Array<{
+        adapter_id?: string;
+        provider_id?: string;
+        model_id?: string;
+      }>;
+    };
+    expect(runtimeEvidence.agents).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        adapter_id: "claude-code",
+        provider_id: "anthropic",
+        model_id: "claude-current",
+      }),
+      expect.objectContaining({
+        adapter_id: "kimi-code",
+        provider_id: "kimi",
+        model_id: "kimi-code/k3",
+      }),
+    ]));
+    expect(remotePorts.push).not.toHaveBeenCalled();
+    expect(remotePorts.createPullRequest).not.toHaveBeenCalled();
+    expect(remotePorts.merge).not.toHaveBeenCalled();
+    expect(remotePorts.deploy).not.toHaveBeenCalled();
+  });
+
+  it("blocks guarded-local before Builder invoke when verification cannot be detected", async () => {
+    const workspace = join(tmp, "missing-verify");
+    execFileSync("git", ["init", "-b", "main", workspace]);
+    await writeFile(join(workspace, "README.md"), "# fixture\n");
+    commitFixture(workspace);
+    const builderInvoke = vi.fn(async function* (
+      task: AgentTask,
+    ): AsyncIterable<HermesEvent> {
+      yield doneEvent(task, "completed", "unexpected");
+    });
+
+    const exitCode = await handleDeliverCommand([
+      "Attempt unverified change",
+      "--workspace",
+      workspace,
+      "--profile",
+      "mac-mini",
+      "--autonomy",
+      "guarded-local",
+      "--json",
+    ], {
+      ...createDeliverCommandDeps(),
+      adapters: () => guardedAdapters(builderInvoke),
+    });
+
+    expect(exitCode).toBe(2);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      error: {
+        code: "verify_profile_missing",
+      },
+    });
+    expect(builderInvoke).not.toHaveBeenCalled();
+  });
+
+  it("fails closed at delivery execution when no independent Evaluator is available", async () => {
+    const workspace = await initGuardedFixture();
+    const builderInvoke = vi.fn(async function* (
+      task: AgentTask,
+    ): AsyncIterable<HermesEvent> {
+      yield doneEvent(task, "completed", "unexpected");
+    });
+
+    const exitCode = await handleDeliverCommand([
+      "Attempt guarded delivery without Kimi",
+      "--workspace",
+      workspace,
+      "--verify",
+      "node --test",
+      "--profile",
+      "mac-mini",
+      "--autonomy",
+      "guarded-local",
+      "--worktree",
+      "--json",
+    ], {
+      ...createDeliverCommandDeps(),
+      adapters: () => guardedAdapters(builderInvoke).filter(
+        (adapter) => adapter.id !== "kimi-code",
+      ),
+    });
+
+    expect(exitCode).toBe(2);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      error: {
+        code: "profile_routing_failed",
+        message: expect.stringContaining(
+          "no independent Evaluator is available",
+        ),
+      },
+    });
+    expect(builderInvoke).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid guarded-local command timeout before Builder invoke", async () => {
+    const workspace = await initGuardedFixture();
+    const builderInvoke = vi.fn(async function* (
+      task: AgentTask,
+    ): AsyncIterable<HermesEvent> {
+      yield doneEvent(task, "completed", "unexpected");
+    });
+
+    const exitCode = await handleDeliverCommand([
+      "Attempt guarded delivery with an invalid timeout",
+      "--workspace",
+      workspace,
+      "--verify",
+      "node --test",
+      "--profile",
+      "mac-mini",
+      "--autonomy",
+      "guarded-local",
+      "--command-timeout-ms",
+      "0",
+      "--json",
+    ], {
+      ...createDeliverCommandDeps(),
+      adapters: () => guardedAdapters(builderInvoke),
+    });
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("\n")).toContain(
+      "--command-timeout-ms must be a positive integer",
+    );
+    expect(builderInvoke).not.toHaveBeenCalled();
+  });
+
+  it("keeps explicit legacy mode on the frozen no-profile path", async () => {
+    const kimiProbe = vi.spyOn(
+      KimiCodeAdapter.prototype,
+      "isAvailable",
+    );
+
+    const exitCode = await main([
+      "deliver",
+      "Explicit legacy delivery",
+      "--workspace",
+      tmp,
+      "--execute",
+      "node -e \"process.exit(0)\"",
+      "--autonomy",
+      "legacy",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as Record<string, unknown>;
+    expect(summary).not.toHaveProperty("profile");
+    expect(summary).not.toHaveProperty("autonomy");
+    expect(kimiProbe).not.toHaveBeenCalled();
+  });
 });
+
+const guardedFixture = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../fixtures/guarded-local",
+);
+
+async function initGuardedFixture(): Promise<string> {
+  const workspace = join(tmp, "guarded-fixture");
+  await cp(guardedFixture, workspace, { recursive: true });
+  execFileSync("git", ["init", "-b", "main"], { cwd: workspace });
+  commitFixture(workspace);
+  return workspace;
+}
+
+function commitFixture(workspace: string): void {
+  execFileSync("git", ["add", "."], { cwd: workspace });
+  execFileSync("git", [
+    "-c",
+    "user.name=osstack test",
+    "-c",
+    "user.email=osstack-test@example.invalid",
+    "commit",
+    "-m",
+    "test: seed guarded fixture",
+  ], { cwd: workspace });
+}
+
+function guardedAdapters(
+  builderInvoke: AgentAdapter["invoke"],
+): AgentAdapter[] {
+  return [
+    fakeAdapter({
+      id: "claude-code",
+      kinds: ["code.write"],
+      identity: runtimeIdentity(
+        "claude-code",
+        "anthropic",
+        "claude-current",
+      ),
+      invoke: builderInvoke,
+    }),
+    fakeAdapter({
+      id: "kimi-code",
+      kinds: ["code.review"],
+      identity: runtimeIdentity(
+        "kimi-code",
+        "kimi",
+        "kimi-code/k3",
+      ),
+      async *invoke(task) {
+        yield structuredReviewDoneEvent(task);
+      },
+    }),
+  ];
+}
+
+function fakeAdapter(options: {
+  id: string;
+  kinds: CapabilityKind[];
+  identity: AgentRuntimeIdentity;
+  invoke: AgentAdapter["invoke"];
+}): AgentAdapter {
+  const capabilities: Capability[] = options.kinds.map((kind) =>
+    CapabilitySchema.parse({
+      id: `${options.id}.${kind}`,
+      kind,
+      agent_id: options.id,
+      description: `${options.id} ${kind}`,
+      cost_tier: "mid",
+    }),
+  );
+  return {
+    id: options.id,
+    display_name: options.id,
+    cost_tier: "mid",
+    capabilities: () => capabilities,
+    isAvailable: async () => ({
+      available: true,
+      last_checked_at: 1,
+    }),
+    runtimeIdentity: async () => options.identity,
+    invoke: options.invoke,
+  };
+}
+
+function runtimeIdentity(
+  adapterId: string,
+  providerId: string,
+  modelId: string,
+): AgentRuntimeIdentity {
+  return {
+    adapter_id: adapterId,
+    adapter_version: "1.0.0",
+    auth_mode: "test",
+    provider_id: providerId,
+    model_id: modelId,
+    evidence_source: "reported",
+  };
+}
+
+function doneEvent(
+  task: AgentTask,
+  status: "completed" | "failed",
+  summary: string,
+): HermesEvent {
+  return {
+    event_id: `${task.run_id}:1`,
+    seq: 1,
+    run_id: task.run_id,
+    session_id: task.session_id,
+    created_at: Date.now() / 1000,
+    terminal: true,
+    type: "done",
+    payload: {
+      status,
+      last_seq: 0,
+      result_summary: summary,
+    },
+  };
+}
+
+function structuredReviewDoneEvent(task: AgentTask): HermesEvent {
+  return {
+    ...doneEvent(task, "completed", "approved"),
+    payload: {
+      status: "completed",
+      last_seq: 0,
+      result_summary: "approved",
+      review: {
+        schema_version: 1,
+        verdict: "approved",
+        risk: "read_only",
+        markdown: "# Review\n\nApproved.",
+        judgments: [],
+        findings: [],
+        recommended_actions: [],
+        evidence_refs: [],
+        runtime_identity: runtimeIdentity(
+          "kimi-code",
+          "kimi",
+          "kimi-code/k3",
+        ),
+      },
+    },
+  };
+}

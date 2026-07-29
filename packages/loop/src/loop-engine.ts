@@ -47,6 +47,7 @@ import {
   type IterationFeedback,
   type LoopEvent,
   type LoopKnowledgeTrace,
+  type LoopProfileRoutingEvidence,
   type PublishedAssetEvidence,
   type ReviewArtifact,
   type Task,
@@ -73,6 +74,7 @@ export interface LoopRunOptions {
   autoAgent?: boolean;
   verifierAgentIds?: string[];
   enforceRoleSeparation?: boolean;
+  profileRouting?: LoopProfileRoutingEvidence;
   artifactVerification?: ArtifactVerificationOptions;
   /** Discovery governance policy. When absent, all discovered tasks execute (legacy behavior). */
   discoveryPolicy?: DiscoveryPolicy;
@@ -723,6 +725,18 @@ export class LoopEngine {
           routing_reason: agentSelection.reason,
           ...(agentSelection.policyDecision !== undefined ? { policy: policyEventPayload(agentSelection.policyDecision) } : {}),
           ...(plan.worktree_path !== undefined ? { worktree_path: plan.worktree_path } : {}),
+          ...(this.options.profileRouting !== undefined
+            ? {
+                profile_name: this.options.profileRouting.profile_name,
+                profile_reason: this.options.profileRouting.reason,
+                builder_identity: redactProfileIdentity(
+                  this.options.profileRouting.builder_identity,
+                ),
+                independent: this.options.profileRouting.independent,
+                independence_reason:
+                  this.options.profileRouting.independence_reason,
+              }
+            : {}),
           iteration,
         });
         decisions.push(`${task.task_id}: selected ${plan.agent_id} - ${agentSelection.reason}`);
@@ -809,6 +823,17 @@ export class LoopEngine {
           diff_summary: finalEvidence.diffSummary,
           ...(finalEvidence.commitHash !== undefined ? { commit_hash: finalEvidence.commitHash } : {}),
           ...(worktree !== undefined ? { worktree_path: worktree.worktreePath } : {}),
+          ...(this.options.profileRouting !== undefined
+            ? {
+                profile_name: this.options.profileRouting.profile_name,
+                evaluator_identity: redactProfileIdentity(
+                  this.options.profileRouting.evaluator_identity,
+                ),
+                independent: this.options.profileRouting.independent,
+                independence_reason:
+                  this.options.profileRouting.independence_reason,
+              }
+            : {}),
           iteration,
         });
         for (const deviation of finalVerdict.implementation_deviations ?? []) {
@@ -1198,6 +1223,16 @@ export class LoopEngine {
       ...(payload !== undefined ? { payload } : {}),
     });
   }
+}
+
+function redactProfileIdentity(
+  identity: object,
+): Record<string, unknown> {
+  const redacted = new PIIRedactor().redactDeep(identity);
+  if (redacted.stats.timed_out) {
+    throw new Error("profile runtime identity redaction timed out");
+  }
+  return redacted.value as Record<string, unknown>;
 }
 
 interface AgentSelection {

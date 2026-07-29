@@ -23,6 +23,7 @@ import {
   LoopBudget,
   LoopEngine,
   LoopKnowledgeTrace,
+  LoopProfileRoutingEvidence,
   checkBudget,
   nextCronDelayMs,
   validateCronExpression,
@@ -34,6 +35,7 @@ import {
   type LoopRunOptions,
   type LoopRunResult,
   type LoopKnowledgeTrace as LoopKnowledgeTraceType,
+  type LoopProfileRoutingEvidence as LoopProfileRoutingEvidenceType,
   type CompletedTask,
 } from "@osstack/loop";
 import { PIIRedactor, routeCapability, AgentOverrideError, PolicyEngine, DEFAULT_RULES, sqliteHistory, HermesBridge, GBrainAdapter, initOtel, shutdownOtel, traceSpan, otelEnabled, KanbanRepository, KanbanNotifier, getBoard, countRuns, countRunsSince, countEvents, listEventsForRun, type RoutableAdapter, type PolicyDecision, type CardStatus, type OutboundMessage } from "@osstack/core";
@@ -871,6 +873,9 @@ function loopStat(session: LoopSession): LoopStat {
     total_cycle_duration_ms: session.totalCycleDurationMs,
     avg_cycle_duration_ms: session.cycleCount === 0 ? null : session.totalCycleDurationMs / session.cycleCount,
     failure_streaks: Object.values(session.failureStreaks),
+    ...(session.runOptions.profileRouting !== undefined
+      ? { profile: session.runOptions.profileRouting }
+      : {}),
     ...(budget !== undefined ? { budget } : {}),
     ...(session.lastCycleDurationMs !== undefined ? { last_cycle_duration_ms: session.lastCycleDurationMs } : {}),
     ...(session.scheduleExpression !== undefined ? { schedule: session.scheduleExpression } : {}),
@@ -1337,6 +1342,9 @@ function loopSessionSummary(session: LoopSession): Record<string, unknown> {
     total_cycle_duration_ms: session.totalCycleDurationMs,
     avg_cycle_duration_ms: session.cycleCount === 0 ? null : session.totalCycleDurationMs / session.cycleCount,
     failure_streaks: Object.values(session.failureStreaks),
+    ...(session.runOptions.profileRouting !== undefined
+      ? { profile: session.runOptions.profileRouting }
+      : {}),
     ...(budget !== undefined ? { budget } : {}),
     ...(session.lastCycleDurationMs !== undefined ? { last_cycle_duration_ms: session.lastCycleDurationMs } : {}),
     ...(session.maxCycles !== undefined ? { max_cycles: session.maxCycles } : {}),
@@ -1695,6 +1703,8 @@ function parseLoopRunParams(
   if (verifierAgentIds instanceof Error) return verifierAgentIds;
   const artifactVerification = optionalArtifactVerification(p, "artifactVerification");
   if (artifactVerification instanceof Error) return artifactVerification;
+  const profileRouting = optionalProfileRouting(p, "profileRouting");
+  if (profileRouting instanceof Error) return profileRouting;
   const maxIterations = optionalPositiveInteger(p, "maxIterations");
   if (maxIterations instanceof Error) return maxIterations;
   const commandTimeoutMs = optionalPositiveInteger(p, "commandTimeoutMs");
@@ -1735,6 +1745,7 @@ function parseLoopRunParams(
     ...(verifyCommands !== undefined ? { verifyCommands } : {}),
     ...(verifierAgentIds !== undefined ? { verifierAgentIds } : {}),
     ...(artifactVerification !== undefined ? { artifactVerification } : {}),
+    ...(profileRouting !== undefined ? { profileRouting } : {}),
     ...(discoveryPolicy !== undefined ? { discoveryPolicy } : {}),
     ...(budget !== undefined ? { budget } : {}),
     ...(lessonDrafts !== undefined ? { lessonDrafts } : {}),
@@ -1910,6 +1921,34 @@ function optionalArtifactVerification(
     ...(requireGitDiff !== undefined ? { requireGitDiff } : {}),
     ...(targetPaths !== undefined ? { targetPaths } : {}),
     ...(forbiddenPaths !== undefined ? { forbiddenPaths } : {}),
+  };
+}
+
+function optionalProfileRouting(
+  params: Record<string, unknown>,
+  key: string,
+): LoopProfileRoutingEvidenceType | undefined | Error {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  const parsed = LoopProfileRoutingEvidence.safeParse(value);
+  if (!parsed.success) {
+    return new Error(
+      `params.${key} must be valid profile routing evidence`,
+    );
+  }
+  const {
+    designer_agent_id: designerAgentId,
+    designer_identity: designerIdentity,
+    ...required
+  } = parsed.data;
+  return {
+    ...required,
+    ...(designerAgentId !== undefined
+      ? { designer_agent_id: designerAgentId }
+      : {}),
+    ...(designerIdentity !== undefined
+      ? { designer_identity: designerIdentity }
+      : {}),
   };
 }
 

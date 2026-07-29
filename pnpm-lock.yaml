@@ -132,6 +132,9 @@ importers:
 
   packages/config:
     dependencies:
+      '@osstack/agents':
+        specifier: workspace:*
+        version: link:../agents
       '@osstack/core':
         specifier: workspace:*
         version: link:../core
