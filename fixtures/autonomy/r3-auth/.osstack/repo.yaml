@@ -1,0 +1,22 @@
+schema_version: 2
+product: autonomy-r3-auth
+role: core_product
+default_branch: main
+verify_command: npm test
+autonomy:
+  max_auto_risk: R2
+  require_independent_evaluator: true
+  max_builder_iterations: 2
+  max_review_rounds: 2
+  max_wall_time_minutes: 10
+  max_no_progress_rounds: 1
+git:
+  remote: origin
+  branch_prefix: osstack
+  merge_strategy: squash
+  auto_merge: true
+  protected_branches: [main]
+verification:
+  quick: [npm test]
+  standard: [npm test]
+  release: [npm test]
