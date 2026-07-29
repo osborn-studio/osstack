@@ -186,9 +186,23 @@ const ClockTime = z
   .string()
   .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, "time must use 24-hour HH:MM format");
 
+function isIanaTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const IanaTimeZone = NonEmptyConfigString.refine(
+  isIanaTimeZone,
+  "timezone must be a valid IANA time zone",
+);
+
 export const FreezeWindow = z
   .object({
-    timezone: NonEmptyConfigString,
+    timezone: IanaTimeZone,
     days: z
       .array(z.number().int().min(0).max(6))
       .min(1)

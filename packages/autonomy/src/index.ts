@@ -8,3 +8,4 @@ export * from "./progress-budget.js";
 export * from "./engine.js";
 export * from "./core-persistence.js";
 export * from "./git-candidate.js";
+export * from "./repo-policy.js";

@@ -183,6 +183,48 @@ describe("RepoConfig schema", () => {
     expect(RepoConfig.safeParse(targetExtra).success).toBe(false);
   });
 
+  it("accepts IANA deployment timezones and rejects unknown zones", () => {
+    expect(
+      RepoConfig.safeParse(
+        v2RepoConfig({
+          deploy: {
+            production: {
+              ...deployTarget(),
+              freeze_windows: [
+                {
+                  timezone: "America/Los_Angeles",
+                  days: [1],
+                  start: "23:00",
+                  end: "02:00",
+                },
+              ],
+            },
+          },
+        }),
+      ).success,
+    ).toBe(true);
+
+    expect(
+      RepoConfig.safeParse(
+        v2RepoConfig({
+          deploy: {
+            production: {
+              ...deployTarget(),
+              freeze_windows: [
+                {
+                  timezone: "Mars/Olympus_Mons",
+                  days: [1],
+                  start: "23:00",
+                  end: "02:00",
+                },
+              ],
+            },
+          },
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
   it("allows only R1 or R2 as max_auto_risk", () => {
     for (const level of ["R1", "R2"]) {
       expect(
