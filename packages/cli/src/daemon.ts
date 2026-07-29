@@ -15,6 +15,7 @@ import { existsSync, unlinkSync, statSync, chmodSync, mkdirSync } from "node:fs"
 import { readFile, rename, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
+import { performance } from "node:perf_hooks";
 import { setTimeout as sleep } from "node:timers/promises";
 import { encodeFrame, FrameDecoder, type HermesEvent } from "@osstack/hermes-adapter";
 import {
@@ -80,6 +81,10 @@ import {
   drainAutonomyNotifications,
   type AutonomyNotificationSender,
 } from "./autonomy-notification.js";
+import {
+  ClockJumpDetector,
+  enforceAutonomyRetention,
+} from "./autonomy-host.js";
 import {
   createDashboardSnapshot,
   dashboardUrl,
@@ -2785,6 +2790,15 @@ function buildContext(
       db_path: dbPath,
       home,
       socket_path: options.socketPath ?? resolveSocketPath(),
+      power_policy:
+        process.env["OSSTACK_POWER_POLICY"] === "process_assertion"
+          ? "process_assertion"
+          : "none",
+      clock_monitor:
+        process.env["OSSTACK_CLOCK_MONITOR"] === "monotonic-v1",
+      require_launchd:
+        process.platform === "darwin"
+        && process.env["OSSTACK_AGENT_PROFILE"] === "mac-mini",
     }),
     lastAutonomyHealth: undefined,
   };
@@ -2803,12 +2817,24 @@ export interface StartDaemonOptions {
   autonomyHealth?: () => Promise<AutonomyHealthReport>;
   healthPollIntervalMs?: number;
   notificationSender?: AutonomyNotificationSender;
+  wallClockMs?: () => number;
+  monotonicClockMs?: () => number;
+  clockJumpThresholdMs?: number;
   guardedAutonomyFactory?: (
     db: Database.Database,
     dbPath: string,
   ) =>
     | GuardedAutonomyDaemonRuntime
     | Promise<GuardedAutonomyDaemonRuntime>;
+}
+
+function environmentPositiveInteger(name: string): number | undefined {
+  const raw = process.env[name];
+  if (raw === undefined) return undefined;
+  if (!/^[1-9]\d*$/.test(raw)) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return Number(raw);
 }
 
 async function restoreGuardedAutonomy(
@@ -2861,6 +2887,42 @@ async function refreshAutonomyHealthAndRecover(
   recover: boolean,
   notificationSender?: AutonomyNotificationSender,
 ): Promise<void> {
+  try {
+    const maxLogBytes = environmentPositiveInteger(
+      "OSSTACK_LOG_MAX_BYTES",
+    );
+    const maxLogFiles = environmentPositiveInteger(
+      "OSSTACK_LOG_MAX_FILES",
+    );
+    const proofRetentionDays = environmentPositiveInteger(
+      "OSSTACK_PROOF_RETENTION_DAYS",
+    );
+    const proofMinKeep = environmentPositiveInteger(
+      "OSSTACK_PROOF_MIN_KEEP",
+    );
+    await enforceAutonomyRetention({
+      home: osstackHome(),
+      db: ctx.db,
+      ...(maxLogBytes === undefined
+        ? {}
+        : { max_log_bytes: maxLogBytes }),
+      ...(maxLogFiles === undefined
+        ? {}
+        : { max_log_files: maxLogFiles }),
+      ...(proofRetentionDays === undefined
+        ? {}
+        : { proof_retention_days: proofRetentionDays }),
+      ...(proofMinKeep === undefined
+        ? {}
+        : { proof_min_keep: proofMinKeep }),
+    });
+  } catch (error) {
+    process.stderr.write(
+      `osstack: autonomy retention failed: ${
+        error instanceof Error ? error.message : String(error)
+      }\n`,
+    );
+  }
   if (notificationSender !== undefined) {
     try {
       await drainAutonomyNotifications({
@@ -3000,6 +3062,13 @@ export async function startDaemon(
         10,
         opts.healthPollIntervalMs ?? 30_000,
       );
+      const wallClockMs = opts.wallClockMs ?? Date.now;
+      const monotonicClockMs =
+        opts.monotonicClockMs ?? (() => performance.now());
+      const clockDetector = new ClockJumpDetector(
+        opts.clockJumpThresholdMs ?? 120_000,
+      );
+      clockDetector.observe(wallClockMs(), monotonicClockMs());
       const healthMonitor =
         ctx.guardedAutonomy === undefined
           && opts.notificationSender === undefined
@@ -3007,9 +3076,18 @@ export async function startDaemon(
           : setInterval(() => {
               if (healthPollPending) return;
               healthPollPending = true;
+              const clock = clockDetector.observe(
+                wallClockMs(),
+                monotonicClockMs(),
+              );
+              if (clock.jump_detected) {
+                process.stderr.write(
+                  `osstack: clock jump detected drift_ms=${clock.drift_ms}; re-running external health and recovery probes\n`,
+                );
+              }
               guardedRecovery = refreshAutonomyHealthAndRecover(
                 ctx,
-                false,
+                clock.jump_detected,
                 opts.notificationSender,
               )
                 .catch((error) => {

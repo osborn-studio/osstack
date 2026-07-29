@@ -355,6 +355,8 @@ interface ServeLaunchdStatus {
   profile: string | null;
   write_concurrency: number | null;
   read_concurrency: number | null;
+  power_policy: "none" | "process_assertion" | null;
+  clock_monitor: "monotonic-v1" | null;
 }
 
 interface ServeLaunchdInstallResult extends ServeLaunchdStatus {
@@ -362,6 +364,7 @@ interface ServeLaunchdInstallResult extends ServeLaunchdStatus {
   load_skipped: boolean;
   home: string;
   logs_dir: string;
+  power_policy_record: string;
 }
 
 interface ServeLaunchdUninstallResult extends ServeLaunchdStatus {
@@ -826,6 +829,15 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
             db_path: dbPath,
             home: osstackHome(),
             socket_path: resolveSocketPath(),
+            power_policy:
+              process.env["OSSTACK_POWER_POLICY"] === "process_assertion"
+                ? "process_assertion"
+                : "none",
+            clock_monitor:
+              process.env["OSSTACK_CLOCK_MONITOR"] === "monotonic-v1",
+            require_launchd:
+              process.platform === "darwin"
+              && process.env["OSSTACK_AGENT_PROFILE"] === "mac-mini",
           }),
           resume: (runId, decision) =>
             runtime.resume(runId, decision),
@@ -7644,7 +7656,8 @@ async function handleServeManagementCommand(args: string[]): Promise<number> {
 Usage:
   osstack serve
   osstack serve --install [--bin PATH] [--profile NAME]
-    [--write-concurrency N] [--read-concurrency N] [--no-load] [--json]
+    [--write-concurrency N] [--read-concurrency N]
+    [--power-policy none|process_assertion] [--no-load] [--json]
   osstack serve --status [--json]
   osstack serve --uninstall [--no-load] [--json]
 
@@ -7656,6 +7669,8 @@ Options:
   --profile NAME  Agent profile for daemon work (default: mac-mini)
   --write-concurrency N  Machine-wide write slots (default: 2)
   --read-concurrency N   Machine-wide read slots (default: 8)
+  --power-policy MODE    Explicit host sleep policy: none or process_assertion
+                         (never changes persistent pmset settings)
   --no-load       Only write/remove plist; skip launchctl calls
   --json          Print machine-readable output
 `);
@@ -7685,6 +7700,19 @@ Options:
         "--read-concurrency",
         8,
       ) ?? 8;
+      const rawPowerPolicy =
+        flagValue(args, "--power-policy")
+        ?? process.env["OSSTACK_POWER_POLICY"]
+        ?? "none";
+      if (
+        rawPowerPolicy !== "none"
+        && rawPowerPolicy !== "process_assertion"
+      ) {
+        throw new Error(
+          "--power-policy must be none or process_assertion; persistent pmset changes are never applied automatically",
+        );
+      }
+      const powerPolicy = rawPowerPolicy;
       if (
         !args.includes("--bin")
         && isDevelopmentCliDist(binPath)
@@ -7730,6 +7758,7 @@ Options:
         profile,
         writeConcurrency,
         readConcurrency,
+        powerPolicy,
       });
       // Record the plist content baseline for doctor's drift check (2.1-C/F2).
       try {
@@ -7771,12 +7800,21 @@ async function installLaunchAgent(options: {
   profile: string;
   writeConcurrency: number;
   readConcurrency: number;
+  powerPolicy: "none" | "process_assertion";
 }): Promise<ServeLaunchdInstallResult> {
   const plistPath = launchAgentPlistPath();
   const logDir = logsDir();
   await mkdir(dirname(plistPath), { recursive: true });
   await mkdir(logDir, { recursive: true });
   await mkdir(osstackHome(), { recursive: true });
+  const existingPlist = await fileExists(plistPath)
+    ? await readFile(plistPath, "utf-8")
+    : "";
+  const priorPowerPolicy =
+    plistEnvironmentValue(existingPlist, "OSSTACK_POWER_POLICY") ===
+        "process_assertion"
+      ? "process_assertion"
+      : "none";
   const plist = renderLaunchAgentPlist({
     binPath: options.binPath,
     home: osstackHome(),
@@ -7786,8 +7824,29 @@ async function installLaunchAgent(options: {
     profile: options.profile,
     writeConcurrency: options.writeConcurrency,
     readConcurrency: options.readConcurrency,
+    powerPolicy: options.powerPolicy,
   });
   await writeFile(plistPath, plist, "utf-8");
+  const hostEvidenceDir = join(osstackHome(), "host");
+  const powerPolicyRecord = join(hostEvidenceDir, "power-policy.json");
+  await mkdir(hostEvidenceDir, { recursive: true });
+  await writeFile(
+    powerPolicyRecord,
+    `${JSON.stringify({
+      schema_version: 1,
+      selected_at: new Date().toISOString(),
+      mode: options.powerPolicy,
+      previous_mode: priorPowerPolicy,
+      machine_settings_changed: false,
+      current:
+        options.powerPolicy === "process_assertion"
+          ? "caffeinate -ims bound to ai.osstack.daemon lifetime"
+          : "no OSStack power assertion",
+      rollback:
+        `reinstall with --power-policy ${priorPowerPolicy}`,
+    }, null, 2)}\n`,
+    { encoding: "utf-8", mode: 0o600 },
+  );
 
   let loaded = false;
   if (!options.noLoad) {
@@ -7809,6 +7868,9 @@ async function installLaunchAgent(options: {
     profile: options.profile,
     write_concurrency: options.writeConcurrency,
     read_concurrency: options.readConcurrency,
+    power_policy: options.powerPolicy,
+    clock_monitor: "monotonic-v1",
+    power_policy_record: powerPolicyRecord,
   };
 }
 
@@ -7831,6 +7893,8 @@ async function uninstallLaunchAgent(options: { noLoad: boolean }): Promise<Serve
     profile: null,
     write_concurrency: null,
     read_concurrency: null,
+    power_policy: null,
+    clock_monitor: null,
   };
 }
 
@@ -7853,6 +7917,18 @@ async function readLaunchAgentStatus(options: { noLoad: boolean } = { noLoad: fa
       plist,
       "OSSTACK_READ_CONCURRENCY",
     ),
+    power_policy:
+      plistEnvironmentValue(plist, "OSSTACK_POWER_POLICY") ===
+        "process_assertion"
+        ? "process_assertion"
+        : installed
+          ? "none"
+          : null,
+    clock_monitor:
+      plistEnvironmentValue(plist, "OSSTACK_CLOCK_MONITOR") ===
+        "monotonic-v1"
+        ? "monotonic-v1"
+        : null,
   };
 }
 
@@ -7869,6 +7945,11 @@ function printServeLaunchdResult(result: ServeLaunchdStatus | ServeLaunchdInstal
   console.log(`profile=${result.profile ?? "unknown"}`);
   console.log(`write_concurrency=${result.write_concurrency ?? "unknown"}`);
   console.log(`read_concurrency=${result.read_concurrency ?? "unknown"}`);
+  console.log(`power_policy=${result.power_policy ?? "unknown"}`);
+  console.log(`clock_monitor=${result.clock_monitor ?? "unknown"}`);
+  if ("power_policy_record" in result) {
+    console.log(`power_policy_record=${result.power_policy_record}`);
+  }
   if ("load_skipped" in result) console.log(`load_skipped=${result.load_skipped}`);
   if ("unloaded" in result) console.log(`unloaded=${result.unloaded}`);
 }
@@ -7882,6 +7963,7 @@ function renderLaunchAgentPlist(options: {
   profile: string;
   writeConcurrency: number;
   readConcurrency: number;
+  powerPolicy: "none" | "process_assertion";
 }): string {
   // launchd's default PATH has no /opt/homebrew/bin (or nvm shims), so a JS
   // binPath's `#!/usr/bin/env node` shebang fails with exit 127 under launchd.
@@ -7901,9 +7983,13 @@ function renderLaunchAgentPlist(options: {
       return options.binPath;
     }
   })();
-  const args = resolvedBinPath.endsWith(".js")
+  const daemonArgs = resolvedBinPath.endsWith(".js")
     ? ["/usr/bin/env", "node", options.binPath, "serve"]
     : [options.binPath, "serve"];
+  const args =
+    options.powerPolicy === "process_assertion"
+      ? ["/usr/bin/caffeinate", "-ims", ...daemonArgs]
+      : daemonArgs;
   const daemonPath = [
     dirname(process.execPath),
     "/opt/homebrew/bin",
@@ -7936,6 +8022,18 @@ ${args.map((arg) => `    <string>${xmlEscape(arg)}</string>`).join("\n")}
     <string>${options.writeConcurrency}</string>
     <key>OSSTACK_READ_CONCURRENCY</key>
     <string>${options.readConcurrency}</string>
+    <key>OSSTACK_POWER_POLICY</key>
+    <string>${options.powerPolicy}</string>
+    <key>OSSTACK_CLOCK_MONITOR</key>
+    <string>monotonic-v1</string>
+    <key>OSSTACK_LOG_MAX_BYTES</key>
+    <string>26214400</string>
+    <key>OSSTACK_LOG_MAX_FILES</key>
+    <string>5</string>
+    <key>OSSTACK_PROOF_RETENTION_DAYS</key>
+    <string>30</string>
+    <key>OSSTACK_PROOF_MIN_KEEP</key>
+    <string>100</string>
     <key>PATH</key>
     <string>${xmlEscape(daemonPath)}</string>
   </dict>

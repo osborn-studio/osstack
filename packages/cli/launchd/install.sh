@@ -13,6 +13,7 @@
 #   OSSTACK_AGENT_PROFILE (default mac-mini)
 #   OSSTACK_WRITE_CONCURRENCY (default 2)
 #   OSSTACK_READ_CONCURRENCY (default 8)
+#   OSSTACK_POWER_POLICY (none or process_assertion; default none)
 
 set -euo pipefail
 
@@ -27,6 +28,7 @@ HERMES_AGENT_HOME="${HERMES_AGENT_HOME:-${HOME}/hermes-agent}"
 OSSTACK_AGENT_PROFILE="${OSSTACK_AGENT_PROFILE:-mac-mini}"
 OSSTACK_WRITE_CONCURRENCY="${OSSTACK_WRITE_CONCURRENCY:-2}"
 OSSTACK_READ_CONCURRENCY="${OSSTACK_READ_CONCURRENCY:-8}"
+OSSTACK_POWER_POLICY="${OSSTACK_POWER_POLICY:-none}"
 NODE_BIN="${NODE_BIN:-$(command -v node || true)}"
 if [ -z "$NODE_BIN" ] || [ ! -x "$NODE_BIN" ]; then
   echo "ERROR: node not found on PATH. Set NODE_BIN=/abs/path/to/node." >&2
@@ -48,6 +50,13 @@ for VALUE in "$OSSTACK_WRITE_CONCURRENCY" "$OSSTACK_READ_CONCURRENCY"; do
     exit 1
   fi
 done
+case "$OSSTACK_POWER_POLICY" in
+  none|process_assertion) ;;
+  *)
+    echo "ERROR: OSSTACK_POWER_POLICY must be none or process_assertion; persistent pmset settings are never changed." >&2
+    exit 1
+    ;;
+esac
 
 # A checkout dist is never selected implicitly. OSSTACK_JS is the explicit
 # operator/deploy escape hatch; otherwise use the installed osstack on PATH.
@@ -115,7 +124,8 @@ DAEMON_PATH="$(dirname "$NODE_BIN"):/opt/homebrew/bin:/usr/local/bin:/usr/bin:/b
   "$TEMPLATE" "$PLIST_PATH" \
   "$NODE_BIN" "$OSSTACK_JS" "$OSSTACK_HOME" "$OSSTACK_SOCKET" \
   "$OSSTACK_AGENT_PROFILE" "$OSSTACK_WRITE_CONCURRENCY" \
-  "$OSSTACK_READ_CONCURRENCY" "$HERMES_HOME" "$HERMES_AGENT_HOME" \
+  "$OSSTACK_READ_CONCURRENCY" "$OSSTACK_POWER_POLICY" \
+  "$HERMES_HOME" "$HERMES_AGENT_HOME" \
   "$DAEMON_PATH" <<'NODE'
 const fs = require("node:fs");
 const [
@@ -128,6 +138,7 @@ const [
   profile,
   writeConcurrency,
   readConcurrency,
+  powerPolicy,
   hermesHome,
   hermesAgentHome,
   daemonPath,
@@ -146,11 +157,26 @@ const replacements = {
   AGENT_PROFILE: profile,
   WRITE_CONCURRENCY: writeConcurrency,
   READ_CONCURRENCY: readConcurrency,
+  POWER_POLICY: powerPolicy,
   HERMES_HOME: hermesHome,
   HERMES_AGENT_HOME: hermesAgentHome,
   PATH: daemonPath,
 };
+const previousPlist = fs.existsSync(plistPath)
+  ? fs.readFileSync(plistPath, "utf8")
+  : "";
+const previousPowerMatch = previousPlist.match(
+  /<key>OSSTACK_POWER_POLICY<\/key>\s*<string>([^<]*)<\/string>/,
+);
+const previousPowerPolicy =
+  previousPowerMatch?.[1] === "process_assertion"
+    ? "process_assertion"
+    : "none";
 let rendered = fs.readFileSync(templatePath, "utf8");
+const powerPrefix = powerPolicy === "process_assertion"
+  ? "    <string>/usr/bin/caffeinate</string>\\n    <string>-ims</string>"
+  : "";
+rendered = rendered.replaceAll("{{POWER_PREFIX_XML}}", powerPrefix);
 for (const [name, value] of Object.entries(replacements)) {
   rendered = rendered.replaceAll(`{{${name}}}`, escapeXml(value));
 }
@@ -158,6 +184,19 @@ if (/\{\{[A-Z_]+\}\}/.test(rendered)) {
   throw new Error("unresolved launchd template placeholder");
 }
 fs.writeFileSync(plistPath, rendered, { encoding: "utf8", mode: 0o600 });
+const hostDir = `${home}/host`;
+fs.mkdirSync(hostDir, { recursive: true });
+fs.writeFileSync(`${hostDir}/power-policy.json`, `${JSON.stringify({
+  schema_version: 1,
+  selected_at: new Date().toISOString(),
+  mode: powerPolicy,
+  previous_mode: previousPowerPolicy,
+  machine_settings_changed: false,
+  current: powerPolicy === "process_assertion"
+    ? "caffeinate -ims bound to ai.osstack.daemon lifetime"
+    : "no OSStack power assertion",
+  rollback: `re-run installer with OSSTACK_POWER_POLICY=${previousPowerPolicy}`,
+}, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
 NODE
 
 # Reload if already loaded.
@@ -177,7 +216,7 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
 done
 if [ -S "$SOCK" ]; then
   echo "ok: daemon socket up at $SOCK"
-  echo "profile=${OSSTACK_AGENT_PROFILE} write_concurrency=${OSSTACK_WRITE_CONCURRENCY} read_concurrency=${OSSTACK_READ_CONCURRENCY}"
+  echo "profile=${OSSTACK_AGENT_PROFILE} write_concurrency=${OSSTACK_WRITE_CONCURRENCY} read_concurrency=${OSSTACK_READ_CONCURRENCY} power_policy=${OSSTACK_POWER_POLICY}"
   echo "Try: osstack health"
 else
   echo "WARNING: socket not present after 3s. Check logs at ${OSSTACK_HOME}/logs/daemon.error.log" >&2

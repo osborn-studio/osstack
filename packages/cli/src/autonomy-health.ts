@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   existsSync,
   lstatSync,
@@ -17,6 +18,10 @@ import {
   type NotificationOutboxSummary,
 } from "@osstack/core";
 import type Database from "better-sqlite3";
+import {
+  inspectAutonomyRetention,
+  type AutonomyRetentionReport,
+} from "./autonomy-host.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -36,7 +41,11 @@ export type AutonomyHealthCheckId =
   | "deploy_freezes"
   | "resumable_runs"
   | "proof_failures"
-  | "notification_outbox";
+  | "notification_outbox"
+  | "power_policy"
+  | "clock_monitor"
+  | "log_retention"
+  | "launchd_service";
 
 export interface AutonomyHealthCheck {
   id: AutonomyHealthCheckId;
@@ -62,6 +71,13 @@ export interface AutonomyHealthDeps {
   probe_github_auth?: () => Promise<boolean>;
   probe_github_network?: () => Promise<boolean>;
   now?: () => number;
+  power_policy?: "none" | "process_assertion";
+  probe_power_assertion?: () => Promise<boolean>;
+  power_policy_record_valid?: boolean;
+  clock_monitor?: boolean;
+  inspect_retention?: () => Promise<AutonomyRetentionReport>;
+  require_launchd?: boolean;
+  probe_launchd?: () => Promise<{ loaded: boolean; output: string }>;
 }
 
 export interface AutonomyHealthReport {
@@ -89,6 +105,23 @@ export interface AutonomyHealthReport {
     state: string;
   }>;
   notification_outbox: NotificationOutboxSummary;
+  host_evidence: {
+    power_policy: {
+      mode: "none" | "process_assertion";
+      assertion_active: boolean;
+      recorded: boolean;
+    };
+    clock_monitor: {
+      mode: "none" | "monotonic-v1";
+      active: boolean;
+    };
+    retention: AutonomyRetentionReport | null;
+    launchd: {
+      required: boolean;
+      loaded: boolean;
+      print_sha256: string | null;
+    };
+  };
   external_blockers: AutonomyHealthCheckId[];
   write_blockers: AutonomyHealthCheckId[];
   next_actions: string[];
@@ -135,6 +168,73 @@ async function commandProbe(
       maxBuffer: 64 * 1024,
     });
     return true;
+  } catch {
+    return false;
+  }
+}
+
+async function defaultPowerAssertionProbe(): Promise<boolean> {
+  if (process.platform !== "darwin") return false;
+  try {
+    const { stdout } = await execFileAsync("pmset", ["-g", "assertions"], {
+      timeout: 5_000,
+      maxBuffer: 64 * 1024,
+    });
+    return /Prevent(?:UserIdle)?SystemSleep\s+1/.test(stdout);
+  } catch {
+    return false;
+  }
+}
+
+async function defaultLaunchdProbe(): Promise<{
+  loaded: boolean;
+  output: string;
+}> {
+  if (process.platform !== "darwin") return { loaded: false, output: "" };
+  try {
+    const { stdout, stderr } = await execFileAsync(
+      "launchctl",
+      [
+        "print",
+        `gui/${process.getuid?.() ?? 501}/ai.osstack.daemon`,
+      ],
+      { timeout: 5_000, maxBuffer: 256 * 1024 },
+    );
+    return { loaded: true, output: `${stdout}${stderr}` };
+  } catch {
+    return { loaded: false, output: "" };
+  }
+}
+
+function positiveEnvironmentInteger(
+  name: string,
+  fallback: number,
+): number {
+  const raw = process.env[name];
+  if (raw === undefined) return fallback;
+  if (!/^[1-9]\d*$/.test(raw)) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return Number(raw);
+}
+
+function powerPolicyRecordMatches(
+  home: string,
+  mode: "none" | "process_assertion",
+): boolean {
+  try {
+    const value = JSON.parse(
+      readFileSync(join(home, "host", "power-policy.json"), "utf8"),
+    ) as unknown;
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      return false;
+    }
+    const record = value as Record<string, unknown>;
+    return record["schema_version"] === 1
+      && record["mode"] === mode
+      && record["machine_settings_changed"] === false
+      && typeof record["current"] === "string"
+      && typeof record["rollback"] === "string";
   } catch {
     return false;
   }
@@ -301,6 +401,17 @@ function nextActions(
     );
   } else if (notificationOutbox.pending_count > 0) {
     actions.push("Restore the Owner notification relay and drain the outbox");
+  }
+  if (blocked.has("power_policy")) {
+    actions.push(
+      "Restore the selected process-bound power assertion before soak",
+    );
+  }
+  if (blocked.has("launchd_service")) {
+    actions.push("Restore ai.osstack.daemon and capture launchctl print evidence");
+  }
+  if (blocked.has("log_retention")) {
+    actions.push("Repair autonomy log/proof retention before new writes");
   }
   return actions;
 }
@@ -488,6 +599,122 @@ export async function runAutonomyHealth(
       }s`,
   ));
 
+  const powerPolicy =
+    deps.power_policy
+    ?? (
+      process.env["OSSTACK_POWER_POLICY"] === "process_assertion"
+        ? "process_assertion"
+        : "none"
+    );
+  const powerAssertionActive =
+    powerPolicy === "process_assertion"
+      ? await (
+          deps.probe_power_assertion ?? defaultPowerAssertionProbe
+        )()
+      : false;
+  const powerPolicyRecorded =
+    deps.power_policy_record_valid
+    ?? powerPolicyRecordMatches(deps.home, powerPolicy);
+  checks.push(check(
+    "power_policy",
+    powerPolicy === "none"
+      ? "warn"
+      : powerAssertionActive && powerPolicyRecorded
+        ? "ok"
+        : "blocked",
+    powerPolicy === "process_assertion"
+        && (!powerAssertionActive || !powerPolicyRecorded)
+      ? "daemon"
+      : "none",
+    powerPolicy === "none"
+      ? "no power assertion selected; explicit Owner selection is required before soak"
+      : powerAssertionActive
+          && powerPolicyRecorded
+        ? "process-bound system-sleep assertion is active and recorded with rollback"
+        : powerAssertionActive
+          ? "power assertion is active but the selection/rollback record is missing"
+        : "selected process-bound power assertion is not active",
+  ));
+
+  const clockMonitorActive =
+    deps.clock_monitor
+    ?? process.env["OSSTACK_CLOCK_MONITOR"] === "monotonic-v1";
+  checks.push(check(
+    "clock_monitor",
+    clockMonitorActive ? "ok" : "warn",
+    "none",
+    clockMonitorActive
+      ? "monotonic-v1 clock jump detection is active"
+      : "clock jump detector is not declared active",
+  ));
+
+  let retention: AutonomyRetentionReport | null = null;
+  let retentionError: string | undefined;
+  try {
+    retention = await (
+      deps.inspect_retention
+      ?? (() =>
+        inspectAutonomyRetention({
+          home: deps.home,
+          db: deps.db,
+          ...(deps.now === undefined ? {} : { now: deps.now }),
+          max_log_bytes: positiveEnvironmentInteger(
+            "OSSTACK_LOG_MAX_BYTES",
+            25 * 1024 ** 2,
+          ),
+          max_log_files: positiveEnvironmentInteger(
+            "OSSTACK_LOG_MAX_FILES",
+            5,
+          ),
+          proof_retention_days: positiveEnvironmentInteger(
+            "OSSTACK_PROOF_RETENTION_DAYS",
+            30,
+          ),
+          proof_min_keep: positiveEnvironmentInteger(
+            "OSSTACK_PROOF_MIN_KEEP",
+            100,
+          ),
+        }))
+    )();
+  } catch (error) {
+    retentionError = error instanceof Error ? error.message : String(error);
+  }
+  const retentionHealthy =
+    retention !== null
+    && retention.oversized_log_count === 0
+    && retention.expired_terminal_proof_count === 0;
+  checks.push(check(
+    "log_retention",
+    retention === null
+      ? "blocked"
+      : retentionHealthy
+        ? "ok"
+        : "warn",
+    retention === null ? "daemon" : "none",
+    retention === null
+      ? `retention inspection failed: ${retentionError ?? "unknown error"}`
+      : `${retention.oversized_log_count} oversized logs and ${
+        retention.expired_terminal_proof_count
+      } expired terminal proof directories`,
+  ));
+
+  const launchdRequired = deps.require_launchd ?? false;
+  const launchd = await (deps.probe_launchd ?? defaultLaunchdProbe)();
+  const launchdDigest =
+    launchd.loaded && launchd.output.length > 0
+      ? createHash("sha256").update(launchd.output).digest("hex")
+      : null;
+  checks.push(check(
+    "launchd_service",
+    launchd.loaded ? "ok" : launchdRequired ? "blocked" : "warn",
+    !launchd.loaded && launchdRequired ? "daemon" : "none",
+    launchd.loaded
+      ? `launchctl print evidence sha256=${launchdDigest}`
+      : launchdRequired
+        ? "required ai.osstack.daemon launchd service is not loaded"
+        : "launchd service is not required in this execution mode",
+  ));
+
   const externalBlockers = checks
     .filter(
       (candidate) =>
@@ -526,6 +753,23 @@ export async function runAutonomyHealth(
     resumable_runs: resumableRuns,
     proof_failures: proofFailures,
     notification_outbox: notificationOutbox,
+    host_evidence: {
+      power_policy: {
+        mode: powerPolicy,
+        assertion_active: powerAssertionActive,
+        recorded: powerPolicyRecorded,
+      },
+      clock_monitor: {
+        mode: clockMonitorActive ? "monotonic-v1" : "none",
+        active: clockMonitorActive,
+      },
+      retention,
+      launchd: {
+        required: launchdRequired,
+        loaded: launchd.loaded,
+        print_sha256: launchdDigest,
+      },
+    },
     external_blockers: externalBlockers,
     write_blockers: writeBlockers,
     next_actions: nextActions(

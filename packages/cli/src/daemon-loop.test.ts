@@ -42,6 +42,34 @@ function healthyAutonomyHealth(
       oldest_dead_letter_at: null,
       oldest_attention_age_seconds: 0,
     },
+    host_evidence: {
+      power_policy: {
+        mode: "process_assertion",
+        assertion_active: true,
+        recorded: true,
+      },
+      clock_monitor: {
+        mode: "monotonic-v1",
+        active: true,
+      },
+      retention: {
+        checked_at: 1,
+        max_log_bytes: 25 * 1024 ** 2,
+        max_log_files: 5,
+        proof_retention_days: 30,
+        proof_min_keep: 100,
+        largest_log_bytes: 0,
+        oversized_log_count: 0,
+        expired_terminal_proof_count: 0,
+        rotated_logs: [],
+        removed_proof_dirs: [],
+      },
+      launchd: {
+        required: true,
+        loaded: true,
+        print_sha256: "a".repeat(64),
+      },
+    },
     external_blockers: [],
     write_blockers: [],
     next_actions: [],
@@ -258,6 +286,74 @@ describe("daemon loop RPC", () => {
       status: "delivered",
       attempt_count: 1,
     });
+  });
+
+  it("forces external health recovery after a detected wall-clock jump", async () => {
+    const home = process.env["OSSTACK_HOME"];
+    if (home === undefined) throw new Error("OSSTACK_HOME is required");
+    await mkdir(home, { recursive: true });
+    const dbPath = join(home, "state.db");
+    const seedDb = guardedOpenDb({ path: dbPath });
+    createAutonomyRun(seedDb, dbPath, {
+      autonomy_run_id: "run-clock-recovery",
+      transition_id: "run-clock-recovery:queued",
+      task_id: "task-clock-recovery",
+      repo_id: "owner/clock-repo",
+      workspace_path: join(tmp, "clock-repo"),
+      contract_sha256: "a".repeat(64),
+      routing: {},
+      budget: {
+        max_builder_iterations: 1,
+        max_review_rounds: 1,
+        max_wall_time_ms: 60_000,
+        max_no_progress_rounds: 1,
+      },
+      attempt: {},
+      event: { kind: "queued" },
+      occurred_at: 1,
+    });
+    seedDb.close();
+
+    let healthCalls = 0;
+    let wallMs = 1_000;
+    let monotonicMs = 1_000;
+    const resumed: string[] = [];
+    daemon = await startDaemon({
+      socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock`,
+      healthPollIntervalMs: 20,
+      clockJumpThresholdMs: 1_000,
+      wallClockMs: () => wallMs,
+      monotonicClockMs: () => monotonicMs,
+      autonomyHealth: async () => {
+        healthCalls += 1;
+        return healthyAutonomyHealth({
+          can_run_local: healthCalls > 1,
+        });
+      },
+      guardedAutonomyFactory: () => ({
+        resume: async (autonomyRunId) => {
+          resumed.push(autonomyRunId);
+          return {
+            status: "completed",
+            run: {
+              autonomy_run_id: autonomyRunId,
+              state: "completed",
+              revision: 2,
+              context: {},
+            },
+          };
+        },
+      }),
+    });
+    wallMs += 10_000;
+    monotonicMs += 20;
+    const deadline = Date.now() + 2_000;
+    while (resumed.length === 0 && Date.now() < deadline) {
+      await sleep(20);
+    }
+
+    expect(healthCalls).toBeGreaterThan(1);
+    expect(resumed).toEqual(["run-clock-recovery"]);
   });
 
   it("limits guarded autonomy writers to two after persisting their queued runs", async () => {

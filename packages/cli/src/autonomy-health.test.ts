@@ -59,6 +59,27 @@ function deps(
     ],
     probe_github_auth: async () => true,
     probe_github_network: async () => true,
+    power_policy: "process_assertion",
+    probe_power_assertion: async () => true,
+    power_policy_record_valid: true,
+    clock_monitor: true,
+    inspect_retention: async () => ({
+      checked_at: 100,
+      max_log_bytes: 25 * 1024 ** 2,
+      max_log_files: 5,
+      proof_retention_days: 30,
+      proof_min_keep: 100,
+      largest_log_bytes: 0,
+      oversized_log_count: 0,
+      expired_terminal_proof_count: 0,
+      rotated_logs: [],
+      removed_proof_dirs: [],
+    }),
+    require_launchd: true,
+    probe_launchd: async () => ({
+      loaded: true,
+      output: "service = ai.osstack.daemon",
+    }),
     ...overrides,
   };
 }
@@ -81,6 +102,10 @@ describe("autonomy operational health", () => {
       "resumable_runs",
       "proof_failures",
       "notification_outbox",
+      "power_policy",
+      "clock_monitor",
+      "log_retention",
+      "launchd_service",
     ]);
     expect(report).toMatchObject({
       ok: true,
@@ -92,6 +117,22 @@ describe("autonomy operational health", () => {
       notification_outbox: {
         pending_count: 0,
         dead_letter_count: 0,
+      },
+      host_evidence: {
+        power_policy: {
+          mode: "process_assertion",
+          assertion_active: true,
+          recorded: true,
+        },
+        clock_monitor: {
+          mode: "monotonic-v1",
+          active: true,
+        },
+        launchd: {
+          required: true,
+          loaded: true,
+          print_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+        },
       },
       external_blockers: [],
     });
@@ -134,6 +175,24 @@ describe("autonomy operational health", () => {
     ).toMatchObject({ status: "warn", scope: "none" });
     expect(report.next_actions).toContain(
       "Restore the Owner notification relay and drain the outbox",
+    );
+  });
+
+  it("blocks daemon writes when a selected power assertion or required launchd service is absent", async () => {
+    const report = await runAutonomyHealth(deps({
+      probe_power_assertion: async () => false,
+      probe_launchd: async () => ({ loaded: false, output: "" }),
+    }));
+
+    expect(report.can_run_local).toBe(false);
+    expect(report.write_blockers).toEqual(
+      expect.arrayContaining(["power_policy", "launchd_service"]),
+    );
+    expect(report.next_actions).toEqual(
+      expect.arrayContaining([
+        "Restore the selected process-bound power assertion before soak",
+        "Restore ai.osstack.daemon and capture launchctl print evidence",
+      ]),
     );
   });
 

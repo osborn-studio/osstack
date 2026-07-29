@@ -276,6 +276,23 @@ describe("autonomy CLI", () => {
             oldest_dead_letter_at: null,
             oldest_attention_age_seconds: 0,
           },
+          host_evidence: {
+            power_policy: {
+              mode: "process_assertion",
+              assertion_active: true,
+              recorded: true,
+            },
+            clock_monitor: {
+              mode: "monotonic-v1",
+              active: true,
+            },
+            retention: null,
+            launchd: {
+              required: true,
+              loaded: true,
+              print_sha256: "a".repeat(64),
+            },
+          },
           external_blockers: ["github_network"],
           write_blockers: [],
           next_actions: [

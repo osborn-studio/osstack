@@ -12,6 +12,7 @@
     {{AGENT_PROFILE}} pinned agent profile
     {{WRITE_CONCURRENCY}} machine-wide write slots
     {{READ_CONCURRENCY}} machine-wide read slots
+    {{POWER_POLICY}} explicit none or process_assertion selection
     {{HERMES_HOME}}  default ~/.hermes
     {{HERMES_AGENT_HOME}} hermes-agent repo root (for the kanban bridge binary)
     {{PATH}}         PATH the daemon should inherit
@@ -23,6 +24,7 @@
 
   <key>ProgramArguments</key>
   <array>
+{{POWER_PREFIX_XML}}
     <string>{{NODE_BIN}}</string>
     <string>{{OSSTACK_JS}}</string>
     <string>serve</string>
@@ -40,6 +42,18 @@
     <string>{{WRITE_CONCURRENCY}}</string>
     <key>OSSTACK_READ_CONCURRENCY</key>
     <string>{{READ_CONCURRENCY}}</string>
+    <key>OSSTACK_POWER_POLICY</key>
+    <string>{{POWER_POLICY}}</string>
+    <key>OSSTACK_CLOCK_MONITOR</key>
+    <string>monotonic-v1</string>
+    <key>OSSTACK_LOG_MAX_BYTES</key>
+    <string>26214400</string>
+    <key>OSSTACK_LOG_MAX_FILES</key>
+    <string>5</string>
+    <key>OSSTACK_PROOF_RETENTION_DAYS</key>
+    <string>30</string>
+    <key>OSSTACK_PROOF_MIN_KEEP</key>
+    <string>100</string>
     <key>HERMES_HOME</key>
     <string>{{HERMES_HOME}}</string>
     <key>HERMES_AGENT_HOME</key>

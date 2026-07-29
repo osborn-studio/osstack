@@ -93,6 +93,9 @@ describe("serve launchd installer", () => {
       profile: string;
       write_concurrency: number;
       read_concurrency: number;
+      power_policy: string;
+      clock_monitor: string;
+      power_policy_record: string;
     };
     expect(result).toMatchObject({
       label: "ai.osstack.daemon",
@@ -102,6 +105,8 @@ describe("serve launchd installer", () => {
       profile: "mac-mini",
       write_concurrency: 2,
       read_concurrency: 8,
+      power_policy: "none",
+      clock_monitor: "monotonic-v1",
     });
     const plist = await readFile(result.plist_path, "utf-8");
     expect(plist).toContain("<string>ai.osstack.daemon</string>");
@@ -112,6 +117,8 @@ describe("serve launchd installer", () => {
     expect(plist).toContain("<key>OSSTACK_AGENT_PROFILE</key>\n    <string>mac-mini</string>");
     expect(plist).toContain("<key>OSSTACK_WRITE_CONCURRENCY</key>\n    <string>2</string>");
     expect(plist).toContain("<key>OSSTACK_READ_CONCURRENCY</key>\n    <string>8</string>");
+    expect(plist).toContain("<key>OSSTACK_POWER_POLICY</key>\n    <string>none</string>");
+    expect(plist).toContain("<key>OSSTACK_CLOCK_MONITOR</key>\n    <string>monotonic-v1</string>");
     expect(plist).toContain("/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:");
     expect(plist).toContain(`${process.env["HOME"]}/.local/bin`);
     expect(plist).toContain(`<string>${join(tmp, "home", "logs", "daemon.log")}</string>`);
@@ -120,6 +127,48 @@ describe("serve launchd installer", () => {
     expect(plist).not.toContain("KIMI");
     // Native (non-.js) binary binPath runs directly — no node interpreter.
     expect(plist).not.toContain("<string>node</string>");
+    expect(plist).not.toContain("<string>/usr/bin/caffeinate</string>");
+    expect(JSON.parse(
+      await readFile(result.power_policy_record, "utf-8"),
+    )).toMatchObject({
+      schema_version: 1,
+      mode: "none",
+      previous_mode: "none",
+      machine_settings_changed: false,
+    });
+  });
+
+  it("uses only an explicitly selected process-bound power assertion and records rollback", async () => {
+    const binPath = join(tmp, "bin", "osstack");
+    expect(await main([
+      "serve",
+      "--install",
+      "--no-load",
+      "--bin",
+      binPath,
+      "--power-policy",
+      "process_assertion",
+      "--json",
+    ])).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      plist_path: string;
+      power_policy: string;
+      power_policy_record: string;
+    };
+    expect(result.power_policy).toBe("process_assertion");
+    const plist = await readFile(result.plist_path, "utf-8");
+    expect(plist).toContain("<string>/usr/bin/caffeinate</string>");
+    expect(plist).toContain("<string>-ims</string>");
+    expect(plist.indexOf("<string>/usr/bin/caffeinate</string>"))
+      .toBeLessThan(plist.indexOf(`<string>${binPath}</string>`));
+    expect(JSON.parse(
+      await readFile(result.power_policy_record, "utf-8"),
+    )).toMatchObject({
+      mode: "process_assertion",
+      previous_mode: "none",
+      machine_settings_changed: false,
+      rollback: "reinstall with --power-policy none",
+    });
   });
 
   it("injects PATH + node for a .js binPath (launchd PATH has no node)", async () => {
@@ -162,6 +211,8 @@ describe("serve launchd installer", () => {
       profile: "mac-mini",
       write_concurrency: 3,
       read_concurrency: 7,
+      power_policy: "none",
+      clock_monitor: "monotonic-v1",
     });
   });
 
@@ -186,6 +237,20 @@ describe("serve launchd installer", () => {
       "0",
     ])).toBe(1);
     expect(errors.join("\n")).toContain("positive integer");
+    errors = [];
+
+    expect(await main([
+      "serve",
+      "--install",
+      "--no-load",
+      "--bin",
+      join(tmp, "bin", "osstack"),
+      "--power-policy",
+      "persistent",
+    ])).toBe(1);
+    expect(errors.join("\n")).toContain(
+      "persistent pmset changes are never applied automatically",
+    );
   });
 
   it("does not silently provision a default development dist as stable-serving", async () => {
