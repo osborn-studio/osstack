@@ -50,7 +50,7 @@ import {
   type LoopProfileRoutingEvidence,
   type PublishedAssetEvidence,
   type ReviewArtifact,
-  type Task,
+  Task,
   type Verdict,
 } from "./types.js";
 
@@ -60,6 +60,9 @@ export interface LoopRunOptions {
   stateFilePath?: string;
   markdownPath?: string;
   sources?: string[];
+  /** Exact caller-supplied tasks. Guarded delivery uses this to avoid
+   * broadening a signed scope by scanning an ambient task queue. */
+  inputTasks?: readonly Task[];
   executeCommand?: string;
   verifyCommands?: string[];
   goalCommand?: string;
@@ -654,7 +657,9 @@ export class LoopEngine {
 
   private async discover(workspacePath: string): Promise<Task[]> {
     const sources = this.options.sources ?? ["git_diff", "task_queue"];
-    const tasks: Task[] = [];
+    const tasks: Task[] = (this.options.inputTasks ?? []).map(
+      (task) => Task.parse(task),
+    );
     for (const source of sources) {
       const parsed = DiscoverSource.safeParse(source);
       if (!parsed.success) continue;

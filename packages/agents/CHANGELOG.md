@@ -7,6 +7,8 @@
 - Add a first-class, no-tool Kimi Code reviewer/release verifier with strict
   structured output, authenticated three-state readiness diagnostics, bounded
   execution, minimal child environments, and runtime identity evidence.
+- Mark Kimi provider/model identity as reported only when the authenticated
+  provider probe reports the exact invocation provider and default model.
 
 ## 0.12.0
 

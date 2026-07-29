@@ -55,6 +55,7 @@ control plane with these shipped surfaces:
 | Capability | Current implementation | Main commands / package |
 |---|---|---|
 | Product entry | One command can turn an intent into a verified local delivery run with reports, scorecards, proof packs, and optional worktree isolation. | `osstack deliver`, `@osstack/cli` |
+| Guarded Git autonomy | Classifies R0-R4 before and after the diff, requires external signed approval for R3, permanently blocks R4, and automatically delivers eligible R1/R2 changes through PR, CI, merge, and two-stage proof. | `osstack deliver --autonomy guarded-git`, `osstack autonomy ...`, `@osstack/autonomy` |
 | Loop Engineering | Task discovery, execution, verification, iteration, budgets, stop reasons, reports, scorecards, lesson drafts, and daemon-managed loop sessions. | `osstack loop ...`, `@osstack/loop` |
 | Portfolio supervision | Repo registry, maturity scan, portfolio report, feedback assets, improvement proposals, evaluator epochs, and machine-actionable recommendations. | `osstack supervise`, `feedback`, `improve`, `evaluator`, `daily`; `@osstack/supervisor` |
 | Daily operating brief | Reads the repo registry, summarizes CI/PR/maturity deltas, emits owner decisions, and can run on a 24h daemon schedule. | `osstack daily`, `osstack daily schedule` |
@@ -265,7 +266,19 @@ osstack doctor --workspace .
 osstack examples
 osstack guide
 osstack deliver "Add billing dashboard" --verify "pnpm test" --auto-agent --worktree --json
+
+# Bounded R1/R2 GitHub delivery. Requires strict repo/policy config and gh auth.
+osstack deliver "Add account summary" \
+  --profile mac-mini \
+  --autonomy guarded-git \
+  --expected-path src/account/summary.ts \
+  --verify "pnpm test" \
+  --json
 ```
+
+See [Guarded Git Autonomy Runbook](docs/runbooks/guarded-git-autonomy.md) for
+the risk matrix, external signed R3 approval, recovery, proof stages, and
+rollback to `guarded-local`.
 
 ### Loop Engineering
 

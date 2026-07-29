@@ -31,3 +31,22 @@ osstack cockpit
 osstack pr --dry-run
 ```
 
+## Guarded Git Autonomy
+
+```bash
+osstack deliver "Implement one bounded change" \
+  --workspace . \
+  --profile mac-mini \
+  --autonomy guarded-git \
+  --expected-path src/example.ts \
+  --verify "pnpm test" \
+  --json
+
+osstack autonomy list --json
+osstack autonomy status RUN_ID --json
+osstack autonomy resume RUN_ID --json
+```
+
+Production prerequisites, R0-R4 semantics, external Ed25519 R3 decisions,
+blocked-delivery recovery, proof ordering, and rollback are documented in
+[`docs/runbooks/guarded-git-autonomy.md`](../runbooks/guarded-git-autonomy.md).

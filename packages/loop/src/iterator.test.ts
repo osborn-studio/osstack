@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { Iterator, evaluateIteration } from "./iterator.js";
 import type { Verdict } from "./types.js";
 
+const SHA_A = "a".repeat(64);
+const SHA_B = "b".repeat(64);
+
 function verdict(overrides: Partial<Verdict>): Verdict {
   return {
     pass: false,
@@ -44,5 +47,81 @@ describe("Iterator", () => {
       reason: "Maximum iterations reached (3) with 1 verifier issue remaining.",
       escalate_to: "human",
     });
+  });
+
+  it("escalates when guarded autonomy repeats findings through its no-progress budget", () => {
+    expect(evaluateIteration({
+      verdict: verdict({
+        issues: [{ severity: "error", message: "Auth review failed" }],
+      }),
+      iteration: 3,
+      maxIterations: 10,
+      guardedProgress: {
+        budget: {
+          max_builder_iterations: 10,
+          max_review_rounds: 10,
+          max_wall_time_ms: 60_000,
+          max_no_progress_rounds: 2,
+        },
+        builder_iterations: 3,
+        review_rounds: 3,
+        elapsed_ms: 10_000,
+        prior_no_progress_rounds: 1,
+        previous: {
+          finding_fingerprints: ["finding-auth"],
+          changed_files_sha256: SHA_A,
+          verification_sha256: SHA_B,
+          failed_commands: ["pnpm test"],
+          acceptance_score: 0.4,
+        },
+        current: {
+          finding_fingerprints: ["finding-auth"],
+          changed_files_sha256: SHA_A,
+          verification_sha256: SHA_B,
+          failed_commands: ["pnpm test"],
+          acceptance_score: 0.4,
+        },
+      },
+    })).toMatchObject({
+      action: "escalate",
+      reason: expect.stringContaining("max_no_progress_rounds"),
+    });
+  });
+
+  it("continues after acceptance-score improvement resets a stall streak", () => {
+    expect(evaluateIteration({
+      verdict: verdict({
+        issues: [{ severity: "error", message: "One issue remains" }],
+        score: 0.5,
+      }),
+      iteration: 2,
+      maxIterations: 10,
+      guardedProgress: {
+        budget: {
+          max_builder_iterations: 10,
+          max_review_rounds: 10,
+          max_wall_time_ms: 60_000,
+          max_no_progress_rounds: 2,
+        },
+        builder_iterations: 2,
+        review_rounds: 2,
+        elapsed_ms: 10_000,
+        prior_no_progress_rounds: 1,
+        previous: {
+          finding_fingerprints: ["finding-auth"],
+          changed_files_sha256: SHA_A,
+          verification_sha256: SHA_B,
+          failed_commands: ["pnpm test"],
+          acceptance_score: 0.4,
+        },
+        current: {
+          finding_fingerprints: ["finding-auth"],
+          changed_files_sha256: SHA_A,
+          verification_sha256: SHA_B,
+          failed_commands: ["pnpm test"],
+          acceptance_score: 0.5,
+        },
+      },
+    })).toMatchObject({ action: "continue" });
   });
 });

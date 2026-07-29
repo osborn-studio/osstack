@@ -262,6 +262,7 @@ describe("dashboard/cockpit CLI", () => {
       "Overview",
       "Kanban",
       "Evidence",
+      "Autonomy",
       "Knowledge",
       "Next Actions",
     ]);

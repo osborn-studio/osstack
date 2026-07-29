@@ -59,6 +59,7 @@ describe("cockpit TUI model", () => {
       "Overview",
       "Kanban",
       "Evidence",
+      "Autonomy",
       "Knowledge",
       "Next Actions",
     ]);
@@ -135,6 +136,15 @@ describe("cockpit TUI model", () => {
           latest_report: { path: "reports/latest.md" },
           latest_proof_pack: { path: "release/proof" },
         },
+        autonomy: {
+          autonomy_run_id: "run-guarded-1",
+          state: "awaiting_approval",
+          risk: "R3",
+          approval_status: "pending",
+          candidate_proof: "none",
+          pr_url: "none",
+          last_transition: "transition-4",
+        },
         quality: { grade: "A", success_rate: 0.95 },
         next_steps: [
           { label: "Loop Engineering", command: "osstack cockpit run --workspace <path> --json", status: "ready" },
@@ -146,7 +156,7 @@ describe("cockpit TUI model", () => {
 
     const output = renderCockpitFullscreen(model, {
       width: 96,
-      height: 28,
+      height: 34,
       state: { active_section_index: 1, selected_action_index: 2 },
     });
 
@@ -155,8 +165,12 @@ describe("cockpit TUI model", () => {
     expect(output).toContain("Daemon: 0.4.0 phase=ready");
     expect(output).toContain("> Kanban");
     expect(output).toContain("running=4 blocked=0 done=5");
+    expect(output).toContain("autonomy_run_id=run-guarded-1");
+    expect(output).toContain("state=awaiting_approval risk=R3");
+    expect(output).toContain("approval_status=pending");
+    expect(output).toContain("last_transition=transition-4");
     expect(output).toContain("> 2. [ready] Proof");
-    expect(output.split("\n").length).toBeLessThanOrEqual(28);
+    expect(output.split("\n").length).toBeLessThanOrEqual(34);
   });
 
   it("updates full-screen cockpit navigation state from keyboard input", () => {

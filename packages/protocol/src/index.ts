@@ -18,6 +18,23 @@ export {
   Risk,
 } from "./approval.js";
 export {
+  AUTONOMY_EMPTY_DIFF_SHA256,
+  AutonomyApprovalPhase,
+  AutonomyRiskDecision,
+  AutonomyRiskLevel,
+  AutonomyRiskPhase,
+  AutonomyRiskSignal,
+  AutonomyRunState,
+  parseInboundAutonomyRiskDecision,
+  parseInboundScopedApprovalDecision,
+  parseInboundScopedApprovalRequest,
+  ScopedApprovalDecision,
+  ScopedApprovalDecisionPayload,
+  ScopedApprovalDecisionValue,
+  ScopedApprovalRequest,
+  validateScopedApprovalDecisionForRequest,
+} from "./autonomy.js";
+export {
   CostTier,
   PolicyCandidate,
   PolicyDecision,

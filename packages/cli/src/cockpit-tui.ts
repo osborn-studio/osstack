@@ -67,6 +67,7 @@ export function cockpitTuiModel(daemonRaw: unknown, snapshotRaw: unknown, knowle
   const overview = isRecord(snapshot["overview"]) ? snapshot["overview"] : {};
   const board = isRecord(snapshot["board"]) ? snapshot["board"] : {};
   const evidence = isRecord(snapshot["evidence"]) ? snapshot["evidence"] : {};
+  const autonomy = isRecord(snapshot["autonomy"]) ? snapshot["autonomy"] : {};
   const quality = isRecord(snapshot["quality"]) ? snapshot["quality"] : {};
   const nextSteps = Array.isArray(snapshot["next_steps"]) ? snapshot["next_steps"] : [];
   const byStatus = isRecord(board["by_status"]) ? board["by_status"] : {};
@@ -113,6 +114,14 @@ export function cockpitTuiModel(daemonRaw: unknown, snapshotRaw: unknown, knowle
           `reports=${String(evidence["reports"] ?? 0)} proof_packs=${String(evidence["proof_packs"] ?? 0)}`,
           `latest_report=${String(latestReport["path"] ?? "none")}`,
           `latest_proof=${String(latestProofPack["path"] ?? "none")}`,
+        ],
+      },
+      {
+        title: "Autonomy",
+        lines: [
+          `autonomy_run_id=${String(autonomy["autonomy_run_id"] ?? "none")} state=${String(autonomy["state"] ?? "none")} risk=${String(autonomy["risk"] ?? "none")}`,
+          `approval_status=${String(autonomy["approval_status"] ?? "none")} candidate_proof=${String(autonomy["candidate_proof"] ?? "none")}`,
+          `pr_url=${String(autonomy["pr_url"] ?? "none")} last_transition=${String(autonomy["last_transition"] ?? "none")}`,
         ],
       },
       {

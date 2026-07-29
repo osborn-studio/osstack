@@ -11,11 +11,15 @@ import { assertDbAccessAllowed, assertServeAllowed, ControlPlaneGuardError, defa
 import {
   createAgentRuntimeEvidence,
   createPolicyDecisionEvidence,
+  createProofStageArtifacts,
+  createProofStageMetadata,
   createVerifierOutputArtifacts,
+  type ProofStageInput,
 } from "./proof-pack.js";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
+import { parse as parseYaml } from "yaml";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import {
   agentAuthMode,
@@ -34,7 +38,7 @@ import {
   type ProofAudience,
 } from "@osstack/compliance";
 import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
-import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons } from "@osstack/core";
+import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, type loadRepoConfig, PolicyProfile as PolicyProfileSchema, PIIRedactor, RepoConfig as RepoConfigSchema, upsertPitfallLesson, verifyPitfallLessons } from "@osstack/core";
 import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import {
   resolveLoopProfileRouting,
@@ -151,6 +155,13 @@ import {
   runLoopNeatFinalizer,
   type LoopNeatFinalizerResultV1,
 } from "./loop-neat-finalizer.js";
+import { handleAutonomyCommand } from "./autonomy-command.js";
+import {
+  GuardedGitRuntime,
+  GuardedGitRouting,
+  type GuardedGitProofInput,
+} from "./guarded-git-runtime.js";
+import { assertGuardedCandidateBase } from "@osstack/autonomy";
 
 const execFileAsync = promisify(execFile);
 
@@ -162,6 +173,59 @@ interface ArtifactVerificationOptions {
 
 function socketPath(): string {
   return resolveSocketPath();
+}
+
+async function readAutonomyApprovalTrustStore(
+  path: string,
+): Promise<ReadonlyMap<string, string>> {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(await readFile(path, "utf-8")) as unknown;
+  } catch (error) {
+    if (
+      isRecord(error)
+      && error["code"] === "ENOENT"
+    ) {
+      return new Map();
+    }
+    throw new Error(
+      `invalid autonomy approval trust store ${path}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+  if (
+    !isRecord(raw)
+    || raw["schema_version"] !== 1
+    || !Array.isArray(raw["keys"])
+    || Object.keys(raw).some(
+      (key) => key !== "schema_version" && key !== "keys",
+    )
+  ) {
+    throw new Error(
+      `invalid autonomy approval trust store ${path}: expected schema_version=1 and keys[]`,
+    );
+  }
+  const keys = new Map<string, string>();
+  for (const value of raw["keys"]) {
+    if (
+      !isRecord(value)
+      || Object.keys(value).some(
+        (key) => key !== "key_id" && key !== "public_key_pem",
+      )
+      || typeof value["key_id"] !== "string"
+      || value["key_id"].length === 0
+      || typeof value["public_key_pem"] !== "string"
+      || value["public_key_pem"].length === 0
+      || keys.has(value["key_id"])
+    ) {
+      throw new Error(
+        `invalid autonomy approval trust store ${path}: keys must be unique key_id/public_key_pem objects`,
+      );
+    }
+    keys.set(value["key_id"], value["public_key_pem"]);
+  }
+  return keys;
 }
 
 function resolveLanguage(value = process.env["OSSTACK_LANG"]): LoopReportLanguage {
@@ -192,6 +256,7 @@ function renderChineseMainHelp(): string {
   release status      输出面向上线交接的发布状态摘要
   release edgeone     输出 EdgeOne Knowledge Cloud 上线清单
   deliver <需求>      从一句需求进入 task queue -> loop -> report/scorecard/proof
+  autonomy            查看、批准或恢复 guarded Git autonomy 运行
   daily               只读组合简报：成熟度扫描 + GitHub PR/CI/release + 栈看板 + 增量对比
   daily schedule      通过 daemon 按间隔调度简报（只读，不受 observe 模式限制）
   daily sessions      列出 daemon 管理的每日简报会话
@@ -377,8 +442,12 @@ Project commands:
   release edgeone [--workspace P] [--cloud-url URL] [--output P] [--json]
                       Generate the EdgeOne Knowledge Cloud setup handoff
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
-  deliver <prompt> [--verify CMD] [--auto-agent] [--worktree]
-                      Product entry: task queue -> loop -> report/scorecard/proof
+  deliver <prompt> [--verify CMD] [--auto-agent] [--worktree] [--autonomy legacy|guarded-local|guarded-git]
+                      Product entry: task queue -> loop -> report/scorecard/proof;
+                      guarded-git adds risk, signed approval, PR/CI/merge, final proof
+  autonomy list|status|approve|reject|resume
+                      Inspect and control guarded Git autonomy runs. High-risk
+                      decisions require an externally signed decision file.
   daily [--registry P] [--workspace P] [--json]
                       Read-only portfolio brief: maturity scan + GitHub PR/CI/release
                       + stack board + delta since the last brief (golden path)
@@ -569,7 +638,16 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
         throw err;
       }
     }
-    const handle = await startDaemon();
+    const handle = await startDaemon({
+      guardedAutonomyFactory: async (db, dbPath) =>
+        createGuardedGitRuntimeForDb(
+          db,
+          dbPath,
+          await readAutonomyApprovalTrustStore(
+            join(osstackHome(), "approval-trust.json"),
+          ),
+        ),
+    });
     console.log(`osstack daemon listening on ${handle.socketPath}`);
     console.log(`db_path=${handle.dbPath}  pid=${process.pid}`);
     console.log("Send SIGTERM/SIGINT to stop.");
@@ -690,6 +768,40 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       args.slice(1),
       createDeliverCommandDeps(),
     );
+  }
+
+  if (cmd === "autonomy") {
+    const dbPath = await ensureLocalStateDbPath();
+    const db = openDb({ path: dbPath });
+    try {
+      try {
+        const trustedApprovalPublicKeys =
+          await readAutonomyApprovalTrustStore(
+            join(osstackHome(), "approval-trust.json"),
+          );
+        const runtime = createGuardedGitRuntimeForDb(
+          db,
+          dbPath,
+          trustedApprovalPublicKeys,
+        );
+        return await handleAutonomyCommand(args.slice(1), {
+          db,
+          dbPath,
+          trustedApprovalPublicKeys,
+          resume: (runId, decision) =>
+            runtime.resume(runId, decision),
+        });
+      } catch (error) {
+        console.error(
+          `osstack: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+        return 1;
+      }
+    } finally {
+      db.close();
+    }
   }
 
   if (cmd === "checkpoint") {
@@ -1119,6 +1231,12 @@ type ProofFileIntegrityIssueCode =
   | "manifest_missing_generated_from"
   | "manifest_missing_created_at"
   | "manifest_missing_generated_at"
+  | "manifest_invalid_proof_stage"
+  | "manifest_missing_supersedes"
+  | "manifest_invalid_supersedes"
+  | "supersedes_manifest_missing"
+  | "supersedes_sha256_mismatch"
+  | "supersedes_not_candidate"
   | "artifact_malformed"
   | "artifact_unexpected_field"
   | "artifact_invalid_sha256"
@@ -2404,6 +2522,7 @@ async function validateProofFileIntegrity(
   if (missingManifestString(manifestRaw, "generated_at")) {
     issues.push({ path: "manifest.json", code: "manifest_missing_generated_at" });
   }
+  issues.push(...await validateProofStageIntegrity(proofDir, manifestRaw));
 
   const proofRoot = resolve(proofDir);
   const manifestShaByPath = new Map<string, string>();
@@ -2518,12 +2637,19 @@ const PROOF_MANIFEST_ALLOWED_FIELDS = new Set([
   "loop_id",
   "agent_id",
   "agent_ids",
+  "proof_stage",
+  "supersedes",
   "workspace",
   "generated_from",
   "created_at",
   "generated_at",
   "compliance_reports",
   "artifacts",
+]);
+
+const PROOF_MANIFEST_SUPERSEDES_ALLOWED_FIELDS = new Set([
+  "manifest_path",
+  "manifest_sha256",
 ]);
 
 const PROOF_MANIFEST_ARTIFACT_ALLOWED_FIELDS = new Set([
@@ -2541,6 +2667,96 @@ const PROOF_MANIFEST_COMPLIANCE_REPORT_ALLOWED_FIELDS = new Set([
 function missingManifestString(manifestRaw: Record<string, unknown>, key: string): boolean {
   const value = manifestRaw[key];
   return typeof value !== "string" || value.trim().length === 0;
+}
+
+async function validateProofStageIntegrity(
+  proofDir: string,
+  manifestRaw: Record<string, unknown>,
+): Promise<ProofFileIntegrityIssue[]> {
+  const stage = manifestRaw["proof_stage"];
+  const supersedes = manifestRaw["supersedes"];
+  if (stage !== "candidate" && stage !== "final") {
+    return [{
+      path: "manifest.json",
+      code: "manifest_invalid_proof_stage",
+      actual: typeof stage === "string" ? stage : String(stage),
+    }];
+  }
+  if (stage === "candidate") {
+    return supersedes === undefined
+      ? []
+      : [{ path: "manifest.json", code: "manifest_invalid_supersedes" }];
+  }
+  if (supersedes === undefined) {
+    return [{ path: "manifest.json", code: "manifest_missing_supersedes" }];
+  }
+  if (!isRecord(supersedes)) {
+    return [{ path: "manifest.json", code: "manifest_invalid_supersedes" }];
+  }
+  if (
+    Object.keys(supersedes).some(
+      (key) => !PROOF_MANIFEST_SUPERSEDES_ALLOWED_FIELDS.has(key),
+    )
+  ) {
+    return [{ path: "manifest.json", code: "manifest_invalid_supersedes" }];
+  }
+  const manifestPath = supersedes["manifest_path"];
+  const expectedSha256 = supersedes["manifest_sha256"];
+  if (
+    typeof manifestPath !== "string"
+    || manifestPath.trim().length === 0
+    || manifestPath.includes("\\")
+    || isAbsolute(manifestPath)
+    || /^[A-Za-z]:[\\/]/.test(manifestPath)
+    || typeof expectedSha256 !== "string"
+    || !/^[a-f0-9]{64}$/.test(expectedSha256)
+  ) {
+    return [{ path: "manifest.json", code: "manifest_invalid_supersedes" }];
+  }
+
+  const proofRoot = resolve(proofDir);
+  const releaseRoot = dirname(proofRoot);
+  const candidateManifest = resolve(proofRoot, manifestPath);
+  const candidateRelativeToRelease = relative(releaseRoot, candidateManifest);
+  if (
+    candidateManifest === join(proofRoot, "manifest.json")
+    || candidateRelativeToRelease.startsWith("..")
+    || isAbsolute(candidateRelativeToRelease)
+    || candidateManifest !== join(dirname(candidateManifest), "manifest.json")
+  ) {
+    return [{ path: "manifest.json", code: "manifest_invalid_supersedes" }];
+  }
+
+  let candidateContent: Buffer;
+  try {
+    candidateContent = await readFile(candidateManifest);
+  } catch {
+    return [{ path: manifestPath, code: "supersedes_manifest_missing" }];
+  }
+  const actualSha256 = sha256Buffer(candidateContent);
+  if (actualSha256 !== expectedSha256) {
+    return [{
+      path: manifestPath,
+      code: "supersedes_sha256_mismatch",
+      expected: expectedSha256,
+      actual: actualSha256,
+    }];
+  }
+
+  let candidateRaw: unknown;
+  try {
+    candidateRaw = JSON.parse(candidateContent.toString("utf-8")) as unknown;
+  } catch {
+    return [{ path: manifestPath, code: "supersedes_not_candidate" }];
+  }
+  if (
+    !isRecord(candidateRaw)
+    || candidateRaw["proof_stage"] !== "candidate"
+    || candidateRaw["supersedes"] !== undefined
+  ) {
+    return [{ path: manifestPath, code: "supersedes_not_candidate" }];
+  }
+  return [];
 }
 
 function validateProofComplianceReports(
@@ -6900,7 +7116,7 @@ async function handleProofCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack proof — local evidence proof pack
 
-  osstack proof [run_id] [--loop loop_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-mode M] [--knowledge-cloud-url URL] [--knowledge-query Q] [--compliance-pack P] [--output-dir P] [--json]
+  osstack proof [run_id] [--loop loop_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-mode M] [--knowledge-cloud-url URL] [--knowledge-query Q] [--compliance-pack P] [--output-dir P] [--stage candidate|final] [--supersedes-manifest P] [--risk-preflight P] [--risk-post-diff P] [--approval-request P] [--approval-decision P] [--git-delivery P] [--json]
   osstack proof validate <run_id> [--proof-dir P] [--workspace P] [--pack P] [--audience engineer|manager|auditor|customer] [--json]
   osstack proof view <run_id> --audience engineer|manager|auditor|customer [--proof-dir P] [--workspace P] [--output P] [--lang en|zh-CN] [--json]
 
@@ -6917,6 +7133,16 @@ Options:
   --compliance-pack P
                       Optional compliance mapping pack to include
   --output-dir P      Directory for proof pack folders (default: <workspace>/release)
+  --stage S           Evidence stage: candidate (default) or final
+  --supersedes-manifest P
+                      Candidate manifest required by a final proof
+  --risk-preflight P  JSON risk evidence from preflight classification
+  --risk-post-diff P  JSON risk evidence from staged-diff classification
+  --approval-request P
+                      JSON scoped approval request evidence
+  --approval-decision P
+                      JSON externally verified approval decision evidence
+  --git-delivery P    JSON GitHub delivery evidence (final stage only)
   --pack P            Validate against a compliance mapping pack
   --lang L            Proof view language: en or zh-CN (default: OSSTACK_LANG or en)
   --json              Print machine-readable summary
@@ -6942,6 +7168,13 @@ Options:
     "--knowledge-query",
     "--compliance-pack",
     "--output-dir",
+    "--stage",
+    "--supersedes-manifest",
+    "--risk-preflight",
+    "--risk-post-diff",
+    "--approval-request",
+    "--approval-decision",
+    "--git-delivery",
   ]));
   const loopId = flagValue(args, "--loop");
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
@@ -6965,6 +7198,28 @@ Options:
   }
 
   const outputDir = resolveLoopPath(flagValue(args, "--output-dir") ?? "release", workspacePath);
+  const proofStage = parseProofStage(flagValue(args, "--stage"));
+  if (proofStage instanceof Error) {
+    console.error(`osstack: ${proofStage.message}`);
+    return 1;
+  }
+  const artifactId = runId ?? loopId ?? state.loop_id;
+  const stageInput = await createCliProofStageInput({
+    stage: proofStage,
+    supersedesManifest: flagValue(args, "--supersedes-manifest"),
+    outputDir,
+    artifactId,
+    workspacePath,
+    riskPreflight: flagValue(args, "--risk-preflight"),
+    riskPostDiff: flagValue(args, "--risk-post-diff"),
+    approvalRequest: flagValue(args, "--approval-request"),
+    approvalDecision: flagValue(args, "--approval-decision"),
+    gitDelivery: flagValue(args, "--git-delivery"),
+  });
+  if (stageInput instanceof Error) {
+    console.error(`osstack: ${stageInput.message}`);
+    return 1;
+  }
   let events: LoopEvent[];
   try {
     events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
@@ -6977,7 +7232,17 @@ Options:
   const knowledge = await createKnowledgeProofEvidence(args, state.loop_id);
   let proof: Awaited<ReturnType<typeof writeProofPack>>;
   try {
-    proof = await writeProofPack(state, outputDir, events, runId ?? loopId, governance, knowledge, flagValues(args, "--compliance-pack"), workspacePath);
+    proof = await writeProofPack(
+      state,
+      outputDir,
+      events,
+      runId ?? loopId,
+      governance,
+      knowledge,
+      flagValues(args, "--compliance-pack"),
+      workspacePath,
+      stageInput,
+    );
   } catch (error) {
     console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
     return 1;
@@ -6999,6 +7264,146 @@ Options:
     console.log(`artifacts=${summary.artifact_count}`);
   }
   return 0;
+}
+
+function parseProofStage(
+  value: string | undefined,
+): ProofStageInput["stage"] | Error {
+  if (value === undefined || value === "candidate") return "candidate";
+  if (value === "final") return "final";
+  return new Error("--stage must be candidate or final");
+}
+
+async function createCliProofStageInput(input: {
+  stage: ProofStageInput["stage"];
+  supersedesManifest: string | undefined;
+  outputDir: string;
+  artifactId: string;
+  workspacePath: string;
+  riskPreflight: string | undefined;
+  riskPostDiff: string | undefined;
+  approvalRequest: string | undefined;
+  approvalDecision: string | undefined;
+  gitDelivery: string | undefined;
+}): Promise<ProofStageInput | Error> {
+  let supersedes: ProofStageInput["supersedes"];
+  if (input.stage === "candidate") {
+    if (input.supersedesManifest !== undefined) {
+      return new Error("--supersedes-manifest is valid only with --stage final");
+    }
+    if (input.gitDelivery !== undefined) {
+      return new Error("--git-delivery is valid only with --stage final");
+    }
+  } else {
+    if (input.supersedesManifest === undefined) {
+      return new Error("--stage final requires --supersedes-manifest");
+    }
+
+    const candidateManifest = resolveLoopPath(
+      input.supersedesManifest,
+      input.workspacePath,
+    );
+    const outputRoot = resolve(input.outputDir);
+    const candidateRelativeToOutput = relative(outputRoot, candidateManifest);
+    if (
+      candidateRelativeToOutput.startsWith("..")
+      || isAbsolute(candidateRelativeToOutput)
+      || candidateManifest !== join(dirname(candidateManifest), "manifest.json")
+    ) {
+      return new Error(
+        "--supersedes-manifest must name a candidate manifest inside --output-dir",
+      );
+    }
+
+    let candidateContent: Buffer;
+    let candidateRaw: unknown;
+    try {
+      candidateContent = await readFile(candidateManifest);
+      candidateRaw = JSON.parse(candidateContent.toString("utf-8")) as unknown;
+    } catch (error) {
+      return new Error(
+        `unable to read candidate manifest: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    if (
+      !isRecord(candidateRaw)
+      || candidateRaw["proof_stage"] !== "candidate"
+      || candidateRaw["supersedes"] !== undefined
+    ) {
+      return new Error(
+        "--supersedes-manifest must reference a candidate proof manifest",
+      );
+    }
+
+    const finalProofDir = join(
+      input.outputDir,
+      `osstack-proof-${safeFileSegment(input.artifactId)}-final`,
+    );
+    const manifestPath = relative(finalProofDir, candidateManifest)
+      .replaceAll("\\", "/");
+    supersedes = {
+      manifest_path: manifestPath,
+      manifest_sha256: sha256Buffer(candidateContent),
+    };
+  }
+
+  const evidence = await Promise.all([
+    readCliProofEvidence(input.riskPreflight, "--risk-preflight", input.workspacePath),
+    readCliProofEvidence(input.riskPostDiff, "--risk-post-diff", input.workspacePath),
+    readCliProofEvidence(input.approvalRequest, "--approval-request", input.workspacePath),
+    readCliProofEvidence(input.approvalDecision, "--approval-decision", input.workspacePath),
+    readCliProofEvidence(input.gitDelivery, "--git-delivery", input.workspacePath),
+  ]);
+  const evidenceError = evidence.find(
+    (value): value is Error => value instanceof Error,
+  );
+  if (evidenceError !== undefined) {
+    return evidenceError;
+  }
+  return {
+    stage: input.stage,
+    ...(supersedes === undefined ? {} : { supersedes }),
+    ...(evidence[0] === undefined && evidence[1] === undefined
+      ? {}
+      : {
+          risk_evidence: {
+            ...(evidence[0] === undefined ? {} : { preflight: evidence[0] }),
+            ...(evidence[1] === undefined ? {} : { post_diff: evidence[1] }),
+          },
+        }),
+    ...(evidence[2] === undefined && evidence[3] === undefined
+      ? {}
+      : {
+          approval_evidence: {
+            ...(evidence[2] === undefined ? {} : { request: evidence[2] }),
+            ...(evidence[3] === undefined ? {} : { decision: evidence[3] }),
+          },
+        }),
+    ...(evidence[4] === undefined
+      ? {}
+      : { git_delivery_evidence: evidence[4] }),
+  };
+}
+
+async function readCliProofEvidence(
+  path: string | undefined,
+  flag: string,
+  workspacePath: string,
+): Promise<Record<string, unknown> | undefined | Error> {
+  if (path === undefined) return undefined;
+  try {
+    const raw = JSON.parse(
+      await readFile(resolveLoopPath(path, workspacePath), "utf-8"),
+    ) as unknown;
+    if (!isRecord(raw) || Object.keys(raw).length === 0) {
+      return new Error(`${flag} must reference a non-empty JSON object`);
+    }
+    return raw;
+  } catch (error) {
+    return new Error(
+      `${flag} could not be read: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
 async function handleProofValidateCommand(args: string[]): Promise<number> {
@@ -7573,13 +7978,18 @@ async function writeProofPack(
   knowledge: KnowledgeProofEvidence = offKnowledgeEvidence(),
   compliancePackIds: string[] = [],
   workspacePath?: string,
+  stageInput: ProofStageInput = { stage: "candidate" },
 ): Promise<{
   proof_dir: string;
   proof_zip: string;
   proof_manifest: string;
   artifact_count: number;
 }> {
-  const proofDir = join(outputDir, `osstack-proof-${safeFileSegment(artifactId)}`);
+  const stageMetadata = createProofStageMetadata(stageInput);
+  const proofDir = join(
+    outputDir,
+    `osstack-proof-${safeFileSegment(artifactId)}${stageInput.stage === "final" ? "-final" : ""}`,
+  );
   const scorecard = createLoopStateScorecardFromState(state);
   const policyDecision = createPolicyDecisionEvidence(events);
   const agentRuntime = createAgentRuntimeEvidence(events);
@@ -7602,6 +8012,7 @@ async function writeProofPack(
     { path: "contract-validation.json", content: `${JSON.stringify(contractValidation, null, 2)}\n` },
     { path: "logs/events.log", content: renderProofEventsLog(events) },
   ];
+  artifacts.push(...createProofStageArtifacts(stageInput));
   artifacts.push(...createVerifierOutputArtifacts(verifyResults));
   if (workspacePath !== undefined) {
     artifacts.push(await createGitDiffProofArtifact(workspacePath));
@@ -7659,6 +8070,7 @@ async function writeProofPack(
     loop_id: state.loop_id,
     agent_id: primaryAgentId(state),
     agent_ids: proofAgentIds(state),
+    ...stageMetadata,
     ...(workspacePath !== undefined ? { workspace: workspacePath } : {}),
     generated_from: "LOOP-STATE.json",
     created_at: createdAt,
@@ -8908,8 +9320,456 @@ export function createDeliverCommandDeps(): DeliverCommandDeps {
     observeLoopProbeEvents,
     writeRequestedLoopArtifacts,
     learnLessonsFromLoopState,
+    startGuardedGit: startGuardedGitDelivery,
   };
 }
+
+function canonicalGuardedJson(value: unknown): string {
+  const normalize = (input: unknown): unknown => {
+    if (Array.isArray(input)) return input.map(normalize);
+    if (isRecord(input)) {
+      return Object.fromEntries(
+        Object.entries(input)
+          .sort(([left], [right]) =>
+            left < right ? -1 : left > right ? 1 : 0
+          )
+          .map(([key, child]) => [key, normalize(child)]),
+      );
+    }
+    return input;
+  };
+  return JSON.stringify(normalize(value));
+}
+
+async function guardedGitText(
+  workspacePath: string,
+  args: string[],
+): Promise<string> {
+  const { stdout } = await execFileAsync(
+    "git",
+    ["-C", workspacePath, ...args],
+    {
+      timeout: 15_000,
+      maxBuffer: 16 * 1024 * 1024,
+      env: {
+        ...process.env,
+        GIT_TERMINAL_PROMPT: "0",
+      },
+    },
+  );
+  return stdout.trim();
+}
+
+function githubRepoId(remoteUrl: string): string | undefined {
+  const trimmed = remoteUrl.trim().replace(/\.git$/i, "");
+  const scp = trimmed.match(
+    /^(?:git@github\.com:|ssh:\/\/git@github\.com\/)([^/]+\/[^/]+)$/i,
+  );
+  if (scp?.[1] !== undefined) return scp[1];
+  try {
+    const url = new URL(trimmed);
+    if (url.hostname.toLowerCase() !== "github.com") return undefined;
+    const path = url.pathname.replace(/^\/+|\/+$/g, "");
+    return /^[^/]+\/[^/]+$/.test(path) ? path : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function guardedProtectedPolicyPaths(
+  repoConfig: Awaited<ReturnType<typeof loadRepoConfig>>,
+): string[] {
+  if (repoConfig?.schema_version !== 2) return [];
+  const paths = new Set([
+    ".osstack/repo.yaml",
+    ".osstack/policy.yaml",
+  ]);
+  for (const target of [
+    repoConfig.deploy?.staging,
+    repoConfig.deploy?.production,
+  ]) {
+    if (target === undefined) continue;
+    for (const argv of [
+      target.command,
+      target.verify_command,
+      target.health_check,
+      target.rollback,
+    ]) {
+      for (const token of argv) {
+        if (
+          !token.startsWith("-")
+          && !isAbsolute(token)
+          && !token.includes("://")
+          && (
+            token.includes("/")
+            || token.endsWith(".sh")
+            || token.endsWith(".mjs")
+            || token.endsWith(".js")
+          )
+        ) {
+          paths.add(token.replace(/^\.\//, ""));
+        }
+      }
+    }
+  }
+  return [...paths].sort();
+}
+
+async function guardedPolicySnapshot(workspacePath: string): Promise<{
+  repoConfig: Exclude<
+    Awaited<ReturnType<typeof loadRepoConfig>>,
+    undefined
+  > & { schema_version: 2 };
+  policySha256: string;
+  protectedPolicyPaths: string[];
+}> {
+  const [repoRaw, policyRaw] = await Promise.all([
+    guardedGitText(workspacePath, [
+      "show",
+      "HEAD:.osstack/repo.yaml",
+    ]),
+    guardedGitText(workspacePath, [
+      "show",
+      "HEAD:.osstack/policy.yaml",
+    ]),
+  ]);
+  let repoValue: unknown;
+  let policyValue: unknown;
+  try {
+    repoValue = parseYaml(repoRaw);
+    policyValue = parseYaml(policyRaw);
+  } catch (error) {
+    throw new Error(
+      `guarded-git base policy is invalid YAML: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+  const repoConfig = RepoConfigSchema.parse(repoValue);
+  const policyProfile = PolicyProfileSchema.parse(policyValue);
+  if (repoConfig?.schema_version !== 2) {
+    throw new Error(
+      "guarded-git requires strict .osstack/repo.yaml schema_version 2",
+    );
+  }
+  if (
+    policyProfile === undefined
+    || policyProfile.mode !== "execute"
+    || policyProfile.auto_apply !== true
+  ) {
+    throw new Error(
+      "guarded-git requires .osstack/policy.yaml mode=execute and auto_apply=true",
+    );
+  }
+  if (!repoConfig.git.auto_merge) {
+    throw new Error(
+      "guarded-git requires repo git.auto_merge=true",
+    );
+  }
+  if (
+    !repoConfig.git.protected_branches.includes(
+      repoConfig.default_branch,
+    )
+  ) {
+    throw new Error(
+      "guarded-git base branch must be listed in git.protected_branches",
+    );
+  }
+  const protectedPolicyPaths = guardedProtectedPolicyPaths(
+    repoConfig,
+  );
+  return {
+    repoConfig,
+    policySha256: sha256(
+      canonicalGuardedJson({
+        repo: repoConfig,
+        policy: policyProfile,
+        protected_policy_paths: protectedPolicyPaths,
+      }),
+    ),
+    protectedPolicyPaths,
+  };
+}
+
+async function writeGuardedGitProof(
+  input: GuardedGitProofInput,
+): Promise<{ manifest_path: string; manifest_sha256: string }> {
+  const statePath = join(
+    input.routing.evidence_root,
+    "LOOP-STATE.json",
+  );
+  const state = await readLoopState(statePath);
+  if (state === null) {
+    throw new Error("guarded proof has no persisted Loop state");
+  }
+  let events: LoopEvent[];
+  try {
+    const raw = JSON.parse(
+      await readFile(
+        join(input.routing.evidence_root, "events.json"),
+        "utf8",
+      ),
+    ) as unknown;
+    if (!Array.isArray(raw)) {
+      throw new Error("events.json must contain an array");
+    }
+    events = normalizeLoopEvents(raw);
+  } catch (error) {
+    throw new Error(
+      `guarded proof events are invalid: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+  const outputDir = join(input.routing.evidence_root, "proof");
+  const artifactId = input.evidence.autonomy_run_id;
+  const finalEvidence = input.stage === "candidate"
+    ? undefined
+    : (() => {
+        if (
+          input.candidate_proof === undefined
+          || input.git_delivery === undefined
+        ) {
+          throw new Error(
+            "final guarded proof requires candidate proof and Git delivery evidence",
+          );
+        }
+        return {
+          candidateProof: input.candidate_proof,
+          gitDelivery: input.git_delivery,
+        };
+      })();
+  const stageInput: ProofStageInput = {
+    stage: input.stage,
+    risk_evidence: {
+      preflight: input.evidence.preflight_risk,
+      post_diff: input.evidence.post_diff_risk,
+    },
+    ...(
+      input.evidence.approval_request === undefined
+      && input.evidence.approval_decision === undefined
+        ? {}
+        : {
+            approval_evidence: {
+              ...(input.evidence.approval_request === undefined
+                ? {}
+                : { request: input.evidence.approval_request }),
+              ...(input.evidence.approval_decision === undefined
+                ? {}
+                : { decision: input.evidence.approval_decision }),
+            },
+          }
+    ),
+    ...(finalEvidence === undefined
+      ? {}
+      : {
+          supersedes: {
+            manifest_path: relative(
+              join(
+                outputDir,
+                `osstack-proof-${safeFileSegment(artifactId)}-final`,
+              ),
+              finalEvidence.candidateProof.manifest_path,
+            ).replaceAll("\\", "/"),
+            manifest_sha256:
+              finalEvidence.candidateProof.manifest_sha256,
+          },
+          git_delivery_evidence: finalEvidence.gitDelivery,
+        }),
+  };
+  const governance = await scanWorkspaceGovernance(
+    input.evidence.intent.workspace_path,
+  );
+  const proof = await writeProofPack(
+    state,
+    outputDir,
+    events,
+    artifactId,
+    governance,
+    offKnowledgeEvidence(),
+    [],
+    input.evidence.intent.workspace_path,
+    stageInput,
+  );
+  const manifest = await readFile(proof.proof_manifest);
+  return {
+    manifest_path: proof.proof_manifest,
+    manifest_sha256: sha256Buffer(manifest),
+  };
+}
+
+function createGuardedGitRuntimeForDb(
+  db: ReturnType<typeof openDb>,
+  dbPath: string,
+  trustedApprovalPublicKeys: ReadonlyMap<string, string>,
+): GuardedGitRuntime {
+  return new GuardedGitRuntime({
+    db,
+    dbPath,
+    trustedApprovalPublicKeys,
+    writeProof: writeGuardedGitProof,
+    assertPolicyUnchanged: async (workspacePath, expected) => {
+      const current = await guardedPolicySnapshot(workspacePath);
+      if (current.policySha256 !== expected) {
+        throw new Error(
+          "repository policy changed after autonomy classification",
+        );
+      }
+    },
+    evaluateGovernance: async (workspacePath) => {
+      const evidence = await createLoopGovernanceEvidence(
+        "strict",
+        workspacePath,
+      );
+      return {
+        blocking:
+          evidence.blocking || evidence.status === "unknown",
+        evidence,
+      };
+    },
+  });
+}
+
+const startGuardedGitDelivery: NonNullable<
+  DeliverCommandDeps["startGuardedGit"]
+> = async (input) => {
+  const policy = await guardedPolicySnapshot(input.workspacePath);
+  const branch = await guardedGitText(
+    input.workspacePath,
+    ["branch", "--show-current"],
+  );
+  if (
+    branch === ""
+    || branch === policy.repoConfig.default_branch
+    || !branch.startsWith(
+      `${policy.repoConfig.git.branch_prefix}/`,
+    )
+  ) {
+    throw new Error(
+      `guarded-git requires a ${policy.repoConfig.git.branch_prefix}/ feature branch; found ${branch || "(detached)"}`,
+    );
+  }
+  const verifiedBase = await assertGuardedCandidateBase({
+    workspace_path: input.workspacePath,
+    remote: policy.repoConfig.git.remote,
+    base: policy.repoConfig.default_branch,
+  });
+  const remoteUrl = await guardedGitText(input.workspacePath, [
+    "remote",
+    "get-url",
+    policy.repoConfig.git.remote,
+  ]);
+  const repoId = githubRepoId(remoteUrl);
+  if (repoId === undefined) {
+    throw new Error(
+      "guarded-git remote must resolve to exactly one GitHub repository",
+    );
+  }
+  const autonomyRunId = `run_${randomUUID().slice(0, 12)}`;
+  const evidenceRoot = join(
+    osstackHome(),
+    "autonomy",
+    autonomyRunId,
+  );
+  await mkdir(evidenceRoot, { recursive: true });
+  const verifyCommands = [
+    ...new Set([
+      ...policy.repoConfig.verification.standard,
+      ...input.verifyCommands,
+    ]),
+  ];
+  const routing = GuardedGitRouting.parse({
+    schema_version: 1,
+    task: {
+      task_id: input.taskId,
+      capability: input.capability,
+      prompt: input.prompt,
+      priority: 50,
+      source: "manual",
+      context: {
+        autonomy_run_id: autonomyRunId,
+        expected_paths: [...new Set(input.expectedPaths)].sort(),
+      },
+    },
+    profile: input.profileRouting.summary,
+    verify_commands: verifyCommands,
+    command_timeout_ms: input.commandTimeoutMs,
+    evidence_root: evidenceRoot,
+    base_commit_sha: verifiedBase.base_commit_sha,
+    policy_sha256: policy.policySha256,
+    max_auto_risk: policy.repoConfig.autonomy.max_auto_risk,
+    protected_policy_paths: policy.protectedPolicyPaths,
+    approval_ttl_ms: 3_600_000,
+    git: {
+      remote: policy.repoConfig.git.remote,
+      base: policy.repoConfig.default_branch,
+      branch,
+      title: input.prompt.replace(/\s+/g, " ").trim().slice(0, 256),
+      body_file: join(evidenceRoot, "pull-request.md"),
+      ci_timeout_ms: Math.min(
+        policy.repoConfig.autonomy.max_wall_time_minutes
+          * 60_000,
+        86_400_000,
+      ),
+    },
+  });
+  const expectedPaths = [...new Set(input.expectedPaths)].sort();
+  const requestedActions = [
+    ...new Set(input.requestedActions),
+  ].sort();
+  const contractSha256 = sha256(
+    canonicalGuardedJson({
+      schema_version: 1,
+      autonomy_run_id: autonomyRunId,
+      task_id: input.taskId,
+      repo_id: repoId,
+      workspace_path: input.workspacePath,
+      goal: input.prompt,
+      expected_paths: expectedPaths,
+      requested_actions: requestedActions,
+      base_commit_sha: verifiedBase.base_commit_sha,
+      policy_sha256: policy.policySha256,
+      profile: input.profileRouting.summary,
+      verify_commands: verifyCommands,
+    }),
+  );
+  const dbPath = await ensureLocalStateDbPath();
+  const db = openDb({ path: dbPath });
+  try {
+    const trust = await readAutonomyApprovalTrustStore(
+      join(osstackHome(), "approval-trust.json"),
+    );
+    const runtime = createGuardedGitRuntimeForDb(
+      db,
+      dbPath,
+      trust,
+    );
+    return await runtime.start({
+      autonomy_run_id: autonomyRunId,
+      task_id: input.taskId,
+      repo_id: repoId,
+      workspace_path: input.workspacePath,
+      goal: input.prompt,
+      expected_paths: expectedPaths,
+      requested_actions: requestedActions,
+      contract_sha256: contractSha256,
+      routing,
+      budget: {
+        max_builder_iterations:
+          policy.repoConfig.autonomy.max_builder_iterations,
+        max_review_rounds:
+          policy.repoConfig.autonomy.max_review_rounds,
+        max_wall_time_ms:
+          policy.repoConfig.autonomy.max_wall_time_minutes
+          * 60_000,
+        max_no_progress_rounds:
+          policy.repoConfig.autonomy.max_no_progress_rounds,
+      },
+    });
+  } finally {
+    db.close();
+  }
+};
 
 function ensureFlags(args: string[], flags: string[]): string[] {
   const next = [...args];

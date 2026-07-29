@@ -7,6 +7,12 @@
 - Surface Kimi readiness and runtime identity in agent/config diagnostics,
   preserve checksummed structured review Markdown/JSON in proof packs, and add
   offline plus live seeded-defect evaluation commands.
+- Add `deliver --autonomy guarded-git`, durable `autonomy` status/approval/
+  resume controls, daemon recovery, two-stage proof composition, and offline
+  R1-R4 fault-injection smoke coverage.
+- Read guarded authority from committed base policy, reject dirty/stale
+  candidate branches, persist the exact base SHA, and wait for boot recovery
+  before closing daemon state.
 
 ## 0.12.0
 

@@ -857,6 +857,92 @@ export const MIGRATIONS: readonly Migration[] = [
         ON knowledge_hygiene_plan_projection(repo_id, state, updated_at);
     `,
   },
+  {
+    id: 17,
+    name: "guarded_autonomy_runs",
+    sql: `
+      CREATE TABLE autonomy_run_transitions (
+        transition_id        TEXT PRIMARY KEY,
+        autonomy_run_id      TEXT NOT NULL,
+        seq                  INTEGER NOT NULL CHECK (seq >= 1),
+        from_state           TEXT CHECK (
+          from_state IS NULL OR from_state IN (
+            'queued','classifying','awaiting_approval','blocked','preparing',
+            'building','verifying','repairing','reviewing','post_classifying',
+            'candidate_proof','committing','pushing','opening_pr','waiting_ci',
+            'merging','final_proof','blocked_delivery','delivery_evidence_failed',
+            'escalated','cancelled','completed'
+          )
+        ),
+        to_state             TEXT NOT NULL CHECK (to_state IN (
+          'queued','classifying','awaiting_approval','blocked','preparing',
+          'building','verifying','repairing','reviewing','post_classifying',
+          'candidate_proof','committing','pushing','opening_pr','waiting_ci',
+          'merging','final_proof','blocked_delivery','delivery_evidence_failed',
+          'escalated','cancelled','completed'
+        )),
+        event_json           TEXT NOT NULL,
+        contract_decision_id TEXT REFERENCES contract_approval_decisions(decision_id),
+        occurred_at          REAL NOT NULL,
+        UNIQUE (autonomy_run_id, seq)
+      );
+      CREATE INDEX idx_autonomy_run_transitions_run
+        ON autonomy_run_transitions(autonomy_run_id, seq);
+      CREATE TRIGGER autonomy_run_transitions_no_update
+        BEFORE UPDATE ON autonomy_run_transitions
+        BEGIN
+          SELECT RAISE(ABORT, 'autonomy run transitions are append-only');
+        END;
+      CREATE TRIGGER autonomy_run_transitions_no_delete
+        BEFORE DELETE ON autonomy_run_transitions
+        BEGIN
+          SELECT RAISE(ABORT, 'autonomy run transitions are append-only');
+        END;
+
+      CREATE TABLE autonomy_run_projection (
+        autonomy_run_id      TEXT PRIMARY KEY,
+        task_id              TEXT NOT NULL,
+        repo_id              TEXT NOT NULL,
+        workspace_path       TEXT NOT NULL,
+        state                TEXT NOT NULL CHECK (state IN (
+          'queued','classifying','awaiting_approval','blocked','preparing',
+          'building','verifying','repairing','reviewing','post_classifying',
+          'candidate_proof','committing','pushing','opening_pr','waiting_ci',
+          'merging','final_proof','blocked_delivery','delivery_evidence_failed',
+          'escalated','cancelled','completed'
+        )),
+        revision             INTEGER NOT NULL CHECK (revision >= 1),
+        contract_sha256      TEXT NOT NULL CHECK (
+          length(contract_sha256) = 64 AND contract_sha256 NOT GLOB '*[^0-9a-f]*'
+        ),
+        diff_sha256          TEXT CHECK (
+          diff_sha256 IS NULL OR (
+            length(diff_sha256) = 64 AND diff_sha256 NOT GLOB '*[^0-9a-f]*'
+          )
+        ),
+        preflight_risk_json  TEXT,
+        post_diff_risk_json  TEXT,
+        approval_json        TEXT,
+        routing_json         TEXT,
+        budget_json          TEXT NOT NULL,
+        attempt_json         TEXT NOT NULL,
+        candidate_proof_json TEXT,
+        git_delivery_json    TEXT,
+        final_proof_json     TEXT,
+        last_transition_id   TEXT NOT NULL
+          REFERENCES autonomy_run_transitions(transition_id),
+        created_at           REAL NOT NULL,
+        updated_at           REAL NOT NULL
+      );
+      CREATE INDEX idx_autonomy_run_projection_repo_state
+        ON autonomy_run_projection(repo_id, state, updated_at);
+      CREATE UNIQUE INDEX idx_autonomy_run_projection_one_active_repo
+        ON autonomy_run_projection(repo_id)
+        WHERE state NOT IN (
+          'blocked','delivery_evidence_failed','escalated','cancelled','completed'
+        );
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

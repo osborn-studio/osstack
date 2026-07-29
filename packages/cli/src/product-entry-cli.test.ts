@@ -1790,6 +1790,7 @@ async function writeReleaseProofEvidence(proofDir: string, options: { omitGovern
     loop_id: "release-ready",
     agent_id: "codex-cli",
     agent_ids: ["codex-cli"],
+    proof_stage: "candidate",
     generated_from: "LOOP-STATE.json",
     created_at: "2026-06-22T00:00:00.000Z",
     generated_at: "2026-06-22T00:00:00.000Z",

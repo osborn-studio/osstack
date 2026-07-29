@@ -65,6 +65,17 @@ exit 91
       agent_profile: "osstack-reviewer",
       evidence_source: "configured",
     });
+    const reportedAdapter = new KimiCodeAdapter({
+      bin,
+      reviewAgentFile,
+      timeoutMs: 5_000,
+    });
+    await reportedAdapter.readiness();
+    await expect(reportedAdapter.runtimeIdentity()).resolves.toMatchObject({
+      provider_id: "kimi",
+      model_id: "kimi-code/k3",
+      evidence_source: "reported",
+    });
   });
 
   it("reports unavailable when the CLI binary is missing", async () => {

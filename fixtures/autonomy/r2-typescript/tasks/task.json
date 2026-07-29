@@ -1,0 +1,8 @@
+{
+  "task_id": "fixture-r2-typescript",
+  "goal": "Implement a bounded TypeScript source change",
+  "expected_paths": ["src/index.ts"],
+  "requested_actions": ["build", "commit", "merge", "push", "verify"],
+  "expected_risk": "R2",
+  "expected_status": "completed"
+}
