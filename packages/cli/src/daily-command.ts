@@ -875,6 +875,9 @@ export function renderDailyMarkdown(brief: DailyBrief): string {
     lines.push(
       `- rollback success: ${weekly.rollback_success_rate.numerator}/${weekly.rollback_success_rate.denominator}`,
     );
+    lines.push(
+      `- Owner notification outbox: ${brief.autonomy.notification_outbox.pending_count} pending, ${brief.autonomy.notification_outbox.dead_letter_count} dead-letter`,
+    );
     lines.push("### Owner attention");
     const attentionLines = [
       ["awaiting_approval", attention.awaiting_approval.length],

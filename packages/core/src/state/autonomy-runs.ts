@@ -6,6 +6,10 @@ import {
   AutonomyRunProjectionRow,
   AutonomyRunTransitionRow,
 } from "./schema.js";
+import {
+  AutonomyNotificationKind,
+  enqueueAutonomyNotificationInTransaction,
+} from "./notification-outbox.js";
 
 type JsonValue =
   | null
@@ -69,6 +73,14 @@ export const TransitionAutonomyRunInput = z
     expected_revision: z.number().int().positive(),
     to_state: AutonomyRunState,
     event: JsonObjectSchema,
+    notification_kinds: z
+      .array(AutonomyNotificationKind)
+      .max(5)
+      .refine(
+        (kinds) => new Set(kinds).size === kinds.length,
+        { message: "notification kinds must be unique" },
+      )
+      .optional(),
     contract_decision_id: z.string().min(1).nullable().optional(),
     patch: JsonPatch.optional(),
     occurred_at: z.number().finite(),
@@ -380,6 +392,16 @@ export function transitionAutonomyRun(
           input.expected_revision,
           current.revision,
         );
+      }
+      for (const kind of input.notification_kinds ?? []) {
+        enqueueAutonomyNotificationInTransaction(transaction, {
+          kind,
+          autonomy_run_id: input.autonomy_run_id,
+          repo_id: current.repo_id,
+          run_state: input.to_state,
+          source_transition_id: input.transition_id,
+          occurred_at: input.occurred_at,
+        });
       }
       return next;
     },

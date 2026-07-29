@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   createAutonomyRun,
+  enqueueAutonomyNotification,
   freezeProduction,
   openDb,
 } from "@osstack/core";
@@ -79,6 +80,7 @@ describe("autonomy operational health", () => {
       "deploy_freezes",
       "resumable_runs",
       "proof_failures",
+      "notification_outbox",
     ]);
     expect(report).toMatchObject({
       ok: true,
@@ -87,10 +89,52 @@ describe("autonomy operational health", () => {
       can_push_deploy: true,
       drain_required: false,
       active_freezes: [],
+      notification_outbox: {
+        pending_count: 0,
+        dead_letter_count: 0,
+      },
       external_blockers: [],
     });
     expect(JSON.stringify(report)).not.toContain("token");
     expect(JSON.stringify(report)).not.toContain("credential");
+  });
+
+  it("reports pending notification count and oldest age without blocking local work", async () => {
+    createAutonomyRun(db, dbPath, {
+      autonomy_run_id: "run-notify",
+      transition_id: "run-notify:queued",
+      task_id: "task-notify",
+      repo_id: "owner/repo",
+      workspace_path: join(directory, "repo"),
+      contract_sha256: "a".repeat(64),
+      budget: { max_builder_iterations: 1 },
+      attempt: {},
+      event: { kind: "queued" },
+      occurred_at: 100,
+    });
+    enqueueAutonomyNotification(db, dbPath, {
+      kind: "escalated",
+      autonomy_run_id: "run-notify",
+      repo_id: "owner/repo",
+      run_state: "escalated",
+      source_transition_id: "run-notify:escalated",
+      occurred_at: 100,
+    });
+
+    const report = await runAutonomyHealth(deps({ now: () => 160 }));
+
+    expect(report.can_run_local).toBe(true);
+    expect(report.notification_outbox).toMatchObject({
+      pending_count: 1,
+      dead_letter_count: 0,
+      oldest_attention_age_seconds: 60,
+    });
+    expect(
+      report.checks.find((check) => check.id === "notification_outbox"),
+    ).toMatchObject({ status: "warn", scope: "none" });
+    expect(report.next_actions).toContain(
+      "Restore the Owner notification relay and drain the outbox",
+    );
   });
 
   it("keeps local work available but marks GitHub network as an external blocker", async () => {

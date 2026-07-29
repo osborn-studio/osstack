@@ -4,6 +4,7 @@ import {
   getAutonomyRun,
   getContractDecision,
   transitionAutonomyRun,
+  type AutonomyNotificationKind,
   type AutonomyRunProjectionRow,
 } from "@osstack/core";
 import {
@@ -101,6 +102,24 @@ function transitionId(
   state: string,
 ): string {
   return `${autonomyRunId}:${String(revision).padStart(6, "0")}:${state}`;
+}
+
+function notificationKinds(
+  event: GuardedDeliveryTransitionInput,
+): AutonomyNotificationKind[] {
+  const kinds: AutonomyNotificationKind[] = [];
+  if (
+    event.to_state === "awaiting_approval"
+    || event.to_state === "escalated"
+    || event.to_state === "deploy_frozen"
+    || event.to_state === "delivery_evidence_failed"
+  ) {
+    kinds.push(event.to_state);
+  }
+  if (event.context_patch?.deploy_outcome === "rollback_failed") {
+    kinds.push("rollback_failed");
+  }
+  return kinds;
 }
 
 export class SqliteGuardedDeliveryStore {
@@ -242,6 +261,7 @@ export class SqliteGuardedDeliveryStore {
         },
         "autonomy transition event",
       ),
+      notification_kinds: notificationKinds(event),
       ...(contractDecisionId === undefined
         ? {}
         : { contract_decision_id: contractDecisionId }),

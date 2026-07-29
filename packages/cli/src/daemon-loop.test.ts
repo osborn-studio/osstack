@@ -9,6 +9,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import {
   createAutonomyRun,
+  enqueueAutonomyNotification,
+  getNotification,
   transitionAutonomyRun,
 } from "@osstack/core";
 import { guardedOpenDb } from "./guarded-open-db.js";
@@ -33,6 +35,13 @@ function healthyAutonomyHealth(
     active_freezes: [],
     resumable_runs: [],
     proof_failures: [],
+    notification_outbox: {
+      pending_count: 0,
+      dead_letter_count: 0,
+      oldest_pending_at: null,
+      oldest_dead_letter_at: null,
+      oldest_attention_age_seconds: 0,
+    },
     external_blockers: [],
     write_blockers: [],
     next_actions: [],
@@ -182,6 +191,73 @@ describe("daemon loop RPC", () => {
     await closing;
     daemon = null;
     expect(closed).toBe(true);
+  });
+
+  it("drains durable Owner notifications after daemon restart", async () => {
+    const home = process.env["OSSTACK_HOME"];
+    if (home === undefined) throw new Error("OSSTACK_HOME is required");
+    await mkdir(home, { recursive: true });
+    const dbPath = join(home, "state.db");
+    const seedDb = guardedOpenDb({ path: dbPath });
+    createAutonomyRun(seedDb, dbPath, {
+      autonomy_run_id: "run-notification-restart",
+      transition_id: "run-notification-restart:queued",
+      task_id: "task-notification-restart",
+      repo_id: "owner/repo",
+      workspace_path: join(tmp, "workspace"),
+      contract_sha256: "a".repeat(64),
+      routing: {},
+      budget: {
+        max_builder_iterations: 1,
+        max_review_rounds: 1,
+        max_wall_time_ms: 60_000,
+        max_no_progress_rounds: 1,
+      },
+      attempt: {},
+      event: { kind: "queued" },
+      occurred_at: 1,
+    });
+    const notificationId = enqueueAutonomyNotification(seedDb, dbPath, {
+      kind: "escalated",
+      autonomy_run_id: "run-notification-restart",
+      repo_id: "owner/repo",
+      run_state: "escalated",
+      source_transition_id: "run-notification-restart:escalated",
+      occurred_at: 2,
+    }).notification_id;
+    seedDb.close();
+
+    const delivered: string[] = [];
+    daemon = await startDaemon({
+      socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock`,
+      healthPollIntervalMs: 20,
+      notificationSender: {
+        send: async (message) => {
+          delivered.push(message.notification_id);
+        },
+      },
+    });
+    const deadline = Date.now() + 2_000;
+    let persistedStatus: string | undefined;
+    let persistedAttemptCount: number | undefined;
+    while (Date.now() < deadline) {
+      const inspectDb = guardedOpenDb({ path: dbPath });
+      const row = getNotification(inspectDb, notificationId);
+      inspectDb.close();
+      persistedStatus = row?.status;
+      persistedAttemptCount = row?.attempt_count;
+      if (persistedStatus === "delivered") break;
+      await sleep(20);
+    }
+
+    expect(delivered).toEqual([notificationId]);
+    expect({
+      status: persistedStatus,
+      attempt_count: persistedAttemptCount,
+    }).toMatchObject({
+      status: "delivered",
+      attempt_count: 1,
+    });
   });
 
   it("limits guarded autonomy writers to two after persisting their queued runs", async () => {

@@ -53,12 +53,14 @@ describe("openDb + runMigrations", () => {
   });
 });
 
-describe("guarded autonomy persistence (migration 18)", () => {
-  it("creates deploy-aware projection, append-only trail, freeze table, and writer index", () => {
+describe("guarded autonomy persistence (migrations 18-19)", () => {
+  it("creates deploy-aware state, notification outbox, append-only trail, and writer index", () => {
     const path = join(tmp, "state.db");
     const db = openDb({ path });
     try {
-      expect(Number(db.pragma("user_version", { simple: true }))).toBe(18);
+      expect(Number(db.pragma("user_version", { simple: true }))).toBe(
+        CURRENT_SCHEMA_VERSION,
+      );
       const objects = db
         .prepare(
           `SELECT name, type
@@ -67,6 +69,7 @@ describe("guarded autonomy persistence (migration 18)", () => {
              'autonomy_run_projection',
              'autonomy_run_transitions',
              'autonomy_deploy_freezes',
+             'autonomy_notification_outbox',
              'idx_autonomy_run_projection_one_active_repo',
              'autonomy_run_transitions_no_update',
              'autonomy_run_transitions_no_delete'
@@ -77,6 +80,10 @@ describe("guarded autonomy persistence (migration 18)", () => {
       expect(objects).toEqual([
         {
           name: "autonomy_deploy_freezes",
+          type: "table",
+        },
+        {
+          name: "autonomy_notification_outbox",
           type: "table",
         },
         {
@@ -174,7 +181,9 @@ describe("guarded autonomy persistence (migration 18)", () => {
 
     const upgraded = openDb({ path, minFreeBytes: 0 });
     try {
-      expect(upgraded.pragma("user_version", { simple: true })).toBe(18);
+      expect(upgraded.pragma("user_version", { simple: true })).toBe(
+        CURRENT_SCHEMA_VERSION,
+      );
       expect(
         upgraded
           .prepare(

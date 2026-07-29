@@ -1,5 +1,6 @@
 import {
   createAutonomyRun,
+  enqueueAutonomyNotification,
   freezeProduction,
   getAutonomyRun,
   openDb,
@@ -86,6 +87,14 @@ describe("guarded autonomy reliability scorecard", () => {
       seedRun(db, path, "h", "awaiting_approval", {
         risk: "R3",
       });
+      enqueueAutonomyNotification(db, path, {
+        kind: "awaiting_approval",
+        autonomy_run_id: "run-h",
+        repo_id: "repo-h",
+        run_state: "awaiting_approval",
+        source_transition_id: "run-h:attention",
+        occurred_at: 1_950,
+      });
       freezeProduction(db, path, {
         repo_id: "repo-e",
         reason: "rollback failed",
@@ -138,6 +147,11 @@ describe("guarded autonomy reliability scorecard", () => {
         value: 0.5,
       });
       expect(metrics.active_freeze_count).toBe(1);
+      expect(report.notification_outbox).toMatchObject({
+        pending_count: 1,
+        dead_letter_count: 0,
+        oldest_attention_age_seconds: 50,
+      });
 
       expect(report.attention.awaiting_approval.map((item) => item.run_id))
         .toEqual(["run-h"]);
@@ -177,6 +191,7 @@ describe("guarded autonomy reliability scorecard", () => {
         denominator: 0,
         value: 0,
       });
+      expect(report.notification_outbox.pending_count).toBe(0);
       expect(Object.values(report.attention).every(
         (items) => items.length === 0,
       )).toBe(true);

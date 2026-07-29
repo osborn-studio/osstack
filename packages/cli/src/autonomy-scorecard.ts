@@ -2,7 +2,9 @@ import {
   AutonomyRunProjectionRow as AutonomyRunProjectionRowSchema,
   listAutonomyTransitions,
   listProductionFreezes,
+  summarizeNotificationOutbox,
   type AutonomyRunProjectionRow,
+  type NotificationOutboxSummary,
 } from "@osstack/core";
 import type Database from "better-sqlite3";
 
@@ -52,6 +54,7 @@ export interface AutonomyReliabilityReport {
   generated_at: string;
   daily: AutonomyScorecard;
   weekly: AutonomyScorecard;
+  notification_outbox: NotificationOutboxSummary;
   attention: {
     awaiting_approval: AutonomyAttentionRun[];
     escalated: AutonomyAttentionRun[];
@@ -424,6 +427,10 @@ export function createAutonomyReliabilityReport(
       weeklyFrom,
       now,
       freezes.length,
+    ),
+    notification_outbox: summarizeNotificationOutbox(
+      db,
+      throughSeconds,
     ),
     attention: {
       awaiting_approval: rowsInState("awaiting_approval"),

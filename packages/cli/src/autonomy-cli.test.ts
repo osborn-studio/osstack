@@ -269,6 +269,13 @@ describe("autonomy CLI", () => {
           active_freezes: [],
           resumable_runs: [],
           proof_failures: [],
+          notification_outbox: {
+            pending_count: 0,
+            dead_letter_count: 0,
+            oldest_pending_at: null,
+            oldest_dead_letter_at: null,
+            oldest_attention_age_seconds: 0,
+          },
           external_blockers: ["github_network"],
           write_blockers: [],
           next_actions: [

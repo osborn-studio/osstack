@@ -77,6 +77,10 @@ import {
   type AutonomyHealthReport,
 } from "./autonomy-health.js";
 import {
+  drainAutonomyNotifications,
+  type AutonomyNotificationSender,
+} from "./autonomy-notification.js";
+import {
   createDashboardSnapshot,
   dashboardUrl,
   dashboardUrlFromEnv,
@@ -2798,6 +2802,7 @@ export interface StartDaemonOptions {
   readConcurrency?: number;
   autonomyHealth?: () => Promise<AutonomyHealthReport>;
   healthPollIntervalMs?: number;
+  notificationSender?: AutonomyNotificationSender;
   guardedAutonomyFactory?: (
     db: Database.Database,
     dbPath: string,
@@ -2854,7 +2859,23 @@ async function restoreGuardedAutonomy(
 async function refreshAutonomyHealthAndRecover(
   ctx: DaemonContext,
   recover: boolean,
+  notificationSender?: AutonomyNotificationSender,
 ): Promise<void> {
+  if (notificationSender !== undefined) {
+    try {
+      await drainAutonomyNotifications({
+        db: ctx.db,
+        db_path: ctx.dbPath,
+        sender: notificationSender,
+      });
+    } catch (error) {
+      process.stderr.write(
+        `osstack: autonomy notification drain failed: ${
+          error instanceof Error ? error.message : String(error)
+        }\n`,
+      );
+    }
+  }
   if (ctx.guardedAutonomy === undefined) return;
   const previous = ctx.lastAutonomyHealth;
   let current: AutonomyHealthReport;
@@ -2967,7 +2988,11 @@ export async function startDaemon(
       try { chmodSync(socketPath, 0o600); } catch { /* best effort */ }
 
       let healthPollPending = true;
-      let guardedRecovery = refreshAutonomyHealthAndRecover(ctx, true)
+      let guardedRecovery = refreshAutonomyHealthAndRecover(
+        ctx,
+        true,
+        opts.notificationSender,
+      )
         .finally(() => {
           healthPollPending = false;
         });
@@ -2977,11 +3002,16 @@ export async function startDaemon(
       );
       const healthMonitor =
         ctx.guardedAutonomy === undefined
+          && opts.notificationSender === undefined
           ? undefined
           : setInterval(() => {
               if (healthPollPending) return;
               healthPollPending = true;
-              guardedRecovery = refreshAutonomyHealthAndRecover(ctx, false)
+              guardedRecovery = refreshAutonomyHealthAndRecover(
+                ctx,
+                false,
+                opts.notificationSender,
+              )
                 .catch((error) => {
                   process.stderr.write(
                     `osstack: autonomy recovery monitor failed: ${

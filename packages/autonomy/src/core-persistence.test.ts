@@ -5,6 +5,7 @@ import { join } from "node:path";
 import {
   getAutonomyRun,
   listAutonomyTransitions,
+  listNotificationAttention,
   openDb,
 } from "@osstack/core";
 import {
@@ -91,6 +92,63 @@ function policy(): GuardedDeliveryPolicy {
 }
 
 describe("SQLite guarded delivery persistence", () => {
+  it("persists attention notification intent in the same state transition", async () => {
+    const store = new SqliteGuardedDeliveryStore({
+      db,
+      dbPath,
+      now: () => NOW,
+    });
+    await store.persist({
+      autonomy_run_id: "run-attention",
+      from_state: "queued",
+      to_state: "classifying",
+      context_patch: {
+        intent: {
+          autonomy_run_id: "run-attention",
+          task_id: "task-attention",
+          repo_id: "gilosbornhello/example",
+          workspace_path: directory,
+          goal: "request guarded approval",
+          expected_paths: ["docs/guide.md"],
+          requested_actions: ["build"],
+          contract_sha256: CONTRACT_SHA,
+        },
+        routing: {
+          profile_name: "test",
+          reason: "test",
+          builder_agent_id: "claude-code",
+          evaluator_agent_id: "kimi-code",
+          builder_identity: {
+            provider_id: "anthropic",
+            model_id: "claude-current",
+            evidence_source: "reported",
+          },
+          evaluator_identity: {
+            provider_id: "kimi",
+            model_id: "kimi-code/k3",
+            evidence_source: "reported",
+          },
+          independent: true,
+          independence_reason: "different provider",
+        },
+        budget: policy().budget,
+      },
+    });
+    await store.persist({
+      autonomy_run_id: "run-attention",
+      from_state: "classifying",
+      to_state: "awaiting_approval",
+    });
+
+    expect(listNotificationAttention(db)).toEqual([
+      expect.objectContaining({
+        kind: "awaiting_approval",
+        autonomy_run_id: "run-attention",
+        status: "pending",
+      }),
+    ]);
+  });
+
   it("round-trips engine context and append-only transitions through completion", async () => {
     const store = new SqliteGuardedDeliveryStore({
       db,

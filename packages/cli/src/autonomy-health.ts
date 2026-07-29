@@ -13,6 +13,8 @@ import {
   listAutonomyRuns,
   listProductionFreezes,
   listResumableAutonomyRuns,
+  summarizeNotificationOutbox,
+  type NotificationOutboxSummary,
 } from "@osstack/core";
 import type Database from "better-sqlite3";
 
@@ -33,7 +35,8 @@ export type AutonomyHealthCheckId =
   | "github_network"
   | "deploy_freezes"
   | "resumable_runs"
-  | "proof_failures";
+  | "proof_failures"
+  | "notification_outbox";
 
 export interface AutonomyHealthCheck {
   id: AutonomyHealthCheckId;
@@ -58,6 +61,7 @@ export interface AutonomyHealthDeps {
   probe_adapters?: () => Promise<AutonomyAdapterProbe[]>;
   probe_github_auth?: () => Promise<boolean>;
   probe_github_network?: () => Promise<boolean>;
+  now?: () => number;
 }
 
 export interface AutonomyHealthReport {
@@ -84,6 +88,7 @@ export interface AutonomyHealthReport {
     repo_id: string;
     state: string;
   }>;
+  notification_outbox: NotificationOutboxSummary;
   external_blockers: AutonomyHealthCheckId[];
   write_blockers: AutonomyHealthCheckId[];
   next_actions: string[];
@@ -262,6 +267,7 @@ function socketCheck(home: string, socketPath: string): AutonomyHealthCheck {
 function nextActions(
   checks: AutonomyHealthCheck[],
   drainRequired: boolean,
+  notificationOutbox: NotificationOutboxSummary,
 ): string[] {
   const actions: string[] = [];
   const blocked = new Set(
@@ -288,6 +294,13 @@ function nextActions(
   }
   if (blocked.has("github_network")) {
     actions.push("Wait for GitHub network recovery; local work may continue");
+  }
+  if (notificationOutbox.dead_letter_count > 0) {
+    actions.push(
+      "Inspect and acknowledge dead-letter Owner notifications",
+    );
+  } else if (notificationOutbox.pending_count > 0) {
+    actions.push("Restore the Owner notification relay and drain the outbox");
   }
   return actions;
 }
@@ -454,6 +467,27 @@ export async function runAutonomyHealth(
     `${proofFailures.length} proof or escalated run failures`,
   ));
 
+  const notificationOutbox = summarizeNotificationOutbox(
+    deps.db,
+    deps.now?.() ?? Date.now() / 1_000,
+  );
+  checks.push(check(
+    "notification_outbox",
+    notificationOutbox.pending_count === 0
+        && notificationOutbox.dead_letter_count === 0
+      ? "ok"
+      : "warn",
+    notificationOutbox.dead_letter_count > 0 ? "external" : "none",
+    notificationOutbox.pending_count === 0
+        && notificationOutbox.dead_letter_count === 0
+      ? "notification outbox is drained"
+      : `${notificationOutbox.pending_count} pending and ${
+        notificationOutbox.dead_letter_count
+      } dead-letter Owner notifications; oldest attention age ${
+        notificationOutbox.oldest_attention_age_seconds
+      }s`,
+  ));
+
   const externalBlockers = checks
     .filter(
       (candidate) =>
@@ -491,8 +525,13 @@ export async function runAutonomyHealth(
     active_freezes: activeFreezes,
     resumable_runs: resumableRuns,
     proof_failures: proofFailures,
+    notification_outbox: notificationOutbox,
     external_blockers: externalBlockers,
     write_blockers: writeBlockers,
-    next_actions: nextActions(checks, drainRequired),
+    next_actions: nextActions(
+      checks,
+      drainRequired,
+      notificationOutbox,
+    ),
   };
 }

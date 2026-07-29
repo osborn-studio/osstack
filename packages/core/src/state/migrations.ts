@@ -1115,6 +1115,67 @@ export const MIGRATIONS: readonly Migration[] = [
         ON autonomy_deploy_freezes(frozen, repo_id);
     `,
   },
+  {
+    id: 19,
+    name: "autonomy_notification_outbox",
+    sql: `
+      CREATE TABLE autonomy_notification_outbox (
+        notification_id      TEXT PRIMARY KEY,
+        dedupe_key           TEXT NOT NULL UNIQUE,
+        kind                 TEXT NOT NULL CHECK (kind IN (
+          'awaiting_approval','escalated','deploy_frozen',
+          'rollback_failed','delivery_evidence_failed'
+        )),
+        autonomy_run_id      TEXT NOT NULL
+          REFERENCES autonomy_run_projection(autonomy_run_id),
+        repo_id              TEXT NOT NULL,
+        run_state            TEXT NOT NULL,
+        payload_json         TEXT NOT NULL,
+        status               TEXT NOT NULL CHECK (status IN (
+          'pending','delivered','dead_letter','acknowledged'
+        )),
+        attempt_count        INTEGER NOT NULL DEFAULT 0
+          CHECK (attempt_count >= 0),
+        next_attempt_at      REAL NOT NULL,
+        last_attempt_at      REAL,
+        delivered_at         REAL,
+        dead_lettered_at     REAL,
+        acknowledged_at     REAL,
+        acknowledged_by     TEXT,
+        last_error_code      TEXT CHECK (
+          last_error_code IS NULL OR last_error_code IN (
+            'timeout','transport_error','invalid_response'
+          )
+        ),
+        created_at           REAL NOT NULL,
+        updated_at           REAL NOT NULL,
+        CHECK (
+          (status = 'pending' AND delivered_at IS NULL
+            AND dead_lettered_at IS NULL AND acknowledged_at IS NULL
+            AND acknowledged_by IS NULL)
+          OR
+          (status = 'delivered' AND delivered_at IS NOT NULL
+            AND dead_lettered_at IS NULL AND acknowledged_at IS NULL
+            AND acknowledged_by IS NULL)
+          OR
+          (status = 'dead_letter' AND delivered_at IS NULL
+            AND dead_lettered_at IS NOT NULL AND acknowledged_at IS NULL
+            AND acknowledged_by IS NULL)
+          OR
+          (status = 'acknowledged' AND acknowledged_at IS NOT NULL
+            AND acknowledged_by IS NOT NULL)
+        )
+      );
+      CREATE INDEX idx_autonomy_notification_outbox_due
+        ON autonomy_notification_outbox(
+          status, next_attempt_at, created_at
+        );
+      CREATE INDEX idx_autonomy_notification_outbox_attention
+        ON autonomy_notification_outbox(status, created_at);
+      CREATE INDEX idx_autonomy_notification_outbox_run
+        ON autonomy_notification_outbox(autonomy_run_id, created_at);
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;
