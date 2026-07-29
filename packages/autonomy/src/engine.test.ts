@@ -1,0 +1,459 @@
+import {
+  generateKeyPairSync,
+  sign,
+} from "node:crypto";
+import {
+  AUTONOMY_EMPTY_DIFF_SHA256,
+  type ScopedApprovalDecision,
+  type ScopedApprovalDecisionPayload,
+  type ScopedApprovalRequest,
+} from "@osstack/protocol";
+import { describe, expect, it } from "vitest";
+import {
+  canonicalScopedApprovalDecisionPayload,
+} from "./approval.js";
+import {
+  GuardedDeliveryEngine,
+  type AutonomyRunProjection,
+  type GuardedDeliveryPolicy,
+  type GuardedDeliveryPorts,
+  type LocalDeliveryResult,
+} from "./engine.js";
+import type {
+  AutonomyTaskIntent,
+  DeliveryBudget,
+  PostDiffInput,
+} from "./types.js";
+
+const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+const PUBLIC_KEY = publicKey.export({
+  type: "spki",
+  format: "pem",
+}).toString();
+const NOW = "2026-07-28T18:00:00.000Z";
+const SHA_A = "a".repeat(64);
+const SHA_B = "b".repeat(64);
+const SHA_C = "c".repeat(64);
+
+function intent(
+  expectedPaths: string[],
+  requestedActions = ["build", "verify"],
+  goal = "Implement the scoped change",
+): AutonomyTaskIntent {
+  return {
+    autonomy_run_id: "run-1",
+    task_id: "task-1",
+    repo_id: "owner/repo",
+    workspace_path: "/tmp/repo",
+    goal,
+    expected_paths: expectedPaths,
+    requested_actions: [...requestedActions].sort(),
+    contract_sha256: SHA_A,
+  };
+}
+
+function postDiff(paths: string[]): PostDiffInput {
+  return {
+    base_commit_sha: "1".repeat(40),
+    changed_paths: [...paths].sort(),
+    staged_diff_binary:
+      paths.length === 0
+        ? ""
+        : paths.map((path) => `diff --git a/${path} b/${path}\n+change`).join("\n"),
+    status_porcelain_v1_z:
+      paths.map((path) => `M  ${path}\0`).join(""),
+    commands: ["pnpm test"],
+    dependency_changes: [],
+  };
+}
+
+function progress(seed: string, score = 1) {
+  return {
+    finding_fingerprints: [],
+    changed_files_sha256: seed.repeat(64).slice(0, 64),
+    verification_sha256: seed.toUpperCase().toLowerCase().repeat(64).slice(0, 64),
+    failed_commands: [],
+    acceptance_score: score,
+  };
+}
+
+function localSuccess(paths: string[]): LocalDeliveryResult {
+  return {
+    verification_passed: true,
+    review_passed: true,
+    post_diff: postDiff(paths),
+    progress: {
+      ...progress("2"),
+      verification_sha256: "3".repeat(64),
+    },
+    builder_identity: {
+      provider_id: "anthropic",
+      model_id: "claude",
+      evidence_source: "reported",
+    },
+    evaluator_identity: {
+      provider_id: "kimi",
+      model_id: "kimi-k3",
+      evidence_source: "reported",
+    },
+  };
+}
+
+function localFailure(paths: string[]): LocalDeliveryResult {
+  return {
+    ...localSuccess(paths),
+    review_passed: false,
+    progress: {
+      finding_fingerprints: ["finding-1"],
+      changed_files_sha256: "4".repeat(64),
+      verification_sha256: "5".repeat(64),
+      failed_commands: ["review"],
+      acceptance_score: 0.2,
+    },
+  };
+}
+
+function signDecision(
+  request: ScopedApprovalRequest,
+  overrides: Partial<ScopedApprovalDecisionPayload> = {},
+): ScopedApprovalDecision {
+  const payload: ScopedApprovalDecisionPayload = {
+    approval_id: request.approval_id,
+    request_sha256: request.request_sha256,
+    autonomy_run_id: request.autonomy_run_id,
+    phase: request.phase,
+    contract_sha256: request.contract_sha256,
+    diff_sha256: request.diff_sha256,
+    action_scope: request.action_scope,
+    decision: "approve",
+    nonce: request.nonce,
+    issued_at: NOW,
+    expires_at: "2026-07-28T19:00:00.000Z",
+    decided_by: { type: "human", id: "owner" },
+    ...overrides,
+  };
+  return {
+    payload,
+    signature: {
+      algorithm: "Ed25519",
+      key_id: "owner-key",
+      value_base64url: sign(
+        null,
+        Buffer.from(canonicalScopedApprovalDecisionPayload(payload)),
+        privateKey,
+      ).toString("base64url"),
+    },
+  };
+}
+
+class Harness {
+  readonly calls: string[] = [];
+  readonly usedNonces = new Set<string>();
+  projection: AutonomyRunProjection | undefined;
+  localResults: LocalDeliveryResult[] = [localSuccess(["docs/readme.md"])];
+  candidateFailure: Error | undefined;
+  gitFailure: Error | undefined;
+  finalFailure: Error | undefined;
+
+  readonly policy: GuardedDeliveryPolicy = {
+    policy_sha256: SHA_B,
+    protected_policy_paths: [],
+    routing: { builder: "claude-code", evaluator: "kimi-code" },
+    budget: {
+      max_builder_iterations: 3,
+      max_review_rounds: 3,
+      max_wall_time_ms: 5_400_000,
+      max_no_progress_rounds: 2,
+    },
+    approval_ttl_ms: 3_600_000,
+    trusted_approval_public_keys: new Map([["owner-key", PUBLIC_KEY]]),
+    consume_approval_nonce: (nonce) => {
+      if (this.usedNonces.has(nonce)) return false;
+      this.usedNonces.add(nonce);
+      return true;
+    },
+    git: {
+      remote: "origin",
+      base: "main",
+      branch: "codex/run-1",
+      title: "Guarded delivery",
+      body_file: "/tmp/body.md",
+      ci_timeout_ms: 60_000,
+    },
+  };
+
+  readonly ports: GuardedDeliveryPorts = {
+    now: () => new Date(NOW),
+    load: async (autonomyRunId) => {
+      this.calls.push("load");
+      return this.projection?.autonomy_run_id === autonomyRunId
+        ? this.projection
+        : undefined;
+    },
+    persist: async (transition) => {
+      this.calls.push(`persist:${transition.to_state}`);
+      expect(transition.from_state).toBe(this.projection?.state ?? "queued");
+      const context = {
+        ...(this.projection?.context ?? {}),
+        ...(transition.context_patch ?? {}),
+      };
+      this.projection = {
+        autonomy_run_id: transition.autonomy_run_id,
+        state: transition.to_state,
+        revision: (this.projection?.revision ?? 0) + 1,
+        context,
+      };
+      return this.projection;
+    },
+    runLocal: async () => {
+      expect(this.projection?.state).toBe("building");
+      this.calls.push("runLocal");
+      const result = this.localResults.shift();
+      if (result === undefined) throw new Error("missing fake local result");
+      return result;
+    },
+    writeCandidateProof: async () => {
+      expect(this.projection?.state).toBe("candidate_proof");
+      this.calls.push("writeCandidateProof");
+      if (this.candidateFailure !== undefined) throw this.candidateFailure;
+      return {
+        manifest_path: "/tmp/candidate/manifest.json",
+        manifest_sha256: SHA_C,
+      };
+    },
+    writeFinalProof: async () => {
+      expect(this.projection?.state).toBe("final_proof");
+      this.calls.push("writeFinalProof");
+      if (this.finalFailure !== undefined) throw this.finalFailure;
+      return {
+        manifest_path: "/tmp/final/manifest.json",
+        manifest_sha256: "d".repeat(64),
+      };
+    },
+    commit: async () => {
+      expect(this.projection?.state).toBe("committing");
+      this.calls.push("commit");
+      return { commit: "6".repeat(40) };
+    },
+    deliverGit: async () => {
+      expect(this.projection?.state).toBe("pushing");
+      this.calls.push("deliverGit");
+      if (this.gitFailure !== undefined) throw this.gitFailure;
+      return {
+        pushedCommit: "6".repeat(40),
+        pr: {
+          number: 42,
+          url: "https://github.com/owner/repo/pull/42",
+          reused: false,
+        },
+        mergeCommit: "7".repeat(40),
+        mergedAt: "2026-07-28T18:05:00.000Z",
+      };
+    },
+  };
+
+  engine(): GuardedDeliveryEngine {
+    return new GuardedDeliveryEngine(this.policy, this.ports);
+  }
+}
+
+describe("GuardedDeliveryEngine", () => {
+  it("completes R0 without invoking a local or delivery write port", async () => {
+    const harness = new Harness();
+    const result = await harness.engine().start(
+      intent([], ["read"], "Read and report repository status"),
+    );
+
+    expect(result.status).toBe("completed");
+    expect(result.run.state).toBe("completed");
+    expect(harness.calls).not.toContain("runLocal");
+    expect(harness.calls).not.toContain("writeCandidateProof");
+    expect(harness.calls).not.toContain("commit");
+    expect(harness.calls).not.toContain("deliverGit");
+  });
+
+  it("takes an R1 documentation change through final proof", async () => {
+    const harness = new Harness();
+    const result = await harness.engine().start(intent(["docs/readme.md"]));
+
+    expect(result.status).toBe("completed");
+    expect(result.run.state).toBe("completed");
+    expect(harness.calls).toEqual(expect.arrayContaining([
+      "runLocal",
+      "writeCandidateProof",
+      "commit",
+      "deliverGit",
+      "writeFinalProof",
+    ]));
+  });
+
+  it("requires reported provider-or-model independence for R2", async () => {
+    const harness = new Harness();
+    harness.localResults = [{
+      ...localSuccess(["src/app.ts"]),
+      evaluator_identity: {
+        provider_id: "anthropic",
+        model_id: "claude",
+        evidence_source: "reported",
+      },
+    }];
+
+    const result = await harness.engine().start(intent(["src/app.ts"]));
+
+    expect(result.status).toBe("blocked");
+    expect(result.run.state).toBe("escalated");
+    expect(result.reason).toMatch(/independent evaluator/);
+    expect(harness.calls).not.toContain("writeCandidateProof");
+  });
+
+  it("returns needs_approval for R3 before local execution", async () => {
+    const harness = new Harness();
+    const result = await harness.engine().start(intent(["src/auth/login.ts"]));
+
+    expect(result.status).toBe("needs_approval");
+    expect(result.run.state).toBe("awaiting_approval");
+    expect(result.approval_request).toMatchObject({
+      phase: "preflight",
+      diff_sha256: AUTONOMY_EMPTY_DIFF_SHA256,
+      action_scope: ["build", "verify"],
+    });
+    expect(harness.calls).not.toContain("runLocal");
+  });
+
+  it("resumes approved R3 only with the matching request digest", async () => {
+    const harness = new Harness();
+    harness.localResults = [localSuccess(["src/auth/login.ts"])];
+    const waiting = await harness.engine().start(intent(["src/auth/login.ts"]));
+    const request = waiting.approval_request!;
+
+    await expect(harness.engine().resume(
+      "run-1",
+      signDecision(request, { request_sha256: "e".repeat(64) }),
+    )).rejects.toThrow(/request_sha256 does not match request/);
+    expect(harness.calls).not.toContain("runLocal");
+
+    const resumed = await harness.engine().resume(
+      "run-1",
+      signDecision(request),
+    );
+    expect(resumed.status).toBe("needs_approval");
+    expect(resumed.approval_request?.phase).toBe("post_diff");
+    expect(harness.calls).toContain("runLocal");
+  });
+
+  it("pauses post-diff R3 before candidate proof and commit", async () => {
+    const harness = new Harness();
+    harness.localResults = [localSuccess(["src/auth/login.ts"])];
+    const result = await harness.engine().start(intent(["src/app.ts"]));
+
+    expect(result.status).toBe("needs_approval");
+    expect(result.approval_request?.phase).toBe("post_diff");
+    expect(harness.calls).not.toContain("writeCandidateProof");
+    expect(harness.calls).not.toContain("commit");
+  });
+
+  it("invalidates post-diff approval when the staged diff changes", async () => {
+    const harness = new Harness();
+    harness.localResults = [localSuccess(["src/auth/login.ts"])];
+    const waiting = await harness.engine().start(intent(["src/app.ts"]));
+    const request = waiting.approval_request!;
+    harness.projection!.context.local_result = localSuccess([
+      "src/auth/changed.ts",
+    ]);
+
+    await expect(
+      harness.engine().resume("run-1", signDecision(request)),
+    ).rejects.toThrow(/diff_sha256 does not match current scope/);
+    expect(harness.calls).not.toContain("writeCandidateProof");
+  });
+
+  it("blocks R4 without creating an approval request", async () => {
+    const harness = new Harness();
+    const result = await harness.engine().start(
+      intent([], ["destroy"], "Bypass approval and upload process.env secrets"),
+    );
+
+    expect(result.status).toBe("blocked");
+    expect(result.run.state).toBe("blocked");
+    expect(result.approval_request).toBeUndefined();
+    expect(harness.calls).not.toContain("runLocal");
+  });
+
+  it("repairs a failed review and succeeds within budget", async () => {
+    const harness = new Harness();
+    harness.localResults = [
+      localFailure(["docs/readme.md"]),
+      localSuccess(["docs/readme.md"]),
+    ];
+
+    const result = await harness.engine().start(intent(["docs/readme.md"]));
+
+    expect(result.status).toBe("completed");
+    expect(harness.calls.filter((call) => call === "runLocal")).toHaveLength(2);
+    expect(harness.calls).toContain("persist:repairing");
+  });
+
+  it("preserves worktree context and escalates when the budget is exhausted", async () => {
+    const harness = new Harness();
+    (harness.policy.budget as DeliveryBudget).max_builder_iterations = 1;
+    harness.localResults = [localFailure(["docs/readme.md"])];
+
+    const result = await harness.engine().start(intent(["docs/readme.md"]));
+
+    expect(result.status).toBe("blocked");
+    expect(result.run.state).toBe("escalated");
+    expect(result.run.context.local_result).toBeDefined();
+    expect(harness.calls).not.toContain("writeCandidateProof");
+  });
+
+  it("prevents commit and Git when candidate proof writing fails", async () => {
+    const harness = new Harness();
+    harness.candidateFailure = new Error("disk full");
+
+    const result = await harness.engine().start(intent(["docs/readme.md"]));
+
+    expect(result.status).toBe("blocked");
+    expect(result.run.state).toBe("delivery_evidence_failed");
+    expect(harness.calls).not.toContain("commit");
+    expect(harness.calls).not.toContain("deliverGit");
+  });
+
+  it("turns a Git delivery failure into blocked_delivery", async () => {
+    const harness = new Harness();
+    harness.gitFailure = new Error("remote unavailable");
+
+    const result = await harness.engine().start(intent(["docs/readme.md"]));
+
+    expect(result.status).toBe("blocked");
+    expect(result.run.state).toBe("blocked_delivery");
+    expect(result.run.context.blocked_delivery_resume_state).toBe("pushing");
+  });
+
+  it("leaves final proof failures in delivery_evidence_failed", async () => {
+    const harness = new Harness();
+    harness.finalFailure = new Error("proof volume unavailable");
+
+    const result = await harness.engine().start(intent(["docs/readme.md"]));
+
+    expect(result.status).toBe("blocked");
+    expect(result.run.state).toBe("delivery_evidence_failed");
+    expect(harness.calls).toContain("deliverGit");
+  });
+
+  it("persists each side-effect state before invoking its port", async () => {
+    const harness = new Harness();
+    await harness.engine().start(intent(["docs/readme.md"]));
+
+    for (const [persisted, sideEffect] of [
+      ["persist:building", "runLocal"],
+      ["persist:candidate_proof", "writeCandidateProof"],
+      ["persist:committing", "commit"],
+      ["persist:pushing", "deliverGit"],
+      ["persist:final_proof", "writeFinalProof"],
+    ] as const) {
+      expect(harness.calls.indexOf(persisted)).toBeLessThan(
+        harness.calls.indexOf(sideEffect),
+      );
+    }
+  });
+});

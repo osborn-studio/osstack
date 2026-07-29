@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@osstack/core": "workspace:*",
+    "@osstack/github": "workspace:*",
     "@osstack/protocol": "workspace:*",
     "zod": "^3.25.76"
   },
