@@ -40,6 +40,7 @@ function target(
     allowed_paths: ["docs/**", "src/**"],
     forbidden_paths: ["src/secrets/**"],
     allowed_base_branches: ["main", "release"],
+    allowed_environment: ["DEPLOY_REGION", "DEPLOY_TOKEN"],
     freeze_windows: [
       {
         timezone: "America/Los_Angeles",
@@ -130,6 +131,7 @@ describe("private repository deployment policy", () => {
           allowed_paths: ["src/features/**", "other/**"],
           forbidden_paths: ["src/private/**"],
           allowed_base_branches: ["main"],
+          allowed_environment: ["DEPLOY_TOKEN"],
           freeze_windows: [
             {
               timezone: "UTC",
@@ -161,6 +163,7 @@ describe("private repository deployment policy", () => {
       allowed_paths: ["src/features/**"],
       forbidden_paths: ["src/private/**", "src/secrets/**"],
       allowed_base_branches: ["main"],
+      allowed_environment: ["DEPLOY_TOKEN"],
     });
     expect(effective.deploy?.staging?.freeze_windows).toHaveLength(2);
   });

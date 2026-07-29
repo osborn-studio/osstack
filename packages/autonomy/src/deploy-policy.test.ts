@@ -25,6 +25,7 @@ function policy(
     allowed_paths: ["docs/**", "src/**"],
     forbidden_paths: ["src/secrets/**"],
     allowed_base_branches: ["main"],
+    allowed_environment: [],
     freeze_windows: [],
     ...patch,
   };

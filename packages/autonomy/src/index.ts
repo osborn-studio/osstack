@@ -10,3 +10,4 @@ export * from "./core-persistence.js";
 export * from "./git-candidate.js";
 export * from "./repo-policy.js";
 export * from "./deploy-policy.js";
+export * from "./deploy-runner.js";

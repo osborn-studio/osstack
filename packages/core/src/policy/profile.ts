@@ -123,7 +123,24 @@ export const RepoConfigV1 = z
   .strict();
 export type RepoConfigV1 = z.infer<typeof RepoConfigV1>;
 
-export const CommandArgv = z.array(NonEmptyConfigString).min(1).max(64);
+const SECRET_ARG_PATTERN =
+  /^-{1,2}(?:password|passwd|secret|token|api[_-]?key|private[_-]?key)(?:=|$)/i;
+
+export const CommandArgv = z
+  .array(NonEmptyConfigString)
+  .min(1)
+  .max(64)
+  .superRefine((argv, context) => {
+    for (const [index, argument] of argv.entries()) {
+      if (!SECRET_ARG_PATTERN.test(argument)) continue;
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [index],
+        message:
+          "deploy argv must not contain credential flags; use an allowlisted environment name",
+      });
+    }
+  });
 export type CommandArgv = z.infer<typeof CommandArgv>;
 
 export const AutonomyRepoPolicy = z
@@ -181,6 +198,26 @@ export const DEPLOY_CHANGE_TYPES = [
 
 export const DeployChangeType = z.enum(DEPLOY_CHANGE_TYPES);
 export type DeployChangeType = z.infer<typeof DeployChangeType>;
+
+const FORBIDDEN_DEPLOY_ENVIRONMENT = [
+  /^APPROVAL(?:_|$)/,
+  /PRIVATE_KEY/,
+  /^TELEGRAM(?:_|$)/,
+  /^SLACK(?:_|$)/,
+  /^GH_TOKEN$/,
+  /^GITHUB_TOKEN$/,
+  /^CI(?:_|$)/,
+] as const;
+
+export const DeployEnvironmentName = z
+  .string()
+  .regex(/^[A-Z_][A-Z0-9_]{0,127}$/)
+  .refine(
+    (name) =>
+      !FORBIDDEN_DEPLOY_ENVIRONMENT.some((pattern) => pattern.test(name)),
+    "approval, notification, CI, and private-key environment names are forbidden",
+  );
+export type DeployEnvironmentName = z.infer<typeof DeployEnvironmentName>;
 
 const ClockTime = z
   .string()
@@ -243,6 +280,18 @@ export const DeployTargetPolicy = z
     allowed_paths: uniqueStringList({ min: 1 }),
     forbidden_paths: uniqueStringList().default([]),
     allowed_base_branches: uniqueStringList({ min: 1 }),
+    allowed_environment: z
+      .array(DeployEnvironmentName)
+      .max(64)
+      .superRefine((names, context) => {
+        if (new Set(names).size !== names.length) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "allowed_environment must not contain duplicates",
+          });
+        }
+      })
+      .default([]),
     freeze_windows: z.array(FreezeWindow).default([]),
   })
   .strict()

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import {
   AutonomyRepoPolicy,
   DeployChangeType,
+  DeployEnvironmentName,
   FreezeWindow,
   type DeployRepoPolicy,
   type DeployTargetPolicy,
@@ -81,6 +82,18 @@ const PrivateDeployChangeTypes = z
     }
   });
 
+const PrivateDeployEnvironment = z
+  .array(DeployEnvironmentName)
+  .max(64)
+  .superRefine((values, context) => {
+    if (new Set(values).size !== values.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "allowed_environment must not contain duplicates",
+      });
+    }
+  });
+
 const PrivateAutonomyOverlay = AutonomyRepoPolicy.partial().strict();
 
 const PrivateDeployTargetOverlay = z
@@ -92,6 +105,7 @@ const PrivateDeployTargetOverlay = z
     allowed_paths: uniquePrivatePathList(1).optional(),
     forbidden_paths: uniquePrivatePathList().optional(),
     allowed_base_branches: uniquePrivateStringList(1).optional(),
+    allowed_environment: PrivateDeployEnvironment.optional(),
     freeze_windows: z.array(FreezeWindow).optional(),
   })
   .strict();
@@ -238,6 +252,13 @@ function mergeDeployTarget(
       ].map(normalizePolicyPath),
     ),
   ].sort();
+  const allowedEnvironment =
+    overlay.allowed_environment === undefined
+      ? [...repository.allowed_environment].sort()
+      : intersectStrings(
+          repository.allowed_environment,
+          overlay.allowed_environment,
+        );
   const enabled =
     repository.enabled &&
     (overlay.enabled ?? true) &&
@@ -263,6 +284,7 @@ function mergeDeployTarget(
     allowed_paths: allowedPaths,
     forbidden_paths: forbiddenPaths,
     allowed_base_branches: allowedBaseBranches,
+    allowed_environment: allowedEnvironment,
     freeze_windows: mergeFreezeWindows(
       repository.freeze_windows,
       overlay.freeze_windows ?? [],

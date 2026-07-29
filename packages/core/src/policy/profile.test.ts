@@ -269,6 +269,28 @@ describe("RepoConfig schema", () => {
         },
       },
     ],
+    [
+      "split deploy secret flag",
+      {
+        deploy: {
+          staging: {
+            ...deployTarget(),
+            command: ["deploy", "--token", "not-a-real-token"],
+          },
+        },
+      },
+    ],
+    [
+      "notification environment",
+      {
+        deploy: {
+          staging: {
+            ...deployTarget(),
+            allowed_environment: ["TELEGRAM_BOT_TOKEN"],
+          },
+        },
+      },
+    ],
   ])("rejects credential-shaped strings in %s", (_label, patch) => {
     expect(RepoConfig.safeParse(v2RepoConfig(patch)).success).toBe(false);
   });
@@ -381,6 +403,7 @@ function deployTarget() {
     allowed_paths: ["src/**"],
     forbidden_paths: ["src/secrets/**"],
     allowed_base_branches: ["main"],
+    allowed_environment: ["DEPLOY_REGION", "DEPLOY_TOKEN"],
     freeze_windows: [],
   };
 }
