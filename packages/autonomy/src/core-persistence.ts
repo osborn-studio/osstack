@@ -235,6 +235,9 @@ export class SqliteGuardedDeliveryStore {
                 blocked_delivery_resume_state:
                   event.blocked_delivery_resume_state,
               }),
+          ...(event.recovery === undefined
+            ? {}
+            : { recovery: event.recovery }),
           context_patch: event.context_patch ?? {},
         },
         "autonomy transition event",

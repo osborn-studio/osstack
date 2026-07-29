@@ -155,6 +155,7 @@ export interface GuardedAutonomyDaemonRuntime {
   resume(
     autonomyRunId: string,
     decision?: ScopedApprovalDecisionType,
+    options?: { recoveryKind?: "restart" },
   ): Promise<GuardedDeliveryResult>;
 }
 
@@ -2261,6 +2262,7 @@ async function resumeGuardedAutonomy(
   ctx: DaemonContext,
   autonomyRunId: string,
   decision?: ScopedApprovalDecisionType,
+  recoveryKind?: "restart",
 ): Promise<GuardedDeliveryResult> {
   if (ctx.guardedAutonomy === undefined) {
     throw new Error("guarded autonomy runtime is not configured");
@@ -2278,6 +2280,7 @@ async function resumeGuardedAutonomy(
     return await ctx.guardedAutonomy.resume(
       autonomyRunId,
       decision,
+      recoveryKind === undefined ? undefined : { recoveryKind },
     );
   } finally {
     await slot.release();
@@ -2831,7 +2834,12 @@ async function restoreGuardedAutonomy(
       )
       .map(async (row) => {
         try {
-          await resumeGuardedAutonomy(ctx, row.autonomy_run_id);
+          await resumeGuardedAutonomy(
+            ctx,
+            row.autonomy_run_id,
+            undefined,
+            "restart",
+          );
         } catch (error) {
           process.stderr.write(
             `osstack: autonomy recovery failed for ${row.autonomy_run_id}: ${

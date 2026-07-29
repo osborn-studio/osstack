@@ -147,11 +147,13 @@ describe("daemon loop RPC", () => {
     const recoveryStarted = new Promise<void>((resolve) => {
       markRecoveryStarted = resolve;
     });
+    let recoveryOptions: { recoveryKind?: "restart" } | undefined;
     daemon = await startDaemon({
       socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock`,
       autonomyHealth: async () => healthyAutonomyHealth(),
       guardedAutonomyFactory: () => ({
-        resume: async (autonomyRunId) => {
+        resume: async (autonomyRunId, _decision, options) => {
+          recoveryOptions = options;
           markRecoveryStarted();
           await recoveryGate;
           return {
@@ -167,6 +169,7 @@ describe("daemon loop RPC", () => {
       }),
     });
     await recoveryStarted;
+    expect(recoveryOptions).toEqual({ recoveryKind: "restart" });
 
     let closed = false;
     const closing = daemon.close().then(() => {

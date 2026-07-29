@@ -132,6 +132,10 @@ export interface GuardedGitStartInput {
   budget: GuardedDeliveryPolicy["budget"];
 }
 
+export interface GuardedGitResumeOptions {
+  recoveryKind?: "restart";
+}
+
 export interface GuardedLocalEvidence {
   state: LoopState;
   events: LoopEvent[];
@@ -197,6 +201,43 @@ function reviewPassed(
   const artifacts = completed.review_artifacts ?? [];
   return artifacts.length > 0
     && artifacts.every((artifact) => artifact.verdict === "approved");
+}
+
+function countIssueRule(
+  completed: LoopState["completed_tasks"][number],
+  rule: string,
+): number {
+  return (completed.verify_issues ?? []).filter(
+    (issue) => issue.rule === rule,
+  ).length;
+}
+
+function countUnauthorizedGovernanceFindings(value: unknown): number {
+  if (Array.isArray(value)) {
+    return value.reduce(
+      (sum, item) => sum + countUnauthorizedGovernanceFindings(item),
+      0,
+    );
+  }
+  if (
+    typeof value !== "object"
+    || value === null
+  ) {
+    return 0;
+  }
+  let count = 0;
+  for (const [key, child] of Object.entries(value)) {
+    if (
+      (key === "rule" || key === "rule_id" || key === "code")
+      && typeof child === "string"
+      && /unauthorized(?:_action)?/i.test(child)
+    ) {
+      count += 1;
+      continue;
+    }
+    count += countUnauthorizedGovernanceFindings(child);
+  }
+  return count;
 }
 
 function policyFromRouting(
@@ -265,6 +306,7 @@ export class GuardedGitRuntime {
   async resume(
     autonomyRunId: string,
     decisionValue?: ScopedApprovalDecisionType,
+    options: GuardedGitResumeOptions = {},
   ): Promise<GuardedDeliveryResult> {
     const loaded = await this.store.load(autonomyRunId);
     if (loaded === undefined) {
@@ -285,7 +327,11 @@ export class GuardedGitRuntime {
     if (context.local_result === undefined) {
       await this.assertPolicy(routing, intent.workspace_path);
     }
-    return await this.engine(routing, budget).resume(
+    return await this.engine(
+      routing,
+      budget,
+      options.recoveryKind,
+    ).resume(
       autonomyRunId,
       decisionValue === undefined
         ? undefined
@@ -296,13 +342,26 @@ export class GuardedGitRuntime {
   private engine(
     routing: GuardedGitRouting,
     budget: GuardedDeliveryPolicy["budget"],
+    recoveryKind?: "restart",
   ): GuardedDeliveryEngine {
+    let recoveryRecorded = false;
     return new GuardedDeliveryEngine(
       policyFromRouting(routing, budget, this.deps),
       {
         now: this.deps.now ?? (() => new Date()),
         load: (runId) => this.store.load(runId),
-        persist: (event) => this.store.persist(event),
+        persist: async (event) => {
+          const recordRecovery =
+            recoveryKind !== undefined && !recoveryRecorded;
+          const persisted = await this.store.persist({
+            ...event,
+            ...(recordRecovery
+              ? { recovery: { kind: recoveryKind } }
+              : {}),
+          });
+          if (recordRecovery) recoveryRecorded = true;
+          return persisted;
+        },
         runLocal: ({ workspacePath }) =>
           this.runLocal(workspacePath, routing),
         writeCandidateProof: async (evidence) => {
@@ -497,7 +556,20 @@ export class GuardedGitRuntime {
             && reviewsPass
             && governance?.blocking !== true
             ? 1
-            : 0,
+          : 0,
+      },
+      telemetry: {
+        reviewer_mutation_count: countIssueRule(
+          completed,
+          "verify.reviewer_mutation",
+        ),
+        unauthorized_action_count: countUnauthorizedGovernanceFindings(
+          governance?.evidence,
+        ),
+        adapter_unavailable_count: countIssueRule(
+          completed,
+          "verify.adapter_unavailable",
+        ),
       },
       builder_identity: runtimeIdentity(
         routing.profile.builder_identity,

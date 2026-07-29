@@ -13,6 +13,10 @@ import {
   listProductionFreezes,
   type AgentScorecard,
 } from "@osstack/core";
+import {
+  createAutonomyReliabilityReport,
+  type AutonomyReliabilityReport,
+} from "./autonomy-scorecard.js";
 
 export interface DashboardAdapter {
   id: string;
@@ -104,6 +108,7 @@ export interface DashboardSnapshot {
     }>;
   };
   autonomy: {
+    reliability: AutonomyReliabilityReport;
     deploy_freezes: Array<{
       repo_id: string;
       target: "production";
@@ -240,6 +245,9 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
     opts.db,
     { active_only: true },
   );
+  const autonomyReliability = createAutonomyReliabilityReport(opts.db, {
+    now: () => new Date(generatedAt * 1_000),
+  });
 
   return {
     dashboard: {
@@ -310,6 +318,7 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
       })),
     },
     autonomy: {
+      reliability: autonomyReliability,
       deploy_freezes: deployFreezes.map((freeze) => ({
         repo_id: freeze.repo_id,
         target: freeze.target,

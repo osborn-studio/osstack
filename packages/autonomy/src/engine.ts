@@ -91,6 +91,14 @@ export const LocalDeliveryResult = z
     review_passed: z.boolean(),
     post_diff: PostDiffInput,
     progress: AttemptProgressSchema,
+    telemetry: z
+      .object({
+        reviewer_mutation_count: z.number().int().nonnegative(),
+        unauthorized_action_count: z.number().int().nonnegative(),
+        adapter_unavailable_count: z.number().int().nonnegative(),
+      })
+      .strict()
+      .optional(),
     builder_identity: RuntimeIdentity,
     evaluator_identity: RuntimeIdentity,
   })
@@ -252,6 +260,9 @@ export interface AutonomyRunProjection {
 export interface GuardedDeliveryTransitionInput
   extends AutonomyTransitionInput {
   context_patch?: Partial<GuardedDeliveryContext>;
+  recovery?: {
+    kind: "restart";
+  };
 }
 
 export interface GuardedDeliveryPorts {

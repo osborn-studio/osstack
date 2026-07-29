@@ -95,6 +95,7 @@ describe("dashboard", () => {
       expect(snapshot.evidence.reports).toBe(1);
       expect(snapshot.evidence.proof_packs).toBe(1);
       expect(snapshot.lessons.total).toBe(1);
+      expect(snapshot.autonomy.reliability.weekly.run_count).toBe(0);
       expect(snapshot.agent_scorecards[0]).toMatchObject({
         agent_id: "codex-cli",
         total_runs: 1,
@@ -172,6 +173,17 @@ describe("dashboard", () => {
         source_run_id: "run-deploy-7",
         frozen_at: 200,
       }]);
+      expect(
+        snapshot.autonomy.reliability.attention.production_frozen,
+      ).toEqual([
+        expect.objectContaining({
+          repo_id: "owner/example-web",
+          source_run_id: "run-deploy-7",
+        }),
+      ]);
+      expect(
+        snapshot.autonomy.reliability.weekly.metrics.active_freeze_count,
+      ).toBe(1);
     } finally {
       db.close();
     }
