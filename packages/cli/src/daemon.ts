@@ -48,6 +48,17 @@ import {
   type AgentTask,
 } from "@osstack/agents";
 import { appendEvent, finalizeRun, insertRun, insertTask } from "./store.js";
+import {
+  getAutonomyRun,
+  listResumableAutonomyRuns,
+} from "@osstack/core";
+import type {
+  GuardedDeliveryResult,
+} from "@osstack/autonomy";
+import {
+  ScopedApprovalDecision,
+  type ScopedApprovalDecision as ScopedApprovalDecisionType,
+} from "@osstack/protocol";
 import { runDailyBrief } from "./daily-command.js";
 import { makePolicyGate } from "./policy-gate.js";
 import { osstackHome, pidFilePath, resolveSocketPath } from "./paths.js";
@@ -117,6 +128,15 @@ interface DaemonContext {
   draining: boolean;
   /** Graceful shutdown trigger, wired up by startDaemon once the server is live. */
   requestShutdown: () => void;
+  /** Durable guarded-delivery recovery port, configured by the product entrypoint. */
+  guardedAutonomy: GuardedAutonomyDaemonRuntime | undefined;
+}
+
+export interface GuardedAutonomyDaemonRuntime {
+  resume(
+    autonomyRunId: string,
+    decision?: ScopedApprovalDecisionType,
+  ): Promise<GuardedDeliveryResult>;
 }
 
 type LoopSessionStatus = "running" | "stopping" | "stopped" | "failed";
@@ -369,6 +389,81 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
 
     case "stats":
       return singleOk(req.id, computeStats(ctx.db, ctx.loopSessions));
+
+    case "autonomy.status": {
+      const params = (req.params ?? {}) as { autonomy_run_id?: unknown };
+      if (
+        typeof params.autonomy_run_id !== "string"
+        || params.autonomy_run_id.length === 0
+      ) {
+        return singleErr(
+          req.id,
+          "bad_request",
+          "params.autonomy_run_id required",
+        );
+      }
+      const row = getAutonomyRun(ctx.db, params.autonomy_run_id);
+      return row === undefined
+        ? singleErr(
+            req.id,
+            "not_found",
+            `no autonomy run with id=${params.autonomy_run_id}`,
+          )
+        : singleOk(req.id, row);
+    }
+
+    case "autonomy.resume": {
+      if (ctx.guardedAutonomy === undefined) {
+        return singleErr(
+          req.id,
+          "unavailable",
+          "guarded autonomy runtime is not configured",
+        );
+      }
+      const params = (req.params ?? {}) as {
+        autonomy_run_id?: unknown;
+        decision?: unknown;
+      };
+      if (
+        typeof params.autonomy_run_id !== "string"
+        || params.autonomy_run_id.length === 0
+      ) {
+        return singleErr(
+          req.id,
+          "bad_request",
+          "params.autonomy_run_id required",
+        );
+      }
+      const parsedDecision =
+        params.decision === undefined
+          ? undefined
+          : ScopedApprovalDecision.safeParse(params.decision);
+      if (
+        parsedDecision !== undefined
+        && !parsedDecision.success
+      ) {
+        return singleErr(
+          req.id,
+          "bad_request",
+          "params.decision must be a valid signed scoped approval",
+        );
+      }
+      try {
+        return singleOk(
+          req.id,
+          await ctx.guardedAutonomy.resume(
+            params.autonomy_run_id,
+            parsedDecision?.data,
+          ),
+        );
+      } catch (error) {
+        return singleErr(
+          req.id,
+          "autonomy_resume_failed",
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    }
 
     case "loop.run": {
       const parsed = parseLoopRunParams(req.params);
@@ -2406,6 +2501,7 @@ function buildContext(): DaemonContext {
     hermesKanbanByRun: new Map(),
     draining: false,
     requestShutdown: () => { /* wired up in startDaemon */ },
+    guardedAutonomy: undefined,
   };
 }
 
@@ -2415,7 +2511,37 @@ export interface DaemonHandles {
   dbPath: string;
 }
 
-export async function startDaemon(opts: { socketPath?: string } = {}): Promise<DaemonHandles> {
+export interface StartDaemonOptions {
+  socketPath?: string;
+  guardedAutonomyFactory?: (
+    db: Database.Database,
+    dbPath: string,
+  ) =>
+    | GuardedAutonomyDaemonRuntime
+    | Promise<GuardedAutonomyDaemonRuntime>;
+}
+
+async function restoreGuardedAutonomy(
+  ctx: DaemonContext,
+): Promise<void> {
+  if (ctx.guardedAutonomy === undefined) return;
+  for (const row of listResumableAutonomyRuns(ctx.db)) {
+    if (row.state === "awaiting_approval") continue;
+    try {
+      await ctx.guardedAutonomy.resume(row.autonomy_run_id);
+    } catch (error) {
+      process.stderr.write(
+        `osstack: autonomy recovery failed for ${row.autonomy_run_id}: ${
+          error instanceof Error ? error.message : String(error)
+        }\n`,
+      );
+    }
+  }
+}
+
+export async function startDaemon(
+  opts: StartDaemonOptions = {},
+): Promise<DaemonHandles> {
   const socketPath = opts.socketPath ?? resolveSocketPath();
   // Refuse to start when another daemon already owns the pidfile — two
   // daemons would race for the socket and share the SQLite writer.
@@ -2424,6 +2550,12 @@ export async function startDaemon(opts: { socketPath?: string } = {}): Promise<D
   // Bring up OTel before the daemon context so spans capture everything.
   initOtel({ serviceVersion: DAEMON_VERSION });
   const ctx = buildContext();
+  if (opts.guardedAutonomyFactory !== undefined) {
+    ctx.guardedAutonomy = await opts.guardedAutonomyFactory(
+      ctx.db,
+      ctx.dbPath,
+    );
+  }
   const stopUpdateChecker = startUpdateChecker();
   let dashboard: DashboardServerHandle | null = null;
 
@@ -2546,6 +2678,7 @@ export async function startDaemon(opts: { socketPath?: string } = {}): Promise<D
         process.stderr.write(`osstack: dashboard server failed: ${(err as Error).message}\n`);
       });
 
+      void restoreGuardedAutonomy(ctx);
       resolve({ close: shutdown, socketPath, dbPath: ctx.dbPath });
       });
     }).catch(reject);

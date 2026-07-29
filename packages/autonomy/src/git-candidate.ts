@@ -15,7 +15,6 @@ const GitCommitSha = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/;
 export interface StageCandidateInput {
   workspace_path: string;
   commands: string[];
-  dependency_changes?: PostDiffInputType["dependency_changes"];
 }
 
 export interface CommitStagedCandidateInput {
@@ -73,6 +72,146 @@ async function head(workspacePath: string): Promise<string> {
   return value;
 }
 
+async function gitBlob(
+  workspacePath: string,
+  spec: string,
+): Promise<string | undefined> {
+  try {
+    await git(workspacePath, ["cat-file", "-e", spec]);
+  } catch {
+    return undefined;
+  }
+  return await git(workspacePath, ["show", spec]);
+}
+
+const DEPENDENCY_SECTIONS = [
+  "dependencies",
+  "devDependencies",
+  "peerDependencies",
+  "optionalDependencies",
+] as const;
+
+function dependencyVersions(
+  raw: string | undefined,
+  path: string,
+): Map<string, string> {
+  if (raw === undefined) return new Map();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch (error) {
+    throw new Error(
+      `cannot classify dependencies in ${path}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+  if (
+    parsed === null
+    || Array.isArray(parsed)
+    || typeof parsed !== "object"
+  ) {
+    throw new Error(`cannot classify dependencies in ${path}: expected object`);
+  }
+  const result = new Map<string, string>();
+  const manifest = parsed as Record<string, unknown>;
+  for (const section of DEPENDENCY_SECTIONS) {
+    const value = manifest[section];
+    if (value === undefined) continue;
+    if (
+      value === null
+      || Array.isArray(value)
+      || typeof value !== "object"
+    ) {
+      throw new Error(
+        `cannot classify dependencies in ${path}: ${section} must be an object`,
+      );
+    }
+    for (const [name, version] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
+      if (typeof version !== "string" || version.length === 0) {
+        throw new Error(
+          `cannot classify dependency ${name} in ${path}: version must be a string`,
+        );
+      }
+      const existing = result.get(name);
+      if (existing !== undefined && existing !== version) {
+        throw new Error(
+          `cannot classify dependency ${name} in ${path}: conflicting versions`,
+        );
+      }
+      result.set(name, version);
+    }
+  }
+  return result;
+}
+
+function dependencyMajor(version: string): number | undefined {
+  const normalized = version.replace(/^workspace:/, "");
+  const match = normalized.match(/^[~^<>=\s]*(\d+)\./);
+  return match?.[1] === undefined ? undefined : Number(match[1]);
+}
+
+function isMajorDependencyChange(
+  from: string | undefined,
+  to: string | undefined,
+): boolean {
+  if (from === undefined || to === undefined || from === to) return false;
+  const fromMajor = dependencyMajor(from);
+  const toMajor = dependencyMajor(to);
+  // Unknown non-registry protocols cannot establish a safe same-major
+  // relation, so a changed opaque spec is conservatively R3.
+  return fromMajor === undefined
+    || toMajor === undefined
+    || fromMajor !== toMajor;
+}
+
+async function dependencyChanges(
+  workspacePath: string,
+  baseCommitSha: string,
+  changedPaths: readonly string[],
+): Promise<PostDiffInputType["dependency_changes"]> {
+  const changes = new Map<
+    string,
+    PostDiffInputType["dependency_changes"][number]
+  >();
+  for (const path of changedPaths) {
+    if (path !== "package.json" && !path.endsWith("/package.json")) {
+      continue;
+    }
+    const [beforeRaw, afterRaw] = await Promise.all([
+      gitBlob(workspacePath, `${baseCommitSha}:${path}`),
+      gitBlob(workspacePath, `:${path}`),
+    ]);
+    const before = dependencyVersions(beforeRaw, path);
+    const after = dependencyVersions(afterRaw, path);
+    for (const name of new Set([...before.keys(), ...after.keys()])) {
+      const from = before.get(name);
+      const to = after.get(name);
+      if (from === to) continue;
+      const existing = changes.get(name);
+      if (
+        existing !== undefined
+        && (existing.from !== from || existing.to !== to)
+      ) {
+        throw new Error(
+          `cannot classify dependency ${name}: changed inconsistently across manifests`,
+        );
+      }
+      changes.set(name, {
+        name,
+        ...(from === undefined ? {} : { from }),
+        ...(to === undefined ? {} : { to }),
+        major: isMajorDependencyChange(from, to),
+      });
+    }
+  }
+  return [...changes.values()].sort(
+    (left, right) => left.name.localeCompare(right.name),
+  );
+}
+
 async function stagedMaterial(workspacePath: string): Promise<{
   status: string;
   diff: string;
@@ -107,14 +246,18 @@ export async function stageGuardedCandidate(
   const baseCommitSha = await head(input.workspace_path);
   await git(input.workspace_path, ["add", "-A", "--"]);
   const material = await stagedMaterial(input.workspace_path);
+  const dependencies = await dependencyChanges(
+    input.workspace_path,
+    baseCommitSha,
+    material.changedPaths,
+  );
   return PostDiffInput.parse({
     base_commit_sha: baseCommitSha,
     changed_paths: material.changedPaths,
     staged_diff_binary: material.diff,
     status_porcelain_v1_z: material.status,
     commands: [...input.commands],
-    dependency_changes: [...(input.dependency_changes ?? [])]
-      .sort((left, right) => left.name.localeCompare(right.name)),
+    dependency_changes: dependencies,
   });
 }
 

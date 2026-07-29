@@ -28,6 +28,43 @@ afterEach(async () => {
 });
 
 describe("daemon loop RPC", () => {
+  it("routes guarded autonomy resume through the daemon socket", async () => {
+    const resumed: string[] = [];
+    daemon = await startDaemon({
+      socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock`,
+      guardedAutonomyFactory: () => ({
+        resume: async (autonomyRunId) => {
+          resumed.push(autonomyRunId);
+          return {
+            status: "completed",
+            run: {
+              autonomy_run_id: autonomyRunId,
+              state: "completed",
+              revision: 7,
+              context: {},
+            },
+          };
+        },
+      }),
+    });
+
+    const response = await daemonRpc(
+      daemon.socketPath,
+      "autonomy.resume",
+      { autonomy_run_id: "run-daemon-restart" },
+    );
+
+    expect(response.ok).toBe(true);
+    expect(response.result).toMatchObject({
+      status: "completed",
+      run: {
+        autonomy_run_id: "run-daemon-restart",
+        state: "completed",
+      },
+    });
+    expect(resumed).toEqual(["run-daemon-restart"]);
+  });
+
   it("removes process signal handlers when closed", async () => {
     const sigtermBefore = process.listenerCount("SIGTERM");
     const sigintBefore = process.listenerCount("SIGINT");

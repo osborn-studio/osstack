@@ -287,6 +287,19 @@ describe("GuardedDeliveryEngine", () => {
     ]));
   });
 
+  it("escalates R2 when repository auto-risk is capped at R1", async () => {
+    const harness = new Harness();
+    harness.policy.max_auto_risk = "R1";
+
+    const result = await harness.engine().start(intent(["src/app.ts"]));
+
+    expect(result.status).toBe("blocked");
+    expect(result.run.state).toBe("escalated");
+    expect(result.reason).toMatch(/max_auto_risk R1/);
+    expect(result.approval_request).toBeUndefined();
+    expect(harness.calls).not.toContain("runLocal");
+  });
+
   it("requires reported provider-or-model independence for R2", async () => {
     const harness = new Harness();
     harness.localResults = [{

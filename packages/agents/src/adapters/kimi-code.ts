@@ -111,6 +111,7 @@ export class KimiCodeAdapter extends BaseAgentAdapter {
 
   private readonly options: KimiCodeOptions;
   private cachedVersion: string | undefined;
+  private hasReportedRuntimeIdentity = false;
 
   constructor(options: KimiCodeOptions = {}) {
     super();
@@ -152,10 +153,11 @@ export class KimiCodeAdapter extends BaseAgentAdapter {
       ["provider", "list"],
       5_000,
     );
+    const providerOutput = providerProbe.stdout || providerProbe.stderr;
     if (
       providerProbe.exitCode !== 0
       || !hasAuthenticatedKimiProvider(
-        providerProbe.stdout || providerProbe.stderr,
+        providerOutput,
       )
     ) {
       return {
@@ -169,6 +171,11 @@ export class KimiCodeAdapter extends BaseAgentAdapter {
         last_checked_at: lastChecked,
       };
     }
+    this.hasReportedRuntimeIdentity = reportsRuntimeIdentity(
+      providerOutput,
+      this.provider(),
+      this.model(),
+    );
 
     return {
       state: "kimi_available",
@@ -188,7 +195,9 @@ export class KimiCodeAdapter extends BaseAgentAdapter {
       provider_id: this.provider(),
       model_id: this.model(),
       agent_profile: REVIEW_AGENT_PROFILE,
-      evidence_source: "configured",
+      evidence_source: this.hasReportedRuntimeIdentity
+        ? "reported"
+        : "configured",
     };
     if (binaryPath !== undefined) {
       identity.binary_path_sha256 = createHash("sha256")
@@ -706,6 +715,23 @@ function hasAuthenticatedKimiProvider(output: string): boolean {
     && /\bmodels=[1-9][0-9]*\b/i.test(line)
     && /\bsource=[a-z0-9._/-]+\b/i.test(line)
   ));
+}
+
+function reportsRuntimeIdentity(
+  output: string,
+  provider: string,
+  model: string,
+): boolean {
+  const providerReported = output.split(/\r?\n/).some((line) => {
+    const type = line.match(/\btype=([a-z0-9._/-]+)\b/i)?.[1];
+    return type?.toLowerCase() === provider.toLowerCase()
+      && /\bmodels=[1-9][0-9]*\b/i.test(line)
+      && /\bsource=[a-z0-9._/-]+\b/i.test(line);
+  });
+  const defaultModel = output.match(
+    /^\s*Default model:\s*(\S+)\s*$/im,
+  )?.[1];
+  return providerReported && defaultModel === model;
 }
 
 function positiveInteger(

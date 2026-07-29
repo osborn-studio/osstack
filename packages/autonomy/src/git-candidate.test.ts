@@ -99,4 +99,59 @@ describe("guarded staged candidate", () => {
       code: "ENOENT",
     });
   });
+
+  it("derives major dependency evidence from the exact staged manifests", async () => {
+    await writeFile(
+      join(directory, "package.json"),
+      `${JSON.stringify({
+        dependencies: {
+          alpha: "^1.2.0",
+          stable: "^4.1.0",
+        },
+      }, null, 2)}\n`,
+    );
+    execFileSync("git", ["add", "package.json"], { cwd: directory });
+    execFileSync(
+      "git",
+      [
+        "-c",
+        "user.name=test",
+        "-c",
+        "user.email=test@example.invalid",
+        "commit",
+        "-m",
+        "seed dependencies",
+      ],
+      { cwd: directory },
+    );
+    await writeFile(
+      join(directory, "package.json"),
+      `${JSON.stringify({
+        dependencies: {
+          alpha: "^2.0.0",
+          stable: "^4.2.0",
+        },
+      }, null, 2)}\n`,
+    );
+
+    const staged = await stageGuardedCandidate({
+      workspace_path: directory,
+      commands: ["pnpm test"],
+    });
+
+    expect(staged.dependency_changes).toEqual([
+      {
+        name: "alpha",
+        from: "^1.2.0",
+        to: "^2.0.0",
+        major: true,
+      },
+      {
+        name: "stable",
+        from: "^4.1.0",
+        to: "^4.2.0",
+        major: false,
+      },
+    ]);
+  });
 });

@@ -171,6 +171,7 @@ export interface GuardedDeliveryPorts {
 
 export interface GuardedDeliveryPolicy {
   policy_sha256: string;
+  max_auto_risk?: "R1" | "R2";
   protected_policy_paths: readonly string[];
   routing: unknown;
   budget: DeliveryBudgetType;
@@ -257,6 +258,7 @@ export class GuardedDeliveryEngine {
     this.policy = {
       ...policy,
       policy_sha256: Sha256.parse(policy.policy_sha256),
+      max_auto_risk: policy.max_auto_risk ?? "R2",
       budget: DeliveryBudget.parse(policy.budget),
     };
     if (
@@ -318,6 +320,16 @@ export class GuardedDeliveryEngine {
     }
     if (risk.level === "R3") {
       return await this.waitForApproval(run, risk, "preflight");
+    }
+    if (
+      risk.level === "R2"
+      && this.policy.max_auto_risk === "R1"
+    ) {
+      return await this.escalate(
+        run,
+        "R2 exceeds repository max_auto_risk R1",
+        { preflight_risk: risk },
+      );
     }
 
     run = await this.transition(run, "preparing", {
@@ -606,6 +618,16 @@ export class GuardedDeliveryEngine {
     }
     if (risk.level === "R3") {
       return await this.waitForApproval(run, risk, "post_diff");
+    }
+    if (
+      risk.level === "R2"
+      && this.policy.max_auto_risk === "R1"
+    ) {
+      return await this.escalate(
+        run,
+        "post-diff R2 exceeds repository max_auto_risk R1",
+        { post_diff_risk: risk },
+      );
     }
     run = await this.transition(run, "candidate_proof", {
       risk_level: risk.level,

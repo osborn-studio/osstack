@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, realpathSync } from "node:fs";
 import {
   cp,
   readFile,
@@ -54,13 +54,14 @@ afterEach(async () => {
 });
 
 describe("deliver CLI", () => {
-  it("accepts only Phase B autonomy modes", () => {
+  it("accepts legacy, guarded-local, and guarded-git autonomy modes", () => {
     expect(DeliverAutonomyMode.options).toEqual([
       "legacy",
       "guarded-local",
+      "guarded-git",
     ]);
     expect(DeliverAutonomyMode.safeParse("guarded-git").success).toBe(
-      false,
+      true,
     );
   });
 
@@ -354,6 +355,85 @@ describe("deliver CLI", () => {
     expect(remotePorts.createPullRequest).not.toHaveBeenCalled();
     expect(remotePorts.merge).not.toHaveBeenCalled();
     expect(remotePorts.deploy).not.toHaveBeenCalled();
+  });
+
+  it("dispatches guarded-git through the durable runtime and surfaces approval", async () => {
+    const workspace = await initGuardedFixture();
+    const builderInvoke = vi.fn(async function* (
+      task: AgentTask,
+    ): AsyncIterable<HermesEvent> {
+      yield doneEvent(task, "completed", "unexpected");
+    });
+    const startGuardedGit = vi.fn(async (_input: unknown) => ({
+      status: "needs_approval" as const,
+      run: {
+        autonomy_run_id: "run-auth",
+        state: "awaiting_approval" as const,
+        revision: 3,
+        context: {},
+      },
+      approval_request: {
+        approval_id: "approval:run-auth:preflight",
+        autonomy_run_id: "run-auth",
+        phase: "preflight" as const,
+        contract_sha256: "a".repeat(64),
+        diff_sha256: "0".repeat(64),
+        action_scope: ["build", "verify"],
+        risk: "R3" as const,
+        nonce: "nonce-auth",
+        requested_at: "2026-07-28T18:00:00.000Z",
+        expires_at: "2026-07-28T19:00:00.000Z",
+        request_sha256: "b".repeat(64),
+      },
+    }));
+
+    const exitCode = await handleDeliverCommand([
+      "Change src/auth/session.ts",
+      "--workspace",
+      workspace,
+      "--profile",
+      "mac-mini",
+      "--autonomy",
+      "guarded-git",
+      "--expected-path",
+      "src/auth/session.ts",
+      "--json",
+    ], {
+      ...createDeliverCommandDeps(),
+      adapters: () => guardedAdapters(builderInvoke),
+      startGuardedGit,
+    });
+
+    expect(exitCode).toBe(2);
+    expect(startGuardedGit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: "Change src/auth/session.ts",
+        workspacePath: realpathSync(workspace),
+        expectedPaths: ["src/auth/session.ts"],
+        requestedActions: [
+          "build",
+          "commit",
+          "merge",
+          "push",
+          "verify",
+        ],
+        verifyCommands: ["pnpm test"],
+        profileRouting: expect.objectContaining({
+          agentId: "claude-code",
+          verifierAgentIds: ["kimi-code"],
+        }),
+      }),
+    );
+    expect(builderInvoke).not.toHaveBeenCalled();
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      autonomy: "guarded-git",
+      autonomy_run_id: "run-auth",
+      state: "awaiting_approval",
+      status: "needs_approval",
+      approval_request: {
+        phase: "preflight",
+      },
+    });
   });
 
   it("blocks guarded-local before Builder invoke when verification cannot be detected", async () => {

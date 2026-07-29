@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
@@ -8,6 +9,7 @@ import {
   type AgentAdapter,
 } from "@osstack/agents";
 import type { GovernanceFinding } from "@osstack/governance";
+import type { GuardedDeliveryResult } from "@osstack/autonomy";
 import {
   enqueueTask,
   LoopEngine,
@@ -27,6 +29,7 @@ const GUARDED_LOCAL_COMMAND_TIMEOUT_MS = 600_000;
 export const DeliverAutonomyMode = z.enum([
   "legacy",
   "guarded-local",
+  "guarded-git",
 ]);
 export type DeliverAutonomyMode = z.infer<typeof DeliverAutonomyMode>;
 
@@ -94,6 +97,17 @@ export interface DeliverCommandDeps {
     state: LoopState,
   ) => Promise<unknown>;
   adapters?: () => AgentAdapter[];
+  startGuardedGit?: (input: {
+    prompt: string;
+    workspacePath: string;
+    taskId: string;
+    capability: string;
+    expectedPaths: string[];
+    requestedActions: string[];
+    verifyCommands: string[];
+    commandTimeoutMs: number;
+    profileRouting: LoopProfileRoutingResult;
+  }) => Promise<GuardedDeliveryResult>;
   remotePorts?: {
     push: () => Promise<unknown>;
     createPullRequest: () => Promise<unknown>;
@@ -134,6 +148,8 @@ Stages:
     "--role",
     "--reviewer",
     "--checker",
+    "--expected-path",
+    "--action",
   ]));
   if (prompt === undefined) {
     console.error("osstack: deliver requires a prompt");
@@ -147,12 +163,14 @@ Stages:
   );
   if (!autonomyResult.success) {
     console.error(
-      "osstack: --autonomy must be legacy or guarded-local",
+      "osstack: --autonomy must be legacy, guarded-local, or guarded-git",
     );
     return 1;
   }
   const autonomy = autonomyResult.data;
   const guardedLocal = autonomy === "guarded-local";
+  const guardedGit = autonomy === "guarded-git";
+  const guarded = guardedLocal || guardedGit;
   const stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
   const executeCommand = flagValue(args, "--execute");
   let agentId = flagValue(args, "--agent");
@@ -186,29 +204,29 @@ Stages:
     return 1;
   }
   const effectiveCommandTimeoutMs = commandTimeoutMs
-    ?? (guardedLocal ? GUARDED_LOCAL_COMMAND_TIMEOUT_MS : undefined);
+    ?? (guarded ? GUARDED_LOCAL_COMMAND_TIMEOUT_MS : undefined);
   const explicitVerifyCommands = flagValues(args, "--verify");
   const suggestedVerify = await suggestVerifyCommand(
     workspacePath,
-    { includeYarn: guardedLocal },
+    { includeYarn: guarded },
   );
-  const verifyCommands = guardedLocal
+  const verifyCommands = guarded
     && explicitVerifyCommands.length === 0
     && suggestedVerify !== undefined
     ? [suggestedVerify]
     : explicitVerifyCommands;
-  if (guardedLocal && verifyCommands.length === 0) {
+  if (guarded && verifyCommands.length === 0) {
     return deliverBlocked(
       args,
       "verify_profile_missing",
-      "guarded-local requires --verify or a detected project test command",
+      `${autonomy} requires --verify or a detected project test command`,
     );
   }
-  if (guardedLocal && !await isGitWorktree(workspacePath)) {
+  if (guarded && !await isGitWorktree(workspacePath)) {
     return deliverBlocked(
       args,
       "git_worktree_required",
-      "guarded-local requires a Git worktree",
+      `${autonomy} requires a Git worktree`,
     );
   }
   const requestedGovernanceMode = parseDeliverGovernanceMode(args);
@@ -216,7 +234,7 @@ Stages:
     console.error(`osstack: ${requestedGovernanceMode.message}`);
     return 1;
   }
-  const governanceMode = guardedLocal
+  const governanceMode = guarded
     ? "strict"
     : requestedGovernanceMode;
   const autoAgent = args.includes("--auto-agent");
@@ -224,10 +242,10 @@ Stages:
   const checkpoint = args.includes("--checkpoint") && !useWorktree
     ? await deps.createShadowCheckpoint(realpathSync(workspacePath))
     : undefined;
-  const adapters = guardedLocal || agentId !== undefined || autoAgent
+  const adapters = guarded || agentId !== undefined || autoAgent
     ? deps.adapters?.() ?? defaultAdapters()
     : undefined;
-  const profileRouting = guardedLocal
+  const profileRouting = guarded
     ? await resolveGuardedProfileRouting(
       args,
       agentId,
@@ -245,6 +263,65 @@ Stages:
   if (profileRouting !== undefined) {
     agentId = profileRouting.agentId;
     verifierAgentIds = profileRouting.verifierAgentIds;
+  }
+  if (guardedGit) {
+    if (deps.startGuardedGit === undefined || profileRouting === undefined) {
+      return deliverBlocked(
+        args,
+        "guarded_git_unavailable",
+        "guarded-git runtime is not configured",
+      );
+    }
+    const taskId = `task_${randomUUID().slice(0, 8)}`;
+    let guardedResult: GuardedDeliveryResult;
+    try {
+      guardedResult = await deps.startGuardedGit({
+        prompt,
+        workspacePath: realpathSync(workspacePath),
+        taskId,
+        capability,
+        expectedPaths: flagValues(args, "--expected-path"),
+        requestedActions:
+          flagValues(args, "--action").length === 0
+            ? ["build", "commit", "merge", "push", "verify"]
+            : flagValues(args, "--action"),
+        verifyCommands,
+        commandTimeoutMs: effectiveCommandTimeoutMs!,
+        profileRouting,
+      });
+    } catch (error) {
+      return deliverBlocked(
+        args,
+        "guarded_git_failed",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+    const summary = {
+      autonomy,
+      autonomy_run_id: guardedResult.run.autonomy_run_id,
+      state: guardedResult.run.state,
+      status: guardedResult.status,
+      profile: profileRouting.summary,
+      ...(guardedResult.approval_request === undefined
+        ? {}
+        : { approval_request: guardedResult.approval_request }),
+      ...(guardedResult.reason === undefined
+        ? {}
+        : { reason: guardedResult.reason }),
+      candidate_proof:
+        guardedResult.run.context.candidate_proof ?? null,
+      git_delivery:
+        guardedResult.run.context.git_delivery ?? null,
+      final_proof: guardedResult.run.context.final_proof ?? null,
+    };
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(summary, null, 2));
+    } else {
+      console.log(`autonomy_run_id=${summary.autonomy_run_id}`);
+      console.log(`state=${summary.state}`);
+      console.log(`status=${summary.status}`);
+    }
+    return guardedResult.status === "completed" ? 0 : 2;
   }
   const stages = [
     "intake",
@@ -267,7 +344,7 @@ Stages:
           ? { command_timeout_ms: effectiveCommandTimeoutMs }
           : {}),
         auto_agent: autoAgent,
-        ...(guardedLocal
+        ...(guarded
           ? {
               autonomy_mode: autonomy,
               profile_routing: profileRouting?.summary,
