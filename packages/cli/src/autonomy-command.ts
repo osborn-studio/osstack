@@ -12,7 +12,9 @@ import {
   listAutonomyRuns,
   listContractDecisions,
   listProductionFreezes,
+  recordRollbackDrill,
   recordContractDecision,
+  type RecordRollbackDrillInput,
 } from "@osstack/core";
 import {
   AgentCommandResult,
@@ -40,6 +42,9 @@ export interface AutonomyCommandDeps {
     decision?: ScopedApprovalDecision,
   ) => Promise<GuardedDeliveryResult>;
   health?: () => Promise<AutonomyHealthReport>;
+  drillRollback?: (
+    repoId: string,
+  ) => Promise<Omit<RecordRollbackDrillInput, "drill_id" | "repo_id">>;
   now?: () => Date;
   stdout?: (line: string) => void;
   stderr?: (line: string) => void;
@@ -391,6 +396,7 @@ export async function handleAutonomyCommand(
   osstack autonomy reject RUN_ID --decision FILE [--reason TEXT] [--json]
   osstack autonomy resume RUN_ID [--json]
   osstack autonomy health [--json]
+  osstack autonomy drill rollback --repo REPO_ID [--json]
   osstack autonomy freeze list [--repo ID] [--json]
   osstack autonomy freeze request REPO_ID [--json]
   osstack autonomy freeze clear REPO_ID --request FILE --decision FILE --reason TEXT [--json]
@@ -400,6 +406,105 @@ self-assertion is not accepted. Approval records authority only; resume executes
 Production freeze clear requires a current scoped request plus an externally
 signed Ed25519 decision. TTY or --actor self-assertion cannot clear production.`);
     return 0;
+  }
+
+  if (subcommand === "drill") {
+    if (args[1] !== "rollback") {
+      return failure(
+        deps,
+        args,
+        "bad_request",
+        "autonomy drill supports only rollback",
+      );
+    }
+    const repoId = flag(args, "--repo");
+    if (repoId === undefined || repoId.trim().length === 0) {
+      return failure(
+        deps,
+        args,
+        "bad_request",
+        "autonomy drill rollback requires --repo REPO_ID",
+      );
+    }
+    if (deps.drillRollback === undefined) {
+      return failure(
+        deps,
+        args,
+        "internal",
+        "controlled rollback drill executor is not configured",
+      );
+    }
+    let executed: Awaited<ReturnType<
+      NonNullable<AutonomyCommandDeps["drillRollback"]>
+    >>;
+    try {
+      executed = await deps.drillRollback(repoId);
+    } catch (error) {
+      return failure(
+        deps,
+        args,
+        "internal",
+        `rollback drill failed before evidence persistence: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+    const drillId =
+      `drill_${createHash("sha256")
+        .update(canonicalJson({ repo_id: repoId, ...executed }))
+        .digest("hex")
+        .slice(0, 24)}`;
+    let record: ReturnType<typeof recordRollbackDrill>;
+    try {
+      record = recordRollbackDrill(deps.db, deps.dbPath, {
+        drill_id: drillId,
+        repo_id: repoId,
+        ...executed,
+      });
+    } catch (error) {
+      return failure(
+        deps,
+        args,
+        "internal",
+        `rollback drill evidence could not be persisted: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+    const envelope = {
+      protocol_version: PROTOCOL_VERSION,
+      status: record.passed ? "ok" as const : "blocked" as const,
+      result: {
+        rollback_drill: record,
+      },
+      ...(
+        record.passed
+          ? {}
+          : {
+              error: {
+                code: "policy_denied" as const,
+                message:
+                  `controlled rollback drill failed: ${
+                    record.failure_reason ?? "unknown"
+                  }`,
+                retryable: false,
+              },
+            }
+      ),
+    };
+    output(
+      deps,
+      args,
+      envelope,
+      [
+        `drill_id=${record.drill_id}`,
+        `repo_id=${record.repo_id}`,
+        `target=${record.target}`,
+        `passed=${record.passed}`,
+        `deploy_script_digest_sha256=${record.deploy_script_digest_sha256}`,
+      ].join("\n"),
+    );
+    return record.passed ? 0 : 2;
   }
 
   if (subcommand === "health") {

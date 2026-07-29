@@ -171,7 +171,9 @@ deploy:
     allowed_paths: [src/**, test/**]
     forbidden_paths: [src/auth/**, .github/**]
     allowed_base_branches: [main]
-    allowed_environment: [DEPLOY_REGION]
+    allowed_environment:
+      - DEPLOY_REGION
+      - OSSTACK_ROLLBACK_DRILL_TARGET
     freeze_windows: []
 ```
 
@@ -183,6 +185,12 @@ Changing either policy file or any referenced deploy, verify, health, or
 rollback script is always RISK-R3. The external decision must bind the exact
 post-diff digest before commit, merge, or deployment.
 
+The production rollback and health scripts must recognize
+`OSSTACK_ROLLBACK_DRILL_TARGET=controlled-non-production` and route that
+invocation only to an isolated non-production target. The drill runner supplies
+an empty sandbox `HOME`, passes no deployment credential values, and refuses
+any other drill-target value.
+
 Validate the effective contract before production:
 
 ```bash
@@ -190,6 +198,36 @@ osstack config doctor
 osstack autonomy health --json
 git diff --check
 ```
+
+## Prove rollback readiness
+
+Register the accepted repository path in the machine registry:
+
+```bash
+osstack supervise register /absolute/path/to/accepted-base-worktree \
+  --repo-id OWNER/REPOSITORY \
+  --role app \
+  --registry "$OSSTACK_HOME/repos.json" \
+  --json
+```
+
+Run the controlled non-production rollback and post-rollback health check:
+
+```bash
+osstack autonomy drill rollback --repo OWNER/REPOSITORY --json
+```
+
+The command requires a clean worktree at the freshly fetched remote default
+branch, verifies that the registry ID matches the GitHub remote, binds every
+production deploy/verify/health/rollback script digest, and persists successful
+and failed attempts append-only in SQLite. It executes from a temporary copy of
+tracked files without `.git`, with an empty sandbox `HOME`, and removes that
+copy after evidence is captured. A successful record is valid for 30 days and
+only for the exact same production script-authority digest.
+
+Do not grant the drill script access to a production credential, native
+production login, or production target. If the script cannot honor the
+controlled marker, do not run the drill and do not activate production.
 
 ## Start one guarded deployment
 

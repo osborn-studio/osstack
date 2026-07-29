@@ -1176,6 +1176,52 @@ export const MIGRATIONS: readonly Migration[] = [
         ON autonomy_notification_outbox(autonomy_run_id, created_at);
     `,
   },
+  {
+    id: 20,
+    name: "autonomy_rollback_drills",
+    sql: `
+      CREATE TABLE autonomy_rollback_drills (
+        drill_id                         TEXT PRIMARY KEY,
+        repo_id                          TEXT NOT NULL,
+        target                           TEXT NOT NULL
+          CHECK (target = 'controlled_non_production'),
+        workspace_path                   TEXT NOT NULL,
+        deploy_script_digest_sha256      TEXT NOT NULL CHECK (
+          length(deploy_script_digest_sha256) = 64 AND
+          deploy_script_digest_sha256 NOT GLOB '*[^0-9a-f]*'
+        ),
+        rollback_evidence_json           TEXT NOT NULL,
+        post_rollback_health_json        TEXT,
+        passed                           INTEGER NOT NULL CHECK (passed IN (0,1)),
+        failure_reason                   TEXT CHECK (
+          failure_reason IS NULL OR failure_reason IN (
+            'rollback_failed','post_rollback_health_failed'
+          )
+        ),
+        started_at                       REAL NOT NULL,
+        completed_at                     REAL NOT NULL,
+        CHECK (completed_at >= started_at),
+        CHECK (
+          (passed = 1 AND failure_reason IS NULL
+            AND post_rollback_health_json IS NOT NULL)
+          OR
+          (passed = 0 AND failure_reason IS NOT NULL)
+        )
+      );
+      CREATE INDEX idx_autonomy_rollback_drills_repo
+        ON autonomy_rollback_drills(repo_id, completed_at DESC, drill_id);
+      CREATE TRIGGER autonomy_rollback_drills_no_update
+        BEFORE UPDATE ON autonomy_rollback_drills
+        BEGIN
+          SELECT RAISE(ABORT, 'autonomy rollback drills are append-only');
+        END;
+      CREATE TRIGGER autonomy_rollback_drills_no_delete
+        BEFORE DELETE ON autonomy_rollback_drills
+        BEGIN
+          SELECT RAISE(ABORT, 'autonomy rollback drills are append-only');
+        END;
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

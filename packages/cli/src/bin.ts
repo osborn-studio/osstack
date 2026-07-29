@@ -5,7 +5,7 @@ import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync as fsExistsSync, readFileSync, realpathSync, writeFileSync as fsWriteFileSync } from "node:fs";
 import { connect, type Socket } from "node:net";
-import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, copyFile, lstat, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import {
@@ -45,7 +45,22 @@ import {
   type ProofAudience,
 } from "@osstack/compliance";
 import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
-import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, type loadRepoConfig, PolicyProfile as PolicyProfileSchema, PIIRedactor, RepoConfig as RepoConfigSchema, upsertPitfallLesson, verifyPitfallLessons } from "@osstack/core";
+import {
+  getAgentScorecard,
+  getLatestSuccessfulRollbackDrill,
+  getRun,
+  listAgentScorecards,
+  listEventsForRun,
+  listPitfallLessons,
+  type loadRepoConfig,
+  PolicyProfile as PolicyProfileSchema,
+  PIIRedactor,
+  RepoConfig as RepoConfigSchema,
+  rollbackDrillEligibilityEvidence,
+  type RecordRollbackDrillInput,
+  upsertPitfallLesson,
+  verifyPitfallLessons,
+} from "@osstack/core";
 import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import {
   resolveLoopProfileRouting,
@@ -171,9 +186,12 @@ import {
 } from "./guarded-git-runtime.js";
 import {
   assertGuardedCandidateBase,
+  computeDeployScriptAuthority,
   loadPrivateRepoOverlay,
   mergeRepoPolicy,
+  runControlledRollbackDrill,
 } from "@osstack/autonomy";
+import { readRepoRegistry } from "@osstack/supervisor";
 
 const execFileAsync = promisify(execFile);
 
@@ -841,6 +859,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
           }),
           resume: (runId, decision) =>
             runtime.resume(runId, decision),
+          drillRollback: executeControlledRollbackDrill,
         });
       } catch (error) {
         console.error(
@@ -9835,6 +9854,182 @@ async function guardedPolicySnapshot(workspacePath: string): Promise<{
   };
 }
 
+async function executeControlledRollbackDrill(
+  repoId: string,
+): Promise<Omit<
+  RecordRollbackDrillInput,
+  "drill_id" | "repo_id"
+>> {
+  const registry = await readRepoRegistry(
+    join(osstackHome(), "repos.json"),
+  );
+  const entry = registry.find(
+    (candidate) =>
+      candidate.repo_id === repoId && candidate.enabled,
+  );
+  if (entry === undefined) {
+    throw new Error(
+      `enabled repository ${repoId} is not registered in $OSSTACK_HOME/repos.json`,
+    );
+  }
+  const workspacePath = realpathSync(entry.path);
+  const policy = await guardedPolicySnapshot(workspacePath);
+  const staging = policy.repoConfig.deploy?.staging;
+  const production = policy.repoConfig.deploy?.production;
+  if (
+    staging?.enabled !== true
+    || production?.enabled !== true
+  ) {
+    throw new Error(
+      "controlled rollback drill requires enabled staging and production policies",
+    );
+  }
+  if (
+    !production.allowed_environment.includes(
+      "OSSTACK_ROLLBACK_DRILL_TARGET",
+    )
+  ) {
+    throw new Error(
+      "production policy must allow OSSTACK_ROLLBACK_DRILL_TARGET for a controlled drill",
+    );
+  }
+  const remoteUrl = await guardedGitText(workspacePath, [
+    "remote",
+    "get-url",
+    policy.repoConfig.git.remote,
+  ]);
+  if (githubRepoId(remoteUrl) !== repoId) {
+    throw new Error(
+      "rollback drill registry id does not match the GitHub remote",
+    );
+  }
+  await assertGuardedCandidateBase({
+    workspace_path: workspacePath,
+    remote: policy.repoConfig.git.remote,
+    base: policy.repoConfig.default_branch,
+  });
+  const authority = await computeDeployScriptAuthority({
+    workspace_path: workspacePath,
+    policy: production,
+  });
+  const drillRoot = join(
+    osstackHome(),
+    "drills",
+    `drill_${randomUUID()}`,
+  );
+  const drillWorkspace = join(drillRoot, "workspace");
+  const sandboxHome = join(drillRoot, "home");
+  const sandboxTmp = join(drillRoot, "tmp");
+  await mkdir(sandboxHome, { recursive: true, mode: 0o700 });
+  await mkdir(sandboxTmp, { recursive: true, mode: 0o700 });
+  try {
+    await materializeTrackedDrillWorkspace(
+      workspacePath,
+      drillWorkspace,
+    );
+    const copiedAuthority = await computeDeployScriptAuthority({
+      workspace_path: drillWorkspace,
+      policy: production,
+    });
+    if (
+      copiedAuthority.digest_sha256 !== authority.digest_sha256
+    ) {
+      throw new Error(
+        "controlled drill workspace script authority does not match accepted base",
+      );
+    }
+    const startedAt = Date.now() / 1_000;
+    const result = await runControlledRollbackDrill({
+      workspace_path: drillWorkspace,
+      policy: production,
+      expected_script_digest_sha256: authority.digest_sha256,
+      host_environment: {
+        PATH: process.env["PATH"] ?? "/usr/bin:/bin",
+        HOME: sandboxHome,
+        ...(process.env["LANG"] === undefined
+          ? {}
+          : { LANG: process.env["LANG"] }),
+        TMPDIR: sandboxTmp,
+        OSSTACK_ROLLBACK_DRILL_TARGET:
+          "controlled-non-production",
+      },
+    });
+    return {
+      workspace_path: workspacePath,
+      deploy_script_digest_sha256:
+        result.deploy_script_digest_sha256,
+      rollback: result.rollback,
+      ...(result.post_rollback_health === undefined
+        ? {}
+        : {
+            post_rollback_health:
+              result.post_rollback_health,
+          }),
+      started_at: startedAt,
+      completed_at: Date.now() / 1_000,
+    };
+  } finally {
+    await rm(drillRoot, { recursive: true, force: true });
+  }
+}
+
+async function materializeTrackedDrillWorkspace(
+  sourceWorkspace: string,
+  targetWorkspace: string,
+): Promise<void> {
+  const { stdout } = await execFileAsync(
+    "git",
+    [
+      "-c",
+      "core.hooksPath=/dev/null",
+      "-C",
+      sourceWorkspace,
+      "ls-files",
+      "-z",
+    ],
+    {
+      timeout: 15_000,
+      maxBuffer: 64 * 1024 * 1024,
+      encoding: "utf8",
+      env: {
+        PATH: process.env["PATH"] ?? "/usr/bin:/bin",
+        HOME: process.env["HOME"],
+        GIT_TERMINAL_PROMPT: "0",
+      },
+    },
+  );
+  await mkdir(targetWorkspace, { recursive: true, mode: 0o700 });
+  for (const path of stdout.split("\0").filter((value) => value !== "")) {
+    if (
+      isAbsolute(path)
+      || path.includes("\0")
+      || path.split("/").some(
+        (segment) =>
+          segment === "" || segment === "." || segment === "..",
+      )
+    ) {
+      throw new Error(`invalid tracked rollback drill path: ${path}`);
+    }
+    const source = resolve(sourceWorkspace, path);
+    const target = resolve(targetWorkspace, path);
+    if (
+      relative(sourceWorkspace, source).startsWith("..")
+      || relative(targetWorkspace, target).startsWith("..")
+    ) {
+      throw new Error(`rollback drill path escapes workspace: ${path}`);
+    }
+    const metadata = await lstat(source);
+    if (!metadata.isFile() || metadata.isSymbolicLink()) {
+      throw new Error(
+        `rollback drill requires regular tracked files: ${path}`,
+      );
+    }
+    await mkdir(dirname(target), { recursive: true });
+    await copyFile(source, target);
+    await chmod(target, metadata.mode & 0o777);
+  }
+}
+
 async function writeGuardedGitProof(
   input: GuardedGitProofInput,
 ): Promise<{ manifest_path: string; manifest_sha256: string }> {
@@ -10050,6 +10245,23 @@ const startGuardedGitDelivery: NonNullable<
       "guarded-git remote must resolve to exactly one GitHub repository",
     );
   }
+  let rollbackDrill: ReturnType<
+    typeof rollbackDrillEligibilityEvidence
+  >;
+  if (
+    input.deployPolicy === "project"
+    && policy.repoConfig.deploy?.production !== undefined
+  ) {
+    const drillDbPath = await ensureLocalStateDbPath();
+    const drillDb = openDb({ path: drillDbPath });
+    try {
+      rollbackDrill = rollbackDrillEligibilityEvidence(
+        getLatestSuccessfulRollbackDrill(drillDb, repoId),
+      );
+    } finally {
+      drillDb.close();
+    }
+  }
   const autonomyRunId = `run_${randomUUID().slice(0, 12)}`;
   const evidenceRoot = join(
     osstackHome(),
@@ -10091,6 +10303,9 @@ const startGuardedGitDelivery: NonNullable<
           deploy: {
             base_branch: policy.repoConfig.default_branch,
             ...policy.repoConfig.deploy,
+            ...(rollbackDrill === undefined
+              ? {}
+              : { rollback_drill: rollbackDrill }),
           },
         }
       : {}),

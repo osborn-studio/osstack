@@ -10,7 +10,9 @@ import { join } from "node:path";
 import {
   createAutonomyRun,
   freezeProduction,
+  getLatestSuccessfulRollbackDrill,
   getProductionFreeze,
+  listRollbackDrills,
   listAutonomyTransitions,
   listContractDecisions,
   openDb,
@@ -248,6 +250,95 @@ function deps(
 }
 
 describe("autonomy CLI", () => {
+  it("runs and persists a controlled rollback drill for later production eligibility", async () => {
+    const exitCode = await handleAutonomyCommand(
+      ["drill", "rollback", "--repo", "owner/repo", "--json"],
+      {
+        ...deps(),
+        drillRollback: async () => ({
+          workspace_path: "/workspace/repo",
+          deploy_script_digest_sha256: "d".repeat(64),
+          rollback: {
+            argv: ["node", "scripts/rollback.mjs"],
+            exit_code: 0,
+            duration_ms: 10,
+            stdout_summary: "",
+            stderr_summary: "",
+            timed_out: false,
+          },
+          post_rollback_health: {
+            argv: ["node", "scripts/health.mjs"],
+            exit_code: 0,
+            duration_ms: 10,
+            stdout_summary: "",
+            stderr_summary: "",
+            timed_out: false,
+          },
+          started_at: 100,
+          completed_at: 101,
+        }),
+      },
+    );
+
+    expect(exitCode, `${stdout.join("\n")}\n${stderr.join("\n")}`).toBe(0);
+    const envelope = AgentCommandResult.parse(
+      JSON.parse(stdout.join("\n")),
+    );
+    expect(envelope.result?.["rollback_drill"]).toMatchObject({
+      repo_id: "owner/repo",
+      target: "controlled_non_production",
+      passed: true,
+    });
+    expect(
+      getLatestSuccessfulRollbackDrill(db, "owner/repo"),
+    ).toMatchObject({
+      deploy_script_digest_sha256: "d".repeat(64),
+      passed: true,
+    });
+  });
+
+  it("persists failed rollback drill evidence and blocks production eligibility", async () => {
+    const exitCode = await handleAutonomyCommand(
+      ["drill", "rollback", "--repo", "owner/repo", "--json"],
+      {
+        ...deps(),
+        drillRollback: async () => ({
+          workspace_path: "/workspace/repo",
+          deploy_script_digest_sha256: "d".repeat(64),
+          rollback: {
+            argv: ["node", "scripts/rollback.mjs"],
+            exit_code: 9,
+            duration_ms: 10,
+            stdout_summary: "",
+            stderr_summary: "controlled rollback failed",
+            timed_out: false,
+          },
+          started_at: 100,
+          completed_at: 101,
+        }),
+      },
+    );
+
+    expect(exitCode).toBe(2);
+    expect(
+      AgentCommandResult.parse(
+        JSON.parse(stdout.join("\n")),
+      ),
+    ).toMatchObject({
+      status: "blocked",
+      result: {
+        rollback_drill: {
+          passed: false,
+          failure_reason: "rollback_failed",
+        },
+      },
+    });
+    expect(
+      getLatestSuccessfulRollbackDrill(db, "owner/repo"),
+    ).toBeUndefined();
+    expect(listRollbackDrills(db, "owner/repo")).toHaveLength(1);
+  });
+
   it("returns structured degraded health while preserving local availability", async () => {
     const exitCode = await handleAutonomyCommand(
       ["health", "--json"],

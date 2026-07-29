@@ -263,6 +263,29 @@ export interface ProjectDeployInput {
   before_phase?: (phase: ProjectDeployPhase) => Promise<void>;
 }
 
+export interface ControlledRollbackDrillInput {
+  workspace_path: string;
+  policy: DeployTargetPolicy;
+  expected_script_digest_sha256: string;
+  host_environment: Readonly<Record<string, string | undefined>>;
+  max_output_bytes?: number;
+  signal?: AbortSignal;
+  before_phase?: (
+    phase: "rollback" | "post_rollback_health",
+  ) => Promise<void>;
+}
+
+export interface ControlledRollbackDrillResult {
+  deploy_script_digest_sha256: string;
+  rollback: DeployCommandEvidence;
+  post_rollback_health?: DeployCommandEvidence;
+  passed: boolean;
+  failure_reason:
+    | "rollback_failed"
+    | "post_rollback_health_failed"
+    | null;
+}
+
 type CommandName =
   | "command"
   | "verify_command"
@@ -730,4 +753,111 @@ export async function runProjectDeploy(
     return { ...result, outcome: "deploy_failed" };
   }
   return { ...result, outcome: "healthy" };
+}
+
+export async function runControlledRollbackDrill(
+  value: ControlledRollbackDrillInput,
+): Promise<ControlledRollbackDrillResult> {
+  const policy = DeployTargetPolicySchema.parse(value.policy);
+  if (
+    !policy.allowed_environment.includes(
+      "OSSTACK_ROLLBACK_DRILL_TARGET",
+    )
+  ) {
+    throw new Error(
+      "controlled rollback drill requires OSSTACK_ROLLBACK_DRILL_TARGET in allowed_environment",
+    );
+  }
+  if (
+    value.host_environment["OSSTACK_ROLLBACK_DRILL_TARGET"]
+    !== "controlled-non-production"
+  ) {
+    throw new Error(
+      "rollback drill target must be controlled-non-production",
+    );
+  }
+  const maxOutputBytes =
+    value.max_output_bytes ?? DEFAULT_MAX_OUTPUT_BYTES;
+  if (
+    !Number.isSafeInteger(maxOutputBytes)
+    || maxOutputBytes < 128
+    || maxOutputBytes > 1_048_576
+  ) {
+    throw new Error("max_output_bytes must be between 128 and 1048576");
+  }
+  const workspace = await realpath(value.workspace_path);
+  const input: ProjectDeployInput = {
+    target: "production",
+    workspace_path: workspace,
+    policy,
+    expected_script_digest_sha256:
+      value.expected_script_digest_sha256,
+    host_environment: value.host_environment,
+  };
+  await assertScriptAuthority(input);
+  const environment = buildDeployEnvironment(
+    policy,
+    value.host_environment,
+  );
+  const redactions = [
+    value.host_environment.HOME ?? "",
+    ...policy.allowed_environment.map(
+      (name) => value.host_environment[name] ?? "",
+    ),
+  ];
+  const executeBound = async (
+    argv: string[],
+    timeoutMs: number,
+  ): Promise<CommandRun> => {
+    await assertScriptAuthority(input);
+    return executeCommand({
+      argv,
+      cwd: workspace,
+      environment,
+      timeout_ms: timeoutMs,
+      max_output_bytes: maxOutputBytes,
+      redactions,
+      ...(value.signal === undefined
+        ? {}
+        : { signal: value.signal }),
+    });
+  };
+
+  await value.before_phase?.("rollback");
+  const rollback = await executeBound(
+    policy.rollback,
+    policy.timeout_ms,
+  );
+  if (
+    rollback.cancelled
+    || rollback.evidence.exit_code !== 0
+    || rollback.evidence.timed_out
+  ) {
+    return {
+      deploy_script_digest_sha256:
+        value.expected_script_digest_sha256,
+      rollback: rollback.evidence,
+      passed: false,
+      failure_reason: "rollback_failed",
+    };
+  }
+
+  await value.before_phase?.("post_rollback_health");
+  const health = await executeBound(
+    policy.health_check,
+    policy.health_timeout_ms,
+  );
+  const passed =
+    !health.cancelled
+    && health.evidence.exit_code === 0
+    && !health.evidence.timed_out;
+  return {
+    deploy_script_digest_sha256:
+      value.expected_script_digest_sha256,
+    rollback: rollback.evidence,
+    post_rollback_health: health.evidence,
+    passed,
+    failure_reason:
+      passed ? null : "post_rollback_health_failed",
+  };
 }

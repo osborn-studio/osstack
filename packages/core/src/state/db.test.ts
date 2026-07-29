@@ -53,8 +53,8 @@ describe("openDb + runMigrations", () => {
   });
 });
 
-describe("guarded autonomy persistence (migrations 18-19)", () => {
-  it("creates deploy-aware state, notification outbox, append-only trail, and writer index", () => {
+describe("guarded autonomy persistence (migrations 18-20)", () => {
+  it("creates deploy, notification, drill, append-only trail, and writer state", () => {
     const path = join(tmp, "state.db");
     const db = openDb({ path });
     try {
@@ -70,6 +70,9 @@ describe("guarded autonomy persistence (migrations 18-19)", () => {
              'autonomy_run_transitions',
              'autonomy_deploy_freezes',
              'autonomy_notification_outbox',
+             'autonomy_rollback_drills',
+             'autonomy_rollback_drills_no_update',
+             'autonomy_rollback_drills_no_delete',
              'idx_autonomy_run_projection_one_active_repo',
              'autonomy_run_transitions_no_update',
              'autonomy_run_transitions_no_delete'
@@ -85,6 +88,18 @@ describe("guarded autonomy persistence (migrations 18-19)", () => {
         {
           name: "autonomy_notification_outbox",
           type: "table",
+        },
+        {
+          name: "autonomy_rollback_drills",
+          type: "table",
+        },
+        {
+          name: "autonomy_rollback_drills_no_delete",
+          type: "trigger",
+        },
+        {
+          name: "autonomy_rollback_drills_no_update",
+          type: "trigger",
         },
         {
           name: "autonomy_run_projection",

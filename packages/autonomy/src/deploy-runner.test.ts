@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   computeDeployScriptAuthority,
   ProjectDeployResultSchema,
+  runControlledRollbackDrill,
   runProjectDeploy,
 } from "./deploy-runner.js";
 
@@ -337,6 +338,61 @@ writeFileSync("environment.json", JSON.stringify({
         },
       }),
     ).rejects.toThrow(/script.*digest|authority/i);
+    await expect(
+      access(join(workspace, "events.log"), constants.F_OK),
+    ).rejects.toThrow();
+  });
+
+  it("runs a digest-bound rollback drill only against the controlled non-production target", async () => {
+    const targetPolicy = policy({
+      allowed_environment: ["OSSTACK_ROLLBACK_DRILL_TARGET"],
+    });
+    const authority = await computeDeployScriptAuthority({
+      workspace_path: workspace,
+      policy: targetPolicy,
+    });
+    const result = await runControlledRollbackDrill({
+      workspace_path: workspace,
+      policy: targetPolicy,
+      expected_script_digest_sha256: authority.digest_sha256,
+      host_environment: {
+        PATH: process.env.PATH ?? "/usr/bin",
+        HOME: "/safe/home",
+        OSSTACK_ROLLBACK_DRILL_TARGET:
+          "controlled-non-production",
+        DEPLOY_TOKEN: "must-not-pass",
+      },
+    });
+
+    expect(result).toMatchObject({
+      deploy_script_digest_sha256: authority.digest_sha256,
+      rollback: { exit_code: 0 },
+      post_rollback_health: { exit_code: 0 },
+      passed: true,
+      failure_reason: null,
+    });
+    expect(await readFile(join(workspace, "events.log"), "utf8"))
+      .toBe("rollback\nhealth\n");
+  });
+
+  it("rejects an unmarked rollback drill target before executing a script", async () => {
+    const targetPolicy = policy();
+    const authority = await computeDeployScriptAuthority({
+      workspace_path: workspace,
+      policy: targetPolicy,
+    });
+
+    await expect(
+      runControlledRollbackDrill({
+        workspace_path: workspace,
+        policy: targetPolicy,
+        expected_script_digest_sha256: authority.digest_sha256,
+        host_environment: {
+          PATH: process.env.PATH ?? "/usr/bin",
+          HOME: "/safe/home",
+        },
+      }),
+    ).rejects.toThrow(/OSSTACK_ROLLBACK_DRILL_TARGET/);
     await expect(
       access(join(workspace, "events.log"), constants.F_OK),
     ).rejects.toThrow();
