@@ -6,3 +6,5 @@ export * from "./approval.js";
 export * from "./state-machine.js";
 export * from "./progress-budget.js";
 export * from "./engine.js";
+export * from "./core-persistence.js";
+export * from "./git-candidate.js";

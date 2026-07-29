@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 import {
   AUTONOMY_EMPTY_DIFF_SHA256,
-  type AutonomyRiskDecision,
+  AutonomyRiskDecision,
   type AutonomyRiskPhase,
   type AutonomyRunState,
-  type ScopedApprovalDecision,
-  type ScopedApprovalRequest,
+  ScopedApprovalDecision,
+  ScopedApprovalRequest,
 } from "@osstack/protocol";
 import type {
   GitHubDeliveryInput,
@@ -39,7 +39,7 @@ import {
 
 const Sha256 = z.string().regex(/^[a-f0-9]{64}$/);
 const GitCommitSha = z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/);
-const GitHubDeliveryEvidence = z
+export const GitHubDeliveryEvidence = z
   .object({
     pushedCommit: GitCommitSha,
     pr: z
@@ -105,27 +105,38 @@ export interface CommitInput {
   idempotency_key: string;
 }
 
-export interface GuardedDeliveryContext {
-  intent?: AutonomyTaskIntentType;
-  started_at?: string;
-  routing?: unknown;
-  budget?: DeliveryBudgetType;
-  preflight_risk?: AutonomyRiskDecision;
-  post_diff_risk?: AutonomyRiskDecision;
-  pending_approval_phase?: AutonomyRiskPhase;
-  approval_request?: ScopedApprovalRequest;
-  approval_decision?: ScopedApprovalDecision;
-  local_result?: LocalDeliveryResult;
-  builder_iterations?: number;
-  review_rounds?: number;
-  no_progress_rounds?: number;
-  candidate_proof?: ProofReference;
-  commit?: { commit: string };
-  git_delivery?: GitHubDeliveryResult;
-  final_proof?: ProofReference;
-  blocked_delivery_resume_state?: "pushing";
-  failure?: { operation: string; message: string };
-}
+export const GuardedDeliveryContextSchema = z
+  .object({
+    intent: AutonomyTaskIntent.optional(),
+    started_at: z.string().datetime().optional(),
+    routing: z.unknown().optional(),
+    budget: DeliveryBudget.optional(),
+    preflight_risk: AutonomyRiskDecision.optional(),
+    post_diff_risk: AutonomyRiskDecision.optional(),
+    pending_approval_phase: z.enum(["preflight", "post_diff"]).optional(),
+    approval_request: ScopedApprovalRequest.optional(),
+    approval_decision: ScopedApprovalDecision.optional(),
+    local_result: LocalDeliveryResult.optional(),
+    builder_iterations: z.number().int().nonnegative().optional(),
+    review_rounds: z.number().int().nonnegative().optional(),
+    no_progress_rounds: z.number().int().nonnegative().optional(),
+    candidate_proof: ProofReference.optional(),
+    commit: z.object({ commit: GitCommitSha }).strict().optional(),
+    git_delivery: GitHubDeliveryEvidence.optional(),
+    final_proof: ProofReference.optional(),
+    blocked_delivery_resume_state: z.literal("pushing").optional(),
+    failure: z
+      .object({
+        operation: z.string().min(1),
+        message: z.string().min(1),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+export type GuardedDeliveryContext = z.infer<
+  typeof GuardedDeliveryContextSchema
+>;
 
 export interface AutonomyRunProjection {
   autonomy_run_id: string;
