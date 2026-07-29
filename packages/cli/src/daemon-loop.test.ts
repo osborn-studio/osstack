@@ -49,6 +49,26 @@ describe("daemon loop RPC", () => {
         },
       }),
     });
+    const runtimeDb = guardedOpenDb({ path: daemon.dbPath });
+    createAutonomyRun(runtimeDb, daemon.dbPath, {
+      autonomy_run_id: "run-daemon-restart",
+      transition_id: "run-daemon-restart:queued",
+      task_id: "task-daemon-restart",
+      repo_id: "owner/repo",
+      workspace_path: join(tmp, "workspace"),
+      contract_sha256: "a".repeat(64),
+      routing: {},
+      budget: {
+        max_builder_iterations: 1,
+        max_review_rounds: 1,
+        max_wall_time_ms: 60_000,
+        max_no_progress_rounds: 1,
+      },
+      attempt: {},
+      event: { kind: "queued" },
+      occurred_at: 1,
+    });
+    runtimeDb.close();
 
     const response = await daemonRpc(
       daemon.socketPath,
@@ -132,6 +152,126 @@ describe("daemon loop RPC", () => {
     await closing;
     daemon = null;
     expect(closed).toBe(true);
+  });
+
+  it("limits guarded autonomy writers to two after persisting their queued runs", async () => {
+    const home = process.env["OSSTACK_HOME"];
+    if (home === undefined) throw new Error("OSSTACK_HOME is required");
+    await mkdir(home, { recursive: true });
+    const dbPath = join(home, "state.db");
+    const seedDb = guardedOpenDb({ path: dbPath });
+    for (const [index, repoId] of [
+      "repo-one",
+      "repo-two",
+      "repo-three",
+    ].entries()) {
+      const runId = `run-concurrency-${index + 1}`;
+      createAutonomyRun(seedDb, dbPath, {
+        autonomy_run_id: runId,
+        transition_id: `${runId}:queued`,
+        task_id: `task-concurrency-${index + 1}`,
+        repo_id: repoId,
+        workspace_path: join(tmp, repoId),
+        contract_sha256: String(index + 1).repeat(64),
+        routing: {},
+        budget: {
+          max_builder_iterations: 1,
+          max_review_rounds: 1,
+          max_wall_time_ms: 60_000,
+          max_no_progress_rounds: 1,
+        },
+        attempt: {},
+        event: { kind: "queued" },
+        occurred_at: index + 1,
+      });
+    }
+    seedDb.close();
+
+    const started: string[] = [];
+    const releases = new Map<string, () => void>();
+    let active = 0;
+    let maxActive = 0;
+    let twoStarted!: () => void;
+    let threeStarted!: () => void;
+    const firstTwo = new Promise<void>((resolve) => {
+      twoStarted = resolve;
+    });
+    const allThree = new Promise<void>((resolve) => {
+      threeStarted = resolve;
+    });
+    daemon = await startDaemon({
+      socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock`,
+      writeConcurrency: 2,
+      guardedAutonomyFactory: () => ({
+        resume: async (autonomyRunId) => {
+          started.push(autonomyRunId);
+          active += 1;
+          maxActive = Math.max(maxActive, active);
+          if (started.length === 2) twoStarted();
+          if (started.length === 3) threeStarted();
+          await new Promise<void>((resolve) => {
+            releases.set(autonomyRunId, resolve);
+          });
+          active -= 1;
+          return {
+            status: "completed",
+            run: {
+              autonomy_run_id: autonomyRunId,
+              state: "completed",
+              revision: 2,
+              context: {},
+            },
+          };
+        },
+      }),
+    });
+
+    await Promise.race([
+      firstTwo,
+      sleep(2_000).then(() => {
+        throw new Error("timed out waiting for two guarded writers");
+      }),
+    ]);
+    expect(started).toHaveLength(2);
+    expect(maxActive).toBe(2);
+    const health = await daemonRpc(daemon.socketPath, "health");
+    expect(health.result).toMatchObject({
+      concurrency: {
+        writes: { limit: 2, active: 2, queued: 1 },
+        reads: { limit: 8, active: 0, queued: 0 },
+        repository_write_queues: 3,
+      },
+    });
+    const inspectDb = guardedOpenDb({ path: dbPath });
+    expect(
+      inspectDb.prepare(
+        "SELECT COUNT(*) AS total FROM autonomy_run_projection WHERE state = 'queued'",
+      ).get(),
+    ).toEqual({ total: 3 });
+    inspectDb.close();
+    for (const runId of started) {
+      const repoId = runId.endsWith("1") ? "repo-one" : "repo-two";
+      await expect(readFile(
+        join(home, "locks", "repos", `${repoId}.lock`),
+        "utf-8",
+      )).resolves.toContain(runId);
+    }
+
+    releases.get(started[0]!)?.();
+    await Promise.race([
+      allThree,
+      sleep(2_000).then(() => {
+        throw new Error("timed out waiting for queued guarded writer");
+      }),
+    ]);
+    expect([...started.slice(0, 2)].sort()).toEqual([
+      "run-concurrency-1",
+      "run-concurrency-2",
+    ]);
+    expect(started[2]).toBe("run-concurrency-3");
+    expect(maxActive).toBe(2);
+
+    for (const release of releases.values()) release();
   });
 
   it("removes process signal handlers when closed", async () => {
