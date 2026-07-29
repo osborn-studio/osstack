@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   AutonomyTaskIntent,
   DeliveryBudget,
+  parseStagedPorcelainV1ZPaths,
   PostDiffInput,
 } from "./types.js";
 
@@ -49,6 +50,24 @@ describe("guarded autonomy package contracts", () => {
         base_commit_sha: "not-a-commit",
       }).success,
     ).toBe(false);
+  });
+
+  it("includes both sides of a rename and rejects post-stage worktree drift", () => {
+    expect(
+      parseStagedPorcelainV1ZPaths(
+        "R  docs/new.md\0docs/old.md\0",
+      ),
+    ).toEqual(["docs/new.md", "docs/old.md"]);
+
+    const input = {
+      base_commit_sha: "b".repeat(40),
+      changed_paths: ["src/file.ts"],
+      staged_diff_binary: "diff --git a/src/file.ts b/src/file.ts\n",
+      status_porcelain_v1_z: "AM src/file.ts\0",
+      commands: [],
+      dependency_changes: [],
+    };
+    expect(PostDiffInput.safeParse(input).success).toBe(false);
   });
 
   it("applies bounded delivery budget defaults", () => {

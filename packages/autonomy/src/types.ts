@@ -59,6 +59,50 @@ export const PostDiffInput = z
   })
   .strict()
   .superRefine((input, context) => {
+    let porcelainPaths: string[] = [];
+    try {
+      porcelainPaths = parseStagedPorcelainV1ZPaths(
+        input.status_porcelain_v1_z,
+      );
+    } catch (error) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["status_porcelain_v1_z"],
+        message:
+          error instanceof Error ? error.message : "invalid staged porcelain",
+      });
+    }
+    if (
+      JSON.stringify(input.changed_paths) !== JSON.stringify(porcelainPaths)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["changed_paths"],
+        message:
+          "changed_paths must exactly match status_porcelain_v1_z paths",
+      });
+    }
+    if (
+      porcelainPaths.length === 0 &&
+      input.staged_diff_binary.length > 0
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["staged_diff_binary"],
+        message: "staged diff must be empty when staged porcelain is empty",
+      });
+    }
+    if (
+      porcelainPaths.length > 0 &&
+      input.staged_diff_binary.length === 0
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["staged_diff_binary"],
+        message: "staged diff must not be empty when staged paths exist",
+      });
+    }
+
     const dependencyNames = input.dependency_changes.map((change) => change.name);
     if (new Set(dependencyNames).size !== dependencyNames.length) {
       context.addIssue({
@@ -77,6 +121,51 @@ export const PostDiffInput = z
     }
   });
 export type PostDiffInput = z.infer<typeof PostDiffInput>;
+
+/**
+ * Parse `git status --porcelain=v1 -z` after `git add -A`.
+ *
+ * Only fully staged, non-conflicted records are accepted. A non-space worktree
+ * status would mean the candidate changed again after staging and is therefore
+ * not the material represented by the cached diff.
+ */
+export function parseStagedPorcelainV1ZPaths(status: string): string[] {
+  if (status === "") return [];
+  if (!status.endsWith("\0")) {
+    throw new Error("staged porcelain must be NUL terminated");
+  }
+
+  const records = status.split("\0");
+  records.pop();
+  const paths: string[] = [];
+  for (let index = 0; index < records.length; index += 1) {
+    const record = records[index]!;
+    if (record.length < 4 || record[2] !== " ") {
+      throw new Error("invalid porcelain v1 -z record");
+    }
+    const code = record.slice(0, 2);
+    if (!/^[MADRC] $/.test(code)) {
+      throw new Error(
+        `porcelain record ${JSON.stringify(code)} is not fully staged`,
+      );
+    }
+    const path = record.slice(3);
+    if (path.length === 0) {
+      throw new Error("staged porcelain path must not be empty");
+    }
+    paths.push(path);
+
+    if (code[0] === "R" || code[0] === "C") {
+      index += 1;
+      const originalPath = records[index];
+      if (originalPath === undefined || originalPath.length === 0) {
+        throw new Error("rename/copy porcelain record is missing original path");
+      }
+      paths.push(originalPath);
+    }
+  }
+  return [...new Set(paths)].sort();
+}
 
 export const DeliveryBudget = z
   .object({
