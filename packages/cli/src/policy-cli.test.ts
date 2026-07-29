@@ -69,6 +69,30 @@ default_branch: main
 verify_command: "pnpm test"
 `;
 
+const VALID_REPO_V2 = `schema_version: 2
+product: example-web
+role: core_product
+default_branch: main
+verify_command: pnpm test
+autonomy:
+  max_auto_risk: R2
+  require_independent_evaluator: true
+  max_builder_iterations: 3
+  max_review_rounds: 3
+  max_wall_time_minutes: 90
+  max_no_progress_rounds: 2
+git:
+  remote: origin
+  branch_prefix: osstack
+  merge_strategy: squash
+  auto_merge: true
+  protected_branches: [main]
+verification:
+  quick: [pnpm lint, pnpm test -- --changed]
+  standard: [pnpm lint, pnpm typecheck, pnpm test, pnpm build]
+  release: [pnpm lint, pnpm typecheck, pnpm test, pnpm build]
+`;
+
 describe("policy check CLI", () => {
   it("reports legacy mode (exit 0) when no policy files are present", async () => {
     const code = await main(["policy", "check", "--repo-path", tmp]);
@@ -108,6 +132,20 @@ describe("policy check CLI", () => {
     const parsed = JSON.parse(logs.join("\n")) as { valid: boolean; policy_error?: string };
     expect(parsed.valid).toBe(false);
     expect(parsed.policy_error).toMatch(/\.osstack\/policy\.yaml/);
+  });
+
+  it("prints guarded autonomy, Git, and verification policy for a v2 repo", async () => {
+    await writePolicyFiles(VALID_POLICY, VALID_REPO_V2);
+    const code = await main(["policy", "check", "--repo-path", tmp]);
+    expect(code).toBe(0);
+    const output = logs.join("\n");
+    expect(output).toContain(
+      "autonomy: max_auto_risk=R2 require_independent_evaluator=true",
+    );
+    expect(output).toContain(
+      "git: remote=origin branch_prefix=osstack merge_strategy=squash auto_merge=true protected_branches=main",
+    );
+    expect(output).toContain("verification: quick=2 standard=4 release=4");
   });
 });
 

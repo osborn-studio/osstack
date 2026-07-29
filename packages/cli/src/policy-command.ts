@@ -77,6 +77,17 @@ async function policyCheck(args: string[]): Promise<number> {
       `repo: product=${repoConfig.product} role=${repoConfig.role} default_branch=${repoConfig.default_branch}`,
     );
     console.log(`  verify_command: ${repoConfig.verify_command}`);
+    if (repoConfig.schema_version === 2) {
+      console.log(
+        `  autonomy: max_auto_risk=${repoConfig.autonomy.max_auto_risk} require_independent_evaluator=${repoConfig.autonomy.require_independent_evaluator}`,
+      );
+      console.log(
+        `  git: remote=${repoConfig.git.remote} branch_prefix=${repoConfig.git.branch_prefix} merge_strategy=${repoConfig.git.merge_strategy} auto_merge=${repoConfig.git.auto_merge} protected_branches=${repoConfig.git.protected_branches.join(",")}`,
+      );
+      console.log(
+        `  verification: quick=${repoConfig.verification.quick.length} standard=${repoConfig.verification.standard.length} release=${repoConfig.verification.release.length}`,
+      );
+    }
   } else {
     console.log("repo: (no .osstack/repo.yaml)");
   }
