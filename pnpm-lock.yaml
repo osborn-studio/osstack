@@ -90,6 +90,9 @@ importers:
       '@osstack/agents':
         specifier: workspace:*
         version: link:../agents
+      '@osstack/autonomy':
+        specifier: workspace:*
+        version: link:../autonomy
       '@osstack/compliance':
         specifier: workspace:*
         version: link:../compliance

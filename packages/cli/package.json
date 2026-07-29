@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@osstack/agents": "workspace:*",
+    "@osstack/autonomy": "workspace:*",
     "@osstack/compliance": "workspace:*",
     "@osstack/config": "workspace:*",
     "@osstack/contracts": "workspace:*",

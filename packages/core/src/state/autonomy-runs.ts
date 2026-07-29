@@ -388,6 +388,36 @@ export function getAutonomyRun(
   return row === undefined ? undefined : projectionRow(row);
 }
 
+export function listAutonomyRuns(
+  db: Database.Database,
+  options: { repo_id?: string; limit?: number } = {},
+): AutonomyRunProjectionRow[] {
+  const limit = options.limit ?? 100;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 1_000) {
+    throw new Error("autonomy run list limit must be between 1 and 1000");
+  }
+  const rows =
+    options.repo_id === undefined
+      ? db
+          .prepare(
+            `SELECT *
+             FROM autonomy_run_projection
+             ORDER BY updated_at DESC, autonomy_run_id ASC
+             LIMIT ?`,
+          )
+          .all(limit)
+      : db
+          .prepare(
+            `SELECT *
+             FROM autonomy_run_projection
+             WHERE repo_id = ?
+             ORDER BY updated_at DESC, autonomy_run_id ASC
+             LIMIT ?`,
+          )
+          .all(options.repo_id, limit);
+  return (rows as unknown[]).map(projectionRow);
+}
+
 export function listResumableAutonomyRuns(
   db: Database.Database,
 ): AutonomyRunProjectionRow[] {

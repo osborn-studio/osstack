@@ -154,6 +154,7 @@ import {
   runLoopNeatFinalizer,
   type LoopNeatFinalizerResultV1,
 } from "./loop-neat-finalizer.js";
+import { handleAutonomyCommand } from "./autonomy-command.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -165,6 +166,59 @@ interface ArtifactVerificationOptions {
 
 function socketPath(): string {
   return resolveSocketPath();
+}
+
+async function readAutonomyApprovalTrustStore(
+  path: string,
+): Promise<ReadonlyMap<string, string>> {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(await readFile(path, "utf-8")) as unknown;
+  } catch (error) {
+    if (
+      isRecord(error)
+      && error["code"] === "ENOENT"
+    ) {
+      return new Map();
+    }
+    throw new Error(
+      `invalid autonomy approval trust store ${path}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+  if (
+    !isRecord(raw)
+    || raw["schema_version"] !== 1
+    || !Array.isArray(raw["keys"])
+    || Object.keys(raw).some(
+      (key) => key !== "schema_version" && key !== "keys",
+    )
+  ) {
+    throw new Error(
+      `invalid autonomy approval trust store ${path}: expected schema_version=1 and keys[]`,
+    );
+  }
+  const keys = new Map<string, string>();
+  for (const value of raw["keys"]) {
+    if (
+      !isRecord(value)
+      || Object.keys(value).some(
+        (key) => key !== "key_id" && key !== "public_key_pem",
+      )
+      || typeof value["key_id"] !== "string"
+      || value["key_id"].length === 0
+      || typeof value["public_key_pem"] !== "string"
+      || value["public_key_pem"].length === 0
+      || keys.has(value["key_id"])
+    ) {
+      throw new Error(
+        `invalid autonomy approval trust store ${path}: keys must be unique key_id/public_key_pem objects`,
+      );
+    }
+    keys.set(value["key_id"], value["public_key_pem"]);
+  }
+  return keys;
 }
 
 function resolveLanguage(value = process.env["OSSTACK_LANG"]): LoopReportLanguage {
@@ -195,6 +249,7 @@ function renderChineseMainHelp(): string {
   release status      输出面向上线交接的发布状态摘要
   release edgeone     输出 EdgeOne Knowledge Cloud 上线清单
   deliver <需求>      从一句需求进入 task queue -> loop -> report/scorecard/proof
+  autonomy            查看、批准或恢复 guarded Git autonomy 运行
   daily               只读组合简报：成熟度扫描 + GitHub PR/CI/release + 栈看板 + 增量对比
   daily schedule      通过 daemon 按间隔调度简报（只读，不受 observe 模式限制）
   daily sessions      列出 daemon 管理的每日简报会话
@@ -382,6 +437,9 @@ Project commands:
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
   deliver <prompt> [--verify CMD] [--auto-agent] [--worktree]
                       Product entry: task queue -> loop -> report/scorecard/proof
+  autonomy list|status|approve|reject|resume
+                      Inspect and control guarded Git autonomy runs. High-risk
+                      decisions require an externally signed decision file.
   daily [--registry P] [--workspace P] [--json]
                       Read-only portfolio brief: maturity scan + GitHub PR/CI/release
                       + stack board + delta since the last brief (golden path)
@@ -693,6 +751,32 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       args.slice(1),
       createDeliverCommandDeps(),
     );
+  }
+
+  if (cmd === "autonomy") {
+    const dbPath = await ensureLocalStateDbPath();
+    const db = openDb({ path: dbPath });
+    try {
+      try {
+        return await handleAutonomyCommand(args.slice(1), {
+          db,
+          dbPath,
+          trustedApprovalPublicKeys:
+            await readAutonomyApprovalTrustStore(
+              join(osstackHome(), "approval-trust.json"),
+            ),
+        });
+      } catch (error) {
+        console.error(
+          `osstack: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+        return 1;
+      }
+    } finally {
+      db.close();
+    }
   }
 
   if (cmd === "checkpoint") {

@@ -183,3 +183,17 @@ export function listContractDecisions(
     .all(contract_id) as unknown[];
   return rows.map((r) => ContractApprovalDecisionRow.parse(r));
 }
+
+export function getContractDecision(
+  db: Database.Database,
+  decisionId: string,
+): ContractApprovalDecisionRow | undefined {
+  const row = db
+    .prepare(
+      "SELECT * FROM contract_approval_decisions WHERE decision_id = ?",
+    )
+    .get(decisionId);
+  return row === undefined
+    ? undefined
+    : ContractApprovalDecisionRow.parse(row);
+}
