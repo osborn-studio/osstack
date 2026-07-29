@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@osstack/agents": "workspace:*",
+    "@osstack/autonomy": "workspace:*",
     "@osstack/core": "workspace:*",
     "@osstack/github": "workspace:*",
     "@osstack/governance": "workspace:*",

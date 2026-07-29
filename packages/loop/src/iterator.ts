@@ -1,3 +1,7 @@
+import {
+  evaluateProgressBudget,
+  type ProgressBudgetInput,
+} from "@osstack/autonomy";
 import type { IterationOutcome, Verdict } from "./types.js";
 
 export interface IterationDecisionInput {
@@ -8,6 +12,11 @@ export interface IterationDecisionInput {
   /** Minimum score required when verdict.pass is true. */
   minPassingScore?: number;
   escalateTo?: "human" | "hermes";
+  /**
+   * Opt-in guarded-autonomy progress evidence. Legacy loop callers omit it
+   * and preserve the existing iteration semantics.
+   */
+  guardedProgress?: ProgressBudgetInput;
 }
 
 export class Iterator {
@@ -36,6 +45,19 @@ export function evaluateIteration(input: IterationDecisionInput): IterationOutco
       action: "stop",
       reason: `Verifier passed with score ${formatScore(input.verdict.score)}.`,
     };
+  }
+
+  if (input.guardedProgress !== undefined) {
+    const progressBudget = evaluateProgressBudget(input.guardedProgress);
+    if (progressBudget.exhausted) {
+      return {
+        action: "escalate",
+        reason:
+          `Guarded autonomy budget ${progressBudget.limit} exhausted: ` +
+          progressBudget.reasons.join("; "),
+        escalate_to: escalateTo,
+      };
+    }
   }
 
   if (input.iteration >= input.maxIterations) {
