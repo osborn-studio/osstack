@@ -29,6 +29,20 @@ export function defaultAdapters(): AgentAdapter[] {
 export const AGENTS_VERSION = "0.0.0";
 ```
 
+## `@osstack/autonomy`
+
+```ts
+export * as protocol from "@osstack/protocol";
+export * from "./types.js";
+export * from "./risk.js";
+export * from "./approval.js";
+export * from "./state-machine.js";
+export * from "./progress-budget.js";
+export * from "./engine.js";
+export * from "./core-persistence.js";
+export * from "./git-candidate.js";
+```
+
 ## `@osstack/cli`
 
 _No `src/index.ts` (not a library entry point)._
@@ -110,6 +124,7 @@ export * from "./branch-scanner.js";
 export * from "./report.js";
 export * from "./stack.js";
 export * from "./portfolio-status.js";
+export * from "./delivery.js";
 ```
 
 ## `@osstack/governance`
@@ -193,6 +208,7 @@ export { Task, TaskSource } from "./task.js";
 export { RunOutcome, RunSummary } from "./run.js";
 export { EventEnvelope } from "./event.js";
 export { EvidenceKind, EvidenceRef } from "./evidence.js";
+export {
 export {
 export {
 export {
