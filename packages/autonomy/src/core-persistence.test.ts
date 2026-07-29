@@ -5,6 +5,7 @@ import { join } from "node:path";
 import {
   getAutonomyRun,
   listAutonomyTransitions,
+  listNotificationAttention,
   openDb,
 } from "@osstack/core";
 import {
@@ -20,6 +21,7 @@ import {
   GuardedDeliveryEngine,
   type GuardedDeliveryPolicy,
 } from "./engine.js";
+import { evaluateDeployEligibility } from "./deploy-policy.js";
 
 const NOW = new Date("2026-07-28T23:00:00.000Z");
 const POLICY_SHA = "a".repeat(64);
@@ -60,6 +62,24 @@ function policy(): GuardedDeliveryPolicy {
     approval_ttl_ms: 3_600_000,
     trusted_approval_public_keys: new Map(),
     consume_approval_nonce: () => false,
+    deploy: {
+      base_branch: "main",
+      staging: {
+        enabled: true,
+        command: ["node", "scripts/deploy.mjs"],
+        verify_command: ["node", "scripts/verify.mjs"],
+        health_check: ["node", "scripts/health.mjs"],
+        rollback: ["node", "scripts/rollback.mjs"],
+        timeout_ms: 5_000,
+        health_timeout_ms: 5_000,
+        allowed_change_types: ["docs"],
+        allowed_paths: ["docs/**"],
+        forbidden_paths: [],
+        allowed_base_branches: ["main"],
+        allowed_environment: [],
+        freeze_windows: [],
+      },
+    },
     git: {
       remote: "origin",
       base: "main",
@@ -72,6 +92,63 @@ function policy(): GuardedDeliveryPolicy {
 }
 
 describe("SQLite guarded delivery persistence", () => {
+  it("persists attention notification intent in the same state transition", async () => {
+    const store = new SqliteGuardedDeliveryStore({
+      db,
+      dbPath,
+      now: () => NOW,
+    });
+    await store.persist({
+      autonomy_run_id: "run-attention",
+      from_state: "queued",
+      to_state: "classifying",
+      context_patch: {
+        intent: {
+          autonomy_run_id: "run-attention",
+          task_id: "task-attention",
+          repo_id: "owner/example",
+          workspace_path: directory,
+          goal: "request guarded approval",
+          expected_paths: ["docs/guide.md"],
+          requested_actions: ["build"],
+          contract_sha256: CONTRACT_SHA,
+        },
+        routing: {
+          profile_name: "test",
+          reason: "test",
+          builder_agent_id: "claude-code",
+          evaluator_agent_id: "kimi-code",
+          builder_identity: {
+            provider_id: "anthropic",
+            model_id: "claude-current",
+            evidence_source: "reported",
+          },
+          evaluator_identity: {
+            provider_id: "kimi",
+            model_id: "kimi-code/k3",
+            evidence_source: "reported",
+          },
+          independent: true,
+          independence_reason: "different provider",
+        },
+        budget: policy().budget,
+      },
+    });
+    await store.persist({
+      autonomy_run_id: "run-attention",
+      from_state: "classifying",
+      to_state: "awaiting_approval",
+    });
+
+    expect(listNotificationAttention(db)).toEqual([
+      expect.objectContaining({
+        kind: "awaiting_approval",
+        autonomy_run_id: "run-attention",
+        status: "pending",
+      }),
+    ]);
+  });
+
   it("round-trips engine context and append-only transitions through completion", async () => {
     const store = new SqliteGuardedDeliveryStore({
       db,
@@ -131,18 +208,50 @@ describe("SQLite guarded delivery persistence", () => {
         pushedCommit: COMMIT_SHA,
         pr: {
           number: 42,
-          url: "https://github.com/gilosbornhello/osstack/pull/42",
+          url: "https://github.com/owner/example/pull/42",
           reused: false,
         },
         mergeCommit: MERGE_SHA,
         mergedAt: NOW.toISOString(),
       }),
+      prepareMergedWorkspace: async () => {},
+      resolveDeployScriptAuthority: async () => ({
+        schema_version: 1,
+        digest_sha256: "5".repeat(64),
+        files: [
+          {
+            path: "scripts/deploy.mjs",
+            sha256: "5".repeat(64),
+          },
+        ],
+      }),
+      evaluateDeploy: evaluateDeployEligibility,
+      deploy: async (input) => {
+        await input.before_phase?.("deploy");
+        await input.before_phase?.("verify");
+        await input.before_phase?.("health");
+        const evidence = {
+          argv: ["node", "scripts/fake.mjs"],
+          exit_code: 0,
+          duration_ms: 10,
+          stdout_summary: "",
+          stderr_summary: "",
+          timed_out: false,
+        };
+        return {
+          target: "staging",
+          deploy: evidence,
+          verify: evidence,
+          health: evidence,
+          outcome: "healthy",
+        };
+      },
     });
 
     const result = await engine.start({
       autonomy_run_id: "run-docs",
       task_id: "task-docs",
-      repo_id: "gilosbornhello/example",
+      repo_id: "owner/example",
       workspace_path: directory,
       goal: "update documentation",
       expected_paths: ["docs/guide.md"],
@@ -163,6 +272,7 @@ describe("SQLite guarded delivery persistence", () => {
             pushedCommit: COMMIT_SHA,
             pr: { number: 42 },
           },
+          deploy_outcome: "staging_healthy",
         },
       },
     });
@@ -172,11 +282,12 @@ describe("SQLite guarded delivery persistence", () => {
     const row = getAutonomyRun(db, "run-docs");
     expect(row).toMatchObject({
       task_id: "task-docs",
-      repo_id: "gilosbornhello/example",
+      repo_id: "owner/example",
       state: "completed",
       revision: result.run.revision,
       candidate_proof_json: expect.any(String),
       git_delivery_json: expect.any(String),
+      deploy_json: expect.any(String),
       final_proof_json: expect.any(String),
     });
     const transitions = listAutonomyTransitions(db, "run-docs");
@@ -194,6 +305,8 @@ describe("SQLite guarded delivery persistence", () => {
       "opening_pr",
       "waiting_ci",
       "merging",
+      "deploying_staging",
+      "verifying_staging",
       "final_proof",
       "completed",
     ]);

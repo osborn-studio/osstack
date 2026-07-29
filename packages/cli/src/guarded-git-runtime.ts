@@ -4,11 +4,16 @@ import { join } from "node:path";
 import {
   assertGuardedCandidateBase,
   assertGuardedCandidateHead,
+  assertGuardedMergedCandidate,
   commitGuardedCandidate,
+  computeDeployScriptAuthority,
   contractDecisionIdForApprovalNonce,
+  evaluateDeployEligibility,
   GuardedDeliveryEngine,
   GuardedDeliveryContextSchema,
+  GuardedDeployPolicySchema,
   LocalDeliveryResult,
+  runProjectDeploy,
   SqliteGuardedDeliveryStore,
   stageGuardedCandidate,
   type CandidateProofInput,
@@ -22,6 +27,8 @@ import {
   type AgentAdapter,
 } from "@osstack/agents";
 import {
+  freezeProduction,
+  getProductionFreeze,
   getContractDecision,
 } from "@osstack/core";
 import {
@@ -76,17 +83,24 @@ export const GuardedGitRouting = z
         ci_timeout_ms: z.number().int().min(1_000).max(86_400_000),
       })
       .strict(),
+    deploy: GuardedDeployPolicySchema.optional(),
   })
   .strict();
 export type GuardedGitRouting = z.infer<typeof GuardedGitRouting>;
 
-export interface GuardedGitProofInput {
-  stage: "candidate" | "final";
-  routing: GuardedGitRouting;
-  evidence: CandidateProofInput | FinalProofInput;
-  candidate_proof?: ProofReference;
-  git_delivery?: GitHubDeliveryResult;
-}
+export type GuardedGitProofInput =
+  | {
+      stage: "candidate";
+      routing: GuardedGitRouting;
+      evidence: CandidateProofInput;
+    }
+  | {
+      stage: "final";
+      routing: GuardedGitRouting;
+      evidence: FinalProofInput;
+      candidate_proof: ProofReference;
+      git_delivery: GitHubDeliveryResult;
+    };
 
 export interface GuardedGitRuntimeDeps {
   db: Parameters<typeof getContractDecision>[0];
@@ -116,6 +130,10 @@ export interface GuardedGitStartInput {
   contract_sha256: string;
   routing: GuardedGitRouting;
   budget: GuardedDeliveryPolicy["budget"];
+}
+
+export interface GuardedGitResumeOptions {
+  recoveryKind?: "restart";
 }
 
 export interface GuardedLocalEvidence {
@@ -185,6 +203,43 @@ function reviewPassed(
     && artifacts.every((artifact) => artifact.verdict === "approved");
 }
 
+function countIssueRule(
+  completed: LoopState["completed_tasks"][number],
+  rule: string,
+): number {
+  return (completed.verify_issues ?? []).filter(
+    (issue) => issue.rule === rule,
+  ).length;
+}
+
+function countUnauthorizedGovernanceFindings(value: unknown): number {
+  if (Array.isArray(value)) {
+    return value.reduce(
+      (sum, item) => sum + countUnauthorizedGovernanceFindings(item),
+      0,
+    );
+  }
+  if (
+    typeof value !== "object"
+    || value === null
+  ) {
+    return 0;
+  }
+  let count = 0;
+  for (const [key, child] of Object.entries(value)) {
+    if (
+      (key === "rule" || key === "rule_id" || key === "code")
+      && typeof child === "string"
+      && /unauthorized(?:_action)?/i.test(child)
+    ) {
+      count += 1;
+      continue;
+    }
+    count += countUnauthorizedGovernanceFindings(child);
+  }
+  return count;
+}
+
 function policyFromRouting(
   routing: GuardedGitRouting,
   budget: GuardedDeliveryPolicy["budget"],
@@ -203,6 +258,9 @@ function policyFromRouting(
         deps.db,
         contractDecisionIdForApprovalNonce(nonce),
       ) !== undefined,
+    ...(routing.deploy === undefined
+      ? {}
+      : { deploy: routing.deploy }),
     git: routing.git,
   };
 }
@@ -248,6 +306,7 @@ export class GuardedGitRuntime {
   async resume(
     autonomyRunId: string,
     decisionValue?: ScopedApprovalDecisionType,
+    options: GuardedGitResumeOptions = {},
   ): Promise<GuardedDeliveryResult> {
     const loaded = await this.store.load(autonomyRunId);
     if (loaded === undefined) {
@@ -268,7 +327,11 @@ export class GuardedGitRuntime {
     if (context.local_result === undefined) {
       await this.assertPolicy(routing, intent.workspace_path);
     }
-    return await this.engine(routing, budget).resume(
+    return await this.engine(
+      routing,
+      budget,
+      options.recoveryKind,
+    ).resume(
       autonomyRunId,
       decisionValue === undefined
         ? undefined
@@ -279,13 +342,26 @@ export class GuardedGitRuntime {
   private engine(
     routing: GuardedGitRouting,
     budget: GuardedDeliveryPolicy["budget"],
+    recoveryKind?: "restart",
   ): GuardedDeliveryEngine {
+    let recoveryRecorded = false;
     return new GuardedDeliveryEngine(
       policyFromRouting(routing, budget, this.deps),
       {
         now: this.deps.now ?? (() => new Date()),
         load: (runId) => this.store.load(runId),
-        persist: (event) => this.store.persist(event),
+        persist: async (event) => {
+          const recordRecovery =
+            recoveryKind !== undefined && !recoveryRecorded;
+          const persisted = await this.store.persist({
+            ...event,
+            ...(recordRecovery
+              ? { recovery: { kind: recoveryKind } }
+              : {}),
+          });
+          if (recordRecovery) recoveryRecorded = true;
+          return persisted;
+        },
         runLocal: ({ workspacePath }) =>
           this.runLocal(workspacePath, routing),
         writeCandidateProof: async (evidence) => {
@@ -332,6 +408,32 @@ export class GuardedGitRuntime {
         },
         deliverGit: (input) =>
           (this.deps.deliverGit ?? deliverToGitHub)(input),
+        prepareMergedWorkspace: async (input) => {
+          await this.assertPolicy(
+            routing,
+            input.workspace_path,
+          );
+          await assertGuardedMergedCandidate(input);
+        },
+        resolveDeployScriptAuthority:
+          computeDeployScriptAuthority,
+        evaluateDeploy: evaluateDeployEligibility,
+        deploy: runProjectDeploy,
+        isProductionFrozen: async (repoId) =>
+          getProductionFreeze(this.deps.db, repoId)?.frozen === 1,
+        freezeProduction: async (input) => {
+          const frozen = freezeProduction(
+            this.deps.db,
+            this.deps.dbPath,
+            input,
+          );
+          return {
+            repo_id: frozen.repo_id,
+            reason: frozen.reason,
+            source_run_id: frozen.source_run_id,
+            frozen_at: frozen.frozen_at,
+          };
+        },
       },
     );
   }
@@ -454,7 +556,20 @@ export class GuardedGitRuntime {
             && reviewsPass
             && governance?.blocking !== true
             ? 1
-            : 0,
+          : 0,
+      },
+      telemetry: {
+        reviewer_mutation_count: countIssueRule(
+          completed,
+          "verify.reviewer_mutation",
+        ),
+        unauthorized_action_count: countUnauthorizedGovernanceFindings(
+          governance?.evidence,
+        ),
+        adapter_unavailable_count: countIssueRule(
+          completed,
+          "verify.adapter_unavailable",
+        ),
       },
       builder_identity: runtimeIdentity(
         routing.profile.builder_identity,

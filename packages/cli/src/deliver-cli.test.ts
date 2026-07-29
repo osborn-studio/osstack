@@ -54,11 +54,12 @@ afterEach(async () => {
 });
 
 describe("deliver CLI", () => {
-  it("accepts legacy, guarded-local, and guarded-git autonomy modes", () => {
+  it("accepts all guarded autonomy modes", () => {
     expect(DeliverAutonomyMode.options).toEqual([
       "legacy",
       "guarded-local",
       "guarded-git",
+      "guarded-deploy",
     ]);
     expect(DeliverAutonomyMode.safeParse("guarded-git").success).toBe(
       true,
@@ -433,6 +434,84 @@ describe("deliver CLI", () => {
       approval_request: {
         phase: "preflight",
       },
+    });
+  });
+
+  it("requires project policy and dispatches guarded-deploy through the durable runtime", async () => {
+    const workspace = await initGuardedFixture();
+    const startGuardedGit = vi.fn(async (_input: unknown) => ({
+      status: "completed" as const,
+      run: {
+        autonomy_run_id: "run-deploy",
+        state: "completed" as const,
+        revision: 15,
+        context: {
+          deploy_outcome: "staging_healthy" as const,
+        },
+      },
+    }));
+    const builderInvoke = vi.fn(async function* (
+      task: AgentTask,
+    ): AsyncIterable<HermesEvent> {
+      yield doneEvent(task, "completed", "unexpected");
+    });
+
+    const missingPolicy = await handleDeliverCommand([
+      "Deploy allowlisted source",
+      "--workspace",
+      workspace,
+      "--profile",
+      "mac-mini",
+      "--autonomy",
+      "guarded-deploy",
+      "--json",
+    ], {
+      ...createDeliverCommandDeps(),
+      adapters: () => guardedAdapters(builderInvoke),
+      startGuardedGit,
+    });
+    expect(missingPolicy).toBe(2);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      error: { code: "deploy_policy_required" },
+    });
+    logs = [];
+
+    const exitCode = await handleDeliverCommand([
+      "Deploy allowlisted source",
+      "--workspace",
+      workspace,
+      "--profile",
+      "mac-mini",
+      "--autonomy",
+      "guarded-deploy",
+      "--deploy-policy",
+      "project",
+      "--json",
+    ], {
+      ...createDeliverCommandDeps(),
+      adapters: () => guardedAdapters(builderInvoke),
+      startGuardedGit,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(startGuardedGit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deployPolicy: "project",
+        requestedActions: [
+          "build",
+          "commit",
+          "deploy:production",
+          "deploy:staging",
+          "merge",
+          "push",
+          "verify",
+        ],
+      }),
+    );
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      autonomy: "guarded-deploy",
+      status: "completed",
+      deploy_outcome: "staging_healthy",
     });
   });
 

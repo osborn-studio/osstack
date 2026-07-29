@@ -1,4 +1,5 @@
 import {
+  createHash,
   generateKeyPairSync,
   sign,
 } from "node:crypto";
@@ -8,6 +9,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   createAutonomyRun,
+  freezeProduction,
+  getLatestSuccessfulRollbackDrill,
+  getProductionFreeze,
+  listRollbackDrills,
+  listAutonomyTransitions,
   listContractDecisions,
   openDb,
   transitionAutonomyRun,
@@ -18,6 +24,7 @@ import {
   type AutonomyRiskDecision,
   type ScopedApprovalDecision,
   type ScopedApprovalDecisionPayload,
+  type ScopedApprovalRequest,
 } from "@osstack/protocol";
 import {
   canonicalScopedApprovalDecisionPayload,
@@ -186,6 +193,39 @@ function signedDecision(
   };
 }
 
+function signedDecisionForRequest(
+  request: ScopedApprovalRequest,
+  overrides: Partial<ScopedApprovalDecisionPayload> = {},
+): ScopedApprovalDecision {
+  const payload: ScopedApprovalDecisionPayload = {
+    approval_id: request.approval_id,
+    request_sha256: request.request_sha256,
+    autonomy_run_id: request.autonomy_run_id,
+    phase: request.phase,
+    contract_sha256: request.contract_sha256,
+    diff_sha256: request.diff_sha256,
+    action_scope: request.action_scope,
+    decision: "approve",
+    nonce: request.nonce,
+    issued_at: NOW,
+    expires_at: request.expires_at,
+    decided_by: { type: "human", id: "owner" },
+    ...overrides,
+  };
+  return {
+    payload,
+    signature: {
+      algorithm: "Ed25519",
+      key_id: "owner-key",
+      value_base64url: sign(
+        null,
+        Buffer.from(canonicalScopedApprovalDecisionPayload(payload)),
+        privateKey,
+      ).toString("base64url"),
+    },
+  };
+}
+
 async function writeDecision(
   decision: unknown,
   name = "decision.json",
@@ -210,6 +250,162 @@ function deps(
 }
 
 describe("autonomy CLI", () => {
+  it("runs and persists a controlled rollback drill for later production eligibility", async () => {
+    const exitCode = await handleAutonomyCommand(
+      ["drill", "rollback", "--repo", "owner/repo", "--json"],
+      {
+        ...deps(),
+        drillRollback: async () => ({
+          workspace_path: "/workspace/repo",
+          deploy_script_digest_sha256: "d".repeat(64),
+          rollback: {
+            argv: ["node", "scripts/rollback.mjs"],
+            exit_code: 0,
+            duration_ms: 10,
+            stdout_summary: "",
+            stderr_summary: "",
+            timed_out: false,
+          },
+          post_rollback_health: {
+            argv: ["node", "scripts/health.mjs"],
+            exit_code: 0,
+            duration_ms: 10,
+            stdout_summary: "",
+            stderr_summary: "",
+            timed_out: false,
+          },
+          started_at: 100,
+          completed_at: 101,
+        }),
+      },
+    );
+
+    expect(exitCode, `${stdout.join("\n")}\n${stderr.join("\n")}`).toBe(0);
+    const envelope = AgentCommandResult.parse(
+      JSON.parse(stdout.join("\n")),
+    );
+    expect(envelope.result?.["rollback_drill"]).toMatchObject({
+      repo_id: "owner/repo",
+      target: "controlled_non_production",
+      passed: true,
+    });
+    expect(
+      getLatestSuccessfulRollbackDrill(db, "owner/repo"),
+    ).toMatchObject({
+      deploy_script_digest_sha256: "d".repeat(64),
+      passed: true,
+    });
+  });
+
+  it("persists failed rollback drill evidence and blocks production eligibility", async () => {
+    const exitCode = await handleAutonomyCommand(
+      ["drill", "rollback", "--repo", "owner/repo", "--json"],
+      {
+        ...deps(),
+        drillRollback: async () => ({
+          workspace_path: "/workspace/repo",
+          deploy_script_digest_sha256: "d".repeat(64),
+          rollback: {
+            argv: ["node", "scripts/rollback.mjs"],
+            exit_code: 9,
+            duration_ms: 10,
+            stdout_summary: "",
+            stderr_summary: "controlled rollback failed",
+            timed_out: false,
+          },
+          started_at: 100,
+          completed_at: 101,
+        }),
+      },
+    );
+
+    expect(exitCode).toBe(2);
+    expect(
+      AgentCommandResult.parse(
+        JSON.parse(stdout.join("\n")),
+      ),
+    ).toMatchObject({
+      status: "blocked",
+      result: {
+        rollback_drill: {
+          passed: false,
+          failure_reason: "rollback_failed",
+        },
+      },
+    });
+    expect(
+      getLatestSuccessfulRollbackDrill(db, "owner/repo"),
+    ).toBeUndefined();
+    expect(listRollbackDrills(db, "owner/repo")).toHaveLength(1);
+  });
+
+  it("returns structured degraded health while preserving local availability", async () => {
+    const exitCode = await handleAutonomyCommand(
+      ["health", "--json"],
+      {
+        ...deps(),
+        health: async () => ({
+          ok: false,
+          can_run_local: true,
+          can_merge: false,
+          can_push_deploy: false,
+          drain_required: false,
+          disk_free_bytes: 20 * 1024 ** 3,
+          checks: [{
+            id: "github_network",
+            status: "blocked",
+            scope: "external",
+            detail: "GitHub network probe failed",
+          }],
+          active_freezes: [],
+          resumable_runs: [],
+          proof_failures: [],
+          notification_outbox: {
+            pending_count: 0,
+            dead_letter_count: 0,
+            oldest_pending_at: null,
+            oldest_dead_letter_at: null,
+            oldest_attention_age_seconds: 0,
+          },
+          host_evidence: {
+            power_policy: {
+              mode: "process_assertion",
+              assertion_active: true,
+              recorded: true,
+            },
+            clock_monitor: {
+              mode: "monotonic-v1",
+              active: true,
+            },
+            retention: null,
+            launchd: {
+              required: true,
+              loaded: true,
+              print_sha256: "a".repeat(64),
+            },
+          },
+          external_blockers: ["github_network"],
+          write_blockers: [],
+          next_actions: [
+            "Wait for GitHub network recovery; local work may continue",
+          ],
+        }),
+      },
+    );
+
+    expect(exitCode).toBe(2);
+    const envelope = AgentCommandResult.parse(
+      JSON.parse(stdout.join("\n")),
+    );
+    expect(envelope.status).toBe("ok");
+    expect(envelope.result).toMatchObject({
+      health_status: "degraded",
+      can_run_local: true,
+      can_push_deploy: false,
+      external_blockers: ["github_network"],
+    });
+  });
+
   it("shows risk, digests, actions, proof, Git, and transition status", async () => {
     seedRun();
 
@@ -415,5 +611,222 @@ describe("autonomy CLI", () => {
     expect(envelope.result?.["runs"]).toEqual([
       expect.objectContaining({ repo_id: "owner/one" }),
     ]);
+  });
+
+  it("lists production freezes with source reason and transition history", async () => {
+    seedRun({ state: "completed", repoId: "owner/one" });
+    freezeProduction(db, dbPath, {
+      repo_id: "owner/one",
+      reason: "production health check failed",
+      source_run_id: "run-r3",
+      frozen_at: Date.parse("2026-07-28T17:30:00.000Z") / 1_000,
+    });
+
+    expect(await handleAutonomyCommand(
+      ["freeze", "list", "--repo", "owner/one", "--json"],
+      deps(),
+    )).toBe(0);
+    const envelope = AgentCommandResult.parse(
+      JSON.parse(stdout.join("\n")),
+    );
+    expect(envelope.result?.["freezes"]).toEqual([
+      expect.objectContaining({
+        repo_id: "owner/one",
+        frozen: true,
+        reason: "production health check failed",
+        source_run_id: "run-r3",
+        transitions: [
+          expect.objectContaining({
+            transition_id: "run-r3:queued",
+            to_state: "queued",
+          }),
+          expect.objectContaining({
+            transition_id: "run-r3:classifying",
+            to_state: "classifying",
+          }),
+          expect.objectContaining({
+            transition_id: "run-r3:completed",
+            to_state: "completed",
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  it("requires an externally signed freeze-clear decision and never resumes deployment", async () => {
+    seedRun({ state: "completed", repoId: "owner/one" });
+    freezeProduction(db, dbPath, {
+      repo_id: "owner/one",
+      reason: "rollback completed after production failure",
+      source_run_id: "run-r3",
+      frozen_at: Date.parse("2026-07-28T17:30:00.000Z") / 1_000,
+    });
+    let resumeCalls = 0;
+    const commandDeps = deps(async () => {
+      resumeCalls += 1;
+      throw new Error("freeze clear must not resume a run");
+    });
+
+    expect(await handleAutonomyCommand(
+      ["freeze", "request", "owner/one", "--json"],
+      commandDeps,
+    )).toBe(0);
+    const requestEnvelope = AgentCommandResult.parse(
+      JSON.parse(stdout.join("\n")),
+    );
+    const request = requestEnvelope.result?.[
+      "scoped_approval_request"
+    ] as ScopedApprovalRequest;
+    expect(request).toMatchObject({
+      autonomy_run_id: "run-r3",
+      phase: "post_diff",
+      contract_sha256: CONTRACT_SHA,
+      action_scope: ["freeze:clear:production"],
+      risk: "R3",
+    });
+    expect(request.diff_sha256).toMatch(/^[a-f0-9]{64}$/);
+    const requestPath = await writeDecision(request, "freeze-request.json");
+    const decision = signedDecisionForRequest(request);
+    const decisionPath = await writeDecision(
+      decision,
+      "freeze-decision.json",
+    );
+    stdout = [];
+
+    expect(await handleAutonomyCommand([
+      "freeze",
+      "clear",
+      "owner/one",
+      "--request",
+      requestPath,
+      "--decision",
+      decisionPath,
+      "--reason",
+      "Rollback verified and incident closed",
+      "--json",
+    ], commandDeps), stdout.join("\n")).toBe(0);
+    expect(resumeCalls).toBe(0);
+    expect(getProductionFreeze(db, "owner/one")).toMatchObject({
+      frozen: 0,
+      clear_reason: "Rollback verified and incident closed",
+      cleared_by_type: "human",
+      cleared_by_id: "owner",
+      clear_key_id: "owner-key",
+      clear_decision_sha256: createHash("sha256")
+        .update(JSON.stringify(decision))
+        .digest("hex"),
+    });
+    expect(listAutonomyTransitions(db, "run-r3")).toHaveLength(3);
+
+    stdout = [];
+    expect(await handleAutonomyCommand([
+      "freeze",
+      "clear",
+      "owner/one",
+      "--request",
+      requestPath,
+      "--decision",
+      decisionPath,
+      "--reason",
+      "Rollback verified and incident closed",
+      "--json",
+    ], commandDeps)).toBe(0);
+    expect(stdout.join("\n")).toContain("\"reused\": true");
+    expect(resumeCalls).toBe(0);
+  });
+
+  it("rejects self-asserted, agent, stale, and incomplete freeze-clear authority", async () => {
+    seedRun({ state: "completed", repoId: "owner/one" });
+    freezeProduction(db, dbPath, {
+      repo_id: "owner/one",
+      reason: "production health check failed",
+      source_run_id: "run-r3",
+      frozen_at: Date.parse("2026-07-28T17:30:00.000Z") / 1_000,
+    });
+    expect(await handleAutonomyCommand(
+      ["freeze", "request", "owner/one", "--json"],
+      deps(),
+    )).toBe(0);
+    const request = AgentCommandResult.parse(
+      JSON.parse(stdout.join("\n")),
+    ).result?.["scoped_approval_request"] as ScopedApprovalRequest;
+    const requestPath = await writeDecision(request, "freeze-request.json");
+    const decisionPath = await writeDecision(
+      signedDecisionForRequest(request),
+      "freeze-decision.json",
+    );
+
+    stdout = [];
+    expect(await handleAutonomyCommand([
+      "freeze",
+      "clear",
+      "owner/one",
+      "--actor",
+      "human:owner",
+      "--request",
+      requestPath,
+      "--decision",
+      decisionPath,
+      "--reason",
+      "incident closed",
+      "--json",
+    ], deps())).toBe(2);
+    expect(await handleAutonomyCommand([
+      "freeze",
+      "clear",
+      "owner/one",
+      "--request",
+      requestPath,
+      "--decision",
+      decisionPath,
+      "--reason",
+      "",
+      "--json",
+    ], deps())).toBe(1);
+
+    const agentDecision = signedDecisionForRequest(request) as unknown as {
+      payload: Record<string, unknown>;
+      signature: unknown;
+    };
+    agentDecision.payload["decided_by"] = {
+      type: "agent",
+      id: "builder",
+    };
+    const agentPath = await writeDecision(
+      agentDecision,
+      "freeze-agent-decision.json",
+    );
+    expect(await handleAutonomyCommand([
+      "freeze",
+      "clear",
+      "owner/one",
+      "--request",
+      requestPath,
+      "--decision",
+      agentPath,
+      "--reason",
+      "incident closed",
+      "--json",
+    ], deps())).not.toBe(0);
+
+    freezeProduction(db, dbPath, {
+      repo_id: "owner/one",
+      reason: "a later independent production failure",
+      source_run_id: "run-r3",
+      frozen_at: Date.parse("2026-07-28T17:45:00.000Z") / 1_000,
+    });
+    expect(await handleAutonomyCommand([
+      "freeze",
+      "clear",
+      "owner/one",
+      "--request",
+      requestPath,
+      "--decision",
+      decisionPath,
+      "--reason",
+      "incident closed",
+      "--json",
+    ], deps())).toBe(2);
+    expect(getProductionFreeze(db, "owner/one")?.frozen).toBe(1);
   });
 });

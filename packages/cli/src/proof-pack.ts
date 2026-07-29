@@ -36,6 +36,12 @@ export interface ProofStageInput {
   risk_evidence?: unknown;
   approval_evidence?: unknown;
   git_delivery_evidence?: unknown;
+  deploy_eligibility_evidence?: unknown;
+  deploy_script_authority_evidence?: unknown;
+  deploy_staging_evidence?: unknown;
+  deploy_production_evidence?: unknown;
+  rollback_evidence?: unknown;
+  production_freeze_evidence?: unknown;
 }
 
 export interface ProofStageManifestMetadata {
@@ -55,6 +61,18 @@ export function createProofStageMetadata(
     }
     if (input.git_delivery_evidence !== undefined) {
       throw new Error("candidate proof must not claim Git delivery evidence");
+    }
+    if (
+      input.deploy_eligibility_evidence !== undefined
+      || input.deploy_script_authority_evidence !== undefined
+      || input.deploy_staging_evidence !== undefined
+      || input.deploy_production_evidence !== undefined
+      || input.rollback_evidence !== undefined
+      || input.production_freeze_evidence !== undefined
+    ) {
+      throw new Error(
+        "candidate proof must not claim post-merge deploy evidence",
+      );
     }
     return { proof_stage: "candidate" };
   }
@@ -119,6 +137,36 @@ export function createProofStageArtifacts(
     artifacts,
     "git-delivery.json",
     input.git_delivery_evidence,
+  );
+  pushJsonEvidenceArtifact(
+    artifacts,
+    "deploy-eligibility.json",
+    input.deploy_eligibility_evidence,
+  );
+  pushJsonEvidenceArtifact(
+    artifacts,
+    "deploy-script-authority.json",
+    input.deploy_script_authority_evidence,
+  );
+  pushJsonEvidenceArtifact(
+    artifacts,
+    "deploy-staging.json",
+    input.deploy_staging_evidence,
+  );
+  pushJsonEvidenceArtifact(
+    artifacts,
+    "deploy-production.json",
+    input.deploy_production_evidence,
+  );
+  pushJsonEvidenceArtifact(
+    artifacts,
+    "rollback.json",
+    input.rollback_evidence,
+  );
+  pushJsonEvidenceArtifact(
+    artifacts,
+    "production-freeze.json",
+    input.production_freeze_evidence,
   );
   return artifacts;
 }

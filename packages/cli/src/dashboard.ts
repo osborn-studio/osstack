@@ -4,7 +4,19 @@ import { dirname, join } from "node:path";
 import type { AddressInfo } from "node:net";
 import type Database from "better-sqlite3";
 import type { KanbanRepository, CardStatus, CostTier } from "@osstack/core";
-import { getBoard, listAgentScorecards, listPitfallLessons, countEvents, countPendingTasks, type AgentScorecard } from "@osstack/core";
+import {
+  countEvents,
+  countPendingTasks,
+  getBoard,
+  listAgentScorecards,
+  listPitfallLessons,
+  listProductionFreezes,
+  type AgentScorecard,
+} from "@osstack/core";
+import {
+  createAutonomyReliabilityReport,
+  type AutonomyReliabilityReport,
+} from "./autonomy-scorecard.js";
 
 export interface DashboardAdapter {
   id: string;
@@ -93,6 +105,17 @@ export interface DashboardSnapshot {
       family: string;
       symptom: string;
       verified_count: number;
+    }>;
+  };
+  autonomy: {
+    reliability: AutonomyReliabilityReport;
+    deploy_freezes: Array<{
+      repo_id: string;
+      target: "production";
+      frozen: true;
+      reason: string;
+      source_run_id: string;
+      frozen_at: number;
     }>;
   };
   recent_runs: Array<{
@@ -218,6 +241,13 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
   const releaseReadinessBlockers = readReleaseReadinessBlockers(join(workspacePath, "release-readiness.md"));
   const lessons = listPitfallLessons(opts.db, { limit: 5 });
   const lessonCount = countActivePitfallLessons(opts.db);
+  const deployFreezes = listProductionFreezes(
+    opts.db,
+    { active_only: true },
+  );
+  const autonomyReliability = createAutonomyReliabilityReport(opts.db, {
+    now: () => new Date(generatedAt * 1_000),
+  });
 
   return {
     dashboard: {
@@ -285,6 +315,17 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
         family: lesson.family,
         symptom: lesson.symptom,
         verified_count: lesson.verified_count,
+      })),
+    },
+    autonomy: {
+      reliability: autonomyReliability,
+      deploy_freezes: deployFreezes.map((freeze) => ({
+        repo_id: freeze.repo_id,
+        target: freeze.target,
+        frozen: true,
+        reason: freeze.reason,
+        source_run_id: freeze.source_run_id,
+        frozen_at: freeze.frozen_at,
       })),
     },
     recent_runs: recentRuns,

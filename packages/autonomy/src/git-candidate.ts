@@ -32,6 +32,13 @@ export interface AssertGuardedCandidateBaseInput {
   base: string;
 }
 
+export interface AssertGuardedMergedCandidateInput {
+  workspace_path: string;
+  remote: string;
+  base: string;
+  expected_merge_commit_sha: string;
+}
+
 function digest(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -150,6 +157,63 @@ export async function assertGuardedCandidateHead(
   if (await cleanStatus(workspacePath) !== "") {
     throw new Error(
       "guarded Builder requires a clean base worktree",
+    );
+  }
+}
+
+export async function assertGuardedMergedCandidate(
+  input: AssertGuardedMergedCandidateInput,
+): Promise<void> {
+  if (!GitCommitSha.test(input.expected_merge_commit_sha)) {
+    throw new Error("expected guarded merge is not a full commit SHA");
+  }
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(input.remote)) {
+    throw new Error("guarded candidate remote name is invalid");
+  }
+  await git(input.workspace_path, [
+    "check-ref-format",
+    "--branch",
+    input.base,
+  ]);
+  if (await cleanStatus(input.workspace_path) !== "") {
+    throw new Error(
+      "post-merge deployment requires a clean candidate worktree",
+    );
+  }
+  await git(input.workspace_path, [
+    "fetch",
+    "--no-tags",
+    "--no-recurse-submodules",
+    input.remote,
+    `refs/heads/${input.base}`,
+  ]);
+  const fetchedMerge = (
+    await git(input.workspace_path, [
+      "rev-parse",
+      "--verify",
+      "FETCH_HEAD^{commit}",
+    ])
+  ).trim();
+  if (fetchedMerge !== input.expected_merge_commit_sha) {
+    throw new Error(
+      "fetched deployment base does not match recorded merge commit",
+    );
+  }
+  const [candidateTree, mergeTree] = await Promise.all([
+    git(input.workspace_path, ["rev-parse", "HEAD^{tree}"]),
+    git(input.workspace_path, [
+      "rev-parse",
+      `${input.expected_merge_commit_sha}^{tree}`,
+    ]),
+  ]);
+  if (candidateTree.trim() !== mergeTree.trim()) {
+    throw new Error(
+      "local deployment tree does not match the recorded merged tree",
+    );
+  }
+  if (await cleanStatus(input.workspace_path) !== "") {
+    throw new Error(
+      "candidate worktree changed during merged-tree verification",
     );
   }
 }

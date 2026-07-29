@@ -183,6 +183,48 @@ describe("RepoConfig schema", () => {
     expect(RepoConfig.safeParse(targetExtra).success).toBe(false);
   });
 
+  it("accepts IANA deployment timezones and rejects unknown zones", () => {
+    expect(
+      RepoConfig.safeParse(
+        v2RepoConfig({
+          deploy: {
+            production: {
+              ...deployTarget(),
+              freeze_windows: [
+                {
+                  timezone: "America/Los_Angeles",
+                  days: [1],
+                  start: "23:00",
+                  end: "02:00",
+                },
+              ],
+            },
+          },
+        }),
+      ).success,
+    ).toBe(true);
+
+    expect(
+      RepoConfig.safeParse(
+        v2RepoConfig({
+          deploy: {
+            production: {
+              ...deployTarget(),
+              freeze_windows: [
+                {
+                  timezone: "Mars/Olympus_Mons",
+                  days: [1],
+                  start: "23:00",
+                  end: "02:00",
+                },
+              ],
+            },
+          },
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
   it("allows only R1 or R2 as max_auto_risk", () => {
     for (const level of ["R1", "R2"]) {
       expect(
@@ -223,6 +265,39 @@ describe("RepoConfig schema", () => {
           staging: {
             ...deployTarget(),
             command: ["deploy", "--password=not-a-real-password"],
+          },
+        },
+      },
+    ],
+    [
+      "split deploy secret flag",
+      {
+        deploy: {
+          staging: {
+            ...deployTarget(),
+            command: ["deploy", "--token", "not-a-real-token"],
+          },
+        },
+      },
+    ],
+    [
+      "notification environment",
+      {
+        deploy: {
+          staging: {
+            ...deployTarget(),
+            allowed_environment: ["TELEGRAM_BOT_TOKEN"],
+          },
+        },
+      },
+    ],
+    [
+      "absolute deploy path",
+      {
+        deploy: {
+          staging: {
+            ...deployTarget(),
+            command: ["node", "--config=/tmp/deploy.json"],
           },
         },
       },
@@ -339,6 +414,7 @@ function deployTarget() {
     allowed_paths: ["src/**"],
     forbidden_paths: ["src/secrets/**"],
     allowed_base_branches: ["main"],
+    allowed_environment: ["DEPLOY_REGION", "DEPLOY_TOKEN"],
     freeze_windows: [],
   };
 }

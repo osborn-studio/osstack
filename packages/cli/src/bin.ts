@@ -5,9 +5,16 @@ import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync as fsExistsSync, readFileSync, realpathSync, writeFileSync as fsWriteFileSync } from "node:fs";
 import { connect, type Socket } from "node:net";
-import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
-import { assertDbAccessAllowed, assertServeAllowed, ControlPlaneGuardError, defaultOsstackHome } from "./control-plane-guard.js";
+import { chmod, copyFile, lstat, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
+import {
+  assertDbAccessAllowed,
+  assertServeAllowed,
+  ControlPlaneGuardError,
+  defaultOsstackHome,
+  loadRoleFile,
+} from "./control-plane-guard.js";
 import {
   createAgentRuntimeEvidence,
   createPolicyDecisionEvidence,
@@ -38,7 +45,22 @@ import {
   type ProofAudience,
 } from "@osstack/compliance";
 import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
-import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, type loadRepoConfig, PolicyProfile as PolicyProfileSchema, PIIRedactor, RepoConfig as RepoConfigSchema, upsertPitfallLesson, verifyPitfallLessons } from "@osstack/core";
+import {
+  getAgentScorecard,
+  getLatestSuccessfulRollbackDrill,
+  getRun,
+  listAgentScorecards,
+  listEventsForRun,
+  listPitfallLessons,
+  type loadRepoConfig,
+  PolicyProfile as PolicyProfileSchema,
+  PIIRedactor,
+  RepoConfig as RepoConfigSchema,
+  rollbackDrillEligibilityEvidence,
+  type RecordRollbackDrillInput,
+  upsertPitfallLesson,
+  verifyPitfallLessons,
+} from "@osstack/core";
 import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import {
   resolveLoopProfileRouting,
@@ -156,12 +178,20 @@ import {
   type LoopNeatFinalizerResultV1,
 } from "./loop-neat-finalizer.js";
 import { handleAutonomyCommand } from "./autonomy-command.js";
+import { runAutonomyHealth } from "./autonomy-health.js";
 import {
   GuardedGitRuntime,
   GuardedGitRouting,
   type GuardedGitProofInput,
 } from "./guarded-git-runtime.js";
-import { assertGuardedCandidateBase } from "@osstack/autonomy";
+import {
+  assertGuardedCandidateBase,
+  computeDeployScriptAuthority,
+  loadPrivateRepoOverlay,
+  mergeRepoPolicy,
+  runControlledRollbackDrill,
+} from "@osstack/autonomy";
+import { readRepoRegistry } from "@osstack/supervisor";
 
 const execFileAsync = promisify(execFile);
 
@@ -340,6 +370,11 @@ interface ServeLaunchdStatus {
   installed: boolean;
   loaded: boolean;
   socket_path: string;
+  profile: string | null;
+  write_concurrency: number | null;
+  read_concurrency: number | null;
+  power_policy: "none" | "process_assertion" | null;
+  clock_monitor: "monotonic-v1" | null;
 }
 
 interface ServeLaunchdInstallResult extends ServeLaunchdStatus {
@@ -347,6 +382,7 @@ interface ServeLaunchdInstallResult extends ServeLaunchdStatus {
   load_skipped: boolean;
   home: string;
   logs_dir: string;
+  power_policy_record: string;
 }
 
 interface ServeLaunchdUninstallResult extends ServeLaunchdStatus {
@@ -638,7 +674,25 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
         throw err;
       }
     }
+    let profile: string | undefined;
+    let writeConcurrency: number | undefined;
+    let readConcurrency: number | undefined;
+    try {
+      profile = optionalStringFlag(args, "--profile");
+      writeConcurrency = positiveIntegerFlag(args, "--write-concurrency");
+      readConcurrency = positiveIntegerFlag(args, "--read-concurrency");
+    } catch (error) {
+      console.error(`osstack: ${errorMessage(error)}`);
+      return 1;
+    }
+    if (profile !== undefined) process.env["OSSTACK_AGENT_PROFILE"] = profile;
     const handle = await startDaemon({
+      ...(writeConcurrency === undefined
+        ? {}
+        : { writeConcurrency }),
+      ...(readConcurrency === undefined
+        ? {}
+        : { readConcurrency }),
       guardedAutonomyFactory: async (db, dbPath) =>
         createGuardedGitRuntimeForDb(
           db,
@@ -788,8 +842,24 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
           db,
           dbPath,
           trustedApprovalPublicKeys,
+          health: () => runAutonomyHealth({
+            db,
+            db_path: dbPath,
+            home: osstackHome(),
+            socket_path: resolveSocketPath(),
+            power_policy:
+              process.env["OSSTACK_POWER_POLICY"] === "process_assertion"
+                ? "process_assertion"
+                : "none",
+            clock_monitor:
+              process.env["OSSTACK_CLOCK_MONITOR"] === "monotonic-v1",
+            require_launchd:
+              process.platform === "darwin"
+              && process.env["OSSTACK_AGENT_PROFILE"] === "mac-mini",
+          }),
           resume: (runId, decision) =>
             runtime.resume(runId, decision),
+          drillRollback: executeControlledRollbackDrill,
         });
       } catch (error) {
         console.error(
@@ -7604,7 +7674,9 @@ async function handleServeManagementCommand(args: string[]): Promise<number> {
 
 Usage:
   osstack serve
-  osstack serve --install [--bin PATH] [--no-load] [--json]
+  osstack serve --install [--bin PATH] [--profile NAME]
+    [--write-concurrency N] [--read-concurrency N]
+    [--power-policy none|process_assertion] [--no-load] [--json]
   osstack serve --status [--json]
   osstack serve --uninstall [--no-load] [--json]
 
@@ -7613,6 +7685,11 @@ Options:
   --uninstall     Boot out the LaunchAgent and remove its plist
   --status        Show plist/launchd status
   --bin PATH      osstack binary path to put in the plist
+  --profile NAME  Agent profile for daemon work (default: mac-mini)
+  --write-concurrency N  Machine-wide write slots (default: 2)
+  --read-concurrency N   Machine-wide read slots (default: 8)
+  --power-policy MODE    Explicit host sleep policy: none or process_assertion
+                         (never changes persistent pmset settings)
   --no-load       Only write/remove plist; skip launchctl calls
   --json          Print machine-readable output
 `);
@@ -7624,6 +7701,63 @@ Options:
   const binPath = flagValue(args, "--bin") ?? defaultOsstackBinPath();
   try {
     if (args.includes("--install")) {
+      if (!isAbsolute(binPath)) {
+        throw new Error("--bin must be an absolute stable-serving binary path");
+      }
+      const profile = optionalStringFlag(
+        args,
+        "--profile",
+        process.env["OSSTACK_AGENT_PROFILE"] ?? "mac-mini",
+      ) ?? "mac-mini";
+      const writeConcurrency = positiveIntegerFlag(
+        args,
+        "--write-concurrency",
+        2,
+      ) ?? 2;
+      const readConcurrency = positiveIntegerFlag(
+        args,
+        "--read-concurrency",
+        8,
+      ) ?? 8;
+      const rawPowerPolicy =
+        flagValue(args, "--power-policy")
+        ?? process.env["OSSTACK_POWER_POLICY"]
+        ?? "none";
+      if (
+        rawPowerPolicy !== "none"
+        && rawPowerPolicy !== "process_assertion"
+      ) {
+        throw new Error(
+          "--power-policy must be none or process_assertion; persistent pmset changes are never applied automatically",
+        );
+      }
+      const powerPolicy = rawPowerPolicy;
+      if (
+        !args.includes("--bin")
+        && isDevelopmentCliDist(binPath)
+      ) {
+        let explicitlyStable = false;
+        try {
+          const checkoutRoot = dirname(realpathSync(binPath));
+          if (loadRoleFile(checkoutRoot)?.role !== "stable-serving") {
+            throw new Error("development dist is not stable-serving");
+          }
+          assertServeAllowed({
+            checkoutRoot,
+            osstackHome: process.env.OSSTACK_HOME ?? defaultOsstackHome(),
+          });
+          explicitlyStable = true;
+        } catch {
+          // The default checkout remains development-only until an operator
+          // names it explicitly with --bin or a deployment provisions it.
+        }
+        if (!explicitlyStable) {
+          console.error(
+            "osstack: serve --install aborted — default development dist/bin.js is not stable-serving; pass an explicit absolute --bin to provision this checkout",
+          );
+          return 78;
+        }
+      }
       // Provision the control-plane role authority for THIS deployment: an
       // installed launchd daemon serves the default home, which the boot guard
       // only permits for a declared stable-serving root (review F1).
@@ -7637,7 +7771,14 @@ Options:
         console.error(`osstack: serve --install aborted — control-plane provisioning failed: ${err instanceof Error ? err.message : String(err)}`);
         return 78;
       }
-      const result = await installLaunchAgent({ binPath, noLoad });
+      const result = await installLaunchAgent({
+        binPath,
+        noLoad,
+        profile,
+        writeConcurrency,
+        readConcurrency,
+        powerPolicy,
+      });
       // Record the plist content baseline for doctor's drift check (2.1-C/F2).
       try {
         const { createHash } = await import("node:crypto");
@@ -7672,20 +7813,59 @@ Options:
   return 1;
 }
 
-async function installLaunchAgent(options: { binPath: string; noLoad: boolean }): Promise<ServeLaunchdInstallResult> {
+async function installLaunchAgent(options: {
+  binPath: string;
+  noLoad: boolean;
+  profile: string;
+  writeConcurrency: number;
+  readConcurrency: number;
+  powerPolicy: "none" | "process_assertion";
+}): Promise<ServeLaunchdInstallResult> {
   const plistPath = launchAgentPlistPath();
   const logDir = logsDir();
   await mkdir(dirname(plistPath), { recursive: true });
   await mkdir(logDir, { recursive: true });
   await mkdir(osstackHome(), { recursive: true });
+  const existingPlist = await fileExists(plistPath)
+    ? await readFile(plistPath, "utf-8")
+    : "";
+  const priorPowerPolicy =
+    plistEnvironmentValue(existingPlist, "OSSTACK_POWER_POLICY") ===
+        "process_assertion"
+      ? "process_assertion"
+      : "none";
   const plist = renderLaunchAgentPlist({
     binPath: options.binPath,
     home: osstackHome(),
     socketPath: resolveSocketPath(),
     stdoutPath: join(logDir, "daemon.log"),
     stderrPath: join(logDir, "daemon.error.log"),
+    profile: options.profile,
+    writeConcurrency: options.writeConcurrency,
+    readConcurrency: options.readConcurrency,
+    powerPolicy: options.powerPolicy,
   });
   await writeFile(plistPath, plist, "utf-8");
+  const hostEvidenceDir = join(osstackHome(), "host");
+  const powerPolicyRecord = join(hostEvidenceDir, "power-policy.json");
+  await mkdir(hostEvidenceDir, { recursive: true });
+  await writeFile(
+    powerPolicyRecord,
+    `${JSON.stringify({
+      schema_version: 1,
+      selected_at: new Date().toISOString(),
+      mode: options.powerPolicy,
+      previous_mode: priorPowerPolicy,
+      machine_settings_changed: false,
+      current:
+        options.powerPolicy === "process_assertion"
+          ? "caffeinate -ims bound to ai.osstack.daemon lifetime"
+          : "no OSStack power assertion",
+      rollback:
+        `reinstall with --power-policy ${priorPowerPolicy}`,
+    }, null, 2)}\n`,
+    { encoding: "utf-8", mode: 0o600 },
+  );
 
   let loaded = false;
   if (!options.noLoad) {
@@ -7704,6 +7884,12 @@ async function installLaunchAgent(options: { binPath: string; noLoad: boolean })
     socket_path: resolveSocketPath(),
     home: osstackHome(),
     logs_dir: logDir,
+    profile: options.profile,
+    write_concurrency: options.writeConcurrency,
+    read_concurrency: options.readConcurrency,
+    power_policy: options.powerPolicy,
+    clock_monitor: "monotonic-v1",
+    power_policy_record: powerPolicyRecord,
   };
 }
 
@@ -7723,17 +7909,45 @@ async function uninstallLaunchAgent(options: { noLoad: boolean }): Promise<Serve
     loaded: false,
     unloaded,
     socket_path: resolveSocketPath(),
+    profile: null,
+    write_concurrency: null,
+    read_concurrency: null,
+    power_policy: null,
+    clock_monitor: null,
   };
 }
 
 async function readLaunchAgentStatus(options: { noLoad: boolean } = { noLoad: false }): Promise<ServeLaunchdStatus> {
   const plistPath = launchAgentPlistPath();
+  const installed = await fileExists(plistPath);
+  const plist = installed ? await readFile(plistPath, "utf-8") : "";
   return {
     label: LAUNCHD_LABEL,
     plist_path: plistPath,
-    installed: await fileExists(plistPath),
+    installed,
     loaded: options.noLoad ? false : await isLaunchAgentLoaded(),
     socket_path: resolveSocketPath(),
+    profile: plistEnvironmentValue(plist, "OSSTACK_AGENT_PROFILE") ?? null,
+    write_concurrency: plistEnvironmentInteger(
+      plist,
+      "OSSTACK_WRITE_CONCURRENCY",
+    ),
+    read_concurrency: plistEnvironmentInteger(
+      plist,
+      "OSSTACK_READ_CONCURRENCY",
+    ),
+    power_policy:
+      plistEnvironmentValue(plist, "OSSTACK_POWER_POLICY") ===
+        "process_assertion"
+        ? "process_assertion"
+        : installed
+          ? "none"
+          : null,
+    clock_monitor:
+      plistEnvironmentValue(plist, "OSSTACK_CLOCK_MONITOR") ===
+        "monotonic-v1"
+        ? "monotonic-v1"
+        : null,
   };
 }
 
@@ -7747,6 +7961,14 @@ function printServeLaunchdResult(result: ServeLaunchdStatus | ServeLaunchdInstal
   console.log(`installed=${result.installed}`);
   console.log(`loaded=${result.loaded}`);
   console.log(`socket=${result.socket_path}`);
+  console.log(`profile=${result.profile ?? "unknown"}`);
+  console.log(`write_concurrency=${result.write_concurrency ?? "unknown"}`);
+  console.log(`read_concurrency=${result.read_concurrency ?? "unknown"}`);
+  console.log(`power_policy=${result.power_policy ?? "unknown"}`);
+  console.log(`clock_monitor=${result.clock_monitor ?? "unknown"}`);
+  if ("power_policy_record" in result) {
+    console.log(`power_policy_record=${result.power_policy_record}`);
+  }
   if ("load_skipped" in result) console.log(`load_skipped=${result.load_skipped}`);
   if ("unloaded" in result) console.log(`unloaded=${result.unloaded}`);
 }
@@ -7757,6 +7979,10 @@ function renderLaunchAgentPlist(options: {
   socketPath: string;
   stdoutPath: string;
   stderrPath: string;
+  profile: string;
+  writeConcurrency: number;
+  readConcurrency: number;
+  powerPolicy: "none" | "process_assertion";
 }): string {
   // launchd's default PATH has no /opt/homebrew/bin (or nvm shims), so a JS
   // binPath's `#!/usr/bin/env node` shebang fails with exit 127 under launchd.
@@ -7776,20 +8002,23 @@ function renderLaunchAgentPlist(options: {
       return options.binPath;
     }
   })();
-  const runtime = resolvedBinPath.endsWith(".js")
-    ? [
-        `PATH=${dirname(process.execPath)}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`,
-        "node",
-      ]
-    : [];
-  const args = [
-    "/usr/bin/env",
-    `OSSTACK_HOME=${options.home}`,
-    `OSSTACK_SOCKET=${options.socketPath}`,
-    ...runtime,
-    options.binPath,
-    "serve",
-  ];
+  const daemonArgs = resolvedBinPath.endsWith(".js")
+    ? ["/usr/bin/env", "node", options.binPath, "serve"]
+    : [options.binPath, "serve"];
+  const args =
+    options.powerPolicy === "process_assertion"
+      ? ["/usr/bin/caffeinate", "-ims", ...daemonArgs]
+      : daemonArgs;
+  const daemonPath = [
+    dirname(process.execPath),
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+    "/usr/bin",
+    "/bin",
+    "/usr/sbin",
+    "/sbin",
+    join(homedir(), ".local", "bin"),
+  ].join(":");
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -7800,16 +8029,48 @@ function renderLaunchAgentPlist(options: {
   <array>
 ${args.map((arg) => `    <string>${xmlEscape(arg)}</string>`).join("\n")}
   </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>OSSTACK_HOME</key>
+    <string>${xmlEscape(options.home)}</string>
+    <key>OSSTACK_SOCKET</key>
+    <string>${xmlEscape(options.socketPath)}</string>
+    <key>OSSTACK_AGENT_PROFILE</key>
+    <string>${xmlEscape(options.profile)}</string>
+    <key>OSSTACK_WRITE_CONCURRENCY</key>
+    <string>${options.writeConcurrency}</string>
+    <key>OSSTACK_READ_CONCURRENCY</key>
+    <string>${options.readConcurrency}</string>
+    <key>OSSTACK_POWER_POLICY</key>
+    <string>${options.powerPolicy}</string>
+    <key>OSSTACK_CLOCK_MONITOR</key>
+    <string>monotonic-v1</string>
+    <key>OSSTACK_LOG_MAX_BYTES</key>
+    <string>26214400</string>
+    <key>OSSTACK_LOG_MAX_FILES</key>
+    <string>5</string>
+    <key>OSSTACK_PROOF_RETENTION_DAYS</key>
+    <string>30</string>
+    <key>OSSTACK_PROOF_MIN_KEEP</key>
+    <string>100</string>
+    <key>PATH</key>
+    <string>${xmlEscape(daemonPath)}</string>
+  </dict>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
-  <true/>
+  <dict>
+    <key>SuccessfulExit</key>
+      <false/>
+  </dict>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
   <key>StandardOutPath</key>
   <string>${xmlEscape(options.stdoutPath)}</string>
   <key>StandardErrorPath</key>
   <string>${xmlEscape(options.stderrPath)}</string>
   <key>WorkingDirectory</key>
-  <string>${xmlEscape(process.cwd())}</string>
+  <string>${xmlEscape(options.home)}</string>
 </dict>
 </plist>
 `;
@@ -7851,6 +8112,37 @@ function defaultOsstackBinPath(): string {
   return process.env["OSSTACK_CLI"] ?? process.argv[1] ?? "osstack";
 }
 
+function isDevelopmentCliDist(binPath: string): boolean {
+  const resolved = (() => {
+    try {
+      return realpathSync(binPath);
+    } catch {
+      return resolve(binPath);
+    }
+  })();
+  return resolved.endsWith(join("packages", "cli", "dist", "bin.js"));
+}
+
+function plistEnvironmentValue(
+  plist: string,
+  name: string,
+): string | undefined {
+  const match = plist.match(
+    new RegExp(`<key>${name}</key>\\s*<string>([^<]*)</string>`),
+  );
+  return match?.[1];
+}
+
+function plistEnvironmentInteger(
+  plist: string,
+  name: string,
+): number | null {
+  const value = plistEnvironmentValue(plist, name);
+  if (value === undefined || !/^[1-9]\d*$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
 function xmlEscape(value: string): string {
   return value
     .replaceAll("&", "&amp;")
@@ -7863,6 +8155,41 @@ function xmlEscape(value: string): string {
 function flagValue(args: string[], name: string): string | undefined {
   const i = args.indexOf(name);
   return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined;
+}
+
+function optionalStringFlag(
+  args: string[],
+  name: string,
+  fallback?: string,
+): string | undefined {
+  const value = flagValue(args, name);
+  if (args.includes(name) && (value === undefined || value.startsWith("--"))) {
+    throw new Error(`${name} requires a value`);
+  }
+  if (value !== undefined && !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value)) {
+    throw new Error(`${name} must be a profile identifier`);
+  }
+  return value ?? fallback;
+}
+
+function positiveIntegerFlag(
+  args: string[],
+  name: string,
+  fallback?: number,
+): number | undefined {
+  const value = flagValue(args, name);
+  if (value === undefined) {
+    if (args.includes(name)) throw new Error(`${name} requires a positive integer`);
+    return fallback;
+  }
+  if (!/^[1-9]\d*$/.test(value)) {
+    throw new Error(`${name} requires a positive integer`);
+  }
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed > 64) {
+    throw new Error(`${name} requires a positive integer no greater than 64`);
+  }
+  return parsed;
 }
 
 function firstPositionalValue(args: string[], flagsWithValues: Set<string>): string | undefined {
@@ -9445,9 +9772,9 @@ async function guardedPolicySnapshot(workspacePath: string): Promise<{
       }`,
     );
   }
-  const repoConfig = RepoConfigSchema.parse(repoValue);
+  const parsedRepoConfig = RepoConfigSchema.parse(repoValue);
   const policyProfile = PolicyProfileSchema.parse(policyValue);
-  if (repoConfig?.schema_version !== 2) {
+  if (parsedRepoConfig?.schema_version !== 2) {
     throw new Error(
       "guarded-git requires strict .osstack/repo.yaml schema_version 2",
     );
@@ -9460,6 +9787,41 @@ async function guardedPolicySnapshot(workspacePath: string): Promise<{
     throw new Error(
       "guarded-git requires .osstack/policy.yaml mode=execute and auto_apply=true",
     );
+  }
+  const privatePolicyId =
+    /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(
+      parsedRepoConfig.product,
+    )
+      ? parsedRepoConfig.product
+      : /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(
+          basename(workspacePath),
+        )
+        ? basename(workspacePath)
+        : `repo-${sha256(workspacePath).slice(0, 16)}`;
+  const privateOverlay = await loadPrivateRepoOverlay(
+    osstackHome(),
+    privatePolicyId,
+  );
+  const effective = mergeRepoPolicy(
+    {
+      autonomy: parsedRepoConfig.autonomy,
+      ...(parsedRepoConfig.deploy === undefined
+        ? {}
+        : { deploy: parsedRepoConfig.deploy }),
+    },
+    privateOverlay,
+  );
+  const repoConfigWithoutDeploy = { ...parsedRepoConfig };
+  delete repoConfigWithoutDeploy.deploy;
+  const repoConfig = RepoConfigSchema.parse({
+    ...repoConfigWithoutDeploy,
+    autonomy: effective.autonomy,
+    ...(effective.deploy === undefined
+      ? {}
+      : { deploy: effective.deploy }),
+  });
+  if (repoConfig.schema_version !== 2) {
+    throw new Error("effective guarded policy must remain schema_version 2");
   }
   if (!repoConfig.git.auto_merge) {
     throw new Error(
@@ -9484,11 +9846,188 @@ async function guardedPolicySnapshot(workspacePath: string): Promise<{
       canonicalGuardedJson({
         repo: repoConfig,
         policy: policyProfile,
+        private_policy_id: privatePolicyId,
         protected_policy_paths: protectedPolicyPaths,
       }),
     ),
     protectedPolicyPaths,
   };
+}
+
+async function executeControlledRollbackDrill(
+  repoId: string,
+): Promise<Omit<
+  RecordRollbackDrillInput,
+  "drill_id" | "repo_id"
+>> {
+  const registry = await readRepoRegistry(
+    join(osstackHome(), "repos.json"),
+  );
+  const entry = registry.find(
+    (candidate) =>
+      candidate.repo_id === repoId && candidate.enabled,
+  );
+  if (entry === undefined) {
+    throw new Error(
+      `enabled repository ${repoId} is not registered in $OSSTACK_HOME/repos.json`,
+    );
+  }
+  const workspacePath = realpathSync(entry.path);
+  const policy = await guardedPolicySnapshot(workspacePath);
+  const staging = policy.repoConfig.deploy?.staging;
+  const production = policy.repoConfig.deploy?.production;
+  if (
+    staging?.enabled !== true
+    || production?.enabled !== true
+  ) {
+    throw new Error(
+      "controlled rollback drill requires enabled staging and production policies",
+    );
+  }
+  if (
+    !production.allowed_environment.includes(
+      "OSSTACK_ROLLBACK_DRILL_TARGET",
+    )
+  ) {
+    throw new Error(
+      "production policy must allow OSSTACK_ROLLBACK_DRILL_TARGET for a controlled drill",
+    );
+  }
+  const remoteUrl = await guardedGitText(workspacePath, [
+    "remote",
+    "get-url",
+    policy.repoConfig.git.remote,
+  ]);
+  if (githubRepoId(remoteUrl) !== repoId) {
+    throw new Error(
+      "rollback drill registry id does not match the GitHub remote",
+    );
+  }
+  await assertGuardedCandidateBase({
+    workspace_path: workspacePath,
+    remote: policy.repoConfig.git.remote,
+    base: policy.repoConfig.default_branch,
+  });
+  const authority = await computeDeployScriptAuthority({
+    workspace_path: workspacePath,
+    policy: production,
+  });
+  const drillRoot = join(
+    osstackHome(),
+    "drills",
+    `drill_${randomUUID()}`,
+  );
+  const drillWorkspace = join(drillRoot, "workspace");
+  const sandboxHome = join(drillRoot, "home");
+  const sandboxTmp = join(drillRoot, "tmp");
+  await mkdir(sandboxHome, { recursive: true, mode: 0o700 });
+  await mkdir(sandboxTmp, { recursive: true, mode: 0o700 });
+  try {
+    await materializeTrackedDrillWorkspace(
+      workspacePath,
+      drillWorkspace,
+    );
+    const copiedAuthority = await computeDeployScriptAuthority({
+      workspace_path: drillWorkspace,
+      policy: production,
+    });
+    if (
+      copiedAuthority.digest_sha256 !== authority.digest_sha256
+    ) {
+      throw new Error(
+        "controlled drill workspace script authority does not match accepted base",
+      );
+    }
+    const startedAt = Date.now() / 1_000;
+    const result = await runControlledRollbackDrill({
+      workspace_path: drillWorkspace,
+      policy: production,
+      expected_script_digest_sha256: authority.digest_sha256,
+      host_environment: {
+        PATH: process.env["PATH"] ?? "/usr/bin:/bin",
+        HOME: sandboxHome,
+        ...(process.env["LANG"] === undefined
+          ? {}
+          : { LANG: process.env["LANG"] }),
+        TMPDIR: sandboxTmp,
+        OSSTACK_ROLLBACK_DRILL_TARGET:
+          "controlled-non-production",
+      },
+    });
+    return {
+      workspace_path: workspacePath,
+      deploy_script_digest_sha256:
+        result.deploy_script_digest_sha256,
+      rollback: result.rollback,
+      ...(result.post_rollback_health === undefined
+        ? {}
+        : {
+            post_rollback_health:
+              result.post_rollback_health,
+          }),
+      started_at: startedAt,
+      completed_at: Date.now() / 1_000,
+    };
+  } finally {
+    await rm(drillRoot, { recursive: true, force: true });
+  }
+}
+
+async function materializeTrackedDrillWorkspace(
+  sourceWorkspace: string,
+  targetWorkspace: string,
+): Promise<void> {
+  const { stdout } = await execFileAsync(
+    "git",
+    [
+      "-c",
+      "core.hooksPath=/dev/null",
+      "-C",
+      sourceWorkspace,
+      "ls-files",
+      "-z",
+    ],
+    {
+      timeout: 15_000,
+      maxBuffer: 64 * 1024 * 1024,
+      encoding: "utf8",
+      env: {
+        PATH: process.env["PATH"] ?? "/usr/bin:/bin",
+        HOME: process.env["HOME"],
+        GIT_TERMINAL_PROMPT: "0",
+      },
+    },
+  );
+  await mkdir(targetWorkspace, { recursive: true, mode: 0o700 });
+  for (const path of stdout.split("\0").filter((value) => value !== "")) {
+    if (
+      isAbsolute(path)
+      || path.includes("\0")
+      || path.split("/").some(
+        (segment) =>
+          segment === "" || segment === "." || segment === "..",
+      )
+    ) {
+      throw new Error(`invalid tracked rollback drill path: ${path}`);
+    }
+    const source = resolve(sourceWorkspace, path);
+    const target = resolve(targetWorkspace, path);
+    if (
+      relative(sourceWorkspace, source).startsWith("..")
+      || relative(targetWorkspace, target).startsWith("..")
+    ) {
+      throw new Error(`rollback drill path escapes workspace: ${path}`);
+    }
+    const metadata = await lstat(source);
+    if (!metadata.isFile() || metadata.isSymbolicLink()) {
+      throw new Error(
+        `rollback drill requires regular tracked files: ${path}`,
+      );
+    }
+    await mkdir(dirname(target), { recursive: true });
+    await copyFile(source, target);
+    await chmod(target, metadata.mode & 0o777);
+  }
 }
 
 async function writeGuardedGitProof(
@@ -9523,22 +10062,13 @@ async function writeGuardedGitProof(
   }
   const outputDir = join(input.routing.evidence_root, "proof");
   const artifactId = input.evidence.autonomy_run_id;
-  const finalEvidence = input.stage === "candidate"
-    ? undefined
-    : (() => {
-        if (
-          input.candidate_proof === undefined
-          || input.git_delivery === undefined
-        ) {
-          throw new Error(
-            "final guarded proof requires candidate proof and Git delivery evidence",
-          );
-        }
-        return {
-          candidateProof: input.candidate_proof,
-          gitDelivery: input.git_delivery,
-        };
-      })();
+  const finalEvidence = input.stage === "final"
+    ? {
+        candidateProof: input.candidate_proof,
+        gitDelivery: input.git_delivery,
+        deployment: input.evidence,
+      }
+    : undefined;
   const stageInput: ProofStageInput = {
     stage: input.stage,
     risk_evidence: {
@@ -9575,6 +10105,56 @@ async function writeGuardedGitProof(
               finalEvidence.candidateProof.manifest_sha256,
           },
           git_delivery_evidence: finalEvidence.gitDelivery,
+          ...(finalEvidence.deployment.deploy_eligibility === undefined
+            ? {}
+            : {
+                deploy_eligibility_evidence:
+                  finalEvidence.deployment.deploy_eligibility,
+              }),
+          ...(finalEvidence.deployment.deploy_script_authority ===
+          undefined
+            ? {}
+            : {
+                deploy_script_authority_evidence:
+                  finalEvidence.deployment.deploy_script_authority,
+              }),
+          ...(finalEvidence.deployment.deploy_staging === undefined
+            ? {}
+            : {
+                deploy_staging_evidence:
+                  finalEvidence.deployment.deploy_staging,
+              }),
+          ...(finalEvidence.deployment.deploy_production === undefined
+            ? {}
+            : {
+                deploy_production_evidence:
+                  finalEvidence.deployment.deploy_production,
+              }),
+          ...(finalEvidence.deployment.deploy_production?.rollback ===
+          undefined
+            ? {}
+            : {
+                rollback_evidence: {
+                  command:
+                    finalEvidence.deployment.deploy_production.rollback,
+                  ...(finalEvidence.deployment.deploy_production
+                      .post_rollback_health === undefined
+                    ? {}
+                    : {
+                        post_health:
+                          finalEvidence.deployment.deploy_production
+                            .post_rollback_health,
+                      }),
+                  outcome:
+                    finalEvidence.deployment.deploy_production.outcome,
+                },
+              }),
+          ...(finalEvidence.deployment.production_freeze === undefined
+            ? {}
+            : {
+                production_freeze_evidence:
+                  finalEvidence.deployment.production_freeze,
+              }),
         }),
   };
   const governance = await scanWorkspaceGovernance(
@@ -9665,6 +10245,23 @@ const startGuardedGitDelivery: NonNullable<
       "guarded-git remote must resolve to exactly one GitHub repository",
     );
   }
+  let rollbackDrill: ReturnType<
+    typeof rollbackDrillEligibilityEvidence
+  >;
+  if (
+    input.deployPolicy === "project"
+    && policy.repoConfig.deploy?.production !== undefined
+  ) {
+    const drillDbPath = await ensureLocalStateDbPath();
+    const drillDb = openDb({ path: drillDbPath });
+    try {
+      rollbackDrill = rollbackDrillEligibilityEvidence(
+        getLatestSuccessfulRollbackDrill(drillDb, repoId),
+      );
+    } finally {
+      drillDb.close();
+    }
+  }
   const autonomyRunId = `run_${randomUUID().slice(0, 12)}`;
   const evidenceRoot = join(
     osstackHome(),
@@ -9700,6 +10297,18 @@ const startGuardedGitDelivery: NonNullable<
     max_auto_risk: policy.repoConfig.autonomy.max_auto_risk,
     protected_policy_paths: policy.protectedPolicyPaths,
     approval_ttl_ms: 3_600_000,
+    ...(input.deployPolicy === "project"
+      && policy.repoConfig.deploy !== undefined
+      ? {
+          deploy: {
+            base_branch: policy.repoConfig.default_branch,
+            ...policy.repoConfig.deploy,
+            ...(rollbackDrill === undefined
+              ? {}
+              : { rollback_drill: rollbackDrill }),
+          },
+        }
+      : {}),
     git: {
       remote: policy.repoConfig.git.remote,
       base: policy.repoConfig.default_branch,
@@ -9731,6 +10340,7 @@ const startGuardedGitDelivery: NonNullable<
       policy_sha256: policy.policySha256,
       profile: input.profileRouting.summary,
       verify_commands: verifyCommands,
+      deploy: routing.deploy ?? null,
     }),
   );
   const dbPath = await ensureLocalStateDbPath();

@@ -17,3 +17,6 @@ export * from "./dependency-obligation-store.js";
 export * from "./probe-store.js";
 export * from "./probe-metrics.js";
 export * from "./autonomy-runs.js";
+export * from "./deploy-freezes.js";
+export * from "./notification-outbox.js";
+export * from "./rollback-drills.js";

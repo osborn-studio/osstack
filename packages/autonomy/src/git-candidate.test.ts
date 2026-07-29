@@ -13,6 +13,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   assertGuardedCandidateBase,
+  assertGuardedMergedCandidate,
   commitGuardedCandidate,
   stageGuardedCandidate,
 } from "./git-candidate.js";
@@ -109,6 +110,85 @@ describe("guarded staged candidate", () => {
       expected_base_commit_sha: verifiedBase.base_commit_sha,
       commands: ["pnpm test"],
     })).rejects.toThrow(/expected.*base|base.*changed/i);
+  });
+
+  it("binds post-merge deployment to the exact fetched merge tree", async () => {
+    execFileSync("git", ["remote", "add", "origin", remoteDirectory], {
+      cwd: directory,
+    });
+    execFileSync("git", ["push", "origin", "HEAD:refs/heads/main"], {
+      cwd: directory,
+    });
+    const base = execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: directory,
+      encoding: "utf8",
+    }).trim();
+    execFileSync("git", ["checkout", "-b", "osstack/feature"], {
+      cwd: directory,
+    });
+    await writeFile(join(directory, "README.md"), "# merged tree\n");
+    execFileSync("git", ["add", "README.md"], { cwd: directory });
+    execFileSync(
+      "git",
+      [
+        "-c",
+        "user.name=test",
+        "-c",
+        "user.email=test@example.invalid",
+        "commit",
+        "-m",
+        "candidate",
+      ],
+      { cwd: directory },
+    );
+    const tree = execFileSync("git", ["rev-parse", "HEAD^{tree}"], {
+      cwd: directory,
+      encoding: "utf8",
+    }).trim();
+    const mergeCommit = execFileSync(
+      "git",
+      [
+        "-c",
+        "user.name=test",
+        "-c",
+        "user.email=test@example.invalid",
+        "commit-tree",
+        tree,
+        "-p",
+        base,
+        "-m",
+        "squash merge",
+      ],
+      { cwd: directory, encoding: "utf8" },
+    ).trim();
+    execFileSync(
+      "git",
+      ["push", "--force", "origin", `${mergeCommit}:refs/heads/main`],
+      { cwd: directory },
+    );
+
+    await expect(
+      assertGuardedMergedCandidate({
+        workspace_path: directory,
+        remote: "origin",
+        base: "main",
+        expected_merge_commit_sha: mergeCommit,
+      }),
+    ).resolves.toBeUndefined();
+
+    execFileSync(
+      "git",
+      ["push", "--force", "origin", `${base}:refs/heads/main`],
+      { cwd: directory },
+    );
+    await expect(
+      assertGuardedMergedCandidate({
+        workspace_path: directory,
+        remote: "origin",
+        base: "main",
+        expected_merge_commit_sha: base,
+      }),
+    ).rejects.toThrow(/tree.*match|match.*tree/i);
   });
 
   it("commits exactly the classified staged bytes and reuses the commit idempotently", async () => {

@@ -298,6 +298,14 @@ describe("autonomy run persistence", () => {
             head_sha: SHA_B,
             pr_number: 157,
           },
+          deploy: {
+            staging: { outcome: "healthy" },
+            production: { outcome: "health_failed_rolled_back" },
+          },
+          rollback: {
+            command_exit_code: 0,
+            post_rollback_health_passed: true,
+          },
           final_proof: {
             merged: true,
             merge_commit_sha: SHA_A,
@@ -319,6 +327,14 @@ describe("autonomy run persistence", () => {
         branch: "codex/autonomy-run-001",
         head_sha: SHA_B,
         pr_number: 157,
+      });
+      expect(JSON.parse(updated.deploy_json!)).toEqual({
+        production: { outcome: "health_failed_rolled_back" },
+        staging: { outcome: "healthy" },
+      });
+      expect(JSON.parse(updated.rollback_json!)).toEqual({
+        command_exit_code: 0,
+        post_rollback_health_passed: true,
       });
       expect(JSON.parse(updated.final_proof_json!)).toEqual({
         merge_commit_sha: SHA_A,

@@ -378,6 +378,8 @@ export const AutonomyRunProjectionRow = z
     attempt_json: AutonomyPersistedJsonText,
     candidate_proof_json: AutonomyPersistedJsonText.nullable(),
     git_delivery_json: AutonomyPersistedJsonText.nullable(),
+    deploy_json: AutonomyPersistedJsonText.nullable(),
+    rollback_json: AutonomyPersistedJsonText.nullable(),
     final_proof_json: AutonomyPersistedJsonText.nullable(),
     last_transition_id: z.string().min(1),
     created_at: z.number().finite(),
@@ -386,4 +388,24 @@ export const AutonomyRunProjectionRow = z
   .strict();
 export type AutonomyRunProjectionRow = z.infer<
   typeof AutonomyRunProjectionRow
+>;
+
+export const AutonomyDeployFreezeRow = z
+  .object({
+    repo_id: z.string().min(1),
+    target: z.literal("production"),
+    frozen: z.union([z.literal(0), z.literal(1)]),
+    reason: z.string().min(1),
+    source_run_id: z.string().min(1),
+    frozen_at: z.number().finite(),
+    cleared_at: z.number().finite().nullable(),
+    cleared_by_type: z.literal("human").nullable(),
+    cleared_by_id: z.string().min(1).nullable(),
+    clear_reason: z.string().min(1).nullable(),
+    clear_decision_sha256: AutonomySha256Text.nullable(),
+    clear_key_id: z.string().min(1).nullable(),
+  })
+  .strict();
+export type AutonomyDeployFreezeRow = z.infer<
+  typeof AutonomyDeployFreezeRow
 >;

@@ -12,6 +12,49 @@ function setup() {
 }
 
 describe("control-plane doctor (G1.3)", () => {
+  it("warns below the autonomy write floor and alerts at the drain floor", () => {
+    const { home, la } = setup();
+    const low = runControlPlaneChecks({
+      home,
+      launchAgentsDir: la,
+      lsof: () => "",
+      diskFreeBytes: () => 5 * 1024 ** 3 - 1,
+    });
+    expect(low.find(
+      (finding) => finding.check === "autonomy_disk",
+    )).toMatchObject({ level: "warn" });
+
+    const critical = runControlPlaneChecks({
+      home,
+      launchAgentsDir: la,
+      lsof: () => "",
+      diskFreeBytes: () => 2 * 1024 ** 3 - 1,
+    });
+    expect(critical.find(
+      (finding) => finding.check === "autonomy_disk",
+    )).toMatchObject({
+      level: "alert",
+      detail: expect.stringContaining("daemon drain required"),
+    });
+  });
+
+  it("alerts on a malformed repository autonomy lock", () => {
+    const { home, la } = setup();
+    mkdirSync(join(home, "locks", "repos"), { recursive: true });
+    writeFileSync(join(home, "locks", "repos", "broken.lock"), "not-json");
+
+    const findings = runControlPlaneChecks({
+      home,
+      launchAgentsDir: la,
+      lsof: () => "",
+      diskFreeBytes: () => 20 * 1024 ** 3,
+    });
+
+    expect(findings.find(
+      (finding) => finding.check === "autonomy_repo_locks",
+    )).toMatchObject({ level: "alert" });
+  });
+
   it("alerts on an unknown DB holder + multiple attachments", () => {
     const { home, la } = setup();
     writeFileSync(join(home, "daemon.pid"), "100");

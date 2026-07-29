@@ -18,8 +18,11 @@ pnpm smoke:npm-install
 
 ```bash
 osstack serve
-osstack serve --install --no-load
-osstack serve --status
+osstack serve --install --profile mac-mini \
+  --write-concurrency 2 \
+  --read-concurrency 8 \
+  --power-policy none
+osstack serve --status --json
 osstack serve --uninstall --no-load
 ```
 
@@ -50,3 +53,17 @@ osstack autonomy resume RUN_ID --json
 Production prerequisites, R0-R4 semantics, external Ed25519 R3 decisions,
 blocked-delivery recovery, proof ordering, and rollback are documented in
 [`docs/runbooks/guarded-git-autonomy.md`](../runbooks/guarded-git-autonomy.md).
+
+## Guarded Deploy on Mac Mini
+
+```bash
+osstack autonomy health --json
+osstack autonomy list --json
+osstack autonomy freeze list --json
+osstack daily --json
+```
+
+Installation, project deploy allowlists, named machine/production authority
+gates, automatic rollback/freeze, recovery order, signed freeze clear, host
+evidence, and the seven-day soak are documented in
+[`docs/runbooks/kimi-mac-mini-autonomy.md`](../runbooks/kimi-mac-mini-autonomy.md).

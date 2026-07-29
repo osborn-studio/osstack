@@ -69,12 +69,18 @@
       ]
     },
     "commandArgv": {
+      "$comment": "The runtime Zod contract rejects credential-bearing argv flags such as --token and --password, plus absolute filesystem paths.",
       "type": "array",
       "minItems": 1,
       "maxItems": 64,
       "items": {
         "$ref": "#/$defs/nonEmptyConfigString"
       }
+    },
+    "deployEnvironmentName": {
+      "$comment": "The runtime Zod contract additionally rejects approval, notification, CI, GitHub-token, and private-key control names.",
+      "type": "string",
+      "pattern": "^[A-Z_][A-Z0-9_]{0,127}$"
     },
     "stringList": {
       "type": "array",
@@ -205,6 +211,7 @@
       "additionalProperties": false
     },
     "freezeWindow": {
+      "$comment": "The runtime Zod contract additionally validates timezone against the host IANA time-zone database.",
       "type": "object",
       "required": [
         "timezone",
@@ -309,6 +316,15 @@
               "minItems": 1
             }
           ]
+        },
+        "allowed_environment": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/deployEnvironmentName"
+          },
+          "default": []
         },
         "freeze_windows": {
           "type": "array",

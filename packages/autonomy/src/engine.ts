@@ -13,6 +13,10 @@ import type {
   GitHubDeliveryInput,
   GitHubDeliveryResult,
 } from "@osstack/github";
+import {
+  DeployTargetPolicy as DeployTargetPolicySchema,
+  type DeployTargetPolicy,
+} from "@osstack/core";
 import { z } from "zod";
 import {
   createScopedApprovalRequest,
@@ -27,6 +31,21 @@ import {
   classifyPostDiffRisk,
   classifyPreflightRisk,
 } from "./risk.js";
+import {
+  DeployEligibilityDecisionSchema,
+  RollbackDrillEvidenceSchema,
+  type DeployEligibilityDecision,
+  type DeployEligibilityInput,
+  type RollbackDrillEvidence,
+} from "./deploy-policy.js";
+import {
+  DeployScriptAuthoritySchema,
+  ProjectDeployResultSchema,
+  type DeployScriptAuthority,
+  type ProjectDeployInput,
+  type ProjectDeployResult,
+  type ProjectDeployPhase,
+} from "./deploy-runner.js";
 import {
   assertAutonomyTransition,
   type AutonomyTransitionInput,
@@ -72,6 +91,14 @@ export const LocalDeliveryResult = z
     review_passed: z.boolean(),
     post_diff: PostDiffInput,
     progress: AttemptProgressSchema,
+    telemetry: z
+      .object({
+        reviewer_mutation_count: z.number().int().nonnegative(),
+        unauthorized_action_count: z.number().int().nonnegative(),
+        adapter_unavailable_count: z.number().int().nonnegative(),
+      })
+      .strict()
+      .optional(),
     builder_identity: RuntimeIdentity,
     evaluator_identity: RuntimeIdentity,
   })
@@ -99,6 +126,18 @@ export interface CandidateProofInput {
 export interface FinalProofInput extends CandidateProofInput {
   candidate_proof: ProofReference;
   git_delivery: GitHubDeliveryResult;
+  deploy_eligibility?: {
+    staging?: DeployEligibilityDecision | undefined;
+    production?: DeployEligibilityDecision | undefined;
+  };
+  deploy_script_authority?: {
+    staging?: DeployScriptAuthority | undefined;
+    production?: DeployScriptAuthority | undefined;
+  };
+  deploy_staging?: ProjectDeployResult | undefined;
+  deploy_production?: ProjectDeployResult | undefined;
+  production_freeze?: ProductionFreezeEvidence | undefined;
+  deploy_outcome?: GuardedDeployOutcome | undefined;
 }
 
 export interface CommitInput {
@@ -107,6 +146,69 @@ export interface CommitInput {
   diff_sha256: string;
   idempotency_key: string;
 }
+
+export const GuardedDeployPolicySchema = z
+  .object({
+    base_branch: z.string().min(1),
+    staging: DeployTargetPolicySchema.optional(),
+    production: DeployTargetPolicySchema.optional(),
+    rollback_drill: RollbackDrillEvidenceSchema.optional(),
+  })
+  .strict()
+  .superRefine((deploy, context) => {
+    if (
+      deploy.production?.enabled === true
+      && deploy.staging?.enabled !== true
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["production"],
+        message: "enabled production deployment requires enabled staging",
+      });
+    }
+  });
+export type GuardedDeployPolicy = z.infer<
+  typeof GuardedDeployPolicySchema
+>;
+
+export const ProductionFreezeEvidenceSchema = z
+  .object({
+    repo_id: z.string().min(1),
+    reason: z.string().min(1),
+    source_run_id: z.string().min(1),
+    frozen_at: z.number().finite(),
+  })
+  .strict();
+export type ProductionFreezeEvidence = z.infer<
+  typeof ProductionFreezeEvidenceSchema
+>;
+
+export const GuardedDeployOutcomeSchema = z.enum([
+  "staging_skipped",
+  "staging_healthy",
+  "staging_failed",
+  "production_skipped",
+  "production_healthy",
+  "production_rolled_back",
+  "rollback_failed",
+]);
+export type GuardedDeployOutcome = z.infer<
+  typeof GuardedDeployOutcomeSchema
+>;
+
+const DeployEligibilityEvidenceSchema = z
+  .object({
+    staging: DeployEligibilityDecisionSchema.optional(),
+    production: DeployEligibilityDecisionSchema.optional(),
+  })
+  .strict();
+
+const DeployScriptAuthorityEvidenceSchema = z
+  .object({
+    staging: DeployScriptAuthoritySchema.optional(),
+    production: DeployScriptAuthoritySchema.optional(),
+  })
+  .strict();
 
 export const GuardedDeliveryContextSchema = z
   .object({
@@ -126,6 +228,13 @@ export const GuardedDeliveryContextSchema = z
     candidate_proof: ProofReference.optional(),
     commit: z.object({ commit: GitCommitSha }).strict().optional(),
     git_delivery: GitHubDeliveryEvidence.optional(),
+    deploy_eligibility: DeployEligibilityEvidenceSchema.optional(),
+    deploy_script_authority:
+      DeployScriptAuthorityEvidenceSchema.optional(),
+    deploy_staging: ProjectDeployResultSchema.optional(),
+    deploy_production: ProjectDeployResultSchema.optional(),
+    production_freeze: ProductionFreezeEvidenceSchema.optional(),
+    deploy_outcome: GuardedDeployOutcomeSchema.optional(),
     final_proof: ProofReference.optional(),
     blocked_delivery_resume_state: z.literal("pushing").optional(),
     failure: z
@@ -151,6 +260,9 @@ export interface AutonomyRunProjection {
 export interface GuardedDeliveryTransitionInput
   extends AutonomyTransitionInput {
   context_patch?: Partial<GuardedDeliveryContext>;
+  recovery?: {
+    kind: "restart";
+  };
 }
 
 export interface GuardedDeliveryPorts {
@@ -170,6 +282,28 @@ export interface GuardedDeliveryPorts {
   writeFinalProof(input: FinalProofInput): Promise<ProofReference>;
   commit(input: CommitInput): Promise<{ commit: string }>;
   deliverGit(input: GitHubDeliveryInput): Promise<GitHubDeliveryResult>;
+  prepareMergedWorkspace?: (input: {
+    workspace_path: string;
+    remote: string;
+    base: string;
+    expected_merge_commit_sha: string;
+  }) => Promise<void>;
+  resolveDeployScriptAuthority?: (input: {
+    workspace_path: string;
+    policy: DeployTargetPolicy;
+  }) => Promise<DeployScriptAuthority>;
+  evaluateDeploy?: (
+    policy: DeployTargetPolicy,
+    input: DeployEligibilityInput,
+  ) => DeployEligibilityDecision;
+  deploy?: (input: ProjectDeployInput) => Promise<ProjectDeployResult>;
+  isProductionFrozen?: (repoId: string) => Promise<boolean>;
+  freezeProduction?: (input: {
+    repo_id: string;
+    reason: string;
+    source_run_id: string;
+    frozen_at: number;
+  }) => Promise<ProductionFreezeEvidence>;
 }
 
 export interface GuardedDeliveryPolicy {
@@ -181,6 +315,7 @@ export interface GuardedDeliveryPolicy {
   approval_ttl_ms: number;
   trusted_approval_public_keys: ReadonlyMap<string, string>;
   consume_approval_nonce(nonce: string): boolean;
+  deploy?: GuardedDeployPolicy;
   git: {
     remote: string;
     base: string;
@@ -301,6 +436,9 @@ export class GuardedDeliveryEngine {
       policy_sha256: Sha256.parse(policy.policy_sha256),
       max_auto_risk: policy.max_auto_risk ?? "R2",
       budget: DeliveryBudget.parse(policy.budget),
+      ...(policy.deploy === undefined
+        ? {}
+        : { deploy: GuardedDeployPolicySchema.parse(policy.deploy) }),
     };
     if (
       !Number.isInteger(policy.approval_ttl_ms)
@@ -308,6 +446,14 @@ export class GuardedDeliveryEngine {
       || policy.approval_ttl_ms > 86_400_000
     ) {
       throw new Error("approval_ttl_ms must be between 1000 and 86400000");
+    }
+    if (
+      policy.deploy !== undefined
+      && policy.deploy.base_branch !== policy.git.base
+    ) {
+      throw new Error(
+        "deploy base_branch must match the guarded Git merge base",
+      );
     }
     this.ports = ports;
   }
@@ -432,6 +578,19 @@ export class GuardedDeliveryEngine {
     ) {
       return await this.continuePersistedGitDelivery(loaded);
     }
+    if (
+      loaded.state === "deploying_staging"
+      || loaded.state === "verifying_staging"
+      || loaded.state === "deploying_production"
+      || loaded.state === "health_checking"
+      || loaded.state === "rolling_back"
+    ) {
+      return await this.recoverDeployState(loaded);
+    }
+    if (loaded.state === "deploy_frozen") {
+      const finalProof = await this.transition(loaded, "final_proof");
+      return await this.writeFinalAndComplete(finalProof);
+    }
     if (loaded.state === "final_proof") {
       return await this.writeFinalAndComplete(loaded);
     }
@@ -484,7 +643,7 @@ export class GuardedDeliveryEngine {
         phase: request.phase,
         contract_sha256: intent.contract_sha256,
         diff_sha256: currentDiffSha256,
-        action_scope: request.action_scope,
+        action_scope: this.approvalActionScope(request.phase),
       },
       trusted_public_keys: this.policy.trusted_approval_public_keys,
       now: () => this.ports.now().toISOString(),
@@ -692,10 +851,7 @@ export class GuardedDeliveryEngine {
       phase === "preflight"
         ? AUTONOMY_EMPTY_DIFF_SHA256
         : stagedDiffSha256(this.requireLocalResult(run).post_diff);
-    const actionScope =
-      phase === "preflight"
-        ? ["build", "verify"]
-        : ["commit", "merge", "push"];
+    const actionScope = this.approvalActionScope(phase);
     const request = createScopedApprovalRequest({
       approval_id: `approval:${run.autonomy_run_id}:${phase}:${risk.input_sha256.slice(0, 16)}`,
       autonomy_run_id: run.autonomy_run_id,
@@ -848,8 +1004,7 @@ export class GuardedDeliveryEngine {
     });
     next = await this.transition(next, "waiting_ci");
     next = await this.transition(next, "merging");
-    next = await this.transition(next, "final_proof");
-    return await this.writeFinalAndComplete(next);
+    return await this.deployAfterMerge(next);
   }
 
   private async continuePersistedGitDelivery(
@@ -870,9 +1025,582 @@ export class GuardedDeliveryEngine {
       run = await this.transition(run, "merging");
     }
     if (run.state === "merging") {
-      run = await this.transition(run, "final_proof");
+      return await this.deployAfterMerge(run);
     }
     return await this.writeFinalAndComplete(run);
+  }
+
+  private async deployAfterMerge(
+    run: AutonomyRunProjection,
+  ): Promise<GuardedDeliveryResult> {
+    const stagingPolicy = this.policy.deploy?.staging;
+    if (stagingPolicy === undefined) {
+      const finalProof = await this.transition(run, "final_proof");
+      return await this.writeFinalAndComplete(finalProof);
+    }
+    const intent = this.requireIntent(run);
+    const gitDelivery = run.context.git_delivery;
+    if (
+      gitDelivery === undefined
+      || this.ports.prepareMergedWorkspace === undefined
+    ) {
+      return await this.finalizeSkippedDeploy(
+        run,
+        "staging",
+        "post-merge workspace verification is not configured",
+      );
+    }
+    try {
+      await this.ports.prepareMergedWorkspace({
+        workspace_path: intent.workspace_path,
+        remote: this.policy.git.remote,
+        base: this.policy.git.base,
+        expected_merge_commit_sha: gitDelivery.mergeCommit,
+      });
+    } catch (error) {
+      return await this.finalizeSkippedDeploy(
+        run,
+        "staging",
+        `post-merge workspace verification failed: ${errorMessage(error)}`,
+      );
+    }
+
+    let prepared: {
+      authority: DeployScriptAuthority;
+      decision: DeployEligibilityDecision;
+    };
+    try {
+      prepared = await this.prepareDeployTarget(
+        run,
+        "staging",
+        stagingPolicy,
+      );
+    } catch (error) {
+      return await this.finalizeSkippedDeploy(
+        run,
+        "staging",
+        `staging deploy eligibility failed: ${errorMessage(error)}`,
+      );
+    }
+    const contextPatch: Partial<GuardedDeliveryContext> = {
+      deploy_eligibility: {
+        ...(run.context.deploy_eligibility ?? {}),
+        staging: prepared.decision,
+      },
+      deploy_script_authority: {
+        ...(run.context.deploy_script_authority ?? {}),
+        staging: prepared.authority,
+      },
+    };
+    if (!prepared.decision.allowed) {
+      const finalProof = await this.transition(run, "final_proof", {
+        context_patch: {
+          ...contextPatch,
+          deploy_outcome: "staging_skipped",
+        },
+      });
+      return await this.writeFinalAndComplete(finalProof);
+    }
+
+    let current = await this.transition(run, "deploying_staging", {
+      context_patch: contextPatch,
+    });
+    let result: ProjectDeployResult;
+    try {
+      result = ProjectDeployResultSchema.parse(
+        await this.requireDeployPort()({
+          target: "staging",
+          workspace_path: this.requireIntent(current).workspace_path,
+          policy: stagingPolicy,
+          expected_script_digest_sha256:
+            prepared.authority.digest_sha256,
+          before_phase: async (phase) => {
+            if (
+              phase === "verify"
+              && current.state === "deploying_staging"
+            ) {
+              current = await this.transition(
+                current,
+                "verifying_staging",
+              );
+            }
+          },
+        }),
+      );
+      this.assertDeployResultTarget(result, "staging");
+    } catch (error) {
+      const finalProof = await this.transition(
+        current,
+        "final_proof",
+        {
+          context_patch: {
+            deploy_outcome: "staging_failed",
+            failure: {
+              operation: "staging_deploy",
+              message: errorMessage(error),
+            },
+          },
+        },
+      );
+      return await this.writeFinalAndComplete(finalProof);
+    }
+    if (result.outcome !== "healthy") {
+      const finalProof = await this.transition(current, "final_proof", {
+        context_patch: {
+          deploy_staging: result,
+          deploy_outcome: "staging_failed",
+        },
+      });
+      return await this.writeFinalAndComplete(finalProof);
+    }
+    if (current.state === "deploying_staging") {
+      current = await this.transition(current, "verifying_staging", {
+        context_patch: { deploy_staging: result },
+      });
+    }
+    return await this.continueProductionAfterStaging(current, result);
+  }
+
+  private async continueProductionAfterStaging(
+    run: AutonomyRunProjection,
+    stagingResult: ProjectDeployResult,
+  ): Promise<GuardedDeliveryResult> {
+    const productionPolicy = this.policy.deploy?.production;
+    if (productionPolicy === undefined) {
+      const finalProof = await this.transition(run, "final_proof", {
+        context_patch: {
+          deploy_staging: stagingResult,
+          deploy_outcome: "staging_healthy",
+        },
+      });
+      return await this.writeFinalAndComplete(finalProof);
+    }
+
+    let prepared: {
+      authority: DeployScriptAuthority;
+      decision: DeployEligibilityDecision;
+    };
+    try {
+      prepared = await this.prepareDeployTarget(
+        run,
+        "production",
+        productionPolicy,
+      );
+    } catch (error) {
+      return await this.finalizeSkippedDeploy(
+        run,
+        "production",
+        `production deploy eligibility failed: ${errorMessage(error)}`,
+        { deploy_staging: stagingResult },
+      );
+    }
+    const contextPatch: Partial<GuardedDeliveryContext> = {
+      deploy_staging: stagingResult,
+      deploy_eligibility: {
+        ...(run.context.deploy_eligibility ?? {}),
+        production: prepared.decision,
+      },
+      deploy_script_authority: {
+        ...(run.context.deploy_script_authority ?? {}),
+        production: prepared.authority,
+      },
+    };
+    if (!prepared.decision.allowed) {
+      const finalProof = await this.transition(run, "final_proof", {
+        context_patch: {
+          ...contextPatch,
+          deploy_outcome: "production_skipped",
+        },
+      });
+      return await this.writeFinalAndComplete(finalProof);
+    }
+
+    let current = await this.transition(
+      run,
+      "deploying_production",
+      { context_patch: contextPatch },
+    );
+    let result: ProjectDeployResult;
+    try {
+      result = ProjectDeployResultSchema.parse(
+        await this.requireDeployPort()({
+          target: "production",
+          workspace_path: this.requireIntent(current).workspace_path,
+          policy: productionPolicy,
+          expected_script_digest_sha256:
+            prepared.authority.digest_sha256,
+          before_phase: async (phase) => {
+            current = await this.persistProductionPhase(
+              current,
+              phase,
+            );
+          },
+        }),
+      );
+      this.assertDeployResultTarget(result, "production");
+    } catch (error) {
+      return await this.freezeFailedProduction(
+        current,
+        `production deploy port failed: ${errorMessage(error)}`,
+      );
+    }
+
+    if (result.outcome === "healthy") {
+      if (current.state === "deploying_production") {
+        current = await this.transition(current, "health_checking");
+      }
+      const finalProof = await this.transition(
+        current,
+        "final_proof",
+        {
+          context_patch: {
+            deploy_production: result,
+            deploy_outcome: "production_healthy",
+          },
+        },
+      );
+      return await this.writeFinalAndComplete(finalProof);
+    }
+
+    if (current.state !== "rolling_back") {
+      current = await this.transition(current, "rolling_back", {
+        context_patch: { deploy_production: result },
+      });
+    }
+    const outcome: GuardedDeployOutcome =
+      result.outcome === "rollback_failed"
+        ? "rollback_failed"
+        : "production_rolled_back";
+    let freeze: ProductionFreezeEvidence;
+    try {
+      freeze = ProductionFreezeEvidenceSchema.parse(
+        await this.requireFreezePort()({
+          repo_id: this.requireIntent(current).repo_id,
+          reason: `automatic production freeze after ${result.outcome}`,
+          source_run_id: current.autonomy_run_id,
+          frozen_at: this.ports.now().getTime() / 1_000,
+        }),
+      );
+    } catch (error) {
+      return await this.escalate(
+        current,
+        `production freeze failed: ${errorMessage(error)}`,
+        { deploy_production: result, deploy_outcome: outcome },
+      );
+    }
+    const frozen = await this.transition(current, "deploy_frozen", {
+      context_patch: {
+        deploy_production: result,
+        production_freeze: freeze,
+        deploy_outcome: outcome,
+      },
+    });
+    const finalProof = await this.transition(frozen, "final_proof");
+    return await this.writeFinalAndComplete(finalProof);
+  }
+
+  private async prepareDeployTarget(
+    run: AutonomyRunProjection,
+    target: "staging" | "production",
+    policy: DeployTargetPolicy,
+  ): Promise<{
+    authority: DeployScriptAuthority;
+    decision: DeployEligibilityDecision;
+  }> {
+    const intent = this.requireIntent(run);
+    const local = this.requireLocalResult(run);
+    const candidate = run.context.candidate_proof;
+    if (candidate === undefined) {
+      throw new Error("deploy eligibility requires candidate proof");
+    }
+    const resolveAuthority =
+      this.ports.resolveDeployScriptAuthority;
+    const evaluate = this.ports.evaluateDeploy;
+    if (resolveAuthority === undefined || evaluate === undefined) {
+      throw new Error("deploy eligibility ports are not configured");
+    }
+    const authority = DeployScriptAuthoritySchema.parse(
+      await resolveAuthority({
+        workspace_path: intent.workspace_path,
+        policy,
+      }),
+    );
+    let actionApproved = false;
+    if (
+      this.requirePreflightRisk(run).level === "R3"
+      || this.requirePostDiffRisk(run).level === "R3"
+    ) {
+      this.assertPostDiffActionAuthorized(
+        run,
+        `deploy:${target}`,
+      );
+      actionApproved = true;
+    }
+    let productionFrozen = false;
+    if (target === "production") {
+      if (this.ports.isProductionFrozen === undefined) {
+        throw new Error("production freeze status port is not configured");
+      }
+      productionFrozen = await this.ports.isProductionFrozen(
+        intent.repo_id,
+      );
+    }
+    const decision = DeployEligibilityDecisionSchema.parse(
+      evaluate(policy, {
+        target,
+        base_branch:
+          this.policy.deploy?.base_branch ?? this.policy.git.base,
+        changed_paths: [...local.post_diff.changed_paths],
+        diff_stats: this.deployDiffStats(local.post_diff),
+        final_risk: this.requirePostDiffRisk(run).level,
+        deterministic_pass: local.verification_passed,
+        kimi_pass: local.review_passed,
+        governance_pass: local.verification_passed,
+        ci_pass: true,
+        candidate_proof_sha256: candidate.manifest_sha256,
+        deploy_script_digest_sha256: authority.digest_sha256,
+        production_frozen: productionFrozen,
+        deploy_action_approved: actionApproved,
+        ...(target === "production"
+          && this.policy.deploy?.rollback_drill !== undefined
+          ? {
+              rollback_drill:
+                this.policy.deploy.rollback_drill as RollbackDrillEvidence,
+            }
+          : {}),
+        now: this.ports.now(),
+      }),
+    );
+    return { authority, decision };
+  }
+
+  private deployDiffStats(
+    postDiff: PostDiffInputType,
+  ): DeployEligibilityInput["diff_stats"] {
+    let additions = 0;
+    let deletions = 0;
+    for (const line of postDiff.staged_diff_binary.split("\n")) {
+      if (line.startsWith("+") && !line.startsWith("+++")) {
+        additions += 1;
+      } else if (
+        line.startsWith("-")
+        && !line.startsWith("---")
+      ) {
+        deletions += 1;
+      }
+    }
+    return {
+      additions,
+      deletions,
+      files_changed: postDiff.changed_paths.length,
+    };
+  }
+
+  private async persistProductionPhase(
+    run: AutonomyRunProjection,
+    phase: ProjectDeployPhase,
+  ): Promise<AutonomyRunProjection> {
+    if (
+      phase === "health"
+      && run.state === "deploying_production"
+    ) {
+      return await this.transition(run, "health_checking");
+    }
+    if (
+      phase === "rollback"
+      && (
+        run.state === "deploying_production"
+        || run.state === "health_checking"
+      )
+    ) {
+      return await this.transition(run, "rolling_back");
+    }
+    return run;
+  }
+
+  private async finalizeSkippedDeploy(
+    run: AutonomyRunProjection,
+    target: "staging" | "production",
+    reason: string,
+    contextPatch: Partial<GuardedDeliveryContext> = {},
+  ): Promise<GuardedDeliveryResult> {
+    const decision: DeployEligibilityDecision = {
+      allowed: false,
+      reasons: ["deploy_eligibility_unavailable"],
+      requires_approval: false,
+      change_types: [],
+      unknown_paths: [],
+    };
+    const finalProof = await this.transition(run, "final_proof", {
+      context_patch: {
+        ...contextPatch,
+        deploy_eligibility: {
+          ...(run.context.deploy_eligibility ?? {}),
+          [target]: decision,
+        },
+        deploy_outcome:
+          target === "staging"
+            ? "staging_skipped"
+            : "production_skipped",
+        failure: {
+          operation: `${target}_deploy_eligibility`,
+          message: reason,
+        },
+      },
+    });
+    return await this.writeFinalAndComplete(finalProof);
+  }
+
+  private async recoverDeployState(
+    run: AutonomyRunProjection,
+  ): Promise<GuardedDeliveryResult> {
+    if (
+      run.state === "deploying_staging"
+      || run.state === "verifying_staging"
+    ) {
+      const result = run.context.deploy_staging;
+      if (result === undefined) {
+        return await this.escalate(
+          run,
+          "recovered staging deployment has no durable result; refusing replay",
+        );
+      }
+      let current = run;
+      if (
+        result.outcome === "healthy"
+        && current.state === "deploying_staging"
+      ) {
+        current = await this.transition(
+          current,
+          "verifying_staging",
+        );
+      }
+      if (result.outcome === "healthy") {
+        return await this.continueProductionAfterStaging(
+          current,
+          result,
+        );
+      }
+      const finalProof = await this.transition(
+        current,
+        "final_proof",
+        {
+          context_patch: { deploy_outcome: "staging_failed" },
+        },
+      );
+      return await this.writeFinalAndComplete(finalProof);
+    }
+
+    const result = run.context.deploy_production;
+    if (result === undefined) {
+      return await this.freezeFailedProduction(
+        run,
+        "recovered production deployment has no durable result; freezing and refusing replay",
+      );
+    }
+    let current = run;
+    if (result.outcome === "healthy") {
+      if (current.state === "deploying_production") {
+        current = await this.transition(current, "health_checking");
+      }
+      const finalProof = await this.transition(
+        current,
+        "final_proof",
+        {
+          context_patch: { deploy_outcome: "production_healthy" },
+        },
+      );
+      return await this.writeFinalAndComplete(finalProof);
+    }
+    return await this.escalate(
+      current,
+      "recovered unhealthy production deployment requires operator review",
+    );
+  }
+
+  private async freezeFailedProduction(
+    run: AutonomyRunProjection,
+    reason: string,
+  ): Promise<GuardedDeliveryResult> {
+    let current = run;
+    if (
+      current.state === "deploying_production"
+      || current.state === "health_checking"
+    ) {
+      current = await this.transition(current, "rolling_back", {
+        context_patch: {
+          deploy_outcome: "rollback_failed",
+          failure: {
+            operation: "production_deploy",
+            message: reason,
+          },
+        },
+      });
+    }
+    let freeze: ProductionFreezeEvidence;
+    try {
+      freeze = ProductionFreezeEvidenceSchema.parse(
+        await this.requireFreezePort()({
+          repo_id: this.requireIntent(current).repo_id,
+          reason: "automatic production freeze after deploy execution error",
+          source_run_id: current.autonomy_run_id,
+          frozen_at: this.ports.now().getTime() / 1_000,
+        }),
+      );
+    } catch (error) {
+      return await this.escalate(
+        current,
+        `production freeze failed after deploy error: ${errorMessage(error)}`,
+        {
+          deploy_outcome: "rollback_failed",
+          failure: {
+            operation: "production_deploy",
+            message: reason,
+          },
+        },
+      );
+    }
+    const frozen = await this.transition(current, "deploy_frozen", {
+      context_patch: {
+        deploy_outcome: "rollback_failed",
+        production_freeze: freeze,
+        failure: {
+          operation: "production_deploy",
+          message: reason,
+        },
+      },
+    });
+    const finalProof = await this.transition(frozen, "final_proof");
+    return await this.writeFinalAndComplete(finalProof);
+  }
+
+  private requireDeployPort(): (
+    input: ProjectDeployInput,
+  ) => Promise<ProjectDeployResult> {
+    if (this.ports.deploy === undefined) {
+      throw new Error("deploy execution port is not configured");
+    }
+    return this.ports.deploy;
+  }
+
+  private requireFreezePort(): NonNullable<
+    GuardedDeliveryPorts["freezeProduction"]
+  > {
+    if (this.ports.freezeProduction === undefined) {
+      throw new Error("production freeze port is not configured");
+    }
+    return this.ports.freezeProduction;
+  }
+
+  private assertDeployResultTarget(
+    result: ProjectDeployResult,
+    target: "staging" | "production",
+  ): void {
+    if (result.target !== target) {
+      throw new Error(
+        `deploy port returned ${result.target} evidence for ${target}`,
+      );
+    }
   }
 
   private async writeFinalAndComplete(
@@ -893,10 +1621,55 @@ export class GuardedDeliveryEngine {
           ...this.candidateProofInput(run),
           candidate_proof: candidate,
           git_delivery: gitDelivery,
+          ...(run.context.deploy_eligibility === undefined
+            ? {}
+            : {
+                deploy_eligibility:
+                  run.context.deploy_eligibility,
+              }),
+          ...(run.context.deploy_script_authority === undefined
+            ? {}
+            : {
+                deploy_script_authority:
+                  run.context.deploy_script_authority,
+              }),
+          ...(run.context.deploy_staging === undefined
+            ? {}
+            : { deploy_staging: run.context.deploy_staging }),
+          ...(run.context.deploy_production === undefined
+            ? {}
+            : {
+                deploy_production:
+                  run.context.deploy_production,
+              }),
+          ...(run.context.production_freeze === undefined
+            ? {}
+            : {
+                production_freeze:
+                  run.context.production_freeze,
+              }),
+          ...(run.context.deploy_outcome === undefined
+            ? {}
+            : { deploy_outcome: run.context.deploy_outcome }),
         }),
       );
     } catch (error) {
       return await this.failFinalEvidence(run, errorMessage(error));
+    }
+    if (
+      run.context.deploy_outcome === "staging_failed"
+      || run.context.deploy_outcome === "rollback_failed"
+      || run.context.failure?.operation ===
+        "staging_deploy_eligibility"
+      || run.context.failure?.operation ===
+        "production_deploy_eligibility"
+    ) {
+      return await this.escalate(
+        run,
+        run.context.failure?.message
+          ?? `deployment ended in ${run.context.deploy_outcome}`,
+        { final_proof: finalProof },
+      );
     }
     const completed = await this.transition(run, "completed", {
       context_patch: { final_proof: finalProof },
@@ -1043,7 +1816,7 @@ export class GuardedDeliveryEngine {
 
   private assertPostDiffActionAuthorized(
     run: AutonomyRunProjection,
-    action: "commit" | "push" | "merge",
+    action: string,
   ): void {
     const preflight = this.requirePreflightRisk(run);
     const postDiff = this.requirePostDiffRisk(run);
@@ -1081,5 +1854,19 @@ export class GuardedDeliveryEngine {
       );
     }
     validateScopedApprovalDecisionForRequest(request, decision);
+  }
+
+  private approvalActionScope(
+    phase: AutonomyRiskPhase,
+  ): string[] {
+    if (phase === "preflight") return ["build", "verify"];
+    const actions = new Set(["commit", "merge", "push"]);
+    if (this.policy.deploy?.staging !== undefined) {
+      actions.add("deploy:staging");
+    }
+    if (this.policy.deploy?.production !== undefined) {
+      actions.add("deploy:production");
+    }
+    return [...actions].sort();
   }
 }

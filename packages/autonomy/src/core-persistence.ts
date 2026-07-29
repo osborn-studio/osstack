@@ -4,6 +4,7 @@ import {
   getAutonomyRun,
   getContractDecision,
   transitionAutonomyRun,
+  type AutonomyNotificationKind,
   type AutonomyRunProjectionRow,
 } from "@osstack/core";
 import {
@@ -101,6 +102,24 @@ function transitionId(
   state: string,
 ): string {
   return `${autonomyRunId}:${String(revision).padStart(6, "0")}:${state}`;
+}
+
+function notificationKinds(
+  event: GuardedDeliveryTransitionInput,
+): AutonomyNotificationKind[] {
+  const kinds: AutonomyNotificationKind[] = [];
+  if (
+    event.to_state === "awaiting_approval"
+    || event.to_state === "escalated"
+    || event.to_state === "deploy_frozen"
+    || event.to_state === "delivery_evidence_failed"
+  ) {
+    kinds.push(event.to_state);
+  }
+  if (event.context_patch?.deploy_outcome === "rollback_failed") {
+    kinds.push("rollback_failed");
+  }
+  return kinds;
 }
 
 export class SqliteGuardedDeliveryStore {
@@ -235,10 +254,14 @@ export class SqliteGuardedDeliveryStore {
                 blocked_delivery_resume_state:
                   event.blocked_delivery_resume_state,
               }),
+          ...(event.recovery === undefined
+            ? {}
+            : { recovery: event.recovery }),
           context_patch: event.context_patch ?? {},
         },
         "autonomy transition event",
       ),
+      notification_kinds: notificationKinds(event),
       ...(contractDecisionId === undefined
         ? {}
         : { contract_decision_id: contractDecisionId }),
@@ -302,6 +325,66 @@ export class SqliteGuardedDeliveryStore {
             : jsonSafeObject(
               context.git_delivery,
               "Git delivery",
+            ),
+        deploy:
+          context.deploy_eligibility === undefined
+          && context.deploy_script_authority === undefined
+          && context.deploy_staging === undefined
+          && context.deploy_production === undefined
+          && context.deploy_outcome === undefined
+            ? undefined
+            : jsonSafeObject(
+              {
+                ...(context.deploy_eligibility === undefined
+                  ? {}
+                  : {
+                      eligibility:
+                        context.deploy_eligibility,
+                    }),
+                ...(context.deploy_script_authority === undefined
+                  ? {}
+                  : {
+                      script_authority:
+                        context.deploy_script_authority,
+                    }),
+                ...(context.deploy_staging === undefined
+                  ? {}
+                  : { staging: context.deploy_staging }),
+                ...(context.deploy_production === undefined
+                  ? {}
+                  : { production: context.deploy_production }),
+                ...(context.deploy_outcome === undefined
+                  ? {}
+                  : { outcome: context.deploy_outcome }),
+              },
+              "deployment evidence",
+            ),
+        rollback:
+          context.deploy_production?.rollback === undefined
+          && context.production_freeze === undefined
+            ? undefined
+            : jsonSafeObject(
+              {
+                ...(context.deploy_production?.rollback ===
+                undefined
+                  ? {}
+                  : {
+                      command:
+                        context.deploy_production.rollback,
+                    }),
+                ...(context.deploy_production
+                    ?.post_rollback_health === undefined
+                  ? {}
+                  : {
+                      post_health:
+                        context.deploy_production
+                          .post_rollback_health,
+                    }),
+                ...(context.production_freeze === undefined
+                  ? {}
+                  : { freeze: context.production_freeze }),
+              },
+              "rollback evidence",
             ),
         final_proof:
           context.final_proof === undefined

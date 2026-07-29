@@ -15,6 +15,7 @@ import type {
 } from "@osstack/agents";
 import {
   CapabilitySchema,
+  listAutonomyTransitions,
   type CapabilityKind,
 } from "@osstack/core";
 import {
@@ -293,7 +294,9 @@ describe("GuardedGitRuntime", () => {
       },
     });
     try {
-      const result = await second.runtime.resume("run-1");
+      const result = await second.runtime.resume("run-1", undefined, {
+        recoveryKind: "restart",
+      });
 
       expect(result.status).toBe("completed");
       expect(result.run.state).toBe("completed");
@@ -303,6 +306,15 @@ describe("GuardedGitRuntime", () => {
       expect(resumedProofs.map((proof) => proof.stage)).toEqual([
         "final",
       ]);
+      expect(
+        listAutonomyTransitions(second.db, "run-1").filter(
+          (transition) => (
+            JSON.parse(transition.event_json) as {
+              recovery?: { kind?: string };
+            }
+          ).recovery?.kind === "restart",
+        ),
+      ).toHaveLength(1);
     } finally {
       second.close();
     }
@@ -455,7 +467,7 @@ async function testRuntime(options: {
       evidence: { status: "pass" },
     }),
   });
-  return { runtime, close: () => db.close() };
+  return { runtime, db, close: () => db.close() };
 }
 
 type GuardedGitRuntimeConstructorDeps =

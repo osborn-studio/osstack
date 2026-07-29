@@ -2,7 +2,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { openDb, KanbanRepository, upsertPitfallLesson } from "@osstack/core";
+import {
+  createAutonomyRun,
+  freezeProduction,
+  openDb,
+  KanbanRepository,
+  upsertPitfallLesson,
+} from "@osstack/core";
 import { insertRun, insertTask, finalizeRun } from "./store.js";
 import { createDashboardSnapshot, dashboardUrl, renderDashboardHtml, startDashboardServer } from "./dashboard.js";
 
@@ -89,6 +95,7 @@ describe("dashboard", () => {
       expect(snapshot.evidence.reports).toBe(1);
       expect(snapshot.evidence.proof_packs).toBe(1);
       expect(snapshot.lessons.total).toBe(1);
+      expect(snapshot.autonomy.reliability.weekly.run_count).toBe(0);
       expect(snapshot.agent_scorecards[0]).toMatchObject({
         agent_id: "codex-cli",
         total_runs: 1,
@@ -114,6 +121,72 @@ describe("dashboard", () => {
   it("builds a shareable dashboard url from host and port options", () => {
     expect(dashboardUrl({ host: "127.0.0.1", urlHost: "localhost", port: 8799 }))
       .toBe("http://localhost:8799/dashboard");
+  });
+
+  it("projects active production freezes into the cockpit snapshot", () => {
+    const path = join(tmp, "state.db");
+    const db = openDb({ path });
+    try {
+      createAutonomyRun(db, path, {
+        autonomy_run_id: "run-deploy-7",
+        transition_id: "run-deploy-7:queued",
+        task_id: "task-deploy-7",
+        repo_id: "owner/example-web",
+        workspace_path: "/tmp/example-web",
+        contract_sha256: "a".repeat(64),
+        routing: { builder: "claude", evaluator: "kimi" },
+        budget: {
+          max_builder_iterations: 3,
+          max_review_rounds: 3,
+          max_wall_time_ms: 5_400_000,
+          max_no_progress_rounds: 2,
+        },
+        attempt: {},
+        event: { kind: "queued" },
+        occurred_at: 100,
+      });
+      freezeProduction(db, path, {
+        repo_id: "owner/example-web",
+        reason: "production health check failed",
+        source_run_id: "run-deploy-7",
+        frozen_at: 200,
+      });
+
+      const snapshot = createDashboardSnapshot({
+        db,
+        kanban: new KanbanRepository(db, path, () => 300),
+        dbPath: path,
+        workspacePath: tmp,
+        version: "0.0.0",
+        phase: "test",
+        dashboardUrl: "http://127.0.0.1:8799/dashboard",
+        adapters: [],
+        activeRuns: 0,
+        now: () => 300,
+      });
+
+      expect(snapshot.autonomy.deploy_freezes).toEqual([{
+        repo_id: "owner/example-web",
+        target: "production",
+        frozen: true,
+        reason: "production health check failed",
+        source_run_id: "run-deploy-7",
+        frozen_at: 200,
+      }]);
+      expect(
+        snapshot.autonomy.reliability.attention.production_frozen,
+      ).toEqual([
+        expect.objectContaining({
+          repo_id: "owner/example-web",
+          source_run_id: "run-deploy-7",
+        }),
+      ]);
+      expect(
+        snapshot.autonomy.reliability.weekly.metrics.active_freeze_count,
+      ).toBe(1);
+    } finally {
+      db.close();
+    }
   });
 
   it("surfaces release readiness blockers as cockpit next steps", () => {

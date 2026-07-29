@@ -103,6 +103,46 @@ describe("cockpit TUI model", () => {
     ]);
   });
 
+  it("shows production freeze evidence without offering actor-string clear", () => {
+    const model = cockpitTuiModel(
+      {},
+      {
+        dashboard: { workspace_path: "/workspace/project" },
+        autonomy: {
+          deploy_freezes: [{
+            repo_id: "owner/example-web",
+            reason: "production health check failed",
+            source_run_id: "run-deploy-7",
+            frozen_at: 1_753_727_400,
+            frozen: true,
+          }],
+        },
+        next_steps: [],
+      },
+      emptyKnowledge,
+    );
+
+    const autonomy = model.sections.find(
+      (section) => section.title === "Autonomy",
+    );
+    expect(autonomy?.lines).toEqual(expect.arrayContaining([
+      "production_freezes=1",
+      expect.stringContaining(
+        "owner/example-web reason=production health check failed source=run-deploy-7",
+      ),
+    ]));
+    expect(model.actions).toEqual(expect.arrayContaining([
+      {
+        label: "Review production freeze owner/example-web",
+        command:
+          "osstack autonomy freeze request 'owner/example-web' --json",
+        status: "needs_approval",
+      },
+    ]));
+    expect(JSON.stringify(model)).not.toContain("--actor");
+    expect(JSON.stringify(model)).not.toContain("freeze clear");
+  });
+
   it("selects actions with concrete shell-quoted workspaces", () => {
     const model = cockpitTuiModel(
       {},

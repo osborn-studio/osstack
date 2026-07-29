@@ -13,6 +13,10 @@
 - Read guarded authority from committed base policy, reject dirty/stale
   candidate branches, persist the exact base SHA, and wait for boot recovery
   before closing daemon state.
+- Add `guarded-deploy`, signed production freeze clear, deployment-aware health
+  and scorecards, durable Owner notifications, restart recovery, Mac Mini host
+  evidence/retention, controlled rollback drills, and deterministic seven-day
+  soak validation.
 
 ## 0.12.0
 

@@ -267,6 +267,34 @@ describe("guarded autonomy legal state transitions", () => {
     ).toThrow(/resume/i);
   });
 
+  it("routes merged delivery through staged deploy, rollback, freeze, and proof", () => {
+    const path: Array<[AutonomyRunState, AutonomyRunState]> = [
+      ["merging", "deploying_staging"],
+      ["deploying_staging", "verifying_staging"],
+      ["verifying_staging", "deploying_production"],
+      ["deploying_production", "health_checking"],
+      ["health_checking", "rolling_back"],
+      ["rolling_back", "deploy_frozen"],
+      ["deploy_frozen", "final_proof"],
+    ];
+    for (const [from_state, to_state] of path) {
+      expect(() =>
+        assertAutonomyTransition({
+          autonomy_run_id: "run_001",
+          from_state,
+          to_state,
+        }),
+      ).not.toThrow();
+    }
+    expect(() =>
+      assertAutonomyTransition({
+        autonomy_run_id: "run_001",
+        from_state: "deploying_production",
+        to_state: "completed",
+      }),
+    ).toThrow(/illegal transition/i);
+  });
+
   it("keeps true terminal states terminal", () => {
     const terminal: AutonomyRunState[] = [
       "blocked",
