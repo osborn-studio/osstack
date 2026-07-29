@@ -27,6 +27,102 @@ export interface ProofArtifact {
   content: string;
 }
 
+export interface ProofStageInput {
+  stage: "candidate" | "final";
+  supersedes?: {
+    manifest_path: string;
+    manifest_sha256: string;
+  };
+  risk_evidence?: unknown;
+  approval_evidence?: unknown;
+  git_delivery_evidence?: unknown;
+}
+
+export interface ProofStageManifestMetadata {
+  proof_stage: "candidate" | "final";
+  supersedes?: {
+    manifest_path: string;
+    manifest_sha256: string;
+  };
+}
+
+export function createProofStageMetadata(
+  input: ProofStageInput,
+): ProofStageManifestMetadata {
+  if (input.stage === "candidate") {
+    if (input.supersedes !== undefined) {
+      throw new Error("candidate proof must not supersede another manifest");
+    }
+    if (input.git_delivery_evidence !== undefined) {
+      throw new Error("candidate proof must not claim Git delivery evidence");
+    }
+    return { proof_stage: "candidate" };
+  }
+
+  const supersedes = input.supersedes;
+  if (supersedes === undefined) {
+    throw new Error("final proof requires supersedes candidate manifest metadata");
+  }
+  if (
+    supersedes.manifest_path.trim().length === 0
+    || supersedes.manifest_path.includes("\0")
+    || /^[A-Za-z]:[\\/]/.test(supersedes.manifest_path)
+    || supersedes.manifest_path.startsWith("/")
+  ) {
+    throw new Error("supersedes manifest_path must be a non-empty relative path");
+  }
+  if (!/^[a-f0-9]{64}$/.test(supersedes.manifest_sha256)) {
+    throw new Error("supersedes manifest_sha256 must be 64 lowercase hex characters");
+  }
+  return {
+    proof_stage: "final",
+    supersedes: { ...supersedes },
+  };
+}
+
+export function createProofStageArtifacts(
+  input: ProofStageInput,
+): ProofArtifact[] {
+  createProofStageMetadata(input);
+  const risk = optionalEvidenceContainer(
+    input.risk_evidence,
+    "risk_evidence",
+    new Set(["preflight", "post_diff"]),
+  );
+  const approval = optionalEvidenceContainer(
+    input.approval_evidence,
+    "approval_evidence",
+    new Set(["request", "decision"]),
+  );
+  const artifacts: ProofArtifact[] = [];
+  pushJsonEvidenceArtifact(
+    artifacts,
+    "risk-preflight.json",
+    risk?.["preflight"],
+  );
+  pushJsonEvidenceArtifact(
+    artifacts,
+    "risk-post-diff.json",
+    risk?.["post_diff"],
+  );
+  pushJsonEvidenceArtifact(
+    artifacts,
+    "approval-request.json",
+    approval?.["request"],
+  );
+  pushJsonEvidenceArtifact(
+    artifacts,
+    "approval-decision.json",
+    approval?.["decision"],
+  );
+  pushJsonEvidenceArtifact(
+    artifacts,
+    "git-delivery.json",
+    input.git_delivery_evidence,
+  );
+  return artifacts;
+}
+
 export interface PolicyDecisionEvidence {
   status: "recorded" | "unknown";
   decisions?: Array<{
@@ -41,6 +137,39 @@ export interface PolicyDecisionEvidence {
     independence_reason?: string;
   }>;
   reason?: string;
+}
+
+function optionalEvidenceContainer(
+  value: unknown,
+  label: string,
+  allowedKeys: ReadonlySet<string>,
+): Record<string, unknown> | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) {
+    throw new Error(`${label} must be a JSON object`);
+  }
+  const unexpectedKey = Object.keys(value).find(
+    (key) => !allowedKeys.has(key),
+  );
+  if (unexpectedKey !== undefined) {
+    throw new Error(`${label} contains unexpected field: ${unexpectedKey}`);
+  }
+  return value;
+}
+
+function pushJsonEvidenceArtifact(
+  artifacts: ProofArtifact[],
+  path: string,
+  value: unknown,
+): void {
+  if (value === undefined) return;
+  if (!isRecord(value) || Object.keys(value).length === 0) {
+    throw new Error(`${path} evidence must be a non-empty JSON object`);
+  }
+  artifacts.push({
+    path,
+    content: `${JSON.stringify(value, null, 2)}\n`,
+  });
 }
 
 export interface AgentRuntimeEvidence {

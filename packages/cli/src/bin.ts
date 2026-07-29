@@ -11,7 +11,10 @@ import { assertDbAccessAllowed, assertServeAllowed, ControlPlaneGuardError, defa
 import {
   createAgentRuntimeEvidence,
   createPolicyDecisionEvidence,
+  createProofStageArtifacts,
+  createProofStageMetadata,
   createVerifierOutputArtifacts,
+  type ProofStageInput,
 } from "./proof-pack.js";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
@@ -1119,6 +1122,12 @@ type ProofFileIntegrityIssueCode =
   | "manifest_missing_generated_from"
   | "manifest_missing_created_at"
   | "manifest_missing_generated_at"
+  | "manifest_invalid_proof_stage"
+  | "manifest_missing_supersedes"
+  | "manifest_invalid_supersedes"
+  | "supersedes_manifest_missing"
+  | "supersedes_sha256_mismatch"
+  | "supersedes_not_candidate"
   | "artifact_malformed"
   | "artifact_unexpected_field"
   | "artifact_invalid_sha256"
@@ -2404,6 +2413,7 @@ async function validateProofFileIntegrity(
   if (missingManifestString(manifestRaw, "generated_at")) {
     issues.push({ path: "manifest.json", code: "manifest_missing_generated_at" });
   }
+  issues.push(...await validateProofStageIntegrity(proofDir, manifestRaw));
 
   const proofRoot = resolve(proofDir);
   const manifestShaByPath = new Map<string, string>();
@@ -2518,12 +2528,19 @@ const PROOF_MANIFEST_ALLOWED_FIELDS = new Set([
   "loop_id",
   "agent_id",
   "agent_ids",
+  "proof_stage",
+  "supersedes",
   "workspace",
   "generated_from",
   "created_at",
   "generated_at",
   "compliance_reports",
   "artifacts",
+]);
+
+const PROOF_MANIFEST_SUPERSEDES_ALLOWED_FIELDS = new Set([
+  "manifest_path",
+  "manifest_sha256",
 ]);
 
 const PROOF_MANIFEST_ARTIFACT_ALLOWED_FIELDS = new Set([
@@ -2541,6 +2558,96 @@ const PROOF_MANIFEST_COMPLIANCE_REPORT_ALLOWED_FIELDS = new Set([
 function missingManifestString(manifestRaw: Record<string, unknown>, key: string): boolean {
   const value = manifestRaw[key];
   return typeof value !== "string" || value.trim().length === 0;
+}
+
+async function validateProofStageIntegrity(
+  proofDir: string,
+  manifestRaw: Record<string, unknown>,
+): Promise<ProofFileIntegrityIssue[]> {
+  const stage = manifestRaw["proof_stage"];
+  const supersedes = manifestRaw["supersedes"];
+  if (stage !== "candidate" && stage !== "final") {
+    return [{
+      path: "manifest.json",
+      code: "manifest_invalid_proof_stage",
+      actual: typeof stage === "string" ? stage : String(stage),
+    }];
+  }
+  if (stage === "candidate") {
+    return supersedes === undefined
+      ? []
+      : [{ path: "manifest.json", code: "manifest_invalid_supersedes" }];
+  }
+  if (supersedes === undefined) {
+    return [{ path: "manifest.json", code: "manifest_missing_supersedes" }];
+  }
+  if (!isRecord(supersedes)) {
+    return [{ path: "manifest.json", code: "manifest_invalid_supersedes" }];
+  }
+  if (
+    Object.keys(supersedes).some(
+      (key) => !PROOF_MANIFEST_SUPERSEDES_ALLOWED_FIELDS.has(key),
+    )
+  ) {
+    return [{ path: "manifest.json", code: "manifest_invalid_supersedes" }];
+  }
+  const manifestPath = supersedes["manifest_path"];
+  const expectedSha256 = supersedes["manifest_sha256"];
+  if (
+    typeof manifestPath !== "string"
+    || manifestPath.trim().length === 0
+    || manifestPath.includes("\\")
+    || isAbsolute(manifestPath)
+    || /^[A-Za-z]:[\\/]/.test(manifestPath)
+    || typeof expectedSha256 !== "string"
+    || !/^[a-f0-9]{64}$/.test(expectedSha256)
+  ) {
+    return [{ path: "manifest.json", code: "manifest_invalid_supersedes" }];
+  }
+
+  const proofRoot = resolve(proofDir);
+  const releaseRoot = dirname(proofRoot);
+  const candidateManifest = resolve(proofRoot, manifestPath);
+  const candidateRelativeToRelease = relative(releaseRoot, candidateManifest);
+  if (
+    candidateManifest === join(proofRoot, "manifest.json")
+    || candidateRelativeToRelease.startsWith("..")
+    || isAbsolute(candidateRelativeToRelease)
+    || candidateManifest !== join(dirname(candidateManifest), "manifest.json")
+  ) {
+    return [{ path: "manifest.json", code: "manifest_invalid_supersedes" }];
+  }
+
+  let candidateContent: Buffer;
+  try {
+    candidateContent = await readFile(candidateManifest);
+  } catch {
+    return [{ path: manifestPath, code: "supersedes_manifest_missing" }];
+  }
+  const actualSha256 = sha256Buffer(candidateContent);
+  if (actualSha256 !== expectedSha256) {
+    return [{
+      path: manifestPath,
+      code: "supersedes_sha256_mismatch",
+      expected: expectedSha256,
+      actual: actualSha256,
+    }];
+  }
+
+  let candidateRaw: unknown;
+  try {
+    candidateRaw = JSON.parse(candidateContent.toString("utf-8")) as unknown;
+  } catch {
+    return [{ path: manifestPath, code: "supersedes_not_candidate" }];
+  }
+  if (
+    !isRecord(candidateRaw)
+    || candidateRaw["proof_stage"] !== "candidate"
+    || candidateRaw["supersedes"] !== undefined
+  ) {
+    return [{ path: manifestPath, code: "supersedes_not_candidate" }];
+  }
+  return [];
 }
 
 function validateProofComplianceReports(
@@ -6900,7 +7007,7 @@ async function handleProofCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack proof — local evidence proof pack
 
-  osstack proof [run_id] [--loop loop_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-mode M] [--knowledge-cloud-url URL] [--knowledge-query Q] [--compliance-pack P] [--output-dir P] [--json]
+  osstack proof [run_id] [--loop loop_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-mode M] [--knowledge-cloud-url URL] [--knowledge-query Q] [--compliance-pack P] [--output-dir P] [--stage candidate|final] [--supersedes-manifest P] [--risk-preflight P] [--risk-post-diff P] [--approval-request P] [--approval-decision P] [--git-delivery P] [--json]
   osstack proof validate <run_id> [--proof-dir P] [--workspace P] [--pack P] [--audience engineer|manager|auditor|customer] [--json]
   osstack proof view <run_id> --audience engineer|manager|auditor|customer [--proof-dir P] [--workspace P] [--output P] [--lang en|zh-CN] [--json]
 
@@ -6917,6 +7024,16 @@ Options:
   --compliance-pack P
                       Optional compliance mapping pack to include
   --output-dir P      Directory for proof pack folders (default: <workspace>/release)
+  --stage S           Evidence stage: candidate (default) or final
+  --supersedes-manifest P
+                      Candidate manifest required by a final proof
+  --risk-preflight P  JSON risk evidence from preflight classification
+  --risk-post-diff P  JSON risk evidence from staged-diff classification
+  --approval-request P
+                      JSON scoped approval request evidence
+  --approval-decision P
+                      JSON externally verified approval decision evidence
+  --git-delivery P    JSON GitHub delivery evidence (final stage only)
   --pack P            Validate against a compliance mapping pack
   --lang L            Proof view language: en or zh-CN (default: OSSTACK_LANG or en)
   --json              Print machine-readable summary
@@ -6942,6 +7059,13 @@ Options:
     "--knowledge-query",
     "--compliance-pack",
     "--output-dir",
+    "--stage",
+    "--supersedes-manifest",
+    "--risk-preflight",
+    "--risk-post-diff",
+    "--approval-request",
+    "--approval-decision",
+    "--git-delivery",
   ]));
   const loopId = flagValue(args, "--loop");
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
@@ -6965,6 +7089,28 @@ Options:
   }
 
   const outputDir = resolveLoopPath(flagValue(args, "--output-dir") ?? "release", workspacePath);
+  const proofStage = parseProofStage(flagValue(args, "--stage"));
+  if (proofStage instanceof Error) {
+    console.error(`osstack: ${proofStage.message}`);
+    return 1;
+  }
+  const artifactId = runId ?? loopId ?? state.loop_id;
+  const stageInput = await createCliProofStageInput({
+    stage: proofStage,
+    supersedesManifest: flagValue(args, "--supersedes-manifest"),
+    outputDir,
+    artifactId,
+    workspacePath,
+    riskPreflight: flagValue(args, "--risk-preflight"),
+    riskPostDiff: flagValue(args, "--risk-post-diff"),
+    approvalRequest: flagValue(args, "--approval-request"),
+    approvalDecision: flagValue(args, "--approval-decision"),
+    gitDelivery: flagValue(args, "--git-delivery"),
+  });
+  if (stageInput instanceof Error) {
+    console.error(`osstack: ${stageInput.message}`);
+    return 1;
+  }
   let events: LoopEvent[];
   try {
     events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
@@ -6977,7 +7123,17 @@ Options:
   const knowledge = await createKnowledgeProofEvidence(args, state.loop_id);
   let proof: Awaited<ReturnType<typeof writeProofPack>>;
   try {
-    proof = await writeProofPack(state, outputDir, events, runId ?? loopId, governance, knowledge, flagValues(args, "--compliance-pack"), workspacePath);
+    proof = await writeProofPack(
+      state,
+      outputDir,
+      events,
+      runId ?? loopId,
+      governance,
+      knowledge,
+      flagValues(args, "--compliance-pack"),
+      workspacePath,
+      stageInput,
+    );
   } catch (error) {
     console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
     return 1;
@@ -6999,6 +7155,146 @@ Options:
     console.log(`artifacts=${summary.artifact_count}`);
   }
   return 0;
+}
+
+function parseProofStage(
+  value: string | undefined,
+): ProofStageInput["stage"] | Error {
+  if (value === undefined || value === "candidate") return "candidate";
+  if (value === "final") return "final";
+  return new Error("--stage must be candidate or final");
+}
+
+async function createCliProofStageInput(input: {
+  stage: ProofStageInput["stage"];
+  supersedesManifest: string | undefined;
+  outputDir: string;
+  artifactId: string;
+  workspacePath: string;
+  riskPreflight: string | undefined;
+  riskPostDiff: string | undefined;
+  approvalRequest: string | undefined;
+  approvalDecision: string | undefined;
+  gitDelivery: string | undefined;
+}): Promise<ProofStageInput | Error> {
+  let supersedes: ProofStageInput["supersedes"];
+  if (input.stage === "candidate") {
+    if (input.supersedesManifest !== undefined) {
+      return new Error("--supersedes-manifest is valid only with --stage final");
+    }
+    if (input.gitDelivery !== undefined) {
+      return new Error("--git-delivery is valid only with --stage final");
+    }
+  } else {
+    if (input.supersedesManifest === undefined) {
+      return new Error("--stage final requires --supersedes-manifest");
+    }
+
+    const candidateManifest = resolveLoopPath(
+      input.supersedesManifest,
+      input.workspacePath,
+    );
+    const outputRoot = resolve(input.outputDir);
+    const candidateRelativeToOutput = relative(outputRoot, candidateManifest);
+    if (
+      candidateRelativeToOutput.startsWith("..")
+      || isAbsolute(candidateRelativeToOutput)
+      || candidateManifest !== join(dirname(candidateManifest), "manifest.json")
+    ) {
+      return new Error(
+        "--supersedes-manifest must name a candidate manifest inside --output-dir",
+      );
+    }
+
+    let candidateContent: Buffer;
+    let candidateRaw: unknown;
+    try {
+      candidateContent = await readFile(candidateManifest);
+      candidateRaw = JSON.parse(candidateContent.toString("utf-8")) as unknown;
+    } catch (error) {
+      return new Error(
+        `unable to read candidate manifest: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    if (
+      !isRecord(candidateRaw)
+      || candidateRaw["proof_stage"] !== "candidate"
+      || candidateRaw["supersedes"] !== undefined
+    ) {
+      return new Error(
+        "--supersedes-manifest must reference a candidate proof manifest",
+      );
+    }
+
+    const finalProofDir = join(
+      input.outputDir,
+      `osstack-proof-${safeFileSegment(input.artifactId)}-final`,
+    );
+    const manifestPath = relative(finalProofDir, candidateManifest)
+      .replaceAll("\\", "/");
+    supersedes = {
+      manifest_path: manifestPath,
+      manifest_sha256: sha256Buffer(candidateContent),
+    };
+  }
+
+  const evidence = await Promise.all([
+    readCliProofEvidence(input.riskPreflight, "--risk-preflight", input.workspacePath),
+    readCliProofEvidence(input.riskPostDiff, "--risk-post-diff", input.workspacePath),
+    readCliProofEvidence(input.approvalRequest, "--approval-request", input.workspacePath),
+    readCliProofEvidence(input.approvalDecision, "--approval-decision", input.workspacePath),
+    readCliProofEvidence(input.gitDelivery, "--git-delivery", input.workspacePath),
+  ]);
+  const evidenceError = evidence.find(
+    (value): value is Error => value instanceof Error,
+  );
+  if (evidenceError !== undefined) {
+    return evidenceError;
+  }
+  return {
+    stage: input.stage,
+    ...(supersedes === undefined ? {} : { supersedes }),
+    ...(evidence[0] === undefined && evidence[1] === undefined
+      ? {}
+      : {
+          risk_evidence: {
+            ...(evidence[0] === undefined ? {} : { preflight: evidence[0] }),
+            ...(evidence[1] === undefined ? {} : { post_diff: evidence[1] }),
+          },
+        }),
+    ...(evidence[2] === undefined && evidence[3] === undefined
+      ? {}
+      : {
+          approval_evidence: {
+            ...(evidence[2] === undefined ? {} : { request: evidence[2] }),
+            ...(evidence[3] === undefined ? {} : { decision: evidence[3] }),
+          },
+        }),
+    ...(evidence[4] === undefined
+      ? {}
+      : { git_delivery_evidence: evidence[4] }),
+  };
+}
+
+async function readCliProofEvidence(
+  path: string | undefined,
+  flag: string,
+  workspacePath: string,
+): Promise<Record<string, unknown> | undefined | Error> {
+  if (path === undefined) return undefined;
+  try {
+    const raw = JSON.parse(
+      await readFile(resolveLoopPath(path, workspacePath), "utf-8"),
+    ) as unknown;
+    if (!isRecord(raw) || Object.keys(raw).length === 0) {
+      return new Error(`${flag} must reference a non-empty JSON object`);
+    }
+    return raw;
+  } catch (error) {
+    return new Error(
+      `${flag} could not be read: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
 async function handleProofValidateCommand(args: string[]): Promise<number> {
@@ -7573,13 +7869,18 @@ async function writeProofPack(
   knowledge: KnowledgeProofEvidence = offKnowledgeEvidence(),
   compliancePackIds: string[] = [],
   workspacePath?: string,
+  stageInput: ProofStageInput = { stage: "candidate" },
 ): Promise<{
   proof_dir: string;
   proof_zip: string;
   proof_manifest: string;
   artifact_count: number;
 }> {
-  const proofDir = join(outputDir, `osstack-proof-${safeFileSegment(artifactId)}`);
+  const stageMetadata = createProofStageMetadata(stageInput);
+  const proofDir = join(
+    outputDir,
+    `osstack-proof-${safeFileSegment(artifactId)}${stageInput.stage === "final" ? "-final" : ""}`,
+  );
   const scorecard = createLoopStateScorecardFromState(state);
   const policyDecision = createPolicyDecisionEvidence(events);
   const agentRuntime = createAgentRuntimeEvidence(events);
@@ -7602,6 +7903,7 @@ async function writeProofPack(
     { path: "contract-validation.json", content: `${JSON.stringify(contractValidation, null, 2)}\n` },
     { path: "logs/events.log", content: renderProofEventsLog(events) },
   ];
+  artifacts.push(...createProofStageArtifacts(stageInput));
   artifacts.push(...createVerifierOutputArtifacts(verifyResults));
   if (workspacePath !== undefined) {
     artifacts.push(await createGitDiffProofArtifact(workspacePath));
@@ -7659,6 +7961,7 @@ async function writeProofPack(
     loop_id: state.loop_id,
     agent_id: primaryAgentId(state),
     agent_ids: proofAgentIds(state),
+    ...stageMetadata,
     ...(workspacePath !== undefined ? { workspace: workspacePath } : {}),
     generated_from: "LOOP-STATE.json",
     created_at: createdAt,

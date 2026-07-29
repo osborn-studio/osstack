@@ -3,8 +3,79 @@ import type { LoopEvent } from "@osstack/loop";
 import {
   createAgentRuntimeEvidence,
   createPolicyDecisionEvidence,
+  createProofStageArtifacts,
+  createProofStageMetadata,
   createVerifierOutputArtifacts,
 } from "./proof-pack.js";
+
+describe("staged proof evidence", () => {
+  it("creates candidate metadata without a supersedes claim", () => {
+    expect(createProofStageMetadata({ stage: "candidate" })).toEqual({
+      proof_stage: "candidate",
+    });
+    expect(() => createProofStageMetadata({
+      stage: "candidate",
+      supersedes: {
+        manifest_path: "../candidate/manifest.json",
+        manifest_sha256: "a".repeat(64),
+      },
+    })).toThrow(/candidate proof must not supersede/);
+  });
+
+  it("requires a checksummed candidate manifest for final metadata", () => {
+    expect(() => createProofStageMetadata({ stage: "final" })).toThrow(
+      /final proof requires supersedes/,
+    );
+    expect(createProofStageMetadata({
+      stage: "final",
+      supersedes: {
+        manifest_path: "../osstack-proof-run/manifest.json",
+        manifest_sha256: "b".repeat(64),
+      },
+    })).toEqual({
+      proof_stage: "final",
+      supersedes: {
+        manifest_path: "../osstack-proof-run/manifest.json",
+        manifest_sha256: "b".repeat(64),
+      },
+    });
+  });
+
+  it("uses exact artifact names and omits absent approval authority", () => {
+    const candidate = createProofStageArtifacts({
+      stage: "candidate",
+      risk_evidence: {
+        preflight: { risk: "R2", signals: ["source"] },
+        post_diff: { risk: "R2", diff_sha256: "c".repeat(64) },
+      },
+    });
+    expect(candidate.map((artifact) => artifact.path)).toEqual([
+      "risk-preflight.json",
+      "risk-post-diff.json",
+    ]);
+    expect(candidate.map((artifact) => artifact.path)).not.toContain(
+      "approval-request.json",
+    );
+
+    const final = createProofStageArtifacts({
+      stage: "final",
+      supersedes: {
+        manifest_path: "../osstack-proof-run/manifest.json",
+        manifest_sha256: "d".repeat(64),
+      },
+      approval_evidence: {
+        request: { request_digest: "request-digest" },
+        decision: { decision: "approved" },
+      },
+      git_delivery_evidence: { pr_url: "https://example.test/pull/1" },
+    });
+    expect(final.map((artifact) => artifact.path)).toEqual([
+      "approval-request.json",
+      "approval-decision.json",
+      "git-delivery.json",
+    ]);
+  });
+});
 
 describe("createVerifierOutputArtifacts", () => {
   it("writes redacted structured Kimi Markdown and JSON evidence", () => {
