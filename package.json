@@ -38,6 +38,8 @@
     "smoke:neat": "pnpm --filter @osstack/cli build && node scripts/smoke-neat.mjs",
     "smoke:probe": "pnpm --filter @osstack/cli... build && node scripts/smoke-probe.mjs",
     "smoke:probe-skill": "pnpm --filter @osstack/cli... build && node scripts/smoke-probe-skill.mjs",
+    "test:soak-kimi-autonomy": "node --test scripts/soak-kimi-autonomy.test.mjs",
+    "soak:kimi-autonomy": "node scripts/soak-kimi-autonomy.mjs --duration-days 7 --min-tasks 30",
     "smoke:bun-single-binary": "node scripts/smoke-bun-single-binary.mjs",
     "smoke:single-binary-signing": "node scripts/smoke-single-binary-signing.mjs",
     "smoke:single-binary-release-pack": "node scripts/smoke-single-binary-release-pack.mjs",
