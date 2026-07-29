@@ -1,13 +1,17 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import {
+  clearProductionFreeze,
   getAutonomyRun,
   getContractApproval,
   getContractApprovalByContract,
   getContractDecision,
+  getProductionFreeze,
   insertContractApproval,
+  listAutonomyTransitions,
   listAutonomyRuns,
   listContractDecisions,
+  listProductionFreezes,
   recordContractDecision,
 } from "@osstack/core";
 import {
@@ -19,6 +23,7 @@ import {
   type ErrorCode,
 } from "@osstack/protocol";
 import {
+  createScopedApprovalRequest,
   verifyScopedApprovalDecision,
   type GuardedDeliveryResult,
 } from "@osstack/autonomy";
@@ -46,6 +51,9 @@ interface StoredSignedDecision {
   signed_decision: ScopedApprovalDecision;
   note?: string;
 }
+
+const FREEZE_CLEAR_ACTION_SCOPE = ["freeze:clear:production"] as const;
+const FREEZE_CLEAR_REQUEST_TTL_MS = 60 * 60 * 1_000;
 
 function flag(args: readonly string[], name: string): string | undefined {
   const index = args.indexOf(name);
@@ -95,6 +103,61 @@ function autonomyContractId(runId: string, phase: string): string {
 
 function decisionId(nonce: string): string {
   return `cd_${createHash("sha256").update(nonce).digest("hex").slice(0, 24)}`;
+}
+
+function freezeContractId(repoId: string, frozenAt: number): string {
+  return `autonomy-freeze:${repoId}:${frozenAt}`;
+}
+
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
+  }
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
+    .join(",")}}`;
+}
+
+function freezeBindingSha256(
+  freeze: Exclude<ReturnType<typeof getProductionFreeze>, undefined>,
+): string {
+  return createHash("sha256")
+    .update(canonicalJson({
+      schema_version: 1,
+      repo_id: freeze.repo_id,
+      target: freeze.target,
+      reason: freeze.reason,
+      source_run_id: freeze.source_run_id,
+      frozen_at: freeze.frozen_at,
+    }))
+    .digest("hex");
+}
+
+function signedDecisionSha256(decision: ScopedApprovalDecision): string {
+  return createHash("sha256")
+    .update(JSON.stringify(ScopedApprovalDecision.parse(decision)))
+    .digest("hex");
+}
+
+async function readScopedApprovalRequest(
+  path: string,
+): Promise<ScopedApprovalRequest> {
+  return ScopedApprovalRequest.parse(
+    JSON.parse(await readFile(path, "utf-8")) as unknown,
+  );
+}
+
+async function readScopedApprovalDecision(
+  path: string,
+): Promise<ScopedApprovalDecision> {
+  return ScopedApprovalDecision.parse(
+    JSON.parse(await readFile(path, "utf-8")) as unknown,
+  );
 }
 
 function decodedStoredDecision(
@@ -273,6 +336,35 @@ function nextActionsForSummary(
   return [];
 }
 
+function freezeSummary(
+  deps: AutonomyCommandDeps,
+  freeze: Exclude<ReturnType<typeof getProductionFreeze>, undefined>,
+) {
+  return {
+    repo_id: freeze.repo_id,
+    target: freeze.target,
+    frozen: freeze.frozen === 1,
+    reason: freeze.reason,
+    source_run_id: freeze.source_run_id,
+    frozen_at: freeze.frozen_at,
+    cleared_at: freeze.cleared_at,
+    cleared_by_type: freeze.cleared_by_type,
+    cleared_by_id: freeze.cleared_by_id,
+    clear_reason: freeze.clear_reason,
+    clear_decision_sha256: freeze.clear_decision_sha256,
+    clear_key_id: freeze.clear_key_id,
+    transitions: listAutonomyTransitions(deps.db, freeze.source_run_id).map(
+      (transition) => ({
+        transition_id: transition.transition_id,
+        seq: transition.seq,
+        from_state: transition.from_state,
+        to_state: transition.to_state,
+        occurred_at: transition.occurred_at,
+      }),
+    ),
+  };
+}
+
 export async function handleAutonomyCommand(
   args: string[],
   depsValue: AutonomyCommandDeps,
@@ -296,10 +388,391 @@ export async function handleAutonomyCommand(
   osstack autonomy approve RUN_ID --decision FILE [--reason TEXT] [--json]
   osstack autonomy reject RUN_ID --decision FILE [--reason TEXT] [--json]
   osstack autonomy resume RUN_ID [--json]
+  osstack autonomy freeze list [--repo ID] [--json]
+  osstack autonomy freeze request REPO_ID [--json]
+  osstack autonomy freeze clear REPO_ID --request FILE --decision FILE --reason TEXT [--json]
 
 approve/reject import an externally signed Ed25519 decision. --actor string
-self-assertion is not accepted. Approval records authority only; resume executes.`);
+self-assertion is not accepted. Approval records authority only; resume executes.
+Production freeze clear requires a current scoped request plus an externally
+signed Ed25519 decision. TTY or --actor self-assertion cannot clear production.`);
     return 0;
+  }
+
+  if (subcommand === "freeze") {
+    const freezeCommand = args[1];
+    if (freezeCommand === "list") {
+      const repoId = flag(args, "--repo");
+      const freezes = listProductionFreezes(deps.db)
+        .filter((freeze) => repoId === undefined || freeze.repo_id === repoId)
+        .map((freeze) => freezeSummary(deps, freeze));
+      return output(
+        deps,
+        args,
+        {
+          protocol_version: PROTOCOL_VERSION,
+          status: "ok",
+          result: { freezes },
+        },
+        freezes.length === 0
+          ? "No production freezes."
+          : freezes
+              .map(
+                (freeze) =>
+                  `${freeze.repo_id} ${freeze.frozen ? "frozen" : "cleared"} reason=${freeze.reason} source=${freeze.source_run_id}`,
+              )
+              .join("\n"),
+      );
+    }
+
+    const repoId = args[2];
+    if (repoId === undefined || repoId.startsWith("--")) {
+      return failure(
+        deps,
+        args,
+        "bad_request",
+        `freeze ${freezeCommand ?? ""}`.trim()
+          + " requires a repository id",
+      );
+    }
+    const freeze = getProductionFreeze(deps.db, repoId);
+    if (freeze === undefined) {
+      return failure(
+        deps,
+        args,
+        "not_found",
+        `production freeze was not found for ${repoId}`,
+      );
+    }
+
+    if (freezeCommand === "request") {
+      if (freeze.frozen !== 1) {
+        return failure(
+          deps,
+          args,
+          "conflict",
+          `production freeze for ${repoId} is already cleared`,
+        );
+      }
+      const sourceRun = getAutonomyRun(deps.db, freeze.source_run_id);
+      if (sourceRun === undefined || sourceRun.repo_id !== repoId) {
+        return failure(
+          deps,
+          args,
+          "internal",
+          "production freeze source run is missing or belongs to another repository",
+        );
+      }
+      const requestedAt = deps.now!();
+      const requestedAtIso = requestedAt.toISOString();
+      const binding = freezeBindingSha256(freeze);
+      const request = createScopedApprovalRequest({
+        approval_id:
+          `approval:${freeze.source_run_id}:freeze:${binding.slice(0, 24)}`,
+        autonomy_run_id: freeze.source_run_id,
+        phase: "post_diff",
+        contract_sha256: sourceRun.contract_sha256,
+        diff_sha256: binding,
+        action_scope: [...FREEZE_CLEAR_ACTION_SCOPE],
+        risk: "R3",
+        nonce: createHash("sha256")
+          .update(`${binding}:${requestedAtIso}`)
+          .digest("base64url"),
+        requested_at: requestedAtIso,
+        expires_at: new Date(
+          requestedAt.getTime() + FREEZE_CLEAR_REQUEST_TTL_MS,
+        ).toISOString(),
+      });
+      const contractId = freezeContractId(repoId, freeze.frozen_at);
+      const existingApproval =
+        getContractApprovalByContract(deps.db, contractId)
+        ?? getContractApproval(deps.db, request.approval_id);
+      if (existingApproval === undefined) {
+        insertContractApproval(deps.db, deps.dbPath, {
+          approval_id: request.approval_id,
+          contract_id: contractId,
+          action: request.action_scope.join(","),
+          risk: "high",
+          requested_at: requestedAt.getTime() / 1_000,
+        });
+      } else if (
+        existingApproval.contract_id !== contractId
+        || existingApproval.approval_id !== request.approval_id
+      ) {
+        return failure(
+          deps,
+          args,
+          "conflict",
+          "freeze approval id is already bound to a different scope",
+        );
+      }
+      return output(
+        deps,
+        args,
+        {
+          protocol_version: PROTOCOL_VERSION,
+          status: "needs_approval",
+          result: {
+            repo_id: repoId,
+            source_run_id: freeze.source_run_id,
+            freeze_binding_sha256: binding,
+            scoped_approval_request: request,
+          },
+          required_approvals: [genericApprovalRequest(request)],
+          next_actions: [{
+            command: "autonomy.freeze_clear",
+            reason:
+              "Import an external signed freeze-clear decision without resuming deployment",
+          }],
+        },
+        [
+          `repo_id=${repoId}`,
+          `source_run_id=${freeze.source_run_id}`,
+          `freeze_binding_sha256=${binding}`,
+          `approval_request=${JSON.stringify(request)}`,
+        ].join("\n"),
+      );
+    }
+
+    if (freezeCommand === "clear") {
+      if (args.includes("--actor")) {
+        return failure(
+          deps,
+          args,
+          "policy_denied",
+          "--actor identity strings cannot authorize production freeze clear",
+        );
+      }
+      const reason = flag(args, "--reason");
+      if (
+        reason === undefined
+        || reason.length === 0
+        || reason.trim() !== reason
+      ) {
+        return failure(
+          deps,
+          args,
+          "bad_request",
+          "freeze clear requires a non-empty trimmed --reason",
+        );
+      }
+      const requestPath = flag(args, "--request");
+      const decisionPath = flag(args, "--decision");
+      if (requestPath === undefined || decisionPath === undefined) {
+        return failure(
+          deps,
+          args,
+          "bad_request",
+          "freeze clear requires --request FILE and --decision FILE",
+        );
+      }
+      let request: ScopedApprovalRequest;
+      let decision: ScopedApprovalDecision;
+      try {
+        [request, decision] = await Promise.all([
+          readScopedApprovalRequest(requestPath),
+          readScopedApprovalDecision(decisionPath),
+        ]);
+      } catch (error) {
+        return failure(
+          deps,
+          args,
+          "bad_request",
+          `freeze-clear authority is invalid: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+      if (decision.payload.decision !== "approve") {
+        return failure(
+          deps,
+          args,
+          "policy_denied",
+          "production freeze clear requires a signed approve decision",
+        );
+      }
+      const sourceRun = getAutonomyRun(deps.db, freeze.source_run_id);
+      if (sourceRun === undefined || sourceRun.repo_id !== repoId) {
+        return failure(
+          deps,
+          args,
+          "internal",
+          "production freeze source run is missing or belongs to another repository",
+        );
+      }
+      const binding = freezeBindingSha256(freeze);
+      const expected = {
+        autonomy_run_id: freeze.source_run_id,
+        phase: "post_diff" as const,
+        contract_sha256: sourceRun.contract_sha256,
+        diff_sha256: binding,
+        action_scope: [...FREEZE_CLEAR_ACTION_SCOPE],
+      };
+      const id = decisionId(decision.payload.nonce);
+      const existing = getContractDecision(deps.db, id);
+      let reused = false;
+      if (existing !== undefined) {
+        const decoded = decodedStoredDecision(existing.reason);
+        if (
+          decoded === undefined
+          || JSON.stringify(decoded.signed_decision)
+            !== JSON.stringify(decision)
+        ) {
+          return failure(
+            deps,
+            args,
+            "conflict",
+            "freeze-clear nonce was already used by a different decision",
+          );
+        }
+        if (
+          request.autonomy_run_id !== expected.autonomy_run_id
+          || request.phase !== expected.phase
+          || request.contract_sha256 !== expected.contract_sha256
+          || request.diff_sha256 !== expected.diff_sha256
+          || JSON.stringify(request.action_scope)
+            !== JSON.stringify(expected.action_scope)
+          || decision.payload.request_sha256 !== request.request_sha256
+        ) {
+          return failure(
+            deps,
+            args,
+            "policy_denied",
+            "stored freeze-clear decision does not bind the current freeze",
+          );
+        }
+        reused = true;
+      } else {
+        try {
+          verifyScopedApprovalDecision(request, decision, {
+            expected,
+            trusted_public_keys: deps.trustedApprovalPublicKeys,
+            now: () => deps.now!().toISOString(),
+            consume_nonce: () => true,
+          });
+        } catch (error) {
+          return failure(
+            deps,
+            args,
+            "policy_denied",
+            `signed freeze-clear verification failed: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }
+      }
+
+      const contractId = freezeContractId(repoId, freeze.frozen_at);
+      const expectedApprovalId =
+        `approval:${freeze.source_run_id}:freeze:${binding.slice(0, 24)}`;
+      if (request.approval_id !== expectedApprovalId) {
+        return failure(
+          deps,
+          args,
+          "policy_denied",
+          "freeze-clear approval id does not bind the current freeze",
+        );
+      }
+      const existingApproval =
+        getContractApprovalByContract(deps.db, contractId)
+        ?? getContractApproval(deps.db, request.approval_id);
+      if (existingApproval === undefined) {
+        insertContractApproval(deps.db, deps.dbPath, {
+          approval_id: request.approval_id,
+          contract_id: contractId,
+          action: request.action_scope.join(","),
+          risk: "high",
+          requested_at: Date.parse(request.requested_at) / 1_000,
+        });
+      } else if (
+        existingApproval.contract_id !== contractId
+        || existingApproval.approval_id !== request.approval_id
+      ) {
+        return failure(
+          deps,
+          args,
+          "conflict",
+          "freeze approval id is already bound to a different scope",
+        );
+      }
+      const decisionSha256 = signedDecisionSha256(decision);
+      if (
+        freeze.frozen === 0
+        && (
+          freeze.clear_decision_sha256 !== decisionSha256
+          || freeze.clear_key_id !== decision.signature.key_id
+          || freeze.clear_reason !== reason
+        )
+      ) {
+        return failure(
+          deps,
+          args,
+          "conflict",
+          "production freeze is already cleared by different authority or reason",
+        );
+      }
+      if (!reused) {
+        recordContractDecision(deps.db, deps.dbPath, {
+          approval_id: request.approval_id,
+          contract_id: contractId,
+          action: "approve",
+          actor_type: "human",
+          actor_id: decision.payload.decided_by.id,
+          decided_at: Date.parse(decision.payload.issued_at) / 1_000,
+          reason: JSON.stringify({
+            request,
+            signed_decision: decision,
+            note: reason,
+          }),
+          decision_id: id,
+        });
+      }
+      try {
+        const cleared = clearProductionFreeze(deps.db, deps.dbPath, {
+          repo_id: repoId,
+          reason,
+          cleared_at: deps.now!().getTime() / 1_000,
+          authority: {
+            actor_type: "human",
+            actor_id: decision.payload.decided_by.id,
+            key_id: decision.signature.key_id,
+            decision_sha256: decisionSha256,
+            freeze_frozen_at: freeze.frozen_at,
+          },
+        });
+        return output(
+          deps,
+          args,
+          {
+            protocol_version: PROTOCOL_VERSION,
+            status: "ok",
+            result: {
+              ...freezeSummary(deps, cleared),
+              decision_id: id,
+              reused,
+              deployment_resumed: false,
+            },
+          },
+          `Cleared production freeze for ${repoId}; deployment was not resumed.`,
+        );
+      } catch (error) {
+        return failure(
+          deps,
+          args,
+          "conflict",
+          `production freeze clear failed: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
+
+    return failure(
+      deps,
+      args,
+      "bad_request",
+      `unknown autonomy freeze subcommand ${freezeCommand ?? ""}`.trim(),
+    );
   }
 
   if (subcommand === "list") {

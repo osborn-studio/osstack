@@ -68,6 +68,17 @@ export function cockpitTuiModel(daemonRaw: unknown, snapshotRaw: unknown, knowle
   const board = isRecord(snapshot["board"]) ? snapshot["board"] : {};
   const evidence = isRecord(snapshot["evidence"]) ? snapshot["evidence"] : {};
   const autonomy = isRecord(snapshot["autonomy"]) ? snapshot["autonomy"] : {};
+  const deployFreezes = (
+    Array.isArray(autonomy["deploy_freezes"])
+      ? autonomy["deploy_freezes"]
+      : []
+  )
+    .filter(isRecord)
+    .filter(
+      (freeze) =>
+        freeze["frozen"] === true
+        || freeze["frozen"] === 1,
+    );
   const quality = isRecord(snapshot["quality"]) ? snapshot["quality"] : {};
   const nextSteps = Array.isArray(snapshot["next_steps"]) ? snapshot["next_steps"] : [];
   const byStatus = isRecord(board["by_status"]) ? board["by_status"] : {};
@@ -88,6 +99,17 @@ export function cockpitTuiModel(daemonRaw: unknown, snapshotRaw: unknown, knowle
       command: `osstack knowledge search "<query>" --cache-dir ${knowledge.cache_dir} --json`,
       status: "ready",
     }];
+  const freezeActions = deployFreezes
+    .filter((freeze) => typeof freeze["repo_id"] === "string")
+    .map((freeze) => {
+      const repoId = String(freeze["repo_id"]);
+      return {
+        label: `Review production freeze ${repoId}`,
+        command:
+          `osstack autonomy freeze request ${shellQuote(repoId)} --json`,
+        status: "needs_approval",
+      };
+    });
   return {
     mode: "terminal-cockpit",
     title: "Osstack Cockpit TUI",
@@ -122,6 +144,11 @@ export function cockpitTuiModel(daemonRaw: unknown, snapshotRaw: unknown, knowle
           `autonomy_run_id=${String(autonomy["autonomy_run_id"] ?? "none")} state=${String(autonomy["state"] ?? "none")} risk=${String(autonomy["risk"] ?? "none")}`,
           `approval_status=${String(autonomy["approval_status"] ?? "none")} candidate_proof=${String(autonomy["candidate_proof"] ?? "none")}`,
           `pr_url=${String(autonomy["pr_url"] ?? "none")} last_transition=${String(autonomy["last_transition"] ?? "none")}`,
+          `production_freezes=${deployFreezes.length}`,
+          ...deployFreezes.slice(0, 2).map(
+            (freeze) =>
+              `freeze=${String(freeze["repo_id"] ?? "unknown")} reason=${String(freeze["reason"] ?? "unknown")} source=${String(freeze["source_run_id"] ?? "unknown")}`,
+          ),
         ],
       },
       {
@@ -139,7 +166,7 @@ export function cockpitTuiModel(daemonRaw: unknown, snapshotRaw: unknown, knowle
         lines: actions.slice(0, 5).map((action) => `[${action.status}] ${action.label}: ${action.command}`),
       },
     ],
-    actions: [...actions, ...knowledgeActions],
+    actions: [...actions, ...freezeActions, ...knowledgeActions],
   };
 }
 
