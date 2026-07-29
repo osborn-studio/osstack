@@ -44,6 +44,8 @@ export * from "./git-candidate.js";
 export * from "./repo-policy.js";
 export * from "./deploy-policy.js";
 export * from "./deploy-runner.js";
+export * from "./repo-lock.js";
+export * from "./semaphore.js";
 ```
 
 ## `@osstack/cli`
