@@ -1,9 +1,11 @@
-import type {
+import {
   DeployChangeType,
-  DeployTargetPolicy,
-  FreezeWindow,
+  type DeployChangeType as DeployChangeTypeType,
+  type DeployTargetPolicy,
+  type FreezeWindow,
 } from "@osstack/core";
 import type { AutonomyRiskLevel } from "@osstack/protocol";
+import { z } from "zod";
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const ROLLBACK_DRILL_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1_000;
@@ -16,7 +18,7 @@ export interface DeployDiffStats {
 }
 
 export interface DerivedDeployChangeTypes {
-  change_types: DeployChangeType[];
+  change_types: DeployChangeTypeType[];
   unknown_paths: string[];
 }
 
@@ -25,6 +27,14 @@ export interface RollbackDrillEvidence {
   deploy_script_digest_sha256: string;
   post_rollback_health_passed: boolean;
 }
+
+export const RollbackDrillEvidenceSchema = z
+  .object({
+    passed_at: z.string().datetime(),
+    deploy_script_digest_sha256: z.string().regex(SHA256_PATTERN),
+    post_rollback_health_passed: z.boolean(),
+  })
+  .strict();
 
 export interface DeployEligibilityInput {
   target: "staging" | "production";
@@ -39,6 +49,7 @@ export interface DeployEligibilityInput {
   candidate_proof_sha256: string;
   deploy_script_digest_sha256: string;
   production_frozen: boolean;
+  deploy_action_approved: boolean;
   rollback_drill?: RollbackDrillEvidence;
   now: Date;
 }
@@ -47,9 +58,19 @@ export interface DeployEligibilityDecision {
   allowed: boolean;
   reasons: string[];
   requires_approval: boolean;
-  change_types: DeployChangeType[];
+  change_types: DeployChangeTypeType[];
   unknown_paths: string[];
 }
+
+export const DeployEligibilityDecisionSchema = z
+  .object({
+    allowed: z.boolean(),
+    reasons: z.array(z.string()),
+    requires_approval: z.boolean(),
+    change_types: z.array(DeployChangeType),
+    unknown_paths: z.array(z.string()),
+  })
+  .strict();
 
 function normalizeChangedPath(value: string): string | undefined {
   const normalized = value.startsWith("./") ? value.slice(2) : value;
@@ -81,7 +102,7 @@ function basename(path: string): string {
   return path.slice(path.lastIndexOf("/") + 1);
 }
 
-function classifyChangedPath(path: string): DeployChangeType | undefined {
+function classifyChangedPath(path: string): DeployChangeTypeType | undefined {
   const name = basename(path).toLowerCase();
   const lower = path.toLowerCase();
 
@@ -178,7 +199,7 @@ export function deriveChangeTypes(
   diffStats: DeployDiffStats,
 ): DerivedDeployChangeTypes {
   validateDiffStats(changedPaths, diffStats);
-  const changeTypes = new Set<DeployChangeType>();
+  const changeTypes = new Set<DeployChangeTypeType>();
   const unknownPaths = new Set<string>();
 
   for (const rawPath of changedPaths) {
@@ -348,7 +369,7 @@ export function evaluateDeployEligibility(
     addReason(reasons, "no_deployable_change_types");
   }
 
-  if (input.final_risk === "R3") {
+  if (input.final_risk === "R3" && !input.deploy_action_approved) {
     addReason(reasons, "risk_r3_requires_approval");
   } else if (input.final_risk === "R4") {
     addReason(reasons, "risk_r4_forbidden");

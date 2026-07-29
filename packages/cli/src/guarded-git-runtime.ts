@@ -4,11 +4,16 @@ import { join } from "node:path";
 import {
   assertGuardedCandidateBase,
   assertGuardedCandidateHead,
+  assertGuardedMergedCandidate,
   commitGuardedCandidate,
+  computeDeployScriptAuthority,
   contractDecisionIdForApprovalNonce,
+  evaluateDeployEligibility,
   GuardedDeliveryEngine,
   GuardedDeliveryContextSchema,
+  GuardedDeployPolicySchema,
   LocalDeliveryResult,
+  runProjectDeploy,
   SqliteGuardedDeliveryStore,
   stageGuardedCandidate,
   type CandidateProofInput,
@@ -22,6 +27,8 @@ import {
   type AgentAdapter,
 } from "@osstack/agents";
 import {
+  freezeProduction,
+  getProductionFreeze,
   getContractDecision,
 } from "@osstack/core";
 import {
@@ -76,17 +83,24 @@ export const GuardedGitRouting = z
         ci_timeout_ms: z.number().int().min(1_000).max(86_400_000),
       })
       .strict(),
+    deploy: GuardedDeployPolicySchema.optional(),
   })
   .strict();
 export type GuardedGitRouting = z.infer<typeof GuardedGitRouting>;
 
-export interface GuardedGitProofInput {
-  stage: "candidate" | "final";
-  routing: GuardedGitRouting;
-  evidence: CandidateProofInput | FinalProofInput;
-  candidate_proof?: ProofReference;
-  git_delivery?: GitHubDeliveryResult;
-}
+export type GuardedGitProofInput =
+  | {
+      stage: "candidate";
+      routing: GuardedGitRouting;
+      evidence: CandidateProofInput;
+    }
+  | {
+      stage: "final";
+      routing: GuardedGitRouting;
+      evidence: FinalProofInput;
+      candidate_proof: ProofReference;
+      git_delivery: GitHubDeliveryResult;
+    };
 
 export interface GuardedGitRuntimeDeps {
   db: Parameters<typeof getContractDecision>[0];
@@ -203,6 +217,9 @@ function policyFromRouting(
         deps.db,
         contractDecisionIdForApprovalNonce(nonce),
       ) !== undefined,
+    ...(routing.deploy === undefined
+      ? {}
+      : { deploy: routing.deploy }),
     git: routing.git,
   };
 }
@@ -332,6 +349,32 @@ export class GuardedGitRuntime {
         },
         deliverGit: (input) =>
           (this.deps.deliverGit ?? deliverToGitHub)(input),
+        prepareMergedWorkspace: async (input) => {
+          await this.assertPolicy(
+            routing,
+            input.workspace_path,
+          );
+          await assertGuardedMergedCandidate(input);
+        },
+        resolveDeployScriptAuthority:
+          computeDeployScriptAuthority,
+        evaluateDeploy: evaluateDeployEligibility,
+        deploy: runProjectDeploy,
+        isProductionFrozen: async (repoId) =>
+          getProductionFreeze(this.deps.db, repoId)?.frozen === 1,
+        freezeProduction: async (input) => {
+          const frozen = freezeProduction(
+            this.deps.db,
+            this.deps.dbPath,
+            input,
+          );
+          return {
+            repo_id: frozen.repo_id,
+            reason: frozen.reason,
+            source_run_id: frozen.source_run_id,
+            frozen_at: frozen.frozen_at,
+          };
+        },
       },
     );
   }

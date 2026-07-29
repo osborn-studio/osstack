@@ -16,6 +16,7 @@ import {
   DeployTargetPolicy as DeployTargetPolicySchema,
   type DeployTargetPolicy,
 } from "@osstack/core";
+import { z } from "zod";
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const BASE_ENVIRONMENT_NAMES = ["PATH", "HOME", "LANG", "TMPDIR"] as const;
@@ -40,13 +41,24 @@ export interface DeployCommandEvidence {
   timed_out: boolean;
 }
 
+export const DeployCommandEvidenceSchema = z
+  .object({
+    argv: z.array(z.string().min(1)).min(1),
+    exit_code: z.number().int(),
+    duration_ms: z.number().int().nonnegative(),
+    stdout_summary: z.string(),
+    stderr_summary: z.string(),
+    timed_out: z.boolean(),
+  })
+  .strict();
+
 export interface ProjectDeployResult {
   target: "staging" | "production";
   deploy: DeployCommandEvidence;
-  verify?: DeployCommandEvidence;
-  health?: DeployCommandEvidence;
-  rollback?: DeployCommandEvidence;
-  post_rollback_health?: DeployCommandEvidence;
+  verify?: DeployCommandEvidence | undefined;
+  health?: DeployCommandEvidence | undefined;
+  rollback?: DeployCommandEvidence | undefined;
+  post_rollback_health?: DeployCommandEvidence | undefined;
   outcome:
     | "healthy"
     | "deploy_failed"
@@ -55,6 +67,152 @@ export interface ProjectDeployResult {
     | "rollback_failed"
     | "cancelled";
 }
+
+export const ProjectDeployResultSchema = z
+  .object({
+    target: z.enum(["staging", "production"]),
+    deploy: DeployCommandEvidenceSchema,
+    verify: DeployCommandEvidenceSchema.optional(),
+    health: DeployCommandEvidenceSchema.optional(),
+    rollback: DeployCommandEvidenceSchema.optional(),
+    post_rollback_health: DeployCommandEvidenceSchema.optional(),
+    outcome: z.enum([
+      "healthy",
+      "deploy_failed",
+      "verify_failed",
+      "health_failed_rolled_back",
+      "rollback_failed",
+      "cancelled",
+    ]),
+  })
+  .strict()
+  .superRefine((result, context) => {
+    const passed = (
+      evidence: z.infer<typeof DeployCommandEvidenceSchema> | undefined,
+    ) =>
+      evidence !== undefined
+      && evidence.exit_code === 0
+      && !evidence.timed_out;
+    if (
+      result.target === "staging"
+      && (
+        result.rollback !== undefined
+        || result.post_rollback_health !== undefined
+      )
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["rollback"],
+        message: "staging deployment must not contain rollback evidence",
+      });
+    }
+    if (
+      result.outcome === "healthy"
+      && (
+        !passed(result.deploy)
+        || !passed(result.verify)
+        || !passed(result.health)
+        || result.rollback !== undefined
+      )
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["outcome"],
+        message:
+          "healthy outcome requires passing deploy, verify, and health evidence without rollback",
+      });
+    }
+    if (
+      result.outcome === "verify_failed"
+      && (
+        result.verify === undefined
+        || passed(result.verify)
+      )
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["outcome"],
+        message: "verify_failed requires failing verify evidence",
+      });
+    }
+    const primaryFailed =
+      !passed(result.deploy)
+      || (
+        result.verify !== undefined
+        && !passed(result.verify)
+      )
+      || (
+        result.health !== undefined
+        && !passed(result.health)
+      );
+    if (
+      (
+        result.outcome === "deploy_failed"
+        || result.outcome === "cancelled"
+      )
+      && !primaryFailed
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["outcome"],
+        message:
+          `${result.outcome} requires failing or timed-out command evidence`,
+      });
+    }
+    if (
+      result.outcome === "health_failed_rolled_back"
+      && (
+        result.target !== "production"
+        || result.health === undefined
+        || passed(result.health)
+        || !passed(result.rollback)
+        || !passed(result.post_rollback_health)
+      )
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["outcome"],
+        message:
+          "health_failed_rolled_back requires failed production health plus passing rollback and post-rollback health",
+      });
+    }
+    if (
+      result.outcome === "rollback_failed"
+      && (
+        result.target !== "production"
+        || (
+          passed(result.rollback)
+          && passed(result.post_rollback_health)
+        )
+      )
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["outcome"],
+        message:
+          "rollback_failed requires production rollback or post-rollback health failure",
+      });
+    }
+    if (
+      result.target === "production"
+      && (
+        result.outcome === "deploy_failed"
+        || result.outcome === "verify_failed"
+        || result.outcome === "cancelled"
+      )
+      && (
+        !passed(result.rollback)
+        || !passed(result.post_rollback_health)
+      )
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["rollback"],
+        message:
+          "failed or cancelled production deployment requires passing rollback and post-rollback health evidence",
+      });
+    }
+  });
 
 export interface DeployScriptAuthorityFile {
   path: string;
@@ -72,6 +230,28 @@ export interface ComputeDeployScriptAuthorityInput {
   policy: DeployTargetPolicy;
 }
 
+export const DeployScriptAuthoritySchema = z
+  .object({
+    schema_version: z.literal(1),
+    digest_sha256: z.string().regex(SHA256_PATTERN),
+    files: z.array(
+      z
+        .object({
+          path: z.string().min(1),
+          sha256: z.string().regex(SHA256_PATTERN),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export type ProjectDeployPhase =
+  | "deploy"
+  | "verify"
+  | "health"
+  | "rollback"
+  | "post_rollback_health";
+
 export interface ProjectDeployInput {
   target: "staging" | "production";
   workspace_path: string;
@@ -80,6 +260,7 @@ export interface ProjectDeployInput {
   host_environment?: Readonly<Record<string, string | undefined>>;
   max_output_bytes?: number;
   signal?: AbortSignal;
+  before_phase?: (phase: ProjectDeployPhase) => Promise<void>;
 }
 
 type CommandName =
@@ -460,6 +641,7 @@ export async function runProjectDeploy(
   ): Promise<ProjectDeployResult> => {
     let rollbackRun: CommandRun;
     try {
+      await value.before_phase?.("rollback");
       rollbackRun = await executeBound(policy.rollback, policy.timeout_ms, undefined);
     } catch {
       return { ...result, outcome: "rollback_failed" };
@@ -470,6 +652,7 @@ export async function runProjectDeploy(
     }
     let postHealth: CommandRun;
     try {
+      await value.before_phase?.("post_rollback_health");
       postHealth = await executeBound(
         policy.health_check,
         policy.health_timeout_ms,
@@ -485,6 +668,7 @@ export async function runProjectDeploy(
     return { ...result, outcome: successfulOutcome };
   };
 
+  await value.before_phase?.("deploy");
   const deploy = await executeBound(
     policy.command,
     policy.timeout_ms,
@@ -506,6 +690,7 @@ export async function runProjectDeploy(
     return result;
   }
 
+  await value.before_phase?.("verify");
   const verify = await executeBound(
     policy.verify_command,
     policy.timeout_ms,
@@ -525,6 +710,7 @@ export async function runProjectDeploy(
       : result;
   }
 
+  await value.before_phase?.("health");
   const health = await executeBound(
     policy.health_check,
     policy.health_timeout_ms,

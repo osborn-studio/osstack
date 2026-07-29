@@ -7,6 +7,7 @@ import type { DeployTargetPolicy } from "@osstack/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   computeDeployScriptAuthority,
+  ProjectDeployResultSchema,
   runProjectDeploy,
 } from "./deploy-runner.js";
 
@@ -102,6 +103,34 @@ async function run(
 }
 
 describe("project deployment runner", () => {
+  it("rejects contradictory deploy outcome evidence", () => {
+    const evidence = {
+      argv: ["node", "scripts/fake.mjs"],
+      exit_code: 0,
+      duration_ms: 1,
+      stdout_summary: "",
+      stderr_summary: "",
+      timed_out: false,
+    };
+    expect(ProjectDeployResultSchema.safeParse({
+      target: "production",
+      deploy: evidence,
+      outcome: "healthy",
+    }).success).toBe(false);
+    expect(ProjectDeployResultSchema.safeParse({
+      target: "production",
+      deploy: evidence,
+      verify: evidence,
+      health: { ...evidence, exit_code: 9 },
+      outcome: "health_failed_rolled_back",
+    }).success).toBe(false);
+    expect(ProjectDeployResultSchema.safeParse({
+      target: "production",
+      deploy: { ...evidence, exit_code: 7 },
+      outcome: "deploy_failed",
+    }).success).toBe(false);
+  });
+
   it("runs staging command, verification, and health without a shell", async () => {
     const result = await run(
       "staging",

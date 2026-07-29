@@ -303,6 +303,66 @@ export class SqliteGuardedDeliveryStore {
               context.git_delivery,
               "Git delivery",
             ),
+        deploy:
+          context.deploy_eligibility === undefined
+          && context.deploy_script_authority === undefined
+          && context.deploy_staging === undefined
+          && context.deploy_production === undefined
+          && context.deploy_outcome === undefined
+            ? undefined
+            : jsonSafeObject(
+              {
+                ...(context.deploy_eligibility === undefined
+                  ? {}
+                  : {
+                      eligibility:
+                        context.deploy_eligibility,
+                    }),
+                ...(context.deploy_script_authority === undefined
+                  ? {}
+                  : {
+                      script_authority:
+                        context.deploy_script_authority,
+                    }),
+                ...(context.deploy_staging === undefined
+                  ? {}
+                  : { staging: context.deploy_staging }),
+                ...(context.deploy_production === undefined
+                  ? {}
+                  : { production: context.deploy_production }),
+                ...(context.deploy_outcome === undefined
+                  ? {}
+                  : { outcome: context.deploy_outcome }),
+              },
+              "deployment evidence",
+            ),
+        rollback:
+          context.deploy_production?.rollback === undefined
+          && context.production_freeze === undefined
+            ? undefined
+            : jsonSafeObject(
+              {
+                ...(context.deploy_production?.rollback ===
+                undefined
+                  ? {}
+                  : {
+                      command:
+                        context.deploy_production.rollback,
+                    }),
+                ...(context.deploy_production
+                    ?.post_rollback_health === undefined
+                  ? {}
+                  : {
+                      post_health:
+                        context.deploy_production
+                          .post_rollback_health,
+                    }),
+                ...(context.production_freeze === undefined
+                  ? {}
+                  : { freeze: context.production_freeze }),
+              },
+              "rollback evidence",
+            ),
         final_proof:
           context.final_proof === undefined
             ? undefined

@@ -125,6 +125,8 @@ export type RepoConfigV1 = z.infer<typeof RepoConfigV1>;
 
 const SECRET_ARG_PATTERN =
   /^-{1,2}(?:password|passwd|secret|token|api[_-]?key|private[_-]?key)(?:=|$)/i;
+const ABSOLUTE_ARG_PATH_PATTERN =
+  /^(?:\/|~\/|[A-Za-z]:[\\/])|=(?:\/|~\/|[A-Za-z]:[\\/])/;
 
 export const CommandArgv = z
   .array(NonEmptyConfigString)
@@ -138,6 +140,15 @@ export const CommandArgv = z
         path: [index],
         message:
           "deploy argv must not contain credential flags; use an allowlisted environment name",
+      });
+    }
+    for (const [index, argument] of argv.entries()) {
+      if (!ABSOLUTE_ARG_PATH_PATTERN.test(argument)) continue;
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [index],
+        message:
+          "deploy argv must not contain absolute filesystem paths; use repository-relative paths or an allowlisted environment name",
       });
     }
   });

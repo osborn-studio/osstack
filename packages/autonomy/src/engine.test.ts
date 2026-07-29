@@ -8,6 +8,7 @@ import {
   type ScopedApprovalDecisionPayload,
   type ScopedApprovalRequest,
 } from "@osstack/protocol";
+import type { DeployTargetPolicy } from "@osstack/core";
 import { describe, expect, it } from "vitest";
 import {
   canonicalScopedApprovalDecisionPayload,
@@ -15,10 +16,17 @@ import {
 import {
   GuardedDeliveryEngine,
   type AutonomyRunProjection,
+  type FinalProofInput,
   type GuardedDeliveryPolicy,
   type GuardedDeliveryPorts,
   type LocalDeliveryResult,
 } from "./engine.js";
+import {
+  evaluateDeployEligibility,
+} from "./deploy-policy.js";
+import type {
+  ProjectDeployResult,
+} from "./deploy-runner.js";
 import type {
   AutonomyTaskIntent,
   DeliveryBudget,
@@ -34,6 +42,7 @@ const NOW = "2026-07-28T18:00:00.000Z";
 const SHA_A = "a".repeat(64);
 const SHA_B = "b".repeat(64);
 const SHA_C = "c".repeat(64);
+const DEPLOY_SHA = "e".repeat(64);
 
 function intent(
   expectedPaths: string[],
@@ -113,6 +122,50 @@ function localFailure(paths: string[]): LocalDeliveryResult {
   };
 }
 
+function deployTarget(
+  patch: Partial<DeployTargetPolicy> = {},
+): DeployTargetPolicy {
+  return {
+    enabled: true,
+    command: ["node", "scripts/deploy.mjs"],
+    verify_command: ["node", "scripts/verify.mjs"],
+    health_check: ["node", "scripts/health.mjs"],
+    rollback: ["node", "scripts/rollback.mjs"],
+    timeout_ms: 5_000,
+    health_timeout_ms: 5_000,
+    allowed_change_types: ["docs", "source"],
+    allowed_paths: ["docs/**", "src/**"],
+    forbidden_paths: [],
+    allowed_base_branches: ["main"],
+    allowed_environment: [],
+    freeze_windows: [],
+    ...patch,
+  };
+}
+
+function commandEvidence(exitCode = 0) {
+  return {
+    argv: ["node", "scripts/fake.mjs"],
+    exit_code: exitCode,
+    duration_ms: 10,
+    stdout_summary: "",
+    stderr_summary: "",
+    timed_out: false,
+  };
+}
+
+function healthyDeploy(
+  target: "staging" | "production",
+): ProjectDeployResult {
+  return {
+    target,
+    deploy: commandEvidence(),
+    verify: commandEvidence(),
+    health: commandEvidence(),
+    outcome: "healthy",
+  };
+}
+
 function signDecision(
   request: ScopedApprovalRequest,
   overrides: Partial<ScopedApprovalDecisionPayload> = {},
@@ -154,6 +207,10 @@ class Harness {
   candidateFailure: Error | undefined;
   gitFailure: Error | undefined;
   finalFailure: Error | undefined;
+  prepareMergedFailure: Error | undefined;
+  productionFrozen = false;
+  deployResults: ProjectDeployResult[] = [];
+  readonly finalProofInputs: FinalProofInput[] = [];
 
   readonly policy: GuardedDeliveryPolicy = {
     policy_sha256: SHA_B,
@@ -221,9 +278,10 @@ class Harness {
         manifest_sha256: SHA_C,
       };
     },
-    writeFinalProof: async () => {
+    writeFinalProof: async (input) => {
       expect(this.projection?.state).toBe("final_proof");
       this.calls.push("writeFinalProof");
+      this.finalProofInputs.push(input);
       if (this.finalFailure !== undefined) throw this.finalFailure;
       return {
         manifest_path: "/tmp/final/manifest.json",
@@ -248,6 +306,59 @@ class Harness {
         },
         mergeCommit: "7".repeat(40),
         mergedAt: "2026-07-28T18:05:00.000Z",
+      };
+    },
+    prepareMergedWorkspace: async () => {
+      this.calls.push("prepareMergedWorkspace");
+      if (this.prepareMergedFailure !== undefined) {
+        throw this.prepareMergedFailure;
+      }
+    },
+    resolveDeployScriptAuthority: async () => {
+      this.calls.push("resolveDeployScriptAuthority");
+      return {
+        schema_version: 1,
+        digest_sha256: DEPLOY_SHA,
+        files: [
+          {
+            path: "scripts/deploy.mjs",
+            sha256: DEPLOY_SHA,
+          },
+        ],
+      };
+    },
+    evaluateDeploy: (policy, input) => {
+      this.calls.push(`evaluateDeploy:${input.target}`);
+      return evaluateDeployEligibility(policy, input);
+    },
+    deploy: async (input) => {
+      this.calls.push(`deploy:${input.target}`);
+      const result = this.deployResults.shift();
+      if (result === undefined) {
+        throw new Error("missing fake deploy result");
+      }
+      await input.before_phase?.("deploy");
+      await input.before_phase?.("verify");
+      await input.before_phase?.("health");
+      if (result.rollback !== undefined) {
+        await input.before_phase?.("rollback");
+        if (result.post_rollback_health !== undefined) {
+          await input.before_phase?.("post_rollback_health");
+        }
+      }
+      return result;
+    },
+    isProductionFrozen: async () => {
+      this.calls.push("isProductionFrozen");
+      return this.productionFrozen;
+    },
+    freezeProduction: async (input) => {
+      this.calls.push("freezeProduction");
+      return {
+        repo_id: input.repo_id,
+        reason: input.reason,
+        source_run_id: input.source_run_id,
+        frozen_at: input.frozen_at,
       };
     },
   };
@@ -285,6 +396,9 @@ describe("GuardedDeliveryEngine", () => {
       "deliverGit",
       "writeFinalProof",
     ]));
+    expect(harness.calls.some((call) => call.startsWith("deploy:"))).toBe(
+      false,
+    );
   });
 
   it("escalates R2 when repository auto-risk is capped at R1", async () => {
@@ -538,5 +652,366 @@ describe("GuardedDeliveryEngine", () => {
         harness.calls.indexOf(sideEffect),
       );
     }
+  });
+
+  it("runs healthy staging after merge and includes deploy evidence in final proof", async () => {
+    const harness = new Harness();
+    harness.policy.deploy = {
+      base_branch: "main",
+      staging: deployTarget(),
+    };
+    harness.deployResults = [healthyDeploy("staging")];
+
+    const result = await harness.engine().start(intent(["docs/readme.md"]));
+
+    expect(result).toMatchObject({
+      status: "completed",
+      run: {
+        context: {
+          deploy_outcome: "staging_healthy",
+          deploy_staging: {
+            target: "staging",
+            outcome: "healthy",
+          },
+        },
+      },
+    });
+    expect(harness.calls.indexOf("deliverGit")).toBeLessThan(
+      harness.calls.indexOf("prepareMergedWorkspace"),
+    );
+    expect(harness.calls.indexOf("prepareMergedWorkspace")).toBeLessThan(
+      harness.calls.indexOf("deploy:staging"),
+    );
+    expect(harness.calls).toEqual(expect.arrayContaining([
+      "persist:deploying_staging",
+      "persist:verifying_staging",
+    ]));
+    expect(harness.finalProofInputs.at(-1)).toMatchObject({
+      deploy_outcome: "staging_healthy",
+      deploy_eligibility: {
+        staging: { allowed: true },
+      },
+      deploy_staging: { outcome: "healthy" },
+    });
+  });
+
+  it("runs production only after healthy staging and a matching rollback drill", async () => {
+    const harness = new Harness();
+    harness.policy.deploy = {
+      base_branch: "main",
+      staging: deployTarget(),
+      production: deployTarget(),
+      rollback_drill: {
+        passed_at: NOW,
+        deploy_script_digest_sha256: DEPLOY_SHA,
+        post_rollback_health_passed: true,
+      },
+    };
+    harness.deployResults = [
+      healthyDeploy("staging"),
+      healthyDeploy("production"),
+    ];
+
+    const result = await harness.engine().start(intent(["src/app.ts"]));
+
+    expect(result).toMatchObject({
+      status: "completed",
+      run: {
+        context: {
+          deploy_outcome: "production_healthy",
+          deploy_staging: { outcome: "healthy" },
+          deploy_production: { outcome: "healthy" },
+        },
+      },
+    });
+    expect(harness.calls.indexOf("deploy:staging")).toBeLessThan(
+      harness.calls.indexOf("deploy:production"),
+    );
+    expect(harness.calls).toContain("persist:health_checking");
+  });
+
+  it("binds an R3 approval to the exact configured deploy action", async () => {
+    const harness = new Harness();
+    harness.policy.deploy = {
+      base_branch: "main",
+      staging: deployTarget(),
+    };
+    harness.localResults = [localSuccess(["src/auth/login.ts"])];
+    harness.deployResults = [healthyDeploy("staging")];
+
+    const preflight = await harness.engine().start(
+      intent(["src/auth/login.ts"]),
+    );
+    const postDiff = await harness.engine().resume(
+      "run-1",
+      signDecision(preflight.approval_request!),
+    );
+    expect(postDiff.approval_request?.action_scope).toEqual([
+      "commit",
+      "deploy:staging",
+      "merge",
+      "push",
+    ]);
+
+    const result = await harness.engine().resume(
+      "run-1",
+      signDecision(postDiff.approval_request!),
+    );
+    expect(result.status).toBe("completed");
+    expect(harness.calls).toContain("deploy:staging");
+  });
+
+  it("records denylisted staging eligibility without invoking deployment", async () => {
+    const harness = new Harness();
+    harness.policy.deploy = {
+      base_branch: "main",
+      staging: deployTarget({
+        forbidden_paths: ["docs/private/**"],
+      }),
+    };
+    harness.localResults = [localSuccess(["docs/private/readme.md"])];
+
+    const result = await harness.engine().start(
+      intent(["docs/private/readme.md"]),
+    );
+
+    expect(result).toMatchObject({
+      status: "completed",
+      run: {
+        context: {
+          deploy_outcome: "staging_skipped",
+          deploy_eligibility: {
+            staging: {
+              allowed: false,
+              reasons: expect.arrayContaining([
+                "forbidden_path:docs/private/readme.md",
+              ]),
+            },
+          },
+        },
+      },
+    });
+    expect(harness.calls).not.toContain("deploy:staging");
+  });
+
+  it("rolls an unhealthy production release back, freezes, and proves it", async () => {
+    const harness = new Harness();
+    harness.policy.deploy = {
+      base_branch: "main",
+      staging: deployTarget(),
+      production: deployTarget(),
+      rollback_drill: {
+        passed_at: NOW,
+        deploy_script_digest_sha256: DEPLOY_SHA,
+        post_rollback_health_passed: true,
+      },
+    };
+    harness.deployResults = [
+      healthyDeploy("staging"),
+      {
+        target: "production",
+        deploy: commandEvidence(),
+        verify: commandEvidence(),
+        health: commandEvidence(9),
+        rollback: commandEvidence(),
+        post_rollback_health: commandEvidence(),
+        outcome: "health_failed_rolled_back",
+      },
+    ];
+
+    const result = await harness.engine().start(intent(["src/app.ts"]));
+
+    expect(result).toMatchObject({
+      status: "completed",
+      run: {
+        context: {
+          deploy_outcome: "production_rolled_back",
+          production_freeze: {
+            repo_id: "owner/repo",
+            source_run_id: "run-1",
+          },
+        },
+      },
+    });
+    expect(harness.calls).toEqual(expect.arrayContaining([
+      "persist:rolling_back",
+      "freezeProduction",
+      "persist:deploy_frozen",
+    ]));
+    expect(harness.finalProofInputs.at(-1)).toMatchObject({
+      deploy_production: {
+        rollback: { exit_code: 0 },
+        post_rollback_health: { exit_code: 0 },
+      },
+      production_freeze: {
+        source_run_id: "run-1",
+      },
+    });
+  });
+
+  it("writes final rollback evidence and escalates failed rollback health", async () => {
+    const harness = new Harness();
+    harness.policy.deploy = {
+      base_branch: "main",
+      staging: deployTarget(),
+      production: deployTarget(),
+      rollback_drill: {
+        passed_at: NOW,
+        deploy_script_digest_sha256: DEPLOY_SHA,
+        post_rollback_health_passed: true,
+      },
+    };
+    harness.deployResults = [
+      healthyDeploy("staging"),
+      {
+        target: "production",
+        deploy: commandEvidence(),
+        verify: commandEvidence(),
+        health: commandEvidence(9),
+        rollback: commandEvidence(),
+        post_rollback_health: commandEvidence(9),
+        outcome: "rollback_failed",
+      },
+    ];
+
+    const result = await harness.engine().start(intent(["src/app.ts"]));
+
+    expect(result).toMatchObject({
+      status: "blocked",
+      run: {
+        state: "escalated",
+        context: {
+          deploy_outcome: "rollback_failed",
+          final_proof: {
+            manifest_sha256: "d".repeat(64),
+          },
+        },
+      },
+    });
+    expect(harness.calls).toContain("writeFinalProof");
+  });
+
+  it("allows staging but skips production while a durable freeze is active", async () => {
+    const harness = new Harness();
+    harness.productionFrozen = true;
+    harness.policy.deploy = {
+      base_branch: "main",
+      staging: deployTarget(),
+      production: deployTarget(),
+      rollback_drill: {
+        passed_at: NOW,
+        deploy_script_digest_sha256: DEPLOY_SHA,
+        post_rollback_health_passed: true,
+      },
+    };
+    harness.deployResults = [healthyDeploy("staging")];
+
+    const result = await harness.engine().start(intent(["src/app.ts"]));
+
+    expect(result).toMatchObject({
+      status: "completed",
+      run: {
+        context: {
+          deploy_outcome: "production_skipped",
+          deploy_eligibility: {
+            production: {
+              allowed: false,
+              reasons: expect.arrayContaining(["production_frozen"]),
+            },
+          },
+        },
+      },
+    });
+    expect(harness.calls).toContain("deploy:staging");
+    expect(harness.calls).not.toContain("deploy:production");
+  });
+
+  it("writes final evidence when the staging deploy port throws", async () => {
+    const harness = new Harness();
+    harness.policy.deploy = {
+      base_branch: "main",
+      staging: deployTarget(),
+    };
+
+    const result = await harness.engine().start(intent(["src/app.ts"]));
+
+    expect(result).toMatchObject({
+      status: "blocked",
+      run: {
+        state: "escalated",
+        context: {
+          deploy_outcome: "staging_failed",
+          final_proof: {
+            manifest_sha256: "d".repeat(64),
+          },
+        },
+      },
+    });
+    expect(harness.calls).toContain("writeFinalProof");
+  });
+
+  it("never deploys and escalates after proving a merged-tree mismatch", async () => {
+    const harness = new Harness();
+    harness.prepareMergedFailure = new Error("merged tree mismatch");
+    harness.policy.deploy = {
+      base_branch: "main",
+      staging: deployTarget(),
+    };
+
+    const result = await harness.engine().start(intent(["src/app.ts"]));
+
+    expect(result).toMatchObject({
+      status: "blocked",
+      run: {
+        state: "escalated",
+        context: {
+          deploy_outcome: "staging_skipped",
+          final_proof: {
+            manifest_sha256: "d".repeat(64),
+          },
+        },
+      },
+    });
+    expect(harness.calls).not.toContain("deploy:staging");
+    expect(harness.calls).toContain("writeFinalProof");
+  });
+
+  it("freezes production when the deploy port throws after staging", async () => {
+    const harness = new Harness();
+    harness.policy.deploy = {
+      base_branch: "main",
+      staging: deployTarget(),
+      production: deployTarget(),
+      rollback_drill: {
+        passed_at: NOW,
+        deploy_script_digest_sha256: DEPLOY_SHA,
+        post_rollback_health_passed: true,
+      },
+    };
+    harness.deployResults = [healthyDeploy("staging")];
+
+    const result = await harness.engine().start(intent(["src/app.ts"]));
+
+    expect(result).toMatchObject({
+      status: "blocked",
+      run: {
+        state: "escalated",
+        context: {
+          deploy_outcome: "rollback_failed",
+          production_freeze: {
+            source_run_id: "run-1",
+          },
+          final_proof: {
+            manifest_sha256: "d".repeat(64),
+          },
+        },
+      },
+    });
+    expect(harness.calls).toEqual(expect.arrayContaining([
+      "persist:rolling_back",
+      "freezeProduction",
+      "persist:deploy_frozen",
+      "writeFinalProof",
+    ]));
   });
 });

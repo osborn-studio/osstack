@@ -51,6 +51,7 @@ function input(
     candidate_proof_sha256: PROOF_SHA,
     deploy_script_digest_sha256: SCRIPT_SHA,
     production_frozen: false,
+    deploy_action_approved: false,
     now: NOW,
     ...patch,
   };
@@ -178,6 +179,18 @@ describe("deployment eligibility", () => {
     );
     expect(r3.reasons).toContain("risk_r3_requires_approval");
     expect(r3.requires_approval).toBe(true);
+    expect(
+      evaluateDeployEligibility(
+        policy(),
+        input({
+          final_risk: "R3",
+          deploy_action_approved: true,
+        }),
+      ),
+    ).toMatchObject({
+      allowed: true,
+      requires_approval: true,
+    });
 
     const r4 = evaluateDeployEligibility(
       policy(),

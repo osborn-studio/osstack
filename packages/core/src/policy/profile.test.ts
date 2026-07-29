@@ -291,6 +291,17 @@ describe("RepoConfig schema", () => {
         },
       },
     ],
+    [
+      "absolute deploy path",
+      {
+        deploy: {
+          staging: {
+            ...deployTarget(),
+            command: ["node", "--config=/tmp/deploy.json"],
+          },
+        },
+      },
+    ],
   ])("rejects credential-shaped strings in %s", (_label, patch) => {
     expect(RepoConfig.safeParse(v2RepoConfig(patch)).success).toBe(false);
   });

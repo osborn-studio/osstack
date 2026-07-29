@@ -6,7 +6,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { existsSync as fsExistsSync, readFileSync, realpathSync, writeFileSync as fsWriteFileSync } from "node:fs";
 import { connect, type Socket } from "node:net";
 import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { assertDbAccessAllowed, assertServeAllowed, ControlPlaneGuardError, defaultOsstackHome } from "./control-plane-guard.js";
 import {
   createAgentRuntimeEvidence,
@@ -161,7 +161,11 @@ import {
   GuardedGitRouting,
   type GuardedGitProofInput,
 } from "./guarded-git-runtime.js";
-import { assertGuardedCandidateBase } from "@osstack/autonomy";
+import {
+  assertGuardedCandidateBase,
+  loadPrivateRepoOverlay,
+  mergeRepoPolicy,
+} from "@osstack/autonomy";
 
 const execFileAsync = promisify(execFile);
 
@@ -9445,9 +9449,9 @@ async function guardedPolicySnapshot(workspacePath: string): Promise<{
       }`,
     );
   }
-  const repoConfig = RepoConfigSchema.parse(repoValue);
+  const parsedRepoConfig = RepoConfigSchema.parse(repoValue);
   const policyProfile = PolicyProfileSchema.parse(policyValue);
-  if (repoConfig?.schema_version !== 2) {
+  if (parsedRepoConfig?.schema_version !== 2) {
     throw new Error(
       "guarded-git requires strict .osstack/repo.yaml schema_version 2",
     );
@@ -9460,6 +9464,41 @@ async function guardedPolicySnapshot(workspacePath: string): Promise<{
     throw new Error(
       "guarded-git requires .osstack/policy.yaml mode=execute and auto_apply=true",
     );
+  }
+  const privatePolicyId =
+    /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(
+      parsedRepoConfig.product,
+    )
+      ? parsedRepoConfig.product
+      : /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(
+          basename(workspacePath),
+        )
+        ? basename(workspacePath)
+        : `repo-${sha256(workspacePath).slice(0, 16)}`;
+  const privateOverlay = await loadPrivateRepoOverlay(
+    osstackHome(),
+    privatePolicyId,
+  );
+  const effective = mergeRepoPolicy(
+    {
+      autonomy: parsedRepoConfig.autonomy,
+      ...(parsedRepoConfig.deploy === undefined
+        ? {}
+        : { deploy: parsedRepoConfig.deploy }),
+    },
+    privateOverlay,
+  );
+  const repoConfigWithoutDeploy = { ...parsedRepoConfig };
+  delete repoConfigWithoutDeploy.deploy;
+  const repoConfig = RepoConfigSchema.parse({
+    ...repoConfigWithoutDeploy,
+    autonomy: effective.autonomy,
+    ...(effective.deploy === undefined
+      ? {}
+      : { deploy: effective.deploy }),
+  });
+  if (repoConfig.schema_version !== 2) {
+    throw new Error("effective guarded policy must remain schema_version 2");
   }
   if (!repoConfig.git.auto_merge) {
     throw new Error(
@@ -9484,6 +9523,7 @@ async function guardedPolicySnapshot(workspacePath: string): Promise<{
       canonicalGuardedJson({
         repo: repoConfig,
         policy: policyProfile,
+        private_policy_id: privatePolicyId,
         protected_policy_paths: protectedPolicyPaths,
       }),
     ),
@@ -9523,22 +9563,13 @@ async function writeGuardedGitProof(
   }
   const outputDir = join(input.routing.evidence_root, "proof");
   const artifactId = input.evidence.autonomy_run_id;
-  const finalEvidence = input.stage === "candidate"
-    ? undefined
-    : (() => {
-        if (
-          input.candidate_proof === undefined
-          || input.git_delivery === undefined
-        ) {
-          throw new Error(
-            "final guarded proof requires candidate proof and Git delivery evidence",
-          );
-        }
-        return {
-          candidateProof: input.candidate_proof,
-          gitDelivery: input.git_delivery,
-        };
-      })();
+  const finalEvidence = input.stage === "final"
+    ? {
+        candidateProof: input.candidate_proof,
+        gitDelivery: input.git_delivery,
+        deployment: input.evidence,
+      }
+    : undefined;
   const stageInput: ProofStageInput = {
     stage: input.stage,
     risk_evidence: {
@@ -9575,6 +9606,56 @@ async function writeGuardedGitProof(
               finalEvidence.candidateProof.manifest_sha256,
           },
           git_delivery_evidence: finalEvidence.gitDelivery,
+          ...(finalEvidence.deployment.deploy_eligibility === undefined
+            ? {}
+            : {
+                deploy_eligibility_evidence:
+                  finalEvidence.deployment.deploy_eligibility,
+              }),
+          ...(finalEvidence.deployment.deploy_script_authority ===
+          undefined
+            ? {}
+            : {
+                deploy_script_authority_evidence:
+                  finalEvidence.deployment.deploy_script_authority,
+              }),
+          ...(finalEvidence.deployment.deploy_staging === undefined
+            ? {}
+            : {
+                deploy_staging_evidence:
+                  finalEvidence.deployment.deploy_staging,
+              }),
+          ...(finalEvidence.deployment.deploy_production === undefined
+            ? {}
+            : {
+                deploy_production_evidence:
+                  finalEvidence.deployment.deploy_production,
+              }),
+          ...(finalEvidence.deployment.deploy_production?.rollback ===
+          undefined
+            ? {}
+            : {
+                rollback_evidence: {
+                  command:
+                    finalEvidence.deployment.deploy_production.rollback,
+                  ...(finalEvidence.deployment.deploy_production
+                      .post_rollback_health === undefined
+                    ? {}
+                    : {
+                        post_health:
+                          finalEvidence.deployment.deploy_production
+                            .post_rollback_health,
+                      }),
+                  outcome:
+                    finalEvidence.deployment.deploy_production.outcome,
+                },
+              }),
+          ...(finalEvidence.deployment.production_freeze === undefined
+            ? {}
+            : {
+                production_freeze_evidence:
+                  finalEvidence.deployment.production_freeze,
+              }),
         }),
   };
   const governance = await scanWorkspaceGovernance(
@@ -9700,6 +9781,15 @@ const startGuardedGitDelivery: NonNullable<
     max_auto_risk: policy.repoConfig.autonomy.max_auto_risk,
     protected_policy_paths: policy.protectedPolicyPaths,
     approval_ttl_ms: 3_600_000,
+    ...(input.deployPolicy === "project"
+      && policy.repoConfig.deploy !== undefined
+      ? {
+          deploy: {
+            base_branch: policy.repoConfig.default_branch,
+            ...policy.repoConfig.deploy,
+          },
+        }
+      : {}),
     git: {
       remote: policy.repoConfig.git.remote,
       base: policy.repoConfig.default_branch,
@@ -9731,6 +9821,7 @@ const startGuardedGitDelivery: NonNullable<
       policy_sha256: policy.policySha256,
       profile: input.profileRouting.summary,
       verify_commands: verifyCommands,
+      deploy: routing.deploy ?? null,
     }),
   );
   const dbPath = await ensureLocalStateDbPath();

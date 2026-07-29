@@ -75,6 +75,49 @@ describe("staged proof evidence", () => {
       "git-delivery.json",
     ]);
   });
+
+  it("keeps post-merge deploy, rollback, and freeze evidence out of candidate proof", () => {
+    expect(() => createProofStageArtifacts({
+      stage: "candidate",
+      deploy_staging_evidence: { outcome: "healthy" },
+    })).toThrow(/candidate proof.*deploy evidence/i);
+
+    const artifacts = createProofStageArtifacts({
+      stage: "final",
+      supersedes: {
+        manifest_path: "../candidate/manifest.json",
+        manifest_sha256: "e".repeat(64),
+      },
+      deploy_eligibility_evidence: {
+        staging: { allowed: true },
+        production: { allowed: true },
+      },
+      deploy_script_authority_evidence: {
+        staging: { digest_sha256: "f".repeat(64) },
+      },
+      deploy_staging_evidence: { outcome: "healthy" },
+      deploy_production_evidence: {
+        outcome: "health_failed_rolled_back",
+      },
+      rollback_evidence: {
+        command: { exit_code: 0 },
+        post_health: { exit_code: 0 },
+      },
+      production_freeze_evidence: {
+        repo_id: "owner/repo",
+        source_run_id: "run-1",
+      },
+    });
+
+    expect(artifacts.map((artifact) => artifact.path)).toEqual([
+      "deploy-eligibility.json",
+      "deploy-script-authority.json",
+      "deploy-staging.json",
+      "deploy-production.json",
+      "rollback.json",
+      "production-freeze.json",
+    ]);
+  });
 });
 
 describe("createVerifierOutputArtifacts", () => {

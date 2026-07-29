@@ -70,7 +70,11 @@ export const LEGAL_TRANSITIONS: Record<
   health_checking: ["final_proof", "rolling_back", "escalated"],
   rolling_back: ["deploy_frozen", "escalated"],
   deploy_frozen: ["final_proof"],
-  final_proof: ["completed", "delivery_evidence_failed"],
+  final_proof: [
+    "completed",
+    "delivery_evidence_failed",
+    "escalated",
+  ],
   blocked_delivery: ["pushing", "opening_pr", "waiting_ci", "merging"],
   delivery_evidence_failed: [],
   escalated: [],

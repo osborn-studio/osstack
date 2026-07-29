@@ -30,6 +30,7 @@ export const DeliverAutonomyMode = z.enum([
   "legacy",
   "guarded-local",
   "guarded-git",
+  "guarded-deploy",
 ]);
 export type DeliverAutonomyMode = z.infer<typeof DeliverAutonomyMode>;
 
@@ -106,6 +107,7 @@ export interface DeliverCommandDeps {
     requestedActions: string[];
     verifyCommands: string[];
     commandTimeoutMs: number;
+    deployPolicy?: "project";
     profileRouting: LoopProfileRoutingResult;
   }) => Promise<GuardedDeliveryResult>;
   remotePorts?: {
@@ -123,13 +125,16 @@ export async function handleDeliverCommand(
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack deliver — product entry from one intent to proof
 
-  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--checkpoint] [--govern [warn|strict]] [--autonomy legacy|guarded-local|guarded-git] [--profile NAME] [--expected-path P] [--action A] [--command-timeout-ms N] [--json]
+  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--checkpoint] [--govern [warn|strict]] [--autonomy legacy|guarded-local|guarded-git|guarded-deploy] [--deploy-policy project] [--profile NAME] [--expected-path P] [--action A] [--command-timeout-ms N] [--json]
 
 Stages:
   intake -> plan -> execute-loop -> verify-review -> proof
 
 guarded-git additionally performs:
   preflight risk -> local verification/review -> post-diff risk -> candidate proof -> commit -> PR/CI/merge -> final proof
+
+guarded-deploy adds after merge:
+  project allowlist -> staging verify/health -> production verify/health -> rollback/freeze -> final proof
 `);
     return 0;
   }
@@ -147,6 +152,7 @@ guarded-git additionally performs:
     "--worktree-root",
     "--govern",
     "--autonomy",
+    "--deploy-policy",
     "--profile",
     "--role",
     "--reviewer",
@@ -166,14 +172,36 @@ guarded-git additionally performs:
   );
   if (!autonomyResult.success) {
     console.error(
-      "osstack: --autonomy must be legacy, guarded-local, or guarded-git",
+      "osstack: --autonomy must be legacy, guarded-local, guarded-git, or guarded-deploy",
     );
     return 1;
   }
   const autonomy = autonomyResult.data;
   const guardedLocal = autonomy === "guarded-local";
-  const guardedGit = autonomy === "guarded-git";
+  const guardedDeploy = autonomy === "guarded-deploy";
+  const guardedGit = autonomy === "guarded-git" || guardedDeploy;
   const guarded = guardedLocal || guardedGit;
+  const deployPolicy = flagValue(args, "--deploy-policy");
+  if (
+    guardedDeploy
+    && deployPolicy !== "project"
+  ) {
+    return deliverBlocked(
+      args,
+      "deploy_policy_required",
+      "guarded-deploy requires --deploy-policy project",
+    );
+  }
+  if (
+    deployPolicy !== undefined
+    && (deployPolicy !== "project" || !guardedDeploy)
+  ) {
+    return deliverBlocked(
+      args,
+      "deploy_policy_invalid",
+      "--deploy-policy project is valid only with --autonomy guarded-deploy",
+    );
+  }
   const stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
   const executeCommand = flagValue(args, "--execute");
   let agentId = flagValue(args, "--agent");
@@ -286,10 +314,22 @@ guarded-git additionally performs:
         expectedPaths: flagValues(args, "--expected-path"),
         requestedActions:
           flagValues(args, "--action").length === 0
-            ? ["build", "commit", "merge", "push", "verify"]
+            ? [
+                "build",
+                "commit",
+                ...(guardedDeploy
+                  ? ["deploy:production", "deploy:staging"]
+                  : []),
+                "merge",
+                "push",
+                "verify",
+              ]
             : flagValues(args, "--action"),
         verifyCommands,
         commandTimeoutMs: effectiveCommandTimeoutMs!,
+        ...(guardedDeploy
+          ? { deployPolicy: "project" as const }
+          : {}),
         profileRouting,
       });
     } catch (error) {
@@ -315,6 +355,16 @@ guarded-git additionally performs:
         guardedResult.run.context.candidate_proof ?? null,
       git_delivery:
         guardedResult.run.context.git_delivery ?? null,
+      deploy_eligibility:
+        guardedResult.run.context.deploy_eligibility ?? null,
+      deploy_outcome:
+        guardedResult.run.context.deploy_outcome ?? null,
+      deploy_staging:
+        guardedResult.run.context.deploy_staging ?? null,
+      deploy_production:
+        guardedResult.run.context.deploy_production ?? null,
+      production_freeze:
+        guardedResult.run.context.production_freeze ?? null,
       final_proof: guardedResult.run.context.final_proof ?? null,
     };
     if (args.includes("--json")) {
