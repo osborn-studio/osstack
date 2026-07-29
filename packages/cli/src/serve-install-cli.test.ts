@@ -77,6 +77,12 @@ describe("serve launchd installer", () => {
     }
     expect(install).toContain("requireFromCli.resolve");
     expect(install).not.toContain("echo 11");
+    expect(install).toContain(
+      "</string>\\n    <string>-ims</string>",
+    );
+    expect(install).not.toContain(
+      "</string>\\\\n    <string>-ims</string>",
+    );
   });
 
   it("writes a LaunchAgent plist without loading it when --no-load is set", async () => {

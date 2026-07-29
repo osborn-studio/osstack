@@ -133,6 +133,11 @@ describe("daemon loop RPC", () => {
     });
     runtimeDb.close();
 
+    const health = await daemonRpc(
+      daemon.socketPath,
+      "autonomy.health",
+    );
+    expect(health.ok).toBe(true);
     const response = await daemonRpc(
       daemon.socketPath,
       "autonomy.resume",
@@ -572,6 +577,160 @@ describe("daemon loop RPC", () => {
       await sleep(20);
     }
     expect(resumed).toEqual([runId]);
+  });
+
+  it("recovers an interrupted production deployment while GitHub remains offline", async () => {
+    const home = process.env["OSSTACK_HOME"];
+    if (home === undefined) throw new Error("OSSTACK_HOME is required");
+    await mkdir(home, { recursive: true });
+    const dbPath = join(home, "state.db");
+    const runId = "run-offline-production-recovery";
+    const seedDb = guardedOpenDb({ path: dbPath });
+    createAutonomyRun(seedDb, dbPath, {
+      autonomy_run_id: runId,
+      transition_id: `${runId}:queued`,
+      task_id: "task-offline-production-recovery",
+      repo_id: "owner/repo",
+      workspace_path: join(tmp, "offline-production-recovery"),
+      contract_sha256: "a".repeat(64),
+      routing: {},
+      budget: {
+        max_builder_iterations: 1,
+        max_review_rounds: 1,
+        max_wall_time_ms: 60_000,
+        max_no_progress_rounds: 1,
+      },
+      attempt: {},
+      event: { kind: "queued" },
+      occurred_at: 1,
+    });
+    const states = [
+      "classifying",
+      "preparing",
+      "building",
+      "verifying",
+      "reviewing",
+      "post_classifying",
+      "candidate_proof",
+      "committing",
+      "pushing",
+      "opening_pr",
+      "waiting_ci",
+      "merging",
+      "deploying_staging",
+      "verifying_staging",
+      "deploying_production",
+    ] as const;
+    for (const [index, state] of states.entries()) {
+      transitionAutonomyRun(seedDb, dbPath, {
+        autonomy_run_id: runId,
+        transition_id: `${runId}:${state}`,
+        expected_revision: index + 1,
+        to_state: state,
+        event: { kind: state },
+        occurred_at: index + 2,
+      });
+    }
+    seedDb.close();
+
+    const resumed: string[] = [];
+    daemon = await startDaemon({
+      socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock`,
+      healthPollIntervalMs: 20,
+      autonomyHealth: async () => healthyAutonomyHealth({
+        ok: false,
+        can_merge: false,
+        can_push_deploy: false,
+        external_blockers: ["github_network"],
+      }),
+      guardedAutonomyFactory: () => ({
+        resume: async (autonomyRunId) => {
+          resumed.push(autonomyRunId);
+          return {
+            status: "blocked",
+            run: {
+              autonomy_run_id: autonomyRunId,
+              state: "escalated",
+              revision: states.length + 2,
+              context: {},
+            },
+          };
+        },
+      }),
+    });
+
+    const deadline = Date.now() + 2_000;
+    while (resumed.length === 0 && Date.now() < deadline) {
+      await sleep(20);
+    }
+    expect(resumed).toEqual([runId]);
+  });
+
+  it("blocks guarded writes until the initial autonomy health check completes", async () => {
+    const home = process.env["OSSTACK_HOME"];
+    if (home === undefined) throw new Error("OSSTACK_HOME is required");
+    await mkdir(home, { recursive: true });
+    const dbPath = join(home, "state.db");
+    const runId = "run-initial-health";
+    const seedDb = guardedOpenDb({ path: dbPath });
+    createAutonomyRun(seedDb, dbPath, {
+      autonomy_run_id: runId,
+      transition_id: `${runId}:queued`,
+      task_id: "task-initial-health",
+      repo_id: "owner/repo",
+      workspace_path: join(tmp, "initial-health"),
+      contract_sha256: "a".repeat(64),
+      routing: {},
+      budget: {
+        max_builder_iterations: 1,
+        max_review_rounds: 1,
+        max_wall_time_ms: 60_000,
+        max_no_progress_rounds: 1,
+      },
+      attempt: {},
+      event: { kind: "queued" },
+      occurred_at: 1,
+    });
+    seedDb.close();
+
+    let resolveHealth:
+      | ((report: AutonomyHealthReport) => void)
+      | undefined;
+    const initialHealth = new Promise<AutonomyHealthReport>((resolve) => {
+      resolveHealth = resolve;
+    });
+    let resumeCalls = 0;
+    daemon = await startDaemon({
+      socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock`,
+      autonomyHealth: async () => await initialHealth,
+      guardedAutonomyFactory: () => ({
+        resume: async (autonomyRunId) => {
+          resumeCalls += 1;
+          return {
+            status: "completed",
+            run: {
+              autonomy_run_id: autonomyRunId,
+              state: "completed",
+              revision: 2,
+              context: {},
+            },
+          };
+        },
+      }),
+    });
+
+    const blocked = await daemonRpc(
+      daemon.socketPath,
+      "autonomy.resume",
+      { autonomy_run_id: runId },
+    );
+    resolveHealth?.(healthyAutonomyHealth());
+
+    expect(blocked.ok).toBe(false);
+    expect(blocked.error?.message).toContain(
+      "until the initial health check completes",
+    );
+    expect(resumeCalls).toBe(0);
   });
 
   it("drains and refuses guarded writes when autonomy disk health is critical", async () => {

@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
   chmod,
+  link,
   lstat,
   mkdir,
   open,
@@ -237,6 +238,16 @@ export async function acquireRepoWriteLock(
     } catch (error) {
       if (errorCode(error) === "ENOENT") continue;
       throw error;
+    }
+    const movedOwner = await readOwner(stalePath);
+    if (!sameOwner(movedOwner, current)) {
+      try {
+        await link(stalePath, path);
+        await rm(stalePath);
+      } catch (error) {
+        if (errorCode(error) !== "EEXIST") throw error;
+      }
+      throw new RepoLockOwnershipError(path);
     }
     try {
       await options.on_audit?.({

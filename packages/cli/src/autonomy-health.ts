@@ -137,15 +137,8 @@ function check(
 }
 
 function defaultDiskFreeBytes(dbPath: string): number {
-  try {
-    const stats = statfsSync(dirname(dbPath));
-    return Number(stats.bsize) * Number(stats.bavail);
-  } catch {
-    // Keep the report JSON-safe while avoiding an accidental write outage when
-    // the platform cannot provide statfs data. The doctor reports this case
-    // separately as a warning.
-    return Number.MAX_SAFE_INTEGER;
-  }
+  const stats = statfsSync(dirname(dbPath));
+  return Number(stats.bsize) * Number(stats.bavail);
 }
 
 async function defaultAdapterProbe(): Promise<AutonomyAdapterProbe[]> {
@@ -282,6 +275,9 @@ function repoLocksCheck(lockDirectory: string): AutonomyHealthCheck {
   let locks = 0;
   try {
     for (const name of readdirSync(lockDirectory)) {
+      if (name.includes(".lock.stale-")) {
+        throw new Error("incomplete stale lock recovery");
+      }
       if (!name.endsWith(".lock")) continue;
       locks += 1;
       const path = join(lockDirectory, name);
@@ -434,12 +430,29 @@ export async function runAutonomyHealth(
 
   checks.push(socketCheck(deps.home, deps.socket_path));
 
-  const diskFreeBytes = (
-    deps.disk_free_bytes ?? (() => defaultDiskFreeBytes(deps.db_path))
-  )();
+  let diskFreeBytes = 0;
+  let diskProbeFailed = false;
+  try {
+    diskFreeBytes = (
+      deps.disk_free_bytes ?? (() => defaultDiskFreeBytes(deps.db_path))
+    )();
+    if (!Number.isFinite(diskFreeBytes) || diskFreeBytes < 0) {
+      throw new Error("disk-free probe returned an invalid value");
+    }
+  } catch {
+    diskProbeFailed = true;
+    diskFreeBytes = 0;
+  }
   const drainRequired = diskFreeBytes < AUTONOMY_DRAIN_FREE_BYTES;
   checks.push(
-    diskFreeBytes < AUTONOMY_MIN_WRITE_FREE_BYTES
+    diskProbeFailed
+      ? check(
+          "disk_free",
+          "blocked",
+          "writes",
+          "disk-free probe failed; daemon drain required",
+        )
+      : diskFreeBytes < AUTONOMY_MIN_WRITE_FREE_BYTES
       ? check(
           "disk_free",
           "blocked",

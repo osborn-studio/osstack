@@ -174,7 +174,7 @@ const previousPowerPolicy =
     : "none";
 let rendered = fs.readFileSync(templatePath, "utf8");
 const powerPrefix = powerPolicy === "process_assertion"
-  ? "    <string>/usr/bin/caffeinate</string>\\n    <string>-ims</string>"
+  ? "    <string>/usr/bin/caffeinate</string>\n    <string>-ims</string>"
   : "";
 rendered = rendered.replaceAll("{{POWER_PREFIX_XML}}", powerPrefix);
 for (const [name, value] of Object.entries(replacements)) {

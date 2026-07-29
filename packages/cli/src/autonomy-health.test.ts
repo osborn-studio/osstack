@@ -263,6 +263,25 @@ describe("autonomy operational health", () => {
     )?.detail).toContain("daemon drain required");
   });
 
+  it("fails closed and drains when disk-free evidence is unavailable", async () => {
+    const report = await runAutonomyHealth(deps({
+      disk_free_bytes: () => {
+        throw new Error("statfs unavailable");
+      },
+    }));
+
+    expect(report.can_run_local).toBe(false);
+    expect(report.drain_required).toBe(true);
+    expect(report.write_blockers).toContain("disk_free");
+    expect(report.checks.find(
+      (check) => check.id === "disk_free",
+    )).toMatchObject({
+      status: "blocked",
+      scope: "writes",
+      detail: "disk-free probe failed; daemon drain required",
+    });
+  });
+
   it("surfaces freezes, resumable runs, and corrupt repository locks", async () => {
     createAutonomyRun(db, dbPath, {
       autonomy_run_id: "run-health",
@@ -309,6 +328,19 @@ describe("autonomy operational health", () => {
         state: "queued",
       }),
     ]);
+    expect(report.write_blockers).toContain("repo_locks");
+    expect(report.can_run_local).toBe(false);
+  });
+
+  it("blocks writes while a stale lock recovery artifact remains", async () => {
+    await mkdir(join(home, "locks", "repos"), { recursive: true });
+    await writeFile(
+      join(home, "locks", "repos", "example.lock.stale-race"),
+      "{}\n",
+    );
+
+    const report = await runAutonomyHealth(deps());
+
     expect(report.write_blockers).toContain("repo_locks");
     expect(report.can_run_local).toBe(false);
   });

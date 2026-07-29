@@ -62,8 +62,8 @@ function realTaskManifest() {
       acceptance_criteria: [`criterion ${index + 1}`],
       workspace_path:
         index % 2 === 0
-          ? "/Volumes/AIMATE_WORK/Developer/CodeX/worktrees/soak-repo-a"
-          : "/Volumes/AIMATE_WORK/Developer/CodeX/worktrees/soak-repo-b",
+          ? "/srv/osstack/worktrees/soak-repo-a"
+          : "/srv/osstack/worktrees/soak-repo-b",
     })),
   };
 }
@@ -339,7 +339,7 @@ test("real task manifest rejects duplicate prompts and fixture workspaces", asyn
   const manifest = realTaskManifest();
   manifest.tasks[1].prompt_sha256 = manifest.tasks[0].prompt_sha256;
   manifest.tasks[2].workspace_path =
-    "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/fixtures/repo";
+    "/srv/osstack/fixtures/repo";
 
   const failures = await validateTaskManifest(manifest, {
     minTasks: 30,
@@ -377,6 +377,61 @@ test("real snapshot rejects replayed event identifiers", async () => {
       eventLogPath: eventsPath,
     }),
     /duplicate event_id/u,
+  );
+});
+
+test("real snapshot cannot close a different high-severity defect", async () => {
+  const home = await temporaryHome("soak-defect-identity");
+  const { manifestPath, eventsPath } =
+    await writeProductizationEvidence(home);
+  const lines = (await readFile(eventsPath, "utf8")).trim().split("\n");
+  const finalEvent = lines.pop();
+  assert.ok(finalEvent);
+  lines.push(
+    JSON.stringify(event(
+      "2026-07-26T12:00:00.000Z",
+      "high_severity_defect_opened",
+      { defect_id: "defect-open" },
+    )),
+    JSON.stringify(event(
+      "2026-07-26T13:00:00.000Z",
+      "high_severity_defect_closed",
+      { defect_id: "different-defect" },
+    )),
+    finalEvent,
+  );
+  await writeChecksummed(eventsPath, `${lines.join("\n")}\n`);
+
+  await assert.rejects(
+    runRealSoakSnapshot({
+      home,
+      taskManifestPath: manifestPath,
+      eventLogPath: eventsPath,
+    }),
+    /high-severity defect closed without open: different-defect/u,
+  );
+});
+
+test("real snapshot verifies every completed task proof pack", async () => {
+  const home = await temporaryHome("soak-all-proofs");
+  const { manifestPath, eventsPath } =
+    await writeProductizationEvidence(home);
+  const lines = (await readFile(eventsPath, "utf8")).trim().split("\n");
+  const taskIndex = lines.findIndex((line) =>
+    JSON.parse(line).type === "task_completed"
+  );
+  const task = JSON.parse(lines[taskIndex]);
+  task.proof_dir = join(home, "autonomy", "missing-proof");
+  lines[taskIndex] = JSON.stringify(task);
+  await writeChecksummed(eventsPath, `${lines.join("\n")}\n`);
+
+  await assert.rejects(
+    runRealSoakSnapshot({
+      home,
+      taskManifestPath: manifestPath,
+      eventLogPath: eventsPath,
+    }),
+    /completed task proof validation failed/u,
   );
 });
 

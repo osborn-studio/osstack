@@ -705,6 +705,7 @@ export async function validateSoakReportFile(
         }
         const events = parseEventLog(eventLog.content);
         const evidence = deriveRealEvidence(validatedManifest, events);
+        failures.push(...await verifyCompletedTaskProofs(events));
         failures.push(...eventEvidencePredicates(report, evidence));
       } catch (error) {
         failures.push({
@@ -1014,6 +1015,7 @@ function deriveRealEvidence(manifest, events) {
   );
   const taskEvents = [];
   const seenTaskIds = new Set();
+  const seenRunIds = new Set();
   for (
     const event of events.filter(
       (candidate) => candidate.type === "task_completed",
@@ -1028,7 +1030,22 @@ function deriveRealEvidence(manifest, events) {
         task_id: event.task_id,
       });
     }
+    if (
+      typeof event.run_id !== "string"
+      || event.run_id.trim().length === 0
+      || seenRunIds.has(event.run_id)
+      || typeof event.proof_dir !== "string"
+      || !isAbsolute(event.proof_dir)
+      || event.outcome !== "completed"
+      || typeof event.unattended !== "boolean"
+    ) {
+      fail("completed task evidence is incomplete or duplicated", {
+        task_id: event.task_id,
+        run_id: event.run_id,
+      });
+    }
     seenTaskIds.add(event.task_id);
+    seenRunIds.add(event.run_id);
     taskEvents.push(event);
   }
   const restarts = events.filter((event) => event.type === "daemon_restart");
@@ -1069,13 +1086,31 @@ function deriveRealEvidence(manifest, events) {
   const unattended = taskEvents.filter(
     (event) => event.unattended === true && event.outcome === "completed",
   ).length;
-  const highSeverityOpenDefects = events.reduce((count, event) => {
-    if (event.type === "high_severity_defect_opened") return count + 1;
-    if (event.type === "high_severity_defect_closed") {
-      return Math.max(0, count - 1);
+  const highSeverityOpenDefects = new Set();
+  for (const event of events) {
+    if (
+      event.type !== "high_severity_defect_opened"
+      && event.type !== "high_severity_defect_closed"
+    ) {
+      continue;
     }
-    return count;
-  }, 0);
+    if (
+      typeof event.defect_id !== "string"
+      || event.defect_id.trim().length === 0
+    ) {
+      fail("high-severity defect event requires a non-empty defect_id");
+    }
+    if (event.type === "high_severity_defect_opened") {
+      if (highSeverityOpenDefects.has(event.defect_id)) {
+        fail(`high-severity defect opened twice: ${event.defect_id}`);
+      }
+      highSeverityOpenDefects.add(event.defect_id);
+      continue;
+    }
+    if (!highSeverityOpenDefects.delete(event.defect_id)) {
+      fail(`high-severity defect closed without open: ${event.defect_id}`);
+    }
+  }
   return {
     started_at: new Date(startedMs).toISOString(),
     ended_at: new Date(endedMs).toISOString(),
@@ -1134,8 +1169,24 @@ function deriveRealEvidence(manifest, events) {
     },
     latest_run_id: latestTask.run_id,
     latest_proof_dir: resolve(latestTask.proof_dir),
-    high_severity_open_defects: highSeverityOpenDefects,
+    high_severity_open_defects: highSeverityOpenDefects.size,
   };
+}
+
+async function verifyCompletedTaskProofs(events) {
+  const failures = [];
+  for (const event of events) {
+    if (event.type !== "task_completed") continue;
+    const proofFailures = await verifyProofDirectory(
+      event.proof_dir,
+      event.run_id,
+    );
+    failures.push(...proofFailures.map((failure) => ({
+      ...failure,
+      predicate: `task_proof.${event.task_id}.${failure.predicate}`,
+    })));
+  }
+  return failures;
 }
 
 export async function runRealSoakSnapshot({
@@ -1166,6 +1217,12 @@ export async function runRealSoakSnapshot({
   const eventLog = await readChecksummedText(eventsPath);
   const events = parseEventLog(eventLog.content);
   const evidence = deriveRealEvidence(manifest.value, events);
+  const proofFailures = await verifyCompletedTaskProofs(events);
+  if (proofFailures.length > 0) {
+    fail("completed task proof validation failed", {
+      failed_predicates: proofFailures,
+    });
+  }
   const report = {
     schema_version: 1,
     mode: "real_evidence_snapshot",

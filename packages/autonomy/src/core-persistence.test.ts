@@ -106,7 +106,7 @@ describe("SQLite guarded delivery persistence", () => {
         intent: {
           autonomy_run_id: "run-attention",
           task_id: "task-attention",
-          repo_id: "gilosbornhello/example",
+          repo_id: "owner/example",
           workspace_path: directory,
           goal: "request guarded approval",
           expected_paths: ["docs/guide.md"],
@@ -208,7 +208,7 @@ describe("SQLite guarded delivery persistence", () => {
         pushedCommit: COMMIT_SHA,
         pr: {
           number: 42,
-          url: "https://github.com/gilosbornhello/osstack/pull/42",
+          url: "https://github.com/owner/example/pull/42",
           reused: false,
         },
         mergeCommit: MERGE_SHA,
@@ -251,7 +251,7 @@ describe("SQLite guarded delivery persistence", () => {
     const result = await engine.start({
       autonomy_run_id: "run-docs",
       task_id: "task-docs",
-      repo_id: "gilosbornhello/example",
+      repo_id: "owner/example",
       workspace_path: directory,
       goal: "update documentation",
       expected_paths: ["docs/guide.md"],
@@ -282,7 +282,7 @@ describe("SQLite guarded delivery persistence", () => {
     const row = getAutonomyRun(db, "run-docs");
     expect(row).toMatchObject({
       task_id: "task-docs",
-      repo_id: "gilosbornhello/example",
+      repo_id: "owner/example",
       state: "completed",
       revision: result.run.revision,
       candidate_proof_json: expect.any(String),

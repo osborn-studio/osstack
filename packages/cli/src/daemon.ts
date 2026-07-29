@@ -2202,6 +2202,14 @@ async function acquireDaemonRunSlot(
       },
     };
   }
+  if (
+    ctx.guardedAutonomy !== undefined
+    && ctx.lastAutonomyHealth === undefined
+  ) {
+    throw new Error(
+      "autonomy writes are blocked until the initial health check completes",
+    );
+  }
   if (ctx.lastAutonomyHealth?.can_run_local === false) {
     throw new Error(
       `autonomy writes are blocked by ${
@@ -2843,17 +2851,12 @@ async function restoreGuardedAutonomy(
 ): Promise<void> {
   if (ctx.guardedAutonomy === undefined) return;
   if (health?.can_run_local === false) return;
-  const externalStates = new Set([
+  const githubRecoveryStates = new Set([
     "blocked_delivery",
     "pushing",
     "opening_pr",
     "waiting_ci",
     "merging",
-    "deploying_staging",
-    "verifying_staging",
-    "deploying_production",
-    "health_checking",
-    "rolling_back",
   ]);
   await Promise.all(
     listResumableAutonomyRuns(ctx.db)
@@ -2861,7 +2864,7 @@ async function restoreGuardedAutonomy(
       .filter(
         (row) =>
           health?.can_push_deploy !== false
-          || !externalStates.has(row.state),
+          || !githubRecoveryStates.has(row.state),
       )
       .map(async (row) => {
         try {

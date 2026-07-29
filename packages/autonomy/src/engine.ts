@@ -1493,9 +1493,9 @@ export class GuardedDeliveryEngine {
 
     const result = run.context.deploy_production;
     if (result === undefined) {
-      return await this.escalate(
+      return await this.freezeFailedProduction(
         run,
-        "recovered production deployment has no durable result; refusing replay",
+        "recovered production deployment has no durable result; freezing and refusing replay",
       );
     }
     let current = run;

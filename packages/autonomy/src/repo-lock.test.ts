@@ -1,5 +1,5 @@
-import { mkdtempSync } from "node:fs";
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, relative } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -131,6 +131,40 @@ describe("repository write lock", () => {
       pid: 202,
       autonomy_run_id: "run-2",
     });
+  });
+
+  it("fails closed if ownership changes during stale recovery", async () => {
+    const stale = await acquireRepoWriteLock({
+      root_dir: directory,
+      repo_id: "example-web",
+      autonomy_run_id: "run-dead",
+      pid: 101,
+      now: () => "2026-07-28T17:00:00.000Z",
+      is_process_alive: () => true,
+    });
+    const replacement = {
+      pid: 303,
+      autonomy_run_id: "run-raced",
+      repo_id: "example-web",
+      acquired_at: "2026-07-28T17:30:00.000Z",
+    };
+
+    await expect(acquireRepoWriteLock({
+      root_dir: directory,
+      repo_id: "example-web",
+      autonomy_run_id: "run-new",
+      pid: 202,
+      now: () => "2026-07-28T18:00:00.000Z",
+      is_process_alive: () => {
+        writeFileSync(stale.path, `${JSON.stringify(replacement)}\n`);
+        return false;
+      },
+    })).rejects.toBeInstanceOf(RepoLockOwnershipError);
+
+    expect(JSON.parse(await readFile(stale.path, "utf-8"))).toEqual(
+      replacement,
+    );
+    expect(await readdir(directory)).toEqual(["example-web.lock"]);
   });
 
   it("maps path-traversal repository ids inside the lock root", () => {

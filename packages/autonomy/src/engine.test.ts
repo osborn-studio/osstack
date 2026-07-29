@@ -1019,4 +1019,64 @@ describe("GuardedDeliveryEngine", () => {
       "writeFinalProof",
     ]));
   });
+
+  it.each([
+    "deploying_production",
+    "health_checking",
+    "rolling_back",
+  ] as const)(
+    "freezes production when recovery finds %s without durable deploy evidence",
+    async (state) => {
+      const harness = new Harness();
+      harness.policy.deploy = {
+        base_branch: "main",
+        staging: deployTarget(),
+        production: deployTarget(),
+        rollback_drill: {
+          passed_at: NOW,
+          deploy_script_digest_sha256: DEPLOY_SHA,
+          post_rollback_health_passed: true,
+        },
+      };
+      harness.deployResults = [
+        healthyDeploy("staging"),
+        healthyDeploy("production"),
+      ];
+      await harness.engine().start(intent(["src/app.ts"]));
+      const completed = harness.projection!;
+      const recoveryContext = { ...completed.context };
+      delete recoveryContext.deploy_production;
+      delete recoveryContext.deploy_outcome;
+      delete recoveryContext.final_proof;
+      delete recoveryContext.production_freeze;
+      harness.projection = {
+        ...completed,
+        state,
+        revision: completed.revision + 1,
+        context: recoveryContext,
+      };
+      harness.calls.length = 0;
+
+      const recovered = await harness.engine().resume("run-1");
+
+      expect(recovered).toMatchObject({
+        status: "blocked",
+        run: {
+          state: "escalated",
+          context: {
+            deploy_outcome: "rollback_failed",
+            production_freeze: {
+              repo_id: "owner/repo",
+              source_run_id: "run-1",
+            },
+          },
+        },
+      });
+      expect(harness.calls).toEqual(expect.arrayContaining([
+        "freezeProduction",
+        "persist:deploy_frozen",
+        "writeFinalProof",
+      ]));
+    },
+  );
 });
