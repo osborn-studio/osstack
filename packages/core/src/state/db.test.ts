@@ -53,6 +53,54 @@ describe("openDb + runMigrations", () => {
   });
 });
 
+describe("guarded autonomy persistence (migration 17)", () => {
+  it("creates the projection, append-only trail, and one-active-writer index", () => {
+    const path = join(tmp, "state.db");
+    const db = openDb({ path });
+    try {
+      expect(Number(db.pragma("user_version", { simple: true }))).toBe(17);
+      const objects = db
+        .prepare(
+          `SELECT name, type
+           FROM sqlite_master
+           WHERE name IN (
+             'autonomy_run_projection',
+             'autonomy_run_transitions',
+             'idx_autonomy_run_projection_one_active_repo',
+             'autonomy_run_transitions_no_update',
+             'autonomy_run_transitions_no_delete'
+           )
+           ORDER BY name`,
+        )
+        .all() as Array<{ name: string; type: string }>;
+      expect(objects).toEqual([
+        {
+          name: "autonomy_run_projection",
+          type: "table",
+        },
+        {
+          name: "autonomy_run_transitions",
+          type: "table",
+        },
+        {
+          name: "autonomy_run_transitions_no_delete",
+          type: "trigger",
+        },
+        {
+          name: "autonomy_run_transitions_no_update",
+          type: "trigger",
+        },
+        {
+          name: "idx_autonomy_run_projection_one_active_repo",
+          type: "index",
+        },
+      ]);
+    } finally {
+      db.close();
+    }
+  });
+});
+
 describe("preflightDiskSpace (G1)", () => {
   it("returns a positive free-byte count for a writable temp dir", () => {
     const free = preflightDiskSpace(join(tmp, "state.db"));

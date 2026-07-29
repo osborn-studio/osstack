@@ -16,3 +16,4 @@ export * from "./knowledge-hygiene-plan-store.js";
 export * from "./dependency-obligation-store.js";
 export * from "./probe-store.js";
 export * from "./probe-metrics.js";
+export * from "./autonomy-runs.js";
