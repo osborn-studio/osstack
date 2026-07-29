@@ -11,3 +11,6 @@
   diff-bound approval, recheck action scope before writes, fail closed on Git
   object errors, and protect verification scripts plus the autonomy trust
   kernel from low-risk self-modification.
+- Add deterministic project deployment eligibility, script-authority digests,
+  health-checked staging and production execution, automatic rollback/freeze,
+  repository locks, and machine-wide concurrency control.

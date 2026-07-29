@@ -6,6 +6,8 @@
 
 - Add strict autonomy risk, transition, scoped approval request, and externally
   signed Ed25519 decision contracts for durable R0-R4 delivery.
+- Add guarded deployment run states for staging, production health checks,
+  rollback, and production freeze evidence.
 
 ## 0.10.0
 

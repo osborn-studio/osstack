@@ -6,6 +6,9 @@
 
 - Add repository policy schema v2 plus append-only autonomy run, transition,
   approval, and decision persistence with deterministic restart replay.
+- Add strict project deployment allowlists, durable deployment/freeze state,
+  restart-safe autonomy projections, append-only rollback drills, and a
+  redacted Owner notification outbox.
 
 ## 0.12.0
 

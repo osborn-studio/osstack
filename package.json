@@ -34,6 +34,7 @@
     "smoke:knowledge-cloud": "pnpm build && node scripts/smoke-knowledge-cloud.mjs",
     "smoke:knowledge-cloud:deploy": "node scripts/smoke-knowledge-cloud-deploy-assets.mjs",
     "smoke:npm-install": "node scripts/smoke-npm-install.mjs",
+    "smoke:guarded-deploy": "pnpm --filter @osstack/cli... build && node scripts/smoke-guarded-deploy.mjs",
     "smoke:release-plan": "pnpm --filter @osstack/cli build && node scripts/smoke-release-plan.mjs",
     "smoke:neat": "pnpm --filter @osstack/cli build && node scripts/smoke-neat.mjs",
     "smoke:probe": "pnpm --filter @osstack/cli... build && node scripts/smoke-probe.mjs",
