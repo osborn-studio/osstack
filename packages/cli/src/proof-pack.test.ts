@@ -182,6 +182,41 @@ describe("createVerifierOutputArtifacts", () => {
     ]);
   });
 
+  it("keeps retry artifacts unique while preserving every verifier result", () => {
+    const artifacts = createVerifierOutputArtifacts({
+      status: "pass",
+      results: [
+        {
+          task_id: "retry-task",
+          pass: false,
+          score: 0,
+          reviewer_agent_id: "local-verifier",
+          summary: "Attempt one failed.",
+          event_seq: 2,
+        },
+        {
+          task_id: "retry-task",
+          pass: true,
+          score: 1,
+          reviewer_agent_id: "local-verifier",
+          summary: "Attempt two passed.",
+          event_seq: 3,
+        },
+      ],
+    });
+
+    expect(artifacts).toEqual([
+      expect.objectContaining({
+        path: "checker-output/retry-task-local-verifier-event-2.txt",
+        content: expect.stringContaining("Attempt one failed."),
+      }),
+      expect.objectContaining({
+        path: "checker-output/retry-task-local-verifier-event-3.txt",
+        content: expect.stringContaining("Attempt two passed."),
+      }),
+    ]);
+  });
+
   it("rejects duplicate structured reviewer paths instead of overwriting evidence", () => {
     const review = {
       schema_version: 1 as const,
