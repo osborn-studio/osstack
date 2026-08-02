@@ -7870,8 +7870,13 @@ async function installLaunchAgent(options: {
   let loaded = false;
   if (!options.noLoad) {
     ensureLaunchdSupported();
-    await launchctl(["bootstrap", launchdDomain(), plistPath]);
-    await launchctl(["kickstart", "-k", `${launchdDomain()}/${LAUNCHD_LABEL}`]);
+    const domain = launchdDomain();
+    const plan = launchAgentLoadPlan({
+      loaded: await isLaunchAgentLoaded(),
+      domain,
+      plistPath,
+    });
+    for (const action of plan) await launchctl(action);
     loaded = await isLaunchAgentLoaded();
   }
 
@@ -8084,6 +8089,19 @@ function launchAgentPlistPath(): string {
 
 function launchdDomain(): string {
   return `gui/${process.getuid?.() ?? 501}`;
+}
+
+export function launchAgentLoadPlan(options: {
+  loaded: boolean;
+  domain: string;
+  plistPath: string;
+}): string[][] {
+  const service = `${options.domain}/${LAUNCHD_LABEL}`;
+  return [
+    ...(options.loaded ? [["bootout", service]] : []),
+    ["bootstrap", options.domain, options.plistPath],
+    ["kickstart", "-k", service],
+  ];
 }
 
 function ensureLaunchdSupported(): void {

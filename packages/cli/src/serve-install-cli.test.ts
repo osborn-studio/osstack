@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { main } from "./bin.js";
+import { launchAgentLoadPlan, main } from "./bin.js";
 
 let tmp: string;
 let logs: string[];
@@ -42,6 +42,28 @@ afterEach(async () => {
 });
 
 describe("serve launchd installer", () => {
+  it("boots out a loaded service before bootstrapping the replacement plist", () => {
+    const plistPath = "/Users/example/Library/LaunchAgents/ai.osstack.daemon.plist";
+
+    expect(launchAgentLoadPlan({
+      loaded: true,
+      domain: "gui/501",
+      plistPath,
+    })).toEqual([
+      ["bootout", "gui/501/ai.osstack.daemon"],
+      ["bootstrap", "gui/501", plistPath],
+      ["kickstart", "-k", "gui/501/ai.osstack.daemon"],
+    ]);
+    expect(launchAgentLoadPlan({
+      loaded: false,
+      domain: "gui/501",
+      plistPath,
+    })).toEqual([
+      ["bootstrap", "gui/501", plistPath],
+      ["kickstart", "-k", "gui/501/ai.osstack.daemon"],
+    ]);
+  });
+
   it("keeps packaged daemon and upgrade templates on the same stable service contract", async () => {
     const launchdDir = join(
       dirname(fileURLToPath(import.meta.url)),
