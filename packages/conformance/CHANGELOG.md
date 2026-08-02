@@ -1,5 +1,13 @@
 # @osstack/conformance
 
+## 0.14.0
+
+### Patch Changes
+
+- Updated dependencies [619cd53]
+  - @osstack/agents@0.14.0
+  - @osstack/loop@0.14.0
+
 ## 0.13.1
 
 ### Patch Changes

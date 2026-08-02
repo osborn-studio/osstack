@@ -1,5 +1,15 @@
 # @osstack/loop
 
+## 0.14.0
+
+### Patch Changes
+
+- 619cd53: Run Codex adapters in each task's repository worktree, keep truncated verifier
+  summaries Unicode-safe for strict JSON readers, and add workspace, changed, and
+  Git-baseline scopes to Loop governance.
+- Updated dependencies [619cd53]
+  - @osstack/agents@0.14.0
+
 ## 0.13.1
 
 ### Patch Changes
