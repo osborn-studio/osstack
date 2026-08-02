@@ -18,6 +18,12 @@
   evidence/retention, controlled rollback drills, and deterministic seven-day
   soak validation.
 
+### Patch Changes
+
+- Reload an existing macOS LaunchAgent by booting out the live service before
+  bootstrapping its replacement plist, preventing config/runtime drift during
+  profile or power-policy changes.
+
 ## 0.12.0
 
 ### Minor Changes
