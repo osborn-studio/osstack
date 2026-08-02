@@ -4,7 +4,11 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { launchAgentLoadPlan, main } from "./bin.js";
+import {
+  executeLaunchAgentLoadPlan,
+  launchAgentLoadPlan,
+  main,
+} from "./bin.js";
 
 let tmp: string;
 let logs: string[];
@@ -62,6 +66,59 @@ describe("serve launchd installer", () => {
       ["bootstrap", "gui/501", plistPath],
       ["kickstart", "-k", "gui/501/ai.osstack.daemon"],
     ]);
+  });
+
+  it("retries a transient bootstrap race before kickstarting the replacement", async () => {
+    const actions = launchAgentLoadPlan({
+      loaded: true,
+      domain: "gui/501",
+      plistPath: "/Users/example/Library/LaunchAgents/ai.osstack.daemon.plist",
+    });
+    const attempts: string[][] = [];
+    const waits: number[] = [];
+    let bootstrapAttempts = 0;
+
+    await executeLaunchAgentLoadPlan({
+      actions,
+      retryDelaysMs: [100, 250],
+      run: async (action, options) => {
+        attempts.push(action);
+        if (action[0] === "bootstrap" && bootstrapAttempts++ === 0) {
+          expect(options).toEqual({ allowFailure: true });
+          return { ok: false, output: "Bootstrap failed: 5: Input/output error" };
+        }
+        return { ok: true, output: "" };
+      },
+      wait: async (milliseconds) => {
+        waits.push(milliseconds);
+      },
+    });
+
+    expect(attempts.map((action) => action[0])).toEqual([
+      "bootout",
+      "bootstrap",
+      "bootstrap",
+      "kickstart",
+    ]);
+    expect(waits).toEqual([100]);
+  });
+
+  it("fails closed after bounded bootstrap retries", async () => {
+    const action = [
+      "bootstrap",
+      "gui/501",
+      "/Users/example/Library/LaunchAgents/ai.osstack.daemon.plist",
+    ];
+
+    await expect(executeLaunchAgentLoadPlan({
+      actions: [action],
+      retryDelaysMs: [100, 250],
+      run: async () => ({
+        ok: false,
+        output: "Bootstrap failed: 5: Input/output error",
+      }),
+      wait: async () => {},
+    })).rejects.toThrow("failed after 3 attempts");
   });
 
   it("keeps packaged daemon and upgrade templates on the same stable service contract", async () => {

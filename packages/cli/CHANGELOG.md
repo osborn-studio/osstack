@@ -23,6 +23,8 @@
 - Reload an existing macOS LaunchAgent by booting out the live service before
   bootstrapping its replacement plist, preventing config/runtime drift during
   profile or power-policy changes.
+- Retry the bounded macOS `launchd` teardown/bootstrap race before kickstarting
+  a replacement service, and fail closed if registration never succeeds.
 
 ## 0.12.0
 
