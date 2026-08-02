@@ -40,6 +40,7 @@ import {
 } from "./types.js";
 import {
   CLAUDE_CODE_MEMORY_ADAPTER_V1,
+  CODEX_LOCAL_MEMORY_ADAPTER_V1,
   runKnowledgeSurfaceAdapter,
   type KnowledgeSurfaceAdapterRunResultV1,
   type KnowledgeSurfaceAdapterV1,
@@ -192,6 +193,8 @@ function configuredAdapterInput(
   const cli = input.adapters?.find((candidate) => candidate.id === adapter.id);
   const configured = adapter.id === "claude-code"
     ? config?.adapters?.claude_code
+    : adapter.id === "codex-local"
+    ? config?.adapters?.codex_local
     : undefined;
   const enabled = cli !== undefined || configured?.enabled === true;
   const memoryDirectory = cli?.memory_dir ?? configured?.memory_dir;
@@ -261,7 +264,10 @@ export async function checkKnowledgeHygiene(
   const inspectReferences = ports.inspect_references ?? inspectKnowledgeReferences;
   const now = ports.now ?? (() => new Date());
   const checkedAt = now();
-  const adapters = ports.adapters ?? [CLAUDE_CODE_MEMORY_ADAPTER_V1];
+  const adapters = ports.adapters ?? [
+    CLAUDE_CODE_MEMORY_ADAPTER_V1,
+    CODEX_LOCAL_MEMORY_ADAPTER_V1,
+  ];
   const homeDirectory = ports.home_directory
     ?? (() => process.env["HOME"]);
 

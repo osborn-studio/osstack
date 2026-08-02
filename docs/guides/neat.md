@@ -335,11 +335,21 @@ guessing it. `memory.platform_limit_exceeded` is a Claude-specific warning when
 `MEMORY.md` exceeds 200 lines or 25KB; no timestamp is treated as evidence of a
 last recall. See the [Claude Code memory contract](https://code.claude.com/docs/en/memory).
 
-Claude Code is the only built-in external-memory adapter in 0.14.x. Unknown
-platform directories and generated Codex memory are never auto-discovered or
-mutated. If a platform has no documented control plane, report the observation
-as generated/read-only and leave remediation pending; do not apply Claude Code
-limits or path rules to it.
+Claude Code and Codex local memory are the built-in external-memory adapters.
+Both require one exact, explicitly authorized directory and never enumerate
+sibling projects. The Codex store is generated state: Neat reports portable
+paths, byte sizes, and hashes only, never file content, and exposes no edit,
+transaction, or platform-limit rule for it. Run the read-only check with:
+
+```bash
+osstack neat check --all --adapter codex-local \
+  --codex-memory-dir "$HOME/.codex/memories" --json --fail-on none
+```
+
+The default path shown above comes from the
+[official Codex memory documentation](https://learn.chatgpt.com/docs/customization/memories.md),
+but Neat does not auto-discover it. Unknown platforms remain pending/read-only;
+Claude Code limits and path rules are never projected onto them.
 
 ## Exit codes
 
@@ -396,6 +406,9 @@ adapters:
   claude_code:
     enabled: false
     # memory_dir: ~/my-custom-memory-dir
+  codex_local:
+    enabled: false
+    # memory_dir: ~/.codex/memories
 
 ignore:
   - rule_id: reference.markdown_target_missing
@@ -424,6 +437,8 @@ ignore:
 | `contracts[].enforcement` | no | `advisory` (warning) or `required` (error). |
 | `adapters.claude_code.enabled` | when the adapter entry exists | Explicit boolean consent; `false` is a strict no-op. |
 | `adapters.claude_code.memory_dir` | no | One absolute or `~/` Claude auto-memory directory. |
+| `adapters.codex_local.enabled` | when the adapter entry exists | Explicit boolean consent to read generated metadata; `false` is a strict no-op. |
+| `adapters.codex_local.memory_dir` | no | One absolute or `~/` Codex local memory directory; never auto-discovered. |
 | `ignore[].rule_id` | per entry | A known rule id. |
 | `ignore[].paths` | per entry | Non-empty v1 path-pattern list; broad `**` is forbidden. |
 | `ignore[].reason` | per entry | Non-empty explanation. |

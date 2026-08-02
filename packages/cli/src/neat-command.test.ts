@@ -105,6 +105,7 @@ describe("handleNeatCommand", () => {
     ["unknown flag", ["--wat"]],
     ["unknown adapter", ["--adapter", "codex"]],
     ["memory directory without consent", ["--claude-memory-dir", "/memory"]],
+    ["Codex memory directory without consent", ["--codex-memory-dir", "/memory"]],
     [
       "relative memory directory",
       ["--adapter", "claude-code", "--claude-memory-dir", "relative/memory"],
@@ -152,6 +153,41 @@ describe("handleNeatCommand", () => {
     expect(report.findings).toEqual([expect.objectContaining({
       rule_id: "memory.platform_limit_exceeded",
     })]);
+  });
+
+  it("explicitly enables generated Codex memory as a read-only adapter without Claude limits", async () => {
+    const repoRoot = await mkdtemp(join(tmpdir(), "osstack-neat-cli-"));
+    const memoryRoot = await mkdtemp(join(tmpdir(), "osstack-neat-codex-memory-"));
+    await writeFile(join(memoryRoot, "memory.jsonl"), "generated\n".repeat(201));
+    const harness = commandHarness({ cwd: repoRoot });
+
+    const exitCode = await handleNeatCommand([
+      "check",
+      "--all",
+      "--adapter",
+      "codex-local",
+      "--codex-memory-dir",
+      memoryRoot,
+      "--json",
+    ], harness.deps);
+
+    expect(exitCode).toBe(0);
+    const envelope = AgentCommandResult.parse(
+      JSON.parse(harness.stdout.join("\n")),
+    );
+    const report = (envelope.result as { report: KnowledgeHygieneReport }).report;
+    expect(report.adapters).toEqual([expect.objectContaining({
+      id: "codex-local",
+      version: "1",
+      status: "available",
+    })]);
+    expect(report.metrics).toEqual([expect.objectContaining({
+      path: "codex-local://generated-memory/memory.jsonl",
+      adapter: expect.objectContaining({ id: "codex-local" }),
+    })]);
+    expect(report.findings).not.toContainEqual(expect.objectContaining({
+      rule_id: "memory.platform_limit_exceeded",
+    }));
   });
 
   it("renders explicit adapter status and source for humans", async () => {

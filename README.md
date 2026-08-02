@@ -467,6 +467,10 @@ osstack neat check --record --json --fail-on none
 osstack neat check --all --adapter claude-code \
   --claude-memory-dir "$HOME/.claude/projects/PROJECT/memory"
 
+# Explicit, metadata-only Codex generated-memory audit for one directory.
+osstack neat check --all --adapter codex-local \
+  --codex-memory-dir "$HOME/.codex/memories"
+
 # Event-derived history (no composite score).
 osstack neat trend --repo-id osstack
 
