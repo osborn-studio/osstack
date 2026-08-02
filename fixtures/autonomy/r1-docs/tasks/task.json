@@ -1,0 +1,8 @@
+{
+  "task_id": "fixture-r1-docs",
+  "goal": "Update documentation for the guarded delivery runbook",
+  "expected_paths": ["docs/readme.md"],
+  "requested_actions": ["build", "commit", "merge", "push", "verify"],
+  "expected_risk": "R1",
+  "expected_status": "completed"
+}

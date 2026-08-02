@@ -58,6 +58,52 @@ describe("HermesEventSchema", () => {
     });
   });
 
+  it("preserves structured review through DonePayload parse and event round trip", () => {
+    const input = {
+      event_id: "run_1:9",
+      seq: 9,
+      run_id: "run_1",
+      session_id: "sess_1",
+      created_at: 1778750102,
+      terminal: true,
+      type: "done",
+      payload: {
+        status: "completed",
+        last_seq: 8,
+        review: {
+          schema_version: 1,
+          verdict: "approved",
+          risk: "read_only",
+          markdown: "# Review\n\nApproved.",
+          judgments: [{
+            id: "correctness",
+            pass: true,
+            severity: "error",
+            summary: "No blocking defect.",
+          }],
+          findings: [],
+          recommended_actions: [],
+          evidence_refs: ["proof/review-input.json"],
+          runtime_identity: {
+            adapter_id: "kimi-code",
+            adapter_version: "0.29.1",
+            auth_mode: "subprocess/login-reuse",
+            provider_id: "kimi",
+            model_id: "k3-256k",
+            agent_profile: "osstack-reviewer",
+            binary_path_sha256: "a".repeat(64),
+            evidence_source: "reported",
+          },
+        },
+      },
+    } as const;
+
+    const parsed = HermesEventSchema.parse(input);
+    const roundTripped = HermesEventSchema.parse(JSON.parse(JSON.stringify(parsed)));
+
+    expect(roundTripped.payload).toEqual(input.payload);
+  });
+
   it("rejects an event with an unknown type", () => {
     expect(() => HermesEventSchema.parse({
       event_id: "x", seq: 0, run_id: "r", session_id: "s",

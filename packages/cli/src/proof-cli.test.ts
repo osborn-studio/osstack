@@ -45,6 +45,8 @@ describe("proof CLI", () => {
       workspace: string;
       agent_id: string;
       agent_ids: string[];
+      proof_stage: string;
+      supersedes?: unknown;
       artifacts: Array<{ path: string; sha256: string }>;
     };
     expect(logs.join("\n")).toContain(`proof=${proofDir}`);
@@ -56,6 +58,8 @@ describe("proof CLI", () => {
     expect(manifest.workspace).toBe(tmp);
     expect(manifest.agent_id).toBe("codex-cli");
     expect(manifest.agent_ids).toEqual(["codex-cli"]);
+    expect(manifest.proof_stage).toBe("candidate");
+    expect(manifest.supersedes).toBeUndefined();
     expect(manifest.artifacts).toEqual(expect.arrayContaining([
       expect.objectContaining({ path: "report.md", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
       expect.objectContaining({ path: "scorecard.html", sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
@@ -96,6 +100,182 @@ describe("proof CLI", () => {
       status: "unknown",
       reason: "No osstack.contracts.json manifest found.",
     });
+  });
+
+  it("writes a final proof that supersedes a checksummed candidate manifest", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const eventsPath = join(tmp, "events.jsonl");
+    await writeProofEvents(eventsPath);
+    expect(await main([
+      "proof",
+      "--workspace",
+      tmp,
+      "--events",
+      eventsPath,
+    ])).toBe(0);
+    const candidateManifest = join(
+      tmp,
+      "release",
+      "osstack-proof-cli-proof-loop",
+      "manifest.json",
+    );
+
+    logs = [];
+    const finalExitCode = await main([
+      "proof",
+      "--workspace",
+      tmp,
+      "--events",
+      eventsPath,
+      "--stage",
+      "final",
+      "--supersedes-manifest",
+      candidateManifest,
+      "--json",
+    ]);
+
+    expect(finalExitCode).toBe(0);
+    const finalDir = join(
+      tmp,
+      "release",
+      "osstack-proof-cli-proof-loop-final",
+    );
+    const finalManifest = JSON.parse(
+      await readFile(join(finalDir, "manifest.json"), "utf-8"),
+    ) as {
+      proof_stage: string;
+      supersedes: {
+        manifest_path: string;
+        manifest_sha256: string;
+      };
+    };
+    expect(finalManifest.proof_stage).toBe("final");
+    expect(finalManifest.supersedes).toEqual({
+      manifest_path: "../osstack-proof-cli-proof-loop/manifest.json",
+      manifest_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+
+    logs = [];
+    const validationExitCode = await main([
+      "proof",
+      "validate",
+      "cli-proof-loop-final",
+      "--proof-dir",
+      finalDir,
+      "--json",
+    ]);
+    expect(
+      validationExitCode,
+      JSON.stringify({ logs, errors }, null, 2),
+    ).toBe(0);
+  });
+
+  it("checksums supplied risk and approval evidence without empty authority claims", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const riskPath = join(tmp, "risk-preflight-input.json");
+    const approvalPath = join(tmp, "approval-request-input.json");
+    await writeFile(riskPath, JSON.stringify({
+      risk: "R3",
+      signals: ["auth"],
+    }));
+    await writeFile(approvalPath, JSON.stringify({
+      request_digest: "scoped-request",
+      requested_actions: ["commit", "push", "merge"],
+    }));
+
+    expect(await main([
+      "proof",
+      "--workspace",
+      tmp,
+      "--risk-preflight",
+      riskPath,
+      "--approval-request",
+      approvalPath,
+    ])).toBe(0);
+
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    const manifest = JSON.parse(
+      await readFile(join(proofDir, "manifest.json"), "utf-8"),
+    ) as {
+      artifacts: Array<{ path: string; sha256: string }>;
+    };
+    expect(manifest.artifacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: "risk-preflight.json",
+        sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
+      expect.objectContaining({
+        path: "approval-request.json",
+        sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
+    ]));
+    expect(manifest.artifacts.map((artifact) => artifact.path)).not.toContain(
+      "approval-decision.json",
+    );
+    const sha256sums = await readFile(
+      join(proofDir, "sha256sums.txt"),
+      "utf-8",
+    );
+    expect(sha256sums).toMatch(
+      /^[a-f0-9]{64} {2}risk-preflight\.json$/m,
+    );
+    expect(sha256sums).toMatch(
+      /^[a-f0-9]{64} {2}approval-request\.json$/m,
+    );
+  });
+
+  it("rejects a final proof whose supersedes digest is wrong", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    expect(await main(["proof", "--workspace", tmp])).toBe(0);
+    const candidateManifest = join(
+      tmp,
+      "release",
+      "osstack-proof-cli-proof-loop",
+      "manifest.json",
+    );
+    expect(await main([
+      "proof",
+      "--workspace",
+      tmp,
+      "--stage",
+      "final",
+      "--supersedes-manifest",
+      candidateManifest,
+    ])).toBe(0);
+    const finalDir = join(
+      tmp,
+      "release",
+      "osstack-proof-cli-proof-loop-final",
+    );
+    const manifestPath = join(finalDir, "manifest.json");
+    const manifest = JSON.parse(await readFile(manifestPath, "utf-8")) as {
+      supersedes: { manifest_sha256: string };
+    };
+    manifest.supersedes.manifest_sha256 = "0".repeat(64);
+    await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+
+    logs = [];
+    const exitCode = await main([
+      "proof",
+      "validate",
+      "cli-proof-loop-final",
+      "--proof-dir",
+      finalDir,
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(1);
+    const summary = JSON.parse(logs.join("\n")) as {
+      file_integrity: {
+        issues: Array<{ path: string; code: string }>;
+      };
+    };
+    expect(summary.file_integrity.issues).toContainEqual(
+      expect.objectContaining({
+        path: "../osstack-proof-cli-proof-loop/manifest.json",
+        code: "supersedes_sha256_mismatch",
+      }),
+    );
   });
 
   it("records contract validation evidence in the proof pack when a manifest exists", async () => {
@@ -1321,6 +1501,71 @@ describe("proof CLI", () => {
         path: join(tmp, ".osstack-worktrees", "proof-task"),
       }],
     });
+  });
+
+  it("includes checksummed redacted structured Kimi review evidence", async () => {
+    await writeState(join(tmp, "LOOP-STATE.json"));
+    const eventsPath = join(tmp, "kimi-events.jsonl");
+    await writeFile(eventsPath, `${JSON.stringify({
+      event_id: "evt-kimi-review",
+      loop_id: "cli-proof-loop",
+      type: "loop.verify.done",
+      seq: 1,
+      created_at: 1782090000000,
+      payload: {
+        task_id: "proof/task",
+        pass: true,
+        score: 1,
+        reviewer_agent_id: "kimi-code",
+        summary: "Kimi review approved.",
+        review_artifacts: [{
+          schema_version: 1,
+          reviewer_agent_id: "kimi-code",
+          verdict: "approved",
+          risk: "read_only",
+          markdown: "# Kimi review\n\nApproved sk-test-secret-token-12345678901234567890",
+          judgments: [],
+          findings: [],
+          recommended_actions: [],
+          evidence_refs: ["src/app.ts"],
+          runtime_identity: {
+            adapter_id: "kimi-code",
+            provider_id: "kimi",
+            model_id: "kimi-code/k3",
+          },
+        }],
+      },
+    })}\n`);
+
+    const exitCode = await main(["proof", "--workspace", tmp, "--events", eventsPath]);
+
+    expect(exitCode).toBe(0);
+    const proofDir = join(tmp, "release", "osstack-proof-cli-proof-loop");
+    const markdownPath = "reviewer-output/proof-task-kimi-code.md";
+    const jsonPath = "reviewer-output/proof-task-kimi-code.json";
+    const manifest = JSON.parse(await readFile(join(proofDir, "manifest.json"), "utf-8")) as {
+      artifacts: Array<{ path: string; sha256: string }>;
+    };
+    expect(manifest.artifacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: markdownPath,
+        sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
+      expect.objectContaining({
+        path: jsonPath,
+        sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
+    ]));
+    const markdown = await readFile(join(proofDir, markdownPath), "utf-8");
+    const json = await readFile(join(proofDir, jsonPath), "utf-8");
+    const sums = await readFile(join(proofDir, "sha256sums.txt"), "utf-8");
+    expect(markdown).toContain("[REDACTED:");
+    expect(json).toContain("\"verdict\": \"approved\"");
+    expect(json).toContain("[REDACTED:");
+    expect(markdown).not.toContain("sk-test-secret-token");
+    expect(json).not.toContain("sk-test-secret-token");
+    expect(sums).toContain(`  ${markdownPath}`);
+    expect(sums).toContain(`  ${jsonPath}`);
   });
 
   it("rejects malformed external proof event evidence", async () => {

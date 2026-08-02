@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Guarded Autonomy Scoped Approval Request",
+  "$comment": "Preflight empty-diff binding, build/verify-only scope, canonical action ordering, and validity windows are additionally enforced by @osstack/protocol Zod refinements.",
+  "type": "object",
+  "properties": {
+    "approval_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "autonomy_run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "phase": {
+      "type": "string",
+      "enum": [
+        "preflight",
+        "post_diff"
+      ]
+    },
+    "contract_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "diff_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "action_scope": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "risk": {
+      "type": "string",
+      "const": "R3"
+    },
+    "nonce": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "request_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "required": [
+    "approval_id",
+    "autonomy_run_id",
+    "phase",
+    "contract_sha256",
+    "diff_sha256",
+    "action_scope",
+    "risk",
+    "nonce",
+    "requested_at",
+    "expires_at",
+    "request_sha256"
+  ],
+  "additionalProperties": false
+}

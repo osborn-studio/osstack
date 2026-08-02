@@ -3,6 +3,7 @@
 //
 // Fields in `runs` match plan v0.6 8.4 (Eng Review default for "memory schema fields").
 
+import { AutonomyRunState } from "@osstack/protocol";
 import { z } from "zod";
 
 // ──────────────────────────────────────────────────────────────────────
@@ -328,3 +329,83 @@ export const ScoreQuarantineRow = z.object({
   created_at: z.number(),
 });
 export type ScoreQuarantineRow = z.infer<typeof ScoreQuarantineRow>;
+
+// Guarded Git autonomy (migration 17). The transition trail is append-only
+// authority; the projection is the O(1) crash-recovery checkpoint.
+const AutonomySha256Text = z.string().regex(/^[a-f0-9]{64}$/);
+const AutonomyPersistedJsonText = z.string().superRefine((value, context) => {
+  try {
+    JSON.parse(value);
+  } catch {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "value must be valid JSON text",
+    });
+  }
+});
+
+export const AutonomyRunTransitionRow = z
+  .object({
+    transition_id: z.string().min(1),
+    autonomy_run_id: z.string().min(1),
+    seq: z.number().int().positive(),
+    from_state: AutonomyRunState.nullable(),
+    to_state: AutonomyRunState,
+    event_json: AutonomyPersistedJsonText,
+    contract_decision_id: z.string().min(1).nullable(),
+    occurred_at: z.number().finite(),
+  })
+  .strict();
+export type AutonomyRunTransitionRow = z.infer<
+  typeof AutonomyRunTransitionRow
+>;
+
+export const AutonomyRunProjectionRow = z
+  .object({
+    autonomy_run_id: z.string().min(1),
+    task_id: z.string().min(1),
+    repo_id: z.string().min(1),
+    workspace_path: z.string().min(1),
+    state: AutonomyRunState,
+    revision: z.number().int().positive(),
+    contract_sha256: AutonomySha256Text,
+    diff_sha256: AutonomySha256Text.nullable(),
+    preflight_risk_json: AutonomyPersistedJsonText.nullable(),
+    post_diff_risk_json: AutonomyPersistedJsonText.nullable(),
+    approval_json: AutonomyPersistedJsonText.nullable(),
+    routing_json: AutonomyPersistedJsonText.nullable(),
+    budget_json: AutonomyPersistedJsonText,
+    attempt_json: AutonomyPersistedJsonText,
+    candidate_proof_json: AutonomyPersistedJsonText.nullable(),
+    git_delivery_json: AutonomyPersistedJsonText.nullable(),
+    deploy_json: AutonomyPersistedJsonText.nullable(),
+    rollback_json: AutonomyPersistedJsonText.nullable(),
+    final_proof_json: AutonomyPersistedJsonText.nullable(),
+    last_transition_id: z.string().min(1),
+    created_at: z.number().finite(),
+    updated_at: z.number().finite(),
+  })
+  .strict();
+export type AutonomyRunProjectionRow = z.infer<
+  typeof AutonomyRunProjectionRow
+>;
+
+export const AutonomyDeployFreezeRow = z
+  .object({
+    repo_id: z.string().min(1),
+    target: z.literal("production"),
+    frozen: z.union([z.literal(0), z.literal(1)]),
+    reason: z.string().min(1),
+    source_run_id: z.string().min(1),
+    frozen_at: z.number().finite(),
+    cleared_at: z.number().finite().nullable(),
+    cleared_by_type: z.literal("human").nullable(),
+    cleared_by_id: z.string().min(1).nullable(),
+    clear_reason: z.string().min(1).nullable(),
+    clear_decision_sha256: AutonomySha256Text.nullable(),
+    clear_key_id: z.string().min(1).nullable(),
+  })
+  .strict();
+export type AutonomyDeployFreezeRow = z.infer<
+  typeof AutonomyDeployFreezeRow
+>;

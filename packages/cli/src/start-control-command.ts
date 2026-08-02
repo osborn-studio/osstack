@@ -35,6 +35,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { loadConfig, selectProfile } from "@osstack/config";
 import { KanbanRepository, contractApprovalRowToDecision, contractApprovalRowToRequest, getContractApprovalByContract, insertContractApproval, listContractDecisions, loadPolicyProfile, loadRepoConfig, recordContractDecision, withWrite, type CardRow, type ContractApprovalRow, type ContractApprovalStatus, type PolicyBudgets, type PolicyProfile, type RepoConfig } from "@osstack/core";
 import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import { PROTOCOL_VERSION, type AgentCommandResult } from "@osstack/protocol";
@@ -48,6 +49,8 @@ export interface StartControlDeps {
   now?: () => Date;
   /** Contract/approval/decision id generator (tests pin it for determinism). */
   genId?: (prefix: string) => string;
+  /** Resolve and freeze the delivery profile at contract creation time. */
+  resolveProfileName?: (override: string | undefined) => string;
   out?: (line: string) => void;
   err?: (line: string) => void;
 }
@@ -64,6 +67,7 @@ interface ContractMeta {
   contract_path: string;
   goal: string;
   verify_command: string;
+  profile_name: string;
   budgets: PolicyBudgets | null;
   allowed_categories: string[];
   forbidden_categories: string[];
@@ -182,6 +186,11 @@ function buildDeliverArgs(meta: ContractMeta): string[] {
     meta.repo_path,
     "--verify",
     meta.verify_command,
+    "--autonomy",
+    "guarded-local",
+    "--worktree",
+    "--profile",
+    meta.profile_name,
   ];
   const iters = meta.budgets?.max_iterations;
   if (iters !== undefined) argv.push("--max-iter", String(iters));
@@ -194,16 +203,25 @@ function buildDeliverArgs(meta: ContractMeta): string[] {
  */
 function buildDeliverCommand(meta: ContractMeta): string {
   const argv = buildDeliverArgs(meta);
+  const fixedTokens = new Set([
+    "deliver",
+    "--workspace",
+    "--verify",
+    "--autonomy",
+    "--worktree",
+    "--profile",
+    "--max-iter",
+  ]);
   const rendered = argv.map((token, i) => {
     // Flags and the subcommand are fixed vocabulary; values get quoted.
-    if (i === 0 || token.startsWith("--")) return token;
+    if (i === 0 || fixedTokens.has(token)) return token;
     if (/^\d+$/.test(token)) return token;
     return shQuote(token);
   });
   return ["osstack", ...rendered].join(" ");
 }
 
-function parseMeta(card: CardRow): ContractMeta | undefined {
+function parseMeta(card: CardRow): ContractMeta | Error | undefined {
   if (card.meta === null) return undefined;
   let parsed: unknown;
   try {
@@ -214,6 +232,14 @@ function parseMeta(card: CardRow): ContractMeta | undefined {
   if (parsed === null || typeof parsed !== "object") return undefined;
   const m = parsed as Record<string, unknown>;
   if (m["kind"] !== "contract") return undefined;
+  if (
+    typeof m["profile_name"] !== "string"
+    || m["profile_name"].trim() === ""
+  ) {
+    return new Error(
+      `contract "${card.card_id}" predates profile-bound delivery; re-sign it by stopping this contract and creating a new one`,
+    );
+  }
   return parsed as ContractMeta;
 }
 
@@ -246,6 +272,7 @@ function errMessage(err: unknown): string {
 // ── osstack start ────────────────────────────────────────────────────────────
 
 const START_FLAGS_WITH_VALUES = new Set([
+  "--profile",
   "--repo-id",
   "--registry",
   "--workspace",
@@ -331,6 +358,25 @@ export async function handleStartCommand(
   ];
   const forbiddenCategories = policy?.forbidden ?? [];
   const contractPath = join(entry.path, ".osstack", "contracts", `${contractId}.md`);
+  const profileOverride = flag(args, "--profile")
+    ?? process.env["OSSTACK_AGENT_PROFILE"]
+    ?? process.env["OSSTACK_PROFILE"];
+  let profileName: string;
+  try {
+    profileName = deps.resolveProfileName !== undefined
+      ? deps.resolveProfileName(profileOverride)
+      : selectProfile(
+        loadConfig(),
+        profileOverride === undefined ? {} : { override: profileOverride },
+      ).name;
+  } catch (e) {
+    return emitFailure(
+      emit,
+      json,
+      "bad_request",
+      `failed to resolve delivery profile: ${errMessage(e)}`,
+    );
+  }
 
   const meta: ContractMeta = {
     kind: "contract",
@@ -340,6 +386,7 @@ export async function handleStartCommand(
     contract_path: contractPath,
     goal,
     verify_command: repoConfig.verify_command,
+    profile_name: profileName,
     budgets,
     allowed_categories: allowedCategories,
     forbidden_categories: forbiddenCategories,
@@ -413,6 +460,7 @@ export async function handleStartCommand(
         contract_path: contractPath,
         status: "needs_approval",
         verify_command: repoConfig.verify_command,
+        profile_name: profileName,
         budgets,
         ...(warnings.length > 0 ? { warnings } : {}),
       },
@@ -426,6 +474,7 @@ export async function handleStartCommand(
     out(`  repo:     ${repoId} (${entry.path})`);
     out(`  file:     ${contractPath}`);
     out(`  verify:   ${repoConfig.verify_command}`);
+    out(`  profile:  ${profileName}`);
     out(`  status:   needs_approval`);
     for (const w of warnings) out(`  warning:  ${w}`);
     out("");
@@ -481,6 +530,9 @@ export async function handleControlCommand(
       const meta = card ? parseMeta(card) : undefined;
       if (card === undefined || meta === undefined) {
         return emitFailure(emit, json, "not_found", `unknown contract id "${contractId}"`);
+      }
+      if (meta instanceof Error) {
+        return emitFailure(emit, json, "bad_request", meta.message);
       }
       // The approval row is the authoritative lifecycle record (B2).
       const approval = getContractApprovalByContract(db, contractId);
@@ -718,6 +770,7 @@ function renderStatus(ctx: ControlContext): number {
         goal: meta.goal,
         status,
         verify_command: meta.verify_command,
+        profile_name: meta.profile_name,
         budgets: meta.budgets,
         allowed_categories: meta.allowed_categories,
         forbidden_categories: meta.forbidden_categories,
@@ -739,6 +792,7 @@ function renderStatus(ctx: ControlContext): number {
     emit.out(`  goal:    ${meta.goal}`);
     emit.out(`  repo:    ${meta.repo_id}`);
     emit.out(`  verify:  ${meta.verify_command}`);
+    emit.out(`  profile: ${meta.profile_name}`);
     emit.out(`  file:    ${meta.contract_path}`);
     emit.out("  approval trail:");
     emit.out(`    - requested (${approval.risk}) at ${new Date(approval.requested_at * 1000).toISOString()}`);
@@ -780,6 +834,7 @@ function renderContractMarkdown(
   lines.push(`| repo_path | ${meta.repo_path} |`);
   lines.push(`| default_branch | ${repoConfig.default_branch} |`);
   lines.push(`| policy_mode | ${policy?.mode ?? "(none)"} |`);
+  lines.push(`| profile_name | ${meta.profile_name} |`);
   lines.push(`| created_at | ${now.toISOString()} |`);
   lines.push(`| status | needs_approval |`);
   lines.push("");
@@ -842,7 +897,7 @@ function renderContractMarkdown(
 function printStartHelp(out: (line: string) => void): void {
   out(`osstack start — open a contract-gated delivery
 
-  osstack start "<goal>" --repo-id <id> [--registry P] [--workspace P] [--risk low|medium|high] [--json]
+  osstack start "<goal>" --repo-id <id> [--profile NAME] [--registry P] [--workspace P] [--risk low|medium|high] [--json]
 
 Requires the repo registered (registry from --registry, or
 <--workspace|cwd>/.osstack/repos.json) and a valid .osstack/repo.yaml in the

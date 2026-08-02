@@ -1,6 +1,6 @@
 {
   "name": "@osstack/cli",
-  "version": "0.12.0",
+  "version": "0.14.0",
   "description": "OSBORN stack CLI binary — orchestrates dev sub-agents under Hermes.",
   "license": "MIT",
   "type": "module",
@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@osstack/agents": "workspace:*",
+    "@osstack/autonomy": "workspace:*",
     "@osstack/compliance": "workspace:*",
     "@osstack/config": "workspace:*",
     "@osstack/contracts": "workspace:*",
@@ -32,7 +33,8 @@
     "@osstack/skill-registry": "workspace:*",
     "@osstack/skills": "workspace:*",
     "better-sqlite3": "^12.10.0",
-    "yaml": "^2.9.0"
+    "yaml": "^2.9.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@osstack/supervisor": "workspace:*",

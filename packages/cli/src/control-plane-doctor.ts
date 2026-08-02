@@ -5,14 +5,31 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  readFileSync,
+  readdirSync,
+  statfsSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import Database from "better-sqlite3";
 import { CURRENT_SCHEMA_VERSION } from "@osstack/core";
+import {
+  AUTONOMY_DRAIN_FREE_BYTES,
+  AUTONOMY_MIN_WRITE_FREE_BYTES,
+} from "./autonomy-health.js";
 
 export interface ControlPlaneFinding {
-  check: "multi_daemon" | "db_writers" | "launch_agents" | "schema_version" | "plist_drift";
+  check:
+    | "multi_daemon"
+    | "db_writers"
+    | "launch_agents"
+    | "schema_version"
+    | "plist_drift"
+    | "autonomy_disk"
+    | "autonomy_repo_locks";
   level: "ok" | "warn" | "alert";
   detail: string;
 }
@@ -26,6 +43,7 @@ export interface ControlPlaneDoctorDeps {
   daemonPlistPath?: string;
   /** Path to the plist sha256 baseline file (default: plist path + ".sha256.baseline" beside the serving dist role file is impractical for doctor; we use <home>/plist.sha256.baseline). */
   plistBaselinePath?: string;
+  diskFreeBytes?: () => number;
 }
 
 const KNOWN_LABELS = ["ai.osstack.daemon", "ai.osstack.autoupgrade", "ai.osstack.copilot-daemon", "ai.ostag.copilot-relay"];
@@ -139,6 +157,96 @@ export function runControlPlaneChecks(deps: ControlPlaneDoctorDeps = {}): Contro
     }
   } else {
     findings.push({ check: "plist_drift", level: "warn", detail: "no daemon plist found — not a launchd deployment or plist missing" });
+  }
+
+  // 6. Autonomy admission thresholds are intentionally much higher than the
+  // SQLite corruption floor: below 5 GiB no new write run may start; below
+  // 2 GiB the daemon must drain.
+  let freeBytes = Number.POSITIVE_INFINITY;
+  try {
+    freeBytes = deps.diskFreeBytes?.() ?? (() => {
+      const stats = statfsSync(home);
+      return Number(stats.bsize) * Number(stats.bavail);
+    })();
+  } catch {
+    findings.push({
+      check: "autonomy_disk",
+      level: "warn",
+      detail: "could not determine free disk space for autonomy admission",
+    });
+  }
+  if (Number.isFinite(freeBytes)) {
+    findings.push(
+      freeBytes < AUTONOMY_DRAIN_FREE_BYTES
+        ? {
+            check: "autonomy_disk",
+            level: "alert",
+            detail: `${freeBytes} bytes free — daemon drain required below 2 GiB`,
+          }
+        : freeBytes < AUTONOMY_MIN_WRITE_FREE_BYTES
+          ? {
+              check: "autonomy_disk",
+              level: "warn",
+              detail: `${freeBytes} bytes free — new autonomy writes require 5 GiB`,
+            }
+          : {
+              check: "autonomy_disk",
+              level: "ok",
+              detail: `${freeBytes} bytes free for autonomy writes`,
+            },
+    );
+  }
+
+  // 7. A malformed or symlinked lock is never silently discarded. Dead/live
+  // ownership recovery remains the guarded daemon's responsibility.
+  const repoLocksDir = join(home, "locks", "repos");
+  try {
+    let locks = 0;
+    for (const name of readdirSync(repoLocksDir)) {
+      if (!name.endsWith(".lock")) continue;
+      locks += 1;
+      const path = join(repoLocksDir, name);
+      const stats = lstatSync(path);
+      const value = JSON.parse(readFileSync(path, "utf-8")) as unknown;
+      if (
+        !stats.isFile()
+        || stats.isSymbolicLink()
+        || typeof value !== "object"
+        || value === null
+        || Array.isArray(value)
+        || typeof (value as Record<string, unknown>)["pid"] !== "number"
+        || typeof (value as Record<string, unknown>)["autonomy_run_id"]
+          !== "string"
+        || typeof (value as Record<string, unknown>)["repo_id"] !== "string"
+        || typeof (value as Record<string, unknown>)["acquired_at"] !== "string"
+      ) {
+        throw new Error("invalid repository lock");
+      }
+    }
+    findings.push({
+      check: "autonomy_repo_locks",
+      level: "ok",
+      detail: `${locks} repository autonomy locks inspected`,
+    });
+  } catch (error) {
+    const missing =
+      typeof error === "object"
+      && error !== null
+      && "code" in error
+      && error.code === "ENOENT";
+    findings.push(
+      missing
+        ? {
+            check: "autonomy_repo_locks",
+            level: "ok",
+            detail: "no repository autonomy lock directory",
+          }
+        : {
+            check: "autonomy_repo_locks",
+            level: "alert",
+            detail: "repository autonomy lock inventory is invalid",
+          },
+    );
   }
 
   return findings;

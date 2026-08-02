@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
+import { KimiCodeAdapter } from "@osstack/agents";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { main } from "./bin.js";
 import { startDaemon, type DaemonHandles } from "./daemon.js";
@@ -76,6 +77,42 @@ afterEach(async () => {
 });
 
 describe("loop CLI", () => {
+  it("preserves bare loop run legacy output without probing adapters", async () => {
+    const kimiProbe = vi.spyOn(KimiCodeAdapter.prototype, "isAvailable");
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "tasks", "legacy.json"), JSON.stringify({
+      task_id: "legacy-loop-task",
+      capability: "code.test",
+      prompt: "Freeze legacy loop routing",
+    }));
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--execute",
+      "node -e \"process.exit(0)\"",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as Record<string, unknown>;
+    expect(summary).toMatchObject({
+      completed_tasks: [
+        expect.objectContaining({
+          task_id: "legacy-loop-task",
+          outcome: "success",
+        }),
+      ],
+    });
+    expect(summary).not.toHaveProperty("profile");
+    expect(kimiProbe).not.toHaveBeenCalled();
+    expect(errors).toEqual([]);
+  });
+
   it("prints loop help from --help", async () => {
     const exitCode = await main(["loop", "--help"]);
 
@@ -87,6 +124,7 @@ describe("loop CLI", () => {
     expect(output).toContain("--proof");
     expect(output).toContain("--knowledge M");
     expect(output).toContain("--govern [M]");
+    expect(output).toContain("--govern-scope S");
     expect(output).toContain("--neat-finalize");
     expect(errors).toEqual([]);
   });
@@ -577,6 +615,189 @@ required_surfaces:
       status: "fail",
       findings: [expect.objectContaining({ rule_id: "secret.api_key", severity: "error" })],
     });
+  });
+
+  it("keeps legacy full-scan findings as warn evidence while strict baseline scope passes clean changes", async () => {
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "legacy.ts"), "const api_key = \"sk-legacy-secret-token\";\n");
+    await writeFile(join(tmp, "app.ts"), "export const value = 1;\n");
+    await git(tmp, ["init", "-b", "main"]);
+    await git(tmp, ["add", "legacy.ts", "app.ts"]);
+    await git(tmp, [
+      "-c",
+      "user.name=Test",
+      "-c",
+      "user.email=test@example.com",
+      "commit",
+      "-m",
+      "baseline",
+    ]);
+    await writeFile(
+      join(tmp, "legacy.ts"),
+      "const api_key = \"sk-legacy-secret-token\";\nexport const value = 2;\n",
+    );
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-loop-govern-baseline-clean",
+      capability: "code.test",
+      prompt: "Exercise baseline-scoped governance",
+    }));
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--govern",
+      "strict",
+      "--govern-scope",
+      "baseline",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as {
+      governance: {
+        scope: string;
+        status: string;
+        blocking: boolean;
+        findings: unknown[];
+        baseline_evidence: { status: string; blocking: boolean; findings: Array<{ rule_id: string }> };
+        changed_evidence: { status: string; findings: unknown[] };
+        baseline_suppressed_findings: number;
+      };
+    };
+    expect(summary.governance).toMatchObject({
+      scope: "baseline",
+      status: "pass",
+      blocking: false,
+      findings: [],
+      baseline_evidence: {
+        status: "fail",
+        blocking: false,
+        findings: [expect.objectContaining({ rule_id: "secret.api_key" })],
+      },
+      changed_evidence: {
+        status: "fail",
+        findings: [expect.objectContaining({ rule_id: "secret.api_key", file: join(tmp, "legacy.ts") })],
+      },
+      baseline_suppressed_findings: 1,
+    });
+  });
+
+  it("blocks new changed-file errors in strict baseline scope", async () => {
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "legacy.ts"), "const api_key = \"sk-legacy-secret-token\";\n");
+    await writeFile(join(tmp, "app.ts"), "export const value = 1;\n");
+    await git(tmp, ["init", "-b", "main"]);
+    await git(tmp, ["add", "legacy.ts", "app.ts"]);
+    await git(tmp, [
+      "-c",
+      "user.name=Test",
+      "-c",
+      "user.email=test@example.com",
+      "commit",
+      "-m",
+      "baseline",
+    ]);
+    await writeFile(join(tmp, "app.ts"), "const password = \"new-unsafe-password\";\n");
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-loop-govern-baseline-block",
+      capability: "code.test",
+      prompt: "Exercise baseline-scoped governance hard gate",
+    }));
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--govern",
+      "strict",
+      "--govern-scope",
+      "baseline",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(2);
+    const summary = JSON.parse(logs.join("\n")) as {
+      governance: {
+        scope: string;
+        status: string;
+        blocking: boolean;
+        findings: Array<{ rule_id: string; file?: string }>;
+        baseline_evidence: { blocking: boolean; findings: Array<{ rule_id: string }> };
+      };
+    };
+    expect(summary.governance).toMatchObject({
+      scope: "baseline",
+      status: "fail",
+      blocking: true,
+      findings: [expect.objectContaining({ rule_id: "secret.api_key", file: join(tmp, "app.ts") })],
+      baseline_evidence: {
+        blocking: false,
+        findings: [expect.objectContaining({ rule_id: "secret.api_key" })],
+      },
+    });
+  });
+
+  it("gates findings committed by an isolated worktree against the pre-run revision", async () => {
+    await mkdir(join(tmp, "tasks"));
+    await writeFile(join(tmp, "app.ts"), "export const value = 1;\n");
+    await git(tmp, ["init", "-b", "main"]);
+    await git(tmp, ["add", "app.ts"]);
+    await git(tmp, [
+      "-c",
+      "user.name=Test",
+      "-c",
+      "user.email=test@example.com",
+      "commit",
+      "-m",
+      "baseline",
+    ]);
+    await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-loop-govern-baseline-worktree",
+      capability: "code.test",
+      prompt: "Exercise committed baseline-scoped governance",
+    }));
+
+    const exitCode = await main([
+      "loop",
+      "run",
+      "--workspace",
+      tmp,
+      "--source",
+      "task_queue",
+      "--execute",
+      "printf 'const password = \"new-worktree-password\";\\n' > app.ts",
+      "--worktree",
+      "--govern",
+      "strict",
+      "--govern-scope",
+      "baseline",
+      "--json",
+    ]);
+
+    expect(exitCode).toBe(2);
+    const summary = JSON.parse(logs.join("\n")) as {
+      governance: {
+        scope: string;
+        blocking: boolean;
+        baseline_revision?: string;
+        findings: Array<{ rule_id: string; file?: string }>;
+      };
+    };
+    expect(summary.governance).toMatchObject({
+      scope: "baseline",
+      blocking: true,
+      baseline_revision: expect.stringMatching(/^[a-f0-9]{40}$/),
+    });
+    expect(summary.governance.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ rule_id: "secret.api_key", file: join(tmp, "app.ts") }),
+    ]));
   });
 
   it("rejects an invalid max iteration value", async () => {
@@ -1193,6 +1414,7 @@ echo review ok
   });
 
   it("treats loop start --once as a single daemon-managed cycle", async () => {
+    const kimiProbe = vi.spyOn(KimiCodeAdapter.prototype, "isAvailable");
     process.env["OSSTACK_HOME"] = join(tmp, "home");
     process.env["OSSTACK_SOCKET"] = `/tmp/osstack-cli-loop-${randomUUID()}.sock`;
     daemon = await startDaemon({ socketPath: process.env["OSSTACK_SOCKET"] });
@@ -1225,10 +1447,13 @@ echo review ok
       interval_ms: number;
       max_cycles: number;
       stop_when_idle: boolean;
+      profile?: unknown;
     };
     expect(started.interval_ms).toBe(0);
     expect(started.max_cycles).toBe(1);
     expect(started.stop_when_idle).toBe(true);
+    expect(started).not.toHaveProperty("profile");
+    expect(kimiProbe).not.toHaveBeenCalled();
     const session = await waitForCliLoop(started.loop_session_id, (candidate) => (
       candidate.status === "stopped" && candidate.executed_task_count === 1
     ));

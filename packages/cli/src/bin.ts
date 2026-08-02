@@ -5,15 +5,35 @@ import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync as fsExistsSync, readFileSync, realpathSync, writeFileSync as fsWriteFileSync } from "node:fs";
 import { connect, type Socket } from "node:net";
-import { chmod, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
-import { assertDbAccessAllowed, assertServeAllowed, ControlPlaneGuardError, defaultOsstackHome } from "./control-plane-guard.js";
+import { chmod, copyFile, lstat, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
+import {
+  assertDbAccessAllowed,
+  assertServeAllowed,
+  ControlPlaneGuardError,
+  defaultOsstackHome,
+  loadRoleFile,
+} from "./control-plane-guard.js";
+import {
+  createAgentRuntimeEvidence,
+  createPolicyDecisionEvidence,
+  createProofStageArtifacts,
+  createProofStageMetadata,
+  createVerifierOutputArtifacts,
+  type ProofStageInput,
+} from "./proof-pack.js";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
+import { parse as parseYaml } from "yaml";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
-import { agentAuthMode, defaultAdapters, rolesForCapabilityKinds } from "@osstack/agents";
-import { loadConfig, resolveAll, selectProfile, type AgentRole } from "@osstack/config";
+import {
+  agentAuthMode,
+  defaultAdapters,
+  rolesForCapabilityKinds,
+  type AgentRuntimeIdentity,
+} from "@osstack/agents";
 import {
   getCompliancePack,
   listCompliancePacks,
@@ -25,11 +45,31 @@ import {
   type ProofAudience,
 } from "@osstack/compliance";
 import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
-import { getAgentScorecard, getRun, listAgentScorecards, listEventsForRun, listPitfallLessons, PIIRedactor, upsertPitfallLesson, verifyPitfallLessons, type RoutableAdapter } from "@osstack/core";
+import {
+  getAgentScorecard,
+  getLatestSuccessfulRollbackDrill,
+  getRun,
+  listAgentScorecards,
+  listEventsForRun,
+  listPitfallLessons,
+  type loadRepoConfig,
+  PolicyProfile as PolicyProfileSchema,
+  PIIRedactor,
+  RepoConfig as RepoConfigSchema,
+  rollbackDrillEligibilityEvidence,
+  type RecordRollbackDrillInput,
+  upsertPitfallLesson,
+  verifyPitfallLessons,
+} from "@osstack/core";
 import { guardedOpenDb as openDb } from "./guarded-open-db.js";
+import {
+  resolveLoopProfileRouting,
+  type LoopProfileSummary,
+} from "./loop-profile-routing.js";
 import {
   inspectInstructionSource,
   scanFiles,
+  scanText,
   type GovernanceFinding,
 } from "@osstack/governance";
 import {
@@ -52,6 +92,7 @@ import {
   createLoopStateScorecardFromState,
   renderLoopStateScorecardHtml,
   renderLoopStateScorecardMarkdown,
+  ReviewArtifact,
   discardLessonDraft,
   listLessonDrafts,
   promoteLessonDraft,
@@ -90,6 +131,10 @@ import {
 } from "@osstack/skill-registry";
 import { startDaemon } from "./daemon.js";
 import { handleConfigCommand } from "./config.js";
+import {
+  handleDeliverCommand,
+  type DeliverCommandDeps,
+} from "./deliver-command.js";
 import {
   cockpitTuiModel,
   renderCockpitFullscreen,
@@ -133,6 +178,21 @@ import {
   runLoopNeatFinalizer,
   type LoopNeatFinalizerResultV1,
 } from "./loop-neat-finalizer.js";
+import { handleAutonomyCommand } from "./autonomy-command.js";
+import { runAutonomyHealth } from "./autonomy-health.js";
+import {
+  GuardedGitRuntime,
+  GuardedGitRouting,
+  type GuardedGitProofInput,
+} from "./guarded-git-runtime.js";
+import {
+  assertGuardedCandidateBase,
+  computeDeployScriptAuthority,
+  loadPrivateRepoOverlay,
+  mergeRepoPolicy,
+  runControlledRollbackDrill,
+} from "@osstack/autonomy";
+import { readRepoRegistry } from "@osstack/supervisor";
 
 const execFileAsync = promisify(execFile);
 
@@ -144,6 +204,59 @@ interface ArtifactVerificationOptions {
 
 function socketPath(): string {
   return resolveSocketPath();
+}
+
+async function readAutonomyApprovalTrustStore(
+  path: string,
+): Promise<ReadonlyMap<string, string>> {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(await readFile(path, "utf-8")) as unknown;
+  } catch (error) {
+    if (
+      isRecord(error)
+      && error["code"] === "ENOENT"
+    ) {
+      return new Map();
+    }
+    throw new Error(
+      `invalid autonomy approval trust store ${path}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+  if (
+    !isRecord(raw)
+    || raw["schema_version"] !== 1
+    || !Array.isArray(raw["keys"])
+    || Object.keys(raw).some(
+      (key) => key !== "schema_version" && key !== "keys",
+    )
+  ) {
+    throw new Error(
+      `invalid autonomy approval trust store ${path}: expected schema_version=1 and keys[]`,
+    );
+  }
+  const keys = new Map<string, string>();
+  for (const value of raw["keys"]) {
+    if (
+      !isRecord(value)
+      || Object.keys(value).some(
+        (key) => key !== "key_id" && key !== "public_key_pem",
+      )
+      || typeof value["key_id"] !== "string"
+      || value["key_id"].length === 0
+      || typeof value["public_key_pem"] !== "string"
+      || value["public_key_pem"].length === 0
+      || keys.has(value["key_id"])
+    ) {
+      throw new Error(
+        `invalid autonomy approval trust store ${path}: keys must be unique key_id/public_key_pem objects`,
+      );
+    }
+    keys.set(value["key_id"], value["public_key_pem"]);
+  }
+  return keys;
 }
 
 function resolveLanguage(value = process.env["OSSTACK_LANG"]): LoopReportLanguage {
@@ -174,6 +287,7 @@ function renderChineseMainHelp(): string {
   release status      输出面向上线交接的发布状态摘要
   release edgeone     输出 EdgeOne Knowledge Cloud 上线清单
   deliver <需求>      从一句需求进入 task queue -> loop -> report/scorecard/proof
+  autonomy            查看、批准或恢复 guarded Git autonomy 运行
   daily               只读组合简报：成熟度扫描 + GitHub PR/CI/release + 栈看板 + 增量对比
   daily schedule      通过 daemon 按间隔调度简报（只读，不受 observe 模式限制）
   daily sessions      列出 daemon 管理的每日简报会话
@@ -257,6 +371,11 @@ interface ServeLaunchdStatus {
   installed: boolean;
   loaded: boolean;
   socket_path: string;
+  profile: string | null;
+  write_concurrency: number | null;
+  read_concurrency: number | null;
+  power_policy: "none" | "process_assertion" | null;
+  clock_monitor: "monotonic-v1" | null;
 }
 
 interface ServeLaunchdInstallResult extends ServeLaunchdStatus {
@@ -264,6 +383,7 @@ interface ServeLaunchdInstallResult extends ServeLaunchdStatus {
   load_skipped: boolean;
   home: string;
   logs_dir: string;
+  power_policy_record: string;
 }
 
 interface ServeLaunchdUninstallResult extends ServeLaunchdStatus {
@@ -359,8 +479,12 @@ Project commands:
   release edgeone [--workspace P] [--cloud-url URL] [--output P] [--json]
                       Generate the EdgeOne Knowledge Cloud setup handoff
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
-  deliver <prompt> [--verify CMD] [--auto-agent] [--worktree]
-                      Product entry: task queue -> loop -> report/scorecard/proof
+  deliver <prompt> [--verify CMD] [--auto-agent] [--worktree] [--autonomy legacy|guarded-local|guarded-git]
+                      Product entry: task queue -> loop -> report/scorecard/proof;
+                      guarded-git adds risk, signed approval, PR/CI/merge, final proof
+  autonomy list|status|approve|reject|resume
+                      Inspect and control guarded Git autonomy runs. High-risk
+                      decisions require an externally signed decision file.
   daily [--registry P] [--workspace P] [--json]
                       Read-only portfolio brief: maturity scan + GitHub PR/CI/release
                       + stack board + delta since the last brief (golden path)
@@ -551,7 +675,34 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
         throw err;
       }
     }
-    const handle = await startDaemon();
+    let profile: string | undefined;
+    let writeConcurrency: number | undefined;
+    let readConcurrency: number | undefined;
+    try {
+      profile = optionalStringFlag(args, "--profile");
+      writeConcurrency = positiveIntegerFlag(args, "--write-concurrency");
+      readConcurrency = positiveIntegerFlag(args, "--read-concurrency");
+    } catch (error) {
+      console.error(`osstack: ${errorMessage(error)}`);
+      return 1;
+    }
+    if (profile !== undefined) process.env["OSSTACK_AGENT_PROFILE"] = profile;
+    const handle = await startDaemon({
+      ...(writeConcurrency === undefined
+        ? {}
+        : { writeConcurrency }),
+      ...(readConcurrency === undefined
+        ? {}
+        : { readConcurrency }),
+      guardedAutonomyFactory: async (db, dbPath) =>
+        createGuardedGitRuntimeForDb(
+          db,
+          dbPath,
+          await readAutonomyApprovalTrustStore(
+            join(osstackHome(), "approval-trust.json"),
+          ),
+        ),
+    });
     console.log(`osstack daemon listening on ${handle.socketPath}`);
     console.log(`db_path=${handle.dbPath}  pid=${process.pid}`);
     console.log("Send SIGTERM/SIGINT to stop.");
@@ -668,7 +819,60 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "deliver") {
-    return await handleDeliverCommand(args.slice(1));
+    return await handleDeliverCommand(
+      args.slice(1),
+      createDeliverCommandDeps(),
+    );
+  }
+
+  if (cmd === "autonomy") {
+    const dbPath = await ensureLocalStateDbPath();
+    const db = openDb({ path: dbPath });
+    try {
+      try {
+        const trustedApprovalPublicKeys =
+          await readAutonomyApprovalTrustStore(
+            join(osstackHome(), "approval-trust.json"),
+          );
+        const runtime = createGuardedGitRuntimeForDb(
+          db,
+          dbPath,
+          trustedApprovalPublicKeys,
+        );
+        return await handleAutonomyCommand(args.slice(1), {
+          db,
+          dbPath,
+          trustedApprovalPublicKeys,
+          health: () => runAutonomyHealth({
+            db,
+            db_path: dbPath,
+            home: osstackHome(),
+            socket_path: resolveSocketPath(),
+            power_policy:
+              process.env["OSSTACK_POWER_POLICY"] === "process_assertion"
+                ? "process_assertion"
+                : "none",
+            clock_monitor:
+              process.env["OSSTACK_CLOCK_MONITOR"] === "monotonic-v1",
+            require_launchd:
+              process.platform === "darwin"
+              && process.env["OSSTACK_AGENT_PROFILE"] === "mac-mini",
+          }),
+          resume: (runId, decision) =>
+            runtime.resume(runId, decision),
+          drillRollback: executeControlledRollbackDrill,
+        });
+      } catch (error) {
+        console.error(
+          `osstack: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+        return 1;
+      }
+    } finally {
+      db.close();
+    }
   }
 
   if (cmd === "checkpoint") {
@@ -849,6 +1053,9 @@ async function handleAgentCommand(args: string[]): Promise<number> {
           console.log(`${agent.id} — ${agent.display_name}`);
           console.log(`  roles=${agent.roles.join(",") || "(none)"}`);
           console.log(`  auth_mode=${agent.auth_mode} cost_tier=${agent.cost_tier} available=${agent.available.available}`);
+          if (agent.runtime_identity !== undefined) {
+            console.log(`  provider=${agent.runtime_identity.provider_id} model=${agent.runtime_identity.model_id}`);
+          }
           if (!agent.available.available && agent.available.reason !== undefined) {
             console.log(`  unavailable_reason=${agent.available.reason}`);
           }
@@ -1095,6 +1302,12 @@ type ProofFileIntegrityIssueCode =
   | "manifest_missing_generated_from"
   | "manifest_missing_created_at"
   | "manifest_missing_generated_at"
+  | "manifest_invalid_proof_stage"
+  | "manifest_missing_supersedes"
+  | "manifest_invalid_supersedes"
+  | "supersedes_manifest_missing"
+  | "supersedes_sha256_mismatch"
+  | "supersedes_not_candidate"
   | "artifact_malformed"
   | "artifact_unexpected_field"
   | "artifact_invalid_sha256"
@@ -2380,6 +2593,7 @@ async function validateProofFileIntegrity(
   if (missingManifestString(manifestRaw, "generated_at")) {
     issues.push({ path: "manifest.json", code: "manifest_missing_generated_at" });
   }
+  issues.push(...await validateProofStageIntegrity(proofDir, manifestRaw));
 
   const proofRoot = resolve(proofDir);
   const manifestShaByPath = new Map<string, string>();
@@ -2494,12 +2708,19 @@ const PROOF_MANIFEST_ALLOWED_FIELDS = new Set([
   "loop_id",
   "agent_id",
   "agent_ids",
+  "proof_stage",
+  "supersedes",
   "workspace",
   "generated_from",
   "created_at",
   "generated_at",
   "compliance_reports",
   "artifacts",
+]);
+
+const PROOF_MANIFEST_SUPERSEDES_ALLOWED_FIELDS = new Set([
+  "manifest_path",
+  "manifest_sha256",
 ]);
 
 const PROOF_MANIFEST_ARTIFACT_ALLOWED_FIELDS = new Set([
@@ -2517,6 +2738,96 @@ const PROOF_MANIFEST_COMPLIANCE_REPORT_ALLOWED_FIELDS = new Set([
 function missingManifestString(manifestRaw: Record<string, unknown>, key: string): boolean {
   const value = manifestRaw[key];
   return typeof value !== "string" || value.trim().length === 0;
+}
+
+async function validateProofStageIntegrity(
+  proofDir: string,
+  manifestRaw: Record<string, unknown>,
+): Promise<ProofFileIntegrityIssue[]> {
+  const stage = manifestRaw["proof_stage"];
+  const supersedes = manifestRaw["supersedes"];
+  if (stage !== "candidate" && stage !== "final") {
+    return [{
+      path: "manifest.json",
+      code: "manifest_invalid_proof_stage",
+      actual: typeof stage === "string" ? stage : String(stage),
+    }];
+  }
+  if (stage === "candidate") {
+    return supersedes === undefined
+      ? []
+      : [{ path: "manifest.json", code: "manifest_invalid_supersedes" }];
+  }
+  if (supersedes === undefined) {
+    return [{ path: "manifest.json", code: "manifest_missing_supersedes" }];
+  }
+  if (!isRecord(supersedes)) {
+    return [{ path: "manifest.json", code: "manifest_invalid_supersedes" }];
+  }
+  if (
+    Object.keys(supersedes).some(
+      (key) => !PROOF_MANIFEST_SUPERSEDES_ALLOWED_FIELDS.has(key),
+    )
+  ) {
+    return [{ path: "manifest.json", code: "manifest_invalid_supersedes" }];
+  }
+  const manifestPath = supersedes["manifest_path"];
+  const expectedSha256 = supersedes["manifest_sha256"];
+  if (
+    typeof manifestPath !== "string"
+    || manifestPath.trim().length === 0
+    || manifestPath.includes("\\")
+    || isAbsolute(manifestPath)
+    || /^[A-Za-z]:[\\/]/.test(manifestPath)
+    || typeof expectedSha256 !== "string"
+    || !/^[a-f0-9]{64}$/.test(expectedSha256)
+  ) {
+    return [{ path: "manifest.json", code: "manifest_invalid_supersedes" }];
+  }
+
+  const proofRoot = resolve(proofDir);
+  const releaseRoot = dirname(proofRoot);
+  const candidateManifest = resolve(proofRoot, manifestPath);
+  const candidateRelativeToRelease = relative(releaseRoot, candidateManifest);
+  if (
+    candidateManifest === join(proofRoot, "manifest.json")
+    || candidateRelativeToRelease.startsWith("..")
+    || isAbsolute(candidateRelativeToRelease)
+    || candidateManifest !== join(dirname(candidateManifest), "manifest.json")
+  ) {
+    return [{ path: "manifest.json", code: "manifest_invalid_supersedes" }];
+  }
+
+  let candidateContent: Buffer;
+  try {
+    candidateContent = await readFile(candidateManifest);
+  } catch {
+    return [{ path: manifestPath, code: "supersedes_manifest_missing" }];
+  }
+  const actualSha256 = sha256Buffer(candidateContent);
+  if (actualSha256 !== expectedSha256) {
+    return [{
+      path: manifestPath,
+      code: "supersedes_sha256_mismatch",
+      expected: expectedSha256,
+      actual: actualSha256,
+    }];
+  }
+
+  let candidateRaw: unknown;
+  try {
+    candidateRaw = JSON.parse(candidateContent.toString("utf-8")) as unknown;
+  } catch {
+    return [{ path: manifestPath, code: "supersedes_not_candidate" }];
+  }
+  if (
+    !isRecord(candidateRaw)
+    || candidateRaw["proof_stage"] !== "candidate"
+    || candidateRaw["supersedes"] !== undefined
+  ) {
+    return [{ path: manifestPath, code: "supersedes_not_candidate" }];
+  }
+  return [];
 }
 
 function validateProofComplianceReports(
@@ -4873,9 +5184,19 @@ async function listLocalAgentProfiles(): Promise<Array<{
   roles: string[];
   capabilities: Array<{ id: string; kind: string; description: string; cost_tier: string }>;
   available: { available: boolean; reason?: string; last_checked_at: number };
+  runtime_identity?: AgentRuntimeIdentity;
 }>> {
   return await Promise.all(defaultAdapters().map(async (adapter) => {
     const capabilities = adapter.capabilities();
+    const available = await adapter.isAvailable();
+    let runtimeIdentity: AgentRuntimeIdentity | undefined;
+    if (adapter.runtimeIdentity !== undefined) {
+      try {
+        runtimeIdentity = await adapter.runtimeIdentity();
+      } catch {
+        runtimeIdentity = undefined;
+      }
+    }
     return {
       id: adapter.id,
       display_name: adapter.display_name,
@@ -4888,7 +5209,10 @@ async function listLocalAgentProfiles(): Promise<Array<{
         description: capability.description,
         cost_tier: capability.cost_tier,
       })),
-      available: await adapter.isAvailable(),
+      available,
+      ...(runtimeIdentity !== undefined
+        ? { runtime_identity: runtimeIdentity }
+        : {}),
     };
   }));
 }
@@ -6687,12 +7011,32 @@ type GovernanceProofEvidence =
   };
 
 type LoopGovernanceMode = "warn" | "strict";
+type LoopGovernanceScope = "workspace" | "changed" | "baseline";
 
-type LoopGovernanceEvidence = GovernanceProofEvidence & {
-  mode: LoopGovernanceMode;
-  blocking: boolean;
+type GovernanceScanEvidence = GovernanceProofEvidence & {
   error_findings: number;
 };
+
+type LoopGovernanceEvidence = GovernanceScanEvidence & {
+  mode: LoopGovernanceMode;
+  scope: LoopGovernanceScope;
+  blocking: boolean;
+  baseline_evidence?: GovernanceScanEvidence & {
+    mode: "warn";
+    scope: "workspace";
+    blocking: false;
+  };
+  changed_evidence?: GovernanceScanEvidence & {
+    scope: "changed";
+  };
+  baseline_revision?: string;
+  baseline_suppressed_findings?: number;
+};
+
+interface LoopGovernanceBaselineSnapshot {
+  evidence?: GovernanceProofEvidence;
+  revision?: string;
+}
 
 type KnowledgeProofEvidence = KnowledgeSearchEvidence;
 
@@ -6863,7 +7207,7 @@ async function handleProofCommand(args: string[]): Promise<number> {
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack proof — local evidence proof pack
 
-  osstack proof [run_id] [--loop loop_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-mode M] [--knowledge-cloud-url URL] [--knowledge-query Q] [--compliance-pack P] [--output-dir P] [--json]
+  osstack proof [run_id] [--loop loop_id] [--workspace P] [--state P] [--events P] [--knowledge-pack P] [--knowledge-mode M] [--knowledge-cloud-url URL] [--knowledge-query Q] [--compliance-pack P] [--output-dir P] [--stage candidate|final] [--supersedes-manifest P] [--risk-preflight P] [--risk-post-diff P] [--approval-request P] [--approval-decision P] [--git-delivery P] [--json]
   osstack proof validate <run_id> [--proof-dir P] [--workspace P] [--pack P] [--audience engineer|manager|auditor|customer] [--json]
   osstack proof view <run_id> --audience engineer|manager|auditor|customer [--proof-dir P] [--workspace P] [--output P] [--lang en|zh-CN] [--json]
 
@@ -6880,6 +7224,16 @@ Options:
   --compliance-pack P
                       Optional compliance mapping pack to include
   --output-dir P      Directory for proof pack folders (default: <workspace>/release)
+  --stage S           Evidence stage: candidate (default) or final
+  --supersedes-manifest P
+                      Candidate manifest required by a final proof
+  --risk-preflight P  JSON risk evidence from preflight classification
+  --risk-post-diff P  JSON risk evidence from staged-diff classification
+  --approval-request P
+                      JSON scoped approval request evidence
+  --approval-decision P
+                      JSON externally verified approval decision evidence
+  --git-delivery P    JSON GitHub delivery evidence (final stage only)
   --pack P            Validate against a compliance mapping pack
   --lang L            Proof view language: en or zh-CN (default: OSSTACK_LANG or en)
   --json              Print machine-readable summary
@@ -6905,6 +7259,13 @@ Options:
     "--knowledge-query",
     "--compliance-pack",
     "--output-dir",
+    "--stage",
+    "--supersedes-manifest",
+    "--risk-preflight",
+    "--risk-post-diff",
+    "--approval-request",
+    "--approval-decision",
+    "--git-delivery",
   ]));
   const loopId = flagValue(args, "--loop");
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
@@ -6928,6 +7289,28 @@ Options:
   }
 
   const outputDir = resolveLoopPath(flagValue(args, "--output-dir") ?? "release", workspacePath);
+  const proofStage = parseProofStage(flagValue(args, "--stage"));
+  if (proofStage instanceof Error) {
+    console.error(`osstack: ${proofStage.message}`);
+    return 1;
+  }
+  const artifactId = runId ?? loopId ?? state.loop_id;
+  const stageInput = await createCliProofStageInput({
+    stage: proofStage,
+    supersedesManifest: flagValue(args, "--supersedes-manifest"),
+    outputDir,
+    artifactId,
+    workspacePath,
+    riskPreflight: flagValue(args, "--risk-preflight"),
+    riskPostDiff: flagValue(args, "--risk-post-diff"),
+    approvalRequest: flagValue(args, "--approval-request"),
+    approvalDecision: flagValue(args, "--approval-decision"),
+    gitDelivery: flagValue(args, "--git-delivery"),
+  });
+  if (stageInput instanceof Error) {
+    console.error(`osstack: ${stageInput.message}`);
+    return 1;
+  }
   let events: LoopEvent[];
   try {
     events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
@@ -6940,7 +7323,17 @@ Options:
   const knowledge = await createKnowledgeProofEvidence(args, state.loop_id);
   let proof: Awaited<ReturnType<typeof writeProofPack>>;
   try {
-    proof = await writeProofPack(state, outputDir, events, runId ?? loopId, governance, knowledge, flagValues(args, "--compliance-pack"), workspacePath);
+    proof = await writeProofPack(
+      state,
+      outputDir,
+      events,
+      runId ?? loopId,
+      governance,
+      knowledge,
+      flagValues(args, "--compliance-pack"),
+      workspacePath,
+      stageInput,
+    );
   } catch (error) {
     console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
     return 1;
@@ -6962,6 +7355,146 @@ Options:
     console.log(`artifacts=${summary.artifact_count}`);
   }
   return 0;
+}
+
+function parseProofStage(
+  value: string | undefined,
+): ProofStageInput["stage"] | Error {
+  if (value === undefined || value === "candidate") return "candidate";
+  if (value === "final") return "final";
+  return new Error("--stage must be candidate or final");
+}
+
+async function createCliProofStageInput(input: {
+  stage: ProofStageInput["stage"];
+  supersedesManifest: string | undefined;
+  outputDir: string;
+  artifactId: string;
+  workspacePath: string;
+  riskPreflight: string | undefined;
+  riskPostDiff: string | undefined;
+  approvalRequest: string | undefined;
+  approvalDecision: string | undefined;
+  gitDelivery: string | undefined;
+}): Promise<ProofStageInput | Error> {
+  let supersedes: ProofStageInput["supersedes"];
+  if (input.stage === "candidate") {
+    if (input.supersedesManifest !== undefined) {
+      return new Error("--supersedes-manifest is valid only with --stage final");
+    }
+    if (input.gitDelivery !== undefined) {
+      return new Error("--git-delivery is valid only with --stage final");
+    }
+  } else {
+    if (input.supersedesManifest === undefined) {
+      return new Error("--stage final requires --supersedes-manifest");
+    }
+
+    const candidateManifest = resolveLoopPath(
+      input.supersedesManifest,
+      input.workspacePath,
+    );
+    const outputRoot = resolve(input.outputDir);
+    const candidateRelativeToOutput = relative(outputRoot, candidateManifest);
+    if (
+      candidateRelativeToOutput.startsWith("..")
+      || isAbsolute(candidateRelativeToOutput)
+      || candidateManifest !== join(dirname(candidateManifest), "manifest.json")
+    ) {
+      return new Error(
+        "--supersedes-manifest must name a candidate manifest inside --output-dir",
+      );
+    }
+
+    let candidateContent: Buffer;
+    let candidateRaw: unknown;
+    try {
+      candidateContent = await readFile(candidateManifest);
+      candidateRaw = JSON.parse(candidateContent.toString("utf-8")) as unknown;
+    } catch (error) {
+      return new Error(
+        `unable to read candidate manifest: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    if (
+      !isRecord(candidateRaw)
+      || candidateRaw["proof_stage"] !== "candidate"
+      || candidateRaw["supersedes"] !== undefined
+    ) {
+      return new Error(
+        "--supersedes-manifest must reference a candidate proof manifest",
+      );
+    }
+
+    const finalProofDir = join(
+      input.outputDir,
+      `osstack-proof-${safeFileSegment(input.artifactId)}-final`,
+    );
+    const manifestPath = relative(finalProofDir, candidateManifest)
+      .replaceAll("\\", "/");
+    supersedes = {
+      manifest_path: manifestPath,
+      manifest_sha256: sha256Buffer(candidateContent),
+    };
+  }
+
+  const evidence = await Promise.all([
+    readCliProofEvidence(input.riskPreflight, "--risk-preflight", input.workspacePath),
+    readCliProofEvidence(input.riskPostDiff, "--risk-post-diff", input.workspacePath),
+    readCliProofEvidence(input.approvalRequest, "--approval-request", input.workspacePath),
+    readCliProofEvidence(input.approvalDecision, "--approval-decision", input.workspacePath),
+    readCliProofEvidence(input.gitDelivery, "--git-delivery", input.workspacePath),
+  ]);
+  const evidenceError = evidence.find(
+    (value): value is Error => value instanceof Error,
+  );
+  if (evidenceError !== undefined) {
+    return evidenceError;
+  }
+  return {
+    stage: input.stage,
+    ...(supersedes === undefined ? {} : { supersedes }),
+    ...(evidence[0] === undefined && evidence[1] === undefined
+      ? {}
+      : {
+          risk_evidence: {
+            ...(evidence[0] === undefined ? {} : { preflight: evidence[0] }),
+            ...(evidence[1] === undefined ? {} : { post_diff: evidence[1] }),
+          },
+        }),
+    ...(evidence[2] === undefined && evidence[3] === undefined
+      ? {}
+      : {
+          approval_evidence: {
+            ...(evidence[2] === undefined ? {} : { request: evidence[2] }),
+            ...(evidence[3] === undefined ? {} : { decision: evidence[3] }),
+          },
+        }),
+    ...(evidence[4] === undefined
+      ? {}
+      : { git_delivery_evidence: evidence[4] }),
+  };
+}
+
+async function readCliProofEvidence(
+  path: string | undefined,
+  flag: string,
+  workspacePath: string,
+): Promise<Record<string, unknown> | undefined | Error> {
+  if (path === undefined) return undefined;
+  try {
+    const raw = JSON.parse(
+      await readFile(resolveLoopPath(path, workspacePath), "utf-8"),
+    ) as unknown;
+    if (!isRecord(raw) || Object.keys(raw).length === 0) {
+      return new Error(`${flag} must reference a non-empty JSON object`);
+    }
+    return raw;
+  } catch (error) {
+    return new Error(
+      `${flag} could not be read: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
 async function handleProofValidateCommand(args: string[]): Promise<number> {
@@ -7162,7 +7695,9 @@ async function handleServeManagementCommand(args: string[]): Promise<number> {
 
 Usage:
   osstack serve
-  osstack serve --install [--bin PATH] [--no-load] [--json]
+  osstack serve --install [--bin PATH] [--profile NAME]
+    [--write-concurrency N] [--read-concurrency N]
+    [--power-policy none|process_assertion] [--no-load] [--json]
   osstack serve --status [--json]
   osstack serve --uninstall [--no-load] [--json]
 
@@ -7171,6 +7706,11 @@ Options:
   --uninstall     Boot out the LaunchAgent and remove its plist
   --status        Show plist/launchd status
   --bin PATH      osstack binary path to put in the plist
+  --profile NAME  Agent profile for daemon work (default: mac-mini)
+  --write-concurrency N  Machine-wide write slots (default: 2)
+  --read-concurrency N   Machine-wide read slots (default: 8)
+  --power-policy MODE    Explicit host sleep policy: none or process_assertion
+                         (never changes persistent pmset settings)
   --no-load       Only write/remove plist; skip launchctl calls
   --json          Print machine-readable output
 `);
@@ -7182,6 +7722,63 @@ Options:
   const binPath = flagValue(args, "--bin") ?? defaultOsstackBinPath();
   try {
     if (args.includes("--install")) {
+      if (!isAbsolute(binPath)) {
+        throw new Error("--bin must be an absolute stable-serving binary path");
+      }
+      const profile = optionalStringFlag(
+        args,
+        "--profile",
+        process.env["OSSTACK_AGENT_PROFILE"] ?? "mac-mini",
+      ) ?? "mac-mini";
+      const writeConcurrency = positiveIntegerFlag(
+        args,
+        "--write-concurrency",
+        2,
+      ) ?? 2;
+      const readConcurrency = positiveIntegerFlag(
+        args,
+        "--read-concurrency",
+        8,
+      ) ?? 8;
+      const rawPowerPolicy =
+        flagValue(args, "--power-policy")
+        ?? process.env["OSSTACK_POWER_POLICY"]
+        ?? "none";
+      if (
+        rawPowerPolicy !== "none"
+        && rawPowerPolicy !== "process_assertion"
+      ) {
+        throw new Error(
+          "--power-policy must be none or process_assertion; persistent pmset changes are never applied automatically",
+        );
+      }
+      const powerPolicy = rawPowerPolicy;
+      if (
+        !args.includes("--bin")
+        && isDevelopmentCliDist(binPath)
+      ) {
+        let explicitlyStable = false;
+        try {
+          const checkoutRoot = dirname(realpathSync(binPath));
+          if (loadRoleFile(checkoutRoot)?.role !== "stable-serving") {
+            throw new Error("development dist is not stable-serving");
+          }
+          assertServeAllowed({
+            checkoutRoot,
+            osstackHome: process.env.OSSTACK_HOME ?? defaultOsstackHome(),
+          });
+          explicitlyStable = true;
+        } catch {
+          // The default checkout remains development-only until an operator
+          // names it explicitly with --bin or a deployment provisions it.
+        }
+        if (!explicitlyStable) {
+          console.error(
+            "osstack: serve --install aborted — default development dist/bin.js is not stable-serving; pass an explicit absolute --bin to provision this checkout",
+          );
+          return 78;
+        }
+      }
       // Provision the control-plane role authority for THIS deployment: an
       // installed launchd daemon serves the default home, which the boot guard
       // only permits for a declared stable-serving root (review F1).
@@ -7195,7 +7792,14 @@ Options:
         console.error(`osstack: serve --install aborted — control-plane provisioning failed: ${err instanceof Error ? err.message : String(err)}`);
         return 78;
       }
-      const result = await installLaunchAgent({ binPath, noLoad });
+      const result = await installLaunchAgent({
+        binPath,
+        noLoad,
+        profile,
+        writeConcurrency,
+        readConcurrency,
+        powerPolicy,
+      });
       // Record the plist content baseline for doctor's drift check (2.1-C/F2).
       try {
         const { createHash } = await import("node:crypto");
@@ -7230,26 +7834,78 @@ Options:
   return 1;
 }
 
-async function installLaunchAgent(options: { binPath: string; noLoad: boolean }): Promise<ServeLaunchdInstallResult> {
+async function installLaunchAgent(options: {
+  binPath: string;
+  noLoad: boolean;
+  profile: string;
+  writeConcurrency: number;
+  readConcurrency: number;
+  powerPolicy: "none" | "process_assertion";
+}): Promise<ServeLaunchdInstallResult> {
   const plistPath = launchAgentPlistPath();
   const logDir = logsDir();
   await mkdir(dirname(plistPath), { recursive: true });
   await mkdir(logDir, { recursive: true });
   await mkdir(osstackHome(), { recursive: true });
+  const existingPlist = await fileExists(plistPath)
+    ? await readFile(plistPath, "utf-8")
+    : "";
+  const priorPowerPolicy =
+    plistEnvironmentValue(existingPlist, "OSSTACK_POWER_POLICY") ===
+        "process_assertion"
+      ? "process_assertion"
+      : "none";
   const plist = renderLaunchAgentPlist({
     binPath: options.binPath,
     home: osstackHome(),
     socketPath: resolveSocketPath(),
     stdoutPath: join(logDir, "daemon.log"),
     stderrPath: join(logDir, "daemon.error.log"),
+    profile: options.profile,
+    writeConcurrency: options.writeConcurrency,
+    readConcurrency: options.readConcurrency,
+    powerPolicy: options.powerPolicy,
   });
   await writeFile(plistPath, plist, "utf-8");
+  const hostEvidenceDir = join(osstackHome(), "host");
+  const powerPolicyRecord = join(hostEvidenceDir, "power-policy.json");
+  await mkdir(hostEvidenceDir, { recursive: true });
+  await writeFile(
+    powerPolicyRecord,
+    `${JSON.stringify({
+      schema_version: 1,
+      selected_at: new Date().toISOString(),
+      mode: options.powerPolicy,
+      previous_mode: priorPowerPolicy,
+      machine_settings_changed: false,
+      current:
+        options.powerPolicy === "process_assertion"
+          ? "caffeinate -ims bound to ai.osstack.daemon lifetime"
+          : "no OSStack power assertion",
+      rollback:
+        `reinstall with --power-policy ${priorPowerPolicy}`,
+    }, null, 2)}\n`,
+    { encoding: "utf-8", mode: 0o600 },
+  );
 
   let loaded = false;
   if (!options.noLoad) {
     ensureLaunchdSupported();
-    await launchctl(["bootstrap", launchdDomain(), plistPath]);
-    await launchctl(["kickstart", "-k", `${launchdDomain()}/${LAUNCHD_LABEL}`]);
+    const domain = launchdDomain();
+    const plan = launchAgentLoadPlan({
+      loaded: await isLaunchAgentLoaded(),
+      domain,
+      plistPath,
+    });
+    await executeLaunchAgentLoadPlan({
+      actions: plan,
+      run: launchctl,
+      wait: async (milliseconds) => {
+        await new Promise<void>((resolvePromise) => {
+          setTimeout(resolvePromise, milliseconds);
+        });
+      },
+    });
     loaded = await isLaunchAgentLoaded();
   }
 
@@ -7262,6 +7918,12 @@ async function installLaunchAgent(options: { binPath: string; noLoad: boolean })
     socket_path: resolveSocketPath(),
     home: osstackHome(),
     logs_dir: logDir,
+    profile: options.profile,
+    write_concurrency: options.writeConcurrency,
+    read_concurrency: options.readConcurrency,
+    power_policy: options.powerPolicy,
+    clock_monitor: "monotonic-v1",
+    power_policy_record: powerPolicyRecord,
   };
 }
 
@@ -7281,17 +7943,45 @@ async function uninstallLaunchAgent(options: { noLoad: boolean }): Promise<Serve
     loaded: false,
     unloaded,
     socket_path: resolveSocketPath(),
+    profile: null,
+    write_concurrency: null,
+    read_concurrency: null,
+    power_policy: null,
+    clock_monitor: null,
   };
 }
 
 async function readLaunchAgentStatus(options: { noLoad: boolean } = { noLoad: false }): Promise<ServeLaunchdStatus> {
   const plistPath = launchAgentPlistPath();
+  const installed = await fileExists(plistPath);
+  const plist = installed ? await readFile(plistPath, "utf-8") : "";
   return {
     label: LAUNCHD_LABEL,
     plist_path: plistPath,
-    installed: await fileExists(plistPath),
+    installed,
     loaded: options.noLoad ? false : await isLaunchAgentLoaded(),
     socket_path: resolveSocketPath(),
+    profile: plistEnvironmentValue(plist, "OSSTACK_AGENT_PROFILE") ?? null,
+    write_concurrency: plistEnvironmentInteger(
+      plist,
+      "OSSTACK_WRITE_CONCURRENCY",
+    ),
+    read_concurrency: plistEnvironmentInteger(
+      plist,
+      "OSSTACK_READ_CONCURRENCY",
+    ),
+    power_policy:
+      plistEnvironmentValue(plist, "OSSTACK_POWER_POLICY") ===
+        "process_assertion"
+        ? "process_assertion"
+        : installed
+          ? "none"
+          : null,
+    clock_monitor:
+      plistEnvironmentValue(plist, "OSSTACK_CLOCK_MONITOR") ===
+        "monotonic-v1"
+        ? "monotonic-v1"
+        : null,
   };
 }
 
@@ -7305,6 +7995,14 @@ function printServeLaunchdResult(result: ServeLaunchdStatus | ServeLaunchdInstal
   console.log(`installed=${result.installed}`);
   console.log(`loaded=${result.loaded}`);
   console.log(`socket=${result.socket_path}`);
+  console.log(`profile=${result.profile ?? "unknown"}`);
+  console.log(`write_concurrency=${result.write_concurrency ?? "unknown"}`);
+  console.log(`read_concurrency=${result.read_concurrency ?? "unknown"}`);
+  console.log(`power_policy=${result.power_policy ?? "unknown"}`);
+  console.log(`clock_monitor=${result.clock_monitor ?? "unknown"}`);
+  if ("power_policy_record" in result) {
+    console.log(`power_policy_record=${result.power_policy_record}`);
+  }
   if ("load_skipped" in result) console.log(`load_skipped=${result.load_skipped}`);
   if ("unloaded" in result) console.log(`unloaded=${result.unloaded}`);
 }
@@ -7315,6 +8013,10 @@ function renderLaunchAgentPlist(options: {
   socketPath: string;
   stdoutPath: string;
   stderrPath: string;
+  profile: string;
+  writeConcurrency: number;
+  readConcurrency: number;
+  powerPolicy: "none" | "process_assertion";
 }): string {
   // launchd's default PATH has no /opt/homebrew/bin (or nvm shims), so a JS
   // binPath's `#!/usr/bin/env node` shebang fails with exit 127 under launchd.
@@ -7334,20 +8036,23 @@ function renderLaunchAgentPlist(options: {
       return options.binPath;
     }
   })();
-  const runtime = resolvedBinPath.endsWith(".js")
-    ? [
-        `PATH=${dirname(process.execPath)}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`,
-        "node",
-      ]
-    : [];
-  const args = [
-    "/usr/bin/env",
-    `OSSTACK_HOME=${options.home}`,
-    `OSSTACK_SOCKET=${options.socketPath}`,
-    ...runtime,
-    options.binPath,
-    "serve",
-  ];
+  const daemonArgs = resolvedBinPath.endsWith(".js")
+    ? ["/usr/bin/env", "node", options.binPath, "serve"]
+    : [options.binPath, "serve"];
+  const args =
+    options.powerPolicy === "process_assertion"
+      ? ["/usr/bin/caffeinate", "-ims", ...daemonArgs]
+      : daemonArgs;
+  const daemonPath = [
+    dirname(process.execPath),
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+    "/usr/bin",
+    "/bin",
+    "/usr/sbin",
+    "/sbin",
+    join(homedir(), ".local", "bin"),
+  ].join(":");
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -7358,16 +8063,48 @@ function renderLaunchAgentPlist(options: {
   <array>
 ${args.map((arg) => `    <string>${xmlEscape(arg)}</string>`).join("\n")}
   </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>OSSTACK_HOME</key>
+    <string>${xmlEscape(options.home)}</string>
+    <key>OSSTACK_SOCKET</key>
+    <string>${xmlEscape(options.socketPath)}</string>
+    <key>OSSTACK_AGENT_PROFILE</key>
+    <string>${xmlEscape(options.profile)}</string>
+    <key>OSSTACK_WRITE_CONCURRENCY</key>
+    <string>${options.writeConcurrency}</string>
+    <key>OSSTACK_READ_CONCURRENCY</key>
+    <string>${options.readConcurrency}</string>
+    <key>OSSTACK_POWER_POLICY</key>
+    <string>${options.powerPolicy}</string>
+    <key>OSSTACK_CLOCK_MONITOR</key>
+    <string>monotonic-v1</string>
+    <key>OSSTACK_LOG_MAX_BYTES</key>
+    <string>26214400</string>
+    <key>OSSTACK_LOG_MAX_FILES</key>
+    <string>5</string>
+    <key>OSSTACK_PROOF_RETENTION_DAYS</key>
+    <string>30</string>
+    <key>OSSTACK_PROOF_MIN_KEEP</key>
+    <string>100</string>
+    <key>PATH</key>
+    <string>${xmlEscape(daemonPath)}</string>
+  </dict>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
-  <true/>
+  <dict>
+    <key>SuccessfulExit</key>
+      <false/>
+  </dict>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
   <key>StandardOutPath</key>
   <string>${xmlEscape(options.stdoutPath)}</string>
   <key>StandardErrorPath</key>
   <string>${xmlEscape(options.stderrPath)}</string>
   <key>WorkingDirectory</key>
-  <string>${xmlEscape(process.cwd())}</string>
+  <string>${xmlEscape(options.home)}</string>
 </dict>
 </plist>
 `;
@@ -7381,6 +8118,61 @@ function launchAgentPlistPath(): string {
 
 function launchdDomain(): string {
   return `gui/${process.getuid?.() ?? 501}`;
+}
+
+export function launchAgentLoadPlan(options: {
+  loaded: boolean;
+  domain: string;
+  plistPath: string;
+}): string[][] {
+  const service = `${options.domain}/${LAUNCHD_LABEL}`;
+  return [
+    ...(options.loaded ? [["bootout", service]] : []),
+    ["bootstrap", options.domain, options.plistPath],
+    ["kickstart", "-k", service],
+  ];
+}
+
+const DEFAULT_LAUNCHD_BOOTSTRAP_RETRY_DELAYS_MS = [
+  100,
+  250,
+  500,
+  1_000,
+  2_000,
+  3_000,
+] as const;
+
+export async function executeLaunchAgentLoadPlan(options: {
+  actions: string[][];
+  run: (
+    action: string[],
+    options?: { allowFailure?: boolean },
+  ) => Promise<{ ok: boolean; output: string }>;
+  wait: (milliseconds: number) => Promise<void>;
+  retryDelaysMs?: readonly number[];
+}): Promise<void> {
+  const retryDelaysMs = options.retryDelaysMs
+    ?? DEFAULT_LAUNCHD_BOOTSTRAP_RETRY_DELAYS_MS;
+  for (const action of options.actions) {
+    if (action[0] !== "bootstrap") {
+      await options.run(action);
+      continue;
+    }
+
+    let attempts = 1;
+    let result = await options.run(action, { allowFailure: true });
+    for (const retryDelayMs of retryDelaysMs) {
+      if (result.ok) break;
+      await options.wait(retryDelayMs);
+      attempts += 1;
+      result = await options.run(action, { allowFailure: true });
+    }
+    if (!result.ok) {
+      throw new Error(
+        `launchctl ${action.join(" ")} failed after ${attempts} attempts: ${result.output}`,
+      );
+    }
+  }
 }
 
 function ensureLaunchdSupported(): void {
@@ -7409,6 +8201,37 @@ function defaultOsstackBinPath(): string {
   return process.env["OSSTACK_CLI"] ?? process.argv[1] ?? "osstack";
 }
 
+function isDevelopmentCliDist(binPath: string): boolean {
+  const resolved = (() => {
+    try {
+      return realpathSync(binPath);
+    } catch {
+      return resolve(binPath);
+    }
+  })();
+  return resolved.endsWith(join("packages", "cli", "dist", "bin.js"));
+}
+
+function plistEnvironmentValue(
+  plist: string,
+  name: string,
+): string | undefined {
+  const match = plist.match(
+    new RegExp(`<key>${name}</key>\\s*<string>([^<]*)</string>`),
+  );
+  return match?.[1];
+}
+
+function plistEnvironmentInteger(
+  plist: string,
+  name: string,
+): number | null {
+  const value = plistEnvironmentValue(plist, name);
+  if (value === undefined || !/^[1-9]\d*$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
 function xmlEscape(value: string): string {
   return value
     .replaceAll("&", "&amp;")
@@ -7421,6 +8244,41 @@ function xmlEscape(value: string): string {
 function flagValue(args: string[], name: string): string | undefined {
   const i = args.indexOf(name);
   return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined;
+}
+
+function optionalStringFlag(
+  args: string[],
+  name: string,
+  fallback?: string,
+): string | undefined {
+  const value = flagValue(args, name);
+  if (args.includes(name) && (value === undefined || value.startsWith("--"))) {
+    throw new Error(`${name} requires a value`);
+  }
+  if (value !== undefined && !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value)) {
+    throw new Error(`${name} must be a profile identifier`);
+  }
+  return value ?? fallback;
+}
+
+function positiveIntegerFlag(
+  args: string[],
+  name: string,
+  fallback?: number,
+): number | undefined {
+  const value = flagValue(args, name);
+  if (value === undefined) {
+    if (args.includes(name)) throw new Error(`${name} requires a positive integer`);
+    return fallback;
+  }
+  if (!/^[1-9]\d*$/.test(value)) {
+    throw new Error(`${name} requires a positive integer`);
+  }
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed > 64) {
+    throw new Error(`${name} requires a positive integer no greater than 64`);
+  }
+  return parsed;
 }
 
 function firstPositionalValue(args: string[], flagsWithValues: Set<string>): string | undefined {
@@ -7536,13 +8394,18 @@ async function writeProofPack(
   knowledge: KnowledgeProofEvidence = offKnowledgeEvidence(),
   compliancePackIds: string[] = [],
   workspacePath?: string,
+  stageInput: ProofStageInput = { stage: "candidate" },
 ): Promise<{
   proof_dir: string;
   proof_zip: string;
   proof_manifest: string;
   artifact_count: number;
 }> {
-  const proofDir = join(outputDir, `osstack-proof-${safeFileSegment(artifactId)}`);
+  const stageMetadata = createProofStageMetadata(stageInput);
+  const proofDir = join(
+    outputDir,
+    `osstack-proof-${safeFileSegment(artifactId)}${stageInput.stage === "final" ? "-final" : ""}`,
+  );
   const scorecard = createLoopStateScorecardFromState(state);
   const policyDecision = createPolicyDecisionEvidence(events);
   const agentRuntime = createAgentRuntimeEvidence(events);
@@ -7565,6 +8428,7 @@ async function writeProofPack(
     { path: "contract-validation.json", content: `${JSON.stringify(contractValidation, null, 2)}\n` },
     { path: "logs/events.log", content: renderProofEventsLog(events) },
   ];
+  artifacts.push(...createProofStageArtifacts(stageInput));
   artifacts.push(...createVerifierOutputArtifacts(verifyResults));
   if (workspacePath !== undefined) {
     artifacts.push(await createGitDiffProofArtifact(workspacePath));
@@ -7622,6 +8486,7 @@ async function writeProofPack(
     loop_id: state.loop_id,
     agent_id: primaryAgentId(state),
     agent_ids: proofAgentIds(state),
+    ...stageMetadata,
     ...(workspacePath !== undefined ? { workspace: workspacePath } : {}),
     generated_from: "LOOP-STATE.json",
     created_at: createdAt,
@@ -7767,24 +8632,115 @@ function hasRequestedLoopArtifacts(args: string[]): boolean {
 async function scanWorkspaceGovernance(workspacePath: string): Promise<GovernanceProofEvidence> {
   try {
     const files = await collectGovernanceScanFiles(workspacePath);
-    if (files.length === 0) {
-      return {
-        status: "pass",
-        ok: true,
-        scanned_files: 0,
-        findings: [],
-      };
-    }
-    const result = await scanFiles(files);
-    return {
-      status: result.ok ? "pass" : "fail",
-      ok: result.ok,
-      scanned_files: files.length,
-      findings: result.findings,
-    };
+    return await scanGovernanceFiles(files);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return unknownGovernanceEvidence(`Governance scan failed: ${message}`);
+  }
+}
+
+async function scanChangedWorkspaceGovernance(
+  workspacePath: string,
+  baselineRevision?: string,
+): Promise<GovernanceProofEvidence> {
+  const files = await collectChangedGovernanceScanFiles(workspacePath, baselineRevision);
+  if (files instanceof Error) {
+    return unknownGovernanceEvidence(`Governance changed-files scan failed: ${files.message}`);
+  }
+  try {
+    return await scanGovernanceFiles(files);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return unknownGovernanceEvidence(`Governance changed-files scan failed: ${message}`);
+  }
+}
+
+async function scanGovernanceFiles(files: string[]): Promise<GovernanceProofEvidence> {
+  if (files.length === 0) {
+    return {
+      status: "pass",
+      ok: true,
+      scanned_files: 0,
+      findings: [],
+    };
+  }
+  const result = await scanFiles(files);
+  return {
+    status: result.ok ? "pass" : "fail",
+    ok: result.ok,
+    scanned_files: files.length,
+    findings: result.findings,
+  };
+}
+
+async function captureLoopGovernanceBaseline(
+  workspacePath: string,
+  includeEvidence: boolean,
+): Promise<LoopGovernanceBaselineSnapshot> {
+  try {
+    const revisionResult = await execFileAsync(
+      "git",
+      ["-C", workspacePath, "rev-parse", "--verify", "HEAD"],
+      { timeout: 10_000 },
+    );
+    const revision = revisionResult.stdout.trim();
+    if (revision === "") {
+      return includeEvidence
+        ? { evidence: unknownGovernanceEvidence("Governance baseline failed: Git HEAD is empty.") }
+        : {};
+    }
+    return {
+      revision,
+      ...(includeEvidence
+        ? { evidence: await scanGovernanceRevision(workspacePath, revision) }
+        : {}),
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return includeEvidence
+      ? { evidence: unknownGovernanceEvidence(`Governance baseline failed: ${message}`) }
+      : {};
+  }
+}
+
+async function scanGovernanceRevision(
+  workspacePath: string,
+  revision: string,
+): Promise<GovernanceProofEvidence> {
+  try {
+    const listing = await execFileAsync(
+      "git",
+      ["-C", workspacePath, "ls-tree", "-r", "--name-only", revision],
+      { timeout: 10_000 },
+    );
+    const relativePaths = uniqueNonEmptyLines(listing.stdout)
+      .filter((path) => isGovernanceScannableFile(path))
+      .filter((path) => !path.split(/[\\/]/).some((part) => isGovernanceExcludedDir(part)))
+      .slice(0, 500);
+    const findings: GovernanceFinding[] = [];
+    for (let offset = 0; offset < relativePaths.length; offset += 16) {
+      const batch = relativePaths.slice(offset, offset + 16);
+      const contents = await Promise.all(batch.map(async (path) => {
+        const result = await execFileAsync(
+          "git",
+          ["-C", workspacePath, "show", `${revision}:${path}`],
+          { timeout: 10_000, maxBuffer: 4 * 1024 * 1024 },
+        );
+        return { path, content: result.stdout };
+      }));
+      for (const { path, content } of contents) {
+        findings.push(...scanText(content, { file: join(workspacePath, path) }).findings);
+      }
+    }
+    return {
+      status: findings.length === 0 ? "pass" : "fail",
+      ok: findings.length === 0,
+      scanned_files: relativePaths.length,
+      findings,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return unknownGovernanceEvidence(`Governance baseline revision scan failed: ${message}`);
   }
 }
 
@@ -7797,18 +8753,136 @@ function parseLoopGovernanceMode(args: string[]): LoopGovernanceMode | undefined
   return new Error("--govern must be warn or strict");
 }
 
+function parseLoopGovernanceScope(
+  args: string[],
+  mode: LoopGovernanceMode | undefined,
+): LoopGovernanceScope | undefined | Error {
+  const index = args.indexOf("--govern-scope");
+  if (index < 0) return mode === undefined ? undefined : "workspace";
+  if (mode === undefined) return new Error("--govern-scope requires --govern");
+  const value = args[index + 1];
+  if (value === "workspace" || value === "changed" || value === "baseline") return value;
+  return new Error("--govern-scope must be workspace, changed, or baseline");
+}
+
+function governanceScanEvidence(evidence: GovernanceProofEvidence): GovernanceScanEvidence {
+  return {
+    ...evidence,
+    error_findings: evidence.findings.filter((finding) => finding.severity === "error").length,
+  };
+}
+
 async function createLoopGovernanceEvidence(
   mode: LoopGovernanceMode,
   workspacePath: string,
+  scope: LoopGovernanceScope,
+  baselineSnapshot?: LoopGovernanceBaselineSnapshot,
 ): Promise<LoopGovernanceEvidence> {
-  const evidence = await scanWorkspaceGovernance(workspacePath);
-  const errorFindings = evidence.findings.filter((finding) => finding.severity === "error").length;
+  if (scope === "baseline") {
+    if (baselineSnapshot?.evidence === undefined) {
+      const evidence = governanceScanEvidence(unknownGovernanceEvidence(
+        "Governance baseline scope requires pre-run workspace evidence.",
+      ));
+      return {
+        ...evidence,
+        mode,
+        scope,
+        blocking: false,
+      };
+    }
+
+    const baseline = governanceScanEvidence(baselineSnapshot.evidence);
+    const changed = governanceScanEvidence(await scanChangedWorkspaceGovernance(
+      workspacePath,
+      baselineSnapshot.revision,
+    ));
+    if (changed.status === "unknown") {
+      return {
+        ...changed,
+        mode,
+        scope,
+        blocking: false,
+        baseline_evidence: {
+          ...baseline,
+          mode: "warn",
+          scope: "workspace",
+          blocking: false,
+        },
+        changed_evidence: {
+          ...changed,
+          scope: "changed",
+        },
+        ...(baselineSnapshot.revision === undefined
+          ? {}
+          : { baseline_revision: baselineSnapshot.revision }),
+        baseline_suppressed_findings: 0,
+      };
+    }
+
+    const findings = subtractBaselineFindings(changed.findings, baseline.findings, workspacePath);
+    const errorFindings = findings.filter((finding) => finding.severity === "error").length;
+    return {
+      status: findings.length === 0 ? "pass" : "fail",
+      ok: findings.length === 0,
+      scanned_files: changed.scanned_files,
+      findings,
+      error_findings: errorFindings,
+      mode,
+      scope,
+      blocking: mode === "strict" && errorFindings > 0,
+      baseline_evidence: {
+        ...baseline,
+        mode: "warn",
+        scope: "workspace",
+        blocking: false,
+      },
+      changed_evidence: {
+        ...changed,
+        scope: "changed",
+      },
+      ...(baselineSnapshot.revision === undefined
+        ? {}
+        : { baseline_revision: baselineSnapshot.revision }),
+      baseline_suppressed_findings: changed.findings.length - findings.length,
+    };
+  }
+
+  const evidence = governanceScanEvidence(scope === "changed"
+    ? await scanChangedWorkspaceGovernance(workspacePath, baselineSnapshot?.revision)
+    : await scanWorkspaceGovernance(workspacePath));
   return {
     ...evidence,
     mode,
-    blocking: mode === "strict" && errorFindings > 0,
-    error_findings: errorFindings,
+    scope,
+    blocking: mode === "strict" && evidence.error_findings > 0,
   };
+}
+
+function subtractBaselineFindings(
+  changedFindings: GovernanceFinding[],
+  baselineFindings: GovernanceFinding[],
+  workspacePath: string,
+): GovernanceFinding[] {
+  const baselineCounts = new Map<string, number>();
+  for (const finding of baselineFindings) {
+    const fingerprint = governanceFindingFingerprint(finding, workspacePath);
+    baselineCounts.set(fingerprint, (baselineCounts.get(fingerprint) ?? 0) + 1);
+  }
+
+  return changedFindings.filter((finding) => {
+    const fingerprint = governanceFindingFingerprint(finding, workspacePath);
+    const remaining = baselineCounts.get(fingerprint) ?? 0;
+    if (remaining === 0) return true;
+    baselineCounts.set(fingerprint, remaining - 1);
+    return false;
+  });
+}
+
+function governanceFindingFingerprint(finding: GovernanceFinding, workspacePath: string): string {
+  const file = finding.file === undefined
+    ? "<inline>"
+    : relative(workspacePath, finding.file).replaceAll("\\", "/");
+  return `${finding.rule_id}\u0000${file}\u0000${finding.excerpt}`;
 }
 
 function appendGovernanceVerifyEvent(
@@ -7820,7 +8894,7 @@ function appendGovernanceVerifyEvent(
   const pass = !governance.blocking;
   const summary = governance.status === "unknown"
     ? "governance scan unknown; fail-open"
-    : `${governance.status}; findings=${governance.findings.length}; errors=${governance.error_findings}; mode=${governance.mode}`;
+    : `${governance.status}; findings=${governance.findings.length}; errors=${governance.error_findings}; mode=${governance.mode}; scope=${governance.scope}`;
   return [
     ...events,
     {
@@ -7851,13 +8925,25 @@ async function collectGovernanceScanFiles(workspacePath: string): Promise<string
   return files;
 }
 
-async function collectChangedGovernanceScanFiles(workspacePath: string): Promise<string[] | Error> {
+async function collectChangedGovernanceScanFiles(
+  workspacePath: string,
+  baselineRevision?: string,
+): Promise<string[] | Error> {
   try {
-    const [workingTree, staged] = await Promise.all([
+    const [workingTree, staged, sinceBaseline] = await Promise.all([
       execFileAsync("git", ["-C", workspacePath, "ls-files", "--modified", "--others", "--exclude-standard"], { timeout: 10_000 }),
       execFileAsync("git", ["-C", workspacePath, "diff", "--name-only", "--cached", "--diff-filter=ACMRT"], { timeout: 10_000 }),
+      baselineRevision === undefined
+        ? Promise.resolve({ stdout: "" })
+        : execFileAsync(
+            "git",
+            ["-C", workspacePath, "diff", "--name-only", "--diff-filter=ACMRT", baselineRevision, "HEAD"],
+            { timeout: 10_000 },
+          ),
     ]);
-    const relativePaths = uniqueNonEmptyLines(`${workingTree.stdout}\n${staged.stdout}`);
+    const relativePaths = uniqueNonEmptyLines(
+      `${workingTree.stdout}\n${staged.stdout}\n${sinceBaseline.stdout}`,
+    );
     const files: string[] = [];
     for (const relativePath of relativePaths) {
       if (!isGovernanceScannableFile(relativePath)) continue;
@@ -8366,103 +9452,6 @@ function knowledgeProofFromTrace(trace: LoopKnowledgeTrace): KnowledgeProofEvide
   };
 }
 
-function createPolicyDecisionEvidence(events: LoopEvent[]): {
-  status: "recorded" | "unknown";
-  decisions?: Array<{
-    task_id: string;
-    agent_id: string;
-    auth_mode: string;
-    roles: string[];
-    reason: string;
-    event_seq: number;
-  }>;
-  reason?: string;
-} {
-  const decisions = events
-    .filter((event) => event.type === "loop.plan.done")
-    .map((event) => ({
-      task_id: stringEventPayload(event, "task_id"),
-      agent_id: stringEventPayload(event, "agent_id"),
-      auth_mode: agentAuthMode(stringEventPayload(event, "agent_id")),
-      roles: rolesForAgentId(stringEventPayload(event, "agent_id")),
-      reason: stringEventPayload(event, "routing_reason"),
-      event_seq: event.seq,
-    }));
-  if (decisions.length === 0) {
-    return {
-      status: "unknown",
-      reason: "No loop.plan.done policy decision evidence found.",
-    };
-  }
-  return { status: "recorded", decisions };
-}
-
-function createAgentRuntimeEvidence(events: LoopEvent[]): {
-  status: "recorded" | "unknown";
-  agents?: Array<{
-    agent_id: string;
-    auth_mode: string;
-    roles: string[];
-    plan_event_seqs: number[];
-  }>;
-  reason?: string;
-} {
-  const byAgent = new Map<string, number[]>();
-  for (const event of events) {
-    if (event.type !== "loop.plan.done") continue;
-    const agentId = stringEventPayload(event, "agent_id");
-    byAgent.set(agentId, [...(byAgent.get(agentId) ?? []), event.seq]);
-  }
-  if (byAgent.size === 0) {
-    return {
-      status: "unknown",
-      reason: "No loop.plan.done event evidence found.",
-    };
-  }
-  return {
-    status: "recorded",
-    agents: [...byAgent.entries()].map(([agentId, seqs]) => ({
-      agent_id: agentId,
-      auth_mode: agentAuthMode(agentId),
-      roles: rolesForAgentId(agentId),
-      plan_event_seqs: seqs,
-    })),
-  };
-}
-
-function rolesForAgentId(agentId: string): string[] {
-  if (agentId === "local-command") return ["coding", "test-verify", "release/proof"];
-  const adapter = defaultAdapters().find((candidate) => candidate.id === agentId);
-  return rolesForCapabilityKinds(adapter?.capabilities().map((capability) => capability.kind) ?? []);
-}
-
-function createVerifierOutputArtifacts(verifyResults: ReturnType<typeof createVerifyResultsEvidence>): Array<{ path: string; content: string }> {
-  if (verifyResults.results === undefined) return [];
-  return verifyResults.results.map((result) => {
-    const agentId = result.reviewer_agent_id === "" ? "unknown-verifier" : result.reviewer_agent_id;
-    const dir = verifierOutputDir(agentId);
-    const path = `${dir}/${safeFileSegment(result.task_id)}-${safeFileSegment(agentId)}.txt`;
-    const content = [
-      `task_id: ${result.task_id}`,
-      `reviewer_agent_id: ${agentId}`,
-      `pass: ${result.pass ? "true" : "false"}`,
-      `score: ${String(result.score)}`,
-      `event_seq: ${result.event_seq}`,
-      "",
-      result.summary,
-      "",
-    ].join("\n");
-    return { path, content: new PIIRedactor().redact(content).text };
-  });
-}
-
-function verifierOutputDir(agentId: string): "checker-output" | "reviewer-output" {
-  const normalized = agentId.toLowerCase();
-  return normalized.includes("checker") || normalized.includes("verify") || normalized.includes("verifier")
-    ? "checker-output"
-    : "reviewer-output";
-}
-
 function renderProofEventsLog(events: LoopEvent[]): string {
   const lines = events.map((event) => `${event.seq} ${event.type} ${proofEventSummary(event)}`);
   const content = lines.length === 0
@@ -8498,6 +9487,7 @@ function createVerifyResultsEvidence(
     reviewer_agent_id: string;
     summary: string;
     event_seq: number;
+    review_artifacts?: ReviewArtifact[];
   }>;
   reason?: string;
 } {
@@ -8508,16 +9498,23 @@ function createVerifyResultsEvidence(
     reviewer_agent_id: string;
     summary: string;
     event_seq: number;
+    review_artifacts?: ReviewArtifact[];
   }> = events
     .filter((event) => event.type === "loop.verify.done")
-    .map((event) => ({
-      task_id: stringEventPayload(event, "task_id"),
-      pass: booleanEventPayload(event, "pass"),
-      score: numberEventPayload(event, "score") ?? "unknown",
-      reviewer_agent_id: stringEventPayload(event, "reviewer_agent_id"),
-      summary: stringEventPayload(event, "summary"),
-      event_seq: event.seq,
-    }));
+    .map((event) => {
+      const reviewArtifacts = reviewArtifactsEventPayload(event);
+      return {
+        task_id: stringEventPayload(event, "task_id"),
+        pass: booleanEventPayload(event, "pass"),
+        score: numberEventPayload(event, "score") ?? "unknown",
+        reviewer_agent_id: stringEventPayload(event, "reviewer_agent_id"),
+        summary: stringEventPayload(event, "summary"),
+        event_seq: event.seq,
+        ...(reviewArtifacts !== undefined
+          ? { review_artifacts: reviewArtifacts }
+          : {}),
+      };
+    });
   if (results.length === 0) {
     return {
       status: scorecard.items.find((item) => item.id === "verify_gates_passed")?.status ?? "unknown",
@@ -8528,6 +9525,20 @@ function createVerifyResultsEvidence(
     status: results.every((result) => result.pass) ? "pass" : "fail",
     results,
   };
+}
+
+function reviewArtifactsEventPayload(
+  event: LoopEvent,
+): ReviewArtifact[] | undefined {
+  const value = event.payload?.["review_artifacts"];
+  if (value === undefined) return undefined;
+  const parsed = ReviewArtifact.array().max(100).safeParse(value);
+  if (!parsed.success) {
+    throw new Error(
+      `invalid review_artifacts in loop.verify.done event seq=${event.seq}: ${parsed.error.message}`,
+    );
+  }
+  return parsed.data.length > 0 ? parsed.data : undefined;
 }
 
 function createWorktreeStatusEvidence(events: LoopEvent[]): {
@@ -8937,138 +9948,750 @@ async function enforceObservePolicyGate(workspacePath: string): Promise<number |
   return decision.reason === OBSERVE_POLICY_DENIED_REASON ? 2 : 1;
 }
 
-async function handleDeliverCommand(args: string[]): Promise<number> {
-  if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
-    console.log(`osstack deliver — product entry from one intent to proof
+export function createDeliverCommandDeps(): DeliverCommandDeps {
+  return {
+    enforceObservePolicyGate,
+    createShadowCheckpoint,
+    createLoopGovernanceEvidence,
+    captureLoopGovernanceBaseline,
+    appendGovernanceVerifyEvent,
+    observeLoopProbeEvents,
+    writeRequestedLoopArtifacts,
+    learnLessonsFromLoopState,
+    startGuardedGit: startGuardedGitDelivery,
+  };
+}
 
-  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--checkpoint] [--govern [warn|strict]] [--json]
+function canonicalGuardedJson(value: unknown): string {
+  const normalize = (input: unknown): unknown => {
+    if (Array.isArray(input)) return input.map(normalize);
+    if (isRecord(input)) {
+      return Object.fromEntries(
+        Object.entries(input)
+          .sort(([left], [right]) =>
+            left < right ? -1 : left > right ? 1 : 0
+          )
+          .map(([key, child]) => [key, normalize(child)]),
+      );
+    }
+    return input;
+  };
+  return JSON.stringify(normalize(value));
+}
 
-Stages:
-  intake -> plan -> execute-loop -> verify-review -> proof
-`);
-    return 0;
-  }
-
-  const prompt = firstPositionalValue(args, new Set([
-    "--workspace",
-    "--state",
-    "--execute",
-    "--verify",
-    "--agent",
-    "--capability",
-    "--priority",
-    "--max-iter",
-    "--worktree-root",
-    "--govern",
-  ]));
-  if (prompt === undefined) {
-    console.error("osstack: deliver requires a prompt");
-    return 1;
-  }
-  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
-  const policyGate = await enforceObservePolicyGate(workspacePath);
-  if (policyGate !== undefined) return policyGate;
-  const stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
-  const executeCommand = flagValue(args, "--execute");
-  const agentId = flagValue(args, "--agent");
-  const capability = flagValue(args, "--capability") ?? "code.write";
-  const priority = parsePositiveIntegerFlag(flagValue(args, "--priority"), "--priority");
-  if (priority instanceof Error) {
-    console.error(`osstack: ${priority.message}`);
-    return 1;
-  }
-  const maxIterations = parsePositiveIntegerFlag(flagValue(args, "--max-iter"), "--max-iter");
-  if (maxIterations instanceof Error) {
-    console.error(`osstack: ${maxIterations.message}`);
-    return 1;
-  }
-  const verifyCommands = flagValues(args, "--verify");
-  const suggestedVerify = await suggestVerifyCommand(workspacePath);
-  const governanceMode = parseLoopGovernanceMode(args);
-  if (governanceMode instanceof Error) {
-    console.error(`osstack: ${governanceMode.message}`);
-    return 1;
-  }
-  const autoAgent = args.includes("--auto-agent");
-  const useWorktree = args.includes("--worktree");
-  const checkpoint = args.includes("--checkpoint") && !useWorktree
-    ? await createShadowCheckpoint(realpathSync(workspacePath))
-    : undefined;
-  const stages = ["intake", "plan", "execute-loop", "verify-review", "proof"];
-  const task = await enqueueTask({
-    workspacePath,
-    prompt,
-    capability,
-    ...(priority !== undefined ? { priority } : {}),
-    context: {
-      deliver_pipeline: {
-        stages,
-        suggested_verify: suggestedVerify,
-        verify_commands: verifyCommands,
-        auto_agent: autoAgent,
+async function guardedGitText(
+  workspacePath: string,
+  args: string[],
+): Promise<string> {
+  const { stdout } = await execFileAsync(
+    "git",
+    ["-C", workspacePath, ...args],
+    {
+      timeout: 15_000,
+      maxBuffer: 16 * 1024 * 1024,
+      env: {
+        ...process.env,
+        GIT_TERMINAL_PROMPT: "0",
       },
     },
-  });
-  const adapters = agentId !== undefined || autoAgent ? defaultAdapters() : undefined;
-  const worktreeRoot = flagValue(args, "--worktree-root");
-  const engine = new LoopEngine({
-    workspacePath,
-    stateFilePath,
-    ...(executeCommand !== undefined ? { executeCommand } : {}),
-    ...(agentId !== undefined ? { agentId } : {}),
-    ...(autoAgent ? { autoAgent } : {}),
-    ...(adapters !== undefined ? { adapters } : {}),
-    ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
-    sources: ["task_queue"],
-    ...(maxIterations !== undefined ? { maxIterations } : {}),
-    ...(useWorktree ? { useWorktree: true } : {}),
-    ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
-    // Kernel gate (R2.2): defense-in-depth over the upfront enforceObservePolicyGate
-    // above — also stops cleanly if policy flips to observe mid-run.
-    policyGate: makePolicyGate(workspacePath),
-  });
-  const result = await engine.runOnce();
-  const artifactArgs = ensureFlags(args, ["--report", "--scorecard", "--proof"]);
-  const governance = governanceMode === undefined
-    ? undefined
-    : await createLoopGovernanceEvidence(governanceMode, workspacePath);
-  const events = governance === undefined
-    ? result.events
-    : appendGovernanceVerifyEvent(result.events, result.loop_id, governance);
-  const probeObservation = await observeLoopProbeEvents(workspacePath, events);
-  const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, artifactArgs, events, governance);
-  const learnedLessons = await learnLessonsFromLoopState(result.state);
-  const summary = {
-    prompt,
-    stages,
-    suggested_verify: suggestedVerify,
-    verify_commands: verifyCommands,
-    task: task.task,
-    task_path: task.path,
-    loop_id: result.loop_id,
-    json_path: result.jsonPath,
-    markdown_path: result.markdownPath,
-    completed_tasks: result.state.completed_tasks,
-    events,
-    ...(probeObservation === undefined ? {} : { probe_observation: probeObservation }),
-    ...(checkpoint !== undefined ? { checkpoint } : {}),
-    ...(artifacts !== undefined ? { artifacts } : {}),
-    ...(governance !== undefined ? { governance } : {}),
-    ...(learnedLessons !== undefined ? { learned_lessons: learnedLessons } : {}),
-    ...(result.state.key_metrics !== undefined ? { metrics: result.state.key_metrics } : {}),
-  };
-  if (args.includes("--json")) {
-    console.log(JSON.stringify(summary, null, 2));
-  } else {
-    console.log(`deliver=${result.loop_id}`);
-    console.log(`task=${task.path}`);
-    if (suggestedVerify !== undefined) console.log(`suggested_verify=${suggestedVerify}`);
-    if (governance !== undefined) console.log(`governance=${governance.status} mode=${governance.mode} blocking=${governance.blocking ? "yes" : "no"}`);
-    if (artifacts?.report !== undefined) console.log(`report=${artifacts.report}`);
-    if (artifacts?.proof_dir !== undefined) console.log(`proof=${artifacts.proof_dir}`);
-  }
-  return result.state.completed_tasks.some((completed) => completed.outcome !== "success") || governance?.blocking === true ? 2 : 0;
+  );
+  return stdout.trim();
 }
+
+function githubRepoId(remoteUrl: string): string | undefined {
+  const trimmed = remoteUrl.trim().replace(/\.git$/i, "");
+  const scp = trimmed.match(
+    /^(?:git@github\.com:|ssh:\/\/git@github\.com\/)([^/]+\/[^/]+)$/i,
+  );
+  if (scp?.[1] !== undefined) return scp[1];
+  try {
+    const url = new URL(trimmed);
+    if (url.hostname.toLowerCase() !== "github.com") return undefined;
+    const path = url.pathname.replace(/^\/+|\/+$/g, "");
+    return /^[^/]+\/[^/]+$/.test(path) ? path : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function guardedProtectedPolicyPaths(
+  repoConfig: Awaited<ReturnType<typeof loadRepoConfig>>,
+): string[] {
+  if (repoConfig?.schema_version !== 2) return [];
+  const paths = new Set([
+    ".osstack/repo.yaml",
+    ".osstack/policy.yaml",
+  ]);
+  for (const target of [
+    repoConfig.deploy?.staging,
+    repoConfig.deploy?.production,
+  ]) {
+    if (target === undefined) continue;
+    for (const argv of [
+      target.command,
+      target.verify_command,
+      target.health_check,
+      target.rollback,
+    ]) {
+      for (const token of argv) {
+        if (
+          !token.startsWith("-")
+          && !isAbsolute(token)
+          && !token.includes("://")
+          && (
+            token.includes("/")
+            || token.endsWith(".sh")
+            || token.endsWith(".mjs")
+            || token.endsWith(".js")
+          )
+        ) {
+          paths.add(token.replace(/^\.\//, ""));
+        }
+      }
+    }
+  }
+  return [...paths].sort();
+}
+
+async function guardedPolicySnapshot(workspacePath: string): Promise<{
+  repoConfig: Exclude<
+    Awaited<ReturnType<typeof loadRepoConfig>>,
+    undefined
+  > & { schema_version: 2 };
+  policySha256: string;
+  protectedPolicyPaths: string[];
+}> {
+  const [repoRaw, policyRaw] = await Promise.all([
+    guardedGitText(workspacePath, [
+      "show",
+      "HEAD:.osstack/repo.yaml",
+    ]),
+    guardedGitText(workspacePath, [
+      "show",
+      "HEAD:.osstack/policy.yaml",
+    ]),
+  ]);
+  let repoValue: unknown;
+  let policyValue: unknown;
+  try {
+    repoValue = parseYaml(repoRaw);
+    policyValue = parseYaml(policyRaw);
+  } catch (error) {
+    throw new Error(
+      `guarded-git base policy is invalid YAML: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+  const parsedRepoConfig = RepoConfigSchema.parse(repoValue);
+  const policyProfile = PolicyProfileSchema.parse(policyValue);
+  if (parsedRepoConfig?.schema_version !== 2) {
+    throw new Error(
+      "guarded-git requires strict .osstack/repo.yaml schema_version 2",
+    );
+  }
+  if (
+    policyProfile === undefined
+    || policyProfile.mode !== "execute"
+    || policyProfile.auto_apply !== true
+  ) {
+    throw new Error(
+      "guarded-git requires .osstack/policy.yaml mode=execute and auto_apply=true",
+    );
+  }
+  const privatePolicyId =
+    /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(
+      parsedRepoConfig.product,
+    )
+      ? parsedRepoConfig.product
+      : /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(
+          basename(workspacePath),
+        )
+        ? basename(workspacePath)
+        : `repo-${sha256(workspacePath).slice(0, 16)}`;
+  const privateOverlay = await loadPrivateRepoOverlay(
+    osstackHome(),
+    privatePolicyId,
+  );
+  const effective = mergeRepoPolicy(
+    {
+      autonomy: parsedRepoConfig.autonomy,
+      ...(parsedRepoConfig.deploy === undefined
+        ? {}
+        : { deploy: parsedRepoConfig.deploy }),
+    },
+    privateOverlay,
+  );
+  const repoConfigWithoutDeploy = { ...parsedRepoConfig };
+  delete repoConfigWithoutDeploy.deploy;
+  const repoConfig = RepoConfigSchema.parse({
+    ...repoConfigWithoutDeploy,
+    autonomy: effective.autonomy,
+    ...(effective.deploy === undefined
+      ? {}
+      : { deploy: effective.deploy }),
+  });
+  if (repoConfig.schema_version !== 2) {
+    throw new Error("effective guarded policy must remain schema_version 2");
+  }
+  if (!repoConfig.git.auto_merge) {
+    throw new Error(
+      "guarded-git requires repo git.auto_merge=true",
+    );
+  }
+  if (
+    !repoConfig.git.protected_branches.includes(
+      repoConfig.default_branch,
+    )
+  ) {
+    throw new Error(
+      "guarded-git base branch must be listed in git.protected_branches",
+    );
+  }
+  const protectedPolicyPaths = guardedProtectedPolicyPaths(
+    repoConfig,
+  );
+  return {
+    repoConfig,
+    policySha256: sha256(
+      canonicalGuardedJson({
+        repo: repoConfig,
+        policy: policyProfile,
+        private_policy_id: privatePolicyId,
+        protected_policy_paths: protectedPolicyPaths,
+      }),
+    ),
+    protectedPolicyPaths,
+  };
+}
+
+async function executeControlledRollbackDrill(
+  repoId: string,
+): Promise<Omit<
+  RecordRollbackDrillInput,
+  "drill_id" | "repo_id"
+>> {
+  const registry = await readRepoRegistry(
+    join(osstackHome(), "repos.json"),
+  );
+  const entry = registry.find(
+    (candidate) =>
+      candidate.repo_id === repoId && candidate.enabled,
+  );
+  if (entry === undefined) {
+    throw new Error(
+      `enabled repository ${repoId} is not registered in $OSSTACK_HOME/repos.json`,
+    );
+  }
+  const workspacePath = realpathSync(entry.path);
+  const policy = await guardedPolicySnapshot(workspacePath);
+  const staging = policy.repoConfig.deploy?.staging;
+  const production = policy.repoConfig.deploy?.production;
+  if (
+    staging?.enabled !== true
+    || production?.enabled !== true
+  ) {
+    throw new Error(
+      "controlled rollback drill requires enabled staging and production policies",
+    );
+  }
+  if (
+    !production.allowed_environment.includes(
+      "OSSTACK_ROLLBACK_DRILL_TARGET",
+    )
+  ) {
+    throw new Error(
+      "production policy must allow OSSTACK_ROLLBACK_DRILL_TARGET for a controlled drill",
+    );
+  }
+  const remoteUrl = await guardedGitText(workspacePath, [
+    "remote",
+    "get-url",
+    policy.repoConfig.git.remote,
+  ]);
+  if (githubRepoId(remoteUrl) !== repoId) {
+    throw new Error(
+      "rollback drill registry id does not match the GitHub remote",
+    );
+  }
+  await assertGuardedCandidateBase({
+    workspace_path: workspacePath,
+    remote: policy.repoConfig.git.remote,
+    base: policy.repoConfig.default_branch,
+  });
+  const authority = await computeDeployScriptAuthority({
+    workspace_path: workspacePath,
+    policy: production,
+  });
+  const drillRoot = join(
+    osstackHome(),
+    "drills",
+    `drill_${randomUUID()}`,
+  );
+  const drillWorkspace = join(drillRoot, "workspace");
+  const sandboxHome = join(drillRoot, "home");
+  const sandboxTmp = join(drillRoot, "tmp");
+  await mkdir(sandboxHome, { recursive: true, mode: 0o700 });
+  await mkdir(sandboxTmp, { recursive: true, mode: 0o700 });
+  try {
+    await materializeTrackedDrillWorkspace(
+      workspacePath,
+      drillWorkspace,
+    );
+    const copiedAuthority = await computeDeployScriptAuthority({
+      workspace_path: drillWorkspace,
+      policy: production,
+    });
+    if (
+      copiedAuthority.digest_sha256 !== authority.digest_sha256
+    ) {
+      throw new Error(
+        "controlled drill workspace script authority does not match accepted base",
+      );
+    }
+    const startedAt = Date.now() / 1_000;
+    const result = await runControlledRollbackDrill({
+      workspace_path: drillWorkspace,
+      policy: production,
+      expected_script_digest_sha256: authority.digest_sha256,
+      host_environment: {
+        PATH: process.env["PATH"] ?? "/usr/bin:/bin",
+        HOME: sandboxHome,
+        ...(process.env["LANG"] === undefined
+          ? {}
+          : { LANG: process.env["LANG"] }),
+        TMPDIR: sandboxTmp,
+        OSSTACK_ROLLBACK_DRILL_TARGET:
+          "controlled-non-production",
+      },
+    });
+    return {
+      workspace_path: workspacePath,
+      deploy_script_digest_sha256:
+        result.deploy_script_digest_sha256,
+      rollback: result.rollback,
+      ...(result.post_rollback_health === undefined
+        ? {}
+        : {
+            post_rollback_health:
+              result.post_rollback_health,
+          }),
+      started_at: startedAt,
+      completed_at: Date.now() / 1_000,
+    };
+  } finally {
+    await rm(drillRoot, { recursive: true, force: true });
+  }
+}
+
+async function materializeTrackedDrillWorkspace(
+  sourceWorkspace: string,
+  targetWorkspace: string,
+): Promise<void> {
+  const { stdout } = await execFileAsync(
+    "git",
+    [
+      "-c",
+      "core.hooksPath=/dev/null",
+      "-C",
+      sourceWorkspace,
+      "ls-files",
+      "-z",
+    ],
+    {
+      timeout: 15_000,
+      maxBuffer: 64 * 1024 * 1024,
+      encoding: "utf8",
+      env: {
+        PATH: process.env["PATH"] ?? "/usr/bin:/bin",
+        HOME: process.env["HOME"],
+        GIT_TERMINAL_PROMPT: "0",
+      },
+    },
+  );
+  await mkdir(targetWorkspace, { recursive: true, mode: 0o700 });
+  for (const path of stdout.split("\0").filter((value) => value !== "")) {
+    if (
+      isAbsolute(path)
+      || path.includes("\0")
+      || path.split("/").some(
+        (segment) =>
+          segment === "" || segment === "." || segment === "..",
+      )
+    ) {
+      throw new Error(`invalid tracked rollback drill path: ${path}`);
+    }
+    const source = resolve(sourceWorkspace, path);
+    const target = resolve(targetWorkspace, path);
+    if (
+      relative(sourceWorkspace, source).startsWith("..")
+      || relative(targetWorkspace, target).startsWith("..")
+    ) {
+      throw new Error(`rollback drill path escapes workspace: ${path}`);
+    }
+    const metadata = await lstat(source);
+    if (!metadata.isFile() || metadata.isSymbolicLink()) {
+      throw new Error(
+        `rollback drill requires regular tracked files: ${path}`,
+      );
+    }
+    await mkdir(dirname(target), { recursive: true });
+    await copyFile(source, target);
+    await chmod(target, metadata.mode & 0o777);
+  }
+}
+
+async function writeGuardedGitProof(
+  input: GuardedGitProofInput,
+): Promise<{ manifest_path: string; manifest_sha256: string }> {
+  const statePath = join(
+    input.routing.evidence_root,
+    "LOOP-STATE.json",
+  );
+  const state = await readLoopState(statePath);
+  if (state === null) {
+    throw new Error("guarded proof has no persisted Loop state");
+  }
+  let events: LoopEvent[];
+  try {
+    const raw = JSON.parse(
+      await readFile(
+        join(input.routing.evidence_root, "events.json"),
+        "utf8",
+      ),
+    ) as unknown;
+    if (!Array.isArray(raw)) {
+      throw new Error("events.json must contain an array");
+    }
+    events = normalizeLoopEvents(raw);
+  } catch (error) {
+    throw new Error(
+      `guarded proof events are invalid: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+  const outputDir = join(input.routing.evidence_root, "proof");
+  const artifactId = input.evidence.autonomy_run_id;
+  const finalEvidence = input.stage === "final"
+    ? {
+        candidateProof: input.candidate_proof,
+        gitDelivery: input.git_delivery,
+        deployment: input.evidence,
+      }
+    : undefined;
+  const stageInput: ProofStageInput = {
+    stage: input.stage,
+    risk_evidence: {
+      preflight: input.evidence.preflight_risk,
+      post_diff: input.evidence.post_diff_risk,
+    },
+    ...(
+      input.evidence.approval_request === undefined
+      && input.evidence.approval_decision === undefined
+        ? {}
+        : {
+            approval_evidence: {
+              ...(input.evidence.approval_request === undefined
+                ? {}
+                : { request: input.evidence.approval_request }),
+              ...(input.evidence.approval_decision === undefined
+                ? {}
+                : { decision: input.evidence.approval_decision }),
+            },
+          }
+    ),
+    ...(finalEvidence === undefined
+      ? {}
+      : {
+          supersedes: {
+            manifest_path: relative(
+              join(
+                outputDir,
+                `osstack-proof-${safeFileSegment(artifactId)}-final`,
+              ),
+              finalEvidence.candidateProof.manifest_path,
+            ).replaceAll("\\", "/"),
+            manifest_sha256:
+              finalEvidence.candidateProof.manifest_sha256,
+          },
+          git_delivery_evidence: finalEvidence.gitDelivery,
+          ...(finalEvidence.deployment.deploy_eligibility === undefined
+            ? {}
+            : {
+                deploy_eligibility_evidence:
+                  finalEvidence.deployment.deploy_eligibility,
+              }),
+          ...(finalEvidence.deployment.deploy_script_authority ===
+          undefined
+            ? {}
+            : {
+                deploy_script_authority_evidence:
+                  finalEvidence.deployment.deploy_script_authority,
+              }),
+          ...(finalEvidence.deployment.deploy_staging === undefined
+            ? {}
+            : {
+                deploy_staging_evidence:
+                  finalEvidence.deployment.deploy_staging,
+              }),
+          ...(finalEvidence.deployment.deploy_production === undefined
+            ? {}
+            : {
+                deploy_production_evidence:
+                  finalEvidence.deployment.deploy_production,
+              }),
+          ...(finalEvidence.deployment.deploy_production?.rollback ===
+          undefined
+            ? {}
+            : {
+                rollback_evidence: {
+                  command:
+                    finalEvidence.deployment.deploy_production.rollback,
+                  ...(finalEvidence.deployment.deploy_production
+                      .post_rollback_health === undefined
+                    ? {}
+                    : {
+                        post_health:
+                          finalEvidence.deployment.deploy_production
+                            .post_rollback_health,
+                      }),
+                  outcome:
+                    finalEvidence.deployment.deploy_production.outcome,
+                },
+              }),
+          ...(finalEvidence.deployment.production_freeze === undefined
+            ? {}
+            : {
+                production_freeze_evidence:
+                  finalEvidence.deployment.production_freeze,
+              }),
+        }),
+  };
+  const governance = await scanWorkspaceGovernance(
+    input.evidence.intent.workspace_path,
+  );
+  const proof = await writeProofPack(
+    state,
+    outputDir,
+    events,
+    artifactId,
+    governance,
+    offKnowledgeEvidence(),
+    [],
+    input.evidence.intent.workspace_path,
+    stageInput,
+  );
+  const manifest = await readFile(proof.proof_manifest);
+  return {
+    manifest_path: proof.proof_manifest,
+    manifest_sha256: sha256Buffer(manifest),
+  };
+}
+
+function createGuardedGitRuntimeForDb(
+  db: ReturnType<typeof openDb>,
+  dbPath: string,
+  trustedApprovalPublicKeys: ReadonlyMap<string, string>,
+): GuardedGitRuntime {
+  return new GuardedGitRuntime({
+    db,
+    dbPath,
+    trustedApprovalPublicKeys,
+    writeProof: writeGuardedGitProof,
+    assertPolicyUnchanged: async (workspacePath, expected) => {
+      const current = await guardedPolicySnapshot(workspacePath);
+      if (current.policySha256 !== expected) {
+        throw new Error(
+          "repository policy changed after autonomy classification",
+        );
+      }
+    },
+    evaluateGovernance: async (workspacePath) => {
+      const evidence = await createLoopGovernanceEvidence(
+        "strict",
+        workspacePath,
+        "workspace",
+      );
+      return {
+        blocking:
+          evidence.blocking || evidence.status === "unknown",
+        evidence,
+      };
+    },
+  });
+}
+
+const startGuardedGitDelivery: NonNullable<
+  DeliverCommandDeps["startGuardedGit"]
+> = async (input) => {
+  const policy = await guardedPolicySnapshot(input.workspacePath);
+  const branch = await guardedGitText(
+    input.workspacePath,
+    ["branch", "--show-current"],
+  );
+  if (
+    branch === ""
+    || branch === policy.repoConfig.default_branch
+    || !branch.startsWith(
+      `${policy.repoConfig.git.branch_prefix}/`,
+    )
+  ) {
+    throw new Error(
+      `guarded-git requires a ${policy.repoConfig.git.branch_prefix}/ feature branch; found ${branch || "(detached)"}`,
+    );
+  }
+  const verifiedBase = await assertGuardedCandidateBase({
+    workspace_path: input.workspacePath,
+    remote: policy.repoConfig.git.remote,
+    base: policy.repoConfig.default_branch,
+  });
+  const remoteUrl = await guardedGitText(input.workspacePath, [
+    "remote",
+    "get-url",
+    policy.repoConfig.git.remote,
+  ]);
+  const repoId = githubRepoId(remoteUrl);
+  if (repoId === undefined) {
+    throw new Error(
+      "guarded-git remote must resolve to exactly one GitHub repository",
+    );
+  }
+  let rollbackDrill: ReturnType<
+    typeof rollbackDrillEligibilityEvidence
+  >;
+  if (
+    input.deployPolicy === "project"
+    && policy.repoConfig.deploy?.production !== undefined
+  ) {
+    const drillDbPath = await ensureLocalStateDbPath();
+    const drillDb = openDb({ path: drillDbPath });
+    try {
+      rollbackDrill = rollbackDrillEligibilityEvidence(
+        getLatestSuccessfulRollbackDrill(drillDb, repoId),
+      );
+    } finally {
+      drillDb.close();
+    }
+  }
+  const autonomyRunId = `run_${randomUUID().slice(0, 12)}`;
+  const evidenceRoot = join(
+    osstackHome(),
+    "autonomy",
+    autonomyRunId,
+  );
+  await mkdir(evidenceRoot, { recursive: true });
+  const verifyCommands = [
+    ...new Set([
+      ...policy.repoConfig.verification.standard,
+      ...input.verifyCommands,
+    ]),
+  ];
+  const routing = GuardedGitRouting.parse({
+    schema_version: 1,
+    task: {
+      task_id: input.taskId,
+      capability: input.capability,
+      prompt: input.prompt,
+      priority: 50,
+      source: "manual",
+      context: {
+        autonomy_run_id: autonomyRunId,
+        expected_paths: [...new Set(input.expectedPaths)].sort(),
+      },
+    },
+    profile: input.profileRouting.summary,
+    verify_commands: verifyCommands,
+    command_timeout_ms: input.commandTimeoutMs,
+    evidence_root: evidenceRoot,
+    base_commit_sha: verifiedBase.base_commit_sha,
+    policy_sha256: policy.policySha256,
+    max_auto_risk: policy.repoConfig.autonomy.max_auto_risk,
+    protected_policy_paths: policy.protectedPolicyPaths,
+    approval_ttl_ms: 3_600_000,
+    ...(input.deployPolicy === "project"
+      && policy.repoConfig.deploy !== undefined
+      ? {
+          deploy: {
+            base_branch: policy.repoConfig.default_branch,
+            ...policy.repoConfig.deploy,
+            ...(rollbackDrill === undefined
+              ? {}
+              : { rollback_drill: rollbackDrill }),
+          },
+        }
+      : {}),
+    git: {
+      remote: policy.repoConfig.git.remote,
+      base: policy.repoConfig.default_branch,
+      branch,
+      title: input.prompt.replace(/\s+/g, " ").trim().slice(0, 256),
+      body_file: join(evidenceRoot, "pull-request.md"),
+      ci_timeout_ms: Math.min(
+        policy.repoConfig.autonomy.max_wall_time_minutes
+          * 60_000,
+        86_400_000,
+      ),
+    },
+  });
+  const expectedPaths = [...new Set(input.expectedPaths)].sort();
+  const requestedActions = [
+    ...new Set(input.requestedActions),
+  ].sort();
+  const contractSha256 = sha256(
+    canonicalGuardedJson({
+      schema_version: 1,
+      autonomy_run_id: autonomyRunId,
+      task_id: input.taskId,
+      repo_id: repoId,
+      workspace_path: input.workspacePath,
+      goal: input.prompt,
+      expected_paths: expectedPaths,
+      requested_actions: requestedActions,
+      base_commit_sha: verifiedBase.base_commit_sha,
+      policy_sha256: policy.policySha256,
+      profile: input.profileRouting.summary,
+      verify_commands: verifyCommands,
+      deploy: routing.deploy ?? null,
+    }),
+  );
+  const dbPath = await ensureLocalStateDbPath();
+  const db = openDb({ path: dbPath });
+  try {
+    const trust = await readAutonomyApprovalTrustStore(
+      join(osstackHome(), "approval-trust.json"),
+    );
+    const runtime = createGuardedGitRuntimeForDb(
+      db,
+      dbPath,
+      trust,
+    );
+    return await runtime.start({
+      autonomy_run_id: autonomyRunId,
+      task_id: input.taskId,
+      repo_id: repoId,
+      workspace_path: input.workspacePath,
+      goal: input.prompt,
+      expected_paths: expectedPaths,
+      requested_actions: requestedActions,
+      contract_sha256: contractSha256,
+      routing,
+      budget: {
+        max_builder_iterations:
+          policy.repoConfig.autonomy.max_builder_iterations,
+        max_review_rounds:
+          policy.repoConfig.autonomy.max_review_rounds,
+        max_wall_time_ms:
+          policy.repoConfig.autonomy.max_wall_time_minutes
+          * 60_000,
+        max_no_progress_rounds:
+          policy.repoConfig.autonomy.max_no_progress_rounds,
+      },
+    });
+  } finally {
+    db.close();
+  }
+};
 
 function ensureFlags(args: string[], flags: string[]): string[] {
   const next = [...args];
@@ -9076,21 +10699,6 @@ function ensureFlags(args: string[], flags: string[]): string[] {
     if (!next.includes(flag)) next.push(flag);
   }
   return next;
-}
-
-async function suggestVerifyCommand(workspacePath: string): Promise<string | undefined> {
-  if (await fileExists(join(workspacePath, "pnpm-lock.yaml"))) return "pnpm test";
-  if (await fileExists(join(workspacePath, "bun.lockb")) || await fileExists(join(workspacePath, "bun.lock"))) return "bun test";
-  if (await fileExists(join(workspacePath, "package-lock.json"))) return "npm test";
-  try {
-    const packageJson = JSON.parse(await readFile(join(workspacePath, "package.json"), "utf-8")) as unknown;
-    if (isRecord(packageJson) && isRecord(packageJson["scripts"]) && typeof packageJson["scripts"]["test"] === "string") {
-      return "npm test";
-    }
-  } catch {
-    // No package.json or unreadable package metadata.
-  }
-  return undefined;
 }
 
 async function fileExists(path: string): Promise<boolean> {
@@ -9182,6 +10790,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(agentId !== undefined ? { agentId } : {}),
       ...(autoAgent ? { autoAgent } : {}),
       ...(profileRouting !== undefined ? { enforceRoleSeparation: true } : {}),
+      ...(profileRouting !== undefined
+        ? { profileRouting: profileRouting.summary }
+        : {}),
       ...(goalCommand !== undefined ? { goalCommand } : {}),
       ...(schedule !== undefined ? { schedule } : {}),
       ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
@@ -9305,6 +10916,14 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       console.error(`osstack: ${governanceMode.message}`);
       return 1;
     }
+    const governanceScope = parseLoopGovernanceScope(args, governanceMode);
+    if (governanceScope instanceof Error) {
+      console.error(`osstack: ${governanceScope.message}`);
+      return 1;
+    }
+    const governanceBaseline = governanceScope === "baseline" || governanceScope === "changed"
+      ? await captureLoopGovernanceBaseline(workspacePath, governanceScope === "baseline")
+      : undefined;
     const maxIterations = parsePositiveIntegerFlag(maxIterRaw, "--max-iter");
     if (maxIterations instanceof Error) {
       console.error(`osstack: ${maxIterations.message}`);
@@ -9336,6 +10955,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ...(agentId !== undefined ? { agentId } : {}),
         ...(autoAgent ? { autoAgent } : {}),
         ...(profileRouting !== undefined ? { enforceRoleSeparation: true } : {}),
+        ...(profileRouting !== undefined
+          ? { profileRouting: profileRouting.summary }
+          : {}),
         ...(goalCommand !== undefined ? { goalCommand } : {}),
         ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
         ...(verifierAgentIds.length > 0 ? { verifierAgentIds } : {}),
@@ -9362,7 +10984,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       const result = resp.result as LoopRunSummary;
       const governance = governanceMode === undefined
         ? undefined
-        : await createLoopGovernanceEvidence(governanceMode, workspacePath);
+        : await createLoopGovernanceEvidence(governanceMode, workspacePath, governanceScope!, governanceBaseline);
       const events = governance === undefined
         ? normalizeLoopEvents(result.events)
         : appendGovernanceVerifyEvent(normalizeLoopEvents(result.events), result.loop_id, governance);
@@ -9415,6 +11037,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(agentId !== undefined ? { agentId } : {}),
       ...(autoAgent ? { autoAgent } : {}),
       ...(profileRouting !== undefined ? { enforceRoleSeparation: true } : {}),
+      ...(profileRouting !== undefined
+        ? { profileRouting: profileRouting.summary }
+        : {}),
       ...(adapters !== undefined ? { adapters } : {}),
       ...(verifierAgentIds.length > 0 ? { verifierAgentIds } : {}),
       ...(artifactVerification !== undefined ? { artifactVerification } : {}),
@@ -9450,7 +11075,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
 
     const governance = governanceMode === undefined
       ? undefined
-      : await createLoopGovernanceEvidence(governanceMode, workspacePath);
+      : await createLoopGovernanceEvidence(governanceMode, workspacePath, governanceScope!, governanceBaseline);
     const events = governance === undefined
       ? result.events
       : appendGovernanceVerifyEvent(result.events, result.loop_id, governance);
@@ -9659,6 +11284,9 @@ Options:
                       Knowledge Cloud URL; unavailable cloud fails open to local/off
   --knowledge-query Q Query used for knowledge trace search
   --govern [M]        Run governance checks after loop run; M=warn or strict
+  --govern-scope S    Governance scope: workspace (legacy), changed, or baseline.
+                      baseline records pre-run full-workspace warn evidence and
+                      gates only changed-file findings not present in that baseline
   --neat-finalize     After a successful run, attach non-gating neat evidence
   --json              Emit machine-readable summary
   --daemon            Run through the osstack daemon RPC socket
@@ -9864,86 +11492,6 @@ function parseArtifactVerification(args: string[]): ArtifactVerificationOptions 
   };
 }
 
-async function resolveLoopProfileRouting(
-  args: string[],
-  explicitAgentId: string | undefined,
-  explicitVerifierAgentIds: readonly string[],
-): Promise<{
-  agentId?: string;
-  verifierAgentIds: string[];
-  summary: LoopProfileSummary;
-} | undefined | Error> {
-  const profileOverride = flagValue(args, "--profile")
-    ?? process.env["OSSTACK_AGENT_PROFILE"]
-    ?? process.env["OSSTACK_PROFILE"];
-  const overrides = parseRoleOverrides(args);
-  if (overrides instanceof Error) return overrides;
-  if (profileOverride === undefined && Object.keys(overrides).length === 0) return undefined;
-
-  const config = loadConfig();
-  const profile = selectProfile(config, profileOverride !== undefined ? { override: profileOverride } : {});
-  const roles = {
-    coding: { ...profile.roles.coding, fallback: [...profile.roles.coding.fallback] },
-    "test-verify": { ...profile.roles["test-verify"], fallback: [...profile.roles["test-verify"].fallback] },
-    design: { ...profile.roles.design, fallback: [...profile.roles.design.fallback] },
-  };
-  for (const [role, agentId] of Object.entries(overrides) as Array<[AgentRole, string]>) {
-    roles[role] = {
-      primary: agentId,
-      fallback: roles[role].fallback.filter((candidate) => candidate !== agentId),
-    };
-  }
-
-  const adapters = defaultAdapters() as unknown as RoutableAdapter[];
-  const resolutions = await resolveAll(roles, adapters, { autoFallback: true });
-  const builder = explicitAgentId ?? resolutions.coding.chosen ?? undefined;
-  const evaluator = explicitVerifierAgentIds[0] ?? resolutions["test-verify"].chosen ?? undefined;
-  return {
-    ...(builder !== undefined ? { agentId: builder } : {}),
-    verifierAgentIds: evaluator !== undefined ? [evaluator] : [],
-    summary: {
-      profile_name: profile.name,
-      reason: profile.reason,
-      ...(builder !== undefined ? { builder_agent_id: builder } : {}),
-      ...(evaluator !== undefined ? { evaluator_agent_id: evaluator } : {}),
-      ...(resolutions.design.chosen !== null ? { designer_agent_id: resolutions.design.chosen } : {}),
-      overrides: Object.fromEntries(Object.entries(overrides)),
-      resolutions: Object.fromEntries(Object.entries(resolutions).map(([role, resolution]) => [
-        role,
-        {
-          chosen: resolution.chosen,
-          reason: resolution.reason,
-          tried: resolution.tried,
-        },
-      ])),
-    },
-  };
-}
-
-function parseRoleOverrides(args: string[]): Partial<Record<AgentRole, string>> | Error {
-  const overrides: Partial<Record<AgentRole, string>> = {};
-  for (const raw of flagValues(args, "--role")) {
-    const [roleRaw, agentId] = raw.split("=", 2);
-    if (roleRaw === undefined || agentId === undefined || agentId.trim() === "") {
-      return new Error(`--role must use role=agent-id, got "${raw}"`);
-    }
-    const role = normalizeLoopRole(roleRaw);
-    if (role === undefined) {
-      return new Error(`unknown --role "${roleRaw}"; use coder, evaluator, or designer`);
-    }
-    overrides[role] = agentId.trim();
-  }
-  return overrides;
-}
-
-function normalizeLoopRole(value: string): AgentRole | undefined {
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "coder" || normalized === "builder" || normalized === "coding") return "coding";
-  if (normalized === "evaluator" || normalized === "judge" || normalized === "verifier" || normalized === "test-verify") return "test-verify";
-  if (normalized === "designer" || normalized === "design") return "design";
-  return undefined;
-}
-
 function safeFileSegment(value: string): string {
   return value.replaceAll(/[^a-zA-Z0-9._-]/g, "-");
 }
@@ -10024,20 +11572,6 @@ interface LoopRunSummary {
 type LoopProbeObservationSummaryV1 =
   | ({ status: "ok" } & LoopProbeObservationResultV1)
   | { status: "error"; message: string };
-
-interface LoopProfileSummary {
-  profile_name: string;
-  reason: string;
-  builder_agent_id?: string;
-  evaluator_agent_id?: string;
-  designer_agent_id?: string;
-  overrides: Record<string, string>;
-  resolutions: Record<string, {
-    chosen: string | null;
-    reason: string;
-    tried: Array<{ id: string; ok: boolean; reason?: string }>;
-  }>;
-}
 
 interface LoopEvidenceArtifacts {
   report?: string;

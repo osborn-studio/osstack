@@ -2,7 +2,7 @@
 // OSSTACK_HOME, then exercises the single-shot surface the upgrade tooling
 // depends on (version handshake, drain, duplicate-instance guard).
 
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { connect } from "node:net";
@@ -108,5 +108,8 @@ describe("daemon RPC surface", () => {
   it("second daemon on the same OSSTACK_HOME is refused", async () => {
     await expect(startDaemon({ socketPath: join(home, "d2.sock") }))
       .rejects.toThrow(DaemonAlreadyRunningError);
+    expect(existsSync(socketPath)).toBe(true);
+    const stillHealthy = (await rpc("health")) as Resp;
+    expect(stillHealthy.ok).toBe(true);
   });
 });

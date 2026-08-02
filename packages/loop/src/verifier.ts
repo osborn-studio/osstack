@@ -1,5 +1,8 @@
 import type { AgentAdapter, AgentTask } from "@osstack/agents";
-import type { HermesEvent } from "@osstack/hermes-adapter";
+import {
+  StructuredReviewSchema,
+  type HermesEvent,
+} from "@osstack/hermes-adapter";
 import {
   evaluationScore,
   implicitArtifactSpec,
@@ -12,12 +15,24 @@ import {
 import type { AgentRun, CommandResult } from "./executor.js";
 import { runShellCommand } from "./executor.js";
 import {
+  collectReviewBoundary,
+  type CollectedReviewBoundary,
+  type ReviewBoundaryPolicy,
+} from "./review-boundary.js";
+import {
+  reviewerWorkspaceMutated,
+  snapshotReviewerWorkspace,
+} from "./reviewer-isolation.js";
+import {
   ImplementationDeviation,
+  ReviewArtifact,
   type ImplementationDeviation as ImplementationDeviationValue,
   type Issue,
+  type ReviewArtifact as ReviewArtifactValue,
   type Task,
   type Verdict,
 } from "./types.js";
+import { truncateUnicodeSafe } from "./unicode.js";
 
 export interface LocalVerifierOptions {
   workspacePath: string;
@@ -29,6 +44,7 @@ export interface LocalVerifierOptions {
   sessionId?: string;
   timeoutMs?: number;
   outputLimit?: number;
+  reviewBoundary?: Partial<ReviewBoundaryPolicy>;
 }
 
 export interface ArtifactVerificationOptions {
@@ -59,18 +75,31 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
     commandRuns.push({ spec, implicit: false, result: await runSpecCommand(spec, options) });
   }
 
-  const adapterSpecs = explicitSpecs.filter(isAdapterEvaluationSpec);
-  const adapterResults = await runVerifierAdapters(run, options, adapterSpecs);
-
   const artifactOptions = normalizeArtifactOptions(options);
   const explicitArtifactSpecs = explicitSpecs.filter(
     (spec) => spec.mode === "artifact" && !isCommandEvaluationSpec(spec),
   );
   const artifact = await verifyArtifacts(options, artifactOptions, explicitArtifactSpecs);
+  const adapterSpecs = explicitSpecs.filter(isAdapterEvaluationSpec);
+  const adapterResults = await runVerifierAdapters(
+    run,
+    options,
+    adapterSpecs,
+    commandRuns.map(({ result }) => result),
+  );
 
   const executionIssues = run.command_results
     .filter((result) => result.exitCode !== 0)
     .map((result) => commandIssue("execute.command_failed", result));
+  const executionOutcomeIssues: Issue[] = run.outcome === "completed"
+    ? []
+    : [{
+        severity: "error",
+        message: `Builder execution ended ${run.outcome}${
+          run.summary === undefined ? "" : `: ${singleLine(run.summary)}`
+        }`,
+        rule: "execute.outcome_not_completed",
+      }];
   const verificationIssues = commandRuns
     .filter(({ implicit, result }) => implicit && result.exitCode !== 0)
     .map(({ result }) => commandIssue("verify.command_failed", result));
@@ -80,12 +109,17 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
       result.stderr.trim() || result.stdout.trim() || `exit code ${result.exitCode}`,
     )));
   const adapterIssues = adapterResults.flatMap((result) => result.issues);
-  const adapterHasIssues = adapterIssues.length > 0;
   const adapterConfigured = (options.verifierAgentIds ?? []).some((id) => id.trim() !== "");
   const unverifiedAdapterSpecIssues = adapterConfigured
     ? []
     : adapterSpecs.map((spec) => evaluationIssue(spec, "no verifier adapter configured for this evaluation"));
   const judgmentsBySpec = collectJudgmentsBySpec(adapterResults);
+  const reconciliationIssues = reconcileAdapterJudgments(
+    adapterResults,
+    adapterSpecs,
+  );
+  const adapterHasIssues = adapterIssues.some((issue) => issue.severity === "error")
+    || reconciliationIssues.some((issue) => issue.severity === "error");
   const judgedFailureIssues = adapterSpecs.flatMap((spec) => {
     const judgments = judgmentsBySpec.get(spec.id) ?? [];
     const failing = judgments.find((judgment) => !judgment.pass);
@@ -97,16 +131,14 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
   // is an error (it may be a real failure reported under a mismatched id — losing
   // it would let a broken run pass); a *passing* orphan is a warning (surfaced,
   // non-blocking) so a spurious extra judgment can't fail an otherwise-green run.
-  const knownSpecIds = new Set(adapterSpecs.map((spec) => spec.id));
-  const unknownJudgmentIssues = collectUnknownJudgmentIssues(adapterResults, knownSpecIds);
-
   const issues = [
+    ...executionOutcomeIssues,
     ...executionIssues,
     ...verificationIssues,
     ...explicitCommandIssues,
     ...adapterIssues,
     ...judgedFailureIssues,
-    ...unknownJudgmentIssues,
+    ...reconciliationIssues,
     ...unverifiedAdapterSpecIssues,
     ...artifact.issues,
   ];
@@ -131,6 +163,9 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
   const implementationDeviations = deduplicateImplementationDeviations(
     adapterResults.flatMap((result) => result.implementationDeviations ?? []),
   );
+  const reviewArtifacts = adapterResults.flatMap(
+    (result) => result.reviewArtifact === undefined ? [] : [result.reviewArtifact],
+  );
 
   return {
     pass,
@@ -143,6 +178,7 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
     ...(implementationDeviations.length > 0
       ? { implementation_deviations: implementationDeviations }
       : {}),
+    ...(reviewArtifacts.length > 0 ? { review_artifacts: reviewArtifacts } : {}),
   };
 }
 
@@ -256,25 +292,38 @@ function collectJudgmentsBySpec(
   return bySpec;
 }
 
-/**
- * Surface adapter judgments whose id matches no requested spec instead of
- * dropping them. Failing orphans are errors (fail-closed); passing orphans are
- * warnings. Deduplicated by id so a repeated orphan reports once.
- */
-function collectUnknownJudgmentIssues(
+function reconcileAdapterJudgments(
   adapterResults: readonly VerifierAdapterResult[],
-  knownSpecIds: ReadonlySet<string>,
+  requestedSpecs: readonly EvaluationSpec[],
 ): Issue[] {
   const issues: Issue[] = [];
-  const seen = new Set<string>();
+  const requestedIds = new Set(requestedSpecs.map((spec) => spec.id));
+  const counts = new Map<string, number>();
   for (const result of adapterResults) {
     for (const judgment of result.judgments ?? []) {
-      if (knownSpecIds.has(judgment.id) || seen.has(judgment.id)) continue;
-      seen.add(judgment.id);
-      const detail = singleLine(judgment.summary ?? (judgment.pass ? "judged pass" : "judged fail"));
+      counts.set(judgment.id, (counts.get(judgment.id) ?? 0) + 1);
+    }
+  }
+
+  for (const spec of requestedSpecs) {
+    if ((counts.get(spec.id) ?? 0) > 0) continue;
+    issues.push(evaluationIssue(
+      spec,
+      "verifier adapter returned no structured judgment for this evaluation id",
+    ));
+  }
+  for (const [id, count] of counts) {
+    if (count > 1) {
       issues.push({
-        severity: judgment.pass ? "warning" : "error",
-        message: `verifier adapter ${result.agentId} returned judgment for unknown evaluation id "${judgment.id}"${detail === "" ? "" : `: ${detail}`}`,
+        severity: "error",
+        message: `verifier adapters returned duplicate judgments for evaluation id "${id}"`,
+        rule: "verify.duplicate_evaluation_id",
+      });
+    }
+    if (!requestedIds.has(id)) {
+      issues.push({
+        severity: "error",
+        message: `verifier adapter returned judgment for unknown evaluation id "${id}"`,
         rule: "verify.unknown_evaluation_id",
       });
     }
@@ -504,12 +553,14 @@ interface VerifierAdapterResult {
   summary?: string;
   judgments?: AdapterEvaluationJudgment[];
   implementationDeviations?: ImplementationDeviationValue[];
+  reviewArtifact?: ReviewArtifactValue;
 }
 
 async function runVerifierAdapters(
   run: AgentRun,
   options: LocalVerifierOptions,
   adapterSpecs: readonly EvaluationSpec[],
+  verificationResults: readonly CommandResult[],
 ): Promise<VerifierAdapterResult[]> {
   const ids = options.verifierAgentIds ?? [];
   const results: VerifierAdapterResult[] = [];
@@ -524,7 +575,13 @@ async function runVerifierAdapters(
       });
       continue;
     }
-    results.push(await invokeVerifierAdapter(run, options, adapter, adapterSpecs));
+    results.push(await invokeVerifierAdapter(
+      run,
+      options,
+      adapter,
+      adapterSpecs,
+      verificationResults,
+    ));
   }
   return results;
 }
@@ -534,6 +591,7 @@ async function invokeVerifierAdapter(
   options: LocalVerifierOptions,
   adapter: AgentAdapter,
   adapterSpecs: readonly EvaluationSpec[],
+  verificationResults: readonly CommandResult[],
 ): Promise<VerifierAdapterResult> {
   const availability = await adapter.isAvailable();
   if (!availability.available) {
@@ -544,17 +602,81 @@ async function invokeVerifierAdapter(
     };
   }
 
+  const structuredReview = adapter.id === "kimi-code";
+  let boundary: CollectedReviewBoundary | undefined;
+  let beforeSnapshot: Awaited<ReturnType<typeof snapshotReviewerWorkspace>> | undefined;
+  if (structuredReview) {
+    try {
+      boundary = await collectReviewBoundary(
+        options.workspacePath,
+        options.reviewBoundary ?? {},
+      );
+    } catch (error) {
+      return {
+        agentId: adapter.id,
+        eventCount: 0,
+        issues: [adapterIssue(
+          adapter.id,
+          "verify.review_boundary_failed",
+          error instanceof Error ? error.message : String(error),
+        )],
+      };
+    }
+    if (!boundary.boundary.pass || boundary.sanitized_diff === undefined) {
+      return {
+        agentId: adapter.id,
+        eventCount: 0,
+        issues: boundary.boundary.findings.map((finding) => ({
+          severity: "error",
+          ...(finding.path !== undefined ? { file: finding.path } : {}),
+          message: `${adapter.id} review boundary failed: ${finding.message}`,
+          rule: finding.rule_id,
+        })),
+      };
+    }
+    try {
+      beforeSnapshot = await snapshotReviewerWorkspace(options.workspacePath);
+    } catch (error) {
+      return {
+        agentId: adapter.id,
+        eventCount: 0,
+        issues: [adapterIssue(
+          adapter.id,
+          "verify.reviewer_snapshot_failed",
+          error instanceof Error ? error.message : String(error),
+        )],
+      };
+    }
+  }
+
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 120_000);
+  const timeoutMs = options.timeoutMs
+    ?? (structuredReview ? 600_000 : 120_000);
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
   let eventCount = 0;
   let summary: string | undefined;
   let status: "completed" | "failed" | "cancelled" | "expired" | undefined;
   let terminalError: string | undefined;
   let judgments: AdapterEvaluationJudgment[] | undefined;
   let implementationDeviations: ImplementationDeviationValue[] | undefined;
+  let reviewArtifact: ReviewArtifactValue | undefined;
+  let reviewArtifactError: string | undefined;
+  let snapshotError: string | undefined;
+  let workspaceMutated = false;
 
   try {
-    const agentTask = verifierAgentTask(run, options, adapter, adapterSpecs);
+    const agentTask = verifierAgentTask(
+      run,
+      options,
+      adapter,
+      adapterSpecs,
+      boundary,
+      verificationResults,
+    );
     for await (const event of adapter.invoke(agentTask, controller.signal)) {
       eventCount += 1;
       if (event.type === "error" && event.terminal) {
@@ -564,7 +686,25 @@ async function invokeVerifierAdapter(
         const payload = donePayload(event.payload);
         status = payload.status;
         summary = payload.result_summary;
-        judgments = parseEvaluationJudgments(payload.evaluation_judgments);
+        if (structuredReview) {
+          const parsedReview = StructuredReviewSchema.safeParse(payload.review);
+          if (parsedReview.success) {
+            const parsedArtifact = ReviewArtifact.safeParse({
+              ...parsedReview.data,
+              reviewer_agent_id: adapter.id,
+            });
+            if (parsedArtifact.success) {
+              reviewArtifact = parsedArtifact.data;
+              judgments = parsedArtifact.data.judgments;
+            } else {
+              reviewArtifactError = parsedArtifact.error.message;
+            }
+          } else {
+            reviewArtifactError = parsedReview.error.message;
+          }
+        } else {
+          judgments = parseEvaluationJudgments(payload.evaluation_judgments);
+        }
         implementationDeviations = parseImplementationDeviations(
           payload.implementation_deviations,
         );
@@ -574,33 +714,96 @@ async function invokeVerifierAdapter(
     terminalError = error instanceof Error ? error.message : String(error);
   } finally {
     clearTimeout(timeout);
+    if (beforeSnapshot !== undefined) {
+      try {
+        const afterSnapshot = await snapshotReviewerWorkspace(options.workspacePath);
+        workspaceMutated = reviewerWorkspaceMutated(
+          beforeSnapshot,
+          afterSnapshot,
+        );
+      } catch (error) {
+        snapshotError = error instanceof Error ? error.message : String(error);
+      }
+    }
   }
 
-  if (status === "completed" && terminalError === undefined) {
+  const issues: Issue[] = [];
+  if (snapshotError !== undefined) {
+    issues.push(adapterIssue(
+      adapter.id,
+      "verify.reviewer_snapshot_failed",
+      snapshotError,
+    ));
+  }
+  if (workspaceMutated) {
+    issues.push(adapterIssue(
+      adapter.id,
+      "verify.reviewer_mutation",
+      "reviewer changed the builder workspace or Git metadata",
+    ));
+  }
+  if (structuredReview) {
+    if (reviewArtifact === undefined) {
+      issues.push(adapterIssue(
+        adapter.id,
+        "verify.review_artifact_invalid",
+        reviewArtifactError ?? "structured review payload is missing",
+      ));
+    } else if (reviewArtifact.verdict !== "approved") {
+      issues.push(adapterIssue(
+        adapter.id,
+        "verify.review_not_approved",
+        `structured reviewer verdict is ${reviewArtifact.verdict}`,
+      ));
+    }
+  }
+  if (terminalError !== undefined) {
+    issues.push(adapterIssue(
+      adapter.id,
+      "verify.adapter_failed",
+      terminalError,
+    ));
+  } else if (timedOut) {
+    issues.push(adapterIssue(
+      adapter.id,
+      "verify.adapter_failed",
+      `verifier timed out after ${timeoutMs}ms`,
+    ));
+  } else if (
+    status !== "completed"
+    && !(structuredReview && reviewArtifact?.verdict !== "approved")
+  ) {
+    const message = summary
+      ?? (controller.signal.aborted
+        ? `verifier timed out after ${timeoutMs}ms`
+        : "verifier did not complete");
+    issues.push(adapterIssue(adapter.id, "verify.adapter_failed", message));
+  }
+
+  if (!issues.some((issue) => issue.severity === "error")) {
     return {
       agentId: adapter.id,
       eventCount,
-      issues: [],
+      issues,
       ...(summary !== undefined ? { summary } : {}),
       ...(judgments !== undefined && judgments.length > 0 ? { judgments } : {}),
       ...(implementationDeviations !== undefined && implementationDeviations.length > 0
         ? { implementationDeviations }
         : {}),
+      ...(reviewArtifact !== undefined ? { reviewArtifact } : {}),
     };
   }
 
-  const message = terminalError
-    ?? summary
-    ?? (controller.signal.aborted ? `verifier timed out after ${options.timeoutMs ?? 120_000}ms` : "verifier did not complete");
   return {
     agentId: adapter.id,
     eventCount,
-    issues: [adapterIssue(adapter.id, "verify.adapter_failed", message)],
+    issues,
     ...(summary !== undefined ? { summary } : {}),
     ...(judgments !== undefined && judgments.length > 0 ? { judgments } : {}),
     ...(implementationDeviations !== undefined && implementationDeviations.length > 0
       ? { implementationDeviations }
       : {}),
+    ...(reviewArtifact !== undefined ? { reviewArtifact } : {}),
   };
 }
 
@@ -635,12 +838,40 @@ function verifierAgentTask(
   options: LocalVerifierOptions,
   adapter: AgentAdapter,
   adapterSpecs: readonly EvaluationSpec[],
+  boundary: CollectedReviewBoundary | undefined,
+  verificationResults: readonly CommandResult[],
 ): AgentTask {
   const task = options.task;
   const acceptanceLines = adapterSpecs.flatMap((spec) => [
     `Evaluation ${spec.id} (${spec.mode}): ${spec.description}`,
     ...(spec.acceptance !== undefined ? [`  Acceptance: ${spec.acceptance}`] : []),
   ]);
+  const deterministicResults = [
+    ...run.command_results,
+    ...verificationResults,
+  ].map((result) => ({
+    command: result.command,
+    exit_code: result.exitCode,
+    summary: singleLine(
+      result.stderr.trim()
+      || result.stdout.trim()
+      || `exit code ${result.exitCode}`,
+    ),
+  }));
+  const kimiReviewInput = boundary?.sanitized_diff === undefined
+    ? undefined
+    : {
+        schema_version: 1 as const,
+        task: task?.prompt ?? run.task_id,
+        evaluation_criteria: adapterSpecs.map((spec) => ({
+          id: spec.id,
+          requirement: spec.acceptance ?? spec.description,
+        })),
+        changed_paths: boundary.boundary.changed_paths,
+        diff: boundary.sanitized_diff,
+        deterministic_results: deterministicResults,
+        evidence_refs: [],
+      };
   return {
     run_id: `${run.run_id}_verify_${sanitizeId(adapter.id)}`,
     task_id: task?.task_id ?? run.task_id,
@@ -661,6 +892,9 @@ function verifierAgentTask(
       subject_agent_id: run.agent_id,
       subject_outcome: run.outcome,
       ...(adapterSpecs.length > 0 ? { evaluation_specs: adapterSpecs } : {}),
+      ...(kimiReviewInput !== undefined
+        ? { kimi_review_input: kimiReviewInput }
+        : {}),
     },
   };
 }
@@ -721,7 +955,7 @@ function summarize(
 }
 
 function singleLine(value: string): string {
-  return value.replace(/\s+/g, " ").slice(0, 240);
+  return truncateUnicodeSafe(value.replace(/\s+/g, " "), 240);
 }
 
 function sanitizeId(value: string): string {
@@ -737,11 +971,13 @@ function donePayload(payload: HermesEvent["payload"]): {
   result_summary?: string;
   evaluation_judgments?: unknown;
   implementation_deviations?: unknown;
+  review?: unknown;
 } {
   return payload as {
     status: "completed" | "failed" | "cancelled" | "expired";
     result_summary?: string;
     evaluation_judgments?: unknown;
     implementation_deviations?: unknown;
+    review?: unknown;
   };
 }

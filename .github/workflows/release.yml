@@ -34,6 +34,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Changeset coverage
+        env:
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          node scripts/check-changeset-coverage.mjs --self-test
+          node scripts/check-changeset-coverage.mjs
+
       # pnpm version comes from package.json's packageManager field
       - uses: pnpm/action-setup@v6
 

@@ -117,6 +117,38 @@ export const ImplementationDeviation = z
   .strict();
 export type ImplementationDeviation = z.infer<typeof ImplementationDeviation>;
 
+export const ReviewArtifact = z.object({
+  schema_version: z.literal(1),
+  reviewer_agent_id: z.string().min(1),
+  verdict: z.enum([
+    "approved",
+    "changes_requested",
+    "blocked",
+    "inconclusive",
+  ]),
+  risk: z.enum(["read_only", "low", "medium", "high", "forbidden"]),
+  markdown: z.string().min(1),
+  judgments: z.array(z.object({
+    id: z.string().min(1),
+    pass: z.boolean(),
+    severity: z.enum(["warning", "error"]),
+    summary: z.string().min(1),
+  }).strict()).max(100),
+  findings: z.array(z.object({
+    rule_id: z.string().min(1),
+    fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+    severity: z.enum(["info", "warning", "error"]),
+    message: z.string().min(1),
+    file: z.string().optional(),
+    line: z.number().int().positive().optional(),
+    evidence: z.string().optional(),
+  }).strict()).max(100),
+  recommended_actions: z.array(z.string().min(1)).max(100),
+  evidence_refs: z.array(z.string().min(1)).max(100),
+  runtime_identity: z.record(z.unknown()),
+}).strict();
+export type ReviewArtifact = z.infer<typeof ReviewArtifact>;
+
 export const Verdict = z.object({
   pass: z.boolean(),
   score: z.number().min(0).max(1),
@@ -132,6 +164,7 @@ export const Verdict = z.object({
   /** Per-evaluation-spec results (explicit task specs plus implicit legacy specs). */
   evaluations: z.array(EvaluationResult).optional(),
   implementation_deviations: z.array(ImplementationDeviation).max(100).optional(),
+  review_artifacts: z.array(ReviewArtifact).max(100).optional(),
 });
 export type Verdict = z.infer<typeof Verdict>;
 
@@ -257,6 +290,7 @@ export const CompletedTask = z.object({
   verify_issues: z.array(IssueAudit).optional(),
   verify_commands: z.array(CommandAudit).optional(),
   evaluations: z.array(EvaluationResult).optional(),
+  review_artifacts: z.array(ReviewArtifact).max(100).optional(),
   /** Feedback derived after each failed attempt, in attempt order. */
   iteration_feedback: z.array(IterationFeedback).optional(),
   changed_files: z.array(z.string()).optional(),
@@ -400,6 +434,31 @@ export const LoopEngineConfig = z.object({
 export type LoopEngineConfig = z.infer<typeof LoopEngineConfig>;
 
 // ── Loop events (Hermes-compatible) ────────────────────────────────────
+
+export const LoopProfileRoutingEvidence = z.object({
+  profile_name: z.string().min(1),
+  reason: z.string().min(1),
+  builder_agent_id: z.string().min(1),
+  evaluator_agent_id: z.string().min(1),
+  designer_agent_id: z.string().min(1).optional(),
+  builder_identity: z.record(z.unknown()),
+  evaluator_identity: z.record(z.unknown()),
+  designer_identity: z.record(z.unknown()).optional(),
+  independent: z.boolean(),
+  independence_reason: z.string().min(1),
+}).passthrough();
+export interface LoopProfileRoutingEvidence {
+  profile_name: string;
+  reason: string;
+  builder_agent_id: string;
+  evaluator_agent_id: string;
+  designer_agent_id?: string;
+  builder_identity: object;
+  evaluator_identity: object;
+  designer_identity?: object;
+  independent: boolean;
+  independence_reason: string;
+}
 
 export const LoopEventType = z.enum([
   "loop.started",

@@ -50,20 +50,299 @@ export const RepoConfigRole = z.enum([
 ]);
 export type RepoConfigRole = z.infer<typeof RepoConfigRole>;
 
-export const RepoConfig = z
+const CREDENTIAL_PATTERNS: readonly RegExp[] = [
+  /\b(?:authorization)\s*:\s*bearer\s+\S+/i,
+  /(?:^|[\s"'`])(?:[a-z0-9_-]*(?:password|passwd|secret|token|api[_-]?key|private[_-]?key)[a-z0-9_-]*)\s*(?:=|:)\s*\S+/i,
+  /\b[a-z][a-z0-9+.-]*:\/\/[^/\s:@]+:[^/\s@]+@/i,
+  /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
+  /\b(?:github_pat_|gh[pousr]_)[A-Za-z0-9_-]{20,}\b/,
+] as const;
+
+function hasCredentialShape(value: string): boolean {
+  return CREDENTIAL_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+const ConfigString = z.string().superRefine((value, context) => {
+  if (hasCredentialShape(value)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "repository config must not contain credential-shaped values",
+    });
+  }
+});
+
+const NonEmptyConfigString = ConfigString.refine(
+  (value) => value.length > 0 && value.trim() === value,
+  "must be a non-empty string without surrounding whitespace",
+);
+
+function uniqueStringList(options: { min?: number } = {}) {
+  const schema =
+    options.min === undefined
+      ? z.array(NonEmptyConfigString)
+      : z.array(NonEmptyConfigString).min(options.min);
+  return schema.superRefine((values, context) => {
+    if (new Set(values).size !== values.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "list must not contain duplicate values",
+      });
+    }
+  });
+}
+
+const RepoConfigCommonV1 = {
+  product: z.string().min(1),
+  domain: z.string().min(1).optional(),
+  role: RepoConfigRole,
+  priority: z.number().min(0).max(100).optional(),
+  default_branch: z.string().min(1),
+  verify_command: z.string().min(1),
+  build_command: z.string().optional(),
+  staging_command: z.string().optional(),
+  production_environment: z.string().optional(),
+} as const;
+
+const RepoConfigCommonV2 = {
+  product: NonEmptyConfigString,
+  domain: NonEmptyConfigString.optional(),
+  role: RepoConfigRole,
+  priority: z.number().min(0).max(100).optional(),
+  default_branch: NonEmptyConfigString,
+  verify_command: NonEmptyConfigString,
+  build_command: ConfigString.optional(),
+  staging_command: ConfigString.optional(),
+  production_environment: ConfigString.optional(),
+} as const;
+
+export const RepoConfigV1 = z
   .object({
     schema_version: z.literal(1),
-    product: z.string().min(1),
-    domain: z.string().min(1).optional(),
-    role: RepoConfigRole,
-    priority: z.number().min(0).max(100).optional(),
-    default_branch: z.string().min(1),
-    verify_command: z.string().min(1),
-    build_command: z.string().optional(),
-    staging_command: z.string().optional(),
-    production_environment: z.string().optional(),
+    ...RepoConfigCommonV1,
   })
   .strict();
+export type RepoConfigV1 = z.infer<typeof RepoConfigV1>;
+
+const SECRET_ARG_PATTERN =
+  /^-{1,2}(?:password|passwd|secret|token|api[_-]?key|private[_-]?key)(?:=|$)/i;
+const ABSOLUTE_ARG_PATH_PATTERN =
+  /^(?:\/|~\/|[A-Za-z]:[\\/])|=(?:\/|~\/|[A-Za-z]:[\\/])/;
+
+export const CommandArgv = z
+  .array(NonEmptyConfigString)
+  .min(1)
+  .max(64)
+  .superRefine((argv, context) => {
+    for (const [index, argument] of argv.entries()) {
+      if (!SECRET_ARG_PATTERN.test(argument)) continue;
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [index],
+        message:
+          "deploy argv must not contain credential flags; use an allowlisted environment name",
+      });
+    }
+    for (const [index, argument] of argv.entries()) {
+      if (!ABSOLUTE_ARG_PATH_PATTERN.test(argument)) continue;
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [index],
+        message:
+          "deploy argv must not contain absolute filesystem paths; use repository-relative paths or an allowlisted environment name",
+      });
+    }
+  });
+export type CommandArgv = z.infer<typeof CommandArgv>;
+
+export const AutonomyRepoPolicy = z
+  .object({
+    max_auto_risk: z.enum(["R1", "R2"]),
+    require_independent_evaluator: z.boolean(),
+    max_builder_iterations: z.number().int().min(1).max(10),
+    max_review_rounds: z.number().int().min(1).max(10),
+    max_wall_time_minutes: z.number().int().min(1).max(1_440),
+    max_no_progress_rounds: z.number().int().min(1).max(5),
+  })
+  .strict();
+export type AutonomyRepoPolicy = z.infer<typeof AutonomyRepoPolicy>;
+
+export const GitRepoPolicy = z
+  .object({
+    remote: NonEmptyConfigString,
+    branch_prefix: NonEmptyConfigString,
+    merge_strategy: z.literal("squash"),
+    auto_merge: z.boolean(),
+    protected_branches: uniqueStringList({ min: 1 }),
+  })
+  .strict()
+  .superRefine((git, context) => {
+    if (git.protected_branches.includes(git.branch_prefix)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["branch_prefix"],
+        message: "branch_prefix cannot equal a protected branch",
+      });
+    }
+  });
+export type GitRepoPolicy = z.infer<typeof GitRepoPolicy>;
+
+export const VerificationProfiles = z
+  .object({
+    quick: uniqueStringList({ min: 1 }),
+    standard: uniqueStringList({ min: 1 }),
+    release: uniqueStringList({ min: 1 }),
+  })
+  .strict();
+export type VerificationProfiles = z.infer<typeof VerificationProfiles>;
+
+export const DEPLOY_CHANGE_TYPES = [
+  "docs",
+  "tests",
+  "lint",
+  "source",
+  "dependencies",
+  "ci",
+  "database_migrations",
+  "production_config",
+  "product_scope",
+] as const;
+
+export const DeployChangeType = z.enum(DEPLOY_CHANGE_TYPES);
+export type DeployChangeType = z.infer<typeof DeployChangeType>;
+
+const FORBIDDEN_DEPLOY_ENVIRONMENT = [
+  /^APPROVAL(?:_|$)/,
+  /PRIVATE_KEY/,
+  /^TELEGRAM(?:_|$)/,
+  /^SLACK(?:_|$)/,
+  /^GH_TOKEN$/,
+  /^GITHUB_TOKEN$/,
+  /^CI(?:_|$)/,
+] as const;
+
+export const DeployEnvironmentName = z
+  .string()
+  .regex(/^[A-Z_][A-Z0-9_]{0,127}$/)
+  .refine(
+    (name) =>
+      !FORBIDDEN_DEPLOY_ENVIRONMENT.some((pattern) => pattern.test(name)),
+    "approval, notification, CI, and private-key environment names are forbidden",
+  );
+export type DeployEnvironmentName = z.infer<typeof DeployEnvironmentName>;
+
+const ClockTime = z
+  .string()
+  .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, "time must use 24-hour HH:MM format");
+
+function isIanaTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const IanaTimeZone = NonEmptyConfigString.refine(
+  isIanaTimeZone,
+  "timezone must be a valid IANA time zone",
+);
+
+export const FreezeWindow = z
+  .object({
+    timezone: IanaTimeZone,
+    days: z
+      .array(z.number().int().min(0).max(6))
+      .min(1)
+      .superRefine((days, context) => {
+        if (new Set(days).size !== days.length) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "freeze-window days must be unique",
+          });
+        }
+      }),
+    start: ClockTime,
+    end: ClockTime,
+  })
+  .strict();
+export type FreezeWindow = z.infer<typeof FreezeWindow>;
+
+export const DeployTargetPolicy = z
+  .object({
+    enabled: z.boolean(),
+    command: CommandArgv,
+    verify_command: CommandArgv,
+    health_check: CommandArgv,
+    rollback: CommandArgv,
+    timeout_ms: z.number().int().min(1_000).max(1_800_000),
+    health_timeout_ms: z.number().int().min(1_000).max(600_000),
+    allowed_change_types: z
+      .array(DeployChangeType)
+      .min(1)
+      .superRefine((types, context) => {
+        if (new Set(types).size !== types.length) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "allowed_change_types must not contain duplicates",
+          });
+        }
+      }),
+    allowed_paths: uniqueStringList({ min: 1 }),
+    forbidden_paths: uniqueStringList().default([]),
+    allowed_base_branches: uniqueStringList({ min: 1 }),
+    allowed_environment: z
+      .array(DeployEnvironmentName)
+      .max(64)
+      .superRefine((names, context) => {
+        if (new Set(names).size !== names.length) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "allowed_environment must not contain duplicates",
+          });
+        }
+      })
+      .default([]),
+    freeze_windows: z.array(FreezeWindow).default([]),
+  })
+  .strict()
+  .superRefine((target, context) => {
+    const forbidden = new Set(target.forbidden_paths);
+    for (const path of target.allowed_paths) {
+      if (!forbidden.has(path)) continue;
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["allowed_paths"],
+        message: `path "${path}" cannot be both allowed and forbidden`,
+      });
+    }
+  });
+export type DeployTargetPolicy = z.infer<typeof DeployTargetPolicy>;
+
+export const DeployRepoPolicy = z
+  .object({
+    staging: DeployTargetPolicy.optional(),
+    production: DeployTargetPolicy.optional(),
+  })
+  .strict();
+export type DeployRepoPolicy = z.infer<typeof DeployRepoPolicy>;
+
+export const RepoConfigV2 = z
+  .object({
+    schema_version: z.literal(2),
+    ...RepoConfigCommonV2,
+    autonomy: AutonomyRepoPolicy,
+    git: GitRepoPolicy,
+    verification: VerificationProfiles,
+    deploy: DeployRepoPolicy.optional(),
+  })
+  .strict();
+export type RepoConfigV2 = z.infer<typeof RepoConfigV2>;
+
+export const RepoConfig = z.discriminatedUnion("schema_version", [
+  RepoConfigV1,
+  RepoConfigV2,
+]);
 export type RepoConfig = z.infer<typeof RepoConfig>;
 
 // ── .osstack/policy.yaml — PolicyProfile (P-003) ────────────────────────────

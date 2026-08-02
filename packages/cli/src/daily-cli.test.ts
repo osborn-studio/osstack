@@ -5,8 +5,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   appendDependencyObligationEventV2,
+  createAutonomyRun,
+  getAutonomyRun,
   KanbanRepository,
   registerDependencyRegistryScopeV2,
+  transitionAutonomyRun,
   createProbeSession,
   openDb,
   recordKnowledgeHygieneRun,
@@ -437,6 +440,74 @@ describe("daily CLI", () => {
 });
 
 describe("runDailyBrief (core extracted for the daemon)", () => {
+  it("includes guarded reliability and prioritizes concrete Owner attention", async () => {
+    const registry = await seedRegistry();
+    const statePath = join(tmp, "home", "state.db");
+    await mkdir(join(tmp, "home"), { recursive: true });
+    const database = openDb({ path: statePath, minFreeBytes: 0 });
+    try {
+      createAutonomyRun(database, statePath, {
+        autonomy_run_id: "run-owner-attention",
+        transition_id: "run-owner-attention:1",
+        task_id: "task-owner-attention",
+        repo_id: "withgh",
+        workspace_path: join(tmp, "withgh"),
+        contract_sha256: "a".repeat(64),
+        budget: {
+          max_builder_iterations: 3,
+          max_review_rounds: 3,
+          max_wall_time_ms: 5_400_000,
+          max_no_progress_rounds: 2,
+        },
+        attempt: { engine_context: {} },
+        event: { kind: "queued" },
+        occurred_at: Date.parse("2026-07-11T08:00:00Z") / 1_000,
+      });
+      const current = getAutonomyRun(database, "run-owner-attention")!;
+      transitionAutonomyRun(database, statePath, {
+        autonomy_run_id: current.autonomy_run_id,
+        transition_id: "run-owner-attention:2",
+        expected_revision: current.revision,
+        to_state: "awaiting_approval",
+        event: { kind: "awaiting_approval" },
+        patch: {
+          preflight_risk: { level: "R3" },
+          approval: { request: { decision: "pending" } },
+        },
+        occurred_at: Date.parse("2026-07-11T08:30:00Z") / 1_000,
+      });
+    } finally {
+      database.close();
+    }
+
+    const run = await runDailyBrief({
+      registryPath: registry,
+      runner: makeRunner([], "success"),
+      now: () => new Date("2026-07-11T09:00:00Z"),
+    });
+
+    expect(
+      run.brief.autonomy?.attention.awaiting_approval.map(
+        (item) => item.run_id,
+      ),
+    ).toEqual(["run-owner-attention"]);
+    expect(run.brief.owner_decisions?.[0]).toMatchObject({
+      command: "autonomy.awaiting_approval",
+      run: {
+        argv: [
+          "osstack",
+          "autonomy",
+          "status",
+          "run-owner-attention",
+          "--json",
+        ],
+      },
+    });
+    const markdown = renderDailyMarkdown(run.brief);
+    expect(markdown).toContain("## Guarded autonomy reliability");
+    expect(markdown).toContain("- awaiting_approval: 1");
+  });
+
   it("writes the dated brief and returns a result byte-identical to `daily --json`", async () => {
     const registry = await seedRegistry();
     const runner = makeRunner([42], "failure");

@@ -1,5 +1,30 @@
 # @osstack/core
 
+## 0.13.0
+
+### Minor Changes
+
+- 4fb11c0: Add project-allowlisted deployment, automatic rollback and freeze, and Mac Mini guarded-autonomy operations.
+- b99bbfb: Add durable R0-R4 guarded autonomy and automated R1/R2 GitHub delivery,
+  including exact-base candidate pinning, diff-bound R3 approval, SHA-bound
+  merged-PR recovery, and fail-closed dependency/security validation.
+
+### Patch Changes
+
+- Updated dependencies [4fb11c0]
+- Updated dependencies [b99bbfb]
+  - @osstack/protocol@0.13.0
+
+## Unreleased
+
+### Minor Changes
+
+- Add repository policy schema v2 plus append-only autonomy run, transition,
+  approval, and decision persistence with deterministic restart replay.
+- Add strict project deployment allowlists, durable deployment/freeze state,
+  restart-safe autonomy projections, append-only rollback drills, and a
+  redacted Owner notification outbox.
+
 ## 0.12.0
 
 ### Minor Changes

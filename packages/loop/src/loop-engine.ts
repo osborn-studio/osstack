@@ -13,6 +13,7 @@ import {
 import {
   DEFAULT_RULES,
   PolicyEngine,
+  PIIRedactor,
   routeCapability,
   type PolicyCandidate,
   type PolicyDecision,
@@ -46,10 +47,13 @@ import {
   type IterationFeedback,
   type LoopEvent,
   type LoopKnowledgeTrace,
+  type LoopProfileRoutingEvidence,
   type PublishedAssetEvidence,
-  type Task,
+  type ReviewArtifact,
+  Task,
   type Verdict,
 } from "./types.js";
+import { truncateUnicodeSafe } from "./unicode.js";
 
 export interface LoopRunOptions {
   loopId?: string;
@@ -57,6 +61,9 @@ export interface LoopRunOptions {
   stateFilePath?: string;
   markdownPath?: string;
   sources?: string[];
+  /** Exact caller-supplied tasks. Guarded delivery uses this to avoid
+   * broadening a signed scope by scanning an ambient task queue. */
+  inputTasks?: readonly Task[];
   executeCommand?: string;
   verifyCommands?: string[];
   goalCommand?: string;
@@ -71,6 +78,7 @@ export interface LoopRunOptions {
   autoAgent?: boolean;
   verifierAgentIds?: string[];
   enforceRoleSeparation?: boolean;
+  profileRouting?: LoopProfileRoutingEvidence;
   artifactVerification?: ArtifactVerificationOptions;
   /** Discovery governance policy. When absent, all discovered tasks execute (legacy behavior). */
   discoveryPolicy?: DiscoveryPolicy;
@@ -650,7 +658,9 @@ export class LoopEngine {
 
   private async discover(workspacePath: string): Promise<Task[]> {
     const sources = this.options.sources ?? ["git_diff", "task_queue"];
-    const tasks: Task[] = [];
+    const tasks: Task[] = (this.options.inputTasks ?? []).map(
+      (task) => Task.parse(task),
+    );
     for (const source of sources) {
       const parsed = DiscoverSource.safeParse(source);
       if (!parsed.success) continue;
@@ -670,6 +680,7 @@ export class LoopEngine {
     const decisions: string[] = [];
     let finalRun: AgentRun | null = null;
     let finalVerdict: Verdict | null = null;
+    let finalReviewArtifacts: ReviewArtifact[] | undefined;
     let outcome: CompletedTask["outcome"] = "failed";
     let iterations = 0;
     // Usage accrues across every iteration of this task, not just the last run.
@@ -720,6 +731,18 @@ export class LoopEngine {
           routing_reason: agentSelection.reason,
           ...(agentSelection.policyDecision !== undefined ? { policy: policyEventPayload(agentSelection.policyDecision) } : {}),
           ...(plan.worktree_path !== undefined ? { worktree_path: plan.worktree_path } : {}),
+          ...(this.options.profileRouting !== undefined
+            ? {
+                profile_name: this.options.profileRouting.profile_name,
+                profile_reason: this.options.profileRouting.reason,
+                builder_identity: redactProfileIdentity(
+                  this.options.profileRouting.builder_identity,
+                ),
+                independent: this.options.profileRouting.independent,
+                independence_reason:
+                  this.options.profileRouting.independence_reason,
+              }
+            : {}),
           iteration,
         });
         decisions.push(`${task.task_id}: selected ${plan.agent_id} - ${agentSelection.reason}`);
@@ -784,6 +807,7 @@ export class LoopEngine {
           });
         }
         finalEvidence = await collectTaskGitEvidence(runWorkspacePath);
+        finalReviewArtifacts = redactReviewArtifacts(finalVerdict.review_artifacts);
         const failedEvaluationIds = (finalVerdict.evaluations ?? [])
           .filter((evaluation) => !evaluation.pass)
           .map((evaluation) => evaluation.spec_id);
@@ -798,10 +822,24 @@ export class LoopEngine {
           } : {}),
           reviewer_agent_id: finalVerdict.reviewer_agent_id,
           summary: finalVerdict.summary,
+          ...(finalReviewArtifacts !== undefined
+            ? { review_artifacts: finalReviewArtifacts }
+            : {}),
           changed_files: finalEvidence.changedFiles,
           diff_summary: finalEvidence.diffSummary,
           ...(finalEvidence.commitHash !== undefined ? { commit_hash: finalEvidence.commitHash } : {}),
           ...(worktree !== undefined ? { worktree_path: worktree.worktreePath } : {}),
+          ...(this.options.profileRouting !== undefined
+            ? {
+                profile_name: this.options.profileRouting.profile_name,
+                evaluator_identity: redactProfileIdentity(
+                  this.options.profileRouting.evaluator_identity,
+                ),
+                independent: this.options.profileRouting.independent,
+                independence_reason:
+                  this.options.profileRouting.independence_reason,
+              }
+            : {}),
           iteration,
         });
         for (const deviation of finalVerdict.implementation_deviations ?? []) {
@@ -936,6 +974,9 @@ export class LoopEngine {
             : {}),
           ...(finalVerdict.evaluations !== undefined && finalVerdict.evaluations.length > 0
             ? { evaluations: finalVerdict.evaluations }
+            : {}),
+          ...(finalReviewArtifacts !== undefined
+            ? { review_artifacts: finalReviewArtifacts }
             : {}),
         } : {}),
         ...(feedbackHistory.length > 0 ? { iteration_feedback: feedbackHistory } : {}),
@@ -1190,6 +1231,16 @@ export class LoopEngine {
   }
 }
 
+function redactProfileIdentity(
+  identity: object,
+): Record<string, unknown> {
+  const redacted = new PIIRedactor().redactDeep(identity);
+  if (redacted.stats.timed_out) {
+    throw new Error("profile runtime identity redaction timed out");
+  }
+  return redacted.value as Record<string, unknown>;
+}
+
 interface AgentSelection {
   agentId: string;
   reason: string;
@@ -1358,6 +1409,21 @@ function issueAudit(issue: Issue): NonNullable<CompletedTask["verify_issues"]>[n
   };
 }
 
+function redactReviewArtifacts(
+  artifacts: Verdict["review_artifacts"],
+): ReviewArtifact[] | undefined {
+  if (artifacts === undefined || artifacts.length === 0) return undefined;
+  const redacted = new PIIRedactor().redactDeep(artifacts);
+  if (redacted.stats.timed_out) {
+    throw new Error(
+      `review artifact redaction timed out${redacted.stats.timed_out_on !== undefined
+        ? ` on ${redacted.stats.timed_out_on}`
+        : ""}`,
+    );
+  }
+  return redacted.value;
+}
+
 function completionErrorSummary(run: AgentRun | null, verdict: Verdict | null): string {
   const firstIssue = verdict?.issues[0];
   if (firstIssue !== undefined) return singleLine(firstIssue.message);
@@ -1367,11 +1433,11 @@ function completionErrorSummary(run: AgentRun | null, verdict: Verdict | null): 
 }
 
 function singleLine(value: string): string {
-  return value.replace(/\s+/g, " " ).trim().slice(0, 240);
+  return truncateUnicodeSafe(value.replace(/\s+/g, " ").trim(), 240);
 }
 
 function summarizeGoalResult(exitCode: number, stdout: string, stderr: string): string {
-  const output = (stderr.trim() || stdout.trim()).replace(/\s+/g, " ").slice(0, 240);
+  const output = truncateUnicodeSafe((stderr.trim() || stdout.trim()).replace(/\s+/g, " "), 240);
   if (exitCode === 0) return output === "" ? "goal command exited 0" : output;
   return output === "" ? `goal command exited ${exitCode}` : output;
 }

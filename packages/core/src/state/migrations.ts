@@ -857,6 +857,371 @@ export const MIGRATIONS: readonly Migration[] = [
         ON knowledge_hygiene_plan_projection(repo_id, state, updated_at);
     `,
   },
+  {
+    id: 17,
+    name: "guarded_autonomy_runs",
+    sql: `
+      CREATE TABLE autonomy_run_transitions (
+        transition_id        TEXT PRIMARY KEY,
+        autonomy_run_id      TEXT NOT NULL,
+        seq                  INTEGER NOT NULL CHECK (seq >= 1),
+        from_state           TEXT CHECK (
+          from_state IS NULL OR from_state IN (
+            'queued','classifying','awaiting_approval','blocked','preparing',
+            'building','verifying','repairing','reviewing','post_classifying',
+            'candidate_proof','committing','pushing','opening_pr','waiting_ci',
+            'merging','final_proof','blocked_delivery','delivery_evidence_failed',
+            'escalated','cancelled','completed'
+          )
+        ),
+        to_state             TEXT NOT NULL CHECK (to_state IN (
+          'queued','classifying','awaiting_approval','blocked','preparing',
+          'building','verifying','repairing','reviewing','post_classifying',
+          'candidate_proof','committing','pushing','opening_pr','waiting_ci',
+          'merging','final_proof','blocked_delivery','delivery_evidence_failed',
+          'escalated','cancelled','completed'
+        )),
+        event_json           TEXT NOT NULL,
+        contract_decision_id TEXT REFERENCES contract_approval_decisions(decision_id),
+        occurred_at          REAL NOT NULL,
+        UNIQUE (autonomy_run_id, seq)
+      );
+      CREATE INDEX idx_autonomy_run_transitions_run
+        ON autonomy_run_transitions(autonomy_run_id, seq);
+      CREATE TRIGGER autonomy_run_transitions_no_update
+        BEFORE UPDATE ON autonomy_run_transitions
+        BEGIN
+          SELECT RAISE(ABORT, 'autonomy run transitions are append-only');
+        END;
+      CREATE TRIGGER autonomy_run_transitions_no_delete
+        BEFORE DELETE ON autonomy_run_transitions
+        BEGIN
+          SELECT RAISE(ABORT, 'autonomy run transitions are append-only');
+        END;
+
+      CREATE TABLE autonomy_run_projection (
+        autonomy_run_id      TEXT PRIMARY KEY,
+        task_id              TEXT NOT NULL,
+        repo_id              TEXT NOT NULL,
+        workspace_path       TEXT NOT NULL,
+        state                TEXT NOT NULL CHECK (state IN (
+          'queued','classifying','awaiting_approval','blocked','preparing',
+          'building','verifying','repairing','reviewing','post_classifying',
+          'candidate_proof','committing','pushing','opening_pr','waiting_ci',
+          'merging','final_proof','blocked_delivery','delivery_evidence_failed',
+          'escalated','cancelled','completed'
+        )),
+        revision             INTEGER NOT NULL CHECK (revision >= 1),
+        contract_sha256      TEXT NOT NULL CHECK (
+          length(contract_sha256) = 64 AND contract_sha256 NOT GLOB '*[^0-9a-f]*'
+        ),
+        diff_sha256          TEXT CHECK (
+          diff_sha256 IS NULL OR (
+            length(diff_sha256) = 64 AND diff_sha256 NOT GLOB '*[^0-9a-f]*'
+          )
+        ),
+        preflight_risk_json  TEXT,
+        post_diff_risk_json  TEXT,
+        approval_json        TEXT,
+        routing_json         TEXT,
+        budget_json          TEXT NOT NULL,
+        attempt_json         TEXT NOT NULL,
+        candidate_proof_json TEXT,
+        git_delivery_json    TEXT,
+        final_proof_json     TEXT,
+        last_transition_id   TEXT NOT NULL
+          REFERENCES autonomy_run_transitions(transition_id),
+        created_at           REAL NOT NULL,
+        updated_at           REAL NOT NULL
+      );
+      CREATE INDEX idx_autonomy_run_projection_repo_state
+        ON autonomy_run_projection(repo_id, state, updated_at);
+      CREATE UNIQUE INDEX idx_autonomy_run_projection_one_active_repo
+        ON autonomy_run_projection(repo_id)
+        WHERE state NOT IN (
+          'blocked','delivery_evidence_failed','escalated','cancelled','completed'
+        );
+    `,
+  },
+  {
+    id: 18,
+    name: "guarded_deploy_state",
+    sql: `
+      DROP TRIGGER autonomy_run_transitions_no_update;
+      DROP TRIGGER autonomy_run_transitions_no_delete;
+      DROP INDEX idx_autonomy_run_transitions_run;
+      DROP INDEX idx_autonomy_run_projection_repo_state;
+      DROP INDEX idx_autonomy_run_projection_one_active_repo;
+
+      ALTER TABLE autonomy_run_projection
+        RENAME TO autonomy_run_projection_v17;
+      ALTER TABLE autonomy_run_transitions
+        RENAME TO autonomy_run_transitions_v17;
+
+      CREATE TABLE autonomy_run_transitions (
+        transition_id        TEXT PRIMARY KEY,
+        autonomy_run_id      TEXT NOT NULL,
+        seq                  INTEGER NOT NULL CHECK (seq >= 1),
+        from_state           TEXT CHECK (
+          from_state IS NULL OR from_state IN (
+            'queued','classifying','awaiting_approval','blocked','preparing',
+            'building','verifying','repairing','reviewing','post_classifying',
+            'candidate_proof','committing','pushing','opening_pr','waiting_ci',
+            'merging','deploying_staging','verifying_staging',
+            'deploying_production','health_checking','rolling_back',
+            'deploy_frozen','final_proof','blocked_delivery',
+            'delivery_evidence_failed','escalated','cancelled','completed'
+          )
+        ),
+        to_state             TEXT NOT NULL CHECK (to_state IN (
+          'queued','classifying','awaiting_approval','blocked','preparing',
+          'building','verifying','repairing','reviewing','post_classifying',
+          'candidate_proof','committing','pushing','opening_pr','waiting_ci',
+          'merging','deploying_staging','verifying_staging',
+          'deploying_production','health_checking','rolling_back',
+          'deploy_frozen','final_proof','blocked_delivery',
+          'delivery_evidence_failed','escalated','cancelled','completed'
+        )),
+        event_json           TEXT NOT NULL,
+        contract_decision_id TEXT
+          REFERENCES contract_approval_decisions(decision_id),
+        occurred_at          REAL NOT NULL,
+        UNIQUE (autonomy_run_id, seq)
+      );
+      INSERT INTO autonomy_run_transitions (
+        transition_id, autonomy_run_id, seq, from_state, to_state, event_json,
+        contract_decision_id, occurred_at
+      ) SELECT
+        transition_id, autonomy_run_id, seq, from_state, to_state, event_json,
+        contract_decision_id, occurred_at
+      FROM autonomy_run_transitions_v17;
+
+      CREATE TABLE autonomy_run_projection (
+        autonomy_run_id      TEXT PRIMARY KEY,
+        task_id              TEXT NOT NULL,
+        repo_id              TEXT NOT NULL,
+        workspace_path       TEXT NOT NULL,
+        state                TEXT NOT NULL CHECK (state IN (
+          'queued','classifying','awaiting_approval','blocked','preparing',
+          'building','verifying','repairing','reviewing','post_classifying',
+          'candidate_proof','committing','pushing','opening_pr','waiting_ci',
+          'merging','deploying_staging','verifying_staging',
+          'deploying_production','health_checking','rolling_back',
+          'deploy_frozen','final_proof','blocked_delivery',
+          'delivery_evidence_failed','escalated','cancelled','completed'
+        )),
+        revision             INTEGER NOT NULL CHECK (revision >= 1),
+        contract_sha256      TEXT NOT NULL CHECK (
+          length(contract_sha256) = 64 AND
+          contract_sha256 NOT GLOB '*[^0-9a-f]*'
+        ),
+        diff_sha256          TEXT CHECK (
+          diff_sha256 IS NULL OR (
+            length(diff_sha256) = 64 AND
+            diff_sha256 NOT GLOB '*[^0-9a-f]*'
+          )
+        ),
+        preflight_risk_json  TEXT,
+        post_diff_risk_json  TEXT,
+        approval_json        TEXT,
+        routing_json         TEXT,
+        budget_json          TEXT NOT NULL,
+        attempt_json         TEXT NOT NULL,
+        candidate_proof_json TEXT,
+        git_delivery_json    TEXT,
+        deploy_json          TEXT,
+        rollback_json        TEXT,
+        final_proof_json     TEXT,
+        last_transition_id   TEXT NOT NULL
+          REFERENCES autonomy_run_transitions(transition_id),
+        created_at           REAL NOT NULL,
+        updated_at           REAL NOT NULL
+      );
+      INSERT INTO autonomy_run_projection (
+        autonomy_run_id, task_id, repo_id, workspace_path, state, revision,
+        contract_sha256, diff_sha256, preflight_risk_json,
+        post_diff_risk_json, approval_json, routing_json, budget_json,
+        attempt_json, candidate_proof_json, git_delivery_json,
+        deploy_json, rollback_json, final_proof_json, last_transition_id,
+        created_at, updated_at
+      ) SELECT
+        autonomy_run_id, task_id, repo_id, workspace_path, state, revision,
+        contract_sha256, diff_sha256, preflight_risk_json,
+        post_diff_risk_json, approval_json, routing_json, budget_json,
+        attempt_json, candidate_proof_json, git_delivery_json,
+        NULL, NULL, final_proof_json, last_transition_id, created_at, updated_at
+      FROM autonomy_run_projection_v17;
+
+      DROP TABLE autonomy_run_projection_v17;
+      DROP TABLE autonomy_run_transitions_v17;
+
+      CREATE INDEX idx_autonomy_run_transitions_run
+        ON autonomy_run_transitions(autonomy_run_id, seq);
+      CREATE TRIGGER autonomy_run_transitions_no_update
+        BEFORE UPDATE ON autonomy_run_transitions
+        BEGIN
+          SELECT RAISE(ABORT, 'autonomy run transitions are append-only');
+        END;
+      CREATE TRIGGER autonomy_run_transitions_no_delete
+        BEFORE DELETE ON autonomy_run_transitions
+        BEGIN
+          SELECT RAISE(ABORT, 'autonomy run transitions are append-only');
+        END;
+      CREATE INDEX idx_autonomy_run_projection_repo_state
+        ON autonomy_run_projection(repo_id, state, updated_at);
+      CREATE UNIQUE INDEX idx_autonomy_run_projection_one_active_repo
+        ON autonomy_run_projection(repo_id)
+        WHERE state NOT IN (
+          'blocked','delivery_evidence_failed','escalated','cancelled','completed'
+        );
+
+      CREATE TABLE autonomy_deploy_freezes (
+        repo_id                 TEXT NOT NULL,
+        target                  TEXT NOT NULL CHECK (target = 'production'),
+        frozen                  INTEGER NOT NULL CHECK (frozen IN (0,1)),
+        reason                  TEXT NOT NULL,
+        source_run_id           TEXT NOT NULL
+          REFERENCES autonomy_run_projection(autonomy_run_id),
+        frozen_at               REAL NOT NULL,
+        cleared_at              REAL,
+        cleared_by_type         TEXT CHECK (
+          cleared_by_type IS NULL OR cleared_by_type = 'human'
+        ),
+        cleared_by_id           TEXT,
+        clear_reason            TEXT,
+        clear_decision_sha256   TEXT CHECK (
+          clear_decision_sha256 IS NULL OR (
+            length(clear_decision_sha256) = 64 AND
+            clear_decision_sha256 NOT GLOB '*[^0-9a-f]*'
+          )
+        ),
+        clear_key_id            TEXT,
+        PRIMARY KEY (repo_id, target),
+        CHECK (
+          (
+            frozen = 1 AND cleared_at IS NULL AND
+            cleared_by_type IS NULL AND cleared_by_id IS NULL AND
+            clear_reason IS NULL AND clear_decision_sha256 IS NULL AND
+            clear_key_id IS NULL
+          ) OR (
+            frozen = 0 AND cleared_at IS NOT NULL AND
+            cleared_by_type = 'human' AND cleared_by_id IS NOT NULL AND
+            clear_reason IS NOT NULL AND clear_decision_sha256 IS NOT NULL AND
+            clear_key_id IS NOT NULL
+          )
+        )
+      );
+      CREATE INDEX idx_autonomy_deploy_freezes_active
+        ON autonomy_deploy_freezes(frozen, repo_id);
+    `,
+  },
+  {
+    id: 19,
+    name: "autonomy_notification_outbox",
+    sql: `
+      CREATE TABLE autonomy_notification_outbox (
+        notification_id      TEXT PRIMARY KEY,
+        dedupe_key           TEXT NOT NULL UNIQUE,
+        kind                 TEXT NOT NULL CHECK (kind IN (
+          'awaiting_approval','escalated','deploy_frozen',
+          'rollback_failed','delivery_evidence_failed'
+        )),
+        autonomy_run_id      TEXT NOT NULL
+          REFERENCES autonomy_run_projection(autonomy_run_id),
+        repo_id              TEXT NOT NULL,
+        run_state            TEXT NOT NULL,
+        payload_json         TEXT NOT NULL,
+        status               TEXT NOT NULL CHECK (status IN (
+          'pending','delivered','dead_letter','acknowledged'
+        )),
+        attempt_count        INTEGER NOT NULL DEFAULT 0
+          CHECK (attempt_count >= 0),
+        next_attempt_at      REAL NOT NULL,
+        last_attempt_at      REAL,
+        delivered_at         REAL,
+        dead_lettered_at     REAL,
+        acknowledged_at     REAL,
+        acknowledged_by     TEXT,
+        last_error_code      TEXT CHECK (
+          last_error_code IS NULL OR last_error_code IN (
+            'timeout','transport_error','invalid_response'
+          )
+        ),
+        created_at           REAL NOT NULL,
+        updated_at           REAL NOT NULL,
+        CHECK (
+          (status = 'pending' AND delivered_at IS NULL
+            AND dead_lettered_at IS NULL AND acknowledged_at IS NULL
+            AND acknowledged_by IS NULL)
+          OR
+          (status = 'delivered' AND delivered_at IS NOT NULL
+            AND dead_lettered_at IS NULL AND acknowledged_at IS NULL
+            AND acknowledged_by IS NULL)
+          OR
+          (status = 'dead_letter' AND delivered_at IS NULL
+            AND dead_lettered_at IS NOT NULL AND acknowledged_at IS NULL
+            AND acknowledged_by IS NULL)
+          OR
+          (status = 'acknowledged' AND acknowledged_at IS NOT NULL
+            AND acknowledged_by IS NOT NULL)
+        )
+      );
+      CREATE INDEX idx_autonomy_notification_outbox_due
+        ON autonomy_notification_outbox(
+          status, next_attempt_at, created_at
+        );
+      CREATE INDEX idx_autonomy_notification_outbox_attention
+        ON autonomy_notification_outbox(status, created_at);
+      CREATE INDEX idx_autonomy_notification_outbox_run
+        ON autonomy_notification_outbox(autonomy_run_id, created_at);
+    `,
+  },
+  {
+    id: 20,
+    name: "autonomy_rollback_drills",
+    sql: `
+      CREATE TABLE autonomy_rollback_drills (
+        drill_id                         TEXT PRIMARY KEY,
+        repo_id                          TEXT NOT NULL,
+        target                           TEXT NOT NULL
+          CHECK (target = 'controlled_non_production'),
+        workspace_path                   TEXT NOT NULL,
+        deploy_script_digest_sha256      TEXT NOT NULL CHECK (
+          length(deploy_script_digest_sha256) = 64 AND
+          deploy_script_digest_sha256 NOT GLOB '*[^0-9a-f]*'
+        ),
+        rollback_evidence_json           TEXT NOT NULL,
+        post_rollback_health_json        TEXT,
+        passed                           INTEGER NOT NULL CHECK (passed IN (0,1)),
+        failure_reason                   TEXT CHECK (
+          failure_reason IS NULL OR failure_reason IN (
+            'rollback_failed','post_rollback_health_failed'
+          )
+        ),
+        started_at                       REAL NOT NULL,
+        completed_at                     REAL NOT NULL,
+        CHECK (completed_at >= started_at),
+        CHECK (
+          (passed = 1 AND failure_reason IS NULL
+            AND post_rollback_health_json IS NOT NULL)
+          OR
+          (passed = 0 AND failure_reason IS NOT NULL)
+        )
+      );
+      CREATE INDEX idx_autonomy_rollback_drills_repo
+        ON autonomy_rollback_drills(repo_id, completed_at DESC, drill_id);
+      CREATE TRIGGER autonomy_rollback_drills_no_update
+        BEFORE UPDATE ON autonomy_rollback_drills
+        BEGIN
+          SELECT RAISE(ABORT, 'autonomy rollback drills are append-only');
+        END;
+      CREATE TRIGGER autonomy_rollback_drills_no_delete
+        BEFORE DELETE ON autonomy_rollback_drills
+        BEGIN
+          SELECT RAISE(ABORT, 'autonomy rollback drills are append-only');
+        END;
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

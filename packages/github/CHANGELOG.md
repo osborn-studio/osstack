@@ -1,5 +1,23 @@
 # @osstack/github
 
+## 0.13.0
+
+### Minor Changes
+
+- b99bbfb: Add durable R0-R4 guarded autonomy and automated R1/R2 GitHub delivery,
+  including exact-base candidate pinning, diff-bound R3 approval, SHA-bound
+  merged-PR recovery, and fail-closed dependency/security validation.
+
+## Unreleased
+
+### Minor Changes
+
+- Add guarded GitHub delivery with safe argv execution, exact-head push, pull
+  request reuse, required-check waiting, match-head merge protection, and
+  structured Git delivery evidence.
+- Recover an already merged exact-head pull request by revalidating protected
+  base checks and merge evidence without repeating push, PR creation, or merge.
+
 ## 0.10.0
 
 ### Minor Changes

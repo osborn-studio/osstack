@@ -1,7 +1,7 @@
 # POLICY_PROFILE_V1
 
 Status: Draft
-Version: 1.0.0
+Version: 1.1.0
 Date: 2026-07-11
 Owner: Fable 5 (CTO); shapes from Doc 16 §7, constraints per ADR-001.
 
@@ -21,8 +21,10 @@ A managed repo declares two files:
 - `.osstack/policy.yaml` — authority and budgets
   (`schemas/policy-profile.schema.json`)
 
-Both MUST be YAML, MUST carry `schema_version: 1`, and MUST validate against
-their schema. **Unknown keys MUST be rejected (fail-closed)** — the same
+Both MUST be YAML and MUST validate against their schema. `policy.yaml` carries
+`schema_version: 1`; `repo.yaml` accepts the legacy `schema_version: 1` contract
+or the guarded-autonomy `schema_version: 2` contract. **Unknown keys MUST be
+rejected (fail-closed)** — the same
 discipline as `DiscoveryPolicy` in `@osstack/loop`: a typo'd key silently
 falling through to a default is a policy hole, not a convenience.
 
@@ -45,6 +47,60 @@ production_environment: ""  # optional, descriptive
   single CI-equivalent verification entry point (Doc 16: 唯一 verify contract).
 - Commands here are *declarations*; execution authority comes from
   `.osstack/policy.yaml`.
+
+### P-002.1 Guarded repository config (`schema_version: 2`)
+
+Version 2 preserves the identity and legacy verification fields and adds the
+deterministic authority required by guarded Git delivery:
+
+```yaml
+schema_version: 2
+product: example-web
+role: core_product
+default_branch: main
+verify_command: pnpm test
+autonomy:
+  max_auto_risk: R2
+  require_independent_evaluator: true
+  max_builder_iterations: 3
+  max_review_rounds: 3
+  max_wall_time_minutes: 90
+  max_no_progress_rounds: 2
+git:
+  remote: origin
+  branch_prefix: osstack
+  merge_strategy: squash
+  auto_merge: true
+  protected_branches: [main]
+verification:
+  quick: [pnpm lint, pnpm test -- --changed]
+  standard: [pnpm lint, pnpm typecheck, pnpm test, pnpm build]
+  release: [pnpm lint, pnpm typecheck, pnpm test, pnpm build]
+```
+
+All v2 objects are strict. `max_auto_risk` is limited to RISK-R1 or RISK-R2;
+RISK-R3 always needs an Owner decision and RISK-R4 has no approval transition.
+`git.branch_prefix` MUST be non-empty and MUST NOT equal a protected branch.
+Every verification profile MUST contain at least one command.
+
+Credential material MUST NOT appear anywhere in the v2 file. Commands may
+refer to an externally supplied environment-variable name, but MUST NOT embed
+tokens, passwords, authorization headers, authenticated URLs, or private keys.
+
+An optional `deploy.staging` or `deploy.production` target may declare argv
+commands, timeouts, closed change categories, allowed/forbidden paths, base
+branches, and freeze windows. Phase C validates and reports these fields but
+does not execute them. Deployment activation remains governed by the guarded
+deployment plan and its production gates. A path cannot appear in both the
+allowed and forbidden list. `allowed_change_types` uses a closed safe subset of
+the P-005 category vocabulary; hard-deny categories such as `secrets`,
+`destructive_git`, and `unreviewed_external_actions` cannot be allowlisted.
+Task or model output cannot invent a type.
+
+Changing `.osstack/repo.yaml`, `.osstack/policy.yaml`, or a deploy/health/
+rollback script referenced by effective policy is always classified RISK-R3.
+The effective repository policy used for delivery is read from the accepted
+base commit, so a candidate diff cannot weaken its own gate.
 
 ## P-003 `.osstack/policy.yaml`
 
@@ -148,5 +204,6 @@ configuration edits keep a dedicated gate; profiles SHOULD list it under
 First onboarding of any repo MUST use `mode: propose`, `auto_apply: false`
 (Doc 16: 首轮统一 propose). Loosening to `execute` for a category SHOULD cite
 dogfood evidence (successful verified deliveries) in the PR that changes the
-policy file. Policy file changes are `ci`-category changes and therefore
-themselves require approval.
+policy file. Under guarded autonomy, policy-file changes are RISK-R3 and
+therefore require a digest-bound Owner decision regardless of their declared
+P-005 category.

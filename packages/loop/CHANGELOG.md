@@ -1,5 +1,49 @@
 # @osstack/loop
 
+## 0.14.0
+
+### Patch Changes
+
+- 619cd53: Run Codex adapters in each task's repository worktree, keep truncated verifier
+  summaries Unicode-safe for strict JSON readers, and add workspace, changed, and
+  Git-baseline scopes to Loop governance.
+- Updated dependencies [619cd53]
+  - @osstack/agents@0.14.0
+
+## 0.13.1
+
+### Patch Changes
+
+- Updated dependencies [733c82a]
+  - @osstack/governance@0.13.1
+  - @osstack/agents@0.13.1
+
+## 0.13.0
+
+### Minor Changes
+
+- 16ec914: Add a first-class Kimi Code adapter and fail-closed structured reviewer verification.
+
+### Patch Changes
+
+- Updated dependencies [4fb11c0]
+- Updated dependencies [b99bbfb]
+- Updated dependencies [16ec914]
+  - @osstack/protocol@0.13.0
+  - @osstack/core@0.13.0
+  - @osstack/autonomy@0.13.0
+  - @osstack/agents@0.13.0
+  - @osstack/github@0.13.0
+  - @osstack/hermes-adapter@0.13.0
+
+## Unreleased
+
+### Minor Changes
+
+- Add a bounded review-input boundary, reviewer workspace mutation detection,
+  fail-closed structured Kimi judgments, and redacted review artifacts on loop
+  events and completed tasks.
+
 ## 0.12.0
 
 ### Patch Changes

@@ -1,5 +1,85 @@
 # @osstack/cli
 
+## 0.14.0
+
+### Minor Changes
+
+- 619cd53: Run Codex adapters in each task's repository worktree, keep truncated verifier
+  summaries Unicode-safe for strict JSON readers, and add workspace, changed, and
+  Git-baseline scopes to Loop governance.
+
+### Patch Changes
+
+- Updated dependencies [619cd53]
+  - @osstack/agents@0.14.0
+  - @osstack/loop@0.14.0
+  - @osstack/config@0.14.0
+
+## 0.13.1
+
+### Patch Changes
+
+- Updated dependencies [733c82a]
+  - @osstack/governance@0.13.1
+  - @osstack/agents@0.13.1
+  - @osstack/loop@0.13.1
+  - @osstack/config@0.13.1
+
+## 0.13.0
+
+### Minor Changes
+
+- 4fb11c0: Add project-allowlisted deployment, automatic rollback and freeze, and Mac Mini guarded-autonomy operations.
+- b99bbfb: Add durable R0-R4 guarded autonomy and automated R1/R2 GitHub delivery,
+  including exact-base candidate pinning, diff-bound R3 approval, SHA-bound
+  merged-PR recovery, and fail-closed dependency/security validation.
+- 16ec914: Add a first-class Kimi Code adapter and fail-closed structured reviewer verification.
+
+### Patch Changes
+
+- 591405a: Boot out an existing daemon before bootstrapping a replacement LaunchAgent.
+- f29b6e5: Retry the transient macOS launchd bootstrap race after replacing a loaded
+  LaunchAgent, while preserving a bounded fail-closed installer error.
+- Updated dependencies [4fb11c0]
+- Updated dependencies [b99bbfb]
+- Updated dependencies [16ec914]
+  - @osstack/protocol@0.13.0
+  - @osstack/core@0.13.0
+  - @osstack/autonomy@0.13.0
+  - @osstack/agents@0.13.0
+  - @osstack/github@0.13.0
+  - @osstack/loop@0.13.0
+  - @osstack/config@0.13.0
+  - @osstack/hermes-adapter@0.13.0
+  - @osstack/skill-registry@0.13.0
+  - @osstack/skills@0.13.0
+
+## Unreleased
+
+### Minor Changes
+
+- Surface Kimi readiness and runtime identity in agent/config diagnostics,
+  preserve checksummed structured review Markdown/JSON in proof packs, and add
+  offline plus live seeded-defect evaluation commands.
+- Add `deliver --autonomy guarded-git`, durable `autonomy` status/approval/
+  resume controls, daemon recovery, two-stage proof composition, and offline
+  R1-R4 fault-injection smoke coverage.
+- Read guarded authority from committed base policy, reject dirty/stale
+  candidate branches, persist the exact base SHA, and wait for boot recovery
+  before closing daemon state.
+- Add `guarded-deploy`, signed production freeze clear, deployment-aware health
+  and scorecards, durable Owner notifications, restart recovery, Mac Mini host
+  evidence/retention, controlled rollback drills, and deterministic seven-day
+  soak validation.
+
+### Patch Changes
+
+- Reload an existing macOS LaunchAgent by booting out the live service before
+  bootstrapping its replacement plist, preventing config/runtime drift during
+  profile or power-policy changes.
+- Retry the bounded macOS `launchd` teardown/bootstrap race before kickstarting
+  a replacement service, and fail closed if registration never succeeds.
+
 ## 0.12.0
 
 ### Minor Changes

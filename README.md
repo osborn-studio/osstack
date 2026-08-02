@@ -24,10 +24,11 @@ surface that makes AI coding work visible and auditable.
 
 | Area | Status |
 |---|---|
-| npm package | Published: `@osstack/cli@0.12.0` |
-| GitHub release | npm packages: `@osstack/cli@0.12.0`; latest single binary: [`v0.8.1`](https://github.com/gilosbornhello/osstack/releases/tag/v0.8.1) |
+| npm package | Published: `@osstack/cli@0.14.0` |
+| GitHub release | npm packages: `@osstack/cli@0.14.0`; latest single binary: [`v0.8.1`](https://github.com/gilosbornhello/osstack/releases/tag/v0.8.1) |
 | macOS single binary | Published as explicit `public-ad-hoc` archive for `darwin-arm64` |
 | Knowledge Cloud | Live on EdgeOne: `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
+| Probe | CLI lifecycle shipped in `@osstack/cli@0.14.0`; report-only is gate behavior, not a background job. The two-week real-use checkpoint remains open. |
 | License | MIT |
 | Monorepo | 16 packages |
 
@@ -54,16 +55,18 @@ control plane with these shipped surfaces:
 | Capability | Current implementation | Main commands / package |
 |---|---|---|
 | Product entry | One command can turn an intent into a verified local delivery run with reports, scorecards, proof packs, and optional worktree isolation. | `osstack deliver`, `@osstack/cli` |
+| Guarded Git autonomy | Classifies R0-R4 before and after the diff, requires external signed approval for R3, permanently blocks R4, and automatically delivers eligible R1/R2 changes through PR, CI, merge, and two-stage proof. | `osstack deliver --autonomy guarded-git`, `osstack autonomy ...`, `@osstack/autonomy` |
 | Loop Engineering | Task discovery, execution, verification, iteration, budgets, stop reasons, reports, scorecards, lesson drafts, and daemon-managed loop sessions. | `osstack loop ...`, `@osstack/loop` |
 | Portfolio supervision | Repo registry, maturity scan, portfolio report, feedback assets, improvement proposals, evaluator epochs, and machine-actionable recommendations. | `osstack supervise`, `feedback`, `improve`, `evaluator`, `daily`; `@osstack/supervisor` |
 | Daily operating brief | Reads the repo registry, summarizes CI/PR/maturity deltas, emits owner decisions, and can run on a 24h daemon schedule. | `osstack daily`, `osstack daily schedule` |
 | Contract-gated execution | Creates execution contracts, blocks execution under observe policy, records approvals, and emits the exact follow-up command after approval. | `osstack start`, `osstack control` |
 | Policy kernel | Loads `.osstack/repo.yaml` and `.osstack/policy.yaml`, enforces `observe` / `propose` / `execute`, budgets, and approval categories. | `osstack policy check`, `@osstack/core` |
-| Agent routing | Routes to adapters such as Claude Code, Codex CLI, OpenCode, DeepSeek review/verify, shell subprocesses, and specialized design/research adapters. | `@osstack/agents`, `@osstack/core` |
+| Agent routing | Routes to adapters such as Claude Code, Codex CLI, OpenCode, Kimi Code review/verify, DeepSeek review/verify, shell subprocesses, and specialized design/research adapters. | `@osstack/agents`, `@osstack/core` |
 | Evidence and release trust | Persists run state, events, governance, diffs, proof manifests, PR body drafts, release handoff, and release readiness checks. | `report`, `scorecard`, `proof`, `pr`, `release` |
 | Cockpit and dashboard | Local dashboard/TUI snapshots for daemon health, recent runs, kanban, evidence, quality, and next actions. | `osstack cockpit`, `osstack dashboard` |
 | Remote gateway hook | Exposes dashboard URLs and transport-agnostic kanban subscriptions/events so a host bot can relay progress to Telegram, Feishu/Lark, Slack, webhooks, or another chat surface. | `dashboard url`, `kanban subscribe`, `kanban events`, `KanbanNotifier` |
 | Knowledge Cloud | Official/team/project knowledge packs, cloud sync, local cache fallback, search, publish, audit, feedback, and review UI. | `osstack knowledge`, `@osstack/knowledge-cloud` |
+| Four-quadrant elicitation | Persists implementation-changing unknowns, asks one question at a time, renders portable ledgers, evaluates readiness, and feeds reviewed decisions into implementation gates. | `osstack probe ...`, `@osstack/governance`, `@osstack/core`; optional repo-local `probe-skill` |
 | Protocol/conformance | Stable cross-process agent command, result, policy, evidence, approval, run, and event schemas with conformance tests. | `@osstack/protocol`, `@osstack/conformance` |
 
 ### Remote Gateway Status
@@ -147,7 +150,7 @@ osstack doctor --workspace .
 Expected:
 
 ```text
-osstack 0.12.0
+osstack 0.14.0
 ```
 
 ### macOS Single-Binary Archive
@@ -202,6 +205,9 @@ osstack knowledge search "proof pack checksum" \
 # Run a local readiness check for the loop engine.
 osstack loop doctor --workspace . --json
 
+# Inspect the explicit Probe session workflow; Probe does not auto-start.
+osstack probe --help
+
 # Audit repository knowledge without writing files.
 osstack neat check --fail-on none
 
@@ -247,6 +253,7 @@ executes the loop, verifies the result, and produces evidence artifacts such as:
 | Capability | A typed skill such as `code.write`, `code.test`, `code.review`, `design.prd`, `release.proof`, or `research.ml`. |
 | Policy | The routing decision layer that selects an agent based on capability, cost, fit, and history. |
 | Governance | Deterministic safety/quality checks. It is a verifier, not a model-based judge. |
+| Probe | A persistent four-quadrant elicitation session that turns unknowns into reviewable decisions, destinations, and readiness evidence. |
 | Proof pack | A checksumed evidence bundle containing reports, state, events, verification results, governance findings, diffs, and manifests. |
 | Knowledge pack | An osstack-native knowledge artifact with version, license, source provenance, quality metadata, chunks, and retrieval evaluation. |
 
@@ -259,7 +266,24 @@ osstack doctor --workspace .
 osstack examples
 osstack guide
 osstack deliver "Add billing dashboard" --verify "pnpm test" --auto-agent --worktree --json
+
+# Bounded R1/R2 GitHub delivery. Requires strict repo/policy config and gh auth.
+osstack deliver "Add account summary" \
+  --profile mac-mini \
+  --autonomy guarded-git \
+  --expected-path src/account/summary.ts \
+  --verify "pnpm test" \
+  --json
 ```
+
+See [Guarded Git Autonomy Runbook](docs/runbooks/guarded-git-autonomy.md) for
+the risk matrix, external signed R3 approval, recovery, proof stages, and
+rollback to `guarded-local`.
+
+For project-allowlisted staging/production deployment, automatic rollback and
+freeze, Mac Mini LaunchAgent operation, named machine/production authority
+gates, and the seven-day real-task soak, see the
+[Kimi Mac Mini 24x7 Autonomy Runbook](docs/runbooks/kimi-mac-mini-autonomy.md).
 
 ### Loop Engineering
 
@@ -270,6 +294,43 @@ osstack loop run --workspace . --source git_diff --reviewer ds-review --json
 osstack loop start --workspace . --source task_queue --verify "pnpm test" --interval-ms 5000
 osstack loop status --workspace .
 ```
+
+### Kimi Code Reviewer (Experimental)
+
+Kimi Code is initially available only as a reviewer and release verifier; it
+is not a Builder and does not advertise code-writing or debugging capability.
+Install Kimi Code, complete its local login, then check the non-model readiness
+probes:
+
+```bash
+osstack agent list
+osstack config doctor
+```
+
+`config doctor` distinguishes `kimi_not_installed`,
+`kimi_not_authenticated`, and `kimi_available`. The `OSSTACK_KIMI_BIN`,
+`OSSTACK_KIMI_MODEL`, `OSSTACK_KIMI_PROVIDER`, `OSSTACK_KIMI_TIMEOUT_MS`,
+`OSSTACK_KIMI_OUTPUT_LIMIT`, and `OSSTACK_KIMI_REVIEW_AGENT_FILE` variables
+select binary/model/runtime behavior only. Do not put API keys or login
+credentials in osstack configuration or these variables; authentication is
+reused from Kimi's own local login.
+
+Only a schema-valid `approved` review can pass the Kimi gate. Deterministic
+tests remain authoritative, while malformed output, a non-approved verdict,
+secret/forbidden review input, timeout, or any detected reviewer workspace
+mutation blocks delivery. Structured review Markdown and JSON are redacted and
+checksummed in the proof pack.
+
+The built-in Mac profiles prefer `kimi-code` for the `test-verify` role, with
+Claude Code or Codex CLI retaining the Builder role. Public defaults match Mac
+hardware model hints and do not embed private hostnames; use `osstack config
+bind` for a machine-specific hostname.
+
+Adapter separation is only the baseline independence check. If Claude Code or
+Codex is routed through Kimi, record its provider and model honestly in
+`agent_runtime`. Configured or inferred identity is useful diagnostics but
+cannot prove RISK-R2 provider/model independence; that requires identities
+reported by both runtimes.
 
 ### Recursive Control Plane (opt-in)
 
@@ -321,11 +382,61 @@ osstack pr <run_id> --dry-run --workspace .
 
 ```bash
 osstack govern check --workspace . --changed --json
+osstack loop run --workspace . --govern strict --govern-scope baseline --proof
 osstack governance scan src/**/*.ts --json
 osstack contracts check --workspace . --manifest api-contracts.json --json
 osstack compliance list --json
 osstack compliance render <run_id> --pack engineering-readiness --proof-dir release/osstack-proof-<run_id>
 ```
+
+### Four-Quadrant Elicitation (Probe)
+
+Probe is an explicit, persistent pre-build and mid-build workflow. It does not
+create sessions in the background. Start one for each real specification and
+link it to the corresponding task so the kanban readiness guard can find it.
+Replace the example paths and identifiers before running:
+
+```bash
+osstack probe start \
+  --input docs/spec.md \
+  --task TASK-123 \
+  --doc-type tech \
+  --depth standard \
+  --actor-kind human \
+  --actor-id owner \
+  --idempotency-key TASK-123-probe-start \
+  --json
+
+osstack probe status --repo . --json
+osstack probe gate --session <session_id> --json
+```
+
+The optional repository policy makes the rollout state visible in review:
+
+```yaml
+# .osstack/probe.yaml
+schema_version: 1
+enforcement: report
+```
+
+If `.osstack/probe.yaml` is absent, the built-in policy is already
+`enforcement: report`. In both cases, **report-only means that an evaluated
+gate reports readiness violations without blocking**. It is not a daemon,
+scheduler, or automatic dogfood switch; with no Probe session there is nothing
+to evaluate.
+
+The deterministic CLI lifecycle is included in the npm release. The natural
+one-question-at-a-time agent experience lives in [`probe-skill/`](probe-skill/)
+and is not automatically installed into a Codex/agent skill directory by the
+CLI package. Install or link that skill separately before invoking
+`$probe-skill`. The two-week report-only dogfood, five real rough-spec runs, and
+manual `restate` review remain empirical checkpoints rather than release claims;
+see the [Probe v2 design and checkpoint record](docs/2026-07-17-probe-four-quadrant-elicitation-design.md#13-checkpoints发布与回滚).
+`--govern-scope baseline` records a full scan of the pre-run Git revision as
+non-blocking evidence, then applies the selected `--govern` mode only to
+changed-file findings that were not present in that baseline. The changed set
+includes working-tree, staged, untracked, and commits created since the run
+started, including isolated-worktree merges.
 
 ### Knowledge Hygiene
 
@@ -401,15 +512,20 @@ osstack kanban comment <card_id> "Waiting for CI"
 osstack kanban subscribe <card_id> telegram <chat_id> [thread_id]
 osstack kanban events --since 0
 osstack serve
-osstack serve --install
+osstack serve --install --profile mac-mini \
+  --write-concurrency 2 \
+  --read-concurrency 8 \
+  --power-policy none
 osstack status
 ```
 
 The daemon is local-first. `osstack serve --install` installs a macOS launchd
-service that keeps the daemon alive across restarts. Chat and phone access should
-be layered through a separate trusted host such as Hermes, Feishu/Lark bot,
-Telegram bot, Slack app, webhook relay, or a named tunnel that can call the
-dashboard/kanban commands above.
+service that keeps the daemon alive across restarts. A process-bound
+`--power-policy process_assertion` is available only after explicit Owner
+machine authorization; OSStack never changes persistent `pmset` settings.
+Chat and phone access should be layered through a separate trusted host such as
+Hermes, Feishu/Lark bot, Telegram bot, Slack app, webhook relay, or a named
+tunnel that can call the dashboard/kanban commands above.
 
 ### Release Operations
 

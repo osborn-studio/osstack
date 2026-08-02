@@ -39,6 +39,10 @@ import {
 import { osstackHome } from "./paths.js";
 import { shQuote } from "./start-control-command.js";
 import { hasFlag, resolveRegistryPath } from "./supervisor-cli-support.js";
+import {
+  createAutonomyReliabilityReport,
+  type AutonomyReliabilityReport,
+} from "./autonomy-scorecard.js";
 
 export interface DailyCliDeps {
   /** Injectable command runner for the GitHub adapter (offline in tests). */
@@ -126,6 +130,7 @@ export interface DailyBrief {
    * freshly built brief, but readers of a PREVIOUS brief must not assume it.
    */
   owner_decisions?: OwnerDecision[];
+  autonomy?: AutonomyReliabilityReport;
   warnings: string[];
 }
 
@@ -186,11 +191,14 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
     readProbePortfolioSummary(enabled, now.getTime());
   const { summary: dependencyObligations, warning: dependencyWarning } =
     await readDependencyObligationSummary(deps.registryPath);
+  const { summary: autonomy, warning: autonomyWarning } =
+    readAutonomyReliability(now);
 
   const warnings = github.filter((g) => g.warning !== undefined).map((g) => `${g.repo_id}: ${g.warning}`);
   if (stackWarning !== undefined) warnings.push(stackWarning);
   if (probeWarning !== undefined) warnings.push(probeWarning);
   if (dependencyWarning !== undefined) warnings.push(dependencyWarning);
+  if (autonomyWarning !== undefined) warnings.push(autonomyWarning);
   if (hygieneHistory.warning !== undefined) {
     warnings.push(hygieneHistory.warning);
   }
@@ -211,6 +219,7 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
     ...(dependencyObligations !== undefined
       ? { dependency_obligations: dependencyObligations }
       : {}),
+    ...(autonomy === undefined ? {} : { autonomy }),
     delta,
     // Computed from portfolio + github below, then stored so the dispatchable
     // `run` payloads ride in `result` (= the brief) and are persisted verbatim.
@@ -225,6 +234,32 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
   await writeFile(briefPath, `${JSON.stringify(brief, null, 2)}\n`, "utf8");
 
   return { brief, briefPath, result: buildDailyResult(brief, briefPath, enabled), entries: enabled };
+}
+
+function readAutonomyReliability(now: Date): {
+  summary?: AutonomyReliabilityReport;
+  warning?: string;
+} {
+  const dbPath = join(osstackHome(), "state.db");
+  if (!existsSync(dbPath)) return {};
+  try {
+    const database = openDb({ path: dbPath, readwrite: false });
+    try {
+      return {
+        summary: createAutonomyReliabilityReport(database, {
+          now: () => now,
+        }),
+      };
+    } finally {
+      database.close();
+    }
+  } catch (error) {
+    return {
+      warning: `autonomy reliability unavailable (${dbPath}): ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    };
+  }
 }
 
 async function readDependencyObligationSummary(
@@ -492,7 +527,7 @@ async function readPreviousBrief(briefsDir: string, today: string): Promise<Dail
  * for quoting, so nothing in a `run.command` can execute on paste.
  */
 export function deriveOwnerDecisions(brief: DailyBrief): OwnerDecision[] {
-  const decisions: OwnerDecision[] = [];
+  const decisions: OwnerDecision[] = autonomyOwnerDecisions(brief);
   const pathById = new Map(brief.portfolio.repos.map((r) => [r.repo_id, r.path]));
 
   for (const g of brief.github) {
@@ -554,6 +589,97 @@ export function deriveOwnerDecisions(brief: DailyBrief): OwnerDecision[] {
   }
 
   return decisions.slice(0, 3);
+}
+
+function autonomyOwnerDecisions(brief: DailyBrief): OwnerDecision[] {
+  const attention = brief.autonomy?.attention;
+  if (attention === undefined) return [];
+  const decisions: OwnerDecision[] = [];
+  const seenRuns = new Set<string>();
+  const addRun = (
+    command: string,
+    reason: string,
+    runId: string,
+  ): void => {
+    if (seenRuns.has(runId)) return;
+    seenRuns.add(runId);
+    decisions.push({
+      command,
+      reason,
+      run: {
+        command: `osstack autonomy status ${shQuote(runId)} --json`,
+        argv: ["osstack", "autonomy", "status", runId, "--json"],
+      },
+    });
+  };
+  for (const item of attention.rollback_failed) {
+    addRun(
+      "autonomy.rollback_failed",
+      `${item.repo_id}: rollback failed in ${item.run_id}`,
+      item.run_id,
+    );
+  }
+  for (const freeze of attention.production_frozen) {
+    decisions.push({
+      command: "autonomy.production_frozen",
+      reason: `${freeze.repo_id}: production frozen — ${freeze.reason}`,
+      run: {
+        command:
+          `osstack autonomy freeze request ${shQuote(freeze.repo_id)} --json`,
+        argv: [
+          "osstack",
+          "autonomy",
+          "freeze",
+          "request",
+          freeze.repo_id,
+          "--json",
+        ],
+      },
+    });
+  }
+  for (const item of attention.delivery_evidence_failed) {
+    addRun(
+      "autonomy.delivery_evidence_failed",
+      `${item.repo_id}: proof integrity failed in ${item.run_id}`,
+      item.run_id,
+    );
+  }
+  for (const item of attention.awaiting_approval) {
+    addRun(
+      "autonomy.awaiting_approval",
+      `${item.repo_id}: signed Owner decision required for ${item.run_id}`,
+      item.run_id,
+    );
+  }
+  for (const item of attention.escalated) {
+    addRun(
+      "autonomy.escalated",
+      `${item.repo_id}: ${item.run_id} escalated`,
+      item.run_id,
+    );
+  }
+  for (const item of attention.blocked_delivery) {
+    addRun(
+      "autonomy.blocked_delivery",
+      `${item.repo_id}: ${item.run_id} is waiting for external delivery recovery`,
+      item.run_id,
+    );
+  }
+  if (
+    attention.adapter_unavailable.length > 0
+    && decisions.length < 3
+  ) {
+    decisions.push({
+      command: "autonomy.adapter_unavailable",
+      reason:
+        `${attention.adapter_unavailable.length} autonomy run(s) require adapter recovery`,
+      run: {
+        command: "osstack autonomy health --json",
+        argv: ["osstack", "autonomy", "health", "--json"],
+      },
+    });
+  }
+  return decisions;
 }
 
 function knowledgeHygieneWarnings(portfolio: PortfolioReport): string[] {
@@ -730,6 +856,48 @@ export function renderDailyMarkdown(brief: DailyBrief): string {
   if (brief.dependency_obligations !== undefined) {
     lines.push("## Dependency obligations");
     lines.push(`- unread: ${brief.dependency_obligations.open_count}`);
+    lines.push("");
+  }
+
+  if (brief.autonomy !== undefined) {
+    const weekly = brief.autonomy.weekly.metrics;
+    const attention = brief.autonomy.attention;
+    lines.push("## Guarded autonomy reliability");
+    lines.push(
+      `- unattended completion: ${weekly.unattended_completion_rate.numerator}/${weekly.unattended_completion_rate.denominator} (${Math.round(weekly.unattended_completion_rate.value * 100)}%)`,
+    );
+    lines.push(
+      `- avoidable human intervention: ${weekly.human_intervention_rate.numerator}/${weekly.human_intervention_rate.denominator} (${Math.round(weekly.human_intervention_rate.value * 100)}%)`,
+    );
+    lines.push(
+      `- production deploy success: ${weekly.deploy_success_rate.numerator}/${weekly.deploy_success_rate.denominator}`,
+    );
+    lines.push(
+      `- rollback success: ${weekly.rollback_success_rate.numerator}/${weekly.rollback_success_rate.denominator}`,
+    );
+    lines.push(
+      `- Owner notification outbox: ${brief.autonomy.notification_outbox.pending_count} pending, ${brief.autonomy.notification_outbox.dead_letter_count} dead-letter`,
+    );
+    lines.push("### Owner attention");
+    const attentionLines = [
+      ["awaiting_approval", attention.awaiting_approval.length],
+      ["escalated", attention.escalated.length],
+      ["blocked_delivery", attention.blocked_delivery.length],
+      [
+        "delivery_evidence_failed",
+        attention.delivery_evidence_failed.length,
+      ],
+      ["production_frozen", attention.production_frozen.length],
+      ["rollback_failed", attention.rollback_failed.length],
+      ["adapter_unavailable", attention.adapter_unavailable.length],
+    ] as const;
+    const actionable = attentionLines.filter(([, count]) => count > 0);
+    if (actionable.length === 0) lines.push("- None.");
+    else {
+      for (const [label, count] of actionable) {
+        lines.push(`- ${label}: ${count}`);
+      }
+    }
     lines.push("");
   }
 

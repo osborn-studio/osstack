@@ -25,6 +25,30 @@ staging_command: ""         # optional
 production_environment: ""  # optional, descriptive
 `;
 
+const REPO_YAML_V2_EXAMPLE = `schema_version: 2
+product: example-web
+role: core_product
+default_branch: main
+verify_command: pnpm test
+autonomy:
+  max_auto_risk: R2
+  require_independent_evaluator: true
+  max_builder_iterations: 3
+  max_review_rounds: 3
+  max_wall_time_minutes: 90
+  max_no_progress_rounds: 2
+git:
+  remote: origin
+  branch_prefix: osstack
+  merge_strategy: squash
+  auto_merge: true
+  protected_branches: [main]
+verification:
+  quick: [pnpm lint, pnpm test -- --changed]
+  standard: [pnpm lint, pnpm typecheck, pnpm test, pnpm build]
+  release: [pnpm lint, pnpm typecheck, pnpm test, pnpm build]
+`;
+
 // The P-003 policy.yaml example from POLICY_PROFILE_V1, verbatim.
 const POLICY_YAML_EXAMPLE = `schema_version: 1
 mode: propose               # observe | propose | execute
@@ -98,7 +122,302 @@ describe("RepoConfig schema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("accepts the exact guarded repository v2 example without breaking v1", () => {
+    expect(RepoConfig.safeParse(parseYaml(REPO_YAML_EXAMPLE)).success).toBe(true);
+    const result = RepoConfig.safeParse(parseYaml(REPO_YAML_V2_EXAMPLE));
+    expect(result.success).toBe(true);
+    if (result.success && result.data.schema_version === 2) {
+      expect(result.data.autonomy.max_auto_risk).toBe("R2");
+      expect(result.data.git).toMatchObject({
+        remote: "origin",
+        branch_prefix: "osstack",
+        protected_branches: ["main"],
+      });
+      expect(result.data.verification.standard).toEqual([
+        "pnpm lint",
+        "pnpm typecheck",
+        "pnpm test",
+        "pnpm build",
+      ]);
+    }
+  });
+
+  it.each([
+    ["autonomy", { max_builder_iterations_typo: 3 }],
+    ["git", { force_push: true }],
+    ["verification", { nightly: ["pnpm test"] }],
+  ])("rejects unknown keys inside v2 %s policy", (section, extra) => {
+    const input = parseYaml(REPO_YAML_V2_EXAMPLE) as Record<string, unknown>;
+    input[section] = { ...(input[section] as object), ...extra };
+    expect(RepoConfig.safeParse(input).success).toBe(false);
+  });
+
+  it("rejects unknown keys in nested deploy targets and freeze windows", () => {
+    const input = v2RepoConfig({
+      deploy: {
+        staging: {
+          ...deployTarget(),
+          freeze_windows: [
+            {
+              timezone: "America/Los_Angeles",
+              days: [1],
+              start: "10:00",
+              end: "11:00",
+              unexpected: true,
+            },
+          ],
+        },
+      },
+    });
+    expect(RepoConfig.safeParse(input).success).toBe(false);
+
+    const targetExtra = v2RepoConfig({
+      deploy: {
+        staging: {
+          ...deployTarget(),
+          unexpected: true,
+        },
+      },
+    });
+    expect(RepoConfig.safeParse(targetExtra).success).toBe(false);
+  });
+
+  it("accepts IANA deployment timezones and rejects unknown zones", () => {
+    expect(
+      RepoConfig.safeParse(
+        v2RepoConfig({
+          deploy: {
+            production: {
+              ...deployTarget(),
+              freeze_windows: [
+                {
+                  timezone: "America/Los_Angeles",
+                  days: [1],
+                  start: "23:00",
+                  end: "02:00",
+                },
+              ],
+            },
+          },
+        }),
+      ).success,
+    ).toBe(true);
+
+    expect(
+      RepoConfig.safeParse(
+        v2RepoConfig({
+          deploy: {
+            production: {
+              ...deployTarget(),
+              freeze_windows: [
+                {
+                  timezone: "Mars/Olympus_Mons",
+                  days: [1],
+                  start: "23:00",
+                  end: "02:00",
+                },
+              ],
+            },
+          },
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
+  it("allows only R1 or R2 as max_auto_risk", () => {
+    for (const level of ["R1", "R2"]) {
+      expect(
+        RepoConfig.safeParse(
+          v2RepoConfig({
+            autonomy: { ...v2RepoConfig().autonomy, max_auto_risk: level },
+          }),
+        ).success,
+      ).toBe(true);
+    }
+    for (const level of ["R0", "R3", "R4"]) {
+      expect(
+        RepoConfig.safeParse(
+          v2RepoConfig({
+            autonomy: { ...v2RepoConfig().autonomy, max_auto_risk: level },
+          }),
+        ).success,
+      ).toBe(false);
+    }
+  });
+
+  it.each([
+    ["top-level command", { verify_command: "TOKEN=ghp_not-a-real-token pnpm test" }],
+    ["authenticated remote", { git: { ...v2RepoConfig().git, remote: "https://u:p@host/repo" } }],
+    [
+      "verification header",
+      {
+        verification: {
+          ...v2RepoConfig().verification,
+          standard: ["Authorization: Bearer not-a-real-token"],
+        },
+      },
+    ],
+    [
+      "deploy argv",
+      {
+        deploy: {
+          staging: {
+            ...deployTarget(),
+            command: ["deploy", "--password=not-a-real-password"],
+          },
+        },
+      },
+    ],
+    [
+      "split deploy secret flag",
+      {
+        deploy: {
+          staging: {
+            ...deployTarget(),
+            command: ["deploy", "--token", "not-a-real-token"],
+          },
+        },
+      },
+    ],
+    [
+      "notification environment",
+      {
+        deploy: {
+          staging: {
+            ...deployTarget(),
+            allowed_environment: ["TELEGRAM_BOT_TOKEN"],
+          },
+        },
+      },
+    ],
+    [
+      "absolute deploy path",
+      {
+        deploy: {
+          staging: {
+            ...deployTarget(),
+            command: ["node", "--config=/tmp/deploy.json"],
+          },
+        },
+      },
+    ],
+  ])("rejects credential-shaped strings in %s", (_label, patch) => {
+    expect(RepoConfig.safeParse(v2RepoConfig(patch)).success).toBe(false);
+  });
+
+  it("rejects an empty branch prefix or one equal to a protected branch", () => {
+    expect(
+      RepoConfig.safeParse(
+        v2RepoConfig({ git: { ...v2RepoConfig().git, branch_prefix: "" } }),
+      ).success,
+    ).toBe(false);
+    expect(
+      RepoConfig.safeParse(
+        v2RepoConfig({ git: { ...v2RepoConfig().git, branch_prefix: "main" } }),
+      ).success,
+    ).toBe(false);
+  });
+
+  it("rejects an empty standard verification profile", () => {
+    expect(
+      RepoConfig.safeParse(
+        v2RepoConfig({
+          verification: { ...v2RepoConfig().verification, standard: [] },
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
+  it("rejects overlapping deploy allow/forbid paths and open change-type values", () => {
+    expect(
+      RepoConfig.safeParse(
+        v2RepoConfig({
+          deploy: {
+            staging: {
+              ...deployTarget(),
+              allowed_paths: ["src/**"],
+              forbidden_paths: ["src/**"],
+            },
+          },
+        }),
+      ).success,
+    ).toBe(false);
+    expect(
+      RepoConfig.safeParse(
+        v2RepoConfig({
+          deploy: {
+            staging: {
+              ...deployTarget(),
+              allowed_change_types: ["frontend-copy"],
+            },
+          },
+        }),
+      ).success,
+    ).toBe(false);
+    expect(
+      RepoConfig.safeParse(
+        v2RepoConfig({
+          deploy: {
+            staging: {
+              ...deployTarget(),
+              allowed_change_types: ["secrets"],
+            },
+          },
+        }),
+      ).success,
+    ).toBe(false);
+  });
 });
+
+function v2RepoConfig(patch: Record<string, unknown> = {}) {
+  return {
+    schema_version: 2,
+    product: "example-web",
+    role: "core_product",
+    default_branch: "main",
+    verify_command: "pnpm test",
+    autonomy: {
+      max_auto_risk: "R2",
+      require_independent_evaluator: true,
+      max_builder_iterations: 3,
+      max_review_rounds: 3,
+      max_wall_time_minutes: 90,
+      max_no_progress_rounds: 2,
+    },
+    git: {
+      remote: "origin",
+      branch_prefix: "osstack",
+      merge_strategy: "squash",
+      auto_merge: true,
+      protected_branches: ["main"],
+    },
+    verification: {
+      quick: ["pnpm lint"],
+      standard: ["pnpm lint", "pnpm typecheck", "pnpm test", "pnpm build"],
+      release: ["pnpm lint", "pnpm typecheck", "pnpm test", "pnpm build"],
+    },
+    ...patch,
+  };
+}
+
+function deployTarget() {
+  return {
+    enabled: true,
+    command: ["scripts/deploy.sh"],
+    verify_command: ["scripts/verify.sh"],
+    health_check: ["scripts/health.sh"],
+    rollback: ["scripts/rollback.sh"],
+    timeout_ms: 60_000,
+    health_timeout_ms: 30_000,
+    allowed_change_types: ["source"],
+    allowed_paths: ["src/**"],
+    forbidden_paths: ["src/secrets/**"],
+    allowed_base_branches: ["main"],
+    allowed_environment: ["DEPLOY_REGION", "DEPLOY_TOKEN"],
+    freeze_windows: [],
+  };
+}
 
 describe("PolicyProfile schema", () => {
   it("accepts the P-003 policy.yaml example", () => {
@@ -221,6 +540,15 @@ describe("loadRepoConfig / loadPolicyProfile", () => {
     const policy = await loadPolicyProfile(tmp);
     expect(repo?.product).toBe("osborn-pa");
     expect(policy?.mode).toBe("propose");
+  });
+
+  it("loads a valid v2 repo.yaml from .osstack/", async () => {
+    await writeOsstackFile("repo.yaml", REPO_YAML_V2_EXAMPLE);
+    const repo = await loadRepoConfig(tmp);
+    expect(repo?.schema_version).toBe(2);
+    if (repo?.schema_version === 2) {
+      expect(repo.autonomy.max_auto_risk).toBe("R2");
+    }
   });
 
   it("throws with the file path and issue list when policy.yaml is schema-invalid (fail-closed)", async () => {

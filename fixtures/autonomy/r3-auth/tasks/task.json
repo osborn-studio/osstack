@@ -1,0 +1,8 @@
+{
+  "task_id": "fixture-r3-auth",
+  "goal": "Change authentication session handling",
+  "expected_paths": ["src/auth/session.ts"],
+  "requested_actions": ["build", "commit", "merge", "push", "verify"],
+  "expected_risk": "R3",
+  "expected_status": "needs_approval"
+}

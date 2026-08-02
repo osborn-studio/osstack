@@ -32,6 +32,10 @@ describe("agent list CLI", () => {
         roles: string[];
         auth_mode: string;
         capabilities: Array<{ kind: string }>;
+        runtime_identity?: {
+          provider_id: string;
+          model_id: string;
+        };
       }>;
     };
     expect(output.agents).toEqual(expect.arrayContaining([
@@ -62,6 +66,19 @@ describe("agent list CLI", () => {
         id: "claude-design",
         roles: expect.arrayContaining(["designer", "product/planning"]),
       }),
+      expect.objectContaining({
+        id: "kimi-code",
+        roles: ["test-verify", "reviewer", "release/proof"],
+        auth_mode: "subprocess/login-reuse",
+        capabilities: [
+          expect.objectContaining({ kind: "code.review" }),
+          expect.objectContaining({ kind: "release.verify" }),
+        ],
+        runtime_identity: expect.objectContaining({
+          provider_id: "kimi",
+          model_id: "kimi-code/k3",
+        }),
+      }),
     ]));
   }, 20_000);
 
@@ -75,6 +92,8 @@ describe("agent list CLI", () => {
     expect(logs.join("\n")).toContain("codex-cli");
     expect(logs.join("\n")).toContain("roles=coding,test-verify,reviewer");
     expect(logs.join("\n")).toContain("auth_mode=subprocess/login-reuse");
+    expect(logs.join("\n")).toContain("kimi-code");
+    expect(logs.join("\n")).toContain("provider=kimi model=kimi-code/k3");
     expect(errors).toEqual([]);
   }, 20_000);
 });

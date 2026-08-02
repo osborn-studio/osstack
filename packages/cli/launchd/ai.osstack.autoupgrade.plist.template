@@ -17,6 +17,7 @@
     {{NODE_BIN}}     absolute path to the Node 20+ binary
     {{OSSTACK_JS}}   absolute path to @osstack/cli's dist/bin.js
     {{OSSTACK_HOME}} default ~/.osstack
+    {{OSSTACK_SOCKET}} daemon Unix socket
     {{PATH}}         PATH for npm/launchctl
 -->
 <plist version="1.0">
@@ -38,6 +39,8 @@
   <dict>
     <key>OSSTACK_HOME</key>
     <string>{{OSSTACK_HOME}}</string>
+    <key>OSSTACK_SOCKET</key>
+    <string>{{OSSTACK_SOCKET}}</string>
     <key>PATH</key>
     <string>{{PATH}}</string>
   </dict>
@@ -54,6 +57,9 @@
 
   <key>ProcessType</key>
   <string>Background</string>
+
+  <key>WorkingDirectory</key>
+  <string>{{OSSTACK_HOME}}</string>
 
   <key>StandardOutPath</key>
   <string>{{OSSTACK_HOME}}/logs/upgrade.log</string>

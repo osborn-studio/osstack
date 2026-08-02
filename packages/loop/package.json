@@ -1,6 +1,6 @@
 {
   "name": "@osstack/loop",
-  "version": "0.12.0",
+  "version": "0.14.0",
   "description": "osstack Loop Engineering layer — scheduler, discover, planner, verifier, iterator: the daemon hot loop that turns osstack from a passive task dispatcher into a self-running Loop Engineering system.",
   "license": "MIT",
   "type": "module",
@@ -20,8 +20,10 @@
   },
   "dependencies": {
     "@osstack/agents": "workspace:*",
+    "@osstack/autonomy": "workspace:*",
     "@osstack/core": "workspace:*",
     "@osstack/github": "workspace:*",
+    "@osstack/governance": "workspace:*",
     "@osstack/hermes-adapter": "workspace:*",
     "@osstack/protocol": "workspace:*",
     "zod": "^3.25.76"

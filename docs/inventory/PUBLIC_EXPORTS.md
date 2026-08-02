@@ -9,7 +9,10 @@ packages are listed for completeness but are not a consumable API.
 
 ```ts
 export * from "./base.js";
+export * from "./child-env.js";
 export * from "./metadata.js";
+export * from "./adapters/kimi-contract.js";
+export * from "./adapters/kimi-stream.js";
 export { ClaudeCodeAdapter } from "./adapters/claude-code.js";
 export { ClaudeCliAdapter } from "./adapters/claude-cli.js";
 export { CodexCliAdapter } from "./adapters/codex-cli.js";
@@ -18,11 +21,31 @@ export { ClaudeDesignAdapter } from "./adapters/claude-design.js";
 export { DeepSeekReviewAdapter } from "./adapters/ds-review.js";
 export { DeepSeekVerifyAdapter } from "./adapters/ds-verify.js";
 export { GoogleStitchAdapter } from "./adapters/google-stitch.js";
+export { KimiCodeAdapter } from "./adapters/kimi-code.js";
 export {
 export {
 export {
 export function defaultAdapters(): AgentAdapter[] {
 export const AGENTS_VERSION = "0.0.0";
+```
+
+## `@osstack/autonomy`
+
+```ts
+export * as protocol from "@osstack/protocol";
+export * from "./types.js";
+export * from "./risk.js";
+export * from "./approval.js";
+export * from "./state-machine.js";
+export * from "./progress-budget.js";
+export * from "./engine.js";
+export * from "./core-persistence.js";
+export * from "./git-candidate.js";
+export * from "./repo-policy.js";
+export * from "./deploy-policy.js";
+export * from "./deploy-runner.js";
+export * from "./repo-lock.js";
+export * from "./semaphore.js";
 ```
 
 ## `@osstack/cli`
@@ -58,6 +81,7 @@ export function validateProofEvidence(options: {
 ## `@osstack/config`
 
 ```ts
+export {
 export {
 export {
 export {
@@ -105,6 +129,7 @@ export * from "./branch-scanner.js";
 export * from "./report.js";
 export * from "./stack.js";
 export * from "./portfolio-status.js";
+export * from "./delivery.js";
 ```
 
 ## `@osstack/governance`
@@ -112,6 +137,7 @@ export * from "./portfolio-status.js";
 ```ts
 export * from "./types.js";
 export * from "./scanner.js";
+export * from "./review-boundary.js";
 export * from "./knowledge-hygiene/index.js";
 export * from "./probe/index.js";
 ```
@@ -147,6 +173,8 @@ export * from "./protocol-mappers.js";
 export * from "./budget.js";
 export * from "./discovery-policy.js";
 export * from "./evaluation-spec.js";
+export * from "./review-boundary.js";
+export * from "./reviewer-isolation.js";
 export * from "./feedback.js";
 export * from "./lesson-draft.js";
 export * from "./stack-retro.js";
@@ -185,6 +213,7 @@ export { Task, TaskSource } from "./task.js";
 export { RunOutcome, RunSummary } from "./run.js";
 export { EventEnvelope } from "./event.js";
 export { EvidenceKind, EvidenceRef } from "./evidence.js";
+export {
 export {
 export {
 export {

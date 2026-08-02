@@ -7,6 +7,8 @@ export * from "./protocol-mappers.js";
 export * from "./budget.js";
 export * from "./discovery-policy.js";
 export * from "./evaluation-spec.js";
+export * from "./review-boundary.js";
+export * from "./reviewer-isolation.js";
 export * from "./feedback.js";
 export * from "./lesson-draft.js";
 export * from "./stack-retro.js";

@@ -30,6 +30,12 @@ const PKG = "@osstack/cli";
 const LAUNCHD_LABEL = "ai.osstack.daemon";
 const BACKUPS_TO_KEEP = 5;
 
+function daemonPlistPath(): string {
+  const directory = process.env["OSSTACK_LAUNCH_AGENTS_DIR"]
+    ?? join(homedir(), "Library", "LaunchAgents");
+  return join(directory, `${LAUNCHD_LABEL}.plist`);
+}
+
 export interface UpgradeOptions {
   channel: string;        // npm dist-tag: latest | canary
   dryRun: boolean;
@@ -128,7 +134,7 @@ async function startDaemonAgain(viaLaunchd: boolean): Promise<void> {
     // as fallback when the job is still loaded).
     log("restarting via launchd bootstrap…");
     const uid = process.getuid?.() ?? 501;
-    const plist = `${homedir()}/Library/LaunchAgents/${LAUNCHD_LABEL}.plist`;
+    const plist = daemonPlistPath();
     const boot = await run("launchctl", ["bootstrap", `gui/${uid}`, plist], 15_000);
     if (!boot.ok) await run("launchctl", ["kickstart", "-k", `gui/${uid}/${LAUNCHD_LABEL}`], 15_000);
     return;
@@ -158,8 +164,7 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
   // closed operationally; full npm-path hardening tracked for Phase 2.1).
   try {
     const { readFileSync: rfs } = await import("node:fs");
-    const { homedir: hd } = await import("node:os");
-    const plist = rfs(`${hd()}/Library/LaunchAgents/ai.osstack.daemon.plist`, "utf8");
+    const plist = rfs(daemonPlistPath(), "utf8");
     const rootResp0 = await run("npm", ["root", "-g"]);
     const npmRoot = rootResp0.ok ? rootResp0.output.trim() : "";
     if (plist.includes("bin.js") && (npmRoot === "" || !plist.includes(npmRoot))) {

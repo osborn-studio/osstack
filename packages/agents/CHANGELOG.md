@@ -1,5 +1,46 @@
 # @osstack/agents
 
+## 0.14.0
+
+### Patch Changes
+
+- 619cd53: Run Codex adapters in each task's repository worktree, keep truncated verifier
+  summaries Unicode-safe for strict JSON readers, and add workspace, changed, and
+  Git-baseline scopes to Loop governance.
+
+## 0.13.1
+
+### Patch Changes
+
+- Updated dependencies [733c82a]
+  - @osstack/governance@0.13.1
+
+## 0.13.0
+
+### Minor Changes
+
+- b99bbfb: Add durable R0-R4 guarded autonomy and automated R1/R2 GitHub delivery,
+  including exact-base candidate pinning, diff-bound R3 approval, SHA-bound
+  merged-PR recovery, and fail-closed dependency/security validation.
+- 16ec914: Add a first-class Kimi Code adapter and fail-closed structured reviewer verification.
+
+### Patch Changes
+
+- Updated dependencies [4fb11c0]
+- Updated dependencies [b99bbfb]
+  - @osstack/core@0.13.0
+  - @osstack/hermes-adapter@0.13.0
+
+## Unreleased
+
+### Minor Changes
+
+- Add a first-class, no-tool Kimi Code reviewer/release verifier with strict
+  structured output, authenticated three-state readiness diagnostics, bounded
+  execution, minimal child environments, and runtime identity evidence.
+- Mark Kimi provider/model identity as reported only when the authenticated
+  provider probe reports the exact invocation provider and default model.
+
 ## 0.12.0
 
 ### Minor Changes

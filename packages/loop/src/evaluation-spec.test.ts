@@ -217,7 +217,23 @@ describe("verifier per-evaluation results", () => {
     const adapter = mockAdapter({
       async *invoke(agentTask) {
         captured = agentTask;
-        yield doneEvent(agentTask.run_id, agentTask.session_id, "completed", "no bypass found");
+        const event = doneEvent(
+          agentTask.run_id,
+          agentTask.session_id,
+          "completed",
+          "no bypass found",
+        );
+        yield {
+          ...event,
+          payload: {
+            ...event.payload,
+            evaluation_judgments: [{
+              id: "no-policy-bypass",
+              pass: true,
+              summary: "no bypass found",
+            }],
+          },
+        } as unknown as HermesEvent;
       },
     });
 

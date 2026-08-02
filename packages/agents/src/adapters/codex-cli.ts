@@ -25,7 +25,7 @@
 
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { CapabilitySchema, type Capability, type CostTier } from "@osstack/core";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { BaseAgentAdapter, type AgentAvailability, type AgentTask } from "../base.js";
@@ -321,6 +321,10 @@ export class CodexCliAdapter extends BaseAgentAdapter {
   async *invoke(task: AgentTask, signal: AbortSignal): AsyncIterable<HermesEvent> {
     const seqRef = { v: 0 };
     const tools = new Map<string, ToolStart>();
+    const taskRepoPath = task.context?.["repo_path"];
+    const taskCwd = typeof taskRepoPath === "string" && taskRepoPath.trim() !== ""
+      ? resolve(taskRepoPath)
+      : this.cwd;
     yield runStarted(task, seqRef.v++);
 
     if (signal.aborted) {
@@ -331,10 +335,11 @@ export class CodexCliAdapter extends BaseAgentAdapter {
     const args = [
       "exec", "--json", "--skip-git-repo-check",
       "-s", this.sandbox,
-      "-C", this.cwd,
+      "-C", taskCwd,
       task.prompt,
     ];
     const proc = spawn(this.bin, args, {
+      cwd: taskCwd,
       stdio: ["ignore", "pipe", "pipe"],
       env: { ...process.env },
     });

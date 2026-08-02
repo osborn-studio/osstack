@@ -39,6 +39,10 @@ export interface CleanupOrphanedWorktreesResult {
 }
 
 const DEFAULT_BRANCH_PREFIX = "osstack/loop";
+const DISABLE_GIT_HOOKS_ARGS = [
+  "-c",
+  "core.hooksPath=/dev/null",
+] as const;
 
 export async function createWorktree(options: CreateWorktreeOptions): Promise<WorktreeHandle> {
   const repoPath = await gitOutput(options.repoPath, ["rev-parse", "--show-toplevel"]);
@@ -52,7 +56,15 @@ export async function createWorktree(options: CreateWorktreeOptions): Promise<Wo
   const worktreePath = join(rootPath, `${safeRunId}-${suffix}`);
   const baseRef = options.baseRef ?? "HEAD";
 
-  await runGit(repoPath, ["worktree", "add", "-b", branch, worktreePath, baseRef]);
+  await runGit(repoPath, [
+    ...DISABLE_GIT_HOOKS_ARGS,
+    "worktree",
+    "add",
+    "-b",
+    branch,
+    worktreePath,
+    baseRef,
+  ]);
 
   return {
     repoPath,
@@ -72,6 +84,7 @@ export async function commitWorktreeChanges(
 
   await runGit(handle.worktreePath, ["add", "-A"]);
   await runGit(handle.worktreePath, [
+    ...DISABLE_GIT_HOOKS_ARGS,
     "-c",
     "user.name=osstack-loop",
     "-c",
@@ -85,7 +98,12 @@ export async function commitWorktreeChanges(
 }
 
 export async function mergeWorktree(handle: WorktreeHandle): Promise<void> {
-  await runGit(handle.repoPath, ["merge", "--ff-only", handle.branch]);
+  await runGit(handle.repoPath, [
+    ...DISABLE_GIT_HOOKS_ARGS,
+    "merge",
+    "--ff-only",
+    handle.branch,
+  ]);
 }
 
 export async function cleanupWorktree(

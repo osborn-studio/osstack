@@ -17,7 +17,12 @@ export function rolesForCapabilityKinds(kinds: readonly string[]): string[] {
 }
 
 export function agentAuthMode(agentId: string): AgentAuthMode {
-  if (agentId === "claude-cli" || agentId === "codex-cli" || agentId === "opencode-cli") {
+  if (
+    agentId === "claude-cli"
+    || agentId === "codex-cli"
+    || agentId === "opencode-cli"
+    || agentId === "kimi-code"
+  ) {
     return "subprocess/login-reuse";
   }
   if (agentId === "claude-code" || agentId === "claude-design") return "sdk/api-key";

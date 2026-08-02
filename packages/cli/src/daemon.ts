@@ -15,6 +15,7 @@ import { existsSync, unlinkSync, statSync, chmodSync, mkdirSync } from "node:fs"
 import { readFile, rename, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
+import { performance } from "node:perf_hooks";
 import { setTimeout as sleep } from "node:timers/promises";
 import { encodeFrame, FrameDecoder, type HermesEvent } from "@osstack/hermes-adapter";
 import {
@@ -23,6 +24,7 @@ import {
   LoopBudget,
   LoopEngine,
   LoopKnowledgeTrace,
+  LoopProfileRoutingEvidence,
   checkBudget,
   nextCronDelayMs,
   validateCronExpression,
@@ -34,6 +36,7 @@ import {
   type LoopRunOptions,
   type LoopRunResult,
   type LoopKnowledgeTrace as LoopKnowledgeTraceType,
+  type LoopProfileRoutingEvidence as LoopProfileRoutingEvidenceType,
   type CompletedTask,
 } from "@osstack/loop";
 import { PIIRedactor, routeCapability, AgentOverrideError, PolicyEngine, DEFAULT_RULES, sqliteHistory, HermesBridge, GBrainAdapter, initOtel, shutdownOtel, traceSpan, otelEnabled, KanbanRepository, KanbanNotifier, getBoard, countRuns, countRunsSince, countEvents, listEventsForRun, type RoutableAdapter, type PolicyDecision, type CardStatus, type OutboundMessage } from "@osstack/core";
@@ -46,12 +49,42 @@ import {
   type AgentTask,
 } from "@osstack/agents";
 import { appendEvent, finalizeRun, insertRun, insertTask } from "./store.js";
+import {
+  getAutonomyRun,
+  listResumableAutonomyRuns,
+} from "@osstack/core";
+import {
+  acquireRepoWriteLock,
+  DEFAULT_READ_CONCURRENCY,
+  DEFAULT_WRITE_CONCURRENCY,
+  FifoSemaphore,
+  SemaphoreAcquireAbortedError,
+  type GuardedDeliveryResult,
+  type RepoWriteLock,
+  type SemaphoreLease,
+} from "@osstack/autonomy";
+import {
+  ScopedApprovalDecision,
+  type ScopedApprovalDecision as ScopedApprovalDecisionType,
+} from "@osstack/protocol";
 import { runDailyBrief } from "./daily-command.js";
 import { makePolicyGate } from "./policy-gate.js";
 import { osstackHome, pidFilePath, resolveSocketPath } from "./paths.js";
 import { PROTOCOL_VERSION, VERSION } from "./version.js";
 import { readUpdateCache, startUpdateChecker } from "./update-check.js";
 import { acquireDaemonLock } from "./daemon-lock.js";
+import {
+  runAutonomyHealth,
+  type AutonomyHealthReport,
+} from "./autonomy-health.js";
+import {
+  drainAutonomyNotifications,
+  type AutonomyNotificationSender,
+} from "./autonomy-notification.js";
+import {
+  ClockJumpDetector,
+  enforceAutonomyRetention,
+} from "./autonomy-host.js";
 import {
   createDashboardSnapshot,
   dashboardUrl,
@@ -115,6 +148,24 @@ interface DaemonContext {
   draining: boolean;
   /** Graceful shutdown trigger, wired up by startDaemon once the server is live. */
   requestShutdown: () => void;
+  /** Durable guarded-delivery recovery port, configured by the product entrypoint. */
+  guardedAutonomy: GuardedAutonomyDaemonRuntime | undefined;
+  /** Whole-machine bounded concurrency, independent for writes and reads. */
+  writeSemaphore: FifoSemaphore;
+  readSemaphore: FifoSemaphore;
+  /** Per-repository writer queues; file locks enforce cross-process ownership. */
+  repoWriteSemaphores: Map<string, FifoSemaphore>;
+  /** Latest operational gate and the probe used to refresh it. */
+  autonomyHealth: () => Promise<AutonomyHealthReport>;
+  lastAutonomyHealth: AutonomyHealthReport | undefined;
+}
+
+export interface GuardedAutonomyDaemonRuntime {
+  resume(
+    autonomyRunId: string,
+    decision?: ScopedApprovalDecisionType,
+    options?: { recoveryKind?: "restart" },
+  ): Promise<GuardedDeliveryResult>;
 }
 
 type LoopSessionStatus = "running" | "stopping" | "stopped" | "failed";
@@ -284,6 +335,19 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
         adapters: Array.from(ctx.adapters.keys()),
         active_runs: ctx.activeRuns.size,
         draining: ctx.draining,
+        concurrency: {
+          writes: {
+            limit: ctx.writeSemaphore.capacity,
+            active: ctx.writeSemaphore.in_use,
+            queued: ctx.writeSemaphore.pending,
+          },
+          reads: {
+            limit: ctx.readSemaphore.capacity,
+            active: ctx.readSemaphore.in_use,
+            queued: ctx.readSemaphore.pending,
+          },
+          repository_write_queues: ctx.repoWriteSemaphores.size,
+        },
         active_loops: activeLoopCount(ctx),
         otel_enabled: otelEnabled(),
         hermes_enabled: ctx.hermes.enabled,
@@ -367,6 +431,97 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
 
     case "stats":
       return singleOk(req.id, computeStats(ctx.db, ctx.loopSessions));
+
+    case "autonomy.status": {
+      const params = (req.params ?? {}) as { autonomy_run_id?: unknown };
+      if (
+        typeof params.autonomy_run_id !== "string"
+        || params.autonomy_run_id.length === 0
+      ) {
+        return singleErr(
+          req.id,
+          "bad_request",
+          "params.autonomy_run_id required",
+        );
+      }
+      const row = getAutonomyRun(ctx.db, params.autonomy_run_id);
+      return row === undefined
+        ? singleErr(
+            req.id,
+            "not_found",
+            `no autonomy run with id=${params.autonomy_run_id}`,
+          )
+        : singleOk(req.id, row);
+    }
+
+    case "autonomy.health": {
+      try {
+        const report = await ctx.autonomyHealth();
+        ctx.lastAutonomyHealth = report;
+        if (report.drain_required) ctx.draining = true;
+        return singleOk(req.id, report);
+      } catch (error) {
+        return singleErr(
+          req.id,
+          "autonomy_health_failed",
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    }
+
+    case "autonomy.resume": {
+      if (ctx.guardedAutonomy === undefined) {
+        return singleErr(
+          req.id,
+          "unavailable",
+          "guarded autonomy runtime is not configured",
+        );
+      }
+      const params = (req.params ?? {}) as {
+        autonomy_run_id?: unknown;
+        decision?: unknown;
+      };
+      if (
+        typeof params.autonomy_run_id !== "string"
+        || params.autonomy_run_id.length === 0
+      ) {
+        return singleErr(
+          req.id,
+          "bad_request",
+          "params.autonomy_run_id required",
+        );
+      }
+      const parsedDecision =
+        params.decision === undefined
+          ? undefined
+          : ScopedApprovalDecision.safeParse(params.decision);
+      if (
+        parsedDecision !== undefined
+        && !parsedDecision.success
+      ) {
+        return singleErr(
+          req.id,
+          "bad_request",
+          "params.decision must be a valid signed scoped approval",
+        );
+      }
+      try {
+        return singleOk(
+          req.id,
+          await resumeGuardedAutonomy(
+            ctx,
+            params.autonomy_run_id,
+            parsedDecision?.data,
+          ),
+        );
+      } catch (error) {
+        return singleErr(
+          req.id,
+          "autonomy_resume_failed",
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    }
 
     case "loop.run": {
       const parsed = parseLoopRunParams(req.params);
@@ -871,6 +1026,9 @@ function loopStat(session: LoopSession): LoopStat {
     total_cycle_duration_ms: session.totalCycleDurationMs,
     avg_cycle_duration_ms: session.cycleCount === 0 ? null : session.totalCycleDurationMs / session.cycleCount,
     failure_streaks: Object.values(session.failureStreaks),
+    ...(session.runOptions.profileRouting !== undefined
+      ? { profile: session.runOptions.profileRouting }
+      : {}),
     ...(budget !== undefined ? { budget } : {}),
     ...(session.lastCycleDurationMs !== undefined ? { last_cycle_duration_ms: session.lastCycleDurationMs } : {}),
     ...(session.scheduleExpression !== undefined ? { schedule: session.scheduleExpression } : {}),
@@ -1337,6 +1495,9 @@ function loopSessionSummary(session: LoopSession): Record<string, unknown> {
     total_cycle_duration_ms: session.totalCycleDurationMs,
     avg_cycle_duration_ms: session.cycleCount === 0 ? null : session.totalCycleDurationMs / session.cycleCount,
     failure_streaks: Object.values(session.failureStreaks),
+    ...(session.runOptions.profileRouting !== undefined
+      ? { profile: session.runOptions.profileRouting }
+      : {}),
     ...(budget !== undefined ? { budget } : {}),
     ...(session.lastCycleDurationMs !== undefined ? { last_cycle_duration_ms: session.lastCycleDurationMs } : {}),
     ...(session.maxCycles !== undefined ? { max_cycles: session.maxCycles } : {}),
@@ -1695,6 +1856,8 @@ function parseLoopRunParams(
   if (verifierAgentIds instanceof Error) return verifierAgentIds;
   const artifactVerification = optionalArtifactVerification(p, "artifactVerification");
   if (artifactVerification instanceof Error) return artifactVerification;
+  const profileRouting = optionalProfileRouting(p, "profileRouting");
+  if (profileRouting instanceof Error) return profileRouting;
   const maxIterations = optionalPositiveInteger(p, "maxIterations");
   if (maxIterations instanceof Error) return maxIterations;
   const commandTimeoutMs = optionalPositiveInteger(p, "commandTimeoutMs");
@@ -1735,6 +1898,7 @@ function parseLoopRunParams(
     ...(verifyCommands !== undefined ? { verifyCommands } : {}),
     ...(verifierAgentIds !== undefined ? { verifierAgentIds } : {}),
     ...(artifactVerification !== undefined ? { artifactVerification } : {}),
+    ...(profileRouting !== undefined ? { profileRouting } : {}),
     ...(discoveryPolicy !== undefined ? { discoveryPolicy } : {}),
     ...(budget !== undefined ? { budget } : {}),
     ...(lessonDrafts !== undefined ? { lessonDrafts } : {}),
@@ -1913,6 +2077,34 @@ function optionalArtifactVerification(
   };
 }
 
+function optionalProfileRouting(
+  params: Record<string, unknown>,
+  key: string,
+): LoopProfileRoutingEvidenceType | undefined | Error {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  const parsed = LoopProfileRoutingEvidence.safeParse(value);
+  if (!parsed.success) {
+    return new Error(
+      `params.${key} must be valid profile routing evidence`,
+    );
+  }
+  const {
+    designer_agent_id: designerAgentId,
+    designer_identity: designerIdentity,
+    ...required
+  } = parsed.data;
+  return {
+    ...required,
+    ...(designerAgentId !== undefined
+      ? { designer_agent_id: designerAgentId }
+      : {}),
+    ...(designerIdentity !== undefined
+      ? { designer_identity: designerIdentity }
+      : {}),
+  };
+}
+
 function optionalPositiveInteger(params: Record<string, unknown>, key: string): number | undefined | Error {
   const value = params[key];
   if (value === undefined) return undefined;
@@ -1952,6 +2144,164 @@ interface TaskSubmitParams {
   agent_id?: string;
   /** Structured context handed to the adapter (e.g. autoresearch tag/max_iterations). */
   context?: Record<string, unknown>;
+}
+
+interface DaemonRunSlot {
+  release(): Promise<void>;
+}
+
+const READ_ONLY_CAPABILITY_KINDS = new Set([
+  "code.review",
+  "review.code",
+  "design.review",
+  "doc.summarize",
+  "plan.estimate",
+  "research.web",
+  "research.code",
+  "release.check",
+  "release.verify",
+  "client.summarize",
+  "matter.summarize",
+  "risk.check",
+  "verify.acceptance",
+  "verify.alignment",
+  "memory.read",
+]);
+
+function daemonAccessKind(capabilityKind: string): "read" | "write" {
+  return READ_ONLY_CAPABILITY_KINDS.has(capabilityKind)
+    ? "read"
+    : "write";
+}
+
+function repoWriteSemaphore(
+  ctx: DaemonContext,
+  repoId: string,
+): FifoSemaphore {
+  const existing = ctx.repoWriteSemaphores.get(repoId);
+  if (existing !== undefined) return existing;
+  const created = new FifoSemaphore(1);
+  ctx.repoWriteSemaphores.set(repoId, created);
+  return created;
+}
+
+async function acquireDaemonRunSlot(
+  ctx: DaemonContext,
+  input: {
+    kind: "read" | "write";
+    run_id: string;
+    repo_id?: string;
+    signal?: AbortSignal;
+  },
+): Promise<DaemonRunSlot> {
+  if (input.kind === "read") {
+    const lease = await ctx.readSemaphore.acquire(input.signal);
+    return {
+      release: async () => {
+        lease.release();
+      },
+    };
+  }
+  if (
+    ctx.guardedAutonomy !== undefined
+    && ctx.lastAutonomyHealth === undefined
+  ) {
+    throw new Error(
+      "autonomy writes are blocked until the initial health check completes",
+    );
+  }
+  if (ctx.lastAutonomyHealth?.can_run_local === false) {
+    throw new Error(
+      `autonomy writes are blocked by ${
+        ctx.lastAutonomyHealth.write_blockers.join(",")
+      }`,
+    );
+  }
+
+  let repoSemaphore: FifoSemaphore | undefined;
+  let repoLease: SemaphoreLease | undefined;
+  let writeLease: SemaphoreLease | undefined;
+  let fileLock: RepoWriteLock | undefined;
+  try {
+    if (input.repo_id !== undefined) {
+      repoSemaphore = repoWriteSemaphore(ctx, input.repo_id);
+      repoLease = await repoSemaphore.acquire(input.signal);
+    }
+    writeLease = await ctx.writeSemaphore.acquire(input.signal);
+    if (input.repo_id !== undefined) {
+      fileLock = await acquireRepoWriteLock({
+        root_dir: join(osstackHome(), "locks", "repos"),
+        repo_id: input.repo_id,
+        autonomy_run_id: input.run_id,
+        on_audit: (event) => {
+          process.stderr.write(
+            `osstack: ${JSON.stringify(event)}\n`,
+          );
+        },
+      });
+    }
+  } catch (error) {
+    writeLease?.release();
+    repoLease?.release();
+    if (
+      input.repo_id !== undefined
+      && repoSemaphore?.in_use === 0
+      && repoSemaphore.pending === 0
+    ) {
+      ctx.repoWriteSemaphores.delete(input.repo_id);
+    }
+    throw error;
+  }
+
+  let released = false;
+  return {
+    release: async () => {
+      if (released) return;
+      released = true;
+      try {
+        await fileLock?.release();
+      } finally {
+        writeLease?.release();
+        repoLease?.release();
+        if (
+          input.repo_id !== undefined
+          && repoSemaphore?.in_use === 0
+          && repoSemaphore.pending === 0
+        ) {
+          ctx.repoWriteSemaphores.delete(input.repo_id);
+        }
+      }
+    },
+  };
+}
+
+async function resumeGuardedAutonomy(
+  ctx: DaemonContext,
+  autonomyRunId: string,
+  decision?: ScopedApprovalDecisionType,
+  recoveryKind?: "restart",
+): Promise<GuardedDeliveryResult> {
+  if (ctx.guardedAutonomy === undefined) {
+    throw new Error("guarded autonomy runtime is not configured");
+  }
+  const row = getAutonomyRun(ctx.db, autonomyRunId);
+  if (row === undefined) {
+    throw new Error(`no autonomy run with id=${autonomyRunId}`);
+  }
+  const slot = await acquireDaemonRunSlot(ctx, {
+    kind: "write",
+    run_id: autonomyRunId,
+    repo_id: row.repo_id,
+  });
+  try {
+    return await ctx.guardedAutonomy.resume(
+      autonomyRunId,
+      decision,
+      recoveryKind === undefined ? undefined : { recoveryKind },
+    );
+  } finally {
+    await slot.release();
+  }
 }
 
 async function handleTaskSubmit(
@@ -2061,6 +2411,17 @@ async function handleTaskSubmit(
   }
   const agentId = adapter.id;
   const selectedCapId = chosenCapId;
+  const selectedCapability = adapter.capabilities().find(
+    (capability) => capability.id === selectedCapId,
+  );
+  if (selectedCapability === undefined) {
+    sock.write(encodeFrame(singleErr(
+      req.id,
+      "internal",
+      `selected capability ${selectedCapId} is not advertised by ${agentId}`,
+    )));
+    return;
+  }
 
   const redact = ctx.redactor.redact(params.prompt);
   const cleanPrompt = redact.text;
@@ -2151,7 +2512,19 @@ async function handleTaskSubmit(
   let lastOutcome: "completed" | "failed" | "cancelled" = "completed";
   let lastUsageTokensIn = 0;
   let lastUsageTokensOut = 0;
+  let executionSlot: DaemonRunSlot | undefined;
   try {
+    const repoId =
+      typeof params.context?.["repo_id"] === "string"
+      && params.context["repo_id"].length > 0
+        ? params.context["repo_id"]
+        : undefined;
+    executionSlot = await acquireDaemonRunSlot(ctx, {
+      kind: daemonAccessKind(selectedCapability.kind),
+      run_id,
+      ...(repoId === undefined ? {} : { repo_id: repoId }),
+      signal: ac.signal,
+    });
     for await (const ev of adapter.invoke(task, ac.signal)) {
       try {
         appendEvent(ctx.db, ctx.dbPath, ev);
@@ -2180,11 +2553,30 @@ async function handleTaskSubmit(
         event_id: `${run_id}:err`,
         seq: -1, run_id, session_id,
         created_at: Date.now() / 1000, terminal: true, type: "error",
-        payload: { code: "adapter_threw", message: (err as Error).message, terminal: true },
+        payload: {
+          code:
+            err instanceof SemaphoreAcquireAbortedError
+              ? "cancelled"
+              : "adapter_threw",
+          message: (err as Error).message,
+          terminal: true,
+        },
       }));
     } catch { /* socket gone */ }
-    lastOutcome = "failed";
+    lastOutcome =
+      err instanceof SemaphoreAcquireAbortedError
+        ? "cancelled"
+        : "failed";
   } finally {
+    try {
+      await executionSlot?.release();
+    } catch (error) {
+      process.stderr.write(
+        `osstack: execution lock release failed for ${run_id}: ${
+          error instanceof Error ? error.message : String(error)
+        }\n`,
+      );
+    }
     sock.off("close", onClose);
     ctx.activeRuns.delete(run_id);
     try {
@@ -2335,7 +2727,29 @@ function cleanupStaleSocket(path: string): void {
   }
 }
 
-function buildContext(): DaemonContext {
+function configuredConcurrency(
+  value: number | undefined,
+  envName: string,
+  fallback: number,
+): number {
+  const raw = value ?? (
+    process.env[envName] === undefined
+      ? fallback
+      : Number(process.env[envName])
+  );
+  if (!Number.isInteger(raw) || raw < 1 || raw > 128) {
+    throw new Error(`${envName} must be an integer between 1 and 128`);
+  }
+  return raw;
+}
+
+function buildContext(
+  options: {
+    writeConcurrency?: number;
+    readConcurrency?: number;
+    socketPath?: string;
+  } = {},
+): DaemonContext {
   const home = osstackHome();
   if (!existsSync(home)) mkdirSync(home, { recursive: true });
   const dbPath = join(home, "state.db");
@@ -2367,6 +2781,34 @@ function buildContext(): DaemonContext {
     hermesKanbanByRun: new Map(),
     draining: false,
     requestShutdown: () => { /* wired up in startDaemon */ },
+    guardedAutonomy: undefined,
+    writeSemaphore: new FifoSemaphore(configuredConcurrency(
+      options.writeConcurrency,
+      "OSSTACK_WRITE_CONCURRENCY",
+      DEFAULT_WRITE_CONCURRENCY,
+    )),
+    readSemaphore: new FifoSemaphore(configuredConcurrency(
+      options.readConcurrency,
+      "OSSTACK_READ_CONCURRENCY",
+      DEFAULT_READ_CONCURRENCY,
+    )),
+    repoWriteSemaphores: new Map(),
+    autonomyHealth: async () => await runAutonomyHealth({
+      db,
+      db_path: dbPath,
+      home,
+      socket_path: options.socketPath ?? resolveSocketPath(),
+      power_policy:
+        process.env["OSSTACK_POWER_POLICY"] === "process_assertion"
+          ? "process_assertion"
+          : "none",
+      clock_monitor:
+        process.env["OSSTACK_CLOCK_MONITOR"] === "monotonic-v1",
+      require_launchd:
+        process.platform === "darwin"
+        && process.env["OSSTACK_AGENT_PROFILE"] === "mac-mini",
+    }),
+    lastAutonomyHealth: undefined,
   };
 }
 
@@ -2376,7 +2818,156 @@ export interface DaemonHandles {
   dbPath: string;
 }
 
-export async function startDaemon(opts: { socketPath?: string } = {}): Promise<DaemonHandles> {
+export interface StartDaemonOptions {
+  socketPath?: string;
+  writeConcurrency?: number;
+  readConcurrency?: number;
+  autonomyHealth?: () => Promise<AutonomyHealthReport>;
+  healthPollIntervalMs?: number;
+  notificationSender?: AutonomyNotificationSender;
+  wallClockMs?: () => number;
+  monotonicClockMs?: () => number;
+  clockJumpThresholdMs?: number;
+  guardedAutonomyFactory?: (
+    db: Database.Database,
+    dbPath: string,
+  ) =>
+    | GuardedAutonomyDaemonRuntime
+    | Promise<GuardedAutonomyDaemonRuntime>;
+}
+
+function environmentPositiveInteger(name: string): number | undefined {
+  const raw = process.env[name];
+  if (raw === undefined) return undefined;
+  if (!/^[1-9]\d*$/.test(raw)) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return Number(raw);
+}
+
+async function restoreGuardedAutonomy(
+  ctx: DaemonContext,
+  health: AutonomyHealthReport | undefined = ctx.lastAutonomyHealth,
+): Promise<void> {
+  if (ctx.guardedAutonomy === undefined) return;
+  if (health?.can_run_local === false) return;
+  const githubRecoveryStates = new Set([
+    "blocked_delivery",
+    "pushing",
+    "opening_pr",
+    "waiting_ci",
+    "merging",
+  ]);
+  await Promise.all(
+    listResumableAutonomyRuns(ctx.db)
+      .filter((row) => row.state !== "awaiting_approval")
+      .filter(
+        (row) =>
+          health?.can_push_deploy !== false
+          || !githubRecoveryStates.has(row.state),
+      )
+      .map(async (row) => {
+        try {
+          await resumeGuardedAutonomy(
+            ctx,
+            row.autonomy_run_id,
+            undefined,
+            "restart",
+          );
+        } catch (error) {
+          process.stderr.write(
+            `osstack: autonomy recovery failed for ${row.autonomy_run_id}: ${
+              error instanceof Error ? error.message : String(error)
+            }\n`,
+          );
+        }
+      }),
+  );
+}
+
+async function refreshAutonomyHealthAndRecover(
+  ctx: DaemonContext,
+  recover: boolean,
+  notificationSender?: AutonomyNotificationSender,
+): Promise<void> {
+  try {
+    const maxLogBytes = environmentPositiveInteger(
+      "OSSTACK_LOG_MAX_BYTES",
+    );
+    const maxLogFiles = environmentPositiveInteger(
+      "OSSTACK_LOG_MAX_FILES",
+    );
+    const proofRetentionDays = environmentPositiveInteger(
+      "OSSTACK_PROOF_RETENTION_DAYS",
+    );
+    const proofMinKeep = environmentPositiveInteger(
+      "OSSTACK_PROOF_MIN_KEEP",
+    );
+    await enforceAutonomyRetention({
+      home: osstackHome(),
+      db: ctx.db,
+      ...(maxLogBytes === undefined
+        ? {}
+        : { max_log_bytes: maxLogBytes }),
+      ...(maxLogFiles === undefined
+        ? {}
+        : { max_log_files: maxLogFiles }),
+      ...(proofRetentionDays === undefined
+        ? {}
+        : { proof_retention_days: proofRetentionDays }),
+      ...(proofMinKeep === undefined
+        ? {}
+        : { proof_min_keep: proofMinKeep }),
+    });
+  } catch (error) {
+    process.stderr.write(
+      `osstack: autonomy retention failed: ${
+        error instanceof Error ? error.message : String(error)
+      }\n`,
+    );
+  }
+  if (notificationSender !== undefined) {
+    try {
+      await drainAutonomyNotifications({
+        db: ctx.db,
+        db_path: ctx.dbPath,
+        sender: notificationSender,
+      });
+    } catch (error) {
+      process.stderr.write(
+        `osstack: autonomy notification drain failed: ${
+          error instanceof Error ? error.message : String(error)
+        }\n`,
+      );
+    }
+  }
+  if (ctx.guardedAutonomy === undefined) return;
+  const previous = ctx.lastAutonomyHealth;
+  let current: AutonomyHealthReport;
+  try {
+    current = await ctx.autonomyHealth();
+  } catch (error) {
+    process.stderr.write(
+      `osstack: autonomy health probe failed: ${
+        error instanceof Error ? error.message : String(error)
+      }\n`,
+    );
+    return;
+  }
+  ctx.lastAutonomyHealth = current;
+  if (current.drain_required) ctx.draining = true;
+  const externalRecovered =
+    previous !== undefined
+    && !previous.can_push_deploy
+    && current.can_push_deploy;
+  if (recover || externalRecovered) {
+    await restoreGuardedAutonomy(ctx, current);
+  }
+}
+
+export async function startDaemon(
+  opts: StartDaemonOptions = {},
+): Promise<DaemonHandles> {
   const socketPath = opts.socketPath ?? resolveSocketPath();
   // Refuse to start when another daemon already owns the pidfile — two
   // daemons would race for the socket and share the SQLite writer.
@@ -2384,7 +2975,24 @@ export async function startDaemon(opts: { socketPath?: string } = {}): Promise<D
   cleanupStaleSocket(socketPath);
   // Bring up OTel before the daemon context so spans capture everything.
   initOtel({ serviceVersion: DAEMON_VERSION });
-  const ctx = buildContext();
+  const ctx = buildContext({
+    socketPath,
+    ...(opts.writeConcurrency === undefined
+      ? {}
+      : { writeConcurrency: opts.writeConcurrency }),
+    ...(opts.readConcurrency === undefined
+      ? {}
+      : { readConcurrency: opts.readConcurrency }),
+  });
+  if (opts.autonomyHealth !== undefined) {
+    ctx.autonomyHealth = opts.autonomyHealth;
+  }
+  if (opts.guardedAutonomyFactory !== undefined) {
+    ctx.guardedAutonomy = await opts.guardedAutonomyFactory(
+      ctx.db,
+      ctx.dbPath,
+    );
+  }
   const stopUpdateChecker = startUpdateChecker();
   let dashboard: DashboardServerHandle | null = null;
 
@@ -2444,12 +3052,66 @@ export async function startDaemon(opts: { socketPath?: string } = {}): Promise<D
       server.listen(socketPath, () => {
       try { chmodSync(socketPath, 0o600); } catch { /* best effort */ }
 
+      let healthPollPending = true;
+      let guardedRecovery = refreshAutonomyHealthAndRecover(
+        ctx,
+        true,
+        opts.notificationSender,
+      )
+        .finally(() => {
+          healthPollPending = false;
+        });
+      const healthPollIntervalMs = Math.max(
+        10,
+        opts.healthPollIntervalMs ?? 30_000,
+      );
+      const wallClockMs = opts.wallClockMs ?? Date.now;
+      const monotonicClockMs =
+        opts.monotonicClockMs ?? (() => performance.now());
+      const clockDetector = new ClockJumpDetector(
+        opts.clockJumpThresholdMs ?? 120_000,
+      );
+      clockDetector.observe(wallClockMs(), monotonicClockMs());
+      const healthMonitor =
+        ctx.guardedAutonomy === undefined
+          && opts.notificationSender === undefined
+          ? undefined
+          : setInterval(() => {
+              if (healthPollPending) return;
+              healthPollPending = true;
+              const clock = clockDetector.observe(
+                wallClockMs(),
+                monotonicClockMs(),
+              );
+              if (clock.jump_detected) {
+                process.stderr.write(
+                  `osstack: clock jump detected drift_ms=${clock.drift_ms}; re-running external health and recovery probes\n`,
+                );
+              }
+              guardedRecovery = refreshAutonomyHealthAndRecover(
+                ctx,
+                clock.jump_detected,
+                opts.notificationSender,
+              )
+                .catch((error) => {
+                  process.stderr.write(
+                    `osstack: autonomy recovery monitor failed: ${
+                      error instanceof Error ? error.message : String(error)
+                    }\n`,
+                  );
+                })
+                .finally(() => {
+                  healthPollPending = false;
+                });
+            }, healthPollIntervalMs);
+      healthMonitor?.unref();
       let shutdownPromise: Promise<void> | undefined;
       const shutdown = async (): Promise<void> => {
         if (shutdownPromise !== undefined) return await shutdownPromise;
         process.off("SIGTERM", onSig);
         process.off("SIGINT", onSig);
         stopUpdateChecker();
+        if (healthMonitor !== undefined) clearInterval(healthMonitor);
         shutdownPromise = (async () => {
           // Abort any active runs so adapters get a chance to clean up.
           for (const ac of ctx.activeRuns.values()) ac.abort();
@@ -2467,7 +3129,11 @@ export async function startDaemon(opts: { socketPath?: string } = {}): Promise<D
           const dailyCompletions = Array.from(ctx.dailySessions.values())
             .map((session) => session.done)
             .filter((done): done is Promise<void> => done !== undefined);
-          await Promise.allSettled([...loopCompletions, ...dailyCompletions]);
+          await Promise.allSettled([
+            ...loopCompletions,
+            ...dailyCompletions,
+            guardedRecovery,
+          ]);
           await new Promise<void>((resolveClose) => server.close(() => resolveClose()));
           if (dashboard !== null) await dashboard.close();
           try { ctx.db.close(); } catch { /* swallow */ }
