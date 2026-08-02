@@ -25,6 +25,13 @@ vi.mock("./update-check.js", () => ({
 import { handleUpgradeCommand } from "./upgrade.js";
 import { VERSION } from "./version.js";
 
+const versionParts = VERSION.split(".");
+const TARGET_VERSION = [
+  versionParts[0] ?? "0",
+  versionParts[1] ?? "0",
+  String(Number.parseInt(versionParts[2] ?? "0", 10) + 1),
+].join(".");
+
 let tmp: string;
 let globalRoot: string;
 let installedVersion: string;
@@ -56,7 +63,7 @@ beforeEach(() => {
   );
   mkdirSync(process.env["OSSTACK_HOME"], { recursive: true });
   writeFileSync(join(process.env["OSSTACK_HOME"], "state.db"), "known-good");
-  mocks.fetchRegistryVersion.mockResolvedValue("0.13.0");
+  mocks.fetchRegistryVersion.mockResolvedValue(TARGET_VERSION);
   mocks.spawn.mockImplementation(
     (command: string, args: readonly string[] = []) => {
       const child = new EventEmitter() as EventEmitter & {
@@ -74,10 +81,10 @@ beforeEach(() => {
 
       if (command === "osstack") {
         servingVersion =
-          failNewHealth && installedVersion === "0.13.0"
-            ? "0.13.0-unhealthy"
+          failNewHealth && installedVersion === TARGET_VERSION
+            ? `${TARGET_VERSION}-unhealthy`
             : installedVersion;
-        if (servingVersion === "0.13.0-unhealthy") {
+        if (servingVersion === `${TARGET_VERSION}-unhealthy`) {
           writeFileSync(
             join(process.env["OSSTACK_HOME"] ?? "", "state.db"),
             "migrated-by-unhealthy-release",
@@ -95,7 +102,7 @@ beforeEach(() => {
         } else if (command === "npm" && argv[0] === "install") {
           const spec = argv.at(-1) ?? "";
           installedVersion = spec.slice(spec.lastIndexOf("@") + 1);
-          if (installedVersion === "0.13.0") {
+          if (installedVersion === TARGET_VERSION) {
             const backupDir = join(
               process.env["OSSTACK_HOME"] ?? "",
               "backups",
@@ -148,14 +155,14 @@ describe("safe self-upgrade", () => {
 
     const installIndex = commands.findIndex(
       ({ command, args }) =>
-        command === "npm" && args.includes("@osstack/cli@0.13.0"),
+        command === "npm" && args.includes(`@osstack/cli@${TARGET_VERSION}`),
     );
     expect(rpcMethods).toContain("daemon.drain");
     expect(rpcMethods).toContain("daemon.shutdown");
     expect(backupPresentAtInstall).toBe(true);
     expect(installIndex).toBeGreaterThan(-1);
-    expect(installedVersion).toBe("0.13.0");
-    expect(servingVersion).toBe("0.13.0");
+    expect(installedVersion).toBe(TARGET_VERSION);
+    expect(servingVersion).toBe(TARGET_VERSION);
   });
 
   it("restores the previous binary and database after failed health", async () => {
@@ -170,7 +177,7 @@ describe("safe self-upgrade", () => {
       .filter(({ command, args }) => command === "npm" && args[0] === "install")
       .map(({ args }) => args.at(-1));
     expect(installs).toEqual([
-      "@osstack/cli@0.13.0",
+      `@osstack/cli@${TARGET_VERSION}`,
       `@osstack/cli@${VERSION}`,
     ]);
     expect(installedVersion).toBe(VERSION);
