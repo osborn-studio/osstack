@@ -1,0 +1,30 @@
+schema_version: 1
+enforcement: report
+blocking_severities: [high]
+accepted_dispositions: [resolved, waived, invalidated]
+require_destination_state: applied
+max_deferred_age_days: 14
+required_question_ids: []
+waiver:
+  require_human: true
+  max_age_days: 30
+resolution:
+  require_human_categories:
+    - user
+    - outcome
+    - scope
+    - data_model
+    - interface
+    - user_flow
+    - security
+    - migration
+    - rollback
+    - acceptance
+destination:
+  verified_require_human: true
+invalidation:
+  required_requires_human: true
+budgets:
+  quick: 8
+  standard: 20
+  deep: 40

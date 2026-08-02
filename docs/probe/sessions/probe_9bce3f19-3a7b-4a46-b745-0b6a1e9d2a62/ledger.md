@@ -1,0 +1,39 @@
+---
+probe_session_id: probe_9bce3f19-3a7b-4a46-b745-0b6a1e9d2a62
+probe_schema_version: 1
+probe_revision: 2
+source_sha256: 8ce723ecf96b2aae9fdbec70c6eeac6890dbfecb961ff2d00afacb805c9fa711
+---
+
+# Probe ledger: probe_9bce3f19-3a7b-4a46-b745-0b6a1e9d2a62
+
+- State: active
+- Required disposed: 0/19
+- Completion: 0%
+
+| Item | Quadrant | State | Category | Disposition |
+|---|---|---|---|---|
+| pi_2f6f5426-ea23-4a2c-8c7e-ae7e22606829 | KU | open | acceptance | — |
+| pi_80e6f846-af58-4f49-a9c2-da98b0605ba6 | KU | open | test_data | — |
+| pi_8fd996c0-71cb-453e-b790-d7eab9c18e7f | KU | open | data_model | — |
+| pi_a927f10e-c1ce-4403-9b59-f6aee4a3cd09 | KU | open | interface | — |
+| pi_c9a182f2-219f-45e5-957d-e966c162befa | KU | open | security | — |
+| pi_d6d1260a-89da-46e2-9e49-771bcc554219 | KU | open | acceptance | — |
+| pi_e1a3e352-a443-453c-95dc-3160a4df1323 | KU | open | rollback | — |
+| pi_fc3f64f6-24c3-4571-b80c-9ddb6b28d328 | KU | open | migration | — |
+| pi_69331705-7cfa-461d-ace5-0bde7d022320 | KU | open | security | — |
+| pi_26850ba8-a334-4fb2-aa66-614750e2e3a5 | KU | open | acceptance | — |
+| pi_4fc9a85a-fd43-47ef-afd0-789692d8f6dd | KU | open | acceptance | — |
+| pi_04ac9b46-7149-47b8-9bb0-d2463da6da62 | KU | open | failure_mode | — |
+| pi_2c273b8b-1c67-4abb-af2c-404f36d7fc81 | KU | open | user | — |
+| pi_429e73cb-011a-4668-b1aa-84beac1b27f6 | KU | open | dependency | — |
+| pi_a158ed39-52be-439c-9836-2483b2c5f4a6 | KU | open | outcome | — |
+| pi_d59be9ff-36f0-48fe-a266-ca761e63e3c0 | KU | open | user_flow | — |
+| pi_2307f4b2-071a-4eda-b6a0-241a794dc158 | KU | open | scope | — |
+| pi_43aedae3-4262-4054-bed7-cf85b30094d7 | KU | open | acceptance | — |
+| pi_692bb7be-d35c-4228-b014-01d877415fac | KU | open | performance | — |
+| pi_f705a3f7-1bf5-4b75-a30f-e97c424bf621 | KU | open | environment | — |
+| pi_b75a2846-6492-44e1-aa77-621259615a2e | UK | open | tacit_convention | — |
+| pi_01b5b6d1-4838-44f9-ba13-38c668a0dcf2 | KU | open | observability | — |
+| pi_078df6bf-3a6a-408c-989a-d212f008160c | KU | open | performance | — |
+| pi_1a91de90-5edb-41c9-92e9-ba56d1c3d723 | KU | open | failure_mode | — |

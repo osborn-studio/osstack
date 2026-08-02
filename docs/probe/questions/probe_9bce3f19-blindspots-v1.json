@@ -1,0 +1,97 @@
+{
+  "schema_version": "1",
+  "batch_id": "pqb_probe_dogfood_v1",
+  "origin": "blindspot",
+  "generated_by": {
+    "type": "agent",
+    "id": "probe-skill"
+  },
+  "source_revision": "d467426329964a17d6c6b057e54bf43f894c0023",
+  "questions": [
+    {
+      "schema_version": "1",
+      "question_id": "dynamic.0da799f37b504b7b955cf30806e5698440dfa17f2f3f8ee4b34b4c98f88d47e5.v1",
+      "item_kind": "question",
+      "initial_quadrant": "uu",
+      "current_quadrant": "ku",
+      "doc_type": "test",
+      "category": "acceptance",
+      "origin": "blindspot",
+      "prompt": "What exact event counts as a false blocking incident during report-only Probe dogfood?",
+      "options": [
+        {
+          "option_id": "enforcement_only",
+          "label": "Enforcement effects only",
+          "description": "Count only a nonzero gate exit, blocked result, or denied Kanban transition caused by Probe."
+        },
+        {
+          "option_id": "any_interruption",
+          "label": "Any workflow interruption",
+          "description": "Count any user-visible interruption attributable to Probe, even when the gate remains advisory."
+        },
+        {
+          "option_id": "track_both",
+          "label": "Track both separately",
+          "description": "Maintain separate enforcement-effect and user-interruption rates in the baseline."
+        }
+      ],
+      "impact": 3,
+      "irreversibility": 2,
+      "uncertainty": 3,
+      "required": true,
+      "evidence_refs": [
+        {
+          "kind": "file",
+          "ref": "packages/cli/src/probe-kanban-guard.ts",
+          "sha256": "6fbaadc3b10872b71fde135c008717f39b82d5105cb6b630c222bf88e0679448"
+        }
+      ],
+      "destination_hint": "test_plan"
+    },
+    {
+      "schema_version": "1",
+      "question_id": "dynamic.f62d38a876136d4fac47b47bd78fbf4205e412d1882e8973f82417437b997fab.v1",
+      "item_kind": "question",
+      "initial_quadrant": "uu",
+      "current_quadrant": "ku",
+      "doc_type": "test",
+      "category": "acceptance",
+      "origin": "blindspot",
+      "prompt": "Does the initial dirty-worktree bootstrap session count toward the five-spec E2E and fourteen-day baseline, or must counting begin with a clean committed source revision?",
+      "options": [
+        {
+          "option_id": "clean_only",
+          "label": "Clean revisions only",
+          "description": "Retain the bootstrap as evidence but start acceptance counting with the first clean committed source revision."
+        },
+        {
+          "option_id": "portable_hashes",
+          "label": "Portable hashes suffice",
+          "description": "Count the bootstrap when every input and rendered artifact is content-addressed and gate-valid."
+        },
+        {
+          "option_id": "separate_bootstrap",
+          "label": "Separate bootstrap metric",
+          "description": "Track bootstrap use separately from the five qualifying E2Es and fourteen-day baseline."
+        }
+      ],
+      "impact": 3,
+      "irreversibility": 2,
+      "uncertainty": 3,
+      "required": true,
+      "evidence_refs": [
+        {
+          "kind": "file",
+          "ref": "packages/cli/src/probe-command.ts",
+          "sha256": "393bec5a63fe2fe5606d15e2cc1e233f40ec523a6ae718f812f14665f89dfa55"
+        },
+        {
+          "kind": "file",
+          "ref": "packages/cli/src/probe-render.ts",
+          "sha256": "af3534c15f22c6256e08bfdc68173d12ab3c1658eec30da4070e9c7d2babb35c"
+        }
+      ],
+      "destination_hint": "test_plan"
+    }
+  ]
+}

@@ -118,6 +118,11 @@ describe("probe portable rendering", () => {
     expect(first.files[2]?.content).toContain(
       "Use versioned snapshots and append-only events.",
     );
+    for (const file of first.files.filter((candidate) =>
+      candidate.path.endsWith(".md"),
+    )) {
+      expect(file.content, file.path).not.toMatch(/[ \t]+$/m);
+    }
     expect(first.manifest).toMatchObject({
       schema_version: "1",
       session_id: session.session_id,

@@ -125,9 +125,9 @@ function renderLedgerMarkdown(
     "",
     `# Probe ledger: ${ledger.session.session_id}`,
     "",
-    `State: ${ledger.session.state}  `,
-    `Required disposed: ${ledger.readiness.required_disposed}/${ledger.readiness.required_total}  `,
-    `Completion: ${ledger.readiness.completion_percent}%`,
+    `- State: ${ledger.session.state}`,
+    `- Required disposed: ${ledger.readiness.required_disposed}/${ledger.readiness.required_total}`,
+    `- Completion: ${ledger.readiness.completion_percent}%`,
     "",
     "| Item | Quadrant | State | Category | Disposition |",
     "|---|---|---|---|---|",
@@ -157,8 +157,8 @@ function renderDelta(
   return [
     `# ${title}`,
     "",
-    `Probe session: ${ledger.session.session_id}  `,
-    `Revision: ${ledger.session.revision}`,
+    `- Probe session: ${ledger.session.session_id}`,
+    `- Revision: ${ledger.session.revision}`,
     "",
     ...(resolved.length === 0
       ? ["No resolved decisions for this document type.", ""]
