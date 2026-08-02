@@ -1,6 +1,6 @@
 {
   "name": "@osstack/config",
-  "version": "0.13.1",
+  "version": "0.14.0",
   "description": "Osstack agent configuration — role-based agent selection (coding / test-verify / design) with per-machine profiles, availability probing, and fallback resolution.",
   "license": "MIT",
   "type": "module",

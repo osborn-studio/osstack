@@ -1,6 +1,6 @@
 {
   "name": "@osstack/conformance",
-  "version": "0.13.1",
+  "version": "0.14.0",
   "description": "Kernel consumption conformance suite — proves an external consumer can use the osstack kernel (core/loop/agents) without @osstack/cli. Test-only, never published.",
   "license": "MIT",
   "private": true,

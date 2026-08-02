@@ -1,6 +1,6 @@
 {
   "name": "@osstack/supervisor",
-  "version": "0.13.1",
+  "version": "0.14.0",
   "description": "Portfolio repo supervision and closed-loop maturity control plane for osstack.",
   "license": "MIT",
   "private": true,
