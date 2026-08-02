@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 
 const root = resolve(import.meta.dirname, "..");
 const zeroSha = /^0+$/;
@@ -57,6 +58,15 @@ export function firstUsableSha(candidates, fallback) {
   return candidates.find((candidate) => candidate && !zeroSha.test(candidate)) ?? fallback;
 }
 
+export function manifestsDifferOnlyByVersion(before, after) {
+  if (before.version === after.version) return false;
+  const beforeWithoutVersion = { ...before };
+  const afterWithoutVersion = { ...after };
+  delete beforeWithoutVersion.version;
+  delete afterWithoutVersion.version;
+  return isDeepStrictEqual(beforeWithoutVersion, afterWithoutVersion);
+}
+
 function resolveBaseSha() {
   return firstUsableSha([
     argumentValue("--base"),
@@ -85,11 +95,31 @@ async function coveredPackageNames() {
   return covered;
 }
 
+function packageManifestAt(sha, path) {
+  try {
+    return JSON.parse(runGit(["show", `${sha}:${path}`]));
+  } catch {
+    return undefined;
+  }
+}
+
+function isVersionOnlyPackageManifestChange(baseSha, headSha, path) {
+  const before = packageManifestAt(baseSha, path);
+  const after = packageManifestAt(headSha, path);
+  return before !== undefined && after !== undefined && manifestsDifferOnlyByVersion(before, after);
+}
+
 async function changedPublicPackages(baseSha, headSha) {
   const output = runGit(["diff", "--name-only", baseSha, headSha]);
-  const directories = new Set(
-    output.split(/\r?\n/).map(isReleaseSensitivePackagePath).filter(Boolean),
-  );
+  const directories = new Set();
+  for (const path of output.split(/\r?\n/)) {
+    const directory = isReleaseSensitivePackagePath(path);
+    if (!directory) continue;
+    if (path.endsWith("/package.json") && isVersionOnlyPackageManifestChange(baseSha, headSha, path)) {
+      continue;
+    }
+    directories.add(directory);
+  }
   const packages = [];
   for (const directory of directories) {
     const manifest = JSON.parse(await readFile(join(root, "packages", directory, "package.json"), "utf8"));
@@ -106,6 +136,20 @@ function runSelfTest() {
   assert.deepEqual(
     parseChangesetPackageNames('---\n"@osstack/governance": minor\n\'@osstack/loop\': patch\n---\n\nRelease.\n'),
     ["@osstack/governance", "@osstack/loop"],
+  );
+  assert.equal(
+    manifestsDifferOnlyByVersion(
+      { name: "@osstack/governance", version: "0.12.0", exports: "./dist/index.js" },
+      { name: "@osstack/governance", version: "0.13.1", exports: "./dist/index.js" },
+    ),
+    true,
+  );
+  assert.equal(
+    manifestsDifferOnlyByVersion(
+      { name: "@osstack/governance", version: "0.12.0", exports: "./dist/index.js" },
+      { name: "@osstack/governance", version: "0.13.1", exports: "./dist/new.js" },
+    ),
+    false,
   );
   console.log("changeset coverage self-test: ok");
 }
