@@ -1,5 +1,23 @@
 # @osstack/loop
 
+## 0.13.0
+
+### Minor Changes
+
+- 16ec914: Add a first-class Kimi Code adapter and fail-closed structured reviewer verification.
+
+### Patch Changes
+
+- Updated dependencies [4fb11c0]
+- Updated dependencies [b99bbfb]
+- Updated dependencies [16ec914]
+  - @osstack/protocol@0.13.0
+  - @osstack/core@0.13.0
+  - @osstack/autonomy@0.13.0
+  - @osstack/agents@0.13.0
+  - @osstack/github@0.13.0
+  - @osstack/hermes-adapter@0.13.0
+
 ## Unreleased
 
 ### Minor Changes

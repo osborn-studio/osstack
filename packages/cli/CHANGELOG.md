@@ -1,5 +1,34 @@
 # @osstack/cli
 
+## 0.13.0
+
+### Minor Changes
+
+- 4fb11c0: Add project-allowlisted deployment, automatic rollback and freeze, and Mac Mini guarded-autonomy operations.
+- b99bbfb: Add durable R0-R4 guarded autonomy and automated R1/R2 GitHub delivery,
+  including exact-base candidate pinning, diff-bound R3 approval, SHA-bound
+  merged-PR recovery, and fail-closed dependency/security validation.
+- 16ec914: Add a first-class Kimi Code adapter and fail-closed structured reviewer verification.
+
+### Patch Changes
+
+- 591405a: Boot out an existing daemon before bootstrapping a replacement LaunchAgent.
+- f29b6e5: Retry the transient macOS launchd bootstrap race after replacing a loaded
+  LaunchAgent, while preserving a bounded fail-closed installer error.
+- Updated dependencies [4fb11c0]
+- Updated dependencies [b99bbfb]
+- Updated dependencies [16ec914]
+  - @osstack/protocol@0.13.0
+  - @osstack/core@0.13.0
+  - @osstack/autonomy@0.13.0
+  - @osstack/agents@0.13.0
+  - @osstack/github@0.13.0
+  - @osstack/loop@0.13.0
+  - @osstack/config@0.13.0
+  - @osstack/hermes-adapter@0.13.0
+  - @osstack/skill-registry@0.13.0
+  - @osstack/skills@0.13.0
+
 ## Unreleased
 
 ### Minor Changes

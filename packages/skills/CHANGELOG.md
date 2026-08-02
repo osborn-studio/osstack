@@ -1,5 +1,13 @@
 # @osstack/skills
 
+## 0.13.0
+
+### Patch Changes
+
+- Updated dependencies [4fb11c0]
+- Updated dependencies [b99bbfb]
+  - @osstack/core@0.13.0
+
 ## 0.12.0
 
 ### Patch Changes
