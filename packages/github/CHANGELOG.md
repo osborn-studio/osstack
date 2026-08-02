@@ -1,5 +1,13 @@
 # @osstack/github
 
+## 0.13.0
+
+### Minor Changes
+
+- b99bbfb: Add durable R0-R4 guarded autonomy and automated R1/R2 GitHub delivery,
+  including exact-base candidate pinning, diff-bound R3 approval, SHA-bound
+  merged-PR recovery, and fail-closed dependency/security validation.
+
 ## Unreleased
 
 ### Minor Changes

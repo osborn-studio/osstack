@@ -1,5 +1,21 @@
 # @osstack/agents
 
+## 0.13.0
+
+### Minor Changes
+
+- b99bbfb: Add durable R0-R4 guarded autonomy and automated R1/R2 GitHub delivery,
+  including exact-base candidate pinning, diff-bound R3 approval, SHA-bound
+  merged-PR recovery, and fail-closed dependency/security validation.
+- 16ec914: Add a first-class Kimi Code adapter and fail-closed structured reviewer verification.
+
+### Patch Changes
+
+- Updated dependencies [4fb11c0]
+- Updated dependencies [b99bbfb]
+  - @osstack/core@0.13.0
+  - @osstack/hermes-adapter@0.13.0
+
 ## Unreleased
 
 ### Minor Changes
