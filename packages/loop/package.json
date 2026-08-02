@@ -1,6 +1,6 @@
 {
   "name": "@osstack/loop",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "description": "osstack Loop Engineering layer — scheduler, discover, planner, verifier, iterator: the daemon hot loop that turns osstack from a passive task dispatcher into a self-running Loop Engineering system.",
   "license": "MIT",
   "type": "module",

@@ -1,5 +1,11 @@
 # @osstack/governance
 
+## 0.13.1
+
+### Patch Changes
+
+- 733c82a: Publish the review-boundary evaluator required by the Loop reviewer isolation runtime.
+
 ## 0.12.0
 
 ### Minor Changes
