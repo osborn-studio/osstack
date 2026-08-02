@@ -1,5 +1,12 @@
 # @osstack/agents
 
+## 0.13.1
+
+### Patch Changes
+
+- Updated dependencies [733c82a]
+  - @osstack/governance@0.13.1
+
 ## 0.13.0
 
 ### Minor Changes
