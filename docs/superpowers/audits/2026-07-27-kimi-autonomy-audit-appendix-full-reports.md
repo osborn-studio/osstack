@@ -1,5 +1,7 @@
 # 附录：五份阶段计划的完整审计报告（原始输出）
 
+> **状态：Historical。** 本文保留固定基线审计证据，不代表当前实现状态；请参阅[当前状态索引](../KIMI_AUTONOMY_STATUS.md)。
+
 > 本附录是五个并行审计 agent 的完整原始报告，供 Codex 再审计时复核证据链（尤其各"文件核验"表）。主结论与修订指令以 `2026-07-27-kimi-autonomy-plan-audit-by-fable5.md` 为准；两者如有出入，以主文件为准。每份报告均基于 pinned commit `4981378` 的真实源码逐条核验。
 
 **索引**：A=P0–P2 Adapter/Verifier ｜ B=P3 Profile/Deliver ｜ C=P4 Guarded Git ｜ D=P5–P6 Deploy/Ops ｜ E=P7 Productization

@@ -1,5 +1,7 @@
 # Kimi Autonomy Final Audit Verdict
 
+> **Status: Historical.** This verdict closed planning defects before implementation. See the [current-state index](../../superpowers/KIMI_AUTONOMY_STATUS.md) for landed PRs and remaining gates.
+
 ## Audit identity
 
 - Date: 2026-07-27

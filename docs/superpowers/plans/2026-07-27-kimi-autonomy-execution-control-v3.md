@@ -1,5 +1,7 @@
 # Kimi Autonomy Execution Control Plan v3
 
+> **Status: Historical controller.** Phases A–D landed; Phase E remains blocked on real-soak evidence. Use the [current-state index](../KIMI_AUTONOMY_STATUS.md) before following any step here.
+
 > Status: normative execution controller, pending the final Codex audit.
 >
 > Purpose: let the final auditor close the remaining plan defects and, on a

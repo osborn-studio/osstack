@@ -1,5 +1,7 @@
 # Kimi Autonomy Audit Closure Ledger
 
+> **Status: Historical.** This ledger closes planning findings, not implementation or production gates. See the [current-state index](../KIMI_AUTONOMY_STATUS.md).
+
 > This ledger separates plan closure from implementation closure.
 >
 > Allowed plan states: `OPEN`, `PLAN_CLOSED`, `WAIVED_BY_OWNER`.

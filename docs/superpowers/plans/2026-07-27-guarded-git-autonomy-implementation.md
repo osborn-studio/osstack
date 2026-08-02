@@ -1,5 +1,7 @@
 # Guarded Git Autonomy Implementation Plan
 
+> **Status: Implemented.** Phase C landed in PR #158. This file is retained as its historical implementation plan; see the [current-state index](../KIMI_AUTONOMY_STATUS.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a durable R0–R4 autonomy kernel so R1/R2 work can commit, push, open a PR, wait for CI, and merge without human intervention while R3 requires a digest-bound Owner decision and R4 remains permanently blocked.

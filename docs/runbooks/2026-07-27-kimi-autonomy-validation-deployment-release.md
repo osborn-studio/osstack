@@ -1,5 +1,7 @@
 # Kimi Autonomy Validation, Deployment, and Release Runbook
 
+> **Status: Superseded.** Retained as acceptance history. Use the runbooks linked from the [current-state index](../superpowers/KIMI_AUTONOMY_STATUS.md) for current operations.
+
 > Commands in this document that begin with `osstack autonomy` are target
 > contracts for the new implementation. They are not assumed to exist on the
 > planning baseline.

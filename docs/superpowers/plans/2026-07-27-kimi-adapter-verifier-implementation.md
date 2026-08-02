@@ -1,5 +1,7 @@
 # Kimi Adapter and Verifier Implementation Plan
 
+> **Status: Implemented.** Phase A landed in PR #155. This file is retained as its historical implementation plan; see the [current-state index](../KIMI_AUTONOMY_STATUS.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add Kimi Code as a first-class osstack adapter and make its structured, read-only review verdict a fail-closed loop gate.

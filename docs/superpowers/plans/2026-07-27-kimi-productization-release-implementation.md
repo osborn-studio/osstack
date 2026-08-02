@@ -1,5 +1,7 @@
 # Kimi Autonomy Productization and Release Implementation Plan
 
+> **Status: Active gate specification; not promoted.** Phase E remains blocked until the required real-soak evidence passes. See the [current-state index](../KIMI_AUTONOMY_STATUS.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Convert the proven Owner-specific Kimi/Mac Mini system into a portable, documented, upgrade-safe osstack capability and release it only after the real soak evidence satisfies the productization gate.

@@ -1,5 +1,7 @@
 # osstack × Kimi Code × Mac Mini 自治开发系统设计
 
+> **状态：Historical。** 本文保留已批准设计与决策依据，但其中“实施未开始”等状态陈述已经过期；请参阅[当前状态索引](../KIMI_AUTONOMY_STATUS.md)。
+
 > 状态：设计评审中  
 > 日期：2026-07-27  
 > 目标读者：Owner、osstack 维护者、实现 Agent、审查 Agent、运维人员  

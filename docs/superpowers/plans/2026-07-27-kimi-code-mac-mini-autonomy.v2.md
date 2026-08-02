@@ -1,5 +1,7 @@
 # Kimi Code Mac Mini Autonomy Implementation Plan (v2)
 
+> **Status: Superseded.** Retained as the v2 audit baseline; v3-controlled implementation and later source/runbooks replace its execution instructions. See the [current-state index](../KIMI_AUTONOMY_STATUS.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 > **v2 (2026-07-27, Fable 5 audit revision).** Supersedes v1 at commit `4981378`. Changes: terminology guard (§0), execution-host declarations and parametrized worktree paths (§3), invariants 16–20 (§5), Kimi usage budget (§5b), verification-ladder phase annotations (§6), hardened promotion gates (§8), privacy-aware self-review (§10). Child plans require the amendments in `2026-07-27-kimi-autonomy-plan-audit-by-fable5.md` before implementation. No KD-01..08 decision is changed.

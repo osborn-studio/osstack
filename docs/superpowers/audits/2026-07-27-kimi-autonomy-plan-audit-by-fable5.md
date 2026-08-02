@@ -1,5 +1,7 @@
 # Kimi Autonomy Plan 审计修订包（Fable 5）
 
+> **状态：Historical。** 本文是固定基线的计划审计修订证据；当前实现与剩余 gate 以[当前状态索引](../KIMI_AUTONOMY_STATUS.md)为准。
+
 **审计对象**：`gilosbornhello/osstack` 分支 `docs/kimi-autonomy-plan`，固定提交 `4981378`（已核验远端一致）
 **审计范围**：设计规格 + 总实施计划 + 五份阶段实施计划，共 7 份文档约 6,600 行
 **审计方法**：主审（Fable 5）负责总计划/设计规格与跨文档一致性；五个并行审计 agent 各深读一份阶段计划，并逐条对照 pinned commit 的真实源码核验文件、导出、命令与测试约定；对全部 fail-closed 保证做绕过路径推演

@@ -1,5 +1,7 @@
 # Kimi Code Mac Mini Autonomy Implementation Plan
 
+> **Status: Superseded.** This v1 document is an audit baseline only. Use the [current-state index](../KIMI_AUTONOMY_STATUS.md) for current code, runbooks, and evidence gates.
+
 > **Superseded for execution.** This v1 plan is retained as the pinned audit
 > baseline. Execute
 > [`2026-07-27-kimi-code-mac-mini-autonomy.v2.md`](2026-07-27-kimi-code-mac-mini-autonomy.v2.md)

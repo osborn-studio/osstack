@@ -1,5 +1,7 @@
 # Codex Handoff — Final Audit, Then Execute Kimi Autonomy
 
+> **Status: Historical.** This handoff is not reusable authorization and grants no current merge, machine, production, or publication permission. See the [current-state index](../KIMI_AUTONOMY_STATUS.md).
+
 Use this prompt after all referenced files are uploaded to
 `docs/kimi-autonomy-plan`.
 

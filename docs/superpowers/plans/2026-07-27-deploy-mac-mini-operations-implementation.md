@@ -1,5 +1,7 @@
 # Guarded Deploy and Mac Mini Operations Implementation Plan
 
+> **Status: Implemented in source.** Phase D landed in PR #159; its real Mac Mini soak gate remains open. See the [current-state index](../KIMI_AUTONOMY_STATUS.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add project-allowlisted staging/production deployment with automatic health verification, rollback, and freeze, then make the guarded delivery service reliable for 24×7 Mac Mini operation.

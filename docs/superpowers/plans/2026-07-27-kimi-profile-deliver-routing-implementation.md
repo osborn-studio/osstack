@@ -1,5 +1,7 @@
 # Kimi Profile and Deliver Routing Implementation Plan
 
+> **Status: Implemented.** Phase B landed in PR #157. This file is retained as its historical implementation plan; see the [current-state index](../KIMI_AUTONOMY_STATUS.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make the Mac Mini profile select Kimi Code as the default independent evaluator and make `deliver`, `loop run`, and `loop start` share the same identity-aware routing logic.
