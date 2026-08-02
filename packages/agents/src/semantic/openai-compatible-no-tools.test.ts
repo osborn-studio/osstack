@@ -46,7 +46,7 @@ function request(): SemanticJudgeRequestV1 {
 function providerResponse(overrides: Record<string, unknown> = {}): Response {
   return new Response(JSON.stringify({
     id: "provider-request-1",
-    model: "provider-model",
+    model: "deepseek-v4-pro",
     choices: [{
       index: 0,
       finish_reason: "stop",
@@ -111,7 +111,9 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
   });
 
   it("uses the fixed DashScope endpoint and credential for Qwen", async () => {
-    const fetchMock = vi.fn<typeof fetch>(async () => providerResponse());
+    const fetchMock = vi.fn<typeof fetch>(async () => providerResponse({
+      model: "qwen3.7-plus",
+    }));
     const provider = new QwenNoToolsSemanticJudge({
       model_id: "qwen3.7-plus",
       environment: { DASHSCOPE_API_KEY: "qwen-secret-sentinel" },
@@ -285,5 +287,18 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
 
     await expect(provider.judge(request(), new AbortController().signal))
       .rejects.toThrow(/response exceeds/i);
+  });
+
+  it("fails closed when the provider reports a different model identity", async () => {
+    const provider = new DeepSeekNoToolsSemanticJudge({
+      model_id: "deepseek-v4-pro",
+      environment: { DEEPSEEK_API_KEY: "key" },
+      fetch: vi.fn<typeof fetch>(async () => providerResponse({
+        model: "unexpected-model",
+      })),
+    });
+
+    await expect(provider.judge(request(), new AbortController().signal))
+      .rejects.toThrow(/model identity/i);
   });
 });

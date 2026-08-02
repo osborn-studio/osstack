@@ -75,11 +75,11 @@ Logged-in general code agents are not acceptable substitutes for the isolated
 `osstack neat semantic` accepts three fixed no-tools judge profiles. A profile
 is ready only when both its credential and complete model ID are present:
 
-| Judge ID | Credential | Model ID |
-|---|---|---|
-| `anthropic-no-tools` | `ANTHROPIC_API_KEY` | `OSSTACK_NEAT_ANTHROPIC_MODEL` |
-| `deepseek-no-tools` | `DEEPSEEK_API_KEY` | `OSSTACK_NEAT_DEEPSEEK_MODEL` |
-| `qwen-no-tools` | `DASHSCOPE_API_KEY` | `OSSTACK_NEAT_QWEN_MODEL` |
+| Judge ID | Credential | Model ID | Endpoint scope |
+|---|---|---|---|
+| `anthropic-no-tools` | `ANTHROPIC_API_KEY` | `OSSTACK_NEAT_ANTHROPIC_MODEL` | Anthropic API |
+| `deepseek-no-tools` | `DEEPSEEK_API_KEY` | `OSSTACK_NEAT_DEEPSEEK_MODEL` | DeepSeek API |
+| `qwen-no-tools` | `DASHSCOPE_API_KEY` | `OSSTACK_NEAT_QWEN_MODEL` | Alibaba Cloud China (Beijing) |
 
 Recommended explicit model IDs for the first canary are
 `deepseek-v4-pro` and `qwen3.7-plus`. Model IDs remain environment-owned so a
@@ -90,6 +90,15 @@ The DeepSeek and Qwen endpoints are fixed in the trusted provider registry;
 repository configuration cannot supply a Base URL. The doctor passes the
 `production_semantic_provider` check when at least one profile is complete and
 reports partial configuration only by variable name, never by value.
+`qwen-no-tools` intentionally accepts only a China (Beijing) Model Studio key,
+because Alibaba Cloud keys and endpoints are region-specific. Keys from
+Singapore, Virginia, Hong Kong, Tokyo, or Frankfurt must not be sent to the
+Beijing endpoint; those regions require separate allowlisted profiles before
+they can be used by osstack.
+
+The HTTP providers also require the response model identity to match the
+requested model string. A mismatch fails closed before the semantic decision
+is accepted or cached.
 
 Before invoking a canary from the terminal where the credentials are already
 loaded, configure the corresponding immutable model identity:

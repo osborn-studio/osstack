@@ -42,6 +42,7 @@ async function main() {
   node scripts/smoke-neat-semantic-live.mjs --provider <deepseek-no-tools|qwen-no-tools> [--receipt <absolute-path>]
 
 The selected credential and model environment variables must already exist.
+qwen-no-tools requires an Alibaba Cloud Model Studio key from China (Beijing).
 The script prints only a sanitized receipt and never prints provider values or findings.
 `);
     return;

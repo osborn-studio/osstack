@@ -36,6 +36,7 @@ interface ProviderProfile {
 
 const deepSeekProfile: ProviderProfile = {
   id: "deepseek-no-tools",
+  // https://api-docs.deepseek.com/api/create-chat-completion/
   endpoint: "https://api.deepseek.com/chat/completions",
   credentialEnvironmentVariable: "DEEPSEEK_API_KEY",
   outputTokenParameter: "max_tokens",
@@ -44,6 +45,8 @@ const deepSeekProfile: ProviderProfile = {
 
 const qwenProfile: ProviderProfile = {
   id: "qwen-no-tools",
+  // China (Beijing) DashScope domain; keys cannot cross regions:
+  // https://www.alibabacloud.com/help/en/model-studio/regions/
   endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
   credentialEnvironmentVariable: "DASHSCOPE_API_KEY",
   outputTokenParameter: "max_completion_tokens",
@@ -206,6 +209,9 @@ class OpenAICompatibleNoToolsSemanticJudge implements SemanticJudgePort {
       const parsed = providerResponse.safeParse(rawProviderResponse);
       if (!parsed.success) {
         throw new Error(`${this.id} returned an invalid provider response schema`);
+      }
+      if (parsed.data.model !== this.model_id) {
+        throw new Error(`${this.id} returned an unexpected model identity`);
       }
       const choice = parsed.data.choices[0];
       if (choice === undefined) {

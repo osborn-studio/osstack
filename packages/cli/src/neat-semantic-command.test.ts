@@ -233,6 +233,7 @@ describe("neat semantic", () => {
     expect(help).toContain("anthropic-no-tools");
     expect(help).toContain("deepseek-no-tools");
     expect(help).toContain("qwen-no-tools");
+    expect(help).toContain("Beijing DASHSCOPE_API_KEY");
     expect(help).toContain("DEEPSEEK_API_KEY");
     expect(help).toContain("DASHSCOPE_API_KEY");
   });
