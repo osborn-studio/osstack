@@ -1,5 +1,21 @@
 # @osstack/config
 
+## 0.13.1
+
+### Patch Changes
+
+- @osstack/agents@0.13.1
+
+## 0.13.0
+
+### Patch Changes
+
+- Updated dependencies [4fb11c0]
+- Updated dependencies [b99bbfb]
+- Updated dependencies [16ec914]
+  - @osstack/core@0.13.0
+  - @osstack/agents@0.13.0
+
 ## 0.12.0
 
 ### Patch Changes

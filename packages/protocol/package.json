@@ -1,6 +1,6 @@
 {
   "name": "@osstack/protocol",
-  "version": "0.10.0",
+  "version": "0.13.0",
   "description": "Stable cross-product / cross-process / cross-agent kernel contracts for osstack (Task, Run, Event, Evidence, Approval, Policy, Agent command envelope) with JSON Schema artifacts and a versioned protocol.",
   "license": "MIT",
   "type": "module",
