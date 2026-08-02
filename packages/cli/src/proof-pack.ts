@@ -393,7 +393,7 @@ export function createVerifierOutputArtifacts(
   verifyResults: VerifyResultsEvidence,
 ): ProofArtifact[] {
   if (verifyResults.results === undefined) return [];
-  const artifacts = verifyResults.results.flatMap((result) => {
+  const candidates = verifyResults.results.flatMap((result) => {
     if (
       result.review_artifacts !== undefined
       && result.review_artifacts.length > 0
@@ -408,11 +408,15 @@ export function createVerifierOutputArtifacts(
         ].join("");
         return [
           {
-            path: `${basePath}.md`,
+            basePath,
+            extension: "md",
+            eventSeq: result.event_seq,
             content: ensureTrailingNewline(redacted.markdown),
           },
           {
-            path: `${basePath}.json`,
+            basePath,
+            extension: "json",
+            eventSeq: result.event_seq,
             content: `${JSON.stringify(redacted, null, 2)}\n`,
           },
         ];
@@ -423,7 +427,7 @@ export function createVerifierOutputArtifacts(
       ? "unknown-verifier"
       : result.reviewer_agent_id;
     const dir = verifierOutputDir(agentId);
-    const path = `${dir}/${safeFileSegment(result.task_id)}-${safeFileSegment(agentId)}.txt`;
+    const basePath = `${dir}/${safeFileSegment(result.task_id)}-${safeFileSegment(agentId)}`;
     const content = [
       `task_id: ${result.task_id}`,
       `reviewer_agent_id: ${agentId}`,
@@ -434,7 +438,24 @@ export function createVerifierOutputArtifacts(
       result.summary,
       "",
     ].join("\n");
-    return [{ path, content: redactText(content) }];
+    return [{
+      basePath,
+      extension: "txt",
+      eventSeq: result.event_seq,
+      content: redactText(content),
+    }];
+  });
+  const pathCounts = new Map<string, number>();
+  for (const candidate of candidates) {
+    const path = `${candidate.basePath}.${candidate.extension}`;
+    pathCounts.set(path, (pathCounts.get(path) ?? 0) + 1);
+  }
+  const artifacts = candidates.map((candidate) => {
+    const unsuffixedPath = `${candidate.basePath}.${candidate.extension}`;
+    const path = pathCounts.get(unsuffixedPath) === 1
+      ? unsuffixedPath
+      : `${candidate.basePath}-event-${String(candidate.eventSeq)}.${candidate.extension}`;
+    return { path, content: candidate.content };
   });
   assertUniqueArtifactPaths(artifacts);
   return artifacts;
