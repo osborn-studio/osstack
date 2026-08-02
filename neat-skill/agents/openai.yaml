@@ -1,4 +1,4 @@
 interface:
-  display_name: "Neat Knowledge Hygiene"
-  short_description: "Close out repository knowledge with evidence"
-  default_prompt: "Use $neat-skill to audit and close out this repository knowledge safely."
+  display_name: "Neat Knowledge Close-out"
+  short_description: "Reconcile project truth, knowledge, and cleanup safely"
+  default_prompt: "Use $neat-skill to reconcile this project’s code, runtime, docs, rules, authorized memory, and workspace state safely."

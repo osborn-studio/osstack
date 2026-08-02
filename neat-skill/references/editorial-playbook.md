@@ -10,7 +10,7 @@ evidence determines the edit.
 |---|---|---|
 | `AGENTS.md` and configured instruction mirrors | Coding agents in this repository | Stable commands, constraints, boundaries, and pointers needed to work safely |
 | `README.md` and `docs/` | Users, maintainers, and downstream integrators | Current behavior, setup, architecture, operations, and handoff knowledge |
-| External agent memory | A future session of one agent | Out of R0 scope; never inspect merely because a path exists |
+| Authorized external agent memory | A future session of one agent | Preferences, non-obvious lessons, and pointers not already owned by project docs |
 
 Do not copy one audience's prose into another surface. Use a concise pointer
 when a maintained document already owns the detail.
@@ -28,6 +28,20 @@ when a maintained document already owns the detail.
    editing both sources.
 7. Propose file deletion, rename, or semantic conflict resolution to the user;
    do not execute it through this skill.
+8. Treat generated platform memory as read-only unless the platform documents
+   an authorized correction or consolidation control plane.
+9. Distinguish repository facts from runtime facts. A declared port, deploy
+   config, merged PR, or passing test is not evidence that production is live.
+
+## Memory convergence
+
+- Promote stable system behavior needed by teammates into the maintained docs.
+- Keep project rules limited to facts that an agent must see to work safely.
+- Collapse obsolete or duplicate human-maintained memory only through an
+  authorized memory transaction. Do not edit generated summaries directly.
+- Preserve decision rationale when it still constrains current work; move event
+  chronology to release notes or Git history.
+- Do not create a new skill merely to reduce memory size.
 
 ## Finding-specific guidance
 

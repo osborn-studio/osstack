@@ -2,7 +2,9 @@
 
 The workflow and editorial principles in this skill adapt ideas from
 [`neat-freak`](https://github.com/KKKKhazix/khazix-skills/tree/main/neat-freak)
-in the `KKKKhazix/khazix-skills` repository.
+in the `KKKKhazix/khazix-skills` repository, including the v3.0 close-out
+contract at commit
+[`2b4a645`](https://github.com/KKKKhazix/khazix-skills/commit/2b4a645cfdc894156ae347d897723562f719ce95).
 
 MIT License
 

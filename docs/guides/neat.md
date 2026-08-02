@@ -1,11 +1,10 @@
 # `osstack neat` knowledge hygiene
 
-`osstack neat check` is a deterministic, read-only repository check for
-instruction sources, required knowledge surfaces, configured budgets,
-conservative relative references, and change-review obligations. It does not
-use a model to invent findings or rewrite prose. `osstack neat review` is a
-separate, explicit write command that only creates or updates the output path
-provided by the caller.
+`osstack neat` combines a deterministic repository checker with opt-in semantic
+review, recoverable remediation transactions, cross-repository dependency
+obligations, event history, and improvement proposals. Mechanical checks never
+use a model to invent findings or rewrite prose. Semantic calls, state writes,
+and repository edits require their own explicit command and safety gate.
 
 ## Quick start
 
@@ -34,6 +33,125 @@ node packages/cli/dist/bin.js neat check --all --fail-on none
 ```
 
 `osstack neat` is an alias of `osstack neat check`.
+
+## Command map
+
+| Command | Purpose | Default behavior |
+|---|---|---|
+| `check` | Mechanical knowledge-contract audit | Read-only and stateless |
+| `review` | Record a portable finding resolution | Writes only `--output` |
+| `fix` | Apply the closed low-risk patch catalog | Preview-only |
+| `semantic` | Evidence-bound narrative, contradiction, drift, and memory-overlap review | Disabled by config unless explicitly enabled |
+| `memory` | Plan approved edits to one bounded external memory surface | Plan/dry-run; TTY approval and execute gates |
+| `narrative` | Plan approved remediation for narrative findings | Plan/dry-run; TTY approval and execute gates |
+| `dependencies` | Scan and govern cross-repository knowledge obligations | Scan-only unless `--record` or a confirmed transaction is used |
+| `trend` | Read event-derived history | Read-only |
+| `propose` | Draft repeated-finding improvements | Preview-only |
+
+Every write path is separate from `check`. No neat command creates a Git
+commit, deletes a branch, or cleans a worktree.
+
+## Semantic review
+
+Semantic review runs only with schema V2 and an explicitly enabled provider
+kill switch in `.osstack/neat.yaml`:
+
+```yaml
+version: 2
+
+semantic:
+  enabled: true
+  judge_id: anthropic-no-tools
+  dimensions: [narrative, contradiction, drift, memory_overlap]
+  schedule: manual
+  max_input_tokens: 32000
+  max_output_tokens: 4000
+  max_calls: 8
+```
+
+The built-in Anthropic judge also requires `ANTHROPIC_API_KEY` and
+`OSSTACK_NEAT_ANTHROPIC_MODEL`. The credential value is read from the process
+environment and is not written to reports. Run a bounded review with:
+
+```bash
+osstack neat semantic --repo . \
+  --dimensions narrative,contradiction,drift,memory-overlap \
+  --max-input-tokens 32000 --max-output-tokens 4000 --max-calls 8 \
+  --json --fail-on none
+```
+
+Candidates are selected mechanically before the provider call. The provider
+receives bounded evidence and must return the declared structured contract.
+Missing requested coverage, transport failure, unapproved truncation, invalid
+output, or a disabled provider fails closed with exit 3. `--allow-truncated`
+accepts budget truncation; it does not turn provider failure into success.
+History is written only with `--record`; `--db` requires `--record`.
+
+## Recoverable memory and narrative transactions
+
+`memory` and `narrative` share a four-step transaction model:
+
+1. `plan` snapshots exact source fingerprints and writes a private plan under
+   `$OSSTACK_HOME/neat/plans`.
+2. `approve` records the selected action IDs, actor, reason, and expected
+   revision. It requires an interactive local TTY.
+3. `apply` defaults to `--dry-run`; `--execute` requires the same TTY and
+   rechecks revision, repository identity, file fingerprints, and free space.
+4. `recover` restores or completes an interrupted transaction from its receipt.
+
+```bash
+# Bounded Claude Code memory plan.
+osstack neat memory plan --repo . --adapter claude-code \
+  --claude-memory-dir "$HOME/.claude/projects/PROJECT/memory" \
+  --source MEMORY.md --start-line 10 --end-line 24 \
+  --kind compress --replacement "Current maintained summary" \
+  --reason "Remove superseded duplicate facts" --format json
+
+osstack neat memory approve --plan khtp_... --actions all \
+  --actor osborn --reason "Reviewed bounded diff" --if-revision 1
+osstack neat memory apply --plan khtp_... --if-revision 1 --dry-run
+osstack neat memory apply --plan khtp_... --if-revision 1 --execute
+osstack neat memory recover --plan khtp_...
+
+# Narrative plans use finding fingerprints from a V2 report.
+osstack neat narrative plan --repo . --findings khf_... \
+  --kind move --target docs/CHANGES.md \
+  --reason "Move event history out of the active rulebook" --format json
+```
+
+Supported action kinds are `move`, `compress`, and `delete`; none is executed
+at plan time. An approval is not reusable after the revision or source evidence
+changes. These commands never create a commit.
+
+## Cross-repository dependency obligations
+
+Use one explicit repository registry to detect probable upstream/downstream
+contract edges. A plain scan is read-only:
+
+```bash
+osstack neat dependencies scan --registry "$OSSTACK_HOME/repos.json" --json
+osstack neat dependencies scan --registry "$OSSTACK_HOME/repos.json" --record --json
+osstack neat dependencies inbox --registry "$OSSTACK_HOME/repos.json" \
+  --repo-id downstream-repo --json
+```
+
+`--record` persists the registry scope and obligation transitions. An optional
+`--judge <id>` is valid only with `--record`, so semantic advisory decisions
+remain auditable. Confirming an edge or revoking a stale edge is a recoverable,
+revision-guarded repository transaction:
+
+```bash
+osstack neat dependencies confirm --obligation kho_... --repo . \
+  --actor osborn --if-revision 1 --dry-run
+osstack neat dependencies confirm --obligation kho_... --repo . \
+  --actor osborn --if-revision 1 --execute
+osstack neat dependencies revoke --edge khe_... --repo . \
+  --actor osborn --if-revision 2 --dry-run
+osstack neat dependencies recover --plan khtp_...
+```
+
+Confirm/revoke execute paths require a local TTY and revalidate registry scope,
+repository identity, revision, and file fingerprints.
 
 ## Portable review evidence
 
@@ -217,6 +335,12 @@ guessing it. `memory.platform_limit_exceeded` is a Claude-specific warning when
 `MEMORY.md` exceeds 200 lines or 25KB; no timestamp is treated as evidence of a
 last recall. See the [Claude Code memory contract](https://code.claude.com/docs/en/memory).
 
+Claude Code is the only built-in external-memory adapter in 0.14.x. Unknown
+platform directories and generated Codex memory are never auto-discovered or
+mutated. If a platform has no documented control plane, report the observation
+as generated/read-only and leave remediation pending; do not apply Claude Code
+limits or path rules to it.
+
 ## Exit codes
 
 | Code | Meaning |
@@ -229,10 +353,15 @@ last recall. See the [Claude Code memory contract](https://code.claude.com/docs/
 `--fail-on none` never hides findings; it only makes a completed check exit 0.
 An incomplete inventory is still represented by `scan.incomplete`.
 
-## Configuration v1
+## Configuration v1 and v2
 
 The optional authoritative config is `<repo>/.osstack/neat.yaml`. A present but
 invalid file fails closed. Unknown keys are rejected.
+
+Version 1 config covers deterministic checks. Version 2 preserves those fields
+and adds strict `semantic` and `dependencies` sections. A V1 config is projected
+to V2 defaults internally when a V2 engine path is used; it is never rewritten
+on disk. Semantic review remains disabled in that projection.
 
 ```yaml
 version: 1
@@ -298,6 +427,19 @@ ignore:
 | `ignore[].rule_id` | per entry | A known rule id. |
 | `ignore[].paths` | per entry | Non-empty v1 path-pattern list; broad `**` is forbidden. |
 | `ignore[].reason` | per entry | Non-empty explanation. |
+
+V2-only fields:
+
+| Field | Required | Accepted value |
+|---|---|---|
+| `semantic.enabled` | when `semantic` exists | Explicit boolean kill switch. |
+| `semantic.judge_id` | when enabled | Registered non-empty judge ID. |
+| `semantic.dimensions` | no | Unique list of `narrative`, `contradiction`, `drift`, `memory_overlap`. |
+| `semantic.schedule` | no | `manual` or narrative-only `daily`. |
+| `semantic.max_input_tokens` | no | Integer 1–250000. |
+| `semantic.max_output_tokens` | no | Integer 1–32000. |
+| `semantic.max_calls` | no | Integer 1–64. |
+| `dependencies[]` | no | Strict confirmed-edge records with stable edge ID, owner, evidence, and review dates. |
 
 Paths use POSIX separators, must remain inside the repository, and reject brace
 expansion, extglobs, character classes, negated globs, and backslashes. Patterns
