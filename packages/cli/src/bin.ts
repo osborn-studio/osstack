@@ -7876,7 +7876,15 @@ async function installLaunchAgent(options: {
       domain,
       plistPath,
     });
-    for (const action of plan) await launchctl(action);
+    await executeLaunchAgentLoadPlan({
+      actions: plan,
+      run: launchctl,
+      wait: async (milliseconds) => {
+        await new Promise<void>((resolvePromise) => {
+          setTimeout(resolvePromise, milliseconds);
+        });
+      },
+    });
     loaded = await isLaunchAgentLoaded();
   }
 
@@ -8102,6 +8110,48 @@ export function launchAgentLoadPlan(options: {
     ["bootstrap", options.domain, options.plistPath],
     ["kickstart", "-k", service],
   ];
+}
+
+const DEFAULT_LAUNCHD_BOOTSTRAP_RETRY_DELAYS_MS = [
+  100,
+  250,
+  500,
+  1_000,
+  2_000,
+  3_000,
+] as const;
+
+export async function executeLaunchAgentLoadPlan(options: {
+  actions: string[][];
+  run: (
+    action: string[],
+    options?: { allowFailure?: boolean },
+  ) => Promise<{ ok: boolean; output: string }>;
+  wait: (milliseconds: number) => Promise<void>;
+  retryDelaysMs?: readonly number[];
+}): Promise<void> {
+  const retryDelaysMs = options.retryDelaysMs
+    ?? DEFAULT_LAUNCHD_BOOTSTRAP_RETRY_DELAYS_MS;
+  for (const action of options.actions) {
+    if (action[0] !== "bootstrap") {
+      await options.run(action);
+      continue;
+    }
+
+    let attempts = 1;
+    let result = await options.run(action, { allowFailure: true });
+    for (const retryDelayMs of retryDelaysMs) {
+      if (result.ok) break;
+      await options.wait(retryDelayMs);
+      attempts += 1;
+      result = await options.run(action, { allowFailure: true });
+    }
+    if (!result.ok) {
+      throw new Error(
+        `launchctl ${action.join(" ")} failed after ${attempts} attempts: ${result.output}`,
+      );
+    }
+  }
 }
 
 function ensureLaunchdSupported(): void {
