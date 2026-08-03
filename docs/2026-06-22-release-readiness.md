@@ -202,6 +202,7 @@ osstack release doctor --target primary --cloud-url https://osstack-knowledge-cl
 - `npm_package_bootstrap`：查询 npm registry，确认每个公开 workspace package 已至少发布过一个版本；未发布的新包必须先由有权限的账号完成首次发布，随后才能在 npm 配置 GitHub Actions Trusted Publisher。
 - `pnpm preflight:npm-trust`：在交互式终端中只读核对每个公开包的 GitHub repository、`release.yml` 与 publish 权限；npm 会要求新鲜的 2FA/web-auth 会话，因此该项不在无长期令牌的 CI 中自动执行。
 - `pnpm configure:npm-trust -- --json`：只生成待配置计划，不访问或修改 registry；显式追加 `--execute` 后，使用 npm 11 官方 `npm trust github` 接口先确认当前账号为 `osbornhello` 并只读审计全部映射，在零写入状态下阻断任一不匹配项，再仅补齐缺失映射，逐包复核并首错即停。首次写入需要一次 2FA，随后可利用 npm 的五分钟批量授权窗口完成全部包。官方合约：https://docs.npmjs.com/cli/v11/commands/npm-trust/
+- `pnpm deprecate:npm-broken -- --json`：默认不联网，只列出两个已知损坏的精确 `0.13.0` 版本与固定升级提示；显式追加 `--execute` 后才会确认 `osbornhello` 身份、先审计全部 registry 记录、拒绝覆盖不同的既有提示、逐项写入并复核。实现不依赖 `npm deprecate --dry-run`，因为 npm 官方说明网络类命令不保证遵守 dry-run：https://docs.npmjs.com/cli/v11/commands/npm-deprecate/
 - `npm_scope_access`：检查 `@osstack` npm scope 是否可被当前 npm 账号访问/发布；令牌预检保留为首次发包和人工恢复路径，常规 Release workflow 使用短期 GitHub OIDC 凭证发布。
 - `version_packages_pr`：识别 `changeset-release/main` 的 Version Packages PR，输出 PR number、URL、draft 状态和 `merge_state`，避免在 publish 权限或 CI 状态不清楚时误合并。
 - `knowledge_cloud_deploy_assets`：检查 Knowledge Cloud Dockerfile、EdgeOne/Render 配置和 GitHub Actions deploy workflow 的关键部署约束，失败时会阻止 `knowledge_cloud_deploy` ready。

@@ -130,6 +130,9 @@ jobs:
       - name: NPM Trusted Publisher preflight smoke
         run: pnpm smoke:npm-trust
 
+      - name: NPM broken release deprecation smoke
+        run: pnpm smoke:npm-deprecation
+
       - name: Version PR / Publish
         id: changesets
         uses: changesets/action@v1
