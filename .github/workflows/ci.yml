@@ -151,3 +151,11 @@ jobs:
       - name: NPM install smoke
         if: steps.changes.outputs.heavy_smoke == 'true'
         run: pnpm smoke:npm-install
+
+      - name: NPM package artifact smoke
+        if: steps.changes.outputs.heavy_smoke == 'true'
+        run: pnpm smoke:npm-package-artifacts
+
+      - name: NPM registry skew smoke
+        if: steps.changes.outputs.heavy_smoke == 'true'
+        run: pnpm smoke:npm-registry-skew

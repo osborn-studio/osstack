@@ -39,6 +39,8 @@
     "smoke:knowledge-cloud": "pnpm build && node scripts/smoke-knowledge-cloud.mjs",
     "smoke:knowledge-cloud:deploy": "node scripts/smoke-knowledge-cloud-deploy-assets.mjs",
     "smoke:npm-install": "node scripts/smoke-npm-install.mjs",
+    "smoke:npm-package-artifacts": "node scripts/smoke-npm-package-artifacts.mjs",
+    "smoke:npm-registry-skew": "node scripts/smoke-npm-registry-skew.mjs --self-test && node scripts/smoke-npm-registry-skew.mjs",
     "smoke:guarded-deploy": "pnpm --filter @osstack/cli... build && node scripts/smoke-guarded-deploy.mjs",
     "smoke:release-plan": "pnpm --filter @osstack/cli build && node scripts/smoke-release-plan.mjs",
     "smoke:neat": "pnpm --filter @osstack/cli build && node scripts/smoke-neat.mjs",

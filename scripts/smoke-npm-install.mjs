@@ -27,6 +27,18 @@ try {
     throw new Error("no package tarballs were produced");
   }
 
+  for (const tarball of tarballs) {
+    const listing = run("tar", ["-tzf", tarball], { cwd: root, capture: true }).stdout;
+    const leakedTestArtifacts = listing
+      .split(/\r?\n/u)
+      .filter((entry) => /\.(?:test|spec)\./u.test(entry));
+    if (leakedTestArtifacts.length > 0) {
+      throw new Error(
+        `compiled test/spec artifacts leaked into ${tarball}:\n${leakedTestArtifacts.join("\n")}`,
+      );
+    }
+  }
+
   run("npm", ["install", "-g", "--prefix", prefix, ...tarballs], { cwd: root });
   const osstackBin = join(prefix, "bin", "osstack");
   run(osstackBin, ["--version"], { cwd: root });
@@ -494,7 +506,9 @@ async function startInstalledDaemon(command, env) {
 async function stopChild(child, label) {
   if (child.exitCode !== null || child.signalCode !== null) return;
   child.kill("SIGTERM");
-  const deadline = Date.now() + 5_000;
+  // A newly started daemon can still be completing two bounded 5-second
+  // external health probes. Graceful shutdown waits for that in-flight probe.
+  const deadline = Date.now() + 15_000;
   while (Date.now() < deadline) {
     if (child.exitCode !== null || child.signalCode !== null) return;
     await sleep(50);

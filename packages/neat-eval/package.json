@@ -7,11 +7,15 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "bin": {
     "osstack-neat-eval": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc -p .",
+    "prepack": "node ../../scripts/prepare-npm-package.mjs",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit"
   },

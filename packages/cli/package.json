@@ -13,6 +13,7 @@
   ],
   "scripts": {
     "build": "tsup",
+    "prepack": "node ../../scripts/prepare-npm-package.mjs",
     "dev": "tsup --watch",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
