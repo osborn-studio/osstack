@@ -3,30 +3,32 @@
 Scope: `@osstack`
 Package: `@osstack/cli`
 Repository: `gilosbornhello/osstack`
-Required secret: `NPM_TOKEN`
+Authentication: `trusted-publishing-oidc`
+Required long-lived publish secret: `none`
 Publish access: `public`
 
 ## Official References
 
-- npm access token docs: https://docs.npmjs.com/creating-and-viewing-access-tokens
+- npm Trusted Publishing: https://docs.npmjs.com/trusted-publishers/
+- npm trust command: https://docs.npmjs.com/cli/v11/commands/npm-trust/
 - npm scoped public package docs: https://docs.npmjs.com/creating-and-publishing-scoped-public-packages
 - npm organization package access docs: https://docs.npmjs.com/managing-team-access-to-organization-packages
 
 ## Console Checklist
 
-- Sign in to npmjs.com with the account that will own the osstack release token.
+- Sign in to npmjs.com with an account that can administer every public @osstack package.
 - Create or claim the @osstack organization/scope on npmjs.com.
-- Invite the npm account used for NPM_TOKEN as an owner or publisher for @osstack.
-- Confirm the token owner can publish the package itself; organization membership alone does not grant package publish access.
+- Manually publish the first version of any new public package because a Trusted Publisher can be configured only after the package exists.
+- For every public package, configure GitHub Actions Trusted Publisher gilosbornhello/osstack / release.yml with publish permission.
 - Confirm @osstack/cli uses public access before publishing.
-- Generate a granular npm access token from the authorized account with publish access for the package scope.
-- Do not paste NPM_TOKEN into chat, logs, issues, or pull requests.
-- Update the GitHub repository secret after copying the token once.
-- Rerun the Release workflow only after the local and CI npm preflight commands pass.
+- After one successful OIDC release, set publishing access to require 2FA and disallow tokens where operationally appropriate.
+- Use local npm login/token access only for first-package bootstrap or manual recovery; never expose it to the Release publish step.
+- Run pnpm preflight:npm-trust in an interactive terminal and complete npm's fresh 2FA/web authentication to verify every package mapping.
+- Rerun the Release workflow only after the package bootstrap and install gates pass.
 
 ## GitHub Commands
 
-- `gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body "$NPM_TOKEN"`
+No repository secret command is required for npm publishing.
 
 ## Workflow Commands
 
@@ -36,7 +38,10 @@ Publish access: `public`
 ## Validation Commands
 
 - `pnpm smoke:npm-preflight`
-- `pnpm preflight:npm-publish`
+- `pnpm smoke:npm-bootstrap`
+- `pnpm preflight:npm-bootstrap`
+- `pnpm smoke:npm-trust`
+- `pnpm preflight:npm-trust`
 - `osstack release doctor --target npm --json`
 
 ## Post-Release Validation Commands

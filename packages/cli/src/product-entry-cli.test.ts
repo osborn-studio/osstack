@@ -19,7 +19,7 @@ const SINGLE_BINARY_RELEASE_SECRETS = [
   "MACOS_CERTIFICATE_P12",
   "MACOS_CERTIFICATE_PASSWORD",
 ].join(",");
-const ALL_RELEASE_SECRETS = `NPM_TOKEN,EDGEONE_API_TOKEN,EDGEONE_DEPLOY_HOOK_URL,OSSTACK_KNOWLEDGE_PUBLISH_TOKEN,${SINGLE_BINARY_RELEASE_SECRETS}`;
+const ALL_RELEASE_SECRETS = `EDGEONE_API_TOKEN,EDGEONE_DEPLOY_HOOK_URL,OSSTACK_KNOWLEDGE_PUBLISH_TOKEN,${SINGLE_BINARY_RELEASE_SECRETS}`;
 
 beforeEach(() => {
   tmp = mkdtempSync(join(tmpdir(), "osstack-product-entry-"));
@@ -27,6 +27,7 @@ beforeEach(() => {
   errors = [];
   process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"] = "ok";
   process.env["OSSTACK_TEST_RELEASE_SINGLE_BINARY_WORKFLOW"] = "ok";
+  process.env["OSSTACK_TEST_RELEASE_NPM_BOOTSTRAP"] = "ok";
   process.env["OSSTACK_TEST_RELEASE_NPM_SCOPE_ACCESS"] = "ok";
   vi.spyOn(console, "log").mockImplementation((...args) => {
     logs.push(args.map(String).join(" "));
@@ -42,6 +43,7 @@ afterEach(async () => {
   delete process.env["OSSTACK_TEST_RELEASE_GITHUB_ACTIONS"];
   delete process.env["OSSTACK_TEST_RELEASE_SECRETS"];
   delete process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"];
+  delete process.env["OSSTACK_TEST_RELEASE_NPM_BOOTSTRAP"];
   delete process.env["OSSTACK_TEST_RELEASE_NPM_SCOPE_ACCESS"];
   delete process.env["OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK"];
   delete process.env["OSSTACK_TEST_RELEASE_VERSION_PR"];
@@ -184,6 +186,55 @@ describe("product entry commands", () => {
     }));
     expect(result.next_steps.join("\n")).toContain("NPM publish path is ready");
     expect(result.next_steps.join("\n")).toContain("Knowledge Cloud deploy=true is ready");
+  });
+
+  it("marks npm publishing ready through Trusted Publishing without NPM_TOKEN", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "";
+    process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "warn";
+    process.env["OSSTACK_TEST_RELEASE_NPM_SCOPE_ACCESS"] = "warn";
+    process.env["OSSTACK_TEST_RELEASE_NPM_BOOTSTRAP"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+
+    const exitCode = await main(["release", "doctor", "--target", "npm", "--json"]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      readiness: { npm_publish: boolean };
+      checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+      next_steps: string[];
+    };
+    expect(result.ok).toBe(true);
+    expect(result.readiness.npm_publish).toBe(true);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "npm_package_bootstrap",
+      status: "ok",
+    }));
+    expect(result.next_steps.join("\n")).not.toContain("NPM_TOKEN");
+  });
+
+  it("blocks Trusted Publishing when a public workspace package has not been bootstrapped", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "";
+    process.env["OSSTACK_TEST_RELEASE_NPM_BOOTSTRAP"] = "error:@osstack/new-package";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+
+    const exitCode = await main(["release", "doctor", "--target", "npm", "--json"]);
+
+    expect(exitCode).toBe(1);
+    const result = JSON.parse(logs.join("\n")) as {
+      readiness: { npm_publish: boolean };
+      checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+      next_steps: string[];
+    };
+    expect(result.readiness.npm_publish).toBe(false);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "npm_package_bootstrap",
+      status: "error",
+      details: expect.objectContaining({ missing: ["@osstack/new-package"] }),
+    }));
+    expect(result.next_steps.join("\n")).toContain("Bootstrap the unpublished npm package");
   });
 
   it("can include proof-core validation in release doctor readiness", async () => {
@@ -470,7 +521,7 @@ describe("product entry commands", () => {
     expect(result.next_steps.join("\n")).toContain("Review Version Packages PR #5; approve or rerun its latest CI workflow");
   });
 
-  it("blocks npm release readiness when the npm scope cannot be published", async () => {
+  it("keeps OIDC release readiness when local npm scope recovery access is unavailable", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
@@ -479,28 +530,29 @@ describe("product entry commands", () => {
 
     const exitCode = await main(["release", "doctor", "--target", "npm", "--json"]);
 
-    expect(exitCode).toBe(1);
+    expect(exitCode).toBe(0);
     const result = JSON.parse(logs.join("\n")) as {
       ok: boolean;
       readiness: { npm_publish: boolean };
       checks: Array<{ id: string; status: string; message: string; details?: Record<string, unknown> }>;
       next_steps: string[];
     };
-    expect(result.ok).toBe(false);
-    expect(result.readiness.npm_publish).toBe(false);
+    expect(result.ok).toBe(true);
+    expect(result.readiness.npm_publish).toBe(true);
     expect(result.checks).toContainEqual(expect.objectContaining({
       id: "npm_scope_access",
-      status: "error",
+      status: "warn",
       message: expect.stringContaining("@osstack"),
       details: expect.objectContaining({
         scope: "@osstack",
         reason: "scope_not_found_or_unauthorized",
       }),
     }));
-    expect(result.next_steps.join("\n")).toContain("Create or authorize the npm @osstack scope");
+    expect(result.next_steps.join("\n")).toContain("Local npm bootstrap/recovery access is unavailable");
+    expect(result.next_steps.join("\n")).not.toContain("NPM_TOKEN");
   });
 
-  it("blocks npm release readiness when the npm scope exists but publish access is forbidden", async () => {
+  it("keeps OIDC release readiness when local npm scope access is forbidden", async () => {
     process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
     process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "NPM_TOKEN";
     process.env["OSSTACK_TEST_RELEASE_NPM_AUTH"] = "ok";
@@ -509,25 +561,26 @@ describe("product entry commands", () => {
 
     const exitCode = await main(["release", "doctor", "--target", "npm", "--json"]);
 
-    expect(exitCode).toBe(1);
+    expect(exitCode).toBe(0);
     const result = JSON.parse(logs.join("\n")) as {
       ok: boolean;
       readiness: { npm_publish: boolean };
       checks: Array<{ id: string; status: string; message: string; details?: Record<string, unknown> }>;
       next_steps: string[];
     };
-    expect(result.ok).toBe(false);
-    expect(result.readiness.npm_publish).toBe(false);
+    expect(result.ok).toBe(true);
+    expect(result.readiness.npm_publish).toBe(true);
     expect(result.checks).toContainEqual(expect.objectContaining({
       id: "npm_scope_access",
-      status: "error",
-      message: expect.stringContaining("publish rights"),
+      status: "warn",
+      message: expect.stringContaining("OIDC publishing remains independent"),
       details: expect.objectContaining({
         scope: "@osstack",
         reason: "scope_forbidden",
       }),
     }));
-    expect(result.next_steps.join("\n")).toContain("Confirm the npm account behind NPM_TOKEN can publish to @osstack");
+    expect(result.next_steps.join("\n")).toContain("Local npm bootstrap/recovery access is unavailable");
+    expect(result.next_steps.join("\n")).not.toContain("NPM_TOKEN");
   });
 
   it("blocks release readiness when GitHub Actions cannot start runners", async () => {
@@ -731,13 +784,17 @@ describe("product entry commands", () => {
     expect(result.target).toBe("npm");
     expect(result.ready).toBe(false);
     expect(result.safe_to_execute).toBe(false);
-    expect(result.blockers.join("\n")).toContain("NPM_TOKEN");
+    expect(result.blockers.join("\n")).not.toContain("NPM_TOKEN");
     expect(result.blockers.join("\n")).toContain("Version Packages PR #5");
-    expect(result.operator_commands).toContain("gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\"");
+    expect(result.operator_commands.join("\n")).not.toContain("NPM_TOKEN");
     expect(result.operator_commands).toContain("Open the latest Version Packages PR CI run and approve or rerun it if GitHub requires manual action.");
     expect(result.validation_commands).toContain("osstack release doctor --target npm --output release-readiness.md --json");
     expect(result.validation_commands).toContain("osstack proof validate <run_id> --proof-dir release/osstack-proof-<run_id> --json");
     expect(result.validation_commands).toContain("pnpm smoke:npm-preflight");
+    expect(result.validation_commands).toContain("pnpm smoke:npm-bootstrap");
+    expect(result.validation_commands).toContain("pnpm preflight:npm-bootstrap");
+    expect(result.validation_commands).toContain("pnpm smoke:npm-trust");
+    expect(result.validation_commands).toContain("pnpm preflight:npm-trust");
     expect(result.validation_commands).toContain("pnpm smoke:npm-install");
     expect(result.validation_commands).toContain("gh pr view 5 --json mergeable,mergeStateStatus,statusCheckRollup,url");
     expect(result.validation_commands).toContain("gh run list --branch changeset-release/main --limit 5");
@@ -904,11 +961,11 @@ describe("product entry commands", () => {
     expect(result.target).toBe("all");
     expect(result.ready).toBe(false);
     expect(result.completion.code_verified).toBe(true);
-    expect(result.completion.npm_publish).toBe(false);
+    expect(result.completion.npm_publish).toBe(true);
     expect(result.completion.knowledge_cloud_deploy).toBe(false);
     expect(result.external_blockers.join("\n")).not.toContain("Local npm scope access could not be verified");
     expect(result.external_blockers.join("\n")).toContain("EDGEONE_API_TOKEN");
-    expect(result.next_actions.operator).toContain("Invite the npm account used for NPM_TOKEN as an owner or publisher for @osstack.");
+    expect(result.next_actions.operator.join("\n")).not.toContain("NPM_TOKEN");
     expect(result.next_actions.operator).toContain("gh secret set EDGEONE_API_TOKEN --repo gilosbornhello/osstack --body \"$EDGEONE_API_TOKEN\"");
     expect(result.next_actions.validation).toContain("pnpm smoke:release-plan");
     expect(result.next_actions.github_readonly).toContain("gh run list --branch changeset-release/main --limit 5");
@@ -918,7 +975,7 @@ describe("product entry commands", () => {
     const markdown = await readFile(output, "utf-8");
     expect(markdown).toContain("# Osstack Release Status");
     expect(markdown).toContain("## External Blockers");
-    expect(markdown).toContain("NPM_TOKEN");
+    expect(markdown).not.toContain("NPM_TOKEN");
     expect(markdown).toContain("EDGEONE_API_TOKEN");
     expect(markdown).toContain("## Next Actions");
     expect(markdown).toContain("### GitHub Read-Only");
@@ -1024,7 +1081,8 @@ describe("product entry commands", () => {
       scope: string;
       package_name: string;
       repository: string;
-      required_secret: string;
+      authentication: string;
+      required_secret: string | null;
       console_checklist: string[];
       github_commands: string[];
       workflow_commands: string[];
@@ -1035,13 +1093,18 @@ describe("product entry commands", () => {
     expect(result.scope).toBe("@osstack");
     expect(result.package_name).toBe("@osstack/cli");
     expect(result.repository).toBe("gilosbornhello/osstack");
-    expect(result.required_secret).toBe("NPM_TOKEN");
+    expect(result.authentication).toBe("trusted-publishing-oidc");
+    expect(result.required_secret).toBeNull();
     expect(result.console_checklist.join("\n")).toContain("Create or claim the @osstack organization/scope on npmjs.com.");
-    expect(result.console_checklist.join("\n")).toContain("Do not paste NPM_TOKEN into chat, logs, issues, or pull requests.");
-    expect(result.github_commands).toContain("gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\"");
+    expect(result.console_checklist.join("\n")).toContain("Trusted Publisher");
+    expect(result.console_checklist.join("\n")).toContain("first version");
+    expect(result.github_commands).toEqual([]);
     expect(result.workflow_commands).toContain("gh run list --workflow Release --branch main --limit 5");
     expect(result.validation_commands).toContain("pnpm smoke:npm-preflight");
-    expect(result.validation_commands).toContain("pnpm preflight:npm-publish");
+    expect(result.validation_commands).toContain("pnpm smoke:npm-bootstrap");
+    expect(result.validation_commands).toContain("pnpm preflight:npm-bootstrap");
+    expect(result.validation_commands).toContain("pnpm smoke:npm-trust");
+    expect(result.validation_commands).toContain("pnpm preflight:npm-trust");
     expect(result.validation_commands).toContain("osstack release doctor --target npm --json");
     expect(result.post_release_validation_commands).toContain("npm view @osstack/cli version --json");
     expect(result.post_release_validation_commands).toContain("npm install -g @osstack/cli");
@@ -1050,7 +1113,8 @@ describe("product entry commands", () => {
     const markdown = await readFile(output, "utf-8");
     expect(markdown).toContain("# NPM Publish Setup");
     expect(markdown).toContain("@osstack/cli");
-    expect(markdown).toContain("NPM_TOKEN");
+    expect(markdown).toContain("trusted-publishing-oidc");
+    expect(markdown).not.toContain("NPM_TOKEN");
     expect(markdown).toContain("## Post-Release Validation Commands");
   });
 
@@ -1100,9 +1164,9 @@ describe("product entry commands", () => {
     expect(result.target).toBe("primary");
     expect(result.output_dir).toBe(outputDir);
     expect(result.cloud_url).toBe("https://knowledge.example.com");
-    expect(result.required_secrets).toEqual(["NPM_TOKEN"]);
+    expect(result.required_secrets).toEqual([]);
     expect(result.alternative_secret_groups).toEqual([["EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"]]);
-    expect(result.external_blockers.join("\n")).toContain("NPM_TOKEN");
+    expect(result.external_blockers.join("\n")).not.toContain("NPM_TOKEN");
     expect(result.external_blockers.join("\n")).toContain("EDGEONE_API_TOKEN");
     expect(result.external_blockers.join("\n")).not.toContain("Apple notarization");
     expect(result.next_actions.operator).toContain("gh secret set EDGEONE_API_TOKEN --repo gilosbornhello/osstack --body \"$EDGEONE_API_TOKEN\"");
@@ -1138,10 +1202,14 @@ describe("product entry commands", () => {
     expect(nextActions).toContain("## Local Validation Commands");
     expect(nextActions).toContain("## GitHub Read-Only Commands");
     expect(nextActions).toContain("## Remote Workflow Commands");
-    expect(nextActions).toContain("gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\"");
+    expect(nextActions).not.toContain("NPM_TOKEN");
     expect(nextActions).toContain("gh secret set EDGEONE_API_TOKEN --repo gilosbornhello/osstack --body \"$EDGEONE_API_TOKEN\"");
     expect(nextActions).toContain("# Optional fallback: gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"");
     expect(nextActions).toContain("pnpm smoke:npm-preflight");
+    expect(nextActions).toContain("pnpm smoke:npm-bootstrap");
+    expect(nextActions).toContain("pnpm preflight:npm-bootstrap");
+    expect(nextActions).toContain("pnpm smoke:npm-trust");
+    expect(nextActions).toContain("pnpm preflight:npm-trust");
     expect(nextActions).toContain("gh workflow run \"Knowledge Cloud Deploy\" --ref main -f deploy=true -f cloud_url=https://knowledge.example.com");
     const secretSection = nextActions.slice(
       nextActions.indexOf("## GitHub Secret Commands"),

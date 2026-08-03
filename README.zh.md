@@ -468,7 +468,7 @@ Release doctor/status 会检查：
 - GitHub CLI auth；
 - GitHub Actions 可用性；
 - npm publish assets；
-- npm scope/token preflight；
+- npm Trusted Publishing（OIDC）、公开包首次发布状态、逐包 trust 映射与本地恢复权限预检；
 - Knowledge Cloud deploy assets；
 - EdgeOne deploy credential；
 - 生产 `/healthz`、`/v1/search`、`/v1/sync`、`/v1/audit`、feedback summary、review UI；

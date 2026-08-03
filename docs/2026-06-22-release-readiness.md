@@ -198,7 +198,9 @@ osstack release doctor --target primary --cloud-url https://osstack-knowledge-cl
 
 当前 `release doctor` 会额外检查发布列车状态：
 
-- `npm_publish_assets`：检查 `@osstack/cli` package 元数据、changeset 与 release workflow 的 changesets publish、GitHub OIDC 权限、Trusted Publishing 兼容 Node/npm 客户端、安装 smoke/`smoke:npm-preflight` 约束，失败时会阻止 `npm_publish` ready。
+- `npm_publish_assets`：检查 `@osstack/cli` package 元数据、changeset 与 release workflow 的 changesets publish、GitHub OIDC 权限、Trusted Publishing 兼容 Node/npm 客户端、包首次发布预检、安装 smoke/`smoke:npm-preflight` 约束，失败时会阻止 `npm_publish` ready。
+- `npm_package_bootstrap`：查询 npm registry，确认每个公开 workspace package 已至少发布过一个版本；未发布的新包必须先由有权限的账号完成首次发布，随后才能在 npm 配置 GitHub Actions Trusted Publisher。
+- `pnpm preflight:npm-trust`：在交互式终端中只读核对每个公开包的 GitHub repository、`release.yml` 与 publish 权限；npm 会要求新鲜的 2FA/web-auth 会话，因此该项不在无长期令牌的 CI 中自动执行。
 - `npm_scope_access`：检查 `@osstack` npm scope 是否可被当前 npm 账号访问/发布；令牌预检保留为首次发包和人工恢复路径，常规 Release workflow 使用短期 GitHub OIDC 凭证发布。
 - `version_packages_pr`：识别 `changeset-release/main` 的 Version Packages PR，输出 PR number、URL、draft 状态和 `merge_state`，避免在 publish 权限或 CI 状态不清楚时误合并。
 - `knowledge_cloud_deploy_assets`：检查 Knowledge Cloud Dockerfile、EdgeOne/Render 配置和 GitHub Actions deploy workflow 的关键部署约束，失败时会阻止 `knowledge_cloud_deploy` ready。
@@ -217,11 +219,11 @@ osstack release doctor --output release-readiness.md --json
 
 `release handoff` 是当前推荐的上线交接包入口：它一次性生成 `release-status.md`、`release-plan.md`、`npm-publish-setup.md`、`edgeone-setup.md`、`next-actions.sh` 和 `manifest.json`。默认 `target=primary` 只覆盖 npm 发布和 EdgeOne Knowledge Cloud 主路径；当前主路径已 ready，后续主要用于每个版本发布前重新验证 npm registry、EdgeOne production URL、GitHub Actions 和 release workflow 状态。如需同时准备 single-binary 公证与 GitHub Release assets，再显式使用 `--target all`。它不会执行发布或部署动作，其中 `next-actions.sh` 只是把操作者清单、secret 命令、验证命令、发布命令、EdgeOne 部署命令和发布后验收命令打印出来，方便按步骤复制执行。
 
-`release handoff` 的 `manifest.json` 会把必须配置的硬性 secret 放在 `required_secrets`，把二选一凭证放在 `alternative_secret_groups`。当前 primary 目标下 `NPM_TOKEN` 是硬性 secret，EdgeOne 使用 `["EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"]` 作为 alternative group，因此配置任意一个 EdgeOne 部署凭证即可通过 deploy credential gate。
+`release handoff` 的 `manifest.json` 会把必须配置的硬性 secret 放在 `required_secrets`，把二选一凭证放在 `alternative_secret_groups`。当前 primary 目标的 npm 发布使用 GitHub OIDC Trusted Publishing，不需要长期 `NPM_TOKEN`；EdgeOne 使用 `["EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"]` 作为 alternative group，因此配置任意一个 EdgeOne 部署凭证即可通过 deploy credential gate。
 
 `release status` 是当前推荐的上线总览入口：它把代码验证完成度、npm 发布、EdgeOne Knowledge Cloud 部署、single-binary release 的状态放在同一张摘要里，并把 npm scope access、EdgeOne deploy credential、Apple notarization secrets 等外部状态和下一步命令集中展示。
 
-`release npm` 是 npm 发布权限修复的操作交接入口：它从 `packages/cli/package.json` 读取 `@osstack/cli` 元数据，生成 npmjs.com 控制台清单、`NPM_TOKEN` GitHub secret 命令、Release workflow 排查命令、`pnpm smoke:npm-preflight` / `pnpm preflight:npm-publish` 验证命令，以及 `npm install -g @osstack/cli` 发布后验证命令。
+`release npm` 是 npm 发布权限修复的操作交接入口：它从 `packages/cli/package.json` 读取 `@osstack/cli` 元数据，生成 npmjs.com Trusted Publisher 与首次建包清单、Release workflow 排查命令、`pnpm smoke:npm-bootstrap` / `pnpm preflight:npm-bootstrap` / `pnpm smoke:npm-trust` / `pnpm preflight:npm-trust` / `pnpm smoke:npm-preflight` 验证命令，以及 `npm install -g @osstack/cli` 发布后验证命令。本地 npm 登录或令牌只用于首次建包、只读 trust 核验和人工恢复，不进入正常 Release workflow。
 
 `release doctor` 是底层诊断入口：该报告包含 readiness summary、检查表、检查详情和 next steps，适合贴到 PR、发布群或 CI artifact。
 

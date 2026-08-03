@@ -144,6 +144,10 @@ jobs:
         if: steps.changes.outputs.heavy_smoke == 'true'
         run: pnpm smoke:npm-preflight
 
+      - name: NPM Trusted Publisher preflight smoke
+        if: steps.changes.outputs.heavy_smoke == 'true'
+        run: pnpm smoke:npm-trust
+
       - name: NPM install smoke
         if: steps.changes.outputs.heavy_smoke == 'true'
         run: pnpm smoke:npm-install
