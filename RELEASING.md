@@ -76,6 +76,8 @@ bootstrapped and the local recovery account remains usable:
 pnpm smoke:npm-bootstrap
 pnpm preflight:npm-bootstrap
 pnpm smoke:npm-trust
+pnpm configure:npm-trust -- --json
+pnpm configure:npm-trust -- --execute
 pnpm preflight:npm-trust
 pnpm smoke:npm-publish-order
 pnpm preflight:npm-publish
@@ -85,7 +87,14 @@ The bootstrap check is a hard OIDC publish gate inside `pnpm release`; it does
 not prevent Changesets from maintaining the Version Packages PR. The local
 publish-access check is diagnostic only and does not represent the workflow's
 OIDC identity. The trust preflight is read-only but npm requires a fresh 2FA or
-web-auth session before it will reveal package trust mappings.
+web-auth session before it will reveal package trust mappings. The configuration
+command is non-mutating unless `--execute` is present. Execute mode uses the
+official npm 11 `npm trust github` interface, preserves correct mappings, refuses
+to replace mismatches, audits every mapping before any write, requires the
+`osbornhello` npm account, verifies every applied mapping, waits two seconds
+between changes, and can be rerun safely after an interruption. npm documents
+that the first command requires 2FA and that a five-minute skip window can cover
+a bulk configuration run: https://docs.npmjs.com/cli/v11/commands/npm-trust/
 
 Before merging the Version Packages PR, run:
 
