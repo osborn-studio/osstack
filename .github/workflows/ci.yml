@@ -149,6 +149,10 @@ jobs:
         if: steps.changes.outputs.heavy_smoke == 'true'
         run: pnpm smoke:npm-trust
 
+      - name: NPM broken release deprecation smoke
+        if: steps.changes.outputs.heavy_smoke == 'true'
+        run: pnpm smoke:npm-deprecation
+
       - name: NPM install smoke
         if: steps.changes.outputs.heavy_smoke == 'true'
         run: pnpm smoke:npm-install

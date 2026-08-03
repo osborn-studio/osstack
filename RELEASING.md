@@ -79,6 +79,8 @@ pnpm smoke:npm-trust
 pnpm configure:npm-trust -- --json
 pnpm configure:npm-trust -- --execute
 pnpm preflight:npm-trust
+pnpm smoke:npm-deprecation
+pnpm deprecate:npm-broken -- --json
 pnpm smoke:npm-publish-order
 pnpm preflight:npm-publish
 ```
@@ -95,6 +97,16 @@ to replace mismatches, audits every mapping before any write, requires the
 between changes, and can be rerun safely after an interruption. npm documents
 that the first command requires 2FA and that a five-minute skip window can cover
 a bulk configuration run: https://docs.npmjs.com/cli/v11/commands/npm-trust/
+
+The broken-version deprecation command also defaults to a no-network plan. Its
+explicit `--execute` mode binds the two known-broken exact `0.13.0` versions and
+their upgrade messages, requires the `osbornhello` account, audits both registry
+records before any write, refuses to replace a different existing warning, and
+verifies each applied warning. Run `pnpm deprecate:npm-broken -- --execute` only
+in the same fresh interactive npm session. The wrapper deliberately does not
+rely on `npm deprecate --dry-run`, because npm documents that dry-run is not
+honored by network-related commands:
+https://docs.npmjs.com/cli/v11/commands/npm-deprecate/
 
 Before merging the Version Packages PR, run:
 

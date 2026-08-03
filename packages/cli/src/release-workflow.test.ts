@@ -87,3 +87,20 @@ describe("npm Trusted Publisher recovery", () => {
     );
   });
 });
+
+describe("broken npm release recovery", () => {
+  it("keeps exact-version deprecation non-mutating unless explicitly executed", () => {
+    const manifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+    const workflow = readFileSync(join(repoRoot, ".github/workflows/release.yml"), "utf8");
+    const ciWorkflow = readFileSync(join(repoRoot, ".github/workflows/ci.yml"), "utf8");
+
+    expect(manifest.scripts["deprecate:npm-broken"]).toBe(
+      "node scripts/deprecate-broken-npm-versions.mjs",
+    );
+    expect(manifest.scripts["smoke:npm-deprecation"]).toBe(
+      "node scripts/smoke-npm-broken-deprecation.mjs",
+    );
+    expect(workflow).toContain("pnpm smoke:npm-deprecation");
+    expect(ciWorkflow).toContain("pnpm smoke:npm-deprecation");
+  });
+});
