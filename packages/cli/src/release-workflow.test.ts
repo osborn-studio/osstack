@@ -38,10 +38,16 @@ describe("trustedPublishingWorkflowViolations", () => {
     const manifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
 
     expect(manifest.scripts["version:packages"]).toBe("node scripts/version-packages.mjs");
+    expect(manifest.scripts.release).toContain("publish-packages-safely.mjs");
+    expect(manifest.scripts["smoke:npm-publish-order"]).toBe(
+      "node scripts/smoke-npm-publish-order.mjs",
+    );
     expect(workflow).toContain("actions: write");
     expect(workflow).toContain("version: pnpm version:packages");
+    expect(workflow).toContain("pnpm smoke:npm-publish-order");
     expect(workflow).toContain("id: changesets");
     expect(workflow).toContain("gh workflow run ci.yml --ref changeset-release/main");
     expect(ciWorkflow).toContain("workflow_dispatch:");
+    expect(ciWorkflow).toContain("pnpm smoke:npm-publish-order");
   });
 });

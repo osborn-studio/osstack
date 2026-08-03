@@ -242,6 +242,7 @@ try {
   assertIncludes(nextActions, "pnpm preflight:npm-bootstrap", "next actions script must include npm bootstrap registry validation");
   assertIncludes(nextActions, "pnpm smoke:npm-trust", "next actions script must include npm trust smoke validation");
   assertIncludes(nextActions, "pnpm preflight:npm-trust", "next actions script must include npm Trusted Publisher validation");
+  assertIncludes(nextActions, "pnpm smoke:npm-publish-order", "next actions script must include dependency-first publish ordering validation");
   assertIncludes(nextActions, `gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${cloudUrl}`, "next actions script must include EdgeOne deploy workflow command");
 
   const sync = JSON.parse((await runAsync(process.execPath, [

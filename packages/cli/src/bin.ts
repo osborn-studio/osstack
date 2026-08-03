@@ -1802,6 +1802,8 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
     "scripts/preflight-npm-publish-access.mjs",
     "scripts/preflight-npm-package-bootstrap.mjs",
     "scripts/preflight-npm-trusted-publishers.mjs",
+    "scripts/publish-packages-safely.mjs",
+    "scripts/smoke-npm-publish-order.mjs",
     ".github/workflows/release.yml",
   ];
   const checkedAssets = [
@@ -1832,6 +1834,8 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   const npmPreflight = await readAsset("scripts/preflight-npm-publish-access.mjs");
   const npmBootstrap = await readAsset("scripts/preflight-npm-package-bootstrap.mjs");
   const npmTrust = await readAsset("scripts/preflight-npm-trusted-publishers.mjs");
+  const npmPublisher = await readAsset("scripts/publish-packages-safely.mjs");
+  const npmPublishOrderSmoke = await readAsset("scripts/smoke-npm-publish-order.mjs");
   let cliVersion = "";
 
   if (cliPackageRaw !== "") {
@@ -1871,6 +1875,7 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   expectAsset(workflow, "pnpm smoke:npm-install", "Release workflow must run npm install smoke.");
   expectAsset(workflow, "pnpm smoke:npm-preflight", "Release workflow must run npm preflight smoke.");
   expectAsset(workflow, "pnpm smoke:npm-trust", "Release workflow must test the Trusted Publisher preflight contract.");
+  expectAsset(workflow, "pnpm smoke:npm-publish-order", "Release workflow must test dependency-first publish ordering.");
   expectAsset(workflow, "publish: pnpm release", "Release workflow must publish through the guarded root release command.");
   expectAsset(workflow, "id-token: write", "Release workflow must allow npm Trusted Publishing through GitHub OIDC.");
   expectAsset(workflow, "node-version: 24", "Release workflow must use a Node version compatible with npm Trusted Publishing.");
@@ -1879,11 +1884,22 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   expectAsset(rootPackage, "\"preflight:npm-publish\"", "Root package scripts must expose preflight:npm-publish.");
   expectAsset(rootPackage, "\"preflight:npm-bootstrap\"", "Root package scripts must expose preflight:npm-bootstrap.");
   expectAsset(rootPackage, "\"preflight:npm-trust\"", "Root package scripts must expose preflight:npm-trust.");
-  expectAsset(rootPackage, "\"release\": \"pnpm preflight:npm-bootstrap && pnpm changeset publish\"", "Root release command must gate Changesets publish on package bootstrap.");
+  expectAsset(rootPackage, "\"release\": \"pnpm preflight:npm-bootstrap && node scripts/publish-packages-safely.mjs\"", "Root release command must gate the safe sequential publisher on package bootstrap.");
+  expectAsset(rootPackage, "\"smoke:npm-publish-order\"", "Root package scripts must expose smoke:npm-publish-order.");
   expectAsset(npmPreflight, "npm\", [\"access\", \"list\", \"packages\", scope, \"--json\"]", "NPM preflight script must verify publish-scope access with npm access list packages.");
   expectAsset(npmPreflight, "Scope not found", "NPM preflight script must explain missing npm scope failures.");
   expectAsset(npmBootstrap, "npm_package_bootstrap", "NPM bootstrap preflight must emit its stable contract kind.");
   expectAsset(npmTrust, "npm_trusted_publishers", "NPM trust preflight must emit its stable contract kind.");
+  expectAsset(npmPublisher, "buildTopologicalPublishPlan", "NPM publisher must build a dependency-first plan.");
+  expectAsset(npmPublisher, "publishPackagesSequentially", "NPM publisher must stop the train on the first publish failure.");
+  expectAsset(npmPublisher, "CHANGESETS_OUTPUT", "NPM publisher must emit Changesets tag events for the release action.");
+  expectAsset(npmPublisher, "New tag:", "NPM publisher must announce successful tags to changesets/action@v1.");
+  expectAsset(npmPublisher, "\"--provenance\"", "NPM publisher must request npm provenance for Trusted Publishing.");
+  expectAsset(npmPublisher, "\"--registry\"", "NPM publisher must publish to the same canonical registry it inspects.");
+  expectAsset(npmPublishOrderSmoke, "the first publish failure must stop the train", "NPM publish ordering smoke must cover fail-stop behavior.");
+  if (/\b(?:NPM_TOKEN|NODE_AUTH_TOKEN)\b/u.test(npmPublisher)) {
+    violations.push("Safe NPM publisher must not depend on long-lived npm tokens.");
+  }
 
   const ok = missing.length === 0 && violations.length === 0;
   return {
@@ -4054,6 +4070,7 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
         "pnpm preflight:npm-bootstrap",
         "pnpm smoke:npm-trust",
         "pnpm preflight:npm-trust",
+        "pnpm smoke:npm-publish-order",
         "pnpm smoke:npm-preflight",
         "pnpm smoke:npm-install",
         versionPrNumber === undefined
@@ -4442,6 +4459,7 @@ async function createNpmPublishSetupSummary(workspacePath: string): Promise<NpmP
       "pnpm preflight:npm-bootstrap",
       "pnpm smoke:npm-trust",
       "pnpm preflight:npm-trust",
+      "pnpm smoke:npm-publish-order",
       "pnpm smoke:npm-preflight",
       "osstack release doctor --target npm --json",
     ],

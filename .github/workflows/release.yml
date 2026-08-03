@@ -118,6 +118,9 @@ jobs:
       - name: NPM package artifact smoke
         run: pnpm smoke:npm-package-artifacts
 
+      - name: NPM publish ordering smoke
+        run: pnpm smoke:npm-publish-order
+
       - name: NPM registry skew smoke
         run: pnpm smoke:npm-registry-skew
 
