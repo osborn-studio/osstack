@@ -7,7 +7,7 @@ import { existsSync as fsExistsSync, readFileSync, realpathSync, writeFileSync a
 import { connect, type Socket } from "node:net";
 import { chmod, copyFile, lstat, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import {
   assertDbAccessAllowed,
   assertServeAllowed,
@@ -30,16 +30,16 @@ import { parse as parseYaml } from "yaml";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import { defaultAdapters } from "@osstack/agents";
 import {
-  getCompliancePack,
-  listCompliancePacks,
   loadProofEvidence,
   renderComplianceReport,
-  renderComplianceReportFromProofDir,
   renderProofViewFromProofDir,
   validateProofEvidence,
   type ProofAudience,
 } from "@osstack/compliance";
-import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
+import {
+  validateWorkspaceContracts,
+  type ContractValidationReport,
+} from "@osstack/contracts";
 import {
   getLatestSuccessfulRollbackDrill,
   getRun,
@@ -119,6 +119,16 @@ import {
 } from "@osstack/skill-registry";
 import { startDaemon } from "./daemon.js";
 import { handleAgentCommand } from "./agent-command.js";
+import {
+  collectChangedGovernanceScanFiles,
+  collectGovernanceScanFiles,
+  handleComplianceCommand,
+  handleContractsCommand,
+  handleGovernanceCommand,
+  isGovernanceExcludedDir,
+  isGovernanceScannableFile,
+  uniqueNonEmptyLines,
+} from "./assurance-command.js";
 import {
   handleStewardCommand,
   parseGitHubRepoSlug,
@@ -4944,204 +4954,6 @@ function assertSafeRelativePath(path: string): void {
   }
 }
 
-async function handleGovernanceCommand(args: string[]): Promise<number> {
-  const sub = args[0];
-  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
-    console.log(`osstack governance — deterministic run governance checks
-
-  osstack govern check [path...] [--workspace P] [--changed] [--json]
-  osstack governance scan <path...> [--json]
-`);
-    return 0;
-  }
-
-  if (sub !== "scan" && sub !== "check") {
-    console.error(`osstack: unknown governance subcommand "${sub}"`);
-    return 1;
-  }
-
-  const paths = positionalValues(args.slice(1), new Set(["--workspace"])).filter((value) => value !== sub);
-  if (paths.length === 0) {
-    if (sub === "scan") {
-      console.error("osstack: governance scan requires at least one path");
-      return 1;
-    }
-    const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
-    const resolvedPaths = args.includes("--changed") || args.includes("--diff")
-      ? await collectChangedGovernanceScanFiles(workspacePath)
-      : await collectGovernanceScanFiles(workspacePath);
-    if (resolvedPaths instanceof Error) {
-      console.error(`osstack: ${resolvedPaths.message}`);
-      return 1;
-    }
-    return await runGovernanceScan(resolvedPaths, args);
-  }
-
-  return await runGovernanceScan(paths, args);
-}
-
-async function runGovernanceScan(paths: string[], args: string[]): Promise<number> {
-  const result = await scanFiles(paths);
-  const output = { ...result, scanned_files: paths };
-  if (args.includes("--json")) {
-    console.log(JSON.stringify(output, null, 2));
-  } else {
-    printGovernanceScan(result);
-  }
-  return result.ok ? 0 : 2;
-}
-
-function printGovernanceScan(result: Awaited<ReturnType<typeof scanFiles>>): void {
-  if (result.findings.length === 0) {
-    console.log("Governance scan clean.");
-    return;
-  }
-  console.log(`Governance findings: ${result.findings.length}`);
-  for (const finding of result.findings) {
-    const location = finding.file === undefined ? `line ${finding.line}` : `${finding.file}:${finding.line}`;
-    console.log(`- [${finding.severity}] ${finding.rule_id} ${location} - ${finding.message}`);
-  }
-}
-
-async function handleContractsCommand(args: string[]): Promise<number> {
-  const sub = args[0];
-  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
-    console.log(`osstack contracts — frontend/backend API contract validation
-
-  osstack contracts check [--workspace P] [--manifest P] [--json]
-
-Contract manifest:
-  osstack.contracts.json with kind=osstack.contract_manifest
-`);
-    return 0;
-  }
-  if (sub !== "check") {
-    console.error(`osstack: unknown contracts subcommand "${sub}"`);
-    return 1;
-  }
-  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
-  const manifestPath = flagValue(args, "--manifest");
-  try {
-    const report = await validateWorkspaceContracts({
-      workspacePath,
-      ...(manifestPath === undefined ? {} : { manifestPath }),
-    });
-    if (args.includes("--json")) {
-      console.log(JSON.stringify(report, null, 2));
-    } else {
-      printContractValidation(report);
-    }
-    return report.status === "pass" ? 0 : 2;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (args.includes("--json")) {
-      console.log(JSON.stringify({
-        schema_version: 1,
-        kind: "osstack.contract_validation",
-        status: "fail",
-        service: "unknown",
-        workspace_path: resolve(workspacePath),
-        manifest_path: manifestPath === undefined ? resolve(workspacePath, "osstack.contracts.json") : resolve(workspacePath, manifestPath),
-        checked_at: new Date().toISOString(),
-        endpoints: 0,
-        frontend_calls: [],
-        backend_routes: [],
-        findings: [{
-          rule_id: "contract.invalid_manifest",
-          severity: "error",
-          kind: "invalid_manifest",
-          message,
-        }],
-      }, null, 2));
-    } else {
-      console.error(`osstack: ${message}`);
-    }
-    return 1;
-  }
-}
-
-function printContractValidation(report: ContractValidationReport): void {
-  console.log(`contract_validation=${report.status}`);
-  console.log(`service=${report.service}`);
-  console.log(`endpoints=${report.endpoints}`);
-  console.log(`frontend_calls=${report.frontend_calls.length}`);
-  console.log(`backend_routes=${report.backend_routes.length}`);
-  for (const finding of report.findings) {
-    console.log(`- [${finding.severity}] ${finding.rule_id} ${finding.method ?? "?"} ${finding.path ?? "?"} - ${finding.message}`);
-  }
-}
-
-async function handleComplianceCommand(args: string[]): Promise<number> {
-  const sub = args[0];
-  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
-    console.log(`osstack compliance — evidence mapping reports
-
-  osstack compliance list [--json]
-  osstack compliance render <run_id> --pack engineering-readiness [--proof-dir P] [--workspace P] [--output P] [--lang en|zh-CN] [--json]
-
-Notes:
-  Compliance reports map osstack proof evidence to internal controls.
-  They do not claim SOC 2, ISO 27001, EU AI Act, or third-party certification.
-`);
-    return 0;
-  }
-
-  if (sub === "list") {
-    const packs = listCompliancePacks().map((pack) => ({
-      id: pack.id,
-      version: pack.version,
-      name: pack.name,
-      certification_claim: pack.certification_claim,
-      controls: pack.controls.length,
-    }));
-    if (args.includes("--json")) {
-      console.log(JSON.stringify({ packs }, null, 2));
-    } else {
-      for (const pack of packs) {
-        console.log(`${pack.id}@${pack.version} ${pack.name} claim=${pack.certification_claim} controls=${pack.controls}`);
-      }
-    }
-    return 0;
-  }
-
-  if (sub === "render") {
-    const runId = firstPositionalValue(args.slice(1), new Set(["--pack", "--proof-dir", "--workspace", "--output", "--lang"]));
-    if (runId === undefined) {
-      console.error("osstack: compliance render requires a run_id");
-      return 1;
-    }
-    const packId = flagValue(args, "--pack");
-    if (packId === undefined) {
-      console.error("osstack: compliance render requires --pack");
-      return 1;
-    }
-    let packVersion: string;
-    try {
-      packVersion = getCompliancePack(packId).version;
-    } catch (error) {
-      console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
-      return 1;
-    }
-    const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
-    const proofDir = flagValue(args, "--proof-dir") ?? join(workspacePath, "release", `osstack-proof-${safeFileSegment(runId)}`);
-    const output = flagValue(args, "--output") ?? join(workspacePath, "reports", `compliance-${packId}-${safeFileSegment(runId)}.md`);
-    const language = resolveLanguage(flagValue(args, "--lang"));
-    const markdown = await renderComplianceReportFromProofDir({ packId, runId, proofDir, language });
-    await mkdir(dirname(output), { recursive: true });
-    await writeFile(output, markdown, "utf-8");
-    if (args.includes("--json")) {
-      console.log(JSON.stringify({ run_id: runId, pack_id: packId, pack_version: packVersion, output }, null, 2));
-    } else {
-      console.log(`compliance=${output}`);
-      console.log(`pack=${packId}@${packVersion}`);
-    }
-    return 0;
-  }
-
-  console.error(`osstack: unknown compliance subcommand "${sub}"`);
-  return 1;
-}
-
 async function handleKnowledgeCommand(args: string[]): Promise<number> {
   const sub = args[0];
   if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
@@ -8518,109 +8330,6 @@ function appendGovernanceVerifyEvent(
 
 function nextLoopEventSeq(events: LoopEvent[]): number {
   return Math.max(0, ...events.map((event) => event.seq)) + 1;
-}
-
-async function collectGovernanceScanFiles(workspacePath: string): Promise<string[]> {
-  const files: string[] = [];
-  await collectGovernanceScanFilesInto(workspacePath, files);
-  return files;
-}
-
-async function collectChangedGovernanceScanFiles(
-  workspacePath: string,
-  baselineRevision?: string,
-): Promise<string[] | Error> {
-  try {
-    const [workingTree, staged, sinceBaseline] = await Promise.all([
-      execFileAsync("git", ["-C", workspacePath, "ls-files", "--modified", "--others", "--exclude-standard"], { timeout: 10_000 }),
-      execFileAsync("git", ["-C", workspacePath, "diff", "--name-only", "--cached", "--diff-filter=ACMRT"], { timeout: 10_000 }),
-      baselineRevision === undefined
-        ? Promise.resolve({ stdout: "" })
-        : execFileAsync(
-            "git",
-            ["-C", workspacePath, "diff", "--name-only", "--diff-filter=ACMRT", baselineRevision, "HEAD"],
-            { timeout: 10_000 },
-          ),
-    ]);
-    const relativePaths = uniqueNonEmptyLines(
-      `${workingTree.stdout}\n${staged.stdout}\n${sinceBaseline.stdout}`,
-    );
-    const files: string[] = [];
-    for (const relativePath of relativePaths) {
-      if (!isGovernanceScannableFile(relativePath)) continue;
-      const absolutePath = join(workspacePath, relativePath);
-      if (await isRegularFile(absolutePath)) files.push(absolutePath);
-    }
-    return files;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return new Error(`could not collect changed files with git: ${message}`);
-  }
-}
-
-function uniqueNonEmptyLines(value: string): string[] {
-  return [...new Set(value.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0))];
-}
-
-async function isRegularFile(path: string): Promise<boolean> {
-  try {
-    return (await stat(path)).isFile();
-  } catch {
-    return false;
-  }
-}
-
-async function collectGovernanceScanFilesInto(dir: string, files: string[]): Promise<void> {
-  if (files.length >= 500) return;
-  const entries = await readdir(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (files.length >= 500) return;
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (isGovernanceExcludedDir(entry.name)) continue;
-      await collectGovernanceScanFilesInto(path, files);
-      continue;
-    }
-    if (!entry.isFile()) continue;
-    if (!isGovernanceScannableFile(entry.name)) continue;
-    files.push(path);
-  }
-}
-
-function isGovernanceExcludedDir(name: string): boolean {
-  return new Set([
-    ".git",
-    ".next",
-    ".turbo",
-    "coverage",
-    "dist",
-    "node_modules",
-    "release",
-    "reports",
-    "tmp",
-    "vendor",
-  ]).has(name);
-}
-
-function isGovernanceScannableFile(name: string): boolean {
-  if (name === ".env") return true;
-  return new Set([
-    ".cjs",
-    ".css",
-    ".html",
-    ".js",
-    ".json",
-    ".jsx",
-    ".md",
-    ".mjs",
-    ".py",
-    ".sh",
-    ".sql",
-    ".ts",
-    ".tsx",
-    ".yaml",
-    ".yml",
-  ]).has(extname(name));
 }
 
 function unknownGovernanceEvidence(reason: string): GovernanceProofEvidence {
