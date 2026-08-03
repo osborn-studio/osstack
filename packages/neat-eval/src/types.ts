@@ -64,9 +64,9 @@ export const DevelopmentCorpusV1 = z.object({
   }).strict(),
   baseline: z.object({
     repository: z.literal("KKKKhazix/khazix-skills"),
-    commit: z.literal("5a963d91f772e0d4f6659c43a36876a74c468143"),
-    path: z.literal("neat-freak/SKILL.md"),
-    sha256: z.literal("31ab2058d60664799af767e46c985a59025934315bee1b9c20d7ff442b0af687"),
+    commit: z.literal("2b4a645cfdc894156ae347d897723562f719ce95"),
+    path: z.literal("neat-freak"),
+    sha256: z.literal("e77e30e39e67f05d3159548605057d396794d1bde20bd59a070670e109c3d904"),
     license: z.literal("MIT"),
   }).strict(),
 }).strict().superRefine((corpus, context) => {

@@ -1,0 +1,9 @@
+{
+  "schema_version": "1",
+  "corpus_id": "osstack-neat-parity-development-v1",
+  "manifest_sha256": "2d5c7e75c613638866c28d095fbc55f2293fc8f29ea093d60a680ec52bded1f0",
+  "generated_tree_sha256": "263fbf61aadaad9c96ad08cfe33ea618d3abefb44cd4df9f382d9d38f01a327c",
+  "cases": 30,
+  "defects": 120,
+  "baseline_sha256": "e77e30e39e67f05d3159548605057d396794d1bde20bd59a070670e109c3d904"
+}

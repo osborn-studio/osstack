@@ -1,6 +1,16 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import {
+  lstat,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  realpath,
+  rename,
+  rm,
+  writeFile,
+} from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
   DevelopmentCorpusV1,
   type ParityCorpusCaseV1,
@@ -8,12 +18,66 @@ import {
   type ParityDefectV1,
 } from "./types.js";
 
-const KHAXIZ_SOURCE = {
-  source_url: "https://github.com/KKKKhazix/khazix-skills/blob/5a963d91f772e0d4f6659c43a36876a74c468143/neat-freak/SKILL.md",
-  source_commit: "5a963d91f772e0d4f6659c43a36876a74c468143",
-  source_sha256: "31ab2058d60664799af767e46c985a59025934315bee1b9c20d7ff442b0af687",
+const KHAZIX_SOURCE = {
+  source_url: "https://github.com/KKKKhazix/khazix-skills/blob/2b4a645cfdc894156ae347d897723562f719ce95/neat-freak/SKILL.md",
+  source_commit: "2b4a645cfdc894156ae347d897723562f719ce95",
+  source_sha256: "6c0ca2236d3518ccaad710f6db8e9c4aa7af67b685dc699ad347ae42186951e1",
   license: "MIT",
-  derivation: "Anonymized defect taxonomy derived from the frozen source workflow; no source prose copied.",
+  derivation: "Anonymized defect taxonomy derived from the frozen v3 source workflow; no source prose copied.",
+} as const;
+
+export interface FrozenBaselineFileV1 {
+  path: string;
+  mode: "100644" | "100755";
+  sha256: string;
+  bytes: number;
+}
+
+export const KHAZIX_NEAT_FREAK_V3_RUNTIME_FILES: readonly FrozenBaselineFileV1[] = [
+  {
+    path: "SKILL.md",
+    mode: "100644",
+    sha256: "6c0ca2236d3518ccaad710f6db8e9c4aa7af67b685dc699ad347ae42186951e1",
+    bytes: 15_454,
+  },
+  {
+    path: "references/agent-paths.md",
+    mode: "100644",
+    sha256: "8210a3cc1211283f71f068de99fd17e62fb9ce269ca6e693879ce6c30e31aff6",
+    bytes: 5_267,
+  },
+  {
+    path: "references/governance.md",
+    mode: "100644",
+    sha256: "6bf4bbf171864f2c82a5f8b8cf441df043362e8790c69ddca38f207c38bb5f72",
+    bytes: 4_296,
+  },
+  {
+    path: "references/sync-matrix.md",
+    mode: "100644",
+    sha256: "5c771ba2695a0d0dc54ef636531d61c916ed7f0f39db39827bbb330268f7648d",
+    bytes: 4_817,
+  },
+  {
+    path: "references/verification.md",
+    mode: "100644",
+    sha256: "cd3f4bf5cdc59c3aa51db868801f7461563a4b4a58b72799a6753c1f863c4126",
+    bytes: 4_042,
+  },
+  {
+    path: "scripts/audit-inventory.sh",
+    mode: "100755",
+    sha256: "260315d659f19e63a12065f9cadd9b57f9c1ddc867457f6c0f6fd87c003a7325",
+    bytes: 3_593,
+  },
+] as const;
+
+const KHAZIX_BASELINE = {
+  repository: "KKKKhazix/khazix-skills",
+  commit: "2b4a645cfdc894156ae347d897723562f719ce95",
+  path: "neat-freak",
+  sha256: "e77e30e39e67f05d3159548605057d396794d1bde20bd59a070670e109c3d904",
+  license: "MIT",
 } as const;
 
 const OSSTACK_SOURCE = {
@@ -46,6 +110,100 @@ function digest(value: string | Buffer): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
+function comparePortablePaths(left: FrozenBaselineFileV1, right: FrozenBaselineFileV1): number {
+  return left.path < right.path ? -1 : left.path > right.path ? 1 : 0;
+}
+
+function baselineBundleDigest(files: readonly FrozenBaselineFileV1[]): string {
+  return digest(JSON.stringify([...files].sort(comparePortablePaths)));
+}
+
+export async function hashFrozenBaselineBundleV1(root: string): Promise<{
+  bundle_sha256: string;
+  files: FrozenBaselineFileV1[];
+}> {
+  const authority = await realpath(root);
+  if (!(await lstat(authority)).isDirectory()) {
+    throw new Error("frozen baseline must be a directory");
+  }
+  const files: FrozenBaselineFileV1[] = [];
+  const visit = async (directory: string): Promise<void> => {
+    for (const name of (await readdir(directory)).sort()) {
+      const absolute = join(directory, name);
+      const stats = await lstat(absolute);
+      const portable = relative(authority, absolute).split("\\").join("/");
+      if (stats.isSymbolicLink() || (!stats.isDirectory() && !stats.isFile())) {
+        throw new Error(`baseline bundle contains unsupported entry: ${portable}`);
+      }
+      if (stats.isDirectory()) {
+        await visit(absolute);
+        continue;
+      }
+      files.push({
+        path: portable,
+        mode: stats.mode & 0o111 ? "100755" : "100644",
+        sha256: digest(await readFile(absolute)),
+        bytes: stats.size,
+      });
+    }
+  };
+  await visit(authority);
+  files.sort(comparePortablePaths);
+  return { bundle_sha256: baselineBundleDigest(files), files };
+}
+
+function isNotFound(error: unknown): boolean {
+  return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
+
+export async function fetchFrozenBaselineV1(
+  output: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<void> {
+  const destination = resolve(output);
+  try {
+    await lstat(destination);
+    throw new Error(`baseline output already exists: ${destination}`);
+  } catch (error) {
+    if (!isNotFound(error)) throw error;
+  }
+  await mkdir(dirname(destination), { recursive: true, mode: 0o700 });
+  const temporary = await mkdtemp(join(dirname(destination), ".osstack-neat-v3-"));
+  try {
+    for (const entry of KHAZIX_NEAT_FREAK_V3_RUNTIME_FILES) {
+      const target = resolve(temporary, entry.path);
+      const fromAuthority = relative(temporary, target);
+      if (
+        fromAuthority === ""
+        || fromAuthority === ".."
+        || fromAuthority.startsWith(`..${sep}`)
+        || isAbsolute(fromAuthority)
+      ) {
+        throw new Error(`baseline file escapes output authority: ${entry.path}`);
+      }
+      const url = `https://raw.githubusercontent.com/${KHAZIX_BASELINE.repository}/${KHAZIX_BASELINE.commit}/${KHAZIX_BASELINE.path}/${entry.path}`;
+      const response = await fetchImpl(url, {
+        headers: { "user-agent": "osstack-neat-eval/1" },
+        redirect: "error",
+      });
+      if (!response.ok) {
+        throw new Error(`baseline download failed for ${entry.path}: HTTP ${response.status}`);
+      }
+      const bytes = Buffer.from(await response.arrayBuffer());
+      if (bytes.length !== entry.bytes || digest(bytes) !== entry.sha256) {
+        throw new Error(`downloaded baseline file does not match manifest: ${entry.path}`);
+      }
+      await mkdir(dirname(target), { recursive: true, mode: 0o700 });
+      await writeFile(target, bytes, { mode: entry.mode === "100755" ? 0o755 : 0o644 });
+    }
+    await verifyFrozenBaselineV1(temporary);
+    await rename(temporary, destination);
+  } catch (error) {
+    await rm(temporary, { recursive: true, force: true });
+    throw error;
+  }
+}
+
 function defect(caseIndex: number, defectIndex: number): ParityDefectV1 {
   const category = categories[(caseIndex * 4 + defectIndex) % categories.length]!;
   const natural = caseIndex < 10;
@@ -55,9 +213,9 @@ function defect(caseIndex: number, defectIndex: number): ParityDefectV1 {
     category,
     origin: natural ? "natural_derived" as const : "controlled_seed" as const,
     provenance: natural
-      ? (caseIndex % 2 === 0 ? OSSTACK_SOURCE : KHAXIZ_SOURCE)
+      ? (caseIndex % 2 === 0 ? OSSTACK_SOURCE : KHAZIX_SOURCE)
       : {
-          ...KHAXIZ_SOURCE,
+          ...KHAZIX_SOURCE,
           derivation: "Deterministic controlled seed derived from the frozen methodology taxonomy.",
         },
   };
@@ -161,13 +319,7 @@ export function buildDevelopmentCorpusV1(): DevelopmentCorpusV1 {
       minimum_defects: 120,
       labels_visible_to_builder: false,
     },
-    baseline: {
-      repository: "KKKKhazix/khazix-skills",
-      commit: "5a963d91f772e0d4f6659c43a36876a74c468143",
-      path: "neat-freak/SKILL.md",
-      sha256: KHAXIZ_SOURCE.source_sha256,
-      license: "MIT",
-    },
+    baseline: KHAZIX_BASELINE,
   });
 }
 
@@ -353,9 +505,16 @@ export async function materializeDevelopmentCorpusV1(root: string): Promise<{
 }
 
 export async function verifyFrozenBaselineV1(path: string): Promise<void> {
-  const actual = digest(await readFile(path));
+  const observed = await hashFrozenBaselineBundleV1(path);
+  const actual = observed.bundle_sha256;
   const expected = buildDevelopmentCorpusV1().baseline.sha256;
   if (actual !== expected) {
     throw new Error(`frozen baseline hash mismatch: expected ${expected}, received ${actual}`);
+  }
+  if (
+    JSON.stringify(observed.files)
+    !== JSON.stringify([...KHAZIX_NEAT_FREAK_V3_RUNTIME_FILES].sort(comparePortablePaths))
+  ) {
+    throw new Error("frozen baseline manifest mismatch");
   }
 }
