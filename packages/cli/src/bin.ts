@@ -113,12 +113,9 @@ import {
   type KnowledgeSearchEvidence,
 } from "@osstack/knowledge";
 import { initProject } from "@osstack/skills";
-import {
-  addSource, checkAll, defaultManifestPath, readManifest,
-  removeSource, writeManifest,
-} from "@osstack/skill-registry";
 import { startDaemon } from "./daemon.js";
 import { handleAgentCommand } from "./agent-command.js";
+import { handleSkillsCommand } from "./skills-command.js";
 import {
   collectChangedGovernanceScanFiles,
   collectGovernanceScanFiles,
@@ -6296,114 +6293,6 @@ function pitfallResolutionForFamily(family: string): string {
 function inferLessonTechStack(capability: string | undefined): string[] {
   if (capability === undefined || capability.length === 0) return ["unknown"];
   return [...new Set(capability.split(/[.:_-]+/).filter((part) => part.length > 0))];
-}
-
-async function handleSkillsCommand(args: string[]): Promise<number> {
-  const sub = args[0];
-  const path = defaultManifestPath();
-
-  if (sub === "list" || sub === undefined) {
-    const m = readManifest(path);
-    console.log(`Skill manifest: ${path}`);
-    console.log(`Schema version: ${m.version}`);
-    console.log(`Tracked sources: ${m.sources.length}`);
-    for (const s of m.sources) {
-      const blessed = s.blessed_sha === null ? "(none)" : s.blessed_sha.slice(0, 12);
-      console.log(`  • ${s.id}  ref=${s.ref}  blessed=${blessed}  auto_minor=${s.auto_minor}`);
-      console.log(`      ${s.origin}`);
-      if (s.notes) console.log(`      ${s.notes}`);
-    }
-    return 0;
-  }
-
-  if (sub === "check") {
-    const m = readManifest(path);
-    console.log(`Checking ${m.sources.length} source(s) against their tracked refs...`);
-    const result = await checkAll(m);
-    let drifted = 0;
-    for (const e of result.entries) {
-      if (!e.ok) {
-        console.log(`  ✗ ${e.source.id}  unreachable: ${e.reason}`);
-        continue;
-      }
-      if (e.drifted) {
-        drifted += 1;
-        const head = e.current_sha?.slice(0, 12) ?? "?";
-        const blessed = e.source.blessed_sha?.slice(0, 12) ?? "(none)";
-        console.log(`  ⚠ ${e.source.id}  drift  blessed=${blessed}  head=${head}  ref=${e.source.ref}`);
-      } else {
-        console.log(`  ✓ ${e.source.id}  up-to-date (${e.current_sha?.slice(0, 12)})`);
-      }
-    }
-    console.log(`\n${drifted} source(s) drifted from blessed_sha.`);
-    return drifted > 0 ? 2 : 0;
-  }
-
-  if (sub === "add") {
-    const id = args[1];
-    const origin = args[2];
-    const ref = args[3] ?? "main";
-    if (!id || !origin) {
-      console.error("usage: osstack skills add <id> <origin-url> [ref]");
-      return 1;
-    }
-    const m = readManifest(path);
-    const next = addSource(m, { id, origin, ref });
-    writeManifest(next, path);
-    console.log(`added ${id} (${origin} @ ${ref})`);
-    return 0;
-  }
-
-  if (sub === "remove") {
-    const id = args[1];
-    if (!id) { console.error("usage: osstack skills remove <id>"); return 1; }
-    const m = readManifest(path);
-    const next = removeSource(m, id);
-    writeManifest(next, path);
-    console.log(`removed ${id}`);
-    return 0;
-  }
-
-  if (sub === "bless") {
-    // Mark the current remote head as blessed for this source.
-    const id = args[1];
-    if (!id) { console.error("usage: osstack skills bless <id>"); return 1; }
-    const m = readManifest(path);
-    const src = m.sources.find((s) => s.id === id);
-    if (!src) { console.error(`no source with id=${id}`); return 1; }
-    const result = await checkAll({ version: 1, sources: [src] });
-    const entry = result.entries[0]!;
-    if (!entry.ok || !entry.current_sha) {
-      console.error(`could not fetch head: ${entry.reason}`);
-      return 1;
-    }
-    const next = addSource(m, {
-      id: src.id, origin: src.origin, ref: src.ref,
-      blessed_sha: entry.current_sha,
-      last_checked: result.generated_at,
-    });
-    writeManifest(next, path);
-    console.log(`blessed ${id} @ ${entry.current_sha.slice(0, 12)}`);
-    return 0;
-  }
-
-  if (sub === "help") {
-    console.log(`osstack skills — external skill registry (S6)
-
-  osstack skills list                       Show tracked sources + versions
-  osstack skills add <id> <origin> [ref]    Add or update a source
-  osstack skills remove <id>                Remove a source
-  osstack skills check                      Compare blessed_sha vs origin HEAD
-  osstack skills bless <id>                 Pin the current HEAD as blessed
-  osstack skills help                       This help
-
-Manifest path: ${path}
-`);
-    return 0;
-  }
-
-  console.error(`osstack: unknown skills subcommand "${sub}"`);
-  return 1;
 }
 
 type RpcResp = { ok: boolean; result?: unknown; error?: { message: string } };
