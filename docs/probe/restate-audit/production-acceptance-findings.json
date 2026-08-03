@@ -1,0 +1,25 @@
+[
+  {
+    "schema_version": "1",
+    "finding_id": "prf_false_blocking_definition_v1",
+    "kind": "ambiguous",
+    "spec_evidence": {
+      "sha256": "9a0bbfb9512f99d8141322dfc927bd9ec4ff604d1aa9187a05c91d704f64db10",
+      "path": "docs/probe/2026-08-02-production-acceptance-intent.md",
+      "line": 15,
+      "anchor": "false blocking incident"
+    },
+    "restatement_evidence": {
+      "sha256": "89bca054f0295f4ec4a63c3645f8c9b797830744c05e38f755529e7497c999bf",
+      "path": "docs/probe/restate-audit/production-acceptance-restatement.md",
+      "line": 12,
+      "anchor": "prevent unrelated repository work"
+    },
+    "explanation": "The source leaves false blocking incident undefined, while the restatement narrows it to report-mode Probe preventing unrelated repository work from continuing. Owner confirmation is needed to determine whether this preserves the intended boundary or excludes other false-blocking behavior.",
+    "proposed_question": "What exact observable event counts as a false blocking incident during report-only Probe dogfood?",
+    "impact": 3,
+    "irreversibility": 2,
+    "uncertainty": 3,
+    "destination_hint": "prd"
+  }
+]
