@@ -30,7 +30,10 @@ smooth cycles, tighten the cadence to weekly by just doing it every Friday.
 
 4. **Train day (every other Friday):** merge the Version Packages PR.
    The workflow publishes all bumped packages to npm under the `latest`
-   dist-tag and tags the release.
+   dist-tag and tags the release. Public workspace packages are published in
+   dependency-first topological order, one at a time. The first publish error
+   stops the train before any dependent package can become visible with a
+   missing exact internal dependency.
 
 5. Verify on a machine: `osstack upgrade --dry-run`, then `osstack upgrade`.
 
@@ -74,6 +77,7 @@ pnpm smoke:npm-bootstrap
 pnpm preflight:npm-bootstrap
 pnpm smoke:npm-trust
 pnpm preflight:npm-trust
+pnpm smoke:npm-publish-order
 pnpm preflight:npm-publish
 ```
 
