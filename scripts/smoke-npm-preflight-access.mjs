@@ -61,12 +61,16 @@ const result = await run(process.execPath, ["scripts/preflight-npm-publish-acces
 
 assert(result.code === 1, "npm preflight must fail when npm returns E403.");
 assert(
-  result.stderr.includes("NPM_TOKEN account cannot publish to @osstack"),
-  "npm preflight must explain forbidden publish access as an NPM_TOKEN account permission problem.",
+  result.stderr.includes("Local npm account cannot administer @osstack"),
+  "npm preflight must explain forbidden local bootstrap/recovery access.",
 );
 assert(
-  result.stderr.includes("Add the npm account behind NPM_TOKEN as an owner or publisher for @osstack"),
+  result.stderr.includes("Add the local npm account as an owner or publisher for @osstack"),
   "npm preflight must print the owner/publisher remediation step.",
+);
+assert(
+  result.stderr.includes("normal publishing uses OIDC"),
+  "npm preflight must distinguish local recovery access from normal OIDC publishing.",
 );
 
 console.log(JSON.stringify({

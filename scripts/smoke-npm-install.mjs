@@ -79,9 +79,10 @@ try {
       ...process.env,
       OSSTACK_TEST_RELEASE_GITHUB_AUTH: "ok",
       OSSTACK_TEST_RELEASE_GITHUB_ACTIONS: "ok",
-      OSSTACK_TEST_RELEASE_SECRETS: "NPM_TOKEN",
+      OSSTACK_TEST_RELEASE_SECRETS: "",
       OSSTACK_TEST_RELEASE_NPM_AUTH: "ok",
       OSSTACK_TEST_RELEASE_NPM_SCOPE_ACCESS: "ok",
+      OSSTACK_TEST_RELEASE_NPM_BOOTSTRAP: "ok",
       OSSTACK_TEST_RELEASE_VERSION_PR: "none",
     },
   });
@@ -94,6 +95,9 @@ try {
   }
   if (!releaseDoctorParsed.checks?.some((check) => check.id === "npm_scope_access" && check.status === "ok")) {
     throw new Error(`installed CLI release doctor did not validate npm scope access: ${releaseDoctor.stdout}`);
+  }
+  if (!releaseDoctorParsed.checks?.some((check) => check.id === "npm_package_bootstrap" && check.status === "ok")) {
+    throw new Error(`installed CLI release doctor did not validate npm package bootstrap: ${releaseDoctor.stdout}`);
   }
 
   const doctor = run(osstackBin, ["loop", "doctor", "--workspace", workspace, "--json"], { cwd: root, capture: true });

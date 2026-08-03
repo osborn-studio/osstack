@@ -28,19 +28,19 @@ try {
   const scopeForbidden = /code E403|E403|Forbidden|not authorized|not authorised|permission|access denied/i.test(output);
   const authMissing = /ENEEDAUTH|need auth|not logged in|code E401/i.test(output);
   const reason = scopeMissing
-    ? `${scope} does not exist on npm, or this token cannot see/publish it.`
+    ? `${scope} does not exist on npm, or this local account cannot see/administer it.`
     : scopeForbidden
-    ? `NPM_TOKEN account cannot publish to ${scope}.`
+    ? `Local npm account cannot administer ${scope}.`
     : authMissing
-    ? "npm authentication cannot prove publish rights for the osstack scope."
-    : "npm publish access preflight failed.";
+    ? "Local npm authentication cannot prove bootstrap or recovery rights for the osstack scope."
+    : "Local npm bootstrap/recovery access preflight failed.";
   console.error(reason);
   console.error("");
-  console.error("Fix before rerunning Release:");
+  console.error("Fix only if first-package bootstrap or manual recovery is required:");
   console.error(`1. Create or claim the npm organization/scope ${scope} on npmjs.com.`);
-  console.error(`2. Add the npm account behind NPM_TOKEN as an owner or publisher for ${scope}.`);
-  console.error("3. Recreate NPM_TOKEN from that npm account with automation/publish rights.");
-  console.error("4. Update the GitHub repository secret NPM_TOKEN and rerun the Release workflow.");
+  console.error(`2. Add the local npm account as an owner or publisher for ${scope}.`);
+  console.error("3. Log in locally with that account and rerun this diagnostic.");
+  console.error("4. Keep long-lived npm tokens out of the GitHub Release publish step; normal publishing uses OIDC.");
   console.error("");
   console.error(output);
   process.exit(1);

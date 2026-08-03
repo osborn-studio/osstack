@@ -117,11 +117,14 @@ jobs:
       - name: NPM preflight smoke
         run: pnpm smoke:npm-preflight
 
+      - name: NPM Trusted Publisher preflight smoke
+        run: pnpm smoke:npm-trust
+
       - name: Version PR / Publish
         uses: changesets/action@v1
         with:
           version: pnpm changeset version
-          publish: pnpm changeset publish
+          publish: pnpm release
           commit: "chore(release): version packages"
           title: "chore(release): version packages"
         env:

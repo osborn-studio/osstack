@@ -82,9 +82,10 @@ Adapter contract coverage and the four documented minor deferrals:
 
 1. **Merge the Version Packages PR** (`#111`) when ready to cut versions. This
    applies the bumps and CHANGELOGs to `main`.
-2. **npm publish is not configured/verified here.** If npm publishing is
-   desired, ensure the repo's `NPM_TOKEN` secret is set for the Release workflow
-   (`changeset publish`). Nothing has been published to npm in this work.
+2. **npm publish was not configured/verified in this historical session.** The
+   current release path now uses GitHub OIDC Trusted Publishing; follow
+   `RELEASING.md` instead of adding a long-lived npm token to the workflow.
+   Nothing was published to npm in this work.
 3. Neither of the above has been performed — no version has been cut and no
    package has been published.
 

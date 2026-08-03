@@ -1387,11 +1387,11 @@ async function handleReleaseCommand(args: string[]): Promise<number> {
 Checks:
   - GitHub CLI authentication for repository operations
   - GitHub Actions runner availability for release/deploy workflows
-  - repository secrets NPM_TOKEN and EDGEONE_API_TOKEN
+  - npm Trusted Publishing (OIDC), package bootstrap, and EdgeOne secrets
   - Optional Apple notarization and Developer ID secrets for notarized single-binary release
   - optional proof-core evidence validation with --proof-dir
   - optional deployed Knowledge Cloud /healthz validation with --cloud-url
-  - local npm login for manual publishing
+  - optional local npm login for first-package bootstrap/manual recovery
   - EdgeOne deploy credential readiness for Knowledge Cloud deploy
 `);
     return 0;
@@ -1473,7 +1473,8 @@ interface NpmPublishSetupSummary {
   scope: string;
   package_name: string;
   repository: string;
-  required_secret: string;
+  authentication: "trusted-publishing-oidc";
+  required_secret: string | null;
   publish_access: string;
   console_checklist: string[];
   github_commands: string[];
@@ -1693,9 +1694,8 @@ async function releaseDoctor(
 
   const edgeOneDeploySecrets = ["EDGEONE_API_TOKEN", "EDGEONE_DEPLOY_HOOK_URL"];
   const knowledgeCloudPublishSecrets = ["OSSTACK_KNOWLEDGE_PUBLISH_TOKEN"];
-  const requiredSecrets = target === "all" ? ["NPM_TOKEN", ...edgeOneDeploySecrets, ...knowledgeCloudPublishSecrets]
+  const requiredSecrets = target === "all" ? [...edgeOneDeploySecrets, ...knowledgeCloudPublishSecrets]
     : [
-      ...(releaseTargetIncludesNpm(target) ? ["NPM_TOKEN"] : []),
       ...(releaseTargetIncludesKnowledgeCloud(target) ? [...edgeOneDeploySecrets, ...knowledgeCloudPublishSecrets] : []),
     ];
   const secrets = await releaseSecretsCheck(requiredSecrets, {
@@ -1705,6 +1705,7 @@ async function releaseDoctor(
 
   if (releaseTargetIncludesNpm(target)) {
     checks.push(await releaseNpmPublishAssetsCheck(process.cwd()));
+    checks.push(await releaseNpmPackageBootstrapCheck(process.cwd()));
     checks.push(await releaseVersionPackagesPrCheck());
     checks.push(await releaseCommandCheck({
       id: "npm_auth",
@@ -1712,7 +1713,7 @@ async function releaseDoctor(
       args: ["whoami"],
       envOverride: "OSSTACK_TEST_RELEASE_NPM_AUTH",
       okMessage: "Local npm login is available for manual publish checks.",
-      errorMessage: "Local npm login is missing; run npm login or rely on the NPM_TOKEN repository secret in CI.",
+      errorMessage: "Local npm login is unavailable; it is optional for OIDC publishing but required for first-package bootstrap or manual recovery.",
       missingSeverity: "warn",
     }));
     checks.push(await releaseNpmScopeAccessCheck());
@@ -1742,7 +1743,7 @@ async function releaseDoctor(
   }
 
   const npmPublishAssetsReady = checks.find((check) => check.id === "npm_publish_assets")?.status !== "error";
-  const npmScopeAccessReady = checks.find((check) => check.id === "npm_scope_access")?.status !== "error";
+  const npmPackageBootstrapReady = checks.find((check) => check.id === "npm_package_bootstrap")?.status !== "error";
   const versionPackagesPrReady = checks.find((check) => check.id === "version_packages_pr")?.status !== "warn";
   const knowledgeDeployAssetsReady = checks.find((check) => check.id === "knowledge_cloud_deploy_assets")?.status !== "error";
   const knowledgeWorkflowReady = checks.find((check) => check.id === "knowledge_cloud_workflow")?.status !== "error";
@@ -1755,7 +1756,7 @@ async function releaseDoctor(
   const singleBinaryAssetsReady = checks.find((check) => check.id === "single_binary_release_assets")?.status !== "error";
   const singleBinaryWorkflowReady = checks.find((check) => check.id === "single_binary_workflow")?.status !== "error";
   const actionsReady = githubActions.status !== "error";
-  const npmPublish = actionsReady && hasSecret(secrets, "NPM_TOKEN") && npmPublishAssetsReady && npmScopeAccessReady && versionPackagesPrReady;
+  const npmPublish = actionsReady && npmPublishAssetsReady && npmPackageBootstrapReady && versionPackagesPrReady;
   const knowledgeCloudDeploy = actionsReady
     && hasAnySecret(secrets, edgeOneDeploySecrets)
     && knowledgeDeployAssetsReady
@@ -1799,6 +1800,8 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
     "packages/cli/package.json",
     "package.json",
     "scripts/preflight-npm-publish-access.mjs",
+    "scripts/preflight-npm-package-bootstrap.mjs",
+    "scripts/preflight-npm-trusted-publishers.mjs",
     ".github/workflows/release.yml",
   ];
   const checkedAssets = [
@@ -1827,6 +1830,8 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   const workflow = await readAsset(".github/workflows/release.yml");
   const rootPackage = await readAsset("package.json");
   const npmPreflight = await readAsset("scripts/preflight-npm-publish-access.mjs");
+  const npmBootstrap = await readAsset("scripts/preflight-npm-package-bootstrap.mjs");
+  const npmTrust = await readAsset("scripts/preflight-npm-trusted-publishers.mjs");
   let cliVersion = "";
 
   if (cliPackageRaw !== "") {
@@ -1865,14 +1870,20 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   expectAsset(workflow, "pnpm smoke:release-plan", "Release workflow must run release plan smoke.");
   expectAsset(workflow, "pnpm smoke:npm-install", "Release workflow must run npm install smoke.");
   expectAsset(workflow, "pnpm smoke:npm-preflight", "Release workflow must run npm preflight smoke.");
-  expectAsset(workflow, "publish: pnpm changeset publish", "Release workflow must publish through changesets.");
+  expectAsset(workflow, "pnpm smoke:npm-trust", "Release workflow must test the Trusted Publisher preflight contract.");
+  expectAsset(workflow, "publish: pnpm release", "Release workflow must publish through the guarded root release command.");
   expectAsset(workflow, "id-token: write", "Release workflow must allow npm Trusted Publishing through GitHub OIDC.");
   expectAsset(workflow, "node-version: 24", "Release workflow must use a Node version compatible with npm Trusted Publishing.");
   expectAsset(workflow, "npm@11.17.0", "Release workflow must pin an npm client compatible with Trusted Publishing.");
   violations.push(...trustedPublishingWorkflowViolations(workflow));
   expectAsset(rootPackage, "\"preflight:npm-publish\"", "Root package scripts must expose preflight:npm-publish.");
+  expectAsset(rootPackage, "\"preflight:npm-bootstrap\"", "Root package scripts must expose preflight:npm-bootstrap.");
+  expectAsset(rootPackage, "\"preflight:npm-trust\"", "Root package scripts must expose preflight:npm-trust.");
+  expectAsset(rootPackage, "\"release\": \"pnpm preflight:npm-bootstrap && pnpm changeset publish\"", "Root release command must gate Changesets publish on package bootstrap.");
   expectAsset(npmPreflight, "npm\", [\"access\", \"list\", \"packages\", scope, \"--json\"]", "NPM preflight script must verify publish-scope access with npm access list packages.");
   expectAsset(npmPreflight, "Scope not found", "NPM preflight script must explain missing npm scope failures.");
+  expectAsset(npmBootstrap, "npm_package_bootstrap", "NPM bootstrap preflight must emit its stable contract kind.");
+  expectAsset(npmTrust, "npm_trusted_publishers", "NPM trust preflight must emit its stable contract kind.");
 
   const ok = missing.length === 0 && violations.length === 0;
   return {
@@ -1892,6 +1903,73 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   };
 }
 
+async function releaseNpmPackageBootstrapCheck(workspacePath: string): Promise<ReleaseDoctorCheck> {
+  const override = process.env["OSSTACK_TEST_RELEASE_NPM_BOOTSTRAP"];
+  if (override === "ok") {
+    return {
+      id: "npm_package_bootstrap",
+      status: "ok",
+      message: "All public workspace packages exist on npm and are eligible for Trusted Publisher configuration.",
+      details: { missing: [] },
+    };
+  }
+  if (override?.startsWith("error:") === true) {
+    const missing = override.slice("error:".length).split(",").filter(Boolean);
+    return {
+      id: "npm_package_bootstrap",
+      status: "error",
+      message: "One or more public workspace packages require a manual first publish before OIDC can publish them.",
+      details: { missing },
+    };
+  }
+  const assetRoot = await findReleaseAssetRoot(workspacePath);
+  try {
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(assetRoot, "scripts", "preflight-npm-package-bootstrap.mjs"),
+      "--root",
+      assetRoot,
+      "--json",
+    ], { timeout: 60_000, maxBuffer: 4 * 1024 * 1024 });
+    const parsed = JSON.parse(stdout) as { packages?: unknown; missing?: unknown };
+    return {
+      id: "npm_package_bootstrap",
+      status: "ok",
+      message: "All public workspace packages exist on npm and are eligible for Trusted Publisher configuration.",
+      details: {
+        packages: Array.isArray(parsed.packages) ? parsed.packages : [],
+        missing: Array.isArray(parsed.missing) ? parsed.missing : [],
+      },
+    };
+  } catch (error) {
+    const commandError = error as { stdout?: unknown; stderr?: unknown };
+    const stdout = typeof commandError.stdout === "string" ? commandError.stdout : "";
+    const stderr = typeof commandError.stderr === "string" ? commandError.stderr : "";
+    const message = [stdout, stderr, releaseErrorMessage(error)]
+      .filter((value): value is string => typeof value === "string" && value.length > 0)
+      .join("\n");
+    let missing: unknown[] = [];
+    for (const candidate of [stdout, stderr]) {
+      try {
+        const parsed = JSON.parse(candidate) as { missing?: unknown };
+        if (Array.isArray(parsed.missing)) {
+          missing = parsed.missing;
+          break;
+        }
+      } catch {
+        // Preserve the bounded command error below when one stream is not JSON.
+      }
+    }
+    return {
+      id: "npm_package_bootstrap",
+      status: "error",
+      message: missing.length > 0
+        ? "One or more public workspace packages require a manual first publish before OIDC can publish them."
+        : "Could not verify npm package bootstrap state before Trusted Publishing.",
+      details: { missing, error: message },
+    };
+  }
+}
+
 export function trustedPublishingWorkflowViolations(workflow: string): string[] {
   const publishStep = workflow.split("- name: Version PR / Publish")[1] ?? "";
   if (publishStep.includes("NPM_TOKEN") || publishStep.includes("NODE_AUTH_TOKEN")) {
@@ -1907,7 +1985,7 @@ async function releaseNpmScopeAccessCheck(): Promise<ReleaseDoctorCheck> {
     return {
       id: "npm_scope_access",
       status: "ok",
-      message: `npm publish access to ${scope} is available.`,
+      message: `Local npm access to ${scope} is available for bootstrap or manual recovery.`,
       details: { scope },
     };
   }
@@ -1922,17 +2000,17 @@ async function releaseNpmScopeAccessCheck(): Promise<ReleaseDoctorCheck> {
   if (override === "error" || override === "error:scope") {
     return {
       id: "npm_scope_access",
-      status: "error",
-      message: `npm cannot publish to ${scope}; create the scope or grant NPM_TOKEN publish rights.`,
-      details: { scope, reason: "scope_not_found_or_unauthorized" },
+      status: "warn",
+      message: `Local npm cannot administer ${scope}; OIDC publishing remains independent, but first-package bootstrap/manual recovery is unavailable.`,
+      details: { scope, reason: "scope_not_found_or_unauthorized", required_for_oidc_publish: false },
     };
   }
   if (override === "error:forbidden") {
     return {
       id: "npm_scope_access",
-      status: "error",
-      message: `npm cannot publish to ${scope}; grant NPM_TOKEN publish rights.`,
-      details: { scope, reason: "scope_forbidden" },
+      status: "warn",
+      message: `Local npm cannot administer ${scope}; OIDC publishing remains independent, but manual recovery is unavailable.`,
+      details: { scope, reason: "scope_forbidden", required_for_oidc_publish: false },
     };
   }
   try {
@@ -1940,7 +2018,7 @@ async function releaseNpmScopeAccessCheck(): Promise<ReleaseDoctorCheck> {
     return {
       id: "npm_scope_access",
       status: "ok",
-      message: `npm publish access to ${scope} is available.`,
+      message: `Local npm access to ${scope} is available for bootstrap or manual recovery.`,
       details: { scope },
     };
   } catch (error) {
@@ -1949,15 +2027,16 @@ async function releaseNpmScopeAccessCheck(): Promise<ReleaseDoctorCheck> {
     const scopeForbidden = /E403|Forbidden|not authorized|not authorised|permission|access denied/i.test(message);
     return {
       id: "npm_scope_access",
-      status: scopeMissing || scopeForbidden ? "error" : "warn",
+      status: "warn",
       message: scopeMissing
-        ? `npm cannot publish to ${scope}; create the scope or grant NPM_TOKEN publish rights.`
+        ? `Local npm cannot administer ${scope}; create/authorize it only for first-package bootstrap or manual recovery.`
         : scopeForbidden
-        ? `npm cannot publish to ${scope}; grant NPM_TOKEN publish rights.`
-        : `Could not verify npm publish access to ${scope}; release CI will run the token-backed preflight.`,
+        ? `Local npm cannot administer ${scope}; OIDC publishing remains independent.`
+        : `Could not verify local npm recovery access to ${scope}; Trusted Publishing does not use this login.`,
       details: {
         scope,
         reason: scopeMissing ? "scope_not_found_or_unauthorized" : scopeForbidden ? "scope_forbidden" : "not_checked",
+        required_for_oidc_publish: false,
         error: message,
       },
     };
@@ -3722,9 +3801,6 @@ function releaseDoctorNextSteps(options: {
     steps.push("Confirm GitHub Actions can start workflow jobs before publishing or deploying.");
   }
   const missing = options.secrets.details?.["missing"];
-  if (Array.isArray(missing) && missing.includes("NPM_TOKEN")) {
-    steps.push("Add repository secret NPM_TOKEN before merging the Version Packages PR.");
-  }
   if (
     Array.isArray(missing)
     && missing.includes("EDGEONE_API_TOKEN")
@@ -3756,14 +3832,17 @@ function releaseDoctorNextSteps(options: {
   if (releaseTargetIncludesNpm(options.target) && npmPublishAssets?.status === "error") {
     steps.push("Restore NPM publish assets before merging the Version Packages PR.");
   }
+  const npmPackageBootstrap = options.checks.find((check) => check.id === "npm_package_bootstrap");
+  if (releaseTargetIncludesNpm(options.target) && npmPackageBootstrap?.status === "error") {
+    const missingPackages = npmPackageBootstrap.details?.["missing"];
+    const suffix = Array.isArray(missingPackages) && missingPackages.length > 0
+      ? `: ${missingPackages.join(", ")}`
+      : "";
+    steps.push(`Bootstrap the unpublished npm package(s) manually, then configure release.yml as their Trusted Publisher${suffix}`);
+  }
   const npmScopeAccess = options.checks.find((check) => check.id === "npm_scope_access");
-  if (releaseTargetIncludesNpm(options.target) && npmScopeAccess?.status === "error") {
-    const reason = npmScopeAccess.details?.["reason"];
-    steps.push(reason === "scope_forbidden"
-      ? "Confirm the npm account behind NPM_TOKEN can publish to @osstack before rerunning the Release workflow."
-      : "Create or authorize the npm @osstack scope before rerunning the Release workflow.");
-  } else if (releaseTargetIncludesNpm(options.target) && npmScopeAccess?.status === "warn") {
-    steps.push("Local npm scope access could not be verified; release CI will use the NPM_TOKEN-backed preflight as the source of truth.");
+  if (releaseTargetIncludesNpm(options.target) && npmScopeAccess?.status === "warn") {
+    steps.push("Local npm bootstrap/recovery access is unavailable; this does not block the OIDC Release workflow.");
   }
   const knowledgeDeployAssets = options.checks.find((check) => check.id === "knowledge_cloud_deploy_assets");
   if (releaseTargetIncludesKnowledgeCloud(options.target) && knowledgeDeployAssets?.status === "error") {
@@ -3938,9 +4017,6 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     : undefined;
   const latestVersionPrCiConclusion = versionPr?.details?.["latest_ci_conclusion"];
   const operatorCommands = [
-    ...(Array.isArray(missingSecrets) && missingSecrets.includes("NPM_TOKEN")
-      ? ["gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\""]
-      : []),
     ...(Array.isArray(missingSecrets)
       && missingSecrets.includes("EDGEONE_API_TOKEN")
       && missingSecrets.includes("EDGEONE_DEPLOY_HOOK_URL")
@@ -3960,11 +4036,10 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
         ...(latestVersionPrCiUrl === undefined ? [] : [latestVersionPrCiUrl]),
       ]
       : []),
-    ...(result.checks.find((check) => check.id === "npm_scope_access")?.status === "error"
+    ...(result.checks.find((check) => check.id === "npm_package_bootstrap")?.status === "error"
       ? [
-        "Create or claim the @osstack npm organization/scope on npmjs.com.",
-        "Invite the npm account used for NPM_TOKEN as an owner or publisher for @osstack.",
-        "Regenerate NPM_TOKEN from that npm account and update the GitHub repository secret.",
+        "Publish each missing package's first version manually from an authorized npm account.",
+        "Configure gilosbornhello/osstack and release.yml as that package's npm Trusted Publisher with publish permission.",
       ]
       : []),
     ...releaseGitHubActionsOperatorCommands(result.checks.find((check) => check.id === "github_actions")),
@@ -3975,6 +4050,10 @@ function releaseActionPlan(result: ReleaseDoctorResult, options: { proofDir?: st
     ...(result.target === "all" || result.target === "primary" ? ["pnpm smoke:release-plan"] : []),
     ...(releaseTargetIncludesNpm(result.target)
       ? [
+        "pnpm smoke:npm-bootstrap",
+        "pnpm preflight:npm-bootstrap",
+        "pnpm smoke:npm-trust",
+        "pnpm preflight:npm-trust",
         "pnpm smoke:npm-preflight",
         "pnpm smoke:npm-install",
         versionPrNumber === undefined
@@ -4064,7 +4143,7 @@ function isReleaseBlockerStep(step: string): boolean {
     || step.startsWith("Regenerate or repair proof pack artifacts")
     || step.startsWith("Remove external certification claims")
     || step.startsWith("Restore NPM publish assets")
-    || step.startsWith("Create or authorize the npm @osstack scope")
+    || step.startsWith("Bootstrap the unpublished npm package")
     || step.startsWith("Restore Knowledge Cloud deploy assets")
     || step.startsWith("Restore the Knowledge Cloud Deploy workflow")
     || step.startsWith("Fix the deployed Knowledge Cloud")
@@ -4284,7 +4363,6 @@ function isGitHubSecretCommand(command: string): boolean {
 
 function releaseHandoffRequiredSecrets(target: ReleaseDoctorResult["target"]): string[] {
   return [
-    ...(releaseTargetIncludesNpm(target) ? ["NPM_TOKEN"] : []),
     ...(releaseTargetIncludesSingleBinary(target) ? SINGLE_BINARY_RELEASE_SECRETS : []),
   ];
 }
@@ -4340,29 +4418,31 @@ async function createNpmPublishSetupSummary(workspacePath: string): Promise<NpmP
     scope,
     package_name: packageSummary.name,
     repository,
-    required_secret: "NPM_TOKEN",
+    authentication: "trusted-publishing-oidc",
+    required_secret: null,
     publish_access: packageSummary.publishAccess,
     console_checklist: [
-      "Sign in to npmjs.com with the account that will own the osstack release token.",
+      "Sign in to npmjs.com with an account that can administer every public @osstack package.",
       `Create or claim the ${scope} organization/scope on npmjs.com.`,
-      `Invite the npm account used for NPM_TOKEN as an owner or publisher for ${scope}.`,
-      "Confirm the token owner can publish the package itself; organization membership alone does not grant package publish access.",
+      "Manually publish the first version of any new public package because a Trusted Publisher can be configured only after the package exists.",
+      `For every public package, configure GitHub Actions Trusted Publisher ${repository} / release.yml with publish permission.`,
       `Confirm ${packageSummary.name} uses public access before publishing.`,
-      "Generate a granular npm access token from the authorized account with publish access for the package scope.",
-      "Do not paste NPM_TOKEN into chat, logs, issues, or pull requests.",
-      "Update the GitHub repository secret after copying the token once.",
-      "Rerun the Release workflow only after the local and CI npm preflight commands pass.",
+      "After one successful OIDC release, set publishing access to require 2FA and disallow tokens where operationally appropriate.",
+      "Use local npm login/token access only for first-package bootstrap or manual recovery; never expose it to the Release publish step.",
+      "Run pnpm preflight:npm-trust in an interactive terminal and complete npm's fresh 2FA/web authentication to verify every package mapping.",
+      "Rerun the Release workflow only after the package bootstrap and install gates pass.",
     ],
-    github_commands: [
-      `gh secret set NPM_TOKEN --repo ${repository} --body "$NPM_TOKEN"`,
-    ],
+    github_commands: [],
     workflow_commands: [
       "gh run list --workflow Release --branch main --limit 5",
       `gh run rerun <failed-release-run-id> --repo ${repository}`,
     ],
     validation_commands: [
+      "pnpm smoke:npm-bootstrap",
+      "pnpm preflight:npm-bootstrap",
+      "pnpm smoke:npm-trust",
+      "pnpm preflight:npm-trust",
       "pnpm smoke:npm-preflight",
-      "pnpm preflight:npm-publish",
       "osstack release doctor --target npm --json",
     ],
     post_release_validation_commands: [
@@ -4406,12 +4486,14 @@ function renderNpmPublishSetupSummary(setup: NpmPublishSetupSummary): string {
     `Scope: \`${setup.scope}\``,
     `Package: \`${setup.package_name}\``,
     `Repository: \`${setup.repository}\``,
-    `Required secret: \`${setup.required_secret}\``,
+    `Authentication: \`${setup.authentication}\``,
+    `Required long-lived publish secret: \`${setup.required_secret ?? "none"}\``,
     `Publish access: \`${setup.publish_access}\``,
     "",
     "## Official References",
     "",
-    "- npm access token docs: https://docs.npmjs.com/creating-and-viewing-access-tokens",
+    "- npm Trusted Publishing: https://docs.npmjs.com/trusted-publishers/",
+    "- npm trust command: https://docs.npmjs.com/cli/v11/commands/npm-trust/",
     "- npm scoped public package docs: https://docs.npmjs.com/creating-and-publishing-scoped-public-packages",
     "- npm organization package access docs: https://docs.npmjs.com/managing-team-access-to-organization-packages",
     "",
@@ -4421,7 +4503,9 @@ function renderNpmPublishSetupSummary(setup: NpmPublishSetupSummary): string {
     "",
     "## GitHub Commands",
     "",
-    ...setup.github_commands.map((command) => `- \`${command}\``),
+    ...(setup.github_commands.length === 0
+      ? ["No repository secret command is required for npm publishing."]
+      : setup.github_commands.map((command) => `- \`${command}\``)),
     "",
     "## Workflow Commands",
     "",
@@ -4714,8 +4798,7 @@ function releaseCodeVerified(checks: ReleaseDoctorCheck[]): boolean {
 function isExternalReleaseBlockerStep(step: string): boolean {
   return step.startsWith("Add repository secret")
     || step.startsWith("Add Apple notarization")
-    || step.startsWith("Confirm the npm account behind NPM_TOKEN")
-    || step.startsWith("Create or authorize the npm @osstack scope")
+    || step.startsWith("Bootstrap the unpublished npm package")
     || step.startsWith("Fix GitHub Actions")
     || step.startsWith("Refresh GitHub auth");
 }

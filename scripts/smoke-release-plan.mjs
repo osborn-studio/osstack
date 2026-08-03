@@ -173,16 +173,18 @@ try {
   const npm = JSON.parse(npmResult.stdout);
   assert(npm.scope === "@osstack", "npm setup must expose the osstack npm scope");
   assert(npm.package_name === "@osstack/cli", "npm setup must read the CLI package metadata");
-  assert(npm.required_secret === "NPM_TOKEN", "npm setup must expose the npm publish secret");
+  assert(npm.authentication === "trusted-publishing-oidc", "npm setup must expose OIDC authentication");
+  assert(npm.required_secret === null, "npm setup must not require a long-lived publish secret");
+  assert(npm.github_commands.length === 0, "npm setup must not emit an npm secret command");
   assertArrayIncludes(
-    npm.github_commands,
-    "gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\"",
-    "npm setup must include the GitHub secret command",
+    npm.validation_commands,
+    "pnpm preflight:npm-bootstrap",
+    "npm setup must include package bootstrap validation",
   );
   assertArrayIncludes(
     npm.validation_commands,
-    "pnpm preflight:npm-publish",
-    "npm setup must include npm publish preflight validation",
+    "pnpm preflight:npm-trust",
+    "npm setup must include Trusted Publisher mapping validation",
   );
   assertArrayIncludes(
     npm.post_release_validation_commands,
@@ -191,7 +193,8 @@ try {
   );
   const npmMarkdown = await readFile(npmOutput, "utf-8");
   assertIncludes(npmMarkdown, "# NPM Publish Setup", "npm setup markdown must render a title");
-  assertIncludes(npmMarkdown, "NPM_TOKEN", "npm setup markdown must include publish secret");
+  assertIncludes(npmMarkdown, "trusted-publishing-oidc", "npm setup markdown must identify OIDC authentication");
+  assert(!npmMarkdown.includes("NPM_TOKEN"), "npm setup markdown must not require a long-lived publish secret");
 
   const handoffResult = await runAsync(process.execPath, [
     "packages/cli/dist/bin.js",
@@ -211,7 +214,7 @@ try {
   assert(handoff.kind === "osstack-release-handoff", "release handoff must identify its artifact kind");
   assert(handoff.target === "primary", "release handoff default target must be primary");
   assert(handoff.output_dir === handoffOutputDir, "release handoff must expose its output directory");
-  assertArrayIncludes(handoff.required_secrets, "NPM_TOKEN", "release handoff must include npm secret");
+  assert(!handoff.required_secrets.includes("NPM_TOKEN"), "release handoff must not require an npm secret");
   assert(
     JSON.stringify(handoff.alternative_secret_groups).includes("[\"EDGEONE_API_TOKEN\",\"EDGEONE_DEPLOY_HOOK_URL\"]"),
     "release handoff must expose EdgeOne API token/deploy hook as alternative secrets",
@@ -231,10 +234,14 @@ try {
   assertIncludes(nextActions, "## Local Validation Commands", "next actions script must separate local validation commands");
   assertIncludes(nextActions, "## GitHub Read-Only Commands", "next actions script must separate read-only GitHub commands");
   assertIncludes(nextActions, "## Remote Workflow Commands", "next actions script must separate commands that consume Actions minutes");
-  assertIncludes(nextActions, "gh secret set NPM_TOKEN --repo gilosbornhello/osstack --body \"$NPM_TOKEN\"", "next actions script must include npm secret setup");
+  assert(!nextActions.includes("NPM_TOKEN"), "next actions script must not include npm secret setup");
   assertIncludes(nextActions, "gh secret set EDGEONE_API_TOKEN --repo gilosbornhello/osstack --body \"$EDGEONE_API_TOKEN\"", "next actions script must include EdgeOne API token setup");
   assertIncludes(nextActions, "# Optional fallback: gh secret set EDGEONE_DEPLOY_HOOK_URL --repo gilosbornhello/osstack --body \"$EDGEONE_DEPLOY_HOOK_URL\"", "next actions script must include EdgeOne deploy hook fallback setup");
   assertIncludes(nextActions, "pnpm smoke:npm-preflight", "next actions script must include npm preflight validation");
+  assertIncludes(nextActions, "pnpm smoke:npm-bootstrap", "next actions script must include npm bootstrap smoke validation");
+  assertIncludes(nextActions, "pnpm preflight:npm-bootstrap", "next actions script must include npm bootstrap registry validation");
+  assertIncludes(nextActions, "pnpm smoke:npm-trust", "next actions script must include npm trust smoke validation");
+  assertIncludes(nextActions, "pnpm preflight:npm-trust", "next actions script must include npm Trusted Publisher validation");
   assertIncludes(nextActions, `gh workflow run "Knowledge Cloud Deploy" --ref main -f deploy=true -f cloud_url=${cloudUrl}`, "next actions script must include EdgeOne deploy workflow command");
 
   const sync = JSON.parse((await runAsync(process.execPath, [
@@ -302,7 +309,6 @@ function releasePlanEnv() {
     OSSTACK_TEST_RELEASE_GITHUB_AUTH: "ok",
     OSSTACK_TEST_RELEASE_GITHUB_ACTIONS: "ok",
     OSSTACK_TEST_RELEASE_SECRETS: [
-      "NPM_TOKEN",
       "EDGEONE_API_TOKEN",
       "EDGEONE_DEPLOY_HOOK_URL",
       "OSSTACK_KNOWLEDGE_PUBLISH_TOKEN",

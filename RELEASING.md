@@ -51,9 +51,13 @@ gh workflow run "macOS Release Candidate" --ref main
 
 ## Prerequisites (one-time)
 
-- **NPM_TOKEN secret** on the GitHub repo: an npm automation token with
-  publish rights to the `@osstack` scope. Until configured, release.yml
-  only maintains the Version PR and skips publish.
+- Every public workspace package must exist on npm before Trusted Publishing
+  can be configured. Publish a new package's first version manually from an
+  authorized npm account, then configure `gilosbornhello/osstack` and
+  `release.yml` as that package's GitHub Actions Trusted Publisher.
+- The Release workflow uses GitHub OIDC (`id-token: write`) and does not need a
+  long-lived `NPM_TOKEN`. Local npm login/token access is only a bootstrap and
+  manual recovery path.
 - The `@osstack` npm scope must exist and be owned by the publishing account
   (`npm org` / scope settings on npmjs.com).
 - **EDGEONE_API_TOKEN secret** on the GitHub repo: the Tencent EdgeOne Makers
@@ -62,16 +66,22 @@ gh workflow run "macOS Release Candidate" --ref main
   Knowledge Cloud deploy runs can validate build/smoke checks but must not be
   run with `deploy=true`.
 
-Before the first npm publish, create or claim the npm organization/scope
-`@osstack`, add the npm account behind `NPM_TOKEN` as an owner or publisher,
-then run:
+Before merging the Version Packages PR, verify every public package has been
+bootstrapped and the local recovery account remains usable:
 
 ```bash
+pnpm smoke:npm-bootstrap
+pnpm preflight:npm-bootstrap
+pnpm smoke:npm-trust
+pnpm preflight:npm-trust
 pnpm preflight:npm-publish
 ```
 
-This preflight fails fast when npm would otherwise reject publish with
-`Scope not found`.
+The bootstrap check is a hard OIDC publish gate inside `pnpm release`; it does
+not prevent Changesets from maintaining the Version Packages PR. The local
+publish-access check is diagnostic only and does not represent the workflow's
+OIDC identity. The trust preflight is read-only but npm requires a fresh 2FA or
+web-auth session before it will reveal package trust mappings.
 
 Before merging the Version Packages PR, run:
 
