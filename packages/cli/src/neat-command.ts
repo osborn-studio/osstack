@@ -117,8 +117,10 @@ Options:
   --checks <id,...>              Run only listed rule ids
   --skip-checks <id,...>         Exclude listed rule ids
   --review-file <path>           Apply matching portable review evidence
-  --adapter <claude-code>        Explicitly enable one read-only memory adapter
+  --adapter <claude-code|codex-local>
+                                 Explicitly enable one read-only memory adapter
   --claude-memory-dir <path>     Exact Claude memory dir (absolute or ~/)
+  --codex-memory-dir <path>      Exact Codex generated-memory dir (absolute or ~/)
   --record                       Persist normalized history explicitly
   --db <path>                    State DB override; requires --record for check
   --format <human|json>          Output format (default: human)
@@ -203,8 +205,9 @@ function parseNeatCommand(
   let rawSkipChecks: string[] | undefined;
   let schemaVersion: "1" | "2" = "2";
   let reviewFile: string | undefined;
-  let adapter: "claude-code" | undefined;
+  let adapter: "claude-code" | "codex-local" | undefined;
   let claudeMemoryDir: string | undefined;
+  let codexMemoryDir: string | undefined;
   let record = false;
   let dbPath: string | undefined;
   let format: NeatFormat = "human";
@@ -263,7 +266,7 @@ function parseNeatCommand(
     } else if (flag === "--adapter") {
       markSeen(flag);
       const value = requireValue(args, index, flag);
-      if (value !== "claude-code") {
+      if (value !== "claude-code" && value !== "codex-local") {
         throw new NeatUsageError(`unsupported adapter: ${value}`);
       }
       adapter = value;
@@ -271,6 +274,10 @@ function parseNeatCommand(
     } else if (flag === "--claude-memory-dir") {
       markSeen(flag);
       claudeMemoryDir = requireValue(args, index, flag);
+      index += 1;
+    } else if (flag === "--codex-memory-dir") {
+      markSeen(flag);
+      codexMemoryDir = requireValue(args, index, flag);
       index += 1;
     } else if (flag === "--record") {
       markSeen(flag);
@@ -325,6 +332,11 @@ function parseNeatCommand(
       "--claude-memory-dir requires --adapter claude-code",
     );
   }
+  if (codexMemoryDir !== undefined && adapter !== "codex-local") {
+    throw new NeatUsageError(
+      "--codex-memory-dir requires --adapter codex-local",
+    );
+  }
   if (
     claudeMemoryDir !== undefined
     && !isAbsolute(claudeMemoryDir)
@@ -332,6 +344,15 @@ function parseNeatCommand(
   ) {
     throw new NeatUsageError(
       "--claude-memory-dir must be absolute or start with ~/",
+    );
+  }
+  if (
+    codexMemoryDir !== undefined
+    && !isAbsolute(codexMemoryDir)
+    && !codexMemoryDir.startsWith("~/")
+  ) {
+    throw new NeatUsageError(
+      "--codex-memory-dir must be absolute or start with ~/",
     );
   }
 
@@ -357,9 +378,9 @@ function parseNeatCommand(
       : {
           adapters: [{
             id: adapter,
-            ...(claudeMemoryDir === undefined
+            ...((adapter === "claude-code" ? claudeMemoryDir : codexMemoryDir) === undefined
               ? {}
-              : { memory_dir: claudeMemoryDir }),
+              : { memory_dir: adapter === "claude-code" ? claudeMemoryDir : codexMemoryDir }),
           }],
         }),
   };

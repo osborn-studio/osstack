@@ -156,6 +156,23 @@ adapters:
     });
   });
 
+  it("parses explicit Codex local read-only adapter consent", () => {
+    expect(parseKnowledgeHygieneConfigV1(`
+version: 1
+adapters:
+  codex_local:
+    enabled: true
+    memory_dir: ~/.codex/memories
+`)).toMatchObject({
+      adapters: {
+        codex_local: {
+          enabled: true,
+          memory_dir: "~/.codex/memories",
+        },
+      },
+    });
+  });
+
   it("rejects direct parser input above the size limit", () => {
     const oversized = `version: 1\n# ${"x".repeat(1024 * 1024)}`;
 

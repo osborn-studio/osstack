@@ -171,6 +171,10 @@ export const KnowledgeHygieneConfigV1Schema = z
         enabled: z.boolean(),
         memory_dir: externalMemoryDirectory.optional(),
       }).strict().optional(),
+      codex_local: z.object({
+        enabled: z.boolean(),
+        memory_dir: externalMemoryDirectory.optional(),
+      }).strict().optional(),
     }).strict().optional(),
     ignore: z
       .array(

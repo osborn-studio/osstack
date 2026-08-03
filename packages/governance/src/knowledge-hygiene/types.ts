@@ -303,10 +303,16 @@ export const KnowledgeHygieneCheckInputV1 = z
     config_path: z.string().min(1).optional(),
     checks: z.array(KnowledgeHygieneRuleIdV1).optional(),
     skip_checks: z.array(KnowledgeHygieneRuleIdV1).optional(),
-    adapters: z.array(z.object({
-      id: z.literal("claude-code"),
-      memory_dir: z.string().min(1).optional(),
-    }).strict()).optional(),
+    adapters: z.array(z.discriminatedUnion("id", [
+      z.object({
+        id: z.literal("claude-code"),
+        memory_dir: z.string().min(1).optional(),
+      }).strict(),
+      z.object({
+        id: z.literal("codex-local"),
+        memory_dir: z.string().min(1).optional(),
+      }).strict(),
+    ])).optional(),
   })
   .strict()
   .superRefine((input, context) => {

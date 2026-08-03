@@ -214,6 +214,22 @@
             "enabled"
           ],
           "additionalProperties": false
+        },
+        "codex_local": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "memory_dir": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "enabled"
+          ],
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

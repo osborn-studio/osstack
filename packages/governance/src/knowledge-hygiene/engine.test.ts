@@ -243,4 +243,38 @@ adapters:
     expect(report.findings).toEqual([]);
     expect(report.metrics).toEqual([]);
   });
+
+  it("inventories configured Codex local memory without applying Claude-specific rules", async () => {
+    const repoRoot = await mkdtemp(join(tmpdir(), "osstack-neat-engine-"));
+    const memoryRoot = await mkdtemp(join(tmpdir(), "osstack-neat-codex-memory-"));
+    await writeFile(join(memoryRoot, "memory.jsonl"), `${"line\n".repeat(201)}`);
+    await mkdir(join(repoRoot, ".osstack"));
+    await writeFile(join(repoRoot, ".osstack", "neat.yaml"), `
+version: 1
+adapters:
+  codex_local:
+    enabled: true
+    memory_dir: ${JSON.stringify(memoryRoot)}
+`);
+
+    const report = await checkKnowledgeHygiene(
+      { repo_root: repoRoot, mode: "all" },
+      {
+        now: () => new Date("2026-07-17T23:00:00.000Z"),
+        repo_identity: () => "repo-1",
+      },
+    );
+
+    expect(report.adapters).toEqual([{
+      id: "codex-local",
+      version: "1",
+      status: "available",
+      source: "https://learn.chatgpt.com/docs/customization/memories.md",
+    }]);
+    expect(report.metrics).toEqual([expect.objectContaining({
+      path: "codex-local://generated-memory/memory.jsonl",
+      adapter: expect.objectContaining({ id: "codex-local" }),
+    })]);
+    expect(report.findings).toEqual([]);
+  });
 });
