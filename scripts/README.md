@@ -16,6 +16,8 @@ Operational helpers that live outside the daemon hot loop.
 | `smoke-npm-preflight-access.mjs` | Simulates npm `E403 Forbidden` local scope access and verifies the recovery preflight distinguishes local bootstrap permissions from normal OIDC publishing. |
 | `smoke-npm-package-bootstrap.mjs` | Verifies the Trusted Publishing bootstrap gate detects unpublished public packages while ignoring private workspace packages. |
 | `smoke-npm-trusted-publishers.mjs` | Verifies the read-only npm trust preflight detects configured, missing, and mismatched GitHub Trusted Publisher mappings without live npm access. |
+| `configure-npm-trusted-publishers.mjs` | Plans npm Trusted Publisher recovery by default; with explicit `--execute`, audits every mapping before mutation, configures only missing public packages, verifies each result, preserves matching entries, blocks mismatches, and stops on the first failure. |
+| `smoke-npm-trust-configuration.mjs` | Verifies safe planning, exact GitHub trust arguments, idempotent/resumable execution, mismatch refusal, authentication redaction, and first-error stop without live npm access. |
 | `publish-packages-safely.mjs` | Publishes public workspace packages through npm Trusted Publishing in deterministic dependency-first order, stops on the first failure, and emits Changesets v1 tag announcements/events only for successful publishes. |
 | `smoke-npm-publish-order.mjs` | Proves dependency ordering, cycle rejection, fail-stop behavior, published-version recovery, and delegated-auth log redaction without contacting npm. |
 | `smoke-release-plan.mjs` | Runs the built CLI `release plan --target all`, verifies JSON and Markdown runbooks, and asserts validation, publish/deploy, and post-release validation command coverage. |

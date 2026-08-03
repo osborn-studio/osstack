@@ -74,3 +74,16 @@ describe("npm install acceptance smoke", () => {
     );
   });
 });
+
+describe("npm Trusted Publisher recovery", () => {
+  it("keeps configuration non-mutating unless the operator explicitly executes it", () => {
+    const manifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+
+    expect(manifest.scripts["configure:npm-trust"]).toBe(
+      "node scripts/configure-npm-trusted-publishers.mjs",
+    );
+    expect(manifest.scripts["smoke:npm-trust"]).toBe(
+      "node scripts/smoke-npm-trusted-publishers.mjs && node scripts/smoke-npm-trust-configuration.mjs",
+    );
+  });
+});
