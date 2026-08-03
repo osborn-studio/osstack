@@ -167,6 +167,7 @@ import { handleEvaluatorCommand } from "./evaluator-command.js";
 import { handlePolicyCommand } from "./policy-command.js";
 import { buildSelfImprovementConfig } from "./loop-self-improvement.js";
 import { resolveRegistryPath } from "./supervisor-cli-support.js";
+import { renderUpdateCheckStatus, type UpdateCheckCache } from "./update-check.js";
 import { handleStackCommand } from "./stack-cli.js";
 import { handleHubCommand, buildRealHubCliDeps } from "./hub-cli.js";
 import { handleDailyCommand } from "./daily-command.js";
@@ -750,14 +751,8 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     }
     try {
       const u = (await rpc("update.status", undefined, 3_000)) as RpcResp;
-      const cache = (u.result as { cache?: { latest?: string | null; update_available?: boolean; checked_at?: number } })?.cache;
-      if (cache?.update_available && typeof cache.latest === "string") {
-        console.log(`update available: ${cache.latest} (run: osstack upgrade)`);
-      } else if (cache?.latest != null) {
-        console.log(`registry latest:  ${cache.latest} (up to date)`);
-      } else {
-        console.log("registry latest:  unknown (no successful probe yet)");
-      }
+      const cache = (u.result as { cache?: UpdateCheckCache })?.cache ?? null;
+      console.log(renderUpdateCheckStatus(cache, VERSION));
     } catch { /* older daemon without update.status */ }
     return 0;
   }
