@@ -30,7 +30,7 @@ surface that makes AI coding work visible and auditable.
 | Knowledge Cloud | Live on EdgeOne: `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | Probe | CLI lifecycle shipped in `@osstack/cli@0.15.0`; report-only is gate behavior, not a background job. The two-week real-use checkpoint remains open. |
 | License | MIT |
-| Monorepo | 16 packages |
+| Monorepo | 21 workspace packages |
 
 The main release gate currently reports:
 

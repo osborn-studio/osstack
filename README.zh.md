@@ -28,7 +28,7 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 | Knowledge Cloud | 已部署到 EdgeOne：`https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | Probe | CLI 生命周期已随 `@osstack/cli@0.15.0` 发布；report-only 是 gate 行为，不是后台任务。两周真实使用 checkpoint 仍未完成。 |
 | License | MIT |
-| Monorepo | 16 个 package |
+| Monorepo | 21 个 workspace package |
 
 当前主发布验收状态：
 
