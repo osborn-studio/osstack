@@ -64,3 +64,13 @@ describe("CLI-backed root scripts", () => {
     expect(manifest.scripts[scriptName]).toContain("pnpm --filter @osstack/cli... build");
   });
 });
+
+describe("npm install acceptance smoke", () => {
+  it("runs the CLI-daemon version handshake self-test before the full install smoke", () => {
+    const manifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+
+    expect(manifest.scripts["smoke:npm-install"]).toBe(
+      "node scripts/smoke-npm-install.mjs --self-test && node scripts/smoke-npm-install.mjs",
+    );
+  });
+});

@@ -22,7 +22,9 @@ authority for that policy.
 
 The first real dogfood session uses
 `2026-08-02-production-acceptance-intent.md`. It tracks the gap between Probe
-being published and Probe being accepted through sustained real use.
+being published and Probe being accepted through sustained real use. Its
+owner-approved obligation-to-evidence mapping is executable in
+`2026-08-02-production-acceptance-test-plan.md`.
 
 ## Verification
 

@@ -6,6 +6,12 @@ import { spawn, spawnSync } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 
 const root = process.cwd();
+const selfTest = process.argv.includes("--self-test");
+if (selfTest) {
+  runVersionHandshakeSelfTest();
+  process.exit(0);
+}
+
 const tempRoot = await mkdtemp(join(tmpdir(), "osstack-npm-smoke-"));
 const packDir = join(tempRoot, "packs");
 const prefix = join(tempRoot, "prefix");
@@ -14,6 +20,7 @@ const osstackHome = join(tempRoot, "home");
 const launchAgentsDir = join(tempRoot, "LaunchAgents");
 let knowledgeCloudChild;
 let installedDaemon;
+let installedVersionHandshake;
 
 try {
   run("pnpm", ["-r", "build"], { cwd: root });
@@ -41,7 +48,10 @@ try {
 
   run("npm", ["install", "-g", "--prefix", prefix, ...tarballs], { cwd: root });
   const osstackBin = join(prefix, "bin", "osstack");
-  run(osstackBin, ["--version"], { cwd: root });
+  const installedCliVersion = run(osstackBin, ["--version"], {
+    cwd: root,
+    capture: true,
+  }).stdout;
   await mkdir(workspace, { recursive: true });
 
   const launchdEnv = {
@@ -146,7 +156,8 @@ try {
     OSSTACK_SOCKET: join(tempRoot, "cockpit.sock"),
     OSSTACK_UPDATE_CHECK: "0",
   };
-  installedDaemon = await startInstalledDaemon(osstackBin, cockpitEnv);
+  installedDaemon = await startInstalledDaemon(osstackBin, cockpitEnv, installedCliVersion);
+  installedVersionHandshake = installedDaemon.versionHandshake;
   await mkdir(join(workspace, "reports"), { recursive: true });
   await mkdir(join(workspace, "release", "osstack-proof-installed-tui"), { recursive: true });
   await writeFile(join(workspace, "reports", "osstack-report-installed-tui.md"), "# installed tui report\n", "utf-8");
@@ -404,6 +415,7 @@ try {
       plist_path: installParsed.plist_path,
       load_skipped: installParsed.load_skipped,
     },
+    installed_version_handshake: installedVersionHandshake,
     product_doctor: productDoctorParsed.ok,
     release_doctor: {
       npm_publish: releaseDoctorParsed.readiness?.npm_publish,
@@ -467,7 +479,7 @@ try {
   }
 }
 
-async function startInstalledDaemon(command, env) {
+async function startInstalledDaemon(command, env, cliVersionOutput) {
   const child = spawn(command, ["serve"], {
     cwd: root,
     env,
@@ -486,16 +498,29 @@ async function startInstalledDaemon(command, env) {
     if (child.exitCode !== null) {
       throw new Error(`installed daemon exited early with ${child.exitCode}\nstdout:\n${stdout}\nstderr:\n${stderr}`);
     }
-    const health = run(command, ["health"], {
+    const health = run(command, ["health", "--json"], {
       cwd: root,
       capture: true,
       env,
       allowFailure: true,
     });
-    if (health.stdout.includes("\"ok\": true") || health.stdout.includes("osstack")) {
-      return {
-        stop: async () => stopChild(child, "installed daemon"),
-      };
+    let healthReady = false;
+    try {
+      healthReady = JSON.parse(health.stdout)?.ok === true;
+    } catch {
+      // The daemon can be unavailable while its socket is still starting.
+    }
+    if (healthReady) {
+      try {
+        const versionHandshake = assertInstalledVersionHandshake(cliVersionOutput, health.stdout);
+        return {
+          versionHandshake,
+          stop: async () => stopChild(child, "installed daemon"),
+        };
+      } catch (error) {
+        await stopChild(child, "installed daemon after version handshake failure");
+        throw error;
+      }
     }
     await sleep(50);
   }
@@ -569,6 +594,82 @@ function assertIncludes(text, expected, message) {
   if (!text.includes(expected)) {
     throw new Error(`${message}: missing ${JSON.stringify(expected)} in ${JSON.stringify(text)}`);
   }
+}
+
+function assertInstalledVersionHandshake(cliVersionOutput, healthOutput) {
+  const cliMatch = /^osstack\s+(\S+)$/u.exec(cliVersionOutput.trim());
+  if (cliMatch === null) {
+    throw new Error(`invalid installed CLI version output: ${JSON.stringify(cliVersionOutput)}`);
+  }
+
+  let health;
+  try {
+    health = JSON.parse(healthOutput);
+  } catch {
+    throw new Error("installed daemon health did not return JSON");
+  }
+  const daemonVersion = health?.result?.version;
+  if (health?.ok !== true || typeof daemonVersion !== "string" || daemonVersion.length === 0) {
+    throw new Error("installed daemon health omitted a successful version result");
+  }
+
+  const cliVersion = cliMatch[1];
+  if (cliVersion !== daemonVersion) {
+    throw new Error(
+      `installed CLI/daemon version mismatch: cli=${cliVersion} daemon=${daemonVersion}`,
+    );
+  }
+  return {
+    cli_version: cliVersion,
+    daemon_version: daemonVersion,
+    matched: true,
+  };
+}
+
+function runVersionHandshakeSelfTest() {
+  const matched = assertInstalledVersionHandshake(
+    "osstack 0.16.0\n",
+    JSON.stringify({ ok: true, result: { version: "0.16.0" } }),
+  );
+  if (matched.cli_version !== "0.16.0" || matched.daemon_version !== "0.16.0") {
+    throw new Error("matching version handshake returned the wrong evidence");
+  }
+  assertThrowsWith(
+    () => assertInstalledVersionHandshake(
+      "osstack 0.16.0\n",
+      JSON.stringify({ ok: true, result: { version: "0.15.0" } }),
+    ),
+    "version mismatch",
+  );
+  assertThrowsWith(
+    () => assertInstalledVersionHandshake(
+      "0.16.0\n",
+      JSON.stringify({ ok: true, result: { version: "0.16.0" } }),
+    ),
+    "invalid installed CLI version output",
+  );
+  assertThrowsWith(
+    () => assertInstalledVersionHandshake(
+      "osstack 0.16.0\n",
+      JSON.stringify({ ok: true, result: {} }),
+    ),
+    "omitted a successful version result",
+  );
+  console.log(JSON.stringify({
+    ok: true,
+    kind: "npm-install-version-handshake-self-test",
+    cases: 4,
+  }));
+}
+
+function assertThrowsWith(operation, expectedMessage) {
+  try {
+    operation();
+  } catch (error) {
+    if (String(error?.message).includes(expectedMessage)) return;
+    throw error;
+  }
+  throw new Error(`expected operation to throw ${JSON.stringify(expectedMessage)}`);
 }
 
 function assertProofValidationPass({ command, runId, proofDir, proofZip, message, requireCoreEvidence = true }) {
