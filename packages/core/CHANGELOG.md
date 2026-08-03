@@ -1,5 +1,11 @@
 # @osstack/core
 
+## 0.16.0
+
+### Minor Changes
+
+- ad57096: Add governed, durable Codex and Claude session relay support with resumable native session identity, optimistic concurrency, idempotent inbound messages, bounded recovery diagnostics, and repository-context preservation.
+
 ## 0.15.0
 
 ### Patch Changes

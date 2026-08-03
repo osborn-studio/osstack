@@ -1,5 +1,13 @@
 # @osstack/config
 
+## 0.16.0
+
+### Patch Changes
+
+- Updated dependencies [ad57096]
+  - @osstack/agents@0.16.0
+  - @osstack/core@0.16.0
+
 ## 0.15.0
 
 ### Patch Changes

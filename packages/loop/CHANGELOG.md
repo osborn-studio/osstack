@@ -1,5 +1,17 @@
 # @osstack/loop
 
+## 0.16.0
+
+### Patch Changes
+
+- Updated dependencies [9cc8a37]
+- Updated dependencies [ad57096]
+  - @osstack/governance@0.16.0
+  - @osstack/agents@0.16.0
+  - @osstack/core@0.16.0
+  - @osstack/autonomy@0.16.0
+  - @osstack/hermes-adapter@0.16.0
+
 ## 0.15.0
 
 ### Patch Changes

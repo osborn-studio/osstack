@@ -1,5 +1,36 @@
 # @osstack/cli
 
+## 0.16.0
+
+### Minor Changes
+
+- ad57096: Add governed, durable Codex and Claude session relay support with resumable native session identity, optimistic concurrency, idempotent inbound messages, bounded recovery diagnostics, and repository-context preservation.
+
+### Patch Changes
+
+- ad57096: Extract agent registry and scorecard commands into a bounded module with explicit daemon and local-state dependencies.
+- ad57096: Extract governance, contract, and compliance assurance commands from the CLI entrypoint.
+- 5fc7dc1: Refresh registry update checks after the running CLI version changes, and stop
+  reporting a cache from an older CLI release as up to date.
+- ad57096: Extract Hermes bridge health, dashboard, cron recipe, and help routing into a bounded command module.
+- ad57096: Extract product doctor, examples, and quickstart guide commands into a bounded product-entry module.
+- 1103839: Publish workspace packages sequentially in dependency-first order, stop the release train on the first failure, and teach Release Doctor to verify the safe publisher contract.
+- ad57096: Extract the governed session CLI into a bounded, independently tested command module without changing its public contract.
+- ad57096: Extract external skill registry commands into a focused, testable CLI module.
+- ad57096: Extract the Branch Steward command into a focused, testable CLI module.
+- ad57096: Extract task submission, status, cancellation, and observation routing into an independently tested command module.
+- Updated dependencies [9cc8a37]
+- Updated dependencies [ad57096]
+  - @osstack/governance@0.16.0
+  - @osstack/agents@0.16.0
+  - @osstack/core@0.16.0
+  - @osstack/loop@0.16.0
+  - @osstack/config@0.16.0
+  - @osstack/autonomy@0.16.0
+  - @osstack/hermes-adapter@0.16.0
+  - @osstack/skill-registry@0.16.0
+  - @osstack/skills@0.16.0
+
 ## 0.15.0
 
 ### Minor Changes
