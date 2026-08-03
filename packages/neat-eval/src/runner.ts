@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { cp, lstat, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join, relative, resolve } from "node:path";
 import { spawn } from "node:child_process";
@@ -10,6 +10,7 @@ import {
   type ParityProtocolV1,
 } from "./types.js";
 import { ParityEvaluationRunV1Schema, type ParityEvaluationRunV1 } from "./scorer.js";
+import { hashFrozenBaselineBundleV1 } from "./corpus.js";
 
 const sha256 = z.string().regex(/^[a-f0-9]{64}$/u);
 
@@ -246,6 +247,7 @@ export async function runExternalParityCaseV1(input: {
   rot_root: string;
   baseline_path: string;
   repetition: number;
+  expected_baseline_sha256?: string;
   expected_snapshot_sha256?: string;
 }): Promise<ExternalParityCaseResultV1> {
   const adapter = ExternalParityAdapterV1.parse(input.adapter);
@@ -260,11 +262,41 @@ export async function runExternalParityCaseV1(input: {
     ) {
       throw new Error(`hidden snapshot commitment mismatch for ${input.case_id}`);
     }
-    const frozenBaseline = join(disposable, "frozen-baseline.md");
-    await writeFile(frozenBaseline, await readFile(input.baseline_path), {
-      encoding: "utf8",
-      mode: 0o600,
-    });
+    const baselineStats = await lstat(input.baseline_path);
+    let frozenBaselineRoot: string;
+    let frozenBaseline: string;
+    let observedBaselineSha256: string;
+    if (baselineStats.isDirectory()) {
+      frozenBaselineRoot = join(disposable, "frozen-baseline");
+      await cp(input.baseline_path, frozenBaselineRoot, {
+        recursive: true,
+        dereference: false,
+      });
+      observedBaselineSha256 = (await hashFrozenBaselineBundleV1(frozenBaselineRoot)).bundle_sha256;
+      frozenBaseline = join(frozenBaselineRoot, "SKILL.md");
+      if (!(await lstat(frozenBaseline)).isFile()) {
+        throw new Error("frozen baseline bundle is missing SKILL.md");
+      }
+    } else if (baselineStats.isFile()) {
+      frozenBaselineRoot = join(disposable, "frozen-baseline");
+      await mkdir(frozenBaselineRoot, { mode: 0o700 });
+      frozenBaseline = join(frozenBaselineRoot, "SKILL.md");
+      await writeFile(frozenBaseline, await readFile(input.baseline_path), {
+        encoding: "utf8",
+        mode: 0o600,
+      });
+      observedBaselineSha256 = digest(await readFile(frozenBaseline));
+    } else {
+      throw new Error("frozen baseline must be a file or directory");
+    }
+    if (
+      input.expected_baseline_sha256 !== undefined
+      && observedBaselineSha256 !== input.expected_baseline_sha256
+    ) {
+      throw new Error(
+        `frozen baseline commitment mismatch: expected ${input.expected_baseline_sha256}, received ${observedBaselineSha256}`,
+      );
+    }
     const requestPath = join(disposable, "request.json");
     await writeFile(requestPath, `${JSON.stringify({
       schema_version: "1",
@@ -272,6 +304,7 @@ export async function runExternalParityCaseV1(input: {
       case_id: input.case_id,
       workspace,
       baseline_path: frozenBaseline,
+      baseline_root: frozenBaselineRoot,
       budget: adapter.budget,
       labels_available: false,
     }, null, 2)}\n`, "utf8");
@@ -408,6 +441,7 @@ export async function runExternalParityMatrixV1(input: {
           rot_root: rotRoot,
           baseline_path: input.baseline_path,
           repetition,
+          expected_baseline_sha256: input.protocol.baseline.sha256,
           expected_snapshot_sha256: caseEntry.snapshot_sha256,
         });
         runs.push(result.run);

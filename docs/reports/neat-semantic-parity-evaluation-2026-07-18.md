@@ -1,5 +1,10 @@
 # Neat semantic parity evaluation report — 2026-07-18
 
+> Historical pre-v3 snapshot. No hidden A/B run was performed under this
+> baseline. Future hidden runs use the
+> [v3 rebaseline](./neat-semantic-parity-v3-rebaseline-2026-08-03.md); the
+> commitments below are preserved as the July 18 audit record.
+
 ## Release decision
 
 **Auditable semantic hygiene beta: release candidate; public rollout requires

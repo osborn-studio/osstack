@@ -1,0 +1,55 @@
+{
+  "schema_version": "1",
+  "repository": "KKKKhazix/khazix-skills",
+  "commit": "2b4a645cfdc894156ae347d897723562f719ce95",
+  "version": "3.0.0",
+  "path": "neat-freak",
+  "source_url": "https://github.com/KKKKhazix/khazix-skills/tree/2b4a645cfdc894156ae347d897723562f719ce95/neat-freak",
+  "license": "MIT",
+  "scope": {
+    "included": "neat-freak runtime instructions, references, and audit script",
+    "excluded": [
+      "neat-freak/evals"
+    ],
+    "exclusion_reason": "Upstream evaluation fixtures are not runtime dependencies and would leak test material into arm A."
+  },
+  "bundle_sha256": "e77e30e39e67f05d3159548605057d396794d1bde20bd59a070670e109c3d904",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "mode": "100644",
+      "sha256": "6c0ca2236d3518ccaad710f6db8e9c4aa7af67b685dc699ad347ae42186951e1",
+      "bytes": 15454
+    },
+    {
+      "path": "references/agent-paths.md",
+      "mode": "100644",
+      "sha256": "8210a3cc1211283f71f068de99fd17e62fb9ce269ca6e693879ce6c30e31aff6",
+      "bytes": 5267
+    },
+    {
+      "path": "references/governance.md",
+      "mode": "100644",
+      "sha256": "6bf4bbf171864f2c82a5f8b8cf441df043362e8790c69ddca38f207c38bb5f72",
+      "bytes": 4296
+    },
+    {
+      "path": "references/sync-matrix.md",
+      "mode": "100644",
+      "sha256": "5c771ba2695a0d0dc54ef636531d61c916ed7f0f39db39827bbb330268f7648d",
+      "bytes": 4817
+    },
+    {
+      "path": "references/verification.md",
+      "mode": "100644",
+      "sha256": "cd3f4bf5cdc59c3aa51db868801f7461563a4b4a58b72799a6753c1f863c4126",
+      "bytes": 4042
+    },
+    {
+      "path": "scripts/audit-inventory.sh",
+      "mode": "100755",
+      "sha256": "260315d659f19e63a12065f9cadd9b57f9c1ddc867457f6c0f6fd87c003a7325",
+      "bytes": 3593
+    }
+  ]
+}

@@ -21,7 +21,7 @@ afterEach(async () => {
 describe("isolated parity runner", () => {
   it("requires a complete, budget-matched A/B model matrix", async () => {
     const protocol = ParityProtocolV1.parse(JSON.parse(await readFile(
-      resolve(process.cwd(), "../../eval/neat-parity/protocol-v1.json"),
+      resolve(process.cwd(), "../../eval/neat-parity/protocol-v1-v3.json"),
       "utf8",
     )));
     const frozen = ParityProtocolV1.parse({
@@ -139,5 +139,66 @@ describe("isolated parity runner", () => {
       baseline_path: baseline,
       repetition: 1,
     })).rejects.toThrow("approval receipt");
+  });
+
+  it("copies a complete A-arm skill bundle into the isolated request", async () => {
+    const root = await mkdtemp(join(tmpdir(), "osstack-neat-eval-baseline-"));
+    created.push(root);
+    const rot = join(root, "rot");
+    const baseline = join(root, "baseline");
+    await mkdir(rot);
+    await mkdir(join(baseline, "references"), { recursive: true });
+    await writeFile(join(rot, "AGENTS.md"), "rules\n");
+    await writeFile(join(baseline, "SKILL.md"), "baseline\n");
+    await writeFile(join(baseline, "references", "governance.md"), "governance\n");
+    const adapter = join(root, "adapter.mjs");
+    await writeFile(adapter, [
+      'import { existsSync, readFileSync } from "node:fs";',
+      'import { join } from "node:path";',
+      "const request = JSON.parse(readFileSync(process.argv[2], \"utf8\"));",
+      'if (!request.baseline_path.endsWith("/SKILL.md")) process.exit(9);',
+      'if (!existsSync(join(request.baseline_root, "references", "governance.md"))) process.exit(10);',
+      "const output = {",
+      '  schema_version: "1", findings: [], coverage: [], rejection_counts: {},',
+      '  tokens: 1, calls: 1, plan: "", diff: "",',
+      "};",
+      "process.stdout.write(JSON.stringify(output));",
+      "",
+    ].join("\n"));
+
+    const runInput = {
+      adapter: {
+        schema_version: "1",
+        adapter_id: "fake-a",
+        arm: "A",
+        model_family: "primary",
+        model_id: "fake-model",
+        executable: process.execPath,
+        args: [adapter, "{request}"],
+        env_allowlist: [],
+        budget: {
+          max_input_tokens: 10,
+          max_output_tokens: 10,
+          max_calls: 1,
+          max_wall_clock_ms: 5_000,
+        },
+        isolation: {
+          kind: "container_network_none",
+          profile_sha256: "a".repeat(64),
+          attested_by: "independent-runner",
+        },
+      },
+      case_id: "case-001",
+      rot_root: rot,
+      baseline_path: baseline,
+      repetition: 1,
+    } satisfies Parameters<typeof runExternalParityCaseV1>[0];
+    await expect(runExternalParityCaseV1({
+      ...runInput,
+      expected_baseline_sha256: "a".repeat(64),
+    })).rejects.toThrow("frozen baseline commitment mismatch");
+
+    const result = await runExternalParityCaseV1(runInput);
+    expect(result.run.failure).toBe(false);
   });
 });

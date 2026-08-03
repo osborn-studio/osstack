@@ -718,7 +718,7 @@ interface DependencyObligationV2 {
 
 ### 7.2 双跑对照协议
 
-同一快照三臂运行：**A 臂** 原版 neat-freak——基准冻结为**固定提交** `5a963d9` 的 [Khazix SKILL.md](https://github.com/KKKKhazix/khazix-skills/blob/5a963d91f772e0d4f6659c43a36876a74c468143/neat-freak/SKILL.md)；**B 臂** osstack neat（U 系列全开）；**C 臂**当前 v2。每次运行使用 fresh session + disposable copy、网络关闭、相同模型/推理档/总 token 与 wall-clock budget。A/B 在主模型每 case 独立运行 3 次，在第二模型家族各运行 2 次；C 为满足 bit-for-bit gate 每 case 确定性运行 2 次。
+同一快照三臂运行：**A 臂** 原版 neat-freak——未来第一次 hidden run 的有效基准冻结为**固定提交** `2b4a645` 的 [Khazix neat-freak v3](https://github.com/KKKKhazix/khazix-skills/tree/2b4a645cfdc894156ae347d897723562f719ce95/neat-freak) 六文件运行时包（`SKILL.md`、四个 `references/*.md`、`scripts/audit-inventory.sh`），bundle SHA-256 为 `e77e30e39e67f05d3159548605057d396794d1bde20bd59a070670e109c3d904`；上游 `evals/` 不属于运行时依赖且会向 A 臂泄漏测试素材，因此排除。**B 臂** osstack neat（U 系列全开）；**C 臂**当前 v2。每次运行使用 fresh session + disposable copy、网络关闭、相同模型/推理档/总 token 与 wall-clock budget。A/B 在主模型每 case 独立运行 3 次，在第二模型家族各运行 2 次；C 为满足 bit-for-bit gate 每 case 确定性运行 2 次。7 月 18 日冻结的 `5a963d9` 单文件基线仅保留为历史审计记录；它未执行 hidden A/B，不能作为 v3 parity 结论。
 
 B 臂 production approval 不得被绕过。eval harness 在 disposable copy 中以明确 `actor=eval-harness` 生成批准事件后施行 plan，仅为得到 diff；这些 receipt 标记 `evaluation_only`，不能导入真实 history。统一采集 findings、coverage、plan、diff、拒收原因、运行时间、tokens/calls 与失败。
 
@@ -829,6 +829,12 @@ B 臂 production approval 不得被绕过。eval harness 在 disposable copy 中
 - 阻断 8：通过冻结样本下限、非劣 margin、CI、重复次数与稳定性界值关闭。
 
 checker 同时新增一个实现门：U0a 新 rule id 不能偷渡进 V1 JSON；因此 U0a 可立即编码，但公开 findings 必须等 U0b V2 writer。
+
+### 9.6 2026-08-03 v3 基线修订
+
+- 原作者在 2026-07-19 发布 neat-freak v3；旧 `5a963d9` 基线早于该版本，且只锁定 `SKILL.md`，没有覆盖 v3 的 references 与 audit script。
+- 因旧协议从未执行 hidden A/B，本次在第一次 hidden run 前新建 `protocol-v1-v3.json` 与 `corpus-lock-v1-v3.json`，阈值、随机种子、预算、运行次数和判定规则不变，只升级 A 臂运行时基线及其可追溯 provenance。
+- 旧协议、旧 lock 和 2026-07-18 报告不改写，继续作为历史证据；任何 v3 parity 声明必须使用新协议、独立 hidden custody、冻结的完整模型 ID、隔离 adapter 与盲审结果。
 
 ---
 

@@ -12,6 +12,7 @@ import {
 } from "./types.js";
 import {
   buildDevelopmentCorpusV1,
+  fetchFrozenBaselineV1,
   materializeDevelopmentCorpusV1,
   verifyFrozenBaselineV1,
 } from "./corpus.js";
@@ -61,21 +62,6 @@ function options(args: readonly string[], name: string): string[] {
 async function privateWrite(path: string, value: string): Promise<void> {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
   await writeFile(path, value, { encoding: "utf8", mode: 0o600 });
-}
-
-async function fetchBaseline(output: string): Promise<void> {
-  const corpus = buildDevelopmentCorpusV1();
-  const url = `https://raw.githubusercontent.com/${corpus.baseline.repository}/${corpus.baseline.commit}/${corpus.baseline.path}`;
-  const response = await fetch(url, {
-    headers: { "user-agent": "osstack-neat-eval/1" },
-    redirect: "error",
-  });
-  if (!response.ok) throw new Error(`baseline download failed: HTTP ${response.status}`);
-  const bytes = Buffer.from(await response.arrayBuffer());
-  if (digest(bytes) !== corpus.baseline.sha256) {
-    throw new Error("downloaded baseline does not match the frozen SHA-256");
-  }
-  await privateWrite(output, bytes.toString("utf8"));
 }
 
 async function verifyCorpusLock(lockPath: string): Promise<{
@@ -237,17 +223,17 @@ function help(): string {
 Usage:
   osstack-neat-eval corpus materialize --output <directory>
   osstack-neat-eval corpus check --lock <corpus-lock.json>
-  osstack-neat-eval baseline fetch --output <SKILL.md>
-  osstack-neat-eval baseline verify --path <SKILL.md>
+  osstack-neat-eval baseline fetch --output <directory>
+  osstack-neat-eval baseline verify --path <directory>
   osstack-neat-eval run-external --bundle <execution-bundle.json> --protocol <json>
-    --custody-receipt <json> --baseline <SKILL.md>
+    --custody-receipt <json> --baseline <directory>
     --adapter <adapter.json> [--adapter ... x4] --output <json>
   osstack-neat-eval blind-diffs --input <external-runs.json> --protocol <json>
     --packet-output <json> --key-output <private-json>
   osstack-neat-eval run-c --corpus-root <directory> --cli <dist/bin.js> --output <json>
   osstack-neat-eval score --input <hidden-evaluation.json> --protocol <json>
     --custody-receipt <json> --output <score.json>
-  osstack-neat-eval doctor --protocol <json> --corpus-lock <json> --baseline <SKILL.md>
+  osstack-neat-eval doctor --protocol <json> --corpus-lock <json> --baseline <directory>
     [--hidden-bundle <path> --custody-receipt <path> --adapter <adapter.json> x4]
 
 Exit 3 means evidence is incomplete or a parity gate failed.`;
@@ -272,7 +258,7 @@ async function main(args: readonly string[]): Promise<number> {
     return result.valid ? 0 : 3;
   }
   if (command === "baseline" && args[1] === "fetch") {
-    await fetchBaseline(resolve(required(args.slice(2), "--output")));
+    await fetchFrozenBaselineV1(resolve(required(args.slice(2), "--output")));
     return 0;
   }
   if (command === "baseline" && args[1] === "verify") {
