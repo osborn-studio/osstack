@@ -15,6 +15,20 @@ package versions, start/end timestamps, environment-variable names (never
 values), and SHA-256 for every retained artifact. A rerun on the same source
 revision must evaluate the same machine-readable pass criteria.
 
+## Owner-approved test-data privacy contract
+
+The owner accepted this policy on 2026-08-03:
+
+- Use synthetic fixtures and redacted structural samples by default.
+- Never copy real records into fixtures or evidence. Preserve only their
+  schema, cryptographic hashes, and aggregate scale or distribution metadata.
+- Represent credentials only with obviously fake sentinel values.
+- Reject any fixture containing a secret or personal identifier before it can
+  reach persistence, logs, reports, receipts, or rendered artifacts.
+
+Passing the sentinel scan alone is insufficient: fixture provenance must also
+show that no real record content was copied into the test corpus.
+
 ## Obligation-to-evidence matrix
 
 | Obligation | Repeatable execution | Required evidence | Machine-readable pass criteria |
@@ -35,12 +49,15 @@ revision must evaluate the same machine-readable pass criteria.
    it fail the run even when the product command exits zero.
 3. Use a clearly synthetic credential sentinel. Never place a real provider,
    npm, GitHub, or signing credential in test data or evidence.
-4. Hash the fixture before and after the run and retain the normalized path
-   diff. Hashes are evidence; copied source contents are not required.
-5. Scan stdout, stderr, reports, receipts, and Probe artifacts for the sentinel
+4. Build representative inputs from synthetic fixtures or redacted structural
+   samples. For real workloads, retain only schema, cryptographic hashes, and
+   aggregate scale or distribution metadata; never retain copied records.
+5. Hash the fixture before and after the run and retain the normalized path
+   diff. Hashes are evidence; copied source contents are prohibited.
+6. Scan stdout, stderr, reports, receipts, and Probe artifacts for the sentinel
    and credential-like values. Retain only the redacted finding category and
    path if a scan fails.
-6. Reject symlink escapes, absolute paths outside the fixture, and undeclared
+7. Reject symlink escapes, absolute paths outside the fixture, and undeclared
    network or provider access.
 
 ## Evidence-bundle layout
