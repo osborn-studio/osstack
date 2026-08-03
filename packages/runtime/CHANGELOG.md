@@ -1,5 +1,11 @@
 # @osstack/runtime
 
+## 0.15.0
+
+### Patch Changes
+
+- 0743a2a: Exclude compiled test and spec artifacts from npm tarballs, scan every packed workspace package for leaks, and verify release candidates against the real npm dependency graph.
+
 ## 0.1.0
 
 ### Minor Changes

@@ -1,5 +1,13 @@
 # @osstack/knowledge-cloud
 
+## 0.15.0
+
+### Patch Changes
+
+- 0743a2a: Exclude compiled test and spec artifacts from npm tarballs, scan every packed workspace package for leaks, and verify release candidates against the real npm dependency graph.
+- Updated dependencies [0743a2a]
+  - @osstack/knowledge@0.15.0
+
 ## 0.8.0
 
 ### Patch Changes

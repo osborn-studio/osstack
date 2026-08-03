@@ -1,5 +1,17 @@
 # @osstack/agents
 
+## 0.15.0
+
+### Patch Changes
+
+- 0743a2a: Exclude compiled test and spec artifacts from npm tarballs, scan every packed workspace package for leaks, and verify release candidates against the real npm dependency graph.
+- Updated dependencies [0743a2a]
+- Updated dependencies [35141a8]
+- Updated dependencies [be6cc63]
+  - @osstack/core@0.15.0
+  - @osstack/governance@0.15.0
+  - @osstack/hermes-adapter@0.15.0
+
 ## 0.14.0
 
 ### Patch Changes

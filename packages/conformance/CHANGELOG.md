@@ -1,5 +1,18 @@
 # @osstack/conformance
 
+## 0.15.0
+
+### Patch Changes
+
+- Updated dependencies [0743a2a]
+- Updated dependencies [35141a8]
+- Updated dependencies [be6cc63]
+  - @osstack/agents@0.15.0
+  - @osstack/core@0.15.0
+  - @osstack/governance@0.15.0
+  - @osstack/hermes-adapter@0.15.0
+  - @osstack/loop@0.15.0
+
 ## 0.14.0
 
 ### Patch Changes

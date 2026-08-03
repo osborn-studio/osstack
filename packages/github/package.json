@@ -1,6 +1,6 @@
 {
   "name": "@osstack/github",
-  "version": "0.13.0",
+  "version": "0.15.0",
   "description": "GitHub branch stewardship helpers for osstack.",
   "license": "MIT",
   "type": "module",
