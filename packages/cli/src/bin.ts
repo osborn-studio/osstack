@@ -164,6 +164,7 @@ import { handleStackCommand } from "./stack-cli.js";
 import { handleHubCommand, buildRealHubCliDeps } from "./hub-cli.js";
 import { handleDailyCommand } from "./daily-command.js";
 import { handleSessionCommand } from "./session-command.js";
+import { handleTaskCommand } from "./task-command.js";
 import { handleControlCommand, handleStartCommand } from "./start-control-command.js";
 import { handleNeatCommand } from "./neat-command.js";
 import {
@@ -810,7 +811,11 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "task") {
-    return await handleTaskCommand(args.slice(1));
+    return await handleTaskCommand(args.slice(1), {
+      rpc,
+      submit: streamTaskSubmit,
+      observe: streamTaskObserve,
+    });
   }
 
   if (cmd === "session") {
@@ -13131,83 +13136,6 @@ Env:
   }
 
   console.error(`osstack: unknown hermes subcommand "${sub}"`);
-  return 1;
-}
-
-async function handleTaskCommand(args: string[]): Promise<number> {
-  const sub = args[0];
-  if (sub === "submit") {
-    // Parse flags out of the arg list; everything else joins into the prompt.
-    //   --kind <kind>        routing hint (e.g. research.ml)
-    //   --agent <id>         pin a specific adapter (e.g. autoresearch)
-    //   --tag <tag>          autoresearch run tag → context.tag
-    //   --max-iter <n>       autoresearch iteration cap → context.max_iterations
-    //   --repo <path>        autoresearch repo → context.repo_path
-    const rest = args.slice(1);
-    const flags: Record<string, string> = {};
-    const promptParts: string[] = [];
-    for (let i = 0; i < rest.length; i++) {
-      const a = rest[i]!;
-      if (a.startsWith("--") && i + 1 < rest.length) {
-        flags[a.slice(2)] = rest[i + 1]!;
-        i++;
-      } else {
-        promptParts.push(a);
-      }
-    }
-    const prompt = promptParts.join(" ");
-    if (!prompt) {
-      console.error("osstack: task submit requires a prompt");
-      return 1;
-    }
-    const params: Record<string, unknown> = { prompt };
-    if (flags.kind) params.kind = flags.kind;
-    if (flags.agent) params.agent_id = flags.agent;
-    const context: Record<string, unknown> = {};
-    if (flags.tag) context.tag = flags.tag;
-    if (flags["max-iter"]) context.max_iterations = Number(flags["max-iter"]);
-    if (flags.repo) context.repo_path = flags.repo;
-    if (Object.keys(context).length > 0) params.context = context;
-    return await streamTaskSubmit(params);
-  }
-  if (sub === "status") {
-    const run_id = args[1];
-    if (!run_id) {
-      console.error("osstack: task status requires a run_id");
-      return 1;
-    }
-    const resp = (await rpc("run.status", { run_id })) as { ok: boolean; result?: unknown; error?: { message: string } };
-    if (!resp.ok) {
-      console.error("osstack:", resp.error?.message ?? "status failed");
-      return 1;
-    }
-    console.log(JSON.stringify(resp.result, null, 2));
-    return 0;
-  }
-  if (sub === "cancel") {
-    const run_id = args[1];
-    if (!run_id) {
-      console.error("osstack: task cancel requires a run_id");
-      return 1;
-    }
-    const resp = (await rpc("task.cancel", { run_id })) as { ok: boolean; result?: unknown; error?: { message: string } };
-    if (!resp.ok) {
-      console.error("osstack:", resp.error?.message ?? "cancel failed");
-      return 1;
-    }
-    console.log(JSON.stringify(resp.result, null, 2));
-    return 0;
-  }
-  if (sub === "observe") {
-    const run_id = args[1];
-    if (!run_id) {
-      console.error("osstack: task observe requires a run_id");
-      return 1;
-    }
-    const after_seq = args[2] !== undefined ? Number.parseInt(args[2], 10) : undefined;
-    return await streamTaskObserve(run_id, after_seq);
-  }
-  console.error(`osstack: unknown task subcommand "${sub}"`);
   return 1;
 }
 
