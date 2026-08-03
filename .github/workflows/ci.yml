@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, changeset-release/main]
   pull_request:
@@ -88,7 +89,7 @@ jobs:
       # R0.1 release-fact gate: README/package.json/binary-channel version
       # claims must agree (offline mode; --remote is for local/manual audits).
       - name: Release facts
-        run: node scripts/release-facts.mjs --self-test && node scripts/release-facts.mjs
+        run: pnpm smoke:version-packages && node scripts/release-facts.mjs --self-test && node scripts/release-facts.mjs
 
       # Build before test/typecheck: packages import each other via dist/.
       - name: Build

@@ -21,6 +21,7 @@ on:
 concurrency: release-${{ github.ref }}
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
   id-token: write
@@ -127,11 +128,21 @@ jobs:
         run: pnpm smoke:npm-trust
 
       - name: Version PR / Publish
+        id: changesets
         uses: changesets/action@v1
         with:
-          version: pnpm changeset version
+          version: pnpm version:packages
           publish: pnpm release
           commit: "chore(release): version packages"
           title: "chore(release): version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Commits made with GITHUB_TOKEN do not trigger ordinary push CI. A
+      # workflow_dispatch event is the documented exception, so dispatch the
+      # exact version branch after Changesets creates or updates its PR.
+      - name: Trigger version PR CI
+        if: steps.changesets.outputs.published != 'true' && steps.changesets.outputs.hasChangesets == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run ci.yml --ref changeset-release/main
