@@ -217,14 +217,20 @@ function findNarrativeBlocks(lines: readonly ClassifiedLine[]): NarrativeSignalV
     const last = matched.at(-1);
     if (first === undefined || last === undefined) continue;
     const kind = observations.length >= 5 ? "observation_records" : "iso_events";
-    const key = `${kind}:${first.number}:${last.number}`;
-    result.set(key, signal(
+    const key = `${kind}:${first.number}`;
+    const candidate = signal(
       "rulebook.narrative_block",
       first.number,
       last.number,
       "medium",
       { kind, count: matched.length },
-    ));
+    );
+    const existing = result.get(key);
+    // The synthetic root section can rediscover a heading-scoped block.
+    // Keep the narrowest candidate so one logical block has one review identity.
+    if (existing === undefined || candidate.end_line < existing.end_line) {
+      result.set(key, candidate);
+    }
   }
   return [...result.values()];
 }
