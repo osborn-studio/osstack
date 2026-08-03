@@ -1,5 +1,20 @@
 # @osstack/governance
 
+## 0.15.0
+
+### Minor Changes
+
+- be6cc63: Add an explicit, read-only Codex local generated-memory adapter for `osstack
+neat`. The adapter inventories only an operator-selected directory, emits
+  portable metadata and hashes without file content, rejects symlink traversal,
+  and deliberately exposes no mutation or Claude-specific limit rules.
+
+### Patch Changes
+
+- 0743a2a: Exclude compiled test and spec artifacts from npm tarballs, scan every packed workspace package for leaks, and verify release candidates against the real npm dependency graph.
+- 35141a8: Render Probe Markdown without trailing whitespace so portable evidence passes
+  repository whitespace checks.
+
 ## 0.13.1
 
 ### Patch Changes

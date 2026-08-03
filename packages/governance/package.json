@@ -1,6 +1,6 @@
 {
   "name": "@osstack/governance",
-  "version": "0.13.1",
+  "version": "0.15.0",
   "description": "Deterministic governance verifier for osstack runs.",
   "license": "MIT",
   "type": "module",

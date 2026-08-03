@@ -1,5 +1,36 @@
 # @osstack/cli
 
+## 0.15.0
+
+### Minor Changes
+
+- be6cc63: Add an explicit, read-only Codex local generated-memory adapter for `osstack
+neat`. The adapter inventories only an operator-selected directory, emits
+  portable metadata and hashes without file content, rejects symlink traversal,
+  and deliberately exposes no mutation or Claude-specific limit rules.
+- 627e22d: Align npm release readiness, plans, and handoff artifacts with tokenless GitHub OIDC Trusted Publishing, and block actual publish when a public package has not been bootstrapped on npm.
+
+### Patch Changes
+
+- 0743a2a: Exclude compiled test and spec artifacts from npm tarballs, scan every packed workspace package for leaks, and verify release candidates against the real npm dependency graph.
+- Updated dependencies [0743a2a]
+- Updated dependencies [35141a8]
+- Updated dependencies [be6cc63]
+  - @osstack/agents@0.15.0
+  - @osstack/autonomy@0.15.0
+  - @osstack/compliance@0.15.0
+  - @osstack/config@0.15.0
+  - @osstack/contracts@0.15.0
+  - @osstack/core@0.15.0
+  - @osstack/github@0.15.0
+  - @osstack/governance@0.15.0
+  - @osstack/hermes-adapter@0.15.0
+  - @osstack/knowledge@0.15.0
+  - @osstack/loop@0.15.0
+  - @osstack/protocol@0.15.0
+  - @osstack/skill-registry@0.15.0
+  - @osstack/skills@0.15.0
+
 ## 0.14.0
 
 ### Minor Changes
