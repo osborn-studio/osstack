@@ -4,6 +4,12 @@ Probe is implemented, tested, and published in `@osstack/cli@0.14.0`, but the
 repository does not yet have enough real-use evidence to claim production
 acceptance.
 
+## Production acceptance behavior
+
+The owner accepted the following observable behavior on 2026-08-03:
+
+> 全新安装后，CLI 与 daemon 版本一致，doctor 全部通过；Neat 能发现并安全修复知识卫生问题；Probe 能生成可审计产物；全过程不得发生未授权写入或泄露凭证。
+
 The dogfood program must establish all of the following without inventing or
 backfilling evidence:
 

@@ -1,15 +1,15 @@
 ---
 probe_session_id: probe_9bce3f19-3a7b-4a46-b745-0b6a1e9d2a62
 probe_schema_version: 1
-probe_revision: 2
-source_sha256: 8ce723ecf96b2aae9fdbec70c6eeac6890dbfecb961ff2d00afacb805c9fa711
+probe_revision: 4
+source_sha256: 2593aafe3f758abd89ef15896a464987039ec4ae9a18883850ddb38b41098205
 ---
 
 # Probe ledger: probe_9bce3f19-3a7b-4a46-b745-0b6a1e9d2a62
 
-- State: active
-- Required disposed: 0/19
-- Completion: 0%
+State: active  
+Required disposed: 1/19  
+Completion: 5.26%
 
 | Item | Quadrant | State | Category | Disposition |
 |---|---|---|---|---|
@@ -18,9 +18,9 @@ source_sha256: 8ce723ecf96b2aae9fdbec70c6eeac6890dbfecb961ff2d00afacb805c9fa711
 | pi_8fd996c0-71cb-453e-b790-d7eab9c18e7f | KU | open | data_model | — |
 | pi_a927f10e-c1ce-4403-9b59-f6aee4a3cd09 | KU | open | interface | — |
 | pi_c9a182f2-219f-45e5-957d-e966c162befa | KU | open | security | — |
-| pi_d6d1260a-89da-46e2-9e49-771bcc554219 | KU | open | acceptance | — |
 | pi_e1a3e352-a443-453c-95dc-3160a4df1323 | KU | open | rollback | — |
 | pi_fc3f64f6-24c3-4571-b80c-9ddb6b28d328 | KU | open | migration | — |
+| pi_d6d1260a-89da-46e2-9e49-771bcc554219 | KK | resolved | acceptance | 全新安装后，CLI 与 daemon 版本一致，doctor 全部通过；Neat 能发现并安全修复知识卫生问题；Probe 能生成可审计产物；全过程不得发生未授权写入或泄露凭证。 |
 | pi_69331705-7cfa-461d-ace5-0bde7d022320 | KU | open | security | — |
 | pi_26850ba8-a334-4fb2-aa66-614750e2e3a5 | KU | open | acceptance | — |
 | pi_4fc9a85a-fd43-47ef-afd0-789692d8f6dd | KU | open | acceptance | — |
