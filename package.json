@@ -45,8 +45,8 @@
     "smoke:npm-package-artifacts": "node scripts/smoke-npm-package-artifacts.mjs",
     "smoke:npm-registry-skew": "node scripts/smoke-npm-registry-skew.mjs --self-test && node scripts/smoke-npm-registry-skew.mjs",
     "smoke:guarded-deploy": "pnpm --filter @osstack/cli... build && node scripts/smoke-guarded-deploy.mjs",
-    "smoke:release-plan": "pnpm --filter @osstack/cli build && node scripts/smoke-release-plan.mjs",
-    "smoke:neat": "pnpm --filter @osstack/cli build && node scripts/smoke-neat.mjs",
+    "smoke:release-plan": "pnpm --filter @osstack/cli... build && node scripts/smoke-release-plan.mjs",
+    "smoke:neat": "pnpm --filter @osstack/cli... build && node scripts/smoke-neat.mjs",
     "smoke:probe": "pnpm --filter @osstack/cli... build && node scripts/smoke-probe.mjs",
     "smoke:probe-skill": "pnpm --filter @osstack/cli... build && node scripts/smoke-probe-skill.mjs",
     "test:soak-kimi-autonomy": "node --test scripts/soak-kimi-autonomy.test.mjs",
@@ -56,10 +56,10 @@
     "smoke:single-binary-release-pack": "node scripts/smoke-single-binary-release-pack.mjs",
     "smoke:single-binary-release-publish": "node scripts/smoke-single-binary-release-publish.mjs",
     "smoke:portable-cli": "node scripts/smoke-portable-cli.mjs",
-    "eval:neat-goldens": "pnpm --filter @osstack/cli build && node scripts/eval-neat-goldens.mjs --check",
+    "eval:neat-goldens": "pnpm --filter @osstack/cli... build && node scripts/eval-neat-goldens.mjs --check",
     "eval:neat-parity:corpus": "pnpm --filter @osstack/neat-eval build && node packages/neat-eval/dist/cli.js corpus check --lock eval/neat-parity/corpus-lock-v1-v3.json",
     "eval:neat-parity:doctor": "pnpm --filter @osstack/neat-eval build && node packages/neat-eval/dist/cli.js doctor --protocol eval/neat-parity/protocol-v1-v3.json --corpus-lock eval/neat-parity/corpus-lock-v1-v3.json --baseline .osstack/eval-cache/neat-freak-v3-2b4a645",
-    "eval:neat-parity:offline": "pnpm --filter @osstack/cli build && pnpm --filter @osstack/neat-eval build && node scripts/eval-neat-parity-offline.mjs",
+    "eval:neat-parity:offline": "pnpm --filter @osstack/cli... build && pnpm --filter @osstack/neat-eval build && node scripts/eval-neat-parity-offline.mjs",
     "eval:kimi-review": "pnpm --filter @osstack/agents build && node scripts/eval-kimi-review.mjs --check"
   },
   "devDependencies": {
