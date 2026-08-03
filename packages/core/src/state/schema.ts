@@ -424,6 +424,7 @@ export const AgentSessionRow = z.object({
   task_id: TaskIdSchema,
   run_id: RunIdSchema,
   agent_id: AgentIdSchema,
+  request_sha256: z.string().regex(/^[a-f0-9]{64}$/),
   native_session_id: z.string().min(1).nullable(),
   repo_path: z.string().max(4096),
   state: AgentSessionState,

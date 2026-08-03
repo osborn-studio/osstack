@@ -488,8 +488,22 @@ async function handleSessionStart(
   const runId = `run_${stableId}`;
   const sessionId = `sess_${stableId}`;
   const turnId = `turn_${randomUUID()}`;
+  const requestSha256 = createHash("sha256").update(JSON.stringify({
+    request_id: p.request_id,
+    prompt: p.prompt,
+    title: p.title,
+    agent_id: p.agent_id,
+    repo_path: p.repo_path,
+  })).digest("hex");
   const existing = ctx.sessions.getSession(sessionId);
   if (existing !== undefined) {
+    if (existing.request_sha256 !== requestSha256) {
+      return singleErr(
+        req.id,
+        "request_id_conflict",
+        "request_id was already used for a different session request",
+      );
+    }
     const snapshot = ctx.sessions.latestSnapshot(sessionId);
     return singleOk(req.id, {
       ...publicSession(existing),
@@ -498,36 +512,39 @@ async function handleSessionStart(
     });
   }
   try {
-    insertTask(ctx.db, ctx.dbPath, { task_id: taskId, title: p.title, created_at: now });
-    insertRun(ctx.db, ctx.dbPath, {
-      run_id: runId,
-      task_id: taskId,
-      session_id: sessionId,
-      agent_id: adapter.id,
-      capability_id: `${adapter.id}.session`,
-      phase: "code",
-      started_at: now,
-    });
-    ctx.sessions.createSession({
-      session_id: sessionId,
-      task_id: taskId,
-      run_id: runId,
-      agent_id: adapter.id,
-      native_session_id: null,
-      repo_path: p.repo_path,
-      state: "starting",
-      resume_supported: true,
-      version: 1,
-      updated_at: now,
-    });
-    ctx.kanban.createCard({
-      card_id: `card_${runId}`,
-      task_id: taskId,
-      title: p.title,
-      body: `agent: ${adapter.id}\ncapability: resumable-session`,
-      status: "running",
-      assignee: adapter.id,
-    });
+    ctx.db.transaction(() => {
+      insertTask(ctx.db, ctx.dbPath, { task_id: taskId, title: p.title, created_at: now });
+      insertRun(ctx.db, ctx.dbPath, {
+        run_id: runId,
+        task_id: taskId,
+        session_id: sessionId,
+        agent_id: adapter.id,
+        capability_id: `${adapter.id}.session`,
+        phase: "code",
+        started_at: now,
+      });
+      ctx.sessions.createSession({
+        session_id: sessionId,
+        task_id: taskId,
+        run_id: runId,
+        agent_id: adapter.id,
+        request_sha256: requestSha256,
+        native_session_id: null,
+        repo_path: p.repo_path,
+        state: "starting",
+        resume_supported: true,
+        version: 1,
+        updated_at: now,
+      });
+      ctx.kanban.createCard({
+        card_id: `card_${runId}`,
+        task_id: taskId,
+        title: p.title,
+        body: `agent: ${adapter.id}\ncapability: resumable-session`,
+        status: "running",
+        assignee: adapter.id,
+      });
+    })();
   } catch {
     return singleErr(req.id, "store_write_failed", "could not create resumable session");
   }
@@ -585,21 +602,36 @@ async function handleSessionStart(
     }
     if (nativeSessionId === undefined) throw new Error("adapter did not return a native session id");
 
-    const recorded = ctx.sessions.recordNativeSession(sessionId, nativeSessionId, 1, Date.now() / 1000);
+    const confirmedNativeSessionId = nativeSessionId;
     const finalState = decision === null ? "idle" : "awaiting_decision";
-    ctx.sessions.appendTurn({
-      turn_id: turnId,
-      session_id: sessionId,
-      ordinal: 1,
-      state: finalState,
-      assistant_text: assistantText,
-      decision,
-      created_at: now,
-      updated_at: Date.now() / 1000,
-    });
-    const updated = ctx.sessions.setState(sessionId, finalState, recorded.version, Date.now() / 1000);
-    finalizeRun(ctx.db, ctx.dbPath, runId, "completed", Date.now() / 1000);
-    ctx.kanban.moveCard(`card_${runId}`, "done", { actor: adapter.id });
+    const completedAt = Date.now() / 1000;
+    const updated = ctx.db.transaction(() => {
+      const recorded = ctx.sessions.recordNativeSession(
+        sessionId,
+        confirmedNativeSessionId,
+        1,
+        completedAt,
+      );
+      ctx.sessions.appendTurn({
+        turn_id: turnId,
+        session_id: sessionId,
+        ordinal: 1,
+        state: finalState,
+        assistant_text: assistantText,
+        decision,
+        created_at: now,
+        updated_at: completedAt,
+      });
+      const session = ctx.sessions.setState(
+        sessionId,
+        finalState,
+        recorded.version,
+        completedAt,
+      );
+      finalizeRun(ctx.db, ctx.dbPath, runId, "completed", completedAt);
+      ctx.kanban.moveCard(`card_${runId}`, "done", { actor: adapter.id });
+      return session;
+    })();
     return singleOk(req.id, {
       ...publicSession(updated),
       turn_id: turnId,
@@ -689,9 +721,22 @@ async function handleSessionSend(
       if (existingMessage.state === "applied") {
         return singleOk(req.id, { state: replay.outcome, session_version: replay.session_version });
       }
-      if (existingMessage.state !== "accepted" || replay.session_version !== p.expected_version + 1) {
+      if (replay.session_version !== p.expected_version + 1) {
         return singleErr(req.id, "version_conflict", "accepted message cannot be recovered safely");
       }
+      if (existingMessage.state === "accepted") {
+        return ctx.activeSessionSends.has(session.session_id)
+          ? singleErr(req.id, "session_busy", "session is already applying another instruction")
+          : singleErr(
+              req.id,
+              "delivery_uncertain",
+              "the previous delivery may have reached the agent; inspect the session before using a new message_id",
+            );
+      }
+      if (existingMessage.state !== "failed") {
+        return singleErr(req.id, "version_conflict", "reserved message is not retryable");
+      }
+      ctx.sessions.retryFailedMessage(p.message_id);
       recoveredReservationVersion = replay.session_version;
     } catch (err) {
       if (err instanceof SessionMessageIdConflict) {
@@ -750,6 +795,21 @@ async function handleSessionSend(
 
   ctx.activeSessionSends.add(session.session_id);
   try {
+    const failReservedMessage = (
+      code: string,
+      message: string,
+    ): SingleResponse => {
+      try {
+        ctx.sessions.markMessageFailed(p.message_id);
+      } catch {
+        return singleErr(
+          req.id,
+          "delivery_uncertain",
+          "the agent failed and the reservation could not be finalized; inspect the session before retrying",
+        );
+      }
+      return singleErr(req.id, code, message);
+    };
     const context: Record<string, unknown> = {};
     if (session.repo_path !== "") context["repo_path"] = session.repo_path;
     if (p.requested_by !== undefined) context["requested_by"] = p.requested_by;
@@ -773,19 +833,24 @@ async function handleSessionSend(
       for await (const event of adapter.resumeSession(input, controller.signal)) {
         if (event.type === "native_session.started") {
           if (event.native_session_id !== session.native_session_id) {
-            return singleErr(req.id, "adapter_protocol", "agent resumed an unexpected native session");
+            return failReservedMessage(
+              "adapter_protocol",
+              "agent resumed an unexpected native session",
+            );
           }
           continue;
         }
         if (JSON.stringify(event).includes(session.native_session_id)) {
-          return singleErr(req.id, "adapter_protocol", "agent output contained protected session metadata");
+          return failReservedMessage(
+            "adapter_protocol",
+            "agent output contained protected session metadata",
+          );
         }
         if (event.type === "session.terminal") {
           if (event.state !== "completed") {
             const rawCode = event.error_code ?? "unknown";
             const safeCode = /^[a-z0-9_]{1,64}$/.test(rawCode) ? rawCode : "unknown";
-            return singleErr(
-              req.id,
+            return failReservedMessage(
               "agent_failed",
               `agent failed while applying the instruction (${safeCode})`,
             );
@@ -814,34 +879,39 @@ async function handleSessionSend(
         };
       }
       if (!terminalCompleted) {
-        return singleErr(req.id, "agent_failed", "agent ended without completing the instruction");
+        return failReservedMessage(
+          "agent_failed",
+          "agent ended without completing the instruction",
+        );
       }
     } catch {
-      return singleErr(req.id, "agent_failed", "agent failed while applying the instruction");
+      return failReservedMessage(
+        "agent_failed",
+        "agent failed while applying the instruction",
+      );
     }
 
     const finalState = publicEvents.some((event) => event.type === "decision.requested")
       ? "awaiting_decision"
       : "idle";
-    ctx.sessions.appendTurn({
-      turn_id: `turn_${randomUUID()}`,
-      session_id: session.session_id,
-      ordinal: (ctx.db.prepare(
-        "SELECT COALESCE(MAX(ordinal), 0) + 1 AS ordinal FROM session_turns WHERE session_id = ?",
-      ).get(session.session_id) as { ordinal: number }).ordinal,
-      state: finalState,
-      assistant_text: assistantText,
-      decision,
-      created_at: now,
-      updated_at: Date.now() / 1000,
+    const completedAt = Date.now() / 1000;
+    const updatedSession = ctx.sessions.completeInboundTurn({
+      turn: {
+        turn_id: `turn_${randomUUID()}`,
+        session_id: session.session_id,
+        ordinal: (ctx.db.prepare(
+          "SELECT COALESCE(MAX(ordinal), 0) + 1 AS ordinal FROM session_turns WHERE session_id = ?",
+        ).get(session.session_id) as { ordinal: number }).ordinal,
+        state: finalState,
+        assistant_text: assistantText,
+        decision,
+        created_at: now,
+        updated_at: completedAt,
+      },
+      message_id: p.message_id,
+      expected_version: applied.session_version,
+      applied_at: completedAt,
     });
-    const updatedSession = ctx.sessions.setState(
-      session.session_id,
-      finalState,
-      applied.session_version,
-      Date.now() / 1000,
-    );
-    ctx.sessions.markMessageApplied(p.message_id, Date.now() / 1000);
     return singleOk(req.id, {
       state: "applied",
       session_version: updatedSession.version,

@@ -1225,7 +1225,7 @@ export const MIGRATIONS: readonly Migration[] = [
   {
     id: 21,
     name: "resumable_agent_sessions",
-    // Durable native-agent session identity and exactly-once remote input.
+    // Durable native-agent session identity and idempotent local input reservation.
     // Tool arguments, command output and reasoning never enter these tables.
     sql: `
       CREATE TABLE IF NOT EXISTS agent_sessions (
@@ -1233,6 +1233,10 @@ export const MIGRATIONS: readonly Migration[] = [
         task_id           TEXT NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,
         run_id            TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
         agent_id          TEXT NOT NULL,
+        request_sha256    TEXT NOT NULL CHECK (
+          length(request_sha256) = 64 AND
+          request_sha256 NOT GLOB '*[^0-9a-f]*'
+        ),
         native_session_id TEXT,
         state             TEXT NOT NULL CHECK (state IN (
           'starting','running','awaiting_decision','idle','completed','failed','cancelled'
@@ -1280,7 +1284,7 @@ export const MIGRATIONS: readonly Migration[] = [
     `,
   },
   {
-    id: 10,
+    id: 22,
     name: "agent_session_repo_path",
     // Claude Code resolves persisted native sessions within the original cwd.
     // Existing rows remain empty until an operator performs a verified local

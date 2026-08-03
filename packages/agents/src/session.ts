@@ -36,7 +36,7 @@ export const AgentSessionInputSchema = z.object({
   expected_version: z.number().int().positive(),
   message_id: IdSchema,
   prompt: z.string().trim().min(1).max(16_000),
-  context: z.record(z.unknown()).optional(),
+  context: z.record(z.string(), z.unknown()).optional(),
 }).strict();
 export type AgentSessionInput = z.infer<typeof AgentSessionInputSchema>;
 

@@ -42,6 +42,7 @@ function createSession(repo: SessionRepository): void {
     task_id: "task_01",
     run_id: "run_01",
     agent_id: "codex-cli",
+    request_sha256: "a".repeat(64),
     native_session_id: null,
     repo_path: "/tmp/osstack-session-repo",
     state: "starting",
@@ -178,6 +179,77 @@ describe("SessionRepository", () => {
         SessionVersionConflict,
       );
       expect(repo.getMessage("msg_stale")).toBeUndefined();
+    } finally {
+      db.close();
+    }
+  });
+
+  it("commits the completed turn, session state, and message state atomically", () => {
+    const { db, repo } = setup();
+    try {
+      createSession(repo);
+      repo.recordNativeSession("sess_01", "019f-thread", 1, 3);
+      repo.appendTurn({
+        turn_id: "turn_01",
+        session_id: "sess_01",
+        ordinal: 1,
+        state: "awaiting_decision",
+        assistant_text: "请选择 A 或 B",
+        decision: { choices: ["A", "B"] },
+        created_at: 3,
+        updated_at: 3,
+      });
+      repo.applyInbound(inboundMessage(), 2, 4);
+
+      expect(() => repo.completeInboundTurn({
+        turn: {
+          turn_id: "turn_01",
+          session_id: "sess_01",
+          ordinal: 2,
+          state: "idle",
+          assistant_text: "重复 turn id",
+          decision: null,
+          created_at: 4,
+          updated_at: 5,
+        },
+        message_id: "msg_01",
+        expected_version: 3,
+        applied_at: 5,
+      })).toThrow();
+      expect(repo.getSession("sess_01")).toMatchObject({
+        state: "idle",
+        version: 3,
+      });
+      expect(repo.getMessage("msg_01")).toMatchObject({
+        state: "accepted",
+        applied_at: null,
+      });
+
+      const completed = repo.completeInboundTurn({
+        turn: {
+          turn_id: "turn_02",
+          session_id: "sess_01",
+          ordinal: 2,
+          state: "idle",
+          assistant_text: "已采用 B",
+          decision: null,
+          created_at: 4,
+          updated_at: 6,
+        },
+        message_id: "msg_01",
+        expected_version: 3,
+        applied_at: 6,
+      });
+      expect(completed).toMatchObject({ state: "idle", version: 4 });
+      expect(repo.getMessage("msg_01")).toMatchObject({
+        state: "applied",
+        applied_at: 6,
+      });
+      expect(repo.latestSnapshot("sess_01")).toMatchObject({
+        turn_id: "turn_02",
+        assistant_text: "已采用 B",
+        version: 4,
+      });
     } finally {
       db.close();
     }

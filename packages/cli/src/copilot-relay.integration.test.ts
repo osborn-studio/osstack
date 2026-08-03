@@ -69,7 +69,8 @@ function seed(handle: DaemonHandles, adapter: RelayAdapter): void {
     const sessions = new SessionRepository(db, handle.dbPath);
     sessions.createSession({
       session_id: "session-relay", task_id: "task-relay", run_id: "run-relay",
-      agent_id: adapter.id, native_session_id: "native-codex-thread-secret",
+      agent_id: adapter.id, request_sha256: "a".repeat(64),
+      native_session_id: "native-codex-thread-secret",
       repo_path: "/tmp/copilot-relay-repo", state: "idle",
       resume_supported: true, version: 2, updated_at: 2,
     });

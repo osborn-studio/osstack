@@ -253,6 +253,22 @@ discover -> execute -> verify -> iterate
 - `--goal "<cmd>"`：直到某个命令通过才停止。
 - `--max-iter <n>`：失败 N 次后升级，避免无限循环。
 
+### 受治理的可恢复会话
+
+```bash
+osstack session start --request-id task-123 --agent codex-cli --repo "$PWD" \
+  --title "Task 123" --text "请给出下一步安全动作" --json
+osstack session snapshot <session_id> --json
+osstack session send <session_id> --runtime codex-cli --turn <turn_id> \
+  --message-id task-123-owner-002 --expected-version <version> \
+  --text "按已批准方案继续" --json
+```
+
+该能力持久化有界的公开会话状态，不暴露 Codex/Claude 原生 session ID。
+相同消息在本地幂等；若 daemon 在外部模型可能已收到指令、但结果尚未落库时中断，
+系统会返回 `delivery_uncertain` 并停止自动重发，交由 owner 核验后决定。
+完整说明见 [session relay 指南](docs/guides/session-relay.md)。
+
 ### Portfolio Daily 与合同门控
 
 ```bash

@@ -280,6 +280,22 @@ See [Guarded Git Autonomy Runbook](docs/runbooks/guarded-git-autonomy.md) for
 the risk matrix, external signed R3 approval, recovery, proof stages, and
 rollback to `guarded-local`.
 
+### Governed Resumable Sessions
+
+```bash
+osstack session start --request-id task-123 --agent codex-cli --repo "$PWD" \
+  --title "Task 123" --text "Report the next safe step" --json
+osstack session snapshot <session_id> --json
+osstack session send <session_id> --runtime codex-cli --turn <turn_id> \
+  --message-id task-123-owner-002 --expected-version <version> \
+  --text "Proceed with the approved option" --json
+```
+
+The relay persists bounded public state without exposing native provider
+session IDs. Replays are locally idempotent; ambiguous crash-window delivery
+fails closed instead of automatically resending an instruction. See the
+[session relay guide](docs/guides/session-relay.md).
+
 For project-allowlisted staging/production deployment, automatic rollback and
 freeze, Mac Mini LaunchAgent operation, named machine/production authority
 gates, and the seven-day real-task soak, see the

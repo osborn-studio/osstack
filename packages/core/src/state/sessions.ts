@@ -34,6 +34,13 @@ export interface ApplyMessageResult {
   session_version: number;
 }
 
+export interface CompleteInboundTurnInput {
+  turn: SessionTurnInput;
+  message_id: string;
+  expected_version: number;
+  applied_at: number;
+}
+
 export interface SessionSnapshot {
   session_id: string;
   task_id: string;
@@ -92,12 +99,12 @@ export class SessionRepository {
     withWrite(this.db, this.path, (db) => {
       db.prepare(`
         INSERT INTO agent_sessions(
-          session_id,task_id,run_id,agent_id,native_session_id,repo_path,state,
-          resume_supported,version,updated_at
-        ) VALUES (?,?,?,?,?,?,?,?,?,?)
+          session_id,task_id,run_id,agent_id,request_sha256,native_session_id,
+          repo_path,state,resume_supported,version,updated_at
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?)
       `).run(
         parsed.session_id, parsed.task_id, parsed.run_id, parsed.agent_id,
-        parsed.native_session_id, parsed.repo_path, parsed.state,
+        parsed.request_sha256, parsed.native_session_id, parsed.repo_path, parsed.state,
         parsed.resume_supported ? 1 : 0, parsed.version, parsed.updated_at,
       );
     });
@@ -214,6 +221,104 @@ export class SessionRepository {
       if (result.changes !== 1) {
         throw new Error(`message ${messageId} is missing or is not accepted`);
       }
+    });
+  }
+
+  markMessageFailed(messageId: string): void {
+    withWrite(this.db, this.path, (db) => {
+      const result = db.prepare(`
+        UPDATE session_messages
+        SET state = 'failed', applied_at = NULL
+        WHERE message_id = ? AND state = 'accepted'
+      `).run(messageId);
+      if (result.changes !== 1) {
+        throw new Error(`message ${messageId} is missing or is not accepted`);
+      }
+    });
+  }
+
+  retryFailedMessage(messageId: string): void {
+    withWrite(this.db, this.path, (db) => {
+      const result = db.prepare(`
+        UPDATE session_messages
+        SET state = 'accepted', applied_at = NULL
+        WHERE message_id = ? AND state = 'failed'
+      `).run(messageId);
+      if (result.changes !== 1) {
+        throw new Error(`message ${messageId} is missing or is not failed`);
+      }
+    });
+  }
+
+  completeInboundTurn(input: CompleteInboundTurnInput): AgentSessionRowType {
+    AgentSessionState.parse(input.turn.state);
+    const { decision, ...storedTurn } = input.turn;
+    const turn = SessionTurnRow.parse({
+      ...storedTurn,
+      decision_json: decision === null ? null : canonicalJson(decision),
+    });
+
+    return withWrite(this.db, this.path, (db) => {
+      const message = db.prepare(`
+        SELECT session_id, state FROM session_messages WHERE message_id = ?
+      `).get(input.message_id) as {
+        session_id: string;
+        state: SessionMessageRowType["state"];
+      } | undefined;
+      if (
+        message === undefined
+        || message.session_id !== turn.session_id
+        || message.state !== "accepted"
+      ) {
+        throw new Error(
+          `message ${input.message_id} is missing, belongs to another session, or is not accepted`,
+        );
+      }
+
+      const updated = db.prepare(`
+        UPDATE agent_sessions
+        SET state = ?, version = version + 1, updated_at = ?
+        WHERE session_id = ? AND version = ?
+      `).run(
+        turn.state,
+        input.applied_at,
+        turn.session_id,
+        input.expected_version,
+      );
+      if (updated.changes !== 1) {
+        const actual = db.prepare("SELECT version FROM agent_sessions WHERE session_id = ?")
+          .get(turn.session_id) as { version: number } | undefined;
+        throw new SessionVersionConflict(
+          turn.session_id,
+          input.expected_version,
+          actual?.version ?? null,
+        );
+      }
+
+      db.prepare(`
+        INSERT INTO session_turns(
+          turn_id,session_id,ordinal,state,assistant_text,decision_json,created_at,updated_at
+        ) VALUES (?,?,?,?,?,?,?,?)
+      `).run(
+        turn.turn_id,
+        turn.session_id,
+        turn.ordinal,
+        turn.state,
+        turn.assistant_text,
+        turn.decision_json,
+        turn.created_at,
+        turn.updated_at,
+      );
+
+      const applied = db.prepare(`
+        UPDATE session_messages
+        SET state = 'applied', applied_at = ?
+        WHERE message_id = ? AND state = 'accepted'
+      `).run(input.applied_at, input.message_id);
+      if (applied.changes !== 1) {
+        throw new Error(`message ${input.message_id} could not be marked applied`);
+      }
+      return this.readSession(db, turn.session_id);
     });
   }
 

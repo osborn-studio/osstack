@@ -10,6 +10,13 @@ beforeEach(() => { tmp = mkdtempSync(join(tmpdir(), "osstack-db-")); });
 afterEach(() => { rmSync(tmp, { recursive: true, force: true }); });
 
 describe("openDb + runMigrations", () => {
+  it("keeps migration ids unique and strictly increasing", () => {
+    const ids = MIGRATIONS.map((migration) => migration.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toEqual([...ids].sort((left, right) => left - right));
+    expect(ids.at(-1)).toBe(CURRENT_SCHEMA_VERSION);
+  });
+
   it("creates the db file and applies the initial schema", () => {
     const path = join(tmp, "state.db");
     const db = openDb({ path });

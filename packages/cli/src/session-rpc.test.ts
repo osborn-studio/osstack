@@ -127,6 +127,7 @@ function seedSession(
       task_id: taskId,
       run_id: runId,
       agent_id: adapter.id,
+      request_sha256: "a".repeat(64),
       native_session_id: `native-secret-${id}`,
       repo_path: `/tmp/repo-${id}`,
       state,
@@ -206,6 +207,17 @@ describe("governed session RPC", () => {
       result: { session_id: sessionId, assistant_text: "CANARY_READY", version: 3 },
     });
     expect(adapter.started.filter((prompt) => prompt === "只回复 CANARY_READY")).toHaveLength(1);
+    expect(await rpc("session.start", {
+      request_id: "request_rpc_start",
+      prompt: "不同的请求内容",
+      title: "Relay canary",
+      agent_id: adapter.id,
+      repo_path: home,
+    })).toMatchObject({
+      ok: false,
+      error: { code: "request_id_conflict" },
+    });
+    expect(adapter.started).toHaveLength(1);
   });
 
   it("lists and snapshots sessions without exposing native ids", async () => {
@@ -414,7 +426,7 @@ describe("governed session RPC", () => {
     expect(adapter.resumed.filter((input) => input.session_id === "sess_concurrent")).toHaveLength(1);
   });
 
-  it("recovers an accepted reservation after daemon interruption without losing the turn", async () => {
+  it("fails closed on an accepted reservation left by daemon interruption", async () => {
     seedSession("sess_recover");
     const db = openDb({ path: handle.dbPath });
     try {
@@ -441,8 +453,11 @@ describe("governed session RPC", () => {
       text: "恢复后继续",
     });
 
-    expect(response).toMatchObject({ ok: true, result: { state: "applied", session_version: 4 } });
-    expect(adapter.resumed.filter((input) => input.session_id === "sess_recover")).toHaveLength(1);
+    expect(response).toMatchObject({
+      ok: false,
+      error: { code: "delivery_uncertain" },
+    });
+    expect(adapter.resumed.filter((input) => input.session_id === "sess_recover")).toHaveLength(0);
   });
 
   it("exposes list, status, snapshot and send through the CLI", async () => {
