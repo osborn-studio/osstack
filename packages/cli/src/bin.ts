@@ -7,7 +7,7 @@ import { existsSync as fsExistsSync, readFileSync, realpathSync, writeFileSync a
 import { connect, type Socket } from "node:net";
 import { chmod, copyFile, lstat, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import {
   assertDbAccessAllowed,
   assertServeAllowed,
@@ -28,22 +28,18 @@ import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
 import { parse as parseYaml } from "yaml";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
+import { defaultAdapters } from "@osstack/agents";
 import {
-  agentAuthMode,
-  defaultAdapters,
-  rolesForCapabilityKinds,
-} from "@osstack/agents";
-import {
-  getCompliancePack,
-  listCompliancePacks,
   loadProofEvidence,
   renderComplianceReport,
-  renderComplianceReportFromProofDir,
   renderProofViewFromProofDir,
   validateProofEvidence,
   type ProofAudience,
 } from "@osstack/compliance";
-import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
+import {
+  validateWorkspaceContracts,
+  type ContractValidationReport,
+} from "@osstack/contracts";
 import {
   getLatestSuccessfulRollbackDrill,
   getRun,
@@ -69,11 +65,6 @@ import {
   scanText,
   type GovernanceFinding,
 } from "@osstack/governance";
-import {
-  renderBranchStewardReport,
-  scanBranchStewardCandidates,
-  type BranchStewardConfig,
-} from "@osstack/github";
 import {
   DEFAULT_DISCOVERY_POLICY,
   DiscoveryPolicy,
@@ -122,12 +113,30 @@ import {
   type KnowledgeSearchEvidence,
 } from "@osstack/knowledge";
 import { initProject } from "@osstack/skills";
-import {
-  addSource, checkAll, defaultManifestPath, readManifest,
-  removeSource, writeManifest,
-} from "@osstack/skill-registry";
 import { startDaemon } from "./daemon.js";
 import { handleAgentCommand } from "./agent-command.js";
+import { handleSkillsCommand } from "./skills-command.js";
+import {
+  collectChangedGovernanceScanFiles,
+  collectGovernanceScanFiles,
+  handleComplianceCommand,
+  handleContractsCommand,
+  handleGovernanceCommand,
+  isGovernanceExcludedDir,
+  isGovernanceScannableFile,
+  uniqueNonEmptyLines,
+} from "./assurance-command.js";
+import {
+  handleStewardCommand,
+  parseGitHubRepoSlug,
+} from "./steward-command.js";
+import {
+  handleExamplesCommand,
+  handleGuideCommand,
+  handleProductDoctorCommand,
+  type LoopDoctorCheck,
+  type LoopDoctorResult,
+} from "./product-entry-command.js";
 import { handleConfigCommand } from "./config.js";
 import {
   handleDeliverCommand,
@@ -764,7 +773,11 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       console.log(out.text);
       return out.exitCode;
     }
-    return await handleProductDoctorCommand(args.slice(1));
+    return await handleProductDoctorCommand(args.slice(1), {
+      loopDoctor,
+      printLoopDoctor,
+      resolveLoopPath,
+    });
   }
 
   if (cmd === "examples") {
@@ -1044,161 +1057,6 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   console.error(`osstack: unknown command "${args.join(" ")}" — see "osstack help"`);
   return 1;
-}
-
-async function handleProductDoctorCommand(args: string[]): Promise<number> {
-  if (args.includes("--help") || args.includes("-h")) {
-    console.log(`osstack doctor — product readiness check
-
-  osstack doctor [--workspace P] [--daemon] [--json]
-
-Checks:
-  - workspace, tasks/, LOOP-STATE.json, git/worktree readiness
-  - daemon socket when --daemon is set
-  - local agent registry roles, auth modes, and availability
-`);
-    return 0;
-  }
-  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
-  const loop = await loopDoctor({
-    workspacePath,
-    stateFilePath: resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath),
-    checkDaemon: args.includes("--daemon"),
-  });
-  const agents = await productAgentDoctor();
-  const nextSteps = productDoctorNextSteps(loop, agents);
-  const result = {
-    ok: loop.ok && agents.total > 0,
-    workspace: workspacePath,
-    loop,
-    agents,
-    next_steps: nextSteps,
-  };
-  if (args.includes("--json")) {
-    console.log(JSON.stringify(result, null, 2));
-  } else {
-    printProductDoctor(result);
-  }
-  return result.ok ? 0 : 1;
-}
-
-async function productAgentDoctor(): Promise<{
-  total: number;
-  available: number;
-  unavailable: number;
-  by_role: Record<string, string[]>;
-  profiles: Array<{
-    id: string;
-    display_name: string;
-    auth_mode: string;
-    cost_tier: string;
-    roles: string[];
-    available: boolean;
-    reason?: string;
-  }>;
-}> {
-  const profiles = await Promise.all(defaultAdapters().map(async (adapter) => {
-    const availability = await adapter.isAvailable();
-    const roles = rolesForCapabilityKinds(adapter.capabilities().map((capability) => capability.kind));
-    return {
-      id: adapter.id,
-      display_name: adapter.display_name,
-      auth_mode: agentAuthMode(adapter.id),
-      cost_tier: adapter.cost_tier,
-      roles,
-      available: availability.available,
-      ...(availability.reason !== undefined ? { reason: availability.reason } : {}),
-    };
-  }));
-  const byRole: Record<string, string[]> = {};
-  for (const profile of profiles) {
-    for (const role of profile.roles) {
-      byRole[role] = [...(byRole[role] ?? []), profile.id];
-    }
-  }
-  return {
-    total: profiles.length,
-    available: profiles.filter((profile) => profile.available).length,
-    unavailable: profiles.filter((profile) => !profile.available).length,
-    by_role: byRole,
-    profiles,
-  };
-}
-
-function productDoctorNextSteps(
-  loop: LoopDoctorResult,
-  agents: Awaited<ReturnType<typeof productAgentDoctor>>,
-): string[] {
-  const steps: string[] = [];
-  const taskQueue = loop.checks.find((check) => check.id === "task_queue");
-  if (taskQueue?.status === "ok") {
-    steps.push("Run queued work: osstack loop run --source task_queue --report --scorecard --proof");
-  } else {
-    steps.push("Queue a task: osstack loop enqueue \"Run local checks\" --capability code.test");
-  }
-  if (agents.available > 0) {
-    steps.push("Try routing: osstack loop run --source task_queue --auto-agent --verify \"pnpm test\"");
-  } else {
-    steps.push("Configure an available agent or use --execute for local shell execution.");
-  }
-  steps.push("Read examples: osstack examples");
-  return steps;
-}
-
-function printProductDoctor(result: {
-  ok: boolean;
-  workspace: string;
-  loop: LoopDoctorResult;
-  agents: Awaited<ReturnType<typeof productAgentDoctor>>;
-  next_steps: string[];
-}): void {
-  console.log(`Osstack doctor: ${result.ok ? "ok" : "attention needed"}`);
-  console.log(`workspace=${result.workspace}`);
-  console.log("");
-  printLoopDoctor(result.loop);
-  console.log("");
-  console.log(`Agents: ${result.agents.available}/${result.agents.total} available`);
-  for (const profile of result.agents.profiles) {
-    console.log(`  [${profile.available ? "ok" : "warn"}] ${profile.id} auth=${profile.auth_mode} roles=${profile.roles.join(",") || "none"}`);
-  }
-  console.log("");
-  console.log("Next steps:");
-  for (const step of result.next_steps) console.log(`- ${step}`);
-}
-
-async function handleExamplesCommand(args: string[]): Promise<number> {
-  const examples = osstackExamples();
-  if (args.includes("--json")) {
-    console.log(JSON.stringify({ examples }, null, 2));
-    return 0;
-  }
-  console.log("# Osstack Examples\n");
-  for (const example of examples) {
-    console.log(`## ${example.title}`);
-    console.log(example.description);
-    console.log("");
-    console.log("```bash");
-    for (const command of example.commands) console.log(command);
-    console.log("```\n");
-  }
-  return 0;
-}
-
-async function handleGuideCommand(args: string[]): Promise<number> {
-  const markdown = renderQuickstartGuide();
-  const output = flagValue(args, "--output");
-  if (output !== undefined) {
-    await mkdir(dirname(output), { recursive: true });
-    await writeFile(output, markdown, "utf-8");
-    if (args.includes("--json")) {
-      console.log(JSON.stringify({ output }, null, 2));
-    } else {
-      console.log(`guide=${output}`);
-    }
-    return 0;
-  }
-  console.log(markdown);
-  return 0;
 }
 
 type ReleaseDoctorStatus = "ok" | "warn" | "error";
@@ -5093,420 +4951,6 @@ function assertSafeRelativePath(path: string): void {
   }
 }
 
-function osstackExamples(): Array<{ title: string; description: string; commands: string[] }> {
-  return [
-    {
-      title: "5-minute proof path",
-      description: "Run one product-entry task, generate evidence, and open the cockpit summary.",
-      commands: [
-        "osstack doctor --workspace .",
-        "osstack deliver \"Add one small verified change\" --verify \"pnpm test\" --auto-agent --worktree --report --scorecard --proof",
-        "osstack cockpit --workspace .",
-        "osstack proof view \"$(node -e 'const s=require(\"./LOOP-STATE.json\"); process.stdout.write(s.loop_id)')\" --audience engineer",
-      ],
-    },
-    {
-      title: "Fix a bug",
-      description: "Queue a failing behavior, run the loop, and produce evidence.",
-      commands: [
-        "osstack loop enqueue \"Fix the failing unit test\" --capability code.test",
-        "osstack loop run --source task_queue --verify \"pnpm test\" --report --scorecard --proof",
-      ],
-    },
-    {
-      title: "Implement a feature",
-      description: "Use the product entry command to create a task, execute, verify, and package proof.",
-      commands: [
-        "osstack deliver \"Add billing dashboard\" --verify \"pnpm test\" --auto-agent --worktree --report --scorecard --proof --json",
-      ],
-    },
-    {
-      title: "Review git diff",
-      description: "Turn local changes into a review/checker workflow.",
-      commands: [
-        "osstack loop run --source git_diff --reviewer ds-review --verify \"pnpm test\" --report",
-      ],
-    },
-    {
-      title: "Auto-agent routing",
-      description: "Let router and policy choose the maker based on capability and local availability.",
-      commands: [
-        "osstack agent list",
-        "osstack loop run --source task_queue --auto-agent --verify \"pnpm test\"",
-      ],
-    },
-    {
-      title: "Worktree isolation",
-      description: "Run each task in an isolated worktree, then merge only successful changes.",
-      commands: [
-        "osstack loop run --source task_queue --worktree --worktree-root ../osstack-worktrees --verify \"pnpm test\"",
-      ],
-    },
-    {
-      title: "Proof pack",
-      description: "Generate report, scorecard, proof pack, and PR evidence body.",
-      commands: [
-        "osstack loop run --source task_queue --report --scorecard --proof",
-        "osstack pr --dry-run",
-      ],
-    },
-  ];
-}
-
-function renderQuickstartGuide(): string {
-  return `# Osstack 5-minute quickstart
-
-## 1. Install and check readiness
-
-\`\`\`bash
-npm install -g @osstack/cli
-osstack --version
-osstack doctor --workspace .
-\`\`\`
-
-## 2. Queue one task
-
-\`\`\`bash
-osstack loop enqueue "Run local checks and fix the first failure" --capability code.test
-\`\`\`
-
-## 3. Run the loop and generate evidence
-
-\`\`\`bash
-osstack loop run --source task_queue --verify "pnpm test" --report --scorecard --proof
-\`\`\`
-
-## 4. Inspect the result from cockpit and proof views
-
-\`\`\`bash
-osstack loop status
-osstack cockpit --workspace .
-# cockpit prints latest_report=... and latest_proof=...
-osstack proof view "$(node -e 'const s=require("./LOOP-STATE.json"); process.stdout.write(s.loop_id)')" --audience engineer
-\`\`\`
-
-## 5. Prefer the one-command product entry path next time
-
-\`\`\`bash
-osstack deliver "Add one small verified change" --verify "pnpm test" --auto-agent --worktree --report --scorecard --proof
-osstack cockpit --workspace .
-\`\`\`
-
-More workflows:
-
-\`\`\`bash
-osstack examples
-\`\`\`
-`;
-}
-
-function printStewardHelp(): void {
-  console.log(`osstack steward — Branch Steward dry-run reports
-
-  osstack steward scan [--repo O/R] [--base B] [--remote R] [--workspace P] [--json]
-  osstack steward help
-`);
-}
-
-async function handleStewardCommand(args: string[]): Promise<number> {
-  const sub = args[0];
-
-  if (sub === undefined || sub === "help" || sub === "--help" || sub === "-h") {
-    printStewardHelp();
-    return 0;
-  }
-
-  if (sub !== "scan") {
-    console.error(`osstack: unknown steward subcommand "${sub}"`);
-    return 1;
-  }
-
-  const workspacePathValue = stewardFlagValue(args, "--workspace");
-  const repoValue = stewardFlagValue(args, "--repo");
-  const baseValue = stewardFlagValue(args, "--base");
-  const remoteValue = stewardFlagValue(args, "--remote");
-  if (workspacePathValue instanceof Error) {
-    console.error(`osstack: ${workspacePathValue.message}`);
-    return 1;
-  }
-  if (repoValue instanceof Error) {
-    console.error(`osstack: ${repoValue.message}`);
-    return 1;
-  }
-  if (baseValue instanceof Error) {
-    console.error(`osstack: ${baseValue.message}`);
-    return 1;
-  }
-  if (remoteValue instanceof Error) {
-    console.error(`osstack: ${remoteValue.message}`);
-    return 1;
-  }
-
-  const workspacePath = workspacePathValue ?? process.cwd();
-  const remote = remoteValue ?? "origin";
-  const repo = repoValue ?? await inferGitHubRepoSlug(workspacePath, remote);
-  if (repo === undefined) {
-    console.error(`osstack: unable to infer GitHub repo from ${remote} remote; pass --repo owner/repo`);
-    return 1;
-  }
-
-  const config: BranchStewardConfig = {
-    repo,
-    base: baseValue ?? "main",
-    remote,
-    branchPrefixAllowlist: ["feat/", "feature/", "codex/"],
-    sensitivePathGlobs: [".github/workflows/", "package.json", "pnpm-lock.yaml"],
-    maxChangedFiles: 80,
-    maxBehindBy: 25,
-    prThreshold: 80,
-    autoMergeThreshold: 90,
-  };
-
-  let report: Awaited<ReturnType<typeof scanBranchStewardCandidates>>;
-  try {
-    report = await scanBranchStewardCandidates(config, undefined, { cwd: workspacePath });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(`osstack: steward scan failed: ${message}`);
-    return 1;
-  }
-  if (args.includes("--json")) {
-    console.log(JSON.stringify(report, null, 2));
-  } else {
-    console.log(renderBranchStewardReport(report));
-  }
-  return 0;
-}
-
-async function inferGitHubRepoSlug(workspacePath: string, remote: string): Promise<string | undefined> {
-  try {
-    const { stdout } = await execFileAsync("git", ["remote", "get-url", remote], {
-      cwd: workspacePath,
-      encoding: "utf-8",
-      timeout: 10_000,
-    });
-    return parseGitHubRepoSlug(String(stdout).trim());
-  } catch {
-    return undefined;
-  }
-}
-
-function stewardFlagValue(args: string[], name: string): string | undefined | Error {
-  const i = args.indexOf(name);
-  if (i < 0) return undefined;
-  const value = args[i + 1];
-  if (value === undefined || value.startsWith("--")) {
-    return new Error(`${name} requires a value`);
-  }
-  return value;
-}
-
-function parseGitHubRepoSlug(remoteUrl: string): string | undefined {
-  const match = remoteUrl.match(
-    /^(?:https:\/\/github\.com\/|git@github\.com:|ssh:\/\/git@github\.com\/)([^/\s:]+)\/([^/\s]+?)(?:\.git)?\/?$/,
-  );
-  if (match === null) return undefined;
-  return `${match[1]}/${match[2]}`;
-}
-
-async function handleGovernanceCommand(args: string[]): Promise<number> {
-  const sub = args[0];
-  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
-    console.log(`osstack governance — deterministic run governance checks
-
-  osstack govern check [path...] [--workspace P] [--changed] [--json]
-  osstack governance scan <path...> [--json]
-`);
-    return 0;
-  }
-
-  if (sub !== "scan" && sub !== "check") {
-    console.error(`osstack: unknown governance subcommand "${sub}"`);
-    return 1;
-  }
-
-  const paths = positionalValues(args.slice(1), new Set(["--workspace"])).filter((value) => value !== sub);
-  if (paths.length === 0) {
-    if (sub === "scan") {
-      console.error("osstack: governance scan requires at least one path");
-      return 1;
-    }
-    const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
-    const resolvedPaths = args.includes("--changed") || args.includes("--diff")
-      ? await collectChangedGovernanceScanFiles(workspacePath)
-      : await collectGovernanceScanFiles(workspacePath);
-    if (resolvedPaths instanceof Error) {
-      console.error(`osstack: ${resolvedPaths.message}`);
-      return 1;
-    }
-    return await runGovernanceScan(resolvedPaths, args);
-  }
-
-  return await runGovernanceScan(paths, args);
-}
-
-async function runGovernanceScan(paths: string[], args: string[]): Promise<number> {
-  const result = await scanFiles(paths);
-  const output = { ...result, scanned_files: paths };
-  if (args.includes("--json")) {
-    console.log(JSON.stringify(output, null, 2));
-  } else {
-    printGovernanceScan(result);
-  }
-  return result.ok ? 0 : 2;
-}
-
-function printGovernanceScan(result: Awaited<ReturnType<typeof scanFiles>>): void {
-  if (result.findings.length === 0) {
-    console.log("Governance scan clean.");
-    return;
-  }
-  console.log(`Governance findings: ${result.findings.length}`);
-  for (const finding of result.findings) {
-    const location = finding.file === undefined ? `line ${finding.line}` : `${finding.file}:${finding.line}`;
-    console.log(`- [${finding.severity}] ${finding.rule_id} ${location} - ${finding.message}`);
-  }
-}
-
-async function handleContractsCommand(args: string[]): Promise<number> {
-  const sub = args[0];
-  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
-    console.log(`osstack contracts — frontend/backend API contract validation
-
-  osstack contracts check [--workspace P] [--manifest P] [--json]
-
-Contract manifest:
-  osstack.contracts.json with kind=osstack.contract_manifest
-`);
-    return 0;
-  }
-  if (sub !== "check") {
-    console.error(`osstack: unknown contracts subcommand "${sub}"`);
-    return 1;
-  }
-  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
-  const manifestPath = flagValue(args, "--manifest");
-  try {
-    const report = await validateWorkspaceContracts({
-      workspacePath,
-      ...(manifestPath === undefined ? {} : { manifestPath }),
-    });
-    if (args.includes("--json")) {
-      console.log(JSON.stringify(report, null, 2));
-    } else {
-      printContractValidation(report);
-    }
-    return report.status === "pass" ? 0 : 2;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (args.includes("--json")) {
-      console.log(JSON.stringify({
-        schema_version: 1,
-        kind: "osstack.contract_validation",
-        status: "fail",
-        service: "unknown",
-        workspace_path: resolve(workspacePath),
-        manifest_path: manifestPath === undefined ? resolve(workspacePath, "osstack.contracts.json") : resolve(workspacePath, manifestPath),
-        checked_at: new Date().toISOString(),
-        endpoints: 0,
-        frontend_calls: [],
-        backend_routes: [],
-        findings: [{
-          rule_id: "contract.invalid_manifest",
-          severity: "error",
-          kind: "invalid_manifest",
-          message,
-        }],
-      }, null, 2));
-    } else {
-      console.error(`osstack: ${message}`);
-    }
-    return 1;
-  }
-}
-
-function printContractValidation(report: ContractValidationReport): void {
-  console.log(`contract_validation=${report.status}`);
-  console.log(`service=${report.service}`);
-  console.log(`endpoints=${report.endpoints}`);
-  console.log(`frontend_calls=${report.frontend_calls.length}`);
-  console.log(`backend_routes=${report.backend_routes.length}`);
-  for (const finding of report.findings) {
-    console.log(`- [${finding.severity}] ${finding.rule_id} ${finding.method ?? "?"} ${finding.path ?? "?"} - ${finding.message}`);
-  }
-}
-
-async function handleComplianceCommand(args: string[]): Promise<number> {
-  const sub = args[0];
-  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
-    console.log(`osstack compliance — evidence mapping reports
-
-  osstack compliance list [--json]
-  osstack compliance render <run_id> --pack engineering-readiness [--proof-dir P] [--workspace P] [--output P] [--lang en|zh-CN] [--json]
-
-Notes:
-  Compliance reports map osstack proof evidence to internal controls.
-  They do not claim SOC 2, ISO 27001, EU AI Act, or third-party certification.
-`);
-    return 0;
-  }
-
-  if (sub === "list") {
-    const packs = listCompliancePacks().map((pack) => ({
-      id: pack.id,
-      version: pack.version,
-      name: pack.name,
-      certification_claim: pack.certification_claim,
-      controls: pack.controls.length,
-    }));
-    if (args.includes("--json")) {
-      console.log(JSON.stringify({ packs }, null, 2));
-    } else {
-      for (const pack of packs) {
-        console.log(`${pack.id}@${pack.version} ${pack.name} claim=${pack.certification_claim} controls=${pack.controls}`);
-      }
-    }
-    return 0;
-  }
-
-  if (sub === "render") {
-    const runId = firstPositionalValue(args.slice(1), new Set(["--pack", "--proof-dir", "--workspace", "--output", "--lang"]));
-    if (runId === undefined) {
-      console.error("osstack: compliance render requires a run_id");
-      return 1;
-    }
-    const packId = flagValue(args, "--pack");
-    if (packId === undefined) {
-      console.error("osstack: compliance render requires --pack");
-      return 1;
-    }
-    let packVersion: string;
-    try {
-      packVersion = getCompliancePack(packId).version;
-    } catch (error) {
-      console.error(`osstack: ${error instanceof Error ? error.message : String(error)}`);
-      return 1;
-    }
-    const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
-    const proofDir = flagValue(args, "--proof-dir") ?? join(workspacePath, "release", `osstack-proof-${safeFileSegment(runId)}`);
-    const output = flagValue(args, "--output") ?? join(workspacePath, "reports", `compliance-${packId}-${safeFileSegment(runId)}.md`);
-    const language = resolveLanguage(flagValue(args, "--lang"));
-    const markdown = await renderComplianceReportFromProofDir({ packId, runId, proofDir, language });
-    await mkdir(dirname(output), { recursive: true });
-    await writeFile(output, markdown, "utf-8");
-    if (args.includes("--json")) {
-      console.log(JSON.stringify({ run_id: runId, pack_id: packId, pack_version: packVersion, output }, null, 2));
-    } else {
-      console.log(`compliance=${output}`);
-      console.log(`pack=${packId}@${packVersion}`);
-    }
-    return 0;
-  }
-
-  console.error(`osstack: unknown compliance subcommand "${sub}"`);
-  return 1;
-}
-
 async function handleKnowledgeCommand(args: string[]): Promise<number> {
   const sub = args[0];
   if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
@@ -6849,114 +6293,6 @@ function pitfallResolutionForFamily(family: string): string {
 function inferLessonTechStack(capability: string | undefined): string[] {
   if (capability === undefined || capability.length === 0) return ["unknown"];
   return [...new Set(capability.split(/[.:_-]+/).filter((part) => part.length > 0))];
-}
-
-async function handleSkillsCommand(args: string[]): Promise<number> {
-  const sub = args[0];
-  const path = defaultManifestPath();
-
-  if (sub === "list" || sub === undefined) {
-    const m = readManifest(path);
-    console.log(`Skill manifest: ${path}`);
-    console.log(`Schema version: ${m.version}`);
-    console.log(`Tracked sources: ${m.sources.length}`);
-    for (const s of m.sources) {
-      const blessed = s.blessed_sha === null ? "(none)" : s.blessed_sha.slice(0, 12);
-      console.log(`  • ${s.id}  ref=${s.ref}  blessed=${blessed}  auto_minor=${s.auto_minor}`);
-      console.log(`      ${s.origin}`);
-      if (s.notes) console.log(`      ${s.notes}`);
-    }
-    return 0;
-  }
-
-  if (sub === "check") {
-    const m = readManifest(path);
-    console.log(`Checking ${m.sources.length} source(s) against their tracked refs...`);
-    const result = await checkAll(m);
-    let drifted = 0;
-    for (const e of result.entries) {
-      if (!e.ok) {
-        console.log(`  ✗ ${e.source.id}  unreachable: ${e.reason}`);
-        continue;
-      }
-      if (e.drifted) {
-        drifted += 1;
-        const head = e.current_sha?.slice(0, 12) ?? "?";
-        const blessed = e.source.blessed_sha?.slice(0, 12) ?? "(none)";
-        console.log(`  ⚠ ${e.source.id}  drift  blessed=${blessed}  head=${head}  ref=${e.source.ref}`);
-      } else {
-        console.log(`  ✓ ${e.source.id}  up-to-date (${e.current_sha?.slice(0, 12)})`);
-      }
-    }
-    console.log(`\n${drifted} source(s) drifted from blessed_sha.`);
-    return drifted > 0 ? 2 : 0;
-  }
-
-  if (sub === "add") {
-    const id = args[1];
-    const origin = args[2];
-    const ref = args[3] ?? "main";
-    if (!id || !origin) {
-      console.error("usage: osstack skills add <id> <origin-url> [ref]");
-      return 1;
-    }
-    const m = readManifest(path);
-    const next = addSource(m, { id, origin, ref });
-    writeManifest(next, path);
-    console.log(`added ${id} (${origin} @ ${ref})`);
-    return 0;
-  }
-
-  if (sub === "remove") {
-    const id = args[1];
-    if (!id) { console.error("usage: osstack skills remove <id>"); return 1; }
-    const m = readManifest(path);
-    const next = removeSource(m, id);
-    writeManifest(next, path);
-    console.log(`removed ${id}`);
-    return 0;
-  }
-
-  if (sub === "bless") {
-    // Mark the current remote head as blessed for this source.
-    const id = args[1];
-    if (!id) { console.error("usage: osstack skills bless <id>"); return 1; }
-    const m = readManifest(path);
-    const src = m.sources.find((s) => s.id === id);
-    if (!src) { console.error(`no source with id=${id}`); return 1; }
-    const result = await checkAll({ version: 1, sources: [src] });
-    const entry = result.entries[0]!;
-    if (!entry.ok || !entry.current_sha) {
-      console.error(`could not fetch head: ${entry.reason}`);
-      return 1;
-    }
-    const next = addSource(m, {
-      id: src.id, origin: src.origin, ref: src.ref,
-      blessed_sha: entry.current_sha,
-      last_checked: result.generated_at,
-    });
-    writeManifest(next, path);
-    console.log(`blessed ${id} @ ${entry.current_sha.slice(0, 12)}`);
-    return 0;
-  }
-
-  if (sub === "help") {
-    console.log(`osstack skills — external skill registry (S6)
-
-  osstack skills list                       Show tracked sources + versions
-  osstack skills add <id> <origin> [ref]    Add or update a source
-  osstack skills remove <id>                Remove a source
-  osstack skills check                      Compare blessed_sha vs origin HEAD
-  osstack skills bless <id>                 Pin the current HEAD as blessed
-  osstack skills help                       This help
-
-Manifest path: ${path}
-`);
-    return 0;
-  }
-
-  console.error(`osstack: unknown skills subcommand "${sub}"`);
-  return 1;
 }
 
 type RpcResp = { ok: boolean; result?: unknown; error?: { message: string } };
@@ -8883,109 +8219,6 @@ function appendGovernanceVerifyEvent(
 
 function nextLoopEventSeq(events: LoopEvent[]): number {
   return Math.max(0, ...events.map((event) => event.seq)) + 1;
-}
-
-async function collectGovernanceScanFiles(workspacePath: string): Promise<string[]> {
-  const files: string[] = [];
-  await collectGovernanceScanFilesInto(workspacePath, files);
-  return files;
-}
-
-async function collectChangedGovernanceScanFiles(
-  workspacePath: string,
-  baselineRevision?: string,
-): Promise<string[] | Error> {
-  try {
-    const [workingTree, staged, sinceBaseline] = await Promise.all([
-      execFileAsync("git", ["-C", workspacePath, "ls-files", "--modified", "--others", "--exclude-standard"], { timeout: 10_000 }),
-      execFileAsync("git", ["-C", workspacePath, "diff", "--name-only", "--cached", "--diff-filter=ACMRT"], { timeout: 10_000 }),
-      baselineRevision === undefined
-        ? Promise.resolve({ stdout: "" })
-        : execFileAsync(
-            "git",
-            ["-C", workspacePath, "diff", "--name-only", "--diff-filter=ACMRT", baselineRevision, "HEAD"],
-            { timeout: 10_000 },
-          ),
-    ]);
-    const relativePaths = uniqueNonEmptyLines(
-      `${workingTree.stdout}\n${staged.stdout}\n${sinceBaseline.stdout}`,
-    );
-    const files: string[] = [];
-    for (const relativePath of relativePaths) {
-      if (!isGovernanceScannableFile(relativePath)) continue;
-      const absolutePath = join(workspacePath, relativePath);
-      if (await isRegularFile(absolutePath)) files.push(absolutePath);
-    }
-    return files;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return new Error(`could not collect changed files with git: ${message}`);
-  }
-}
-
-function uniqueNonEmptyLines(value: string): string[] {
-  return [...new Set(value.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0))];
-}
-
-async function isRegularFile(path: string): Promise<boolean> {
-  try {
-    return (await stat(path)).isFile();
-  } catch {
-    return false;
-  }
-}
-
-async function collectGovernanceScanFilesInto(dir: string, files: string[]): Promise<void> {
-  if (files.length >= 500) return;
-  const entries = await readdir(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (files.length >= 500) return;
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (isGovernanceExcludedDir(entry.name)) continue;
-      await collectGovernanceScanFilesInto(path, files);
-      continue;
-    }
-    if (!entry.isFile()) continue;
-    if (!isGovernanceScannableFile(entry.name)) continue;
-    files.push(path);
-  }
-}
-
-function isGovernanceExcludedDir(name: string): boolean {
-  return new Set([
-    ".git",
-    ".next",
-    ".turbo",
-    "coverage",
-    "dist",
-    "node_modules",
-    "release",
-    "reports",
-    "tmp",
-    "vendor",
-  ]).has(name);
-}
-
-function isGovernanceScannableFile(name: string): boolean {
-  if (name === ".env") return true;
-  return new Set([
-    ".cjs",
-    ".css",
-    ".html",
-    ".js",
-    ".json",
-    ".jsx",
-    ".md",
-    ".mjs",
-    ".py",
-    ".sh",
-    ".sql",
-    ".ts",
-    ".tsx",
-    ".yaml",
-    ".yml",
-  ]).has(extname(name));
 }
 
 function unknownGovernanceEvidence(reason: string): GovernanceProofEvidence {
@@ -11573,22 +10806,6 @@ interface LoopSessionSummary {
   stop_reason?: string;
   last_error?: string;
   profile?: LoopProfileSummary;
-}
-
-interface LoopDoctorResult {
-  ok: boolean;
-  workspace_path: string;
-  state_json: string;
-  daemon_checked: boolean;
-  socket_path: string;
-  checks: LoopDoctorCheck[];
-}
-
-interface LoopDoctorCheck {
-  id: string;
-  status: "ok" | "warn" | "error";
-  summary: string;
-  details?: Record<string, unknown>;
 }
 
 interface StatsResult {
