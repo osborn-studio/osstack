@@ -795,6 +795,7 @@ describe("product entry commands", () => {
     expect(result.validation_commands).toContain("pnpm preflight:npm-bootstrap");
     expect(result.validation_commands).toContain("pnpm smoke:npm-trust");
     expect(result.validation_commands).toContain("pnpm preflight:npm-trust");
+    expect(result.validation_commands).toContain("pnpm smoke:npm-publish-order");
     expect(result.validation_commands).toContain("pnpm smoke:npm-install");
     expect(result.validation_commands).toContain("gh pr view 5 --json mergeable,mergeStateStatus,statusCheckRollup,url");
     expect(result.validation_commands).toContain("gh run list --branch changeset-release/main --limit 5");
@@ -1105,6 +1106,7 @@ describe("product entry commands", () => {
     expect(result.validation_commands).toContain("pnpm preflight:npm-bootstrap");
     expect(result.validation_commands).toContain("pnpm smoke:npm-trust");
     expect(result.validation_commands).toContain("pnpm preflight:npm-trust");
+    expect(result.validation_commands).toContain("pnpm smoke:npm-publish-order");
     expect(result.validation_commands).toContain("osstack release doctor --target npm --json");
     expect(result.post_release_validation_commands).toContain("npm view @osstack/cli version --json");
     expect(result.post_release_validation_commands).toContain("npm install -g @osstack/cli");
