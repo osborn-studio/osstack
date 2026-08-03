@@ -32,7 +32,6 @@ import {
   agentAuthMode,
   defaultAdapters,
   rolesForCapabilityKinds,
-  type AgentRuntimeIdentity,
 } from "@osstack/agents";
 import {
   getCompliancePack,
@@ -46,10 +45,8 @@ import {
 } from "@osstack/compliance";
 import { validateWorkspaceContracts, type ContractValidationReport } from "@osstack/contracts";
 import {
-  getAgentScorecard,
   getLatestSuccessfulRollbackDrill,
   getRun,
-  listAgentScorecards,
   listEventsForRun,
   listPitfallLessons,
   type loadRepoConfig,
@@ -130,6 +127,7 @@ import {
   removeSource, writeManifest,
 } from "@osstack/skill-registry";
 import { startDaemon } from "./daemon.js";
+import { handleAgentCommand } from "./agent-command.js";
 import { handleConfigCommand } from "./config.js";
 import {
   handleDeliverCommand,
@@ -804,7 +802,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "agent") {
-    return await handleAgentCommand(args.slice(1));
+    return await handleAgentCommand(args.slice(1), {
+      rpc,
+      stateDbPath: ensureLocalStateDbPath,
+    });
   }
 
   if (cmd === "config") {
@@ -1042,79 +1043,6 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   console.error(`osstack: unknown command "${args.join(" ")}" — see "osstack help"`);
-  return 1;
-}
-
-async function handleAgentCommand(args: string[]): Promise<number> {
-  const sub = args[0];
-  if (sub === undefined || sub === "help" || args.includes("--help") || args.includes("-h")) {
-    console.log(`osstack agent — agent registry and performance
-
-  osstack agent list
-  osstack agent scorecard [agent_id] [--json]
-`);
-    return 0;
-  }
-
-  if (sub === "list") {
-    if (!args.includes("--daemon")) {
-      const agents = await listLocalAgentProfiles();
-      if (args.includes("--json")) {
-        console.log(JSON.stringify({ agents }, null, 2));
-      } else {
-        for (const agent of agents) {
-          console.log(`${agent.id} — ${agent.display_name}`);
-          console.log(`  roles=${agent.roles.join(",") || "(none)"}`);
-          console.log(`  auth_mode=${agent.auth_mode} cost_tier=${agent.cost_tier} available=${agent.available.available}`);
-          if (agent.runtime_identity !== undefined) {
-            console.log(`  provider=${agent.runtime_identity.provider_id} model=${agent.runtime_identity.model_id}`);
-          }
-          if (!agent.available.available && agent.available.reason !== undefined) {
-            console.log(`  unavailable_reason=${agent.available.reason}`);
-          }
-          console.log(`  capabilities=${agent.capabilities.map((capability) => capability.kind).join(",")}`);
-        }
-      }
-      return 0;
-    }
-    const resp = (await rpc("agent.list")) as { ok: boolean; result?: unknown; error?: { message: string } };
-    if (!resp.ok) {
-      console.error("osstack:", resp.error?.message ?? "agent.list failed");
-      return 1;
-    }
-    console.log(JSON.stringify(resp.result, null, 2));
-    return 0;
-  }
-
-  if (sub === "scorecard") {
-    const agentId = positionalValues(args.slice(1), new Set()).find((value) => value !== "scorecard");
-    const dbPath = await ensureLocalStateDbPath();
-    const db = openDb({ path: dbPath });
-    try {
-      if (agentId !== undefined) {
-        const scorecard = getAgentScorecard(db, agentId);
-        if (args.includes("--json")) {
-          console.log(JSON.stringify(scorecard, null, 2));
-        } else {
-          printAgentScorecard(scorecard);
-        }
-        return 0;
-      }
-      const scorecards = listAgentScorecards(db);
-      if (args.includes("--json")) {
-        console.log(JSON.stringify({ scorecards }, null, 2));
-      } else if (scorecards.length === 0) {
-        console.log("No agent run history yet.");
-      } else {
-        for (const scorecard of scorecards) printAgentScorecard(scorecard);
-      }
-      return 0;
-    } finally {
-      db.close();
-    }
-  }
-
-  console.error(`osstack: unknown agent subcommand "${sub}"`);
   return 1;
 }
 
@@ -5270,64 +5198,6 @@ More workflows:
 osstack examples
 \`\`\`
 `;
-}
-
-async function listLocalAgentProfiles(): Promise<Array<{
-  id: string;
-  display_name: string;
-  cost_tier: string;
-  auth_mode: string;
-  roles: string[];
-  capabilities: Array<{ id: string; kind: string; description: string; cost_tier: string }>;
-  available: { available: boolean; reason?: string; last_checked_at: number };
-  runtime_identity?: AgentRuntimeIdentity;
-}>> {
-  return await Promise.all(defaultAdapters().map(async (adapter) => {
-    const capabilities = adapter.capabilities();
-    const available = await adapter.isAvailable();
-    let runtimeIdentity: AgentRuntimeIdentity | undefined;
-    if (adapter.runtimeIdentity !== undefined) {
-      try {
-        runtimeIdentity = await adapter.runtimeIdentity();
-      } catch {
-        runtimeIdentity = undefined;
-      }
-    }
-    return {
-      id: adapter.id,
-      display_name: adapter.display_name,
-      cost_tier: adapter.cost_tier,
-      auth_mode: agentAuthMode(adapter.id),
-      roles: rolesForCapabilityKinds(capabilities.map((capability) => capability.kind)),
-      capabilities: capabilities.map((capability) => ({
-        id: capability.id,
-        kind: capability.kind,
-        description: capability.description,
-        cost_tier: capability.cost_tier,
-      })),
-      available,
-      ...(runtimeIdentity !== undefined
-        ? { runtime_identity: runtimeIdentity }
-        : {}),
-    };
-  }));
-}
-
-function printAgentScorecard(scorecard: ReturnType<typeof getAgentScorecard>): void {
-  console.log(`${scorecard.agent_id}`);
-  console.log(`  runs=${scorecard.total_runs} completed=${scorecard.completed_runs} failed=${scorecard.failed_runs} success=${Math.round(scorecard.success_rate * 100)}%`);
-  console.log(`  avg_duration_ms=${scorecard.avg_duration_ms ?? "unknown"} cost_tier=${scorecard.cost_tier} fit=${scorecard.capability_fit}`);
-  const adapter = defaultAdapters().find((candidate) => candidate.id === scorecard.agent_id);
-  const scorecardKinds = scorecard.best_task_kinds.map((kind) => kind.kind);
-  const roles = rolesForCapabilityKinds(adapter?.capabilities().map((capability) => capability.kind) ?? scorecardKinds);
-  if (roles.length > 0) console.log(`  roles=${roles.join(",")}`);
-  console.log(`  recent_failures=${scorecard.recent_failures}`);
-  if (scorecard.best_task_kinds.length > 0) {
-    console.log(`  best_task_kinds=${scorecard.best_task_kinds.map((kind) => `${kind.kind}:${Math.round(kind.success_rate * 100)}%`).join(", ")}`);
-  }
-  if (scorecard.warnings.length > 0) {
-    console.log(`  warnings=${scorecard.warnings.join("; ")}`);
-  }
 }
 
 function printStewardHelp(): void {
