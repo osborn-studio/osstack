@@ -23,6 +23,32 @@ export interface UpdateCheckCache {
   reason?: string;
 }
 
+export function isUpdateCacheFresh(
+  cache: UpdateCheckCache | null,
+  nowSeconds = Date.now() / 1000,
+  currentVersion = VERSION,
+): boolean {
+  return cache !== null
+    && cache.current === currentVersion
+    && nowSeconds - cache.checked_at < UPDATE_CHECK_INTERVAL_MS / 1000;
+}
+
+export function renderUpdateCheckStatus(
+  cache: UpdateCheckCache | null,
+  currentVersion = VERSION,
+): string {
+  if (cache !== null && cache.current !== currentVersion) {
+    return "registry latest:  unknown (version cache refresh pending)";
+  }
+  if (cache?.update_available && typeof cache.latest === "string") {
+    return `update available: ${cache.latest} (run: osstack upgrade)`;
+  }
+  if (cache?.latest != null) {
+    return `registry latest:  ${cache.latest} (up to date)`;
+  }
+  return "registry latest:  unknown (no successful probe yet)";
+}
+
 export function updateCheckEnabled(): boolean {
   return process.env["OSSTACK_UPDATE_CHECK"] !== "0";
 }
@@ -86,9 +112,7 @@ export function startUpdateChecker(): () => void {
   if (!updateCheckEnabled()) return () => { /* disabled */ };
   const probeIfStale = (): void => {
     const cache = readUpdateCache();
-    const fresh = cache !== null
-      && Date.now() / 1000 - cache.checked_at < UPDATE_CHECK_INTERVAL_MS / 1000;
-    if (!fresh) void runUpdateCheck();
+    if (!isUpdateCacheFresh(cache)) void runUpdateCheck();
   };
   const initial = setTimeout(probeIfStale, 60_000);
   initial.unref();
