@@ -12,6 +12,7 @@
   ],
   "scripts": {
     "build": "tsc -p .",
+    "prepack": "node ../../scripts/prepare-npm-package.mjs",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit"
   },

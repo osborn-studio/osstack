@@ -114,6 +114,12 @@ jobs:
       - name: NPM install smoke
         run: pnpm smoke:npm-install
 
+      - name: NPM package artifact smoke
+        run: pnpm smoke:npm-package-artifacts
+
+      - name: NPM registry skew smoke
+        run: pnpm smoke:npm-registry-skew
+
       - name: NPM preflight smoke
         run: pnpm smoke:npm-preflight
 
