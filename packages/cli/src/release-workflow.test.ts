@@ -51,3 +51,16 @@ describe("trustedPublishingWorkflowViolations", () => {
     expect(ciWorkflow).toContain("pnpm smoke:npm-publish-order");
   });
 });
+
+describe("CLI-backed root scripts", () => {
+  it.each([
+    "smoke:release-plan",
+    "smoke:neat",
+    "eval:neat-goldens",
+    "eval:neat-parity:offline",
+  ])("builds workspace dependencies before running %s", (scriptName) => {
+    const manifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+
+    expect(manifest.scripts[scriptName]).toContain("pnpm --filter @osstack/cli... build");
+  });
+});
