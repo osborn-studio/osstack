@@ -23,6 +23,7 @@ describe("Codex local read-only memory adapter", () => {
     await writeFile(join(memory, "index.json"), '{"generated":true}\n');
     await writeFile(join(outside, "SECRET.md"), "must not be read\n");
     await symlink(join(outside, "SECRET.md"), join(memory, "linked-secret.md"));
+    await symlink(outside, join(memory, "linked-outside"), "dir");
 
     const before = await readFile(join(memory, "project", "summary.md"), "utf8");
     const result = await runKnowledgeSurfaceAdapter(
@@ -58,7 +59,7 @@ describe("Codex local read-only memory adapter", () => {
     ]);
     expect(result.inventory.completeness).toMatchObject({
       complete: false,
-      skipped_files: 1,
+      skipped_files: 2,
     });
     expect(JSON.stringify(result.inventory)).not.toContain("private generated summary");
     expect(JSON.stringify(result.inventory)).not.toContain("SECRET.md");
@@ -101,5 +102,35 @@ describe("Codex local read-only memory adapter", () => {
     );
 
     expect(result.status).toBe("absent");
+  });
+
+  it("does not read file content beyond the per-file byte limit", async () => {
+    const home = await fakeHome();
+    const memory = join(home, "memories");
+    await mkdir(memory);
+    await writeFile(join(memory, "oversized.bin"), Buffer.alloc(2 * 1024 * 1024 + 1));
+
+    const result = await runKnowledgeSurfaceAdapter(
+      CODEX_LOCAL_MEMORY_ADAPTER_V1,
+      {
+        repo_root: "/fixture/repo",
+        enabled: true,
+        options: { memory_directory: memory },
+      },
+    );
+
+    expect(result.status).toBe("available");
+    if (result.status !== "available") throw new Error("expected inventory");
+    expect(result.inventory.surfaces).toEqual([
+      expect.objectContaining({
+        path: "codex-local://generated-memory/oversized.bin",
+        bytes: 2 * 1024 * 1024 + 1,
+      }),
+    ]);
+    expect(result.inventory.surfaces[0]).not.toHaveProperty("sha256");
+    expect(result.inventory.completeness).toMatchObject({
+      complete: false,
+      skipped_files: 1,
+    });
   });
 });

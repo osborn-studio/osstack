@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
-import { lstat, open, readdir } from "node:fs/promises";
-import { isAbsolute, join, posix, resolve } from "node:path";
+import { lstat, open, readdir, realpath } from "node:fs/promises";
+import type { FileHandle } from "node:fs/promises";
+import { isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import { z } from "zod";
 import {
   KnowledgeSurfaceInventoryV1,
@@ -22,6 +23,7 @@ export const CODEX_LOCAL_MEMORY_ADAPTER_VERSION = "1";
 const MAX_ADAPTER_FILES = 1_000;
 const MAX_ADAPTER_FILE_BYTES = 2 * 1024 * 1024;
 const MAX_ADAPTER_DEPTH = 16;
+const MAX_ADAPTER_ENTRIES = 5_000;
 
 const optionsSchema = z.object({
   memory_directory: z.string().min(1).optional(),
@@ -53,6 +55,14 @@ function configuredRoot(input: AdapterDetectionInputV1): string | undefined {
 
 function portablePath(relativePath: string): string {
   return `codex-local://generated-memory/${relativePath}`;
+}
+
+function isWithinRoot(root: string, candidate: string): boolean {
+  const pathFromRoot = relative(root, candidate);
+  return pathFromRoot === ""
+    || (!pathFromRoot.startsWith(`..${sep}`)
+      && pathFromRoot !== ".."
+      && !isAbsolute(pathFromRoot));
 }
 
 const adapterMetadata = {
@@ -96,16 +106,62 @@ async function inventory(
   const reasons: string[] = [];
   let recognizedFiles = 0;
   let skippedFiles = 0;
+  let visitedEntries = 0;
+  let traversalStopped = false;
 
   const skip = (reason: string): void => {
     skippedFiles += 1;
     reasons.push(reason);
   };
 
+  let canonicalRoot: string;
+  try {
+    const metadata = await lstat(root);
+    if (metadata.isSymbolicLink() || !metadata.isDirectory()) {
+      skip("Codex generated-memory root changed after detection");
+      return KnowledgeSurfaceInventoryV1.parse({
+        surfaces,
+        completeness: { complete: false, skipped_files: skippedFiles, reasons },
+      });
+    }
+    canonicalRoot = await realpath(root);
+  } catch (error) {
+    if (errorCode(error) !== "ENOENT") throw error;
+    skip("Codex generated-memory root disappeared after detection");
+    return KnowledgeSurfaceInventoryV1.parse({
+      surfaces,
+      completeness: { complete: false, skipped_files: skippedFiles, reasons },
+    });
+  }
+
   const visit = async (directory: string, relativeDirectory: string, depth: number): Promise<void> => {
+    if (traversalStopped) return;
+    let resolvedDirectory: string;
+    try {
+      const metadata = await lstat(directory);
+      resolvedDirectory = await realpath(directory);
+      if (
+        metadata.isSymbolicLink()
+        || !metadata.isDirectory()
+        || !isWithinRoot(canonicalRoot, resolvedDirectory)
+      ) {
+        skip(`Codex generated-memory directory traversal rejected: ${portablePath(relativeDirectory)}`);
+        return;
+      }
+    } catch (error) {
+      if (errorCode(error) !== "ENOENT") throw error;
+      skip(`Codex generated-memory directory changed during read: ${portablePath(relativeDirectory)}`);
+      return;
+    }
     const entries = (await readdir(directory, { withFileTypes: true }))
       .sort((left, right) => left.name.localeCompare(right.name, "en"));
     for (const entry of entries) {
+      visitedEntries += 1;
+      if (visitedEntries > MAX_ADAPTER_ENTRIES) {
+        skip(`Codex generated-memory entry limit exceeded: ${MAX_ADAPTER_ENTRIES}`);
+        traversalStopped = true;
+        return;
+      }
       const relativePath = relativeDirectory === ""
         ? entry.name
         : posix.join(relativeDirectory, entry.name);
@@ -129,14 +185,22 @@ async function inventory(
       recognizedFiles += 1;
       if (recognizedFiles > MAX_ADAPTER_FILES) {
         skip(`Codex generated-memory file limit exceeded: ${MAX_ADAPTER_FILES}`);
-        continue;
+        traversalStopped = true;
+        return;
       }
 
       const absolutePath = join(directory, entry.name);
-      const handle = await open(
-        absolutePath,
-        constants.O_RDONLY | constants.O_NOFOLLOW,
-      );
+      let handle: FileHandle;
+      try {
+        handle = await open(
+          absolutePath,
+          constants.O_RDONLY | constants.O_NOFOLLOW,
+        );
+      } catch (error) {
+        if (!["ELOOP", "ENOENT"].includes(errorCode(error) ?? "")) throw error;
+        skip(`Codex generated-memory entry changed during read: ${path}`);
+        continue;
+      }
       try {
         const metadata = await handle.stat();
         if (!metadata.isFile()) {
@@ -155,14 +219,26 @@ async function inventory(
           });
           continue;
         }
-        const buffer = await handle.readFile();
+        const buffer = Buffer.alloc(metadata.size);
+        let bytesRead = 0;
+        while (bytesRead < buffer.byteLength) {
+          const result = await handle.read(
+            buffer,
+            bytesRead,
+            buffer.byteLength - bytesRead,
+            bytesRead,
+          );
+          if (result.bytesRead === 0) break;
+          bytesRead += result.bytesRead;
+        }
+        const boundedContent = buffer.subarray(0, bytesRead);
         surfaces.push({
           surface: "memory",
           path,
           kind: "file",
           exists: true,
-          bytes: buffer.byteLength,
-          sha256: createHash("sha256").update(buffer).digest("hex"),
+          bytes: boundedContent.byteLength,
+          sha256: createHash("sha256").update(boundedContent).digest("hex"),
           adapter: adapterMetadata,
         });
       } finally {
