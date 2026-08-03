@@ -11,10 +11,15 @@
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import { query, type Options, type SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { CapabilitySchema, type Capability, type CostTier } from "@osstack/core";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { BaseAgentAdapter, type AgentAvailability, type AgentTask } from "../base.js";
+import type {
+  AgentSessionCapabilities,
+  AgentSessionEvent,
+  AgentSessionInput,
+} from "../session.js";
 
 const CAPABILITIES: readonly Capability[] = [
   CapabilitySchema.parse({
@@ -49,6 +54,15 @@ const CAPABILITIES: readonly Capability[] = [
 ];
 
 function now(): number { return Date.now() / 1000; }
+
+function sanitizeAssistantText(value: string): string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: relay text must remove ASCII controls before transport
+  return value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "").slice(0, 4_000);
+}
+
+function sanitizeSummary(value: string): string {
+  return sanitizeAssistantText(value).slice(0, 1_000);
+}
 
 function envelope(task: AgentTask, seq: number, terminal: boolean): Omit<HermesEvent, "type" | "payload"> {
   return {
@@ -238,19 +252,166 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
     return CAPABILITIES;
   }
 
+  sessionCapabilities(): AgentSessionCapabilities {
+    return { resume: true, snapshot: true };
+  }
+
   async isAvailable(): Promise<AgentAvailability> {
     const hermes_home = process.env["HERMES_HOME"] ?? join(process.env["HOME"] ?? "", ".hermes");
     const has_anthropic_key = Boolean(process.env["ANTHROPIC_API_KEY"]);
+    const has_claude_oauth = Boolean(process.env["CLAUDE_CODE_OAUTH_TOKEN"]);
     const has_hermes_auth = existsSync(join(hermes_home, "config.yaml"))
                          || existsSync(join(hermes_home, "auth.json"));
-    if (has_anthropic_key || has_hermes_auth) {
+    if (has_anthropic_key || has_claude_oauth || has_hermes_auth) {
       return { available: true, last_checked_at: Math.floor(now()) };
     }
     return {
       available: false,
-      reason: "No ANTHROPIC_API_KEY in env and no Hermes auth found. Run `hermes login anthropic` or export ANTHROPIC_API_KEY.",
+      reason: "No ANTHROPIC_API_KEY, CLAUDE_CODE_OAUTH_TOKEN, or Hermes auth found.",
       last_checked_at: Math.floor(now()),
     };
+  }
+
+  startSession(task: AgentTask, signal: AbortSignal): AsyncIterable<AgentSessionEvent> {
+    return this.runSession(task.prompt, task.context, signal);
+  }
+
+  resumeSession(input: AgentSessionInput, signal: AbortSignal): AsyncIterable<AgentSessionEvent> {
+    return this.runSession(input.prompt, input.context, signal, input.native_session_id);
+  }
+
+  private async *runSession(
+    prompt: string,
+    context: Record<string, unknown> | undefined,
+    signal: AbortSignal,
+    expectedNativeSessionId?: string,
+  ): AsyncIterable<AgentSessionEvent> {
+    yield { type: "session.state", state: "running" };
+    if (signal.aborted) {
+      yield { type: "session.terminal", state: "cancelled" };
+      return;
+    }
+
+    const options: Options = {};
+    const repoPath = typeof context?.["repo_path"] === "string"
+      ? context["repo_path"]
+      : undefined;
+    if (repoPath !== undefined) options.cwd = repoPath;
+    if (expectedNativeSessionId !== undefined) options.resume = expectedNativeSessionId;
+    if (process.env["OSSTACK_AUTOAPPROVE"] === "1") {
+      options.permissionMode = "bypassPermissions";
+      options.allowDangerouslySkipPermissions = true;
+    }
+
+    const stream = query({ prompt, options });
+    let nativeSessionId: string | undefined;
+    let terminalEmitted = false;
+    let assistantTextEmitted = false;
+    try {
+      for await (const message of stream) {
+        if (signal.aborted) {
+          stream.close?.();
+          terminalEmitted = true;
+          yield { type: "session.terminal", state: "cancelled" };
+          return;
+        }
+
+        const raw = message as unknown as Record<string, unknown>;
+        const candidate = raw["type"] === "system" && raw["subtype"] === "init"
+          ? raw["session_id"]
+          : undefined;
+        if (nativeSessionId === undefined && typeof candidate === "string" && candidate.length > 0) {
+          if (expectedNativeSessionId !== undefined && candidate !== expectedNativeSessionId) {
+            stream.close?.();
+            terminalEmitted = true;
+            yield {
+              type: "session.terminal",
+              state: "failed",
+              error_code: "native_session_mismatch",
+              summary: "Claude resume returned a different native session",
+            };
+            return;
+          }
+          nativeSessionId = candidate;
+          yield { type: "native_session.started", native_session_id: candidate };
+        }
+
+        if (raw["type"] === "assistant") {
+          const sdkMessage = raw["message"] as {
+            id?: unknown;
+            content?: Array<{ type?: unknown; text?: unknown }>;
+          } | undefined;
+          for (const block of sdkMessage?.content ?? []) {
+            if (block.type === "text" && typeof block.text === "string") {
+              const text = sanitizeAssistantText(block.text);
+              if (text.length === 0) continue;
+              assistantTextEmitted = true;
+              yield {
+                type: "assistant.message",
+                message_id: typeof sdkMessage?.id === "string" ? sdkMessage.id : "assistant",
+                text,
+              };
+            }
+          }
+          continue;
+        }
+
+        if (raw["type"] === "result") {
+          const success = raw["subtype"] === "success";
+          terminalEmitted = true;
+          if (success) {
+            const result = typeof raw["result"] === "string" ? raw["result"] : undefined;
+            const fallbackText = result === undefined ? "" : sanitizeAssistantText(result);
+            if (!assistantTextEmitted && fallbackText.length > 0) {
+              yield {
+                type: "assistant.message",
+                message_id: "result",
+                text: fallbackText,
+              };
+            }
+            yield {
+              type: "session.terminal",
+              state: "completed",
+              ...(result === undefined ? {} : { summary: sanitizeSummary(result) }),
+            };
+          } else {
+            const errors = Array.isArray(raw["errors"])
+              ? raw["errors"].filter((item): item is string => typeof item === "string").join("; ")
+              : String(raw["subtype"] ?? "Claude session failed");
+            yield {
+              type: "session.terminal",
+              state: "failed",
+              error_code: "claude_session_failed",
+              summary: sanitizeSummary(errors),
+            };
+          }
+          return;
+        }
+      }
+
+      if (nativeSessionId === undefined) {
+        terminalEmitted = true;
+        yield {
+          type: "session.terminal",
+          state: "failed",
+          error_code: "native_session_missing",
+          summary: "Claude completed without a session id",
+        };
+      } else {
+        terminalEmitted = true;
+        yield { type: "session.terminal", state: "completed" };
+      }
+    } catch (error) {
+      terminalEmitted = true;
+      yield {
+        type: "session.terminal",
+        state: "failed",
+        error_code: "claude_adapter_threw",
+        summary: sanitizeSummary(error instanceof Error ? error.message : String(error)),
+      };
+    } finally {
+      if (!terminalEmitted && signal.aborted) stream.close?.();
+    }
   }
 
   async *invoke(task: AgentTask, signal: AbortSignal): AsyncIterable<HermesEvent> {

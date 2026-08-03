@@ -26,9 +26,15 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { createInterface } from "node:readline";
 import { CapabilitySchema, type Capability, type CostTier } from "@osstack/core";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { BaseAgentAdapter, type AgentAvailability, type AgentTask } from "../base.js";
+import type {
+  AgentSessionCapabilities,
+  AgentSessionEvent,
+  AgentSessionInput,
+} from "../session.js";
 
 const CAPABILITIES: readonly Capability[] = [
   CapabilitySchema.parse({
@@ -66,6 +72,15 @@ function now(): number { return Date.now() / 1000; }
 
 function singleLine(value: string): string {
   return value.replace(/\s+/g, " ").trim().slice(0, 240);
+}
+
+function sanitizeAssistantText(value: string): string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: relay text must remove ASCII controls before transport
+  return value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "").slice(0, 4_000);
+}
+
+function sanitizeSummary(value: string): string {
+  return sanitizeAssistantText(value).slice(0, 1_000);
 }
 
 function envelope(task: AgentTask, seq: number, terminal: boolean): Omit<HermesEvent, "type" | "payload"> {
@@ -258,44 +273,64 @@ export class CodexCliAdapter extends BaseAgentAdapter {
     return CAPABILITIES;
   }
 
+  sessionCapabilities(): AgentSessionCapabilities {
+    return { resume: true, snapshot: true };
+  }
+
   async isAvailable(): Promise<AgentAvailability> {
     try {
       const out = await this.runCheck();
-      if (out.ok) return { available: true, last_checked_at: Math.floor(now()) };
+      if (out.ok) {
+        return { available: true, status: "available", last_checked_at: Math.floor(now()) };
+      }
       return out.reason !== undefined
-        ? { available: false, reason: out.reason, last_checked_at: Math.floor(now()) }
-        : { available: false, last_checked_at: Math.floor(now()) };
+        ? {
+            available: false,
+            status: out.status ?? "installed_but_broken",
+            reason: out.reason,
+            last_checked_at: Math.floor(now()),
+          }
+        : {
+            available: false,
+            status: out.status ?? "installed_but_broken",
+            last_checked_at: Math.floor(now()),
+          };
     } catch (err) {
       return {
         available: false,
+        status: "installed_but_broken",
         reason: `codex probe failed: ${err instanceof Error ? err.message : String(err)}`,
         last_checked_at: Math.floor(now()),
       };
     }
   }
 
-  private runCheck(): Promise<{ ok: boolean; reason?: string }> {
+  private runCheck(): Promise<{
+    ok: boolean;
+    status?: AgentAvailability["status"];
+    reason?: string;
+  }> {
     return new Promise((resolve) => {
       const codexDir = join(process.env["HOME"] ?? "", ".codex");
       const hasConfig = existsSync(codexDir);
       if (!hasConfig) {
-        resolve({ ok: false, reason: `codex installed but ~/.codex not configured. Run \`codex login\`.` });
+        resolve({
+          ok: false,
+          status: "not_authenticated",
+          reason: `codex installed but ~/.codex not configured. Run \`codex login\`.`,
+        });
         return;
       }
-      const p = spawn(this.bin, [
-        "exec",
-        "--json",
-        "--skip-git-repo-check",
-        "-s",
-        this.sandbox,
-        "-C",
-        this.cwd,
-        "Dry-run health check. Reply exactly: ok",
-      ], { stdio: ["ignore", "pipe", "pipe"] });
-      let stdout = "";
+      const p = spawn(this.bin, ["exec", "resume", "--help"], {
+        stdio: ["ignore", "ignore", "pipe"],
+      });
       let stderr = "";
       let settled = false;
-      const finish = (result: { ok: boolean; reason?: string }) => {
+      const finish = (result: {
+        ok: boolean;
+        status?: AgentAvailability["status"];
+        reason?: string;
+      }) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
@@ -303,19 +338,166 @@ export class CodexCliAdapter extends BaseAgentAdapter {
       };
       const timer = setTimeout(() => {
         p.kill("SIGTERM");
-        finish({ ok: false, reason: `codex dry-run timed out after ${this.probeTimeoutMs}ms` });
+        finish({
+          ok: false,
+          status: "installed_but_broken",
+          reason: `codex resume preflight timed out after ${this.probeTimeoutMs}ms`,
+        });
       }, this.probeTimeoutMs);
-      p.stdout.on("data", (c) => { stdout += String(c); });
       p.stderr.on("data", (c) => { stderr += String(c); });
       p.on("error", (err) => {
-        finish({ ok: false, reason: `codex binary not found on PATH (${this.bin}): ${err.message}` });
+        const notInstalled = (err as NodeJS.ErrnoException).code === "ENOENT";
+        finish({
+          ok: false,
+          status: notInstalled ? "not_installed" : "installed_but_broken",
+          reason: `codex binary failed (${this.bin}): ${err.message}`,
+        });
       });
       p.on("exit", (code) => {
-        if (code === 0 && stdout.includes("turn.completed")) finish({ ok: true });
-        else if (code === 0) finish({ ok: false, reason: "codex dry-run exited 0 but did not emit a completed turn" });
-        else finish({ ok: false, reason: `codex dry-run exited ${code}: ${singleLine(stderr || stdout)}` });
+        if (code === 0) finish({ ok: true, status: "available" });
+        else finish({
+          ok: false,
+          status: "installed_but_broken",
+          reason: `codex resume preflight exited ${code}: ${singleLine(stderr)}`,
+        });
       });
     });
+  }
+
+  startSession(task: AgentTask, signal: AbortSignal): AsyncIterable<AgentSessionEvent> {
+    const cwd = typeof task.context?.["repo_path"] === "string"
+      ? task.context["repo_path"]
+      : this.cwd;
+    return this.runSession([
+      "exec", "--json", "--skip-git-repo-check",
+      "-s", this.sandbox, "-C", cwd, task.prompt,
+    ], signal);
+  }
+
+  resumeSession(input: AgentSessionInput, signal: AbortSignal): AsyncIterable<AgentSessionEvent> {
+    const cwd = typeof input.context?.["repo_path"] === "string"
+      ? input.context["repo_path"]
+      : this.cwd;
+    // Current Codex CLI models resume as an exec subcommand. Parent flags must
+    // precede `resume`; the fake-binary test locks this argv contract.
+    return this.runSession([
+      "exec", "--json", "--skip-git-repo-check",
+      "-s", this.sandbox, "-C", cwd,
+      "resume", input.native_session_id, input.prompt,
+    ], signal, input.native_session_id);
+  }
+
+  private async *runSession(
+    args: string[],
+    signal: AbortSignal,
+    expectedNativeSessionId?: string,
+  ): AsyncIterable<AgentSessionEvent> {
+    yield { type: "session.state", state: "running" };
+    if (signal.aborted) {
+      yield { type: "session.terminal", state: "cancelled" };
+      return;
+    }
+
+    const proc = spawn(this.bin, args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env },
+    });
+    const stderr: string[] = [];
+    let spawnError: Error | undefined;
+    proc.stderr.on("data", (chunk) => stderr.push(String(chunk)));
+    proc.on("error", (error) => { spawnError = error; });
+    const onAbort = (): void => { proc.kill("SIGTERM"); };
+    signal.addEventListener("abort", onAbort);
+
+    let nativeSessionId: string | undefined;
+    let terminalEmitted = false;
+    try {
+      const lines = createInterface({ input: proc.stdout, crlfDelay: Number.POSITIVE_INFINITY });
+      for await (const line of lines) {
+        let event: Record<string, unknown>;
+        try {
+          event = JSON.parse(line) as Record<string, unknown>;
+        } catch {
+          continue;
+        }
+        const type = String(event["type"] ?? "");
+        if (type === "thread.started") {
+          const candidate = event["thread_id"];
+          if (typeof candidate !== "string" || candidate.length === 0) continue;
+          if (expectedNativeSessionId !== undefined && candidate !== expectedNativeSessionId) {
+            terminalEmitted = true;
+            yield {
+              type: "session.terminal",
+              state: "failed",
+              error_code: "native_session_mismatch",
+              summary: "Codex resume returned a different native session",
+            };
+            proc.kill("SIGTERM");
+            return;
+          }
+          nativeSessionId = candidate;
+          yield { type: "native_session.started", native_session_id: candidate };
+          continue;
+        }
+        if (type === "item.completed") {
+          const item = event["item"] as Record<string, unknown> | undefined;
+          if (
+            nativeSessionId !== undefined
+            && item?.["type"] === "agent_message"
+            && typeof item["text"] === "string"
+          ) {
+            yield {
+              type: "assistant.message",
+              message_id: typeof item["id"] === "string" ? item["id"] : "assistant",
+              text: sanitizeAssistantText(item["text"]),
+            };
+          }
+          continue;
+        }
+        if (type === "error") {
+          terminalEmitted = true;
+          proc.kill("SIGTERM");
+          yield {
+            type: "session.terminal",
+            state: "failed",
+            error_code: "codex_error",
+            summary: sanitizeSummary(String(event["message"] ?? "Codex error")),
+          };
+          return;
+        }
+      }
+
+      const exitCode = await new Promise<number | null>((resolve) => {
+        if (proc.exitCode !== null) resolve(proc.exitCode);
+        else proc.once("exit", resolve);
+      });
+      if (signal.aborted) {
+        terminalEmitted = true;
+        yield { type: "session.terminal", state: "cancelled" };
+      } else if (spawnError !== undefined || exitCode !== 0) {
+        terminalEmitted = true;
+        yield {
+          type: "session.terminal",
+          state: "failed",
+          error_code: "codex_nonzero_exit",
+          summary: sanitizeSummary(spawnError?.message ?? (stderr.join("") || `exit ${exitCode}`)),
+        };
+      } else if (nativeSessionId === undefined) {
+        terminalEmitted = true;
+        yield {
+          type: "session.terminal",
+          state: "failed",
+          error_code: "native_session_missing",
+          summary: "Codex completed without a thread id",
+        };
+      } else {
+        terminalEmitted = true;
+        yield { type: "session.terminal", state: "completed" };
+      }
+    } finally {
+      signal.removeEventListener("abort", onAbort);
+      if (!terminalEmitted && proc.exitCode === null) proc.kill("SIGTERM");
+    }
   }
 
   async *invoke(task: AgentTask, signal: AbortSignal): AsyncIterable<HermesEvent> {

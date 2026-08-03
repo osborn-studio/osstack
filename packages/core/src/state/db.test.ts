@@ -10,6 +10,13 @@ beforeEach(() => { tmp = mkdtempSync(join(tmpdir(), "osstack-db-")); });
 afterEach(() => { rmSync(tmp, { recursive: true, force: true }); });
 
 describe("openDb + runMigrations", () => {
+  it("keeps migration ids unique and strictly increasing", () => {
+    const ids = MIGRATIONS.map((migration) => migration.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toEqual([...ids].sort((left, right) => left - right));
+    expect(ids.at(-1)).toBe(CURRENT_SCHEMA_VERSION);
+  });
+
   it("creates the db file and applies the initial schema", () => {
     const path = join(tmp, "state.db");
     const db = openDb({ path });
@@ -21,6 +28,9 @@ describe("openDb + runMigrations", () => {
       const rows = db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all() as { name: string }[];
       const names = rows.map((r) => r.name);
       for (const t of ["tasks", "runs", "events", "agents", "approvals", "clarifies", "memory_facts"]) {
+        expect(names).toContain(t);
+      }
+      for (const t of ["agent_sessions", "session_turns", "session_messages"]) {
         expect(names).toContain(t);
       }
     } finally {

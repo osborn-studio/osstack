@@ -16,6 +16,8 @@ export type AgentId = string;
 
 export interface AgentAvailability {
   available: boolean;
+  /** Stable preflight classification for control-plane decisions. */
+  status?: "available" | "not_authenticated" | "installed_but_broken" | "not_installed";
   /** Human-readable reason when unavailable (missing key, bin not on PATH, ...). */
   reason?: string;
   /** Last successful probe time (unix seconds). */
@@ -77,6 +79,10 @@ export interface AgentAdapter {
    */
   invoke(task: AgentTask, signal: AbortSignal): AsyncIterable<HermesEvent>;
 }
+
+// Resumable conversation support is deliberately a separate structural
+// capability. See session.ts and isSessionCapableAdapter(): existing one-shot
+// adapters continue to satisfy AgentAdapter without implementing fake resume.
 
 /**
  * Helper base class: keeps the common fields and forces subclasses to

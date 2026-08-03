@@ -7,23 +7,122 @@
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AgentTask } from "../base.js";
+import type { AgentSessionEvent, AgentSessionInput } from "../session.js";
 
 // Hoisted so the vi.mock factory (which is hoisted above imports) can capture a
 // stable reference; each test assigns the fake SDK message stream it wants.
-const sdk = vi.hoisted(() => ({ messages: [] as unknown[] }));
+const sdk = vi.hoisted(() => ({ messages: [] as unknown[], calls: [] as unknown[] }));
+const repoPath = "/tmp/osstack-claude-session-test";
 
 vi.mock("@anthropic-ai/claude-agent-sdk", () => ({
-  query: () =>
-    (async function* () {
+  query: (input: unknown) => {
+    sdk.calls.push(input);
+    return (async function* () {
       for (const message of sdk.messages) yield message;
-    })(),
+    })();
+  },
 }));
 
 import { ClaudeCodeAdapter } from "./claude-code.js";
 
 afterEach(() => {
   sdk.messages = [];
+  sdk.calls = [];
   vi.clearAllMocks();
+});
+
+describe("ClaudeCodeAdapter resumable sessions", () => {
+  it("recognizes a dedicated Claude OAuth token as available headless auth", async () => {
+    const previous = process.env["CLAUDE_CODE_OAUTH_TOKEN"];
+    process.env["CLAUDE_CODE_OAUTH_TOKEN"] = "test-oauth-token";
+    try {
+      await expect(new ClaudeCodeAdapter().isAvailable()).resolves.toMatchObject({
+        available: true,
+      });
+    } finally {
+      if (previous === undefined) delete process.env["CLAUDE_CODE_OAUTH_TOKEN"];
+      else process.env["CLAUDE_CODE_OAUTH_TOKEN"] = previous;
+    }
+  });
+
+  it("captures the SDK session id and resumes it without reconstructing context", async () => {
+    sdk.messages = [
+      { type: "system", subtype: "hook_started", session_id: "hook-ephemeral-id" },
+      { type: "system", subtype: "hook_response", session_id: "hook-ephemeral-id" },
+      { type: "system", subtype: "init", session_id: "claude-session-uuid" },
+      {
+        type: "assistant",
+        session_id: "claude-session-uuid",
+        message: { id: "m1", content: [{ type: "text", text: "继续完成。" }] },
+      },
+      {
+        type: "result",
+        subtype: "success",
+        session_id: "claude-session-uuid",
+        result: "done",
+      },
+    ];
+    const adapter = new ClaudeCodeAdapter();
+
+    const started = await drainSession(adapter.startSession(task("claude-code.code.write"), new AbortController().signal));
+    expect(started).toContainEqual({
+      type: "native_session.started",
+      native_session_id: "claude-session-uuid",
+    });
+
+    sdk.calls = [];
+    const resumed = await drainSession(adapter.resumeSession(claudeSessionInput(), new AbortController().signal));
+    expect(sdk.calls).toEqual([{
+      prompt: "采用方案 B",
+      options: expect.objectContaining({
+        resume: "claude-session-uuid",
+        cwd: repoPath,
+      }),
+    }]);
+    expect(resumed).toContainEqual({
+      type: "assistant.message",
+      message_id: "m1",
+      text: "继续完成。",
+    });
+  });
+
+  it("uses the successful result text when a resumed SDK stream omits assistant blocks", async () => {
+    sdk.messages = [
+      { type: "system", subtype: "init", session_id: "claude-session-uuid" },
+      {
+        type: "result",
+        subtype: "success",
+        session_id: "claude-session-uuid",
+        result: "继续只读验证。",
+      },
+    ];
+    const adapter = new ClaudeCodeAdapter();
+
+    const resumed = await drainSession(
+      adapter.resumeSession(claudeSessionInput(), new AbortController().signal),
+    );
+
+    expect(resumed).toContainEqual({
+      type: "assistant.message",
+      message_id: "result",
+      text: "继续只读验证。",
+    });
+  });
+
+  it("fails closed when the resumed SDK stream changes session id", async () => {
+    sdk.messages = [
+      { type: "system", subtype: "init", session_id: "wrong-session" },
+    ];
+    const adapter = new ClaudeCodeAdapter();
+
+    const events = await drainSession(adapter.resumeSession(claudeSessionInput(), new AbortController().signal));
+
+    expect(events.at(-1)).toMatchObject({
+      type: "session.terminal",
+      state: "failed",
+      error_code: "native_session_mismatch",
+    });
+  });
 });
 
 describe("ClaudeCodeAdapter usage.final emission (loop budget contract)", () => {
@@ -113,6 +212,26 @@ function task(capabilityId: string): AgentTask {
     session_id: "session-1",
     capability_id: capabilityId,
     prompt: "hello from task",
-    context: {},
+    context: { repo_path: repoPath },
   };
+}
+
+function claudeSessionInput(): AgentSessionInput {
+  return {
+    session_id: "session-1",
+    task_id: "task-1",
+    run_id: "run_claude",
+    turn_id: "turn-2",
+    native_session_id: "claude-session-uuid",
+    expected_version: 2,
+    message_id: "msg-2",
+    prompt: "采用方案 B",
+    context: { repo_path: repoPath },
+  };
+}
+
+async function drainSession(iterable: AsyncIterable<AgentSessionEvent>): Promise<AgentSessionEvent[]> {
+  const events: AgentSessionEvent[] = [];
+  for await (const event of iterable) events.push(event);
+  return events;
 }

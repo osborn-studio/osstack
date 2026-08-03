@@ -39,13 +39,43 @@ import {
   type LoopProfileRoutingEvidence as LoopProfileRoutingEvidenceType,
   type CompletedTask,
 } from "@osstack/loop";
-import { PIIRedactor, routeCapability, AgentOverrideError, PolicyEngine, DEFAULT_RULES, sqliteHistory, HermesBridge, GBrainAdapter, initOtel, shutdownOtel, traceSpan, otelEnabled, KanbanRepository, KanbanNotifier, getBoard, countRuns, countRunsSince, countEvents, listEventsForRun, type RoutableAdapter, type PolicyDecision, type CardStatus, type OutboundMessage } from "@osstack/core";
+import {
+  AgentOverrideError,
+  countEvents,
+  countRuns,
+  countRunsSince,
+  DEFAULT_RULES,
+  GBrainAdapter,
+  getBoard,
+  HermesBridge,
+  initOtel,
+  KanbanNotifier,
+  KanbanRepository,
+  listEventsForRun,
+  otelEnabled,
+  PIIRedactor,
+  PolicyEngine,
+  routeCapability,
+  SessionMessageIdConflict,
+  SessionRepository,
+  SessionVersionConflict,
+  shutdownOtel,
+  sqliteHistory,
+  traceSpan,
+  type CardStatus,
+  type OutboundMessage,
+  type PolicyDecision,
+  type RoutableAdapter,
+} from "@osstack/core";
 import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import type Database from "better-sqlite3";
 import {
   cleanupOrphanedWorktrees,
   defaultAdapters,
+  isSessionCapableAdapter,
   type AgentAdapter,
+  type AgentSessionEvent,
+  type AgentSessionInput,
   type AgentTask,
 } from "@osstack/agents";
 import { appendEvent, finalizeRun, insertRun, insertTask } from "./store.js";
@@ -134,10 +164,14 @@ interface DaemonContext {
   gbrain: GBrainAdapter;
   /** osstack's own kanban board (borrowed from Hermes; see core/src/kanban). */
   kanban: KanbanRepository;
+  /** Durable, versioned control plane for resumable agent conversations. */
+  sessions: SessionRepository;
   /** Local browser dashboard, returned to chat bridges as a shareable URL. */
   dashboardUrl: string | null;
   /** Active runs by run_id → AbortController for cancellation. */
   activeRuns: Map<string, AbortController>;
+  /** Sessions currently applying a non-duplicate inbound message. */
+  activeSessionSends: Set<string>;
   /** Daemon-managed polling loop sessions, keyed by loop_session_id. */
   loopSessions: Map<string, LoopSession>;
   /** Daemon-managed daily-brief sessions, keyed by daily_session_id (R2.3). */
@@ -309,6 +343,585 @@ function singleErr(id: DaemonRequest["id"], code: string, message: string): Sing
   return { id, ok: false, error: { code, message } };
 }
 
+const TERMINAL_SESSION_STATES = new Set(["completed", "failed", "cancelled"]);
+
+function publicSession(row: ReturnType<SessionRepository["getSession"]>): Record<string, unknown> | null {
+  if (row === undefined) return null;
+  return {
+    session_id: row.session_id,
+    task_id: row.task_id,
+    run_id: row.run_id,
+    agent_id: row.agent_id,
+    runtime_id: row.agent_id,
+    state: row.state,
+    resume_supported: row.resume_supported,
+    resume_ready: row.resume_supported
+      && row.native_session_id !== null
+      && !TERMINAL_SESSION_STATES.has(row.state),
+    version: row.version,
+    updated_at: row.updated_at,
+  };
+}
+
+type DecisionRequestedEvent = Extract<AgentSessionEvent, { type: "decision.requested" }>;
+
+function parseDecisionDirective(text: string): DecisionRequestedEvent | undefined {
+  let root: unknown;
+  try {
+    root = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  if (typeof root !== "object" || root === null || Array.isArray(root)) return undefined;
+  const outer = root as Record<string, unknown>;
+  if (Object.keys(outer).length !== 1 || !("ostag_decision" in outer)) return undefined;
+  const value = outer["ostag_decision"];
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+  const decision = value as Record<string, unknown>;
+  if (
+    Object.keys(decision).sort().join(",") !== "choices,decision_id,question"
+    || typeof decision["decision_id"] !== "string"
+    || decision["decision_id"].trim() === ""
+    || decision["decision_id"].length > 256
+    || typeof decision["question"] !== "string"
+    || decision["question"].trim() === ""
+    || decision["question"].length > 1_000
+    || !Array.isArray(decision["choices"])
+    || decision["choices"].length < 1
+    || decision["choices"].length > 8
+  ) return undefined;
+  const choices: Array<{ choice_id: string; label: string }> = [];
+  for (const item of decision["choices"]) {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) return undefined;
+    const choice = item as Record<string, unknown>;
+    if (
+      Object.keys(choice).sort().join(",") !== "choice_id,label"
+      || typeof choice["choice_id"] !== "string"
+      || choice["choice_id"].trim() === ""
+      || choice["choice_id"].length > 256
+      || typeof choice["label"] !== "string"
+      || choice["label"].trim() === ""
+      || choice["label"].length > 160
+    ) return undefined;
+    choices.push({ choice_id: choice["choice_id"], label: choice["label"] });
+  }
+  if (new Set(choices.map((choice) => choice.choice_id)).size !== choices.length) return undefined;
+  return {
+    type: "decision.requested",
+    decision_id: decision["decision_id"],
+    question: decision["question"],
+    choices,
+  };
+}
+
+interface SessionSendParams {
+  session_id: string;
+  runtime_id: string;
+  turn_id: string;
+  message_id: string;
+  expected_version: number;
+  text: string;
+  requested_by?: string;
+}
+
+interface SessionStartParams {
+  request_id: string;
+  prompt: string;
+  title: string;
+  agent_id: string;
+  repo_path: string;
+}
+
+function parseSessionStartParams(value: unknown): SessionStartParams | Error {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return new Error("params must be an object");
+  }
+  const p = value as Record<string, unknown>;
+  if (typeof p["request_id"] !== "string" || p["request_id"].trim() === "" || p["request_id"].length > 256) {
+    return new Error("params.request_id must be a non-empty string of at most 256 characters");
+  }
+  if (typeof p["prompt"] !== "string" || p["prompt"].trim() === "" || p["prompt"].length > 16_000) {
+    return new Error("params.prompt must be between 1 and 16000 characters");
+  }
+  if (typeof p["title"] !== "string" || p["title"].trim() === "" || p["title"].length > 160) {
+    return new Error("params.title must be between 1 and 160 characters");
+  }
+  if (typeof p["agent_id"] !== "string" || p["agent_id"].trim() === "" || p["agent_id"].length > 256) {
+    return new Error("params.agent_id must be a non-empty string of at most 256 characters");
+  }
+  if (typeof p["repo_path"] !== "string" || !isAbsolute(p["repo_path"]) || p["repo_path"].length > 4096) {
+    return new Error("params.repo_path must be an absolute path of at most 4096 characters");
+  }
+  return {
+    request_id: p["request_id"],
+    prompt: p["prompt"],
+    title: p["title"],
+    agent_id: p["agent_id"],
+    repo_path: p["repo_path"],
+  };
+}
+
+async function handleSessionStart(
+  ctx: DaemonContext,
+  req: DaemonRequest,
+): Promise<SingleResponse> {
+  const p = parseSessionStartParams(req.params);
+  if (p instanceof Error) return singleErr(req.id, "bad_request", p.message);
+  if (ctx.draining) return singleErr(req.id, "draining", "daemon is not accepting new sessions");
+
+  const adapter = ctx.adapters.get(p.agent_id);
+  if (adapter === undefined || !isSessionCapableAdapter(adapter)) {
+    return singleErr(req.id, "resume_unsupported", "agent does not support resumable sessions");
+  }
+  const capabilities = adapter.sessionCapabilities();
+  if (!capabilities.resume) {
+    return singleErr(req.id, "resume_unsupported", "agent does not support resume");
+  }
+  const availability = await adapter.isAvailable();
+  if (!availability.available) {
+    return singleErr(req.id, "agent_unavailable", "agent is unavailable");
+  }
+
+  const now = Date.now() / 1000;
+  const stableId = createHash("sha256").update(p.request_id).digest("hex").slice(0, 24);
+  const taskId = `task_${stableId}`;
+  const runId = `run_${stableId}`;
+  const sessionId = `sess_${stableId}`;
+  const turnId = `turn_${randomUUID()}`;
+  const requestSha256 = createHash("sha256").update(JSON.stringify({
+    request_id: p.request_id,
+    prompt: p.prompt,
+    title: p.title,
+    agent_id: p.agent_id,
+    repo_path: p.repo_path,
+  })).digest("hex");
+  const existing = ctx.sessions.getSession(sessionId);
+  if (existing !== undefined) {
+    if (existing.request_sha256 !== requestSha256) {
+      return singleErr(
+        req.id,
+        "request_id_conflict",
+        "request_id was already used for a different session request",
+      );
+    }
+    const snapshot = ctx.sessions.latestSnapshot(sessionId);
+    return singleOk(req.id, {
+      ...publicSession(existing),
+      ...snapshot,
+      events: [],
+    });
+  }
+  try {
+    ctx.db.transaction(() => {
+      insertTask(ctx.db, ctx.dbPath, { task_id: taskId, title: p.title, created_at: now });
+      insertRun(ctx.db, ctx.dbPath, {
+        run_id: runId,
+        task_id: taskId,
+        session_id: sessionId,
+        agent_id: adapter.id,
+        capability_id: `${adapter.id}.session`,
+        phase: "code",
+        started_at: now,
+      });
+      ctx.sessions.createSession({
+        session_id: sessionId,
+        task_id: taskId,
+        run_id: runId,
+        agent_id: adapter.id,
+        request_sha256: requestSha256,
+        native_session_id: null,
+        repo_path: p.repo_path,
+        state: "starting",
+        resume_supported: true,
+        version: 1,
+        updated_at: now,
+      });
+      ctx.kanban.createCard({
+        card_id: `card_${runId}`,
+        task_id: taskId,
+        title: p.title,
+        body: `agent: ${adapter.id}\ncapability: resumable-session`,
+        status: "running",
+        assignee: adapter.id,
+      });
+    })();
+  } catch {
+    return singleErr(req.id, "store_write_failed", "could not create resumable session");
+  }
+
+  const controller = new AbortController();
+  ctx.activeRuns.set(runId, controller);
+  const task: AgentTask = {
+    run_id: runId,
+    task_id: taskId,
+    session_id: sessionId,
+    capability_id: `${adapter.id}.session`,
+    prompt: p.prompt,
+    context: { repo_path: p.repo_path },
+  };
+  const publicEvents: AgentSessionEvent[] = [];
+  let nativeSessionId: string | undefined;
+  let assistantText = "";
+  let decision: unknown = null;
+  try {
+    for await (const event of adapter.startSession(task, controller.signal)) {
+      if (event.type === "native_session.started") {
+        if (nativeSessionId !== undefined && nativeSessionId !== event.native_session_id) {
+          throw new Error("adapter changed native session id");
+        }
+        nativeSessionId = event.native_session_id;
+        continue;
+      }
+      if (nativeSessionId !== undefined && JSON.stringify(event).includes(nativeSessionId)) {
+        throw new Error("adapter output contained protected session metadata");
+      }
+      if (event.type === "assistant.message") {
+        const directive = parseDecisionDirective(event.text);
+        if (directive !== undefined) {
+          publicEvents.push(directive);
+          decision = {
+            decision_id: directive.decision_id,
+            question: directive.question,
+            choices: directive.choices,
+          };
+          assistantText = directive.question;
+          continue;
+        }
+        assistantText += event.text;
+      }
+      publicEvents.push(event);
+      if (assistantText.length > 4_000) throw new Error("assistant output exceeded relay bound");
+      if (event.type === "decision.requested") decision = {
+        decision_id: event.decision_id,
+        question: event.question,
+        choices: event.choices,
+      };
+      if (event.type === "session.terminal" && event.state !== "completed") {
+        throw new Error("adapter terminated while starting the session");
+      }
+    }
+    if (nativeSessionId === undefined) throw new Error("adapter did not return a native session id");
+
+    const confirmedNativeSessionId = nativeSessionId;
+    const finalState = decision === null ? "idle" : "awaiting_decision";
+    const completedAt = Date.now() / 1000;
+    const updated = ctx.db.transaction(() => {
+      const recorded = ctx.sessions.recordNativeSession(
+        sessionId,
+        confirmedNativeSessionId,
+        1,
+        completedAt,
+      );
+      ctx.sessions.appendTurn({
+        turn_id: turnId,
+        session_id: sessionId,
+        ordinal: 1,
+        state: finalState,
+        assistant_text: assistantText,
+        decision,
+        created_at: now,
+        updated_at: completedAt,
+      });
+      const session = ctx.sessions.setState(
+        sessionId,
+        finalState,
+        recorded.version,
+        completedAt,
+      );
+      finalizeRun(ctx.db, ctx.dbPath, runId, "completed", completedAt);
+      ctx.kanban.moveCard(`card_${runId}`, "done", { actor: adapter.id });
+      return session;
+    })();
+    return singleOk(req.id, {
+      ...publicSession(updated),
+      turn_id: turnId,
+      assistant_text: assistantText,
+      decision,
+      events: publicEvents,
+    });
+  } catch {
+    try {
+      const current = ctx.sessions.getSession(sessionId);
+      if (current !== undefined) {
+        ctx.sessions.setState(sessionId, "failed", current.version, Date.now() / 1000);
+      }
+      finalizeRun(ctx.db, ctx.dbPath, runId, "failed", Date.now() / 1000);
+      ctx.kanban.moveCard(`card_${runId}`, "blocked", { actor: adapter.id, blocked_reason: "session start failed" });
+    } catch { /* preserve the original bounded failure */ }
+    return singleErr(req.id, "agent_failed", "agent failed while starting the session");
+  } finally {
+    ctx.activeRuns.delete(runId);
+  }
+}
+
+function parseSessionSendParams(value: unknown): SessionSendParams | Error {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return new Error("params must be an object");
+  }
+  const p = value as Record<string, unknown>;
+  for (const key of ["session_id", "runtime_id", "turn_id", "message_id"] as const) {
+    if (typeof p[key] !== "string" || p[key].trim() === "" || p[key].length > 256) {
+      return new Error(`params.${key} must be a non-empty string of at most 256 characters`);
+    }
+  }
+  if (!Number.isInteger(p["expected_version"]) || (p["expected_version"] as number) < 1) {
+    return new Error("params.expected_version must be a positive integer");
+  }
+  if (typeof p["text"] !== "string" || p["text"].trim() === "" || p["text"].length > 16_000) {
+    return new Error("params.text must be between 1 and 16000 characters");
+  }
+  if (p["requested_by"] !== undefined && (
+    typeof p["requested_by"] !== "string"
+    || p["requested_by"].trim() === ""
+    || p["requested_by"].length > 256
+  )) {
+    return new Error("params.requested_by must be a non-empty string of at most 256 characters");
+  }
+  return {
+    session_id: p["session_id"] as string,
+    runtime_id: p["runtime_id"] as string,
+    turn_id: p["turn_id"] as string,
+    message_id: p["message_id"] as string,
+    expected_version: p["expected_version"] as number,
+    text: p["text"] as string,
+    ...(p["requested_by"] === undefined ? {} : { requested_by: p["requested_by"] as string }),
+  };
+}
+
+async function handleSessionSend(
+  ctx: DaemonContext,
+  req: DaemonRequest,
+): Promise<SingleResponse> {
+  const p = parseSessionSendParams(req.params);
+  if (p instanceof Error) return singleErr(req.id, "bad_request", p.message);
+
+  const session = ctx.sessions.getSession(p.session_id);
+  if (session === undefined) return singleErr(req.id, "not_found", "session not found");
+  if (p.runtime_id !== session.agent_id) {
+    return singleErr(req.id, "runtime_mismatch", "session belongs to another runtime");
+  }
+  // Idempotency wins over moving state: a retry may arrive after the first
+  // delivery already appended a newer turn or completed the conversation.
+  // Let the repository compare the complete canonical envelope before any
+  // current-turn/current-state guards reject it.
+  const existingMessage = ctx.sessions.getMessage(p.message_id);
+  let recoveredReservationVersion: number | undefined;
+  if (existingMessage !== undefined) {
+    try {
+      const replay = ctx.sessions.applyInbound({
+        message_id: p.message_id,
+        session_id: p.session_id,
+        turn_id: p.turn_id,
+        direction: "inbound",
+        kind: "instruction.send",
+        payload: { text: p.text, ...(p.requested_by === undefined ? {} : { requested_by: p.requested_by }) },
+        state: "accepted",
+        created_at: Date.now() / 1000,
+      }, p.expected_version, Date.now() / 1000);
+      if (existingMessage.state === "applied") {
+        return singleOk(req.id, { state: replay.outcome, session_version: replay.session_version });
+      }
+      if (replay.session_version !== p.expected_version + 1) {
+        return singleErr(req.id, "version_conflict", "accepted message cannot be recovered safely");
+      }
+      if (existingMessage.state === "accepted") {
+        return ctx.activeSessionSends.has(session.session_id)
+          ? singleErr(req.id, "session_busy", "session is already applying another instruction")
+          : singleErr(
+              req.id,
+              "delivery_uncertain",
+              "the previous delivery may have reached the agent; inspect the session before using a new message_id",
+            );
+      }
+      if (existingMessage.state !== "failed") {
+        return singleErr(req.id, "version_conflict", "reserved message is not retryable");
+      }
+      ctx.sessions.retryFailedMessage(p.message_id);
+      recoveredReservationVersion = replay.session_version;
+    } catch (err) {
+      if (err instanceof SessionMessageIdConflict) {
+        return singleErr(req.id, "message_id_conflict", "message_id was already used for different content");
+      }
+      throw err;
+    }
+  }
+  if (recoveredReservationVersion === undefined && TERMINAL_SESSION_STATES.has(session.state)) {
+    return singleErr(req.id, "session_terminal", `session state=${session.state}`);
+  }
+  if (!session.resume_supported || session.native_session_id === null) {
+    return singleErr(req.id, "resume_unsupported", "session cannot be resumed");
+  }
+  const snapshot = ctx.sessions.latestSnapshot(p.session_id);
+  if (recoveredReservationVersion === undefined && snapshot.turn_id !== p.turn_id) {
+    return singleErr(req.id, "turn_conflict", "message does not target the current turn");
+  }
+  const adapter = ctx.adapters.get(session.agent_id);
+  if (adapter === undefined || !isSessionCapableAdapter(adapter) || !adapter.sessionCapabilities().resume) {
+    return singleErr(req.id, "resume_unsupported", "agent does not support resume");
+  }
+  if (ctx.activeSessionSends.has(session.session_id)) {
+    return singleErr(req.id, "session_busy", "session is already applying another instruction");
+  }
+
+  let applied: { outcome: "applied" | "duplicate"; session_version: number };
+  const now = Date.now() / 1000;
+  if (recoveredReservationVersion !== undefined) {
+    applied = { outcome: "applied", session_version: recoveredReservationVersion };
+  } else {
+    try {
+      applied = ctx.sessions.applyInbound({
+        message_id: p.message_id,
+        session_id: p.session_id,
+        turn_id: p.turn_id,
+        direction: "inbound",
+        kind: "instruction.send",
+        payload: { text: p.text, ...(p.requested_by === undefined ? {} : { requested_by: p.requested_by }) },
+        state: "accepted",
+        created_at: now,
+      }, p.expected_version, now);
+    } catch (err) {
+      if (err instanceof SessionVersionConflict) {
+        return singleErr(req.id, "version_conflict", "session version changed; refresh before retrying");
+      }
+      if (err instanceof SessionMessageIdConflict) {
+        return singleErr(req.id, "message_id_conflict", "message_id was already used for different content");
+      }
+      throw err;
+    }
+  }
+  if (applied.outcome === "duplicate") {
+    return singleOk(req.id, { state: "duplicate", session_version: applied.session_version });
+  }
+
+  ctx.activeSessionSends.add(session.session_id);
+  try {
+    const failReservedMessage = (
+      code: string,
+      message: string,
+    ): SingleResponse => {
+      try {
+        ctx.sessions.markMessageFailed(p.message_id);
+      } catch {
+        return singleErr(
+          req.id,
+          "delivery_uncertain",
+          "the agent failed and the reservation could not be finalized; inspect the session before retrying",
+        );
+      }
+      return singleErr(req.id, code, message);
+    };
+    const context: Record<string, unknown> = {};
+    if (session.repo_path !== "") context["repo_path"] = session.repo_path;
+    if (p.requested_by !== undefined) context["requested_by"] = p.requested_by;
+    const input: AgentSessionInput = {
+      session_id: session.session_id,
+      task_id: session.task_id,
+      run_id: session.run_id,
+      turn_id: p.turn_id,
+      native_session_id: session.native_session_id,
+      expected_version: applied.session_version,
+      message_id: p.message_id,
+      prompt: p.text,
+      ...(Object.keys(context).length === 0 ? {} : { context }),
+    };
+    const controller = new AbortController();
+    const publicEvents: AgentSessionEvent[] = [];
+    let assistantText = "";
+    let decision: unknown = null;
+    let terminalCompleted = false;
+    try {
+      for await (const event of adapter.resumeSession(input, controller.signal)) {
+        if (event.type === "native_session.started") {
+          if (event.native_session_id !== session.native_session_id) {
+            return failReservedMessage(
+              "adapter_protocol",
+              "agent resumed an unexpected native session",
+            );
+          }
+          continue;
+        }
+        if (JSON.stringify(event).includes(session.native_session_id)) {
+          return failReservedMessage(
+            "adapter_protocol",
+            "agent output contained protected session metadata",
+          );
+        }
+        if (event.type === "session.terminal") {
+          if (event.state !== "completed") {
+            const rawCode = event.error_code ?? "unknown";
+            const safeCode = /^[a-z0-9_]{1,64}$/.test(rawCode) ? rawCode : "unknown";
+            return failReservedMessage(
+              "agent_failed",
+              `agent failed while applying the instruction (${safeCode})`,
+            );
+          }
+          terminalCompleted = true;
+        }
+        if (event.type === "assistant.message") {
+          const directive = parseDecisionDirective(event.text);
+          if (directive !== undefined) {
+            publicEvents.push(directive);
+            decision = {
+              decision_id: directive.decision_id,
+              question: directive.question,
+              choices: directive.choices,
+            };
+            assistantText = directive.question;
+            continue;
+          }
+          assistantText += event.text;
+        }
+        publicEvents.push(event);
+        if (event.type === "decision.requested") decision = {
+          decision_id: event.decision_id,
+          question: event.question,
+          choices: event.choices,
+        };
+      }
+      if (!terminalCompleted) {
+        return failReservedMessage(
+          "agent_failed",
+          "agent ended without completing the instruction",
+        );
+      }
+    } catch {
+      return failReservedMessage(
+        "agent_failed",
+        "agent failed while applying the instruction",
+      );
+    }
+
+    const finalState = publicEvents.some((event) => event.type === "decision.requested")
+      ? "awaiting_decision"
+      : "idle";
+    const completedAt = Date.now() / 1000;
+    const updatedSession = ctx.sessions.completeInboundTurn({
+      turn: {
+        turn_id: `turn_${randomUUID()}`,
+        session_id: session.session_id,
+        ordinal: (ctx.db.prepare(
+          "SELECT COALESCE(MAX(ordinal), 0) + 1 AS ordinal FROM session_turns WHERE session_id = ?",
+        ).get(session.session_id) as { ordinal: number }).ordinal,
+        state: finalState,
+        assistant_text: assistantText,
+        decision,
+        created_at: now,
+        updated_at: completedAt,
+      },
+      message_id: p.message_id,
+      expected_version: applied.session_version,
+      applied_at: completedAt,
+    });
+    return singleOk(req.id, {
+      state: "applied",
+      session_version: updatedSession.version,
+      events: publicEvents,
+    });
+  } finally {
+    ctx.activeSessionSends.delete(session.session_id);
+  }
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // Single-shot methods
 // ──────────────────────────────────────────────────────────────────────
@@ -419,6 +1032,45 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       const active = ctx.activeRuns.has(p.run_id);
       return singleOk(req.id, { ...(row as object), active });
     }
+
+    case "session.list": {
+      const p = (req.params ?? {}) as { limit?: number };
+      const limit = p.limit ?? 100;
+      if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+        return singleErr(req.id, "bad_request", "params.limit must be an integer between 1 and 200");
+      }
+      return singleOk(req.id, {
+        sessions: ctx.sessions.listSessions({ limit }).map((row) => publicSession(row)),
+      });
+    }
+
+    case "session.start":
+      return await handleSessionStart(ctx, req);
+
+    case "session.status": {
+      const p = (req.params ?? {}) as { session_id?: string };
+      if (typeof p.session_id !== "string" || p.session_id.trim() === "") {
+        return singleErr(req.id, "bad_request", "params.session_id required");
+      }
+      const session = publicSession(ctx.sessions.getSession(p.session_id));
+      return session === null
+        ? singleErr(req.id, "not_found", "session not found")
+        : singleOk(req.id, session);
+    }
+
+    case "session.snapshot": {
+      const p = (req.params ?? {}) as { session_id?: string };
+      if (typeof p.session_id !== "string" || p.session_id.trim() === "") {
+        return singleErr(req.id, "bad_request", "params.session_id required");
+      }
+      if (ctx.sessions.getSession(p.session_id) === undefined) {
+        return singleErr(req.id, "not_found", "session not found");
+      }
+      return singleOk(req.id, ctx.sessions.latestSnapshot(p.session_id));
+    }
+
+    case "session.send":
+      return await handleSessionSend(ctx, req);
 
     case "task.cancel": {
       const p = (req.params ?? {}) as { run_id?: string };
@@ -2748,6 +3400,7 @@ function buildContext(
     writeConcurrency?: number;
     readConcurrency?: number;
     socketPath?: string;
+    adapters?: readonly AgentAdapter[];
   } = {},
 ): DaemonContext {
   const home = osstackHome();
@@ -2764,7 +3417,7 @@ function buildContext(
   // Deck CLI, so daemon and `osstack deck` agree on which agents exist). Order
   // doesn't matter once policy ranks them; each adapter's isAvailable() gates
   // whether it's a viable route on this machine.
-  for (const a of defaultAdapters()) {
+  for (const a of options.adapters ?? defaultAdapters()) {
     adapters.set(a.id, a);
   }
 
@@ -2772,10 +3425,12 @@ function buildContext(
   const hermes = new HermesBridge();   // disabled unless HERMES_KANBAN_BOARD is set
   const gbrain = new GBrainAdapter();  // disabled unless OSSTACK_GBRAIN=1
   const kanban = new KanbanRepository(db, dbPath);
+  const sessions = new SessionRepository(db, dbPath);
   return {
-    dbPath, loopSessionsPath, dailySessionsPath, db, redactor, adapters, policy, hermes, gbrain, kanban,
+    dbPath, loopSessionsPath, dailySessionsPath, db, redactor, adapters, policy, hermes, gbrain, kanban, sessions,
     dashboardUrl: null,
     activeRuns: new Map(),
+    activeSessionSends: new Set(),
     loopSessions: new Map(),
     dailySessions: new Map(),
     hermesKanbanByRun: new Map(),
@@ -2820,6 +3475,8 @@ export interface DaemonHandles {
 
 export interface StartDaemonOptions {
   socketPath?: string;
+  /** Test/embedding hook; production continues to use the default registry. */
+  adapters?: readonly AgentAdapter[];
   writeConcurrency?: number;
   readConcurrency?: number;
   autonomyHealth?: () => Promise<AutonomyHealthReport>;
@@ -2977,6 +3634,7 @@ export async function startDaemon(
   initOtel({ serviceVersion: DAEMON_VERSION });
   const ctx = buildContext({
     socketPath,
+    ...(opts.adapters === undefined ? {} : { adapters: opts.adapters }),
     ...(opts.writeConcurrency === undefined
       ? {}
       : { writeConcurrency: opts.writeConcurrency }),
