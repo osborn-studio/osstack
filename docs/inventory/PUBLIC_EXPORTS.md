@@ -13,6 +13,7 @@ export * from "./child-env.js";
 export * from "./metadata.js";
 export * from "./adapters/kimi-contract.js";
 export * from "./adapters/kimi-stream.js";
+export * from "./session.js";
 export { ClaudeCodeAdapter } from "./adapters/claude-code.js";
 export { ClaudeCliAdapter } from "./adapters/claude-cli.js";
 export { CodexCliAdapter } from "./adapters/codex-cli.js";
