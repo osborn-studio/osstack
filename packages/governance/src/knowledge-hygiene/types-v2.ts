@@ -672,6 +672,14 @@ export const KnowledgeHygieneReportV2 = KnowledgeHygieneReportV1.omit({
   })
   .strict()
   .superRefine((report, context) => {
+    const fingerprints = report.findings.map((finding) => finding.fingerprint);
+    if (new Set(fingerprints).size !== fingerprints.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["findings"],
+        message: "findings must have unique fingerprints",
+      });
+    }
     const dimensions = report.coverage.map((coverage) => coverage.dimension);
     if (
       dimensions.length !== COVERAGE_DIMENSION_ORDER_V2.length

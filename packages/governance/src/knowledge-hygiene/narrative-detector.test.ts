@@ -116,4 +116,27 @@ describe("detectNarrativeSignals", () => {
       [2, "rulebook.managed_context_block"],
     ]);
   });
+
+  it("emits one canonical candidate when root and section scans share a start", () => {
+    const observation = (id: number) => `${1000 + id} 1:00p finding-${id}`;
+    const content = [
+      "# First session",
+      ...Array.from({ length: 5 }, (_, index) => observation(index)),
+      "# Second session",
+      ...Array.from({ length: 5 }, (_, index) => observation(index + 5)),
+    ].join("\n");
+
+    expect(
+      detectNarrativeSignals({ path: "AGENTS.md", content })
+        .filter((signal) => signal.rule_id === "rulebook.narrative_block")
+        .map((signal) => [
+          signal.start_line,
+          signal.end_line,
+          signal.observed["count"],
+        ]),
+    ).toEqual([
+      [2, 6, 5],
+      [8, 12, 5],
+    ]);
+  });
 });

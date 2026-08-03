@@ -218,6 +218,10 @@ describe("knowledge hygiene v2 contracts", () => {
         ],
       },
     }).success).toBe(false);
+    expect(KnowledgeHygieneReportV2.safeParse({
+      ...report,
+      findings: [findingV2(), findingV2()],
+    }).success).toBe(false);
   });
 
   it("accepts legal lifecycle events and rejects illegal transitions", () => {
