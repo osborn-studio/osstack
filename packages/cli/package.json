@@ -1,6 +1,6 @@
 {
   "name": "@osstack/cli",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "description": "OSBORN stack CLI binary — orchestrates dev sub-agents under Hermes.",
   "license": "MIT",
   "type": "module",

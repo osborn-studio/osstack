@@ -1,5 +1,19 @@
 # @osstack/agents
 
+## 0.16.0
+
+### Minor Changes
+
+- ad57096: Add governed, durable Codex and Claude session relay support with resumable native session identity, optimistic concurrency, idempotent inbound messages, bounded recovery diagnostics, and repository-context preservation.
+
+### Patch Changes
+
+- Updated dependencies [9cc8a37]
+- Updated dependencies [ad57096]
+  - @osstack/governance@0.16.0
+  - @osstack/core@0.16.0
+  - @osstack/hermes-adapter@0.16.0
+
 ## 0.15.0
 
 ### Patch Changes

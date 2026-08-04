@@ -1,5 +1,12 @@
 # @osstack/hermes-adapter
 
+## 0.16.0
+
+### Patch Changes
+
+- Updated dependencies [ad57096]
+  - @osstack/core@0.16.0
+
 ## 0.15.0
 
 ### Patch Changes

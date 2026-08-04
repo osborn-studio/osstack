@@ -1,5 +1,11 @@
 # @osstack/governance
 
+## 0.16.0
+
+### Patch Changes
+
+- 9cc8a37: Canonicalize overlapping narrative candidates and reject duplicate finding fingerprints so Neat reports and recorded history retain the same unambiguous finding set.
+
 ## 0.15.0
 
 ### Minor Changes
