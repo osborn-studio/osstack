@@ -12,7 +12,8 @@
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm build && pnpm typecheck:check",
+    "typecheck:check": "pnpm -r typecheck",
     "lint": "biome check .",
     "dev": "pnpm --filter @osstack/cli dev",
     "coverage:loop": "pnpm --filter @osstack/loop test:coverage",
@@ -35,6 +36,7 @@
     "smoke:npm-trust": "node scripts/smoke-npm-trusted-publishers.mjs && node scripts/smoke-npm-trust-configuration.mjs",
     "smoke:npm-deprecation": "node scripts/smoke-npm-broken-deprecation.mjs",
     "smoke:npm-publish-order": "node scripts/smoke-npm-publish-order.mjs",
+    "smoke:clean-typecheck": "node scripts/smoke-clean-typecheck-contract.mjs",
     "smoke:version-packages": "node scripts/version-packages.mjs --self-test",
     "demo:loop": "pnpm build && node scripts/demo-loop.mjs",
     "demo:loop:daemon": "pnpm build && node scripts/demo-loop-daemon.mjs",
