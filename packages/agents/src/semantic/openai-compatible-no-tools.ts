@@ -1,7 +1,9 @@
-import type {
-  SemanticJudgePort,
-  SemanticJudgeRequestV1,
-  SemanticJudgeResponseV1,
+import {
+  SemanticProviderError,
+  type SemanticProviderFailureCodeV1,
+  type SemanticJudgePort,
+  type SemanticJudgeRequestV1,
+  type SemanticJudgeResponseV1,
 } from "@osstack/governance";
 import { z } from "zod";
 
@@ -19,7 +21,7 @@ const providerResponse = z.object({
       content: z.string().nullable(),
       tool_calls: z.array(z.unknown()).optional(),
     }).passthrough(),
-  }).passthrough()).min(1),
+  }).passthrough()),
   usage: z.object({
     prompt_tokens: z.number().int().nonnegative(),
     completion_tokens: z.number().int().nonnegative(),
@@ -56,7 +58,6 @@ const qwenProfile: ProviderProfile = {
 async function readBoundedResponseText(
   response: Response,
   maximumBytes: number,
-  judgeId: string,
 ): Promise<string> {
   const advertisedLength = response.headers.get("content-length");
   if (
@@ -64,7 +65,7 @@ async function readBoundedResponseText(
     && /^\d+$/u.test(advertisedLength)
     && Number(advertisedLength) > maximumBytes
   ) {
-    throw new Error(`${judgeId} response exceeds the configured byte limit`);
+    throw new SemanticProviderError("response_too_large");
   }
   if (response.body === null) return "";
   const reader = response.body.getReader();
@@ -77,7 +78,7 @@ async function readBoundedResponseText(
     bytesRead += chunk.value.byteLength;
     if (bytesRead > maximumBytes) {
       await reader.cancel();
-      throw new Error(`${judgeId} response exceeds the configured byte limit`);
+      throw new SemanticProviderError("response_too_large");
     }
     text += decoder.decode(chunk.value, { stream: true });
   }
@@ -136,7 +137,7 @@ class OpenAICompatibleNoToolsSemanticJudge implements SemanticJudgePort {
     input: SemanticJudgeRequestV1,
     signal: AbortSignal,
   ): Promise<SemanticJudgeResponseV1> {
-    if (signal.aborted) throw new Error("semantic judge call cancelled");
+    if (signal.aborted) throw new SemanticProviderError("cancelled");
     const requestController = new AbortController();
     let timedOut = false;
     const cancel = (): void => requestController.abort();
@@ -179,64 +180,68 @@ class OpenAICompatibleNoToolsSemanticJudge implements SemanticJudgePort {
           signal: requestController.signal,
         });
       } catch {
-        if (signal.aborted) throw new Error("semantic judge call cancelled");
-        if (timedOut) throw new Error(`${this.id} provider request timed out`);
-        throw new Error(`${this.id} provider request failed`);
+        if (signal.aborted) throw new SemanticProviderError("cancelled");
+        if (timedOut) throw new SemanticProviderError("request_timeout");
+        throw new SemanticProviderError("transport_error");
       }
       if (!response.ok) {
-        throw new Error(`${this.id} provider failed: HTTP ${response.status}`);
+        const code: SemanticProviderFailureCodeV1 = response.status === 401
+          || response.status === 403
+          ? "authentication_failed"
+          : response.status === 429
+            ? "rate_limited"
+            : "http_error";
+        throw new SemanticProviderError(code);
       }
 
       const maximumResponseBytes = Math.max(
         16_384,
         input.budget.max_output_tokens * 16,
       );
+      let responseText: string;
+      try {
+        responseText = await readBoundedResponseText(response, maximumResponseBytes);
+      } catch (error) {
+        if (signal.aborted) throw new SemanticProviderError("cancelled");
+        if (timedOut) throw new SemanticProviderError("request_timeout");
+        if (error instanceof SemanticProviderError) throw error;
+        throw new SemanticProviderError("transport_error");
+      }
       let rawProviderResponse: unknown;
       try {
-        rawProviderResponse = JSON.parse(await readBoundedResponseText(
-          response,
-          maximumResponseBytes,
-          this.id,
-        ));
-      } catch (error) {
-        if (signal.aborted) throw new Error("semantic judge call cancelled");
-        if (timedOut) throw new Error(`${this.id} provider request timed out`);
-        if (error instanceof Error && error.message.includes("response exceeds")) {
-          throw error;
-        }
-        throw new Error(`${this.id} returned invalid provider JSON`);
+        rawProviderResponse = JSON.parse(responseText);
+      } catch {
+        throw new SemanticProviderError("invalid_provider_json");
       }
       const parsed = providerResponse.safeParse(rawProviderResponse);
       if (!parsed.success) {
-        throw new Error(`${this.id} returned an invalid provider response schema`);
+        throw new SemanticProviderError("invalid_provider_response");
       }
       if (parsed.data.model !== this.model_id) {
-        throw new Error(`${this.id} returned an unexpected model identity`);
+        throw new SemanticProviderError("model_identity_mismatch");
       }
       const choice = parsed.data.choices[0];
       if (choice === undefined) {
-        throw new Error(`${this.id} returned no completion choice`);
+        throw new SemanticProviderError("missing_completion_choice");
       }
       if (
         choice.finish_reason === "tool_calls"
         || (choice.message.tool_calls?.length ?? 0) > 0
       ) {
-        throw new Error(`${this.id} reported tool activity`);
+        throw new SemanticProviderError("tool_activity");
       }
       if (choice.finish_reason !== "stop") {
-        throw new Error(
-          `${this.id} failed closed: finish_reason=${choice.finish_reason ?? "null"}`,
-        );
+        throw new SemanticProviderError("unsupported_finish_reason");
       }
       if (choice.message.content === null) {
-        throw new Error(`${this.id} returned no JSON content`);
+        throw new SemanticProviderError("missing_json_content");
       }
 
       let rawOutput: unknown;
       try {
         rawOutput = JSON.parse(choice.message.content);
       } catch {
-        throw new Error(`${this.id} returned invalid JSON content`);
+        throw new SemanticProviderError("invalid_json_content");
       }
       return {
         nonce: input.nonce,

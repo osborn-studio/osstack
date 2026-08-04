@@ -7,6 +7,7 @@ import {
   KnowledgeHygieneResolutionEventV2,
   KnowledgeHygieneRuleIdV2,
 } from "./types-v2.js";
+import { SemanticProviderFailureCodeV1 } from "./semantic-provider-error.js";
 
 const sha = "a".repeat(64);
 
@@ -161,6 +162,23 @@ describe("knowledge hygiene v2 contracts", () => {
     expect(CoverageDimensionV2.safeParse({
       ...notRequestedCoverage("narrative"),
       reason_codes: ["not_requested", "judge_unavailable"],
+    }).success).toBe(false);
+    expect(SemanticProviderFailureCodeV1.parse("authentication_failed")).toBe(
+      "authentication_failed",
+    );
+    expect(CoverageDimensionV2.parse({
+      dimension: "narrative",
+      state: "failed",
+      source_units_total: 1,
+      candidates_generated: 1,
+      candidates_assessed: 0,
+      candidates_skipped: 1,
+      reason_codes: ["provider_error"],
+      provider_failure_code: "authentication_failed",
+    })).toMatchObject({ provider_failure_code: "authentication_failed" });
+    expect(CoverageDimensionV2.safeParse({
+      ...notRequestedCoverage("narrative"),
+      provider_failure_code: "authentication_failed",
     }).success).toBe(false);
   });
 

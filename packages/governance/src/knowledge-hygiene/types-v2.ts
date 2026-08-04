@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 import { z } from "zod";
 import { assertKnowledgeHygieneRepositoryPathV1 } from "./path-pattern.js";
+import { SemanticProviderFailureCodeV1 } from "./semantic-provider-error.js";
 import {
   KnowledgeHygieneEvidenceRefV1,
   KnowledgeHygieneCheckInputV1,
@@ -276,10 +277,21 @@ export const CoverageDimensionV2 = z
     candidates_assessed: z.number().int().nonnegative(),
     candidates_skipped: z.number().int().nonnegative(),
     reason_codes: z.array(CoverageReasonCodeV2),
+    provider_failure_code: SemanticProviderFailureCodeV1.optional(),
   })
   .strict()
   .superRefine((coverage, context) => {
     const reasons = new Set(coverage.reason_codes);
+    if (
+      coverage.provider_failure_code !== undefined
+      && (coverage.state !== "failed" || !reasons.has("provider_error"))
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["provider_failure_code"],
+        message: "provider_failure_code requires failed provider coverage",
+      });
+    }
     if (reasons.size !== coverage.reason_codes.length) {
       context.addIssue({
         code: z.ZodIssueCode.custom,

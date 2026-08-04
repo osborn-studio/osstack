@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto";
-import { SemanticJudgeRequestV1 } from "@osstack/governance";
+import {
+  SemanticJudgeRequestV1,
+  SemanticProviderError,
+} from "@osstack/governance";
 import { describe, expect, it, vi } from "vitest";
 import {
   DeepSeekNoToolsSemanticJudge,
@@ -150,7 +153,10 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
   });
 
   it("fails closed on tool activity, truncation, malformed JSON, and HTTP errors", async () => {
-    const cases: Array<{ response: Response; message: RegExp }> = [
+    const cases: Array<{
+      response: Response;
+      code: string;
+    }> = [
       {
         response: providerResponse({
           choices: [{
@@ -159,7 +165,7 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
             message: { role: "assistant", content: null, tool_calls: [{}] },
           }],
         }),
-        message: /tool activity/i,
+        code: "tool_activity",
       },
       {
         response: providerResponse({
@@ -169,7 +175,7 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
             message: { role: "assistant", content: "{}" },
           }],
         }),
-        message: /finish_reason=length/i,
+        code: "unsupported_finish_reason",
       },
       {
         response: providerResponse({
@@ -179,11 +185,11 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
             message: { role: "assistant", content: "not-json" },
           }],
         }),
-        message: /invalid JSON/i,
+        code: "invalid_json_content",
       },
       {
         response: new Response("credential=secret-sentinel", { status: 401 }),
-        message: /HTTP 401/,
+        code: "authentication_failed",
       },
     ];
 
@@ -198,7 +204,9 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
         throw new Error("expected provider rejection");
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        expect(message).toMatch(testCase.message);
+        expect(error).toBeInstanceOf(SemanticProviderError);
+        expect(error).toMatchObject({ code: testCase.code });
+        expect(message).toBe(`semantic provider failed: ${testCase.code}`);
         expect(message).not.toContain("secret-sentinel");
       }
     }
@@ -251,7 +259,10 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
       await vi.advanceTimersByTimeAsync(50);
       const error = await captured;
       expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toMatch(/timed out/i);
+      expect(error).toMatchObject({ code: "request_timeout" });
+      expect((error as Error).message).toBe(
+        "semantic provider failed: request_timeout",
+      );
       expect((error as Error).message).not.toContain("secret-sentinel");
     } finally {
       vi.useRealTimers();
@@ -271,7 +282,10 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
       .judge(request(), new AbortController().signal)
       .catch((caught: unknown) => caught);
     expect(error).toBeInstanceOf(Error);
-    expect((error as Error).message).toMatch(/provider request failed/i);
+    expect(error).toMatchObject({ code: "transport_error" });
+    expect((error as Error).message).toBe(
+      "semantic provider failed: transport_error",
+    );
     expect((error as Error).message).not.toContain("secret-sentinel");
   });
 
@@ -286,7 +300,7 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
     });
 
     await expect(provider.judge(request(), new AbortController().signal))
-      .rejects.toThrow(/response exceeds/i);
+      .rejects.toMatchObject({ code: "response_too_large" });
   });
 
   it("fails closed when the provider reports a different model identity", async () => {
@@ -299,6 +313,6 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
     });
 
     await expect(provider.judge(request(), new AbortController().signal))
-      .rejects.toThrow(/model identity/i);
+      .rejects.toMatchObject({ code: "model_identity_mismatch" });
   });
 });

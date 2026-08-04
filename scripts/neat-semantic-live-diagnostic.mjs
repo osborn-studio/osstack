@@ -1,4 +1,26 @@
 const providerPrefix = "(?:deepseek-no-tools|qwen-no-tools)";
+const providerFailureCodes = new Set([
+  "cancelled",
+  "transport_error",
+  "request_timeout",
+  "authentication_failed",
+  "rate_limited",
+  "http_error",
+  "response_too_large",
+  "invalid_provider_json",
+  "invalid_provider_response",
+  "model_identity_mismatch",
+  "missing_completion_choice",
+  "tool_activity",
+  "unsupported_finish_reason",
+  "missing_json_content",
+  "invalid_json_content",
+  "missing_result",
+  "provider_result_error",
+  "missing_structured_output",
+  "stale_nonce",
+  "unknown_provider_error",
+]);
 
 const providerFailureClassifiers = [
   {
@@ -53,8 +75,9 @@ export function summarizeProviderInvocationFailure(error) {
     return `provider invocation failed: runner_timeout (exit code ${exitCode})`;
   }
 
-  if (hasProviderCoverageFailure(error)) {
-    return `provider invocation failed: semantic_coverage_failed (reason provider_error; exit code ${exitCode})`;
+  const coverageFailureCode = providerCoverageFailureCode(error);
+  if (coverageFailureCode !== undefined) {
+    return `provider invocation failed: semantic_coverage_failed (provider_failure_code=${coverageFailureCode}; exit code ${exitCode})`;
   }
 
   const message = cliErrorMessage(error);
@@ -73,16 +96,21 @@ export function summarizeProviderInvocationFailure(error) {
   return `provider invocation failed: provider_runtime_failure (exit code ${exitCode})`;
 }
 
-function hasProviderCoverageFailure(error) {
+function providerCoverageFailureCode(error) {
   const envelope = cliEnvelope(error);
   const coverage = envelope?.status === "ok"
     ? envelope?.result?.report?.coverage
     : undefined;
-  return Array.isArray(coverage) && coverage.some((entry) =>
+  if (!Array.isArray(coverage)) return undefined;
+  const failed = coverage.find((entry) =>
     entry?.state === "failed"
     && Array.isArray(entry?.reason_codes)
     && entry.reason_codes.includes("provider_error")
   );
+  if (failed === undefined) return undefined;
+  return providerFailureCodes.has(failed.provider_failure_code)
+    ? failed.provider_failure_code
+    : "unknown_provider_error";
 }
 
 function cliErrorMessage(error) {

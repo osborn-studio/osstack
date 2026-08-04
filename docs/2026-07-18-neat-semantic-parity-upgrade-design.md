@@ -123,6 +123,28 @@ type CoverageState =
   | "truncated"
   | "failed";
 
+type SemanticProviderFailureCodeV1 =
+  | "cancelled"
+  | "transport_error"
+  | "request_timeout"
+  | "authentication_failed"
+  | "rate_limited"
+  | "http_error"
+  | "response_too_large"
+  | "invalid_provider_json"
+  | "invalid_provider_response"
+  | "model_identity_mismatch"
+  | "missing_completion_choice"
+  | "tool_activity"
+  | "unsupported_finish_reason"
+  | "missing_json_content"
+  | "invalid_json_content"
+  | "missing_result"
+  | "provider_result_error"
+  | "missing_structured_output"
+  | "stale_nonce"
+  | "unknown_provider_error";
+
 interface CoverageDimensionV2 {
   dimension:
     | "mechanical"
@@ -146,6 +168,7 @@ interface CoverageDimensionV2 {
     | "scan_incomplete"
     | "provider_error"
   >;
+  provider_failure_code?: SemanticProviderFailureCodeV1;
 }
 ```
 
@@ -157,6 +180,11 @@ interface CoverageDimensionV2 {
 - `truncated`：至少一个 skipped，且至少含一个 `*_budget_exhausted`；
 - `failed`：必须含 `scan_incomplete` 或 `provider_error`，已完成的 assessed 计数仍保留；
 - `dimension` 唯一且按本文枚举顺序输出；未请求维度必须是 `not_assessed/not_requested`。
+
+`provider_failure_code` 只允许出现在 `state="failed"` 且
+`reason_codes` 含 `provider_error` 的覆盖记录中。该字段只保留封闭错误码，不得持久化
+HTTP 响应正文、SDK 异常文本、供应商错误详情或凭据；未识别异常统一映射为
+`unknown_provider_error`。字段为可选，旧 V2 报告继续由新 reader 接受。
 
 #### 2.1.2 `FindingV2` 与 `ReportV2` 最小合同
 

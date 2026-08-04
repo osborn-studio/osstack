@@ -6,6 +6,7 @@ import {
   invokeSemanticJudge,
   type SemanticJudgePort,
 } from "./semantic-judge.js";
+import { SemanticProviderError } from "./semantic-provider-error.js";
 
 const sha = "a".repeat(64);
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -110,5 +111,41 @@ describe("SemanticJudgePort gate", () => {
     await expect(invokeSemanticJudge(fake, request(), controller.signal))
       .rejects.toMatchObject({ code: "cancelled" });
     expect(calls).toBe(0);
+  });
+
+  it("preserves a typed provider code without preserving provider text", async () => {
+    const fake = port();
+    fake.judge = async () => {
+      throw new SemanticProviderError("request_timeout");
+    };
+
+    await expect(invokeSemanticJudge(
+      fake,
+      request(),
+      new AbortController().signal,
+    )).rejects.toMatchObject({
+      code: "provider_error",
+      provider_failure_code: "request_timeout",
+      message: "semantic judge provider failed: request_timeout",
+    });
+  });
+
+  it("maps arbitrary provider exceptions to a non-disclosing fallback code", async () => {
+    const fake = port();
+    fake.judge = async () => {
+      throw new Error("transport leaked secret-sentinel");
+    };
+
+    const error = await invokeSemanticJudge(
+      fake,
+      request(),
+      new AbortController().signal,
+    ).catch((caught: unknown) => caught);
+    expect(error).toMatchObject({
+      code: "provider_error",
+      provider_failure_code: "unknown_provider_error",
+      message: "semantic judge provider failed: unknown_provider_error",
+    });
+    expect((error as Error).message).not.toContain("secret-sentinel");
   });
 });
