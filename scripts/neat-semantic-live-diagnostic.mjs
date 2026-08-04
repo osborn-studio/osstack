@@ -53,6 +53,10 @@ export function summarizeProviderInvocationFailure(error) {
     return `provider invocation failed: runner_timeout (exit code ${exitCode})`;
   }
 
+  if (hasProviderCoverageFailure(error)) {
+    return `provider invocation failed: semantic_coverage_failed (reason provider_error; exit code ${exitCode})`;
+  }
+
   const message = cliErrorMessage(error);
   const httpMatch = message?.match(
     new RegExp(`^${providerPrefix} provider failed: HTTP ([1-5][0-9]{2})$`, "u"),
@@ -69,18 +73,33 @@ export function summarizeProviderInvocationFailure(error) {
   return `provider invocation failed: provider_runtime_failure (exit code ${exitCode})`;
 }
 
+function hasProviderCoverageFailure(error) {
+  const envelope = cliEnvelope(error);
+  const coverage = envelope?.status === "ok"
+    ? envelope?.result?.report?.coverage
+    : undefined;
+  return Array.isArray(coverage) && coverage.some((entry) =>
+    entry?.state === "failed"
+    && Array.isArray(entry?.reason_codes)
+    && entry.reason_codes.includes("provider_error")
+  );
+}
+
 function cliErrorMessage(error) {
+  const envelope = cliEnvelope(error);
+  return envelope?.status === "error"
+    && typeof envelope?.error?.message === "string"
+    ? envelope.error.message
+    : undefined;
+}
+
+function cliEnvelope(error) {
   if (typeof error !== "object" || error === null || !("stdout" in error)) {
     return undefined;
   }
-  const stdout = error.stdout;
-  if (typeof stdout !== "string") return undefined;
+  if (typeof error.stdout !== "string") return undefined;
   try {
-    const envelope = JSON.parse(stdout);
-    return envelope?.status === "error"
-      && typeof envelope?.error?.message === "string"
-      ? envelope.error.message
-      : undefined;
+    return JSON.parse(error.stdout);
   } catch {
     return undefined;
   }

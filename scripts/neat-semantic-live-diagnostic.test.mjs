@@ -62,3 +62,27 @@ test("falls back safely when the CLI output is not a JSON error envelope", () =>
     "provider invocation failed: runner_timeout (exit code ETIMEDOUT)",
   );
 });
+
+test("reports a failed semantic coverage reason from a successful CLI envelope", () => {
+  assert.equal(
+    summarizeProviderInvocationFailure({
+      code: 3,
+      stdout: JSON.stringify({
+        protocol_version: "1.0",
+        status: "ok",
+        result: {
+          command: "knowledge_hygiene.semantic",
+          report: {
+            coverage: [{
+              dimension: "narrative",
+              state: "failed",
+              reason_codes: ["provider_error"],
+            }],
+          },
+        },
+      }),
+      stderr: "",
+    }),
+    "provider invocation failed: semantic_coverage_failed (reason provider_error; exit code 3)",
+  );
+});
