@@ -1,5 +1,11 @@
 # @osstack/cli
 
+## 0.16.1
+
+### Patch Changes
+
+- 6e95ab8: Allow npm Trusted Publishing from private GitHub repositories by deferring provenance generation to npm instead of forcing the unsupported `--provenance` flag.
+
 ## 0.16.0
 
 ### Minor Changes
