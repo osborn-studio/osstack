@@ -257,6 +257,8 @@ R0 不新建 workspace package。若两个非 osstack 产品需要独立使用 p
 
 SQLite 与仓库工件不是两个可自由编辑的真相：仓库 JSON 是一次导出的不可变 revision。继续访谈后必须重新 render 新 revision；CLI 不从手改 Markdown 反向恢复状态。
 
+2026-08-03 的生产 dogfood 中，owner 再次确认以下不可逆数据模型约束：append-only event 是审计事实来源；SQLite 是活动会话权威，`ledger.json`、`ledger.md` 与 `render-manifest.json` 构成可移植交付面；session id、单调 revision 与 idempotency key 不可重写，已有会话写入使用 `if_revision`；SQLite migration 只增不删，破坏 portable schema 时保留 v1 reader 至少一个 minor release；readiness、指标和索引均从事件确定性重建，禁止手改数据库、ledger 或派生视图。
+
 ### 4.4 仓库文件布局
 
 ```text
