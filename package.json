@@ -53,6 +53,7 @@
     "smoke:guarded-deploy": "pnpm --filter @osstack/cli... build && node scripts/smoke-guarded-deploy.mjs",
     "smoke:release-plan": "pnpm --filter @osstack/cli... build && node scripts/smoke-release-plan.mjs",
     "smoke:neat": "pnpm --filter @osstack/cli... build && node scripts/smoke-neat.mjs",
+    "test:neat-semantic-live-diagnostic": "node --test scripts/neat-semantic-live-diagnostic.test.mjs",
     "smoke:neat:semantic:live": "pnpm --filter @osstack/cli... build && node scripts/smoke-neat-semantic-live.mjs",
     "smoke:probe": "pnpm --filter @osstack/cli... build && node scripts/smoke-probe.mjs",
     "smoke:probe-skill": "pnpm --filter @osstack/cli... build && node scripts/smoke-probe-skill.mjs",

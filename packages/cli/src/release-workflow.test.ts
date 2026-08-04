@@ -66,6 +66,16 @@ describe("CLI-backed root scripts", () => {
 });
 
 describe("paid semantic provider CI boundary", () => {
+  it("verifies sanitized diagnostics before regular and paid semantic runs", () => {
+    const workflow = readFileSync(join(repoRoot, ".github/workflows/ci.yml"), "utf8");
+    const manifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+
+    expect(manifest.scripts["test:neat-semantic-live-diagnostic"]).toBe(
+      "node --test scripts/neat-semantic-live-diagnostic.test.mjs",
+    );
+    expect(workflow.match(/pnpm test:neat-semantic-live-diagnostic/gu)).toHaveLength(3);
+  });
+
   it("exposes credentials only to explicitly selected manual smoke jobs", () => {
     const workflow = readFileSync(join(repoRoot, ".github/workflows/ci.yml"), "utf8");
     const checkStart = workflow.indexOf("  check:");

@@ -129,6 +129,9 @@ jobs:
           OSSTACK_BENCH_HELP_BUDGET_MS: "900"
         run: node scripts/bench-cli-startup.mjs
 
+      - name: Neat semantic live diagnostic tests
+        run: pnpm test:neat-semantic-live-diagnostic
+
       - name: Neat semantic beta contract gates
         if: steps.changes.outputs.heavy_smoke == 'true'
         run: |
@@ -217,6 +220,9 @@ jobs:
       - name: Build semantic CLI
         run: pnpm --filter @osstack/cli... build
 
+      - name: Verify sanitized diagnostics
+        run: pnpm test:neat-semantic-live-diagnostic
+
       - name: Run sanitized DeepSeek smoke
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
@@ -247,6 +253,9 @@ jobs:
 
       - name: Build semantic CLI
         run: pnpm --filter @osstack/cli... build
+
+      - name: Verify sanitized diagnostics
+        run: pnpm test:neat-semantic-live-diagnostic
 
       - name: Run sanitized Qwen smoke
         env:

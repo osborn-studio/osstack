@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { summarizeProviderInvocationFailure } from "./neat-semantic-live-diagnostic.mjs";
 
 const execFileAsync = promisify(execFile);
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -130,10 +131,7 @@ The script prints only a sanitized receipt and never prints provider values or f
         timeout: 150_000,
       }));
     } catch (error) {
-      const code = typeof error === "object" && error !== null && "code" in error
-        ? String(error.code)
-        : "unknown";
-      fail(`provider invocation failed with exit code ${code}`);
+      fail(summarizeProviderInvocationFailure(error));
     }
     let envelope;
     try {
