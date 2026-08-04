@@ -22,6 +22,7 @@ Operational helpers that live outside the daemon hot loop.
 | `smoke-npm-broken-deprecation.mjs` | Verifies exact targets/messages, no-network planning, identity binding, full-audit-before-write, idempotent/resumable deprecation, authentication redaction, and first-error stop without live npm access. |
 | `publish-packages-safely.mjs` | Publishes public workspace packages through npm Trusted Publishing in deterministic dependency-first order, stops on the first failure, and emits Changesets v1 tag announcements/events only for successful publishes. |
 | `smoke-npm-publish-order.mjs` | Proves dependency ordering, cycle rejection, fail-stop behavior, published-version recovery, and delegated-auth log redaction without contacting npm. |
+| `smoke-clean-typecheck-contract.mjs` | Keeps the documented root `pnpm typecheck` runnable from a clean checkout while ensuring CI reuses its preceding build instead of rebuilding. |
 | `smoke-release-plan.mjs` | Runs the built CLI `release plan --target all`, verifies JSON and Markdown runbooks, and asserts validation, publish/deploy, and post-release validation command coverage. |
 | `smoke-single-binary-release-pack.mjs` | Builds a local single-binary release archive, verifies checksum/SBOM/extracted binary behavior, and runs the built CLI `release doctor --target single-binary` release asset gate. |
 | `symphony-watch.sh` | One-shot: check openai/symphony drift against blessed_sha. Read-only by default; `--pull` fetches, `--bless` re-pins. |

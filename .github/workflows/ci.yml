@@ -91,6 +91,9 @@ jobs:
       - name: Release facts
         run: pnpm smoke:version-packages && node scripts/release-facts.mjs --self-test && node scripts/release-facts.mjs
 
+      - name: Clean typecheck contract
+        run: pnpm smoke:clean-typecheck
+
       # Build before test/typecheck: packages import each other via dist/.
       - name: Build
         run: pnpm -r build
@@ -101,7 +104,7 @@ jobs:
         run: node scripts/generate-inventory.mjs --check
 
       - name: Typecheck
-        run: pnpm -r typecheck
+        run: pnpm typecheck:check
 
       - name: Test
         run: pnpm -r test
