@@ -1688,7 +1688,9 @@ async function releaseNpmPublishAssetsCheck(workspacePath: string): Promise<Rele
   expectAsset(npmPublisher, "publishPackagesSequentially", "NPM publisher must stop the train on the first publish failure.");
   expectAsset(npmPublisher, "CHANGESETS_OUTPUT", "NPM publisher must emit Changesets tag events for the release action.");
   expectAsset(npmPublisher, "New tag:", "NPM publisher must announce successful tags to changesets/action@v1.");
-  expectAsset(npmPublisher, "\"--provenance\"", "NPM publisher must request npm provenance for Trusted Publishing.");
+  if (npmPublisher.includes("\"--provenance\"")) {
+    violations.push("NPM publisher must defer provenance to Trusted Publishing so private source repositories remain publishable.");
+  }
   expectAsset(npmPublisher, "\"--registry\"", "NPM publisher must publish to the same canonical registry it inspects.");
   expectAsset(npmPublishOrderSmoke, "the first publish failure must stop the train", "NPM publish ordering smoke must cover fail-stop behavior.");
   if (/\b(?:NPM_TOKEN|NODE_AUTH_TOKEN)\b/u.test(npmPublisher)) {

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildTopologicalPublishPlan,
   changesetsTagAnnouncement,
+  npmPublishArgs,
   publishPackagesSequentially,
   sanitizePublishError,
 } from "./publish-packages-safely.mjs";
@@ -101,10 +102,19 @@ assert.equal(
   "changesets/action@v1 must discover each successfully created monorepo tag",
 );
 
+const publishArgs = npmPublishArgs(workspacePackage("@osstack/cli"), "latest");
+assert(!publishArgs.includes("--provenance"), "Trusted Publishing must not force provenance for a private source repository");
+assert(publishArgs.includes("--no-git-checks"), "the guarded publisher must keep the release-worktree override");
+assert.deepEqual(
+  publishArgs.slice(-2),
+  ["--registry", "https://registry.npmjs.org/"],
+  "the guarded publisher must use the canonical registry",
+);
+
 console.log(JSON.stringify({
   ok: true,
   kind: "npm-publish-order-smoke",
-  cases: 6,
+  cases: 7,
 }, null, 2));
 
 function workspacePackage(name, internalDependencies = []) {

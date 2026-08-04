@@ -105,6 +105,26 @@ export function changesetsTagAnnouncement(item) {
   return `New tag: ${packageVersionKey(item)}`;
 }
 
+export function npmPublishArgs(item, distTag) {
+  // Trusted Publishing generates provenance automatically for public source
+  // repositories and does not support it for private source repositories.
+  // Do not force --provenance here; let npm apply its repository-visibility rule.
+  // Source: https://docs.npmjs.com/trusted-publishers/#automatic-provenance-generation
+  return [
+    "--dir",
+    item.directory,
+    "publish",
+    "--access",
+    item.access,
+    "--tag",
+    distTag,
+    "--no-git-checks",
+    "--json",
+    "--registry",
+    registry,
+  ];
+}
+
 async function main() {
   const packages = await publicWorkspacePackages();
   const publishedVersions = await registryPublishedVersions(packages);
@@ -227,20 +247,7 @@ function releaseDistTag(packages) {
 async function publishPackage(item, distTag) {
   console.log(`Publishing ${item.name}@${item.version} after all internal dependencies are available.`);
   try {
-    const { stdout, stderr } = await execFileAsync("pnpm", [
-      "--dir",
-      item.directory,
-      "publish",
-      "--access",
-      item.access,
-      "--tag",
-      distTag,
-      "--no-git-checks",
-      "--provenance",
-      "--json",
-      "--registry",
-      registry,
-    ], {
+    const { stdout, stderr } = await execFileAsync("pnpm", npmPublishArgs(item, distTag), {
       cwd: root,
       env: process.env,
       timeout: 300_000,
