@@ -36,6 +36,23 @@ interface ProviderProfile {
   requestDefaults: Readonly<Record<string, unknown>>;
 }
 
+function finishReasonFailureCode(
+  finishReason: string | null,
+): SemanticProviderFailureCodeV1 | undefined {
+  switch (finishReason) {
+    case "stop":
+      return undefined;
+    case "length":
+      return "output_token_limit_reached";
+    case "content_filter":
+      return "content_filtered";
+    case "insufficient_system_resource":
+      return "insufficient_system_resource";
+    default:
+      return "unsupported_finish_reason";
+  }
+}
+
 const deepSeekProfile: ProviderProfile = {
   id: "deepseek-no-tools",
   // https://api-docs.deepseek.com/api/create-chat-completion/
@@ -230,8 +247,9 @@ class OpenAICompatibleNoToolsSemanticJudge implements SemanticJudgePort {
       ) {
         throw new SemanticProviderError("tool_activity");
       }
-      if (choice.finish_reason !== "stop") {
-        throw new SemanticProviderError("unsupported_finish_reason");
+      const finishReasonError = finishReasonFailureCode(choice.finish_reason);
+      if (finishReasonError !== undefined) {
+        throw new SemanticProviderError(finishReasonError);
       }
       if (choice.message.content === null) {
         throw new SemanticProviderError("missing_json_content");

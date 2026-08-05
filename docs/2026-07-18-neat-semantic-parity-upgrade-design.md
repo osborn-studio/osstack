@@ -136,6 +136,9 @@ type SemanticProviderFailureCodeV1 =
   | "model_identity_mismatch"
   | "missing_completion_choice"
   | "tool_activity"
+  | "output_token_limit_reached"
+  | "content_filtered"
+  | "insufficient_system_resource"
   | "unsupported_finish_reason"
   | "missing_json_content"
   | "invalid_json_content"
@@ -185,6 +188,10 @@ interface CoverageDimensionV2 {
 `reason_codes` 含 `provider_error` 的覆盖记录中。该字段只保留封闭错误码，不得持久化
 HTTP 响应正文、SDK 异常文本、供应商错误详情或凭据；未识别异常统一映射为
 `unknown_provider_error`。字段为可选，旧 V2 报告继续由新 reader 接受。
+DeepSeek/OpenAI-compatible `finish_reason` 固定映射为：`length` →
+`output_token_limit_reached`、`content_filter` → `content_filtered`、
+`insufficient_system_resource` → 同名错误码、`tool_calls` → `tool_activity`；
+空值、未来新增值或其他未识别值统一映射为 `unsupported_finish_reason`，禁止把原值写入报告。
 
 #### 2.1.2 `FindingV2` 与 `ReportV2` 最小合同
 

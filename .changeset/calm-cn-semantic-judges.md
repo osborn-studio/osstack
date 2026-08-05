@@ -12,6 +12,8 @@ from the requested model. The built-in Qwen profile is explicitly scoped to
 Alibaba Cloud China (Beijing) credentials.
 Propagate sanitized, closed-registry provider failure codes through semantic
 coverage reports and live diagnostics without exposing provider response bodies
-or exception text.
+or exception text. Classify output-token exhaustion, content filtering, and
+provider resource interruption separately while retaining a safe unknown
+finish-reason fallback.
 Refresh MCP HTTP transitive dependencies to patched, upstream-supported
 versions.

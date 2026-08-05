@@ -152,7 +152,7 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
     })).toThrow(/DASHSCOPE_API_KEY/);
   });
 
-  it("fails closed on tool activity, truncation, malformed JSON, and HTTP errors", async () => {
+  it("fails closed with precise finish-reason, JSON, and HTTP error codes", async () => {
     const cases: Array<{
       response: Response;
       code: string;
@@ -172,6 +172,36 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
           choices: [{
             index: 0,
             finish_reason: "length",
+            message: { role: "assistant", content: "{}" },
+          }],
+        }),
+        code: "output_token_limit_reached",
+      },
+      {
+        response: providerResponse({
+          choices: [{
+            index: 0,
+            finish_reason: "content_filter",
+            message: { role: "assistant", content: "{}" },
+          }],
+        }),
+        code: "content_filtered",
+      },
+      {
+        response: providerResponse({
+          choices: [{
+            index: 0,
+            finish_reason: "insufficient_system_resource",
+            message: { role: "assistant", content: "{}" },
+          }],
+        }),
+        code: "insufficient_system_resource",
+      },
+      {
+        response: providerResponse({
+          choices: [{
+            index: 0,
+            finish_reason: "future_provider_reason",
             message: { role: "assistant", content: "{}" },
           }],
         }),

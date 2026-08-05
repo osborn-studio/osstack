@@ -9,6 +9,12 @@ describe("semantic provider failure contract", () => {
     expect(SemanticProviderFailureCodeV1.parse("request_timeout")).toBe(
       "request_timeout",
     );
+    expect(SemanticProviderFailureCodeV1.parse("output_token_limit_reached"))
+      .toBe("output_token_limit_reached");
+    expect(SemanticProviderFailureCodeV1.parse("content_filtered"))
+      .toBe("content_filtered");
+    expect(SemanticProviderFailureCodeV1.parse("insufficient_system_resource"))
+      .toBe("insufficient_system_resource");
     expect(SemanticProviderFailureCodeV1.safeParse("raw_provider_message").success)
       .toBe(false);
   });
