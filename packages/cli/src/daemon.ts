@@ -3631,7 +3631,7 @@ export async function startDaemon(
   const releaseLock = acquireDaemonLock(pidFilePath());
   cleanupStaleSocket(socketPath);
   // Bring up OTel before the daemon context so spans capture everything.
-  initOtel({ serviceVersion: DAEMON_VERSION });
+  await initOtel({ serviceVersion: DAEMON_VERSION });
   const ctx = buildContext({
     socketPath,
     ...(opts.adapters === undefined ? {} : { adapters: opts.adapters }),
