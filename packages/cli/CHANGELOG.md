@@ -1,5 +1,30 @@
 # @osstack/cli
 
+## 0.17.0
+
+### Patch Changes
+
+- 2ab3a6e: Answer `osstack --version` in ~30ms (was ~350ms) via a lightweight entry wrapper.
+
+  `dist/bin.js` is now a 1KB wrapper (`cli-entry.ts`) that serves `--version`/`-v`/`version` without loading the command surface, then lazily imports the full CLI (emitted as a split chunk) for every other command. The direct-execution guard moved into the wrapper and `bin.ts` no longer self-executes — under `bun build --compile` every bundled module reports the same `import.meta.url`, so a guard left in the chunk would have run `main()` twice. Importing `dist/bin.js` as a module remains side-effect free. A new `smoke:cli-startup` gate (`scripts/bench-cli-startup.mjs`) budgets `--version` at 150ms and `--help` at 500ms so the startup tax cannot silently return.
+
+- a007f58: Lazy-load heavy optional dependencies to cut CLI startup module-load cost from ~324ms to ~190ms.
+
+  - `@osstack/agents`: the claude-code adapter now imports `@anthropic-ai/claude-agent-sdk` (grpc/opentelemetry/protobufjs tree, ~150ms) on first `query()` call instead of at module load. Import failures surface through the existing event contracts (`session.terminal failed` / `adapter_threw`), abort is re-checked after the import window, and a failed load is not memoized so later calls can retry.
+  - `@osstack/core`: **BREAKING** — `initOtel()` changed from `void` to `Promise<void>`. The OTel NodeSDK/OTLP exporter modules (~100ms) now load lazily inside `initOtel()`, so consumers that never enable tracing skip the cost. Callers must `await initOtel(...)`; un-awaited calls compile-error under `@typescript-eslint/no-floating-promises` and would otherwise start tracing asynchronously (early spans dropped).
+  - `@osstack/cli`: daemon startup awaits `initOtel(...)`.
+
+- 21752b5: `osstack stats` now reports per-method daemon RPC latency (p50/p95/max over a sliding ≤512-sample window, sorted by descending p95). The record path is O(1) and allocation-free after warm-up; percentile computation is deferred to the stats call. This gives bulk-API work (Performance Hints plan P2) measured offenders to target. AGENTS.md gains a Performance Budgets section documenting the CI-enforced startup budgets and the daemon RPC p95 < 10ms target.
+- Updated dependencies [a007f58]
+  - @osstack/core@0.17.0
+  - @osstack/agents@0.17.0
+  - @osstack/autonomy@0.17.0
+  - @osstack/config@0.17.0
+  - @osstack/hermes-adapter@0.17.0
+  - @osstack/loop@0.17.0
+  - @osstack/skill-registry@0.17.0
+  - @osstack/skills@0.17.0
+
 ## 0.16.1
 
 ### Patch Changes
