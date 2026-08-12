@@ -10,17 +10,17 @@
 // smaller dependency surface, and good enough for our throughput.
 
 import { trace, context, SpanStatusCode, type Tracer, type Span } from "@opentelemetry/api";
-import { NodeSDK } from "@opentelemetry/sdk-node";
-import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
-import { resourceFromAttributes } from "@opentelemetry/resources";
-import {
-  ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION,
-} from "@opentelemetry/semantic-conventions";
+
+// The OTel NodeSDK + OTLP exporter tree costs ~100ms to import, and tracing
+// is disabled by default. Only @opentelemetry/api (lightweight, no-op safe)
+// is imported statically; the SDK loads lazily inside initOtel() so every
+// @osstack/core consumer that never enables tracing skips the cost entirely.
+type NodeSDKInstance = import("@opentelemetry/sdk-node").NodeSDK;
 
 export const OSSTACK_SERVICE_NAME = "osstack";
 export const OSSTACK_TRACER_NAME = "osstack-daemon";
 
-let sdk: NodeSDK | null = null;
+let sdk: NodeSDKInstance | null = null;
 let started = false;
 
 export interface OtelInitOptions {
@@ -37,22 +37,32 @@ export function otelEnabled(): boolean { return started; }
 
 /**
  * Initialize the OTel SDK if an endpoint is configured. Idempotent.
- * Call once at daemon startup; the corresponding shutdownOtel() can be
- * called from the daemon's shutdown handler.
+ * Call once at daemon startup (and await it so spans capture everything);
+ * the corresponding shutdownOtel() can be called from the daemon's
+ * shutdown handler. The heavy SDK modules are imported lazily here so the
+ * common disabled case never loads them.
  */
-export function initOtel(opts: OtelInitOptions = {}): void {
+export async function initOtel(opts: OtelInitOptions = {}): Promise<void> {
   if (started) return;
   const endpoint = opts.endpoint ?? process.env["OTEL_EXPORTER_OTLP_ENDPOINT"];
   const enabled = opts.enabled ?? Boolean(endpoint);
   if (!enabled || !endpoint) return;
+
+  const [{ NodeSDK }, { OTLPTraceExporter }, { resourceFromAttributes }, semconv] =
+    await Promise.all([
+      import("@opentelemetry/sdk-node"),
+      import("@opentelemetry/exporter-trace-otlp-http"),
+      import("@opentelemetry/resources"),
+      import("@opentelemetry/semantic-conventions"),
+    ]);
 
   const exporterUrl = endpoint.endsWith("/v1/traces") ? endpoint : `${endpoint.replace(/\/$/, "")}/v1/traces`;
   const exporter = new OTLPTraceExporter({ url: exporterUrl });
 
   sdk = new NodeSDK({
     resource: resourceFromAttributes({
-      [ATTR_SERVICE_NAME]: OSSTACK_SERVICE_NAME,
-      [ATTR_SERVICE_VERSION]: opts.serviceVersion ?? "0.0.0",
+      [semconv.ATTR_SERVICE_NAME]: OSSTACK_SERVICE_NAME,
+      [semconv.ATTR_SERVICE_VERSION]: opts.serviceVersion ?? "0.0.0",
     }),
     traceExporter: exporter,
   });

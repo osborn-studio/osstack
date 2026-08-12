@@ -11,7 +11,7 @@
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { query, type Options, type SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import type { Options, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { CapabilitySchema, type Capability, type CostTier } from "@osstack/core";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { BaseAgentAdapter, type AgentAvailability, type AgentTask } from "../base.js";
@@ -20,6 +20,24 @@ import type {
   AgentSessionEvent,
   AgentSessionInput,
 } from "../session.js";
+
+// The Claude Agent SDK drags in a large dependency tree (grpc, opentelemetry,
+// protobufjs, MCP) that costs ~230ms to load. Import it lazily at the first
+// query() call so CLI invocations that never run this adapter don't pay for it.
+type SdkQuery = typeof import("@anthropic-ai/claude-agent-sdk").query;
+let sdkQueryPromise: Promise<SdkQuery> | undefined;
+
+function loadSdkQuery(): Promise<SdkQuery> {
+  // On failure, drop the memoized promise so a transient loader error does
+  // not permanently poison every later call in this process.
+  sdkQueryPromise ??= import("@anthropic-ai/claude-agent-sdk")
+    .then((sdk) => sdk.query)
+    .catch((err: unknown) => {
+      sdkQueryPromise = undefined;
+      throw err;
+    });
+  return sdkQueryPromise;
+}
 
 const CAPABILITIES: readonly Capability[] = [
   CapabilitySchema.parse({
@@ -303,11 +321,20 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
       options.allowDangerouslySkipPermissions = true;
     }
 
-    const stream = query({ prompt, options });
+    let stream: ReturnType<SdkQuery> | undefined;
     let nativeSessionId: string | undefined;
     let terminalEmitted = false;
     let assistantTextEmitted = false;
     try {
+      // Inside the try so an import failure surfaces as the contractual
+      // session.terminal failed event instead of escaping the generator.
+      const query = await loadSdkQuery();
+      if (signal.aborted) {
+        terminalEmitted = true;
+        yield { type: "session.terminal", state: "cancelled" };
+        return;
+      }
+      stream = query({ prompt, options });
       for await (const message of stream) {
         if (signal.aborted) {
           stream.close?.();
@@ -410,7 +437,7 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
         summary: sanitizeSummary(error instanceof Error ? error.message : String(error)),
       };
     } finally {
-      if (!terminalEmitted && signal.aborted) stream.close?.();
+      if (!terminalEmitted && signal.aborted) stream?.close?.();
     }
   }
 
@@ -443,6 +470,11 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
       if (autoApprove) {
         options.permissionMode = "bypassPermissions";
         options.allowDangerouslySkipPermissions = true;
+      }
+      const query = await loadSdkQuery();
+      if (signal.aborted) {
+        yield doneEvent(task, seqRef.v, "cancelled", seqRef.v - 1, "cancel requested");
+        return;
       }
       const stream = query({ prompt: task.prompt, options });
       for await (const msg of stream) {
