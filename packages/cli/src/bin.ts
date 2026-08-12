@@ -10828,6 +10828,16 @@ interface StatsResult {
   total_events: number;
   per_agent: AgentStatsRow[];
   loops?: LoopStatsSummary;
+  rpc?: RpcLatencyRow[];
+}
+
+interface RpcLatencyRow {
+  method: string;
+  count: number;
+  window: number;
+  p50_ms: number;
+  p95_ms: number;
+  max_ms: number;
 }
 
 interface AgentStatsRow {
@@ -12242,7 +12252,10 @@ function printStats(result: unknown): void {
     }
   }
 
-  if (s.loops === undefined) return;
+  if (s.loops === undefined) {
+    printRpcLatency(s.rpc);
+    return;
+  }
   console.log();
   const loopAvg = s.loops.avg_cycle_duration_ms === null ? "—" : s.loops.avg_cycle_duration_ms.toFixed(0);
   console.log(
@@ -12251,14 +12264,30 @@ function printStats(result: unknown): void {
   console.log(
     `loop_cycles=${s.loops.total_cycles} discovered=${s.loops.total_discovered} executed=${s.loops.total_executed} skipped=${s.loops.total_skipped} ok=${s.loops.total_successful} failed=${s.loops.total_failed} escalated=${s.loops.total_escalated} tokens=${s.loops.total_tokens_consumed} avg_cycle_ms=${loopAvg}`,
   );
-  if (s.loops.per_loop.length === 0) return;
+  if (s.loops.per_loop.length > 0) {
+    console.log();
+    console.log("loop_session_id      status    cycles exec ok fail escl avg_cycle_ms  tokens workspace");
+    console.log("-".repeat(124));
+    for (const loop of s.loops.per_loop) {
+      const avg = loop.avg_cycle_duration_ms === null ? "—" : loop.avg_cycle_duration_ms.toFixed(0);
+      console.log(
+        `${pad(loop.loop_session_id, 20)} ${pad(loop.status, 9)} ${num(loop.cycle_count, 6)} ${num(loop.executed_task_count, 4)} ${num(loop.successful_task_count, 2)} ${num(loop.failed_task_count, 4)} ${num(loop.escalated_task_count, 4)} ${pad(avg, 13)} ${num(loop.tokens_consumed, 6)} ${loop.workspace_path}`,
+      );
+    }
+  }
+
+  printRpcLatency(s.rpc);
+}
+
+/** RPC latency section: sorted by the daemon (descending p95), sliding window ≤512. */
+function printRpcLatency(rows: RpcLatencyRow[] | undefined): void {
+  if (rows === undefined || rows.length === 0) return;
   console.log();
-  console.log("loop_session_id      status    cycles exec ok fail escl avg_cycle_ms  tokens workspace");
-  console.log("-".repeat(124));
-  for (const loop of s.loops.per_loop) {
-    const avg = loop.avg_cycle_duration_ms === null ? "—" : loop.avg_cycle_duration_ms.toFixed(0);
+  console.log("rpc_method                count window   p50_ms   p95_ms   max_ms");
+  console.log("-".repeat(68));
+  for (const r of rows) {
     console.log(
-      `${pad(loop.loop_session_id, 20)} ${pad(loop.status, 9)} ${num(loop.cycle_count, 6)} ${num(loop.executed_task_count, 4)} ${num(loop.successful_task_count, 2)} ${num(loop.failed_task_count, 4)} ${num(loop.escalated_task_count, 4)} ${pad(avg, 13)} ${num(loop.tokens_consumed, 6)} ${loop.workspace_path}`,
+      `${pad(r.method, 24)} ${num(r.count, 7)} ${num(r.window, 6)} ${pad(r.p50_ms.toFixed(1), 8)} ${pad(r.p95_ms.toFixed(1), 8)} ${pad(r.max_ms.toFixed(1), 8)}`,
     );
   }
 }
