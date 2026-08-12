@@ -23,7 +23,7 @@ import {
   createVerifierOutputArtifacts,
   type ProofStageInput,
 } from "./proof-pack.js";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
 import { parse as parseYaml } from "yaml";
@@ -12269,24 +12269,7 @@ function num(n: number, w: number): string {
   return s.length >= w ? s : `${" ".repeat(w - s.length)}${s}`;
 }
 
-function isDirectCliEntrypoint(): boolean {
-  if (process.argv[1] === undefined) return false;
-  let invokedPath = process.argv[1];
-  try {
-    invokedPath = realpathSync(process.argv[1]);
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
-  }
-  const invoked = pathToFileURL(invokedPath).href;
-  return import.meta.url === invoked;
-}
-
-if (isDirectCliEntrypoint()) {
-  main().then(
-    (code) => process.exit(code),
-    (err) => {
-      console.error("osstack:", err instanceof Error ? err.message : err);
-      process.exit(1);
-    },
-  );
-}
+// No self-execution block here: cli-entry.ts (the dist/bin.js wrapper) owns
+// the direct-entry guard and calls main() explicitly. Under bun --compile
+// every bundled module reports the same import.meta.url, so a guard in this
+// module would fire alongside the wrapper's and run main() twice.
