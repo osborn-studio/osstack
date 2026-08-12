@@ -1,9 +1,14 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: { bin: "src/bin.ts" },
+  // cli-entry.ts is a thin wrapper that answers --version without loading
+  // the command surface, then lazily imports bin.ts (emitted as a split
+  // chunk) for everything else. The output keeps the dist/bin.js name that
+  // package.json#bin points at.
+  entry: { bin: "src/cli-entry.ts" },
   format: ["esm"],
   target: "node20",
+  splitting: true,
   clean: true,
   banner: { js: "#!/usr/bin/env node" },
   sourcemap: true,
