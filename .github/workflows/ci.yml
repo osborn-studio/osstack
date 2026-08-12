@@ -109,6 +109,16 @@ jobs:
       - name: Test
         run: pnpm -r test
 
+      # Startup budget gate: median-of-5 spawns of the built dist/bin.js.
+      # Budgets are looser than the local defaults (150/500ms) because CI
+      # runners spawn node slower; they still catch the eager-import class
+      # of regression (each costs 100ms+). See scripts/bench-cli-startup.mjs.
+      - name: CLI startup budget
+        env:
+          OSSTACK_BENCH_VERSION_BUDGET_MS: "250"
+          OSSTACK_BENCH_HELP_BUDGET_MS: "900"
+        run: node scripts/bench-cli-startup.mjs
+
       - name: Neat semantic beta contract gates
         if: steps.changes.outputs.heavy_smoke == 'true'
         run: |
