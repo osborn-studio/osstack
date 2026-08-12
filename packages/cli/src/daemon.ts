@@ -68,6 +68,7 @@ import {
   type RoutableAdapter,
 } from "@osstack/core";
 import { guardedOpenDb as openDb } from "./guarded-open-db.js";
+import { RpcLatencyRecorder, type RpcMethodLatency } from "./rpc-latency.js";
 import type Database from "better-sqlite3";
 import {
   cleanupOrphanedWorktrees,
@@ -178,6 +179,8 @@ interface DaemonContext {
   dailySessions: Map<string, DailySession>;
   /** Kanban task_ids per osstack run_id, set when bridge create succeeds. */
   hermesKanbanByRun: Map<string, string>;
+  /** Per-method RPC latency windows, surfaced via the stats method. */
+  rpcLatency: RpcLatencyRecorder;
   /** When true (set by daemon.drain), new task.submit calls are rejected. */
   draining: boolean;
   /** Graceful shutdown trigger, wired up by startDaemon once the server is live. */
@@ -1082,7 +1085,7 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
     }
 
     case "stats":
-      return singleOk(req.id, computeStats(ctx.db, ctx.loopSessions));
+      return singleOk(req.id, computeStats(ctx.db, ctx.loopSessions, ctx.rpcLatency));
 
     case "autonomy.status": {
       const params = (req.params ?? {}) as { autonomy_run_id?: unknown };
@@ -1544,6 +1547,8 @@ interface DaemonStats {
   total_events: number;
   per_agent: AgentStat[];
   loops: LoopStats;
+  /** Per-method socket RPC latency (p50/p95 over a recent window). */
+  rpc: RpcMethodLatency[];
   generated_at: number;
 }
 
@@ -1610,7 +1615,11 @@ function loopBudgetStat(session: LoopSession): LoopBudgetStat | undefined {
   };
 }
 
-function computeStats(db: Database.Database, loopSessions: Map<string, LoopSession>): DaemonStats {
+function computeStats(
+  db: Database.Database,
+  loopSessions: Map<string, LoopSession>,
+  rpcLatency: RpcLatencyRecorder,
+): DaemonStats {
   const total_runs = countRuns(db);
   const total_events = countEvents(db);
   const rows = db.prepare(
@@ -1633,6 +1642,7 @@ function computeStats(db: Database.Database, loopSessions: Map<string, LoopSessi
     total_events,
     per_agent: rows,
     loops: computeLoopStats(loopSessions),
+    rpc: rpcLatency.snapshot(),
     generated_at: Date.now() / 1000,
   };
 }
@@ -3434,6 +3444,7 @@ function buildContext(
     loopSessions: new Map(),
     dailySessions: new Map(),
     hermesKanbanByRun: new Map(),
+    rpcLatency: new RpcLatencyRecorder(),
     draining: false,
     requestShutdown: () => { /* wired up in startDaemon */ },
     guardedAutonomy: undefined,
@@ -3667,12 +3678,21 @@ export async function startDaemon(
             continue;
           }
 
+          // Wall-clock per request, recorded into the per-method latency
+          // window that `osstack stats` reports. For the streaming methods
+          // (task.submit/task.observe) this measures the full handler
+          // lifetime, not time-to-first-byte.
+          const startedAt = performance.now();
+          const recordLatency = (): void => {
+            ctx.rpcLatency.record(req.method, performance.now() - startedAt);
+          };
+
           if (req.method === "task.submit") {
             void traceSpan(
               "osstack.task.submit",
               { "osstack.method": req.method },
               () => handleTaskSubmit(ctx, req, sock),
-            );
+            ).finally(recordLatency);
             continue;
           }
           if (req.method === "task.observe") {
@@ -3680,7 +3700,7 @@ export async function startDaemon(
               "osstack.task.observe",
               { "osstack.method": req.method },
               async () => handleTaskObserve(ctx, req, sock),
-            );
+            ).finally(recordLatency);
             continue;
           }
 
@@ -3692,7 +3712,7 @@ export async function startDaemon(
               if (resp === null) return;
               try { sock.write(encodeFrame(resp)); } catch { /* socket gone */ }
             },
-          );
+          ).finally(recordLatency);
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

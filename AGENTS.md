@@ -28,6 +28,17 @@ Vitest is the test runner. Place tests beside the code they cover using `*.test.
 
 Recent history follows Conventional Commits, for example `feat(loop): add loop engineering foundation` and `feat: OSStack standalone product + role-based agent configuration`. Use a concise imperative subject and include a scope when it clarifies the affected package. Pull requests should describe the change, list validation commands run, link related issues or docs, and include screenshots only for user-visible CLI, dashboard, or Hermes-facing behavior.
 
+## Performance Budgets
+
+Startup and latency budgets (from `docs/design/2026-08-12-performance-hints-improvement-plan.md`, after Dean & Ghemawat's Performance Hints). CI enforces the first two via the "CLI startup budget" step (`scripts/bench-cli-startup.mjs`); check the rest with `osstack stats` (rpc section).
+
+- `osstack --version` < 150ms local / 250ms CI — served by `cli-entry.ts` without loading the command surface.
+- `osstack --help` (full command surface) < 500ms local / 900ms CI.
+- Daemon local socket RPC p95 < 10ms per method for non-streaming calls.
+- Loop tick overhead < 1% of session wall-clock.
+
+Before adding a top-level import to `packages/cli/src/cli-entry.ts`, `bin.ts`, or any `@osstack/*` package's index: measure its load cost (`node --input-type=module -e "const t=performance.now(); await import('<dep>'); console.log(performance.now()-t)"`). Anything over ~20ms that isn't needed by every invocation should be a lazy `await import()` at its use site — the eager-import class of regression cost 100ms+ per offender when the plan landed.
+
 ## Security & Configuration Tips
 
 Do not commit local Hermes paths, secrets, socket data, or generated databases. Keep machine-specific settings in environment variables such as `HERMES_HOME`. Treat `legacy-python/` as compatibility code: update it only when intentionally maintaining V1 shims.
