@@ -15,13 +15,13 @@
 // to be quiet and always safe to run unattended.
 
 import { spawn } from "node:child_process";
-import { provisionStableServing } from "./control-plane-guard.js";
+import { loadRoleFile, provisionStableServing } from "./control-plane-guard.js";
 import { CURRENT_SCHEMA_VERSION } from "@osstack/core";
 import { homedir } from "node:os";
 import {
-  copyFileSync, existsSync, mkdirSync, openSync, readdirSync, rmSync, unlinkSync,
+  copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, unlinkSync,
 } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { backupsDir, logsDir, osstackHome, resolveSocketPath } from "./paths.js";
 import { compareSemver, VERSION } from "./version.js";
 import { fetchRegistryVersion } from "./update-check.js";
@@ -34,6 +34,66 @@ function daemonPlistPath(): string {
   const directory = process.env["OSSTACK_LAUNCH_AGENTS_DIR"]
     ?? join(homedir(), "Library", "LaunchAgents");
   return join(directory, `${LAUNCHD_LABEL}.plist`);
+}
+
+/**
+ * Resolve the OSSTACK_HOME the DEPLOYED daemon actually serves.
+ *
+ * The caller's shell environment is the LAST resort: `osstack upgrade` run
+ * from a terminal without the daemon's env used to re-provision the guard
+ * for the wrong home, so the freshly installed daemon refused to serve and
+ * every health check failed — and the rollback re-provisioned wrongly too
+ * (incident 2026-08-12, 0.16.1 → 0.17.0). Priority: the launchd plist env
+ * (how the daemon is actually started) → the role file provisioned next to
+ * the current global binary (self-perpetuating; captured BEFORE npm wipes
+ * it) → caller env / default.
+ */
+export function resolveDeployedHome(
+  plistText: string | null,
+  npmRoot: string | null,
+): { home: string; source: "launchd plist" | "existing role file" | "environment" } {
+  const fromPlist = plistText?.match(/<key>OSSTACK_HOME<\/key>\s*<string>([^<]+)<\/string>/)?.[1];
+  if (fromPlist !== undefined && fromPlist !== "") {
+    return { home: fromPlist, source: "launchd plist" };
+  }
+  if (npmRoot !== null && npmRoot !== "") {
+    try {
+      const role = loadRoleFile(join(npmRoot, "@osstack", "cli", "dist"));
+      const first = role?.allowed_osstack_homes[0];
+      if (first !== undefined) return { home: first, source: "existing role file" };
+    } catch { /* invalid role file — treat as absent */ }
+  }
+  return { home: process.env["OSSTACK_HOME"] ?? "~/.osstack", source: "environment" };
+}
+
+/**
+ * Align this process with the deployed daemon's home BEFORE any path is
+ * derived from it (backup, socket polling, log paths, and all four
+ * provisionStableServing calls read OSSTACK_HOME/OSSTACK_SOCKET from env).
+ *
+ * Values are ~-expanded to absolute paths before assignment: role files may
+ * legitimately carry "~/..." entries, but osstackHome()/resolveSocketPath()
+ * do no expansion of their own — a literal "~" in env would silently derive
+ * relative paths (and mkdir a literal ./~ directory).
+ *
+ * A served-home change must go through `serve --install`, which re-renders
+ * the plist: when both exist, a (stale) plist intentionally wins over the
+ * role file, because the incident this guards against is exactly a
+ * wrongly-provisioned role file.
+ */
+export function alignEnvWithDeployment(plistText: string | null, npmRoot: string | null): void {
+  const deployed = resolveDeployedHome(plistText, npmRoot);
+  if (deployed.source === "environment") return;
+  const expand = (p: string): string => resolve(p.replace(/^~(?=$|\/)/, homedir()));
+  const envHome = process.env["OSSTACK_HOME"];
+  if (envHome !== undefined && expand(envHome) !== expand(deployed.home)) {
+    log(`note: OSSTACK_HOME in this shell (${envHome}) differs from the deployed daemon's home (${deployed.home}, from ${deployed.source}) — using the deployed home.`);
+  }
+  process.env["OSSTACK_HOME"] = expand(deployed.home);
+  const sock = plistText?.match(/<key>OSSTACK_SOCKET<\/key>\s*<string>([^<]+)<\/string>/)?.[1];
+  if (sock !== undefined && sock !== "" && process.env["OSSTACK_SOCKET"] === undefined) {
+    process.env["OSSTACK_SOCKET"] = expand(sock);
+  }
 }
 
 export interface UpgradeOptions {
@@ -162,16 +222,22 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
   // self-upgrade via npm: the swap would not affect the serving binary and the
   // npm-path recovery branches do not apply (release-review F2-F5 exposure
   // closed operationally; full npm-path hardening tracked for Phase 2.1).
+  let plistText: string | null = null;
+  let npmRoot: string | null = null;
   try {
-    const { readFileSync: rfs } = await import("node:fs");
-    const plist = rfs(daemonPlistPath(), "utf8");
+    plistText = readFileSync(daemonPlistPath(), "utf8");
+  } catch { /* no plist — not a launchd deployment */ }
+  {
     const rootResp0 = await run("npm", ["root", "-g"]);
-    const npmRoot = rootResp0.ok ? rootResp0.output.trim() : "";
-    if (plist.includes("bin.js") && (npmRoot === "" || !plist.includes(npmRoot))) {
-      log("this deployment serves a CHECKOUT dist (not the npm-global package); `osstack upgrade` does not apply — use the checkout deploy flow in PHASE2-RUNBOOK.md");
-      return 1;
-    }
-  } catch { /* no plist — not a launchd deployment; continue */ }
+    npmRoot = rootResp0.ok ? rootResp0.output.trim() : null;
+  }
+  if (plistText !== null && plistText.includes("bin.js") && (npmRoot === null || npmRoot === "" || !plistText.includes(npmRoot))) {
+    log("this deployment serves a CHECKOUT dist (not the npm-global package); `osstack upgrade` does not apply — use the checkout deploy flow in PHASE2-RUNBOOK.md");
+    return 1;
+  }
+  // Incident 2026-08-12: provisioning/backup/health-checks must follow the
+  // DEPLOYED home, not whatever this shell happens to export.
+  alignEnvWithDeployment(plistText, npmRoot);
   const channel = args.includes("--channel")
     ? (args[args.indexOf("--channel") + 1] ?? "latest")
     : "latest";
