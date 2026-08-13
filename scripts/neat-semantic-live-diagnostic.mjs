@@ -1,4 +1,4 @@
-const providerPrefix = "(?:deepseek-no-tools|qwen-no-tools)";
+const providerPrefix = "deepseek-no-tools";
 const providerFailureCodes = new Set([
   "cancelled",
   "transport_error",

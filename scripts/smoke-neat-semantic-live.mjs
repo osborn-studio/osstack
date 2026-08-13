@@ -18,10 +18,6 @@ const providerRequirements = {
     credential: "DEEPSEEK_API_KEY",
     model: "OSSTACK_NEAT_DEEPSEEK_MODEL",
   },
-  "qwen-no-tools": {
-    credential: "DASHSCOPE_API_KEY",
-    model: "OSSTACK_NEAT_QWEN_MODEL",
-  },
 };
 
 class SmokeFailure extends Error {}
@@ -40,10 +36,9 @@ async function main() {
   const options = parseArguments(process.argv.slice(2));
   if (options.help) {
     process.stdout.write(`Usage:
-  node scripts/smoke-neat-semantic-live.mjs --provider <deepseek-no-tools|qwen-no-tools> [--receipt <absolute-path>]
+  node scripts/smoke-neat-semantic-live.mjs --provider deepseek-no-tools [--receipt <absolute-path>]
 
 The selected credential and model environment variables must already exist.
-qwen-no-tools requires an Alibaba Cloud Model Studio key from China (Beijing).
 The script prints only a sanitized receipt and never prints provider values or findings.
 `);
     return;
@@ -54,7 +49,7 @@ The script prints only a sanitized receipt and never prints provider values or f
   }
   const requirement = providerRequirements[options.provider];
   if (requirement === undefined) {
-    fail("--provider must be deepseek-no-tools or qwen-no-tools");
+    fail("--provider must be deepseek-no-tools");
   }
   for (const variable of [requirement.credential, requirement.model]) {
     if (!present(process.env[variable])) {

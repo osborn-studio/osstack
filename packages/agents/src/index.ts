@@ -44,7 +44,6 @@ export {
 } from "./semantic/built-in-judges.js";
 export {
   DeepSeekNoToolsSemanticJudge,
-  QwenNoToolsSemanticJudge,
   type OpenAICompatibleNoToolsSemanticJudgeOptions,
 } from "./semantic/openai-compatible-no-tools.js";
 export {

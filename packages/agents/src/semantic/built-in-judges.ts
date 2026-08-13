@@ -1,14 +1,10 @@
 import type { SemanticJudgePort } from "@osstack/governance";
 import { AnthropicNoToolsSemanticJudge } from "./anthropic-no-tools.js";
-import {
-  DeepSeekNoToolsSemanticJudge,
-  QwenNoToolsSemanticJudge,
-} from "./openai-compatible-no-tools.js";
+import { DeepSeekNoToolsSemanticJudge } from "./openai-compatible-no-tools.js";
 
 export const BUILT_IN_SEMANTIC_JUDGE_IDS = [
   "anthropic-no-tools",
   "deepseek-no-tools",
-  "qwen-no-tools",
 ] as const;
 
 export type BuiltInSemanticJudgeId =
@@ -56,13 +52,6 @@ export function createBuiltInSemanticJudge(
       environment,
       judgeId,
       "OSSTACK_NEAT_DEEPSEEK_MODEL",
-    )));
-  }
-  if (judgeId === "qwen-no-tools") {
-    return new QwenNoToolsSemanticJudge(httpOptions(requiredModel(
-      environment,
-      judgeId,
-      "OSSTACK_NEAT_QWEN_MODEL",
     )));
   }
   throw new Error(`unsupported semantic judge: ${judgeId}`);

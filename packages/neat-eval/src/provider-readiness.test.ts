@@ -11,10 +11,6 @@ describe("production semantic provider readiness", () => {
       "deepseek-no-tools",
       { DEEPSEEK_API_KEY: "secret-b", OSSTACK_NEAT_DEEPSEEK_MODEL: "deepseek-v4-pro" },
     ],
-    [
-      "qwen-no-tools",
-      { DASHSCOPE_API_KEY: "secret-c", OSSTACK_NEAT_QWEN_MODEL: "qwen3.7-plus" },
-    ],
   ])("accepts a complete %s environment without disclosing values", (
     judgeId,
     environment,
@@ -29,7 +25,6 @@ describe("production semantic provider readiness", () => {
   it("fails closed for partial provider configuration and names missing variables", () => {
     const result = inspectProductionSemanticProviders({
       DEEPSEEK_API_KEY: "secret-b",
-      DASHSCOPE_API_KEY: "secret-c",
     });
 
     expect(result.passed).toBe(false);
@@ -38,10 +33,6 @@ describe("production semantic provider readiness", () => {
       {
         judge_id: "deepseek-no-tools",
         missing: ["OSSTACK_NEAT_DEEPSEEK_MODEL"],
-      },
-      {
-        judge_id: "qwen-no-tools",
-        missing: ["OSSTACK_NEAT_QWEN_MODEL"],
       },
     ]);
     expect(JSON.stringify(result)).not.toContain("secret-");

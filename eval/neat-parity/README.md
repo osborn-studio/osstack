@@ -72,31 +72,25 @@ Logged-in general code agents are not acceptable substitutes for the isolated
 
 ## Built-in production semantic providers
 
-`osstack neat semantic` accepts three fixed no-tools judge profiles. A profile
+`osstack neat semantic` accepts two fixed no-tools judge profiles. A profile
 is ready only when both its credential and complete model ID are present:
 
 | Judge ID | Credential | Model ID | Endpoint scope |
 |---|---|---|---|
 | `anthropic-no-tools` | `ANTHROPIC_API_KEY` | `OSSTACK_NEAT_ANTHROPIC_MODEL` | Anthropic API |
 | `deepseek-no-tools` | `DEEPSEEK_API_KEY` | `OSSTACK_NEAT_DEEPSEEK_MODEL` | DeepSeek API |
-| `qwen-no-tools` | `DASHSCOPE_API_KEY` | `OSSTACK_NEAT_QWEN_MODEL` | Alibaba Cloud China (Beijing) |
 
-Recommended explicit model IDs for the first canary are
-`deepseek-v4-pro` and `qwen3.7-plus`. Model IDs remain environment-owned so a
+The recommended explicit model ID for the first DeepSeek canary is
+`deepseek-v4-pro`. Model IDs remain environment-owned so a
 provider alias change cannot silently alter the cache fingerprint or evaluation
 record.
 
-The DeepSeek and Qwen endpoints are fixed in the trusted provider registry;
+The DeepSeek endpoint is fixed in the trusted provider registry;
 repository configuration cannot supply a Base URL. The doctor passes the
 `production_semantic_provider` check when at least one profile is complete and
 reports partial configuration only by variable name, never by value.
-`qwen-no-tools` intentionally accepts only a China (Beijing) Model Studio key,
-because Alibaba Cloud keys and endpoints are region-specific. Keys from
-Singapore, Virginia, Hong Kong, Tokyo, or Frankfurt must not be sent to the
-Beijing endpoint; those regions require separate allowlisted profiles before
-they can be used by osstack.
 
-The HTTP providers also require the response model identity to match the
+The DeepSeek provider also requires the response model identity to match the
 requested model string. A mismatch fails closed before the semantic decision
 is accepted or cached.
 
@@ -105,10 +99,9 @@ loaded, configure the corresponding immutable model identity:
 
 ```sh
 export OSSTACK_NEAT_DEEPSEEK_MODEL=deepseek-v4-pro
-export OSSTACK_NEAT_QWEN_MODEL=qwen3.7-plus
 ```
 
-Build once, then invoke either provider through the disposable live-smoke
+Build once, then invoke DeepSeek through the disposable live-smoke
 runner. A receipt path must be absolute and must not already exist; the runner
 creates it with mode `0600` and never stores raw findings or credentials.
 
@@ -117,10 +110,6 @@ pnpm --filter @osstack/cli build
 node scripts/smoke-neat-semantic-live.mjs \
   --provider deepseek-no-tools \
   --receipt /tmp/osstack-deepseek-live-smoke.json
-
-node scripts/smoke-neat-semantic-live.mjs \
-  --provider qwen-no-tools \
-  --receipt /tmp/osstack-qwen-live-smoke.json
 ```
 
 For a live smoke, use a disposable sanitized repository with ConfigV2

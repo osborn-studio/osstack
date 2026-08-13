@@ -73,28 +73,23 @@ describe("paid semantic provider CI boundary", () => {
     expect(manifest.scripts["test:neat-semantic-live-diagnostic"]).toBe(
       "node --test scripts/neat-semantic-live-diagnostic.test.mjs",
     );
-    expect(workflow.match(/pnpm test:neat-semantic-live-diagnostic/gu)).toHaveLength(3);
+    expect(workflow.match(/pnpm test:neat-semantic-live-diagnostic/gu)).toHaveLength(2);
   });
 
   it("exposes credentials only to explicitly selected manual smoke jobs", () => {
     const workflow = readFileSync(join(repoRoot, ".github/workflows/ci.yml"), "utf8");
     const checkStart = workflow.indexOf("  check:");
     const deepSeekStart = workflow.indexOf("  paid_deepseek_semantic:");
-    const qwenStart = workflow.indexOf("  paid_qwen_semantic:");
 
     expect(workflow).not.toContain("pull_request_target:");
     expect(workflow).toContain("semantic_provider:");
     expect(workflow).toContain("- deepseek-no-tools");
-    expect(workflow).toContain("- qwen-no-tools");
     expect(deepSeekStart).toBeGreaterThan(checkStart);
-    expect(qwenStart).toBeGreaterThan(deepSeekStart);
 
     const checkJob = workflow.slice(checkStart, deepSeekStart);
-    const deepSeekJob = workflow.slice(deepSeekStart, qwenStart);
-    const qwenJob = workflow.slice(qwenStart);
+    const deepSeekJob = workflow.slice(deepSeekStart);
 
     expect(checkJob).not.toContain("DEEPSEEK_API_KEY");
-    expect(checkJob).not.toContain("DASHSCOPE_API_KEY");
     expect(deepSeekJob).toContain(
       "if: github.event_name == 'workflow_dispatch' && inputs.semantic_provider == 'deepseek-no-tools'",
     );
@@ -102,15 +97,6 @@ describe("paid semantic provider CI boundary", () => {
     expect(deepSeekJob).toContain(
       `OSSTACK_NEAT_DEEPSEEK_MODEL: \${{ vars.OSSTACK_NEAT_DEEPSEEK_MODEL }}`,
     );
-    expect(deepSeekJob).not.toContain("DASHSCOPE_API_KEY");
-    expect(qwenJob).toContain(
-      "if: github.event_name == 'workflow_dispatch' && inputs.semantic_provider == 'qwen-no-tools'",
-    );
-    expect(qwenJob).toContain(`DASHSCOPE_API_KEY: \${{ secrets.DASHSCOPE_API_KEY }}`);
-    expect(qwenJob).toContain(
-      `OSSTACK_NEAT_QWEN_MODEL: \${{ vars.OSSTACK_NEAT_QWEN_MODEL }}`,
-    );
-    expect(qwenJob).not.toContain("DEEPSEEK_API_KEY");
   });
 });
 

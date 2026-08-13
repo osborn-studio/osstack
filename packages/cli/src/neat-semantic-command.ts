@@ -104,7 +104,6 @@ Options:
 Built-in no-tools judges:
   anthropic-no-tools  ANTHROPIC_API_KEY + OSSTACK_NEAT_ANTHROPIC_MODEL
   deepseek-no-tools   DEEPSEEK_API_KEY + OSSTACK_NEAT_DEEPSEEK_MODEL
-  qwen-no-tools       Beijing DASHSCOPE_API_KEY + OSSTACK_NEAT_QWEN_MODEL
 
 Config semantic.enabled is the provider kill switch.
 

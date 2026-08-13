@@ -29,10 +29,10 @@ const providerResponse = z.object({
 }).passthrough();
 
 interface ProviderProfile {
-  id: "deepseek-no-tools" | "qwen-no-tools";
+  id: "deepseek-no-tools";
   endpoint: string;
-  credentialEnvironmentVariable: "DEEPSEEK_API_KEY" | "DASHSCOPE_API_KEY";
-  outputTokenParameter: "max_tokens" | "max_completion_tokens";
+  credentialEnvironmentVariable: "DEEPSEEK_API_KEY";
+  outputTokenParameter: "max_tokens";
   requestDefaults: Readonly<Record<string, unknown>>;
 }
 
@@ -60,16 +60,6 @@ const deepSeekProfile: ProviderProfile = {
   credentialEnvironmentVariable: "DEEPSEEK_API_KEY",
   outputTokenParameter: "max_tokens",
   requestDefaults: { thinking: { type: "enabled" } },
-};
-
-const qwenProfile: ProviderProfile = {
-  id: "qwen-no-tools",
-  // China (Beijing) DashScope domain; keys cannot cross regions:
-  // https://www.alibabacloud.com/help/en/model-studio/regions/
-  endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-  credentialEnvironmentVariable: "DASHSCOPE_API_KEY",
-  outputTokenParameter: "max_completion_tokens",
-  requestDefaults: { enable_thinking: false },
 };
 
 async function readBoundedResponseText(
@@ -283,12 +273,5 @@ export class DeepSeekNoToolsSemanticJudge
   extends OpenAICompatibleNoToolsSemanticJudge {
   constructor(options: OpenAICompatibleNoToolsSemanticJudgeOptions) {
     super(deepSeekProfile, options);
-  }
-}
-
-export class QwenNoToolsSemanticJudge
-  extends OpenAICompatibleNoToolsSemanticJudge {
-  constructor(options: OpenAICompatibleNoToolsSemanticJudgeOptions) {
-    super(qwenProfile, options);
   }
 }

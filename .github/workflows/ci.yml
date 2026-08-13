@@ -11,7 +11,6 @@ on:
         options:
           - none
           - deepseek-no-tools
-          - qwen-no-tools
   push:
     branches: [main, changeset-release/main]
   pull_request:
@@ -228,37 +227,3 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           OSSTACK_NEAT_DEEPSEEK_MODEL: ${{ vars.OSSTACK_NEAT_DEEPSEEK_MODEL }}
         run: node scripts/smoke-neat-semantic-live.mjs --provider deepseek-no-tools
-
-  paid_qwen_semantic:
-    name: Paid Qwen semantic smoke
-    if: github.event_name == 'workflow_dispatch' && inputs.semantic_provider == 'qwen-no-tools'
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - uses: pnpm/action-setup@v6
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install
-        run: pnpm install --frozen-lockfile
-
-      - name: Build semantic CLI
-        run: pnpm --filter @osstack/cli... build
-
-      - name: Verify sanitized diagnostics
-        run: pnpm test:neat-semantic-live-diagnostic
-
-      - name: Run sanitized Qwen smoke
-        env:
-          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
-          OSSTACK_NEAT_QWEN_MODEL: ${{ vars.OSSTACK_NEAT_QWEN_MODEL }}
-        run: node scripts/smoke-neat-semantic-live.mjs --provider qwen-no-tools

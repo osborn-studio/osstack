@@ -205,14 +205,9 @@ describe("neat semantic", () => {
     expect(command.stderr.join("\n")).toContain("semantic.enabled");
   });
 
-  it.each([
-    ["deepseek-no-tools", "OSSTACK_NEAT_DEEPSEEK_MODEL"],
-    ["qwen-no-tools", "OSSTACK_NEAT_QWEN_MODEL"],
-  ])("recognizes %s and fails before network access when its model is absent", async (
-    judgeId,
-    modelVariable,
-  ) => {
-    const repo = await semanticRepo(true, judgeId);
+  it("recognizes DeepSeek and fails before network access when its model is absent", async () => {
+    const modelVariable = "OSSTACK_NEAT_DEEPSEEK_MODEL";
+    const repo = await semanticRepo(true, "deepseek-no-tools");
     const command = commandHarness(repo);
     command.deps.semantic = {};
     const previous = process.env[modelVariable];
@@ -232,10 +227,7 @@ describe("neat semantic", () => {
     const help = command.stdout.join("\n");
     expect(help).toContain("anthropic-no-tools");
     expect(help).toContain("deepseek-no-tools");
-    expect(help).toContain("qwen-no-tools");
-    expect(help).toContain("Beijing DASHSCOPE_API_KEY");
     expect(help).toContain("DEEPSEEK_API_KEY");
-    expect(help).toContain("DASHSCOPE_API_KEY");
   });
 
   it("returns exit 3 for truncated requested coverage unless explicitly allowed", async () => {

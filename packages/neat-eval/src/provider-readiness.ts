@@ -12,10 +12,6 @@ const requirements: readonly ProviderRequirement[] = [
     judge_id: "deepseek-no-tools",
     variables: ["DEEPSEEK_API_KEY", "OSSTACK_NEAT_DEEPSEEK_MODEL"],
   },
-  {
-    judge_id: "qwen-no-tools",
-    variables: ["DASHSCOPE_API_KEY", "OSSTACK_NEAT_QWEN_MODEL"],
-  },
 ] as const;
 
 export interface ProductionSemanticProviderReadiness {

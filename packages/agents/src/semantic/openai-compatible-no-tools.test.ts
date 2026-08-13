@@ -4,10 +4,7 @@ import {
   SemanticProviderError,
 } from "@osstack/governance";
 import { describe, expect, it, vi } from "vitest";
-import {
-  DeepSeekNoToolsSemanticJudge,
-  QwenNoToolsSemanticJudge,
-} from "./openai-compatible-no-tools.js";
+import { DeepSeekNoToolsSemanticJudge } from "./openai-compatible-no-tools.js";
 
 const sha = "a".repeat(64);
 const digest = (value: string): string =>
@@ -113,43 +110,11 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
     expect(JSON.stringify(body)).not.toContain("repo-secret-sentinel");
   });
 
-  it("uses the fixed DashScope endpoint and credential for Qwen", async () => {
-    const fetchMock = vi.fn<typeof fetch>(async () => providerResponse({
-      model: "qwen3.7-plus",
-    }));
-    const provider = new QwenNoToolsSemanticJudge({
-      model_id: "qwen3.7-plus",
-      environment: { DASHSCOPE_API_KEY: "qwen-secret-sentinel" },
-      fetch: fetchMock,
-    });
-
-    await provider.judge(request(), new AbortController().signal);
-
-    const [url, init] = fetchMock.mock.calls[0] ?? [];
-    expect(url).toBe(
-      "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-    );
-    expect(init?.headers).toMatchObject({
-      authorization: "Bearer qwen-secret-sentinel",
-    });
-    expect(JSON.parse(String(init?.body))).toMatchObject({
-      model: "qwen3.7-plus",
-      response_format: { type: "json_object" },
-      enable_thinking: false,
-      max_completion_tokens: 100,
-    });
-    expect(JSON.parse(String(init?.body))).not.toHaveProperty("max_tokens");
-  });
-
   it("requires the provider-specific credential", () => {
     expect(() => new DeepSeekNoToolsSemanticJudge({
       model_id: "deepseek-v4-pro",
       environment: {},
     })).toThrow(/DEEPSEEK_API_KEY/);
-    expect(() => new QwenNoToolsSemanticJudge({
-      model_id: "qwen3.7-plus",
-      environment: {},
-    })).toThrow(/DASHSCOPE_API_KEY/);
   });
 
   it("fails closed with precise finish-reason, JSON, and HTTP error codes", async () => {
@@ -300,9 +265,9 @@ describe("OpenAI-compatible no-tools semantic judges", () => {
   });
 
   it("does not disclose provider transport errors", async () => {
-    const provider = new QwenNoToolsSemanticJudge({
-      model_id: "qwen3.7-plus",
-      environment: { DASHSCOPE_API_KEY: "secret-sentinel" },
+    const provider = new DeepSeekNoToolsSemanticJudge({
+      model_id: "deepseek-v4-pro",
+      environment: { DEEPSEEK_API_KEY: "secret-sentinel" },
       fetch: vi.fn<typeof fetch>(async () => {
         throw new Error("TLS failure included secret-sentinel");
       }),
