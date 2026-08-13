@@ -8,7 +8,7 @@ Workspace packages, publish status, and internal (workspace) dependencies.
 |---|---|---|---|
 | `@osstack/agents` | 0.17.0 | public | `core`, `governance`, `hermes-adapter` |
 | `@osstack/autonomy` | 0.17.0 | public | `core`, `github`, `protocol` |
-| `@osstack/cli` | 0.17.2 | public | `agents`, `autonomy`, `compliance`, `config`, `contracts`, `core`, `github`, `governance`, `hermes-adapter`, `knowledge`, `loop`, `protocol`, `skill-registry`, `skills`, `supervisor` |
+| `@osstack/cli` | 0.17.3 | public | `agents`, `autonomy`, `compliance`, `config`, `contracts`, `core`, `github`, `governance`, `hermes-adapter`, `knowledge`, `loop`, `protocol`, `skill-registry`, `skills`, `supervisor` |
 | `@osstack/compliance` | 0.15.0 | public | — |
 | `@osstack/config` | 0.17.0 | public | `agents`, `core` |
 | `@osstack/conformance` | 0.17.0 | **private** | `agents`, `core`, `governance`, `hermes-adapter`, `loop` |
