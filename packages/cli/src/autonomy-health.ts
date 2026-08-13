@@ -9,7 +9,7 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
-import { defaultAdapters } from "@osstack/agents";
+// @osstack/agents loads lazily at the availability probe (see config.ts note).
 import {
   listAutonomyRuns,
   listProductionFreezes,
@@ -142,6 +142,7 @@ function defaultDiskFreeBytes(dbPath: string): number {
 }
 
 async function defaultAdapterProbe(): Promise<AutonomyAdapterProbe[]> {
+  const { defaultAdapters } = await import("@osstack/agents");
   return await Promise.all(defaultAdapters().map(async (adapter) => ({
     id: adapter.id,
     available: (await adapter.isAvailable()).available,
