@@ -76,6 +76,12 @@ async function draining(socketPath: string): Promise<boolean> {
   return (resp.result as { draining?: boolean }).draining === true;
 }
 
+/** Drive one health verdict through the daemon's autonomy.health RPC. */
+async function probe(socketPath: string, required: boolean): Promise<void> {
+  drainRequired = required;
+  await daemonRpc(socketPath, "autonomy.health");
+}
+
 async function start(): Promise<DaemonHandles> {
   return await startDaemon({
     socketPath: `/tmp/osstack-drain-${randomUUID()}.sock`,
@@ -131,6 +137,70 @@ describe("daemon drain recovery", () => {
 
     expect(await draining(daemon.socketPath)).toBe(true);
     await daemonRpc(daemon.socketPath, "daemon.resume");
+    expect(await draining(daemon.socketPath)).toBe(false);
+  });
+
+  // Adversarial transition sequences contributed by the Kimi K3 review of
+  // #211, which mutation-tested the marker semantics against this suite.
+  it("operator drain during an active health drain survives the recovery probe", async () => {
+    // health raises → operator drains over it → health recovers:
+    // operator ownership must win, the good probe must NOT clear.
+    daemon = await start();
+    await probe(daemon.socketPath, true);
+    expect(await draining(daemon.socketPath)).toBe(true);
+
+    await daemonRpc(daemon.socketPath, "daemon.drain", { timeout_ms: 0 });
+    await probe(daemon.socketPath, false);
+    expect(await draining(daemon.socketPath)).toBe(true);
+
+    await daemonRpc(daemon.socketPath, "daemon.resume");
+    expect(await draining(daemon.socketPath)).toBe(false);
+  });
+
+  it("operator drain survives repeated bad probes then a good probe", async () => {
+    daemon = await start();
+    await daemonRpc(daemon.socketPath, "daemon.drain", { timeout_ms: 0 });
+    await probe(daemon.socketPath, true);
+    await probe(daemon.socketPath, true);
+    await probe(daemon.socketPath, true);
+    expect(await draining(daemon.socketPath)).toBe(true);
+    await probe(daemon.socketPath, false);
+    expect(await draining(daemon.socketPath)).toBe(true);
+  });
+
+  it("resume during a health drain is re-raised by the next bad probe (no stuck, no flap-loss)", async () => {
+    daemon = await start();
+    await probe(daemon.socketPath, true);
+    expect(await draining(daemon.socketPath)).toBe(true);
+
+    // Operator force-resumes while disk is still bad.
+    await daemonRpc(daemon.socketPath, "daemon.resume");
+    expect(await draining(daemon.socketPath)).toBe(false);
+
+    // Next bad probe re-raises as health-owned and a good probe clears it.
+    await probe(daemon.socketPath, true);
+    expect(await draining(daemon.socketPath)).toBe(true);
+    await probe(daemon.socketPath, false);
+    expect(await draining(daemon.socketPath)).toBe(false);
+  });
+
+  it("health raise/clear cycle is repeatable", async () => {
+    daemon = await start();
+    for (let i = 0; i < 3; i++) {
+      await probe(daemon.socketPath, true);
+      expect(await draining(daemon.socketPath)).toBe(true);
+      await probe(daemon.socketPath, false);
+      expect(await draining(daemon.socketPath)).toBe(false);
+    }
+  });
+
+  it("operator drain → resume → health flap behaves as pure health-owned", async () => {
+    daemon = await start();
+    await daemonRpc(daemon.socketPath, "daemon.drain", { timeout_ms: 0 });
+    await daemonRpc(daemon.socketPath, "daemon.resume");
+    await probe(daemon.socketPath, true);
+    expect(await draining(daemon.socketPath)).toBe(true);
+    await probe(daemon.socketPath, false);
     expect(await draining(daemon.socketPath)).toBe(false);
   });
 
