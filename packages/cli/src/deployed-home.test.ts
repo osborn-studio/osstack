@@ -1,0 +1,137 @@
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { rm } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { applyDeployedEnvDefaults, discoverDeployedEnv } from "./deployed-home.js";
+
+// Regression (2026-08-13): a plain shell exports neither OSSTACK_HOME nor
+// OSSTACK_SOCKET, so paths.ts resolved ~/.osstack/daemon.sock while the
+// launchd daemon served ~/.osstack-stable — `osstack status` reported
+// "daemon: not running" against a healthy daemon and `doctor` recommended
+// queue work it could not reach.
+
+const PLIST = `<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>OSSTACK_HOME</key>
+    <string>/Users/example/.osstack-stable</string>
+    <key>OSSTACK_SOCKET</key>
+    <string>/Users/example/.osstack-stable/daemon.sock</string>
+  </dict>
+</dict></plist>`;
+
+const PLIST_HOME_ONLY = PLIST.replace(
+  /  <key>OSSTACK_SOCKET<\/key>\n    <string>[^<]*<\/string>\n/,
+  "",
+);
+
+let tmp: string;
+let env: NodeJS.ProcessEnv;
+
+beforeEach(() => {
+  tmp = mkdtempSync(join(tmpdir(), "osstack-deployed-home-"));
+  env = {};
+});
+
+afterEach(async () => {
+  await rm(tmp, { recursive: true, force: true });
+});
+
+function writePlist(text: string): string {
+  const path = join(tmp, "ai.osstack.daemon.plist");
+  writeFileSync(path, text);
+  return path;
+}
+
+/** A fake module URL whose directory holds a control-plane role file. */
+function roleFileModuleUrl(home: string): string {
+  const dist = join(tmp, "dist");
+  mkdirSync(dist, { recursive: true });
+  // The module file must exist: discovery realpath-resolves it so a symlinked
+  // install (Homebrew) lands on the directory holding the role file.
+  writeFileSync(join(dist, "bin.js"), "");
+  writeFileSync(join(dist, "control-plane.json"), JSON.stringify({
+    role: "stable-serving",
+    allowed_osstack_homes: [home],
+    schema: { min: 22, max: 22 },
+  }));
+  return `file://${join(dist, "bin.js")}`;
+}
+
+describe("discoverDeployedEnv", () => {
+  it("reads home and socket from the launchd plist", () => {
+    expect(discoverDeployedEnv(writePlist(PLIST), roleFileModuleUrl("/role/home"))).toEqual({
+      home: "/Users/example/.osstack-stable",
+      socket: "/Users/example/.osstack-stable/daemon.sock",
+      source: "launchd plist",
+    });
+  });
+
+  it("omits the socket when the plist only pins a home", () => {
+    const found = discoverDeployedEnv(writePlist(PLIST_HOME_ONLY), roleFileModuleUrl("/role/home"));
+    expect(found?.home).toBe("/Users/example/.osstack-stable");
+    expect(found?.socket).toBeUndefined();
+  });
+
+  it("falls back to the role file beside the running binary", () => {
+    const found = discoverDeployedEnv(join(tmp, "absent.plist"), roleFileModuleUrl("/role/home"));
+    expect(found).toEqual({ home: "/role/home", source: "role file" });
+  });
+
+  it("returns null when nothing is deployed", () => {
+    expect(discoverDeployedEnv(join(tmp, "absent.plist"), `file://${join(tmp, "nowhere", "bin.js")}`))
+      .toBeNull();
+  });
+
+  it("treats an unparseable plist as absent and uses the role file", () => {
+    const found = discoverDeployedEnv(writePlist("\u0000binary-plist-garbage"), roleFileModuleUrl("/role/home"));
+    expect(found).toEqual({ home: "/role/home", source: "role file" });
+  });
+});
+
+describe("applyDeployedEnvDefaults", () => {
+  it("never overrides an explicitly exported home", () => {
+    env["OSSTACK_HOME"] = "/dev/home";
+    expect(applyDeployedEnvDefaults(env)).toBeNull();
+    expect(env["OSSTACK_HOME"]).toBe("/dev/home");
+  });
+
+  it("leaves the environment untouched when nothing is deployed", () => {
+    // The real machine may have a plist; assert only that an explicit home
+    // survives and that no socket is invented without a home.
+    env["OSSTACK_HOME"] = "/dev/home";
+    applyDeployedEnvDefaults(env);
+    expect(env["OSSTACK_SOCKET"]).toBeUndefined();
+  });
+
+  it("fills home and socket from the discovery when both are unset", () => {
+    const applied = applyDeployedEnvDefaults(env, {
+      home: "/Users/example/.osstack-stable",
+      socket: "/Users/example/.osstack-stable/daemon.sock",
+      source: "launchd plist",
+    });
+    expect(applied?.source).toBe("launchd plist");
+    expect(env["OSSTACK_HOME"]).toBe("/Users/example/.osstack-stable");
+    expect(env["OSSTACK_SOCKET"]).toBe("/Users/example/.osstack-stable/daemon.sock");
+  });
+
+  it("keeps an explicitly exported socket while filling the home", () => {
+    env["OSSTACK_SOCKET"] = "/custom/daemon.sock";
+    applyDeployedEnvDefaults(env, {
+      home: "/Users/example/.osstack-stable",
+      socket: "/Users/example/.osstack-stable/daemon.sock",
+      source: "launchd plist",
+    });
+    expect(env["OSSTACK_SOCKET"]).toBe("/custom/daemon.sock");
+  });
+
+  it("expands a tilde-prefixed home so paths.ts gets an absolute path", () => {
+    // osstackHome()/resolveSocketPath() do no expansion of their own; a role
+    // file may legitimately carry "~/..." and a literal "~" would derive
+    // relative paths and mkdir a literal ./~ directory.
+    applyDeployedEnvDefaults(env, { home: "~/.osstack-stable", source: "role file" });
+    expect(env["OSSTACK_HOME"]).toBe(join(homedir(), ".osstack-stable"));
+  });
+});

@@ -1,5 +1,5 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { mkdtempSync, realpathSync } from "node:fs";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { existsSync, mkdtempSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -76,6 +76,76 @@ describe("checkpoint CLI", () => {
       })],
       exclusions: expect.arrayContaining([".git", "node_modules"]),
     });
+  });
+
+  it("excludes build output, virtualenvs and caches from the snapshot", async () => {
+    // Regression (2026-08-13): only .git/node_modules/.osstack were excluded,
+    // so a Python+build workspace produced a 14 GB checkpoint and 109 of them
+    // filled the disk until the daemon drained itself.
+    const workspace = join(tmp, "workspace");
+    await mkdir(join(workspace, "src"), { recursive: true });
+    await writeFile(join(workspace, "src", "app.ts"), "export const value = 1;\n");
+    for (const heavy of [".venv", "dist", "__pycache__", ".next", "target", ".pytest_cache"]) {
+      await mkdir(join(workspace, heavy), { recursive: true });
+      await writeFile(join(workspace, heavy, "blob.bin"), "x".repeat(1024));
+    }
+
+    const exitCode = await main(["checkpoint", "create", "--workspace", workspace, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as { checkpoint_dir: string; files: number };
+    expect(summary.files).toBe(1);
+    for (const heavy of [".venv", "dist", "__pycache__", ".next", "target", ".pytest_cache"]) {
+      expect(existsSync(join(summary.checkpoint_dir, "files", heavy))).toBe(false);
+    }
+  });
+
+  it("keeps source directories that merely share a build-output name", async () => {
+    // dist/build/out/target are build output at the workspace root but often
+    // real source deeper in a tree; a restore safety net must not silently
+    // drop them (Kimi K3 review of #211).
+    const workspace = join(tmp, "workspace");
+    await mkdir(join(workspace, "src", "build"), { recursive: true });
+    await mkdir(join(workspace, "pkg", "out"), { recursive: true });
+    await mkdir(join(workspace, "dist"), { recursive: true });
+    await writeFile(join(workspace, "src", "build", "rules.ts"), "export const kept = 1;\n");
+    await writeFile(join(workspace, "pkg", "out", "shape.ts"), "export const kept = 2;\n");
+    await writeFile(join(workspace, "dist", "bundle.js"), "// generated\n");
+
+    const exitCode = await main(["checkpoint", "create", "--workspace", workspace, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as { checkpoint_dir: string; files: number };
+    expect(summary.files).toBe(2);
+    expect(existsSync(join(summary.checkpoint_dir, "files", "src", "build", "rules.ts"))).toBe(true);
+    expect(existsSync(join(summary.checkpoint_dir, "files", "pkg", "out", "shape.ts"))).toBe(true);
+    // The root-level build output is still skipped.
+    expect(existsSync(join(summary.checkpoint_dir, "files", "dist"))).toBe(false);
+  });
+
+  it("prunes to the newest 20 checkpoints", async () => {
+    const workspace = join(tmp, "workspace");
+    await mkdir(workspace, { recursive: true });
+    await writeFile(join(workspace, "app.ts"), "export const value = 1;\n");
+    const checkpointsRoot = join(tmp, "home", "checkpoints");
+    // Seed 25 older checkpoints; ids sort chronologically by construction.
+    await mkdir(checkpointsRoot, { recursive: true });
+    for (let i = 0; i < 25; i++) {
+      await mkdir(join(checkpointsRoot, `chk_2026010100000${String(i).padStart(2, "0")}_seed${i}`), { recursive: true });
+    }
+    await mkdir(join(checkpointsRoot, "not-a-checkpoint"), { recursive: true });
+
+    const exitCode = await main(["checkpoint", "create", "--workspace", workspace, "--json"]);
+    expect(exitCode).toBe(0);
+
+    const remaining = (await readdir(checkpointsRoot)).filter((name) => name.startsWith("chk_"));
+    expect(remaining).toHaveLength(20);
+    // The just-created one survives; the oldest seeds are gone.
+    const summary = JSON.parse(logs.join("\n")) as { checkpoint_id: string };
+    expect(remaining).toContain(summary.checkpoint_id);
+    expect(remaining).not.toContain("chk_2026010100000000_seed0");
+    // Unrelated directories are never touched.
+    expect(existsSync(join(checkpointsRoot, "not-a-checkpoint"))).toBe(true);
   });
 
   it("dry-runs checkpoint restore by default without changing workspace files", async () => {
