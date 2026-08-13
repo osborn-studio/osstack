@@ -1,7 +1,7 @@
 # osstack 性能改进方案 — 基于 Jeff Dean & Sanjay Ghemawat《Performance Hints》
 
 - 日期：2026-08-12
-- 状态：提案（未实施）
+- 状态：**已执行并收口**（见 §6 执行结果；P2 数据门控中）
 - 事实源：[abseil.io/fast/hints.html](https://abseil.io/fast/hints.html)（Dean & Ghemawat）；中文案例库 [eyeu.net/learn/ai-performance](https://www.eyeu.net/learn/ai-performance)
 - 测量环境：Mac mini (darwin 25.6.0), Node v26.5.0, @osstack/cli 0.16.1（Homebrew 全局安装）
 
@@ -114,3 +114,33 @@ bin.ts:  import { defaultAdapters } from "@osstack/agents"      (静态)
 3. PR-C..N：随 CLI 拆分线逐模块转懒分发（每个命令模块一个小 PR，符合现有 maker/checker 节奏）
 4. PR-X：--version/--help 快路径
 5. 之后按 stats 数据决定 P2 是否立项
+
+---
+
+## 6. 执行结果（2026-08-13 收口）
+
+计划全部可执行项已落地，六个 PR 三班 release train，生产运行于 0.17.2。
+
+| 验收项 | 计划目标 | 实测终值 | 载体 |
+|---|---|---|---|
+| `osstack --version` | < 60ms | **~20ms** | #201 cli-entry 快路径 |
+| `osstack status` / `--help` | < 120ms | **~75ms** | #199 懒 SDK/OTel + #206 懒分发 |
+| 主 chunk 冷 import | < 100ms | **~72ms**（1.1MB→500KB） | #206 |
+| 性能闸门 | bench:cli 进 CI | 本地 150/500ms + CI 250/900ms 双档 | #201「CLI startup budget」步骤 |
+| RPC p50/p95 | stats 输出 | 每方法 512 槽滑窗，method 数封顶 64 | #203 |
+
+附带成果：#204 修复 `osstack upgrade` 用调用者 env 写控制面角色文件的缺陷（2026-08-12 生产事故根因，已裸 env 实弹回归验证）；#207 根修两个环境 flaky 测试（doctor 磁盘注入、guarded fixture .gitignore）。
+
+### P2 状态：数据门控中
+
+bulk API 立项条件 = 生产 RPC p95 表积累足量流量（daemon 2026-08-13 重启后从零开始，需数日 daily/loop 流量）。届时按 `osstack stats` rpc 段 p95 降序榜首立项。
+
+P2b（SQLite 事务过账）已完成审计：core 状态层事务纪律整体良好；仅 `probe-store.ts upsertItems`（多行 upsert 循环无事务）与 `lessons.ts` 计数更新循环两处冷路径候选，规模小、无实测痛点，按「先测后改」原则记录不动码。
+
+### 剩余 eager 成本
+
+`@osstack/core`（冷 ~40-70ms，zod + state/policy 面）是最后大头，符号编织于 bin.ts 全文，归属命令模块抽取线（codex/*-cli-module）继续处理；bin.ts 顶部已留注释约束新增顶层 import。
+
+### 方法论沉淀（供后续懒化工作复用）
+
+验证 bundle 懒化**不能**用文本 grep（esbuild 多行 import 逃逸单行匹配），**不能**在同进程串测多包（先测包污染后测包的模块缓存）。可靠方法：构建后每包独立进程执行「import 主 chunk → 计时 import 目标包」，<1ms 即判 eager；或 loader-hook 记录全量加载清单。本计划执行中文本 grep 两次误判通过、串测探针两次误判回流，均由该方法纠正（含 supervisor→loop/governance/agents/github 的 ~177ms 隐蔽回流链）。
