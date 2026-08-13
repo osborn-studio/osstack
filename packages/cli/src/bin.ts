@@ -15,20 +15,15 @@ import {
   defaultOsstackHome,
   loadRoleFile,
 } from "./control-plane-guard.js";
-import {
-  createAgentRuntimeEvidence,
-  createPolicyDecisionEvidence,
-  createProofStageArtifacts,
-  createProofStageMetadata,
-  createVerifierOutputArtifacts,
-  type ProofStageInput,
-} from "./proof-pack.js";
+import type { ProofStageInput } from "./proof-pack.js";
+type ProofPackModule = typeof import("./proof-pack.js");
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
 import { parse as parseYaml } from "yaml";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
-import { defaultAdapters } from "@osstack/agents";
+// @osstack/agents (~65ms: 11 adapters, zod capability parsing at module
+// scope) is loaded lazily at its single use site in handleLoopCommand.
 import {
   loadProofEvidence,
   renderComplianceReport,
@@ -55,41 +50,21 @@ import {
   verifyPitfallLessons,
 } from "@osstack/core";
 import { guardedOpenDb as openDb } from "./guarded-open-db.js";
-import {
-  resolveLoopProfileRouting,
-  type LoopProfileSummary,
-} from "./loop-profile-routing.js";
-import {
-  inspectInstructionSource,
-  scanFiles,
-  scanText,
-  type GovernanceFinding,
-} from "@osstack/governance";
-import {
-  DEFAULT_DISCOVERY_POLICY,
+import type { LoopProfileSummary } from "./loop-profile-routing.js";
+// @osstack/governance (~20ms) loads lazily at its three scan/doctor sites.
+import type { GovernanceFinding } from "@osstack/governance";
+// @osstack/loop costs ~150ms cold to import; it is needed only by the loop/
+// cockpit/proof command families. Types stay static (erased at build); every
+// VALUE is pulled through loadLoop() inside the functions that use it.
+import type {
   DiscoveryPolicy,
   LoopBudget,
-  LoopEngine,
-  countTaskQueueTasks,
-  enqueueTask,
-  readLoopState,
-  renderLoopStateMarkdown,
-  renderLoopStateReportFromState,
-  renderLoopStateReportFromStateAndEvents,
-  createLoopStateReport,
-  createLoopStateScorecardFromState,
-  renderLoopStateScorecardHtml,
-  renderLoopStateScorecardMarkdown,
+  LoopBudgetStatus,
+  LoopEvent,
+  LoopKnowledgeTrace,
+  LoopReportLanguage,
+  LoopState,
   ReviewArtifact,
-  discardLessonDraft,
-  listLessonDrafts,
-  promoteLessonDraft,
-  readLessonDraft,
-  type LoopBudgetStatus,
-  type LoopEvent,
-  type LoopKnowledgeTrace,
-  type LoopReportLanguage,
-  type LoopState,
 } from "@osstack/loop";
 import { evaluatePolicyGate, makePolicyGate, OBSERVE_POLICY_DENIED_REASON } from "./policy-gate.js";
 import {
@@ -113,35 +88,12 @@ import {
   type KnowledgeSearchEvidence,
 } from "@osstack/knowledge";
 import { initProject } from "@osstack/skills";
-import { startDaemon } from "./daemon.js";
-import { handleAgentCommand } from "./agent-command.js";
-import { handleSkillsCommand } from "./skills-command.js";
-import {
-  collectChangedGovernanceScanFiles,
-  collectGovernanceScanFiles,
-  handleComplianceCommand,
-  handleContractsCommand,
-  handleGovernanceCommand,
-  isGovernanceExcludedDir,
-  isGovernanceScannableFile,
-  uniqueNonEmptyLines,
-} from "./assurance-command.js";
-import {
-  handleStewardCommand,
-  parseGitHubRepoSlug,
-} from "./steward-command.js";
-import {
-  handleExamplesCommand,
-  handleGuideCommand,
-  handleProductDoctorCommand,
-  type LoopDoctorCheck,
-  type LoopDoctorResult,
-} from "./product-entry-command.js";
-import { handleConfigCommand } from "./config.js";
-import {
-  handleDeliverCommand,
-  type DeliverCommandDeps,
-} from "./deliver-command.js";
+// Command modules that pull heavy dependency trees (@osstack/loop, agents,
+// github, governance, supervisor, the 3.8k-line daemon) are imported lazily
+// at their dispatch sites — see the Performance Budgets section in AGENTS.md.
+// Static imports here are paid by EVERY osstack invocation.
+import type { LoopDoctorCheck, LoopDoctorResult } from "./product-entry-command.js";
+import type { DeliverCommandDeps } from "./deliver-command.js";
 import {
   cockpitTuiModel,
   renderCockpitFullscreen,
@@ -156,46 +108,17 @@ import {
 import { logsDir, osstackHome, resolveSocketPath } from "./paths.js";
 import { PROTOCOL_VERSION, VERSION } from "./version.js";
 import { handleUpgradeCommand } from "./upgrade.js";
-import {
-  handleAdversarialCommand,
-  handleFeedbackCommand,
-  handleMetaCommand,
-  handleSuperviseCommand,
-} from "./supervise-command.js";
-import { handleImproveCommand } from "./improve-command.js";
-import { handleEvaluatorCommand } from "./evaluator-command.js";
 import { handlePolicyCommand } from "./policy-command.js";
-import { buildSelfImprovementConfig } from "./loop-self-improvement.js";
 import { resolveRegistryPath } from "./supervisor-cli-support.js";
 import { renderUpdateCheckStatus, type UpdateCheckCache } from "./update-check.js";
-import { handleStackCommand } from "./stack-cli.js";
 import { handleHubCommand, buildRealHubCliDeps } from "./hub-cli.js";
-import { handleDailyCommand } from "./daily-command.js";
 import { handleHermesCommand } from "./hermes-command.js";
 import { handleSessionCommand } from "./session-command.js";
 import { handleTaskCommand } from "./task-command.js";
-import { handleControlCommand, handleStartCommand } from "./start-control-command.js";
-import { handleNeatCommand } from "./neat-command.js";
-import {
-  handleProbeCommand,
-  resolveProbeRepositoryId,
-} from "./probe-command.js";
-import {
-  observeLoopImplementationDeviations,
-  type LoopProbeObservationResultV1,
-} from "./loop-probe-observer.js";
-import { createProbeKanbanTransitionGuard } from "./probe-kanban-guard.js";
-import {
-  runLoopNeatFinalizer,
-  type LoopNeatFinalizerResultV1,
-} from "./loop-neat-finalizer.js";
-import { handleAutonomyCommand } from "./autonomy-command.js";
+import type { LoopProbeObservationResultV1 } from "./loop-probe-observer.js";
+import type { LoopNeatFinalizerResultV1 } from "./loop-neat-finalizer.js";
 import { runAutonomyHealth } from "./autonomy-health.js";
-import {
-  GuardedGitRuntime,
-  GuardedGitRouting,
-  type GuardedGitProofInput,
-} from "./guarded-git-runtime.js";
+import type { GuardedGitProofInput, GuardedGitRuntime } from "./guarded-git-runtime.js";
 import {
   assertGuardedCandidateBase,
   computeDeployScriptAuthority,
@@ -203,9 +126,18 @@ import {
   mergeRepoPolicy,
   runControlledRollbackDrill,
 } from "@osstack/autonomy";
-import { readRepoRegistry } from "@osstack/supervisor";
+// @osstack/supervisor statically chains to loop/governance/agents/github
+// (~177ms combined). Its two consumers load it lazily at their call sites.
 
 const execFileAsync = promisify(execFile);
+
+// Memoized loader for @osstack/loop (see the import-type note above).
+type LoopModule = typeof import("@osstack/loop");
+let loopModulePromise: Promise<LoopModule> | undefined;
+function loadLoop(): Promise<LoopModule> {
+  loopModulePromise ??= import("@osstack/loop");
+  return loopModulePromise;
+}
 
 interface ArtifactVerificationOptions {
   requireGitDiff?: boolean;
@@ -700,6 +632,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       return 1;
     }
     if (profile !== undefined) process.env["OSSTACK_AGENT_PROFILE"] = profile;
+    const { startDaemon } = await import("./daemon.js");
     const handle = await startDaemon({
       ...(writeConcurrency === undefined
         ? {}
@@ -708,7 +641,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
         ? {}
         : { readConcurrency }),
       guardedAutonomyFactory: async (db, dbPath) =>
-        createGuardedGitRuntimeForDb(
+        await createGuardedGitRuntimeForDb(
           db,
           dbPath,
           await readAutonomyApprovalTrustStore(
@@ -768,6 +701,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       console.log(out.text);
       return out.exitCode;
     }
+    const { handleProductDoctorCommand } = await import("./product-entry-command.js");
     return await handleProductDoctorCommand(args.slice(1), {
       loopDoctor,
       printLoopDoctor,
@@ -776,10 +710,12 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "examples") {
+    const { handleExamplesCommand } = await import("./product-entry-command.js");
     return await handleExamplesCommand(args.slice(1));
   }
 
   if (cmd === "guide") {
+    const { handleGuideCommand } = await import("./product-entry-command.js");
     return await handleGuideCommand(args.slice(1));
   }
 
@@ -810,6 +746,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "agent") {
+    const { handleAgentCommand } = await import("./agent-command.js");
     return await handleAgentCommand(args.slice(1), {
       rpc,
       stateDbPath: ensureLocalStateDbPath,
@@ -817,6 +754,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "config") {
+    const { handleConfigCommand } = await import("./config.js");
     return await handleConfigCommand(args.slice(1));
   }
 
@@ -841,6 +779,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "deliver") {
+    const { handleDeliverCommand } = await import("./deliver-command.js");
     return await handleDeliverCommand(
       args.slice(1),
       createDeliverCommandDeps(),
@@ -856,11 +795,12 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
           await readAutonomyApprovalTrustStore(
             join(osstackHome(), "approval-trust.json"),
           );
-        const runtime = createGuardedGitRuntimeForDb(
+        const runtime = await createGuardedGitRuntimeForDb(
           db,
           dbPath,
           trustedApprovalPublicKeys,
         );
+        const { handleAutonomyCommand } = await import("./autonomy-command.js");
         return await handleAutonomyCommand(args.slice(1), {
           db,
           dbPath,
@@ -918,11 +858,14 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "steward") {
+    const { handleStewardCommand } = await import("./steward-command.js");
     return await handleStewardCommand(args.slice(1));
   }
 
   if (cmd === "stack") {
     const dbPath = await ensureLocalStateDbPath();
+    const { handleStackCommand } = await import("./stack-cli.js");
+    const { createProbeKanbanTransitionGuard } = await import("./probe-kanban-guard.js");
     return handleStackCommand(args.slice(1), {
       dbPath,
       workspacePath: process.cwd(),
@@ -931,10 +874,12 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "governance" || cmd === "govern") {
+    const { handleGovernanceCommand } = await import("./assurance-command.js");
     return await handleGovernanceCommand(args.slice(1));
   }
 
   if (cmd === "neat") {
+    const { handleNeatCommand } = await import("./neat-command.js");
     return await handleNeatCommand(args.slice(1), {
       cwd: () => process.cwd(),
       stdout: (value) => console.log(value),
@@ -944,6 +889,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "probe") {
+    const { handleProbeCommand } = await import("./probe-command.js");
     return await handleProbeCommand(args.slice(1), {
       cwd: () => process.cwd(),
       stdout: (value) => console.log(value),
@@ -952,10 +898,12 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "contracts" || cmd === "contract") {
+    const { handleContractsCommand } = await import("./assurance-command.js");
     return await handleContractsCommand(args.slice(1));
   }
 
   if (cmd === "compliance") {
+    const { handleComplianceCommand } = await import("./assurance-command.js");
     return await handleComplianceCommand(args.slice(1));
   }
 
@@ -968,6 +916,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "supervise") {
+    const { handleSuperviseCommand } = await import("./supervise-command.js");
     return await handleSuperviseCommand(args.slice(1));
   }
 
@@ -978,26 +927,32 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     if (sub === "schedule" || sub === "sessions" || sub === "unschedule") {
       return await handleDailyScheduleCommand(args.slice(1));
     }
+    const { handleDailyCommand } = await import("./daily-command.js");
     return await handleDailyCommand(args.slice(1));
   }
 
   if (cmd === "start") {
+    const { handleStartCommand } = await import("./start-control-command.js");
     return await handleStartCommand(args.slice(1));
   }
 
   if (cmd === "control") {
+    const { handleControlCommand } = await import("./start-control-command.js");
     return await handleControlCommand(args.slice(1));
   }
 
   if (cmd === "feedback") {
+    const { handleFeedbackCommand } = await import("./supervise-command.js");
     return await handleFeedbackCommand(args.slice(1));
   }
 
   if (cmd === "improve") {
+    const { handleImproveCommand } = await import("./improve-command.js");
     return await handleImproveCommand(args.slice(1));
   }
 
   if (cmd === "evaluator") {
+    const { handleEvaluatorCommand } = await import("./evaluator-command.js");
     return await handleEvaluatorCommand(args.slice(1));
   }
 
@@ -1006,10 +961,12 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "adversarial") {
+    const { handleAdversarialCommand } = await import("./supervise-command.js");
     return await handleAdversarialCommand(args.slice(1));
   }
 
   if (cmd === "meta") {
+    const { handleMetaCommand } = await import("./supervise-command.js");
     return await handleMetaCommand(args.slice(1));
   }
 
@@ -1018,6 +975,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "skills") {
+    const { handleSkillsCommand } = await import("./skills-command.js");
     return await handleSkillsCommand(args.slice(1));
   }
 
@@ -5993,6 +5951,7 @@ function parseKnowledgeScope(value: string | undefined): KnowledgeScope | undefi
 }
 
 async function handleLessonsCommand(args: string[]): Promise<number> {
+  const { readLoopState } = await loadLoop();
   const sub = args[0] ?? "list";
   if (sub === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack lessons — local pitfall knowledge base
@@ -6107,6 +6066,8 @@ async function observeLoopProbeEvents(
     const repoRoot = realpathSync(workspacePath);
     const db = openDb({ path: await ensureLocalStateDbPath() });
     try {
+      const { resolveProbeRepositoryId } = await import("./probe-command.js");
+      const { observeLoopImplementationDeviations } = await import("./loop-probe-observer.js");
       const observation = await observeLoopImplementationDeviations({
         db,
         repo_root: repoRoot,
@@ -6412,6 +6373,7 @@ interface PrReadinessResult {
 }
 
 async function handleReportCommand(args: string[]): Promise<number> {
+  const { readLoopState } = await loadLoop();
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack report — evidence-oriented loop report
 
@@ -6456,11 +6418,12 @@ Options:
     return 1;
   }
   const events = evidenceResult?.events ?? await readLoopEventsJsonlFlag(args, workspacePath);
-  console.log(renderReportMarkdownForArtifacts(state, events, language));
+  console.log(await renderReportMarkdownForArtifacts(state, events, language));
   return 0;
 }
 
 async function handleScorecardCommand(args: string[]): Promise<number> {
+  const { readLoopState, createLoopStateScorecardFromState, renderLoopStateScorecardHtml, renderLoopStateScorecardMarkdown } = await loadLoop();
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack scorecard — loop evidence scorecard
 
@@ -6521,6 +6484,7 @@ Options:
 }
 
 async function handleProofCommand(args: string[]): Promise<number> {
+  const { readLoopState } = await loadLoop();
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack proof — local evidence proof pack
 
@@ -6907,6 +6871,7 @@ function parseProofAudience(value: string | undefined): ProofAudience | undefine
 }
 
 async function handlePrCommand(args: string[]): Promise<number> {
+  const { readLoopState } = await loadLoop();
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack pr — generate PR evidence body
 
@@ -6958,7 +6923,7 @@ Options:
     workspacePath,
   );
   const proofEvidence = await readProofEvidenceForPr(proofDir);
-  const body = renderPrBody({
+  const body = await renderPrBody({
     state,
     events,
     proofDir,
@@ -7642,6 +7607,7 @@ async function writeRequestedLoopArtifactsFromStateFile(options: {
   events?: unknown[];
   governance?: GovernanceProofEvidence;
 }): Promise<LoopEvidenceArtifacts | undefined | Error> {
+  const { readLoopState } = await loadLoop();
   if (!hasRequestedLoopArtifacts(options.args)) return undefined;
   const statePath = resolveLoopPath(options.stateFilePath, options.workspacePath);
   const state = await readLoopState(statePath);
@@ -7664,6 +7630,7 @@ async function writeRequestedLoopArtifacts(
   events: LoopEvent[] = [],
   governanceOverride?: GovernanceProofEvidence,
 ): Promise<LoopEvidenceArtifacts | undefined> {
+  const { createLoopStateScorecardFromState, renderLoopStateScorecardHtml, renderLoopStateScorecardMarkdown } = await loadLoop();
   if (!hasRequestedLoopArtifacts(args)) return undefined;
 
   const artifacts: LoopEvidenceArtifacts = {};
@@ -7673,7 +7640,7 @@ async function writeRequestedLoopArtifacts(
     const reportDir = join(workspacePath, "reports");
     const reportPath = join(reportDir, `osstack-report-${loopId}.md`);
     await mkdir(reportDir, { recursive: true });
-    await writeFile(reportPath, renderReportMarkdownForArtifacts(state, events), "utf-8");
+    await writeFile(reportPath, await renderReportMarkdownForArtifacts(state, events), "utf-8");
     artifacts.report = reportPath;
   }
 
@@ -7718,6 +7685,14 @@ async function writeProofPack(
   proof_manifest: string;
   artifact_count: number;
 }> {
+  const { createLoopStateScorecardFromState, renderLoopStateScorecardHtml, renderLoopStateScorecardMarkdown } = await loadLoop();
+  const {
+    createAgentRuntimeEvidence,
+    createPolicyDecisionEvidence,
+    createProofStageArtifacts,
+    createProofStageMetadata,
+    createVerifierOutputArtifacts,
+  } = await import("./proof-pack.js");
   const stageMetadata = createProofStageMetadata(stageInput);
   const proofDir = join(
     outputDir,
@@ -7726,12 +7701,12 @@ async function writeProofPack(
   const scorecard = createLoopStateScorecardFromState(state);
   const policyDecision = createPolicyDecisionEvidence(events);
   const agentRuntime = createAgentRuntimeEvidence(events);
-  const verifyResults = createVerifyResultsEvidence(scorecard, events);
+  const verifyResults = await createVerifyResultsEvidence(scorecard, events);
   const worktreeStatus = createWorktreeStatusEvidence(events);
   const contractValidation = await createContractProofEvidence(workspacePath);
   validateProofEvidenceArtifacts({ policyDecision, agentRuntime, verifyResults, worktreeStatus });
   const artifacts = [
-    { path: "report.md", content: renderReportMarkdownForArtifacts(state, events) },
+    { path: "report.md", content: await renderReportMarkdownForArtifacts(state, events) },
     { path: "scorecard.md", content: renderLoopStateScorecardMarkdown(scorecard, { language: resolveLanguage() }) },
     { path: "scorecard.html", content: renderLoopStateScorecardHtml(scorecard, { language: resolveLanguage() }) },
     { path: "loop-state.json", content: `${JSON.stringify(state, null, 2)}\n` },
@@ -7948,6 +7923,7 @@ function hasRequestedLoopArtifacts(args: string[]): boolean {
 
 async function scanWorkspaceGovernance(workspacePath: string): Promise<GovernanceProofEvidence> {
   try {
+    const { collectGovernanceScanFiles } = await import("./assurance-command.js");
     const files = await collectGovernanceScanFiles(workspacePath);
     return await scanGovernanceFiles(files);
   } catch (error) {
@@ -7960,6 +7936,7 @@ async function scanChangedWorkspaceGovernance(
   workspacePath: string,
   baselineRevision?: string,
 ): Promise<GovernanceProofEvidence> {
+  const { collectChangedGovernanceScanFiles } = await import("./assurance-command.js");
   const files = await collectChangedGovernanceScanFiles(workspacePath, baselineRevision);
   if (files instanceof Error) {
     return unknownGovernanceEvidence(`Governance changed-files scan failed: ${files.message}`);
@@ -7981,6 +7958,7 @@ async function scanGovernanceFiles(files: string[]): Promise<GovernanceProofEvid
       findings: [],
     };
   }
+  const { scanFiles } = await import("@osstack/governance");
   const result = await scanFiles(files);
   return {
     status: result.ok ? "pass" : "fail",
@@ -8030,6 +8008,8 @@ async function scanGovernanceRevision(
       ["-C", workspacePath, "ls-tree", "-r", "--name-only", revision],
       { timeout: 10_000 },
     );
+    const { isGovernanceExcludedDir, isGovernanceScannableFile, uniqueNonEmptyLines } =
+      await import("./assurance-command.js");
     const relativePaths = uniqueNonEmptyLines(listing.stdout)
       .filter((path) => isGovernanceScannableFile(path))
       .filter((path) => !path.split(/[\\/]/).some((part) => isGovernanceExcludedDir(part)))
@@ -8046,6 +8026,7 @@ async function scanGovernanceRevision(
         return { path, content: result.stdout };
       }));
       for (const { path, content } of contents) {
+        const { scanText } = await import("@osstack/governance");
         findings.push(...scanText(content, { file: join(workspacePath, path) }).findings);
       }
     }
@@ -8314,7 +8295,7 @@ async function readJsonFileIfExists(path: string): Promise<unknown | undefined> 
   }
 }
 
-function renderPrBody(options: {
+async function renderPrBody(options: {
   state: LoopState;
   events: LoopEvent[];
   proofDir: string;
@@ -8322,7 +8303,8 @@ function renderPrBody(options: {
   knowledge?: unknown;
   worktree?: unknown;
   verify?: unknown;
-}): string {
+}): Promise<string> {
+  const { createLoopStateReport } = await loadLoop();
   const report = createLoopStateReport(options.state, { events: options.events });
   const lines: string[] = [
     `# PR Evidence - ${options.state.loop_id}`,
@@ -8339,7 +8321,7 @@ function renderPrBody(options: {
     ...renderPrTasks(options.state),
     "",
     "## Agent Selection",
-    ...renderPrPolicy(options.events),
+    ...(await renderPrPolicy(options.events)),
     "",
     "## Verification",
     ...renderPrVerification(options.events, options.verify),
@@ -8404,6 +8386,7 @@ async function checkPrCreateReadiness(workspacePath: string): Promise<PrReadines
   }
 
   const remote = await gitOutput(workspacePath, ["remote", "get-url", "origin"]);
+  const { parseGitHubRepoSlug } = await import("./steward-command.js");
   if (remote instanceof Error || parseGitHubRepoSlug(remote.trim()) === undefined) {
     checks.push({ id: "remote", status: "error", summary: "No GitHub origin remote was found." });
   } else {
@@ -8481,7 +8464,8 @@ function renderPrTasks(state: LoopState): string[] {
   ));
 }
 
-function renderPrPolicy(events: LoopEvent[]): string[] {
+async function renderPrPolicy(events: LoopEvent[]): Promise<string[]> {
+  const { createPolicyDecisionEvidence } = await import("./proof-pack.js");
   const decisions = createPolicyDecisionEvidence(events);
   if (decisions.status === "unknown" || decisions.decisions === undefined || decisions.decisions.length === 0) {
     return [`- ${decisions.reason ?? "No policy decision evidence found."}`];
@@ -8689,10 +8673,10 @@ function proofEventSummary(event: LoopEvent): string {
   return stringEventPayload(event, "summary");
 }
 
-function createVerifyResultsEvidence(
-  scorecard: ReturnType<typeof createLoopStateScorecardFromState>,
+async function createVerifyResultsEvidence(
+  scorecard: ReturnType<LoopModule["createLoopStateScorecardFromState"]>,
   events: LoopEvent[],
-): {
+): Promise<{
   status: "pass" | "fail" | "unknown";
   results?: Array<{
     task_id: string;
@@ -8704,7 +8688,8 @@ function createVerifyResultsEvidence(
     review_artifacts?: ReviewArtifact[];
   }>;
   reason?: string;
-} {
+}> {
+  const { ReviewArtifact: ReviewArtifactSchema } = await loadLoop();
   const results: Array<{
     task_id: string;
     pass: boolean;
@@ -8716,7 +8701,7 @@ function createVerifyResultsEvidence(
   }> = events
     .filter((event) => event.type === "loop.verify.done")
     .map((event) => {
-      const reviewArtifacts = reviewArtifactsEventPayload(event);
+      const reviewArtifacts = reviewArtifactsEventPayload(event, ReviewArtifactSchema);
       return {
         task_id: stringEventPayload(event, "task_id"),
         pass: booleanEventPayload(event, "pass"),
@@ -8743,10 +8728,11 @@ function createVerifyResultsEvidence(
 
 function reviewArtifactsEventPayload(
   event: LoopEvent,
+  ReviewArtifactSchema: LoopModule["ReviewArtifact"],
 ): ReviewArtifact[] | undefined {
   const value = event.payload?.["review_artifacts"];
   if (value === undefined) return undefined;
-  const parsed = ReviewArtifact.array().max(100).safeParse(value);
+  const parsed = ReviewArtifactSchema.array().max(100).safeParse(value);
   if (!parsed.success) {
     throw new Error(
       `invalid review_artifacts in loop.verify.done event seq=${event.seq}: ${parsed.error.message}`,
@@ -8795,9 +8781,9 @@ function createWorktreeStatusEvidence(events: LoopEvent[]): {
 }
 
 function validateProofEvidenceArtifacts(evidence: {
-  policyDecision: ReturnType<typeof createPolicyDecisionEvidence>;
-  agentRuntime: ReturnType<typeof createAgentRuntimeEvidence>;
-  verifyResults: ReturnType<typeof createVerifyResultsEvidence>;
+  policyDecision: ReturnType<ProofPackModule["createPolicyDecisionEvidence"]>;
+  agentRuntime: ReturnType<ProofPackModule["createAgentRuntimeEvidence"]>;
+  verifyResults: Awaited<ReturnType<typeof createVerifyResultsEvidence>>;
   worktreeStatus: ReturnType<typeof createWorktreeStatusEvidence>;
 }): void {
   const errors = [
@@ -8811,7 +8797,7 @@ function validateProofEvidenceArtifacts(evidence: {
   }
 }
 
-function validatePolicyDecisionEvidence(value: ReturnType<typeof createPolicyDecisionEvidence>): string[] {
+function validatePolicyDecisionEvidence(value: ReturnType<ProofPackModule["createPolicyDecisionEvidence"]>): string[] {
   const errors: string[] = [];
   if (value.status !== "recorded" && value.status !== "unknown") {
     errors.push("policy-decision.status must be recorded or unknown");
@@ -8848,7 +8834,7 @@ function validatePolicyDecisionEvidence(value: ReturnType<typeof createPolicyDec
   return errors;
 }
 
-function validateAgentRuntimeEvidence(value: ReturnType<typeof createAgentRuntimeEvidence>): string[] {
+function validateAgentRuntimeEvidence(value: ReturnType<ProofPackModule["createAgentRuntimeEvidence"]>): string[] {
   const errors: string[] = [];
   if (value.status !== "recorded" && value.status !== "unknown") {
     errors.push("agent-runtime.status must be recorded or unknown");
@@ -8875,7 +8861,7 @@ function validateAgentRuntimeEvidence(value: ReturnType<typeof createAgentRuntim
   return errors;
 }
 
-function validateVerifyResultsEvidence(value: ReturnType<typeof createVerifyResultsEvidence>): string[] {
+function validateVerifyResultsEvidence(value: Awaited<ReturnType<typeof createVerifyResultsEvidence>>): string[] {
   const errors: string[] = [];
   if (value.status !== "pass" && value.status !== "fail" && value.status !== "unknown") {
     errors.push("verify-results.status must be pass, fail, or unknown");
@@ -8966,11 +8952,12 @@ function numberEventPayload(event: LoopEvent, key: string): number | undefined {
   return typeof value === "number" ? value : undefined;
 }
 
-function renderReportMarkdownForArtifacts(
+async function renderReportMarkdownForArtifacts(
   state: LoopState,
   events: LoopEvent[],
   language: LoopReportLanguage = resolveLanguage(),
-): string {
+): Promise<string> {
+  const { renderLoopStateReportFromState, renderLoopStateReportFromStateAndEvents } = await loadLoop();
   return events.length === 0
     ? renderLoopStateReportFromState(state, { language })
     : renderLoopStateReportFromStateAndEvents(state, events, { language });
@@ -9385,6 +9372,7 @@ async function executeControlledRollbackDrill(
   RecordRollbackDrillInput,
   "drill_id" | "repo_id"
 >> {
+  const { readRepoRegistry } = await import("@osstack/supervisor");
   const registry = await readRepoRegistry(
     join(osstackHome(), "repos.json"),
   );
@@ -9558,6 +9546,7 @@ async function materializeTrackedDrillWorkspace(
 async function writeGuardedGitProof(
   input: GuardedGitProofInput,
 ): Promise<{ manifest_path: string; manifest_sha256: string }> {
+  const { readLoopState } = await loadLoop();
   const statePath = join(
     input.routing.evidence_root,
     "LOOP-STATE.json",
@@ -9703,11 +9692,12 @@ async function writeGuardedGitProof(
   };
 }
 
-function createGuardedGitRuntimeForDb(
+async function createGuardedGitRuntimeForDb(
   db: ReturnType<typeof openDb>,
   dbPath: string,
   trustedApprovalPublicKeys: ReadonlyMap<string, string>,
-): GuardedGitRuntime {
+): Promise<GuardedGitRuntime> {
+  const { GuardedGitRuntime } = await import("./guarded-git-runtime.js");
   return new GuardedGitRuntime({
     db,
     dbPath,
@@ -9739,6 +9729,7 @@ function createGuardedGitRuntimeForDb(
 const startGuardedGitDelivery: NonNullable<
   DeliverCommandDeps["startGuardedGit"]
 > = async (input) => {
+  const { GuardedGitRouting } = await import("./guarded-git-runtime.js");
   const policy = await guardedPolicySnapshot(input.workspacePath);
   const branch = await guardedGitText(
     input.workspacePath,
@@ -9875,7 +9866,7 @@ const startGuardedGitDelivery: NonNullable<
     const trust = await readAutonomyApprovalTrustStore(
       join(osstackHome(), "approval-trust.json"),
     );
-    const runtime = createGuardedGitRuntimeForDb(
+    const runtime = await createGuardedGitRuntimeForDb(
       db,
       dbPath,
       trust,
@@ -9925,6 +9916,8 @@ async function fileExists(path: string): Promise<boolean> {
 }
 
 async function handleLoopCommand(args: string[]): Promise<number> {
+  const { LoopEngine, enqueueTask, readLoopState, renderLoopStateMarkdown } = await loadLoop();
+  const { resolveLoopProfileRouting } = await import("./loop-profile-routing.js");
   const sub = args[0];
 
   if (sub === "start") {
@@ -9946,7 +9939,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       console.error(`osstack: ${discoveryPolicy.message}`);
       return 1;
     }
-    const budget = parseLoopBudgetFlags(args);
+    const budget = await parseLoopBudgetFlags(args);
     if (budget instanceof Error) {
       console.error(`osstack: ${budget.message}`);
       return 1;
@@ -10083,7 +10076,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       console.error(`osstack: ${discoveryPolicy.message}`);
       return 1;
     }
-    const budget = parseLoopBudgetFlags(args);
+    const budget = await parseLoopBudgetFlags(args);
     if (budget instanceof Error) {
       console.error(`osstack: ${budget.message}`);
       return 1;
@@ -10234,10 +10227,10 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     }
 
     const adapters = agentId !== undefined || verifierAgentIds.length > 0 || autoAgent
-      ? defaultAdapters()
+      ? (await import("@osstack/agents")).defaultAdapters()
       : undefined;
     const selfImprovement = selfImprovementEnabled
-      ? buildSelfImprovementConfig({
+      ? (await import("./loop-self-improvement.js")).buildSelfImprovementConfig({
           repoId: selfImprovementRepoId!,
           proposeImprovements,
           registryPath: resolveRegistryPath(args),
@@ -10296,6 +10289,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const probeObservation = await observeLoopProbeEvents(workspacePath, events);
     const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, args, events, governance);
     const learnedLessons = await learnLessonsFromLoopState(result.state);
+    const { runLoopNeatFinalizer } = await import("./loop-neat-finalizer.js");
     const knowledgeHygiene = await runLoopNeatFinalizer({
       enabled: neatFinalize,
       loop_succeeded: result.state.completed_tasks.length > 0
@@ -10518,6 +10512,7 @@ Example:
 }
 
 async function handleLoopLessonsCommand(args: string[]): Promise<number> {
+  const { discardLessonDraft, listLessonDrafts, promoteLessonDraft, readLessonDraft } = await loadLoop();
   const action = args[0];
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
   const lessonsDir = flagValue(args, "--lessons-dir") ?? "loop-lessons/drafts";
@@ -10638,7 +10633,8 @@ function parseLessonDraftFlags(args: string[]): { enabled?: boolean; dir?: strin
   };
 }
 
-function parseLoopBudgetFlags(args: string[]): LoopBudget | undefined | Error {
+async function parseLoopBudgetFlags(args: string[]): Promise<LoopBudget | undefined | Error> {
+  const { LoopBudget: LoopBudgetSchema } = await loadLoop();
   // Runtime and no-progress always enforce. Token/cost enforce against
   // adapter-reported usage (usage.final events) and stay at 0 when adapters
   // don't report — so these caps trip only when there is real usage to measure.
@@ -10664,7 +10660,7 @@ function parseLoopBudgetFlags(args: string[]): LoopBudget | undefined | Error {
   ) {
     return undefined;
   }
-  return LoopBudget.parse({
+  return LoopBudgetSchema.parse({
     ...(maxRuntimeMs !== undefined ? { max_runtime_ms: maxRuntimeMs } : {}),
     ...(maxTokens !== undefined ? { max_tokens: maxTokens } : {}),
     ...(noProgressLimit !== undefined ? { no_progress_limit: noProgressLimit } : {}),
@@ -10676,6 +10672,7 @@ async function parseDiscoveryPolicyFlag(
   args: string[],
   workspacePath: string,
 ): Promise<DiscoveryPolicy | undefined | Error> {
+  const { DEFAULT_DISCOVERY_POLICY, DiscoveryPolicy: DiscoveryPolicySchema } = await loadLoop();
   const raw = flagValue(args, "--discovery-policy");
   if (raw === undefined) return undefined;
   if (raw === "default") return DEFAULT_DISCOVERY_POLICY;
@@ -10686,7 +10683,7 @@ async function parseDiscoveryPolicyFlag(
   } catch (error) {
     return new Error(`--discovery-policy could not read ${raw}: ${error instanceof Error ? error.message : String(error)}`);
   }
-  const parsed = DiscoveryPolicy.safeParse(parsedJson);
+  const parsed = DiscoveryPolicySchema.safeParse(parsedJson);
   if (!parsed.success) {
     return new Error(`--discovery-policy file ${raw} is not a valid discovery policy`);
   }
@@ -11161,6 +11158,7 @@ async function checkTaskQueue(
   workspacePath: string,
   add: (id: string, status: LoopDoctorCheck["status"], summary: string, details?: Record<string, unknown>) => void,
 ): Promise<void> {
+  const { countTaskQueueTasks } = await loadLoop();
   const taskDir = join(workspacePath, "tasks");
   let entries: string[];
   try {
@@ -11266,6 +11264,7 @@ async function addInstructionSourceDoctorCheck(
 ): Promise<void> {
   const agentsPath = join(workspacePath, "AGENTS.md");
   const claudePath = join(workspacePath, "CLAUDE.md");
+  const { inspectInstructionSource } = await import("@osstack/governance");
   const observation = await inspectInstructionSource({
     repo_root: workspacePath,
     canonical_path: "AGENTS.md",
@@ -11892,6 +11891,7 @@ function parseCockpitNextStatus(value: string | undefined): CockpitNextStatus | 
 }
 
 async function handleCockpitReportCommand(args: string[]): Promise<number> {
+  const { readLoopState } = await loadLoop();
   const runId = firstPositionalValue(args, new Set(["--workspace", "--state", "--events", "--output", "--lang"]));
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
   const language = resolveLanguage(flagValue(args, "--lang"));
@@ -11916,7 +11916,7 @@ async function handleCockpitReportCommand(args: string[]): Promise<number> {
     workspacePath,
   );
   await mkdir(dirname(output), { recursive: true });
-  await writeFile(output, renderReportMarkdownForArtifacts(state, events, language), "utf-8");
+  await writeFile(output, await renderReportMarkdownForArtifacts(state, events, language), "utf-8");
   const opened = args.includes("--open");
   if (opened) {
     const { spawn } = await import("node:child_process");
@@ -11982,6 +11982,7 @@ async function handleCockpitRunCommand(args: string[]): Promise<number> {
 }
 
 async function handleCockpitRetryCommand(args: string[]): Promise<number> {
+  const { enqueueTask, readLoopState } = await loadLoop();
   const taskId = firstPositionalValue(args, new Set(["--workspace", "--state"]));
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
   const stateFilePath = resolveLoopPath(flagValue(args, "--state") ?? "LOOP-STATE.json", workspacePath);
@@ -12061,6 +12062,7 @@ function cockpitRunArgs(args: string[]): string[] {
 }
 
 async function handleCockpitProofCommand(args: string[]): Promise<number> {
+  const { readLoopState } = await loadLoop();
   const runId = firstPositionalValue(args, new Set(["--workspace", "--state", "--events", "--output-dir"]));
   const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
   const evidenceResult = runId === undefined

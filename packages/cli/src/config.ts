@@ -8,12 +8,10 @@
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { stringify as stringifyYaml } from "yaml";
-import {
-  defaultAdapters,
-  rolesForCapabilityKinds,
-  type AgentAdapter,
-  type AgentRuntimeIdentity,
-} from "@osstack/agents";
+// @osstack/agents is ~65ms of import (11 adapters, zod parsing at module
+// scope); config commands load it lazily so `osstack <anything-else>`
+// never pays for it via this module's static import chain.
+import type { AgentAdapter, AgentRuntimeIdentity } from "@osstack/agents";
 import {
   ALL_ROLES,
   ROLE_KINDS,
@@ -36,9 +34,9 @@ export interface ConfigCommandDeps {
   adapters?: () => ConfigAdapter[];
 }
 
-function adapters(deps: ConfigCommandDeps = {}): ConfigAdapter[] {
+async function adapters(deps: ConfigCommandDeps = {}): Promise<ConfigAdapter[]> {
   if (deps.adapters !== undefined) return deps.adapters();
-  return defaultAdapters();
+  return (await import("@osstack/agents")).defaultAdapters();
 }
 
 function flagValue(args: string[], name: string): string | undefined {
@@ -117,7 +115,7 @@ async function configShow(
   const cfg = loadConfig();
   const override = overrideFrom(args);
   const prof = selectProfile(cfg, override !== undefined ? { override } : {});
-  const list = adapters(deps);
+  const list = await adapters(deps);
   const res = await resolveAll(
     prof.roles,
     list,
@@ -162,7 +160,7 @@ async function configDoctor(
   args: string[],
   deps: ConfigCommandDeps,
 ): Promise<number> {
-  const list = adapters(deps);
+  const list = await adapters(deps);
   const cfg = loadConfig();
   const override = overrideFrom(args);
   const prof = selectProfile(
@@ -185,6 +183,7 @@ async function configDoctor(
     } catch {
       detail = "probe threw — details withheld";
     }
+    const { rolesForCapabilityKinds } = await import("@osstack/agents");
     const roles = rolesForCapabilityKinds(
       a.capabilities().map((capability) => capability.kind),
     );
@@ -269,7 +268,7 @@ async function configPick(
 
   const rl = createInterface({ input: stdin, output: stdout });
   try {
-    const list = adapters(deps);
+    const list = await adapters(deps);
     for (const role of ALL_ROLES) {
       const candidates = list.filter((a) => advertises(a, role));
       const avail = await Promise.all(
