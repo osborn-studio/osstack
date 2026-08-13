@@ -181,6 +181,13 @@ interface DaemonContext {
   hermesKanbanByRun: Map<string, string>;
   /** Per-method RPC latency windows, surfaced via the stats method. */
   rpcLatency: RpcLatencyRecorder;
+  /**
+   * True when `draining` was raised by the autonomy health probe (low disk,
+   * lost push/deploy) rather than by an operator/upgrade `daemon.drain`.
+   * Only a health-raised drain may auto-clear — clearing an upgrade's drain
+   * would resurrect the daemon mid-swap.
+   */
+  drainingFromHealth: boolean;
   /** When true (set by daemon.drain), new task.submit calls are rejected. */
   draining: boolean;
   /** Graceful shutdown trigger, wired up by startDaemon once the server is live. */
@@ -986,6 +993,7 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       const p = (req.params ?? {}) as { timeout_ms?: number };
       const timeoutMs = Math.min(Math.max(p.timeout_ms ?? 30_000, 0), 300_000);
       ctx.draining = true;
+      ctx.drainingFromHealth = false;
       const deadline = Date.now() + timeoutMs;
       while (ctx.activeRuns.size > 0 && Date.now() < deadline) {
         await new Promise((r) => setTimeout(r, 200));
@@ -999,6 +1007,7 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
 
     case "daemon.resume":
       ctx.draining = false;
+      ctx.drainingFromHealth = false;
       return singleOk(req.id, { draining: false });
 
     case "daemon.shutdown":
@@ -1113,7 +1122,7 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       try {
         const report = await ctx.autonomyHealth();
         ctx.lastAutonomyHealth = report;
-        if (report.drain_required) ctx.draining = true;
+        applyAutonomyDrainSignal(ctx, report.drain_required);
         return singleOk(req.id, report);
       } catch (error) {
         return singleErr(
@@ -3446,6 +3455,7 @@ function buildContext(
     hermesKanbanByRun: new Map(),
     rpcLatency: new RpcLatencyRecorder(),
     draining: false,
+    drainingFromHealth: false,
     requestShutdown: () => { /* wired up in startDaemon */ },
     guardedAutonomy: undefined,
     writeSemaphore: new FifoSemaphore(configuredConcurrency(
@@ -3623,13 +3633,36 @@ async function refreshAutonomyHealthAndRecover(
     return;
   }
   ctx.lastAutonomyHealth = current;
-  if (current.drain_required) ctx.draining = true;
+  applyAutonomyDrainSignal(ctx, current.drain_required);
   const externalRecovered =
     previous !== undefined
     && !previous.can_push_deploy
     && current.can_push_deploy;
   if (recover || externalRecovered) {
     await restoreGuardedAutonomy(ctx, current);
+  }
+}
+
+/**
+ * Raise or clear `draining` from an autonomy health verdict.
+ *
+ * The drain used to be a one-way latch: a dip below the 2 GiB autonomy floor
+ * set `draining` and nothing ever cleared it, so the daemon kept refusing
+ * work long after the disk recovered and only a restart brought it back
+ * (observed 2026-08-13 — 19 GB of unpruned shadow checkpoints filled the
+ * disk, and the daemon stayed drained for 12 h after space was freed).
+ * An operator/upgrade drain is never auto-cleared.
+ */
+function applyAutonomyDrainSignal(ctx: DaemonContext, drainRequired: boolean): void {
+  if (drainRequired) {
+    ctx.draining = true;
+    ctx.drainingFromHealth = true;
+    return;
+  }
+  if (ctx.draining && ctx.drainingFromHealth) {
+    ctx.draining = false;
+    ctx.drainingFromHealth = false;
+    process.stderr.write("osstack: autonomy health recovered — daemon resumed accepting work\n");
   }
 }
 

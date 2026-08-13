@@ -105,6 +105,7 @@ import {
   type CockpitKnowledgeSummary,
   type CockpitTuiActionSelection,
 } from "./cockpit-tui.js";
+import { applyDeployedEnvDefaults } from "./deployed-home.js";
 import { logsDir, osstackHome, resolveSocketPath } from "./paths.js";
 import { PROTOCOL_VERSION, VERSION } from "./version.js";
 import { handleUpgradeCommand } from "./upgrade.js";
@@ -595,6 +596,13 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 `);
     return 0;
   }
+
+  // Talk to the daemon that is actually deployed. Without this, a plain shell
+  // (no OSSTACK_HOME/OSSTACK_SOCKET exported) resolves ~/.osstack/daemon.sock
+  // and every daemon-touching command reports "not running" against a healthy
+  // launchd daemon serving a different home. An explicit env still wins, and
+  // `serve` is excluded because it CREATES a daemon rather than addressing one.
+  if (cmd !== "serve") applyDeployedEnvDefaults();
 
   if (cmd === "serve") {
     if (args.includes("--install") || args.includes("--uninstall") || args.includes("--status")) {
@@ -4741,13 +4749,50 @@ interface ShadowCheckpointMetadata {
   files: Array<{ path: string; sha256: string; bytes: number }>;
 }
 
+/**
+ * Directories a shadow checkpoint never copies.
+ *
+ * Checkpoints are a safety net for source edits, so reproducible build output,
+ * virtualenvs and caches are pure waste — and expensive waste: with only
+ * .git/node_modules/.osstack excluded, one checkpoint of a Python+build
+ * workspace weighed 14 GB, and 109 unpruned checkpoints filled the disk until
+ * the daemon drained itself (2026-08-13).
+ */
+const CHECKPOINT_EXCLUSIONS = [
+  ".git", "node_modules", ".osstack",
+  ".venv", "venv", "__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache",
+  "dist", "build", "target", "out", ".next", ".turbo", ".cache", ".gradle",
+] as const;
+
+/** Newest N checkpoints kept by createShadowCheckpoint; older ones are pruned. */
+const CHECKPOINTS_TO_KEEP = 20;
+
+/**
+ * Delete all but the newest CHECKPOINTS_TO_KEEP checkpoints. Ids are
+ * `chk_<UTC timestamp>_<uuid>`, so lexicographic order is chronological —
+ * the same prune shape backupStateDb uses for state.db snapshots.
+ */
+async function pruneShadowCheckpoints(checkpointsRoot: string): Promise<void> {
+  let ids: string[];
+  try {
+    ids = (await readdir(checkpointsRoot)).filter((name) => name.startsWith("chk_")).sort();
+  } catch {
+    return; // no checkpoints directory yet
+  }
+  for (const id of ids.slice(0, Math.max(0, ids.length - CHECKPOINTS_TO_KEEP))) {
+    try {
+      await rm(join(checkpointsRoot, id), { recursive: true, force: true });
+    } catch { /* best effort — never fail a checkpoint over cleanup */ }
+  }
+}
+
 async function createShadowCheckpoint(workspacePath: string): Promise<ShadowCheckpointSummary> {
   const workspaceStat = await stat(workspacePath);
   if (!workspaceStat.isDirectory()) throw new Error(`workspace is not a directory: ${workspacePath}`);
   const checkpointId = `chk_${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}_${randomUUID().slice(0, 8)}`;
   const checkpointDir = join(osstackHome(), "checkpoints", checkpointId);
   const filesDir = join(checkpointDir, "files");
-  const exclusions = [".git", "node_modules", ".osstack"];
+  const exclusions = [...CHECKPOINT_EXCLUSIONS];
   const entries = await collectCheckpointFiles(workspacePath, workspacePath, new Set(exclusions));
   let totalBytes = 0;
   const metadataFiles: Array<{ path: string; sha256: string; bytes: number }> = [];
@@ -4779,6 +4824,7 @@ async function createShadowCheckpoint(workspacePath: string): Promise<ShadowChec
   };
   const metadataPath = join(checkpointDir, "metadata.json");
   await writeFile(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`, "utf-8");
+  await pruneShadowCheckpoints(join(osstackHome(), "checkpoints"));
   return {
     checkpoint_id: checkpointId,
     checkpoint_dir: checkpointDir,
@@ -11344,10 +11390,22 @@ async function checkLoopDaemon(
   try {
     const response = await rpc("health", undefined, 1_000) as RpcResp;
     if (response.ok) {
-      add("daemon", "ok", "daemon RPC is reachable", {
-        socket: socketPath(),
-        health: response.result,
-      });
+      // Reachable is not the same as accepting work: a draining daemon
+      // rejects session starts and task submissions (daemon.ts "draining"),
+      // so reporting a plain ok here sends callers into refusals.
+      const health = isRecord(response.result) ? response.result : {};
+      if (health["draining"] === true) {
+        add("daemon", "error", "daemon is draining — new tasks and sessions are refused", {
+          socket: socketPath(),
+          health: response.result,
+          remedy: "check free disk (autonomy drains below 2 GiB) and restart the daemon once it recovers",
+        });
+      } else {
+        add("daemon", "ok", "daemon RPC is reachable", {
+          socket: socketPath(),
+          health: response.result,
+        });
+      }
     } else {
       add("daemon", "error", "daemon RPC returned an error", {
         socket: socketPath(),
