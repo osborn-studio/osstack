@@ -58,7 +58,7 @@ describe("control-plane doctor (G1.3)", () => {
   it("alerts on an unknown DB holder + multiple attachments", () => {
     const { home, la } = setup();
     writeFileSync(join(home, "daemon.pid"), "100");
-    const f = runControlPlaneChecks({ home, launchAgentsDir: la, lsof: () => "100\n666\n" });
+    const f = runControlPlaneChecks({ home, launchAgentsDir: la, lsof: () => "100\n666\n",  diskFreeBytes: () => 20 * 1024 ** 3 });
     expect(f.find((x) => x.check === "db_writers")?.level).toBe("alert");
     expect(f.find((x) => x.check === "multi_daemon")?.level).toBe("alert");
     expect(renderControlPlaneFindings(f).exitCode).toBe(1);
@@ -68,14 +68,14 @@ describe("control-plane doctor (G1.3)", () => {
     const { home, la } = setup();
     writeFileSync(join(home, "daemon.pid"), "100");
     writeFileSync(join(la, "ai.osstack.daemon.plist"), "<plist>osstack</plist>");
-    const f = runControlPlaneChecks({ home, launchAgentsDir: la, lsof: () => "100\n" });
+    const f = runControlPlaneChecks({ home, launchAgentsDir: la, lsof: () => "100\n",  diskFreeBytes: () => 20 * 1024 ** 3 });
     expect(f.filter((x) => x.level === "alert")).toHaveLength(0);
   });
 
   it("alerts on an UNKNOWN osstack LaunchAgent label", () => {
     const { home, la } = setup();
     writeFileSync(join(la, "com.rogue.osstack-starter.plist"), "<plist>runs osstack serve</plist>");
-    const f = runControlPlaneChecks({ home, launchAgentsDir: la, lsof: () => "" });
+    const f = runControlPlaneChecks({ home, launchAgentsDir: la, lsof: () => "",  diskFreeBytes: () => 20 * 1024 ** 3 });
     expect(f.find((x) => x.check === "launch_agents")?.level).toBe("alert");
     expect(f.find((x) => x.check === "launch_agents")?.detail).toContain("com.rogue.osstack-starter");
   });
@@ -107,7 +107,7 @@ describe("plist content drift (Phase 2.1-C)", () => {
     writeFileSync(plist, "<plist>original osstack daemon</plist>");
     writeFileSync(join(home, "plist.sha256.baseline"), createHash("sha256").update("<plist>original osstack daemon</plist>").digest("hex"));
     writeFileSync(plist, "<plist>REWRITTEN by unknown process</plist>");
-    const f = runControlPlaneChecks({ home, launchAgentsDir: la, lsof: () => "", daemonPlistPath: plist });
+    const f = runControlPlaneChecks({ home, launchAgentsDir: la, lsof: () => "", daemonPlistPath: plist,  diskFreeBytes: () => 20 * 1024 ** 3 });
     expect(f.find((x) => x.check === "plist_drift")?.level).toBe("alert");
   });
 
@@ -116,8 +116,8 @@ describe("plist content drift (Phase 2.1-C)", () => {
     const plist = join(r, "d.plist");
     writeFileSync(plist, "<plist>x</plist>");
     writeFileSync(join(home, "plist.sha256.baseline"), createHash("sha256").update("<plist>x</plist>").digest("hex"));
-    expect(runControlPlaneChecks({ home, launchAgentsDir: la, lsof: () => "", daemonPlistPath: plist }).find((x) => x.check === "plist_drift")?.level).toBe("ok");
+    expect(runControlPlaneChecks({ home, launchAgentsDir: la, lsof: () => "", daemonPlistPath: plist,  diskFreeBytes: () => 20 * 1024 ** 3 }).find((x) => x.check === "plist_drift")?.level).toBe("ok");
     rmSync(join(home, "plist.sha256.baseline"));
-    expect(runControlPlaneChecks({ home, launchAgentsDir: la, lsof: () => "", daemonPlistPath: plist }).find((x) => x.check === "plist_drift")?.level).toBe("warn");
+    expect(runControlPlaneChecks({ home, launchAgentsDir: la, lsof: () => "", daemonPlistPath: plist,  diskFreeBytes: () => 20 * 1024 ** 3 }).find((x) => x.check === "plist_drift")?.level).toBe("warn");
   });
 });
