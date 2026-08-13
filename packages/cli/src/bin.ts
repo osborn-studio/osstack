@@ -373,6 +373,14 @@ export async function main(args = process.argv.slice(2)): Promise<number> {
     return 0;
   }
 
+  // Talk to the daemon that is actually deployed. Without this, a plain shell
+  // (no OSSTACK_HOME/OSSTACK_SOCKET exported) resolves ~/.osstack/daemon.sock
+  // and every daemon-touching command reports "not running" against a healthy
+  // launchd daemon serving a different home. Runs before the help text so the
+  // socket path it prints is the real one. An explicit env still wins, and
+  // `serve` is excluded because it CREATES a daemon rather than addressing one.
+  if (cmd !== "serve") applyDeployedEnvDefaults();
+
   if (cmd === "--help" || cmd === "-h" || cmd === "help" || !cmd) {
     if (resolveLanguage() === "zh-CN") {
       console.log(renderChineseMainHelp());
@@ -596,13 +604,6 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 `);
     return 0;
   }
-
-  // Talk to the daemon that is actually deployed. Without this, a plain shell
-  // (no OSSTACK_HOME/OSSTACK_SOCKET exported) resolves ~/.osstack/daemon.sock
-  // and every daemon-touching command reports "not running" against a healthy
-  // launchd daemon serving a different home. An explicit env still wins, and
-  // `serve` is excluded because it CREATES a daemon rather than addressing one.
-  if (cmd !== "serve") applyDeployedEnvDefaults();
 
   if (cmd === "serve") {
     if (args.includes("--install") || args.includes("--uninstall") || args.includes("--status")) {
@@ -4761,8 +4762,16 @@ interface ShadowCheckpointMetadata {
 const CHECKPOINT_EXCLUSIONS = [
   ".git", "node_modules", ".osstack",
   ".venv", "venv", "__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache",
-  "dist", "build", "target", "out", ".next", ".turbo", ".cache", ".gradle",
+  ".next", ".turbo", ".cache", ".gradle",
 ] as const;
+
+/**
+ * Names that are build output at the workspace root but are perfectly ordinary
+ * source directories deeper in a tree (`src/app/build/`, `lib/out/`). Excluding
+ * them at every depth would silently drop real files from a restore safety net,
+ * so they are only skipped at the top level.
+ */
+const CHECKPOINT_ROOT_ONLY_EXCLUSIONS = ["dist", "build", "target", "out"] as const;
 
 /** Newest N checkpoints kept by createShadowCheckpoint; older ones are pruned. */
 const CHECKPOINTS_TO_KEEP = 20;
@@ -4793,7 +4802,13 @@ async function createShadowCheckpoint(workspacePath: string): Promise<ShadowChec
   const checkpointDir = join(osstackHome(), "checkpoints", checkpointId);
   const filesDir = join(checkpointDir, "files");
   const exclusions = [...CHECKPOINT_EXCLUSIONS];
-  const entries = await collectCheckpointFiles(workspacePath, workspacePath, new Set(exclusions));
+  const rootOnlyExclusions = [...CHECKPOINT_ROOT_ONLY_EXCLUSIONS];
+  const entries = await collectCheckpointFiles(
+    workspacePath,
+    workspacePath,
+    new Set(exclusions),
+    new Set(rootOnlyExclusions),
+  );
   let totalBytes = 0;
   const metadataFiles: Array<{ path: string; sha256: string; bytes: number }> = [];
   await mkdir(filesDir, { recursive: true });
@@ -4817,6 +4832,7 @@ async function createShadowCheckpoint(workspacePath: string): Promise<ShadowChec
     files_root: filesDir,
     files: metadataFiles,
     exclusions,
+    root_only_exclusions: rootOnlyExclusions,
     notes: [
       "Shadow checkpoints are stored outside the workspace and do not write to .git.",
       "Restore is dry-run by default and only writes files listed in this metadata.",
@@ -4839,14 +4855,17 @@ async function collectCheckpointFiles(
   root: string,
   current: string,
   excludedNames: Set<string>,
+  rootOnlyExcludedNames: ReadonlySet<string> = new Set(),
 ): Promise<Array<{ sourcePath: string; relativePath: string; sha256: string; bytes: number }>> {
   const dirents = await readdir(current, { withFileTypes: true });
+  const atRoot = current === root;
   const files: Array<{ sourcePath: string; relativePath: string; sha256: string; bytes: number }> = [];
   for (const dirent of dirents.sort((a, b) => a.name.localeCompare(b.name))) {
     if (excludedNames.has(dirent.name)) continue;
+    if (atRoot && rootOnlyExcludedNames.has(dirent.name)) continue;
     const sourcePath = join(current, dirent.name);
     if (dirent.isDirectory()) {
-      files.push(...await collectCheckpointFiles(root, sourcePath, excludedNames));
+      files.push(...await collectCheckpointFiles(root, sourcePath, excludedNames, rootOnlyExcludedNames));
       continue;
     }
     if (!dirent.isFile()) continue;

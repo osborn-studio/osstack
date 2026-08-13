@@ -100,6 +100,29 @@ describe("checkpoint CLI", () => {
     }
   });
 
+  it("keeps source directories that merely share a build-output name", async () => {
+    // dist/build/out/target are build output at the workspace root but often
+    // real source deeper in a tree; a restore safety net must not silently
+    // drop them (Kimi K3 review of #211).
+    const workspace = join(tmp, "workspace");
+    await mkdir(join(workspace, "src", "build"), { recursive: true });
+    await mkdir(join(workspace, "pkg", "out"), { recursive: true });
+    await mkdir(join(workspace, "dist"), { recursive: true });
+    await writeFile(join(workspace, "src", "build", "rules.ts"), "export const kept = 1;\n");
+    await writeFile(join(workspace, "pkg", "out", "shape.ts"), "export const kept = 2;\n");
+    await writeFile(join(workspace, "dist", "bundle.js"), "// generated\n");
+
+    const exitCode = await main(["checkpoint", "create", "--workspace", workspace, "--json"]);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(logs.join("\n")) as { checkpoint_dir: string; files: number };
+    expect(summary.files).toBe(2);
+    expect(existsSync(join(summary.checkpoint_dir, "files", "src", "build", "rules.ts"))).toBe(true);
+    expect(existsSync(join(summary.checkpoint_dir, "files", "pkg", "out", "shape.ts"))).toBe(true);
+    // The root-level build output is still skipped.
+    expect(existsSync(join(summary.checkpoint_dir, "files", "dist"))).toBe(false);
+  });
+
   it("prunes to the newest 20 checkpoints", async () => {
     const workspace = join(tmp, "workspace");
     await mkdir(workspace, { recursive: true });

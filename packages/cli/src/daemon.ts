@@ -3655,8 +3655,13 @@ async function refreshAutonomyHealthAndRecover(
  */
 function applyAutonomyDrainSignal(ctx: DaemonContext, drainRequired: boolean): void {
   if (drainRequired) {
+    // Only claim ownership on the transition INTO draining. Marking an
+    // already-draining daemon would relabel an operator/upgrade drain as
+    // health-raised, and the next healthy probe would then lift it — the
+    // exact sequence (operator drain → bad probe → good probe) that Kimi K3
+    // reproduced against the first cut of this fix.
+    if (!ctx.draining) ctx.drainingFromHealth = true;
     ctx.draining = true;
-    ctx.drainingFromHealth = true;
     return;
   }
   if (ctx.draining && ctx.drainingFromHealth) {

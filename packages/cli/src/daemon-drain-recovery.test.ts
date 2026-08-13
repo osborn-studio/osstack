@@ -116,6 +116,24 @@ describe("daemon drain recovery", () => {
     expect(await draining(daemon.socketPath)).toBe(false);
   });
 
+  it("keeps an operator drain even after the health signal flaps bad then good", async () => {
+    // The sequence that broke the first cut of this fix: an operator drain is
+    // in place, a bad probe relabels it as health-raised, and the next good
+    // probe lifts a drain the operator never released.
+    daemon = await start();
+    await daemonRpc(daemon.socketPath, "daemon.drain", { timeout_ms: 0 });
+    expect(await draining(daemon.socketPath)).toBe(true);
+
+    drainRequired = true;
+    await daemonRpc(daemon.socketPath, "autonomy.health");
+    drainRequired = false;
+    await daemonRpc(daemon.socketPath, "autonomy.health");
+
+    expect(await draining(daemon.socketPath)).toBe(true);
+    await daemonRpc(daemon.socketPath, "daemon.resume");
+    expect(await draining(daemon.socketPath)).toBe(false);
+  });
+
   it("keeps refusing work while drained", async () => {
     daemon = await start();
     drainRequired = true;
