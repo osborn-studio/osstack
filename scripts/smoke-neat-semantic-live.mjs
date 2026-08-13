@@ -13,6 +13,7 @@ import { summarizeProviderInvocationFailure } from "./neat-semantic-live-diagnos
 const execFileAsync = promisify(execFile);
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cliPath = join(repoRoot, "packages", "cli", "dist", "bin.js");
+const liveSmokeMaxOutputTokens = 8_192;
 const providerRequirements = {
   "deepseek-no-tools": {
     credential: "DEEPSEEK_API_KEY",
@@ -73,7 +74,7 @@ The script prints only a sanitized receipt and never prints provider values or f
       "  dimensions: [narrative]",
       "  schedule: manual",
       "  max_input_tokens: 8000",
-      "  max_output_tokens: 4000",
+      `  max_output_tokens: ${liveSmokeMaxOutputTokens}`,
       "  max_calls: 1",
       "",
     ].join("\n"), "utf8");
@@ -110,7 +111,7 @@ The script prints only a sanitized receipt and never prints provider values or f
         "--max-input-tokens",
         "8000",
         "--max-output-tokens",
-        "4000",
+        String(liveSmokeMaxOutputTokens),
         "--max-calls",
         "1",
         "--schema-version",

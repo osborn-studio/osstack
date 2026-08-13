@@ -69,11 +69,17 @@ describe("paid semantic provider CI boundary", () => {
   it("verifies sanitized diagnostics before regular and paid semantic runs", () => {
     const workflow = readFileSync(join(repoRoot, ".github/workflows/ci.yml"), "utf8");
     const manifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+    const liveSmoke = readFileSync(
+      join(repoRoot, "scripts/smoke-neat-semantic-live.mjs"),
+      "utf8",
+    );
 
     expect(manifest.scripts["test:neat-semantic-live-diagnostic"]).toBe(
       "node --test scripts/neat-semantic-live-diagnostic.test.mjs",
     );
     expect(workflow.match(/pnpm test:neat-semantic-live-diagnostic/gu)).toHaveLength(2);
+    expect(liveSmoke).toContain("const liveSmokeMaxOutputTokens = 8_192;");
+    expect(liveSmoke).toContain("String(liveSmokeMaxOutputTokens)");
   });
 
   it("exposes credentials only to explicitly selected manual smoke jobs", () => {
