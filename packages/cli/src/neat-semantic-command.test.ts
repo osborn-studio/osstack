@@ -13,7 +13,10 @@ import {
   type NeatCommandDependencies,
 } from "./neat-command.js";
 
-async function semanticRepo(enabled = true): Promise<string> {
+async function semanticRepo(
+  enabled = true,
+  judgeId = "fake-no-tools",
+): Promise<string> {
   const repo = await mkdtemp(join(tmpdir(), "osstack-neat-semantic-cli-"));
   await mkdir(join(repo, ".osstack"));
   await writeFile(join(repo, ".osstack", "neat.yaml"), `
@@ -22,7 +25,7 @@ instructions:
   canonical: AGENTS.md
 semantic:
   enabled: ${enabled}
-${enabled ? "  judge_id: fake-no-tools\n" : ""}  dimensions: [narrative]
+${enabled ? `  judge_id: ${judgeId}\n` : ""}  dimensions: [narrative]
   schedule: manual
   max_input_tokens: 32000
   max_output_tokens: 4000
@@ -200,6 +203,31 @@ describe("neat semantic", () => {
     const command = commandHarness(repo);
     expect(await handleNeatCommand(["semantic", "--all"], command.deps)).toBe(2);
     expect(command.stderr.join("\n")).toContain("semantic.enabled");
+  });
+
+  it("recognizes DeepSeek and fails before network access when its model is absent", async () => {
+    const modelVariable = "OSSTACK_NEAT_DEEPSEEK_MODEL";
+    const repo = await semanticRepo(true, "deepseek-no-tools");
+    const command = commandHarness(repo);
+    command.deps.semantic = {};
+    const previous = process.env[modelVariable];
+    delete process.env[modelVariable];
+    try {
+      expect(await handleNeatCommand(["semantic", "--all"], command.deps)).toBe(2);
+      expect(command.stderr.join("\n")).toContain(modelVariable);
+    } finally {
+      if (previous !== undefined) process.env[modelVariable] = previous;
+    }
+  });
+
+  it("documents all built-in no-tools providers without exposing credentials", async () => {
+    const repo = await semanticRepo();
+    const command = commandHarness(repo);
+    expect(await handleNeatCommand(["semantic", "--help"], command.deps)).toBe(0);
+    const help = command.stdout.join("\n");
+    expect(help).toContain("anthropic-no-tools");
+    expect(help).toContain("deepseek-no-tools");
+    expect(help).toContain("DEEPSEEK_API_KEY");
   });
 
   it("returns exit 3 for truncated requested coverage unless explicitly allowed", async () => {

@@ -32,6 +32,7 @@ import {
   type SemanticEvidencePackV1 as SemanticEvidencePack,
   type SemanticJudgePort,
 } from "./semantic-judge.js";
+import type { SemanticProviderFailureCodeV1 } from "./semantic-provider-error.js";
 import {
   KnowledgeHygieneFindingV2,
   KnowledgeHygieneReportV2,
@@ -692,6 +693,7 @@ async function auditDimension(
   let calls = 0;
   let assessed = 0;
   let failure: "provider_error" | undefined;
+  let providerFailureCode: SemanticProviderFailureCodeV1 | undefined;
   let truncation:
     | "input_budget_exhausted"
     | "output_budget_exhausted"
@@ -789,6 +791,15 @@ async function auditDimension(
         break;
       }
       failure = "provider_error";
+      providerFailureCode = error instanceof SemanticJudgeError
+        ? error.code === "provider_error"
+          ? error.provider_failure_code ?? "unknown_provider_error"
+          : error.code === "cancelled"
+            ? "cancelled"
+            : error.code === "stale_nonce"
+              ? "stale_nonce"
+              : "unknown_provider_error"
+        : "unknown_provider_error";
       increment(rejections, "provider_error");
       break;
     }
@@ -804,6 +815,9 @@ async function auditDimension(
         candidates_assessed: assessed,
         candidates_skipped: skipped,
         reason_codes: [failure],
+        ...(providerFailureCode === undefined
+          ? {}
+          : { provider_failure_code: providerFailureCode }),
       }
     : truncation !== undefined
       ? {

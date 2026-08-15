@@ -69,3 +69,51 @@ future hidden runs use the v3 rebaseline files whose names end in `-v3.json`.
 
 Logged-in general code agents are not acceptable substitutes for the isolated
 `SemanticJudgePort`, independent hidden custody, or blind judges.
+
+## Built-in production semantic providers
+
+`osstack neat semantic` accepts two fixed no-tools judge profiles. A profile
+is ready only when both its credential and complete model ID are present:
+
+| Judge ID | Credential | Model ID | Endpoint scope |
+|---|---|---|---|
+| `anthropic-no-tools` | `ANTHROPIC_API_KEY` | `OSSTACK_NEAT_ANTHROPIC_MODEL` | Anthropic API |
+| `deepseek-no-tools` | `DEEPSEEK_API_KEY` | `OSSTACK_NEAT_DEEPSEEK_MODEL` | DeepSeek API |
+
+The recommended explicit model ID for the first DeepSeek canary is
+`deepseek-v4-pro`. Model IDs remain environment-owned so a
+provider alias change cannot silently alter the cache fingerprint or evaluation
+record.
+
+The DeepSeek endpoint is fixed in the trusted provider registry;
+repository configuration cannot supply a Base URL. The doctor passes the
+`production_semantic_provider` check when at least one profile is complete and
+reports partial configuration only by variable name, never by value.
+
+The DeepSeek provider also requires the response model identity to match the
+requested model string. A mismatch fails closed before the semantic decision
+is accepted or cached.
+
+Before invoking a canary from the terminal where the credentials are already
+loaded, configure the corresponding immutable model identity:
+
+```sh
+export OSSTACK_NEAT_DEEPSEEK_MODEL=deepseek-v4-pro
+```
+
+Build once, then invoke DeepSeek through the disposable live-smoke
+runner. A receipt path must be absolute and must not already exist; the runner
+creates it with mode `0600` and never stores raw findings or credentials.
+
+```sh
+pnpm --filter @osstack/cli build
+node scripts/smoke-neat-semantic-live.mjs \
+  --provider deepseek-no-tools \
+  --receipt /tmp/osstack-deepseek-live-smoke.json
+```
+
+For a live smoke, use a disposable sanitized repository with ConfigV2
+`semantic.enabled: true`, invoke one profile explicitly with `--judge`, retain
+the JSON ReportV2 in a private location, and verify that requested coverage is
+neither `failed` nor `not_assessed`. A live smoke is integration evidence only;
+it does not replace the independently held hidden A/B experiment.

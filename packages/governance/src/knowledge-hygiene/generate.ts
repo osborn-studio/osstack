@@ -104,7 +104,7 @@ export const KNOWLEDGE_HYGIENE_SCHEMA_MANIFEST_V2 = Object.freeze([
     key: "knowledge-hygiene-coverage-v2",
     title: "Osstack Knowledge Hygiene Coverage Dimension v2",
     comment:
-      "Coverage count and state invariants are enforced by @osstack/governance Zod validation.",
+      "Coverage count, state, and provider-failure-code invariants are enforced by @osstack/governance Zod validation.",
     schema: CoverageDimensionV2,
   },
   {

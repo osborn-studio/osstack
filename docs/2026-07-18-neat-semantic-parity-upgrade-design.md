@@ -123,6 +123,31 @@ type CoverageState =
   | "truncated"
   | "failed";
 
+type SemanticProviderFailureCodeV1 =
+  | "cancelled"
+  | "transport_error"
+  | "request_timeout"
+  | "authentication_failed"
+  | "rate_limited"
+  | "http_error"
+  | "response_too_large"
+  | "invalid_provider_json"
+  | "invalid_provider_response"
+  | "model_identity_mismatch"
+  | "missing_completion_choice"
+  | "tool_activity"
+  | "output_token_limit_reached"
+  | "content_filtered"
+  | "insufficient_system_resource"
+  | "unsupported_finish_reason"
+  | "missing_json_content"
+  | "invalid_json_content"
+  | "missing_result"
+  | "provider_result_error"
+  | "missing_structured_output"
+  | "stale_nonce"
+  | "unknown_provider_error";
+
 interface CoverageDimensionV2 {
   dimension:
     | "mechanical"
@@ -146,6 +171,7 @@ interface CoverageDimensionV2 {
     | "scan_incomplete"
     | "provider_error"
   >;
+  provider_failure_code?: SemanticProviderFailureCodeV1;
 }
 ```
 
@@ -157,6 +183,15 @@ interface CoverageDimensionV2 {
 - `truncated`：至少一个 skipped，且至少含一个 `*_budget_exhausted`；
 - `failed`：必须含 `scan_incomplete` 或 `provider_error`，已完成的 assessed 计数仍保留；
 - `dimension` 唯一且按本文枚举顺序输出；未请求维度必须是 `not_assessed/not_requested`。
+
+`provider_failure_code` 只允许出现在 `state="failed"` 且
+`reason_codes` 含 `provider_error` 的覆盖记录中。该字段只保留封闭错误码，不得持久化
+HTTP 响应正文、SDK 异常文本、供应商错误详情或凭据；未识别异常统一映射为
+`unknown_provider_error`。字段为可选，旧 V2 报告继续由新 reader 接受。
+DeepSeek/OpenAI-compatible `finish_reason` 固定映射为：`length` →
+`output_token_limit_reached`、`content_filter` → `content_filtered`、
+`insufficient_system_resource` → 同名错误码、`tool_calls` → `tool_activity`；
+空值、未来新增值或其他未识别值统一映射为 `unsupported_finish_reason`，禁止把原值写入报告。
 
 #### 2.1.2 `FindingV2` 与 `ReportV2` 最小合同
 
@@ -518,6 +553,8 @@ interface SemanticJudgePort {
 ```
 
 首个 provider 固定在 `@osstack/agents` 内实现，针对仓库当前 `@anthropic-ai/claude-agent-sdk@0.3.143` 使用：`tools: []`、`settingSources: []`、`skills: []`、`mcpServers: {}`、`plugins: []`、`hooks: {}`、`agents: {}`、custom `systemPrompt`（不使用 preset）、`outputFormat: json_schema`、`maxTurns: 1`、`permissionMode: dontAsk` 与空临时 cwd；永不设置 `allowDangerouslySkipPermissions`。首 provider 要求显式 API credential，子进程 env 仅允许 `ANTHROPIC_API_KEY/PATH/LANG/LC_ALL/TMPDIR`；明确剔除 `HOME/CLAUDE_CONFIG_DIR/OSSTACK_AUTOAPPROVE/HERMES_HOME` 及全部仓库级变量。需要企业代理或自定义 CA 的环境在后续 provider 设计中单独扩展 allowlist 与测试，不能临时透传 `process.env`。SDK 类型明确规定空 `tools` 禁用内置工具，Anthropic API 也支持 `tool_choice: none`；两者任何一次升级都必须重跑 port conformance。[Anthropic tool configuration](https://platform.claude.com/docs/en/managed-agents/tools)，[Anthropic tool choice](https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools)
+
+2026-07-20 provider 增量实现把 registry 扩为 `anthropic-no-tools` 与 `deepseek-no-tools`。DeepSeek 使用一个仅 HTTP 的 OpenAI-compatible transport，其 judge id、HTTPS endpoint 与 credential 变量均在 `@osstack/agents` 内冻结，仓库内容和 ConfigV2 不能提供任意 Base URL。transport 不传 `tools`/`tool_choice`，若响应出现 `tool_calls`、非 `stop` finish reason、响应模型身份与请求不一致、超预算字节、畸形 provider JSON 或不符合本地 schema 的 decision，均 fail closed；HTTP 错误不得回显 body，transport 异常只输出分类，默认 120 秒超时。它只从环境读取 `DEEPSEEK_API_KEY` 与显式的 `OSSTACK_NEAT_DEEPSEEK_MODEL`，不把 ambient env 传给子进程或 provider；请求显式启用 thinking 并按官方接口使用 `max_tokens`。U5 doctor 接受任一完整 provider 配置，但 partial 配置仍为 No-Go。DeepSeek JSON Output 与固定模型参数见[官方 Chat Completion API](https://api-docs.deepseek.com/api/create-chat-completion)。
 
 当前 Codex CLI 是能读文件和运行命令的 coding agent，read-only sandbox 不是 no-tool contract，所以不得直接注册为 SemanticJudgePort。未来 provider 必须提供同等的 no-tool/structured-output 证明后才能进入 registry。[OpenAI Codex CLI safety model](https://help.openai.com/en/articles/11096431)
 

@@ -2,7 +2,10 @@ import { createHash } from "node:crypto";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { SemanticJudgeRequestV1 } from "@osstack/governance";
+import {
+  SemanticJudgeRequestV1,
+  SemanticProviderError,
+} from "@osstack/governance";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AnthropicNoToolsSemanticJudge } from "./anthropic-no-tools.js";
 
@@ -134,7 +137,51 @@ describe("AnthropicNoToolsSemanticJudge", () => {
       environment: { ANTHROPIC_API_KEY: "key", PATH: "/usr/bin" },
     });
     await expect(provider.judge(request(), new AbortController().signal))
-      .rejects.toThrow(/tool activity/i);
+      .rejects.toSatisfy((error: unknown) =>
+        error instanceof SemanticProviderError && error.code === "tool_activity"
+      );
+  });
+
+  it("classifies and sanitizes a failed provider result", async () => {
+    queryMock.mockReturnValue((async function* () {
+      yield {
+        type: "result",
+        subtype: "error_during_execution",
+        errors: ["provider leaked secret-sentinel"],
+      };
+    })());
+    const provider = new AnthropicNoToolsSemanticJudge({
+      model_id: "claude-test",
+      environment: { ANTHROPIC_API_KEY: "key", PATH: "/usr/bin" },
+    });
+
+    const error = await provider
+      .judge(request(), new AbortController().signal)
+      .catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(SemanticProviderError);
+    expect(error).toMatchObject({ code: "provider_result_error" });
+    expect((error as Error).message).not.toContain("secret-sentinel");
+  });
+
+  it("classifies and sanitizes SDK transport failures", async () => {
+    queryMock.mockReturnValue({
+      async *[Symbol.asyncIterator]() {
+        yield await Promise.reject(
+          new Error("SDK transport leaked secret-sentinel"),
+        );
+      },
+    });
+    const provider = new AnthropicNoToolsSemanticJudge({
+      model_id: "claude-test",
+      environment: { ANTHROPIC_API_KEY: "key", PATH: "/usr/bin" },
+    });
+
+    const error = await provider
+      .judge(request(), new AbortController().signal)
+      .catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(SemanticProviderError);
+    expect(error).toMatchObject({ code: "transport_error" });
+    expect((error as Error).message).not.toContain("secret-sentinel");
   });
 
   it("requires an explicit API credential", () => {

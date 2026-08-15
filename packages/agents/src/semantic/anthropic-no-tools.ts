@@ -4,10 +4,11 @@ import {
   type SDKMessage,
   type SDKResultMessage,
 } from "@anthropic-ai/claude-agent-sdk";
-import type {
-  SemanticJudgePort,
-  SemanticJudgeRequestV1,
-  SemanticJudgeResponseV1,
+import {
+  SemanticProviderError,
+  type SemanticJudgePort,
+  type SemanticJudgeRequestV1,
+  type SemanticJudgeResponseV1,
 } from "@osstack/governance";
 import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -105,7 +106,7 @@ export class AnthropicNoToolsSemanticJudge implements SemanticJudgePort {
     input: SemanticJudgeRequestV1,
     signal: AbortSignal,
   ): Promise<SemanticJudgeResponseV1> {
-    if (signal.aborted) throw new Error("semantic judge call cancelled");
+    if (signal.aborted) throw new SemanticProviderError("cancelled");
     const temporaryDirectory = await this.#createTemporaryDirectory();
     await assertOwnedTemporaryDirectory(temporaryDirectory);
     const controller = new AbortController();
@@ -138,27 +139,29 @@ export class AnthropicNoToolsSemanticJudge implements SemanticJudgePort {
         nonce: input.nonce,
         evidence_pack: input.evidence_pack,
       });
+      let messages: ReturnType<typeof query>;
+      try {
+        messages = query({ prompt, options });
+      } catch {
+        throw new SemanticProviderError("transport_error");
+      }
       let terminal: SDKResultMessage | undefined;
-      for await (const message of query({ prompt, options })) {
-        if (signal.aborted) throw new Error("semantic judge call cancelled");
+      for await (const message of messages) {
+        if (signal.aborted) throw new SemanticProviderError("cancelled");
         if (isToolActivity(message)) {
           controller.abort();
-          throw new Error(
-            `no-tools semantic judge reported tool activity: ${message.type}`,
-          );
+          throw new SemanticProviderError("tool_activity");
         }
         if (message.type === "result") terminal = message;
       }
       if (terminal === undefined) {
-        throw new Error("semantic judge stream ended without a result");
+        throw new SemanticProviderError("missing_result");
       }
       if (terminal.subtype !== "success") {
-        throw new Error(
-          `semantic judge provider failed: ${terminal.subtype} ${terminal.errors.join("; ")}`,
-        );
+        throw new SemanticProviderError("provider_result_error");
       }
       if (terminal.structured_output === undefined) {
-        throw new Error("semantic judge returned no structured output");
+        throw new SemanticProviderError("missing_structured_output");
       }
       return {
         nonce: input.nonce,
@@ -166,6 +169,10 @@ export class AnthropicNoToolsSemanticJudge implements SemanticJudgePort {
         usage: resultUsage(terminal),
         provider_request_id: terminal.uuid,
       };
+    } catch (error) {
+      if (signal.aborted) throw new SemanticProviderError("cancelled");
+      if (error instanceof SemanticProviderError) throw error;
+      throw new SemanticProviderError("transport_error");
     } finally {
       signal.removeEventListener("abort", abort);
       controller.abort();

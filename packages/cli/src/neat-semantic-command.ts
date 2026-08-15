@@ -1,4 +1,4 @@
-import { AnthropicNoToolsSemanticJudge } from "@osstack/agents";
+import { createBuiltInSemanticJudge } from "@osstack/agents";
 import {
   auditKnowledgeHygieneSemantics,
   KnowledgeHygieneConfigError,
@@ -101,8 +101,11 @@ Options:
   --fail-on <error|warning|none> Finding threshold (default: none)
   --help                         Show this help
 
-The built-in anthropic-no-tools judge requires ANTHROPIC_API_KEY and
-OSSTACK_NEAT_ANTHROPIC_MODEL. Config semantic.enabled is the provider kill switch.
+Built-in no-tools judges:
+  anthropic-no-tools  ANTHROPIC_API_KEY + OSSTACK_NEAT_ANTHROPIC_MODEL
+  deepseek-no-tools   DEEPSEEK_API_KEY + OSSTACK_NEAT_DEEPSEEK_MODEL
+
+Config semantic.enabled is the provider kill switch.
 
 Exit codes:
   0  Requested coverage completed and threshold was not met
@@ -346,16 +349,13 @@ function emitError(
 }
 
 function defaultJudgeFactory(judgeId: string): SemanticJudgePort {
-  if (judgeId !== "anthropic-no-tools") {
-    throw new NeatSemanticUsageError(`unsupported semantic judge: ${judgeId}`);
-  }
-  const model = process.env["OSSTACK_NEAT_ANTHROPIC_MODEL"];
-  if (model === undefined || model.trim().length === 0) {
+  try {
+    return createBuiltInSemanticJudge(judgeId);
+  } catch (error) {
     throw new NeatSemanticUsageError(
-      "anthropic-no-tools requires OSSTACK_NEAT_ANTHROPIC_MODEL",
+      error instanceof Error ? error.message : String(error),
     );
   }
-  return new AnthropicNoToolsSemanticJudge({ model_id: model });
 }
 
 function findingExitCode(

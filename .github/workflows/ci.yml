@@ -2,6 +2,15 @@ name: CI
 
 on:
   workflow_dispatch:
+    inputs:
+      semantic_provider:
+        description: Paid semantic provider smoke to run (manual only)
+        required: true
+        default: none
+        type: choice
+        options:
+          - none
+          - deepseek-no-tools
   push:
     branches: [main, changeset-release/main]
   pull_request:
@@ -119,6 +128,9 @@ jobs:
           OSSTACK_BENCH_HELP_BUDGET_MS: "900"
         run: node scripts/bench-cli-startup.mjs
 
+      - name: Neat semantic live diagnostic tests
+        run: pnpm test:neat-semantic-live-diagnostic
+
       - name: Neat semantic beta contract gates
         if: steps.changes.outputs.heavy_smoke == 'true'
         run: |
@@ -181,3 +193,37 @@ jobs:
       - name: NPM registry skew smoke
         if: steps.changes.outputs.heavy_smoke == 'true'
         run: pnpm smoke:npm-registry-skew
+
+  paid_deepseek_semantic:
+    name: Paid DeepSeek semantic smoke
+    if: github.event_name == 'workflow_dispatch' && inputs.semantic_provider == 'deepseek-no-tools'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build semantic CLI
+        run: pnpm --filter @osstack/cli... build
+
+      - name: Verify sanitized diagnostics
+        run: pnpm test:neat-semantic-live-diagnostic
+
+      - name: Run sanitized DeepSeek smoke
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          OSSTACK_NEAT_DEEPSEEK_MODEL: ${{ vars.OSSTACK_NEAT_DEEPSEEK_MODEL }}
+        run: node scripts/smoke-neat-semantic-live.mjs --provider deepseek-no-tools

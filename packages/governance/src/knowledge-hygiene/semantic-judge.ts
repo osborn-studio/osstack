@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { z } from "zod";
+import {
+  SemanticProviderError,
+  type SemanticProviderFailureCodeV1,
+} from "./semantic-provider-error.js";
 import { KnowledgeHygieneCitationV2 } from "./types-v2.js";
 
 const sha256 = z.string().regex(/^[a-f0-9]{64}$/);
@@ -251,11 +255,17 @@ export type SemanticJudgeErrorCode =
 
 export class SemanticJudgeError extends Error {
   readonly code: SemanticJudgeErrorCode;
+  readonly provider_failure_code: SemanticProviderFailureCodeV1 | undefined;
 
-  constructor(code: SemanticJudgeErrorCode, message: string) {
+  constructor(
+    code: SemanticJudgeErrorCode,
+    message: string,
+    providerFailureCode?: SemanticProviderFailureCodeV1,
+  ) {
     super(message);
     this.name = "SemanticJudgeError";
     this.code = code;
+    this.provider_failure_code = providerFailureCode;
   }
 }
 
@@ -281,9 +291,13 @@ export async function invokeSemanticJudge(
     if (signal.aborted) {
       throw new SemanticJudgeError("cancelled", "semantic judge call was cancelled");
     }
+    const providerFailureCode = error instanceof SemanticProviderError
+      ? error.code
+      : "unknown_provider_error";
     throw new SemanticJudgeError(
       "provider_error",
-      error instanceof Error ? error.message : String(error),
+      `semantic judge provider failed: ${providerFailureCode}`,
+      providerFailureCode,
     );
   }
   const response = SemanticJudgeResponseV1.safeParse(rawResponse);

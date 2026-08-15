@@ -65,6 +65,47 @@ describe("CLI-backed root scripts", () => {
   });
 });
 
+describe("paid semantic provider CI boundary", () => {
+  it("verifies sanitized diagnostics before regular and paid semantic runs", () => {
+    const workflow = readFileSync(join(repoRoot, ".github/workflows/ci.yml"), "utf8");
+    const manifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+    const liveSmoke = readFileSync(
+      join(repoRoot, "scripts/smoke-neat-semantic-live.mjs"),
+      "utf8",
+    );
+
+    expect(manifest.scripts["test:neat-semantic-live-diagnostic"]).toBe(
+      "node --test scripts/neat-semantic-live-diagnostic.test.mjs",
+    );
+    expect(workflow.match(/pnpm test:neat-semantic-live-diagnostic/gu)).toHaveLength(2);
+    expect(liveSmoke).toContain("const liveSmokeMaxOutputTokens = 8_192;");
+    expect(liveSmoke).toContain("String(liveSmokeMaxOutputTokens)");
+  });
+
+  it("exposes credentials only to explicitly selected manual smoke jobs", () => {
+    const workflow = readFileSync(join(repoRoot, ".github/workflows/ci.yml"), "utf8");
+    const checkStart = workflow.indexOf("  check:");
+    const deepSeekStart = workflow.indexOf("  paid_deepseek_semantic:");
+
+    expect(workflow).not.toContain("pull_request_target:");
+    expect(workflow).toContain("semantic_provider:");
+    expect(workflow).toContain("- deepseek-no-tools");
+    expect(deepSeekStart).toBeGreaterThan(checkStart);
+
+    const checkJob = workflow.slice(checkStart, deepSeekStart);
+    const deepSeekJob = workflow.slice(deepSeekStart);
+
+    expect(checkJob).not.toContain("DEEPSEEK_API_KEY");
+    expect(deepSeekJob).toContain(
+      "if: github.event_name == 'workflow_dispatch' && inputs.semantic_provider == 'deepseek-no-tools'",
+    );
+    expect(deepSeekJob).toContain(`DEEPSEEK_API_KEY: \${{ secrets.DEEPSEEK_API_KEY }}`);
+    expect(deepSeekJob).toContain(
+      `OSSTACK_NEAT_DEEPSEEK_MODEL: \${{ vars.OSSTACK_NEAT_DEEPSEEK_MODEL }}`,
+    );
+  });
+});
+
 describe("npm install acceptance smoke", () => {
   it("runs the CLI-daemon version handshake self-test before the full install smoke", () => {
     const manifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));

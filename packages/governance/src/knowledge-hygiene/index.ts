@@ -16,6 +16,7 @@ export * from "./transaction-plan.js";
 export * from "./transaction-builder.js";
 export * from "./transaction-applier.js";
 export * from "./dependency.js";
+export * from "./semantic-provider-error.js";
 export * from "./semantic-judge.js";
 export * from "./semantic-engine.js";
 export * from "./semantic-evidence.js";

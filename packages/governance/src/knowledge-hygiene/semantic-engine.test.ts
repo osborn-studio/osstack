@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { SemanticJudgePort } from "./semantic-judge.js";
 import { auditKnowledgeHygieneSemantics } from "./semantic-engine.js";
+import { SemanticProviderError } from "./semantic-provider-error.js";
 
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 
@@ -74,7 +75,7 @@ function judge(options: { quoteMismatch?: boolean; fail?: boolean } = {}): Seman
     prompt_version: "1",
     supports_no_tools: true,
     async judge(input) {
-      if (options.fail) throw new Error("provider unavailable");
+      if (options.fail) throw new SemanticProviderError("request_timeout");
       const source = input.evidence_pack.sources[0];
       const excerpt = source?.excerpts[0];
       if (source === undefined || excerpt === undefined) {
@@ -166,6 +167,7 @@ describe("auditKnowledgeHygieneSemantics", () => {
       dimension: "narrative",
       state: "failed",
       reason_codes: ["provider_error"],
+      provider_failure_code: "request_timeout",
     });
     expect(report.health_claim).toBe("assessment_incomplete");
   });
