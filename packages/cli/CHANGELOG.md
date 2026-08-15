@@ -1,5 +1,28 @@
 # @osstack/cli
 
+## 0.18.0
+
+### Minor Changes
+
+- 249554f: Add a fixed, bounded `deepseek-no-tools` semantic judge profile, route neat
+  semantic and dependency judgments through a shared
+  provider registry, and make semantic parity readiness provider-neutral.
+  Provider responses now fail closed when the reported model identity differs
+  from the requested model.
+  Propagate sanitized, closed-registry provider failure codes through semantic
+  coverage reports and live diagnostics without exposing provider response bodies
+  or exception text. Classify output-token exhaustion, content filtering, and
+  provider resource interruption separately while retaining a safe unknown
+  finish-reason fallback.
+
+### Patch Changes
+
+- Updated dependencies [249554f]
+  - @osstack/agents@0.18.0
+  - @osstack/governance@0.18.0
+  - @osstack/config@0.18.0
+  - @osstack/loop@0.18.0
+
 ## 0.17.3
 
 ### Patch Changes
