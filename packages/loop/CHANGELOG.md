@@ -1,5 +1,13 @@
 # @osstack/loop
 
+## 0.18.0
+
+### Patch Changes
+
+- Updated dependencies [249554f]
+  - @osstack/agents@0.18.0
+  - @osstack/governance@0.18.0
+
 ## 0.17.0
 
 ### Patch Changes
