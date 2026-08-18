@@ -1,5 +1,12 @@
 # @osstack/config
 
+## 0.19.0
+
+### Patch Changes
+
+- Updated dependencies [db9b69d]
+  - @osstack/agents@0.19.0
+
 ## 0.18.0
 
 ### Patch Changes

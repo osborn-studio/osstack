@@ -1,5 +1,11 @@
 # @osstack/agents
 
+## 0.19.0
+
+### Minor Changes
+
+- db9b69d: Add a Z-Code CLI adapter for running coding tasks with GLM through the locally authenticated Z-Code desktop CLI.
+
 ## 0.18.0
 
 ### Minor Changes
