@@ -18,6 +18,7 @@ export { ClaudeCodeAdapter } from "./adapters/claude-code.js";
 export { ClaudeCliAdapter } from "./adapters/claude-cli.js";
 export { CodexCliAdapter } from "./adapters/codex-cli.js";
 export { OpenCodeCliAdapter } from "./adapters/opencode-cli.js";
+export { ZCodeCliAdapter } from "./adapters/zcode-cli.js";
 export { ClaudeDesignAdapter } from "./adapters/claude-design.js";
 export { DeepSeekReviewAdapter } from "./adapters/ds-review.js";
 export { DeepSeekVerifyAdapter } from "./adapters/ds-verify.js";
