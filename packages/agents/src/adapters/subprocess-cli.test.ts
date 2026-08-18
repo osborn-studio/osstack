@@ -8,6 +8,7 @@ import type { AgentTask } from "../base.js";
 import { ClaudeCliAdapter } from "./claude-cli.js";
 import { CodexCliAdapter } from "./codex-cli.js";
 import { OpenCodeCliAdapter } from "./opencode-cli.js";
+import { ZCodeCliAdapter } from "./zcode-cli.js";
 
 let tmp: string;
 
@@ -93,6 +94,76 @@ printf 'stdin:%s\\n' "$input"
       payload: expect.objectContaining({ delta: expect.stringContaining("hello from task") }),
     }));
     expect(doneStatus(events)).toBe("completed");
+  });
+});
+
+describe("ZCodeCliAdapter", () => {
+  it("advertises code capabilities with zcode-cli ownership", () => {
+    const adapter = new ZCodeCliAdapter({ bin: "missing-zcode-for-capability-test" });
+
+    expect(adapter.capabilities().map((capability) => capability.kind).sort()).toEqual([
+      "code.refactor",
+      "code.review",
+      "code.test",
+      "code.write",
+    ]);
+    expect(adapter.capabilities().every((capability) => capability.agent_id === "zcode-cli")).toBe(true);
+  });
+
+  it("probes with doctor and invokes via --prompt", async () => {
+    const argsLog = join(tmp, "zcode-args.txt");
+    const bin = await fakeCommand("zcode", `
+if [ "\${1:-}" = "doctor" ]; then echo "zcode doctor"; exit 0; fi
+printf '%s\\n' "$*" > ${JSON.stringify(argsLog)}
+printf 'zcode args:%s\\n' "$*"
+`);
+    const adapter = new ZCodeCliAdapter({ bin });
+
+    await expect(adapter.isAvailable()).resolves.toMatchObject({ available: true });
+
+    const events = await drain(adapter.invoke(task("zcode-cli.code.write"), new AbortController().signal));
+    expect(events).toContainEqual(expect.objectContaining({
+      type: "token.delta",
+      payload: expect.objectContaining({ delta: expect.stringContaining("hello from task") }),
+    }));
+    expect(doneStatus(events)).toBe("completed");
+    await expect(readFile(argsLog, "utf-8")).resolves.toContain("--mode yolo --prompt hello from task");
+  });
+
+  it("discovers the desktop app bundle and runs it through node", async () => {
+    const previousCjs = process.env["OSSTACK_ZCODE_APP_CJS"];
+    const cjs = join(tmp, "zcode.cjs");
+    await writeFile(cjs, `
+const args = process.argv.slice(2);
+if (args[0] === "doctor") { console.log("zcode doctor"); process.exit(0); }
+console.log("zcode args:" + args.join(" "));
+`, "utf-8");
+    process.env["OSSTACK_ZCODE_APP_CJS"] = cjs;
+
+    try {
+      const adapter = new ZCodeCliAdapter();
+
+      await expect(adapter.isAvailable()).resolves.toMatchObject({ available: true });
+
+      const events = await drain(adapter.invoke(task("zcode-cli.code.write"), new AbortController().signal));
+      expect(events).toContainEqual(expect.objectContaining({
+        type: "token.delta",
+        payload: expect.objectContaining({ delta: expect.stringContaining("hello from task") }),
+      }));
+      expect(doneStatus(events)).toBe("completed");
+    } finally {
+      if (previousCjs === undefined) delete process.env["OSSTACK_ZCODE_APP_CJS"];
+      else process.env["OSSTACK_ZCODE_APP_CJS"] = previousCjs;
+    }
+  });
+
+  it("reports unavailable when the CLI is missing", async () => {
+    const adapter = new ZCodeCliAdapter({ bin: join(tmp, "missing-zcode") });
+
+    const availability = await adapter.isAvailable();
+
+    expect(availability.available).toBe(false);
+    expect(availability.reason).toContain("spawn");
   });
 });
 
