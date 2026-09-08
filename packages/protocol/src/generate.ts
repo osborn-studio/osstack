@@ -29,6 +29,7 @@ import { EventEnvelope } from "./event.js";
 import { PolicyDecision } from "./policy.js";
 import { RunSummary } from "./run.js";
 import { Task } from "./task.js";
+import { SessionContinuationRequest, SessionDecision } from "./session-continuation.js";
 
 interface SchemaEntry {
   /** File basename (without the .schema.json suffix) and schema registry key. */
@@ -48,6 +49,18 @@ export const SCHEMA_MANIFEST: readonly SchemaEntry[] = [
   { key: "evidence-ref", title: "Osstack Protocol Evidence Ref", schema: EvidenceRef },
   { key: "approval-request", title: "Osstack Protocol Approval Request", schema: ApprovalRequest },
   { key: "approval-decision", title: "Osstack Protocol Approval Decision", schema: ApprovalDecision },
+  {
+    key: "session-continuation-request",
+    title: "Osstack Session Continuation Request",
+    comment: "Agent-reported request only. Evidence references must be independently verified and this object never authorizes an action.",
+    schema: SessionContinuationRequest,
+  },
+  {
+    key: "session-decision",
+    title: "Osstack Session Decision Request",
+    comment: "Choice ID uniqueness is additionally enforced by Zod. The optional continuation is an untrusted request, not an approval.",
+    schema: SessionDecision,
+  },
   {
     key: "autonomy-risk-level",
     title: "Osstack Guarded Autonomy Risk Level",

@@ -92,6 +92,32 @@ afterEach(async () => {
 });
 
 describe("daemon loop RPC", () => {
+  it("persists deferred-work reasons across daemon restart instead of reporting idle", async () => {
+    const workspace = join(tmp, "waiting-workspace");
+    await mkdir(join(workspace, "tasks"), { recursive: true });
+    await writeFile(join(workspace, "tasks", "waiting.json"), JSON.stringify({
+      task_id: "waiting-task", capability: "code.test", prompt: "Needs a task authorization",
+    }));
+    daemon = await startDaemon({ socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock` });
+    const response = await daemonRpc(daemon.socketPath, "loop.start", {
+      workspacePath: workspace, sources: ["task_queue"], stopWhenIdle: true, intervalMs: 20,
+      discoveryPolicy: { default_authorization: "needs_approval" },
+      executeCommand: "node -e \"require('fs').writeFileSync('unexpected.txt','bad')\"",
+    });
+    expect(response.ok).toBe(true);
+    const id = (response.result as { loop_session_id: string }).loop_session_id;
+    const expected = {
+      status: "stopped", executed_task_count: 0,
+      stop_reason: expect.stringContaining("discovery_deferred"),
+      wait_reason: { code: "discovery_deferred", needs_approval: 1, suggest_only: 0, blocked: 0 },
+    };
+    expect(await waitForLoop(daemon.socketPath, id, (loop) => loop.status === "stopped")).toMatchObject(expected);
+    await expect(readFile(join(workspace, "unexpected.txt"))).rejects.toMatchObject({ code: "ENOENT" });
+    await daemon.close();
+    daemon = await startDaemon({ socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock` });
+    expect(await waitForLoop(daemon.socketPath, id, (loop) => loop.status === "stopped")).toMatchObject(expected);
+  });
+
   it("routes guarded autonomy resume through the daemon socket", async () => {
     const resumed: string[] = [];
     daemon = await startDaemon({

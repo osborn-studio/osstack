@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Session Continuation Request",
+  "$comment": "Agent-reported request only. Evidence references must be independently verified and this object never authorizes an action.",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "gate_kind": {
+      "type": "string",
+      "enum": [
+        "phase_continue",
+        "task_authorization",
+        "risk_approval",
+        "external_input"
+      ]
+    },
+    "phase": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "next_action": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "evidence_id",
+          "sha256"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 32
+    }
+  },
+  "required": [
+    "version",
+    "gate_kind",
+    "phase",
+    "next_action",
+    "evidence_refs"
+  ],
+  "additionalProperties": false
+}

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SessionContinuationRequest, SessionDecision } from "@osstack/protocol";
 import type { AgentAdapter } from "./base.js";
 
 const IdSchema = z.string().trim().min(1).max(256);
@@ -57,6 +58,8 @@ const AssistantMessageSchema = z.object({
   text: z.string().max(4_000),
 }).strict();
 
+// Agents use Zod 4, protocol uses Zod 3. Share parsed data and validation,
+// never compose schema class instances across those package boundaries.
 const DecisionRequestedSchema = z.object({
   type: z.literal("decision.requested"),
   decision_id: IdSchema,
@@ -65,7 +68,16 @@ const DecisionRequestedSchema = z.object({
     choice_id: IdSchema,
     label: z.string().trim().min(1).max(160),
   }).strict()).max(8),
-}).strict();
+  continuation: z.unknown().transform((value, ctx) => {
+    const parsed = SessionContinuationRequest.safeParse(value);
+    if (parsed.success) return parsed.data;
+    ctx.addIssue({ code: "custom", message: "invalid session continuation request" });
+    return z.NEVER;
+  }).optional(),
+}).strict().refine((event) => {
+  const { type: _type, ...decision } = event;
+  return SessionDecision.safeParse(decision).success;
+}, "invalid session decision request");
 
 const SessionStateEventSchema = z.object({
   type: z.literal("session.state"),

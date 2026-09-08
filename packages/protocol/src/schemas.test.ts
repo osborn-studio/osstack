@@ -30,6 +30,8 @@ describe("generated JSON Schemas are committed and fresh", () => {
         "run-summary.schema.json",
         "scoped-approval-decision.schema.json",
         "scoped-approval-request.schema.json",
+        "session-continuation-request.schema.json",
+        "session-decision.schema.json",
         "task.schema.json",
       ].sort(),
     );

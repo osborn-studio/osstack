@@ -58,6 +58,13 @@ export async function writeLoopState(
 export function renderLoopStateMarkdown(state: LoopState): string {
   const lines: string[] = [
     `# Loop State - ${state.updated_at}`,
+    ...(state.wait_reason === undefined ? [] : [
+      "",
+      "## Waiting",
+      `- Reason: ${state.wait_reason.code}`,
+      "- No discovered task is authorized to execute.",
+      `- Needs approval: ${state.wait_reason.needs_approval}; suggested: ${state.wait_reason.suggest_only}; blocked: ${state.wait_reason.blocked}`,
+    ]),
     "",
     "## In Progress",
     ...renderTasks(state.in_progress ?? [], false),
