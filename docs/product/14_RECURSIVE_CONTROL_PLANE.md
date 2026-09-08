@@ -1,9 +1,10 @@
 # Recursive Control Plane
 
 The recursive control plane upgrades osstack from a single-workspace loop runner
-into a repo-supervising, closed-loop system that can improve **its own inputs**
-(evals, tests, prompts, skills, docs, policies) under strict human-in-the-loop
-gates. It is delivered by the `@osstack/supervisor` package plus additive
+into a repo-supervising system that records feedback and proposes changes to
+its inputs (evals, tests, prompts, skills, docs, policies). Candidate implementation
+and independently verified effectiveness are not provided by `improve apply`.
+The current foundation is delivered by the `@osstack/supervisor` package plus additive
 persistence in `@osstack/core` and CLI surfaces in `@osstack/cli`.
 
 Everything here is **opt-in**. Existing CLI behavior is unchanged, read-only
@@ -20,6 +21,8 @@ These constraints are enforced by design and must never be relaxed:
   repo paths and make no network calls.
 - No destructive git commands; no auto-apply of medium- or high-risk changes.
 - `osstack improve apply` defaults to **dry-run** unless `--yes` is passed.
+  `--yes` runs current-repository gates only; it never implements a candidate
+  or records a new `applied` status.
 - Deterministic verification commands are first-class gates. LLM judges are
   allowed only as versioned evaluator artifacts.
 - AI-generated/modified evaluators cannot become active without anchor-case
@@ -68,6 +71,16 @@ CompletedTask -> RunTrace -> FeedbackAsset[] -> ImprovementProposal[] -> Gate
    passing gates), `needs_human` (medium/high, or low with no gate), or
    `blocked` (failing gate or missing runner).
 
+`auto_applicable` is the gate helper's advisory result. The CLI reports it as
+`gates_passed` with `applied: false` and `implementation_status: not_implemented`;
+it is not candidate eligibility or evidence of an actual patch. Historical
+`applied` rows remain unchanged and do not establish implementation or verification.
+
+New feedback proposals use `prop_v2_<sha256>` identities bound to their source,
+evidence, and proposed content. Identical retries preserve reviewed status and
+timestamps; changed definitions produce distinct proposals. Legacy draft producers
+can append recurring evidence, while reviewed definitions remain protected.
+
 ## Evaluator Epochs (Red Queen control)
 
 Evaluators (including LLM judges) are versioned artifacts, not free-floating
@@ -86,6 +99,10 @@ code:
 
 `evaluator challenge` is advisory (read-only); `evaluator promote` is dry-run by
 default and requires `--yes`.
+
+The current CLI accepts caller-supplied accuracy counts. These records cannot
+authorize future autonomous promotion without binding actual evaluation artifacts,
+candidate versions, and independently controlled tests.
 
 ## The Self-Improvement Hook (loop integration)
 
@@ -123,7 +140,7 @@ osstack feedback assets --repo <id> --json
 # Improvement proposals (dry-run by default; --yes runs gates)
 osstack improve propose --repo <id> --json
 osstack improve apply --proposal <id>         # DRY RUN — changes nothing
-osstack improve apply --proposal <id> --yes   # low-risk only, after gates pass
+osstack improve apply --proposal <id> --yes   # check gates only; no implementation
 
 # Evaluator epochs / Red Queen (advisory + gated promotion)
 osstack evaluator list --repo <id> --json
@@ -151,6 +168,15 @@ local control-plane state DB. It requires `--repo-id`, is **local-only**
 `evaluator_epochs`, `anchor_cases`, and `score_quarantine`. No existing table is
 altered. All writes go through repository helpers that upsert by id and preserve
 `created_at`.
+
+Migration 23 adds explicit pitfall observation provenance. `observation_count`
+counts distinct source IDs explicitly recorded after this migration. The current
+CLI derives observations from failed/escalated tasks and uses `loop_id` as their
+`source_run_id`, so multiple observations of one lesson within a loop count once. Old
+`verified_count` values are frozen and exposed as `legacy_verified_count` for
+compatibility; neither counter measures effectiveness. Old source histories are
+preserved without inferring whether a lesson was used. A later successful task
+no longer increments lesson verification merely because it shares a technology stack.
 
 ## What This Is Not
 

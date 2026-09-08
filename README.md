@@ -358,11 +358,16 @@ osstack supervise init-loop-doc --repo <id>
 osstack feedback assets --repo <id> --json
 osstack improve propose --repo <id> --json
 osstack improve apply --proposal <id>          # DRY RUN by default
-osstack improve apply --proposal <id> --yes    # low-risk only, after gates pass
+osstack improve apply --proposal <id> --yes    # check gates only; no candidate is implemented
 osstack evaluator challenge --repo <id> --incumbent A --challenger B ...   # advisory
 osstack evaluator promote  --repo <id> ... --yes   # blocked without anchor cases
 osstack loop run --workspace . --self-improvement --repo-id <id> --verify "pnpm test"
 ```
+
+Feedback proposals and recurring lesson observations are not proof of improvement.
+`improve apply --yes` reports `applied: false` even when current-repository gates
+pass. See the [collaborator implementation record](docs/reports/2026-09-08-collaborator-foundation-implementation.md)
+for waiting diagnostics, proposal history, and observation-count migration.
 
 ### Portfolio Daily and Contract Gates
 
