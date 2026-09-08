@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { openDb } from "./db.js";
-import { listImprovementProposals, upsertImprovementProposal } from "./improvement-proposals.js";
+import { approveImprovementProposal, improvementProposalDigest, listImprovementProposals, upsertImprovementProposal } from "./improvement-proposals.js";
 
 let tmp: string;
 beforeEach(() => { tmp = mkdtempSync(join(tmpdir(), "osstack-proposals-")); });
@@ -24,6 +24,58 @@ function seed() {
 }
 
 describe("improvement proposals persistence", () => {
+  it("binds review digests to every definition field, excluding identity, status and timestamps", () => {
+    const original = { ...seed(), status: "draft" as const, created_at: 1, updated_at: 2 };
+    const digest = improvementProposalDigest(original);
+    expect(digest).toMatch(/^[a-f0-9]{64}$/);
+    expect(improvementProposalDigest({ ...original, proposal_id: "other", status: "approved", created_at: 3, updated_at: 4 })).toBe(digest);
+    expect(improvementProposalDigest({ ...original, source_asset_ids: ["asset_2", "asset_1", "asset_1"] })).toBe(digest);
+    for (const change of [
+      { repo_id: "other" }, { source_asset_ids: ["asset_1"] }, { target: "other" }, { risk: "high" as const },
+      { title: "new title" }, { rationale: "new reason" }, { proposed_changes: [] }, { required_gates: ["new check"] },
+    ]) expect(improvementProposalDigest({ ...original, ...change })).not.toBe(digest);
+  });
+
+  it("approves only the reviewed digest and preserves the entire definition", () => {
+    const path = join(tmp, "state.db");
+    const db = openDb({ path });
+    try {
+      const original = upsertImprovementProposal(db, path, seed());
+      const digest = improvementProposalDigest(original);
+      expect(() => approveImprovementProposal(db, path, { proposal_id: original.proposal_id, expected_digest: "f".repeat(64), now: 5 })).toThrow(/digest/i);
+      expect(listImprovementProposals(db)).toEqual([original]);
+      const approved = approveImprovementProposal(db, path, { proposal_id: original.proposal_id, expected_digest: digest, now: 6 });
+      expect(approved).toEqual({ ...original, status: "approved", updated_at: 6 });
+      expect(approveImprovementProposal(db, path, { proposal_id: original.proposal_id, expected_digest: digest, now: 7 })).toEqual(approved);
+      expect(() => upsertImprovementProposal(db, path, { ...seed(), title: "silently edited" })).toThrow(/conflict/i);
+    } finally { db.close(); }
+  });
+
+  it("rejects approval when a legacy draft changed after it was displayed", () => {
+    const path = join(tmp, "state.db");
+    const db = openDb({ path });
+    try {
+      const original = upsertImprovementProposal(db, path, seed());
+      const changed = upsertImprovementProposal(db, path, { ...seed(), rationale: "new evidence" });
+      expect(() => approveImprovementProposal(db, path, {
+        proposal_id: original.proposal_id, expected_digest: improvementProposalDigest(original), now: 5,
+      })).toThrow(/digest/i);
+      expect(listImprovementProposals(db)).toEqual([changed]);
+    } finally { db.close(); }
+  });
+
+  it.each(["applied", "rejected"] as const)("does not reapprove a %s historical proposal", (status) => {
+    const path = join(tmp, "state.db");
+    const db = openDb({ path });
+    try {
+      const original = upsertImprovementProposal(db, path, { ...seed(), status });
+      expect(() => approveImprovementProposal(db, path, {
+        proposal_id: original.proposal_id, expected_digest: improvementProposalDigest(original), now: 5,
+      })).toThrow(/terminal/i);
+      expect(listImprovementProposals(db)).toEqual([original]);
+    } finally { db.close(); }
+  });
+
   it("round-trips json arrays and proposed changes", () => {
     const path = join(tmp, "state.db");
     const db = openDb({ path });

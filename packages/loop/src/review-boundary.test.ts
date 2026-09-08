@@ -25,6 +25,49 @@ afterEach(async () => {
 });
 
 describe("collectReviewBoundary", () => {
+  it("reviews a supplied raw candidate even when Git ignores its added path", async () => {
+    await writeFile(join(workspace, ".git/info/exclude"), "src/ignored.ts\n");
+    await writeFile(join(workspace, "src/ignored.ts"), "export const candidate = true;\n");
+    const diff = "diff --git a/src/ignored.ts b/src/ignored.ts\n--- /dev/null\n+++ b/src/ignored.ts\n@@ -0,0 +1 @@\n+export const candidate = true;\n";
+
+    const result = await collectReviewBoundary(workspace, {}, {
+      changed_paths: ["src/ignored.ts"], diff,
+    });
+
+    expect(result.boundary.pass).toBe(true);
+    expect(result.boundary.changed_paths).toEqual(["src/ignored.ts"]);
+    expect(result.sanitized_diff).toBe(diff);
+  });
+
+  it.each([
+    ["secret", "src/ignored.ts", 'api_key = "candidate-secret-value"\n', {}, "review.secret_detected"],
+    ["forbidden", ".env", "safe text\n", {}, "review.forbidden_path"],
+    ["file size", "src/ignored.ts", "x".repeat(100), { max_file_bytes: 50 }, "review.file_too_large"],
+    ["diff size", "src/ignored.ts", "safe text\n", { max_total_bytes: 10 }, "review.diff_too_large"],
+    ["binary", "src/ignored.ts", "\0binary", {}, "review.binary_disallowed"],
+  ] as const)("applies the %s gate to a supplied candidate", async (_label, path, content, policy, expectedRule) => {
+    await writeFile(join(workspace, ".git/info/exclude"), `${path}\n`);
+    await writeFile(join(workspace, path), content);
+    const result = await collectReviewBoundary(workspace, policy, {
+      changed_paths: [path], diff: `candidate content:\n${content}`,
+    });
+    expect(ruleIds(result)).toContain(expectedRule);
+    expect(result.sanitized_diff).toBeUndefined();
+  });
+
+  it("scans deleted content in the supplied patch and rejects escaping supplied paths", async () => {
+    const deleted = await collectReviewBoundary(workspace, {}, {
+      changed_paths: ["src/deleted.ts"], diff: '-api_key = "deleted-candidate-secret"\n',
+    });
+    expect(ruleIds(deleted)).toContain("review.secret_detected");
+    expect(deleted.sanitized_diff).toBeUndefined();
+    const escaping = await collectReviewBoundary(workspace, {}, {
+      changed_paths: ["../external.ts"], diff: "safe text\n",
+    });
+    expect(ruleIds(escaping)).toContain("review.path_outside_workspace");
+    expect(escaping.sanitized_diff).toBeUndefined();
+  });
+
   it("collects tracked and untracked text with argv-safe Git calls", async () => {
     await writeFile(join(workspace, "src/app.ts"), "export const changed = true;\n");
     await writeFile(join(workspace, "src/new file.ts"), "export const added = true;\n");
