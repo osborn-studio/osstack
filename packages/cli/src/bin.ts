@@ -404,6 +404,8 @@ Daemon commands:
   agent list          List registered sub-agents and their capabilities
   agent scorecard [agent_id]
                       Show agent run-history scorecards
+  collaborator inspect|draft|sign|install|status|revoke
+                        Finite signed phase continuation for controlled sessions
   session list|status|snapshot|send
                       Inspect and resume governed agent conversations
 
@@ -772,6 +774,11 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       submit: streamTaskSubmit,
       observe: streamTaskObserve,
     });
+  }
+
+  if (cmd === "collaborator") {
+    const { handleCollaboratorCommand } = await import("./collaborator-command.js");
+    return await handleCollaboratorCommand(args.slice(1), { rpc });
   }
 
   if (cmd === "session") {

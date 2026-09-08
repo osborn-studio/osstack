@@ -1304,6 +1304,54 @@ export const MIGRATIONS: readonly Migration[] = [
         ADD COLUMN observation_run_ids_json TEXT NOT NULL DEFAULT '[]';
     `,
   },
+  {
+    id: 24,
+    name: "session_continuation_grants",
+    sql: `
+      CREATE TABLE session_continuation_grants (
+        grant_id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL REFERENCES agent_sessions(session_id) ON DELETE CASCADE,
+        body_json TEXT NOT NULL,
+        digest TEXT NOT NULL,
+        key_id TEXT NOT NULL,
+        signature TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('active','completed','blocked','revoked')),
+        reason TEXT,
+        step_index INTEGER NOT NULL DEFAULT 0 CHECK (step_index >= 0),
+        checks_used INTEGER NOT NULL DEFAULT 0 CHECK (checks_used >= 0),
+        resumes_used INTEGER NOT NULL DEFAULT 0 CHECK (resumes_used >= 0),
+        retries_used INTEGER NOT NULL DEFAULT 0 CHECK (retries_used >= 0),
+        expected_turn_id TEXT NOT NULL,
+        expected_version INTEGER NOT NULL CHECK (expected_version > 0),
+        created_at REAL NOT NULL,
+        updated_at REAL NOT NULL
+      );
+      CREATE UNIQUE INDEX idx_session_continuation_one_active
+        ON session_continuation_grants(session_id) WHERE status = 'active';
+      CREATE INDEX idx_session_continuation_session
+        ON session_continuation_grants(session_id, created_at DESC, grant_id);
+      CREATE TABLE session_continuation_attempts (
+        attempt_id TEXT PRIMARY KEY,
+        grant_id TEXT NOT NULL REFERENCES session_continuation_grants(grant_id) ON DELETE CASCADE,
+        step_index INTEGER NOT NULL CHECK (step_index >= 0),
+        source_turn_id TEXT NOT NULL,
+        source_version INTEGER NOT NULL CHECK (source_version > 0),
+        decision_sha256 TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('checking','reserved','applied','blocked','abandoned')),
+        check_result_json TEXT,
+        message_id TEXT UNIQUE REFERENCES session_messages(message_id),
+        reservation_version INTEGER,
+        action TEXT CHECK (action IN ('continue','retry')),
+        completed_turn_id TEXT,
+        completed_version INTEGER,
+        reason TEXT,
+        created_at REAL NOT NULL,
+        updated_at REAL NOT NULL
+      );
+      CREATE UNIQUE INDEX idx_session_continuation_one_attempt
+        ON session_continuation_attempts(grant_id) WHERE status IN ('checking','reserved');
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

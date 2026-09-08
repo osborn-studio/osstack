@@ -24,6 +24,8 @@ describe("generated JSON Schemas are committed and fresh", () => {
         "autonomy-risk-decision.schema.json",
         "autonomy-risk-level.schema.json",
         "autonomy-run-state.schema.json",
+        "continuation-grant-body.schema.json",
+        "continuation-output-check.schema.json",
         "event-envelope.schema.json",
         "evidence-ref.schema.json",
         "policy-decision.schema.json",
@@ -32,6 +34,7 @@ describe("generated JSON Schemas are committed and fresh", () => {
         "scoped-approval-request.schema.json",
         "session-continuation-request.schema.json",
         "session-decision.schema.json",
+        "signed-continuation-grant.schema.json",
         "task.schema.json",
       ].sort(),
     );

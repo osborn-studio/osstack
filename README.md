@@ -369,6 +369,13 @@ Feedback proposals and recurring lesson observations are not proof of improvemen
 pass. See the [collaborator implementation record](docs/reports/2026-09-08-collaborator-foundation-implementation.md)
 for waiting diagnostics, proposal history, and observation-count migration.
 
+Finite automatic phase continuation is available for the no-tools
+`claude-controlled-session` planning/review runtime. `osstack collaborator`
+provides inspect, draft, sign, install, status, and revoke commands. A signed
+grant freezes output checks, instructions, deadlines and budgets; it does not
+grant GitHub approval or code execution powers. See the
+[signed collaborator walkthrough](docs/reports/2026-09-08-signed-session-collaborator.md).
+
 ### Portfolio Daily and Contract Gates
 
 ```bash

@@ -21,3 +21,4 @@ export * from "./deploy-freezes.js";
 export * from "./notification-outbox.js";
 export * from "./rollback-drills.js";
 export * from "./sessions.js";
+export * from "./session-continuations.js";

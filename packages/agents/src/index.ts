@@ -23,6 +23,7 @@ export * from "./metadata.js";
 export * from "./adapters/kimi-contract.js";
 export * from "./adapters/kimi-stream.js";
 export * from "./session.js";
+export { createControlledSessionAdapter, isControlledSessionAdapter, type ControlledSessionAdapter, type ControlledSessionAdapterOptions, type ControlledSessionPolicy, type ControlledSessionQuery } from "./controlled-session.js";
 export { ClaudeCodeAdapter } from "./adapters/claude-code.js";
 export { ClaudeCliAdapter } from "./adapters/claude-cli.js";
 export { CodexCliAdapter } from "./adapters/codex-cli.js";

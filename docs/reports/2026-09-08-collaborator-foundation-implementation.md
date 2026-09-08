@@ -3,6 +3,8 @@
 日期：2026-09-08。起点：`c9c3cd2`。工作分支：`codex/collaborator-foundation`。
 承接[共创 RFC](../design/2026-09-08-collaborator-and-self-improvement-rfc.md)。本记录覆盖用户 `go` 后的本地实现，之前的 Fable 设计挑战和论文研究仍是独立的历史记录。
 
+后续进展：用户再次输入 `go` 后，S2/S3 的受限会话签名接续已实现，见[新切片记录](2026-09-08-signed-session-collaborator.md)。下文保留此前基础切片的状态与验证历史。
+
 ## 当前交付状态
 
 | 切片 | 已实现 | 尚未提供 |

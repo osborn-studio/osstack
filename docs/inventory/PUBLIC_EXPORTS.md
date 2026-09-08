@@ -14,6 +14,7 @@ export * from "./metadata.js";
 export * from "./adapters/kimi-contract.js";
 export * from "./adapters/kimi-stream.js";
 export * from "./session.js";
+export { createControlledSessionAdapter, isControlledSessionAdapter, type ControlledSessionAdapter, type ControlledSessionAdapterOptions, type ControlledSessionPolicy, type ControlledSessionQuery } from "./controlled-session.js";
 export { ClaudeCodeAdapter } from "./adapters/claude-code.js";
 export { ClaudeCliAdapter } from "./adapters/claude-cli.js";
 export { CodexCliAdapter } from "./adapters/codex-cli.js";
@@ -39,6 +40,7 @@ export * as protocol from "@osstack/protocol";
 export * from "./types.js";
 export * from "./risk.js";
 export * from "./approval.js";
+export * from "./session-continuation-grant.js";
 export * from "./state-machine.js";
 export * from "./progress-budget.js";
 export * from "./engine.js";
@@ -217,6 +219,7 @@ export { RunOutcome, RunSummary } from "./run.js";
 export { EventEnvelope } from "./event.js";
 export { EvidenceKind, EvidenceRef } from "./evidence.js";
 export { SessionContinuationRequest, SessionDecision, SessionGateKind } from "./session-continuation.js";
+export {
 export {
 export {
 export {

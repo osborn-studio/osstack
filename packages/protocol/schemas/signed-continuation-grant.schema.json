@@ -1,0 +1,209 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Signed Session Continuation Grant",
+  "$comment": "Ed25519 signs UTF-8 canonical JSON of the strictly parsed body (defaults included, object keys sorted, array order preserved). Zod additionally rejects NUL in repo_path and whitespace-only instructions without rewriting their contents. Signature and trusted-key verification are required at runtime. This grant carries no R3 or GitHub approval authority.",
+  "type": "object",
+  "properties": {
+    "body": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "number",
+          "const": 1
+        },
+        "grant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "runtime_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "runtime_policy_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "repo_path": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^(?:\\/|[A-Za-z]:[\\\\/]|\\\\\\\\[^\\\\/]+[\\\\/][^\\\\/]+(?:[\\\\/]|$))"
+        },
+        "initial_turn_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "initial_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "max_resumes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "max_checks": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "turn_timeout_ms": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 300000
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phase": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "instruction": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16000
+              },
+              "checks": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "text_equals"
+                        },
+                        "expected": {
+                          "type": "string",
+                          "maxLength": 4000
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "expected"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "json_value_equals"
+                        },
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 256
+                          },
+                          "maxItems": 8
+                        },
+                        "expected": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string",
+                              "maxLength": 4000
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "path",
+                        "expected"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "minItems": 1,
+                "maxItems": 16
+              },
+              "retry_instruction": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16000
+              },
+              "max_retries": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 3,
+                "default": 0
+              }
+            },
+            "required": [
+              "phase",
+              "instruction",
+              "checks"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 16
+        }
+      },
+      "required": [
+        "version",
+        "grant_id",
+        "session_id",
+        "runtime_id",
+        "runtime_policy_sha256",
+        "repo_path",
+        "initial_turn_id",
+        "initial_version",
+        "issued_at",
+        "expires_at",
+        "max_resumes",
+        "max_checks",
+        "turn_timeout_ms",
+        "steps"
+      ],
+      "additionalProperties": false
+    },
+    "key_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/]{85}[AQgw]==$"
+    }
+  },
+  "required": [
+    "body",
+    "key_id",
+    "signature"
+  ],
+  "additionalProperties": false
+}

@@ -11,7 +11,8 @@ export interface SessionWaitInput {
 export interface SessionWaitDetails {
   reason: "awaiting_instruction" | "unclassified_decision" | "resume_unavailable"
     | "delivery_uncertain" | "delivery_failed" | SessionContinuationRequest["gate_kind"];
-  automatic_continuation: false;
+  automatic_continuation: boolean;
+  grant_id?: string;
   request_source?: "agent_reported";
   continuation?: SessionContinuationRequest;
   message_id?: string;
