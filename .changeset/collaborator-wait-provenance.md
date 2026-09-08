@@ -6,8 +6,9 @@
 "@osstack/core": patch
 ---
 
-Add versioned session continuation requests and durable waiting diagnostics without
-enabling automatic continuation. Track resumed sessions during daemon drain and
+Add versioned session continuation requests and durable waiting diagnostics.
+Parsing an agent-reported request does not authorize automatic continuation.
+Track resumed sessions during daemon drain and
 cancellation, and preserve uncertain delivery receipts in status output.
 
 Keep improvement proposal identities and reviewed history stable. Gate-only checks
