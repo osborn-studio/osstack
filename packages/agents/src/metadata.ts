@@ -22,6 +22,7 @@ export function agentAuthMode(agentId: string): AgentAuthMode {
     || agentId === "codex-cli"
     || agentId === "opencode-cli"
     || agentId === "kimi-code"
+    || agentId === "zcode-cli"
   ) {
     return "subprocess/login-reuse";
   }

@@ -24,7 +24,7 @@ afterEach(async () => {
 describe("adapter conformance", () => {
   it("keeps the default registry capability metadata self-consistent", () => {
     const adapters = defaultAdapters();
-    expect(adapters).toHaveLength(10);
+    expect(adapters).toHaveLength(11);
 
     for (const adapter of adapters) {
       expect(adapter.id).toMatch(/^[a-z0-9][a-z0-9-]*$/);
