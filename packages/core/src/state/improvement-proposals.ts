@@ -44,26 +44,48 @@ export function upsertImprovementProposal(
   dbPath: string,
   proposal: NewImprovementProposal,
 ): ImprovementProposalView {
-  const now = Date.now() / 1000;
-  const existing = db.prepare("SELECT * FROM improvement_proposals WHERE proposal_id = ?").get(proposal.proposal_id) as unknown;
-  const createdAt = existing !== undefined ? ImprovementProposalRow.parse(existing).created_at : now;
+  return withWrite(db, dbPath, (d) => {
+    const raw = d.prepare("SELECT * FROM improvement_proposals WHERE proposal_id = ?").get(proposal.proposal_id) as unknown;
+    const existing = raw === undefined ? undefined : parseImprovementProposal(raw);
+    if (existing !== undefined) {
+      if (existing.repo_id !== proposal.repo_id
+        || (sourceIdentity(existing) !== sourceIdentity(proposal) && !isLegacyDraftEvidenceExtension(existing, proposal))) {
+        throw new Error(`Improvement proposal identity conflict: ${proposal.proposal_id}`);
+      }
+      // v2 IDs bind content. Legacy producers can refresh draft content and
+      // append recurrence evidence in place; reviewed definitions stay frozen.
+      if (proposalDefinition(existing) !== proposalDefinition(proposal)
+        && (proposal.proposal_id.startsWith("prop_v2_") || existing.status !== "draft")) {
+        throw new Error(`Improvement proposal content conflict: ${proposal.proposal_id}`);
+      }
+    }
+    const status = existing !== undefined && (proposal.status === undefined || proposal.status === "draft")
+      ? existing.status
+      : proposal.status ?? "draft";
+    // A gate result can arrive after another caller has closed the proposal.
+    // Preserve the terminal record even when the stale writer is explicit.
+    if (existing !== undefined && (existing.status === "applied" || existing.status === "rejected")
+      && status !== existing.status) {
+      throw new Error(`Improvement proposal status conflict: ${proposal.proposal_id}`);
+    }
+    if (existing !== undefined && existing.status === status
+      && proposalDefinition(existing) === proposalDefinition(proposal)) return existing;
 
-  const row = ImprovementProposalRow.parse({
-    proposal_id: proposal.proposal_id,
-    repo_id: proposal.repo_id,
-    source_asset_ids_json: JSON.stringify(proposal.source_asset_ids),
-    target: proposal.target,
-    risk: proposal.risk,
-    title: proposal.title,
-    rationale: proposal.rationale,
-    proposed_changes_json: JSON.stringify(proposal.proposed_changes),
-    required_gates_json: JSON.stringify(proposal.required_gates),
-    status: proposal.status ?? "draft",
-    created_at: createdAt,
-    updated_at: now,
-  });
-
-  withWrite(db, dbPath, (d) => {
+    const now = Date.now() / 1000;
+    const row = ImprovementProposalRow.parse({
+      proposal_id: proposal.proposal_id,
+      repo_id: proposal.repo_id,
+      source_asset_ids_json: JSON.stringify(proposal.source_asset_ids),
+      target: proposal.target,
+      risk: proposal.risk,
+      title: proposal.title,
+      rationale: proposal.rationale,
+      proposed_changes_json: JSON.stringify(proposal.proposed_changes),
+      required_gates_json: JSON.stringify(proposal.required_gates),
+      status,
+      created_at: existing?.created_at ?? now,
+      updated_at: now,
+    });
     d.prepare(`
       INSERT INTO improvement_proposals (
         proposal_id, repo_id, source_asset_ids_json, target, risk, title, rationale,
@@ -84,17 +106,47 @@ export function upsertImprovementProposal(
         status = excluded.status,
         updated_at = excluded.updated_at
     `).run(row);
+    return parseImprovementProposal(row);
   });
+}
 
-  return parseImprovementProposal(row);
+function sourceIdentity(proposal: NewImprovementProposal): string {
+  return JSON.stringify([...new Set(proposal.source_asset_ids)].sort());
+}
+
+function isLegacyDraftEvidenceExtension(existing: ImprovementProposalView, proposal: NewImprovementProposal): boolean {
+  if (existing.proposal_id.startsWith("prop_v2_") || existing.status !== "draft"
+    || (proposal.status !== undefined && proposal.status !== "draft")
+    || existing.repo_id !== proposal.repo_id || existing.target !== proposal.target) return false;
+  // NEAT uses a stable repo/rule ID as subsequent runs add evidence. Keep every
+  // prior source so this compatibility path cannot replace an unrelated origin.
+  const nextSources = new Set(proposal.source_asset_ids);
+  return existing.source_asset_ids.every((source) => nextSources.has(source));
+}
+
+function proposalDefinition(proposal: NewImprovementProposal): string {
+  return JSON.stringify({
+    repo_id: proposal.repo_id,
+    source_asset_ids: sourceIdentity(proposal),
+    target: proposal.target,
+    risk: proposal.risk,
+    title: proposal.title,
+    rationale: proposal.rationale,
+    proposed_changes: proposal.proposed_changes.map(({ path, action, summary }) => ({ path, action, summary })),
+    required_gates: proposal.required_gates,
+  });
 }
 
 export function listImprovementProposals(
   db: Database.Database,
-  opts: { repo_id?: string; status?: ImprovementStatus; limit?: number } = {},
+  opts: { proposal_id?: string; repo_id?: string; status?: ImprovementStatus; limit?: number } = {},
 ): ImprovementProposalView[] {
   const where: string[] = ["1 = 1"];
   const params: unknown[] = [];
+  if (opts.proposal_id !== undefined) {
+    where.push("proposal_id = ?");
+    params.push(opts.proposal_id);
+  }
   if (opts.repo_id !== undefined) {
     where.push("repo_id = ?");
     params.push(opts.repo_id);

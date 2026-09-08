@@ -3,6 +3,7 @@
 // A proposal is never applied here; it only describes an intended change and
 // the gates that must pass first.
 
+import { createHash } from "node:crypto";
 import { ImprovementProposal, type FeedbackAsset, type FeedbackAssetKind, type ImprovementRisk, type ImprovementTarget } from "./types.js";
 
 interface Mapping {
@@ -27,15 +28,10 @@ export function proposeImprovement(input: {
   verify_commands: string[];
 }): ImprovementProposal[] {
   const proposals: ImprovementProposal[] = [];
-  const counters = new Map<string, number>();
 
   for (const asset of input.assets) {
     const mapping = KIND_TO_MAPPING[asset.kind];
-    const n = (counters.get(mapping.target) ?? 0) + 1;
-    counters.set(mapping.target, n);
-
-    proposals.push(ImprovementProposal.parse({
-      proposal_id: `prop_${sanitize(input.repo_id)}_${mapping.target}_${n}`,
+    const definition = {
       repo_id: input.repo_id,
       source_asset_ids: [asset.asset_id],
       target: mapping.target,
@@ -46,6 +42,20 @@ export function proposeImprovement(input: {
         ? [{ path: asset.suggested_storage_path, action: "modify", summary: `Record ${asset.kind} from failure.` }]
         : [],
       required_gates: [...input.verify_commands],
+    };
+    // Stable across batches and retries; changed provenance, evidence, or
+    // proposal content creates a new identity instead of replacing history.
+    const digest = createHash("sha256").update(JSON.stringify({
+      version: 2,
+      definition,
+      source_repo_id: asset.repo_id,
+      source_trace_id: asset.source_trace_id,
+      evidence: asset.evidence,
+    })).digest("hex");
+
+    proposals.push(ImprovementProposal.parse({
+      ...definition,
+      proposal_id: `prop_v2_${digest}`,
       status: "draft",
       created_at: asset.created_at,
     }));
@@ -77,8 +87,4 @@ function titleForTarget(target: ImprovementTarget): string {
     default:
       return "Improvement";
   }
-}
-
-function sanitize(value: string): string {
-  return value.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 }

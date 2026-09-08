@@ -1,7 +1,7 @@
 // `osstack improve propose|apply` — turn stored feedback assets into risk-rated
-// proposals, and (only with --yes) apply low-risk ones after their gates pass.
-// apply defaults to a dry run; it never applies medium/high risk, and it blocks
-// on a failing gate.
+// proposals and (only with --yes) check their gates against the current repo.
+// Candidate implementation is not available yet. Passing existing-repo gates
+// must not be persisted or reported as an applied improvement.
 
 import { spawn } from "node:child_process";
 import {
@@ -36,6 +36,8 @@ export async function handleImproveCommand(args: string[]): Promise<number> {
 
   improve propose --repo <id> [--from-assets] [--registry P] [--json]
   improve apply --proposal <id> [--yes] [--json]   (dry-run by default)
+
+  --yes checks gates only. Proposal changes are not implemented by this command.
 `);
     return 0;
   }
@@ -57,10 +59,10 @@ async function improvePropose(args: string[]): Promise<number> {
   try {
     const stored = listFeedbackAssets(db, { repo_id: repoId, status: "proposed", limit: 1000 });
     const assets = stored.flatMap((view) => toSupervisorAsset(view));
-    const proposals = proposeImprovement({ repo_id: repoId, assets, verify_commands: verifyCommands });
+    const drafts = proposeImprovement({ repo_id: repoId, assets, verify_commands: verifyCommands });
 
-    for (const proposal of proposals) {
-      upsertImprovementProposal(db, dbPath, {
+    const proposals = drafts.map((proposal) => {
+      const persisted = upsertImprovementProposal(db, dbPath, {
         proposal_id: proposal.proposal_id,
         repo_id: proposal.repo_id,
         source_asset_ids: proposal.source_asset_ids,
@@ -70,9 +72,9 @@ async function improvePropose(args: string[]): Promise<number> {
         rationale: proposal.rationale,
         proposed_changes: proposal.proposed_changes,
         required_gates: proposal.required_gates,
-        status: "draft",
       });
-    }
+      return toSupervisorProposal(persisted);
+    });
 
     if (hasFlag(args, "--json")) {
       printJson({ proposals });
@@ -110,20 +112,29 @@ async function improveApply(args: string[]): Promise<number> {
     // Dry run: report intent, never run gates or modify anything.
     if (!apply) {
       if (json) {
-        printJson({ dry_run: true, proposal_id: proposalId, risk: proposal.risk, required_gates: proposal.required_gates, files: proposal.proposed_changes.map((c) => c.path) });
+        printJson({ dry_run: true, applied: false, implementation_status: "not_implemented", proposal_id: proposalId, risk: proposal.risk, required_gates: proposal.required_gates, files: proposal.proposed_changes.map((c) => c.path) });
       } else {
         console.log(`DRY RUN: proposal ${proposalId}`);
         console.log(`Risk: ${proposal.risk}`);
         for (const gate of proposal.required_gates) console.log(`Gate: ${gate} -> not run in dry-run`);
-        console.log("Files that would change:");
+        console.log("Proposed files (implementation not available):");
         if (proposal.proposed_changes.length === 0) console.log("  (none recorded)");
         for (const change of proposal.proposed_changes) console.log(`  - ${change.path}`);
-        console.log("No files were modified. Re-run with --yes after approval.");
+        console.log("No files were modified. --yes checks current-repository gates only; it does not implement the proposal.");
       }
       return 0;
     }
 
-    // Applying: gates run for real in the repo's directory (if registered).
+    if (view.status === "applied" || view.status === "rejected") {
+      const reason = view.status === "applied"
+        ? "Historical applied status preserved; this command cannot establish whether a candidate was implemented or verified."
+        : "Rejected proposal preserved; no gates or implementation were run.";
+      if (json) printJson({ applied: false, action: "unchanged", proposal_id: proposalId, stored_status: view.status, reason });
+      else console.log(`unchanged ${proposalId}: ${reason}`);
+      return 0;
+    }
+
+    // These gates observe the current repository, not an implemented candidate.
     const registryPath = resolveRegistryPath(args);
     const registry = await readRepoRegistry(registryPath);
     const cwd = registry.find((entry) => entry.repo_id === view.repo_id)?.path ?? process.cwd();
@@ -133,9 +144,9 @@ async function improveApply(args: string[]): Promise<number> {
     });
 
     if (decision.action === "auto_applicable") {
-      upsertImprovementProposal(db, dbPath, proposalToNew(view, "applied"));
-      if (json) printJson({ applied: true, proposal_id: proposalId, reason: decision.reason });
-      else console.log(`applied ${proposalId}: ${decision.reason}`);
+      const reason = "Current-repository gates passed. Candidate implementation is not available; no proposal changes were applied or verified.";
+      if (json) printJson({ applied: false, action: "gates_passed", implementation_status: "not_implemented", proposal_id: proposalId, stored_status: view.status, reason });
+      else console.log(`not applied ${proposalId}: ${reason}`);
       return 0;
     }
     if (decision.action === "needs_human") {
@@ -190,7 +201,7 @@ function toSupervisorProposal(view: ReturnType<typeof listImprovementProposals>[
 
 function proposalToNew(
   view: ReturnType<typeof listImprovementProposals>[number],
-  status: "applied" | "needs_human" | "blocked",
+  status: "needs_human" | "blocked",
 ) {
   return {
     proposal_id: view.proposal_id,
