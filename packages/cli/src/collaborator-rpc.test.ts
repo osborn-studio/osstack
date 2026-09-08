@@ -104,6 +104,9 @@ beforeEach(async () => {
 afterEach(async () => { await handle?.close(); handle = undefined; vi.restoreAllMocks(); vi.unstubAllEnvs(); rmSync(home, { recursive: true, force: true }); });
 
 describe("signed collaborator through daemon RPC", () => {
+  // These cases cover several separately bounded turns and native binary hash
+  // checks. The whole case needs more than one turn's 5-second budget under
+  // full-suite CPU/I/O contention; product deadlines remain asserted below.
   it("automatically advances two frozen phases and replay never resets spent budgets", async () => {
     const signed = await grant();
     expect((await rpc("collaborator.install", signed)).ok).toBe(true);
@@ -111,13 +114,13 @@ describe("signed collaborator through daemon RPC", () => {
     expect(resumed).toEqual(["review frozen", "final frozen"]);
     expect((await rpc("collaborator.install", signed)).ok).toBe(true);
     expect(resumed).toHaveLength(2);
-  });
+  }, 20_000);
   it("uses only the signed retry instruction within its finite budget", async () => {
     const signed = await grant("retry");
     await rpc("collaborator.install", signed);
     await until(signed.body.grant_id, "completed");
     expect(resumed).toEqual(["repair frozen", "review frozen", "final frozen"]);
-  });
+  }, 20_000);
   it("cannot use a phase grant as a risk approval", async () => {
     const signed = await grant("risk");
     await rpc("collaborator.install", signed);
