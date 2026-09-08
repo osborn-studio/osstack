@@ -1293,6 +1293,17 @@ export const MIGRATIONS: readonly Migration[] = [
       ALTER TABLE agent_sessions ADD COLUMN repo_path TEXT NOT NULL DEFAULT '';
     `,
   },
+  {
+    id: 23,
+    name: "pitfall_observation_provenance",
+    // Legacy verified_count/source_run_ids mixed failures and unrelated
+    // successful runs. Preserve them verbatim; only new explicit observations
+    // populate this column. Never infer a verified-use history from old counts.
+    sql: `
+      ALTER TABLE pitfall_lessons
+        ADD COLUMN observation_run_ids_json TEXT NOT NULL DEFAULT '[]';
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

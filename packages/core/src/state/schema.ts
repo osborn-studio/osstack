@@ -232,8 +232,11 @@ export const PitfallLessonRow = z.object({
   tech_stack_json: z.string(),
   symptom: z.string().min(1),
   resolution: z.string().min(1),
+  /** Frozen legacy mixed counter; not evidence of verified effectiveness. */
   verified_count: z.number().int().nonnegative(),
   source_run_ids_json: z.string(),
+  /** Explicit failure observations; legacy source history is not backfilled. */
+  observation_run_ids_json: z.string().default("[]"),
   status: z.enum(["active", "archived"]).default("active"),
   tenant_id: z.string().nullable().default(null),
   created_at: z.number(),

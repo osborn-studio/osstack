@@ -44,6 +44,9 @@ describe("dashboard", () => {
         resolution: "rerun verifier",
         source_run_id: "r1",
       });
+      // Preserve a mixed counter from before observation tracking, while only
+      // the explicit failure above contributes to the current observation count.
+      db.prepare("UPDATE pitfall_lessons SET verified_count = 7").run();
 
       insertTask(db, path, { task_id: "t2", title: "Verify release", created_at: 200 });
       insertRun(db, path, {
@@ -95,6 +98,12 @@ describe("dashboard", () => {
       expect(snapshot.evidence.reports).toBe(1);
       expect(snapshot.evidence.proof_packs).toBe(1);
       expect(snapshot.lessons.total).toBe(1);
+      expect(snapshot.lessons.recent).toEqual([expect.objectContaining({
+        family: "verify_failed",
+        observation_count: 1,
+        legacy_verified_count: 7,
+        verified_count: 7,
+      })]);
       expect(snapshot.autonomy.reliability.weekly.run_count).toBe(0);
       expect(snapshot.agent_scorecards[0]).toMatchObject({
         agent_id: "codex-cli",
@@ -341,6 +350,8 @@ describe("dashboard", () => {
     expect(english).toContain("<h2>Evidence Assets</h2>");
     expect(english).toContain("Queued Tasks");
     expect(english).toContain("No recent runs");
+    expect(english).toContain("tracked observations");
+    expect(english).toContain("legacy count (not validation)");
     expect(chinese).toContain('<html lang="zh-CN">');
     expect(chinese).toContain("<title>osstack 开发驾驶舱</title>");
     expect(chinese).toContain("<h2>证据资产</h2>");
@@ -352,6 +363,7 @@ describe("dashboard", () => {
     expect(chinese).toContain("最新 Proof pack");
     expect(chinese).toContain("次运行");
     expect(chinese).toContain("成功");
-    expect(chinese).toContain("已验证");
+    expect(chinese).toContain("已记录观察");
+    expect(chinese).toContain("历史计数（非验证）");
   });
 });

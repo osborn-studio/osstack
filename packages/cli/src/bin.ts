@@ -47,7 +47,6 @@ import {
   rollbackDrillEligibilityEvidence,
   type RecordRollbackDrillInput,
   upsertPitfallLesson,
-  verifyPitfallLessons,
 } from "@osstack/core";
 import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import type { LoopProfileSummary } from "./loop-profile-routing.js";
@@ -6023,7 +6022,7 @@ async function handleLessonsCommand(args: string[]): Promise<number> {
 
   osstack lessons list [--family F] [--limit N] [--json]
   osstack lessons learn [--workspace P] [--state P] [--json]
-                                 Learn failed/escalated pitfalls and verify matching lessons from successful loop state
+                                 Record failed/escalated observations; effectiveness requires independent evaluation
 `);
     return 0;
   }
@@ -6048,7 +6047,7 @@ async function handleLessonsCommand(args: string[]): Promise<number> {
         console.log("No lessons recorded yet.");
       } else {
         for (const lesson of lessons) {
-          console.log(`${lesson.pitfall_id} ${lesson.family} verified=${lesson.verified_count}`);
+          console.log(`${lesson.pitfall_id} ${lesson.family} observations=${lesson.observation_count} legacy_verified=${lesson.legacy_verified_count} (not effectiveness evidence)`);
           console.log(`  symptom=${lesson.symptom}`);
           console.log(`  resolution=${lesson.resolution}`);
         }
@@ -6072,7 +6071,8 @@ async function handleLessonsCommand(args: string[]): Promise<number> {
     const db = openDb({ path: dbPath });
     try {
       const lessons = candidates.map((candidate) => upsertPitfallLesson(db, dbPath, candidate));
-      const verifiedLessons = verifyPitfallLessonsFromState(db, dbPath, state);
+      // Related successes do not prove that any lesson was used or effective.
+      const verifiedLessons: ReturnType<typeof upsertPitfallLesson>[] = [];
       if (args.includes("--json")) {
         console.log(JSON.stringify({
           learned: lessons.length,
@@ -6082,12 +6082,12 @@ async function handleLessonsCommand(args: string[]): Promise<number> {
         }, null, 2));
       } else {
         console.log(`learned=${lessons.length}`);
-        console.log(`verified=${verifiedLessons.length}`);
+        console.log("effectiveness=not_evaluated");
         for (const lesson of lessons) {
-          console.log(`${lesson.pitfall_id} ${lesson.family} verified=${lesson.verified_count}`);
+          console.log(`${lesson.pitfall_id} ${lesson.family} observations=${lesson.observation_count} legacy_verified=${lesson.legacy_verified_count} (not effectiveness evidence)`);
         }
         for (const lesson of verifiedLessons) {
-          console.log(`${lesson.pitfall_id} ${lesson.family} verified=${lesson.verified_count}`);
+          console.log(`${lesson.pitfall_id} ${lesson.family} observations=${lesson.observation_count} legacy_verified=${lesson.legacy_verified_count} (not effectiveness evidence)`);
         }
       }
       return 0;
@@ -6174,7 +6174,7 @@ async function learnLessonsFromLoopState(state: LoopState): Promise<{
   learned: number;
   lessons: ReturnType<typeof upsertPitfallLesson>[];
   verified: number;
-  verified_lessons: ReturnType<typeof verifyPitfallLessons>;
+  verified_lessons: ReturnType<typeof upsertPitfallLesson>[];
 } | undefined> {
   const candidates = derivePitfallLessonsFromState(state);
   try {
@@ -6182,7 +6182,8 @@ async function learnLessonsFromLoopState(state: LoopState): Promise<{
     const db = openDb({ path: dbPath });
     try {
       const lessons = candidates.map((candidate) => upsertPitfallLesson(db, dbPath, candidate));
-      const verifiedLessons = verifyPitfallLessonsFromState(db, dbPath, state);
+      // Related successes do not prove that any lesson was used or effective.
+      const verifiedLessons: ReturnType<typeof upsertPitfallLesson>[] = [];
       if (lessons.length === 0 && verifiedLessons.length === 0) return undefined;
       return {
         learned: lessons.length,
@@ -6196,22 +6197,6 @@ async function learnLessonsFromLoopState(state: LoopState): Promise<{
   } catch {
     return undefined;
   }
-}
-
-function verifyPitfallLessonsFromState(
-  db: Parameters<typeof verifyPitfallLessons>[0],
-  dbPath: string,
-  state: LoopState,
-): ReturnType<typeof verifyPitfallLessons> {
-  const verified: ReturnType<typeof verifyPitfallLessons> = [];
-  for (const task of state.completed_tasks) {
-    if (task.outcome !== "success") continue;
-    verified.push(...verifyPitfallLessons(db, dbPath, {
-      source_run_id: state.loop_id,
-      tech_stack: inferLessonTechStack(task.capability),
-    }));
-  }
-  return verified;
 }
 
 function pitfallFamilyForCompletedTask(task: LoopState["completed_tasks"][number]): string {
