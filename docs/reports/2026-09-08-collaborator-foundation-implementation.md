@@ -15,6 +15,8 @@
 
 这些变化已进入开发分支，未安装到正在服务的 daemon。没有修改 GitHub 身份、审批规则、App 安装或发布目标。工作区 remote 仍与用户指定的组织命名空间不同，没有据此推断交付目标。
 
+后续通过已安装的 `/opt/homebrew/bin/osstack` 做只读 RPC 检查：`session list --json` 返回空列表，`loop list --json` 返回五个已停止的历史 smoke 循环。当前连接端点未发现用户所述等待；这不代表其他端点或宿主 AI 会话没有等待。没有用开发 CLI 直接打开或迁移服务库。
+
 ## 会话与循环的实际行为
 
 `SessionContinuationRequest` 包含协议版本、`gate_kind`、阶段、拟议下一动作与有限数量的证据引用。`gate_kind` 区分 `phase_continue / task_authorization / risk_approval / external_input`。严格解析拒绝未知授权字段、未知版本及重复 choice ID。没有 continuation 的既有会话事件继续兼容；自然语言 `go` 不被转换成结构化授权。
@@ -80,6 +82,21 @@ Migration 23 只新增 `pitfall_lessons.observation_run_ids_json`，旧行默认
 
 新增回归均先复现 RED 再验证 GREEN，覆盖结构化交接、排空/取消、未确认投递被遮盖、经验并发丢失、旧库迁移、提案冲突、NEAT 20→21 次复发窗口和已审 Stack 提案复跑。新增 DB、socket 与任务执行测试使用隔离 fixtures，没有调用真实模型或接触服务数据库。
 
-当前工作目录的首次全仓 `pnpm test` 被既有、非本批修改的 `AGENTS.md` 阻断：123 行超过配置的 120 行 warning 预算，`knowledge-hygiene/osstack-config.test.ts` 要求零 findings。该文件保持原样，不降低门禁或删除用户记忆；本批提交将在独立校验工作树中运行全仓检查，结果另补于此。
+当前工作目录的首次全仓 `pnpm test` 被既有、非本批修改的 `AGENTS.md` 阻断：123 行超过配置的 120 行 warning 预算，`knowledge-hygiene/osstack-config.test.ts` 要求零 findings。该文件保持原样，不降低门禁或删除用户记忆。
+
+最终在提交 `071c1ff` 的独立干净工作树验证，运行时代码截至 `e08f06f`。依赖使用冻结 lockfile 离线安装，再执行 `pnpm -r rebuild better-sqlite3` 准备对应 Node ABI 的原生依赖；测试没有借用原工作区的 workspace 构建产物。
+
+| 检查 | 结果 |
+|---|---|
+| `pnpm build` | 全仓通过 |
+| `pnpm typecheck:check` | 全仓通过 |
+| `pnpm test` | 278 个测试文件、2,262 个测试通过，0 失败 |
+| `pnpm lint` | 0 错误；2 条既有警告位于未修改的 deployed-home.test.ts 与 upgrade.ts |
+| `node scripts/generate-inventory.mjs --check` | fresh |
+| `node scripts/check-changeset-coverage.mjs --base c9c3cd2 --head HEAD` | 5 个受影响公开包均覆盖；自检也通过 |
+| `node scripts/bench-cli-startup.mjs` | 5 次中位数：version 26ms、help 71ms；预算分别为 150ms、500ms |
+| 文档链接、围栏与 `git diff --check` | 通过 |
+
+独立代码审阅发现的未确认回执遮盖、经验并发覆盖、NEAT 滚动窗口与 Stack 已审提案覆盖问题均已修复并补回归。最终复审无新增必须修正项。
 
 测试通过仅证明本批行为与回归符合断言，不证明 OSStack 已获得可泛化的自我提升能力。
