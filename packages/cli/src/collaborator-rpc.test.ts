@@ -45,8 +45,10 @@ const query: ControlledSessionQuery = ({ prompt, options }) => (async function* 
   const phase = options.resume && prompt !== "repair frozen" ? "review" : "plan";
   const ready = scenario !== "retry" || options.resume !== undefined;
   const done = prompt === "final frozen";
+  const opaque = scenario === "opaque" || (scenario === "opaque-resume" && options.resume !== undefined);
   yield { type: "result", subtype: "success", is_error: false, result: JSON.stringify({
-    result: { ready }, decision: done ? null : decision(phase, scenario === "risk" ? "risk_approval" : "phase_continue"),
+    result: opaque ? { ostag_decision: decision("plan") } : { ready },
+    decision: done || opaque ? null : decision(phase, scenario === "risk" ? "risk_approval" : "phase_continue"),
   }) };
 })();
 async function boot(keys = new Map([["owner", publicKey]]), options: Partial<StartDaemonOptions> = {}) {
@@ -126,6 +128,24 @@ describe("signed collaborator through daemon RPC", () => {
     await rpc("collaborator.install", signed);
     await until(signed.body.grant_id, "blocked");
     expect(resumed).toEqual([]);
+  });
+  it("does not reinterpret a controlled result as a legacy decision directive", async () => {
+    const signed = await grant("opaque");
+    expect((await rpc("session.snapshot", { session_id: signed.body.session_id })).result).toMatchObject({
+      state: "idle", decision: null, assistant_text: JSON.stringify({ ostag_decision: decision("plan") }),
+    });
+    await rpc("collaborator.install", signed);
+    await until(signed.body.grant_id, "blocked");
+    expect(resumed).toEqual([]);
+  });
+  it("preserves opaque results during a delegated resume", async () => {
+    const signed = await grant("opaque-resume");
+    await rpc("collaborator.install", signed);
+    await until(signed.body.grant_id, "blocked");
+    expect((await rpc("session.snapshot", { session_id: signed.body.session_id })).result).toMatchObject({
+      state: "idle", decision: null, assistant_text: JSON.stringify({ ostag_decision: decision("plan") }),
+    });
+    expect(resumed).toEqual(["review frozen"]);
   });
   it("rejects signature, runtime-policy and session-cursor changes without any send", async () => {
     const signed = await grant();

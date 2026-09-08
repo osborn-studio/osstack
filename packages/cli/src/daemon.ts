@@ -77,6 +77,7 @@ import {
   cleanupOrphanedWorktrees,
   defaultAdapters,
   createControlledSessionAdapter,
+  isControlledSessionAdapter,
   isSessionCapableAdapter,
   type AgentAdapter,
   type AgentSessionEvent,
@@ -602,7 +603,8 @@ async function handleSessionStart(
         throw new Error("adapter output contained protected session metadata");
       }
       if (event.type === "assistant.message") {
-        const directive = parseDecisionDirective(event.text);
+        // Controlled results are opaque data; their adapter emits decisions separately.
+        const directive = isControlledSessionAdapter(adapter) ? undefined : parseDecisionDirective(event.text);
         if (directive !== undefined) {
           publicEvents.push(directive);
           decision = {
@@ -912,7 +914,8 @@ async function executeReservedSessionTurn(
           terminalCompleted = true;
         }
         if (event.type === "assistant.message") {
-          const directive = parseDecisionDirective(event.text);
+          // Controlled results are opaque data; their adapter emits decisions separately.
+          const directive = isControlledSessionAdapter(adapter) ? undefined : parseDecisionDirective(event.text);
           if (directive !== undefined) {
             publicEvents.push(directive);
             decision = {
