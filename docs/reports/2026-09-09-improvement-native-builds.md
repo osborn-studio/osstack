@@ -43,9 +43,9 @@ This smoke is skipped in ordinary CI because it needs network/native toolchains;
 
 - `pnpm build`, `pnpm typecheck:check`, `pnpm lint`: passed (only the two existing lint warnings).
 - `pnpm test --maxWorkers=4`: **291 files / 2,584 tests passed**, one opt-in cold smoke skipped in the regular suite.
-- Inventory freshness and changeset coverage self-test: passed.
+- Inventory freshness, changeset coverage against `origin/main`, and coverage self-test: passed.
 - CLI startup: version median **33 ms**, full help median **87 ms** (local budgets 150/500 ms).
-- Initial real cold-install pair: **passed**, 202.65 seconds, SQLite `42` and esbuild `let n = 42;` in both independent checkouts. The final contract discriminator and missing-installed-instance check are covered by regression tests; final real cold pair results follow below.
+- Initial real cold-install pair: **passed**, 202.65 seconds, SQLite `42` and esbuild `let n = 42;` in both independent checkouts. Final real cold pair with the new contract and installed-instance check: **passed**, 301.98 seconds. Both candidate and replay returned SQLite `42` and esbuild `let n = 42;`. Runtime: Node v26.5.0, pnpm 11.4.0, macOS arm64; 31 frozen dependency inputs. Dependency baseline `1b3d65a21be99a1e01703d6f2e96b137bdf74ebf` has the identical tree to merged main `3ace387797eb1ff23783d1e84a305e8972c29f3a`. Ordinary test suite excludes this network smoke; it was explicitly run locally.
 
 ## Review and next milestone
 
