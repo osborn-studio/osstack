@@ -1352,6 +1352,30 @@ export const MIGRATIONS: readonly Migration[] = [
         ON session_continuation_attempts(grant_id) WHERE status IN ('checking','reserved');
     `,
   },
+  {
+    id: 25,
+    name: "improvement_candidate_executions",
+    // Candidate results never rewrite proposal approval or historical applied records.
+    sql: `
+      CREATE TABLE improvement_executions (
+        execution_id TEXT PRIMARY KEY,
+        proposal_id TEXT NOT NULL REFERENCES improvement_proposals(proposal_id),
+        request_json TEXT NOT NULL,
+        request_sha256 TEXT NOT NULL,
+        state TEXT NOT NULL CHECK (state IN ('claimed','running','candidate_verified','candidate_failed')),
+        worktree_json TEXT,
+        result_json TEXT,
+        created_at REAL NOT NULL,
+        updated_at REAL NOT NULL,
+        CHECK (state NOT IN ('running','candidate_verified') OR worktree_json IS NOT NULL),
+        CHECK (state NOT IN ('candidate_verified','candidate_failed') OR result_json IS NOT NULL)
+      );
+      CREATE UNIQUE INDEX idx_improvement_execution_one_active
+        ON improvement_executions(proposal_id) WHERE state IN ('claimed','running');
+      CREATE INDEX idx_improvement_execution_proposal
+        ON improvement_executions(proposal_id, created_at DESC, execution_id);
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

@@ -56,6 +56,8 @@ export interface KimiCodeOptions {
   timeoutMs?: number;
   outputLimit?: number;
   reviewAgentFile?: string;
+  /** Replace the child environment; the caller owns credential/authority filtering. */
+  env?: NodeJS.ProcessEnv;
 }
 
 interface KimiProcessResult {
@@ -115,7 +117,7 @@ export class KimiCodeAdapter extends BaseAgentAdapter {
 
   constructor(options: KimiCodeOptions = {}) {
     super();
-    this.options = options;
+    this.options = { ...options, ...(options.env === undefined ? {} : { env: { ...options.env } }) };
   }
 
   capabilities(): readonly Capability[] {
@@ -135,7 +137,7 @@ export class KimiCodeAdapter extends BaseAgentAdapter {
 
   async readiness(): Promise<KimiReadiness> {
     const lastChecked = Math.floor(Date.now() / 1000);
-    const versionProbe = await runProbe(this.bin(), ["--version"], 5_000);
+    const versionProbe = await runProbe(this.bin(), ["--version"], 5_000, this.options.env);
     if (versionProbe.exitCode !== 0) {
       return {
         state: "kimi_not_installed",
@@ -152,6 +154,7 @@ export class KimiCodeAdapter extends BaseAgentAdapter {
       this.bin(),
       ["provider", "list"],
       5_000,
+      this.options.env,
     );
     const providerOutput = providerProbe.stdout || providerProbe.stderr;
     if (
@@ -264,6 +267,7 @@ export class KimiCodeAdapter extends BaseAgentAdapter {
         signal,
         timeoutMs: this.timeoutMs(),
         outputLimit: this.outputLimit(),
+        ...(this.options.env === undefined ? {} : { env: this.options.env }),
       });
 
       if (result.displayText !== "") {
@@ -374,7 +378,7 @@ export class KimiCodeAdapter extends BaseAgentAdapter {
   }
 
   private async readVersion(): Promise<string> {
-    const result = await runProbe(this.bin(), ["--version"], 5_000);
+    const result = await runProbe(this.bin(), ["--version"], 5_000, this.options.env);
     if (result.exitCode !== 0) return "unknown";
     const version = parseVersion(result.stdout || result.stderr);
     this.cachedVersion = version;
@@ -474,6 +478,7 @@ async function runKimi(
     signal: AbortSignal;
     timeoutMs: number;
     outputLimit: number;
+    env?: NodeJS.ProcessEnv;
   },
 ): Promise<KimiProcessResult> {
   return new Promise((resolvePromise) => {
@@ -481,7 +486,7 @@ async function runKimi(
     const child = spawn(command, args, {
       cwd: options.cwd,
       stdio: ["ignore", "pipe", "pipe"],
-      env: buildAgentChildEnv({ KIMI_CODE_EXPERIMENTAL_FLAG: "1" }),
+      env: { ...(options.env ?? buildAgentChildEnv()), KIMI_CODE_EXPERIMENTAL_FLAG: "1" },
       shell: false,
     });
     let stderr = "";
@@ -563,11 +568,12 @@ async function runProbe(
   command: string,
   args: readonly string[],
   timeoutMs: number,
+  env?: NodeJS.ProcessEnv,
 ): Promise<ProbeResult> {
   return new Promise((resolvePromise) => {
     const child = spawn(command, args, {
       stdio: ["ignore", "pipe", "pipe"],
-      env: buildAgentChildEnv(),
+      env: { ...(env ?? buildAgentChildEnv()) },
       shell: false,
     });
     let stdout = "";

@@ -32,7 +32,7 @@ GitHub 官方通常推荐 GitHub App：可限定仓库、细粒度权限、短�
 
 **含义：用户具备组织管理身份；产品缺口主要是 OSStack 登录、身份授权与受限执行链。** 当前 main 的规则对管理员也生效，不能把 Owner 身份当作自动跳过审批的入口。启用自动交付前，应先将实际需要的 CI 和 OSStack 检查纳入保护条件。
 
-工作区当前 git remote 是个人命名空间 `gilosbornhello/osstack`，用户此次指定的是组织仓库 `osborn-studio/osstack`。新集成必须绑定目标 repository ID，不能从本地 remote 推断发布或审批目标；本轮没有同步或改写 remote，也未证明两仓代码一致。
+提交 PR 时进一步核验：`gilosbornhello/osstack` 已重定向到 `osborn-studio/osstack`，两个 API 入口返回相同 repository ID `1255570742`，并非两个独立仓库。工作区 origin 已更新为组织规范 URL，基础实现已提交 [PR #217](https://github.com/osborn-studio/osstack/pull/217)。新集成仍应绑定 repository ID，避免仅凭可迁移的 owner/name 判断审批目标。
 
 ## 3. 登录、代用户操作、机器人身份
 

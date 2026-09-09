@@ -26,6 +26,22 @@ afterEach(async () => {
 });
 
 describe("KimiCodeAdapter", () => {
+  it("uses an explicit child environment for readiness and structured review", async () => {
+    const log = join(tmp, "env.log");
+    const result = reviewResult("approved");
+    const bin = await fakeCommand("kimi-env", `
+printf '%s|%s\\n' "$OSSTACK_HOME" "$OSSTACK_AUTOAPPROVE" >> '${log}'
+if [ "\${1:-}" = "--version" ]; then printf '0.29.1\\n'; exit 0; fi
+if [ "\${1:-}" = "provider" ]; then printf 'managed:kimi-code type=kimi models=4 source=oauth\\nDefault model: k3-256k\\n'; exit 0; fi
+printf '%s\\n' ${shellQuote(streamEvent(result))}
+`);
+    const adapter = new KimiCodeAdapter({ bin, reviewAgentFile, model: "k3-256k",
+      env: { PATH: process.env["PATH"], HOME: process.env["HOME"], OSSTACK_HOME: join(tmp, "control"), OSSTACK_AUTOAPPROVE: "0" } });
+    expect((await adapter.isAvailable()).available).toBe(true);
+    expect(doneStatus(await drain(adapter.invoke(task(), new AbortController().signal)))).toBe("completed");
+    expect((await readFile(log, "utf8")).trim().split("\n")).toEqual(Array(3).fill(`${join(tmp, "control")}|0`));
+  });
+
   it("advertises only read-only review and release verification", () => {
     const adapter = new KimiCodeAdapter({ bin: "missing-kimi" });
 

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { AgentSessionEvent, AgentSessionInput } from "../session.js";
 import type { AgentTask } from "../base.js";
+import type { HermesEvent } from "@osstack/hermes-adapter";
 import { CodexCliAdapter } from "./codex-cli.js";
 
 let tmp: string;
@@ -99,6 +100,44 @@ exit 9
       if (previousHome === undefined) delete process.env["HOME"];
       else process.env["HOME"] = previousHome;
     }
+  });
+});
+
+describe("CodexCliAdapter strict candidate completion", () => {
+  it.each([
+    ["empty zero exit", "exit 0", "failed"],
+    ["truncated turn", `printf '{"type":"thread.started","thread_id":"thread"}\\n'; exit 0`, "failed"],
+    ["completed then nonzero exit", `printf '{"type":"turn.completed"}\\n'; exit 7`, "failed"],
+    ["completed with zero exit", `printf '{"type":"turn.completed"}\\n'; exit 0`, "completed"],
+  ])("requires native completion and successful process exit: %s", async (_label, body, expected) => {
+    const bin = await fakeCommand("codex-strict", body!);
+    const adapter = new CodexCliAdapter({ bin, cwd: tmp, strictCompletion: true });
+    const events: HermesEvent[] = [];
+    for await (const event of adapter.invoke(task(), new AbortController().signal)) events.push(event);
+    expect(events.filter((event) => event.type === "done").map((event) => (event.payload as { status: string }).status)).toEqual([expected]);
+  });
+
+  it("replaces inherited child environment consistently for probe, session and invoke", async () => {
+    const log = join(tmp, "environment.log");
+    await mkdir(join(tmp, ".codex"));
+    const bin = await fakeCommand("codex-environment", `
+printf '%s|%s|%s\\n' "$OSSTACK_HOME" "$OSSTACK_AUTOAPPROVE" "\${AMBIENT_SECRET:-absent}" >> '${log}'
+if [ "$*" = "exec resume --help" ]; then exit 0; fi
+printf '{"type":"thread.started","thread_id":"thread"}\\n{"type":"turn.completed"}\\n'
+`);
+    const adapter = new CodexCliAdapter({ bin, cwd: tmp, strictCompletion: true,
+      env: { PATH: process.env["PATH"], HOME: tmp, OSSTACK_HOME: join(tmp, "control"), OSSTACK_AUTOAPPROVE: "0" } });
+    expect((await adapter.isAvailable()).available).toBe(true);
+    await drain(adapter.startSession(task(), new AbortController().signal));
+    for await (const _event of adapter.invoke(task(), new AbortController().signal)) { /* drain */ }
+    expect((await readFile(log, "utf8")).trim().split("\n")).toEqual(Array(3).fill(`${join(tmp, "control")}|0|absent`));
+  });
+
+  it("reports a missing binary as failure without an unhandled process error", async () => {
+    const adapter = new CodexCliAdapter({ bin: join(tmp, "does-not-exist"), cwd: tmp, strictCompletion: true });
+    const events: HermesEvent[] = [];
+    for await (const event of adapter.invoke(task(), new AbortController().signal)) events.push(event);
+    expect((events.at(-1)?.payload as { status: string }).status).toBe("failed");
   });
 });
 

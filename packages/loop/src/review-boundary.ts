@@ -33,6 +33,12 @@ export interface CollectedReviewBoundary {
   sanitized_diff?: string;
 }
 
+/** A caller-captured candidate; Git visibility must not narrow this input. */
+export interface ReviewCandidateInput {
+  changed_paths: readonly string[];
+  diff: string;
+}
+
 export const DEFAULT_REVIEW_BOUNDARY_POLICY: Readonly<ReviewBoundaryPolicy> = {
   forbidden_paths: [".env", ".git", ".ssh", ".aws", ".config"],
   max_file_bytes: DEFAULT_MAX_FILE_BYTES,
@@ -43,6 +49,7 @@ export const DEFAULT_REVIEW_BOUNDARY_POLICY: Readonly<ReviewBoundaryPolicy> = {
 export async function collectReviewBoundary(
   workspacePath: string,
   overrides: Partial<ReviewBoundaryPolicy> = {},
+  supplied?: ReviewCandidateInput,
 ): Promise<CollectedReviewBoundary> {
   const policy: ReviewBoundaryPolicy = {
     ...DEFAULT_REVIEW_BOUNDARY_POLICY,
@@ -50,6 +57,26 @@ export async function collectReviewBoundary(
   };
   validatePolicy(policy);
   const workspace = await realpath(resolve(workspacePath));
+
+  if (supplied !== undefined) {
+    // Capture the caller's values before awaiting file reads. The same policy
+    // scans every supplied file and the complete patch (including deletions).
+    const changedPaths = [...new Set(supplied.changed_paths)].sort();
+    const candidateDiff = supplied.diff;
+    const files = await Promise.all(changedPaths.map((path) => collectFile(workspace, path, policy)));
+    const boundary = evaluateReviewBoundary({
+      workspace_path: workspace,
+      changed_paths: changedPaths,
+      files,
+      diff_bytes: Buffer.byteLength(candidateDiff, "utf8"),
+      diff_content: candidateDiff,
+      forbidden_paths: policy.forbidden_paths,
+      max_file_bytes: policy.max_file_bytes,
+      max_total_bytes: policy.max_total_bytes,
+      allowed_extensions: policy.allowed_extensions,
+    });
+    return boundary.pass ? { boundary, sanitized_diff: candidateDiff } : { boundary };
+  }
 
   const [trackedOutput, untrackedOutput] = await Promise.all([
     execGit(

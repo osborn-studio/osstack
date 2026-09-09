@@ -1,7 +1,7 @@
 // `osstack improve propose|apply` — turn stored feedback assets into risk-rated
 // proposals and (only with --yes) check their gates against the current repo.
-// Candidate implementation is not available yet. Passing existing-repo gates
-// must not be persisted or reported as an applied improvement.
+// Candidate execution has a separate explicit local approval path. Passing
+// existing-repo gates must not be reported as an applied improvement.
 
 import { spawn } from "node:child_process";
 import {
@@ -31,13 +31,25 @@ export async function handleImproveCommand(args: string[]): Promise<number> {
   const rest = args.slice(1);
   if (sub === "propose") return await improvePropose(rest);
   if (sub === "apply") return await improveApply(rest);
+  if (["inspect", "approve", "execute", "status"].includes(sub ?? "")) {
+    const { handleImprovementExecutionCommand } = await import("./improvement-execution-command.js");
+    return handleImprovementExecutionCommand(sub!, rest);
+  }
   if (sub === "help" || sub === "--help" || sub === "-h" || sub === undefined) {
     console.log(`osstack improve — proposals from feedback assets
 
   improve propose --repo <id> [--from-assets] [--registry P] [--json]
   improve apply --proposal <id> [--yes] [--json]   (dry-run by default)
+  improve inspect --proposal <id>
+  improve approve --proposal <id> --digest <sha256> [--yes]
+  improve execute --proposal <id> --digest <sha256> --execution <id>
+                  [--profile <name>] [--registry P] [--timeout-ms N]
+                  [--request-digest <preview-sha256> --yes]
+  improve status --execution <id>
 
-  --yes checks gates only. Proposal changes are not implemented by this command.
+  apply --yes checks existing-repository gates only.
+  execute --yes implements an approved low-risk docs/test/eval proposal in an
+  external worktree and records candidate verification. It does not merge or publish.
 `);
     return 0;
   }

@@ -288,7 +288,11 @@ Loop 工程：
   supervise init-loop-doc  为仓库生成 docs/LOOP.md 闭环契约
   feedback assets     列出失败运行沉淀的反馈资产
   improve propose     从反馈资产生成改进提案
-  improve apply       通过门禁后应用低风险提案（默认 dry-run，需 --yes）
+  improve apply       检查当前仓库门禁（不实施提案，默认 dry-run）
+  improve inspect     查看提案内容和用于批准的摘要
+  improve approve     按摘要批准提案（需 --yes）
+  improve execute     生成并验证低风险候选补丁（需 --yes，不合并发布）
+  improve status      查看候选执行状态与证据
   evaluator list      列出评估器版本与当前冻结 epoch
   evaluator challenge 用锚点用例评分挑战者评估器（仅建议）
   evaluator promote   在 epoch 边界晋升挑战者（默认 dry-run，需 --yes）
