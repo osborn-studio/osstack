@@ -380,3 +380,26 @@ it("records a failed frozen install, retains occupancy and never starts the buil
   expect(output()).toMatchObject({ replay: true });
   expect(builders).toBe(0);
 }, 20_000);
+
+it("binds --build-deps into the one-shot digest and refuses a wider confirmation", async () => {
+  const { parse, stringify } = await import("yaml");
+  await seedPnpmEnvironment(repoPath);
+  await writeFile(join(repoPath, "pnpm-workspace.yaml"), "packages: [packages/*]\nallowBuilds: {native: true}\n");
+  const lock = parse(await readFile(join(repoPath, "pnpm-lock.yaml"), "utf8"));
+  lock.packages = { "native@1.2.3": { resolution: { integrity: "sha512-YWJj" } } };
+  await writeFile(join(repoPath, "pnpm-lock.yaml"), stringify(lock));
+  await git(["add", "."]); await git(["commit", "-m", "locked build preview"]);
+  originalHead = await git(["rev-parse", "HEAD"]);
+  const github = await simulatedImprovementGithub(root, repoPath);
+  vi.spyOn(improvementPrTransport, "run").mockImplementation(github.transport.run);
+  const args = [...executeArgs().map((arg) => arg === "execute" ? "deliver" : arg), "--prepare-deps", "pnpm"];
+  expect(await main(args)).toBe(0);
+  const scriptFreeDigest = output<{ request_digest: string }>().request_digest;
+  logs.length = 0;
+  expect(await main([...args, "--build-deps", "native@1.2.3"])).toBe(0);
+  const buildPreview = output<{ request_digest: string; request: { environment: unknown } }>();
+  expect(buildPreview.request_digest).not.toBe(scriptFreeDigest);
+  expect(buildPreview.request.environment).toMatchObject({ kind: "pnpm-frozen-builds-v1", dependency_builds: { packages: [{ selector: "native@1.2.3", integrity: "sha512-YWJj" }], isolation: "os-user" } });
+  expect(await main([...args, "--build-deps", "native@1.2.3", "--yes", "--request-digest", scriptFreeDigest])).toBe(1);
+  expect(executions()).toEqual([]); expect(builders).toBe(0); expect(github.writes).toEqual([]);
+}, 15_000);

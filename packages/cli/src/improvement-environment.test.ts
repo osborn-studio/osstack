@@ -89,3 +89,78 @@ it("rejects missing/extraneous importers and links outside the locked workspace"
   files.set("pnpm-lock.yaml", Buffer.from("lockfileVersion: '9.0'\nimporters:\n  .:\n    dependencies:\n      local:\n        version: link:../outside\n  packages/local: {}\n"));
   expect(() => validateDependencyInputs(files)).toThrow("Lockfile link");
 });
+
+it("binds only exact locked registry builds and rejects broader or stale policy", async () => {
+  const { resolveDependencyBuilds } = await import("./improvement-environment.js");
+  const files = inputs();
+  files.set("pnpm-workspace.yaml", Buffer.from("packages: []\nallowBuilds: {native: true}"));
+  files.set("pnpm-lock.yaml", Buffer.from("lockfileVersion: '9.0'\nimporters: {.: {}}\npackages:\n  native@1.2.3:\n    resolution: {integrity: sha512-YWJj}\n"));
+  expect(resolveDependencyBuilds(files, ["native@1.2.3"])).toEqual({ packages: [{ selector: "native@1.2.3", integrity: "sha512-YWJj" }], network: "unrestricted", isolation: "os-user" });
+  for (const selectors of [[], ["native"], ["native@^1.2.3"], ["native@1.2.4"], ["native@1.2.3", "native@1.2.3"], ["--pending"], ["other@1.2.3"]]) {
+    expect(() => resolveDependencyBuilds(files, selectors)).toThrow();
+  }
+  files.set("other/package.json", Buffer.from('{"name":"native"}'));
+  expect(() => resolveDependencyBuilds(files, ["native@1.2.3"])).toThrow("Workspace");
+  files.delete("other/package.json");
+  files.set("pnpm-workspace.yaml", Buffer.from("allowBuilds: {'*': true, native: true}"));
+  expect(() => resolveDependencyBuilds(files, ["native@1.2.3"])).toThrow("simple package-name");
+});
+
+// Populate a synthetic registry layout after a real script-free workspace install.
+// No network is needed; pnpm's actual rebuild implementation executes the fixture scripts.
+it("forces pnpm builtin and builds only the selected version, without root/workspace lifecycle scripts", async () => {
+  const { mkdir } = await import("node:fs/promises");
+  const { parse, stringify } = await import("yaml");
+  const { rebuildImprovementDependencies } = await import("./improvement-environment.js");
+  const f = await environmentFixture();
+  const contract = await previewImprovementEnvironment(f.repo, f.commit);
+  const stage = join(f.root, "env");
+  await prepareImprovementEnvironment({ contract, workspace: f.repo, commit: f.commit, directory: stage, timeoutMs: 15_000, checkActive() {} });
+  const manifest = JSON.parse(await readFile(join(f.repo, "package.json"), "utf8"));
+  manifest.scripts.rebuild = "node -e \"require('fs').writeFileSync('shadow-ran','bad')\"";
+  manifest.scripts.pm = manifest.scripts.rebuild;
+  manifest.scripts.prepare = manifest.scripts.rebuild;
+  await writeFile(join(f.repo, "package.json"), JSON.stringify(manifest));
+  await writeFile(join(f.repo, "pnpm-workspace.yaml"), "packages: [packages/*]\nallowBuilds: {selected: true, unselected: true}\n");
+  const lockPath = join(f.repo, "node_modules/.pnpm/lock.yaml");
+  const lock = parse(await readFile(lockPath, "utf8"));
+  lock.packages = {}; lock.snapshots = {};
+  for (const [name, version, alias] of [["selected", "1.0.0", "selected"], ["selected", "2.0.0", "other-version"], ["unselected", "1.0.0", "unselected"]] as const) {
+    const key = `${name}@${version}`;
+    lock.packages[key] = { resolution: { integrity: "sha512-YWJj" } };
+    lock.snapshots[key] = {};
+    lock.importers["."].dependencies[alias] = { specifier: version, version: alias === name ? version : key };
+    const dir = join(f.repo, "node_modules/.pnpm", key, "node_modules", name);
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, "package.json"), JSON.stringify({ name, version, scripts: Object.fromEntries(["preinstall", "install", "postinstall"].map((stage) => [stage, `node -e "require('fs').appendFileSync('built','${stage},')"`])) }));
+  }
+  await writeFile(lockPath, stringify(lock));
+  await rebuildImprovementDependencies(["selected@1.0.0"], f.repo, join(stage, "home"), join(stage, "store"), 15_000);
+  expect(await readFile(join(f.repo, "node_modules/.pnpm/selected@1.0.0/node_modules/selected/built"), "utf8")).toBe("preinstall,install,postinstall,");
+  for (const path of ["shadow-ran", "script-ran", "packages/local/dependency-script-ran", "node_modules/.pnpm/selected@2.0.0/node_modules/selected/built", "node_modules/.pnpm/unselected@1.0.0/node_modules/unselected/built"]) {
+    await expect(readFile(join(f.repo, path))).rejects.toThrow();
+  }
+  await expect(rebuildImprovementDependencies(["selected@9.0.0"], f.repo, join(stage, "home"), join(stage, "store"), 1000)).rejects.toThrow("no installed instance");
+  await expect(rebuildImprovementDependencies([], f.repo, join(stage, "home"), join(stage, "store"), 1000)).rejects.toThrow();
+}, 30_000);
+
+it("rejects a tampered build receipt before install and leaves the failed stage occupied", async () => {
+  const { parse, stringify } = await import("yaml");
+  const f = await environmentFixture();
+  await writeFile(join(f.repo, "pnpm-workspace.yaml"), "packages: [packages/*]\nallowBuilds: {native: true}\n");
+  const lock = parse(await readFile(join(f.repo, "pnpm-lock.yaml"), "utf8"));
+  lock.packages = { "native@1.2.3": { resolution: { integrity: "sha512-YWJj" } } };
+  await writeFile(join(f.repo, "pnpm-lock.yaml"), stringify(lock));
+  await f.git(["add", "."]); await f.git(["commit", "-m", "build-policy"]);
+  const commit = await f.git(["rev-parse", "HEAD"]);
+  const contract = await previewImprovementEnvironment(f.repo, commit, ["native@1.2.3"]);
+  expect(contract.kind).toBe("pnpm-frozen-builds-v1");
+  expect(contract.lifecycle_scripts).toBe("selected-dependencies");
+  contract.dependency_builds!.packages[0]!.integrity = "sha512-dGFtcGVy";
+  const directory = join(f.root, "tampered");
+  const request = { contract, workspace: f.repo, commit, directory, timeoutMs: 1000, checkActive() {} };
+  await expect(prepareImprovementEnvironment(request)).rejects.toThrow("build policy changed");
+  expect(JSON.parse(await readFile(join(directory, "failed.json"), "utf8"))).toMatchObject({ phase: "input_validation", retry_allowed: false });
+  await expect(readFile(join(f.repo, "node_modules/.modules.yaml"))).rejects.toThrow();
+  await expect(prepareImprovementEnvironment(request)).rejects.toThrow();
+}, 15_000);

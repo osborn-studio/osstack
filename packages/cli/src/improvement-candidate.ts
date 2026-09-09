@@ -33,6 +33,7 @@ export interface ImprovementCandidateInput {
   evidenceRoot: string;
   prDelivery?: ImprovementPrTarget;
   prepareDeps?: "pnpm";
+  buildDeps?: string[];
 }
 
 /** Local operator execution only. A session phase grant cannot call this path. */
@@ -77,8 +78,9 @@ export async function prepareImprovementCandidate(input: ImprovementCandidateInp
   if (rel === "" || (!rel.startsWith("../") && !isAbsolute(rel))) throw new Error("evidence root must be outside the candidate repository");
   const baseSha = await git(repoPath, ["rev-parse", "HEAD"]);
   if (input.prepareDeps !== undefined && input.prDelivery === undefined) throw new Error("Dependency preparation requires improve deliver");
+  if (input.buildDeps !== undefined && input.prepareDeps !== "pnpm") throw new Error("Dependency builds require --prepare-deps pnpm");
   const environment = input.prepareDeps === undefined ? undefined
-    : await (await import("./improvement-environment.js")).previewImprovementEnvironment(repoPath, baseSha);
+    : await (await import("./improvement-environment.js")).previewImprovementEnvironment(repoPath, baseSha, input.buildDeps);
   const request = {
     schema_version: 1,
     proposal_digest: input.expectedDigest,

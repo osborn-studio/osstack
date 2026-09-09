@@ -54,7 +54,7 @@ function sha256(value: string | Buffer): string {
 
 function validateRelativePath(path: string): void {
   if (typeof path !== "string" || path.length === 0 || path.startsWith("/") ||
-      path.includes("\\") || [":", "*", "?", "[", "]"].some((character) => path.includes(character)) ||
+      path.includes("\\") || path.includes(":") ||
       [...path].some((character) => {
         const code = character.codePointAt(0) ?? 0;
         return code < 32 || code === 127;
@@ -70,6 +70,7 @@ export function validateImprovementPaths(paths: string[]): string[] {
   }
   for (const path of paths) {
     validateRelativePath(path);
+    if (["*", "?", "[", "]"].some((character) => path.includes(character))) throw new Error(`Invalid exact relative improvement path: ${JSON.stringify(path)}`);
     if (path.split("/").some((part) => {
       const lower = part.toLowerCase();
       return PROTECTED_COMPONENTS.has(lower) || PROTECTED_FILES.has(lower) ||

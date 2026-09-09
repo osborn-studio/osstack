@@ -45,7 +45,7 @@ export async function handleImproveCommand(args: string[]): Promise<number> {
   improve execute --proposal <id> --digest <sha256> --execution <id>
                   [--profile <name>] [--registry P] [--timeout-ms N]
                   [--request-digest <preview-sha256> --yes]
-  improve deliver --proposal <id> --execution <id> [--base <branch>] [--prepare-deps pnpm]
+  improve deliver --proposal <id> --execution <id> [--base <branch>] [--prepare-deps pnpm] [--build-deps <name@version,...>]
                   [--profile <name>] [--registry P] [--timeout-ms N]
                   [--request-digest <preview-sha256> --yes]
   improve status --execution <id> [--reconcile]
@@ -56,7 +56,8 @@ export async function handleImproveCommand(args: string[]): Promise<number> {
   execute --yes implements an approved low-risk docs/test/eval proposal in an
   external worktree and records candidate verification. It does not merge or publish.
   deliver confirms a draft/approved proposal once, builds and verifies it, and creates one draft PR.
-  --prepare-deps pnpm binds a pinned public-registry environment and prepares dependencies twice with scripts disabled.
+  --build-deps binds exact locked dependency builds; scripts run as the OS user with unrestricted network.
+  --prepare-deps pnpm binds a pinned public-registry environment and installs dependencies twice with scripts disabled; --build-deps opts into selected rebuilds.
   Replays report history; --reconcile only reads GitHub to confirm uncertain writes.
   stop requests cooperative stopping; it does not kill processes or release active occupancy.
   baseline exports all matching attempts; candidate verification is not PR delivery or effectiveness.

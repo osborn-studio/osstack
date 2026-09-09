@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { assertCandidateUnchanged, captureImprovementCandidate, validateImprovementPaths } from "./improvement-candidate-artifacts.js";
+import { assertImprovementTreeUnchanged, assertCandidateUnchanged, captureImprovementCandidate, validateImprovementPaths } from "./improvement-candidate-artifacts.js";
 
 const exec = promisify(execFile);
 let root: string;
@@ -207,4 +207,17 @@ describe("improvement candidate artifacts", () => {
     expect(captured.patch).toContain("candidate");
     await expect(readFile(marker)).rejects.toThrow();
   });
+});
+
+
+it("scans unchanged framework route filenames without accepting glob-shaped authorizations", async () => {
+  await file("cloud-functions/[[default]].js", "export default {};\n");
+  await git(["add", "."]); await git(["commit", "-m", "route"]);
+  const commit = (await git(["rev-parse", "HEAD"])).trim();
+  await expect(assertImprovementTreeUnchanged(workspace, commit)).resolves.toBeUndefined();
+  expect(() => validateImprovementPaths(["cloud-functions/[[default]].js"])).toThrow("exact relative");
+  await file("docs/a.md", "candidate\n");
+  expect((await captureImprovementCandidate(workspace, commit, ["docs/a.md"])).changed_paths).toEqual(["docs/a.md"]);
+  await file("cloud-functions/[[default]].js", "unauthorized\n");
+  await expect(captureImprovementCandidate(workspace, commit, ["docs/a.md"])).rejects.toThrow("exact relative");
 });
