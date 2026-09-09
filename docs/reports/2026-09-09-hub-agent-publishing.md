@@ -24,8 +24,12 @@ The Hub API source inspected on `origin/main` exposes catalog/read routes and no
 - `git diff --check`: passed. Original user checkouts and their AGENTS.md edits were not modified.
 - [Two actual Fable 5.1 design challenges and evaluated responses](2026-09-09-hub-publish-fable-review.md). Model suggestions are distinguished from code/runtime evidence.
 
-## Remaining owner/runtime dependency
+## Follow-up: colleague identity and repository invitation
 
-The actual runtime host/framework or configuration entry point for maomaobdm has been requested and is not yet known. No account/grant has been provisioned, no shared credential issued, no real catalog asset published, and no production installation updated by this PR. This is the preparatory diagnosis/integration fix, not completed onboarding. Continue with the actual principal, repository/namespace scope and a selected real test asset using the [onboarding acceptance guide](../guides/hub-agent-publishing.md).
+The owner clarified that maomaobdm is their colleague's GitHub account, not an Agent runtime. Authenticated GitHub reads verified login `maomaobdm`, account ID `317464155`, active organization membership, and Maintain access to `osborn-studio/osstack` and `osborn-studio/osbornhub`. Effective access to `gilosbornhello/osborn-skill-catalog` was `none`. Both the Hub dispatch workflow and the live catalog deployment workflow confirm that this separate personal-account repository drives API publication.
+
+Under the existing owner authorization to enable this colleague's publishing access, issued `permission=push` to that catalog repository. GitHub returned invitation ID `332377945`, `permissions: write`, invitee `maomaobdm`; re-reading invitations confirmed it pending, while effective permission remained `none` until acceptance. No redundant organization/OSStack/Hub grant, shared credential distribution, publication or production installation update was performed. The catalog main branch has no classic protection and the rulesets list was empty; the owner was informed that Write allows main pushes which trigger deployment. No branch policies were changed.
+
+Remaining dependency: the colleague must accept the repository invitation. Then verify their effective access and a colleague-authored test change through the existing CI/API publication path. Do not claim active access or a successful upload from an invitation receipt. See the updated [onboarding acceptance guide](../guides/hub-agent-publishing.md).
 
 The companion reports API version equality; this change does not establish commit/digest-level deployment attestation. A local prerequisite check does not establish tooling trust, branch-policy acceptance, storage readiness or external-agent authorization.

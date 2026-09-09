@@ -61,7 +61,7 @@ osstack hub publish <asset-id> --gate team --surfaces api --json
 
 If `doctor` is unknown, the installed CLI predates this diagnostic. Report its version and check `osstack --help` for `hub publish`; an old command surface is not evidence that the Hub lacks a publishing channel. If root/tooling/catalog is missing, report the specific missing setup. For a new asset, candidate registration only records an external Git source reference; it does not import content into the catalog or publish it.
 
-For maomaobdm or another external agent, obtain its actual runtime host/framework and authenticated principal before onboarding. A display name is not permission. `doctor` reports `publish_permission: unverified` even when configured. Missing booleans are `null`; report partial outcomes using `committed`, `pushed`, `apiVerified` and `delivery`. A nonzero exit is not completed delivery; a pushed but unverified result requires checking CI/API before a retry. Version verification is the companion's report, not independent artifact-digest attestation.
+For an external automated agent, obtain its actual runtime host/framework and authenticated principal before onboarding. A display name is not permission. `doctor` reports `publish_permission: unverified` even when configured. Missing booleans are `null`; report partial outcomes using `committed`, `pushed`, `apiVerified` and `delivery`. A nonzero exit is not completed delivery; a pushed but unverified result requires checking CI/API before a retry. Version verification is the companion's report, not independent artifact-digest attestation.
 
 See [the onboarding and recovery guide](../docs/guides/hub-agent-publishing.md).
 
