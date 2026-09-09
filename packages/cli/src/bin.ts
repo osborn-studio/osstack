@@ -260,10 +260,11 @@ Loop 工程：
   contracts check     检查前端调用与后端 API 契约是否对齐
 
 私有 Hub（可选；Hub 为发布权威，经 OSSTACK_HUB_ROOT 解析）：
+  hub doctor [--json]  检查 OsbornSkillHub 发布链路与 API 读取鉴权（不授予发布权限）
   hub candidate <资产路径> --namespace organization/<id> [--allow-dirty] [--json]
                       只登记外部源引用（不复制源码、不发布）；脏工作区需 --allow-dirty
   hub publish <资产ID> --gate team [--json]
-                      发布 Hub 托管资产；打印逻辑发布身份（release_id+digest+storage_key），绝不打印 dist 路径
+                      经 GitHub Actions 发布到 api.osbornhub.com；只有推送和 API 版本校验均通过才返回成功
   compliance list     列出合规映射包
   knowledge list       列出本地、官方或缓存的 Osstack 知识包
   knowledge login      保存 Knowledge Cloud URL/token 到本地缓存
@@ -555,12 +556,13 @@ Governance:
                                  Validate frontend/backend API contract alignment
 
 Private Hub (optional; Hub is the release authority via OSSTACK_HUB_ROOT):
+  hub doctor [--json]             Diagnose OsbornSkillHub GitOps publishing and API read auth (read-only)
   hub candidate <asset-path> --namespace organization/<id> [--reuse-scope team] [--allow-dirty] [--json]
                                  Register an EXTERNAL source reference (no source copy, no release);
                                  refuses a dirty source unless --allow-dirty
   hub publish <asset-id> --gate team [--surfaces api] [--json]
-                                 Publish a Hub-managed asset; prints logical release identity
-                                 (release_id + digest + storage_key), never a dist path
+                                 Publish via GitHub Actions to api.osbornhub.com; success requires
+                                 push + companion API version verification (--surfaces api only)
   compliance render <run_id> --pack P [--proof-dir P]
                                  Render a compliance evidence mapping report
   knowledge list [--pack P|--official|--cache-dir P] [--json]

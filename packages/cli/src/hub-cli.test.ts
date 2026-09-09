@@ -51,19 +51,19 @@ describe("osstack hub candidate", () => {
 describe("osstack hub publish", () => {
   it("publishes and prints immutable release identity (logical locator, no dist path)", async () => {
     const runNode = vi.fn(async (_script: string, _argv: string[]) => ({
-      stdout: JSON.stringify({ contract: "1.1", status: "published", id: "research.alpha", gate: "team", namespace: "organization/acme", releaseId: "organization__acme/research.alpha@0.1.0", digest: DIGEST, storage_key: "organization__acme/research.alpha/0.1.0" }),
+      stdout: JSON.stringify({ contract: "1.1", status: "published", pushed: true, apiVerified: true, id: "research.alpha", gate: "team", namespace: "organization/acme", releaseId: "organization__acme/research.alpha@0.1.0", digest: DIGEST, storage_key: "organization__acme/research.alpha/0.1.0" }),
       stderr: "", exitCode: 0,
     }));
     const result = await handleHubCommand(["publish", "research.alpha", "--gate", "team", "--surfaces", "api", "--json"], deps({ runNode }));
     expect(result.exitCode).toBe(0);
-    expect(JSON.parse(result.stdout)).toMatchObject({ status: "published", namespace: "organization/acme", release_id: "organization__acme/research.alpha@0.1.0", digest: DIGEST, storage_key: "organization__acme/research.alpha/0.1.0" });
+    expect(JSON.parse(result.stdout)).toMatchObject({ status: "published", pushed: true, apiVerified: true, namespace: "organization/acme", release_id: "organization__acme/research.alpha@0.1.0", digest: DIGEST, storage_key: "organization__acme/research.alpha/0.1.0" });
     const [script, argv] = runNode.mock.calls[0]!;
     expect(String(script)).toContain("osstack_publish.mjs");
-    expect(argv).toEqual(["research.alpha", "--gate", "team", "--surfaces", "api", "--json"]);
+    expect(argv).toEqual(["research.alpha", "--gate", "team", "--json"]);
   });
 
   it("NEVER surfaces a dist/packages path as storage_key", async () => {
-    const runNode = vi.fn(async () => ({ stdout: JSON.stringify({ status: "published", id: "a", gate: "team", packagePath: "dist/packages/organization__acme/a/0.1.0", releaseId: "r", digest: DIGEST }), stderr: "", exitCode: 0 }));
+    const runNode = vi.fn(async () => ({ stdout: JSON.stringify({ status: "published", pushed: true, apiVerified: true, id: "a", gate: "team", packagePath: "dist/packages/organization__acme/a/0.1.0", releaseId: "r", digest: DIGEST }), stderr: "", exitCode: 0 }));
     const r = await handleHubCommand(["publish", "a", "--json"], deps({ runNode }));
     expect(JSON.parse(r.stdout).storage_key).toBeUndefined();
   });
@@ -111,7 +111,7 @@ describe("osstack hub option-injection + exit mapping + leak safety", () => {
   });
 
   it("sanitizes a Hub-controlled id that is an absolute/dist path (+ redacts reasons)", async () => {
-    const runNode = vi.fn(async () => ({ stdout: JSON.stringify({ status: "published", id: "/tmp/dist/packages/secret", gate: "team", releaseId: "organization__acme/research.alpha@0.1.0", digest: DIGEST, reasons: ["see /Volumes/AIMATE_WORK/osborn-hub-store/v1/client-secret"] }), stderr: "", exitCode: 0 }));
+    const runNode = vi.fn(async () => ({ stdout: JSON.stringify({ status: "published", pushed: true, apiVerified: true, id: "/tmp/dist/packages/secret", gate: "team", releaseId: "organization__acme/research.alpha@0.1.0", digest: DIGEST, reasons: ["see /Volumes/AIMATE_WORK/osborn-hub-store/v1/client-secret"] }), stderr: "", exitCode: 0 }));
     const r = await handleHubCommand(["publish", "research.alpha", "--json"], deps({ runNode }));
     const out = JSON.parse(r.stdout);
     expect(out.id).toBe("research.alpha"); // fell back to the caller's SAFE assetId
@@ -150,5 +150,70 @@ describe("osstack hub errors", () => {
     const r = await handleHubCommand(["frobnicate", "--json"], deps());
     expect(r.exitCode).toBe(1);
     expect(JSON.parse(r.stdout)).toMatchObject({ reasons: ["unknown_subcommand"] });
+  });
+});
+
+
+describe("osstack hub delivery evidence", () => {
+  const publishResult = (payload: Record<string, unknown>, exitCode = 0) => deps({
+    runNode: vi.fn(async () => ({ stdout: JSON.stringify({ status: "published", id: "research.alpha", ...payload }), stderr: "", exitCode })),
+  });
+  it.each([
+    [{ committed: true, pushed: false, apiVerified: false }, "local_only"],
+    [{ committed: true, pushed: true, apiVerified: false }, "pushed_unverified"],
+    [{}, "unknown"],
+    [{ pushed: "true", apiVerified: "true" }, "unknown"],
+  ])("fails closed for unverified delivery %j", async (payload, delivery) => {
+    const r = await handleHubCommand(["publish", "research.alpha", "--json"], publishResult(payload as Record<string, unknown>));
+    expect(r.exitCode).toBe(1);
+    expect(JSON.parse(r.stdout)).toMatchObject({ status: "error", delivery, reasons: ["api_delivery_unverified"] });
+    expect(JSON.parse(r.stdout).release_id).toBeUndefined();
+  });
+  it("preserves partial failure evidence without claiming delivery", async () => {
+    const r = await handleHubCommand(["publish", "research.alpha", "--json"], publishResult({ status: "error", committed: true, pushed: false, apiVerified: false, reasons: ["push_failed"] }, 1));
+    expect(r.exitCode).toBe(1);
+    expect(JSON.parse(r.stdout)).toMatchObject({ committed: true, pushed: false, apiVerified: false, reasons: ["push_failed"] });
+  });
+  it("rejects success JSON from a failed child", async () => {
+    const r = await handleHubCommand(["publish", "research.alpha", "--json"], publishResult({ pushed: true, apiVerified: true }, 1));
+    expect(r.exitCode).toBe(1);
+    expect(JSON.parse(r.stdout)).toMatchObject({ status: "error", delivery: "unknown", reasons: ["publisher_exit_failure"] });
+  });
+  it("rejects success for a different asset", async () => {
+    const r = await handleHubCommand(["publish", "research.alpha", "--json"], publishResult({ id: "research.beta", pushed: true, apiVerified: true }));
+    expect(r.exitCode).toBe(1);
+    expect(JSON.parse(r.stdout).reasons).toContain("publisher_id_mismatch");
+  });
+  it.each(["none", "store"])("refuses unsupported surface %s before any child execution", async (surface) => {
+    const d = deps();
+    const r = await handleHubCommand(["publish", "research.alpha", "--surfaces", surface, "--json"], d);
+    expect(r.exitCode).toBe(1);
+    expect(JSON.parse(r.stdout).reasons).toEqual(["unsupported_surface"]);
+    expect(d.runNode).not.toHaveBeenCalled();
+  });
+  it.each(["-x", "../alpha", "/tmp/alpha"])("rejects invalid asset ID %s before execution", async (id) => {
+    const d = deps();
+    expect((await handleHubCommand(["publish", id, "--json"], d)).exitCode).toBe(1);
+    expect(d.runNode).not.toHaveBeenCalled();
+  });
+});
+
+describe("osstack hub doctor routing", () => {
+  it("runs without a Hub root and never starts a publisher or git resolver", async () => {
+    const doctor = vi.fn(async () => ({ status: "needs_configuration", api_read: "missing_key", reasons: ["no_hub_root"] }));
+    const d = deps({ env: {}, doctor });
+    const r = await handleHubCommand(["doctor", "--json"], d);
+    expect(r.exitCode).toBe(1);
+    expect(JSON.parse(r.stdout).reasons).toContain("no_hub_root");
+    expect(doctor).toHaveBeenCalledWith({});
+    expect(d.runNode).not.toHaveBeenCalled();
+    expect(d.resolveSource).not.toHaveBeenCalled();
+  });
+  it("shows the publish route and unverified permission in text mode", async () => {
+    const d = deps({ doctor: vi.fn(async () => ({ status: "configured", api_read: "reachable", reasons: [] })) });
+    const r = await handleHubCommand(["doctor"], d);
+    expect(r.exitCode).toBe(0);
+    expect(r.stdout).toContain("osstack hub publish");
+    expect(r.stdout).toContain("publish permission: unverified");
   });
 });

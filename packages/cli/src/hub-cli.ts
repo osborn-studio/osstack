@@ -34,6 +34,7 @@ export interface ResolvedSource {
 
 export interface HubCliDeps {
   env?: NodeJS.ProcessEnv;
+  doctor?: (env: NodeJS.ProcessEnv) => Promise<Record<string, unknown>>;
   /** Run a Node script with an argument array; returns its stdout + exit code. */
   runNode: (scriptPath: string, argv: string[]) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
   /** Resolve the git source triple (+ dirty flag) for an asset path. */
@@ -90,7 +91,7 @@ function parseFlags(args: string[]): ParsedFlags & { invalid?: string } {
 }
 
 function resolveHubRoot(env: NodeJS.ProcessEnv): string | undefined {
-  return env["OSSTACK_HUB_ROOT"] ?? env["HUB_ROOT"];
+  return env["OSSTACK_HUB_ROOT"]?.trim() || env["HUB_ROOT"]?.trim() || undefined;
 }
 
 function parseNamespace(value: string | undefined): { kind: string; id: string } | undefined {
@@ -114,6 +115,23 @@ export async function handleHubCommand(args: string[], deps: HubCliDeps): Promis
   if (flags.invalid !== undefined) {
     return fail(flags.json, 1, { status: "error", reasons: ["invalid_flag"], message: `invalid or option-injected value for ${flags.invalid}` });
   }
+  if (sub === "doctor") {
+    if (flags.positional.length > 0 || args.slice(1).some((a) => a !== "--json")) {
+      return fail(flags.json, 1, { status: "error", reasons: ["invalid_flag"], message: "usage: osstack hub doctor [--json]" });
+    }
+    const inspect = deps.doctor ?? (await import("./hub-doctor.js")).inspectHub;
+    const report = await inspect(env);
+    return {
+      exitCode: report["status"] === "configured" ? 0 : 1,
+      stdout: flags.json ? JSON.stringify(report) : [
+        `Hub: ${report["status"]}; target: https://api.osbornhub.com`,
+        `API read: ${report["api_read"]}; publish permission: unverified`,
+        "Route: osstack hub publish <asset-id> --gate team --json (catalog Git push → GitHub Actions → API verification)",
+        "Local prerequisites and API health do not grant publish permission. See docs/guides/hub-agent-publishing.md.",
+        `Reasons: ${(report["reasons"] as string[]).join(", ") || "none"}`,
+      ].join("\n"),
+    };
+  }
   const hubRoot = resolveHubRoot(env);
   if (hubRoot === undefined) {
     return fail(flags.json, 1, { status: "error", reasons: ["no_hub_root"], message: "set OSSTACK_HUB_ROOT (or HUB_ROOT)" });
@@ -121,7 +139,7 @@ export async function handleHubCommand(args: string[], deps: HubCliDeps): Promis
 
   if (sub === "candidate") return await runCandidate(hubRoot, flags, deps);
   if (sub === "publish") return await runPublish(hubRoot, flags, deps);
-  return fail(flags.json, 1, { status: "error", reasons: ["unknown_subcommand"], message: "usage: osstack hub <candidate|publish> ..." });
+  return fail(flags.json, 1, { status: "error", reasons: ["unknown_subcommand"], message: "usage: osstack hub <doctor|candidate|publish> ..." });
 }
 
 async function runCandidate(hubRoot: string, flags: ParsedFlags, deps: HubCliDeps): Promise<HubCliResult> {
@@ -186,10 +204,18 @@ async function runPublish(hubRoot: string, flags: ParsedFlags, deps: HubCliDeps)
   if (assetId === undefined) {
     return fail(flags.json, 1, { status: "error", reasons: ["missing_asset_id"] });
   }
+  if (safeAssetId(assetId) === undefined) {
+    return fail(flags.json, 1, { status: "error", reasons: ["invalid_asset_id"] });
+  }
+  // The companion does not implement --surfaces; never silently publish when
+  // the caller requested a local-only or store-only operation.
+  if (flags.surfaces !== "api") {
+    return fail(flags.json, 1, { status: "error", reasons: ["unsupported_surface"], message: "the GitOps publisher supports --surfaces api only" });
+  }
   // Route to the Hub publish command (contract 1.1). Argument array, no shell.
   const script = pathResolve(hubRoot, "tooling", "osstack_publish.mjs");
-  const argv = [assetId, "--gate", flags.gate, "--surfaces", flags.surfaces, "--json"];
-  const { stdout } = await deps.runNode(script, argv);
+  const argv = [assetId, "--gate", flags.gate, "--json"];
+  const { stdout, exitCode } = await deps.runNode(script, argv);
 
   const parsed = safeJson(stdout);
   if (parsed === undefined) {
@@ -198,7 +224,21 @@ async function runPublish(hubRoot: string, flags: ParsedFlags, deps: HubCliDeps)
   // Normalize the Hub-controlled status to the supported contract values — a
   // raw status string could carry a path/secret into JSON + text output.
   const rawStatus = String(parsed["status"] ?? "");
-  const status = rawStatus === "published" ? "published" : rawStatus === "blocked" ? "blocked" : "error";
+  const evidence = {
+    committed: typeof parsed["committed"] === "boolean" ? parsed["committed"] : null,
+    pushed: typeof parsed["pushed"] === "boolean" ? parsed["pushed"] : null,
+    apiVerified: typeof parsed["apiVerified"] === "boolean" ? parsed["apiVerified"] : null,
+  };
+  const reasons = redactReasons(parsed["reasons"]);
+  const idMatches = parsed["id"] === assetId;
+  const verified = evidence.pushed === true && evidence.apiVerified === true;
+  const status = rawStatus === "published" && exitCode === 0 && verified && idMatches
+    ? "published" : rawStatus === "blocked" && exitCode === 2 ? "blocked" : "error";
+  if (rawStatus === "published") {
+    if (exitCode !== 0) reasons.push("publisher_exit_failure");
+    if (!verified) reasons.push("api_delivery_unverified");
+    if (!idMatches) reasons.push("publisher_id_mismatch");
+  }
   // Sanitize the Hub-controlled id AND the caller's assetId (either could be a
   // path); reasons are redacted. Never echo an absolute/dist path or a secret.
   const id = safeAssetId(parsed["id"]) ?? safeAssetId(assetId) ?? "redacted";
@@ -206,7 +246,13 @@ async function runPublish(hubRoot: string, flags: ParsedFlags, deps: HubCliDeps)
     status,
     id,
     gate: GATES.has(String(parsed["gate"])) ? parsed["gate"] : flags.gate,
-    reasons: redactReasons(parsed["reasons"]),
+    reasons,
+    ...evidence,
+    evidence_source: "hub_companion",
+    verification_scope: "companion_api_version_check",
+    delivery: !idMatches || exitCode !== 0 ? "unknown" : evidence.pushed === true
+      ? (evidence.apiVerified === true ? "api_verified" : "pushed_unverified")
+      : evidence.pushed === false ? "local_only" : "unknown",
   };
   if (status === "published") {
     // Release identity ONLY on success; identity is logical (never a dist/
@@ -221,7 +267,7 @@ async function runPublish(hubRoot: string, flags: ParsedFlags, deps: HubCliDeps)
     if (storageKey !== undefined) out["storage_key"] = storageKey;
   }
   const code = status === "published" ? 0 : status === "blocked" ? 2 : 1;
-  return { exitCode: code, stdout: flags.json ? JSON.stringify(out) : `${status} ${out["id"]} ${out["release_id"] ?? ""}`.trim() };
+  return { exitCode: code, stdout: flags.json ? JSON.stringify(out) : `${status} ${out["id"]} ${out["release_id"] ?? ""} (delivery: ${out["delivery"]}; reasons: ${reasons.join(", ") || "none"})`.trim() };
 }
 
 const RELEASE_ID_RE = /^[a-z0-9][a-z0-9-]*__[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9._-]*@[0-9][0-9A-Za-z.-]*$/;
@@ -239,7 +285,7 @@ function safeStorageKey(value: unknown): string | undefined {
 function safeReleaseId(value: unknown): string | undefined {
   return typeof value === "string" && RELEASE_ID_RE.test(value) ? value : undefined;
 }
-const ASSET_ID_RE = /^[a-z0-9][a-z0-9._-]+$/;
+const ASSET_ID_RE = /^[a-z0-9][a-z0-9._-]*$/;
 // The Hub companion emits deterministic ids of the form candidate_<16 hex>.
 const CANDIDATE_ID_RE = /^candidate_[a-f0-9]{16}$/;
 function safeAssetId(value: unknown): string | undefined {
