@@ -8,6 +8,7 @@ import { CURRENT_SCHEMA_VERSION, MIGRATIONS } from "./migrations.js";
 import { improvementProposalDigest, listImprovementProposals, upsertImprovementProposal } from "./improvement-proposals.js";
 import { ImprovementExecutionRepository } from "./improvement-executions.js";
 
+const owner = { worker_id: "fixture-worker", generation: 1 };
 let tmp: string;
 const databases: Database.Database[] = [];
 beforeEach(() => { tmp = mkdtempSync(join(tmpdir(), "osstack-improvement-executions-")); });
@@ -40,7 +41,7 @@ function fixture(version?: number) {
   return { path, db, repo: new ImprovementExecutionRepository(db, path) };
 }
 function claim(f: ReturnType<typeof fixture>, id = "execution_1") {
-  return f.repo.claim({ execution_id: id, proposal_id: "proposal_1", request: request(), now: 5 });
+  return f.repo.claim({ execution_id: id, proposal_id: "proposal_1", request: request(), worker_id: owner.worker_id, now: 5 });
 }
 
 describe("ImprovementExecutionRepository", () => {
@@ -93,7 +94,7 @@ describe("ImprovementExecutionRepository", () => {
     const other = new ImprovementExecutionRepository(otherDb, f.path);
     claim(f);
     expect(() => other.claim({ execution_id: "execution_2", proposal_id: "proposal_1", request: request(), now: 6 })).toThrow(/active/i);
-    f.repo.recordWorktree("execution_1", descriptor(), 7);
+    f.repo.recordWorktree("execution_1", descriptor(), 7, owner);
     expect(() => other.claim({ execution_id: "execution_2", proposal_id: "proposal_1", request: request(), now: 8 })).toThrow(/active/i);
     expect(other.list({ state: "running" })).toHaveLength(1);
   });
@@ -116,10 +117,10 @@ describe("ImprovementExecutionRepository", () => {
   it("records the worktree once and keeps its immutable descriptor after reopening", () => {
     const f = fixture();
     claim(f);
-    const running = f.repo.recordWorktree("execution_1", descriptor(), 6);
+    const running = f.repo.recordWorktree("execution_1", descriptor(), 6, owner);
     expect(running).toMatchObject({ state: "running", worktree: descriptor(), updated_at: 6 });
-    expect(f.repo.recordWorktree("execution_1", descriptor(), 7)).toEqual(running);
-    expect(() => f.repo.recordWorktree("execution_1", { ...descriptor(), worktreePath: "/other" }, 7)).toThrow(/conflict/i);
+    expect(f.repo.recordWorktree("execution_1", descriptor(), 7, owner)).toEqual(running);
+    expect(() => f.repo.recordWorktree("execution_1", { ...descriptor(), worktreePath: "/other" }, 7, owner)).toThrow(/conflict/i);
     f.db.close();
     const reopened = openDb({ path: f.path });
     databases.push(reopened);
@@ -132,14 +133,14 @@ describe("ImprovementExecutionRepository", () => {
     const f = fixture();
     const original = listImprovementProposals(f.db);
     claim(f);
-    f.repo.recordWorktree("execution_1", descriptor(), 6);
+    f.repo.recordWorktree("execution_1", descriptor(), 6, owner);
     const result = { manifest_path: "/evidence/run_1/manifest.json", manifest_sha256: "c".repeat(64), changed_paths: ["tests/case.ts"] };
-    const terminal = f.repo.complete("execution_1", state, result, 7);
+    const terminal = f.repo.complete("execution_1", state, result, 7, owner);
     expect(terminal).toMatchObject({ state, result, updated_at: 7 });
-    expect(f.repo.complete("execution_1", state, result, 8)).toEqual(terminal);
-    expect(() => f.repo.complete("execution_1", state, { ...result, changed_paths: [] }, 8)).toThrow(/terminal.*conflict/i);
-    expect(() => f.repo.complete("execution_1", state === "candidate_verified" ? "candidate_failed" : "candidate_verified", result, 8)).toThrow(/terminal.*conflict/i);
-    expect(() => f.repo.recordWorktree("execution_1", descriptor(), 8)).toThrow(/terminal|state/i);
+    expect(f.repo.complete("execution_1", state, result, 8, owner)).toEqual(terminal);
+    expect(() => f.repo.complete("execution_1", state, { ...result, changed_paths: [] }, 8, owner)).toThrow(/terminal.*conflict/i);
+    expect(() => f.repo.complete("execution_1", state === "candidate_verified" ? "candidate_failed" : "candidate_verified", result, 8, owner)).toThrow(/terminal.*conflict/i);
+    expect(() => f.repo.recordWorktree("execution_1", descriptor(), 8, owner)).toThrow(/terminal|state/i);
     expect(claim(f)).toEqual({ outcome: "replay", execution: terminal });
     expect(listImprovementProposals(f.db)).toEqual(original);
     expect(claim(f, "execution_2").outcome).toBe("claimed");
@@ -148,8 +149,8 @@ describe("ImprovementExecutionRepository", () => {
   it("can record a failure before worktree creation but cannot verify without an implementation workspace", () => {
     const f = fixture();
     claim(f);
-    expect(() => f.repo.complete("execution_1", "candidate_verified", {}, 6)).toThrow(/running|worktree/i);
-    expect(f.repo.complete("execution_1", "candidate_failed", { reason: "worktree_failed" }, 6)).toMatchObject({ state: "candidate_failed" });
+    expect(() => f.repo.complete("execution_1", "candidate_verified", {}, 6, owner)).toThrow(/running|worktree/i);
+    expect(f.repo.complete("execution_1", "candidate_failed", { reason: "worktree_failed" }, 6, owner)).toMatchObject({ state: "candidate_failed" });
   });
 
   it("does not reset old execution history when its proposal is later rejected", () => {
@@ -179,5 +180,120 @@ describe("ImprovementExecutionRepository", () => {
     expect(() => f.repo.claim({ execution_id: "execution_1", proposal_id: "proposal_1", request: {
       ...request(), profile: { nested: { instruction: "different" } },
     }, now: 6 })).toThrow(/conflict/);
+  });
+});
+
+
+describe("improvement execution worker and stop contract", () => {
+  const worker = { worker_id: "worker-instance-1", generation: 1 };
+  function owned(f: ReturnType<typeof fixture>) {
+    return f.repo.claim({ execution_id: "execution_1", proposal_id: "proposal_1", request: request(), worker_id: worker.worker_id, now: 5 });
+  }
+
+  it("assigns an owner even to a legacy-shaped new claim", () => {
+    const f = fixture();
+    const result = f.repo.claim({ execution_id: "execution_1", proposal_id: "proposal_1", request: request(), now: 5 });
+    expect(result.execution.worker?.worker_id).toBeTruthy();
+    expect(() => f.repo.complete("execution_1", "candidate_failed", {}, 6)).toThrow(/worker/i);
+    expect(f.repo.complete("execution_1", "candidate_failed", {}, 6, result.execution.worker).state).toBe("candidate_failed");
+  });
+
+  it("requires the bound worker on all writes, including legacy method calls", () => {
+    const f = fixture();
+    expect(owned(f).execution.worker).toEqual(worker);
+    expect(() => f.repo.recordWorktree("execution_1", descriptor(), 6)).toThrow(/worker/i);
+    expect(() => f.repo.complete("execution_1", "candidate_failed", {}, 6)).toThrow(/worker/i);
+    for (const invalid of [{ ...worker, worker_id: "other" }, { ...worker, generation: 2 }]) {
+      expect(() => f.repo.recordWorktree("execution_1", descriptor(), 6, invalid)).toThrow(/worker/i);
+      expect(() => f.repo.complete("execution_1", "candidate_failed", {}, 6, invalid)).toThrow(/worker/i);
+    }
+    f.repo.recordWorktree("execution_1", descriptor(), 6, worker);
+    expect(f.repo.complete("execution_1", "candidate_verified", {}, 7, worker).state).toBe("candidate_verified");
+  });
+
+  it("persists stop across reopen, fences late results, and keeps the active slot", () => {
+    const f = fixture();
+    owned(f);
+    f.repo.recordWorktree("execution_1", descriptor(), 6, worker);
+    const stopDb = openDb({ path: f.path }); databases.push(stopDb);
+    const stopped = new ImprovementExecutionRepository(stopDb, f.path).requestStop("execution_1", "operator paused trial", 7);
+    expect(stopped).toMatchObject({ state: "running", worker: { ...worker, generation: 2 }, stop: { reason: "operator paused trial", requested_at: 7 } });
+    expect(stopped.result).toBeUndefined();
+    expect(f.repo.requestStop("execution_1", "duplicate request", 8)).toEqual(stopped);
+    f.db.close();
+    const db = openDb({ path: f.path }); databases.push(db);
+    const repo = new ImprovementExecutionRepository(db, f.path);
+    expect(repo.get("execution_1")).toEqual(stopped);
+    expect(() => repo.assertWorker("execution_1", worker)).toThrow(/stop/i);
+    for (const state of ["candidate_verified", "candidate_failed"] as const) {
+      expect(() => repo.complete("execution_1", state, {}, 9, worker)).toThrow(/stop/i);
+    }
+    expect(() => repo.recordWorktree("execution_1", descriptor(), 9, worker)).toThrow(/stop/i);
+    expect(() => repo.claim({ execution_id: "execution_2", proposal_id: "proposal_1", request: request(), worker_id: "new-worker", now: 100000 })).toThrow(/active/i);
+    expect(repo.get("execution_1")).toEqual(stopped);
+  });
+
+  it("stop wins before worktree registration and cannot be bypassed by an unowned legacy call", () => {
+    const f = fixture(); claim(f);
+    f.db.prepare("UPDATE improvement_executions SET worker_id = NULL").run();
+    f.repo.requestStop("execution_1", "stop legacy worker", 6);
+    expect(() => f.repo.recordWorktree("execution_1", descriptor(), 7)).toThrow(/stop/i);
+    expect(() => f.repo.complete("execution_1", "candidate_failed", {}, 7)).toThrow(/stop/i);
+    expect(() => f.db.prepare("UPDATE improvement_executions SET state = 'candidate_failed', result_json = '{}' WHERE execution_id = 'execution_1'").run()).toThrow(/stop/i);
+    expect(f.repo.get("execution_1")?.state).toBe("claimed");
+  });
+
+  it("keeps a terminal result if completion wins the race", () => {
+    const f = fixture(); owned(f);
+    const completed = f.repo.complete("execution_1", "candidate_failed", { reason: "setup failed" }, 6, worker);
+    const stopDb = openDb({ path: f.path }); databases.push(stopDb);
+    expect(new ImprovementExecutionRepository(stopDb, f.path).requestStop("execution_1", "too late", 7)).toEqual(completed);
+    expect(f.repo.complete("execution_1", "candidate_failed", { reason: "setup failed" }, 8, worker)).toEqual(completed);
+  });
+
+  it("upgrades schema 25 with active and terminal legacy executions intact", () => {
+    const f = fixture(25);
+    const legacy = { ...request() };
+    for (const [id, state] of [["old-active", "claimed"], ["old-failed", "candidate_failed"]]) {
+      f.db.prepare(`INSERT INTO improvement_executions
+        (execution_id,proposal_id,request_json,request_sha256,state,result_json,created_at,updated_at)
+        VALUES (?, 'proposal_1', ?, ?, ?, ?, 5, 6)`).run(id, JSON.stringify(legacy), "a".repeat(64), state, state === "claimed" ? null : "{}");
+    }
+    const before = f.db.prepare("SELECT execution_id, state, request_json, result_json FROM improvement_executions ORDER BY execution_id").all();
+    f.db.close();
+    const db = openDb({ path: f.path }); databases.push(db);
+    expect(db.prepare("SELECT execution_id, state, request_json, result_json FROM improvement_executions ORDER BY execution_id").all()).toEqual(before);
+    expect(db.pragma("integrity_check", { simple: true })).toBe("ok");
+    const repo = new ImprovementExecutionRepository(db, f.path);
+    expect(repo.get("old-active")?.worker).toBeUndefined();
+    expect(repo.complete("old-active", "candidate_failed", { reason: "legacy setup failure" }, 7).state).toBe("candidate_failed");
+  });
+});
+
+
+describe("improvement execution baseline", () => {
+  it("includes every attempt beyond the list limit and keeps stop as an overlapping label", () => {
+    const f = fixture();
+    for (let i = 0; i < 103; i++) {
+      const id = `failed_${i}`;
+      claim(f, id);
+      f.repo.complete(id, "candidate_failed", { reason: "invalid candidate" }, 7, owner);
+    }
+    claim(f, "verified");
+    f.repo.recordWorktree("verified", descriptor(), 6, owner);
+    f.repo.complete("verified", "candidate_verified", {}, 7, owner);
+    claim(f, "pending");
+    f.repo.requestStop("pending", "inspect worker", 8);
+    expect(f.repo.list()).toHaveLength(100);
+    const snapshot = f.repo.baseline({ now: 9 });
+    expect(snapshot.counts).toEqual({ total: 105, claimed: 1, running: 0, candidate_verified: 1, candidate_failed: 103 });
+    expect(snapshot.stop_requests).toEqual({ operator: 1, system_indeterminate: 0 });
+    expect(snapshot.records).toHaveLength(105);
+    expect(new Set(snapshot.records.map((row) => row.execution_id)).size).toBe(105);
+    expect(snapshot).toMatchObject({ endpoint: "candidate_verification", cost_usd: null, cost_status: "not_collected", delivery_effectiveness: "not_measured" });
+    expect(snapshot.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(f.repo.baseline({ now: 9 })).toEqual(snapshot);
+    expect(f.repo.baseline({ now: 10 }).records).toEqual(snapshot.records);
+    expect(f.repo.baseline({ now: 9, proposal_id: "absent" }).counts.total).toBe(0);
   });
 });

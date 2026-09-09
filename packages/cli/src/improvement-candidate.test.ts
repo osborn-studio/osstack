@@ -97,12 +97,16 @@ describe("approved improvement candidate execution", () => {
     if (mode === "silent_builder") adapters = [{ ...f.adapters[0]!, async *invoke() { /* no terminal event */ } }, adapter("reviewer")];
     const prepared = await prepareImprovementCandidate(f.input);
     const result = await executeImprovementCandidate(prepared, f.repository, adapters);
-    expect(result.execution.state).toBe("candidate_failed");
-    expect(result.execution.result).toMatchObject({ applied: false, error: expect.any(String) });
+    const uncertain = mode === "gate" || mode === "silent_builder";
+    expect(result.execution.state).toBe(uncertain ? "running" : "candidate_failed");
+    if (uncertain) {
+      expect(result.execution.stop?.reason).toMatch(/uncertain/i);
+      expect(result.execution.result).toBeUndefined();
+    } else expect(result.execution.result).toMatchObject({ applied: false, error: expect.any(String) });
     expect(result.execution.worktree).toBeDefined();
     expect(await readFile(join(f.repoPath, "docs/guide.md"), "utf8")).toBe("original\n");
     expect(listImprovementProposals(f.db)[0]?.status).toBe("approved");
-    await expect(executeImprovementCandidate(prepared, f.repository, adapters)).resolves.toMatchObject({ replay: true, execution: { state: "candidate_failed" } });
+    await expect(executeImprovementCandidate(prepared, f.repository, adapters)).resolves.toMatchObject({ replay: true, execution: { state: uncertain ? "running" : "candidate_failed" } });
   }, 15_000);
 
   it("reports an unfinished claim without guessing whether its worker died", async () => {
@@ -111,6 +115,27 @@ describe("approved improvement candidate execution", () => {
     f.repository.claim({ execution_id: f.input.executionId, proposal_id: f.input.proposal.proposal_id, request: prepared.request, now: Date.now() / 1000 });
     expect(await executeImprovementCandidate(prepared, f.repository, f.adapters)).toMatchObject({ replay: true, execution: { state: "claimed" } });
     expect(f.builderCount()).toBe(0);
+  });
+
+  it.each(["builder", "reviewer"])("retains a stop requested during %s without publishing a terminal result", async (stage) => {
+    const f = await fixture();
+    let reviews = 0;
+    const adapters = [
+      adapter("builder", async (task) => {
+        await writeFile(join(String(task.context?.["repo_path"]), "docs/guide.md"), "improved\n");
+        if (stage === "builder") f.repository.requestStop(f.input.executionId, "operator stop", Date.now() / 1000);
+      }),
+      adapter("reviewer", async () => {
+        reviews++;
+        if (stage === "reviewer") f.repository.requestStop(f.input.executionId, "operator stop", Date.now() / 1000);
+      }),
+    ];
+    const prepared = await prepareImprovementCandidate(f.input);
+    const result = await executeImprovementCandidate(prepared, f.repository, adapters);
+    expect(result.execution).toMatchObject({ state: "running", worker: { generation: 2 }, stop: { reason: "operator stop" } });
+    expect(result.execution.result).toBeUndefined();
+    expect(reviews).toBe(stage === "builder" ? 0 : 1);
+    expect(await executeImprovementCandidate(prepared, f.repository, adapters)).toMatchObject({ replay: true, execution: result.execution });
   });
 
   it("freezes caller data before giving instructions to adapters", async () => {

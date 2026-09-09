@@ -251,3 +251,27 @@ describe("improve execution command", () => {
     await expect(readFile(gateLog)).rejects.toThrow();
   });
 });
+
+
+it("previews a stop, persists it only with --yes, and reports it through status and baseline", async () => {
+  const proposal = withDb((db) => listImprovementProposals(db)[0]!);
+  withDb((db, path) => new ImprovementExecutionRepository(db, path).claim({
+    execution_id: "command-attempt", proposal_id: proposal.proposal_id,
+    request: { proposal_digest: improvementProposalDigest(proposal) }, now: 5,
+  }));
+  const args = ["improve", "stop", "--execution", "command-attempt", "--reason", "pause this trial"];
+  expect(await main(args)).toBe(0);
+  expect(output<{ dry_run: boolean }>().dry_run).toBe(true);
+  expect(executions()[0]?.stop).toBeUndefined();
+  logs.length = 0;
+  expect(await main([...args, "--yes"])).toBe(0);
+  expect(output<{ execution: { stop: { source: string }; state: string } }>().execution).toMatchObject({ state: "claimed", stop: { source: "operator" } });
+  logs.length = 0;
+  expect(await main(["improve", "status", "--execution", "command-attempt"])).toBe(0);
+  expect(output<{ execution: { stop: { reason: string } } }>().execution.stop.reason).toBe("pause this trial");
+  logs.length = 0;
+  expect(await main(["improve", "baseline", "--proposal", proposal.proposal_id])).toBe(0);
+  expect(output<{ counts: { total: number }; cost_usd: null; stop_requests: { operator: number } }>()).toMatchObject({ counts: { total: 1 }, cost_usd: null, stop_requests: { operator: 1 } });
+  expect(builders).toBe(0);
+  expect(reviewers).toBe(0);
+});

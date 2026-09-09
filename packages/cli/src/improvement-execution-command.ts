@@ -17,6 +17,28 @@ export async function handleImprovementExecutionCommand(sub: string, args: strin
   const { db, dbPath } = await openStateDb();
   try {
     const repository = new ImprovementExecutionRepository(db, dbPath);
+    if (sub === "baseline") {
+      const proposalId = flag(args, "--proposal");
+      printJson(repository.baseline({ now: Date.now() / 1000,
+        ...(proposalId === undefined ? {} : { proposal_id: proposalId }),
+      }));
+      return 0;
+    }
+    if (sub === "stop") {
+      const id = flag(args, "--execution");
+      const reason = flag(args, "--reason");
+      if (id === undefined || reason === undefined || reason.trim() === "" || reason.length > 2000 || reason.includes("\0")) {
+        throw new Error("improve stop requires --execution <id> and --reason <1..2000 characters>");
+      }
+      const current = repository.get(id);
+      if (current === undefined) throw new Error(`no execution with id ${id}`);
+      const dryRun = !hasFlag(args, "--yes");
+      const execution = dryRun ? current : repository.requestStop(id, reason, Date.now() / 1000);
+      printJson({ dry_run: dryRun, execution, process_termination_confirmed: false,
+        message: "Stop is cooperative at stage boundaries; it retains active occupancy and does not kill processes or authorize retry.",
+      });
+      return 0;
+    }
     if (sub === "status") {
       const id = flag(args, "--execution");
       if (id === undefined) throw new Error("improve status requires --execution <id>");
