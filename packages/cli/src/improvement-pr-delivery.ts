@@ -77,10 +77,12 @@ async function readArtifact(directory: string, name: string, expectedHash: strin
 }
 
 /** Run only explicitly previewed local verification, without ambient GitHub/env authority. */
-async function verifyRebuilt(command: string, cwd: string, home: string, timeout: number): Promise<void> {
+async function verifyRebuilt(command: string, cwd: string, home: string, timeout: number, environment?: unknown): Promise<void> {
+  const preparedEnv = environment === undefined ? undefined
+    : (await import("./improvement-environment.js")).improvementVerificationEnvironment(home, environment);
   await new Promise<void>((resolve, reject) => {
     execFile("/bin/sh", ["-c", command], { cwd, timeout, maxBuffer: 4 * 1024 * 1024,
-      env: buildAgentChildEnv({ HOME: home, OSSTACK_HOME: home, OSSTACK_AUTOAPPROVE: "0",
+      env: preparedEnv ?? buildAgentChildEnv({ HOME: home, OSSTACK_HOME: home, OSSTACK_AUTOAPPROVE: "0",
         GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_SYSTEM: "/dev/null" }),
     }, (error) => error ? reject(new Error("Clean reconstruction verification failed or was interrupted")) : resolve());
   });
@@ -138,11 +140,17 @@ export async function deliverImprovementPr(
     const commit = Sha.parse((await git(transport, bare, ["-c", "user.name=OSStack", "-c", "user.email=osstack@users.noreply.github.com",
       "commit-tree", tree, "-p", result.base_sha, "-F", messageFile])).toString().trim());
     await git(transport, bare, ["worktree", "add", "--detach", workspace, commit]);
+    if (execution.request.environment !== undefined) {
+      const { ImprovementEnvironment, prepareImprovementEnvironment } = await import("./improvement-environment.js");
+      await prepareImprovementEnvironment({ contract: ImprovementEnvironment.parse(execution.request.environment), workspace, commit,
+        directory: join(directory, "dependency-environment"), timeoutMs: z.number().int().min(1000).max(600000).parse(execution.request.timeout_ms),
+        checkActive: () => ledger.assertActive(id, worker) });
+    }
     const commands = z.array(z.string().min(1)).min(1).parse(execution.request.verify_commands);
     const timeout = z.number().int().min(1000).max(600000).parse(execution.request.timeout_ms);
     for (const command of commands) {
       ledger.assertActive(id, worker);
-      await verifyRebuilt(command, workspace, home, timeout);
+      await verifyRebuilt(command, workspace, home, timeout, execution.request.environment);
     }
     await assertImprovementTreeUnchanged(workspace, commit);
     ledger.prepare(id, worker, { base_sha: result.base_sha, commit_sha: commit, tree_sha: tree, patch_sha256: result.candidate_patch_sha256 }, Date.now() / 1000);
