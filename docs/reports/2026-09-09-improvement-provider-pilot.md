@@ -6,7 +6,7 @@
 
 The command can incur provider charges. It permits one adapter invocation per role, 120 seconds per stage, no automatic retries, and no dollar-cap claim. It requires installed/authenticated `codex` and `kimi`; binary overrides are rejected. The launcher sets a fresh OSSTACK_HOME and the smoke creates its own disposable control DB; it never opens production state. Native CLIs still load their normal account configuration. This is not OS isolation or proof that unrelated account context was excluded.
 
-The live test is skipped by the ordinary suite/CI unless explicitly enabled. Build workspace packages first (`pnpm build`), then run the command. The printed `osstack-provider-live-*` directory retains `pilot.json`, model evidence, patch and control DB for inspection, including failures. Preserve needed evidence before removing that generated directory. The empty launcher home is removed after either success or failure. The failure exit code propagates.
+The live test is skipped by the ordinary suite/CI unless explicitly enabled. Build workspace packages first (`pnpm build`), then run the command. The printed `osstack-provider-live-*` directory retains `pilot.json`, model evidence, patch and control DB for inspection, including failures. Preserve needed evidence before removing that generated directory. The empty launcher home is removed after either success or failure. The failure exit code propagates. The launcher and live fixture clear an inherited `OSSTACK_SOCKET` override while using their isolated home. A resource scope closes the database and restores prior home/socket values even if setup, execution, or evidence persistence throws; combined failures retain the primary error. Artifact directories remain available for diagnosis.
 
 ## What success means
 
@@ -47,3 +47,8 @@ Next slice: explicit Codex model/provider binding with drift detection, followed
 - CLI startup: version median 30 ms; full help 83 ms, below 150/500 ms local budgets.
 
 Claude Fable 5.1 actually challenged the generic design twice. [Prompts, responses and decisions](2026-09-09-provider-pilot-fable-review.md) distinguish model reasoning from measured results. No repository code/configuration was exported to that reviewer.
+
+
+## Pre-approval revision
+
+[Repair and offline failure-injection evidence](2026-09-09-pr223-revision.md) covers resource cleanup, adapter transparency and the real launcher process. These repairs did not initiate more paid provider runs; the two earlier experiments remain historical observations of the earlier smoke definition.

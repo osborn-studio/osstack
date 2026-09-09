@@ -14,6 +14,7 @@ import { executeImprovementCandidate, prepareImprovementCandidate } from "./impr
 import { createImprovementExecutionAdapters } from "./improvement-execution-adapters.js";
 import { deliverImprovementPr, prepareImprovementPrTarget } from "./improvement-pr-delivery.js";
 import { simulatedImprovementGithub } from "./improvement-pr-test-fixture.js";
+import { observePilotAdapter, withPilotState } from "./fixtures/improvement-provider-pilot.js";
 import { resolveLoopProfileRouting } from "./loop-profile-routing.js";
 
 it.skipIf(process.env["OSSTACK_PROVIDER_LIVE_SMOKE"] !== "1")("runs one real Builder and Evaluator through a synthetic candidate-to-PR pipeline", async () => {
@@ -29,10 +30,7 @@ it.skipIf(process.env["OSSTACK_PROVIDER_LIVE_SMOKE"] !== "1")("runs one real Bui
   const git = async (args: string[]) => (await exec("git", ["-c", "core.hooksPath=/dev/null", "-c", "user.name=Pilot", "-c", "user.email=pilot@example.invalid", ...args], { cwd: repo })).stdout.trim();
   await git(["init", "-b", "main"]); await git(["add", "."]); await git(["commit", "-m", "synthetic pilot baseline"]);
   const base = await git(["rev-parse", "HEAD"]);
-  const previousHome = process.env["OSSTACK_HOME"];
-  process.env["OSSTACK_HOME"] = home;
   const dbPath = join(home, "state.db");
-  const db = openDb({ path: dbPath });
   const counts: Record<string, number> = {};
   const observations: Record<string, HermesEvent[]> = {};
   const receipt: Record<string, unknown> = { schema_version: 1, started_at: Date.now() / 1000,
@@ -40,8 +38,8 @@ it.skipIf(process.env["OSSTACK_PROVIDER_LIVE_SMOKE"] !== "1")("runs one real Bui
     limits: { builder_invocations: 1, evaluator_invocations: 1, stage_timeout_ms: 120_000, automatic_retries: 0, cost_usd: null },
     invocations: counts, observations, provider_response_ids: { "codex-cli": null, "kimi-code": null }, kimi_usage: null, actual_provider_models: { "codex-cli": null, "kimi-code": null }, outcome: "started" };
   const save = async () => writeFile(join(root, "pilot.json"), JSON.stringify(receipt, null, 2), { mode: 0o600 });
-  await save();
-  try {
+  await withPilotState(home, () => openDb({ path: dbPath }), async (db) => {
+    await save();
     const routing = await resolveLoopProfileRouting(["--profile", "macbook-pro"], "codex-cli", ["kimi-code"], {
       loadConfig: defaultConfig, adapters: () => createImprovementExecutionAdapters(),
     });
@@ -63,24 +61,18 @@ it.skipIf(process.env["OSSTACK_PROVIDER_LIVE_SMOKE"] !== "1")("runs one real Bui
     const deliveries = new ImprovementPrDeliveryRepository(db, dbPath);
     const adapters = (workspacePath: string, homePath: string): AgentAdapter[] => createImprovementExecutionAdapters({ workspacePath, homePath,
       builderAgentId: routing.agentId, evaluatorAgentId: routing.verifierAgentIds[0]!,
-    }).map((adapter) => ({
-      id: adapter.id, display_name: adapter.display_name, cost_tier: adapter.cost_tier,
-      capabilities: () => adapter.capabilities(), isAvailable: () => adapter.isAvailable(),
-      async *invoke(task, signal) {
-        counts[adapter.id] = (counts[adapter.id] ?? 0) + 1;
-        await save();
-        if (counts[adapter.id]! > 1) throw new Error("Pilot invocation budget exceeded");
-        observations[adapter.id] = [];
-        for await (const event of adapter.invoke(task, signal)) {
-          // Keep transport evidence without copying reasoning/tool contents into the pilot report.
-          if (event.type === "done" || event.type === "usage.final" || event.type === "error"
-            || (event.type === "progress" && "phase" in event.payload && event.payload.phase === "codex.thread.started")) {
-            observations[adapter.id]!.push(event); await save();
-          }
-          if (adapter.id === "kimi-code" && (event.type === "tool.started" || event.type === "tool.done")) throw new Error("Tool-free reviewer emitted tool activity");
-          yield event;
-        }
-      },
+    }).map((adapter) => observePilotAdapter(adapter, async () => {
+      counts[adapter.id] = (counts[adapter.id] ?? 0) + 1;
+      await save();
+      if (counts[adapter.id]! > 1) throw new Error("Pilot invocation budget exceeded");
+      observations[adapter.id] = [];
+    }, async (event) => {
+      // Keep transport evidence without copying reasoning/tool contents into the pilot report.
+      if (event.type === "done" || event.type === "usage.final" || event.type === "error"
+        || (event.type === "progress" && "phase" in event.payload && event.payload.phase === "codex.thread.started")) {
+        observations[adapter.id]!.push(event); await save();
+      }
+      if (adapter.id === "kimi-code" && (event.type === "tool.started" || event.type === "tool.done")) throw new Error("Tool-free reviewer emitted tool activity");
     }));
     const result = await executeImprovementCandidate(prepared, executions, adapters);
     receipt.execution = result.execution; await save();
@@ -109,13 +101,13 @@ it.skipIf(process.env["OSSTACK_PROVIDER_LIVE_SMOKE"] !== "1")("runs one real Bui
     receipt.patch_sha256 = createHash("sha256").update(patch).digest("hex");
     receipt.transport_calls = transportCalls;
     receipt.replay_verified = true; receipt.outcome = "passed";
-  } catch (error) {
-    receipt.outcome = "failed";
-    receipt.error = error instanceof Error ? error.message : String(error);
-    throw error;
-  } finally {
+  }, async (failures) => {
+    const error = failures[0];
+    if (failures.length > 0) {
+      receipt.outcome = "failed";
+      receipt.error = error instanceof Error ? error.message : String(error);
+    }
     receipt.finished_at = Date.now() / 1000;
-    await save(); db.close();
-    if (previousHome === undefined) delete process.env["OSSTACK_HOME"]; else process.env["OSSTACK_HOME"] = previousHome;
-  }
+    await save();
+  });
 }, 360_000);

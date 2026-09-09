@@ -10,9 +10,11 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const home = await mkdtemp(join(tmpdir(), "osstack-provider-launcher-"));
 console.log("Live provider smoke: one Codex Builder and one Kimi Evaluator; provider charges may apply. GitHub is simulated. No automatic retries.");
 try {
+  const env = { ...process.env, OSSTACK_HOME: home, OSSTACK_PROVIDER_LIVE_SMOKE: "1" };
+  delete env.OSSTACK_SOCKET;
   const child = spawn("pnpm", ["--filter", "@osstack/cli", "test", "src/improvement-provider-live.test.ts"], {
     cwd: root, stdio: "inherit",
-    env: { ...process.env, OSSTACK_HOME: home, OSSTACK_PROVIDER_LIVE_SMOKE: "1" },
+    env,
   });
   process.exitCode = await new Promise((accept) => {
     child.on("error", (error) => { console.error(error.message); accept(1); });
