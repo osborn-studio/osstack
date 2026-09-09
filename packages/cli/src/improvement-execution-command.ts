@@ -112,8 +112,11 @@ export async function handleImprovementExecutionCommand(sub: string, args: strin
     }
     const preparation = flag(args, "--prepare-deps");
     if (hasFlag(args, "--prepare-deps") && (preparation !== "pnpm" || sub !== "deliver")) throw new Error("--prepare-deps pnpm is supported only for improve deliver");
+    const buildDeps = flag(args, "--build-deps");
+    if (hasFlag(args, "--build-deps") && (!buildDeps || preparation !== "pnpm" || sub !== "deliver")) throw new Error("--build-deps <name@version,...> requires improve deliver --prepare-deps pnpm");
     const prepared = await prepareImprovementCandidate({
       executionId, expectedDigest, proposal, repoPath: entry.path,
+      ...(buildDeps === undefined ? {} : { buildDeps: buildDeps.split(",") }),
       registryGates: entry.verify_commands, routing,
       timeoutMs: Number(flag(args, "--timeout-ms") ?? "120000"),
       evidenceRoot: join(osstackHome(), "improvement-executions"),

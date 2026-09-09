@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { lstat, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, posix } from "node:path";
 import type { ImprovementExecutionView, ImprovementPrDeliveryView } from "@osstack/core";
@@ -11,13 +11,23 @@ import { assertImprovementTreeUnchanged } from "./improvement-candidate-artifact
 
 const hash = (value: Buffer | string) => createHash("sha256").update(value).digest("hex");
 const managerCache = process.env["COREPACK_HOME"] ?? join(process.env["XDG_CACHE_HOME"] ?? join(homedir(), ".cache"), "node/corepack");
+const BuildSelector = z.string().regex(/^(?:@[a-z0-9_.-]+\/)?[a-z0-9][a-z0-9_.-]*@(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/);
+const DependencyBuilds = z.object({
+  packages: z.array(z.object({ selector: BuildSelector, integrity: z.string() }).strict()).min(1),
+  network: z.literal("unrestricted"), isolation: z.literal("os-user"),
+}).strict();
 const Inputs = z.record(z.string().regex(/^[a-f0-9]{64}$/));
-export const ImprovementEnvironment = z.object({
+const FrozenEnvironment = z.object({
   kind: z.literal("pnpm-frozen-v1"), pnpm_version: z.string().regex(/^11\.(?:[4-9]|[1-9][0-9]+)\.\d+$/),
   corepack_home: z.string(), node_version: z.string(), platform: z.string(), arch: z.string(), inputs: Inputs,
   lifecycle_scripts: z.literal(false), pnpm_hooks: z.literal(false), network: z.literal("public-npm"),
   preparation_runs: z.literal(2),
 }).strict();
+export const ImprovementEnvironment = z.discriminatedUnion("kind", [
+  FrozenEnvironment.extend({ dependency_builds: z.undefined().optional() }),
+  FrozenEnvironment.extend({ kind: z.literal("pnpm-frozen-builds-v1"), dependency_builds: DependencyBuilds,
+    lifecycle_scripts: z.literal("selected-dependencies"), network: z.literal("public-npm-and-build-scripts") }),
+]);
 export type ImprovementEnvironment = z.infer<typeof ImprovementEnvironment>;
 
 function childEnv(home: string): NodeJS.ProcessEnv {
@@ -127,16 +137,38 @@ export function validateDependencyInputs(files: Map<string, Buffer>): { version:
   return { version, inputs: Object.fromEntries([...files].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([path, bytes]) => [path, hash(bytes)])) };
 }
 
-export async function previewImprovementEnvironment(repo: string, baseSha: string): Promise<ImprovementEnvironment> {
+/** Exact registry selectors only; the committed workspace must independently allow each package. */
+export function resolveDependencyBuilds(files: Map<string, Buffer>, selectors: string[]) {
+  if (selectors.length === 0 || new Set(selectors).size !== selectors.length) throw new Error("Build selectors must be nonempty and unique");
+  const settings = z.object({ allowBuilds: z.record(z.boolean()).optional() }).passthrough().parse(parseYaml(files.get("pnpm-workspace.yaml")!.toString()));
+  // Avoid matcher precedence and exclusions changing the meaning of a simple authorization.
+  if (Object.keys(settings.allowBuilds ?? {}).some((key) => !/^(?:@[a-z0-9_.-]+\/)?[a-z0-9][a-z0-9_.-]*$/.test(key))) throw new Error("Dependency builds require simple package-name allowBuilds entries");
+  const lock = z.object({ packages: z.record(z.object({ resolution: z.object({ integrity: z.string() }) }).passthrough()) }).passthrough().parse(parseYaml(files.get("pnpm-lock.yaml")!.toString()));
+  const workspaceNames = new Set([...files].filter(([path]) => path.endsWith("package.json")).map(([, bytes]) => (JSON.parse(bytes.toString()) as { name?: string }).name));
+  const packages = [...selectors].sort().map((value) => {
+    const selector = BuildSelector.parse(value);
+    const name = selector.slice(0, selector.lastIndexOf("@"));
+    if (workspaceNames.has(name)) throw new Error("Workspace packages cannot be dependency build selectors");
+    if (settings.allowBuilds?.[name] !== true) throw new Error(`Dependency build is not allowed by committed workspace: ${selector}`);
+    const locked = lock.packages[selector];
+    if (!locked) throw new Error(`Dependency build selector is absent from lockfile: ${selector}`);
+    return { selector, integrity: locked.resolution.integrity };
+  });
+  return DependencyBuilds.parse({ packages, network: "unrestricted", isolation: "os-user" });
+}
+
+export async function previewImprovementEnvironment(repo: string, baseSha: string, buildSelectors?: string[]): Promise<ImprovementEnvironment> {
   const home = await mkdtemp(join(tmpdir(), "osstack-env-preview-"));
   try {
-    const { version, inputs } = validateDependencyInputs(await inputFiles(repo, baseSha, home));
+    const files = await inputFiles(repo, baseSha, home);
+    const { version, inputs } = validateDependencyInputs(files);
+    const builds = buildSelectors === undefined ? undefined : resolveDependencyBuilds(files, buildSelectors);
     await writeFile(join(home, "package.json"), JSON.stringify({ packageManager: `pnpm@${version}` }));
     const actual = (await command("pnpm", versionArgs, home, home)).toString().trim();
     if (actual !== version) throw new Error(`Installed pnpm version differs from pinned ${version}; automatic download is disabled`);
     return ImprovementEnvironment.parse({ kind: "pnpm-frozen-v1", pnpm_version: version, corepack_home: managerCache, node_version: (await command("node", ["--version"], home, home)).toString().trim(),
       platform: process.platform, arch: process.arch, inputs, lifecycle_scripts: false, pnpm_hooks: false,
-      network: "public-npm", preparation_runs: 2 });
+      network: "public-npm", preparation_runs: 2, ...(builds === undefined ? {} : { kind: "pnpm-frozen-builds-v1", dependency_builds: builds, lifecycle_scripts: "selected-dependencies", network: "public-npm-and-build-scripts" }) });
   } finally { await rm(home, { recursive: true, force: true }); }
 }
 
@@ -154,7 +186,9 @@ export async function prepareImprovementEnvironment(input: {
   await writeFile(join(input.directory, "started.json"), JSON.stringify(start), { flag: "wx", mode: 0o600 });
   let phase = "input_validation";
   try {
-    const current = validateDependencyInputs(await inputFiles(input.workspace, input.commit, home));
+    const files = await inputFiles(input.workspace, input.commit, home);
+    const current = validateDependencyInputs(files);
+    if (contract.dependency_builds !== undefined && JSON.stringify(resolveDependencyBuilds(files, contract.dependency_builds.packages.map((p) => p.selector))) !== JSON.stringify(contract.dependency_builds)) throw new Error("Frozen dependency build policy changed");
     if (Object.keys(current.inputs).length !== Object.keys(contract.inputs).length
       || Object.entries(current.inputs).some(([path, digest]) => contract.inputs[path] !== digest) || current.version !== contract.pnpm_version) throw new Error("Frozen dependency inputs changed");
     phase = "toolchain_check";
@@ -179,6 +213,18 @@ export async function prepareImprovementEnvironment(input: {
     input.checkActive();
     phase = "source_check";
     await assertImprovementTreeUnchanged(input.workspace, input.commit);
+    if (contract.dependency_builds !== undefined) {
+      phase = "dependency_build";
+      input.checkActive();
+      const buildStart = { packages: contract.dependency_builds.packages, started_at: Date.now() / 1000 };
+      await writeFile(join(input.directory, "build-started.json"), JSON.stringify(buildStart), { flag: "wx", mode: 0o600 });
+      await rebuildImprovementDependencies(contract.dependency_builds.packages.map((p) => p.selector), input.workspace, home, join(input.directory, "store"), input.timeoutMs);
+      input.checkActive();
+      await writeFile(join(input.directory, "build-command-completed.json"), JSON.stringify({ ...buildStart, completed_at: Date.now() / 1000,
+        functional_verification: "required-by-registered-gates" }), { flag: "wx", mode: 0o600 });
+      phase = "post_build_source_check";
+    }
+    if (contract.dependency_builds !== undefined) await assertImprovementTreeUnchanged(input.workspace, input.commit);
     await writeFile(join(input.directory, "completed.json"), JSON.stringify({ ...start, completed_at: Date.now() / 1000 }), { flag: "wx", mode: 0o600 });
   } catch (error) {
     // Do not persist raw installer output: URLs or config errors can contain credentials.
@@ -187,6 +233,31 @@ export async function prepareImprovementEnvironment(input: {
     }), { flag: "wx", mode: 0o600 });
     throw error;
   }
+}
+
+/** Explicit nonempty selectors prevent project lifecycle execution. `pm` must be argv[0]. */
+export async function rebuildImprovementDependencies(selectors: string[], workspace: string, home: string, store: string, timeoutMs: number) {
+  z.array(BuildSelector).min(1).parse(selectors);
+  // pnpm can exit 0 for unmatched selectors (including platform-skipped optional packages).
+  // Require an installed instance; command completion still needs functional gates afterward.
+  const virtualStore = join(workspace, "node_modules/.pnpm");
+  const entries = await readdir(virtualStore, { withFileTypes: true });
+  for (const selector of selectors) {
+    const split = selector.lastIndexOf("@");
+    const name = selector.slice(0, split);
+    let found = false;
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      try {
+        const manifest = JSON.parse(await readFile(join(virtualStore, entry.name, "node_modules", name, "package.json"), "utf8")) as { name?: string; version?: string };
+        if (`${manifest.name}@${manifest.version}` === selector) { found = true; break; }
+      } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+    }
+    if (!found) throw new Error(`Dependency build selector has no installed instance: ${selector}`);
+  }
+  await command("pnpm", ["pm", "--pm-on-fail=error", "--recursive", "--include-workspace-root", "rebuild", ...selectors,
+    "--config.ignore-pnpmfile=true", "--config.ignore-scripts=false", "--store-dir", store, "--config.side-effects-cache=false", "--config.enable-global-virtual-store=false",
+    "--config.runtime-on-fail=error", "--reporter=silent"], workspace, home, timeoutMs);
 }
 
 
