@@ -1,7 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import { withWrite } from "./db.js";
-import { improvementProposalDigest, listImprovementProposals } from "./improvement-proposals.js";
+import { ImprovementPrTarget } from "./improvement-pr-deliveries.js";
+import { approveImprovementProposal, improvementProposalDigest, listImprovementProposals } from "./improvement-proposals.js";
 
 export type ImprovementExecutionState = "claimed" | "running" | "candidate_verified" | "candidate_failed";
 export type ImprovementExecutionRequest = Record<string, unknown> & { proposal_digest: string };
@@ -56,7 +57,7 @@ interface ExecutionRow {
 export class ImprovementExecutionRepository {
   constructor(private readonly db: Database.Database, private readonly dbPath: string) {}
 
-  claim(input: { execution_id: string; proposal_id: string; request: ImprovementExecutionRequest; worker_id?: string; now: number }): {
+  claim(input: { execution_id: string; proposal_id: string; request: ImprovementExecutionRequest; worker_id?: string; approve_proposal?: boolean; now: number }): {
     outcome: "claimed" | "replay"; execution: ImprovementExecutionView;
   } {
     checkIdentifier(input.execution_id);
@@ -78,15 +79,28 @@ export class ImprovementExecutionRepository {
         }
         return { outcome: "replay", execution: toView(existing) };
       }
+      const target = request.mode === "local_candidate_to_pr" ? ImprovementPrTarget.parse(request.pr_delivery) : undefined;
+      if (input.approve_proposal) {
+        if (!target) throw new Error("Combined approval requires a bound PR target");
+        const current = listImprovementProposals(d, { proposal_id: input.proposal_id })[0];
+        if (!current || !["draft", "approved"].includes(current.status)) throw new Error("Combined approval supports draft or approved proposals only");
+        approveImprovementProposal(d, this.dbPath, { proposal_id: input.proposal_id, expected_digest: request.proposal_digest, now: input.now });
+      }
       const proposal = listImprovementProposals(d, { proposal_id: input.proposal_id })[0];
       if (proposal?.status !== "approved") throw new Error("Improvement execution requires an approved proposal");
       if (improvementProposalDigest(proposal) !== request.proposal_digest) throw new Error("Improvement proposal digest conflict");
       const active = d.prepare("SELECT execution_id FROM improvement_executions WHERE proposal_id = ? AND state IN ('claimed','running')").get(input.proposal_id);
-      if (active !== undefined) throw new Error(`Improvement proposal already has an active execution: ${input.proposal_id}`);
+      const deliveryActive = d.prepare(`SELECT p.execution_id FROM improvement_pr_deliveries p
+        JOIN improvement_executions e ON e.execution_id = p.execution_id
+        WHERE e.proposal_id = ? AND p.state != 'blocked'`).get(input.proposal_id);
+      if (active !== undefined || deliveryActive !== undefined) throw new Error(`Improvement proposal already has an active execution: ${input.proposal_id}`);
       d.prepare(`INSERT INTO improvement_executions
         (execution_id, proposal_id, request_json, request_sha256, state, created_at, updated_at, worker_id)
         VALUES (?, ?, ?, ?, 'claimed', ?, ?, ?)`)
         .run(input.execution_id, input.proposal_id, requestJson, requestSha, input.now, input.now, input.worker_id ?? randomUUID());
+      if (target !== undefined) d.prepare(`INSERT INTO improvement_pr_deliveries
+        (execution_id, target_json, state, created_at, updated_at) VALUES (?, ?, 'authorized', ?, ?)`)
+        .run(input.execution_id, JSON.stringify(target), input.now, input.now);
       return { outcome: "claimed", execution: toView(this.requireRow(input.execution_id)) };
     });
   }
@@ -152,6 +166,9 @@ export class ImprovementExecutionRepository {
     }
     return withWrite(this.db, this.dbPath, (d) => {
       const existing = this.requireRow(id);
+      d.prepare(`UPDATE improvement_pr_deliveries SET stop_json = COALESCE(stop_json, ?), updated_at = ?
+        WHERE execution_id = ? AND state NOT IN ('delivered','blocked') AND stop_json IS NULL`)
+        .run(canonicalJson({ reason, requested_at: now, source }), now, id);
       if (isTerminal(existing.state) || existing.stop_json !== null) return toView(existing);
       d.prepare(`UPDATE improvement_executions SET stop_json = ?, worker_generation = worker_generation + 1, updated_at = ?
         WHERE execution_id = ?`).run(canonicalJson({ reason, requested_at: now, source }), now, id);

@@ -4,6 +4,12 @@
 
 规划基线：main `32146c40cf179d16a87768fa921d606adf61dbca`。GitHub 已确认 [#217](https://github.com/osborn-studio/osstack/pull/217) 和 [#218](https://github.com/osborn-studio/osstack/pull/218) 均合并。承接[协作者 RFC](2026-09-08-collaborator-and-self-improvement-rfc.md)、[GitHub 身份 RFC](2026-09-08-github-identity-and-cloud-steward-rfc.md)和[候选执行记录](../reports/2026-09-08-improvement-candidate-execution.md)。
 
+## 本轮实施更新：可信本地操作员的前台切片
+
+前置 #219 已合并。本轮新增 `improve deliver`：从 draft 提案预览完整请求，再以一次 `--request-digest ... --yes` 连续构建、评审、验证、重建复验并交付草稿 PR。重复执行仅返回记录；`status --reconcile` 只查询远端。见[实现与使用说明](../reports/2026-09-09-authorize-to-pr.md)和[Fable 两轮挑战](../reports/2026-09-09-authorize-to-pr-fable-review.md)。
+
+这是显式本地操作员模式的产品纵切，覆盖 P3/P5a 的接口与正常流程；不标记 M1/M2 或检查点 A 已完成。P2 的依赖环境与 OS 权限隔离、P4 的签名代码委托，以及真实提供方/GitHub 试点仍未完成。本轮不接入后台代码委托，不将该模式作为满足 P2 的证据。原依赖关系继续约束后台自治版本。
+
 ## 1. 下一阶段的产品结果
 
 第一目标：用户一次定义任务、允许修改的范围、预算和交付终点，OSStack 完成构建、验证、有限返工及 PR 交付；正常阶段推进不再索要 `go`。碰到真实授权缺口或无法核实的执行结果时，说明具体原因并保留进度。

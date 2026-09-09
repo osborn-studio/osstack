@@ -46,7 +46,9 @@ export interface LocalVerifierOptions {
   timeoutMs?: number;
   outputLimit?: number;
   /** Explicit per-run overrides; never mutate the host process environment. */
-  commandEnv?: Record<string, string>;
+  commandEnv?: NodeJS.ProcessEnv;
+  /** False replaces the ambient environment; default preserves existing callers. */
+  inheritCommandEnv?: boolean;
   reviewBoundary?: Partial<ReviewBoundaryPolicy>;
   /** Captured patch and complete paths to review, still subject to the boundary policy. */
   reviewCandidate?: ReviewCandidateInput;
@@ -204,6 +206,7 @@ async function runSpecCommand(spec: EvaluationSpec, options: LocalVerifierOption
     timeoutMs: options.timeoutMs ?? 120_000,
     outputLimit: options.outputLimit ?? 16_000,
     ...(options.commandEnv !== undefined ? { env: options.commandEnv } : {}),
+    ...(options.inheritCommandEnv === undefined ? {} : { inheritEnv: options.inheritCommandEnv }),
   });
 }
 

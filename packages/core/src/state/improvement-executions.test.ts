@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { openDb } from "./db.js";
 import { CURRENT_SCHEMA_VERSION, MIGRATIONS } from "./migrations.js";
 import { improvementProposalDigest, listImprovementProposals, upsertImprovementProposal } from "./improvement-proposals.js";
+import { ImprovementPrDeliveryRepository } from "./improvement-pr-deliveries.js";
 import { ImprovementExecutionRepository } from "./improvement-executions.js";
 
 const owner = { worker_id: "fixture-worker", generation: 1 };
@@ -296,4 +297,66 @@ describe("improvement execution baseline", () => {
     expect(f.repo.baseline({ now: 10 }).records).toEqual(snapshot.records);
     expect(f.repo.baseline({ now: 9, proposal_id: "absent" }).counts.total).toBe(0);
   });
+});
+
+
+describe("one-confirmation PR authorization", () => {
+  const target = { repository_id: 123, repository: "studio/project", base: "main", branch: `codex/improve-pr-${"a".repeat(24)}`, title: "Improve guide", draft: true };
+  const prRequest = () => ({ ...request(), mode: "local_candidate_to_pr", pr_delivery: target });
+  const authorize = (f: ReturnType<typeof fixture>) => f.repo.claim({ execution_id: "execution_1", proposal_id: "proposal_1", request: prRequest(), approve_proposal: true, worker_id: owner.worker_id, now: 5 });
+
+  it("atomically approves a draft, claims execution, and binds the delivery target", () => {
+    const f = fixture();
+    f.db.prepare("UPDATE improvement_proposals SET status = 'draft'").run();
+    const delivery = new ImprovementPrDeliveryRepository(f.db, f.path);
+    expect(() => f.db.transaction(() => { authorize(f); throw new Error("rollback"); })()).toThrow("rollback");
+    expect(listImprovementProposals(f.db)[0]?.status).toBe("draft");
+    expect(f.repo.list()).toEqual([]);
+    expect(delivery.get("execution_1")).toBeUndefined();
+    authorize(f);
+    expect(listImprovementProposals(f.db)[0]?.status).toBe("approved");
+    expect(delivery.get("execution_1")).toMatchObject({ state: "authorized", target });
+    expect(authorize(f).outcome).toBe("replay");
+    expect(() => f.repo.claim({ execution_id: "execution_1", proposal_id: "proposal_1", request: { ...prRequest(), pr_delivery: { ...target, repository_id: 456 } }, approve_proposal: true, now: 6 })).toThrow(/conflict/);
+  });
+
+  it.each(["blocked", "needs_human", "rejected", "applied"])("does not auto-approve %s proposals", (status) => {
+    const f = fixture(); f.db.prepare("UPDATE improvement_proposals SET status = ?").run(status);
+    expect(() => authorize(f)).toThrow(/draft|approved/);
+    expect(f.repo.list()).toEqual([]);
+  });
+
+  it("allows only one delivery owner and retains dispatched uncertainty after stop", () => {
+    const f = fixture(); authorize(f);
+    const delivery = new ImprovementPrDeliveryRepository(f.db, f.path);
+    expect(() => delivery.begin("execution_1", owner, 6)).toThrow(/verified/);
+    f.repo.recordWorktree("execution_1", descriptor(), 6, owner);
+    f.repo.complete("execution_1", "candidate_verified", {}, 7, owner);
+    expect(delivery.begin("execution_1", owner, 8)).toBe(true);
+    expect(delivery.begin("execution_1", owner, 8)).toBe(false);
+    delivery.prepare("execution_1", owner, { base_sha: "a".repeat(40), commit_sha: "b".repeat(40), tree_sha: "c".repeat(40), patch_sha256: "d".repeat(64) }, 9);
+    delivery.dispatch("execution_1", owner, "push", 10);
+    f.repo.requestStop("execution_1", "stop before PR", 11);
+    expect(delivery.get("execution_1")).toMatchObject({ state: "push_dispatched", stop: { reason: "stop before PR" } });
+    delivery.observePush("execution_1", "b".repeat(40), 12);
+    expect(() => delivery.dispatch("execution_1", owner, "pr", 13)).toThrow(/stop/);
+    expect(delivery.get("execution_1")?.state).toBe("pushed");
+    expect(() => claim(f, "execution_2")).toThrow(/active/);
+  });
+});
+
+
+it("upgrades schema 26 while preserving an owned stopped attempt", () => {
+  const f = fixture(26);
+  f.db.prepare(`INSERT INTO improvement_executions
+    (execution_id, proposal_id, request_json, request_sha256, state, worker_id, worker_generation, stop_json, created_at, updated_at)
+    VALUES ('old', 'proposal_1', '{}', ?, 'claimed', 'old-worker', 1, ?, 1, 2)`)
+    .run("a".repeat(64), JSON.stringify({ reason: "stopped", source: "operator", requested_at: 2 }));
+  const before = f.db.prepare("SELECT * FROM improvement_executions").all();
+  f.db.close();
+  const upgraded = openDb({ path: f.path });
+  databases.push(upgraded);
+  expect(upgraded.prepare("SELECT * FROM improvement_executions").all()).toEqual(before);
+  expect(upgraded.prepare("SELECT * FROM improvement_pr_deliveries").all()).toEqual([]);
+  expect(upgraded.pragma("integrity_check", { simple: true })).toBe("ok");
 });

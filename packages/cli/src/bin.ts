@@ -295,6 +295,7 @@ Loop 工程：
   improve status      查看候选执行状态与证据
   improve stop        请求候选执行停止（保留占用，不承诺杀进程）
   improve baseline    导出全部候选执行的观察基线
+  improve deliver     一次确认后构建、验证并交付草稿 PR
   evaluator list      列出评估器版本与当前冻结 epoch
   evaluator challenge 用锚点用例评分挑战者评估器（仅建议）
   evaluator promote   在 epoch 边界晋升挑战者（默认 dry-run，需 --yes）

@@ -16,6 +16,8 @@ import type { HermesEvent } from "@osstack/hermes-adapter";
 import { addRepoRegistryEntry } from "@osstack/supervisor";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { main } from "./bin.js";
+import { improvementPrTransport } from "./improvement-pr-delivery.js";
+import { simulatedImprovementGithub } from "./improvement-pr-test-fixture.js";
 import type { ImprovementExecutionAdapterOptions } from "./improvement-execution-adapters.js";
 import type { LoopProfileRoutingResult } from "./loop-profile-routing.js";
 
@@ -275,3 +277,44 @@ it("previews a stop, persists it only with --yes, and reports it through status 
   expect(builders).toBe(0);
   expect(reviewers).toBe(0);
 });
+
+
+it("delivers from a draft proposal with one confirmation and replays without another side effect", async () => {
+  vi.stubEnv("OSSTACK_TEST_AMBIENT_SECRET", "must-not-reach-verification");
+  const environmentGate = `node -e "if(process.env.OSSTACK_TEST_AMBIENT_SECRET) process.exit(1)"`;
+  await register([registryGate, environmentGate]);
+  const github = await simulatedImprovementGithub(root, repoPath);
+  vi.spyOn(improvementPrTransport, "run").mockImplementation(github.transport.run);
+  withDb((db) => db.prepare("UPDATE improvement_proposals SET status = 'draft'").run());
+  const args = executeArgs().map((arg) => arg === "execute" ? "deliver" : arg);
+  expect(await main(args)).toBe(0);
+  const inspected = output<{ request_digest: string; request: { mode: string } }>();
+  expect(inspected.request.mode).toBe("local_candidate_to_pr");
+  expect(withDb((db) => listImprovementProposals(db))[0]?.status).toBe("draft");
+  expect(executions()).toEqual([]);
+  expect(github.writes).toEqual([]);
+
+  // A changed profile invalidates the preview without approving or starting it.
+  routing.summary.builder_identity.model_id = "changed";
+  logs.length = 0;
+  expect(await main([...args, "--yes", "--request-digest", inspected.request_digest])).toBe(1);
+  expect(builders).toBe(0);
+  expect(withDb((db) => listImprovementProposals(db))[0]?.status).toBe("draft");
+  routing.summary.builder_identity.model_id = "fixture-v1";
+  errors.length = 0;
+  logs.length = 0;
+  const confirmed = [...args, "--yes", "--request-digest", inspected.request_digest];
+  expect(await main(confirmed)).toBe(0);
+  expect(output()).toMatchObject({ replay: false, delivery: { state: "delivered", pr: { url: "https://github.com/studio/project/pull/17" } } });
+  expect(withDb((db) => listImprovementProposals(db))[0]?.status).toBe("approved");
+  expect(builders).toBe(1);
+  expect(reviewers).toBe(1);
+  expect(await readFile(gateLog, "utf8")).toBe("proposal\nregistry\nproposal\nregistry\n");
+  expect(github.writes).toEqual(["push", "pr"]);
+  logs.length = 0;
+  expect(await main(confirmed)).toBe(0);
+  expect(output()).toMatchObject({ replay: true, delivery: { state: "delivered" } });
+  expect(builders).toBe(1);
+  expect(github.writes).toEqual(["push", "pr"]);
+  expect(errors).toEqual([]);
+}, 20_000);
