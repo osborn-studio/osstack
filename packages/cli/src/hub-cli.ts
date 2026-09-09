@@ -65,10 +65,17 @@ function flagValue(args: string[], i: number): string | undefined {
   return v;
 }
 
-function parseFlags(args: string[]): ParsedFlags & { invalid?: string } {
+function parseFlags(args: string[], sub: string | undefined): ParsedFlags & { invalid?: string } {
+  const allowed = new Set(sub === "candidate"
+    ? ["--namespace", "--reuse-scope", "--allow-dirty", "--json"]
+    : sub === "publish" ? ["--gate", "--surfaces", "--json"] : ["--json"]);
   const out: ParsedFlags & { invalid?: string } = { positional: [], reuseScope: "team", gate: "team", surfaces: "api", json: false, allowDirty: false };
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
+    if (a?.startsWith("--") && !allowed.has(a)) {
+      out.invalid ??= a;
+      continue;
+    }
     switch (a) {
       case "--namespace": { const v = flagValue(args, ++i); if (v === undefined) out.invalid ??= "--namespace"; else out.namespace = v; break; }
       case "--reuse-scope": { const v = flagValue(args, ++i); if (v === undefined) out.invalid ??= "--reuse-scope"; else out.reuseScope = v; break; }
@@ -96,6 +103,7 @@ function resolveHubRoot(env: NodeJS.ProcessEnv): string | undefined {
 
 function parseNamespace(value: string | undefined): { kind: string; id: string } | undefined {
   if (value === undefined) return undefined;
+  if (!/^(personal|organization)\/[a-z0-9][a-z0-9-]*$/.test(value)) return undefined;
   const [kind, id] = value.split("/");
   if (kind === undefined || id === undefined || id === "") return undefined;
   if (kind !== "personal" && kind !== "organization") return undefined;
@@ -111,9 +119,12 @@ function fail(json: boolean, exitCode: number, payload: Record<string, unknown>)
 export async function handleHubCommand(args: string[], deps: HubCliDeps): Promise<HubCliResult> {
   const env = deps.env ?? process.env;
   const sub = args[0];
-  const flags = parseFlags(args.slice(1));
+  const flags = parseFlags(args.slice(1), sub);
   if (flags.invalid !== undefined) {
     return fail(flags.json, 1, { status: "error", reasons: ["invalid_flag"], message: `invalid or option-injected value for ${flags.invalid}` });
+  }
+  if ((sub === "candidate" || sub === "publish") && flags.positional.length > 1) {
+    return fail(flags.json, 1, { status: "error", reasons: ["unexpected_argument"], message: "exactly one asset is supported" });
   }
   if (sub === "doctor") {
     if (flags.positional.length > 0 || args.slice(1).some((a) => a !== "--json")) {
@@ -239,6 +250,7 @@ async function runPublish(hubRoot: string, flags: ParsedFlags, deps: HubCliDeps)
     if (!verified) reasons.push("api_delivery_unverified");
     if (!idMatches) reasons.push("publisher_id_mismatch");
   }
+  if (status === "error" && reasons.length === 0) reasons.push("publisher_failed");
   // Sanitize the Hub-controlled id AND the caller's assetId (either could be a
   // path); reasons are redacted. Never echo an absolute/dist path or a secret.
   const id = safeAssetId(parsed["id"]) ?? safeAssetId(assetId) ?? "redacted";
@@ -250,7 +262,7 @@ async function runPublish(hubRoot: string, flags: ParsedFlags, deps: HubCliDeps)
     ...evidence,
     evidence_source: "hub_companion",
     verification_scope: "companion_api_version_check",
-    delivery: !idMatches || exitCode !== 0 ? "unknown" : evidence.pushed === true
+    delivery: !idMatches || exitCode !== 0 || rawStatus !== "published" ? "unknown" : evidence.pushed === true
       ? (evidence.apiVerified === true ? "api_verified" : "pushed_unverified")
       : evidence.pushed === false ? "local_only" : "unknown",
   };

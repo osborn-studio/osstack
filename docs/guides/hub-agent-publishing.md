@@ -51,6 +51,8 @@ osstack hub publish <asset-id> --gate team --surfaces api --json
 
 For a new external source, `osstack hub candidate <asset-path> --namespace organization/<id> --json` registers an exact Git source reference only. It does not copy files into the catalog or create a deployable release; finish the Hub's intake/review workflow before publishing.
 
+Publish accepts one asset ID and only `--gate`, `--surfaces`, and `--json`. Candidate-only options such as `--namespace` or `--reuse-scope` are rejected, not silently ignored; they do not constrain an existing catalog asset publication. Candidate accepts one source path and an exact `personal/<id>` or `organization/<id>` namespace (lowercase ASCII letters/digits and hyphens in the namespace ID). Extra namespace segments are rejected before source resolution.
+
 Only `--surfaces api` is supported by the current companion. Other surfaces fail before any process is started. Success requires child exit 0, the requested asset ID, and explicit `pushed: true` plus `apiVerified: true`. These booleans are **companion-reported**, and verification scope is its API **version** check, not independent content digest verification.
 
 - `pushed_unverified`: a push was reported but online version verification was not confirmed. Inspect existing CI and API state before retrying; do not announce completion.

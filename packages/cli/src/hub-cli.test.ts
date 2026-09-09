@@ -217,3 +217,34 @@ describe("osstack hub doctor routing", () => {
     expect(r.stdout).toContain("publish permission: unverified");
   });
 });
+
+describe("Hub command intent must not be silently weakened", () => {
+  it.each([
+    ["publish", "research.alpha", "--namespace", "organization/acme", "--json"],
+    ["publish", "research.alpha", "--reuse-scope", "personal", "--json"],
+    ["publish", "research.alpha", "--allow-dirty", "--json"],
+    ["publish", "research.alpha", "research.beta", "--json"],
+    ["candidate", "./skill", "--namespace", "organization/acme", "--gate", "commercial", "--json"],
+    ["candidate", "./skill", "extra", "--namespace", "organization/acme", "--json"],
+  ])("rejects unsupported command arguments %j before any side effects", async (...args) => {
+    const d = deps();
+    const r = await handleHubCommand(args, d);
+    expect(r.exitCode).toBe(1);
+    expect(d.runNode).not.toHaveBeenCalled();
+    expect(d.resolveSource).not.toHaveBeenCalled();
+  });
+  it.each(["organization/acme/extra", "organization/../other", "personal/"])("rejects malformed namespace %s", async (namespace) => {
+    const d = deps();
+    const r = await handleHubCommand(["candidate", "./skill", "--namespace", namespace, "--json"], d);
+    expect(r.exitCode).toBe(1);
+    expect(d.runNode).not.toHaveBeenCalled();
+    expect(d.resolveSource).not.toHaveBeenCalled();
+  });
+  it.each(["error", "busy", "unexpected"])("never labels %s as verified delivery", async (status) => {
+    const d = deps({ runNode: vi.fn(async () => ({ stdout: JSON.stringify({ status, id: "research.alpha", pushed: true, apiVerified: true }), stderr: "", exitCode: 0 })) });
+    const r = await handleHubCommand(["publish", "research.alpha", "--json"], d);
+    expect(r.exitCode).toBe(1);
+    expect(JSON.parse(r.stdout).delivery).not.toBe("api_verified");
+    expect(JSON.parse(r.stdout).reasons.length).toBeGreaterThan(0);
+  });
+});
