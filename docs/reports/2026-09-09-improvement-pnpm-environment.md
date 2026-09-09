@@ -47,3 +47,6 @@ status 的 `environment.candidate`、`environment.replay` 展示各阶段目录�
 下一片优先补充原生构建的明确策略和真实 cold-install 验收，再完成受限 worker/终止证明。daemon 和签名代码委托仍依赖该执行边界；不能因本片安装成功而提前启用后台自治。
 
 来源：[pnpm install](https://pnpm.io/cli/install)、[pnpm workspace settings](https://pnpm.io/settings)、[Corepack 环境变量](https://github.com/nodejs/corepack#environment-variables)、[pnpm 11 配置迁移](https://github.com/pnpm/pnpm.io/blob/main/blog/releases/11.0.md)。在线 pnpm 文档已显示 12.x，实际命令能力另外用本机 11.4.0 的 help 和真实安装验证。
+
+
+最终本地验证：`pnpm build`、`pnpm typecheck:check`、`pnpm lint`（两条既有 warning）、inventory freshness、changeset coverage/self-test 均通过。`pnpm test --maxWorkers=4` 全量通过 291 个文件、2579 个测试。默认并发复验曾使未修改的 guarded-local 测试超过既有 5 秒上限，并引出目录清理错误；限制并发后该测试与整套测试通过，未放宽断言或超时。启动预算也通过：version 中位数 36ms、help 204ms（测量时有并发测试负载）。所有 CLI/整仓测试都使用独立临时 OSSTACK_HOME。
