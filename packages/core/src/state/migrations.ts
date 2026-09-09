@@ -1376,6 +1376,21 @@ export const MIGRATIONS: readonly Migration[] = [
         ON improvement_executions(proposal_id, created_at DESC, execution_id);
     `,
   },
+  {
+    id: 26,
+    name: "improvement_execution_worker_stop",
+    sql: `
+      ALTER TABLE improvement_executions ADD COLUMN worker_id TEXT;
+      ALTER TABLE improvement_executions ADD COLUMN worker_generation INTEGER NOT NULL DEFAULT 1 CHECK (worker_generation > 0);
+      ALTER TABLE improvement_executions ADD COLUMN stop_json TEXT;
+      CREATE TRIGGER improvement_execution_stopped_write
+      BEFORE UPDATE OF state, worktree_json, result_json ON improvement_executions
+      WHEN OLD.stop_json IS NOT NULL
+      BEGIN
+        SELECT RAISE(ABORT, 'improvement execution stop requested');
+      END;
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

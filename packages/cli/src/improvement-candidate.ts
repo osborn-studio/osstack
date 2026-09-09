@@ -103,6 +103,9 @@ export async function executeImprovementCandidate(
     now: Date.now() / 1000,
   });
   if (claim.outcome === "replay") return { replay: true, execution: claim.execution };
+  const worker = claim.execution.worker!;
+  const check = () => repository.assertWorker(input.executionId, worker);
+  let executionUncertain = false;
   const directory = join(evidenceRoot, digest(input.executionId));
   const artifacts: Array<{ name: string; sha256: string }> = [];
   const save = async (name: string, value: unknown, raw = false) => {
@@ -111,13 +114,15 @@ export async function executeImprovementCandidate(
     artifacts.push({ name, sha256: digest(content) });
   };
   try {
+    check();
     await mkdir(directory, { mode: 0o700 });
     await save("request.json", request);
+    check();
     const worktree = await createWorktree({
       repoPath, runId: input.executionId, baseRef: baseSha,
       branchPrefix: "codex/improve", rootPath: join(directory, "worktrees"),
     });
-    repository.recordWorktree(input.executionId, worktree, Date.now() / 1000);
+    repository.recordWorktree(input.executionId, worktree, Date.now() / 1000, worker);
     const task = Task.parse({
       task_id: `improvement_${input.executionId}`, capability: "code.fix", source: "manual",
       prompt: [
@@ -136,17 +141,23 @@ export async function executeImprovementCandidate(
     const candidateHome = join(directory, "runtime-home");
     await mkdir(candidateHome, { mode: 0o700 });
     const executionAdapters = typeof adapters === "function" ? adapters(worktree.worktreePath, candidateHome) : adapters;
-    const checkedAdapters = executionAdapters.map(requireCompletedStream);
+    const checkedAdapters = executionAdapters.map((adapter) => requireCompletedStream(adapter, check));
+    check();
+    executionUncertain = true;
     const run = await executePlan(planTask(task, { agentId: input.routing.agentId, worktreePath: worktree.worktreePath, maxIterations: 1 }), {
       workspacePath: worktree.worktreePath, adapters: checkedAdapters, timeoutMs: input.timeoutMs,
     });
     await save("builder.json", run);
     if (run.outcome !== "completed") throw new Error(`builder ended ${run.outcome}: ${run.summary ?? "no summary"}`);
+    executionUncertain = false;
+    check();
     const before = await captureImprovementCandidate(worktree.worktreePath, baseSha, paths);
     await save("candidate.patch", before.patch, true);
     await save("candidate.json", before);
     // Our capture validates the complete diff (including staged/new files), not
     // the legacy verifier's weaker “at least one target path changed” check.
+    check();
+    executionUncertain = true;
     const verdict = await verifyRun(run, {
       workspacePath: worktree.worktreePath, task, commands,
       verifierAgentIds: input.routing.verifierAgentIds,
@@ -156,6 +167,11 @@ export async function executeImprovementCandidate(
       reviewBoundary: { allowed_extensions: [...DEFAULT_REVIEW_BOUNDARY_POLICY.allowed_extensions, ".jsonl"] },
     });
     await save("verification.json", verdict);
+    // The legacy command audit folds signal exits into ordinary nonzero codes.
+    // Until structured termination evidence exists, nonzero gates retain the slot.
+    executionUncertain = verdict.issues.some((issue) => issue.rule === "verify.adapter_failed")
+      || (verdict.verify_commands ?? []).some((command) => command.exit_code !== 0);
+    check();
     const after = await captureImprovementCandidate(worktree.worktreePath, baseSha, paths);
     assertCandidateUnchanged(before, after);
     if (!verdict.pass) throw new Error(`candidate verification failed: ${verdict.summary}`);
@@ -166,26 +182,35 @@ export async function executeImprovementCandidate(
       artifacts,
     };
     await save("manifest.json", { ...result, artifacts: [...artifacts] });
-    return { replay: false, execution: repository.complete(input.executionId, "candidate_verified", result, Date.now() / 1000) };
+    return { replay: false, execution: repository.complete(input.executionId, "candidate_verified", result, Date.now() / 1000, worker) };
   } catch (error) {
+    const current = repository.get(input.executionId)!;
+    if (current.stop !== undefined) return { replay: false, execution: current };
+    if (executionUncertain) {
+      const detail = error instanceof Error ? error.message : String(error);
+      return { replay: false, execution: repository.requestStop(input.executionId,
+        `Execution outcome uncertain: ${detail}`.slice(0, 2000).replaceAll("\0", ""), Date.now() / 1000, "system_indeterminate") };
+    }
     return { replay: false, execution: repository.complete(input.executionId, "candidate_failed", {
       applied: false, effectiveness_proven: false, evidence_directory: directory,
       error: error instanceof Error ? error.message : String(error), artifacts,
-    }, Date.now() / 1000) };
+    }, Date.now() / 1000, worker) };
   }
 }
 
 // The legacy executor defaults to completed when a stream ends silently. This
 // execution path requires a successful terminal receipt from each adapter. This
 // does not attest to a provider-native completion or replace candidate checks.
-function requireCompletedStream(adapter: AgentAdapter): AgentAdapter {
+function requireCompletedStream(adapter: AgentAdapter, check: () => void): AgentAdapter {
   return {
     id: adapter.id, display_name: adapter.display_name, cost_tier: adapter.cost_tier,
     capabilities: () => adapter.capabilities(), isAvailable: () => adapter.isAvailable(),
     async *invoke(task, signal) {
+      check();
       let completed = false;
       let failed = false;
       for await (const event of adapter.invoke(task, signal)) {
+        check();
         if (event.type === "error" && event.terminal) failed = true;
         if (event.type === "done") {
           completed = "status" in event.payload && event.payload.status === "completed";

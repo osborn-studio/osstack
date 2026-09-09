@@ -31,7 +31,7 @@ export async function handleImproveCommand(args: string[]): Promise<number> {
   const rest = args.slice(1);
   if (sub === "propose") return await improvePropose(rest);
   if (sub === "apply") return await improveApply(rest);
-  if (["inspect", "approve", "execute", "status"].includes(sub ?? "")) {
+  if (["inspect", "approve", "execute", "status", "stop", "baseline"].includes(sub ?? "")) {
     const { handleImprovementExecutionCommand } = await import("./improvement-execution-command.js");
     return handleImprovementExecutionCommand(sub!, rest);
   }
@@ -46,10 +46,14 @@ export async function handleImproveCommand(args: string[]): Promise<number> {
                   [--profile <name>] [--registry P] [--timeout-ms N]
                   [--request-digest <preview-sha256> --yes]
   improve status --execution <id>
+  improve stop --execution <id> --reason <text> [--yes]
+  improve baseline [--proposal <id>]
 
   apply --yes checks existing-repository gates only.
   execute --yes implements an approved low-risk docs/test/eval proposal in an
   external worktree and records candidate verification. It does not merge or publish.
+  stop requests cooperative stopping; it does not kill processes or release active occupancy.
+  baseline exports all matching attempts; candidate verification is not PR delivery or effectiveness.
 `);
     return 0;
   }
