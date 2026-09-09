@@ -1391,6 +1391,26 @@ export const MIGRATIONS: readonly Migration[] = [
       END;
     `,
   },
+  {
+    id: 27,
+    name: "improvement_pr_delivery_intents",
+    sql: `
+      CREATE TABLE improvement_pr_deliveries (
+        execution_id TEXT PRIMARY KEY REFERENCES improvement_executions(execution_id),
+        target_json TEXT NOT NULL,
+        workspace_path TEXT,
+        state TEXT NOT NULL CHECK (state IN ('authorized','preparing','prepared','push_dispatched','pushed','pr_dispatched','delivered','blocked')),
+        commit_json TEXT,
+        pr_json TEXT,
+        stop_json TEXT,
+        error TEXT,
+        created_at REAL NOT NULL,
+        updated_at REAL NOT NULL,
+        CHECK (state NOT IN ('prepared','push_dispatched','pushed','pr_dispatched','delivered') OR commit_json IS NOT NULL),
+        CHECK (state != 'delivered' OR pr_json IS NOT NULL)
+      );
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

@@ -276,7 +276,7 @@ function selectCapabilityId(adapter: AgentAdapter, plan: ExecutionPlan): string 
 
 export async function runShellCommand(
   command: string,
-  options: { cwd: string; timeoutMs: number; outputLimit: number; env?: Record<string, string> },
+  options: { cwd: string; timeoutMs: number; outputLimit: number; env?: NodeJS.ProcessEnv; inheritEnv?: boolean },
 ): Promise<CommandResult> {
   const started = Date.now();
   return await new Promise<CommandResult>((resolve) => {
@@ -284,7 +284,8 @@ export async function runShellCommand(
       cwd: options.cwd,
       shell: true,
       stdio: ["ignore", "pipe", "pipe"],
-      ...(options.env !== undefined ? { env: { ...process.env, ...options.env } } : {}),
+      ...((options.env !== undefined || options.inheritEnv === false)
+        ? { env: { ...(options.inheritEnv === false ? {} : process.env), ...options.env } } : {}),
     });
     let stdout = "";
     let stderr = "";

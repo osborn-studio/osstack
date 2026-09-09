@@ -4,6 +4,8 @@ import {
   improvementProposalDigest,
   improvementExecutionRequestDigest,
   ImprovementExecutionRepository,
+  ImprovementPrDeliveryRepository,
+  type ImprovementPrTarget,
   listImprovementProposals,
 } from "@osstack/core";
 import { readRepoRegistry } from "@osstack/supervisor";
@@ -17,6 +19,16 @@ export async function handleImprovementExecutionCommand(sub: string, args: strin
   const { db, dbPath } = await openStateDb();
   try {
     const repository = new ImprovementExecutionRepository(db, dbPath);
+    const deliveries = new ImprovementPrDeliveryRepository(db, dbPath);
+    const existingId = flag(args, "--execution");
+    const existing = existingId === undefined ? undefined : repository.get(existingId);
+    if (sub === "deliver" && existing !== undefined) {
+      if (existing.request.mode !== "local_candidate_to_pr") throw new Error("This execution was not authorized for PR delivery; use a new execution ID");
+      if (hasFlag(args, "--yes") && flag(args, "--request-digest") !== existing.request_sha256) throw new Error("Replay requires the original request digest");
+      const delivery = deliveries.get(existing.execution_id);
+      printJson({ replay: true, execution: existing, delivery, applied: false });
+      return delivery?.state === "delivered" ? 0 : 2;
+    }
     if (sub === "baseline") {
       const proposalId = flag(args, "--proposal");
       printJson(repository.baseline({ now: Date.now() / 1000,
@@ -34,7 +46,7 @@ export async function handleImprovementExecutionCommand(sub: string, args: strin
       if (current === undefined) throw new Error(`no execution with id ${id}`);
       const dryRun = !hasFlag(args, "--yes");
       const execution = dryRun ? current : repository.requestStop(id, reason, Date.now() / 1000);
-      printJson({ dry_run: dryRun, execution, process_termination_confirmed: false,
+      printJson({ dry_run: dryRun, execution, delivery: deliveries.get(id), process_termination_confirmed: false,
         message: "Stop is cooperative at stage boundaries; it retains active occupancy and does not kill processes or authorize retry.",
       });
       return 0;
@@ -44,7 +56,11 @@ export async function handleImprovementExecutionCommand(sub: string, args: strin
       if (id === undefined) throw new Error("improve status requires --execution <id>");
       const execution = repository.get(id);
       if (execution === undefined) throw new Error(`no execution with id ${id}`);
-      printJson({ applied: false, execution });
+      if (hasFlag(args, "--reconcile")) {
+        const { reconcileImprovementPr } = await import("./improvement-pr-delivery.js");
+        await reconcileImprovementPr(id, deliveries, osstackHome());
+      }
+      printJson({ applied: false, execution, delivery: deliveries.get(id) });
       return 0;
     }
     const proposalId = flag(args, "--proposal");
@@ -56,7 +72,7 @@ export async function handleImprovementExecutionCommand(sub: string, args: strin
       printJson({ proposal, proposal_digest: proposalDigest, executions: repository.list({ proposal_id: proposalId, limit: 20 }) });
       return 0;
     }
-    const expectedDigest = flag(args, "--digest");
+    const expectedDigest = flag(args, "--digest") ?? (sub === "deliver" ? proposalDigest : undefined);
     if (expectedDigest === undefined) throw new Error(`improve ${sub} requires --digest from improve inspect`);
     if (sub === "approve") {
       if (!hasFlag(args, "--yes")) {
@@ -81,12 +97,24 @@ export async function handleImprovementExecutionCommand(sub: string, args: strin
     const routing = await resolveLoopProfileRouting(["--auto-agent", ...args], undefined, [], { adapters: () => adapters });
     if (routing instanceof Error) throw routing;
     if (routing === undefined) throw new Error("candidate execution requires an execution profile");
+    let prDelivery: ImprovementPrTarget | undefined;
+    let expectedBase: string | undefined;
+    if (sub === "deliver") {
+      const { prepareImprovementPrTarget, improvementPrTransport } = await import("./improvement-pr-delivery.js");
+      expectedBase = (await improvementPrTransport.run("git", ["rev-parse", "HEAD"], entry.path)).toString().trim();
+      const base = flag(args, "--base");
+      prDelivery = await prepareImprovementPrTarget({ repoPath: entry.path, baseSha: expectedBase, executionId,
+        title: proposal.title, ...(base === undefined ? {} : { base }),
+      });
+    }
     const prepared = await prepareImprovementCandidate({
       executionId, expectedDigest, proposal, repoPath: entry.path,
       registryGates: entry.verify_commands, routing,
       timeoutMs: Number(flag(args, "--timeout-ms") ?? "120000"),
       evidenceRoot: join(osstackHome(), "improvement-executions"),
+      ...(prDelivery === undefined ? {} : { prDelivery }),
     });
+    if (expectedBase !== undefined && expectedBase !== prepared.baseSha) throw new Error("Local base changed during preview");
     const requestDigest = improvementExecutionRequestDigest(prepared.request);
     if (!hasFlag(args, "--yes")) {
       printJson({ dry_run: true, applied: false, request: prepared.request, request_digest: requestDigest });
@@ -98,6 +126,15 @@ export async function handleImprovementExecutionCommand(sub: string, args: strin
     const result = await executeImprovementCandidate(prepared, repository, (workspacePath, homePath) => createImprovementExecutionAdapters({
       workspacePath, homePath, builderAgentId: routing.agentId, evaluatorAgentId: routing.verifierAgentIds[0]!,
     }));
+    if (sub === "deliver") {
+      if (!result.replay && result.execution.state === "candidate_verified") {
+        const { deliverImprovementPr } = await import("./improvement-pr-delivery.js");
+        await deliverImprovementPr(result.execution, deliveries);
+      } else if (!result.replay) deliveries.recordError(executionId, "Candidate did not pass verification; no PR writes attempted", Date.now() / 1000);
+      const delivery = deliveries.get(executionId);
+      printJson({ applied: false, ...result, delivery });
+      return delivery?.state === "delivered" ? 0 : 2;
+    }
     printJson({ applied: false, ...result });
     return result.execution.state === "candidate_verified" ? 0 : 2;
   } catch (error) {

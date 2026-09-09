@@ -291,3 +291,10 @@ export function assertCandidateUnchanged(before: ImprovementCandidateArtifact, a
     throw new Error("Improvement candidate changed during verification or review");
   }
 }
+
+/** Verify a reconstructed commit stayed unchanged while clean verification ran. */
+export async function assertImprovementTreeUnchanged(workspace: string, commitSha: string): Promise<void> {
+  const format = decode(await git(workspace, ["rev-parse", "--show-object-format"])).trim();
+  if (format !== "sha1" && format !== "sha256") throw new Error("Unsupported Git object format");
+  await snapshot(workspace, commitSha, new Set(), format);
+}

@@ -31,7 +31,7 @@ export async function handleImproveCommand(args: string[]): Promise<number> {
   const rest = args.slice(1);
   if (sub === "propose") return await improvePropose(rest);
   if (sub === "apply") return await improveApply(rest);
-  if (["inspect", "approve", "execute", "status", "stop", "baseline"].includes(sub ?? "")) {
+  if (["inspect", "approve", "execute", "status", "stop", "baseline", "deliver"].includes(sub ?? "")) {
     const { handleImprovementExecutionCommand } = await import("./improvement-execution-command.js");
     return handleImprovementExecutionCommand(sub!, rest);
   }
@@ -45,13 +45,18 @@ export async function handleImproveCommand(args: string[]): Promise<number> {
   improve execute --proposal <id> --digest <sha256> --execution <id>
                   [--profile <name>] [--registry P] [--timeout-ms N]
                   [--request-digest <preview-sha256> --yes]
-  improve status --execution <id>
+  improve deliver --proposal <id> --execution <id> [--base <branch>]
+                  [--profile <name>] [--registry P] [--timeout-ms N]
+                  [--request-digest <preview-sha256> --yes]
+  improve status --execution <id> [--reconcile]
   improve stop --execution <id> --reason <text> [--yes]
   improve baseline [--proposal <id>]
 
   apply --yes checks existing-repository gates only.
   execute --yes implements an approved low-risk docs/test/eval proposal in an
   external worktree and records candidate verification. It does not merge or publish.
+  deliver confirms a draft/approved proposal once, builds and verifies it, and creates one draft PR.
+  Replays report history; --reconcile only reads GitHub to confirm uncertain writes.
   stop requests cooperative stopping; it does not kill processes or release active occupancy.
   baseline exports all matching attempts; candidate verification is not PR delivery or effectiveness.
 `);

@@ -6,12 +6,14 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import type { AgentAdapter, AgentTask } from "@osstack/agents";
 import {
-  approveImprovementProposal, improvementProposalDigest, ImprovementExecutionRepository,
+  approveImprovementProposal, improvementProposalDigest, ImprovementExecutionRepository, ImprovementPrDeliveryRepository,
   listImprovementProposals, openDb, upsertImprovementProposal,
 } from "@osstack/core";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { afterEach, describe, expect, it } from "vitest";
 import { executeImprovementCandidate, prepareImprovementCandidate, type ImprovementCandidateInput } from "./improvement-candidate.js";
+import { deliverImprovementPr, prepareImprovementPrTarget, reconcileImprovementPr } from "./improvement-pr-delivery.js";
+import { simulatedImprovementGithub } from "./improvement-pr-test-fixture.js";
 import type { LoopProfileRoutingResult } from "./loop-profile-routing.js";
 
 const exec = promisify(execFile);
@@ -188,3 +190,125 @@ function adapter(id: string, run?: (task: AgentTask) => Promise<void>, judgments
 async function git(cwd: string, args: string[]) {
   return (await exec("git", ["-c", "core.hooksPath=/dev/null", ...args], { cwd })).stdout.trim();
 }
+
+
+describe("one authorization to a real Git commit and simulated GitHub draft PR", () => {
+  async function setup(drop?: "push" | "pr") {
+    const f = await fixture();
+    const { remote, base, writes, pulls, transport } = await simulatedImprovementGithub(f.root, f.repoPath, drop);
+    const target = await prepareImprovementPrTarget({ repoPath: f.repoPath, baseSha: base, executionId: f.input.executionId, title: "Improve guide" }, transport);
+    f.db.prepare("UPDATE improvement_proposals SET status = 'draft'").run();
+    f.input.proposal.status = "draft";
+    f.input.prDelivery = target;
+    const prepared = await prepareImprovementCandidate(f.input);
+    return { ...f, remote, base, transport, writes, pulls, target, prepared, ledger: new ImprovementPrDeliveryRepository(f.db, join(f.root, "state.db")) };
+  }
+
+  it("approves once and delivers only the saved verified patch, ignoring later builder edits", async () => {
+    const f = await setup();
+    expect(listImprovementProposals(f.db)[0]?.status).toBe("draft");
+    const result = await executeImprovementCandidate(f.prepared, f.repository, f.adapters);
+    expect(listImprovementProposals(f.db)[0]?.status).toBe("approved");
+    expect(result.execution.state).toBe("candidate_verified");
+    await writeFile(join(result.execution.worktree!.worktreePath, "docs/guide.md"), "unreviewed late edit\n");
+    await deliverImprovementPr(result.execution, f.ledger, f.transport);
+    const delivered = f.ledger.get(f.input.executionId)!;
+    expect(delivered).toMatchObject({ state: "delivered", pr: { url: "https://github.com/studio/project/pull/17" } });
+    expect(f.writes).toEqual(["push", "pr"]);
+    expect(await git(f.remote, ["show", `${delivered.commit!.commit_sha}:docs/guide.md`])).toBe("improved");
+    expect(await git(f.repoPath, ["rev-parse", "HEAD"])).toBe(f.base);
+    expect(await executeImprovementCandidate(f.prepared, f.repository, f.adapters)).toMatchObject({ replay: true });
+    await deliverImprovementPr(result.execution, f.ledger, f.transport);
+    expect(f.writes).toEqual(["push", "pr"]);
+    expect(f.builderCount()).toBe(1);
+  }, 20_000);
+
+  it.each(["push", "pr"] as const)("reconciles a lost %s response without sending a second write", async (drop) => {
+    const f = await setup(drop);
+    const result = await executeImprovementCandidate(f.prepared, f.repository, f.adapters);
+    await deliverImprovementPr(result.execution, f.ledger, f.transport);
+    expect(f.ledger.get(f.input.executionId)?.state).toBe(drop === "push" ? "push_dispatched" : "pr_dispatched");
+    const writes = [...f.writes];
+    await reconcileImprovementPr(f.input.executionId, f.ledger, f.repoPath, f.transport);
+    expect(f.ledger.get(f.input.executionId)?.state).toBe(drop === "push" ? "pushed" : "delivered");
+    await deliverImprovementPr(result.execution, f.ledger, f.transport);
+    expect(f.writes).toEqual(writes);
+  }, 20_000);
+
+  it("refuses tampered artifacts before any GitHub write", async () => {
+    const f = await setup();
+    const result = await executeImprovementCandidate(f.prepared, f.repository, f.adapters);
+    const directory = (result.execution.result as { evidence_directory: string }).evidence_directory;
+    await writeFile(join(directory, "candidate.patch"), "tampered");
+    await deliverImprovementPr(result.execution, f.ledger, f.transport);
+    expect(f.ledger.get(f.input.executionId)?.error).toMatch(/digest/);
+    expect(f.writes).toEqual([]);
+  });
+  it("refuses a moved remote base without rebasing or writing", async () => {
+    const f = await setup();
+    const result = await executeImprovementCandidate(f.prepared, f.repository, f.adapters);
+    await git(f.repoPath, ["-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "--allow-empty", "-m", "base advanced"]);
+    await git(f.repoPath, ["push", f.remote, "HEAD:main"]);
+    await deliverImprovementPr(result.execution, f.ledger, f.transport);
+    expect(f.ledger.get(f.input.executionId)?.error).toContain("base moved");
+    expect(f.writes).toEqual([]);
+  });
+
+  it("never overwrites an existing delivery branch", async () => {
+    const f = await setup();
+    const result = await executeImprovementCandidate(f.prepared, f.repository, f.adapters);
+    await git(f.remote, ["update-ref", `refs/heads/${f.target.branch}`, f.base]);
+    await deliverImprovementPr(result.execution, f.ledger, f.transport);
+    expect(f.ledger.get(f.input.executionId)?.state).toBe("push_dispatched");
+    expect(await git(f.remote, ["rev-parse", `refs/heads/${f.target.branch}`])).toBe(f.base);
+    expect(f.writes).toEqual([]);
+    await expect(reconcileImprovementPr(f.input.executionId, f.ledger, f.repoPath, f.transport)).rejects.toThrow("differs");
+  });
+
+  it.each(["head", "base", "draft"])("does not report delivery when the observed PR %s binding differs", async (field) => {
+    const f = await setup("pr");
+    const result = await executeImprovementCandidate(f.prepared, f.repository, f.adapters);
+    await deliverImprovementPr(result.execution, f.ledger, f.transport);
+    const pr = f.pulls[0] as { head: { sha: string }; base: { sha: string }; draft: boolean };
+    if (field === "draft") pr.draft = false;
+    else if (field === "head") pr.head.sha = f.base;
+    else pr.base.sha = "a".repeat(40);
+    await expect(reconcileImprovementPr(f.input.executionId, f.ledger, f.repoPath, f.transport)).rejects.toThrow("could not be confirmed");
+    expect(f.ledger.get(f.input.executionId)?.state).toBe("pr_dispatched");
+    expect(f.writes).toEqual(["push", "pr"]);
+  });
+
+  it.each(["before push", "after push"])("honors a stop %s without issuing the next external action", async (when) => {
+    const f = await setup();
+    const result = await executeImprovementCandidate(f.prepared, f.repository, f.adapters);
+    if (when === "before push") {
+      f.repository.requestStop(f.input.executionId, "operator stop", Date.now() / 1000);
+      await expect(deliverImprovementPr(result.execution, f.ledger, f.transport)).rejects.toThrow("stop");
+      expect(f.writes).toEqual([]);
+    } else {
+      const transport = { run: async (...args: Parameters<typeof f.transport.run>) => {
+        const value = await f.transport.run(...args);
+        if (args[0] === "git" && args[1].includes("push")) f.repository.requestStop(f.input.executionId, "operator stop", Date.now() / 1000);
+        return value;
+      } };
+      await deliverImprovementPr(result.execution, f.ledger, transport);
+      expect(f.ledger.get(f.input.executionId)).toMatchObject({ state: "pushed", stop: { reason: "operator stop" } });
+      expect(f.writes).toEqual(["push"]);
+    }
+  });
+
+  it("requires clean reconstruction gates to pass, even if the candidate gate passed", async () => {
+    const f = await setup();
+    const command = `node -e "if(process.cwd().includes('osstack-pr-rebuild-')) process.exit(1)"`;
+    f.input.registryGates = [command];
+    const prepared = await prepareImprovementCandidate(f.input);
+    const result = await executeImprovementCandidate(prepared, f.repository, f.adapters);
+    expect(result.execution.state).toBe("candidate_verified");
+    await deliverImprovementPr(result.execution, f.ledger, f.transport);
+    expect(f.ledger.get(f.input.executionId)).toMatchObject({ state: "preparing", error: expect.stringContaining("Clean reconstruction verification failed") });
+    expect(f.writes).toEqual([]);
+    await deliverImprovementPr(result.execution, f.ledger, f.transport);
+    expect(f.builderCount()).toBe(1);
+  });
+
+});

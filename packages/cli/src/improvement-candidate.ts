@@ -3,12 +3,13 @@ import { createHash } from "node:crypto";
 import { mkdir, realpath, writeFile } from "node:fs/promises";
 import { isAbsolute, join, relative } from "node:path";
 import { promisify } from "node:util";
-import { createWorktree, type AgentAdapter } from "@osstack/agents";
+import { buildAgentChildEnv, createWorktree, type AgentAdapter } from "@osstack/agents";
 import {
   improvementProposalDigest,
   type ImprovementExecutionRepository,
   type ImprovementExecutionView,
   type ImprovementProposalView,
+  type ImprovementPrTarget,
 } from "@osstack/core";
 import { DEFAULT_REVIEW_BOUNDARY_POLICY, executePlan, planTask, Task, verifyRun } from "@osstack/loop";
 import type { LoopProfileRoutingResult } from "./loop-profile-routing.js";
@@ -30,6 +31,7 @@ export interface ImprovementCandidateInput {
   routing: LoopProfileRoutingResult;
   timeoutMs: number;
   evidenceRoot: string;
+  prDelivery?: ImprovementPrTarget;
 }
 
 /** Local operator execution only. A session phase grant cannot call this path. */
@@ -37,7 +39,7 @@ export async function prepareImprovementCandidate(input: ImprovementCandidateInp
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(input.executionId)) {
     throw new Error("execution ID must be 1–128 letters, digits, dots, underscores or hyphens");
   }
-  if (input.proposal.status !== "approved") throw new Error("proposal is not approved");
+  if (input.proposal.status !== "approved" && !(input.prDelivery !== undefined && input.proposal.status === "draft")) throw new Error("proposal is not approved");
   if (improvementProposalDigest(input.proposal) !== input.expectedDigest) {
     throw new Error("proposal digest changed; inspect and approve the current definition");
   }
@@ -84,7 +86,11 @@ export async function prepareImprovementCandidate(input: ImprovementCandidateInp
     profile: input.routing.summary,
     timeout_ms: input.timeoutMs,
     evidence_root: evidenceRoot,
-    mode: "local_candidate_only",
+    mode: input.prDelivery === undefined ? "local_candidate_only" : "local_candidate_to_pr",
+    ...(input.prDelivery === undefined ? {} : { pr_delivery: input.prDelivery,
+      limits: { builder_invocations: 1, evaluator_invocations: 1, verification_command_runs: commands.length * 2,
+        automatic_retries: 0, stage_timeout_ms: input.timeoutMs, cost_usd: null },
+    }),
   };
   return freezeDeep(structuredClone({ input, request, repoPath, evidenceRoot, baseSha, paths, commands }));
 }
@@ -100,6 +106,7 @@ export async function executeImprovementCandidate(
     execution_id: input.executionId,
     proposal_id: input.proposal.proposal_id,
     request: JSON.parse(JSON.stringify(request)),
+    ...(input.prDelivery === undefined ? {} : { approve_proposal: true }),
     now: Date.now() / 1000,
   });
   if (claim.outcome === "replay") return { replay: true, execution: claim.execution };
@@ -162,7 +169,10 @@ export async function executeImprovementCandidate(
       workspacePath: worktree.worktreePath, task, commands,
       verifierAgentIds: input.routing.verifierAgentIds,
       adapters: checkedAdapters, timeoutMs: input.timeoutMs,
-      commandEnv: { OSSTACK_HOME: candidateHome, OSSTACK_AUTOAPPROVE: "0" },
+      ...(input.prDelivery === undefined
+        ? { commandEnv: { OSSTACK_HOME: candidateHome, OSSTACK_AUTOAPPROVE: "0" } }
+        : { inheritCommandEnv: false, commandEnv: buildAgentChildEnv({ HOME: candidateHome, OSSTACK_HOME: candidateHome, OSSTACK_AUTOAPPROVE: "0",
+          GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_SYSTEM: "/dev/null" }) }),
       reviewCandidate: { changed_paths: before.changed_paths, diff: before.patch },
       reviewBoundary: { allowed_extensions: [...DEFAULT_REVIEW_BOUNDARY_POLICY.allowed_extensions, ".jsonl"] },
     });
