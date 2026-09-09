@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdir, realpath, writeFile } from "node:fs/promises";
+import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { isAbsolute, join, relative } from "node:path";
 import { promisify } from "node:util";
 import { buildAgentChildEnv, createWorktree, type AgentAdapter } from "@osstack/agents";
@@ -32,6 +32,7 @@ export interface ImprovementCandidateInput {
   timeoutMs: number;
   evidenceRoot: string;
   prDelivery?: ImprovementPrTarget;
+  prepareDeps?: "pnpm";
 }
 
 /** Local operator execution only. A session phase grant cannot call this path. */
@@ -75,6 +76,9 @@ export async function prepareImprovementCandidate(input: ImprovementCandidateInp
   const rel = relative(repoPath, evidenceRoot);
   if (rel === "" || (!rel.startsWith("../") && !isAbsolute(rel))) throw new Error("evidence root must be outside the candidate repository");
   const baseSha = await git(repoPath, ["rev-parse", "HEAD"]);
+  if (input.prepareDeps !== undefined && input.prDelivery === undefined) throw new Error("Dependency preparation requires improve deliver");
+  const environment = input.prepareDeps === undefined ? undefined
+    : await (await import("./improvement-environment.js")).previewImprovementEnvironment(repoPath, baseSha);
   const request = {
     schema_version: 1,
     proposal_digest: input.expectedDigest,
@@ -86,6 +90,7 @@ export async function prepareImprovementCandidate(input: ImprovementCandidateInp
     profile: input.routing.summary,
     timeout_ms: input.timeoutMs,
     evidence_root: evidenceRoot,
+    ...(environment === undefined ? {} : { environment }),
     mode: input.prDelivery === undefined ? "local_candidate_only" : "local_candidate_to_pr",
     ...(input.prDelivery === undefined ? {} : { pr_delivery: input.prDelivery,
       limits: { builder_invocations: 1, evaluator_invocations: 1, verification_command_runs: commands.length * 2,
@@ -147,6 +152,16 @@ export async function executeImprovementCandidate(
     });
     const candidateHome = join(directory, "runtime-home");
     await mkdir(candidateHome, { mode: 0o700 });
+    if (request.environment !== undefined) {
+      executionUncertain = true;
+      const { prepareImprovementEnvironment } = await import("./improvement-environment.js");
+      const preparationDirectory = join(directory, "dependency-environment");
+      await prepareImprovementEnvironment({ contract: request.environment, workspace: worktree.worktreePath,
+        commit: baseSha, directory: preparationDirectory, timeoutMs: input.timeoutMs, checkActive: check });
+      await save("environment.json", JSON.parse(await readFile(join(preparationDirectory, "completed.json"), "utf8")));
+      executionUncertain = false;
+      check();
+    }
     const executionAdapters = typeof adapters === "function" ? adapters(worktree.worktreePath, candidateHome) : adapters;
     const checkedAdapters = executionAdapters.map((adapter) => requireCompletedStream(adapter, check));
     check();
@@ -171,7 +186,9 @@ export async function executeImprovementCandidate(
       adapters: checkedAdapters, timeoutMs: input.timeoutMs,
       ...(input.prDelivery === undefined
         ? { commandEnv: { OSSTACK_HOME: candidateHome, OSSTACK_AUTOAPPROVE: "0" } }
-        : { inheritCommandEnv: false, commandEnv: buildAgentChildEnv({ HOME: candidateHome, OSSTACK_HOME: candidateHome, OSSTACK_AUTOAPPROVE: "0",
+        : { inheritCommandEnv: false, commandEnv: request.environment !== undefined
+          ? (await import("./improvement-environment.js")).improvementVerificationEnvironment(candidateHome, request.environment)
+          : buildAgentChildEnv({ HOME: candidateHome, OSSTACK_HOME: candidateHome, OSSTACK_AUTOAPPROVE: "0",
           GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_SYSTEM: "/dev/null" }) }),
       reviewCandidate: { changed_paths: before.changed_paths, diff: before.patch },
       reviewBoundary: { allowed_extensions: [...DEFAULT_REVIEW_BOUNDARY_POLICY.allowed_extensions, ".jsonl"] },

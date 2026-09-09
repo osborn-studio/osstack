@@ -60,7 +60,10 @@ export async function handleImprovementExecutionCommand(sub: string, args: strin
         const { reconcileImprovementPr } = await import("./improvement-pr-delivery.js");
         await reconcileImprovementPr(id, deliveries, osstackHome());
       }
-      printJson({ applied: false, execution, delivery: deliveries.get(id) });
+      const delivery = deliveries.get(id);
+      const environment = execution.request.environment === undefined ? undefined
+        : await (await import("./improvement-environment.js")).improvementEnvironmentStatus(execution, delivery);
+      printJson({ applied: false, execution, delivery, ...(environment === undefined ? {} : { environment }) });
       return 0;
     }
     const proposalId = flag(args, "--proposal");
@@ -107,12 +110,15 @@ export async function handleImprovementExecutionCommand(sub: string, args: strin
         title: proposal.title, ...(base === undefined ? {} : { base }),
       });
     }
+    const preparation = flag(args, "--prepare-deps");
+    if (hasFlag(args, "--prepare-deps") && (preparation !== "pnpm" || sub !== "deliver")) throw new Error("--prepare-deps pnpm is supported only for improve deliver");
     const prepared = await prepareImprovementCandidate({
       executionId, expectedDigest, proposal, repoPath: entry.path,
       registryGates: entry.verify_commands, routing,
       timeoutMs: Number(flag(args, "--timeout-ms") ?? "120000"),
       evidenceRoot: join(osstackHome(), "improvement-executions"),
       ...(prDelivery === undefined ? {} : { prDelivery }),
+      ...(preparation === undefined ? {} : { prepareDeps: "pnpm" as const }),
     });
     if (expectedBase !== undefined && expectedBase !== prepared.baseSha) throw new Error("Local base changed during preview");
     const requestDigest = improvementExecutionRequestDigest(prepared.request);
