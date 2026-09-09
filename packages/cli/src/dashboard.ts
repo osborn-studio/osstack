@@ -104,7 +104,10 @@ export interface DashboardSnapshot {
       pitfall_id: string;
       family: string;
       symptom: string;
+      /** @deprecated Frozen legacy counter, not verified effectiveness. */
       verified_count: number;
+      legacy_verified_count: number;
+      observation_count: number;
     }>;
   };
   autonomy: {
@@ -315,6 +318,8 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
         family: lesson.family,
         symptom: lesson.symptom,
         verified_count: lesson.verified_count,
+        legacy_verified_count: lesson.legacy_verified_count,
+        observation_count: lesson.observation_count,
       })),
     },
     autonomy: {
@@ -585,7 +590,8 @@ function dashboardText(language: DashboardLanguage): {
   checksumedProofPacks: string;
   runsLabel: string;
   successLabel: string;
-  verifiedLabel: string;
+  observationsLabel: string;
+  legacyCountLabel: string;
   commands: string;
   noAgentHistory: string;
   noLessons: string;
@@ -617,7 +623,8 @@ function dashboardText(language: DashboardLanguage): {
       checksumedProofPacks: "个带校验 Proof pack",
       runsLabel: "次运行",
       successLabel: "成功",
-      verifiedLabel: "已验证",
+      observationsLabel: "已记录观察",
+      legacyCountLabel: "历史计数（非验证）",
       commands: "命令",
       noAgentHistory: "暂无 agent 运行历史。",
       noLessons: "暂无 pitfall lessons。",
@@ -649,7 +656,8 @@ function dashboardText(language: DashboardLanguage): {
     checksumedProofPacks: "checksumed proof pack(s)",
     runsLabel: "runs",
     successLabel: "success",
-    verifiedLabel: "verified",
+    observationsLabel: "tracked observations",
+    legacyCountLabel: "legacy count (not validation)",
     commands: "Commands",
     noAgentHistory: "No agent run history yet.",
     noLessons: "No pitfall lessons recorded.",
@@ -817,7 +825,7 @@ async function load(){
     '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.commands)+'</b><br><small>osstack report · osstack proof · osstack pr</small></span></div>'
   ].join('');
   document.getElementById('scorecards').innerHTML = d.agent_scorecards.length ? d.agent_scorecards.map(s => '<div class="row"><span class="dot '+(s.recent_failures ? 'warn' : 'ok')+'"></span><span><b>'+esc(s.agent_id)+'</b><br><small>'+s.total_runs+' '+esc(t.runsLabel)+' · '+Math.round(s.success_rate*100)+'% '+esc(t.successLabel)+' · '+esc(s.capability_fit)+'</small></span></div>').join('') : '<div class="row"><span class="dot warn"></span><span>'+esc(t.noAgentHistory)+'</span></div>';
-  document.getElementById('lessons').innerHTML = d.lessons.recent.length ? d.lessons.recent.map(l => '<div class="row"><span class="dot warn"></span><span><b>'+esc(l.family)+'</b><br><small>'+esc(l.symptom)+' · '+esc(t.verifiedLabel)+' '+l.verified_count+'</small></span></div>').join('') : '<div class="row"><span class="dot ok"></span><span>'+esc(t.noLessons)+'</span></div>';
+  document.getElementById('lessons').innerHTML = d.lessons.recent.length ? d.lessons.recent.map(l => '<div class="row"><span class="dot warn"></span><span><b>'+esc(l.family)+'</b><br><small>'+esc(l.symptom)+' · '+esc(t.observationsLabel)+' '+l.observation_count+' · '+esc(t.legacyCountLabel)+' '+l.legacy_verified_count+'</small></span></div>').join('') : '<div class="row"><span class="dot ok"></span><span>'+esc(t.noLessons)+'</span></div>';
   document.getElementById('board').innerHTML = lanes.map(lane => {
     const col = d.board.columns.find(c => c.name === lane) || { cards: [] };
     return '<div class="lane"><div class="lane-title"><span>'+lane+'</span><span>'+col.cards.length+'</span></div>'+col.cards.map(c => '<div class="card"><b>'+esc(c.title)+'</b><small>'+esc(c.assignee || t.unassigned)+(c.blocked_reason ? ' · '+esc(c.blocked_reason) : '')+'</small></div>').join('')+'</div>';

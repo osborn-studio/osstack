@@ -48,6 +48,7 @@ import {
   type LoopEvent,
   type LoopKnowledgeTrace,
   type LoopProfileRoutingEvidence,
+  type LoopWaitReason,
   type PublishedAssetEvidence,
   type ReviewArtifact,
   Task,
@@ -191,6 +192,7 @@ export interface LoopRunResult {
 export interface LoopRunCyclesOptions {
   cycles?: number;
   intervalMs?: number;
+  /** Stop when no task can execute; deferred work retains a distinct wait reason. */
   stopWhenIdle?: boolean;
 }
 
@@ -271,13 +273,11 @@ export class LoopEngine {
     }
     const finalState = await this.persistBudgetStatus(last, budgetStatus);
     this.emit(last.loop_id, "loop.stopped", {
-      reason: policyReason !== undefined
-        ? policyStopReason(policyReason)
+      ...(policyReason !== undefined
+        ? { reason_code: "policy_denied", reason: policyStopReason(policyReason) }
         : budgetStatus?.exceeded === true
-          ? `budget exceeded: ${budgetStatus.reason}`
-          : last.goal?.pass === true
-            ? "goal command passed"
-            : "manual run completed",
+          ? { reason_code: "budget_exceeded", reason: `budget exceeded: ${budgetStatus.reason}` }
+          : completionStopPayload(last.state, last.executedTaskCount, last.goal)),
       cycles: results.length,
     });
 
@@ -312,11 +312,9 @@ export class LoopEngine {
     });
     const finalState = await this.persistBudgetStatus(result, budgetStatus);
     this.emit(result.loop_id, "loop.stopped", {
-      reason: budgetStatus?.exceeded === true
-        ? `budget exceeded: ${budgetStatus.reason}`
-        : result.goal?.pass === true
-          ? "goal command passed"
-          : "manual run completed",
+      ...(budgetStatus?.exceeded === true
+        ? { reason_code: "budget_exceeded", reason: `budget exceeded: ${budgetStatus.reason}` }
+        : completionStopPayload(result.state, result.executedTaskCount, result.goal)),
     });
     return {
       ...result,
@@ -522,6 +520,9 @@ export class LoopEngine {
       in_progress: [],
       pending,
       deferred_tasks: governance.deferred,
+      // Recompute each cycle, including after restart or a policy change. Never
+      // carry a prior waiting verdict into newly executable or truly idle work.
+      wait_reason: tasks.length === 0 ? discoveryWaitReason(governance.deferred) : undefined,
       key_metrics: {
         total_cycles: (state.key_metrics?.total_cycles ?? 0) + 1,
         avg_duration_ms: completed.length === 0
@@ -550,9 +551,7 @@ export class LoopEngine {
       duration_ms: Date.now() - startedAt,
     });
     if (lifecycle.emitStopped) {
-      this.emit(loopId, "loop.stopped", {
-        reason: goal?.pass === true ? "goal command passed" : "manual run completed",
-      });
+      this.emit(loopId, "loop.stopped", completionStopPayload(nextState, tasks.length, goal));
     }
 
     return {
@@ -1256,6 +1255,35 @@ function nextNoProgressCycles(current: number, result: LoopRunResult): number {
   if (result.executedTaskCount === 0) return current;
   const madeProgress = result.completedTasks.some((task) => task.outcome === "success");
   return madeProgress ? 0 : current + 1;
+}
+
+function discoveryWaitReason(deferred: readonly DeferredTask[]): LoopWaitReason | undefined {
+  if (deferred.length === 0) return undefined;
+  return {
+    code: "discovery_deferred",
+    needs_approval: deferred.filter((entry) => entry.authorization === "needs_approval").length,
+    suggest_only: deferred.filter((entry) => entry.authorization === "suggest_only").length,
+    blocked: deferred.filter((entry) => entry.authorization === "blocked").length,
+  };
+}
+
+function completionStopPayload(
+  state: LoopState,
+  executedTaskCount: number,
+  goal?: LoopGoalResult,
+): Record<string, unknown> {
+  if (goal?.pass === true) return { reason_code: "goal_passed", reason: "goal command passed" };
+  if (state.wait_reason !== undefined) {
+    const waiting = state.wait_reason;
+    return {
+      reason_code: waiting.code,
+      reason: `discovery deferred: ${waiting.needs_approval} need approval, ${waiting.suggest_only} suggested, ${waiting.blocked} blocked; no task is authorized to execute`,
+      wait_reason: waiting,
+    };
+  }
+  return executedTaskCount === 0
+    ? { reason_code: "idle", reason: "no pending tasks discovered" }
+    : { reason_code: "completed", reason: "manual run completed" };
 }
 
 interface TaskGitEvidence {

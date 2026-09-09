@@ -1,6 +1,7 @@
 import {
   listImprovementProposals,
   openDb,
+  queryKnowledgeHygieneRecurrenceCandidatesV2,
   recordKnowledgeHygieneRun,
   upsertImprovementProposal,
   type RecordKnowledgeHygieneRunInputV1,
@@ -72,6 +73,97 @@ async function fixture() {
 }
 
 describe("neat propose command", () => {
+  it("retains historical draft sources when the evidence window rolls from 20 to 21 runs", async () => {
+    const command = await fixture();
+    const args = ["--db", command.dbPath, "--min-occurrences", "2", "--min-repositories", "2", "--yes", "--json"];
+    const seedDb = openDb({ path: command.dbPath, minFreeBytes: 0 });
+    for (const repoId of ["repo-a", "repo-b"]) {
+      for (let sequence = 3; sequence <= 20; sequence += 1) {
+        recordKnowledgeHygieneRun(seedDb, run(repoId, sequence));
+      }
+    }
+    seedDb.close();
+    expect(await handleNeatProposalCommand(args, command.deps)).toBe(0);
+
+    const firstDb = openDb({ path: command.dbPath, minFreeBytes: 0 });
+    const original = listImprovementProposals(firstDb, { repo_id: "repo-a" })[0]!;
+    expect(original.source_asset_ids).toHaveLength(20);
+    const reviewed = upsertImprovementProposal(firstDb, command.dbPath, {
+      ...listImprovementProposals(firstDb, { repo_id: "repo-b" })[0]!, status: "approved",
+    });
+    recordKnowledgeHygieneRun(firstDb, run("repo-a", 21));
+    recordKnowledgeHygieneRun(firstDb, run("repo-b", 21));
+    const current = queryKnowledgeHygieneRecurrenceCandidatesV2(firstDb, {
+      min_occurrences: 2, min_repositories: 2,
+    }).find((candidate) => candidate.repo_id === "repo-a")!;
+    expect(current.evidence_run_ids).toHaveLength(20);
+    expect(original.source_asset_ids.filter((id) => !current.evidence_run_ids.includes(id))).toHaveLength(1);
+    firstDb.close();
+
+    command.stdout.length = 0;
+    expect(await handleNeatProposalCommand(args, command.deps)).toBe(0);
+    expect(AgentCommandResult.parse(JSON.parse(command.stdout[0] ?? ""))).toMatchObject({
+      status: "ok", result: {
+        dry_run: false, persisted: 1, preserved: 1,
+        proposals: expect.arrayContaining([expect.objectContaining({
+          proposal_id: original.proposal_id,
+          source_asset_ids: [...new Set([...original.source_asset_ids, ...current.evidence_run_ids])].sort(),
+        })]),
+      },
+    });
+    const nextDb = openDb({ path: command.dbPath, minFreeBytes: 0 });
+    const updated = listImprovementProposals(nextDb, { repo_id: "repo-a" })[0]!;
+    expect(updated.source_asset_ids).toHaveLength(21);
+    expect(updated.source_asset_ids).toEqual(expect.arrayContaining(original.source_asset_ids));
+    expect(updated.source_asset_ids).toEqual(expect.arrayContaining(current.evidence_run_ids));
+    expect(updated.rationale).toContain("21 high-confidence occurrences");
+    expect(updated.proposal_id).toBe(original.proposal_id);
+    expect(listImprovementProposals(nextDb, { repo_id: "repo-b" })).toEqual([reviewed]);
+    nextDb.close();
+
+    expect(await handleNeatProposalCommand(args, command.deps)).toBe(0);
+    const replayDb = openDb({ path: command.dbPath, minFreeBytes: 0 });
+    expect(listImprovementProposals(replayDb, { repo_id: "repo-a" })).toEqual([updated]);
+    expect(listImprovementProposals(replayDb, { repo_id: "repo-b" })).toEqual([reviewed]);
+    replayDb.close();
+  });
+
+  it("extends stable draft evidence after another recurrence without changing reviewed proposals", async () => {
+    const command = await fixture();
+    const args = ["--db", command.dbPath, "--min-occurrences", "2", "--min-repositories", "2", "--yes", "--json"];
+    expect(await handleNeatProposalCommand(args, command.deps)).toBe(0);
+
+    const firstDb = openDb({ path: command.dbPath, minFreeBytes: 0 });
+    const originalDraft = listImprovementProposals(firstDb, { repo_id: "repo-a" })[0]!;
+    const reviewed = upsertImprovementProposal(firstDb, command.dbPath, {
+      ...listImprovementProposals(firstDb, { repo_id: "repo-b" })[0]!, status: "approved",
+    });
+    recordKnowledgeHygieneRun(firstDb, run("repo-a", 3));
+    recordKnowledgeHygieneRun(firstDb, run("repo-b", 3));
+    firstDb.close();
+
+    command.stdout.length = 0;
+    expect(await handleNeatProposalCommand(args, command.deps)).toBe(0);
+    expect(AgentCommandResult.parse(JSON.parse(command.stdout[0] ?? ""))).toMatchObject({
+      status: "ok", result: { dry_run: false, persisted: 1, preserved: 1 },
+    });
+    const nextDb = openDb({ path: command.dbPath, minFreeBytes: 0 });
+    const updated = listImprovementProposals(nextDb, { repo_id: "repo-a" })[0]!;
+    expect(updated.proposal_id).toBe(originalDraft.proposal_id);
+    expect(updated.source_asset_ids).toEqual(expect.arrayContaining(originalDraft.source_asset_ids));
+    expect(updated.source_asset_ids.length).toBeGreaterThan(originalDraft.source_asset_ids.length);
+    expect(updated.rationale).not.toBe(originalDraft.rationale);
+    expect(updated.status).toBe("draft");
+    expect(listImprovementProposals(nextDb, { repo_id: "repo-b" })).toEqual([reviewed]);
+    nextDb.close();
+
+    expect(await handleNeatProposalCommand(args, command.deps)).toBe(0);
+    const replayDb = openDb({ path: command.dbPath, minFreeBytes: 0 });
+    expect(listImprovementProposals(replayDb, { repo_id: "repo-a" })).toEqual([updated]);
+    expect(listImprovementProposals(replayDb, { repo_id: "repo-b" })).toEqual([reviewed]);
+    replayDb.close();
+  });
+
   it("previews by default without writing proposals", async () => {
     const command = await fixture();
 

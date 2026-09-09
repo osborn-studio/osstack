@@ -229,6 +229,13 @@ export async function handleNeatProposalCommand(
           preserved += 1;
           continue;
         }
+        // Candidates expose a bounded recent evidence window. A stable legacy
+        // draft retains historical sources as that window advances; updating
+        // the returned draft too keeps JSON output aligned with persistence.
+        proposal.source_asset_ids = [...new Set([
+          ...(prior?.source_asset_ids ?? []),
+          ...proposal.source_asset_ids,
+        ])].sort();
         upsertImprovementProposal(db, parsed.dbPath, {
           proposal_id: proposal.proposal_id,
           repo_id: proposal.repo_id,

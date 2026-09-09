@@ -23,6 +23,7 @@ import {
   LessonDraftConfig,
   LoopBudget,
   LoopEngine,
+  LoopWaitReason,
   LoopKnowledgeTrace,
   LoopProfileRoutingEvidence,
   checkBudget,
@@ -58,6 +59,7 @@ import {
   routeCapability,
   SessionMessageIdConflict,
   SessionRepository,
+  SessionContinuationRepository,
   SessionVersionConflict,
   shutdownOtel,
   sqliteHistory,
@@ -71,13 +73,17 @@ import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import { RpcLatencyRecorder, type RpcMethodLatency } from "./rpc-latency.js";
 import type Database from "better-sqlite3";
 import {
+  AgentSessionEventSchema,
   cleanupOrphanedWorktrees,
   defaultAdapters,
+  createControlledSessionAdapter,
+  isControlledSessionAdapter,
   isSessionCapableAdapter,
   type AgentAdapter,
   type AgentSessionEvent,
   type AgentSessionInput,
   type AgentTask,
+  type SessionCapableAdapter,
 } from "@osstack/agents";
 import { appendEvent, finalizeRun, insertRun, insertTask } from "./store.js";
 import {
@@ -96,8 +102,11 @@ import {
 } from "@osstack/autonomy";
 import {
   ScopedApprovalDecision,
+  SessionDecision,
   type ScopedApprovalDecision as ScopedApprovalDecisionType,
 } from "@osstack/protocol";
+import { SessionCollaborator, readContinuationTrust } from "./session-collaborator.js";
+import { describeSessionWait } from "./session-wait.js";
 import { runDailyBrief } from "./daily-command.js";
 import { makePolicyGate } from "./policy-gate.js";
 import { osstackHome, pidFilePath, resolveSocketPath } from "./paths.js";
@@ -167,6 +176,8 @@ interface DaemonContext {
   kanban: KanbanRepository;
   /** Durable, versioned control plane for resumable agent conversations. */
   sessions: SessionRepository;
+  continuations: SessionContinuationRepository;
+  collaborator: SessionCollaborator | undefined;
   /** Local browser dashboard, returned to chat bridges as a shareable URL. */
   dashboardUrl: string | null;
   /** Active runs by run_id → AbortController for cancellation. */
@@ -245,6 +256,7 @@ interface LoopSession {
   lastMarkdownPath?: string;
   lastError?: string;
   stopReason?: string;
+  waitReason?: LoopRunResult["state"]["wait_reason"];
   runOptions: LoopRunOptions;
   scheduleExpression?: string;
   shutdownRequested?: boolean;
@@ -292,6 +304,7 @@ interface PersistedLoopSession {
   lastMarkdownPath?: string;
   lastError?: string;
   stopReason?: string;
+  waitReason?: LoopRunResult["state"]["wait_reason"];
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -373,6 +386,44 @@ function publicSession(row: ReturnType<SessionRepository["getSession"]>): Record
   };
 }
 
+function publicSessionWait(ctx: DaemonContext, sessionId: string) {
+  const row = ctx.sessions.getSession(sessionId);
+  if (row === undefined) return null;
+  const snapshot = ctx.sessions.latestSnapshot(sessionId);
+  const pending = ctx.db.prepare(`
+    SELECT message_id, state FROM session_messages
+    WHERE session_id = ? AND direction = 'inbound'
+      AND (state = 'accepted' OR (state = 'failed' AND turn_id = ?))
+    ORDER BY CASE WHEN state = 'accepted' THEN 0 ELSE 1 END, created_at DESC, message_id LIMIT 1
+  `).get(sessionId, snapshot.turn_id) as { message_id: string; state: "accepted" | "failed" } | undefined;
+  const wait = describeSessionWait({
+    state: row.state,
+    decision: snapshot.decision,
+    resume_ready: row.resume_supported && row.native_session_id !== null,
+    applying: ctx.activeSessionSends.has(sessionId),
+    ...(pending === undefined ? {} : { pending_message: pending }),
+  });
+  const grant = ctx.continuations.forSession(sessionId);
+  if (wait?.reason === "phase_continue" && grant?.status === "active"
+    && Date.parse(grant.body.expires_at) > Date.now()
+    && ctx.collaborator?.isScheduled(grant.grant_id)) {
+    return { ...wait, automatic_continuation: true, grant_id: grant.grant_id };
+  }
+  return wait;
+}
+
+function publicCollaborator(ctx: DaemonContext, sessionId: string) {
+  const grant = ctx.continuations.forSession(sessionId);
+  return grant === undefined ? null : {
+    grant_id: grant.grant_id, status: grant.status, reason: grant.reason,
+    step_index: grant.step_index, steps_total: grant.body.steps.length,
+    checks_used: grant.checks_used, max_checks: grant.body.max_checks,
+    resumes_used: grant.resumes_used, max_resumes: grant.body.max_resumes,
+    expires_at: grant.body.expires_at,
+    scheduled: ctx.collaborator?.isScheduled(grant.grant_id) ?? false,
+  };
+}
+
 type DecisionRequestedEvent = Extract<AgentSessionEvent, { type: "decision.requested" }>;
 
 function parseDecisionDirective(text: string): DecisionRequestedEvent | undefined {
@@ -385,43 +436,8 @@ function parseDecisionDirective(text: string): DecisionRequestedEvent | undefine
   if (typeof root !== "object" || root === null || Array.isArray(root)) return undefined;
   const outer = root as Record<string, unknown>;
   if (Object.keys(outer).length !== 1 || !("ostag_decision" in outer)) return undefined;
-  const value = outer["ostag_decision"];
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
-  const decision = value as Record<string, unknown>;
-  if (
-    Object.keys(decision).sort().join(",") !== "choices,decision_id,question"
-    || typeof decision["decision_id"] !== "string"
-    || decision["decision_id"].trim() === ""
-    || decision["decision_id"].length > 256
-    || typeof decision["question"] !== "string"
-    || decision["question"].trim() === ""
-    || decision["question"].length > 1_000
-    || !Array.isArray(decision["choices"])
-    || decision["choices"].length < 1
-    || decision["choices"].length > 8
-  ) return undefined;
-  const choices: Array<{ choice_id: string; label: string }> = [];
-  for (const item of decision["choices"]) {
-    if (typeof item !== "object" || item === null || Array.isArray(item)) return undefined;
-    const choice = item as Record<string, unknown>;
-    if (
-      Object.keys(choice).sort().join(",") !== "choice_id,label"
-      || typeof choice["choice_id"] !== "string"
-      || choice["choice_id"].trim() === ""
-      || choice["choice_id"].length > 256
-      || typeof choice["label"] !== "string"
-      || choice["label"].trim() === ""
-      || choice["label"].length > 160
-    ) return undefined;
-    choices.push({ choice_id: choice["choice_id"], label: choice["label"] });
-  }
-  if (new Set(choices.map((choice) => choice.choice_id)).size !== choices.length) return undefined;
-  return {
-    type: "decision.requested",
-    decision_id: decision["decision_id"],
-    question: decision["question"],
-    choices,
-  };
+  const parsed = SessionDecision.safeParse(outer["ostag_decision"]);
+  return parsed.success ? { type: "decision.requested", ...parsed.data } : undefined;
 }
 
 interface SessionSendParams {
@@ -574,7 +590,8 @@ async function handleSessionStart(
   let assistantText = "";
   let decision: unknown = null;
   try {
-    for await (const event of adapter.startSession(task, controller.signal)) {
+    for await (const rawEvent of adapter.startSession(task, controller.signal)) {
+      const event = AgentSessionEventSchema.parse(rawEvent);
       if (event.type === "native_session.started") {
         if (nativeSessionId !== undefined && nativeSessionId !== event.native_session_id) {
           throw new Error("adapter changed native session id");
@@ -586,13 +603,15 @@ async function handleSessionStart(
         throw new Error("adapter output contained protected session metadata");
       }
       if (event.type === "assistant.message") {
-        const directive = parseDecisionDirective(event.text);
+        // Controlled results are opaque data; their adapter emits decisions separately.
+        const directive = isControlledSessionAdapter(adapter) ? undefined : parseDecisionDirective(event.text);
         if (directive !== undefined) {
           publicEvents.push(directive);
           decision = {
             decision_id: directive.decision_id,
             question: directive.question,
             choices: directive.choices,
+            ...(directive.continuation === undefined ? {} : { continuation: directive.continuation }),
           };
           assistantText = directive.question;
           continue;
@@ -605,6 +624,7 @@ async function handleSessionStart(
         decision_id: event.decision_id,
         question: event.question,
         choices: event.choices,
+        ...(event.continuation === undefined ? {} : { continuation: event.continuation }),
       };
       if (event.type === "session.terminal" && event.state !== "completed") {
         throw new Error("adapter terminated while starting the session");
@@ -704,6 +724,11 @@ async function handleSessionSend(
 ): Promise<SingleResponse> {
   const p = parseSessionSendParams(req.params);
   if (p instanceof Error) return singleErr(req.id, "bad_request", p.message);
+  // Completed receipt replay remains read-only while drained; no new/retried
+  // instruction may reserve a message or invoke an adapter during an upgrade.
+  if (ctx.draining && ctx.sessions.getMessage(p.message_id)?.state !== "applied") {
+    return singleErr(req.id, "draining", "daemon is not accepting session instructions");
+  }
 
   const session = ctx.sessions.getSession(p.session_id);
   if (session === undefined) return singleErr(req.id, "not_found", "session not found");
@@ -803,7 +828,28 @@ async function handleSessionSend(
     return singleOk(req.id, { state: "duplicate", session_version: applied.session_version });
   }
 
+  return await executeReservedSessionTurn(ctx, req, p, session, adapter, applied.session_version);
+}
+
+/** Private port: only an already persisted reservation may invoke the runtime. */
+async function executeReservedSessionTurn(
+  ctx: DaemonContext,
+  req: DaemonRequest,
+  p: SessionSendParams,
+  session: NonNullable<ReturnType<SessionRepository["getSession"]>>,
+  adapter: SessionCapableAdapter,
+  reservationVersion: number,
+  options: {
+    controller?: AbortController;
+    completed?: (turnId: string, version: number, now: number) => void;
+  } = {},
+): Promise<SingleResponse> {
+  if (session.native_session_id === null) return singleErr(req.id, "resume_unsupported", "session cannot resume");
+  const applied = { session_version: reservationVersion };
   ctx.activeSessionSends.add(session.session_id);
+  const controller = options.controller ?? new AbortController();
+  const now = Date.now() / 1000;
+  ctx.activeRuns.set(session.run_id, controller);
   try {
     const failReservedMessage = (
       code: string,
@@ -834,13 +880,13 @@ async function handleSessionSend(
       prompt: p.text,
       ...(Object.keys(context).length === 0 ? {} : { context }),
     };
-    const controller = new AbortController();
     const publicEvents: AgentSessionEvent[] = [];
     let assistantText = "";
     let decision: unknown = null;
     let terminalCompleted = false;
     try {
-      for await (const event of adapter.resumeSession(input, controller.signal)) {
+      for await (const rawEvent of adapter.resumeSession(input, controller.signal)) {
+        const event = AgentSessionEventSchema.parse(rawEvent);
         if (event.type === "native_session.started") {
           if (event.native_session_id !== session.native_session_id) {
             return failReservedMessage(
@@ -868,13 +914,15 @@ async function handleSessionSend(
           terminalCompleted = true;
         }
         if (event.type === "assistant.message") {
-          const directive = parseDecisionDirective(event.text);
+          // Controlled results are opaque data; their adapter emits decisions separately.
+          const directive = isControlledSessionAdapter(adapter) ? undefined : parseDecisionDirective(event.text);
           if (directive !== undefined) {
             publicEvents.push(directive);
             decision = {
               decision_id: directive.decision_id,
               question: directive.question,
               choices: directive.choices,
+              ...(directive.continuation === undefined ? {} : { continuation: directive.continuation }),
             };
             assistantText = directive.question;
             continue;
@@ -886,6 +934,7 @@ async function handleSessionSend(
           decision_id: event.decision_id,
           question: event.question,
           choices: event.choices,
+          ...(event.continuation === undefined ? {} : { continuation: event.continuation }),
         };
       }
       if (!terminalCompleted) {
@@ -905,23 +954,28 @@ async function handleSessionSend(
       ? "awaiting_decision"
       : "idle";
     const completedAt = Date.now() / 1000;
-    const updatedSession = ctx.sessions.completeInboundTurn({
-      turn: {
-        turn_id: `turn_${randomUUID()}`,
-        session_id: session.session_id,
-        ordinal: (ctx.db.prepare(
-          "SELECT COALESCE(MAX(ordinal), 0) + 1 AS ordinal FROM session_turns WHERE session_id = ?",
-        ).get(session.session_id) as { ordinal: number }).ordinal,
-        state: finalState,
-        assistant_text: assistantText,
-        decision,
-        created_at: now,
-        updated_at: completedAt,
-      },
-      message_id: p.message_id,
-      expected_version: applied.session_version,
-      applied_at: completedAt,
-    });
+    const turnId = `turn_${randomUUID()}`;
+    const updatedSession = ctx.db.transaction(() => {
+      const updated = ctx.sessions.completeInboundTurn({
+        turn: {
+          turn_id: turnId,
+          session_id: session.session_id,
+          ordinal: (ctx.db.prepare(
+            "SELECT COALESCE(MAX(ordinal), 0) + 1 AS ordinal FROM session_turns WHERE session_id = ?",
+          ).get(session.session_id) as { ordinal: number }).ordinal,
+          state: finalState,
+          assistant_text: assistantText,
+          decision,
+          created_at: now,
+          updated_at: completedAt,
+        },
+        message_id: p.message_id,
+        expected_version: applied.session_version,
+        applied_at: completedAt,
+      });
+      options.completed?.(turnId, updated.version, completedAt);
+      return updated;
+    })();
     return singleOk(req.id, {
       state: "applied",
       session_version: updatedSession.version,
@@ -929,6 +983,7 @@ async function handleSessionSend(
     });
   } finally {
     ctx.activeSessionSends.delete(session.session_id);
+    if (ctx.activeRuns.get(session.run_id) === controller) ctx.activeRuns.delete(session.run_id);
   }
 }
 
@@ -1008,6 +1063,7 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
     case "daemon.resume":
       ctx.draining = false;
       ctx.drainingFromHealth = false;
+      ctx.collaborator?.resumePending();
       return singleOk(req.id, { draining: false });
 
     case "daemon.shutdown":
@@ -1052,7 +1108,9 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
         return singleErr(req.id, "bad_request", "params.limit must be an integer between 1 and 200");
       }
       return singleOk(req.id, {
-        sessions: ctx.sessions.listSessions({ limit }).map((row) => publicSession(row)),
+        sessions: ctx.sessions.listSessions({ limit }).map((row) => ({
+          ...publicSession(row), wait: publicSessionWait(ctx, row.session_id), collaborator: publicCollaborator(ctx, row.session_id),
+        })),
       });
     }
 
@@ -1067,7 +1125,7 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       const session = publicSession(ctx.sessions.getSession(p.session_id));
       return session === null
         ? singleErr(req.id, "not_found", "session not found")
-        : singleOk(req.id, session);
+        : singleOk(req.id, { ...session, wait: publicSessionWait(ctx, p.session_id), collaborator: publicCollaborator(ctx, p.session_id) });
     }
 
     case "session.snapshot": {
@@ -1078,7 +1136,37 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       if (ctx.sessions.getSession(p.session_id) === undefined) {
         return singleErr(req.id, "not_found", "session not found");
       }
-      return singleOk(req.id, ctx.sessions.latestSnapshot(p.session_id));
+      return singleOk(req.id, {
+        ...ctx.sessions.latestSnapshot(p.session_id),
+        wait: publicSessionWait(ctx, p.session_id),
+        collaborator: publicCollaborator(ctx, p.session_id),
+      });
+    }
+
+    case "collaborator.inspect": {
+      const p = req.params as Record<string, unknown> | undefined;
+      if (typeof p?.["session_id"] !== "string") return singleErr(req.id, "bad_request", "session_id is required");
+      const session = ctx.sessions.getSession(p["session_id"]);
+      if (session === undefined) return singleErr(req.id, "not_found", "session not found");
+      try {
+        const policy = await ctx.collaborator!.policy(session.agent_id);
+        return singleOk(req.id, {
+          ...ctx.sessions.latestSnapshot(session.session_id), repo_path: session.repo_path,
+          runtime_policy: policy, collaborator: ctx.continuations.forSession(session.session_id) ?? null,
+        });
+      } catch { return singleErr(req.id, "controlled_runtime_required", "start a claude-controlled-session before installing a continuation grant"); }
+    }
+    case "collaborator.install": {
+      try { return singleOk(req.id, await ctx.collaborator!.install(req.params)); }
+      catch { return singleErr(req.id, "grant_rejected", "grant signature, runtime policy, session cursor, or time window is invalid; inspect the session and signed grant"); }
+    }
+    case "collaborator.status":
+    case "collaborator.revoke": {
+      const p = req.params as Record<string, unknown> | undefined;
+      if (typeof p?.["grant_id"] !== "string") return singleErr(req.id, "bad_request", "grant_id is required");
+      const grant = ctx.continuations.get(p["grant_id"]);
+      if (grant === undefined) return singleErr(req.id, "not_found", "grant not found");
+      return singleOk(req.id, req.method === "collaborator.revoke" ? ctx.collaborator!.revoke(p["grant_id"]) : grant);
     }
 
     case "session.send":
@@ -1922,6 +2010,8 @@ async function runLoopSession(ctx: DaemonContext, session: LoopSession): Promise
       session.lastCycleDurationMs = cycleDurationMs;
       session.lastJsonPath = result.jsonPath;
       session.lastMarkdownPath = result.markdownPath;
+      if (result.state.wait_reason === undefined) delete session.waitReason;
+      else session.waitReason = result.state.wait_reason;
       session.updatedAt = Date.now();
       await persistLoopSessions(ctx);
 
@@ -1951,7 +2041,9 @@ async function runLoopSession(ctx: DaemonContext, session: LoopSession): Promise
         return;
       }
       if (session.stopWhenIdle && result.executedTaskCount === 0) {
-        await markLoopSessionStopped(ctx, session, "idle cycle completed");
+        await markLoopSessionStopped(ctx, session, result.state.wait_reason === undefined
+          ? "idle cycle completed"
+          : `discovery_deferred: needs_approval=${result.state.wait_reason.needs_approval}, suggest_only=${result.state.wait_reason.suggest_only}, blocked=${result.state.wait_reason.blocked}`);
         return;
       }
       if (session.maxCycles !== undefined && session.cycleCount >= session.maxCycles) {
@@ -2175,6 +2267,7 @@ function loopSessionSummary(session: LoopSession): Record<string, unknown> {
     ...(session.lastJsonPath !== undefined ? { last_json_path: session.lastJsonPath } : {}),
     ...(session.lastMarkdownPath !== undefined ? { last_markdown_path: session.lastMarkdownPath } : {}),
     ...(session.stopReason !== undefined ? { stop_reason: session.stopReason } : {}),
+    ...(session.waitReason !== undefined ? { wait_reason: session.waitReason } : {}),
     ...(session.lastError !== undefined ? { last_error: session.lastError } : {}),
   };
 }
@@ -2210,6 +2303,7 @@ async function persistLoopSessions(ctx: DaemonContext): Promise<void> {
       ...(session.lastMarkdownPath !== undefined ? { lastMarkdownPath: session.lastMarkdownPath } : {}),
       ...(session.lastError !== undefined ? { lastError: session.lastError } : {}),
       ...(session.stopReason !== undefined ? { stopReason: session.stopReason } : {}),
+      ...(session.waitReason !== undefined ? { waitReason: session.waitReason } : {}),
     })),
   };
   // Atomic write (temp + rename): loop-sessions.json is read concurrently by
@@ -2261,6 +2355,7 @@ async function restoreLoopSessions(ctx: DaemonContext): Promise<void> {
         process.stderr.write(`osstack: loop orphaned worktree cleanup failed: ${(err as Error).message}\n`);
       }
     }
+    const restoredWait = LoopWaitReason.safeParse(saved.waitReason);
     const session: LoopSession = {
       loopSessionId: saved.loopSessionId,
       workspacePath,
@@ -2284,6 +2379,7 @@ async function restoreLoopSessions(ctx: DaemonContext): Promise<void> {
       noProgressCycles: saved.noProgressCycles ?? 0,
       abort: new AbortController(),
       runOptions: restoredRunOptions,
+      ...(restoredWait.success ? { waitReason: restoredWait.data } : {}),
       ...(saved.lastBudgetCheck !== undefined ? { lastBudgetCheck: saved.lastBudgetCheck } : {}),
       ...(saved.maxCycles !== undefined ? { maxCycles: saved.maxCycles } : {}),
       ...(saved.lastCycleDurationMs !== undefined ? { lastCycleDurationMs: saved.lastCycleDurationMs } : {}),
@@ -3436,7 +3532,7 @@ function buildContext(
   // Deck CLI, so daemon and `osstack deck` agree on which agents exist). Order
   // doesn't matter once policy ranks them; each adapter's isAvailable() gates
   // whether it's a viable route on this machine.
-  for (const a of options.adapters ?? defaultAdapters()) {
+  for (const a of options.adapters ?? [...defaultAdapters(), createControlledSessionAdapter({ state_directory: join(home, "controlled-sessions") })]) {
     adapters.set(a.id, a);
   }
 
@@ -3445,8 +3541,9 @@ function buildContext(
   const gbrain = new GBrainAdapter();  // disabled unless OSSTACK_GBRAIN=1
   const kanban = new KanbanRepository(db, dbPath);
   const sessions = new SessionRepository(db, dbPath);
+  const continuations = new SessionContinuationRepository(db, dbPath);
   return {
-    dbPath, loopSessionsPath, dailySessionsPath, db, redactor, adapters, policy, hermes, gbrain, kanban, sessions,
+    dbPath, loopSessionsPath, dailySessionsPath, db, redactor, adapters, policy, hermes, gbrain, kanban, sessions, continuations, collaborator: undefined,
     dashboardUrl: null,
     activeRuns: new Map(),
     activeSessionSends: new Set(),
@@ -3495,6 +3592,8 @@ export interface DaemonHandles {
 }
 
 export interface StartDaemonOptions {
+  /** Trusted owner public keys only; absent means read continuation-trust.json. */
+  continuationTrustedPublicKeys?: ReadonlyMap<string, string>;
   socketPath?: string;
   /** Test/embedding hook; production continues to use the default registry. */
   adapters?: readonly AgentAdapter[];
@@ -3634,6 +3733,7 @@ async function refreshAutonomyHealthAndRecover(
   }
   ctx.lastAutonomyHealth = current;
   applyAutonomyDrainSignal(ctx, current.drain_required);
+  ctx.collaborator?.resumePending();
   const externalRecovered =
     previous !== undefined
     && !previous.can_push_deploy
@@ -3667,14 +3767,22 @@ function applyAutonomyDrainSignal(ctx: DaemonContext, drainRequired: boolean): v
   if (ctx.draining && ctx.drainingFromHealth) {
     ctx.draining = false;
     ctx.drainingFromHealth = false;
+    ctx.collaborator?.resumePending();
     process.stderr.write("osstack: autonomy health recovered — daemon resumed accepting work\n");
   }
+}
+
+function collaboratorPaused(ctx: DaemonContext): boolean {
+  return ctx.draining || (ctx.guardedAutonomy !== undefined
+    && (ctx.lastAutonomyHealth === undefined || !ctx.lastAutonomyHealth.can_run_local || ctx.lastAutonomyHealth.drain_required));
 }
 
 export async function startDaemon(
   opts: StartDaemonOptions = {},
 ): Promise<DaemonHandles> {
   const socketPath = opts.socketPath ?? resolveSocketPath();
+  const continuationTrust = new Map(opts.continuationTrustedPublicKeys
+    ?? await readContinuationTrust(join(osstackHome(), "continuation-trust.json")));
   // Refuse to start when another daemon already owns the pidfile — two
   // daemons would race for the socket and share the SQLite writer.
   const releaseLock = acquireDaemonLock(pidFilePath());
@@ -3690,6 +3798,41 @@ export async function startDaemon(
     ...(opts.readConcurrency === undefined
       ? {}
       : { readConcurrency: opts.readConcurrency }),
+  });
+  ctx.collaborator = new SessionCollaborator({
+    repository: ctx.continuations,
+    adapters: ctx.adapters,
+    trustedPublicKeys: continuationTrust,
+    draining: () => collaboratorPaused(ctx),
+    send: async (reservation, controller) => {
+      const session = ctx.sessions.getSession(reservation.grant.body.session_id);
+      const adapter = ctx.adapters.get(reservation.grant.body.runtime_id);
+      if (collaboratorPaused(ctx) || controller.signal.aborted) return { ok: false, error: { code: "continuation_cancelled" } };
+      if (session === undefined || adapter === undefined || !isSessionCapableAdapter(adapter)) {
+        return { ok: false, error: { code: "resume_unsupported" } };
+      }
+      if (ctx.activeSessionSends.has(session.session_id)) return { ok: false, error: { code: "session_busy" } };
+      return await executeReservedSessionTurn(ctx, { id: reservation.attempt.attempt_id, method: "collaborator.resume" }, {
+        session_id: session.session_id,
+        runtime_id: session.agent_id,
+        turn_id: reservation.message.turn_id,
+        message_id: reservation.message.message_id,
+        expected_version: reservation.reservation_version - 1,
+        text: reservation.prompt,
+        requested_by: `agent:collaborator:${reservation.grant.body.grant_id}`,
+      }, session, adapter, reservation.reservation_version, {
+        controller,
+        completed: (turnId, version, now) => {
+          // Timers are cooperative: a blocked event loop can deliver completion
+          // before an overdue abort callback. Keep the real receipt, but expire
+          // the delegation inside this same completion transaction.
+          const grant = reservation.grant;
+          if (now * 1000 >= Date.parse(grant.body.expires_at)) ctx.continuations.block(grant.grant_id, "expired", now);
+          else if ((now - reservation.message.created_at) * 1000 >= grant.body.turn_timeout_ms) ctx.continuations.block(grant.grant_id, "turn_timeout", now);
+          ctx.continuations.completeAttempt(reservation.attempt.attempt_id, turnId, version, now);
+        },
+      });
+    },
   });
   if (opts.autonomyHealth !== undefined) {
     ctx.autonomyHealth = opts.autonomyHealth;
@@ -3829,6 +3972,8 @@ export async function startDaemon(
         stopUpdateChecker();
         if (healthMonitor !== undefined) clearInterval(healthMonitor);
         shutdownPromise = (async () => {
+          ctx.draining = true;
+          const collaboratorStopped = ctx.collaborator?.stop();
           // Abort any active runs so adapters get a chance to clean up.
           for (const ac of ctx.activeRuns.values()) ac.abort();
           for (const session of ctx.loopSessions.values()) {
@@ -3849,6 +3994,7 @@ export async function startDaemon(
             ...loopCompletions,
             ...dailyCompletions,
             guardedRecovery,
+            collaboratorStopped,
           ]);
           await new Promise<void>((resolveClose) => server.close(() => resolveClose()));
           if (dashboard !== null) await dashboard.close();
@@ -3889,6 +4035,7 @@ export async function startDaemon(
         process.stderr.write(`osstack: dashboard server failed: ${(err as Error).message}\n`);
       });
 
+      ctx.collaborator?.recover();
       resolve({ close: shutdown, socketPath, dbPath: ctx.dbPath });
       });
     }).catch(reject);

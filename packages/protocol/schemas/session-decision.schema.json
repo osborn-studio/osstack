@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Session Decision Request",
+  "$comment": "Choice ID uniqueness is additionally enforced by Zod. The optional continuation is an untrusted request, not an approval.",
+  "type": "object",
+  "properties": {
+    "decision_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "question": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "choices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "choice_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          }
+        },
+        "required": [
+          "choice_id",
+          "label"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 8
+    },
+    "continuation": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "number",
+          "const": 1
+        },
+        "gate_kind": {
+          "type": "string",
+          "enum": [
+            "phase_continue",
+            "task_authorization",
+            "risk_approval",
+            "external_input"
+          ]
+        },
+        "phase": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "next_action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "evidence_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "evidence_id",
+              "sha256"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 32
+        }
+      },
+      "required": [
+        "version",
+        "gate_kind",
+        "phase",
+        "next_action",
+        "evidence_refs"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "decision_id",
+    "question",
+    "choices"
+  ],
+  "additionalProperties": false
+}

@@ -50,11 +50,20 @@ describe("lessons CLI", () => {
     const listCode = await main(["lessons", "list", "--json"]);
 
     expect(listCode).toBe(0);
-    const listed = JSON.parse(logs.join("\n")) as { lessons: Array<{ family: string; verified_count: number }> };
+    const listed = JSON.parse(logs.join("\n")) as {
+      lessons: Array<{ family: string; observation_count: number; legacy_verified_count: number; verified_count: number }>;
+    };
     expect(listed.lessons.map((lesson) => lesson.family)).toEqual(
       expect.arrayContaining(["verify_failed", "max_iter_escalation"]),
     );
-    expect(listed.lessons.every((lesson) => lesson.verified_count === 1)).toBe(true);
+    expect(listed.lessons.every((lesson) => lesson.observation_count === 1)).toBe(true);
+    expect(listed.lessons.every((lesson) => lesson.verified_count === 0 && lesson.legacy_verified_count === 0)).toBe(true);
+
+    logs = [];
+    expect(await main(["lessons", "list"])).toBe(0);
+    expect(logs.join("\n")).toContain("observations=1");
+    expect(logs.join("\n")).toContain("legacy_verified=0");
+    expect(logs.join("\n")).not.toMatch(/(?:^|\s)verified=/);
   });
 
   it("classifies common failure families into distinct pitfall lessons", async () => {
@@ -214,7 +223,7 @@ describe("lessons CLI", () => {
     ]));
   });
 
-  it("increments verified_count when a later successful loop verifies an existing pitfall", async () => {
+  it("does not claim that a later successful loop verified an existing pitfall", async () => {
     await writeState(join(tmp, "failed-state.json"), {
       loop_id: "failed-loop",
       tasks: [{
@@ -232,7 +241,9 @@ describe("lessons CLI", () => {
     expect(JSON.parse(logs.join("\n"))).toMatchObject({
       learned: 1,
       verified: 0,
-      lessons: [expect.objectContaining({ family: "verify_failed", verified_count: 1 })],
+      lessons: [expect.objectContaining({
+        family: "verify_failed", observation_count: 1, legacy_verified_count: 0, verified_count: 0,
+      })],
     });
 
     logs = [];
@@ -252,8 +263,8 @@ describe("lessons CLI", () => {
     expect(verifyCode).toBe(0);
     expect(JSON.parse(logs.join("\n"))).toMatchObject({
       learned: 0,
-      verified: 1,
-      verified_lessons: [expect.objectContaining({ family: "verify_failed", verified_count: 2 })],
+      verified: 0,
+      verified_lessons: [],
     });
 
     logs = [];
@@ -271,8 +282,11 @@ describe("lessons CLI", () => {
     const listed = JSON.parse(logs.join("\n")) as { lessons: Array<{ family: string; verified_count: number; source_run_ids: string[] }> };
     expect(listed.lessons).toContainEqual(expect.objectContaining({
       family: "verify_failed",
-      verified_count: 2,
-      source_run_ids: ["failed-loop", "fixed-loop"],
+      verified_count: 0,
+      legacy_verified_count: 0,
+      observation_count: 1,
+      observation_run_ids: ["failed-loop"],
+      source_run_ids: ["failed-loop"],
     }));
   });
 

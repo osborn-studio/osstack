@@ -36,13 +36,28 @@ class FakeSessionAdapter implements SessionCapableAdapter {
   async *startSession(task: { prompt: string }): AsyncIterable<AgentSessionEvent> {
     this.started.push(task.prompt);
     yield { type: "native_session.started", native_session_id: "native-secret-started" };
-    yield { type: "assistant.message", message_id: "reply_started", text: "CANARY_READY" };
+    yield task.prompt === "structured-start-event" ? { type: "decision.requested", ...structuredDecision } : {
+      type: "assistant.message", message_id: "reply_started",
+      text: task.prompt === "structured-start" ? JSON.stringify({ ostag_decision: structuredDecision }) : "CANARY_READY",
+    };
     yield { type: "session.terminal", state: "completed" };
   }
-  async *resumeSession(input: AgentSessionInput): AsyncIterable<AgentSessionEvent> {
+  async *resumeSession(input: AgentSessionInput, signal: AbortSignal): AsyncIterable<AgentSessionEvent> {
     this.resumed.push(input);
     yield { type: "native_session.started", native_session_id: input.native_session_id };
     yield { type: "session.state", state: "running" };
+    if (input.prompt === "wait-for-cancel") {
+      await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }));
+      yield { type: "session.terminal", state: "cancelled" };
+      return;
+    }
+    if (input.prompt === "structured-event" || input.prompt === "structured-directive") {
+      yield input.prompt === "structured-event"
+        ? { type: "decision.requested", ...structuredDecision }
+        : { type: "assistant.message", message_id: "structured_reply", text: JSON.stringify({ ostag_decision: structuredDecision }) };
+      yield { type: "session.terminal", state: "completed" };
+      return;
+    }
     if (input.prompt === "leak") {
       yield { type: "assistant.message", message_id: `reply_${input.message_id}`, text: input.native_session_id };
       return;
@@ -84,6 +99,19 @@ let home: string;
 let socketPath: string;
 let handle: DaemonHandles;
 let adapter: FakeSessionAdapter;
+
+const structuredDecision = {
+  decision_id: "phase_boundary",
+  question: "Verification finished. Continue?",
+  choices: [{ choice_id: "continue", label: "Continue" }],
+  continuation: {
+    version: 1 as const,
+    gate_kind: "phase_continue" as const,
+    phase: "verify",
+    next_action: "Continue to the next authorized phase",
+    evidence_refs: [{ evidence_id: "verification_1", sha256: "a".repeat(64) }],
+  },
+};
 
 function rpc(method: string, params?: unknown, timeoutMs = 5_000): Promise<RpcResponse> {
   return new Promise((resolve, reject) => {
@@ -169,6 +197,70 @@ afterAll(async () => {
 });
 
 describe("governed session RPC", () => {
+  it.each(["structured-event", "structured-directive"])("persists %s without treating it as approval", async (text) => {
+    const sessionId = `sess_${text}`;
+    seedSession(sessionId);
+    expect(await rpc("session.send", {
+      session_id: sessionId, runtime_id: adapter.id, turn_id: `turn_${sessionId}`,
+      message_id: `msg_${text}`, expected_version: 2, text,
+    })).toMatchObject({ ok: true });
+    const expectedWait = {
+      reason: "phase_continue", request_source: "agent_reported", automatic_continuation: false,
+      continuation: structuredDecision.continuation,
+    };
+    expect(await rpc("session.status", { session_id: sessionId })).toMatchObject({
+      ok: true, result: { state: "awaiting_decision", wait: expectedWait },
+    });
+    expect(await rpc("session.snapshot", { session_id: sessionId })).toMatchObject({
+      ok: true, result: { decision: structuredDecision, wait: expectedWait },
+    });
+    // The state, including the request evidence, survives reopening the store.
+    const db = openDb({ path: handle.dbPath });
+    try {
+      expect(new SessionRepository(db, handle.dbPath).latestSnapshot(sessionId).decision).toEqual(structuredDecision);
+    } finally { db.close(); }
+    expect(adapter.resumed.filter((input) => input.session_id === sessionId)).toHaveLength(1);
+  });
+
+  it.each(["structured-start", "structured-start-event"])("preserves %s on the first session turn", async (prompt) => {
+    const response = await rpc("session.start", {
+      request_id: prompt, agent_id: adapter.id, repo_path: home,
+      title: "Structured handoff", prompt,
+    });
+    expect(response).toMatchObject({ ok: true, result: { decision: structuredDecision } });
+    expect(await rpc("session.snapshot", { session_id: response.result?.["session_id"] })).toMatchObject({
+      ok: true, result: { wait: { reason: "phase_continue", automatic_continuation: false } },
+    });
+  });
+
+  it("tracks a resumed turn for drain and cancellation", async () => {
+    seedSession("sess_cancel");
+    const sending = rpc("session.send", {
+      session_id: "sess_cancel", runtime_id: adapter.id, turn_id: "turn_sess_cancel",
+      message_id: "msg_cancel", expected_version: 2, text: "wait-for-cancel",
+    });
+    await vi.waitFor(() => expect(adapter.resumed.some((input) => input.session_id === "sess_cancel")).toBe(true));
+    expect(await rpc("run.status", { run_id: "run_sess_cancel" })).toMatchObject({ ok: true, result: { active: true } });
+    expect(await rpc("session.snapshot", { session_id: "sess_cancel" })).toMatchObject({ ok: true, result: { wait: null } });
+    expect(await rpc("task.cancel", { run_id: "run_sess_cancel" })).toMatchObject({ ok: true });
+    expect(await sending).toMatchObject({ ok: false, error: { code: "agent_failed" } });
+    expect(await rpc("session.snapshot", { session_id: "sess_cancel" })).toMatchObject({
+      ok: true, result: { wait: { reason: "delivery_failed", message_id: "msg_cancel" } },
+    });
+  });
+
+  it("refuses a new instruction while the daemon is drained", async () => {
+    seedSession("sess_drained");
+    await rpc("daemon.drain", { timeout_ms: 0 });
+    try {
+      expect(await rpc("session.send", {
+        session_id: "sess_drained", runtime_id: adapter.id, turn_id: "turn_sess_drained",
+        message_id: "msg_drained", expected_version: 2, text: "go",
+      })).toMatchObject({ ok: false, error: { code: "draining" } });
+      expect(adapter.resumed.some((input) => input.session_id === "sess_drained")).toBe(false);
+    } finally { await rpc("daemon.resume"); }
+  });
+
   it("starts and persists a real resumable session without exposing its native id", async () => {
     const started = await rpc("session.start", {
       request_id: "request_rpc_start",
@@ -217,7 +309,7 @@ describe("governed session RPC", () => {
       ok: false,
       error: { code: "request_id_conflict" },
     });
-    expect(adapter.started).toHaveLength(1);
+    expect(adapter.started.filter((prompt) => prompt === "只回复 CANARY_READY")).toHaveLength(1);
   });
 
   it("lists and snapshots sessions without exposing native ids", async () => {
@@ -458,6 +550,30 @@ describe("governed session RPC", () => {
       error: { code: "delivery_uncertain" },
     });
     expect(adapter.resumed.filter((input) => input.session_id === "sess_recover")).toHaveLength(0);
+    expect(await rpc("session.snapshot", { session_id: "sess_recover" })).toMatchObject({
+      ok: true, result: { wait: { reason: "delivery_uncertain", message_id: "msg_recover", automatic_continuation: false } },
+    });
+  });
+
+  it("keeps an uncertain delivery visible when a newer message fails", async () => {
+    seedSession("sess_shadow");
+    const db = openDb({ path: handle.dbPath });
+    try {
+      const repo = new SessionRepository(db, handle.dbPath);
+      for (const [messageId, version, createdAt] of [
+        ["msg_uncertain", 2, 3], ["msg_newer_failed", 3, 4],
+      ] as const) {
+        repo.applyInbound({
+          message_id: messageId, session_id: "sess_shadow", turn_id: "turn_sess_shadow",
+          direction: "inbound", kind: "instruction.send", payload: { text: "go" },
+          state: "accepted", created_at: createdAt,
+        }, version, createdAt);
+      }
+      repo.markMessageFailed("msg_newer_failed");
+    } finally { db.close(); }
+    expect(await rpc("session.snapshot", { session_id: "sess_shadow" })).toMatchObject({
+      ok: true, result: { wait: { reason: "delivery_uncertain", message_id: "msg_uncertain", automatic_continuation: false } },
+    });
   });
 
   it("exposes list, status, snapshot and send through the CLI", async () => {

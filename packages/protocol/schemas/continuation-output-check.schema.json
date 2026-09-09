@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Continuation Persisted Output Check",
+  "$comment": "Checks only a declared equality contract against persisted assistant_text. JSON paths use literal own-property keys; an empty path selects the root primitive. This is not proof of open-ended quality or permission to execute scripts.",
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "text_equals"
+        },
+        "expected": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "kind",
+        "expected"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "json_value_equals"
+        },
+        "path": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "maxItems": 8
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "maxLength": 4000
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "path",
+        "expected"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

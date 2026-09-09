@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { listImprovementProposals, openDb, upsertFeedbackAsset, upsertImprovementProposal } from "@osstack/core";
@@ -40,7 +40,7 @@ async function withDb<T>(fn: (db: ReturnType<typeof openDb>, path: string) => T)
   }
 }
 
-function seedProposal(risk: "low" | "medium", gates: string[]) {
+function seedProposal(risk: "low" | "medium", gates: string[], proposedPath = "eval/cases.jsonl") {
   return withDb((db, path) => upsertImprovementProposal(db, path, {
     proposal_id: `prop_${risk}`,
     repo_id: "osstack",
@@ -49,7 +49,7 @@ function seedProposal(risk: "low" | "medium", gates: string[]) {
     risk,
     title: "Test proposal",
     rationale: "evidence",
-    proposed_changes: [{ path: "eval/cases.jsonl", action: "modify", summary: "append" }],
+    proposed_changes: [{ path: proposedPath, action: "modify", summary: "append" }],
     required_gates: gates,
   }));
 }
@@ -72,6 +72,23 @@ describe("improve CLI", () => {
     expect(parsed.proposals[0]).toMatchObject({ target: "eval", risk: "low" });
   });
 
+  it("reproposing the same evidence preserves and reports the reviewed state", async () => {
+    await withDb((db, path) => upsertFeedbackAsset(db, path, {
+      asset_id: "asset_1", repo_id: "osstack", source_trace_id: "trace_1",
+      kind: "eval_case", failure_family: "bad_reasoning", summary: "needs a case", evidence: [],
+    }));
+    const args = ["improve", "propose", "--repo", "osstack", "--registry", join(tmp, "repos.json"), "--json"];
+    expect(await main(args)).toBe(0);
+    const original = await withDb((db, path) => {
+      const proposal = listImprovementProposals(db)[0]!;
+      return upsertImprovementProposal(db, path, { ...proposal, status: "approved" });
+    });
+    logs.length = 0;
+    expect(await main(args)).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({ proposals: [{ proposal_id: original.proposal_id, status: "approved" }] });
+    expect(await withDb((db) => listImprovementProposals(db))).toEqual([original]);
+  });
+
   it("apply defaults to a dry run that changes nothing", async () => {
     await seedProposal("low", ["true"]);
     const code = await main(["improve", "apply", "--proposal", "prop_low"]);
@@ -82,13 +99,30 @@ describe("improve CLI", () => {
     expect(stored.find((p) => p.proposal_id === "prop_low")?.status).toBe("draft");
   });
 
-  it("apply --yes applies a low-risk proposal after its gate passes", async () => {
-    await seedProposal("low", ["true"]);
+  it("apply --yes reports only gate checks, without claiming implementation or changing the proposal", async () => {
+    const artifact = join(tmp, "candidate.jsonl");
+    await writeFile(artifact, "original\n");
+    await seedProposal("low", ["true"], artifact);
+    const before = await withDb((db) => listImprovementProposals(db));
     const code = await main(["improve", "apply", "--proposal", "prop_low", "--yes", "--json"]);
     expect(code).toBe(0);
-    expect(JSON.parse(logs.join("\n"))).toMatchObject({ applied: true });
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({
+      applied: false,
+      action: "gates_passed",
+      implementation_status: "not_implemented",
+    });
     const stored = await withDb((db) => listImprovementProposals(db, { limit: 10 }));
-    expect(stored.find((p) => p.proposal_id === "prop_low")?.status).toBe("applied");
+    expect(stored).toEqual(before);
+    expect(await readFile(artifact, "utf8")).toBe("original\n");
+  });
+
+  it.each(["applied", "rejected"] as const)("preserves legacy %s records without rerunning gates or asserting new implementation", async (status) => {
+    const seeded = await seedProposal("low", ["false"]);
+    const original = await withDb((db, path) => upsertImprovementProposal(db, path, { ...seeded, status }));
+    const code = await main(["improve", "apply", "--proposal", "prop_low", "--yes", "--json"]);
+    expect(code).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({ applied: false, action: "unchanged", stored_status: status });
+    expect(await withDb((db) => listImprovementProposals(db))).toEqual([original]);
   });
 
   it("apply --yes refuses a medium-risk proposal (needs human)", async () => {

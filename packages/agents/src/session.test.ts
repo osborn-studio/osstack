@@ -21,6 +21,27 @@ const descriptor = {
 } as const;
 
 describe("resumable agent session contracts", () => {
+  it("validates versioned decision requests across the protocol schema boundary", () => {
+    const event = {
+      type: "decision.requested",
+      decision_id: "decision_1",
+      question: "Continue?",
+      choices: [{ choice_id: "go", label: "Go" }],
+      continuation: {
+        version: 1, gate_kind: "risk_approval", phase: "publish", next_action: "Request approval",
+        evidence_refs: [{ evidence_id: "proof_1", sha256: "a".repeat(64) }],
+      },
+    };
+    expect(AgentSessionEventSchema.parse(event)).toEqual(event);
+    expect(() => AgentSessionEventSchema.parse({
+      ...event, continuation: { ...event.continuation, version: 2 },
+    })).toThrow();
+    expect(() => AgentSessionEventSchema.parse({ ...event, choices: [...event.choices, ...event.choices] })).toThrow();
+    expect(() => AgentSessionEventSchema.parse({
+      ...event, continuation: { ...event.continuation, approved: true },
+    })).toThrow();
+  });
+
   it("parses a strict, positive-version session descriptor", () => {
     expect(AgentSessionDescriptorSchema.parse(descriptor)).toEqual(descriptor);
     expect(() => AgentSessionDescriptorSchema.parse({ ...descriptor, version: 0 })).toThrow();

@@ -227,6 +227,7 @@
 
 - SQLite pitfall lessons 存储存在。
 - `osstack lessons list` 存在。
+- 以下两条为当时的实现行为；2026-09-08 的[修复](reports/2026-09-08-collaborator-foundation-implementation.md)已冻结旧混合计数，改为显式失败观察，成功任务不再自动验证经验。
 - `osstack lessons learn` 会从 failed/escalated loop state 写入 pitfall lesson；同一个 `source_run_id` 重复学习不会重复提升 `verified_count`。
 - 后续 successful loop state 会按 tech stack 验证已有 failed/escalated lesson，并把成功 run id 写入 `source_run_ids`，从而提升 `verified_count`。
 - pitfall family 已区分 `verify_failed`、`max_iter_escalation`、`agent_unavailable`、`reviewer_checker_failed`、`dependency_install_failure`、`governance_high_severity`、`merge_conflict`、`toolchain_mismatch`、`test_fixture_drift`、`network_outage`、`filesystem_permission`，避免把缺 agent、reviewer/checker gate、依赖安装、治理高危、合并冲突、工具链、fixture、网络或文件权限问题都混入通用 max-iter/verify failed。

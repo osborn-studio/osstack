@@ -9,6 +9,7 @@ import {
   writeFact,
   readFactsForSubject,
   listImprovementProposals,
+  upsertImprovementProposal,
 } from "@osstack/core";
 import type { CommandRunner } from "@osstack/github";
 import {
@@ -565,6 +566,45 @@ describe("handleStackCommand: unknown subcommand", () => {
 });
 
 describe("handleStackCommand: retro", () => {
+  it.each(["approved", "rejected", "applied", "needs_human"] as const)("preserves a %s proposal when a later retro suggests different gates", async (status) => {
+    const dbPath = makeTempDbPath();
+    await ingestThreePrBoard(dbPath);
+    const smokeIdx = PR_CARD_CHECKLIST.indexOf("endpoint/UI smoke");
+    const firstDb = openDb({ path: dbPath });
+    new KanbanRepository(firstDb, dbPath).setCheckState("pr-47", smokeIdx, "fail");
+    firstDb.close();
+
+    const out: string[] = [];
+    let now = 1000;
+    const run = () => handleStackCommand(["retro", "--board", "stack", "--write"], {
+      dbPath, now: () => now, out: (line) => out.push(line),
+    });
+    expect(await run()).toBe(0);
+    const reviewDb = openDb({ path: dbPath });
+    const reviewed = upsertImprovementProposal(reviewDb, dbPath, {
+      ...listImprovementProposals(reviewDb, { repo_id: "stack" })[0]!, status,
+    });
+    const repo = new KanbanRepository(reviewDb, dbPath);
+    repo.setCheckState("pr-47", smokeIdx, "pass");
+    repo.setCheckState("pr-48", smokeIdx, "fail");
+    reviewDb.close();
+
+    now = 1001;
+    out.length = 0;
+    expect(await run()).toBe(0);
+    expect(out.join("\n")).toContain(`preserved improvement proposal ${reviewed.proposal_id} (${status})`);
+    expect(out.join("\n")).toContain("new gate suggestions were not persisted");
+    expect(out.join("\n")).not.toContain("retro: recorded improvement proposal");
+    expect(await run()).toBe(0);
+    const replayDb = openDb({ path: dbPath });
+    try {
+      expect(listImprovementProposals(replayDb, { repo_id: "stack" })).toEqual([reviewed]);
+      expect(readFactsForSubject(replayDb, "workflow", "merge-orchestration")).toHaveLength(2);
+    } finally {
+      replayDb.close();
+    }
+  });
+
   it("counts reworkCount from REAL blocked-transition events (2× blocked shows 2×; never-blocked shows none)", async () => {
     const dbPath = makeTempDbPath();
     await ingestThreePrBoard(dbPath);

@@ -11,6 +11,13 @@ export { Task, TaskSource } from "./task.js";
 export { RunOutcome, RunSummary } from "./run.js";
 export { EventEnvelope } from "./event.js";
 export { EvidenceKind, EvidenceRef } from "./evidence.js";
+export { SessionContinuationRequest, SessionDecision, SessionGateKind } from "./session-continuation.js";
+export {
+  ContinuationGrantBody,
+  ContinuationGrantStep,
+  OutputCheck,
+  SignedContinuationGrant,
+} from "./session-continuation-grant.js";
 export {
   Actor,
   ApprovalDecision,

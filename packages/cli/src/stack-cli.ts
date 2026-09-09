@@ -3,7 +3,7 @@
 // tooling (board/move/check/timeline, added in later tasks) has a substrate
 // to work against.
 
-import { CardCheckNotFound, CardCycleError, CardNotFound, CardStatus, IllegalCardTransition, KanbanRepository, evaluateKanbanTransitionGuards, getBoard, readFactsForSubject, upsertImprovementProposal, writeFact, type KanbanTransitionGuard } from "@osstack/core";
+import { CardCheckNotFound, CardCycleError, CardNotFound, CardStatus, IllegalCardTransition, KanbanRepository, evaluateKanbanTransitionGuards, getBoard, listImprovementProposals, readFactsForSubject, upsertImprovementProposal, writeFact, type KanbanTransitionGuard } from "@osstack/core";
 import { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import { ingestStack, type CommandRunner } from "@osstack/github";
 import { renderStackRetro, type StackRetroInput } from "@osstack/loop";
@@ -643,21 +643,28 @@ async function stackRetro(args: string[], deps?: StackCliDeps): Promise<number> 
         out("retro: recorded memory fact");
       }
 
-      // Improvement proposal (optional, idempotent via upsert on proposal_id).
+      // A legacy stable ID may refresh a draft, but a later retrospective must
+      // preserve the exact definition that has already entered review.
       if (result.missingGates.length > 0) {
-        upsertImprovementProposal(db, dbPath, {
-          proposal_id: `stack-retro-gate-${board}`,
-          repo_id: board,
-          source_asset_ids: [],
-          target: "merge-orchestration",
-          risk: "low",
-          title: `Add earlier gates for board ${board}`,
-          rationale: result.missingGates.join("; "),
-          proposed_changes: [],
-          required_gates: result.missingGates,
-          status: "draft",
-        });
-        out("retro: recorded improvement proposal");
+        const proposalId = `stack-retro-gate-${board}`;
+        const prior = listImprovementProposals(db, { proposal_id: proposalId })[0];
+        if (prior !== undefined && prior.status !== "draft") {
+          out(`retro: preserved improvement proposal ${proposalId} (${prior.status}); new gate suggestions were not persisted`);
+        } else {
+          upsertImprovementProposal(db, dbPath, {
+            proposal_id: proposalId,
+            repo_id: board,
+            source_asset_ids: [],
+            target: "merge-orchestration",
+            risk: "low",
+            title: `Add earlier gates for board ${board}`,
+            rationale: result.missingGates.join("; "),
+            proposed_changes: [],
+            required_gates: result.missingGates,
+            status: "draft",
+          });
+          out("retro: recorded improvement proposal");
+        }
       }
     }
 

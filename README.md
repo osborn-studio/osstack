@@ -358,11 +358,23 @@ osstack supervise init-loop-doc --repo <id>
 osstack feedback assets --repo <id> --json
 osstack improve propose --repo <id> --json
 osstack improve apply --proposal <id>          # DRY RUN by default
-osstack improve apply --proposal <id> --yes    # low-risk only, after gates pass
+osstack improve apply --proposal <id> --yes    # check gates only; no candidate is implemented
 osstack evaluator challenge --repo <id> --incumbent A --challenger B ...   # advisory
 osstack evaluator promote  --repo <id> ... --yes   # blocked without anchor cases
 osstack loop run --workspace . --self-improvement --repo-id <id> --verify "pnpm test"
 ```
+
+Feedback proposals and recurring lesson observations are not proof of improvement.
+`improve apply --yes` reports `applied: false` even when current-repository gates
+pass. See the [collaborator implementation record](docs/reports/2026-09-08-collaborator-foundation-implementation.md)
+for waiting diagnostics, proposal history, and observation-count migration.
+
+Finite automatic phase continuation is available for the no-tools
+`claude-controlled-session` planning/review runtime. `osstack collaborator`
+provides inspect, draft, sign, install, status, and revoke commands. A signed
+grant freezes output checks, instructions, deadlines and budgets; it does not
+grant GitHub approval or code execution powers. See the
+[signed collaborator walkthrough](docs/reports/2026-09-08-signed-session-collaborator.md).
 
 ### Portfolio Daily and Contract Gates
 

@@ -74,6 +74,8 @@ describe("session persistence migration", () => {
       ).all() as Array<{ name: string }>;
       expect(tables.map((row) => row.name)).toEqual([
         "agent_sessions",
+        "session_continuation_attempts",
+        "session_continuation_grants",
         "session_messages",
         "session_turns",
       ]);

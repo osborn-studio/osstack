@@ -369,6 +369,18 @@ export const DeferredTask = z.object({
 });
 export type DeferredTask = z.infer<typeof DeferredTask>;
 
+/** Current discovery found work, but policy authorized none of it to execute. */
+export const LoopWaitReason = z.object({
+  code: z.literal("discovery_deferred"),
+  needs_approval: z.number().int().nonnegative(),
+  suggest_only: z.number().int().nonnegative(),
+  blocked: z.number().int().nonnegative(),
+}).strict().refine(
+  (reason) => reason.needs_approval + reason.suggest_only + reason.blocked > 0,
+  { message: "a discovery wait requires at least one deferred task" },
+);
+export type LoopWaitReason = z.infer<typeof LoopWaitReason>;
+
 /** The durable state of one loop session. Written to STATE.md + LOOP-STATE.json. */
 export const LoopState = z.object({
   loop_id: z.string(),
@@ -379,6 +391,8 @@ export const LoopState = z.object({
   pending: z.array(Task).optional(),
   /** Discovered but not executed this cycle: needs_approval / suggest_only / blocked. */
   deferred_tasks: z.array(DeferredTask).optional(),
+  /** Present only when this cycle had deferred work and no executable tasks. */
+  wait_reason: LoopWaitReason.optional(),
   /** Last budget check when a LoopBudget is configured. */
   budget_status: LoopBudgetStatus.optional(),
   key_metrics: LoopMetrics.optional(),
