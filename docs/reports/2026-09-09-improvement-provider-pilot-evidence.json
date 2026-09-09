@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "scope": "synthetic fixture, production adapters, simulated GitHub; not a benchmark",
+  "manual_experiments": 2,
+  "automatic_retries": 0,
+  "trials": [
+    {
+      "trial": 1,
+      "definition": "initial semantic-content gate",
+      "outcome": "passed",
+      "providers": "live-cli",
+      "github_pr_created": false,
+      "github_transport": "simulated-local-only",
+      "invocations": {
+        "codex-cli": 1,
+        "kimi-code": 1
+      },
+      "replay_verified": true,
+      "patch_sha256": "7757e81bc7136d64155602f6b3ab21363886ad769da81af0f0ba59c6ea81fe73",
+      "profile_builder_identity": {
+        "adapter_id": "codex-cli",
+        "adapter_version": "unknown",
+        "auth_mode": "subprocess/login-reuse",
+        "provider_id": "unknown",
+        "model_id": "unknown",
+        "evidence_source": "inferred"
+      },
+      "profile_evaluator_identity": {
+        "adapter_id": "kimi-code",
+        "adapter_version": "0.29.1",
+        "auth_mode": "subprocess/login-reuse",
+        "provider_id": "kimi",
+        "model_id": "kimi-code/k3",
+        "agent_profile": "osstack-reviewer",
+        "evidence_source": "reported"
+      },
+      "codex_adapter_usage": {
+        "tokens_in": 10383,
+        "tokens_out": 342
+      },
+      "actual_provider_model": null,
+      "provider_response_id": null,
+      "kimi_usage": null,
+      "cost_usd": null,
+      "pilot_elapsed_seconds": 51.129
+    },
+    {
+      "trial": 2,
+      "definition": "exact-byte gate and native receipt assertions",
+      "outcome": "passed",
+      "providers": "live-cli",
+      "github_pr_created": false,
+      "github_transport": "simulated-local-only",
+      "invocations": {
+        "codex-cli": 1,
+        "kimi-code": 1
+      },
+      "replay_verified": true,
+      "patch_sha256": "7757e81bc7136d64155602f6b3ab21363886ad769da81af0f0ba59c6ea81fe73",
+      "profile_builder_identity": {
+        "adapter_id": "codex-cli",
+        "adapter_version": "unknown",
+        "auth_mode": "subprocess/login-reuse",
+        "provider_id": "unknown",
+        "model_id": "unknown",
+        "evidence_source": "inferred"
+      },
+      "profile_evaluator_identity": {
+        "adapter_id": "kimi-code",
+        "adapter_version": "0.29.1",
+        "auth_mode": "subprocess/login-reuse",
+        "provider_id": "kimi",
+        "model_id": "kimi-code/k3",
+        "agent_profile": "osstack-reviewer",
+        "evidence_source": "reported"
+      },
+      "codex_adapter_usage": {
+        "tokens_in": 10397,
+        "tokens_out": 362
+      },
+      "actual_provider_model": null,
+      "provider_response_id": null,
+      "kimi_usage": null,
+      "cost_usd": null,
+      "pilot_elapsed_seconds": 43.484
+    }
+  ]
+}

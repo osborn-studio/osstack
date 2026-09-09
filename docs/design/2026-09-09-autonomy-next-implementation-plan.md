@@ -234,3 +234,9 @@ P3 先验收精确补丁交付接口；与 P5a 合起来才验收一次授权到
 ## 2026-09-09 原生依赖增量
 
 在 #221 的冻结 pnpm 环境之上新增精确 `--build-deps` 授权。默认仍不运行生命周期脚本；启用时把选定版本、锁文件完整性及 OS 用户／网络执行边界纳入同一摘要。候选和干净重建分别安装、构建并验证；真实 OSStack 冷安装验收使用 SQLite 查询与 esbuild 转换。完整记录见[实现与验证](../reports/2026-09-09-improvement-native-builds.md)、[Fable 5.1 两轮挑战](../reports/2026-09-09-native-build-fable-review.md)。这属于可信依赖的前台执行增量，P2 的 OS 隔离、P5b 的跨重启接力和 R3 的收益晋升仍未完成。
+
+## 2026-09-09 真实提供方试点增量
+
+#222 已通过 CI 并合并。本片增加 `pnpm smoke:improvement-providers`，使用新生成演练仓库与真实 Codex/Kimi 适配器，两次手工实验均通过候选验证、补丁重建和零重复调用回放。GitHub 仍为本地模拟，不能宣布检查点 A 已完成。[试点与脱敏证据](../reports/2026-09-09-improvement-provider-pilot.md)记录了 Codex 模型身份仍 unknown、Kimi 用量与实际提供方响应 ID 不可得等边界；[Fable 两轮挑战](../reports/2026-09-09-provider-pilot-fable-review.md)记录取舍。
+
+下一片先固定 Codex 请求的模型／提供方并检测漂移，再做明确仓库范围内的真实 GitHub 草稿 PR 试点；P2b 隔离与 daemon 持久接力保持后续依赖。普通测试不会自动消耗模型额度。这是可重复诊断入口与真实适配器验收增量，不是新增后台执行权限。
