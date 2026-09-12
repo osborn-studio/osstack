@@ -223,6 +223,7 @@ function renderChineseMainHelp(): string {
   stats               查看 agent 与 loop 指标
 
 项目命令：
+  graph explain       只读联查指定任务的 Loop、看板关系与运行记录（实验）
   doctor              检查 workspace、loop、agent 与下一步建议
   examples            输出可直接运行的工作流示例
   guide               输出或写入 5 分钟 Quickstart
@@ -416,6 +417,7 @@ Self-update:
                       and roll back automatically on failure.
 
 Project commands:
+  graph explain       Read-only task/Loop/card relation view (experimental; graph --help)
   doctor [--workspace P] [--daemon] [--json]
                       Product readiness check: loop + agents + next steps
   examples [--json]   Print runnable workflow examples
@@ -774,6 +776,11 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       submit: streamTaskSubmit,
       observe: streamTaskObserve,
     });
+  }
+
+  if (cmd === "graph") {
+    const { handleGraphCommand } = await import("./graph-command.js");
+    return await handleGraphCommand(args.slice(1));
   }
 
   if (cmd === "collaborator") {
