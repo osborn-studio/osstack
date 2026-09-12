@@ -1,0 +1,491 @@
+{
+  "method": "Declared workspace package dependencies; provider -> consumer; includes dependencies/dev/optional/peer; not symbol-level test selection",
+  "nodes": [
+    "@osstack/agents",
+    "@osstack/autonomy",
+    "@osstack/cli",
+    "@osstack/compliance",
+    "@osstack/config",
+    "@osstack/conformance",
+    "@osstack/contracts",
+    "@osstack/core",
+    "@osstack/github",
+    "@osstack/governance",
+    "@osstack/hermes-adapter",
+    "@osstack/knowledge",
+    "@osstack/knowledge-cloud",
+    "@osstack/loop",
+    "@osstack/neat-eval",
+    "@osstack/plugins",
+    "@osstack/protocol",
+    "@osstack/runtime",
+    "@osstack/skill-registry",
+    "@osstack/skills",
+    "@osstack/supervisor"
+  ],
+  "edges": [
+    [
+      "@osstack/agents",
+      "@osstack/cli"
+    ],
+    [
+      "@osstack/agents",
+      "@osstack/config"
+    ],
+    [
+      "@osstack/agents",
+      "@osstack/conformance"
+    ],
+    [
+      "@osstack/agents",
+      "@osstack/loop"
+    ],
+    [
+      "@osstack/autonomy",
+      "@osstack/cli"
+    ],
+    [
+      "@osstack/autonomy",
+      "@osstack/loop"
+    ],
+    [
+      "@osstack/compliance",
+      "@osstack/cli"
+    ],
+    [
+      "@osstack/config",
+      "@osstack/cli"
+    ],
+    [
+      "@osstack/contracts",
+      "@osstack/cli"
+    ],
+    [
+      "@osstack/core",
+      "@osstack/agents"
+    ],
+    [
+      "@osstack/core",
+      "@osstack/autonomy"
+    ],
+    [
+      "@osstack/core",
+      "@osstack/cli"
+    ],
+    [
+      "@osstack/core",
+      "@osstack/config"
+    ],
+    [
+      "@osstack/core",
+      "@osstack/conformance"
+    ],
+    [
+      "@osstack/core",
+      "@osstack/hermes-adapter"
+    ],
+    [
+      "@osstack/core",
+      "@osstack/loop"
+    ],
+    [
+      "@osstack/core",
+      "@osstack/plugins"
+    ],
+    [
+      "@osstack/core",
+      "@osstack/skill-registry"
+    ],
+    [
+      "@osstack/core",
+      "@osstack/skills"
+    ],
+    [
+      "@osstack/core",
+      "@osstack/supervisor"
+    ],
+    [
+      "@osstack/github",
+      "@osstack/autonomy"
+    ],
+    [
+      "@osstack/github",
+      "@osstack/cli"
+    ],
+    [
+      "@osstack/github",
+      "@osstack/loop"
+    ],
+    [
+      "@osstack/governance",
+      "@osstack/agents"
+    ],
+    [
+      "@osstack/governance",
+      "@osstack/cli"
+    ],
+    [
+      "@osstack/governance",
+      "@osstack/conformance"
+    ],
+    [
+      "@osstack/governance",
+      "@osstack/loop"
+    ],
+    [
+      "@osstack/governance",
+      "@osstack/supervisor"
+    ],
+    [
+      "@osstack/hermes-adapter",
+      "@osstack/agents"
+    ],
+    [
+      "@osstack/hermes-adapter",
+      "@osstack/cli"
+    ],
+    [
+      "@osstack/hermes-adapter",
+      "@osstack/conformance"
+    ],
+    [
+      "@osstack/hermes-adapter",
+      "@osstack/loop"
+    ],
+    [
+      "@osstack/knowledge",
+      "@osstack/cli"
+    ],
+    [
+      "@osstack/knowledge",
+      "@osstack/knowledge-cloud"
+    ],
+    [
+      "@osstack/loop",
+      "@osstack/cli"
+    ],
+    [
+      "@osstack/loop",
+      "@osstack/conformance"
+    ],
+    [
+      "@osstack/loop",
+      "@osstack/supervisor"
+    ],
+    [
+      "@osstack/protocol",
+      "@osstack/agents"
+    ],
+    [
+      "@osstack/protocol",
+      "@osstack/autonomy"
+    ],
+    [
+      "@osstack/protocol",
+      "@osstack/cli"
+    ],
+    [
+      "@osstack/protocol",
+      "@osstack/core"
+    ],
+    [
+      "@osstack/protocol",
+      "@osstack/loop"
+    ],
+    [
+      "@osstack/skill-registry",
+      "@osstack/cli"
+    ],
+    [
+      "@osstack/skills",
+      "@osstack/cli"
+    ],
+    [
+      "@osstack/supervisor",
+      "@osstack/cli"
+    ]
+  ],
+  "typed_edges": [
+    {
+      "provider": "@osstack/agents",
+      "consumer": "@osstack/cli",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/agents",
+      "consumer": "@osstack/config",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/agents",
+      "consumer": "@osstack/conformance",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/agents",
+      "consumer": "@osstack/loop",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/autonomy",
+      "consumer": "@osstack/cli",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/autonomy",
+      "consumer": "@osstack/loop",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/compliance",
+      "consumer": "@osstack/cli",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/config",
+      "consumer": "@osstack/cli",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/contracts",
+      "consumer": "@osstack/cli",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/core",
+      "consumer": "@osstack/agents",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/core",
+      "consumer": "@osstack/autonomy",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/core",
+      "consumer": "@osstack/cli",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/core",
+      "consumer": "@osstack/config",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/core",
+      "consumer": "@osstack/conformance",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/core",
+      "consumer": "@osstack/hermes-adapter",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/core",
+      "consumer": "@osstack/loop",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/core",
+      "consumer": "@osstack/plugins",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/core",
+      "consumer": "@osstack/skill-registry",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/core",
+      "consumer": "@osstack/skills",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/core",
+      "consumer": "@osstack/supervisor",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/github",
+      "consumer": "@osstack/autonomy",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/github",
+      "consumer": "@osstack/cli",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/github",
+      "consumer": "@osstack/loop",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/governance",
+      "consumer": "@osstack/agents",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/governance",
+      "consumer": "@osstack/cli",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/governance",
+      "consumer": "@osstack/conformance",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/governance",
+      "consumer": "@osstack/loop",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/governance",
+      "consumer": "@osstack/supervisor",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/hermes-adapter",
+      "consumer": "@osstack/agents",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/hermes-adapter",
+      "consumer": "@osstack/cli",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/hermes-adapter",
+      "consumer": "@osstack/conformance",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/hermes-adapter",
+      "consumer": "@osstack/loop",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/knowledge",
+      "consumer": "@osstack/cli",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/knowledge",
+      "consumer": "@osstack/knowledge-cloud",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/loop",
+      "consumer": "@osstack/cli",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/loop",
+      "consumer": "@osstack/conformance",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/loop",
+      "consumer": "@osstack/supervisor",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/protocol",
+      "consumer": "@osstack/agents",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/protocol",
+      "consumer": "@osstack/autonomy",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/protocol",
+      "consumer": "@osstack/cli",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/protocol",
+      "consumer": "@osstack/core",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/protocol",
+      "consumer": "@osstack/loop",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/skill-registry",
+      "consumer": "@osstack/cli",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/skills",
+      "consumer": "@osstack/cli",
+      "kind": "dependencies"
+    },
+    {
+      "provider": "@osstack/supervisor",
+      "consumer": "@osstack/cli",
+      "kind": "devDependencies"
+    }
+  ],
+  "by_dependency_kind": {
+    "dependencies": {
+      "edge_count": 44,
+      "impacted_by_protocol": [
+        "@osstack/agents",
+        "@osstack/autonomy",
+        "@osstack/cli",
+        "@osstack/config",
+        "@osstack/conformance",
+        "@osstack/core",
+        "@osstack/hermes-adapter",
+        "@osstack/loop",
+        "@osstack/plugins",
+        "@osstack/skill-registry",
+        "@osstack/skills",
+        "@osstack/supervisor"
+      ],
+      "impacted_by_knowledge": [
+        "@osstack/cli",
+        "@osstack/knowledge-cloud"
+      ]
+    },
+    "devDependencies": {
+      "edge_count": 1,
+      "impacted_by_protocol": [],
+      "impacted_by_knowledge": []
+    },
+    "optionalDependencies": {
+      "edge_count": 0,
+      "impacted_by_protocol": [],
+      "impacted_by_knowledge": []
+    },
+    "peerDependencies": {
+      "edge_count": 0,
+      "impacted_by_protocol": [],
+      "impacted_by_knowledge": []
+    }
+  },
+  "impacted_by_protocol": [
+    "@osstack/agents",
+    "@osstack/autonomy",
+    "@osstack/cli",
+    "@osstack/config",
+    "@osstack/conformance",
+    "@osstack/core",
+    "@osstack/hermes-adapter",
+    "@osstack/loop",
+    "@osstack/plugins",
+    "@osstack/skill-registry",
+    "@osstack/skills",
+    "@osstack/supervisor"
+  ],
+  "impacted_by_knowledge": [
+    "@osstack/cli",
+    "@osstack/knowledge-cloud"
+  ]
+}

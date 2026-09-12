@@ -1,0 +1,127 @@
+[
+  {
+    "path": "packages/core/src/kanban/repository.ts",
+    "anchor_line": 298,
+    "sha256": "2cc310da406ccac8db4985742209520aebc6c8d840bdf5a5058bb84d82df4624"
+  },
+  {
+    "path": "packages/cli/src/stack-cli.ts",
+    "anchor_line": 455,
+    "sha256": "054644260f339f9c40c714731d4e2dc92be69cc49fb138ade4d90a12a9d61a71"
+  },
+  {
+    "path": "packages/loop/src/types.ts",
+    "anchor_line": 27,
+    "sha256": "86233be74963f03a658bcadb6053816795aae39eb5ab9106f3d62311eb8eb5a1"
+  },
+  {
+    "path": "packages/loop/src/planner.ts",
+    "anchor_line": 11,
+    "sha256": "9dacd41bddae5456b44f06f655d9b29f06857ad44a9c68b780cfd6cc5c02c1e3"
+  },
+  {
+    "path": "packages/loop/src/loop-engine.ts",
+    "anchor_line": 467,
+    "sha256": "26636b8a432d928efbaa85d516528d66d560d14229c98a57dc6cc786a2516f71"
+  },
+  {
+    "path": "packages/cli/src/daemon.ts",
+    "anchor_line": 2952,
+    "sha256": "9e5ef8efa61a61f41094aeb2ac56140f94c3ead9fa9339578615c2881c9448e2"
+  },
+  {
+    "path": "packages/governance/src/knowledge-hygiene/dependency.ts",
+    "anchor_line": 27,
+    "sha256": "740682e79a7d8219a079d7c23f5758bebe343803982ab05236a2756796269ddd"
+  },
+  {
+    "path": "packages/cli/src/neat-dependency-command.ts",
+    "anchor_line": 970,
+    "sha256": "577a9caa91110e412d99660d74d666369a1e8de319fbee40705f77568942e351"
+  },
+  {
+    "path": "packages/core/src/state/dependency-obligation-store.ts",
+    "anchor_line": 178,
+    "sha256": "dfbfa47fc65e3d5fbfa0fc5ba10ef4295b41f903240d07e546d7b41af6899552"
+  },
+  {
+    "path": "packages/core/src/state/autonomy-runs.ts",
+    "anchor_line": 279,
+    "sha256": "9a205c1da98c7c7da993d349e85d16240235887f50cd35f9e0c0c1bda52e50c4"
+  },
+  {
+    "path": "packages/protocol/src/event.ts",
+    "anchor_line": 13,
+    "sha256": "6b3f2edde62ec9468f3aafe949edda0687cc00d328ad47b4822e919780787dfa"
+  },
+  {
+    "path": "packages/protocol/src/evidence.ts",
+    "anchor_line": 19,
+    "sha256": "5786ebab493c26284c20727478eb21213dc075ce5d9589ee0fa0f2ba6d8de747"
+  },
+  {
+    "path": "packages/loop/src/state-file.ts",
+    "anchor_line": 39,
+    "sha256": "e643aa3e9273018d0d0eb61289fb43fc5b77dade4769b75a13950b9b8643d33f"
+  },
+  {
+    "path": "packages/knowledge/src/types.ts",
+    "anchor_line": 14,
+    "sha256": "2c7a87b97211896b4d95fca710bf4bf1461e3faac150e2244914a044e8dcd38f"
+  },
+  {
+    "path": "packages/knowledge/src/pack.ts",
+    "anchor_line": 857,
+    "sha256": "e15d79a049e98ece387bfd96f0531caf5e7ca6da52224df7fc73ed43d9ca2a82"
+  },
+  {
+    "path": "packages/core/src/state/memory.ts",
+    "anchor_line": 71,
+    "sha256": "04afcba6abf9961d311a1d1a4245aae382b287b21ae07211415b5444c252f52c"
+  },
+  {
+    "path": "packages/core/src/kg/gbrain.ts",
+    "anchor_line": 82,
+    "sha256": "c8c043db5a0fcf0a2429177a78b4742b4f33d4fb56d969103ddb7dc848734778"
+  },
+  {
+    "path": "packages/cli/src/daemon.ts",
+    "anchor_line": 3388,
+    "sha256": "9e5ef8efa61a61f41094aeb2ac56140f94c3ead9fa9339578615c2881c9448e2"
+  },
+  {
+    "path": "packages/core/src/orchestrator/router.ts",
+    "anchor_line": 70,
+    "sha256": "85e982382efd8e1348940078ddc613362539de0208059f1d1858f1e883ff2fb6"
+  },
+  {
+    "path": "packages/core/src/policy/agent-scorecard.ts",
+    "anchor_line": 27,
+    "sha256": "567d107fff9891f033677f9f61f9719ffadfd8b10e1f43ea83c01e6ca0952870"
+  },
+  {
+    "path": "packages/supervisor/src/proposal.ts",
+    "anchor_line": 25,
+    "sha256": "7af844fb1f629a81540d80491b3f7ddfd8ca5fe35f60b5c2baa32e999038e318"
+  },
+  {
+    "path": "packages/supervisor/src/gate.ts",
+    "anchor_line": 14,
+    "sha256": "7af0a4e87f998b7260e8dc35246a94f8ead22ad1e7048a3c27a944440e7f9882"
+  },
+  {
+    "path": "packages/runtime/src/index.ts",
+    "anchor_line": 1,
+    "sha256": "181a4771c3e85ac6156bdcb2155ab4bd3b86889bc52e13c04f347d7cd00513de"
+  },
+  {
+    "path": "packages/protocol/src/session-continuation.ts",
+    "anchor_line": 5,
+    "sha256": "f79735335a44ad1831bba840b8e664a79848552d4ab1c8e7b3f68bf926b270fb"
+  },
+  {
+    "path": "packages/cli/src/session-collaborator.ts",
+    "anchor_line": 45,
+    "sha256": "729f6511dbded2ee064e265f8e4022bc7e6ecbbccdc0da251f1f190f8db1c62f"
+  }
+]
