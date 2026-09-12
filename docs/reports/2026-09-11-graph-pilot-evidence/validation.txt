@@ -1,0 +1,13 @@
+pnpm --filter @osstack/cli test
+Test Files  98 passed (98)
+      Tests  850 passed (850)
+   Start at  18:54:43
+   Duration  17.66s (transform 3.75s, setup 549ms, collect 39.26s, tests 70.97s, environment 15ms, prepare 3.91s)
+
+pnpm --filter @osstack/cli typecheck: passed
+pnpm exec biome check packages/cli/src/graph-command.ts packages/cli/src/graph-command.test.ts: passed
+pnpm --filter @osstack/cli build: passed
+node scripts/verify-graph-pilot.mjs: passed (isolated fixture, independent SQL/JSON, source bytes unchanged)
+
+Final full-suite graph test line:
+ ✓ src/graph-command.test.ts (12 tests) 227ms
