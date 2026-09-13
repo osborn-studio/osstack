@@ -675,6 +675,7 @@ describe("command process groups", () => {
         terminationGraceMs: 40, killGraceMs: 500,
       });
       expect(run).toMatchObject({ outcome: "failed", failure_code: "surviving_descendants" });
+      expect(run.command_results[0]?.termination?.leader_exit_code).toBe(0);
       expect(run.command_results[0]).toMatchObject({ termination: {
         trigger: "leader_exit", stop_confirmed: true, signals: ["SIGTERM", "SIGKILL"],
       } });
@@ -911,3 +912,123 @@ function errorEvent(runId: string, sessionId: string, message: string): HermesEv
     },
   };
 }
+
+describe("reviewed invocation lifecycle", () => {
+  it("confirms no invocation after a settled preflight is cancelled", async () => {
+    const controller = new AbortController();
+    const adapter = mockAdapter();
+    adapter.isAvailable = async () => { controller.abort(); return { available: true, last_checked_at: 0 }; };
+    const invoke = vi.spyOn(adapter, "invoke");
+    const run = await executePlan(plan(adapter.id), { workspacePath: workspace, adapters: [adapter], signal: controller.signal });
+    expect(run).toMatchObject({ outcome: "cancelled", cancellation: {
+      invocation_started: false, stop_confirmed: true, evidence: "invocation_not_started",
+    } });
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it("does not reuse stop evidence when the same plan is invoked twice", async () => {
+    const executionPlan = plan("mock-agent");
+    const stopped = new Set<string>();
+    const controller = new AbortController();
+    let calls = 0;
+    const adapter = mockAdapter({ async *invoke(task) {
+      if (++calls === 1) {
+        stopped.add(task.run_id);
+        yield doneEvent(task.run_id, task.session_id, "completed", "first stopped");
+      } else {
+        controller.abort();
+        yield doneEvent(task.run_id, task.session_id, "cancelled", "still running");
+      }
+    } });
+    adapter.confirmStopped = async (runId) => stopped.has(runId) ? { stopped: true, evidence: "first invocation stopped" } : { stopped: false };
+    const options = { workspacePath: workspace, adapters: [adapter], signal: controller.signal };
+    const first = await executePlan(executionPlan, options);
+    const second = await executePlan(executionPlan, options);
+    expect(first.run_id).not.toBe(second.run_id);
+    expect(second.cancellation?.stop_confirmed).toBe(false);
+  });
+
+  it("knows an unsupported command was not started", async () => {
+    const platform = vi.spyOn(process, "platform", "get").mockReturnValue("win32");
+    try {
+      const run = await runShellCommand("exit 0", { cwd: workspace, timeoutMs: 100, outputLimit: 100 });
+      expect(run).toMatchObject({ failure_code: "process_control_unsupported", termination: { stop_confirmed: true } });
+    } finally { platform.mockRestore(); }
+  });
+
+  it.each(["SIGINT", "SIGTERM", "exit"] as const)("cleans owned groups on parent %s", async (ending) => {
+    const { spawn } = await import("node:child_process");
+    await withProcessFixture("setInterval(() => {}, 1000);", async (fixture) => {
+      const program = `import { runShellCommand } from ${JSON.stringify(new URL("../dist/executor.js", import.meta.url).href)};
+        process.on('message', () => process.exit(7));
+        await runShellCommand(${JSON.stringify(fixture.command)}, {cwd:${JSON.stringify(workspace)},timeoutMs:10000,outputLimit:100});`;
+      const host = spawn(process.execPath, ["--input-type=module", "-e", program], { cwd: workspace, stdio: ["ignore", "ignore", "ignore", "ipc"] });
+      const exited = new Promise<void>((resolve) => host.once("exit", () => resolve()));
+      try {
+        await fixture.waitFor("leader.pid");
+        if (ending === "exit") host.send({ exit: true }); else host.kill(ending);
+        await exited;
+        await waitUntil(() => !pidExists(fixture.leaderPid()));
+        fixture.assertStopped();
+      } finally {
+        if (host.exitCode === null && host.signalCode === null) host.kill("SIGKILL");
+        await exited;
+      }
+    });
+  });
+});
+
+describe("reviewed lifecycle compatibility", () => {
+  it("knows a timeout preflight settled without invoking", async () => {
+    const adapter = mockAdapter();
+    adapter.isAvailable = async () => { await new Promise((resolve) => setTimeout(resolve, 20)); return { available: true, last_checked_at: 0 }; };
+    const invoke = vi.spyOn(adapter, "invoke");
+    const result = await executePlan(plan(adapter.id), { workspacePath: workspace, adapters: [adapter], timeoutMs: 5 });
+    expect(result.cancellation).toMatchObject({ source: "timeout", stop_confirmed: true, invocation_started: false });
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it("lets finishing descendants drain within a bounded window", async () => {
+    await withProcessFixture(`const {spawn} = require('node:child_process');
+      const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 10)'], {stdio: 'ignore'});
+      fs.writeFileSync('child.pid', String(child.pid)); process.exit(0);`, async (fixture) => {
+      const result = await runShellCommand(fixture.command, { cwd: workspace, timeoutMs: 2000, outputLimit: 1000 });
+      expect(result).toMatchObject({ exitCode: 0, termination: { trigger: "exit", stop_confirmed: true, signals: [] } });
+      fixture.assertStopped();
+    });
+  });
+
+  it("releases process shutdown listeners after success and failure", async () => {
+    const names = ["SIGINT", "SIGTERM", "exit"] as const;
+    const before = names.map((name) => process.listenerCount(name));
+    for (const command of ["exit 0", "exit 7"]) {
+      await runShellCommand(command, { cwd: workspace, timeoutMs: 1000, outputLimit: 100 });
+      expect(names.map((name) => process.listenerCount(name))).toEqual(before);
+    }
+  });
+
+  it("preserves the host's own signal handler", async () => {
+    const { spawn } = await import("node:child_process");
+    await withProcessFixture("setInterval(() => {}, 1000);", async (fixture) => {
+      const program = `import {writeFileSync} from 'node:fs';
+        import {runShellCommand} from ${JSON.stringify(new URL("../dist/executor.js", import.meta.url).href)};
+        process.on('message', () => process.exit(0));
+        process.on('SIGINT', () => writeFileSync('host-handled', 'yes'));
+        await runShellCommand(${JSON.stringify(fixture.command)}, {cwd:${JSON.stringify(workspace)},timeoutMs:10000,outputLimit:100});`;
+      const host = spawn(process.execPath, ["--input-type=module", "-e", program], { cwd: workspace, stdio: ["ignore", "ignore", "ignore", "ipc"] });
+      const exited = new Promise<void>((resolve) => host.once("exit", () => resolve()));
+      try {
+        await fixture.waitFor("leader.pid");
+        host.kill("SIGINT");
+        await fixture.waitFor("host-handled");
+        await waitUntil(() => !pidExists(fixture.leaderPid()));
+        expect(host.exitCode).toBeNull();
+        expect(host.signalCode).toBeNull();
+        fixture.assertStopped();
+      } finally {
+        if (host.exitCode === null && host.signalCode === null) host.send({ exit: true });
+        await exited;
+      }
+    });
+  });
+});

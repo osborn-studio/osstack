@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -25,6 +26,7 @@ export interface CommandTerminationEvidence {
   /** Covers group members only; deliberately detached processes can escape. */
   scope: "posix_process_group" | "not_started" | "unsupported";
   pgid?: number;
+  leader_exit_code?: number;
   trigger: "exit" | "external" | "timeout" | "leader_exit" | "process_error";
   stop_confirmed: boolean;
   signals: NodeJS.Signals[];
@@ -80,10 +82,11 @@ export interface LocalExecutorOptions {
 }
 
 export async function executePlan(plan: ExecutionPlan, options: LocalExecutorOptions): Promise<AgentRun> {
-  if (options.signal?.aborted) {
+  const runId = `run_${randomUUID()}`;
+  if (options.signal?.aborted || parentTerminationSignal !== undefined) {
     const now = new Date().toISOString();
     return {
-      run_id: `run_${plan.plan_id}`, plan_id: plan.plan_id, task_id: plan.task.task_id,
+      run_id: runId, plan_id: plan.plan_id, task_id: plan.task.task_id,
       agent_id: plan.agent_id, outcome: "cancelled", started_at: now, completed_at: now,
       duration_ms: 0, command_results: [], adapter_event_count: 0,
       summary: "Cancelled before execution started",
@@ -93,10 +96,10 @@ export async function executePlan(plan: ExecutionPlan, options: LocalExecutorOpt
   }
   const adapter = options.adapters?.find((candidate) => candidate.id === plan.agent_id);
   if (adapter !== undefined) {
-    return await executeAdapterPlan(plan, options, adapter);
+    return await executeAdapterPlan(plan, options, adapter, runId);
   }
   if (!isLocalAgentId(plan.agent_id)) {
-    return missingAdapterRun(plan);
+    return missingAdapterRun(plan, runId);
   }
 
   const started = Date.now();
@@ -124,7 +127,7 @@ export async function executePlan(plan: ExecutionPlan, options: LocalExecutorOpt
   const cancellation = commandResult?.cancellation;
   const completed = Date.now();
   return {
-    run_id: `run_${plan.plan_id}`,
+    run_id: runId,
     plan_id: plan.plan_id,
     task_id: plan.task.task_id,
     agent_id: plan.agent_id,
@@ -140,11 +143,11 @@ export async function executePlan(plan: ExecutionPlan, options: LocalExecutorOpt
   };
 }
 
-function missingAdapterRun(plan: ExecutionPlan): AgentRun {
+function missingAdapterRun(plan: ExecutionPlan, runId: string): AgentRun {
   const now = Date.now();
   const message = `agent adapter not registered: ${plan.agent_id}`;
   return {
-    run_id: `run_${plan.plan_id}`,
+    run_id: runId,
     plan_id: plan.plan_id,
     task_id: plan.task.task_id,
     agent_id: plan.agent_id,
@@ -168,13 +171,14 @@ async function executeAdapterPlan(
   plan: ExecutionPlan,
   options: LocalExecutorOptions,
   adapter: AgentAdapter,
+  runId: string,
 ): Promise<AgentRun> {
   const started = Date.now();
-  const runId = `run_${plan.plan_id}`;
   const cancellation = new AdapterCancellation(options, adapter, runId);
   const commandResults: CommandResult[] = [];
   let iterator: AsyncIterator<HermesEvent> | undefined;
   let streamClosed = false;
+  let preflightSettled = false;
   let outcome: AgentRun["outcome"] = "failed";
   let failureCode: AgentRun["failure_code"];
   let terminalState: "running" | "error" | "done" = "running";
@@ -183,6 +187,7 @@ async function executeAdapterPlan(
   let usage: AgentUsage | undefined;
   try {
     const availability = await cancellation.wait(adapter.isAvailable());
+    preflightSettled = true;
     cancellation.checkBeforeInvoke();
     if (!availability.available) {
       const message = availability.reason ?? "agent unavailable";
@@ -191,7 +196,9 @@ async function executeAdapterPlan(
       throw new Error(message);
     }
     // Load the shared runtime contract only for adapter invocations.
+    preflightSettled = false;
     const { DonePayload } = await cancellation.wait(import("@osstack/hermes-adapter"));
+    preflightSettled = true;
     cancellation.checkBeforeInvoke();
     const agentTask: AgentTask = {
       run_id: runId,
@@ -266,6 +273,7 @@ async function executeAdapterPlan(
       const unfinished = iterator;
       void Promise.resolve().then(() => unfinished.return?.()).catch(() => undefined);
     }
+    if (!cancellation.invocationStarted && preflightSettled) cancellation.confirmNotInvoked();
     await cancellation.finish();
   }
 
@@ -355,7 +363,13 @@ class AdapterCancellation {
     }
   }
 
+  confirmNotInvoked(): void {
+    if (this.record === undefined) return;
+    this.record = { ...this.record, stop_confirmed: true, confirmed_at: new Date().toISOString(), evidence: "invocation_not_started" };
+  }
+
   checkBeforeInvoke(): void {
+    if (parentTerminationSignal !== undefined) this.request("external", new Error("Parent termination requested"));
     if (this.signal.aborted) throw new Error("Cancelled before adapter invocation");
   }
 
@@ -482,10 +496,59 @@ export interface ShellCommandOptions {
   killGraceMs?: number;
 }
 
+// Installed only while commands are owned by this process. Preserve existing
+// host signal handlers; re-deliver the default signal only when we are alone.
+const commandShutdowns = new Set<(exiting: boolean) => void>();
+let parentTerminationSignal: "SIGINT" | "SIGTERM" | undefined;
+let parentTerminationTimer: ReturnType<typeof setTimeout> | undefined;
+const onCommandParentExit = (): void => { for (const stop of commandShutdowns) stop(true); };
+const onCommandParentInt = (): void => { stopCommandsForSignal("SIGINT", onCommandParentInt); };
+const onCommandParentTerm = (): void => { stopCommandsForSignal("SIGTERM", onCommandParentTerm); };
+function stopCommandsForSignal(signal: "SIGINT" | "SIGTERM", listener: () => void): void {
+  const defaultTermination = process.listenerCount(signal) === 1 && process.listeners(signal).includes(listener);
+  if (defaultTermination) {
+    if (parentTerminationSignal !== undefined) {
+      onCommandParentExit();
+      resumeDefaultTermination();
+      return;
+    }
+    parentTerminationSignal = signal;
+    parentTerminationTimer = setTimeout(() => {
+      onCommandParentExit();
+      resumeDefaultTermination();
+    }, 2_500);
+  }
+  for (const stop of commandShutdowns) stop(false);
+}
+function resumeDefaultTermination(): void {
+  if (parentTerminationSignal === undefined) return;
+  clearTimeout(parentTerminationTimer);
+  process.removeListener("SIGINT", onCommandParentInt);
+  process.removeListener("SIGTERM", onCommandParentTerm);
+  process.kill(process.pid, parentTerminationSignal);
+}
+function registerCommandShutdown(stop: (exiting: boolean) => void): () => void {
+  if (commandShutdowns.size === 0) {
+    process.on("exit", onCommandParentExit);
+    process.on("SIGINT", onCommandParentInt);
+    process.on("SIGTERM", onCommandParentTerm);
+  }
+  commandShutdowns.add(stop);
+  return () => {
+    commandShutdowns.delete(stop);
+    if (commandShutdowns.size === 0) {
+      process.removeListener("exit", onCommandParentExit);
+      process.removeListener("SIGINT", onCommandParentInt);
+      process.removeListener("SIGTERM", onCommandParentTerm);
+      if (parentTerminationSignal !== undefined) setImmediate(resumeDefaultTermination);
+    }
+  };
+}
+
 export async function runShellCommand(command: string, options: ShellCommandOptions): Promise<CommandResult> {
   const started = Date.now();
   const timeoutMs = timerDuration(options.timeoutMs, 120_000);
-  if (options.signal?.aborted) {
+  if (options.signal?.aborted || parentTerminationSignal !== undefined) {
     const now = new Date().toISOString();
     return { command, exitCode: 130, stdout: "", stderr: "Cancelled before command started", durationMs: 0,
       cancellation: { source: "external", requested_at: now, invocation_started: false,
@@ -495,7 +558,7 @@ export async function runShellCommand(command: string, options: ShellCommandOpti
     const evidence = `Command not started: POSIX process-group control unsupported on ${process.platform}`;
     return { command, exitCode: 125, stdout: "", stderr: evidence, durationMs: 0,
       failure_code: "process_control_unsupported",
-      termination: { scope: "unsupported", trigger: "process_error", stop_confirmed: false, signals: [], evidence } };
+      termination: { scope: "unsupported", trigger: "process_error", stop_confirmed: true, signals: [], evidence } };
   }
   return await new Promise<CommandResult>((resolve) => {
     const child = spawn(command, {
@@ -518,6 +581,7 @@ export async function runShellCommand(command: string, options: ShellCommandOpti
     let termDeadline = Infinity;
     let killDeadline = Infinity;
     let drainDeadline = Infinity;
+    let descendantDeadline = Infinity;
     let lastProbe = "not inspected";
     const signals: NodeJS.Signals[] = [];
     const errors: string[] = [];
@@ -546,6 +610,7 @@ export async function runShellCommand(command: string, options: ShellCommandOpti
     const finish = (confirmed: boolean, notStarted = false): void => {
       if (settled) return;
       settled = true;
+      releaseShutdown();
       clearTimeout(timeout);
       clearInterval(poll);
       options.signal?.removeEventListener("abort", onAbort);
@@ -570,7 +635,8 @@ export async function runShellCommand(command: string, options: ShellCommandOpti
           : trigger === "external" ? 130 : trigger !== undefined ? 1 : exitCode,
         durationMs: Date.now() - started,
         termination: { scope: notStarted ? "not_started" : "posix_process_group",
-          ...(pgid !== undefined ? { pgid } : {}), trigger: trigger ?? "exit",
+          ...(pgid !== undefined ? { pgid } : {}),
+          ...(leaderExited ? { leader_exit_code: exitCode } : {}), trigger: trigger ?? "exit",
           stop_confirmed: confirmed, signals: [...signals], evidence: detail },
         ...(failureCode !== undefined ? { failure_code: failureCode } : {}),
         ...(cancellation !== undefined ? { cancellation: { ...cancellation, stop_confirmed: confirmed,
@@ -596,7 +662,11 @@ export async function runShellCommand(command: string, options: ShellCommandOpti
         if (pipesClosed || now >= drainDeadline) finish(true);
         return;
       }
-      if (leaderExited && trigger === undefined) requestStop("leader_exit");
+      if (leaderExited && trigger === undefined) {
+        // A short drain window avoids killing auxiliaries already finishing.
+        if (descendantDeadline === Infinity) descendantDeadline = now + Math.min(timerDuration(options.terminationGraceMs, 1_000), 100);
+        if (now >= descendantDeadline) requestStop("leader_exit");
+      }
       if (now >= termDeadline && killDeadline === Infinity) {
         signalGroup("SIGKILL");
         killDeadline = now + timerDuration(options.killGraceMs, 1_000);
@@ -625,6 +695,11 @@ export async function runShellCommand(command: string, options: ShellCommandOpti
     child.on("close", () => {
       pipesClosed = true;
       inspect();
+    });
+    const releaseShutdown = pgid === undefined ? () => {} : registerCommandShutdown((exiting) => {
+      if (!exiting) requestStop("external");
+      // SIGINT/TERM allow bounded cleanup; exit itself cannot await promises.
+      else signalGroup("SIGKILL");
     });
     options.signal?.addEventListener("abort", onAbort, { once: true });
     if (options.signal?.aborted) onAbort();

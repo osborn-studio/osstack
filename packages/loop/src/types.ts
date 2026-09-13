@@ -283,6 +283,8 @@ export const CompletedTask = z.object({
   started_at: z.string().optional(),
   completed_at: z.string().optional(),
   execution_summary: z.string().optional(),
+  /** Executor-owned stop latch; agent summary text cannot set it. */
+  implementation_unconfirmed: z.boolean().optional(),
   execution_commands: z.array(CommandAudit).optional(),
   verifier_agent_id: z.string().optional(),
   verify_summary: z.string().optional(),
