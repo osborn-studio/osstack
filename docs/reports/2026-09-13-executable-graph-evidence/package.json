@@ -1,0 +1,12 @@
+{
+  "name": "osstack-executable-graph-probes",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "@google/adk": "2.0.0",
+    "@langchain/core": "1.2.11",
+    "@langchain/langgraph": "1.4.15",
+    "@langchain/langgraph-checkpoint-sqlite": "1.0.4",
+    "zod": "4.6.4"
+  }
+}

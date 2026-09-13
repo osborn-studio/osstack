@@ -1,0 +1,35 @@
+{
+  "is_error": false,
+  "duration_ms": 87905,
+  "num_turns": 1,
+  "modelUsage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 5731,
+      "outputTokens": 14,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.005801,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "thinkingTokens": 0,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    },
+    "claude-fable-5-1": {
+      "inputTokens": 2,
+      "outputTokens": 5252,
+      "cacheReadInputTokens": 3919,
+      "cacheCreationInputTokens": 11174,
+      "webSearchRequests": 0,
+      "costUSD": 0.48707975000000003,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 3082,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  }
+}

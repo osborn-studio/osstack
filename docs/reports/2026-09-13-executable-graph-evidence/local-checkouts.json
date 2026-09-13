@@ -1,0 +1,27 @@
+[
+  {
+    "name": "osstack",
+    "path": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+    "sha": "b476bcc3fbbfcc11953abd3d154e59f7f85c4660"
+  },
+  {
+    "name": "awesome",
+    "path": "/Volumes/AIMATE_WORK/Developer/CodeX/Awesome-Graph-Engineering",
+    "sha": "d30a601e5ded64a595985e182b2b962519122ed3"
+  },
+  {
+    "name": "adk-js",
+    "path": "/tmp/osstack-executable-graph-20260913/repos/adk-js",
+    "sha": "fbd7f5aa8133ed25df33ddb46fc37ae65ff69c72"
+  },
+  {
+    "name": "langgraphjs",
+    "path": "/tmp/osstack-executable-graph-20260913/repos/langgraphjs",
+    "sha": "592fd0cab0fd9287fab1b7c7fcfd4abc44675700"
+  },
+  {
+    "name": "graph-engineering-playbook",
+    "path": "/tmp/osstack-executable-graph-20260913/repos/graph-engineering-playbook",
+    "sha": "692d161587099adda5945982ff3db9213c343ee4"
+  }
+]
