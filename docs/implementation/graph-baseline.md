@@ -4,10 +4,10 @@
 
 Node 26.5.0, pnpm 11.4.0, locked dependencies installed with `--frozen-lockfile`; migration 24. Native SQLite loaded against an in-memory DB; [runtime and ABI](graph-foundation-evidence/native-baseline.json). No production DB opened. This macOS baseline does not establish Node 22/Linux compatibility.
 
-- [Build](graph-foundation-evidence/baseline-build.log): all workspace packages passed.
-- [Existing Loop tests](graph-foundation-evidence/baseline-loop.log): 35/35 passed (executor and loop-engine).
-- [Startup](graph-foundation-evidence/baseline-startup.log): version median 29 ms / 150 ms budget; help median 78 ms / 500 ms budget, five samples each.
-- [Fixture RED](graph-foundation-evidence/g00-red.log), [GREEN](graph-foundation-evidence/g00-green.log): fresh temporary homes, refusal of default/reserved homes and symlink aliases. Run `node scripts/graph-test-env.mjs -- COMMAND ...` to isolate any future CLI/test invocation. The wrapper ignores inherited OSSTACK_HOME and owns cleanup only for its fresh home.
+- [Build](graph-foundation-evidence/baseline-build.txt): all workspace packages passed.
+- [Existing Loop tests](graph-foundation-evidence/baseline-loop.txt): 35/35 passed (executor and loop-engine).
+- [Startup](graph-foundation-evidence/baseline-startup.txt): version median 29 ms / 150 ms budget; help median 78 ms / 500 ms budget, five samples each.
+- [Fixture RED](graph-foundation-evidence/g00-red.txt), [GREEN](graph-foundation-evidence/g00-green.txt): fresh temporary homes, refusal of default/reserved homes and symlink aliases. Run `node scripts/graph-test-env.mjs -- COMMAND ...` to isolate any future CLI/test invocation. The wrapper ignores inherited OSSTACK_HOME and owns cleanup only for its fresh home.
 - Existing-file/command inventory for all cards is retained in [verified references](2026-09-13-upgrade-plan-review/verified-existing-references.json). Future files and commands are proposals until their card implements them. Historical research/probe results are not implementation validation.
 
 Baseline limitations: complete test suite, RPC latency and Loop tick overhead were not measured in G00; the existing startup gate and targeted tests above passed. Installation warned that local CLI bin targets were missing before the first build; build resolved them. No observed baseline failure is being hidden as a new regression.

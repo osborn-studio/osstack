@@ -3,7 +3,7 @@
   "createdAt": "2026-09-13",
   "baseline": "b476bcc",
   "objective": "OSStack Loop hardening and executable Graph code-delivery-v1",
-  "status": "planned",
+  "status": "in_progress",
   "verificationCommands": {
     "BASE": "记录 `git status --short` / `git rev-parse HEAD` / `node -v`；在隔离环境运行现有相关包测试与 `node scripts/bench-cli-startup.mjs`，保存基线。",
     "LOOP": "`pnpm --filter @osstack/loop exec vitest run src/executor.test.ts src/loop-engine.test.ts`；新增 candidate 测试后同时运行；涉及 agents 时跑对应包测试。",
@@ -46,7 +46,10 @@
       ],
       "verify": "BASE",
       "size": "S",
-      "status": "pending"
+      "status": "completed",
+      "evidence": [
+        "docs/implementation/graph-baseline.md"
+      ]
     },
     {
       "id": "G01",
