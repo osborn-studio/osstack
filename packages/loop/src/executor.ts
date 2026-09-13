@@ -16,6 +16,19 @@ export interface CommandResult {
   stdout: string;
   stderr: string;
   durationMs: number;
+  failure_code?: "process_exit_unconfirmed" | "process_control_unsupported" | "surviving_descendants";
+  termination?: CommandTerminationEvidence;
+  cancellation?: CancellationEvidence;
+}
+
+export interface CommandTerminationEvidence {
+  /** Covers group members only; deliberately detached processes can escape. */
+  scope: "posix_process_group" | "not_started" | "unsupported";
+  pgid?: number;
+  trigger: "exit" | "external" | "timeout" | "leader_exit" | "process_error";
+  stop_confirmed: boolean;
+  signals: NodeJS.Signals[];
+  evidence: string;
 }
 
 export interface AgentRun {
@@ -31,7 +44,7 @@ export interface AgentRun {
   adapter_event_count?: number;
   summary?: string;
   /** Stable failure classification; unconfirmed cancellation is not retry-safe. */
-  failure_code?: "missing_done" | "invalid_done_payload" | "duplicate_done" | "conflicting_terminal" | "event_after_terminal" | "cancellation_unconfirmed";
+  failure_code?: "missing_done" | "invalid_event" | "invalid_done_payload" | "duplicate_done" | "conflicting_terminal" | "event_after_terminal" | "cancellation_unconfirmed" | NonNullable<CommandResult["failure_code"]>;
   cancellation?: CancellationEvidence;
   /** Adapter-reported token usage for this run (undefined when not reported). */
   tokens_in?: number;
@@ -41,7 +54,7 @@ export interface AgentRun {
 }
 
 export interface CancellationEvidence {
-  source: "external" | "timeout";
+  source: "external" | "timeout" | "executor_error";
   requested_at: string;
   invocation_started: boolean;
   stop_confirmed: boolean;
@@ -54,11 +67,15 @@ export interface LocalExecutorOptions {
   command?: string;
   adapters?: readonly AgentAdapter[];
   sessionId?: string;
+  /** Invalid durations (nonfinite, negative, > 2^31-1) use defaults: timeout 120s, grace 1s. */
   timeoutMs?: number;
-  /** Parent cancellation for adapter execution (command process control is separate). */
+  /** Parent cancellation for adapter or command execution. */
   signal?: AbortSignal;
   /** Maximum wait after cancellation for adapter stop evidence; default 1,000ms. */
   cancellationGraceMs?: number;
+  /** Command process-group TERM grace, followed by a bounded KILL wait (defaults: 1,000ms each). */
+  terminationGraceMs?: number;
+  killGraceMs?: number;
   outputLimit?: number;
 }
 
@@ -92,6 +109,9 @@ export async function executePlan(plan: ExecutionPlan, options: LocalExecutorOpt
         cwd: options.workspacePath,
         timeoutMs: options.timeoutMs ?? 120_000,
         outputLimit: options.outputLimit ?? 16_000,
+        ...(options.signal !== undefined ? { signal: options.signal } : {}),
+        ...(options.terminationGraceMs !== undefined ? { terminationGraceMs: options.terminationGraceMs } : {}),
+        ...(options.killGraceMs !== undefined ? { killGraceMs: options.killGraceMs } : {}),
         ...(feedback !== undefined ? { env: { [ITERATION_FEEDBACK_FILE_ENV]: feedback.path } } : {}),
       }));
     } finally {
@@ -100,17 +120,23 @@ export async function executePlan(plan: ExecutionPlan, options: LocalExecutorOpt
   }
 
   const failed = commandResults.some((result) => result.exitCode !== 0);
+  const commandResult = commandResults[0];
+  const cancellation = commandResult?.cancellation;
   const completed = Date.now();
   return {
     run_id: `run_${plan.plan_id}`,
     plan_id: plan.plan_id,
     task_id: plan.task.task_id,
     agent_id: plan.agent_id,
-    outcome: failed ? "failed" : "completed",
+    outcome: cancellation?.source === "external" && cancellation.stop_confirmed
+      ? "cancelled" : failed ? "failed" : "completed",
     started_at: new Date(started).toISOString(),
     completed_at: new Date(completed).toISOString(),
     duration_ms: completed - started,
     command_results: commandResults,
+    ...(commandResult?.failure_code !== undefined ? { failure_code: commandResult.failure_code } : {}),
+    ...(cancellation !== undefined ? { cancellation } : {}),
+    ...(commandResult?.termination !== undefined ? { summary: commandResult.termination.evidence } : {}),
   };
 }
 
@@ -190,6 +216,7 @@ async function executeAdapterPlan(
         break;
       }
       const event = next.value;
+      validateEvent(event);
       adapterEventCount += 1;
       if (event.type === "usage.updated" || event.type === "usage.final") {
         // usage events report running/final totals; the latest authoritative
@@ -231,6 +258,7 @@ async function executeAdapterPlan(
     outcome = "failed";
     if (err instanceof AdapterProtocolError) failureCode = err.code;
     summary = err instanceof Error ? err.message : String(err);
+    if (cancellation.invocationStarted) cancellation.stopAfterError(err);
   } finally {
     if (iterator !== undefined && !streamClosed) {
       // Best-effort cleanup only. Neither return() nor a pending next() may
@@ -245,11 +273,13 @@ async function executeAdapterPlan(
   if (evidence !== undefined) {
     // Cancellation wins over every late status, including completed/cancelled.
     // Keep protocol violations failed even when stop is independently proven.
-    outcome = evidence.stop_confirmed && failureCode === undefined ? "cancelled" : "failed";
-    if (!evidence.stop_confirmed) failureCode = "cancellation_unconfirmed";
-    summary = evidence.stop_confirmed
-      ? `Cancellation confirmed: ${evidence.evidence}${failureCode !== undefined ? `; ${summary}` : ""}`
-      : "Cancellation requested; external work stop is unconfirmed (reconciliation required)";
+    outcome = evidence.stop_confirmed && failureCode === undefined && evidence.source !== "executor_error" ? "cancelled" : "failed";
+    if (!evidence.stop_confirmed && failureCode === undefined) failureCode = "cancellation_unconfirmed";
+    const originalFailure = failureCode !== undefined || evidence.source === "executor_error" ? summary : undefined;
+    summary = (evidence.stop_confirmed
+      ? `Cancellation confirmed: ${evidence.evidence}`
+      : "Cancellation requested; external work stop is unconfirmed (reconciliation required)")
+      + (originalFailure !== undefined ? `; ${originalFailure}` : "");
   }
 
   const completed = Date.now();
@@ -280,6 +310,7 @@ class AdapterCancellation {
   private graceTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly waiters = new Set<() => void>();
   private deadline = Infinity;
+  private expired = false;
   private active = true;
   private confirmation: Promise<void> | undefined;
   private record: CancellationEvidence | undefined;
@@ -290,7 +321,7 @@ class AdapterCancellation {
     private readonly adapter: AgentAdapter,
     private readonly runId: string,
   ) {
-    this.timeout = setTimeout(() => this.request("timeout", new Error("Adapter execution timed out")), options.timeoutMs ?? 120_000);
+    this.timeout = setTimeout(() => this.request("timeout", new Error("Adapter execution timed out")), timerDuration(options.timeoutMs, 120_000));
     options.signal?.addEventListener("abort", this.onAbort, { once: true });
     if (options.signal?.aborted) this.onAbort();
   }
@@ -298,22 +329,24 @@ class AdapterCancellation {
   get signal(): AbortSignal { return this.controller.signal; }
   get evidence(): CancellationEvidence | undefined { return this.record === undefined ? undefined : { ...this.record }; }
 
+  stopAfterError(reason: unknown): void { this.request("executor_error", reason); }
+
   private readonly onAbort = (): void => { this.request("external", this.options.signal?.reason); };
 
   private request(source: CancellationEvidence["source"], reason: unknown): void {
     if (this.record !== undefined || !this.active) return;
-    const grace = this.options.cancellationGraceMs ?? 1_000;
-    const boundedGrace = Number.isFinite(grace) ? Math.max(0, grace) : 1_000;
-    this.deadline = Date.now() + boundedGrace;
+    const grace = timerDuration(this.options.cancellationGraceMs, 1_000);
+    this.deadline = performance.now() + grace;
     this.record = { source, requested_at: new Date().toISOString(),
       invocation_started: this.invocationStarted, stop_confirmed: false };
     this.graceTimer = setTimeout(() => {
+      this.expired = true;
       for (const expire of this.waiters) expire();
-    }, boundedGrace);
+    }, grace);
     this.controller.abort(reason);
     if (this.invocationStarted && this.adapter.confirmStopped !== undefined) {
       this.confirmation = Promise.resolve().then(() => this.adapter.confirmStopped!(this.runId)).then((proof) => {
-        if (this.active && Date.now() <= this.deadline && proof?.stopped === true
+        if (this.active && !this.expired && performance.now() <= this.deadline && proof?.stopped === true
           && typeof proof.evidence === "string" && proof.evidence.trim() !== "") {
           this.record = { ...this.record!, stop_confirmed: true,
             confirmed_at: new Date().toISOString(), evidence: proof.evidence };
@@ -343,7 +376,7 @@ class AdapterCancellation {
         this.waiters.delete(expire);
         reject(error);
       });
-      if (Date.now() >= this.deadline) expire();
+      if (this.expired || performance.now() >= this.deadline) expire();
     });
   }
 
@@ -411,6 +444,20 @@ function errorPayload(payload: HermesEvent["payload"]): { message: string } {
   return payload as { message: string };
 }
 
+function validateEvent(value: unknown): asserts value is HermesEvent {
+  const isRecord = (item: unknown): item is Record<string, unknown> =>
+    typeof item === "object" && item !== null && !Array.isArray(item);
+  if (!isRecord(value) || typeof value["type"] !== "string" || value["type"].trim() === ""
+    || typeof value["terminal"] !== "boolean") {
+    throw new AdapterProtocolError("invalid_event", "Adapter emitted an invalid event object");
+  }
+  const payload = value["payload"];
+  if ((value["type"] === "error" && (!isRecord(payload) || typeof payload["message"] !== "string"))
+    || ((value["type"] === "usage.updated" || value["type"] === "usage.final") && !isRecord(payload))) {
+    throw new AdapterProtocolError("invalid_event", `Adapter emitted an invalid ${value["type"]} payload`);
+  }
+}
+
 class AdapterProtocolError extends Error {
   constructor(readonly code: NonNullable<AgentRun["failure_code"]>, message: string) {
     super(message);
@@ -424,27 +471,140 @@ function selectCapabilityId(adapter: AgentAdapter, plan: ExecutionPlan): string 
   return capability?.id ?? plan.task.capability;
 }
 
-export async function runShellCommand(
-  command: string,
-  options: { cwd: string; timeoutMs: number; outputLimit: number; env?: Record<string, string> },
-): Promise<CommandResult> {
+export interface ShellCommandOptions {
+  cwd: string;
+  /** Invalid durations use a 120s timeout or 1s grace; zero requests immediate expiry. */
+  timeoutMs: number;
+  outputLimit: number;
+  env?: Record<string, string>;
+  signal?: AbortSignal;
+  terminationGraceMs?: number;
+  killGraceMs?: number;
+}
+
+export async function runShellCommand(command: string, options: ShellCommandOptions): Promise<CommandResult> {
   const started = Date.now();
+  const timeoutMs = timerDuration(options.timeoutMs, 120_000);
+  if (options.signal?.aborted) {
+    const now = new Date().toISOString();
+    return { command, exitCode: 130, stdout: "", stderr: "Cancelled before command started", durationMs: 0,
+      cancellation: { source: "external", requested_at: now, invocation_started: false,
+        stop_confirmed: true, confirmed_at: now, evidence: "not_started" } };
+  }
+  if (process.platform === "win32") {
+    const evidence = `Command not started: POSIX process-group control unsupported on ${process.platform}`;
+    return { command, exitCode: 125, stdout: "", stderr: evidence, durationMs: 0,
+      failure_code: "process_control_unsupported",
+      termination: { scope: "unsupported", trigger: "process_error", stop_confirmed: false, signals: [], evidence } };
+  }
   return await new Promise<CommandResult>((resolve) => {
     const child = spawn(command, {
       cwd: options.cwd,
       shell: true,
+      detached: true,
       stdio: ["ignore", "pipe", "pipe"],
       ...(options.env !== undefined ? { env: { ...process.env, ...options.env } } : {}),
     });
+    const pgid = child.pid;
     let stdout = "";
     let stderr = "";
-    let timedOut = false;
+    let leaderExited = false;
+    let pipesClosed = false;
+    let exitCode = 1;
+    let exitSignal: NodeJS.Signals | null = null;
+    let settled = false;
+    let trigger: CommandTerminationEvidence["trigger"] | undefined;
+    let cancellation: CancellationEvidence | undefined;
+    let termDeadline = Infinity;
+    let killDeadline = Infinity;
+    let drainDeadline = Infinity;
+    let lastProbe = "not inspected";
+    const signals: NodeJS.Signals[] = [];
+    const errors: string[] = [];
 
-    const timer = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGTERM");
-    }, options.timeoutMs);
-
+    const signalGroup = (signal: NodeJS.Signals): void => {
+      if (pgid === undefined) return;
+      signals.push(signal);
+      try { process.kill(-pgid, signal); } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        // ESRCH during delivery is a race, not independent exit proof.
+        if (code !== "ESRCH") errors.push(`${signal}: ${code ?? String(error)}`);
+      }
+    };
+    const requestStop = (reason: NonNullable<typeof trigger>): void => {
+      if (trigger !== undefined || settled) return;
+      trigger = reason;
+      clearTimeout(timeout);
+      if (reason === "external" || reason === "timeout") {
+        cancellation = { source: reason, requested_at: new Date().toISOString(),
+          invocation_started: pgid !== undefined, stop_confirmed: false };
+      }
+      termDeadline = performance.now() + timerDuration(options.terminationGraceMs, 1_000);
+      signalGroup("SIGTERM");
+    };
+    const onAbort = (): void => { requestStop("external"); };
+    const finish = (confirmed: boolean, notStarted = false): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      clearInterval(poll);
+      options.signal?.removeEventListener("abort", onAbort);
+      // Do not let inherited pipes or an unconfirmed child keep this caller
+      // alive forever. Late child events stay observed, but cannot revise proof.
+      child.stdout.destroy();
+      child.stderr.destroy();
+      child.unref();
+      const evidence = notStarted ? "Command not started: spawn failed"
+        : confirmed ? `Process group ${pgid} gone (kill(-pgid, 0): ESRCH); leader exit observed`
+          : `Process group ${pgid} exit unconfirmed (reconciliation required): ${lastProbe}; leader exit observed=${leaderExited}`;
+      const detail = evidence + (errors.length ? `; ${errors.join("; ")}` : "");
+      const failureCode = !confirmed ? "process_exit_unconfirmed"
+        : trigger === "leader_exit" ? "surviving_descendants" : undefined;
+      const diagnostic = trigger === "timeout" ? `Command timed out after ${timeoutMs}ms`
+        : trigger === "external" ? "Command cancelled"
+          : trigger === "leader_exit" ? "Command leader exited with surviving descendants"
+            : exitSignal ? `Command exited from signal ${exitSignal}` : "";
+      resolve({ command, stdout,
+        stderr: appendLimited(stderr, [diagnostic, ...(!confirmed ? [detail] : []), ...errors].filter(Boolean).join("; "), options.outputLimit),
+        exitCode: !confirmed ? 125 : notStarted ? 127 : trigger === "timeout" ? 124
+          : trigger === "external" ? 130 : trigger !== undefined ? 1 : exitCode,
+        durationMs: Date.now() - started,
+        termination: { scope: notStarted ? "not_started" : "posix_process_group",
+          ...(pgid !== undefined ? { pgid } : {}), trigger: trigger ?? "exit",
+          stop_confirmed: confirmed, signals: [...signals], evidence: detail },
+        ...(failureCode !== undefined ? { failure_code: failureCode } : {}),
+        ...(cancellation !== undefined ? { cancellation: { ...cancellation, stop_confirmed: confirmed,
+          evidence: detail, ...(confirmed ? { confirmed_at: new Date().toISOString() } : {}) } } : {}),
+      });
+    };
+    const inspect = (): void => {
+      if (settled || pgid === undefined) return;
+      let groupGone = false;
+      try {
+        process.kill(-pgid, 0);
+        lastProbe = "group still exists";
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        groupGone = code === "ESRCH";
+        lastProbe = `kill(-pgid, 0): ${code ?? String(error)}`;
+      }
+      const now = performance.now();
+      if (groupGone && leaderExited) {
+        // Usually close has already drained output. Bound draining because a
+        // deliberately detached process could hold a pipe outside this group.
+        if (drainDeadline === Infinity) drainDeadline = now + 50;
+        if (pipesClosed || now >= drainDeadline) finish(true);
+        return;
+      }
+      if (leaderExited && trigger === undefined) requestStop("leader_exit");
+      if (now >= termDeadline && killDeadline === Infinity) {
+        signalGroup("SIGKILL");
+        killDeadline = now + timerDuration(options.killGraceMs, 1_000);
+      }
+      if (now >= killDeadline) finish(false);
+    };
+    const timeout = setTimeout(() => requestStop("timeout"), timeoutMs);
+    const poll = setInterval(inspect, 10);
     child.stdout.on("data", (chunk: Buffer) => {
       stdout = appendLimited(stdout, chunk.toString("utf-8"), options.outputLimit);
     });
@@ -452,30 +612,27 @@ export async function runShellCommand(
       stderr = appendLimited(stderr, chunk.toString("utf-8"), options.outputLimit);
     });
     child.on("error", (error) => {
-      clearTimeout(timer);
-      resolve({
-        command,
-        exitCode: 127,
-        stdout,
-        stderr: appendLimited(stderr, error.message, options.outputLimit),
-        durationMs: Date.now() - started,
-      });
+      if (settled) return;
+      errors.push(error.message);
+      if (pgid === undefined) finish(true, true);
+      else requestStop("process_error");
     });
-    child.on("close", (code, signal) => {
-      clearTimeout(timer);
-      resolve({
-        command,
-        exitCode: timedOut ? 124 : code ?? 1,
-        stdout,
-        stderr: timedOut
-          ? appendLimited(stderr, `Command timed out after ${options.timeoutMs}ms`, options.outputLimit)
-          : signal
-            ? appendLimited(stderr, `Command exited from signal ${signal}`, options.outputLimit)
-            : stderr,
-        durationMs: Date.now() - started,
-      });
+    child.on("exit", (code, signal) => {
+      leaderExited = true;
+      exitCode = code ?? 1;
+      exitSignal = signal;
     });
+    child.on("close", () => {
+      pipesClosed = true;
+      inspect();
+    });
+    options.signal?.addEventListener("abort", onAbort, { once: true });
+    if (options.signal?.aborted) onAbort();
   });
+}
+
+function timerDuration(value: number | undefined, fallback: number): number {
+  return value !== undefined && Number.isFinite(value) && value >= 0 && value <= 2 ** 31 - 1 ? value : fallback;
 }
 
 function appendLimited(current: string, next: string, limit: number): string {

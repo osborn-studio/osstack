@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -97,7 +97,8 @@ describe("executePlan", () => {
         },
       })],
     });
-    expect(thrown).toMatchObject({ outcome: "failed", summary: "stream failed" });
+    expect(thrown).toMatchObject({ outcome: "failed", summary: expect.stringContaining("stream failed"),
+      cancellation: { source: "executor_error", stop_confirmed: false } });
   });
 });
 
@@ -207,7 +208,7 @@ describe("adapter cancellation", () => {
       const run = await executePlan(plan(adapter.id), {
         workspacePath: workspace, adapters: [adapter], signal: controller.signal, cancellationGraceMs: 20,
       });
-      expect(run).toMatchObject({ outcome: "failed", failure_code: "cancellation_unconfirmed",
+      expect(run).toMatchObject({ outcome: "failed", failure_code: ending === "close" ? "missing_done" : "cancellation_unconfirmed",
         cancellation: { stop_confirmed: false, invocation_started: true } });
       await vi.advanceTimersByTimeAsync(10);
       expect(effects).toEqual(["write", "write"]);
@@ -307,6 +308,117 @@ describe("adapter cancellation", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it.each(["invalid", "post-terminal", "throw"])("stops owned work after abnormal %s stream exit", async (mode) => {
+    let signalSeen: AbortSignal | undefined;
+    let active = true;
+    const close = vi.fn(() => new Promise<IteratorResult<HermesEvent>>(() => {}));
+    const adapter = mockAdapter({ invoke(_task, signal) {
+      signalSeen = signal;
+      signal.addEventListener("abort", () => { active = false; }, { once: true });
+      let step = 0;
+      return { [Symbol.asyncIterator]: () => ({ return: close, next: async () => {
+        if (mode === "throw") throw new Error("iterator exploded");
+        return { done: false, value: mode === "invalid" ? streamEvent("done", {}, true)
+          : step++ === 0 ? streamEvent("done", { status: "completed", last_seq: 1 }, true)
+            : streamEvent("progress", {}) };
+      } }) };
+    } });
+    const run = await executePlan(plan(adapter.id), {
+      workspacePath: workspace, adapters: [adapter], cancellationGraceMs: 20,
+    });
+    expect(signalSeen?.aborted).toBe(true);
+    expect(active).toBe(false);
+    expect(close).toHaveBeenCalledOnce();
+    expect(run).toMatchObject({ outcome: "failed", cancellation: {
+      source: "executor_error", stop_confirmed: false, invocation_started: true,
+    } });
+    expect(run.failure_code).toBe(mode === "invalid" ? "invalid_done_payload"
+      : mode === "post-terminal" ? "event_after_terminal" : "cancellation_unconfirmed");
+    expect(run.summary).toContain(mode === "throw" ? "iterator exploded" : "Adapter emitted");
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("keeps a protocol violation failed even with confirmed stop", async () => {
+    const adapter = mockAdapter({ async *invoke() { yield streamEvent("done", {}, true); } });
+    adapter.confirmStopped = async () => ({ stopped: true, evidence: "owned-work:stopped" });
+    const run = await executePlan(plan(adapter.id), {
+      workspacePath: workspace, adapters: [adapter], cancellationGraceMs: 20,
+    });
+    expect(run).toMatchObject({ outcome: "failed", failure_code: "invalid_done_payload",
+      cancellation: { source: "executor_error", stop_confirmed: true } });
+  });
+
+  it("does not reopen an expired grace after the wall clock rolls backward", async () => {
+    const started = deferred<void>();
+    const proof = deferred<{ stopped: true; evidence: string }>();
+    const controller = new AbortController();
+    const adapter = mockAdapter({ invoke() {
+      started.resolve();
+      return { [Symbol.asyncIterator]: () => ({ next: () => new Promise<IteratorResult<HermesEvent>>(() => {}) }) };
+    } });
+    adapter.confirmStopped = () => proof.promise;
+    const pending = executePlan(plan(adapter.id), {
+      workspacePath: workspace, adapters: [adapter], signal: controller.signal, cancellationGraceMs: 20,
+    });
+    await started.promise;
+    controller.abort();
+    // Model NTP rollback without moving the monotonic timer queue.
+    vi.spyOn(Date, "now").mockReturnValue(0);
+    await vi.advanceTimersByTimeAsync(20);
+    const result = await settledResult(pending);
+    expect(result).toMatchObject({ outcome: "failed", cancellation: { stop_confirmed: false } });
+    const snapshot = JSON.stringify(result);
+    proof.resolve({ stopped: true, evidence: "late proof after expired timer" });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(JSON.stringify(result)).toBe(snapshot);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each([NaN, Infinity, -1, 2 ** 31])("uses safe defaults for invalid adapter timer durations: %s", async (duration) => {
+    const controller = new AbortController();
+    const started = deferred<void>();
+    let signalSeen: AbortSignal | undefined;
+    const adapter = mockAdapter({ invoke(_task, signal) {
+      signalSeen = signal;
+      started.resolve();
+      return { [Symbol.asyncIterator]: () => ({ next: () => new Promise<IteratorResult<HermesEvent>>(() => {}) }) };
+    } });
+    adapter.confirmStopped = () => new Promise(() => {});
+    const pending = executePlan(plan(adapter.id), {
+      workspacePath: workspace, adapters: [adapter], signal: controller.signal,
+      timeoutMs: duration, cancellationGraceMs: duration,
+    });
+    await started.promise;
+    await vi.advanceTimersByTimeAsync(10);
+    expect(signalSeen?.aborted).toBe(false);
+    controller.abort();
+    await vi.advanceTimersByTimeAsync(999);
+    expect(await settledResult(pending)).toBe("still pending");
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await settledResult(pending)).toMatchObject({ outcome: "failed", cancellation: { stop_confirmed: false } });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("blocks done success when the final next and stop confirmation both hang with real timers", async () => {
+    vi.useRealTimers();
+    const adapter = mockAdapter({ invoke() {
+      let step = 0;
+      return { [Symbol.asyncIterator]: () => ({ next: () => step++ === 0
+        ? Promise.resolve({ done: false, value: streamEvent("done", { status: "completed", last_seq: 1 }, true) })
+        : new Promise<IteratorResult<HermesEvent>>(() => {}) }) };
+    } });
+    adapter.confirmStopped = () => new Promise(() => {});
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const result = await Promise.race([
+        executePlan(plan(adapter.id), { workspacePath: workspace, adapters: [adapter], timeoutMs: 20, cancellationGraceMs: 30 }),
+        new Promise<string>((resolve) => { watchdog = setTimeout(() => resolve("watchdog expired"), 1_000); }),
+      ]);
+      expect(result).toMatchObject({ outcome: "failed", failure_code: "cancellation_unconfirmed",
+        cancellation: { source: "timeout", stop_confirmed: false } });
+    } finally { clearTimeout(watchdog); }
+  });
+
   it.each(["completed", "unavailable", "throw", "protocol", "cancel"])(
     "cleans external listeners and timers after %s", async (ending) => {
       const controller = new AbortController();
@@ -329,8 +441,9 @@ describe("adapter cancellation", () => {
       }
       expect(vi.getTimerCount()).toBe(0);
       if (ending !== "cancel") {
+        const alreadyAborted = signalSeen?.aborted ?? false;
         controller.abort();
-        expect(signalSeen?.aborted ?? false).toBe(false);
+        expect(signalSeen?.aborted ?? false).toBe(alreadyAborted);
       }
     },
   );
@@ -356,6 +469,14 @@ describe("adapter terminal protocol", () => {
   const usage = (type: string, tokens: number) => streamEvent(type, {
     tokens_in: tokens, tokens_out: tokens * 2, cost_usd: tokens / 100, duration_ms: 1,
   });
+
+  it.each([null, undefined, [], {}, { type: 42 }, streamEvent("error", null, true),
+    streamEvent("error", { message: 42 }, true), streamEvent("usage.final", null)].map((event) => [event]))(
+    "classifies malformed event %j and records stop uncertainty", async (event) => {
+      expect(await runEvents([event as HermesEvent])).toMatchObject({ outcome: "failed",
+        failure_code: "invalid_event", cancellation: { source: "executor_error", stop_confirmed: false } });
+    },
+  );
 
   it.each([
     ["empty stream", []],
@@ -484,6 +605,227 @@ describe("runShellCommand", () => {
     expect(timedOut.stderr).toContain("Command timed out after 20ms");
   });
 });
+
+describe("command process groups", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each([NaN, Infinity, -1, 2 ** 31])("uses a safe shell timeout default for %s", async (timeoutMs) => {
+    await withProcessFixture(`setTimeout(() => { console.log('finished'); }, 60);`, async (fixture) => {
+      const result = await runShellCommand(fixture.command, { cwd: workspace, timeoutMs, outputLimit: 100 });
+      expect(result).toMatchObject({ exitCode: 0, stdout: "finished\n", termination: { stop_confirmed: true } });
+      fixture.assertStopped();
+    });
+  });
+
+  it.each(["external", "timeout"] as const)("confirms %s termination of children and grandchildren", async (source) => {
+    await withProcessFixture(`
+      const { spawn } = require('node:child_process');
+      const grandchild = "const fs = require('node:fs'); fs.writeFileSync('grandchild.pid', String(process.pid)); setInterval(() => {}, 1000);";
+      const child = "const fs = require('node:fs'); fs.writeFileSync('child.pid', String(process.pid)); require('node:child_process').spawn(process.execPath, ['-e', " + JSON.stringify(grandchild) + "], {stdio: 'inherit'}); setInterval(() => {}, 1000);";
+      spawn(process.execPath, ['-e', child], {stdio: 'inherit'});
+      setInterval(() => {}, 1000);
+    `, async (fixture) => {
+      const controller = new AbortController();
+      const pending = executePlan(plan("local-command"), {
+        workspacePath: workspace, command: fixture.command, signal: controller.signal,
+        timeoutMs: source === "timeout" ? 500 : 5_000, terminationGraceMs: 40, killGraceMs: 500,
+      });
+      await fixture.waitFor("grandchild.pid");
+      if (source === "external") controller.abort();
+      const run = await pending;
+      expect(run).toMatchObject({ outcome: source === "external" ? "cancelled" : "failed",
+        cancellation: { source, invocation_started: true, stop_confirmed: true } });
+      expect(run.command_results[0]).toMatchObject({ exitCode: source === "external" ? 130 : 124,
+        termination: { stop_confirmed: true, scope: "posix_process_group" } });
+      fixture.assertStopped();
+    });
+  });
+
+  it("escalates an ignored TERM to KILL within the configured bounds", async () => {
+    await withProcessFixture(`
+      process.on('SIGTERM', () => fs.writeFileSync('term', 'received'));
+      fs.writeFileSync('ready', 'yes'); setInterval(() => {}, 1000);
+    `, async (fixture) => {
+      const controller = new AbortController();
+      const pending = runShellCommand(fixture.command, {
+        cwd: workspace, timeoutMs: 5_000, outputLimit: 100,
+        signal: controller.signal, terminationGraceMs: 60, killGraceMs: 500,
+      });
+      await fixture.waitFor("ready");
+      const started = Date.now();
+      controller.abort();
+      const result = await pending;
+      expect(result).toMatchObject({ exitCode: 130, termination: {
+        stop_confirmed: true, signals: ["SIGTERM", "SIGKILL"],
+      } });
+      expect(existsSync(join(workspace, "term"))).toBe(true);
+      expect(Date.now() - started).toBeLessThan(1_000);
+      fixture.assertStopped();
+    });
+  });
+
+  it.each(["inherit", "ignore"])("cleans surviving descendants after successful leader exit with %s stdio", async (stdio) => {
+    await withProcessFixture(`
+      const code = "const fs = require('node:fs'); fs.writeFileSync('child.pid', String(process.pid)); process.on('SIGTERM', () => {}); fs.writeFileSync('ready', 'yes'); setInterval(() => {}, 1000);";
+      require('node:child_process').spawn(process.execPath, ['-e', code], {stdio: '${stdio}'}).unref();
+      const wait = setInterval(() => { if (fs.existsSync('ready')) { clearInterval(wait); process.exit(0); } }, 5);
+    `, async (fixture) => {
+      const run = await executePlan(plan("local-command"), {
+        workspacePath: workspace, command: fixture.command, timeoutMs: 5_000,
+        terminationGraceMs: 40, killGraceMs: 500,
+      });
+      expect(run).toMatchObject({ outcome: "failed", failure_code: "surviving_descendants" });
+      expect(run.command_results[0]).toMatchObject({ termination: {
+        trigger: "leader_exit", stop_confirmed: true, signals: ["SIGTERM", "SIGKILL"],
+      } });
+      fixture.assertStopped();
+    });
+  });
+
+  it("does not treat closed stdio as process exit", async () => {
+    await withProcessFixture(`
+      fs.closeSync(1); fs.closeSync(2);
+      process.on('SIGTERM', () => {});
+      fs.writeFileSync('ready', 'yes'); setInterval(() => {}, 1000);
+    `, async (fixture) => {
+      const controller = new AbortController();
+      const pending = runShellCommand(fixture.command, {
+        cwd: workspace, timeoutMs: 5_000, outputLimit: 100, signal: controller.signal,
+        terminationGraceMs: 40, killGraceMs: 500,
+      });
+      await fixture.waitFor("ready");
+      expect(await settledResult(pending)).toBe("still pending");
+      controller.abort();
+      expect(await pending).toMatchObject({ exitCode: 130, termination: { stop_confirmed: true } });
+      fixture.assertStopped();
+    });
+  });
+
+  it("waits for late graceful exit without letting exit zero erase cancellation", async () => {
+    await withProcessFixture(`
+      process.on('SIGTERM', () => setTimeout(() => { fs.writeFileSync('graceful', 'yes'); process.exit(0); }, 70));
+      fs.writeFileSync('ready', 'yes'); setInterval(() => {}, 1000);
+    `, async (fixture) => {
+      const controller = new AbortController();
+      const pending = executePlan(plan("local-command"), {
+        workspacePath: workspace, command: fixture.command, timeoutMs: 5_000,
+        signal: controller.signal, terminationGraceMs: 300, killGraceMs: 500,
+      });
+      await fixture.waitFor("ready");
+      controller.abort();
+      expect(await pending).toMatchObject({ outcome: "cancelled", cancellation: { stop_confirmed: true },
+        command_results: [{ exitCode: 130, termination: { signals: ["SIGTERM"] } }] });
+      expect(existsSync(join(workspace, "graceful"))).toBe(true);
+      fixture.assertStopped();
+    });
+  });
+
+  it.each(["EPERM", "ESRCH"])("fails closed when group inspection returns %s without leader exit", async (code) => {
+    await withProcessFixture(`fs.writeFileSync('ready', 'yes'); setInterval(() => {}, 1000);`, async (fixture) => {
+      const controller = new AbortController();
+      const pending = executePlan(plan("local-command"), {
+        workspacePath: workspace, command: fixture.command, timeoutMs: 5_000,
+        signal: controller.signal, terminationGraceMs: 20, killGraceMs: 40,
+      });
+      await fixture.waitFor("ready");
+      const kill = process.kill.bind(process);
+      vi.spyOn(process, "kill").mockImplementation((pid, signal) => {
+        if (pid < 0) {
+          if (signal === 0) throw Object.assign(new Error(`inspection: ${code}`), { code });
+          return true; // Fault injection: delivery cannot be established.
+        }
+        return kill(pid, signal);
+      });
+      controller.abort();
+      const run = await pending;
+      expect(run).toMatchObject({ outcome: "failed", failure_code: "process_exit_unconfirmed",
+        cancellation: { stop_confirmed: false },
+        command_results: [{ termination: { stop_confirmed: false, pgid: expect.any(Number) } }] });
+      expect(run.summary).toContain("unconfirmed");
+      const snapshot = JSON.stringify(run);
+      vi.restoreAllMocks();
+      fixture.cleanup();
+      await waitUntil(() => !pidExists(fixture.leaderPid()));
+      expect(JSON.stringify(run)).toBe(snapshot);
+    });
+  });
+
+  it("refuses unsupported process-group platforms before starting work", async () => {
+    const platform = vi.spyOn(process, "platform", "get").mockReturnValue("win32");
+    try {
+      const run = await executePlan(plan("local-command"), {
+        workspacePath: workspace, command: "echo started > should-not-exist",
+      });
+      expect(run).toMatchObject({ outcome: "failed", failure_code: "process_control_unsupported" });
+      expect(existsSync(join(workspace, "should-not-exist"))).toBe(false);
+    } finally { platform.mockRestore(); }
+  });
+
+  it("does not start a preaborted shell command", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const result = await runShellCommand("echo started > should-not-exist", {
+      cwd: workspace, timeoutMs: 1_000, outputLimit: 100, signal: controller.signal,
+    });
+    expect(result).toMatchObject({ exitCode: 130, cancellation: {
+      stop_confirmed: true, invocation_started: false, evidence: "not_started",
+    } });
+    expect(existsSync(join(workspace, "should-not-exist"))).toBe(false);
+  });
+});
+
+function pidExists(pid: number): boolean {
+  try { process.kill(pid, 0); return true; } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ESRCH") return false;
+    throw error;
+  }
+}
+
+async function waitUntil(predicate: () => boolean): Promise<void> {
+  const deadline = Date.now() + 2_000;
+  while (!predicate()) {
+    if (Date.now() > deadline) throw new Error("Process fixture condition timed out");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}
+
+async function withProcessFixture(source: string, test: (fixture: {
+  command: string; waitFor: (file: string) => Promise<void>; assertStopped: () => void;
+  cleanup: () => void; leaderPid: () => number;
+}) => Promise<void>): Promise<void> {
+  writeFileSync(join(workspace, "main.cjs"), `const fs = require('node:fs');
+    fs.writeFileSync('leader.pid', String(process.pid));\n${source}`);
+  const pids = () => readdirSync(workspace).filter((file) => file.endsWith(".pid"))
+    .map((file) => Number(readFileSync(join(workspace, file), "utf8"))).filter((pid) => pid > 1);
+  const leaderPid = () => Number(readFileSync(join(workspace, "leader.pid"), "utf8"));
+  const realKill = process.kill.bind(process);
+  const cleanup = () => {
+    // Negative ID only targets the fixture's own group when detached; the RED
+    // implementation has no such group. Individual PIDs also clean up RED runs.
+    for (const pid of pids()) {
+      for (const target of [-pid, pid]) {
+        try { realKill(target, "SIGKILL"); } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+        }
+      }
+    }
+  };
+  const safety = setTimeout(cleanup, 3_000);
+  try {
+    await test({ command: `exec '${process.execPath.replaceAll("'", "'\\''")}' main.cjs`,
+      waitFor: (file) => waitUntil(() => existsSync(join(workspace, file))), cleanup, leaderPid,
+      assertStopped: () => {
+        expect(pids().length).toBeGreaterThan(0);
+        for (const pid of pids()) expect(pidExists(pid)).toBe(false);
+        expect(pidExists(-leaderPid())).toBe(false);
+      } });
+  } finally {
+    clearTimeout(safety);
+    vi.restoreAllMocks();
+    cleanup();
+    await waitUntil(() => pids().every((pid) => !pidExists(pid)));
+  }
+}
 
 function plan(agentId: string) {
   return planTask(task(), { agentId });

@@ -95,7 +95,12 @@
       ],
       "verify": "LOOP",
       "size": "M",
-      "status": "pending"
+      "status": "completed",
+      "evidence": [
+        "docs/implementation/graph-foundation-evidence/G02-executor.md",
+        "docs/implementation/graph-foundation-evidence/G02-STATE.md",
+        "docs/implementation/graph-foundation-evidence/g02-review-followup.md"
+      ]
     },
     {
       "id": "G03",
@@ -115,7 +120,12 @@
       ],
       "verify": "LOOP",
       "size": "S",
-      "status": "pending"
+      "status": "completed",
+      "evidence": [
+        "docs/implementation/graph-foundation-evidence/G03-executor.md",
+        "docs/implementation/graph-foundation-evidence/G03-STATE.md",
+        "docs/implementation/graph-foundation-evidence/g02-review-followup.md"
+      ]
     },
     {
       "id": "G04",
@@ -137,7 +147,7 @@
       ],
       "verify": "LOOP",
       "size": "M",
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "id": "G05",
