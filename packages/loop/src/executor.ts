@@ -30,13 +30,23 @@ export interface AgentRun {
   command_results: CommandResult[];
   adapter_event_count?: number;
   summary?: string;
-  /** Stable classification of an invalid adapter event stream. */
-  failure_code?: "missing_done" | "invalid_done_payload" | "duplicate_done" | "conflicting_terminal" | "event_after_terminal";
+  /** Stable failure classification; unconfirmed cancellation is not retry-safe. */
+  failure_code?: "missing_done" | "invalid_done_payload" | "duplicate_done" | "conflicting_terminal" | "event_after_terminal" | "cancellation_unconfirmed";
+  cancellation?: CancellationEvidence;
   /** Adapter-reported token usage for this run (undefined when not reported). */
   tokens_in?: number;
   tokens_out?: number;
   /** Adapter/provider-reported spend for this run (undefined when not reported). */
   cost_usd?: number;
+}
+
+export interface CancellationEvidence {
+  source: "external" | "timeout";
+  requested_at: string;
+  invocation_started: boolean;
+  stop_confirmed: boolean;
+  confirmed_at?: string;
+  evidence?: string;
 }
 
 export interface LocalExecutorOptions {
@@ -45,10 +55,25 @@ export interface LocalExecutorOptions {
   adapters?: readonly AgentAdapter[];
   sessionId?: string;
   timeoutMs?: number;
+  /** Parent cancellation for adapter execution (command process control is separate). */
+  signal?: AbortSignal;
+  /** Maximum wait after cancellation for adapter stop evidence; default 1,000ms. */
+  cancellationGraceMs?: number;
   outputLimit?: number;
 }
 
 export async function executePlan(plan: ExecutionPlan, options: LocalExecutorOptions): Promise<AgentRun> {
+  if (options.signal?.aborted) {
+    const now = new Date().toISOString();
+    return {
+      run_id: `run_${plan.plan_id}`, plan_id: plan.plan_id, task_id: plan.task.task_id,
+      agent_id: plan.agent_id, outcome: "cancelled", started_at: now, completed_at: now,
+      duration_ms: 0, command_results: [], adapter_event_count: 0,
+      summary: "Cancelled before execution started",
+      cancellation: { source: "external", requested_at: now, invocation_started: false,
+        stop_confirmed: true, confirmed_at: now, evidence: "not_started" },
+    };
+  }
   const adapter = options.adapters?.find((candidate) => candidate.id === plan.agent_id);
   if (adapter !== undefined) {
     return await executeAdapterPlan(plan, options, adapter);
@@ -120,32 +145,10 @@ async function executeAdapterPlan(
 ): Promise<AgentRun> {
   const started = Date.now();
   const runId = `run_${plan.plan_id}`;
-  const availability = await adapter.isAvailable();
-  if (!availability.available) {
-    const completed = Date.now();
-    return {
-      run_id: runId,
-      plan_id: plan.plan_id,
-      task_id: plan.task.task_id,
-      agent_id: adapter.id,
-      outcome: "failed",
-      started_at: new Date(started).toISOString(),
-      completed_at: new Date(completed).toISOString(),
-      duration_ms: completed - started,
-      command_results: [{
-        command: `agent:${adapter.id}`,
-        exitCode: 127,
-        stdout: "",
-        stderr: availability.reason ?? "agent unavailable",
-        durationMs: completed - started,
-      }],
-      adapter_event_count: 0,
-      summary: availability.reason ?? "agent unavailable",
-    };
-  }
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 120_000);
+  const cancellation = new AdapterCancellation(options, adapter, runId);
+  const commandResults: CommandResult[] = [];
+  let iterator: AsyncIterator<HermesEvent> | undefined;
+  let streamClosed = false;
   let outcome: AgentRun["outcome"] = "failed";
   let failureCode: AgentRun["failure_code"];
   let terminalState: "running" | "error" | "done" = "running";
@@ -153,8 +156,17 @@ async function executeAdapterPlan(
   let summary: string | undefined;
   let usage: AgentUsage | undefined;
   try {
+    const availability = await cancellation.wait(adapter.isAvailable());
+    cancellation.checkBeforeInvoke();
+    if (!availability.available) {
+      const message = availability.reason ?? "agent unavailable";
+      commandResults.push({ command: `agent:${adapter.id}`, exitCode: 127,
+        stdout: "", stderr: message, durationMs: Date.now() - started });
+      throw new Error(message);
+    }
     // Load the shared runtime contract only for adapter invocations.
-    const { DonePayload } = await import("@osstack/hermes-adapter");
+    const { DonePayload } = await cancellation.wait(import("@osstack/hermes-adapter"));
+    cancellation.checkBeforeInvoke();
     const agentTask: AgentTask = {
       run_id: runId,
       task_id: plan.task.task_id,
@@ -167,7 +179,17 @@ async function executeAdapterPlan(
       },
     };
 
-    for await (const event of adapter.invoke(agentTask, controller.signal)) {
+    cancellation.checkBeforeInvoke();
+    cancellation.invocationStarted = true;
+    iterator = adapter.invoke(agentTask, cancellation.signal)[Symbol.asyncIterator]();
+    // Manual iteration avoids for-await's unbounded implicit await return().
+    while (true) {
+      const next = await cancellation.wait(iterator.next());
+      if (next.done) {
+        streamClosed = true;
+        break;
+      }
+      const event = next.value;
       adapterEventCount += 1;
       if (event.type === "usage.updated" || event.type === "usage.final") {
         // usage events report running/final totals; the latest authoritative
@@ -210,7 +232,24 @@ async function executeAdapterPlan(
     if (err instanceof AdapterProtocolError) failureCode = err.code;
     summary = err instanceof Error ? err.message : String(err);
   } finally {
-    clearTimeout(timeout);
+    if (iterator !== undefined && !streamClosed) {
+      // Best-effort cleanup only. Neither return() nor a pending next() may
+      // hold the executor open, and late rejections must remain observed.
+      const unfinished = iterator;
+      void Promise.resolve().then(() => unfinished.return?.()).catch(() => undefined);
+    }
+    await cancellation.finish();
+  }
+
+  const evidence = cancellation.evidence;
+  if (evidence !== undefined) {
+    // Cancellation wins over every late status, including completed/cancelled.
+    // Keep protocol violations failed even when stop is independently proven.
+    outcome = evidence.stop_confirmed && failureCode === undefined ? "cancelled" : "failed";
+    if (!evidence.stop_confirmed) failureCode = "cancellation_unconfirmed";
+    summary = evidence.stop_confirmed
+      ? `Cancellation confirmed: ${evidence.evidence}${failureCode !== undefined ? `; ${summary}` : ""}`
+      : "Cancellation requested; external work stop is unconfirmed (reconciliation required)";
   }
 
   const completed = Date.now();
@@ -223,14 +262,103 @@ async function executeAdapterPlan(
     started_at: new Date(started).toISOString(),
     completed_at: new Date(completed).toISOString(),
     duration_ms: completed - started,
-    command_results: [],
+    command_results: commandResults,
     adapter_event_count: adapterEventCount,
     ...(failureCode !== undefined ? { failure_code: failureCode } : {}),
+    ...(evidence !== undefined ? { cancellation: evidence } : {}),
     ...(summary !== undefined ? { summary } : {}),
     ...(usage?.tokens_in !== undefined ? { tokens_in: usage.tokens_in } : {}),
     ...(usage?.tokens_out !== undefined ? { tokens_out: usage.tokens_out } : {}),
     ...(usage?.cost_usd !== undefined ? { cost_usd: usage.cost_usd } : {}),
   };
+}
+
+/** Owns the timeout, parent listener, and a single absolute cancellation grace. */
+class AdapterCancellation {
+  private readonly controller = new AbortController();
+  private readonly timeout: ReturnType<typeof setTimeout>;
+  private graceTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly waiters = new Set<() => void>();
+  private deadline = Infinity;
+  private active = true;
+  private confirmation: Promise<void> | undefined;
+  private record: CancellationEvidence | undefined;
+  invocationStarted = false;
+
+  constructor(
+    private readonly options: LocalExecutorOptions,
+    private readonly adapter: AgentAdapter,
+    private readonly runId: string,
+  ) {
+    this.timeout = setTimeout(() => this.request("timeout", new Error("Adapter execution timed out")), options.timeoutMs ?? 120_000);
+    options.signal?.addEventListener("abort", this.onAbort, { once: true });
+    if (options.signal?.aborted) this.onAbort();
+  }
+
+  get signal(): AbortSignal { return this.controller.signal; }
+  get evidence(): CancellationEvidence | undefined { return this.record === undefined ? undefined : { ...this.record }; }
+
+  private readonly onAbort = (): void => { this.request("external", this.options.signal?.reason); };
+
+  private request(source: CancellationEvidence["source"], reason: unknown): void {
+    if (this.record !== undefined || !this.active) return;
+    const grace = this.options.cancellationGraceMs ?? 1_000;
+    const boundedGrace = Number.isFinite(grace) ? Math.max(0, grace) : 1_000;
+    this.deadline = Date.now() + boundedGrace;
+    this.record = { source, requested_at: new Date().toISOString(),
+      invocation_started: this.invocationStarted, stop_confirmed: false };
+    this.graceTimer = setTimeout(() => {
+      for (const expire of this.waiters) expire();
+    }, boundedGrace);
+    this.controller.abort(reason);
+    if (this.invocationStarted && this.adapter.confirmStopped !== undefined) {
+      this.confirmation = Promise.resolve().then(() => this.adapter.confirmStopped!(this.runId)).then((proof) => {
+        if (this.active && Date.now() <= this.deadline && proof?.stopped === true
+          && typeof proof.evidence === "string" && proof.evidence.trim() !== "") {
+          this.record = { ...this.record!, stop_confirmed: true,
+            confirmed_at: new Date().toISOString(), evidence: proof.evidence };
+        }
+      }).catch(() => undefined);
+    }
+  }
+
+  checkBeforeInvoke(): void {
+    if (this.signal.aborted) throw new Error("Cancelled before adapter invocation");
+  }
+
+  wait<T>(pending: PromiseLike<T>): Promise<T> {
+    // Remove each completed wait instead of retaining a Promise.race reaction
+    // per streamed event on one never-settled cancellation promise.
+    return new Promise<T>((resolve, reject) => {
+      const expire = (): void => {
+        this.waiters.delete(expire);
+        reject(new Error("Cancellation grace elapsed"));
+      };
+      this.waiters.add(expire);
+      // Observe even late rejection from an abandoned probe/next/confirmation.
+      Promise.resolve(pending).then((value) => {
+        this.waiters.delete(expire);
+        resolve(value);
+      }, (error: unknown) => {
+        this.waiters.delete(expire);
+        reject(error);
+      });
+      if (Date.now() >= this.deadline) expire();
+    });
+  }
+
+  async finish(): Promise<void> {
+    try {
+      if (this.confirmation !== undefined) await this.wait(this.confirmation);
+    } catch {
+      // Grace expiration is uncertainty, never evidence that work stopped.
+    } finally {
+      this.active = false;
+      clearTimeout(this.timeout);
+      if (this.graceTimer !== undefined) clearTimeout(this.graceTimer);
+      this.options.signal?.removeEventListener("abort", this.onAbort);
+    }
+  }
 }
 
 interface AgentUsage {

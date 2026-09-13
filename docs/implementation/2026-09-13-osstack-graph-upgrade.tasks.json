@@ -69,7 +69,12 @@
       ],
       "verify": "LOOP",
       "size": "S",
-      "status": "pending"
+      "status": "completed",
+      "implementationCommit": "3fe3793",
+      "evidence": [
+        "docs/implementation/graph-foundation-evidence/G01-executor.md",
+        "docs/implementation/graph-foundation-evidence/G01-STATE.md"
+      ]
     },
     {
       "id": "G02",
