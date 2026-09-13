@@ -19,3 +19,7 @@ Code delivery v1 is `artifact_only`. Single implementation returns `implementati
 This worktree is the only writable implementation target. OSStack's current compiled engine controls explicit tasks and verification from a separate runtime, with a fresh `/tmp` home and bounded iterations/timeouts. No ambient queue scanning, self-improvement publication, skill publication or deployment. The supervising session reviews results and commits accepted changes locally.
 
 Managed repositories: OSStack release and OStag's GitHub/Vercel integration retain their existing owners. A protected-branch merge or push may trigger a release/deployment and is outside this batch. No OStag or OSBot code/configuration changed; no Rakazo deployment. Future Graph admission must register these real effects before granting release authority.
+
+## Expanded agents baseline
+
+The unmodified agents package suite recorded 137 passing tests and one 5-second timeout in adapter-conformance under concurrent execution; [full output](graph-foundation-evidence/agents-baseline.txt). The isolated file rerun passed both tests in 2.02 seconds ([rerun](graph-foundation-evidence/agents-conformance-recheck.txt)). This is a recorded baseline timing failure, not evidence that the full suite initially passed.

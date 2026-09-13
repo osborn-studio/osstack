@@ -1,0 +1,83 @@
+$ vitest run
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/agents
+
+ ✓ src/adapters/claude-code.test.ts (7 tests) 6ms
+ ✓ src/semantic/anthropic-no-tools.test.ts (5 tests) 22ms
+ ✓ src/semantic/openai-compatible-no-tools.test.ts (8 tests) 24ms
+ ✓ src/adapters/kimi-stream.test.ts (9 tests) 4ms
+ ✓ src/session.test.ts (5 tests) 8ms
+ ✓ src/adapters/kimi-contract.test.ts (9 tests) 4ms
+ ✓ src/adapters/design.test.ts (6 tests) 2ms
+ ✓ src/semantic/built-in-judges.test.ts (2 tests) 2ms
+ ✓ src/worktree.test.ts (7 tests) 1664ms
+   ✓ git worktree lifecycle > commits isolated changes, fast-forwards the repo, and cleans up  302ms
+   ✓ git worktree lifecycle > removes orphaned osstack worktrees under the configured root  339ms
+ ✓ src/child-env.test.ts (2 tests) 2ms
+ ✓ src/adapters/autoresearch.test.ts (13 tests) 2095ms
+   ✓ invoke — propose→train→eval→keep/rollback > keeps only the best across several iterations  314ms
+ ✓ src/controlled-session.test.ts (22 tests) 5033ms
+   ✓ controlled no-tools sessions > launches and resumes with the same private settings and strips ambient authority  859ms
+   ✓ controlled no-tools sessions > requires initialization and a successful result  382ms
+   ✓ controlled no-tools sessions > rejects unknown native sessions and persists its own binding across adapter restart  530ms
+ ❯ src/adapter-conformance.test.ts (2 tests | 1 failed) 5012ms
+   ✓ adapter conformance > keeps the default registry capability metadata self-consistent 5ms
+   × adapter conformance > emits schema-valid terminal failure streams for subprocess adapter families 5007ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ✓ src/adapters/deepseek.test.ts (7 tests) 9043ms
+   ✓ DeepSeekReviewAdapter > advertises review capabilities and runs ds-review over git diff  1852ms
+   ✓ DeepSeekVerifyAdapter > advertises verifier capabilities and forwards strict output options  2564ms
+   ✓ DeepSeekVerifyAdapter > forwards evaluation specs via env file and reports per-spec judgments  2647ms
+   ✓ DeepSeekVerifyAdapter > maps command failures to terminal error and failed done events  1978ms
+ ✓ src/adapters/codex-cli.test.ts (4 tests) 12013ms
+   ✓ CodexCliAdapter resumable sessions > captures the native thread id and emits only bounded public session events  1896ms
+   ✓ CodexCliAdapter resumable sessions > resumes the exact native thread with verified parent flags  2532ms
+   ✓ CodexCliAdapter resumable sessions > fails closed when resume reports a different native thread  2650ms
+   ✓ CodexCliAdapter resumable sessions > uses a no-model resume help preflight and classifies a broken binary  4935ms
+ ✓ src/adapters/subprocess-cli.test.ts (13 tests) 14482ms
+   ✓ ClaudeCliAdapter > probes and invokes a login-reuse CLI subprocess  1002ms
+   ✓ OpenCodeCliAdapter > probes and invokes a login-reuse CLI subprocess  2559ms
+   ✓ OpenCodeCliAdapter > can pass prompt on stdin when args omit the prompt template  2339ms
+   ✓ ZCodeCliAdapter > probes with doctor and invokes via --prompt  2262ms
+   ✓ CodexCliAdapter > runs in task.context.repo_path instead of the adapter fallback directory  2732ms
+   ✓ CodexCliAdapter > uses an exec resume help preflight for availability  1809ms
+   ✓ CodexCliAdapter > emits usage.final with net tokens from turn.completed (loop budget contract)  850ms
+   ✓ CodexCliAdapter > classifies a broken resume preflight  844ms
+ ✓ src/adapters/kimi-code.test.ts (17 tests) 16173ms
+   ✓ KimiCodeAdapter > probes the installed CLI version without invoking a model  1392ms
+   ✓ KimiCodeAdapter > distinguishes installed but unauthenticated from a missing binary  2558ms
+   ✓ KimiCodeAdapter > emits a schema-valid approved structured review  2345ms
+   ✓ KimiCodeAdapter > maps a zero-exit changes_requested verdict to failed  2264ms
+   ✓ KimiCodeAdapter > defaults to the model alias observed on the execution node  2815ms
+   ✓ KimiCodeAdapter > rejects model identity that does not match the invocation  1806ms
+   ✓ KimiCodeAdapter > fails closed on non-zero exit  851ms
+   ✓ KimiCodeAdapter > fails closed on malformed stream  785ms
+   ✓ KimiCodeAdapter > fails closed on missing result sentinel  435ms
+   ✓ KimiCodeAdapter > fails closed on duplicate result sentinel  447ms
+   ✓ KimiCodeAdapter > fails closed when the output byte limit is exceeded  414ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/adapter-conformance.test.ts > adapter conformance > emits schema-valid terminal failure streams for subprocess adapter families
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/adapter-conformance.test.ts:47:3
+     45|   });
+     46| 
+     47|   it("emits schema-valid terminal failure streams for subprocess adapt…
+       |   ^
+     48|     const claudeBin = await fakeCommand("claude", `
+     49| if [ "\${1:-}" = "--version" ]; then echo "claude fake"; exit 0; fi
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 16 passed (17)
+      Tests  1 failed | 137 passed (138)
+   Start at  08:03:15
+   Duration  16.97s (transform 1.17s, setup 0ms, collect 4.76s, tests 65.59s, environment 2ms, prepare 1.04s)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/agents:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/agents@0.19.0 test: `vitest run`
+Exit status 1

@@ -101,6 +101,116 @@ describe("executePlan", () => {
   });
 });
 
+describe("adapter terminal protocol", () => {
+  const done = (status = "completed", extra: Record<string, unknown> = {}) =>
+    streamEvent("done", { status, last_seq: 1, ...extra }, true);
+  const error = streamEvent("error", { code: "test_error", message: "adapter failed", terminal: true }, true);
+  const progress = streamEvent("progress", { phase: "working" });
+  const usage = (type: string, tokens: number) => streamEvent(type, {
+    tokens_in: tokens, tokens_out: tokens * 2, cost_usd: tokens / 100, duration_ms: 1,
+  });
+
+  it.each([
+    ["empty stream", []],
+    ["work without done", [progress]],
+    ["usage without done", [usage("usage.final", 10)]],
+    ["nonterminal error without done", [{ ...error, terminal: false, payload: {
+      code: "retryable", message: "retrying", terminal: false,
+    } }]],
+  ])("rejects %s as missing_done", async (_name, events) => {
+    expect(await runEvents(events as HermesEvent[])).toMatchObject({
+      outcome: "failed", failure_code: "missing_done",
+      summary: expect.stringContaining("done"),
+    });
+  });
+
+  it.each([
+    null, undefined, [], "completed", {}, { status: "completed" },
+    { status: "unknown", last_seq: 1 },
+    { status: "completed", last_seq: -1 },
+    { status: "completed", last_seq: 1.5 },
+    { status: "completed", last_seq: "1" },
+    { status: "completed", last_seq: 1, result_summary: 42 },
+    { status: "completed", last_seq: 1, usage: null },
+    { status: "completed", last_seq: 1, usage: { tokens_in: "10" } },
+    { status: "completed", last_seq: 1, usage: { tokens_in: -1, tokens_out: 0, duration_ms: 1 } },
+    { status: "completed", last_seq: 1, review: {} },
+  ].map((payload) => [payload]))("rejects malformed done payload %j", async (payload) => {
+    expect(await runEvents([streamEvent("done", payload, true)])).toMatchObject({
+      outcome: "failed", failure_code: "invalid_done_payload",
+    });
+  });
+
+  it.each([
+    ["terminal error then success", [error, done()], "conflicting_terminal"],
+    ["duplicate done", [done(), done()], "duplicate_done"],
+    ["failure then success", [done("failed"), done()], "duplicate_done"],
+    ["success then failure", [done(), done("failed")], "duplicate_done"],
+    ["done then terminal error", [done(), error], "event_after_terminal"],
+    ["done then progress then success", [done(), progress, done()], "event_after_terminal"],
+    ["terminal error then work", [error, progress, done("failed")], "event_after_terminal"],
+  ])("rejects %s", async (_name, events, failureCode) => {
+    expect(await runEvents(events as HermesEvent[])).toMatchObject({ outcome: "failed", failure_code: failureCode });
+  });
+
+  it.each(["token.delta", "tool.started", "tool.updated", "tool.done", "run.started", "status", "approval.requested"])(
+    "rejects %s after done", async (type) => {
+      expect(await runEvents([done(), streamEvent(type, {})])).toMatchObject({
+        outcome: "failed", failure_code: "event_after_terminal",
+      });
+    },
+  );
+
+  it.each(["completed", "failed", "expired", "cancelled"])("preserves a valid %s result", async (status) => {
+    const run = await runEvents([progress, done(status, { result_summary: "result" })]);
+    expect(run).toMatchObject({ outcome: status === "expired" ? "failed" : status, summary: "result" });
+    expect(run).not.toHaveProperty("failure_code");
+  });
+
+  it("allows recovery from nonterminal errors before done", async () => {
+    expect(await runEvents([{ ...error, terminal: false, payload: {
+      code: "retryable", message: "retrying", terminal: false,
+    } }, progress, done()])).toMatchObject({ outcome: "completed" });
+  });
+
+  it.each([false, true])("preserves terminal error with failed done: %s and surrounding usage", async (withDone) => {
+    const run = await runEvents([
+      usage("usage.updated", 1), error, usage("usage.final", 2),
+      ...(withDone ? [done("failed")] : []), usage("usage.final", 3),
+    ]);
+    expect(run).toMatchObject({ outcome: "failed", summary: "adapter failed", tokens_in: 3, tokens_out: 6, cost_usd: 0.03 });
+    expect(run).not.toHaveProperty("failure_code");
+  });
+
+  it("keeps the failed done summary after a terminal error", async () => {
+    expect(await runEvents([error, done("failed", { result_summary: "failure summary" })]))
+      .toMatchObject({ outcome: "failed", summary: "failure summary" });
+  });
+
+  it("uses the latest usage totals across updates, done payload, and final summaries", async () => {
+    const events = [usage("usage.updated", 1), usage("usage.updated", 2), done("completed", {
+      usage: { tokens_in: 3, tokens_out: 6, cost_usd: 0.03, duration_ms: 1 },
+    })];
+    expect(await runEvents(events)).toMatchObject({ outcome: "completed", tokens_in: 3, tokens_out: 6, cost_usd: 0.03 });
+    expect(await runEvents([...events, usage("usage.final", 4)])).toMatchObject({
+      outcome: "completed", tokens_in: 4, tokens_out: 8, cost_usd: 0.04, adapter_event_count: 4,
+    });
+  });
+});
+
+// Deliberately bypass static types to exercise malformed adapter output at runtime.
+function streamEvent(type: string, payload: unknown, terminal = false): HermesEvent {
+  return { event_id: "event-1", seq: 1, run_id: "run-1", session_id: "session-1",
+    created_at: 0, terminal, type, payload } as HermesEvent;
+}
+
+async function runEvents(events: HermesEvent[]) {
+  return executePlan(plan("mock-agent"), {
+    workspacePath: workspace,
+    adapters: [mockAdapter({ async *invoke() { yield* events; } })],
+  });
+}
+
 describe("runShellCommand", () => {
   it("captures failures, truncates output, and reports timeouts", async () => {
     const failed = await runShellCommand("node -e \"console.error('bad'); process.exit(7)\"", {

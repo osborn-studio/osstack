@@ -30,6 +30,8 @@ export interface AgentRun {
   command_results: CommandResult[];
   adapter_event_count?: number;
   summary?: string;
+  /** Stable classification of an invalid adapter event stream. */
+  failure_code?: "missing_done" | "invalid_done_payload" | "duplicate_done" | "conflicting_terminal" | "event_after_terminal";
   /** Adapter-reported token usage for this run (undefined when not reported). */
   tokens_in?: number;
   tokens_out?: number;
@@ -144,11 +146,15 @@ async function executeAdapterPlan(
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 120_000);
-  let outcome: AgentRun["outcome"] = "completed";
+  let outcome: AgentRun["outcome"] = "failed";
+  let failureCode: AgentRun["failure_code"];
+  let terminalState: "running" | "error" | "done" = "running";
   let adapterEventCount = 0;
   let summary: string | undefined;
   let usage: AgentUsage | undefined;
   try {
+    // Load the shared runtime contract only for adapter invocations.
+    const { DonePayload } = await import("@osstack/hermes-adapter");
     const agentTask: AgentTask = {
       run_id: runId,
       task_id: plan.task.task_id,
@@ -163,24 +169,45 @@ async function executeAdapterPlan(
 
     for await (const event of adapter.invoke(agentTask, controller.signal)) {
       adapterEventCount += 1;
-      if (event.type === "error" && event.terminal) {
-        outcome = "failed";
-        summary = errorPayload(event.payload).message;
-      }
       if (event.type === "usage.updated" || event.type === "usage.final") {
         // usage events report running/final totals; the latest authoritative
         // value wins (final supersedes updated, both supersede nothing).
         usage = usagePayload(event.payload);
+        continue;
       }
       if (event.type === "done") {
-        const payload = donePayload(event.payload);
+        if (terminalState === "done") {
+          throw new AdapterProtocolError("duplicate_done", "Adapter emitted more than one done event");
+        }
+        const parsed = DonePayload.safeParse(event.payload);
+        if (!parsed.success) {
+          throw new AdapterProtocolError("invalid_done_payload", "Adapter emitted an invalid done payload");
+        }
+        const payload = parsed.data;
+        if (terminalState === "error" && payload.status !== "failed" && payload.status !== "expired") {
+          throw new AdapterProtocolError("conflicting_terminal", `Terminal error followed by done(${payload.status})`);
+        }
+        terminalState = "done";
         outcome = payload.status === "expired" ? "failed" : payload.status;
-        summary = payload.result_summary;
+        summary = payload.result_summary ?? summary;
         if (payload.usage !== undefined) usage = usagePayload(payload.usage);
+        continue;
       }
+      if (terminalState !== "running") {
+        throw new AdapterProtocolError("event_after_terminal", `Adapter emitted ${event.type} after a terminal event`);
+      }
+      if (event.type === "error" && event.terminal) {
+        terminalState = "error";
+        outcome = "failed";
+        summary = errorPayload(event.payload).message;
+      }
+    }
+    if (terminalState === "running") {
+      throw new AdapterProtocolError("missing_done", "Adapter stream ended without done or a terminal error");
     }
   } catch (err) {
     outcome = "failed";
+    if (err instanceof AdapterProtocolError) failureCode = err.code;
     summary = err instanceof Error ? err.message : String(err);
   } finally {
     clearTimeout(timeout);
@@ -198,6 +225,7 @@ async function executeAdapterPlan(
     duration_ms: completed - started,
     command_results: [],
     adapter_event_count: adapterEventCount,
+    ...(failureCode !== undefined ? { failure_code: failureCode } : {}),
     ...(summary !== undefined ? { summary } : {}),
     ...(usage?.tokens_in !== undefined ? { tokens_in: usage.tokens_in } : {}),
     ...(usage?.tokens_out !== undefined ? { tokens_out: usage.tokens_out } : {}),
@@ -255,16 +283,10 @@ function errorPayload(payload: HermesEvent["payload"]): { message: string } {
   return payload as { message: string };
 }
 
-function donePayload(payload: HermesEvent["payload"]): {
-  status: "completed" | "failed" | "cancelled" | "expired";
-  result_summary?: string;
-  usage?: HermesEvent["payload"];
-} {
-  return payload as {
-    status: "completed" | "failed" | "cancelled" | "expired";
-    result_summary?: string;
-    usage?: HermesEvent["payload"];
-  };
+class AdapterProtocolError extends Error {
+  constructor(readonly code: NonNullable<AgentRun["failure_code"]>, message: string) {
+    super(message);
+  }
 }
 
 function selectCapabilityId(adapter: AgentAdapter, plan: ExecutionPlan): string {
