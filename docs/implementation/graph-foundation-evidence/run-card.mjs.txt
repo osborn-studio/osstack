@@ -1,0 +1,43 @@
+import { readFileSync, writeFileSync, mkdirSync, appendFileSync } from 'node:fs';
+import { LoopEngine } from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/loop/dist/index.js';
+import { CodexCliAdapter } from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/agents/dist/index.js';
+const workspace = '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation';
+const evidence = '/tmp/osstack-graph-foundation-controller/evidence';
+const id = process.argv[2];
+const task = JSON.parse(readFileSync(workspace + '/docs/implementation/2026-09-13-osstack-graph-upgrade.tasks.json','utf8')).tasks.find(t=>t.id === id);
+if (!task || !['G01','G02','G03','G04'].includes(id)) throw new Error('Invalid card');
+if (!process.env.OSSTACK_HOME?.startsWith('/tmp/osstack-graph-foundation-controller/')) throw new Error('Isolated home required');
+mkdirSync(evidence, {recursive:true});
+const extra = {
+G01:'Preserve compatible adapters emitting terminal error followed by done(failed), and usage summaries around terminal events. Reject missing done success, malformed payload, terminal error followed by completed, duplicate/conflicting done, illegal work events after done. Do not change cancellation in this card.',
+G02:'Cancellation requested must be distinct from stop confirmed. AbortSignal alone or stream closure/throw are not proof external side effects have stopped. Use bounded grace to avoid hanging on uncooperative iterator including isAvailable; do not await hanging iterator.return. Late completed done must never overwrite uncertain cancel. Preabort must not invoke adapter. Preserve legacy AgentRun outcome vocabulary if possible; express uncertainty as failed + structured evidence, never fake cancelled. Add configurable bounded grace for fast tests. Check real adapter signal argument and listener cleanup.',
+G03:'POSIX detached process groups, TERM then grace then KILL; confirm group gone (kill(-pgid,0)), not merely shell exit or pipe closure. Surviving descendants on normal leader exit must not be ignored. Unsupported platforms/unconfirmed termination fail closed with explicit evidence. Real subprocess tests must leave no leaked descendants, with safety cleanup finally. Test ignoreTERM, descendants, closed stdio, late exit; use short configurable grace periods. Do not claim containment of deliberately detached processes. The supervising reviewer may write docs/implementation/graph-foundation-evidence/g02-review-followup.md while you work; read it before final validation and address any concrete executor fixes requested there with tests, keeping G03 process work and review fixes separately documented. Do not rerun the full agents test suite for shell-only changes; its known timing failure is documented, scoped loop tests suffice.',
+G04:'Extract one candidate implementation primitive. Input is explicit preselected ExecutionPlan + registered workspace reference + mandatory authorization callback, no graph data treated as authority. Reuse executePlan; graph new API returns implementation_complete only on actual confirmed implementation completion; does NOT commit, verify, archive, schedule, discover or clean worktrees. Wire legacy Loop execution through shared seam while retaining admission/selection/role separation/verification/worktree behavior. No module deep imports across packages. Bind authorization to a stable snapshot of plan, command and workspace scope across await, rather than an object the authorizer or caller can mutate before execution. Caller cancellation must prevent effects even during pending authorization. Test denied/throwing auth before effects, preabort, workspace identity, no git commit/cleanup/state writes, failure mapping, existing governance and role separation. Important: unknown cancellation must not trigger a second legacy implementation attempt on the same workspace. Test with maxIterations > 1 that unconfirmed execution escalates/stops with one adapter invocation; preserve its evidence in the existing state audit without introducing future ledger/schema. Future G16 freezes candidate. Do not overbuild future graph services.'
+}[id];
+const prompt = `Implement ONLY ${id} in this existing isolated worktree. You are the coding executor invoked by OSStack LoopEngine. Parent supervisor is handling docs/status and review. Do not spawn agents or nested OSStack loops. Do not commit, push, merge, deploy, alter AGENTS.md, touch sibling repositories, or mark plan tasks done. All dependencies are installed and built. Read AGENTS.md, the implementation plan docs/implementation/2026-09-13-osstack-graph-upgrade.md and relevant source. Use TDD: add outcome tests first, run to establish RED, implement GREEN, then run affected tests and pnpm --filter @osstack/loop typecheck. Save concise real RED/GREEN evidence at docs/implementation/graph-foundation-evidence/${id}-executor.md (only this evidence doc). CLI/database tests MUST use explicit inherited OSSTACK_HOME or scripts/graph-test-env.mjs, never default homes. Target card: ${JSON.stringify(task)}. ${extra} Parent will review and run additional tests. Finish the full card, report limitations honestly.`;
+const verify = id === 'G04'
+ ? 'pnpm --filter @osstack/loop exec vitest run src/executor.test.ts src/candidate-execution.test.ts src/loop-engine.test.ts && pnpm --filter @osstack/loop typecheck'
+ : 'pnpm --filter @osstack/loop exec vitest run src/executor.test.ts src/loop-engine.test.ts && pnpm --filter @osstack/loop typecheck';
+writeFileSync(`${evidence}/${id}-input.json`, JSON.stringify({task, prompt, verify, baselineRuntime:'b476bcc', workspace},null,2));
+const adapter = new CodexCliAdapter({sandbox:'workspace-write',cwd:workspace});
+const invoke = adapter.invoke.bind(adapter);
+adapter.invoke = async function* (task, signal) {
+  for await (const event of invoke(task, signal)) {
+    appendFileSync(`${evidence}/${id}-events.jsonl`, JSON.stringify(event) + '\n');
+    yield event;
+  }
+};
+const engine = new LoopEngine({
+ loopId:`graph-foundation-${id.toLowerCase()}`,
+ workspacePath:workspace,
+ stateFilePath:`${evidence}/${id}-LOOP-STATE.json`, markdownPath:`${evidence}/${id}-STATE.md`,
+ sources:[], inputTasks:[{task_id:id.toLowerCase(), capability:'code.write', prompt, priority:90, source:'manual'}],
+ agentId:'codex-cli', adapters:[adapter],
+ verifyCommands:[verify], maxIterations:2, commandTimeoutMs:1_200_000, outputLimit:20000,
+ useWorktree:false, lessonDrafts:{enabled:false}, skipCompletedTasks:false,
+ policyGate:async ({workspacePath})=>workspacePath === workspace ? {allow:true}:{allow:false,reason:'Out of scope'},
+});
+const result = await engine.runOnce();
+writeFileSync(`${evidence}/${id}-result.json`,JSON.stringify(result,null,2));
+console.log(JSON.stringify({id, completed:result.completedTasks, state:result.jsonPath},null,2));
+process.exitCode = result.completedTasks.length===1 && result.completedTasks[0].outcome === 'success' ? 0:2;

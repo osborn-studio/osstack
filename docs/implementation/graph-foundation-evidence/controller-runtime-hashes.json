@@ -1,0 +1,14 @@
+{
+  "packages/loop/dist/executor.js": {
+    "controllerSha256": "2c3764b341a48af3e05042ac5f9a081e668a619754ef0a18d16af1e0a04b5bf9",
+    "baselineWorktreeSha256": "2c3764b341a48af3e05042ac5f9a081e668a619754ef0a18d16af1e0a04b5bf9"
+  },
+  "packages/loop/dist/loop-engine.js": {
+    "controllerSha256": "2a95b041d155e68cc766fdb4dc0b0d26c33e15c2eaee78e6c47b0cc7c1084e05",
+    "baselineWorktreeSha256": "2a95b041d155e68cc766fdb4dc0b0d26c33e15c2eaee78e6c47b0cc7c1084e05"
+  },
+  "packages/agents/dist/adapters/codex-cli.js": {
+    "controllerSha256": "cd7fd5d9a5b4e2057e65d442c13c864507d8c8eac93d4aadc6d04a9453d134d9",
+    "baselineWorktreeSha256": "cd7fd5d9a5b4e2057e65d442c13c864507d8c8eac93d4aadc6d04a9453d134d9"
+  }
+}

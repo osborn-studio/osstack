@@ -16,10 +16,14 @@ Baseline limitations: complete test suite, RPC latency and Loop tick overhead we
 
 Code delivery v1 is `artifact_only`. Single implementation returns `implementation_complete`; G16 later freezes a candidate. No automatic git commit/merge/push/deployment belongs to the new primitive. Existing legacy Loop worktree commit/fast-forward behavior remains legacy behavior, and is disabled for this implementation controller (`useWorktree: false` in an already isolated worktree).
 
-This worktree is the only writable implementation target. OSStack's current compiled engine controls explicit tasks and verification from a separate runtime, with a fresh `/tmp` home and bounded iterations/timeouts. No ambient queue scanning, self-improvement publication, skill publication or deployment. The supervising session reviews results and commits accepted changes locally.
+This worktree is the only writable implementation target. OSStack's current compiled engine controls explicit tasks and verification from a separate runtime, with a fresh `/tmp` home and bounded iterations/timeouts. G01–G04 traces each record one discovered/executed task. Important controller correction: inputTasks is additive; only sources: [] disables ambient discovery. The initial acceptance controller omitted this flag and repeated deterministic validation for Git diff tasks; it was stopped. The corrected final controller explicitly sets sources: [] and records exactly one task. No self-improvement publication, skill publication or deployment occurred. The supervising session reviews results and commits accepted changes locally.
 
 Managed repositories: OSStack release and OStag's GitHub/Vercel integration retain their existing owners. A protected-branch merge or push may trigger a release/deployment and is outside this batch. No OStag or OSBot code/configuration changed; no Rakazo deployment. Future Graph admission must register these real effects before granting release authority.
 
 ## Expanded agents baseline
 
 The unmodified agents package suite recorded 137 passing tests and one 5-second timeout in adapter-conformance under concurrent execution; [full output](graph-foundation-evidence/agents-baseline.txt). The isolated file rerun passed both tests in 2.02 seconds ([rerun](graph-foundation-evidence/agents-conformance-recheck.txt)). This is a recorded baseline timing failure, not evidence that the full suite initially passed.
+
+## Accepted implementation
+
+G00–G04 are complete at `de4a3bbebc48fc119d9aca41d547d60da773e8a2`; see the [completion report](2026-09-13-graph-foundation-completion.md) and [final acceptance](graph-foundation-evidence/acceptance-summary.json). Continue G05–G07 in the implementation worktree, not the source readonly-pilot checkout. Baseline logs above remain historical and do not replace the final full-suite results.

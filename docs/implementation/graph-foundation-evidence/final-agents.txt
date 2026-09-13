@@ -1,0 +1,57 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/agents
+
+ ✓ src/adapters/subprocess-cli.test.ts (13 tests) 10381ms
+   ✓ ClaudeCliAdapter > probes and invokes a login-reuse CLI subprocess  683ms
+   ✓ OpenCodeCliAdapter > probes and invokes a login-reuse CLI subprocess  1249ms
+   ✓ OpenCodeCliAdapter > can pass prompt on stdin when args omit the prompt template  1884ms
+   ✓ ZCodeCliAdapter > probes with doctor and invokes via --prompt  803ms
+   ✓ CodexCliAdapter > runs in task.context.repo_path instead of the adapter fallback directory  778ms
+   ✓ CodexCliAdapter > uses an exec resume help preflight for availability  835ms
+   ✓ CodexCliAdapter > emits usage.final with net tokens from turn.completed (loop budget contract)  1588ms
+   ✓ CodexCliAdapter > classifies a broken resume preflight  2493ms
+ ✓ src/adapters/kimi-code.test.ts (17 tests) 13154ms
+   ✓ KimiCodeAdapter > probes the installed CLI version without invoking a model  1088ms
+   ✓ KimiCodeAdapter > distinguishes installed but unauthenticated from a missing binary  1240ms
+   ✓ KimiCodeAdapter > emits a schema-valid approved structured review  1880ms
+   ✓ KimiCodeAdapter > maps a zero-exit changes_requested verdict to failed  847ms
+   ✓ KimiCodeAdapter > defaults to the model alias observed on the execution node  817ms
+   ✓ KimiCodeAdapter > rejects model identity that does not match the invocation  916ms
+   ✓ KimiCodeAdapter > fails closed on non-zero exit  3186ms
+   ✓ KimiCodeAdapter > fails closed on malformed stream  731ms
+   ✓ KimiCodeAdapter > fails closed on missing result sentinel  777ms
+   ✓ KimiCodeAdapter > fails closed on duplicate result sentinel  824ms
+   ✓ KimiCodeAdapter > fails closed when the output byte limit is exceeded  785ms
+ ✓ src/adapters/codex-cli.test.ts (4 tests) 3783ms
+   ✓ CodexCliAdapter resumable sessions > captures the native thread id and emits only bounded public session events  628ms
+   ✓ CodexCliAdapter resumable sessions > resumes the exact native thread with verified parent flags  808ms
+   ✓ CodexCliAdapter resumable sessions > fails closed when resume reports a different native thread  795ms
+   ✓ CodexCliAdapter resumable sessions > uses a no-model resume help preflight and classifies a broken binary  1551ms
+ ✓ src/adapters/deepseek.test.ts (7 tests) 2350ms
+   ✓ DeepSeekReviewAdapter > advertises review capabilities and runs ds-review over git diff  663ms
+   ✓ DeepSeekVerifyAdapter > advertises verifier capabilities and forwards strict output options  719ms
+   ✓ DeepSeekVerifyAdapter > forwards evaluation specs via env file and reports per-spec judgments  480ms
+   ✓ DeepSeekVerifyAdapter > maps command failures to terminal error and failed done events  486ms
+ ✓ src/adapter-conformance.test.ts (2 tests) 1222ms
+   ✓ adapter conformance > emits schema-valid terminal failure streams for subprocess adapter families  1218ms
+ ✓ src/controlled-session.test.ts (22 tests) 4366ms
+   ✓ controlled no-tools sessions > launches and resumes with the same private settings and strips ambient authority  422ms
+   ✓ controlled no-tools sessions > requires initialization and a successful result  368ms
+   ✓ controlled no-tools sessions > rejects unknown native sessions and persists its own binding across adapter restart  563ms
+ ✓ src/adapters/autoresearch.test.ts (13 tests) 1668ms
+   ✓ invoke — propose→train→eval→keep/rollback > keeps only the best across several iterations  308ms
+ ✓ src/semantic/openai-compatible-no-tools.test.ts (8 tests) 11ms
+ ✓ src/semantic/anthropic-no-tools.test.ts (5 tests) 6ms
+ ✓ src/session.test.ts (5 tests) 6ms
+ ✓ src/adapters/kimi-stream.test.ts (9 tests) 4ms
+ ✓ src/adapters/kimi-contract.test.ts (9 tests) 4ms
+ ✓ src/worktree.test.ts (7 tests) 1076ms
+ ✓ src/adapters/claude-code.test.ts (7 tests) 3ms
+ ✓ src/semantic/built-in-judges.test.ts (2 tests) 2ms
+ ✓ src/adapters/design.test.ts (6 tests) 2ms
+ ✓ src/child-env.test.ts (2 tests) 1ms
+
+ Test Files  17 passed (17)
+      Tests  138 passed (138)
+   Start at  08:29:06
+   Duration  20.69s (transform 441ms, setup 0ms, collect 1.63s, tests 38.04s, environment 1ms, prepare 416ms)

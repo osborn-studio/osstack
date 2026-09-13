@@ -20,7 +20,7 @@ requirement tables while keeping humans in control.
 
 OS Tag is not a Claude Tag clone and not a Zilliz official product. It
 competes on being open, neutral, inspectable, and system-of-record aware —
-see [docs/claude_tag_strategy.md](docs/claude_tag_strategy.md) for the full
+see [docs/claude_tag_strategy.md](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/claude_tag_strategy.md) for the full
 strategic direction.
 
 ## What it does
@@ -74,7 +74,7 @@ Boundaries: adapters own transport/rendering; core owns events, runs,
 receipts, ledger, policy; connectors own system-of-record operations;
 executors/backends own agent invocation; workflows coordinate domain
 operations; the CLI exposes stable human/agent operations. Details:
-[docs/ostag/architecture.md](docs/ostag/architecture.md).
+[docs/ostag/architecture.md](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/architecture.md).
 
 ## Quick start
 
@@ -114,25 +114,25 @@ ostag ambient run-once [--send] --json
 ostag memory show|remember|sync ...
 ```
 
-Full reference: [docs/cli_reference.md](docs/cli_reference.md).
+Full reference: [docs/cli_reference.md](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/cli_reference.md).
 
 Work-monitor architecture, deterministic smoke, production deployment, backup,
 rollback, and the explicitly incomplete external evidence checklist are in
-[docs/ostag/work_monitor.md](docs/ostag/work_monitor.md) and
-[docs/ostag/deployment.md](docs/ostag/deployment.md).
+[docs/ostag/work_monitor.md](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/work_monitor.md) and
+[docs/ostag/deployment.md](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/deployment.md).
 
 ## Governance model
 
 | Layer | Mechanism |
 |---|---|
-| Receipts | state machine: `apply` only from approved state; stale receipts refuse all verbs ([docs/action_receipt_protocol.md](docs/action_receipt_protocol.md)) |
-| Permissions | `OSTAG_ACTOR_PERMISSIONS` + per-channel grants ([docs/channel_policy.md](docs/channel_policy.md)) |
-| Governed writes | opt-in per deployment or per channel; frozen `apply_payload`; connector executors; no delete path ([docs/governed_writes.md](docs/governed_writes.md)) |
-| Audit | run ledger + audit log, secrets redacted ([docs/run_ledger.md](docs/run_ledger.md)) |
-| Reporting | identity-scoped JSON/HTML operations report with derived Agent Presence, disabled by default ([docs/ostag/operational_report.md](docs/ostag/operational_report.md)) |
-| Async | durable continuations ([docs/async_runs.md](docs/async_runs.md)) |
-| Ambient | opt-in, cited, suppressed, proposal-only ([docs/ambient_v2.md](docs/ambient_v2.md)) |
-| Security | defaults and hardening roadmap ([docs/security_governance.md](docs/security_governance.md)) |
+| Receipts | state machine: `apply` only from approved state; stale receipts refuse all verbs ([docs/action_receipt_protocol.md](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/action_receipt_protocol.md)) |
+| Permissions | `OSTAG_ACTOR_PERMISSIONS` + per-channel grants ([docs/channel_policy.md](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/channel_policy.md)) |
+| Governed writes | opt-in per deployment or per channel; frozen `apply_payload`; connector executors; no delete path ([docs/governed_writes.md](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/governed_writes.md)) |
+| Audit | run ledger + audit log, secrets redacted ([docs/run_ledger.md](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/run_ledger.md)) |
+| Reporting | identity-scoped JSON/HTML operations report with derived Agent Presence, disabled by default ([docs/ostag/operational_report.md](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/operational_report.md)) |
+| Async | durable continuations ([docs/async_runs.md](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/async_runs.md)) |
+| Ambient | opt-in, cited, suppressed, proposal-only ([docs/ambient_v2.md](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ambient_v2.md)) |
+| Security | defaults and hardening roadmap ([docs/security_governance.md](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/security_governance.md)) |
 
 Safe defaults: dry-run on, mock backend, MFS off, shell off, applies off,
 governed writes off (fully backward compatible), unsafe CLI flags require
@@ -140,10 +140,10 @@ explicit env vars, audit and ledger redact secrets.
 
 ## Platforms and backends
 
-- Platform setup: [Feishu](docs/ostag/feishu_setup.md) ·
-  [Lark](docs/ostag/lark_setup.md) · [Slack](docs/ostag/slack_setup.md) ·
-  [DingTalk](docs/ostag/dingtalk_setup.md) ·
-  [deployment](docs/ostag/deployment.md) (launchd, Docker Compose)
+- Platform setup: [Feishu](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/feishu_setup.md) ·
+  [Lark](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/lark_setup.md) · [Slack](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/slack_setup.md) ·
+  [DingTalk](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/dingtalk_setup.md) ·
+  [deployment](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/deployment.md) (launchd, Docker Compose)
 - Backends: `OSTAG_BACKEND=mock|codex_cli|claude_cli|kimi_cli|openai_api`
   (`uv sync --extra openai` for the API backend; unsafe CLI modes require
   explicit `OSTAG_*_UNSAFE_MODE` flags; Kimi stays disabled until both executor
@@ -156,7 +156,7 @@ explicit env vars, audit and ledger redact secrets.
   schema-v2 projection and six-state Agent Presence summary at `/v1/report` and
   `/v1/report.html` when explicitly enabled.
 - Capability declarations per connector: `ostag connector list --json`
-  ([docs/connector_capabilities.md](docs/connector_capabilities.md))
+  ([docs/connector_capabilities.md](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/connector_capabilities.md))
 
 ## Platform operating model
 
@@ -215,8 +215,8 @@ Every run that reaches the workflow/backend records a hashed context packet
 
 Forked from and inspired by `zilliztech/mfs` (Apache-2.0) open-tag-skill;
 adapted and renamed as OS Tag with multi-platform adapters and the governance
-layer. See [FORK_ORIGIN.md](FORK_ORIGIN.md) and upstream research notes in
-[docs/research/](docs/research/).
+layer. See [FORK_ORIGIN.md](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/FORK_ORIGIN.md) and upstream research notes in
+[docs/research/](https://github.com/osborn-studio/ostag/tree/5098f9141864d413718d776c9ae783951ea4b5c1/docs/research/).
 
 ## Roadmap
 
@@ -235,9 +235,9 @@ reading · web admin console.
 
 ## Acceptance
 
-Scoring standard: [docs/ostag/acceptance_criteria.md](docs/ostag/acceptance_criteria.md)
+Scoring standard: [docs/ostag/acceptance_criteria.md](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/acceptance_criteria.md)
 and the benchmark scorecard in
-[docs/claude_tag_strategy.md](docs/claude_tag_strategy.md) §16. Release
+[docs/claude_tag_strategy.md](https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/claude_tag_strategy.md) §16. Release
 requires `uv run pytest` green and `scripts/release_check.sh` exit 0.
 
 RAKAZO VISION（愿景，不自动等于全已实现）：
@@ -339,7 +339,7 @@ bash install-images.sh
 The installer downloads `docker-compose.images.yml` and `.env.images.example`, creates `.env` with
 random secrets, then pulls and starts the images. It preserves an existing `.env` when rerun. For
 the installer secret list, non-reuse rules, and recovery, see
-[Self-host secrets checklist](./self-host-secrets.md). To customize the public URL, image tag, or
+[Self-host secrets checklist](https://github.com/elie222/rakazo/blob/b286fc4a5d0f608005000ef35bee4c473c31a165/docs/self-host-secrets.md). To customize the public URL, image tag, or
 optional providers before startup, run `bash install-images.sh --prepare-only`, edit `.env`, then
 run `bash install-images.sh`. Flags may be combined in either order: `--prepare-only`, `--local`.
 
@@ -377,7 +377,7 @@ instead of this host proxy.
 ### Restricted networks / mirror downloads
 
 If the installer, Compose downloads, or image pulls are blocked, use the
-[restricted-network guide](./self-host-restricted-network.md) for mirror settings and local files.
+[restricted-network guide](https://github.com/elie222/rakazo/blob/b286fc4a5d0f608005000ef35bee4c473c31a165/docs/self-host-restricted-network.md) for mirror settings and local files.
 
 ### Bot computer resource ceilings
 
@@ -435,10 +435,10 @@ fencing 同时约束 saver `put` 和 `putWrites`，以及 broker 新动作。它
 
 ## 下一步执行依据
 
-以 [实施计划](../design/2026-09-13-executable-graph-plan.md) 的 P0 → P1 → P2 顺序推进，先把受控执行与故障窗口跑通，再开放真实写入 beta。具体测试矩阵已经列出。当前任务交付研究与方案，没有实现生产图运行时。
+以 [实施计划](../../design/2026-09-13-executable-graph-plan.md) 的 P0 → P1 → P2 顺序推进，先把受控执行与故障窗口跑通，再开放真实写入 beta。具体测试矩阵已经列出。当前任务交付研究与方案，没有实现生产图运行时。
 
 现有未提交的 `AGENTS.md` 修改属于用户，不覆盖或混入提交。开发 CLI / DB 检查必须显式使用临时 `OSSTACK_HOME`，禁止打开默认或保留 serving home。不要把研究用 npm 依赖或临时数据库拷入产品依赖树。
 
-完整证据：[研究报告](2026-09-13-executable-graph-research.md)、[三轮评审纪要](2026-09-13-executable-graph-claude-review.md)、[证据说明](2026-09-13-executable-graph-evidence/README.md)。Claude 原始各轮上下文和答复在证据目录，最终决策不能只根据第一轮答复。
+完整证据：[研究报告](../2026-09-13-executable-graph-research.md)、[三轮评审纪要](../2026-09-13-executable-graph-claude-review.md)、[证据说明](../2026-09-13-executable-graph-evidence/README.md)。Claude 原始各轮上下文和答复在证据目录，最终决策不能只根据第一轮答复。
 
 请额外回答：1)编码任务如果三个系统都有agent和scheduler，如何单一执行所有权？2)个人与公司账号/记忆/浏览器凭据如何分开？3)一条飞书业务需求如何经过三个产品，哪些流程不需要三者全部经过？4)仅研究方案的首期明确交付边界与成功指标。

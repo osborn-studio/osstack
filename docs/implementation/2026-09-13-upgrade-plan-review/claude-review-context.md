@@ -7,7 +7,7 @@
 
 日期：2026-09-13。检查基线：`b476bcc3fbbf...`，分支 `codex/graph-readonly-pilot`。**状态：详细计划已形成；G00–G29 全部未开始，尚未实现生产运行时。**
 
-本计划将 [架构设计](../design/2026-09-13-executable-graph-plan.md) 转成可逐项执行的任务，产品边界遵循 [三产品定义](../design/2026-09-13-os-products-definition.md)。OSBot 功能在 [独立 handoff](../handoffs/osbot/handoff.md) 交接；本计划只改造 OSStack，不部署 Rakazo，不修改 OStag 产品。
+本计划将 [架构设计](../../design/2026-09-13-executable-graph-plan.md) 转成可逐项执行的任务，产品边界遵循 [三产品定义](../../design/2026-09-13-os-products-definition.md)。OSBot 功能在 [独立 handoff](../../handoffs/osbot/handoff.md) 交接；本计划只改造 OSStack，不部署 Rakazo，不修改 OStag 产品。
 
 ## 1. 本次升级的完成定义
 
@@ -138,7 +138,7 @@ node 成功是交付合法结果，不代表代码通过。合法测试失败报
 | G28 | M3 | 验证 CLI 与 daemon 性能预算 | G27 |
 | G29 | M3 | 交付受控内部试点与操作手册 | G28 |
 
-任务机器可读版本：[升级任务清单](2026-09-13-osstack-graph-upgrade.tasks.json)。下面列出的新文件是拟新增位置，不表示已经存在；验证命令中新增脚本也只有在对应任务实现后才可执行。
+任务机器可读版本：[升级任务清单](../2026-09-13-osstack-graph-upgrade.tasks.json)。下面列出的新文件是拟新增位置，不表示已经存在；验证命令中新增脚本也只有在对应任务实现后才可执行。
 
 ## 7. 逐任务执行卡
 

@@ -1,6 +1,8 @@
 # OSStack 升级改造实施计划：Loop 强化与可执行 Graph v1
 
-日期：2026-09-13。检查基线：`b476bcc3fbbfcc11953abd3d154e59f7f85c4660`，分支 `codex/graph-readonly-pilot`。**状态：实施中：G00 基线已完成；G01–G04 正由 OSStack 按依赖推进，G05–G29 尚未开始。尚未实现生产图运行时。**
+日期：2026-09-13。检查基线：`b476bcc3fbbfcc11953abd3d154e59f7f85c4660`，分支 `codex/graph-readonly-pilot`。**状态：G00–G04 已实现并验收，完成 5/30 项；G05–G29 尚未开始，M0 尚未整体完成。尚未实现生产图运行时。**
+
+实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；已验收代码：`de4a3bbebc48fc119d9aca41d547d60da773e8a2`。下一轮从这个工作区继续 G05–G07，勿在原 `graph-readonly-pilot` 检出中重做。见 [实施验收与接续报告](2026-09-13-graph-foundation-completion.md)。
 
 本计划将 [架构设计](../design/2026-09-13-executable-graph-plan.md) 转成可逐项执行的任务，产品边界遵循 [三产品定义](../design/2026-09-13-os-products-definition.md)。OSBot 功能在 [独立 handoff](../handoffs/osbot/handoff.md) 交接；本计划只改造 OSStack，不部署 Rakazo，不修改 OStag 产品。
 
@@ -17,6 +19,8 @@
 Loop 与 Graph 都获得具体提升：Loop 的终态、取消和候选执行接口被修正；Graph 负责外层任务结构与质量门。图模式只调用一次实现迭代，避免完整 Loop 内评审与图评审重复。旧 Loop 模式保持清楚的兼容路径。
 
 ## 2. 已核实基线和工程差距
+
+下表描述 `b476bcc` 实施前事实；G00–G04 的已交付变化以任务状态和验收报告为准。
 
 | 位置 | 当前事实 | 升级责任 |
 |---|---|---|
@@ -154,24 +158,25 @@ flowchart TD
 
 ### G00 · 冻结基线和升级边界
 
-**依赖：** 无。**规模：** S。**状态：** 未开始。
+**依赖：** 无。**规模：** S。**状态：** 已完成，见 [验收报告](2026-09-13-graph-foundation-completion.md)。
 
 **预计改动位置：**
 
 - `docs/implementation/graph-baseline.md`
 - `scripts/graph-test-env.mjs`
+- `scripts/graph-test-env.test.mjs`（实际新增隔离夹具回归）
 
 **验收：**
 
-- [ ] 记录 HEAD、用户改动、迁移版本、Node/原生依赖和现有性能；逐卡核实现有文件与命令，历史失败单列。
-- [ ] 生成显式隔离 OSSTACK_HOME 的测试夹具，拒绝默认和保留 serving home。
-- [ ] 确认代码交付 v1 为 artifact_only，并登记受管仓库的合并/部署触发边界。
+- [x] 记录 HEAD、用户改动、迁移版本、Node/原生依赖和现有性能；逐卡核实现有文件与命令，历史失败单列。
+- [x] 生成显式隔离 OSSTACK_HOME 的测试夹具，拒绝默认和保留 serving home。
+- [x] 确认代码交付 v1 为 artifact_only，并登记受管仓库的合并/部署触发边界。
 
 **验证：** 记录 `git status --short` / `git rev-parse HEAD` / `node -v`；在隔离环境运行现有相关包测试与 `node scripts/bench-cli-startup.mjs`，保存基线。
 
 ### G01 · 校验 adapter 终态事件
 
-**依赖：** G00。**规模：** S。**状态：** 未开始。
+**依赖：** G00。**规模：** S。**状态：** 已完成，见 [验收报告](2026-09-13-graph-foundation-completion.md)。
 
 **预计改动位置：**
 
@@ -180,15 +185,15 @@ flowchart TD
 
 **验收：**
 
-- [ ] 无 done 且无明确失败的流不能 completed；终态 error 保持失败。
-- [ ] 冲突终态、终态后非法事件和不合法 done payload 有确定失败分类。
-- [ ] 正常完成、明确失败及现有用量累计行为保持兼容。
+- [x] 无 done 且无明确失败的流不能 completed；终态 error 保持失败。
+- [x] 冲突终态、终态后非法事件和不合法 done payload 有确定失败分类。
+- [x] 正常完成、明确失败及现有用量累计行为保持兼容。
 
 **验证：** `pnpm --filter @osstack/loop exec vitest run src/executor.test.ts src/loop-engine.test.ts`；新增 candidate 测试后同时运行；涉及 agents 时跑对应包测试。
 
 ### G02 · 贯通图级取消信号
 
-**依赖：** G01。**规模：** M。**状态：** 未开始。
+**依赖：** G01。**规模：** M。**状态：** 已完成，见 [验收报告](2026-09-13-graph-foundation-completion.md)。
 
 **预计改动位置：**
 
@@ -198,15 +203,15 @@ flowchart TD
 
 **验收：**
 
-- [ ] LocalExecutorOptions 接收外部 signal，并与内部 timeout 合并且清理 listener。
-- [ ] 开始前已取消不启动 adapter；运行中取消向真实 invoke(signal) 传递。
-- [ ] signal 已发出与执行已停止分开记录，晚到 done 不抹掉未确认取消。
+- [x] LocalExecutorOptions 接收外部 signal，并与内部 timeout 合并且清理 listener。
+- [x] 开始前已取消不启动 adapter；运行中取消向真实 invoke(signal) 传递。
+- [x] signal 已发出与执行已停止分开记录，晚到 done 不抹掉未确认取消。
 
 **验证：** `pnpm --filter @osstack/loop exec vitest run src/executor.test.ts src/loop-engine.test.ts`；新增 candidate 测试后同时运行；涉及 agents 时跑对应包测试。
 
 ### G03 · 确认命令进程退出
 
-**依赖：** G02。**规模：** S。**状态：** 未开始。
+**依赖：** G02。**规模：** S。**状态：** 已完成，见 [验收报告](2026-09-13-graph-foundation-completion.md)。
 
 **预计改动位置：**
 
@@ -215,15 +220,15 @@ flowchart TD
 
 **验收：**
 
-- [ ] 命令超时/取消终止受控进程组，支持 TERM 宽限和必要的 KILL。
-- [ ] 测试包含子孙进程、忽略 TERM、关闭管道但进程仍存活及晚到退出。
-- [ ] 不能确认退出时返回明确未确认信息，不伪报 completed/cancelled。
+- [x] 命令超时/取消终止受控进程组，支持 TERM 宽限和必要的 KILL。
+- [x] 测试包含子孙进程、忽略 TERM、关闭管道但进程仍存活及晚到退出。
+- [x] 不能确认退出时返回明确未确认信息，不伪报 completed/cancelled。
 
 **验证：** `pnpm --filter @osstack/loop exec vitest run src/executor.test.ts src/loop-engine.test.ts`；新增 candidate 测试后同时运行；涉及 agents 时跑对应包测试。
 
 ### G04 · 提炼一次候选实现
 
-**依赖：** G03。**规模：** M。**状态：** 未开始。
+**依赖：** G03。**规模：** M。**状态：** 已完成，见 [验收报告](2026-09-13-graph-foundation-completion.md)。
 
 **预计改动位置：**
 
@@ -231,12 +236,14 @@ flowchart TD
 - `packages/loop/src/candidate-execution.test.ts`
 - `packages/loop/src/loop-engine.ts`
 - `packages/loop/src/index.ts`
+- `packages/loop/src/types.ts`（审查后新增结构化未确认停止标记）
+- `packages/loop/src/loop-engine.test.ts`（旧 Loop 执行身份与角色回归）
 
 **验收：**
 
-- [ ] 新入口只执行一次已授权实现，返回 implementation_complete、执行证据与工作区引用；不 commit，也不等于 candidate_ready 或任务成功。
-- [ ] 不执行 discovery、archive、cycle 状态写回、内置重复评审、merge 或未登记清理。
-- [ ] 旧 Loop 通过明确 legacy 路径维持行为，治理/agent 选择和角色约束有回归测试。
+- [x] 新入口只执行一次已授权实现，返回 implementation_complete、执行证据与工作区引用；不 commit，也不等于 candidate_ready 或任务成功。
+- [x] 不执行 discovery、archive、cycle 状态写回、内置重复评审、merge 或未登记清理。
+- [x] 旧 Loop 通过明确 legacy 路径维持行为，治理/agent 选择和角色约束有回归测试。
 
 **验证：** `pnpm --filter @osstack/loop exec vitest run src/executor.test.ts src/loop-engine.test.ts`；新增 candidate 测试后同时运行；涉及 agents 时跑对应包测试。
 
@@ -720,7 +727,7 @@ flowchart TD
 
 ## 8. 依赖、分支和交接纪律
 
-- 先完成 G00–G04；协议/包/Saver 路线 G05–G07 可以与不共享文件的工作交替推进，但内核准入不能后补。
+- G00–G04 已完成；下一批执行 G05–G07，完成协议、独立包与 Saver 内核准入后再进入 M1。
 - G08、G09 在约束明确后可分别处理。G10–G17 涉及 daemon/核心存储，按依赖串行整合，避免多个任务同时改 migrations.ts 或 daemon.ts；DDL 严格按 G08→G11→G13→G16 单负责人推进。
 - G18 是纯编译器分支，可在 M1 集成期间独立开发；G19 必须等真实 broker/产物接口稳定。
 - G22/G23 共用 graph-command 和 RPC；G25/G26 故障验证依赖完整业务路径，不提前用 stub 结果充数。
@@ -789,10 +796,10 @@ graph worker 启动、冷/热执行、checkpoint/IPC 和并行工作区准备成
 
 ## 13. 第一轮实施的明确起点
 
-下一次编码实施的 Loop 主线从 **G00 → G01 → G02 → G03 → G04** 开始。若有独立开发资源，G00 后可同步推进不共享文件的 G05→G07，尽早验证可能影响后续结构的 Saver 路线；不必等 G04 完成才开始内核可行性检查。先得到可相信的单次实现结果，再由 G16 冻结成候选。不要先写 graph run 命令包装现有 runTask，那会保留无 done 伪成功、取消不穿透与自动 merge 三类问题。
+G00–G04 已完成并由真实 OSStack 验收。下一批从 **G05 → G06 → G07** 开始：明确图边界契约，建立独立图包，再验证公共 Saver 与跨进程序列化。当前 `executeCandidateImplementation` 只证明一次实现完成；G16 才冻结候选，G18 以后才进入完整工程图。不要用 graph run 包装完整 legacy Loop 代替图节点，否则仍会重复评审并继承自动提交/合并生命周期。
 
 可给实施会话的起始指令：
 
-> 阅读本计划与架构设计，核对当前 Git/用户改动，建立隔离工作区和 OSSTACK_HOME。按 G00–G04 实现 Loop 基础改造，遵循项目 TDD、接口和 Git 约定。每张卡完成后记录实际测试证据并更新任务状态；不得接默认 DB，不得自动 merge/push/deploy，不得把后续 Graph 或 OSBot 功能提前标完成。遇到设计未知项先做最小验证，明确失败证据后再调整方案。
+> 在 `/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation` 的 `codex/graph-runtime-foundation` 分支继续。先读本计划、验收报告和机器任务清单，确认 G00–G04 已验收代码及当前用户改动。使用 OSStack 按 G05→G06→G07 做协议、独立图包与公共 Saver 准入，遵循项目 TDD/接口约定。执行控制器显式设 sources: []，仅传指定 inputTasks；通过 scripts/graph-test-env.mjs 建立新 OSSTACK_HOME。逐卡保存真实测试证据，不得接默认 DB、自动 merge/push/deploy，或提前宣称 M1/完整图运行时完成。
 
 本轮的交付是本计划与 OSBot handoff；不会仅因写出这段起始指令而自动开始生产代码改造。

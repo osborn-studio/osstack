@@ -37,7 +37,8 @@
       "dependsOn": [],
       "files": [
         "docs/implementation/graph-baseline.md",
-        "scripts/graph-test-env.mjs"
+        "scripts/graph-test-env.mjs",
+        "scripts/graph-test-env.test.mjs"
       ],
       "acceptance": [
         "记录 HEAD、用户改动、迁移版本、Node/原生依赖和现有性能；逐卡核实现有文件与命令，历史失败单列。",
@@ -48,8 +49,11 @@
       "size": "S",
       "status": "completed",
       "evidence": [
-        "docs/implementation/graph-baseline.md"
-      ]
+        "docs/implementation/graph-baseline.md",
+        "docs/implementation/2026-09-13-graph-foundation-completion.md",
+        "docs/implementation/graph-foundation-evidence/acceptance-summary.json"
+      ],
+      "acceptedCodeCommit": "de4a3bbebc48fc119d9aca41d547d60da773e8a2"
     },
     {
       "id": "G01",
@@ -73,8 +77,11 @@
       "implementationCommit": "3fe3793",
       "evidence": [
         "docs/implementation/graph-foundation-evidence/G01-executor.md",
-        "docs/implementation/graph-foundation-evidence/G01-STATE.md"
-      ]
+        "docs/implementation/graph-foundation-evidence/G01-STATE.md",
+        "docs/implementation/2026-09-13-graph-foundation-completion.md",
+        "docs/implementation/graph-foundation-evidence/acceptance-summary.json"
+      ],
+      "acceptedCodeCommit": "de4a3bbebc48fc119d9aca41d547d60da773e8a2"
     },
     {
       "id": "G02",
@@ -99,8 +106,12 @@
       "evidence": [
         "docs/implementation/graph-foundation-evidence/G02-executor.md",
         "docs/implementation/graph-foundation-evidence/G02-STATE.md",
-        "docs/implementation/graph-foundation-evidence/g02-review-followup.md"
-      ]
+        "docs/implementation/graph-foundation-evidence/g02-review-followup.md",
+        "docs/implementation/2026-09-13-graph-foundation-completion.md",
+        "docs/implementation/graph-foundation-evidence/acceptance-summary.json"
+      ],
+      "acceptedCodeCommit": "de4a3bbebc48fc119d9aca41d547d60da773e8a2",
+      "implementationCommit": "9b50d3b"
     },
     {
       "id": "G03",
@@ -124,8 +135,12 @@
       "evidence": [
         "docs/implementation/graph-foundation-evidence/G03-executor.md",
         "docs/implementation/graph-foundation-evidence/G03-STATE.md",
-        "docs/implementation/graph-foundation-evidence/g02-review-followup.md"
-      ]
+        "docs/implementation/graph-foundation-evidence/g02-review-followup.md",
+        "docs/implementation/2026-09-13-graph-foundation-completion.md",
+        "docs/implementation/graph-foundation-evidence/acceptance-summary.json"
+      ],
+      "acceptedCodeCommit": "de4a3bbebc48fc119d9aca41d547d60da773e8a2",
+      "implementationCommit": "3722e22"
     },
     {
       "id": "G04",
@@ -138,7 +153,9 @@
         "packages/loop/src/candidate-execution.ts",
         "packages/loop/src/candidate-execution.test.ts",
         "packages/loop/src/loop-engine.ts",
-        "packages/loop/src/index.ts"
+        "packages/loop/src/index.ts",
+        "packages/loop/src/types.ts",
+        "packages/loop/src/loop-engine.test.ts"
       ],
       "acceptance": [
         "新入口只执行一次已授权实现，返回 implementation_complete、执行证据与工作区引用；不 commit，也不等于 candidate_ready 或任务成功。",
@@ -147,7 +164,15 @@
       ],
       "verify": "LOOP",
       "size": "M",
-      "status": "in_progress"
+      "status": "completed",
+      "acceptedCodeCommit": "de4a3bbebc48fc119d9aca41d547d60da773e8a2",
+      "evidence": [
+        "docs/implementation/2026-09-13-graph-foundation-completion.md",
+        "docs/implementation/graph-foundation-evidence/acceptance-summary.json",
+        "docs/implementation/graph-foundation-evidence/G04-executor.md",
+        "docs/implementation/graph-foundation-evidence/G04-STATE.md"
+      ],
+      "implementationCommit": "de4a3bbebc48fc119d9aca41d547d60da773e8a2"
     },
     {
       "id": "G05",
@@ -722,5 +747,19 @@
       "size": "M",
       "status": "pending"
     }
-  ]
+  ],
+  "updatedAt": "2026-09-13",
+  "implementation": {
+    "branch": "codex/graph-runtime-foundation",
+    "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
+    "acceptedCodeCommit": "de4a3bbebc48fc119d9aca41d547d60da773e8a2",
+    "completedTaskCount": 5,
+    "totalTaskCount": 30,
+    "nextTasks": [
+      "G05",
+      "G06",
+      "G07"
+    ],
+    "report": "docs/implementation/2026-09-13-graph-foundation-completion.md"
+  }
 }
