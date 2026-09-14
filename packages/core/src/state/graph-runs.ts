@@ -6,6 +6,7 @@ import { z } from "zod";
 import { GraphJsonValue, GraphScope, GraphRunState, GraphRequest, StartGraphRequest, computeGraphInputDigest } from "@osstack/protocol";
 import { preflightDiskSpace } from "./db.js";
 
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Reject controls in persisted identity strings.
 const text = z.string().min(1).max(256).refine((s) => s.trim() === s && !/[\u0000-\u001f\u007f-\u009f]/.test(s));
 const counter = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 const digest = z.string().regex(/^[a-f0-9]{64}$/);

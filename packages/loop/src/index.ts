@@ -30,3 +30,5 @@ export type {
 } from "./candidate-execution.js";
 export * from "./verifier.js";
 export * from "./loop-engine.js";
+
+export type { LoopLifecycleLease, LoopLifecycleAdmission } from "./policy-gate.js";

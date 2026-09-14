@@ -1,3 +1,5 @@
+import { healthyAutonomyHealth } from "./test-healthy-autonomy.js";
+import { execFileSync } from "node:child_process";
 import { connect } from "node:net";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync, mkdtempSync } from "node:fs";
@@ -7,7 +9,7 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
-import { startDaemon, type DaemonHandles } from "./daemon.js";
+import { startDaemon as startRealDaemon, type DaemonHandles } from "./daemon.js";
 
 // R2.2 — kernel policy gate wired into the daemon. Proves the observe-mode
 // refusal now covers the daemon RPC path (loop.run) AND the persisted session
@@ -38,6 +40,7 @@ async function writePolicy(workspace: string, mode: "observe" | "propose" | "exe
 }
 
 async function seedTask(workspace: string): Promise<void> {
+  execFileSync("git", ["init", workspace]);
   await mkdir(join(workspace, "tasks"), { recursive: true });
   await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
     task_id: "policy-gate-task",
@@ -207,3 +210,37 @@ async function waitForPersistedSession(
   }
   throw new Error(`persisted loop session did not reach expected state: ${JSON.stringify(last)}`);
 }
+
+
+it("requires a host graph identity and denies its authorization before a Loop effect", async () => {
+  const workspace = join(tmp, "graph-repo");
+  await seedTask(workspace);
+  await writePolicy(workspace, "execute");
+  const identity = {};
+  daemon = await startDaemon({ socketPath: `/tmp/g10-${randomUUID()}.sock`,
+    graphIdentities: new Map([[identity, { workspacePath: workspace, authorize: async () => { throw new Error("graph grant denied"); } }]]),
+  });
+  await expect(daemon.acquireGraphAdmission({ principal: "admin" }, { runId: "forged" })).rejects.toThrow("trusted graph identity");
+  await expect(daemon.acquireGraphAdmission(identity, { runId: "denied" })).rejects.toThrow("graph grant denied");
+  expect(existsSync(join(workspace, "LOOP-STATE.json"))).toBe(false);
+});
+
+it("holds daemon Loop behind a graph lease for a second worktree and aborts queued admission", async () => {
+  const workspace = join(tmp, "contended-repo"); await seedTask(workspace);
+  execFileSync("git", ["-C", workspace, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "--allow-empty", "-m", "init"]);
+  const second = join(tmp, "other-worktree"); execFileSync("git", ["-C", workspace, "worktree", "add", second]);
+  await writePolicy(workspace, "execute");
+  const identity = {};
+  daemon = await startDaemon({ socketPath: `/tmp/g10-${randomUUID()}.sock`,
+    graphIdentities: new Map([[identity, { workspacePath: workspace, authorize: async () => {} }]]),
+  });
+  const lease = await daemon.acquireGraphAdmission(identity, { runId: "held" });
+  const abort = new AbortController();
+  const queued = daemon.acquireGraphAdmission(identity, { runId: "queued", signal: abort.signal });
+  const rejected = expect(queued).rejects.toThrow(); abort.abort(); await rejected;
+  const pending = daemonRpc(daemon.socketPath, "loop.run", { workspacePath: second, sources: [] });
+  await sleep(40); expect(existsSync(join(second, "LOOP-STATE.json"))).toBe(false);
+  await lease.release(); expect((await pending).ok).toBe(true);
+});
+
+const startDaemon = (options: Parameters<typeof startRealDaemon>[0]) => startRealDaemon({ autonomyHealth: async () => healthyAutonomyHealth(), ...options });

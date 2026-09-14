@@ -645,7 +645,9 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     }
     if (profile !== undefined) process.env["OSSTACK_AGENT_PROFILE"] = profile;
     const { startDaemon } = await import("./daemon.js");
+    const servingWorkspace = optionalStringFlag(args, "--workspace");
     const handle = await startDaemon({
+      ...(servingWorkspace === undefined ? {} : { workspacePath: servingWorkspace }),
       ...(writeConcurrency === undefined
         ? {}
         : { writeConcurrency }),
@@ -842,8 +844,17 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
               process.platform === "darwin"
               && process.env["OSSTACK_AGENT_PROFILE"] === "mac-mini",
           }),
-          resume: (runId, decision) =>
-            runtime.resume(runId, decision),
+          resume: async (runId, decision) => {
+            const { getAutonomyRun } = await import("@osstack/core");
+            const row = getAutonomyRun(db, runId);
+            if (!row) throw new Error("autonomy run not found");
+            const { acquireLocalExecution } = await import("./local-execution.js");
+            const lease = await acquireLocalExecution({ workspacePath: row.workspace_path, runId,
+              dbPath, home: osstackHome(), socketPath: resolveSocketPath(), requiresAgent: true, external: true });
+            let confirmed = false;
+            try { const result = await runtime.resume(runId, decision); confirmed = result.status === "completed" || result.status === "needs_approval"; return result; }
+            finally { if (confirmed) await lease.release(); else lease.retain("guarded resume external exit unconfirmed"); }
+          },
           drillRollback: executeControlledRollbackDrill,
         });
       } catch (error) {
@@ -7664,29 +7675,6 @@ async function readPersistedLoopRunEvidence(runId: string): Promise<{
   }
 }
 
-async function writeRequestedLoopArtifactsFromStateFile(options: {
-  args: string[];
-  workspacePath: string;
-  stateFilePath: string;
-  events?: unknown[];
-  governance?: GovernanceProofEvidence;
-}): Promise<LoopEvidenceArtifacts | undefined | Error> {
-  const { readLoopState } = await loadLoop();
-  if (!hasRequestedLoopArtifacts(options.args)) return undefined;
-  const statePath = resolveLoopPath(options.stateFilePath, options.workspacePath);
-  const state = await readLoopState(statePath);
-  if (state === null) {
-    return new Error(`no loop state found at ${statePath}; cannot generate evidence artifacts`);
-  }
-  return await writeRequestedLoopArtifacts(
-    state,
-    options.workspacePath,
-    options.args,
-    normalizeLoopEvents(options.events),
-    options.governance,
-  );
-}
-
 async function writeRequestedLoopArtifacts(
   state: LoopState,
   workspacePath: string,
@@ -9793,6 +9781,12 @@ async function createGuardedGitRuntimeForDb(
 const startGuardedGitDelivery: NonNullable<
   DeliverCommandDeps["startGuardedGit"]
 > = async (input) => {
+  const { acquireLocalExecution } = await import("./local-execution.js");
+  const lease = await acquireLocalExecution({ workspacePath: input.workspacePath, runId: `guarded_delivery_${randomUUID()}`,
+    dbPath: await ensureLocalStateDbPath(), home: osstackHome(), socketPath: resolveSocketPath(), requiresAgent: true, external: true });
+  let started = false;
+  let confirmed = false;
+  try {
   const { GuardedGitRouting } = await import("./guarded-git-runtime.js");
   const policy = await guardedPolicySnapshot(input.workspacePath);
   const branch = await guardedGitText(
@@ -9935,7 +9929,8 @@ const startGuardedGitDelivery: NonNullable<
       dbPath,
       trust,
     );
-    return await runtime.start({
+    started = true;
+    const result = await runtime.start({
       autonomy_run_id: autonomyRunId,
       task_id: input.taskId,
       repo_id: repoId,
@@ -9957,8 +9952,14 @@ const startGuardedGitDelivery: NonNullable<
           policy.repoConfig.autonomy.max_no_progress_rounds,
       },
     });
+    confirmed = result.status === "completed" || result.status === "needs_approval";
+    return result;
   } finally {
     db.close();
+  }
+  } finally {
+    if (started && !confirmed) lease.retain("guarded delivery external exit unconfirmed");
+    else await lease.release();
   }
 };
 
@@ -10153,6 +10154,10 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const intervalRaw = flagValue(args, "--interval-ms");
     const json = args.includes("--json");
     const useDaemon = args.includes("--daemon");
+    if (useDaemon && (args.includes("--checkpoint") || args.includes("--govern") || hasRequestedLoopArtifacts(args))) {
+      console.error("osstack: use the local Loop for checkpoint, governance or artifact flags; daemon-owned exports are not implemented");
+      return 2;
+    }
     const stopWhenIdle = args.includes("--stop-when-idle");
     const archiveCompletedTasks = args.includes("--archive-completed");
     const autoAgent = args.includes("--auto-agent");
@@ -10177,6 +10182,22 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       agentId = agentId ?? profileRouting.agentId;
       verifierAgentIds = verifierAgentIds.length > 0 ? verifierAgentIds : profileRouting.verifierAgentIds;
     }
+    let repositoryLease: import("./governed-execution.js").ExecutionLease | undefined;
+    let unconfirmed = false;
+    if (!useDaemon) {
+      const { resolveRepositoryScope } = await import("@osstack/core");
+      let repository = false;
+      try { await resolveRepositoryScope(workspacePath); repository = true; }
+      catch (error) { if (!String(error).includes("not a git repository")) throw error; }
+      if (repository) {
+        const { acquireLocalExecution } = await import("./local-execution.js");
+        repositoryLease = await acquireLocalExecution({ workspacePath, runId: `local_loop_${randomUUID()}`,
+          dbPath: await ensureLocalStateDbPath(), home: osstackHome(), socketPath: resolveSocketPath(),
+          requiresAgent: agentId !== undefined || autoAgent,
+        });
+      }
+    }
+    try {
     const useWorktree = args.includes("--worktree");
     const checkpoint = args.includes("--checkpoint") && !useWorktree
       ? await createShadowCheckpoint(realpathSync(workspacePath))
@@ -10261,27 +10282,8 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         : appendGovernanceVerifyEvent(normalizeLoopEvents(result.events), result.loop_id, governance);
       if (events.length > 0) result.events = events;
       if (governance !== undefined) result.governance = governance;
-      const probeObservation = await observeLoopProbeEvents(workspacePath, events);
-      if (probeObservation !== undefined) result.probe_observation = probeObservation;
-      const artifacts = await writeRequestedLoopArtifactsFromStateFile({
-        args,
-        workspacePath,
-        stateFilePath,
-        events,
-        ...(governance !== undefined ? { governance } : {}),
-      });
-      if (artifacts instanceof Error) {
-        console.error(`osstack: ${artifacts.message}`);
-        return 1;
-      }
-      if (artifacts !== undefined) result.artifacts = artifacts;
       if (checkpoint !== undefined) result.checkpoint = checkpoint;
       if (profileRouting !== undefined) result.profile = profileRouting.summary;
-      const persistedState = await readLoopState(resolveLoopPath(stateFilePath, workspacePath));
-      if (persistedState !== null) {
-        const learnedLessons = await learnLessonsFromLoopState(persistedState);
-        if (learnedLessons !== undefined) result.learned_lessons = learnedLessons;
-      }
       printLoopRun(result, json);
       return result.completed_tasks.some((task) => task.outcome !== "success")
         || governance?.blocking === true
@@ -10289,6 +10291,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ? 2
         : 0;
     }
+
 
     const adapters = agentId !== undefined || verifierAgentIds.length > 0 || autoAgent
       ? (await import("@osstack/agents")).defaultAdapters()
@@ -10329,7 +10332,8 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(shouldRecordLoopKnowledge(args, knowledge) ? { knowledge } : {}),
       // Kernel gate (R2.2): defense-in-depth over the upfront gate; a mid-run
       // flip to observe stops `--cycles` runs cleanly on the next tick.
-      policyGate: makePolicyGate(workspacePath),
+      policyGate: repositoryLease === undefined ? makePolicyGate(workspacePath) : (await import("./repository-policy.js")).makeRepositoryPolicyGate(workspacePath),
+      ...(repositoryLease === undefined ? {} : { lifecycleLease: async () => ({ release: async () => {}, retain: () => { unconfirmed = true; } }) }),
     });
     const result = runCycles
       ? await engine.runCycles({
@@ -10390,6 +10394,10 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       || result.budget?.exceeded === true
       ? 2
       : 0;
+    } finally {
+      if (unconfirmed) repositoryLease?.retain("local Loop external exit unconfirmed");
+      else await repositoryLease?.release();
+    }
   }
 
   if (sub === "enqueue") {

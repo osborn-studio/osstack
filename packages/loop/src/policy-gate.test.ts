@@ -165,3 +165,46 @@ describe("LoopEngine policy gate (R2.2)", () => {
     expect(existsSync(join(workspace, "loop-output.txt"))).toBe(false);
   });
 });
+
+it('holds an injected lifecycle lease until final state persistence', async () => {
+  const workspace = await makeQueuedWorkspace();
+  let acquired = false; let released = false;
+  const result = await new LoopEngine({ workspacePath: workspace, sources: ['task_queue'], executeCommand: writeSideEffect,
+    lifecycleLease: async () => {
+      acquired = true;
+      return { release: async () => { expect(existsSync(join(workspace, 'LOOP-STATE.json'))).toBe(true); released = true; }, retain: () => {} };
+    },
+  }).runOnce();
+  expect(result.executedTaskCount).toBe(1); expect(acquired).toBe(true); expect(released).toBe(true);
+});
+
+it('retains the host lease when persisted implementation stop is unconfirmed', async () => {
+  const workspace = await makeQueuedWorkspace();
+  const first = await new LoopEngine({ workspacePath: workspace, sources: ['task_queue'], executeCommand: writeSideEffect }).runOnce();
+  first.state.completed_tasks[0]!.implementation_unconfirmed = true;
+  await writeFile(first.jsonPath, JSON.stringify(first.state));
+  let retained = false; let released = false;
+  await new LoopEngine({ workspacePath: workspace, sources: ['task_queue'],
+    lifecycleLease: async () => ({ retain: () => { retained = true; }, release: async () => { released = true; } }),
+  }).runOnce();
+  expect(retained).toBe(true); expect(released).toBe(false);
+});
+
+it("releases an admission on invalid cycle options before any execution", async () => {
+  const workspace = await makeQueuedWorkspace();
+  const release = vi.fn(async () => {}); const retain = vi.fn();
+  const engine = new LoopEngine({ workspacePath: workspace, sources: [], lifecycleLease: async () => ({ release, retain }) });
+  await expect(engine.runCycles({ intervalMs: -1 })).rejects.toThrow("intervalMs");
+  expect(release).toHaveBeenCalledTimes(1); expect(retain).not.toHaveBeenCalled();
+  expect(existsSync(join(workspace, "LOOP-STATE.json"))).toBe(false);
+});
+
+it("does not carry confirmed effects into a later invalid invocation", async () => {
+  const workspace = await makeQueuedWorkspace();
+  const release = vi.fn(async () => {}); const retain = vi.fn();
+  const engine = new LoopEngine({ workspacePath: workspace, sources: ["task_queue"], executeCommand: writeSideEffect,
+    lifecycleLease: async () => ({ release, retain }) });
+  await engine.runOnce();
+  await expect(engine.runCycles({ intervalMs: -1 })).rejects.toThrow("intervalMs");
+  expect(release).toHaveBeenCalledTimes(2); expect(retain).not.toHaveBeenCalled();
+});

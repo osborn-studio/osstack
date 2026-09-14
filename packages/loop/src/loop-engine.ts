@@ -1,3 +1,4 @@
+import type { LoopLifecycleAdmission } from "./policy-gate.js";
 import { randomUUID } from "node:crypto";
 import { dirname, isAbsolute, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -117,6 +118,7 @@ export interface LoopRunOptions {
    * the gate is never allowed to crash the engine.
    */
   policyGate?: PolicyGate;
+  lifecycleLease?: LoopLifecycleAdmission;
 }
 
 /**
@@ -212,11 +214,16 @@ export interface LoopRunCyclesResult {
 export class LoopEngine {
   private seq = 0;
   private implementationUnconfirmed = false;
+  private lifecycleEffectsStarted = false;
   private readonly events: LoopEvent[] = [];
 
   constructor(private readonly options: LoopRunOptions = {}) {}
 
   async runCycles(options: LoopRunCyclesOptions = {}): Promise<LoopRunCyclesResult> {
+    return this.withLifecycleLease(() => this.runCyclesAdmitted(options));
+  }
+
+  private async runCyclesAdmitted(options: LoopRunCyclesOptions): Promise<LoopRunCyclesResult> {
     const cycles = options.cycles ?? 1;
     const intervalMs = options.intervalMs ?? 0;
     if (!Number.isInteger(cycles) || cycles < 1) {
@@ -296,6 +303,24 @@ export class LoopEngine {
   }
 
   async runOnce(): Promise<LoopRunResult> {
+    return this.withLifecycleLease(() => this.runOnceAdmitted());
+  }
+
+  private async withLifecycleLease<T>(run: () => Promise<T>): Promise<T> {
+    const lease = await this.options.lifecycleLease?.({ workspacePath: this.options.workspacePath ?? process.cwd() });
+    this.lifecycleEffectsStarted = false;
+    let settled = false;
+    try {
+      const result = await run();
+      settled = true;
+      return result;
+    } finally {
+      if (this.implementationUnconfirmed || (!settled && this.lifecycleEffectsStarted)) lease?.retain("execution or external stop unconfirmed");
+      else await lease?.release();
+    }
+  }
+
+  private async runOnceAdmitted(): Promise<LoopRunResult> {
     const eventStartIndex = this.events.length;
     // Entry consult (R2.2): refuse before ANY discovery/execution work. Covers
     // the daemon session scheduler too, which drives each tick via runOnce().
@@ -499,6 +524,7 @@ export class LoopEngine {
 
     for (const task of tasks) {
       pending.shift();
+      this.lifecycleEffectsStarted = true;
       const taskResult = await this.runTask(loopId, workspacePath, task, completed);
       completed.push(taskResult.completedTask);
       decisions.push(...taskResult.decisions);
@@ -1209,6 +1235,7 @@ export class LoopEngine {
     const command = this.options.goalCommand;
     if (command === undefined || command.trim() === "") return undefined;
 
+    this.lifecycleEffectsStarted = true;
     const result = await runShellCommand(command, {
       cwd: workspacePath,
       timeoutMs: this.options.commandTimeoutMs ?? 120_000,
@@ -1239,6 +1266,7 @@ export class LoopEngine {
     decisions: string[],
   ): Promise<void> {
     if (this.options.useWorktree !== true || this.implementationUnconfirmed) return;
+    this.lifecycleEffectsStarted = true;
     const result = await cleanupOrphanedWorktrees(workspacePath, {
       branchPrefix: loopWorktreeBranchPrefix(loopId),
       ...(this.options.worktreeRoot !== undefined ? { rootPath: this.options.worktreeRoot } : {}),

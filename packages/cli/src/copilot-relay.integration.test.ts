@@ -1,3 +1,5 @@
+import { healthyAutonomyHealth } from "./test-healthy-autonomy.js";
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { connect } from "node:net";
 import { tmpdir } from "node:os";
@@ -58,7 +60,7 @@ function rpc(socketPath: string, method: string, params?: unknown): Promise<Reco
   });
 }
 
-function seed(handle: DaemonHandles, adapter: RelayAdapter): void {
+function seed(handle: DaemonHandles, adapter: RelayAdapter, home: string): void {
   const db = openDb({ path: handle.dbPath });
   try {
     insertTask(db, handle.dbPath, { task_id: "task-relay", title: "Relay", created_at: 1 });
@@ -71,7 +73,7 @@ function seed(handle: DaemonHandles, adapter: RelayAdapter): void {
       session_id: "session-relay", task_id: "task-relay", run_id: "run-relay",
       agent_id: adapter.id, request_sha256: "a".repeat(64),
       native_session_id: "native-codex-thread-secret",
-      repo_path: "/tmp/copilot-relay-repo", state: "idle",
+      repo_path: home, state: "idle",
       resume_supported: true, version: 2, updated_at: 2,
     });
     sessions.appendTurn({
@@ -87,6 +89,7 @@ function seed(handle: DaemonHandles, adapter: RelayAdapter): void {
 describe("Copilot Relay daemon restart contract", () => {
   it("resumes the same native session after restart and applies a Feishu message only once", async () => {
     const home = mkdtempSync(join(tmpdir(), "osstack-copilot-relay-"));
+    execFileSync("git", ["init", home], { stdio: "ignore" });
     homes.push(home);
     const socketPath = join(home, "daemon.sock");
     process.env["OSSTACK_HOME"] = home;
@@ -94,11 +97,11 @@ describe("Copilot Relay daemon restart contract", () => {
     process.env["OSSTACK_UPDATE_CHECK"] = "0";
     const adapter = new RelayAdapter();
 
-    let daemon = await startDaemon({ socketPath, adapters: [adapter] });
-    seed(daemon, adapter);
+    let daemon = await startDaemon({ socketPath, adapters: [adapter], autonomyHealth: async () => healthyAutonomyHealth() });
+    seed(daemon, adapter, home);
     await daemon.close();
 
-    daemon = await startDaemon({ socketPath, adapters: [adapter] });
+    daemon = await startDaemon({ socketPath, adapters: [adapter], autonomyHealth: async () => healthyAutonomyHealth() });
     const params = {
       session_id: "session-relay", runtime_id: adapter.id,
       turn_id: "turn-relay", message_id: "feishu-message-1",
@@ -107,7 +110,7 @@ describe("Copilot Relay daemon restart contract", () => {
     const applied = await rpc(socketPath, "session.send", params);
     await daemon.close();
 
-    daemon = await startDaemon({ socketPath, adapters: [adapter] });
+    daemon = await startDaemon({ socketPath, adapters: [adapter], autonomyHealth: async () => healthyAutonomyHealth() });
     const replay = await rpc(socketPath, "session.send", params);
     const snapshot = await rpc(socketPath, "session.snapshot", { session_id: "session-relay" });
     await daemon.close();
