@@ -1,8 +1,8 @@
 # OSStack 升级改造实施计划：Loop 强化与可执行 Graph v1
 
-日期：2026-09-13。检查基线：`b476bcc3fbbfcc11953abd3d154e59f7f85c4660`，分支 `codex/graph-readonly-pilot`。**状态：G00–G04 已实现并验收，完成 5/30 项；G05–G29 尚未开始，M0 尚未整体完成。尚未实现生产图运行时。**
+日期：2026-09-13。检查基线：`b476bcc3fbbfcc11953abd3d154e59f7f85c4660`，分支 `codex/graph-readonly-pilot`。**状态：G00–G07 任务实现/可行性验证完成，8/30；C2 内核准入未通过，因此 M0 尚未整体闭门。G08–G29 尚未开始，生产图运行时尚未实现。**
 
-实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；已验收代码：`de4a3bbebc48fc119d9aca41d547d60da773e8a2`。下一轮从这个工作区继续 G05–G07，勿在原 `graph-readonly-pilot` 检出中重做。见 [实施验收与接续报告](2026-09-13-graph-foundation-completion.md)。
+实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；本批已验收代码：`c1f461992a5967bbb9055f78f8e2cb648599d5c9`。先解决 C2 partial-abort 汇合反例，再按 G08→G09→G10 继续。见 [本批验收与接续报告](2026-09-13-graph-kernel-completion.md)、[Saver 决策与反例](graph-saver-decision.md)；[G00–G04 历史验收](2026-09-13-graph-foundation-completion.md) 保留原结论。
 
 本计划将 [架构设计](../design/2026-09-13-executable-graph-plan.md) 转成可逐项执行的任务，产品边界遵循 [三产品定义](../design/2026-09-13-os-products-definition.md)。OSBot 功能在 [独立 handoff](../handoffs/osbot/handoff.md) 交接；本计划只改造 OSStack，不部署 Rakazo，不修改 OStag 产品。
 
@@ -20,7 +20,7 @@ Loop 与 Graph 都获得具体提升：Loop 的终态、取消和候选执行接
 
 ## 2. 已核实基线和工程差距
 
-下表描述 `b476bcc` 实施前事实；G00–G04 的已交付变化以任务状态和验收报告为准。
+下表描述 `b476bcc` 实施前事实；G00–G07 的已交付变化以任务状态和验收报告为准。
 
 | 位置 | 当前事实 | 升级责任 |
 |---|---|---|
@@ -40,7 +40,7 @@ Loop 与 Graph 都获得具体提升：Loop 的终态、取消和候选执行接
 ## 3. 锁定的设计决定
 
 1. **产品范围**：内部编程强化；Graph 是 OSStack 模块，不创建 OSGraph 产品。
-2. **内核**：先用一个 LangGraph.js 后端；初始候选为研究验证的 1.4.15 及其依赖闭包，G06/G07 检查后固定 lock。不会自动切换到 latest，也不做多引擎通用层。
+2. **内核**：先用一个 LangGraph.js 后端；初始候选为研究验证的 1.4.15 及其依赖闭包，G06 已固定 lock；G07 发现 partial-abort 汇合恢复缺陷，当前 C2 未准入，详见 Saver 决策。不会自动切换到 latest，也不做多引擎通用层。
 3. **进程**：独立 graph worker；daemon 主线程不加载 LangGraph 重入口，包括 checkpoint 服务也不能暗中引入它。
 4. **包依赖**：graph → protocol + LangGraph；core → protocol；loop → 既有 core/agents/governance；cli 组装它们。graph 不 import loop/core/cli，动作通过 broker。
 5. **图结构**：注册节点和确定性路由，最多三 epoch 静态展开；第一版不接受任意 JS 或无限动态拓扑。
@@ -91,7 +91,7 @@ node 成功是交付合法结果，不代表代码通过。合法测试失败报
 
 - C0：G00–G02 后，终态/取消测试清楚，不把历史失败归咎于新实现。
 - C1：G03–G04 后，一次候选实现不合并、不重复评审。
-- C2：G05–G07 后，固定内核与公开 Saver 路线；失败先处理，不能直接跳到业务模板。
+- **C2：当前未通过。** G05–G07 卡片已完成，但 LangGraph 1.4.15 的 partial-abort 反例会漏掉 join。先验证公开修复/明确完成凭据；若不足，评估有限静态调度器。不得以实验 passed:true 替代内核准入，不直接跳到业务模板。
 - C3：G08–G10 后，run 身份、仓库锁和准入可复用。
 - C4：G11–G13 后，账本/预算和受控 checkpoint 能解释每个崩溃窗口。
 - C5：G14–G17 后，两节点链经重启恢复；G16 可以在依赖满足后独立进行。
@@ -249,7 +249,7 @@ flowchart TD
 
 ### G05 · 定义图边界契约
 
-**依赖：** G00。**规模：** M。**状态：** 未开始。
+**依赖：** G00。**规模：** M。**状态：** 已完成；见 [执行证据](graph-kernel-evidence/G05-executor.md) 和 [审查处理](graph-kernel-evidence/review-adjudication.md)。
 
 **预计改动位置：**
 
@@ -261,15 +261,15 @@ flowchart TD
 
 **验收：**
 
-- [ ] 定义 GraphSpec、范围、结果、错误、状态、预算及 WorkerActionRequest/Response，拒绝未知字段及未认证身份。
-- [ ] canonical inputDigest 排除 trace/time；idempotency 与 expectedRevision 语义固定。
-- [ ] 保持 protocol 的现有 Zod 3 和 JSON Schema 生成路线，不要求跨进程传 Zod/SDK 实例。
+- [x] 定义 GraphSpec、范围、结果、错误、状态、预算及 WorkerActionRequest/Response，拒绝未知字段及未认证身份。
+- [x] canonical inputDigest 排除 trace/time；idempotency 与 expectedRevision 语义固定。
+- [x] 保持 protocol 的现有 Zod 3 和 JSON Schema 生成路线，不要求跨进程传 Zod/SDK 实例。
 
 **验证：** `pnpm --filter @osstack/protocol test`；build 后 `pnpm --filter @osstack/protocol generate:schemas` 和 `check:schemas`。
 
 ### G06 · 建立独立图包入口
 
-**依赖：** G05。**规模：** M。**状态：** 未开始。
+**依赖：** G05。**规模：** M。**状态：** 已完成，见 [执行与验证证据](graph-kernel-evidence/G06-executor.md)。
 
 **预计改动位置：**
 
@@ -281,15 +281,15 @@ flowchart TD
 
 **验收：**
 
-- [ ] 只引入一套 LangGraph 内核，显式 worker 子入口；轻入口不导入重运行时。
-- [ ] 固定已研究的包版本后验证依赖闭包，记录 Node 20/22 与原生 SQLite 兼容性。
-- [ ] graph 不依赖 loop/core/cli；通过 protocol 与受控 RPC 交互，避免反向包依赖。
+- [x] 只引入一套 LangGraph 内核，显式 worker 子入口；轻入口不导入重运行时。
+- [x] 固定已研究的包版本后验证依赖闭包，记录 Node 20/22 与原生 SQLite 兼容性。
+- [x] graph 不依赖 loop/core/cli；通过 protocol 与受控 RPC 交互，避免反向包依赖。
 
 **验证：** `pnpm --filter @osstack/graph build` 与 `typecheck`；记录根入口/worker 入口分别的模块加载链。
 
 ### G07 · 验证公共 Saver 与序列化扩展
 
-**依赖：** G06。**规模：** M。**状态：** 未开始。
+**依赖：** G06。**规模：** M。**状态：** 已完成可行性验证（C2 准入未通过）。
 
 **预计改动位置：**
 
@@ -300,11 +300,13 @@ flowchart TD
 
 **验收：**
 
-- [ ] 覆盖 getTuple/list/put/putWrites 的完整字段、parent config、版本、pending writes 和错误通道。
-- [ ] 纯 JSON/受限字节编码不依赖引擎私有类；在独立临时进程验证持久恢复与 pending-write 语义。
-- [ ] 记录公开接口能否满足需求；失败须给最小反例和替代评估，禁止靠修改引擎内部掩盖。
+- [x] 覆盖 getTuple/list/put/putWrites 的完整字段、parent config、版本、pending writes 和错误通道。
+- [x] 纯 JSON/受限字节编码不依赖引擎私有类；在独立临时进程验证持久恢复与 pending-write 语义。
+- [x] 记录公开接口能否满足需求；失败须给最小反例和替代评估，禁止靠修改引擎内部掩盖。
 
 **验证：** `pnpm --filter @osstack/graph test`；运行新 `node scripts/probe-graph-saver.mjs`，必须在显式临时目录跨进程验证。
+
+**验收限定：** 公共 Saver、受限编码与跨进程恢复实验已交付；完整兄弟节点恢复成功，部分写入后中止可漏掉 join。按本卡要求保存反例和替代评估，不能据此宣布 M0 内核准入完成。
 
 ### G08 · 保存图身份和 worker 代际
 
@@ -747,7 +749,7 @@ flowchart TD
 | F02 | intent 已落、执行是否发出不明 | 对账/unknown，不未经证据重发 |
 | F03 | 外部动作完成、ledger 未确认 | 不宣称物理恰好一次，保留足够核对引用 |
 | F04 | ledger confirmed、checkpoint 未写 | 重放返回原结果，不启动第二次动作 |
-| F05 | 并行 pending writes 尚未完整 checkpoint | 已持久结果可恢复；丢失输出安全重放且经 ledger 去重 |
+| F05 | 并行 pending writes 尚未完整 checkpoint，含输出已写但 barrier 未写 | 完整任务不重跑；部分任务不得误判完成，join 恰好一次；外部效果经 ledger 去重。G07 已发现当前内核反例，须先关闭 C2 |
 | F06 | 旧 worker 在切代后 put/putWrites/action | 三条路径均拒绝；不能命中旧成功缓存绕过 |
 | F07 | 旧子进程继续写旧 worktree | 新代候选不污染；旧目录隔离保留 |
 | F08 | 运行中撤权、过期、跨 scope resume | 下一新动作不启动，授权请求定位正确 |
@@ -794,12 +796,12 @@ graph worker 启动、冷/热执行、checkpoint/IPC 和并行工作区准备成
 | 初始化/存储是否阻塞 RPC | G13/G14/G28 | 调整存储/IPC边界并复测，不放宽既有预算 |
 | 实际并行是否值得准备独立 worktree | G19/G28/G29 | 测量真实成本，允许减少并行；不牺牲证据版本和隔离 |
 
-## 13. 第一轮实施的明确起点
+## 13. 下一轮实施的明确起点
 
-G00–G04 已完成并由真实 OSStack 验收。下一批从 **G05 → G06 → G07** 开始：明确图边界契约，建立独立图包，再验证公共 Saver 与跨进程序列化。当前 `executeCandidateImplementation` 只证明一次实现完成；G16 才冻结候选，G18 以后才进入完整工程图。不要用 graph run 包装完整 legacy Loop 代替图节点，否则仍会重复评审并继承自动提交/合并生命周期。
+G00–G07 已完成其实现或验证任务，**8/30 不等于 M0 准入通过**。下一轮先处理 C2：重跑 `scripts/probe-graph-saver.mjs` 中 partial-abort 及官方 MemorySaver 对照，围绕“输出已持久化但完成通知缺失”验证公开修复与有限静态调度替代。成功必须让 join 恰好一次，且覆盖独立进程故障窗口，不能仅将预期失败包装成数据就宣布任意崩溃可恢复。关闭 C2 并更新决策后才继续 G08→G09→G10。
 
 可给实施会话的起始指令：
 
-> 在 `/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation` 的 `codex/graph-runtime-foundation` 分支继续。先读本计划、验收报告和机器任务清单，确认 G00–G04 已验收代码及当前用户改动。使用 OSStack 按 G05→G06→G07 做协议、独立图包与公共 Saver 准入，遵循项目 TDD/接口约定。执行控制器显式设 sources: []，仅传指定 inputTasks；通过 scripts/graph-test-env.mjs 建立新 OSSTACK_HOME。逐卡保存真实测试证据，不得接默认 DB、自动 merge/push/deploy，或提前宣称 M1/完整图运行时完成。
+> 在 `/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation` 的 `codex/graph-runtime-foundation` 分支继续。先读本计划、本批验收、Saver 决策和机器任务清单，确认已验收代码及用户改动。使用 OSStack 先完成 C2 内核准入复核；公开接口不能解决时提交有运行证据的有限静态调度器方案，不私改 LangGraph。解除决策门后按 G08→G09→G10 落 run/worker 身份、共享锁和准入。控制器显式 sources: []，仅指定 inputTasks；使用新 OSSTACK_HOME，逐卡保存真实证据，不接默认 DB，不自动 merge/push/deploy，不提前声称生产恢复链完成。
 
-本轮的交付是本计划与 OSBot handoff；不会仅因写出这段起始指令而自动开始生产代码改造。
+当前候选执行接口仍只证明一次实现完成；G16 才冻结候选，G18 后才进入完整工程图。不要用 graph run 包装完整 legacy Loop，否则会重复评审并继承自动提交/合并生命周期。

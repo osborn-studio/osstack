@@ -1,0 +1,56 @@
+{
+  "checks": [
+    {
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/graph",
+        "test"
+      ],
+      "exitCode": 0,
+      "log": "G07-codec-green.txt"
+    },
+    {
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/graph",
+        "typecheck"
+      ],
+      "exitCode": 0,
+      "log": "G07-typecheck.txt"
+    },
+    {
+      "command": [
+        "node",
+        "scripts/probe-graph-saver.mjs"
+      ],
+      "exitCode": 0,
+      "log": "G07-saver-green.json"
+    },
+    {
+      "command": [
+        "pnpm",
+        "exec",
+        "biome",
+        "check",
+        "packages/graph/src/checkpoint-codec.ts",
+        "packages/graph/src/checkpoint-codec.test.ts"
+      ],
+      "exitCode": 0,
+      "log": "G07-lint.txt"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exitCode": 0,
+      "log": "G07-diff-check.txt"
+    }
+  ],
+  "probeAssertions": 25,
+  "passed": true,
+  "productionReady": false
+}

@@ -1,0 +1,95 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol
+
+ ✓ src/session-continuation.test.ts (7 tests) 4ms
+ ✓ src/graph-review.test.ts (12 tests) 8ms
+ ✓ src/session-continuation-grant.test.ts (52 tests) 13ms
+ ✓ src/autonomy.test.ts (11 tests) 9ms
+ ✓ src/graph.test.ts (58 tests) 43ms
+ ✓ src/protocol.test.ts (45 tests) 18ms
+ ❯ src/schemas.test.ts (21 tests | 1 failed) 12ms
+   ✓ generated JSON Schemas are committed and fresh > emits one schema per public protocol contract 2ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/agent-command-result.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/agent-command.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/approval-decision.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/approval-request.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/autonomy-risk-decision.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/autonomy-risk-level.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/autonomy-run-state.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/continuation-grant-body.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/continuation-output-check.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/event-envelope.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/evidence-ref.schema.json matches the Zod source (zero drift) 0ms
+   × generated JSON Schemas are committed and fresh > schemas/graph.schema.json matches the Zod source (zero drift) 7ms
+     → expected '{\n  "$schema": "http://json-schema.o…' to be '{\n  "$schema": "http://json-schema.o…' // Object.is equality
+   ✓ generated JSON Schemas are committed and fresh > schemas/policy-decision.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/run-summary.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/scoped-approval-decision.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/scoped-approval-request.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/session-continuation-request.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/session-decision.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/signed-continuation-grant.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/task.schema.json matches the Zod source (zero drift) 0ms
+
+ Test Files  1 failed | 6 passed (7)
+      Tests  1 failed | 205 passed (206)
+   Start at  18:29:52
+   Duration  426ms (transform 571ms, setup 0ms, collect 949ms, tests 107ms, environment 1ms, prepare 385ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/protocol@0.15.0 test: `vitest run`
+Exit status 1
+$ vitest run
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/schemas.test.ts > generated JSON Schemas are committed and fresh > schemas/graph.schema.json matches the Zod source (zero drift)
+AssertionError: expected '{\n  "$schema": "http://json-schema.o…' to be '{\n  "$schema": "http://json-schema.o…' // Object.is equality
+
+- Expected
++ Received
+
+@@ -20,11 +20,11 @@
+            "properties": {
+              "taskRef": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+-               "pattern": "^[^\\s\\u0000-\\u001f\\u007f-\\u009f](?:[^\\u0000-\\u001f\\u007f-\\u009f]*[^\\s\\u0000-\\u001f\\u007f-\\u009f])?$"
++               "pattern": "^[^\\s\\u0000-\\u001f](?:[^\\u0000-\\u001f]*[^\\s\\u0000-\\u001f])?$"
+              },
+              "repositoryRef": {
+                "$ref": "#/properties/spec/properties/input/properties/taskRef"
+              },
+              "baseRevision": {
+@@ -1146,18 +1146,11 @@
+                      "state": {
+                        "type": "string",
+                        "const": "failed"
+                      },
+                      "error": {
+-                       "anyOf": [
+-                         {
+-                           "$ref": "#/properties/error/anyOf/0"
+-                         },
+-                         {
+-                           "$ref": "#/properties/error/anyOf/2"
+-                         }
+-                       ]
++                       "$ref": "#/properties/error"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "error"
+
+ ❯ src/schemas.test.ts:50:43
+     48|         true,
+     49|       );
+     50|       expect(readFileSync(path, "utf-8")).toBe(expected[filename]);
+       |                                           ^
+     51|     });
+     52|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

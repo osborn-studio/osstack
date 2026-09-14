@@ -1,0 +1,1 @@
+Supervisor completed pnpm install --no-frozen-lockfile successfully with working network. Runtime dependencies linked; pnpm-lock.yaml updated. 22 added / 2 removed; exact manifest versions retained. Continue graph build/tests. Full install log is G06-parent-install.txt in the temporary controller evidence directory.

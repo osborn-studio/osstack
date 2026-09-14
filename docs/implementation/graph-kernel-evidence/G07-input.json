@@ -1,0 +1,30 @@
+{
+  "id": "G07",
+  "task": {
+    "id": "G07",
+    "phase": "M0",
+    "title": "验证公共 Saver 与序列化扩展",
+    "dependsOn": [
+      "G06"
+    ],
+    "files": [
+      "packages/graph/src/checkpoint-codec.ts",
+      "packages/graph/src/checkpoint-codec.test.ts",
+      "scripts/probe-graph-saver.mjs",
+      "docs/implementation/graph-saver-decision.md"
+    ],
+    "acceptance": [
+      "覆盖 getTuple/list/put/putWrites 的完整字段、parent config、版本、pending writes 和错误通道。",
+      "纯 JSON/受限字节编码不依赖引擎私有类；在独立临时进程验证持久恢复与 pending-write 语义。",
+      "记录公开接口能否满足需求；失败须给最小反例和替代评估，禁止靠修改引擎内部掩盖。"
+    ],
+    "verify": "SAVER_SPIKE",
+    "size": "M",
+    "status": "in_progress"
+  },
+  "prompt": "You are the coding executor dispatched by OSStack LoopEngine. Implement ONLY G07 in /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation. Read AGENTS.md, docs/implementation/2026-09-13-osstack-graph-upgrade.md, docs/implementation/2026-09-13-graph-foundation-completion.md, docs/design/2026-09-13-executable-graph-plan.md. Parent supervisor handles task status, commits, independent review and full validation. Do not spawn nested agents/loops, commit/push/merge/deploy, modify AGENTS.md, access default OSSTACK_HOME or sibling repos. All CLI/DB/tests must use inherited explicit home or scripts/graph-test-env.mjs. Use TDD and keep RED/GREEN logs under /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-graph-kernel-z3zisd4r/evidence; preserve concise evidence MD inside specified evidence directory. Do not modify task plan/JSON status. Parent may write docs/implementation/graph-kernel-evidence/review-followup.md while you work; read it before final validation. Concrete task: {\"id\":\"G07\",\"phase\":\"M0\",\"title\":\"验证公共 Saver 与序列化扩展\",\"dependsOn\":[\"G06\"],\"files\":[\"packages/graph/src/checkpoint-codec.ts\",\"packages/graph/src/checkpoint-codec.test.ts\",\"scripts/probe-graph-saver.mjs\",\"docs/implementation/graph-saver-decision.md\"],\"acceptance\":[\"覆盖 getTuple/list/put/putWrites 的完整字段、parent config、版本、pending writes 和错误通道。\",\"纯 JSON/受限字节编码不依赖引擎私有类；在独立临时进程验证持久恢复与 pending-write 语义。\",\"记录公开接口能否满足需求；失败须给最小反例和替代评估，禁止靠修改引擎内部掩盖。\"],\"verify\":\"SAVER_SPIKE\",\"size\":\"M\",\"status\":\"in_progress\"}. Verify public BaseCheckpointSaver extension and restricted checkpoint codec, using installed pinned public package sources and official docs. Create production-usable bounded deterministic codec for JSON/explicit restricted bytes; reject class instances/functions/undefined/nonfinite/prototype hazards/unbounded depth and allocation before deserializing. Do not lose reserved __error__, interrupt, resume, pending-write semantics. All engine-required checkpoint fields, parent config, versions_seen/channel_versions, metadata, task/channel tuples, putWrites indexes and retry/overwrite behavior need evidence. Build scripts/probe-graph-saver.mjs using a test-only persistent facade over public BaseCheckpointSaver and JSON wire; must start separate temporary processes, persist checkpoint + pending writes, recover failed parallel superstep without rerunning completed sibling, prove data not inherited in memory. Use public exports only, no private engine patches. No production DB/checkpointer RPC/worker manager yet; keep probe adapter clearly test-only. Ensure temp ownership/safe cleanup, result JSON records each assertion, nonzero on failure. Add codec tests RED first and docs/implementation/graph-saver-decision.md with versioned method/signature coverage, error channels, serializer restrictions, smallest failures/alternatives if public seam insufficient. Evidence doc docs/implementation/graph-kernel-evidence/G07-executor.md. Parent handles final adversarial review. Scope packages/graph codec + tests, probe script, decision/evidence docs.",
+  "verify": "pnpm --filter @osstack/graph build && pnpm --filter @osstack/graph typecheck && pnpm --filter @osstack/graph test && node scripts/probe-graph-saver.mjs",
+  "workspace": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
+  "controllerBaseline": "360e226",
+  "sources": []
+}

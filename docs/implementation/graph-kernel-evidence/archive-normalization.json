@@ -1,0 +1,8 @@
+{
+  "operation": "Trailing whitespace/final newline only in named text archives; raw temp files unchanged. JSON logs were not normalized. Do not compare normalized text bytes against any raw-log hashes.",
+  "files": [
+    "G07-byte-accessor-red.txt",
+    "G07-codec-red.txt",
+    "claude-g05-prompt.txt"
+  ]
+}

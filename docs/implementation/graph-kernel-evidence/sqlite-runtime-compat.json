@@ -1,0 +1,26 @@
+[
+  {
+    "runtime": "node20",
+    "installExit": 0,
+    "smokeExit": 0,
+    "result": {
+      "node": "v20.20.2",
+      "abi": "115",
+      "sqlitePackage": "12.10.0",
+      "nativeRoundtrip": true,
+      "scope": "isolated in-memory SQLite smoke; not complete OSStack compatibility"
+    }
+  },
+  {
+    "runtime": "node22",
+    "installExit": 0,
+    "smokeExit": 0,
+    "result": {
+      "node": "v22.22.1",
+      "abi": "127",
+      "sqlitePackage": "12.10.0",
+      "nativeRoundtrip": true,
+      "scope": "isolated in-memory SQLite smoke; not complete OSStack compatibility"
+    }
+  }
+]

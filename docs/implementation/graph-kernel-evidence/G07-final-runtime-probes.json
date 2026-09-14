@@ -1,0 +1,23 @@
+[
+  {
+    "runtime": "node20",
+    "exitCode": 0,
+    "log": "G07-node20-probe.json",
+    "assertions": 25,
+    "productionReady": false
+  },
+  {
+    "runtime": "node22",
+    "exitCode": 0,
+    "log": "G07-node22-probe.json",
+    "assertions": 25,
+    "productionReady": false
+  },
+  {
+    "runtime": "node20floor",
+    "exitCode": 0,
+    "log": "G07-node20floor-probe.json",
+    "assertions": 25,
+    "productionReady": false
+  }
+]

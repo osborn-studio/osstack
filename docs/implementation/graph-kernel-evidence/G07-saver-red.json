@@ -1,0 +1,31 @@
+{
+  "testOnly": true,
+  "node": "v26.5.0",
+  "versions": {
+    "langgraph": "1.4.15",
+    "checkpoint": "1.1.5",
+    "core": "1.2.11"
+  },
+  "parentPid": 93128,
+  "phases": [
+    {
+      "phase": "contract-write",
+      "pid": 93129,
+      "assertions": [
+        {
+          "name": "missing getTuple and inherited get return undefined",
+          "passed": false,
+          "error": "Error: RED: persistent public saver transport not implemented"
+        }
+      ],
+      "passed": false,
+      "exitCode": 1,
+      "signal": null,
+      "stderr": "Error: RED: persistent public saver transport not implemented\n    at TestOnlyPersistentSaver.rpc (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-saver.mjs:56:17)\n    at TestOnlyPersistentSaver.getTuple (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-saver.mjs:57:39)\n    at file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-saver.mjs:83:30\n    at check (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-saver.mjs:23:15)\n    at contractWrite (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-saver.mjs:82:9)\n    at child (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-saver.mjs:199:41)\n    at main (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-saver.mjs:275:17)\n    at file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-saver.mjs:317:7\n"
+    }
+  ],
+  "assertions": [],
+  "passed": false,
+  "cleaned": true,
+  "error": "AssertionError [ERR_ASSERTION]: contract-write failed\n\n1 !== 0\n"
+}

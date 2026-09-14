@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol
+
+ ✓ src/graph-review.test.ts (9 tests) 7ms
+ ✓ src/graph.test.ts (58 tests) 32ms
+
+ Test Files  2 passed (2)
+      Tests  67 passed (67)
+   Start at  17:55:52
+   Duration  415ms (transform 139ms, setup 0ms, collect 185ms, tests 39ms, environment 0ms, prepare 91ms)

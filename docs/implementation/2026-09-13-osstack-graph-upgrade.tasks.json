@@ -186,7 +186,9 @@
         "packages/protocol/src/graph.test.ts",
         "packages/protocol/src/index.ts",
         "packages/protocol/src/generate.ts",
-        "packages/protocol/schemas/graph.schema.json"
+        "packages/protocol/schemas/graph.schema.json",
+        "packages/protocol/src/graph-review.test.ts",
+        "packages/protocol/src/schemas.test.ts"
       ],
       "acceptance": [
         "定义 GraphSpec、范围、结果、错误、状态、预算及 WorkerActionRequest/Response，拒绝未知字段及未认证身份。",
@@ -195,7 +197,14 @@
       ],
       "verify": "PROTOCOL",
       "size": "M",
-      "status": "pending"
+      "status": "completed",
+      "implementationCommit": "8f94aa91601b75cd5b678d186baefcfe3e742b65",
+      "evidence": [
+        "docs/implementation/graph-kernel-evidence/G05-executor.md",
+        "docs/implementation/graph-kernel-evidence/G05-STATE.md",
+        "docs/implementation/graph-kernel-evidence/claude-g05-review.md"
+      ],
+      "followupCommit": "c1f461992a5967bbb9055f78f8e2cb648599d5c9"
     },
     {
       "id": "G06",
@@ -209,7 +218,9 @@
         "packages/graph/tsconfig.json",
         "packages/graph/src/index.ts",
         "packages/graph/src/worker-entry.ts",
-        "pnpm-lock.yaml"
+        "pnpm-lock.yaml",
+        "packages/graph/src/package-entry.test.ts",
+        "packages/graph/src/worker-entry.test.ts"
       ],
       "acceptance": [
         "只引入一套 LangGraph 内核，显式 worker 子入口；轻入口不导入重运行时。",
@@ -218,7 +229,14 @@
       ],
       "verify": "GRAPH_BUILD",
       "size": "M",
-      "status": "pending"
+      "status": "completed",
+      "implementationCommit": "864c031d1b030dc12cd615dbab68dda14d54fa33",
+      "evidence": [
+        "docs/implementation/graph-kernel-evidence/G06-executor.md",
+        "docs/implementation/graph-kernel-evidence/G06-STATE.md",
+        "docs/implementation/graph-kernel-evidence/node-floor-smoke.json"
+      ],
+      "followupCommit": "c1f461992a5967bbb9055f78f8e2cb648599d5c9"
     },
     {
       "id": "G07",
@@ -231,7 +249,9 @@
         "packages/graph/src/checkpoint-codec.ts",
         "packages/graph/src/checkpoint-codec.test.ts",
         "scripts/probe-graph-saver.mjs",
-        "docs/implementation/graph-saver-decision.md"
+        "docs/implementation/graph-saver-decision.md",
+        "packages/graph/package.json",
+        "packages/graph/src/worker-entry.ts"
       ],
       "acceptance": [
         "覆盖 getTuple/list/put/putWrites 的完整字段、parent config、版本、pending writes 和错误通道。",
@@ -240,7 +260,15 @@
       ],
       "verify": "SAVER_SPIKE",
       "size": "M",
-      "status": "pending"
+      "status": "completed",
+      "completedAt": "2026-09-13",
+      "implementationCommit": "c1f461992a5967bbb9055f78f8e2cb648599d5c9",
+      "evidence": [
+        "docs/implementation/graph-kernel-evidence/G07-result.json",
+        "docs/implementation/graph-kernel-evidence/acceptance-result.json",
+        "docs/implementation/graph-saver-decision.md"
+      ],
+      "qualification": "可行性验证完成；保留 partial-abort 反例和替代评估，C2 内核准入未通过。"
     },
     {
       "id": "G08",
@@ -263,7 +291,10 @@
       ],
       "verify": "CORE",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G09",
@@ -286,7 +317,10 @@
       ],
       "verify": "LOCKS",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G10",
@@ -310,7 +344,10 @@
       ],
       "verify": "ADMISSION",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G11",
@@ -331,7 +368,10 @@
       ],
       "verify": "CORE",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G12",
@@ -355,7 +395,10 @@
       ],
       "verify": "BROKER",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G13",
@@ -380,7 +423,10 @@
       ],
       "verify": "CHECKPOINT",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G14",
@@ -403,7 +449,10 @@
       ],
       "verify": "WORKER",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G15",
@@ -425,7 +474,10 @@
       ],
       "verify": "RECOVERY",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G16",
@@ -451,7 +503,10 @@
       ],
       "verify": "ARTIFACTS",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G17",
@@ -473,7 +528,10 @@
       ],
       "verify": "CHAIN",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G18",
@@ -497,7 +555,10 @@
       ],
       "verify": "GRAPH",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G19",
@@ -522,7 +583,10 @@
       ],
       "verify": "GRAPH",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G20",
@@ -545,7 +609,10 @@
       ],
       "verify": "GRAPH",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G21",
@@ -567,7 +634,10 @@
       ],
       "verify": "DELIVERY",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G22",
@@ -590,7 +660,10 @@
       ],
       "verify": "CLI_GRAPH",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G23",
@@ -613,7 +686,10 @@
       ],
       "verify": "CLI_GRAPH",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G24",
@@ -635,7 +711,10 @@
       ],
       "verify": "CONTRACT",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G25",
@@ -657,7 +736,10 @@
       ],
       "verify": "FAULTS",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G26",
@@ -679,7 +761,10 @@
       ],
       "verify": "COMPAT",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G27",
@@ -701,7 +786,10 @@
       ],
       "verify": "RELEASE",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G28",
@@ -723,7 +811,10 @@
       ],
       "verify": "PERF",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     },
     {
       "id": "G29",
@@ -745,21 +836,47 @@
       ],
       "verify": "PILOT",
       "size": "M",
-      "status": "pending"
+      "status": "pending",
+      "requiresDecisionGates": [
+        "C2"
+      ]
     }
   ],
   "updatedAt": "2026-09-13",
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "de4a3bbebc48fc119d9aca41d547d60da773e8a2",
-    "completedTaskCount": 5,
+    "acceptedCodeCommit": "c1f461992a5967bbb9055f78f8e2cb648599d5c9",
+    "completedTaskCount": 8,
     "totalTaskCount": 30,
-    "nextTasks": [
-      "G05",
-      "G06",
-      "G07"
+    "nextTasks": [],
+    "report": "docs/implementation/2026-09-13-graph-kernel-completion.md",
+    "nextGate": "C2",
+    "queuedTasksAfterGate": [
+      "G08",
+      "G09",
+      "G10"
     ],
-    "report": "docs/implementation/2026-09-13-graph-foundation-completion.md"
-  }
+    "milestoneStatus": {
+      "M0": "implementation_complete_admission_blocked",
+      "M1": "pending",
+      "M2": "pending",
+      "M3": "pending"
+    }
+  },
+  "decisionGates": [
+    {
+      "id": "C2",
+      "status": "blocked",
+      "reason": "LangGraph 1.4.15 partial-abort 可持久化输出却缺失 AND barrier 通知；恢复后 join 不执行，官方 MemorySaver 也可复现。",
+      "evidence": "docs/implementation/graph-saver-decision.md",
+      "nextAction": "在隔离环境用最小反例验证公开修复/明确完成凭据方案；不足则评估有限静态调度器。不得修改引擎私有实现掩盖，闭门前不进入业务模板/生产恢复链。",
+      "releaseCriteria": [
+        "最小反例恢复后 join 恰好执行一次且结果完整",
+        "部分写入/超时/异常/worker 退出的独立进程故障矩阵通过",
+        "已确认外部效果保持账本去重设计，不以盲目重跑绕过",
+        "Node20/22 与版本/序列化回归通过并更新公开接口决策"
+      ]
+    }
+  ]
 }

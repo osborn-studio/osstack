@@ -1,0 +1,18 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {LoopEngine} from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/loop/dist/index.js';
+const workspace='/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation';
+const base=readFileSync('/tmp/osstack-graph-kernel-current-path.txt','utf8').trim();
+process.env.OSSTACK_HOME=base+'/home';
+const evidence=base+'/evidence';
+const checks=[
+ ['workspace-tests','pnpm -r --no-bail --workspace-concurrency=1 test --maxWorkers=2'],
+ ['typecheck','pnpm typecheck:check'],
+ ['schemas','pnpm --filter @osstack/protocol check:schemas'],
+ ['startup','node scripts/bench-cli-startup.mjs'],
+ ['lint','pnpm exec biome check packages/protocol/src/graph.ts packages/protocol/src/graph.test.ts packages/protocol/src/graph-review.test.ts packages/protocol/src/index.ts packages/protocol/src/generate.ts packages/graph/src'],
+ ['diff','git diff --check'],
+];
+const result=await new LoopEngine({loopId:'graph-kernel-acceptance',workspacePath:workspace,stateFilePath:evidence+'/acceptance-LOOP-STATE.json',markdownPath:evidence+'/acceptance-STATE.md',sources:[],inputTasks:[{task_id:'graph-kernel-acceptance',capability:'code.test',priority:90,source:'manual',prompt:'Validate G05-G07: real public Saver across temporary processes, all package tests, types, schema freshness and unchanged startup budgets.'}],executeCommand:`node scripts/probe-graph-saver.mjs > ${evidence}/accepted-saver.json 2> ${evidence}/accepted-saver-stderr.txt`,verifyCommands:checks.map(([name,cmd])=>`${cmd} > ${evidence}/accepted-${name}.txt 2>&1`),commandTimeoutMs:240000,maxIterations:1,useWorktree:false,skipCompletedTasks:false,lessonDrafts:{enabled:false},policyGate:async({workspacePath})=>workspacePath===workspace?{allow:true}:{allow:false,reason:'Workspace mismatch'}}).runOnce();
+writeFileSync(evidence+'/acceptance-result.json',JSON.stringify(result,null,2));
+console.log(JSON.stringify({completed:result.completedTasks,discovered:result.discoveredTaskCount,executed:result.executedTaskCount,state:result.markdownPath},null,2));
+process.exitCode=result.discoveredTaskCount===1&&result.executedTaskCount===1&&result.completedTasks.length===1&&result.completedTasks[0].outcome==='success'?0:2;
