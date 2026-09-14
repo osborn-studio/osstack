@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { CapabilitySchema, GraphActionStore, GraphRunStore, openDb, type GraphRun } from "@osstack/core";
 import { FifoSemaphore } from "@osstack/autonomy";
 import type { AgentAdapter, AgentTask } from "@osstack/agents";
@@ -132,16 +132,99 @@ it.each(['same', 'different'])('never settles an already-running effect (%s exec
   let invokes = 0;
   const adapter = actor(async function* (task) { invokes++; yield done(task); });
   const f = fixture(adapter);
-  adapter.isAvailable = async () => {
-    const row = f.db.prepare('SELECT effect_key FROM graph_actions').get() as { effect_key: string };
-    const current = f.runs.get(scope, f.run.graphRunId)!;
-    new GraphActionStore(f.db).markRunning(fence(current), row.effect_key, reference === 'same' ? `graph-execution:${row.effect_key}` : 'other-trusted-executor');
-    return { available: true, last_checked_at: 0 };
-  };
-  // Registration snapshots method bindings, so register after replacing the probe.
-  const connection = {}; f.broker.register(connection, f.registration);
-  expect(await f.broker.handle(connection, f.request)).toMatchObject({ outcome: { state: 'unknown' } });
+  const real = GraphActionStore.prototype.markRunning;
+  const race = vi.spyOn(GraphActionStore.prototype, 'markRunning').mockImplementationOnce(function (this: GraphActionStore, currentFence, key, executionRef) {
+    const started = real.call(this, currentFence, key, reference === 'same' ? executionRef : 'other-trusted-executor');
+    return real.call(this, { ...currentFence, expectedRevision: started.run.revision }, key, executionRef);
+  });
+  try { expect(await f.broker.handle(f.connection, f.request)).toMatchObject({ outcome: { state: 'unknown' } }); }
+  finally { race.mockRestore(); }
   expect(invokes).toBe(0);
   expect(f.db.prepare('SELECT state, retry_safe FROM graph_actions').get()).toEqual({ state: 'unknown', retry_safe: 0 });
   expect(f.writes.in_use).toBe(1);
+});
+it('retires a supervised connection while its availability probe is pending', async () => {
+  let proceed!: () => void; let probed = false; let invokes = 0;
+  const adapter = actor(async function* (task) { invokes++; yield done(task); });
+  adapter.isAvailable = async () => { probed = true; await new Promise<void>(resolve => { proceed = resolve; }); return { available: true, last_checked_at: 0 }; };
+  const f = fixture(adapter); const pending = f.broker.handle(f.connection, f.request);
+  await expect.poll(() => probed).toBe(true);
+  f.broker.unregister(f.connection); proceed();
+  expect(await pending).toMatchObject({ kind: 'worker_action_rejected' });
+  expect(invokes).toBe(0); expect(f.writes.in_use).toBe(0);
+  expect(() => f.broker.register(f.connection, f.registration)).toThrow('retired');
+});
+it('keeps uncertain admission until its exact effect receives trusted release verification', async () => {
+  const f = fixture(actor(async function* (task) { yield done(task); })); const connection = {};
+  f.broker.register(connection, { ...f.registration, actions: f.registration.actions.map(a => ({ ...a, persist: async () => { throw new Error('lost receipt'); } })) });
+  const response = await f.broker.handle(connection, f.request);
+  expect(response).toMatchObject({ outcome: { state: 'unknown' } });
+  const row = f.db.prepare('SELECT effect_key FROM graph_actions').get() as { effect_key: string };
+  await expect(f.broker.releaseReconciled(row.effect_key, async () => { throw new Error('not reconciled'); })).rejects.toThrow('not reconciled');
+  expect(f.writes.in_use).toBe(1);
+  await expect(f.broker.releaseReconciled(row.effect_key, async binding => {
+    expect(binding).toMatchObject({ effectKey: row.effect_key, graphRunId: f.run.graphRunId, workspacePath: f.repo });
+  })).resolves.toBe(true);
+  expect(f.writes.in_use).toBe(0);
+  // This host-only resource port cannot settle the ledger or authorize a retry.
+  expect(f.db.prepare('SELECT state FROM graph_actions').get()).toEqual({ state: 'unknown' });
+  await expect(f.broker.releaseReconciled(row.effect_key, async () => {})).resolves.toBe(false);
+});
+it('executes an explicitly host-authorized retry once while ordinary worker replay stays inert', async () => {
+  let invokes = 0; const f = fixture(actor(async function* (task) { invokes++; yield done(task); }));
+  f.revokePolicy(); expect(await f.broker.handle(f.connection, f.request)).toMatchObject({ kind: 'worker_action_rejected' });
+  const row = f.db.prepare('SELECT effect_key FROM graph_actions').get() as { effect_key: string };
+  const broker = new GraphActionBroker(f.db, { ...f.options, authorizePolicy: async () => {} });
+  const connection = {}; broker.register(connection, f.registration);
+  expect(await broker.handle(connection, f.request)).toMatchObject({ outcome: { state: 'failed' } });
+  expect(invokes).toBe(0);
+  expect(await broker.retryAuthorized(connection, row.effect_key, () => {})).toMatchObject({ outcome: { state: 'confirmed' }, effect: { logicalAttempt: 2 } });
+  expect(await broker.handle(connection, f.request)).toMatchObject({ outcome: { state: 'confirmed' } });
+  expect(invokes).toBe(1);
+  await expect(broker.retryAuthorized(connection, row.effect_key, () => {})).rejects.toThrow();
+});
+it('persists the actual adapter run identity before invoking the producer', async () => {
+  let executionRef = ''; let runId = '';
+  const f = fixture(actor(async function* (task) {
+    runId = task.run_id;
+    executionRef = (f.db.prepare('SELECT execution_ref FROM graph_actions').get() as { execution_ref: string }).execution_ref;
+    yield done(task);
+  }));
+  expect(await f.broker.handle(f.connection, f.request)).toMatchObject({ outcome: { state: 'confirmed' } });
+  expect(executionRef).toContain(runId); expect(runId).not.toBe('');
+});
+
+it('retains the exact lease when release fails after a confirmed effect, without replacing its outcome', async () => {
+  let invokes = 0;
+  const f = fixture(actor(async function* (task) { invokes++; yield done(task); }));
+  const broker = new GraphActionBroker(f.db, { ...f.options, acquire: async input => {
+    const lease = await f.admission.acquire(input);
+    return { ...lease, release: async () => { lease.retain('injected lock release failure'); throw new Error('injected lock release failure'); } };
+  } });
+  const connection = {}; broker.register(connection, f.registration);
+  await expect(broker.handle(connection, f.request)).rejects.toThrow('injected lock release failure');
+  const row = f.db.prepare('SELECT effect_key, state, outcome_json FROM graph_actions').get() as { effect_key: string; state: string; outcome_json: string };
+  expect(row.state).toBe('confirmed'); expect(f.writes.in_use).toBe(1);
+  expect(await broker.releaseReconciled(row.effect_key, async () => {})).toBe(true);
+  expect(f.writes.in_use).toBe(0);
+  expect(await broker.handle(connection, f.request)).toMatchObject({ outcome: { state: 'confirmed' } });
+  expect(invokes).toBe(1);
+  expect(f.db.prepare('SELECT outcome_json FROM graph_actions').get()).toEqual({ outcome_json: row.outcome_json });
+});
+
+it('rechecks explicit retry authority after adapter availability and before a new physical invocation', async () => {
+  let invokes = 0; let retryAllowed = true;
+  const adapter = actor(async function* (task) { invokes++; yield done(task); });
+  const f = fixture(adapter); let policyAllowed = false;
+  const broker = new GraphActionBroker(f.db, { ...f.options, authorizePolicy: async () => { if (!policyAllowed) throw new Error('policy denied'); } });
+  const connection = {}; broker.register(connection, f.registration);
+  await broker.handle(connection, f.request);
+  const row = f.db.prepare('SELECT effect_key FROM graph_actions').get() as { effect_key: string };
+  policyAllowed = true;
+  // The broker captures adapter methods at registration; a separate connection
+  // supplies the asynchronous availability window for the authorized retry.
+  adapter.isAvailable = async () => { retryAllowed = false; return { available: true, last_checked_at: 0 }; };
+  const retryConnection = {}; broker.register(retryConnection, f.registration);
+  expect(await broker.retryAuthorized(retryConnection, row.effect_key, () => { if (!retryAllowed) throw new Error('retry grant revoked'); })).toMatchObject({ kind: 'worker_action_rejected' });
+  expect(invokes).toBe(0); expect(f.writes.in_use).toBe(0);
 });

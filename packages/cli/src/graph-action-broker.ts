@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { isAbsolute } from "node:path";
 import type Database from "better-sqlite3";
+import type { GraphArtifactStore, GraphFreezeInput, GraphFreezeAuthority } from "@osstack/core/graph-artifacts";
 import { CapabilitySchema, GraphActionStore, GraphRunStore, type GraphRunFence, type GraphProgramIdentity,
   type GraphAction } from "@osstack/core";
 import { GraphResult, GraphScope, WorkerActionRequest, WorkerActionResponse,
@@ -16,6 +17,7 @@ export interface GraphActionEvidence {
   candidate?: CandidateExecutionResult;
   command?: CommandResult;
   workspace?: unknown;
+  frozenCandidate?: Extract<GraphResult, { kind: "candidate_ready" }>;
 }
 export interface PersistedGraphActionEvidence {
   evidenceRef: string;
@@ -23,6 +25,7 @@ export interface PersistedGraphActionEvidence {
   actualTokens?: number;
 }
 type RegisteredExecution =
+  | { kind: "freeze"; store: Pick<GraphArtifactStore, "freeze">; input: GraphFreezeInput; authority: Omit<GraphFreezeAuthority, "lease"> }
   | { kind: "adapter"; plan: ExecutionPlan; adapter: AgentAdapter; capabilityId: string }
   | { kind: "command"; plan: ExecutionPlan; command: string }
   | { kind: "workspace"; handler: (input: { workspace: RegisteredCandidateWorkspace; signal: AbortSignal }) => Promise<{
@@ -48,6 +51,10 @@ export interface GraphWorkerRegistration {
   /** Synchronous host revocation check, including immediately before physical effects. */
   authorize: () => void;
   actions: readonly GraphRegisteredAction[];
+}
+export interface GraphRetainedAction {
+  effectKey: string; scope: GraphScope; graphRunId: string; generation: number;
+  owner: string; workspacePath: string;
 }
 export interface GraphActionBrokerOptions {
   acquire: (input: AdmissionInput) => Promise<ExecutionLease>;
@@ -94,6 +101,8 @@ function errorCode(error: unknown): GraphErrorCode {
  * each action; callers must NOT hold a whole-run lease around this port. */
 export class GraphActionBroker {
   private readonly connections = new WeakMap<object, Binding>();
+  private readonly retired = new WeakSet<object>();
+  private readonly retained = new Map<string, { lease: ExecutionLease; context: GraphRetainedAction }>();
   private readonly runs: GraphRunStore;
   private readonly actions: GraphActionStore;
   constructor(db: Database.Database, private readonly options: GraphActionBrokerOptions) {
@@ -101,6 +110,7 @@ export class GraphActionBroker {
   }
 
   register(connection: object, input: GraphWorkerRegistration): void {
+    if (this.retired.has(connection)) throw new Error("worker connection retired");
     if (this.connections.has(connection)) throw new Error("worker connection already registered");
     const { actions, authorize, ...data } = input;
     const fixed = snapshot(data);
@@ -115,10 +125,20 @@ export class GraphActionBroker {
       WorkerActionRequest.parse({ schemaVersion: 1, kind: "worker_action", requestId: "registration", scope: fixed.scope,
         graphRunId: fixed.graphRunId, specHash: fixed.identity.specHash, generation: fixed.generation, epoch: fixed.epoch,
         nodeId: copy.nodeId, effectSlot: copy.effectSlot, action: copy.action });
-      if (copy.action.kind === "freeze" || typeof persist !== "function") throw new Error("unsupported graph action");
+      if (typeof persist !== "function") throw new Error("unsupported graph action");
       if (!Number.isSafeInteger(copy.tokenReservation) || copy.tokenReservation < 0) throw new Error("invalid token reservation");
       let selected: RegisteredExecution; let access: "read" | "write" = "write";
-      if (execution.kind === "workspace") {
+      if (execution.kind === "freeze") {
+        if (copy.action.kind !== "freeze" || typeof execution.store?.freeze !== "function") throw new Error("unsupported freeze registration");
+        const input = snapshot(execution.input);
+        if (canonical(input.scope) !== canonical(fixed.scope) || input.runId !== fixed.graphRunId || input.generation !== fixed.generation
+          || input.owner !== fixed.owner || input.worktreePath !== fixed.workspace.workspace_path
+          || input.workspaceLeaseRef !== copy.action.workspaceLeaseRef || input.implementationReceiptRef !== copy.action.receiptRef) throw new Error("freeze registration identity mismatch");
+        const { verifyLease, verifyImplementationReceipt, verifyProducersStopped } = execution.authority;
+        if ([verifyLease, verifyImplementationReceipt, verifyProducersStopped].some(fn => typeof fn !== "function")) throw new Error("freeze authority required");
+        selected = Object.freeze({ kind: "freeze", input, store: Object.freeze({ freeze: execution.store.freeze.bind(execution.store) }),
+          authority: Object.freeze({ verifyLease, verifyImplementationReceipt, verifyProducersStopped }) });
+      } else if (execution.kind === "workspace") {
         if (!["workspace_create", "workspace_release"].includes(copy.action.kind) || typeof execution.handler !== "function") throw new Error("unsupported workspace handler");
         selected = Object.freeze({ kind: "workspace", handler: execution.handler });
       } else {
@@ -155,6 +175,22 @@ export class GraphActionBroker {
     this.connections.set(connection, binding);
   }
 
+  unregister(connection: object): void {
+    this.connections.delete(connection);
+    this.retired.add(connection);
+  }
+
+  /** Trusted recovery service only. Commit the decision before verifying/releasing;
+   * this method deliberately cannot mutate outcomes or allocate another attempt. */
+  async releaseReconciled(effectKey: string, verify: (context: GraphRetainedAction) => Promise<void>): Promise<boolean> {
+    const entry = this.retained.get(effectKey);
+    if (!entry) return false;
+    if (!entry.lease.releaseAfterReconciliation) throw new Error("lease reconciliation unsupported");
+    await entry.lease.releaseAfterReconciliation(() => verify(snapshot(entry.context)));
+    this.retained.delete(effectKey);
+    return true;
+  }
+
   private authorize(binding: Binding): void {
     const result: unknown = binding.authorize();
     if (result !== undefined) {
@@ -176,7 +212,33 @@ export class GraphActionBroker {
       expectedGeneration: binding.generation, expectedOwner: binding.owner, expectedRevision: run.revision, now };
   }
 
-  async handle(connection: object, value: unknown, options: { signal?: AbortSignal } = {}): Promise<WorkerActionResponse> {
+  handle(connection: object, value: unknown, options: { signal?: AbortSignal } = {}): Promise<WorkerActionResponse> {
+    return this.executeRequest(connection, value, options);
+  }
+
+  /** Trusted host command, never part of worker transport. Only this call owns the
+   * freshly ledger-allocated retry intent; ordinary replays cannot claim it. */
+  async retryAuthorized(connection: object, effectKey: string, authorizeRetry: () => void,
+    options: { signal?: AbortSignal } = {}): Promise<WorkerActionResponse> {
+    const binding = this.connections.get(connection);
+    if (!binding) throw new Error("UNAUTHENTICATED");
+    this.authorize(binding);
+    const permitted: unknown = authorizeRetry();
+    if (permitted !== undefined) {
+      void Promise.resolve(permitted).catch(() => {});
+      throw new Error("invalid synchronous retry authority");
+    }
+    if (options.signal?.aborted) throw new Error("retry cancelled");
+    const prior = this.actions.get(this.fence(binding), effectKey).action;
+    const registered = binding.actions.get(slot(prior.effect.nodeId, prior.effect.effectSlot));
+    if (!registered || prior.effect.epoch !== binding.epoch || canonical(registered.action) !== canonical(prior.action)) throw new Error("unregistered retry slot");
+    const next = this.actions.retry(this.fence(binding), effectKey).action;
+    return this.executeRequest(connection, { schemaVersion: 1, kind: "worker_action", requestId: `retry:${randomUUID()}`,
+      scope: binding.scope, graphRunId: binding.graphRunId, generation: binding.generation, specHash: binding.identity.specHash,
+      epoch: binding.epoch, nodeId: prior.effect.nodeId, effectSlot: prior.effect.effectSlot, action: registered.action }, options, next.effectKey, authorizeRetry);
+  }
+
+  private async executeRequest(connection: object, value: unknown, options: { signal?: AbortSignal }, retryEffectKey?: string, authorizeRetry?: () => void): Promise<WorkerActionResponse> {
     let request: WorkerActionRequest;
     try { request = snapshot(WorkerActionRequest.parse(value)); }
     catch { return { schemaVersion: 1, kind: "worker_action_rejected", requestId: "invalid-request", error: graphError("INPUT_CONTRACT_INVALID", "invalid worker action request") }; }
@@ -195,22 +257,30 @@ export class GraphActionBroker {
       const action = binding.actions.get(slot(request.nodeId, request.effectSlot));
       if (!action) throw new Denied("POLICY_DENIED", "unregistered compiled action slot");
       if (canonical(action.action) !== canonical(request.action)) throw new Denied("IDEMPOTENCY_CONFLICT", "action differs from immutable compiled registration");
-      const check = (): void => { if (signal.aborted) throw new Denied("POLICY_DENIED", "action cancelled before invocation"); this.authorize(binding); this.fence(binding); };
+      const check = (): void => { if (this.connections.get(connection) !== binding) throw new Denied("UNAUTHENTICATED", "worker connection retired"); if (signal.aborted) throw new Denied("POLICY_DENIED", "action cancelled before invocation"); this.authorize(binding); this.fence(binding);
+        if (authorizeRetry) {
+          const permitted: unknown = authorizeRetry();
+          if (permitted !== undefined) { void Promise.resolve(permitted).catch(() => {}); throw new Denied("POLICY_DENIED", "retry authority must be synchronous"); }
+        }
+      };
       check();
       const intent = this.actions.reserve(this.fence(binding), { epoch: binding.epoch, nodeId: action.nodeId, effectSlot: action.effectSlot,
         reservationTokens: action.tokenReservation, action: action.action });
-      if (!intent.created) return this.response(request, intent.action);
+      if (!intent.created && intent.action.effectKey !== retryEffectKey) return this.response(request, intent.action);
+      if (retryEffectKey && (intent.action.state !== "intent" || intent.action.generation !== binding.generation)) {
+        return this.response(request, intent.action);
+      }
       owned = intent.action;
       lease = await this.options.acquire({ kind: action.access, runId: `graph-action:${owned.effectKey}`, workspacePath: binding.workspace.workspace_path,
         signal, authorize: async () => { check(); await this.options.authorizePolicy?.(binding.workspace.workspace_path); check(); } });
       check();
       // This synchronous gate runs inside the actual adapter invoke/command/host
       // handler call, after G04's async authorization and availability windows.
-      const beforeEffect = (): void => {
+      const beforeEffect = (executionRunId: string): void => {
         check();
         let started: ReturnType<GraphActionStore["markRunning"]>;
         try {
-          started = this.actions.markRunning(this.fence(binding), owned!.effectKey, `graph-execution:${owned!.effectKey}`);
+          started = this.actions.markRunning(this.fence(binding), owned!.effectKey, `graph-execution:${owned!.effectKey}:${executionRunId}`);
         } catch (error) {
           // A different execution reference also proves somebody already started.
           if (String(error).includes("EXECUTION_CONFLICT")) invoked = true;
@@ -224,7 +294,7 @@ export class GraphActionBroker {
         }
         invoked = true;
       };
-      const evidence = await this.execute(binding, action, signal, beforeEffect, tokens => { observedTokens = Math.max(observedTokens, tokens); });
+      const evidence = await this.execute(binding, action, signal, beforeEffect, tokens => { observedTokens = Math.max(observedTokens, tokens); }, lease);
       if (!invoked) throw new Denied("POLICY_DENIED", "execution did not start");
       const persisted = snapshot(await action.persist(evidence));
       if (typeof persisted.evidenceRef !== "string" || !persisted.evidenceRef || persisted.evidenceRef.trim() !== persisted.evidenceRef
@@ -241,7 +311,8 @@ export class GraphActionBroker {
       let result: GraphResult | undefined;
       if (evidence.status === "completed") {
         result = GraphResult.parse(persisted.result);
-        const expected = action.action.kind === "implement" || action.action.kind === "repair" ? "implementation_complete"
+        if (action.action.kind === "freeze" && (!evidence.frozenCandidate || canonical(result) !== canonical(evidence.frozenCandidate))) throw new Error("freeze result differs from durable artifact");
+        const expected = action.action.kind === "freeze" ? "candidate_ready" : action.action.kind === "implement" || action.action.kind === "repair" ? "implementation_complete"
           : action.action.kind.startsWith("workspace_") ? "workspace" : action.action.kind;
         if (result.kind !== expected) throw new Error("invalid result kind for registered operation");
         if ("workspaceLeaseRef" in result && "workspaceLeaseRef" in action.action && result.workspaceLeaseRef !== action.action.workspaceLeaseRef) throw new Error("persisted workspace mismatch");
@@ -255,6 +326,9 @@ export class GraphActionBroker {
       if (binding && owned) {
         if (invoked) {
           uncertain = true; lease?.retain(String(error));
+          if (lease) this.retained.set(owned.effectKey, { lease, context: { effectKey: owned.effectKey,
+            scope: binding.scope, graphRunId: binding.graphRunId, generation: binding.generation,
+            owner: binding.owner, workspacePath: binding.workspace.workspace_path } });
           try { const unknown = this.actions.markUncertain(this.fence(binding), owned.effectKey, { state: "unknown", evidenceRef: persistedEvidenceRef ?? `unknown:${randomUUID()}`, observedTokens: Math.max(owned.reservationTokens, observedTokens) });
             return this.response(request, unknown.action); } catch { /* Commit/fence failure preserves the original running reservation. */ }
           return { schemaVersion: 1, kind: "worker_action_response", requestId: request.requestId, generation: request.generation,
@@ -268,7 +342,19 @@ export class GraphActionBroker {
       }
       return reject(error);
     } finally {
-      if (lease && !uncertain) await lease.release();
+      if (lease && !uncertain) {
+        try { await lease.release(); }
+        catch (error) {
+          // Resource release is independent of the durable effect outcome. Keep
+          // its exact admission reachable for verified release-only recovery.
+          lease.retain(String(error));
+          if (binding && owned) this.retained.set(owned.effectKey, { lease, context: {
+            effectKey: owned.effectKey, scope: binding.scope, graphRunId: binding.graphRunId,
+            generation: binding.generation, owner: binding.owner, workspacePath: binding.workspace.workspace_path,
+          } });
+          throw error;
+        }
+      }
     }
   }
 
@@ -280,11 +366,26 @@ export class GraphActionBroker {
     return { ...base, outcome: { state: "unknown", error: graphError("ACTION_OUTCOME_UNKNOWN", "existing action requires reconciliation; invocation was not repeated"), reconciliationRef: action.effectKey } };
   }
 
-  private async execute(binding: Binding, action: BoundAction, signal: AbortSignal, beforeEffect: () => void, observeTokens: (tokens: number) => void): Promise<GraphActionEvidence> {
+  private async execute(binding: Binding, action: BoundAction, signal: AbortSignal, beforeEffect: (executionRunId: string) => void, observeTokens: (tokens: number) => void, lease?: ExecutionLease): Promise<GraphActionEvidence> {
     const execution = action.execution;
+    if (execution.kind === "freeze") {
+      if (!lease?.assertActive) throw new Error("freeze requires canonical lease verification");
+      const check = (): void => { if (signal.aborted) throw new Error("freeze cancelled"); this.authorize(binding); this.fence(binding); };
+      await this.options.authorizePolicy?.(binding.workspace.workspace_path); check();
+      await lease.assertActive(); check(); beforeEffect(`freeze:${randomUUID()}`);
+      const frozenCandidate = await execution.store.freeze(execution.input, { ...execution.authority, lease,
+        verifyLease: async (input, actualLease) => {
+          if (actualLease !== lease) throw new Error("freeze lease identity mismatch");
+          check(); await lease.assertActive!(); check();
+          const decision: unknown = await execution.authority.verifyLease(input, actualLease);
+          if (decision !== undefined) throw new Error("invalid freeze authority");
+          check();
+        } });
+      return { status: "completed", frozenCandidate };
+    }
     if (execution.kind === "workspace") {
       await this.options.authorizePolicy?.(binding.workspace.workspace_path);
-      beforeEffect();
+      beforeEffect(`workspace:${randomUUID()}`);
       const result = await execution.handler({ workspace: binding.workspace, signal });
       if (result?.stopped !== true || !["completed", "failed"].includes(result.status)) throw new Error("workspace outcome unconfirmed");
       return { status: result.status, workspace: result.evidence };
@@ -301,7 +402,7 @@ export class GraphActionBroker {
         return (async function* () {
           await policy?.(binding.workspace.workspace_path);
           if (invocationSignal.aborted) throw new Denied("POLICY_DENIED", "execution cancelled before invocation");
-          beforeEffect(); invocationRunId = task.run_id;
+          beforeEffect(task.run_id); invocationRunId = task.run_id;
           try {
             if (original) {
               for await (const event of original.invoke(task, invocationSignal)) {

@@ -67,3 +67,25 @@ it('rejects same-run reentry promptly and shares canonical lock across independe
   const next = await independent.acquire({ kind: 'write', runId: 'after', workspacePath: f.other });
   await next.release();
 });
+it('releases retained admission only after an explicit reverified reconciliation', async () => {
+  const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'retained', workspacePath: f.repo });
+  lease.retain('unknown');
+  await expect(lease.releaseAfterReconciliation!(async () => { throw new Error('producer alive'); })).rejects.toThrow('producer alive');
+  expect(f.writes.in_use).toBe(1);
+  await expect(lease.releaseAfterReconciliation!(async () => false as unknown as undefined)).rejects.toThrow('reconciliation');
+  expect(f.writes.in_use).toBe(1);
+  await lease.releaseAfterReconciliation!(async () => {});
+  expect(f.writes.in_use).toBe(0);
+  const next = await f.admission.acquire({ kind: 'write', runId: 'next', workspacePath: f.repo });
+  await next.release();
+});
+it('keeps a repository quarantined until every retained reader is reconciled', async () => {
+  const f = await fixture();
+  const first = await f.admission.acquire({ kind: 'read', runId: 'read1', workspacePath: f.repo });
+  const second = await f.admission.acquire({ kind: 'read', runId: 'read2', workspacePath: f.repo });
+  first.retain('uncertain read executor'); second.retain('other executor');
+  await first.releaseAfterReconciliation!(async () => {});
+  await expect(f.admission.acquire({ kind: 'write', runId: 'early', workspacePath: f.repo })).rejects.toThrow('unconfirmed');
+  await second.releaseAfterReconciliation!(async () => {});
+  const next = await f.admission.acquire({ kind: 'write', runId: 'after', workspacePath: f.repo }); await next.release();
+});

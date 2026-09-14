@@ -6,6 +6,10 @@ export interface ExecutionLease {
   release(): Promise<void>;
   /** Keep ownership until a trusted caller has confirmed external exit. */
   retain(reason: string): void;
+  /** Trusted host only; never accept a worker-provided proof callback. */
+  releaseAfterReconciliation?(verify: () => Promise<void>): Promise<void>;
+  /** Assert this exact canonical writer lease is still live. */
+  assertActive?(): Promise<void>;
 }
 export interface AdmissionInput {
   kind: 'read' | 'write';
@@ -18,7 +22,11 @@ export interface AdmissionInput {
 }
 export class GovernedExecution {
   private readonly activeRuns = new Set<string>();
-  private readonly quarantinedRepositories = new Set<string>();
+  private readonly quarantinedRepositories = new Map<string, Set<string>>();
+  private quarantine(repoId: string, runId: string): void {
+    const owners = this.quarantinedRepositories.get(repoId) ?? new Set<string>();
+    owners.add(runId); this.quarantinedRepositories.set(repoId, owners);
+  }
   constructor(private readonly options: {
     reads: FifoSemaphore;
     writes: FifoSemaphore;
@@ -76,14 +84,46 @@ export class GovernedExecution {
         if (!released) await lock!.renew();
       }).catch((error: unknown) => {
         retained = true;
-        if (scope) this.quarantinedRepositories.add(scope.repoId);
+        if (scope) this.quarantine(scope.repoId, input.runId);
         process.stderr.write(`repository lease renewal failed; retained ${input.runId}: ${String(error)}\n`);
         if (timer) clearInterval(timer);
       });
     }, 20_000);
     timer?.unref();
+    let reconciled: Promise<void> | undefined;
     return {
-      retain: (reason) => { retained = true; if (timer) clearInterval(timer); if (scope) this.quarantinedRepositories.add(scope.repoId); process.stderr.write(`osstack: retaining write lease ${input.runId}: ${reason}\n`); },
+      assertActive: async () => {
+        if (released || retained) throw new Error("execution lease unavailable");
+        await lock?.assertActive();
+        if (released || retained) throw new Error("execution lease unavailable");
+      },
+      releaseAfterReconciliation: (verify) => {
+        if (released) return Promise.resolve();
+        if (reconciled) return reconciled;
+        if (typeof verify !== 'function') return Promise.reject(new Error('trusted reconciliation verifier required'));
+        reconciled = (async () => {
+          // Stop renewal first. No authority is freed until the verifier succeeds
+          // and the canonical token is released under its filesystem guard.
+          if (timer) clearInterval(timer);
+          await renewing;
+          const result: unknown = await verify();
+          if (result !== undefined) throw new Error('invalid reconciliation authority');
+          await lock?.release();
+          released = true; retained = false;
+          if (scope) {
+            const owners = this.quarantinedRepositories.get(scope.repoId);
+            owners?.delete(input.runId);
+            if (owners?.size === 0) this.quarantinedRepositories.delete(scope.repoId);
+          }
+          releasePermits();
+        })().catch((error: unknown) => {
+          retained = true;
+          if (scope) this.quarantine(scope.repoId, input.runId);
+          throw error;
+        }).finally(() => { reconciled = undefined; });
+        return reconciled;
+      },
+      retain: (reason) => { retained = true; if (timer) clearInterval(timer); if (scope) this.quarantine(scope.repoId, input.runId); process.stderr.write(`osstack: retaining write lease ${input.runId}: ${reason}\n`); },
       release: async () => {
         if (released) return;
         if (retained) throw new Error("external stop unconfirmed; reconciliation required before release");
@@ -95,7 +135,7 @@ export class GovernedExecution {
         try { await lock?.release(); }
         catch (error) {
           released = false; retained = true;
-          if (scope) this.quarantinedRepositories.add(scope.repoId);
+          if (scope) this.quarantine(scope.repoId, input.runId);
           process.stderr.write(`repository lock release failed; retained ${input.runId}: ${String(error)}\n`);
           throw error;
         }

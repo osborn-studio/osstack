@@ -19,17 +19,28 @@ export interface GraphCheckpointBinding {
 export class GraphCheckpointService {
   private readonly bindings = new Map<object, GraphCheckpointBinding>();
   private closed = false;
+  private readonly retired = new WeakSet<object>();
   constructor(private readonly options: {
     runs: GraphRunStore;
     checkpoints: GraphCheckpointStore;
     bindings: ReadonlyMap<object, GraphCheckpointBinding>;
     now?: () => number;
   }) {
-    for (const [connection, binding] of options.bindings) {
-      if (typeof binding.authorize !== 'function') throw new Error('UNAUTHENTICATED');
-      const { authorize, ...data } = binding;
-      this.bindings.set(connection, { ...structuredClone(data), authorize });
-    }
+    for (const [connection, binding] of options.bindings) this.register(connection, binding);
+  }
+
+  register(connection: object, binding: GraphCheckpointBinding): void {
+    this.assertOpen();
+    if (this.retired.has(connection)) throw new Error('CONNECTION_RETIRED');
+    if (this.bindings.has(connection)) throw new Error('ALREADY_REGISTERED');
+    if (typeof binding.authorize !== 'function') throw new Error('UNAUTHENTICATED');
+    const { authorize, ...data } = binding;
+    this.bindings.set(connection, { ...structuredClone(data), authorize });
+  }
+
+  unregister(connection: object): void {
+    this.bindings.delete(connection);
+    this.retired.add(connection);
   }
 
   close(): void { this.closed = true; }
@@ -44,6 +55,7 @@ export class GraphCheckpointService {
     const decision: unknown = await authorize();
     if (decision !== undefined) throw new Error("POLICY_DENIED: authorization must resolve without a decision payload or throw");
     this.assertOpen();
+    if (this.bindings.get(connection) !== binding) throw new Error('UNAUTHENTICATED');
     // Refresh only the revision, after the asynchronous authorization boundary.
     // Keep the original connection's generation, owner and program identity. There
     // is no await between this read and the store's transactional check/write.

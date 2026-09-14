@@ -341,3 +341,36 @@ export async function acquireRepoLock(
   const { mode: _mode, ...writeOptions } = options;
   return await acquireRepoWriteLock(writeOptions);
 }
+
+/** Trusted administrative inspection. Expiry/PID are not external-stop evidence. */
+export async function inspectRepoWriteLock(rootDir: string, repoId: string): Promise<Readonly<RepoLockOwner> | null> {
+  try {
+    const owner = await readOwner(repoLockPath(rootDir, repoId));
+    if (owner.repo_id !== repoId) throw new RepoLockOwnershipError(rootDir);
+    return Object.freeze(owner);
+  } catch (error) { if (errorCode(error) === 'ENOENT') return null; throw error; }
+}
+
+/** Post-daemon-restart administration only. The registered verifier must validate
+ * a committed graph decision, every external producer and workspace quarantine.
+ * No automatic stale recovery: exact token/run/repository and real daemon PID
+ * death are checked under the existing mutation guard before unlinking one file. */
+export async function releaseReconciledRepoWriteLock(options: {
+  root_dir: string; repo_id: string; expectedOwner: Readonly<RepoLockOwner>;
+  verifyQuiescent: (owner: Readonly<RepoLockOwner>) => Promise<void>;
+}): Promise<void> {
+  const { root_dir: root, repo_id: repoId, verifyQuiescent } = options;
+  const expected = Object.freeze(RepoLockOwner.parse(options.expectedOwner));
+  const path = repoLockPath(root, repoId);
+  if (expected.repo_id !== repoId || typeof verifyQuiescent !== 'function') throw new RepoLockOwnershipError(path);
+  await withMutationGuard(path, async () => {
+    const current = await readOwner(path);
+    if (!sameOwner(current, expected)) throw new RepoLockOwnershipError(path);
+    if (defaultIsProcessAlive(current.pid)) throw new Error('recorded daemon still alive; use its retained lease');
+    const result: unknown = await verifyQuiescent(Object.freeze({ ...current }));
+    if (result !== undefined) throw new Error('invalid quiescence authority');
+    if (!sameOwner(await readOwner(path), expected)) throw new RepoLockOwnershipError(path);
+    if (defaultIsProcessAlive(current.pid)) throw new Error('recorded daemon PID is alive or reused');
+    await rm(path);
+  });
+}

@@ -40,5 +40,23 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./graph-recovery": {
+      "types": "./dist/state/graph-recovery.d.ts",
+      "import": "./dist/state/graph-recovery.js",
+      "default": "./dist/state/graph-recovery.js"
+    },
+    "./graph-artifacts": {
+      "types": "./dist/graph/artifact-store.d.ts",
+      "import": "./dist/graph/artifact-store.js",
+      "default": "./dist/graph/artifact-store.js"
+    },
+    "./*": "./*"
   }
 }

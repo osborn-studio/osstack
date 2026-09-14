@@ -7,6 +7,7 @@ import { Worker } from "node:worker_threads";
 import type Database from "better-sqlite3";
 import type { StartGraphRequest } from "@osstack/protocol";
 import { openDb } from "./db.js";
+import { GraphActionStore } from "./graph-actions.js";
 import { GraphRunStore, type GraphProgramVersion, type GraphRun } from "./graph-runs.js";
 
 const scope = { schemaVersion: 1 as const, tenantId: "tenant", principalId: "principal", workspaceId: "workspace" };
@@ -98,12 +99,18 @@ describe("graph run storage", () => {
     expect(second.projectRequest(cancel, { ...fence(run, 121), status: "cancel_pending" })).toEqual(pending);
     expect(() => second.projectRequest({ ...cancel, expectedRevision: 2 }, { ...fence(pending, 122), status: "cancel_pending" })).toThrow(/IDEMPOTENCY_CONFLICT/);
     expect(() => store.projectRequest({ ...cancel, idempotencyKey: request.idempotencyKey }, { ...fence(pending, 122), status: "cancel_pending" })).toThrow(/IDEMPOTENCY_CONFLICT/);
-    const resume = { schemaVersion: 1 as const, kind: "resume" as const, scope, idempotencyKey: "resume-key", graphRunId: run.graphRunId, expectedRevision: pending.revision, interruptId: "interrupt", input: { kind: "data" as const, value: false } };
-    const resumed = store.projectRequest(resume, { ...fence(pending, 130), status: "running" });
-    expect(resumed.revision).toBe(pending.revision + 1);
+    const cancelledResume = { schemaVersion: 1 as const, kind: "resume" as const, scope, idempotencyKey: "rejected-resume", graphRunId: run.graphRunId, expectedRevision: pending.revision, interruptId: "interrupt", input: { kind: "data" as const, value: false } };
+    expect(() => store.projectRequest(cancelledResume, { ...fence(pending, 130), status: "running" })).toThrow('CANCEL_PENDING');
+    expect(db.prepare("SELECT count(*) AS n FROM graph_requests").get()).toEqual({ n: 2 });
+    const waiting = store.project({ ...fence(claim(store.create({ ...request, idempotencyKey: 'waiting-run' }, program, 100)), 120), status: 'waiting_input' });
+    const resume = { ...cancelledResume, idempotencyKey: 'resume-key', graphRunId: waiting.graphRunId, expectedRevision: waiting.revision };
+    const resumed = store.projectRequest(resume, { ...fence(waiting, 130), status: "running" });
+    expect(resumed.revision).toBe(waiting.revision + 1);
+    expect(second.projectRequest(resume, { ...fence(waiting, 131), status: 'running' })).toEqual(resumed);
     expect(() => store.projectRequest({ ...resume, input: { kind: "data", value: true } }, { ...fence(resumed, 131), status: "running" })).toThrow(/IDEMPOTENCY_CONFLICT/);
-    expect(db.prepare("SELECT count(*) AS n FROM graph_requests").get()).toEqual({ n: 3 });
-    expect(store.get(scope, run.graphRunId)).toEqual(resumed);
+    expect(db.prepare("SELECT count(*) AS n FROM graph_requests").get()).toEqual({ n: 4 });
+    expect(store.get(scope, waiting.graphRunId)).toEqual(resumed);
+    expect(store.get(scope, run.graphRunId)).toEqual(pending);
   });
 
   it("renews with CAS and persists only a status projection; terminal runs cannot resurrect", () => {
@@ -242,4 +249,19 @@ describe("graph run storage", () => {
     } finally { await Promise.all(workers.map((worker) => worker.terminate())); }
 
   }, 12_000);
+});
+
+it.each(['ready', 'failed', 'cancelled'] as const)('refuses sealing %s while an external action is unresolved', (status) => {
+  let run = claim(store.create(request, program, 100));
+  run = new GraphActionStore(db).reserve(fence(run), { epoch: 0, nodeId: 'implement', effectSlot: 'invoke',
+    reservationTokens: 1, action: { kind: 'implement', inputArtifactRef: 'input', workspaceLeaseRef: 'workspace' } }).run;
+  expect(() => store.project({ ...fence(run), status })).toThrow('UNRESOLVED_ACTION');
+  expect(store.get(scope, run.graphRunId)?.status).toBe('queued');
+});
+
+it.each(['running', 'waiting_input', 'queued', 'ready', 'failed'] as const)('does not clear pending cancellation through ordinary %s projection', (status) => {
+  const run = store.project({ ...fence(claim(store.create(request, program, 100))), status: 'cancel_pending' });
+  expect(() => store.project({ ...fence(run), status })).toThrow('CANCEL_PENDING');
+  expect(store.get(scope, run.graphRunId)?.status).toBe('cancel_pending');
+  expect(store.project({ ...fence(run), status: 'cancelled' }).status).toBe('cancelled');
 });

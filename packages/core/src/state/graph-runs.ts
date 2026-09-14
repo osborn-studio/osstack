@@ -61,7 +61,7 @@ export interface GraphRun {
 }
 export type GraphRunStorageErrorCode = "RUN_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "PROGRAM_IDENTITY_MISMATCH"
   | "STALE_GENERATION" | "REVISION_CONFLICT" | "OWNER_MISMATCH" | "LEASE_EXPIRED" | "STOPPED_WORKER_REQUIRED"
-  | "STOPPED_WORKER_MISMATCH" | "TERMINAL_RUN" | "INVALID_TIME" | "COUNTER_EXHAUSTED";
+  | "STOPPED_WORKER_MISMATCH" | "TERMINAL_RUN" | "UNRESOLVED_ACTION" | "CANCEL_PENDING" | "INVALID_TIME" | "COUNTER_EXHAUSTED";
 export class GraphRunStorageError extends Error {
   constructor(public readonly code: GraphRunStorageErrorCode) { super(code); this.name = "GraphRunStorageError"; }
 }
@@ -227,6 +227,12 @@ export class GraphRunStore {
 
   private projectInTransaction(input: GraphRunProjection): GraphRun {
     const run = this.checked(input, true);
+    // Cancellation intent is irreversible even before external exit is confirmed.
+    if (run.status === "cancel_pending" && !["cancel_pending", "cancelled"].includes(input.status)) fail("CANCEL_PENDING");
+    // Never seal away the authority required to reconcile unfinished effects.
+    if (["ready", "failed", "cancelled"].includes(input.status)
+      && this.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND state IN ('intent','running','unknown','cancel_pending') LIMIT 1")
+        .get(run.graphRunId)) fail("UNRESOLVED_ACTION");
     this.db.prepare(`UPDATE graph_runs SET status = ?, revision = ?, updated_at = ?
       WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
       .run(input.status, increment(run.revision), input.now, run.graphRunId, run.generation, run.revision);

@@ -1496,6 +1496,46 @@ export const MIGRATIONS: readonly Migration[] = [
       );
     `,
   },
+  {
+    id: 28,
+    name: "graph_recovery_decisions",
+    sql: `
+      CREATE TABLE graph_recovery_decisions (
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        receipt_id TEXT NOT NULL,
+        effect_key TEXT REFERENCES graph_actions(effect_key),
+        interrupt_id TEXT NOT NULL,
+        snapshot_json TEXT NOT NULL,
+        proof_json TEXT NOT NULL,
+        decision_json TEXT NOT NULL,
+        committed_at INTEGER NOT NULL CHECK(committed_at >= 0 AND committed_at <= 9007199254740991),
+        PRIMARY KEY(graph_run_id, receipt_id)
+      );
+      CREATE TRIGGER graph_recovery_decisions_no_update BEFORE UPDATE ON graph_recovery_decisions
+        BEGIN SELECT RAISE(ABORT, 'graph recovery decision immutable'); END;
+      CREATE TRIGGER graph_recovery_decisions_no_delete BEFORE DELETE ON graph_recovery_decisions
+        BEGIN SELECT RAISE(ABORT, 'graph recovery decision immutable'); END;
+    `,
+  },
+  {
+    id: 29,
+    name: "graph_worker_launches",
+    sql: `
+      CREATE TABLE graph_worker_launches (
+        graph_run_id TEXT NOT NULL,
+        generation INTEGER NOT NULL CHECK(generation >= 1 AND generation <= 9007199254740991),
+        owner TEXT NOT NULL,
+        identity_json TEXT NOT NULL,
+        launched_at INTEGER NOT NULL CHECK(launched_at >= 0 AND launched_at <= 9007199254740991),
+        PRIMARY KEY(graph_run_id, generation),
+        FOREIGN KEY(graph_run_id, generation) REFERENCES graph_worker_leases(graph_run_id, generation)
+      );
+      CREATE TRIGGER graph_worker_launches_no_update BEFORE UPDATE ON graph_worker_launches
+        BEGIN SELECT RAISE(ABORT, 'graph worker launch immutable'); END;
+      CREATE TRIGGER graph_worker_launches_no_delete BEFORE DELETE ON graph_worker_launches
+        BEGIN SELECT RAISE(ABORT, 'graph worker launch immutable'); END;
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

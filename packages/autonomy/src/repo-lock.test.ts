@@ -8,6 +8,8 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join, relative } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  inspectRepoWriteLock,
+  releaseReconciledRepoWriteLock,
   acquireRepoLock,
   acquireRepoWriteLock,
   RepoLockBusyError,
@@ -380,5 +382,27 @@ it("starts the lease at publication after waiting for a metadata transaction", a
   const lock = await pending;
   await lock.assertActive();
   expect(lock.owner.expires_at).toBe(new Date(time + 100).toISOString());
+  await lock.release();
+});
+
+it('requires exact dead-owner identity and verified external quiescence before post-restart release', async () => {
+  const pid = Number(execFileSync(process.execPath, ['-e', 'process.stdout.write(String(process.pid))'], { encoding: 'utf8' }));
+  const lock = await acquireRepoWriteLock({ root_dir: directory, repo_id: 'recovered', autonomy_run_id: 'graph-action:effect', pid, recover_stale: false });
+  const owner = await inspectRepoWriteLock(directory, 'recovered');
+  expect(owner).toEqual(lock.owner);
+  const options = { root_dir: directory, repo_id: 'recovered', expectedOwner: owner!, verifyQuiescent: async () => {} };
+  await expect(releaseReconciledRepoWriteLock({ ...options, expectedOwner: { ...owner!, token: '00000000-0000-4000-8000-000000000000' } })).rejects.toThrow('ownership');
+  await expect(releaseReconciledRepoWriteLock({ ...options, verifyQuiescent: async () => { throw new Error('independent producer remains'); } })).rejects.toThrow('independent producer');
+  expect(await inspectRepoWriteLock(directory, 'recovered')).toEqual(owner);
+  await expect(releaseReconciledRepoWriteLock({ ...options, verifyQuiescent: async () => false as unknown as undefined })).rejects.toThrow('quiescence');
+  await releaseReconciledRepoWriteLock(options);
+  expect(await inspectRepoWriteLock(directory, 'recovered')).toBeNull();
+  const replacement = await acquireRepoWriteLock({ root_dir: directory, repo_id: 'recovered', autonomy_run_id: 'new-owner' });
+  await expect(releaseReconciledRepoWriteLock(options)).rejects.toThrow('ownership');
+  await replacement.release();
+});
+it('never treats a live daemon PID as a post-restart recovery target', async () => {
+  const lock = await acquireRepoWriteLock({ root_dir: directory, repo_id: 'live', autonomy_run_id: 'live' });
+  await expect(releaseReconciledRepoWriteLock({ root_dir: directory, repo_id: 'live', expectedOwner: lock.owner, verifyQuiescent: async () => {} })).rejects.toThrow('alive');
   await lock.release();
 });

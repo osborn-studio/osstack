@@ -65,3 +65,16 @@ it('rejects a false authorization return instead of treating it as successful co
   f.authorize.mockResolvedValue(false as unknown as undefined);
   await expect(f.service.execute(f.token, f.request)).rejects.toThrow('POLICY_DENIED');
 });
+it('registers new supervised connections and rejects an in-flight write after revocation', async () => {
+  let resume!: () => void;
+  const f = fixture(); const token = {};
+  f.service.register(token, { ...f.binding, authorize: () => new Promise<void>(resolve => { resume = resolve; }) });
+  expect(() => f.service.register(token, f.binding)).toThrow('ALREADY_REGISTERED');
+  const pending = f.service.execute(token, { kind: 'put', requestId: 'revoked-put', threadId: f.run.graphRunId,
+    namespace: '', checkpointId: '001', checkpoint: 'null', metadata: 'null', newVersions: 'null' });
+  f.service.unregister(token); resume();
+  await expect(pending).rejects.toThrow('UNAUTHENTICATED');
+  expect(f.db.prepare('SELECT count(*) AS n FROM graph_checkpoints').get()).toEqual({ n: 0 });
+  expect(() => f.service.register(token, f.binding)).toThrow('CONNECTION_RETIRED');
+  f.service.close(); expect(() => f.service.register({}, f.binding)).toThrow('CLOSED');
+});
