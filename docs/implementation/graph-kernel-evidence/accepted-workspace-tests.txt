@@ -1581,4 +1581,3 @@ osstack upgrade: note: OSSTACK_HOME in this shell (/Users/example/.osstack) diff
       Tests  850 passed (850)
    Start at  18:33:05
    Duration  29.09s (transform 1.18s, setup 125ms, collect 13.07s, tests 35.24s, environment 7ms, prepare 2.41s)
-

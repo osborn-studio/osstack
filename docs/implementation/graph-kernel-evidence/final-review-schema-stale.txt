@@ -92,4 +92,3 @@ AssertionError: expected '{\n  "$schema": "http://json-schema.o…' to be '{\n  
      52|   }
 
 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
-
