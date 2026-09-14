@@ -1,0 +1,127 @@
+{
+  "distTags": {
+    "next": "1.0.0",
+    "latest": "1.1.5"
+  },
+  "latestVersion": {
+    "name": "@langchain/langgraph-checkpoint",
+    "version": "1.1.5",
+    "author": {
+      "name": "LangChain"
+    },
+    "license": "MIT",
+    "_id": "@langchain/langgraph-checkpoint@1.1.5",
+    "maintainers": [
+      {
+        "name": "lc-oss-admin",
+        "email": "oss-admin@langchain.dev"
+      },
+      {
+        "name": "langchain-security",
+        "email": "infra@langchain.dev"
+      }
+    ],
+    "homepage": "https://github.com/langchain-ai/langgraphjs#readme",
+    "bugs": {
+      "url": "https://github.com/langchain-ai/langgraphjs/issues"
+    },
+    "dist": {
+      "shasum": "c793177f9afcce31a1e9922f317f88fec1254282",
+      "tarball": "https://registry.npmjs.org/@langchain/langgraph-checkpoint/-/langgraph-checkpoint-1.1.5.tgz",
+      "fileCount": 101,
+      "integrity": "sha512-BwDwl5VeTOh6CVuiIPgsUgfK51vTJDMSbFcSCUfjJWsl8/DPdK/mbv+ejxJstkSk/BlSPMP4JfXWcN6jD2ea2Q==",
+      "signatures": [
+        {
+          "sig": "MEUCIQCwX6zSQeVFhiE0daGp+DEIHXIY44ycW53xRRY04zrfOAIgEqw3dbBuAUEXHGqM3mzurDa5UkRxFcPiWddcIralryg=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEUCIQDC5k1TFW/7crJLGoHEGASf8uiWI1s22dcyHaYJJujBtgIgHPy/2wXuQdQ1amxbrmGGS4CpKGU/ko4gsr/O8Gll8Vo=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@langchain%2flanggraph-checkpoint@1.1.5",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 478850
+    },
+    "main": "./dist/index.js",
+    "type": "module",
+    "_from": "file:langchain-langgraph-checkpoint-1.1.5.tgz",
+    "types": "./dist/index.d.ts",
+    "engines": {
+      "node": ">=18"
+    },
+    "exports": {
+      ".": {
+        "input": "./src/index.ts",
+        "import": {
+          "types": "./dist/index.d.ts",
+          "default": "./dist/index.js"
+        },
+        "require": {
+          "types": "./dist/index.d.cts",
+          "default": "./dist/index.cjs"
+        },
+        "typedoc": "./src/index.ts"
+      },
+      "./package.json": "./package.json"
+    },
+    "scripts": {
+      "test": "vitest run",
+      "build": "pnpm turbo build:internal --filter=@langchain/langgraph-checkpoint",
+      "clean": "rm -rf dist/ dist-cjs/ .turbo/",
+      "test:int": "vitest run --mode int",
+      "lint:dpdm": "dpdm --exit-code circular:1 --no-warning --no-tree src/*.ts src/**/*.ts",
+      "prepublish": "pnpm build",
+      "test:watch": "vitest watch",
+      "lint:eslint": "NODE_OPTIONS=--max-old-space-size=4096 eslint --cache --ext .ts,.js src/",
+      "build:internal": "pnpm --filter @langchain/build compile @langchain/langgraph-checkpoint"
+    },
+    "_npmUser": {
+      "name": "GitHub Actions",
+      "email": "npm-oidc-no-reply@github.com",
+      "trustedPublisher": {
+        "id": "github",
+        "oidcConfigId": "oidc:5e1643bb-9c20-43c5-bbed-a84f51ed265c"
+      }
+    },
+    "_resolved": "/tmp/2ae1779d8a6320353b4a42fd90a7e82e/langchain-langgraph-checkpoint-1.1.5.tgz",
+    "_integrity": "sha512-BwDwl5VeTOh6CVuiIPgsUgfK51vTJDMSbFcSCUfjJWsl8/DPdK/mbv+ejxJstkSk/BlSPMP4JfXWcN6jD2ea2Q==",
+    "repository": {
+      "url": "git+ssh://git@github.com/langchain-ai/langgraphjs.git",
+      "type": "git",
+      "directory": "libs/checkpoint"
+    },
+    "_npmVersion": "11.17.0",
+    "description": "Library with base interfaces for LangGraph checkpoint savers.",
+    "directories": {},
+    "_nodeVersion": "24.19.0",
+    "publishConfig": {
+      "access": "public",
+      "registry": "https://registry.npmjs.org/"
+    },
+    "_hasShrinkwrap": false,
+    "devDependencies": {
+      "tsx": "^4.19.3",
+      "dpdm": "^3.12.0",
+      "dotenv": "^16.3.1",
+      "rollup": "^4.62.3",
+      "vitest": "^4.1.10",
+      "typescript": "^4.9.5 || ^5.4.5",
+      "@langchain/scripts": ">=0.1.3 <0.2.0",
+      "@tsconfig/recommended": "^1.0.3"
+    },
+    "peerDependencies": {
+      "@langchain/core": "^1.1.48"
+    },
+    "_npmOperationalInternal": {
+      "tmp": "tmp/langgraph-checkpoint_1.1.5_1787182545795_0.5503740694252981",
+      "host": "s3://npm-registry-packages-npm-production"
+    }
+  },
+  "latestTime": "2026-08-19T23:35:45.889Z"
+}

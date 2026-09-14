@@ -1,0 +1,144 @@
+{
+  "taskReturns": [
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff32-d37c-6760-ffff-bc4ef44c77d2",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "abcb968a-d25e-58dd-9fcc-2d4579818bb8",
+      "value": {
+        "results": [
+          "completed"
+        ]
+      }
+    },
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff32-d37c-6760-ffff-bc4ef44c77d2",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "bcbd518d-60a3-5507-b3c6-8836613957c6",
+      "value": {
+        "results": [
+          "recovered"
+        ]
+      }
+    }
+  ],
+  "counts": {
+    "completedBody": 1,
+    "completedWrapper": 1,
+    "flakyAttempts": 2,
+    "joinWrapper": 1,
+    "joinedBody": 1,
+    "recoveredBody": 1
+  },
+  "effects": {
+    "completed": {
+      "attempt": 1,
+      "effect": "completed",
+      "result": {
+        "results": [
+          "completed"
+        ]
+      },
+      "run": "functional-async-recovery-second-kill-ungated",
+      "status": "confirmed"
+    },
+    "joined": {
+      "attempt": 1,
+      "effect": "joined",
+      "result": {
+        "results": [
+          "joined"
+        ]
+      },
+      "run": "functional-async-recovery-second-kill-ungated",
+      "status": "confirmed"
+    },
+    "recovered": {
+      "attempt": 1,
+      "effect": "recovered",
+      "result": {
+        "results": [
+          "recovered"
+        ]
+      },
+      "run": "functional-async-recovery-second-kill-ungated",
+      "status": "confirmed"
+    }
+  },
+  "tuple": {
+    "checkpoint": {
+      "channel_values": {
+        "__pregel_tasks": [],
+        "__start__": {
+          "results": []
+        }
+      },
+      "channel_versions": {
+        "__start__": 1
+      },
+      "id": "1f1aff32-d37c-6760-ffff-bc4ef44c77d2",
+      "ts": "2026-09-14T04:17:19.574Z",
+      "v": 4,
+      "versions_seen": {
+        "__input__": {}
+      }
+    },
+    "config": {
+      "configurable": {
+        "checkpoint_id": "1f1aff32-d37c-6760-ffff-bc4ef44c77d2",
+        "checkpoint_ns": "",
+        "thread_id": "c2"
+      }
+    },
+    "metadata": {
+      "parents": {},
+      "source": "input",
+      "step": -1
+    },
+    "pendingWrites": [
+      [
+        "abcb968a-d25e-58dd-9fcc-2d4579818bb8",
+        "__return__",
+        {
+          "results": [
+            "completed"
+          ]
+        }
+      ],
+      [
+        "bcbd518d-60a3-5507-b3c6-8836613957c6",
+        "__error__",
+        {
+          "message": "injected after completed writes",
+          "name": "Error"
+        }
+      ],
+      [
+        "1a8eca97-6733-5962-af03-eca6e1308646",
+        "__error__",
+        {
+          "message": "This operation was aborted",
+          "name": "AbortError"
+        }
+      ],
+      [
+        "bcbd518d-60a3-5507-b3c6-8836613957c6",
+        "__return__",
+        {
+          "results": [
+            "recovered"
+          ]
+        }
+      ]
+    ]
+  }
+}

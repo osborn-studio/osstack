@@ -1,5 +1,7 @@
 # G07: public Saver and restricted checkpoint wire decision
 
+> **C2 后续决定（2026-09-13）：** 原 StateGraph 反例仍有效。公开 Functional API + durability:sync 已完成独立故障矩阵，获准进入 M1 集成；不代表生产可用。见 [Functional 决策](../design/2026-09-13-graph-functional-runtime.md)及 [C2 验收](2026-09-13-graph-c2-completion.md)。下文保留 G07 原始结论。
+
 2026-09-13. Tested pins: `@langchain/langgraph` **1.4.15**, `@langchain/langgraph-checkpoint` **1.1.5**, `@langchain/core` **1.2.11**. Executor runtime: Node **26.5.0**, macOS arm64. Supervisor owns independent runtime/adversarial/full-repository validation.
 
 **Decision: the public Saver extension supports the restricted static JSON graph's storage seam, including cross-process completed-sibling recovery and interrupt/resume. Unconditional kernel admission is NOT established. A reproducible engine partial-abort counterexample remains a production recovery gate.** No engine patch, private import, production DB, checkpointer RPC or worker manager was introduced. A passing probe means its assertions (including recognition of the counterexample) passed; it explicitly reports `productionReady: false`.

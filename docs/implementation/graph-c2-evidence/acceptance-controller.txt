@@ -1,0 +1,1 @@
+{"tasks":[{"id":"c2-acceptance","outcome":"success","verification":"8 verifier commands and 0 verifier adapters passed. 8 evaluations passed."}],"discovered":1,"executed":1}

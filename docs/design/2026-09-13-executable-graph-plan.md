@@ -4,6 +4,8 @@
 
 执行拆解已更新为 [4 个里程碑、30 张任务卡的详细实施计划](../implementation/2026-09-13-osstack-graph-upgrade.md)。本文件继续作为架构与语义依据；实际任务编号、依赖、状态和验收以详细计划及其 JSON 清单为准。
 
+当前内核决定已更新：[Functional API + sync](2026-09-13-graph-functional-runtime.md) 通过 C2 限定准入。G00–G07 完成，生产图执行链尚未实现；具体状态见实施计划。原 StateGraph 并行部分写入反例保留，不作为生产编译目标。
+
 ## 1. 决策与产品验收
 
 产品入口为 `osstack graph`；新增 `@osstack/graph` 包；首个执行内核使用 LangGraph.js。独立 graph worker 按需启动，经 daemon 执行受控动作。现有 `graph explain` 保留其只读语义。初版不创建新的控制面产品、模型客户端体系或通用多引擎插件层。

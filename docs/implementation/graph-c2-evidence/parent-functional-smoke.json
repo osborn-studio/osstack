@@ -1,0 +1,68 @@
+{
+  "first": "fail",
+  "codecCheck": true,
+  "before": {
+    "config": {
+      "configurable": {
+        "thread_id": "probe",
+        "checkpoint_id": "1f1afef8-91c1-66c0-ffff-6d88742c155f",
+        "checkpoint_ns": ""
+      }
+    },
+    "checkpoint": {
+      "v": 4,
+      "id": "1f1afef8-91c1-66c0-ffff-6d88742c155f",
+      "ts": "2026-09-14T03:51:15.756Z",
+      "channel_values": {
+        "__start__": {},
+        "__pregel_tasks": []
+      },
+      "channel_versions": {
+        "__start__": 1
+      },
+      "versions_seen": {
+        "__input__": {}
+      }
+    },
+    "metadata": {
+      "source": "input",
+      "step": -1,
+      "parents": {}
+    },
+    "pendingWrites": [
+      [
+        "3462a1cd-c37a-54b7-af36-845e0e956f5e",
+        "__error__",
+        {
+          "message": "fail",
+          "name": "Error"
+        }
+      ],
+      [
+        "8ee18da5-1c61-5da0-aa2f-b13acaa54a59",
+        "__return__",
+        {
+          "value": "completed"
+        }
+      ],
+      [
+        "1c3f2900-79da-5ac0-9dfe-6ec4e063cadb",
+        "__error__",
+        {
+          "message": "This operation was aborted",
+          "name": "AbortError"
+        }
+      ]
+    ]
+  },
+  "counts": {
+    "a": 1,
+    "b": 2,
+    "j": 1
+  },
+  "result": [
+    "completed",
+    "recovered",
+    "joined"
+  ]
+}

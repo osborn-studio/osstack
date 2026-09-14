@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "admitted": false,
+  "node": "v22.22.1",
+  "versions": {
+    "langgraph": "1.4.15",
+    "langgraph-checkpoint": "1.1.5",
+    "core": "1.2.11"
+  },
+  "assertions": 56,
+  "failedAssertions": [],
+  "experiments": 42,
+  "processes": 96,
+  "actualSigkills": 26,
+  "cleaned": true,
+  "evidence": "/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-graph-c2-ijsk2plt/final-node22"
+}

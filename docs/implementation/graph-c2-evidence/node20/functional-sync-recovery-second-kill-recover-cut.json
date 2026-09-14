@@ -1,0 +1,131 @@
+{
+  "taskReturns": [
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff2f-528e-6340-ffff-e120842e1fa8",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "f41bf108-1b79-5fe5-87e7-0895b8e626f2",
+      "value": {
+        "results": [
+          "completed"
+        ]
+      }
+    },
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff2f-528e-6340-ffff-e120842e1fa8",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "067c5571-bab0-5cde-90b2-f58282c4b47e",
+      "value": {
+        "results": [
+          "recovered"
+        ]
+      }
+    }
+  ],
+  "counts": {
+    "completedBody": 1,
+    "completedWrapper": 1,
+    "flakyAttempts": 2,
+    "recoveredBody": 1
+  },
+  "effects": {
+    "completed": {
+      "attempt": 1,
+      "effect": "completed",
+      "result": {
+        "results": [
+          "completed"
+        ]
+      },
+      "run": "functional-sync-recovery-second-kill",
+      "status": "confirmed"
+    },
+    "recovered": {
+      "attempt": 1,
+      "effect": "recovered",
+      "result": {
+        "results": [
+          "recovered"
+        ]
+      },
+      "run": "functional-sync-recovery-second-kill",
+      "status": "confirmed"
+    }
+  },
+  "tuple": {
+    "checkpoint": {
+      "channel_values": {
+        "__pregel_tasks": [],
+        "__start__": {
+          "results": []
+        }
+      },
+      "channel_versions": {
+        "__start__": 1
+      },
+      "id": "1f1aff2f-528e-6340-ffff-e120842e1fa8",
+      "ts": "2026-09-14T04:15:45.524Z",
+      "v": 4,
+      "versions_seen": {
+        "__input__": {}
+      }
+    },
+    "config": {
+      "configurable": {
+        "checkpoint_id": "1f1aff2f-528e-6340-ffff-e120842e1fa8",
+        "checkpoint_ns": "",
+        "thread_id": "c2"
+      }
+    },
+    "metadata": {
+      "parents": {},
+      "source": "input",
+      "step": -1
+    },
+    "pendingWrites": [
+      [
+        "f41bf108-1b79-5fe5-87e7-0895b8e626f2",
+        "__return__",
+        {
+          "results": [
+            "completed"
+          ]
+        }
+      ],
+      [
+        "067c5571-bab0-5cde-90b2-f58282c4b47e",
+        "__error__",
+        {
+          "message": "injected after completed writes",
+          "name": "Error"
+        }
+      ],
+      [
+        "c8c74e3d-06d6-59be-830f-a64c6810b62a",
+        "__error__",
+        {
+          "message": "This operation was aborted",
+          "name": "AbortError"
+        }
+      ],
+      [
+        "067c5571-bab0-5cde-90b2-f58282c4b47e",
+        "__return__",
+        {
+          "results": [
+            "recovered"
+          ]
+        }
+      ]
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';import {createRequire} from 'node:module';import {pathToFileURL} from 'node:url';
+const rq=createRequire('/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/package.json');const {entrypoint,task,MemorySaver}=await import(pathToFileURL(rq.resolve('@langchain/langgraph')));
+const results=[];
+for(const scenario of ['changed-argument','reordered-calls']){
+ const saver=new MemorySaver();const counts={a:0,b:0,join:0};const a=task('a',n=>{counts.a++;return n});const b=task('b',n=>{counts.b++;return n});const j=task('join',values=>{counts.join++;return values.reduce((x,y)=>x+y,0)});
+ const build=(changed)=>entrypoint({name:'identity',checkpointer:saver},async()=>{const values=await Promise.all(changed&&scenario==='reordered-calls'?[b(22),a(20)]:[a(20),b(22)]);const result=await j(changed&&scenario==='changed-argument'?[100,200]:values);if(!changed)throw Error('injected entrypoint error');return result});
+ const cfg={configurable:{thread_id:scenario},durability:'sync'};await assert.rejects(build(false).invoke({},cfg),/injected entrypoint error/);const before=await saver.getTuple(cfg);assert.equal(counts.join,1);assert.ok(before.pendingWrites.some(w=>w[1]==='__return__'&&w[2]===42));const result=await build(true).invoke(null,cfg);
+ if(scenario==='changed-argument'){assert.equal(result,42);assert.deepEqual(counts,{a:1,b:1,join:1});}else{assert.deepEqual(counts,{a:2,b:2,join:1});}
+ results.push({scenario,bypassedProgramIdentityGate:true,result,counts,conclusion:scenario==='changed-argument'?'Changed join parameters reused cached old result: engine does not bind args':'Reordered task calls re-entered completed bodies: ordered program identity must be bound'});
+}
+console.log(JSON.stringify({negativeControls:true,passed:true,results},null,2));

@@ -9,7 +9,7 @@
     "LOOP": "`pnpm --filter @osstack/loop exec vitest run src/executor.test.ts src/loop-engine.test.ts`；新增 candidate 测试后同时运行；涉及 agents 时跑对应包测试。",
     "PROTOCOL": "`pnpm --filter @osstack/protocol test`；build 后 `pnpm --filter @osstack/protocol generate:schemas` 和 `check:schemas`。",
     "GRAPH_BUILD": "`pnpm --filter @osstack/graph build` 与 `typecheck`；记录根入口/worker 入口分别的模块加载链。",
-    "SAVER_SPIKE": "`pnpm --filter @osstack/graph test`；运行新 `node scripts/probe-graph-saver.mjs`，必须在显式临时目录跨进程验证。",
+    "SAVER_SPIKE": "`pnpm --filter @osstack/graph test`；运行新 `node scripts/probe-graph-saver.mjs`，必须在显式临时目录跨进程验证。 C2 补充：node --test scripts/fixtures/graph-c2-*.test.mjs；node scripts/probe-graph-c2.mjs，区分实验断言通过和内核准入。",
     "CORE": "`pnpm --filter @osstack/core test`；迁移/状态测试只使用临时数据库夹具。",
     "LOCKS": "`pnpm --filter @osstack/autonomy test`；`pnpm --filter @osstack/core test` 中仓库身份夹具覆盖同仓多 worktree。",
     "ADMISSION": "`pnpm --filter @osstack/cli exec vitest run src/governed-execution.test.ts src/daemon-policy-gate.test.ts src/daemon-loop.test.ts`；并跑 Loop policy-gate 测试。",
@@ -266,9 +266,10 @@
       "evidence": [
         "docs/implementation/graph-kernel-evidence/G07-result.json",
         "docs/implementation/graph-kernel-evidence/acceptance-result.json",
-        "docs/implementation/graph-saver-decision.md"
+        "docs/implementation/graph-saver-decision.md",
+        "docs/implementation/graph-c2-evidence/admission.json"
       ],
-      "qualification": "可行性验证完成；保留 partial-abort 反例和替代评估，C2 内核准入未通过。"
+      "qualification": "G07 可行性验证完成并保留 StateGraph partial-abort 反例；后续 C2 已限定准入 Functional + sync 供 M1 集成，生产运行时未实现。"
     },
     {
       "id": "G08",
@@ -287,7 +288,8 @@
       "acceptance": [
         "新增 graph run、请求摘要、scope、spec/version、lease/generation 和引用索引，迁移使用实施时最新编号。",
         "同请求同内容返回原 run，不同内容拒绝；CAS/唯一约束覆盖并发与陈旧版本。",
-        "全新 DB、旧版夹具升级、重复打开和未来版本拒绝行为明确。"
+        "全新 DB、旧版夹具升级、重复打开和未来版本拒绝行为明确。",
+        "保存不可变 spec/input digest、executionModel、engine/checkpoint/template/registry/compiler/schema 版本及 compiledProgramDigest；恢复前拒绝程序身份和固定调用顺序不匹配。"
       ],
       "verify": "CORE",
       "size": "M",
@@ -419,7 +421,9 @@
       "acceptance": [
         "存储协议保留 G07 验证的全部语义；daemon 不导入 LangGraph 重入口或执行任意反序列化代码。",
         "put/putWrites 均校验 scope/generation，幂等缓存先检查代际；同 run 串行写入和切代。",
-        "v1 checkpoints/pending writes 与 run/action 同属控制面 SQLite，由同一迁移负责人建表；短事务绑定代际检查与写入，重启先核对 lease。"
+        "v1 checkpoints/pending writes 与 run/action 同属控制面 SQLite，由同一迁移负责人建表；短事务绑定代际检查与写入，重启先核对 lease。",
+        "覆盖 Functional task RETURN、工作流结束批次、错误和 resume 值；保持 codec/整批写入/fencing，不能把测试 JournalSaver 当生产实现。",
+        "sync 模式下必须等待 daemon 持久事务提交后确认写入；延迟 RPC/失败/崩溃验证不能由同步文件夹具代替。"
       ],
       "verify": "CHECKPOINT",
       "size": "M",
@@ -445,7 +449,9 @@
       "acceptance": [
         "worker-entry 实现 protocol 动作请求/响应的 IPC 客户端，供节点注入调用；run/generation 绑定、日志隔离、帧限长、背压明确。",
         "每 run 单有效 worker；daemon 内部取消经 worker/broker 传至 executor，超时转待确认；心跳/接管禁止陈旧 checkpoint 和动作。",
-        "worker 不持控制面 DB 写通路，启动不阻塞 daemon 主事件循环。"
+        "worker 不持控制面 DB 写通路，启动不阻塞 daemon 主事件循环。",
+        "invoke abort 拒绝不等于停止：停止新动作后确认 worker 退出才可接管；独立 agent/命令仍由 broker 取消与对账，旧代写入拒绝。",
+        "v1 固定 executionModel=langgraph-functional-v1 与 durability=sync；恢复前验证不可变程序/input 身份，拒绝 async/exit 或身份不符。"
       ],
       "verify": "WORKER",
       "size": "M",
@@ -524,7 +530,8 @@
       "acceptance": [
         "通过 daemon→worker IPC action client→broker→一次命令→持久结果贯穿两节点链；内部取消可停止后续节点并核对进程退出。",
         "随机故障之外确定性击中三个落库窗口，重启后检查外部日志与账本。",
-        "仅实验/测试开启，不公开真实仓库写入；不能用 MemorySaver 替代集成持久化。"
+        "仅实验/测试开启，不公开真实仓库写入；不能用 MemorySaver 替代集成持久化。",
+        "用真实 daemon/worker/broker 接口重跑 C2 的已确认效果到 RETURN、最终 checkpoint、恢复再次崩溃及不响应取消窗口。"
       ],
       "verify": "CHAIN",
       "size": "M",
@@ -551,7 +558,8 @@
       "acceptance": [
         "仅注册节点/schema/路由；拒绝任意 JS、不可达依赖、缺输入及未授权工具。",
         "最多三 epoch 静态展开，计算最坏动作预算并拒绝不可能满足的规格。",
-        "图、节点注册表和 schema 版本固定，输入映射类型与输出存在性运行时校验。"
+        "图、节点注册表和 schema 版本固定，输入映射类型与输出存在性运行时校验。",
+        "编译目标采用公开 entrypoint/task；固定 task 名称、顺序、输入映射及有限重试展开，生成 compiledProgramDigest；编排函数无 I/O/随机/时钟依赖。"
       ],
       "verify": "GRAPH",
       "size": "M",
@@ -732,7 +740,8 @@
       "acceptance": [
         "逐项覆盖 F01–F12 确定性窗口，再做固定 seed 的重复运行。",
         "旧 worker checkpoint/action 被拒，旧子进程写旧目录不污染新 candidate。",
-        "撤权、同 key 并发、pending writes 丢失与 cancel race 有可复核日志；不承诺外部物理恰好一次。"
+        "撤权、同 key 并发、pending writes 丢失与 cancel race 有可复核日志；不承诺外部物理恰好一次。",
+        "覆盖已确认外部效果与缓存 RETURN 的不同崩溃边界，区分函数重入次数、确认效果次数和逻辑 join 次数；错误程序身份不得恢复。"
       ],
       "verify": "FAULTS",
       "size": "M",
@@ -846,19 +855,18 @@
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "c1f461992a5967bbb9055f78f8e2cb648599d5c9",
+    "acceptedCodeCommit": "b230eb5b51d3dd1e81dfe789f46f22d12b50f2cc",
     "completedTaskCount": 8,
     "totalTaskCount": 30,
-    "nextTasks": [],
-    "report": "docs/implementation/2026-09-13-graph-kernel-completion.md",
-    "nextGate": "C2",
-    "queuedTasksAfterGate": [
+    "nextTasks": [
       "G08",
       "G09",
       "G10"
     ],
+    "report": "docs/implementation/2026-09-13-graph-c2-completion.md",
+    "nextGate": "C3",
     "milestoneStatus": {
-      "M0": "implementation_complete_admission_blocked",
+      "M0": "completed",
       "M1": "pending",
       "M2": "pending",
       "M3": "pending"
@@ -867,16 +875,31 @@
   "decisionGates": [
     {
       "id": "C2",
-      "status": "blocked",
-      "reason": "LangGraph 1.4.15 partial-abort 可持久化输出却缺失 AND barrier 通知；恢复后 join 不执行，官方 MemorySaver 也可复现。",
-      "evidence": "docs/implementation/graph-saver-decision.md",
-      "nextAction": "在隔离环境用最小反例验证公开修复/明确完成凭据方案；不足则评估有限静态调度器。不得修改引擎私有实现掩盖，闭门前不进入业务模板/生产恢复链。",
+      "status": "passed",
+      "reason": "C2 仅准入 langgraph-functional-v1 + durability:sync 供 M1 集成；StateGraph 1.4.15 的 partial-abort AND-join 反例仍未修复，不获准入。",
+      "evidence": "docs/implementation/graph-c2-evidence/admission.json",
+      "nextAction": "按 G08→G09→G10 继续。G13/G14 固定同步持久 ack 与程序身份；G17/G25 必须通过真实 daemon/worker/broker 故障验收。",
       "releaseCriteria": [
-        "最小反例恢复后 join 恰好执行一次且结果完整",
-        "部分写入/超时/异常/worker 退出的独立进程故障矩阵通过",
-        "已确认外部效果保持账本去重设计，不以盲目重跑绕过",
-        "Node20/22 与版本/序列化回归通过并更新公开接口决策"
-      ]
+        "对应 Functional 并行失败场景恢复完整结果，逻辑 join 效果一次；StateGraph 失败对照保持可复现",
+        "独立进程 partial write、异常、超时、取消、恢复二次 SIGKILL、interrupt false 矩阵通过",
+        "区分缓存 RETURN 与已确认效果，未知效果拒绝盲重发和新动作；恢复程序身份约束已绑定后续任务",
+        "Node 20.6.0/20.20.2/22.22.1/26.5.0 核心实验与序列化回归通过；生产 RPC/发行形式留待 M1/G27"
+      ],
+      "executionModel": "langgraph-functional-v1",
+      "durability": "sync",
+      "productionReady": false,
+      "acceptedCodeCommit": "b230eb5b51d3dd1e81dfe789f46f22d12b50f2cc"
+    },
+    {
+      "id": "C3",
+      "status": "pending",
+      "tasks": [
+        "G08",
+        "G09",
+        "G10"
+      ],
+      "reason": "图 run/worker 身份、共享仓库锁与准入尚未实现。",
+      "evidence": null
     }
   ]
 }

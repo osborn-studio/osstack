@@ -1,0 +1,85 @@
+{
+  "counts": {
+    "completedBody": 1,
+    "completedWrapper": 2,
+    "flakyAttempts": 1,
+    "recoveredBody": 1
+  },
+  "effects": {
+    "completed": {
+      "attempt": 1,
+      "effect": "completed",
+      "run": "functional-sync-unknown-effect-crash",
+      "status": "started"
+    },
+    "recovered": {
+      "attempt": 1,
+      "effect": "recovered",
+      "result": {
+        "results": [
+          "recovered"
+        ]
+      },
+      "run": "functional-sync-unknown-effect-crash",
+      "status": "confirmed"
+    }
+  },
+  "tuple": {
+    "checkpoint": {
+      "channel_values": {
+        "__pregel_tasks": [],
+        "__start__": {
+          "results": []
+        }
+      },
+      "channel_versions": {
+        "__start__": 1
+      },
+      "id": "1f1aff1b-bd0d-62c0-ffff-ba56e36d9a68",
+      "ts": "2026-09-14T04:06:59.820Z",
+      "v": 4,
+      "versions_seen": {
+        "__input__": {}
+      }
+    },
+    "config": {
+      "configurable": {
+        "checkpoint_id": "1f1aff1b-bd0d-62c0-ffff-ba56e36d9a68",
+        "checkpoint_ns": "",
+        "thread_id": "c2"
+      }
+    },
+    "metadata": {
+      "parents": {},
+      "source": "input",
+      "step": -1
+    },
+    "pendingWrites": [
+      [
+        "a64dd19e-4b34-5868-8ceb-1d38c9226cb3",
+        "__error__",
+        {
+          "message": "reconcile: no confirmed effect",
+          "name": "Error"
+        }
+      ],
+      [
+        "ad8b7197-a951-5120-b0fa-49ce0214e38c",
+        "__return__",
+        {
+          "results": [
+            "recovered"
+          ]
+        }
+      ],
+      [
+        "295e6768-4c21-53dd-af24-db95eadcb6de",
+        "__error__",
+        {
+          "message": "This operation was aborted",
+          "name": "AbortError"
+        }
+      ]
+    ]
+  }
+}

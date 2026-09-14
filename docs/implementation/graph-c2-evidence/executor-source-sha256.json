@@ -1,0 +1,8 @@
+{
+  "scripts/probe-graph-c2.mjs": "3a5c9fcd7d2330f52793344aaaf130480b82982399e346124ffc4634b57f8ca2",
+  "scripts/fixtures/graph-c2-runtime.mjs": "4481c2454addd2600d71873763a14d4ab3becc9feba53bd9035df04f0df11505",
+  "scripts/fixtures/graph-c2-ledger.mjs": "2749c24b0c06a16a939f0c8aa66a83546193406c01c9003b3723043488588b7c",
+  "scripts/fixtures/graph-c2-journal.test.mjs": "9e17e2a16341f8ac76799eafb22e1699a507f4e63bfb00771e862b1d90e4c7e2",
+  "scripts/fixtures/graph-c2-ledger.test.mjs": "c7334eb00d7a3cd6769862855a39ccc06218a6fa99d96f029a3711c665ba30e5",
+  "docs/implementation/graph-c2-evidence/executor.md": "cb2de6a773c5342527bd00361a6cb03cc35d275d2a31fcc83ebcf94d4261fe60"
+}

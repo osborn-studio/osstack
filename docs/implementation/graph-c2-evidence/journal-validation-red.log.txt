@@ -1,0 +1,52 @@
+✔ restart via public calls preserves full tuple, errors, and duplicate write semantics (25.419875ms)
+✖ invalid persisted method and argument shapes are refused before replay (4.7775ms)
+✖ failed persistence does not resurrect an uncommitted request on later append (3.947458ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 1
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 202.501083
+
+✖ failing tests:
+
+test at scripts/fixtures/graph-c2-journal.test.mjs:24:1
+✖ invalid persisted method and argument shapes are refused before replay (4.7775ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/fixtures/graph-c2-journal.test.mjs:35:7)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /invalid journal/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/fixtures/graph-c2-journal.test.mjs:39:1
+✖ failed persistence does not resurrect an uncommitted request on later append (3.947458ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    [
+      [
+  +     'failed'
+  +   ],
+  +   [
+        'successful'
+      ]
+    ]
+
+      at TestContext.<anonymous> (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/fixtures/graph-c2-journal.test.mjs:48:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ [ 'failed' ], [ 'successful' ] ],
+    expected: [ [ 'successful' ] ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
