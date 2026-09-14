@@ -22,7 +22,7 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 256,
-              "pattern": "^[^\\s\\u0000-\\u001f](?:[^\\u0000-\\u001f]*[^\\s\\u0000-\\u001f])?$"
+              "pattern": "^[^\\s\\u0000-\\u001f\\u007f-\\u009f](?:[^\\u0000-\\u001f\\u007f-\\u009f]*[^\\s\\u0000-\\u001f\\u007f-\\u009f])?$"
             },
             "repositoryRef": {
               "$ref": "#/properties/spec/properties/input/properties/taskRef"
@@ -1148,7 +1148,14 @@
                       "const": "failed"
                     },
                     "error": {
-                      "$ref": "#/properties/error"
+                      "anyOf": [
+                        {
+                          "$ref": "#/properties/error/anyOf/0"
+                        },
+                        {
+                          "$ref": "#/properties/error/anyOf/2"
+                        }
+                      ]
                     }
                   },
                   "required": [

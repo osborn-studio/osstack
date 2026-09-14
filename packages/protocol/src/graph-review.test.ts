@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GraphError, WorkerActionResponse, parseInboundGraphRequest, parseInboundWorkerActionRequest, validateGraphMutation, validateWorkerActionResponse } from "./graph.js";
+import { GraphError, GraphScope, WorkerActionResponse, parseInboundGraphRequest, parseInboundWorkerActionRequest, validateGraphMutation, validateWorkerActionResponse } from "./graph.js";
 const scope = { schemaVersion: 1 as const, tenantId: "tenant", principalId: "owner", workspaceId: "workspace" };
 const specHash = "a".repeat(64);
 const worker = { schemaVersion: 1, kind: "worker_action", requestId: "request", scope, graphRunId: "run", generation: 1, specHash, epoch: 0, nodeId: "implement", effectSlot: "invoke", action: { kind: "implement", inputArtifactRef: "input", workspaceLeaseRef: "lease" } };
@@ -12,6 +12,16 @@ const response = { schemaVersion: 1, kind: "worker_action_response", requestId: 
 const unknownError = { schemaVersion: 1, code: "ACTION_OUTCOME_UNKNOWN", message: "Unknown", retryable: false, nextAction: "reconcile" };
 
 describe("adversarial graph boundary regressions", () => {
+  it.each(["ACTION_OUTCOME_UNKNOWN", "CANCEL_UNCONFIRMED"])("never labels unresolved %s as a definite failure", (code) => {
+    expect(WorkerActionResponse.safeParse({ ...response, outcome: { state: "failed", error: { ...unknownError, code } } }).success).toBe(false);
+  });
+  it("rejects DEL and C1 controls in identities at every position", () => {
+    for (const character of ["\u007f", "\u0085", "\u009b", "\u009f"]) {
+      for (const tenantId of [`${character}a`, `a${character}b`, `a${character}`]) {
+        expect(GraphScope.safeParse({ ...scope, tenantId }).success).toBe(false);
+      }
+    }
+  });
   it("denies worker identities every control-plane mutation even within their run", () => {
     expect(() => parseInboundGraphRequest(resume, resolve)).toThrow(/UNAUTHENTICATED/);
     expect(parseInboundGraphRequest(resume, control)).toEqual(resume);

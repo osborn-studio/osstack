@@ -8,7 +8,8 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./worker": { "types": "./dist/worker-entry.d.ts", "import": "./dist/worker-entry.js" }
+    "./worker": { "types": "./dist/worker-entry.d.ts", "import": "./dist/worker-entry.js" },
+    "./codec": { "types": "./dist/checkpoint-codec.d.ts", "import": "./dist/checkpoint-codec.js" }
   },
   "files": ["dist"],
   "scripts": {

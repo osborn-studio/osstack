@@ -64,7 +64,7 @@ export const GraphJsonValue = wire(JsonValue);
 const Version = z.literal(1);
 // No trimming/coercion: business identities must not silently collapse.
 // biome-ignore lint/suspicious/noControlCharactersInRegex: Wire IDs must reject ASCII control characters.
-const Id = z.string().min(1).max(256).regex(/^[^\s\u0000-\u001f](?:[^\u0000-\u001f]*[^\s\u0000-\u001f])?$/);
+const Id = z.string().min(1).max(256).regex(/^[^\s\u0000-\u001f\u007f-\u009f](?:[^\u0000-\u001f\u007f-\u009f]*[^\s\u0000-\u001f\u007f-\u009f])?$/);
 const Digest = z.string().regex(/^[a-f0-9]{64}$/);
 const Commit = z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/);
 const Count = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
@@ -194,7 +194,7 @@ const WorkerResponse = z.object({
     z.object({ state: z.literal("confirmed"), result: Result }).strict(),
     z.object({ state: z.literal("intent") }).strict(),
     z.object({ state: z.literal("running"), executionRef: Id }).strict(),
-    z.object({ state: z.literal("failed"), error: ErrorObject }).strict(),
+    z.object({ state: z.literal("failed"), error: z.union([ErrorObject.options[0], ErrorObject.options[2]]) }).strict(),
     z.object({ state: z.literal("unknown"), error: ErrorObject, reconciliationRef: Id }).strict(),
     z.object({ state: z.literal("cancel_pending"), error: ErrorObject, executionRef: Id }).strict(),
     z.object({ state: z.literal("reconciliation_required"), error: ErrorObject, reconciliationRef: Id }).strict(),
