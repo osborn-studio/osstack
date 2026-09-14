@@ -1,3 +1,6 @@
+import type { GraphCheckpointResponse } from "@osstack/protocol";
+import type { GraphCheckpointBinding, GraphCheckpointService } from "./graph-checkpoint-service.js";
+import type { GraphActionBroker } from "./graph-action-broker.js";
 import { boundedAdapterEvents, confirmAdapterStopped } from "./adapter-lifecycle.js";
 import { GovernedExecution, type ExecutionLease, type AdmissionInput } from "./governed-execution.js";
 // osstack daemon — Unix socket server.
@@ -3606,6 +3609,10 @@ function buildContext(
 }
 
 export interface DaemonHandles {
+  /** Trusted in-process checkpoint channel; no public worker RPC is exposed yet. */
+  executeGraphCheckpoint: (connection: object, request: unknown) => Promise<GraphCheckpointResponse>;
+  /** Trusted in-process port; await once, then register immutable worker bindings synchronously. */
+  graphActionBroker: () => Promise<GraphActionBroker>;
   close: () => Promise<void>;
   socketPath: string;
   dbPath: string;
@@ -3614,6 +3621,7 @@ export interface DaemonHandles {
 }
 
 export interface StartDaemonOptions {
+  graphCheckpointBindings?: ReadonlyMap<object, GraphCheckpointBinding>;
   /** Host launch configuration for direct adapter writes. */
   workspacePath?: string;
   adapterWorkspaces?: ReadonlyMap<string, string>;
@@ -3807,6 +3815,13 @@ function collaboratorPaused(ctx: DaemonContext): boolean {
 export async function startDaemon(
   opts: StartDaemonOptions = {},
 ): Promise<DaemonHandles> {
+  let checkpointService: Promise<GraphCheckpointService> | undefined;
+  let checkpointClosed = false;
+  const checkpointBindings = new Map(Array.from(opts.graphCheckpointBindings ?? [], ([key, binding]) => {
+    const { authorize, ...data } = binding;
+    return [key, { ...structuredClone(data), authorize }] as const;
+  }));
+  let graphBroker: Promise<GraphActionBroker> | undefined;
   const registeredWorkspace = opts.workspacePath === undefined ? undefined : (await resolveRepositoryScope(opts.workspacePath)).workspacePath;
   const socketPath = opts.socketPath ?? resolveSocketPath();
   const continuationTrust = new Map(opts.continuationTrustedPublicKeys
@@ -4003,6 +4018,10 @@ export async function startDaemon(
       healthMonitor?.unref();
       let shutdownPromise: Promise<void> | undefined;
       const shutdown = async (): Promise<void> => {
+        checkpointClosed = true;
+        if (checkpointService) {
+          try { (await checkpointService).close(); } catch { /* Initialization failure created no service. */ }
+        }
         if (shutdownPromise !== undefined) return await shutdownPromise;
         process.off("SIGTERM", onSig);
         process.off("SIGINT", onSig);
@@ -4074,6 +4093,23 @@ export async function startDaemon(
 
       ctx.collaborator?.recover();
       resolve({ close: shutdown, socketPath, dbPath: ctx.dbPath,
+        executeGraphCheckpoint: async (connection, request) => {
+          if (checkpointClosed) throw new Error("CHECKPOINT_SERVICE_CLOSED");
+          checkpointService ??= Promise.all([
+            import("./graph-checkpoint-service.js"), import("@osstack/core"),
+          ]).then(([{ GraphCheckpointService }, { GraphRunStore, GraphCheckpointStore }]) =>
+            new GraphCheckpointService({ runs: new GraphRunStore(ctx.db), checkpoints: new GraphCheckpointStore(ctx.db), bindings: checkpointBindings }));
+          const service = await checkpointService;
+          if (checkpointClosed) { service.close(); throw new Error("CHECKPOINT_SERVICE_CLOSED"); }
+          return service.execute(connection, request);
+        },
+        graphActionBroker: () => graphBroker ??= import("./graph-action-broker.js").then(({ GraphActionBroker }) => new GraphActionBroker(ctx.db, {
+          acquire: (input) => admissionFor(ctx).acquire(input),
+          authorizePolicy: async (workspacePath) => {
+            const decision = await makeRepositoryPolicyGate(workspacePath, true)({ workspacePath });
+            if (!decision.allow) throw new Error(decision.reason);
+          },
+        })),
         acquireGraphAdmission: async (identity, input) => {
           const trusted = opts.graphIdentities?.get(identity);
           if (!trusted || typeof trusted.authorize !== "function") throw new Error("trusted graph identity and authorization required");

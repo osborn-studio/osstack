@@ -1460,7 +1460,42 @@ export const MIGRATIONS: readonly Migration[] = [
         BEGIN SELECT RAISE(ABORT, 'graph action history is immutable'); END;
     `,
   },
-
+  {
+    id: 27,
+    name: "graph_checkpoints",
+    sql: `
+      CREATE TABLE graph_checkpoints (
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        namespace TEXT NOT NULL CHECK (length(namespace) <= 1024),
+        checkpoint_id TEXT NOT NULL CHECK (length(checkpoint_id) BETWEEN 1 AND 256),
+        parent_checkpoint_id TEXT,
+        checkpoint TEXT NOT NULL CHECK (length(CAST(checkpoint AS BLOB)) <= 1048576),
+        metadata TEXT NOT NULL CHECK (length(CAST(metadata AS BLOB)) <= 1048576),
+        new_versions TEXT NOT NULL CHECK (length(CAST(new_versions AS BLOB)) <= 1048576),
+        PRIMARY KEY (graph_run_id, namespace, checkpoint_id)
+      );
+      CREATE INDEX idx_graph_checkpoints_page ON graph_checkpoints(graph_run_id, checkpoint_id DESC, namespace DESC);
+      -- Pending writes can arrive before put; bind to the run, not a yet-absent checkpoint.
+      CREATE TABLE graph_checkpoint_writes (
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        namespace TEXT NOT NULL CHECK (length(namespace) <= 1024),
+        checkpoint_id TEXT NOT NULL CHECK (length(checkpoint_id) BETWEEN 1 AND 256),
+        task_id TEXT NOT NULL CHECK (length(task_id) BETWEEN 1 AND 256),
+        write_index INTEGER NOT NULL CHECK (write_index BETWEEN -4 AND 4095),
+        channel TEXT NOT NULL CHECK (length(channel) BETWEEN 1 AND 256),
+        value TEXT NOT NULL CHECK (length(CAST(value AS BLOB)) <= 1048576),
+        PRIMARY KEY (graph_run_id, namespace, checkpoint_id, task_id, write_index)
+      );
+      CREATE TABLE graph_checkpoint_requests (
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        request_id TEXT NOT NULL CHECK (length(request_id) BETWEEN 1 AND 256),
+        payload_digest TEXT NOT NULL CHECK (length(payload_digest) = 64),
+        response_json TEXT NOT NULL CHECK (length(response_json) <= 1024),
+        generation INTEGER NOT NULL CHECK (generation >= 1),
+        PRIMARY KEY (graph_run_id, request_id)
+      );
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

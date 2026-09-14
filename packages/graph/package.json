@@ -9,7 +9,8 @@
   "exports": {
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
     "./worker": { "types": "./dist/worker-entry.d.ts", "import": "./dist/worker-entry.js" },
-    "./codec": { "types": "./dist/checkpoint-codec.d.ts", "import": "./dist/checkpoint-codec.js" }
+    "./codec": { "types": "./dist/checkpoint-codec.d.ts", "import": "./dist/checkpoint-codec.js" },
+    "./checkpointer": { "types": "./dist/remote-checkpointer.d.ts", "import": "./dist/remote-checkpointer.js" }
   },
   "files": ["dist"],
   "scripts": {

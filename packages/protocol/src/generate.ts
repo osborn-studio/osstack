@@ -10,6 +10,7 @@
 // documents the object SHAPE only; the conditional rules live in the superRefine
 // and the tests. This is a known, documented limitation, not a gap.
 
+import { GraphCheckpointRequest, GraphCheckpointResponse } from "./graph-checkpoint.js";
 import type { ZodTypeAny } from "zod";
 import { GraphProtocol } from "./graph.js";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -46,6 +47,8 @@ interface SchemaEntry {
 
 /** Public protocol contracts emitted as JSON Schema. Order is stable. */
 export const SCHEMA_MANIFEST: readonly SchemaEntry[] = [
+  { key: "graph-checkpoint-request", title: "Graph Checkpoint Request", schema: GraphCheckpointRequest, comment: "Opaque bounded codec data; transport caps raw frames at 8 MiB. Host binds authenticated run and fences transaction before reads, writes and replay. No JSON field confers authority." },
+  { key: "graph-checkpoint-response", title: "Graph Checkpoint Response", schema: GraphCheckpointResponse },
   {
     key: "graph", title: "Osstack Graph v1 Contract Registry", schema: GraphProtocol, references: "root",
     comment: "Registry of strict versioned JSON graph contracts. Zod additionally enforces finite JSON values, 65536-byte/16-depth/4096-value envelope bounds, plain data properties, response outcome/error consistency and effect/error location. Transport must cap raw bytes before JSON.parse. Authentication, current scope/run/generation/spec/epoch checks, request/response pairing, canonical digests, idempotency and scoped revision decisions require the protocol helpers. Trusted daemon integration must verify identity, authority, artifacts and leases and enforce durable atomic CAS/dedup. No checkpoint or graph data grants authority.",

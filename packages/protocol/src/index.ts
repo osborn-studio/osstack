@@ -93,3 +93,10 @@ export {
   parseInboundAgentCommand,
   parseInboundAgentCommandResult,
 } from "./envelope.js";
+
+export {
+  GraphCheckpointRequest, GraphCheckpointResponse, GraphCheckpointTupleWire,
+  GRAPH_CHECKPOINT_MAX_FRAME_BYTES, GRAPH_CHECKPOINT_MAX_TUPLE_BYTES, GRAPH_CHECKPOINT_MAX_PAGE_SIZE,
+  parseGraphCheckpointRequest, parseGraphCheckpointResponse,
+} from './graph-checkpoint.js';
+export type { GraphCheckpointTransport } from './graph-checkpoint.js';
