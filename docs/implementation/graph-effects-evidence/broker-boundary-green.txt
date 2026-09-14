@@ -1,0 +1,23 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-action-broker-boundary.test.ts (4 tests) 411ms
+osstack: retaining write lease graph-action:92a2c6c53391ef11b0178873fc9cade317c842910035dca17dd98feeb854b8e9: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:62b9d4e9b62e562c2f71fffc00da2b3b93d7dad5a71aecbd1b98a261ae5446b3: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:469cd036d41473e34c81513e7b425f0351dac669a8ffceb0e3b50a714adead7c: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:69c7c6c5719496ef569cc3c1b18d8ef545c34bd6556add6c9931635e286063a5: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:24d731f3f0213ef0d51fbebbc61302519afbf8f792021924f20741385bd1f034: Error: invalid usage
+osstack: retaining write lease graph-action:85735d8feee0a7abfd59e504d0be35d9b3c84cc5eee5b7fd0502f473b8744a95: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:0946f88888f037228c9fd3a72ed7490cbca9114ef734daf721ca1dba5a9d14a3: SqliteError: injected
+osstack: retaining write lease graph-action:d2ddc604701879915d2526a770365e29eadb12b9d3800b737e3d34167fa80958: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:2e52775cf5fb49bf7221b6d291f46ad72afd19a9bb0e5f064178ecba7bb47e6d: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:2f5c4bbd9dbbe6ae72e371d10e26540b957294c2efbbeb00a1597c5d0103fb87: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:fe548b224646fce5ec3bc579a7723f00c34ffff8fda591c40aecc171b6168f1a: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:eecf4caf6c7717edc789abac381d5ff998c604be965c1bf10bc93885b92af46e: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker.test.ts (31 tests) 2524ms
+
+ Test Files  2 passed (2)
+      Tests  35 passed (35)
+   Start at  06:57:42
+   Duration  4.63s (transform 1.11s, setup 33ms, collect 3.62s, tests 2.94s, environment 0ms, prepare 106ms)
+

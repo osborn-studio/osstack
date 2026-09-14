@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "acceptedCodeCommit": "36eee05f6bc6ef6aa8148dd9f4e9271e2237d4fc",
+  "sourceHashesVerified": 30,
+  "taskCount": 30,
+  "completedTasks": 14,
+  "completedDependenciesVerified": true,
+  "reportLinksVerified": true,
+  "docsHygiene": "1 passed",
+  "mirroredFilesExcludingThisRecord": 121,
+  "mirrorTarget": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+  "mirrorPrecondition": "Every existing target matched baseline 405b318 or final bytes before mutation; absent new paths allowed.",
+  "mirrorContentVerified": true,
+  "originalAgentsSha256": "0aeac98453f7b46af92c269528ef81268c5de79ea39a8635bd0bd510b7b9d377",
+  "originalSourcesModified": false,
+  "rawEvidenceWhitespace": "Only evidence .txt/.log preserve verbatim tool output via directory-local attributes."
+}

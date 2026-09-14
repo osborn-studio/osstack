@@ -1,0 +1,45 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-checkpoint-service.test.ts (5 tests | 1 failed) 122ms
+   ✓ requires exact host registration and rejects caller-supplied scope or a different thread 25ms
+   ✓ refreshes revision after an authorization await but never adopts a new worker generation 23ms
+   ✓ snapshots registration data and request before authorization can yield 15ms
+   ✓ denies revoked authorization and prevents late writes after service closes 35ms
+   × rejects a false authorization return instead of treating it as successful completion 24ms
+     → promise resolved "{ kind: 'get', tuple: null }" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-checkpoint-service.test.ts > rejects a false authorization return instead of treating it as successful completion
+AssertionError: promise resolved "{ kind: 'get', tuple: null }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "kind": "get",
++   "tuple": null,
+  }
+
+ ❯ src/graph-checkpoint-service.test.ts:66:53
+     64|   const f = fixture();
+     65|   f.authorize.mockResolvedValue(false as unknown as void);
+     66|   await expect(f.service.execute(f.token, f.request)).rejects.toThrow(…
+       |                                                     ^
+     67| });
+     68| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  06:58:57
+   Duration  875ms (transform 271ms, setup 11ms, collect 460ms, tests 122ms, environment 0ms, prepare 66ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-checkpoint-service.test.ts

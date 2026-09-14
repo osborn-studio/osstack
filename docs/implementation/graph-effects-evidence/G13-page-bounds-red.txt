@@ -1,0 +1,45 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ❯ src/state/graph-checkpoints.test.ts (9 tests | 1 failed) 661ms
+   ✓ stores opaque codec bytes without revival and persists full tuples across SQLite close/reopen 40ms
+   ✓ fences every cache replay by scope, complete program, generation, owner, revision and live lease 22ms
+   ✓ rejects cross-run read/write and changed payload under the same mutation ID 17ms
+   ✓ rolls back the entire pending-write batch, replay record and revision on an injected SQLite failure 24ms
+   ✓ preserves partial batches, reserved negative overwrites and ordinary positive first-write semantics 19ms
+   ✓ bounds aggregate tuple bytes transactionally across many individually bounded write requests 52ms
+   ✓ rolls back checkpoint insertion when the idempotency record fails, then retries the original ID 15ms
+   ✓ paginates equal checkpoint IDs across namespaces without skipping and bounds response bytes 101ms
+   × splits pages at transport traversal bounds even when many small pending writes fit the byte cap 369ms
+     → expected 5 to be 4 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/graph-checkpoints.test.ts > splits pages at transport traversal bounds even when many small pending writes fit the byte cap
+AssertionError: expected 5 to be 4 // Object.is equality
+
+- Expected
++ Received
+
+- 4
++ 5
+
+ ❯ src/state/graph-checkpoints.test.ts:129:54
+    127|   }
+    128|   const page = execute({ kind: 'list', threadId: run.graphRunId, pageS…
+    129|   expect(page.kind === 'list' && page.tuples.length).toBe(4);
+       |                                                      ^
+    130|   expect(page).toMatchObject({ cursor: { namespace: '', checkpointId: …
+    131| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 passed (9)
+   Start at  06:57:00
+   Duration  1.13s (transform 177ms, setup 0ms, collect 243ms, tests 661ms, environment 0ms, prepare 53ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/graph-checkpoints.test.ts

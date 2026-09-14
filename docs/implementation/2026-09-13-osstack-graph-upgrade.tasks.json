@@ -385,9 +385,16 @@
       ],
       "verify": "CORE",
       "size": "M",
-      "status": "pending",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "completedAt": "2026-09-14",
+      "evidence": "docs/implementation/graph-effects-evidence/admission.json",
+      "acceptedCodeCommit": "b064928",
+      "implementationSteps": [
+        "G11a immutable original budget and action ledger",
+        "G11b fenced transaction and migration26"
       ]
     },
     {
@@ -412,9 +419,17 @@
       ],
       "verify": "BROKER",
       "size": "M",
-      "status": "pending",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "completedAt": "2026-09-14",
+      "evidence": "docs/implementation/graph-effects-evidence/admission.json",
+      "acceptedCodeCommit": "36eee05f6bc6ef6aa8148dd9f4e9271e2237d4fc",
+      "implementationSteps": [
+        "G12a immutable registration and controlled invocation",
+        "G12b lazy daemon assembly",
+        "G12c real process and authority boundary tests"
       ]
     },
     {
@@ -442,9 +457,18 @@
       ],
       "verify": "CHECKPOINT",
       "size": "M",
-      "status": "pending",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "completedAt": "2026-09-14",
+      "evidence": "docs/implementation/graph-effects-evidence/admission.json",
+      "acceptedCodeCommit": "36eee05f6bc6ef6aa8148dd9f4e9271e2237d4fc",
+      "implementationSteps": [
+        "G13a bounded checkpoint wire schemas",
+        "G13b fenced SQLite migration27 storage",
+        "G13c public remote saver",
+        "G13d daemon authority and asynchronous crash fixtures"
       ]
     },
     {
@@ -870,16 +894,17 @@
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "055e217f7d4d29e0a93278544efb3b7b5b6f7beb",
-    "completedTaskCount": 11,
+    "acceptedCodeCommit": "36eee05f6bc6ef6aa8148dd9f4e9271e2237d4fc",
+    "completedTaskCount": 14,
     "totalTaskCount": 30,
     "nextTasks": [
-      "G11",
-      "G12",
-      "G13"
+      "G14",
+      "G15",
+      "G16",
+      "G17"
     ],
-    "report": "docs/implementation/2026-09-14-graph-admission-completion.md",
-    "nextGate": "C4",
+    "report": "docs/implementation/2026-09-14-graph-effects-completion.md",
+    "nextGate": "C5",
     "milestoneStatus": {
       "M0": "completed",
       "M1": "in_progress",
@@ -893,7 +918,7 @@
       "status": "passed",
       "reason": "C2 仅准入 langgraph-functional-v1 + durability:sync 供 M1 集成；StateGraph 1.4.15 的 partial-abort AND-join 反例仍未修复，不获准入。",
       "evidence": "docs/implementation/graph-c2-evidence/admission.json",
-      "nextAction": "按 G08→G09→G10 继续。G13/G14 固定同步持久 ack 与程序身份；G17/G25 必须通过真实 daemon/worker/broker 故障验收。",
+      "nextAction": "C2/C3/C4 基础已完成；按 G14→G15/G16→G17 继续，真实 worker/broker 故障链仍需 C5/G25 验证。",
       "releaseCriteria": [
         "对应 Functional 并行失败场景恢复完整结果，逻辑 join 效果一次；StateGraph 失败对照保持可复现",
         "独立进程 partial write、异常、超时、取消、恢复二次 SIGKILL、interrupt false 矩阵通过",
@@ -920,14 +945,29 @@
     },
     {
       "id": "C4",
-      "status": "pending",
+      "status": "passed",
       "tasks": [
         "G11",
         "G12",
         "G13"
       ],
-      "reason": "动作账本、受控 broker 和 daemon checkpoint 尚未实现。",
-      "evidence": null
+      "reason": "持久动作账本/预算、受控进程内 daemon broker/checkpoint、异步 SQLite commit/ACK/crash 经真实 Loop 全库验收；生产 worker 与恢复链留待 C5。",
+      "evidence": "docs/implementation/graph-effects-evidence/admission.json",
+      "acceptedCodeCommit": "36eee05f6bc6ef6aa8148dd9f4e9271e2237d4fc",
+      "productionReady": false
+    },
+    {
+      "id": "C5",
+      "status": "pending",
+      "tasks": [
+        "G14",
+        "G15",
+        "G16",
+        "G17"
+      ],
+      "reason": "独立 worker 生命周期、可信未知动作对账、候选冻结及第一条生产接口可恢复链尚未实现。",
+      "evidence": null,
+      "productionReady": false
     }
   ]
 }

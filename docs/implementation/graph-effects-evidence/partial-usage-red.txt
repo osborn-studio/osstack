@@ -1,0 +1,43 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-action-broker-boundary.test.ts (4 tests | 1 failed) 365ms
+   ✓ rejects a Promise-returning synchronous authorizer instead of silently granting authority 67ms
+   ✓ rechecks repository policy after an asynchronous adapter availability probe 116ms
+   ✓ charges observed adapter usage even when the persistence mapper reports less 99ms
+   × combines independently reported cumulative input and output usage without lowering either component 81ms
+     → expected { actual_tokens: 150, …(1) } to deeply equal { actual_tokens: 200, …(1) }
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-action-broker-boundary.test.ts > combines independently reported cumulative input and output usage without lowering either component
+AssertionError: expected { actual_tokens: 150, …(1) } to deeply equal { actual_tokens: 200, …(1) }
+
+- Expected
++ Received
+
+  {
+    "accounting_blocked": 1,
+-   "actual_tokens": 200,
++   "actual_tokens": 150,
+  }
+
+ ❯ src/graph-action-broker-boundary.test.ts:107:93
+    105|   const f = fixture(adapter);
+    106|   expect(await f.broker.handle(f.connection, f.request)).toMatchObject…
+    107|   expect(f.db.prepare('SELECT actual_tokens, accounting_blocked FROM g…
+       |                                                                                             ^
+    108| });
+    109| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  06:56:47
+   Duration  2.40s (transform 1.02s, setup 14ms, collect 1.71s, tests 365ms, environment 0ms, prepare 51ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-action-broker-boundary.test.ts

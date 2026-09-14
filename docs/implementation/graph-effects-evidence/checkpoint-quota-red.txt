@@ -1,0 +1,130 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ❯ src/state/graph-checkpoints.test.ts (14 tests | 5 failed) 783ms
+   ✓ stores opaque codec bytes without revival and persists full tuples across SQLite close/reopen 33ms
+   ✓ fences every cache replay by scope, complete program, generation, owner, revision and live lease 19ms
+   ✓ rejects cross-run read/write and changed payload under the same mutation ID 15ms
+   ✓ rolls back the entire pending-write batch, replay record and revision on an injected SQLite failure 16ms
+   ✓ preserves partial batches, reserved negative overwrites and ordinary positive first-write semantics 15ms
+   ✓ bounds aggregate tuple bytes transactionally across many individually bounded write requests 45ms
+   ✓ rolls back checkpoint insertion when the idempotency record fails, then retries the original ID 16ms
+   ✓ paginates equal checkpoint IDs across namespaces without skipping and bounds response bytes 145ms
+   ✓ splits pages at transport traversal bounds even when many small pending writes fit the byte cap  402ms
+   × enforces the daemon checkpoints run quota atomically across addresses and reopening 18ms
+     → expected [Function] to throw an error
+   × enforces the daemon pendingWrites run quota atomically across addresses and reopening 15ms
+     → expected [Function] to throw an error
+   × enforces the daemon requests run quota atomically across addresses and reopening 17ms
+     → expected [Function] to throw an error
+   × enforces the daemon bytes run quota atomically across addresses and reopening 14ms
+     → expected [Function] to throw an error
+   × permits only trusted tightening of fixed checkpoint storage ceilings 13ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/graph-checkpoints.test.ts > enforces the daemon checkpoints run quota atomically across addresses and reopening
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/state/graph-checkpoints.test.ts:140:68
+    138|     execute({ ...put('put2'), checkpointId: '002' });
+    139|     const revision = run.revision;
+    140|     expect(() => execute({ ...put('put3'), checkpointId: '003' })).toT…
+       |                                                                    ^
+    141|     expect(runs.get(scope, run.graphRunId)?.revision).toBe(revision);
+    142|   } else if (kind === 'pendingWrites') {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  src/state/graph-checkpoints.test.ts > enforces the daemon pendingWrites run quota atomically across addresses and reopening
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/state/graph-checkpoints.test.ts:144:74
+    142|   } else if (kind === 'pendingWrites') {
+    143|     execute(writes());
+    144|     expect(() => execute({ ...writes('writes2'), checkpointId: '002' }…
+       |                                                                          ^
+    145|     expect(db.prepare('SELECT count(*) AS n FROM graph_checkpoint_writ…
+    146|   } else if (kind === 'requests') {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  src/state/graph-checkpoints.test.ts > enforces the daemon requests run quota atomically across addresses and reopening
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/state/graph-checkpoints.test.ts:148:54
+    146|   } else if (kind === 'requests') {
+    147|     execute(put('same-data-new-id-1')); execute(put('same-data-new-id-…
+    148|     expect(() => execute(put('same-data-new-id-3'))).toThrow('CHECKPOI…
+       |                                                      ^
+    149|     // Original idempotency replay is still allowed, without growing h…
+    150|     expect(execute(put())).toEqual({ kind: 'put', checkpointId: '001' …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  src/state/graph-checkpoints.test.ts > enforces the daemon bytes run quota atomically across addresses and reopening
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/state/graph-checkpoints.test.ts:152:134
+    150|     expect(execute(put())).toEqual({ kind: 'put', checkpointId: '001' …
+    151|   } else {
+    152|     expect(() => execute({ ...writes(), checkpointId: 'other', writes:…
+       |                                                                                                                                      ^
+    153|     expect(runs.get(scope, run.graphRunId)).toEqual(before);
+    154|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  src/state/graph-checkpoints.test.ts > permits only trusted tightening of fixed checkpoint storage ceilings
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/state/graph-checkpoints.test.ts:161:82
+    159| });
+    160| it('permits only trusted tightening of fixed checkpoint storage ceilin…
+    161|   expect(() => new GraphCheckpointStore(db, { bytes: Number.MAX_SAFE_I…
+       |                                                                                  ^
+    162|   expect(() => new GraphCheckpointStore(db, { requests: 0 })).toThrow(…
+    163| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 9 passed (14)
+   Start at  07:01:45
+   Duration  1.11s (transform 111ms, setup 0ms, collect 142ms, tests 783ms, environment 0ms, prepare 36ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/graph-checkpoints.test.ts

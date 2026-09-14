@@ -1,0 +1,1743 @@
+独立实现审查，使用实际 Claude Fable 5.1。工具关闭，禁止技能/命令。OSStack C4 G11-G13：ledger+budget, broker+G04/G10, daemon SQLite checkpoint/remote public Saver. G14 worker manager/G15 reconcile/G16 artifacts/G17 fullchain尚未实现，别因未来功能未实现要求阻塞本批。请找真实P1/P2，给具体竞态时序/代码位置/最小修复。最多1500字；若无阻塞问题明确说。不能建议普通mutation绕过stalegeneration；confirm写失败保留unknown让G15未来对账。host可信，worker JSON不可信，实际注册对象仅进程内API、非worker自授权。同步authorize必须拒绝thenable。确认物理结果和usage异常应保留证据预算。共享锁按effectID，无整run嵌套准入。独立parent测试发现postavailability policy和lowreportedusage已修。审查是否仍有可触发漏洞。
+
+--- packages/core/src/state/graph-runs.ts ---
+// Storage contracts only. Status is a projection of checkpoint/broker evidence,
+// never an independent scheduler or node FSM. No engine code is imported here.
+import { createHash, randomUUID } from "node:crypto";
+import type Database from "better-sqlite3";
+import { z } from "zod";
+import { GraphJsonValue, GraphScope, GraphRunState, GraphRequest, StartGraphRequest, computeGraphInputDigest } from "@osstack/protocol";
+import { preflightDiskSpace } from "./db.js";
+
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Reject controls in persisted identity strings.
+const text = z.string().min(1).max(256).refine((s) => s.trim() === s && !/[\u0000-\u001f\u007f-\u009f]/.test(s));
+const counter = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+const digest = z.string().regex(/^[a-f0-9]{64}$/);
+const programSchema = z.object({
+  executionModel: z.literal("langgraph-functional-v1"), durability: z.literal("sync"),
+  engineVersion: text, checkpointVersion: text, templateVersion: text,
+  registryVersion: text, compilerVersion: text, schemaVersion: text, compiledProgramDigest: digest,
+}).strict();
+const identitySchema = programSchema.extend({ specHash: digest, inputDigest: digest });
+export type GraphProgramVersion = z.infer<typeof programSchema>;
+export type GraphProgramIdentity = z.infer<typeof identitySchema>;
+const stoppedSchema = z.object({
+  graphRunId: text, generation: counter.min(1), owner: text, confirmedAt: counter, evidenceRef: text,
+}).strict();
+/** A trusted supervisor's durable exit receipt, NOT a worker claim or an abort result.
+ * Caller must verify the receipt and independently reconcile/stop external actions
+ * and isolate old workspaces before takeover. This store cannot inspect processes. */
+export type GraphStoppedWorkerEvidence = z.infer<typeof stoppedSchema>;
+export const graphRunFenceSchema = z.object({
+  scope: GraphScope, graphRunId: text, expectedGeneration: counter, expectedRevision: counter,
+  expectedOwner: text.nullable(), identity: identitySchema, now: counter,
+}).strict();
+export type GraphRunFence = z.infer<typeof graphRunFenceSchema>;
+export interface GraphLeaseAcquisition extends GraphRunFence {
+  owner: string;
+  leaseExpiresAt: number;
+  stoppedWorker?: GraphStoppedWorkerEvidence;
+}
+export interface GraphLeaseRenewal extends GraphRunFence { leaseExpiresAt: number }
+export interface GraphRunProjection extends GraphRunFence { status: GraphRunState }
+const acquireSchema = graphRunFenceSchema.extend({ owner: text, leaseExpiresAt: counter, stoppedWorker: stoppedSchema.optional() });
+const renewSchema = graphRunFenceSchema.extend({ leaseExpiresAt: counter });
+const projectSchema = graphRunFenceSchema.extend({ status: GraphRunState });
+
+export interface GraphRun {
+  graphRunId: string;
+  scope: GraphScope;
+  source: StartGraphRequest["source"];
+  inputArtifactRef: string;
+  template: StartGraphRequest["spec"]["template"];
+  identity: GraphProgramIdentity;
+  /** Original immutable start spec; null for pre-migration-26 runs. */
+  spec: StartGraphRequest["spec"] | null;
+  status: GraphRunState;
+  generation: number;
+  revision: number;
+  leaseOwner: string | null;
+  leaseExpiresAt: number | null;
+  leaseAcquiredAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+export type GraphRunStorageErrorCode = "RUN_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "PROGRAM_IDENTITY_MISMATCH"
+  | "STALE_GENERATION" | "REVISION_CONFLICT" | "OWNER_MISMATCH" | "LEASE_EXPIRED" | "STOPPED_WORKER_REQUIRED"
+  | "STOPPED_WORKER_MISMATCH" | "TERMINAL_RUN" | "INVALID_TIME" | "COUNTER_EXHAUSTED";
+export class GraphRunStorageError extends Error {
+  constructor(public readonly code: GraphRunStorageErrorCode) { super(code); this.name = "GraphRunStorageError"; }
+}
+const fail = (code: GraphRunStorageErrorCode): never => { throw new GraphRunStorageError(code); };
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((k) => `${JSON.stringify(k)}:${canonical(record[k])}`).join(",")}}`;
+}
+function parse<T extends z.ZodTypeAny>(schema: T, value: unknown): z.output<T> {
+  // Bound the decoded object before recursive schema processing, including accessors.
+  return schema.parse(GraphJsonValue.parse(value));
+}
+function increment(value: number): number {
+  if (value === Number.MAX_SAFE_INTEGER) fail("COUNTER_EXHAUSTED");
+  return value + 1;
+}
+interface RunRow {
+  graph_run_id: string; scope_json: string; source_json: string; input_artifact_ref: string; template: GraphRun["template"];
+  spec_json: string | null; identity_json: string; status: GraphRunState; generation: number; revision: number;
+  lease_owner: string | null; lease_expires_at: number | null; lease_acquired_at: number | null; created_at: number; updated_at: number;
+}
+function decode(row: RunRow): GraphRun {
+  return { graphRunId: row.graph_run_id, scope: JSON.parse(row.scope_json) as GraphScope,
+    source: JSON.parse(row.source_json) as StartGraphRequest["source"], inputArtifactRef: row.input_artifact_ref,
+    spec: row.spec_json === null ? null : JSON.parse(row.spec_json) as StartGraphRequest["spec"],
+    template: row.template, identity: JSON.parse(row.identity_json) as GraphProgramIdentity,
+    status: row.status, generation: row.generation, revision: row.revision, leaseOwner: row.lease_owner,
+    leaseExpiresAt: row.lease_expires_at, leaseAcquiredAt: row.lease_acquired_at, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+/** Daemon-owned synchronous store. Caller authenticates scope/owner, authorizes every
+ * operation, verifies compiler/artifact identity and supplies trusted epoch-ms time.
+ * Never expose this API directly to worker/request JSON. A matching lease is fencing,
+ * not authorization. G13 must bind checks and checkpoint writes in the SAME transaction. */
+export class GraphRunStore {
+  constructor(private readonly db: Database.Database) {}
+
+  private write<T>(fn: () => T): T {
+    preflightDiskSpace(this.db.name);
+    // Acquire write reservation BEFORE reading: independent connections cannot both
+    // admit the same key or update from the same revision (also avoids WAL upgrades).
+    return this.db.transaction(fn).immediate();
+  }
+
+  get(scopeValue: GraphScope, graphRunId: string): GraphRun | null {
+    const scope = GraphScope.parse(scopeValue);
+    text.parse(graphRunId);
+    const row = this.db.prepare("SELECT * FROM graph_runs WHERE scope_json = ? AND graph_run_id = ?")
+      .get(canonical(scope), graphRunId) as RunRow | undefined;
+    return row ? decode(row) : null;
+  }
+
+  /** Fresh server-generated run ID; one canonical business request per full scope/key.
+   * Metadata is excluded using the protocol digest. Compiler versions/digest are
+   * supplied by trusted compilation; start request/spec digests are computed here. */
+  create(requestValue: StartGraphRequest, versionValue: GraphProgramVersion, nowValue: number): GraphRun {
+    const request = StartGraphRequest.parse(requestValue);
+    const version = parse(programSchema, versionValue);
+    const now = counter.parse(nowValue);
+    const inputDigest = computeGraphInputDigest(request);
+    const identity: GraphProgramIdentity = { ...version, inputDigest,
+      specHash: createHash("sha256").update(`osstack.graph.spec.v1\n${canonical(request.spec)}`).digest("hex") };
+    const scopeJson = canonical(request.scope);
+    return this.write(() => {
+      const prior = this.db.prepare("SELECT graph_run_id, input_digest FROM graph_requests WHERE scope_json = ? AND idempotency_key = ?")
+        .get(scopeJson, request.idempotencyKey) as { graph_run_id: string; input_digest: string } | undefined;
+      if (prior) {
+        if (prior.input_digest !== inputDigest) fail("IDEMPOTENCY_CONFLICT");
+        const run = this.get(request.scope, prior.graph_run_id)!;
+        if (canonical(run.identity) !== canonical(identity)) fail("PROGRAM_IDENTITY_MISMATCH");
+        return run;
+      }
+      const id = randomUUID();
+      this.db.prepare(`INSERT INTO graph_runs (graph_run_id, scope_json, source_json, input_artifact_ref,
+        template, identity_json, spec_json, status, generation, revision, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', 0, 0, ?, ?)`)
+        .run(id, scopeJson, canonical(request.source), request.inputArtifactRef, request.spec.template, canonical(identity), canonical(request.spec), now, now);
+      this.db.prepare(`INSERT INTO graph_requests (scope_json, idempotency_key, graph_run_id, input_digest, kind, created_at)
+        VALUES (?, ?, ?, ?, 'start', ?)`).run(scopeJson, request.idempotencyKey, id, inputDigest, now);
+      return this.get(request.scope, id)!;
+    });
+  }
+
+  private checked(input: GraphRunFence, requireLive: boolean): GraphRun {
+    return checkGraphRunFence(this.get(input.scope, input.graphRunId), input, requireLive);
+  }
+
+  acquireLease(value: GraphLeaseAcquisition): GraphRun {
+    const input = parse(acquireSchema, value);
+    return this.write(() => {
+      const run = this.checked(input, false);
+      if (input.leaseExpiresAt <= input.now) fail("INVALID_TIME");
+      if (run.generation > 0) {
+        const stopped = input.stoppedWorker ?? fail("STOPPED_WORKER_REQUIRED");
+        if (stopped.graphRunId !== run.graphRunId || stopped.generation !== run.generation || stopped.owner !== run.leaseOwner
+          || stopped.confirmedAt < run.updatedAt || stopped.confirmedAt > input.now) fail("STOPPED_WORKER_MISMATCH");
+      } else if (input.stoppedWorker) fail("STOPPED_WORKER_MISMATCH");
+      const generation = increment(run.generation);
+      this.db.prepare(`UPDATE graph_runs SET generation = ?, revision = ?, lease_owner = ?, lease_expires_at = ?,
+        lease_acquired_at = ?, updated_at = ? WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
+        .run(generation, increment(run.revision), input.owner, input.leaseExpiresAt, input.now, input.now, run.graphRunId, run.generation, run.revision);
+      this.db.prepare(`INSERT INTO graph_worker_leases (graph_run_id, generation, owner, acquired_at, expires_at, stopped_worker_json)
+        VALUES (?, ?, ?, ?, ?, ?)`).run(run.graphRunId, generation, input.owner, input.now, input.leaseExpiresAt,
+          input.stoppedWorker ? JSON.stringify(input.stoppedWorker) : null);
+      return this.get(input.scope, run.graphRunId)!;
+    });
+  }
+
+  renewLease(value: GraphLeaseRenewal): GraphRun {
+    const input = parse(renewSchema, value);
+    return this.write(() => {
+      const run = this.checked(input, true);
+      if (input.leaseExpiresAt <= input.now || input.leaseExpiresAt < run.leaseExpiresAt!) fail("INVALID_TIME");
+      this.db.prepare(`UPDATE graph_runs SET lease_expires_at = ?, revision = ?, updated_at = ?
+        WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
+        .run(input.leaseExpiresAt, increment(run.revision), input.now, run.graphRunId, run.generation, run.revision);
+      this.db.prepare("UPDATE graph_worker_leases SET expires_at = ? WHERE graph_run_id = ? AND generation = ?")
+        .run(input.leaseExpiresAt, run.graphRunId, run.generation);
+      return this.get(input.scope, run.graphRunId)!;
+    });
+  }
+
+  /** Store an already-authorized resume/cancel decision and its projection together.
+   * Caller verifies interrupt/resume data, cancellation/exit evidence and policy;
+   * this method neither resumes a worker nor sends cancellation. All request kinds
+   * share one scope/key namespace. Replay returns the current run without mutation. */
+  projectRequest(requestValue: Exclude<GraphRequest, StartGraphRequest>, value: GraphRunProjection): GraphRun {
+    const request = GraphRequest.parse(requestValue);
+    const input = parse(projectSchema, value);
+    if (request.kind === "start") throw new Error("Expected resume or cancel request");
+    if (canonical(request.scope) !== canonical(input.scope) || request.graphRunId !== input.graphRunId) fail("RUN_NOT_FOUND");
+    const inputDigest = computeGraphInputDigest(request);
+    const scopeJson = canonical(input.scope);
+    return this.write(() => {
+      const run = this.get(input.scope, input.graphRunId) ?? fail("RUN_NOT_FOUND");
+      // Authenticate/fence before a cache hit, but do not reject a replay just
+      // because its original revision has advanced or the run is now terminal.
+      if (canonical(run.identity) !== canonical(input.identity)) fail("PROGRAM_IDENTITY_MISMATCH");
+      if (run.generation !== input.expectedGeneration) fail("STALE_GENERATION");
+      if (run.leaseOwner !== input.expectedOwner) fail("OWNER_MISMATCH");
+      const prior = this.db.prepare("SELECT graph_run_id, input_digest FROM graph_requests WHERE scope_json = ? AND idempotency_key = ?")
+        .get(scopeJson, request.idempotencyKey) as { graph_run_id: string; input_digest: string } | undefined;
+      if (prior) {
+        if (prior.graph_run_id !== run.graphRunId || prior.input_digest !== inputDigest) fail("IDEMPOTENCY_CONFLICT");
+        return run;
+      }
+      if (request.expectedRevision !== input.expectedRevision) fail("REVISION_CONFLICT");
+      const projected = this.projectInTransaction(input);
+      this.db.prepare(`INSERT INTO graph_requests (scope_json, idempotency_key, graph_run_id, input_digest, kind, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)`).run(scopeJson, request.idempotencyKey, run.graphRunId, inputDigest, request.kind, input.now);
+      return projected;
+    });
+  }
+
+  /** Caller derives status from authoritative execution evidence. There is no
+   * transition map here; only irreversible terminal sealing and transactional CAS. */
+  project(value: GraphRunProjection): GraphRun {
+    const input = parse(projectSchema, value);
+    return this.write(() => this.projectInTransaction(input));
+  }
+
+  private projectInTransaction(input: GraphRunProjection): GraphRun {
+    const run = this.checked(input, true);
+    this.db.prepare(`UPDATE graph_runs SET status = ?, revision = ?, updated_at = ?
+      WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
+      .run(input.status, increment(run.revision), input.now, run.graphRunId, run.generation, run.revision);
+    return this.get(input.scope, run.graphRunId)!;
+  }
+}
+
+/** Internal shared storage check; call only while holding the SQLite write transaction. */
+export function checkGraphRunFence(value: GraphRun | null, input: GraphRunFence, requireLive: boolean): GraphRun {
+  const run = value ?? fail("RUN_NOT_FOUND");
+  if (canonical(run.identity) !== canonical(input.identity)) fail("PROGRAM_IDENTITY_MISMATCH");
+  if (run.generation !== input.expectedGeneration) fail("STALE_GENERATION");
+  if (run.revision !== input.expectedRevision) fail("REVISION_CONFLICT");
+  if (run.leaseOwner !== input.expectedOwner) fail("OWNER_MISMATCH");
+  if (["ready", "failed", "cancelled"].includes(run.status)) fail("TERMINAL_RUN");
+  if (input.now < run.updatedAt) fail("INVALID_TIME");
+  if (requireLive && (run.generation === 0 || run.leaseExpiresAt === null || run.leaseExpiresAt <= input.now)) fail("LEASE_EXPIRED");
+  increment(run.revision);
+  return run;
+}
+
+--- packages/core/src/state/graph-storage.ts ---
+// Internal synchronous primitive shared by action and checkpoint storage. Never
+// export a callback-taking transaction API from core's public entry point.
+import type Database from "better-sqlite3";
+import { GraphJsonValue } from "@osstack/protocol";
+import { preflightDiskSpace } from "./db.js";
+import { GraphRunStore, checkGraphRunFence, graphRunFenceSchema, type GraphRun, type GraphRunFence } from "./graph-runs.js";
+
+export interface GraphStorageMutation<T> { value: T; changed: boolean }
+
+/** Acquires BEGIN IMMEDIATE before any fence/cache read. Callback is internal,
+ * synchronous SQL only; no adapter invocation, async authorization, or nested
+ * transactions. Every mutation advances run revision; a read/cache hit does not.
+ * Host must serialize requests and refresh its fence from the returned run. */
+export function fencedGraphTransaction<T>(
+  db: Database.Database,
+  value: GraphRunFence,
+  operation: (run: GraphRun) => GraphStorageMutation<T>,
+): { value: T; run: GraphRun } {
+  const input = graphRunFenceSchema.parse(GraphJsonValue.parse(value));
+  if (db.inTransaction) throw new Error("Graph storage requires its own BEGIN IMMEDIATE transaction");
+  preflightDiskSpace(db.name);
+  return db.transaction(() => {
+    const store = new GraphRunStore(db);
+    const run = checkGraphRunFence(store.get(input.scope, input.graphRunId), input, true);
+    const result = operation(run);
+    // Runtime guard supplements the non-Promise callback return type. Callers are
+    // trusted internal code; this cannot sandbox an intentionally async callback.
+    if (!result || typeof result.changed !== "boolean" || "then" in result) throw new Error("Graph storage callback must be synchronous");
+    if (result.changed) {
+      db.prepare("UPDATE graph_runs SET revision = ?, updated_at = ? WHERE graph_run_id = ?")
+        .run(run.revision + 1, input.now, run.graphRunId);
+    }
+    return { value: result.value, run: result.changed ? store.get(input.scope, input.graphRunId)! : run };
+  }).immediate();
+}
+
+--- packages/core/src/state/graph-actions.ts ---
+// Daemon-owned effect/resource authority, not a node scheduler. Never forward
+// worker JSON to this port: G12 authenticates, authorizes the registry slot and
+// verifies adapter evidence under G10 admission before using these methods.
+import { createHash } from "node:crypto";
+import type Database from "better-sqlite3";
+import { z } from "zod";
+import { GraphEffectIdentity, GraphJsonValue, GraphResult, WorkerActionRequest, computeGraphEffectKey } from "@osstack/protocol";
+import type { GraphRun, GraphRunFence } from "./graph-runs.js";
+import { fencedGraphTransaction } from "./graph-storage.js";
+
+const count = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Persisted references must reject control characters.
+const ref = z.string().min(1).max(256).refine((v) => v.trim() === v && !/[\u0000-\u001f\u007f-\u009f]/.test(v));
+const keySchema = z.string().regex(/^[a-f0-9]{64}$/);
+const admissionSchema = z.object({ epoch: count.max(2), nodeId: ref, effectSlot: ref,
+  reservationTokens: count, action: z.unknown() }).strict();
+const uncertainSchema = z.object({ state: z.enum(["unknown", "cancel_pending"]), evidenceRef: ref, observedTokens: count }).strict();
+const outcomeSchema = z.discriminatedUnion("state", [
+  z.object({ state: z.literal("confirmed"), evidenceRef: ref, actualTokens: count.nullable(), result: z.unknown() }).strict(),
+  z.object({ state: z.literal("failed"), evidenceRef: ref, actualTokens: count.nullable(), error: z.unknown(), retrySafe: z.boolean() }).strict(),
+]);
+
+/** Host derives epoch/node/slot from the immutable compiled registry and pins its
+ * token cap. This is NOT a worker authorization capability. nodeId identifies the
+ * retry-budget branch: retries of all its slots share maxBranchAttempts per epoch. */
+export interface GraphActionAdmission {
+  epoch: number; nodeId: string; effectSlot: string;
+  action: WorkerActionRequest["action"];
+  reservationTokens: number;
+}
+export type GraphActionOutcomeInput =
+  | { state: "confirmed"; evidenceRef: string; actualTokens: number; result: GraphResult }
+  | { state: "failed"; evidenceRef: string; actualTokens: number; error: GraphJsonValue; retrySafe: boolean };
+export type GraphActionOutcome =
+  | { state: "confirmed"; evidenceRef: string; actualTokens: number | null; result: GraphResult }
+  | { state: "failed"; evidenceRef: string; actualTokens: number | null; error: GraphJsonValue; retrySafe: boolean };
+export type GraphActionUncertainty = z.infer<typeof uncertainSchema>;
+export interface GraphAction {
+  effectKey: string;
+  effect: GraphEffectIdentity;
+  action: WorkerActionRequest["action"];
+  businessDigest: string;
+  generation: number;
+  reservationTokens: number;
+  state: "intent" | "running" | "confirmed" | "failed" | "unknown" | "cancel_pending";
+  executionRef: string | null;
+  outcome: GraphActionOutcome | null;
+  uncertainty: GraphActionUncertainty | null;
+  actualTokens: number | null;
+  observedTokens: number;
+  accountingBlocked: boolean;
+  retrySafe: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+export interface GraphActionBudget {
+  actionStarts: number;
+  // Exact decimal totals: several independently overrun actions can exceed the
+  // JS safe integer range. Never use SQLite SUM/REAL or round away real usage.
+  reservedTokens: string;
+  chargedTokens: string;
+  accountingBlocked: boolean;
+}
+export interface GraphActionResult {
+  action: GraphAction; run: GraphRun; budget: GraphActionBudget;
+  created: boolean; changed: boolean;
+}
+export type GraphActionStorageErrorCode = "ORIGINAL_BUDGET_MISSING" | "ACTION_NOT_FOUND" | "ACTION_INPUT_CONFLICT"
+  | "UNRESOLVED_ACTION" | "RETRY_NOT_SAFE" | "NOT_CURRENT_ATTEMPT" | "ACTION_GENERATION_MISMATCH"
+  | "INVALID_ACTION_STATE" | "OUTCOME_CONFLICT" | "EXECUTION_CONFLICT" | "EPOCH_BUDGET_EXHAUSTED"
+  | "BRANCH_BUDGET_EXHAUSTED" | "ACTION_BUDGET_EXHAUSTED" | "WALL_CLOCK_BUDGET_EXHAUSTED"
+  | "TOKEN_BUDGET_EXHAUSTED" | "ACCOUNTING_BLOCKED" | "RUN_STOPPING";
+export class GraphActionStorageError extends Error {
+  constructor(public readonly code: GraphActionStorageErrorCode) { super(code); this.name = "GraphActionStorageError"; }
+}
+const fail = (code: GraphActionStorageErrorCode): never => { throw new GraphActionStorageError(code); };
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((k) => `${JSON.stringify(k)}:${canonical(record[k])}`).join(",")}}`;
+}
+interface ActionRow {
+  effect_key: string; effect_json: string; action_json: string; business_digest: string; generation: number;
+  reservation_tokens: number; state: GraphAction["state"]; execution_ref: string | null;
+  outcome_json: string | null; uncertainty_json: string | null; actual_tokens: number | null; observed_tokens: number;
+  accounting_blocked: number; retry_safe: number; created_at: number; updated_at: number;
+}
+function decode(row: ActionRow): GraphAction {
+  return { effectKey: row.effect_key, effect: JSON.parse(row.effect_json) as GraphEffectIdentity,
+    action: JSON.parse(row.action_json) as WorkerActionRequest["action"], businessDigest: row.business_digest,
+    generation: row.generation, reservationTokens: row.reservation_tokens, state: row.state,
+    executionRef: row.execution_ref, outcome: row.outcome_json === null ? null : JSON.parse(row.outcome_json) as GraphActionOutcome,
+    uncertainty: row.uncertainty_json === null ? null : JSON.parse(row.uncertainty_json) as GraphActionUncertainty,
+    actualTokens: row.actual_tokens, observedTokens: row.observed_tokens, accountingBlocked: row.accounting_blocked === 1,
+    retrySafe: row.retry_safe === 1, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+interface Mutation { action: GraphAction; changed: boolean; created: boolean }
+
+export class GraphActionStore {
+  constructor(private readonly db: Database.Database) {}
+
+  private write(fence: GraphRunFence, fn: (run: GraphRun) => Mutation): GraphActionResult {
+    const result = fencedGraphTransaction(this.db, fence, (run) => {
+      if (!run.spec) fail("ORIGINAL_BUDGET_MISSING");
+      const value = fn(run);
+      return { changed: value.changed, value: { ...value, budget: this.budget(run) } };
+    });
+    return { ...result.value, run: result.run };
+  }
+  private find(run: GraphRun, key: string): GraphAction {
+    const row = this.db.prepare("SELECT * FROM graph_actions WHERE graph_run_id = ? AND effect_key = ?")
+      .get(run.graphRunId, key) as ActionRow | undefined;
+    return row ? decode(row) : fail("ACTION_NOT_FOUND");
+  }
+  private current(run: GraphRun, slot: Pick<GraphActionAdmission, "epoch" | "nodeId" | "effectSlot">): GraphAction | null {
+    const row = this.db.prepare(`SELECT * FROM graph_actions WHERE graph_run_id = ? AND epoch = ? AND node_id = ? AND effect_slot = ?
+      ORDER BY logical_attempt DESC LIMIT 1`).get(run.graphRunId, slot.epoch, slot.nodeId, slot.effectSlot) as ActionRow | undefined;
+    return row ? decode(row) : null;
+  }
+  private budget(run: GraphRun): GraphActionBudget {
+    let reserved = 0n; let charged = 0n; let actionStarts = 0; let accountingBlocked = false;
+    // Ledger rows ARE the authoritative budget entries. Derived in the same
+    // transaction, so there is no mutable budget mirror to reset on resume.
+    const rows = this.db.prepare(`SELECT state, reservation_tokens, actual_tokens, observed_tokens, accounting_blocked
+      FROM graph_actions WHERE graph_run_id = ?`).iterate(run.graphRunId) as Iterable<Pick<ActionRow,
+        "state" | "reservation_tokens" | "actual_tokens" | "observed_tokens" | "accounting_blocked">>;
+    for (const row of rows) {
+      actionStarts++;
+      accountingBlocked ||= row.accounting_blocked === 1;
+      if ((row.state === "confirmed" || row.state === "failed") && row.actual_tokens !== null) {
+        // Failed attempts consume their full reservation even if less usage was
+        // reported. Unknown usage never releases capacity.
+        charged += BigInt(row.state === "failed" ? Math.max(row.reservation_tokens, row.actual_tokens) : row.actual_tokens);
+      } else reserved += BigInt(Math.max(row.reservation_tokens, row.observed_tokens));
+    }
+    return { actionStarts, reservedTokens: reserved.toString(), chargedTokens: charged.toString(), accountingBlocked };
+  }
+  private admit(run: GraphRun, slot: GraphActionAdmission, retry: boolean, now: number): void {
+    const limits = run.spec!.limits;
+    if (run.status === "cancel_pending" || run.status === "reconciliation_required") fail("RUN_STOPPING");
+    if (this.db.prepare(`SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND
+      (state IN ('unknown','cancel_pending') OR (state IN ('intent','running') AND generation <> ?)) LIMIT 1`)
+      .get(run.graphRunId, run.generation)) fail("UNRESOLVED_ACTION");
+    const budget = this.budget(run);
+    if (budget.accountingBlocked) fail("ACCOUNTING_BLOCKED");
+    if (slot.epoch >= limits.maxEpochs) fail("EPOCH_BUDGET_EXHAUSTED");
+    if (now - run.createdAt >= limits.deadlineSeconds * 1000) fail("WALL_CLOCK_BUDGET_EXHAUSTED");
+    if (budget.actionStarts >= limits.maxActionStarts) fail("ACTION_BUDGET_EXHAUSTED");
+    if (retry) {
+      const row = this.db.prepare(`SELECT count(*) AS retries FROM graph_actions
+        WHERE graph_run_id = ? AND epoch = ? AND node_id = ? AND logical_attempt > 1`)
+        .get(run.graphRunId, slot.epoch, slot.nodeId) as { retries: number };
+      if (1 + row.retries >= limits.maxBranchAttempts) fail("BRANCH_BUDGET_EXHAUSTED");
+    }
+    if (BigInt(budget.reservedTokens) + BigInt(budget.chargedTokens) + BigInt(slot.reservationTokens) > BigInt(limits.tokenReservationLimit)) {
+      fail("TOKEN_BUDGET_EXHAUSTED");
+    }
+  }
+  private insert(run: GraphRun, input: GraphActionAdmission, businessDigest: string, attempt: number, now: number): Mutation {
+    const effect = GraphEffectIdentity.parse({ schemaVersion: 1, scope: run.scope, graphRunId: run.graphRunId,
+      specHash: run.identity.specHash, epoch: input.epoch, nodeId: input.nodeId, effectSlot: input.effectSlot, logicalAttempt: attempt });
+    const key = computeGraphEffectKey(effect);
+    this.db.prepare(`INSERT INTO graph_actions (effect_key, graph_run_id, epoch, node_id, effect_slot, logical_attempt,
+      effect_json, action_json, business_digest, generation, reservation_tokens, state, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'intent', ?, ?)`).run(key, run.graphRunId, effect.epoch, effect.nodeId,
+        effect.effectSlot, attempt, canonical(effect), canonical(input.action), businessDigest, run.generation, input.reservationTokens, now, now);
+    return { action: this.find(run, key), changed: true, created: true };
+  }
+
+  /** Persist intent/reservation before invocation. Existing slots NEVER allocate
+   * an attempt. Host must markRunning and invoke only when that call changed=true;
+   * a lost response is pending, not permission to invoke again. */
+  reserve(fence: GraphRunFence, value: GraphActionAdmission): GraphActionResult {
+    const parsed = admissionSchema.parse(GraphJsonValue.parse(value));
+    return this.write(fence, (run) => {
+      const action = WorkerActionRequest.parse({ schemaVersion: 1, kind: "worker_action", requestId: "storage",
+        generation: run.generation, scope: run.scope, graphRunId: run.graphRunId, specHash: run.identity.specHash,
+        epoch: parsed.epoch, nodeId: parsed.nodeId, effectSlot: parsed.effectSlot, action: parsed.action }).action;
+      const input = { ...parsed, action };
+      const digest = createHash("sha256").update(`osstack.graph.action.business.v1\n${canonical(action)}`).digest("hex");
+      const prior = this.current(run, input);
+      if (prior) {
+        if (prior.businessDigest !== digest || prior.reservationTokens !== input.reservationTokens) fail("ACTION_INPUT_CONFLICT");
+        return { action: prior, changed: false, created: false };
+      }
+      this.admit(run, input, false, fence.now);
+      return this.insert(run, input, digest, 1, fence.now);
+    });
+  }
+
+  /** Fenced evidence lookup, including historical attempts. No raw public cache. */
+  get(fence: GraphRunFence, effectKey: string): GraphActionResult {
+    keySchema.parse(effectKey);
+    return this.write(fence, (run) => ({ action: this.find(run, effectKey), changed: false, created: false }));
+  }
+
+  /** Explicit trusted retry command, never a worker flag. Proof of retry safety
+   * must already be verified by G12 and recorded on a failed outcome. The old
+   * action supplies ALL key/payload/cap inputs. Unknown is not retryable. */
+  retry(fence: GraphRunFence, effectKey: string): GraphActionResult {
+    keySchema.parse(effectKey);
+    return this.write(fence, (run) => {
+      const prior = this.find(run, effectKey);
+      if (this.current(run, prior.effect)!.effectKey !== effectKey) fail("NOT_CURRENT_ATTEMPT");
+      if (prior.state !== "failed" || !prior.retrySafe) fail("RETRY_NOT_SAFE");
+      const input = { epoch: prior.effect.epoch, nodeId: prior.effect.nodeId, effectSlot: prior.effect.effectSlot,
+        action: prior.action, reservationTokens: prior.reservationTokens };
+      this.admit(run, input, true, fence.now);
+      return this.insert(run, input, prior.businessDigest, prior.effect.logicalAttempt + 1, fence.now);
+    });
+  }
+
+  markRunning(fence: GraphRunFence, effectKey: string, executionRef: string): GraphActionResult {
+    keySchema.parse(effectKey); ref.parse(executionRef);
+    return this.write(fence, (run) => {
+      const prior = this.find(run, effectKey);
+      if (prior.generation !== run.generation) fail("ACTION_GENERATION_MISMATCH");
+      if (prior.state === "running") {
+        if (prior.executionRef !== executionRef) fail("EXECUTION_CONFLICT");
+        return { action: prior, changed: false, created: false };
+      }
+      if (prior.state !== "intent") fail("INVALID_ACTION_STATE");
+      // Recheck stopping, unknown and deadline immediately before the host can
+      // invoke. Capacity was already reserved by intent, so do not reserve twice.
+      if (run.status === "cancel_pending" || run.status === "reconciliation_required") fail("RUN_STOPPING");
+      if (this.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND state IN ('unknown','cancel_pending') LIMIT 1")
+        .get(run.graphRunId)) fail("UNRESOLVED_ACTION");
+      if (this.budget(run).accountingBlocked) fail("ACCOUNTING_BLOCKED");
+      if (fence.now - run.createdAt >= run.spec!.limits.deadlineSeconds * 1000) fail("WALL_CLOCK_BUDGET_EXHAUSTED");
+      this.db.prepare("UPDATE graph_actions SET state = 'running', execution_ref = ?, updated_at = ? WHERE effect_key = ?")
+        .run(executionRef, fence.now, effectKey);
+      return { action: this.find(run, effectKey), changed: true, created: false };
+    });
+  }
+
+  /** Adapter/supervisor uncertainty only. G11 has no release/reconciliation API:
+   * worker receipts or later 'not applied' claims cannot clear unknown capacity. */
+  markUncertain(fence: GraphRunFence, effectKey: string, value: GraphActionUncertainty): GraphActionResult {
+    keySchema.parse(effectKey);
+    const input = uncertainSchema.parse(GraphJsonValue.parse(value));
+    return this.write(fence, (run) => {
+      const prior = this.find(run, effectKey);
+      if (prior.generation !== run.generation) fail("ACTION_GENERATION_MISMATCH");
+      if (prior.state === "confirmed" || prior.state === "failed") fail("INVALID_ACTION_STATE");
+      if (prior.uncertainty && canonical(prior.uncertainty) === canonical(input)) return { action: prior, changed: false, created: false };
+      this.db.prepare(`UPDATE graph_actions SET state = ?, uncertainty_json = ?, observed_tokens = ?,
+        accounting_blocked = ?, updated_at = ? WHERE effect_key = ?`).run(input.state, canonical(input),
+          Math.max(prior.observedTokens, input.observedTokens), Number(prior.accountingBlocked || input.observedTokens > prior.reservationTokens), fence.now, effectKey);
+      return { action: this.find(run, effectKey), changed: true, created: false };
+    });
+  }
+
+  /** Only trusted adapter outcomes, never worker-provided evidence. Invalid usage
+   * does not discard a real result: persist null usage, retain capacity and stop
+   * new actions. Over-cap actual usage is charged exactly and also stops actions.
+   * Settlement after the wall-clock budget elapsed remains allowed with a live
+   * fence; effects already started must not disappear because their budget ended. */
+  recordOutcome(fence: GraphRunFence, effectKey: string, value: GraphActionOutcomeInput): GraphActionResult {
+    keySchema.parse(effectKey);
+    const usage = count.safeParse(value.actualTokens);
+    const input = outcomeSchema.parse(GraphJsonValue.parse({ ...value, actualTokens: usage.success ? usage.data : null }));
+    const outcome: GraphActionOutcome = input.state === "confirmed"
+      ? { ...input, result: GraphResult.parse(input.result) }
+      : { ...input, error: GraphJsonValue.parse(input.error) };
+    return this.write(fence, (run) => {
+      const prior = this.find(run, effectKey);
+      if (prior.outcome) {
+        if (canonical(prior.outcome) !== canonical(outcome)) fail("OUTCOME_CONFLICT");
+        return { action: prior, changed: false, created: false };
+      }
+      if (prior.generation !== run.generation) fail("ACTION_GENERATION_MISMATCH");
+      if (prior.state === "unknown" || prior.state === "cancel_pending") fail("UNRESOLVED_ACTION");
+      if (prior.state !== "running" && !(prior.state === "intent" && outcome.state === "failed")) fail("INVALID_ACTION_STATE");
+      const blocked = !usage.success || usage.data > prior.reservationTokens;
+      this.db.prepare(`UPDATE graph_actions SET state = ?, outcome_json = ?, actual_tokens = ?, retry_safe = ?,
+        accounting_blocked = ?, updated_at = ? WHERE effect_key = ?`).run(outcome.state, canonical(outcome), outcome.actualTokens,
+          Number(outcome.state === "failed" && outcome.retrySafe), Number(blocked), fence.now, effectKey);
+      return { action: this.find(run, effectKey), changed: true, created: false };
+    });
+  }
+}
+
+--- packages/core/src/state/graph-checkpoints.ts ---
+import { createHash } from 'node:crypto';
+import type Database from 'better-sqlite3';
+import {
+  parseGraphCheckpointRequest, parseGraphCheckpointResponse,
+  GRAPH_CHECKPOINT_MAX_FRAME_BYTES, GRAPH_CHECKPOINT_MAX_TUPLE_BYTES,
+  type GraphCheckpointRequest, type GraphCheckpointResponse, type GraphCheckpointTupleWire,
+} from '@osstack/protocol';
+import type { GraphRun, GraphRunFence } from './graph-runs.js';
+import { fencedGraphTransaction } from './graph-storage.js';
+
+type Put = Extract<GraphCheckpointRequest, { kind: 'put' }>;
+type Writes = Extract<GraphCheckpointRequest, { kind: 'writes' }>;
+type Address = { threadId: string; namespace: string; checkpointId: string };
+interface CheckpointRow { namespace: string; checkpoint_id: string; parent_checkpoint_id: string | null;
+  checkpoint: string; metadata: string; new_versions: string }
+interface WriteRow { task_id: string; channel: string; write_index: number; value: string }
+// Pinned checkpoint 1.1.5 public WRITES_IDX_MAP. Cross-package test compares with
+// the installed SDK; core never imports LangGraph or decodes its codec payloads.
+const reserved: Readonly<Record<string, number>> = { __error__: -1, __scheduled__: -2, __interrupt__: -3, __resume__: -4 };
+const fail = (code: string): never => { throw new Error(code); };
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  const object = value as Record<string, unknown>;
+  return `{${Object.keys(object).sort().map((key) => `${JSON.stringify(key)}:${canonical(object[key])}`).join(',')}}`;
+}
+
+/** Trusted daemon-only storage, in the control-plane DB. Authorization is supplied
+ * by a fixed host binding; checkpoint JSON cannot select scope/owner/generation.
+ * Every operation, including reads and replay, fences under BEGIN IMMEDIATE.
+ * Return means SQLite COMMIT completed (existing WAL/NORMAL policy), not a claim
+ * of power-loss durability or of atomicity with external effects. */
+export class GraphCheckpointStore {
+  constructor(private readonly db: Database.Database) {}
+
+  execute(fence: GraphRunFence, value: GraphCheckpointRequest): { run: GraphRun; response: GraphCheckpointResponse } {
+    const request = parseGraphCheckpointRequest(value);
+    if (request.threadId !== fence.graphRunId) fail('CHECKPOINT_THREAD_MISMATCH');
+    const result = fencedGraphTransaction<GraphCheckpointResponse>(this.db, fence, () => {
+      if (request.kind === 'get') {
+        const row = this.db.prepare(`SELECT * FROM graph_checkpoints WHERE graph_run_id = ? AND namespace = ?
+          ${request.checkpointId ? 'AND checkpoint_id = ?' : ''} ORDER BY checkpoint_id DESC LIMIT 1`)
+          .get(request.threadId, request.namespace, ...(request.checkpointId ? [request.checkpointId] : [])) as CheckpointRow | undefined;
+        return { value: { kind: 'get', tuple: row ? this.tuple(request.threadId, row) : null }, changed: false };
+      }
+      if (request.kind === 'list') return { value: this.list(request), changed: false };
+      // Fence has already checked live lease and revision, even for cached IDs.
+      const digest = createHash('sha256').update(canonical(request)).digest('hex');
+      const prior = this.db.prepare('SELECT payload_digest, response_json FROM graph_checkpoint_requests WHERE graph_run_id = ? AND request_id = ?')
+        .get(request.threadId, request.requestId) as { payload_digest: string; response_json: string } | undefined;
+      if (prior) {
+        if (prior.payload_digest !== digest) fail('IDEMPOTENCY_CONFLICT');
+        return { value: parseGraphCheckpointResponse(JSON.parse(prior.response_json)), changed: false };
+      }
+      const response: GraphCheckpointResponse = request.kind === 'put' ? this.put(request) : this.writes(request);
+      this.db.prepare(`INSERT INTO graph_checkpoint_requests (graph_run_id, request_id, payload_digest, response_json, generation)
+        VALUES (?, ?, ?, ?, ?)`).run(request.threadId, request.requestId, digest, JSON.stringify(response), fence.expectedGeneration);
+      return { value: response, changed: true };
+    });
+    return { run: result.run, response: result.value };
+  }
+
+  private pending(address: Address): GraphCheckpointTupleWire['pendingWrites'] {
+    const size = this.db.prepare(`SELECT count(*) AS count, coalesce(sum(length(CAST(value AS BLOB))), 0) AS bytes
+      FROM graph_checkpoint_writes WHERE graph_run_id = ? AND namespace = ? AND checkpoint_id = ?`)
+      .get(address.threadId, address.namespace, address.checkpointId) as { count: number; bytes: number };
+    if (size.count > 4096 || size.bytes > GRAPH_CHECKPOINT_MAX_TUPLE_BYTES) fail('CHECKPOINT_TUPLE_LIMIT');
+    const rows = this.db.prepare(`SELECT task_id, channel, write_index, value FROM graph_checkpoint_writes
+      WHERE graph_run_id = ? AND namespace = ? AND checkpoint_id = ? ORDER BY task_id, write_index LIMIT 4097`)
+      .all(address.threadId, address.namespace, address.checkpointId) as WriteRow[];
+    if (rows.length > 4096) fail('CHECKPOINT_TUPLE_LIMIT');
+    return rows.map((row) => ({ taskId: row.task_id, channel: row.channel, index: row.write_index, value: row.value }));
+  }
+  private tuple(threadId: string, row: CheckpointRow): GraphCheckpointTupleWire {
+    const address = { threadId, namespace: row.namespace, checkpointId: row.checkpoint_id };
+    const tuple: GraphCheckpointTupleWire = { ...address, ...(row.parent_checkpoint_id ? { parentCheckpointId: row.parent_checkpoint_id } : {}),
+      checkpoint: row.checkpoint, metadata: row.metadata, newVersions: row.new_versions, pendingWrites: this.pending(address) };
+    if (Buffer.byteLength(JSON.stringify(tuple)) > GRAPH_CHECKPOINT_MAX_TUPLE_BYTES) fail('CHECKPOINT_TUPLE_LIMIT');
+    return tuple;
+  }
+  private checkSize(address: Address): void {
+    const row = this.db.prepare('SELECT * FROM graph_checkpoints WHERE graph_run_id = ? AND namespace = ? AND checkpoint_id = ?')
+      .get(address.threadId, address.namespace, address.checkpointId) as CheckpointRow | undefined;
+    if (row) { this.tuple(address.threadId, row); return; }
+    // Pending writes may precede put. Still bound their accumulated footprint.
+    if (Buffer.byteLength(JSON.stringify(this.pending(address))) > GRAPH_CHECKPOINT_MAX_TUPLE_BYTES - 4096) fail('CHECKPOINT_TUPLE_LIMIT');
+  }
+  private put(request: Put): GraphCheckpointResponse {
+    if (request.parentCheckpointId && request.parentCheckpointId >= request.checkpointId) fail('CHECKPOINT_PARENT_INVALID');
+    const prior = this.db.prepare('SELECT * FROM graph_checkpoints WHERE graph_run_id = ? AND namespace = ? AND checkpoint_id = ?')
+      .get(request.threadId, request.namespace, request.checkpointId) as CheckpointRow | undefined;
+    if (prior) {
+      if (prior.checkpoint !== request.checkpoint || prior.metadata !== request.metadata || prior.new_versions !== request.newVersions
+        || prior.parent_checkpoint_id !== (request.parentCheckpointId ?? null)) fail('CHECKPOINT_ID_CONFLICT');
+    } else {
+      this.db.prepare(`INSERT INTO graph_checkpoints (graph_run_id, namespace, checkpoint_id, parent_checkpoint_id, checkpoint, metadata, new_versions)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`).run(request.threadId, request.namespace, request.checkpointId,
+          request.parentCheckpointId ?? null, request.checkpoint, request.metadata, request.newVersions);
+    }
+    this.checkSize(request);
+    return { kind: 'put', checkpointId: request.checkpointId };
+  }
+  private writes(request: Writes): GraphCheckpointResponse {
+    for (const [position, write] of request.writes.entries()) {
+      const index = Object.hasOwn(reserved, write.channel) ? reserved[write.channel]! : position;
+      if (write.index !== index) fail('CHECKPOINT_WRITE_INDEX');
+      this.db.prepare(`INSERT INTO graph_checkpoint_writes (graph_run_id, namespace, checkpoint_id, task_id, write_index, channel, value)
+        VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(graph_run_id, namespace, checkpoint_id, task_id, write_index)
+        ${index < 0 ? 'DO UPDATE SET channel = excluded.channel, value = excluded.value' : 'DO NOTHING'}`)
+        .run(request.threadId, request.namespace, request.checkpointId, request.taskId, index, write.channel, write.value);
+    }
+    this.checkSize(request);
+    return { kind: 'writes' };
+  }
+  private list(request: Extract<GraphCheckpointRequest, { kind: 'list' }>): GraphCheckpointResponse {
+    const where = ['graph_run_id = ?']; const args: (string | number)[] = [request.threadId];
+    if (request.namespace !== undefined) { where.push('namespace = ?'); args.push(request.namespace); }
+    if (request.checkpointId) { where.push('checkpoint_id = ?'); args.push(request.checkpointId); }
+    if (request.before) { where.push('checkpoint_id < ?'); args.push(request.before); }
+    if (request.cursor) {
+      where.push('(checkpoint_id < ? OR (checkpoint_id = ? AND namespace < ?))');
+      args.push(request.cursor.checkpointId, request.cursor.checkpointId, request.cursor.namespace);
+    }
+    // Fetch IDs first; never allocate pageSize times the maximum tuple size.
+    const ids = this.db.prepare(`SELECT namespace, checkpoint_id FROM graph_checkpoints WHERE ${where.join(' AND ')}
+      ORDER BY checkpoint_id DESC, namespace DESC LIMIT ?`).all(...args, request.pageSize + 1) as { namespace: string; checkpoint_id: string }[];
+    const tuples: GraphCheckpointTupleWire[] = [];
+    let bytes = 1024;
+    for (const id of ids.slice(0, request.pageSize)) {
+      const row = this.db.prepare('SELECT * FROM graph_checkpoints WHERE graph_run_id = ? AND namespace = ? AND checkpoint_id = ?')
+        .get(request.threadId, id.namespace, id.checkpoint_id) as CheckpointRow;
+      const tuple = this.tuple(request.threadId, row);
+      const size = Buffer.byteLength(JSON.stringify(tuple)) + 1;
+      if (bytes + size > GRAPH_CHECKPOINT_MAX_FRAME_BYTES) break;
+      bytes += size; tuples.push(tuple);
+    }
+    const last = tuples.at(-1);
+    return { kind: 'list', tuples, ...(last && ids.length > tuples.length
+      ? { cursor: { namespace: last.namespace, checkpointId: last.checkpointId } } : {}) };
+  }
+}
+
+--- packages/cli/src/graph-action-broker.ts ---
+import { randomUUID } from "node:crypto";
+import { isAbsolute } from "node:path";
+import type Database from "better-sqlite3";
+import { CapabilitySchema, GraphActionStore, GraphRunStore, type GraphRunFence, type GraphProgramIdentity,
+  type GraphAction } from "@osstack/core";
+import { GraphResult, GraphScope, WorkerActionRequest, WorkerActionResponse,
+  type GraphError, type GraphErrorCode } from "@osstack/protocol";
+import { ExecutionPlan, executeCandidateImplementation, runShellCommand,
+  type CandidateExecutionResult, type CommandResult, type RegisteredCandidateWorkspace } from "@osstack/loop";
+import type { AgentAdapter } from "@osstack/agents";
+import type { AdmissionInput, ExecutionLease } from "./governed-execution.js";
+
+type Action = WorkerActionRequest["action"];
+export interface GraphActionEvidence {
+  status: "completed" | "failed";
+  candidate?: CandidateExecutionResult;
+  command?: CommandResult;
+  workspace?: unknown;
+}
+export interface PersistedGraphActionEvidence {
+  evidenceRef: string;
+  result?: GraphResult;
+  actualTokens?: number;
+}
+type RegisteredExecution =
+  | { kind: "adapter"; plan: ExecutionPlan; adapter: AgentAdapter; capabilityId: string }
+  | { kind: "command"; plan: ExecutionPlan; command: string }
+  | { kind: "workspace"; handler: (input: { workspace: RegisteredCandidateWorkspace; signal: AbortSignal }) => Promise<{
+      status: "completed" | "failed"; stopped: true; evidence: unknown;
+    }> };
+export interface GraphRegisteredAction {
+  nodeId: string;
+  effectSlot: string;
+  action: Action;
+  tokenReservation: number;
+  execution: RegisteredExecution;
+  /** Trusted persistence boundary. Worker receipts/checkpoints are never passed here. */
+  persist: (evidence: GraphActionEvidence) => Promise<PersistedGraphActionEvidence>;
+}
+export interface GraphWorkerRegistration {
+  scope: GraphScope;
+  graphRunId: string;
+  identity: GraphProgramIdentity;
+  generation: number;
+  owner: string;
+  epoch: number;
+  workspace: RegisteredCandidateWorkspace;
+  /** Synchronous host revocation check, including immediately before physical effects. */
+  authorize: () => void;
+  actions: readonly GraphRegisteredAction[];
+}
+export interface GraphActionBrokerOptions {
+  acquire: (input: AdmissionInput) => Promise<ExecutionLease>;
+  authorizePolicy?: (workspacePath: string) => Promise<void>;
+  now?: () => number;
+}
+type BoundAction = GraphRegisteredAction & { access: "read" | "write" };
+type Binding = Omit<GraphWorkerRegistration, "actions"> & { actions: ReadonlyMap<string, BoundAction> };
+const slot = (node: string, effect: string) => JSON.stringify([node, effect]);
+const reads = new Set(["code.review", "review.code", "research.code"]);
+const writes = new Set(["code.write", "code.refactor", "code.debug", "code.test"]);
+function snapshot<T>(value: T): T {
+  const copy = structuredClone(value);
+  const freeze = (item: unknown): void => {
+    if (item !== null && typeof item === "object") { Object.values(item).forEach(freeze); Object.freeze(item); }
+  };
+  freeze(copy); return copy;
+}
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(",")}}`;
+}
+class Denied extends Error { constructor(readonly code: GraphErrorCode, message: string) { super(message); } }
+function graphError(code: GraphErrorCode, message: string): GraphError {
+  return { schemaVersion: 1, code, message: message.slice(0, 4096) || code, retryable: false,
+    nextAction: code === "ACTION_OUTCOME_UNKNOWN" || code === "CANCEL_UNCONFIRMED" ? "reconcile" : "stop" } as GraphError;
+}
+function errorCode(error: unknown): GraphErrorCode {
+  if (error instanceof Denied) return error.code;
+  const message = String(error);
+  if (/GRANT_EXPIRED/.test(message)) return "GRANT_EXPIRED";
+  if (/STALE_GENERATION|OWNER_MISMATCH|LEASE_EXPIRED/.test(message)) return "STALE_GENERATION";
+  if (/PROGRAM_IDENTITY/.test(message)) return "CHECKPOINT_INCOMPATIBLE";
+  if (/UNRESOLVED|RETRY_NOT_SAFE/.test(message)) return "ACTION_OUTCOME_UNKNOWN";
+  if (/BUDGET|ACCOUNTING/.test(message)) return "BUDGET_EXHAUSTED";
+  if (/REVISION_CONFLICT/.test(message)) return "REVISION_CONFLICT";
+  return "POLICY_DENIED";
+}
+
+/** Trusted in-process action port; no RPC, worker launcher or node scheduler.
+ * Ledger granularity is one adapter invocation, registered command or host workspace
+ * operation. It does not intercept an agent's internal tools. Admission belongs to
+ * each action; callers must NOT hold a whole-run lease around this port. */
+export class GraphActionBroker {
+  private readonly connections = new WeakMap<object, Binding>();
+  private readonly runs: GraphRunStore;
+  private readonly actions: GraphActionStore;
+  constructor(db: Database.Database, private readonly options: GraphActionBrokerOptions) {
+    this.runs = new GraphRunStore(db); this.actions = new GraphActionStore(db);
+  }
+
+  register(connection: object, input: GraphWorkerRegistration): void {
+    if (this.connections.has(connection)) throw new Error("worker connection already registered");
+    const { actions, authorize, ...data } = input;
+    const fixed = snapshot(data);
+    GraphScope.parse(fixed.scope);
+    if (typeof authorize !== "function" || !fixed.owner || !isAbsolute(fixed.workspace.workspace_path)
+      || fixed.workspace.workspace_path.includes("\0") || fixed.workspace.workspace_id !== fixed.scope.workspaceId) throw new Error("invalid trusted worker registration");
+    const registered = new Map<string, BoundAction>();
+    for (const item of actions) {
+      const { execution, persist, ...actionData } = item;
+      const copy = snapshot(actionData);
+      // Reuse the strict wire parser to validate exact compiled action/node/slot data.
+      WorkerActionRequest.parse({ schemaVersion: 1, kind: "worker_action", requestId: "registration", scope: fixed.scope,
+        graphRunId: fixed.graphRunId, specHash: fixed.identity.specHash, generation: fixed.generation, epoch: fixed.epoch,
+        nodeId: copy.nodeId, effectSlot: copy.effectSlot, action: copy.action });
+      if (copy.action.kind === "freeze" || typeof persist !== "function") throw new Error("unsupported graph action");
+      if (!Number.isSafeInteger(copy.tokenReservation) || copy.tokenReservation < 0) throw new Error("invalid token reservation");
+      let selected: RegisteredExecution; let access: "read" | "write" = "write";
+      if (execution.kind === "workspace") {
+        if (!["workspace_create", "workspace_release"].includes(copy.action.kind) || typeof execution.handler !== "function") throw new Error("unsupported workspace handler");
+        selected = Object.freeze({ kind: "workspace", handler: execution.handler });
+      } else {
+        if (!["implement", "repair", "tests", "review"].includes(copy.action.kind)) throw new Error("unsupported candidate action");
+        const plan = snapshot(ExecutionPlan.parse(execution.plan));
+        if (plan.worktree_path !== undefined && plan.worktree_path !== fixed.workspace.workspace_path) throw new Error("workspace mismatch");
+        if (execution.kind === "command") {
+          if (!execution.command?.trim() || execution.command.includes("\0")) throw new Error("invalid registered command");
+          selected = Object.freeze({ kind: "command", plan, command: execution.command });
+        } else if (execution.kind === "adapter") {
+          const adapter = execution.adapter;
+          const capabilities = snapshot(adapter.capabilities().map(cap => CapabilitySchema.parse(cap)));
+          const matches = capabilities.filter(cap => cap.id === execution.capabilityId);
+          const cap = matches[0];
+          if (matches.length !== 1 || !cap || cap.agent_id !== adapter.id || plan.agent_id !== adapter.id
+            || plan.task.capability !== cap.kind || (!reads.has(cap.kind) && !writes.has(cap.kind))) throw new Error("unknown or ambiguous trusted capability");
+          // A multi-capability adapter can internally select a writer. Only entirely
+          // read-only registrations may consume a read permit.
+          if (capabilities.some(capability => !reads.has(capability.kind) && !writes.has(capability.kind))) throw new Error("unknown adapter capability");
+          access = capabilities.every(capability => reads.has(capability.kind)) ? "read" : "write";
+          const bound: AgentAdapter = Object.freeze({ id: adapter.id, display_name: adapter.display_name, cost_tier: adapter.cost_tier,
+            capabilities: () => structuredClone(capabilities), isAvailable: adapter.isAvailable.bind(adapter), invoke: adapter.invoke.bind(adapter),
+            ...(adapter.confirmStopped ? { confirmStopped: adapter.confirmStopped.bind(adapter) } : {}) });
+          selected = Object.freeze({ kind: "adapter", plan, adapter: bound, capabilityId: execution.capabilityId });
+        } else throw new Error("unsupported execution handler");
+      }
+      const key = slot(copy.nodeId, copy.effectSlot);
+      if (registered.has(key)) throw new Error("duplicate compiled action slot");
+      registered.set(key, Object.freeze({ ...copy, execution: selected, persist, access }));
+    }
+    const binding = Object.freeze({ ...fixed, authorize, actions: registered });
+    // Verify full registered identity at installation, then at every ledger access.
+    this.fence(binding);
+    this.connections.set(connection, binding);
+  }
+
+  private authorize(binding: Binding): void {
+    const result: unknown = binding.authorize();
+    if (result !== undefined) {
+      // TypeScript allows async functions in void positions. Never silently
+      // treat a pending/rejected promise as synchronous permission.
+      void Promise.resolve(result).catch(() => {});
+      throw new Denied("POLICY_DENIED", "revocation check must be synchronous");
+    }
+  }
+
+  private fence(binding: Binding): GraphRunFence {
+    const run = this.runs.get(binding.scope, binding.graphRunId);
+    if (!run) throw new Denied("RUN_MISMATCH", "registered run not found");
+    if (run.generation !== binding.generation || run.leaseOwner !== binding.owner) throw new Denied("STALE_GENERATION", "registered worker lease changed");
+    if (canonical(run.identity) !== canonical(binding.identity)) throw new Denied("CHECKPOINT_INCOMPATIBLE", "registered program identity changed");
+    const now = this.options.now?.() ?? Date.now();
+    if (!run.leaseExpiresAt || run.leaseExpiresAt <= now) throw new Denied("STALE_GENERATION", "registered worker lease expired");
+    return { scope: binding.scope, graphRunId: binding.graphRunId, identity: binding.identity,
+      expectedGeneration: binding.generation, expectedOwner: binding.owner, expectedRevision: run.revision, now };
+  }
+
+  async handle(connection: object, value: unknown, options: { signal?: AbortSignal } = {}): Promise<WorkerActionResponse> {
+    let request: WorkerActionRequest;
+    try { request = snapshot(WorkerActionRequest.parse(value)); }
+    catch { return { schemaVersion: 1, kind: "worker_action_rejected", requestId: "invalid-request", error: graphError("INPUT_CONTRACT_INVALID", "invalid worker action request") }; }
+    const binding = this.connections.get(connection);
+    const signal = options.signal ?? new AbortController().signal;
+    let lease: ExecutionLease | undefined; let owned: GraphAction | undefined; let invoked = false; let uncertain = false;
+    const reject = (error: unknown): WorkerActionResponse => ({ schemaVersion: 1, kind: "worker_action_rejected", requestId: request.requestId,
+      error: graphError(errorCode(error), String(error)) });
+    try {
+      if (!binding) throw new Denied("UNAUTHENTICATED", "unregistered worker connection");
+      if (canonical(request.scope) !== canonical(binding.scope)) throw new Denied("SCOPE_MISMATCH", "scope does not match registered connection");
+      if (request.graphRunId !== binding.graphRunId) throw new Denied("RUN_MISMATCH", "run does not match registered connection");
+      if (request.generation !== binding.generation) throw new Denied("STALE_GENERATION", "generation does not match registered connection");
+      if (request.specHash !== binding.identity.specHash) throw new Denied("SPEC_MISMATCH", "spec does not match registered program");
+      if (request.epoch !== binding.epoch) throw new Denied("EPOCH_MISMATCH", "epoch does not match registered program");
+      const action = binding.actions.get(slot(request.nodeId, request.effectSlot));
+      if (!action) throw new Denied("POLICY_DENIED", "unregistered compiled action slot");
+      if (canonical(action.action) !== canonical(request.action)) throw new Denied("IDEMPOTENCY_CONFLICT", "action differs from immutable compiled registration");
+      const check = (): void => { if (signal.aborted) throw new Denied("POLICY_DENIED", "action cancelled before invocation"); this.authorize(binding); this.fence(binding); };
+      check();
+      const intent = this.actions.reserve(this.fence(binding), { epoch: binding.epoch, nodeId: action.nodeId, effectSlot: action.effectSlot,
+        reservationTokens: action.tokenReservation, action: action.action });
+      if (!intent.created) return this.response(request, intent.action);
+      owned = intent.action;
+      lease = await this.options.acquire({ kind: action.access, runId: `graph-action:${owned.effectKey}`, workspacePath: binding.workspace.workspace_path,
+        signal, authorize: async () => { check(); await this.options.authorizePolicy?.(binding.workspace.workspace_path); check(); } });
+      check();
+      // This synchronous gate runs inside the actual adapter invoke/command/host
+      // handler call, after G04's async authorization and availability windows.
+      const beforeEffect = (): void => {
+        check();
+        const started = this.actions.markRunning(this.fence(binding), owned!.effectKey, `graph-execution:${owned!.effectKey}`);
+        if (!started.changed) throw new Denied("ACTION_OUTCOME_UNKNOWN", "intent already started");
+        invoked = true;
+      };
+      const evidence = await this.execute(binding, action, signal, beforeEffect);
+      if (!invoked) throw new Denied("POLICY_DENIED", "execution did not start");
+      const persisted = snapshot(await action.persist(evidence));
+      if (!persisted.evidenceRef?.trim() || persisted.evidenceRef.length > 256) throw new Error("invalid persisted evidence reference");
+      if (persisted.actualTokens !== undefined && (!Number.isSafeInteger(persisted.actualTokens) || persisted.actualTokens < 0)) throw new Error("invalid usage");
+      const usage = evidence.candidate?.execution;
+      const measured = usage?.tokens_in !== undefined && usage.tokens_out !== undefined ? usage.tokens_in + usage.tokens_out : undefined;
+      if (measured !== undefined && !Number.isSafeInteger(measured)) throw new Error("invalid total token usage");
+      const actualTokens = Math.max(persisted.actualTokens ?? 0, measured ?? Math.max(action.tokenReservation, usage?.tokens_in ?? 0, usage?.tokens_out ?? 0));
+      let result: GraphResult | undefined;
+      if (evidence.status === "completed") {
+        result = GraphResult.parse(persisted.result);
+        const expected = action.action.kind === "implement" || action.action.kind === "repair" ? "implementation_complete"
+          : action.action.kind.startsWith("workspace_") ? "workspace" : action.action.kind;
+        if (result.kind !== expected) throw new Error("invalid result kind for registered operation");
+        if ("workspaceLeaseRef" in result && "workspaceLeaseRef" in action.action && result.workspaceLeaseRef !== action.action.workspaceLeaseRef) throw new Error("persisted workspace mismatch");
+        if ("candidateRevision" in result && "candidateRevision" in action.action && result.candidateRevision !== action.action.candidateRevision) throw new Error("persisted revision mismatch");
+      }
+      const settled = this.actions.recordOutcome(this.fence(binding), owned.effectKey, evidence.status === "completed"
+        ? { state: "confirmed", evidenceRef: persisted.evidenceRef, actualTokens, result: result! }
+        : { state: "failed", evidenceRef: persisted.evidenceRef, actualTokens, retrySafe: false, error: { message: "trusted stopped invocation failed" } });
+      return this.response(request, settled.action);
+    } catch (error) {
+      if (binding && owned) {
+        if (invoked) {
+          uncertain = true; lease?.retain(String(error));
+          try { const unknown = this.actions.markUncertain(this.fence(binding), owned.effectKey, { state: "unknown", evidenceRef: `unknown:${randomUUID()}`, observedTokens: owned.reservationTokens });
+            return this.response(request, unknown.action); } catch { /* Commit/fence failure preserves the original running reservation. */ }
+          return { schemaVersion: 1, kind: "worker_action_response", requestId: request.requestId, generation: request.generation,
+            effect: owned.effect, outcome: { state: "unknown", error: graphError("ACTION_OUTCOME_UNKNOWN", String(error)), reconciliationRef: owned.effectKey } };
+        }
+        // No physical invocation: resolve this caller's own intent without calling
+        // it unknown or suggesting an automatic retry of a terminal failure.
+        try { this.actions.recordOutcome(this.fence(binding), owned.effectKey, { state: "failed", evidenceRef: `not-started:${randomUUID()}`,
+          actualTokens: 0, retrySafe: false, error: { message: "admission refused before invocation" } }); } catch { /* A stale owner cannot mutate a newer generation. */ }
+      }
+      return reject(error);
+    } finally {
+      if (lease && !uncertain) await lease.release();
+    }
+  }
+
+  private response(request: WorkerActionRequest, action: GraphAction): WorkerActionResponse {
+    const base = { schemaVersion: 1 as const, kind: "worker_action_response" as const, requestId: request.requestId,
+      generation: request.generation, effect: action.effect };
+    if (action.state === "confirmed") return WorkerActionResponse.parse({ ...base, outcome: { state: "confirmed", result: action.outcome?.state === "confirmed" ? action.outcome.result : undefined } });
+    if (action.state === "failed") return WorkerActionResponse.parse({ ...base, outcome: { state: "failed", error: graphError("POLICY_DENIED", "prior invocation failed; no automatic retry") } });
+    return { ...base, outcome: { state: "unknown", error: graphError("ACTION_OUTCOME_UNKNOWN", "existing action requires reconciliation; invocation was not repeated"), reconciliationRef: action.effectKey } };
+  }
+
+  private async execute(binding: Binding, action: BoundAction, signal: AbortSignal, beforeEffect: () => void): Promise<GraphActionEvidence> {
+    const execution = action.execution;
+    if (execution.kind === "workspace") {
+      await this.options.authorizePolicy?.(binding.workspace.workspace_path);
+      beforeEffect();
+      const result = await execution.handler({ workspace: binding.workspace, signal });
+      if (result?.stopped !== true || !["completed", "failed"].includes(result.status)) throw new Error("workspace outcome unconfirmed");
+      return { status: result.status, workspace: result.evidence };
+    }
+    let threw = false; let command: CommandResult | undefined; let invocationRunId: string | undefined;
+    const original = execution.kind === "adapter" ? execution.adapter : undefined;
+    const capabilities = execution.kind === "adapter" ? execution.adapter.capabilities().filter(cap => cap.id === execution.capabilityId) : [CapabilitySchema.parse({ id: "registered-command.write", kind: "code.write", agent_id: "registered-command", description: "Registered command" })];
+    const policy = this.options.authorizePolicy;
+    const wrapper: AgentAdapter = {
+      id: original?.id ?? "registered-command", display_name: "Governed graph action", cost_tier: "low",
+      capabilities: () => capabilities, isAvailable: original?.isAvailable ?? (async () => ({ available: true, last_checked_at: 0 })),
+      invoke: (task, invocationSignal) => {
+        return (async function* () {
+          await policy?.(binding.workspace.workspace_path);
+          if (invocationSignal.aborted) throw new Denied("POLICY_DENIED", "execution cancelled before invocation");
+          beforeEffect(); invocationRunId = task.run_id;
+          try {
+            if (original) { yield* original.invoke(task, invocationSignal); return; }
+            if (execution.kind !== "command") throw new Error("invalid execution registration");
+            // runShellCommand starts synchronously before its returned promise; no
+            // untrusted await separates the fence above from the actual spawn.
+            command = await runShellCommand(execution.command, { cwd: binding.workspace.workspace_path, timeoutMs: 120_000,
+              outputLimit: 16_000, ...(invocationSignal ? { signal: invocationSignal } : {}) });
+            yield { event_id: randomUUID(), run_id: task.run_id, session_id: task.session_id, seq: 1, type: "done" as const,
+              created_at: Date.now() / 1000, terminal: true, payload: { status: command.exitCode === 0 ? "completed" : "failed", last_seq: 0 } };
+          } catch (error) { threw = true; throw error; }
+        })();
+      },
+      confirmStopped: async runId => original?.confirmStopped ? original.confirmStopped(runId)
+        : { stopped: command?.termination?.stop_confirmed === true, evidence: command?.termination?.evidence ?? "no trusted stop receipt" },
+    };
+    const candidate = await executeCandidateImplementation({ plan: { ...execution.plan, agent_id: wrapper.id }, workspace: binding.workspace,
+      adapters: [wrapper], signal, cancellationGraceMs: 50,
+      authorize: async () => { this.authorize(binding); this.fence(binding); return { allow: true }; } });
+    if (!invocationRunId) throw new Denied("POLICY_DENIED", candidate.reason ?? "candidate preflight refused");
+    if (threw || candidate.status === "execution_unconfirmed" || candidate.execution?.failure_code) throw new Error("adapter result or execution unconfirmed");
+    let stopTimer: ReturnType<typeof setTimeout> | undefined;
+    const stopped = await Promise.race([wrapper.confirmStopped!(invocationRunId),
+      new Promise<{ stopped: false }>(resolve => { stopTimer = setTimeout(() => resolve({ stopped: false }), 1000); })])
+      .finally(() => { if (stopTimer) clearTimeout(stopTimer); });
+    if (stopped.stopped !== true || !stopped.evidence?.trim()) throw new Error("external stop unconfirmed");
+    const usage = candidate.execution;
+    if ([usage?.tokens_in, usage?.tokens_out].some(value => value !== undefined && (!Number.isSafeInteger(value) || value < 0))) throw new Error("invalid adapter usage");
+    return { status: candidate.status === "implementation_complete" ? "completed" : "failed", candidate, ...(command ? { command } : {}) };
+  }
+}
+
+--- packages/cli/src/graph-checkpoint-service.ts ---
+import { parseGraphCheckpointRequest, type GraphCheckpointResponse, type GraphScope } from '@osstack/protocol';
+import type { GraphCheckpointStore, GraphProgramIdentity, GraphRunStore } from '@osstack/core';
+
+/** Created by the trusted daemon supervisor, never from worker JSON or a checkpoint.
+ * The object used as the registry key represents an authenticated connection. G14
+ * supplies that connection; possession of scope strings is insufficient. */
+export interface GraphCheckpointBinding {
+  scope: GraphScope;
+  graphRunId: string;
+  generation: number;
+  owner: string;
+  identity: GraphProgramIdentity;
+  authorize: () => Promise<void>;
+}
+
+/** Control-plane assembly only. The database store fences inside its transaction;
+ * this service resolves authority outside the request and waits for commit before
+ * acknowledging. No LangGraph runtime or deserialization is loaded in the daemon. */
+export class GraphCheckpointService {
+  private readonly bindings = new Map<object, GraphCheckpointBinding>();
+  private closed = false;
+  constructor(private readonly options: {
+    runs: GraphRunStore;
+    checkpoints: GraphCheckpointStore;
+    bindings: ReadonlyMap<object, GraphCheckpointBinding>;
+    now?: () => number;
+  }) {
+    for (const [connection, binding] of options.bindings) {
+      if (typeof binding.authorize !== 'function') throw new Error('UNAUTHENTICATED');
+      const { authorize, ...data } = binding;
+      this.bindings.set(connection, { ...structuredClone(data), authorize });
+    }
+  }
+
+  close(): void { this.closed = true; }
+
+  async execute(connection: object, value: unknown): Promise<GraphCheckpointResponse> {
+    this.assertOpen();
+    const binding = this.bindings.get(connection);
+    if (!binding) throw new Error('UNAUTHENTICATED');
+    const request = parseGraphCheckpointRequest(value);
+    if (request.threadId !== binding.graphRunId) throw new Error('RUN_MISMATCH');
+    const authorize = binding.authorize;
+    await authorize();
+    this.assertOpen();
+    // Refresh only the revision, after the asynchronous authorization boundary.
+    // Keep the original connection's generation, owner and program identity. There
+    // is no await between this read and the store's transactional check/write.
+    const run = this.options.runs.get(binding.scope, binding.graphRunId);
+    if (!run) throw new Error('RUN_NOT_FOUND');
+    const result = this.options.checkpoints.execute({ scope: binding.scope,
+      graphRunId: binding.graphRunId, expectedGeneration: binding.generation,
+      expectedRevision: run.revision, expectedOwner: binding.owner,
+      identity: binding.identity, now: this.options.now?.() ?? Date.now(),
+    }, request);
+    return result.response;
+  }
+
+  private assertOpen(): void { if (this.closed) throw new Error('CHECKPOINT_SERVICE_CLOSED'); }
+}
+
+--- packages/cli/src/governed-execution.ts ---
+import { join } from "node:path";
+import { acquireRepoWriteLock, FifoSemaphore, SemaphoreAcquireAbortedError, type SemaphoreLease, type RepoWriteLock } from '@osstack/autonomy';
+import { resolveRepositoryScope } from '@osstack/core';
+
+export interface ExecutionLease {
+  release(): Promise<void>;
+  /** Keep ownership until a trusted caller has confirmed external exit. */
+  retain(reason: string): void;
+}
+export interface AdmissionInput {
+  kind: 'read' | 'write';
+  runId: string;
+  /** Supplied by the daemon registration, never by an adapter context. */
+  workspacePath?: string;
+  repoId?: string;
+  signal?: AbortSignal;
+  authorize?: () => Promise<void>;
+}
+export class GovernedExecution {
+  private readonly activeRuns = new Set<string>();
+  private readonly quarantinedRepositories = new Set<string>();
+  constructor(private readonly options: {
+    reads: FifoSemaphore;
+    writes: FifoSemaphore;
+    repositories: Map<string, FifoSemaphore>;
+    checkHealth: () => Promise<void>;
+  }) {}
+
+  get hasWriters(): boolean { return this.options.writes.in_use > 0; }
+
+  async acquire(input: AdmissionInput): Promise<ExecutionLease> {
+    const check = async (): Promise<void> => {
+      if (input.signal?.aborted) throw new SemaphoreAcquireAbortedError();
+      if (input.kind === 'write') await this.options.checkHealth();
+      await input.authorize?.();
+    };
+    await check();
+    const scope = input.workspacePath === undefined ? undefined
+      : await resolveRepositoryScope(input.workspacePath, input.repoId === undefined ? {} : { repoId: input.repoId });
+    if (input.kind === 'write' && !scope) throw new Error('trusted repository scope required for writes');
+    if (input.kind === "write" && scope && this.quarantinedRepositories.has(scope.repoId)) throw new Error("repository external stop unconfirmed; reconciliation required");
+    if (this.activeRuns.has(input.runId)) throw new Error("run already admitted or queued");
+    this.activeRuns.add(input.runId);
+    let local: SemaphoreLease | undefined;
+    let global: SemaphoreLease | undefined;
+    let lock: RepoWriteLock | undefined;
+    let queue: FifoSemaphore | undefined;
+    const releasePermits = (): void => {
+      global?.release(); local?.release();
+      this.activeRuns.delete(input.runId);
+      if (scope && queue?.in_use === 0 && queue.pending === 0) this.options.repositories.delete(scope.repoId);
+    };
+    try {
+      if (input.kind === 'write' && scope) {
+        queue = this.options.repositories.get(scope.repoId) ?? new FifoSemaphore(1);
+        this.options.repositories.set(scope.repoId, queue);
+        local = await queue.acquire(input.signal);
+      }
+      global = await (input.kind === 'read' ? this.options.reads : this.options.writes).acquire(input.signal);
+      if (input.kind === 'write' && scope) {
+        lock = await acquireRepoWriteLock({ root_dir: join(scope.commonDir, "osstack", "writer-locks"), recover_stale: false, repo_id: scope.repoId, autonomy_run_id: input.runId });
+      }
+      if (input.kind === "write" && scope && this.quarantinedRepositories.has(scope.repoId)) throw new Error("repository external stop unconfirmed; reconciliation required");
+      await check();
+    } catch (error) {
+      try { await lock?.release(); } finally { releasePermits(); }
+      throw error;
+    }
+    let released = false;
+    let retained = false;
+    // A renewal failure quarantines this repository. Its unknown producer still
+    // consumes write capacity, while unrelated reads remain available.
+    let renewing: Promise<void> = Promise.resolve();
+    const timer = lock === undefined ? undefined : setInterval(() => {
+      renewing = renewing.then(async () => {
+        if (!released) await lock!.renew();
+      }).catch((error: unknown) => {
+        retained = true;
+        if (scope) this.quarantinedRepositories.add(scope.repoId);
+        process.stderr.write(`repository lease renewal failed; retained ${input.runId}: ${String(error)}\n`);
+        if (timer) clearInterval(timer);
+      });
+    }, 20_000);
+    timer?.unref();
+    return {
+      retain: (reason) => { retained = true; if (timer) clearInterval(timer); if (scope) this.quarantinedRepositories.add(scope.repoId); process.stderr.write(`osstack: retaining write lease ${input.runId}: ${reason}\n`); },
+      release: async () => {
+        if (released) return;
+        if (retained) throw new Error("external stop unconfirmed; reconciliation required before release");
+        released = true;
+        if (timer) clearInterval(timer);
+        await renewing;
+        if (retained) { released = false; throw new Error("external stop unconfirmed; reconciliation required before release"); }
+        // Ownership failure must not free the in-process writer authority.
+        try { await lock?.release(); }
+        catch (error) {
+          released = false; retained = true;
+          if (scope) this.quarantinedRepositories.add(scope.repoId);
+          process.stderr.write(`repository lock release failed; retained ${input.runId}: ${String(error)}\n`);
+          throw error;
+        }
+        releasePermits();
+      },
+    };
+  }
+}
+
+--- packages/graph/src/remote-checkpointer.ts ---
+import { randomUUID } from 'node:crypto';
+import type { RunnableConfig } from '@langchain/core/runnables';
+import {
+  BaseCheckpointSaver, WRITES_IDX_MAP, getCheckpointId,
+  type Checkpoint, type CheckpointMetadata, type CheckpointListOptions,
+  type CheckpointTuple, type ChannelVersions, type PendingWrite,
+} from '@langchain/langgraph-checkpoint';
+import {
+  GRAPH_CHECKPOINT_MAX_PAGE_SIZE, parseGraphCheckpointRequest, parseGraphCheckpointResponse,
+  type GraphCheckpointRequest, type GraphCheckpointResponse, type GraphCheckpointTransport,
+  type GraphCheckpointTupleWire,
+} from '@osstack/protocol';
+import { CheckpointCodec, assertCheckpointV4 } from './checkpoint-codec.js';
+
+/** Worker-only saver. Host supplies an authenticated, fixed-run transport closure.
+ * A transport retry MUST reuse the same request (including requestId). Rejections
+ * are propagated: the saver cannot infer external effect outcome from lost ACKs. */
+export class RemoteCheckpointSaver extends BaseCheckpointSaver {
+  private readonly codec: CheckpointCodec;
+  constructor(private readonly threadId: string, private readonly transport: GraphCheckpointTransport) {
+    const codec = new CheckpointCodec({ allowBytes: true });
+    super(codec);
+    this.codec = codec;
+    parseGraphCheckpointRequest({ kind: 'get', threadId, namespace: '' });
+  }
+
+  private address(config: RunnableConfig, allNamespaces = false) {
+    const thread = config.configurable?.['thread_id'];
+    if (thread !== undefined && thread !== this.threadId) throw new Error('CHECKPOINT_THREAD_MISMATCH');
+    const ns: unknown = config.configurable?.['checkpoint_ns'];
+    if (ns !== undefined && typeof ns !== 'string') throw new Error('CHECKPOINT_NAMESPACE_INVALID');
+    const checkpointId = getCheckpointId(config);
+    return { threadId: this.threadId, ...(ns !== undefined ? { namespace: ns } : allNamespaces ? {} : { namespace: '' }),
+      ...(checkpointId ? { checkpointId } : {}) };
+  }
+  private encode(value: unknown): string { return Buffer.from(this.codec.encode(value)).toString('utf8'); }
+  private async call(request: GraphCheckpointRequest): Promise<GraphCheckpointResponse> {
+    const response = parseGraphCheckpointResponse(await this.transport(parseGraphCheckpointRequest(request)));
+    if (response.kind !== request.kind) throw new Error('CHECKPOINT_RESPONSE_MISMATCH');
+    return response;
+  }
+  private tuple(wire: GraphCheckpointTupleWire): CheckpointTuple {
+    if (wire.threadId !== this.threadId) throw new Error('CHECKPOINT_THREAD_MISMATCH');
+    const checkpoint = this.codec.decode(wire.checkpoint);
+    assertCheckpointV4(checkpoint);
+    if (checkpoint.id !== wire.checkpointId) throw new Error('CHECKPOINT_ID_MISMATCH');
+    const config = (id: string): RunnableConfig => ({ configurable: {
+      thread_id: this.threadId, checkpoint_ns: wire.namespace, checkpoint_id: id,
+    } });
+    return { config: config(wire.checkpointId), checkpoint,
+      metadata: this.codec.decode(wire.metadata) as CheckpointMetadata,
+      ...(wire.parentCheckpointId ? { parentConfig: config(wire.parentCheckpointId) } : {}),
+      pendingWrites: wire.pendingWrites.map((w) => [w.taskId, w.channel, this.codec.decode(w.value)]),
+    };
+  }
+  async getTuple(config: RunnableConfig): Promise<CheckpointTuple | undefined> {
+    const address = this.address(config);
+    const response = await this.call({ kind: 'get', ...address, namespace: address.namespace ?? '' });
+    if (response.kind !== 'get' || !response.tuple) return undefined;
+    if (response.tuple.namespace !== address.namespace || (address.checkpointId && response.tuple.checkpointId !== address.checkpointId)) {
+      throw new Error('CHECKPOINT_RESPONSE_MISMATCH');
+    }
+    return this.tuple(response.tuple);
+  }
+  async *list(config: RunnableConfig, options: CheckpointListOptions = {}): AsyncGenerator<CheckpointTuple> {
+    const address = this.address(config, true);
+    if (options.before) this.address(options.before);
+    let remaining = options.limit ?? Infinity;
+    if (remaining !== Infinity && (!Number.isSafeInteger(remaining) || remaining < 0)) throw new Error('CHECKPOINT_LIMIT_INVALID');
+    const before = options.before ? getCheckpointId(options.before) : undefined;
+    let cursor: { namespace: string; checkpointId: string } | undefined;
+    while (remaining > 0) {
+      const response = await this.call({ kind: 'list', ...address, ...(before ? { before } : {}),
+        ...(cursor ? { cursor } : {}), pageSize: GRAPH_CHECKPOINT_MAX_PAGE_SIZE });
+      if (response.kind !== 'list') throw new Error('CHECKPOINT_RESPONSE_MISMATCH');
+      let previous = cursor;
+      for (const wire of response.tuples) {
+        if (previous && (wire.checkpointId > previous.checkpointId
+          || (wire.checkpointId === previous.checkpointId && wire.namespace >= previous.namespace))) {
+          throw new Error('CHECKPOINT_CURSOR_INVALID');
+        }
+        previous = wire;
+      }
+      const last = response.tuples.at(-1);
+      if (response.cursor && (!last || response.cursor.checkpointId !== last.checkpointId || response.cursor.namespace !== last.namespace)) {
+        throw new Error('CHECKPOINT_CURSOR_INVALID');
+      }
+      for (const wire of response.tuples) {
+        if ((address.namespace !== undefined && wire.namespace !== address.namespace)
+          || (address.checkpointId && wire.checkpointId !== address.checkpointId)
+          || (before && wire.checkpointId >= before)) throw new Error('CHECKPOINT_RESPONSE_MISMATCH');
+        const tuple = this.tuple(wire);
+        if (options.filter && !Object.entries(options.filter).every(([key, value]) => {
+          const actual = (tuple.metadata as Record<string, unknown> | undefined)?.[key];
+          return actual !== undefined && this.encode(actual) === this.encode(value);
+        })) continue;
+        yield tuple;
+        if (--remaining <= 0) return;
+      }
+      if (!response.cursor) return;
+      if (cursor && (response.cursor.checkpointId > cursor.checkpointId
+        || (response.cursor.checkpointId === cursor.checkpointId && response.cursor.namespace >= cursor.namespace))) {
+        throw new Error('CHECKPOINT_CURSOR_INVALID');
+      }
+      cursor = response.cursor;
+    }
+  }
+  async put(config: RunnableConfig, checkpoint: Checkpoint, metadata: CheckpointMetadata, newVersions: ChannelVersions): Promise<RunnableConfig> {
+    const address = this.address(config);
+    const checkpointWire = this.encode(checkpoint);
+    const snapshot = this.codec.decode(checkpointWire);
+    assertCheckpointV4(snapshot);
+    const response = await this.call({ kind: 'put', requestId: randomUUID(), threadId: this.threadId,
+      namespace: address.namespace ?? '', checkpointId: snapshot.id,
+      ...(address.checkpointId ? { parentCheckpointId: address.checkpointId } : {}),
+      checkpoint: checkpointWire, metadata: this.encode(metadata), newVersions: this.encode(newVersions) });
+    if (response.kind !== 'put' || response.checkpointId !== snapshot.id) throw new Error('CHECKPOINT_RESPONSE_MISMATCH');
+    return { configurable: { thread_id: this.threadId, checkpoint_ns: address.namespace ?? '', checkpoint_id: snapshot.id } };
+  }
+  async putWrites(config: RunnableConfig, writes: PendingWrite[], taskId: string): Promise<void> {
+    const address = this.address(config);
+    if (!address.checkpointId) throw new Error('CHECKPOINT_ID_REQUIRED');
+    await this.call({ kind: 'writes', requestId: randomUUID(), threadId: this.threadId,
+      namespace: address.namespace ?? '', checkpointId: address.checkpointId, taskId,
+      writes: writes.map(([channel, value], index) => ({ channel,
+        index: Object.hasOwn(WRITES_IDX_MAP, channel) ? WRITES_IDX_MAP[channel]! : index, value: this.encode(value) })) });
+  }
+  async deleteThread(_threadId: string): Promise<void> { throw new Error('CHECKPOINT_DELETE_UNSUPPORTED'); }
+}
+
+--- packages/protocol/src/graph-checkpoint.ts ---
+import { types } from 'node:util';
+import { z } from 'zod';
+
+export const GRAPH_CHECKPOINT_MAX_FRAME_BYTES = 8 * 1024 * 1024;
+export const GRAPH_CHECKPOINT_MAX_TUPLE_BYTES = 4 * 1024 * 1024;
+export const GRAPH_CHECKPOINT_MAX_PAGE_SIZE = 16;
+const id = z.string().min(1).max(256);
+const namespace = z.string().max(1024);
+const wire = z.string().max(1_048_576).refine((s) => Buffer.byteLength(s, 'utf8') <= 1_048_576);
+const cursor = z.object({ namespace, checkpointId: id }).strict();
+const write = z.object({ channel: id, index: z.number().int().min(-4).max(4095), value: wire }).strict();
+const address = { threadId: id, namespace, checkpointId: id };
+export const GraphCheckpointTupleWire = z.object({
+  ...address, parentCheckpointId: id.optional(), checkpoint: wire, metadata: wire, newVersions: wire,
+  pendingWrites: z.array(write.extend({ taskId: id })).max(4096),
+}).strict();
+export type GraphCheckpointTupleWire = z.infer<typeof GraphCheckpointTupleWire>;
+export const GraphCheckpointRequest = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('get'), ...address, checkpointId: id.optional() }).strict(),
+  z.object({ kind: z.literal('list'), threadId: id, namespace: namespace.optional(), checkpointId: id.optional(),
+    before: id.optional(), cursor: cursor.optional(), pageSize: z.number().int().min(1).max(GRAPH_CHECKPOINT_MAX_PAGE_SIZE) }).strict(),
+  z.object({ kind: z.literal('put'), requestId: id, ...address, parentCheckpointId: id.optional(),
+    checkpoint: wire, metadata: wire, newVersions: wire }).strict(),
+  z.object({ kind: z.literal('writes'), requestId: id, ...address, taskId: id, writes: z.array(write).max(4096) }).strict(),
+]);
+export type GraphCheckpointRequest = z.infer<typeof GraphCheckpointRequest>;
+export const GraphCheckpointResponse = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('get'), tuple: GraphCheckpointTupleWire.nullable() }).strict(),
+  z.object({ kind: z.literal('list'), tuples: z.array(GraphCheckpointTupleWire).max(GRAPH_CHECKPOINT_MAX_PAGE_SIZE), cursor: cursor.optional() }).strict(),
+  z.object({ kind: z.literal('put'), checkpointId: id }).strict(),
+  z.object({ kind: z.literal('writes') }).strict(),
+]);
+export type GraphCheckpointResponse = z.infer<typeof GraphCheckpointResponse>;
+/** Supplied by trusted host binding. JSON fields never confer authenticated scope. */
+export type GraphCheckpointTransport = (request: GraphCheckpointRequest) => Promise<GraphCheckpointResponse>;
+
+// Iterative preflight rejects accessors/proxies through descriptors and bounds traversal
+// before Zod or JSON.stringify sees untrusted trees. Transport still caps raw frames.
+function bounded(value: unknown): void {
+  const stack: { value: unknown; depth: number }[] = [{ value, depth: 0 }];
+  let nodes = 0;
+  let bytes = 0;
+  while (stack.length) {
+    const item = stack.pop()!;
+    if (++nodes > 100_000 || item.depth > 16) throw new Error('CHECKPOINT_FRAME_LIMIT');
+    bytes += 8;
+    if (bytes > GRAPH_CHECKPOINT_MAX_FRAME_BYTES) throw new Error('CHECKPOINT_FRAME_LIMIT');
+    if (item.value === null || typeof item.value === 'boolean') continue;
+    if (typeof item.value === 'number' && Number.isFinite(item.value)) continue;
+    if (typeof item.value === 'string') {
+      if (item.value.length > 1_048_576) throw new Error('CHECKPOINT_FRAME_LIMIT');
+      bytes += Buffer.byteLength(JSON.stringify(item.value), 'utf8');
+      if (bytes > GRAPH_CHECKPOINT_MAX_FRAME_BYTES) throw new Error('CHECKPOINT_FRAME_LIMIT');
+      continue;
+    }
+    if (typeof item.value !== 'object' || types.isProxy(item.value)) throw new Error('CHECKPOINT_FRAME_INVALID');
+    const proto = Object.getPrototypeOf(item.value);
+    if (proto !== Object.prototype && proto !== Array.prototype && proto !== null) throw new Error('CHECKPOINT_FRAME_INVALID');
+    if (Array.isArray(item.value) && item.value.length > 100_000) throw new Error('CHECKPOINT_FRAME_LIMIT');
+    const descriptors = Object.getOwnPropertyDescriptors(item.value);
+    if (Array.isArray(item.value) && Object.keys(descriptors).length !== item.value.length + 1) throw new Error('CHECKPOINT_FRAME_INVALID');
+    if (Reflect.ownKeys(descriptors).some((key) => typeof key !== 'string')) throw new Error('CHECKPOINT_FRAME_INVALID');
+    for (const [key, descriptor] of Object.entries(descriptors)) {
+      if (key.length > 1024) throw new Error('CHECKPOINT_FRAME_LIMIT');
+      bytes += Buffer.byteLength(JSON.stringify(key), 'utf8') + 2;
+      if (bytes > GRAPH_CHECKPOINT_MAX_FRAME_BYTES || stack.length > 100_000) throw new Error('CHECKPOINT_FRAME_LIMIT');
+      if (Array.isArray(item.value) && key === 'length') continue;
+      if (!('value' in descriptor) || !descriptor.enumerable || ['__proto__', 'constructor', 'prototype'].includes(key)) throw new Error('CHECKPOINT_FRAME_INVALID');
+      stack.push({ value: descriptor.value, depth: item.depth + 1 });
+    }
+  }
+  if (Buffer.byteLength(JSON.stringify(value), 'utf8') > GRAPH_CHECKPOINT_MAX_FRAME_BYTES) throw new Error('CHECKPOINT_FRAME_LIMIT');
+}
+export function parseGraphCheckpointRequest(value: unknown): GraphCheckpointRequest {
+  bounded(value); return GraphCheckpointRequest.parse(value);
+}
+export function parseGraphCheckpointResponse(value: unknown): GraphCheckpointResponse {
+  bounded(value); return GraphCheckpointResponse.parse(value);
+}
+
+--- packages/loop/src/candidate-execution.ts ---
+import { isAbsolute } from "node:path";
+import { executePlan, type AgentRun, type LocalExecutorOptions } from "./executor.js";
+import { ExecutionPlan } from "./types.js";
+
+/** Supplied by the workspace owner. Identity is checked by authorize, never by graph data. */
+export interface RegisteredCandidateWorkspace {
+  workspace_id: string;
+  workspace_path: string;
+}
+
+type Immutable<T> = T extends object ? { readonly [K in keyof T]: Immutable<T[K]> } : T;
+
+export interface CandidateAuthorizationScope {
+  readonly plan: Immutable<ExecutionPlan>;
+  readonly workspace: Immutable<RegisteredCandidateWorkspace>;
+  readonly command?: string;
+}
+
+export type CandidateAuthorizationDecision = { allow: true } | { allow: false; reason: string };
+
+export interface CandidateExecutionInput extends Omit<LocalExecutorOptions, "workspacePath"> {
+  plan: ExecutionPlan;
+  workspace: RegisteredCandidateWorkspace;
+  /** Mandatory trusted callback: validate current authority AND workspace registration/scope. */
+  authorize: (scope: CandidateAuthorizationScope) => CandidateAuthorizationDecision | Promise<CandidateAuthorizationDecision>;
+}
+
+export interface CandidateExecutionResult {
+  /** Completion only describes the implementation invocation, never a frozen/verified candidate. */
+  status: "implementation_complete" | "failed" | "cancelled" | "execution_unconfirmed" | "authorization_denied" | "invalid_input";
+  workspace: Immutable<RegisteredCandidateWorkspace>;
+  /** Exact executor evidence, absent when execution was not started. */
+  execution?: AgentRun;
+  reason?: string;
+}
+
+/**
+ * Execute one preselected implementation. No selection, verification, state,
+ * git lifecycle or retry belongs here. The caller owns workspace registration
+ * and supplies live authorization; a plan or graph checkpoint grants nothing.
+ */
+export async function executeCandidateImplementation(input: CandidateExecutionInput): Promise<CandidateExecutionResult> {
+  // Capture all execution options and the authority function before the first
+  // await. In particular, caller replacement of signal cannot revoke cancellation.
+  const { plan, workspace, authorize, ...options } = input;
+  const workspaceSnapshot = Object.freeze({ ...workspace });
+  const base = { workspace: workspaceSnapshot };
+  if (options.signal?.aborted) return { ...base, status: "cancelled", reason: "Cancelled before authorization" };
+
+  let snapshot: { plan: ExecutionPlan; workspace: RegisteredCandidateWorkspace; command?: string };
+  try {
+    const effectivePlan = ExecutionPlan.parse(structuredClone(plan));
+    effectivePlan.task.context = { ...effectivePlan.task.context, repo_path: workspaceSnapshot.workspace_path };
+    snapshot = freezeSnapshot({
+      plan: effectivePlan,
+      workspace: workspaceSnapshot,
+      ...(options.command !== undefined ? { command: options.command } : {}),
+    });
+    if (!snapshot.workspace.workspace_id.trim() || !isAbsolute(snapshot.workspace.workspace_path)
+      || snapshot.workspace.workspace_path.includes("\0")
+      || (options.command !== undefined && (typeof options.command !== "string" || options.command.includes("\0")))
+      || (snapshot.plan.worktree_path !== undefined && snapshot.plan.worktree_path !== snapshot.workspace.workspace_path)) {
+      return { ...base, status: "invalid_input", reason: "Plan and registered workspace scope must agree on an absolute path and nonempty identity" };
+    }
+  } catch (error) {
+    return { ...base, status: "invalid_input", reason: String(error) };
+  }
+  const executionOptions: LocalExecutorOptions = {
+    ...options,
+    workspacePath: snapshot.workspace.workspace_path,
+    ...(options.adapters !== undefined ? { adapters: [...options.adapters] } : {}),
+  };
+  if (typeof authorize !== "function") return { ...base, status: "authorization_denied", reason: "Authorization callback is required" };
+  const decision = await awaitAuthorization(authorize, snapshot, options.signal);
+  if (decision === "cancelled" || options.signal?.aborted) {
+    return { ...base, status: "cancelled", reason: "Cancelled before execution" };
+  }
+  if (decision.allow !== true) return { ...base, status: "authorization_denied", reason: decision.reason };
+
+  let execution: AgentRun;
+  try { execution = await executePlan(snapshot.plan, executionOptions); }
+  catch (error) { return { ...base, status: "execution_unconfirmed", reason: `Unexpected execution failure: ${String(error)}` }; }
+  const status = isImplementationUnconfirmed(execution) ? "execution_unconfirmed"
+    : execution.outcome === "completed"
+      // Legacy's local-noop is valid there, but is not evidence of implementation.
+      ? ((execution.adapter_event_count ?? 0) > 0 || execution.command_results.length > 0 ? "implementation_complete" : "failed")
+      : execution.outcome;
+  return { ...base, status, execution,
+    ...(status === "failed" && execution.outcome === "completed" ? { reason: "No implementation invocation or command was executed" } : {}) };
+}
+
+/** Explicit compatibility path: admission/selection and all lifecycle work remain in LoopEngine. */
+export async function executeLegacyImplementation(plan: ExecutionPlan, options: LocalExecutorOptions): Promise<AgentRun> {
+
+  return executePlan(plan, options);
+}
+
+/** Unknown external effects are not retry-safe, even when a protocol failure is also present. */
+export function isImplementationUnconfirmed(run: AgentRun): boolean {
+  return run.cancellation?.stop_confirmed === false
+    || run.command_results.some((result) => result.termination?.stop_confirmed === false)
+    || run.failure_code === "cancellation_unconfirmed" || run.failure_code === "process_exit_unconfirmed"
+    || run.failure_code === "surviving_descendants";
+}
+
+function awaitAuthorization(
+  authorize: CandidateExecutionInput["authorize"],
+  scope: CandidateAuthorizationScope,
+  signal: AbortSignal | undefined,
+): Promise<CandidateAuthorizationDecision | "cancelled"> {
+  return new Promise((resolve) => {
+    const finish = (decision: CandidateAuthorizationDecision | "cancelled"): void => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve(decision);
+    };
+    const onAbort = (): void => finish("cancelled");
+    signal?.addEventListener("abort", onAbort, { once: true });
+    if (signal?.aborted) { onAbort(); return; }
+    const deny = (error: unknown): void => finish({ allow: false, reason: `Authorization failed: ${String(error)}` });
+    try {
+      // Observe late rejections even after cancellation wins; no continuation
+      // from the authorizer itself may launch execution.
+      Promise.resolve(authorize(scope)).then((decision) => {
+        if (decision?.allow === true) finish({ allow: true });
+        else finish({ allow: false, reason: decision?.reason ?? "Authorization denied" });
+      }, deny);
+    } catch (error) { deny(error); }
+  });
+}
+
+/** Only plain data can be frozen reliably (Object.freeze does not freeze Map/Date internals). */
+function freezeSnapshot<T>(value: T): T {
+  if (value !== null && typeof value === "object") {
+    const prototype: unknown = Object.getPrototypeOf(value);
+    if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) {
+      throw new Error("Candidate authorization scope must contain plain data");
+    }
+    for (const child of Object.values(value)) freezeSnapshot(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+--- daemon C4 assembly diff ---
+diff --git a/packages/cli/src/daemon.ts b/packages/cli/src/daemon.ts
+index ad93dce..2a0116e 100644
+--- a/packages/cli/src/daemon.ts
++++ b/packages/cli/src/daemon.ts
+@@ -1,3 +1,6 @@
++import type { GraphCheckpointResponse } from "@osstack/protocol";
++import type { GraphCheckpointBinding, GraphCheckpointService } from "./graph-checkpoint-service.js";
++import type { GraphActionBroker } from "./graph-action-broker.js";
+ import { boundedAdapterEvents, confirmAdapterStopped } from "./adapter-lifecycle.js";
+ import { GovernedExecution, type ExecutionLease, type AdmissionInput } from "./governed-execution.js";
+ // osstack daemon — Unix socket server.
+@@ -3606,6 +3609,10 @@ function buildContext(
+ }
+ 
+ export interface DaemonHandles {
++  /** Trusted in-process checkpoint channel; no public worker RPC is exposed yet. */
++  executeGraphCheckpoint: (connection: object, request: unknown) => Promise<GraphCheckpointResponse>;
++  /** Trusted in-process port; await once, then register immutable worker bindings synchronously. */
++  graphActionBroker: () => Promise<GraphActionBroker>;
+   close: () => Promise<void>;
+   socketPath: string;
+   dbPath: string;
+@@ -3614,6 +3621,7 @@ export interface DaemonHandles {
+ }
+ 
+ export interface StartDaemonOptions {
++  graphCheckpointBindings?: ReadonlyMap<object, GraphCheckpointBinding>;
+   /** Host launch configuration for direct adapter writes. */
+   workspacePath?: string;
+   adapterWorkspaces?: ReadonlyMap<string, string>;
+@@ -3807,6 +3815,13 @@ function collaboratorPaused(ctx: DaemonContext): boolean {
+ export async function startDaemon(
+   opts: StartDaemonOptions = {},
+ ): Promise<DaemonHandles> {
++  let checkpointService: Promise<GraphCheckpointService> | undefined;
++  let checkpointClosed = false;
++  const checkpointBindings = new Map(Array.from(opts.graphCheckpointBindings ?? [], ([key, binding]) => {
++    const { authorize, ...data } = binding;
++    return [key, { ...structuredClone(data), authorize }] as const;
++  }));
++  let graphBroker: Promise<GraphActionBroker> | undefined;
+   const registeredWorkspace = opts.workspacePath === undefined ? undefined : (await resolveRepositoryScope(opts.workspacePath)).workspacePath;
+   const socketPath = opts.socketPath ?? resolveSocketPath();
+   const continuationTrust = new Map(opts.continuationTrustedPublicKeys
+@@ -4003,6 +4018,10 @@ export async function startDaemon(
+       healthMonitor?.unref();
+       let shutdownPromise: Promise<void> | undefined;
+       const shutdown = async (): Promise<void> => {
++        checkpointClosed = true;
++        if (checkpointService) {
++          try { (await checkpointService).close(); } catch { /* Initialization failure created no service. */ }
++        }
+         if (shutdownPromise !== undefined) return await shutdownPromise;
+         process.off("SIGTERM", onSig);
+         process.off("SIGINT", onSig);
+@@ -4074,6 +4093,22 @@ export async function startDaemon(
+ 
+       ctx.collaborator?.recover();
+       resolve({ close: shutdown, socketPath, dbPath: ctx.dbPath,
++        executeGraphCheckpoint: async (connection, request) => {
++          if (checkpointClosed) throw new Error("CHECKPOINT_SERVICE_CLOSED");
++          const service = await (checkpointService ??= Promise.all([
++            import("./graph-checkpoint-service.js"), import("@osstack/core"),
++          ]).then(([{ GraphCheckpointService }, { GraphRunStore, GraphCheckpointStore }]) =>
++            new GraphCheckpointService({ runs: new GraphRunStore(ctx.db), checkpoints: new GraphCheckpointStore(ctx.db), bindings: checkpointBindings })));
++          if (checkpointClosed) { service.close(); throw new Error("CHECKPOINT_SERVICE_CLOSED"); }
++          return service.execute(connection, request);
++        },
++        graphActionBroker: () => graphBroker ??= import("./graph-action-broker.js").then(({ GraphActionBroker }) => new GraphActionBroker(ctx.db, {
++          acquire: (input) => admissionFor(ctx).acquire(input),
++          authorizePolicy: async (workspacePath) => {
++            const decision = await makeRepositoryPolicyGate(workspacePath, true)({ workspacePath });
++            if (!decision.allow) throw new Error(decision.reason);
++          },
++        })),
+         acquireGraphAdmission: async (identity, input) => {
+           const trusted = opts.graphIdentities?.get(identity);
+           if (!trusted || typeof trusted.authorize !== "function") throw new Error("trusted graph identity and authorization required");
+
+--- ledger/checkpoint migrations26,27 ---
+
+    name: "graph_action_ledger_and_original_budget",
+    sql: `
+      ALTER TABLE graph_runs ADD COLUMN spec_json TEXT;
+      CREATE TRIGGER graph_runs_spec_immutable BEFORE UPDATE OF spec_json ON graph_runs
+        BEGIN SELECT RAISE(ABORT, 'graph original spec is immutable'); END;
+      CREATE TABLE graph_actions (
+        effect_key TEXT PRIMARY KEY,
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        epoch INTEGER NOT NULL CHECK (typeof(epoch) = 'integer' AND epoch BETWEEN 0 AND 2),
+        node_id TEXT NOT NULL,
+        effect_slot TEXT NOT NULL,
+        logical_attempt INTEGER NOT NULL CHECK (typeof(logical_attempt) = 'integer' AND logical_attempt BETWEEN 1 AND 9007199254740991),
+        effect_json TEXT NOT NULL,
+        action_json TEXT NOT NULL,
+        business_digest TEXT NOT NULL,
+        generation INTEGER NOT NULL CHECK (typeof(generation) = 'integer' AND generation BETWEEN 1 AND 9007199254740991),
+        reservation_tokens INTEGER NOT NULL CHECK (typeof(reservation_tokens) = 'integer' AND reservation_tokens BETWEEN 0 AND 9007199254740991),
+        state TEXT NOT NULL CHECK (state IN ('intent','running','confirmed','failed','unknown','cancel_pending')),
+        execution_ref TEXT,
+        outcome_json TEXT,
+        uncertainty_json TEXT,
+        actual_tokens INTEGER CHECK (actual_tokens IS NULL OR (typeof(actual_tokens) = 'integer' AND actual_tokens BETWEEN 0 AND 9007199254740991)),
+        observed_tokens INTEGER NOT NULL DEFAULT 0 CHECK (typeof(observed_tokens) = 'integer' AND observed_tokens BETWEEN 0 AND 9007199254740991),
+        accounting_blocked INTEGER NOT NULL DEFAULT 0 CHECK (accounting_blocked IN (0,1)),
+        retry_safe INTEGER NOT NULL DEFAULT 0 CHECK (retry_safe IN (0,1)),
+        created_at INTEGER NOT NULL CHECK (typeof(created_at) = 'integer' AND created_at BETWEEN 0 AND 9007199254740991),
+        updated_at INTEGER NOT NULL CHECK (typeof(updated_at) = 'integer' AND updated_at BETWEEN created_at AND 9007199254740991),
+        UNIQUE(graph_run_id, epoch, node_id, effect_slot, logical_attempt),
+        CHECK ((state IN ('confirmed','failed')) = (outcome_json IS NOT NULL)),
+        CHECK (retry_safe = 0 OR state = 'failed'),
+        CHECK (actual_tokens IS NULL OR state IN ('confirmed','failed'))
+      );
+      CREATE INDEX idx_graph_actions_run_state ON graph_actions(graph_run_id, state);
+      CREATE TRIGGER graph_actions_identity_immutable BEFORE UPDATE OF effect_key, graph_run_id, epoch, node_id,
+        effect_slot, logical_attempt, effect_json, action_json, business_digest, generation, reservation_tokens, created_at ON graph_actions
+        BEGIN SELECT RAISE(ABORT, 'graph action identity is immutable'); END;
+      CREATE TRIGGER graph_actions_outcome_immutable BEFORE UPDATE ON graph_actions
+        WHEN OLD.state IN ('confirmed','failed')
+        BEGIN SELECT RAISE(ABORT, 'graph action outcome is immutable'); END;
+      CREATE TRIGGER graph_actions_no_delete BEFORE DELETE ON graph_actions
+        BEGIN SELECT RAISE(ABORT, 'graph action history is immutable'); END;
+    `,
+  },
+  {
+    id: 27,
+    name: "graph_checkpoints",
+    sql: `
+      CREATE TABLE graph_checkpoints (
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        namespace TEXT NOT NULL CHECK (length(namespace) <= 1024),
+        checkpoint_id TEXT NOT NULL CHECK (length(checkpoint_id) BETWEEN 1 AND 256),
+        parent_checkpoint_id TEXT,
+        checkpoint TEXT NOT NULL CHECK (length(CAST(checkpoint AS BLOB)) <= 1048576),
+        metadata TEXT NOT NULL CHECK (length(CAST(metadata AS BLOB)) <= 1048576),
+        new_versions TEXT NOT NULL CHECK (length(CAST(new_versions AS BLOB)) <= 1048576),
+        PRIMARY KEY (graph_run_id, namespace, checkpoint_id)
+      );
+      CREATE INDEX idx_graph_checkpoints_page ON graph_checkpoints(graph_run_id, checkpoint_id DESC, namespace DESC);
+      -- Pending writes can arrive before put; bind to the run, not a yet-absent checkpoint.
+      CREATE TABLE graph_checkpoint_writes (
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        namespace TEXT NOT NULL CHECK (length(namespace) <= 1024),
+        checkpoint_id TEXT NOT NULL CHECK (length(checkpoint_id) BETWEEN 1 AND 256),
+        task_id TEXT NOT NULL CHECK (length(task_id) BETWEEN 1 AND 256),
+        write_index INTEGER NOT NULL CHECK (write_index BETWEEN -4 AND 4095),
+        channel TEXT NOT NULL CHECK (length(channel) BETWEEN 1 AND 256),
+        value TEXT NOT NULL CHECK (length(CAST(value AS BLOB)) <= 1048576),
+        PRIMARY KEY (graph_run_id, namespace, checkpoint_id, task_id, write_index)
+      );
+      CREATE TABLE graph_checkpoint_requests (
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        request_id TEXT NOT NULL CHECK (length(request_id) BETWEEN 1 AND 256),
+        payload_digest TEXT NOT NULL CHECK (length(payload_digest) = 64),
+        response_json TEXT NOT NULL CHECK (length(response_json) <= 1024),
+        generation INTEGER NOT NULL CHECK (generation >= 1),
+        PRIMARY KEY (graph_run_id, request_id)
+      );
+    `,
+  },
+];
+
+export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;
+
+--- evidence boundaries ---
+# Claude design challenge adjudication
+
+Source: claude-design.json, actual claude-fable-5-1 tool-less review. Snapshot predates C4 implementation.
+
+Accepted: refresh revision after every async boundary but preserve original generation/owner/program; failed != not_applied; exact compiled slot/action payload binding; threadId bound to run; unique effect-level admission ID and no nested whole-run lease; atomic shared budget; bounded Saver ACK semantics.
+
+Rejected suggestion to persist stale-generation confirmations through the regular mutation path: violates C3/G13 fencing. Failed post-effect persistence stays unknown, evidence retained for later authenticated G15 reconciliation. We do not weaken current checks.
+
+Qualified: automatic daemon orphan scan and broker receipt-aware worker takeover belong G14/G15. Current storage requires trusted supervisor attestation and external effect reconciliation before takeover; ledger blocks inherited unresolved actions and stale writes. No worker is launched by C4.
+
+Rejected unqualified adapter self-report not_started as sole retry authorization: only trusted broker pre-invocation decisions can establish zero effects. Adapter failure/exit alone cannot. Raw worker receipts remain untrusted.
+
+Qualified epoch proposal: mutable ledger-derived epoch would add scheduler authority. Registered immutable per-node/epoch action allowlist is acceptable; G18 compiler owns ordered finite epochs. No new node FSM.
+
+Clock rollback remains fail-closed in G08, not silently rewritten to allow possibly expired authority. G28/operations may later add a documented clock policy.
+
+Tests currently: core382pass, graph41pass real childIPC with RETURN/error/resume keyedfalse and killbefore/aftercommit; parent checkpointservice5pass; CLI integration inprogress. These counts do not substitute code review.

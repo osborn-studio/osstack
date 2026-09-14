@@ -1,0 +1,30 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-checkpoint-service.test.ts [ src/graph-checkpoint-service.test.ts ]
+Error: Cannot find module './graph-checkpoint-service.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli/src/graph-checkpoint-service.test.ts'
+ ❯ src/graph-checkpoint-service.test.ts:7:1
+      5| import { openDb, GraphRunStore, GraphCheckpointStore, type GraphRun, t…
+      6| import type { StartGraphRequest, GraphCheckpointRequest } from '@ossta…
+      7| import { GraphCheckpointService } from './graph-checkpoint-service.js';
+       | ^
+      8| 
+      9| const scope = { schemaVersion: 1 as const, tenantId: 'tenant', princip…
+
+Caused by: Error: Failed to load url ./graph-checkpoint-service.js (resolved id: ./graph-checkpoint-service.js) in /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli/src/graph-checkpoint-service.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  06:42:34
+   Duration  441ms (transform 153ms, setup 9ms, collect 0ms, tests 0ms, environment 0ms, prepare 38ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-checkpoint-service.test.ts

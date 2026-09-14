@@ -1,0 +1,915 @@
+You are Claude Fable 5.1, independent adversarial implementation reviewer for OSStack G11-G13. Tools disabled; reason only from provided snapshots, no nested skills. Reply concise Chinese, concrete P1/P2 risks and suggested interface decisions, no permission questions. Scope: G11 SQLite stable effect ledger + authoritative budget; G12 trusted in-process action broker reusing existing admission/G04; G13 remote Saver using public SDK, control-plane SQLite. G14 worker lifecycle and G15 automatic reconciliation are later. Proposed: store original immutable GraphSpec limits; use same BEGIN IMMEDIATE fence and writes, stable effectKey excludes generation, explicit ledger retries only proven no-effect failures, unknown stops new effects and retains reservations/locks. Host binds opaque worker connection to scope/run/owner/program; validates all requested slots/actions against exact trusted registration before invocation; async policy/queue rechecked before effect; returning confirmed cached result still fences generation. Broker owns per-action G10 admission (not nested whole-run lease). Checkpoint stores opaque bounded codec bytes and pending-write indexes in core, remote saver encodes/decodes using existing CheckpointCodec; daemon never imports LangGraph. Host RPC response only after commit; identity/generation/revision validated together. Need avoid stale captured fence across asynchronous operations, false retry-safe on adapter failures, ambiguous accounting after confirmed physical effect. Challenge design with concrete counterexamples; focus C4 requirements not future production features.
+
+--- docs/implementation/2026-09-14-graph-admission-next-context.md ---
+# 下一轮编码上下文：G11–G13 / C4
+
+继续在 `/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation` 的 `codex/graph-runtime-foundation` 工作。读取本仓库 AGENTS.md、[实施计划](2026-09-13-osstack-graph-upgrade.md)、[任务清单](2026-09-13-osstack-graph-upgrade.tasks.json)、[C3 验收](2026-09-14-graph-admission-completion.md) 和 [Functional 决策](../design/2026-09-13-graph-functional-runtime.md)。原工作区仍在 graph-readonly-pilot；不要覆盖其用户修改的 AGENTS.md。
+
+G00–G10 已完成，11/30。下一批先 G11，再按依赖推进 G12/G13；目标 C4。继续用真实 OSStack Loop 执行聚焦任务，并请 Claude Fable 5.1 做独立挑战。使用显式隔离 OSSTACK_HOME；及时把结果归档到仓库，不能仅依赖会被清理的系统临时目录。不要 merge、push 或部署。
+
+## 本批契约
+
+- G11：动作账本、稳定 effectKey、intent/confirmed/unknown、逻辑 attempt 与预算预留。generation 不能进入 effectKey 来规避幂等。未知外部效果不盲重发。
+- G12：受控 action broker；复用 G04 的一次实现接口和 G10 准入。动作权限从可信 daemon 会话/委托取得，worker 的 scope、principal、receipt 或 checkpoint 不自授权。锁后的授权/撤销再校验不可省略。
+- G13：daemon 持有 checkpoint 持久化，绑定 G08 program identity、generation、owner、revision；检查与写入必须在同一 SQLite 事务内。checkpoint 是调度权威；ledger 是效果/权限/资源权威，禁止增加第二套节点调度器。
+
+## 必须继承的实现约束
+
+1. 内核仅使用已准入的 `langgraph-functional-v1` + `durability: sync`。StateGraph partial-abort AND-join 反例仍存在；公开 task cache 不校验输入参数/调用顺序，必须绑定完整不可变编译身份与输入。
+2. `GraphRunStore` 是可信 daemon 内部存储端口，不可直接转发 worker JSON。当前投影写要求活动 generation；pre-worker cancel、expired-worker 管理操作需要后续基于证据的专门路径，不要伪造已退出 worker。
+3. 仓库锁取 actual Git common directory，跨 HOME 与 worktree 共用。`context.repo_id` 仅是严格校验的 canonical hint；旧 logical label 不是锁身份。
+4. G10 入口：`GovernedExecution`、`acquireLocalExecution`、daemon `withLoopAdapters`、`acquireSessionAdmission`、in-process `acquireGraphAdmission`。新 broker 复用它们，不能绕开租约或通过同一 run 的嵌套准入造成死锁。
+5. `serve --workspace <repo>` 注册直接写 adapter 的确切执行目录；worker 不能选择或覆盖注册。读请求保持其目标；写路径不匹配在调用 adapter 前拒绝。每个 worktree 继承主仓库 policy。
+6. 取消请求、terminal event、iterator exhaustion 和 leader PID 退出都不能自行证明全部外部效果停止。真实 receipt 才能释放不确定执行；缺少 receipt 保留 canonical lock 和实际占用的并发容量。G14/G15 实现自动隔离/对账；当前只有[离线恢复规程](graph-admission-evidence/recovery-boundary.md)。
+7. 没有副作用的参数/读取错误应释放准入，避免把拼写错误变成永久隔离。续约/释放故障只隔离相关仓库，不能阻断无关读取。
+8. 新模块继续保持 graph → protocol + LangGraph；core → protocol；CLI 负责组装。LangGraph 重入口不得加载到 daemon 根入口。
+9. 当前 Graph port 只是受信任进程内注册接口，没有公开 graph RPC、worker、checkpoint 服务或生产运行模板。不要将 C3 的通过表述成整个 Graph 已可用。
+10. G27/G28 仍需正式运行时/native SQLite 支持矩阵、daemon RPC/tick 性能测量。C3 启动预算通过不能替代这些验收。
+
+完成后更新任务清单、代码提交、实际验证日志和下一轮上下文。若局部实验通过但集成仍失败，保持相应任务未完成。
+
+--- packages/protocol/src/graph.ts ---
+import { createHash } from "node:crypto";
+import { z } from "zod";
+
+/** Decoded JSON limits; transport MUST also cap raw bytes before JSON.parse. */
+export const GRAPH_JSON_LIMITS = Object.freeze({ maxBytes: 65_536, maxDepth: 16, maxValues: 4_096, maxStringLength: 16_384 });
+
+function isBoundedJson(value: unknown): boolean {
+  let values = 0;
+  let bytes = 0;
+  const ancestors = new Set<object>();
+  function visit(item: unknown, depth: number): boolean {
+    if (++values > GRAPH_JSON_LIMITS.maxValues || depth > GRAPH_JSON_LIMITS.maxDepth) return false;
+    if (item === null || typeof item === "boolean" || (typeof item === "number" && Number.isFinite(item))) {
+      bytes += Buffer.byteLength(JSON.stringify(item));
+    } else if (typeof item === "string") {
+      if (item.length > GRAPH_JSON_LIMITS.maxStringLength) return false;
+      bytes += Buffer.byteLength(JSON.stringify(item));
+    } else if (typeof item === "object") {
+      if (ancestors.has(item)) return false;
+      const array = Array.isArray(item);
+      const proto = Object.getPrototypeOf(item);
+      if (array ? proto !== Array.prototype : proto !== Object.prototype && proto !== null) return false;
+      const keys = Reflect.ownKeys(item);
+      if (keys.length > GRAPH_JSON_LIMITS.maxValues) return false;
+      if (array && (item.length > GRAPH_JSON_LIMITS.maxValues || keys.length !== item.length + 1)) return false;
+      ancestors.add(item);
+      bytes += 2;
+      let index = 0;
+      for (const key of keys) {
+        if (array && key === "length") continue;
+        if (typeof key !== "string" || key.length > 256 || ["__proto__", "constructor", "prototype"].includes(key)) return false;
+        if (array && key !== String(index++)) return false;
+        const descriptor = Object.getOwnPropertyDescriptor(item, key);
+        if (!descriptor?.enumerable || !("value" in descriptor)) return false;
+        bytes += (array ? 0 : Buffer.byteLength(JSON.stringify(key)) + 1) + 1;
+        if (bytes > GRAPH_JSON_LIMITS.maxBytes || !visit(descriptor.value, depth + 1)) return false;
+      }
+      ancestors.delete(item);
+    } else return false;
+    return bytes <= GRAPH_JSON_LIMITS.maxBytes;
+  }
+  // IPC must supply decoded JSON, never executable objects. Accessors are not read.
+  // A hostile in-process Proxy is not a supported transport input.
+  try { return visit(value, 0); } catch { return false; }
+}
+
+function wire<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess((value, ctx) => {
+    if (!isBoundedJson(value)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Expected bounded JSON-only graph data" });
+      return z.NEVER;
+    }
+    return value;
+  }, schema);
+}
+
+export type GraphJsonValue = null | boolean | number | string | GraphJsonValue[] | { [key: string]: GraphJsonValue };
+const JsonValue: z.ZodType<GraphJsonValue> = z.lazy(() => z.union([
+  z.null(), z.boolean(), z.number().finite(), z.string().max(GRAPH_JSON_LIMITS.maxStringLength),
+  z.array(JsonValue).max(GRAPH_JSON_LIMITS.maxValues), z.record(z.string().max(256).regex(/^(?!__proto__$|constructor$|prototype$)/), JsonValue),
+]));
+export const GraphJsonValue = wire(JsonValue);
+
+const Version = z.literal(1);
+// No trimming/coercion: business identities must not silently collapse.
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Wire IDs must reject ASCII control characters.
+const Id = z.string().min(1).max(256).regex(/^[^\s\u0000-\u001f\u007f-\u009f](?:[^\u0000-\u001f\u007f-\u009f]*[^\s\u0000-\u001f\u007f-\u009f])?$/);
+const Digest = z.string().regex(/^[a-f0-9]{64}$/);
+const Commit = z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/);
+const Count = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+const Epoch = z.number().int().min(0).max(2);
+const Refs = z.array(Id).min(1).max(128);
+const Scope = z.object({ schemaVersion: Version, tenantId: Id, principalId: Id, workspaceId: Id }).strict();
+/** Claimed/recorded identity only; parsing does not authenticate it. */
+export const GraphScope = wire(Scope);
+export type GraphScope = z.infer<typeof GraphScope>;
+
+const budgetShape = {
+  maxEpochs: z.number().int().min(1).max(3),
+  maxBranchAttempts: z.number().int().min(1).max(32),
+  maxConcurrentReaders: z.number().int().min(1).max(64),
+  maxConcurrentWritersPerRepo: z.literal(1),
+  maxActionStarts: z.number().int().min(1).max(100_000),
+  deadlineSeconds: z.number().int().min(1).max(604_800),
+  tokenReservationLimit: z.number().int().min(0).max(1_000_000_000),
+};
+export const GraphBudget = wire(z.object({ schemaVersion: Version, ...budgetShape }).strict());
+export type GraphBudget = z.infer<typeof GraphBudget>;
+const Spec = z.object({
+  schemaVersion: Version,
+  template: z.literal("code-delivery-v1"),
+  input: z.object({ taskRef: Id, repositoryRef: Id, baseRevision: Commit, acceptanceRef: Id }).strict(),
+  limits: z.object(budgetShape).strict(),
+  publication: z.literal("artifact_only"),
+}).strict();
+/** Declarative template only. Registry/topology/feasibility validation belongs to G18. */
+export const GraphSpec = wire(Spec);
+export type GraphSpec = z.infer<typeof GraphSpec>;
+export const GraphSpecV1 = GraphSpec;
+export type GraphSpecV1 = GraphSpec;
+
+export const GraphRunState = z.enum(["queued", "running", "ready", "failed", "cancelled", "waiting_input", "cancel_pending", "reconciliation_required"]);
+export type GraphRunState = z.infer<typeof GraphRunState>;
+export const GraphNodeState = z.enum(["pending", "running", "succeeded", "failed", "skipped", "cancelled", "waiting_input"]);
+export type GraphNodeState = z.infer<typeof GraphNodeState>;
+export const GraphActionState = z.enum(["intent", "running", "confirmed", "failed", "unknown", "cancel_pending", "reconciliation_required", "cancelled"]);
+export type GraphActionState = z.infer<typeof GraphActionState>;
+export const GraphErrorCode = z.enum([
+  "SPEC_INVALID", "INPUT_CONTRACT_INVALID", "OUTPUT_CONTRACT_INVALID", "JOIN_REVISION_MISMATCH",
+  "POLICY_DENIED", "GRANT_EXPIRED", "BUDGET_EXHAUSTED", "ACTION_OUTCOME_UNKNOWN", "STALE_GENERATION",
+  "CANCEL_UNCONFIRMED", "CHECKPOINT_INCOMPATIBLE", "UNAUTHENTICATED", "SCOPE_MISMATCH", "RUN_MISMATCH",
+  "IDEMPOTENCY_CONFLICT", "REVISION_CONFLICT", "INTERNAL_ERROR", "SPEC_MISMATCH", "EPOCH_MISMATCH", "RESPONSE_MISMATCH",
+]);
+export type GraphErrorCode = z.infer<typeof GraphErrorCode>;
+const errorShape = {
+  schemaVersion: Version, message: z.string().min(1).max(4096),
+  nodeId: Id.optional(), epoch: Epoch.optional(), actionId: Id.optional(),
+};
+// A union preserves these conditional instructions in generated JSON Schema.
+const ErrorObject = z.union([
+  z.object({ ...errorShape, code: z.enum(["OUTPUT_CONTRACT_INVALID", "INTERNAL_ERROR"]), retryable: z.literal(true), nextAction: z.literal("retry") }).strict(),
+  z.object({ ...errorShape, code: z.enum(["ACTION_OUTCOME_UNKNOWN", "CANCEL_UNCONFIRMED"]), retryable: z.literal(false), nextAction: z.literal("reconcile") }).strict(),
+  z.object({ ...errorShape, code: GraphErrorCode.exclude(["ACTION_OUTCOME_UNKNOWN", "CANCEL_UNCONFIRMED"]), retryable: z.literal(false), nextAction: z.enum(["fix_input", "reauthorize", "reconcile", "refresh", "stop"]) }).strict(),
+]);
+export const GraphError = wire(ErrorObject);
+export type GraphError = z.infer<typeof GraphError>;
+
+const evidenceShape = { candidateRevision: Commit, evidenceRefs: Refs, evidenceDigest: Digest };
+const Result = z.discriminatedUnion("kind", [
+  z.object({ schemaVersion: Version, kind: z.literal("implementation_complete"), workspaceLeaseRef: Id, receiptRef: Id }).strict(),
+  z.object({ schemaVersion: Version, kind: z.literal("candidate_ready"), candidateRevision: Commit, artifactRefs: Refs, artifactDigest: Digest }).strict(),
+  z.object({ schemaVersion: Version, kind: z.literal("review"), ...evidenceShape, verdict: z.enum(["accept", "changes_requested"]) }).strict(),
+  z.object({ schemaVersion: Version, kind: z.literal("tests"), ...evidenceShape, passed: z.boolean() }).strict(),
+  z.object({ schemaVersion: Version, kind: z.literal("ready"), ...evidenceShape, artifactRefs: Refs, publication: z.literal("artifact_only") }).strict(),
+  z.object({ schemaVersion: Version, kind: z.literal("workspace"), workspaceLeaseRef: Id, receiptRef: Id }).strict(),
+]);
+/** References/digests are claims until the daemon validates stored evidence (G16/G19). */
+export const GraphResult = wire(Result);
+export type GraphResult = z.infer<typeof GraphResult>;
+
+const Metadata = z.object({
+  trace: z.object({ traceId: Id, spanId: Id.optional() }).strict().optional(),
+  requestedAt: z.string().datetime({ offset: true }).optional(),
+}).strict();
+const requestShape = { schemaVersion: Version, scope: Scope, idempotencyKey: Id, metadata: Metadata.optional() };
+const Start = z.object({
+  ...requestShape, kind: z.literal("start"), spec: Spec, inputArtifactRef: Id,
+  source: z.object({ product: z.enum(["osstack", "osbot", "ostag"]), requestId: Id, parentRunId: Id.optional() }).strict(),
+}).strict();
+const Resume = z.object({
+  ...requestShape, kind: z.literal("resume"), graphRunId: Id, expectedRevision: Count, interruptId: Id,
+  // Data is never authority, including strings/objects that say "approved".
+  input: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("data"), value: JsonValue }).strict(),
+    z.object({ kind: z.literal("reconciliation"), outcome: z.enum(["applied", "not_applied", "unknown"]), evidenceRefs: Refs }).strict(),
+  ]),
+}).strict();
+const Cancel = z.object({ ...requestShape, kind: z.literal("cancel"), graphRunId: Id, expectedRevision: Count }).strict();
+export const StartGraphRequest = wire(Start);
+export type StartGraphRequest = z.infer<typeof StartGraphRequest>;
+export const ResumeGraphRequest = wire(Resume);
+export type ResumeGraphRequest = z.infer<typeof ResumeGraphRequest>;
+export const CancelGraphRequest = wire(Cancel);
+export type CancelGraphRequest = z.infer<typeof CancelGraphRequest>;
+export const GraphRequest = wire(z.discriminatedUnion("kind", [Start, Resume, Cancel]));
+export type GraphRequest = z.infer<typeof GraphRequest>;
+
+const actionIdentityShape = { scope: Scope, graphRunId: Id, specHash: Digest, epoch: Epoch, nodeId: Id, effectSlot: Id };
+const Effect = z.object({ schemaVersion: Version, ...actionIdentityShape, logicalAttempt: Count.min(1) }).strict();
+/** Ledger-issued identity. Derive spec/epoch/node/slot from trusted run/registry state,
+ * and logicalAttempt from ledger; never blindly copy worker claims. Generation is fencing only. */
+export const GraphEffectIdentity = wire(Effect);
+export type GraphEffectIdentity = z.infer<typeof GraphEffectIdentity>;
+const WorkerRequest = z.object({
+  schemaVersion: Version, kind: z.literal("worker_action"), requestId: Id, generation: Count.min(1),
+  ...actionIdentityShape,
+  // Worker asks to register-or-return a slot. It cannot allocate logicalAttempt.
+  action: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("implement"), inputArtifactRef: Id, workspaceLeaseRef: Id }).strict(),
+    z.object({ kind: z.literal("repair"), inputArtifactRef: Id, workspaceLeaseRef: Id, candidateRevision: Commit, feedbackRef: Id }).strict(),
+    z.object({ kind: z.literal("freeze"), workspaceLeaseRef: Id, receiptRef: Id }).strict(),
+    z.object({ kind: z.literal("review"), candidateRevision: Commit, acceptanceRef: Id, workspaceLeaseRef: Id }).strict(),
+    z.object({ kind: z.literal("tests"), candidateRevision: Commit, commandSpecRef: Id, workspaceLeaseRef: Id }).strict(),
+    z.object({ kind: z.literal("workspace_create"), repositoryRef: Id, baseRevision: Commit }).strict(),
+    z.object({ kind: z.literal("workspace_release"), workspaceLeaseRef: Id }).strict(),
+  ]),
+  metadata: Metadata.optional(),
+}).strict();
+export const WorkerActionRequest = wire(WorkerRequest);
+export type WorkerActionRequest = z.infer<typeof WorkerActionRequest>;
+const WorkerResponse = z.object({
+  schemaVersion: Version, kind: z.literal("worker_action_response"), requestId: Id, generation: Count.min(1), effect: Effect,
+  outcome: z.discriminatedUnion("state", [
+    z.object({ state: z.literal("confirmed"), result: Result }).strict(),
+    z.object({ state: z.literal("intent") }).strict(),
+    z.object({ state: z.literal("running"), executionRef: Id }).strict(),
+    z.object({ state: z.literal("failed"), error: z.union([ErrorObject.options[0], ErrorObject.options[2]]) }).strict(),
+    z.object({ state: z.literal("unknown"), error: ErrorObject, reconciliationRef: Id }).strict(),
+    z.object({ state: z.literal("cancel_pending"), error: ErrorObject, executionRef: Id }).strict(),
+    z.object({ state: z.literal("reconciliation_required"), error: ErrorObject, reconciliationRef: Id }).strict(),
+    z.object({ state: z.literal("cancelled"), receiptRef: Id }).strict(),
+  ]),
+  metadata: Metadata.optional(),
+}).strict();
+export const WorkerActionResponse = wire(z.discriminatedUnion("kind", [
+  WorkerResponse,
+  // No scope, generation or effect is asserted when authentication/admission fails.
+  z.object({ schemaVersion: Version, kind: z.literal("worker_action_rejected"), requestId: Id, error: ErrorObject }).strict(),
+]).superRefine((response, ctx) => {
+  if (response.kind !== "worker_action_response") return;
+  const outcome = response.outcome;
+  if ("error" in outcome) {
+    if ((outcome.error.nodeId !== undefined && outcome.error.nodeId !== response.effect.nodeId) ||
+        (outcome.error.epoch !== undefined && outcome.error.epoch !== response.effect.epoch)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["outcome", "error"], message: "Error location must match effect" });
+    }
+    const expectedCodes = outcome.state === "cancel_pending" ? ["CANCEL_UNCONFIRMED"]
+      : outcome.state === "unknown" || outcome.state === "reconciliation_required" ? ["ACTION_OUTCOME_UNKNOWN", "CANCEL_UNCONFIRMED"] : undefined;
+    if (expectedCodes && !expectedCodes.includes(outcome.error.code)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["outcome", "error", "code"], message: "Error code must describe uncertain execution" });
+    }
+  }
+  if ((outcome.state === "unknown" || outcome.state === "cancel_pending" || outcome.state === "reconciliation_required") &&
+      outcome.error.retryable) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["outcome", "error"], message: "Uncertain execution cannot be retried" });
+  }
+}));
+export type WorkerActionResponse = z.infer<typeof WorkerActionResponse>;
+
+const TransportContext = wire(z.object({
+  schemaVersion: Version, scope: Scope,
+  worker: z.object({ graphRunId: Id, generation: Count.min(1), specHash: Digest, epoch: Epoch }).strict().optional(),
+}).strict());
+/** Trusted integration input, deliberately not part of the wire/schema manifest. */
+export type AuthenticatedGraphTransportContext = z.infer<typeof TransportContext>;
+/**
+ * Trusted daemon code must resolve an authenticated connection and its current
+ * lease independently of the request/checkpoint. This is an integration seam,
+ * NOT authentication implemented by this package. Never derive this callback's
+ * result from worker scope, caller flags or a cast. G10/G12 own real verification,
+ * authorization, revocation and atomic fencing. Resolve async registry/lease data
+ * before calling this synchronous boundary, in the protected admission section. Remote identities fail closed
+ * until that integration can verify them; there is no local-owner fallback.
+ */
+export type ResolveAuthenticatedGraphTransport = () => AuthenticatedGraphTransportContext | null;
+
+export class GraphContractError extends Error {
+  constructor(public readonly code: GraphErrorCode) {
+    super(code);
+    this.name = "GraphContractError";
+  }
+}
+
+function authenticate(resolve: ResolveAuthenticatedGraphTransport): AuthenticatedGraphTransportContext {
+  if (typeof resolve !== "function") throw new GraphContractError("UNAUTHENTICATED");
+  try {
+    const result = TransportContext.safeParse(resolve());
+    if (result.success) return result.data;
+  } catch { /* Fail closed on unavailable/failed authentication. */ }
+  throw new GraphContractError("UNAUTHENTICATED");
+}
+
+function canonical(value: GraphJsonValue): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonical(value[key]!)}`).join(",")}}`;
+}
+function sameScope(left: GraphScope, right: GraphScope): void {
+  if (canonical(left) !== canonical(right)) throw new GraphContractError("SCOPE_MISMATCH");
+}
+
+function parseContract<T extends z.ZodTypeAny>(schema: T, value: unknown, code: GraphErrorCode = "INPUT_CONTRACT_INVALID"): z.output<T> {
+  const parsed = schema.safeParse(value);
+  if (!parsed.success) throw new GraphContractError(code === "INPUT_CONTRACT_INVALID" && parsed.error.issues.some((issue) => issue.path[0] === "spec") ? "SPEC_INVALID" : code);
+  return parsed.data;
+}
+
+/** Control-plane mutations require a principal connection, never a worker lease. */
+export function parseInboundGraphRequest(value: unknown, resolve: ResolveAuthenticatedGraphTransport): GraphRequest {
+  const context = authenticate(resolve);
+  if (context.worker) throw new GraphContractError("UNAUTHENTICATED");
+  const request = parseContract(GraphRequest, value);
+  sameScope(request.scope, context.scope);
+  return request;
+}
+
+export function parseInboundWorkerActionRequest(value: unknown, resolve: ResolveAuthenticatedGraphTransport): WorkerActionRequest {
+  const context = authenticate(resolve);
+  if (!context.worker) throw new GraphContractError("UNAUTHENTICATED");
+  const request = parseContract(WorkerActionRequest, value);
+  sameScope(request.scope, context.scope);
+  if (request.graphRunId !== context.worker.graphRunId) throw new GraphContractError("RUN_MISMATCH");
+  if (request.generation !== context.worker.generation) throw new GraphContractError("STALE_GENERATION");
+  if (request.specHash !== context.worker.specHash) throw new GraphContractError("SPEC_MISMATCH");
+  if (request.epoch !== context.worker.epoch) throw new GraphContractError("EPOCH_MISMATCH");
+  return request;
+}
+
+/** Pair data received on an authenticated daemon channel. This does not verify artifact truth. */
+export function validateWorkerActionResponse(requestValue: unknown, responseValue: unknown): WorkerActionResponse {
+  const request = parseContract(WorkerActionRequest, requestValue);
+  const response = parseContract(WorkerActionResponse, responseValue, "OUTPUT_CONTRACT_INVALID");
+  const mismatch = (): never => { throw new GraphContractError("RESPONSE_MISMATCH"); };
+  if (response.requestId !== request.requestId) mismatch();
+  if (response.kind === "worker_action_rejected") return response;
+  if (response.generation !== request.generation) mismatch();
+  sameScope(request.scope, response.effect.scope);
+  for (const key of ["graphRunId", "specHash", "epoch", "nodeId", "effectSlot"] as const) {
+    if (request[key] !== response.effect[key]) mismatch();
+  }
+  if (response.outcome.state === "confirmed") {
+    const kinds: Record<WorkerActionRequest["action"]["kind"], GraphResult["kind"]> = {
+      implement: "implementation_complete", repair: "implementation_complete", freeze: "candidate_ready",
+      review: "review", tests: "tests", workspace_create: "workspace", workspace_release: "workspace",
+    };
+    const result = response.outcome.result;
+    if (result.kind !== kinds[request.action.kind]) mismatch();
+    if ("candidateRevision" in request.action && "candidateRevision" in result && request.action.candidateRevision !== result.candidateRevision) mismatch();
+    if ("workspaceLeaseRef" in request.action && "workspaceLeaseRef" in result && request.action.workspaceLeaseRef !== result.workspaceLeaseRef) mismatch();
+  }
+  return response;
+}
+
+function hash(domain: string, value: GraphJsonValue): string {
+  return createHash("sha256").update(`${domain}\n${canonical(value)}`, "utf8").digest("hex");
+}
+/**
+ * Digest v1 = SHA-256 of domain + LF + canonical strictly parsed business JSON.
+ * Only root metadata (trace/requestedAt) and root idempotencyKey are omitted.
+ * Kind, scope, source, expectedRevision and all nested data remain significant.
+ * Object keys sort by JS UTF-16 order; arrays retain order; JSON number encoding.
+ */
+export function computeGraphInputDigest(value: unknown): string {
+  const { metadata: _metadata, idempotencyKey: _key, ...business } = GraphRequest.parse(value);
+  return hash("osstack.graph.input.v1", GraphJsonValue.parse(business));
+}
+
+export function computeGraphEffectKey(value: unknown): string {
+  return hash("osstack.graph.effect.v1", GraphEffectIdentity.parse(value));
+}
+
+export const GraphIdempotencyRecord = wire(z.object({
+  schemaVersion: Version, scope: Scope, idempotencyKey: Id, inputDigest: Digest,
+}).strict());
+export type GraphIdempotencyRecord = z.infer<typeof GraphIdempotencyRecord>;
+const MutationContext = wire(z.object({ run: z.object({ scope: Scope, graphRunId: Id, currentRevision: Count }).strict().optional(), prior: GraphIdempotencyRecord.optional() }).strict());
+
+/**
+ * Pure decision over a trusted snapshot, NOT durable dedup/CAS or authorization.
+ * After authentication/fencing, look up prior by full scope + key (all kinds).
+ * Same key/digest replays even if revision has since advanced; changed digest
+ * conflicts. A fresh resume/cancel must match currentRevision exactly. Start has
+ * no revision. G08 must bind decision, unique key and mutation in one transaction.
+ */
+export function validateGraphMutation(value: unknown, snapshot: unknown): "apply" | "replay" {
+  const request = parseContract(GraphRequest, value);
+  const { prior, run } = parseContract(MutationContext, snapshot);
+  if (request.kind === "start" && run) throw new GraphContractError("INPUT_CONTRACT_INVALID");
+  if (request.kind !== "start" && run) {
+    sameScope(request.scope, run.scope);
+    if (request.graphRunId !== run.graphRunId) throw new GraphContractError("RUN_MISMATCH");
+  }
+  if (prior) {
+    sameScope(prior.scope, request.scope);
+    if (prior.idempotencyKey !== request.idempotencyKey || prior.inputDigest !== computeGraphInputDigest(request)) {
+      throw new GraphContractError("IDEMPOTENCY_CONFLICT");
+    }
+    return "replay";
+  }
+  if (request.kind !== "start" && request.expectedRevision !== run?.currentRevision) throw new GraphContractError("REVISION_CONFLICT");
+  return "apply";
+}
+
+/** Same-generation transport retransmission: keep requestId and every business field. */
+export function validateWorkerTransportRetry(previous: unknown, retry: unknown): "replay" {
+  const { metadata: _previousMetadata, ...first } = WorkerActionRequest.parse(previous);
+  const { metadata: _retryMetadata, ...second } = WorkerActionRequest.parse(retry);
+  if (canonical(first) !== canonical(second)) throw new GraphContractError("IDEMPOTENCY_CONFLICT");
+  return "replay";
+}
+
+/** Single generated registry document; context/callbacks never cross the wire. */
+export const GraphProtocol = z.object({
+  spec: GraphSpec, scope: GraphScope, budget: GraphBudget, error: GraphError,
+  runState: GraphRunState, nodeState: GraphNodeState, actionState: GraphActionState,
+  result: GraphResult, request: GraphRequest, effectIdentity: GraphEffectIdentity,
+  workerActionRequest: WorkerActionRequest, workerActionResponse: WorkerActionResponse,
+  idempotencyRecord: GraphIdempotencyRecord,
+}).strict();
+
+--- packages/core/src/state/graph-runs.ts ---
+// Storage contracts only. Status is a projection of checkpoint/broker evidence,
+// never an independent scheduler or node FSM. No engine code is imported here.
+import { createHash, randomUUID } from "node:crypto";
+import type Database from "better-sqlite3";
+import { z } from "zod";
+import { GraphJsonValue, GraphScope, GraphRunState, GraphRequest, StartGraphRequest, computeGraphInputDigest } from "@osstack/protocol";
+import { preflightDiskSpace } from "./db.js";
+
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Reject controls in persisted identity strings.
+const text = z.string().min(1).max(256).refine((s) => s.trim() === s && !/[\u0000-\u001f\u007f-\u009f]/.test(s));
+const counter = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+const digest = z.string().regex(/^[a-f0-9]{64}$/);
+const programSchema = z.object({
+  executionModel: z.literal("langgraph-functional-v1"), durability: z.literal("sync"),
+  engineVersion: text, checkpointVersion: text, templateVersion: text,
+  registryVersion: text, compilerVersion: text, schemaVersion: text, compiledProgramDigest: digest,
+}).strict();
+const identitySchema = programSchema.extend({ specHash: digest, inputDigest: digest });
+export type GraphProgramVersion = z.infer<typeof programSchema>;
+export type GraphProgramIdentity = z.infer<typeof identitySchema>;
+const stoppedSchema = z.object({
+  graphRunId: text, generation: counter.min(1), owner: text, confirmedAt: counter, evidenceRef: text,
+}).strict();
+/** A trusted supervisor's durable exit receipt, NOT a worker claim or an abort result.
+ * Caller must verify the receipt and independently reconcile/stop external actions
+ * and isolate old workspaces before takeover. This store cannot inspect processes. */
+export type GraphStoppedWorkerEvidence = z.infer<typeof stoppedSchema>;
+const fenceSchema = z.object({
+  scope: GraphScope, graphRunId: text, expectedGeneration: counter, expectedRevision: counter,
+  expectedOwner: text.nullable(), identity: identitySchema, now: counter,
+}).strict();
+export type GraphRunFence = z.infer<typeof fenceSchema>;
+export interface GraphLeaseAcquisition extends GraphRunFence {
+  owner: string;
+  leaseExpiresAt: number;
+  stoppedWorker?: GraphStoppedWorkerEvidence;
+}
+export interface GraphLeaseRenewal extends GraphRunFence { leaseExpiresAt: number }
+export interface GraphRunProjection extends GraphRunFence { status: GraphRunState }
+const acquireSchema = fenceSchema.extend({ owner: text, leaseExpiresAt: counter, stoppedWorker: stoppedSchema.optional() });
+const renewSchema = fenceSchema.extend({ leaseExpiresAt: counter });
+const projectSchema = fenceSchema.extend({ status: GraphRunState });
+
+export interface GraphRun {
+  graphRunId: string;
+  scope: GraphScope;
+  source: StartGraphRequest["source"];
+  inputArtifactRef: string;
+  template: StartGraphRequest["spec"]["template"];
+  identity: GraphProgramIdentity;
+  status: GraphRunState;
+  generation: number;
+  revision: number;
+  leaseOwner: string | null;
+  leaseExpiresAt: number | null;
+  leaseAcquiredAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+export type GraphRunStorageErrorCode = "RUN_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "PROGRAM_IDENTITY_MISMATCH"
+  | "STALE_GENERATION" | "REVISION_CONFLICT" | "OWNER_MISMATCH" | "LEASE_EXPIRED" | "STOPPED_WORKER_REQUIRED"
+  | "STOPPED_WORKER_MISMATCH" | "TERMINAL_RUN" | "INVALID_TIME" | "COUNTER_EXHAUSTED";
+export class GraphRunStorageError extends Error {
+  constructor(public readonly code: GraphRunStorageErrorCode) { super(code); this.name = "GraphRunStorageError"; }
+}
+const fail = (code: GraphRunStorageErrorCode): never => { throw new GraphRunStorageError(code); };
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((k) => `${JSON.stringify(k)}:${canonical(record[k])}`).join(",")}}`;
+}
+function parse<T extends z.ZodTypeAny>(schema: T, value: unknown): z.output<T> {
+  // Bound the decoded object before recursive schema processing, including accessors.
+  return schema.parse(GraphJsonValue.parse(value));
+}
+function increment(value: number): number {
+  if (value === Number.MAX_SAFE_INTEGER) fail("COUNTER_EXHAUSTED");
+  return value + 1;
+}
+interface RunRow {
+  graph_run_id: string; scope_json: string; source_json: string; input_artifact_ref: string; template: GraphRun["template"];
+  identity_json: string; status: GraphRunState; generation: number; revision: number;
+  lease_owner: string | null; lease_expires_at: number | null; lease_acquired_at: number | null; created_at: number; updated_at: number;
+}
+function decode(row: RunRow): GraphRun {
+  return { graphRunId: row.graph_run_id, scope: JSON.parse(row.scope_json) as GraphScope,
+    source: JSON.parse(row.source_json) as StartGraphRequest["source"], inputArtifactRef: row.input_artifact_ref,
+    template: row.template, identity: JSON.parse(row.identity_json) as GraphProgramIdentity,
+    status: row.status, generation: row.generation, revision: row.revision, leaseOwner: row.lease_owner,
+    leaseExpiresAt: row.lease_expires_at, leaseAcquiredAt: row.lease_acquired_at, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+/** Daemon-owned synchronous store. Caller authenticates scope/owner, authorizes every
+ * operation, verifies compiler/artifact identity and supplies trusted epoch-ms time.
+ * Never expose this API directly to worker/request JSON. A matching lease is fencing,
+ * not authorization. G13 must bind checks and checkpoint writes in the SAME transaction. */
+export class GraphRunStore {
+  constructor(private readonly db: Database.Database) {}
+
+  private write<T>(fn: () => T): T {
+    preflightDiskSpace(this.db.name);
+    // Acquire write reservation BEFORE reading: independent connections cannot both
+    // admit the same key or update from the same revision (also avoids WAL upgrades).
+    return this.db.transaction(fn).immediate();
+  }
+
+  get(scopeValue: GraphScope, graphRunId: string): GraphRun | null {
+    const scope = GraphScope.parse(scopeValue);
+    text.parse(graphRunId);
+    const row = this.db.prepare("SELECT * FROM graph_runs WHERE scope_json = ? AND graph_run_id = ?")
+      .get(canonical(scope), graphRunId) as RunRow | undefined;
+    return row ? decode(row) : null;
+  }
+
+  /** Fresh server-generated run ID; one canonical business request per full scope/key.
+   * Metadata is excluded using the protocol digest. Compiler versions/digest are
+   * supplied by trusted compilation; start request/spec digests are computed here. */
+  create(requestValue: StartGraphRequest, versionValue: GraphProgramVersion, nowValue: number): GraphRun {
+    const request = StartGraphRequest.parse(requestValue);
+    const version = parse(programSchema, versionValue);
+    const now = counter.parse(nowValue);
+    const inputDigest = computeGraphInputDigest(request);
+    const identity: GraphProgramIdentity = { ...version, inputDigest,
+      specHash: createHash("sha256").update(`osstack.graph.spec.v1\n${canonical(request.spec)}`).digest("hex") };
+    const scopeJson = canonical(request.scope);
+    return this.write(() => {
+      const prior = this.db.prepare("SELECT graph_run_id, input_digest FROM graph_requests WHERE scope_json = ? AND idempotency_key = ?")
+        .get(scopeJson, request.idempotencyKey) as { graph_run_id: string; input_digest: string } | undefined;
+      if (prior) {
+        if (prior.input_digest !== inputDigest) fail("IDEMPOTENCY_CONFLICT");
+        const run = this.get(request.scope, prior.graph_run_id)!;
+        if (canonical(run.identity) !== canonical(identity)) fail("PROGRAM_IDENTITY_MISMATCH");
+        return run;
+      }
+      const id = randomUUID();
+      this.db.prepare(`INSERT INTO graph_runs (graph_run_id, scope_json, source_json, input_artifact_ref,
+        template, identity_json, status, generation, revision, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'queued', 0, 0, ?, ?)`)
+        .run(id, scopeJson, canonical(request.source), request.inputArtifactRef, request.spec.template, canonical(identity), now, now);
+      this.db.prepare(`INSERT INTO graph_requests (scope_json, idempotency_key, graph_run_id, input_digest, kind, created_at)
+        VALUES (?, ?, ?, ?, 'start', ?)`).run(scopeJson, request.idempotencyKey, id, inputDigest, now);
+      return this.get(request.scope, id)!;
+    });
+  }
+
+  private checked(input: GraphRunFence, requireLive: boolean): GraphRun {
+    const run = this.get(input.scope, input.graphRunId) ?? fail("RUN_NOT_FOUND");
+    if (canonical(run.identity) !== canonical(input.identity)) fail("PROGRAM_IDENTITY_MISMATCH");
+    if (run.generation !== input.expectedGeneration) fail("STALE_GENERATION");
+    if (run.revision !== input.expectedRevision) fail("REVISION_CONFLICT");
+    if (run.leaseOwner !== input.expectedOwner) fail("OWNER_MISMATCH");
+    if (["ready", "failed", "cancelled"].includes(run.status)) fail("TERMINAL_RUN");
+    if (input.now < run.updatedAt) fail("INVALID_TIME");
+    if (requireLive && (run.generation === 0 || run.leaseExpiresAt === null || run.leaseExpiresAt <= input.now)) fail("LEASE_EXPIRED");
+    increment(run.revision);
+    return run;
+  }
+
+  acquireLease(value: GraphLeaseAcquisition): GraphRun {
+    const input = parse(acquireSchema, value);
+    return this.write(() => {
+      const run = this.checked(input, false);
+      if (input.leaseExpiresAt <= input.now) fail("INVALID_TIME");
+      if (run.generation > 0) {
+        const stopped = input.stoppedWorker ?? fail("STOPPED_WORKER_REQUIRED");
+        if (stopped.graphRunId !== run.graphRunId || stopped.generation !== run.generation || stopped.owner !== run.leaseOwner
+          || stopped.confirmedAt < run.updatedAt || stopped.confirmedAt > input.now) fail("STOPPED_WORKER_MISMATCH");
+      } else if (input.stoppedWorker) fail("STOPPED_WORKER_MISMATCH");
+      const generation = increment(run.generation);
+      this.db.prepare(`UPDATE graph_runs SET generation = ?, revision = ?, lease_owner = ?, lease_expires_at = ?,
+        lease_acquired_at = ?, updated_at = ? WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
+        .run(generation, increment(run.revision), input.owner, input.leaseExpiresAt, input.now, input.now, run.graphRunId, run.generation, run.revision);
+      this.db.prepare(`INSERT INTO graph_worker_leases (graph_run_id, generation, owner, acquired_at, expires_at, stopped_worker_json)
+        VALUES (?, ?, ?, ?, ?, ?)`).run(run.graphRunId, generation, input.owner, input.now, input.leaseExpiresAt,
+          input.stoppedWorker ? JSON.stringify(input.stoppedWorker) : null);
+      return this.get(input.scope, run.graphRunId)!;
+    });
+  }
+
+  renewLease(value: GraphLeaseRenewal): GraphRun {
+    const input = parse(renewSchema, value);
+    return this.write(() => {
+      const run = this.checked(input, true);
+      if (input.leaseExpiresAt <= input.now || input.leaseExpiresAt < run.leaseExpiresAt!) fail("INVALID_TIME");
+      this.db.prepare(`UPDATE graph_runs SET lease_expires_at = ?, revision = ?, updated_at = ?
+        WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
+        .run(input.leaseExpiresAt, increment(run.revision), input.now, run.graphRunId, run.generation, run.revision);
+      this.db.prepare("UPDATE graph_worker_leases SET expires_at = ? WHERE graph_run_id = ? AND generation = ?")
+        .run(input.leaseExpiresAt, run.graphRunId, run.generation);
+      return this.get(input.scope, run.graphRunId)!;
+    });
+  }
+
+  /** Store an already-authorized resume/cancel decision and its projection together.
+   * Caller verifies interrupt/resume data, cancellation/exit evidence and policy;
+   * this method neither resumes a worker nor sends cancellation. All request kinds
+   * share one scope/key namespace. Replay returns the current run without mutation. */
+  projectRequest(requestValue: Exclude<GraphRequest, StartGraphRequest>, value: GraphRunProjection): GraphRun {
+    const request = GraphRequest.parse(requestValue);
+    const input = parse(projectSchema, value);
+    if (request.kind === "start") throw new Error("Expected resume or cancel request");
+    if (canonical(request.scope) !== canonical(input.scope) || request.graphRunId !== input.graphRunId) fail("RUN_NOT_FOUND");
+    const inputDigest = computeGraphInputDigest(request);
+    const scopeJson = canonical(input.scope);
+    return this.write(() => {
+      const run = this.get(input.scope, input.graphRunId) ?? fail("RUN_NOT_FOUND");
+      // Authenticate/fence before a cache hit, but do not reject a replay just
+      // because its original revision has advanced or the run is now terminal.
+      if (canonical(run.identity) !== canonical(input.identity)) fail("PROGRAM_IDENTITY_MISMATCH");
+      if (run.generation !== input.expectedGeneration) fail("STALE_GENERATION");
+      if (run.leaseOwner !== input.expectedOwner) fail("OWNER_MISMATCH");
+      const prior = this.db.prepare("SELECT graph_run_id, input_digest FROM graph_requests WHERE scope_json = ? AND idempotency_key = ?")
+        .get(scopeJson, request.idempotencyKey) as { graph_run_id: string; input_digest: string } | undefined;
+      if (prior) {
+        if (prior.graph_run_id !== run.graphRunId || prior.input_digest !== inputDigest) fail("IDEMPOTENCY_CONFLICT");
+        return run;
+      }
+      if (request.expectedRevision !== input.expectedRevision) fail("REVISION_CONFLICT");
+      const projected = this.projectInTransaction(input);
+      this.db.prepare(`INSERT INTO graph_requests (scope_json, idempotency_key, graph_run_id, input_digest, kind, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)`).run(scopeJson, request.idempotencyKey, run.graphRunId, inputDigest, request.kind, input.now);
+      return projected;
+    });
+  }
+
+  /** Caller derives status from authoritative execution evidence. There is no
+   * transition map here; only irreversible terminal sealing and transactional CAS. */
+  project(value: GraphRunProjection): GraphRun {
+    const input = parse(projectSchema, value);
+    return this.write(() => this.projectInTransaction(input));
+  }
+
+  private projectInTransaction(input: GraphRunProjection): GraphRun {
+    const run = this.checked(input, true);
+    this.db.prepare(`UPDATE graph_runs SET status = ?, revision = ?, updated_at = ?
+      WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
+      .run(input.status, increment(run.revision), input.now, run.graphRunId, run.generation, run.revision);
+    return this.get(input.scope, run.graphRunId)!;
+  }
+}
+
+--- packages/cli/src/governed-execution.ts ---
+import { join } from "node:path";
+import { acquireRepoWriteLock, FifoSemaphore, SemaphoreAcquireAbortedError, type SemaphoreLease, type RepoWriteLock } from '@osstack/autonomy';
+import { resolveRepositoryScope } from '@osstack/core';
+
+export interface ExecutionLease {
+  release(): Promise<void>;
+  /** Keep ownership until a trusted caller has confirmed external exit. */
+  retain(reason: string): void;
+}
+export interface AdmissionInput {
+  kind: 'read' | 'write';
+  runId: string;
+  /** Supplied by the daemon registration, never by an adapter context. */
+  workspacePath?: string;
+  repoId?: string;
+  signal?: AbortSignal;
+  authorize?: () => Promise<void>;
+}
+export class GovernedExecution {
+  private readonly activeRuns = new Set<string>();
+  private readonly quarantinedRepositories = new Set<string>();
+  constructor(private readonly options: {
+    reads: FifoSemaphore;
+    writes: FifoSemaphore;
+    repositories: Map<string, FifoSemaphore>;
+    checkHealth: () => Promise<void>;
+  }) {}
+
+  get hasWriters(): boolean { return this.options.writes.in_use > 0; }
+
+  async acquire(input: AdmissionInput): Promise<ExecutionLease> {
+    const check = async (): Promise<void> => {
+      if (input.signal?.aborted) throw new SemaphoreAcquireAbortedError();
+      if (input.kind === 'write') await this.options.checkHealth();
+      await input.authorize?.();
+    };
+    await check();
+    const scope = input.workspacePath === undefined ? undefined
+      : await resolveRepositoryScope(input.workspacePath, input.repoId === undefined ? {} : { repoId: input.repoId });
+    if (input.kind === 'write' && !scope) throw new Error('trusted repository scope required for writes');
+    if (input.kind === "write" && scope && this.quarantinedRepositories.has(scope.repoId)) throw new Error("repository external stop unconfirmed; reconciliation required");
+    if (this.activeRuns.has(input.runId)) throw new Error("run already admitted or queued");
+    this.activeRuns.add(input.runId);
+    let local: SemaphoreLease | undefined;
+    let global: SemaphoreLease | undefined;
+    let lock: RepoWriteLock | undefined;
+    let queue: FifoSemaphore | undefined;
+    const releasePermits = (): void => {
+      global?.release(); local?.release();
+      this.activeRuns.delete(input.runId);
+      if (scope && queue?.in_use === 0 && queue.pending === 0) this.options.repositories.delete(scope.repoId);
+    };
+    try {
+      if (input.kind === 'write' && scope) {
+        queue = this.options.repositories.get(scope.repoId) ?? new FifoSemaphore(1);
+        this.options.repositories.set(scope.repoId, queue);
+        local = await queue.acquire(input.signal);
+      }
+      global = await (input.kind === 'read' ? this.options.reads : this.options.writes).acquire(input.signal);
+      if (input.kind === 'write' && scope) {
+        lock = await acquireRepoWriteLock({ root_dir: join(scope.commonDir, "osstack", "writer-locks"), recover_stale: false, repo_id: scope.repoId, autonomy_run_id: input.runId });
+      }
+      if (input.kind === "write" && scope && this.quarantinedRepositories.has(scope.repoId)) throw new Error("repository external stop unconfirmed; reconciliation required");
+      await check();
+    } catch (error) {
+      try { await lock?.release(); } finally { releasePermits(); }
+      throw error;
+    }
+    let released = false;
+    let retained = false;
+    // A renewal failure quarantines this repository. Its unknown producer still
+    // consumes write capacity, while unrelated reads remain available.
+    let renewing: Promise<void> = Promise.resolve();
+    const timer = lock === undefined ? undefined : setInterval(() => {
+      renewing = renewing.then(async () => {
+        if (!released) await lock!.renew();
+      }).catch((error: unknown) => {
+        retained = true;
+        if (scope) this.quarantinedRepositories.add(scope.repoId);
+        process.stderr.write(`repository lease renewal failed; retained ${input.runId}: ${String(error)}\n`);
+        if (timer) clearInterval(timer);
+      });
+    }, 20_000);
+    timer?.unref();
+    return {
+      retain: (reason) => { retained = true; if (timer) clearInterval(timer); if (scope) this.quarantinedRepositories.add(scope.repoId); process.stderr.write(`osstack: retaining write lease ${input.runId}: ${reason}\n`); },
+      release: async () => {
+        if (released) return;
+        if (retained) throw new Error("external stop unconfirmed; reconciliation required before release");
+        released = true;
+        if (timer) clearInterval(timer);
+        await renewing;
+        if (retained) { released = false; throw new Error("external stop unconfirmed; reconciliation required before release"); }
+        // Ownership failure must not free the in-process writer authority.
+        try { await lock?.release(); }
+        catch (error) {
+          released = false; retained = true;
+          if (scope) this.quarantinedRepositories.add(scope.repoId);
+          process.stderr.write(`repository lock release failed; retained ${input.runId}: ${String(error)}\n`);
+          throw error;
+        }
+        releasePermits();
+      },
+    };
+  }
+}
+
+--- packages/loop/src/candidate-execution.ts ---
+import { isAbsolute } from "node:path";
+import { executePlan, type AgentRun, type LocalExecutorOptions } from "./executor.js";
+import { ExecutionPlan } from "./types.js";
+
+/** Supplied by the workspace owner. Identity is checked by authorize, never by graph data. */
+export interface RegisteredCandidateWorkspace {
+  workspace_id: string;
+  workspace_path: string;
+}
+
+type Immutable<T> = T extends object ? { readonly [K in keyof T]: Immutable<T[K]> } : T;
+
+export interface CandidateAuthorizationScope {
+  readonly plan: Immutable<ExecutionPlan>;
+  readonly workspace: Immutable<RegisteredCandidateWorkspace>;
+  readonly command?: string;
+}
+
+export type CandidateAuthorizationDecision = { allow: true } | { allow: false; reason: string };
+
+export interface CandidateExecutionInput extends Omit<LocalExecutorOptions, "workspacePath"> {
+  plan: ExecutionPlan;
+  workspace: RegisteredCandidateWorkspace;
+  /** Mandatory trusted callback: validate current authority AND workspace registration/scope. */
+  authorize: (scope: CandidateAuthorizationScope) => CandidateAuthorizationDecision | Promise<CandidateAuthorizationDecision>;
+}
+
+export interface CandidateExecutionResult {
+  /** Completion only describes the implementation invocation, never a frozen/verified candidate. */
+  status: "implementation_complete" | "failed" | "cancelled" | "execution_unconfirmed" | "authorization_denied" | "invalid_input";
+  workspace: Immutable<RegisteredCandidateWorkspace>;
+  /** Exact executor evidence, absent when execution was not started. */
+  execution?: AgentRun;
+  reason?: string;
+}
+
+/**
+ * Execute one preselected implementation. No selection, verification, state,
+ * git lifecycle or retry belongs here. The caller owns workspace registration
+ * and supplies live authorization; a plan or graph checkpoint grants nothing.
+ */
+export async function executeCandidateImplementation(input: CandidateExecutionInput): Promise<CandidateExecutionResult> {
+  // Capture all execution options and the authority function before the first
+  // await. In particular, caller replacement of signal cannot revoke cancellation.
+  const { plan, workspace, authorize, ...options } = input;
+  const workspaceSnapshot = Object.freeze({ ...workspace });
+  const base = { workspace: workspaceSnapshot };
+  if (options.signal?.aborted) return { ...base, status: "cancelled", reason: "Cancelled before authorization" };
+
+  let snapshot: { plan: ExecutionPlan; workspace: RegisteredCandidateWorkspace; command?: string };
+  try {
+    const effectivePlan = ExecutionPlan.parse(structuredClone(plan));
+    effectivePlan.task.context = { ...effectivePlan.task.context, repo_path: workspaceSnapshot.workspace_path };
+    snapshot = freezeSnapshot({
+      plan: effectivePlan,
+      workspace: workspaceSnapshot,
+      ...(options.command !== undefined ? { command: options.command } : {}),
+    });
+    if (!snapshot.workspace.workspace_id.trim() || !isAbsolute(snapshot.workspace.workspace_path)
+      || snapshot.workspace.workspace_path.includes("\0")
+      || (options.command !== undefined && (typeof options.command !== "string" || options.command.includes("\0")))
+      || (snapshot.plan.worktree_path !== undefined && snapshot.plan.worktree_path !== snapshot.workspace.workspace_path)) {
+      return { ...base, status: "invalid_input", reason: "Plan and registered workspace scope must agree on an absolute path and nonempty identity" };
+    }
+  } catch (error) {
+    return { ...base, status: "invalid_input", reason: String(error) };
+  }
+  const executionOptions: LocalExecutorOptions = {
+    ...options,
+    workspacePath: snapshot.workspace.workspace_path,
+    ...(options.adapters !== undefined ? { adapters: [...options.adapters] } : {}),
+  };
+  if (typeof authorize !== "function") return { ...base, status: "authorization_denied", reason: "Authorization callback is required" };
+  const decision = await awaitAuthorization(authorize, snapshot, options.signal);
+  if (decision === "cancelled" || options.signal?.aborted) {
+    return { ...base, status: "cancelled", reason: "Cancelled before execution" };
+  }
+  if (decision.allow !== true) return { ...base, status: "authorization_denied", reason: decision.reason };
+
+  let execution: AgentRun;
+  try { execution = await executePlan(snapshot.plan, executionOptions); }
+  catch (error) { return { ...base, status: "execution_unconfirmed", reason: `Unexpected execution failure: ${String(error)}` }; }
+  const status = isImplementationUnconfirmed(execution) ? "execution_unconfirmed"
+    : execution.outcome === "completed"
+      // Legacy's local-noop is valid there, but is not evidence of implementation.
+      ? ((execution.adapter_event_count ?? 0) > 0 || execution.command_results.length > 0 ? "implementation_complete" : "failed")
+      : execution.outcome;
+  return { ...base, status, execution,
+    ...(status === "failed" && execution.outcome === "completed" ? { reason: "No implementation invocation or command was executed" } : {}) };
+}
+
+/** Explicit compatibility path: admission/selection and all lifecycle work remain in LoopEngine. */
+export async function executeLegacyImplementation(plan: ExecutionPlan, options: LocalExecutorOptions): Promise<AgentRun> {
+
+  return executePlan(plan, options);
+}
+
+/** Unknown external effects are not retry-safe, even when a protocol failure is also present. */
+export function isImplementationUnconfirmed(run: AgentRun): boolean {
+  return run.cancellation?.stop_confirmed === false
+    || run.command_results.some((result) => result.termination?.stop_confirmed === false)
+    || run.failure_code === "cancellation_unconfirmed" || run.failure_code === "process_exit_unconfirmed"
+    || run.failure_code === "surviving_descendants";
+}
+
+function awaitAuthorization(
+  authorize: CandidateExecutionInput["authorize"],
+  scope: CandidateAuthorizationScope,
+  signal: AbortSignal | undefined,
+): Promise<CandidateAuthorizationDecision | "cancelled"> {
+  return new Promise((resolve) => {
+    const finish = (decision: CandidateAuthorizationDecision | "cancelled"): void => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve(decision);
+    };
+    const onAbort = (): void => finish("cancelled");
+    signal?.addEventListener("abort", onAbort, { once: true });
+    if (signal?.aborted) { onAbort(); return; }
+    const deny = (error: unknown): void => finish({ allow: false, reason: `Authorization failed: ${String(error)}` });
+    try {
+      // Observe late rejections even after cancellation wins; no continuation
+      // from the authorizer itself may launch execution.
+      Promise.resolve(authorize(scope)).then((decision) => {
+        if (decision?.allow === true) finish({ allow: true });
+        else finish({ allow: false, reason: decision?.reason ?? "Authorization denied" });
+      }, deny);
+    } catch (error) { deny(error); }
+  });
+}
+
+/** Only plain data can be frozen reliably (Object.freeze does not freeze Map/Date internals). */
+function freezeSnapshot<T>(value: T): T {
+  if (value !== null && typeof value === "object") {
+    const prototype: unknown = Object.getPrototypeOf(value);
+    if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) {
+      throw new Error("Candidate authorization scope must contain plain data");
+    }
+    for (const child of Object.values(value)) freezeSnapshot(child);
+    Object.freeze(value);
+  }
+  return value;
+}

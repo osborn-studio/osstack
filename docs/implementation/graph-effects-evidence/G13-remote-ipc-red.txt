@@ -1,0 +1,255 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph
+
+ ❯ src/remote-checkpointer.test.ts (10 tests | 9 failed) 405ms
+   ✓ rejects cross-run access and destructive deletion before transport 2ms
+   × preserves parent, versions, namespaces, before/filter and complete pagination through real asynchronous SQLite IPC 53ms
+     → checkpoint transport exited (ACK unknown): node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js' imported from /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/fixtures/graph-checkpoint-server.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:708:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:728:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:766:56)
+    at #resolve (node:internal/modules/esm/loader:690:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:610:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:389:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js'
+}
+
+Node.js v26.5.0
+
+   × matches the installed public reserved-index overwrite and ordinary first-write semantics after reopening SQLite 43ms
+     → checkpoint transport exited (ACK unknown): node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js' imported from /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/fixtures/graph-checkpoint-server.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:708:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:728:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:766:56)
+    at #resolve (node:internal/modules/esm/loader:690:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:610:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:389:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js'
+}
+
+Node.js v26.5.0
+
+   × awaits a delayed commit ACK and propagates failed writes without reporting success 44ms
+     → checkpoint transport exited (ACK unknown): node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js' imported from /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/fixtures/graph-checkpoint-server.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:708:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:728:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:766:56)
+    at #resolve (node:internal/modules/esm/loader:690:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:610:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:389:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js'
+}
+
+Node.js v26.5.0
+
+   × survives child kill before commit with stable-ID retry and explicit lost-ACK outcome 48ms
+     → checkpoint transport exited (ACK unknown): node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js' imported from /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/fixtures/graph-checkpoint-server.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:708:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:728:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:766:56)
+    at #resolve (node:internal/modules/esm/loader:690:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:610:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:389:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js'
+}
+
+Node.js v26.5.0
+
+   × survives child kill after commit with stable-ID retry and explicit lost-ACK outcome 40ms
+     → checkpoint transport exited (ACK unknown): node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js' imported from /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/fixtures/graph-checkpoint-server.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:708:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:728:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:766:56)
+    at #resolve (node:internal/modules/esm/loader:690:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:610:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:389:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js'
+}
+
+Node.js v26.5.0
+
+   × public Functional tasks persist RETURN/error and resume only incomplete work over delayed transport 42ms
+     → checkpoint transport exited (ACK unknown): node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js' imported from /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/fixtures/graph-checkpoint-server.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:708:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:728:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:766:56)
+    at #resolve (node:internal/modules/esm/loader:690:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:610:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:389:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js'
+}
+
+Node.js v26.5.0
+
+   × public Functional interrupt preserves resume false through SQLite and asynchronous ACK 46ms
+     → checkpoint transport exited (ACK unknown): node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js' imported from /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/fixtures/graph-checkpoint-server.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:708:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:728:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:766:56)
+    at #resolve (node:internal/modules/esm/loader:690:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:610:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:389:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js'
+}
+
+Node.js v26.5.0
+
+   × public Functional rejects transport failure at __return__ and recovers without inventing task completion 44ms
+     → checkpoint transport exited (ACK unknown): node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js' imported from /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/fixtures/graph-checkpoint-server.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:708:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:728:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:766:56)
+    at #resolve (node:internal/modules/esm/loader:690:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:610:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:389:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js'
+}
+
+Node.js v26.5.0
+
+   × public Functional rejects transport failure at __end__ and recovers without inventing task completion 42ms
+     → checkpoint transport exited (ACK unknown): node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js' imported from /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/fixtures/graph-checkpoint-server.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:708:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:728:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:766:56)
+    at #resolve (node:internal/modules/esm/loader:690:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:610:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:389:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js'
+}
+
+Node.js v26.5.0
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/remote-checkpointer.test.ts > preserves parent, versions, namespaces, before/filter and complete pagination through real asynchronous SQLite IPC
+ FAIL  src/remote-checkpointer.test.ts > matches the installed public reserved-index overwrite and ordinary first-write semantics after reopening SQLite
+ FAIL  src/remote-checkpointer.test.ts > awaits a delayed commit ACK and propagates failed writes without reporting success
+ FAIL  src/remote-checkpointer.test.ts > survives child kill before commit with stable-ID retry and explicit lost-ACK outcome
+ FAIL  src/remote-checkpointer.test.ts > survives child kill after commit with stable-ID retry and explicit lost-ACK outcome
+ FAIL  src/remote-checkpointer.test.ts > public Functional tasks persist RETURN/error and resume only incomplete work over delayed transport
+ FAIL  src/remote-checkpointer.test.ts > public Functional interrupt preserves resume false through SQLite and asynchronous ACK
+ FAIL  src/remote-checkpointer.test.ts > public Functional rejects transport failure at __return__ and recovers without inventing task completion
+ FAIL  src/remote-checkpointer.test.ts > public Functional rejects transport failure at __end__ and recovers without inventing task completion
+Error: checkpoint transport exited (ACK unknown): node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js' imported from /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/fixtures/graph-checkpoint-server.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:708:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:728:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:766:56)
+    at #resolve (node:internal/modules/esm/loader:690:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:610:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:389:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/dist/state/graph-checkpoints.js'
+}
+
+Node.js v26.5.0
+
+ ❯ ChildProcess.<anonymous> src/checkpoint-ipc-fixture.ts:25:21
+     23|     child.on('error', reject);
+     24|     child.on('exit', () => {
+     25|       const error = new Error(`checkpoint transport exited (ACK unknow…
+       |                     ^
+     26|       reject(error);
+     27|       for (const handler of pending.values()) handler.reject(error);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  9 failed | 1 passed (10)
+   Start at  06:46:30
+   Duration  844ms (transform 66ms, setup 0ms, collect 282ms, tests 405ms, environment 0ms, prepare 32ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/remote-checkpointer.test.ts

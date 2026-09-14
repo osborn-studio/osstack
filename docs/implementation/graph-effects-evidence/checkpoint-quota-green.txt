@@ -1,0 +1,51 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ❯ src/state/graph-checkpoints.test.ts (14 tests | 1 failed) 646ms
+   ✓ stores opaque codec bytes without revival and persists full tuples across SQLite close/reopen 35ms
+   ✓ fences every cache replay by scope, complete program, generation, owner, revision and live lease 19ms
+   ✓ rejects cross-run read/write and changed payload under the same mutation ID 15ms
+   ✓ rolls back the entire pending-write batch, replay record and revision on an injected SQLite failure 16ms
+   ✓ preserves partial batches, reserved negative overwrites and ordinary positive first-write semantics 15ms
+   ✓ bounds aggregate tuple bytes transactionally across many individually bounded write requests 42ms
+   ✓ rolls back checkpoint insertion when the idempotency record fails, then retries the original ID 14ms
+   ✓ paginates equal checkpoint IDs across namespaces without skipping and bounds response bytes 82ms
+   × splits pages at transport traversal bounds even when many small pending writes fit the byte cap 325ms
+     → CHECKPOINT_RUN_LIMIT
+   ✓ enforces the daemon checkpoints run quota atomically across addresses and reopening 19ms
+   ✓ enforces the daemon pendingWrites run quota atomically across addresses and reopening 17ms
+   ✓ enforces the daemon requests run quota atomically across addresses and reopening 18ms
+   ✓ enforces the daemon bytes run quota atomically across addresses and reopening 16ms
+   ✓ permits only trusted tightening of fixed checkpoint storage ceilings 14ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/graph-checkpoints.test.ts > splits pages at transport traversal bounds even when many small pending writes fit the byte cap
+Error: CHECKPOINT_RUN_LIMIT
+ ❯ fail src/state/graph-checkpoints.ts:20:47
+     18| // the installed SDK; core never imports LangGraph or decodes its code…
+     19| const reserved: Readonly<Record<string, number>> = { __error__: -1, __…
+     20| const fail = (code: string): never => { throw new Error(code); };
+       |                                               ^
+     21| function canonical(value: unknown): string {
+     22|   if (value === null || typeof value !== 'object') return JSON.stringi…
+ ❯ GraphCheckpointStore.checkRunLimits src/state/graph-checkpoints.ts:88:50
+ ❯ src/state/graph-checkpoints.ts:72:12
+ ❯ sqliteTransaction.<anonymous> src/state/graph-storage.ts:25:20
+ ❯ sqliteTransaction ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/transaction.js:65:24
+ ❯ fencedGraphTransaction src/state/graph-storage.ts:34:6
+ ❯ GraphCheckpointStore.execute src/state/graph-checkpoints.ts:53:20
+ ❯ execute src/state/graph-checkpoints.test.ts:33:75
+ ❯ src/state/graph-checkpoints.test.ts:125:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 passed (14)
+   Start at  07:02:27
+   Duration  966ms (transform 114ms, setup 0ms, collect 144ms, tests 646ms, environment 0ms, prepare 42ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/graph-checkpoints.test.ts

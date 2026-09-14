@@ -1,8 +1,8 @@
 # OSStack 升级改造实施计划：Loop 强化与可执行 Graph v1
 
-日期：2026-09-13。检查基线：`b476bcc3fbbfcc11953abd3d154e59f7f85c4660`，分支 `codex/graph-readonly-pilot`。**状态：G00–G10 已完成，11/30；C2 Functional API + sync 与 C3 共享身份/锁/准入已通过。M1 继续推进 G11–G13，生产图运行时尚未完成。**
+日期：2026-09-13。检查基线：`b476bcc3fbbfcc11953abd3d154e59f7f85c4660`，分支 `codex/graph-readonly-pilot`。**状态：G00–G13 已完成，14/30；C2 Functional API + sync、C3 身份/锁/准入及 C4 账本/broker/checkpoint 已通过。M1 继续推进 G14–G17，完整生产图运行时尚未完成。**
 
-实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；本批已验收代码：`055e217f7d4d29e0a93278544efb3b7b5b6f7beb`。按 G11→G12/G13 继续，见 [C3 验收](2026-09-14-graph-admission-completion.md)与[下一轮上下文](2026-09-14-graph-admission-next-context.md)。见 [C2 验收与接续报告](2026-09-13-graph-c2-completion.md)、[G05–G07 历史验收](2026-09-13-graph-kernel-completion.md)、[Saver 决策与反例](graph-saver-decision.md)；[G00–G04 历史验收](2026-09-13-graph-foundation-completion.md) 保留原结论。
+实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；本批已验收代码：`36eee05f6bc6ef6aa8148dd9f4e9271e2237d4fc`。按 G14→G15/G16→G17 继续，见 [C4 验收](2026-09-14-graph-effects-completion.md)与[下一轮上下文](2026-09-14-graph-effects-next-context.md)。见 [C2 验收与接续报告](2026-09-13-graph-c2-completion.md)、[G05–G07 历史验收](2026-09-13-graph-kernel-completion.md)、[Saver 决策与反例](graph-saver-decision.md)；[G00–G04 历史验收](2026-09-13-graph-foundation-completion.md) 保留原结论。
 
 本计划将 [架构设计](../design/2026-09-13-executable-graph-plan.md) 转成可逐项执行的任务，产品边界遵循 [三产品定义](../design/2026-09-13-os-products-definition.md)。OSBot 功能在 [独立 handoff](../handoffs/osbot/handoff.md) 交接；本计划只改造 OSStack，不部署 Rakazo，不修改 OStag 产品。
 
@@ -20,7 +20,7 @@ Loop 与 Graph 都获得具体提升：Loop 的终态、取消和候选执行接
 
 ## 2. 已核实基线和工程差距
 
-下表描述 `b476bcc` 实施前事实；G00–G07 的已交付变化以任务状态和验收报告为准。
+下表描述 `b476bcc` 实施前事实；G00–G13 的已交付变化以任务状态和验收报告为准。
 
 | 位置 | 当前事实 | 升级责任 |
 |---|---|---|
@@ -117,7 +117,7 @@ flowchart TD
   PRODUCT --> GATES[M3：故障 / 兼容 / 性能 / 试点]
 ```
 
-任务状态以本文件和机器清单的实际验收记录为准；目前 G00–G10 完成，G11–G29 pending。预计每卡一个 S/M 范围；若实施发现超过一个聚焦会话或约 5 个实质源文件，应拆成后缀任务并更新依赖，不能以表内估计硬塞大型改造。
+任务状态以本文件和机器清单的实际验收记录为准；目前 G00–G13 完成，G14–G29 pending。预计每卡一个 S/M 范围；若实施发现超过一个聚焦会话或约 5 个实质源文件，应拆成后缀任务并更新依赖，不能以表内估计硬塞大型改造。
 
 | ID | 阶段 | 任务 | 依赖 |
 |---|---|---|---|
@@ -370,7 +370,7 @@ flowchart TD
 
 ### G11 · 实现动作账本与预算预留
 
-**依赖：** G08。**规模：** M。**状态：** 未开始。
+**依赖：** G08。**规模：** M。**状态：** 已完成；见 [C4 验收](2026-09-14-graph-effects-completion.md)。
 
 **预计改动位置：**
 
@@ -380,15 +380,15 @@ flowchart TD
 
 **验收：**
 
-- [ ] intent 先落库，逻辑 attempt 仅由 ledger 分配，effectKey 不含 worker generation。
-- [ ] 同一 key 结果确认唯一；pending/unknown/cancel_pending 禁止凭新 attempt 绕过。
-- [ ] 预留、确认、失败和未知用量原子计数；图/分支/epoch/动作预算共享权威。
+- [x] intent 先落库，逻辑 attempt 仅由 ledger 分配，effectKey 不含 worker generation。
+- [x] 同一 key 结果确认唯一；pending/unknown/cancel_pending 禁止凭新 attempt 绕过。
+- [x] 预留、确认、失败和未知用量原子计数；图/分支/epoch/动作预算共享权威。
 
 **验证：** `pnpm --filter @osstack/core test`；迁移/状态测试只使用临时数据库夹具。
 
 ### G12 · 接通受控动作 broker
 
-**依赖：** G04, G10, G11。**规模：** M。**状态：** 未开始。
+**依赖：** G04, G10, G11。**规模：** M。**状态：** 已完成；见 [C4 验收](2026-09-14-graph-effects-completion.md)。
 
 **预计改动位置：**
 
@@ -399,15 +399,15 @@ flowchart TD
 
 **验收：**
 
-- [ ] 节点调用受控实现/命令/工作区操作，confirmed 重放返回旧结果，不再 invoke。
-- [ ] 每次实际动作重新检查当前授权与代际；过期、撤销、scope 扩张返回结构化原因。
-- [ ] 账本粒度明确为受控 invocation/command 等，不伪称已逐工具截获所有 agent 内部副作用。
+- [x] 节点调用受控实现/命令/工作区操作，confirmed 重放返回旧结果，不再 invoke。
+- [x] 每次实际动作重新检查当前授权与代际；过期、撤销、scope 扩张返回结构化原因。
+- [x] 账本粒度明确为受控 invocation/command 等，不伪称已逐工具截获所有 agent 内部副作用。
 
 **验证：** `pnpm --filter @osstack/cli exec vitest run src/graph-action-broker.test.ts`，配合 core graph-actions 测试和 fake adapter 调用计数。
 
 ### G13 · 实现 daemon 持有的检查点存储
 
-**依赖：** G07, G08, G11。**规模：** M。**状态：** 未开始。
+**依赖：** G07, G08, G11。**规模：** M。**状态：** 已完成；见 [C4 验收](2026-09-14-graph-effects-completion.md)。
 
 **预计改动位置：**
 
@@ -419,13 +419,13 @@ flowchart TD
 
 **验收：**
 
-- [ ] 存储协议保留 G07 验证的全部语义；daemon 不导入 LangGraph 重入口或执行任意反序列化代码。
-- [ ] put/putWrites 均校验 scope/generation，幂等缓存先检查代际；同 run 串行写入和切代。
-- [ ] v1 checkpoints/pending writes 与 run/action 同属控制面 SQLite，由同一迁移负责人建表；短事务绑定代际检查与写入，重启先核对 lease。
+- [x] 存储协议保留 G07 验证的全部语义；daemon 不导入 LangGraph 重入口或执行任意反序列化代码。
+- [x] put/putWrites 均校验 scope/generation，幂等缓存先检查代际；同 run 串行写入和切代。
+- [x] v1 checkpoints/pending writes 与 run/action 同属控制面 SQLite，由同一迁移负责人建表；短事务绑定代际检查与写入，重启先核对 lease。
 
-- [ ] 覆盖 Functional task RETURN、工作流结束批次、错误和 resume 值；保持 codec/整批写入/fencing，不能把测试 JournalSaver 当生产实现。
+- [x] 覆盖 Functional task RETURN、工作流结束批次、错误和 resume 值；保持 codec/整批写入/fencing，不能把测试 JournalSaver 当生产实现。
 
-- [ ] sync 模式下必须等待 daemon 持久事务提交后确认写入；延迟 RPC/失败/崩溃验证不能由同步文件夹具代替。
+- [x] sync 模式下必须等待 daemon 持久事务提交后确认写入；延迟 RPC/失败/崩溃验证不能由同步文件夹具代替。
 
 **验证：** 分别跑 core `graph-checkpoints.test.ts` 与 graph `remote-checkpointer.test.ts`；fixture 必须包括 pending writes 和陈旧 generation。
 
@@ -745,7 +745,7 @@ flowchart TD
 
 ## 8. 依赖、分支和交接纪律
 
-- G00–G07 与 C2 限定内核准入已完成；下一批执行 G08–G10，建立 run/worker 身份、共享仓库锁与准入。
+- G00–G13 与 C2/C3/C4 已完成；下一批执行 G14–G17，建立 worker 生命周期、可信对账、候选冻结和第一条可恢复执行链。
 - G08、G09 在约束明确后可分别处理。G10–G17 涉及 daemon/核心存储，按依赖串行整合，避免多个任务同时改 migrations.ts 或 daemon.ts；DDL 严格按 G08→G11→G13→G16 单负责人推进。
 - G18 是纯编译器分支，可在 M1 集成期间独立开发；G19 必须等真实 broker/产物接口稳定。
 - G22/G23 共用 graph-command 和 RPC；G25/G26 故障验证依赖完整业务路径，不提前用 stub 结果充数。
@@ -814,10 +814,4 @@ graph worker 启动、冷/热执行、checkpoint/IPC 和并行工作区准备成
 
 ## 13. 下一轮实施的明确起点
 
-G00–G07 已完成其实现或验证任务，**8/30；C2 已限定准入，M0 完成**。下一轮按 G08→G09→G10 实施 run/worker 身份、共享锁和准入。先读取 Functional 内核决定和 C2 证据：引擎缓存不绑定程序/输入身份，invoke 拒绝不代表任务或外部进程退出；这些是后续实现必须执行的约束。生产图运行时尚未实现。
-
-可直接使用的接续指令：
-
-> 在 `/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation` 的 `codex/graph-runtime-foundation` 分支继续。先读本计划、C2 验收报告、Functional 内核决定、Saver 原始反例和机器任务清单，核对已验收 commit 与用户改动。使用 OSStack 按 G08→G09→G10 落 run/worker 身份、共享仓库锁与准入；executionModel 固定 langgraph-functional-v1，durability 固定 sync。G08 必须持久不可变程序/input 身份，不能依赖引擎缓存校验。控制器显式 sources: []，仅指定 inputTasks；使用新 OSSTACK_HOME，逐卡保存真实证据，不接默认 DB，不自动 merge/push/deploy，不提前声称生产恢复链完成。
-
-当前候选执行接口仍只证明一次实现完成；G16 才冻结候选，G18 后才进入完整工程图。不要用 graph run 包装完整 legacy Loop，否则会重复评审并继承自动提交/合并生命周期。
+G00–G13 已完成，**14/30；C4 已通过，M1 仍在推进**。下一轮按 G14→G15/G16→G17 建立 worker 生命周期、未知动作对账、候选冻结与真实可恢复链，目标 C5。先读 [C4 接续上下文](2026-09-14-graph-effects-next-context.md)：broker/checkpoint 当前是受信任进程内端口；异步持久化子进程夹具不能冒充生产 worker。固定 Functional API + sync，保留完整身份、逐动作准入、未知效果隔离和授权复检。完整工程图与公开 CLI 尚未实现。

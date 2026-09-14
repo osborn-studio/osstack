@@ -1,0 +1,1 @@
+{"completedTasks":[],"events":[{"event_id":"evt_271a927a-ed06-4ecd-8d48-6b802ffce8e5","loop_id":"C4-final-acceptance","type":"loop.stopped","seq":6,"created_at":1789394764792,"payload":{"reason_code":"idle","reason":"no pending tasks discovered"}}]}

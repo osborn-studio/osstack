@@ -1,0 +1,11 @@
+$ vitest run --passWithNoTests osstack-config.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/governance
+
+ ✓ src/knowledge-hygiene/osstack-config.test.ts (1 test) 87ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  07:20:56
+   Duration  488ms (transform 141ms, setup 0ms, collect 206ms, tests 87ms, environment 0ms, prepare 43ms)
+
