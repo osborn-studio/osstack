@@ -1,0 +1,13 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease run_97705a86: adapter cancellation exit unconfirmed
+ ✓ src/daemon-admission.test.ts (6 tests) 3788ms
+   ✓ keeps a direct adapter's lease past terminal output until producer cleanup, then admits Loop  714ms
+   ✓ cancelled real producer: confirmed=false controls cross-instance admission  1290ms
+   ✓ cancelled real producer: confirmed=true controls cross-instance admission  1274ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  06:21:27
+   Duration  5.54s (transform 950ms, setup 10ms, collect 1.49s, tests 3.79s, environment 0ms, prepare 46ms)

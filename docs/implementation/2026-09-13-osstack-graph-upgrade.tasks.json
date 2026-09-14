@@ -293,10 +293,13 @@
       ],
       "verify": "CORE",
       "size": "M",
-      "status": "pending",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
-      ]
+      ],
+      "completedAt": "2026-09-14",
+      "evidence": "docs/implementation/graph-admission-evidence/admission.json",
+      "acceptedCodeCommit": "055e217f7d4d29e0a93278544efb3b7b5b6f7beb"
     },
     {
       "id": "G09",
@@ -319,10 +322,13 @@
       ],
       "verify": "LOCKS",
       "size": "M",
-      "status": "pending",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
-      ]
+      ],
+      "completedAt": "2026-09-14",
+      "evidence": "docs/implementation/graph-admission-evidence/admission.json",
+      "acceptedCodeCommit": "055e217f7d4d29e0a93278544efb3b7b5b6f7beb"
     },
     {
       "id": "G10",
@@ -346,9 +352,18 @@
       ],
       "verify": "ADMISSION",
       "size": "M",
-      "status": "pending",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "completedAt": "2026-09-14",
+      "evidence": "docs/implementation/graph-admission-evidence/admission.json",
+      "acceptedCodeCommit": "055e217f7d4d29e0a93278544efb3b7b5b6f7beb",
+      "implementationSteps": [
+        "G10a shared admission and lease lifetime",
+        "G10b daemon/graph/Loop integration",
+        "G10c foreground CLI and legacy session paths",
+        "G10d process and compatibility acceptance"
       ]
     },
     {
@@ -851,23 +866,23 @@
       ]
     }
   ],
-  "updatedAt": "2026-09-13",
+  "updatedAt": "2026-09-14",
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "b230eb5b51d3dd1e81dfe789f46f22d12b50f2cc",
-    "completedTaskCount": 8,
+    "acceptedCodeCommit": "055e217f7d4d29e0a93278544efb3b7b5b6f7beb",
+    "completedTaskCount": 11,
     "totalTaskCount": 30,
     "nextTasks": [
-      "G08",
-      "G09",
-      "G10"
+      "G11",
+      "G12",
+      "G13"
     ],
-    "report": "docs/implementation/2026-09-13-graph-c2-completion.md",
-    "nextGate": "C3",
+    "report": "docs/implementation/2026-09-14-graph-admission-completion.md",
+    "nextGate": "C4",
     "milestoneStatus": {
       "M0": "completed",
-      "M1": "pending",
+      "M1": "in_progress",
       "M2": "pending",
       "M3": "pending"
     }
@@ -892,13 +907,26 @@
     },
     {
       "id": "C3",
-      "status": "pending",
+      "status": "passed",
       "tasks": [
         "G08",
         "G09",
         "G10"
       ],
-      "reason": "图 run/worker 身份、共享仓库锁与准入尚未实现。",
+      "reason": "G08/G09 identities and locks plus G10 shared admission accepted through actual Loop verification; production worker/broker not implemented.",
+      "evidence": "docs/implementation/graph-admission-evidence/admission.json",
+      "acceptedCodeCommit": "055e217f7d4d29e0a93278544efb3b7b5b6f7beb",
+      "productionReady": false
+    },
+    {
+      "id": "C4",
+      "status": "pending",
+      "tasks": [
+        "G11",
+        "G12",
+        "G13"
+      ],
+      "reason": "动作账本、受控 broker 和 daemon checkpoint 尚未实现。",
       "evidence": null
     }
   ]

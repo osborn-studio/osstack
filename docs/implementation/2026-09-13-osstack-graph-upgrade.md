@@ -1,8 +1,8 @@
 # OSStack 升级改造实施计划：Loop 强化与可执行 Graph v1
 
-日期：2026-09-13。检查基线：`b476bcc3fbbfcc11953abd3d154e59f7f85c4660`，分支 `codex/graph-readonly-pilot`。**状态：G00–G07 任务实现/可行性验证完成，8/30；C2 对 Functional API + sync 的内核准入已通过，M0 完成。G08–G29 尚未开始，生产图运行时尚未实现。**
+日期：2026-09-13。检查基线：`b476bcc3fbbfcc11953abd3d154e59f7f85c4660`，分支 `codex/graph-readonly-pilot`。**状态：G00–G10 已完成，11/30；C2 Functional API + sync 与 C3 共享身份/锁/准入已通过。M1 继续推进 G11–G13，生产图运行时尚未完成。**
 
-实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；本批已验收代码：`b230eb5b51d3dd1e81dfe789f46f22d12b50f2cc`。按 G08→G09→G10 继续。见 [C2 验收与接续报告](2026-09-13-graph-c2-completion.md)、[G05–G07 历史验收](2026-09-13-graph-kernel-completion.md)、[Saver 决策与反例](graph-saver-decision.md)；[G00–G04 历史验收](2026-09-13-graph-foundation-completion.md) 保留原结论。
+实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；本批已验收代码：`055e217f7d4d29e0a93278544efb3b7b5b6f7beb`。按 G11→G12/G13 继续，见 [C3 验收](2026-09-14-graph-admission-completion.md)与[下一轮上下文](2026-09-14-graph-admission-next-context.md)。见 [C2 验收与接续报告](2026-09-13-graph-c2-completion.md)、[G05–G07 历史验收](2026-09-13-graph-kernel-completion.md)、[Saver 决策与反例](graph-saver-decision.md)；[G00–G04 历史验收](2026-09-13-graph-foundation-completion.md) 保留原结论。
 
 本计划将 [架构设计](../design/2026-09-13-executable-graph-plan.md) 转成可逐项执行的任务，产品边界遵循 [三产品定义](../design/2026-09-13-os-products-definition.md)。OSBot 功能在 [独立 handoff](../handoffs/osbot/handoff.md) 交接；本计划只改造 OSStack，不部署 Rakazo，不修改 OStag 产品。
 
@@ -117,7 +117,7 @@ flowchart TD
   PRODUCT --> GATES[M3：故障 / 兼容 / 性能 / 试点]
 ```
 
-所有任务当前均为 pending；“计划已写完”不会自动改变任务状态。预计每卡一个 S/M 范围；若实施发现超过一个聚焦会话或约 5 个实质源文件，应拆成后缀任务并更新依赖，不能以表内估计硬塞大型改造。
+任务状态以本文件和机器清单的实际验收记录为准；目前 G00–G10 完成，G11–G29 pending。预计每卡一个 S/M 范围；若实施发现超过一个聚焦会话或约 5 个实质源文件，应拆成后缀任务并更新依赖，不能以表内估计硬塞大型改造。
 
 | ID | 阶段 | 任务 | 依赖 |
 |---|---|---|---|
@@ -310,7 +310,7 @@ flowchart TD
 
 ### G08 · 保存图身份和 worker 代际
 
-**依赖：** G05, G07。**规模：** M。**状态：** 未开始。
+**依赖：** G05, G07。**规模：** M。**状态：** 已完成，见 [C3 验收](2026-09-14-graph-admission-completion.md)。
 
 **预计改动位置：**
 
@@ -321,17 +321,17 @@ flowchart TD
 
 **验收：**
 
-- [ ] 新增 graph run、请求摘要、scope、spec/version、lease/generation 和引用索引，迁移使用实施时最新编号。
-- [ ] 同请求同内容返回原 run，不同内容拒绝；CAS/唯一约束覆盖并发与陈旧版本。
-- [ ] 全新 DB、旧版夹具升级、重复打开和未来版本拒绝行为明确。
+- [x] 新增 graph run、请求摘要、scope、spec/version、lease/generation 和引用索引，迁移使用实施时最新编号。
+- [x] 同请求同内容返回原 run，不同内容拒绝；CAS/唯一约束覆盖并发与陈旧版本。
+- [x] 全新 DB、旧版夹具升级、重复打开和未来版本拒绝行为明确。
 
-- [ ] 保存不可变 spec/input digest、executionModel、engine/checkpoint/template/registry/compiler/schema 版本及 compiledProgramDigest；恢复前拒绝程序身份和固定调用顺序不匹配。
+- [x] 保存不可变 spec/input digest、executionModel、engine/checkpoint/template/registry/compiler/schema 版本及 compiledProgramDigest；恢复前拒绝程序身份和固定调用顺序不匹配。
 
 **验证：** `pnpm --filter @osstack/core test`；迁移/状态测试只使用临时数据库夹具。
 
 ### G09 · 统一仓库身份和写者租约
 
-**依赖：** G00, G05。**规模：** M。**状态：** 未开始。
+**依赖：** G00, G05。**规模：** M。**状态：** 已完成，见 [C3 验收](2026-09-14-graph-admission-completion.md)。
 
 **预计改动位置：**
 
@@ -342,15 +342,15 @@ flowchart TD
 
 **验收：**
 
-- [ ] 从可信注册/实际 git common dir 规范化仓库身份，拒绝 caller 伪造/遗漏标识绕锁。
-- [ ] 不同 worktree 的共享 git 元数据操作遵守同一锁范围；无锁标识的受管写操作拒绝。
-- [ ] 租约续期、释放、过期与跨进程竞争有可观察结果，不以纯内存 semaphore 当完整保护。
+- [x] 从可信注册/实际 git common dir 规范化仓库身份，拒绝 caller 伪造/遗漏标识绕锁。
+- [x] 不同 worktree 的共享 git 元数据操作遵守同一锁范围；无锁标识的受管写操作拒绝。
+- [x] 租约续期、释放、过期与跨进程竞争有可观察结果，不以纯内存 semaphore 当完整保护。
 
 **验证：** `pnpm --filter @osstack/autonomy test`；`pnpm --filter @osstack/core test` 中仓库身份夹具覆盖同仓多 worktree。
 
 ### G10 · 提炼共享执行准入
 
-**依赖：** G09, G02。**规模：** M。**状态：** 未开始。
+**依赖：** G09, G02。**规模：** M。**状态：** 已完成，见 [C3 验收](2026-09-14-graph-admission-completion.md)。
 
 **预计改动位置：**
 
@@ -362,9 +362,9 @@ flowchart TD
 
 **验收：**
 
-- [ ] 迁移 daemon 私有门控为共享服务，保留健康检查、scope、grant、预算和锁顺序。
-- [ ] graph/daemon 直接执行/受管 Loop 使用同一准入；不能接入的旧写路径在受管冲突时明确拒绝。
-- [ ] 身份来自可信本地连接/已验证委托；worker 传来的 tenant/principal 不自授权限。
+- [x] 迁移 daemon 私有门控为共享服务，保留健康检查、scope、grant、预算和锁顺序。
+- [x] graph/daemon 直接执行/受管 Loop 使用同一准入；不能接入的旧写路径在受管冲突时明确拒绝。
+- [x] 身份来自可信本地连接/已验证委托；worker 传来的 tenant/principal 不自授权限。
 
 **验证：** `pnpm --filter @osstack/cli exec vitest run src/governed-execution.test.ts src/daemon-policy-gate.test.ts src/daemon-loop.test.ts`；并跑 Loop policy-gate 测试。
 
