@@ -1352,6 +1352,69 @@ export const MIGRATIONS: readonly Migration[] = [
         ON session_continuation_attempts(grant_id) WHERE status IN ('checking','reserved');
     `,
   },
+  {
+    id: 25,
+    name: "graph_run_identity_and_worker_leases",
+    sql: `
+      CREATE TABLE graph_runs (
+        graph_run_id TEXT PRIMARY KEY NOT NULL,
+        scope_json TEXT NOT NULL,
+        source_json TEXT NOT NULL,
+        input_artifact_ref TEXT NOT NULL,
+        template TEXT NOT NULL,
+        identity_json TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('queued','running','ready','failed','cancelled','waiting_input','cancel_pending','reconciliation_required')),
+        generation INTEGER NOT NULL CHECK (typeof(generation) = 'integer' AND generation BETWEEN 0 AND 9007199254740991),
+        revision INTEGER NOT NULL CHECK (typeof(revision) = 'integer' AND revision BETWEEN 0 AND 9007199254740991),
+        lease_owner TEXT,
+        lease_expires_at INTEGER CHECK (lease_expires_at IS NULL OR typeof(lease_expires_at) = 'integer' AND lease_expires_at BETWEEN 0 AND 9007199254740991),
+        lease_acquired_at INTEGER CHECK (lease_acquired_at IS NULL OR typeof(lease_acquired_at) = 'integer' AND lease_acquired_at BETWEEN 0 AND 9007199254740991),
+        created_at INTEGER NOT NULL CHECK (typeof(created_at) = 'integer' AND created_at BETWEEN 0 AND 9007199254740991),
+        updated_at INTEGER NOT NULL CHECK (typeof(updated_at) = 'integer' AND updated_at BETWEEN created_at AND 9007199254740991),
+        CHECK ((generation = 0 AND lease_owner IS NULL AND lease_expires_at IS NULL AND lease_acquired_at IS NULL)
+          OR (generation > 0 AND lease_owner IS NOT NULL AND lease_expires_at IS NOT NULL AND lease_acquired_at IS NOT NULL AND lease_expires_at > lease_acquired_at)),
+        UNIQUE(scope_json, graph_run_id)
+      );
+      CREATE INDEX idx_graph_runs_scope_status ON graph_runs(scope_json, status, created_at, graph_run_id);
+      CREATE INDEX idx_graph_runs_input_ref ON graph_runs(scope_json, input_artifact_ref);
+      CREATE INDEX idx_graph_runs_source_parent ON graph_runs(scope_json, json_extract(source_json, '$.parentRunId'));
+      CREATE INDEX idx_graph_runs_lease_expiry ON graph_runs(lease_expires_at) WHERE lease_owner IS NOT NULL;
+      CREATE TABLE graph_requests (
+        scope_json TEXT NOT NULL,
+        idempotency_key TEXT NOT NULL,
+        graph_run_id TEXT NOT NULL,
+        input_digest TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('start','resume','cancel')),
+        created_at INTEGER NOT NULL CHECK (typeof(created_at) = 'integer' AND created_at BETWEEN 0 AND 9007199254740991),
+        PRIMARY KEY(scope_json, idempotency_key),
+        FOREIGN KEY(scope_json, graph_run_id) REFERENCES graph_runs(scope_json, graph_run_id)
+      );
+      CREATE INDEX idx_graph_requests_run ON graph_requests(graph_run_id);
+      CREATE TABLE graph_worker_leases (
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        generation INTEGER NOT NULL CHECK (typeof(generation) = 'integer' AND generation BETWEEN 1 AND 9007199254740991),
+        owner TEXT NOT NULL,
+        acquired_at INTEGER NOT NULL CHECK (typeof(acquired_at) = 'integer' AND acquired_at BETWEEN 0 AND 9007199254740991),
+        expires_at INTEGER NOT NULL CHECK (typeof(expires_at) = 'integer' AND expires_at > acquired_at AND expires_at <= 9007199254740991),
+        stopped_worker_json TEXT,
+        PRIMARY KEY(graph_run_id, generation),
+        CHECK ((generation = 1 AND stopped_worker_json IS NULL) OR (generation > 1 AND stopped_worker_json IS NOT NULL))
+      );
+      CREATE TRIGGER graph_runs_identity_immutable BEFORE UPDATE OF graph_run_id, scope_json, source_json, input_artifact_ref, template, identity_json, created_at ON graph_runs
+        BEGIN SELECT RAISE(ABORT, 'graph run identity is immutable'); END;
+      CREATE TRIGGER graph_runs_terminal_sealed BEFORE UPDATE ON graph_runs
+        WHEN OLD.status IN ('ready','failed','cancelled')
+        BEGIN SELECT RAISE(ABORT, 'terminal graph run is immutable'); END;
+      CREATE TRIGGER graph_requests_no_update BEFORE UPDATE ON graph_requests
+        BEGIN SELECT RAISE(ABORT, 'graph request is immutable'); END;
+      CREATE TRIGGER graph_requests_no_delete BEFORE DELETE ON graph_requests
+        BEGIN SELECT RAISE(ABORT, 'graph request is immutable'); END;
+      CREATE TRIGGER graph_worker_leases_identity_immutable BEFORE UPDATE OF graph_run_id, generation, owner, acquired_at, stopped_worker_json ON graph_worker_leases
+        BEGIN SELECT RAISE(ABORT, 'graph lease identity is immutable'); END;
+      CREATE TRIGGER graph_worker_leases_no_delete BEFORE DELETE ON graph_worker_leases
+        BEGIN SELECT RAISE(ABORT, 'graph lease history is immutable'); END;
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

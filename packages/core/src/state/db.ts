@@ -78,15 +78,29 @@ export function openDb(opts: OpenDbOptions): Database.Database {
 
   const db = new Database(path, { readonly: !readwrite });
 
-  // Pragmas are applied per-connection in SQLite. Apply on every open.
-  db.pragma("journal_mode = WAL");
-  db.pragma("synchronous = NORMAL");
-  db.pragma(`cache_size = ${PAGE_CACHE_KIB}`);
-  db.pragma("foreign_keys = ON");
-  db.pragma("busy_timeout = 5000");
+  try {
+    // Refuse an unsupported schema before changing journal mode or running DDL,
+    // including read-only inspection. A failed open never escapes with a live handle.
+    assertSupportedVersion(db.pragma("user_version", { simple: true }) as number);
+    // Pragmas are applied per-connection in SQLite. Apply on every open.
+    db.pragma("journal_mode = WAL");
+    db.pragma("synchronous = NORMAL");
+    db.pragma(`cache_size = ${PAGE_CACHE_KIB}`);
+    db.pragma("foreign_keys = ON");
+    db.pragma("busy_timeout = 5000");
 
-  if (readwrite) runMigrations(db);
-  return db;
+    if (readwrite) runMigrations(db);
+    return db;
+  } catch (error) {
+    db.close();
+    throw error;
+  }
+}
+
+function assertSupportedVersion(current: number): void {
+  if (current > CURRENT_SCHEMA_VERSION) {
+    throw new Error(`Migration state inconsistent: user_version=${current}, expected=${CURRENT_SCHEMA_VERSION}`);
+  }
 }
 
 /**
@@ -97,6 +111,7 @@ export function openDb(opts: OpenDbOptions): Database.Database {
 export function runMigrations(db: Database.Database): void {
   const currentRow = db.pragma("user_version", { simple: true }) as number;
   let current = Number(currentRow);
+  assertSupportedVersion(current);
   for (const m of MIGRATIONS) {
     if (m.id <= current) continue;
     db.exec("BEGIN");

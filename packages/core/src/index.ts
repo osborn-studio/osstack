@@ -18,3 +18,12 @@ export * from "./observability/index.js";
 
 export const CORE_VERSION = "0.0.0";
 export { CURRENT_SCHEMA_VERSION } from "./state/migrations.js";
+
+export { GraphRunStore, GraphRunStorageError } from "./state/graph-runs.js";
+export type {
+  GraphProgramVersion, GraphProgramIdentity, GraphStoppedWorkerEvidence,
+  GraphRunFence, GraphLeaseAcquisition, GraphLeaseRenewal, GraphRunProjection,
+  GraphRun, GraphRunStorageErrorCode,
+} from "./state/graph-runs.js";
+export { resolveRepositoryScope } from "./graph/repository-scope.js";
+export type { RepositoryScope } from "./graph/repository-scope.js";

@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -402,5 +402,71 @@ describe("schema incident hardening (G1.4, incident 2026-07-18)", () => {
     expect((db.prepare("SELECT count(*) c FROM sqlite_master WHERE name LIKE 'probe_%' AND type='table'").get() as { c: number }).c).toBeGreaterThan(0);
     db.close();
     rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+
+describe("graph admission migrations", () => {
+  it("upgrades the actual pre-G08 baseline and preserves old rows across repeat opens", () => {
+    const path = join(tmp, "baseline.db");
+    const legacy = new Database(path);
+    for (const migration of MIGRATIONS.filter((m) => m.id <= 24)) legacy.exec(migration.sql);
+    legacy.pragma("user_version = 24");
+    legacy.prepare("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES ('old','old','pending',1,1)").run();
+    legacy.close();
+    for (let i = 0; i < 2; i++) {
+      const db = openDb({ path });
+      try {
+        expect(db.prepare("SELECT title FROM tasks WHERE task_id='old'").get()).toEqual({ title: "old" });
+        expect(db.prepare("SELECT count(*) AS n FROM graph_runs").get()).toEqual({ n: 0 });
+        expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
+        expect(db.pragma("integrity_check", { simple: true })).toBe("ok");
+      } finally { db.close(); }
+    }
+  });
+
+  it("closes the newly opened connection when migration rejects a future version", () => {
+    const path = join(tmp, "future.db");
+    const raw = new Database(path);
+    raw.pragma(`user_version = ${CURRENT_SCHEMA_VERSION + 1}`);
+    raw.close();
+    const close = vi.spyOn(Database.prototype, "close");
+    try {
+      expect(() => openDb({ path })).toThrow(/Migration state inconsistent/);
+      expect(close).toHaveBeenCalledTimes(1);
+    } finally { close.mockRestore(); }
+    const check = new Database(path);
+    try { expect(check.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION + 1); }
+    finally { check.close(); }
+  });
+});
+
+
+describe("failed-open cleanup", () => {
+  it("rejects future schemas on read-only opens too", () => {
+    const path = join(tmp, "readonly-future.db");
+    const raw = new Database(path);
+    raw.pragma(`user_version = ${CURRENT_SCHEMA_VERSION + 1}`);
+    raw.close();
+    expect(() => openDb({ path, readwrite: false })).toThrow(/Migration state inconsistent/);
+  });
+
+  it("closes a connection after a real SQL migration failure and rolls back the failed migration", () => {
+    const path = join(tmp, "broken-baseline.db");
+    const raw = new Database(path);
+    for (const migration of MIGRATIONS.filter((m) => m.id <= 24)) raw.exec(migration.sql);
+    raw.pragma("user_version = 24");
+    raw.exec("CREATE TABLE graph_worker_leases (collision TEXT)");
+    raw.close();
+    const close = vi.spyOn(Database.prototype, "close");
+    try {
+      expect(() => openDb({ path })).toThrow(/already exists/);
+      expect(close).toHaveBeenCalledTimes(1);
+    } finally { close.mockRestore(); }
+    const check = new Database(path);
+    try {
+      expect(check.pragma("user_version", { simple: true })).toBe(24);
+      expect(check.prepare("SELECT name FROM sqlite_master WHERE name='graph_runs'").get()).toBeUndefined();
+    } finally { check.close(); }
   });
 });
