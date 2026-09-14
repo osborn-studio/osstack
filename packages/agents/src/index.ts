@@ -50,6 +50,10 @@ export {
   type OpenAICompatibleNoToolsSemanticJudgeOptions,
 } from "./semantic/openai-compatible-no-tools.js";
 export {
+  cleanupGraphWorktree,
+  quarantineGraphWorktree,
+  type GraphWorktreeRetention,
+  type GraphWorktreeRetentionRecord,
   cleanupOrphanedWorktrees,
   cleanupWorktree,
   commitWorktreeChanges,
