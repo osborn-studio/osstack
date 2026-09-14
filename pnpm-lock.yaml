@@ -124,6 +124,9 @@ importers:
       '@osstack/governance':
         specifier: workspace:*
         version: link:../governance
+      '@osstack/graph':
+        specifier: workspace:*
+        version: link:../graph
       '@osstack/hermes-adapter':
         specifier: workspace:*
         version: link:../hermes-adapter

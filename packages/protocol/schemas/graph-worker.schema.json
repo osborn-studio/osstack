@@ -1,0 +1,546 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Graph Worker IPC",
+  "$comment": "Dedicated length-prefixed fd3 transport; cap raw bytes before allocation and JSON.parse. Host registration supplies authority. done is not process exit evidence.",
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "init"
+        },
+        "binding": {
+          "type": "object",
+          "properties": {
+            "scope": {
+              "type": "object",
+              "properties": {
+                "schemaVersion": {
+                  "type": "number",
+                  "const": 1
+                },
+                "tenantId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "pattern": "^[^\\s\\u0000-\\u001f\\u007f-\\u009f](?:[^\\u0000-\\u001f\\u007f-\\u009f]*[^\\s\\u0000-\\u001f\\u007f-\\u009f])?$"
+                },
+                "principalId": {
+                  "$ref": "#/anyOf/0/properties/binding/properties/scope/properties/tenantId"
+                },
+                "workspaceId": {
+                  "$ref": "#/anyOf/0/properties/binding/properties/scope/properties/tenantId"
+                }
+              },
+              "required": [
+                "schemaVersion",
+                "tenantId",
+                "principalId",
+                "workspaceId"
+              ],
+              "additionalProperties": false
+            },
+            "graphRunId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "generation": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "owner": {
+              "$ref": "#/anyOf/0/properties/binding/properties/graphRunId"
+            },
+            "identity": {
+              "type": "object",
+              "properties": {
+                "executionModel": {
+                  "type": "string",
+                  "const": "langgraph-functional-v1"
+                },
+                "durability": {
+                  "type": "string",
+                  "const": "sync"
+                },
+                "engineVersion": {
+                  "$ref": "#/anyOf/0/properties/binding/properties/graphRunId"
+                },
+                "checkpointVersion": {
+                  "$ref": "#/anyOf/0/properties/binding/properties/graphRunId"
+                },
+                "templateVersion": {
+                  "$ref": "#/anyOf/0/properties/binding/properties/graphRunId"
+                },
+                "registryVersion": {
+                  "$ref": "#/anyOf/0/properties/binding/properties/graphRunId"
+                },
+                "compilerVersion": {
+                  "$ref": "#/anyOf/0/properties/binding/properties/graphRunId"
+                },
+                "schemaVersion": {
+                  "$ref": "#/anyOf/0/properties/binding/properties/graphRunId"
+                },
+                "compiledProgramDigest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "specHash": {
+                  "$ref": "#/anyOf/0/properties/binding/properties/identity/properties/compiledProgramDigest"
+                },
+                "inputDigest": {
+                  "$ref": "#/anyOf/0/properties/binding/properties/identity/properties/compiledProgramDigest"
+                }
+              },
+              "required": [
+                "executionModel",
+                "durability",
+                "engineVersion",
+                "checkpointVersion",
+                "templateVersion",
+                "registryVersion",
+                "compilerVersion",
+                "schemaVersion",
+                "compiledProgramDigest",
+                "specHash",
+                "inputDigest"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "scope",
+            "graphRunId",
+            "generation",
+            "owner",
+            "identity"
+          ],
+          "additionalProperties": false
+        },
+        "programId": {
+          "$ref": "#/anyOf/0/properties/binding/properties/graphRunId"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "input": {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/anyOf/0/properties/binding/properties/scope/properties/schemaVersion"
+            },
+            "scope": {
+              "$ref": "#/anyOf/0/properties/binding/properties/scope"
+            },
+            "idempotencyKey": {
+              "$ref": "#/anyOf/0/properties/binding/properties/scope/properties/tenantId"
+            },
+            "metadata": {
+              "type": "object",
+              "properties": {
+                "trace": {
+                  "type": "object",
+                  "properties": {
+                    "traceId": {
+                      "$ref": "#/anyOf/0/properties/binding/properties/scope/properties/tenantId"
+                    },
+                    "spanId": {
+                      "$ref": "#/anyOf/0/properties/binding/properties/scope/properties/tenantId"
+                    }
+                  },
+                  "required": [
+                    "traceId"
+                  ],
+                  "additionalProperties": false
+                },
+                "requestedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "additionalProperties": false
+            },
+            "kind": {
+              "type": "string",
+              "const": "start"
+            },
+            "spec": {
+              "type": "object",
+              "properties": {
+                "schemaVersion": {
+                  "$ref": "#/anyOf/0/properties/binding/properties/scope/properties/schemaVersion"
+                },
+                "template": {
+                  "type": "string",
+                  "const": "code-delivery-v1"
+                },
+                "input": {
+                  "type": "object",
+                  "properties": {
+                    "taskRef": {
+                      "$ref": "#/anyOf/0/properties/binding/properties/scope/properties/tenantId"
+                    },
+                    "repositoryRef": {
+                      "$ref": "#/anyOf/0/properties/binding/properties/scope/properties/tenantId"
+                    },
+                    "baseRevision": {
+                      "type": "string",
+                      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+                    },
+                    "acceptanceRef": {
+                      "$ref": "#/anyOf/0/properties/binding/properties/scope/properties/tenantId"
+                    }
+                  },
+                  "required": [
+                    "taskRef",
+                    "repositoryRef",
+                    "baseRevision",
+                    "acceptanceRef"
+                  ],
+                  "additionalProperties": false
+                },
+                "limits": {
+                  "type": "object",
+                  "properties": {
+                    "maxEpochs": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 3
+                    },
+                    "maxBranchAttempts": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 32
+                    },
+                    "maxConcurrentReaders": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 64
+                    },
+                    "maxConcurrentWritersPerRepo": {
+                      "type": "number",
+                      "const": 1
+                    },
+                    "maxActionStarts": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 100000
+                    },
+                    "deadlineSeconds": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 604800
+                    },
+                    "tokenReservationLimit": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 1000000000
+                    }
+                  },
+                  "required": [
+                    "maxEpochs",
+                    "maxBranchAttempts",
+                    "maxConcurrentReaders",
+                    "maxConcurrentWritersPerRepo",
+                    "maxActionStarts",
+                    "deadlineSeconds",
+                    "tokenReservationLimit"
+                  ],
+                  "additionalProperties": false
+                },
+                "publication": {
+                  "type": "string",
+                  "const": "artifact_only"
+                }
+              },
+              "required": [
+                "schemaVersion",
+                "template",
+                "input",
+                "limits",
+                "publication"
+              ],
+              "additionalProperties": false
+            },
+            "inputArtifactRef": {
+              "$ref": "#/anyOf/0/properties/binding/properties/scope/properties/tenantId"
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "product": {
+                  "type": "string",
+                  "enum": [
+                    "osstack",
+                    "osbot",
+                    "ostag"
+                  ]
+                },
+                "requestId": {
+                  "$ref": "#/anyOf/0/properties/binding/properties/scope/properties/tenantId"
+                },
+                "parentRunId": {
+                  "$ref": "#/anyOf/0/properties/binding/properties/scope/properties/tenantId"
+                }
+              },
+              "required": [
+                "product",
+                "requestId"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "scope",
+            "idempotencyKey",
+            "kind",
+            "spec",
+            "inputArtifactRef",
+            "source"
+          ],
+          "additionalProperties": false
+        },
+        "resume": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "continue"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "interrupt"
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "maxLength": 16384
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/anyOf/0/properties/resume/anyOf/1/properties/value"
+                      },
+                      "maxItems": 4096
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": {
+                        "$ref": "#/anyOf/0/properties/resume/anyOf/1/properties/value"
+                      },
+                      "propertyNames": {
+                        "maxLength": 256,
+                        "pattern": "^(?!__proto__$|constructor$|prototype$)"
+                      }
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "value"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "heartbeatMs": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 60000
+        },
+        "maxInFlight": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "requestTimeoutMs": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 300000
+        }
+      },
+      "required": [
+        "kind",
+        "binding",
+        "programId",
+        "source",
+        "input",
+        "heartbeatMs",
+        "maxInFlight",
+        "requestTimeoutMs"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "ready"
+        },
+        "binding": {
+          "$ref": "#/anyOf/0/properties/binding"
+        }
+      },
+      "required": [
+        "kind",
+        "binding"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "heartbeat"
+        },
+        "binding": {
+          "$ref": "#/anyOf/0/properties/binding"
+        }
+      },
+      "required": [
+        "kind",
+        "binding"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "cancel"
+        },
+        "binding": {
+          "$ref": "#/anyOf/0/properties/binding"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "kind",
+        "binding",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "request"
+        },
+        "binding": {
+          "$ref": "#/anyOf/0/properties/binding"
+        },
+        "id": {
+          "$ref": "#/anyOf/0/properties/binding/properties/graphRunId"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "action",
+            "checkpoint"
+          ]
+        },
+        "payload": {}
+      },
+      "required": [
+        "kind",
+        "binding",
+        "id",
+        "method"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "response"
+        },
+        "binding": {
+          "$ref": "#/anyOf/0/properties/binding"
+        },
+        "id": {
+          "$ref": "#/anyOf/0/properties/binding/properties/graphRunId"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "payload": {},
+        "error": {
+          "type": "string",
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "kind",
+        "binding",
+        "id",
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "done"
+        },
+        "binding": {
+          "$ref": "#/anyOf/0/properties/binding"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "value": {
+          "$ref": "#/anyOf/0/properties/resume/anyOf/1/properties/value"
+        },
+        "error": {
+          "type": "string",
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "kind",
+        "binding",
+        "ok"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

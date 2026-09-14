@@ -100,3 +100,8 @@ export {
   parseGraphCheckpointRequest, parseGraphCheckpointResponse,
 } from './graph-checkpoint.js';
 export type { GraphCheckpointTransport } from './graph-checkpoint.js';
+
+export {
+  GRAPH_WORKER_MAX_FRAME_BYTES, GraphWorkerIdentity, GraphWorkerBinding, GraphWorkerResume, GraphWorkerMessage,
+  WorkerFrameDecoder, WorkerFramedTransport, encodeWorkerFrame, workerCanonical, freezeWorkerData,
+} from './graph-worker.js';
