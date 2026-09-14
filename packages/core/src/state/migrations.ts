@@ -1415,6 +1415,52 @@ export const MIGRATIONS: readonly Migration[] = [
         BEGIN SELECT RAISE(ABORT, 'graph lease history is immutable'); END;
     `,
   },
+  {
+    id: 26,
+    name: "graph_action_ledger_and_original_budget",
+    sql: `
+      ALTER TABLE graph_runs ADD COLUMN spec_json TEXT;
+      CREATE TRIGGER graph_runs_spec_immutable BEFORE UPDATE OF spec_json ON graph_runs
+        BEGIN SELECT RAISE(ABORT, 'graph original spec is immutable'); END;
+      CREATE TABLE graph_actions (
+        effect_key TEXT PRIMARY KEY,
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        epoch INTEGER NOT NULL CHECK (typeof(epoch) = 'integer' AND epoch BETWEEN 0 AND 2),
+        node_id TEXT NOT NULL,
+        effect_slot TEXT NOT NULL,
+        logical_attempt INTEGER NOT NULL CHECK (typeof(logical_attempt) = 'integer' AND logical_attempt BETWEEN 1 AND 9007199254740991),
+        effect_json TEXT NOT NULL,
+        action_json TEXT NOT NULL,
+        business_digest TEXT NOT NULL,
+        generation INTEGER NOT NULL CHECK (typeof(generation) = 'integer' AND generation BETWEEN 1 AND 9007199254740991),
+        reservation_tokens INTEGER NOT NULL CHECK (typeof(reservation_tokens) = 'integer' AND reservation_tokens BETWEEN 0 AND 9007199254740991),
+        state TEXT NOT NULL CHECK (state IN ('intent','running','confirmed','failed','unknown','cancel_pending')),
+        execution_ref TEXT,
+        outcome_json TEXT,
+        uncertainty_json TEXT,
+        actual_tokens INTEGER CHECK (actual_tokens IS NULL OR (typeof(actual_tokens) = 'integer' AND actual_tokens BETWEEN 0 AND 9007199254740991)),
+        observed_tokens INTEGER NOT NULL DEFAULT 0 CHECK (typeof(observed_tokens) = 'integer' AND observed_tokens BETWEEN 0 AND 9007199254740991),
+        accounting_blocked INTEGER NOT NULL DEFAULT 0 CHECK (accounting_blocked IN (0,1)),
+        retry_safe INTEGER NOT NULL DEFAULT 0 CHECK (retry_safe IN (0,1)),
+        created_at INTEGER NOT NULL CHECK (typeof(created_at) = 'integer' AND created_at BETWEEN 0 AND 9007199254740991),
+        updated_at INTEGER NOT NULL CHECK (typeof(updated_at) = 'integer' AND updated_at BETWEEN created_at AND 9007199254740991),
+        UNIQUE(graph_run_id, epoch, node_id, effect_slot, logical_attempt),
+        CHECK ((state IN ('confirmed','failed')) = (outcome_json IS NOT NULL)),
+        CHECK (retry_safe = 0 OR state = 'failed'),
+        CHECK (actual_tokens IS NULL OR state IN ('confirmed','failed'))
+      );
+      CREATE INDEX idx_graph_actions_run_state ON graph_actions(graph_run_id, state);
+      CREATE TRIGGER graph_actions_identity_immutable BEFORE UPDATE OF effect_key, graph_run_id, epoch, node_id,
+        effect_slot, logical_attempt, effect_json, action_json, business_digest, generation, reservation_tokens, created_at ON graph_actions
+        BEGIN SELECT RAISE(ABORT, 'graph action identity is immutable'); END;
+      CREATE TRIGGER graph_actions_outcome_immutable BEFORE UPDATE ON graph_actions
+        WHEN OLD.state IN ('confirmed','failed')
+        BEGIN SELECT RAISE(ABORT, 'graph action outcome is immutable'); END;
+      CREATE TRIGGER graph_actions_no_delete BEFORE DELETE ON graph_actions
+        BEGIN SELECT RAISE(ABORT, 'graph action history is immutable'); END;
+    `,
+  },
+
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

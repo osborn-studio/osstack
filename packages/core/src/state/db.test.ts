@@ -470,3 +470,42 @@ describe("failed-open cleanup", () => {
     } finally { check.close(); }
   });
 });
+
+
+describe("graph ledger migration 26", () => {
+  it("upgrades populated v25 graph history, leaves missing original specs explicit, and reserves v27 for checkpoints", () => {
+    const path = join(tmp, "graph-v25.db");
+    const old = new Database(path);
+    for (const migration of MIGRATIONS.filter((m) => m.id <= 25)) old.exec(migration.sql);
+    old.prepare(`INSERT INTO graph_runs (graph_run_id, scope_json, source_json, input_artifact_ref,
+      template, identity_json, status, generation, revision, created_at, updated_at)
+      VALUES ('legacy', '{}', '{}', 'input', 'code-delivery-v1', '{}', 'queued', 0, 0, 1, 1)`).run();
+    old.pragma("user_version = 25"); old.close();
+    for (let i = 0; i < 2; i++) {
+      const db = openDb({ path });
+      try {
+        expect(db.prepare("SELECT graph_run_id, spec_json, revision FROM graph_runs").get())
+          .toEqual({ graph_run_id: "legacy", spec_json: null, revision: 0 });
+        expect(db.prepare("SELECT count(*) AS n FROM graph_actions").get()).toEqual({ n: 0 });
+        expect(() => db.prepare("UPDATE graph_runs SET spec_json = '{}' WHERE graph_run_id = 'legacy'").run()).toThrow(/immutable/);
+        expect(db.pragma("integrity_check", { simple: true })).toBe("ok");
+      } finally { db.close(); }
+    }
+    expect(MIGRATIONS.find((m) => m.id === 26)?.name).toBe("graph_action_ledger_and_original_budget");
+  });
+
+  it("rolls back ALTER and all ledger DDL when migration 26 fails", () => {
+    const path = join(tmp, "graph-v26-failure.db");
+    const old = new Database(path);
+    for (const migration of MIGRATIONS.filter((m) => m.id <= 25)) old.exec(migration.sql);
+    old.pragma("user_version = 25");
+    old.exec("CREATE TABLE graph_actions (collision TEXT)"); old.close();
+    expect(() => openDb({ path })).toThrow(/already exists/);
+    const check = new Database(path);
+    try {
+      expect(check.pragma("user_version", { simple: true })).toBe(25);
+      expect((check.prepare("PRAGMA table_info(graph_runs)").all() as { name: string }[]).map((r) => r.name)).not.toContain("spec_json");
+      expect(check.prepare("SELECT name FROM sqlite_master WHERE name='graph_runs_spec_immutable'").get()).toBeUndefined();
+    } finally { check.close(); }
+  });
+});

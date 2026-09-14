@@ -25,11 +25,11 @@ const stoppedSchema = z.object({
  * Caller must verify the receipt and independently reconcile/stop external actions
  * and isolate old workspaces before takeover. This store cannot inspect processes. */
 export type GraphStoppedWorkerEvidence = z.infer<typeof stoppedSchema>;
-const fenceSchema = z.object({
+export const graphRunFenceSchema = z.object({
   scope: GraphScope, graphRunId: text, expectedGeneration: counter, expectedRevision: counter,
   expectedOwner: text.nullable(), identity: identitySchema, now: counter,
 }).strict();
-export type GraphRunFence = z.infer<typeof fenceSchema>;
+export type GraphRunFence = z.infer<typeof graphRunFenceSchema>;
 export interface GraphLeaseAcquisition extends GraphRunFence {
   owner: string;
   leaseExpiresAt: number;
@@ -37,9 +37,9 @@ export interface GraphLeaseAcquisition extends GraphRunFence {
 }
 export interface GraphLeaseRenewal extends GraphRunFence { leaseExpiresAt: number }
 export interface GraphRunProjection extends GraphRunFence { status: GraphRunState }
-const acquireSchema = fenceSchema.extend({ owner: text, leaseExpiresAt: counter, stoppedWorker: stoppedSchema.optional() });
-const renewSchema = fenceSchema.extend({ leaseExpiresAt: counter });
-const projectSchema = fenceSchema.extend({ status: GraphRunState });
+const acquireSchema = graphRunFenceSchema.extend({ owner: text, leaseExpiresAt: counter, stoppedWorker: stoppedSchema.optional() });
+const renewSchema = graphRunFenceSchema.extend({ leaseExpiresAt: counter });
+const projectSchema = graphRunFenceSchema.extend({ status: GraphRunState });
 
 export interface GraphRun {
   graphRunId: string;
@@ -48,6 +48,8 @@ export interface GraphRun {
   inputArtifactRef: string;
   template: StartGraphRequest["spec"]["template"];
   identity: GraphProgramIdentity;
+  /** Original immutable start spec; null for pre-migration-26 runs. */
+  spec: StartGraphRequest["spec"] | null;
   status: GraphRunState;
   generation: number;
   revision: number;
@@ -80,12 +82,13 @@ function increment(value: number): number {
 }
 interface RunRow {
   graph_run_id: string; scope_json: string; source_json: string; input_artifact_ref: string; template: GraphRun["template"];
-  identity_json: string; status: GraphRunState; generation: number; revision: number;
+  spec_json: string | null; identity_json: string; status: GraphRunState; generation: number; revision: number;
   lease_owner: string | null; lease_expires_at: number | null; lease_acquired_at: number | null; created_at: number; updated_at: number;
 }
 function decode(row: RunRow): GraphRun {
   return { graphRunId: row.graph_run_id, scope: JSON.parse(row.scope_json) as GraphScope,
     source: JSON.parse(row.source_json) as StartGraphRequest["source"], inputArtifactRef: row.input_artifact_ref,
+    spec: row.spec_json === null ? null : JSON.parse(row.spec_json) as StartGraphRequest["spec"],
     template: row.template, identity: JSON.parse(row.identity_json) as GraphProgramIdentity,
     status: row.status, generation: row.generation, revision: row.revision, leaseOwner: row.lease_owner,
     leaseExpiresAt: row.lease_expires_at, leaseAcquiredAt: row.lease_acquired_at, createdAt: row.created_at, updatedAt: row.updated_at };
@@ -135,9 +138,9 @@ export class GraphRunStore {
       }
       const id = randomUUID();
       this.db.prepare(`INSERT INTO graph_runs (graph_run_id, scope_json, source_json, input_artifact_ref,
-        template, identity_json, status, generation, revision, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'queued', 0, 0, ?, ?)`)
-        .run(id, scopeJson, canonical(request.source), request.inputArtifactRef, request.spec.template, canonical(identity), now, now);
+        template, identity_json, spec_json, status, generation, revision, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', 0, 0, ?, ?)`)
+        .run(id, scopeJson, canonical(request.source), request.inputArtifactRef, request.spec.template, canonical(identity), canonical(request.spec), now, now);
       this.db.prepare(`INSERT INTO graph_requests (scope_json, idempotency_key, graph_run_id, input_digest, kind, created_at)
         VALUES (?, ?, ?, ?, 'start', ?)`).run(scopeJson, request.idempotencyKey, id, inputDigest, now);
       return this.get(request.scope, id)!;
@@ -145,16 +148,7 @@ export class GraphRunStore {
   }
 
   private checked(input: GraphRunFence, requireLive: boolean): GraphRun {
-    const run = this.get(input.scope, input.graphRunId) ?? fail("RUN_NOT_FOUND");
-    if (canonical(run.identity) !== canonical(input.identity)) fail("PROGRAM_IDENTITY_MISMATCH");
-    if (run.generation !== input.expectedGeneration) fail("STALE_GENERATION");
-    if (run.revision !== input.expectedRevision) fail("REVISION_CONFLICT");
-    if (run.leaseOwner !== input.expectedOwner) fail("OWNER_MISMATCH");
-    if (["ready", "failed", "cancelled"].includes(run.status)) fail("TERMINAL_RUN");
-    if (input.now < run.updatedAt) fail("INVALID_TIME");
-    if (requireLive && (run.generation === 0 || run.leaseExpiresAt === null || run.leaseExpiresAt <= input.now)) fail("LEASE_EXPIRED");
-    increment(run.revision);
-    return run;
+    return checkGraphRunFence(this.get(input.scope, input.graphRunId), input, requireLive);
   }
 
   acquireLease(value: GraphLeaseAcquisition): GraphRun {
@@ -238,4 +232,18 @@ export class GraphRunStore {
       .run(input.status, increment(run.revision), input.now, run.graphRunId, run.generation, run.revision);
     return this.get(input.scope, run.graphRunId)!;
   }
+}
+
+/** Internal shared storage check; call only while holding the SQLite write transaction. */
+export function checkGraphRunFence(value: GraphRun | null, input: GraphRunFence, requireLive: boolean): GraphRun {
+  const run = value ?? fail("RUN_NOT_FOUND");
+  if (canonical(run.identity) !== canonical(input.identity)) fail("PROGRAM_IDENTITY_MISMATCH");
+  if (run.generation !== input.expectedGeneration) fail("STALE_GENERATION");
+  if (run.revision !== input.expectedRevision) fail("REVISION_CONFLICT");
+  if (run.leaseOwner !== input.expectedOwner) fail("OWNER_MISMATCH");
+  if (["ready", "failed", "cancelled"].includes(run.status)) fail("TERMINAL_RUN");
+  if (input.now < run.updatedAt) fail("INVALID_TIME");
+  if (requireLive && (run.generation === 0 || run.leaseExpiresAt === null || run.leaseExpiresAt <= input.now)) fail("LEASE_EXPIRED");
+  increment(run.revision);
+  return run;
 }

@@ -54,6 +54,19 @@ describe("graph run storage", () => {
     expect(() => store.create({ ...request, inputArtifactRef: "changed" }, program, 102)).toThrow(/IDEMPOTENCY_CONFLICT/);
   });
 
+  it("persists the original spec and limits without allowing refresh or caller mutation to reset them", () => {
+    const original = store.create(request, program, 100);
+    expect(original.spec).toEqual(request.spec);
+    original.spec!.limits.tokenReservationLimit = 999;
+    expect(store.get(scope, original.graphRunId)?.spec).toEqual(request.spec);
+    const leased = claim(store.get(scope, original.graphRunId)!);
+    expect(store.renewLease({ ...fence(leased, 120), leaseExpiresAt: 300 }).spec).toEqual(request.spec);
+    expect(() => db.prepare("UPDATE graph_runs SET spec_json = ? WHERE graph_run_id = ?")
+      .run(JSON.stringify(original.spec), original.graphRunId)).toThrow(/immutable/);
+    expect(() => store.create({ ...request, spec: { ...request.spec, limits: { ...request.spec.limits, maxActionStarts: 100 } } }, program, 121))
+      .toThrow(/IDEMPOTENCY_CONFLICT/);
+  });
+
   it.each(["tenantId", "principalId", "workspaceId"] as const)("isolates requests and reads by %s", (field) => {
     const run = store.create(request, program, 100);
     const different = { ...scope, [field]: "other" };
