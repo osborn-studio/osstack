@@ -1536,6 +1536,29 @@ export const MIGRATIONS: readonly Migration[] = [
         BEGIN SELECT RAISE(ABORT, 'graph worker launch immutable'); END;
     `,
   },
+  {
+    id: 30,
+    name: "graph_action_admissions",
+    sql: `
+      CREATE TABLE graph_action_admissions (
+        effect_key TEXT PRIMARY KEY REFERENCES graph_actions(effect_key),
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        generation INTEGER NOT NULL,
+        owner TEXT NOT NULL,
+        held_at INTEGER NOT NULL CHECK(held_at >= 0 AND held_at <= 9007199254740991),
+        released_at INTEGER CHECK(released_at >= held_at AND released_at <= 9007199254740991),
+        FOREIGN KEY(graph_run_id,generation) REFERENCES graph_worker_leases(graph_run_id,generation)
+      );
+      CREATE INDEX graph_admissions_pending ON graph_action_admissions(graph_run_id) WHERE released_at IS NULL;
+      CREATE TRIGGER graph_admissions_identity_immutable BEFORE UPDATE OF effect_key,graph_run_id,generation,owner,held_at ON graph_action_admissions
+        BEGIN SELECT RAISE(ABORT, 'graph admission identity immutable'); END;
+      CREATE TRIGGER graph_admissions_release_immutable BEFORE UPDATE OF released_at ON graph_action_admissions
+        WHEN OLD.released_at IS NOT NULL AND NEW.released_at IS NOT OLD.released_at
+        BEGIN SELECT RAISE(ABORT, 'graph admission release immutable'); END;
+      CREATE TRIGGER graph_admissions_no_delete BEFORE DELETE ON graph_action_admissions
+        BEGIN SELECT RAISE(ABORT, 'graph admission history immutable'); END;
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

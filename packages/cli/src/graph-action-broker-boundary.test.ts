@@ -228,3 +228,25 @@ it('rechecks explicit retry authority after adapter availability and before a ne
   expect(await broker.retryAuthorized(retryConnection, row.effect_key, () => { if (!retryAllowed) throw new Error('retry grant revoked'); })).toMatchObject({ kind: 'worker_action_rejected' });
   expect(invokes).toBe(0); expect(f.writes.in_use).toBe(0);
 });
+it('refuses terminal projection while a confirmed effect still owns a retained admission', async () => {
+  const f = fixture(actor(async function* (task) { yield done(task); }));
+  const broker = new GraphActionBroker(f.db, { ...f.options, acquire: async input => {
+    const lease = await f.admission.acquire(input);
+    return { ...lease, release: async () => { lease.retain('release failure'); throw new Error('release failure'); } };
+  } });
+  const connection = {}; broker.register(connection, f.registration);
+  await expect(broker.handle(connection, f.request)).rejects.toThrow('release failure');
+  const run = f.runs.get(scope, f.run.graphRunId)!;
+  expect(() => f.runs.project({ ...fence(run), status: 'failed' })).toThrow('ADMISSION_RELEASE_PENDING');
+});
+it('recovers a lost admission-release DB acknowledgement without quarantining an already released physical lease', async () => {
+  const f = fixture(actor(async function* (task) { yield done(task); }));
+  f.db.exec("CREATE TRIGGER fail_release BEFORE UPDATE OF released_at ON graph_action_admissions BEGIN SELECT RAISE(ABORT, 'lost release ack'); END");
+  await expect(f.broker.handle(f.connection, f.request)).rejects.toThrow('lost release ack');
+  const { effect_key: key } = f.db.prepare('SELECT effect_key FROM graph_actions').get() as { effect_key: string };
+  expect(f.writes.in_use).toBe(0);
+  f.db.exec('DROP TRIGGER fail_release'); let verified = 0;
+  expect(await f.broker.releaseReconciled(key, async () => { verified++; })).toBe(true);
+  expect(verified).toBeGreaterThan(0);
+  const next = await f.admission.acquire({ kind: 'write', runId: 'after-release-ack', workspacePath: f.repo }); await next.release();
+});

@@ -1,3 +1,4 @@
+import { GraphAdmissionStore } from "@osstack/core/graph-recovery";
 import { randomUUID } from "node:crypto";
 import { isAbsolute } from "node:path";
 import type Database from "better-sqlite3";
@@ -103,9 +104,11 @@ export class GraphActionBroker {
   private readonly connections = new WeakMap<object, Binding>();
   private readonly retired = new WeakSet<object>();
   private readonly retained = new Map<string, { lease: ExecutionLease; context: GraphRetainedAction }>();
+  private readonly admissions: GraphAdmissionStore;
   private readonly runs: GraphRunStore;
   private readonly actions: GraphActionStore;
   constructor(db: Database.Database, private readonly options: GraphActionBrokerOptions) {
+    this.admissions = new GraphAdmissionStore(db);
     this.runs = new GraphRunStore(db); this.actions = new GraphActionStore(db);
   }
 
@@ -186,7 +189,10 @@ export class GraphActionBroker {
     const entry = this.retained.get(effectKey);
     if (!entry) return false;
     if (!entry.lease.releaseAfterReconciliation) throw new Error("lease reconciliation unsupported");
+    const verification: unknown = await verify(snapshot(entry.context));
+    if (verification !== undefined) throw new Error("invalid reconciliation authority");
     await entry.lease.releaseAfterReconciliation(() => verify(snapshot(entry.context)));
+    this.admissions.released(effectKey, this.options.now?.() ?? Date.now());
     this.retained.delete(effectKey);
     return true;
   }
@@ -273,6 +279,7 @@ export class GraphActionBroker {
       owned = intent.action;
       lease = await this.options.acquire({ kind: action.access, runId: `graph-action:${owned.effectKey}`, workspacePath: binding.workspace.workspace_path,
         signal, authorize: async () => { check(); await this.options.authorizePolicy?.(binding.workspace.workspace_path); check(); } });
+      this.admissions.hold(owned.effectKey, this.options.now?.() ?? Date.now());
       check();
       // This synchronous gate runs inside the actual adapter invoke/command/host
       // handler call, after G04's async authorization and availability windows.
@@ -347,11 +354,15 @@ export class GraphActionBroker {
   }
 
   private async releaseAdmission(lease: ExecutionLease, binding: Binding | undefined, owned: GraphAction | undefined): Promise<void> {
-    try { await lease.release(); }
+    let physicallyReleased = false;
+    try {
+      await lease.release(); physicallyReleased = true;
+      if (owned) this.admissions.released(owned.effectKey, this.options.now?.() ?? Date.now());
+    }
     catch (error) {
       // Release failure deliberately stops the chain without replacing durable
       // effect truth. Keep its exact admission reachable for release-only recovery.
-      lease.retain(String(error));
+      if (!physicallyReleased) lease.retain(String(error));
       if (binding && owned) this.retained.set(owned.effectKey, { lease, context: {
         effectKey: owned.effectKey, scope: binding.scope, graphRunId: binding.graphRunId,
         generation: binding.generation, owner: binding.owner, workspacePath: binding.workspace.workspace_path,

@@ -148,10 +148,23 @@ it('acknowledges an exact lost takeover response without stopping the replacemen
 it('refuses old-generation release replay before stopping a replacement worker', async () => {
   registration.release = async () => { throw new Error('release failed'); }; install();
   run = (await reconciler.reconcile(connection, request())).result.run;
+  registration.release = async (_result, reverify) => { await reverify(); }; install();
+  await reconciler.reconcile(connection, { ...request(), fence: { ...fence(), now: 130 } });
   run = (await reconciler.reconcile(connection, { kind: 'takeover', fence: { ...fence(), now: 130 }, receiptId: 'takeover', owner: 'replacement', leaseExpiresAt: 300 })).result.run;
   const stop = vi.fn(async () => { throw new Error('replacement must remain running'); });
   registration = { ...registration, binding: { ...registration.binding, generation: run.generation, owner: run.leaseOwner }, stopWorker: stop };
   connection = {}; install();
   await expect(reconciler.reconcile(connection, { ...request(), fence: { ...fence(), now: 130 } })).rejects.toThrow('RECOVERY_GENERATION_CHANGED');
   expect(stop).not.toHaveBeenCalled();
+});
+it('blocks takeover and terminal sealing until durable resource release completes after restart', async () => {
+  registration.release = async () => { throw new Error('release failed'); }; install();
+  run = (await reconciler.reconcile(connection, request())).result.run;
+  const currentFence = { ...fence(), now: 130 };
+  await expect(reconciler.reconcile(connection, { kind: 'takeover', fence: currentFence, receiptId: 'premature', owner: 'next', leaseExpiresAt: 300 })).rejects.toThrow('ADMISSION_RELEASE_PENDING');
+  expect(() => runs.project({ ...currentFence, status: 'failed' })).toThrow('ADMISSION_RELEASE_PENDING');
+  db.close(); db = openDb({ path: join(dir, 'state.db') }); runs = new GraphRunStore(db);
+  registration.release = async (_result, reverify) => { await reverify(); }; install();
+  expect((await reconciler.reconcile(connection, { ...request(), fence: currentFence })).exit).toBe('applied');
+  expect(runs.project({ ...currentFence, status: 'ready' }).status).toBe('ready');
 });

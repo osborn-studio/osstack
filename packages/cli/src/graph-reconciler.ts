@@ -97,15 +97,16 @@ export class GraphReconciler {
     try { return fn(); } finally { this.attestation = undefined; }
   }
   private async release(connection: object, registration: GraphReconcilerRegistration, result: GraphRecoveryResult): Promise<void> {
-    const reverify = async () => {
+    const reverify = async (completed = false) => {
       const run = result.run;
       const snapshot = this.store.snapshot({ scope: run.scope, graphRunId: run.graphRunId, identity: run.identity,
         expectedGeneration: run.generation, expectedRevision: run.revision, expectedOwner: run.leaseOwner, now: this.now() }, result.action?.effectKey);
       const proof = await this.proof(connection, registration, snapshot);
-      this.verified(connection, registration, snapshot, proof, result.record.decision, () => this.store.verifyRelease(snapshot, result.record.decision.receiptId, proof, this.now()));
+      this.verified(connection, registration, snapshot, proof, result.record.decision, () => completed ? this.store.completeRelease(snapshot, result.record.decision.receiptId, proof, this.now()) : this.store.verifyRelease(snapshot, result.record.decision.receiptId, proof, this.now()));
     };
     await reverify();
-    authority(await registration.release(structuredClone(result), reverify));
+    authority(await registration.release(structuredClone(result), () => reverify()));
+    await reverify(true);
   }
   async reconcile(connection: object, value: GraphReconciliationRequest): Promise<GraphReconciliationResult> {
     // Parse/clone every request field before the first await. No worker-selected callback.

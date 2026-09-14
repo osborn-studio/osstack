@@ -135,6 +135,8 @@ describe("trusted graph recovery", () => {
     const done = commit({ kind: "effect", receiptId: "absent", verdict: { outcome: "not_applied", evidenceRef: "absent", actualTokens: 0, error: null } });
     expect(done.action?.retrySafe).toBe(true);
     expect(actions.get(fence(130), key).budget).toMatchObject({ actionStarts: 1, chargedTokens: "40" });
+    expect(() => actions.retry(fence(130), key)).toThrow('ADMISSION_RELEASE_PENDING');
+    const release = snapshot(130); recovery.completeRelease(release, 'absent', proof(release), 130);
     const retry = actions.retry(fence(130), key);
     expect(retry.action).toMatchObject({ state: "intent", effect: { logicalAttempt: 2 } });
     expect(retry.budget.actionStarts).toBe(2);
@@ -143,6 +145,7 @@ describe("trusted graph recovery", () => {
     const first = recovery.snapshot(fence(210)); const p = proof(first, 220);
     expect(() => recovery.commit(first, { kind: "takeover", receiptId: "takeover", owner: "next", leaseExpiresAt: 500 }, p, 220)).toThrow(/UNRESOLVED_ACTION/);
     commit(applied, 220);
+    const release = snapshot(220); recovery.completeRelease(release, 'receipt', proof(release, 220), 220);
     const settled = recovery.snapshot(fence(220)); const verified = proof(settled, 230);
     run = recovery.commit(settled, { kind: "takeover", receiptId: "takeover", owner: "next", leaseExpiresAt: 500 }, verified, 230).run;
     expect(run).toMatchObject({ generation: 2, leaseOwner: "next" });
@@ -215,4 +218,17 @@ it('refuses a no-child proof when that generation has admitted actions', () => {
     owner: run.leaseOwner!, confirmedAt: 125, evidenceRef: 'worker-not-started:forged' } };
   trusted.add(proofKey(p));
   expect(() => recovery.commit(s, { kind: 'project', receiptId: 'forged-no-child', status: 'waiting_input' }, p, 130)).toThrow('WORKER_PROOF_MISMATCH');
+});
+it('persists the admission obligation until an authenticated completed release and seals its history', () => {
+  commit();
+  const held = db.prepare('SELECT released_at FROM graph_action_admissions WHERE effect_key=?').get(key);
+  expect(held).toEqual({ released_at: null });
+  const s = snapshot(130); const p = proof(s);
+  expect(() => recovery.completeRelease(s, 'receipt', { ...p, executorEvidenceRef: 'forged' }, 130)).toThrow('FORGED_PROOF');
+  expect(() => runs.acquireLease({ ...fence(130), owner: 'premature', leaseExpiresAt: 300,
+    stoppedWorker: { graphRunId: run.graphRunId, generation: run.generation, owner: run.leaseOwner!, confirmedAt: 130, evidenceRef: 'stop' } })).toThrow('ADMISSION_RELEASE_PENDING');
+  recovery.completeRelease(s, 'receipt', p, 130);
+  expect(db.prepare('SELECT released_at FROM graph_action_admissions WHERE effect_key=?').get(key)).toEqual({ released_at: 130 });
+  expect(() => db.exec('UPDATE graph_action_admissions SET released_at=NULL')).toThrow('immutable');
+  expect(() => db.exec('DELETE FROM graph_action_admissions')).toThrow('immutable');
 });

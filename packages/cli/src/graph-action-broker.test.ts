@@ -130,8 +130,12 @@ it.each(["revoke", "generation"])("fences %s after G04 asynchronous availability
   await expect.poll(() => probing).toBe(true);
   if (kind === "revoke") f.revoke();
   else { const current = f.runs.get(scope, f.run.graphRunId)!; const now = Date.now();
-    f.runs.acquireLease({ ...fence(current), now, owner: "new-worker", leaseExpiresAt: Date.now() + 120_000,
-      stoppedWorker: { graphRunId: current.graphRunId, generation: current.generation, owner: current.leaseOwner!, confirmedAt: now, evidenceRef: "host-exit" } }); }
+    expect(() => f.runs.acquireLease({ ...fence(current), now, owner: "new-worker", leaseExpiresAt: Date.now() + 120_000,
+      stoppedWorker: { graphRunId: current.graphRunId, generation: current.generation, owner: current.leaseOwner!, confirmedAt: now, evidenceRef: "host-exit" } })).toThrow('ADMISSION_RELEASE_PENDING');
+    // The supported takeover now refuses held admissions. Still fault-inject an
+    // out-of-protocol state change to prove the final invocation fence holds.
+    f.db.prepare("UPDATE graph_runs SET generation=generation+1,revision=revision+1,lease_owner='new-worker' WHERE graph_run_id=?").run(current.graphRunId);
+  }
   release(); expect(await pending).toMatchObject({ kind: "worker_action_rejected" }); expect(count).toBe(0); expect(f.writes.in_use).toBe(0);
 });
 it("fences confirmed replay before lookup and keeps effect identity across a trusted fresh generation", async () => {

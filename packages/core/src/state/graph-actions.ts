@@ -65,7 +65,7 @@ export interface GraphActionResult {
   action: GraphAction; run: GraphRun; budget: GraphActionBudget;
   created: boolean; changed: boolean;
 }
-export type GraphActionStorageErrorCode = "ORIGINAL_BUDGET_MISSING" | "ACTION_NOT_FOUND" | "ACTION_INPUT_CONFLICT"
+export type GraphActionStorageErrorCode = "ADMISSION_RELEASE_PENDING" | "ORIGINAL_BUDGET_MISSING" | "ACTION_NOT_FOUND" | "ACTION_INPUT_CONFLICT"
   | "UNRESOLVED_ACTION" | "RETRY_NOT_SAFE" | "NOT_CURRENT_ATTEMPT" | "ACTION_GENERATION_MISMATCH"
   | "INVALID_ACTION_STATE" | "OUTCOME_CONFLICT" | "EXECUTION_CONFLICT" | "EPOCH_BUDGET_EXHAUSTED"
   | "BRANCH_BUDGET_EXHAUSTED" | "ACTION_BUDGET_EXHAUSTED" | "WALL_CLOCK_BUDGET_EXHAUSTED"
@@ -204,6 +204,7 @@ export class GraphActionStore {
       const prior = this.find(run, effectKey);
       if (this.current(run, prior.effect)!.effectKey !== effectKey) fail("NOT_CURRENT_ATTEMPT");
       if (prior.state !== "failed" || !prior.retrySafe) fail("RETRY_NOT_SAFE");
+      if (this.db.prepare("SELECT 1 FROM graph_action_admissions WHERE effect_key=? AND released_at IS NULL").get(effectKey)) fail("ADMISSION_RELEASE_PENDING");
       const input = { epoch: prior.effect.epoch, nodeId: prior.effect.nodeId, effectSlot: prior.effect.effectSlot,
         action: prior.action, reservationTokens: prior.reservationTokens };
       this.admit(run, input, true, fence.now);

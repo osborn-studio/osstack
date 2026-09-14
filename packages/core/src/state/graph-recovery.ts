@@ -54,6 +54,27 @@ function normalizeDecision(value: GraphRecoveryDecision): GraphRecoveryDecision 
   return decisionSchema.parse(GraphJsonValue.parse(input));
 }
 
+/** Host-owned physical admission bookkeeping, not a worker API. Record a hold
+ * before invocation; record release only after the exact physical lease releases.
+ * Recovery also records an obligation for legacy/acquire-crash actions. */
+export class GraphAdmissionStore {
+  constructor(private readonly db: Database.Database) {}
+  hold(effectKey: string, now: number): void {
+    digest.parse(effectKey); count.parse(now);
+    const row = this.db.prepare("SELECT a.graph_run_id,a.generation,l.owner FROM graph_actions a JOIN graph_worker_leases l ON l.graph_run_id=a.graph_run_id AND l.generation=a.generation WHERE a.effect_key=?")
+      .get(effectKey) as { graph_run_id: string; generation: number; owner: string } | undefined;
+    if (!row) fail("ACTION_NOT_FOUND");
+    this.db.prepare("INSERT INTO graph_action_admissions(effect_key,graph_run_id,generation,owner,held_at,released_at) VALUES(?,?,?,?,?,NULL) ON CONFLICT(effect_key) DO NOTHING")
+      .run(effectKey, row!.graph_run_id, row!.generation, row!.owner, now);
+  }
+  released(effectKey: string, now: number): void {
+    digest.parse(effectKey); count.parse(now);
+    const row = this.db.prepare("SELECT held_at FROM graph_action_admissions WHERE effect_key=?").get(effectKey) as { held_at: number } | undefined;
+    if (row && now < row.held_at) fail("INVALID_TIME");
+    this.db.prepare("UPDATE graph_action_admissions SET released_at=? WHERE effect_key=? AND released_at IS NULL").run(now, effectKey);
+  }
+}
+
 export class GraphRecoveryStore {
   constructor(private readonly db: Database.Database, private readonly verifyProof: GraphRecoveryVerifier) {}
   private transaction<T>(fn: () => T): T {
@@ -158,6 +179,19 @@ export class GraphRecoveryStore {
     if (result.record.decision.kind === "effect" && result.record.decision.verdict.outcome === "unknown") fail("UNRESOLVED_ACTION");
     return result;
   }
+  /** Called only after the trusted release callback completed. A lost DB ACK
+   * leaves a held obligation, so takeover/terminal projection remain blocked. */
+  completeRelease(snapshot: GraphRecoverySnapshot, receiptId: string, proof: GraphRecoveryProof, now: number): GraphRecoveryResult {
+    return this.transaction(() => {
+      const run = this.unchanged(snapshot, now);
+      const record = this.record(run, receiptId) ?? fail("DECISION_NOT_FOUND");
+      if (!snapshot.action || record.snapshot.action?.effectKey !== snapshot.action.effectKey || record.decision.kind !== "effect"
+        || record.decision.verdict.outcome === "unknown") fail("UNRESOLVED_ACTION");
+      this.proof(snapshot, proof, now, record.decision);
+      new GraphAdmissionStore(this.db).released(snapshot.action!.effectKey, now);
+      return { run, action: snapshot.action, record, changed: false };
+    });
+  }
   commit(snapshotValue: GraphRecoverySnapshot, decisionValue: GraphRecoveryDecision, proofValue: GraphRecoveryProof, now: number): GraphRecoveryResult {
     const snapshot = structuredClone(snapshotValue); graphRunFenceSchema.parse(GraphJsonValue.parse(snapshot.fence)); count.parse(now);
     const decision = normalizeDecision(decisionValue);
@@ -176,18 +210,25 @@ export class GraphRecoveryStore {
       if (run.revision === Number.MAX_SAFE_INTEGER) fail("COUNTER_EXHAUSTED");
       const proof = this.proof(snapshot, proofValue, now, decision);
       let status = run.status;
-      if (decision.kind === "effect") this.settle(run, snapshot.action ?? fail("ACTION_NOT_FOUND"), decision.verdict, now);
+      if (decision.kind === "effect") {
+        const action = snapshot.action ?? fail("ACTION_NOT_FOUND");
+        this.settle(run, action, decision.verdict, now);
+        if (decision.verdict.outcome !== "unknown") new GraphAdmissionStore(this.db).hold(action.effectKey, now);
+      }
       else {
         if (snapshot.action) fail("RUN_SNAPSHOT_REQUIRED");
         const unresolved = this.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND state IN ('intent','running','unknown','cancel_pending') LIMIT 1").get(run.graphRunId);
+        const held = this.db.prepare("SELECT 1 FROM graph_action_admissions WHERE graph_run_id=? AND released_at IS NULL LIMIT 1").get(run.graphRunId);
         if (decision.kind === "project") {
           if (["running", "waiting_input"].includes(decision.status) && (run.status === "cancel_pending"
             || this.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND state = 'cancel_pending'").get(run.graphRunId))) fail("CANCEL_PENDING");
           if (["running", "cancelled"].includes(decision.status) && unresolved) fail("UNRESOLVED_ACTION");
+          if (["running", "cancelled"].includes(decision.status) && held) fail("ADMISSION_RELEASE_PENDING");
           status = decision.status;
         } else {
           if (run.status === "cancel_pending") fail("CANCEL_PENDING");
           if (unresolved) fail("UNRESOLVED_ACTION");
+          if (held) fail("ADMISSION_RELEASE_PENDING");
           if (run.generation === Number.MAX_SAFE_INTEGER) fail("COUNTER_EXHAUSTED");
           if (decision.leaseExpiresAt <= now) fail("INVALID_TIME");
           const generation = run.generation + 1;

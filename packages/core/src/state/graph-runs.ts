@@ -61,7 +61,7 @@ export interface GraphRun {
 }
 export type GraphRunStorageErrorCode = "RUN_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "PROGRAM_IDENTITY_MISMATCH"
   | "STALE_GENERATION" | "REVISION_CONFLICT" | "OWNER_MISMATCH" | "LEASE_EXPIRED" | "STOPPED_WORKER_REQUIRED"
-  | "STOPPED_WORKER_MISMATCH" | "TERMINAL_RUN" | "UNRESOLVED_ACTION" | "CANCEL_PENDING" | "INVALID_TIME" | "COUNTER_EXHAUSTED";
+  | "STOPPED_WORKER_MISMATCH" | "TERMINAL_RUN" | "UNRESOLVED_ACTION" | "CANCEL_PENDING" | "ADMISSION_RELEASE_PENDING" | "INVALID_TIME" | "COUNTER_EXHAUSTED";
 export class GraphRunStorageError extends Error {
   constructor(public readonly code: GraphRunStorageErrorCode) { super(code); this.name = "GraphRunStorageError"; }
 }
@@ -161,6 +161,7 @@ export class GraphRunStore {
         if (stopped.graphRunId !== run.graphRunId || stopped.generation !== run.generation || stopped.owner !== run.leaseOwner
           || stopped.confirmedAt < run.updatedAt || stopped.confirmedAt > input.now) fail("STOPPED_WORKER_MISMATCH");
       } else if (input.stoppedWorker) fail("STOPPED_WORKER_MISMATCH");
+      if (this.db.prepare("SELECT 1 FROM graph_action_admissions WHERE graph_run_id=? AND released_at IS NULL LIMIT 1").get(run.graphRunId)) fail("ADMISSION_RELEASE_PENDING");
       const generation = increment(run.generation);
       this.db.prepare(`UPDATE graph_runs SET generation = ?, revision = ?, lease_owner = ?, lease_expires_at = ?,
         lease_acquired_at = ?, updated_at = ? WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
@@ -233,6 +234,8 @@ export class GraphRunStore {
     if (["ready", "failed", "cancelled"].includes(input.status)
       && this.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND state IN ('intent','running','unknown','cancel_pending') LIMIT 1")
         .get(run.graphRunId)) fail("UNRESOLVED_ACTION");
+    if (["ready", "failed", "cancelled"].includes(input.status)
+      && this.db.prepare("SELECT 1 FROM graph_action_admissions WHERE graph_run_id=? AND released_at IS NULL LIMIT 1").get(run.graphRunId)) fail("ADMISSION_RELEASE_PENDING");
     this.db.prepare(`UPDATE graph_runs SET status = ?, revision = ?, updated_at = ?
       WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
       .run(input.status, increment(run.revision), input.now, run.graphRunId, run.generation, run.revision);
