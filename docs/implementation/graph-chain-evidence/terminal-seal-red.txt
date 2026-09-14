@@ -1,0 +1,75 @@
+$ vitest run graph-runs.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ❯ src/state/graph-runs.test.ts (34 tests | 3 failed) 1536ms
+   ✓ graph run storage > persists fresh identity, source and canonical idempotency through a real SQLite restart 47ms
+   ✓ graph run storage > persists the original spec and limits without allowing refresh or caller mutation to reset them 37ms
+   ✓ graph run storage > isolates requests and reads by tenantId 58ms
+   ✓ graph run storage > isolates requests and reads by principalId 32ms
+   ✓ graph run storage > isolates requests and reads by workspaceId 17ms
+   ✓ graph run storage > serializes competing connection CAS and requires stopped-worker evidence even after expiry 39ms
+   ✓ graph run storage > atomically deduplicates resume/cancel projection requests in the same scope/key namespace 24ms
+   ✓ graph run storage > renews with CAS and persists only a status projection; terminal runs cannot resurrect 29ms
+   ✓ graph run storage > rejects identity change to executionModel at creation and recovery 18ms
+   ✓ graph run storage > rejects identity change to durability at creation and recovery 19ms
+   ✓ graph run storage > rejects identity change to engineVersion at creation and recovery 20ms
+   ✓ graph run storage > rejects identity change to checkpointVersion at creation and recovery 29ms
+   ✓ graph run storage > rejects identity change to templateVersion at creation and recovery 38ms
+   ✓ graph run storage > rejects identity change to registryVersion at creation and recovery 27ms
+   ✓ graph run storage > rejects identity change to compilerVersion at creation and recovery 25ms
+   ✓ graph run storage > rejects identity change to schemaVersion at creation and recovery 22ms
+   ✓ graph run storage > rejects identity change to compiledProgramDigest at creation and recovery 20ms
+   ✓ graph run storage > rejects recovery with a different specHash 20ms
+   ✓ graph run storage > rejects recovery with a different inputDigest 16ms
+   ✓ graph run storage > rejects invalid counters and timestamps: -1 17ms
+   ✓ graph run storage > rejects invalid counters and timestamps: 0.5 24ms
+   ✓ graph run storage > rejects invalid counters and timestamps: NaN 27ms
+   ✓ graph run storage > rejects invalid counters and timestamps: Infinity 18ms
+   ✓ graph run storage > rejects invalid counters and timestamps: 9007199254740992 20ms
+   ✓ graph run storage > rejects oversized/non-JSON arguments, invalid owner, backward clock and counter overflow 18ms
+   ✓ graph run storage > rejects a stop receipt predating the last worker mutation and rolls back both tables on failure 20ms
+   ✓ graph run storage > never wraps generation at the safe integer boundary 17ms
+   ✓ graph run storage > protects immutable identity in SQLite itself 14ms
+   ✓ graph run storage > serializes independent SQLite workers: same-request  518ms
+   ✓ graph run storage > serializes independent SQLite workers: conflicting-request 140ms
+   ✓ graph run storage > serializes independent SQLite workers: lease-cas 102ms
+   × refuses sealing ready while an external action is unresolved 21ms
+     → expected [Function] to throw an error
+   × refuses sealing failed while an external action is unresolved 23ms
+     → expected [Function] to throw an error
+   × refuses sealing cancelled while an external action is unresolved 18ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/graph-runs.test.ts > refuses sealing ready while an external action is unresolved
+ FAIL  src/state/graph-runs.test.ts > refuses sealing failed while an external action is unresolved
+ FAIL  src/state/graph-runs.test.ts > refuses sealing cancelled while an external action is unresolved
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/state/graph-runs.test.ts:252:58
+    250|   run = new GraphActionStore(db).reserve(fence(run), { epoch: 0, nodeI…
+    251|     reservationTokens: 1, action: { kind: 'implement', inputArtifactRe…
+    252|   expect(() => store.project({ ...fence(run), status })).toThrow('UNRE…
+       |                                                          ^
+    253|   expect(store.get(scope, run.graphRunId)?.status).toBe('queued');
+    254| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 31 passed (34)
+   Start at  07:35:02
+   Duration  2.22s (transform 252ms, setup 0ms, collect 367ms, tests 1.54s, environment 0ms, prepare 55ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/core@0.17.0 test: `vitest run graph-runs.test.ts`
+Exit status 1

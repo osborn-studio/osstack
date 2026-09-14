@@ -1,0 +1,76 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-reconciler.test.ts (22 tests) 399ms
+ ❯ src/graph-worker-manager.test.ts (26 tests | 2 failed) 5986ms
+   ✓ handshakes asynchronously, executes Functional+remote sync checkpoints and isolates bounded logs  308ms
+   ✓ reserves each run synchronously and requires verified exit before replacement  392ms
+   ✓ rejects async durability before spawning 1ms
+   ✓ rejects exit durability before spawning 1ms
+   ✓ rejects immutable input and program identity mismatch before child launch 2ms
+   ✓ executes snapshotted bytes even when the original trusted module is changed  310ms
+   ✓ settles spawn failures and early exits without unhandled rejections 202ms
+   ✓ revocation aborts the injected broker and rejects later checkpoints without releasing its resources 211ms
+   ✓ expires leases and terminates an unresponsive child with actual exit evidence  2038ms
+   ✓ rejects expired authority before any worker is started 1ms
+   ✓ does not equate invoke rejection to worker exit or await inherited log pipes  313ms
+   ✓ rejects real child handshake with wrong graphRunId 32ms
+   ✓ rejects real child handshake with wrong generation 31ms
+   ✓ rejects real child handshake with wrong owner 31ms
+   ✓ rejects real child handshake with wrong scope 30ms
+   ✓ rejects real child handshake with wrong identity 31ms
+   ✓ rejects a real oversize IPC header without dispatching any request 31ms
+   ✓ bounds host outstanding callbacks even when a child ignores client backpressure 33ms
+   ✓ done leaves exit pending until the OS observes termination  334ms
+   ✓ revokes a running lease and old callbacks cannot respond through a replacement connection  345ms
+   ✓ caps each log stream independently and does not pass a DB home or node injection environment 296ms
+   ✓ rejects async authority and asynchronous registration without unhandled rejection 2ms
+   ✓ waits for the remote final checkpoint acknowledgement before resolving the program 296ms
+   ✓ bounds the handshake even if a child emits heartbeats without becoming ready 204ms
+   × allows startup grace before requiring heartbeats 158ms
+     → promise rejected "Error: WORKER_HEARTBEAT_EXPIRED" instead of resolving
+   × does not apply a checkpoint RPC timeout to a healthy long-running governed action 353ms
+     → Error: WORKER_REQUEST_TIMEOUT
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-worker-manager.test.ts > allows startup grace before requiring heartbeats
+AssertionError: promise rejected "Error: WORKER_HEARTBEAT_EXPIRED" instead of resolving
+ ❯ src/graph-worker-manager.test.ts:159:45
+    157|   const f = fixture(undefined, { programs: [], heartbeatTimeoutMs: 50,…
+    158|     workerEntry: rawWorker("setTimeout(()=>{send({kind:'ready',binding…
+    159|   const h = f.launch(); await expect(h.ready).resolves.toBeUndefined();
+       |                                             ^
+    160| });
+    161| it('does not apply a checkpoint RPC timeout to a healthy long-running …
+
+Caused by: Error: WORKER_HEARTBEAT_EXPIRED
+ ❯ cancel src/graph-worker-manager.ts:145:35
+ ❯ Timeout._onTimeout src/graph-worker-manager.ts:244:62
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/graph-worker-manager.test.ts > does not apply a checkpoint RPC timeout to a healthy long-running governed action
+Error: Error: WORKER_REQUEST_TIMEOUT
+ ❯ receive src/graph-worker-manager.ts:194:28
+    192|         didDone = true;
+    193|         if (message.ok) result.resolve(GraphJsonValue.parse(message.va…
+    194|         else result.reject(new Error(message.error ?? 'WORKER_INVOKE_F…
+       |                            ^
+    195|         cancel(message.ok ? 'WORKER_FINISHED' : message.error ?? 'WORK…
+    196|       } else if (message.kind === 'request') {
+ ❯ WorkerFrameDecoder.receive ../protocol/src/graph-worker.ts:91:73
+ ❯ WorkerFrameDecoder.push ../protocol/src/graph-worker.ts:75:16
+ ❯ Socket.<anonymous> ../protocol/src/graph-worker.ts:92:60
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  2 failed | 46 passed (48)
+   Start at  08:02:01
+   Duration  6.22s (transform 178ms, setup 14ms, collect 320ms, tests 6.39s, environment 0ms, prepare 68ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-worker-manager.test.ts src/graph-reconciler.test.ts

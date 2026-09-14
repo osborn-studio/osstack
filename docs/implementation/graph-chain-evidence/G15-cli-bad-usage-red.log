@@ -1,0 +1,51 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-reconciler.test.ts (20 tests | 1 failed) 2221ms
+   ✓ trusted reconciler > stops and independently verifies, commits before release, never invokes and retries lost release ack after restart 83ms
+   ✓ trusted reconciler > returns distinct unknown exit without sending effects 21ms
+   ✓ trusted reconciler > returns distinct not_applied exit without sending effects 19ms
+   ✓ trusted reconciler > rejects revocation after stop await with no decision 17ms
+   ✓ trusted reconciler > rejects revocation after worker await with no decision 270ms
+   ✓ trusted reconciler > rejects revocation after quiescence await with no decision 130ms
+   ✓ trusted reconciler > rejects revocation after outcome await with no decision 19ms
+   ✓ trusted reconciler > does not refresh the proof revision over a concurrent ledger update 232ms
+   ✓ trusted reconciler > snapshots request and registration before await; worker-shaped flags and unregistered connections have no authority 111ms
+   ✓ trusted reconciler > rejects non-undefined synchronous authority true 16ms
+   ✓ trusted reconciler > rejects non-undefined synchronous authority yes 19ms
+   ✓ trusted reconciler > rejects non-undefined synchronous authority Promise{…} 206ms
+   ✓ trusted reconciler > rejects changed outcome on receipt replay and revalidates release authority 210ms
+   ✓ trusted reconciler > rejects boolean self-authority from worker verifier 19ms
+   ✓ trusted reconciler > rejects boolean self-authority from quiescence verifier 167ms
+   ✓ trusted reconciler > rejects boolean self-authority from outcome verifier 146ms
+   ✓ trusted reconciler > keeps the decision durable when release-time verification is revoked 31ms
+   ✓ trusted reconciler > replays unknown without releasing, then appends a later receipt under the same stable interrupt 252ms
+   ✓ trusted reconciler > rejects asynchronous final recheck grants without an unhandled rejection 21ms
+   × trusted reconciler > replays invalid usage as the same blocked accounting decision 232ms
+     → DECISION_CONFLICT
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-reconciler.test.ts > trusted reconciler > replays invalid usage as the same blocked accounting decision
+Error: DECISION_CONFLICT
+ ❯ fail src/graph-reconciler.ts:45:47
+     43|   return `{${Object.keys(r).sort().map((k) => `${JSON.stringify(k)}:${…
+     44| }
+     45| const fail = (code: string): never => { throw new Error(code); };
+       |                                               ^
+     46| const authority = (value: unknown) => {
+     47|   if (value === undefined) return;
+ ❯ GraphReconciler.reconcile src/graph-reconciler.ts:129:62
+ ❯ src/graph-reconciler.test.ts:130:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 19 passed (20)
+   Start at  07:44:32
+   Duration  4.29s (transform 760ms, setup 15ms, collect 1.62s, tests 2.22s, environment 0ms, prepare 212ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-reconciler.test.ts

@@ -1,0 +1,22 @@
+$ vitest run governed-execution.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+osstack: retaining write lease one: external stop unconfirmed
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+osstack: retaining write lease retained: unknown
+Preparing worktree (new branch 'other')
+osstack: retaining write lease read1: uncertain read executor
+osstack: retaining write lease read2: other executor
+ ✓ src/governed-execution.test.ts (7 tests) 1278ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  07:31:55
+   Duration  2.30s (transform 448ms, setup 15ms, collect 717ms, tests 1.28s, environment 0ms, prepare 66ms)
+

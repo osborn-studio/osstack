@@ -1,0 +1,62 @@
+$ vitest run repo-lock.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/autonomy
+
+ ❯ src/repo-lock.test.ts (19 tests | 2 failed) 2950ms
+   ✓ repository write lock > allows only one live writer per repository 11ms
+   ✓ repository write lock > does not create a writer lock for read-only access 1ms
+   ✓ repository write lock > recovers a dead process lock and emits an audit event 12ms
+   ✓ repository write lock > refuses to unlink a lock after ownership changes 4ms
+   ✓ repository write lock > fails closed if ownership changes during stale recovery 7ms
+   ✓ repository write lock > maps path-traversal repository ids inside the lock root 1ms
+   ✓ renewable repository lease > has unique ownership even with identical pid, run and timestamp 5ms
+   ✓ renewable repository lease > renews expiry, observes expiry and cannot renew an already expired lease 11ms
+   ✓ renewable repository lease > rejects omitted lock identity and invalid lease durations 1ms
+   ✓ renewable repository lease > treats unknown process liveness as live and leaves legacy owner files intact 1ms
+   ✓ renewable repository lease > fails closed on an abandoned mutation guard instead of age-stealing it  2003ms
+   ✓ renewable repository lease > arbitrates real competing processes, renews and transfers only after release 179ms
+   ✓ renewable repository lease > concurrent stale recovery never removes a newly acquired live process lock 232ms
+   ✓ managed repository process quarantine > retains a dead owner when managed acquisition forbids unproven descendant recovery 66ms
+   ✓ managed repository process quarantine > does not steal from a real live child after its lease expires 129ms
+   ✓ managed repository process quarantine > shares one lock across real worktrees and independent OSSTACK_HOMEs 243ms
+   ✓ starts the lease at publication after waiting for a metadata transaction 5ms
+   × requires exact dead-owner identity and verified external quiescence before post-restart release 35ms
+     → (0 , inspectRepoWriteLock) is not a function
+   × never treats a live daemon PID as a post-restart recovery target 5ms
+     → (0 , releaseReconciledRepoWriteLock) is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/repo-lock.test.ts > requires exact dead-owner identity and verified external quiescence before post-restart release
+TypeError: (0 , inspectRepoWriteLock) is not a function
+ ❯ src/repo-lock.test.ts:391:23
+    389|   const pid = Number(execFileSync(process.execPath, ['-e', 'process.st…
+    390|   const lock = await acquireRepoWriteLock({ root_dir: directory, repo_…
+    391|   const owner = await inspectRepoWriteLock(directory, 'recovered');
+       |                       ^
+    392|   expect(owner).toEqual(lock.owner);
+    393|   const options = { root_dir: directory, repo_id: 'recovered', expecte…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/repo-lock.test.ts > never treats a live daemon PID as a post-restart recovery target
+TypeError: (0 , releaseReconciledRepoWriteLock) is not a function
+ ❯ src/repo-lock.test.ts:406:16
+    404| it('never treats a live daemon PID as a post-restart recovery target',…
+    405|   const lock = await acquireRepoWriteLock({ root_dir: directory, repo_…
+    406|   await expect(releaseReconciledRepoWriteLock({ root_dir: directory, r…
+       |                ^
+    407|   await lock.release();
+    408| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 17 passed (19)
+   Start at  07:40:53
+   Duration  3.43s (transform 60ms, setup 0ms, collect 265ms, tests 2.95s, environment 0ms, prepare 50ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/autonomy:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/autonomy@0.17.0 test: `vitest run repo-lock.test.ts`
+Exit status 1

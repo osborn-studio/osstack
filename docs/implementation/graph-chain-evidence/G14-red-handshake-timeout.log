@@ -1,0 +1,58 @@
+Scope: all 23 workspace projects
+Already up to date
+Done in 412ms using pnpm v11.4.0
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-worker-manager.test.ts (24 tests | 1 failed | 23 skipped) 5112ms
+   ↓ handshakes asynchronously, executes Functional+remote sync checkpoints and isolates bounded logs
+   ↓ reserves each run synchronously and requires verified exit before replacement
+   ↓ rejects async durability before spawning
+   ↓ rejects exit durability before spawning
+   ↓ rejects immutable input and program identity mismatch before child launch
+   ↓ executes snapshotted bytes even when the original trusted module is changed
+   ↓ settles spawn failures and early exits without unhandled rejections
+   ↓ revocation aborts the injected broker and rejects later checkpoints without releasing its resources
+   ↓ expires leases and terminates an unresponsive child with actual exit evidence
+   ↓ rejects expired authority before any worker is started
+   ↓ does not equate invoke rejection to worker exit or await inherited log pipes
+   ↓ rejects real child handshake with wrong graphRunId
+   ↓ rejects real child handshake with wrong generation
+   ↓ rejects real child handshake with wrong owner
+   ↓ rejects real child handshake with wrong scope
+   ↓ rejects real child handshake with wrong identity
+   ↓ rejects a real oversize IPC header without dispatching any request
+   ↓ bounds host outstanding callbacks even when a child ignores client backpressure
+   ↓ done leaves exit pending until the OS observes termination
+   ↓ revokes a running lease and old callbacks cannot respond through a replacement connection
+   ↓ caps each log stream independently and does not pass a DB home or node injection environment
+   ↓ rejects async authority and asynchronous registration without unhandled rejection
+   ↓ waits for the remote final checkpoint acknowledgement before resolving the program
+   × bounds the handshake even if a child emits heartbeats without becoming ready 5111ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-worker-manager.test.ts > bounds the handshake even if a child emits heartbeats without becoming ready
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/graph-worker-manager.test.ts:152:1
+    150|   await waiting; expect(resolved).toBe(false); acknowledge(); expect(a…
+    151| });
+    152| it('bounds the handshake even if a child emits heartbeats without beco…
+       | ^
+    153|   const f = fixture(undefined, { programs: [], startupTimeoutMs: 80,
+    154|     workerEntry: rawWorker("setInterval(()=>send({kind:'heartbeat',bin…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 23 skipped (24)
+   Start at  07:38:31
+   Duration  5.58s (transform 152ms, setup 25ms, collect 212ms, tests 5.11s, environment 0ms, prepare 45ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-worker-manager.test.ts -t 'bounds the handshake'

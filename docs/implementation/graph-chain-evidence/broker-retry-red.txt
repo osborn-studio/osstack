@@ -1,0 +1,47 @@
+$ vitest run graph-action-broker-boundary.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:bdcdb9b395d897ed1d84be53d9cd06c3b2a178817a8236b76c766662ac3d8c2d: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:a6d82f9a5217735d19a41ae40644c2d6495fca9a18dbf5894be2bd75ffd7d2fb: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:76dcc8e82640ee14d2fabf869a3c2c33b46d2c5b65d195ff769d13c7f60115be: Error: candidate preflight refused
+osstack: retaining write lease graph-action:0888accb762c600e0c610171123ebe14bf2f0d145ea36c4f55d4ab2884193656: Error: candidate preflight refused
+osstack: retaining write lease graph-action:e0cd1d47678a586e0a5a9bae4b9e1f039959f2e05ec6b6180ce78fd8c8f08c32: Error: lost receipt
+ ❯ src/graph-action-broker-boundary.test.ts (12 tests | 1 failed) 1054ms
+   ✓ rejects a Promise-returning synchronous authorizer instead of silently granting authority 65ms
+   ✓ rechecks repository policy after an asynchronous adapter availability probe 171ms
+   ✓ charges observed adapter usage even when the persistence mapper reports less 103ms
+   ✓ combines independently reported cumulative input and output usage without lowering either component 93ms
+   ✓ marks only a proven pre-invocation policy failure safe for a future explicit host retry 53ms
+   ✓ retains a saved evidence reference and known usage when result validation fails 86ms
+   ✓ does not let malformed persistence references prevent durable uncertainty recording 100ms
+   ✓ never settles an already-running effect (same execution) as a safe pre-invocation failure 79ms
+   ✓ never settles an already-running effect (different execution) as a safe pre-invocation failure 78ms
+   ✓ retires a supervised connection while its availability probe is pending 98ms
+   ✓ keeps uncertain admission until its exact effect receives trusted release verification 79ms
+   × executes an explicitly host-authorized retry once while ordinary worker replay stays inert 48ms
+     → broker.retryAuthorized is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-action-broker-boundary.test.ts > executes an explicitly host-authorized retry once while ordinary worker replay stays inert
+TypeError: broker.retryAuthorized is not a function
+ ❯ src/graph-action-broker-boundary.test.ts:183:23
+    181|   expect(await broker.handle(connection, f.request)).toMatchObject({ o…
+    182|   expect(invokes).toBe(0);
+    183|   expect(await broker.retryAuthorized(connection, row.effect_key, () =…
+       |                       ^
+    184|   expect(await broker.handle(connection, f.request)).toMatchObject({ o…
+    185|   expect(invokes).toBe(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 11 passed (12)
+   Start at  07:35:53
+   Duration  3.50s (transform 1.27s, setup 17ms, collect 2.17s, tests 1.05s, environment 0ms, prepare 53ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.19.0 test: `vitest run graph-action-broker-boundary.test.ts`
+Exit status 1

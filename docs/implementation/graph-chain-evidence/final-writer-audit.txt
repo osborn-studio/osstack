@@ -1,0 +1,28 @@
+packages/cli/src/governed-execution.ts:10:  releaseAfterReconciliation?(verify: () => Promise<void>): Promise<void>;
+packages/cli/src/governed-execution.ts:100:      releaseAfterReconciliation: (verify) => {
+packages/cli/src/governed-execution.ts:101:        if (released) return Promise.resolve();
+packages/cli/src/governed-execution.ts:128:        if (released) return;
+packages/core/src/state/knowledge-hygiene-store-v2.test.ts:18:  db.pragma("foreign_keys = ON");
+packages/core/src/state/db.ts:8://   - foreign_keys ON (so ON DELETE CASCADE works for runs/events on task delete)
+packages/core/src/state/db.ts:89:    db.pragma("foreign_keys = ON");
+packages/core/src/state/graph-actions.test.ts:288:        const db = new Database(w.path); db.pragma('busy_timeout = 5000'); db.pragma('foreign_keys = ON');
+packages/core/src/state/session-continuations.test.ts:47:    db.pragma("foreign_keys = ON");
+packages/core/src/state/knowledge-hygiene-history-v2.test.ts:21:  database.pragma("foreign_keys = ON");
+packages/core/src/state/dependency-obligation-store.test.ts:16:  value.pragma("foreign_keys = ON");
+packages/core/src/state/graph-storage.ts:30:      db.prepare("UPDATE graph_runs SET revision = ?, updated_at = ? WHERE graph_run_id = ?")
+packages/core/src/state/graph-runs.test.ts:65:    expect(() => db.prepare("UPDATE graph_runs SET spec_json = ? WHERE graph_run_id = ?")
+packages/core/src/state/graph-runs.test.ts:154:    db.prepare("UPDATE graph_runs SET revision = ? WHERE graph_run_id = ?").run(Number.MAX_SAFE_INTEGER, run.graphRunId);
+packages/core/src/state/graph-runs.test.ts:175:    db.prepare("UPDATE graph_runs SET generation = ? WHERE graph_run_id = ?").run(Number.MAX_SAFE_INTEGER, run.graphRunId);
+packages/core/src/state/graph-runs.test.ts:183:    expect(() => db.prepare("UPDATE graph_runs SET identity_json = '{}' WHERE graph_run_id = ?").run(run.graphRunId)).toThrow(/immutable/);
+packages/core/src/state/knowledge-hygiene-plan-store.test.ts:14:  value.pragma("foreign_keys = ON");
+packages/core/src/state/db.test.ts:58:      const fk = db.pragma("foreign_keys", { simple: true });
+packages/core/src/state/db.test.ts:149:    legacy.pragma("foreign_keys = ON");
+packages/core/src/state/db.test.ts:490:        expect(() => db.prepare("UPDATE graph_runs SET spec_json = '{}' WHERE graph_run_id = 'legacy'").run()).toThrow(/immutable/);
+packages/core/src/state/graph-recovery.ts:237:          this.db.prepare("UPDATE graph_runs SET generation = ?, lease_owner = ?, lease_expires_at = ?, lease_acquired_at = ? WHERE graph_run_id = ?")
+packages/core/src/state/graph-recovery.ts:245:      this.db.prepare("UPDATE graph_runs SET status = ?, revision = ?, updated_at = ? WHERE graph_run_id = ?").run(status, run.revision + 1, now, run.graphRunId);
+packages/core/src/state/graph-runs.ts:166:      this.db.prepare(`UPDATE graph_runs SET generation = ?, revision = ?, lease_owner = ?, lease_expires_at = ?,
+packages/core/src/state/graph-runs.ts:181:      this.db.prepare(`UPDATE graph_runs SET lease_expires_at = ?, revision = ?, updated_at = ?
+packages/core/src/state/graph-runs.ts:215:      const projected = this.projectInTransaction(input);
+packages/core/src/state/graph-runs.ts:226:    return this.write(() => this.projectInTransaction(input));
+packages/core/src/state/graph-runs.ts:229:  private projectInTransaction(input: GraphRunProjection): GraphRun {
+packages/core/src/state/graph-runs.ts:239:    this.db.prepare(`UPDATE graph_runs SET status = ?, revision = ?, updated_at = ?

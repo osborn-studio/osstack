@@ -1,0 +1,39 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+Preparing worktree (detached HEAD fbec25e)
+Preparing worktree (detached HEAD 2545010)
+Preparing worktree (detached HEAD 5ae081e)
+Preparing worktree (detached HEAD 5ae081e)
+Preparing worktree (detached HEAD a4ea4f1)
+Preparing worktree (detached HEAD dfb41b3)
+Preparing worktree (detached HEAD dfb41b3)
+Preparing worktree (detached HEAD 6dac418)
+Preparing worktree (detached HEAD 48083af)
+Preparing worktree (detached HEAD 48083af)
+Preparing worktree (detached HEAD 48083af)
+Preparing worktree (detached HEAD 48083af)
+Preparing worktree (detached HEAD 48083af)
+Preparing worktree (detached HEAD 48083af)
+Preparing worktree (detached HEAD 4bcd25c)
+Preparing worktree (detached HEAD 4bcd25c)
+Preparing worktree (detached HEAD c817280)
+ ✓ src/graph/artifact-store.test.ts (17 tests) 13032ms
+   ✓ trusted graph artifact freeze > restores full reachable history and exact raw tree after deleting original repo and worktree  2666ms
+   ✓ trusted graph artifact freeze > rechecks authority after durable publication before returning ready  764ms
+   ✓ trusted graph artifact freeze > returns immutable candidate identity and artifact refs  789ms
+   ✓ trusted graph artifact freeze > captures tracked-file to directory replacement with unusual filenames  1040ms
+   ✓ trusted graph artifact freeze > does not return ready if durable ID publication fails; exported bytes remain recoverable  851ms
+   ✓ trusted graph artifact freeze > rejects manifest corruption under a pinned artifact digest  776ms
+   ✓ trusted graph artifact freeze > rejects same ID with changed receipt or content  1367ms
+   ✓ trusted graph artifact freeze > rejects mismatched exact source identity and HEAD  305ms
+   ✓ trusted graph artifact freeze > does not invoke local hooks or filters during capture or restore  1534ms
+   ✓ trusted graph artifact freeze > rejects submodules instead of exporting an incomplete tree  392ms
+   ✓ trusted graph artifact freeze > rejects corrupted bundles and manifests, including replay  1141ms
+   ✓ trusted graph artifact freeze > refuses existing and escaping restore destinations  721ms
+
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+   Start at  07:43:20
+   Duration  13.69s (transform 235ms, setup 0ms, collect 333ms, tests 13.03s, environment 0ms, prepare 63ms)
+

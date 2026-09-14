@@ -1,0 +1,61 @@
+$ vitest run governed-execution.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+osstack: retaining write lease one: external stop unconfirmed
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+osstack: retaining write lease retained: unknown
+Preparing worktree (new branch 'other')
+osstack: retaining write lease read1: uncertain read executor
+osstack: retaining write lease read2: other executor
+ ❯ src/governed-execution.test.ts (7 tests | 2 failed) 1544ms
+   ✓ canonicalizes worktrees and rechecks health after queueing without leaking permits 251ms
+   ✓ rejects forged hints and managed missing scope 155ms
+   ✓ aborts a queued writer and retains an unconfirmed producer lease 234ms
+   ✓ rechecks authorization after the queue 265ms
+   ✓ rejects same-run reentry promptly and shares canonical lock across independent homes 255ms
+   × releases retained admission only after an explicit reverified reconciliation 191ms
+     → lease.releaseAfterReconciliation is not a function
+   × keeps a repository quarantined until every retained reader is reconciled 192ms
+     → first.releaseAfterReconciliation is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/governed-execution.test.ts > releases retained admission only after an explicit reverified reconciliation
+TypeError: lease.releaseAfterReconciliation is not a function
+ ❯ src/governed-execution.test.ts:73:22
+     71|   const f = await fixture(); const lease = await f.admission.acquire({…
+     72|   lease.retain('unknown');
+     73|   await expect(lease.releaseAfterReconciliation!(async () => { throw n…
+       |                      ^
+     74|   expect(f.writes.in_use).toBe(1);
+     75|   await expect(lease.releaseAfterReconciliation!(async () => false as …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/governed-execution.test.ts > keeps a repository quarantined until every retained reader is reconciled
+TypeError: first.releaseAfterReconciliation is not a function
+ ❯ src/governed-execution.test.ts:87:15
+     85|   const second = await f.admission.acquire({ kind: 'read', runId: 'rea…
+     86|   first.retain('uncertain read executor'); second.retain('other execut…
+     87|   await first.releaseAfterReconciliation!(async () => {});
+       |               ^
+     88|   await expect(f.admission.acquire({ kind: 'write', runId: 'early', wo…
+     89|   await second.releaseAfterReconciliation!(async () => {});
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 5 passed (7)
+   Start at  07:31:24
+   Duration  2.66s (transform 473ms, setup 13ms, collect 777ms, tests 1.54s, environment 0ms, prepare 62ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.19.0 test: `vitest run governed-execution.test.ts`
+Exit status 1

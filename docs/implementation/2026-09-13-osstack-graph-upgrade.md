@@ -1,8 +1,8 @@
 # OSStack 升级改造实施计划：Loop 强化与可执行 Graph v1
 
-日期：2026-09-13。检查基线：`b476bcc3fbbfcc11953abd3d154e59f7f85c4660`，分支 `codex/graph-readonly-pilot`。**状态：G00–G13 已完成，14/30；C2 Functional API + sync、C3 身份/锁/准入及 C4 账本/broker/checkpoint 已通过。M1 继续推进 G14–G17，完整生产图运行时尚未完成。**
+日期：2026-09-13。检查基线：`b476bcc3fbbfcc11953abd3d154e59f7f85c4660`，分支 `codex/graph-readonly-pilot`。**状态：G00–G17 已完成，18/30；M0/M1 与 C2–C5 已通过。下一批 G18–G20/C6：静态工程图、独立评审/测试、汇合路由。完整生产图运行时尚未完成。**
 
-实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；本批已验收代码：`36eee05f6bc6ef6aa8148dd9f4e9271e2237d4fc`。按 G14→G15/G16→G17 继续，见 [C4 验收](2026-09-14-graph-effects-completion.md)与[下一轮上下文](2026-09-14-graph-effects-next-context.md)。见 [C2 验收与接续报告](2026-09-13-graph-c2-completion.md)、[G05–G07 历史验收](2026-09-13-graph-kernel-completion.md)、[Saver 决策与反例](graph-saver-decision.md)；[G00–G04 历史验收](2026-09-13-graph-foundation-completion.md) 保留原结论。
+实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；本批已验收代码：`50133c0eec518add33f556bfa95b746de350cc35`。按 G18→G19→G20 继续，见 [C5 验收](2026-09-14-graph-chain-completion.md)与[下一轮上下文](2026-09-14-graph-chain-next-context.md)。见 [C2 验收与接续报告](2026-09-13-graph-c2-completion.md)、[G05–G07 历史验收](2026-09-13-graph-kernel-completion.md)、[Saver 决策与反例](graph-saver-decision.md)；[G00–G04 历史验收](2026-09-13-graph-foundation-completion.md) 保留原结论。
 
 本计划将 [架构设计](../design/2026-09-13-executable-graph-plan.md) 转成可逐项执行的任务，产品边界遵循 [三产品定义](../design/2026-09-13-os-products-definition.md)。OSBot 功能在 [独立 handoff](../handoffs/osbot/handoff.md) 交接；本计划只改造 OSStack，不部署 Rakazo，不修改 OStag 产品。
 
@@ -20,7 +20,7 @@ Loop 与 Graph 都获得具体提升：Loop 的终态、取消和候选执行接
 
 ## 2. 已核实基线和工程差距
 
-下表描述 `b476bcc` 实施前事实；G00–G13 的已交付变化以任务状态和验收报告为准。
+下表描述 `b476bcc` 实施前事实；G00–G17 的已交付变化以任务状态和验收报告为准。
 
 | 位置 | 当前事实 | 升级责任 |
 |---|---|---|
@@ -94,7 +94,7 @@ node 成功是交付合法结果，不代表代码通过。合法测试失败报
 - **C2：限定通过。** 准入 langgraph-functional-v1 + durability:sync 供 M1 集成；StateGraph partial-abort 反例仍保留。42 场景/96 子进程/26 实际强杀及多版本复验见 [C2 验收](2026-09-13-graph-c2-completion.md)。探针 admitted:false 表示实验自身不授权生产；真实生产链仍须 G17/G25 验收。
 - C3：G08–G10 后，run 身份、仓库锁和准入可复用。
 - C4：G11–G13 后，账本/预算和受控 checkpoint 能解释每个崩溃窗口。
-- C5：G14–G17 后，两节点链经重启恢复；G16 可以在依赖满足后独立进行。
+- **C5：限定通过。** G14–G17 的真实两节点链、候选恢复、可信对账与资源释放义务已验收。daemon 重启案例先持久保存已观察到的 worker 停止证据；未观察停止的故障矩阵仍须 G25。见 [C5 报告](2026-09-14-graph-chain-completion.md)。
 - C6：G18–G20 后，类型/汇合/路由和失败分类验证。
 - C7：G21–G24 后，完整模板与用户入口、外部契约可演示。
 - C8：G25–G26 后，故障与旧模式共存验证。
@@ -117,7 +117,7 @@ flowchart TD
   PRODUCT --> GATES[M3：故障 / 兼容 / 性能 / 试点]
 ```
 
-任务状态以本文件和机器清单的实际验收记录为准；目前 G00–G13 完成，G14–G29 pending。预计每卡一个 S/M 范围；若实施发现超过一个聚焦会话或约 5 个实质源文件，应拆成后缀任务并更新依赖，不能以表内估计硬塞大型改造。
+任务状态以本文件和机器清单的实际验收记录为准；目前 G00–G17 完成，G18–G29 pending。预计每卡一个 S/M 范围；若实施发现超过一个聚焦会话或约 5 个实质源文件，应拆成后缀任务并更新依赖，不能以表内估计硬塞大型改造。
 
 | ID | 阶段 | 任务 | 依赖 |
 |---|---|---|---|
@@ -431,7 +431,7 @@ flowchart TD
 
 ### G14 · 管理独立 worker 生命周期
 
-**依赖：** G12, G13。**规模：** M。**状态：** 未开始。
+**依赖：** G12, G13。**规模：** M。**状态：** 已完成，C5 通过。
 
 **预计改动位置：**
 
@@ -442,19 +442,21 @@ flowchart TD
 
 **验收：**
 
-- [ ] worker-entry 实现 protocol 动作请求/响应的 IPC 客户端，供节点注入调用；run/generation 绑定、日志隔离、帧限长、背压明确。
-- [ ] 每 run 单有效 worker；daemon 内部取消经 worker/broker 传至 executor，超时转待确认；心跳/接管禁止陈旧 checkpoint 和动作。
-- [ ] worker 不持控制面 DB 写通路，启动不阻塞 daemon 主事件循环。
+- [x] worker-entry 实现 protocol 动作请求/响应的 IPC 客户端，供节点注入调用；run/generation 绑定、日志隔离、帧限长、背压明确。
+- [x] 每 run 单有效 worker；daemon 内部取消经 worker/broker 传至 executor，超时转待确认；心跳/接管禁止陈旧 checkpoint 和动作。
+- [x] worker 不持控制面 DB 写通路，启动不阻塞 daemon 主事件循环。
 
-- [ ] invoke abort 拒绝不等于停止：停止新动作后确认 worker 退出才可接管；独立 agent/命令仍由 broker 取消与对账，旧代写入拒绝。
+- [x] invoke abort 拒绝不等于停止：停止新动作后确认 worker 退出才可接管；独立 agent/命令仍由 broker 取消与对账，旧代写入拒绝。
 
-- [ ] v1 固定 executionModel=langgraph-functional-v1 与 durability=sync；恢复前验证不可变程序/input 身份，拒绝 async/exit 或身份不符。
+- [x] v1 固定 executionModel=langgraph-functional-v1 与 durability=sync；恢复前验证不可变程序/input 身份，拒绝 async/exit 或身份不符。
 
 **验证：** 分别跑 cli `graph-worker-manager.test.ts` 与 graph `worker-entry.test.ts`；实际创建实验子进程，检查 IPC/退出行为。
 
+**实现记录：** 以 [C5 报告](2026-09-14-graph-chain-completion.md)和机器清单中的后缀步骤/实际文件为准；同批五个源码提交，验收源 `50133c0eec518add33f556bfa95b746de350cc35`。
+
 ### G15 · 恢复未知动作与暂停点
 
-**依赖：** G14。**规模：** M。**状态：** 未开始。
+**依赖：** G14。**规模：** M。**状态：** 已完成，C5 通过。
 
 **预计改动位置：**
 
@@ -465,15 +467,17 @@ flowchart TD
 
 **验收：**
 
-- [ ] 覆盖 intent/effect/result/checkpoint 窗口；unknown 不盲重发，confirmed 返回同一证据。
-- [ ] 对账请求有稳定 interruptId/动作引用；有证据的已生效、未生效和仍未知裁定有不同出口。
-- [ ] cancelled 终态不能 resume 复活；恢复每个新动作前重新检查权限和资源。
+- [x] 覆盖 intent/effect/result/checkpoint 窗口；unknown 不盲重发，confirmed 返回同一证据。
+- [x] 对账请求有稳定 interruptId/动作引用；有证据的已生效、未生效和仍未知裁定有不同出口。
+- [x] cancelled 终态不能 resume 复活；恢复每个新动作前重新检查权限和资源。
 
 **验证：** cli `graph-reconciler.test.ts` + core `graph-actions.test.ts`；确认无自动重发的外部动作日志。
 
+**实现记录：** 以 [C5 报告](2026-09-14-graph-chain-completion.md)和机器清单中的后缀步骤/实际文件为准；同批五个源码提交，验收源 `50133c0eec518add33f556bfa95b746de350cc35`。
+
 ### G16 · 冻结并保存可恢复候选产物
 
-**依赖：** G04, G09, G12, G13。**规模：** M。**状态：** 未开始。
+**依赖：** G04, G09, G12, G13。**规模：** M。**状态：** 已完成，C5 通过。
 
 **预计改动位置：**
 
@@ -485,31 +489,36 @@ flowchart TD
 
 **验收：**
 
-- [ ] 只有本卡的 freeze 服务发 candidate_ready：可信 commit 与产物先持久化；清理原 worktree 后可重建并核对 tree，覆盖二进制/删除/文件模式。
-- [ ] 旧进程未确认退出时隔离旧工作区；新写动作不复用其目录。
-- [ ] 成功/失败保留与 GC 独立，活进程或未导出结果不被 finally/前缀扫描误删。
+- [x] 只有本卡的 freeze 服务发 candidate_ready：可信 commit 与产物先持久化；清理原 worktree 后可重建并核对 tree，覆盖二进制/删除/文件模式。
+- [x] 旧进程未确认退出时隔离旧工作区；新写动作不复用其目录。
+- [x] 成功/失败保留与 GC 独立，活进程或未导出结果不被 finally/前缀扫描误删。
 
 **验证：** core `artifact-store.test.ts` + agents `worktree.test.ts`；用临时 git 仓库验证 commit/产物/GC。
 
+**实现记录：** 以 [C5 报告](2026-09-14-graph-chain-completion.md)和机器清单中的后缀步骤/实际文件为准；同批五个源码提交，验收源 `50133c0eec518add33f556bfa95b746de350cc35`。
+
 ### G17 · 验收第一条可恢复执行链
 
-**依赖：** G15, G16。**规模：** M。**状态：** 未开始。
+**依赖：** G15, G16。**规模：** M。**状态：** 已完成，C5 通过。
 
 **预计改动位置：**
 
 - `packages/cli/src/graph-chain.integration.test.ts`
-- `packages/cli/src/graph-rpc.ts`
+- `packages/cli/src/graph-runtime.ts`
+- `scripts/fixtures/graph-chain-host.ts`
 - `packages/cli/src/daemon.ts`
 
 **验收：**
 
-- [ ] 通过 daemon→worker IPC action client→broker→一次命令→持久结果贯穿两节点链；内部取消可停止后续节点并核对进程退出。
-- [ ] 随机故障之外确定性击中三个落库窗口，重启后检查外部日志与账本。
-- [ ] 仅实验/测试开启，不公开真实仓库写入；不能用 MemorySaver 替代集成持久化。
+- [x] 通过 daemon→worker IPC action client→broker→一次命令→持久结果贯穿两节点链；内部取消可停止后续节点并核对进程退出。
+- [x] 随机故障之外确定性击中三个落库窗口，重启后检查外部日志与账本。
+- [x] 仅实验/测试开启，不公开真实仓库写入；不能用 MemorySaver 替代集成持久化。
 
-- [ ] 用真实 daemon/worker/broker 接口重跑 C2 的已确认效果到 RETURN、最终 checkpoint、恢复再次崩溃及不响应取消窗口。
+- [x] 用真实 daemon/worker/broker 接口重跑 C2 的已确认效果到 RETURN、最终 checkpoint、恢复再次崩溃及不响应取消窗口。
 
 **验证：** `pnpm --filter @osstack/cli exec vitest run src/graph-chain.integration.test.ts`；fixture 必须启动 daemon/worker，显式临时 OSSTACK_HOME。
+
+**实现记录：** 以 [C5 报告](2026-09-14-graph-chain-completion.md)和机器清单中的后缀步骤/实际文件为准；同批五个源码提交，验收源 `50133c0eec518add33f556bfa95b746de350cc35`。
 
 ### G18 · 编译静态工程图规格
 
@@ -665,6 +674,8 @@ flowchart TD
 
 - [ ] 覆盖已确认外部效果与缓存 RETURN 的不同崩溃边界，区分函数重入次数、确认效果次数和逻辑 join 次数；错误程序身份不得恢复。
 
+- [ ] 补齐 daemon 在未观察 worker 退出时崩溃的持久 PID/PGID/启动标识与独立执行器证明；覆盖已消耗启动权后注册失败、PID 重用和 artifact 临时锁残留，不以超时或租约过期推断可接管。
+
 **验证：** 新 `node scripts/verify-graph-runtime.mjs` 与 graph fault/concurrency 集成测试，输出 JSON 证据和固定 seed。
 
 ### G26 · 验证旧模式与回滚共存
@@ -703,6 +714,8 @@ flowchart TD
 - [ ] 原生 SQLite、worker 入口解析、协议 schema、新包依赖和单文件分发路径有验证记录。
 - [ ] 若某分发形式暂不支持 graph，明确拒绝且保留旧功能；不静默改成 daemon 内嵌执行。
 
+- [ ] 核验旧版本或外部锁获取路径不会回收仍有未知 graph 动作的保留锁；验证 full-history bundle 的仓库格式与大小边界。
+
 **验证：** `pnpm build`、`pnpm typecheck`、`pnpm test`、protocol `check:schemas`，按现有发行脚本验证包含 worker 的构建；只用临时打包产物。
 
 ### G28 · 验证 CLI 与 daemon 性能预算
@@ -721,6 +734,8 @@ flowchart TD
 - [ ] version/help 继续满足既有预算，graph 首次启动不把重模块求值放在 daemon 主线程。
 - [ ] 同时测非图 RPC p95、worker 启动、checkpoint/broker 开销，区分冷启动与热缓存。
 - [ ] Loop tick 开销预算与原有行为不回退；真实性能失败先修，不能只放宽阈值。
+
+- [ ] 在事件循环阻塞与并行负载下验证 heartbeat、停止及 checkpoint 开销；区分保守超时和真正停止证明。
 
 **验证：** `node scripts/bench-cli-startup.mjs` + 新 `node scripts/bench-graph-runtime.mjs` + 既有 RPC 测试；按本地/CI 原预算分别验收。
 
@@ -745,9 +760,9 @@ flowchart TD
 
 ## 8. 依赖、分支和交接纪律
 
-- G00–G13 与 C2/C3/C4 已完成；下一批执行 G14–G17，建立 worker 生命周期、可信对账、候选冻结和第一条可恢复执行链。
+- G00–G17 与 C2–C5 已完成；下一批执行 G18–G20，完成静态工程图、独立评审/隔离测试、严格汇合与有界路由。
 - G08、G09 在约束明确后可分别处理。G10–G17 涉及 daemon/核心存储，按依赖串行整合，避免多个任务同时改 migrations.ts 或 daemon.ts；DDL 严格按 G08→G11→G13→G16 单负责人推进。
-- G18 是纯编译器分支，可在 M1 集成期间独立开发；G19 必须等真实 broker/产物接口稳定。
+- M1 的真实 broker/产物接口已通过 C5；G18 编译器先行，G19 复用这些接口，G20 在两者后集成。
 - G22/G23 共用 graph-command 和 RPC；G25/G26 故障验证依赖完整业务路径，不提前用 stub 结果充数。
 - 真正并行时，每人只处理一个有明确文件边界的任务。此计划的依赖图不代表本次已经启动 agent 或其他 session。
 
@@ -814,4 +829,4 @@ graph worker 启动、冷/热执行、checkpoint/IPC 和并行工作区准备成
 
 ## 13. 下一轮实施的明确起点
 
-G00–G13 已完成，**14/30；C4 已通过，M1 仍在推进**。下一轮按 G14→G15/G16→G17 建立 worker 生命周期、未知动作对账、候选冻结与真实可恢复链，目标 C5。先读 [C4 接续上下文](2026-09-14-graph-effects-next-context.md)：broker/checkpoint 当前是受信任进程内端口；异步持久化子进程夹具不能冒充生产 worker。固定 Functional API + sync，保留完整身份、逐动作准入、未知效果隔离和授权复检。完整工程图与公开 CLI 尚未实现。
+G00–G17 已完成，**18/30；C5 已通过，M0/M1 完成**。下一轮按 G18→G19→G20 实施静态工程图、独立评审/隔离测试和严格汇合路由，目标 C6。先读 [C5 接续上下文](2026-09-14-graph-chain-next-context.md)。固定 Functional API + sync，复用完整身份、逐动作准入、候选冻结、可信对账及持久释放义务。完整工程图、公开 CLI 与生产故障/兼容/性能/试点仍待后续任务。

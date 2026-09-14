@@ -1,0 +1,1 @@
+Fixture strict typecheck now PASS: G17-fixture-typecheck-2.log (empty output, exit0) after removing artificial zod override and adding correct supported core subpath types plus StartGraphRequest annotation. Runtime source/test standard CLI typecheck-2 also PASS. Current evidence-launcher G17_TEST_HOME honors exact actor home while default source remains portable.

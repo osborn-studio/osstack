@@ -1,0 +1,33 @@
+from pathlib import Path
+import subprocess,json,hashlib,shutil,re
+r=Path('/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation');o=Path('/Volumes/AIMATE_WORK/Developer/CodeX/osstack');d=r/'docs/implementation';e=Path('/Volumes/AIMATE_WORK/tmp/gc5')
+j=json.loads((d/'2026-09-13-osstack-graph-upgrade.tasks.json').read_text());by={t['id']:t for t in j['tasks']}
+assert len(by)==30 and sum(t['status']=='completed' for t in by.values())==18
+for t in by.values():
+ assert all(dep in by for dep in t['dependsOn'])
+ if t['status']=='completed':assert all(by[dep]['status']=='completed' for dep in t['dependsOn'])
+for t in j['tasks'][14:18]:
+ for f in t['files']:assert (r/f).is_file(),f
+ for f in t['evidence']:assert (r/f).is_file(),f
+assert j['implementation']['milestoneStatus']['M1']=='completed'
+assert next(g for g in j['decisionGates'] if g['id']=='C5')['status']=='passed'
+a=json.loads((d/'graph-chain-evidence/admission.json').read_text());assert a['status']=='passed' and a['productionReady']==False
+h=json.loads((e/'source-hashes.json').read_text());assert h['head']==a['acceptedCodeCommit']
+assert all(hashlib.sha256((r/f).read_bytes()).hexdigest()==v for f,v in h['files'].items())
+for name in ['2026-09-14-graph-chain-completion.md','2026-09-14-graph-chain-next-context.md']:
+ for link in re.findall(r'\]\(([^)]+)\)',(d/name).read_text()):
+  if '://' not in link and not link.startswith('#'):assert (d/link.split('#')[0]).exists(),link
+assert hashlib.sha256((o/'AGENTS.md').read_bytes()).hexdigest()=='0aeac98453f7b46af92c269528ef81268c5de79ea39a8635bd0bd510b7b9d377'
+files=['docs/implementation/2026-09-13-osstack-graph-upgrade.md','docs/implementation/2026-09-13-osstack-graph-upgrade.tasks.json']
+for f in files:
+ base=subprocess.check_output(['git','show','30236fb:'+f],cwd=r)
+ assert (o/f).read_bytes() in [base,(r/f).read_bytes()], 'concurrent user edit '+f
+files += ['docs/implementation/2026-09-14-graph-chain-completion.md','docs/implementation/2026-09-14-graph-chain-next-context.md']
+files += [str(p.relative_to(r)) for p in (d/'graph-chain-evidence').rglob('*') if p.is_file()]
+for f in files[2:]:assert not (o/f).exists() or (o/f).read_bytes()==(r/f).read_bytes(), 'concurrent user edit '+f
+for f in files:
+ (o/f).parent.mkdir(parents=True,exist_ok=True);shutil.copy2(r/f,o/f)
+assert all((r/f).read_bytes()==(o/f).read_bytes() for f in files)
+assert hashlib.sha256((o/'AGENTS.md').read_bytes()).hexdigest()=='0aeac98453f7b46af92c269528ef81268c5de79ea39a8635bd0bd510b7b9d377'
+result={'status':'passed','completedTasks':18,'totalTasks':30,'mirroredFiles':len(files),'originalAgentsUnchanged':True,'sourceHashesVerified':len(h['files']),'acceptedCodeCommit':a['acceptedCodeCommit']}
+(e/'docs-validation.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result))

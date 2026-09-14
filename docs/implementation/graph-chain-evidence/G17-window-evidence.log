@@ -1,0 +1,23 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+
+  ../../../tmp/gc5/g17-build-U7LtiN/graph-chain-host.mjs  327.2kb
+
+⚡ Done in 14ms
+ ✓ src/graph-chain.integration.test.ts (22 tests | 10 skipped) 10140ms
+   ✓ assembly: real command implement → freeze persists a selfcontained candidate  1523ms
+   ✓ assembly: SIGKILL at before-return resumes using actual SQLite saver and ledger  1414ms
+   ✓ assembly: SIGKILL at before-final resumes using actual SQLite saver and ledger  1316ms
+   ✓ assembly: SIGKILL at after-final resumes using actual SQLite saver and ledger  1276ms
+   ✓ assembly: restore then SIGKILL again re-enters implement without repeating the confirmed external command  1751ms
+   ✓ assembly: real broker unknown stays quarantined, then durable applied release failure is retried without resending  755ms
+   ✓ assembly: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying  742ms
+   ✓ assembly: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze  657ms
+   ✓ module: a fresh supervisor cannot relaunch a consumed generation from the persistent database  386ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed | 10 skipped (22)
+   Start at  08:03:43
+   Duration  10.97s (transform 402ms, setup 7ms, collect 669ms, tests 10.14s, environment 0ms, prepare 37ms)
+

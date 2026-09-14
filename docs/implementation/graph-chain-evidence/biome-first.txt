@@ -1,0 +1,187 @@
+packages/cli/src/graph-chain.integration.test.ts:79:75 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    77 │   // Keep all fixture evidence under gc5 for parent inspection, including failures.
+    78 │   const child = fork(builtFixture, [root, mode, String(deadlineSeconds)], { cwd: repoRoot, stdio: ['ignore', 'pipe', 'pipe', 'ipc'], env: { ...process.env, OSSTACK_HOME: process.env['G17_TEST_HOME'] ?? join(root, 'home'), OSSTACK_DASHBOARD: '0' } });
+  > 79 │   let output = ''; let sequence = 0; const messages: Array<Record<string, any>> = []; const changed = new Set<() => void>();
+       │                                                                           ^^^
+    80 │   child.stdout!.on('data', chunk => { output += String(chunk); }); child.stderr!.on('data', chunk => { output += String(chunk); });
+    81 │   child.on('message', message => { messages.push(message as Record<string, any>); for (const fn of changed) fn(); });
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+packages/cli/src/graph-chain.integration.test.ts:81:76 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    79 │   let output = ''; let sequence = 0; const messages: Array<Record<string, any>> = []; const changed = new Set<() => void>();
+    80 │   child.stdout!.on('data', chunk => { output += String(chunk); }); child.stderr!.on('data', chunk => { output += String(chunk); });
+  > 81 │   child.on('message', message => { messages.push(message as Record<string, any>); for (const fn of changed) fn(); });
+       │                                                                            ^^^
+    82 │   child.on('exit', () => { writeFileSync(join(root, `host-${child.pid}.log`), output); for (const fn of changed) fn(); });
+    83 │   const next = async (predicate: (message: Record<string, any>) => boolean, timeout = 15_000): Promise<Record<string, any>> => {
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+packages/cli/src/graph-chain.integration.test.ts:83:59 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    81 │   child.on('message', message => { messages.push(message as Record<string, any>); for (const fn of changed) fn(); });
+    82 │   child.on('exit', () => { writeFileSync(join(root, `host-${child.pid}.log`), output); for (const fn of changed) fn(); });
+  > 83 │   const next = async (predicate: (message: Record<string, any>) => boolean, timeout = 15_000): Promise<Record<string, any>> => {
+       │                                                           ^^^
+    84 │     const take = () => { const index = messages.findIndex(predicate); return index < 0 ? undefined : messages.splice(index, 1)[0]; };
+    85 │     const found = take(); if (found) return found;
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+packages/cli/src/graph-chain.integration.test.ts:83:119 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    81 │   child.on('message', message => { messages.push(message as Record<string, any>); for (const fn of changed) fn(); });
+    82 │   child.on('exit', () => { writeFileSync(join(root, `host-${child.pid}.log`), output); for (const fn of changed) fn(); });
+  > 83 │   const next = async (predicate: (message: Record<string, any>) => boolean, timeout = 15_000): Promise<Record<string, any>> => {
+       │                                                                                                                       ^^^
+    84 │     const take = () => { const index = messages.findIndex(predicate); return index < 0 ? undefined : messages.splice(index, 1)[0]; };
+    85 │     const found = take(); if (found) return found;
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+packages/cli/src/daemon.ts:3840:12 lint/suspicious/noAssignInExpressions ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × The assignment should not be in an expression.
+  
+    3838 │   const getBroker = (): Promise<GraphActionBroker> => {
+    3839 │     if (checkpointClosed) return Promise.reject(new Error("GRAPH_RUNTIME_CLOSED"));
+  > 3840 │     return graphBroker ??= import("./graph-action-broker.js").then(({ GraphActionBroker }) => new GraphActionBroker(ctx.db, {
+         │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  > 3841 │       acquire: (input) => admissionFor(ctx).acquire(input),
+          ...
+  > 3845 │       },
+  > 3846 │     }));
+         │     ^^^
+    3847 │   };
+    3848 │   const registeredWorkspace = opts.workspacePath === undefined ? undefined : (await resolveRepositoryScope(opts.workspacePath)).workspacePath;
+  
+  i The use of assignments in expressions is confusing.
+    Expressions are often considered as side-effect free.
+  
+
+packages/cli/src/daemon.ts:4130:18 lint/suspicious/noAssignInExpressions ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × The assignment should not be in an expression.
+  
+    4128 │           // verified/snapshotted by the manager; the SDK stays in its child process.
+    4129 │           const fixed = structuredClone(configuration);
+  > 4130 │           return graphRuntime = Promise.all([import("./graph-runtime.js"), getBroker(), getCheckpoints()])
+         │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  > 4131 │             .then(async ([{ GraphRuntime }, broker, checkpoints]) => {
+  > 4132 │               const runtime = new GraphRuntime({ ...fixed, db: ctx.db, broker, checkpoints });
+  > 4133 │               if (checkpointClosed) { await runtime.close(); throw new Error("GRAPH_RUNTIME_CLOSED"); }
+  > 4134 │               return runtime;
+  > 4135 │             });
+         │             ^^
+    4136 │         },
+    4137 │         acquireGraphAdmission: async (identity, input) => {
+  
+  i The use of assignments in expressions is confusing.
+    Expressions are often considered as side-effect free.
+  
+
+packages/cli/src/graph-action-broker.ts:355:11 lint/correctness/noUnsafeFinally ━━━━━━━━━━━━━━━━━━━━
+
+  × Unsafe usage of 'throw'.
+  
+    353 │             generation: binding.generation, owner: binding.owner, workspacePath: binding.workspace.workspace_path,
+    354 │           } });
+  > 355 │           throw error;
+        │           ^^^^^^^^^^^^
+    356 │         }
+    357 │       }
+  
+  i 'throw' in 'finally' overwrites the control flow statements inside 'try' and 'catch'.
+  
+
+packages/cli/src/graph-reconciler.ts:33:50 lint/suspicious/noControlCharactersInRegex ━━━━━━━━━━━━━━
+
+  × Unexpected control character in a regular expression.
+  
+    31 │   releaseError?: string;
+    32 │ }
+  > 33 │ const ref = z.string().min(1).max(256).regex(/^[^\x00-\x1f\x7f-\x9f]+$/).refine((s) => s.trim() === s);
+       │                                                  ^^^^
+    34 │ const requestSchema = z.discriminatedUnion("kind", [
+    35 │   z.object({ kind: z.literal("effect"), fence: z.unknown(), receiptId: ref, effectKey: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  
+  i Control characters are unusual and potentially incorrect inputs, so they are disallowed.
+  
+
+packages/cli/src/graph-reconciler.ts:33:55 lint/suspicious/noControlCharactersInRegex ━━━━━━━━━━━━━━
+
+  × Unexpected control character in a regular expression.
+  
+    31 │   releaseError?: string;
+    32 │ }
+  > 33 │ const ref = z.string().min(1).max(256).regex(/^[^\x00-\x1f\x7f-\x9f]+$/).refine((s) => s.trim() === s);
+       │                                                       ^^^^
+    34 │ const requestSchema = z.discriminatedUnion("kind", [
+    35 │   z.object({ kind: z.literal("effect"), fence: z.unknown(), receiptId: ref, effectKey: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  
+  i Control characters are unusual and potentially incorrect inputs, so they are disallowed.
+  
+
+packages/core/src/graph/artifact-git.ts:51:9 lint/suspicious/noImplicitAnyLet ━━━━━━━━━━━━━━━━━━━━━━
+
+  × This variable implicitly has the any type.
+  
+    49 │   for (const name of names) {
+    50 │     const path = artifactPath(source, name);
+  > 51 │     let info;
+       │         ^^^^
+    52 │     try { info = await lstat(path); } catch (error) { if (["ENOENT", "ENOTDIR"].includes((error as NodeJS.ErrnoException).code ?? "")) continue; throw error; }
+    53 │     if (await realpath(dirname(path)) !== dirname(path)) throw new Error("source path has symlink ancestor");
+  
+  i Variable declarations without type annotation and initialization implicitly have the any type. Declare a type or initialize the variable with some value.
+  
+
+packages/core/src/state/graph-recovery.ts:11:50 lint/suspicious/noControlCharactersInRegex ━━━━━━━━━━
+
+  × Unexpected control character in a regular expression.
+  
+    10 │ const count = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+  > 11 │ const ref = z.string().min(1).max(256).regex(/^[^\x00-\x1f\x7f-\x9f]+$/).refine((s) => s.trim() === s);
+       │                                                  ^^^^
+    12 │ const digest = z.string().regex(/^[a-f0-9]{64}$/);
+    13 │ const stopped = z.object({ kind: z.literal("stopped"), graphRunId: ref, generation: count.min(1), owner: ref, confirmedAt: count, evidenceRef: ref }).strict();
+  
+  i Control characters are unusual and potentially incorrect inputs, so they are disallowed.
+  
+
+packages/core/src/state/graph-recovery.ts:11:55 lint/suspicious/noControlCharactersInRegex ━━━━━━━━━━
+
+  × Unexpected control character in a regular expression.
+  
+    10 │ const count = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+  > 11 │ const ref = z.string().min(1).max(256).regex(/^[^\x00-\x1f\x7f-\x9f]+$/).refine((s) => s.trim() === s);
+       │                                                       ^^^^
+    12 │ const digest = z.string().regex(/^[a-f0-9]{64}$/);
+    13 │ const stopped = z.object({ kind: z.literal("stopped"), graphRunId: ref, generation: count.min(1), owner: ref, confirmedAt: count, evidenceRef: ref }).strict();
+  
+  i Control characters are unusual and potentially incorrect inputs, so they are disallowed.
+  
+
+Checked 36 files in 46ms. No fixes applied.
+Found 8 errors.
+Found 4 warnings.
+check ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Some errors were emitted while running checks.
+  
+

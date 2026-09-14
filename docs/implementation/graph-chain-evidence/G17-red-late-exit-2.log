@@ -1,0 +1,76 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-chain.integration.test.ts (29 tests | 1 failed | 28 skipped) 414ms
+   ↓ uses real worker IPC and durable SQLite checkpoints, retires both ports and exposes OS exit
+   ↓ rejects asynchronous authority and terminal/old identities before spawning
+   ↓ assembly: real command implement → freeze persists a selfcontained candidate
+   ↓ daemon: real command implement → freeze persists a selfcontained candidate
+   ↓ assembly: SIGKILL at before-return resumes using actual SQLite saver and ledger
+   ↓ assembly: SIGKILL at before-final resumes using actual SQLite saver and ledger
+   ↓ assembly: SIGKILL at after-final resumes using actual SQLite saver and ledger
+   ↓ assembly: restore then SIGKILL again re-enters implement without repeating the confirmed external command
+   ↓ daemon: SIGKILL at before-return resumes using actual SQLite saver and ledger
+   ↓ daemon: SIGKILL at before-final resumes using actual SQLite saver and ledger
+   ↓ daemon: SIGKILL at after-final resumes using actual SQLite saver and ledger
+   ↓ daemon: restore then SIGKILL again re-enters implement without repeating the confirmed external command
+   ↓ daemon: true daemon process SIGKILL/restart retains SQLite results and resumes through G15
+   ↓ assembly: real broker unknown stays quarantined, then durable applied release failure is retried without resending
+   ↓ assembly: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying
+   ↓ assembly: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze
+   ↓ daemon: real broker unknown stays quarantined, then durable applied release failure is retried without resending
+   ↓ daemon: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying
+   ↓ daemon: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze
+   ↓ module: a fresh supervisor cannot relaunch a consumed generation from the persistent database
+   ↓ daemon: unknown retained canonical lock survives actual daemon SIGKILL and releases only after G15 committed decision
+   ↓ module: durable original deadline refuses a live lease and cannot be reset by start
+   ↓ assembly: bounded stop reports undrained actual broker Promise and refuses recovery before drainage
+   ↓ assembly: original deadline aborts actual in-flight command through supervisor heartbeat
+   ↓ assembly: cancel with unproven executor stop retains unknown effect even after broker drainage
+   ↓ daemon: bounded stop reports undrained actual broker Promise and refuses recovery before drainage
+   ↓ daemon: original deadline aborts actual in-flight command through supervisor heartbeat
+   ↓ daemon: cancel with unproven executor stop retains unknown effect even after broker drainage
+   × module: late actual worker OS exit replaces unconfirmed observation without rewriting bounded stop 413ms
+     → expected { kind: 'exit_unconfirmed', …(2) } to deeply equal { kind: 'exited', …(8) }
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-chain.integration.test.ts > module: late actual worker OS exit replaces unconfirmed observation without rewriting bounded stop
+AssertionError: expected { kind: 'exit_unconfirmed', …(2) } to deeply equal { kind: 'exited', …(8) }
+
+- Expected
++ Received
+
+  {
+-   "code": null,
+-   "confirmedAt": 1789398482263,
+-   "evidenceRef": "worker-exit:48f0bbd3-22cc-4f50-80b9-85541a1ae9ba",
+-   "generation": 1,
+-   "graphRunId": "aebfc822-0526-415f-a399-a081f9109149",
+-   "kind": "exited",
+-   "owner": "owner",
++   "error": "WORKER_EXIT_UNCONFIRMED",
++   "kind": "exit_unconfirmed",
+    "pid": 96654,
+-   "signal": "SIGKILL",
+  }
+
+ ❯ src/graph-chain.integration.test.ts:250:50
+    248|     if (stop.worker.kind !== 'exit_unconfirmed') throw new Error('expe…
+    249|     process.kill(pid!, 'SIGKILL'); const actual = await h.finalExit; e…
+    250|     expect(f.runtime.observedExit(h.connection)).toEqual(actual); expe…
+       |                                                  ^
+    251|   } finally { ignoreKill.mockRestore(); if (pid) { try { process.kill(…
+    252| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 28 skipped (29)
+   Start at  08:08:00
+   Duration  1.31s (transform 414ms, setup 7ms, collect 735ms, tests 414ms, environment 0ms, prepare 33ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-chain.integration.test.ts -t 'late actual worker'

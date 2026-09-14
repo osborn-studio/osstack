@@ -1,0 +1,99 @@
+$ vitest run -- src/graph-worker.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol
+
+ ✓ src/session-continuation.test.ts (7 tests) 6ms
+ ✓ src/graph-review.test.ts (12 tests) 9ms
+ ✓ src/graph-checkpoint.test.ts (2 tests) 13ms
+ ✓ src/graph-worker.test.ts (5 tests) 8ms
+ ✓ src/session-continuation-grant.test.ts (52 tests) 12ms
+ ✓ src/autonomy.test.ts (11 tests) 7ms
+ ✓ src/graph.test.ts (58 tests) 46ms
+ ✓ src/protocol.test.ts (45 tests) 15ms
+ ❯ src/schemas.test.ts (24 tests | 2 failed) 17ms
+   × generated JSON Schemas are committed and fresh > emits one schema per public protocol contract 11ms
+     → expected [ …(23) ] to deeply equal [ …(22) ]
+   ✓ generated JSON Schemas are committed and fresh > schemas/agent-command-result.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/agent-command.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/approval-decision.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/approval-request.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/autonomy-risk-decision.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/autonomy-risk-level.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/autonomy-run-state.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/continuation-grant-body.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/continuation-output-check.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/event-envelope.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/evidence-ref.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/graph-checkpoint-request.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/graph-checkpoint-response.schema.json matches the Zod source (zero drift) 0ms
+   × generated JSON Schemas are committed and fresh > schemas/graph-worker.schema.json matches the Zod source (zero drift) 1ms
+     → schemas/graph-worker.schema.json is not committed — run generate:schemas: expected false to be true // Object.is equality
+   ✓ generated JSON Schemas are committed and fresh > schemas/graph.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/policy-decision.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/run-summary.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/scoped-approval-decision.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/scoped-approval-request.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/session-continuation-request.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/session-decision.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/signed-continuation-grant.schema.json matches the Zod source (zero drift) 0ms
+   ✓ generated JSON Schemas are committed and fresh > schemas/task.schema.json matches the Zod source (zero drift) 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/schemas.test.ts > generated JSON Schemas are committed and fresh > emits one schema per public protocol contract
+AssertionError: expected [ …(23) ] to deeply equal [ …(22) ]
+
+- Expected
++ Received
+
+@@ -10,10 +10,11 @@
+    "continuation-output-check.schema.json",
+    "event-envelope.schema.json",
+    "evidence-ref.schema.json",
+    "graph-checkpoint-request.schema.json",
+    "graph-checkpoint-response.schema.json",
++   "graph-worker.schema.json",
+    "graph.schema.json",
+    "policy-decision.schema.json",
+    "run-summary.schema.json",
+    "scoped-approval-decision.schema.json",
+    "scoped-approval-request.schema.json",
+
+ ❯ src/schemas.test.ts:18:23
+     16| 
+     17|   it("emits one schema per public protocol contract", () => {
+     18|     expect(filenames).toEqual(
+       |                       ^
+     19|       [
+     20|         "agent-command-result.schema.json",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/schemas.test.ts > generated JSON Schemas are committed and fresh > schemas/graph-worker.schema.json matches the Zod source (zero drift)
+AssertionError: schemas/graph-worker.schema.json is not committed — run generate:schemas: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/schemas.test.ts:49:95
+     47|     it(`schemas/${filename} matches the Zod source (zero drift)`, () =…
+     48|       const path = `${SCHEMAS_DIR}/${filename}`;
+     49|       expect(existsSync(path), `schemas/${filename} is not committed —…
+       |                                                                                               ^
+     50|         true,
+     51|       );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 8 passed (9)
+      Tests  2 failed | 214 passed (216)
+   Start at  07:29:05
+   Duration  460ms (transform 594ms, setup 0ms, collect 1.19s, tests 133ms, environment 1ms, prepare 566ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/protocol@0.15.0 test: `vitest run -- src/graph-worker.test.ts`
+Exit status 1

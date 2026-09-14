@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-chain.integration.test.ts (2 tests) 344ms
+   ✓ uses real worker IPC and durable SQLite checkpoints, retires both ports and exposes OS exit  330ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  07:49:39
+   Duration  1.23s (transform 431ms, setup 7ms, collect 716ms, tests 344ms, environment 0ms, prepare 35ms)
+

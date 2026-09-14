@@ -1,0 +1,1869 @@
+You are an independent adversarial Claude Fable 5.1 reviewer. Tool-less review of supplied actual source. Do not invoke tools or skills. Review the final resource-release gap fix for C5 G14-G17: confirmed/applied effects must not permit terminal projection, takeover, or retry while admission release is unresolved; normal physical release then lost DB acknowledgment must remain recoverable without leaving in-memory quarantine. Check races, transaction atomicity, stale proof and lost ACK. Cite concrete source. Report actionable bugs with severity, and distinguish trusted-host misuse from reachable worker API. Live-worker daemon crash without durable PID identity remains explicitly G25, fail-closed; no production-ready or automatic recovery claim. Focus bounded C5 fix, do not expand scope. Focused CLI 101 tests and core93 tests passed. Full verification follows.
+
+DIFF
+diff --git a/packages/cli/src/graph-action-broker-boundary.test.ts b/packages/cli/src/graph-action-broker-boundary.test.ts
+index 50a73b6..54a50bb 100644
+--- a/packages/cli/src/graph-action-broker-boundary.test.ts
++++ b/packages/cli/src/graph-action-broker-boundary.test.ts
+@@ -228,3 +228,25 @@ it('rechecks explicit retry authority after adapter availability and before a ne
+   expect(await broker.retryAuthorized(retryConnection, row.effect_key, () => { if (!retryAllowed) throw new Error('retry grant revoked'); })).toMatchObject({ kind: 'worker_action_rejected' });
+   expect(invokes).toBe(0); expect(f.writes.in_use).toBe(0);
+ });
++it('refuses terminal projection while a confirmed effect still owns a retained admission', async () => {
++  const f = fixture(actor(async function* (task) { yield done(task); }));
++  const broker = new GraphActionBroker(f.db, { ...f.options, acquire: async input => {
++    const lease = await f.admission.acquire(input);
++    return { ...lease, release: async () => { lease.retain('release failure'); throw new Error('release failure'); } };
++  } });
++  const connection = {}; broker.register(connection, f.registration);
++  await expect(broker.handle(connection, f.request)).rejects.toThrow('release failure');
++  const run = f.runs.get(scope, f.run.graphRunId)!;
++  expect(() => f.runs.project({ ...fence(run), status: 'failed' })).toThrow('ADMISSION_RELEASE_PENDING');
++});
++it('recovers a lost admission-release DB acknowledgement without quarantining an already released physical lease', async () => {
++  const f = fixture(actor(async function* (task) { yield done(task); }));
++  f.db.exec("CREATE TRIGGER fail_release BEFORE UPDATE OF released_at ON graph_action_admissions BEGIN SELECT RAISE(ABORT, 'lost release ack'); END");
++  await expect(f.broker.handle(f.connection, f.request)).rejects.toThrow('lost release ack');
++  const { effect_key: key } = f.db.prepare('SELECT effect_key FROM graph_actions').get() as { effect_key: string };
++  expect(f.writes.in_use).toBe(0);
++  f.db.exec('DROP TRIGGER fail_release'); let verified = 0;
++  expect(await f.broker.releaseReconciled(key, async () => { verified++; })).toBe(true);
++  expect(verified).toBeGreaterThan(0);
++  const next = await f.admission.acquire({ kind: 'write', runId: 'after-release-ack', workspacePath: f.repo }); await next.release();
++});
+diff --git a/packages/cli/src/graph-action-broker.test.ts b/packages/cli/src/graph-action-broker.test.ts
+index 2b67806..083d27a 100644
+--- a/packages/cli/src/graph-action-broker.test.ts
++++ b/packages/cli/src/graph-action-broker.test.ts
+@@ -130,8 +130,12 @@ it.each(["revoke", "generation"])("fences %s after G04 asynchronous availability
+   await expect.poll(() => probing).toBe(true);
+   if (kind === "revoke") f.revoke();
+   else { const current = f.runs.get(scope, f.run.graphRunId)!; const now = Date.now();
+-    f.runs.acquireLease({ ...fence(current), now, owner: "new-worker", leaseExpiresAt: Date.now() + 120_000,
+-      stoppedWorker: { graphRunId: current.graphRunId, generation: current.generation, owner: current.leaseOwner!, confirmedAt: now, evidenceRef: "host-exit" } }); }
++    expect(() => f.runs.acquireLease({ ...fence(current), now, owner: "new-worker", leaseExpiresAt: Date.now() + 120_000,
++      stoppedWorker: { graphRunId: current.graphRunId, generation: current.generation, owner: current.leaseOwner!, confirmedAt: now, evidenceRef: "host-exit" } })).toThrow('ADMISSION_RELEASE_PENDING');
++    // The supported takeover now refuses held admissions. Still fault-inject an
++    // out-of-protocol state change to prove the final invocation fence holds.
++    f.db.prepare("UPDATE graph_runs SET generation=generation+1,revision=revision+1,lease_owner='new-worker' WHERE graph_run_id=?").run(current.graphRunId);
++  }
+   release(); expect(await pending).toMatchObject({ kind: "worker_action_rejected" }); expect(count).toBe(0); expect(f.writes.in_use).toBe(0);
+ });
+ it("fences confirmed replay before lookup and keeps effect identity across a trusted fresh generation", async () => {
+diff --git a/packages/cli/src/graph-action-broker.ts b/packages/cli/src/graph-action-broker.ts
+index 2b37ce9..836f7da 100644
+--- a/packages/cli/src/graph-action-broker.ts
++++ b/packages/cli/src/graph-action-broker.ts
+@@ -1,3 +1,4 @@
++import { GraphAdmissionStore } from "@osstack/core/graph-recovery";
+ import { randomUUID } from "node:crypto";
+ import { isAbsolute } from "node:path";
+ import type Database from "better-sqlite3";
+@@ -103,9 +104,11 @@ export class GraphActionBroker {
+   private readonly connections = new WeakMap<object, Binding>();
+   private readonly retired = new WeakSet<object>();
+   private readonly retained = new Map<string, { lease: ExecutionLease; context: GraphRetainedAction }>();
++  private readonly admissions: GraphAdmissionStore;
+   private readonly runs: GraphRunStore;
+   private readonly actions: GraphActionStore;
+   constructor(db: Database.Database, private readonly options: GraphActionBrokerOptions) {
++    this.admissions = new GraphAdmissionStore(db);
+     this.runs = new GraphRunStore(db); this.actions = new GraphActionStore(db);
+   }
+ 
+@@ -186,7 +189,10 @@ export class GraphActionBroker {
+     const entry = this.retained.get(effectKey);
+     if (!entry) return false;
+     if (!entry.lease.releaseAfterReconciliation) throw new Error("lease reconciliation unsupported");
++    const verification: unknown = await verify(snapshot(entry.context));
++    if (verification !== undefined) throw new Error("invalid reconciliation authority");
+     await entry.lease.releaseAfterReconciliation(() => verify(snapshot(entry.context)));
++    this.admissions.released(effectKey, this.options.now?.() ?? Date.now());
+     this.retained.delete(effectKey);
+     return true;
+   }
+@@ -273,6 +279,7 @@ export class GraphActionBroker {
+       owned = intent.action;
+       lease = await this.options.acquire({ kind: action.access, runId: `graph-action:${owned.effectKey}`, workspacePath: binding.workspace.workspace_path,
+         signal, authorize: async () => { check(); await this.options.authorizePolicy?.(binding.workspace.workspace_path); check(); } });
++      this.admissions.hold(owned.effectKey, this.options.now?.() ?? Date.now());
+       check();
+       // This synchronous gate runs inside the actual adapter invoke/command/host
+       // handler call, after G04's async authorization and availability windows.
+@@ -347,11 +354,15 @@ export class GraphActionBroker {
+   }
+ 
+   private async releaseAdmission(lease: ExecutionLease, binding: Binding | undefined, owned: GraphAction | undefined): Promise<void> {
+-    try { await lease.release(); }
++    let physicallyReleased = false;
++    try {
++      await lease.release(); physicallyReleased = true;
++      if (owned) this.admissions.released(owned.effectKey, this.options.now?.() ?? Date.now());
++    }
+     catch (error) {
+       // Release failure deliberately stops the chain without replacing durable
+       // effect truth. Keep its exact admission reachable for release-only recovery.
+-      lease.retain(String(error));
++      if (!physicallyReleased) lease.retain(String(error));
+       if (binding && owned) this.retained.set(owned.effectKey, { lease, context: {
+         effectKey: owned.effectKey, scope: binding.scope, graphRunId: binding.graphRunId,
+         generation: binding.generation, owner: binding.owner, workspacePath: binding.workspace.workspace_path,
+diff --git a/packages/cli/src/graph-reconciler.test.ts b/packages/cli/src/graph-reconciler.test.ts
+index b36fff7..277e060 100644
+--- a/packages/cli/src/graph-reconciler.test.ts
++++ b/packages/cli/src/graph-reconciler.test.ts
+@@ -148,6 +148,8 @@ it('acknowledges an exact lost takeover response without stopping the replacemen
+ it('refuses old-generation release replay before stopping a replacement worker', async () => {
+   registration.release = async () => { throw new Error('release failed'); }; install();
+   run = (await reconciler.reconcile(connection, request())).result.run;
++  registration.release = async (_result, reverify) => { await reverify(); }; install();
++  await reconciler.reconcile(connection, { ...request(), fence: { ...fence(), now: 130 } });
+   run = (await reconciler.reconcile(connection, { kind: 'takeover', fence: { ...fence(), now: 130 }, receiptId: 'takeover', owner: 'replacement', leaseExpiresAt: 300 })).result.run;
+   const stop = vi.fn(async () => { throw new Error('replacement must remain running'); });
+   registration = { ...registration, binding: { ...registration.binding, generation: run.generation, owner: run.leaseOwner }, stopWorker: stop };
+@@ -155,3 +157,14 @@ it('refuses old-generation release replay before stopping a replacement worker',
+   await expect(reconciler.reconcile(connection, { ...request(), fence: { ...fence(), now: 130 } })).rejects.toThrow('RECOVERY_GENERATION_CHANGED');
+   expect(stop).not.toHaveBeenCalled();
+ });
++it('blocks takeover and terminal sealing until durable resource release completes after restart', async () => {
++  registration.release = async () => { throw new Error('release failed'); }; install();
++  run = (await reconciler.reconcile(connection, request())).result.run;
++  const currentFence = { ...fence(), now: 130 };
++  await expect(reconciler.reconcile(connection, { kind: 'takeover', fence: currentFence, receiptId: 'premature', owner: 'next', leaseExpiresAt: 300 })).rejects.toThrow('ADMISSION_RELEASE_PENDING');
++  expect(() => runs.project({ ...currentFence, status: 'failed' })).toThrow('ADMISSION_RELEASE_PENDING');
++  db.close(); db = openDb({ path: join(dir, 'state.db') }); runs = new GraphRunStore(db);
++  registration.release = async (_result, reverify) => { await reverify(); }; install();
++  expect((await reconciler.reconcile(connection, { ...request(), fence: currentFence })).exit).toBe('applied');
++  expect(runs.project({ ...currentFence, status: 'ready' }).status).toBe('ready');
++});
+diff --git a/packages/cli/src/graph-reconciler.ts b/packages/cli/src/graph-reconciler.ts
+index 2832d73..ceec81d 100644
+--- a/packages/cli/src/graph-reconciler.ts
++++ b/packages/cli/src/graph-reconciler.ts
+@@ -97,15 +97,16 @@ export class GraphReconciler {
+     try { return fn(); } finally { this.attestation = undefined; }
+   }
+   private async release(connection: object, registration: GraphReconcilerRegistration, result: GraphRecoveryResult): Promise<void> {
+-    const reverify = async () => {
++    const reverify = async (completed = false) => {
+       const run = result.run;
+       const snapshot = this.store.snapshot({ scope: run.scope, graphRunId: run.graphRunId, identity: run.identity,
+         expectedGeneration: run.generation, expectedRevision: run.revision, expectedOwner: run.leaseOwner, now: this.now() }, result.action?.effectKey);
+       const proof = await this.proof(connection, registration, snapshot);
+-      this.verified(connection, registration, snapshot, proof, result.record.decision, () => this.store.verifyRelease(snapshot, result.record.decision.receiptId, proof, this.now()));
++      this.verified(connection, registration, snapshot, proof, result.record.decision, () => completed ? this.store.completeRelease(snapshot, result.record.decision.receiptId, proof, this.now()) : this.store.verifyRelease(snapshot, result.record.decision.receiptId, proof, this.now()));
+     };
+     await reverify();
+-    authority(await registration.release(structuredClone(result), reverify));
++    authority(await registration.release(structuredClone(result), () => reverify()));
++    await reverify(true);
+   }
+   async reconcile(connection: object, value: GraphReconciliationRequest): Promise<GraphReconciliationResult> {
+     // Parse/clone every request field before the first await. No worker-selected callback.
+diff --git a/packages/core/src/state/graph-actions.ts b/packages/core/src/state/graph-actions.ts
+index 9bb2d1b..6189c95 100644
+--- a/packages/core/src/state/graph-actions.ts
++++ b/packages/core/src/state/graph-actions.ts
+@@ -65,7 +65,7 @@ export interface GraphActionResult {
+   action: GraphAction; run: GraphRun; budget: GraphActionBudget;
+   created: boolean; changed: boolean;
+ }
+-export type GraphActionStorageErrorCode = "ORIGINAL_BUDGET_MISSING" | "ACTION_NOT_FOUND" | "ACTION_INPUT_CONFLICT"
++export type GraphActionStorageErrorCode = "ADMISSION_RELEASE_PENDING" | "ORIGINAL_BUDGET_MISSING" | "ACTION_NOT_FOUND" | "ACTION_INPUT_CONFLICT"
+   | "UNRESOLVED_ACTION" | "RETRY_NOT_SAFE" | "NOT_CURRENT_ATTEMPT" | "ACTION_GENERATION_MISMATCH"
+   | "INVALID_ACTION_STATE" | "OUTCOME_CONFLICT" | "EXECUTION_CONFLICT" | "EPOCH_BUDGET_EXHAUSTED"
+   | "BRANCH_BUDGET_EXHAUSTED" | "ACTION_BUDGET_EXHAUSTED" | "WALL_CLOCK_BUDGET_EXHAUSTED"
+@@ -204,6 +204,7 @@ export class GraphActionStore {
+       const prior = this.find(run, effectKey);
+       if (this.current(run, prior.effect)!.effectKey !== effectKey) fail("NOT_CURRENT_ATTEMPT");
+       if (prior.state !== "failed" || !prior.retrySafe) fail("RETRY_NOT_SAFE");
++      if (this.db.prepare("SELECT 1 FROM graph_action_admissions WHERE effect_key=? AND released_at IS NULL").get(effectKey)) fail("ADMISSION_RELEASE_PENDING");
+       const input = { epoch: prior.effect.epoch, nodeId: prior.effect.nodeId, effectSlot: prior.effect.effectSlot,
+         action: prior.action, reservationTokens: prior.reservationTokens };
+       this.admit(run, input, true, fence.now);
+diff --git a/packages/core/src/state/graph-recovery.test.ts b/packages/core/src/state/graph-recovery.test.ts
+index 5c283a3..160071f 100644
+--- a/packages/core/src/state/graph-recovery.test.ts
++++ b/packages/core/src/state/graph-recovery.test.ts
+@@ -135,6 +135,8 @@ describe("trusted graph recovery", () => {
+     const done = commit({ kind: "effect", receiptId: "absent", verdict: { outcome: "not_applied", evidenceRef: "absent", actualTokens: 0, error: null } });
+     expect(done.action?.retrySafe).toBe(true);
+     expect(actions.get(fence(130), key).budget).toMatchObject({ actionStarts: 1, chargedTokens: "40" });
++    expect(() => actions.retry(fence(130), key)).toThrow('ADMISSION_RELEASE_PENDING');
++    const release = snapshot(130); recovery.completeRelease(release, 'absent', proof(release), 130);
+     const retry = actions.retry(fence(130), key);
+     expect(retry.action).toMatchObject({ state: "intent", effect: { logicalAttempt: 2 } });
+     expect(retry.budget.actionStarts).toBe(2);
+@@ -143,6 +145,7 @@ describe("trusted graph recovery", () => {
+     const first = recovery.snapshot(fence(210)); const p = proof(first, 220);
+     expect(() => recovery.commit(first, { kind: "takeover", receiptId: "takeover", owner: "next", leaseExpiresAt: 500 }, p, 220)).toThrow(/UNRESOLVED_ACTION/);
+     commit(applied, 220);
++    const release = snapshot(220); recovery.completeRelease(release, 'receipt', proof(release, 220), 220);
+     const settled = recovery.snapshot(fence(220)); const verified = proof(settled, 230);
+     run = recovery.commit(settled, { kind: "takeover", receiptId: "takeover", owner: "next", leaseExpiresAt: 500 }, verified, 230).run;
+     expect(run).toMatchObject({ generation: 2, leaseOwner: "next" });
+@@ -216,3 +219,16 @@ it('refuses a no-child proof when that generation has admitted actions', () => {
+   trusted.add(proofKey(p));
+   expect(() => recovery.commit(s, { kind: 'project', receiptId: 'forged-no-child', status: 'waiting_input' }, p, 130)).toThrow('WORKER_PROOF_MISMATCH');
+ });
++it('persists the admission obligation until an authenticated completed release and seals its history', () => {
++  commit();
++  const held = db.prepare('SELECT released_at FROM graph_action_admissions WHERE effect_key=?').get(key);
++  expect(held).toEqual({ released_at: null });
++  const s = snapshot(130); const p = proof(s);
++  expect(() => recovery.completeRelease(s, 'receipt', { ...p, executorEvidenceRef: 'forged' }, 130)).toThrow('FORGED_PROOF');
++  expect(() => runs.acquireLease({ ...fence(130), owner: 'premature', leaseExpiresAt: 300,
++    stoppedWorker: { graphRunId: run.graphRunId, generation: run.generation, owner: run.leaseOwner!, confirmedAt: 130, evidenceRef: 'stop' } })).toThrow('ADMISSION_RELEASE_PENDING');
++  recovery.completeRelease(s, 'receipt', p, 130);
++  expect(db.prepare('SELECT released_at FROM graph_action_admissions WHERE effect_key=?').get(key)).toEqual({ released_at: 130 });
++  expect(() => db.exec('UPDATE graph_action_admissions SET released_at=NULL')).toThrow('immutable');
++  expect(() => db.exec('DELETE FROM graph_action_admissions')).toThrow('immutable');
++});
+diff --git a/packages/core/src/state/graph-recovery.ts b/packages/core/src/state/graph-recovery.ts
+index 5e4beaf..392b760 100644
+--- a/packages/core/src/state/graph-recovery.ts
++++ b/packages/core/src/state/graph-recovery.ts
+@@ -54,6 +54,27 @@ function normalizeDecision(value: GraphRecoveryDecision): GraphRecoveryDecision
+   return decisionSchema.parse(GraphJsonValue.parse(input));
+ }
+ 
++/** Host-owned physical admission bookkeeping, not a worker API. Record a hold
++ * before invocation; record release only after the exact physical lease releases.
++ * Recovery also records an obligation for legacy/acquire-crash actions. */
++export class GraphAdmissionStore {
++  constructor(private readonly db: Database.Database) {}
++  hold(effectKey: string, now: number): void {
++    digest.parse(effectKey); count.parse(now);
++    const row = this.db.prepare("SELECT a.graph_run_id,a.generation,l.owner FROM graph_actions a JOIN graph_worker_leases l ON l.graph_run_id=a.graph_run_id AND l.generation=a.generation WHERE a.effect_key=?")
++      .get(effectKey) as { graph_run_id: string; generation: number; owner: string } | undefined;
++    if (!row) fail("ACTION_NOT_FOUND");
++    this.db.prepare("INSERT INTO graph_action_admissions(effect_key,graph_run_id,generation,owner,held_at,released_at) VALUES(?,?,?,?,?,NULL) ON CONFLICT(effect_key) DO NOTHING")
++      .run(effectKey, row!.graph_run_id, row!.generation, row!.owner, now);
++  }
++  released(effectKey: string, now: number): void {
++    digest.parse(effectKey); count.parse(now);
++    const row = this.db.prepare("SELECT held_at FROM graph_action_admissions WHERE effect_key=?").get(effectKey) as { held_at: number } | undefined;
++    if (row && now < row.held_at) fail("INVALID_TIME");
++    this.db.prepare("UPDATE graph_action_admissions SET released_at=? WHERE effect_key=? AND released_at IS NULL").run(now, effectKey);
++  }
++}
++
+ export class GraphRecoveryStore {
+   constructor(private readonly db: Database.Database, private readonly verifyProof: GraphRecoveryVerifier) {}
+   private transaction<T>(fn: () => T): T {
+@@ -158,6 +179,19 @@ export class GraphRecoveryStore {
+     if (result.record.decision.kind === "effect" && result.record.decision.verdict.outcome === "unknown") fail("UNRESOLVED_ACTION");
+     return result;
+   }
++  /** Called only after the trusted release callback completed. A lost DB ACK
++   * leaves a held obligation, so takeover/terminal projection remain blocked. */
++  completeRelease(snapshot: GraphRecoverySnapshot, receiptId: string, proof: GraphRecoveryProof, now: number): GraphRecoveryResult {
++    return this.transaction(() => {
++      const run = this.unchanged(snapshot, now);
++      const record = this.record(run, receiptId) ?? fail("DECISION_NOT_FOUND");
++      if (!snapshot.action || record.snapshot.action?.effectKey !== snapshot.action.effectKey || record.decision.kind !== "effect"
++        || record.decision.verdict.outcome === "unknown") fail("UNRESOLVED_ACTION");
++      this.proof(snapshot, proof, now, record.decision);
++      new GraphAdmissionStore(this.db).released(snapshot.action!.effectKey, now);
++      return { run, action: snapshot.action, record, changed: false };
++    });
++  }
+   commit(snapshotValue: GraphRecoverySnapshot, decisionValue: GraphRecoveryDecision, proofValue: GraphRecoveryProof, now: number): GraphRecoveryResult {
+     const snapshot = structuredClone(snapshotValue); graphRunFenceSchema.parse(GraphJsonValue.parse(snapshot.fence)); count.parse(now);
+     const decision = normalizeDecision(decisionValue);
+@@ -176,18 +210,25 @@ export class GraphRecoveryStore {
+       if (run.revision === Number.MAX_SAFE_INTEGER) fail("COUNTER_EXHAUSTED");
+       const proof = this.proof(snapshot, proofValue, now, decision);
+       let status = run.status;
+-      if (decision.kind === "effect") this.settle(run, snapshot.action ?? fail("ACTION_NOT_FOUND"), decision.verdict, now);
++      if (decision.kind === "effect") {
++        const action = snapshot.action ?? fail("ACTION_NOT_FOUND");
++        this.settle(run, action, decision.verdict, now);
++        if (decision.verdict.outcome !== "unknown") new GraphAdmissionStore(this.db).hold(action.effectKey, now);
++      }
+       else {
+         if (snapshot.action) fail("RUN_SNAPSHOT_REQUIRED");
+         const unresolved = this.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND state IN ('intent','running','unknown','cancel_pending') LIMIT 1").get(run.graphRunId);
++        const held = this.db.prepare("SELECT 1 FROM graph_action_admissions WHERE graph_run_id=? AND released_at IS NULL LIMIT 1").get(run.graphRunId);
+         if (decision.kind === "project") {
+           if (["running", "waiting_input"].includes(decision.status) && (run.status === "cancel_pending"
+             || this.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND state = 'cancel_pending'").get(run.graphRunId))) fail("CANCEL_PENDING");
+           if (["running", "cancelled"].includes(decision.status) && unresolved) fail("UNRESOLVED_ACTION");
++          if (["running", "cancelled"].includes(decision.status) && held) fail("ADMISSION_RELEASE_PENDING");
+           status = decision.status;
+         } else {
+           if (run.status === "cancel_pending") fail("CANCEL_PENDING");
+           if (unresolved) fail("UNRESOLVED_ACTION");
++          if (held) fail("ADMISSION_RELEASE_PENDING");
+           if (run.generation === Number.MAX_SAFE_INTEGER) fail("COUNTER_EXHAUSTED");
+           if (decision.leaseExpiresAt <= now) fail("INVALID_TIME");
+           const generation = run.generation + 1;
+diff --git a/packages/core/src/state/graph-runs.ts b/packages/core/src/state/graph-runs.ts
+index b12a73f..dd60e21 100644
+--- a/packages/core/src/state/graph-runs.ts
++++ b/packages/core/src/state/graph-runs.ts
+@@ -61,7 +61,7 @@ export interface GraphRun {
+ }
+ export type GraphRunStorageErrorCode = "RUN_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "PROGRAM_IDENTITY_MISMATCH"
+   | "STALE_GENERATION" | "REVISION_CONFLICT" | "OWNER_MISMATCH" | "LEASE_EXPIRED" | "STOPPED_WORKER_REQUIRED"
+-  | "STOPPED_WORKER_MISMATCH" | "TERMINAL_RUN" | "UNRESOLVED_ACTION" | "CANCEL_PENDING" | "INVALID_TIME" | "COUNTER_EXHAUSTED";
++  | "STOPPED_WORKER_MISMATCH" | "TERMINAL_RUN" | "UNRESOLVED_ACTION" | "CANCEL_PENDING" | "ADMISSION_RELEASE_PENDING" | "INVALID_TIME" | "COUNTER_EXHAUSTED";
+ export class GraphRunStorageError extends Error {
+   constructor(public readonly code: GraphRunStorageErrorCode) { super(code); this.name = "GraphRunStorageError"; }
+ }
+@@ -161,6 +161,7 @@ export class GraphRunStore {
+         if (stopped.graphRunId !== run.graphRunId || stopped.generation !== run.generation || stopped.owner !== run.leaseOwner
+           || stopped.confirmedAt < run.updatedAt || stopped.confirmedAt > input.now) fail("STOPPED_WORKER_MISMATCH");
+       } else if (input.stoppedWorker) fail("STOPPED_WORKER_MISMATCH");
++      if (this.db.prepare("SELECT 1 FROM graph_action_admissions WHERE graph_run_id=? AND released_at IS NULL LIMIT 1").get(run.graphRunId)) fail("ADMISSION_RELEASE_PENDING");
+       const generation = increment(run.generation);
+       this.db.prepare(`UPDATE graph_runs SET generation = ?, revision = ?, lease_owner = ?, lease_expires_at = ?,
+         lease_acquired_at = ?, updated_at = ? WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
+@@ -233,6 +234,8 @@ export class GraphRunStore {
+     if (["ready", "failed", "cancelled"].includes(input.status)
+       && this.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND state IN ('intent','running','unknown','cancel_pending') LIMIT 1")
+         .get(run.graphRunId)) fail("UNRESOLVED_ACTION");
++    if (["ready", "failed", "cancelled"].includes(input.status)
++      && this.db.prepare("SELECT 1 FROM graph_action_admissions WHERE graph_run_id=? AND released_at IS NULL LIMIT 1").get(run.graphRunId)) fail("ADMISSION_RELEASE_PENDING");
+     this.db.prepare(`UPDATE graph_runs SET status = ?, revision = ?, updated_at = ?
+       WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
+       .run(input.status, increment(run.revision), input.now, run.graphRunId, run.generation, run.revision);
+diff --git a/packages/core/src/state/migrations.ts b/packages/core/src/state/migrations.ts
+index d1466d2..c7dc28e 100644
+--- a/packages/core/src/state/migrations.ts
++++ b/packages/core/src/state/migrations.ts
+@@ -1536,6 +1536,29 @@ export const MIGRATIONS: readonly Migration[] = [
+         BEGIN SELECT RAISE(ABORT, 'graph worker launch immutable'); END;
+     `,
+   },
++  {
++    id: 30,
++    name: "graph_action_admissions",
++    sql: `
++      CREATE TABLE graph_action_admissions (
++        effect_key TEXT PRIMARY KEY REFERENCES graph_actions(effect_key),
++        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
++        generation INTEGER NOT NULL,
++        owner TEXT NOT NULL,
++        held_at INTEGER NOT NULL CHECK(held_at >= 0 AND held_at <= 9007199254740991),
++        released_at INTEGER CHECK(released_at >= held_at AND released_at <= 9007199254740991),
++        FOREIGN KEY(graph_run_id,generation) REFERENCES graph_worker_leases(graph_run_id,generation)
++      );
++      CREATE INDEX graph_admissions_pending ON graph_action_admissions(graph_run_id) WHERE released_at IS NULL;
++      CREATE TRIGGER graph_admissions_identity_immutable BEFORE UPDATE OF effect_key,graph_run_id,generation,owner,held_at ON graph_action_admissions
++        BEGIN SELECT RAISE(ABORT, 'graph admission identity immutable'); END;
++      CREATE TRIGGER graph_admissions_release_immutable BEFORE UPDATE OF released_at ON graph_action_admissions
++        WHEN OLD.released_at IS NOT NULL AND NEW.released_at IS NOT OLD.released_at
++        BEGIN SELECT RAISE(ABORT, 'graph admission release immutable'); END;
++      CREATE TRIGGER graph_admissions_no_delete BEFORE DELETE ON graph_action_admissions
++        BEGIN SELECT RAISE(ABORT, 'graph admission history immutable'); END;
++    `,
++  },
+ ];
+ 
+ export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;
+
+
+FILE packages/core/src/state/graph-recovery.ts
+// Trusted administrative recovery only. This port is never a worker JSON API.
+import { createHash } from "node:crypto";
+import type Database from "better-sqlite3";
+import { z } from "zod";
+import { GraphJsonValue, GraphResult, validateWorkerActionResponse } from "@osstack/protocol";
+import { preflightDiskSpace } from "./db.js";
+import { GraphRunStore, GraphRunStorageError, graphRunFenceSchema, type GraphRun, type GraphRunFence, type GraphStoppedWorkerEvidence } from "./graph-runs.js";
+import type { GraphAction, GraphActionOutcome } from "./graph-actions.js";
+
+const count = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Reject control characters in persisted recovery references.
+const ref = z.string().min(1).max(256).regex(/^[^\x00-\x1f\x7f-\x9f]+$/).refine((s) => s.trim() === s);
+const digest = z.string().regex(/^[a-f0-9]{64}$/);
+const stopped = z.object({ kind: z.literal("stopped"), graphRunId: ref, generation: count.min(1), owner: ref, confirmedAt: count, evidenceRef: ref }).strict();
+// No-child is a distinct trusted host receipt. Registration denials/duplicate
+// launch claims are not proof that an existing generation never spawned.
+const notStarted = stopped.extend({ kind: z.literal("not_started") });
+const proofSchema = z.object({ snapshotDigest: digest, verifiedAt: count,
+  worker: z.union([stopped, notStarted, z.object({ kind: z.literal("preworker"), evidenceRef: ref }).strict()]),
+  effectWorker: stopped.optional(), executorEvidenceRef: ref, workspaceEvidenceRef: ref }).strict();
+const verdictSchema = z.discriminatedUnion("outcome", [
+  z.object({ outcome: z.literal("applied"), evidenceRef: ref, actualTokens: count.nullable(), result: GraphResult }).strict(),
+  z.object({ outcome: z.literal("not_applied"), evidenceRef: ref, actualTokens: count.nullable(), error: GraphJsonValue }).strict(),
+  z.object({ outcome: z.literal("unknown"), evidenceRef: ref, observedTokens: count }).strict(),
+]);
+const decisionSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("effect"), receiptId: ref, verdict: verdictSchema }).strict(),
+  z.object({ kind: z.literal("project"), receiptId: ref, status: z.enum(["cancel_pending", "cancelled", "waiting_input", "running"]) }).strict(),
+  z.object({ kind: z.literal("takeover"), receiptId: ref, owner: ref, leaseExpiresAt: count }).strict(),
+]);
+export type GraphRecoveryProof = z.infer<typeof proofSchema>;
+export type GraphRecoveryVerdict = z.infer<typeof verdictSchema>;
+export type GraphRecoveryDecision = z.infer<typeof decisionSchema>;
+export interface GraphRecoverySnapshot { fence: GraphRunFence; run: GraphRun; action: GraphAction | null; digest: string; interruptId: string }
+export interface GraphRecoveryRecord { snapshot: GraphRecoverySnapshot; proof: GraphRecoveryProof; decision: GraphRecoveryDecision; committedAt: number }
+export interface GraphRecoveryResult { run: GraphRun; action: GraphAction | null; record: GraphRecoveryRecord; changed: boolean }
+/** Must independently authenticate supervisor/executor/workspace evidence AND the
+ * exact decision/result/evidence/receipt. A string,
+ * boolean, object or Promise is never authorization. Invoked inside BEGIN IMMEDIATE. */
+export type GraphRecoveryVerifier = (snapshot: GraphRecoverySnapshot, proof: GraphRecoveryProof, decision: GraphRecoveryDecision) => void;
+function canonical(v: unknown): string {
+  if (v === null || typeof v !== "object") return JSON.stringify(v);
+  if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
+  const r = v as Record<string, unknown>;
+  return `{${Object.keys(r).sort().map((k) => `${JSON.stringify(k)}:${canonical(r[k])}`).join(",")}}`;
+}
+const fail = (code: string): never => { throw new Error(code); };
+const hash = (v: unknown) => createHash("sha256").update(canonical(v)).digest("hex");
+export const graphRecoveryInterruptId = (effectKey: string): string => `graph-recovery:${digest.parse(effectKey)}`;
+function normalizeDecision(value: GraphRecoveryDecision): GraphRecoveryDecision {
+  // Invalid usage never erases a verified physical result. Null retains capacity.
+  const input = value.kind === "effect" && value.verdict.outcome !== "unknown"
+    ? { ...value, verdict: { ...value.verdict, actualTokens: count.safeParse(value.verdict.actualTokens).success ? value.verdict.actualTokens : null } } : value;
+  return decisionSchema.parse(GraphJsonValue.parse(input));
+}
+
+/** Host-owned physical admission bookkeeping, not a worker API. Record a hold
+ * before invocation; record release only after the exact physical lease releases.
+ * Recovery also records an obligation for legacy/acquire-crash actions. */
+export class GraphAdmissionStore {
+  constructor(private readonly db: Database.Database) {}
+  hold(effectKey: string, now: number): void {
+    digest.parse(effectKey); count.parse(now);
+    const row = this.db.prepare("SELECT a.graph_run_id,a.generation,l.owner FROM graph_actions a JOIN graph_worker_leases l ON l.graph_run_id=a.graph_run_id AND l.generation=a.generation WHERE a.effect_key=?")
+      .get(effectKey) as { graph_run_id: string; generation: number; owner: string } | undefined;
+    if (!row) fail("ACTION_NOT_FOUND");
+    this.db.prepare("INSERT INTO graph_action_admissions(effect_key,graph_run_id,generation,owner,held_at,released_at) VALUES(?,?,?,?,?,NULL) ON CONFLICT(effect_key) DO NOTHING")
+      .run(effectKey, row!.graph_run_id, row!.generation, row!.owner, now);
+  }
+  released(effectKey: string, now: number): void {
+    digest.parse(effectKey); count.parse(now);
+    const row = this.db.prepare("SELECT held_at FROM graph_action_admissions WHERE effect_key=?").get(effectKey) as { held_at: number } | undefined;
+    if (row && now < row.held_at) fail("INVALID_TIME");
+    this.db.prepare("UPDATE graph_action_admissions SET released_at=? WHERE effect_key=? AND released_at IS NULL").run(now, effectKey);
+  }
+}
+
+export class GraphRecoveryStore {
+  constructor(private readonly db: Database.Database, private readonly verifyProof: GraphRecoveryVerifier) {}
+  private transaction<T>(fn: () => T): T {
+    if (this.db.inTransaction) fail("Recovery requires its own BEGIN IMMEDIATE transaction");
+    preflightDiskSpace(this.db.name);
+    return this.db.transaction(fn).immediate();
+  }
+  private run(fence: GraphRunFence, replay = false): GraphRun {
+    const run = new GraphRunStore(this.db).get(fence.scope, fence.graphRunId);
+    const error = (code: ConstructorParameters<typeof GraphRunStorageError>[0]): never => { throw new GraphRunStorageError(code); };
+    if (!run) return error("RUN_NOT_FOUND");
+    if (canonical(run.identity) !== canonical(fence.identity)) error("PROGRAM_IDENTITY_MISMATCH");
+    if (run.generation !== fence.expectedGeneration) error("STALE_GENERATION");
+    if (run.leaseOwner !== fence.expectedOwner) error("OWNER_MISMATCH");
+    if (!replay && run.revision !== fence.expectedRevision) error("REVISION_CONFLICT");
+    if (!replay && fence.now < run.updatedAt) error("INVALID_TIME");
+    return run;
+  }
+  private action(run: GraphRun, key: string | undefined): GraphAction | null {
+    if (key === undefined) return null;
+    digest.parse(key);
+    const r = this.db.prepare("SELECT * FROM graph_actions WHERE graph_run_id = ? AND effect_key = ?").get(run.graphRunId, key) as Record<string, unknown> | undefined;
+    if (!r) return fail("ACTION_NOT_FOUND");
+    const json = (name: string) => r[name] === null ? null : JSON.parse(r[name] as string);
+    return { effectKey: key, effect: json("effect_json"), action: json("action_json"), businessDigest: r.business_digest as string,
+      generation: r.generation as number, reservationTokens: r.reservation_tokens as number, state: r.state as GraphAction["state"],
+      executionRef: r.execution_ref as string | null, outcome: json("outcome_json"), uncertainty: json("uncertainty_json"),
+      actualTokens: r.actual_tokens as number | null, observedTokens: r.observed_tokens as number, accountingBlocked: r.accounting_blocked === 1,
+      retrySafe: r.retry_safe === 1, createdAt: r.created_at as number, updatedAt: r.updated_at as number };
+  }
+  private capture(fence: GraphRunFence, effectKey?: string): GraphRecoverySnapshot {
+    const run = this.run(fence); const action = this.action(run, effectKey);
+    const interruptId = effectKey ? graphRecoveryInterruptId(effectKey) : `graph-recovery-run:${run.graphRunId}`;
+    const body = { fence, run, action, interruptId };
+    return { ...body, digest: hash(body) };
+  }
+  /** Read-only admin snapshot can inspect terminal state for release replay. */
+  snapshot(value: GraphRunFence, effectKey?: string): GraphRecoverySnapshot {
+    const fence = graphRunFenceSchema.parse(GraphJsonValue.parse(value));
+    return this.transaction(() => this.capture(fence, effectKey));
+  }
+  private record(run: GraphRun, receiptId: string): GraphRecoveryRecord | null {
+    ref.parse(receiptId);
+    const row = this.db.prepare("SELECT * FROM graph_recovery_decisions WHERE graph_run_id = ? AND receipt_id = ?")
+      .get(run.graphRunId, receiptId) as { snapshot_json: string; proof_json: string; decision_json: string; committed_at: number } | undefined;
+    return row ? { snapshot: JSON.parse(row.snapshot_json), proof: JSON.parse(row.proof_json), decision: JSON.parse(row.decision_json), committedAt: row.committed_at } : null;
+  }
+  history(value: GraphRunFence, effectKey?: string): GraphRecoveryRecord[] {
+    const fence = graphRunFenceSchema.parse(GraphJsonValue.parse(value));
+    return this.transaction(() => {
+      const run = this.run(fence); if (effectKey) this.action(run, effectKey);
+      const rows = this.db.prepare(`SELECT receipt_id FROM graph_recovery_decisions WHERE graph_run_id = ?${effectKey ? " AND effect_key = ?" : ""} ORDER BY committed_at, rowid`)
+        .all(...(effectKey ? [run.graphRunId, effectKey] : [run.graphRunId])) as { receipt_id: string }[];
+      return rows.map((row) => this.record(run, row.receipt_id)!);
+    });
+  }
+  private proof(snapshot: GraphRecoverySnapshot, value: GraphRecoveryProof, now: number, decision: GraphRecoveryDecision): GraphRecoveryProof {
+    const proof = proofSchema.parse(GraphJsonValue.parse(value));
+    if (proof.snapshotDigest !== snapshot.digest || proof.verifiedAt < snapshot.fence.now || proof.verifiedAt > now) fail("PROOF_SNAPSHOT_MISMATCH");
+    const run = snapshot.run;
+    if (run.generation === 0) { if (proof.worker.kind !== "preworker" || proof.effectWorker) fail("WORKER_PROOF_MISMATCH"); }
+    else {
+      const w = proof.worker;
+      if (w.kind === "preworker" || w.graphRunId !== run.graphRunId || w.generation !== run.generation || w.owner !== run.leaseOwner
+        || w.confirmedAt < run.leaseAcquiredAt! || w.confirmedAt > proof.verifiedAt) fail("WORKER_PROOF_MISMATCH");
+      if (w.kind === "not_started" && (this.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND generation = ? LIMIT 1").get(run.graphRunId, run.generation)
+        || this.db.prepare("SELECT 1 FROM graph_checkpoint_requests WHERE graph_run_id = ? AND generation = ? LIMIT 1").get(run.graphRunId, run.generation))) fail("WORKER_PROOF_MISMATCH");
+      if (snapshot.action && snapshot.action.generation !== run.generation) {
+        const old = proof.effectWorker;
+        const lease = this.db.prepare("SELECT owner, acquired_at FROM graph_worker_leases WHERE graph_run_id = ? AND generation = ?")
+          .get(run.graphRunId, snapshot.action.generation) as { owner: string; acquired_at: number } | undefined;
+        if (!old || !lease || old.graphRunId !== run.graphRunId || old.generation !== snapshot.action.generation || old.owner !== lease.owner
+          || old.confirmedAt < lease.acquired_at || old.confirmedAt > proof.verifiedAt) fail("EFFECT_WORKER_PROOF_MISMATCH");
+      } else if (proof.effectWorker) fail("EFFECT_WORKER_PROOF_MISMATCH");
+    }
+    const authorization: unknown = this.verifyProof(structuredClone(snapshot), structuredClone(proof), structuredClone(decision));
+    if (authorization !== undefined) {
+      void Promise.resolve(authorization).catch(() => undefined);
+      fail("INVALID_PROOF_AUTHORITY");
+    }
+    return proof;
+  }
+  private unchanged(snapshot: GraphRecoverySnapshot, now: number): GraphRun {
+    count.parse(now);
+    const fresh = this.capture(snapshot.fence, snapshot.action?.effectKey);
+    if (canonical(fresh) !== canonical(snapshot)) fail("PROOF_SNAPSHOT_MISMATCH");
+    if (now < fresh.run.updatedAt || now < snapshot.fence.now) fail("INVALID_TIME");
+    return fresh.run;
+  }
+  /** Revalidate fresh authority for release retries without altering immutable decisions. */
+  verifyDecision(snapshot: GraphRecoverySnapshot, receiptId: string, proof: GraphRecoveryProof, now: number): GraphRecoveryResult {
+    return this.transaction(() => {
+      const run = this.unchanged(snapshot, now);
+      const record = this.record(run, receiptId) ?? fail("DECISION_NOT_FOUND");
+      this.proof(snapshot, proof, now, record.decision);
+      if (record.snapshot.action?.effectKey !== snapshot.action?.effectKey) fail("DECISION_CONFLICT");
+      return { run, action: snapshot.action, record, changed: false };
+    });
+  }
+  verifyRelease(snapshot: GraphRecoverySnapshot, receiptId: string, proof: GraphRecoveryProof, now: number): GraphRecoveryResult {
+    const result = this.verifyDecision(snapshot, receiptId, proof, now);
+    if (result.record.decision.kind === "effect" && result.record.decision.verdict.outcome === "unknown") fail("UNRESOLVED_ACTION");
+    return result;
+  }
+  /** Called only after the trusted release callback completed. A lost DB ACK
+   * leaves a held obligation, so takeover/terminal projection remain blocked. */
+  completeRelease(snapshot: GraphRecoverySnapshot, receiptId: string, proof: GraphRecoveryProof, now: number): GraphRecoveryResult {
+    return this.transaction(() => {
+      const run = this.unchanged(snapshot, now);
+      const record = this.record(run, receiptId) ?? fail("DECISION_NOT_FOUND");
+      if (!snapshot.action || record.snapshot.action?.effectKey !== snapshot.action.effectKey || record.decision.kind !== "effect"
+        || record.decision.verdict.outcome === "unknown") fail("UNRESOLVED_ACTION");
+      this.proof(snapshot, proof, now, record.decision);
+      new GraphAdmissionStore(this.db).released(snapshot.action!.effectKey, now);
+      return { run, action: snapshot.action, record, changed: false };
+    });
+  }
+  commit(snapshotValue: GraphRecoverySnapshot, decisionValue: GraphRecoveryDecision, proofValue: GraphRecoveryProof, now: number): GraphRecoveryResult {
+    const snapshot = structuredClone(snapshotValue); graphRunFenceSchema.parse(GraphJsonValue.parse(snapshot.fence)); count.parse(now);
+    const decision = normalizeDecision(decisionValue);
+    return this.transaction(() => {
+      const current = this.run(snapshot.fence, true);
+      if (now < current.updatedAt || now < snapshot.fence.now) fail("INVALID_TIME");
+      const previous = this.record(current, decision.receiptId);
+      if (previous) {
+        if (canonical(previous.snapshot) !== canonical(snapshot) || canonical(previous.proof) !== canonical(proofValue)
+          || canonical(previous.decision) !== canonical(decision)) fail("DECISION_CONFLICT");
+        this.proof(snapshot, proofValue, now, decision);
+        return { run: current, action: this.action(current, snapshot.action?.effectKey), record: previous, changed: false };
+      }
+      const run = this.unchanged(snapshot, now);
+      if (["ready", "failed", "cancelled"].includes(run.status)) fail("TERMINAL_RUN");
+      if (run.revision === Number.MAX_SAFE_INTEGER) fail("COUNTER_EXHAUSTED");
+      const proof = this.proof(snapshot, proofValue, now, decision);
+      let status = run.status;
+      if (decision.kind === "effect") {
+        const action = snapshot.action ?? fail("ACTION_NOT_FOUND");
+        this.settle(run, action, decision.verdict, now);
+        if (decision.verdict.outcome !== "unknown") new GraphAdmissionStore(this.db).hold(action.effectKey, now);
+      }
+      else {
+        if (snapshot.action) fail("RUN_SNAPSHOT_REQUIRED");
+        const unresolved = this.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND state IN ('intent','running','unknown','cancel_pending') LIMIT 1").get(run.graphRunId);
+        const held = this.db.prepare("SELECT 1 FROM graph_action_admissions WHERE graph_run_id=? AND released_at IS NULL LIMIT 1").get(run.graphRunId);
+        if (decision.kind === "project") {
+          if (["running", "waiting_input"].includes(decision.status) && (run.status === "cancel_pending"
+            || this.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND state = 'cancel_pending'").get(run.graphRunId))) fail("CANCEL_PENDING");
+          if (["running", "cancelled"].includes(decision.status) && unresolved) fail("UNRESOLVED_ACTION");
+          if (["running", "cancelled"].includes(decision.status) && held) fail("ADMISSION_RELEASE_PENDING");
+          status = decision.status;
+        } else {
+          if (run.status === "cancel_pending") fail("CANCEL_PENDING");
+          if (unresolved) fail("UNRESOLVED_ACTION");
+          if (held) fail("ADMISSION_RELEASE_PENDING");
+          if (run.generation === Number.MAX_SAFE_INTEGER) fail("COUNTER_EXHAUSTED");
+          if (decision.leaseExpiresAt <= now) fail("INVALID_TIME");
+          const generation = run.generation + 1;
+          const worker: GraphStoppedWorkerEvidence | null = proof.worker.kind === "stopped" ? { graphRunId: run.graphRunId,
+            generation: run.generation, owner: run.leaseOwner!, confirmedAt: proof.worker.confirmedAt, evidenceRef: proof.worker.evidenceRef } : proof.worker.kind === "not_started" ? proof.worker : null;
+          this.db.prepare("UPDATE graph_runs SET generation = ?, lease_owner = ?, lease_expires_at = ?, lease_acquired_at = ? WHERE graph_run_id = ?")
+            .run(generation, decision.owner, decision.leaseExpiresAt, now, run.graphRunId);
+          this.db.prepare("INSERT INTO graph_worker_leases (graph_run_id, generation, owner, acquired_at, expires_at, stopped_worker_json) VALUES (?, ?, ?, ?, ?, ?)")
+            .run(run.graphRunId, generation, decision.owner, now, decision.leaseExpiresAt, worker ? canonical(worker) : null);
+        }
+      }
+      this.db.prepare("INSERT INTO graph_recovery_decisions (graph_run_id, receipt_id, effect_key, interrupt_id, snapshot_json, proof_json, decision_json, committed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+        .run(run.graphRunId, decision.receiptId, snapshot.action?.effectKey ?? null, snapshot.interruptId, canonical(snapshot), canonical(proof), canonical(decision), now);
+      this.db.prepare("UPDATE graph_runs SET status = ?, revision = ?, updated_at = ? WHERE graph_run_id = ?").run(status, run.revision + 1, now, run.graphRunId);
+      const updated = new GraphRunStore(this.db).get(run.scope, run.graphRunId)!;
+      return { run: updated, action: this.action(updated, snapshot.action?.effectKey), record: { snapshot, proof, decision, committedAt: now }, changed: true };
+    });
+  }
+  private settle(run: GraphRun, action: GraphAction, verdict: GraphRecoveryVerdict, now: number): void {
+    if (verdict.outcome === "unknown") {
+      if (action.outcome) fail("OUTCOME_CONFLICT");
+      const observed = Math.max(action.observedTokens, verdict.observedTokens);
+      const state = run.status === "cancel_pending" || action.state === "cancel_pending" ? "cancel_pending" : "unknown";
+      this.db.prepare("UPDATE graph_actions SET state = ?, uncertainty_json = ?, observed_tokens = ?, accounting_blocked = ?, updated_at = ? WHERE effect_key = ?")
+        .run(state, canonical({ state, evidenceRef: verdict.evidenceRef, observedTokens: observed }), observed,
+          Number(action.accountingBlocked || observed > action.reservationTokens), now, action.effectKey);
+      return;
+    }
+    const actualTokens = verdict.actualTokens === null ? null : Math.max(action.observedTokens, verdict.actualTokens);
+    const outcome: GraphActionOutcome = verdict.outcome === "applied"
+      ? { state: "confirmed", evidenceRef: verdict.evidenceRef, actualTokens, result: verdict.result }
+      : { state: "failed", evidenceRef: verdict.evidenceRef, actualTokens, error: verdict.error,
+        retrySafe: run.status !== "cancel_pending" && action.state !== "cancel_pending" && actualTokens !== null && !action.accountingBlocked };
+    if (outcome.state === "confirmed") {
+      validateWorkerActionResponse({ schemaVersion: 1, kind: "worker_action", requestId: "recovery", generation: action.generation,
+        scope: run.scope, graphRunId: run.graphRunId, specHash: run.identity.specHash, epoch: action.effect.epoch,
+        nodeId: action.effect.nodeId, effectSlot: action.effect.effectSlot, action: action.action },
+      { schemaVersion: 1, kind: "worker_action_response", requestId: "recovery", generation: action.generation,
+        effect: action.effect, outcome: { state: "confirmed", result: outcome.result } });
+    }
+    if (action.outcome) { if (canonical(action.outcome) !== canonical(outcome)) fail("OUTCOME_CONFLICT"); return; }
+    const blocked = action.accountingBlocked || actualTokens === null || actualTokens > action.reservationTokens;
+    this.db.prepare("UPDATE graph_actions SET state = ?, outcome_json = ?, actual_tokens = ?, retry_safe = ?, accounting_blocked = ?, updated_at = ? WHERE effect_key = ?")
+      .run(outcome.state, canonical(outcome), actualTokens, Number(outcome.state === "failed" && outcome.retrySafe), Number(blocked), now, action.effectKey);
+  }
+}
+
+
+FILE packages/core/src/state/graph-runs.ts
+// Storage contracts only. Status is a projection of checkpoint/broker evidence,
+// never an independent scheduler or node FSM. No engine code is imported here.
+import { createHash, randomUUID } from "node:crypto";
+import type Database from "better-sqlite3";
+import { z } from "zod";
+import { GraphJsonValue, GraphScope, GraphRunState, GraphRequest, StartGraphRequest, computeGraphInputDigest } from "@osstack/protocol";
+import { preflightDiskSpace } from "./db.js";
+
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Reject controls in persisted identity strings.
+const text = z.string().min(1).max(256).refine((s) => s.trim() === s && !/[\u0000-\u001f\u007f-\u009f]/.test(s));
+const counter = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+const digest = z.string().regex(/^[a-f0-9]{64}$/);
+const programSchema = z.object({
+  executionModel: z.literal("langgraph-functional-v1"), durability: z.literal("sync"),
+  engineVersion: text, checkpointVersion: text, templateVersion: text,
+  registryVersion: text, compilerVersion: text, schemaVersion: text, compiledProgramDigest: digest,
+}).strict();
+const identitySchema = programSchema.extend({ specHash: digest, inputDigest: digest });
+export type GraphProgramVersion = z.infer<typeof programSchema>;
+export type GraphProgramIdentity = z.infer<typeof identitySchema>;
+const stoppedSchema = z.object({
+  graphRunId: text, generation: counter.min(1), owner: text, confirmedAt: counter, evidenceRef: text,
+}).strict();
+/** A trusted supervisor's durable exit receipt, NOT a worker claim or an abort result.
+ * Caller must verify the receipt and independently reconcile/stop external actions
+ * and isolate old workspaces before takeover. This store cannot inspect processes. */
+export type GraphStoppedWorkerEvidence = z.infer<typeof stoppedSchema>;
+export const graphRunFenceSchema = z.object({
+  scope: GraphScope, graphRunId: text, expectedGeneration: counter, expectedRevision: counter,
+  expectedOwner: text.nullable(), identity: identitySchema, now: counter,
+}).strict();
+export type GraphRunFence = z.infer<typeof graphRunFenceSchema>;
+export interface GraphLeaseAcquisition extends GraphRunFence {
+  owner: string;
+  leaseExpiresAt: number;
+  stoppedWorker?: GraphStoppedWorkerEvidence;
+}
+export interface GraphLeaseRenewal extends GraphRunFence { leaseExpiresAt: number }
+export interface GraphRunProjection extends GraphRunFence { status: GraphRunState }
+const acquireSchema = graphRunFenceSchema.extend({ owner: text, leaseExpiresAt: counter, stoppedWorker: stoppedSchema.optional() });
+const renewSchema = graphRunFenceSchema.extend({ leaseExpiresAt: counter });
+const projectSchema = graphRunFenceSchema.extend({ status: GraphRunState });
+
+export interface GraphRun {
+  graphRunId: string;
+  scope: GraphScope;
+  source: StartGraphRequest["source"];
+  inputArtifactRef: string;
+  template: StartGraphRequest["spec"]["template"];
+  identity: GraphProgramIdentity;
+  /** Original immutable start spec; null for pre-migration-26 runs. */
+  spec: StartGraphRequest["spec"] | null;
+  status: GraphRunState;
+  generation: number;
+  revision: number;
+  leaseOwner: string | null;
+  leaseExpiresAt: number | null;
+  leaseAcquiredAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+export type GraphRunStorageErrorCode = "RUN_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "PROGRAM_IDENTITY_MISMATCH"
+  | "STALE_GENERATION" | "REVISION_CONFLICT" | "OWNER_MISMATCH" | "LEASE_EXPIRED" | "STOPPED_WORKER_REQUIRED"
+  | "STOPPED_WORKER_MISMATCH" | "TERMINAL_RUN" | "UNRESOLVED_ACTION" | "CANCEL_PENDING" | "ADMISSION_RELEASE_PENDING" | "INVALID_TIME" | "COUNTER_EXHAUSTED";
+export class GraphRunStorageError extends Error {
+  constructor(public readonly code: GraphRunStorageErrorCode) { super(code); this.name = "GraphRunStorageError"; }
+}
+const fail = (code: GraphRunStorageErrorCode): never => { throw new GraphRunStorageError(code); };
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((k) => `${JSON.stringify(k)}:${canonical(record[k])}`).join(",")}}`;
+}
+function parse<T extends z.ZodTypeAny>(schema: T, value: unknown): z.output<T> {
+  // Bound the decoded object before recursive schema processing, including accessors.
+  return schema.parse(GraphJsonValue.parse(value));
+}
+function increment(value: number): number {
+  if (value === Number.MAX_SAFE_INTEGER) fail("COUNTER_EXHAUSTED");
+  return value + 1;
+}
+interface RunRow {
+  graph_run_id: string; scope_json: string; source_json: string; input_artifact_ref: string; template: GraphRun["template"];
+  spec_json: string | null; identity_json: string; status: GraphRunState; generation: number; revision: number;
+  lease_owner: string | null; lease_expires_at: number | null; lease_acquired_at: number | null; created_at: number; updated_at: number;
+}
+function decode(row: RunRow): GraphRun {
+  return { graphRunId: row.graph_run_id, scope: JSON.parse(row.scope_json) as GraphScope,
+    source: JSON.parse(row.source_json) as StartGraphRequest["source"], inputArtifactRef: row.input_artifact_ref,
+    spec: row.spec_json === null ? null : JSON.parse(row.spec_json) as StartGraphRequest["spec"],
+    template: row.template, identity: JSON.parse(row.identity_json) as GraphProgramIdentity,
+    status: row.status, generation: row.generation, revision: row.revision, leaseOwner: row.lease_owner,
+    leaseExpiresAt: row.lease_expires_at, leaseAcquiredAt: row.lease_acquired_at, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+/** Daemon-owned synchronous store. Caller authenticates scope/owner, authorizes every
+ * operation, verifies compiler/artifact identity and supplies trusted epoch-ms time.
+ * Never expose this API directly to worker/request JSON. A matching lease is fencing,
+ * not authorization. G13 must bind checks and checkpoint writes in the SAME transaction. */
+export class GraphRunStore {
+  constructor(private readonly db: Database.Database) {}
+
+  private write<T>(fn: () => T): T {
+    preflightDiskSpace(this.db.name);
+    // Acquire write reservation BEFORE reading: independent connections cannot both
+    // admit the same key or update from the same revision (also avoids WAL upgrades).
+    return this.db.transaction(fn).immediate();
+  }
+
+  get(scopeValue: GraphScope, graphRunId: string): GraphRun | null {
+    const scope = GraphScope.parse(scopeValue);
+    text.parse(graphRunId);
+    const row = this.db.prepare("SELECT * FROM graph_runs WHERE scope_json = ? AND graph_run_id = ?")
+      .get(canonical(scope), graphRunId) as RunRow | undefined;
+    return row ? decode(row) : null;
+  }
+
+  /** Fresh server-generated run ID; one canonical business request per full scope/key.
+   * Metadata is excluded using the protocol digest. Compiler versions/digest are
+   * supplied by trusted compilation; start request/spec digests are computed here. */
+  create(requestValue: StartGraphRequest, versionValue: GraphProgramVersion, nowValue: number): GraphRun {
+    const request = StartGraphRequest.parse(requestValue);
+    const version = parse(programSchema, versionValue);
+    const now = counter.parse(nowValue);
+    const inputDigest = computeGraphInputDigest(request);
+    const identity: GraphProgramIdentity = { ...version, inputDigest,
+      specHash: createHash("sha256").update(`osstack.graph.spec.v1\n${canonical(request.spec)}`).digest("hex") };
+    const scopeJson = canonical(request.scope);
+    return this.write(() => {
+      const prior = this.db.prepare("SELECT graph_run_id, input_digest FROM graph_requests WHERE scope_json = ? AND idempotency_key = ?")
+        .get(scopeJson, request.idempotencyKey) as { graph_run_id: string; input_digest: string } | undefined;
+      if (prior) {
+        if (prior.input_digest !== inputDigest) fail("IDEMPOTENCY_CONFLICT");
+        const run = this.get(request.scope, prior.graph_run_id)!;
+        if (canonical(run.identity) !== canonical(identity)) fail("PROGRAM_IDENTITY_MISMATCH");
+        return run;
+      }
+      const id = randomUUID();
+      this.db.prepare(`INSERT INTO graph_runs (graph_run_id, scope_json, source_json, input_artifact_ref,
+        template, identity_json, spec_json, status, generation, revision, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', 0, 0, ?, ?)`)
+        .run(id, scopeJson, canonical(request.source), request.inputArtifactRef, request.spec.template, canonical(identity), canonical(request.spec), now, now);
+      this.db.prepare(`INSERT INTO graph_requests (scope_json, idempotency_key, graph_run_id, input_digest, kind, created_at)
+        VALUES (?, ?, ?, ?, 'start', ?)`).run(scopeJson, request.idempotencyKey, id, inputDigest, now);
+      return this.get(request.scope, id)!;
+    });
+  }
+
+  private checked(input: GraphRunFence, requireLive: boolean): GraphRun {
+    return checkGraphRunFence(this.get(input.scope, input.graphRunId), input, requireLive);
+  }
+
+  acquireLease(value: GraphLeaseAcquisition): GraphRun {
+    const input = parse(acquireSchema, value);
+    return this.write(() => {
+      const run = this.checked(input, false);
+      if (input.leaseExpiresAt <= input.now) fail("INVALID_TIME");
+      if (run.generation > 0) {
+        const stopped = input.stoppedWorker ?? fail("STOPPED_WORKER_REQUIRED");
+        if (stopped.graphRunId !== run.graphRunId || stopped.generation !== run.generation || stopped.owner !== run.leaseOwner
+          || stopped.confirmedAt < run.updatedAt || stopped.confirmedAt > input.now) fail("STOPPED_WORKER_MISMATCH");
+      } else if (input.stoppedWorker) fail("STOPPED_WORKER_MISMATCH");
+      if (this.db.prepare("SELECT 1 FROM graph_action_admissions WHERE graph_run_id=? AND released_at IS NULL LIMIT 1").get(run.graphRunId)) fail("ADMISSION_RELEASE_PENDING");
+      const generation = increment(run.generation);
+      this.db.prepare(`UPDATE graph_runs SET generation = ?, revision = ?, lease_owner = ?, lease_expires_at = ?,
+        lease_acquired_at = ?, updated_at = ? WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
+        .run(generation, increment(run.revision), input.owner, input.leaseExpiresAt, input.now, input.now, run.graphRunId, run.generation, run.revision);
+      this.db.prepare(`INSERT INTO graph_worker_leases (graph_run_id, generation, owner, acquired_at, expires_at, stopped_worker_json)
+        VALUES (?, ?, ?, ?, ?, ?)`).run(run.graphRunId, generation, input.owner, input.now, input.leaseExpiresAt,
+          input.stoppedWorker ? JSON.stringify(input.stoppedWorker) : null);
+      return this.get(input.scope, run.graphRunId)!;
+    });
+  }
+
+  renewLease(value: GraphLeaseRenewal): GraphRun {
+    const input = parse(renewSchema, value);
+    return this.write(() => {
+      const run = this.checked(input, true);
+      if (input.leaseExpiresAt <= input.now || input.leaseExpiresAt < run.leaseExpiresAt!) fail("INVALID_TIME");
+      this.db.prepare(`UPDATE graph_runs SET lease_expires_at = ?, revision = ?, updated_at = ?
+        WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
+        .run(input.leaseExpiresAt, increment(run.revision), input.now, run.graphRunId, run.generation, run.revision);
+      this.db.prepare("UPDATE graph_worker_leases SET expires_at = ? WHERE graph_run_id = ? AND generation = ?")
+        .run(input.leaseExpiresAt, run.graphRunId, run.generation);
+      return this.get(input.scope, run.graphRunId)!;
+    });
+  }
+
+  /** Store an already-authorized resume/cancel decision and its projection together.
+   * Caller verifies interrupt/resume data, cancellation/exit evidence and policy;
+   * this method neither resumes a worker nor sends cancellation. All request kinds
+   * share one scope/key namespace. Replay returns the current run without mutation. */
+  projectRequest(requestValue: Exclude<GraphRequest, StartGraphRequest>, value: GraphRunProjection): GraphRun {
+    const request = GraphRequest.parse(requestValue);
+    const input = parse(projectSchema, value);
+    if (request.kind === "start") throw new Error("Expected resume or cancel request");
+    if (canonical(request.scope) !== canonical(input.scope) || request.graphRunId !== input.graphRunId) fail("RUN_NOT_FOUND");
+    const inputDigest = computeGraphInputDigest(request);
+    const scopeJson = canonical(input.scope);
+    return this.write(() => {
+      const run = this.get(input.scope, input.graphRunId) ?? fail("RUN_NOT_FOUND");
+      // Authenticate/fence before a cache hit, but do not reject a replay just
+      // because its original revision has advanced or the run is now terminal.
+      if (canonical(run.identity) !== canonical(input.identity)) fail("PROGRAM_IDENTITY_MISMATCH");
+      if (run.generation !== input.expectedGeneration) fail("STALE_GENERATION");
+      if (run.leaseOwner !== input.expectedOwner) fail("OWNER_MISMATCH");
+      const prior = this.db.prepare("SELECT graph_run_id, input_digest FROM graph_requests WHERE scope_json = ? AND idempotency_key = ?")
+        .get(scopeJson, request.idempotencyKey) as { graph_run_id: string; input_digest: string } | undefined;
+      if (prior) {
+        if (prior.graph_run_id !== run.graphRunId || prior.input_digest !== inputDigest) fail("IDEMPOTENCY_CONFLICT");
+        return run;
+      }
+      if (request.expectedRevision !== input.expectedRevision) fail("REVISION_CONFLICT");
+      const projected = this.projectInTransaction(input);
+      this.db.prepare(`INSERT INTO graph_requests (scope_json, idempotency_key, graph_run_id, input_digest, kind, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)`).run(scopeJson, request.idempotencyKey, run.graphRunId, inputDigest, request.kind, input.now);
+      return projected;
+    });
+  }
+
+  /** Caller derives status from authoritative execution evidence. There is no
+   * transition map here; only irreversible terminal sealing and transactional CAS. */
+  project(value: GraphRunProjection): GraphRun {
+    const input = parse(projectSchema, value);
+    return this.write(() => this.projectInTransaction(input));
+  }
+
+  private projectInTransaction(input: GraphRunProjection): GraphRun {
+    const run = this.checked(input, true);
+    // Cancellation intent is irreversible even before external exit is confirmed.
+    if (run.status === "cancel_pending" && !["cancel_pending", "cancelled"].includes(input.status)) fail("CANCEL_PENDING");
+    // Never seal away the authority required to reconcile unfinished effects.
+    if (["ready", "failed", "cancelled"].includes(input.status)
+      && this.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND state IN ('intent','running','unknown','cancel_pending') LIMIT 1")
+        .get(run.graphRunId)) fail("UNRESOLVED_ACTION");
+    if (["ready", "failed", "cancelled"].includes(input.status)
+      && this.db.prepare("SELECT 1 FROM graph_action_admissions WHERE graph_run_id=? AND released_at IS NULL LIMIT 1").get(run.graphRunId)) fail("ADMISSION_RELEASE_PENDING");
+    this.db.prepare(`UPDATE graph_runs SET status = ?, revision = ?, updated_at = ?
+      WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
+      .run(input.status, increment(run.revision), input.now, run.graphRunId, run.generation, run.revision);
+    return this.get(input.scope, run.graphRunId)!;
+  }
+}
+
+/** Internal shared storage check; call only while holding the SQLite write transaction. */
+export function checkGraphRunFence(value: GraphRun | null, input: GraphRunFence, requireLive: boolean): GraphRun {
+  const run = value ?? fail("RUN_NOT_FOUND");
+  if (canonical(run.identity) !== canonical(input.identity)) fail("PROGRAM_IDENTITY_MISMATCH");
+  if (run.generation !== input.expectedGeneration) fail("STALE_GENERATION");
+  if (run.revision !== input.expectedRevision) fail("REVISION_CONFLICT");
+  if (run.leaseOwner !== input.expectedOwner) fail("OWNER_MISMATCH");
+  if (["ready", "failed", "cancelled"].includes(run.status)) fail("TERMINAL_RUN");
+  if (input.now < run.updatedAt) fail("INVALID_TIME");
+  if (requireLive && (run.generation === 0 || run.leaseExpiresAt === null || run.leaseExpiresAt <= input.now)) fail("LEASE_EXPIRED");
+  increment(run.revision);
+  return run;
+}
+
+
+FILE packages/core/src/state/graph-actions.ts
+// Daemon-owned effect/resource authority, not a node scheduler. Never forward
+// worker JSON to this port: G12 authenticates, authorizes the registry slot and
+// verifies adapter evidence under G10 admission before using these methods.
+import { createHash } from "node:crypto";
+import type Database from "better-sqlite3";
+import { z } from "zod";
+import { GraphEffectIdentity, GraphJsonValue, GraphResult, WorkerActionRequest, computeGraphEffectKey } from "@osstack/protocol";
+import type { GraphRun, GraphRunFence } from "./graph-runs.js";
+import { fencedGraphTransaction } from "./graph-storage.js";
+
+const count = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Persisted references must reject control characters.
+const ref = z.string().min(1).max(256).refine((v) => v.trim() === v && !/[\u0000-\u001f\u007f-\u009f]/.test(v));
+const keySchema = z.string().regex(/^[a-f0-9]{64}$/);
+const admissionSchema = z.object({ epoch: count.max(2), nodeId: ref, effectSlot: ref,
+  reservationTokens: count, action: z.unknown() }).strict();
+const uncertainSchema = z.object({ state: z.enum(["unknown", "cancel_pending"]), evidenceRef: ref, observedTokens: count }).strict();
+const outcomeSchema = z.discriminatedUnion("state", [
+  z.object({ state: z.literal("confirmed"), evidenceRef: ref, actualTokens: count.nullable(), result: z.unknown() }).strict(),
+  z.object({ state: z.literal("failed"), evidenceRef: ref, actualTokens: count.nullable(), error: z.unknown(), retrySafe: z.boolean() }).strict(),
+]);
+
+/** Host derives epoch/node/slot from the immutable compiled registry and pins its
+ * token cap. This is NOT a worker authorization capability. nodeId identifies the
+ * retry-budget branch: retries of all its slots share maxBranchAttempts per epoch. */
+export interface GraphActionAdmission {
+  epoch: number; nodeId: string; effectSlot: string;
+  action: WorkerActionRequest["action"];
+  reservationTokens: number;
+}
+export type GraphActionOutcomeInput =
+  | { state: "confirmed"; evidenceRef: string; actualTokens: number; result: GraphResult }
+  | { state: "failed"; evidenceRef: string; actualTokens: number; error: GraphJsonValue; retrySafe: boolean };
+export type GraphActionOutcome =
+  | { state: "confirmed"; evidenceRef: string; actualTokens: number | null; result: GraphResult }
+  | { state: "failed"; evidenceRef: string; actualTokens: number | null; error: GraphJsonValue; retrySafe: boolean };
+export type GraphActionUncertainty = z.infer<typeof uncertainSchema>;
+export interface GraphAction {
+  effectKey: string;
+  effect: GraphEffectIdentity;
+  action: WorkerActionRequest["action"];
+  businessDigest: string;
+  generation: number;
+  reservationTokens: number;
+  state: "intent" | "running" | "confirmed" | "failed" | "unknown" | "cancel_pending";
+  executionRef: string | null;
+  outcome: GraphActionOutcome | null;
+  uncertainty: GraphActionUncertainty | null;
+  actualTokens: number | null;
+  observedTokens: number;
+  accountingBlocked: boolean;
+  retrySafe: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+export interface GraphActionBudget {
+  actionStarts: number;
+  // Exact decimal totals: several independently overrun actions can exceed the
+  // JS safe integer range. Never use SQLite SUM/REAL or round away real usage.
+  reservedTokens: string;
+  chargedTokens: string;
+  accountingBlocked: boolean;
+}
+export interface GraphActionResult {
+  action: GraphAction; run: GraphRun; budget: GraphActionBudget;
+  created: boolean; changed: boolean;
+}
+export type GraphActionStorageErrorCode = "ADMISSION_RELEASE_PENDING" | "ORIGINAL_BUDGET_MISSING" | "ACTION_NOT_FOUND" | "ACTION_INPUT_CONFLICT"
+  | "UNRESOLVED_ACTION" | "RETRY_NOT_SAFE" | "NOT_CURRENT_ATTEMPT" | "ACTION_GENERATION_MISMATCH"
+  | "INVALID_ACTION_STATE" | "OUTCOME_CONFLICT" | "EXECUTION_CONFLICT" | "EPOCH_BUDGET_EXHAUSTED"
+  | "BRANCH_BUDGET_EXHAUSTED" | "ACTION_BUDGET_EXHAUSTED" | "WALL_CLOCK_BUDGET_EXHAUSTED"
+  | "TOKEN_BUDGET_EXHAUSTED" | "ACCOUNTING_BLOCKED" | "RUN_STOPPING";
+export class GraphActionStorageError extends Error {
+  constructor(public readonly code: GraphActionStorageErrorCode) { super(code); this.name = "GraphActionStorageError"; }
+}
+const fail = (code: GraphActionStorageErrorCode): never => { throw new GraphActionStorageError(code); };
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((k) => `${JSON.stringify(k)}:${canonical(record[k])}`).join(",")}}`;
+}
+interface ActionRow {
+  effect_key: string; effect_json: string; action_json: string; business_digest: string; generation: number;
+  reservation_tokens: number; state: GraphAction["state"]; execution_ref: string | null;
+  outcome_json: string | null; uncertainty_json: string | null; actual_tokens: number | null; observed_tokens: number;
+  accounting_blocked: number; retry_safe: number; created_at: number; updated_at: number;
+}
+function decode(row: ActionRow): GraphAction {
+  return { effectKey: row.effect_key, effect: JSON.parse(row.effect_json) as GraphEffectIdentity,
+    action: JSON.parse(row.action_json) as WorkerActionRequest["action"], businessDigest: row.business_digest,
+    generation: row.generation, reservationTokens: row.reservation_tokens, state: row.state,
+    executionRef: row.execution_ref, outcome: row.outcome_json === null ? null : JSON.parse(row.outcome_json) as GraphActionOutcome,
+    uncertainty: row.uncertainty_json === null ? null : JSON.parse(row.uncertainty_json) as GraphActionUncertainty,
+    actualTokens: row.actual_tokens, observedTokens: row.observed_tokens, accountingBlocked: row.accounting_blocked === 1,
+    retrySafe: row.retry_safe === 1, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+interface Mutation { action: GraphAction; changed: boolean; created: boolean }
+
+export class GraphActionStore {
+  constructor(private readonly db: Database.Database) {}
+
+  private write(fence: GraphRunFence, fn: (run: GraphRun) => Mutation): GraphActionResult {
+    const result = fencedGraphTransaction(this.db, fence, (run) => {
+      if (!run.spec) fail("ORIGINAL_BUDGET_MISSING");
+      const value = fn(run);
+      return { changed: value.changed, value: { ...value, budget: this.budget(run) } };
+    });
+    return { ...result.value, run: result.run };
+  }
+  private find(run: GraphRun, key: string): GraphAction {
+    const row = this.db.prepare("SELECT * FROM graph_actions WHERE graph_run_id = ? AND effect_key = ?")
+      .get(run.graphRunId, key) as ActionRow | undefined;
+    return row ? decode(row) : fail("ACTION_NOT_FOUND");
+  }
+  private current(run: GraphRun, slot: Pick<GraphActionAdmission, "epoch" | "nodeId" | "effectSlot">): GraphAction | null {
+    const row = this.db.prepare(`SELECT * FROM graph_actions WHERE graph_run_id = ? AND epoch = ? AND node_id = ? AND effect_slot = ?
+      ORDER BY logical_attempt DESC LIMIT 1`).get(run.graphRunId, slot.epoch, slot.nodeId, slot.effectSlot) as ActionRow | undefined;
+    return row ? decode(row) : null;
+  }
+  private budget(run: GraphRun): GraphActionBudget {
+    let reserved = 0n; let charged = 0n; let actionStarts = 0; let accountingBlocked = false;
+    // Ledger rows ARE the authoritative budget entries. Derived in the same
+    // transaction, so there is no mutable budget mirror to reset on resume.
+    const rows = this.db.prepare(`SELECT state, reservation_tokens, actual_tokens, observed_tokens, accounting_blocked
+      FROM graph_actions WHERE graph_run_id = ?`).iterate(run.graphRunId) as Iterable<Pick<ActionRow,
+        "state" | "reservation_tokens" | "actual_tokens" | "observed_tokens" | "accounting_blocked">>;
+    for (const row of rows) {
+      actionStarts++;
+      accountingBlocked ||= row.accounting_blocked === 1;
+      if ((row.state === "confirmed" || row.state === "failed") && row.actual_tokens !== null) {
+        // Failed attempts consume their full reservation even if less usage was
+        // reported. Unknown usage never releases capacity.
+        charged += BigInt(row.state === "failed" ? Math.max(row.reservation_tokens, row.actual_tokens) : row.actual_tokens);
+      } else reserved += BigInt(Math.max(row.reservation_tokens, row.observed_tokens));
+    }
+    return { actionStarts, reservedTokens: reserved.toString(), chargedTokens: charged.toString(), accountingBlocked };
+  }
+  private admit(run: GraphRun, slot: GraphActionAdmission, retry: boolean, now: number): void {
+    const limits = run.spec!.limits;
+    if (run.status === "cancel_pending" || run.status === "reconciliation_required") fail("RUN_STOPPING");
+    if (this.db.prepare(`SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND
+      (state IN ('unknown','cancel_pending') OR (state IN ('intent','running') AND generation <> ?)) LIMIT 1`)
+      .get(run.graphRunId, run.generation)) fail("UNRESOLVED_ACTION");
+    const budget = this.budget(run);
+    if (budget.accountingBlocked) fail("ACCOUNTING_BLOCKED");
+    if (slot.epoch >= limits.maxEpochs) fail("EPOCH_BUDGET_EXHAUSTED");
+    if (now - run.createdAt >= limits.deadlineSeconds * 1000) fail("WALL_CLOCK_BUDGET_EXHAUSTED");
+    if (budget.actionStarts >= limits.maxActionStarts) fail("ACTION_BUDGET_EXHAUSTED");
+    if (retry) {
+      const row = this.db.prepare(`SELECT count(*) AS retries FROM graph_actions
+        WHERE graph_run_id = ? AND epoch = ? AND node_id = ? AND logical_attempt > 1`)
+        .get(run.graphRunId, slot.epoch, slot.nodeId) as { retries: number };
+      if (1 + row.retries >= limits.maxBranchAttempts) fail("BRANCH_BUDGET_EXHAUSTED");
+    }
+    if (BigInt(budget.reservedTokens) + BigInt(budget.chargedTokens) + BigInt(slot.reservationTokens) > BigInt(limits.tokenReservationLimit)) {
+      fail("TOKEN_BUDGET_EXHAUSTED");
+    }
+  }
+  private insert(run: GraphRun, input: GraphActionAdmission, businessDigest: string, attempt: number, now: number): Mutation {
+    const effect = GraphEffectIdentity.parse({ schemaVersion: 1, scope: run.scope, graphRunId: run.graphRunId,
+      specHash: run.identity.specHash, epoch: input.epoch, nodeId: input.nodeId, effectSlot: input.effectSlot, logicalAttempt: attempt });
+    const key = computeGraphEffectKey(effect);
+    this.db.prepare(`INSERT INTO graph_actions (effect_key, graph_run_id, epoch, node_id, effect_slot, logical_attempt,
+      effect_json, action_json, business_digest, generation, reservation_tokens, state, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'intent', ?, ?)`).run(key, run.graphRunId, effect.epoch, effect.nodeId,
+        effect.effectSlot, attempt, canonical(effect), canonical(input.action), businessDigest, run.generation, input.reservationTokens, now, now);
+    return { action: this.find(run, key), changed: true, created: true };
+  }
+
+  /** Persist intent/reservation before invocation. Existing slots NEVER allocate
+   * an attempt. Host must markRunning and invoke only when that call changed=true;
+   * a lost response is pending, not permission to invoke again. */
+  reserve(fence: GraphRunFence, value: GraphActionAdmission): GraphActionResult {
+    const parsed = admissionSchema.parse(GraphJsonValue.parse(value));
+    return this.write(fence, (run) => {
+      const action = WorkerActionRequest.parse({ schemaVersion: 1, kind: "worker_action", requestId: "storage",
+        generation: run.generation, scope: run.scope, graphRunId: run.graphRunId, specHash: run.identity.specHash,
+        epoch: parsed.epoch, nodeId: parsed.nodeId, effectSlot: parsed.effectSlot, action: parsed.action }).action;
+      const input = { ...parsed, action };
+      const digest = createHash("sha256").update(`osstack.graph.action.business.v1\n${canonical(action)}`).digest("hex");
+      const prior = this.current(run, input);
+      if (prior) {
+        if (prior.businessDigest !== digest || prior.reservationTokens !== input.reservationTokens) fail("ACTION_INPUT_CONFLICT");
+        return { action: prior, changed: false, created: false };
+      }
+      this.admit(run, input, false, fence.now);
+      return this.insert(run, input, digest, 1, fence.now);
+    });
+  }
+
+  /** Fenced evidence lookup, including historical attempts. No raw public cache. */
+  get(fence: GraphRunFence, effectKey: string): GraphActionResult {
+    keySchema.parse(effectKey);
+    return this.write(fence, (run) => ({ action: this.find(run, effectKey), changed: false, created: false }));
+  }
+
+  /** Explicit trusted retry command, never a worker flag. Proof of retry safety
+   * must already be verified by G12 and recorded on a failed outcome. The old
+   * action supplies ALL key/payload/cap inputs. Unknown is not retryable. */
+  retry(fence: GraphRunFence, effectKey: string): GraphActionResult {
+    keySchema.parse(effectKey);
+    return this.write(fence, (run) => {
+      const prior = this.find(run, effectKey);
+      if (this.current(run, prior.effect)!.effectKey !== effectKey) fail("NOT_CURRENT_ATTEMPT");
+      if (prior.state !== "failed" || !prior.retrySafe) fail("RETRY_NOT_SAFE");
+      if (this.db.prepare("SELECT 1 FROM graph_action_admissions WHERE effect_key=? AND released_at IS NULL").get(effectKey)) fail("ADMISSION_RELEASE_PENDING");
+      const input = { epoch: prior.effect.epoch, nodeId: prior.effect.nodeId, effectSlot: prior.effect.effectSlot,
+        action: prior.action, reservationTokens: prior.reservationTokens };
+      this.admit(run, input, true, fence.now);
+      return this.insert(run, input, prior.businessDigest, prior.effect.logicalAttempt + 1, fence.now);
+    });
+  }
+
+  markRunning(fence: GraphRunFence, effectKey: string, executionRef: string): GraphActionResult {
+    keySchema.parse(effectKey); ref.parse(executionRef);
+    return this.write(fence, (run) => {
+      const prior = this.find(run, effectKey);
+      if (prior.generation !== run.generation) fail("ACTION_GENERATION_MISMATCH");
+      if (prior.state === "running") {
+        if (prior.executionRef !== executionRef) fail("EXECUTION_CONFLICT");
+        return { action: prior, changed: false, created: false };
+      }
+      if (prior.state !== "intent") fail("INVALID_ACTION_STATE");
+      // Recheck stopping, unknown and deadline immediately before the host can
+      // invoke. Capacity was already reserved by intent, so do not reserve twice.
+      if (run.status === "cancel_pending" || run.status === "reconciliation_required") fail("RUN_STOPPING");
+      if (this.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND state IN ('unknown','cancel_pending') LIMIT 1")
+        .get(run.graphRunId)) fail("UNRESOLVED_ACTION");
+      if (this.budget(run).accountingBlocked) fail("ACCOUNTING_BLOCKED");
+      if (fence.now - run.createdAt >= run.spec!.limits.deadlineSeconds * 1000) fail("WALL_CLOCK_BUDGET_EXHAUSTED");
+      this.db.prepare("UPDATE graph_actions SET state = 'running', execution_ref = ?, updated_at = ? WHERE effect_key = ?")
+        .run(executionRef, fence.now, effectKey);
+      return { action: this.find(run, effectKey), changed: true, created: false };
+    });
+  }
+
+  /** Adapter/supervisor uncertainty only. G11 has no release/reconciliation API:
+   * worker receipts or later 'not applied' claims cannot clear unknown capacity. */
+  markUncertain(fence: GraphRunFence, effectKey: string, value: GraphActionUncertainty): GraphActionResult {
+    keySchema.parse(effectKey);
+    const input = uncertainSchema.parse(GraphJsonValue.parse(value));
+    return this.write(fence, (run) => {
+      const prior = this.find(run, effectKey);
+      if (prior.generation !== run.generation) fail("ACTION_GENERATION_MISMATCH");
+      if (prior.state === "confirmed" || prior.state === "failed") fail("INVALID_ACTION_STATE");
+      if (prior.uncertainty && canonical(prior.uncertainty) === canonical(input)) return { action: prior, changed: false, created: false };
+      this.db.prepare(`UPDATE graph_actions SET state = ?, uncertainty_json = ?, observed_tokens = ?,
+        accounting_blocked = ?, updated_at = ? WHERE effect_key = ?`).run(input.state, canonical(input),
+          Math.max(prior.observedTokens, input.observedTokens), Number(prior.accountingBlocked || input.observedTokens > prior.reservationTokens), fence.now, effectKey);
+      return { action: this.find(run, effectKey), changed: true, created: false };
+    });
+  }
+
+  /** Only trusted adapter outcomes, never worker-provided evidence. Invalid usage
+   * does not discard a real result: persist null usage, retain capacity and stop
+   * new actions. Over-cap actual usage is charged exactly and also stops actions.
+   * Settlement after the wall-clock budget elapsed remains allowed with a live
+   * fence; effects already started must not disappear because their budget ended. */
+  recordOutcome(fence: GraphRunFence, effectKey: string, value: GraphActionOutcomeInput): GraphActionResult {
+    keySchema.parse(effectKey);
+    const usage = count.safeParse(value.actualTokens);
+    const input = outcomeSchema.parse(GraphJsonValue.parse({ ...value, actualTokens: usage.success ? usage.data : null }));
+    const outcome: GraphActionOutcome = input.state === "confirmed"
+      ? { ...input, result: GraphResult.parse(input.result) }
+      : { ...input, error: GraphJsonValue.parse(input.error) };
+    return this.write(fence, (run) => {
+      const prior = this.find(run, effectKey);
+      if (prior.outcome) {
+        if (canonical(prior.outcome) !== canonical(outcome)) fail("OUTCOME_CONFLICT");
+        return { action: prior, changed: false, created: false };
+      }
+      if (prior.generation !== run.generation) fail("ACTION_GENERATION_MISMATCH");
+      if (prior.state === "unknown" || prior.state === "cancel_pending") fail("UNRESOLVED_ACTION");
+      if (prior.state !== "running" && !(prior.state === "intent" && outcome.state === "failed")) fail("INVALID_ACTION_STATE");
+      const blocked = !usage.success || usage.data > prior.reservationTokens;
+      this.db.prepare(`UPDATE graph_actions SET state = ?, outcome_json = ?, actual_tokens = ?, retry_safe = ?,
+        accounting_blocked = ?, updated_at = ? WHERE effect_key = ?`).run(outcome.state, canonical(outcome), outcome.actualTokens,
+          Number(outcome.state === "failed" && outcome.retrySafe), Number(blocked), fence.now, effectKey);
+      return { action: this.find(run, effectKey), changed: true, created: false };
+    });
+  }
+}
+
+
+FILE packages/cli/src/graph-reconciler.ts
+// Host-only administrative recovery. No worker RPC, scheduler or automatic retry.
+import type Database from "better-sqlite3";
+import { z } from "zod";
+import { GraphJsonValue } from "@osstack/protocol";
+import type { GraphRunFence, GraphProgramIdentity } from "@osstack/core";
+import { GraphRecoveryStore, type GraphRecoverySnapshot, type GraphRecoveryProof,
+  type GraphRecoveryVerdict, type GraphRecoveryDecision, type GraphRecoveryResult } from "@osstack/core/graph-recovery";
+
+export interface GraphReconcilerRegistration {
+  binding: { scope: GraphRunFence["scope"]; graphRunId: string; generation: number; owner: string | null; identity: GraphProgramIdentity };
+  authorize: (snapshot: GraphRecoverySnapshot) => void;
+  /** Calls the actual supervisor. Its return alone is not evidence. */
+  stopWorker: (snapshot: GraphRecoverySnapshot) => Promise<unknown>;
+  verifyWorker: (snapshot: GraphRecoverySnapshot, stopResult: unknown) => Promise<GraphRecoveryProof["worker"]>;
+  /** Must independently stop all executors and export/quarantine the workspace. */
+  verifyQuiescence: (snapshot: GraphRecoverySnapshot, worker: GraphRecoveryProof["worker"]) => Promise<Pick<GraphRecoveryProof,
+    "executorEvidenceRef" | "workspaceEvidenceRef" | "effectWorker">>;
+  verifyOutcome: (snapshot: GraphRecoverySnapshot) => Promise<GraphRecoveryVerdict>;
+  /** Synchronous final check: permission and physical evidence remain valid. */
+  recheck: (snapshot: GraphRecoverySnapshot, proof: GraphRecoveryProof, decision: GraphRecoveryDecision) => void;
+  /** Idempotent exact-admission release. Call reverify inside the release guard. */
+  release: (result: GraphRecoveryResult, reverify: () => Promise<void>) => Promise<void>;
+}
+export type GraphReconciliationRequest = { fence: GraphRunFence; receiptId: string } & (
+  | { kind: "effect"; effectKey: string }
+  | { kind: "project"; status: "cancel_pending" | "cancelled" | "waiting_input" | "running" }
+  | { kind: "takeover"; owner: string; leaseExpiresAt: number });
+export interface GraphReconciliationResult {
+  exit: "applied" | "not_applied" | "unknown" | "projected" | "takeover" | "release_pending";
+  result: GraphRecoveryResult;
+  releaseError?: string;
+}
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Reject control characters in persisted recovery references.
+const ref = z.string().min(1).max(256).regex(/^[^\x00-\x1f\x7f-\x9f]+$/).refine((s) => s.trim() === s);
+const requestSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("effect"), fence: z.unknown(), receiptId: ref, effectKey: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  z.object({ kind: z.literal("project"), fence: z.unknown(), receiptId: ref, status: z.enum(["cancel_pending", "cancelled", "waiting_input", "running"]) }).strict(),
+  z.object({ kind: z.literal("takeover"), fence: z.unknown(), receiptId: ref, owner: ref, leaseExpiresAt: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER) }).strict(),
+]);
+function canonical(v: unknown): string {
+  if (v === null || typeof v !== "object") return JSON.stringify(v);
+  if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
+  const r = v as Record<string, unknown>;
+  return `{${Object.keys(r).sort().map((k) => `${JSON.stringify(k)}:${canonical(r[k])}`).join(",")}}`;
+}
+const fail = (code: string): never => { throw new Error(code); };
+const authority = (value: unknown) => {
+  if (value === undefined) return;
+  // Reject async grants while observing a rejected Promise so it cannot escape.
+  void Promise.resolve(value).catch(() => undefined);
+  fail("INVALID_RECOVERY_AUTHORITY");
+};
+
+export class GraphReconciler {
+  private readonly registrations = new Map<object, GraphReconcilerRegistration>();
+  private readonly store: GraphRecoveryStore;
+  private attestation: { connection: object; registration: GraphReconcilerRegistration; snapshot: GraphRecoverySnapshot; proof: GraphRecoveryProof; decision: GraphRecoveryDecision } | undefined;
+  constructor(db: Database.Database, private readonly now: () => number = Date.now) {
+    this.store = new GraphRecoveryStore(db, (snapshot, proof, decision) => {
+      const attestation = this.attestation;
+      if (!attestation || canonical(attestation.snapshot) !== canonical(snapshot) || canonical(attestation.proof) !== canonical(proof) || canonical(attestation.decision) !== canonical(decision)) fail("UNVERIFIED_RECOVERY_PROOF");
+      this.check(attestation!.connection, attestation!.registration, snapshot);
+      authority(attestation!.registration.recheck(structuredClone(snapshot), structuredClone(proof), structuredClone(decision)));
+    });
+  }
+  register(connection: object, registration: GraphReconcilerRegistration): void {
+    if (!connection || typeof connection !== "object" || this.registrations.has(connection)) fail("INVALID_RECOVERY_REGISTRATION");
+    for (const name of ["authorize", "stopWorker", "verifyWorker", "verifyQuiescence", "verifyOutcome", "recheck", "release"] as const) {
+      if (typeof registration[name] !== "function") fail("INVALID_RECOVERY_REGISTRATION");
+    }
+    this.registrations.set(connection, { ...registration, binding: structuredClone(registration.binding) });
+  }
+  unregister(connection: object): void { this.registrations.delete(connection); }
+  private check(connection: object, registration: GraphReconcilerRegistration, snapshot: GraphRecoverySnapshot): void {
+    if (this.registrations.get(connection) !== registration) fail("RECOVERY_REGISTRATION_REVOKED");
+    const run = snapshot.run;
+    if (canonical(registration.binding) !== canonical({ scope: run.scope, graphRunId: run.graphRunId, generation: run.generation,
+      owner: run.leaseOwner, identity: run.identity })) fail("RECOVERY_BINDING_MISMATCH");
+    authority(registration.authorize(structuredClone(snapshot)));
+  }
+  private async proof(connection: object, registration: GraphReconcilerRegistration, snapshot: GraphRecoverySnapshot): Promise<GraphRecoveryProof> {
+    this.check(connection, registration, snapshot);
+    const stop = await registration.stopWorker(structuredClone(snapshot));
+    this.check(connection, registration, snapshot);
+    const worker = structuredClone(await registration.verifyWorker(structuredClone(snapshot), stop));
+    this.check(connection, registration, snapshot);
+    const quiescence = structuredClone(await registration.verifyQuiescence(structuredClone(snapshot), structuredClone(worker)));
+    this.check(connection, registration, snapshot);
+    if (!quiescence || typeof quiescence !== "object" || Array.isArray(quiescence)
+      || Object.keys(quiescence).some((key) => !["executorEvidenceRef", "workspaceEvidenceRef", "effectWorker"].includes(key))) fail("INVALID_QUIESCENCE_PROOF");
+    const proof: GraphRecoveryProof = { ...quiescence, worker, snapshotDigest: snapshot.digest, verifiedAt: this.now() };
+    return proof;
+  }
+  private verified<T>(connection: object, registration: GraphReconcilerRegistration, snapshot: GraphRecoverySnapshot, proof: GraphRecoveryProof, decision: GraphRecoveryDecision, fn: () => T): T {
+    if (this.attestation) fail("NESTED_RECOVERY");
+    this.attestation = { connection, registration, snapshot: structuredClone(snapshot), proof: structuredClone(proof), decision: structuredClone(decision) };
+    try { return fn(); } finally { this.attestation = undefined; }
+  }
+  private async release(connection: object, registration: GraphReconcilerRegistration, result: GraphRecoveryResult): Promise<void> {
+    const reverify = async (completed = false) => {
+      const run = result.run;
+      const snapshot = this.store.snapshot({ scope: run.scope, graphRunId: run.graphRunId, identity: run.identity,
+        expectedGeneration: run.generation, expectedRevision: run.revision, expectedOwner: run.leaseOwner, now: this.now() }, result.action?.effectKey);
+      const proof = await this.proof(connection, registration, snapshot);
+      this.verified(connection, registration, snapshot, proof, result.record.decision, () => completed ? this.store.completeRelease(snapshot, result.record.decision.receiptId, proof, this.now()) : this.store.verifyRelease(snapshot, result.record.decision.receiptId, proof, this.now()));
+    };
+    await reverify();
+    authority(await registration.release(structuredClone(result), () => reverify()));
+    await reverify(true);
+  }
+  async reconcile(connection: object, value: GraphReconciliationRequest): Promise<GraphReconciliationResult> {
+    // Parse/clone every request field before the first await. No worker-selected callback.
+    const request = requestSchema.parse(GraphJsonValue.parse(value)) as GraphReconciliationRequest;
+    const registration = this.registrations.get(connection) ?? fail("RECOVERY_REGISTRATION_REQUIRED");
+    const snapshot = this.store.snapshot(request.fence, request.kind === "effect" ? request.effectKey : undefined);
+    this.check(connection, registration, snapshot);
+    const prior = this.store.history(request.fence).find((r) => r.decision.receiptId === request.receiptId);
+    if (prior && prior.snapshot.action?.effectKey !== snapshot.action?.effectKey) fail("DECISION_CONFLICT");
+    if (prior && prior.snapshot.run.generation !== snapshot.run.generation) {
+      // A lost takeover ACK is a read of immutable history, never permission to
+      // stop the replacement worker. Release of an old effect is a separate,
+      // explicit operation; do not infer authority over a newer generation.
+      if (request.kind === "takeover" && prior.decision.kind === "takeover") {
+        if (request.owner !== prior.decision.owner || request.leaseExpiresAt !== prior.decision.leaseExpiresAt) fail("DECISION_CONFLICT");
+        if (snapshot.run.generation === prior.snapshot.run.generation + 1 && snapshot.run.leaseOwner === prior.decision.owner) {
+          return { exit: "takeover", result: { run: snapshot.run, action: snapshot.action, record: prior, changed: false } };
+        }
+      }
+      fail("RECOVERY_GENERATION_CHANGED");
+    }
+    const proof = await this.proof(connection, registration, snapshot);
+    let decision: GraphRecoveryDecision;
+    if (request.kind === "effect") {
+      const received = structuredClone(await registration.verifyOutcome(structuredClone(snapshot)));
+      // Match storage normalization on replay: invalid usage means unknown usage,
+      // while the physical outcome/result remains durable and immutable.
+      const verdict = received && received.outcome !== "unknown" &&
+        (typeof received.actualTokens !== "number" || !Number.isSafeInteger(received.actualTokens) || received.actualTokens < 0)
+        ? { ...received, actualTokens: null } : received;
+      this.check(connection, registration, snapshot);
+      decision = { kind: "effect", receiptId: request.receiptId, verdict };
+    } else if (request.kind === "project") decision = { kind: "project", receiptId: request.receiptId, status: request.status };
+    else decision = { kind: "takeover", receiptId: request.receiptId, owner: request.owner, leaseExpiresAt: request.leaseExpiresAt };
+    // Proof time includes outcome verification, but no snapshot revision is refreshed.
+    proof.verifiedAt = this.now();
+    let result: GraphRecoveryResult;
+    if (prior) {
+      if (canonical(prior.decision) !== canonical(decision)) fail("DECISION_CONFLICT");
+      result = this.verified(connection, registration, snapshot, proof, decision, () => this.store.verifyDecision(snapshot, request.receiptId, proof, this.now()));
+    } else result = this.verified(connection, registration, snapshot, proof, decision, () => this.store.commit(snapshot, decision, proof, this.now()));
+    const exit = decision.kind === "effect" ? decision.verdict.outcome : decision.kind === "project" ? "projected" : "takeover";
+    if (exit === "unknown" || decision.kind !== "effect") return { exit, result };
+    // Decision is already durable. Release failure never rolls back physical truth.
+    try { await this.release(connection, registration, result); }
+    catch (error) { return { exit: "release_pending", result, releaseError: error instanceof Error ? error.message : "release failed" }; }
+    return { exit, result };
+  }
+}
+
+
+FILE packages/cli/src/graph-action-broker.ts
+import { GraphAdmissionStore } from "@osstack/core/graph-recovery";
+import { randomUUID } from "node:crypto";
+import { isAbsolute } from "node:path";
+import type Database from "better-sqlite3";
+import type { GraphArtifactStore, GraphFreezeInput, GraphFreezeAuthority } from "@osstack/core/graph-artifacts";
+import { CapabilitySchema, GraphActionStore, GraphRunStore, type GraphRunFence, type GraphProgramIdentity,
+  type GraphAction } from "@osstack/core";
+import { GraphResult, GraphScope, WorkerActionRequest, WorkerActionResponse,
+  type GraphError, type GraphErrorCode } from "@osstack/protocol";
+import { ExecutionPlan, executeCandidateImplementation, runShellCommand,
+  type CandidateExecutionResult, type CommandResult, type RegisteredCandidateWorkspace } from "@osstack/loop";
+import type { AgentAdapter } from "@osstack/agents";
+import type { AdmissionInput, ExecutionLease } from "./governed-execution.js";
+
+type Action = WorkerActionRequest["action"];
+export interface GraphActionEvidence {
+  status: "completed" | "failed";
+  candidate?: CandidateExecutionResult;
+  command?: CommandResult;
+  workspace?: unknown;
+  frozenCandidate?: Extract<GraphResult, { kind: "candidate_ready" }>;
+}
+export interface PersistedGraphActionEvidence {
+  evidenceRef: string;
+  result?: GraphResult;
+  actualTokens?: number;
+}
+type RegisteredExecution =
+  | { kind: "freeze"; store: Pick<GraphArtifactStore, "freeze">; input: GraphFreezeInput; authority: Omit<GraphFreezeAuthority, "lease"> }
+  | { kind: "adapter"; plan: ExecutionPlan; adapter: AgentAdapter; capabilityId: string }
+  | { kind: "command"; plan: ExecutionPlan; command: string }
+  | { kind: "workspace"; handler: (input: { workspace: RegisteredCandidateWorkspace; signal: AbortSignal }) => Promise<{
+      status: "completed" | "failed"; stopped: true; evidence: unknown;
+    }> };
+export interface GraphRegisteredAction {
+  nodeId: string;
+  effectSlot: string;
+  action: Action;
+  tokenReservation: number;
+  execution: RegisteredExecution;
+  /** Trusted persistence boundary. Worker receipts/checkpoints are never passed here. */
+  persist: (evidence: GraphActionEvidence) => Promise<PersistedGraphActionEvidence>;
+}
+export interface GraphWorkerRegistration {
+  scope: GraphScope;
+  graphRunId: string;
+  identity: GraphProgramIdentity;
+  generation: number;
+  owner: string;
+  epoch: number;
+  workspace: RegisteredCandidateWorkspace;
+  /** Synchronous host revocation check, including immediately before physical effects. */
+  authorize: () => void;
+  actions: readonly GraphRegisteredAction[];
+}
+export interface GraphRetainedAction {
+  effectKey: string; scope: GraphScope; graphRunId: string; generation: number;
+  owner: string; workspacePath: string;
+}
+export interface GraphActionBrokerOptions {
+  acquire: (input: AdmissionInput) => Promise<ExecutionLease>;
+  authorizePolicy?: (workspacePath: string) => Promise<void>;
+  now?: () => number;
+}
+type BoundAction = GraphRegisteredAction & { access: "read" | "write" };
+type Binding = Omit<GraphWorkerRegistration, "actions"> & { actions: ReadonlyMap<string, BoundAction> };
+const slot = (node: string, effect: string) => JSON.stringify([node, effect]);
+const reads = new Set(["code.review", "review.code", "research.code"]);
+const writes = new Set(["code.write", "code.refactor", "code.debug", "code.test"]);
+function snapshot<T>(value: T): T {
+  const copy = structuredClone(value);
+  const freeze = (item: unknown): void => {
+    if (item !== null && typeof item === "object") { Object.values(item).forEach(freeze); Object.freeze(item); }
+  };
+  freeze(copy); return copy;
+}
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(",")}}`;
+}
+class Denied extends Error { constructor(readonly code: GraphErrorCode, message: string) { super(message); } }
+function graphError(code: GraphErrorCode, message: string): GraphError {
+  return { schemaVersion: 1, code, message: message.slice(0, 4096) || code, retryable: false,
+    nextAction: code === "ACTION_OUTCOME_UNKNOWN" || code === "CANCEL_UNCONFIRMED" ? "reconcile" : "stop" } as GraphError;
+}
+function errorCode(error: unknown): GraphErrorCode {
+  if (error instanceof Denied) return error.code;
+  const message = String(error);
+  if (/GRANT_EXPIRED/.test(message)) return "GRANT_EXPIRED";
+  if (/STALE_GENERATION|OWNER_MISMATCH|LEASE_EXPIRED/.test(message)) return "STALE_GENERATION";
+  if (/PROGRAM_IDENTITY/.test(message)) return "CHECKPOINT_INCOMPATIBLE";
+  if (/UNRESOLVED|RETRY_NOT_SAFE/.test(message)) return "ACTION_OUTCOME_UNKNOWN";
+  if (/BUDGET|ACCOUNTING/.test(message)) return "BUDGET_EXHAUSTED";
+  if (/REVISION_CONFLICT/.test(message)) return "REVISION_CONFLICT";
+  return "POLICY_DENIED";
+}
+
+/** Trusted in-process action port; no RPC, worker launcher or node scheduler.
+ * Ledger granularity is one adapter invocation, registered command or host workspace
+ * operation. It does not intercept an agent's internal tools. Admission belongs to
+ * each action; callers must NOT hold a whole-run lease around this port. */
+export class GraphActionBroker {
+  private readonly connections = new WeakMap<object, Binding>();
+  private readonly retired = new WeakSet<object>();
+  private readonly retained = new Map<string, { lease: ExecutionLease; context: GraphRetainedAction }>();
+  private readonly admissions: GraphAdmissionStore;
+  private readonly runs: GraphRunStore;
+  private readonly actions: GraphActionStore;
+  constructor(db: Database.Database, private readonly options: GraphActionBrokerOptions) {
+    this.admissions = new GraphAdmissionStore(db);
+    this.runs = new GraphRunStore(db); this.actions = new GraphActionStore(db);
+  }
+
+  register(connection: object, input: GraphWorkerRegistration): void {
+    if (this.retired.has(connection)) throw new Error("worker connection retired");
+    if (this.connections.has(connection)) throw new Error("worker connection already registered");
+    const { actions, authorize, ...data } = input;
+    const fixed = snapshot(data);
+    GraphScope.parse(fixed.scope);
+    if (typeof authorize !== "function" || !fixed.owner || !isAbsolute(fixed.workspace.workspace_path)
+      || fixed.workspace.workspace_path.includes("\0") || fixed.workspace.workspace_id !== fixed.scope.workspaceId) throw new Error("invalid trusted worker registration");
+    const registered = new Map<string, BoundAction>();
+    for (const item of actions) {
+      const { execution, persist, ...actionData } = item;
+      const copy = snapshot(actionData);
+      // Reuse the strict wire parser to validate exact compiled action/node/slot data.
+      WorkerActionRequest.parse({ schemaVersion: 1, kind: "worker_action", requestId: "registration", scope: fixed.scope,
+        graphRunId: fixed.graphRunId, specHash: fixed.identity.specHash, generation: fixed.generation, epoch: fixed.epoch,
+        nodeId: copy.nodeId, effectSlot: copy.effectSlot, action: copy.action });
+      if (typeof persist !== "function") throw new Error("unsupported graph action");
+      if (!Number.isSafeInteger(copy.tokenReservation) || copy.tokenReservation < 0) throw new Error("invalid token reservation");
+      let selected: RegisteredExecution; let access: "read" | "write" = "write";
+      if (execution.kind === "freeze") {
+        if (copy.action.kind !== "freeze" || typeof execution.store?.freeze !== "function") throw new Error("unsupported freeze registration");
+        const input = snapshot(execution.input);
+        if (canonical(input.scope) !== canonical(fixed.scope) || input.runId !== fixed.graphRunId || input.generation !== fixed.generation
+          || input.owner !== fixed.owner || input.worktreePath !== fixed.workspace.workspace_path
+          || input.workspaceLeaseRef !== copy.action.workspaceLeaseRef || input.implementationReceiptRef !== copy.action.receiptRef) throw new Error("freeze registration identity mismatch");
+        const { verifyLease, verifyImplementationReceipt, verifyProducersStopped } = execution.authority;
+        if ([verifyLease, verifyImplementationReceipt, verifyProducersStopped].some(fn => typeof fn !== "function")) throw new Error("freeze authority required");
+        selected = Object.freeze({ kind: "freeze", input, store: Object.freeze({ freeze: execution.store.freeze.bind(execution.store) }),
+          authority: Object.freeze({ verifyLease, verifyImplementationReceipt, verifyProducersStopped }) });
+      } else if (execution.kind === "workspace") {
+        if (!["workspace_create", "workspace_release"].includes(copy.action.kind) || typeof execution.handler !== "function") throw new Error("unsupported workspace handler");
+        selected = Object.freeze({ kind: "workspace", handler: execution.handler });
+      } else {
+        if (!["implement", "repair", "tests", "review"].includes(copy.action.kind)) throw new Error("unsupported candidate action");
+        const plan = snapshot(ExecutionPlan.parse(execution.plan));
+        if (plan.worktree_path !== undefined && plan.worktree_path !== fixed.workspace.workspace_path) throw new Error("workspace mismatch");
+        if (execution.kind === "command") {
+          if (!execution.command?.trim() || execution.command.includes("\0")) throw new Error("invalid registered command");
+          selected = Object.freeze({ kind: "command", plan, command: execution.command });
+        } else if (execution.kind === "adapter") {
+          const adapter = execution.adapter;
+          const capabilities = snapshot(adapter.capabilities().map(cap => CapabilitySchema.parse(cap)));
+          const matches = capabilities.filter(cap => cap.id === execution.capabilityId);
+          const cap = matches[0];
+          if (matches.length !== 1 || !cap || cap.agent_id !== adapter.id || plan.agent_id !== adapter.id
+            || plan.task.capability !== cap.kind || (!reads.has(cap.kind) && !writes.has(cap.kind))) throw new Error("unknown or ambiguous trusted capability");
+          // A multi-capability adapter can internally select a writer. Only entirely
+          // read-only registrations may consume a read permit.
+          if (capabilities.some(capability => !reads.has(capability.kind) && !writes.has(capability.kind))) throw new Error("unknown adapter capability");
+          access = capabilities.every(capability => reads.has(capability.kind)) ? "read" : "write";
+          const bound: AgentAdapter = Object.freeze({ id: adapter.id, display_name: adapter.display_name, cost_tier: adapter.cost_tier,
+            capabilities: () => structuredClone(capabilities), isAvailable: adapter.isAvailable.bind(adapter), invoke: adapter.invoke.bind(adapter),
+            ...(adapter.confirmStopped ? { confirmStopped: adapter.confirmStopped.bind(adapter) } : {}) });
+          selected = Object.freeze({ kind: "adapter", plan, adapter: bound, capabilityId: execution.capabilityId });
+        } else throw new Error("unsupported execution handler");
+      }
+      const key = slot(copy.nodeId, copy.effectSlot);
+      if (registered.has(key)) throw new Error("duplicate compiled action slot");
+      registered.set(key, Object.freeze({ ...copy, execution: selected, persist, access }));
+    }
+    const binding = Object.freeze({ ...fixed, authorize, actions: registered });
+    // Verify full registered identity at installation, then at every ledger access.
+    this.fence(binding);
+    this.connections.set(connection, binding);
+  }
+
+  unregister(connection: object): void {
+    this.connections.delete(connection);
+    this.retired.add(connection);
+  }
+
+  /** Trusted recovery service only. Commit the decision before verifying/releasing;
+   * this method deliberately cannot mutate outcomes or allocate another attempt. */
+  async releaseReconciled(effectKey: string, verify: (context: GraphRetainedAction) => Promise<void>): Promise<boolean> {
+    const entry = this.retained.get(effectKey);
+    if (!entry) return false;
+    if (!entry.lease.releaseAfterReconciliation) throw new Error("lease reconciliation unsupported");
+    const verification: unknown = await verify(snapshot(entry.context));
+    if (verification !== undefined) throw new Error("invalid reconciliation authority");
+    await entry.lease.releaseAfterReconciliation(() => verify(snapshot(entry.context)));
+    this.admissions.released(effectKey, this.options.now?.() ?? Date.now());
+    this.retained.delete(effectKey);
+    return true;
+  }
+
+  private authorize(binding: Binding): void {
+    const result: unknown = binding.authorize();
+    if (result !== undefined) {
+      // TypeScript allows async functions in void positions. Never silently
+      // treat a pending/rejected promise as synchronous permission.
+      void Promise.resolve(result).catch(() => {});
+      throw new Denied("POLICY_DENIED", "revocation check must be synchronous");
+    }
+  }
+
+  private fence(binding: Binding): GraphRunFence {
+    const run = this.runs.get(binding.scope, binding.graphRunId);
+    if (!run) throw new Denied("RUN_MISMATCH", "registered run not found");
+    if (run.generation !== binding.generation || run.leaseOwner !== binding.owner) throw new Denied("STALE_GENERATION", "registered worker lease changed");
+    if (canonical(run.identity) !== canonical(binding.identity)) throw new Denied("CHECKPOINT_INCOMPATIBLE", "registered program identity changed");
+    const now = this.options.now?.() ?? Date.now();
+    if (!run.leaseExpiresAt || run.leaseExpiresAt <= now) throw new Denied("STALE_GENERATION", "registered worker lease expired");
+    return { scope: binding.scope, graphRunId: binding.graphRunId, identity: binding.identity,
+      expectedGeneration: binding.generation, expectedOwner: binding.owner, expectedRevision: run.revision, now };
+  }
+
+  handle(connection: object, value: unknown, options: { signal?: AbortSignal } = {}): Promise<WorkerActionResponse> {
+    return this.executeRequest(connection, value, options);
+  }
+
+  /** Trusted host command, never part of worker transport. Only this call owns the
+   * freshly ledger-allocated retry intent; ordinary replays cannot claim it. */
+  async retryAuthorized(connection: object, effectKey: string, authorizeRetry: () => void,
+    options: { signal?: AbortSignal } = {}): Promise<WorkerActionResponse> {
+    const binding = this.connections.get(connection);
+    if (!binding) throw new Error("UNAUTHENTICATED");
+    this.authorize(binding);
+    const permitted: unknown = authorizeRetry();
+    if (permitted !== undefined) {
+      void Promise.resolve(permitted).catch(() => {});
+      throw new Error("invalid synchronous retry authority");
+    }
+    if (options.signal?.aborted) throw new Error("retry cancelled");
+    const prior = this.actions.get(this.fence(binding), effectKey).action;
+    const registered = binding.actions.get(slot(prior.effect.nodeId, prior.effect.effectSlot));
+    if (!registered || prior.effect.epoch !== binding.epoch || canonical(registered.action) !== canonical(prior.action)) throw new Error("unregistered retry slot");
+    const next = this.actions.retry(this.fence(binding), effectKey).action;
+    return this.executeRequest(connection, { schemaVersion: 1, kind: "worker_action", requestId: `retry:${randomUUID()}`,
+      scope: binding.scope, graphRunId: binding.graphRunId, generation: binding.generation, specHash: binding.identity.specHash,
+      epoch: binding.epoch, nodeId: prior.effect.nodeId, effectSlot: prior.effect.effectSlot, action: registered.action }, options, next.effectKey, authorizeRetry);
+  }
+
+  private async executeRequest(connection: object, value: unknown, options: { signal?: AbortSignal }, retryEffectKey?: string, authorizeRetry?: () => void): Promise<WorkerActionResponse> {
+    let request: WorkerActionRequest;
+    try { request = snapshot(WorkerActionRequest.parse(value)); }
+    catch { return { schemaVersion: 1, kind: "worker_action_rejected", requestId: "invalid-request", error: graphError("INPUT_CONTRACT_INVALID", "invalid worker action request") }; }
+    const binding = this.connections.get(connection);
+    const signal = options.signal ?? new AbortController().signal;
+    let lease: ExecutionLease | undefined; let owned: GraphAction | undefined; let invoked = false; let uncertain = false; let observedTokens = 0; let persistedEvidenceRef: string | undefined;
+    const reject = (error: unknown): WorkerActionResponse => ({ schemaVersion: 1, kind: "worker_action_rejected", requestId: request.requestId,
+      error: graphError(errorCode(error), String(error)) });
+    try {
+      if (!binding) throw new Denied("UNAUTHENTICATED", "unregistered worker connection");
+      if (canonical(request.scope) !== canonical(binding.scope)) throw new Denied("SCOPE_MISMATCH", "scope does not match registered connection");
+      if (request.graphRunId !== binding.graphRunId) throw new Denied("RUN_MISMATCH", "run does not match registered connection");
+      if (request.generation !== binding.generation) throw new Denied("STALE_GENERATION", "generation does not match registered connection");
+      if (request.specHash !== binding.identity.specHash) throw new Denied("SPEC_MISMATCH", "spec does not match registered program");
+      if (request.epoch !== binding.epoch) throw new Denied("EPOCH_MISMATCH", "epoch does not match registered program");
+      const action = binding.actions.get(slot(request.nodeId, request.effectSlot));
+      if (!action) throw new Denied("POLICY_DENIED", "unregistered compiled action slot");
+      if (canonical(action.action) !== canonical(request.action)) throw new Denied("IDEMPOTENCY_CONFLICT", "action differs from immutable compiled registration");
+      const check = (): void => { if (this.connections.get(connection) !== binding) throw new Denied("UNAUTHENTICATED", "worker connection retired"); if (signal.aborted) throw new Denied("POLICY_DENIED", "action cancelled before invocation"); this.authorize(binding); this.fence(binding);
+        if (authorizeRetry) {
+          const permitted: unknown = authorizeRetry();
+          if (permitted !== undefined) { void Promise.resolve(permitted).catch(() => {}); throw new Denied("POLICY_DENIED", "retry authority must be synchronous"); }
+        }
+      };
+      check();
+      const intent = this.actions.reserve(this.fence(binding), { epoch: binding.epoch, nodeId: action.nodeId, effectSlot: action.effectSlot,
+        reservationTokens: action.tokenReservation, action: action.action });
+      if (!intent.created && intent.action.effectKey !== retryEffectKey) return this.response(request, intent.action);
+      if (retryEffectKey && (intent.action.state !== "intent" || intent.action.generation !== binding.generation)) {
+        return this.response(request, intent.action);
+      }
+      owned = intent.action;
+      lease = await this.options.acquire({ kind: action.access, runId: `graph-action:${owned.effectKey}`, workspacePath: binding.workspace.workspace_path,
+        signal, authorize: async () => { check(); await this.options.authorizePolicy?.(binding.workspace.workspace_path); check(); } });
+      this.admissions.hold(owned.effectKey, this.options.now?.() ?? Date.now());
+      check();
+      // This synchronous gate runs inside the actual adapter invoke/command/host
+      // handler call, after G04's async authorization and availability windows.
+      const beforeEffect = (executionRunId: string): void => {
+        check();
+        let started: ReturnType<GraphActionStore["markRunning"]>;
+        try {
+          started = this.actions.markRunning(this.fence(binding), owned!.effectKey, `graph-execution:${owned!.effectKey}:${executionRunId}`);
+        } catch (error) {
+          // A different execution reference also proves somebody already started.
+          if (String(error).includes("EXECUTION_CONFLICT")) invoked = true;
+          throw error;
+        }
+        if (!started.changed) {
+          // Another trusted caller already started this effect. We cannot prove
+          // non-execution, so retain admission and require reconciliation.
+          invoked = true;
+          throw new Denied("ACTION_OUTCOME_UNKNOWN", "intent already started");
+        }
+        invoked = true;
+      };
+      const evidence = await this.execute(binding, action, signal, beforeEffect, tokens => { observedTokens = Math.max(observedTokens, tokens); }, lease);
+      if (!invoked) throw new Denied("POLICY_DENIED", "execution did not start");
+      const persisted = snapshot(await action.persist(evidence));
+      if (typeof persisted.evidenceRef !== "string" || !persisted.evidenceRef || persisted.evidenceRef.trim() !== persisted.evidenceRef
+        || persisted.evidenceRef.length > 256 || Array.from(persisted.evidenceRef).some(char => {
+          const code = char.charCodeAt(0); return code < 32 || (code >= 127 && code <= 159);
+        })) throw new Error("invalid persisted evidence reference");
+      persistedEvidenceRef = persisted.evidenceRef;
+      if (persisted.actualTokens !== undefined && (!Number.isSafeInteger(persisted.actualTokens) || persisted.actualTokens < 0)) throw new Error("invalid usage");
+      observedTokens = Math.max(observedTokens, persisted.actualTokens ?? 0);
+      const usage = evidence.candidate?.execution;
+      const measured = usage?.tokens_in !== undefined && usage.tokens_out !== undefined ? usage.tokens_in + usage.tokens_out : undefined;
+      if (measured !== undefined && !Number.isSafeInteger(measured)) throw new Error("invalid total token usage");
+      const actualTokens = Math.max(observedTokens, persisted.actualTokens ?? 0, measured ?? Math.max(action.tokenReservation, usage?.tokens_in ?? 0, usage?.tokens_out ?? 0));
+      let result: GraphResult | undefined;
+      if (evidence.status === "completed") {
+        result = GraphResult.parse(persisted.result);
+        if (action.action.kind === "freeze" && (!evidence.frozenCandidate || canonical(result) !== canonical(evidence.frozenCandidate))) throw new Error("freeze result differs from durable artifact");
+        const expected = action.action.kind === "freeze" ? "candidate_ready" : action.action.kind === "implement" || action.action.kind === "repair" ? "implementation_complete"
+          : action.action.kind.startsWith("workspace_") ? "workspace" : action.action.kind;
+        if (result.kind !== expected) throw new Error("invalid result kind for registered operation");
+        if ("workspaceLeaseRef" in result && "workspaceLeaseRef" in action.action && result.workspaceLeaseRef !== action.action.workspaceLeaseRef) throw new Error("persisted workspace mismatch");
+        if ("candidateRevision" in result && "candidateRevision" in action.action && result.candidateRevision !== action.action.candidateRevision) throw new Error("persisted revision mismatch");
+      }
+      const settled = this.actions.recordOutcome(this.fence(binding), owned.effectKey, evidence.status === "completed"
+        ? { state: "confirmed", evidenceRef: persisted.evidenceRef, actualTokens, result: result! }
+        : { state: "failed", evidenceRef: persisted.evidenceRef, actualTokens, retrySafe: false, error: { message: "trusted stopped invocation failed" } });
+      return this.response(request, settled.action);
+    } catch (error) {
+      if (binding && owned) {
+        if (invoked) {
+          uncertain = true; lease?.retain(String(error));
+          if (lease) this.retained.set(owned.effectKey, { lease, context: { effectKey: owned.effectKey,
+            scope: binding.scope, graphRunId: binding.graphRunId, generation: binding.generation,
+            owner: binding.owner, workspacePath: binding.workspace.workspace_path } });
+          try { const unknown = this.actions.markUncertain(this.fence(binding), owned.effectKey, { state: "unknown", evidenceRef: persistedEvidenceRef ?? `unknown:${randomUUID()}`, observedTokens: Math.max(owned.reservationTokens, observedTokens) });
+            return this.response(request, unknown.action); } catch { /* Commit/fence failure preserves the original running reservation. */ }
+          return { schemaVersion: 1, kind: "worker_action_response", requestId: request.requestId, generation: request.generation,
+            effect: owned.effect, outcome: { state: "unknown", error: graphError("ACTION_OUTCOME_UNKNOWN", String(error)), reconciliationRef: owned.effectKey } };
+        }
+        // No physical invocation: resolve this caller's own intent without calling
+        // it unknown. Only a future explicit host retry can use this proof;
+        // cancellations remain sealed and worker replay never allocates attempts.
+        try { this.actions.recordOutcome(this.fence(binding), owned.effectKey, { state: "failed", evidenceRef: `not-started:${randomUUID()}`,
+          actualTokens: 0, retrySafe: !signal.aborted, error: { message: "admission refused before invocation" } }); } catch { /* A stale owner cannot mutate a newer generation. */ }
+      }
+      return reject(error);
+    } finally {
+      if (lease && !uncertain) await this.releaseAdmission(lease, binding, owned);
+    }
+  }
+
+  private async releaseAdmission(lease: ExecutionLease, binding: Binding | undefined, owned: GraphAction | undefined): Promise<void> {
+    let physicallyReleased = false;
+    try {
+      await lease.release(); physicallyReleased = true;
+      if (owned) this.admissions.released(owned.effectKey, this.options.now?.() ?? Date.now());
+    }
+    catch (error) {
+      // Release failure deliberately stops the chain without replacing durable
+      // effect truth. Keep its exact admission reachable for release-only recovery.
+      if (!physicallyReleased) lease.retain(String(error));
+      if (binding && owned) this.retained.set(owned.effectKey, { lease, context: {
+        effectKey: owned.effectKey, scope: binding.scope, graphRunId: binding.graphRunId,
+        generation: binding.generation, owner: binding.owner, workspacePath: binding.workspace.workspace_path,
+      } });
+      throw error;
+    }
+  }
+
+  private response(request: WorkerActionRequest, action: GraphAction): WorkerActionResponse {
+    const base = { schemaVersion: 1 as const, kind: "worker_action_response" as const, requestId: request.requestId,
+      generation: request.generation, effect: action.effect };
+    if (action.state === "confirmed") return WorkerActionResponse.parse({ ...base, outcome: { state: "confirmed", result: action.outcome?.state === "confirmed" ? action.outcome.result : undefined } });
+    if (action.state === "failed") return WorkerActionResponse.parse({ ...base, outcome: { state: "failed", error: graphError("POLICY_DENIED", "prior invocation failed; no automatic retry") } });
+    return { ...base, outcome: { state: "unknown", error: graphError("ACTION_OUTCOME_UNKNOWN", "existing action requires reconciliation; invocation was not repeated"), reconciliationRef: action.effectKey } };
+  }
+
+  private async execute(binding: Binding, action: BoundAction, signal: AbortSignal, beforeEffect: (executionRunId: string) => void, observeTokens: (tokens: number) => void, lease?: ExecutionLease): Promise<GraphActionEvidence> {
+    const execution = action.execution;
+    if (execution.kind === "freeze") {
+      if (!lease?.assertActive) throw new Error("freeze requires canonical lease verification");
+      const check = (): void => { if (signal.aborted) throw new Error("freeze cancelled"); this.authorize(binding); this.fence(binding); };
+      await this.options.authorizePolicy?.(binding.workspace.workspace_path); check();
+      await lease.assertActive(); check(); beforeEffect(`freeze:${randomUUID()}`);
+      const frozenCandidate = await execution.store.freeze(execution.input, { ...execution.authority, lease,
+        verifyLease: async (input, actualLease) => {
+          if (actualLease !== lease) throw new Error("freeze lease identity mismatch");
+          check(); await lease.assertActive!(); check();
+          const decision: unknown = await execution.authority.verifyLease(input, actualLease);
+          if (decision !== undefined) throw new Error("invalid freeze authority");
+          check();
+        } });
+      return { status: "completed", frozenCandidate };
+    }
+    if (execution.kind === "workspace") {
+      await this.options.authorizePolicy?.(binding.workspace.workspace_path);
+      beforeEffect(`workspace:${randomUUID()}`);
+      const result = await execution.handler({ workspace: binding.workspace, signal });
+      if (result?.stopped !== true || !["completed", "failed"].includes(result.status)) throw new Error("workspace outcome unconfirmed");
+      return { status: result.status, workspace: result.evidence };
+    }
+    let threw = false; let command: CommandResult | undefined; let invocationRunId: string | undefined;
+    const original = execution.kind === "adapter" ? execution.adapter : undefined;
+    const capabilities = execution.kind === "adapter" ? execution.adapter.capabilities().filter(cap => cap.id === execution.capabilityId) : [CapabilitySchema.parse({ id: "registered-command.write", kind: "code.write", agent_id: "registered-command", description: "Registered command" })];
+    const policy = this.options.authorizePolicy;
+    const cumulativeUsage: Record<string, number> = { tokens_in: 0, tokens_out: 0 };
+    const wrapper: AgentAdapter = {
+      id: original?.id ?? "registered-command", display_name: "Governed graph action", cost_tier: "low",
+      capabilities: () => capabilities, isAvailable: original?.isAvailable ?? (async () => ({ available: true, last_checked_at: 0 })),
+      invoke: (task, invocationSignal) => {
+        return (async function* () {
+          await policy?.(binding.workspace.workspace_path);
+          if (invocationSignal.aborted) throw new Denied("POLICY_DENIED", "execution cancelled before invocation");
+          beforeEffect(task.run_id); invocationRunId = task.run_id;
+          try {
+            if (original) {
+              for await (const event of original.invoke(task, invocationSignal)) {
+                const payload: unknown = event.type === "usage.updated" || event.type === "usage.final" ? event.payload
+                  : event.type === "done" && event.payload && typeof event.payload === "object" ? (event.payload as { usage?: unknown }).usage : undefined;
+                if (payload !== undefined) {
+                  if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("invalid adapter usage payload");
+                  const usage = payload as Record<string, unknown>;
+                  let tokens = 0;
+                  for (const field of ["tokens_in", "tokens_out"]) {
+                    const amount = usage[field];
+                    if (amount !== undefined) {
+                      if (typeof amount !== "number" || !Number.isSafeInteger(amount) || amount < 0) throw new Error("invalid adapter token usage");
+                      cumulativeUsage[field] = Math.max(cumulativeUsage[field]!, amount);
+                    }
+                  }
+                  // Providers may send input/output counters in separate events.
+                  // Retain each cumulative maximum instead of only max(event sum).
+                  tokens = cumulativeUsage["tokens_in"]! + cumulativeUsage["tokens_out"]!;
+                  if (!Number.isSafeInteger(tokens)) throw new Error("invalid adapter total usage");
+                  observeTokens(tokens);
+                  const cost = usage["cost_usd"];
+                  if (cost !== undefined && (typeof cost !== "number" || !Number.isFinite(cost) || cost < 0)) throw new Error("invalid adapter cost usage");
+                }
+                yield event;
+              }
+              return;
+            }
+            if (execution.kind !== "command") throw new Error("invalid execution registration");
+            // runShellCommand starts synchronously before its returned promise; no
+            // untrusted await separates the fence above from the actual spawn.
+            command = await runShellCommand(execution.command, { cwd: binding.workspace.workspace_path, timeoutMs: 120_000,
+              outputLimit: 16_000, ...(invocationSignal ? { signal: invocationSignal } : {}) });
+            yield { event_id: randomUUID(), run_id: task.run_id, session_id: task.session_id, seq: 1, type: "done" as const,
+              created_at: Date.now() / 1000, terminal: true, payload: { status: command.exitCode === 0 ? "completed" : "failed", last_seq: 0 } };
+          } catch (error) { threw = true; throw error; }
+        })();
+      },
+      confirmStopped: async runId => original?.confirmStopped ? original.confirmStopped(runId)
+        : { stopped: command?.termination?.stop_confirmed === true, evidence: command?.termination?.evidence ?? "no trusted stop receipt" },
+    };
+    const candidate = await executeCandidateImplementation({ plan: { ...execution.plan, agent_id: wrapper.id }, workspace: binding.workspace,
+      adapters: [wrapper], signal, cancellationGraceMs: 50,
+      authorize: async () => { this.authorize(binding); this.fence(binding); return { allow: true }; } });
+    if (!invocationRunId) throw new Denied("POLICY_DENIED", candidate.reason ?? "candidate preflight refused");
+    if (threw || candidate.status === "execution_unconfirmed" || candidate.execution?.failure_code) throw new Error("adapter result or execution unconfirmed");
+    let stopTimer: ReturnType<typeof setTimeout> | undefined;
+    const stopped = await Promise.race([wrapper.confirmStopped!(invocationRunId),
+      new Promise<{ stopped: false }>(resolve => { stopTimer = setTimeout(() => resolve({ stopped: false }), 1000); })])
+      .finally(() => { if (stopTimer) clearTimeout(stopTimer); });
+    if (stopped.stopped !== true || !stopped.evidence?.trim()) throw new Error("external stop unconfirmed");
+    const usage = candidate.execution;
+    if ([usage?.tokens_in, usage?.tokens_out].some(value => value !== undefined && (!Number.isSafeInteger(value) || value < 0))) throw new Error("invalid adapter usage");
+    return { status: candidate.status === "implementation_complete" ? "completed" : "failed", candidate, ...(command ? { command } : {}) };
+  }
+}
+
+
+Previous review decisions
+# C5 Claude Fable 5.1 对抗审查裁定（待最终闭环）
+
+真实调用使用 claude-fable-5-1、medium、tool-less、JSON 输出。原始 prompt/JSON/文本/错误流随证据保存。模型意见不是验收替代品。
+
+## 设计审查
+- 采纳：显式 retry intent 执行所有权、原始 task.run_id 执行引用、按 run 计数的仓库隔离、可信释放端口、持久 worktree retention、独立 receiptId 和稳定 interruptId。
+- 调整后采纳：恢复原代动作采用单独 GraphRecoveryStore 管理端口和完整快照/双代证据，不削弱普通写 fence；终态前拒绝未决动作，不允许终态复活。
+- 不采纳：放宽过期 lease 普通结算、回退时间容忍、无限制领取 intent。过期/回拨仍拒绝，通过新鲜证据的管理对账恢复。
+
+## worker / artifact 实施审查
+1. 长动作受 RPC 超时误杀：修复。action 不用 checkpoint RPC timer；保留限流、取消、断连和 host 原始 deadline 约束。
+2. 单独 worker exit 不代表外部执行结束：由 GraphRuntime 跟踪真实 broker Promise 的有限等待，G15 另核对 G04 独立执行器收据和 G16 隔离。drained 也不等于物理停止。加入 daemon/assembly 未排空与未确认停止反例。
+3. 启动期 heartbeat 提前触发：修复，ready 后才检查 heartbeat。
+4. 授权暂时不可验证应缓存旧 grant：不采纳，仍失效关闭；性能与恢复策略放 G28，不以旧权限覆盖不可验证状态。
+5. spawn_failed 无身份：修复为明确 no-child 收据，含 run/gen/owner/时间/证据/phase。只有 post-registration spawn 失败且没有同代动作/checkpoint 写入才允许受信任 not_started 对账；注册冲突不能当作旧 worker 不存在。
+6. sparse/skip-worktree 被当删除：修复，冻结前明确拒绝 skip-worktree。
+7. 完整历史 bundle 的大小/时间限制：记录能力边界，保留自包含与严格验证；大仓库性能/兼容性仍须 G27/G28，不宣称普适可用。
+8. 超时后的迟到 OS exit 被丢弃：修复，增加 finalExit；bounded exit 仍保持原未确认结果，runtime 提供可再次核验的实际退出收据。
+
+## recovery / broker 实施审查
+1. 释放失败的 lease 不可达：父执行器独立复现并修复。finally 保存精确 admission；confirmed 不改为 unknown，不重复执行；失败继续停止链，可信管理路径只重试释放。
+2. 丢失接管回复的重放停止新 worker：修复。精确 next-generation takeover 重放只读返回持久决定；跨代旧 effect release 重放在停止前拒绝，先清理再接管，或发起新的显式对账。
+3. interrupt 唯一约束风险：已核对 migration28 仅 (run,receipt) 唯一；unknown→applied 两条历史测试通过，无此问题。
+4–5. 把 worker confirmedAt 强制设在所有 action.updatedAt 之后：不采纳；worker 退出后 broker 可以继续做持久结算/管理对账，独立 producer stop 在另一份证据中。真实 supervisor 收据、完整快照、原代证明和同步可信 verifier 是授权边界；不得伪造退出时间。
+6/8. 过期 lease 普通结算与未调用 intent：保持严格 fence，通过明确 not_applied 管理对账；普通 replay 不隐式领取/重发。
+7. 失败尝试退回全部预算：不采纳，原方案以保守 reservation 和 attempt 上限约束重复拒绝/重试；恢复不重置预算。
+9. 正在处理的 intent 返回对账：保留保守行为，没有 worker 自动重试；更细 pending UI 属于后续公开协议/CLI。
+10. 固定停止确认时限：当前能力保守地保留 unknown；真实 provider 适配和性能在 G19/G25/G28 验收。
+
+## 父执行器额外发现并修复
+- 退休连接不能在异步授权后写入；单一 daemon runtime 配置阻止多 manager 重复有效 worker。
+- migration29 持久消耗每个 run/generation 的启动权，daemon 重启不得重用内存丢失的同代；G15 journal 才允许新代。
+- 独立 retry grant 在可用性检查/排队后的实际调用前重检。
+- 普通 cancel_pending 投影不可变回 running/ready/queued 等；终态前必须无未决动作。
+- daemon 重启后的 releaseReconciled(false) 不能代表磁盘锁已无；精确 owner、PID 已死、持久决定和独立静止证明后才删除原锁。
+
+最终闭环结果待补。

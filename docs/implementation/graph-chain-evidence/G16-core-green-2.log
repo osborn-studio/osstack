@@ -1,0 +1,34 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+Preparing worktree (detached HEAD d6f2380)
+Preparing worktree (detached HEAD c3a5337)
+Preparing worktree (detached HEAD 8b75cc6)
+Preparing worktree (detached HEAD 3a86d52)
+Preparing worktree (detached HEAD 01fc9ec)
+Preparing worktree (detached HEAD 7656566)
+Preparing worktree (detached HEAD 7656566)
+Preparing worktree (detached HEAD 0445abd)
+Preparing worktree (detached HEAD 0445abd)
+Preparing worktree (detached HEAD 0445abd)
+Preparing worktree (detached HEAD 3ebd9d0)
+Preparing worktree (detached HEAD 2f0fb83)
+Preparing worktree (detached HEAD 9b79eae)
+Preparing worktree (detached HEAD 956319b)
+ ✓ src/graph/artifact-store.test.ts (14 tests) 18339ms
+   ✓ trusted graph artifact freeze > restores full reachable history and exact raw tree after deleting original repo and worktree  3803ms
+   ✓ trusted graph artifact freeze > does not return ready if durable ID publication fails; exported bytes remain recoverable  960ms
+   ✓ trusted graph artifact freeze > rejects manifest corruption under a pinned artifact digest  2153ms
+   ✓ trusted graph artifact freeze > rejects same ID with changed receipt or content  3469ms
+   ✓ trusted graph artifact freeze > rechecks resolved producer evidence before capture and rejects revocation  414ms
+   ✓ trusted graph artifact freeze > rejects mismatched exact source identity and HEAD  443ms
+   ✓ trusted graph artifact freeze > does not invoke local hooks or filters during capture or restore  2424ms
+   ✓ trusted graph artifact freeze > rejects submodules instead of exporting an incomplete tree  649ms
+   ✓ trusted graph artifact freeze > rejects corrupted bundles and manifests, including replay  1988ms
+   ✓ trusted graph artifact freeze > refuses existing and escaping restore destinations  1225ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  07:35:39
+   Duration  18.82s (transform 146ms, setup 0ms, collect 225ms, tests 18.34s, environment 0ms, prepare 51ms)
+

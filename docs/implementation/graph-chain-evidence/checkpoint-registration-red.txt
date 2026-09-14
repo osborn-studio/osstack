@@ -1,0 +1,36 @@
+$ vitest run graph-checkpoint-service.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-checkpoint-service.test.ts (6 tests | 1 failed) 164ms
+   ✓ requires exact host registration and rejects caller-supplied scope or a different thread 42ms
+   ✓ refreshes revision after an authorization await but never adopts a new worker generation 19ms
+   ✓ snapshots registration data and request before authorization can yield 15ms
+   ✓ denies revoked authorization and prevents late writes after service closes 34ms
+   ✓ rejects a false authorization return instead of treating it as successful completion 20ms
+   × registers new supervised connections and rejects an in-flight write after revocation 32ms
+     → f.service.register is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-checkpoint-service.test.ts > registers new supervised connections and rejects an in-flight write after revocation
+TypeError: f.service.register is not a function
+ ❯ src/graph-checkpoint-service.test.ts:71:13
+     69|   let resume!: () => void;
+     70|   const f = fixture(); const token = {};
+     71|   f.service.register(token, { ...f.binding, authorize: () => new Promi…
+       |             ^
+     72|   expect(() => f.service.register(token, f.binding)).toThrow('ALREADY_…
+     73|   const pending = f.service.execute(token, { kind: 'put', requestId: '…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  07:27:43
+   Duration  641ms (transform 167ms, setup 8ms, collect 270ms, tests 164ms, environment 0ms, prepare 46ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.19.0 test: `vitest run graph-checkpoint-service.test.ts`
+Exit status 1

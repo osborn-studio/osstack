@@ -1,0 +1,9 @@
+{
+  "core_tests": 0,
+  "cli_tests": 0,
+  "core_build": 0,
+  "cli_build": 0,
+  "core_typecheck": 0,
+  "cli_typecheck": 0,
+  "git_diff_check": 0
+}

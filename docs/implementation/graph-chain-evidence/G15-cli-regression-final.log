@@ -1,0 +1,16 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-reconciler.test.ts (20 tests) 565ms
+osstack: retaining write lease graph-action:80eef0fa33323e6ef100b41911b4dc9d456bf361ece67975104d7e3660f0a5c6: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:ec2732a9b03e594b6f19038c630a2d4ed59bb8f357248431dfdae89ec552995e: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:5cc577b9a64b466d25f8282c786362bac70f83573422d112dcfc7f6f4d726d7b: Error: candidate preflight refused
+osstack: retaining write lease graph-action:091fec62a282d866392377f179f5c395751c90538c16ccb90ebccacfdcf29b21: Error: candidate preflight refused
+osstack: retaining write lease graph-action:9f3f4facff4940a14303b9e89c4d5dc6597b29aad5e6c43332f38d230fed23d1: Error: lost receipt
+ ✓ src/graph-action-broker-boundary.test.ts (13 tests) 779ms
+
+ Test Files  2 passed (2)
+      Tests  33 passed (33)
+   Start at  07:48:15
+   Duration  2.95s (transform 1.05s, setup 35ms, collect 2.45s, tests 1.34s, environment 0ms, prepare 187ms)
+

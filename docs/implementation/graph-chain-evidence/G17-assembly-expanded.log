@@ -1,0 +1,57 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+
+  ../../../tmp/gc5/graph-chain-host.mjs  322.9kb
+
+⚡ Done in 14ms
+ ❯ src/graph-chain.integration.test.ts (12 tests | 1 failed | 4 skipped) 8558ms
+   ↓ uses real worker IPC and durable SQLite checkpoints, retires both ports and exposes OS exit
+   ↓ rejects asynchronous authority and terminal/old identities before spawning
+   ✓ assembly: real command implement → freeze persists a selfcontained candidate  1535ms
+   ↓ daemon: real command implement → freeze persists a selfcontained candidate
+   ✓ assembly: SIGKILL at before-return resumes using actual SQLite saver and ledger  1296ms
+   ✓ assembly: SIGKILL at before-final resumes using actual SQLite saver and ledger  1221ms
+   ✓ assembly: SIGKILL at after-final resumes using actual SQLite saver and ledger  1266ms
+   ✓ assembly: restore then SIGKILL again re-enters implement without repeating the confirmed external command  1474ms
+   ↓ daemon: true daemon process SIGKILL/restart retains SQLite results and resumes through G15
+   ✓ assembly: real broker unknown stays quarantined, then durable applied release failure is retried without resending  615ms
+   ✓ assembly: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying  618ms
+   × assembly: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze 533ms
+     → expected { kind: 'exited', …(8) } to match object { kind: 'exited', signal: 'SIGKILL' }
+(7 matching properties omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-chain.integration.test.ts > assembly: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze
+AssertionError: expected { kind: 'exited', …(8) } to match object { kind: 'exited', signal: 'SIGKILL' }
+(7 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "kind": "exited",
+-   "signal": "SIGKILL",
++   "signal": null,
+  }
+
+ ❯ src/graph-chain.integration.test.ts:154:100
+    152|   let state = await h.call('inspect'); const deadline = Date.now() + 5…
+    153|   while (!state.external && Date.now() < deadline) { await new Promise…
+    154|   expect(state.external).toBe('started\n'); const stop = await h.call(…
+       |                                                                                                    ^
+    155|   state = await h.call('inspect'); expect(state.actions).toHaveLength(…
+    156|   // Drained calls are not an external stop receipt. If G04 cannot pro…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed | 4 skipped (12)
+   Start at  07:57:07
+   Duration  9.40s (transform 405ms, setup 7ms, collect 672ms, tests 8.56s, environment 0ms, prepare 32ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-chain.integration.test.ts -t 'assembly:'

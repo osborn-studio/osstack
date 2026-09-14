@@ -1,0 +1,278 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-reconciler.test.ts (23 tests | 1 failed) 962ms
+   ✓ trusted reconciler > stops and independently verifies, commits before release, never invokes and retries lost release ack after restart 63ms
+   ✓ trusted reconciler > returns distinct unknown exit without sending effects 24ms
+   ✓ trusted reconciler > returns distinct not_applied exit without sending effects 31ms
+   ✓ trusted reconciler > rejects revocation after stop await with no decision 23ms
+   ✓ trusted reconciler > rejects revocation after worker await with no decision 24ms
+   ✓ trusted reconciler > rejects revocation after quiescence await with no decision 24ms
+   ✓ trusted reconciler > rejects revocation after outcome await with no decision 31ms
+   ✓ trusted reconciler > does not refresh the proof revision over a concurrent ledger update 28ms
+   ✓ trusted reconciler > snapshots request and registration before await; worker-shaped flags and unregistered connections have no authority 34ms
+   ✓ trusted reconciler > rejects non-undefined synchronous authority true 44ms
+   ✓ trusted reconciler > rejects non-undefined synchronous authority yes 41ms
+   ✓ trusted reconciler > rejects non-undefined synchronous authority Promise{…} 38ms
+   ✓ trusted reconciler > rejects changed outcome on receipt replay and revalidates release authority 47ms
+   ✓ trusted reconciler > rejects boolean self-authority from worker verifier 38ms
+   ✓ trusted reconciler > rejects boolean self-authority from quiescence verifier 43ms
+   ✓ trusted reconciler > rejects boolean self-authority from outcome verifier 36ms
+   ✓ trusted reconciler > keeps the decision durable when release-time verification is revoked 42ms
+   ✓ trusted reconciler > replays unknown without releasing, then appends a later receipt under the same stable interrupt 53ms
+   ✓ trusted reconciler > rejects asynchronous final recheck grants without an unhandled rejection 39ms
+   ✓ trusted reconciler > replays invalid usage as the same blocked accounting decision 66ms
+   ✓ acknowledges an exact lost takeover response without stopping the replacement worker 60ms
+   ✓ refuses old-generation release replay before stopping a replacement worker 44ms
+   × blocks takeover and terminal sealing until durable resource release completes after restart 87ms
+     → promise resolved "{ exit: 'takeover', result: { …(4) } }" instead of rejecting
+osstack: retaining write lease graph-action:2edf1703036b93361046c801d630656d7fa4e4f691aca82ead010e2704323f49: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:4eadc4bdef386b8fcf97c7e1c71db5ecea14c32d64b129ccf9f00116d42b0802: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:7042fa596b8b238c5cc536139ac9cb65c7a706cc359af527b917fa579ab3f404: Error: candidate preflight refused
+osstack: retaining write lease graph-action:fe2e00eabdf95532976b6ccd9193d7f389c340a733558bd5672b1cce05f6bf7e: Error: candidate preflight refused
+osstack: retaining write lease graph-action:3a0c65d863394b1244f19b6dd568c0703f915b37091bb35fa919e0ec0481c764: Error: lost receipt
+osstack: retaining write lease graph-action:a7364a0401d27483c50571aa66077e4bb3ec1d0bddcb6fda1b6a965e6f86b48f: injected lock release failure
+osstack: retaining write lease graph-action:a7364a0401d27483c50571aa66077e4bb3ec1d0bddcb6fda1b6a965e6f86b48f: Error: injected lock release failure
+osstack: retaining write lease graph-action:79077d9e2a726f125abce8b3a5c3dfbaa1720bad70fbef20aa67f0cc5a825d75: release failure
+osstack: retaining write lease graph-action:79077d9e2a726f125abce8b3a5c3dfbaa1720bad70fbef20aa67f0cc5a825d75: Error: release failure
+ ❯ src/graph-action-broker-boundary.test.ts (16 tests | 1 failed) 1706ms
+   ✓ rejects a Promise-returning synchronous authorizer instead of silently granting authority 77ms
+   ✓ rechecks repository policy after an asynchronous adapter availability probe 130ms
+   ✓ charges observed adapter usage even when the persistence mapper reports less 131ms
+   ✓ combines independently reported cumulative input and output usage without lowering either component 108ms
+   ✓ marks only a proven pre-invocation policy failure safe for a future explicit host retry 73ms
+   ✓ retains a saved evidence reference and known usage when result validation fails 110ms
+   ✓ does not let malformed persistence references prevent durable uncertainty recording 131ms
+   ✓ never settles an already-running effect (same execution) as a safe pre-invocation failure 144ms
+   ✓ never settles an already-running effect (different execution) as a safe pre-invocation failure 112ms
+   ✓ retires a supervised connection while its availability probe is pending 126ms
+   ✓ keeps uncertain admission until its exact effect receives trusted release verification 103ms
+   ✓ executes an explicitly host-authorized retry once while ordinary worker replay stays inert 112ms
+   ✓ persists the actual adapter run identity before invoking the producer 81ms
+   ✓ retains the exact lease when release fails after a confirmed effect, without replacing its outcome 91ms
+   ✓ rechecks explicit retry authority after adapter availability and before a new physical invocation 90ms
+   × refuses terminal projection while a confirmed effect still owns a retained admission 82ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-action-broker-boundary.test.ts > refuses terminal projection while a confirmed effect still owns a retained admission
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/graph-action-broker-boundary.test.ts:240:69
+    238|   await expect(broker.handle(connection, f.request)).rejects.toThrow('…
+    239|   const run = f.runs.get(scope, f.run.graphRunId)!;
+    240|   expect(() => f.runs.project({ ...fence(run), status: 'failed' })).to…
+       |                                                                     ^
+    241| });
+    242| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/graph-reconciler.test.ts > blocks takeover and terminal sealing until durable resource release completes after restart
+AssertionError: promise resolved "{ exit: 'takeover', result: { …(4) } }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "exit": "takeover",
++   "result": {
++     "action": null,
++     "changed": true,
++     "record": {
++       "committedAt": 130,
++       "decision": {
++         "kind": "takeover",
++         "leaseExpiresAt": 300,
++         "owner": "next",
++         "receiptId": "premature",
++       },
++       "proof": {
++         "executorEvidenceRef": "all-executors",
++         "snapshotDigest": "10a3b3fa74f234a1cc4e026ddd66e6b8049929895e678c5835ace59a0e38fab2",
++         "verifiedAt": 130,
++         "worker": {
++           "confirmedAt": 125,
++           "evidenceRef": "actual-exit",
++           "generation": 1,
++           "graphRunId": "a4b869aa-e171-4b2b-a6e2-cc6daa3281da",
++           "kind": "stopped",
++           "owner": "worker",
++         },
++         "workspaceEvidenceRef": "archive",
++       },
++       "snapshot": {
++         "action": null,
++         "digest": "10a3b3fa74f234a1cc4e026ddd66e6b8049929895e678c5835ace59a0e38fab2",
++         "fence": {
++           "expectedGeneration": 1,
++           "expectedOwner": "worker",
++           "expectedRevision": 4,
++           "graphRunId": "a4b869aa-e171-4b2b-a6e2-cc6daa3281da",
++           "identity": {
++             "checkpointVersion": "1",
++             "compiledProgramDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
++             "compilerVersion": "1",
++             "durability": "sync",
++             "engineVersion": "1",
++             "executionModel": "langgraph-functional-v1",
++             "inputDigest": "e3079e181d7a783176c5cac1fd53a4b672f08e71e52871e7a28128043e8153c7",
++             "registryVersion": "1",
++             "schemaVersion": "1",
++             "specHash": "7bf4eaefc0d107665caf8159aabdb7f2a78b9ddeb69b26c508a38eed4dcd3fff",
++             "templateVersion": "1",
++           },
++           "now": 130,
++           "scope": {
++             "principalId": "p",
++             "schemaVersion": 1,
++             "tenantId": "t",
++             "workspaceId": "w",
++           },
++         },
++         "interruptId": "graph-recovery-run:a4b869aa-e171-4b2b-a6e2-cc6daa3281da",
++         "run": {
++           "createdAt": 100,
++           "generation": 1,
++           "graphRunId": "a4b869aa-e171-4b2b-a6e2-cc6daa3281da",
++           "identity": {
++             "checkpointVersion": "1",
++             "compiledProgramDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
++             "compilerVersion": "1",
++             "durability": "sync",
++             "engineVersion": "1",
++             "executionModel": "langgraph-functional-v1",
++             "inputDigest": "e3079e181d7a783176c5cac1fd53a4b672f08e71e52871e7a28128043e8153c7",
++             "registryVersion": "1",
++             "schemaVersion": "1",
++             "specHash": "7bf4eaefc0d107665caf8159aabdb7f2a78b9ddeb69b26c508a38eed4dcd3fff",
++             "templateVersion": "1",
++           },
++           "inputArtifactRef": "input",
++           "leaseAcquiredAt": 120,
++           "leaseExpiresAt": 200,
++           "leaseOwner": "worker",
++           "revision": 4,
++           "scope": {
++             "principalId": "p",
++             "schemaVersion": 1,
++             "tenantId": "t",
++             "workspaceId": "w",
++           },
++           "source": {
++             "product": "osstack",
++             "requestId": "r",
++           },
++           "spec": {
++             "input": {
++               "acceptanceRef": "a",
++               "baseRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
++               "repositoryRef": "repo",
++               "taskRef": "t",
++             },
++             "limits": {
++               "deadlineSeconds": 60,
++               "maxActionStarts": 10,
++               "maxBranchAttempts": 2,
++               "maxConcurrentReaders": 2,
++               "maxConcurrentWritersPerRepo": 1,
++               "maxEpochs": 1,
++               "tokenReservationLimit": 100,
++             },
++             "publication": "artifact_only",
++             "schemaVersion": 1,
++             "template": "code-delivery-v1",
++           },
++           "status": "queued",
++           "template": "code-delivery-v1",
++           "updatedAt": 130,
++         },
++       },
++     },
++     "run": {
++       "createdAt": 100,
++       "generation": 2,
++       "graphRunId": "a4b869aa-e171-4b2b-a6e2-cc6daa3281da",
++       "identity": {
++         "checkpointVersion": "1",
++         "compiledProgramDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
++         "compilerVersion": "1",
++         "durability": "sync",
++         "engineVersion": "1",
++         "executionModel": "langgraph-functional-v1",
++         "inputDigest": "e3079e181d7a783176c5cac1fd53a4b672f08e71e52871e7a28128043e8153c7",
++         "registryVersion": "1",
++         "schemaVersion": "1",
++         "specHash": "7bf4eaefc0d107665caf8159aabdb7f2a78b9ddeb69b26c508a38eed4dcd3fff",
++         "templateVersion": "1",
++       },
++       "inputArtifactRef": "input",
++       "leaseAcquiredAt": 130,
++       "leaseExpiresAt": 300,
++       "leaseOwner": "next",
++       "revision": 5,
++       "scope": {
++         "principalId": "p",
++         "schemaVersion": 1,
++         "tenantId": "t",
++         "workspaceId": "w",
++       },
++       "source": {
++         "product": "osstack",
++         "requestId": "r",
++       },
++       "spec": {
++         "input": {
++           "acceptanceRef": "a",
++           "baseRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
++           "repositoryRef": "repo",
++           "taskRef": "t",
++         },
++         "limits": {
++           "deadlineSeconds": 60,
++           "maxActionStarts": 10,
++           "maxBranchAttempts": 2,
++           "maxConcurrentReaders": 2,
++           "maxConcurrentWritersPerRepo": 1,
++           "maxEpochs": 1,
++           "tokenReservationLimit": 100,
++         },
++         "publication": "artifact_only",
++         "schemaVersion": 1,
++         "template": "code-delivery-v1",
++       },
++       "status": "queued",
++       "template": "code-delivery-v1",
++       "updatedAt": 130,
++     },
++   },
+  }
+
+ ❯ src/graph-reconciler.test.ts:162:151
+    160|   run = (await reconciler.reconcile(connection, request())).result.run;
+    161|   const currentFence = { ...fence(), now: 130 };
+    162|   await expect(reconciler.reconcile(connection, { kind: 'takeover', fe…
+       |                                                                                                                                                       ^
+    163|   expect(() => runs.project({ ...currentFence, status: 'failed' })).to…
+    164|   db.close(); db = openDb({ path: join(dir, 'state.db') }); runs = new…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 37 passed (39)
+   Start at  08:22:40
+   Duration  4.05s (transform 1.12s, setup 37ms, collect 2.49s, tests 2.67s, environment 0ms, prepare 168ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-reconciler.test.ts src/graph-action-broker-boundary.test.ts

@@ -480,10 +480,17 @@
         "G13"
       ],
       "files": [
+        "packages/protocol/src/graph-worker.ts",
+        "packages/protocol/src/graph-worker.test.ts",
+        "packages/protocol/src/index.ts",
+        "packages/protocol/src/generate.ts",
+        "packages/graph/src/worker-client.ts",
         "packages/cli/src/graph-worker-manager.ts",
         "packages/cli/src/graph-worker-manager.test.ts",
         "packages/graph/src/worker-entry.ts",
-        "packages/graph/src/worker-entry.test.ts"
+        "packages/graph/src/worker-entry.test.ts",
+        "packages/graph/src/worker-runtime.ts",
+        "packages/graph/src/index.ts"
       ],
       "acceptance": [
         "worker-entry 实现 protocol 动作请求/响应的 IPC 客户端，供节点注入调用；run/generation 绑定、日志隔离、帧限长、背压明确。",
@@ -494,9 +501,49 @@
       ],
       "verify": "WORKER",
       "size": "M",
-      "status": "pending",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "acceptedCodeCommit": "50133c0eec518add33f556bfa95b746de350cc35",
+      "evidence": [
+        "docs/implementation/2026-09-14-graph-chain-completion.md",
+        "docs/implementation/graph-chain-evidence/admission.json",
+        "docs/implementation/graph-chain-evidence/G14-result.json"
+      ],
+      "implementationSteps": [
+        {
+          "id": "G14a",
+          "status": "completed",
+          "files": [
+            "packages/protocol/src/graph-worker.ts",
+            "packages/protocol/src/graph-worker.test.ts",
+            "packages/protocol/src/index.ts",
+            "packages/protocol/src/generate.ts",
+            "packages/graph/src/worker-client.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        },
+        {
+          "id": "G14b",
+          "status": "completed",
+          "files": [
+            "packages/cli/src/graph-worker-manager.ts",
+            "packages/cli/src/graph-worker-manager.test.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        },
+        {
+          "id": "G14c",
+          "status": "completed",
+          "files": [
+            "packages/graph/src/worker-entry.ts",
+            "packages/graph/src/worker-entry.test.ts",
+            "packages/graph/src/worker-runtime.ts",
+            "packages/graph/src/index.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        }
       ]
     },
     {
@@ -507,10 +554,20 @@
         "G14"
       ],
       "files": [
+        "packages/core/src/state/graph-recovery.ts",
+        "packages/core/src/state/graph-recovery.test.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/core/src/state/graph-runs.ts",
+        "packages/core/src/state/graph-actions.ts",
         "packages/cli/src/graph-reconciler.ts",
         "packages/cli/src/graph-reconciler.test.ts",
-        "packages/core/src/state/graph-actions.ts",
-        "packages/core/src/state/graph-actions.test.ts"
+        "packages/cli/src/graph-action-broker.ts",
+        "packages/cli/src/graph-action-broker-boundary.test.ts",
+        "packages/cli/src/graph-action-broker.test.ts",
+        "packages/cli/src/governed-execution.ts",
+        "packages/cli/src/governed-execution.test.ts",
+        "packages/autonomy/src/repo-lock.ts",
+        "packages/autonomy/src/repo-lock.test.ts"
       ],
       "acceptance": [
         "覆盖 intent/effect/result/checkpoint 窗口；unknown 不盲重发，confirmed 返回同一证据。",
@@ -519,9 +576,59 @@
       ],
       "verify": "RECOVERY",
       "size": "M",
-      "status": "pending",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "acceptedCodeCommit": "50133c0eec518add33f556bfa95b746de350cc35",
+      "evidence": [
+        "docs/implementation/2026-09-14-graph-chain-completion.md",
+        "docs/implementation/graph-chain-evidence/admission.json",
+        "docs/implementation/graph-chain-evidence/G15-result.json"
+      ],
+      "implementationSteps": [
+        {
+          "id": "G15a",
+          "status": "completed",
+          "files": [
+            "packages/core/src/state/graph-recovery.ts",
+            "packages/core/src/state/graph-recovery.test.ts",
+            "packages/core/src/state/migrations.ts",
+            "packages/core/src/state/graph-runs.ts",
+            "packages/core/src/state/graph-actions.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        },
+        {
+          "id": "G15b",
+          "status": "completed",
+          "files": [
+            "packages/cli/src/graph-reconciler.ts",
+            "packages/cli/src/graph-reconciler.test.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        },
+        {
+          "id": "G15c",
+          "status": "completed",
+          "files": [
+            "packages/cli/src/graph-action-broker.ts",
+            "packages/cli/src/graph-action-broker-boundary.test.ts",
+            "packages/cli/src/graph-action-broker.test.ts",
+            "packages/cli/src/governed-execution.ts",
+            "packages/cli/src/governed-execution.test.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        },
+        {
+          "id": "G15d",
+          "status": "completed",
+          "files": [
+            "packages/autonomy/src/repo-lock.ts",
+            "packages/autonomy/src/repo-lock.test.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        }
       ]
     },
     {
@@ -537,9 +644,12 @@
       "files": [
         "packages/core/src/graph/artifact-store.ts",
         "packages/core/src/graph/artifact-store.test.ts",
+        "packages/core/src/graph/artifact-git.ts",
+        "packages/core/package.json",
+        "packages/cli/src/graph-action-freeze.test.ts",
         "packages/agents/src/worktree.ts",
         "packages/agents/src/worktree.test.ts",
-        "packages/core/src/state/migrations.ts"
+        "packages/agents/src/index.ts"
       ],
       "acceptance": [
         "只有本卡的 freeze 服务发 candidate_ready：可信 commit 与产物先持久化；清理原 worktree 后可重建并核对 tree，覆盖二进制/删除/文件模式。",
@@ -548,9 +658,39 @@
       ],
       "verify": "ARTIFACTS",
       "size": "M",
-      "status": "pending",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "acceptedCodeCommit": "50133c0eec518add33f556bfa95b746de350cc35",
+      "evidence": [
+        "docs/implementation/2026-09-14-graph-chain-completion.md",
+        "docs/implementation/graph-chain-evidence/admission.json",
+        "docs/implementation/graph-chain-evidence/G16-result.json"
+      ],
+      "implementationSteps": [
+        {
+          "id": "G16a",
+          "status": "completed",
+          "files": [
+            "packages/core/src/graph/artifact-store.ts",
+            "packages/core/src/graph/artifact-store.test.ts",
+            "packages/core/src/graph/artifact-git.ts",
+            "packages/core/package.json",
+            "packages/cli/src/graph-action-freeze.test.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        },
+        {
+          "id": "G16b",
+          "status": "completed",
+          "files": [
+            "packages/agents/src/worktree.ts",
+            "packages/agents/src/worktree.test.ts",
+            "packages/agents/src/index.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        }
       ]
     },
     {
@@ -562,9 +702,11 @@
         "G16"
       ],
       "files": [
+        "packages/cli/src/graph-runtime.ts",
+        "packages/cli/src/daemon.ts",
+        "packages/cli/package.json",
         "packages/cli/src/graph-chain.integration.test.ts",
-        "packages/cli/src/graph-rpc.ts",
-        "packages/cli/src/daemon.ts"
+        "scripts/fixtures/graph-chain-host.ts"
       ],
       "acceptance": [
         "通过 daemon→worker IPC action client→broker→一次命令→持久结果贯穿两节点链；内部取消可停止后续节点并核对进程退出。",
@@ -574,9 +716,36 @@
       ],
       "verify": "CHAIN",
       "size": "M",
-      "status": "pending",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "acceptedCodeCommit": "50133c0eec518add33f556bfa95b746de350cc35",
+      "evidence": [
+        "docs/implementation/2026-09-14-graph-chain-completion.md",
+        "docs/implementation/graph-chain-evidence/admission.json",
+        "docs/implementation/graph-chain-evidence/G17-result.json"
+      ],
+      "implementationSteps": [
+        {
+          "id": "G17a",
+          "status": "completed",
+          "files": [
+            "packages/cli/src/graph-runtime.ts",
+            "packages/cli/src/daemon.ts",
+            "packages/cli/package.json"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        },
+        {
+          "id": "G17b",
+          "status": "completed",
+          "files": [
+            "packages/cli/src/graph-chain.integration.test.ts",
+            "scripts/fixtures/graph-chain-host.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        }
       ]
     },
     {
@@ -780,7 +949,8 @@
         "逐项覆盖 F01–F12 确定性窗口，再做固定 seed 的重复运行。",
         "旧 worker checkpoint/action 被拒，旧子进程写旧目录不污染新 candidate。",
         "撤权、同 key 并发、pending writes 丢失与 cancel race 有可复核日志；不承诺外部物理恰好一次。",
-        "覆盖已确认外部效果与缓存 RETURN 的不同崩溃边界，区分函数重入次数、确认效果次数和逻辑 join 次数；错误程序身份不得恢复。"
+        "覆盖已确认外部效果与缓存 RETURN 的不同崩溃边界，区分函数重入次数、确认效果次数和逻辑 join 次数；错误程序身份不得恢复。",
+        "补齐 daemon 在未观察 worker 退出时崩溃的持久 PID/PGID/启动标识与独立执行器证明；覆盖已消耗启动权后注册失败、PID 重用和 artifact 临时锁残留，不以超时或租约过期推断可接管。"
       ],
       "verify": "FAULTS",
       "size": "M",
@@ -830,7 +1000,8 @@
       "acceptance": [
         "验证声明支持的 Node 20 范围与现有 CI Node 22，确认实际最低 minor 而非只看包标签。",
         "原生 SQLite、worker 入口解析、协议 schema、新包依赖和单文件分发路径有验证记录。",
-        "若某分发形式暂不支持 graph，明确拒绝且保留旧功能；不静默改成 daemon 内嵌执行。"
+        "若某分发形式暂不支持 graph，明确拒绝且保留旧功能；不静默改成 daemon 内嵌执行。",
+        "核验旧版本或外部锁获取路径不会回收仍有未知 graph 动作的保留锁；验证 full-history bundle 的仓库格式与大小边界。"
       ],
       "verify": "RELEASE",
       "size": "M",
@@ -855,7 +1026,8 @@
       "acceptance": [
         "version/help 继续满足既有预算，graph 首次启动不把重模块求值放在 daemon 主线程。",
         "同时测非图 RPC p95、worker 启动、checkpoint/broker 开销，区分冷启动与热缓存。",
-        "Loop tick 开销预算与原有行为不回退；真实性能失败先修，不能只放宽阈值。"
+        "Loop tick 开销预算与原有行为不回退；真实性能失败先修，不能只放宽阈值。",
+        "在事件循环阻塞与并行负载下验证 heartbeat、停止及 checkpoint 开销；区分保守超时和真正停止证明。"
       ],
       "verify": "PERF",
       "size": "M",
@@ -894,20 +1066,19 @@
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "36eee05f6bc6ef6aa8148dd9f4e9271e2237d4fc",
-    "completedTaskCount": 14,
+    "acceptedCodeCommit": "50133c0eec518add33f556bfa95b746de350cc35",
+    "completedTaskCount": 18,
     "totalTaskCount": 30,
     "nextTasks": [
-      "G14",
-      "G15",
-      "G16",
-      "G17"
+      "G18",
+      "G19",
+      "G20"
     ],
-    "report": "docs/implementation/2026-09-14-graph-effects-completion.md",
-    "nextGate": "C5",
+    "report": "docs/implementation/2026-09-14-graph-chain-completion.md",
+    "nextGate": "C6",
     "milestoneStatus": {
       "M0": "completed",
-      "M1": "in_progress",
+      "M1": "completed",
       "M2": "pending",
       "M3": "pending"
     }
@@ -918,7 +1089,7 @@
       "status": "passed",
       "reason": "C2 仅准入 langgraph-functional-v1 + durability:sync 供 M1 集成；StateGraph 1.4.15 的 partial-abort AND-join 反例仍未修复，不获准入。",
       "evidence": "docs/implementation/graph-c2-evidence/admission.json",
-      "nextAction": "C2/C3/C4 基础已完成；按 G14→G15/G16→G17 继续，真实 worker/broker 故障链仍需 C5/G25 验证。",
+      "nextAction": "C2–C5 已通过限定准入；继续 G18–G20/C6，完整故障矩阵仍须 G25。",
       "releaseCriteria": [
         "对应 Functional 并行失败场景恢复完整结果，逻辑 join 效果一次；StateGraph 失败对照保持可复现",
         "独立进程 partial write、异常、超时、取消、恢复二次 SIGKILL、interrupt false 矩阵通过",
@@ -958,14 +1129,27 @@
     },
     {
       "id": "C5",
-      "status": "pending",
+      "status": "passed",
       "tasks": [
         "G14",
         "G15",
         "G16",
         "G17"
       ],
-      "reason": "独立 worker 生命周期、可信未知动作对账、候选冻结及第一条生产接口可恢复链尚未实现。",
+      "reason": "独立 worker、可信恢复、持久候选及两节点 daemon 执行链经实际 Loop 全库验收；含持久资源释放义务与精确释放重试。",
+      "evidence": "docs/implementation/graph-chain-evidence/admission.json",
+      "productionReady": false,
+      "acceptedCodeCommit": "50133c0eec518add33f556bfa95b746de350cc35"
+    },
+    {
+      "id": "C6",
+      "status": "pending",
+      "tasks": [
+        "G18",
+        "G19",
+        "G20"
+      ],
+      "reason": "静态工程图、独立评审/测试及汇合路由待实施。",
       "evidence": null,
       "productionReady": false
     }

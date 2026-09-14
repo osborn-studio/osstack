@@ -1,0 +1,51 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-chain.integration.test.ts (13 tests | 1 failed | 12 skipped) 516ms
+   ↓ uses real worker IPC and durable SQLite checkpoints, retires both ports and exposes OS exit
+   ↓ rejects asynchronous authority and terminal/old identities before spawning
+   ↓ assembly: real command implement → freeze persists a selfcontained candidate
+   ↓ daemon: real command implement → freeze persists a selfcontained candidate
+   ↓ assembly: SIGKILL at before-return resumes using actual SQLite saver and ledger
+   ↓ assembly: SIGKILL at before-final resumes using actual SQLite saver and ledger
+   ↓ assembly: SIGKILL at after-final resumes using actual SQLite saver and ledger
+   ↓ assembly: restore then SIGKILL again re-enters implement without repeating the confirmed external command
+   ↓ daemon: true daemon process SIGKILL/restart retains SQLite results and resumes through G15
+   ↓ assembly: real broker unknown stays quarantined, then durable applied release failure is retried without resending
+   ↓ assembly: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying
+   ↓ assembly: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze
+   × module: a fresh supervisor cannot relaunch a consumed generation from the persistent database 516ms
+     → promise resolved "42" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-chain.integration.test.ts > module: a fresh supervisor cannot relaunch a consumed generation from the persistent database
+AssertionError: promise resolved "42" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+42
+
+ ❯ src/graph-chain.integration.test.ts:173:32
+    171|     checkpoints: new GraphCheckpointService({ runs, checkpoints: new G…
+    172|   const duplicate = second.start({ ...start, run: runs.get(run.scope, …
+    173|   await expect(duplicate.result).rejects.toThrow('GRAPH_GENERATION_ALR…
+       |                                ^
+    174|   expect((await duplicate.exit).kind).toBe('spawn_failed');
+    175| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 12 skipped (13)
+   Start at  07:58:35
+   Duration  1.35s (transform 413ms, setup 6ms, collect 688ms, tests 516ms, environment 0ms, prepare 33ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-chain.integration.test.ts -t 'fresh supervisor'

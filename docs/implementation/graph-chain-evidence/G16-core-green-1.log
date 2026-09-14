@@ -1,0 +1,28 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+Preparing worktree (detached HEAD 7f3b35d)
+Preparing worktree (detached HEAD 55e9e01)
+Preparing worktree (detached HEAD 884cf96)
+Preparing worktree (detached HEAD 884cf96)
+Preparing worktree (detached HEAD 884cf96)
+Preparing worktree (detached HEAD 884cf96)
+Preparing worktree (detached HEAD c87d8a7)
+Preparing worktree (detached HEAD c87d8a7)
+Preparing worktree (detached HEAD 5e27c16)
+Preparing worktree (detached HEAD 1e78f70)
+Preparing worktree (detached HEAD 7ee7f26)
+ ✓ src/graph/artifact-store.test.ts (11 tests) 14936ms
+   ✓ trusted graph artifact freeze > restores full reachable history and exact raw tree after deleting original repo and worktree  4270ms
+   ✓ trusted graph artifact freeze > rejects same ID with changed receipt or content  2971ms
+   ✓ trusted graph artifact freeze > rechecks resolved producer evidence before capture and rejects revocation  442ms
+   ✓ trusted graph artifact freeze > does not invoke local hooks or filters during capture or restore  2210ms
+   ✓ trusted graph artifact freeze > rejects submodules instead of exporting an incomplete tree  595ms
+   ✓ trusted graph artifact freeze > rejects corrupted bundles and manifests, including replay  1926ms
+   ✓ trusted graph artifact freeze > refuses existing and escaping restore destinations  1556ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  07:33:27
+   Duration  15.45s (transform 175ms, setup 0ms, collect 248ms, tests 14.94s, environment 0ms, prepare 65ms)
+

@@ -1,0 +1,10 @@
+file:///Volumes/AIMATE_WORK/tmp/gc5/G14-manager-dist/graph-worker-manager.js:32
+        throw new Error('GRAPH_WORKER_NOT_INSTALLED');
+              ^
+
+Error: GRAPH_WORKER_NOT_INSTALLED
+    at resolveGraphWorkerEntry (file:///Volumes/AIMATE_WORK/tmp/gc5/G14-manager-dist/graph-worker-manager.js:32:15)
+    at GraphWorkerManager.start (file:///Volumes/AIMATE_WORK/tmp/gc5/G14-manager-dist/graph-worker-manager.js:96:51)
+    at file:///Volumes/AIMATE_WORK/tmp/gc5/G14-manager-dist/smoke.mjs:18:17
+
+Node.js v26.5.0
