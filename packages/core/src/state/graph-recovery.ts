@@ -8,6 +8,7 @@ import { GraphRunStore, GraphRunStorageError, graphRunFenceSchema, type GraphRun
 import type { GraphAction, GraphActionOutcome } from "./graph-actions.js";
 
 const count = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Reject control characters in persisted recovery references.
 const ref = z.string().min(1).max(256).regex(/^[^\x00-\x1f\x7f-\x9f]+$/).refine((s) => s.trim() === s);
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const stopped = z.object({ kind: z.literal("stopped"), graphRunId: ref, generation: count.min(1), owner: ref, confirmedAt: count, evidenceRef: ref }).strict();

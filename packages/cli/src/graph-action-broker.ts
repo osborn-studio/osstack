@@ -342,19 +342,21 @@ export class GraphActionBroker {
       }
       return reject(error);
     } finally {
-      if (lease && !uncertain) {
-        try { await lease.release(); }
-        catch (error) {
-          // Resource release is independent of the durable effect outcome. Keep
-          // its exact admission reachable for verified release-only recovery.
-          lease.retain(String(error));
-          if (binding && owned) this.retained.set(owned.effectKey, { lease, context: {
-            effectKey: owned.effectKey, scope: binding.scope, graphRunId: binding.graphRunId,
-            generation: binding.generation, owner: binding.owner, workspacePath: binding.workspace.workspace_path,
-          } });
-          throw error;
-        }
-      }
+      if (lease && !uncertain) await this.releaseAdmission(lease, binding, owned);
+    }
+  }
+
+  private async releaseAdmission(lease: ExecutionLease, binding: Binding | undefined, owned: GraphAction | undefined): Promise<void> {
+    try { await lease.release(); }
+    catch (error) {
+      // Release failure deliberately stops the chain without replacing durable
+      // effect truth. Keep its exact admission reachable for release-only recovery.
+      lease.retain(String(error));
+      if (binding && owned) this.retained.set(owned.effectKey, { lease, context: {
+        effectKey: owned.effectKey, scope: binding.scope, graphRunId: binding.graphRunId,
+        generation: binding.generation, owner: binding.owner, workspacePath: binding.workspace.workspace_path,
+      } });
+      throw error;
     }
   }
 

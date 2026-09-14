@@ -30,6 +30,7 @@ export interface GraphReconciliationResult {
   result: GraphRecoveryResult;
   releaseError?: string;
 }
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Reject control characters in persisted recovery references.
 const ref = z.string().min(1).max(256).regex(/^[^\x00-\x1f\x7f-\x9f]+$/).refine((s) => s.trim() === s);
 const requestSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("effect"), fence: z.unknown(), receiptId: ref, effectKey: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),

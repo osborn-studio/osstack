@@ -1,3 +1,4 @@
+import type { Stats } from "node:fs";
 import { spawn } from "node:child_process";
 import { lstat, mkdir, readFile, readlink, realpath, writeFile } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
@@ -48,7 +49,7 @@ export async function captureArtifactTree(source: string, objectRepo: string): P
   const entries: string[] = [];
   for (const name of names) {
     const path = artifactPath(source, name);
-    let info;
+    let info: Stats;
     try { info = await lstat(path); } catch (error) { if (["ENOENT", "ENOTDIR"].includes((error as NodeJS.ErrnoException).code ?? "")) continue; throw error; }
     if (await realpath(dirname(path)) !== dirname(path)) throw new Error("source path has symlink ancestor");
     if (info.isDirectory()) {

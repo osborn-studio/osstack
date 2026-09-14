@@ -1,3 +1,4 @@
+import type { GraphRuntime, GraphRuntimeConfiguration } from "./graph-runtime.js";
 import type { GraphCheckpointResponse } from "@osstack/protocol";
 import type { GraphCheckpointBinding, GraphCheckpointService } from "./graph-checkpoint-service.js";
 import type { GraphActionBroker } from "./graph-action-broker.js";
@@ -3613,6 +3614,8 @@ export interface DaemonHandles {
   executeGraphCheckpoint: (connection: object, request: unknown) => Promise<GraphCheckpointResponse>;
   /** Trusted in-process port; await once, then register immutable worker bindings synchronously. */
   graphActionBroker: () => Promise<GraphActionBroker>;
+  /** Explicit trusted experimental assembly, configured once; no public graph RPC. */
+  graphRuntime: (configuration: GraphRuntimeConfiguration) => Promise<GraphRuntime>;
   close: () => Promise<void>;
   socketPath: string;
   dbPath: string;
@@ -3822,6 +3825,27 @@ export async function startDaemon(
     return [key, { ...structuredClone(data), authorize }] as const;
   }));
   let graphBroker: Promise<GraphActionBroker> | undefined;
+  let graphRuntime: Promise<GraphRuntime> | undefined;
+  const getCheckpoints = async (): Promise<GraphCheckpointService> => {
+    if (checkpointClosed) throw new Error("CHECKPOINT_SERVICE_CLOSED");
+    checkpointService ??= Promise.all([import("./graph-checkpoint-service.js"), import("@osstack/core")])
+      .then(([{ GraphCheckpointService }, { GraphRunStore, GraphCheckpointStore }]) =>
+        new GraphCheckpointService({ runs: new GraphRunStore(ctx.db), checkpoints: new GraphCheckpointStore(ctx.db), bindings: checkpointBindings }));
+    const service = await checkpointService;
+    if (checkpointClosed) { service.close(); throw new Error("CHECKPOINT_SERVICE_CLOSED"); }
+    return service;
+  };
+  const getBroker = (): Promise<GraphActionBroker> => {
+    if (checkpointClosed) return Promise.reject(new Error("GRAPH_RUNTIME_CLOSED"));
+    graphBroker ??= import("./graph-action-broker.js").then(({ GraphActionBroker }) => new GraphActionBroker(ctx.db, {
+      acquire: (input) => admissionFor(ctx).acquire(input),
+      authorizePolicy: async (workspacePath) => {
+        const decision = await makeRepositoryPolicyGate(workspacePath, true)({ workspacePath });
+        if (!decision.allow) throw new Error(decision.reason);
+      },
+    }));
+    return graphBroker;
+  };
   const registeredWorkspace = opts.workspacePath === undefined ? undefined : (await resolveRepositoryScope(opts.workspacePath)).workspacePath;
   const socketPath = opts.socketPath ?? resolveSocketPath();
   const continuationTrust = new Map(opts.continuationTrustedPublicKeys
@@ -4029,6 +4053,9 @@ export async function startDaemon(
         if (healthMonitor !== undefined) clearInterval(healthMonitor);
         shutdownPromise = (async () => {
           ctx.draining = true;
+          if (graphRuntime) {
+            try { await (await graphRuntime).close(); } catch { /* Failed initialization launched no graph worker. */ }
+          }
           const collaboratorStopped = ctx.collaborator?.stop();
           // Abort any active runs so adapters get a chance to clean up.
           for (const ac of ctx.activeRuns.values()) ac.abort();
@@ -4093,23 +4120,22 @@ export async function startDaemon(
 
       ctx.collaborator?.recover();
       resolve({ close: shutdown, socketPath, dbPath: ctx.dbPath,
-        executeGraphCheckpoint: async (connection, request) => {
-          if (checkpointClosed) throw new Error("CHECKPOINT_SERVICE_CLOSED");
-          checkpointService ??= Promise.all([
-            import("./graph-checkpoint-service.js"), import("@osstack/core"),
-          ]).then(([{ GraphCheckpointService }, { GraphRunStore, GraphCheckpointStore }]) =>
-            new GraphCheckpointService({ runs: new GraphRunStore(ctx.db), checkpoints: new GraphCheckpointStore(ctx.db), bindings: checkpointBindings }));
-          const service = await checkpointService;
-          if (checkpointClosed) { service.close(); throw new Error("CHECKPOINT_SERVICE_CLOSED"); }
-          return service.execute(connection, request);
+        executeGraphCheckpoint: async (connection, request) => (await getCheckpoints()).execute(connection, request),
+        graphActionBroker: getBroker,
+        graphRuntime: (configuration) => {
+          if (checkpointClosed) return Promise.reject(new Error("GRAPH_RUNTIME_CLOSED"));
+          if (graphRuntime) return Promise.reject(new Error("GRAPH_RUNTIME_ALREADY_CONFIGURED"));
+          // Snapshot trusted launch settings before dynamic import. Program bytes are
+          // verified/snapshotted by the manager; the SDK stays in its child process.
+          const fixed = structuredClone(configuration);
+          graphRuntime = Promise.all([import("./graph-runtime.js"), getBroker(), getCheckpoints()])
+            .then(async ([{ GraphRuntime }, broker, checkpoints]) => {
+              const runtime = new GraphRuntime({ ...fixed, db: ctx.db, broker, checkpoints });
+              if (checkpointClosed) { await runtime.close(); throw new Error("GRAPH_RUNTIME_CLOSED"); }
+              return runtime;
+            });
+          return graphRuntime;
         },
-        graphActionBroker: () => graphBroker ??= import("./graph-action-broker.js").then(({ GraphActionBroker }) => new GraphActionBroker(ctx.db, {
-          acquire: (input) => admissionFor(ctx).acquire(input),
-          authorizePolicy: async (workspacePath) => {
-            const decision = await makeRepositoryPolicyGate(workspacePath, true)({ workspacePath });
-            if (!decision.allow) throw new Error(decision.reason);
-          },
-        })),
         acquireGraphAdmission: async (identity, input) => {
           const trusted = opts.graphIdentities?.get(identity);
           if (!trusted || typeof trusted.authorize !== "function") throw new Error("trusted graph identity and authorization required");
