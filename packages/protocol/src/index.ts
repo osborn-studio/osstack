@@ -35,6 +35,7 @@ export {
   parseInboundWorkerActionRequest,
   validateGraphMutation,
   validateWorkerTransportRetry,
+  validateWorkerActionResponse,
 } from "./graph.js";
 export type { AuthenticatedGraphTransportContext, ResolveAuthenticatedGraphTransport } from "./graph.js";
 export { Task, TaskSource } from "./task.js";

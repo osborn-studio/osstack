@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 
-/** v1 wire limits, also enforced before Zod traverses untrusted object input. */
+/** Decoded JSON limits; transport MUST also cap raw bytes before JSON.parse. */
 export const GRAPH_JSON_LIMITS = Object.freeze({ maxBytes: 65_536, maxDepth: 16, maxValues: 4_096, maxStringLength: 16_384 });
 
 function isBoundedJson(value: unknown): boolean {
@@ -57,7 +57,7 @@ function wire<T extends z.ZodTypeAny>(schema: T) {
 export type GraphJsonValue = null | boolean | number | string | GraphJsonValue[] | { [key: string]: GraphJsonValue };
 const JsonValue: z.ZodType<GraphJsonValue> = z.lazy(() => z.union([
   z.null(), z.boolean(), z.number().finite(), z.string().max(GRAPH_JSON_LIMITS.maxStringLength),
-  z.array(JsonValue).max(GRAPH_JSON_LIMITS.maxValues), z.record(z.string().max(256), JsonValue),
+  z.array(JsonValue).max(GRAPH_JSON_LIMITS.maxValues), z.record(z.string().max(256).regex(/^(?!__proto__$|constructor$|prototype$)/), JsonValue),
 ]));
 export const GraphJsonValue = wire(JsonValue);
 
@@ -109,21 +109,19 @@ export const GraphErrorCode = z.enum([
   "SPEC_INVALID", "INPUT_CONTRACT_INVALID", "OUTPUT_CONTRACT_INVALID", "JOIN_REVISION_MISMATCH",
   "POLICY_DENIED", "GRANT_EXPIRED", "BUDGET_EXHAUSTED", "ACTION_OUTCOME_UNKNOWN", "STALE_GENERATION",
   "CANCEL_UNCONFIRMED", "CHECKPOINT_INCOMPATIBLE", "UNAUTHENTICATED", "SCOPE_MISMATCH", "RUN_MISMATCH",
-  "IDEMPOTENCY_CONFLICT", "REVISION_CONFLICT", "INTERNAL_ERROR",
+  "IDEMPOTENCY_CONFLICT", "REVISION_CONFLICT", "INTERNAL_ERROR", "SPEC_MISMATCH", "EPOCH_MISMATCH", "RESPONSE_MISMATCH",
 ]);
 export type GraphErrorCode = z.infer<typeof GraphErrorCode>;
-const ErrorObject = z.object({
-  schemaVersion: Version, code: GraphErrorCode, message: z.string().min(1).max(4096),
-  retryable: z.boolean(), nextAction: z.enum(["fix_input", "reauthorize", "reconcile", "refresh", "retry", "stop"]),
+const errorShape = {
+  schemaVersion: Version, message: z.string().min(1).max(4096),
   nodeId: Id.optional(), epoch: Epoch.optional(), actionId: Id.optional(),
-}).strict().superRefine((error, ctx) => {
-  if (error.retryable && !["OUTPUT_CONTRACT_INVALID", "INTERNAL_ERROR"].includes(error.code)) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["retryable"], message: "Error cannot authorize automatic retry" });
-  }
-  if (["ACTION_OUTCOME_UNKNOWN", "CANCEL_UNCONFIRMED"].includes(error.code) && error.nextAction === "retry") {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["nextAction"], message: "Uncertain execution requires reconciliation" });
-  }
-});
+};
+// A union preserves these conditional instructions in generated JSON Schema.
+const ErrorObject = z.union([
+  z.object({ ...errorShape, code: z.enum(["OUTPUT_CONTRACT_INVALID", "INTERNAL_ERROR"]), retryable: z.literal(true), nextAction: z.literal("retry") }).strict(),
+  z.object({ ...errorShape, code: z.enum(["ACTION_OUTCOME_UNKNOWN", "CANCEL_UNCONFIRMED"]), retryable: z.literal(false), nextAction: z.literal("reconcile") }).strict(),
+  z.object({ ...errorShape, code: GraphErrorCode.exclude(["ACTION_OUTCOME_UNKNOWN", "CANCEL_UNCONFIRMED"]), retryable: z.literal(false), nextAction: z.enum(["fix_input", "reauthorize", "reconcile", "refresh", "stop"]) }).strict(),
+]);
 export const GraphError = wire(ErrorObject);
 export type GraphError = z.infer<typeof GraphError>;
 
@@ -169,7 +167,8 @@ export type GraphRequest = z.infer<typeof GraphRequest>;
 
 const actionIdentityShape = { scope: Scope, graphRunId: Id, specHash: Digest, epoch: Epoch, nodeId: Id, effectSlot: Id };
 const Effect = z.object({ schemaVersion: Version, ...actionIdentityShape, logicalAttempt: Count.min(1) }).strict();
-/** Ledger-issued identity. Generation fences transport, never identifies an effect. */
+/** Ledger-issued identity. Derive spec/epoch/node/slot from trusted run/registry state,
+ * and logicalAttempt from ledger; never blindly copy worker claims. Generation is fencing only. */
 export const GraphEffectIdentity = wire(Effect);
 export type GraphEffectIdentity = z.infer<typeof GraphEffectIdentity>;
 const WorkerRequest = z.object({
@@ -210,8 +209,19 @@ export const WorkerActionResponse = wire(z.discriminatedUnion("kind", [
 ]).superRefine((response, ctx) => {
   if (response.kind !== "worker_action_response") return;
   const outcome = response.outcome;
+  if ("error" in outcome) {
+    if ((outcome.error.nodeId !== undefined && outcome.error.nodeId !== response.effect.nodeId) ||
+        (outcome.error.epoch !== undefined && outcome.error.epoch !== response.effect.epoch)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["outcome", "error"], message: "Error location must match effect" });
+    }
+    const expectedCodes = outcome.state === "cancel_pending" ? ["CANCEL_UNCONFIRMED"]
+      : outcome.state === "unknown" || outcome.state === "reconciliation_required" ? ["ACTION_OUTCOME_UNKNOWN", "CANCEL_UNCONFIRMED"] : undefined;
+    if (expectedCodes && !expectedCodes.includes(outcome.error.code)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["outcome", "error", "code"], message: "Error code must describe uncertain execution" });
+    }
+  }
   if ((outcome.state === "unknown" || outcome.state === "cancel_pending" || outcome.state === "reconciliation_required") &&
-      (outcome.error.retryable || outcome.error.nextAction === "retry")) {
+      outcome.error.retryable) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["outcome", "error"], message: "Uncertain execution cannot be retried" });
   }
 }));
@@ -219,7 +229,7 @@ export type WorkerActionResponse = z.infer<typeof WorkerActionResponse>;
 
 const TransportContext = wire(z.object({
   schemaVersion: Version, scope: Scope,
-  worker: z.object({ graphRunId: Id, generation: Count.min(1) }).strict().optional(),
+  worker: z.object({ graphRunId: Id, generation: Count.min(1), specHash: Digest, epoch: Epoch }).strict().optional(),
 }).strict());
 /** Trusted integration input, deliberately not part of the wire/schema manifest. */
 export type AuthenticatedGraphTransportContext = z.infer<typeof TransportContext>;
@@ -228,7 +238,8 @@ export type AuthenticatedGraphTransportContext = z.infer<typeof TransportContext
  * lease independently of the request/checkpoint. This is an integration seam,
  * NOT authentication implemented by this package. Never derive this callback's
  * result from worker scope, caller flags or a cast. G10/G12 own real verification,
- * authorization, revocation and atomic fencing. Remote identities fail closed
+ * authorization, revocation and atomic fencing. Resolve async registry/lease data
+ * before calling this synchronous boundary, in the protected admission section. Remote identities fail closed
  * until that integration can verify them; there is no local-owner fallback.
  */
 export type ResolveAuthenticatedGraphTransport = () => AuthenticatedGraphTransportContext | null;
@@ -258,25 +269,56 @@ function sameScope(left: GraphScope, right: GraphScope): void {
   if (canonical(left) !== canonical(right)) throw new GraphContractError("SCOPE_MISMATCH");
 }
 
-/** Schema parsing alone is not inbound authentication. Use this at the trusted boundary. */
+function parseContract<T extends z.ZodTypeAny>(schema: T, value: unknown, code: GraphErrorCode = "INPUT_CONTRACT_INVALID"): z.output<T> {
+  const parsed = schema.safeParse(value);
+  if (!parsed.success) throw new GraphContractError(code === "INPUT_CONTRACT_INVALID" && parsed.error.issues.some((issue) => issue.path[0] === "spec") ? "SPEC_INVALID" : code);
+  return parsed.data;
+}
+
+/** Control-plane mutations require a principal connection, never a worker lease. */
 export function parseInboundGraphRequest(value: unknown, resolve: ResolveAuthenticatedGraphTransport): GraphRequest {
   const context = authenticate(resolve);
-  const request = GraphRequest.parse(value);
+  if (context.worker) throw new GraphContractError("UNAUTHENTICATED");
+  const request = parseContract(GraphRequest, value);
   sameScope(request.scope, context.scope);
-  if (context.worker && request.kind !== "start" && request.graphRunId !== context.worker.graphRunId) {
-    throw new GraphContractError("RUN_MISMATCH");
-  }
   return request;
 }
 
 export function parseInboundWorkerActionRequest(value: unknown, resolve: ResolveAuthenticatedGraphTransport): WorkerActionRequest {
   const context = authenticate(resolve);
   if (!context.worker) throw new GraphContractError("UNAUTHENTICATED");
-  const request = WorkerActionRequest.parse(value);
+  const request = parseContract(WorkerActionRequest, value);
   sameScope(request.scope, context.scope);
   if (request.graphRunId !== context.worker.graphRunId) throw new GraphContractError("RUN_MISMATCH");
   if (request.generation !== context.worker.generation) throw new GraphContractError("STALE_GENERATION");
+  if (request.specHash !== context.worker.specHash) throw new GraphContractError("SPEC_MISMATCH");
+  if (request.epoch !== context.worker.epoch) throw new GraphContractError("EPOCH_MISMATCH");
   return request;
+}
+
+/** Pair data received on an authenticated daemon channel. This does not verify artifact truth. */
+export function validateWorkerActionResponse(requestValue: unknown, responseValue: unknown): WorkerActionResponse {
+  const request = parseContract(WorkerActionRequest, requestValue);
+  const response = parseContract(WorkerActionResponse, responseValue, "OUTPUT_CONTRACT_INVALID");
+  const mismatch = (): never => { throw new GraphContractError("RESPONSE_MISMATCH"); };
+  if (response.requestId !== request.requestId) mismatch();
+  if (response.kind === "worker_action_rejected") return response;
+  if (response.generation !== request.generation) mismatch();
+  sameScope(request.scope, response.effect.scope);
+  for (const key of ["graphRunId", "specHash", "epoch", "nodeId", "effectSlot"] as const) {
+    if (request[key] !== response.effect[key]) mismatch();
+  }
+  if (response.outcome.state === "confirmed") {
+    const kinds: Record<WorkerActionRequest["action"]["kind"], GraphResult["kind"]> = {
+      implement: "implementation_complete", repair: "implementation_complete", freeze: "candidate_ready",
+      review: "review", tests: "tests", workspace_create: "workspace", workspace_release: "workspace",
+    };
+    const result = response.outcome.result;
+    if (result.kind !== kinds[request.action.kind]) mismatch();
+    if ("candidateRevision" in request.action && "candidateRevision" in result && request.action.candidateRevision !== result.candidateRevision) mismatch();
+    if ("workspaceLeaseRef" in request.action && "workspaceLeaseRef" in result && request.action.workspaceLeaseRef !== result.workspaceLeaseRef) mismatch();
+  }
+  return response;
 }
 
 function hash(domain: string, value: GraphJsonValue): string {
@@ -301,7 +343,7 @@ export const GraphIdempotencyRecord = wire(z.object({
   schemaVersion: Version, scope: Scope, idempotencyKey: Id, inputDigest: Digest,
 }).strict());
 export type GraphIdempotencyRecord = z.infer<typeof GraphIdempotencyRecord>;
-const MutationContext = wire(z.object({ currentRevision: Count.optional(), prior: GraphIdempotencyRecord.optional() }).strict());
+const MutationContext = wire(z.object({ run: z.object({ scope: Scope, graphRunId: Id, currentRevision: Count }).strict().optional(), prior: GraphIdempotencyRecord.optional() }).strict());
 
 /**
  * Pure decision over a trusted snapshot, NOT durable dedup/CAS or authorization.
@@ -311,8 +353,13 @@ const MutationContext = wire(z.object({ currentRevision: Count.optional(), prior
  * no revision. G08 must bind decision, unique key and mutation in one transaction.
  */
 export function validateGraphMutation(value: unknown, snapshot: unknown): "apply" | "replay" {
-  const request = GraphRequest.parse(value);
-  const { prior, currentRevision } = MutationContext.parse(snapshot);
+  const request = parseContract(GraphRequest, value);
+  const { prior, run } = parseContract(MutationContext, snapshot);
+  if (request.kind === "start" && run) throw new GraphContractError("INPUT_CONTRACT_INVALID");
+  if (request.kind !== "start" && run) {
+    sameScope(request.scope, run.scope);
+    if (request.graphRunId !== run.graphRunId) throw new GraphContractError("RUN_MISMATCH");
+  }
   if (prior) {
     sameScope(prior.scope, request.scope);
     if (prior.idempotencyKey !== request.idempotencyKey || prior.inputDigest !== computeGraphInputDigest(request)) {
@@ -320,7 +367,7 @@ export function validateGraphMutation(value: unknown, snapshot: unknown): "apply
     }
     return "replay";
   }
-  if (request.kind !== "start" && request.expectedRevision !== currentRevision) throw new GraphContractError("REVISION_CONFLICT");
+  if (request.kind !== "start" && request.expectedRevision !== run?.currentRevision) throw new GraphContractError("REVISION_CONFLICT");
   return "apply";
 }
 

@@ -38,7 +38,7 @@ const worker = {
   action: { kind: "implement", inputArtifactRef: "input", workspaceLeaseRef: "lease" },
 };
 // This callback stands in for trusted daemon connection/lease resolution, not wire data.
-const authenticated = () => ({ schemaVersion: 1 as const, scope, worker: { graphRunId: "run", generation: 1 } });
+const authenticated = () => ({ schemaVersion: 1 as const, scope, worker: { graphRunId: "run", generation: 1, specHash: "b".repeat(64), epoch: 0 } });
 const digest = (value: unknown) => computeGraphInputDigest(value);
 
 describe("graph v1 contracts", () => {
@@ -160,14 +160,14 @@ describe("authenticated transport boundary", () => {
 
   it.each(["tenantId", "workspaceId", "principalId"])("rejects mismatched %s", (key) => {
     expect(() => parseInboundWorkerActionRequest({ ...worker, scope: { ...scope, [key]: "other" } }, authenticated)).toThrow(/SCOPE_MISMATCH/);
-    expect(() => parseInboundGraphRequest({ ...start, scope: { ...scope, [key]: "other" } }, authenticated)).toThrow(/SCOPE_MISMATCH/);
+    expect(() => parseInboundGraphRequest({ ...start, scope: { ...scope, [key]: "other" } }, () => ({ schemaVersion: 1, scope }))).toThrow(/SCOPE_MISMATCH/);
   });
 
   it("rejects run/generation mismatch and missing worker binding", () => {
     expect(() => parseInboundWorkerActionRequest({ ...worker, graphRunId: "other" }, authenticated)).toThrow(/RUN_MISMATCH/);
     expect(() => parseInboundWorkerActionRequest({ ...worker, generation: 2 }, authenticated)).toThrow(/STALE_GENERATION/);
     expect(() => parseInboundWorkerActionRequest(worker, () => ({ schemaVersion: 1, scope }))).toThrow(/UNAUTHENTICATED/);
-    expect(() => parseInboundGraphRequest({ ...resume, graphRunId: "other" }, authenticated)).toThrow(/RUN_MISMATCH/);
+    expect(() => parseInboundGraphRequest({ ...resume, graphRunId: "other" }, authenticated)).toThrow(/UNAUTHENTICATED/);
   });
 });
 
@@ -203,14 +203,14 @@ describe("canonical identity and pure mutation decisions", () => {
 
   it("replays the same key/input before revision CAS but conflicts on changed business input", () => {
     const prior = { schemaVersion: 1, scope, idempotencyKey: resume.idempotencyKey, inputDigest: digest(resume) };
-    expect(validateGraphMutation(resume, { currentRevision: 4 })).toBe("apply");
-    expect(validateGraphMutation(resume, { currentRevision: 5, prior })).toBe("replay");
-    expect(() => validateGraphMutation({ ...resume, input: { kind: "data", value: 2 } }, { currentRevision: 5, prior })).toThrow(/IDEMPOTENCY_CONFLICT/);
-    expect(() => validateGraphMutation(resume, { currentRevision: 5 })).toThrow(/REVISION_CONFLICT/);
-    expect(() => validateGraphMutation(resume, { currentRevision: -1 })).toThrow();
+    expect(validateGraphMutation(resume, { run: { scope, graphRunId: "run", currentRevision: 4 } })).toBe("apply");
+    expect(validateGraphMutation(resume, { run: { scope, graphRunId: "run", currentRevision: 5 }, prior })).toBe("replay");
+    expect(() => validateGraphMutation({ ...resume, input: { kind: "data", value: 2 } }, { run: { scope, graphRunId: "run", currentRevision: 5 }, prior })).toThrow(/IDEMPOTENCY_CONFLICT/);
+    expect(() => validateGraphMutation(resume, { run: { scope, graphRunId: "run", currentRevision: 5 } })).toThrow(/REVISION_CONFLICT/);
+    expect(() => validateGraphMutation(resume, { run: { scope, graphRunId: "run", currentRevision: -1 } })).toThrow();
     expect(() => validateGraphMutation(resume, {})).toThrow(/REVISION_CONFLICT/);
-    expect(() => validateGraphMutation(resume, { currentRevision: 4, prior: { ...prior, scope: { ...scope, tenantId: "other" } } })).toThrow(/SCOPE_MISMATCH/);
-    expect(() => validateGraphMutation({ ...resume, expectedRevision: 5 }, { currentRevision: 5, prior })).toThrow(/IDEMPOTENCY_CONFLICT/);
+    expect(() => validateGraphMutation(resume, { run: { scope, graphRunId: "run", currentRevision: 4 }, prior: { ...prior, scope: { ...scope, tenantId: "other" } } })).toThrow(/SCOPE_MISMATCH/);
+    expect(() => validateGraphMutation({ ...resume, expectedRevision: 5 }, { run: { scope, graphRunId: "run", currentRevision: 5 }, prior })).toThrow(/IDEMPOTENCY_CONFLICT/);
     expect(validateGraphMutation(start, {})).toBe("apply");
   });
 
@@ -223,10 +223,10 @@ describe("canonical identity and pure mutation decisions", () => {
 
   it("bounds fresh cancel revisions and never treats resume data as identity", () => {
     const cancel = { schemaVersion: 1, kind: "cancel", scope, graphRunId: "run", expectedRevision: 4, idempotencyKey: "cancel-1" };
-    expect(validateGraphMutation(cancel, { currentRevision: 4 })).toBe("apply");
-    expect(() => validateGraphMutation(cancel, { currentRevision: 5 })).toThrow(/REVISION_CONFLICT/);
+    expect(validateGraphMutation(cancel, { run: { scope, graphRunId: "run", currentRevision: 4 } })).toBe("apply");
+    expect(() => validateGraphMutation(cancel, { run: { scope, graphRunId: "run", currentRevision: 5 } })).toThrow(/REVISION_CONFLICT/);
     for (const expectedRevision of [-1, 0.5, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
-      expect(() => validateGraphMutation({ ...cancel, expectedRevision }, { currentRevision: 4 })).toThrow();
+      expect(() => validateGraphMutation({ ...cancel, expectedRevision }, { run: { scope, graphRunId: "run", currentRevision: 4 } })).toThrow();
     }
     const claim = { ...resume, input: { kind: "data", value: { authenticated: true, grant: "approved" } } };
     expect(() => parseInboundGraphRequest(claim, () => null)).toThrow(/UNAUTHENTICATED/);

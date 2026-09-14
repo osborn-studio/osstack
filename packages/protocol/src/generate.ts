@@ -48,7 +48,7 @@ interface SchemaEntry {
 export const SCHEMA_MANIFEST: readonly SchemaEntry[] = [
   {
     key: "graph", title: "Osstack Graph v1 Contract Registry", schema: GraphProtocol, references: "root",
-    comment: "Registry of strict versioned JSON graph contracts. Zod additionally enforces finite JSON values, 65536-byte/16-depth/4096-value envelope bounds, plain data properties and retryable error rules. Authentication, current scope/run/generation checks, canonical digests, idempotency and revision decisions require the protocol helpers. Trusted daemon integration must verify identity, authority, artifacts and leases and enforce durable atomic CAS/dedup. No checkpoint or graph data grants authority.",
+    comment: "Registry of strict versioned JSON graph contracts. Zod additionally enforces finite JSON values, 65536-byte/16-depth/4096-value envelope bounds, plain data properties, response outcome/error consistency and effect/error location. Transport must cap raw bytes before JSON.parse. Authentication, current scope/run/generation/spec/epoch checks, request/response pairing, canonical digests, idempotency and scoped revision decisions require the protocol helpers. Trusted daemon integration must verify identity, authority, artifacts and leases and enforce durable atomic CAS/dedup. No checkpoint or graph data grants authority.",
   },
   { key: "task", title: "Osstack Protocol Task", schema: Task },
   { key: "run-summary", title: "Osstack Protocol Run Summary", schema: RunSummary },

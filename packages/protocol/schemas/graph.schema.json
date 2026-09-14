@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Osstack Graph v1 Contract Registry",
-  "$comment": "Registry of strict versioned JSON graph contracts. Zod additionally enforces finite JSON values, 65536-byte/16-depth/4096-value envelope bounds, plain data properties and retryable error rules. Authentication, current scope/run/generation checks, canonical digests, idempotency and revision decisions require the protocol helpers. Trusted daemon integration must verify identity, authority, artifacts and leases and enforce durable atomic CAS/dedup. No checkpoint or graph data grants authority.",
+  "$comment": "Registry of strict versioned JSON graph contracts. Zod additionally enforces finite JSON values, 65536-byte/16-depth/4096-value envelope bounds, plain data properties, response outcome/error consistency and effect/error location. Transport must cap raw bytes before JSON.parse. Authentication, current scope/run/generation/spec/epoch checks, request/response pairing, canonical digests, idempotency and scoped revision decisions require the protocol helpers. Trusted daemon integration must verify identity, authority, artifacts and leases and enforce durable atomic CAS/dedup. No checkpoint or graph data grants authority.",
   "type": "object",
   "properties": {
     "spec": {
@@ -171,72 +171,163 @@
       "additionalProperties": false
     },
     "error": {
-      "type": "object",
-      "properties": {
-        "schemaVersion": {
-          "$ref": "#/properties/spec/properties/schemaVersion"
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/properties/spec/properties/schemaVersion"
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "nodeId": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "epoch": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2
+            },
+            "actionId": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "code": {
+              "type": "string",
+              "enum": [
+                "OUTPUT_CONTRACT_INVALID",
+                "INTERNAL_ERROR"
+              ]
+            },
+            "retryable": {
+              "type": "boolean",
+              "const": true
+            },
+            "nextAction": {
+              "type": "string",
+              "const": "retry"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "message",
+            "code",
+            "retryable",
+            "nextAction"
+          ],
+          "additionalProperties": false
         },
-        "code": {
-          "type": "string",
-          "enum": [
-            "SPEC_INVALID",
-            "INPUT_CONTRACT_INVALID",
-            "OUTPUT_CONTRACT_INVALID",
-            "JOIN_REVISION_MISMATCH",
-            "POLICY_DENIED",
-            "GRANT_EXPIRED",
-            "BUDGET_EXHAUSTED",
-            "ACTION_OUTCOME_UNKNOWN",
-            "STALE_GENERATION",
-            "CANCEL_UNCONFIRMED",
-            "CHECKPOINT_INCOMPATIBLE",
-            "UNAUTHENTICATED",
-            "SCOPE_MISMATCH",
-            "RUN_MISMATCH",
-            "IDEMPOTENCY_CONFLICT",
-            "REVISION_CONFLICT",
-            "INTERNAL_ERROR"
-          ]
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/properties/spec/properties/schemaVersion"
+            },
+            "message": {
+              "$ref": "#/properties/error/anyOf/0/properties/message"
+            },
+            "nodeId": {
+              "$ref": "#/properties/error/anyOf/0/properties/nodeId"
+            },
+            "epoch": {
+              "$ref": "#/properties/error/anyOf/0/properties/epoch"
+            },
+            "actionId": {
+              "$ref": "#/properties/error/anyOf/0/properties/actionId"
+            },
+            "code": {
+              "type": "string",
+              "enum": [
+                "ACTION_OUTCOME_UNKNOWN",
+                "CANCEL_UNCONFIRMED"
+              ]
+            },
+            "retryable": {
+              "type": "boolean",
+              "const": false
+            },
+            "nextAction": {
+              "type": "string",
+              "const": "reconcile"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "message",
+            "code",
+            "retryable",
+            "nextAction"
+          ],
+          "additionalProperties": false
         },
-        "message": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 4096
-        },
-        "retryable": {
-          "type": "boolean"
-        },
-        "nextAction": {
-          "type": "string",
-          "enum": [
-            "fix_input",
-            "reauthorize",
-            "reconcile",
-            "refresh",
-            "retry",
-            "stop"
-          ]
-        },
-        "nodeId": {
-          "$ref": "#/properties/spec/properties/input/properties/taskRef"
-        },
-        "epoch": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 2
-        },
-        "actionId": {
-          "$ref": "#/properties/spec/properties/input/properties/taskRef"
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/properties/spec/properties/schemaVersion"
+            },
+            "message": {
+              "$ref": "#/properties/error/anyOf/0/properties/message"
+            },
+            "nodeId": {
+              "$ref": "#/properties/error/anyOf/0/properties/nodeId"
+            },
+            "epoch": {
+              "$ref": "#/properties/error/anyOf/0/properties/epoch"
+            },
+            "actionId": {
+              "$ref": "#/properties/error/anyOf/0/properties/actionId"
+            },
+            "code": {
+              "type": "string",
+              "enum": [
+                "SPEC_INVALID",
+                "INPUT_CONTRACT_INVALID",
+                "OUTPUT_CONTRACT_INVALID",
+                "JOIN_REVISION_MISMATCH",
+                "POLICY_DENIED",
+                "GRANT_EXPIRED",
+                "BUDGET_EXHAUSTED",
+                "STALE_GENERATION",
+                "CHECKPOINT_INCOMPATIBLE",
+                "UNAUTHENTICATED",
+                "SCOPE_MISMATCH",
+                "RUN_MISMATCH",
+                "IDEMPOTENCY_CONFLICT",
+                "REVISION_CONFLICT",
+                "INTERNAL_ERROR",
+                "SPEC_MISMATCH",
+                "EPOCH_MISMATCH",
+                "RESPONSE_MISMATCH"
+              ]
+            },
+            "retryable": {
+              "type": "boolean",
+              "const": false
+            },
+            "nextAction": {
+              "type": "string",
+              "enum": [
+                "fix_input",
+                "reauthorize",
+                "reconcile",
+                "refresh",
+                "stop"
+              ]
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "message",
+            "code",
+            "retryable",
+            "nextAction"
+          ],
+          "additionalProperties": false
         }
-      },
-      "required": [
-        "schemaVersion",
-        "code",
-        "message",
-        "retryable",
-        "nextAction"
-      ],
-      "additionalProperties": false
+      ]
     },
     "runState": {
       "type": "string",
@@ -625,7 +716,8 @@
                             "$ref": "#/properties/request/anyOf/1/properties/input/anyOf/0/properties/value"
                           },
                           "propertyNames": {
-                            "maxLength": 256
+                            "maxLength": 256,
+                            "pattern": "^(?!__proto__$|constructor$|prototype$)"
                           }
                         }
                       ]
@@ -732,7 +824,7 @@
           "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
         },
         "epoch": {
-          "$ref": "#/properties/error/properties/epoch"
+          "$ref": "#/properties/error/anyOf/0/properties/epoch"
         },
         "nodeId": {
           "$ref": "#/properties/spec/properties/input/properties/taskRef"
@@ -786,7 +878,7 @@
           "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
         },
         "epoch": {
-          "$ref": "#/properties/error/properties/epoch"
+          "$ref": "#/properties/error/anyOf/0/properties/epoch"
         },
         "nodeId": {
           "$ref": "#/properties/spec/properties/input/properties/taskRef"
