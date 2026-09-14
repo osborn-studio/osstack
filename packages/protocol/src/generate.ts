@@ -11,6 +11,7 @@
 // and the tests. This is a known, documented limitation, not a gap.
 
 import type { ZodTypeAny } from "zod";
+import { GraphProtocol } from "./graph.js";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import {
   AgentCommand,
@@ -40,10 +41,15 @@ interface SchemaEntry {
   /** Optional top-level $comment embedded in the generated JSON Schema. */
   comment?: string;
   schema: ZodTypeAny;
+  references?: "root";
 }
 
 /** Public protocol contracts emitted as JSON Schema. Order is stable. */
 export const SCHEMA_MANIFEST: readonly SchemaEntry[] = [
+  {
+    key: "graph", title: "Osstack Graph v1 Contract Registry", schema: GraphProtocol, references: "root",
+    comment: "Registry of strict versioned JSON graph contracts. Zod additionally enforces finite JSON values, 65536-byte/16-depth/4096-value envelope bounds, plain data properties and retryable error rules. Authentication, current scope/run/generation checks, canonical digests, idempotency and revision decisions require the protocol helpers. Trusted daemon integration must verify identity, authority, artifacts and leases and enforce durable atomic CAS/dedup. No checkpoint or graph data grants authority.",
+  },
   { key: "task", title: "Osstack Protocol Task", schema: Task },
   { key: "run-summary", title: "Osstack Protocol Run Summary", schema: RunSummary },
   { key: "event-envelope", title: "Osstack Protocol Event Envelope", schema: EventEnvelope },
@@ -126,7 +132,7 @@ export const SCHEMA_MANIFEST: readonly SchemaEntry[] = [
 function renderSchema(entry: SchemaEntry): string {
   const json = zodToJsonSchema(entry.schema, {
     target: "jsonSchema7",
-    $refStrategy: "none",
+    $refStrategy: entry.references ?? "none",
   }) as Record<string, unknown>;
   // Stable, self-describing header fields, independent of Zod internals.
   const withMeta: Record<string, unknown> = {

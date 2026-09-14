@@ -1,0 +1,1232 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Osstack Graph v1 Contract Registry",
+  "$comment": "Registry of strict versioned JSON graph contracts. Zod additionally enforces finite JSON values, 65536-byte/16-depth/4096-value envelope bounds, plain data properties and retryable error rules. Authentication, current scope/run/generation checks, canonical digests, idempotency and revision decisions require the protocol helpers. Trusted daemon integration must verify identity, authority, artifacts and leases and enforce durable atomic CAS/dedup. No checkpoint or graph data grants authority.",
+  "type": "object",
+  "properties": {
+    "spec": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "template": {
+          "type": "string",
+          "const": "code-delivery-v1"
+        },
+        "input": {
+          "type": "object",
+          "properties": {
+            "taskRef": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "^[^\\s\\u0000-\\u001f](?:[^\\u0000-\\u001f]*[^\\s\\u0000-\\u001f])?$"
+            },
+            "repositoryRef": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "baseRevision": {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            "acceptanceRef": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            }
+          },
+          "required": [
+            "taskRef",
+            "repositoryRef",
+            "baseRevision",
+            "acceptanceRef"
+          ],
+          "additionalProperties": false
+        },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "maxEpochs": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
+            },
+            "maxBranchAttempts": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32
+            },
+            "maxConcurrentReaders": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64
+            },
+            "maxConcurrentWritersPerRepo": {
+              "type": "number",
+              "const": 1
+            },
+            "maxActionStarts": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000
+            },
+            "deadlineSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 604800
+            },
+            "tokenReservationLimit": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000000
+            }
+          },
+          "required": [
+            "maxEpochs",
+            "maxBranchAttempts",
+            "maxConcurrentReaders",
+            "maxConcurrentWritersPerRepo",
+            "maxActionStarts",
+            "deadlineSeconds",
+            "tokenReservationLimit"
+          ],
+          "additionalProperties": false
+        },
+        "publication": {
+          "type": "string",
+          "const": "artifact_only"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "template",
+        "input",
+        "limits",
+        "publication"
+      ],
+      "additionalProperties": false
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/properties/spec/properties/schemaVersion"
+        },
+        "tenantId": {
+          "$ref": "#/properties/spec/properties/input/properties/taskRef"
+        },
+        "principalId": {
+          "$ref": "#/properties/spec/properties/input/properties/taskRef"
+        },
+        "workspaceId": {
+          "$ref": "#/properties/spec/properties/input/properties/taskRef"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "tenantId",
+        "principalId",
+        "workspaceId"
+      ],
+      "additionalProperties": false
+    },
+    "budget": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/properties/spec/properties/schemaVersion"
+        },
+        "maxEpochs": {
+          "$ref": "#/properties/spec/properties/limits/properties/maxEpochs"
+        },
+        "maxBranchAttempts": {
+          "$ref": "#/properties/spec/properties/limits/properties/maxBranchAttempts"
+        },
+        "maxConcurrentReaders": {
+          "$ref": "#/properties/spec/properties/limits/properties/maxConcurrentReaders"
+        },
+        "maxConcurrentWritersPerRepo": {
+          "$ref": "#/properties/spec/properties/limits/properties/maxConcurrentWritersPerRepo"
+        },
+        "maxActionStarts": {
+          "$ref": "#/properties/spec/properties/limits/properties/maxActionStarts"
+        },
+        "deadlineSeconds": {
+          "$ref": "#/properties/spec/properties/limits/properties/deadlineSeconds"
+        },
+        "tokenReservationLimit": {
+          "$ref": "#/properties/spec/properties/limits/properties/tokenReservationLimit"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "maxEpochs",
+        "maxBranchAttempts",
+        "maxConcurrentReaders",
+        "maxConcurrentWritersPerRepo",
+        "maxActionStarts",
+        "deadlineSeconds",
+        "tokenReservationLimit"
+      ],
+      "additionalProperties": false
+    },
+    "error": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/properties/spec/properties/schemaVersion"
+        },
+        "code": {
+          "type": "string",
+          "enum": [
+            "SPEC_INVALID",
+            "INPUT_CONTRACT_INVALID",
+            "OUTPUT_CONTRACT_INVALID",
+            "JOIN_REVISION_MISMATCH",
+            "POLICY_DENIED",
+            "GRANT_EXPIRED",
+            "BUDGET_EXHAUSTED",
+            "ACTION_OUTCOME_UNKNOWN",
+            "STALE_GENERATION",
+            "CANCEL_UNCONFIRMED",
+            "CHECKPOINT_INCOMPATIBLE",
+            "UNAUTHENTICATED",
+            "SCOPE_MISMATCH",
+            "RUN_MISMATCH",
+            "IDEMPOTENCY_CONFLICT",
+            "REVISION_CONFLICT",
+            "INTERNAL_ERROR"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "nextAction": {
+          "type": "string",
+          "enum": [
+            "fix_input",
+            "reauthorize",
+            "reconcile",
+            "refresh",
+            "retry",
+            "stop"
+          ]
+        },
+        "nodeId": {
+          "$ref": "#/properties/spec/properties/input/properties/taskRef"
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "actionId": {
+          "$ref": "#/properties/spec/properties/input/properties/taskRef"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "code",
+        "message",
+        "retryable",
+        "nextAction"
+      ],
+      "additionalProperties": false
+    },
+    "runState": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "running",
+        "ready",
+        "failed",
+        "cancelled",
+        "waiting_input",
+        "cancel_pending",
+        "reconciliation_required"
+      ]
+    },
+    "nodeState": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "running",
+        "succeeded",
+        "failed",
+        "skipped",
+        "cancelled",
+        "waiting_input"
+      ]
+    },
+    "actionState": {
+      "type": "string",
+      "enum": [
+        "intent",
+        "running",
+        "confirmed",
+        "failed",
+        "unknown",
+        "cancel_pending",
+        "reconciliation_required",
+        "cancelled"
+      ]
+    },
+    "result": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/properties/spec/properties/schemaVersion"
+            },
+            "kind": {
+              "type": "string",
+              "const": "implementation_complete"
+            },
+            "workspaceLeaseRef": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "receiptRef": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "kind",
+            "workspaceLeaseRef",
+            "receiptRef"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/properties/spec/properties/schemaVersion"
+            },
+            "kind": {
+              "type": "string",
+              "const": "candidate_ready"
+            },
+            "candidateRevision": {
+              "$ref": "#/properties/spec/properties/input/properties/baseRevision"
+            },
+            "artifactRefs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/properties/spec/properties/input/properties/taskRef"
+              },
+              "minItems": 1,
+              "maxItems": 128
+            },
+            "artifactDigest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "kind",
+            "candidateRevision",
+            "artifactRefs",
+            "artifactDigest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/properties/spec/properties/schemaVersion"
+            },
+            "kind": {
+              "type": "string",
+              "const": "review"
+            },
+            "candidateRevision": {
+              "$ref": "#/properties/spec/properties/input/properties/baseRevision"
+            },
+            "evidenceRefs": {
+              "$ref": "#/properties/result/anyOf/1/properties/artifactRefs"
+            },
+            "evidenceDigest": {
+              "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+            },
+            "verdict": {
+              "type": "string",
+              "enum": [
+                "accept",
+                "changes_requested"
+              ]
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "kind",
+            "candidateRevision",
+            "evidenceRefs",
+            "evidenceDigest",
+            "verdict"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/properties/spec/properties/schemaVersion"
+            },
+            "kind": {
+              "type": "string",
+              "const": "tests"
+            },
+            "candidateRevision": {
+              "$ref": "#/properties/spec/properties/input/properties/baseRevision"
+            },
+            "evidenceRefs": {
+              "$ref": "#/properties/result/anyOf/1/properties/artifactRefs"
+            },
+            "evidenceDigest": {
+              "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+            },
+            "passed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "kind",
+            "candidateRevision",
+            "evidenceRefs",
+            "evidenceDigest",
+            "passed"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/properties/spec/properties/schemaVersion"
+            },
+            "kind": {
+              "type": "string",
+              "const": "ready"
+            },
+            "candidateRevision": {
+              "$ref": "#/properties/spec/properties/input/properties/baseRevision"
+            },
+            "evidenceRefs": {
+              "$ref": "#/properties/result/anyOf/1/properties/artifactRefs"
+            },
+            "evidenceDigest": {
+              "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+            },
+            "artifactRefs": {
+              "$ref": "#/properties/result/anyOf/1/properties/artifactRefs"
+            },
+            "publication": {
+              "type": "string",
+              "const": "artifact_only"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "kind",
+            "candidateRevision",
+            "evidenceRefs",
+            "evidenceDigest",
+            "artifactRefs",
+            "publication"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/properties/spec/properties/schemaVersion"
+            },
+            "kind": {
+              "type": "string",
+              "const": "workspace"
+            },
+            "workspaceLeaseRef": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "receiptRef": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "kind",
+            "workspaceLeaseRef",
+            "receiptRef"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "request": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/properties/spec/properties/schemaVersion"
+            },
+            "scope": {
+              "$ref": "#/properties/scope"
+            },
+            "idempotencyKey": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "metadata": {
+              "type": "object",
+              "properties": {
+                "trace": {
+                  "type": "object",
+                  "properties": {
+                    "traceId": {
+                      "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                    },
+                    "spanId": {
+                      "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                    }
+                  },
+                  "required": [
+                    "traceId"
+                  ],
+                  "additionalProperties": false
+                },
+                "requestedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "additionalProperties": false
+            },
+            "kind": {
+              "type": "string",
+              "const": "start"
+            },
+            "spec": {
+              "$ref": "#/properties/spec"
+            },
+            "inputArtifactRef": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "product": {
+                  "type": "string",
+                  "enum": [
+                    "osstack",
+                    "osbot",
+                    "ostag"
+                  ]
+                },
+                "requestId": {
+                  "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                },
+                "parentRunId": {
+                  "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                }
+              },
+              "required": [
+                "product",
+                "requestId"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "scope",
+            "idempotencyKey",
+            "kind",
+            "spec",
+            "inputArtifactRef",
+            "source"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/properties/spec/properties/schemaVersion"
+            },
+            "scope": {
+              "$ref": "#/properties/scope"
+            },
+            "idempotencyKey": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "metadata": {
+              "$ref": "#/properties/request/anyOf/0/properties/metadata"
+            },
+            "kind": {
+              "type": "string",
+              "const": "resume"
+            },
+            "graphRunId": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "expectedRevision": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "interruptId": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "input": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "data"
+                    },
+                    "value": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "string",
+                          "maxLength": 16384
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/properties/request/anyOf/1/properties/input/anyOf/0/properties/value"
+                          },
+                          "maxItems": 4096
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {
+                            "$ref": "#/properties/request/anyOf/1/properties/input/anyOf/0/properties/value"
+                          },
+                          "propertyNames": {
+                            "maxLength": 256
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "value"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "reconciliation"
+                    },
+                    "outcome": {
+                      "type": "string",
+                      "enum": [
+                        "applied",
+                        "not_applied",
+                        "unknown"
+                      ]
+                    },
+                    "evidenceRefs": {
+                      "$ref": "#/properties/result/anyOf/1/properties/artifactRefs"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "outcome",
+                    "evidenceRefs"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "scope",
+            "idempotencyKey",
+            "kind",
+            "graphRunId",
+            "expectedRevision",
+            "interruptId",
+            "input"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/properties/spec/properties/schemaVersion"
+            },
+            "scope": {
+              "$ref": "#/properties/scope"
+            },
+            "idempotencyKey": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "metadata": {
+              "$ref": "#/properties/request/anyOf/0/properties/metadata"
+            },
+            "kind": {
+              "type": "string",
+              "const": "cancel"
+            },
+            "graphRunId": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "expectedRevision": {
+              "$ref": "#/properties/request/anyOf/1/properties/expectedRevision"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "scope",
+            "idempotencyKey",
+            "kind",
+            "graphRunId",
+            "expectedRevision"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "effectIdentity": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/properties/spec/properties/schemaVersion"
+        },
+        "scope": {
+          "$ref": "#/properties/scope"
+        },
+        "graphRunId": {
+          "$ref": "#/properties/spec/properties/input/properties/taskRef"
+        },
+        "specHash": {
+          "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+        },
+        "epoch": {
+          "$ref": "#/properties/error/properties/epoch"
+        },
+        "nodeId": {
+          "$ref": "#/properties/spec/properties/input/properties/taskRef"
+        },
+        "effectSlot": {
+          "$ref": "#/properties/spec/properties/input/properties/taskRef"
+        },
+        "logicalAttempt": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "scope",
+        "graphRunId",
+        "specHash",
+        "epoch",
+        "nodeId",
+        "effectSlot",
+        "logicalAttempt"
+      ],
+      "additionalProperties": false
+    },
+    "workerActionRequest": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/properties/spec/properties/schemaVersion"
+        },
+        "kind": {
+          "type": "string",
+          "const": "worker_action"
+        },
+        "requestId": {
+          "$ref": "#/properties/spec/properties/input/properties/taskRef"
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "scope": {
+          "$ref": "#/properties/scope"
+        },
+        "graphRunId": {
+          "$ref": "#/properties/spec/properties/input/properties/taskRef"
+        },
+        "specHash": {
+          "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+        },
+        "epoch": {
+          "$ref": "#/properties/error/properties/epoch"
+        },
+        "nodeId": {
+          "$ref": "#/properties/spec/properties/input/properties/taskRef"
+        },
+        "effectSlot": {
+          "$ref": "#/properties/spec/properties/input/properties/taskRef"
+        },
+        "action": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "implement"
+                },
+                "inputArtifactRef": {
+                  "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                },
+                "workspaceLeaseRef": {
+                  "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                }
+              },
+              "required": [
+                "kind",
+                "inputArtifactRef",
+                "workspaceLeaseRef"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "repair"
+                },
+                "inputArtifactRef": {
+                  "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                },
+                "workspaceLeaseRef": {
+                  "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                },
+                "candidateRevision": {
+                  "$ref": "#/properties/spec/properties/input/properties/baseRevision"
+                },
+                "feedbackRef": {
+                  "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                }
+              },
+              "required": [
+                "kind",
+                "inputArtifactRef",
+                "workspaceLeaseRef",
+                "candidateRevision",
+                "feedbackRef"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "freeze"
+                },
+                "workspaceLeaseRef": {
+                  "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                },
+                "receiptRef": {
+                  "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                }
+              },
+              "required": [
+                "kind",
+                "workspaceLeaseRef",
+                "receiptRef"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "review"
+                },
+                "candidateRevision": {
+                  "$ref": "#/properties/spec/properties/input/properties/baseRevision"
+                },
+                "acceptanceRef": {
+                  "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                },
+                "workspaceLeaseRef": {
+                  "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                }
+              },
+              "required": [
+                "kind",
+                "candidateRevision",
+                "acceptanceRef",
+                "workspaceLeaseRef"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "tests"
+                },
+                "candidateRevision": {
+                  "$ref": "#/properties/spec/properties/input/properties/baseRevision"
+                },
+                "commandSpecRef": {
+                  "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                },
+                "workspaceLeaseRef": {
+                  "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                }
+              },
+              "required": [
+                "kind",
+                "candidateRevision",
+                "commandSpecRef",
+                "workspaceLeaseRef"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "workspace_create"
+                },
+                "repositoryRef": {
+                  "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                },
+                "baseRevision": {
+                  "$ref": "#/properties/spec/properties/input/properties/baseRevision"
+                }
+              },
+              "required": [
+                "kind",
+                "repositoryRef",
+                "baseRevision"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "workspace_release"
+                },
+                "workspaceLeaseRef": {
+                  "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                }
+              },
+              "required": [
+                "kind",
+                "workspaceLeaseRef"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "metadata": {
+          "$ref": "#/properties/request/anyOf/0/properties/metadata"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "requestId",
+        "generation",
+        "scope",
+        "graphRunId",
+        "specHash",
+        "epoch",
+        "nodeId",
+        "effectSlot",
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "workerActionResponse": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/properties/spec/properties/schemaVersion"
+            },
+            "kind": {
+              "type": "string",
+              "const": "worker_action_response"
+            },
+            "requestId": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "generation": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "effect": {
+              "$ref": "#/properties/effectIdentity"
+            },
+            "outcome": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "string",
+                      "const": "confirmed"
+                    },
+                    "result": {
+                      "$ref": "#/properties/result"
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "result"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "string",
+                      "const": "intent"
+                    }
+                  },
+                  "required": [
+                    "state"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "string",
+                      "const": "running"
+                    },
+                    "executionRef": {
+                      "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "executionRef"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "string",
+                      "const": "failed"
+                    },
+                    "error": {
+                      "$ref": "#/properties/error"
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "error"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "string",
+                      "const": "unknown"
+                    },
+                    "error": {
+                      "$ref": "#/properties/error"
+                    },
+                    "reconciliationRef": {
+                      "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "error",
+                    "reconciliationRef"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "string",
+                      "const": "cancel_pending"
+                    },
+                    "error": {
+                      "$ref": "#/properties/error"
+                    },
+                    "executionRef": {
+                      "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "error",
+                    "executionRef"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "string",
+                      "const": "reconciliation_required"
+                    },
+                    "error": {
+                      "$ref": "#/properties/error"
+                    },
+                    "reconciliationRef": {
+                      "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "error",
+                    "reconciliationRef"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "string",
+                      "const": "cancelled"
+                    },
+                    "receiptRef": {
+                      "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "receiptRef"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "metadata": {
+              "$ref": "#/properties/request/anyOf/0/properties/metadata"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "kind",
+            "requestId",
+            "generation",
+            "effect",
+            "outcome"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/properties/spec/properties/schemaVersion"
+            },
+            "kind": {
+              "type": "string",
+              "const": "worker_action_rejected"
+            },
+            "requestId": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "error": {
+              "$ref": "#/properties/error"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "kind",
+            "requestId",
+            "error"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "idempotencyRecord": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/properties/spec/properties/schemaVersion"
+        },
+        "scope": {
+          "$ref": "#/properties/scope"
+        },
+        "idempotencyKey": {
+          "$ref": "#/properties/spec/properties/input/properties/taskRef"
+        },
+        "inputDigest": {
+          "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "scope",
+        "idempotencyKey",
+        "inputDigest"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "spec",
+    "scope",
+    "budget",
+    "error",
+    "runState",
+    "nodeState",
+    "actionState",
+    "result",
+    "request",
+    "effectIdentity",
+    "workerActionRequest",
+    "workerActionResponse",
+    "idempotencyRecord"
+  ],
+  "additionalProperties": false
+}

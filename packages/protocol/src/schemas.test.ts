@@ -28,6 +28,7 @@ describe("generated JSON Schemas are committed and fresh", () => {
         "continuation-output-check.schema.json",
         "event-envelope.schema.json",
         "evidence-ref.schema.json",
+        "graph.schema.json",
         "policy-decision.schema.json",
         "run-summary.schema.json",
         "scoped-approval-decision.schema.json",
