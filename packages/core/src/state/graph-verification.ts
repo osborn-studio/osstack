@@ -66,3 +66,43 @@ export class GraphVerificationStore {
     return freezeWorkerData({ ...result.value, run: result.run });
   }
 }
+
+/** Immutable lifecycle permits, not node state. Only the host can authorize a
+ * subsequent epoch from an attested, published negative quality join. */
+export class GraphDeliveryEpochStore {
+  constructor(private readonly db: Database.Database) {}
+  activate(input: GraphRunFence, epoch: number, cost: { actions: number; tokens: number }, joinRef?: string): GraphRun {
+    return fencedGraphTransaction(this.db, input, run => {
+      if (!run.spec || run.status !== 'running') throw Error('RUN_NOT_RUNNING');
+      const state = readGraphActionState(this.db, run.graphRunId);
+      if (state.actions.some(a => ['intent','running','unknown','cancel_pending'].includes(a.state))) throw Error('UNRESOLVED_ACTION');
+      if (this.db.prepare('SELECT 1 FROM graph_action_admissions WHERE graph_run_id=? AND released_at IS NULL').get(run.graphRunId)) throw Error('ADMISSION_RELEASE_PENDING');
+      const row = this.db.prepare('SELECT max(epoch) AS epoch FROM graph_delivery_epochs WHERE graph_run_id=?').get(run.graphRunId) as { epoch: number | null };
+      if (row.epoch === epoch) {
+        const prior = this.db.prepare('SELECT join_ref FROM graph_delivery_epochs WHERE graph_run_id=? AND epoch=?').get(run.graphRunId, epoch) as { join_ref: string | null };
+        if (prior.join_ref !== (joinRef ?? null)) throw Error('EPOCH_PERMIT_CONFLICT');
+        return { changed: false, value: undefined };
+      }
+      if (epoch !== (row.epoch ?? -1) + 1 || epoch >= run.spec.limits.maxEpochs) throw Error('EPOCH_MISMATCH');
+      if (epoch === 0 && (joinRef || state.actions.length)) throw Error('INITIAL_EPOCH_ALREADY_CONSUMED');
+      if (epoch > 0) {
+        const saved = this.db.prepare('SELECT bundle_json,epoch FROM graph_verification_joins WHERE graph_run_id=? AND receipt_ref=?').get(run.graphRunId, joinRef) as { bundle_json: string; epoch: number } | undefined;
+        if (!saved || saved.epoch !== epoch - 1) throw Error('IMMUTABLE_JOIN_REQUIRED');
+        const bundle = JSON.parse(saved.bundle_json);
+        if (bundle.status !== 'complete' || bundle.branches.length !== 2 || !bundle.branches.every((b: { state: string }) => b.state === 'confirmed')
+          || !bundle.branches.some((b: { result: { verdict?: string; passed?: boolean } }) => b.result.verdict === 'changes_requested' || b.result.passed === false)) throw Error('NEGATIVE_JOIN_REQUIRED');
+        for (const branch of bundle.branches) {
+          const latest = state.actions.filter(a => a.effect.epoch === epoch - 1 && a.effect.nodeId === branch.nodeId && a.effect.effectSlot === branch.effectSlot).sort((a,b) => b.effect.logicalAttempt - a.effect.logicalAttempt)[0];
+          if (!latest || latest.effectKey !== branch.effectKey || latest.state !== 'confirmed' || latest.outcome?.state !== 'confirmed' || workerCanonical(latest.outcome.result) !== workerCanonical(branch.result)) throw Error('STALE_JOIN');
+        }
+      }
+      if (!Number.isSafeInteger(cost.actions) || cost.actions < 1 || !Number.isSafeInteger(cost.tokens) || cost.tokens < 0) throw Error('INVALID_COMPILED_COST');
+      const budget = state.budget;
+      if (input.now - run.createdAt >= run.spec.limits.deadlineSeconds * 1000 || budget.accountingBlocked
+        || budget.actionStarts + cost.actions > run.spec.limits.maxActionStarts
+        || BigInt(budget.chargedTokens) + BigInt(budget.reservedTokens) + BigInt(cost.tokens) > BigInt(run.spec.limits.tokenReservationLimit)) throw Error('BUDGET_EXHAUSTED');
+      this.db.prepare('INSERT INTO graph_delivery_epochs(graph_run_id,epoch,join_ref,generation,created_at) VALUES(?,?,?,?,?)').run(run.graphRunId, epoch, joinRef ?? null, run.generation, input.now);
+      return { changed: true, value: undefined };
+    }).run;
+  }
+}

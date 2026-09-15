@@ -41,7 +41,7 @@ describe('static graph compiler', () => {
       expect(compiled.budget.maxActionStarts).toBe(epochs * (3 + 4 * attempts));
       expect(compiled.budget.tokenReservationLimit).toBe(epochs * (GRAPH_REGISTRY.nodes.implement.reservedTokens
         + attempts * (GRAPH_REGISTRY.nodes.review.reservedTokens + GRAPH_REGISTRY.nodes.tests.reservedTokens)));
-      expect(compiled.plan.nodes).toHaveLength(6 * epochs);
+      expect(compiled.plan.nodes).toHaveLength(8 * epochs);
       input.limits.maxActionStarts = compiled.budget.maxActionStarts;
       input.limits.tokenReservationLimit = compiled.budget.tokenReservationLimit;
       expect(() => compileGraphSpec(input)).not.toThrow();
@@ -90,6 +90,7 @@ async function execute(outputOverride?: Record<string, unknown>, observed: strin
   const workflow = entrypoint('compiler-execution-proof', () => source.run({ input,
     binding: { scope: input.scope, graphRunId: 'run', generation: 1, identity: { specHash: compiled.specHash } },
     signal: new AbortController().signal,
+    interrupt: () => ({ kind: 'ready', epoch: 0, feedbackRef: 'host-join' }),
     task: (options: { name: string }, fn: (value: unknown) => unknown) => task(options, (value: unknown) => { observed.push(options.name); return fn(value); }),
     action: async (value: unknown) => {
       const request = WorkerActionRequest.parse(value); requests.push(request);
@@ -109,13 +110,13 @@ async function execute(outputOverride?: Record<string, unknown>, observed: strin
 
 it('executes emitted ESM through actual Functional tasks in stable order with predecessor mappings', async () => {
   const { result, observed, requests, values } = await execute();
-  expect(observed).toEqual(['code-delivery-v1.e0.workspace', 'code-delivery-v1.e0.implement', 'code-delivery-v1.e0.freeze', 'code-delivery-v1.e0.review', 'code-delivery-v1.e0.tests']);
-  expect(result).toEqual({ candidate: values.freeze, review: values.review, tests: values.tests });
-  expect(requests.map(value => value.action.kind)).toEqual(['workspace_create', 'implement', 'freeze', 'review', 'tests']);
+  expect(observed).toEqual(['code-delivery-v1.e0.workspace', 'code-delivery-v1.e0.implement', 'code-delivery-v1.e0.freeze', 'code-delivery-v1.e0.prepare_review', 'code-delivery-v1.e0.prepare_tests', 'code-delivery-v1.e0.review', 'code-delivery-v1.e0.tests']);
+  expect(result).toEqual({ kind: 'ready', epoch: 0, feedbackRef: 'host-join' });
+  expect(requests.map(value => value.action.kind)).toEqual(['workspace_create', 'implement', 'freeze', 'workspace_create', 'workspace_create', 'review', 'tests']);
   expect(requests[2]!.action).toEqual({ kind: 'freeze', workspaceLeaseRef: 'lease', receiptRef: 'implemented' });
-  expect(requests[3]!.action).toEqual({ kind: 'review', candidateRevision: 'b'.repeat(40), acceptanceRef: 'acceptance', workspaceLeaseRef: 'lease' });
+  expect(requests[5]!.action).toEqual({ kind: 'review', candidateRevision: 'b'.repeat(40), acceptanceRef: 'acceptance', workspaceLeaseRef: 'lease' });
   for (const request of requests) expect(request).not.toHaveProperty('logicalAttempt');
-  GraphResult.parse(result.candidate);
+  GraphResult.parse(values.freeze);
 });
 
 it.each([

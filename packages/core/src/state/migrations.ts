@@ -1581,6 +1581,24 @@ export const MIGRATIONS: readonly Migration[] = [
         BEGIN SELECT RAISE(ABORT, 'graph verification join immutable'); END;
     `,
   },
+  {
+    id: 32,
+    name: "graph_delivery_epochs",
+    sql: `
+      CREATE TABLE graph_delivery_epochs (
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        epoch INTEGER NOT NULL CHECK(epoch BETWEEN 0 AND 2),
+        join_ref TEXT REFERENCES graph_verification_joins(receipt_ref),
+        generation INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY(graph_run_id, epoch)
+      );
+      CREATE TRIGGER graph_delivery_epochs_no_update BEFORE UPDATE ON graph_delivery_epochs
+        BEGIN SELECT RAISE(ABORT, 'graph delivery epoch immutable'); END;
+      CREATE TRIGGER graph_delivery_epochs_no_delete BEFORE DELETE ON graph_delivery_epochs
+        BEGIN SELECT RAISE(ABORT, 'graph delivery epoch immutable'); END;
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

@@ -26,6 +26,8 @@ export interface GraphVerificationOptions {
   verifyReviewer: (identities: Readonly<ReviewerIdentity>) => Promise<void>;
   /** Reads current running ledger record, including its actual logical attempt. */
   effectIdentity: (kind: Kind) => VerificationEffect;
+  /** Host ledger preparation owns this exact source lease. No nested acquisition. */
+  preparationLease?: ExecutionLease;
   slots?: Partial<Record<Kind, { nodeId: string; effectSlot: string; workspaceLeaseRef: string; tokenReservation: number }>>;
 }
 export interface PreparedGraphVerification {
@@ -101,12 +103,21 @@ function repositoryStamp(path: string): string {
 /** Explicit trusted host preparation. No worker-supplied paths, commands, identity
  * claims, writer history or automatic cleanup. Same UID is not an OS sandbox. */
 export async function prepareGraphVerification(options: GraphVerificationOptions): Promise<PreparedGraphVerification> {
+  const selected = await prepareSelection(options, ['review', 'tests']);
+  return { ...selected, reviewWorkspace: selected.workspaces.review!, testsWorkspace: selected.workspaces.tests! };
+}
+/** A single ledger preparation returns only the physical workspace it created. */
+export async function prepareGraphVerificationBranch(options: GraphVerificationOptions, kind: Kind) {
+  return prepareSelection(options, [kind]);
+}
+async function prepareSelection(options: GraphVerificationOptions, kinds: readonly Kind[]) {
   // Capture ALL callbacks and values before the first await.
-  const { authorize, acquire, effectIdentity, verifyReviewer } = options;
+  const { authorize, acquire, effectIdentity, verifyReviewer, preparationLease } = options;
   const check = checkedAuthority(authorize); check();
   const data = snapshot({ root: options.root, binding: parseVerificationBinding(options.binding), candidate: GraphResult.parse(options.candidate), source: options.sourceWorkspace,
     writerIdentity: options.writerIdentity, reviewerIdentity: options.reviewer.identity, capabilityId: options.reviewer.capabilityId,
-    registry: options.acceptanceRegistry.map(parseAcceptanceCommand), slots: options.slots ?? {} });
+    kinds, registry: options.acceptanceRegistry.map(parseAcceptanceCommand), slots: options.slots ?? {} });
+  if (!data.kinds.length || new Set(data.kinds).size !== data.kinds.length || data.kinds.some(k => k !== 'review' && k !== 'tests')) throw Error('invalid preparation kinds');
   const adapter = options.reviewer.adapter;
   const capabilities = snapshot(adapter.capabilities());
   const reviewer: AgentAdapter = Object.freeze({ id: adapter.id, display_name: adapter.display_name, cost_tier: adapter.cost_tier,
@@ -128,7 +139,7 @@ export async function prepareGraphVerification(options: GraphVerificationOptions
   const independent = async () => { const result: unknown = await checked(() => verifyReviewer(identities)); if (result !== undefined) throw new Error('independent verifier must return void'); check(); };
   await independent();
   check();
-  const lease = await acquire({ kind: 'write', runId: `graph-verification-prepare:${randomUUID()}`, workspacePath: data.source.workspace_path, authorize: async () => { check(); } });
+  const lease = preparationLease ?? await acquire({ kind: 'write', runId: `graph-verification-prepare:${randomUUID()}`, workspacePath: data.source.workspace_path, authorize: async () => { check(); } });
   const preparedCheck = async () => { if (!lease.assertActive) throw new Error('canonical G10 preparation lease required'); await checked(() => lease.assertActive!()); };
   let manifest!: GraphArtifactManifest; let reviewPath!: string; let testsPath!: string;
   let preparationFailure: { error: unknown } | undefined;
@@ -144,27 +155,28 @@ export async function prepareGraphVerification(options: GraphVerificationOptions
     await checked(() => mkdir(data.root, { mode: 0o700, recursive: true }));
     if (await checked(() => realpath(data.root)) !== data.root || data.root === data.source.workspace_path || data.root.startsWith(`${data.source.workspace_path}/`)) throw new Error('host root must be canonical and outside source workspace');
     const paths: string[] = [];
-    for (const kind of ['review', 'tests']) {
+    for (const kind of data.kinds) {
       await preparedCheck();
       const restored = await checked(() => restore(binding.artifactDigest, { rootPath: data.root, directoryName: `${kind}-${randomUUID()}` }));
       if (restored.candidateRevision !== binding.candidateRevision || restored.tree !== manifest.tree || dirname(restored.worktreePath) !== data.root) throw new Error('restored candidate mismatch');
       paths.push(restored.worktreePath);
       await preparedCheck();
     }
-    reviewPath = paths[0]!; testsPath = paths[1]!;
+    reviewPath = paths[data.kinds.indexOf('review')]!; testsPath = paths[data.kinds.indexOf('tests')]!;
     const final = await checked(() => verifyArtifact(binding.artifactDigest)); validateManifest(final);
     if (verificationCanonical(final) !== verificationCanonical(manifest)) throw new Error('artifact changed during preparation');
     await preparedCheck();
   } catch (error) { preparationFailure = { error }; }
   // Restore promises have settled: no external agent exists during preparation.
   // Leave allocated directories intact even when publication/authority fails.
-  try { await lease.release(); } catch (error) { lease.retain(String(error)); throw error; }
+  try { if (!preparationLease) await lease.release(); } catch (error) { lease.retain(String(error)); throw error; }
   if (preparationFailure) throw preparationFailure.error;
   check();
-  const reviewWorkspace = snapshot({ workspace_id: binding.scope.workspaceId, workspace_path: reviewPath });
-  const testsWorkspace = snapshot({ workspace_id: binding.scope.workspaceId, workspace_path: testsPath });
-  const actions = (['review', 'tests'] as const).map(kind => {
-    const workspace = kind === 'review' ? reviewWorkspace : testsWorkspace;
+  const workspaces: Partial<Record<Kind, RegisteredCandidateWorkspace>> = {};
+  if (reviewPath) workspaces.review = snapshot({ workspace_id: binding.scope.workspaceId, workspace_path: reviewPath });
+  if (testsPath) workspaces.tests = snapshot({ workspace_id: binding.scope.workspaceId, workspace_path: testsPath });
+  const actions = data.kinds.map(kind => {
+    const workspace = workspaces[kind]!;
     assertExactCandidateFiles(workspace.workspace_path, binding.candidateRevision);
     // Paths come from the frozen tree, never from a potentially altered index.
     const trackedPaths = gitRaw(workspace.workspace_path, 'ls-tree', '-rz', '--name-only', binding.candidateRevision).split('\0').filter(Boolean);
@@ -268,5 +280,5 @@ export async function prepareGraphVerification(options: GraphVerificationOptions
       workspace, verifyWorkspace, persist, execution: kind === 'review' ? { kind: 'adapter', plan, adapter: invocationReviewer, capabilityId: data.capabilityId } : { kind: 'command', plan, command: acceptance.command } };
     Object.freeze(action.execution); return Object.freeze(action);
   });
-  return Object.freeze({ binding, reviewWorkspace, testsWorkspace, actions: Object.freeze(actions) });
+  return Object.freeze({ binding, workspaces: Object.freeze(workspaces), actions: Object.freeze(actions) });
 }

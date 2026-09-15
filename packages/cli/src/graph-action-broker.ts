@@ -33,7 +33,7 @@ type RegisteredExecution =
   | { kind: "freeze"; store: Pick<GraphArtifactStore, "freeze">; input: GraphFreezeInput; authority: Omit<GraphFreezeAuthority, "lease"> }
   | { kind: "adapter"; plan: ExecutionPlan; adapter: AgentAdapter; capabilityId: string }
   | { kind: "command"; plan: ExecutionPlan; command: string }
-  | { kind: "workspace"; handler: (input: { workspace: RegisteredCandidateWorkspace; signal: AbortSignal }) => Promise<{
+  | { kind: "workspace"; handler: (input: { workspace: RegisteredCandidateWorkspace; signal: AbortSignal; lease: ExecutionLease }) => Promise<{
       status: "completed" | "failed"; stopped: true; evidence: unknown;
     }> };
 export interface GraphRegisteredAction {
@@ -115,7 +115,7 @@ export class GraphActionBroker {
   private readonly admissions: GraphAdmissionStore;
   private readonly runs: GraphRunStore;
   private readonly actions: GraphActionStore;
-  constructor(db: Database.Database, private readonly options: GraphActionBrokerOptions) {
+  constructor(private readonly db: Database.Database, private readonly options: GraphActionBrokerOptions) {
     this.admissions = new GraphAdmissionStore(db);
     this.runs = new GraphRunStore(db); this.actions = new GraphActionStore(db);
   }
@@ -123,6 +123,11 @@ export class GraphActionBroker {
   register(connection: object, input: GraphWorkerRegistration): void {
     if (this.retired.has(connection)) throw new Error("worker connection retired");
     if (this.connections.has(connection)) throw new Error("worker connection already registered");
+    const binding = this.bind(input);
+    this.connections.set(connection, binding);
+  }
+
+  private bind(input: GraphWorkerRegistration): Binding {
     const { actions, authorize, ...data } = input;
     const fixed = snapshot(data);
     GraphScope.parse(fixed.scope);
@@ -186,7 +191,17 @@ export class GraphActionBroker {
     const binding = Object.freeze({ ...fixed, authorize, actions: registered });
     // Verify full registered identity at installation, then at every ledger access.
     this.fence(binding);
-    this.connections.set(connection, binding);
+    return binding;
+  }
+
+  /** Host-only append. Existing slots and in-flight binding stay immutable. */
+  installActions(connection: object, actions: readonly GraphRegisteredAction[]): void {
+    const binding = this.connections.get(connection);
+    if (!binding || this.retired.has(connection)) throw Error("UNAUTHENTICATED");
+    this.authorize(binding); this.fence(binding);
+    const additions = this.bind({ ...binding, actions });
+    for (const key of additions.actions.keys()) if (binding.actions.has(key)) throw Error("immutable action registration");
+    for (const [key, action] of additions.actions) (binding.actions as Map<string, BoundAction>).set(key, action);
   }
 
   unregister(connection: object): void {
@@ -223,6 +238,9 @@ export class GraphActionBroker {
     if (!run) throw new Denied("RUN_MISMATCH", "registered run not found");
     if (run.generation !== binding.generation || run.leaseOwner !== binding.owner) throw new Denied("STALE_GENERATION", "registered worker lease changed");
     if (canonical(run.identity) !== canonical(binding.identity)) throw new Denied("CHECKPOINT_INCOMPATIBLE", "registered program identity changed");
+    const permit = this.db.prepare('SELECT max(epoch) AS epoch FROM graph_delivery_epochs WHERE graph_run_id=?').get(run.graphRunId) as { epoch: number | null };
+    if (permit.epoch === null && binding.identity.compilerVersion.startsWith("code-delivery-functional-")) throw new Denied("EPOCH_MISMATCH", "delivery epoch permit required");
+    if (permit.epoch !== null && permit.epoch !== binding.epoch) throw new Denied("EPOCH_MISMATCH", "durable delivery epoch changed");
     const now = this.options.now?.() ?? Date.now();
     if (!run.leaseExpiresAt || run.leaseExpiresAt <= now) throw new Denied("STALE_GENERATION", "registered worker lease expired");
     return { scope: binding.scope, graphRunId: binding.graphRunId, identity: binding.identity,
@@ -236,7 +254,7 @@ export class GraphActionBroker {
   /** Trusted host command, never part of worker transport. Only this call owns the
    * freshly ledger-allocated retry intent; ordinary replays cannot claim it. */
   async retryAuthorized(connection: object, effectKey: string, authorizeRetry: () => void,
-    options: { signal?: AbortSignal } = {}): Promise<WorkerActionResponse> {
+    options: { signal?: AbortSignal; replacement?: GraphRegisteredAction } = {}): Promise<WorkerActionResponse> {
     const binding = this.connections.get(connection);
     if (!binding) throw new Error("UNAUTHENTICATED");
     this.authorize(binding);
@@ -249,7 +267,10 @@ export class GraphActionBroker {
     const prior = this.actions.get(this.fence(binding), effectKey).action;
     const registered = binding.actions.get(slot(prior.effect.nodeId, prior.effect.effectSlot));
     if (!registered || prior.effect.epoch !== binding.epoch || canonical(registered.action) !== canonical(prior.action)) throw new Error("unregistered retry slot");
+    const replacement = options.replacement ? this.bind({ ...binding, actions: [options.replacement] }).actions.get(slot(prior.effect.nodeId, prior.effect.effectSlot)) : undefined;
+    if (options.replacement && (!replacement || canonical(replacement.action) !== canonical(prior.action) || replacement.tokenReservation !== prior.reservationTokens)) throw Error('immutable retry payload');
     const next = this.actions.retry(this.fence(binding), effectKey).action;
+    if (replacement) (binding.actions as Map<string, BoundAction>).set(slot(prior.effect.nodeId, prior.effect.effectSlot), replacement);
     return this.executeRequest(connection, { schemaVersion: 1, kind: "worker_action", requestId: `retry:${randomUUID()}`,
       scope: binding.scope, graphRunId: binding.graphRunId, generation: binding.generation, specHash: binding.identity.specHash,
       epoch: binding.epoch, nodeId: prior.effect.nodeId, effectSlot: prior.effect.effectSlot, action: registered.action }, options, { action: next, binding }, authorizeRetry);
@@ -437,7 +458,7 @@ export class GraphActionBroker {
       await this.options.authorizePolicy?.(action.workspace.workspace_path);
       await verifyWorkspace();
       beforeEffect(`workspace:${randomUUID()}`);
-      const result = await execution.handler({ workspace: action.workspace, signal });
+      const result = await execution.handler({ workspace: action.workspace, signal, lease: lease! });
       if (result?.stopped !== true || !["completed", "failed"].includes(result.status)) throw new Error("workspace outcome unconfirmed");
       return { status: result.status, workspace: result.evidence };
     }

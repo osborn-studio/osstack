@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { GraphJsonValue, GraphSpec, freezeWorkerData, workerCanonical } from '@osstack/protocol';
 import { GRAPH_REGISTRY, validateGraphRegistry, type GraphFieldKind, type GraphOperation } from './registry.js';
 
-export const GRAPH_COMPILER_VERSION = 'static-functional-scaffold-v3';
+export const GRAPH_COMPILER_VERSION = 'code-delivery-functional-v4';
 export type GraphInputMapping =
   | { readonly from: 'spec' | 'start'; readonly field: string; readonly kind: GraphFieldKind }
   | { readonly from: 'node'; readonly nodeId: string; readonly field: string; readonly kind: GraphFieldKind };
@@ -58,11 +58,14 @@ function fixedPlan(maxEpochs: number, maxBranchAttempts: number): GraphPlan {
         feedbackRef: output(`${prior}.join`, 'feedbackRef'),
       }) });
     add('freeze', 'freeze', { workspaceLeaseRef: output(`${prefix}.${work}`, 'workspaceLeaseRef'), receiptRef: output(`${prefix}.${work}`, 'receiptRef') });
+    for (const kind of ['review', 'tests']) add(`prepare_${kind}`, 'workspace_create', {
+      repositoryRef: specInput('repositoryRef'), baseRevision: output(`${prefix}.freeze`, 'candidateRevision', 'commit'),
+    }, maxBranchAttempts);
     add('review', 'review', { candidateRevision: output(`${prefix}.freeze`, 'candidateRevision', 'commit'),
-      acceptanceRef: specInput('acceptanceRef'), workspaceLeaseRef: output(`${prefix}.workspace`, 'workspaceLeaseRef') }, maxBranchAttempts);
+      acceptanceRef: specInput('acceptanceRef'), workspaceLeaseRef: output(`${prefix}.prepare_review`, 'workspaceLeaseRef') }, maxBranchAttempts);
     // Host resolves acceptanceRef to an authorized command specification. Never shell text.
     add('tests', 'tests', { candidateRevision: output(`${prefix}.freeze`, 'candidateRevision', 'commit'),
-      commandSpecRef: specInput('acceptanceRef'), workspaceLeaseRef: output(`${prefix}.workspace`, 'workspaceLeaseRef') }, maxBranchAttempts);
+      commandSpecRef: specInput('acceptanceRef'), workspaceLeaseRef: output(`${prefix}.prepare_tests`, 'workspaceLeaseRef') }, maxBranchAttempts);
     add('join', 'join', { candidate: output(`${prefix}.freeze`, '$', 'candidate'), review: output(`${prefix}.review`, '$', 'review'),
       tests: output(`${prefix}.tests`, '$', 'tests') });
   }
@@ -106,7 +109,7 @@ export function validateGraphPlan(value: unknown, registryValue: unknown = GRAPH
 }
 
 /** Pure compilation: no filesystem, executor, clock, random source, or plugin lookup.
- * Emitted source is a versioned first-epoch execution scaffold, not the G21 template.
+ * Emitted source uses Functional tasks and host-owned quality interrupts.
  * All possible epochs/host-authorized branch retries reserve capacity up front. */
 export function compileGraphSpec(value: unknown, registryValue: unknown = GRAPH_REGISTRY): CompiledGraphSpec {
   const spec = freezeWorkerData(GraphSpec.parse(value));
@@ -118,10 +121,6 @@ export function compileGraphSpec(value: unknown, registryValue: unknown = GRAPH_
     if (contract.tool !== 'pure') budget.maxActionStarts += node.maxLedgerAttempts;
     budget.tokenReservationLimit += node.maxLedgerAttempts * contract.reservedTokens;
   }
-  // Each review/tests attempt may require a fresh isolated restore, including
-  // retries. Reserve these host lifecycle starts even though G21 will register
-  // and dispatch them; the G18 scaffold is not the complete delivery template.
-  budget.maxActionStarts += 2 * spec.limits.maxEpochs * spec.limits.maxBranchAttempts;
   if (budget.maxActionStarts > spec.limits.maxActionStarts || budget.tokenReservationLimit > spec.limits.tokenReservationLimit) {
     throw new Error('BUDGET_EXHAUSTED: limits cannot reserve the expanded fixed plan');
   }
@@ -166,7 +165,7 @@ export async function run(ctx) {
   if (canonical(ctx.input.spec) !== canonical(program.spec) || ctx.binding.identity.specHash !== program.specHash) throw Error('SPEC_MISMATCH');
   const results = Object.create(null);
   const functions = new Map();
-  const active = program.plan.nodes.filter(node => node.epoch === 0 && node.operation !== 'join');
+  const active = program.plan.nodes.filter(node => node.operation !== 'join');
   for (const node of active) {
     functions.set(node.id, ctx.task({ name: node.taskName, retry: { maxAttempts: 1 } }, async inputs => {
       if (ctx.signal.aborted) throw Error('WORKER_CANCELLED');
@@ -199,10 +198,21 @@ export async function run(ctx) {
     results[node.id] = validateOutput(node, await functions.get(node.id)(freeze(inputs)));
     return results[node.id];
   };
-  for (const node of active.slice(0, 3)) await invoke(node);
-  // Invocation order is fixed; completion order never creates/reorders task calls.
-  const branches = await Promise.all(active.slice(3).map(node => invoke(node)));
-  return { candidate: results['e0.freeze'], review: branches[0], tests: branches[1] };
+  for (let epoch = 0; epoch < program.plan.maxEpochs; epoch++) {
+    const nodes = active.filter(node => node.epoch === epoch);
+    for (const node of nodes.slice(0, 3)) await invoke(node);
+    await Promise.all(nodes.slice(3, 5).map(node => invoke(node)));
+    const branches = await Promise.allSettled(nodes.slice(5).map(node => invoke(node)));
+    const failure = branches.find(result => result.status === 'rejected');
+    if (failure) throw failure.reason;
+    // This is a checkpointed handoff, never a worker quality decision.
+    const decision = ctx.interrupt({ kind: 'quality_join', epoch });
+    if (!decision || decision.epoch !== epoch || !valid('ref', decision.feedbackRef)) throw Error('HOST_JOIN_REQUIRED');
+    results['e' + epoch + '.join'] = { feedbackRef: decision.feedbackRef };
+    if (decision.kind === 'ready' || decision.kind === 'stop') return decision;
+    if (decision.kind !== 'repair_required' || decision.nextEpoch !== epoch + 1) throw Error('HOST_JOIN_REQUIRED');
+  }
+  throw Error('EPOCH_BUDGET_EXHAUSTED');
 }
 `;
 }

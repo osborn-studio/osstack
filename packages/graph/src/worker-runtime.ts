@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Socket } from 'node:net';
-import { Command, entrypoint, task } from '@langchain/langgraph';
+import { Command, entrypoint, task, interrupt } from '@langchain/langgraph';
 import {
   GraphJsonValue, GraphWorkerMessage, WorkerFramedTransport, computeGraphInputDigest, workerCanonical, freezeWorkerData,
   type GraphWorkerBinding, type GraphCheckpointTransport, type StartGraphRequest, type GraphWorkerResume,
@@ -18,6 +18,7 @@ export interface GraphWorkerProgramContext {
   readonly signal: AbortSignal;
   /** Installed public Functional API. Registered source must be self-contained. */
   readonly task: typeof task;
+  readonly interrupt: typeof interrupt;
 }
 export interface GraphWorkerProgram { run(context: GraphWorkerProgramContext): Promise<GraphJsonValue> }
 
@@ -66,7 +67,7 @@ export function runGraphWorker(): void {
     const input = freezeWorkerData(init.input);
     const resume = init.resume ? freezeWorkerData(init.resume) : undefined;
     const context = Object.freeze({ binding: init.binding, input, ...(resume ? { resume } : {}),
-      action: contextClient.action, checkpoint: contextClient.checkpoint, signal: abort.signal, task });
+      action: contextClient.action, checkpoint: contextClient.checkpoint, signal: abort.signal, task, interrupt });
     const workflow = entrypoint({ name: init.programId, checkpointer: new RemoteCheckpointSaver(init.binding.graphRunId, contextClient.checkpoint) },
       async (_input: StartGraphRequest) => GraphJsonValue.parse(await program.run(context)));
     if (abort.signal.aborted) throw new Error('WORKER_CANCELLED');

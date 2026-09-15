@@ -50,6 +50,10 @@
     "./route": {
       "types": "./dist/route.d.ts",
       "import": "./dist/route.js"
+    },
+    "./templates/code-delivery-v1": {
+      "types": "./dist/templates/code-delivery-v1.d.ts",
+      "import": "./dist/templates/code-delivery-v1.js"
     }
   },
   "files": [

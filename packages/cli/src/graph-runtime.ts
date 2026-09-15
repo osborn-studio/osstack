@@ -1,3 +1,4 @@
+import type { WorkerActionRequest, WorkerActionResponse } from '@osstack/protocol';
 import type Database from 'better-sqlite3';
 import { GraphRunStore, type GraphRun, type GraphProgramVersion } from '@osstack/core';
 import { workerCanonical, freezeWorkerData, type StartGraphRequest, type GraphWorkerResume } from '@osstack/protocol';
@@ -22,6 +23,8 @@ export interface GraphRuntimeStart {
   registration: GraphWorkerRegistration;
   authorize: () => void;
   resume?: GraphWorkerResume;
+  /** Trusted host compilation/lifecycle port; never selected by worker data. */
+  dispatch?: (connection: object, request: WorkerActionRequest, options: { signal?: AbortSignal }) => Promise<WorkerActionResponse>;
   /** Optional live renewal only; never acquires a replacement generation. */
   leaseDurationMs?: number;
 }
@@ -70,6 +73,7 @@ export class GraphRuntime {
     this.open();
     const run = freezeWorkerData(structuredClone(value.run));
     const registration = value.registration;
+    const dispatch = value.dispatch;
     const authorizeHost = value.authorize; const authorizeRegistration = registration.authorize;
     const duration = value.leaseDurationMs;
     if (duration !== undefined && (!Number.isSafeInteger(duration) || duration < 100 || duration > 60000)) throw new Error('GRAPH_LEASE_DURATION');
@@ -132,7 +136,7 @@ export class GraphRuntime {
           this.options.broker.register(key, { ...registration, authorize: () => { authorize(); } });
           this.options.checkpoints.register(key, { ...fixed, authorize: async () => { authorize(); } });
         },
-        action: (key, request, options) => track(this.options.broker.handle(key, request, options)),
+        action: (key, request, options) => track(dispatch ? dispatch(key, request, options) : this.options.broker.handle(key, request, options)),
         checkpoint: (key, request) => this.options.checkpoints.execute(key, request),
       });
     } catch (error) { retire(); throw error; }

@@ -142,8 +142,14 @@ export class GraphActionStore {
     return row ? decode(row) : null;
   }
   private budget(run: GraphRun): GraphActionBudget { return graphActionBudget(this.db, run.graphRunId); }
+  private checkEpoch(run: GraphRun, epoch: number): void {
+    const row = this.db.prepare('SELECT max(epoch) AS epoch FROM graph_delivery_epochs WHERE graph_run_id=?').get(run.graphRunId) as { epoch: number | null };
+    if (row.epoch === null && run.identity.compilerVersion.startsWith('code-delivery-functional-')) throw Error('DELIVERY_EPOCH_PERMIT_REQUIRED');
+    if (row.epoch !== null && row.epoch !== epoch) throw Error('EPOCH_MISMATCH');
+  }
   private admit(run: GraphRun, slot: GraphActionAdmission, retry: boolean, now: number): void {
     const limits = run.spec!.limits;
+    this.checkEpoch(run, slot.epoch);
     if (run.status === "cancel_pending" || run.status === "reconciliation_required") fail("RUN_STOPPING");
     if (this.db.prepare(`SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND
       (state IN ('unknown','cancel_pending') OR (state IN ('intent','running') AND generation <> ?)) LIMIT 1`)
@@ -185,6 +191,7 @@ export class GraphActionStore {
         epoch: parsed.epoch, nodeId: parsed.nodeId, effectSlot: parsed.effectSlot, action: parsed.action }).action;
       const input = { ...parsed, action };
       const digest = createHash("sha256").update(`osstack.graph.action.business.v1\n${canonical(action)}`).digest("hex");
+      this.checkEpoch(run, input.epoch);
       const prior = this.current(run, input);
       if (prior) {
         if (prior.businessDigest !== digest || prior.reservationTokens !== input.reservationTokens) fail("ACTION_INPUT_CONFLICT");
@@ -222,6 +229,7 @@ export class GraphActionStore {
     keySchema.parse(effectKey); ref.parse(executionRef);
     return this.write(fence, (run) => {
       const prior = this.find(run, effectKey);
+      this.checkEpoch(run, prior.effect.epoch);
       if (prior.generation !== run.generation) fail("ACTION_GENERATION_MISMATCH");
       if (prior.state === "running") {
         if (prior.executionRef !== executionRef) fail("EXECUTION_CONFLICT");
@@ -248,6 +256,7 @@ export class GraphActionStore {
     const input = uncertainSchema.parse(GraphJsonValue.parse(value));
     return this.write(fence, (run) => {
       const prior = this.find(run, effectKey);
+      this.checkEpoch(run, prior.effect.epoch);
       if (prior.generation !== run.generation) fail("ACTION_GENERATION_MISMATCH");
       if (prior.state === "confirmed" || prior.state === "failed") fail("INVALID_ACTION_STATE");
       if (prior.uncertainty && canonical(prior.uncertainty) === canonical(input)) return { action: prior, changed: false, created: false };
@@ -276,6 +285,7 @@ export class GraphActionStore {
         if (canonical(prior.outcome) !== canonical(outcome)) fail("OUTCOME_CONFLICT");
         return { action: prior, changed: false, created: false };
       }
+      this.checkEpoch(run, prior.effect.epoch);
       if (prior.generation !== run.generation) fail("ACTION_GENERATION_MISMATCH");
       if (prior.state === "unknown" || prior.state === "cancel_pending") fail("UNRESOLVED_ACTION");
       if (prior.state !== "running" && !(prior.state === "intent" && outcome.state === "failed")) fail("INVALID_ACTION_STATE");
