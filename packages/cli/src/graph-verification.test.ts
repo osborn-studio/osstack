@@ -261,10 +261,15 @@ it('allocates distinct actual review sessions on explicit retry and persists pro
     expect(envelope).toHaveProperty('reviewerInvocation', expect.objectContaining({ sessionId: seen[i]!.session_id, runId: seen[i]!.run_id, historyPassed: false, promptDigest: createHash('sha256').update(seen[i]!.prompt).digest('hex') }));
   }
 }, 15000);
-it('rejects oversized evidence before publishing any envelope', async () => {
+it('rejects an oversized envelope at the storage boundary before publishing any file', async () => {
   const f = await fixture(); const p = await prepareGraphVerification(f.options);
-  await expect(p.actions[1]!.persist({ status: 'failed', stopped: true, command: { command: 'exit 1', exitCode: 1, stdout: '界'.repeat(24000), stderr: '', durationMs: 1, termination: { scope: 'posix_process_group', trigger: 'exit', leader_exit_code: 1, stop_confirmed: true, signals: [], evidence: 'stopped' } } })).rejects.toThrow(/bounded|size|64|limit/);
-  expect(await readdir(join(f.options.root, 'evidence')).catch(() => [])).toEqual([]);
+  const saved = await p.actions[1]!.persist({ status: 'failed', stopped: true, command: { command: 'exit 1', exitCode: 1, stdout: '', stderr: '', durationMs: 1, termination: { scope: 'posix_process_group', trigger: 'exit', leader_exit_code: 1, stop_confirmed: true, signals: [], evidence: 'stopped' } } });
+  const envelope = await loadGraphVerificationEvidence(f.options.root, saved.evidenceRef, f.binding);
+  envelope.evidence.command!.stdout = '界'.repeat(24000);
+  const storageRoot = join(f.root, 'oversized'); await mkdir(storageRoot);
+  const { publishGraphVerificationEvidence } = await import('./graph-verification-store.js');
+  await expect(publishGraphVerificationEvidence(storageRoot, envelope, () => {})).rejects.toThrow(/bounded|size|64|limit/);
+  expect(await readdir(storageRoot)).toEqual([]);
 }, 15000);
 
 it('requires an actual invocation receipt and strips supplied writer context on every invocation', async () => {
