@@ -97,6 +97,29 @@ function decode(row: ActionRow): GraphAction {
 }
 interface Mutation { action: GraphAction; changed: boolean; created: boolean }
 
+/** Internal core snapshot helper; callers own their fenced SQL transaction. */
+export function readGraphActionState(db: Database.Database, graphRunId: string): { actions: GraphAction[]; budget: GraphActionBudget } {
+  return { actions: (db.prepare("SELECT * FROM graph_actions WHERE graph_run_id=? ORDER BY epoch,node_id,effect_slot,logical_attempt").all(graphRunId) as ActionRow[]).map(decode), budget: graphActionBudget(db, graphRunId) };
+}
+function graphActionBudget(db: Database.Database, graphRunId: string): GraphActionBudget {
+    let reserved = 0n; let charged = 0n; let actionStarts = 0; let accountingBlocked = false;
+    // Ledger rows ARE the authoritative budget entries. Derived in the same
+    // transaction, so there is no mutable budget mirror to reset on resume.
+    const rows = db.prepare(`SELECT state, reservation_tokens, actual_tokens, observed_tokens, accounting_blocked
+      FROM graph_actions WHERE graph_run_id = ?`).iterate(graphRunId) as Iterable<Pick<ActionRow,
+        "state" | "reservation_tokens" | "actual_tokens" | "observed_tokens" | "accounting_blocked">>;
+    for (const row of rows) {
+      actionStarts++;
+      accountingBlocked ||= row.accounting_blocked === 1;
+      if ((row.state === "confirmed" || row.state === "failed") && row.actual_tokens !== null) {
+        // Failed attempts consume their full reservation even if less usage was
+        // reported. Unknown usage never releases capacity.
+        charged += BigInt(row.state === "failed" ? Math.max(row.reservation_tokens, row.actual_tokens) : row.actual_tokens);
+      } else reserved += BigInt(Math.max(row.reservation_tokens, row.observed_tokens));
+    }
+    return { actionStarts, reservedTokens: reserved.toString(), chargedTokens: charged.toString(), accountingBlocked };
+}
+
 export class GraphActionStore {
   constructor(private readonly db: Database.Database) {}
 
@@ -118,24 +141,7 @@ export class GraphActionStore {
       ORDER BY logical_attempt DESC LIMIT 1`).get(run.graphRunId, slot.epoch, slot.nodeId, slot.effectSlot) as ActionRow | undefined;
     return row ? decode(row) : null;
   }
-  private budget(run: GraphRun): GraphActionBudget {
-    let reserved = 0n; let charged = 0n; let actionStarts = 0; let accountingBlocked = false;
-    // Ledger rows ARE the authoritative budget entries. Derived in the same
-    // transaction, so there is no mutable budget mirror to reset on resume.
-    const rows = this.db.prepare(`SELECT state, reservation_tokens, actual_tokens, observed_tokens, accounting_blocked
-      FROM graph_actions WHERE graph_run_id = ?`).iterate(run.graphRunId) as Iterable<Pick<ActionRow,
-        "state" | "reservation_tokens" | "actual_tokens" | "observed_tokens" | "accounting_blocked">>;
-    for (const row of rows) {
-      actionStarts++;
-      accountingBlocked ||= row.accounting_blocked === 1;
-      if ((row.state === "confirmed" || row.state === "failed") && row.actual_tokens !== null) {
-        // Failed attempts consume their full reservation even if less usage was
-        // reported. Unknown usage never releases capacity.
-        charged += BigInt(row.state === "failed" ? Math.max(row.reservation_tokens, row.actual_tokens) : row.actual_tokens);
-      } else reserved += BigInt(Math.max(row.reservation_tokens, row.observed_tokens));
-    }
-    return { actionStarts, reservedTokens: reserved.toString(), chargedTokens: charged.toString(), accountingBlocked };
-  }
+  private budget(run: GraphRun): GraphActionBudget { return graphActionBudget(this.db, run.graphRunId); }
   private admit(run: GraphRun, slot: GraphActionAdmission, retry: boolean, now: number): void {
     const limits = run.spec!.limits;
     if (run.status === "cancel_pending" || run.status === "reconciliation_required") fail("RUN_STOPPING");

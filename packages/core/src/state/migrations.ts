@@ -1559,6 +1559,28 @@ export const MIGRATIONS: readonly Migration[] = [
         BEGIN SELECT RAISE(ABORT, 'graph admission history immutable'); END;
     `,
   },
+  {
+    id: 31,
+    name: "graph_verification_joins",
+    sql: `
+      CREATE TABLE graph_verification_joins (
+        receipt_ref TEXT PRIMARY KEY,
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        epoch INTEGER NOT NULL CHECK(epoch BETWEEN 0 AND 2),
+        candidate_revision TEXT NOT NULL,
+        generation INTEGER NOT NULL,
+        owner TEXT NOT NULL,
+        bundle_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL CHECK(created_at >= 0 AND created_at <= 9007199254740991),
+        UNIQUE(graph_run_id,epoch,candidate_revision),
+        FOREIGN KEY(graph_run_id,generation) REFERENCES graph_worker_leases(graph_run_id,generation)
+      );
+      CREATE TRIGGER graph_verification_joins_no_update BEFORE UPDATE ON graph_verification_joins
+        BEGIN SELECT RAISE(ABORT, 'graph verification join immutable'); END;
+      CREATE TRIGGER graph_verification_joins_no_delete BEFORE DELETE ON graph_verification_joins
+        BEGIN SELECT RAISE(ABORT, 'graph verification join immutable'); END;
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;
