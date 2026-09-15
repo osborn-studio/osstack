@@ -1,8 +1,8 @@
 # OSStack 升级改造实施计划：Loop 强化与可执行 Graph v1
 
-日期：2026-09-13。检查基线：`b476bcc3fbbfcc11953abd3d154e59f7f85c4660`，分支 `codex/graph-readonly-pilot`。**状态：G00–G20 已完成，21/30；M0/M1 与 C2–C6 已通过，M2 实施中。下一批 G21：组合完整代码交付模板。完整生产图运行时尚未完成。**
+日期：2026-09-13；更新：2026-09-15。**状态：G00–G21 已完成，22/30；M0/M1 与 C2–C6 已通过，M2 实施中。下一批 G22–G24；C7 尚未通过。** 完整模板已执行验证，公开入口与生产故障/兼容/性能/试点尚未完成。
 
-实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；本批已验收代码：`00571bb862f27d9ab8e2e502d33e588196d62fee`。按 G21 继续，见 [C6 验收](2026-09-14-graph-verification-completion.md)与[下一轮上下文](2026-09-14-graph-verification-next-context.md)。[C5 历史验收](2026-09-14-graph-chain-completion.md)保留原结论。见 [C2 验收与接续报告](2026-09-13-graph-c2-completion.md)、[G05–G07 历史验收](2026-09-13-graph-kernel-completion.md)、[Saver 决策与反例](graph-saver-decision.md)；[G00–G04 历史验收](2026-09-13-graph-foundation-completion.md) 保留原结论。
+实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；本批验收源：`ab988b32649c9eef084e997bb92d31c0108436fc`。见 [G21 验收](2026-09-15-graph-delivery-completion.md)与[G22–G24 接续上下文](2026-09-15-graph-delivery-next-context.md)；[C6 历史验收](2026-09-14-graph-verification-completion.md)保留原结论。
 
 本计划将 [架构设计](../design/2026-09-13-executable-graph-plan.md) 转成可逐项执行的任务，产品边界遵循 [三产品定义](../design/2026-09-13-os-products-definition.md)。OSBot 功能在 [独立 handoff](../handoffs/osbot/handoff.md) 交接；本计划只改造 OSStack，不部署 Rakazo，不修改 OStag 产品。
 
@@ -20,7 +20,7 @@ Loop 与 Graph 都获得具体提升：Loop 的终态、取消和候选执行接
 
 ## 2. 已核实基线和工程差距
 
-下表描述 `b476bcc` 实施前事实；G00–G20 的已交付变化以任务状态和验收报告为准。
+下表描述 `b476bcc` 实施前事实；G00–G21 的已交付变化以任务状态和验收报告为准。
 
 | 位置 | 当前事实 | 升级责任 |
 |---|---|---|
@@ -117,7 +117,7 @@ flowchart TD
   PRODUCT --> GATES[M3：故障 / 兼容 / 性能 / 试点]
 ```
 
-任务状态以本文件和机器清单的实际验收记录为准；目前 G00–G20 完成，G21–G29 pending。预计每卡一个 S/M 范围；若实施发现超过一个聚焦会话或约 5 个实质源文件，应拆成后缀任务并更新依赖，不能以表内估计硬塞大型改造。
+任务状态以本文件和机器清单的实际验收记录为准；目前 G00–G21 完成，G22–G29 pending。预计每卡一个 S/M 范围；若实施发现超过一个聚焦会话或约 5 个实质源文件，应拆成后缀任务并更新依赖，不能以表内估计硬塞大型改造。
 
 | ID | 阶段 | 任务 | 依赖 |
 |---|---|---|---|
@@ -581,9 +581,11 @@ flowchart TD
 
 ### G21 · 组合代码交付 v1 模板
 
-**依赖：** G17, G20。**规模：** M。**状态：** 未开始。
+**依赖：** G17, G20。**规模：** M。**状态：** 已完成。
 
-**预计改动位置：**
+**实际改动：** 完整编排跨 19 个文件，详见准入记录的 sourceHashes；以下是最初预计位置。按实施规模拆为 G21a（轮次/注册，依赖 G17/G20）、G21b（模板/host/回执，依赖 G21a）、G21c（集成/反例/验收，依赖 G21b）；三项已完成，G22 仍依赖聚合任务 G21。
+
+**最初预计位置：**
 
 - `packages/graph/src/templates/code-delivery-v1.ts`
 - `packages/graph/src/templates/code-delivery-v1.test.ts`
@@ -591,11 +593,13 @@ flowchart TD
 
 **验收：**
 
-- [ ] 实现→freeze→并行 review/tests→join→ready/repair/stop 全路径真实可执行。
-- [ ] ready 只交付候选包；无隐式 merge/push/deploy，无 task FSM 自动完成。
-- [ ] 覆盖直接成功、修复后成功、分支错误、预算停止和不同先后顺序，只有一个质量门 owner。
+- [x] 实现→freeze→并行 review/tests→join→ready/repair/stop 全路径真实可执行。
+- [x] ready 只交付候选包；无隐式 merge/push/deploy，无 task FSM 自动完成。
+- [x] 覆盖直接成功、修复后成功、分支错误、预算停止和不同先后顺序，只有一个质量门 owner。
 
 **验证：** graph 模板测试 + cli `graph-delivery.integration.test.ts`；真实临时仓库和确定性 fake model/命令。
+
+**验收记录：** 源 `ab988b32649c9eef084e997bb92d31c0108436fc`；真实 Loop 全库 3201 项测试与 6 个 verifier 通过。Claude 两轮审查后的修复与额度限制详见 [G21 报告](2026-09-15-graph-delivery-completion.md)。
 
 ### G22 · 交付 validate/run/status 命令
 
@@ -760,9 +764,9 @@ flowchart TD
 
 ## 8. 依赖、分支和交接纪律
 
-- G00–G20 与 C2–C6 已完成；下一批执行 G21，将已验收组件组合为完整代码交付模板。
+- G00–G21 与 C2–C6 已完成；下一批执行 G22–G24，交付用户命令与外部契约后再验收 C7。
 - G08、G09 在约束明确后可分别处理。G10–G17 涉及 daemon/核心存储，按依赖串行整合，避免多个任务同时改 migrations.ts 或 daemon.ts；DDL 严格按 G08→G11→G13→G16 单负责人推进。
-- M1 的真实 broker/产物接口已通过 C5，G18–G20 已通过 C6；G21 补齐动态 host 注册、完整模板和 epoch 推进，再交付 G22–G24 用户入口。
+- M1 的真实 broker/产物接口已通过 C5，G18–G20 已通过 C6；G21 已补齐动态 host 注册、完整模板和 epoch 推进；继续 G22–G24 用户入口。
 - G22/G23 共用 graph-command 和 RPC；G25/G26 故障验证依赖完整业务路径，不提前用 stub 结果充数。
 - 真正并行时，每人只处理一个有明确文件边界的任务。此计划的依赖图不代表本次已经启动 agent 或其他 session。
 
@@ -829,4 +833,4 @@ graph worker 启动、冷/热执行、checkpoint/IPC 和并行工作区准备成
 
 ## 13. 下一轮实施的明确起点
 
-G00–G20 已完成，**21/30；C6 已通过，M0/M1 完成，M2 实施中**。下一轮从 G21 组合完整 code-delivery-v1 开始，见 [C6 接续上下文](2026-09-14-graph-verification-next-context.md)。当前已实现静态规格、独立验证、host 最新证据汇合与有界路由；完整 epoch 推进、公开 CLI 与生产故障/兼容/性能/试点仍待后续任务。
+G00–G21 已完成，**22/30；C6 已通过，M0/M1 完成，M2 实施中，C7 pending**。完整代码交付模板和实际修复换代已验证；继续 [G22–G24](2026-09-15-graph-delivery-next-context.md) 用户入口/外部契约，随后完成故障、兼容、发行、性能与试点。

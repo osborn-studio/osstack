@@ -938,9 +938,25 @@
         "G20"
       ],
       "files": [
-        "packages/graph/src/templates/code-delivery-v1.ts",
+        "packages/cli/src/graph-action-broker.ts",
+        "packages/cli/src/graph-runtime.ts",
+        "packages/cli/src/graph-verification.ts",
+        "packages/core/src/state/graph-actions.ts",
+        "packages/core/src/state/graph-verification.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/graph/package.json",
+        "packages/graph/src/spec-compiler.test.ts",
+        "packages/graph/src/spec-compiler.ts",
+        "packages/graph/src/worker-runtime.ts",
+        "packages/cli/src/graph-delivery-adversarial.test.ts",
+        "packages/cli/src/graph-delivery-broker.test.ts",
+        "packages/cli/src/graph-delivery-receipts.test.ts",
+        "packages/cli/src/graph-delivery-receipts.ts",
+        "packages/cli/src/graph-delivery.integration.test.ts",
+        "packages/cli/src/graph-delivery.ts",
+        "packages/core/src/state/graph-delivery-epochs.test.ts",
         "packages/graph/src/templates/code-delivery-v1.test.ts",
-        "packages/cli/src/graph-delivery.integration.test.ts"
+        "packages/graph/src/templates/code-delivery-v1.ts"
       ],
       "acceptance": [
         "实现→freeze→并行 review/tests→join→ready/repair/stop 全路径真实可执行。",
@@ -949,9 +965,43 @@
       ],
       "verify": "DELIVERY",
       "size": "M",
-      "status": "pending",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "acceptedCodeCommit": "ab988b32649c9eef084e997bb92d31c0108436fc",
+      "evidence": [
+        "docs/implementation/2026-09-15-graph-delivery-completion.md",
+        "docs/implementation/graph-delivery-evidence/admission.json",
+        "docs/implementation/graph-delivery-evidence/acceptance-result.json",
+        "docs/implementation/graph-delivery-evidence/review-adjudication.md"
+      ],
+      "implementationSubtasks": [
+        {
+          "id": "G21a",
+          "title": "持久轮次许可与可信注册",
+          "dependsOn": [
+            "G17",
+            "G20"
+          ],
+          "status": "completed"
+        },
+        {
+          "id": "G21b",
+          "title": "完整模板、host driver 与回执",
+          "dependsOn": [
+            "G21a"
+          ],
+          "status": "completed"
+        },
+        {
+          "id": "G21c",
+          "title": "真实集成、反例与验收",
+          "dependsOn": [
+            "G21b"
+          ],
+          "status": "completed"
+        }
       ]
     },
     {
@@ -1161,24 +1211,27 @@
       ]
     }
   ],
-  "updatedAt": "2026-09-14",
+  "updatedAt": "2026-09-15",
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "00571bb862f27d9ab8e2e502d33e588196d62fee",
-    "completedTaskCount": 21,
+    "acceptedCodeCommit": "ab988b32649c9eef084e997bb92d31c0108436fc",
+    "completedTaskCount": 22,
     "totalTaskCount": 30,
     "nextTasks": [
-      "G21"
+      "G22",
+      "G23",
+      "G24"
     ],
-    "report": "docs/implementation/2026-09-14-graph-verification-completion.md",
+    "report": "docs/implementation/2026-09-15-graph-delivery-completion.md",
     "nextGate": "C7",
     "milestoneStatus": {
       "M0": "completed",
       "M1": "completed",
       "M2": "in_progress",
       "M3": "pending"
-    }
+    },
+    "reviewNote": "Claude Fable 5.1 两轮有效审查；最终回审额度不足，无最终签核。独立 Codex Loop 只读审查 PASS，真实 Loop 全库验收通过。"
   },
   "decisionGates": [
     {
@@ -1186,7 +1239,7 @@
       "status": "passed",
       "reason": "C2 仅准入 langgraph-functional-v1 + durability:sync 供 M1 集成；StateGraph 1.4.15 的 partial-abort AND-join 反例仍未修复，不获准入。",
       "evidence": "docs/implementation/graph-c2-evidence/admission.json",
-      "nextAction": "C2–C6 已通过限定准入；继续 G21 与 G22–G24/C7，完整故障矩阵仍须 G25。",
+      "nextAction": "C2–C6 已通过限定准入，G21 本地验收完成；继续 G22–G24/C7，完整故障矩阵仍须 G25。",
       "releaseCriteria": [
         "对应 Functional 并行失败场景恢复完整结果，逻辑 join 效果一次；StateGraph 失败对照保持可复现",
         "独立进程 partial write、异常、超时、取消、恢复二次 SIGKILL、interrupt false 矩阵通过",
@@ -1250,6 +1303,18 @@
       "evidence": "docs/implementation/graph-verification-evidence/admission.json",
       "productionReady": false,
       "acceptedCodeCommit": "00571bb862f27d9ab8e2e502d33e588196d62fee"
+    },
+    {
+      "id": "C7",
+      "status": "pending",
+      "tasks": [
+        "G21",
+        "G22",
+        "G23",
+        "G24"
+      ],
+      "reason": "G21 完成；用户命令、cancel/resume 与外部契约尚未完成。",
+      "productionReady": false
     }
   ]
 }
