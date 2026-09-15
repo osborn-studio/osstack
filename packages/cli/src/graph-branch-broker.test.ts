@@ -138,3 +138,16 @@ it('retains the precise overridden workspace when executor stop cannot be proven
   })).rejects.toThrow('inspect only');
   expect(f.writes.in_use).toBe(1);
 });
+it('settles its allocated retry intent when the fresh retry grant is refused before reserve', async () => {
+  let calls = 0; const f = fixture(actor(async function* (task) { calls++; yield done(task); })); const connection = {};
+  const action = { kind: 'review' as const, candidateRevision: 'a'.repeat(40), acceptanceRef: 'acceptance', workspaceLeaseRef: 'workspace' };
+  f.broker.register(connection, { ...f.registration, actions: [{ ...f.registration.actions[0]!, nodeId: 'review', action,
+    persist: async () => ({ evidenceRef: 'malformed-review', verificationFailure: { code: 'OUTPUT_CONTRACT_INVALID', message: 'malformed', retrySafe: true } }) }] });
+  await f.broker.handle(connection, { ...f.request, nodeId: 'review', action });
+  const row = f.db.prepare('SELECT effect_key FROM graph_actions').get() as { effect_key: string }; let checks = 0;
+  const response = await f.broker.retryAuthorized(connection, row.effect_key, () => { if (++checks > 1) throw Error('retry grant revoked'); });
+  expect(response).toMatchObject({ kind: 'worker_action_rejected' }); expect(calls).toBe(1);
+  expect(f.db.prepare('SELECT logical_attempt, state FROM graph_actions ORDER BY logical_attempt').all()).toEqual([
+    { logical_attempt: 1, state: 'failed' }, { logical_attempt: 2, state: 'failed' },
+  ]);
+});

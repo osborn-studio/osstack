@@ -60,3 +60,15 @@ it('requires a fresh synchronous host verifier and rejects a changed publication
   f.store.commit(f.store.snapshot(f.fence()), bundle(f), 125); f.refresh();
   expect(() => f.store.commit(f.store.snapshot({ ...f.fence(), now: 130 }), { ...bundle(f), evidenceDigest: 'f'.repeat(64) }, 130)).toThrow(/CONFLICT/);
 });
+it('detects release-only changes even when run revision stays the same', () => {
+  const f = fixture(); const action = f.reserve();
+  f.actions.markRunning(f.fence(), action.effectKey, 'execution'); f.refresh();
+  f.actions.recordOutcome(f.fence(), action.effectKey, { state: 'confirmed', evidenceRef: 'tests', actualTokens: 0,
+    result: { schemaVersion: 1, kind: 'tests', candidateRevision: 'c'.repeat(40), passed: true, evidenceDigest: 'a'.repeat(64), evidenceRefs: ['tests'] } }); f.refresh();
+  const admissions = new GraphAdmissionStore(f.db); admissions.hold(action.effectKey, 125);
+  const before = f.store.snapshot(f.fence()); admissions.released(action.effectKey, 126);
+  const after = f.store.snapshot(f.fence());
+  expect(after.run.revision).toBe(before.run.revision); expect(after.digest).not.toBe(before.digest);
+  expect(() => f.store.commit(before, bundle(f), 130)).toThrow('VERIFICATION_SNAPSHOT_CHANGED');
+  expect(f.store.commit(after, bundle(f), 130).created).toBe(true);
+});

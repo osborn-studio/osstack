@@ -252,17 +252,21 @@ export class GraphActionBroker {
     const next = this.actions.retry(this.fence(binding), effectKey).action;
     return this.executeRequest(connection, { schemaVersion: 1, kind: "worker_action", requestId: `retry:${randomUUID()}`,
       scope: binding.scope, graphRunId: binding.graphRunId, generation: binding.generation, specHash: binding.identity.specHash,
-      epoch: binding.epoch, nodeId: prior.effect.nodeId, effectSlot: prior.effect.effectSlot, action: registered.action }, options, next.effectKey, authorizeRetry);
+      epoch: binding.epoch, nodeId: prior.effect.nodeId, effectSlot: prior.effect.effectSlot, action: registered.action }, options, { action: next, binding }, authorizeRetry);
   }
 
-  private async executeRequest(connection: object, value: unknown, options: { signal?: AbortSignal }, retryEffectKey?: string, authorizeRetry?: () => void): Promise<WorkerActionResponse> {
+  private async executeRequest(connection: object, value: unknown, options: { signal?: AbortSignal }, retry?: { action: GraphAction; binding: Binding }, authorizeRetry?: () => void): Promise<WorkerActionResponse> {
     let request: WorkerActionRequest;
     try { request = snapshot(WorkerActionRequest.parse(value)); }
     catch { return { schemaVersion: 1, kind: "worker_action_rejected", requestId: "invalid-request", error: graphError("INPUT_CONTRACT_INVALID", "invalid worker action request") }; }
-    const binding = this.connections.get(connection);
+    // Own the allocated retry before rechecking grants. If admission is denied,
+    // settle this caller's unstarted intent while its original fence is still live.
+    // Expired/replaced owners must instead use G15, never a refreshed generation.
+    const binding = this.connections.get(connection) ?? retry?.binding;
+    const retryEffectKey = retry?.action.effectKey;
     const signal = options.signal ?? new AbortController().signal;
     let executionWorkspace: RegisteredCandidateWorkspace | undefined;
-    let lease: ExecutionLease | undefined; let owned: GraphAction | undefined; let invoked = false; let uncertain = false; let observedTokens = 0; let persistedEvidenceRef: string | undefined;
+    let lease: ExecutionLease | undefined; let owned: GraphAction | undefined = retry?.action; let invoked = false; let uncertain = false; let observedTokens = 0; let persistedEvidenceRef: string | undefined;
     const reject = (error: unknown): WorkerActionResponse => ({ schemaVersion: 1, kind: "worker_action_rejected", requestId: request.requestId,
       error: graphError(errorCode(error), String(error)) });
     try {
