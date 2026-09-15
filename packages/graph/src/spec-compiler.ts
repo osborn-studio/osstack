@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { GraphJsonValue, GraphSpec, freezeWorkerData, workerCanonical } from '@osstack/protocol';
 import { GRAPH_REGISTRY, validateGraphRegistry, type GraphFieldKind, type GraphOperation } from './registry.js';
 
-export const GRAPH_COMPILER_VERSION = 'static-functional-scaffold-v2';
+export const GRAPH_COMPILER_VERSION = 'static-functional-scaffold-v3';
 export type GraphInputMapping =
   | { readonly from: 'spec' | 'start'; readonly field: string; readonly kind: GraphFieldKind }
   | { readonly from: 'node'; readonly nodeId: string; readonly field: string; readonly kind: GraphFieldKind };

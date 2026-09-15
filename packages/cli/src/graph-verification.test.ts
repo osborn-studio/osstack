@@ -304,3 +304,22 @@ it('allows untracked build outputs from successful actual acceptance execution',
   expect(await b.invoke('tests')).toMatchObject({ outcome: { state: 'confirmed', result: { passed: true } } });
   await expect(b.prepared.actions[1]!.verifyWorkspace!()).resolves.toBeUndefined();
 }, 15000);
+it('confirms ordinary failing tests with escape-heavy and multibyte captured output', async () => {
+  const f = await fixture(); const command = `node -e 'process.stdout.write("\\x1b".repeat(16000)); process.stderr.write("界".repeat(16000)); process.exitCode=1'`;
+  f.options.acceptanceRegistry = [{ ref: 'acceptance', command, passExitCodes: [0], failExitCodes: [1] }];
+  const host = await brokerFixture(f); const response = await host.invoke('tests');
+  expect(response).toMatchObject({ outcome: { state: 'confirmed', result: { passed: false } } });
+  if (response.kind !== 'worker_action_response' || response.outcome.state !== 'confirmed' || response.outcome.result.kind !== 'tests') throw Error('missing settled tests');
+  const envelope = await loadGraphVerificationEvidence(f.options.root, response.outcome.result.evidenceRefs[0]!, f.binding, { effect: response.effect, effectKey: computeGraphEffectKey(response.effect) });
+  expect(envelope.outputCaptures?.map(c => c.field)).toEqual(['command.stdout', 'command.stderr']);
+  expect(Buffer.byteLength(JSON.stringify(envelope))).toBeLessThan(65536);
+  expect(envelope.evidence.command?.termination).toMatchObject({ trigger: 'exit', stop_confirmed: true, leader_exit_code: 1 });
+}, 15000);
+it('settles an oversized structured review as a bounded contract failure instead of unknown', async () => {
+  const f = await fixture();
+  f.options.reviewer.adapter.invoke = async function* (task) { yield { event_id: 'done', run_id: task.run_id, session_id: task.session_id, seq: 1,
+    created_at: 0, terminal: true, type: 'done', payload: { status: 'completed', last_seq: 0,
+      result_summary: JSON.stringify({ schemaVersion: 1, verdict: 'accept', summary: '界'.repeat(8000), findings: [] }) } }; };
+  const host = await brokerFixture(f);
+  expect(await host.invoke('review')).toMatchObject({ outcome: { state: 'failed', error: { code: 'OUTPUT_CONTRACT_INVALID', retryable: true } } });
+}, 15000);

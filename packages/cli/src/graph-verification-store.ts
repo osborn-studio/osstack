@@ -16,7 +16,12 @@ export interface ReviewerInvocation {
   runId: string; taskId: string; sessionId: string; adapterId: string; capabilityId: string;
   promptDigest: string; contextDigest: string; historyPassed: false; effectKey: string;
 }
+export interface VerificationOutputCapture {
+  field: 'command.stdout' | 'command.stderr' | 'candidate.summary';
+  capturedBytes: number; capturedSha256: string; representation: 'prefix' | 'canonical_review';
+}
 export interface GraphVerificationEnvelope extends VerificationEffect {
+  outputCaptures?: VerificationOutputCapture[];
   schemaVersion: 1; binding: VerificationBinding; kind: 'review' | 'tests'; nodeId: string; effectSlot: string;
   workspace: { workspace_id: string; workspace_path: string }; acceptance: AcceptanceCommandSpec;
   workspaceLeaseRef: string; candidateIdentity: { before: CandidateIdentity; after: CandidateObservation };
@@ -39,7 +44,7 @@ export function validateVerificationEffect(value: unknown, binding: Verification
   return { effect, effectKey: object.effectKey as string };
 }
 function validateEnvelope(value: unknown, expectedBinding: VerificationBinding, expectedEffect?: VerificationEffect): GraphVerificationEnvelope {
-  const object = verificationObject(value, ['schemaVersion', 'binding', 'kind', 'nodeId', 'effectSlot', 'effect', 'effectKey', 'workspace', 'acceptance', 'writerIdentity', 'reviewerIdentity', 'evidence', 'report', 'verificationFailure', 'workspaceLeaseRef', 'candidateIdentity', 'reviewerInvocation']);
+  const object = verificationObject(value, ['schemaVersion', 'binding', 'kind', 'nodeId', 'effectSlot', 'effect', 'effectKey', 'workspace', 'acceptance', 'writerIdentity', 'reviewerIdentity', 'evidence', 'report', 'verificationFailure', 'workspaceLeaseRef', 'candidateIdentity', 'reviewerInvocation', 'outputCaptures']);
   const binding = parseVerificationBinding(object.binding);
   if (verificationCanonical(binding) !== verificationCanonical(parseVerificationBinding(expectedBinding))) throw new Error('evidence binding mismatch');
   if (object.schemaVersion !== 1 || !['review', 'tests'].includes(String(object.kind))) throw new Error('invalid evidence kind');
@@ -97,7 +102,43 @@ function validateEnvelope(value: unknown, expectedBinding: VerificationBinding, 
       if (candidate.execution.failure_code || candidate.status !== 'implementation_complete' || candidate.execution.outcome !== 'completed' || verificationCanonical(parseReviewReport(JSON.parse(candidate.execution.summary ?? 'null'))) !== verificationCanonical(report)) throw new Error('review report evidence mismatch');
     }
   }
+  if (envelope.outputCaptures !== undefined) {
+    if (!Array.isArray(envelope.outputCaptures) || envelope.outputCaptures.length > 3) throw new Error('invalid output captures');
+    const seen = new Set<string>();
+    for (const value of envelope.outputCaptures) {
+      const capture = verificationObject(value, ['field', 'capturedBytes', 'capturedSha256', 'representation']);
+      if (!['command.stdout','command.stderr','candidate.summary'].includes(String(capture.field)) || seen.has(String(capture.field))
+        || !Number.isSafeInteger(capture.capturedBytes) || (capture.capturedBytes as number) < 0
+        || typeof capture.capturedSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(capture.capturedSha256)
+        || !['prefix','canonical_review'].includes(String(capture.representation))) throw new Error('invalid output capture');
+      seen.add(String(capture.field));
+      const text = capture.field === 'command.stdout' ? envelope.evidence.command?.stdout : capture.field === 'command.stderr' ? envelope.evidence.command?.stderr : envelope.evidence.candidate?.execution?.summary;
+      if (typeof text !== 'string') throw new Error('missing captured output preview');
+      if (capture.representation === 'prefix' && (Buffer.byteLength(JSON.stringify(text)) > 2048 || Buffer.byteLength(text) > (capture.capturedBytes as number))) throw new Error('invalid output preview');
+      if (capture.representation === 'canonical_review' && (capture.field !== 'candidate.summary' || !envelope.report || text !== JSON.stringify(envelope.report))) throw new Error('invalid canonical review capture');
+    }
+  }
   return structuredClone(envelope);
+}
+/** Diagnostic previews are explicitly lossy. Hash/length describe the complete
+ * stream captured by G04, which itself may have an earlier output limit. They
+ * are host observations, not a claim that the discarded suffix is retrievable.
+ * Business report, exit, stop, identity and usage evidence are not truncated. */
+export function compactVerificationOutput(envelope: GraphVerificationEnvelope): void {
+  const evidence = structuredClone(envelope.evidence); const captures: VerificationOutputCapture[] = [];
+  const compact = (field: VerificationOutputCapture['field'], original: string, canonicalReview?: string): string => {
+    let retained = canonicalReview ?? original;
+    if (canonicalReview === undefined && Buffer.byteLength(JSON.stringify(original)) > 2048) {
+      let low = 0; let high = original.length;
+      while (low < high) { const mid = Math.ceil((low + high) / 2); if (Buffer.byteLength(JSON.stringify(original.slice(0, mid))) <= 2048) low = mid; else high = mid - 1; }
+      retained = original.slice(0, low);
+    }
+    if (retained !== original) captures.push({ field, capturedBytes: Buffer.byteLength(original), capturedSha256: sha(original), representation: canonicalReview === undefined ? 'prefix' : 'canonical_review' });
+    return retained;
+  };
+  if (evidence.command) { evidence.command.stdout = compact('command.stdout', evidence.command.stdout); evidence.command.stderr = compact('command.stderr', evidence.command.stderr); }
+  if (evidence.candidate?.execution?.summary !== undefined) evidence.candidate.execution.summary = compact('candidate.summary', evidence.candidate.execution.summary, envelope.report ? JSON.stringify(envelope.report) : undefined);
+  envelope.evidence = evidence; if (captures.length) envelope.outputCaptures = captures;
 }
 const sha = (bytes: string | Buffer) => createHash('sha256').update(bytes).digest('hex');
 async function directory(root: string): Promise<string> {

@@ -12,7 +12,7 @@ import { createReviewRequest, parseReviewReport } from '@osstack/graph/nodes/rev
 import { createTestsRequest } from '@osstack/graph/nodes/tests';
 import type { AdmissionInput, ExecutionLease } from './governed-execution.js';
 import type { GraphActionEvidence, GraphRegisteredAction, PersistedGraphActionEvidence } from './graph-action-broker.js';
-import { parseAcceptanceCommand, publishGraphVerificationEvidence, validateVerificationEffect, type CandidateIdentity, type CandidateObservation, type ReviewerInvocation, type AcceptanceCommandSpec, type GraphVerificationEnvelope, type VerificationEffect } from './graph-verification-store.js';
+import { compactVerificationOutput, parseAcceptanceCommand, publishGraphVerificationEvidence, validateVerificationEffect, type CandidateIdentity, type CandidateObservation, type ReviewerInvocation, type AcceptanceCommandSpec, type GraphVerificationEnvelope, type VerificationEffect } from './graph-verification-store.js';
 export { loadGraphVerificationEvidence } from './graph-verification-store.js';
 export type { AcceptanceCommandSpec, GraphVerificationEnvelope, VerificationEffect } from './graph-verification-store.js';
 type Kind = 'review' | 'tests';
@@ -236,6 +236,7 @@ export async function prepareGraphVerification(options: GraphVerificationOptions
         if (!envelope.verificationFailure && (command.failure_code || command.cancellation || command.termination.scope !== 'posix_process_group' || command.termination.trigger !== 'exit' || command.termination.leader_exit_code !== command.exitCode
           || ![...acceptance.passExitCodes, ...acceptance.failExitCodes].includes(command.exitCode))) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Acceptance command infrastructure failure or unregistered exit code', retrySafe: true };
       }
+      compactVerificationOutput(envelope);
       return publishGraphVerificationEvidence(data.root, envelope, () => {
         if (verificationCanonical(observe()) !== verificationCanonical(envelope.candidateIdentity.after)) throw new Error('candidate changed during persistence');
         check(); if (verificationCanonical(validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot)) !== verificationCanonical(effect)) throw new Error('ledger effect changed during persistence');

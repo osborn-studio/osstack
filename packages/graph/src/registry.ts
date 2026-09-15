@@ -40,7 +40,7 @@ export interface GraphRegistry {
 /** Costs are reservation ceilings, not model estimates supplied by a spec.
  * A host must enforce these ceilings on its registered executors. */
 export const GRAPH_REGISTRY: GraphRegistry = freezeWorkerData({
-  registryVersion: 'code-delivery-registry-v2', schemaVersion: 'code-delivery-schema-v2', template: 'code-delivery-v1',
+  registryVersion: 'code-delivery-registry-v3', schemaVersion: 'code-delivery-schema-v3', template: 'code-delivery-v1',
   routes: ['artifact_only', 'host_repair', 'host_retry', 'stop', 'reconcile'], nodes: definitions,
 });
 
