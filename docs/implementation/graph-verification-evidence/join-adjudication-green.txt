@@ -1,0 +1,14 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-verification-join.test.ts (21 tests | 17 skipped) 14819ms
+   ✓ rejects renewal changing during the actual durable envelope read  3958ms
+   ✓ publishes an actual passing candidate at exact action and token limits  4158ms
+   ✓ routes a legacy pre-invocation failure to stop without requiring a GraphError or report  2732ms
+   ✓ preserves a failed ledger settlement with a valid unclassified verification receipt  3970ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed | 17 skipped (21)
+   Start at  18:36:13
+   Duration  15.68s (transform 432ms, setup 7ms, collect 707ms, tests 14.82s, environment 0ms, prepare 38ms)
+

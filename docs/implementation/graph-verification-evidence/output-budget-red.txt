@@ -1,0 +1,106 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:dca111b82c039a1178dbdfd0919813725336730b6f7a648fd7a191279a013fa7: [
+  {
+    "code": "custom",
+    "message": "Expected bounded JSON-only graph data",
+    "path": []
+  }
+]
+ ❯ src/graph-verification.test.ts (29 tests | 2 failed | 27 skipped) 4176ms
+   ↓ restores the exact verified candidate into independent repositories and rejects reviewer writes
+   ↓ rejects wrong manifest and reviewer identity before restoring or invoking
+   ↓ persists actual stopped exit evidence and rejects tampering/replay
+   ↓ keeps unknown stop separate from stopped malformed review and valid changes_requested
+   ↓ runs real registered command and independent G04 review concurrently with an observable two-way barrier
+   ↓ rejects revoke during adapter availability before actual invocation
+   ↓ rejects mutate during adapter availability before actual invocation
+   ↓ snapshots callback/data replacement and rejects live revocation after preparation awaits
+   ↓ rejects mutation during restore before accepting any workspace baseline
+   ↓ releases preparation lease if authority is revoked while acquiring it
+   ↓ uses exact allowlisted exits, refusing model pass claims and unregistered commands
+   ↓ does not accept review done as executor stop proof through the actual broker
+   ↓ classifies stopped malformed output and reviewer filesystem mutation without a code-failure result
+   ↓ rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation
+   ↓ snapshots executor evidence before asynchronous verification and rechecks authority afterward
+   ↓ rejects actual successful command that mutates candidate: printf malicious > file
+   ↓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file; printf malicious > file
+   ↓ rejects actual successful command that mutates candidate: chmod +x file
+   ↓ rejects actual successful command that mutates candidate: chmod 600 file
+   ↓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file
+   ↓ rejects actual successful command that mutates candidate: printf staged > file; git add file; printf candidate > file
+   ↓ rejects actual successful command that mutates candidate: git -c user.name=test -c user.email=test@invalid commit --allow-empty -qm malicious
+   ↓ allocates distinct actual review sessions on explicit retry and persists prompt receipts
+   ↓ rejects oversized evidence before publishing any envelope
+   ↓ requires an actual invocation receipt and strips supplied writer context on every invocation
+   ↓ validates all new receipts when loading digest-consistent evidence
+   ↓ allows untracked build outputs from successful actual acceptance execution
+   × confirms ordinary failing tests with escape-heavy and multibyte captured output 1597ms
+     → expected { schemaVersion: 1, …(5) } to match object { outcome: { …(2) } }
+(20 matching properties omitted from actual)
+   × settles an oversized structured review as a bounded contract failure instead of unknown 2578ms
+     → expected { schemaVersion: 1, …(5) } to match object { outcome: { state: 'failed', …(1) } }
+(20 matching properties omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-verification.test.ts > confirms ordinary failing tests with escape-heavy and multibyte captured output
+AssertionError: expected { schemaVersion: 1, …(5) } to match object { outcome: { …(2) } }
+(20 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "outcome": {
+-     "result": {
+-       "passed": false,
+-     },
+-     "state": "confirmed",
++     "state": "unknown",
+    },
+  }
+
+ ❯ src/graph-verification.test.ts:311:20
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/graph-verification.test.ts > settles an oversized structured review as a bounded contract failure instead of unknown
+AssertionError: expected { schemaVersion: 1, …(5) } to match object { outcome: { state: 'failed', …(1) } }
+(20 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "outcome": {
+-     "error": {
+-       "code": "OUTPUT_CONTRACT_INVALID",
+-       "retryable": true,
+-     },
+-     "state": "failed",
++     "state": "confirmed",
+    },
+  }
+
+ ❯ src/graph-verification.test.ts:324:39
+    322|       result_summary: JSON.stringify({ schemaVersion: 1, verdict: 'acc…
+    323|   const host = await brokerFixture(f);
+    324|   expect(await host.invoke('review')).toMatchObject({ outcome: { state…
+       |                                       ^
+    325| }, 15000);
+    326| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 27 skipped (29)
+   Start at  18:37:25
+   Duration  5.01s (transform 395ms, setup 7ms, collect 682ms, tests 4.18s, environment 0ms, prepare 32ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-verification.test.ts -t 'escape-heavy|oversized structured'

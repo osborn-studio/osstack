@@ -1,0 +1,30 @@
+# G19 interface (published before implementation)
+
+Owned pure files: graph/src/nodes/{branch,review,tests}.ts, each with tests.
+Required parent package subpath: `@osstack/graph/nodes/branch`, `/nodes/review`, `/nodes/tests` -> corresponding dist files. Host will use these public subpaths, never relative cross-package imports.
+
+Pure contracts (protocol-only imports):
+- `VerificationBinding`: {scope,graphRunId,specHash,epoch,candidateRevision,artifactDigest,acceptanceRef}.
+- `VerificationBranch`: {schemaVersion:1,binding,kind:'review'|'tests',nodeId,effectSlot,logicalAttempt?:number,state:'confirmed'|'failed'|'unknown'|'cancel_pending'|'cancelled',result?:GraphResult,error?:GraphError,effectKey?:string}. logicalAttempt only copied from authenticated worker action response; rejected requests have none.
+- `parseVerificationBinding(unknown)`, `validateVerificationBranch(unknown,expectedBinding)` fail closed on runtime non-JSON, extra keys, kind/state/result/binding mismatches.
+- `verificationBranchFromResponse(binding,request,response)` delegates to protocol `validateWorkerActionResponse`; result kind and candidate must agree. No schema failure becomes passed:false.
+- `createReviewRequest({binding,generation,requestId,nodeId,effectSlot,reviewerRef})`, `validateReviewResponse(binding,request,response)`.
+- `createTestsRequest({binding,generation,requestId,nodeId,effectSlot})`, `validateTestsResponse(binding,request,response)`.
+- `parseReviewReport(unknown)`: exact {schemaVersion:1,verdict:'accept'|'changes_requested',summary:string,findings:string[]}; no self-reported identity trusted.
+
+Host `graph-verification.ts`:
+- `prepareGraphVerification(options): Promise<PreparedGraphVerification>`: host-owned root, actual GraphArtifactStore, binding, candidate_ready, sourceWorkspace, authorize synchronous callback, acquire G10 admission, trusted acceptanceRegistry [{ref,command,passExitCodes,failExitCodes}], acceptanceRef via binding, writerIdentity, reviewer {identity,adapter,capabilityId}, independent verifyReviewer callback. Preparation under G10 writer admission for artifact verify/restore; checks exact manifest scope/run/candidate/artifact and source path. Snapshots data and callback methods before await; fresh authority checks surround awaits. Restores review/tests into unique independently initialized repositories (no shared .git/index/objects/cache); retains failed/uncertain preparation directories, no cleanup API.
+- Returned frozen `{binding,reviewWorkspace,testsWorkspace,actions}`; immutable actions use existing GraphActionBroker adapter/command registrations, optional workspace and verifyWorkspace from parent. Each starts with exact candidate tree/SHA; reviewer post-execution tree and all untracked/ignored paths checked; tests own scratch permitted.
+- Options include host `effectIdentity(kind)` synchronous reader for actual ledger identity `{effect:GraphEffectIdentity,effectKey:string}`; must read currently running exact node/slot and never fabricate attempt. Actions use nodeId review/tests, effectSlot invoke (optional configured slots).
+- `loadGraphVerificationEvidence(root,evidenceRef,expectedBinding,expectedEffect?)`: verifies immutable envelope bytes/digest, exact bindings, stopped executor evidence, command allowlist or independent configured review identity; returns stored validated envelope. Stored result reconstructed from evidence digest; report persisted in envelope. Host callers must compare with actual ledger/response, and live authorize remains caller responsibility when loading outside service.
+
+Evidence publishing: unique exclusive temp file, fsync, chmod read-only, atomic no-overwrite link publication + directory fsync; no recursive removal. Includes binding/kind/node/slot/actual effect identity, acceptance exact command/exit codes, actual command result+stop evidence, independently verified writer/reviewer identity, review structured report or explicit verificationFailure. Uncertain execution throws (broker retains unknown); stopped malformed reports/infrastructure return durable verificationFailure. Nonzero allowlisted legitimate test failures return GraphResult tests passed:false. No fabricated tests receipt from reviewer/model text.
+
+Parent dependencies: GraphRegisteredAction.workspace + verifyWorkspace hook after availability immediately before beforeEffect; GraphActionEvidence.stopped only independently proven; PersistedGraphActionEvidence.verificationFailure with retrySafe. Parent owns G20 consumption, broker wiring and full acceptance. G19 focused tests and actual Loop actor run will be archived here; no full-suite or commits.
+
+Correction against actual protocol: request constructors take `workspaceLeaseRef` (review action has no reviewerRef). Host derives fresh lease refs unless slots provide them. Actual actor is already launched by parent `actor.mjs` using LoopEngine + CodexCliAdapter; its git-diff verifier is a lightweight gate only, not G19 acceptance. Focused capability tests supply G19 evidence separately.
+
+## Integration status 18:04 UTC
+Host exists and 10 focused tests pass, including real broker/G04 + command/adaptor barrier. Public graph subpaths now resolve from parent changes. Graph/CLI typechecks currently report parent-owned join.test.ts:40 (`tampered` literal), graph-action-broker.ts:351 (GraphError optional undefined not GraphJsonValue), graph-branch-broker.test.ts unused GraphActionStore. G19 own task.context optional error being corrected. No edits to those parent-owned files.
+
+Host API final additions: options.slots?: Partial<Record<'review'|'tests',{nodeId,effectSlot,workspaceLeaseRef,tokenReservation}>>; use compiler node IDs/slots here. `effectIdentity(kind)` MUST resolve the actual running ledger effect (example in brokerFixture test). Source G10 preparation lease is released once all restore work settles; failed roots remain. Evidence loader returns GraphVerificationEnvelope including exact effect/effectKey/workspace/acceptance/executor data and report or verificationFailure. It never fabricates a response attempt.

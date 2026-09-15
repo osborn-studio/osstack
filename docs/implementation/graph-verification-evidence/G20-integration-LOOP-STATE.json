@@ -1,0 +1,64 @@
+{
+  "loop_id": "G20-integration",
+  "started_at": "2026-09-15T01:17:56.693Z",
+  "updated_at": "2026-09-15T01:33:46.677Z",
+  "completed_tasks": [
+    {
+      "task_id": "G20-integration",
+      "capability": "code.write",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "codex-cli",
+      "duration_ms": 949980,
+      "run_id": "run_9f10a753-c970-4660-a5ca-494ff52baa7b",
+      "started_at": "2026-09-15T01:17:56.697Z",
+      "completed_at": "2026-09-15T01:33:46.611Z",
+      "execution_summary": "codex exited 0",
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "1 verifier command and 0 verifier adapters passed. 1 evaluation passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "git diff --check",
+          "exit_code": 0,
+          "duration_ms": 18
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: git diff --check",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (18 ms)",
+          "implicit": true
+        }
+      ],
+      "changed_files": [
+        "?? packages/cli/src/graph-verification-join.test.ts",
+        "?? packages/cli/src/graph-verification-join.ts"
+      ],
+      "diff_summary": "2 changed file(s), 2 untracked",
+      "commit_hash": "42f6810",
+      "tokens_in": 110565,
+      "tokens_out": 25198,
+      "cost_usd": 0
+    }
+  ],
+  "in_progress": [],
+  "pending": [],
+  "deferred_tasks": [],
+  "key_metrics": {
+    "total_cycles": 1,
+    "avg_duration_ms": 949980,
+    "success_rate": 1,
+    "tokens_consumed": 135763,
+    "cost_consumed": 0
+  },
+  "decisions": [
+    "G20-integration: selected codex-cli - agent_id override",
+    "G20-integration: stop after iteration 1 - Verifier passed with score 1.00."
+  ]
+}

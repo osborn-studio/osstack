@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "gate": "C6",
+  "status": "passed",
+  "date": "2026-09-14",
+  "acceptedCodeCommit": "00571bb862f27d9ab8e2e502d33e588196d62fee",
+  "baseline": "f1cf5a07b9803218f5d73635d37ab148da34a8eb",
+  "tasks": [
+    "G18",
+    "G19",
+    "G20"
+  ],
+  "productionReady": false,
+  "executionModel": "langgraph-functional-v1",
+  "durability": "sync",
+  "workspaceTestCount": 3160,
+  "testPackageCount": 22,
+  "previousChainTestCount": 29,
+  "verificationJoinTestCount": 21,
+  "verificationServiceTestCount": 29,
+  "verification": "Actual LoopEngine C6-final-acceptance-2: 1 executed, 0 skipped, success; six verifiers passed. Full build and 25 changed TS files Biome passed.",
+  "scope": "Fixed compiler scaffold, independent verification executors/receipts, host-authoritative bounded routing and one durable join; actual verification-phase Functional/SQLite partial RETURN recovery.",
+  "limitations": [
+    "G21 must implement complete template, dynamic host registration and fenced epoch advance; routes do not execute repairs",
+    "Compiler reserves branch workspace preparation; complete lifecycle ledger registration remains G21",
+    "Exact revision conflict including lease renewal requires full re-verification; short-lease long-I/O liveness G21/G28",
+    "same-UID is not OS sandbox; adapter session isolation is not live provider history proof",
+    "WAL NORMAL is not a power-loss guarantee; full fault/native/distribution/performance/pilot remains G25-G29",
+    "8192-byte review business reports; lossy 2048 JSON-byte diagnostic previews with captured-string UTF-8 hashes/lengths; discarded suffixes are not retrievable",
+    "No merge/push/deploy or public graph write CLI/RPC"
+  ],
+  "evidence": [
+    "acceptance-result.json",
+    "accepted-full-tests.txt",
+    "accepted-typecheck.txt",
+    "accepted-schemas.txt",
+    "accepted-kernel.txt",
+    "accepted-functional.txt",
+    "accepted-startup.txt",
+    "build-final.txt",
+    "biome-final.txt",
+    "source-hashes.json",
+    "worker-replay-proof.json",
+    "actor-summary.json",
+    "claude-adjudication.md"
+  ]
+}

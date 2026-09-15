@@ -1,0 +1,37 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:9d5a208f268b1f1fe1743b2d93b9f84a6eefa2547ffec9b10acfdee54867cc79: Error: external stop unconfirmed
+ ❯ src/graph-branch-broker.test.ts (7 tests | 1 failed) 467ms
+   ✓ executes in the immutable per-action workspace and releases its canonical admission 85ms
+   ✓ rejects a per-action workspace outside the authenticated logical scope 51ms
+   ✓ verifies workspace after adapter availability and before physical invocation 99ms
+   ✓ confirms a valid negative test report after an ordinary nonzero process exit 51ms
+   ✓ separates stopped malformed review output from unknown effects and requires explicit retry 70ms
+   ✓ rechecks authority after asynchronous workspace verification 46ms
+   × retains the precise overridden workspace when executor stop cannot be proven 63ms
+     → f.broker.retainedActions is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-branch-broker.test.ts > retains the precise overridden workspace when executor stop cannot be proven
+TypeError: f.broker.retainedActions is not a function
+ ❯ src/graph-branch-broker.test.ts:135:19
+    133|   expect(await f.broker.handle(connection, f.request)).toMatchObject({…
+    134|   expect(f.writes.in_use).toBe(1);
+    135|   expect(f.broker.retainedActions()).toMatchObject([{ workspacePath: b…
+       |                   ^
+    136| });
+    137| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  18:19:57
+   Duration  1.43s (transform 481ms, setup 7ms, collect 837ms, tests 467ms, environment 0ms, prepare 33ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-branch-broker.test.ts '--maxWorkers=1'

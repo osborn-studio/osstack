@@ -1,0 +1,137 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:e80f14a135226decd42429dd374ab5b31cd55359d0eda68f9cb8b5a103b86f23: AssertionError: expected undefined to be true // Object.is equality
+osstack: retaining write lease graph-action:d204e8f6596d707a8c3346cd9f23adb12a38548821e54fa29e29a1ba812ed506: AssertionError: expected undefined to be true // Object.is equality
+ ❯ src/graph-branch-broker.test.ts (5 tests | 5 failed) 345ms
+   × executes in the immutable per-action workspace and releases its canonical admission 188ms
+     → ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/gc6/g12-lVEmtw/branch/output.txt'
+   × rejects a per-action workspace outside the authenticated logical scope 29ms
+     → expected [Function] to throw an error
+   × verifies workspace after adapter availability and before physical invocation 31ms
+     → async () => {
+      if (!valid) throw new Error("candidate changed");
+    } could not be cloned.
+   × confirms a valid negative test report after an ordinary nonzero process exit 52ms
+     → expected { schemaVersion: 1, …(5) } to match object { outcome: { …(2) } }
+(20 matching properties omitted from actual)
+   × separates stopped malformed review output from unknown effects and requires explicit retry 44ms
+     → expected { schemaVersion: 1, …(5) } to match object { outcome: { state: 'failed', …(1) } }
+(17 matching properties omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-branch-broker.test.ts > executes in the immutable per-action workspace and releases its canonical admission
+Error: ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/gc6/g12-lVEmtw/branch/output.txt'
+ ❯ src/graph-branch-broker.test.ts:76:10
+     74|   workspace.workspace_path = f.repo;
+     75|   expect(await f.broker.handle(connection, f.request)).toMatchObject({…
+     76|   expect(readFileSync(join(branch, 'output.txt'), 'utf8')).toBe('once'…
+       |          ^
+     77|   expect(existsSync(join(f.repo, 'output.txt'))).toBe(false); expect(f…
+     78| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  src/graph-branch-broker.test.ts > rejects a per-action workspace outside the authenticated logical scope
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/graph-branch-broker.test.ts:82:76
+     80|   const f = fixture();
+     81|   expect(() => f.broker.register({}, { ...f.registration, actions: f.r…
+     82|     workspace: { workspace_id: 'foreign', workspace_path: f.repo } }))…
+       |                                                                            ^
+     83| });
+     84| it('verifies workspace after adapter availability and before physical …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  src/graph-branch-broker.test.ts > verifies workspace after adapter availability and before physical invocation
+DataCloneError: async () => {
+      if (!valid) throw new Error("candidate changed");
+    } could not be cloned.
+ ❯ snapshot src/graph-action-broker.ts:71:16
+     69| const writes = new Set(["code.write", "code.refactor", "code.debug", "…
+     70| function snapshot<T>(value: T): T {
+     71|   const copy = structuredClone(value);
+       |                ^
+     72|   const freeze = (item: unknown): void => {
+     73|     if (item !== null && typeof item === "object") { Object.values(ite…
+ ❯ GraphActionBroker.register src/graph-action-broker.ts:126:20
+ ❯ src/graph-branch-broker.test.ts:89:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  src/graph-branch-broker.test.ts > confirms a valid negative test report after an ordinary nonzero process exit
+AssertionError: expected { schemaVersion: 1, …(5) } to match object { outcome: { …(2) } }
+(20 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "outcome": {
+-     "result": {
+-       "kind": "tests",
+-       "passed": false,
+-     },
+-     "state": "confirmed",
++     "state": "unknown",
+    },
+  }
+
+ ❯ src/graph-branch-broker.test.ts:103:18
+    101|         passed: false, evidenceRefs: ['negative-tests'], evidenceDiges…
+    102|   const result = await f.broker.handle(connection, { ...f.request, nod…
+    103|   expect(result).toMatchObject({ outcome: { state: 'confirmed', result…
+       |                  ^
+    104|   expect(f.writes.in_use).toBe(0);
+    105| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  src/graph-branch-broker.test.ts > separates stopped malformed review output from unknown effects and requires explicit retry
+AssertionError: expected { schemaVersion: 1, …(5) } to match object { outcome: { state: 'failed', …(1) } }
+(17 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "outcome": {
+      "error": {
+-       "code": "OUTPUT_CONTRACT_INVALID",
+-       "retryable": true,
++       "code": "ACTION_OUTCOME_UNKNOWN",
++       "retryable": false,
+      },
+-     "state": "failed",
++     "state": "unknown",
+    },
+  }
+
+ ❯ src/graph-branch-broker.test.ts:114:54
+    112|       verificationFailure: { code: 'OUTPUT_CONTRACT_INVALID', message:…
+    113|   const request = { ...f.request, nodeId: 'review', action };
+    114|   expect(await f.broker.handle(connection, request)).toMatchObject({ o…
+       |                                                      ^
+    115|   expect(f.writes.in_use).toBe(0);
+    116|   expect(await f.broker.handle(connection, request)).toMatchObject({ o…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed (5)
+   Start at  17:52:27
+   Duration  1.24s (transform 434ms, setup 7ms, collect 742ms, tests 345ms, environment 0ms, prepare 41ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-branch-broker.test.ts

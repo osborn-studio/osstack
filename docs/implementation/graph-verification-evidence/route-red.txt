@@ -1,0 +1,30 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/route.test.ts [ src/route.test.ts ]
+Error: Cannot find module './route.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/src/route.test.ts'
+ ❯ src/route.test.ts:5:1
+      3| import { computeGraphEffectKey, workerCanonical } from '@osstack/proto…
+      4| import { joinVerificationBranches } from './join.js';
+      5| import { routeVerification } from './route.js';
+       | ^
+      6| function fixture(epoch = 0, failure: 'code' | 'schema' | 'unknown' | '…
+      7|   const spec = { schemaVersion: 1 as const, template: 'code-delivery-v…
+
+Caused by: Error: Failed to load url ./route.js (resolved id: ./route.js) in /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/src/route.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  18:00:08
+   Duration  309ms (transform 73ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 42ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/route.test.ts

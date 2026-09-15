@@ -1,0 +1,50 @@
+{
+  "fixture": "/Volumes/AIMATE_WORK/tmp/gc6/g20-b4IhX2",
+  "workerStop": {
+    "worker": {
+      "kind": "exited",
+      "graphRunId": "a6c3536e-1c64-4d15-adab-b74a49f76bd9",
+      "generation": 1,
+      "owner": "g20-worker",
+      "pid": 91378,
+      "code": null,
+      "signal": "SIGKILL",
+      "confirmedAt": 1789437079892,
+      "evidenceRef": "worker-exit:76f9634f-8339-4056-b91b-b4d613e08505"
+    },
+    "actionsSettled": true
+  },
+  "commandLog": "run\n",
+  "actions": [
+    {
+      "node_id": "freeze",
+      "logical_attempt": 1,
+      "state": "confirmed",
+      "generation": 1
+    },
+    {
+      "node_id": "review",
+      "logical_attempt": 1,
+      "state": "failed",
+      "generation": 1
+    },
+    {
+      "node_id": "review",
+      "logical_attempt": 2,
+      "state": "confirmed",
+      "generation": 2
+    },
+    {
+      "node_id": "tests",
+      "logical_attempt": 1,
+      "state": "confirmed",
+      "generation": 1
+    }
+  ],
+  "tables": {
+    "graph_verification_joins": 1,
+    "graph_recovery_decisions": 1,
+    "graph_checkpoints": 2,
+    "graph_checkpoint_writes": 5
+  }
+}

@@ -1,0 +1,108 @@
+Final narrow follow-up review, Claude Fable 5.1 source-only, tools disabled. Prior C6 review PASS but P2-A output-cap bug was reproduced with REAL Node command stdout ESC.repeat(16000), stderr Chinese.repeat(16000), exit1: unknown before, confirmed passed:false now. Oversized review report previously unknown now explicit stopped OUTPUT_CONTRACT_INVALID retrySafe:true. New contract bounds serialized business report at8192 UTF8bytes; compiler/registry/schema versions bumped v3. Every accepted report remains whole, candidate summary normalized canonical JSON for same report; invalid summaries and command diagnostics store <=2048 JSON-byte prefixes plus SHA256/byte count of full G04-captured string. This is explicitly lossy diagnostic output, hashes are host observations and discarded suffix is not retrievable (G04 already independently truncates capture). Exit/stop/identity/usage and accepted report NOTtruncated. Publisher cap64KiB remains. Review ONLY concrete correctness of this patch, point to exact scenario ifrequestchange, max500words. Rawmetadata too large stillfailsclosed; no productionclaimarbitraryconfigsize.
+Your conditional P2-B runID issue is disproven: G04 executor.ts line85 const runId=`run_${randomUUID()}`. Actual G19 retry integration proves distinct session/receipt and settled attempt2. Shared branch budget intentionally counts retries across all slots per node; coreadmit uses same SQL node filter, so do not filteronlyslot aslowseveritysuggested. Fullsource finalreviewalreadyhadcompleteG19 loader. Patch below:
+diff --git a/packages/cli/src/graph-verification-store.ts b/packages/cli/src/graph-verification-store.ts
+index 75f7a08..fa9d066 100644
+--- a/packages/cli/src/graph-verification-store.ts
++++ b/packages/cli/src/graph-verification-store.ts
+@@ -16,7 +16,12 @@ export interface ReviewerInvocation {
+   runId: string; taskId: string; sessionId: string; adapterId: string; capabilityId: string;
+   promptDigest: string; contextDigest: string; historyPassed: false; effectKey: string;
+ }
++export interface VerificationOutputCapture {
++  field: 'command.stdout' | 'command.stderr' | 'candidate.summary';
++  capturedBytes: number; capturedSha256: string; representation: 'prefix' | 'canonical_review';
++}
+ export interface GraphVerificationEnvelope extends VerificationEffect {
++  outputCaptures?: VerificationOutputCapture[];
+   schemaVersion: 1; binding: VerificationBinding; kind: 'review' | 'tests'; nodeId: string; effectSlot: string;
+   workspace: { workspace_id: string; workspace_path: string }; acceptance: AcceptanceCommandSpec;
+   workspaceLeaseRef: string; candidateIdentity: { before: CandidateIdentity; after: CandidateObservation };
+@@ -39,7 +44,7 @@ export function validateVerificationEffect(value: unknown, binding: Verification
+   return { effect, effectKey: object.effectKey as string };
+ }
+ function validateEnvelope(value: unknown, expectedBinding: VerificationBinding, expectedEffect?: VerificationEffect): GraphVerificationEnvelope {
+-  const object = verificationObject(value, ['schemaVersion', 'binding', 'kind', 'nodeId', 'effectSlot', 'effect', 'effectKey', 'workspace', 'acceptance', 'writerIdentity', 'reviewerIdentity', 'evidence', 'report', 'verificationFailure', 'workspaceLeaseRef', 'candidateIdentity', 'reviewerInvocation']);
++  const object = verificationObject(value, ['schemaVersion', 'binding', 'kind', 'nodeId', 'effectSlot', 'effect', 'effectKey', 'workspace', 'acceptance', 'writerIdentity', 'reviewerIdentity', 'evidence', 'report', 'verificationFailure', 'workspaceLeaseRef', 'candidateIdentity', 'reviewerInvocation', 'outputCaptures']);
+   const binding = parseVerificationBinding(object.binding);
+   if (verificationCanonical(binding) !== verificationCanonical(parseVerificationBinding(expectedBinding))) throw new Error('evidence binding mismatch');
+   if (object.schemaVersion !== 1 || !['review', 'tests'].includes(String(object.kind))) throw new Error('invalid evidence kind');
+@@ -97,8 +102,44 @@ function validateEnvelope(value: unknown, expectedBinding: VerificationBinding,
+       if (candidate.execution.failure_code || candidate.status !== 'implementation_complete' || candidate.execution.outcome !== 'completed' || verificationCanonical(parseReviewReport(JSON.parse(candidate.execution.summary ?? 'null'))) !== verificationCanonical(report)) throw new Error('review report evidence mismatch');
+     }
+   }
++  if (envelope.outputCaptures !== undefined) {
++    if (!Array.isArray(envelope.outputCaptures) || envelope.outputCaptures.length > 3) throw new Error('invalid output captures');
++    const seen = new Set<string>();
++    for (const value of envelope.outputCaptures) {
++      const capture = verificationObject(value, ['field', 'capturedBytes', 'capturedSha256', 'representation']);
++      if (!['command.stdout','command.stderr','candidate.summary'].includes(String(capture.field)) || seen.has(String(capture.field))
++        || !Number.isSafeInteger(capture.capturedBytes) || (capture.capturedBytes as number) < 0
++        || typeof capture.capturedSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(capture.capturedSha256)
++        || !['prefix','canonical_review'].includes(String(capture.representation))) throw new Error('invalid output capture');
++      seen.add(String(capture.field));
++      const text = capture.field === 'command.stdout' ? envelope.evidence.command?.stdout : capture.field === 'command.stderr' ? envelope.evidence.command?.stderr : envelope.evidence.candidate?.execution?.summary;
++      if (typeof text !== 'string') throw new Error('missing captured output preview');
++      if (capture.representation === 'prefix' && (Buffer.byteLength(JSON.stringify(text)) > 2048 || Buffer.byteLength(text) > (capture.capturedBytes as number))) throw new Error('invalid output preview');
++      if (capture.representation === 'canonical_review' && (capture.field !== 'candidate.summary' || !envelope.report || text !== JSON.stringify(envelope.report))) throw new Error('invalid canonical review capture');
++    }
++  }
+   return structuredClone(envelope);
+ }
++/** Diagnostic previews are explicitly lossy. Hash/length describe the complete
++ * stream captured by G04, which itself may have an earlier output limit. They
++ * are host observations, not a claim that the discarded suffix is retrievable.
++ * Business report, exit, stop, identity and usage evidence are not truncated. */
++export function compactVerificationOutput(envelope: GraphVerificationEnvelope): void {
++  const evidence = structuredClone(envelope.evidence); const captures: VerificationOutputCapture[] = [];
++  const compact = (field: VerificationOutputCapture['field'], original: string, canonicalReview?: string): string => {
++    let retained = canonicalReview ?? original;
++    if (canonicalReview === undefined && Buffer.byteLength(JSON.stringify(original)) > 2048) {
++      let low = 0; let high = original.length;
++      while (low < high) { const mid = Math.ceil((low + high) / 2); if (Buffer.byteLength(JSON.stringify(original.slice(0, mid))) <= 2048) low = mid; else high = mid - 1; }
++      retained = original.slice(0, low);
++    }
++    if (retained !== original) captures.push({ field, capturedBytes: Buffer.byteLength(original), capturedSha256: sha(original), representation: canonicalReview === undefined ? 'prefix' : 'canonical_review' });
++    return retained;
++  };
++  if (evidence.command) { evidence.command.stdout = compact('command.stdout', evidence.command.stdout); evidence.command.stderr = compact('command.stderr', evidence.command.stderr); }
++  if (evidence.candidate?.execution?.summary !== undefined) evidence.candidate.execution.summary = compact('candidate.summary', evidence.candidate.execution.summary, envelope.report ? JSON.stringify(envelope.report) : undefined);
++  envelope.evidence = evidence; if (captures.length) envelope.outputCaptures = captures;
++}
+ const sha = (bytes: string | Buffer) => createHash('sha256').update(bytes).digest('hex');
+ async function directory(root: string): Promise<string> {
+   if (!isAbsolute(root) || await realpath(root) !== root) throw new Error('host evidence root must be canonical');
+diff --git a/packages/cli/src/graph-verification.ts b/packages/cli/src/graph-verification.ts
+index 999752d..c0ccdc7 100644
+--- a/packages/cli/src/graph-verification.ts
++++ b/packages/cli/src/graph-verification.ts
+@@ -12,7 +12,7 @@ import { createReviewRequest, parseReviewReport } from '@osstack/graph/nodes/rev
+ import { createTestsRequest } from '@osstack/graph/nodes/tests';
+ import type { AdmissionInput, ExecutionLease } from './governed-execution.js';
+ import type { GraphActionEvidence, GraphRegisteredAction, PersistedGraphActionEvidence } from './graph-action-broker.js';
+-import { parseAcceptanceCommand, publishGraphVerificationEvidence, validateVerificationEffect, type CandidateIdentity, type CandidateObservation, type ReviewerInvocation, type AcceptanceCommandSpec, type GraphVerificationEnvelope, type VerificationEffect } from './graph-verification-store.js';
++import { compactVerificationOutput, parseAcceptanceCommand, publishGraphVerificationEvidence, validateVerificationEffect, type CandidateIdentity, type CandidateObservation, type ReviewerInvocation, type AcceptanceCommandSpec, type GraphVerificationEnvelope, type VerificationEffect } from './graph-verification-store.js';
+ export { loadGraphVerificationEvidence } from './graph-verification-store.js';
+ export type { AcceptanceCommandSpec, GraphVerificationEnvelope, VerificationEffect } from './graph-verification-store.js';
+ type Kind = 'review' | 'tests';
+@@ -236,6 +236,7 @@ export async function prepareGraphVerification(options: GraphVerificationOptions
+         if (!envelope.verificationFailure && (command.failure_code || command.cancellation || command.termination.scope !== 'posix_process_group' || command.termination.trigger !== 'exit' || command.termination.leader_exit_code !== command.exitCode
+           || ![...acceptance.passExitCodes, ...acceptance.failExitCodes].includes(command.exitCode))) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Acceptance command infrastructure failure or unregistered exit code', retrySafe: true };
+       }
++      compactVerificationOutput(envelope);
+       return publishGraphVerificationEvidence(data.root, envelope, () => {
+         if (verificationCanonical(observe()) !== verificationCanonical(envelope.candidateIdentity.after)) throw new Error('candidate changed during persistence');
+         check(); if (verificationCanonical(validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot)) !== verificationCanonical(effect)) throw new Error('ledger effect changed during persistence');
+diff --git a/packages/graph/src/nodes/review.ts b/packages/graph/src/nodes/review.ts
+index 3b7242f..0fb7f8b 100644
+--- a/packages/graph/src/nodes/review.ts
++++ b/packages/graph/src/nodes/review.ts
+@@ -6,6 +6,9 @@ export function parseReviewReport(value: unknown): ReviewReport {
+   if (report.schemaVersion !== 1 || !['accept', 'changes_requested'].includes(String(report.verdict))
+     || typeof report.summary !== 'string' || !report.summary.trim() || report.summary.length > 8192
+     || !Array.isArray(report.findings) || report.findings.length > 64 || report.findings.some(item => typeof item !== 'string' || !item.trim() || item.length > 4096)) throw new Error('OUTPUT_CONTRACT_INVALID: review report');
++  // Bound the serialized business report so the host can retain it alongside
++  // invocation/stop evidence in a 64 KiB envelope, including JSON escaping.
++  if (new TextEncoder().encode(JSON.stringify(report)).length > 8192) throw new Error('OUTPUT_CONTRACT_INVALID: review report exceeds 8192 UTF-8 bytes');
+   return structuredClone(value) as ReviewReport;
+ }
+ export function createReviewRequest(input: VerificationRequestInput): WorkerActionRequest {

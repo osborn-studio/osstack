@@ -1,0 +1,16 @@
+**Verdict: PASS.** I found no concrete correctness defect that warrants a change request. Two low-severity notes follow, with the exact scenarios.
+
+**What I checked and why it holds**
+
+- **Prefix bound is always honored.** In the binary search, `low` only advances to a `mid` whose escaped JSON length passed the 2048 check, so the returned slice satisfies the bound even where the length function is non-monotonic. The loader recomputes the same formula, so host and loader agree.
+- **Loader ordering is consistent.** The review branch compares the canonicalized parse of the summary against the report before the capture loop runs. With the canonical_review representation the summary is exactly the stringified report, so the parse round-trips and the equality check in the capture loop is satisfied by construction. Key order survives the JSON round-trip on disk.
+- **Old envelopes still load.** The envelope schema stays at version 1 and the new key is only validated when present, so pre-patch evidence with uncompacted output remains readable.
+- **Invalid report path.** With no report, the summary takes the prefix path. The oversized-report reproduction becomes an explicit stopped OUTPUT_CONTRACT_INVALID with a hashed prefix, which matches the stated intent.
+- **Budget arithmetic.** Worst case is report plus canonical summary at 8192 bytes each, plus three previews at 2048 bytes, well under the 64 KiB publisher cap. The 8192-byte contract check in the review parser uses the same serializer as the capture, so they cannot disagree.
+- **No TDZ hazard.** The hash helper is declared after the new function but is only referenced at call time, after module evaluation.
+
+**Low-severity note 1: surrogate-pair split.** Scenario: stdout is 1900 ASCII bytes followed by an emoji, then more text, so the 2048 boundary lands between the two UTF-16 code units of the emoji. The search may retain a prefix ending in a lone high surrogate. It still passes both host and loader checks, because both use the same escape-based measurement, and it round-trips through JSON as an escaped code unit. The cost is only that the preview contains a non-character. If you care, back off one code unit when the final unit is in the high-surrogate range before returning the slice. Not a change request.
+
+**Low-severity note 2: doc wording on captured bytes.** The comment says the hash and length describe the complete stream captured by G04. They actually describe the UTF-8 re-encoding of the JavaScript string G04 handed over. If G04 decoded invalid bytes to U+FFFD, the numbers differ from the raw process byte count. Since the patch already frames these as host observations rather than a retrieval claim, this is a one-line comment clarification, not a correctness issue.
+
+**Non-issues I ruled out.** A null summary never reaches the byte-length or hash calls, because the four-byte serialization of null is under the threshold and the retained value equals the original. The capture-count and field-uniqueness checks are correct. Compaction runs after the infrastructure-failure classification and before publish, so the failure fields are derived from untruncated exit and termination data as claimed.

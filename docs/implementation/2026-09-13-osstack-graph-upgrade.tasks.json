@@ -761,7 +761,8 @@
         "packages/graph/src/spec-compiler.ts",
         "packages/graph/src/spec-compiler.test.ts",
         "packages/graph/src/registry.ts",
-        "packages/graph/src/registry.test.ts"
+        "packages/graph/src/registry.test.ts",
+        "packages/graph/package.json"
       ],
       "acceptance": [
         "仅注册节点/schema/路由；拒绝任意 JS、不可达依赖、缺输入及未授权工具。",
@@ -771,9 +772,29 @@
       ],
       "verify": "GRAPH",
       "size": "M",
-      "status": "pending",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "implementationCommit": "7e778de",
+      "acceptedCodeCommit": "00571bb862f27d9ab8e2e502d33e588196d62fee",
+      "evidence": [
+        "docs/implementation/2026-09-14-graph-verification-completion.md",
+        "docs/implementation/graph-verification-evidence/admission.json"
+      ],
+      "subtasks": [
+        {
+          "id": "G18a",
+          "title": "固定注册表与类型合同",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        },
+        {
+          "id": "G18b",
+          "title": "确定性 Functional 骨架与预算预留",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        }
       ]
     },
     {
@@ -790,7 +811,14 @@
         "packages/graph/src/nodes/review.ts",
         "packages/graph/src/nodes/review.test.ts",
         "packages/graph/src/nodes/tests.ts",
-        "packages/graph/src/nodes/tests.test.ts"
+        "packages/graph/src/nodes/tests.test.ts",
+        "packages/graph/src/nodes/branch.ts",
+        "packages/graph/src/nodes/branch.test.ts",
+        "packages/cli/src/graph-action-broker.ts",
+        "packages/cli/src/graph-branch-broker.test.ts",
+        "packages/cli/src/graph-verification.ts",
+        "packages/cli/src/graph-verification-store.ts",
+        "packages/cli/src/graph-verification.test.ts"
       ],
       "acceptance": [
         "review/tests 基于同一 candidate SHA 的独立工作区，评审身份满足独立性约束。",
@@ -799,9 +827,41 @@
       ],
       "verify": "GRAPH",
       "size": "M",
-      "status": "pending",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "implementationCommit": "b999b03",
+      "acceptedCodeCommit": "00571bb862f27d9ab8e2e502d33e588196d62fee",
+      "evidence": [
+        "docs/implementation/2026-09-14-graph-verification-completion.md",
+        "docs/implementation/graph-verification-evidence/admission.json"
+      ],
+      "subtasks": [
+        {
+          "id": "G19a",
+          "title": "分支节点合同",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        },
+        {
+          "id": "G19b",
+          "title": "逐动作独立工作区与失败分类",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        },
+        {
+          "id": "G19c",
+          "title": "独立恢复与持久收据",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        },
+        {
+          "id": "G19d",
+          "title": "候选/会话/输出长度加固",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        }
       ]
     },
     {
@@ -816,7 +876,14 @@
         "packages/graph/src/join.ts",
         "packages/graph/src/join.test.ts",
         "packages/graph/src/route.ts",
-        "packages/graph/src/route.test.ts"
+        "packages/graph/src/route.test.ts",
+        "packages/core/package.json",
+        "packages/core/src/state/graph-actions.ts",
+        "packages/core/src/state/graph-verification.ts",
+        "packages/core/src/state/graph-verification.test.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/cli/src/graph-verification-join.ts",
+        "packages/cli/src/graph-verification-join.test.ts"
       ],
       "acceptance": [
         "按 run/spec/epoch/candidate 绑定两个必需前驱，拒绝旧轮、空输出和跨 scope 结果。",
@@ -825,9 +892,41 @@
       ],
       "verify": "GRAPH",
       "size": "M",
-      "status": "pending",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "implementationCommit": "a44e878",
+      "acceptedCodeCommit": "00571bb862f27d9ab8e2e502d33e588196d62fee",
+      "evidence": [
+        "docs/implementation/2026-09-14-graph-verification-completion.md",
+        "docs/implementation/graph-verification-evidence/admission.json"
+      ],
+      "subtasks": [
+        {
+          "id": "G20a",
+          "title": "纯汇合和有界路由",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        },
+        {
+          "id": "G20b",
+          "title": "迁移31与事务发布",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        },
+        {
+          "id": "G20c",
+          "title": "host 最新账本/证据复核",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        },
+        {
+          "id": "G20d",
+          "title": "真实 worker 恢复与错误边界",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        }
       ]
     },
     {
@@ -1066,20 +1165,18 @@
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "50133c0eec518add33f556bfa95b746de350cc35",
-    "completedTaskCount": 18,
+    "acceptedCodeCommit": "00571bb862f27d9ab8e2e502d33e588196d62fee",
+    "completedTaskCount": 21,
     "totalTaskCount": 30,
     "nextTasks": [
-      "G18",
-      "G19",
-      "G20"
+      "G21"
     ],
-    "report": "docs/implementation/2026-09-14-graph-chain-completion.md",
-    "nextGate": "C6",
+    "report": "docs/implementation/2026-09-14-graph-verification-completion.md",
+    "nextGate": "C7",
     "milestoneStatus": {
       "M0": "completed",
       "M1": "completed",
-      "M2": "pending",
+      "M2": "in_progress",
       "M3": "pending"
     }
   },
@@ -1089,7 +1186,7 @@
       "status": "passed",
       "reason": "C2 仅准入 langgraph-functional-v1 + durability:sync 供 M1 集成；StateGraph 1.4.15 的 partial-abort AND-join 反例仍未修复，不获准入。",
       "evidence": "docs/implementation/graph-c2-evidence/admission.json",
-      "nextAction": "C2–C5 已通过限定准入；继续 G18–G20/C6，完整故障矩阵仍须 G25。",
+      "nextAction": "C2–C6 已通过限定准入；继续 G21 与 G22–G24/C7，完整故障矩阵仍须 G25。",
       "releaseCriteria": [
         "对应 Functional 并行失败场景恢复完整结果，逻辑 join 效果一次；StateGraph 失败对照保持可复现",
         "独立进程 partial write、异常、超时、取消、恢复二次 SIGKILL、interrupt false 矩阵通过",
@@ -1143,15 +1240,16 @@
     },
     {
       "id": "C6",
-      "status": "pending",
+      "status": "passed",
       "tasks": [
         "G18",
         "G19",
         "G20"
       ],
-      "reason": "静态工程图、独立评审/测试及汇合路由待实施。",
-      "evidence": null,
-      "productionReady": false
+      "reason": "静态规格、独立候选验证、严格 host 汇合与有限路由经真实 Loop 全库验收；真实 Functional/SQLite 验证阶段恢复通过，完整模板与 epoch 推进留给 G21。",
+      "evidence": "docs/implementation/graph-verification-evidence/admission.json",
+      "productionReady": false,
+      "acceptedCodeCommit": "00571bb862f27d9ab8e2e502d33e588196d62fee"
     }
   ]
 }

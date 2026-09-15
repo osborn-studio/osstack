@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ✓ src/state/graph-verification.test.ts (5 tests) 106ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  18:21:45
+   Duration  416ms (transform 83ms, setup 0ms, collect 121ms, tests 106ms, environment 0ms, prepare 42ms)
+

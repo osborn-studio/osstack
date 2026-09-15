@@ -1,0 +1,24 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:9c57c90ab0d5812aa68c439d9ef00735843dcfe9b59bd335f151a21ba0b7781a: Error: external stop unconfirmed
+ ✓ src/graph-branch-broker.test.ts (8 tests) 424ms
+osstack: retaining write lease graph-action:f31adc1159ce5c2359a6509ead7f53cf469024f692ff2b29485c2ba2475811ab: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:a3f8b1fed580b36c93af68e4723f4badefa55da90e917849870e041c2254fc63: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:d46954a6be43180986ea6c676615f9c0ede1e224b9b75e404d04f7e52b9ed75b: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:f557ba8309803008e985a0773fc445ff74f51fb822549825eb6b977b26532576: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:fa6a148ed17097c6a53d7027ce7295120680b17c4771efa80bd2b794b9072d77: Error: invalid usage
+osstack: retaining write lease graph-action:58b1708b22f5dc7f7e599f7ee37a0064e3a3272570baaeb32dbeff4466206109: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:e2f71f78cd533b3271ee39bdcce7637e1b0aac3adac0f1b8f41694ad5dbe4a64: SqliteError: injected
+osstack: retaining write lease graph-action:a72650c26c53ca94fa94d926dd579443e65393587f0a63ce0d64ffe3a2718447: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:10842ec1bb02f6fa4e07d63d1e27666775d7b88a9113ec92c56665b63b82378e: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:b068a35f2f4d232179eed924a1831c248abc2866edaf1726fa8026e284401fd0: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:229bb7b83d309a7588779f54552e3fc74bda2ede48ceedbec751c0dbe99d15e8: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:d1ca7847a5da600a3f31f22d069c18d95f4a73abe2946671af40a32f23529046: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker.test.ts (31 tests) 1584ms
+
+ Test Files  2 passed (2)
+      Tests  39 passed (39)
+   Start at  18:26:27
+   Duration  3.06s (transform 409ms, setup 8ms, collect 853ms, tests 2.01s, environment 0ms, prepare 52ms)
+

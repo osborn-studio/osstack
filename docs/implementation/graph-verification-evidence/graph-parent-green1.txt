@@ -1,0 +1,16 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph
+
+ ✓ src/registry.test.ts (13 tests) 33ms
+ ✓ src/join.test.ts (8 tests) 65ms
+ ✓ src/route.test.ts (12 tests) 206ms
+ ✓ src/spec-compiler.test.ts (44 tests) 1467ms
+   ✓ static graph compiler > reserves every possible action and trusted token cost for 1 epochs  335ms
+   ✓ static graph compiler > reserves every possible action and trusted token cost for 2 epochs  435ms
+   ✓ static graph compiler > reserves every possible action and trusted token cost for 3 epochs  562ms
+
+ Test Files  4 passed (4)
+      Tests  77 passed (77)
+   Start at  18:18:12
+   Duration  2.19s (transform 302ms, setup 0ms, collect 961ms, tests 1.77s, environment 0ms, prepare 252ms)
+

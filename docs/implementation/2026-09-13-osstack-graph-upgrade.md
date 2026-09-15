@@ -1,8 +1,8 @@
 # OSStack 升级改造实施计划：Loop 强化与可执行 Graph v1
 
-日期：2026-09-13。检查基线：`b476bcc3fbbfcc11953abd3d154e59f7f85c4660`，分支 `codex/graph-readonly-pilot`。**状态：G00–G17 已完成，18/30；M0/M1 与 C2–C5 已通过。下一批 G18–G20/C6：静态工程图、独立评审/测试、汇合路由。完整生产图运行时尚未完成。**
+日期：2026-09-13。检查基线：`b476bcc3fbbfcc11953abd3d154e59f7f85c4660`，分支 `codex/graph-readonly-pilot`。**状态：G00–G20 已完成，21/30；M0/M1 与 C2–C6 已通过，M2 实施中。下一批 G21：组合完整代码交付模板。完整生产图运行时尚未完成。**
 
-实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；本批已验收代码：`50133c0eec518add33f556bfa95b746de350cc35`。按 G18→G19→G20 继续，见 [C5 验收](2026-09-14-graph-chain-completion.md)与[下一轮上下文](2026-09-14-graph-chain-next-context.md)。见 [C2 验收与接续报告](2026-09-13-graph-c2-completion.md)、[G05–G07 历史验收](2026-09-13-graph-kernel-completion.md)、[Saver 决策与反例](graph-saver-decision.md)；[G00–G04 历史验收](2026-09-13-graph-foundation-completion.md) 保留原结论。
+实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；本批已验收代码：`00571bb862f27d9ab8e2e502d33e588196d62fee`。按 G21 继续，见 [C6 验收](2026-09-14-graph-verification-completion.md)与[下一轮上下文](2026-09-14-graph-verification-next-context.md)。[C5 历史验收](2026-09-14-graph-chain-completion.md)保留原结论。见 [C2 验收与接续报告](2026-09-13-graph-c2-completion.md)、[G05–G07 历史验收](2026-09-13-graph-kernel-completion.md)、[Saver 决策与反例](graph-saver-decision.md)；[G00–G04 历史验收](2026-09-13-graph-foundation-completion.md) 保留原结论。
 
 本计划将 [架构设计](../design/2026-09-13-executable-graph-plan.md) 转成可逐项执行的任务，产品边界遵循 [三产品定义](../design/2026-09-13-os-products-definition.md)。OSBot 功能在 [独立 handoff](../handoffs/osbot/handoff.md) 交接；本计划只改造 OSStack，不部署 Rakazo，不修改 OStag 产品。
 
@@ -20,7 +20,7 @@ Loop 与 Graph 都获得具体提升：Loop 的终态、取消和候选执行接
 
 ## 2. 已核实基线和工程差距
 
-下表描述 `b476bcc` 实施前事实；G00–G17 的已交付变化以任务状态和验收报告为准。
+下表描述 `b476bcc` 实施前事实；G00–G20 的已交付变化以任务状态和验收报告为准。
 
 | 位置 | 当前事实 | 升级责任 |
 |---|---|---|
@@ -117,7 +117,7 @@ flowchart TD
   PRODUCT --> GATES[M3：故障 / 兼容 / 性能 / 试点]
 ```
 
-任务状态以本文件和机器清单的实际验收记录为准；目前 G00–G17 完成，G18–G29 pending。预计每卡一个 S/M 范围；若实施发现超过一个聚焦会话或约 5 个实质源文件，应拆成后缀任务并更新依赖，不能以表内估计硬塞大型改造。
+任务状态以本文件和机器清单的实际验收记录为准；目前 G00–G20 完成，G21–G29 pending。预计每卡一个 S/M 范围；若实施发现超过一个聚焦会话或约 5 个实质源文件，应拆成后缀任务并更新依赖，不能以表内估计硬塞大型改造。
 
 | ID | 阶段 | 任务 | 依赖 |
 |---|---|---|---|
@@ -522,7 +522,7 @@ flowchart TD
 
 ### G18 · 编译静态工程图规格
 
-**依赖：** G05, G06, G07。**规模：** M。**状态：** 未开始。
+**依赖：** G05, G06, G07。**规模：** M。**状态：** 已完成，C6 通过，见 [验收报告](2026-09-14-graph-verification-completion.md)。
 
 **预计改动位置：**
 
@@ -533,17 +533,17 @@ flowchart TD
 
 **验收：**
 
-- [ ] 仅注册节点/schema/路由；拒绝任意 JS、不可达依赖、缺输入及未授权工具。
-- [ ] 最多三 epoch 静态展开，计算最坏动作预算并拒绝不可能满足的规格。
-- [ ] 图、节点注册表和 schema 版本固定，输入映射类型与输出存在性运行时校验。
+- [x] 仅注册节点/schema/路由；拒绝任意 JS、不可达依赖、缺输入及未授权工具。
+- [x] 最多三 epoch 静态展开，计算最坏动作预算并拒绝不可能满足的规格。
+- [x] 图、节点注册表和 schema 版本固定，输入映射类型与输出存在性运行时校验。
 
-- [ ] 编译目标采用公开 entrypoint/task；固定 task 名称、顺序、输入映射及有限重试展开，生成 compiledProgramDigest；编排函数无 I/O/随机/时钟依赖。
+- [x] 编译目标采用公开 entrypoint/task；固定 task 名称、顺序、输入映射及有限重试展开，生成 compiledProgramDigest；编排函数无 I/O/随机/时钟依赖。
 
 **验证：** `pnpm --filter @osstack/graph test`；增加可观察的分支调用计数、版本与预算断言。
 
 ### G19 · 执行独立评审与隔离测试
 
-**依赖：** G12, G16, G18, G14。**规模：** M。**状态：** 未开始。
+**依赖：** G12, G16, G18, G14。**规模：** M。**状态：** 已完成，C6 通过，见 [验收报告](2026-09-14-graph-verification-completion.md)。
 
 **预计改动位置：**
 
@@ -554,15 +554,15 @@ flowchart TD
 
 **验收：**
 
-- [ ] review/tests 基于同一 candidate SHA 的独立工作区，评审身份满足独立性约束。
-- [ ] 测试命令来自允许的验收规格，真实收据含退出状态和报告摘要。
-- [ ] 合法代码失败与输出格式/基础设施错误分开；后二者不消耗代码修复 epoch。
+- [x] review/tests 基于同一 candidate SHA 的独立工作区，评审身份满足独立性约束。
+- [x] 测试命令来自允许的验收规格，真实收据含退出状态和报告摘要。
+- [x] 合法代码失败与输出格式/基础设施错误分开；后二者不消耗代码修复 epoch。
 
 **验证：** `pnpm --filter @osstack/graph test`；增加可观察的分支调用计数、版本与预算断言。
 
 ### G20 · 实现严格汇合与有界路由
 
-**依赖：** G18, G19。**规模：** M。**状态：** 未开始。
+**依赖：** G18, G19。**规模：** M。**状态：** 已完成，C6 通过，见 [验收报告](2026-09-14-graph-verification-completion.md)。
 
 **预计改动位置：**
 
@@ -573,9 +573,9 @@ flowchart TD
 
 **验收：**
 
-- [ ] 按 run/spec/epoch/candidate 绑定两个必需前驱，拒绝旧轮、空输出和跨 scope 结果。
-- [ ] 节点成功产出合法失败报告可进入 join 再 repair；failed/skipped 分支不制造永久等待。
-- [ ] 分支 retry 共用有限 attempt，代码 repair 最多两轮；达到任一预算停止新动作。
+- [x] 按 run/spec/epoch/candidate 绑定两个必需前驱，拒绝旧轮、空输出和跨 scope 结果。
+- [x] 节点成功产出合法失败报告可进入 join 再 repair；failed/skipped 分支不制造永久等待。
+- [x] 分支 retry 共用有限 attempt，代码 repair 最多两轮；达到任一预算停止新动作。
 
 **验证：** `pnpm --filter @osstack/graph test`；增加可观察的分支调用计数、版本与预算断言。
 
@@ -760,9 +760,9 @@ flowchart TD
 
 ## 8. 依赖、分支和交接纪律
 
-- G00–G17 与 C2–C5 已完成；下一批执行 G18–G20，完成静态工程图、独立评审/隔离测试、严格汇合与有界路由。
+- G00–G20 与 C2–C6 已完成；下一批执行 G21，将已验收组件组合为完整代码交付模板。
 - G08、G09 在约束明确后可分别处理。G10–G17 涉及 daemon/核心存储，按依赖串行整合，避免多个任务同时改 migrations.ts 或 daemon.ts；DDL 严格按 G08→G11→G13→G16 单负责人推进。
-- M1 的真实 broker/产物接口已通过 C5；G18 编译器先行，G19 复用这些接口，G20 在两者后集成。
+- M1 的真实 broker/产物接口已通过 C5，G18–G20 已通过 C6；G21 补齐动态 host 注册、完整模板和 epoch 推进，再交付 G22–G24 用户入口。
 - G22/G23 共用 graph-command 和 RPC；G25/G26 故障验证依赖完整业务路径，不提前用 stub 结果充数。
 - 真正并行时，每人只处理一个有明确文件边界的任务。此计划的依赖图不代表本次已经启动 agent 或其他 session。
 
@@ -829,4 +829,4 @@ graph worker 启动、冷/热执行、checkpoint/IPC 和并行工作区准备成
 
 ## 13. 下一轮实施的明确起点
 
-G00–G17 已完成，**18/30；C5 已通过，M0/M1 完成**。下一轮按 G18→G19→G20 实施静态工程图、独立评审/隔离测试和严格汇合路由，目标 C6。先读 [C5 接续上下文](2026-09-14-graph-chain-next-context.md)。固定 Functional API + sync，复用完整身份、逐动作准入、候选冻结、可信对账及持久释放义务。完整工程图、公开 CLI 与生产故障/兼容/性能/试点仍待后续任务。
+G00–G20 已完成，**21/30；C6 已通过，M0/M1 完成，M2 实施中**。下一轮从 G21 组合完整 code-delivery-v1 开始，见 [C6 接续上下文](2026-09-14-graph-verification-next-context.md)。当前已实现静态规格、独立验证、host 最新证据汇合与有界路由；完整 epoch 推进、公开 CLI 与生产故障/兼容/性能/试点仍待后续任务。
