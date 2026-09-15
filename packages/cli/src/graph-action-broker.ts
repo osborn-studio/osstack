@@ -5,7 +5,7 @@ import type Database from "better-sqlite3";
 import type { GraphArtifactStore, GraphFreezeInput, GraphFreezeAuthority } from "@osstack/core/graph-artifacts";
 import { CapabilitySchema, GraphActionStore, GraphRunStore, type GraphRunFence, type GraphProgramIdentity,
   type GraphAction } from "@osstack/core";
-import { GraphResult, GraphScope, WorkerActionRequest, WorkerActionResponse,
+import { GraphError as GraphErrorSchema, GraphJsonValue, GraphResult, GraphScope, WorkerActionRequest, WorkerActionResponse,
   type GraphError, type GraphErrorCode } from "@osstack/protocol";
 import { ExecutionPlan, executeCandidateImplementation, runShellCommand,
   type CandidateExecutionResult, type CommandResult, type RegisteredCandidateWorkspace } from "@osstack/loop";
@@ -15,6 +15,8 @@ import type { AdmissionInput, ExecutionLease } from "./governed-execution.js";
 type Action = WorkerActionRequest["action"];
 export interface GraphActionEvidence {
   status: "completed" | "failed";
+  /** Set only after independent executor-stop verification. */
+  stopped?: true;
   candidate?: CandidateExecutionResult;
   command?: CommandResult;
   workspace?: unknown;
@@ -24,6 +26,8 @@ export interface PersistedGraphActionEvidence {
   evidenceRef: string;
   result?: GraphResult;
   actualTokens?: number;
+  /** Trusted classification of a stopped verification invocation, never a worker claim. */
+  verificationFailure?: { code: "OUTPUT_CONTRACT_INVALID" | "INTERNAL_ERROR"; message: string; retrySafe: boolean };
 }
 type RegisteredExecution =
   | { kind: "freeze"; store: Pick<GraphArtifactStore, "freeze">; input: GraphFreezeInput; authority: Omit<GraphFreezeAuthority, "lease"> }
@@ -37,6 +41,10 @@ export interface GraphRegisteredAction {
   effectSlot: string;
   action: Action;
   tokenReservation: number;
+  /** Host registered physical workspace within the same logical graph scope. */
+  workspace?: RegisteredCandidateWorkspace;
+  /** Revalidate candidate/workspace after availability, immediately before invocation. */
+  verifyWorkspace?: () => Promise<void>;
   execution: RegisteredExecution;
   /** Trusted persistence boundary. Worker receipts/checkpoints are never passed here. */
   persist: (evidence: GraphActionEvidence) => Promise<PersistedGraphActionEvidence>;
@@ -62,7 +70,7 @@ export interface GraphActionBrokerOptions {
   authorizePolicy?: (workspacePath: string) => Promise<void>;
   now?: () => number;
 }
-type BoundAction = GraphRegisteredAction & { access: "read" | "write" };
+type BoundAction = GraphRegisteredAction & { access: "read" | "write"; workspace: RegisteredCandidateWorkspace };
 type Binding = Omit<GraphWorkerRegistration, "actions"> & { actions: ReadonlyMap<string, BoundAction> };
 const slot = (node: string, effect: string) => JSON.stringify([node, effect]);
 const reads = new Set(["code.review", "review.code", "research.code"]);
@@ -122,8 +130,11 @@ export class GraphActionBroker {
       || fixed.workspace.workspace_path.includes("\0") || fixed.workspace.workspace_id !== fixed.scope.workspaceId) throw new Error("invalid trusted worker registration");
     const registered = new Map<string, BoundAction>();
     for (const item of actions) {
-      const { execution, persist, ...actionData } = item;
+      const { execution, persist, verifyWorkspace, ...actionData } = item;
       const copy = snapshot(actionData);
+      const workspace = snapshot(copy.workspace ?? fixed.workspace);
+      if (workspace.workspace_id !== fixed.scope.workspaceId || !isAbsolute(workspace.workspace_path)
+        || workspace.workspace_path.includes("\0") || (verifyWorkspace !== undefined && typeof verifyWorkspace !== "function")) throw new Error("invalid action workspace");
       // Reuse the strict wire parser to validate exact compiled action/node/slot data.
       WorkerActionRequest.parse({ schemaVersion: 1, kind: "worker_action", requestId: "registration", scope: fixed.scope,
         graphRunId: fixed.graphRunId, specHash: fixed.identity.specHash, generation: fixed.generation, epoch: fixed.epoch,
@@ -135,7 +146,7 @@ export class GraphActionBroker {
         if (copy.action.kind !== "freeze" || typeof execution.store?.freeze !== "function") throw new Error("unsupported freeze registration");
         const input = snapshot(execution.input);
         if (canonical(input.scope) !== canonical(fixed.scope) || input.runId !== fixed.graphRunId || input.generation !== fixed.generation
-          || input.owner !== fixed.owner || input.worktreePath !== fixed.workspace.workspace_path
+          || input.owner !== fixed.owner || input.worktreePath !== workspace.workspace_path
           || input.workspaceLeaseRef !== copy.action.workspaceLeaseRef || input.implementationReceiptRef !== copy.action.receiptRef) throw new Error("freeze registration identity mismatch");
         const { verifyLease, verifyImplementationReceipt, verifyProducersStopped } = execution.authority;
         if ([verifyLease, verifyImplementationReceipt, verifyProducersStopped].some(fn => typeof fn !== "function")) throw new Error("freeze authority required");
@@ -147,7 +158,7 @@ export class GraphActionBroker {
       } else {
         if (!["implement", "repair", "tests", "review"].includes(copy.action.kind)) throw new Error("unsupported candidate action");
         const plan = snapshot(ExecutionPlan.parse(execution.plan));
-        if (plan.worktree_path !== undefined && plan.worktree_path !== fixed.workspace.workspace_path) throw new Error("workspace mismatch");
+        if (plan.worktree_path !== undefined && plan.worktree_path !== workspace.workspace_path) throw new Error("workspace mismatch");
         if (execution.kind === "command") {
           if (!execution.command?.trim() || execution.command.includes("\0")) throw new Error("invalid registered command");
           selected = Object.freeze({ kind: "command", plan, command: execution.command });
@@ -170,7 +181,7 @@ export class GraphActionBroker {
       }
       const key = slot(copy.nodeId, copy.effectSlot);
       if (registered.has(key)) throw new Error("duplicate compiled action slot");
-      registered.set(key, Object.freeze({ ...copy, execution: selected, persist, access }));
+      registered.set(key, Object.freeze({ ...copy, workspace, execution: selected, persist, access, ...(verifyWorkspace ? { verifyWorkspace } : {}) }));
     }
     const binding = Object.freeze({ ...fixed, authorize, actions: registered });
     // Verify full registered identity at installation, then at every ledger access.
@@ -250,6 +261,7 @@ export class GraphActionBroker {
     catch { return { schemaVersion: 1, kind: "worker_action_rejected", requestId: "invalid-request", error: graphError("INPUT_CONTRACT_INVALID", "invalid worker action request") }; }
     const binding = this.connections.get(connection);
     const signal = options.signal ?? new AbortController().signal;
+    let executionWorkspace: RegisteredCandidateWorkspace | undefined;
     let lease: ExecutionLease | undefined; let owned: GraphAction | undefined; let invoked = false; let uncertain = false; let observedTokens = 0; let persistedEvidenceRef: string | undefined;
     const reject = (error: unknown): WorkerActionResponse => ({ schemaVersion: 1, kind: "worker_action_rejected", requestId: request.requestId,
       error: graphError(errorCode(error), String(error)) });
@@ -262,6 +274,7 @@ export class GraphActionBroker {
       if (request.epoch !== binding.epoch) throw new Denied("EPOCH_MISMATCH", "epoch does not match registered program");
       const action = binding.actions.get(slot(request.nodeId, request.effectSlot));
       if (!action) throw new Denied("POLICY_DENIED", "unregistered compiled action slot");
+      executionWorkspace = action.workspace;
       if (canonical(action.action) !== canonical(request.action)) throw new Denied("IDEMPOTENCY_CONFLICT", "action differs from immutable compiled registration");
       const check = (): void => { if (this.connections.get(connection) !== binding) throw new Denied("UNAUTHENTICATED", "worker connection retired"); if (signal.aborted) throw new Denied("POLICY_DENIED", "action cancelled before invocation"); this.authorize(binding); this.fence(binding);
         if (authorizeRetry) {
@@ -277,8 +290,8 @@ export class GraphActionBroker {
         return this.response(request, intent.action);
       }
       owned = intent.action;
-      lease = await this.options.acquire({ kind: action.access, runId: `graph-action:${owned.effectKey}`, workspacePath: binding.workspace.workspace_path,
-        signal, authorize: async () => { check(); await this.options.authorizePolicy?.(binding.workspace.workspace_path); check(); } });
+      lease = await this.options.acquire({ kind: action.access, runId: `graph-action:${owned.effectKey}`, workspacePath: action.workspace.workspace_path,
+        signal, authorize: async () => { check(); await this.options.authorizePolicy?.(action.workspace.workspace_path); check(); } });
       this.admissions.hold(owned.effectKey, this.options.now?.() ?? Date.now());
       check();
       // This synchronous gate runs inside the actual adapter invoke/command/host
@@ -315,8 +328,18 @@ export class GraphActionBroker {
       const measured = usage?.tokens_in !== undefined && usage.tokens_out !== undefined ? usage.tokens_in + usage.tokens_out : undefined;
       if (measured !== undefined && !Number.isSafeInteger(measured)) throw new Error("invalid total token usage");
       const actualTokens = Math.max(observedTokens, persisted.actualTokens ?? 0, measured ?? Math.max(action.tokenReservation, usage?.tokens_in ?? 0, usage?.tokens_out ?? 0));
+      const verification = action.action.kind === "review" || action.action.kind === "tests";
+      const failure = persisted.verificationFailure;
+      if (failure && (!verification || evidence.stopped !== true || signal.aborted || persisted.result !== undefined
+        || !["OUTPUT_CONTRACT_INVALID", "INTERNAL_ERROR"].includes(failure.code) || typeof failure.retrySafe !== "boolean")) throw new Error("invalid verification failure classification");
+      const failureError = failure ? GraphErrorSchema.parse({ schemaVersion: 1, code: failure.code, message: failure.message,
+        retryable: failure.retrySafe, nextAction: failure.retrySafe ? "retry" : "stop" }) : undefined;
+      const normalTestsExit = action.action.kind === "tests" && evidence.stopped === true
+        && evidence.command?.termination?.trigger === "exit" && evidence.command.termination.stop_confirmed
+        && !evidence.command.cancellation && !evidence.command.failure_code && !signal.aborted;
+      const completed = !failure && (evidence.status === "completed" || (normalTestsExit && persisted.result !== undefined));
       let result: GraphResult | undefined;
-      if (evidence.status === "completed") {
+      if (completed) {
         result = GraphResult.parse(persisted.result);
         if (action.action.kind === "freeze" && (!evidence.frozenCandidate || canonical(result) !== canonical(evidence.frozenCandidate))) throw new Error("freeze result differs from durable artifact");
         const expected = action.action.kind === "freeze" ? "candidate_ready" : action.action.kind === "implement" || action.action.kind === "repair" ? "implementation_complete"
@@ -325,9 +348,9 @@ export class GraphActionBroker {
         if ("workspaceLeaseRef" in result && "workspaceLeaseRef" in action.action && result.workspaceLeaseRef !== action.action.workspaceLeaseRef) throw new Error("persisted workspace mismatch");
         if ("candidateRevision" in result && "candidateRevision" in action.action && result.candidateRevision !== action.action.candidateRevision) throw new Error("persisted revision mismatch");
       }
-      const settled = this.actions.recordOutcome(this.fence(binding), owned.effectKey, evidence.status === "completed"
+      const settled = this.actions.recordOutcome(this.fence(binding), owned.effectKey, completed
         ? { state: "confirmed", evidenceRef: persisted.evidenceRef, actualTokens, result: result! }
-        : { state: "failed", evidenceRef: persisted.evidenceRef, actualTokens, retrySafe: false, error: { message: "trusted stopped invocation failed" } });
+        : { state: "failed", evidenceRef: persisted.evidenceRef, actualTokens, retrySafe: failure?.retrySafe ?? false, error: GraphJsonValue.parse(failureError ?? { message: "trusted stopped invocation failed" }) });
       return this.response(request, settled.action);
     } catch (error) {
       if (binding && owned) {
@@ -335,7 +358,7 @@ export class GraphActionBroker {
           uncertain = true; lease?.retain(String(error));
           if (lease) this.retained.set(owned.effectKey, { lease, context: { effectKey: owned.effectKey,
             scope: binding.scope, graphRunId: binding.graphRunId, generation: binding.generation,
-            owner: binding.owner, workspacePath: binding.workspace.workspace_path } });
+            owner: binding.owner, workspacePath: executionWorkspace?.workspace_path ?? binding.workspace.workspace_path } });
           try { const unknown = this.actions.markUncertain(this.fence(binding), owned.effectKey, { state: "unknown", evidenceRef: persistedEvidenceRef ?? `unknown:${randomUUID()}`, observedTokens: Math.max(owned.reservationTokens, observedTokens) });
             return this.response(request, unknown.action); } catch { /* Commit/fence failure preserves the original running reservation. */ }
           return { schemaVersion: 1, kind: "worker_action_response", requestId: request.requestId, generation: request.generation,
@@ -349,11 +372,11 @@ export class GraphActionBroker {
       }
       return reject(error);
     } finally {
-      if (lease && !uncertain) await this.releaseAdmission(lease, binding, owned);
+      if (lease && !uncertain) await this.releaseAdmission(lease, binding, owned, executionWorkspace);
     }
   }
 
-  private async releaseAdmission(lease: ExecutionLease, binding: Binding | undefined, owned: GraphAction | undefined): Promise<void> {
+  private async releaseAdmission(lease: ExecutionLease, binding: Binding | undefined, owned: GraphAction | undefined, workspace?: RegisteredCandidateWorkspace): Promise<void> {
     let physicallyReleased = false;
     try {
       await lease.release(); physicallyReleased = true;
@@ -365,7 +388,7 @@ export class GraphActionBroker {
       if (!physicallyReleased) lease.retain(String(error));
       if (binding && owned) this.retained.set(owned.effectKey, { lease, context: {
         effectKey: owned.effectKey, scope: binding.scope, graphRunId: binding.graphRunId,
-        generation: binding.generation, owner: binding.owner, workspacePath: binding.workspace.workspace_path,
+        generation: binding.generation, owner: binding.owner, workspacePath: workspace?.workspace_path ?? binding.workspace.workspace_path,
       } });
       throw error;
     }
@@ -375,17 +398,27 @@ export class GraphActionBroker {
     const base = { schemaVersion: 1 as const, kind: "worker_action_response" as const, requestId: request.requestId,
       generation: request.generation, effect: action.effect };
     if (action.state === "confirmed") return WorkerActionResponse.parse({ ...base, outcome: { state: "confirmed", result: action.outcome?.state === "confirmed" ? action.outcome.result : undefined } });
-    if (action.state === "failed") return WorkerActionResponse.parse({ ...base, outcome: { state: "failed", error: graphError("POLICY_DENIED", "prior invocation failed; no automatic retry") } });
+    if (action.state === "failed") {
+      const error = GraphErrorSchema.safeParse(action.outcome?.state === "failed" ? action.outcome.error : undefined);
+      return WorkerActionResponse.parse({ ...base, outcome: { state: "failed", error: error.success ? error.data : graphError("POLICY_DENIED", "prior invocation failed; no automatic retry") } });
+    }
     return { ...base, outcome: { state: "unknown", error: graphError("ACTION_OUTCOME_UNKNOWN", "existing action requires reconciliation; invocation was not repeated"), reconciliationRef: action.effectKey } };
   }
 
   private async execute(binding: Binding, action: BoundAction, signal: AbortSignal, beforeEffect: (executionRunId: string) => void, observeTokens: (tokens: number) => void, lease?: ExecutionLease): Promise<GraphActionEvidence> {
     const execution = action.execution;
+    const verifyWorkspace = async (): Promise<void> => {
+      if (action.verifyWorkspace) {
+        const valid: unknown = await action.verifyWorkspace();
+        if (valid !== undefined) throw new Denied("POLICY_DENIED", "invalid workspace authority");
+      }
+      if (lease?.assertActive) await lease.assertActive();
+    };
     if (execution.kind === "freeze") {
       if (!lease?.assertActive) throw new Error("freeze requires canonical lease verification");
       const check = (): void => { if (signal.aborted) throw new Error("freeze cancelled"); this.authorize(binding); this.fence(binding); };
-      await this.options.authorizePolicy?.(binding.workspace.workspace_path); check();
-      await lease.assertActive(); check(); beforeEffect(`freeze:${randomUUID()}`);
+      await this.options.authorizePolicy?.(action.workspace.workspace_path); check();
+      await verifyWorkspace(); check(); beforeEffect(`freeze:${randomUUID()}`);
       const frozenCandidate = await execution.store.freeze(execution.input, { ...execution.authority, lease,
         verifyLease: async (input, actualLease) => {
           if (actualLease !== lease) throw new Error("freeze lease identity mismatch");
@@ -397,9 +430,10 @@ export class GraphActionBroker {
       return { status: "completed", frozenCandidate };
     }
     if (execution.kind === "workspace") {
-      await this.options.authorizePolicy?.(binding.workspace.workspace_path);
+      await this.options.authorizePolicy?.(action.workspace.workspace_path);
+      await verifyWorkspace();
       beforeEffect(`workspace:${randomUUID()}`);
-      const result = await execution.handler({ workspace: binding.workspace, signal });
+      const result = await execution.handler({ workspace: action.workspace, signal });
       if (result?.stopped !== true || !["completed", "failed"].includes(result.status)) throw new Error("workspace outcome unconfirmed");
       return { status: result.status, workspace: result.evidence };
     }
@@ -413,8 +447,9 @@ export class GraphActionBroker {
       capabilities: () => capabilities, isAvailable: original?.isAvailable ?? (async () => ({ available: true, last_checked_at: 0 })),
       invoke: (task, invocationSignal) => {
         return (async function* () {
-          await policy?.(binding.workspace.workspace_path);
+          await policy?.(action.workspace.workspace_path);
           if (invocationSignal.aborted) throw new Denied("POLICY_DENIED", "execution cancelled before invocation");
+          await verifyWorkspace();
           beforeEffect(task.run_id); invocationRunId = task.run_id;
           try {
             if (original) {
@@ -447,7 +482,7 @@ export class GraphActionBroker {
             if (execution.kind !== "command") throw new Error("invalid execution registration");
             // runShellCommand starts synchronously before its returned promise; no
             // untrusted await separates the fence above from the actual spawn.
-            command = await runShellCommand(execution.command, { cwd: binding.workspace.workspace_path, timeoutMs: 120_000,
+            command = await runShellCommand(execution.command, { cwd: action.workspace.workspace_path, timeoutMs: 120_000,
               outputLimit: 16_000, ...(invocationSignal ? { signal: invocationSignal } : {}) });
             yield { event_id: randomUUID(), run_id: task.run_id, session_id: task.session_id, seq: 1, type: "done" as const,
               created_at: Date.now() / 1000, terminal: true, payload: { status: command.exitCode === 0 ? "completed" : "failed", last_seq: 0 } };
@@ -457,7 +492,7 @@ export class GraphActionBroker {
       confirmStopped: async runId => original?.confirmStopped ? original.confirmStopped(runId)
         : { stopped: command?.termination?.stop_confirmed === true, evidence: command?.termination?.evidence ?? "no trusted stop receipt" },
     };
-    const candidate = await executeCandidateImplementation({ plan: { ...execution.plan, agent_id: wrapper.id }, workspace: binding.workspace,
+    const candidate = await executeCandidateImplementation({ plan: { ...execution.plan, agent_id: wrapper.id }, workspace: action.workspace,
       adapters: [wrapper], signal, cancellationGraceMs: 50,
       authorize: async () => { this.authorize(binding); this.fence(binding); return { allow: true }; } });
     if (!invocationRunId) throw new Denied("POLICY_DENIED", candidate.reason ?? "candidate preflight refused");
@@ -469,6 +504,6 @@ export class GraphActionBroker {
     if (stopped.stopped !== true || !stopped.evidence?.trim()) throw new Error("external stop unconfirmed");
     const usage = candidate.execution;
     if ([usage?.tokens_in, usage?.tokens_out].some(value => value !== undefined && (!Number.isSafeInteger(value) || value < 0))) throw new Error("invalid adapter usage");
-    return { status: candidate.status === "implementation_complete" ? "completed" : "failed", candidate, ...(command ? { command } : {}) };
+    return { status: candidate.status === "implementation_complete" ? "completed" : "failed", stopped: true, candidate, ...(command ? { command } : {}) };
   }
 }
