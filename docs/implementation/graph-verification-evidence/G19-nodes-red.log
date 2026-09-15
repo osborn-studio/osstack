@@ -1,0 +1,49 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/nodes/branch.test.ts [ src/nodes/branch.test.ts ]
+Error: Cannot find module './branch.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/src/nodes/branch.test.ts'
+ ❯ src/nodes/branch.test.ts:2:1
+
+
+Caused by: Error: Failed to load url ./branch.js (resolved id: ./branch.js) in /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/src/nodes/branch.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/nodes/review.test.ts [ src/nodes/review.test.ts ]
+Error: Cannot find module './review.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/src/nodes/review.test.ts'
+ ❯ src/nodes/review.test.ts:2:1
+      1| import { expect, it } from 'vitest';
+      2| import { parseReviewReport, createReviewRequest, validateReviewRespons…
+       | ^
+      3| it('accepts structured changes_requested and rejects identity self-cla…
+      4|   const report = { schemaVersion: 1, verdict: 'changes_requested', sum…
+
+Caused by: Error: Failed to load url ./review.js (resolved id: ./review.js) in /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/src/nodes/review.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/nodes/tests.test.ts [ src/nodes/tests.test.ts ]
+Error: Cannot find module './tests.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/src/nodes/tests.test.ts'
+ ❯ src/nodes/tests.test.ts:2:1
+
+
+Caused by: Error: Failed to load url ./tests.js (resolved id: ./tests.js) in /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/src/nodes/tests.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  no tests
+   Start at  17:53:24
+   Duration  250ms (transform 142ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 133ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/nodes/branch.test.ts src/nodes/review.test.ts src/nodes/tests.test.ts

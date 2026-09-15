@@ -1,0 +1,30 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-verification.test.ts [ src/graph-verification.test.ts ]
+Error: Cannot find module './graph-verification.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli/src/graph-verification.test.ts'
+ ❯ src/graph-verification.test.ts:9:1
+      7| import { resolveRepositoryScope } from '@osstack/core';
+      8| import { computeGraphEffectKey } from '@osstack/protocol';
+      9| import { prepareGraphVerification, loadGraphVerificationEvidence, type…
+       | ^
+     10| const git = (cwd: string, ...args: string[]) => execFileSync('git', ar…
+     11| async function fixture() {
+
+Caused by: Error: Failed to load url ./graph-verification.js (resolved id: ./graph-verification.js) in /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli/src/graph-verification.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  17:56:13
+   Duration  432ms (transform 154ms, setup 8ms, collect 0ms, tests 0ms, environment 0ms, prepare 47ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-verification.test.ts

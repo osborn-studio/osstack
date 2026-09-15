@@ -1,0 +1,64 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:2488c57ac68a6dfac1c4613b0a0952e7abdd2cdad585489ec20bb7db2251337f: Error: external stop unconfirmed
+ ❯ src/graph-verification-join.test.ts (13 tests | 2 failed | 11 skipped) 7802ms
+   ↓ joins real negative outcomes in review then tests order and publishes one immutable row
+   ↓ joins real negative outcomes in tests then review order and publishes one immutable row
+   ↓ unknown reviewer remains reconciliation-only on repeated evaluation and cannot allocate retry
+   ↓ host retry allocates attempt two and recomputes latest durable evidence instead of replaying failed RETURN
+   ↓ rejects a stale fence and revoked authority across asynchronous artifact evidence verification
+   ↓ held real admission release prevents publication even when both branches are confirmed
+   ↓ revalidates durable evidence bytes after a successful publication instead of trusting a cached join
+   ↓ retains original repair limits {"maxActionStarts":2} after actual branch execution
+   ↓ retains original repair limits {"tokenReservationLimit":2} after actual branch execution
+   ↓ retains original repair limits {"maxEpochs":1} after actual branch execution
+   ↓ retains original branch-attempt limit on malformed output and original elapsed deadline
+   × real worker partial RETURN survives stop/drain and G15 takeover; host retry supersedes cached malformed review 5381ms
+     → freeze registration identity mismatch
+   × actual Functional task throws for unknown verification outcome and host refuses worker pass proposal 2420ms
+     → expected [Function] to throw error matching /ACTION_OUTCOME_UNKNOWN|unknown/ but got 'AggregateError: Multiple errors occur…'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-verification-join.test.ts > real worker partial RETURN survives stop/drain and G15 takeover; host retry supersedes cached malformed review
+Error: freeze registration identity mismatch
+ ❯ GraphActionBroker.register src/graph-action-broker.ts:150:140
+    148|         if (canonical(input.scope) !== canonical(fixed.scope) || input…
+    149|           || input.owner !== fixed.owner || input.worktreePath !== wor…
+    150|           || input.workspaceLeaseRef !== copy.action.workspaceLeaseRef…
+       |                                                                                                                                            ^
+    151|         const { verifyLease, verifyImplementationReceipt, verifyProduc…
+    152|         if ([verifyLease, verifyImplementationReceipt, verifyProducers…
+ ❯ src/graph-verification-join.test.ts:287:80
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/graph-verification-join.test.ts > actual Functional task throws for unknown verification outcome and host refuses worker pass proposal
+AssertionError: expected [Function] to throw error matching /ACTION_OUTCOME_UNKNOWN|unknown/ but got 'AggregateError: Multiple errors occur…'
+
+- Expected: 
+/ACTION_OUTCOME_UNKNOWN|unknown/
+
++ Received: 
+"AggregateError: Multiple errors occurred during superstep 0. See the \"errors\" field of this exception for more details."
+
+ ❯ src/graph-verification-join.test.ts:310:3
+    308|   const f = await fixture({ source: verificationPhase }); f.state.stop…
+    309|   const w = workerRuntime(f); const handle = w.start();
+    310|   await expect(handle.result).rejects.toThrow(/ACTION_OUTCOME_UNKNOWN|…
+       |   ^
+    311|   const stopped = await handle.stop(); expect(stopped).toMatchObject({…
+    312|   const decision = await f.evaluate(); expect(decision).toMatchObject(…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 11 skipped (13)
+   Start at  18:24:52
+   Duration  8.70s (transform 439ms, setup 7ms, collect 734ms, tests 7.80s, environment 0ms, prepare 33ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-verification-join.test.ts -t 'real worker partial|actual Functional'

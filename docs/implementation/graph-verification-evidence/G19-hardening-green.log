@@ -1,0 +1,62 @@
+$ vitest run src/graph-verification.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:6636e60a2eb2e8c6dca9e36759437c64c24eab91fabb07ce4152817e0edc639d: Error: external stop unconfirmed
+ ❯ src/graph-verification.test.ts (23 tests | 1 failed) 83537ms
+   ✓ restores the exact verified candidate into independent repositories and rejects reviewer writes  3683ms
+   ✓ rejects wrong manifest and reviewer identity before restoring or invoking  952ms
+   ✓ persists actual stopped exit evidence and rejects tampering/replay  4842ms
+   ✓ keeps unknown stop separate from stopped malformed review and valid changes_requested  6017ms
+   ✓ runs real registered command and independent G04 review concurrently with an observable two-way barrier  7098ms
+   ✓ rejects revoke during adapter availability before actual invocation  3144ms
+   ✓ rejects mutate during adapter availability before actual invocation  2260ms
+   ✓ snapshots callback/data replacement and rejects live revocation after preparation awaits  2521ms
+   ✓ rejects mutation during restore before accepting any workspace baseline  1446ms
+   ✓ releases preparation lease if authority is revoked while acquiring it  704ms
+   ✓ uses exact allowlisted exits, refusing model pass claims and unregistered commands  8652ms
+   ✓ does not accept review done as executor stop proof through the actual broker  1808ms
+   ✓ classifies stopped malformed output and reviewer filesystem mutation without a code-failure result  6334ms
+   ✓ rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation  686ms
+   ✓ snapshots executor evidence before asynchronous verification and rechecks authority afterward  6950ms
+   ✓ rejects actual successful command that mutates candidate: printf malicious > file  3391ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file; printf malicious > file  3218ms
+   ✓ rejects actual successful command that mutates candidate: chmod +x file  3322ms
+   ✓ rejects actual successful command that mutates candidate: printf staged > file; git add file; printf candidate > file  3345ms
+   ✓ rejects actual successful command that mutates candidate: git -c user.name=test -c user.email=test@invalid commit --allow-empty -qm malicious  3387ms
+   ✓ allocates distinct actual review sessions on explicit retry and persists prompt receipts  4958ms
+   × rejects oversized evidence before publishing any envelope 1667ms
+     → expected [Function] to throw error matching /size|64|limit/ but got '[\n  {\n    "code": "custom",\n    "m…'
+   ✓ requires an actual invocation receipt and strips supplied writer context on every invocation  3152ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-verification.test.ts > rejects oversized evidence before publishing any envelope
+AssertionError: expected [Function] to throw error matching /size|64|limit/ but got '[\n  {\n    "code": "custom",\n    "m…'
+
+- Expected: 
+/size|64|limit/
+
++ Received: 
+"[
+  {
+    \"code\": \"custom\",
+    \"message\": \"Expected bounded JSON-only graph data\",
+    \"path\": []
+  }
+]"
+
+ ❯ src/graph-verification.test.ts:264:3
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 22 passed (23)
+   Start at  18:19:31
+   Duration  84.60s (transform 500ms, setup 14ms, collect 823ms, tests 83.54s, environment 0ms, prepare 63ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.19.0 test: `vitest run src/graph-verification.test.ts`
+Exit status 1

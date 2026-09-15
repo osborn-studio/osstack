@@ -1,0 +1,39 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-verification.test.ts (8 tests | 1 failed) 21752ms
+   ✓ restores the exact verified candidate into independent repositories and rejects reviewer writes  1524ms
+   ✓ rejects wrong manifest and reviewer identity before restoring or invoking  613ms
+   ✓ persists actual stopped exit evidence and rejects tampering/replay  4098ms
+   ✓ keeps unknown stop separate from stopped malformed review and valid changes_requested  2813ms
+   ✓ runs real registered command and independent G04 review concurrently with an observable two-way barrier  4003ms
+   ✓ rejects revoke during adapter availability before actual invocation  1975ms
+   ✓ rejects mutate during adapter availability before actual invocation  1719ms
+   × snapshots callback/data replacement and rejects live revocation after preparation awaits 5008ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-verification.test.ts > snapshots callback/data replacement and rejects live revocation after preparation awaits
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/graph-verification.test.ts:117:1
+    115|   expect(await f2.invoke('review')).toMatchObject({ kind: 'worker_acti…
+    116| });
+    117| it('snapshots callback/data replacement and rejects live revocation af…
+       | ^
+    118|   const f = await fixture(); const originalCommand = f.options.accepta…
+    119|   let release!: () => void; const barrier = new Promise<void>(resolve …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  18:01:51
+   Duration  22.75s (transform 474ms, setup 8ms, collect 802ms, tests 21.75s, environment 0ms, prepare 35ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-verification.test.ts

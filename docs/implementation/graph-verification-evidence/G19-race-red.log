@@ -1,0 +1,166 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-verification.test.ts (10 tests | 2 failed | 8 skipped) 2160ms
+   ↓ restores the exact verified candidate into independent repositories and rejects reviewer writes
+   ↓ rejects wrong manifest and reviewer identity before restoring or invoking
+   ↓ persists actual stopped exit evidence and rejects tampering/replay
+   ↓ keeps unknown stop separate from stopped malformed review and valid changes_requested
+   ↓ runs real registered command and independent G04 review concurrently with an observable two-way barrier
+   ↓ rejects revoke during adapter availability before actual invocation
+   ↓ rejects mutate during adapter availability before actual invocation
+   ↓ snapshots callback/data replacement and rejects live revocation after preparation awaits
+   × rejects mutation during restore before accepting any workspace baseline 1615ms
+     → promise resolved "{ …(4) }" instead of rejecting
+   × releases preparation lease if authority is revoked while acquiring it 545ms
+     → expected "spy" to be called once, but got 0 times
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-verification.test.ts > rejects mutation during restore before accepting any workspace baseline
+AssertionError: promise resolved "{ …(4) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "actions": [
++     {
++       "action": {
++         "acceptanceRef": "acceptance",
++         "candidateRevision": "84e19c877a9bb457c3e5832987b57bb9951840a3",
++         "kind": "review",
++         "workspaceLeaseRef": "verification:28afb5b3-7f46-433c-b48d-87b86dbf4c1f",
++       },
++       "effectSlot": "invoke",
++       "execution": {
++         "adapter": {
++           "capabilities": [Function capabilities],
++           "confirmStopped": [Function bound confirmStopped],
++           "cost_tier": "low",
++           "display_name": "Independent reviewer",
++           "id": "reviewer",
++           "invoke": [Function bound invoke],
++           "isAvailable": [Function bound isAvailable],
++         },
++         "capabilityId": "review",
++         "kind": "adapter",
++         "plan": {
++           "agent_id": "reviewer",
++           "max_iterations": 1,
++           "plan_id": "verification:6e6d1002-33a2-4ba7-a08d-7871166f61c3",
++           "stop_condition": {
++             "type": "review_approved",
++           },
++           "task": {
++             "capability": "review.code",
++             "priority": 50,
++             "prompt": "Independently review frozen candidate 84e19c877a9bb457c3e5832987b57bb9951840a3 against acceptance acceptance. Return only JSON {\"schemaVersion\":1,\"verdict\":\"accept\"|\"changes_requested\",\"summary\":string,\"findings\":string[]}. Do not modify files.",
++             "source": "manual",
++             "task_id": "verification:review:d4c30b3e-13dc-43b8-ae90-176e43b28045",
++           },
++         },
++       },
++       "nodeId": "review",
++       "persist": [Function persist],
++       "tokenReservation": 0,
++       "verifyWorkspace": [Function verifyWorkspace],
++       "workspace": {
++         "workspace_id": "w",
++         "workspace_path": "/Volumes/AIMATE_WORK/tmp/gc6/g19-5ZWvJh/verification/review-6f44f17e-be24-4fa1-b24e-9e6246a535a1",
++       },
++     },
++     {
++       "action": {
++         "candidateRevision": "84e19c877a9bb457c3e5832987b57bb9951840a3",
++         "commandSpecRef": "acceptance",
++         "kind": "tests",
++         "workspaceLeaseRef": "verification:97ea3ce0-5c70-415b-a7b7-7c43ef09feea",
++       },
++       "effectSlot": "invoke",
++       "execution": {
++         "command": "exit 1",
++         "kind": "command",
++         "plan": {
++           "agent_id": "registered-command",
++           "max_iterations": 1,
++           "plan_id": "verification:68a1465b-1655-4d53-b9f2-305e89f4c8b3",
++           "stop_condition": {
++             "type": "tests_pass",
++           },
++           "task": {
++             "capability": "code.test",
++             "priority": 50,
++             "prompt": "Run registered acceptance acceptance.",
++             "source": "manual",
++             "task_id": "verification:tests:e675e3fc-917e-4765-a1ab-203a34190472",
++           },
++         },
++       },
++       "nodeId": "tests",
++       "persist": [Function persist],
++       "tokenReservation": 0,
++       "verifyWorkspace": [Function verifyWorkspace],
++       "workspace": {
++         "workspace_id": "w",
++         "workspace_path": "/Volumes/AIMATE_WORK/tmp/gc6/g19-5ZWvJh/verification/tests-3ca20d41-0870-49f2-9997-f633b9c33753",
++       },
++     },
++   ],
++   "binding": {
++     "acceptanceRef": "acceptance",
++     "artifactDigest": "c3a648a2ea1faae1adb14c4fa349f605aa0e81e0255f25c7fc9a98f9b6e842f1",
++     "candidateRevision": "84e19c877a9bb457c3e5832987b57bb9951840a3",
++     "epoch": 0,
++     "graphRunId": "4c3b9f06-425c-49a4-9e89-c2b6e587dd54",
++     "scope": {
++       "principalId": "p",
++       "schemaVersion": 1,
++       "tenantId": "t",
++       "workspaceId": "w",
++     },
++     "specHash": "3fb316971dcd1f541791f453de93af45989eeb62713c7dd72648cce0f92b08f0",
++   },
++   "reviewWorkspace": {
++     "workspace_id": "w",
++     "workspace_path": "/Volumes/AIMATE_WORK/tmp/gc6/g19-5ZWvJh/verification/review-6f44f17e-be24-4fa1-b24e-9e6246a535a1",
++   },
++   "testsWorkspace": {
++     "workspace_id": "w",
++     "workspace_path": "/Volumes/AIMATE_WORK/tmp/gc6/g19-5ZWvJh/verification/tests-3ca20d41-0870-49f2-9997-f633b9c33753",
++   },
+  }
+
+ ❯ src/graph-verification.test.ts:135:51
+    133|   const f = await fixture(); const restore = f.options.artifacts.resto…
+    134|   f.options.artifacts.restore = async (...args) => { const restored = …
+    135|   await expect(prepareGraphVerification(f.options)).rejects.toThrow(/c…
+       |                                                   ^
+    136| }, 15000);
+    137| it('releases preparation lease if authority is revoked while acquiring…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/graph-verification.test.ts > releases preparation lease if authority is revoked while acquiring it
+AssertionError: expected "spy" to be called once, but got 0 times
+ ❯ src/graph-verification.test.ts:141:97
+    139|   f.options.authorize = () => { if (revoked) throw new Error('revoked'…
+    140|   f.options.acquire = async () => { revoked = true; return { release, …
+    141|   await expect(prepareGraphVerification(f.options)).rejects.toThrow('r…
+       |                                                                                                 ^
+    142| }, 15000);
+    143| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 8 skipped (10)
+   Start at  18:02:39
+   Duration  3.10s (transform 449ms, setup 7ms, collect 749ms, tests 2.16s, environment 0ms, prepare 37ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-verification.test.ts -t 'during restore|while acquiring'
