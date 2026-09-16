@@ -6,6 +6,7 @@ import type { GraphActionBroker, GraphWorkerRegistration } from './graph-action-
 import type { GraphCheckpointService } from './graph-checkpoint-service.js';
 import { GraphProcessJournal, type GraphWorkerProcessReport } from './graph-process-journal.js';
 import { GraphReconciler } from './graph-reconciler.js';
+import { recoverUnstartedGraphWorker, type GraphUnstartedRecoveryRequest } from './graph-unstarted-recovery.js';
 import { GraphWorkerManager, type GraphWorkerManagerOptions, type GraphWorkerHandle, type GraphWorkerExitEvidence } from './graph-worker-manager.js';
 
 export interface GraphRuntimeOptions {
@@ -71,6 +72,12 @@ export class GraphRuntime {
     this.open();
     if (run.generation !== 0 || run.leaseOwner !== null) throw new Error('RECOVERY_REQUIRED');
     return this.runs.acquireLease({ ...fence(run), owner, leaseExpiresAt });
+  }
+  /** Host-authorized G15 takeover only when durable evidence proves no worker or executor started. */
+  recoverUnstartedWorker(request: GraphUnstartedRecoveryRequest, authorize: () => void) {
+    return recoverUnstartedGraphWorker(this.options.db, this.reconciler, request, () => {
+      this.open(); synchronous(authorize());
+    });
   }
   start(value: GraphRuntimeStart): GraphRuntimeHandle {
     this.open();

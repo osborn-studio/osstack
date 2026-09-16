@@ -202,15 +202,15 @@ describe("trusted graph recovery", () => {
   });
 
 });
-it('recovers an authenticated no-child spawn failure without fabricating a stopped-process receipt', () => {
+it('refuses an attested no-child claim without durable launch and failure records', () => {
   run = runs.create({ ...request, idempotencyKey: 'no-child' }, program, 100);
   run = runs.acquireLease({ ...fence(110), owner: 'failed-spawn-owner', leaseExpiresAt: 200 });
   const s = recovery.snapshot(fence());
   const p = { ...proof(s), worker: { kind: 'not_started' as const, graphRunId: run.graphRunId, generation: run.generation,
     owner: run.leaseOwner!, confirmedAt: 125, evidenceRef: 'worker-not-started:observed-enoent' } };
   trusted.add(proofKey(p));
-  const result = recovery.commit(s, { kind: 'takeover', receiptId: 'replace-failed-spawn', owner: 'replacement', leaseExpiresAt: 300 }, p, 130);
-  expect(result.run.generation).toBe(2); expect(result.record.proof.worker.kind).toBe('not_started');
+  expect(() => recovery.commit(s, { kind: 'takeover', receiptId: 'replace-failed-spawn', owner: 'replacement', leaseExpiresAt: 300 }, p, 130)).toThrow('WORKER_PROOF_MISMATCH');
+  expect(runs.get(run.scope, run.graphRunId)!.generation).toBe(1);
 });
 it('refuses a no-child proof when that generation has admitted actions', () => {
   const s = recovery.snapshot(fence());

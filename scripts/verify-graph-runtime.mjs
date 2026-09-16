@@ -33,18 +33,19 @@ const groups = [
     'src/graph-faults.integration.test.ts', 'src/graph-chain.integration.test.ts', 'src/graph-worker-manager.test.ts',
     'src/graph-checkpoint-service.test.ts', 'src/graph-action-broker.test.ts', 'src/graph-action-broker-boundary.test.ts',
     'src/graph-verification.test.ts', 'src/graph-verification-join.test.ts', 'src/graph-rpc.test.ts',
-    'src/graph-concurrency.integration.test.ts', 'src/graph-review-findings.test.ts'] },
+    'src/graph-concurrency.integration.test.ts', 'src/graph-review-findings.test.ts',
+    'src/graph-unstarted-recovery.test.ts', 'src/graph-recovery-crash.integration.test.ts'] },
 ];
 const coverage = {
   F01: ['loop/src/executor.test.ts'],
-  F02: ['cli/src/graph-action-broker.test.ts', 'cli/src/graph-chain.integration.test.ts'],
+  F02: ['cli/src/graph-action-broker.test.ts', 'cli/src/graph-chain.integration.test.ts', 'cli/src/graph-recovery-crash.integration.test.ts'],
   F03: ['cli/src/graph-chain.integration.test.ts'],
   F04: ['cli/src/graph-chain.integration.test.ts'],
   F05: ['core/src/state/graph-checkpoints.test.ts', 'cli/src/graph-chain.integration.test.ts'],
   F06: ['cli/src/graph-checkpoint-service.test.ts', 'cli/src/graph-action-broker-boundary.test.ts'],
   F07: ['core/src/graph/artifact-store.test.ts'],
   F08: ['cli/src/graph-review-findings.test.ts', 'cli/src/graph-concurrency.integration.test.ts'],
-  F09: ['cli/src/graph-concurrency.integration.test.ts'],
+  F09: ['cli/src/graph-concurrency.integration.test.ts', 'cli/src/graph-unstarted-recovery.test.ts', 'cli/src/graph-recovery-crash.integration.test.ts'],
   F10: ['cli/src/graph-verification.test.ts', 'cli/src/graph-verification-join.test.ts'],
   F11: ['loop/src/executor.test.ts', 'cli/src/graph-chain.integration.test.ts', 'cli/src/graph-concurrency.integration.test.ts'],
   F12: ['cli/src/graph-faults.integration.test.ts', 'cli/src/graph-rpc.test.ts', 'core/src/graph/artifact-store.test.ts'],
@@ -57,7 +58,7 @@ const report = { schemaVersion: 1, scope: 'G25 fault regression diagnostics; no 
   platform: process.platform, node: process.version, seed: options.seed, repeat: options.repeat,
   startedAt: new Date().toISOString(), coverage, sourceHashes, runs: [], passed: false,
   limitations: ['Coverage lists regression suites, not proof that every F01–F12 subcase or production platform is admitted.',
-    'Opaque executor quiescence and fresh-supervisor recovery remain separate requirements.',
+    'First-generation no-child recovery is covered; previously running opaque executor quiescence remains unproved.',
     'A stale artifact lock is retained, not automatically removed.'] };
 const save = () => writeFileSync(output, JSON.stringify(report, null, 2) + '\n');
 save();

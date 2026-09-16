@@ -146,6 +146,7 @@ export class GraphRecoveryStore {
       if (w.kind === "not_started") {
         const launch = this.db.prepare("SELECT owner,identity_json,launched_at FROM graph_worker_launches WHERE graph_run_id=? AND generation=?")
           .get(run.graphRunId, run.generation) as { owner: string; identity_json: string; launched_at: number } | undefined;
+        if (!launch) fail("WORKER_PROOF_MISMATCH");
         if (launch) {
           const events = this.db.prepare("SELECT kind,event_json FROM graph_worker_process_events WHERE graph_run_id=? AND generation=?")
             .all(run.graphRunId, run.generation) as { kind: string; event_json: string }[];
