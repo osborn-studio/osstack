@@ -11,8 +11,9 @@ import { GraphDelivery } from './graph-delivery.js';
 import { makeRepositoryPolicyGate } from './repository-policy.js';
 import { GovernedExecution } from './governed-execution.js';
 import type { AgentAdapter } from '@osstack/agents';
+const quoteShell = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'";
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-async function fixture(mode: 'success' | 'review' | 'tests' | 'unknown' = 'success') {
+async function fixture(mode: 'success' | 'review' | 'tests' | 'tests-slow-stop' | 'unknown' = 'success') {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'g22-rpc-'))); const repo = join(root, 'source'); await mkdir(repo);
   git(repo, 'init', '-q'); await writeFile(join(repo, 'answer'), '0\n'); git(repo, 'add', '.'); git(repo, '-c', 'user.name=G22', '-c', 'user.email=g22@invalid', 'commit', '-qm', 'base');
   const db = openDb({ path: join(root, 'control.sqlite') }); let writes = 0; let reviewStarted = false; let granted = true; let abortObserved = false;
@@ -47,7 +48,7 @@ async function fixture(mode: 'success' | 'review' | 'tests' | 'unknown' = 'succe
     authorize: operation => { if (!granted && operation !== 'read' && operation !== 'cancel') throw Error('GRANT_EXPIRED'); },
     delivery: { repositoryPath: repo, task: 'Set answer to 1', writer: { identity: 'writer', adapter: writer, capabilityId: 'write' }, reviewer: { identity: 'reviewer', adapter: reviewer, capabilityId: 'review' },
       verifyReviewer: async proof => { if (proof.writerIdentity === proof.reviewerIdentity) throw Error('independence'); },
-      acceptanceRegistry: [{ ref: 'acceptance', command: mode === 'tests' ? `touch '${join(root, 'command-started')}'; exec sleep 60` : 'test "$(cat answer)" = 1', passExitCodes: [0], failExitCodes: [1] }] } };
+      acceptanceRegistry: [{ ref: 'acceptance', command: mode.startsWith('tests') ? `exec ${quoteShell(process.execPath)} -e ${quoteShell(`process.on('SIGTERM',()=>setTimeout(()=>process.exit(0),${mode === 'tests-slow-stop' ? 150 : 0}));require('node:fs').writeFileSync(${JSON.stringify(join(root, 'command-started'))},'ready');setInterval(()=>{},1000)`)}` : 'test "$(cat answer)" = 1', passExitCodes: [0], failExitCodes: [1] }] } };
   const connection = {};
   const admission = new GovernedExecution({ reads: new FifoSemaphore(2), writes: new FifoSemaphore(2), repositories: new Map(), checkHealth: async () => {} });
   const options = { db, root: join(root, 'delivery'), registrations: [registration], resolveCaller: (key: object) => key === connection ? 'local' : null, acquire: admission.acquire.bind(admission) };
@@ -64,11 +65,11 @@ async function fixture(mode: 'success' | 'review' | 'tests' | 'unknown' = 'succe
     close: async () => { await service.close(); db.close(); } };
 }
 
-it.each(['review', 'tests', 'unknown'] as const)('settles stopped %s cancellation with revoked execute, holding only unproven stop', async mode => {
+it.each(['review', 'tests', 'tests-slow-stop', 'unknown'] as const)('settles stopped %s cancellation with revoked execute, holding only unproven stop', async mode => {
   const f = await fixture(mode);
   try {
     const run = await f.start();
-    if (mode === 'tests') {
+    if (mode.startsWith('tests')) {
       const deadline = Date.now() + 15000;
       for (;;) { try { await readFile(join(f.root, 'command-started')); break; } catch { if (Date.now() > deadline) throw Error('command did not start'); await new Promise(resolve => setTimeout(resolve, 15)); } }
     } else await f.until(run.graphRunId, () => f.reviewStarted());
@@ -76,7 +77,7 @@ it.each(['review', 'tests', 'unknown'] as const)('settles stopped %s cancellatio
     const before = await f.status(run.graphRunId);
     await f.service.handle(f.connection, 'graph.cancel', { schemaVersion: 1, kind: 'cancel', scope: f.request.scope, idempotencyKey: 'cancel', graphRunId: run.graphRunId, expectedRevision: before.revision });
     await f.service.close();
-    const branch = mode === 'tests' ? 'tests' : 'review';
+    const branch = mode.startsWith('tests') ? 'tests' : 'review';
     const row = f.db.prepare('SELECT state, outcome_json FROM graph_actions WHERE node_id=?').get(`e0.${branch}`) as { state: string; outcome_json: string };
     expect(row.state).toBe(mode === 'unknown' ? 'unknown' : 'failed');
     expect(f.db.prepare('SELECT status FROM graph_runs').get()).toEqual({ status: mode === 'unknown' ? 'cancel_pending' : 'cancelled' });

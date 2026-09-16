@@ -464,6 +464,7 @@ export class GraphActionBroker {
       if (result?.stopped !== true || !["completed", "failed"].includes(result.status)) throw new Error("workspace outcome unconfirmed");
       return { status: result.status, workspace: result.evidence };
     }
+    const commandTerminationGraceMs = 1000; const commandKillGraceMs = 1000;
     let threw = false; let command: CommandResult | undefined; let commandPending: Promise<CommandResult> | undefined; let invocationRunId: string | undefined;
     const original = execution.kind === "adapter" ? execution.adapter : undefined;
     const capabilities = execution.kind === "adapter" ? execution.adapter.capabilities().filter(cap => cap.id === execution.capabilityId) : [CapabilitySchema.parse({ id: "registered-command.write", kind: "code.write", agent_id: "registered-command", description: "Registered command" })];
@@ -510,6 +511,7 @@ export class GraphActionBroker {
             // runShellCommand starts synchronously before its returned promise; no
             // untrusted await separates the fence above from the actual spawn.
             commandPending = runShellCommand(execution.command, { cwd: action.workspace.workspace_path, timeoutMs: 120_000,
+              terminationGraceMs: commandTerminationGraceMs, killGraceMs: commandKillGraceMs,
               outputLimit: 16_000, ...(invocationSignal ? { signal: invocationSignal } : {}) });
             command = await commandPending;
             yield { event_id: randomUUID(), run_id: task.run_id, session_id: task.session_id, seq: 1, type: "done" as const,
@@ -526,7 +528,10 @@ export class GraphActionBroker {
       },
     };
     const candidate = await executeCandidateImplementation({ plan: { ...execution.plan, agent_id: wrapper.id }, workspace: action.workspace,
-      adapters: [wrapper], signal, cancellationGraceMs: 50,
+      adapters: [wrapper], signal,
+      // Command confirmation includes TERM/KILL grace, process-group probes and
+      // pipe drainage. The outer adapter must not time out after only 50ms.
+      cancellationGraceMs: execution.kind === "command" ? commandTerminationGraceMs + commandKillGraceMs + 500 : 50,
       authorize: async () => { this.authorize(binding); this.fence(binding); await policy?.(action.workspace.workspace_path); this.authorize(binding); this.fence(binding); return { allow: true }; } });
     if (!invocationRunId) throw new Denied("POLICY_DENIED", candidate.reason ?? "candidate preflight refused");
     if (threw || candidate.status === "execution_unconfirmed" || candidate.execution?.failure_code) throw new Error("adapter result or execution unconfirmed");

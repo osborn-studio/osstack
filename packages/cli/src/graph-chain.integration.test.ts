@@ -221,17 +221,21 @@ for (const mode of ['assembly', 'daemon'] as const) {
     const stopped = await h.call('stop'); expect(stopped.worker.kind).toBe('exited');
     const state = await h.call('inspect'); expect(state.actions).toHaveLength(1); expect(state.reentries).not.toContain('freeze:');
   }, 25_000);
-  it(`${mode}: cancel with unproven executor stop retains unknown effect even after broker drainage`, async () => {
+  it(`${mode}: stubborn command cancellation settles after proven process-group exit`, async () => {
     const h = await host(mode); await h.call('start', { fault: 'cancel-stubborn' });
     let state = await h.call('inspect'); const deadline = Date.now() + 5000;
     while (!state.external && Date.now() < deadline) { await new Promise(done => setTimeout(done, 20)); state = await h.call('inspect'); }
-    expect(state.external).toBe('started\n'); const stopped = await h.call('stop'); expect(stopped.actionsSettled).toBe(true); expect(stopped.worker.signal).toBe('SIGKILL');
-    state = await h.call('inspect'); expect(state.actions[0].state).toBe('unknown'); expect(state.lock).not.toBeNull(); expect(state.actions).toHaveLength(1);
-    // The test independently waits for OS death; broker had no such receipt when
-    // it settled unknown, so this observation never automatically releases it.
+    expect(state.external).toBe('started\n'); const stopped = await h.call('stop'); expect(stopped.worker.signal).toBe('SIGKILL');
+    // Bounded host drainage can finish before the command's TERM/KILL sequence.
+    await expect.poll(async () => (await h.call('stop')).actionsSettled, { timeout: 5000 }).toBe(true);
+    state = await h.call('inspect'); expect(state.actions).toHaveLength(1); expect(state.actions[0].state).toBe('failed');
+    expect(JSON.parse(state.actions[0].outcome_json)).toMatchObject({ state: 'failed', retrySafe: false });
+    const evidence = JSON.parse(readFileSync(join(h.root, 'implementation.json'), 'utf8'));
+    expect(evidence).toMatchObject({ stopped: true, command: { termination: { scope: 'posix_process_group', stop_confirmed: true } } });
     const pid = Number(readFileSync(join(h.root, 'command.pid'), 'utf8'));
     await expect.poll(() => { try { process.kill(pid, 0); return false; } catch (error) { return (error as NodeJS.ErrnoException).code === 'ESRCH'; } }, { timeout: 5000 }).toBe(true);
-    expect((await h.call('inspect')).lock).not.toBeNull();
+    expect(evidence.command.termination.pgid).toBe(pid);
+    expect((await h.call('inspect')).lock).toBeNull(); expect(state.reentries).not.toContain('freeze:');
   }, 25_000);
 }
 it('module: late actual worker OS exit replaces unconfirmed observation without rewriting bounded stop', async () => {
