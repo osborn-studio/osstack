@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-16",
+  "status": "passed_bounded_slice",
+  "scope": "Opt-in contained image command and independent exact-container stop proof; no Graph/G15 recovery admission",
+  "productionReady": false,
+  "taskStatus": "in_progress",
+  "completedTaskCount": 25,
+  "totalTaskCount": 30,
+  "acceptedCodeCommit": "8d16b37be20187624fafd7bcc275329dc70bea98",
+  "loop": {
+    "id": "G25-contained-executor-acceptance-1",
+    "executed": 1,
+    "skipped": 0,
+    "outcome": "success",
+    "tests": 3307,
+    "packages": 22,
+    "verifiersPassed": 8
+  },
+  "matrix": {
+    "testExecutions": 420,
+    "seed": 250917,
+    "repeat": 2,
+    "runs": [
+      {
+        "package": "loop",
+        "iteration": 0,
+        "tests": 112,
+        "passed": true
+      },
+      {
+        "package": "agents",
+        "iteration": 0,
+        "tests": 18,
+        "passed": true
+      },
+      {
+        "package": "core",
+        "iteration": 0,
+        "tests": 65,
+        "passed": true
+      },
+      {
+        "package": "cli",
+        "iteration": 0,
+        "tests": 221,
+        "passed": true
+      },
+      {
+        "package": "cli",
+        "iteration": 1,
+        "tests": 4,
+        "passed": true
+      }
+    ],
+    "sourceUnchanged": true,
+    "artifactsUnchanged": true
+  },
+  "realContainerProbe": {
+    "checksPassed": 6,
+    "hostPlatform": "darwin",
+    "daemon": {
+      "id": "96300cab-3e55-44ea-be6f-834057ae56cc",
+      "os": "Ubuntu 24.04.4 LTS",
+      "kernel": "6.8.0-117-generic",
+      "version": "29.5.2"
+    },
+    "imageId": "sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce",
+    "scope": "Contained executor only; no G15/Graph recovery or full Linux suite admission"
+  },
+  "audit": {
+    "verdict": "approved",
+    "runtimeIdentity": {
+      "adapter_id": "kimi-code",
+      "adapter_version": "0.29.1",
+      "auth_mode": "subprocess/login-reuse",
+      "provider_id": "kimi",
+      "model_id": "kimi-code/k3",
+      "agent_profile": "osstack-reviewer",
+      "evidence_source": "reported",
+      "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+    },
+    "blockingFindings": 0
+  },
+  "limitations": [
+    "No automatic router/CLI registration, no host workspace mounting; command must be in pinned image",
+    "Graph worker quiescence, candidate-image binding, action ledger and G15 release/takeover integration pending",
+    "Create/receipt crash gaps remain unknown and require future administrative reconciliation",
+    "Only contained executor tested on Linux; not full Linux monorepo compatibility",
+    "Artifact locks and full F01-F12 counts pending"
+  ],
+  "testEnvironment": {
+    "profile": "osstack-graph-test",
+    "statusAfterVerification": "stopped",
+    "remainingTestContainers": 0,
+    "defaultDockerContextUnchanged": true
+  }
+}

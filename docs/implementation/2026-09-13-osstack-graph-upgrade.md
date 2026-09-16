@@ -1,8 +1,8 @@
 # OSStack 升级改造实施计划：Loop 强化与可执行 Graph v1
 
-日期：2026-09-13；更新：2026-09-16。**状态：G00–G24 已完成，25/30；M0–M2 与 C2–C7 已通过本地限定验收，M3 实施中，G25 诊断基础与首次启动失败接管已分阶段验收。下一批仍为 G25。** 完整模板、公开入口与委托契约已验证，故障、兼容、发行、性能和真实试点仍待完成。
+日期：2026-09-13；更新：2026-09-16。**状态：G00–G24 已完成，25/30；M0–M2 与 C2–C7 已通过本地限定验收，M3 实施中，G25 诊断、首次启动失败接管及受控容器执行器已分阶段验收。下一批仍为 G25。** 完整模板、公开入口与委托契约已验证，故障、兼容、发行、性能和真实试点仍待完成。
 
-实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；最新限定恢复源码：`e94dfda29c2659a3c5720a6a6b4323c5189ac48a`。见 [G25 首次启动失败恢复报告](../reports/graph-unstarted-recovery-validation.md)与[最新接续上下文](2026-09-16-graph-recovery-next-context.md)；[G22–G24 / C7 验收](2026-09-15-graph-public-completion.md)保留原准入范围；[G21 历史验收](2026-09-15-graph-delivery-completion.md)保留原结论。
+实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；最新受控执行器源码：`8d16b37be20187624fafd7bcc275329dc70bea98`。见 [G25 受控执行器报告](../reports/graph-contained-executor-validation.md)与[最新接续上下文](2026-09-16-graph-contained-next-context.md)；[G22–G24 / C7 验收](2026-09-15-graph-public-completion.md)保留原准入范围；[G21 历史验收](2026-09-15-graph-delivery-completion.md)保留原结论。
 
 本计划将 [架构设计](../design/2026-09-13-executable-graph-plan.md) 转成可逐项执行的任务，产品边界遵循 [三产品定义](../design/2026-09-13-os-products-definition.md)。OSBot 功能在 [独立 handoff](../handoffs/osbot/handoff.md) 交接；本计划只改造 OSStack，不部署 Rakazo，不修改 OStag 产品。
 
@@ -688,7 +688,7 @@ flowchart TD
 
 **验证：** 新 `node scripts/verify-graph-runtime.mjs` 与 graph fault/concurrency 集成测试，输出 JSON 证据和固定 seed。
 
-**阶段进展：** 已实现持久进程观察、no-child 验证加固、首次启动失败的 host-only G15 接管，以及真实公共提交/启动崩溃与并发测试。已运行 executor 的独立停止证明、artifact 锁管理恢复及完整故障子窗口仍待完成；见 [G25 首次启动失败恢复报告](../reports/graph-unstarted-recovery-validation.md)与[最新接续上下文](2026-09-16-graph-recovery-next-context.md)。
+**阶段进展：** 持久进程诊断、首次启动失败的 G15 接管、受控容器命令及跨 supervisor 停止证明已分阶段验收。候选/镜像绑定、graph worker 停止、账本/G15与资源释放接线、artifact 锁管理恢复及完整故障子窗口仍待完成；见 [G25 受控执行器报告](../reports/graph-contained-executor-validation.md)与[最新接续上下文](2026-09-16-graph-contained-next-context.md)。
 
 ### G26 · 验证旧模式与回滚共存
 
@@ -841,4 +841,4 @@ graph worker 启动、冷/热执行、checkpoint/IPC 和并行工作区准备成
 
 ## 13. 下一轮实施的明确起点
 
-G00–G24 已完成，**25/30；C7 本地限定准入通过，M0–M2 完成，M3 实施中**。G25 持久诊断、首次启动失败的受管接管及公共提交/启动崩溃窗口已通过阶段验收，实际 Kimi K3 审查通过；按 [G25 最新接续上下文](2026-09-16-graph-recovery-next-context.md) 继续已运行执行器的独立停止证明、artifact锁管理恢复与完整故障矩阵，随后做兼容、发行、性能与试点。
+G00–G24 已完成，**25/30；C7 本地限定准入通过，M0–M2 完成，M3 实施中**。G25 已新增受控容器执行器与跨 supervisor 停止证明，实际 Kimi K3 最终复审通过；按 [G25 最新接续上下文](2026-09-16-graph-contained-next-context.md) 继续候选/镜像绑定、graph worker 停止及账本/G15恢复接线、artifact锁管理恢复与完整故障矩阵，随后做兼容、发行、性能与试点。

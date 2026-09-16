@@ -1,0 +1,1 @@
+$ tsc -p . && node scripts/copy-assets.mjs

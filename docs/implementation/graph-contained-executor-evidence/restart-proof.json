@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "daemonId": "96300cab-3e55-44ea-be6f-834057ae56cc",
+  "expectedDaemonId": "96300cab-3e55-44ea-be6f-834057ae56cc",
+  "proof": {
+    "stopped": true,
+    "evidence": "docker-removed:31d0a4cd5af8433660bb7fb293ef4a4f87962f34da7197b1dc4c785b1734aeaa"
+  },
+  "kernel": "6.8.0-117-generic",
+  "scope": "Actual Docker daemon restart; immutable removed scope stays stopped"
+}

@@ -1117,7 +1117,12 @@
         "packages/cli/src/graph-unstarted-recovery.ts",
         "packages/cli/src/graph-unstarted-recovery.test.ts",
         "packages/cli/src/graph-recovery-crash.integration.test.ts",
-        "docs/reports/graph-unstarted-recovery-validation.md"
+        "docs/reports/graph-unstarted-recovery-validation.md",
+        "packages/agents/src/contained-command.ts",
+        "packages/agents/src/contained-command.test.ts",
+        "packages/agents/src/contained-docker.ts",
+        "scripts/verify-contained-executor.mjs",
+        "docs/reports/graph-contained-executor-validation.md"
       ],
       "acceptance": [
         "逐项覆盖 F01–F12 确定性窗口，再做固定 seed 的重复运行。",
@@ -1132,14 +1137,17 @@
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "第二阶段已验收：第一代持久no-child＋整个run从无执行准入/调度状态的host-only G15接管，真实公共submit及spawn前后崩溃测试；已运行执行器独立停止证明、artifact锁管理恢复及完整矩阵尚未完成。",
+      "progressNote": "第三阶段已验收：显式启用的固定镜像命令执行器、跨supervisor精确容器移除回执与迟到启动拒绝，含实际Linux/Docker重启实验。Graph候选/镜像内容绑定、worker停止、账本/G15对账及资源释放、artifact锁管理恢复和完整矩阵仍待完成。",
       "evidence": [
         "docs/reports/graph-runtime-fault-validation.md",
         "docs/implementation/2026-09-15-graph-fault-next-context.md",
         "docs/implementation/graph-fault-foundation-evidence/admission.json",
         "docs/reports/graph-unstarted-recovery-validation.md",
         "docs/implementation/2026-09-16-graph-recovery-next-context.md",
-        "docs/implementation/graph-unstarted-recovery-evidence/admission.json"
+        "docs/implementation/graph-unstarted-recovery-evidence/admission.json",
+        "docs/reports/graph-contained-executor-validation.md",
+        "docs/implementation/2026-09-16-graph-contained-next-context.md",
+        "docs/implementation/graph-contained-executor-evidence/admission.json"
       ]
     },
     {
@@ -1249,13 +1257,13 @@
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "e94dfda29c2659a3c5720a6a6b4323c5189ac48a",
+    "acceptedCodeCommit": "8d16b37be20187624fafd7bcc275329dc70bea98",
     "completedTaskCount": 25,
     "totalTaskCount": 30,
     "nextTasks": [
       "G25"
     ],
-    "report": "docs/reports/graph-unstarted-recovery-validation.md",
+    "report": "docs/reports/graph-contained-executor-validation.md",
     "nextGate": null,
     "milestoneStatus": {
       "M0": "completed",
@@ -1263,7 +1271,7 @@
       "M2": "completed",
       "M3": "in_progress"
     },
-    "reviewNote": "实际 Kimi K3 源码审查 approved；真实 OSStack Loop 全库3289测试与7项verifier通过。G25首次启动失败接管限定验收；已运行执行器停止证明和完整G25仍未准入。"
+    "reviewNote": "实际Kimi K3两次源码审查approved；真实Loop全库3307测试与8项verifier通过，含6项Linux容器故障实验。G25受控执行器限定阶段，Graph/G15完整恢复链未准入。"
   },
   "decisionGates": [
     {

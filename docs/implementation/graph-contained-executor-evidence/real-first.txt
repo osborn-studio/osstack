@@ -1,0 +1,10 @@
+{
+  exitCode: 0,
+  output: 'contained-ok\n',
+  cancelled: false,
+  evidence: 'docker-removed:4c7debd9a0548fb5676667d89052501ddee37d722a624b81747df0c8a89e2428'
+}
+{
+  stopped: true,
+  evidence: 'docker-removed:4c7debd9a0548fb5676667d89052501ddee37d722a624b81747df0c8a89e2428'
+}

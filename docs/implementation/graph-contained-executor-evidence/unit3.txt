@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/agents
+
+ ✓ src/contained-command.test.ts (18 tests) 216ms
+
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
+   Start at  07:50:53
+   Duration  401ms (transform 54ms, setup 0ms, collect 76ms, tests 216ms, environment 0ms, prepare 33ms)
+

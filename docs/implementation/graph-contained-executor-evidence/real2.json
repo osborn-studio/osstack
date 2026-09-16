@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "scope": "Contained executor only; no G15/Graph recovery or full Linux suite admission",
+  "node": "v26.5.0",
+  "hostPlatform": "darwin",
+  "daemon": {
+    "id": "96300cab-3e55-44ea-be6f-834057ae56cc",
+    "os": "Ubuntu 24.04.4 LTS",
+    "kernel": "6.8.0-117-generic",
+    "version": "29.5.2"
+  },
+  "imageId": "sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce",
+  "startedAt": "2026-09-16T14:51:08.028Z",
+  "root": "/Volumes/AIMATE_WORK/tmp/g25-contained/home/contained-real-C7eMaP",
+  "checks": [
+    {
+      "name": "actual Loop candidate seam executes fixed image command and fresh host verifies stop",
+      "passed": true
+    },
+    {
+      "name": "SIGKILL supervisor; fresh process removes live PID namespace with detached session child",
+      "passed": true
+    },
+    {
+      "name": "paused original supervisor cannot start after fresh host removes recorded container",
+      "passed": true
+    },
+    {
+      "name": "post-create crash stays unknown without durable completion",
+      "passed": true
+    },
+    {
+      "name": "post-delete crash stays unknown without durable completion",
+      "passed": true
+    },
+    {
+      "name": "abort removes the exact live scope and persists independently verifiable stop",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "loopResult": {
+    "workspace": {
+      "workspace_id": "contained-fixture",
+      "workspace_path": "/Volumes/AIMATE_WORK/tmp/g25-contained/home/contained-real-C7eMaP/loop"
+    },
+    "status": "implementation_complete",
+    "execution": {
+      "run_id": "run_c5b1c55e-36ab-45c3-a7b5-45aa28cb99c3",
+      "plan_id": "contained-plan",
+      "task_id": "contained-task",
+      "agent_id": "contained-command",
+      "outcome": "completed",
+      "started_at": "2026-09-16T14:51:08.031Z",
+      "completed_at": "2026-09-16T14:51:08.185Z",
+      "duration_ms": 154,
+      "command_results": [],
+      "adapter_event_count": 3,
+      "summary": "docker-removed:aeee62345e8c7b1bfc440e64e84319327c35f0738befbe6f7913027bf2d5c34b"
+    }
+  },
+  "detachedProcessObservation": {
+    "Processes": [
+      [
+        "2864",
+        "2840",
+        "2864",
+        "2864",
+        "/bin/sh -c trap '' TERM; setsid sh -c 'while :; do sleep 1; done' & while :; do sleep 1; done"
+      ],
+      [
+        "2876",
+        "2864",
+        "2876",
+        "2876",
+        "sh -c while :; do sleep 1; done"
+      ],
+      [
+        "2877",
+        "2864",
+        "2864",
+        "2864",
+        "sleep 1"
+      ],
+      [
+        "2878",
+        "2876",
+        "2876",
+        "2876",
+        "sleep 1"
+      ]
+    ],
+    "Titles": [
+      "PID",
+      "PPID",
+      "PGID",
+      "SID",
+      "COMMAND"
+    ]
+  },
+  "finishedAt": "2026-09-16T14:51:09.073Z"
+}
