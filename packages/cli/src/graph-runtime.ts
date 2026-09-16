@@ -1,9 +1,10 @@
 import type { WorkerActionRequest, WorkerActionResponse } from '@osstack/protocol';
 import type Database from 'better-sqlite3';
 import { GraphRunStore, type GraphRun, type GraphProgramVersion } from '@osstack/core';
-import { workerCanonical, freezeWorkerData, type StartGraphRequest, type GraphWorkerResume } from '@osstack/protocol';
+import { workerCanonical, freezeWorkerData, type StartGraphRequest, type GraphWorkerResume, type GraphWorkerBinding } from '@osstack/protocol';
 import type { GraphActionBroker, GraphWorkerRegistration } from './graph-action-broker.js';
 import type { GraphCheckpointService } from './graph-checkpoint-service.js';
+import { GraphProcessJournal, type GraphWorkerProcessReport } from './graph-process-journal.js';
 import { GraphReconciler } from './graph-reconciler.js';
 import { GraphWorkerManager, type GraphWorkerManagerOptions, type GraphWorkerHandle, type GraphWorkerExitEvidence } from './graph-worker-manager.js';
 
@@ -50,6 +51,7 @@ export class GraphRuntime {
   readonly reconciler: GraphReconciler;
   private readonly runs: GraphRunStore;
   private readonly workers: GraphWorkerManager;
+  private readonly processJournal: GraphProcessJournal;
   private readonly connections = new Map<object, Connection>();
   private readonly drainTimeoutMs: number;
   private closed = false;
@@ -57,6 +59,7 @@ export class GraphRuntime {
     this.drainTimeoutMs = options.drainTimeoutMs ?? 5000;
     if (!Number.isSafeInteger(this.drainTimeoutMs) || this.drainTimeoutMs < 1 || this.drainTimeoutMs > 60000) throw new Error('GRAPH_DRAIN_LIMIT');
     this.runs = new GraphRunStore(options.db);
+    this.processJournal = new GraphProcessJournal(options.db);
     this.reconciler = new GraphReconciler(options.db);
     this.workers = new GraphWorkerManager({ ...options.workerOptions, programs: options.programs });
   }
@@ -87,6 +90,7 @@ export class GraphRuntime {
         return decision.kind === 'takeover' && decision.owner === run.leaseOwner && snapshot.run.generation + 1 === run.generation;
       })) throw new Error('RECOVERY_REQUIRED');
     }
+    let consumed = false;
     let connection: object | undefined;
     let retired = false;
     const authorize = (renew = true) => {
@@ -127,14 +131,15 @@ export class GraphRuntime {
           if (this.options.db.inTransaction) throw new Error('GRAPH_LAUNCH_REQUIRES_TRANSACTION');
           this.options.db.transaction(() => {
             authorize(false);
-            const prior = this.options.db.prepare('SELECT 1 FROM graph_worker_launches WHERE graph_run_id = ? AND generation = ?')
-              .get(fixed.graphRunId, fixed.generation);
-            if (prior) throw new Error('GRAPH_GENERATION_ALREADY_LAUNCHED');
-            this.options.db.prepare('INSERT INTO graph_worker_launches(graph_run_id,generation,owner,identity_json,launched_at) VALUES (?,?,?,?,?)')
-              .run(fixed.graphRunId, fixed.generation, fixed.owner, workerCanonical(fixed.identity), Date.now());
+            this.processJournal.consume(fixed);
           }).immediate();
+          consumed = true;
           this.options.broker.register(key, { ...registration, authorize: () => { authorize(); } });
           this.options.checkpoints.register(key, { ...fixed, authorize: async () => { authorize(); } });
+        },
+        lifecycle: {
+          launched: launch => this.processJournal.launched(binding, launch),
+          observed: evidence => { if (consumed) this.processJournal.observed(binding, evidence); },
         },
         action: (key, request, options) => track(dispatch ? dispatch(key, request, options) : this.options.broker.handle(key, request, options)),
         checkpoint: (key, request) => track(this.options.checkpoints.execute(key, request)),
@@ -151,6 +156,10 @@ export class GraphRuntime {
     void handle.finalExit.then(exit => { record.exit = freezeWorkerData(structuredClone(exit)); retire(); });
     return Object.freeze({ ...handle, cancel: (reason?: string) => { retire(); handle.cancel(reason); },
       stop: (reason?: string) => { retire(); return this.stop(handle.connection, reason); } });
+  }
+  /** Trusted host inspection only: no signaling, release, replay or recovery authority. */
+  observeWorkerProcess(binding: GraphWorkerBinding): GraphWorkerProcessReport {
+    this.open(); return this.processJournal.observe(binding);
   }
   observedExit(connection: object): GraphWorkerExitEvidence | undefined {
     const receipt = this.connections.get(connection)?.exit;
@@ -171,10 +180,10 @@ export class GraphRuntime {
   }
   /** Database lifetime barrier, separate from bounded physical-stop observations.
    * Call after close(): an unresolved producer keeps shutdown pending, never
-   * authorizes closing SQLite while its broker finally/release still uses it. */
+   * authorizes closing SQLite while broker cleanup or late OS events still use it. */
   async drainDatabaseUsers(): Promise<void> {
     if (!this.closed) throw new Error('GRAPH_RUNTIME_MUST_CLOSE_BEFORE_DRAIN');
-    await Promise.allSettled([...this.connections.values()].flatMap(record => [...record.pending]));
+    await Promise.allSettled([...this.connections.values()].flatMap(record => [record.handle.finalExit, ...record.pending]));
   }
   async close(): Promise<void> {
     this.closed = true;

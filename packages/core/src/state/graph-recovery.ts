@@ -15,6 +15,7 @@ const stopped = z.object({ kind: z.literal("stopped"), graphRunId: ref, generati
 // No-child is a distinct trusted host receipt. Registration denials/duplicate
 // launch claims are not proof that an existing generation never spawned.
 const notStarted = stopped.extend({ kind: z.literal("not_started") });
+const noChildEvent = stopped.extend({ kind: z.literal("spawn_failed"), phase: z.enum(["registration", "spawn"]), error: z.string() });
 const proofSchema = z.object({ snapshotDigest: digest, verifiedAt: count,
   worker: z.union([stopped, notStarted, z.object({ kind: z.literal("preworker"), evidenceRef: ref }).strict()]),
   effectWorker: stopped.optional(), executorEvidenceRef: ref, workspaceEvidenceRef: ref }).strict();
@@ -142,6 +143,22 @@ export class GraphRecoveryStore {
         || w.confirmedAt < run.leaseAcquiredAt! || w.confirmedAt > proof.verifiedAt) fail("WORKER_PROOF_MISMATCH");
       if (w.kind === "not_started" && (this.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND generation = ? LIMIT 1").get(run.graphRunId, run.generation)
         || this.db.prepare("SELECT 1 FROM graph_checkpoint_requests WHERE graph_run_id = ? AND generation = ? LIMIT 1").get(run.graphRunId, run.generation))) fail("WORKER_PROOF_MISMATCH");
+      if (w.kind === "not_started") {
+        const launch = this.db.prepare("SELECT owner,identity_json,launched_at FROM graph_worker_launches WHERE graph_run_id=? AND generation=?")
+          .get(run.graphRunId, run.generation) as { owner: string; identity_json: string; launched_at: number } | undefined;
+        if (launch) {
+          const events = this.db.prepare("SELECT kind,event_json FROM graph_worker_process_events WHERE graph_run_id=? AND generation=?")
+            .all(run.graphRunId, run.generation) as { kind: string; event_json: string }[];
+          // Consuming a generation is not evidence that no child ever existed.
+          if (launch.owner !== w.owner || launch.identity_json !== canonical(run.identity) || launch.launched_at > w.confirmedAt
+            || events.length !== 1 || events[0]!.kind !== "spawn_failed") fail("WORKER_PROOF_MISMATCH");
+          let event: z.infer<typeof noChildEvent>;
+          try { event = noChildEvent.parse(JSON.parse(events[0]!.event_json)); }
+          catch { return fail("WORKER_PROOF_MISMATCH"); }
+          if (event.graphRunId !== w.graphRunId || event.generation !== w.generation || event.owner !== w.owner
+            || event.evidenceRef !== w.evidenceRef || event.confirmedAt !== w.confirmedAt) fail("WORKER_PROOF_MISMATCH");
+        }
+      }
       if (snapshot.action && snapshot.action.generation !== run.generation) {
         const old = proof.effectWorker;
         const lease = this.db.prepare("SELECT owner, acquired_at FROM graph_worker_leases WHERE graph_run_id = ? AND generation = ?")

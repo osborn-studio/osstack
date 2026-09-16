@@ -1,4 +1,6 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, fork, spawn } from "node:child_process";
+import { once } from "node:events";
+import { fileURLToPath } from "node:url";
 import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, readlink, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -148,3 +150,52 @@ it('rejects skip-worktree entries instead of silently freezing sparse omissions 
   git(f.worktree, 'update-index', '--skip-worktree', 'base.txt'); await rm(join(f.worktree, 'base.txt'));
   await expect(f.store.freeze(f.input, f.authority)).rejects.toThrow('skip-worktree');
 });
+
+it('F07/F12: SIGKILL during freeze leaves a lock that a fresh store cannot guess away', async () => {
+  const f = await fixture();
+  const inputFile = join(f.root, 'crash-input.json');
+  const storeRoot = join(f.root, 'artifacts');
+  await writeFile(inputFile, JSON.stringify({ storeRoot, input: f.input }));
+  const child = fork(fileURLToPath(new URL('../../../../scripts/fixtures/graph-artifact-crash.mjs', import.meta.url)), [inputFile], {
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'], env: { ...process.env, OSSTACK_HOME: join(f.root, 'home') },
+  });
+  const exited = new Promise<void>(resolve => child.once('exit', () => resolve()));
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(Error('LOCK_BARRIER_TIMEOUT')), 5000);
+      child.once('error', error => { clearTimeout(timer); reject(error); });
+      child.once('exit', () => { clearTimeout(timer); reject(Error('EARLY_PRODUCER_EXIT')); });
+      child.once('message', value => {
+        clearTimeout(timer);
+        if ((value as { kind?: string }).kind === 'lock-acquired') resolve(); else reject(Error('WRONG_BARRIER'));
+      });
+    });
+    child.kill('SIGKILL'); await exited;
+    const locks = await readdir(join(storeRoot, 'locks')); expect(locks).toHaveLength(1);
+    expect(await readdir(join(storeRoot, 'ids'))).toEqual([]);
+    await expect(new GraphArtifactStore(storeRoot).freeze(f.input, f.authority)).rejects.toMatchObject({ code: 'EEXIST' });
+    expect(await readdir(join(storeRoot, 'locks'))).toEqual(locks);
+    expect(await readFile(join(f.worktree, 'base.txt'), 'utf8')).toBe('base');
+    expect(await readdir(join(storeRoot, 'ids'))).toEqual([]);
+  } finally {
+    if (child.exitCode === null && child.signalCode === null) { child.kill('SIGKILL'); await exited; }
+  }
+}, 10000);
+
+it('F07: a late real process writing the old directory cannot mutate the exported candidate or its new restore', async () => {
+  const f = await fixture(); const candidate = await f.store.freeze(f.input, f.authority);
+  const child = spawn(process.execPath, ['-e',
+    'require("node:fs").writeFileSync(process.argv[1],"late old-generation write");process.send({written:true});setInterval(()=>{},1000)',
+    join(f.worktree, 'base.txt')], { stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
+  const exited = new Promise<void>(resolve => child.once('exit', () => resolve()));
+  try {
+    const [message] = await once(child, 'message', { signal: AbortSignal.timeout(5000) }); expect(message).toEqual({ written: true });
+    const restored = await f.store.restore(candidate.artifactDigest, { rootPath: f.root, directoryName: 'next-generation' });
+    expect(restored.worktreePath).not.toBe(f.worktree);
+    expect(await readFile(join(f.worktree, 'base.txt'), 'utf8')).toBe('late old-generation write');
+    expect(await readFile(join(restored.worktreePath, 'base.txt'), 'utf8')).toBe('base');
+    expect((await f.store.verify(candidate.artifactDigest)).candidateRevision).toBe(candidate.candidateRevision);
+  } finally {
+    if (child.exitCode === null && child.signalCode === null) { child.kill('SIGKILL'); await exited; }
+  }
+}, 10000);

@@ -1613,6 +1613,26 @@ export const MIGRATIONS: readonly Migration[] = [
         BEGIN SELECT RAISE(ABORT, 'graph driver descriptor immutable'); END;
     `,
   },
+  {
+    id: 34,
+    name: "graph_worker_process_events",
+    sql: `
+      CREATE TABLE graph_worker_process_events (
+        sequence INTEGER PRIMARY KEY,
+        graph_run_id TEXT NOT NULL,
+        generation INTEGER NOT NULL,
+        kind TEXT NOT NULL CHECK(kind IN ('launched','spawn_failed','exited','exit_unconfirmed')),
+        event_json TEXT NOT NULL,
+        observed_at INTEGER NOT NULL CHECK(observed_at >= 0 AND observed_at <= 9007199254740991),
+        UNIQUE(graph_run_id,generation,kind),
+        FOREIGN KEY(graph_run_id,generation) REFERENCES graph_worker_launches(graph_run_id,generation)
+      );
+      CREATE TRIGGER graph_worker_process_events_no_update BEFORE UPDATE ON graph_worker_process_events
+        BEGIN SELECT RAISE(ABORT, 'graph process observation immutable'); END;
+      CREATE TRIGGER graph_worker_process_events_no_delete BEFORE DELETE ON graph_worker_process_events
+        BEGIN SELECT RAISE(ABORT, 'graph process observation immutable'); END;
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

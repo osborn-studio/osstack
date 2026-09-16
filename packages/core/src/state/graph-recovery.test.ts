@@ -232,3 +232,28 @@ it('persists the admission obligation until an authenticated completed release a
   expect(() => db.exec('UPDATE graph_action_admissions SET released_at=NULL')).toThrow('immutable');
   expect(() => db.exec('DELETE FROM graph_action_admissions')).toThrow('immutable');
 });
+it.each(['missing', 'wrong-owner', 'wrong-identity', 'wrong-ref', 'wrong-time', 'launched', 'valid'])(
+  'requires an exact durable no-child receipt for consumed launches: %s', mode => {
+    run = runs.create({ ...request, idempotencyKey: 'consumed' }, program, 100);
+    run = runs.acquireLease({ ...fence(110), owner: 'failed-owner', leaseExpiresAt: 200 });
+    db.prepare('INSERT INTO graph_worker_launches(graph_run_id,generation,owner,identity_json,launched_at) VALUES(?,?,?,?,?)')
+      .run(run.graphRunId, run.generation, run.leaseOwner, proofKey(mode === 'wrong-identity' ? { ...run.identity, compilerVersion: 'changed' } : run.identity), 115);
+    const s = recovery.snapshot(fence());
+    const worker = { kind: 'not_started' as const, graphRunId: run.graphRunId, generation: run.generation,
+      owner: run.leaseOwner!, confirmedAt: 125, evidenceRef: 'worker-not-started:consumed' };
+    const p = { ...proof(s), worker }; trusted.add(proofKey(p));
+    if (mode !== 'missing') {
+      const event = { ...worker, kind: 'spawn_failed', phase: 'registration', error: 'consumed register failure',
+        owner: mode === 'wrong-owner' ? 'other' : worker.owner,
+        evidenceRef: mode === 'wrong-ref' ? 'other' : worker.evidenceRef,
+        confirmedAt: mode === 'wrong-time' ? 126 : worker.confirmedAt };
+      db.prepare('INSERT INTO graph_worker_process_events(graph_run_id,generation,kind,event_json,observed_at) VALUES(?,?,?,?,?)')
+        .run(run.graphRunId, run.generation, 'spawn_failed', JSON.stringify(event), 125);
+      if (mode === 'launched') db.prepare('INSERT INTO graph_worker_process_events(graph_run_id,generation,kind,event_json,observed_at) VALUES(?,?,?,?,?)')
+        .run(run.graphRunId, run.generation, 'launched', '{}', 120);
+    }
+    const recover = () => recovery.commit(s, { kind: 'takeover', receiptId: 'replace-consumed', owner: 'replacement', leaseExpiresAt: 300 }, p, 130);
+    if (mode === 'valid') expect(recover().run.generation).toBe(2);
+    else expect(recover).toThrow('WORKER_PROOF_MISMATCH');
+  },
+);

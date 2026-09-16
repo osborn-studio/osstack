@@ -186,3 +186,49 @@ it('preserves actual late OS exit evidence after the bounded stop result was unc
     expect(await h.exit).toEqual(bounded);
   } finally { ignoredKill.mockRestore(); if (pid) { try { process.kill(pid, 'SIGKILL'); } catch {} } }
 });
+it('records the authenticated child identity before its program receives init', async () => {
+  const f = fixture(); let launch: unknown;
+  const h = f.launch({ ...f.start, lifecycle: {
+    launched: identity => { launch = identity; expect(f.requests).toHaveLength(0); },
+    observed: () => {},
+  }, checkpoint: async (connection, request) => { expect(launch).toBeDefined(); return f.start.checkpoint(connection, request); } });
+  expect(await h.result).toEqual({ task: 'task' }); await h.finalExit;
+  expect(launch).toMatchObject({ pid: expect.any(Number), processIdentity: { pid: expect.any(Number) } });
+  const pgid = (launch as { pgid: number | null }).pgid;
+  expect(pgid === null || (Number.isSafeInteger(pgid) && pgid > 0)).toBe(true);
+});
+it('never sends init if durable launch recording fails', async () => {
+  const f = fixture(); const observations: unknown[] = [];
+  const h = f.launch({ ...f.start, lifecycle: { launched: () => { throw new Error('disk failure'); }, observed: event => { observations.push(event); } } });
+  await expect(h.ready).rejects.toThrow('disk failure'); await h.finalExit;
+  expect(f.requests).toHaveLength(0); expect(observations).toEqual([expect.objectContaining({ kind: 'exited' })]);
+});
+it('records consumed registration failure synchronously without pretending a child was launched', async () => {
+  const f = fixture(); const observations: unknown[] = [];
+  const h = f.launch({ ...f.start, register: () => { throw new Error('registration failed'); }, lifecycle: {
+    launched: () => { throw new Error('unexpected child'); }, observed: event => { observations.push(event); },
+  } });
+  expect(observations).toEqual([expect.objectContaining({ kind: 'spawn_failed', phase: 'registration' })]);
+  expect(await h.finalExit).toEqual(observations[0]);
+});
+it('never classifies a post-spawn kill error as no-child even before durable launch recording', async () => {
+  const f = fixture(); const observations: unknown[] = [];
+  const original = ChildProcess.prototype.kill;
+  const kill = vi.spyOn(ChildProcess.prototype, 'kill').mockImplementation(function (this: ChildProcess, signal) {
+    this.emit('error', new Error('post-spawn kill error')); return original.call(this, signal);
+  });
+  try {
+    const h = f.launch({ ...f.start, lifecycle: {
+      launched: () => { throw Error('launch record unavailable'); }, observed: event => { observations.push(event); },
+    } });
+    await expect(h.ready).rejects.toThrow('launch record unavailable');
+    expect(await h.finalExit).toMatchObject({ kind: 'exited' });
+    expect(observations).toEqual([expect.objectContaining({ kind: 'exited' })]);
+  } finally { kill.mockRestore(); }
+});
+it('surfaces failed exit journaling even after the successful program result has settled', async () => {
+  const f = fixture();
+  const h = f.launch({ ...f.start, lifecycle: { launched: () => {}, observed: () => { throw Error('disk write failed'); } } });
+  expect(await h.result).toEqual({ task: 'task' });
+  expect(await h.finalExit).toMatchObject({ kind: 'exited', journalError: expect.stringContaining('disk write failed') });
+});

@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { Duplex } from 'node:stream';
+import { captureGraphProcessIdentity, type GraphProcessIdentity } from './graph-process-identity.js';
 import {
   GraphWorkerBinding, GraphWorkerMessage, GraphWorkerResume, GraphJsonValue, StartGraphRequest, WorkerActionRequest,
   WorkerFramedTransport, computeGraphInputDigest, parseGraphCheckpointRequest, parseGraphCheckpointResponse,
@@ -22,12 +23,23 @@ export interface GraphWorkerStart {
   register: (connection: object, binding: GraphWorkerBinding) => void;
   action: (connection: object, request: WorkerActionRequest, options: { signal: AbortSignal }) => Promise<WorkerActionResponse>;
   checkpoint: (connection: object, request: GraphCheckpointRequest) => Promise<GraphCheckpointResponse>;
+  /** Trusted synchronous durability port. Launch must commit before init. */
+  lifecycle?: {
+    launched: (launch: GraphWorkerLaunch) => void;
+    observed: (evidence: GraphWorkerExitEvidence) => void;
+  };
 }
-export type GraphWorkerExitEvidence =
+export interface GraphWorkerLaunch {
+  pid: number;
+  pgid: number | null;
+  processIdentity: GraphProcessIdentity;
+  capturedAt: number;
+}
+export type GraphWorkerExitEvidence = (
   | { kind: 'exited'; graphRunId: string; generation: number; owner: string; pid: number; code: number | null;
       signal: NodeJS.Signals | null; confirmedAt: number; evidenceRef: string }
   | { kind: 'spawn_failed'; graphRunId: string; generation: number; owner: string; confirmedAt: number; evidenceRef: string; phase: 'registration' | 'spawn'; error: string }
-  | { kind: 'exit_unconfirmed'; pid: number | undefined; error: string };
+  | { kind: 'exit_unconfirmed'; pid: number | undefined; error: string }) & { journalError?: string };
 export interface GraphWorkerHandle {
   readonly connection: object;
   readonly binding: GraphWorkerBinding;
@@ -130,6 +142,24 @@ export class GraphWorkerManager {
     const entry = this.options.workerEntry ?? resolveGraphWorkerEntry();
     const ready = deferred<void>(); const result = deferred<GraphJsonValue>(); const exit = deferred<GraphWorkerExitEvidence>();
     const finalExit = deferred<Exclude<GraphWorkerExitEvidence, { kind: 'exit_unconfirmed' }>>();
+    const lifecycle = value.lifecycle ? { ...value.lifecycle } : undefined;
+    const persist = (callback: (() => unknown) | undefined) => {
+      const returned = callback?.();
+      if (returned !== undefined) {
+        void Promise.resolve(returned).catch(() => {}); throw new Error('WORKER_LIFECYCLE_MUST_BE_SYNC');
+      }
+    };
+    const observe = <T extends GraphWorkerExitEvidence>(evidence: T): T => {
+      try { persist(lifecycle ? () => lifecycle.observed(freezeWorkerData(structuredClone(evidence))) : undefined); }
+      catch (error) {
+        const journalError = `WORKER_JOURNAL_FAILED: ${String(error)}`;
+        ready.reject(new Error(journalError)); result.reject(new Error(journalError));
+        // The physical observation remains true; its durability failure must
+        // remain visible even when ready/result were already settled.
+        return { ...evidence, journalError };
+      }
+      return evidence;
+    };
     const connection = Object.freeze({}); const abort = new AbortController();
     const record = { binding, programId, input: computeGraphInputDigest(input), active: true };
     this.runs.set(binding.graphRunId, record);
@@ -156,7 +186,8 @@ export class GraphWorkerManager {
           kill('SIGKILL');
           timers.push(setTimeout(() => {
             if (!observedExit) { transport?.close(); child?.stdout?.destroy(); child?.stderr?.destroy();
-              exit.resolve({ kind: 'exit_unconfirmed', pid: child?.pid, error: 'WORKER_EXIT_UNCONFIRMED' }); clear(); }
+              const evidence = { kind: 'exit_unconfirmed' as const, pid: child?.pid, error: 'WORKER_EXIT_UNCONFIRMED' };
+              exit.resolve(observe(evidence)); clear(); }
           }, terminationMs));
         }, terminationMs));
       }, shutdownMs));
@@ -215,7 +246,7 @@ export class GraphWorkerManager {
       const evidence = { kind: 'spawn_failed' as const, graphRunId: binding.graphRunId, generation: binding.generation,
         owner: binding.owner, confirmedAt: Date.now(), evidenceRef: `worker-not-started:${randomUUID()}`,
         phase: registered ? 'spawn' as const : 'registration' as const, error: String(error) };
-      exit.resolve(evidence); finalExit.resolve(evidence);
+      const receipt = observe(evidence); exit.resolve(receipt); finalExit.resolve(receipt);
     };
     try {
       const registration: unknown = value.register(connection, binding);
@@ -233,7 +264,7 @@ export class GraphWorkerManager {
         ready.reject(new Error('WORKER_EXITED_BEFORE_READY')); result.reject(new Error('WORKER_EXITED_BEFORE_RESULT'));
         const evidence = { kind: 'exited' as const, graphRunId: binding.graphRunId, generation: binding.generation, owner: binding.owner,
           pid: child!.pid!, code, signal, confirmedAt: Date.now(), evidenceRef: `worker-exit:${randomUUID()}` };
-        exit.resolve(evidence); finalExit.resolve(evidence);
+        const receipt = observe(evidence); exit.resolve(receipt); finalExit.resolve(receipt);
       });
       child.stdout!.on('error', error => cancel(String(error)));
       child.stderr!.on('error', error => cancel(String(error)));
@@ -243,6 +274,10 @@ export class GraphWorkerManager {
       transport = new WorkerFramedTransport(pipe, pipe, receive, error => cancel(error.message));
       child.once('spawn', () => {
         try {
+          assertActive();
+          const processIdentity = captureGraphProcessIdentity(child!.pid!);
+          const launch = freezeWorkerData({ pid: child!.pid!, pgid: processIdentity.pgid, processIdentity, capturedAt: Date.now() });
+          persist(lifecycle ? () => lifecycle.launched(launch) : undefined);
           assertActive(); transport!.send({ kind: 'init', binding, programId, source: program.source, input,
             ...(resume ? { resume } : {}), heartbeatMs: Math.max(10, Math.floor(heartbeatMs / 3)), maxInFlight, requestTimeoutMs });
         } catch (error) { cancel(String(error)); }
