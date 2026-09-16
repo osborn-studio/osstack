@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-chain.integration.test.ts (30 tests | 28 skipped) 531ms
+ ✓ src/graph-shutdown.test.ts (1 test) 84ms
+
+ Test Files  2 passed (2)
+      Tests  3 passed | 28 skipped (31)
+   Start at  18:40:47
+   Duration  1.82s (transform 487ms, setup 9ms, collect 987ms, tests 615ms, environment 0ms, prepare 52ms)
+

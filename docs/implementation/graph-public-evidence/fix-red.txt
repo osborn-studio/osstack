@@ -1,0 +1,107 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-eGf9SQ/delivery/136997fe-2a5b-48de-afc9-25e05c6546f8/writer-0'...
+HEAD is now at 6a1e029 base
+osstack: retaining write lease graph-action:860c111064e8215fc6207b337823d88be5c87d87326ee9b25ec288fef4b241c2: Error: adapter result or execution unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-Pjmtgl/delivery/07cbc58d-e725-4029-b2d7-bef4bae261ac/writer-0'...
+HEAD is now at 2d957ad base
+osstack: retaining write lease graph-action:73c05ce97e9b3fe265db92a0fc1982413046c77731b7de6d9d153e54fa01584c: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:76f30d3ba974e6ab30defa4aeb9f8c501a6cd8528d7ff5ef5b6e01960941c7eb: Error: GRANT_EXPIRED
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-NYlGe0/delivery/b2eb2872-4613-4a47-8a10-0c4caef33943/writer-0'...
+HEAD is now at f08aacc base
+osstack: retaining write lease graph-action:58c7c293325ab7f2eff73ce5cc9050324644b85f939a146e705e9129f0229cee: Error: adapter result or execution unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-0lrM40/direct/writer-0'...
+HEAD is now at 21b1a81 policy
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-iJVyWU/direct/writer-0'...
+HEAD is now at 86b81cb base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-raD9Ga/direct/writer-0'...
+HEAD is now at ee855a7 base
+ ❯ src/graph-review-findings.test.ts (6 tests | 5 failed) 26130ms
+   × settles stopped review cancellation with revoked execute, holding only unproven stop 2420ms
+     → expected 'unknown' to be 'failed' // Object.is equality
+   × settles stopped tests cancellation with revoked execute, holding only unproven stop 3522ms
+     → expected 'unknown' to be 'failed' // Object.is equality
+   ✓ settles stopped unknown cancellation with revoked execute, holding only unproven stop  2267ms
+   × uses current source policy (revoked) beyond workspace creation and writer availability 7113ms
+     → expected 1 to be +0 // Object.is equality
+   × uses current source policy (untracked) beyond workspace creation and writer availability 5393ms
+     → expected [] to include '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-…'
+   × uses current source policy (newer) beyond workspace creation and writer availability 5414ms
+     → expected [] to include '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-…'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-review-findings.test.ts > settles stopped review cancellation with revoked execute, holding only unproven stop
+AssertionError: expected 'unknown' to be 'failed' // Object.is equality
+
+Expected: "failed"
+Received: "unknown"
+
+ ❯ src/graph-review-findings.test.ts:80:23
+     78|     const branch = mode === 'tests' ? 'tests' : 'review';
+     79|     const row = f.db.prepare('SELECT state, outcome_json FROM graph_ac…
+     80|     expect(row.state).toBe(mode === 'unknown' ? 'unknown' : 'failed');
+       |                       ^
+     81|     expect(f.db.prepare('SELECT status FROM graph_runs').get()).toEqua…
+     82|     expect(f.db.prepare('SELECT count(*) n FROM graph_action_admission…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  src/graph-review-findings.test.ts > settles stopped tests cancellation with revoked execute, holding only unproven stop
+AssertionError: expected 'unknown' to be 'failed' // Object.is equality
+
+Expected: "failed"
+Received: "unknown"
+
+ ❯ src/graph-review-findings.test.ts:80:23
+     78|     const branch = mode === 'tests' ? 'tests' : 'review';
+     79|     const row = f.db.prepare('SELECT state, outcome_json FROM graph_ac…
+     80|     expect(row.state).toBe(mode === 'unknown' ? 'unknown' : 'failed');
+       |                       ^
+     81|     expect(f.db.prepare('SELECT status FROM graph_runs').get()).toEqua…
+     82|     expect(f.db.prepare('SELECT count(*) n FROM graph_action_admission…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  src/graph-review-findings.test.ts > uses current source policy (revoked) beyond workspace creation and writer availability
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/graph-review-findings.test.ts:120:24
+    118|     if (mode === 'revoked') await setPolicy('observe');
+    119|     release(); await pending;
+    120|     expect(f.writes()).toBe(mode === 'revoked' ? 0 : 1);
+       |                        ^
+    121|     expect(host.current().status).toBe(mode === 'revoked' ? 'failed' :…
+    122|     expect(checked).toContain(join(f.root, 'direct', 'writer-0'));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  src/graph-review-findings.test.ts > uses current source policy (untracked) beyond workspace creation and writer availability
+ FAIL  src/graph-review-findings.test.ts > uses current source policy (newer) beyond workspace creation and writer availability
+AssertionError: expected [] to include '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-…'
+ ❯ src/graph-review-findings.test.ts:122:21
+    120|     expect(f.writes()).toBe(mode === 'revoked' ? 0 : 1);
+    121|     expect(host.current().status).toBe(mode === 'revoked' ? 'failed' :…
+    122|     expect(checked).toContain(join(f.root, 'direct', 'writer-0'));
+       |                     ^
+    123|     expect(f.db.prepare('SELECT count(*) n FROM graph_action_admission…
+    124|   } finally { release(); await f.close(); }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 1 passed (6)
+   Start at  18:39:49
+   Duration  27.13s (transform 512ms, setup 8ms, collect 834ms, tests 26.13s, environment 0ms, prepare 34ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-review-findings.test.ts

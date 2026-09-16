@@ -1,0 +1,29 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-lgJUDT/delivery/63731969-a4d2-440d-a814-6e4fd14b8cc0/writer-0'...
+HEAD is now at 2a85593 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-OFNrts/delivery/f5057686-da7d-473b-945c-06aee643cfeb/writer-0'...
+HEAD is now at 4faf77d base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-XSn7XC/delivery/b2b85583-284c-43b8-80e5-a8f54d1a4bf5/writer-0'...
+HEAD is now at acab703 base
+osstack: retaining write lease graph-action:6120521eb673463326948c0fb60d3b89b72cd6838e0db3be8faf26ef191ff26a: Error: adapter result or execution unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-pDuN3s/direct/writer-0'...
+HEAD is now at a2b9f6c policy
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-ND4WCF/direct/writer-0'...
+HEAD is now at aa79ebb base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-h7MLEe/direct/writer-0'...
+HEAD is now at 443c2c6 base
+ ✓ src/graph-review-findings.test.ts (6 tests) 26728ms
+   ✓ settles stopped review cancellation with revoked execute, holding only unproven stop  3597ms
+   ✓ settles stopped tests cancellation with revoked execute, holding only unproven stop  4836ms
+   ✓ settles stopped unknown cancellation with revoked execute, holding only unproven stop  2235ms
+   ✓ uses current source policy (revoked) beyond workspace creation and writer availability  1963ms
+   ✓ uses current source policy (untracked) beyond workspace creation and writer availability  7033ms
+   ✓ uses current source policy (newer) beyond workspace creation and writer availability  7062ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  18:42:18
+   Duration  27.61s (transform 453ms, setup 7ms, collect 730ms, tests 26.73s, environment 0ms, prepare 33ms)
+

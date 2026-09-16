@@ -1,0 +1,163 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:1020099e91ec3ef3740ee2d88e36321b32cfc691e2c9ceb0e312d891e8665715: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:0d1c1cda6ae98090b9ccde53a36291439c7f983357cb7658122a7be01f7a6aad: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:51841c6d1908b7f23eff3d98962e990281fc00fc476507a92b6196a5a6ddf8af: Error: candidate preflight refused
+osstack: retaining write lease graph-action:1e3fd00121bf87ec967080558adf3cc5891e792d9e6625882846a1b3bf67247f: Error: adapter result or execution unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-delivery-ol9uEz/delivery/writer-0'...
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-lbJANz/delivery/a288240c-8fa9-4e9e-abf0-30d446a8f34a/writer-0'...
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-ROi4KN/delivery/writer-0'...
+HEAD is now at bcea594 base
+HEAD is now at bcea594 base
+HEAD is now at 1b62a16 base
+osstack: retaining write lease graph-action:d58102fa908ae573f6924630b08067247a43bcbded2ae18503fb1907b7239af7: Error: candidate preflight refused
+osstack: retaining write lease graph-action:4739ecb2142529b0f2afed314f087003fa621f408f05ac9b4eef90c61e640165: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:8d0af7b8e6ab1ec93faa6581fce78600bb0f55ba30f72ede0734a4553f1711ff: Error: lost receipt
+osstack: retaining write lease graph-action:952e59826884a9ab03a146f6e9fd0d4a211d3d04cb08f1a3ff16843249d25cec: injected lock release failure
+osstack: retaining write lease graph-action:952e59826884a9ab03a146f6e9fd0d4a211d3d04cb08f1a3ff16843249d25cec: Error: injected lock release failure
+osstack: retaining write lease graph-action:8cae10cea8e8571a48d54a61bec72f73dece4b032bd2debad0f221ca3de0404c: release failure
+osstack: retaining write lease graph-action:8cae10cea8e8571a48d54a61bec72f73dece4b032bd2debad0f221ca3de0404c: Error: release failure
+osstack: retaining write lease graph-action:9a70dc92f0c3650545fb8c27842037ca7d3b05cc7cca26a7b653ed7d643be729: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker-boundary.test.ts (17 tests) 1555ms
+osstack: retaining write lease graph-action:f5d4414a292cf3f1fe530a21661610c872f5fa4640d387b7617640e19e841b3f: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:eee59107d93c59bcee18871f7328f10ec28d249b1a19cd20d307b04a3d8d0e32: Error: invalid usage
+osstack: retaining write lease graph-action:1ef33951cbc6a0ee03301f4de0f425527b99060cf2b97b122538b16071ae76c5: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:d9e98c8a65eb1994c8d1cc49cf08bc66be017ad44c828c5221c7017f504794a3: SqliteError: injected
+osstack: retaining write lease graph-action:435e41cc02d280340895b10895b1027c6b27d513fad349cf10d5d112a012a294: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:e89471f8c8cd87bb61bb2986e981e934d20fea9841cd4534e7c8ef1a97c98166: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:da00080984ebb44bc29cc49b8d7ec16883bc6585977cbaa638c090e85305dc3e: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:052e1664d6de722b4c596f6ab56f249d8cb40c1aa3c322ccc1848a8711afcc64: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:636aeedadd8f6df4148a73d29b43d8144ff6cec39ecb262a54599402b7fe651c: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker.test.ts (31 tests) 2680ms
+osstack: retaining write lease graph-action:3282f1850d9bf3ad6e6bebdc80b193a4c26176562f164299dc01fc10bb9dafe8: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-7jm5wZ/delivery/writer-0'...
+HEAD is now at 481f803 base
+osstack: retaining write lease graph-action:138caa3926ad3e566392efa94668346797bd60877189a547bdd33f0da51bc6ab: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-TYDjZz/delivery/ebfa8b68-98e0-4f00-a9c0-90bb85dcd452/writer-0'...
+HEAD is now at d58d26f base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-tYaW3m/delivery/writer-0'...
+HEAD is now at 3936480 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-delivery-bWhxh1/delivery/writer-0'...
+HEAD is now at 3936480 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-KZGT3Y/delivery/writer-0'...
+HEAD is now at 146f3b3 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-gSRHQ1/delivery/310cb5d9-d034-4373-af13-dab33223f413/writer-0'...
+HEAD is now at 49bd6e9 base
+osstack: retaining write lease graph-action:940a7d64519b4d565a293b9514ae7a73c2a88fa4bc4bad8a5d459b05a21ff40b: Error: adapter result or execution unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-QKsSUx/direct/writer-0'...
+HEAD is now at ca2375b policy
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-delivery-cGaad5/delivery/writer-0'...
+HEAD is now at 2d2a2e7 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-Ff7nAt/delivery/writer-0'...
+HEAD is now at fe8ac3f base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-bseWhi/direct/writer-0'...
+HEAD is now at 90061d2 base
+osstack: retaining write lease graph-action:2fd4e708cd9ee5d17c1fca3a2789d70a51401e84f4a2172e08391ec096379367: Error: STALE_DELIVERY_OWNER
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-HHHIrz/delivery/writer-0'...
+HEAD is now at 7badac8 base
+osstack: retaining write lease graph-action:326631f4c487d59c1fb5d88641ce776ca427b1c9d6722f0d16cf82040315bbd7: Error: authority revoked
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-eIlUbj/delivery/writer-0'...
+HEAD is now at 8aaad78 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-nEL8Ng/direct/writer-0'...
+HEAD is now at e0d68ff base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-oh1Ynb/delivery/writer-0'...
+HEAD is now at 723d416 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-delivery-4poMnh/delivery/writer-0'...
+HEAD is now at 1506667 base
+ ✓ src/graph-review-findings.test.ts (6 tests) 33595ms
+   ✓ settles stopped review cancellation with revoked execute, holding only unproven stop  5701ms
+   ✓ settles stopped tests cancellation with revoked execute, holding only unproven stop  5653ms
+   ✓ settles stopped unknown cancellation with revoked execute, holding only unproven stop  2679ms
+   ✓ uses current source policy (revoked) beyond workspace creation and writer availability  1970ms
+   ✓ uses current source policy (untracked) beyond workspace creation and writer availability  8780ms
+   ✓ uses current source policy (newer) beyond workspace creation and writer availability  8811ms
+osstack: retaining write lease graph-action:3f06ea0b42d52fc3f71756a40a40e52792645ba4b34a4f62a2202d538274b851: Error: external stop unconfirmed
+ ❯ src/graph-delivery-adversarial.test.ts (9 tests | 1 failed) 36423ms
+   ✓ retains unknown-review uncertainty without retry, repair or ready publication  5285ms
+   ✓ retains unknown-writer uncertainty without retry, repair or ready publication  1458ms
+   ✓ stops before freeze after actual token overrun and preserves charged action evidence  1454ms
+   ✓ captures business inputs, executors, commands and authority before asynchronous execution  6945ms
+   ✓ cannot project state after foreign-owner invalidates its authority  2553ms
+   ✓ cannot project state after revoked invalidates its authority  2687ms
+   × returns an explicit stop when preparation admission prevents an otherwise retryable branch 5907ms
+     → expected { kind: 'stop', epoch: +0, …(1) } to match object { kind: 'stop', …(1) }
+(1 matching property omitted from actual)
+   ✓ closes its runtime without projecting an unowned run when setup acquisition fails 89ms
+   ✓ renews the owned lease during an actual pending writer invocation and still completes  10044ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-delivery-s5yXSk/delivery/writer-0'...
+HEAD is now at 71bf85e base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-delivery-EsRhKX/delivery/writer-0'...
+HEAD is now at d25b6c4 base
+ ✓ src/graph-delivery.integration.test.ts (6 tests) 51080ms
+   ✓ actual child delivery succeeds with review finishing last  7389ms
+   ✓ actual child delivery succeeds with tests finishing last  7067ms
+   ✓ repairs from immutable complete join through physical child stop and G15 resume  13904ms
+   ✓ host bounded retry returns only final confirmed task result and fresh independent workspace  8721ms
+   ✓ finite branch failure stops without a failed task RETURN or poisoned join  8607ms
+   ✓ negative quality at epoch cap stops  5392ms
+ ✓ src/graph-verification.test.ts (29 tests) 91758ms
+   ✓ restores the exact verified candidate into independent repositories and rejects reviewer writes  3396ms
+   ✓ rejects wrong manifest and reviewer identity before restoring or invoking  868ms
+   ✓ persists actual stopped exit evidence and rejects tampering/replay  3142ms
+   ✓ keeps unknown stop separate from stopped malformed review and valid changes_requested  5049ms
+   ✓ runs real registered command and independent G04 review concurrently with an observable two-way barrier  4825ms
+   ✓ rejects revoke during adapter availability before actual invocation  1861ms
+   ✓ rejects mutate during adapter availability before actual invocation  1883ms
+   ✓ snapshots callback/data replacement and rejects live revocation after preparation awaits  2472ms
+   ✓ rejects mutation during restore before accepting any workspace baseline  1391ms
+   ✓ releases preparation lease if authority is revoked while acquiring it  717ms
+   ✓ uses exact allowlisted exits, refusing model pass claims and unregistered commands  8134ms
+   ✓ does not accept review done as executor stop proof through the actual broker  1783ms
+   ✓ classifies stopped malformed output and reviewer filesystem mutation without a code-failure result  6327ms
+   ✓ rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation  722ms
+   ✓ snapshots executor evidence before asynchronous verification and rechecks authority afterward  4741ms
+   ✓ rejects actual successful command that mutates candidate: printf malicious > file  3067ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file; printf malicious > file  3921ms
+   ✓ rejects actual successful command that mutates candidate: chmod +x file  3932ms
+   ✓ rejects actual successful command that mutates candidate: chmod 600 file  3108ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file  3036ms
+   ✓ rejects actual successful command that mutates candidate: printf staged > file; git add file; printf candidate > file  3025ms
+   ✓ rejects actual successful command that mutates candidate: git -c user.name=test -c user.email=test@invalid commit --allow-empty -qm malicious  3005ms
+   ✓ allocates distinct actual review sessions on explicit retry and persists prompt receipts  4666ms
+   ✓ rejects an oversized envelope at the storage boundary before publishing any file  2741ms
+   ✓ requires an actual invocation receipt and strips supplied writer context on every invocation  2843ms
+   ✓ validates all new receipts when loading digest-consistent evidence  2661ms
+   ✓ allows untracked build outputs from successful actual acceptance execution  2771ms
+   ✓ confirms ordinary failing tests with escape-heavy and multibyte captured output  2733ms
+   ✓ settles an oversized structured review as a bounded contract failure instead of unknown  2936ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-delivery-adversarial.test.ts > returns an explicit stop when preparation admission prevents an otherwise retryable branch
+AssertionError: expected { kind: 'stop', epoch: +0, …(1) } to match object { kind: 'stop', …(1) }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "kind": "stop",
+-   "reason": "retry_dispatch_incomplete",
++   "reason": "branch_failure",
+  }
+
+ ❯ src/graph-delivery-adversarial.test.ts:106:27
+    104| it('returns an explicit stop when preparation admission prevents an ot…
+    105|   const f = await fixture('retry-preparation-denied');
+    106|   expect(f.result?.route).toMatchObject({ kind: 'stop', reason: 'retry…
+       |                           ^
+    107|   expect(f.run.status).toBe('failed'); expect(f.joins).toBe(0); expect…
+    108|   expect(f.actions.some(a => a.node_id === 'e0.tests' && a.state === '…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 5 passed (6)
+      Tests  1 failed | 97 passed (98)
+   Start at  18:43:35
+   Duration  93.11s (transform 919ms, setup 96ms, collect 6.86s, tests 217.09s, environment 1ms, prepare 355ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-review-findings.test.ts src/graph-verification.test.ts src/graph-delivery.integration.test.ts src/graph-delivery-adversarial.test.ts src/graph-action-broker.test.ts src/graph-action-broker-boundary.test.ts

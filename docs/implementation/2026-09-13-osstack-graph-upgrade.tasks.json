@@ -1025,9 +1025,16 @@
       ],
       "verify": "CLI_GRAPH",
       "size": "M",
-      "status": "pending",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "acceptedCodeCommit": "7da1be9ef70770bbdea5c52f6453764f6b4ba317",
+      "evidence": [
+        "docs/implementation/2026-09-15-graph-public-completion.md",
+        "docs/implementation/graph-public-evidence/admission.json",
+        "docs/implementation/graph-public-evidence/acceptance-result.json",
+        "docs/implementation/graph-public-evidence/review-adjudication.md"
       ]
     },
     {
@@ -1051,9 +1058,16 @@
       ],
       "verify": "CLI_GRAPH",
       "size": "M",
-      "status": "pending",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "acceptedCodeCommit": "7da1be9ef70770bbdea5c52f6453764f6b4ba317",
+      "evidence": [
+        "docs/implementation/2026-09-15-graph-public-completion.md",
+        "docs/implementation/graph-public-evidence/admission.json",
+        "docs/implementation/graph-public-evidence/acceptance-result.json",
+        "docs/implementation/graph-public-evidence/review-adjudication.md"
       ]
     },
     {
@@ -1076,9 +1090,16 @@
       ],
       "verify": "CONTRACT",
       "size": "M",
-      "status": "pending",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "acceptedCodeCommit": "7da1be9ef70770bbdea5c52f6453764f6b4ba317",
+      "evidence": [
+        "docs/implementation/2026-09-15-graph-public-completion.md",
+        "docs/implementation/graph-public-evidence/admission.json",
+        "docs/implementation/graph-public-evidence/acceptance-result.json",
+        "docs/implementation/graph-public-evidence/review-adjudication.md"
       ]
     },
     {
@@ -1215,23 +1236,21 @@
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "ab988b32649c9eef084e997bb92d31c0108436fc",
-    "completedTaskCount": 22,
+    "acceptedCodeCommit": "7da1be9ef70770bbdea5c52f6453764f6b4ba317",
+    "completedTaskCount": 25,
     "totalTaskCount": 30,
     "nextTasks": [
-      "G22",
-      "G23",
-      "G24"
+      "G25"
     ],
-    "report": "docs/implementation/2026-09-15-graph-delivery-completion.md",
-    "nextGate": "C7",
+    "report": "docs/implementation/2026-09-15-graph-public-completion.md",
+    "nextGate": null,
     "milestoneStatus": {
       "M0": "completed",
       "M1": "completed",
-      "M2": "in_progress",
+      "M2": "completed",
       "M3": "pending"
     },
-    "reviewNote": "Claude Fable 5.1 两轮有效审查；最终回审额度不足，无最终签核。独立 Codex Loop 只读审查 PASS，真实 Loop 全库验收通过。"
+    "reviewNote": "Claude Fable 5.1 本批实际调用额度受限，无有效新审查；独立 Codex Loop 初审要求修改、复审 PASS；冻结源码后真实 Loop 全库及6项 verifier 通过。"
   },
   "decisionGates": [
     {
@@ -1306,15 +1325,17 @@
     },
     {
       "id": "C7",
-      "status": "pending",
+      "status": "passed",
       "tasks": [
         "G21",
         "G22",
         "G23",
         "G24"
       ],
-      "reason": "G21 完成；用户命令、cancel/resume 与外部契约尚未完成。",
-      "productionReady": false
+      "reason": "G21–G24 完成；离线CLI/真实daemon执行、取消/恢复、来源隔离及稳定外部契约通过限定验收；任意崩溃恢复和发布仍须G25–G29。",
+      "productionReady": false,
+      "evidence": "docs/implementation/graph-public-evidence/admission.json",
+      "acceptedCodeCommit": "7da1be9ef70770bbdea5c52f6453764f6b4ba317"
     }
   ]
 }

@@ -1,0 +1,81 @@
+{
+  "loop_id": "G22-G24-actor",
+  "started_at": "2026-09-16T01:17:12.029Z",
+  "updated_at": "2026-09-16T01:34:57.729Z",
+  "completed_tasks": [
+    {
+      "task_id": "G22-G24-actor",
+      "capability": "code.write",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "codex-cli",
+      "duration_ms": 1065699,
+      "run_id": "run_bc738688-40e2-4105-8b85-2daf7b223a52",
+      "started_at": "2026-09-16T01:17:12.030Z",
+      "completed_at": "2026-09-16T01:34:57.639Z",
+      "execution_summary": "codex exited 0",
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "1 verifier command and 0 verifier adapters passed. 1 evaluation passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "git diff --check",
+          "exit_code": 0,
+          "duration_ms": 27
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: git diff --check",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (27 ms)",
+          "implicit": true
+        }
+      ],
+      "changed_files": [
+        "packages/cli/src/bin.ts",
+        "packages/cli/src/daemon.ts",
+        "packages/cli/src/graph-command.ts",
+        "packages/cli/src/graph-delivery.ts",
+        "packages/core/src/state/graph-runs.test.ts",
+        "packages/core/src/state/graph-runs.ts",
+        "packages/core/src/state/graph-verification.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/protocol/schemas/graph.schema.json",
+        "packages/protocol/src/graph.test.ts",
+        "packages/protocol/src/graph.ts",
+        "packages/protocol/src/index.ts",
+        "?? docs/guides/graph-delegation.md",
+        "?? packages/cli/src/graph-delegation.integration.test.ts",
+        "?? packages/cli/src/graph-execution-command.test.ts",
+        "?? packages/cli/src/graph-execution-command.ts",
+        "?? packages/cli/src/graph-host-config.test.ts",
+        "?? packages/cli/src/graph-rpc.test.ts",
+        "?? packages/cli/src/graph-rpc.ts"
+      ],
+      "diff_summary": "packages/cli/src/bin.ts | 6 +- packages/cli/src/daemon.ts | 45 +++++ packages/cli/src/graph-command.ts | 9 +- packages/cli/src/graph-delivery.ts | 95 +++++++++- packages/core/src/state/graph-runs.test.ts | 14 ++ packages/core/src/state/grap",
+      "commit_hash": "a37b006",
+      "tokens_in": 151636,
+      "tokens_out": 30477,
+      "cost_usd": 0
+    }
+  ],
+  "in_progress": [],
+  "pending": [],
+  "deferred_tasks": [],
+  "key_metrics": {
+    "total_cycles": 1,
+    "avg_duration_ms": 1065699,
+    "success_rate": 1,
+    "tokens_consumed": 182113,
+    "cost_consumed": 0
+  },
+  "decisions": [
+    "G22-G24-actor: selected codex-cli - agent_id override",
+    "G22-G24-actor: stop after iteration 1 - Verifier passed with score 1.00."
+  ]
+}

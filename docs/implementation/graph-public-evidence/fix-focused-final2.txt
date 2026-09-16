@@ -1,0 +1,131 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:8eee69d553a9a2f9695a36ac16ed3643848d83a599b62eebea6ddb77f30f359f: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:fb25ae55bf634c46b6b3047ff27d842263a9b1be3786bbbbd92afc405cf43a5a: Error: invalid persisted evidence reference
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-jwBxrC/delivery/d8051c94-d53b-46e2-9ca7-b4f6de4d27c1/writer-0'...
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-A6CIFr/delivery/writer-0'...
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-delivery-yiWLpC/delivery/writer-0'...
+HEAD is now at ca172ea base
+HEAD is now at 9ecb455 base
+osstack: retaining write lease graph-action:2b7708a1bc6993a3e2a83249ab75f5f61714ab5d0143c069bfe28873492f4d5b: Error: adapter result or execution unconfirmed
+HEAD is now at 9ecb455 base
+osstack: retaining write lease graph-action:4a1af3d52e148b57e0428b0cd5fd716cc561118dccc6c66bbc4c146828e93ce0: Error: candidate preflight refused
+osstack: retaining write lease graph-action:9f45031ca8e2d952516df284ca31041e3016071917c4add95c8bdfe5562325ad: Error: candidate preflight refused
+osstack: retaining write lease graph-action:c34715352413087c420eeb6276370f3a09d95cf8d42d7cdd4319a9307c74d011: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:48d75ff3d63eb1981db6b32c81b4e5946fb6a2ceaaf14e84fad43df5b4bf791b: Error: lost receipt
+osstack: retaining write lease graph-action:53c89025e001d6c6e02773306363bd888e4b3d1bc7cfa9e844835a2c31662865: injected lock release failure
+osstack: retaining write lease graph-action:53c89025e001d6c6e02773306363bd888e4b3d1bc7cfa9e844835a2c31662865: Error: injected lock release failure
+osstack: retaining write lease graph-action:3e26a8e0ed86eb0a315664e48a8aa5f6d365a343213482f4f5f599f9dbaa39ef: release failure
+osstack: retaining write lease graph-action:3e26a8e0ed86eb0a315664e48a8aa5f6d365a343213482f4f5f599f9dbaa39ef: Error: release failure
+osstack: retaining write lease graph-action:f6f862ee0ae72c80ca6aca786fd44819d7a780b1f3152d854bdc3d51f4b2b0ea: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker-boundary.test.ts (17 tests) 1164ms
+osstack: retaining write lease graph-action:20719fe415eeb55eab0ff1619898bf0de82e6142e2595ee015ab104c90df1fe3: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:c864c81dec851f1f055726030339c585c4f11a79be1b6b963c6f5f4b33d21c35: Error: invalid usage
+osstack: retaining write lease graph-action:fdf8bbe50b660f715383ad2050eb3754fdc14f80721aeb3ae1ebdd1aea82226b: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:501e4d62870cb0ca445e3b55cc74db0ae414232ec1d4117ffbb1a37f7b571306: SqliteError: injected
+osstack: retaining write lease graph-action:a58a4297f5753991ed1dc0cc395dfdc0d003ac89268a5531951d06c93b3c5712: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:117d426a22dcacdd0abd8153d9a0f7eddde665dbf9be0107963d471e474aa2f2: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:62ff88aa64e88beece9b4a12a6b5de80bf2600aefa059645dd8138fc8db27312: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:c3b5a874d552afa74f323d52ae50ca55aaf2a8fef29dc19494f0c12f649a1bee: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:65b998ab5039ad5e5076c267eb2240c63cf28febee2835254b0b9e0234dd3931: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker.test.ts (31 tests) 1989ms
+osstack: retaining write lease graph-action:ee30c12152b879a56c754773f24874499810b1e4c90266c70866fd0e04af2d19: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-KGuCPA/delivery/writer-0'...
+HEAD is now at 5418f94 base
+osstack: retaining write lease graph-action:ac355355ea125b77ed4b08a399066aa126d071f8523574887fce2f96a02c13d3: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-hJ9o72/delivery/83988960-879b-4b76-a19f-fb7eb7309ec6/writer-0'...
+HEAD is now at 27b1cc7 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-DaWFsm/delivery/writer-0'...
+HEAD is now at 2f14477 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-6fKxiu/delivery/writer-0'...
+HEAD is now at 9ace0ce base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-delivery-u2Sngl/delivery/writer-0'...
+HEAD is now at 9ace0ce base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-pLWtzM/delivery/02109736-8f13-4540-95e3-ad5c56457785/writer-0'...
+HEAD is now at 0bfdbd3 base
+osstack: retaining write lease graph-action:bd9d21662982869756d98379e496b715d7ad0f6bf4e236fa1154ee579964393b: Error: adapter result or execution unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-QdXxb1/direct/writer-0'...
+HEAD is now at 2d3c18d policy
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-07BpyP/delivery/writer-0'...
+HEAD is now at 5320a72 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-delivery-NZ1Rea/delivery/writer-0'...
+HEAD is now at 5320a72 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-1BbIk2/direct/writer-0'...
+HEAD is now at 1997ea3 base
+osstack: retaining write lease graph-action:9b7f3e7bca9b316b100d075f0900b45d634d55eabc935cfdd39b057522c748c1: Error: STALE_DELIVERY_OWNER
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-PSaB6B/delivery/writer-0'...
+HEAD is now at 4cbaeda base
+osstack: retaining write lease graph-action:d0477687d49809d173da3f7bb51e07559599a25449124c872b4143ff9b356c05: Error: authority revoked
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-Wb6iv4/delivery/writer-0'...
+HEAD is now at 418aeb7 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-MUctdC/direct/writer-0'...
+HEAD is now at 03a6160 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-UUYaf6/delivery/writer-0'...
+HEAD is now at 545d891 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-delivery-B4WCB7/delivery/writer-0'...
+HEAD is now at 4484d1b base
+ ✓ src/graph-review-findings.test.ts (6 tests) 28223ms
+   ✓ settles stopped review cancellation with revoked execute, holding only unproven stop  4211ms
+   ✓ settles stopped tests cancellation with revoked execute, holding only unproven stop  5516ms
+   ✓ settles stopped unknown cancellation with revoked execute, holding only unproven stop  2421ms
+   ✓ uses current source policy (revoked) beyond workspace creation and writer availability  1952ms
+   ✓ uses current source policy (untracked) beyond workspace creation and writer availability  7054ms
+   ✓ uses current source policy (newer) beyond workspace creation and writer availability  7068ms
+osstack: retaining write lease graph-action:aa78e5aff32ab62e7097cb158bfc478ee313ffdab52ab4aca41ba41d6026c997: Error: external stop unconfirmed
+ ✓ src/graph-delivery-adversarial.test.ts (9 tests) 32292ms
+   ✓ retains unknown-review uncertainty without retry, repair or ready publication  3815ms
+   ✓ retains unknown-writer uncertainty without retry, repair or ready publication  1377ms
+   ✓ stops before freeze after actual token overrun and preserves charged action evidence  1431ms
+   ✓ captures business inputs, executors, commands and authority before asynchronous execution  6704ms
+   ✓ cannot project state after foreign-owner invalidates its authority  2370ms
+   ✓ cannot project state after revoked invalidates its authority  2432ms
+   ✓ returns an explicit stop when preparation admission prevents an otherwise retryable branch  5385ms
+   ✓ renews the owned lease during an actual pending writer invocation and still completes  8704ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-delivery-OP0TmQ/delivery/writer-0'...
+HEAD is now at b16ed36 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-delivery-HCHP9J/delivery/writer-0'...
+HEAD is now at 7fe3abd base
+ ✓ src/graph-delivery.integration.test.ts (6 tests) 45896ms
+   ✓ actual child delivery succeeds with review finishing last  6702ms
+   ✓ actual child delivery succeeds with tests finishing last  6930ms
+   ✓ repairs from immutable complete join through physical child stop and G15 resume  11808ms
+   ✓ host bounded retry returns only final confirmed task result and fresh independent workspace  7038ms
+   ✓ finite branch failure stops without a failed task RETURN or poisoned join  8037ms
+   ✓ negative quality at epoch cap stops  5378ms
+ ✓ src/graph-verification.test.ts (29 tests) 82502ms
+   ✓ restores the exact verified candidate into independent repositories and rejects reviewer writes  2201ms
+   ✓ rejects wrong manifest and reviewer identity before restoring or invoking  680ms
+   ✓ persists actual stopped exit evidence and rejects tampering/replay  2849ms
+   ✓ keeps unknown stop separate from stopped malformed review and valid changes_requested  4877ms
+   ✓ runs real registered command and independent G04 review concurrently with an observable two-way barrier  4406ms
+   ✓ rejects revoke during adapter availability before actual invocation  1669ms
+   ✓ rejects mutate during adapter availability before actual invocation  1776ms
+   ✓ snapshots callback/data replacement and rejects live revocation after preparation awaits  2071ms
+   ✓ rejects mutation during restore before accepting any workspace baseline  1273ms
+   ✓ releases preparation lease if authority is revoked while acquiring it  582ms
+   ✓ uses exact allowlisted exits, refusing model pass claims and unregistered commands  6922ms
+   ✓ does not accept review done as executor stop proof through the actual broker  1653ms
+   ✓ classifies stopped malformed output and reviewer filesystem mutation without a code-failure result  5765ms
+   ✓ rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation  710ms
+   ✓ snapshots executor evidence before asynchronous verification and rechecks authority afterward  4490ms
+   ✓ rejects actual successful command that mutates candidate: printf malicious > file  2885ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file; printf malicious > file  2720ms
+   ✓ rejects actual successful command that mutates candidate: chmod +x file  2742ms
+   ✓ rejects actual successful command that mutates candidate: chmod 600 file  2805ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file  2685ms
+   ✓ rejects actual successful command that mutates candidate: printf staged > file; git add file; printf candidate > file  2734ms
+   ✓ rejects actual successful command that mutates candidate: git -c user.name=test -c user.email=test@invalid commit --allow-empty -qm malicious  2727ms
+   ✓ allocates distinct actual review sessions on explicit retry and persists prompt receipts  4403ms
+   ✓ rejects an oversized envelope at the storage boundary before publishing any file  3026ms
+   ✓ requires an actual invocation receipt and strips supplied writer context on every invocation  2689ms
+   ✓ validates all new receipts when loading digest-consistent evidence  2637ms
+   ✓ allows untracked build outputs from successful actual acceptance execution  2951ms
+   ✓ confirms ordinary failing tests with escape-heavy and multibyte captured output  2811ms
+   ✓ settles an oversized structured review as a bounded contract failure instead of unknown  2762ms
+
+ Test Files  6 passed (6)
+      Tests  98 passed (98)
+   Start at  18:45:58
+   Duration  83.63s (transform 725ms, setup 71ms, collect 5.64s, tests 192.07s, environment 0ms, prepare 224ms)
+

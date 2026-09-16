@@ -1,8 +1,8 @@
 # OSStack 升级改造实施计划：Loop 强化与可执行 Graph v1
 
-日期：2026-09-13；更新：2026-09-15。**状态：G00–G21 已完成，22/30；M0/M1 与 C2–C6 已通过，M2 实施中。下一批 G22–G24；C7 尚未通过。** 完整模板已执行验证，公开入口与生产故障/兼容/性能/试点尚未完成。
+日期：2026-09-13；更新：2026-09-15。**状态：G00–G24 已完成，25/30；M0–M2 与 C2–C7 已通过本地限定验收，M3 待实施。下一批 G25。** 完整模板、公开入口与委托契约已验证，故障、兼容、发行、性能和真实试点仍待完成。
 
-实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；本批验收源：`ab988b32649c9eef084e997bb92d31c0108436fc`。见 [G21 验收](2026-09-15-graph-delivery-completion.md)与[G22–G24 接续上下文](2026-09-15-graph-delivery-next-context.md)；[C6 历史验收](2026-09-14-graph-verification-completion.md)保留原结论。
+实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；本批验收源：`7da1be9ef70770bbdea5c52f6453764f6b4ba317`。见 [G22–G24 验收](2026-09-15-graph-public-completion.md)与[G25 接续上下文](2026-09-15-graph-public-next-context.md)；[G21 历史验收](2026-09-15-graph-delivery-completion.md)保留原结论。
 
 本计划将 [架构设计](../design/2026-09-13-executable-graph-plan.md) 转成可逐项执行的任务，产品边界遵循 [三产品定义](../design/2026-09-13-os-products-definition.md)。OSBot 功能在 [独立 handoff](../handoffs/osbot/handoff.md) 交接；本计划只改造 OSStack，不部署 Rakazo，不修改 OStag 产品。
 
@@ -20,7 +20,7 @@ Loop 与 Graph 都获得具体提升：Loop 的终态、取消和候选执行接
 
 ## 2. 已核实基线和工程差距
 
-下表描述 `b476bcc` 实施前事实；G00–G21 的已交付变化以任务状态和验收报告为准。
+下表描述 `b476bcc` 实施前事实；G00–G24 的已交付变化以任务状态和验收报告为准。
 
 | 位置 | 当前事实 | 升级责任 |
 |---|---|---|
@@ -603,7 +603,7 @@ flowchart TD
 
 ### G22 · 交付 validate/run/status 命令
 
-**依赖：** G21。**规模：** M。**状态：** 未开始。
+**依赖：** G21。**规模：** M。**状态：** 已完成（C7 本地限定准入）。
 
 **预计改动位置：**
 
@@ -615,15 +615,17 @@ flowchart TD
 
 **验收：**
 
-- [ ] validate 离线且不打开控制面 DB；run 经 daemon，status 为权威结果投影。
-- [ ] 保留 graph explain，支持稳定 JSON、run id、阶段、候选版本、预算和错误。
-- [ ] 幂等重投和不同 payload 冲突从用户入口可验证；重依赖不进入 help/version eager 路径。
+- [x] validate 离线且不打开控制面 DB；run 经 daemon，status 为权威结果投影。
+- [x] 保留 graph explain，支持稳定 JSON、run id、阶段、候选版本、预算和错误。
+- [x] 幂等重投和不同 payload 冲突从用户入口可验证；重依赖不进入 help/version eager 路径。
 
 **验证：** `pnpm --filter @osstack/cli exec vitest run src/graph-command.test.ts src/graph-rpc.test.ts`；旧 explain 测试保留。
 
+**验收记录：** 源 `7da1be9ef70770bbdea5c52f6453764f6b4ba317`；真实 Loop 全库 3236 项测试、六项 verifier 和独立复审通过。详见 [G22–G24 报告](2026-09-15-graph-public-completion.md)。
+
 ### G23 · 交付 cancel/resume 与授权请求
 
-**依赖：** G15, G22。**规模：** M。**状态：** 未开始。
+**依赖：** G15, G22。**规模：** M。**状态：** 已完成（C7 本地限定准入）。
 
 **预计改动位置：**
 
@@ -634,15 +636,17 @@ flowchart TD
 
 **验收：**
 
-- [ ] CLI/RPC 暴露 M1 已验证的取消链，区分请求/确认；过程超时进入 cancel_pending/reconciliation_required，不在此卡补造底层取消。
-- [ ] resume 绑定 interruptId、expectedRevision、scope 和当前授权；过期/跨域/旧输入拒绝。
-- [ ] needs_authorization 回原授权域，布尔输入/模型说 approved 不能作为 grant。
+- [x] CLI/RPC 暴露 M1 已验证的取消链，区分请求/确认；过程超时进入 cancel_pending/reconciliation_required，不在此卡补造底层取消。
+- [x] resume 绑定 interruptId、expectedRevision、scope 和当前授权；过期/跨域/旧输入拒绝。
+- [x] needs_authorization 回原授权域，布尔输入/模型说 approved 不能作为 grant。
 
 **验证：** `pnpm --filter @osstack/cli exec vitest run src/graph-command.test.ts src/graph-rpc.test.ts`；旧 explain 测试保留。
 
+**验收记录：** 源 `7da1be9ef70770bbdea5c52f6453764f6b4ba317`；真实 Loop 全库 3236 项测试、六项 verifier 和独立复审通过。详见 [G22–G24 报告](2026-09-15-graph-public-completion.md)。
+
 ### G24 · 稳定外部委托结果契约
 
-**依赖：** G23。**规模：** M。**状态：** 未开始。
+**依赖：** G23。**规模：** M。**状态：** 已完成（C7 本地限定准入）。
 
 **预计改动位置：**
 
@@ -653,11 +657,13 @@ flowchart TD
 
 **验收：**
 
-- [ ] 冻结 submit/status/cancel/result 的 v1 行为，保留父子引用、业务 inputDigest 和 delivery_unknown。
-- [ ] 用模拟 OStag/OSBot caller 验证重复请求、来源隔离及结果引用；未支持身份的远程 caller 明确拒绝。
-- [ ] 只交付 OSStack 服务契约，不在本任务实现 Rakazo connector、OStag UI 或新公网 API。
+- [x] 冻结 submit/status/cancel/result 的 v1 行为，保留父子引用、业务 inputDigest 和 delivery_unknown。
+- [x] 用模拟 OStag/OSBot caller 验证重复请求、来源隔离及结果引用；未支持身份的远程 caller 明确拒绝。
+- [x] 只交付 OSStack 服务契约，不在本任务实现 Rakazo connector、OStag UI 或新公网 API。
 
 **验证：** protocol 测试与 schema freshness；cli graph RPC caller 契约测试；不调用真实 OStag/OSBot。
+
+**验收记录：** 源 `7da1be9ef70770bbdea5c52f6453764f6b4ba317`；真实 Loop 全库 3236 项测试、六项 verifier 和独立复审通过。详见 [G22–G24 报告](2026-09-15-graph-public-completion.md)。
 
 ### G25 · 完成故障窗口和并发验收
 
@@ -764,9 +770,9 @@ flowchart TD
 
 ## 8. 依赖、分支和交接纪律
 
-- G00–G21 与 C2–C6 已完成；下一批执行 G22–G24，交付用户命令与外部契约后再验收 C7。
+- G00–G24 与 C2–C7 已完成本地限定准入；下一批执行 G25 真实故障与并发验收。
 - G08、G09 在约束明确后可分别处理。G10–G17 涉及 daemon/核心存储，按依赖串行整合，避免多个任务同时改 migrations.ts 或 daemon.ts；DDL 严格按 G08→G11→G13→G16 单负责人推进。
-- M1 的真实 broker/产物接口已通过 C5，G18–G20 已通过 C6；G21 已补齐动态 host 注册、完整模板和 epoch 推进；继续 G22–G24 用户入口。
+- M1 的真实 broker/产物接口已通过 C5，G18–G20 已通过 C6；G21 已补齐动态 host 注册、完整模板和 epoch 推进；G22–G24 已交付用户入口与外部契约；继续 G25 故障验收。
 - G22/G23 共用 graph-command 和 RPC；G25/G26 故障验证依赖完整业务路径，不提前用 stub 结果充数。
 - 真正并行时，每人只处理一个有明确文件边界的任务。此计划的依赖图不代表本次已经启动 agent 或其他 session。
 
@@ -833,4 +839,4 @@ graph worker 启动、冷/热执行、checkpoint/IPC 和并行工作区准备成
 
 ## 13. 下一轮实施的明确起点
 
-G00–G21 已完成，**22/30；C6 已通过，M0/M1 完成，M2 实施中，C7 pending**。完整代码交付模板和实际修复换代已验证；继续 [G22–G24](2026-09-15-graph-delivery-next-context.md) 用户入口/外部契约，随后完成故障、兼容、发行、性能与试点。
+G00–G24 已完成，**25/30；C7 本地限定准入通过，M0–M2 完成，M3 待实施**。用户入口、取消/恢复与外部契约已验证；继续 [G25 交接](2026-09-15-graph-public-next-context.md) 中的真实故障与并发验收，随后做兼容、发行、性能与试点。

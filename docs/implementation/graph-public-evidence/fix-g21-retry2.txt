@@ -1,0 +1,13 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-EDr0IS/delivery/writer-0'...
+HEAD is now at e4d26e5 base
+ ✓ src/graph-delivery-adversarial.test.ts (9 tests | 8 skipped) 5394ms
+   ✓ returns an explicit stop when preparation admission prevents an otherwise retryable branch  5393ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 8 skipped (9)
+   Start at  18:45:19
+   Duration  6.28s (transform 421ms, setup 7ms, collect 720ms, tests 5.39s, environment 0ms, prepare 29ms)
+
