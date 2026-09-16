@@ -93,3 +93,6 @@ export function defaultAdapters(): AgentAdapter[] {
 }
 
 export const AGENTS_VERSION = "0.0.0";
+
+export { createContainedCommandExecutor, createContainedCommandAdapter } from "./contained.js";
+export type { ContainedCommandOptions, ContainedStopReceipt, ContainedCommandExecutor } from "./contained.js";

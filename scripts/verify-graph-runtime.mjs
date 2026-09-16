@@ -28,6 +28,7 @@ mkdirSync(dirname(output), { recursive: true });
 const evidence = `${output}.evidence`; mkdirSync(evidence, { recursive: true });
 const groups = [
   { package: 'loop', files: ['src/executor.test.ts'] },
+  { package: 'agents', files: ['src/contained-command.test.ts'] },
   { package: 'core', files: ['src/state/graph-checkpoints.test.ts', 'src/state/graph-recovery.test.ts', 'src/graph/artifact-store.test.ts'] },
   { package: 'cli', files: ['src/graph-process-identity.test.ts', 'src/graph-process-journal.test.ts',
     'src/graph-faults.integration.test.ts', 'src/graph-chain.integration.test.ts', 'src/graph-worker-manager.test.ts',
@@ -47,7 +48,7 @@ const coverage = {
   F08: ['cli/src/graph-review-findings.test.ts', 'cli/src/graph-concurrency.integration.test.ts'],
   F09: ['cli/src/graph-concurrency.integration.test.ts', 'cli/src/graph-unstarted-recovery.test.ts', 'cli/src/graph-recovery-crash.integration.test.ts'],
   F10: ['cli/src/graph-verification.test.ts', 'cli/src/graph-verification-join.test.ts'],
-  F11: ['loop/src/executor.test.ts', 'cli/src/graph-chain.integration.test.ts', 'cli/src/graph-concurrency.integration.test.ts'],
+  F11: ['agents/src/contained-command.test.ts', 'loop/src/executor.test.ts', 'cli/src/graph-chain.integration.test.ts', 'cli/src/graph-concurrency.integration.test.ts'],
   F12: ['cli/src/graph-faults.integration.test.ts', 'cli/src/graph-rpc.test.ts', 'core/src/graph/artifact-store.test.ts'],
 };
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
