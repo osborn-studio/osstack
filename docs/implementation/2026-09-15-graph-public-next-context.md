@@ -41,3 +41,7 @@ bounded stop 只返回观察，**不是 DB 生命周期屏障**。GraphRuntime �
 ## 协作纪律
 
 仍用真实 OSStack Loop，sources:[]、显式 inputTasks、skipCompletedTasks:false、新 taskId/state/home，核对 executed/skipped/outcome。Claude Fable 5.1 本批实际尝试被额度限制阻止；保留原始响应，不能写成 Claude 通过。独立 Codex Loop 初审要求修改，复审检查源码和回归修复；最终验收须独立运行。源码冻结后再启动完整验收，避免 Vitest 缓存旧模块却读取新测试的混合状态。
+
+## 用户更新：协作模型选择
+
+用户授权在 Fable 5.1 额度耗尽后使用 Opus 5.5 或更好的模型。后续优先核实实际模型标识与访问权限，不再将 Fable 5.1 可用作为协作前提。实际 CLI 探测 `--model claude-opus-5-5` 返回模型不存在或无访问权限；`--model opus` 成功，但响应 modelUsage 的主要模型为 `claude-opus-5`，不能称为 Opus 5.5，也不能假定它满足“5.5 或更好”的要求。此次仅作连通性探测，未新增 Claude 代码审查或签核；C7 的既有审查结论保持不变。原始探测响应在 `graph-public-evidence/model-availability.json`。
