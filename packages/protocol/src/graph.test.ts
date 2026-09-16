@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  GraphDelegationStatus, GraphStatusRequest, GraphDeliveryUnknown,
   GraphSpec, GraphScope, GraphBudget, GraphError, GraphRunState, GraphNodeState,
   GraphActionState, GraphResult, WorkerActionRequest, WorkerActionResponse,
   StartGraphRequest, ResumeGraphRequest, GraphJsonValue, GraphEffectIdentity,
@@ -231,5 +232,38 @@ describe("canonical identity and pure mutation decisions", () => {
     const claim = { ...resume, input: { kind: "data", value: { authenticated: true, grant: "approved" } } };
     expect(() => parseInboundGraphRequest(claim, () => null)).toThrow(/UNAUTHENTICATED/);
     expect(ResumeGraphRequest.safeParse({ ...resume, input: true }).success).toBe(false);
+  });
+});
+
+describe('v1 external delegation projection', () => {
+  const status = {
+    schemaVersion: 1, scope, graphRunId: 'run', source: { product: 'osbot', requestId: 'r', parentRunId: 'parent' },
+    status: 'queued', revision: 0, generation: 0, inputDigest: 'a'.repeat(64), specHash: 'b'.repeat(64), createdAt: 1, updatedAt: 1,
+    publication: 'artifact_only', phase: 'queued', budget: { limits, actionStarts: 0, reservedTokens: '9007199254740993', chargedTokens: '0', accountingBlocked: false },
+    delivery: 'pending', evidenceRefs: [],
+  };
+  it('preserves parent references and exact budget counters', () => {
+    expect(GraphDelegationStatus.parse(status)).toEqual(status);
+    expect(GraphStatusRequest.parse({ schemaVersion: 1, scope, graphRunId: 'run' }).scope).toEqual(scope);
+    expect(GraphStatusRequest.safeParse({ schemaVersion: 1, scope, graphRunId: 'run', approved: true }).success).toBe(false);
+  });
+  it('requires frozen candidate and quality evidence for ready', () => {
+    expect(GraphDelegationStatus.safeParse({ ...status, status: 'ready', delivery: 'available' }).success).toBe(false);
+    const ready = { ...status, status: 'ready', delivery: 'available', candidate: { candidateRevision: 'c'.repeat(40), artifactDigest: 'd'.repeat(64), artifactRefs: ['artifact:1'] }, resultRef: 'join:1', evidenceRefs: ['review:1', 'tests:1'] };
+    expect(GraphDelegationStatus.parse(ready)).toEqual(ready);
+    expect(GraphDelegationStatus.safeParse({ ...ready, publication: 'merge' }).success).toBe(false);
+  });
+  it('keeps uncertain execution and transport outcomes explicit', () => {
+    for (const state of ['cancel_pending', 'reconciliation_required']) {
+      expect(GraphDelegationStatus.safeParse({ ...status, status: state }).success).toBe(false);
+      expect(GraphDelegationStatus.safeParse({ ...status, status: state, delivery: 'delivery_unknown' }).success).toBe(true);
+    }
+    const unknown = { schemaVersion: 1, kind: 'delivery_unknown', scope, idempotencyKey: 'one', inputDigest: computeGraphInputDigest(start), nextAction: 'retry_same_request' };
+    expect(GraphDeliveryUnknown.parse(unknown)).toEqual(unknown);
+    expect(GraphDeliveryUnknown.safeParse({ ...unknown, nextAction: 'start_new_run' }).success).toBe(false);
+  });
+  it('rejects stale input-bound interrupt and cross-domain authorization', () => {
+    expect(GraphDelegationStatus.safeParse({ ...status, interrupt: { interruptId: 'i', inputDigest: 'f'.repeat(64), kind: 'quality' } }).success).toBe(false);
+    expect(GraphDelegationStatus.safeParse({ ...status, authorization: { kind: 'needs_authorization', requestRef: 'auth-1', scope: { ...scope, tenantId: 'other' } } }).success).toBe(false);
   });
 });

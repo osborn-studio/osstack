@@ -1,3 +1,4 @@
+import type { GraphRpcService, GraphRpcOptions } from './graph-rpc.js';
 import type { GraphRuntime, GraphRuntimeConfiguration } from "./graph-runtime.js";
 import type { GraphCheckpointResponse } from "@osstack/protocol";
 import type { GraphCheckpointBinding, GraphCheckpointService } from "./graph-checkpoint-service.js";
@@ -3624,6 +3625,8 @@ export interface DaemonHandles {
 }
 
 export interface StartDaemonOptions {
+  /** Trusted host registry and actual socket authentication; never RPC fields. */
+  graphRpc?: Pick<GraphRpcOptions, 'registrations' | 'resolveCaller'>;
   graphCheckpointBindings?: ReadonlyMap<object, GraphCheckpointBinding>;
   /** Host launch configuration for direct adapter writes. */
   workspacePath?: string;
@@ -3826,6 +3829,35 @@ export async function startDaemon(
   }));
   let graphBroker: Promise<GraphActionBroker> | undefined;
   let graphRuntime: Promise<GraphRuntime> | undefined;
+  let graphRpc: Promise<GraphRpcService> | undefined;
+  const graphSockets = new WeakSet<object>();
+  const getGraphRpc = (): Promise<GraphRpcService> => {
+    if (checkpointClosed) return Promise.reject(new Error('GRAPH_SERVICE_CLOSED'));
+    graphRpc ??= import('./graph-rpc.js').then(({ GraphRpcService, loadLocalGraphRegistration }) => {
+      const configured = opts.graphRpc;
+      const local = configured ? undefined : loadLocalGraphRegistration(join(osstackHome(), 'graph-host.json'), ctx.adapters);
+      const service = new GraphRpcService({ db: ctx.db, root: join(osstackHome(), 'graph-delivery'),
+        registrations: configured?.registrations ?? [local!],
+        resolveCaller: connection => {
+          if (!graphSockets.has(connection)) return null;
+          if (configured) return configured.resolveCaller(connection);
+          const socket = statSync(socketPath);
+          return socket.isSocket() && socket.uid === process.getuid?.() && (socket.mode & 0o077) === 0 ? local!.id : null;
+        },
+        acquire: input => admissionFor(ctx).acquire(input),
+        authorizePolicy: async ({ policyRoot, workspacePath }) => {
+          const source = await makeRepositoryPolicyGate(policyRoot, true)({ workspacePath: policyRoot });
+          if (!source.allow) throw new Error('POLICY_DENIED');
+          if (workspacePath !== policyRoot) {
+            const candidate = await makeRepositoryPolicyGate(workspacePath, false)({ workspacePath });
+            if (!candidate.allow) throw new Error('POLICY_DENIED');
+          }
+        } });
+      if (checkpointClosed) { void service.close(); throw new Error('GRAPH_SERVICE_CLOSED'); }
+      return service;
+    }).catch(error => { graphRpc = undefined; throw error; });
+    return graphRpc;
+  };
   const getCheckpoints = async (): Promise<GraphCheckpointService> => {
     if (checkpointClosed) throw new Error("CHECKPOINT_SERVICE_CLOSED");
     checkpointService ??= Promise.all([import("./graph-checkpoint-service.js"), import("@osstack/core")])
@@ -3920,6 +3952,8 @@ export async function startDaemon(
   let dashboard: DashboardServerHandle | null = null;
 
   const server = createServer((sock: Socket) => {
+    graphSockets.add(sock);
+    sock.once('close', () => graphSockets.delete(sock));
     const decoder = new FrameDecoder();
 
     sock.on("data", (chunk) => {
@@ -3944,6 +3978,16 @@ export async function startDaemon(
             try { sock.write(encodeFrame(singleErr(req.id, "execution_failed", error instanceof Error ? error.message : String(error)))); } catch { /* disconnected */ }
           };
 
+          if (['graph.validate', 'graph.start', 'graph.submit', 'graph.status', 'graph.result', 'graph.cancel', 'graph.resume'].includes(req.method)) {
+            void getGraphRpc().then(service => service.handle(sock, req.method, req.params)).then(result => {
+              try { sock.write(encodeFrame(singleOk(req.id, result))); } catch { /* disconnected */ }
+            }).catch(async error => {
+              const { graphRpcError } = await import('./graph-rpc.js');
+              const failure = graphRpcError(error);
+              try { sock.write(encodeFrame(singleErr(req.id, failure.code, failure.message))); } catch { /* disconnected */ }
+            }).finally(recordLatency);
+            continue;
+          }
           if (req.method === "task.submit") {
             void traceSpan(
               "osstack.task.submit",
@@ -4053,8 +4097,11 @@ export async function startDaemon(
         if (healthMonitor !== undefined) clearInterval(healthMonitor);
         shutdownPromise = (async () => {
           ctx.draining = true;
+          if (graphRpc) {
+            try { await (await graphRpc).close(); } catch { /* Initialization may have failed. */ }
+          }
           if (graphRuntime) {
-            try { await (await graphRuntime).close(); } catch { /* Failed initialization launched no graph worker. */ }
+            try { const runtime = await graphRuntime; await runtime.close(); await runtime.drainDatabaseUsers(); } catch { /* Failed initialization launched no graph worker. */ }
           }
           const collaboratorStopped = ctx.collaborator?.stop();
           // Abort any active runs so adapters get a chance to clean up.

@@ -1,4 +1,5 @@
 // Experimental read model: keep this adapter lazy and outside the scheduler.
+import type { GraphCommandDependencies } from "./graph-execution-command.js";
 import { createHash } from "node:crypto";
 import { closeSync, constants, existsSync, fstatSync, openSync, readSync, realpathSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
@@ -204,10 +205,14 @@ function renderText(result: ReturnType<typeof explainGraph>) {
   ].join("\n");
 }
 
-export async function handleGraphCommand(args: string[], deps: { stdout?: (text: string) => void; stderr?: (text: string) => void } = {}): Promise<number> {
+export async function handleGraphCommand(args: string[], deps: GraphCommandDependencies = {}): Promise<number> {
+  if (["validate", "run", "status", "result", "cancel", "resume"].includes(args[0] ?? "")) {
+    const { handleGraphExecutionCommand } = await import("./graph-execution-command.js");
+    return handleGraphExecutionCommand(args, deps);
+  }
   const stdout = deps.stdout ?? console.log;
   const stderr = deps.stderr ?? console.error;
-  if ((args.length === 1 && ["--help", "help"].includes(args[0] ?? "")) || (args.length === 2 && args[0] === "explain" && args[1] === "--help")) { stdout(HELP); return 0; }
+  if ((args.length === 1 && ["--help", "help"].includes(args[0] ?? "")) || (args.length === 2 && args[0] === "explain" && args[1] === "--help")) { const { GRAPH_EXECUTION_HELP } = await import("./graph-execution-command.js"); stdout(`${GRAPH_EXECUTION_HELP}\n\n${HELP}`); return 0; }
   try {
     const input = parseArgs(args);
     const result = explainGraph(input);

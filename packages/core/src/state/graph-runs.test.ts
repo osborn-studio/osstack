@@ -40,6 +40,20 @@ const claim = (run: GraphRun) => store.acquireLease({ ...fence(run), owner: "wor
 const stopped = (run: GraphRun) => ({ graphRunId: run.graphRunId, generation: run.generation, owner: run.leaseOwner!, confirmedAt: 190, evidenceRef: "exit-receipt" });
 
 describe("graph run storage", () => {
+  it("persists preworker/expired cancellation without granting unfenced execution", () => {
+    const queued = store.create(request, program, 100);
+    expect(() => store.project({ ...fence(queued), status: 'running' })).toThrow('LEASE_EXPIRED');
+    const cancel = { schemaVersion: 1 as const, kind: 'cancel' as const, scope, idempotencyKey: 'cancel', graphRunId: queued.graphRunId, expectedRevision: queued.revision };
+    const pending = store.projectRequest(cancel, { ...fence(queued), status: 'cancel_pending' });
+    expect(second.get(scope, queued.graphRunId)?.status).toBe('cancel_pending');
+    expect(store.project({ ...fence(pending), status: 'cancelled' }).status).toBe('cancelled');
+    const leased = claim(store.create({ ...request, idempotencyKey: 'other' }, program, 100));
+    const expired = store.project({ ...fence(leased, 201), status: 'cancel_pending' });
+    expect(expired.generation).toBe(1);
+    expect(() => store.project({ ...fence(expired, 202), status: 'cancelled' })).toThrow('LEASE_EXPIRED');
+    expect(() => store.project({ ...fence(expired, 202), expectedOwner: 'impostor', status: 'cancel_pending' })).toThrow('OWNER_MISMATCH');
+  });
+
   it("persists fresh identity, source and canonical idempotency through a real SQLite restart", () => {
     const run = store.create(request, program, 100);
     expect(run).toMatchObject({ generation: 0, revision: 0, leaseOwner: null, status: "queued", source: request.source });

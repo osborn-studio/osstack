@@ -20,6 +20,9 @@ export interface ReviewerIdentity { writerIdentity: string; reviewerIdentity: st
 export interface GraphVerificationOptions {
   root: string; artifacts: GraphArtifactStore; candidate: Extract<GraphResult, { kind: 'candidate_ready' }>; binding: VerificationBinding;
   sourceWorkspace: RegisteredCandidateWorkspace; authorize: () => void; acquire: (input: AdmissionInput) => Promise<ExecutionLease>;
+  /** Current host cancel grant permits only stopped cancellation evidence settlement. */
+  authorizeCancel?: () => void;
+  authorizePolicy?: (workspacePath: string) => Promise<void>;
   acceptanceRegistry: readonly AcceptanceCommandSpec[]; writerIdentity: string;
   reviewer: { identity: string; adapter: AgentAdapter; capabilityId: string };
   /** Independent host identity/credential check; never derived from review/model output. */
@@ -112,7 +115,7 @@ export async function prepareGraphVerificationBranch(options: GraphVerificationO
 }
 async function prepareSelection(options: GraphVerificationOptions, kinds: readonly Kind[]) {
   // Capture ALL callbacks and values before the first await.
-  const { authorize, acquire, effectIdentity, verifyReviewer, preparationLease } = options;
+  const { authorize, authorizeCancel, authorizePolicy, acquire, effectIdentity, verifyReviewer, preparationLease } = options;
   const check = checkedAuthority(authorize); check();
   const data = snapshot({ root: options.root, binding: parseVerificationBinding(options.binding), candidate: GraphResult.parse(options.candidate), source: options.sourceWorkspace,
     writerIdentity: options.writerIdentity, reviewerIdentity: options.reviewer.identity, capabilityId: options.reviewer.capabilityId,
@@ -221,15 +224,24 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
     const requestInput = { binding, generation: 1, requestId: 'register', ...slot };
     const request = kind === 'review' ? createReviewRequest(requestInput) : createTestsRequest(requestInput);
     const verifyWorkspace = async () => { await independent(); candidateCheck(); };
-    const persist = async (raw: GraphActionEvidence): Promise<PersistedGraphActionEvidence> => {
-      const evidence = snapshot(raw); check();
+    const persist = async (raw: GraphActionEvidence, context?: { signal: AbortSignal }): Promise<PersistedGraphActionEvidence> => {
+      const evidence = snapshot(raw);
+      const settlementCheck = () => {
+        if (context?.signal.aborted && evidence.stopped === true && authorizeCancel) checkedAuthority(authorizeCancel)();
+        else check();
+      };
+      settlementCheck();
       if (evidence.stopped !== true || evidence.candidate?.status === 'execution_unconfirmed' || evidence.candidate?.execution?.failure_code === 'cancellation_unconfirmed'
         || evidence.command?.failure_code === 'process_exit_unconfirmed' || evidence.command?.failure_code === 'surviving_descendants') throw new Error('executor stop unconfirmed');
       const effect = snapshot(validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot));
-      await independent();
+      settlementCheck();
+      const identityCheck: unknown = await verifyReviewer(identities);
+      if (identityCheck !== undefined) throw new Error('independent verifier must return void');
+      settlementCheck();
       if (verificationCanonical(validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot)) !== verificationCanonical(effect)) throw new Error('ledger effect changed during verification');
       const envelope: GraphVerificationEnvelope = { schemaVersion: 1, binding, kind, nodeId: slot.nodeId, effectSlot: slot.effectSlot, ...effect,
         workspace, workspaceLeaseRef: slot.workspaceLeaseRef, candidateIdentity: { before, after: observe() }, acceptance, writerIdentity: data.writerIdentity, reviewerIdentity: data.reviewerIdentity, evidence };
+      if (context?.signal.aborted) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Verification cancelled after confirmed executor stop', retrySafe: false };
       if (verificationCanonical(envelope.candidateIdentity.after) !== verificationCanonical(before)) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Candidate workspace mutation detected after execution', retrySafe: false };
       if (kind === 'review') {
         const receipt = invocations.get(evidence.candidate?.execution?.run_id ?? '');
@@ -251,7 +263,7 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
       compactVerificationOutput(envelope);
       return publishGraphVerificationEvidence(data.root, envelope, () => {
         if (verificationCanonical(observe()) !== verificationCanonical(envelope.candidateIdentity.after)) throw new Error('candidate changed during persistence');
-        check(); if (verificationCanonical(validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot)) !== verificationCanonical(effect)) throw new Error('ledger effect changed during persistence');
+        settlementCheck(); if (verificationCanonical(validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot)) !== verificationCanonical(effect)) throw new Error('ledger effect changed during persistence');
       });
     };
     // G04 reuses plan-derived session IDs on retry. Allocate the real session at invocation,
@@ -264,6 +276,7 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
       invoke: (task: AgentTask, signal: AbortSignal) => (async function* () {
         const runId = task.run_id; const taskId = task.task_id;
         await independent(); candidateCheck();
+        await authorizePolicy?.(workspace.workspace_path); check();
         if (signal.aborted) throw new Error('review invocation cancelled');
         if (taskId !== plan.task.task_id || invocations.has(runId)) throw new Error('invalid or repeated reviewer invocation');
         const actual: AgentTask = snapshot({ run_id: runId, task_id: taskId, session_id: randomUUID(), capability_id: data.capabilityId,

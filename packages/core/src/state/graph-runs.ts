@@ -227,7 +227,11 @@ export class GraphRunStore {
   }
 
   private projectInTransaction(input: GraphRunProjection): GraphRun {
-    const run = this.checked(input, true);
+    // Cancellation intent is durable even before launch or after lease expiry.
+    // Physical settlement remains a separate host/G15 evidence requirement.
+    const prior = this.get(input.scope, input.graphRunId);
+    const preworkerSettlement = prior?.generation === 0 && ['failed', 'cancelled'].includes(input.status);
+    const run = this.checked(input, input.status !== 'cancel_pending' && !preworkerSettlement);
     // Cancellation intent is irreversible even before external exit is confirmed.
     if (run.status === "cancel_pending" && !["cancel_pending", "cancelled"].includes(input.status)) fail("CANCEL_PENDING");
     // Never seal away the authority required to reconcile unfinished effects.

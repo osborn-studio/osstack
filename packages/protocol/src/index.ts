@@ -9,6 +9,7 @@
 export { PROTOCOL_VERSION, ProtocolVersion } from "./version.js";
 export {
   GRAPH_JSON_LIMITS,
+  GraphStatusRequest, GraphDelegationStatus, GraphDeliveryUnknown,
   GraphActionState,
   GraphBudget,
   GraphContractError,

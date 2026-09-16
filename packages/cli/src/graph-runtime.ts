@@ -137,7 +137,7 @@ export class GraphRuntime {
           this.options.checkpoints.register(key, { ...fixed, authorize: async () => { authorize(); } });
         },
         action: (key, request, options) => track(dispatch ? dispatch(key, request, options) : this.options.broker.handle(key, request, options)),
-        checkpoint: (key, request) => this.options.checkpoints.execute(key, request),
+        checkpoint: (key, request) => track(this.options.checkpoints.execute(key, request)),
       });
     } catch (error) { retire(); throw error; }
     const record: Connection = { handle, pending, retired };
@@ -168,6 +168,13 @@ export class GraphRuntime {
     const [exit, actionsSettled] = await Promise.all([worker, bounded]);
     if (timer) clearTimeout(timer);
     return { worker: exit, actionsSettled };
+  }
+  /** Database lifetime barrier, separate from bounded physical-stop observations.
+   * Call after close(): an unresolved producer keeps shutdown pending, never
+   * authorizes closing SQLite while its broker finally/release still uses it. */
+  async drainDatabaseUsers(): Promise<void> {
+    if (!this.closed) throw new Error('GRAPH_RUNTIME_MUST_CLOSE_BEFORE_DRAIN');
+    await Promise.allSettled([...this.connections.values()].flatMap(record => [...record.pending]));
   }
   async close(): Promise<void> {
     this.closed = true;

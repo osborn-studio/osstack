@@ -379,6 +379,49 @@ export function validateWorkerTransportRetry(previous: unknown, retry: unknown):
   return "replay";
 }
 
+/** Read-only lookup. Scope is checked against the authenticated connection. */
+export const GraphStatusRequest = wire(z.object({ schemaVersion: Version, scope: Scope, graphRunId: Id }).strict());
+export type GraphStatusRequest = z.infer<typeof GraphStatusRequest>;
+
+const DelegationFields = z.object({
+  schemaVersion: Version, scope: Scope, graphRunId: Id, source: Start.shape.source,
+  status: GraphRunState, revision: Count, generation: Count,
+  inputDigest: Digest, specHash: Digest, createdAt: Count, updatedAt: Count,
+  publication: z.literal("artifact_only"), phase: Id,
+  budget: z.object({ limits: Spec.shape.limits, actionStarts: Count, reservedTokens: z.string().regex(/^(0|[1-9][0-9]{0,39})$/), chargedTokens: z.string().regex(/^(0|[1-9][0-9]{0,39})$/), accountingBlocked: z.boolean() }).strict(),
+  candidate: z.object({ candidateRevision: Commit, artifactRefs: Refs, artifactDigest: Digest }).strict().optional(),
+  evidenceRefs: z.array(Id).max(100), resultRef: Id.optional(),
+  delivery: z.enum(["pending", "available", "delivery_unknown"]),
+  interrupt: z.object({ interruptId: Id, inputDigest: Digest, kind: z.enum(["quality", "authorization"]) }).strict().optional(),
+  authorization: z.object({ kind: z.literal("needs_authorization"), scope: Scope, requestRef: Id }).strict().optional(),
+  error: ErrorObject.optional(),
+ }).strict();
+// Keep availability requirements in JSON Schema too, for non-TypeScript callers.
+const DelegationStatus = z.discriminatedUnion("status", [
+  DelegationFields.extend({ status: z.literal("ready"), delivery: z.literal("available"),
+    candidate: DelegationFields.shape.candidate.unwrap(), resultRef: Id, evidenceRefs: Refs }),
+  DelegationFields.extend({ status: z.enum(["cancel_pending", "reconciliation_required"]), delivery: z.literal("delivery_unknown") }),
+  DelegationFields.extend({ status: GraphRunState.exclude(["ready", "cancel_pending", "reconciliation_required"]), delivery: z.enum(["pending", "delivery_unknown"]) }),
+]).superRefine((value, ctx) => {
+  if (value.interrupt && value.interrupt.inputDigest !== value.inputDigest) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Interrupt must bind original input" });
+  }
+  if (value.authorization && canonical(value.authorization.scope) !== canonical(value.scope)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Authorization must return to original scope" });
+  }
+});
+/** OSStack v1 delegation projection. References are verified by the serving host;
+ * consumers must not turn an artifact-only result into merge/push authorization. */
+export const GraphDelegationStatus = wire(DelegationStatus);
+export type GraphDelegationStatus = z.infer<typeof GraphDelegationStatus>;
+/** A lost mutation response is not a failed action. Retry the exact request/key. */
+export const GraphDeliveryUnknown = wire(z.object({
+  schemaVersion: Version, kind: z.literal("delivery_unknown"), scope: Scope,
+  idempotencyKey: Id, inputDigest: Digest, graphRunId: Id.optional(),
+  nextAction: z.literal("retry_same_request"),
+}).strict());
+export type GraphDeliveryUnknown = z.infer<typeof GraphDeliveryUnknown>;
+
 /** Single generated registry document; context/callbacks never cross the wire. */
 export const GraphProtocol = z.object({
   spec: GraphSpec, scope: GraphScope, budget: GraphBudget, error: GraphError,
@@ -386,4 +429,5 @@ export const GraphProtocol = z.object({
   result: GraphResult, request: GraphRequest, effectIdentity: GraphEffectIdentity,
   workerActionRequest: WorkerActionRequest, workerActionResponse: WorkerActionResponse,
   idempotencyRecord: GraphIdempotencyRecord,
+  statusRequest: GraphStatusRequest, delegationStatus: GraphDelegationStatus, deliveryUnknown: GraphDeliveryUnknown,
 }).strict();

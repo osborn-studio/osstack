@@ -250,3 +250,27 @@ it('module: late actual worker OS exit replaces unconfirmed observation without 
     expect(f.runtime.observedExit(h.connection)).toEqual(actual); expect(await h.exit).toEqual(stop.worker);
   } finally { ignoreKill.mockRestore(); if (pid) { try { process.kill(pid, 'SIGKILL'); } catch { /* already dead */ } } }
 });
+
+it('keeps a database lifetime barrier after bounded stop reports pending host work', async () => {
+  const f = fixture(`export async function run(ctx) { return await ctx.action({schemaVersion:1,kind:'worker_action',requestId:'one',scope:ctx.input.scope,graphRunId:ctx.binding.graphRunId,specHash:ctx.binding.identity.specHash,generation:ctx.binding.generation,epoch:0,nodeId:'workspace',effectSlot:'main',action:{kind:'workspace_create',repositoryRef:'repo',baseRevision:ctx.input.spec.input.baseRevision}}); }`);
+  const runtime = new GraphRuntime({ ...f.runtimeOptions, drainTimeoutMs: 5 });
+  let release = () => {}; const blocked = new Promise<void>(resolve => { release = resolve; }); let entered = false; let dbUsed = false;
+  const run = runtime.claim(runtime.prepare(f.request, f.version), 'owner', Date.now() + 30000);
+  const handle = runtime.start({ request: f.request, run, programId: 'chain', authorize: () => {}, registration: {
+    scope: run.scope, graphRunId: run.graphRunId, identity: run.identity, generation: run.generation, owner: 'owner', epoch: 0,
+    workspace: { workspace_id: 'workspace', workspace_path: f.root }, authorize: () => {}, actions: [],
+  }, dispatch: async () => {
+    entered = true; await blocked;
+    // Represents broker persistence/release continuing after a bounded stop.
+    dbUsed = !!f.db.prepare('SELECT graph_run_id FROM graph_runs WHERE graph_run_id=?').get(run.graphRunId);
+    throw Error('HOST_OPERATION_RETIRED');
+  } });
+  void handle.result.catch(() => {});
+  try {
+    await expect.poll(() => entered).toBe(true);
+    expect((await handle.stop()).actionsSettled).toBe(false); await runtime.close();
+    let drained = false; const barrier = runtime.drainDatabaseUsers().then(() => { drained = true; });
+    await new Promise(resolve => setTimeout(resolve, 30)); expect(drained).toBe(false); expect(dbUsed).toBe(false);
+    release(); await barrier; expect(dbUsed).toBe(true); expect(drained).toBe(true);
+  } finally { release(); await runtime.close(); await runtime.drainDatabaseUsers(); }
+}, 10000);

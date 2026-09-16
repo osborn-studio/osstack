@@ -3,6 +3,7 @@ import type Database from 'better-sqlite3';
 import { GraphJsonValue, GraphResult, freezeWorkerData, workerCanonical } from '@osstack/protocol';
 import type { GraphAction, GraphActionBudget } from './graph-actions.js';
 import { readGraphActionState } from './graph-actions.js';
+export { readGraphActionState } from './graph-actions.js';
 import { fencedGraphTransaction } from './graph-storage.js';
 import type { GraphRun, GraphRunFence } from './graph-runs.js';
 export interface GraphVerificationSnapshot {

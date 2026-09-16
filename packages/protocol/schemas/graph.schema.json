@@ -1310,6 +1310,436 @@
         "inputDigest"
       ],
       "additionalProperties": false
+    },
+    "statusRequest": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/properties/spec/properties/schemaVersion"
+        },
+        "scope": {
+          "$ref": "#/properties/scope"
+        },
+        "graphRunId": {
+          "$ref": "#/properties/spec/properties/input/properties/taskRef"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "scope",
+        "graphRunId"
+      ],
+      "additionalProperties": false
+    },
+    "delegationStatus": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/properties/spec/properties/schemaVersion"
+            },
+            "scope": {
+              "$ref": "#/properties/scope"
+            },
+            "graphRunId": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "source": {
+              "$ref": "#/properties/request/anyOf/0/properties/source"
+            },
+            "status": {
+              "type": "string",
+              "const": "ready"
+            },
+            "revision": {
+              "$ref": "#/properties/request/anyOf/1/properties/expectedRevision"
+            },
+            "generation": {
+              "$ref": "#/properties/request/anyOf/1/properties/expectedRevision"
+            },
+            "inputDigest": {
+              "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+            },
+            "specHash": {
+              "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+            },
+            "createdAt": {
+              "$ref": "#/properties/request/anyOf/1/properties/expectedRevision"
+            },
+            "updatedAt": {
+              "$ref": "#/properties/request/anyOf/1/properties/expectedRevision"
+            },
+            "publication": {
+              "type": "string",
+              "const": "artifact_only"
+            },
+            "phase": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "budget": {
+              "type": "object",
+              "properties": {
+                "limits": {
+                  "$ref": "#/properties/spec/properties/limits"
+                },
+                "actionStarts": {
+                  "$ref": "#/properties/request/anyOf/1/properties/expectedRevision"
+                },
+                "reservedTokens": {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]{0,39})$"
+                },
+                "chargedTokens": {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]{0,39})$"
+                },
+                "accountingBlocked": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "limits",
+                "actionStarts",
+                "reservedTokens",
+                "chargedTokens",
+                "accountingBlocked"
+              ],
+              "additionalProperties": false
+            },
+            "candidate": {
+              "type": "object",
+              "properties": {
+                "candidateRevision": {
+                  "$ref": "#/properties/spec/properties/input/properties/baseRevision"
+                },
+                "artifactRefs": {
+                  "$ref": "#/properties/result/anyOf/1/properties/artifactRefs"
+                },
+                "artifactDigest": {
+                  "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+                }
+              },
+              "required": [
+                "candidateRevision",
+                "artifactRefs",
+                "artifactDigest"
+              ],
+              "additionalProperties": false
+            },
+            "evidenceRefs": {
+              "$ref": "#/properties/result/anyOf/1/properties/artifactRefs"
+            },
+            "resultRef": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "delivery": {
+              "type": "string",
+              "const": "available"
+            },
+            "interrupt": {
+              "type": "object",
+              "properties": {
+                "interruptId": {
+                  "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                },
+                "inputDigest": {
+                  "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "quality",
+                    "authorization"
+                  ]
+                }
+              },
+              "required": [
+                "interruptId",
+                "inputDigest",
+                "kind"
+              ],
+              "additionalProperties": false
+            },
+            "authorization": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "needs_authorization"
+                },
+                "scope": {
+                  "$ref": "#/properties/scope"
+                },
+                "requestRef": {
+                  "$ref": "#/properties/spec/properties/input/properties/taskRef"
+                }
+              },
+              "required": [
+                "kind",
+                "scope",
+                "requestRef"
+              ],
+              "additionalProperties": false
+            },
+            "error": {
+              "$ref": "#/properties/error"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "scope",
+            "graphRunId",
+            "source",
+            "status",
+            "revision",
+            "generation",
+            "inputDigest",
+            "specHash",
+            "createdAt",
+            "updatedAt",
+            "publication",
+            "phase",
+            "budget",
+            "candidate",
+            "evidenceRefs",
+            "resultRef",
+            "delivery"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/properties/spec/properties/schemaVersion"
+            },
+            "scope": {
+              "$ref": "#/properties/scope"
+            },
+            "graphRunId": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "source": {
+              "$ref": "#/properties/request/anyOf/0/properties/source"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "cancel_pending",
+                "reconciliation_required"
+              ]
+            },
+            "revision": {
+              "$ref": "#/properties/request/anyOf/1/properties/expectedRevision"
+            },
+            "generation": {
+              "$ref": "#/properties/request/anyOf/1/properties/expectedRevision"
+            },
+            "inputDigest": {
+              "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+            },
+            "specHash": {
+              "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+            },
+            "createdAt": {
+              "$ref": "#/properties/request/anyOf/1/properties/expectedRevision"
+            },
+            "updatedAt": {
+              "$ref": "#/properties/request/anyOf/1/properties/expectedRevision"
+            },
+            "publication": {
+              "$ref": "#/properties/delegationStatus/anyOf/0/properties/publication"
+            },
+            "phase": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "budget": {
+              "$ref": "#/properties/delegationStatus/anyOf/0/properties/budget"
+            },
+            "candidate": {
+              "$ref": "#/properties/delegationStatus/anyOf/0/properties/candidate"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/properties/spec/properties/input/properties/taskRef"
+              },
+              "maxItems": 100
+            },
+            "resultRef": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "delivery": {
+              "type": "string",
+              "const": "delivery_unknown"
+            },
+            "interrupt": {
+              "$ref": "#/properties/delegationStatus/anyOf/0/properties/interrupt"
+            },
+            "authorization": {
+              "$ref": "#/properties/delegationStatus/anyOf/0/properties/authorization"
+            },
+            "error": {
+              "$ref": "#/properties/delegationStatus/anyOf/0/properties/error"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "scope",
+            "graphRunId",
+            "source",
+            "status",
+            "revision",
+            "generation",
+            "inputDigest",
+            "specHash",
+            "createdAt",
+            "updatedAt",
+            "publication",
+            "phase",
+            "budget",
+            "evidenceRefs",
+            "delivery"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "$ref": "#/properties/spec/properties/schemaVersion"
+            },
+            "scope": {
+              "$ref": "#/properties/scope"
+            },
+            "graphRunId": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "source": {
+              "$ref": "#/properties/request/anyOf/0/properties/source"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "queued",
+                "running",
+                "failed",
+                "cancelled",
+                "waiting_input"
+              ]
+            },
+            "revision": {
+              "$ref": "#/properties/request/anyOf/1/properties/expectedRevision"
+            },
+            "generation": {
+              "$ref": "#/properties/request/anyOf/1/properties/expectedRevision"
+            },
+            "inputDigest": {
+              "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+            },
+            "specHash": {
+              "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+            },
+            "createdAt": {
+              "$ref": "#/properties/request/anyOf/1/properties/expectedRevision"
+            },
+            "updatedAt": {
+              "$ref": "#/properties/request/anyOf/1/properties/expectedRevision"
+            },
+            "publication": {
+              "$ref": "#/properties/delegationStatus/anyOf/0/properties/publication"
+            },
+            "phase": {
+              "$ref": "#/properties/spec/properties/input/properties/taskRef"
+            },
+            "budget": {
+              "$ref": "#/properties/delegationStatus/anyOf/0/properties/budget"
+            },
+            "candidate": {
+              "$ref": "#/properties/delegationStatus/anyOf/1/properties/candidate"
+            },
+            "evidenceRefs": {
+              "$ref": "#/properties/delegationStatus/anyOf/1/properties/evidenceRefs"
+            },
+            "resultRef": {
+              "$ref": "#/properties/delegationStatus/anyOf/1/properties/resultRef"
+            },
+            "delivery": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "delivery_unknown"
+              ]
+            },
+            "interrupt": {
+              "$ref": "#/properties/delegationStatus/anyOf/0/properties/interrupt"
+            },
+            "authorization": {
+              "$ref": "#/properties/delegationStatus/anyOf/0/properties/authorization"
+            },
+            "error": {
+              "$ref": "#/properties/delegationStatus/anyOf/0/properties/error"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "scope",
+            "graphRunId",
+            "source",
+            "status",
+            "revision",
+            "generation",
+            "inputDigest",
+            "specHash",
+            "createdAt",
+            "updatedAt",
+            "publication",
+            "phase",
+            "budget",
+            "evidenceRefs",
+            "delivery"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "deliveryUnknown": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/properties/spec/properties/schemaVersion"
+        },
+        "kind": {
+          "type": "string",
+          "const": "delivery_unknown"
+        },
+        "scope": {
+          "$ref": "#/properties/scope"
+        },
+        "idempotencyKey": {
+          "$ref": "#/properties/spec/properties/input/properties/taskRef"
+        },
+        "inputDigest": {
+          "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+        },
+        "graphRunId": {
+          "$ref": "#/properties/spec/properties/input/properties/taskRef"
+        },
+        "nextAction": {
+          "type": "string",
+          "const": "retry_same_request"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "scope",
+        "idempotencyKey",
+        "inputDigest",
+        "nextAction"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
@@ -1325,7 +1755,10 @@
     "effectIdentity",
     "workerActionRequest",
     "workerActionResponse",
-    "idempotencyRecord"
+    "idempotencyRecord",
+    "statusRequest",
+    "delegationStatus",
+    "deliveryUnknown"
   ],
   "additionalProperties": false
 }

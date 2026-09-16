@@ -1599,6 +1599,20 @@ export const MIGRATIONS: readonly Migration[] = [
         BEGIN SELECT RAISE(ABORT, 'graph delivery epoch immutable'); END;
     `,
   },
+  {
+    id: 33,
+    name: "graph_public_delivery",
+    sql: `
+      CREATE TABLE graph_public_delivery (
+        graph_run_id TEXT PRIMARY KEY REFERENCES graph_runs(graph_run_id),
+        descriptor_json TEXT NOT NULL,
+        result_json TEXT,
+        interrupt_json TEXT
+      );
+      CREATE TRIGGER graph_public_descriptor_immutable BEFORE UPDATE OF descriptor_json ON graph_public_delivery
+        BEGIN SELECT RAISE(ABORT, 'graph driver descriptor immutable'); END;
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

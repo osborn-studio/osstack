@@ -47,7 +47,7 @@ export interface GraphRegisteredAction {
   verifyWorkspace?: () => Promise<void>;
   execution: RegisteredExecution;
   /** Trusted persistence boundary. Worker receipts/checkpoints are never passed here. */
-  persist: (evidence: GraphActionEvidence) => Promise<PersistedGraphActionEvidence>;
+  persist: (evidence: GraphActionEvidence, context?: { signal: AbortSignal }) => Promise<PersistedGraphActionEvidence>;
 }
 export interface GraphWorkerRegistration {
   scope: GraphScope;
@@ -341,7 +341,7 @@ export class GraphActionBroker {
       };
       const evidence = await this.execute(binding, action, signal, beforeEffect, tokens => { observedTokens = Math.max(observedTokens, tokens); }, lease);
       if (!invoked) throw new Denied("POLICY_DENIED", "execution did not start");
-      const persisted = snapshot(await action.persist(evidence));
+      const persisted = snapshot(await action.persist(evidence, { signal }));
       if (typeof persisted.evidenceRef !== "string" || !persisted.evidenceRef || persisted.evidenceRef.trim() !== persisted.evidenceRef
         || persisted.evidenceRef.length > 256 || Array.from(persisted.evidenceRef).some(char => {
           const code = char.charCodeAt(0); return code < 32 || (code >= 127 && code <= 159);
@@ -355,13 +355,15 @@ export class GraphActionBroker {
       const actualTokens = Math.max(observedTokens, persisted.actualTokens ?? 0, measured ?? Math.max(action.tokenReservation, usage?.tokens_in ?? 0, usage?.tokens_out ?? 0));
       const verification = action.action.kind === "review" || action.action.kind === "tests";
       const failure = persisted.verificationFailure;
-      if (failure && (!verification || evidence.stopped !== true || signal.aborted || persisted.result !== undefined
+      if (failure && (!verification || evidence.stopped !== true || (signal.aborted && failure.retrySafe !== false) || persisted.result !== undefined
         || !["OUTPUT_CONTRACT_INVALID", "INTERNAL_ERROR"].includes(failure.code) || typeof failure.retrySafe !== "boolean")) throw new Error("invalid verification failure classification");
       const failureError = failure ? GraphErrorSchema.parse({ schemaVersion: 1, code: failure.code, message: failure.message,
         retryable: failure.retrySafe, nextAction: failure.retrySafe ? "retry" : "stop" }) : undefined;
       const normalTestsExit = action.action.kind === "tests" && evidence.stopped === true
         && evidence.command?.termination?.trigger === "exit" && evidence.command.termination.stop_confirmed
         && !evidence.command.cancellation && !evidence.command.failure_code && !signal.aborted;
+      // An abort after execution/evidence completion does not invalidate quality
+      // already established. Cancelled invocations carry a stopped failure above.
       const completed = !failure && (evidence.status === "completed" || (normalTestsExit && persisted.result !== undefined));
       let result: GraphResult | undefined;
       if (completed) {
@@ -442,8 +444,8 @@ export class GraphActionBroker {
     if (execution.kind === "freeze") {
       if (!lease?.assertActive) throw new Error("freeze requires canonical lease verification");
       const check = (): void => { if (signal.aborted) throw new Error("freeze cancelled"); this.authorize(binding); this.fence(binding); };
-      await this.options.authorizePolicy?.(action.workspace.workspace_path); check();
-      await verifyWorkspace(); check(); beforeEffect(`freeze:${randomUUID()}`);
+      await verifyWorkspace(); check();
+      await this.options.authorizePolicy?.(action.workspace.workspace_path); check(); beforeEffect(`freeze:${randomUUID()}`);
       const frozenCandidate = await execution.store.freeze(execution.input, { ...execution.authority, lease,
         verifyLease: async (input, actualLease) => {
           if (actualLease !== lease) throw new Error("freeze lease identity mismatch");
@@ -455,14 +457,14 @@ export class GraphActionBroker {
       return { status: "completed", frozenCandidate };
     }
     if (execution.kind === "workspace") {
-      await this.options.authorizePolicy?.(action.workspace.workspace_path);
       await verifyWorkspace();
+      await this.options.authorizePolicy?.(action.workspace.workspace_path);
       beforeEffect(`workspace:${randomUUID()}`);
       const result = await execution.handler({ workspace: action.workspace, signal, lease: lease! });
       if (result?.stopped !== true || !["completed", "failed"].includes(result.status)) throw new Error("workspace outcome unconfirmed");
       return { status: result.status, workspace: result.evidence };
     }
-    let threw = false; let command: CommandResult | undefined; let invocationRunId: string | undefined;
+    let threw = false; let command: CommandResult | undefined; let commandPending: Promise<CommandResult> | undefined; let invocationRunId: string | undefined;
     const original = execution.kind === "adapter" ? execution.adapter : undefined;
     const capabilities = execution.kind === "adapter" ? execution.adapter.capabilities().filter(cap => cap.id === execution.capabilityId) : [CapabilitySchema.parse({ id: "registered-command.write", kind: "code.write", agent_id: "registered-command", description: "Registered command" })];
     const policy = this.options.authorizePolicy;
@@ -472,9 +474,9 @@ export class GraphActionBroker {
       capabilities: () => capabilities, isAvailable: original?.isAvailable ?? (async () => ({ available: true, last_checked_at: 0 })),
       invoke: (task, invocationSignal) => {
         return (async function* () {
+          await verifyWorkspace();
           await policy?.(action.workspace.workspace_path);
           if (invocationSignal.aborted) throw new Denied("POLICY_DENIED", "execution cancelled before invocation");
-          await verifyWorkspace();
           beforeEffect(task.run_id); invocationRunId = task.run_id;
           try {
             if (original) {
@@ -507,19 +509,25 @@ export class GraphActionBroker {
             if (execution.kind !== "command") throw new Error("invalid execution registration");
             // runShellCommand starts synchronously before its returned promise; no
             // untrusted await separates the fence above from the actual spawn.
-            command = await runShellCommand(execution.command, { cwd: action.workspace.workspace_path, timeoutMs: 120_000,
+            commandPending = runShellCommand(execution.command, { cwd: action.workspace.workspace_path, timeoutMs: 120_000,
               outputLimit: 16_000, ...(invocationSignal ? { signal: invocationSignal } : {}) });
+            command = await commandPending;
             yield { event_id: randomUUID(), run_id: task.run_id, session_id: task.session_id, seq: 1, type: "done" as const,
               created_at: Date.now() / 1000, terminal: true, payload: { status: command.exitCode === 0 ? "completed" : "failed", last_seq: 0 } };
           } catch (error) { threw = true; throw error; }
         })();
       },
-      confirmStopped: async runId => original?.confirmStopped ? original.confirmStopped(runId)
-        : { stopped: command?.termination?.stop_confirmed === true, evidence: command?.termination?.evidence ?? "no trusted stop receipt" },
+      confirmStopped: async runId => {
+        if (original?.confirmStopped) return original.confirmStopped(runId);
+        // Command cancellation can request confirmation before termination settles.
+        // G04 bounds this wait; only the shell's process-group proof can confirm it.
+        const stoppedCommand = command ?? await commandPending;
+        return { stopped: stoppedCommand?.termination?.stop_confirmed === true, evidence: stoppedCommand?.termination?.evidence ?? "no trusted stop receipt" };
+      },
     };
     const candidate = await executeCandidateImplementation({ plan: { ...execution.plan, agent_id: wrapper.id }, workspace: action.workspace,
       adapters: [wrapper], signal, cancellationGraceMs: 50,
-      authorize: async () => { this.authorize(binding); this.fence(binding); return { allow: true }; } });
+      authorize: async () => { this.authorize(binding); this.fence(binding); await policy?.(action.workspace.workspace_path); this.authorize(binding); this.fence(binding); return { allow: true }; } });
     if (!invocationRunId) throw new Denied("POLICY_DENIED", candidate.reason ?? "candidate preflight refused");
     if (threw || candidate.status === "execution_unconfirmed" || candidate.execution?.failure_code) throw new Error("adapter result or execution unconfirmed");
     let stopTimer: ReturnType<typeof setTimeout> | undefined;

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, writeFile, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 import type Database from 'better-sqlite3';
@@ -25,6 +25,22 @@ export interface GraphDeliveryOptions {
   reviewer: GraphVerificationOptions['reviewer']; verifyReviewer: GraphVerificationOptions['verifyReviewer'];
   acceptanceRegistry: GraphVerificationOptions['acceptanceRegistry'];
   acquire: (input: AdmissionInput) => Promise<ExecutionLease>; authorize: () => void;
+  /** Reserved and exclusively selected by the public host before construction. */
+  reservedRun?: GraphRun;
+  authorizeCancel?: () => void;
+  /** Current source authority is distinct from the physical candidate checkout. */
+  authorizePolicy?: (input: { policyRoot: string; workspacePath: string }) => Promise<void>;
+  qualityInterrupt?: (proof: GraphDeliveryInterrupt) => void;
+  publish?: (candidate: Candidate, feedbackRef: string) => void;
+}
+export interface GraphDeliveryInterrupt {
+  interruptId: string; inputDigest: string; kind: 'quality';
+  checkpointDigest: string; feedbackRef: string;
+}
+export function graphDeliveryVersion(compiled: CompiledGraphSpec) {
+  return { executionModel: 'langgraph-functional-v1' as const, durability: 'sync' as const,
+    engineVersion: '1.4.15', checkpointVersion: '1.1.5', templateVersion: '4', registryVersion: compiled.registryVersion,
+    compilerVersion: compiled.compilerVersion, schemaVersion: compiled.schemaVersion, compiledProgramDigest: compiled.compiledProgramDigest };
 }
 type Candidate = Extract<GraphResult, { kind: 'candidate_ready' }>;
 type Kind = 'review' | 'tests';
@@ -49,6 +65,9 @@ export class GraphDelivery {
   private connection: object | undefined;
   private closed = false;
   private started = false;
+  private stopping = false;
+  private active: GraphRuntimeHandle | undefined;
+  private waiting: { proof: GraphDeliveryInterrupt; verify: () => void; resolve: () => void; reject: (error: Error) => void } | undefined;
   private readonly options: GraphDeliveryOptions;
   constructor(options: GraphDeliveryOptions) {
     const adapter = (a: AgentAdapter): AgentAdapter => {
@@ -66,9 +85,13 @@ export class GraphDelivery {
     if (options.writer.identity !== options.writer.adapter.id || !capability || !['code.write','code.refactor','code.debug'].includes(capability.kind)) throw Error('WRITER_IDENTITY_REQUIRED');
     this.compiled = compileGraphSpec(options.request.spec);
     this.runs = new GraphRunStore(options.db);
-    this.broker = new GraphActionBroker(options.db, { acquire: options.acquire });
+    if (options.reservedRun) this.runValue = options.reservedRun;
+    this.broker = new GraphActionBroker(options.db, { acquire: options.acquire,
+      ...(options.authorizePolicy ? { authorizePolicy: (workspacePath: string) => options.authorizePolicy!({ policyRoot: options.repositoryPath, workspacePath }) } : {}) });
     this.artifacts = new GraphArtifactStore(join(options.root, 'artifacts'));
   }
+  /** Called by the service after run() completes, before its shared DB closes. */
+  async drainDatabaseUsers(): Promise<void> { if (this.runtime) await this.runtime.drainDatabaseUsers(); }
   current(): GraphRun { return this.runs.get(this.runValue.scope, this.runValue.graphRunId)!; }
   private leaseDeadline(): number {
     const createdAt = this.runValue ? this.current().createdAt : Date.now();
@@ -85,6 +108,12 @@ export class GraphDelivery {
     if (this.closed) throw Error('DELIVERY_CLOSED');
     this.assertOwned();
     const value: unknown = this.options.authorize();
+    if (value !== undefined) { void Promise.resolve(value).catch(() => {}); throw Error('AUTHORITY_MUST_BE_SYNCHRONOUS'); }
+  }
+  private checkSettlement(): void {
+    if (!this.stopping || this.current().status !== 'cancel_pending' || !this.options.authorizeCancel) { this.check(); return; }
+    this.assertOwned();
+    const value: unknown = this.options.authorizeCancel();
     if (value !== undefined) { void Promise.resolve(value).catch(() => {}); throw Error('AUTHORITY_MUST_BE_SYNCHRONOUS'); }
   }
   private latest(nodeId: string, effectSlot = 'main') {
@@ -112,7 +141,7 @@ export class GraphDelivery {
   }
   private async persist(nodeId: string, workspacePath: string, evidence: GraphActionEvidence, effectSlot = 'main'): Promise<string> {
     if (this.latest(nodeId, effectSlot)?.state !== 'running') throw Error('RUNNING_EFFECT_REQUIRED');
-    return publishDeliveryReceipt(this.options.root, this.receiptBinding(nodeId, workspacePath, effectSlot), evidence, () => this.check());
+    return publishDeliveryReceipt(this.options.root, this.receiptBinding(nodeId, workspacePath, effectSlot), evidence, () => this.checkSettlement());
   }
   private async restoreWorkspaceMappings(): Promise<void> {
     // Functional replay may skip cached workspace callbacks. Recover mappings
@@ -138,7 +167,8 @@ export class GraphDelivery {
       action: { kind: 'workspace_create', repositoryRef: this.compiled.spec.input.repositoryRef, baseRevision: candidate.candidateRevision }, workspace: source,
       execution: { kind: 'workspace', handler: async ({ lease }) => {
         const prepared = await prepareGraphVerificationBranch({ root: join(this.options.root, 'verification'), artifacts: this.artifacts, candidate,
-          binding: this.binding(), sourceWorkspace: source, authorize: () => this.check(), acquire: this.options.acquire,
+          binding: this.binding(), sourceWorkspace: source, authorize: () => this.check(), authorizeCancel: () => this.checkSettlement(), acquire: this.options.acquire,
+          ...(this.options.authorizePolicy ? { authorizePolicy: (workspacePath: string) => this.options.authorizePolicy!({ policyRoot: this.options.repositoryPath, workspacePath }) } : {}),
           preparationLease: lease, acceptanceRegistry: this.options.acceptanceRegistry, writerIdentity: this.options.writer.identity,
           reviewer: this.options.reviewer, verifyReviewer: this.options.verifyReviewer,
           slots: { [kind]: { nodeId: branch.id, effectSlot: branch.effectSlot, workspaceLeaseRef: `e${epoch}.${kind}`, tokenReservation: branch.tokenReservation } },
@@ -205,6 +235,7 @@ export class GraphDelivery {
     scope: r.scope, graphRunId: r.graphRunId, specHash: r.identity.specHash, generation: r.generation, epoch: this.epoch,
     nodeId: action.nodeId, effectSlot: action.effectSlot, action: action.action }; }
   private async dispatch(connection: object, value: WorkerActionRequest, options: { signal?: AbortSignal }): Promise<WorkerActionResponse> {
+    if (this.stopping) throw Error('DELIVERY_STOPPING');
     this.check(); const request = WorkerActionRequest.parse(value); const r = this.current();
     if (request.epoch !== this.epoch || request.generation !== r.generation || request.graphRunId !== r.graphRunId || request.specHash !== r.identity.specHash || workerCanonical(request.scope) !== workerCanonical(r.scope)) throw Error('DELIVERY_IDENTITY_MISMATCH');
     const name = request.nodeId.replace(`e${this.epoch}.`, ''); const n = deliveryEpoch(this.compiled, this.epoch).node(name);
@@ -254,21 +285,57 @@ export class GraphDelivery {
     try { const takeover = await this.runtime.reconciler.reconcile(key, { kind: 'takeover', fence: this.fence(), receiptId: `delivery-takeover-${this.epoch}`, owner: `delivery-${r.generation + 1}`, leaseExpiresAt: this.leaseDeadline() }); this.owned = takeover.result.run; }
     finally { this.runtime.reconciler.unregister(key); }
   }
+  private checkpointDigest(): string {
+    const rows = this.options.db.prepare('SELECT namespace,checkpoint_id,checkpoint FROM graph_checkpoints WHERE graph_run_id=? ORDER BY namespace,checkpoint_id').all(this.current().graphRunId);
+    const writes = this.options.db.prepare("SELECT namespace,checkpoint_id,task_id,channel,write_index,value FROM graph_checkpoint_writes WHERE graph_run_id=? ORDER BY namespace,checkpoint_id,task_id,write_index").all(this.current().graphRunId);
+    if (!rows.length || !writes.some(row => (row as { channel: string }).channel === '__interrupt__')) throw Error('DURABLE_INTERRUPT_REQUIRED');
+    return createHash('sha256').update(workerCanonical({ rows, writes })).digest('hex');
+  }
+  verifyResume(proof: GraphDeliveryInterrupt): void {
+    if (!this.waiting || workerCanonical(proof) !== workerCanonical(this.waiting.proof) || this.stopping) throw Error('LIVE_QUIESCENCE_REQUIRED');
+    this.waiting.verify();
+  }
+  resumeQuality(proof: GraphDeliveryInterrupt): void { this.verifyResume(proof); this.waiting!.resolve(); }
+  /** Actual worker and broker signal chain. A drained Promise never clears holds. */
+  async cancel(): Promise<void> {
+    this.stopping = true; this.waiting?.reject(Error('DELIVERY_CANCELLED'));
+    const handle = this.active;
+    if (!handle) return;
+    const stopped = await handle.stop('GRAPH_CANCEL_REQUESTED');
+    if (!this.owned || stopped.worker.kind !== 'exited' || !stopped.actionsSettled) return;
+    const r = this.current(); if (r.status !== 'cancel_pending') return;
+    const verify = () => {
+      this.assertOwned();
+      if (workerCanonical(this.runtime.observedExit(handle.connection)) !== workerCanonical(stopped.worker)) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
+      if (this.options.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id=? AND state IN ('intent','running','unknown','cancel_pending')").get(r.graphRunId)
+        || this.options.db.prepare('SELECT 1 FROM graph_action_admissions WHERE graph_run_id=? AND released_at IS NULL').get(r.graphRunId)) throw Error('QUIESCENCE_REQUIRED');
+    };
+    const key = {}; const exit = stopped.worker;
+    this.runtime.reconciler.register(key, { binding: { scope: r.scope, graphRunId: r.graphRunId, identity: r.identity, generation: r.generation, owner: r.leaseOwner },
+      authorize: () => { this.assertOwned(); const result: unknown = (this.options.authorizeCancel ?? this.options.authorize)();
+        if (result !== undefined) { void Promise.resolve(result).catch(() => {}); throw Error('AUTHORITY_MUST_BE_SYNCHRONOUS'); } }, stopWorker: async () => stopped,
+      verifyWorker: async () => { verify(); return { kind: 'stopped', graphRunId: r.graphRunId, generation: r.generation, owner: r.leaseOwner!, confirmedAt: exit.confirmedAt, evidenceRef: exit.evidenceRef }; },
+      verifyQuiescence: async () => { verify(); return { executorEvidenceRef: exit.evidenceRef, workspaceEvidenceRef: exit.evidenceRef }; },
+      verifyOutcome: async () => { throw Error('NO_EFFECT_RECONCILIATION'); }, recheck: verify, release: async () => {},
+    });
+    try { await this.runtime.reconciler.reconcile(key, { kind: 'project', status: 'cancelled', receiptId: `delivery-cancel-${r.generation}`, fence: this.fence() }); }
+    finally { this.runtime.reconciler.unregister(key); }
+  }
   async run(): Promise<{ route: GraphVerificationDecision['route']; candidate?: Candidate; feedbackRef?: string }> {
     if (this.started) throw Error('DELIVERY_ALREADY_STARTED'); this.started = true;
     this.check(); await mkdir(this.options.root, { recursive: true, mode: 0o700 }); this.check();
     if (this.options.root === this.options.repositoryPath || this.options.root.startsWith(`${this.options.repositoryPath}/`) || await realpath(this.options.root) !== this.options.root || await realpath(this.options.repositoryPath) !== this.options.repositoryPath) throw Error('CANONICAL_HOST_PATHS_REQUIRED');
     this.check();
     const modulePath = join(this.options.root, 'delivery.mjs'); await writeFile(modulePath, this.compiled.source, { flag: 'wx', mode: 0o600 }); this.check();
-    const version = { executionModel: 'langgraph-functional-v1' as const, durability: 'sync' as const, engineVersion: '1.4.15', checkpointVersion: '1.1.5', templateVersion: '4',
-      registryVersion: this.compiled.registryVersion, compilerVersion: this.compiled.compilerVersion, schemaVersion: this.compiled.schemaVersion, compiledProgramDigest: this.compiled.compiledProgramDigest };
+    const version = graphDeliveryVersion(this.compiled);
     this.runtime = new GraphRuntime({ db: this.options.db, broker: this.broker,
       checkpoints: new GraphCheckpointService({ runs: this.runs, checkpoints: new GraphCheckpointStore(this.options.db), bindings: new Map() }),
       programs: [{ id: 'code-delivery-v1', modulePath, digest: this.compiled.compiledProgramDigest }] });
     let resume: GraphWorkerResume | undefined;
     let lastStopped: GraphRuntimeStop | undefined;
     try {
-      this.runValue = this.runtime.prepare(this.options.request, version);
+      this.runValue = this.options.reservedRun ?? this.runtime.prepare(this.options.request, version);
+      if (this.stopping || this.current().status === 'cancel_pending') return { route: { kind: 'stop', epoch: 0, reason: 'cancel_requested' } };
       this.runValue = this.runtime.claim(this.runValue, 'delivery-1', this.leaseDeadline()); this.owned = this.runValue;
       this.runs.project({ ...this.fence(), status: 'running' });
       new GraphDeliveryEpochStore(this.options.db).activate(this.fence(), 0, deliveryEpoch(this.compiled, 0).cost);
@@ -279,10 +346,11 @@ export class GraphDelivery {
           authorize: () => this.check(), registration: { scope: r.scope, graphRunId: r.graphRunId, identity: r.identity, generation: r.generation, owner: r.leaseOwner!, epoch: this.epoch,
             workspace: { workspace_id: r.scope.workspaceId, workspace_path: this.options.repositoryPath }, authorize: () => this.check(), actions: [] },
           dispatch: (key, request, options) => this.dispatch(key, request, options) });
-        this.connection = handle.connection;
+        this.active = handle; this.connection = handle.connection;
         let workerError: unknown;
         try { await handle.result; } catch (error) { workerError = error; }
         const stopped = await handle.stop(); lastStopped = stopped;
+        if (this.stopping || this.current().status === 'cancel_pending') return { route: { kind: 'reconcile', epoch: this.epoch, reason: 'cancel_requested' } };
         if (!stopped.actionsSettled || stopped.worker.kind !== 'exited') throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
         // No heartbeat now. Extend only the live lease, then capture a fresh immutable premise.
         const current = this.current(); this.runs.renewLease({ ...this.fence(), leaseExpiresAt: Math.max(current.leaseExpiresAt!, this.leaseDeadline()) });
@@ -294,11 +362,30 @@ export class GraphDelivery {
           const route = decision.route.kind === 'retry_required'
             ? { kind: 'stop' as const, epoch: this.epoch, reason: 'retry_dispatch_incomplete' } : decision.route;
           this.check();
-          if (this.current().status !== 'cancel_pending') this.runs.project({ ...this.fence(decision.snapshot.run), status: route.kind === 'ready' ? 'ready' : route.kind === 'reconcile' ? 'reconciliation_required' : 'failed' });
+          if (this.current().status !== 'cancel_pending') this.options.db.transaction(() => {
+            this.runs.project({ ...this.fence(decision.snapshot.run), status: route.kind === 'ready' ? 'ready' : route.kind === 'reconcile' ? 'reconciliation_required' : 'failed' });
+            if (decision.publication) this.options.publish?.(candidate, decision.publication.record.receiptRef);
+          }).immediate();
           return { route, candidate, ...(decision.publication ? { feedbackRef: decision.publication.record.receiptRef } : {}) };
         }
         if (workerError || !decision.publication) throw workerError ?? Error('IMMUTABLE_JOIN_REQUIRED');
+        this.check();
         this.feedbackRef = decision.publication.record.receiptRef;
+        this.options.publish?.(candidate, this.feedbackRef);
+        if (this.options.qualityInterrupt) {
+          const proof: GraphDeliveryInterrupt = { interruptId: `quality:${r.graphRunId}:${this.epoch}:${r.generation}`, inputDigest: r.identity.inputDigest,
+            kind: 'quality', checkpointDigest: this.checkpointDigest(), feedbackRef: this.feedbackRef };
+          await new Promise<void>((resolve, reject) => {
+            this.waiting = { proof, resolve, reject, verify: () => {
+              this.check();
+              if (this.checkpointDigest() !== proof.checkpointDigest || workerCanonical(this.runtime.observedExit(handle.connection)) !== workerCanonical(stopped.worker)
+                || stopped.worker.kind !== 'exited' || !stopped.actionsSettled) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
+              if (!this.options.db.prepare('SELECT 1 FROM graph_verification_joins WHERE graph_run_id=? AND receipt_ref=?').get(r.graphRunId, proof.feedbackRef)) throw Error('IMMUTABLE_JOIN_REQUIRED');
+            } };
+            this.options.qualityInterrupt!(proof);
+          });
+          this.waiting = undefined;
+        }
         await this.takeover(handle, stopped);
         const next = this.epoch + 1;
         new GraphDeliveryEpochStore(this.options.db).activate(this.fence(), next, deliveryEpoch(this.compiled, next).cost, this.feedbackRef);
