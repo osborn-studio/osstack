@@ -1,0 +1,22 @@
+{
+  "packages/cli/src/graph-rpc.test.ts": "3a3169f0be887ab12c69250b23d04191be73e28af4b4f5c8a0cbe56169b3d8de",
+  "packages/cli/src/graph-runtime.ts": "f593b592002aa7c5b0f66b6c089be45f3c8b23b8d3c740317da2c6deead4ad60",
+  "packages/cli/src/graph-worker-manager.test.ts": "6db8125f9817e22bed1a49a3f0e8c74835058f4452df183b3e3bdff32228aac3",
+  "packages/cli/src/graph-worker-manager.ts": "b758c41e8042f72b38edb8b10d2c21e8a862cd1ac55f64a4dd6fdb8e7ad54808",
+  "packages/core/src/graph/artifact-store.test.ts": "948af3215adc2f5be657a2268f0c1c58f8e07b0d71e617021128db3e80f26f1d",
+  "packages/core/src/state/graph-recovery.test.ts": "1433e866ab16c9de6b77740b2a6852435800f16bd915aaa402f076e6ba9de03d",
+  "packages/core/src/state/graph-recovery.ts": "fade78c5925c5447fd962e66c8077fa31d875374af8a0ac5f19d9bd0dec42125",
+  "packages/core/src/state/migrations.ts": "1c417c168c9f5380b831d704fb22e5ade72ef0a15b83860613aa19374331d328",
+  "packages/cli/src/graph-concurrency.integration.test.ts": "2cea8c2dd4db19e9e181f2ec0113119a8100d04750e73512937a9190b4f8eed2",
+  "packages/cli/src/graph-faults.integration.test.ts": "6fe963bef7ab8e63b45f5930bf947cccf2ed5d899f0a4a5fca6989e7f8820280",
+  "packages/cli/src/graph-process-fixture.ts": "0fe0e09c31ab6437c36a2269be2be6d0d9bcc6b2f84ad7395e45feaf6eea8c43",
+  "packages/cli/src/graph-process-identity.test.ts": "394ebd15c392f2f6dab2e9c95542151a453b4a526e96c327dc2bddd262462f36",
+  "packages/cli/src/graph-process-identity.ts": "9e336728afb46efe26288652fad3d6f30b4f1574840b896cc216bf7b44825d2d",
+  "packages/cli/src/graph-process-journal.test.ts": "9c3d4b0521b06796bbc20790bea3b4ba6be803341c5767af540f4de3d5eb943d",
+  "packages/cli/src/graph-process-journal.ts": "0b5dea91a567d30aba638caa82c854685a25f0f29097e4153cdda23ff840f392",
+  "packages/cli/src/graph-test-fixture.ts": "bc88f1a37757f5c8f92c3335faf4cce7d69b2132bd34a87415b565349a670609",
+  "scripts/fixtures/graph-artifact-crash.mjs": "f28c13d45492713445b72b7a121bffbfad951c6645223364a0ddee5d010f1aaa",
+  "scripts/fixtures/graph-process-host.ts": "291536f4a9ece1d2499fbafc8a0212deb98e75dd55cf1516c61b3b13e7965198",
+  "scripts/fixtures/graph-submit-race.mjs": "4567f22444f96f328725886f6dfcb4286d04cf976ceb29719fec791c2ad2b7f5",
+  "scripts/verify-graph-runtime.mjs": "32722562df056e4b339e08ba1e5d2e484a295a3b5c50825af70cccc256f31953"
+}

@@ -1,0 +1,234 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+      Running tests with seed "250915"
+
+ ✓ src/graph-process-journal.test.ts (8 tests) 986ms
+   ✓ persists timeout separately from actual late exit and keeps DB drainage pending  357ms
+ ✓ src/graph-checkpoint-service.test.ts (6 tests) 122ms
+ ✓ src/graph-process-identity.test.ts (3 tests) 6ms
+osstack: retaining write lease graph-action:6c6390a851ee5e2046e22362ffc095bc31e4d356e34e18e150d4b3a508e3c243: Error: external stop unconfirmed
+ ✓ src/graph-verification.test.ts (29 tests) 94914ms
+   ✓ restores the exact verified candidate into independent repositories and rejects reviewer writes  1897ms
+   ✓ rejects wrong manifest and reviewer identity before restoring or invoking  621ms
+   ✓ persists actual stopped exit evidence and rejects tampering/replay  3011ms
+   ✓ keeps unknown stop separate from stopped malformed review and valid changes_requested  5405ms
+   ✓ runs real registered command and independent G04 review concurrently with an observable two-way barrier  9217ms
+   ✓ rejects revoke during adapter availability before actual invocation  1611ms
+   ✓ rejects mutate during adapter availability before actual invocation  1631ms
+   ✓ snapshots callback/data replacement and rejects live revocation after preparation awaits  2078ms
+   ✓ rejects mutation during restore before accepting any workspace baseline  1239ms
+   ✓ releases preparation lease if authority is revoked while acquiring it  554ms
+   ✓ uses exact allowlisted exits, refusing model pass claims and unregistered commands  7357ms
+   ✓ does not accept review done as executor stop proof through the actual broker  1637ms
+   ✓ classifies stopped malformed output and reviewer filesystem mutation without a code-failure result  6580ms
+   ✓ rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation  788ms
+   ✓ snapshots executor evidence before asynchronous verification and rechecks authority afterward  4518ms
+   ✓ rejects actual successful command that mutates candidate: printf malicious > file  2852ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file; printf malicious > file  3474ms
+   ✓ rejects actual successful command that mutates candidate: chmod +x file  2868ms
+   ✓ rejects actual successful command that mutates candidate: chmod 600 file  5377ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file  3778ms
+   ✓ rejects actual successful command that mutates candidate: printf staged > file; git add file; printf candidate > file  3036ms
+   ✓ rejects actual successful command that mutates candidate: git -c user.name=test -c user.email=test@invalid commit --allow-empty -qm malicious  3271ms
+   ✓ allocates distinct actual review sessions on explicit retry and persists prompt receipts  4308ms
+   ✓ rejects an oversized envelope at the storage boundary before publishing any file  2737ms
+   ✓ requires an actual invocation receipt and strips supplied writer context on every invocation  3406ms
+   ✓ validates all new receipts when loading digest-consistent evidence  3012ms
+   ✓ allows untracked build outputs from successful actual acceptance execution  2949ms
+   ✓ confirms ordinary failing tests with escape-heavy and multibyte captured output  2833ms
+   ✓ settles an oversized structured review as a bounded contract failure instead of unknown  2868ms
+osstack: retaining write lease graph-action:9312fb4cdeafa588b615cf7a7fcda7f5cc3236330501086b888f8d0bdb24664f: Error: invalid usage
+osstack: retaining write lease graph-action:80c5c5bc8c57ddde26398c8d7524fa6333707a79d3b8e99c711e86dfc82d2622: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:9dac2f1bb0a91411748222c959e3a015a27fdb685a918ad9fc2857a548923abf: SqliteError: injected
+osstack: retaining write lease graph-action:6e9e418a3b73d79a80314836a9b672c63aefa50de4ffc61d4f72ddf2afc77477: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:973f540146e686c35a417611c12b0823c2f98d35450780b8008546a929e03086: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:a473d9836512d7acb91af3c2e2c4ea0c013f2afbbbb0afd583373a2de2d0cc02: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:a30abd0c67f150031a15d864ebb8553a68140bbf8ea6bcdc775d557579b595e1: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:1c11c89538f30c9db558d2db5648e520bc752ab739e69f53475ca04c05fc4153: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:a1cc9709f221d342c3dbf7919f8ba11f642d3631ca801e0b3008258d0cc4b7e5: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:6e7caba14ae4a77342d2a554ef1e737e97ea562fd672f55d8e13d28236dfb92f: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:e44216dc03a4536f88e0ab9de46aeb4257baf0e192fdc8480374b4dc4170a552: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:035271b02cc1ed611ef0b46ddb83b129b4b798d09299a26b5a0aee1ad2f73512: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker.test.ts (31 tests) 1615ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-K8Ej6B/delivery/2f4c0ee3-02b5-4bfd-92da-6ddc3c69a13d/writer-0'...
+HEAD is now at 8a24421 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-9plyMy/delivery/52da94f5-d2b8-4456-86d5-392c42a7e957/writer-0'...
+HEAD is now at c538a0e base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-HmeXqT/delivery/a75cc7e8-7c33-459b-a88d-1d2225a8d546/writer-0'...
+HEAD is now at d4552bb base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-5WO4sT/delivery/66999eb7-0342-4286-baed-01a6bfb99eed/writer-0'...
+HEAD is now at e8e7cb0 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-F3HYoF/delivery/59ec7c79-3a97-4244-aa52-7fd542bc7e9d/writer-0'...
+HEAD is now at c84441f base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-Ar54BH/delivery/56f8dbd5-c6cb-46ae-9180-9992cf6905ca/writer-0'...
+HEAD is now at 9b97085 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-YS4XO2/delivery/36bfe3dc-c8ea-40d5-977a-da8fab5ccffc/writer-0'...
+HEAD is now at 9b97085 base
+osstack: retaining write lease graph-action:1612017efb15de016a3919ac04c8528a963bbf26c5211219eb64096eb78f55ef: Error: external stop unconfirmed
+ ✓ src/graph-rpc.test.ts (10 tests) 31751ms
+   ✓ durably reserves before launch; concurrent replay and fresh service replay never launch twice; ready is atomic v1 evidence  5410ms
+   ✓ persisted cancel intent drives actual worker/executor abort and confirmed stop through G15  407ms
+   ✓ quality interrupt binds input/revision/current grants and resumes actual checkpoint through G15  12103ms
+   ✓ lost supervisor cannot resume durable waiting evidence or mint a new launch  6440ms
+   ✓ unknown external stop retains holds and cannot become cancelled from Promise drainage  1399ms
+   ✓ close persists cancellation and drains a live executor before returning  392ms
+   ✓ expired waiting lease refuses resume before acknowledging or spending a new budget  5392ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-8DuEMt/delivery/7b706962-3e30-4df5-96c0-37a96a1dcd49/writer-0'...
+HEAD is now at eb4dbff base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-OKJIQb/delivery/b06fe5ca-73bd-4631-920e-7444b009806e/writer-0'...
+HEAD is now at b380541 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-Dt5C2c/delivery/85a29b38-b56e-478a-9153-38c18eca969f/writer-0'...
+HEAD is now at 58cd1c5 base
+ ✓ src/graph-concurrency.integration.test.ts (4 tests) 12551ms
+   ✓ F09 seed=250915: two SQLite connections deduplicate a submit burst and reject changed payloads  6512ms
+   ✓ F08/F11 seed=250915: competing cancellation revisions cannot relaunch a revoked writer  424ms
+   ✓ F09/F11 seed=250915: resume and cancel race commits one revision without resetting the budget  5417ms
+ ✓ src/graph-worker-manager.test.ts (32 tests) 7337ms
+   ✓ reserves each run synchronously and requires verified exit before replacement  381ms
+   ✓ expires leases and terminates an unresponsive child with actual exit evidence  2043ms
+   ✓ does not equate invoke rejection to worker exit or await inherited log pipes  304ms
+   ✓ done leaves exit pending until the OS observes termination  335ms
+   ✓ revokes a running lease and old callbacks cannot respond through a replacement connection  348ms
+   ✓ caps each log stream independently and does not pass a DB home or node injection environment  311ms
+   ✓ allows startup grace before requiring heartbeats  335ms
+   ✓ does not apply a checkpoint RPC timeout to a healthy long-running governed action  623ms
+   ✓ records the authenticated child identity before its program receives init  302ms
+   ✓ surfaces failed exit journaling even after the successful program result has settled  301ms
+
+  ../../../../../tmp/g25/g25-process-build-Szvagd/host.mjs  77.6kb
+
+⚡ Done in 9ms
+ ✓ src/graph-faults.integration.test.ts (1 test) 948ms
+   ✓ fresh host observes a SIGKILLed supervisor without releasing or replaying the live worker or descendants  948ms
+osstack: retaining write lease graph-action:fb2e2af3a029d0c4acabe28d37f57fc5c3a175072fd5e6e91f4f6e4c2824ef9a: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:ad254180ed12befb8ba315bb3b05f0627563b3709caa06053018bf162598a14d: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:3256cbf20d2ab772e6040af0cfba13e30f5f0e1d1787900a692b1cde4d30e7fd: Error: lost receipt
+osstack: retaining write lease graph-action:43755843371a7013c0028f03e5254ead38e2b643446eb08efa6787a3ada42289: injected lock release failure
+osstack: retaining write lease graph-action:43755843371a7013c0028f03e5254ead38e2b643446eb08efa6787a3ada42289: Error: injected lock release failure
+osstack: retaining write lease graph-action:4c530c95abd89c66f501f9fdd9d494900b8e7c96d22c290635193836e7e68a43: Error: candidate preflight refused
+osstack: retaining write lease graph-action:fa8d803290866af27b4c642a7d6e954bb1024941e1315f3dc94560b10b890f25: release failure
+osstack: retaining write lease graph-action:fa8d803290866af27b4c642a7d6e954bb1024941e1315f3dc94560b10b890f25: Error: release failure
+osstack: retaining write lease graph-action:9499077424ef4afcfc915a851848588555a70fa535b1cbc33d1f7e3672dc9475: Error: candidate preflight refused
+ ✓ src/graph-action-broker-boundary.test.ts (17 tests) 907ms
+osstack: retaining write lease graph-action:f576e8e1e985307cb8ccc953a8013fa0083752d228b6bd98ffb4fc4fac9d3609: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:5fea179cbc33e3a073f819cf09793ee46092a78b30bf0463057cd6d5dd5cfb66: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:54c080b5edaa27519e3f72a7b725f3947e2f250c9b1af8efce16f6b954d766bd: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:9c39b549b9099c2f5856eec3193c729f81a4a31102fc993beac9b153cc99a3a7: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:da46190409e6d267c73dfccbee6d9a531730d38aeec39748fbc41ee59f370c02: Error: G20_LOST_PERSIST_ACK
+osstack: retaining write lease graph-action:cadeeea5ccc6ca98863fab52b5fb4decb01fd3bc366309714f4afaa048fb3cd2: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:b7688cb3d64121e382d190d9880916c9e00cd7af322a6deea9ea81d2758c930f: Error: G20_RELEASE_HELD
+ ✓ src/graph-verification-join.test.ts (21 tests) 98306ms
+   ✓ joins real negative outcomes in review then tests order and publishes one immutable row  4614ms
+   ✓ joins real negative outcomes in tests then review order and publishes one immutable row  4734ms
+   ✓ unknown reviewer remains reconciliation-only on repeated evaluation and cannot allocate retry  2066ms
+   ✓ host retry allocates attempt two and recomputes latest durable evidence instead of replaying failed RETURN  5970ms
+   ✓ rejects a stale fence and revoked authority across asynchronous artifact evidence verification  7462ms
+   ✓ held real admission release prevents publication even when both branches are confirmed  4420ms
+   ✓ revalidates durable evidence bytes after a successful publication instead of trusting a cached join  5666ms
+   ✓ retains original repair limits {"maxActionStarts":2} after actual branch execution  5098ms
+   ✓ retains original repair limits {"tokenReservationLimit":2} after actual branch execution  4474ms
+   ✓ retains original repair limits {"maxEpochs":1} after actual branch execution  4354ms
+   ✓ retains original branch-attempt limit on malformed output and original elapsed deadline  4651ms
+   ✓ real worker partial RETURN survives stop/drain and G15 takeover; host retry supersedes cached malformed review  7571ms
+   ✓ actual Functional task throws for unknown verification outcome and host refuses worker pass proposal  2726ms
+   ✓ rejects revoke changing during the actual durable envelope read  4539ms
+   ✓ rejects fence changing during the actual durable envelope read  4428ms
+   ✓ rejects renewal changing during the actual durable envelope read  4394ms
+   ✓ rejects admission-release changing during the actual durable envelope read  4274ms
+   ✓ a new actual unknown action invalidates routing from an already published join  4843ms
+   ✓ publishes an actual passing candidate at exact action and token limits  4296ms
+   ✓ routes a legacy pre-invocation failure to stop without requiring a GraphError or report  3054ms
+   ✓ preserves a failed ledger settlement with a valid unclassified verification receipt  4672ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-Eja0AY/delivery/d958756b-af07-49ef-bb5a-68c394b95aac/writer-0'...
+HEAD is now at 9b37f32 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-AbB1pP/delivery/7707bdd0-0a3d-4d58-ba66-db62c54dc0d9/writer-0'...
+HEAD is now at b55db31 base
+osstack: retaining write lease graph-action:8d64badd62552891d10106a149b651306ffe1c0e040177e3530991a8e7bde7b6: Error: adapter result or execution unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-4nkR6F/direct/writer-0'...
+HEAD is now at 14c6c19 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-yVbNff/delivery/e21fc7c6-bc56-4464-87e9-d014c790827a/writer-0'...
+HEAD is now at aef1b1b base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-HWGgKD/direct/writer-0'...
+HEAD is now at cb783cd base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-kfqg4a/direct/writer-0'...
+HEAD is now at 7a5b05b policy
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-xbLsWk/delivery/115fe4f6-9ac5-4bea-9b7c-2bef996c0dfc/writer-0'...
+HEAD is now at afe7e49 base
+ ✓ src/graph-review-findings.test.ts (7 tests) 34294ms
+   ✓ settles stopped review cancellation with revoked execute, holding only unproven stop  4444ms
+   ✓ settles stopped tests cancellation with revoked execute, holding only unproven stop  4864ms
+   ✓ settles stopped tests-slow-stop cancellation with revoked execute, holding only unproven stop  4871ms
+   ✓ settles stopped unknown cancellation with revoked execute, holding only unproven stop  2289ms
+   ✓ uses current source policy (revoked) beyond workspace creation and writer availability  1965ms
+   ✓ uses current source policy (untracked) beyond workspace creation and writer availability  7034ms
+   ✓ uses current source policy (newer) beyond workspace creation and writer availability  8827ms
+
+  ../../../tmp/g25/g17-build-roeBLH/graph-chain-host.mjs  455.0kb
+
+⚡ Done in 20ms
+ ❯ src/graph-chain.integration.test.ts (30 tests | 2 failed) 39626ms
+   ✓ uses real worker IPC and durable SQLite checkpoints, retires both ports and exposes OS exit 254ms
+   ✓ rejects asynchronous authority and terminal/old identities before spawning 16ms
+   ✓ assembly: real command implement → freeze persists a selfcontained candidate  1532ms
+   ✓ daemon: real command implement → freeze persists a selfcontained candidate  1905ms
+   ✓ assembly: SIGKILL at before-return resumes using actual SQLite saver and ledger  1465ms
+   ✓ assembly: SIGKILL at before-final resumes using actual SQLite saver and ledger  1426ms
+   ✓ assembly: SIGKILL at after-final resumes using actual SQLite saver and ledger  1447ms
+   ✓ assembly: restore then SIGKILL again re-enters implement without repeating the confirmed external command  1732ms
+   ✓ daemon: SIGKILL at before-return resumes using actual SQLite saver and ledger  1754ms
+   ✓ daemon: SIGKILL at before-final resumes using actual SQLite saver and ledger  2132ms
+   ✓ daemon: SIGKILL at after-final resumes using actual SQLite saver and ledger  1707ms
+   ✓ daemon: restore then SIGKILL again re-enters implement without repeating the confirmed external command  2120ms
+   ✓ daemon: true daemon process SIGKILL/restart retains SQLite results and resumes through G15  2049ms
+   ✓ assembly: real broker unknown stays quarantined, then durable applied release failure is retried without resending  834ms
+   ✓ assembly: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying  806ms
+   ✓ assembly: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze  644ms
+   ✓ daemon: real broker unknown stays quarantined, then durable applied release failure is retried without resending  1072ms
+   ✓ daemon: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying  965ms
+   ✓ daemon: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze  821ms
+   ✓ module: a fresh supervisor cannot relaunch a consumed generation from the persistent database 260ms
+   ✓ daemon: unknown retained canonical lock survives actual daemon SIGKILL and releases only after G15 committed decision  2461ms
+   ✓ module: durable original deadline refuses a live lease and cannot be reset by start 19ms
+   ✓ assembly: bounded stop reports undrained actual broker Promise and refuses recovery before drainage  1588ms
+   ✓ assembly: original deadline aborts actual in-flight command through supervisor heartbeat  2413ms
+   × assembly: cancel with unproven executor stop retains unknown effect even after broker drainage 1593ms
+     → expected false to be true // Object.is equality
+   ✓ daemon: bounded stop reports undrained actual broker Promise and refuses recovery before drainage  1786ms
+   ✓ daemon: original deadline aborts actual in-flight command through supervisor heartbeat  2435ms
+   × daemon: cancel with unproven executor stop retains unknown effect even after broker drainage 1757ms
+     → expected false to be true // Object.is equality
+   ✓ module: late actual worker OS exit replaces unconfirmed observation without rewriting bounded stop  366ms
+   ✓ keeps a database lifetime barrier after bounded stop reports pending host work 266ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-chain.integration.test.ts > assembly: cancel with unproven executor stop retains unknown effect even after broker drainage
+ FAIL  src/graph-chain.integration.test.ts > daemon: cancel with unproven executor stop retains unknown effect even after broker drainage
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/graph-chain.integration.test.ts:228:116
+    226|     let state = await h.call('inspect'); const deadline = Date.now() +…
+    227|     while (!state.external && Date.now() < deadline) { await new Promi…
+    228|     expect(state.external).toBe('started\n'); const stopped = await h.…
+       |                                                                                                                    ^
+    229|     state = await h.call('inspect'); expect(state.actions[0].state).to…
+    230|     // The test independently waits for OS death; broker had no such r…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed | 12 passed (13)
+      Tests  2 failed | 197 passed (199)
+   Start at  22:06:01
+   Duration  327.49s (transform 579ms, setup 20ms, collect 2.81s, tests 323.36s, environment 1ms, prepare 336ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g25/matrix.json.evidence/0-cli.json
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-process-identity.test.ts src/graph-process-journal.test.ts src/graph-faults.integration.test.ts src/graph-chain.integration.test.ts src/graph-worker-manager.test.ts src/graph-checkpoint-service.test.ts src/graph-action-broker.test.ts src/graph-action-broker-boundary.test.ts src/graph-verification.test.ts src/graph-verification-join.test.ts src/graph-rpc.test.ts src/graph-concurrency.integration.test.ts src/graph-review-findings.test.ts '--maxWorkers=1' '--reporter=default' '--reporter=json' '--outputFile=/Volumes/AIMATE_WORK/tmp/g25/matrix.json.evidence/0-cli.json' --sequence.shuffle '--sequence.seed=250915'

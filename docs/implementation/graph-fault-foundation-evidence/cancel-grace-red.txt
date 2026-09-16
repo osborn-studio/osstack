@@ -1,0 +1,43 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-7soDgk/delivery/37ad5cd7-e2aa-4cd9-baed-e2281f4765f7/writer-0'...
+HEAD is now at 3667b93 base
+osstack: retaining write lease graph-action:a86c4916336f71556a1dbe04df878cbeb5273cd5c947d1e62eb23733947c19df: Error: adapter result or execution unconfirmed
+ ❯ src/graph-review-findings.test.ts (7 tests | 1 failed | 6 skipped) 3802ms
+   ↓ settles stopped review cancellation with revoked execute, holding only unproven stop
+   ↓ settles stopped tests cancellation with revoked execute, holding only unproven stop
+   × settles stopped tests-slow-stop cancellation with revoked execute, holding only unproven stop 3802ms
+     → expected 'unknown' to be 'failed' // Object.is equality
+   ↓ settles stopped unknown cancellation with revoked execute, holding only unproven stop
+   ↓ uses current source policy (revoked) beyond workspace creation and writer availability
+   ↓ uses current source policy (untracked) beyond workspace creation and writer availability
+   ↓ uses current source policy (newer) beyond workspace creation and writer availability
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-review-findings.test.ts > settles stopped tests-slow-stop cancellation with revoked execute, holding only unproven stop
+AssertionError: expected 'unknown' to be 'failed' // Object.is equality
+
+Expected: "failed"
+Received: "unknown"
+
+ ❯ src/graph-review-findings.test.ts:82:23
+     80|     const branch = mode.startsWith('tests') ? 'tests' : 'review';
+     81|     const row = f.db.prepare('SELECT state, outcome_json FROM graph_ac…
+     82|     expect(row.state).toBe(mode === 'unknown' ? 'unknown' : 'failed');
+       |                       ^
+     83|     expect(f.db.prepare('SELECT status FROM graph_runs').get()).toEqua…
+     84|     expect(f.db.prepare('SELECT count(*) n FROM graph_action_admission…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 skipped (7)
+   Start at  21:50:13
+   Duration  4.72s (transform 493ms, setup 7ms, collect 798ms, tests 3.80s, environment 0ms, prepare 32ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-review-findings.test.ts -t tests-slow-stop '--maxWorkers=1'

@@ -1124,9 +1124,15 @@
       ],
       "verify": "FAULTS",
       "size": "M",
-      "status": "pending",
+      "status": "in_progress",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "progressNote": "第一阶段已验收：持久进程诊断、no-child 验证加固、取消宽限修复及故障/并发回归；独立执行器停止证明、管理恢复及完整矩阵尚未完成。",
+      "evidence": [
+        "docs/reports/graph-runtime-fault-validation.md",
+        "docs/implementation/2026-09-15-graph-fault-next-context.md",
+        "docs/implementation/graph-fault-foundation-evidence/admission.json"
       ]
     },
     {
@@ -1236,21 +1242,21 @@
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "7da1be9ef70770bbdea5c52f6453764f6b4ba317",
+    "acceptedCodeCommit": "4590fcb494e1fff991138f77c687b47fa7544c5f",
     "completedTaskCount": 25,
     "totalTaskCount": 30,
     "nextTasks": [
       "G25"
     ],
-    "report": "docs/implementation/2026-09-15-graph-public-completion.md",
+    "report": "docs/reports/graph-runtime-fault-validation.md",
     "nextGate": null,
     "milestoneStatus": {
       "M0": "completed",
       "M1": "completed",
       "M2": "completed",
-      "M3": "pending"
+      "M3": "in_progress"
     },
-    "reviewNote": "Claude Fable 5.1 本批实际调用额度受限，无有效新审查；独立 Codex Loop 初审要求修改、复审 PASS；冻结源码后真实 Loop 全库及6项 verifier 通过。"
+    "reviewNote": "实际 Claude Opus 5 整批与最终差异源码复审 PASS；真实 OSStack Loop 全库 3268 测试与7项 verifier通过，仅G25诊断基础阶段，完整G25未准入。"
   },
   "decisionGates": [
     {

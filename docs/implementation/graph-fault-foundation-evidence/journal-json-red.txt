@@ -1,0 +1,40 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-process-journal.test.ts (9 tests | 1 failed | 8 skipped) 22ms
+   ↓ passes an actual runtime no-child journal through the G15 canonical identity gate
+   ↓ persists intent before registration and no-child registration failure after consuming generation
+   ↓ journals an actual failed OS spawn and never launches an already consumed generation
+   ↓ retains launch and true exit, rejects changed identity and protects immutable observations
+   ↓ keeps the pre-spawn crash window unknown and does not derive stop from lease expiry
+   × round-trips an unconfirmed observation without an assigned PID as valid JSON 22ms
+     → Unexpected token 'u', ..."ed","pid":undefined}" is not valid JSON
+   ↓ persists timeout separately from actual late exit and keeps DB drainage pending
+   ↓ reopens consumed registration failure from SQLite without inferring that an intent-only launch stopped
+   ↓ refuses changed compiled program bytes on a fresh runtime before launching
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-process-journal.test.ts > round-trips an unconfirmed observation without an assigned PID as valid JSON
+SyntaxError: Unexpected token 'u', ..."ed","pid":undefined}" is not valid JSON
+ ❯ src/graph-process-journal.ts:60:41
+     58|     const rows = this.db.prepare('SELECT event_json FROM graph_worker_…
+     59|       .all(binding.graphRunId, binding.generation) as { event_json: st…
+     60|     const events = rows.map(row => JSON.parse(row.event_json) as Proce…
+       |                                         ^
+     61|     const launch = events.find((event): event is Extract<ProcessEvent,…
+     62|     const observations = events.filter((event): event is GraphWorkerEx…
+ ❯ GraphProcessJournal.observe src/graph-process-journal.ts:60:25
+ ❯ src/graph-process-journal.test.ts:78:48
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 skipped (9)
+   Start at  22:11:58
+   Duration  840ms (transform 424ms, setup 7ms, collect 703ms, tests 22ms, environment 0ms, prepare 31ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-process-journal.test.ts -t round-trips '--maxWorkers=1'

@@ -1,0 +1,27 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-worker-manager.test.ts (32 tests) 7394ms
+   ✓ handshakes asynchronously, executes Functional+remote sync checkpoints and isolates bounded logs  361ms
+   ✓ reserves each run synchronously and requires verified exit before replacement  418ms
+   ✓ expires leases and terminates an unresponsive child with actual exit evidence  2040ms
+   ✓ done leaves exit pending until the OS observes termination  331ms
+   ✓ revokes a running lease and old callbacks cannot respond through a replacement connection  385ms
+   ✓ caps each log stream independently and does not pass a DB home or node injection environment  306ms
+   ✓ allows startup grace before requiring heartbeats  344ms
+   ✓ does not apply a checkpoint RPC timeout to a healthy long-running governed action  633ms
+
+  ../../../../../tmp/g25/g25-process-build-wcMDx3/host.mjs  77.5kb
+
+⚡ Done in 8ms
+ ✓ src/graph-faults.integration.test.ts (1 test) 898ms
+   ✓ fresh host observes a SIGKILLed supervisor without releasing or replaying the live worker or descendants  898ms
+ ✓ src/graph-process-journal.test.ts (8 tests) 885ms
+   ✓ persists timeout separately from actual late exit and keeps DB drainage pending  338ms
+ ✓ src/graph-process-identity.test.ts (3 tests) 6ms
+
+ Test Files  4 passed (4)
+      Tests  44 passed (44)
+   Start at  21:52:36
+   Duration  10.26s (transform 415ms, setup 11ms, collect 694ms, tests 9.18s, environment 0ms, prepare 97ms)
+

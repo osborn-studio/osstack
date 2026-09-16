@@ -1,0 +1,4 @@
+0-loop: PASS (112 tests), seed=250915
+0-core: PASS (65 tests), seed=250915
+0-cli: FAIL (195 tests), seed=250915
+{"passed":false,"output":"/Volumes/AIMATE_WORK/tmp/g25/matrix-preflight.json","runs":3}

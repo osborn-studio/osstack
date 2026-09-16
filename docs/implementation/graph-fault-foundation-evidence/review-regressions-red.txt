@@ -1,0 +1,73 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-worker-manager.test.ts (32 tests | 1 failed | 30 skipped) 430ms
+   ↓ handshakes asynchronously, executes Functional+remote sync checkpoints and isolates bounded logs
+   ↓ reserves each run synchronously and requires verified exit before replacement
+   ↓ rejects async durability before spawning
+   ↓ rejects exit durability before spawning
+   ↓ rejects immutable input and program identity mismatch before child launch
+   ↓ executes snapshotted bytes even when the original trusted module is changed
+   ↓ settles spawn failures and early exits without unhandled rejections
+   ↓ revocation aborts the injected broker and rejects later checkpoints without releasing its resources
+   ↓ expires leases and terminates an unresponsive child with actual exit evidence
+   ↓ rejects expired authority before any worker is started
+   ↓ does not equate invoke rejection to worker exit or await inherited log pipes
+   ↓ rejects real child handshake with wrong graphRunId
+   ↓ rejects real child handshake with wrong generation
+   ↓ rejects real child handshake with wrong owner
+   ↓ rejects real child handshake with wrong scope
+   ↓ rejects real child handshake with wrong identity
+   ↓ rejects a real oversize IPC header without dispatching any request
+   ↓ bounds host outstanding callbacks even when a child ignores client backpressure
+   ↓ done leaves exit pending until the OS observes termination
+   ↓ revokes a running lease and old callbacks cannot respond through a replacement connection
+   ↓ caps each log stream independently and does not pass a DB home or node injection environment
+   ↓ rejects async authority and asynchronous registration without unhandled rejection
+   ↓ waits for the remote final checkpoint acknowledgement before resolving the program
+   ↓ bounds the handshake even if a child emits heartbeats without becoming ready
+   ↓ allows startup grace before requiring heartbeats
+   ↓ does not apply a checkpoint RPC timeout to a healthy long-running governed action
+   ↓ preserves actual late OS exit evidence after the bounded stop result was unconfirmed
+   ↓ records the authenticated child identity before its program receives init
+   ↓ never sends init if durable launch recording fails
+   ↓ records consumed registration failure synchronously without pretending a child was launched
+   ✓ never classifies a post-spawn kill error as no-child even before durable launch recording 113ms
+   × surfaces failed exit journaling even after the successful program result has settled 316ms
+     → expected { kind: 'exited', …(8) } to match object { kind: 'exited', …(1) }
+(8 matching properties omitted from actual)
+ ✓ src/graph-process-journal.test.ts (8 tests | 7 skipped) 32ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-worker-manager.test.ts > surfaces failed exit journaling even after the successful program result has settled
+AssertionError: expected { kind: 'exited', …(8) } to match object { kind: 'exited', …(1) }
+(8 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "journalError": StringContaining "disk write failed",
+    "kind": "exited",
+  }
+
+ ❯ src/graph-worker-manager.test.ts:231:29
+    229|   const h = f.launch({ ...f.start, lifecycle: { launched: () => {}, ob…
+    230|   expect(await h.result).toEqual({ task: 'task' });
+    231|   expect(await h.finalExit).toMatchObject({ kind: 'exited', journalErr…
+       |                             ^
+    232| });
+    233| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 2 passed | 37 skipped (40)
+   Start at  21:51:46
+   Duration  1.43s (transform 442ms, setup 8ms, collect 758ms, tests 461ms, environment 0ms, prepare 59ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-worker-manager.test.ts src/graph-process-journal.test.ts -t 'post-spawn kill|failed exit journaling|actual runtime no-child' '--maxWorkers=1'

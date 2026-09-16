@@ -1,0 +1,65 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-process-identity.test.ts (3 tests) 3ms
+ ❯ src/graph-process-journal.test.ts (5 tests | 2 failed) 532ms
+   ✓ persists intent before registration and no-child registration failure after consuming generation 29ms
+   ✓ journals an actual failed OS spawn and never launches an already consumed generation 19ms
+   ✓ retains launch and true exit, rejects changed identity and protects immutable observations 260ms
+   × keeps the pre-spawn crash window unknown and does not derive stop from lease expiry 16ms
+     → CHECK constraint failed: (generation = 0 AND lease_owner IS NULL AND lease_expires_at IS NULL AND lease_acquired_at IS NULL)
+          OR (generation > 0 AND lease_owner IS NOT NULL AND lease_expires_at IS NOT NULL AND lease_acquired_at IS NOT NULL AND lease_expires_at > lease_acquired_at)
+   × persists timeout separately from actual late exit and keeps DB drainage pending 207ms
+     → expected 'exited' to be 'exit_unconfirmed' // Object.is equality
+ ✓ src/graph-worker-manager.test.ts (30 tests) 6975ms
+   ✓ handshakes asynchronously, executes Functional+remote sync checkpoints and isolates bounded logs  370ms
+   ✓ reserves each run synchronously and requires verified exit before replacement  382ms
+   ✓ executes snapshotted bytes even when the original trusted module is changed  310ms
+   ✓ expires leases and terminates an unresponsive child with actual exit evidence  2043ms
+   ✓ done leaves exit pending until the OS observes termination  335ms
+   ✓ revokes a running lease and old callbacks cannot respond through a replacement connection  370ms
+   ✓ caps each log stream independently and does not pass a DB home or node injection environment  312ms
+   ✓ allows startup grace before requiring heartbeats  360ms
+   ✓ does not apply a checkpoint RPC timeout to a healthy long-running governed action  612ms
+   ✓ records the authenticated child identity before its program receives init  309ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-process-journal.test.ts > keeps the pre-spawn crash window unknown and does not derive stop from lease expiry
+SqliteError: CHECK constraint failed: (generation = 0 AND lease_owner IS NULL AND lease_expires_at IS NULL AND lease_acquired_at IS NULL)
+          OR (generation > 0 AND lease_owner IS NOT NULL AND lease_expires_at IS NOT NULL AND lease_acquired_at IS NOT NULL AND lease_expires_at > lease_acquired_at)
+ ❯ src/graph-process-journal.test.ts:52:85
+     50| it('keeps the pre-spawn crash window unknown and does not derive stop …
+     51|   const f = fixture(); const journal = new GraphProcessJournal(f.db); …
+     52|   f.db.prepare('UPDATE graph_runs SET lease_expires_at = 1 WHERE graph…
+       |                                                                                     ^
+     53|   expect(f.runtime.observeWorkerProcess(f.binding)).toMatchObject({ in…
+     54| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/graph-process-journal.test.ts > persists timeout separately from actual late exit and keeps DB drainage pending
+AssertionError: expected 'exited' to be 'exit_unconfirmed' // Object.is equality
+
+Expected: "exit_unconfirmed"
+Received: "exited"
+
+ ❯ src/graph-process-journal.test.ts:61:70
+     59|   let pid: number | undefined;
+     60|   try {
+     61|     const bounded = await handle.stop(); expect(bounded.worker.kind).t…
+       |                                                                      ^
+     62|     const report = f.runtime.observeWorkerProcess(f.binding); pid = re…
+     63|     expect(report.observations.map(event => event.kind)).toEqual(['exi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  2 failed | 36 passed (38)
+   Start at  21:33:16
+   Duration  7.19s (transform 472ms, setup 18ms, collect 849ms, tests 7.51s, environment 0ms, prepare 84ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-process-journal.test.ts src/graph-worker-manager.test.ts src/graph-process-identity.test.ts

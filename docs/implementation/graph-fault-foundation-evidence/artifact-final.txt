@@ -1,0 +1,41 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+Preparing worktree (detached HEAD dc1cecb)
+Preparing worktree (detached HEAD f8f8f42)
+Preparing worktree (detached HEAD 103cd32)
+Preparing worktree (detached HEAD 103cd32)
+Preparing worktree (detached HEAD 41a967e)
+Preparing worktree (detached HEAD 41a967e)
+Preparing worktree (detached HEAD b1216ca)
+Preparing worktree (detached HEAD e7ca169)
+Preparing worktree (detached HEAD 2912351)
+Preparing worktree (detached HEAD 2912351)
+Preparing worktree (detached HEAD 2912351)
+Preparing worktree (detached HEAD 2912351)
+Preparing worktree (detached HEAD 2912351)
+Preparing worktree (detached HEAD 2912351)
+Preparing worktree (detached HEAD d2b6cf9)
+Preparing worktree (detached HEAD d2b6cf9)
+Preparing worktree (detached HEAD 95b7860)
+Preparing worktree (detached HEAD 068b19a)
+Preparing worktree (detached HEAD 068b19a)
+Preparing worktree (detached HEAD 068b19a)
+ ✓ src/graph/artifact-store.test.ts (20 tests) 10148ms
+   ✓ trusted graph artifact freeze > restores full reachable history and exact raw tree after deleting original repo and worktree  1486ms
+   ✓ trusted graph artifact freeze > rechecks authority after durable publication before returning ready  548ms
+   ✓ trusted graph artifact freeze > returns immutable candidate identity and artifact refs  553ms
+   ✓ trusted graph artifact freeze > captures tracked-file to directory replacement with unusual filenames  811ms
+   ✓ trusted graph artifact freeze > does not return ready if durable ID publication fails; exported bytes remain recoverable  764ms
+   ✓ trusted graph artifact freeze > rejects manifest corruption under a pinned artifact digest  587ms
+   ✓ trusted graph artifact freeze > rejects same ID with changed receipt or content  1006ms
+   ✓ trusted graph artifact freeze > does not invoke local hooks or filters during capture or restore  851ms
+   ✓ trusted graph artifact freeze > rejects corrupted bundles and manifests, including replay  769ms
+   ✓ trusted graph artifact freeze > refuses existing and escaping restore destinations  569ms
+   ✓ F07: a late real process writing the old directory cannot mutate the exported candidate or its new restore  993ms
+
+ Test Files  1 passed (1)
+      Tests  20 passed (20)
+   Start at  21:32:33
+   Duration  10.39s (transform 110ms, setup 0ms, collect 130ms, tests 10.15s, environment 0ms, prepare 34ms)
+

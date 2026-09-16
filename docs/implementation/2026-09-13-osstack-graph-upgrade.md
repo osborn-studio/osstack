@@ -1,8 +1,8 @@
 # OSStack 升级改造实施计划：Loop 强化与可执行 Graph v1
 
-日期：2026-09-13；更新：2026-09-15。**状态：G00–G24 已完成，25/30；M0–M2 与 C2–C7 已通过本地限定验收，M3 待实施。下一批 G25。** 完整模板、公开入口与委托契约已验证，故障、兼容、发行、性能和真实试点仍待完成。
+日期：2026-09-13；更新：2026-09-15。**状态：G00–G24 已完成，25/30；M0–M2 与 C2–C7 已通过本地限定验收，M3 实施中，G25 诊断基础第一阶段已验收。下一批仍为 G25。** 完整模板、公开入口与委托契约已验证，故障、兼容、发行、性能和真实试点仍待完成。
 
-实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；本批验收源：`7da1be9ef70770bbdea5c52f6453764f6b4ba317`。见 [G22–G24 验收](2026-09-15-graph-public-completion.md)与[G25 接续上下文](2026-09-15-graph-public-next-context.md)；[G21 历史验收](2026-09-15-graph-delivery-completion.md)保留原结论。
+实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；最新诊断基础源码：`4590fcb494e1fff991138f77c687b47fa7544c5f`。见 [G25 阶段报告](../reports/graph-runtime-fault-validation.md)与[接续上下文](2026-09-15-graph-fault-next-context.md)；[G22–G24 / C7 验收](2026-09-15-graph-public-completion.md)保留原准入范围；[G21 历史验收](2026-09-15-graph-delivery-completion.md)保留原结论。
 
 本计划将 [架构设计](../design/2026-09-13-executable-graph-plan.md) 转成可逐项执行的任务，产品边界遵循 [三产品定义](../design/2026-09-13-os-products-definition.md)。OSBot 功能在 [独立 handoff](../handoffs/osbot/handoff.md) 交接；本计划只改造 OSStack，不部署 Rakazo，不修改 OStag 产品。
 
@@ -667,7 +667,7 @@ flowchart TD
 
 ### G25 · 完成故障窗口和并发验收
 
-**依赖：** G24。**规模：** M。**状态：** 未开始。
+**依赖：** G24。**规模：** M。**状态：** 实施中（进程诊断与并发基础；完整 G25 未验收）。
 
 **预计改动位置：**
 
@@ -687,6 +687,8 @@ flowchart TD
 - [ ] 补齐 daemon 在未观察 worker 退出时崩溃的持久 PID/PGID/启动标识与独立执行器证明；覆盖已消耗启动权后注册失败、PID 重用和 artifact 临时锁残留，不以超时或租约过期推断可接管。
 
 **验证：** 新 `node scripts/verify-graph-runtime.mjs` 与 graph fault/concurrency 集成测试，输出 JSON 证据和固定 seed。
+
+**阶段进展：** 已实现持久进程观察、no-child 验证加固、真实 supervisor 崩溃与并发测试。独立 executor 停止证明、管理恢复及完整故障子窗口仍待完成；见 [G25 阶段报告](../reports/graph-runtime-fault-validation.md)与[接续上下文](2026-09-15-graph-fault-next-context.md)。
 
 ### G26 · 验证旧模式与回滚共存
 
@@ -839,4 +841,4 @@ graph worker 启动、冷/热执行、checkpoint/IPC 和并行工作区准备成
 
 ## 13. 下一轮实施的明确起点
 
-G00–G24 已完成，**25/30；C7 本地限定准入通过，M0–M2 完成，M3 待实施**。用户入口、取消/恢复与外部契约已验证；继续 [G25 交接](2026-09-15-graph-public-next-context.md) 中的真实故障与并发验收，随后做兼容、发行、性能与试点。
+G00–G24 已完成，**25/30；C7 本地限定准入通过，M0–M2 完成，M3 实施中**。G25 持久进程诊断与并发基础已通过阶段验收；按 [G25 接续上下文](2026-09-15-graph-fault-next-context.md) 继续独立执行器停止证明、受管恢复与完整故障矩阵，随后做兼容、发行、性能与试点。
