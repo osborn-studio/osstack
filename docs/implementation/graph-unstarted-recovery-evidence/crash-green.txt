@@ -1,0 +1,27 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+
+  ...mp/g25-recovery/g25-recovery-build-WCsjOp/graph-recovery-host.mjs  81.7kb
+
+⚡ Done in 12ms
+
+  ...25-recovery/g25-recovery-build-WCsjOp/graph-submission-crash.mjs  191.4kb
+
+⚡ Done in 6ms
+ ✓ src/graph-recovery-crash.integration.test.ts (6 tests) 4144ms
+   ✓ a fresh host recovers an authenticated no-child failure with the original host killed  804ms
+   ✓ a fresh host recovers an authenticated no-child failure with the original host alive  653ms
+   ✓ public submit survives committed reservation with its original host killed before construction  752ms
+   ✓ public submit survives committed reservation with its original host alive before construction  735ms
+   ✓ refuses an unobserved pre-spawn crash window without starting replacement effects  733ms
+   ✓ refuses an unobserved pre-identity crash window without starting replacement effects  467ms
+ ✓ src/graph-unstarted-recovery.test.ts (15 tests) 853ms
+   ✓ takes over a durable no-child run through G15 and starts one replacement worker  320ms
+   ✓ refuses a launched worker even after its confirmed exit  300ms
+
+ Test Files  2 passed (2)
+      Tests  21 passed (21)
+   Start at  06:08:11
+   Duration  6.28s (transform 592ms, setup 16ms, collect 1.00s, tests 5.00s, environment 0ms, prepare 72ms)
+

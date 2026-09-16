@@ -1,0 +1,49 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-unstarted-recovery.test.ts (15 tests) 835ms
+   ✓ takes over a durable no-child run through G15 and starts one replacement worker  336ms
+
+  ../../../../../tmp/g25-recovery/g25-recovery-build-uuMwQ5/host.mjs  81.7kb
+
+⚡ Done in 9ms
+ ❯ src/graph-recovery-crash.integration.test.ts (4 tests | 2 failed) 2387ms
+   × a fresh host recovers an authenticated no-child failure with the original host killed 720ms
+     → expected 'once\n' to be 'once\n' // Object.is equality
+   × a fresh host recovers an authenticated no-child failure with the original host alive 704ms
+     → expected 'once\n' to be 'once\n' // Object.is equality
+   ✓ refuses an unobserved pre-spawn crash window without starting replacement effects  574ms
+   ✓ refuses an unobserved pre-identity crash window without starting replacement effects  389ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-recovery-crash.integration.test.ts > a fresh host recovers an authenticated no-child failure with the original host killed
+ FAIL  src/graph-recovery-crash.integration.test.ts > a fresh host recovers an authenticated no-child failure with the original host alive
+AssertionError: expected 'once\n' to be 'once\n' // Object.is equality
+
+- Expected
++ Received
+
+- once\n
++ once
++
+
+ ❯ src/graph-recovery-crash.integration.test.ts:38:62
+     36|   expect(await message(replacement)).toMatchObject({ kind: 'recovered'…
+     37|     proof: { worker: { kind: 'not_started' } }, launches: { n: 1 }, ac…
+     38|   expect(readFileSync(join(root, 'executions.log'), 'utf8')).toBe('onc…
+       |                                                              ^
+     39|   if (original === 'alive') {
+     40|     const refused = message(first); first.send('retry-old'); expect(aw…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  2 failed | 17 passed (19)
+   Start at  06:06:04
+   Duration  4.28s (transform 489ms, setup 9ms, collect 824ms, tests 3.22s, environment 0ms, prepare 62ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-recovery-crash.integration.test.ts src/graph-unstarted-recovery.test.ts '--maxWorkers=1'

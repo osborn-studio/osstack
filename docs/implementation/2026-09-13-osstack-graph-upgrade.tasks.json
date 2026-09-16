@@ -1113,7 +1113,11 @@
         "packages/cli/src/graph-faults.integration.test.ts",
         "packages/cli/src/graph-concurrency.integration.test.ts",
         "scripts/verify-graph-runtime.mjs",
-        "docs/reports/graph-runtime-fault-validation.md"
+        "docs/reports/graph-runtime-fault-validation.md",
+        "packages/cli/src/graph-unstarted-recovery.ts",
+        "packages/cli/src/graph-unstarted-recovery.test.ts",
+        "packages/cli/src/graph-recovery-crash.integration.test.ts",
+        "docs/reports/graph-unstarted-recovery-validation.md"
       ],
       "acceptance": [
         "逐项覆盖 F01–F12 确定性窗口，再做固定 seed 的重复运行。",
@@ -1128,11 +1132,14 @@
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "第一阶段已验收：持久进程诊断、no-child 验证加固、取消宽限修复及故障/并发回归；独立执行器停止证明、管理恢复及完整矩阵尚未完成。",
+      "progressNote": "第二阶段已验收：第一代持久no-child＋整个run从无执行准入/调度状态的host-only G15接管，真实公共submit及spawn前后崩溃测试；已运行执行器独立停止证明、artifact锁管理恢复及完整矩阵尚未完成。",
       "evidence": [
         "docs/reports/graph-runtime-fault-validation.md",
         "docs/implementation/2026-09-15-graph-fault-next-context.md",
-        "docs/implementation/graph-fault-foundation-evidence/admission.json"
+        "docs/implementation/graph-fault-foundation-evidence/admission.json",
+        "docs/reports/graph-unstarted-recovery-validation.md",
+        "docs/implementation/2026-09-16-graph-recovery-next-context.md",
+        "docs/implementation/graph-unstarted-recovery-evidence/admission.json"
       ]
     },
     {
@@ -1238,17 +1245,17 @@
       ]
     }
   ],
-  "updatedAt": "2026-09-15",
+  "updatedAt": "2026-09-16",
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "4590fcb494e1fff991138f77c687b47fa7544c5f",
+    "acceptedCodeCommit": "e94dfda29c2659a3c5720a6a6b4323c5189ac48a",
     "completedTaskCount": 25,
     "totalTaskCount": 30,
     "nextTasks": [
       "G25"
     ],
-    "report": "docs/reports/graph-runtime-fault-validation.md",
+    "report": "docs/reports/graph-unstarted-recovery-validation.md",
     "nextGate": null,
     "milestoneStatus": {
       "M0": "completed",
@@ -1256,7 +1263,7 @@
       "M2": "completed",
       "M3": "in_progress"
     },
-    "reviewNote": "实际 Claude Opus 5 整批与最终差异源码复审 PASS；真实 OSStack Loop 全库 3268 测试与7项 verifier通过，仅G25诊断基础阶段，完整G25未准入。"
+    "reviewNote": "实际 Kimi K3 源码审查 approved；真实 OSStack Loop 全库3289测试与7项verifier通过。G25首次启动失败接管限定验收；已运行执行器停止证明和完整G25仍未准入。"
   },
   "decisionGates": [
     {
