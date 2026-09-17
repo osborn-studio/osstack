@@ -28,7 +28,7 @@ mkdirSync(dirname(output), { recursive: true });
 const evidence = `${output}.evidence`; mkdirSync(evidence, { recursive: true });
 const groups = [
   { package: 'loop', files: ['src/executor.test.ts'] },
-  { package: 'agents', files: ['src/contained-command.test.ts'] },
+  { package: 'agents', files: ['src/contained-command.test.ts', 'src/contained-image.test.ts'] },
   { package: 'core', files: ['src/state/graph-checkpoints.test.ts', 'src/state/graph-recovery.test.ts', 'src/graph/artifact-store.test.ts'] },
   { package: 'cli', files: ['src/graph-process-identity.test.ts', 'src/graph-process-journal.test.ts',
     'src/graph-faults.integration.test.ts', 'src/graph-chain.integration.test.ts', 'src/graph-worker-manager.test.ts',

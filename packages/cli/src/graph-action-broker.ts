@@ -1,3 +1,4 @@
+import type { RegisteredContainedTests, GraphContainedTestEvidence } from "./graph-contained-tests.js";
 import { GraphAdmissionStore } from "@osstack/core/graph-recovery";
 import { randomUUID } from "node:crypto";
 import { isAbsolute } from "node:path";
@@ -19,6 +20,7 @@ export interface GraphActionEvidence {
   stopped?: true;
   candidate?: CandidateExecutionResult;
   command?: CommandResult;
+  contained?: GraphContainedTestEvidence;
   workspace?: unknown;
   frozenCandidate?: Extract<GraphResult, { kind: "candidate_ready" }>;
 }
@@ -33,6 +35,7 @@ type RegisteredExecution =
   | { kind: "freeze"; store: Pick<GraphArtifactStore, "freeze">; input: GraphFreezeInput; authority: Omit<GraphFreezeAuthority, "lease"> }
   | { kind: "adapter"; plan: ExecutionPlan; adapter: AgentAdapter; capabilityId: string }
   | { kind: "command"; plan: ExecutionPlan; command: string }
+  | ({ kind: "contained"; plan: ExecutionPlan } & RegisteredContainedTests)
   | { kind: "workspace"; handler: (input: { workspace: RegisteredCandidateWorkspace; signal: AbortSignal; lease: ExecutionLease }) => Promise<{
       status: "completed" | "failed"; stopped: true; evidence: unknown;
     }> };
@@ -164,7 +167,10 @@ export class GraphActionBroker {
         if (!["implement", "repair", "tests", "review"].includes(copy.action.kind)) throw new Error("unsupported candidate action");
         const plan = snapshot(ExecutionPlan.parse(execution.plan));
         if (plan.worktree_path !== undefined && plan.worktree_path !== workspace.workspace_path) throw new Error("workspace mismatch");
-        if (execution.kind === "command") {
+        if (execution.kind === "contained") {
+          if (copy.action.kind !== "tests" || !execution.command.trim() || execution.command.includes("\0") || typeof execution.execute !== "function" || typeof execution.confirmStopped !== "function") throw Error("invalid contained tests registration");
+          selected = Object.freeze({ kind: "contained", plan, command: execution.command, execute: execution.execute.bind(execution), confirmStopped: execution.confirmStopped.bind(execution) });
+        } else if (execution.kind === "command") {
           if (!execution.command?.trim() || execution.command.includes("\0")) throw new Error("invalid registered command");
           selected = Object.freeze({ kind: "command", plan, command: execution.command });
         } else if (execution.kind === "adapter") {
@@ -321,7 +327,7 @@ export class GraphActionBroker {
       check();
       // This synchronous gate runs inside the actual adapter invoke/command/host
       // handler call, after G04's async authorization and availability windows.
-      const beforeEffect = (executionRunId: string): void => {
+      const beforeEffect = (executionRunId: string): GraphAction => {
         check();
         let started: ReturnType<GraphActionStore["markRunning"]>;
         try {
@@ -337,7 +343,7 @@ export class GraphActionBroker {
           invoked = true;
           throw new Denied("ACTION_OUTCOME_UNKNOWN", "intent already started");
         }
-        invoked = true;
+        invoked = true; return started.action;
       };
       const evidence = await this.execute(binding, action, signal, beforeEffect, tokens => { observedTokens = Math.max(observedTokens, tokens); }, lease);
       if (!invoked) throw new Denied("POLICY_DENIED", "execution did not start");
@@ -359,9 +365,9 @@ export class GraphActionBroker {
         || !["OUTPUT_CONTRACT_INVALID", "INTERNAL_ERROR"].includes(failure.code) || typeof failure.retrySafe !== "boolean")) throw new Error("invalid verification failure classification");
       const failureError = failure ? GraphErrorSchema.parse({ schemaVersion: 1, code: failure.code, message: failure.message,
         retryable: failure.retrySafe, nextAction: failure.retrySafe ? "retry" : "stop" }) : undefined;
-      const normalTestsExit = action.action.kind === "tests" && evidence.stopped === true
-        && evidence.command?.termination?.trigger === "exit" && evidence.command.termination.stop_confirmed
-        && !evidence.command.cancellation && !evidence.command.failure_code && !signal.aborted;
+      const normalTestsExit = action.action.kind === "tests" && evidence.stopped === true && !signal.aborted
+        && ((evidence.command?.termination?.trigger === "exit" && evidence.command.termination.stop_confirmed && !evidence.command.cancellation && !evidence.command.failure_code)
+          || (evidence.contained !== undefined && !evidence.contained.result.cancelled));
       // An abort after execution/evidence completion does not invalidate quality
       // already established. Cancelled invocations carry a stopped failure above.
       const completed = !failure && (evidence.status === "completed" || (normalTestsExit && persisted.result !== undefined));
@@ -432,7 +438,7 @@ export class GraphActionBroker {
     return { ...base, outcome: { state: "unknown", error: graphError("ACTION_OUTCOME_UNKNOWN", "existing action requires reconciliation; invocation was not repeated"), reconciliationRef: action.effectKey } };
   }
 
-  private async execute(binding: Binding, action: BoundAction, signal: AbortSignal, beforeEffect: (executionRunId: string) => void, observeTokens: (tokens: number) => void, lease?: ExecutionLease): Promise<GraphActionEvidence> {
+  private async execute(binding: Binding, action: BoundAction, signal: AbortSignal, beforeEffect: (executionRunId: string) => GraphAction, observeTokens: (tokens: number) => void, lease?: ExecutionLease): Promise<GraphActionEvidence> {
     const execution = action.execution;
     const verifyWorkspace = async (): Promise<void> => {
       if (action.verifyWorkspace) {
@@ -465,6 +471,8 @@ export class GraphActionBroker {
       return { status: result.status, workspace: result.evidence };
     }
     const commandTerminationGraceMs = 1000; const commandKillGraceMs = 1000;
+    let contained: GraphContainedTestEvidence | undefined;
+    const authorizeContained = () => { if (signal.aborted) throw Error("contained execution cancelled"); this.authorize(binding); this.fence(binding); };
     let threw = false; let command: CommandResult | undefined; let commandPending: Promise<CommandResult> | undefined; let invocationRunId: string | undefined;
     const original = execution.kind === "adapter" ? execution.adapter : undefined;
     const capabilities = execution.kind === "adapter" ? execution.adapter.capabilities().filter(cap => cap.id === execution.capabilityId) : [CapabilitySchema.parse({ id: "registered-command.write", kind: "code.write", agent_id: "registered-command", description: "Registered command" })];
@@ -478,7 +486,7 @@ export class GraphActionBroker {
           await verifyWorkspace();
           await policy?.(action.workspace.workspace_path);
           if (invocationSignal.aborted) throw new Denied("POLICY_DENIED", "execution cancelled before invocation");
-          beforeEffect(task.run_id); invocationRunId = task.run_id;
+          const effect = beforeEffect(task.run_id); invocationRunId = task.run_id;
           try {
             if (original) {
               for await (const event of original.invoke(task, invocationSignal)) {
@@ -507,6 +515,12 @@ export class GraphActionBroker {
               }
               return;
             }
+            if (execution.kind === "contained") {
+              contained = await execution.execute({ scope: binding.scope, graphRunId: binding.graphRunId, generation: binding.generation, effectKey: effect.effectKey, invocationId: task.run_id }, invocationSignal, authorizeContained);
+              yield { event_id: randomUUID(), run_id: task.run_id, session_id: task.session_id, seq: 1, type: "done" as const, created_at: Date.now() / 1000, terminal: true,
+                payload: { status: contained.result.cancelled ? "cancelled" : contained.result.exitCode === 0 ? "completed" : "failed", last_seq: 0 } };
+              return;
+            }
             if (execution.kind !== "command") throw new Error("invalid execution registration");
             // runShellCommand starts synchronously before its returned promise; no
             // untrusted await separates the fence above from the actual spawn.
@@ -520,6 +534,7 @@ export class GraphActionBroker {
         })();
       },
       confirmStopped: async runId => {
+        if (execution.kind === "contained") return execution.confirmStopped(runId);
         if (original?.confirmStopped) return original.confirmStopped(runId);
         // Command cancellation can request confirmation before termination settles.
         // G04 bounds this wait; only the shell's process-group proof can confirm it.
@@ -531,7 +546,7 @@ export class GraphActionBroker {
       adapters: [wrapper], signal,
       // Command confirmation includes TERM/KILL grace, process-group probes and
       // pipe drainage. The outer adapter must not time out after only 50ms.
-      cancellationGraceMs: execution.kind === "command" ? commandTerminationGraceMs + commandKillGraceMs + 500 : 50,
+      cancellationGraceMs: execution.kind === "contained" ? 30000 : execution.kind === "command" ? commandTerminationGraceMs + commandKillGraceMs + 500 : 50,
       authorize: async () => { this.authorize(binding); this.fence(binding); await policy?.(action.workspace.workspace_path); this.authorize(binding); this.fence(binding); return { allow: true }; } });
     if (!invocationRunId) throw new Denied("POLICY_DENIED", candidate.reason ?? "candidate preflight refused");
     if (threw || candidate.status === "execution_unconfirmed" || candidate.execution?.failure_code) throw new Error("adapter result or execution unconfirmed");
@@ -542,6 +557,6 @@ export class GraphActionBroker {
     if (stopped.stopped !== true || !stopped.evidence?.trim()) throw new Error("external stop unconfirmed");
     const usage = candidate.execution;
     if ([usage?.tokens_in, usage?.tokens_out].some(value => value !== undefined && (!Number.isSafeInteger(value) || value < 0))) throw new Error("invalid adapter usage");
-    return { status: candidate.status === "implementation_complete" ? "completed" : "failed", stopped: true, candidate, ...(command ? { command } : {}) };
+    return { status: candidate.status === "implementation_complete" ? "completed" : "failed", stopped: true, candidate, ...(command ? { command } : {}), ...(contained ? { contained } : {}) };
   }
 }

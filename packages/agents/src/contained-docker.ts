@@ -5,9 +5,9 @@ export class ContainedDocker {
   constructor(readonly socketPath: string, private readonly timeoutMs = 5000) {}
   async call(method: string, path: string, body?: unknown): Promise<{ status: number; bytes: Buffer }> {
     return new Promise((resolve, reject) => {
-      const bytes = body === undefined ? undefined : Buffer.from(JSON.stringify(body));
+      const bytes = body === undefined ? undefined : Buffer.isBuffer(body) ? body : Buffer.from(JSON.stringify(body));
       const req = request({ socketPath: this.socketPath, path: `/v1.47${path}`, method,
-        headers: { ...(bytes ? { 'content-type': 'application/json', 'content-length': bytes.length } : {}) } }, res => {
+        headers: { ...(bytes ? { 'content-type': Buffer.isBuffer(body) ? 'application/x-tar' : 'application/json', 'content-length': bytes.length } : {}) } }, res => {
         const chunks: Buffer[] = []; let length = 0;
         res.on('data', (chunk: Buffer) => {
           length += chunk.length;

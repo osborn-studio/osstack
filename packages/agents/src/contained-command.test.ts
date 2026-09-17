@@ -70,9 +70,9 @@ it.each(['unsafe', 'unbounded'])('rejects %s container scope before start or del
   const f = await fixture(mode); await expect(f.executor.execute('run', new AbortController().signal)).rejects.toThrow('CONTAINED_SCOPE_MISMATCH');
   expect(f.calls.some(x => x.endsWith('/start') || x.startsWith('DELETE'))).toBe(false);
 });
-it.each(['binding', 'daemon', 'command'])('does not accept another %s receipt', async change => {
+it.each(['binding', 'daemon', 'command', 'workingDirectory'])('does not accept another %s receipt', async change => {
   const f = await fixture(); await f.executor.execute('run', new AbortController().signal);
-  const options = { ...f.options, ...(change === 'binding' ? { bindingRef: 'd'.repeat(64) } : change === 'daemon' ? { daemonId: 'other' } : { command: 'other' }) };
+  const options = { ...f.options, ...(change === 'binding' ? { bindingRef: 'd'.repeat(64) } : change === 'daemon' ? { daemonId: 'other' } : change === 'workingDirectory' ? { workingDirectory: '/osstack-candidate-00000000-0000-4000-8000-000000000000' } : { command: 'other' }) };
   expect(await new ContainedCommandExecutor(options).confirmStopped('run')).toEqual({ stopped: false });
 });
 it('an incomplete or modified stop receipt cannot authorize recovery', async () => {
@@ -103,4 +103,13 @@ it('competing executors cannot create two scopes for one invocation', async () =
   const f = await fixture(); const peer = new ContainedCommandExecutor(f.options);
   const results = await Promise.allSettled([f.executor.execute('run', new AbortController().signal), peer.execute('run', new AbortController().signal)]);
   expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(1); expect(f.calls.filter(x => x.includes('/create'))).toHaveLength(1);
+});
+it('persists exact host binding before create and rejects a digest mismatch', async () => {
+  const f = await fixture(); const { createHash } = await import('node:crypto');
+  const bindingData = JSON.stringify({ effectKey: 'host-effect', invocation: 'bound' });
+  expect(() => new ContainedCommandExecutor({ ...f.options, bindingData })).toThrow('CONTAINED_CONFIG_INVALID');
+  const bound = new ContainedCommandExecutor({ ...f.options, bindingData, bindingRef: createHash('sha256').update(bindingData).digest('hex') });
+  await bound.execute('bound', new AbortController().signal);
+  const { readFileSync } = await import('node:fs'); const path = join(f.options.journalRoot, createHash('sha256').update('bound').digest('hex'), 'binding.json');
+  expect(JSON.parse(readFileSync(path, 'utf8'))).toMatchObject({ version: 1, data: bindingData });
 });

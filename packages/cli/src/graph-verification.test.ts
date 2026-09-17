@@ -97,7 +97,7 @@ async function brokerFixture(f: Awaited<ReturnType<typeof fixture>>) {
   const prepared = await prepareGraphVerification(f.options);
   const broker = new GraphActionBroker(f.db, { acquire: admission.acquire.bind(admission) }); const connection = {};
   broker.register(connection, { scope: f.binding.scope, graphRunId: f.run.graphRunId, identity: f.run.identity, generation: f.run.generation, owner: 'worker', epoch: 0, workspace: f.options.sourceWorkspace, authorize: f.options.authorize, actions: prepared.actions });
-  const invoke = (kind: 'review' | 'tests') => { const action = prepared.actions[kind === 'review' ? 0 : 1]!; return broker.handle(connection, { schemaVersion: 1, kind: 'worker_action', requestId: kind, generation: f.run.generation, scope: f.binding.scope, graphRunId: f.binding.graphRunId, specHash: f.binding.specHash, epoch: 0, nodeId: action.nodeId, effectSlot: action.effectSlot, action: action.action }); };
+  const invoke = (kind: 'review' | 'tests', signal?: AbortSignal) => { const action = prepared.actions[kind === 'review' ? 0 : 1]!; return broker.handle(connection, { schemaVersion: 1, kind: 'worker_action', requestId: kind, generation: f.run.generation, scope: f.binding.scope, graphRunId: f.binding.graphRunId, specHash: f.binding.specHash, epoch: 0, nodeId: action.nodeId, effectSlot: action.effectSlot, action: action.action }, signal ? { signal } : {}); };
   return { prepared, invoke, broker, connection };
 }
 it('runs real registered command and independent G04 review concurrently with an observable two-way barrier', async () => {
@@ -328,3 +328,97 @@ it('settles an oversized structured review as a bounded contract failure instead
   const host = await brokerFixture(f);
   expect(await host.invoke('review')).toMatchObject({ outcome: { state: 'failed', error: { code: 'OUTPUT_CONTRACT_INVALID', retryable: true } } });
 }, 15000);
+
+// By default these use a deterministic Engine API fixture. The exact same tests
+// can target the dedicated Linux daemon via an explicit host-owned config file.
+async function containedFixture(exitCode: number) {
+  const f = await fixture(); let actualExit = exitCode; let onStart = () => {}; let loseDelete = false;
+  const journalRoot = join(f.root, 'contained-journal'); await mkdir(journalRoot);
+  const configPath = process.env['G25_CONTAINED_CONFIG'];
+  let config: { socketPath: string; daemonId: string; baseImageId: string };
+  if (configPath) config = JSON.parse(await readFile(configPath, 'utf8')) as typeof config;
+  else {
+    const { createServer } = await import('node:http');
+    const socketPath = join(f.root, 'engine.sock'); let labels: unknown; let directory = ''; let containerConfig: Record<string, unknown>; let removed = false; let started = false;
+    config = { socketPath, daemonId: 'fixture-daemon', baseImageId: 'sha256:' + 'a'.repeat(64) };
+    const server = createServer(async (req, res) => {
+      const url = new URL(req.url!, 'http://fixture'); const path = url.pathname;
+      if (path.endsWith('/info')) { res.end(JSON.stringify({ ID: config.daemonId, OSType: 'linux' })); return; }
+      if (path.endsWith('/build')) {
+        const chunks: Buffer[] = []; for await (const chunk of req) chunks.push(chunk as Buffer); const tar = Buffer.concat(chunks).toString();
+        expect(tar).toContain('candidate/file'); expect(tar).toContain('candidate'); labels = JSON.parse(url.searchParams.get('labels')!);
+        directory = /WORKDIR (\/osstack-candidate-[a-f0-9-]+)/.exec(tar)![1]!; res.end(JSON.stringify({ aux: { ID: 'sha256:' + 'b'.repeat(64) } })); return;
+      }
+      if (path.includes('/images/')) { const base = path.includes(config.baseImageId); res.end(JSON.stringify({ Id: base ? config.baseImageId : 'sha256:' + 'b'.repeat(64), Config: { WorkingDir: directory, Labels: labels } })); return; }
+      if (path.endsWith('/create')) {
+        let body = ''; for await (const chunk of req) body += chunk; containerConfig = JSON.parse(body) as typeof containerConfig;
+        res.writeHead(201).end(JSON.stringify({ Id: 'c'.repeat(64) })); return;
+      }
+      if (req.method === 'DELETE') { removed = true; res.writeHead(loseDelete ? 500 : 204).end(); return; }
+      if (removed) { res.writeHead(404).end(); return; }
+      if (path.endsWith('/start')) { started = true; onStart(); res.writeHead(204).end(); return; }
+      if (path.endsWith('/logs')) { res.end(); return; }
+      res.end(JSON.stringify({ Id: 'c'.repeat(64), Image: 'sha256:' + 'b'.repeat(64), Config: containerConfig!, HostConfig: { ...(containerConfig!['HostConfig'] as object), CapAdd: null }, Mounts: [],
+        State: { Status: started ? 'exited' : 'created', Running: false, ExitCode: actualExit } }));
+    });
+    await new Promise<void>(r => server.listen(socketPath, r)); close.push(() => { server.closeAllConnections(); server.close(); });
+  }
+  f.options.containedTests = { ...config, journalRoot, authorizeStop: () => {}, authorizeRead: () => {} };
+  f.options.acceptanceRegistry = [{ ref: 'acceptance', command: `test "$(cat file)" = candidate || exit 98; test "$(pwd)" != /tmp || exit 99; exit ${exitCode}`, passExitCodes: [0, 42], failExitCodes: [1] }];
+  return { ...f, setExit: (value: number) => { actualExit = value; }, onStart: (fn: () => void) => { onStart = fn; }, loseDelete: () => { loseDelete = true; } };
+}
+it.each([0, 1, 42, 7])('binds actual contained tests exit %i to candidate/image/ledger without POSIX evidence', async code => {
+  const f = await containedFixture(code); const b = await brokerFixture(f); const response = await b.invoke('tests');
+  if (code === 7) expect(response).toMatchObject({ outcome: { state: 'failed', error: { retryable: false } } });
+  else expect(response).toMatchObject({ outcome: { state: 'confirmed', result: { kind: 'tests', passed: code !== 1 } } });
+  const row = f.db.prepare("SELECT json_extract(outcome_json, '$.evidenceRef') AS evidence_ref, effect_key FROM graph_actions WHERE node_id=?").get('tests') as { evidence_ref: string; effect_key: string };
+  const envelope = await loadGraphVerificationEvidence(f.options.root, row.evidence_ref, f.binding);
+  if (process.env['G25_CONTAINED_REPORT_DIR']) await writeFile(join(process.env['G25_CONTAINED_REPORT_DIR'], `candidate-exit-${code}.json`), JSON.stringify(envelope, null, 2));
+  expect(envelope.evidence.command).toBeUndefined(); expect(envelope.evidence.contained!.identity.effectKey).toBe(row.effect_key);
+  expect(envelope.evidence.contained!.identity.generation).toBe(f.run.generation);
+  expect(envelope.evidence.contained!.result.exitCode).toBe(code);
+  expect(envelope.evidence.contained!.identity.image.contentDigest).toBe(envelope.candidateIdentity.before.containedContentDigest);
+  const replay = await b.invoke('tests'); expect(replay).toEqual(response);
+  const journals = await readdir(f.options.containedTests!.journalRoot); expect(journals).toHaveLength(1);
+  const bound = JSON.parse(await readFile(join(f.options.containedTests!.journalRoot, journals[0]!, 'binding.json'), 'utf8')) as { data: string };
+  expect(JSON.parse(bound.data)).toEqual(envelope.evidence.contained!.identity);
+}, 30000);
+it('rejects cross-candidate, image, generation, invocation and container receipt substitution', async () => {
+  const f = await containedFixture(0); const b = await brokerFixture(f); expect(await b.invoke('tests')).toMatchObject({ outcome: { state: 'confirmed' } });
+  const row = f.db.prepare("SELECT json_extract(outcome_json, '$.evidenceRef') AS evidence_ref FROM graph_actions WHERE node_id=?").get('tests') as { evidence_ref: string };
+  const original = await loadGraphVerificationEvidence(f.options.root, row.evidence_ref, f.binding);
+  const { publishGraphVerificationEvidence } = await import('./graph-verification-store.js');
+  const edits: Array<(v: NonNullable<typeof original.evidence.contained>) => void> = [v => { v.identity.candidateRevision = 'a'.repeat(40); }, v => { v.identity.image.imageId = 'sha256:' + 'a'.repeat(64); },
+    v => { v.identity.generation++; }, v => { v.identity.invocationId = 'different'; }, v => { v.result.stopReceipt.launch.containerId = 'd'.repeat(64); }];
+  for (const edit of edits) { const changed = structuredClone(original); edit(changed.evidence.contained!); await expect(publishGraphVerificationEvidence(f.options.root, changed, () => {})).rejects.toThrow(); }
+  const fake = structuredClone(original.evidence); fake.contained!.result.exitCode = 1;
+  await expect(b.prepared.actions[1]!.persist(fake)).rejects.toThrow();
+}, 30000);
+it.runIf(!process.env['G25_CONTAINED_CONFIG'])('retains admission and seals replay after contained DELETE acknowledgement loss', async () => {
+  const f = await containedFixture(0); f.loseDelete(); const b = await brokerFixture(f);
+  expect(await b.invoke('tests')).toMatchObject({ outcome: { state: 'unknown' } });
+  expect(await b.invoke('tests')).toMatchObject({ outcome: { state: 'unknown' } });
+  expect(await readdir(f.options.containedTests!.journalRoot)).toHaveLength(1);
+  expect(f.db.prepare('SELECT released_at FROM graph_action_admissions').all()).toEqual([{ released_at: null }]);
+}, 30000);
+
+it('settles contained cancellation only after durable removal and prevents replay', async () => {
+  const f = await containedFixture(0); f.options.acceptanceRegistry = [{ ref: 'acceptance', command: 'sleep 30', passExitCodes: [0], failExitCodes: [1] }];
+  const controller = new AbortController(); f.onStart(() => controller.abort());
+  const b = await brokerFixture(f); const executing = b.invoke('tests', controller.signal);
+  if (process.env['G25_CONTAINED_CONFIG']) {
+    const deadline = Date.now() + 10000; let launched = false;
+    while (Date.now() < deadline) {
+      const dirs = await readdir(f.options.containedTests!.journalRoot);
+      if (dirs.length) { try { await readFile(join(f.options.containedTests!.journalRoot, dirs[0]!, 'launch.json')); launched = true; break; } catch {} }
+      await new Promise(r => setTimeout(r, 10));
+    }
+    expect(launched).toBe(true); controller.abort();
+  }
+  expect(await executing).toMatchObject({ outcome: { state: 'failed', error: { retryable: false } } });
+  expect(await b.invoke('tests')).toMatchObject({ outcome: { state: 'failed' } });
+  const dirs = await readdir(f.options.containedTests!.journalRoot); expect(dirs).toHaveLength(1);
+  const receipt = JSON.parse(await readFile(join(f.options.containedTests!.journalRoot, dirs[0]!, 'stopped.json'), 'utf8')) as { kind: string };
+  expect(receipt.kind).toBe('docker_removed');
+  expect(f.db.prepare('SELECT released_at FROM graph_action_admissions WHERE released_at IS NULL').all()).toEqual([]);
+}, 30000);

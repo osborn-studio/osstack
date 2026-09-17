@@ -96,3 +96,6 @@ export const AGENTS_VERSION = "0.0.0";
 
 export { createContainedCommandExecutor, createContainedCommandAdapter } from "./contained.js";
 export type { ContainedCommandOptions, ContainedStopReceipt, ContainedCommandExecutor } from "./contained.js";
+
+export { prepareContainedImage } from "./contained.js";
+export type { ContainedImageOptions, ContainedImageReceipt, ContainedCandidateFile, ContainedCommandResult } from "./contained.js";

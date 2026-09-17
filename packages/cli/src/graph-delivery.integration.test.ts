@@ -40,7 +40,11 @@ async function delivery(mode: 'direct' | 'repair' | 'retry' | 'failure' | 'negat
       yield {event_id:task.run_id,run_id:task.run_id,session_id:task.session_id,seq:1,created_at:Date.now()/1000,type:'done',terminal:true,payload:{status:'completed',last_seq:0,result_summary:summary,usage:{tokens_in:1,tokens_out:1,duration_ms:1}}};
     } };
   const admission = new GovernedExecution({ reads:new FifoSemaphore(2),writes:new FifoSemaphore(2),repositories:new Map(),checkHealth:async()=>{} });
-  const host = new GraphDelivery({db, root:join(root,'delivery'),repositoryPath:repo,task:'Set answer to 1',writer:{identity:'writer',adapter:writer,capabilityId:'write'},
+  const containedConfigPath = process.env['G25_CONTAINED_CONFIG'];
+  const containedConfig = containedConfigPath ? JSON.parse(await readFile(containedConfigPath, 'utf8')) as { socketPath: string; daemonId: string; baseImageId: string } : undefined;
+  const journalRoot = join(root, 'contained-journal'); if (containedConfig) await mkdir(journalRoot);
+  const host = new GraphDelivery({db,
+    ...(containedConfig ? { containedTests: { ...containedConfig, journalRoot, authorizeStop: () => {}, authorizeRead: () => {} } } : {}), root:join(root,'delivery'),repositoryPath:repo,task:'Set answer to 1',writer:{identity:'writer',adapter:writer,capabilityId:'write'},
     reviewer:{identity:'reviewer',adapter:reviewer,capabilityId:'review'},verifyReviewer:async p=>{if(p.writerIdentity === p.reviewerIdentity) throw Error('not independent');},
     acceptanceRegistry:[{ref:'acceptance',command:`${slow === 'tests' ? 'sleep 0.2; ' : ''}test "$(cat answer)" = 1`,passExitCodes:[0],failExitCodes:[1]}],acquire:async i=>{ if(mode === 'direct' && slow === 'tests' && /\/tests-[^/]+$/.test(i.workspacePath ?? '')) await waitConfirmed('review'); return admission.acquire(i); },authorize:()=>{},
     request:{schemaVersion:1,kind:'start',scope:{schemaVersion:1,tenantId:'t',principalId:'p',workspaceId:'w'},idempotencyKey:'delivery',inputArtifactRef:'input',source:{product:'osstack',requestId:'delivery'},
@@ -67,6 +71,7 @@ async function delivery(mode: 'direct' | 'repair' | 'retry' | 'failure' | 'negat
     expect(db.prepare("SELECT count(*) AS n FROM graph_checkpoint_writes WHERE channel='__return__' AND value LIKE '%OUTPUT_CONTRACT_INVALID%'").get()).toEqual({ n: 0 });
     expect(db.prepare('SELECT count(*) AS n FROM graph_worker_launches').get()).toEqual({n: mode === 'repair' ? 2 : 1});
     expect(db.prepare('SELECT count(*) AS n FROM graph_verification_joins').get()).toEqual({n: mode === 'repair' ? 2 : mode === 'failure' ? 0 : 1});
+    if (containedConfig && process.env['G25_CONTAINED_REPORT_DIR']) await writeFile(join(process.env['G25_CONTAINED_REPORT_DIR'], `delivery-${mode}-${slow}.json`), JSON.stringify({ route: result.route, writes, reviews, generation: host.current().generation, actions, root }, null, 2));
     return {result,writes,reviews,prompts,actions,root,run:host.current()};
   } finally { db.close(); }
 }

@@ -77,7 +77,7 @@ export class GraphVerificationJoinService {
           if (envelope.verificationFailure) throw Error('JOIN_FAILED_EVIDENCE');
           const result = GraphResult.parse({ schemaVersion: 1, kind, candidateRevision: binding.candidateRevision,
             evidenceRefs: [outcome.evidenceRef], evidenceDigest: outcome.evidenceRef.slice('graph-verification:'.length),
-            ...(kind === 'review' ? { verdict: envelope.report!.verdict } : { passed: envelope.acceptance.passExitCodes.includes(envelope.evidence.command!.exitCode) }) });
+            ...(kind === 'review' ? { verdict: envelope.report!.verdict } : { passed: envelope.acceptance.passExitCodes.includes(envelope.evidence.contained?.result.exitCode ?? envelope.evidence.command!.exitCode) }) });
           if (verificationCanonical(outcome.result) !== verificationCanonical(result)) throw Error('JOIN_RESULT_MISMATCH');
           branches.push({ ...base, state: 'confirmed', result });
         } else {

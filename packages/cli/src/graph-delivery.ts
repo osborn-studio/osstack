@@ -24,6 +24,7 @@ export interface GraphDeliveryOptions {
   task: string; writer: { identity: string; adapter: AgentAdapter; capabilityId: string };
   reviewer: GraphVerificationOptions['reviewer']; verifyReviewer: GraphVerificationOptions['verifyReviewer'];
   acceptanceRegistry: GraphVerificationOptions['acceptanceRegistry'];
+  containedTests?: GraphVerificationOptions['containedTests'];
   acquire: (input: AdmissionInput) => Promise<ExecutionLease>; authorize: () => void;
   /** Reserved and exclusively selected by the public host before construction. */
   reservedRun?: GraphRun;
@@ -79,6 +80,7 @@ export class GraphDelivery {
     this.options = Object.freeze({ ...options, request: freezeWorkerData(StartGraphRequest.parse(options.request)),
       writer: Object.freeze({ ...options.writer, adapter: adapter(options.writer.adapter) }),
       reviewer: Object.freeze({ ...options.reviewer, adapter: adapter(options.reviewer.adapter) }),
+      ...(options.containedTests ? { containedTests: Object.freeze({ ...options.containedTests }) } : {}),
       acceptanceRegistry: freezeWorkerData(structuredClone(options.acceptanceRegistry)) });
     options = this.options;
     const capability = options.writer.adapter.capabilities().find(c => c.id === options.writer.capabilityId);
@@ -169,6 +171,7 @@ export class GraphDelivery {
         const prepared = await prepareGraphVerificationBranch({ root: join(this.options.root, 'verification'), artifacts: this.artifacts, candidate,
           binding: this.binding(), sourceWorkspace: source, authorize: () => this.check(), authorizeCancel: () => this.checkSettlement(), acquire: this.options.acquire,
           ...(this.options.authorizePolicy ? { authorizePolicy: (workspacePath: string) => this.options.authorizePolicy!({ policyRoot: this.options.repositoryPath, workspacePath }) } : {}),
+          ...(this.options.containedTests ? { containedTests: this.options.containedTests } : {}),
           preparationLease: lease, acceptanceRegistry: this.options.acceptanceRegistry, writerIdentity: this.options.writer.identity,
           reviewer: this.options.reviewer, verifyReviewer: this.options.verifyReviewer,
           slots: { [kind]: { nodeId: branch.id, effectSlot: branch.effectSlot, workspaceLeaseRef: `e${epoch}.${kind}`, tokenReservation: branch.tokenReservation } },

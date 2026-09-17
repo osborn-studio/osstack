@@ -1,3 +1,5 @@
+import { prepareGraphContainedImage, registerContainedTests, validateContainedTestEvidence, type GraphContainedTestOptions } from './graph-contained-tests.js';
+import type { ContainedImageReceipt } from '@osstack/agents';
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync, realpathSync } from 'node:fs';
@@ -23,6 +25,8 @@ export interface GraphVerificationOptions {
   /** Current host cancel grant permits only stopped cancellation evidence settlement. */
   authorizeCancel?: () => void;
   authorizePolicy?: (workspacePath: string) => Promise<void>;
+  /** Opt-in immutable-image tests; default registered shell behavior is unchanged. */
+  containedTests?: GraphContainedTestOptions;
   acceptanceRegistry: readonly AcceptanceCommandSpec[]; writerIdentity: string;
   reviewer: { identity: string; adapter: AgentAdapter; capabilityId: string };
   /** Independent host identity/credential check; never derived from review/model output. */
@@ -116,6 +120,7 @@ export async function prepareGraphVerificationBranch(options: GraphVerificationO
 async function prepareSelection(options: GraphVerificationOptions, kinds: readonly Kind[]) {
   // Capture ALL callbacks and values before the first await.
   const { authorize, authorizeCancel, authorizePolicy, acquire, effectIdentity, verifyReviewer, preparationLease } = options;
+  const containedOptions = options.containedTests ? Object.freeze({ ...options.containedTests }) : undefined;
   const check = checkedAuthority(authorize); check();
   const data = snapshot({ root: options.root, binding: parseVerificationBinding(options.binding), candidate: GraphResult.parse(options.candidate), source: options.sourceWorkspace,
     writerIdentity: options.writerIdentity, reviewerIdentity: options.reviewer.identity, capabilityId: options.reviewer.capabilityId,
@@ -144,6 +149,7 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
   check();
   const lease = preparationLease ?? await acquire({ kind: 'write', runId: `graph-verification-prepare:${randomUUID()}`, workspacePath: data.source.workspace_path, authorize: async () => { check(); } });
   const preparedCheck = async () => { if (!lease.assertActive) throw new Error('canonical G10 preparation lease required'); await checked(() => lease.assertActive!()); };
+  let containedImage: ContainedImageReceipt | undefined;
   let manifest!: GraphArtifactManifest; let reviewPath!: string; let testsPath!: string;
   let preparationFailure: { error: unknown } | undefined;
   try {
@@ -162,6 +168,11 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
       await preparedCheck();
       const restored = await checked(() => restore(binding.artifactDigest, { rootPath: data.root, directoryName: `${kind}-${randomUUID()}` }));
       if (restored.candidateRevision !== binding.candidateRevision || restored.tree !== manifest.tree || dirname(restored.worktreePath) !== data.root) throw new Error('restored candidate mismatch');
+      if (kind === 'tests' && containedOptions) {
+        assertExactCandidateFiles(restored.worktreePath, binding.candidateRevision);
+        containedImage = snapshot(await checked(() => prepareGraphContainedImage(containedOptions, restored.worktreePath, binding.candidateRevision, check)));
+        assertExactCandidateFiles(restored.worktreePath, binding.candidateRevision);
+      }
       paths.push(restored.worktreePath);
       await preparedCheck();
     }
@@ -203,6 +214,7 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
       repositoryDigest: createHash('sha256').update(repositoryStamp(workspace.workspace_path)).digest('hex'),
       head: git(workspace.workspace_path, 'rev-parse', 'HEAD'), tree: git(workspace.workspace_path, 'rev-parse', 'HEAD^{tree}'),
       indexTree: git(workspace.workspace_path, 'write-tree'), indexDigest: createHash('sha256').update(gitRaw(workspace.workspace_path, 'ls-files', '--stage', '-v', '-z')).digest('hex'), trackedDigest: trackedFingerprint(),
+      ...(kind === 'tests' && containedImage ? { containedContentDigest: containedImage.contentDigest } : {}),
       ...(kind === 'review' ? { inventoryDigest: workspaceFingerprint(workspace.workspace_path) } : {}),
     });
     // Both workspaces start with a strict inventory; tests may later emit untracked build outputs.
@@ -218,6 +230,7 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
       check();
     };
     candidateCheck();
+    const contained = kind === 'tests' && containedOptions && containedImage ? registerContainedTests(containedOptions, containedImage, binding, acceptance.command) : undefined;
     const invocations = new Map<string, ReviewerInvocation>();
     const slot = data.slots[kind] ?? { nodeId: kind, effectSlot: 'invoke', workspaceLeaseRef: `verification:${randomUUID()}`, tokenReservation: 0 };
     if (!Number.isSafeInteger(slot.tokenReservation) || slot.tokenReservation < 0) throw new Error('invalid token reservation');
@@ -254,7 +267,13 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
             catch { envelope.verificationFailure = { code: 'OUTPUT_CONTRACT_INVALID', message: 'Review summary is not a valid structured report', retrySafe: true }; }
           }
         }
+      } else if (contained) {
+        if (!evidence.contained || evidence.command) throw Error('missing actual contained command evidence');
+        contained.verify(evidence.contained);
+        const receipt = validateContainedTestEvidence(evidence.contained, binding, effect.effectKey, acceptance.command, before.containedContentDigest);
+        if (!envelope.verificationFailure && (receipt.result.cancelled || ![...acceptance.passExitCodes, ...acceptance.failExitCodes].includes(receipt.result.exitCode))) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Contained command cancelled or returned unregistered exit code', retrySafe: false };
       } else {
+        if (evidence.contained) throw Error('unexpected contained evidence');
         const command = evidence.command;
         if (!command || command.command !== acceptance.command || command.termination?.stop_confirmed !== true) throw new Error('missing actual registered command stop evidence');
         if (!envelope.verificationFailure && (command.failure_code || command.cancellation || command.termination.scope !== 'posix_process_group' || command.termination.trigger !== 'exit' || command.termination.leader_exit_code !== command.exitCode
@@ -290,7 +309,7 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
       })(),
     });
     const action: GraphRegisteredAction = { nodeId: slot.nodeId, effectSlot: slot.effectSlot, action: snapshot(request.action), tokenReservation: slot.tokenReservation,
-      workspace, verifyWorkspace, persist, execution: kind === 'review' ? { kind: 'adapter', plan, adapter: invocationReviewer, capabilityId: data.capabilityId } : { kind: 'command', plan, command: acceptance.command } };
+      workspace, verifyWorkspace, persist, execution: kind === 'review' ? { kind: 'adapter', plan, adapter: invocationReviewer, capabilityId: data.capabilityId } : contained ? { kind: 'contained', plan, ...contained.registration } : { kind: 'command', plan, command: acceptance.command } };
     Object.freeze(action.execution); return Object.freeze(action);
   });
   return Object.freeze({ binding, workspaces: Object.freeze(workspaces), actions: Object.freeze(actions) });

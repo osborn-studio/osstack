@@ -13,14 +13,19 @@ type Launch = z.infer<typeof launchSchema>;
 const receiptSchema = z.object({ version: z.literal(1), kind: z.literal('docker_removed'), launch: launchSchema,
   confirmedAt: z.number().int().positive() }).strict();
 export type ContainedStopReceipt = z.infer<typeof receiptSchema>;
+export interface ContainedCommandResult { exitCode: number; output: string; cancelled: boolean; evidence: string; stopReceipt: ContainedStopReceipt }
 export interface ContainedCommandOptions {
   socketPath: string;
   daemonId: string;
   journalRoot: string;
   imageId: string;
   command: string;
+  /** Host-selected immutable image directory; defaults preserve legacy /tmp behavior. */
+  workingDirectory?: string;
   /** Digest of the host's exact scope/run/generation/action binding, not worker input. */
   bindingRef: string;
+  /** Optional canonical host identity, durably published before any Docker create. */
+  bindingData?: string;
   authorize: (operation: 'start' | 'stop' | 'read') => void;
   timeoutMs?: number;
 }
@@ -47,10 +52,12 @@ export class ContainedCommandExecutor {
   constructor(options: ContainedCommandOptions) {
     if (![options.socketPath, options.journalRoot].every(p => isAbsolute(p) && !p.includes('\0'))
       || !/^sha256:[a-f0-9]{64}$/.test(options.imageId) || !/^[a-f0-9]{64}$/.test(options.bindingRef)
+      || (options.workingDirectory !== undefined && !/^\/osstack-candidate-[a-f0-9-]{36}$/.test(options.workingDirectory))
+      || (options.bindingData !== undefined && (Buffer.byteLength(options.bindingData) > 32768 || sha(options.bindingData) !== options.bindingRef))
       || !options.daemonId || !options.command || options.command.length > 64000 || typeof options.authorize !== 'function'
       || (options.timeoutMs !== undefined && (!Number.isSafeInteger(options.timeoutMs) || options.timeoutMs < 1 || options.timeoutMs > 120000))) throw Error('CONTAINED_CONFIG_INVALID');
     this.options = Object.freeze({ ...options }); this.api = new ContainedDocker(options.socketPath);
-    this.specDigest = sha(JSON.stringify({ image: options.imageId, command: options.command, binding: options.bindingRef, policy: 1 }));
+    this.specDigest = sha(JSON.stringify({ image: options.imageId, command: options.command, binding: options.bindingRef, policy: 1, ...(options.workingDirectory ? { workingDirectory: options.workingDirectory } : {}) }));
   }
   private authorize(operation: 'start' | 'stop' | 'read'): void {
     const value: unknown = this.options.authorize(operation);
@@ -78,7 +85,7 @@ export class ContainedCommandExecutor {
   }
   private config(nonce: string) {
     return { Image: this.options.imageId, Entrypoint: ['/bin/sh', '-c'], Cmd: [this.options.command], User: '65534:65534',
-      WorkingDir: '/tmp', NetworkDisabled: true, Tty: false, OpenStdin: false,
+      WorkingDir: this.options.workingDirectory ?? '/tmp', NetworkDisabled: true, Tty: false, OpenStdin: false,
       Labels: { 'osstack.contained.spec': this.specDigest, 'osstack.contained.nonce': nonce },
       HostConfig: { NetworkMode: 'none', PidMode: '', IpcMode: 'private', Privileged: false, ReadonlyRootfs: true,
         CapDrop: ['ALL'], SecurityOpt: ['no-new-privileges'], RestartPolicy: { Name: 'no' }, AutoRemove: false,
@@ -99,7 +106,7 @@ export class ContainedCommandExecutor {
     if (v.Id !== launch.containerId || v.Image !== this.options.imageId || v.Config.User !== expected.User
       || JSON.stringify(v.Config.Entrypoint) !== JSON.stringify(expected.Entrypoint) || JSON.stringify(v.Config.Cmd) !== JSON.stringify(expected.Cmd)
       || v.Config.Labels['osstack.contained.spec'] !== this.specDigest || v.Config.Labels['osstack.contained.nonce'] !== launch.nonce
-      || v.Config.Tty || v.Config.OpenStdin || v.Config.WorkingDir !== '/tmp' || !v.Config.NetworkDisabled || v.Mounts.length
+      || v.Config.Tty || v.Config.OpenStdin || v.Config.WorkingDir !== expected.WorkingDir || !v.Config.NetworkDisabled || v.Mounts.length
       || h.NetworkMode !== 'none' || h.PidMode !== '' || h.IpcMode !== 'private' || h.Privileged || !h.ReadonlyRootfs
       || (h.CapAdd?.length ?? 0) !== 0 || JSON.stringify(h.CapDrop) !== '["ALL"]' || !h.SecurityOpt.includes('no-new-privileges')
       || h.RestartPolicy.Name !== 'no' || h.AutoRemove || JSON.stringify(h.Tmpfs) !== JSON.stringify(expected.HostConfig.Tmpfs)
@@ -133,10 +140,11 @@ export class ContainedCommandExecutor {
     durable(join(this.directory(invocationId), 'stopped.json'), receipt); sync(this.directory(invocationId));
     const proof = await this.confirmStopped(invocationId); if (!proof.stopped) throw Error('CONTAINED_STOP_UNCONFIRMED'); return proof;
   }
-  async execute(invocationId: string, signal: AbortSignal): Promise<{ exitCode: number; output: string; cancelled: boolean; evidence: string }> {
+  async execute(invocationId: string, signal: AbortSignal): Promise<ContainedCommandResult> {
     this.authorize('start'); if (signal.aborted) throw Error('CONTAINED_CANCELLED_BEFORE_CREATE');
     const dir = this.directory(invocationId); mkdirSync(dir, { mode: 0o700 }); sync(this.options.journalRoot);
     // Permanent exclusive consumption: an interrupted invocation is never auto-recreated.
+    if (this.options.bindingData !== undefined) durable(join(dir, 'binding.json'), { version: 1, bindingRef: this.options.bindingRef, data: this.options.bindingData });
     const nonce = randomUUID(); await this.daemon(); this.authorize('start');
     if (signal.aborted) throw Error('CONTAINED_CANCELLED_BEFORE_CREATE');
     const created = await this.api.call('POST', '/containers/create', this.config(nonce));
@@ -157,14 +165,14 @@ export class ContainedCommandExecutor {
           const logs = await this.api.call('GET', `/containers/${containerId}/logs?stdout=true&stderr=true&tail=100`);
           if (logs.status !== 200) throw Error('CONTAINED_LOGS_UNAVAILABLE');
           const output = dockerLogs(logs.bytes); const proof = await this.stop(invocationId);
-          return { exitCode: state.ExitCode, output, cancelled: false, evidence: proof.evidence };
+          return { exitCode: state.ExitCode, output, cancelled: false, evidence: proof.evidence, stopReceipt: receiptSchema.parse(read(join(dir, 'stopped.json'))) };
         }
         await delay(50);
       }
     } catch (error) {
       const proof = await this.stop(invocationId); // Failure to prove stop stays an error/unknown.
       if (!signal.aborted) throw error;
-      return { exitCode: 1, output: '', cancelled: true, evidence: proof.evidence };
+      return { exitCode: 1, output: '', cancelled: true, evidence: proof.evidence, stopReceipt: receiptSchema.parse(read(join(dir, 'stopped.json'))) };
     }
   }
 }

@@ -1,3 +1,4 @@
+import { validateContainedTestEvidence } from './graph-contained-tests.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
 import { chmod, link, lstat, mkdir, open, realpath, unlink } from 'node:fs/promises';
@@ -9,7 +10,7 @@ import type { GraphActionEvidence, PersistedGraphActionEvidence } from './graph-
 export interface AcceptanceCommandSpec { ref: string; command: string; passExitCodes: readonly number[]; failExitCodes: readonly number[] }
 export interface VerificationEffect { effect: GraphEffectIdentity; effectKey: string }
 export interface CandidateIdentity {
-  head: string; tree: string; indexTree: string; indexDigest: string; trackedDigest: string; repositoryDigest: string; inventoryDigest?: string;
+  head: string; tree: string; indexTree: string; indexDigest: string; trackedDigest: string; repositoryDigest: string; inventoryDigest?: string; containedContentDigest?: string;
 }
 export type CandidateObservation = CandidateIdentity | { error: string };
 export interface ReviewerInvocation {
@@ -17,7 +18,7 @@ export interface ReviewerInvocation {
   promptDigest: string; contextDigest: string; historyPassed: false; effectKey: string;
 }
 export interface VerificationOutputCapture {
-  field: 'command.stdout' | 'command.stderr' | 'candidate.summary';
+  field: 'command.stdout' | 'command.stderr' | 'candidate.summary' | 'contained.output';
   capturedBytes: number; capturedSha256: string; representation: 'prefix' | 'canonical_review';
 }
 export interface GraphVerificationEnvelope extends VerificationEffect {
@@ -55,7 +56,7 @@ function validateEnvelope(value: unknown, expectedBinding: VerificationBinding, 
   const workspace = verificationObject(object.workspace, ['workspace_id', 'workspace_path']);
   if (workspace.workspace_id !== binding.scope.workspaceId || typeof workspace.workspace_path !== 'string' || !isAbsolute(workspace.workspace_path)) throw new Error('evidence workspace mismatch');
   if (typeof object.writerIdentity !== 'string' || !object.writerIdentity.trim() || typeof object.reviewerIdentity !== 'string' || !object.reviewerIdentity.trim() || object.writerIdentity === object.reviewerIdentity) throw new Error('independent identity required');
-  const evidence = verificationObject(object.evidence, ['status', 'stopped', 'candidate', 'command']);
+  const evidence = verificationObject(object.evidence, ['status', 'stopped', 'candidate', 'command', 'contained']);
   if (evidence.stopped !== true || !['completed', 'failed'].includes(String(evidence.status))) throw new Error('executor stop unconfirmed');
   const envelope = object as unknown as GraphVerificationEnvelope;
   if (envelope.evidence.candidate?.status === 'execution_unconfirmed' || envelope.evidence.candidate?.execution?.failure_code === 'cancellation_unconfirmed'
@@ -67,30 +68,39 @@ function validateEnvelope(value: unknown, expectedBinding: VerificationBinding, 
   if (typeof object.workspaceLeaseRef !== 'string' || !object.workspaceLeaseRef.trim() || object.workspaceLeaseRef.length > 256) throw new Error('invalid workspace lease receipt');
   const identities = verificationObject(object.candidateIdentity, ['before', 'after']);
   const validateIdentity = (value: unknown) => {
-    const identity = verificationObject(value, ['head', 'tree', 'indexTree', 'indexDigest', 'trackedDigest', 'repositoryDigest', 'inventoryDigest']);
+    const identity = verificationObject(value, ['head', 'tree', 'indexTree', 'indexDigest', 'trackedDigest', 'repositoryDigest', 'inventoryDigest', 'containedContentDigest']);
     for (const key of ['head', 'tree', 'indexTree']) if (typeof identity[key] !== 'string' || !/^[a-f0-9]{40}$/.test(identity[key] as string)) throw new Error('invalid candidate identity');
     for (const key of ['indexDigest', 'trackedDigest', 'repositoryDigest', ...(envelope.kind === 'review' ? ['inventoryDigest'] : [])]) if (typeof identity[key] !== 'string' || !/^[a-f0-9]{64}$/.test(identity[key] as string)) throw new Error('invalid candidate identity digest');
     if (envelope.kind === 'tests' && identity.inventoryDigest !== undefined) throw new Error('unexpected tests inventory receipt');
+    if (identity.containedContentDigest !== undefined && (envelope.kind !== 'tests' || typeof identity.containedContentDigest !== 'string' || !/^[a-f0-9]{64}$/.test(identity.containedContentDigest))) throw Error('invalid contained content digest');
     return identity;
   };
   const before = validateIdentity(identities.before);
   if (before.head !== binding.candidateRevision || before.tree !== before.indexTree) throw new Error('invalid frozen candidate identity');
-  const after = verificationObject(identities.after, ['head', 'tree', 'indexTree', 'indexDigest', 'trackedDigest', 'repositoryDigest', 'inventoryDigest', 'error']);
+  const after = verificationObject(identities.after, ['head', 'tree', 'indexTree', 'indexDigest', 'trackedDigest', 'repositoryDigest', 'inventoryDigest', 'containedContentDigest', 'error']);
   if (after.error !== undefined) {
     if (Object.keys(after).length !== 1 || typeof after.error !== 'string' || !after.error.trim() || after.error.length > 4096) throw new Error('invalid candidate observation error');
   } else validateIdentity(after);
   if (verificationCanonical(before) !== verificationCanonical(after) && (envelope.verificationFailure?.code !== 'INTERNAL_ERROR' || envelope.verificationFailure.retrySafe !== false)) throw new Error('candidate mutation requires non-retryable failure');
   if (envelope.kind === 'tests') {
     if (object.reviewerInvocation !== undefined) throw new Error('tests cannot contain reviewer invocation');
+    if (envelope.evidence.contained) {
+      if (envelope.evidence.command || object.report !== undefined) throw Error('conflicting contained evidence');
+      const contained = validateContainedTestEvidence(envelope.evidence.contained, binding, effect.effectKey, acceptance.command, envelope.candidateIdentity.before.containedContentDigest);
+      if (envelope.evidence.candidate?.execution?.run_id !== contained.identity.invocationId) throw Error('contained executor invocation mismatch');
+      if (!envelope.verificationFailure && (contained.result.cancelled || ![...acceptance.passExitCodes, ...acceptance.failExitCodes].includes(contained.result.exitCode))) throw Error('invalid contained acceptance outcome');
+    } else {
+    if (envelope.candidateIdentity.before.containedContentDigest !== undefined) throw Error('missing contained evidence');
     const command = envelope.evidence.command;
     if (!command || command.command !== acceptance.command || !Number.isInteger(command.exitCode) || typeof command.stdout !== 'string' || typeof command.stderr !== 'string' || !Number.isFinite(command.durationMs) || command.durationMs < 0
       || command.termination?.stop_confirmed !== true || !command.termination.evidence.trim()) throw new Error('invalid stopped command evidence');
     if (object.report !== undefined) throw new Error('tests cannot contain model report');
     if (!envelope.verificationFailure && (command.failure_code || command.cancellation || command.termination.scope !== 'posix_process_group' || command.termination.trigger !== 'exit'
       || command.termination.leader_exit_code !== command.exitCode || ![...acceptance.passExitCodes, ...acceptance.failExitCodes].includes(command.exitCode))) throw new Error('invalid acceptance outcome');
+    }
   } else {
     const candidate = envelope.evidence.candidate;
-    if (!candidate?.execution || candidate.execution.agent_id !== envelope.reviewerIdentity || !candidate.execution.run_id || verificationCanonical(candidate.workspace) !== verificationCanonical(workspace) || evidence.command !== undefined) throw new Error('review executor identity mismatch');
+    if (!candidate?.execution || candidate.execution.agent_id !== envelope.reviewerIdentity || !candidate.execution.run_id || verificationCanonical(candidate.workspace) !== verificationCanonical(workspace) || evidence.command !== undefined || evidence.contained !== undefined) throw new Error('review executor identity mismatch');
     const receipt = verificationObject(object.reviewerInvocation, ['runId', 'taskId', 'sessionId', 'adapterId', 'capabilityId', 'promptDigest', 'contextDigest', 'historyPassed', 'effectKey']);
     if (receipt.runId !== candidate.execution.run_id || receipt.taskId !== candidate.execution.task_id || receipt.adapterId !== envelope.reviewerIdentity
       || typeof receipt.sessionId !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(receipt.sessionId)
@@ -103,16 +113,16 @@ function validateEnvelope(value: unknown, expectedBinding: VerificationBinding, 
     }
   }
   if (envelope.outputCaptures !== undefined) {
-    if (!Array.isArray(envelope.outputCaptures) || envelope.outputCaptures.length > 3) throw new Error('invalid output captures');
+    if (!Array.isArray(envelope.outputCaptures) || envelope.outputCaptures.length > 4) throw new Error('invalid output captures');
     const seen = new Set<string>();
     for (const value of envelope.outputCaptures) {
       const capture = verificationObject(value, ['field', 'capturedBytes', 'capturedSha256', 'representation']);
-      if (!['command.stdout','command.stderr','candidate.summary'].includes(String(capture.field)) || seen.has(String(capture.field))
+      if (!['command.stdout','command.stderr','candidate.summary','contained.output'].includes(String(capture.field)) || seen.has(String(capture.field))
         || !Number.isSafeInteger(capture.capturedBytes) || (capture.capturedBytes as number) < 0
         || typeof capture.capturedSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(capture.capturedSha256)
         || !['prefix','canonical_review'].includes(String(capture.representation))) throw new Error('invalid output capture');
       seen.add(String(capture.field));
-      const text = capture.field === 'command.stdout' ? envelope.evidence.command?.stdout : capture.field === 'command.stderr' ? envelope.evidence.command?.stderr : envelope.evidence.candidate?.execution?.summary;
+      const text = capture.field === 'command.stdout' ? envelope.evidence.command?.stdout : capture.field === 'command.stderr' ? envelope.evidence.command?.stderr : capture.field === 'contained.output' ? envelope.evidence.contained?.result.output : envelope.evidence.candidate?.execution?.summary;
       if (typeof text !== 'string') throw new Error('missing captured output preview');
       if (capture.representation === 'prefix' && (Buffer.byteLength(JSON.stringify(text)) > 2048 || Buffer.byteLength(text) > (capture.capturedBytes as number))) throw new Error('invalid output preview');
       if (capture.representation === 'canonical_review' && (capture.field !== 'candidate.summary' || !envelope.report || text !== JSON.stringify(envelope.report))) throw new Error('invalid canonical review capture');
@@ -136,6 +146,7 @@ export function compactVerificationOutput(envelope: GraphVerificationEnvelope): 
     if (retained !== original) captures.push({ field, capturedBytes: Buffer.byteLength(original), capturedSha256: sha(original), representation: canonicalReview === undefined ? 'prefix' : 'canonical_review' });
     return retained;
   };
+  if (evidence.contained) evidence.contained.result.output = compact('contained.output', evidence.contained.result.output);
   if (evidence.command) { evidence.command.stdout = compact('command.stdout', evidence.command.stdout); evidence.command.stderr = compact('command.stderr', evidence.command.stderr); }
   if (evidence.candidate?.execution?.summary !== undefined) evidence.candidate.execution.summary = compact('candidate.summary', evidence.candidate.execution.summary, envelope.report ? JSON.stringify(envelope.report) : undefined);
   envelope.evidence = evidence; if (captures.length) envelope.outputCaptures = captures;
@@ -164,7 +175,7 @@ export async function publishGraphVerificationEvidence(root: string, value: Grap
   if (envelope.verificationFailure) return { evidenceRef, verificationFailure: envelope.verificationFailure };
   const common = { schemaVersion: 1, candidateRevision: envelope.binding.candidateRevision, evidenceRefs: [evidenceRef], evidenceDigest: digest };
   const result = GraphResult.parse(envelope.kind === 'review' ? { ...common, kind: 'review', verdict: envelope.report!.verdict }
-    : { ...common, kind: 'tests', passed: envelope.acceptance.passExitCodes.includes(envelope.evidence.command!.exitCode) });
+    : { ...common, kind: 'tests', passed: envelope.acceptance.passExitCodes.includes(envelope.evidence.contained?.result.exitCode ?? envelope.evidence.command!.exitCode) });
   return { evidenceRef, result };
 }
 /** Host-owned storage authenticates provenance; digest alone is not an authorization grant. */
