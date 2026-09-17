@@ -1135,7 +1135,12 @@
         "packages/agents/src/contained-image.test.ts",
         "packages/agents/src/contained-image.ts",
         "packages/cli/src/graph-contained-tests.ts",
-        "docs/reports/graph-contained-candidate-validation.md"
+        "docs/reports/graph-contained-candidate-validation.md",
+        "packages/core/src/state/graph-recovery.ts",
+        "packages/core/src/state/graph-recovery.test.ts",
+        "packages/cli/src/graph-contained-recovery.ts",
+        "packages/cli/src/graph-contained-recovery.test.ts",
+        "docs/reports/graph-contained-reopen-validation.md"
       ],
       "acceptance": [
         "逐项覆盖 F01–F12 确定性窗口，再做固定 seed 的重复运行。",
@@ -1150,7 +1155,7 @@
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "第四阶段已验收：冻结候选精确内容→固定镜像→G04/Graph broker受控测试→持久回执→完整join/repair/stop，含真实Linux容器链。worker停止与跨host账本/G15对账、精确资源释放、artifact锁管理恢复及完整矩阵仍待完成。",
+      "progressNote": "第五阶段已验收：由原子action/admission/historical owner与canonical journal重建单个contained tests，当前权限与完整fence重复核验；真实独立进程与SIGKILL场景通过，仍保留unknown/held。整图worker/全部执行器停止、G15业务对账、精确释放、artifact锁与完整矩阵仍待完成。",
       "evidence": [
         "docs/reports/graph-runtime-fault-validation.md",
         "docs/implementation/2026-09-15-graph-fault-next-context.md",
@@ -1163,7 +1168,10 @@
         "docs/implementation/graph-contained-executor-evidence/admission.json",
         "docs/reports/graph-contained-candidate-validation.md",
         "docs/implementation/2026-09-16-graph-candidate-next-context.md",
-        "docs/implementation/graph-contained-candidate-evidence/admission.json"
+        "docs/implementation/graph-contained-candidate-evidence/admission.json",
+        "docs/reports/graph-contained-reopen-validation.md",
+        "docs/implementation/2026-09-17-graph-reopen-next-context.md",
+        "docs/implementation/graph-contained-reopen-evidence/admission.json"
       ]
     },
     {
@@ -1269,17 +1277,17 @@
       ]
     }
   ],
-  "updatedAt": "2026-09-16",
+  "updatedAt": "2026-09-17",
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "dc89a1a6851694887e7dde5a49850dc62b1ab668",
+    "acceptedCodeCommit": "fd6687665bb01b68b09bf96a44c1356e8f3c2452",
     "completedTaskCount": 25,
     "totalTaskCount": 30,
     "nextTasks": [
       "G25"
     ],
-    "report": "docs/reports/graph-contained-candidate-validation.md",
+    "report": "docs/reports/graph-contained-reopen-validation.md",
     "nextGate": null,
     "milestoneStatus": {
       "M0": "completed",
@@ -1287,7 +1295,7 @@
       "M2": "completed",
       "M3": "in_progress"
     },
-    "reviewNote": "实际Kimi K3两次源码审查approved；真实Loop 3332 测试、9 verifier及12项真实候选/完整容器交付链检查通过。G25候选容器限定阶段，任意崩溃恢复/G15链未准入。"
+    "reviewNote": "实际Kimi K3两次有效审查approved；真实Loop 3368 测试通过；报告目录缺失导致首轮9/10检查通过，补验Loop成功并以哈希确认原证据有效，最终满足10类验证。单动作journal重建限定阶段，G25整体/G15整图恢复未准入。"
   },
   "decisionGates": [
     {

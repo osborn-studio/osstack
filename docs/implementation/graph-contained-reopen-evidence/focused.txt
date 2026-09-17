@@ -1,0 +1,51 @@
+$ vitest run src/graph-contained-recovery.test.ts src/graph-verification.test.ts src/graph-reconciler.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-contained-recovery.test.ts (32 tests) 1145ms
+osstack: retaining write lease graph-action:28010e1f8787b8a5ba0590451c41b07aa9e2629c25f6172e36382bb711569629: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:c97f6dd34b99ab0a28a39312f7e12d375b285f6c4cf4fb37192b87493177e110: Error: adapter result or execution unconfirmed
+ ✓ src/graph-verification.test.ts (36 tests) 137431ms
+   ✓ restores the exact verified candidate into independent repositories and rejects reviewer writes  2224ms
+   ✓ rejects wrong manifest and reviewer identity before restoring or invoking  815ms
+   ✓ persists actual stopped exit evidence and rejects tampering/replay  3635ms
+   ✓ keeps unknown stop separate from stopped malformed review and valid changes_requested  5380ms
+   ✓ runs real registered command and independent G04 review concurrently with an observable two-way barrier  6210ms
+   ✓ rejects revoke during adapter availability before actual invocation  2018ms
+   ✓ rejects mutate during adapter availability before actual invocation  1942ms
+   ✓ snapshots callback/data replacement and rejects live revocation after preparation awaits  3295ms
+   ✓ rejects mutation during restore before accepting any workspace baseline  1690ms
+   ✓ releases preparation lease if authority is revoked while acquiring it  985ms
+   ✓ uses exact allowlisted exits, refusing model pass claims and unregistered commands  9727ms
+   ✓ does not accept review done as executor stop proof through the actual broker  2173ms
+   ✓ classifies stopped malformed output and reviewer filesystem mutation without a code-failure result  7975ms
+   ✓ rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation  870ms
+   ✓ snapshots executor evidence before asynchronous verification and rechecks authority afterward  6133ms
+   ✓ rejects actual successful command that mutates candidate: printf malicious > file  4059ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file; printf malicious > file  4034ms
+   ✓ rejects actual successful command that mutates candidate: chmod +x file  3892ms
+   ✓ rejects actual successful command that mutates candidate: chmod 600 file  3742ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file  4509ms
+   ✓ rejects actual successful command that mutates candidate: printf staged > file; git add file; printf candidate > file  4142ms
+   ✓ rejects actual successful command that mutates candidate: git -c user.name=test -c user.email=test@invalid commit --allow-empty -qm malicious  4196ms
+   ✓ allocates distinct actual review sessions on explicit retry and persists prompt receipts  5698ms
+   ✓ rejects an oversized envelope at the storage boundary before publishing any file  3471ms
+   ✓ requires an actual invocation receipt and strips supplied writer context on every invocation  3778ms
+   ✓ validates all new receipts when loading digest-consistent evidence  3549ms
+   ✓ allows untracked build outputs from successful actual acceptance execution  4086ms
+   ✓ confirms ordinary failing tests with escape-heavy and multibyte captured output  3722ms
+   ✓ settles an oversized structured review as a bounded contract failure instead of unknown  3694ms
+   ✓ binds actual contained tests exit 0 to candidate/image/ledger without POSIX evidence  4362ms
+   ✓ binds actual contained tests exit 1 to candidate/image/ledger without POSIX evidence  3857ms
+   ✓ binds actual contained tests exit 42 to candidate/image/ledger without POSIX evidence  3502ms
+   ✓ binds actual contained tests exit 7 to candidate/image/ledger without POSIX evidence  3816ms
+   ✓ rejects cross-candidate, image, generation, invocation and container receipt substitution  3830ms
+   ✓ retains admission and seals replay after contained DELETE acknowledgement loss  2377ms
+   ✓ settles contained cancellation only after durable removal and prevents replay  4040ms
+ ✓ src/graph-reconciler.test.ts (23 tests) 640ms
+
+ Test Files  3 passed (3)
+      Tests  91 passed (91)
+   Start at  16:09:00
+   Duration  141.27s (transform 742ms, setup 18ms, collect 1.64s, tests 139.22s, environment 0ms, prepare 107ms)
+

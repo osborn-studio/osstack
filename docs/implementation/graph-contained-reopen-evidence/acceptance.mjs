@@ -1,0 +1,19 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+const root = "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation";
+const evidence = "/Volumes/AIMATE_WORK/tmp/g25-reopen";
+process.env.OSSTACK_HOME = evidence + '/acceptance-home';
+process.env.TMPDIR = evidence;
+process.env.OSSTACK_UPDATE_CHECK = '0';
+await mkdir(process.env.OSSTACK_HOME, {recursive: true});
+const { LoopEngine } = await import(root + '/packages/loop/dist/index.js');
+const runner = 'node ' + evidence + '/acceptance-command.mjs ';
+const engine = new LoopEngine({ loopId: 'G25-contained-reopen-acceptance-1', workspacePath: root,
+ sources: [], inputTasks: [{task_id:'G25-contained-reopen-acceptance-1', capability:'code.test', source:'manual', priority:100, prompt:'Verify G25 contained executor without making source changes.'}],
+ useWorktree:false, skipCompletedTasks:false, maxIterations:1, commandTimeoutMs:900000, outputLimit:12000,
+ stateFilePath: evidence + '/acceptance-LOOP-STATE.json', markdownPath:evidence + '/acceptance-STATE.md',
+ policyGate: async ({workspacePath}) => workspacePath === root ? {allow:true} : {allow:false,reason:'scope mismatch'},
+ executeCommand: runner + 'full-tests', verifyCommands: ['typecheck','schemas','kernel','functional','startup','matrix','contained','candidate','reopen','whitespace'].map(name => runner + name),
+});
+const result = await engine.runOnce(); await writeFile(evidence + '/acceptance-result.json', JSON.stringify(result,null,2)+'\n');
+console.log(JSON.stringify({completedTasks:result.completedTasks, events:result.events.filter(x=>x.type.includes('verify')||x.type==='loop.stopped')}));
+process.exitCode = result.completedTasks.length === 1 && result.completedTasks[0].outcome === 'success' ? 0 : 1;

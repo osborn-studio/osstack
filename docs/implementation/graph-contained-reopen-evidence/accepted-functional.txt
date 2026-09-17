@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "admitted": false,
+  "node": "v26.5.0",
+  "versions": {
+    "langgraph": "1.4.15",
+    "langgraph-checkpoint": "1.1.5",
+    "core": "1.2.11"
+  },
+  "assertions": 56,
+  "failedAssertions": [],
+  "experiments": 42,
+  "processes": 96,
+  "actualSigkills": 26,
+  "cleaned": true,
+  "evidence": "/Volumes/AIMATE_WORK/tmp/g25-reopen/osstack-graph-c2-evidence-gnbNH2"
+}

@@ -1,0 +1,6 @@
+0-loop: PASS (112 tests), seed=250921
+0-agents: PASS (36 tests), seed=250921
+0-core: PASS (69 tests), seed=250921
+0-cli: PASS (260 tests), seed=250921
+1-cli: PASS (4 tests), seed=250922
+{"passed":true,"output":"/Volumes/AIMATE_WORK/tmp/g25-reopen/matrix.json","runs":5}

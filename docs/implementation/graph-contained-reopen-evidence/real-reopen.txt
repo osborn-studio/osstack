@@ -1,0 +1,14 @@
+$ vitest run src/graph-contained-recovery.test.ts -t 'reopens held|fresh host stops|missing stop receipt' --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-contained-recovery.test.ts (32 tests | 29 skipped) 2808ms
+   ✓ reopens held unknown action after DB restart and lease expiry without outcome inference or replay  1282ms
+   ✓ missing stop receipt leaves physical and business outcome unknown after restart  640ms
+   ✓ fresh host stops an exactly journaled orphan after old stop permission failed  885ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed | 29 skipped (32)
+   Start at  16:11:20
+   Duration  4.43s (transform 874ms, setup 13ms, collect 1.47s, tests 2.81s, environment 0ms, prepare 37ms)
+
