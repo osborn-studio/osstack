@@ -71,14 +71,10 @@ export function registerContainedTests(options: GraphContainedTestOptions, image
     if (observed.get(evidence.identity.invocationId) !== verificationCanonical(evidence)) throw Error('CONTAINED_ACTUAL_INVOCATION_REQUIRED');
   } };
 }
-/** Validate the durable host envelope; this does not itself authorize recovery. */
-export function validateContainedTestEvidence(value: unknown, binding: VerificationBinding, effectKey: string, command: string, contentDigest: string | undefined): GraphContainedTestEvidence {
-  const v = verificationObject(value, ['identity', 'result']);
-  const identity = verificationObject(v.identity, ['scope', 'graphRunId', 'generation', 'effectKey', 'invocationId', 'version', 'candidateRevision', 'artifactDigest', 'command', 'image']);
+/** Shared identity validation for live envelopes and host-only journal reopening. */
+export function validateContainedTestIdentity(value: unknown, binding: VerificationBinding, effectKey: string, command: string, contentDigest: string | undefined): GraphContainedTestEvidence['identity'] {
+  const identity = verificationObject(value, ['scope', 'graphRunId', 'generation', 'effectKey', 'invocationId', 'version', 'candidateRevision', 'artifactDigest', 'command', 'image']);
   const image = verificationObject(identity.image, ['version', 'daemonId', 'baseImageId', 'imageId', 'contentDigest', 'archiveDigest', 'workingDirectory']);
-  const result = verificationObject(v.result, ['exitCode', 'output', 'cancelled', 'evidence', 'stopReceipt']);
-  const receipt = verificationObject(result.stopReceipt, ['version', 'kind', 'launch', 'confirmedAt']);
-  const launch = verificationObject(receipt.launch, ['version', 'invocationId', 'specDigest', 'daemonId', 'containerId', 'nonce']);
   const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
   if (identity.version !== 1 || identity.graphRunId !== binding.graphRunId || verificationCanonical(identity.scope) !== verificationCanonical(binding.scope)
     || identity.effectKey !== effectKey || !Number.isSafeInteger(identity.generation) || (identity.generation as number) < 1
@@ -88,6 +84,17 @@ export function validateContainedTestEvidence(value: unknown, binding: Verificat
     || ![image.contentDigest, image.archiveDigest].every(v => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v))
     || ![image.baseImageId, image.imageId].every(v => typeof v === 'string' && /^sha256:[a-f0-9]{64}$/.test(v))
     || typeof image.workingDirectory !== 'string' || !image.workingDirectory.startsWith('/osstack-candidate-') || !uuid.test(image.workingDirectory.slice(19))) throw Error('CONTAINED_EVIDENCE_BINDING');
+  return value as GraphContainedTestEvidence['identity'];
+}
+/** Validate the durable host envelope; this does not itself authorize recovery. */
+export function validateContainedTestEvidence(value: unknown, binding: VerificationBinding, effectKey: string, command: string, contentDigest: string | undefined): GraphContainedTestEvidence {
+  const v = verificationObject(value, ['identity', 'result']);
+  const identity = validateContainedTestIdentity(v.identity, binding, effectKey, command, contentDigest);
+  const image = identity.image;
+  const result = verificationObject(v.result, ['exitCode', 'output', 'cancelled', 'evidence', 'stopReceipt']);
+  const receipt = verificationObject(result.stopReceipt, ['version', 'kind', 'launch', 'confirmedAt']);
+  const launch = verificationObject(receipt.launch, ['version', 'invocationId', 'specDigest', 'daemonId', 'containerId', 'nonce']);
+  const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
   const specDigest = sha(JSON.stringify({ image: image.imageId, command, binding: sha(verificationCanonical(identity)), policy: 1, workingDirectory: image.workingDirectory }));
   if (receipt.version !== 1 || receipt.kind !== 'docker_removed' || !Number.isSafeInteger(receipt.confirmedAt) || (receipt.confirmedAt as number) <= 0
     || launch.version !== 1 || launch.invocationId !== identity.invocationId || launch.daemonId !== image.daemonId || launch.specDigest !== specDigest

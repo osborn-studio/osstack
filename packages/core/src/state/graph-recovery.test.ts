@@ -7,7 +7,7 @@ import type { StartGraphRequest } from "@osstack/protocol";
 import { openDb } from "./db.js";
 import { GraphRunStore, type GraphRun, type GraphProgramVersion } from "./graph-runs.js";
 import { GraphActionStore } from "./graph-actions.js";
-import { GraphRecoveryStore, type GraphRecoverySnapshot, type GraphRecoveryProof, type GraphRecoveryDecision } from "./graph-recovery.js";
+import { GraphAdmissionStore, GraphRecoveryStore, type GraphRecoverySnapshot, type GraphRecoveryProof, type GraphRecoveryDecision } from "./graph-recovery.js";
 
 const scope = { schemaVersion: 1 as const, tenantId: "t", principalId: "p", workspaceId: "w" };
 const request: StartGraphRequest = { schemaVersion: 1, kind: "start", scope, idempotencyKey: "start", inputArtifactRef: "input",
@@ -257,3 +257,21 @@ it.each(['missing', 'wrong-owner', 'wrong-identity', 'wrong-ref', 'wrong-time', 
     else expect(recover).toThrow('WORKER_PROOF_MISMATCH');
   },
 );
+
+it('inspects admission with an expired full fence without granting settlement', () => {
+  expect(() => recovery.inspectAdmission(fence(201), key)).toThrow('RECOVERY_ADMISSION_BINDING');
+  new GraphAdmissionStore(db).hold(key, 121);
+  const value = recovery.inspectAdmission(fence(201), key);
+  expect(value.admission).toEqual({ generation: 1, owner: 'worker', heldAt: 121, releasedAt: null });
+  expect(value.snapshot.action?.effectKey).toBe(key); expect(value.snapshot.run.revision).toBe(run.revision);
+  new GraphAdmissionStore(db).released(key, 202);
+  expect(recovery.inspectAdmission(fence(203), key).admission.releasedAt).toBe(202);
+  expect(db.prepare('SELECT count(*) AS n FROM graph_recovery_decisions').get()).toEqual({ n: 0 });
+});
+it.each(['owner', 'revision', 'scope'])('rejects %s mismatch in admission inspection', field => {
+  new GraphAdmissionStore(db).hold(key, 121); const input = fence(201);
+  if (field === 'owner') input.expectedOwner = 'other';
+  else if (field === 'revision') input.expectedRevision++;
+  else input.scope = { ...scope, tenantId: 'other' };
+  expect(() => recovery.inspectAdmission(input, key)).toThrow();
+});

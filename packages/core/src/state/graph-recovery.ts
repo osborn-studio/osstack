@@ -78,6 +78,21 @@ export class GraphAdmissionStore {
 
 export class GraphRecoveryStore {
   constructor(private readonly db: Database.Database, private readonly verifyProof: GraphRecoveryVerifier) {}
+  /** Read the action, its admission and historical worker owner under one fence.
+   * Expiry is permitted for administrative inspection; no recovery is authorized. */
+  inspectAdmission(fence: GraphRunFence, effectKey: string) {
+    const input = graphRunFenceSchema.parse(GraphJsonValue.parse(fence));
+    return this.transaction(() => {
+      const snapshot = this.capture(input, effectKey);
+      const row = this.db.prepare(`SELECT a.graph_run_id,a.generation,a.owner,a.held_at,a.released_at,l.owner AS lease_owner
+        FROM graph_action_admissions a LEFT JOIN graph_worker_leases l
+        ON l.graph_run_id=a.graph_run_id AND l.generation=a.generation WHERE a.effect_key=?`)
+        .get(effectKey) as { graph_run_id: string; generation: number; owner: string; held_at: number; released_at: number | null; lease_owner: string | null } | undefined;
+      if (!row || row.graph_run_id !== snapshot.run.graphRunId || row.generation !== snapshot.action!.generation
+        || row.owner !== row.lease_owner) fail("RECOVERY_ADMISSION_BINDING");
+      return { snapshot, admission: { generation: row!.generation, owner: row!.owner, heldAt: row!.held_at, releasedAt: row!.released_at } };
+    });
+  }
   private transaction<T>(fn: () => T): T {
     if (this.db.inTransaction) fail("Recovery requires its own BEGIN IMMEDIATE transaction");
     preflightDiskSpace(this.db.name);
