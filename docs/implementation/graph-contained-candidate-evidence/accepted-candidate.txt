@@ -1,0 +1,36 @@
+$ vitest run src/graph-verification.test.ts src/graph-delivery.integration.test.ts -t 'contained|substitution|actual child|repairs from|host bounded|finite branch|negative quality' --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-verification.test.ts (36 tests | 30 skipped) 18329ms
+   ✓ binds actual contained tests exit 0 to candidate/image/ledger without POSIX evidence  3098ms
+   ✓ binds actual contained tests exit 1 to candidate/image/ledger without POSIX evidence  3016ms
+   ✓ binds actual contained tests exit 42 to candidate/image/ledger without POSIX evidence  3023ms
+   ✓ binds actual contained tests exit 7 to candidate/image/ledger without POSIX evidence  2990ms
+   ✓ rejects cross-candidate, image, generation, invocation and container receipt substitution  3165ms
+   ✓ settles contained cancellation only after durable removal and prevents replay  3037ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-candidate/g21-delivery-yF2N3y/delivery/writer-0'...
+HEAD is now at f680dd7 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-candidate/g21-delivery-HTwMwS/delivery/writer-0'...
+HEAD is now at f55786a base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-candidate/g21-delivery-NEjsan/delivery/writer-0'...
+HEAD is now at 9f9f5fb base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-candidate/g21-delivery-pu57GX/delivery/writer-0'...
+HEAD is now at ded6519 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-candidate/g21-delivery-jD0qyH/delivery/writer-0'...
+HEAD is now at 27659ee base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-candidate/g21-delivery-8fUbtx/delivery/writer-0'...
+HEAD is now at 7701871 base
+ ✓ src/graph-delivery.integration.test.ts (6 tests) 40963ms
+   ✓ actual child delivery succeeds with review finishing last  5378ms
+   ✓ actual child delivery succeeds with tests finishing last  5363ms
+   ✓ repairs from immutable complete join through physical child stop and G15 resume  10773ms
+   ✓ host bounded retry returns only final confirmed task result and fresh independent workspace  7032ms
+   ✓ finite branch failure stops without a failed task RETURN or poisoned join  7034ms
+   ✓ negative quality at epoch cap stops  5383ms
+
+ Test Files  2 passed (2)
+      Tests  12 passed | 30 skipped (42)
+   Start at  19:48:56
+   Duration  60.41s (transform 441ms, setup 8ms, collect 918ms, tests 59.29s, environment 0ms, prepare 49ms)
+

@@ -1,0 +1,132 @@
+[
+  {
+    "event_id": "kimi-code-2:0",
+    "seq": 0,
+    "run_id": "kimi-code-2",
+    "session_id": "kimi-code-2",
+    "created_at": 1789612133.003,
+    "terminal": false,
+    "type": "run.started",
+    "payload": {
+      "status": "running",
+      "controls": {
+        "cancel": true,
+        "approval_pending": false,
+        "clarify_pending": false,
+        "queue": false,
+        "goal": false
+      }
+    }
+  },
+  {
+    "event_id": "kimi-code-2:1",
+    "seq": 1,
+    "run_id": "kimi-code-2",
+    "session_id": "kimi-code-2",
+    "created_at": 1789612133.005,
+    "terminal": false,
+    "type": "progress",
+    "payload": {
+      "phase": "kimi.review.start",
+      "detail": "Starting bounded no-tool Kimi review"
+    }
+  },
+  {
+    "event_id": "kimi-code-2:2",
+    "seq": 2,
+    "run_id": "kimi-code-2",
+    "session_id": "kimi-code-2",
+    "created_at": 1789612515.3,
+    "terminal": true,
+    "type": "done",
+    "payload": {
+      "status": "completed",
+      "last_seq": 1,
+      "result_summary": "approved: 3 finding(s)",
+      "review": {
+        "schema_version": 1,
+        "verdict": "approved",
+        "risk": "read_only",
+        "markdown": "# Review\n\nAdversarial audit of the actual G25 bounded-slice code (contained image build, contained command executor, Graph broker contained path, verification store). All three criteria pass on source evidence; no blocking security or correctness defect found.\n\n## Binding (pass)\n- Candidate bytes are exported from immutable Git objects (`git cat-file blob` with sha1 re-verification, regular files 100644/100755 only, symlinks rejected via `CONTAINED_CANDIDATE_REGULAR_FILES_REQUIRED`), not from mutable working-tree files; `assertExactCandidateFiles` runs before and after image preparation.\n- `contentDigest` (sha256 of sorted [path, mode, sha(bytes)]) is carried into image labels, verified post-build (`CONTAINED_IMAGE_BINDING_MISMATCH`), stored as `containedContentDigest` in candidate identity, and re-checked in `validateContainedTestEvidence`.\n- `bindingData` (canonical identity: scope, graphRunId, generation, effectKey, invocationId, candidateRevision, artifactDigest, command, image receipt) is durably published to `binding.json` before any Docker create; its sha256 equals `bindingRef`, which is folded into `specDigest`; launch record and stop receipt both bind `specDigest`, `daemonId`, `containerId`, nonce. `registerContainedTests.verify` requires the persisted evidence to byte-match the host's own observed evidence (`CONTAINED_ACTUAL_INVOCATION_REQUIRED`), so worker/model receipts cannot substitute identity. Effect key comes from the ledger's actual running row and is recomputed via `computeGraphEffectKey`.\n\n## Isolation (pass)\n- Build context is a host-written USTAR (regular files only, no links/devices/PAX, path/mode/size allowlists, 32MiB/10000-file caps). The Dockerfile is host-generated (`FROM <pinned digest>`, `COPY candidate/`, `WORKDIR`); a candidate-supplied `Dockerfile` is copied as inert data and never executed (test proves `RUN malicious` inert). Base image pinned by digest with `pull:false`, `networkmode:none`, and pre-build rejection of OnBuild triggers/Volumes; built image re-inspected for OnBuild/Volumes/WorkingDir/labels.\n- Execution: `NetworkMode none`, `NetworkDisabled`, readonly rootfs, `CapDrop ALL`, `CapAdd` must be empty, `no-new-privileges`, user 65534, zero mounts, bounded tmpfs/pids/memory/cpu/log, no restart, no AutoRemove. `inspect()` re-verifies the entire scope before start, during polling, and before DELETE; any drift throws `CONTAINED_SCOPE_MISMATCH` before start or deletion. Docker access is the explicit local socket only (no DOCKER_HOST/context/credentials), API version pinned, responses bounded to 1MiB with timeout, log frames strictly parsed and output capped.\n\n## Settlement (pass)\n- Stop is independent of business result: `stop()` requires DELETE 204 plus a subsequent 404, writes a durable `stopped.json` receipt (atomic link, fsync), and re-verifies via `confirmStopped` (fresh daemon identity check + 404); any failure yields `{stopped:false}`, never inferred absence.\n- Valid fail exit codes settle `passed:false` (exit 1 → confirmed/false; allowlisted 42 → confirmed/true; unregistered 7 → non-retryable `INTERNAL_ERROR`, never success, never passed).\n- Lost DELETE ACK retains admission: no receipt written, outcome `unknown`, replay sealed (EEXIST), admission row stays unreleased (test asserts `released_at: null`). Abort after observed exit settles only after durable removal as a non-retryable cancelled failure; the unconditional `signal.aborted → verificationFailure` in persist plus the broker's `normalTestsExit` `!signal.aborted` guard make success-on-abort unreachable. Authorization is synchronous-only and rechecked at every effect boundary (broker fence, contained authorize mapping, persist/publish re-checks of ledger effect and candidate identity).\n\n## Non-blocking observations\n- Crash between container create and `launch.json` publication leaks an unstarted container (AutoRemove false) with no recovery in this slice; fail-closed (replay blocked by EEXIST), and worker-stop/recovery is explicitly deferred.\n- `prepareGraphContainedImage` decodes blobs as UTF-8; non-UTF-8 candidate files are rejected by the blob-sha mismatch (fail closed), making the contained path effectively text-only.\n- The broker's 1s `confirmStopped` race can conservatively convert a slow-daemon stop confirmation into a retained admission; the failure direction is safe (unknown, never success).\n\nDeterministic evidence supplied (34 agents tests, 7 CLI contained tests, real Linux image build) is consistent with the code paths reviewed.",
+        "judgments": [
+          {
+            "id": "binding",
+            "pass": true,
+            "severity": "error",
+            "summary": "Candidate bytes (git-object export with sha1 re-verify + contentDigest), pinned base/built image (digest, labels, WorkingDir re-inspection), ledger effectKey (actual running row, recomputed), generation (fenced broker binding), invocationId (journal EEXIST anti-replay) and containerId (durable launch + receipt + specDigest) are cryptographically linked; persisted evidence must byte-match host-observed evidence, so worker/model identity is never trusted."
+          },
+          {
+            "id": "isolation",
+            "pass": true,
+            "severity": "error",
+            "summary": "Image build executes only host-generated FROM/COPY/WORKDIR against a digest-pinned, OnBuild/Volume-inspected base with pull:false and networkmode:none; candidate Dockerfiles are inert data and the tar context excludes links/devices. Execution preserves containment (network none, readonly rootfs, all caps dropped, no-new-privileges, nobody user, no mounts, bounded resources) with full scope re-verification before start and before delete; Docker access is the explicit local socket with bounded, timed responses."
+          },
+          {
+            "id": "settlement",
+            "pass": true,
+            "severity": "error",
+            "summary": "Container stop is independently proven (DELETE 204 + 404 + durable receipt + re-verify) and separate from business outcome; fail-listed exits settle passed=false, unregistered exits settle non-retryable failure, lost DELETE ACK retains admission with replay sealed, and abort-after-exit can only settle as cancelled failure, never success; synchronous authorization and ledger fence are rechecked at every effect and persistence boundary."
+          }
+        ],
+        "findings": [
+          {
+            "rule_id": "g25.orphan.create-crash-window",
+            "severity": "info",
+            "message": "A host crash between POST /containers/create and durable launch.json publication leaves an unstarted container (AutoRemove=false) with no journal handle; replay is blocked by EEXIST so it fails closed, and worker-stop/recovery is explicitly deferred to the next G25 slice.",
+            "file": "packages/agents/src/contained-command.ts",
+            "evidence": "execute(): create call precedes durable(join(dir,'launch.json'),launch); mkdirSync(dir) without recursive makes any retry throw EEXIST.",
+            "fingerprint": "1a815b037b3c228acde5f608cf8e8515895cdecbf207cd0304f6e01117101bc8"
+          },
+          {
+            "rule_id": "g25.image.utf8-blob-decoding",
+            "severity": "info",
+            "message": "prepareGraphContainedImage reads blobs via execFileSync with utf8 encoding; non-UTF-8 candidate files are rejected by the blob-sha1 mismatch (fail closed) rather than supported, making contained candidates effectively text-only regular files.",
+            "file": "packages/cli/src/graph-contained-tests.ts",
+            "evidence": "git('cat-file','blob',sha) returns a utf8 string; sha1 over re-encoded bytes mismatches for invalid UTF-8, throwing CONTAINED_CANDIDATE_BLOB_MISMATCH.",
+            "fingerprint": "8c5ca83f5d96cfcc35557a7bff172c1d5394bbe9484dd9c19fa3fc0929851a5b"
+          },
+          {
+            "rule_id": "g25.broker.stop-confirm-race",
+            "severity": "info",
+            "message": "The broker races confirmStopped against a 1000ms timeout; a slow daemon turns a true stop into {stopped:false} -> 'external stop unconfirmed' -> unknown with admission retained. The failure direction is conservative (never success), but may cause spurious reconciliation holds under load.",
+            "file": "packages/cli/src/graph-action-broker.ts",
+            "evidence": "Promise.race([wrapper.confirmStopped!(invocationRunId), setTimeout(()=>resolve({stopped:false}),1000)]).",
+            "fingerprint": "3275590d9274e85f48ead75e8b9736b4f8ed22dadf1a5466f5ec49b8d1ce4697"
+          }
+        ],
+        "recommended_actions": [],
+        "evidence_refs": [],
+        "runtime_identity": {
+          "adapter_id": "kimi-code",
+          "adapter_version": "0.29.1",
+          "auth_mode": "subprocess/login-reuse",
+          "provider_id": "kimi",
+          "model_id": "kimi-code/k3",
+          "agent_profile": "osstack-reviewer",
+          "evidence_source": "reported",
+          "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+        }
+      },
+      "evaluation_judgments": [
+        {
+          "id": "binding",
+          "pass": true,
+          "severity": "error",
+          "summary": "Candidate bytes (git-object export with sha1 re-verify + contentDigest), pinned base/built image (digest, labels, WorkingDir re-inspection), ledger effectKey (actual running row, recomputed), generation (fenced broker binding), invocationId (journal EEXIST anti-replay) and containerId (durable launch + receipt + specDigest) are cryptographically linked; persisted evidence must byte-match host-observed evidence, so worker/model identity is never trusted."
+        },
+        {
+          "id": "isolation",
+          "pass": true,
+          "severity": "error",
+          "summary": "Image build executes only host-generated FROM/COPY/WORKDIR against a digest-pinned, OnBuild/Volume-inspected base with pull:false and networkmode:none; candidate Dockerfiles are inert data and the tar context excludes links/devices. Execution preserves containment (network none, readonly rootfs, all caps dropped, no-new-privileges, nobody user, no mounts, bounded resources) with full scope re-verification before start and before delete; Docker access is the explicit local socket with bounded, timed responses."
+        },
+        {
+          "id": "settlement",
+          "pass": true,
+          "severity": "error",
+          "summary": "Container stop is independently proven (DELETE 204 + 404 + durable receipt + re-verify) and separate from business outcome; fail-listed exits settle passed=false, unregistered exits settle non-retryable failure, lost DELETE ACK retains admission with replay sealed, and abort-after-exit can only settle as cancelled failure, never success; synchronous authorization and ledger fence are rechecked at every effect and persistence boundary."
+        }
+      ]
+    }
+  }
+]

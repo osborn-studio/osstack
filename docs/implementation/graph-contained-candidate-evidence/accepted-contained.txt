@@ -1,0 +1,7 @@
+PASS actual Loop candidate seam executes fixed image command and fresh host verifies stop
+PASS SIGKILL supervisor; fresh process removes live PID namespace with detached session child
+PASS paused original supervisor cannot start after fresh host removes recorded container
+PASS post-create crash stays unknown without durable completion
+PASS post-delete crash stays unknown without durable completion
+PASS abort removes the exact live scope and persists independently verifiable stop
+{"passed":true,"checks":6,"output":"/Volumes/AIMATE_WORK/tmp/g25-candidate/real-final.json"}

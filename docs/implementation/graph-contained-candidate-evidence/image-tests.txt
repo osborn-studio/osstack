@@ -1,0 +1,12 @@
+$ vitest run src/contained-image.test.ts src/contained-command.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/agents
+
+ ✓ src/contained-command.test.ts (18 tests) 300ms
+ ✓ src/contained-image.test.ts (16 tests) 32ms
+
+ Test Files  2 passed (2)
+      Tests  34 passed (34)
+   Start at  19:17:08
+   Duration  715ms (transform 93ms, setup 0ms, collect 131ms, tests 332ms, environment 0ms, prepare 70ms)
+

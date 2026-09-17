@@ -688,7 +688,7 @@ flowchart TD
 
 **验证：** 新 `node scripts/verify-graph-runtime.mjs` 与 graph fault/concurrency 集成测试，输出 JSON 证据和固定 seed。
 
-**阶段进展：** 持久进程诊断、首次启动失败的 G15 接管、受控容器命令及跨 supervisor 停止证明已分阶段验收。候选/镜像绑定、graph worker 停止、账本/G15与资源释放接线、artifact 锁管理恢复及完整故障子窗口仍待完成；见 [G25 受控执行器报告](../reports/graph-contained-executor-validation.md)与[最新接续上下文](2026-09-16-graph-contained-next-context.md)。
+**阶段进展：** 持久进程诊断、首次启动失败的 G15 接管、受控容器命令及跨 supervisor 停止证明已分阶段验收。本轮进一步完成冻结候选/镜像绑定、Graph受控tests与完整join/repair/stop；graph worker停止、跨host账本/G15与精确资源释放、artifact锁管理恢复及完整故障子窗口仍待完成。见 [G25 候选容器报告](../reports/graph-contained-candidate-validation.md)与[最新接续上下文](2026-09-16-graph-candidate-next-context.md)。
 
 ### G26 · 验证旧模式与回滚共存
 
@@ -841,4 +841,4 @@ graph worker 启动、冷/热执行、checkpoint/IPC 和并行工作区准备成
 
 ## 13. 下一轮实施的明确起点
 
-G00–G24 已完成，**25/30；C7 本地限定准入通过，M0–M2 完成，M3 实施中**。G25 已新增受控容器执行器与跨 supervisor 停止证明，实际 Kimi K3 最终复审通过；按 [G25 最新接续上下文](2026-09-16-graph-contained-next-context.md) 继续候选/镜像绑定、graph worker 停止及账本/G15恢复接线、artifact锁管理恢复与完整故障矩阵，随后做兼容、发行、性能与试点。
+G00–G24 已完成，**25/30；C7 本地限定准入通过，M0–M2 完成，M3 实施中**。G25 已完成受控容器执行器、候选/镜像绑定及完整Graph tests汇合，实际Kimi K3最终复审通过；按 [G25 最新接续上下文](2026-09-16-graph-candidate-next-context.md) 继续graph worker停止、跨host账本/G15与精确资源释放、artifact锁管理恢复和完整故障矩阵，随后做兼容、发行、性能与试点。

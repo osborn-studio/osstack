@@ -1122,7 +1122,20 @@
         "packages/agents/src/contained-command.test.ts",
         "packages/agents/src/contained-docker.ts",
         "scripts/verify-contained-executor.mjs",
-        "docs/reports/graph-contained-executor-validation.md"
+        "docs/reports/graph-contained-executor-validation.md",
+        "packages/agents/src/contained.ts",
+        "packages/agents/src/index.ts",
+        "packages/cli/src/graph-action-broker.ts",
+        "packages/cli/src/graph-delivery.integration.test.ts",
+        "packages/cli/src/graph-delivery.ts",
+        "packages/cli/src/graph-verification-join.ts",
+        "packages/cli/src/graph-verification-store.ts",
+        "packages/cli/src/graph-verification.test.ts",
+        "packages/cli/src/graph-verification.ts",
+        "packages/agents/src/contained-image.test.ts",
+        "packages/agents/src/contained-image.ts",
+        "packages/cli/src/graph-contained-tests.ts",
+        "docs/reports/graph-contained-candidate-validation.md"
       ],
       "acceptance": [
         "逐项覆盖 F01–F12 确定性窗口，再做固定 seed 的重复运行。",
@@ -1137,7 +1150,7 @@
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "第三阶段已验收：显式启用的固定镜像命令执行器、跨supervisor精确容器移除回执与迟到启动拒绝，含实际Linux/Docker重启实验。Graph候选/镜像内容绑定、worker停止、账本/G15对账及资源释放、artifact锁管理恢复和完整矩阵仍待完成。",
+      "progressNote": "第四阶段已验收：冻结候选精确内容→固定镜像→G04/Graph broker受控测试→持久回执→完整join/repair/stop，含真实Linux容器链。worker停止与跨host账本/G15对账、精确资源释放、artifact锁管理恢复及完整矩阵仍待完成。",
       "evidence": [
         "docs/reports/graph-runtime-fault-validation.md",
         "docs/implementation/2026-09-15-graph-fault-next-context.md",
@@ -1147,7 +1160,10 @@
         "docs/implementation/graph-unstarted-recovery-evidence/admission.json",
         "docs/reports/graph-contained-executor-validation.md",
         "docs/implementation/2026-09-16-graph-contained-next-context.md",
-        "docs/implementation/graph-contained-executor-evidence/admission.json"
+        "docs/implementation/graph-contained-executor-evidence/admission.json",
+        "docs/reports/graph-contained-candidate-validation.md",
+        "docs/implementation/2026-09-16-graph-candidate-next-context.md",
+        "docs/implementation/graph-contained-candidate-evidence/admission.json"
       ]
     },
     {
@@ -1257,13 +1273,13 @@
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "8d16b37be20187624fafd7bcc275329dc70bea98",
+    "acceptedCodeCommit": "dc89a1a6851694887e7dde5a49850dc62b1ab668",
     "completedTaskCount": 25,
     "totalTaskCount": 30,
     "nextTasks": [
       "G25"
     ],
-    "report": "docs/reports/graph-contained-executor-validation.md",
+    "report": "docs/reports/graph-contained-candidate-validation.md",
     "nextGate": null,
     "milestoneStatus": {
       "M0": "completed",
@@ -1271,7 +1287,7 @@
       "M2": "completed",
       "M3": "in_progress"
     },
-    "reviewNote": "实际Kimi K3两次源码审查approved；真实Loop全库3307测试与8项verifier通过，含6项Linux容器故障实验。G25受控执行器限定阶段，Graph/G15完整恢复链未准入。"
+    "reviewNote": "实际Kimi K3两次源码审查approved；真实Loop 3332 测试、9 verifier及12项真实候选/完整容器交付链检查通过。G25候选容器限定阶段，任意崩溃恢复/G15链未准入。"
   },
   "decisionGates": [
     {

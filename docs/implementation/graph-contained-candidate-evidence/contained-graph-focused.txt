@@ -1,0 +1,87 @@
+$ vitest run src/graph-verification.test.ts -t 'contained|substitution' --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:1e8ce03c7cb890d3c5e9d6b21f114875325b6d92bc66b10caf66ba7a407159a7: Error: adapter result or execution unconfirmed
+ ❯ src/graph-verification.test.ts (35 tests | 5 failed | 29 skipped) 15725ms
+   ↓ restores the exact verified candidate into independent repositories and rejects reviewer writes
+   ↓ rejects wrong manifest and reviewer identity before restoring or invoking
+   ↓ persists actual stopped exit evidence and rejects tampering/replay
+   ↓ keeps unknown stop separate from stopped malformed review and valid changes_requested
+   ↓ runs real registered command and independent G04 review concurrently with an observable two-way barrier
+   ↓ rejects revoke during adapter availability before actual invocation
+   ↓ rejects mutate during adapter availability before actual invocation
+   ↓ snapshots callback/data replacement and rejects live revocation after preparation awaits
+   ↓ rejects mutation during restore before accepting any workspace baseline
+   ↓ releases preparation lease if authority is revoked while acquiring it
+   ↓ uses exact allowlisted exits, refusing model pass claims and unregistered commands
+   ↓ does not accept review done as executor stop proof through the actual broker
+   ↓ classifies stopped malformed output and reviewer filesystem mutation without a code-failure result
+   ↓ rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation
+   ↓ snapshots executor evidence before asynchronous verification and rechecks authority afterward
+   ↓ rejects actual successful command that mutates candidate: printf malicious > file
+   ↓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file; printf malicious > file
+   ↓ rejects actual successful command that mutates candidate: chmod +x file
+   ↓ rejects actual successful command that mutates candidate: chmod 600 file
+   ↓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file
+   ↓ rejects actual successful command that mutates candidate: printf staged > file; git add file; printf candidate > file
+   ↓ rejects actual successful command that mutates candidate: git -c user.name=test -c user.email=test@invalid commit --allow-empty -qm malicious
+   ↓ allocates distinct actual review sessions on explicit retry and persists prompt receipts
+   ↓ rejects an oversized envelope at the storage boundary before publishing any file
+   ↓ requires an actual invocation receipt and strips supplied writer context on every invocation
+   ↓ validates all new receipts when loading digest-consistent evidence
+   ↓ allows untracked build outputs from successful actual acceptance execution
+   ↓ confirms ordinary failing tests with escape-heavy and multibyte captured output
+   ↓ settles an oversized structured review as a bounded contract failure instead of unknown
+   × binds actual contained tests exit 0 to candidate/image/ledger without POSIX evidence 2903ms
+     → no such column: evidence_ref
+   × binds actual contained tests exit 1 to candidate/image/ledger without POSIX evidence 2772ms
+     → no such column: evidence_ref
+   × binds actual contained tests exit 42 to candidate/image/ledger without POSIX evidence 2774ms
+     → no such column: evidence_ref
+   × binds actual contained tests exit 7 to candidate/image/ledger without POSIX evidence 2761ms
+     → no such column: evidence_ref
+   × rejects cross-candidate, image, generation, invocation and container receipt substitution 2765ms
+     → no such column: evidence_ref
+   ✓ retains admission and seals replay after contained DELETE acknowledgement loss  1750ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-verification.test.ts > binds actual contained tests exit 0 to candidate/image/ledger without POSIX evidence
+ FAIL  src/graph-verification.test.ts > binds actual contained tests exit 1 to candidate/image/ledger without POSIX evidence
+ FAIL  src/graph-verification.test.ts > binds actual contained tests exit 42 to candidate/image/ledger without POSIX evidence
+ FAIL  src/graph-verification.test.ts > binds actual contained tests exit 7 to candidate/image/ledger without POSIX evidence
+SqliteError: no such column: evidence_ref
+ ❯ Database.prepare ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/wrappers.js:5:21
+ ❯ src/graph-verification.test.ts:374:20
+    372|   if (code === 7) expect(response).toMatchObject({ outcome: { state: '…
+    373|   else expect(response).toMatchObject({ outcome: { state: 'confirmed',…
+    374|   const row = f.db.prepare('SELECT evidence_ref, effect_key FROM graph…
+       |                    ^
+    375|   const envelope = await loadGraphVerificationEvidence(f.options.root,…
+    376|   if (process.env['G25_CONTAINED_REPORT_DIR']) await writeFile(join(pr…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  src/graph-verification.test.ts > rejects cross-candidate, image, generation, invocation and container receipt substitution
+SqliteError: no such column: evidence_ref
+ ❯ Database.prepare ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/wrappers.js:5:21
+ ❯ src/graph-verification.test.ts:386:20
+    384| it('rejects cross-candidate, image, generation, invocation and contain…
+    385|   const f = await containedFixture(0); const b = await brokerFixture(f…
+    386|   const row = f.db.prepare('SELECT evidence_ref FROM graph_actions WHE…
+       |                    ^
+    387|   const original = await loadGraphVerificationEvidence(f.options.root,…
+    388|   const { publishGraphVerificationEvidence } = await import('./graph-v…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 1 passed | 29 skipped (35)
+   Start at  19:24:26
+   Duration  16.68s (transform 496ms, setup 8ms, collect 837ms, tests 15.72s, environment 0ms, prepare 29ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.19.0 test: `vitest run src/graph-verification.test.ts -t 'contained|substitution' --maxWorkers=1`
+Exit status 1
