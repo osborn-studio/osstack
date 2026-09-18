@@ -40,8 +40,10 @@ function readBinding(root: string, invocationId: string) {
 
 /** Host-only per-action cleanup port, reconstructible after supervisor restart.
  * Does not execute, settle outcomes, release admission, or prove all workers stopped.
+ * read_only also inspects released admissions, but can never stop an executor.
  * Private journal + trusted daemon/admin remain authority; labels are never searched. */
-export async function reopenGraphContainedTests(db: Database.Database, options: GraphContainedTestOptions, request: ReopenContainedTests) {
+export async function reopenGraphContainedTests(db: Database.Database, options: GraphContainedTestOptions, request: ReopenContainedTests, mode: 'held' | 'read_only' = 'held') {
+  if (mode !== 'held' && mode !== 'read_only') throw Error('CONTAINED_RECOVERY_MODE');
   const fixed = structuredClone({ request, socketPath: options.socketPath, daemonId: options.daemonId,
     baseImageId: options.baseImageId, journalRoot: options.journalRoot });
   const { authorizeRead, authorizeStop } = options;
@@ -53,7 +55,7 @@ export async function reopenGraphContainedTests(db: Database.Database, options: 
   const action = initial.snapshot.action!;
   const prefix = `graph-execution:${input.effectKey}:`;
   const invocationId = action.executionRef?.startsWith(prefix) ? action.executionRef.slice(prefix.length) : '';
-  if (initial.admission.releasedAt !== null || action.action.kind !== 'tests'
+  if ((mode === 'held' && initial.admission.releasedAt !== null) || action.action.kind !== 'tests'
     || action.action.candidateRevision !== binding.candidateRevision || action.action.commandSpecRef !== binding.acceptanceRef
     || action.effect.epoch !== binding.epoch || action.effect.specHash !== binding.specHash
     || binding.graphRunId !== input.fence.graphRunId || verificationCanonical(binding.scope) !== verificationCanonical(input.fence.scope)
@@ -65,7 +67,10 @@ export async function reopenGraphContainedTests(db: Database.Database, options: 
   const initialDigest = sha(verificationCanonical(initial));
   const recheck = (operation: 'read' | 'stop') => {
     authorize(authorizeRead);
-    if (operation === 'stop') authorize(authorizeStop);
+    if (operation === 'stop') {
+      if (mode === 'read_only') throw Error('CONTAINED_INSPECTION_CANNOT_STOP');
+      authorize(authorizeStop);
+    }
     if (sha(verificationCanonical(store.inspectAdmission(input.fence, input.effectKey))) !== initialDigest
       || readBinding(fixed.journalRoot, invocationId).data !== journal.data) throw Error('CONTAINED_RECOVERY_CHANGED');
   };
