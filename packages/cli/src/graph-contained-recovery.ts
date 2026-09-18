@@ -51,11 +51,13 @@ export async function reopenGraphContainedTests(db: Database.Database, options: 
   // This instance cannot commit a recovery decision, even accidentally.
   const store = new GraphRecoveryStore(db, () => { throw Error('CONTAINED_REOPEN_IS_NOT_RECOVERY_AUTHORITY'); });
   authorize(authorizeRead);
-  const initial = store.inspectAdmission(input.fence, input.effectKey);
+  const initial = store.inspectExecutors(input.fence, input.effectKey);
+  const admission = initial.entries.find(entry => entry.action.effectKey === input.effectKey)?.admission;
+  if (!admission) throw Error('RECOVERY_ADMISSION_BINDING');
   const action = initial.snapshot.action!;
   const prefix = `graph-execution:${input.effectKey}:`;
   const invocationId = action.executionRef?.startsWith(prefix) ? action.executionRef.slice(prefix.length) : '';
-  if ((mode === 'held' && initial.admission.releasedAt !== null) || action.action.kind !== 'tests'
+  if ((mode === 'held' && admission.releasedAt !== null) || action.action.kind !== 'tests'
     || action.action.candidateRevision !== binding.candidateRevision || action.action.commandSpecRef !== binding.acceptanceRef
     || action.effect.epoch !== binding.epoch || action.effect.specHash !== binding.specHash
     || binding.graphRunId !== input.fence.graphRunId || verificationCanonical(binding.scope) !== verificationCanonical(input.fence.scope)
@@ -64,15 +66,15 @@ export async function reopenGraphContainedTests(db: Database.Database, options: 
   const identity = validateContainedTestIdentity(journal.identity, binding, input.effectKey, input.command, input.contentDigest);
   if (identity.invocationId !== invocationId || identity.generation !== action.generation
     || identity.image.daemonId !== fixed.daemonId || identity.image.baseImageId !== fixed.baseImageId) throw Error('CONTAINED_LEDGER_BINDING');
-  const initialDigest = sha(verificationCanonical(initial));
   const recheck = (operation: 'read' | 'stop') => {
     authorize(authorizeRead);
     if (operation === 'stop') {
       if (mode === 'read_only') throw Error('CONTAINED_INSPECTION_CANNOT_STOP');
       authorize(authorizeStop);
     }
-    if (sha(verificationCanonical(store.inspectAdmission(input.fence, input.effectKey))) !== initialDigest
-      || readBinding(fixed.journalRoot, invocationId).data !== journal.data) throw Error('CONTAINED_RECOVERY_CHANGED');
+    if (db.inTransaction) store.assertExecutorInventory(initial);
+    else if (store.inspectExecutors(input.fence, input.effectKey).digest !== initial.digest) throw Error('CONTAINED_RECOVERY_CHANGED');
+    if (readBinding(fixed.journalRoot, invocationId).data !== journal.data) throw Error('CONTAINED_RECOVERY_CHANGED');
   };
   const executor = await createContainedCommandExecutor({ socketPath: fixed.socketPath, daemonId: fixed.daemonId,
     journalRoot: fixed.journalRoot, imageId: identity.image.imageId, workingDirectory: identity.image.workingDirectory,
@@ -86,5 +88,12 @@ export async function reopenGraphContainedTests(db: Database.Database, options: 
     identity: structuredClone(identity),
     confirmStopped: async () => { recheck('read'); const result = await executor.confirmStopped(invocationId); recheck('read'); return result; },
     stop: async () => { recheck('stop'); const result = await executor.stop(invocationId); recheck('stop'); return result; },
+    /** Per-invocation proof only; the host must separately cover every other producer. */
+    captureQuiescence: async () => {
+      recheck('read'); const proof = await executor.captureQuiescence(invocationId); recheck('read');
+      return Object.freeze({ executorEvidenceRef: proof.executorEvidenceRef, isolationEvidenceRef: proof.isolationEvidenceRef,
+        effectKey: input.effectKey, scope: proof.scope,
+        recheck: () => { if (!db.inTransaction) throw Error('RECOVERY_TRANSACTION_REQUIRED'); recheck('read'); proof.recheck(); } });
+    },
   };
 }

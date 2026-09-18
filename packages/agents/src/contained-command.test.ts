@@ -1,7 +1,7 @@
 import { createServer, type RequestListener, type Server } from 'node:http';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { ContainedDocker, dockerLogs } from './contained-docker.js';
 const close: Array<() => Promise<void>> = [];
@@ -28,7 +28,7 @@ it('rejects truncated log frames', () => { expect(() => dockerLogs(Buffer.from([
 
 import { ContainedCommandExecutor } from './contained-command.js';
 import { createContainedCommandAdapter } from './adapters/contained-command.js';
-import { existsSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 async function fixture(mode = 'normal', authorize: (op: 'start' | 'stop' | 'read') => void = () => {}) {
   let config: Record<string, unknown>; let removed = false; let inspections = 0;
   const calls: string[] = [];
@@ -112,4 +112,37 @@ it('persists exact host binding before create and rejects a digest mismatch', as
   await bound.execute('bound', new AbortController().signal);
   const { readFileSync } = await import('node:fs'); const path = join(f.options.journalRoot, createHash('sha256').update('bound').digest('hex'), 'binding.json');
   expect(JSON.parse(readFileSync(path, 'utf8'))).toMatchObject({ version: 1, data: bindingData });
+});
+
+it('captures distinct stop and host-isolation receipts in a fresh executor with synchronous recheck', async () => {
+  const f = await fixture(); const result = await f.executor.execute('run', new AbortController().signal);
+  const proof = await new ContainedCommandExecutor(f.options).captureQuiescence('run');
+  expect(proof.executorEvidenceRef).toBe(result.evidence); expect(proof.isolationEvidenceRef).toMatch(/^docker-isolated:[a-f0-9]{64}$/);
+  expect(proof.scope).toBe('contained-invocation'); expect(Object.isFrozen(proof)).toBe(true);
+  const calls = f.calls.length; expect(proof.recheck()).toBeUndefined(); expect(f.calls).toHaveLength(calls);
+  const receipt = JSON.parse(readFileSync(join(dirname(f.receipt()), 'isolated.json'), 'utf8'));
+  expect(receipt.launch).toEqual(result.stopReceipt.launch); expect(receipt.verifiedAt).toBeLessThanOrEqual(result.stopReceipt.confirmedAt);
+});
+it.each(['missing', 'policy', 'launch', 'future', 'symlink', 'oversize'])('rejects %s isolation receipt before capture can access the daemon', async mode => {
+  const f = await fixture(); await f.executor.execute('run', new AbortController().signal);
+  const path = join(dirname(f.receipt()), 'isolated.json'); const receipt = JSON.parse(readFileSync(path, 'utf8'));
+  if (mode === 'missing') rmSync(path);
+  else if (mode === 'symlink') { const other = path + '.other'; writeFileSync(other, JSON.stringify(receipt)); rmSync(path); symlinkSync(other, path); }
+  else if (mode === 'oversize') writeFileSync(path, ' '.repeat(65537));
+  else { if (mode === 'policy') receipt.policyDigest = '0'.repeat(64); else if (mode === 'launch') receipt.launch.containerId = '0'.repeat(64); else receipt.verifiedAt = Date.now() + 60000; writeFileSync(path, JSON.stringify(receipt)); }
+  const calls = f.calls.length; await expect(f.executor.captureQuiescence('run')).rejects.toThrow(); expect(f.calls).toHaveLength(calls);
+});
+it.each(['isolation', 'stopped', 'grant'])('rejects %s changes in the captured synchronous proof', async mode => {
+  let allowed = true; const f = await fixture('normal', () => { if (!allowed) throw Error('REVOKED'); });
+  await f.executor.execute('run', new AbortController().signal); const proof = await f.executor.captureQuiescence('run');
+  if (mode === 'grant') allowed = false;
+  else rmSync(mode === 'isolation' ? join(dirname(f.receipt()), 'isolated.json') : f.receipt());
+  const calls = f.calls.length; expect(proof.recheck).toThrow(); expect(f.calls).toHaveLength(calls);
+});
+it('cannot manufacture an isolation receipt for an already-removed legacy invocation', async () => {
+  const f = await fixture(); await f.executor.execute('run', new AbortController().signal);
+  rmSync(join(dirname(f.receipt()), 'isolated.json'));
+  expect((await f.executor.confirmStopped('run')).stopped).toBe(true);
+  await expect(f.executor.captureQuiescence('run')).rejects.toThrow();
+  expect(f.calls.filter(c => c.startsWith('DELETE'))).toHaveLength(1);
 });

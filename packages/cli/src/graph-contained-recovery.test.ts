@@ -11,6 +11,7 @@ import { createContainedCommandExecutor, prepareContainedImage, type ContainedIm
 import { verificationCanonical } from '@osstack/graph/nodes/branch';
 import { processFixture } from './graph-process-fixture.js';
 import { GraphProcessJournal } from './graph-process-journal.js';
+import { GraphReconciler } from './graph-reconciler.js';
 import { reopenGraphContainedTests, type ReopenContainedTests } from './graph-contained-recovery.js';
 import { sweepGraphQuiescence } from './graph-quiescence-sweep.js';
 import { verifyJournaledGraphWorkerExit } from './graph-worker-exit-proof.js';
@@ -91,13 +92,16 @@ async function fixture() {
     path: (name: string) => join(journalRoot, sha(invocationId), name),
     execute: () => executor.execute(invocationId, new AbortController().signal),
     reopen: (input = request()) => reopenGraphContainedTests(db, options, input),
-    child: async (operation: 'stop' | 'confirmStopped') => {
+    child: async (operation: 'stop' | 'confirmStopped' | 'captureQuiescence') => {
       const helper = process.env['G25_REOPEN_CHILD']; if (!helper) return;
       const inputPath = join(root, 'child-input.json'); writeFileSync(inputPath, JSON.stringify({ dbPath: join(root, 'state.db'), options, request: request(), operation }));
       const child = spawn(process.execPath, [helper, inputPath], { stdio: ['ignore', 'pipe', 'pipe'], env: process.env });
       let stdout = ''; let stderr = ''; child.stdout.on('data', chunk => { stdout += chunk; }); child.stderr.on('data', chunk => { stderr += chunk; });
       const code = await new Promise<number | null>((resolve, reject) => { child.on('error', reject); child.on('close', resolve); });
-      expect(code, stderr).toBe(0); expect(JSON.parse(stdout)).toMatchObject({ stopped: true, held: true, state: 'unknown' });
+      expect(code, stderr).toBe(0);
+      expect(JSON.parse(stdout)).toMatchObject(operation === 'captureQuiescence'
+        ? { scope: 'contained-invocation', held: true, state: 'unknown', rechecked: true }
+        : { stopped: true, held: true, state: 'unknown' });
     },
     restart: () => { db.close(); db = openDb({ path: join(root, 'state.db') }); },
     revokeRead: () => { canRead = false; }, stopGrant: (allowed: boolean) => { canStop = allowed; }, loseDelete: () => { lostDelete = true; }, keepRunning: () => { running = true; },
@@ -112,12 +116,70 @@ it('reopens held unknown action after DB restart and lease expiry without outcom
   const f = await fixture(); const actual = await f.execute(); f.uncertain(); f.restart();
   const input = f.request(); input.fence.now += 60000;
   const opened = await f.reopen(input);
-  expect(opened.identity).toEqual(f.identity); expect(Object.keys(opened).sort()).toEqual(['confirmStopped', 'identity', 'stop']);
+  expect(opened.identity).toEqual(f.identity); expect(Object.keys(opened).sort()).toEqual(['captureQuiescence', 'confirmStopped', 'identity', 'stop']);
   await f.child('confirmStopped');
   expect(await opened.confirmStopped()).toEqual({ stopped: true, evidence: actual.evidence });
   expect(await opened.stop()).toEqual({ stopped: true, evidence: actual.evidence });
   expect(f.action()).toMatchObject({ state: 'unknown', outcome: null, observedTokens: 3 }); expect(f.held()).toBeNull();
   if (!process.env['G25_CONTAINED_CONFIG']) expect(f.calls.filter(c => c.includes('/create'))).toHaveLength(1);
+});
+
+describe('contained proof bridge', () => {
+it('reopens distinct physical/isolation proofs after SQLite restart and rechecks without I/O in a transaction', async () => {
+  const f = await fixture(); const result = await f.execute(); f.uncertain(); f.restart();
+  const proof = await (await f.reopen()).captureQuiescence();
+  expect(proof.executorEvidenceRef).toBe(result.evidence); expect(proof.isolationEvidenceRef).toMatch(/^docker-isolated:[a-f0-9]{64}$/);
+  expect(proof.effectKey).toBe(f.request().effectKey); expect(Object.isFrozen(proof)).toBe(true);
+  expect(proof.recheck).toThrow('TRANSACTION_REQUIRED'); const before = f.calls.length;
+  expect(f.db.transaction(() => proof.recheck()).immediate()).toBeUndefined(); expect(f.calls).toHaveLength(before);
+  await f.child('captureQuiescence'); expect(f.held()).toBeNull(); expect(f.action().state).toBe('unknown');
+});
+it.each(['isolation', 'stop', 'binding', 'grant', 'release', 'other-action'])('rejects %s drift at final transaction recheck', async mode => {
+  const f = await fixture(); await f.execute(); const proof = await (await f.reopen()).captureQuiescence();
+  if (mode === 'isolation') rmSync(f.path('isolated.json'));
+  else if (mode === 'stop') rmSync(f.path('stopped.json'));
+  else if (mode === 'binding') writeFileSync(f.path('binding.json'), '{}');
+  else if (mode === 'grant') f.revokeRead();
+  else if (mode === 'release') f.release();
+  else f.addOpaque(true, true);
+  const before = f.calls.length; expect(() => f.db.transaction(() => proof.recheck()).immediate()).toThrow(); expect(f.calls).toHaveLength(before);
+});
+it.each(['valid', 'revoked', 'isolation-lost', 'release-drift'])('uses the host closure inside actual G15 without inferring business outcome: %s', async mode => {
+  const f = await fixture(); await f.execute(); f.uncertain(); await f.observeWorkerExit();
+  const input = f.request(); const binding = { scope: input.fence.scope, graphRunId: input.fence.graphRunId, identity: input.fence.identity,
+    generation: input.fence.expectedGeneration, owner: input.fence.expectedOwner! };
+  const reconciler = new GraphReconciler(f.db); const connection = {};
+  let captured: Awaited<ReturnType<Awaited<ReturnType<typeof f.reopen>>['captureQuiescence']>> | undefined;
+  const verifyWorker = () => verifyJournaledGraphWorkerExit(f.db, binding);
+  // This trusted fixture runs a fixed no-descendants program and exactly one
+  // contained action. Production hosts must independently cover all other producers.
+  reconciler.register(connection, { binding,
+    authorize: () => { if (f.db.inTransaction) {
+      if (mode === 'revoked') f.revokeRead(); else if (mode === 'isolation-lost') rmSync(f.path('isolated.json'), { force: true });
+      else if (mode === 'release-drift') f.release();
+    } },
+    stopWorker: async () => undefined, verifyWorker: async () => verifyWorker(),
+    verifyQuiescence: async () => { captured = await (await f.reopen(input)).captureQuiescence();
+      return { executorEvidenceRef: captured.executorEvidenceRef, workspaceEvidenceRef: captured.isolationEvidenceRef }; },
+    verifyOutcome: async () => ({ outcome: 'unknown', evidenceRef: 'fixture-missing-business-envelope', observedTokens: 3 }),
+    recheck: (_snapshot, proof) => { expect(f.db.inTransaction).toBe(true); expect(verifyWorker()).toEqual(proof.worker); captured!.recheck(); },
+    release: async () => { throw Error('unknown outcome cannot release'); },
+  });
+  try {
+    const result = reconciler.reconcile(connection, { kind: 'effect', fence: input.fence, effectKey: input.effectKey, receiptId: 'contained-bridge' });
+    if (mode === 'valid') { const done = await result; expect(done.exit).toBe('unknown');
+      expect(done.result.record.proof.workspaceEvidenceRef).toBe(captured!.isolationEvidenceRef);
+      expect(done.result.record.proof.workspaceEvidenceRef).not.toBe(done.result.record.proof.worker.evidenceRef);
+      expect(f.db.prepare('SELECT count(*) n FROM graph_recovery_decisions').get()).toEqual({ n: 1 }); }
+    else { await expect(result).rejects.toThrow(); expect(f.db.prepare('SELECT count(*) n FROM graph_recovery_decisions').get()).toEqual({ n: 0 }); }
+    expect(f.held()).toBeNull(); expect(f.db.prepare('SELECT state FROM graph_actions WHERE effect_key=?').get(input.effectKey)).toEqual({ state: 'unknown' });
+  } finally { reconciler.unregister(connection); }
+});
+it('does not retrofit isolation onto a removed legacy invocation or create a new executor', async () => {
+  const f = await fixture(); await f.execute(); rmSync(f.path('isolated.json')); const opened = await f.reopen();
+  expect((await opened.confirmStopped()).stopped).toBe(true);
+  const before = f.calls.length; await expect(opened.captureQuiescence()).rejects.toThrow(); expect(f.calls).toHaveLength(before); expect(f.held()).toBeNull();
+});
 });
 it.each(['generation', 'invocationId', 'effectKey', 'candidateRevision', 'artifactDigest', 'daemon', 'base', 'image', 'command', 'scope'])('rejects substituted %s binding before any daemon operation', async field => {
   const f = await fixture(); await f.execute(); const data = structuredClone(f.identity);

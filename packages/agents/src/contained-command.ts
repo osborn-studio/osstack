@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { closeSync, fsyncSync, linkSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from 'node:fs';
+import { constants, closeSync, fstatSync, fsyncSync, linkSync, lstatSync, mkdirSync, openSync, readSync, realpathSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { z } from 'zod';
@@ -13,6 +13,8 @@ type Launch = z.infer<typeof launchSchema>;
 const receiptSchema = z.object({ version: z.literal(1), kind: z.literal('docker_removed'), launch: launchSchema,
   confirmedAt: z.number().int().positive() }).strict();
 export type ContainedStopReceipt = z.infer<typeof receiptSchema>;
+const isolationSchema = z.object({ version: z.literal(1), kind: z.literal('docker_isolated'), launch: launchSchema,
+  policyDigest: id, verifiedAt: z.number().int().positive().max(Number.MAX_SAFE_INTEGER) }).strict();
 export interface ContainedCommandResult { exitCode: number; output: string; cancelled: boolean; evidence: string; stopReceipt: ContainedStopReceipt }
 export interface ContainedCommandOptions {
   socketPath: string;
@@ -38,9 +40,15 @@ function durable(path: string, value: unknown): void {
 }
 function sync(path: string): void { const fd = openSync(path, 'r'); try { fsyncSync(fd); } finally { closeSync(fd); } }
 function read(path: string): unknown {
-  const stat = lstatSync(path);
-  if (!stat.isFile() || stat.size > 65536) throw Error('CONTAINED_JOURNAL_INVALID');
-  return JSON.parse(readFileSync(path, 'utf8')) as unknown;
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const stat = fstatSync(fd);
+    if (!stat.isFile() || stat.size > 65536) throw Error('CONTAINED_JOURNAL_INVALID');
+    const bytes = Buffer.alloc(65537); let offset = 0;
+    while (offset < bytes.length) { const n = readSync(fd, bytes, offset, bytes.length - offset, offset); if (!n) break; offset += n; }
+    if (offset > 65536) throw Error('CONTAINED_JOURNAL_INVALID');
+    return JSON.parse(bytes.subarray(0, offset).toString('utf8')) as unknown;
+  } finally { closeSync(fd); }
 }
 
 /** Opt-in contained local commands. Trust the daemon/admin and host-owned journal;
@@ -114,6 +122,43 @@ export class ContainedCommandExecutor {
       || h.LogConfig.Config['max-size'] !== '1m' || h.LogConfig.Config['max-file'] !== '1' || Object.keys(h.LogConfig.Config).length !== 2) throw Error('CONTAINED_SCOPE_MISMATCH');
     return v.State;
   }
+  private isolation(launch: Launch) {
+    const receipt = isolationSchema.parse(read(join(this.directory(launch.invocationId), 'isolated.json')));
+    if (JSON.stringify(receipt.launch) !== JSON.stringify(launch) || receipt.policyDigest !== sha(JSON.stringify(this.config(launch.nonce)))) throw Error('CONTAINED_ISOLATION_MISMATCH');
+    return receipt;
+  }
+  /** Called only after actual inspect validates the exact immutable container policy. */
+  private recordIsolation(launch: Launch): void {
+    try { this.isolation(launch); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      durable(join(this.directory(launch.invocationId), 'isolated.json'), { version: 1, kind: 'docker_isolated', launch,
+        policyDigest: sha(JSON.stringify(this.config(launch.nonce))), verifiedAt: Date.now() });
+    }
+  }
+  /** Captures two independent receipts for ONE contained invocation. The closure
+   * rechecks current authority and immutable journals synchronously, including in
+   * a host's final DB transaction. No network in recheck: acknowledged deletion of
+   * this exact Docker ID is irreversible under the trusted daemon/admin boundary.
+   * Does not prove other producers stopped or authorize graph-wide recovery. */
+  async captureQuiescence(invocationId: string) {
+    const observe = () => {
+      const launch = this.launch(invocationId); const isolation = this.isolation(launch);
+      const stopped = receiptSchema.parse(read(join(this.directory(invocationId), 'stopped.json')));
+      if (JSON.stringify(stopped.launch) !== JSON.stringify(launch) || isolation.verifiedAt > stopped.confirmedAt
+        || stopped.confirmedAt > Date.now()) throw Error('CONTAINED_RECEIPT_MISMATCH');
+      return { executorEvidenceRef: `docker-removed:${sha(JSON.stringify(stopped))}`, isolationEvidenceRef: `docker-isolated:${sha(JSON.stringify(isolation))}` };
+    };
+    this.authorize('read'); const initial = observe();
+    const live = await this.confirmStopped(invocationId);
+    if (!live.stopped || live.evidence !== initial.executorEvidenceRef) throw Error('CONTAINED_STOP_UNCONFIRMED');
+    const recheck = (): void => {
+      this.authorize('read');
+      if (JSON.stringify(observe()) !== JSON.stringify(initial)) throw Error('CONTAINED_PROOF_CHANGED');
+    };
+    recheck();
+    return Object.freeze({ ...initial, scope: 'contained-invocation' as const, recheck });
+  }
   /** Never interprets missing containers, expired leases or old PIDs as proof. */
   async confirmStopped(invocationId: string): Promise<{ stopped: false } | { stopped: true; evidence: string }> {
     try {
@@ -131,7 +176,7 @@ export class ContainedCommandExecutor {
   async stop(invocationId: string): Promise<{ stopped: true; evidence: string }> {
     this.authorize('stop'); const launch = this.launch(invocationId);
     const prior = await this.confirmStopped(invocationId); if (prior.stopped) return prior;
-    await this.daemon(); await this.inspect(launch); this.authorize('stop');
+    await this.daemon(); await this.inspect(launch); this.authorize('stop'); this.recordIsolation(launch);
     const result = await this.api.call('DELETE', `/containers/${launch.containerId}?force=true&v=true`);
     if (result.status !== 204) throw Error('CONTAINED_DELETE_UNCONFIRMED');
     await this.daemon();
@@ -153,7 +198,7 @@ export class ContainedCommandExecutor {
     const launch: Launch = { version: 1, invocationId, specDigest: this.specDigest, daemonId: this.options.daemonId, containerId, nonce };
     durable(join(dir, 'launch.json'), launch); sync(dir);
     try {
-      await this.daemon(); await this.inspect(launch); this.authorize('start');
+      await this.daemon(); await this.inspect(launch); this.authorize('start'); this.recordIsolation(launch);
       if (signal.aborted) throw Error('CONTAINED_CANCELLED');
       if ((await this.api.call('POST', `/containers/${containerId}/start`)).status !== 204) throw Error('CONTAINED_START_UNCONFIRMED');
       const deadline = Date.now() + (this.options.timeoutMs ?? 120000);
