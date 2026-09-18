@@ -320,3 +320,24 @@ it('requires verification of a confirmed held action until its exact admission i
   const s = snapshot(130); recovery.completeRelease(s, 'receipt', proof(s), 130);
   expect(recovery.inspectExecutors(fence(130)).requiredEffectKeys).toEqual([]);
 });
+
+it('includes intermediate leases with no action and guards lease history inside the final transaction', () => {
+  commit(applied, 130); const release = snapshot(130); recovery.completeRelease(release, 'receipt', proof(release), 130);
+  for (const now of [140, 150]) {
+    const s = recovery.snapshot(fence(now));
+    run = recovery.commit(s, { kind: 'takeover', receiptId: `empty-${now}`, owner: `worker-${now}`, leaseExpiresAt: 500 }, proof(s, now), now).run;
+  }
+  const inventory = recovery.inspectExecutors(fence(160));
+  expect(inventory.workers.map(w => [w.generation, w.owner])).toEqual([[1, 'worker'], [2, 'worker-140'], [3, 'worker-150']]);
+  expect(inventory.entries).toHaveLength(1); expect(inventory.requiredEffectKeys).toEqual([]);
+  db.transaction(() => recovery.assertExecutorInventory(inventory)).immediate();
+  db.prepare('UPDATE graph_worker_leases SET expires_at=501 WHERE graph_run_id=? AND generation=2').run(run.graphRunId);
+  expect(() => db.transaction(() => recovery.assertExecutorInventory(inventory)).immediate()).toThrow('INVENTORY_CHANGED');
+});
+it.each(['gap', 'extra', 'owner'])('rejects inconsistent worker inventory: %s', mode => {
+  if (mode === 'gap') db.prepare('UPDATE graph_runs SET generation=3 WHERE graph_run_id=?').run(run.graphRunId);
+  else if (mode === 'owner') db.prepare("UPDATE graph_runs SET lease_owner='wrong' WHERE graph_run_id=?").run(run.graphRunId);
+  else db.prepare('INSERT INTO graph_worker_leases VALUES(?,2,?,?,?,?)').run(run.graphRunId, 'extra', 121, 400, '{}');
+  run = runs.get(scope, run.graphRunId)!;
+  expect(() => recovery.inspectExecutors(fence(201))).toThrow('WORKER_INVENTORY_BINDING');
+});

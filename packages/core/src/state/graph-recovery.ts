@@ -35,6 +35,8 @@ export type GraphRecoveryDecision = z.infer<typeof decisionSchema>;
 export interface GraphRecoverySnapshot { fence: GraphRunFence; run: GraphRun; action: GraphAction | null; digest: string; interruptId: string }
 export interface GraphExecutorInventory {
   snapshot: GraphRecoverySnapshot;
+  /** Every claimed generation, including generations with no actions or launch. */
+  workers: Array<{ generation: number; owner: string; acquiredAt: number; expiresAt: number }>;
   entries: Array<{ action: GraphAction; owner: string; admission: { generation: number; owner: string; heldAt: number; releasedAt: number | null } | null }>;
   /** Includes missing admission rows, even for settled legacy actions. */
   requiredEffectKeys: string[];
@@ -102,6 +104,10 @@ export class GraphRecoveryStore {
   }
   private inventory(fence: GraphRunFence, effectKey?: string): GraphExecutorInventory {
     const snapshot = this.capture(fence, effectKey);
+    const workers = this.db.prepare(`SELECT generation,owner,acquired_at AS acquiredAt,expires_at AS expiresAt
+      FROM graph_worker_leases WHERE graph_run_id=? ORDER BY generation`).all(snapshot.run.graphRunId) as GraphExecutorInventory['workers'];
+    if (workers.length !== snapshot.run.generation || workers.some((worker, index) => worker.generation !== index + 1)
+      || (workers.length > 0 && workers.at(-1)!.owner !== snapshot.run.leaseOwner)) fail('RECOVERY_WORKER_INVENTORY_BINDING');
     // Union catches malformed cross-run admissions as well as actions missing a hold.
     const keys = this.db.prepare(`SELECT effect_key FROM graph_actions WHERE graph_run_id=?
       UNION SELECT effect_key FROM graph_action_admissions WHERE graph_run_id=? ORDER BY effect_key`)
@@ -117,7 +123,7 @@ export class GraphRecoveryStore {
     });
     const requiredEffectKeys = entries.filter(entry => !entry.admission || entry.admission.releasedAt === null
       || !['confirmed', 'failed'].includes(entry.action.state)).map(entry => entry.action.effectKey);
-    const body = { snapshot, entries, requiredEffectKeys };
+    const body = { snapshot, workers, entries, requiredEffectKeys };
     return { ...body, digest: hash(body) };
   }
   /** Complete run inventory, including historical generations and missing holds.

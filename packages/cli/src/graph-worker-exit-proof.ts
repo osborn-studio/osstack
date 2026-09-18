@@ -17,6 +17,42 @@ const exited = z.object({ kind: z.literal('exited'), graphRunId: text, generatio
   code: count.nullable(), signal: z.string().regex(/^SIG[A-Z0-9]+$/).nullable(), confirmedAt: count,
   evidenceRef: z.string().regex(/^worker-exit:[a-f0-9-]{36}$/) }).strict();
 const unconfirmed = z.object({ kind: z.literal('exit_unconfirmed'), pid: pid.optional(), error: text }).strict();
+const notStarted = z.object({ kind: z.literal('spawn_failed'), graphRunId: text, generation: pid, owner: text,
+  confirmedAt: count, evidenceRef: z.string().regex(/^worker-not-started:[a-f0-9-]{36}$/),
+  phase: z.enum(['registration', 'spawn']), error: z.string() }).strict();
+
+/** A consumed launch plus one authenticated no-child observation. Missing intent,
+ * an expired lease, or absence of an OS process is never a no-start proof.
+ * This proves only this generation; callers must inventory all other workers and
+ * independently verify executor/workspace obligations. Safe inside G15 recheck. */
+export function verifyJournaledGraphWorkerNotStarted(db: Database.Database, value: GraphWorkerBinding, now = Date.now()): Extract<GraphRecoveryProof['worker'], { kind: 'not_started' }> {
+  const binding = GraphWorkerBinding.parse(value); count.parse(now);
+  const run = new GraphRunStore(db).get(binding.scope, binding.graphRunId);
+  if (!run || workerCanonical(run.identity) !== workerCanonical(binding.identity)) throw Error('GRAPH_NO_CHILD_PROOF_REQUIRED');
+  const rows = db.prepare(`SELECT l.owner,l.acquired_at,w.owner AS launch_owner,w.identity_json,w.launched_at,
+    e.kind,e.event_json,e.observed_at,
+    EXISTS(SELECT 1 FROM graph_actions WHERE graph_run_id=l.graph_run_id AND generation=l.generation) AS actions,
+    EXISTS(SELECT 1 FROM graph_action_admissions WHERE graph_run_id=l.graph_run_id AND generation=l.generation) AS admissions,
+    EXISTS(SELECT 1 FROM graph_checkpoint_requests WHERE graph_run_id=l.graph_run_id AND generation=l.generation) AS requests
+    FROM graph_worker_leases l JOIN graph_worker_launches w ON w.graph_run_id=l.graph_run_id AND w.generation=l.generation
+    LEFT JOIN graph_worker_process_events e ON e.graph_run_id=l.graph_run_id AND e.generation=l.generation
+    WHERE l.graph_run_id=? AND l.generation=?`).all(binding.graphRunId, binding.generation) as Array<{
+      owner: string; acquired_at: number; launch_owner: string; identity_json: string; launched_at: number;
+      kind: string | null; event_json: string | null; observed_at: number | null; actions: number; admissions: number; requests: number;
+    }>;
+  const row = rows[0];
+  if (rows.length !== 1 || !row || row.owner !== binding.owner || row.launch_owner !== binding.owner
+    || row.identity_json !== workerCanonical(binding.identity) || row.kind !== 'spawn_failed'
+    || row.actions || row.admissions || row.requests) throw Error('GRAPH_NO_CHILD_PROOF_REQUIRED');
+  const parsed = notStarted.safeParse(JSON.parse(row.event_json!));
+  if (!parsed.success) throw Error('GRAPH_NO_CHILD_PROOF_REQUIRED');
+  const event = parsed.data;
+  if (event.graphRunId !== binding.graphRunId || event.generation !== binding.generation || event.owner !== binding.owner
+    || row.acquired_at > row.launched_at || row.launched_at > event.confirmedAt
+    || event.confirmedAt > row.observed_at! || row.observed_at! > now) throw Error('GRAPH_NO_CHILD_PROOF_REQUIRED');
+  return { kind: 'not_started', graphRunId: event.graphRunId, generation: event.generation, owner: event.owner,
+    confirmedAt: event.confirmedAt, evidenceRef: event.evidenceRef };
+}
 
 /** Trusted host journal only. Proves the direct child's observed exit, not the
  * termination of its descendants/executors, workspace safety, or recovery authority.

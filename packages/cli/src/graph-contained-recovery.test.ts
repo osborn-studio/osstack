@@ -10,6 +10,7 @@ import { GraphAdmissionStore } from '@osstack/core/graph-recovery';
 import { createContainedCommandExecutor, prepareContainedImage, type ContainedImageReceipt } from '@osstack/agents';
 import { verificationCanonical } from '@osstack/graph/nodes/branch';
 import { processFixture } from './graph-process-fixture.js';
+import { GraphProcessJournal } from './graph-process-journal.js';
 import { reopenGraphContainedTests, type ReopenContainedTests } from './graph-contained-recovery.js';
 import { sweepGraphQuiescence } from './graph-quiescence-sweep.js';
 import { verifyJournaledGraphWorkerExit } from './graph-worker-exit-proof.js';
@@ -257,6 +258,26 @@ it('requires old and current generation exit evidence before any container read 
   const before = f.calls.length; const report = await sweepGraphQuiescence(f.db, input.options, { ...input.request, mode: 'stop_contained' });
   expect(report.workers.map(w => [w.generation, w.status])).toEqual([[1, 'stopped'], [2, 'unproven']]);
   expect(report.allInventoriedExecutorsStopped).toBe(false); expect(f.calls).toHaveLength(before);
+});
+it.each([false, true])('includes an actionless intermediate generation (durable no-start=%s)', async noStart => {
+  const f = await fixture(); await f.execute(); await f.observeWorkerExit();
+  const r = f.request().fence; const now = Date.now(); const journal = new GraphProcessJournal(f.db);
+  for (const generation of [2, 3]) {
+    const owner = `owner-${generation}`;
+    f.db.prepare('INSERT INTO graph_worker_leases VALUES(?,?,?,?,?,?)').run(r.graphRunId, generation, owner, now, now + 60000, '{}');
+    const binding = { scope: r.scope, graphRunId: r.graphRunId, identity: r.identity, generation, owner };
+    journal.consume(binding);
+    if (generation === 3 || noStart) journal.observed(binding, { kind: 'spawn_failed', graphRunId: r.graphRunId, generation, owner,
+      confirmedAt: Date.now(), evidenceRef: 'worker-not-started:00000000-0000-0000-0000-000000000000', phase: 'registration', error: 'failed' });
+  }
+  f.db.prepare("UPDATE graph_runs SET generation=3,lease_owner='owner-3',revision=revision+1 WHERE graph_run_id=?").run(r.graphRunId);
+  const input = sweepInput(f); const current = new GraphRunStore(f.db).get(r.scope, r.graphRunId)!;
+  input.request.fence = { ...r, expectedGeneration: 3, expectedOwner: 'owner-3', expectedRevision: current.revision, now: Date.now() };
+  const before = f.calls.length; const report = await sweepGraphQuiescence(f.db, input.options, { ...input.request, mode: 'stop_contained' });
+  expect(report.workers.map(w => [w.generation, w.status])).toEqual([[1, 'stopped'], [2, noStart ? 'not_started' : 'unproven'], [3, 'not_started']]);
+  expect(report.allInventoriedExecutorsStopped).toBe(noStart);
+  if (!noStart) expect(f.calls).toHaveLength(before);
+  expect(report.recoveryAuthorized).toBe(false); expect(f.held()).toBeNull();
 });
 it.each(['release', 'revision', 'grant'])('rejects %s drift inside executor authorization before subsequent physical operations', async mode => {
   const f = await fixture(); await f.execute(); await f.observeWorkerExit(); const input = sweepInput(f); let allowed = true;

@@ -9,7 +9,8 @@ import { workerCanonical } from '@osstack/protocol';
 import { GraphRecoveryStore } from '@osstack/core/graph-recovery';
 import { GraphProcessJournal } from './graph-process-journal.js';
 import { processFixture } from './graph-process-fixture.js';
-import { verifyJournaledGraphWorkerExit } from './graph-worker-exit-proof.js';
+import { GraphRuntime } from './graph-runtime.js';
+import { verifyJournaledGraphWorkerExit, verifyJournaledGraphWorkerNotStarted } from './graph-worker-exit-proof.js';
 const cleanup: Array<() => Promise<void>> = [];
 afterEach(async () => { vi.restoreAllMocks(); for (const close of cleanup.splice(0).reverse()) await close(); });
 function fixture() {
@@ -113,4 +114,45 @@ it('retains the original worker instance even when the same PID may be reused, w
   const f = synthetic(); const kill = vi.spyOn(process, 'kill'); const first = f.verify();
   expect(f.verify()).toEqual(first); expect(kill).not.toHaveBeenCalled();
   expect(first.evidenceRef).toMatch(/^graph-worker-exit:[a-f0-9]{64}$/);
+});
+
+it.each(['registration', 'spawn'])('verifies a real %s failure after SQLite reopen and within a transaction without proving exit', async phase => {
+  const f = fixture();
+  if (phase === 'registration') vi.spyOn(f.broker, 'register').mockImplementation(() => { throw Error('registration failure'); });
+  const runtime = phase === 'registration' ? f.runtime : new GraphRuntime({ ...f.options,
+    workerOptions: { ...f.options.workerOptions, executable: join(f.db.name, '..', 'missing-executable') } });
+  const event = await runtime.start(f.start).finalExit; expect(event).toMatchObject({ kind: 'spawn_failed', phase });
+  await runtime.close(); await runtime.drainDatabaseUsers();
+  await f.runtime.close(); await f.runtime.drainDatabaseUsers(); const path = f.db.name; f.db.close(); const db = openDb({ path });
+  try {
+    const proof = verifyJournaledGraphWorkerNotStarted(db, f.binding);
+    expect(proof).toMatchObject({ kind: 'not_started', graphRunId: f.run.graphRunId, generation: 1, owner: f.binding.owner });
+    if (event.kind === 'spawn_failed') expect(proof.evidenceRef).toBe(event.evidenceRef);
+    for (const binding of [{ ...f.binding, owner: 'wrong' }, { ...f.binding, scope: { ...f.binding.scope, tenantId: 'wrong' } },
+      { ...f.binding, identity: { ...f.binding.identity, compiledProgramDigest: 'f'.repeat(64) } }]) {
+      expect(() => verifyJournaledGraphWorkerNotStarted(db, binding)).toThrow('GRAPH_NO_CHILD_PROOF_REQUIRED');
+    }
+    expect(db.transaction(() => verifyJournaledGraphWorkerNotStarted(db, f.binding)).immediate()).toEqual(proof);
+    expect(() => verifyJournaledGraphWorkerExit(db, f.binding)).toThrow('UNPROVEN');
+  } finally { db.close(); }
+});
+it.each(['owner', 'generation', 'run', 'phase', 'ref', 'journal-error', 'before-intent', 'future', 'extra-event', 'intent-only', 'no-intent'])('rejects invalid no-child evidence: %s', mode => {
+  const f = fixture(); const now = Date.now(); const journal = new GraphProcessJournal(f.db);
+  if (mode !== 'no-intent') journal.consume(f.binding);
+  const event: Record<string, unknown> = { kind: 'spawn_failed', graphRunId: f.run.graphRunId, generation: 1, owner: f.binding.owner,
+    confirmedAt: now + 1, evidenceRef: `worker-not-started:${randomUUID()}`, phase: 'spawn', error: 'ENOENT' };
+  if (mode === 'owner') event.owner = 'other';
+  else if (mode === 'generation') event.generation = 2;
+  else if (mode === 'run') event.graphRunId = 'other';
+  else if (mode === 'phase') event.phase = 'execute';
+  else if (mode === 'ref') event.evidenceRef = 'worker-return-stopped';
+  else if (mode === 'journal-error') event.journalError = 'disk failed';
+  else if (mode === 'before-intent') event.confirmedAt = now - 100;
+  else if (mode === 'future') event.confirmedAt = now + 10;
+  if (!['intent-only', 'no-intent'].includes(mode)) {
+    f.db.prepare('INSERT INTO graph_worker_process_events(graph_run_id,generation,kind,event_json,observed_at) VALUES(?,?,?,?,?)')
+      .run(f.run.graphRunId, 1, 'spawn_failed', workerCanonical(event), now + 2);
+    if (mode === 'extra-event') journal.observed(f.binding, { kind: 'exit_unconfirmed', pid: undefined, error: 'conflict' });
+  }
+  expect(() => verifyJournaledGraphWorkerNotStarted(f.db, f.binding, now + 3)).toThrow('GRAPH_NO_CHILD_PROOF_REQUIRED');
 });

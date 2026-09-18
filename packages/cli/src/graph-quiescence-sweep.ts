@@ -5,7 +5,7 @@ import { GraphRecoveryStore } from '@osstack/core/graph-recovery';
 import { workerCanonical } from '@osstack/protocol';
 import { reopenGraphContainedTests, type ReopenContainedTests } from './graph-contained-recovery.js';
 import type { GraphContainedTestOptions } from './graph-contained-tests.js';
-import { verifyJournaledGraphWorkerExit } from './graph-worker-exit-proof.js';
+import { verifyJournaledGraphWorkerExit, verifyJournaledGraphWorkerNotStarted } from './graph-worker-exit-proof.js';
 
 type Registration = Omit<ReopenContainedTests, 'fence'>;
 export interface GraphQuiescenceSweepOptions {
@@ -38,15 +38,16 @@ export async function sweepGraphQuiescence(db: Database.Database, options: Graph
   const registrations = new Map(contained?.registrations.map(r => [r.effectKey, r]));
   if (registrations.size !== (contained?.registrations.length ?? 0)
     || [...registrations.keys()].some(key => !inventory.entries.some(e => e.action.effectKey === key))) throw Error('QUIESCENCE_REGISTRATION_SET');
-  const generations = new Map(inventory.entries.map(e => [e.action.generation, e.owner]));
-  if (inventory.snapshot.run.generation > 0) generations.set(inventory.snapshot.run.generation, inventory.snapshot.run.leaseOwner!);
-  const observeWorkers = () => [...generations].sort(([a], [b]) => a - b).map(([generation, owner]) => {
+  const observeWorkers = () => inventory.workers.map(({ generation, owner }) => {
     const binding = { scope: input.fence.scope, graphRunId: input.fence.graphRunId, identity: input.fence.identity, generation, owner };
     try { return { generation, owner, status: 'stopped' as const, proof: verifyJournaledGraphWorkerExit(db, binding) }; }
-    catch (error) { return { generation, owner, status: 'unproven' as const, reason: reason(error) }; }
+    catch (error) {
+      try { return { generation, owner, status: 'not_started' as const, proof: verifyJournaledGraphWorkerNotStarted(db, binding) }; }
+      catch { return { generation, owner, status: 'unproven' as const, reason: reason(error) }; }
+    }
   });
   const workers = observeWorkers();
-  const workersStopped = workers.length > 0 && workers.every(w => w.status === 'stopped');
+  const workersStopped = workers.length > 0 && workers.every(w => w.status !== 'unproven');
   const guard = () => {
     authorize(grant);
     if (store.inspectExecutors(input.fence).digest !== inventory.digest || workerCanonical(observeWorkers()) !== workerCanonical(workers)) throw Error('QUIESCENCE_SWEEP_CHANGED');
