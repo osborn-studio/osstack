@@ -1,0 +1,30 @@
+$ vitest run src/graph-contained-recovery.test.ts -t 'graph quiescence sweep' --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-contained-recovery.test.ts (52 tests | 32 skipped) 20389ms
+   ✓ graph quiescence sweep > sweeps actual worker and contained executor after reopening the ledger, without settling or releasing  1317ms
+   ✓ graph quiescence sweep > sweeps two distinct contained invocations without re-execution and binds each physical receipt  983ms
+   ✓ graph quiescence sweep > does not omit released or missing-admission historical obligations (held=false)  846ms
+   ✓ graph quiescence sweep > does not omit released or missing-admission historical obligations (held=true)  848ms
+   ✓ graph quiescence sweep > can inspect a released contained action but cannot reacquire cleanup authority  872ms
+   ✓ graph quiescence sweep > never substitutes container absence for a deleted receipt in inspect mode  854ms
+   ✓ graph quiescence sweep > never substitutes container absence for a deleted receipt in stop_contained mode  883ms
+   ✓ graph quiescence sweep > requires explicit stop mode and current stop grant for an orphan; never releases its ledger hold  897ms
+   ✓ graph quiescence sweep > requires old and current generation exit evidence before any container read or stop  887ms
+   ✓ graph quiescence sweep > rejects release drift inside executor authorization before subsequent physical operations  887ms
+   ✓ graph quiescence sweep > rejects revision drift inside executor authorization before subsequent physical operations  864ms
+   ✓ graph quiescence sweep > rejects grant drift inside executor authorization before subsequent physical operations  995ms
+   ✓ graph quiescence sweep > rejects duplicate registration/authority before daemon access  1244ms
+   ✓ graph quiescence sweep > rejects extra registration/authority before daemon access  1099ms
+   ✓ graph quiescence sweep > rejects async registration/authority before daemon access  1103ms
+   ✓ graph quiescence sweep > captures trusted registrations and guards, and reports absent registries as unproven  1186ms
+   ✓ graph quiescence sweep > rejects release drift after daemon I/O before further cleanup  1200ms
+   ✓ graph quiescence sweep > rejects worker-journal drift after daemon I/O before further cleanup  1247ms
+   ✓ graph quiescence sweep > keeps a substituted trusted manifest unproven before Docker calls  1155ms
+   ✓ graph quiescence sweep > does not access Docker when the actual worker exit was never journaled  1020ms
+
+ Test Files  1 passed (1)
+      Tests  20 passed | 32 skipped (52)
+   Start at  05:33:37
+   Duration  21.24s (transform 441ms, setup 7ms, collect 719ms, tests 20.39s, environment 0ms, prepare 32ms)
