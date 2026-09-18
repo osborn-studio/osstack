@@ -1,0 +1,43 @@
+$ vitest run src/graph-delivery.integration.test.ts -t 'refuses repair' --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-elme9g/delivery/writer-0'...
+HEAD is now at 6b65337 base
+ ❯ src/graph-delivery.integration.test.ts (7 tests | 1 failed | 6 skipped) 6900ms
+   ↓ actual child delivery succeeds with review finishing last
+   ↓ actual child delivery succeeds with tests finishing last
+   ↓ repairs from immutable complete join through physical child stop and G15 resume
+   ↓ host bounded retry returns only final confirmed task result and fresh independent workspace
+   ↓ finite branch failure stops without a failed task RETURN or poisoned join
+   ↓ negative quality at epoch cap stops
+   × refuses repair takeover when the real worker exited but exit journaling failed 6900ms
+     → expected [Function] to throw error including 'PHYSICAL_WORKER_STOP_REQUIRED' but got 'expected [ { …(21) }, { …(21) } ] to …'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-delivery.integration.test.ts > refuses repair takeover when the real worker exited but exit journaling failed
+AssertionError: expected [Function] to throw error including 'PHYSICAL_WORKER_STOP_REQUIRED' but got 'expected [ { …(21) }, { …(21) } ] to …'
+
+Expected: "PHYSICAL_WORKER_STOP_REQUIRED"
+Received: "expected [ { …(21) }, { …(21) } ] to have a length of 4 but got 2"
+
+ ❯ src/graph-delivery.integration.test.ts:109:9
+    107|     expect(db.prepare('SELECT count(*) AS n FROM graph_recovery_decisi…
+    108|   });
+    109|   try { await expect(delivery('repair', 'review', check)).rejects.toTh…
+       |         ^
+    110|   finally { fail.mockRestore(); }
+    111| }, 30000);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 skipped (7)
+   Start at  17:17:54
+   Duration  7.84s (transform 489ms, setup 8ms, collect 811ms, tests 6.90s, environment 0ms, prepare 33ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.19.0 test: `vitest run src/graph-delivery.integration.test.ts -t 'refuses repair' --maxWorkers=1`
+Exit status 1

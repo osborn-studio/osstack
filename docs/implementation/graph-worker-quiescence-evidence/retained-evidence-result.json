@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "sourceFiles": 1071,
+  "retainedVerifiers": 7,
+  "reason": "Prior delivery run failed only on conservative missing-admission contract expectation; final delivery rerun required. Seeded matrix and all retained verifiers attest final exact source and artifacts.",
+  "matrixTests": 512,
+  "sourceUnchanged": true,
+  "artifactsUnchanged": true
+}

@@ -1140,7 +1140,11 @@
         "packages/core/src/state/graph-recovery.test.ts",
         "packages/cli/src/graph-contained-recovery.ts",
         "packages/cli/src/graph-contained-recovery.test.ts",
-        "docs/reports/graph-contained-reopen-validation.md"
+        "docs/reports/graph-contained-reopen-validation.md",
+        "packages/cli/src/graph-delivery-adversarial.test.ts",
+        "packages/cli/src/graph-worker-exit-proof.test.ts",
+        "packages/cli/src/graph-worker-exit-proof.ts",
+        "docs/reports/graph-worker-quiescence-validation.md"
       ],
       "acceptance": [
         "逐项覆盖 F01–F12 确定性窗口，再做固定 seed 的重复运行。",
@@ -1155,7 +1159,7 @@
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "第五阶段已验收：由原子action/admission/historical owner与canonical journal重建单个contained tests，当前权限与完整fence重复核验；真实独立进程与SIGKILL场景通过，仍保留unknown/held。整图worker/全部执行器停止、G15业务对账、精确释放、artifact锁与完整矩阵仍待完成。",
+      "progressNote": "第六阶段已验收：持久父进程观察的直接Graph worker退出证明、完整历史action/admission义务清单与最终事务重验，接入完成/repair/cancel；缺日志和缺admission保留对账。Kimi K3最终及补充审查通过，Loop补验37项通过，512次故障矩阵等7项检查哈希保留。所有执行器/工作区独立证明、G15业务对账/释放、artifact锁与完整窗口仍待完成。",
       "evidence": [
         "docs/reports/graph-runtime-fault-validation.md",
         "docs/implementation/2026-09-15-graph-fault-next-context.md",
@@ -1171,7 +1175,10 @@
         "docs/implementation/graph-contained-candidate-evidence/admission.json",
         "docs/reports/graph-contained-reopen-validation.md",
         "docs/implementation/2026-09-17-graph-reopen-next-context.md",
-        "docs/implementation/graph-contained-reopen-evidence/admission.json"
+        "docs/implementation/graph-contained-reopen-evidence/admission.json",
+        "docs/reports/graph-worker-quiescence-validation.md",
+        "docs/implementation/2026-09-17-graph-quiescence-next-context.md",
+        "docs/implementation/graph-worker-quiescence-evidence/admission.json"
       ]
     },
     {
@@ -1281,13 +1288,13 @@
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "fd6687665bb01b68b09bf96a44c1356e8f3c2452",
+    "acceptedCodeCommit": "138784c74caee698f0f8836cb5aa9ae9be47b869",
     "completedTaskCount": 25,
     "totalTaskCount": 30,
     "nextTasks": [
       "G25"
     ],
-    "report": "docs/reports/graph-contained-reopen-validation.md",
+    "report": "docs/reports/graph-worker-quiescence-validation.md",
     "nextGate": null,
     "milestoneStatus": {
       "M0": "completed",
@@ -1295,7 +1302,7 @@
       "M2": "completed",
       "M3": "in_progress"
     },
-    "reviewNote": "实际Kimi K3两次有效审查approved；真实Loop 3368 测试通过；报告目录缺失导致首轮9/10检查通过，补验Loop成功并以哈希确认原证据有效，最终满足10类验证。单动作journal重建限定阶段，G25整体/G15整图恢复未准入。"
+    "reviewNote": "实际Kimi K3最终和补充审查approved，保留非阻断证据引用提醒；Loop补验37项通过、执行1跳过0，7项已通过检查按最终源码/构建哈希保留，含512次故障矩阵。G25整体/全图崩溃恢复仍未准入。"
   },
   "decisionGates": [
     {

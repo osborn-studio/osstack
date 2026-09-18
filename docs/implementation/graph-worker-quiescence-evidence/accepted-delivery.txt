@@ -1,0 +1,76 @@
+$ vitest run src/graph-delivery.integration.test.ts src/graph-delivery-adversarial.test.ts src/graph-delivery-broker.test.ts src/graph-delivery-receipts.test.ts src/graph-shutdown.test.ts src/graph-execution-command.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-adversarial-AmOLWs/delivery/writer-0'...
+HEAD is now at b2accd7 base
+osstack: retaining write lease graph-action:bf39dc1c1b3b48337619ce3359e3d286b493a5b88924ba776afbdf74d009e654: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-adversarial-DmKt2k/delivery/writer-0'...
+HEAD is now at 37441e1 base
+osstack: retaining write lease graph-action:bec142f6d67f0abb8768f0bf991059d4f98ba4a91b2bbe33a1a31ccf54d37d77: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-adversarial-xo60r2/delivery/writer-0'...
+HEAD is now at 447b14d base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-adversarial-bTyJqA/delivery/writer-0'...
+HEAD is now at c849fb9 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-adversarial-yUpu58/delivery/writer-0'...
+HEAD is now at a1a1415 base
+osstack: retaining write lease graph-action:2bc3986506db5a6b06f99a8d445d49721fb49db50be30e4a663062379cda9316: Error: STALE_DELIVERY_OWNER
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-adversarial-rUDKw5/delivery/writer-0'...
+HEAD is now at 3cee78b base
+osstack: retaining write lease graph-action:b420171c275625414d1544b1284de8f9b57dcce9d1e126dd04b0f185ae7f31b4: Error: authority revoked
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-adversarial-rDs8Bh/delivery/writer-0'...
+HEAD is now at f0c14e9 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-adversarial-3YtJgS/delivery/writer-0'...
+HEAD is now at cd5aab9 base
+ ✓ src/graph-delivery-adversarial.test.ts (9 tests) 30251ms
+   ✓ retains unknown-review uncertainty without retry, repair or ready publication  3502ms
+   ✓ retains unknown-writer uncertainty without retry, repair or ready publication  1412ms
+   ✓ stops before freeze after actual token overrun and preserves charged action evidence  1401ms
+   ✓ captures business inputs, executors, commands and authority before asynchronous execution  5371ms
+   ✓ cannot project state after foreign-owner invalidates its authority  2239ms
+   ✓ cannot project state after revoked invalidates its authority  2177ms
+   ✓ retains reconciliation when denied preparation has no durable admission receipt  5377ms
+   ✓ renews the owned lease during an actual pending writer invocation and still completes  8699ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-HCwjgH/delivery/writer-0'...
+HEAD is now at 5eb670f base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-cpXOmm/delivery/writer-0'...
+HEAD is now at 44c4352 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-PBfj3v/delivery/writer-0'...
+HEAD is now at 0f3fb51 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-6pX1nC/delivery/writer-0'...
+HEAD is now at 412c0cc base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-E69aLb/delivery/writer-0'...
+HEAD is now at 9a0a677 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-Go8A1W/delivery/writer-0'...
+HEAD is now at 7b2b09f base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-v0m8yV/delivery/writer-0'...
+HEAD is now at 4affb87 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-JVcMBC/delivery/writer-0'...
+HEAD is now at ac686d5 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-jCnc3u/delivery/writer-0'...
+HEAD is now at 918e77b base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-4UrfAQ/delivery/writer-0'...
+HEAD is now at ba6d0cf base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-p61sBO/delivery/writer-0'...
+HEAD is now at d3ea3e1 base
+ ✓ src/graph-delivery.integration.test.ts (11 tests) 67435ms
+   ✓ actual child delivery succeeds with review finishing last  5407ms
+   ✓ actual child delivery succeeds with tests finishing last  5376ms
+   ✓ repairs from immutable complete join through physical child stop and G15 resume  10812ms
+   ✓ host bounded retry returns only final confirmed task result and fresh independent workspace  7043ms
+   ✓ finite branch failure stops without a failed task RETURN or poisoned join  7039ms
+   ✓ negative quality at epoch cap stops  5385ms
+   ✓ keeps direct in reconciliation when real worker exit journaling failed  5279ms
+   ✓ keeps repair in reconciliation when real worker exit journaling failed  5281ms
+   ✓ cancels actual delivery with clean exit and inventory evidence  5274ms
+   ✓ cancels actual delivery with journal-failed exit and inventory evidence  5261ms
+   ✓ cancels actual delivery with missing-admission exit and inventory evidence  5276ms
+ ✓ src/graph-delivery-broker.test.ts (5 tests) 190ms
+ ✓ src/graph-shutdown.test.ts (1 test) 85ms
+ ✓ src/graph-execution-command.test.ts (7 tests) 34ms
+ ✓ src/graph-delivery-receipts.test.ts (4 tests) 28ms
+
+ Test Files  6 passed (6)
+      Tests  37 passed (37)
+   Start at  17:38:05
+   Duration  100.24s (transform 532ms, setup 13ms, collect 1.63s, tests 98.02s, environment 0ms, prepare 147ms)

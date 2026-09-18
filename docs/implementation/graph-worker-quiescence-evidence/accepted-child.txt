@@ -1,0 +1,11 @@
+$ vitest run src/graph-worker-exit-proof.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-worker-exit-proof.test.ts (25 tests) 927ms
+   ✓ verifies a real parent-observed exit after reopening SQLite, including inside the G15 final transaction  334ms
+
+ Test Files  1 passed (1)
+      Tests  25 passed (25)
+   Start at  17:36:27
+   Duration  1.70s (transform 381ms, setup 7ms, collect 662ms, tests 927ms, environment 0ms, prepare 28ms)
