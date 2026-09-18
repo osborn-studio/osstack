@@ -1,0 +1,11 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+const root='/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation',out='/Volumes/AIMATE_WORK/tmp/g25-proof-bridge';
+const hash=x=>createHash('sha256').update(x).digest('hex');const bytes=readFileSync(out+'/matrix.json');const report=JSON.parse(bytes);
+if(!report.passed||!report.sourceUnchanged||!report.artifactsUnchanged)throw Error('MATRIX_NOT_PASSED');
+const paths=execFileSync('git',['ls-files','-z','--cached','--others','--exclude-standard','--','packages','scripts','pnpm-lock.yaml','package.json'],{cwd:root,encoding:'utf8'}).split('\0').filter(Boolean).sort();
+if(JSON.stringify(paths)!==JSON.stringify(Object.keys(report.sourceHashes).sort()))throw Error('SOURCE_SET_CHANGED');
+for(const [path,digest] of Object.entries({...report.sourceHashes,...report.artifactHashes}))if(hash(readFileSync(root+'/'+path))!==digest)throw Error('HASH_CHANGED:'+path);
+const evidence={verifiedAt:new Date().toISOString(),matrixSha256:hash(bytes),testExecutions:report.runs.reduce((n,r)=>n+r.tests.length,0),sourceFiles:paths.length,artifactFiles:Object.keys(report.artifactHashes).length,hashesMatched:true,reason:'Only external test harness timeout changed from 5s to30s; source and dist exactly match the passing matrix. Do not rerun unchanged broad tests.'};
+writeFileSync(out+'/matrix-reuse.json',JSON.stringify(evidence,null,2)+'\n');console.log(JSON.stringify(evidence));

@@ -1147,7 +1147,8 @@
         "docs/reports/graph-worker-quiescence-validation.md",
         "packages/cli/src/graph-quiescence-sweep.ts",
         "docs/reports/graph-quiescence-sweep-validation.md",
-        "docs/reports/graph-worker-coverage-validation.md"
+        "docs/reports/graph-worker-coverage-validation.md",
+        "docs/reports/graph-contained-proof-validation.md"
       ],
       "acceptance": [
         "逐项覆盖 F01–F12 确定性窗口，再做固定 seed 的重复运行。",
@@ -1162,7 +1163,7 @@
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "第八阶段已验收：完整lease代际清单及严格持久no-child证明，真实G15支持连续未启动代次接管并最终事务重验；sweep不遗漏无动作中间代。真实Loop112项focused和5项检查通过，故障矩阵556次，Kimi K3 approved。已启动worker跨宿主恢复/opaque/工作区/G15业务对账释放/artifact锁仍待完成。",
+      "progressNote": "第九阶段已验收：contained每调用独立isolated/removed回执、fresh daemon确认与最终事务同步闭包，reopener绑定完整inventory。真实Loop12项Linux专项和5项检查通过，矩阵579次同源码/dist哈希复核复用，Kimi K3 approved。仅单调用；全图host/opaque/workspace/G15业务对账释放/artifact锁仍待完成。",
       "evidence": [
         "docs/reports/graph-runtime-fault-validation.md",
         "docs/implementation/2026-09-15-graph-fault-next-context.md",
@@ -1187,7 +1188,10 @@
         "docs/implementation/graph-quiescence-sweep-evidence/admission.json",
         "docs/reports/graph-worker-coverage-validation.md",
         "docs/implementation/2026-09-18-graph-worker-coverage-next-context.md",
-        "docs/implementation/graph-worker-coverage-evidence/admission.json"
+        "docs/implementation/graph-worker-coverage-evidence/admission.json",
+        "docs/reports/graph-contained-proof-validation.md",
+        "docs/implementation/2026-09-18-graph-proof-next-context.md",
+        "docs/implementation/graph-contained-proof-evidence/admission.json"
       ]
     },
     {

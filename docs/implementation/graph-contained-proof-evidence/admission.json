@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-18",
+  "status": "passed_bounded_slice",
+  "productionReady": false,
+  "taskStatus": "in_progress",
+  "completedTaskCount": 25,
+  "totalTaskCount": 30,
+  "acceptedCodeCommit": "407e21695fe1f476e4cf345bc6ceeaa26550ca85",
+  "scope": "Per-contained-invocation independent isolation/removal receipts and trusted synchronous G15 proof closure; not full graph recovery",
+  "loop": {
+    "id": "G25-contained-proof-bridge-2",
+    "executed": 1,
+    "skipped": 0,
+    "outcome": "success",
+    "realLinuxSelectedTests": 12,
+    "verifiersPassed": 5
+  },
+  "matrix": {
+    "testExecutions": 579,
+    "seed": 250927,
+    "repeat": 2,
+    "sourceUnchanged": true,
+    "artifactsUnchanged": true,
+    "reusedWithFreshHashCheck": true
+  },
+  "audit": {
+    "provider": "KimiCodeAdapter",
+    "modelId": "kimi-code/k3",
+    "verdict": "approved",
+    "judgments": 4,
+    "identitySource": "adapter runtime report"
+  },
+  "limitations": [
+    "Closure scope is one invocation. Does not prove opaque adapters, all graph workers/descendants or other host workspaces safe.",
+    "Actual G15 composition test uses fixed trusted no-descendants fixture program and one contained action; business outcome stays unknown and admission held.",
+    "Legacy stopped receipts without isolated.json cannot produce new closure. No retrofit from container absence.",
+    "No public recovery API, business effect verdict, admission release, takeover or general GraphDelivery cancellation proof added."
+  ]
+}

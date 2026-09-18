@@ -1,0 +1,98 @@
+$ vitest run src/graph-contained-recovery.test.ts -t 'contained proof bridge' --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-contained-recovery.test.ts (66 tests | 1 failed | 54 skipped) 16732ms
+   ↓ reopens held unknown action after DB restart and lease expiry without outcome inference or replay
+   × contained proof bridge > reopens distinct physical/isolation proofs after SQLite restart and rechecks without I/O in a transaction 5007ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ contained proof bridge > rejects isolation drift at final transaction recheck  2582ms
+   ✓ contained proof bridge > rejects stop drift at final transaction recheck  860ms
+   ✓ contained proof bridge > rejects binding drift at final transaction recheck  793ms
+   ✓ contained proof bridge > rejects grant drift at final transaction recheck  815ms
+   ✓ contained proof bridge > rejects release drift at final transaction recheck  803ms
+   ✓ contained proof bridge > rejects other-action drift at final transaction recheck  815ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: valid  1064ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: revoked  1046ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: isolation-lost  1061ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: release-drift  1070ms
+   ✓ contained proof bridge > does not retrofit isolation onto a removed legacy invocation or create a new executor  815ms
+   ↓ rejects substituted generation binding before any daemon operation
+   ↓ rejects substituted invocationId binding before any daemon operation
+   ↓ rejects substituted effectKey binding before any daemon operation
+   ↓ rejects substituted candidateRevision binding before any daemon operation
+   ↓ rejects substituted artifactDigest binding before any daemon operation
+   ↓ rejects substituted daemon binding before any daemon operation
+   ↓ rejects substituted base binding before any daemon operation
+   ↓ rejects substituted image binding before any daemon operation
+   ↓ rejects substituted command binding before any daemon operation
+   ↓ rejects substituted scope binding before any daemon operation
+   ↓ rejects missing binding journal without daemon calls
+   ↓ rejects digest binding journal without daemon calls
+   ↓ rejects noncanonical binding journal without daemon calls
+   ↓ rejects oversize binding journal without daemon calls
+   ↓ rejects symlink binding journal without daemon calls
+   ↓ rejects incorrect trusted request scope
+   ↓ rejects incorrect trusted request epoch
+   ↓ rejects incorrect trusted request revision
+   ↓ rejects incorrect trusted request owner
+   ↓ rejects incorrect trusted request program
+   ↓ rejects incorrect trusted request command
+   ↓ rejects incorrect trusted request content
+   ↓ rechecks read after reopen before any later effects
+   ↓ rechecks stop after reopen before any later effects
+   ↓ rechecks released after reopen before any later effects
+   ↓ rechecks revision after reopen before any later effects
+   ↓ rechecks binding after reopen before any later effects
+   ↓ snapshots caller options, request and returned identity and rejects async grants
+   ↓ missing stop receipt leaves physical and business outcome unknown after restart
+   ↓ fresh host stops an exactly journaled orphan after old stop permission failed
+   ↓ lost delete ACK remains unknown after reopening without repeated deletion
+   ↓ graph quiescence sweep > sweeps actual worker and contained executor after reopening the ledger, without settling or releasing
+   ↓ graph quiescence sweep > sweeps two distinct contained invocations without re-execution and binds each physical receipt
+   ↓ graph quiescence sweep > does not omit released or missing-admission historical obligations (held=false)
+   ↓ graph quiescence sweep > does not omit released or missing-admission historical obligations (held=true)
+   ↓ graph quiescence sweep > can inspect a released contained action but cannot reacquire cleanup authority
+   ↓ graph quiescence sweep > never substitutes container absence for a deleted receipt in inspect mode
+   ↓ graph quiescence sweep > never substitutes container absence for a deleted receipt in stop_contained mode
+   ↓ graph quiescence sweep > requires explicit stop mode and current stop grant for an orphan; never releases its ledger hold
+   ↓ graph quiescence sweep > requires old and current generation exit evidence before any container read or stop
+   ↓ graph quiescence sweep > includes an actionless intermediate generation (durable no-start=false)
+   ↓ graph quiescence sweep > includes an actionless intermediate generation (durable no-start=true)
+   ↓ graph quiescence sweep > rejects release drift inside executor authorization before subsequent physical operations
+   ↓ graph quiescence sweep > rejects revision drift inside executor authorization before subsequent physical operations
+   ↓ graph quiescence sweep > rejects grant drift inside executor authorization before subsequent physical operations
+   ↓ graph quiescence sweep > rejects duplicate registration/authority before daemon access
+   ↓ graph quiescence sweep > rejects extra registration/authority before daemon access
+   ↓ graph quiescence sweep > rejects async registration/authority before daemon access
+   ↓ graph quiescence sweep > captures trusted registrations and guards, and reports absent registries as unproven
+   ↓ graph quiescence sweep > rejects release drift after daemon I/O before further cleanup
+   ↓ graph quiescence sweep > rejects worker-journal drift after daemon I/O before further cleanup
+   ↓ graph quiescence sweep > keeps a substituted trusted manifest unproven before Docker calls
+   ↓ graph quiescence sweep > does not access Docker when the actual worker exit was never journaled
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-contained-recovery.test.ts > contained proof bridge > reopens distinct physical/isolation proofs after SQLite restart and rechecks without I/O in a transaction
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/graph-contained-recovery.test.ts:128:1
+    126|
+    127| describe('contained proof bridge', () => {
+    128| it('reopens distinct physical/isolation proofs after SQLite restart an…
+       | ^
+    129|   const f = await fixture(); const result = await f.execute(); f.uncer…
+    130|   const proof = await (await f.reopen()).captureQuiescence();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 11 passed | 54 skipped (66)
+   Start at  07:23:00
+   Duration  18.83s (transform 1.17s, setup 10ms, collect 1.96s, tests 16.73s, environment 0ms, prepare 39ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.19.0 test: `vitest run src/graph-contained-recovery.test.ts -t 'contained proof bridge' --maxWorkers=1`
+Exit status 1

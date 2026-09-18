@@ -1,0 +1,22 @@
+$ vitest run src/graph-contained-recovery.test.ts -t 'contained proof bridge' --maxWorkers=1 --testTimeout=30000
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-contained-recovery.test.ts (66 tests | 54 skipped) 14993ms
+   ✓ contained proof bridge > reopens distinct physical/isolation proofs after SQLite restart and rechecks without I/O in a transaction  1220ms
+   ✓ contained proof bridge > rejects isolation drift at final transaction recheck  982ms
+   ✓ contained proof bridge > rejects stop drift at final transaction recheck  1198ms
+   ✓ contained proof bridge > rejects binding drift at final transaction recheck  1007ms
+   ✓ contained proof bridge > rejects grant drift at final transaction recheck  1112ms
+   ✓ contained proof bridge > rejects release drift at final transaction recheck  997ms
+   ✓ contained proof bridge > rejects other-action drift at final transaction recheck  1032ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: valid  2180ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: revoked  1582ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: isolation-lost  1475ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: release-drift  1224ms
+   ✓ contained proof bridge > does not retrofit isolation onto a removed legacy invocation or create a new executor  985ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed | 54 skipped (66)
+   Start at  07:31:02
+   Duration  15.81s (transform 434ms, setup 7ms, collect 703ms, tests 14.99s, environment 0ms, prepare 31ms)
