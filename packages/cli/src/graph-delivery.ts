@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import type Database from 'better-sqlite3';
 import type { AgentAdapter } from '@osstack/agents';
 import { GraphRunStore, GraphActionStore, GraphCheckpointStore, resolveRepositoryScope, type GraphRun, type GraphRunFence } from '@osstack/core';
+import { GraphRecoveryStore, type GraphExecutorInventory } from '@osstack/core/graph-recovery';
+import { verifyJournaledGraphWorkerExit } from './graph-worker-exit-proof.js';
 import { GraphArtifactStore } from '@osstack/core/graph-artifacts';
 import { GraphDeliveryEpochStore, GraphVerificationStore } from '@osstack/core/graph-verification';
 import { compileGraphSpec, type CompiledGraphSpec } from '@osstack/graph/spec-compiler';
@@ -274,16 +276,23 @@ export class GraphDelivery {
   }
   private async takeover(handle: GraphRuntimeHandle, stopped: GraphRuntimeStop): Promise<void> {
     const r = this.current(); const key = {};
+    const inspection = new GraphRecoveryStore(this.options.db, () => { throw Error('INSPECTION_ONLY'); });
+    let inventory: GraphExecutorInventory | undefined;
     const verify = () => { const observed = this.runtime.observedExit(handle.connection);
-      if (!stopped.actionsSettled || stopped.worker.kind !== 'exited' || workerCanonical(observed) !== workerCanonical(stopped.worker)) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
-      return stopped.worker;
+      if (!stopped.actionsSettled || stopped.worker.kind !== 'exited' || stopped.worker.journalError || workerCanonical(observed) !== workerCanonical(stopped.worker)) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
+      return verifyJournaledGraphWorkerExit(this.options.db, handle.binding);
     };
     this.runtime.reconciler.register(key, { binding: { scope: r.scope, graphRunId: r.graphRunId, identity: r.identity, generation: r.generation, owner: r.leaseOwner },
       authorize: () => this.check(), stopWorker: async () => stopped,
-      verifyWorker: async () => { const exit = verify(); return { kind: 'stopped', graphRunId: exit.graphRunId, generation: exit.generation, owner: exit.owner, confirmedAt: exit.confirmedAt, evidenceRef: exit.evidenceRef }; },
-      verifyQuiescence: async () => { verify(); const decision = await this.evaluate(); if (decision.snapshot.pendingAdmissions || decision.snapshot.unresolvedActions) throw Error('QUIESCENCE_REQUIRED');
+      verifyWorker: async () => verify(),
+      verifyQuiescence: async snapshot => { verify(); const decision = await this.evaluate(); if (decision.snapshot.pendingAdmissions || decision.snapshot.unresolvedActions) throw Error('QUIESCENCE_REQUIRED');
+        inventory = inspection.inspectExecutors(snapshot.fence);
+        if (inventory.requiredEffectKeys.length) throw Error('QUIESCENCE_REQUIRED');
         return { executorEvidenceRef: decision.publication!.record.receiptRef, workspaceEvidenceRef: this.candidate().artifactRefs[0]! }; },
-      verifyOutcome: async () => { throw Error('NO_EFFECT_RECONCILIATION'); }, recheck: () => { this.check(); verify(); }, release: async () => {},
+      verifyOutcome: async () => { throw Error('NO_EFFECT_RECONCILIATION'); }, recheck: (_snapshot, proof) => {
+        this.check(); if (workerCanonical(verify()) !== workerCanonical(proof.worker) || !inventory) throw Error('QUIESCENCE_REQUIRED');
+        inspection.assertExecutorInventory(inventory);
+      }, release: async () => {},
     });
     try { const takeover = await this.runtime.reconciler.reconcile(key, { kind: 'takeover', fence: this.fence(), receiptId: `delivery-takeover-${this.epoch}`, owner: `delivery-${r.generation + 1}`, leaseExpiresAt: this.leaseDeadline() }); this.owned = takeover.result.run; }
     finally { this.runtime.reconciler.unregister(key); }
@@ -307,19 +316,27 @@ export class GraphDelivery {
     const stopped = await handle.stop('GRAPH_CANCEL_REQUESTED');
     if (!this.owned || stopped.worker.kind !== 'exited' || !stopped.actionsSettled) return;
     const r = this.current(); if (r.status !== 'cancel_pending') return;
+    const inspection = new GraphRecoveryStore(this.options.db, () => { throw Error('INSPECTION_ONLY'); });
+    let inventory: GraphExecutorInventory | undefined;
     const verify = () => {
       this.assertOwned();
-      if (workerCanonical(this.runtime.observedExit(handle.connection)) !== workerCanonical(stopped.worker)) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
-      if (this.options.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id=? AND state IN ('intent','running','unknown','cancel_pending')").get(r.graphRunId)
-        || this.options.db.prepare('SELECT 1 FROM graph_action_admissions WHERE graph_run_id=? AND released_at IS NULL').get(r.graphRunId)) throw Error('QUIESCENCE_REQUIRED');
+      if (stopped.worker.journalError || workerCanonical(this.runtime.observedExit(handle.connection)) !== workerCanonical(stopped.worker)) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
+      return verifyJournaledGraphWorkerExit(this.options.db, handle.binding);
     };
-    const key = {}; const exit = stopped.worker;
+    const key = {};
     this.runtime.reconciler.register(key, { binding: { scope: r.scope, graphRunId: r.graphRunId, identity: r.identity, generation: r.generation, owner: r.leaseOwner },
       authorize: () => { this.assertOwned(); const result: unknown = (this.options.authorizeCancel ?? this.options.authorize)();
         if (result !== undefined) { void Promise.resolve(result).catch(() => {}); throw Error('AUTHORITY_MUST_BE_SYNCHRONOUS'); } }, stopWorker: async () => stopped,
-      verifyWorker: async () => { verify(); return { kind: 'stopped', graphRunId: r.graphRunId, generation: r.generation, owner: r.leaseOwner!, confirmedAt: exit.confirmedAt, evidenceRef: exit.evidenceRef }; },
-      verifyQuiescence: async () => { verify(); return { executorEvidenceRef: exit.evidenceRef, workspaceEvidenceRef: exit.evidenceRef }; },
-      verifyOutcome: async () => { throw Error('NO_EFFECT_RECONCILIATION'); }, recheck: verify, release: async () => {},
+      verifyWorker: async () => verify(),
+      verifyQuiescence: async snapshot => {
+        const exit = verify(); inventory = inspection.inspectExecutors(snapshot.fence);
+        if (inventory.requiredEffectKeys.length) throw Error('QUIESCENCE_REQUIRED');
+        return { executorEvidenceRef: `graph-executor-inventory:${inventory.digest}`, workspaceEvidenceRef: exit.evidenceRef };
+      },
+      verifyOutcome: async () => { throw Error('NO_EFFECT_RECONCILIATION'); }, recheck: (_snapshot, proof) => {
+        if (workerCanonical(verify()) !== workerCanonical(proof.worker) || !inventory) throw Error('QUIESCENCE_REQUIRED');
+        inspection.assertExecutorInventory(inventory);
+      }, release: async () => {},
     });
     try { await this.runtime.reconciler.reconcile(key, { kind: 'project', status: 'cancelled', receiptId: `delivery-cancel-${r.generation}`, fence: this.fence() }); }
     finally { this.runtime.reconciler.unregister(key); }
@@ -336,6 +353,7 @@ export class GraphDelivery {
       programs: [{ id: 'code-delivery-v1', modulePath, digest: this.compiled.compiledProgramDigest }] });
     let resume: GraphWorkerResume | undefined;
     let lastStopped: GraphRuntimeStop | undefined;
+    let durableWorkerStopped = false;
     try {
       this.runValue = this.options.reservedRun ?? this.runtime.prepare(this.options.request, version);
       if (this.stopping || this.current().status === 'cancel_pending') return { route: { kind: 'stop', epoch: 0, reason: 'cancel_requested' } };
@@ -343,6 +361,7 @@ export class GraphDelivery {
       this.runs.project({ ...this.fence(), status: 'running' });
       new GraphDeliveryEpochStore(this.options.db).activate(this.fence(), 0, deliveryEpoch(this.compiled, 0).cost);
       for (;;) {
+        durableWorkerStopped = false;
         await this.restoreWorkspaceMappings();
         const r = this.current(); this.installed.clear();
         const handle = this.runtime.start({ request: this.options.request, run: r, programId: 'code-delivery-v1', leaseDurationMs: 60000, ...(resume ? { resume } : {}),
@@ -354,7 +373,11 @@ export class GraphDelivery {
         try { await handle.result; } catch (error) { workerError = error; }
         const stopped = await handle.stop(); lastStopped = stopped;
         if (this.stopping || this.current().status === 'cancel_pending') return { route: { kind: 'reconcile', epoch: this.epoch, reason: 'cancel_requested' } };
-        if (!stopped.actionsSettled || stopped.worker.kind !== 'exited') throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
+        if (!stopped.actionsSettled || stopped.worker.kind !== 'exited' || stopped.worker.journalError) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
+        const verifyDurableExit = () => {
+          durableWorkerStopped = false; const proof = verifyJournaledGraphWorkerExit(this.options.db, handle.binding); durableWorkerStopped = true; return proof;
+        };
+        const workerProof = verifyDurableExit();
         // No heartbeat now. Extend only the live lease, then capture a fresh immutable premise.
         const current = this.current(); this.runs.renewLease({ ...this.fence(), leaseExpiresAt: Math.max(current.leaseExpiresAt!, this.leaseDeadline()) });
         if (!this.latest(`e${this.epoch}.freeze`)) throw workerError ?? Error('FREEZE_REQUIRED');
@@ -365,7 +388,12 @@ export class GraphDelivery {
           const route = decision.route.kind === 'retry_required'
             ? { kind: 'stop' as const, epoch: this.epoch, reason: 'retry_dispatch_incomplete' } : decision.route;
           this.check();
+          const inspection = new GraphRecoveryStore(this.options.db, () => { throw Error('INSPECTION_ONLY'); });
+          const inventory = inspection.inspectExecutors(this.fence(decision.snapshot.run));
+          if (route.kind !== 'reconcile' && inventory.requiredEffectKeys.length) throw Error('QUIESCENCE_REQUIRED');
           if (this.current().status !== 'cancel_pending') this.options.db.transaction(() => {
+            if (workerCanonical(verifyDurableExit()) !== workerCanonical(workerProof)) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
+            inspection.assertExecutorInventory(inventory);
             this.runs.project({ ...this.fence(decision.snapshot.run), status: route.kind === 'ready' ? 'ready' : route.kind === 'reconcile' ? 'reconciliation_required' : 'failed' });
             if (decision.publication) this.options.publish?.(candidate, decision.publication.record.receiptRef);
           }).immediate();
@@ -381,6 +409,7 @@ export class GraphDelivery {
           await new Promise<void>((resolve, reject) => {
             this.waiting = { proof, resolve, reject, verify: () => {
               this.check();
+              if (workerCanonical(verifyDurableExit()) !== workerCanonical(workerProof)) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
               if (this.checkpointDigest() !== proof.checkpointDigest || workerCanonical(this.runtime.observedExit(handle.connection)) !== workerCanonical(stopped.worker)
                 || stopped.worker.kind !== 'exited' || !stopped.actionsSettled) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
               if (!this.options.db.prepare('SELECT 1 FROM graph_verification_joins WHERE graph_run_id=? AND receipt_ref=?').get(r.graphRunId, proof.feedbackRef)) throw Error('IMMUTABLE_JOIN_REQUIRED');
@@ -400,9 +429,10 @@ export class GraphDelivery {
       // grants no authority to project that run's status.
       if (!this.owned) throw error;
       const current = this.current();
-      const held = this.options.db.prepare('SELECT 1 FROM graph_action_admissions WHERE graph_run_id=? AND released_at IS NULL').get(current.graphRunId);
-      const unresolved = this.options.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id=? AND state IN ('intent','running','unknown','cancel_pending')").get(current.graphRunId);
-      const reconcile = !!held || !!unresolved || !lastStopped?.actionsSettled || lastStopped.worker.kind !== 'exited';
+      let inventoryUnknown = true;
+      try { inventoryUnknown = new GraphRecoveryStore(this.options.db, () => { throw Error('INSPECTION_ONLY'); })
+        .inspectExecutors(this.fence(current)).requiredEffectKeys.length > 0; } catch { /* An unreadable inventory is not quiescence. */ }
+      const reconcile = inventoryUnknown || !durableWorkerStopped || !lastStopped?.actionsSettled || lastStopped.worker.kind !== 'exited';
       try {
         this.check();
         if (!['ready','failed','cancelled','cancel_pending'].includes(current.status) && current.leaseExpiresAt! > Date.now()) {

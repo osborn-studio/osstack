@@ -101,10 +101,11 @@ it.each(['foreign-owner', 'revoked'] as const)('cannot project state after %s in
   expect(f.calls.writer).toBe(1); expect(f.calls.reviewer).toBe(1);
 }, 30_000);
 
-it('returns an explicit stop when preparation admission prevents an otherwise retryable branch', async () => {
+it('retains reconciliation when denied preparation has no durable admission receipt', async () => {
   const f = await fixture('retry-preparation-denied');
-  expect(f.result?.route).toMatchObject({ kind: 'stop', reason: 'retry_dispatch_incomplete' });
-  expect(f.run.status).toBe('failed'); expect(f.joins).toBe(0); expect(f.held).toBe(0); expect(f.calls.reviewer).toBe(1);
+  // A failed action alone cannot substitute for a durable no-start/stop receipt.
+  expect(f.result?.route).toMatchObject({ kind: 'reconcile', reason: expect.stringContaining('QUIESCENCE_REQUIRED') });
+  expect(f.run.status).toBe('reconciliation_required'); expect(f.joins).toBe(0); expect(f.held).toBe(0); expect(f.calls.reviewer).toBe(1);
   expect(f.actions.some(a => a.node_id === 'e0.tests' && a.state === 'confirmed')).toBe(true);
   expect(f.actions.filter(a => a.node_id === 'e0.prepare_review').map(a => a.state)).toEqual(['confirmed', 'failed']);
 }, 30_000);

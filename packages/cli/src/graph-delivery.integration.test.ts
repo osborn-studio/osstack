@@ -2,15 +2,18 @@ import { execFileSync } from 'node:child_process';
 import { mkdtemp, mkdir, writeFile, readFile, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { expect, it } from 'vitest';
-import { openDb, CapabilitySchema } from '@osstack/core';
+import { expect, it, vi } from 'vitest';
+import type Database from 'better-sqlite3';
+import { GraphProcessJournal } from './graph-process-journal.js';
+import { GraphAdmissionStore } from '@osstack/core/graph-recovery';
+import { openDb, CapabilitySchema, GraphRunStore } from '@osstack/core';
 import { FifoSemaphore } from '@osstack/autonomy';
 import { GraphDelivery } from './graph-delivery.js';
 import { GovernedExecution } from './governed-execution.js';
 import type { AgentAdapter } from '@osstack/agents';
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 
-async function delivery(mode: 'direct' | 'repair' | 'retry' | 'failure' | 'negative', slow: 'review' | 'tests' = 'review') {
+async function delivery(mode: 'direct' | 'repair' | 'retry' | 'failure' | 'negative', slow: 'review' | 'tests' = 'review', failureCheck?: (db: Database.Database, writes: number) => void, cancelMode?: 'clean' | 'journal-failed' | 'missing-admission') {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'g21-delivery-'))); const repo = join(root, 'source'); await mkdir(repo);
   git(repo, 'init','-q'); await writeFile(join(repo, 'answer'), '0\n'); git(repo, 'add','.'); git(repo,'-c','user.name=G21','-c','user.email=g21@invalid','commit','-qm','base');
   const base = git(repo,'rev-parse','HEAD');
@@ -50,10 +53,38 @@ async function delivery(mode: 'direct' | 'repair' | 'retry' | 'failure' | 'negat
     request:{schemaVersion:1,kind:'start',scope:{schemaVersion:1,tenantId:'t',principalId:'p',workspaceId:'w'},idempotencyKey:'delivery',inputArtifactRef:'input',source:{product:'osstack',requestId:'delivery'},
       spec:{schemaVersion:1,template:'code-delivery-v1',publication:'artifact_only',input:{taskRef:'task',repositoryRef:'repo',baseRevision:base,acceptanceRef:'acceptance'},
         limits:{maxEpochs:mode === 'repair'?2:1,maxBranchAttempts:2,maxConcurrentReaders:2,maxConcurrentWritersPerRepo:1,maxActionStarts:22,tokenReservationLimit:200000,deadlineSeconds:120}}} });
+  let cancellation: Promise<void> | undefined; let cancelError: string | undefined;
+  const hold = GraphAdmissionStore.prototype.hold;
+  // Legacy actions can exist without an admission row. Bypass this write only
+  // for the finite writer; retain the real physical lease/stop path.
+  const holdHook = cancelMode === 'missing-admission' ? vi.spyOn(GraphAdmissionStore.prototype, 'hold').mockImplementation(function (this: GraphAdmissionStore, effectKey, now) {
+    if ((db.prepare('SELECT node_id FROM graph_actions WHERE effect_key=?').get(effectKey) as { node_id: string }).node_id !== 'e0.implement') hold.call(this, effectKey, now);
+  }) : undefined;
+  const observe = GraphProcessJournal.prototype.observed;
+  const cancelHook = cancelMode ? vi.spyOn(GraphProcessJournal.prototype, 'observed').mockImplementation(function (this: GraphProcessJournal, binding, event) {
+    if (event.kind !== 'exited') return observe.call(this, binding, event);
+    if (cancelMode !== 'journal-failed') observe.call(this, binding, event);
+    const r = host.current();
+    new GraphRunStore(db).project({ scope: r.scope, graphRunId: r.graphRunId, identity: r.identity, expectedGeneration: r.generation,
+      expectedOwner: r.leaseOwner, expectedRevision: r.revision, now: Date.now(), status: 'cancel_pending' });
+    cancellation = host.cancel().catch(error => { cancelError = String(error); });
+    if (cancelMode === 'journal-failed') throw Error('injected cancel exit journal failure');
+  }) : undefined;
   try {
-    const result = await host.run();
+    const result = await host.run(); await cancellation;
+    if (cancelMode) {
+      expect(cancellation).toBeDefined(); expect(result.route.kind).not.toBe('ready');
+      expect(host.current().status).toBe(cancelMode === 'clean' ? 'cancelled' : 'cancel_pending');
+      const recovery = db.prepare('SELECT proof_json FROM graph_recovery_decisions').all() as { proof_json: string }[];
+      if (cancelMode === 'clean') {
+        expect(cancelError).toBeUndefined(); expect(recovery).toHaveLength(1);
+        expect(JSON.parse(recovery[0]!.proof_json)).toMatchObject({ worker: { evidenceRef: expect.stringMatching(/^graph-worker-exit:[a-f0-9]{64}$/) }, executorEvidenceRef: expect.stringMatching(/^graph-executor-inventory:[a-f0-9]{64}$/) });
+      } else { expect(recovery).toHaveLength(0); expect(cancelError).toContain(cancelMode === 'journal-failed' ? 'PHYSICAL_WORKER_STOP_REQUIRED' : 'QUIESCENCE_REQUIRED'); }
+      return { result, writes, reviews, prompts, actions: [], root, run: host.current() };
+    }
     expect(await readFile(join(repo,'answer'),'utf8')).toBe('0\n'); expect(git(repo,'rev-parse','HEAD')).toBe(base);
     const actions = db.prepare('SELECT * FROM graph_actions ORDER BY created_at,rowid').all() as Array<{node_id:string;state:string;reservation_tokens:number;action_json:string}>;
+    if (failureCheck) { failureCheck(db, writes); return { result, writes, reviews, prompts, actions, root, run: host.current() }; }
     expect(actions.every(a=>['confirmed','failed'].includes(a.state))).toBe(true);
     expect(db.prepare('SELECT count(*) AS n FROM graph_action_admissions WHERE released_at IS NULL').get()).toEqual({n:0});
     expect(actions.filter(a=>a.node_id.includes('.prepare_'))).toHaveLength(mode === 'repair'?4:mode === 'retry'||mode === 'failure'?3:2);
@@ -65,6 +96,8 @@ async function delivery(mode: 'direct' | 'repair' | 'retry' | 'failure' | 'negat
     if (mode === 'direct') expect((db.prepare("SELECT node_id FROM graph_actions WHERE node_id IN ('e0.review','e0.tests') ORDER BY updated_at").all() as {node_id:string}[]).map(a=>a.node_id)).toEqual(slow === 'review' ? ['e0.tests','e0.review'] : ['e0.review','e0.tests']);
     if (mode === 'repair') {
       expect(db.prepare('SELECT generation FROM graph_worker_launches ORDER BY generation').all()).toEqual([{generation:1},{generation:2}]);
+      const proof = JSON.parse((db.prepare("SELECT proof_json FROM graph_recovery_decisions WHERE receipt_id='delivery-takeover-0'").get() as { proof_json: string }).proof_json) as { worker: { evidenceRef: string } };
+      expect(proof.worker.evidenceRef).toMatch(/^graph-worker-exit:[a-f0-9]{64}$/);
       const permits = db.prepare('SELECT epoch,join_ref FROM graph_delivery_epochs ORDER BY epoch').all() as {epoch:number;join_ref:string|null}[];
       expect(permits[0]).toEqual({epoch:0,join_ref:null}); expect(permits[1]!.join_ref).toMatch(/^graph-join:/);
     }
@@ -73,7 +106,7 @@ async function delivery(mode: 'direct' | 'repair' | 'retry' | 'failure' | 'negat
     expect(db.prepare('SELECT count(*) AS n FROM graph_verification_joins').get()).toEqual({n: mode === 'repair' ? 2 : mode === 'failure' ? 0 : 1});
     if (containedConfig && process.env['G25_CONTAINED_REPORT_DIR']) await writeFile(join(process.env['G25_CONTAINED_REPORT_DIR'], `delivery-${mode}-${slow}.json`), JSON.stringify({ route: result.route, writes, reviews, generation: host.current().generation, actions, root }, null, 2));
     return {result,writes,reviews,prompts,actions,root,run:host.current()};
-  } finally { db.close(); }
+  } finally { cancelHook?.mockRestore(); holdHook?.mockRestore(); await host.drainDatabaseUsers(); db.close(); }
 }
 it.each(['review','tests'] as const)('actual child delivery succeeds with %s finishing last', async slow=>{
   const f = await delivery('direct',slow); expect(f.result.route.kind).toBe('ready'); expect(f.writes).toBe(1); expect(f.reviews).toBe(1); expect(f.actions).toHaveLength(7);
@@ -90,3 +123,23 @@ it('finite branch failure stops without a failed task RETURN or poisoned join',a
 it('negative quality at epoch cap stops',async()=>{
   const f=await delivery('negative'); expect(f.result.route).toMatchObject({kind:'stop',reason:'epoch_budget'}); expect(f.writes).toBe(1);
 },30000);
+
+it.each(['direct', 'repair'] as const)('keeps %s in reconciliation when real worker exit journaling failed', async mode => {
+  const original = GraphProcessJournal.prototype.observed;
+  const fail = vi.spyOn(GraphProcessJournal.prototype, 'observed').mockImplementation(function (this: GraphProcessJournal, binding, event) {
+    if (event.kind === 'exited') throw Error('injected exit journal failure');
+    return original.call(this, binding, event);
+  });
+  const check = vi.fn((db: Database.Database, writes: number) => {
+    expect(writes).toBe(1);
+    expect(db.prepare('SELECT count(*) AS n FROM graph_worker_launches').get()).toEqual({ n: 1 });
+    expect(db.prepare('SELECT count(*) AS n FROM graph_recovery_decisions').get()).toEqual({ n: 0 });
+  });
+  try { const f = await delivery(mode, 'review', check); expect(f.result.route).toMatchObject({ kind: 'reconcile', reason: expect.stringContaining('PHYSICAL_WORKER_STOP_REQUIRED') });
+    expect(f.run.status).toBe('reconciliation_required'); expect(check).toHaveBeenCalledOnce(); }
+  finally { fail.mockRestore(); }
+}, 30000);
+
+it.each(['clean', 'journal-failed', 'missing-admission'] as const)('cancels actual delivery with %s exit and inventory evidence', async mode => {
+  await delivery('direct', 'review', undefined, mode);
+}, 30000);

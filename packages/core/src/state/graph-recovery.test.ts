@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type Database from "better-sqlite3";
-import type { StartGraphRequest } from "@osstack/protocol";
+import { workerCanonical, type StartGraphRequest } from "@osstack/protocol";
 import { openDb } from "./db.js";
 import { GraphRunStore, type GraphRun, type GraphProgramVersion } from "./graph-runs.js";
 import { GraphActionStore } from "./graph-actions.js";
@@ -237,7 +237,7 @@ it.each(['missing', 'wrong-owner', 'wrong-identity', 'wrong-ref', 'wrong-time', 
     run = runs.create({ ...request, idempotencyKey: 'consumed' }, program, 100);
     run = runs.acquireLease({ ...fence(110), owner: 'failed-owner', leaseExpiresAt: 200 });
     db.prepare('INSERT INTO graph_worker_launches(graph_run_id,generation,owner,identity_json,launched_at) VALUES(?,?,?,?,?)')
-      .run(run.graphRunId, run.generation, run.leaseOwner, proofKey(mode === 'wrong-identity' ? { ...run.identity, compilerVersion: 'changed' } : run.identity), 115);
+      .run(run.graphRunId, run.generation, run.leaseOwner, workerCanonical(mode === 'wrong-identity' ? { ...run.identity, compilerVersion: 'changed' } : run.identity), 115);
     const s = recovery.snapshot(fence());
     const worker = { kind: 'not_started' as const, graphRunId: run.graphRunId, generation: run.generation,
       owner: run.leaseOwner!, confirmedAt: 125, evidenceRef: 'worker-not-started:consumed' };
@@ -274,4 +274,49 @@ it.each(['owner', 'revision', 'scope'])('rejects %s mismatch in admission inspec
   else if (field === 'revision') input.expectedRevision++;
   else input.scope = { ...scope, tenantId: 'other' };
   expect(() => recovery.inspectAdmission(input, key)).toThrow();
+});
+
+it('inventories missing holds and unresolved released actions without inferring stop', () => {
+  let inventory = recovery.inspectExecutors(fence(201));
+  expect(inventory.entries[0]).toMatchObject({ owner: 'worker', admission: null }); expect(inventory.requiredEffectKeys).toEqual([key]);
+  new GraphAdmissionStore(db).hold(key, 121); new GraphAdmissionStore(db).released(key, 122);
+  inventory = recovery.inspectExecutors(fence(201)); expect(inventory.requiredEffectKeys).toEqual([key]);
+  // A released hold cannot erase an unresolved action.
+  expect(inventory.entries[0]?.action.state).toBe('intent');
+});
+it('inventory final recheck detects admission release without a run revision change', () => {
+  new GraphAdmissionStore(db).hold(key, 121); const inventory = recovery.inspectExecutors(fence(201));
+  expect(() => recovery.assertExecutorInventory(inventory)).toThrow('TRANSACTION_REQUIRED');
+  db.transaction(() => recovery.assertExecutorInventory(inventory)).immediate();
+  new GraphAdmissionStore(db).released(key, 202);
+  expect(() => db.transaction(() => recovery.assertExecutorInventory(inventory)).immediate()).toThrow('INVENTORY_CHANGED');
+  expect(runs.get(scope, run.graphRunId)?.revision).toBe(inventory.snapshot.run.revision);
+});
+it('inventory includes settled released historical actions after takeover and new pending actions', () => {
+  commit(applied, 130); const release = snapshot(130); recovery.completeRelease(release, 'receipt', proof(release), 130);
+  const first = recovery.inspectExecutors(fence(130)); expect(first.requiredEffectKeys).toEqual([]);
+  const s = recovery.snapshot(fence(140)); run = recovery.commit(s, { kind: 'takeover', receiptId: 'inventory-takeover', owner: 'replacement', leaseExpiresAt: 500 }, proof(s, 140), 140).run;
+  const second = actions.reserve(fence(150), { ...admission, nodeId: 'second' }); run = second.run;
+  const inventory = recovery.inspectExecutors(fence(201));
+  expect(inventory.entries).toHaveLength(2); expect(inventory.entries.find(e => e.action.effectKey === key)).toMatchObject({ owner: 'worker', action: { generation: 1 }, admission: { releasedAt: 130 } });
+  expect(inventory.requiredEffectKeys).toEqual([second.action.effectKey]);
+  expect(() => db.transaction(() => recovery.assertExecutorInventory(first)).immediate()).toThrow('STALE_GENERATION');
+});
+it('includes settled legacy actions with no admission and rejects wrong scope or stale revision', () => {
+  run = actions.markRunning(fence(), key, 'legacy-executor').run;
+  run = actions.recordOutcome(fence(), key, { state: 'confirmed', evidenceRef: 'legacy', actualTokens: 0, result: { schemaVersion: 1, kind: 'workspace', workspaceLeaseRef: 'lease', receiptRef: 'receipt' } }).run;
+  expect(recovery.inspectExecutors(fence(201)).requiredEffectKeys).toEqual([key]);
+  expect(() => recovery.inspectExecutors({ ...fence(201), expectedRevision: 0 })).toThrow('REVISION_CONFLICT');
+  expect(() => recovery.inspectExecutors({ ...fence(201), scope: { ...scope, tenantId: 'other' } })).toThrow('RUN_NOT_FOUND');
+});
+it('rejects a mismatched historical admission owner instead of silently dropping that action', () => {
+  db.prepare('INSERT INTO graph_action_admissions(effect_key,graph_run_id,generation,owner,held_at) VALUES(?,?,?,?,?)').run(key, run.graphRunId, 1, 'impostor', 121);
+  expect(() => recovery.inspectExecutors(fence(201))).toThrow('RECOVERY_ADMISSION_BINDING');
+});
+
+it('requires verification of a confirmed held action until its exact admission is released', () => {
+  commit(applied, 130); const before = recovery.inspectExecutors(fence(130));
+  expect(before.entries[0]?.action.state).toBe('confirmed'); expect(before.requiredEffectKeys).toEqual([key]);
+  const s = snapshot(130); recovery.completeRelease(s, 'receipt', proof(s), 130);
+  expect(recovery.inspectExecutors(fence(130)).requiredEffectKeys).toEqual([]);
 });

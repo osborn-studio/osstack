@@ -33,6 +33,13 @@ export type GraphRecoveryProof = z.infer<typeof proofSchema>;
 export type GraphRecoveryVerdict = z.infer<typeof verdictSchema>;
 export type GraphRecoveryDecision = z.infer<typeof decisionSchema>;
 export interface GraphRecoverySnapshot { fence: GraphRunFence; run: GraphRun; action: GraphAction | null; digest: string; interruptId: string }
+export interface GraphExecutorInventory {
+  snapshot: GraphRecoverySnapshot;
+  entries: Array<{ action: GraphAction; owner: string; admission: { generation: number; owner: string; heldAt: number; releasedAt: number | null } | null }>;
+  /** Includes missing admission rows, even for settled legacy actions. */
+  requiredEffectKeys: string[];
+  digest: string;
+}
 export interface GraphRecoveryRecord { snapshot: GraphRecoverySnapshot; proof: GraphRecoveryProof; decision: GraphRecoveryDecision; committedAt: number }
 export interface GraphRecoveryResult { run: GraphRun; action: GraphAction | null; record: GraphRecoveryRecord; changed: boolean }
 /** Must independently authenticate supervisor/executor/workspace evidence AND the
@@ -92,6 +99,39 @@ export class GraphRecoveryStore {
         || row.owner !== row.lease_owner) fail("RECOVERY_ADMISSION_BINDING");
       return { snapshot, admission: { generation: row!.generation, owner: row!.owner, heldAt: row!.held_at, releasedAt: row!.released_at } };
     });
+  }
+  private inventory(fence: GraphRunFence, effectKey?: string): GraphExecutorInventory {
+    const snapshot = this.capture(fence, effectKey);
+    // Union catches malformed cross-run admissions as well as actions missing a hold.
+    const keys = this.db.prepare(`SELECT effect_key FROM graph_actions WHERE graph_run_id=?
+      UNION SELECT effect_key FROM graph_action_admissions WHERE graph_run_id=? ORDER BY effect_key`)
+      .all(snapshot.run.graphRunId, snapshot.run.graphRunId) as { effect_key: string }[];
+    const entries = keys.map(({ effect_key }) => {
+      const action = this.action(snapshot.run, effect_key)!;
+      const lease = this.db.prepare('SELECT owner FROM graph_worker_leases WHERE graph_run_id=? AND generation=?')
+        .get(snapshot.run.graphRunId, action.generation) as { owner: string } | undefined;
+      const row = this.db.prepare('SELECT graph_run_id,generation,owner,held_at,released_at FROM graph_action_admissions WHERE effect_key=?')
+        .get(effect_key) as { graph_run_id: string; generation: number; owner: string; held_at: number; released_at: number | null } | undefined;
+      if (!lease || (row && (row.graph_run_id !== snapshot.run.graphRunId || row.generation !== action.generation || row.owner !== lease.owner))) fail('RECOVERY_ADMISSION_BINDING');
+      return { action, owner: lease!.owner, admission: row ? { generation: row.generation, owner: row.owner, heldAt: row.held_at, releasedAt: row.released_at } : null };
+    });
+    const requiredEffectKeys = entries.filter(entry => !entry.admission || entry.admission.releasedAt === null
+      || !['confirmed', 'failed'].includes(entry.action.state)).map(entry => entry.action.effectKey);
+    const body = { snapshot, entries, requiredEffectKeys };
+    return { ...body, digest: hash(body) };
+  }
+  /** Complete run inventory, including historical generations and missing holds.
+   * This is an inspection, never proof of physical executor quiescence. */
+  inspectExecutors(value: GraphRunFence, effectKey?: string): GraphExecutorInventory {
+    const fence = graphRunFenceSchema.parse(GraphJsonValue.parse(value));
+    return this.transaction(() => this.inventory(fence, effectKey));
+  }
+  /** Read-only final attestation guard inside the caller's G15 transaction.
+   * Admission release does not advance run revision, so compare the entire inventory. */
+  assertExecutorInventory(value: GraphExecutorInventory): void {
+    if (!this.db.inTransaction) fail('RECOVERY_TRANSACTION_REQUIRED');
+    const fence = graphRunFenceSchema.parse(GraphJsonValue.parse(value.snapshot.fence));
+    if (this.inventory(fence, value.snapshot.action?.effectKey).digest !== digest.parse(value.digest)) fail('RECOVERY_INVENTORY_CHANGED');
   }
   private transaction<T>(fn: () => T): T {
     if (this.db.inTransaction) fail("Recovery requires its own BEGIN IMMEDIATE transaction");
