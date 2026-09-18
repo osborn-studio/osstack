@@ -1,0 +1,533 @@
+{
+  "loop_id": "G25-worker-coverage-1",
+  "state": {
+    "loop_id": "G25-worker-coverage-1",
+    "started_at": "2026-09-18T12:55:54.071Z",
+    "updated_at": "2026-09-18T13:11:56.916Z",
+    "completed_tasks": [
+      {
+        "task_id": "G25-worker-coverage-1",
+        "capability": "code.test",
+        "outcome": "escalated",
+        "iterations": 1,
+        "agent_id": "local-command",
+        "duration_ms": 396966,
+        "run_id": "run_3fdb14fd-ff4e-4b01-bc1c-22842c701e63",
+        "started_at": "2026-09-18T12:55:54.072Z",
+        "completed_at": "2026-09-18T12:56:06.099Z",
+        "execution_summary": "Process group 72830 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "execution_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs focused",
+            "exit_code": 0,
+            "duration_ms": 12027,
+            "summary": "focused: exit=0 $ vitest run src/graph-worker-exit-proof.test.ts src/graph-unstarted-recovery.test.ts src/graph-contained-recovery.test.ts --maxWorkers=1 RUN v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packa"
+          }
+        ],
+        "verifier_agent_id": "local-verifier",
+        "verify_summary": "1 issue found by local verifier. Failed evaluations: verify-command-2.",
+        "verify_issue_count": 1,
+        "verify_issues": [
+          {
+            "severity": "error",
+            "message": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs typecheck failed (2): typecheck: exit=2 pter typecheck: Done packages/autonomy typecheck: Done packages/skills typecheck: Done packages/agents typecheck$ tsc --noEmit packages/agents typecheck: Done packages/config typecheck$ tsc --noEmit packages/loop typecheck",
+            "rule": "verify.command_failed"
+          }
+        ],
+        "verify_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs matrix",
+            "exit_code": 0,
+            "duration_ms": 376834,
+            "summary": "matrix: exit=0 0-loop: PASS (112 tests), seed=250925 0-agents: PASS (36 tests), seed=250925 0-core: PASS (79 tests), seed=250925 0-cli: PASS (325 tests), seed=250925 1-cli: PASS (4 tests), seed=250926 {\"passed\":true,\"output\":\"/Volumes/AIMAT"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs typecheck",
+            "exit_code": 2,
+            "duration_ms": 7100,
+            "summary": "typecheck: exit=2 pter typecheck: Done packages/autonomy typecheck: Done packages/skills typecheck: Done packages/agents typecheck$ tsc --noEmit packages/agents typecheck: Done packages/config typecheck$ tsc --noEmit packages/loop typecheck"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs schemas",
+            "exit_code": 0,
+            "duration_ms": 295,
+            "summary": "schemas: exit=0 $ node scripts/generate-schemas.mjs --check schemas up to date"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs startup",
+            "exit_code": 0,
+            "duration_ms": 597,
+            "summary": "startup: exit=0 ok osstack --version (fast path): median 28ms over 5 runs (budget 150ms; min 27, max 29) ok osstack --help (full command surface): median 80ms over 5 runs (budget 500ms; min 79, max 80)"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs whitespace",
+            "exit_code": 0,
+            "duration_ms": 47,
+            "summary": "whitespace: exit=0"
+          }
+        ],
+        "evaluations": [
+          {
+            "spec_id": "verify-command-1",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs matrix",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (376834 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-2",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs typecheck",
+            "required": true,
+            "weight": 1,
+            "pass": false,
+            "summary": "command failed (exit 2): typecheck: exit=2 pter typecheck: Done packages/autonomy typecheck: Done packages/skills typecheck: Done packages/agents typecheck$ tsc --noEmit packages/agents typecheck: Done packages/config typecheck$ tsc --noEmit packages/loop typecheck",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-3",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs schemas",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (295 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-4",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs startup",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (597 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-5",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs whitespace",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (47 ms)",
+            "implicit": true
+          }
+        ],
+        "iteration_feedback": [
+          {
+            "attempt": 1,
+            "verdict_summary": "1 issue found by local verifier. Failed evaluations: verify-command-2.",
+            "blocking_issues": [
+              {
+                "severity": "error",
+                "message": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs typecheck failed (2): typecheck: exit=2 pter typecheck: Done packages/autonomy typecheck: Done packages/skills typecheck: Done packages/agents typecheck$ tsc --noEmit packages/agents typecheck: Done packages/config typecheck$ tsc --noEmit packages/loop typecheck",
+                "rule": "verify.command_failed"
+              }
+            ],
+            "failed_evaluations": [
+              "verify-command-2"
+            ],
+            "suggested_focus": [
+              "satisfy evaluation verify-command-2: Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs typecheck"
+            ],
+            "previous_diff_summary": "packages/cli/src/graph-contained-recovery.test.ts | 21 +++++++++ packages/cli/src/graph-quiescence-sweep.ts | 13 +++--- packages/cli/src/graph-unstarted-recovery.test.ts | 57 +++++++++++++++++++++-- packages/cli/src/graph-unstarted-recovery"
+          }
+        ],
+        "changed_files": [
+          "packages/cli/src/graph-contained-recovery.test.ts",
+          "packages/cli/src/graph-quiescence-sweep.ts",
+          "packages/cli/src/graph-unstarted-recovery.test.ts",
+          "packages/cli/src/graph-unstarted-recovery.ts",
+          "packages/cli/src/graph-worker-exit-proof.test.ts",
+          "packages/cli/src/graph-worker-exit-proof.ts",
+          "packages/core/src/state/graph-recovery.test.ts",
+          "packages/core/src/state/graph-recovery.ts"
+        ],
+        "diff_summary": "packages/cli/src/graph-contained-recovery.test.ts | 21 +++++++++ packages/cli/src/graph-quiescence-sweep.ts | 13 +++--- packages/cli/src/graph-unstarted-recovery.test.ts | 57 +++++++++++++++++++++-- packages/cli/src/graph-unstarted-recovery",
+        "commit_hash": "ac2ab97",
+        "error_summary": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs typecheck failed (2): typecheck: exit=2 pter typecheck: Done packages/autonomy typecheck: Done packages/skills typecheck: Done packages/agents typecheck$ tsc --noEmit packages/agen"
+      },
+      {
+        "task_id": "G25-worker-coverage-2",
+        "capability": "code.test",
+        "outcome": "success",
+        "iterations": 1,
+        "agent_id": "local-command",
+        "duration_ms": 422530,
+        "run_id": "run_5e29df09-4431-477b-8a49-63f7fc770b9d",
+        "started_at": "2026-09-18T13:04:54.386Z",
+        "completed_at": "2026-09-18T13:05:06.709Z",
+        "execution_summary": "Process group 74309 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "execution_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs focused",
+            "exit_code": 0,
+            "duration_ms": 12323,
+            "summary": "focused: exit=0 $ vitest run src/graph-worker-exit-proof.test.ts src/graph-unstarted-recovery.test.ts src/graph-contained-recovery.test.ts --maxWorkers=1 RUN v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packa"
+          }
+        ],
+        "verifier_agent_id": "local-verifier",
+        "verify_summary": "5 verifier commands and 0 verifier adapters passed. 5 evaluations passed.",
+        "verify_issue_count": 0,
+        "verify_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs matrix",
+            "exit_code": 0,
+            "duration_ms": 403112,
+            "summary": "matrix: exit=0 0-loop: PASS (112 tests), seed=250925 0-agents: PASS (36 tests), seed=250925 0-core: PASS (79 tests), seed=250925 0-cli: PASS (325 tests), seed=250925 1-cli: PASS (4 tests), seed=250926 {\"passed\":true,\"output\":\"/Volumes/AIMAT"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs typecheck",
+            "exit_code": 0,
+            "duration_ms": 6110,
+            "summary": "typecheck: exit=0 $ pnpm -r typecheck Scope: 22 of 23 workspace projects packages/compliance typecheck$ tsc --noEmit packages/contracts typecheck$ tsc --noEmit packages/governance typecheck$ tsc --noEmit packages/github typecheck$ tsc --noE"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs schemas",
+            "exit_code": 0,
+            "duration_ms": 288,
+            "summary": "schemas: exit=0 $ node scripts/generate-schemas.mjs --check schemas up to date"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs startup",
+            "exit_code": 0,
+            "duration_ms": 599,
+            "summary": "startup: exit=0 ok osstack --version (fast path): median 28ms over 5 runs (budget 150ms; min 27, max 29) ok osstack --help (full command surface): median 80ms over 5 runs (budget 500ms; min 79, max 81)"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs whitespace",
+            "exit_code": 0,
+            "duration_ms": 45,
+            "summary": "whitespace: exit=0"
+          }
+        ],
+        "evaluations": [
+          {
+            "spec_id": "verify-command-1",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs matrix",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (403112 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-2",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs typecheck",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (6110 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-3",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs schemas",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (288 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-4",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs startup",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (599 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-5",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs whitespace",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (45 ms)",
+            "implicit": true
+          }
+        ],
+        "diff_summary": "no git changes",
+        "commit_hash": "096a03f"
+      }
+    ],
+    "in_progress": [],
+    "pending": [],
+    "deferred_tasks": [],
+    "key_metrics": {
+      "total_cycles": 2,
+      "avg_duration_ms": 409748,
+      "success_rate": 0.5,
+      "tokens_consumed": 0,
+      "cost_consumed": 0
+    },
+    "decisions": [
+      "G25-worker-coverage-1: selected local-command - local execute command",
+      "G25-worker-coverage-1: escalate after iteration 1 - Maximum iterations reached (1) with 1 verifier issue remaining.",
+      "G25-worker-coverage-2: selected local-command - local execute command",
+      "G25-worker-coverage-2: stop after iteration 1 - Verifier passed with score 1.00."
+    ]
+  },
+  "completedTasks": [
+    {
+      "task_id": "G25-worker-coverage-2",
+      "capability": "code.test",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 422530,
+      "run_id": "run_5e29df09-4431-477b-8a49-63f7fc770b9d",
+      "started_at": "2026-09-18T13:04:54.386Z",
+      "completed_at": "2026-09-18T13:05:06.709Z",
+      "execution_summary": "Process group 74309 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs focused",
+          "exit_code": 0,
+          "duration_ms": 12323,
+          "summary": "focused: exit=0 $ vitest run src/graph-worker-exit-proof.test.ts src/graph-unstarted-recovery.test.ts src/graph-contained-recovery.test.ts --maxWorkers=1 RUN v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packa"
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "5 verifier commands and 0 verifier adapters passed. 5 evaluations passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs matrix",
+          "exit_code": 0,
+          "duration_ms": 403112,
+          "summary": "matrix: exit=0 0-loop: PASS (112 tests), seed=250925 0-agents: PASS (36 tests), seed=250925 0-core: PASS (79 tests), seed=250925 0-cli: PASS (325 tests), seed=250925 1-cli: PASS (4 tests), seed=250926 {\"passed\":true,\"output\":\"/Volumes/AIMAT"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs typecheck",
+          "exit_code": 0,
+          "duration_ms": 6110,
+          "summary": "typecheck: exit=0 $ pnpm -r typecheck Scope: 22 of 23 workspace projects packages/compliance typecheck$ tsc --noEmit packages/contracts typecheck$ tsc --noEmit packages/governance typecheck$ tsc --noEmit packages/github typecheck$ tsc --noE"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs schemas",
+          "exit_code": 0,
+          "duration_ms": 288,
+          "summary": "schemas: exit=0 $ node scripts/generate-schemas.mjs --check schemas up to date"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs startup",
+          "exit_code": 0,
+          "duration_ms": 599,
+          "summary": "startup: exit=0 ok osstack --version (fast path): median 28ms over 5 runs (budget 150ms; min 27, max 29) ok osstack --help (full command surface): median 80ms over 5 runs (budget 500ms; min 79, max 81)"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs whitespace",
+          "exit_code": 0,
+          "duration_ms": 45,
+          "summary": "whitespace: exit=0"
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs matrix",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (403112 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-2",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs typecheck",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (6110 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-3",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs schemas",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (288 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-4",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs startup",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (599 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-5",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-worker-coverage/check.mjs whitespace",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (45 ms)",
+          "implicit": true
+        }
+      ],
+      "diff_summary": "no git changes",
+      "commit_hash": "096a03f"
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_159bd7d9-291c-4742-a9f7-e6c3cf6e0e82",
+      "loop_id": "G25-worker-coverage-1",
+      "type": "loop.started",
+      "seq": 1,
+      "created_at": 1789736694385,
+      "payload": {
+        "workspace_path": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation"
+      }
+    },
+    {
+      "event_id": "evt_d7ac705a-cf86-4946-90e7-a50b0e2911df",
+      "loop_id": "G25-worker-coverage-1",
+      "type": "loop.cycle.started",
+      "seq": 2,
+      "created_at": 1789736694385,
+      "payload": {
+        "cycle": 1
+      }
+    },
+    {
+      "event_id": "evt_9cb8fd34-a753-46c4-af77-8b46085789f8",
+      "loop_id": "G25-worker-coverage-1",
+      "type": "loop.discover.done",
+      "seq": 3,
+      "created_at": 1789736694385,
+      "payload": {
+        "task_count": 1,
+        "discovered_task_count": 1,
+        "skipped_task_count": 0
+      }
+    },
+    {
+      "event_id": "evt_fe25d802-5c46-47e2-9b80-0d90a51f4ffb",
+      "loop_id": "G25-worker-coverage-1",
+      "type": "loop.plan.done",
+      "seq": 4,
+      "created_at": 1789736694386,
+      "payload": {
+        "task_id": "G25-worker-coverage-2",
+        "plan_id": "plan_6ef63d08-b0da-43b2-b4f7-7736479acc5d",
+        "agent_id": "local-command",
+        "routing_reason": "local execute command",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_54dd29be-b11a-42c3-b946-9955a3d62c78",
+      "loop_id": "G25-worker-coverage-1",
+      "type": "loop.execute.done",
+      "seq": 5,
+      "created_at": 1789736706709,
+      "payload": {
+        "task_id": "G25-worker-coverage-2",
+        "run_id": "run_5e29df09-4431-477b-8a49-63f7fc770b9d",
+        "outcome": "completed",
+        "agent_id": "local-command",
+        "summary": "Process group 74309 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_f9eb0b90-6de7-4fa9-a4c1-b61c6b6dbaac",
+      "loop_id": "G25-worker-coverage-1",
+      "type": "loop.verify.done",
+      "seq": 6,
+      "created_at": 1789737116916,
+      "payload": {
+        "task_id": "G25-worker-coverage-2",
+        "pass": true,
+        "score": 1,
+        "issue_count": 0,
+        "evaluation_count": 5,
+        "failed_evaluation_ids": [],
+        "reviewer_agent_id": "local-verifier",
+        "summary": "5 verifier commands and 0 verifier adapters passed. 5 evaluations passed.",
+        "changed_files": [],
+        "diff_summary": "no git changes",
+        "commit_hash": "096a03f",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_9d58b215-d713-42b6-ac7b-bbfe9be5db81",
+      "loop_id": "G25-worker-coverage-1",
+      "type": "loop.iterate.done",
+      "seq": 7,
+      "created_at": 1789737116916,
+      "payload": {
+        "task_id": "G25-worker-coverage-2",
+        "action": "stop",
+        "reason": "Verifier passed with score 1.00.",
+        "iteration": 1,
+        "issue_count": 0,
+        "failed_evaluation_ids": []
+      }
+    },
+    {
+      "event_id": "evt_412d6b8c-08db-4efa-a2a3-1fb0e9f841e2",
+      "loop_id": "G25-worker-coverage-1",
+      "type": "loop.state.written",
+      "seq": 8,
+      "created_at": 1789737116918,
+      "payload": {
+        "jsonPath": "/Volumes/AIMATE_WORK/tmp/g25-worker-coverage/LOOP-STATE.json",
+        "markdownPath": "/Volumes/AIMATE_WORK/tmp/g25-worker-coverage/STATE.md"
+      }
+    },
+    {
+      "event_id": "evt_ab9e8322-3f51-4119-b6b5-6f8d2b6e7aac",
+      "loop_id": "G25-worker-coverage-1",
+      "type": "loop.cycle.completed",
+      "seq": 9,
+      "created_at": 1789737116918,
+      "payload": {
+        "cycle": 1,
+        "task_count": 1,
+        "discovered_task_count": 1,
+        "skipped_task_count": 0,
+        "duration_ms": 422537
+      }
+    },
+    {
+      "event_id": "evt_7c545225-efc9-4bf2-a5de-78987a9c819c",
+      "loop_id": "G25-worker-coverage-1",
+      "type": "loop.stopped",
+      "seq": 10,
+      "created_at": 1789737116918,
+      "payload": {
+        "reason_code": "completed",
+        "reason": "manual run completed"
+      }
+    }
+  ],
+  "jsonPath": "/Volumes/AIMATE_WORK/tmp/g25-worker-coverage/LOOP-STATE.json",
+  "markdownPath": "/Volumes/AIMATE_WORK/tmp/g25-worker-coverage/STATE.md",
+  "discoveredTaskCount": 1,
+  "executedTaskCount": 1,
+  "skippedTaskCount": 0
+}

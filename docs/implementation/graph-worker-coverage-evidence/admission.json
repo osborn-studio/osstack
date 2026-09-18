@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-18",
+  "status": "passed_bounded_slice",
+  "productionReady": false,
+  "taskStatus": "in_progress",
+  "completedTaskCount": 25,
+  "totalTaskCount": 30,
+  "acceptedCodeCommit": "096a03f0db825d508a2004477fbc55f548005698",
+  "scope": "Complete worker lease inventory and real G15 repeated durable no-child takeover; no previously launched worker recovery",
+  "loop": {
+    "id": "G25-worker-coverage-2",
+    "executed": 1,
+    "skipped": 0,
+    "outcome": "success",
+    "focusedTests": 112,
+    "verifiersPassed": 5
+  },
+  "matrix": {
+    "testExecutions": 556,
+    "seed": 250925,
+    "repeat": 2,
+    "sourceUnchanged": true,
+    "artifactsUnchanged": true
+  },
+  "audit": {
+    "provider": "KimiCodeAdapter",
+    "modelId": "kimi-code/k3",
+    "verdict": "approved",
+    "judgments": 4,
+    "identitySource": "adapter runtime report, not cryptographic attestation"
+  },
+  "limitations": [
+    "No new real Linux/Docker run; contained tests used controlled fake daemon. Real OS child startup, failure, exit and SQLite/service reopen tested.",
+    "Launched workers, descendants, opaque adapters and independent workspace isolation remain outside this no-child recovery path.",
+    "G25 remains in progress; artifact locks, effect reconciliation/release and G26-G29 remain."
+  ]
+}
