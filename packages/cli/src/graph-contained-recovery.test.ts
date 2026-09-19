@@ -1,10 +1,17 @@
 import { createHash } from 'node:crypto';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { constants, openSync, fstatSync, readSync } from 'node:fs';
+
+vi.mock('node:fs', async importOriginal => {
+  const fs = await importOriginal<typeof import('node:fs')>();
+  return { ...fs, openSync: vi.fn(fs.openSync), fstatSync: vi.fn(fs.fstatSync), readSync: vi.fn(fs.readSync) };
+});
+const actualFs = await vi.importActual<typeof import('node:fs')>('node:fs');
 import { GraphActionStore, GraphRunStore, openDb } from '@osstack/core';
 import { GraphAdmissionStore } from '@osstack/core/graph-recovery';
 import { createContainedCommandExecutor, prepareContainedImage, type ContainedImageReceipt } from '@osstack/agents';
@@ -17,7 +24,7 @@ import { sweepGraphQuiescence } from './graph-quiescence-sweep.js';
 import { verifyJournaledGraphWorkerExit } from './graph-worker-exit-proof.js';
 
 const cleanup: Array<() => Promise<void>> = [];
-afterEach(async () => { for (const fn of cleanup.splice(0).reverse()) await fn(); });
+afterEach(async () => { vi.mocked(openSync).mockReset(); vi.mocked(fstatSync).mockReset(); vi.mocked(readSync).mockReset(); for (const fn of cleanup.splice(0).reverse()) await fn(); });
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 async function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'g25-reopen-')); const f = processFixture(root); let db = f.db; let run = f.run;
@@ -207,6 +214,72 @@ it.each(['missing', 'digest', 'noncanonical', 'oversize', 'symlink'])('rejects %
   else if (mode === 'oversize') writeFileSync(path, ' '.repeat(65537));
   else { const target = join(f.root, 'copy'); writeFileSync(target, readFileSync(path)); rmSync(path); symlinkSync(target, path); }
   const before = f.calls.length; await expect(f.reopen()).rejects.toThrow(); expect(f.calls).toHaveLength(before);
+});
+describe('bounded binding journal reads', () => {
+  it.each(['reopen', 'transaction'])('rejects a real FIFO without waiting for a writer at %s', async stage => {
+    const f = await fixture(); await f.execute(); f.uncertain();
+    const proof = stage === 'transaction' ? await (await f.reopen()).captureQuiescence() : undefined;
+    const path = f.path('binding.json'); rmSync(path); execFileSync('mkfifo', [path]);
+    // The guard makes a regression fail rather than wedging the Vitest process.
+    // With the flag present the real OS open/fstat still run against the FIFO.
+    vi.mocked(openSync).mockImplementation((file, flags, mode) => {
+      if (file === path && (typeof flags !== 'number' || !(flags & constants.O_NONBLOCK))) throw Error('TEST_BLOCKING_FIFO_OPEN');
+      return actualFs.openSync(file, flags, mode);
+    });
+    const before = f.calls.length;
+    if (proof) expect(() => f.db.transaction(() => proof.recheck()).immediate()).toThrow('CONTAINED_JOURNAL_INVALID');
+    else await expect(f.reopen()).rejects.toThrow('CONTAINED_JOURNAL_INVALID');
+    expect(f.calls).toHaveLength(before); expect(f.held()).toBeNull(); expect(f.action().state).toBe('unknown');
+    expect(f.db.inTransaction).toBe(false);
+  });
+  it.each(['reopen', 'transaction'])('rejects growth beyond the limit after fstat at %s', async stage => {
+    const f = await fixture(); await f.execute(); f.uncertain();
+    const proof = stage === 'transaction' ? await (await f.reopen()).captureQuiescence() : undefined;
+    const path = f.path('binding.json'); const original = readFileSync(path); let fd: number | undefined; let grew = false;
+    vi.mocked(openSync).mockImplementation((file, flags, mode) => {
+      const opened = actualFs.openSync(file, flags, mode); if (file === path) fd = opened; return opened;
+    });
+    vi.mocked(fstatSync).mockImplementation((file, options) => {
+      const stat = actualFs.fstatSync(file, options);
+      if (file === fd) {
+        if (!grew) { grew = true; writeFileSync(path, Buffer.concat([original, Buffer.alloc(65537 - original.length, 32)])); }
+        // Keep stat small on later rechecks too: only the actual read cap can
+        // reject this valid JSON followed by whitespace, not a subsequent stat.
+        stat.size = typeof stat.size === 'bigint' ? BigInt(original.length) : original.length;
+      }
+      return stat;
+    });
+    const before = f.calls.length;
+    if (proof) expect(() => f.db.transaction(() => proof.recheck()).immediate()).toThrow('CONTAINED_JOURNAL_INVALID');
+    else await expect(f.reopen()).rejects.toThrow('CONTAINED_JOURNAL_INVALID');
+    expect(grew).toBe(true); expect(f.calls).toHaveLength(before); expect(f.held()).toBeNull(); expect(f.action().state).toBe('unknown');
+    expect(() => actualFs.fstatSync(fd!)).toThrow(); expect(f.db.inTransaction).toBe(false);
+  });
+  it('accepts the exact byte limit even with short reads', async () => {
+    const f = await fixture(); await f.execute(); const path = f.path('binding.json'); const bytes = readFileSync(path);
+    writeFileSync(path, Buffer.concat([bytes, Buffer.alloc(65536 - bytes.length, 32)]));
+    let fd: number | undefined; let reads = 0;
+    vi.mocked(openSync).mockImplementation((file, flags, mode) => {
+      const opened = actualFs.openSync(file, flags, mode); if (file === path) fd = opened; return opened;
+    });
+    vi.mocked(readSync).mockImplementation(((file: number, buffer: Buffer, offset: number, length: number, position: number) => {
+      if (file === fd) { reads++; length = Math.min(length, 97); }
+      return actualFs.readSync(file, buffer, offset, length, position);
+    }) as typeof readSync);
+    expect((await f.reopen()).identity).toEqual(f.identity); expect(reads).toBeGreaterThan(675);
+    expect(() => actualFs.fstatSync(fd!)).toThrow(); expect(f.held()).toBeNull();
+  });
+  it('closes the binding descriptor when a read fails', async () => {
+    const f = await fixture(); await f.execute(); const path = f.path('binding.json'); let fd: number | undefined;
+    vi.mocked(openSync).mockImplementation((file, flags, mode) => {
+      const opened = actualFs.openSync(file, flags, mode); if (file === path) fd = opened; return opened;
+    });
+    vi.mocked(readSync).mockImplementation(((file: number, buffer: Buffer, offset: number, length: number, position: number) => {
+      if (file === fd) throw Error('TEST_READ_FAILURE'); return actualFs.readSync(file, buffer, offset, length, position);
+    }) as typeof readSync);
+    const before = f.calls.length; await expect(f.reopen()).rejects.toThrow('TEST_READ_FAILURE');
+    expect(f.calls).toHaveLength(before); expect(() => actualFs.fstatSync(fd!)).toThrow(); expect(f.held()).toBeNull();
+  });
 });
 it.each(['scope', 'epoch', 'revision', 'owner', 'program', 'command', 'content'])('rejects incorrect trusted request %s', async field => {
   const f = await fixture(); await f.execute(); const input = f.request();

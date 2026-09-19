@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { constants, closeSync, fstatSync, openSync, readFileSync, realpathSync } from 'node:fs';
+import { constants, closeSync, fstatSync, openSync, readSync, realpathSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import type Database from 'better-sqlite3';
 import type { GraphRunFence } from '@osstack/core';
@@ -25,11 +25,19 @@ function readBinding(root: string, invocationId: string) {
   if (!isAbsolute(root) || realpathSync(root) !== root) throw Error('CONTAINED_ROOT_CHANGED');
   const directory = join(root, sha(invocationId));
   if (realpathSync(directory) !== directory) throw Error('CONTAINED_JOURNAL_INVALID');
-  const fd = openSync(join(directory, 'binding.json'), constants.O_RDONLY | constants.O_NOFOLLOW);
+  const fd = openSync(join(directory, 'binding.json'), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   try {
     const stat = fstatSync(fd);
     if (!stat.isFile() || stat.size > 65536) throw Error('CONTAINED_JOURNAL_INVALID');
-    const value = verificationObject(JSON.parse(readFileSync(fd, 'utf8')), ['version', 'bindingRef', 'data']);
+    // Bound the actual read as well as the pre-read stat: a private journal can
+    // grow between those operations. NONBLOCK also lets fstat reject a FIFO.
+    const bytes = Buffer.alloc(65537); let offset = 0;
+    while (offset < bytes.length) {
+      const count = readSync(fd, bytes, offset, bytes.length - offset, offset);
+      if (!count) break; offset += count;
+    }
+    if (offset > 65536) throw Error('CONTAINED_JOURNAL_INVALID');
+    const value = verificationObject(JSON.parse(bytes.subarray(0, offset).toString('utf8')), ['version', 'bindingRef', 'data']);
     if (value.version !== 1 || typeof value.data !== 'string' || Buffer.byteLength(value.data) > 32768
       || value.bindingRef !== sha(value.data)) throw Error('CONTAINED_BINDING_MISMATCH');
     const identity: unknown = JSON.parse(value.data);
