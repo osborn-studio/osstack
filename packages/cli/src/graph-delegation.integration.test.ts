@@ -4,7 +4,8 @@ import { mkdtemp, mkdir, realpath, writeFile, readFile, rm } from 'node:fs/promi
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { connect } from 'node:net';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
+import { GraphActionBroker } from './graph-action-broker.js';
 import type { AgentAdapter } from '@osstack/agents';
 import { CapabilitySchema } from '@osstack/core';
 import { GraphDelegationStatus, type StartGraphRequest } from '@osstack/protocol';
@@ -93,5 +94,27 @@ it('simulated OSBot/OStag host bindings preserve parents, isolate source results
     const completed = await f.ready(tag.graphRunId); expect(completed.source.parentRunId).toBe(bot.graphRunId); expect(f.calls()).toBe(2);
     expect(completed.resultRef).toBeDefined(); f.setCaller(null);
     expect(await f.rpc('graph.result', { schemaVersion: 1, scope: f.request.scope, graphRunId: tag.graphRunId })).toMatchObject({ ok: false, error: { code: 'UNAUTHENTICATED' } });
+    expect(await f.rpc('graph.reconcile', { schemaVersion: 1, kind: 'cancel', scope: f.request.scope, graphRunId: tag.graphRunId, expectedRevision: completed.revision, idempotencyKey: 'unauth' })).toMatchObject({ ok: false, error: { code: 'UNAUTHENTICATED' } });
   } finally { await f.close(); }
 }, 45000);
+
+it('actual daemon and CLI reconcile a registered no-child failure while new admission is disabled', async () => {
+  const f = await fixture();
+  const failure = vi.spyOn(GraphActionBroker.prototype, 'register').mockImplementation(() => { throw Error('injected registration failure'); });
+  try {
+    const started = GraphDelegationStatus.parse((await f.rpc('graph.start', f.request)).result);
+    const params = { schemaVersion: 1, scope: f.request.scope, graphRunId: started.graphRunId };
+    await expect.poll(async () => GraphDelegationStatus.parse((await f.rpc('graph.status', params)).result).status, { timeout: 10000 }).toBe('reconciliation_required');
+    failure.mockRestore();
+    const configPath = join(f.home, 'graph-host.json'); const config = JSON.parse(await readFile(configPath, 'utf8'));
+    config.admissionEnabled = false; await writeFile(configPath, JSON.stringify(config));
+    const before = GraphDelegationStatus.parse((await f.rpc('graph.status', params)).result);
+    const request = { ...params, kind: 'cancel', expectedRevision: before.revision, idempotencyKey: 'settle' };
+    const file = join(f.root, 'cancel.json'); await writeFile(file, JSON.stringify(request));
+    let output = ''; const deps = { rpc: f.rpc, stdout: (value: string) => { output = value; } };
+    expect(await handleGraphCommand(['reconcile', '--request', file, '--json'], deps)).toBe(0);
+    expect(GraphDelegationStatus.parse(JSON.parse(output)).status).toBe('cancelled');
+    expect(await f.rpc('graph.reconcile', request)).toMatchObject({ ok: true, result: { status: 'cancelled' } });
+    expect(f.calls()).toBe(0);
+  } finally { failure.mockRestore(); await f.close(); }
+}, 30000);

@@ -9,6 +9,8 @@ import { readGraphActionState } from '@osstack/core/graph-verification';
 import { GraphErrorCode, GraphStatusRequest, GraphDelegationStatus, GraphScope, GraphRequest, type StartGraphRequest, GraphSpec, computeGraphInputDigest, workerCanonical, GraphContractError } from '@osstack/protocol';
 import { compileGraphSpec } from '@osstack/graph/spec-compiler';
 import { GraphDelivery, assertGraphDeliverySupported, graphDeliveryVersion, type GraphDeliveryOptions, type GraphDeliveryInterrupt } from './graph-delivery.js';
+import { GraphReconciler } from './graph-reconciler.js';
+import { cancelUnstartedGraphWorker } from './graph-unstarted-recovery.js';
 
 export interface GraphHostRegistration {
   id: string;
@@ -63,6 +65,7 @@ export class GraphRpcService {
   private readonly runs: GraphRunStore;
   private readonly registrations = new Map<string, GraphHostRegistration>();
   private readonly live = new Map<string, { driver?: GraphDelivery; done: Promise<void> }>();
+  private readonly pendingRequests = new Set<Promise<unknown>>();
   private readonly owner = randomUUID();
   private closed = false;
   private closing: Promise<void> | undefined;
@@ -131,8 +134,11 @@ export class GraphRpcService {
     return true;
   }
   async handle(connection: object, method: string, params: unknown): Promise<unknown> {
-    try { return await this.handleRequest(connection, method, params); }
+    const pending = this.handleRequest(connection, method, params);
+    this.pendingRequests.add(pending);
+    try { return await pending; }
     catch (error) { throw new GraphContractError(GraphErrorCode.parse(graphRpcError(error).code)); }
+    finally { this.pendingRequests.delete(pending); }
   }
   private async handleRequest(connection: object, method: string, params: unknown): Promise<unknown> {
     const registration = this.caller(connection);
@@ -145,17 +151,39 @@ export class GraphRpcService {
     const request = GraphRequest.parse(params);
     if (!same(request.scope, registration.scope)) throw new GraphContractError('SCOPE_MISMATCH');
     if ((method === 'graph.start' || method === 'graph.submit') && request.kind === 'start') return this.submit(registration, request);
-    if ((method !== 'graph.cancel' || request.kind !== 'cancel') && (method !== 'graph.resume' || request.kind !== 'resume')) throw new GraphContractError('INPUT_CONTRACT_INVALID');
+    const reconcile = method === 'graph.reconcile';
+    if ((!['graph.cancel', 'graph.reconcile'].includes(method) || request.kind !== 'cancel') && (method !== 'graph.resume' || request.kind !== 'resume')) throw new GraphContractError('INPUT_CONTRACT_INVALID');
     synchronous(registration.authorize(request.kind === 'cancel' ? 'cancel' : 'resume'));
     const run = this.bound(registration, request.scope, request.graphRunId);
-    if (this.replay(request)) return this.status(run, registration);
-    if (run.revision !== request.expectedRevision) throw new GraphContractError('REVISION_CONFLICT');
+    const replay = this.replay(request);
+    // Only the unchanged cancellation intent can be retried as reconciliation.
+    // Later revisions/generations are a lookup, never authority to stop a new owner.
+    if (replay && !(reconcile && run.status === 'cancel_pending' && run.revision === request.expectedRevision + 1)) return this.status(run, registration);
+    if (!replay && run.revision !== request.expectedRevision) throw new GraphContractError('REVISION_CONFLICT');
     if (request.kind === 'cancel') {
-      const pending = this.runs.projectRequest(request, { ...fence(run), status: 'cancel_pending' });
+      const pending = replay ? run : this.runs.projectRequest(request, { ...fence(run), status: 'cancel_pending' });
       const entry = this.live.get(run.graphRunId);
       if (entry?.driver) void entry.driver.cancel().catch(() => {});
       else if (run.generation === 0) this.runs.project({ ...fence(pending), status: 'cancelled' });
-      // A missing supervisor for a launched run cannot prove any physical stop.
+      if (reconcile && run.generation > 0) {
+        const receiptId = `public-cancel:${createHash('sha256').update(workerCanonical({ scope: request.scope,
+          idempotencyKey: request.idempotencyKey, digest: computeGraphInputDigest(request) })).digest('hex')}`;
+        let authorizationFailed = false;
+        try {
+          await cancelUnstartedGraphWorker(this.options.db, new GraphReconciler(this.options.db), { fence: fence(pending), receiptId },
+            () => {
+              try { synchronous(registration.authorize('cancel')); }
+              catch (error) { authorizationFailed = true; throw error; }
+            });
+        } catch (error) {
+          if (authorizationFailed) throw error;
+          synchronous(registration.authorize('cancel'));
+          // Intent is already durable. Missing/conflicting evidence cannot undo
+          // its acknowledgement; return current state without settling or releasing.
+        }
+        // Successful G15 commit rechecked the grant in its final transaction.
+        // Later expiry cannot turn that completed operation into a rejected request.
+      }
       return this.status(this.runs.get(run.scope, run.graphRunId)!, registration);
     }
     const row = this.row(run.graphRunId);
@@ -258,7 +286,7 @@ export class GraphRpcService {
     });
     // A deadline cannot prove database users are gone. Forced process recovery
     // keeps its existing durable uncertainty; graceful shutdown waits for I/O.
-    await Promise.allSettled(draining);
+    await Promise.allSettled([...draining, ...this.pendingRequests]);
   }
 }
 

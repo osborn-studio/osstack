@@ -15,9 +15,10 @@ export const GRAPH_EXECUTION_HELP = `Usage: osstack graph <command> [--json]
   status --run ID --scope FILE       Read authoritative run state
   result --run ID --scope FILE       Read artifact-only delivery and evidence references
   cancel --request FILE             Persist cancellation intent; confirmation is separate
+  reconcile --request FILE          Recheck cancellation using trusted host no-child evidence
   resume --request FILE             Resume an exact interrupt with current host authorization
 Request/scope files are strict v1 JSON (max 64 KiB). No implicit scope or grant.
-run/cancel/resume retain the request's idempotencyKey across transport retries.
+run/cancel/reconcile/resume retain the request's idempotencyKey across transport retries.
 Exit: 0 acknowledged; 1 input/RPC rejection; 2 delivery_unknown (retry the same request).
 The server must have explicit trusted graph-host configuration. graph explain remains available.`;
 
@@ -86,11 +87,11 @@ export async function handleGraphExecutionCommand(args: string[], deps: GraphCom
       const opts = options(args.slice(1), ['--run', '--scope']);
       params = GraphStatusRequest.parse({ schemaVersion: 1, scope: GraphScope.parse(readJson(opts.get('--scope')!)), graphRunId: opts.get('--run') });
       method = `graph.${command}`;
-    } else if (command === 'run' || command === 'cancel' || command === 'resume') {
+    } else if (command === 'run' || command === 'cancel' || command === 'reconcile' || command === 'resume') {
       const opts = options(args.slice(1), ['--request']);
       mutation = GraphRequest.parse(readJson(opts.get('--request')!));
-      if (mutation.kind !== (command === 'run' ? 'start' : command)) throw new GraphContractError('INPUT_CONTRACT_INVALID');
-      params = mutation; method = `graph.${mutation.kind}`;
+      if (mutation.kind !== (command === 'run' ? 'start' : command === 'reconcile' ? 'cancel' : command)) throw new GraphContractError('INPUT_CONTRACT_INVALID');
+      params = mutation; method = command === 'reconcile' ? 'graph.reconcile' : `graph.${mutation.kind}`;
     } else throw new GraphContractError('INPUT_CONTRACT_INVALID');
     if (!deps.rpc) throw new GraphContractError('UNAUTHENTICATED');
     let response: unknown;

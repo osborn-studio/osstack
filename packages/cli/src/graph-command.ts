@@ -206,7 +206,7 @@ function renderText(result: ReturnType<typeof explainGraph>) {
 }
 
 export async function handleGraphCommand(args: string[], deps: GraphCommandDependencies = {}): Promise<number> {
-  if (["validate", "run", "status", "result", "cancel", "resume"].includes(args[0] ?? "")) {
+  if (["validate", "run", "status", "result", "cancel", "reconcile", "resume"].includes(args[0] ?? "")) {
     const { handleGraphExecutionCommand } = await import("./graph-execution-command.js");
     return handleGraphExecutionCommand(args, deps);
   }

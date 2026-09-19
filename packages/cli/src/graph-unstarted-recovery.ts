@@ -16,6 +16,18 @@ export interface GraphUnstartedRecoveryRequest {
  * Every historical generation must have its own durable no-child observation. */
 export async function recoverUnstartedGraphWorker(db: Database.Database, reconciler: GraphReconciler,
   value: GraphUnstartedRecoveryRequest, authorize: () => void) {
+  return reconcileUnstarted(db, reconciler, { ...value, kind: 'takeover' }, authorize);
+}
+
+/** Cancellation needs no fresh execution deadline; it never starts a replacement. */
+export async function cancelUnstartedGraphWorker(db: Database.Database, reconciler: GraphReconciler,
+  value: Pick<GraphUnstartedRecoveryRequest, 'fence' | 'receiptId'>, authorize: () => void) {
+  return reconcileUnstarted(db, reconciler, { ...value, kind: 'project', status: 'cancelled' }, authorize);
+}
+
+async function reconcileUnstarted(db: Database.Database, reconciler: GraphReconciler,
+  value: (GraphUnstartedRecoveryRequest & { kind: 'takeover' })
+    | (Pick<GraphUnstartedRecoveryRequest, 'fence' | 'receiptId'> & { kind: 'project'; status: 'cancelled' }), authorize: () => void) {
   const request = structuredClone(value);
   const binding = GraphWorkerBinding.parse({ scope: request.fence.scope, graphRunId: request.fence.graphRunId,
     identity: request.fence.identity, generation: request.fence.expectedGeneration, owner: request.fence.expectedOwner });
@@ -23,7 +35,7 @@ export async function recoverUnstartedGraphWorker(db: Database.Database, reconci
   let inventory: GraphExecutorInventory | undefined;
   const verify = (snapshot: GraphRecoverySnapshot) => {
     const deadline = snapshot.run.spec && snapshot.run.createdAt + snapshot.run.spec.limits.deadlineSeconds * 1000;
-    if (!deadline || Date.now() >= deadline || request.leaseExpiresAt > deadline) throw Error('GRAPH_DEADLINE_EXCEEDED');
+    if (request.kind === 'takeover' && (!deadline || Date.now() >= deadline || request.leaseExpiresAt > deadline)) throw Error('GRAPH_DEADLINE_EXCEEDED');
     // Look across the entire run, not only the current generation or running rows.
     for (const table of ['graph_actions', 'graph_action_admissions', 'graph_checkpoints', 'graph_checkpoint_writes', 'graph_checkpoint_requests']) {
       if (db.prepare(`SELECT 1 FROM ${table} WHERE graph_run_id=? LIMIT 1`).get(binding.graphRunId)) {
@@ -53,6 +65,6 @@ export async function recoverUnstartedGraphWorker(db: Database.Database, reconci
     },
     release: async () => { throw Error('GRAPH_NO_RESOURCE_RELEASE'); },
   });
-  try { return await reconciler.reconcile(connection, { ...request, kind: 'takeover' }); }
+  try { return await reconciler.reconcile(connection, request); }
   finally { reconciler.unregister(connection); }
 }

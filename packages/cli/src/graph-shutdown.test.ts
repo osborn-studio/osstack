@@ -22,7 +22,8 @@ it('graceful close waits beyond the former timeout for prelaunch I/O before allo
   const connection = {};
   const writer: AgentAdapter = { id: 'writer', display_name: 'writer', cost_tier: 'low',
     capabilities: () => [CapabilitySchema.parse({ id: 'write', agent_id: 'writer', kind: 'code.write', description: 'write' })],
-    isAvailable: async () => ({ available: true, last_checked_at: 0 }), invoke: () => { throw Error('NO_EXECUTION_EXPECTED'); } };
+    isAvailable: async () => ({ available: true, last_checked_at: 0 }), invoke: () => { throw Error('NO_EXECUTION_EXPECTED'); },
+    confirmStopped: async () => { throw Error('NO_EXECUTION_EXPECTED'); } };
   const scope = { schemaVersion: 1 as const, tenantId: 'local', principalId: 'owner', workspaceId: 'repo' };
   const service = new GraphRpcService({ db, root: join(root, 'delivery'), registrations: [{ id: 'owner', scope, product: 'osstack', repositoryRef: 'repo', taskRef: 'task', inputArtifactRef: 'input', authorize: () => {},
     delivery: { repositoryPath: repository, task: 'task', writer: { identity: 'writer', adapter: writer, capabilityId: 'write' }, reviewer: { identity: 'reviewer', adapter: { ...writer, id: 'reviewer' }, capabilityId: 'review' },

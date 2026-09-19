@@ -12,6 +12,7 @@ osstack graph run --request start.json --json
 osstack graph status --run GRAPH_RUN_ID --scope scope.json --json
 osstack graph result --run GRAPH_RUN_ID --scope scope.json --json
 osstack graph cancel --request cancel.json --json
+osstack graph reconcile --request cancel.json --json
 osstack graph resume --request resume.json --json
 ```
 
@@ -48,6 +49,27 @@ The complete scope and idempotency key bind the original business input. Repeati
 A lost response yields `GraphDeliveryUnknown`: the original scope, idempotency key and mutation input digest, optional run ID, and `nextAction: retry_same_request`. Retry the exact request. Do not invent a new key to work around a timeout. A retry after daemon restart consults durable state; it must not create another writer. A crashed execution without independently proven stop remains subject to reconciliation.
 
 Cancel requests include `graphRunId`, the latest `expectedRevision`, and a distinct idempotency key. `cancel_pending` records an intent; `cancelled` requires confirmed worker and executor quiescence. `cancel_pending` and `reconciliation_required` expose `delivery_unknown`. A promise completion, expired lease, or model statement does not prove a physical stop. Graceful daemon shutdown also waits for remaining local database users (including late persistence/release). A bounded cancellation response does not permit closing SQLite underneath them; genuinely stuck local I/O can delay graceful shutdown and requires operator recovery.
+
+`graph reconcile` calls `graph.reconcile` using the same strict `CancelGraphRequest` as `graph cancel`, under the current **cancel** grant. It records cancellation intent and asks the host to verify cancellation, not to restart execution or accept a client-supplied outcome. A live supervisor receives cancellation through the existing signal chain. A fresh host can additionally confirm cancellation when **every historical worker generation has a durable no-child observation and the entire run has no admitted actions, admissions or checkpoint scheduling evidence**. This bounded path uses G15's independent checks and final transaction; it remains available with new admission disabled or adapters unsupported, and after the execution deadline expires.
+
+Example cancellation/reconciliation input:
+
+```json
+{
+  "schemaVersion": 1,
+  "kind": "cancel",
+  "scope": { "schemaVersion": 1, "tenantId": "local", "principalId": "owner", "workspaceId": "project" },
+  "graphRunId": "GRAPH_RUN_ID",
+  "expectedRevision": 7,
+  "idempotencyKey": "cancel-001"
+}
+```
+
+Obtain the current revision from status. Proof references, process IDs, paths, arbitrary outcomes and takeover owners are not accepted in this request. For a lost response, repeat the exact request to `reconcile`. Reusing the original cancel request can continue reconciliation while its cancellation intent is still the next unchanged revision. After other state changes, the old key only returns current status; inspect it and submit a new cancellation key with the current revision for another reconciliation attempt. This prevents an old request from operating on a later owner/generation. Confirmed cancellation replay returns the terminal state without another recovery decision.
+
+Exit 0 acknowledges the request. Inspect `status`: `cancel_pending` with `delivery_unknown` means the host still cannot prove stop, not success. Missing journals, an unobserved generation, checkpoint evidence or opaque external effects keep the run pending and retain holds. General effect outcome reconciliation, workspace quiescence and recovery of already-launched orphan workers remain unsupported by this public path. It never infers stop from an expired lease or a missing process, and never creates a replacement writer. Graceful shutdown drains these asynchronous reconciliation requests before SQLite closes.
+
+Once cancellation intent is durable, a concurrent state change or failed proof check returns the current state rather than claiming that the intent was rejected. Grant failure still refuses further reconciliation; an earlier intent may already be recorded. A successful G15 commit checks its grant inside the final transaction, so expiry strictly after that commit does not invalidate the completed cancellation acknowledgement.
 
 Resume requests include the exact interrupt ID and latest revision. The v1 quality-resume data is `{ "kind": "data", "value": { "inputDigest": "ORIGINAL_RUN_INPUT_DIGEST" } }`. The host checks the original scope, current grant, saved checkpoint/join evidence and supervisor stop observations before G15 takeover. Boolean input or text saying `approved` is never authorization. A live supervisor may resume an observed, safely stopped quality interrupt; loss of that supervisor requires independent recovery evidence. General unobserved process-crash recovery is tracked separately in G25.
 
@@ -93,7 +115,7 @@ The owner may renew the grant's deadline and allowed operations while retaining 
 
 Set top-level `admissionEnabled` to `false` to reject new reservations with `GRAPH_ADMISSION_DISABLED`. The owner-only file is reread at admission; changing this boolean does not require a daemon restart or alter the registered bindings. Omission preserves the earlier enabled default. The example starts disabled. Write configuration updates atomically, retaining mode `0600` and ownership.
 
-The cutoff is durable reservation: already admitted queued/running work continues, and live quality resume remains available under its existing grant. To stop that work, use `graph cancel`. Reads, results, cancellation and exact start-request replay remain available under their required grants while admission is disabled, including from a fresh host whose adapters no longer support new graphs. Conflicting replay input is still rejected. This switch neither releases unknown effects nor provides missing post-crash reconciliation; the public reconcile entrypoint remains unfinished in G25. The CLI returns exit 1 and `nextAction: stop` for either admission error; retrying with a new key does not fix the host configuration.
+The cutoff is durable reservation: already admitted queued/running work continues, and live quality resume remains available under its existing grant. To stop that work, use `graph cancel`. Reads, results, cancellation, bounded cancellation reconciliation and exact start-request replay remain available under their required grants while admission is disabled, including from a fresh host whose adapters no longer support new graphs. Conflicting replay input is still rejected. This switch does not release unknown effects; `graph reconcile` has the proof limits described above. The CLI returns exit 1 and `nextAction: stop` for either admission error; retrying with a new key does not fix the host configuration.
 
 The current CLI host pauses at a negative quality join that needs another repair epoch. Resume requires the same live supervisor and an unexpired worker lease (currently bounded to five minutes at the quality boundary) as well as the original overall deadline. Expired leases are refused before acknowledgement; this version does not silently refresh them or adopt another owner. Longer human approval waits and reconstruction after daemon loss require the recovery work in G25. Positive quality joins finish without an extra resume.
 

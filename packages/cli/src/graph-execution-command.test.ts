@@ -88,3 +88,16 @@ it.each(['EXECUTOR_UNSUPPORTED', 'GRAPH_ADMISSION_DISABLED'])('surfaces %s as a 
   expect(f.output()).toMatchObject({ error: { code, retryable: false, nextAction: 'stop' } });
   expect(f.deps.rpc).toHaveBeenCalledTimes(1);
 });
+
+it('reconcile sends the strict cancellation contract and preserves its exact retry identity on lost response', async () => {
+  const f = fixture(); const request = { schemaVersion: 1, kind: 'cancel', scope: f.request.scope, graphRunId: 'graph-1', expectedRevision: 3, idempotencyKey: 'settle' };
+  const file = f.save('reconcile.json', request);
+  expect(await handleGraphCommand(['reconcile', '--request', file, '--json'], f.deps)).toBe(0);
+  expect(f.deps.rpc.mock.calls[0]).toEqual(['graph.reconcile', request]);
+  f.deps.rpc.mockRejectedValue(Error('lost response'));
+  expect(await handleGraphCommand(['reconcile', '--request', file, '--json'], f.deps)).toBe(2);
+  expect(f.output()).toMatchObject({ kind: 'delivery_unknown', idempotencyKey: 'settle', inputDigest: computeGraphInputDigest(request), nextAction: 'retry_same_request' });
+  f.deps.rpc.mockClear();
+  expect(await handleGraphCommand(['reconcile', '--request', f.save('forged.json', { ...request, evidenceRefs: ['trust-me'], outcome: 'stopped' }), '--json'], f.deps)).toBe(1);
+  expect(f.deps.rpc).not.toHaveBeenCalled();
+});

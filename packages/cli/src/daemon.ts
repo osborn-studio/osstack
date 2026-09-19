@@ -3978,7 +3978,7 @@ export async function startDaemon(
             try { sock.write(encodeFrame(singleErr(req.id, "execution_failed", error instanceof Error ? error.message : String(error)))); } catch { /* disconnected */ }
           };
 
-          if (['graph.validate', 'graph.start', 'graph.submit', 'graph.status', 'graph.result', 'graph.cancel', 'graph.resume'].includes(req.method)) {
+          if (['graph.validate', 'graph.start', 'graph.submit', 'graph.status', 'graph.result', 'graph.cancel', 'graph.reconcile', 'graph.resume'].includes(req.method)) {
             void getGraphRpc().then(service => service.handle(sock, req.method, req.params)).then(result => {
               try { sock.write(encodeFrame(singleOk(req.id, result))); } catch { /* disconnected */ }
             }).catch(async error => {
