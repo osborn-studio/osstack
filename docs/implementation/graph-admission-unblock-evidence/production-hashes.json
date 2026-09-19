@@ -1,0 +1,8 @@
+{
+  "packages/cli/src/graph-action-broker.ts": "252bcbb536ad84ed25ea2eb4edfb3a6b580799c82327dac948e44917469c37b6",
+  "packages/cli/src/graph-delivery.ts": "70076348aaf82d7ebbea8083fb280c40d0c0c2a39e9c4c051a710e00c62fd166",
+  "packages/cli/src/graph-execution-command.ts": "b7240b2961c6e11eee5e0b185e79101947071bb21c247257540eea20a232a239",
+  "packages/cli/src/graph-rpc.ts": "bdaf0fd9f29d4fae59e52dca09c9c144988b358bbae420e9aec9da6077b1d34a",
+  "packages/protocol/src/graph.ts": "3b97ee7588ae14110af8b5386f12a643dea949c625eb047dcfead082e85b9a1a",
+  "packages/protocol/schemas/graph.schema.json": "ed89c75c7e427b5686fe3f776c751ba57bab5bc0be146c1c025e857119c2aacb"
+}

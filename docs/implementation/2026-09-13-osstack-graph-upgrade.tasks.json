@@ -1164,7 +1164,7 @@
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "已补齐CLI binding journal非阻塞及实际64KiB读取上限；真实FIFO复现与Kimi指出的增长测试缺口已解决。新矩阵585次通过，最终Loop全72专项与5项检查通过，Kimi K3复审approved；仅测试文件增强，生产源码/dist哈希一致。整图host/opaque/workspace、业务对账释放与artifact锁仍待完成。",
+      "progressNote": "G25-A 在新 run/直接 delivery/broker 注册前拒绝缺少 confirmStopped 的 adapter；真实内置 CLI adapter 仍不支持完整图。按 G25-B 真后端停止范围、G25-C 公开对账、G25-D 原故障矩阵推进；不再只扩充内部诊断。",
       "evidence": [
         "docs/reports/graph-runtime-fault-validation.md",
         "docs/implementation/2026-09-15-graph-fault-next-context.md",
@@ -1195,7 +1195,14 @@
         "docs/implementation/graph-contained-proof-evidence/admission.json",
         "docs/reports/graph-binding-reader-validation.md",
         "docs/implementation/2026-09-18-graph-binding-next-context.md",
-        "docs/implementation/graph-binding-reader-evidence/admission.json"
+        "docs/implementation/graph-binding-reader-evidence/admission.json",
+        "docs/reports/graph-admission-unblock-validation.md",
+        "docs/implementation/2026-09-18-graph-unblock-next-context.md"
+      ],
+      "remainingSlices": [
+        "G25-B",
+        "G25-C",
+        "G25-D"
       ]
     },
     {
@@ -1209,7 +1216,10 @@
         "packages/cli/src/daemon-loop.test.ts",
         "packages/cli/src/session-rpc.test.ts",
         "packages/loop/src/loop-engine.test.ts",
-        "packages/cli/src/graph-compatibility.integration.test.ts"
+        "packages/cli/src/graph-compatibility.integration.test.ts",
+        "packages/cli/src/graph-admission.test.ts",
+        "packages/cli/src/graph-rpc.ts",
+        "docs/guides/graph-delegation.md"
       ],
       "acceptance": [
         "旧 Loop/session/graph explain 语义回归通过，受管模式统一仓库租约，无第二条绕行 writer。",
@@ -1218,9 +1228,13 @@
       ],
       "verify": "COMPAT",
       "size": "M",
-      "status": "pending",
+      "status": "in_progress",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "progressNote": "G26-A 动态新图准入已实现，保留已有查询/结果/原请求重试/取消/live quality resume；公开 reconcile、备份恢复与完整旧模式共存仍待验收。G25 依赖是最终验收顺序，独立兼容实现已提前启动。",
+      "evidence": [
+        "docs/reports/graph-admission-unblock-validation.md"
       ]
     },
     {
@@ -1305,13 +1319,14 @@
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "1ca7d09bec024ba3a807adc8e9c5fdef9dd0c393",
+    "acceptedCodeCommit": "f263062731f678f6835ac76546227fcd85f54b43",
     "completedTaskCount": 25,
     "totalTaskCount": 30,
     "nextTasks": [
-      "G25"
+      "G25",
+      "G26"
     ],
-    "report": "docs/reports/graph-binding-reader-validation.md",
+    "report": "docs/reports/graph-admission-unblock-validation.md",
     "nextGate": null,
     "milestoneStatus": {
       "M0": "completed",
@@ -1319,7 +1334,8 @@
       "M2": "completed",
       "M3": "in_progress"
     },
-    "reviewNote": "真实Kimi K3复审approved；Loop执行1跳过0/success，最终72测试、585次既有矩阵的生产源码/dist复核及typecheck/schema/startup通过。G25整体及全图恢复仍未准入。"
+    "reviewNote": "真实 Claude CLI Fable 5.1 两轮咨询和一次代码审查，结论接受有界切片。实际 Loop 434 项相关测试通过；最终 Loop 10 项准入补测及类型/哈希验证通过。G25-A/G26-A 已落地，G25/G26 父卡仍待原验收，计数 25/30。",
+    "slicePlan": "docs/implementation/2026-09-18-graph-unblock-next-context.md"
   },
   "decisionGates": [
     {

@@ -1,0 +1,30 @@
+[
+  {
+    "id": "codex-cli",
+    "hasStopConfirmation": false,
+    "capabilities": [
+      "code.write",
+      "code.refactor",
+      "code.test",
+      "code.review"
+    ]
+  },
+  {
+    "id": "claude-code",
+    "hasStopConfirmation": false,
+    "capabilities": [
+      "code.write",
+      "code.refactor",
+      "code.test",
+      "code.debug"
+    ]
+  },
+  {
+    "id": "kimi-code",
+    "hasStopConfirmation": false,
+    "capabilities": [
+      "code.review",
+      "release.verify"
+    ]
+  }
+]

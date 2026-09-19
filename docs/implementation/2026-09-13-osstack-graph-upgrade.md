@@ -1,8 +1,8 @@
 # OSStack 升级改造实施计划：Loop 强化与可执行 Graph v1
 
-日期：2026-09-13；更新：2026-09-18。**状态：G00–G24 已完成，25/30；M0–M2 与 C2–C7 已通过本地限定验收，M3 实施中，G25 诊断、连续启动前失败接管及受控容器执行器已分阶段验收。下一批仍为 G25。** 完整模板、公开入口与委托契约已验证，故障、兼容、发行、性能和真实试点仍待完成。
+日期：2026-09-13；更新：2026-09-18。**状态：G00–G24 已完成，25/30；G25 与 G26 实施中。已新增不支持 executor 的执行前拒绝及动态新图准入开关；真实后端停止证明、公开对账与完整故障/兼容验收尚未完成。** G26 独立实现可提前推进，最终验收仍依赖 G25。
 
-实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；最新限定阶段源码：`1ca7d09bec024ba3a807adc8e9c5fdef9dd0c393`。见 [恢复绑定文件有界读取报告](../reports/graph-binding-reader-validation.md)与[最新接续上下文](2026-09-18-graph-binding-next-context.md)；此前各阶段准入范围保留。
+实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`。本轮源码提交 `f263062731f678f6835ac76546227fcd85f54b43`；见 [Claude Fable 解阻与准入报告](../reports/graph-admission-unblock-validation.md)和[有限任务接续上下文](2026-09-18-graph-unblock-next-context.md)；历史限定验收保留。
 
 本计划将 [架构设计](../design/2026-09-13-executable-graph-plan.md) 转成可逐项执行的任务，产品边界遵循 [三产品定义](../design/2026-09-13-os-products-definition.md)。OSBot 功能在 [独立 handoff](../handoffs/osbot/handoff.md) 交接；本计划只改造 OSStack，不部署 Rakazo，不修改 OStag 产品。
 
@@ -690,9 +690,11 @@ flowchart TD
 
 **阶段进展：** 已实现 host-only 全量动作停止检查和精确 contained 清理，含 released 只读与异步边界复验。Kimi K3 和真实 Loop 限定验收通过。报告不授权恢复；非容器执行器、workspace/未登记后代/无动作中间代证明、G15 对账释放及 artifact 锁仍待完成。见 [最新报告](../reports/graph-quiescence-sweep-validation.md)与[接续上下文](2026-09-18-graph-binding-next-context.md)。
 
+**2026-09-18 解阻：** Claude CLI Fable 5.1 确认真实 adapter 缺少停止确认、公开对账入口缺失。本轮 G25-A 执行前支持检查落地；其余按 G25-B（真实后端范围与停止）、G25-C（公开对账）、G25-D（原故障矩阵）推进，禁止把未完成物理证明改成已完成。详见[切片验收条件](2026-09-18-graph-unblock-next-context.md)。
+
 ### G26 · 验证旧模式与回滚共存
 
-**依赖：** G25。**规模：** M。**状态：** 未开始。
+**验收依赖：** G25。**规模：** M。**状态：** 实施中；G26-A 新图准入开关已实现。可提前实施独立兼容工作，关闭父卡仍须 G25 及本卡全部验收。
 
 **预计改动位置：**
 
@@ -772,7 +774,7 @@ flowchart TD
 
 ## 8. 依赖、分支和交接纪律
 
-- G00–G24 与 C2–C7 已完成本地限定准入；下一批执行 G25 真实故障与并发验收。
+- G00–G24 与 C2–C7 已完成本地限定准入；下一批按有限切片推进 G25-B/C/D，并继续 G26-B 兼容准备。
 - G08、G09 在约束明确后可分别处理。G10–G17 涉及 daemon/核心存储，按依赖串行整合，避免多个任务同时改 migrations.ts 或 daemon.ts；DDL 严格按 G08→G11→G13→G16 单负责人推进。
 - M1 的真实 broker/产物接口已通过 C5，G18–G20 已通过 C6；G21 已补齐动态 host 注册、完整模板和 epoch 推进；G22–G24 已交付用户入口与外部契约；继续 G25 故障验收。
 - G22/G23 共用 graph-command 和 RPC；G25/G26 故障验证依赖完整业务路径，不提前用 stub 结果充数。

@@ -1,0 +1,16 @@
+{
+  "AGENTS.md": {
+    "original": "674b11ba6e8bcf3c844af6b583d8aeaff3a2681f15c9ad1a0d02c603969e146f",
+    "worktree": "13470229f38ec22e4cf3dd993ffd1c7a47493c35a6798ec6b24bee629fd7f1c3"
+  },
+  "docs/implementation/2026-09-13-osstack-graph-upgrade.md": {
+    "original": "d862614b3bfb48574471f902f3bc8e5098ced71ddd97da25e736cafe25aac3dc",
+    "worktree": "d862614b3bfb48574471f902f3bc8e5098ced71ddd97da25e736cafe25aac3dc"
+  },
+  "docs/implementation/2026-09-13-osstack-graph-upgrade.tasks.json": {
+    "original": "7ae3af4e7667ef5d7e4c7080b0c6a0dda3c1d3a9ce74ff67829e49af4ba0f3b1",
+    "worktree": "7ae3af4e7667ef5d7e4c7080b0c6a0dda3c1d3a9ce74ff67829e49af4ba0f3b1"
+  },
+  "originalStatus": " M AGENTS.md\n?? docs/design/2026-09-13-executable-graph-plan.md\n?? docs/design/2026-09-13-graph-functional-runtime.md\n?? docs/design/2026-09-13-os-products-definition.md\n?? docs/guides/graph-delegation.md\n?? docs/handoffs/\n?? docs/implementation/\n?? docs/reports/2026-09-13-executable-graph-claude-review.md\n?? docs/reports/2026-09-13-executable-graph-context.md\n?? docs/reports/2026-09-13-executable-graph-evidence/\n?? docs/reports/2026-09-13-executable-graph-research.md\n?? docs/reports/2026-09-13-os-products-claude-review.md\n?? docs/reports/2026-09-13-os-products-context.md\n?? docs/reports/2026-09-13-os-products-evidence/\n?? docs/reports/graph-binding-reader-validation.md\n?? docs/reports/graph-contained-candidate-validation.md\n?? docs/reports/graph-contained-executor-validation.md\n?? docs/reports/graph-contained-proof-validation.md\n?? docs/reports/graph-contained-reopen-validation.md\n?? docs/reports/graph-quiescence-sweep-validation.md\n?? docs/reports/graph-runtime-fault-validation.md\n?? docs/reports/graph-unstarted-recovery-validation.md\n?? docs/reports/graph-worker-coverage-validation.md\n?? docs/reports/graph-worker-quiescence-validation.md\n",
+  "worktreeCommit": "b6f8ac8683d36bf409307ff0128435fa9bd63bb9"
+}
