@@ -1149,7 +1149,12 @@
         "docs/reports/graph-quiescence-sweep-validation.md",
         "docs/reports/graph-worker-coverage-validation.md",
         "docs/reports/graph-contained-proof-validation.md",
-        "docs/reports/graph-binding-reader-validation.md"
+        "docs/reports/graph-binding-reader-validation.md",
+        "packages/cli/src/graph-rpc.ts",
+        "packages/cli/src/graph-reconcile-rpc.test.ts",
+        "packages/cli/src/graph-execution-command.ts",
+        "packages/cli/src/graph-command.ts",
+        "packages/cli/src/daemon.ts"
       ],
       "acceptance": [
         "逐项覆盖 F01–F12 确定性窗口，再做固定 seed 的重复运行。",
@@ -1164,7 +1169,7 @@
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "G25-A 在新 run/直接 delivery/broker 注册前拒绝缺少 confirmStopped 的 adapter；真实内置 CLI adapter 仍不支持完整图。按 G25-B 真后端停止范围、G25-C 公开对账、G25-D 原故障矩阵推进；不再只扩充内部诊断。",
+      "progressNote": "G25-A 支持检查已落地；本轮 G25-C1 增加真实公开 RPC/CLI 取消对账，复用全历史 no-child 证明与 G15；未知外部效果保持 pending/holds。下一轮 G25-B 真实后端，随后 C2 外部效果/工作区对账及 D 原故障矩阵。",
       "evidence": [
         "docs/reports/graph-runtime-fault-validation.md",
         "docs/implementation/2026-09-15-graph-fault-next-context.md",
@@ -1197,12 +1202,18 @@
         "docs/implementation/2026-09-18-graph-binding-next-context.md",
         "docs/implementation/graph-binding-reader-evidence/admission.json",
         "docs/reports/graph-admission-unblock-validation.md",
-        "docs/implementation/2026-09-18-graph-unblock-next-context.md"
+        "docs/implementation/2026-09-18-graph-unblock-next-context.md",
+        "docs/reports/graph-public-reconcile-validation.md",
+        "docs/implementation/2026-09-19-graph-reconcile-next-context.md"
       ],
       "remainingSlices": [
         "G25-B",
-        "G25-C",
+        "G25-C2",
         "G25-D"
+      ],
+      "completedSlices": [
+        "G25-A",
+        "G25-C1"
       ]
     },
     {
@@ -1232,9 +1243,10 @@
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "G26-A 动态新图准入已实现，保留已有查询/结果/原请求重试/取消/live quality resume；公开 reconcile、备份恢复与完整旧模式共存仍待验收。G25 依赖是最终验收顺序，独立兼容实现已提前启动。",
+      "progressNote": "新图准入开关、关闭后查询/结果/原请求重试/取消/live quality resume 已实现；本轮补 no-child 取消对账仍可用。一般外部动作对账、备份恢复与完整旧模式共存仍待验收。",
       "evidence": [
-        "docs/reports/graph-admission-unblock-validation.md"
+        "docs/reports/graph-admission-unblock-validation.md",
+        "docs/reports/graph-public-reconcile-validation.md"
       ]
     },
     {
@@ -1315,18 +1327,18 @@
       ]
     }
   ],
-  "updatedAt": "2026-09-18",
+  "updatedAt": "2026-09-19",
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "f263062731f678f6835ac76546227fcd85f54b43",
+    "acceptedCodeCommit": "1893d09a845c0e2abdbd3eb392a184b0c89ee0e0",
     "completedTaskCount": 25,
     "totalTaskCount": 30,
     "nextTasks": [
       "G25",
       "G26"
     ],
-    "report": "docs/reports/graph-admission-unblock-validation.md",
+    "report": "docs/reports/graph-public-reconcile-validation.md",
     "nextGate": null,
     "milestoneStatus": {
       "M0": "completed",
@@ -1334,8 +1346,8 @@
       "M2": "completed",
       "M3": "in_progress"
     },
-    "reviewNote": "真实 Claude CLI Fable 5.1 两轮咨询和一次代码审查，结论接受有界切片。实际 Loop 434 项相关测试通过；最终 Loop 10 项准入补测及类型/哈希验证通过。G25-A/G26-A 已落地，G25/G26 父卡仍待原验收，计数 25/30。",
-    "slicePlan": "docs/implementation/2026-09-18-graph-unblock-next-context.md"
+    "reviewNote": "Claude CLI Fable 5.1 初审竞态意见已修复，复审 accept；最终实际 Loop 109 项相关测试及类型/schema/startup 通过。G25-C1 公开 no-child 取消对账已交付；下一主任务 G25-B 真实后端。父卡保持 25/30。",
+    "slicePlan": "docs/implementation/2026-09-19-graph-reconcile-next-context.md"
   },
   "decisionGates": [
     {

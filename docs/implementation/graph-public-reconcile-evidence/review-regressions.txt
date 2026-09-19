@@ -1,0 +1,18 @@
+$ vitest run src/graph-reconcile-rpc.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/tmp/g22-rpc-KPqEco/delivery/d45d3c68-34e3-4df0-b3d2-9f0e0568f171/writer-0'...
+HEAD is now at f42645b base
+osstack: retaining write lease graph-action:d9c8b95396b841409886ed7e97b188fdaed52f4ec1793481c9073bd0b1e46343: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/tmp/g22-rpc-x0xk6Z/delivery/e11edb1f-866a-4c55-ac39-60f91ec60d42/writer-0'...
+HEAD is now at 40dfad7 base
+ ✓ src/graph-reconcile-rpc.test.ts (20 tests) 3610ms
+   ✓ keeps actual unknown external work and its admission held on a fresh host  1467ms
+   ✓ reconcile signals the actual live writer and leaves settlement to its supervisor  407ms
+
+ Test Files  1 passed (1)
+      Tests  20 passed (20)
+   Start at  01:03:22
+   Duration  4.58s (transform 523ms, setup 7ms, collect 855ms, tests 3.61s, environment 0ms, prepare 27ms)
+

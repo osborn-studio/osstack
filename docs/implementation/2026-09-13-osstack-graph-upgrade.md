@@ -1,8 +1,8 @@
 # OSStack 升级改造实施计划：Loop 强化与可执行 Graph v1
 
-日期：2026-09-13；更新：2026-09-18。**状态：G00–G24 已完成，25/30；G25 与 G26 实施中。已新增不支持 executor 的执行前拒绝及动态新图准入开关；真实后端停止证明、公开对账与完整故障/兼容验收尚未完成。** G26 独立实现可提前推进，最终验收仍依赖 G25。
+日期：2026-09-13；更新：2026-09-19。**状态：G00–G24 已完成，25/30；G25 与 G26 实施中。已新增执行前支持检查、动态准入开关和公开 no-child 取消对账；真实后端、已产生外部动作的对账与完整故障/兼容验收仍待完成。** G26 独立实现可提前推进，最终验收仍依赖 G25。
 
-实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`。本轮源码提交 `f263062731f678f6835ac76546227fcd85f54b43`；见 [Claude Fable 解阻与准入报告](../reports/graph-admission-unblock-validation.md)和[有限任务接续上下文](2026-09-18-graph-unblock-next-context.md)；历史限定验收保留。
+实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`。本轮源码提交 `1893d09a845c0e2abdbd3eb392a184b0c89ee0e0`；见 [公开取消对账报告](../reports/graph-public-reconcile-validation.md)和[最新接续上下文](2026-09-19-graph-reconcile-next-context.md)。
 
 本计划将 [架构设计](../design/2026-09-13-executable-graph-plan.md) 转成可逐项执行的任务，产品边界遵循 [三产品定义](../design/2026-09-13-os-products-definition.md)。OSBot 功能在 [独立 handoff](../handoffs/osbot/handoff.md) 交接；本计划只改造 OSStack，不部署 Rakazo，不修改 OStag 产品。
 
@@ -691,6 +691,8 @@ flowchart TD
 **阶段进展：** 已实现 host-only 全量动作停止检查和精确 contained 清理，含 released 只读与异步边界复验。Kimi K3 和真实 Loop 限定验收通过。报告不授权恢复；非容器执行器、workspace/未登记后代/无动作中间代证明、G15 对账释放及 artifact 锁仍待完成。见 [最新报告](../reports/graph-quiescence-sweep-validation.md)与[接续上下文](2026-09-18-graph-binding-next-context.md)。
 
 **2026-09-18 解阻：** Claude CLI Fable 5.1 确认真实 adapter 缺少停止确认、公开对账入口缺失。本轮 G25-A 执行前支持检查落地；其余按 G25-B（真实后端范围与停止）、G25-C（公开对账）、G25-D（原故障矩阵）推进，禁止把未完成物理证明改成已完成。详见[切片验收条件](2026-09-18-graph-unblock-next-context.md)。
+
+**2026-09-19：** G25-C1 将全历史 no-child 证明接到公开 RPC/CLI；可在新 host 确认从未启动的 run 取消，未知外部动作继续保留占用。下一轮转向真实后端 G25-B；见[最新接续上下文](2026-09-19-graph-reconcile-next-context.md)。
 
 ### G26 · 验证旧模式与回滚共存
 

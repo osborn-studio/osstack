@@ -1,0 +1,11 @@
+{
+  "packages/cli/src/daemon.ts": "1eda6b727b991ac02ea6f920fc81fdbce56d0160b592d702ff5edcdd8e1fd16c",
+  "packages/cli/src/graph-command.ts": "3cc666a550b57b0d1822ec39d53e3d4b43d63ec066b76dc3331b8d4d3e7e9213",
+  "packages/cli/src/graph-delegation.integration.test.ts": "ea3ac504e6a691748669d12f92bb9437514f473b98b384ecf29e759201881c20",
+  "packages/cli/src/graph-execution-command.test.ts": "bd64ff2270da35218b61e0fc2cdd60f2b29d9e9c5fbad3f03a51dfaf8bb4497a",
+  "packages/cli/src/graph-execution-command.ts": "ab1abfe545d0985406275943b7fd3867cc55e2b24c755e8f79ec141354a9ac83",
+  "packages/cli/src/graph-rpc.ts": "6fae399a1eef9ae2cc9aadbbebc0d38b2383b9a232051f384f6501eac84240f8",
+  "packages/cli/src/graph-shutdown.test.ts": "97a6c6b5ac918606cba807b5f51d8440f27ca4254ef7d3cb99fc52c9d0a49eb8",
+  "packages/cli/src/graph-unstarted-recovery.ts": "9de4b1a2bc68429c0b10f4842a65ee90677c4a7c605c4ed2890c37af6394775b",
+  "packages/cli/src/graph-reconcile-rpc.test.ts": "968b52a29b983591f76bb5c42e730a156cdf983f13361dc1e591ee0c6b863620"
+}

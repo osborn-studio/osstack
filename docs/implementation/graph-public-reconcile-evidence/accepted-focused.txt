@@ -1,0 +1,63 @@
+$ vitest run src/graph-reconcile-rpc.test.ts src/graph-unstarted-recovery.test.ts src/graph-reconciler.test.ts src/graph-rpc.test.ts src/graph-admission.test.ts src/graph-delegation.integration.test.ts src/graph-execution-command.test.ts src/graph-command.test.ts src/graph-shutdown.test.ts --maxWorkers=1 --reporter=default --reporter=json --outputFile=/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/focused-tests.json
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/g22-rpc-cw2GtT/delivery/16e14db0-bee5-4121-bb0e-de479051b0e6/writer-0'...
+HEAD is now at 225842f base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/g22-rpc-56bzcQ/delivery/13409f01-cc6d-419a-bec9-358f7f10693f/writer-0'...
+HEAD is now at fb9c159 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/g22-rpc-48pziv/delivery/d9a1f2ba-65ee-46a7-ac69-deda207781f1/writer-0'...
+HEAD is now at 2df33d7 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/g22-rpc-zrBVMD/delivery/01bb2848-07d9-4197-a53a-5c7d57acfddc/writer-0'...
+HEAD is now at 0221e65 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/g22-rpc-J6iLfC/delivery/85f9892b-a2c8-4e15-929c-72bf8dd8b514/writer-0'...
+HEAD is now at 700a995 base
+osstack: retaining write lease graph-action:ec55955be4b4e03bb93998ca5f19f0b2087de3d181c81431be36ec5d0376df18: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/g22-rpc-GC4pfN/delivery/94393d45-e39b-474d-937c-732c8ff3913e/writer-0'...
+HEAD is now at e79db4b base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/g22-rpc-WxvPCp/delivery/b63ce8e0-e78d-4534-aa1b-743cdbea15ca/writer-0'...
+HEAD is now at bee5b5b base
+ ✓ src/graph-rpc.test.ts (10 tests) 40614ms
+   ✓ durably reserves before launch; concurrent replay and fresh service replay never launch twice; ready is atomic v1 evidence  8872ms
+   ✓ persisted cancel intent drives actual worker/executor abort and confirmed stop through G15  962ms
+   ✓ quality interrupt binds input/revision/current grants and resumes actual checkpoint through G15  15408ms
+   ✓ lost supervisor cannot resume durable waiting evidence or mint a new launch  6618ms
+   ✓ unknown external stop retains holds and cannot become cancelled from Promise drainage  1418ms
+   ✓ close persists cancellation and drains a live executor before returning  419ms
+   ✓ expired waiting lease refuses resume before acknowledging or spending a new budget  6533ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/graph-delegation-FqIHSf/home/graph-delivery/cde35afb-be91-4ac4-8f44-cad0adfa1d1a/writer-0'...
+HEAD is now at 42da1db base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/graph-delegation-BPf25E/home/graph-delivery/363dbdb1-38c4-47f2-a415-71aa90ffccd7/writer-0'...
+HEAD is now at d7ab3e2 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/graph-delegation-BPf25E/home/graph-delivery/7546872f-92aa-4c98-8e78-07c01bfeef7b/writer-0'...
+HEAD is now at d7ab3e2 base
+ ✓ src/graph-delegation.integration.test.ts (3 tests) 21341ms
+   ✓ real daemon loads owner config and CLI run/status retain durable idempotency and stable conflict codes  7110ms
+   ✓ simulated OSBot/OStag host bindings preserve parents, isolate source results and refuse unverified callers  14092ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/g22-rpc-DHhqpz/delivery/0d3328db-71e0-4740-8748-746b442ccbac/writer-0'...
+HEAD is now at f3ac9ef base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/g22-rpc-WHIy9J/delivery/b186eefe-06df-4cbf-8608-2b93bc05d501/writer-0'...
+HEAD is now at f3ac9ef base
+ ✓ src/graph-admission.test.ts (10 tests) 14719ms
+   ✓ disables new admission while retaining reads, exact replay and cancellation of admitted live work  476ms
+   ✓ admission disabled still permits an authorized live quality resume of the existing run  13624ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/g22-rpc-wXbY3U/delivery/23f8f2f8-3951-48d0-8ab9-2a87dcfc61b5/writer-0'...
+HEAD is now at edf42ec base
+osstack: retaining write lease graph-action:23257ebb866b7c4bcf8c00927bc851f1a82fdea784dfad6687341c6f025f7f24: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/g22-rpc-7nn1Ob/delivery/40cc6516-ec1a-4536-acdb-dd5bd9ed345d/writer-0'...
+HEAD is now at 3517a6a base
+ ✓ src/graph-reconcile-rpc.test.ts (20 tests) 3492ms
+   ✓ keeps actual unknown external work and its admission held on a fresh host  1413ms
+   ✓ reconcile signals the actual live writer and leaves settlement to its supervisor  400ms
+ ✓ src/graph-unstarted-recovery.test.ts (20 tests) 1287ms
+ ✓ src/graph-reconciler.test.ts (23 tests) 448ms
+ ✓ src/graph-command.test.ts (12 tests) 225ms
+ ✓ src/graph-shutdown.test.ts (1 test) 86ms
+ ✓ src/graph-execution-command.test.ts (10 tests) 35ms
+
+ Test Files  9 passed (9)
+      Tests  109 passed (109)
+   Start at  01:04:15
+   Duration  85.80s (transform 678ms, setup 18ms, collect 2.59s, tests 82.25s, environment 1ms, prepare 245ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g25-public-reconcile/focused-tests.json
