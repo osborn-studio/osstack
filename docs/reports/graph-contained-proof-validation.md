@@ -7,7 +7,7 @@
 - `ContainedCommandExecutor` 在实际 Docker inspect 核验精确 container ID、nonce、image、working directory 和既有无宿主挂载/无网络/非特权/只读 rootfs 策略后，原子持久化 `isolated.json`。它与 `stopped.json` 分开，前者证明该调用的隔离策略，后者记录精确 DELETE ACK 与移除。
 - `captureQuiescence(invocationId)` 必须具备两份严格绑定、顺序正确的回执，再向固定 Linux daemon 重新确认该 ID 的 404。返回冻结的 executor/isolation refs、`scope=contained-invocation` 和受信宿主闭包，不接受模型的 stopped 布尔值作为输入。
 - 同步 recheck 复验当前 grant 和同一组私有 journal；不在 G15 数据库事务中等待 Docker。前提是现有受信 daemon/admin 和宿主私有 journal，精确 Docker ID 的已确认删除不可自行复活；不覆盖恶意管理员或恢复 Docker 数据目录的越界操作。
-- `reopenGraphContainedTests` 捕获完整 executor/worker inventory 和绑定 journal，闭包仅在已有事务内运行 `assertExecutorInventory`。无 run revision 变化的 admission release、其他动作、回执或 grant 漂移都拒绝。同步 journal 读取使用 O_NOFOLLOW/O_NONBLOCK、fstat regular-file 检查与有界读取。
+- `reopenGraphContainedTests` 捕获完整 executor/worker inventory 和绑定 journal，闭包仅在已有事务内运行 `assertExecutorInventory`。无 run revision 变化的 admission release、其他动作、回执或 grant 漂移都拒绝。agent侧 launch/isolated/stopped journal 读取使用 O_NOFOLLOW/O_NONBLOCK、fstat regular-file 检查与有界读取；CLI binding reader当时尚未全部采用这些限制，已在[后续修复](graph-binding-reader-validation.md)补齐。
 - 闭包只证明该容器调用与其宿主访问隔离；不是图级 workspace 安全，也不涵盖其他 producer。实际 G15 测试宿主使用固定、无后代程序和唯一 contained action，组合 direct-worker exit 与该闭包。缺业务 envelope 时提交 unknown，绝不因已删除而宣称 applied 或释放 admission。
 - 旧调用若只有 stopped.json，原 confirmStopped 行为保留；新 capture 拒绝。已删除容器无法补做历史隔离观察，不从404反推。普通 GraphDelivery cancel/takeover 的完整证明仍待接入。
 

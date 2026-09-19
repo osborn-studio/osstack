@@ -1148,7 +1148,8 @@
         "packages/cli/src/graph-quiescence-sweep.ts",
         "docs/reports/graph-quiescence-sweep-validation.md",
         "docs/reports/graph-worker-coverage-validation.md",
-        "docs/reports/graph-contained-proof-validation.md"
+        "docs/reports/graph-contained-proof-validation.md",
+        "docs/reports/graph-binding-reader-validation.md"
       ],
       "acceptance": [
         "逐项覆盖 F01–F12 确定性窗口，再做固定 seed 的重复运行。",
@@ -1163,7 +1164,7 @@
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "第九阶段已验收：contained每调用独立isolated/removed回执、fresh daemon确认与最终事务同步闭包，reopener绑定完整inventory。真实Loop12项Linux专项和5项检查通过，矩阵579次同源码/dist哈希复核复用，Kimi K3 approved。仅单调用；全图host/opaque/workspace/G15业务对账释放/artifact锁仍待完成。",
+      "progressNote": "已补齐CLI binding journal非阻塞及实际64KiB读取上限；真实FIFO复现与Kimi指出的增长测试缺口已解决。新矩阵585次通过，最终Loop全72专项与5项检查通过，Kimi K3复审approved；仅测试文件增强，生产源码/dist哈希一致。整图host/opaque/workspace、业务对账释放与artifact锁仍待完成。",
       "evidence": [
         "docs/reports/graph-runtime-fault-validation.md",
         "docs/implementation/2026-09-15-graph-fault-next-context.md",
@@ -1191,7 +1192,10 @@
         "docs/implementation/graph-worker-coverage-evidence/admission.json",
         "docs/reports/graph-contained-proof-validation.md",
         "docs/implementation/2026-09-18-graph-proof-next-context.md",
-        "docs/implementation/graph-contained-proof-evidence/admission.json"
+        "docs/implementation/graph-contained-proof-evidence/admission.json",
+        "docs/reports/graph-binding-reader-validation.md",
+        "docs/implementation/2026-09-18-graph-binding-next-context.md",
+        "docs/implementation/graph-binding-reader-evidence/admission.json"
       ]
     },
     {
@@ -1301,13 +1305,13 @@
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "355af3747870947a7b9ea628368e63249fb42c09",
+    "acceptedCodeCommit": "1ca7d09bec024ba3a807adc8e9c5fdef9dd0c393",
     "completedTaskCount": 25,
     "totalTaskCount": 30,
     "nextTasks": [
       "G25"
     ],
-    "report": "docs/reports/graph-quiescence-sweep-validation.md",
+    "report": "docs/reports/graph-binding-reader-validation.md",
     "nextGate": null,
     "milestoneStatus": {
       "M0": "completed",
@@ -1315,7 +1319,7 @@
       "M2": "completed",
       "M3": "in_progress"
     },
-    "reviewNote": "真实Kimi K3 approved；真实Loop执行1跳过0/success，20项Linux专项、532次故障矩阵及typecheck/schema/startup通过。仅全量动作诊断与精确容器清理，G25整体/全图恢复未准入。"
+    "reviewNote": "真实Kimi K3复审approved；Loop执行1跳过0/success，最终72测试、585次既有矩阵的生产源码/dist复核及typecheck/schema/startup通过。G25整体及全图恢复仍未准入。"
   },
   "decisionGates": [
     {

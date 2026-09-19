@@ -2,7 +2,7 @@
 
 日期：2026-09-13；更新：2026-09-18。**状态：G00–G24 已完成，25/30；M0–M2 与 C2–C7 已通过本地限定验收，M3 实施中，G25 诊断、连续启动前失败接管及受控容器执行器已分阶段验收。下一批仍为 G25。** 完整模板、公开入口与委托契约已验证，故障、兼容、发行、性能和真实试点仍待完成。
 
-实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；最新限定阶段源码：`407e21695fe1f476e4cf345bc6ceeaa26550ca85`。见 [受控容器独立证明与G15复核报告](../reports/graph-contained-proof-validation.md)与[最新接续上下文](2026-09-18-graph-proof-next-context.md)；此前各阶段准入范围保留。
+实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`；最新限定阶段源码：`1ca7d09bec024ba3a807adc8e9c5fdef9dd0c393`。见 [恢复绑定文件有界读取报告](../reports/graph-binding-reader-validation.md)与[最新接续上下文](2026-09-18-graph-binding-next-context.md)；此前各阶段准入范围保留。
 
 本计划将 [架构设计](../design/2026-09-13-executable-graph-plan.md) 转成可逐项执行的任务，产品边界遵循 [三产品定义](../design/2026-09-13-os-products-definition.md)。OSBot 功能在 [独立 handoff](../handoffs/osbot/handoff.md) 交接；本计划只改造 OSStack，不部署 Rakazo，不修改 OStag 产品。
 
@@ -688,7 +688,7 @@ flowchart TD
 
 **验证：** 新 `node scripts/verify-graph-runtime.mjs` 与 graph fault/concurrency 集成测试，输出 JSON 证据和固定 seed。
 
-**阶段进展：** 已实现 host-only 全量动作停止检查和精确 contained 清理，含 released 只读与异步边界复验。Kimi K3 和真实 Loop 限定验收通过。报告不授权恢复；非容器执行器、workspace/未登记后代/无动作中间代证明、G15 对账释放及 artifact 锁仍待完成。见 [最新报告](../reports/graph-quiescence-sweep-validation.md)与[接续上下文](2026-09-18-graph-proof-next-context.md)。
+**阶段进展：** 已实现 host-only 全量动作停止检查和精确 contained 清理，含 released 只读与异步边界复验。Kimi K3 和真实 Loop 限定验收通过。报告不授权恢复；非容器执行器、workspace/未登记后代/无动作中间代证明、G15 对账释放及 artifact 锁仍待完成。见 [最新报告](../reports/graph-quiescence-sweep-validation.md)与[接续上下文](2026-09-18-graph-binding-next-context.md)。
 
 ### G26 · 验证旧模式与回滚共存
 
@@ -841,4 +841,4 @@ graph worker 启动、冷/热执行、checkpoint/IPC 和并行工作区准备成
 
 ## 13. 下一轮实施的明确起点
 
-G00–G24 已完成，**25/30；M0–M2 完成，M3 实施中**。G25 单容器独立隔离/停止证明与G15同步复核限定阶段已验收；按 [最新上下文](2026-09-18-graph-proof-next-context.md) 继续独立 host/adapter/workspace 证明及 G15 对账释放，随后完成 artifact 锁、兼容、发行、性能与试点。
+G00–G24 已完成，**25/30；M0–M2 完成，M3 实施中**。G25 单容器证明、G15同步复核及binding读取边界限定阶段已验收；按 [最新上下文](2026-09-18-graph-binding-next-context.md) 继续独立 host/adapter/workspace 证明及 G15 对账释放，随后完成 artifact 锁、兼容、发行、性能与试点。

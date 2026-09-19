@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "status": "limited_validation_passed",
+  "scope": "G25 contained binding journal bounded reads; no new graph recovery authority",
+  "codeCommit": "1ca7d09bec024ba3a807adc8e9c5fdef9dd0c393",
+  "completedTasks": 25,
+  "totalTasks": 30,
+  "g25": "in_progress",
+  "finalLoop": {
+    "taskId": "G25-binding-read-2",
+    "executed": 1,
+    "skipped": 0,
+    "outcome": "success",
+    "tests": 72,
+    "verifiers": 5
+  },
+  "matrix": {
+    "executions": 585,
+    "seeds": [
+      250929,
+      250930
+    ],
+    "productionSourcesUnchanged": true,
+    "distUnchanged": true,
+    "testAmendment": "Only graph-contained-recovery.test.ts changed after broad matrix; final full72 rerun. Source hashes are explicitly different for this one test file."
+  },
+  "audit": {
+    "model": "kimi-code/k3",
+    "identityEvidence": "reported",
+    "verdict": "approved",
+    "judgments": [
+      {
+        "id": "io",
+        "pass": true,
+        "severity": "error",
+        "summary": "FIFO rejected via O_NONBLOCK open + fstat isFile without waiting for a writer; reads hard-capped at 65537 bytes across short reads and post-stat growth; closeSync in finally closes the descriptor on all paths, confirmed by tests and the unmocked FIFO probe."
+      },
+      {
+        "id": "authority",
+        "pass": true,
+        "severity": "error",
+        "summary": "Identity, canonical bytes, scope, inventory, grants, ledger binding, and transactional recheck checks are unchanged in the current module; recovery store still throws on any commit and no settlement, release, or replay behavior was added."
+      },
+      {
+        "id": "tests",
+        "pass": true,
+        "severity": "error",
+        "summary": "Tests cover reopen and final transaction stages, FIFO rejection with a fail-fast mock guard, discriminating post-stat growth (RED on old reader), exact 65536 boundary under forced short reads, and descriptor closure on read error; mocks pass through to real OS calls and an unmocked probe corroborates real FIFO behavior without overclaiming full-graph proof."
+      }
+    ],
+    "findings": [
+      {
+        "rule_id": "reader.close-mask",
+        "severity": "info",
+        "message": "closeSync in finally could theoretically mask the original rejection error if close itself throws; cosmetic and not blocking.",
+        "file": "packages/cli/src/graph-contained-recovery.ts",
+        "line": 46,
+        "evidence": "} finally { closeSync(fd); }",
+        "fingerprint": "c96cbaa12d4b81a84c96b0bf71550eb9e8743c378ec37421aa60efb850ab94c1"
+      },
+      {
+        "rule_id": "tests.growth-mock-simulation",
+        "severity": "info",
+        "message": "Post-stat growth is simulated via an fstat mock because a real growth race is not deterministically testable; acceptable given the discriminating RED evidence and the unmocked FIFO probe covering real-OS behavior.",
+        "file": "packages/cli/src/graph-contained-recovery.test.ts",
+        "line": 240,
+        "evidence": "stat.size kept at original.length while real file grows to 65537 bytes",
+        "fingerprint": "ad26f5c64aaefec3090fa6952b81d5a4e5d05be1a77ddca63ad0ec3da45ac9b7"
+      }
+    ],
+    "initialGrowthWarning": "Resolved by final test retaining small fstat across rechecks. Old reader fails exactly2 growth cases; patched reader passes72."
+  },
+  "fifoProbe": {
+    "platform": "darwin",
+    "node": "v26.5.0",
+    "kind": "unmocked FIFO initial reopen child-process probe",
+    "runs": [
+      {
+        "version": "before",
+        "elapsedMs": 3004,
+        "ready": true,
+        "exitCode": null,
+        "signal": "SIGTERM",
+        "error": "ETIMEDOUT",
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "version": "after",
+        "elapsedMs": 200,
+        "ready": true,
+        "exitCode": 0,
+        "signal": null,
+        "stdout": "{\"rejected\":true,\"state\":{\"state\":\"running\",\"released_at\":null},\"transactionClosed\":true}\n",
+        "stderr": ""
+      }
+    ],
+    "passed": true
+  },
+  "limitations": [
+    "POSIX local filesystem test on macOS; no new real Linux Docker run for this host-only change.",
+    "O_NOFOLLOW protects final file, not malicious parent-directory replacement; private root/admin remain trusted.",
+    "O_NONBLOCK does not bound arbitrary filesystem/device latency.",
+    "Complete GraphDelivery worker descendants, opaque adapters, workspace and business reconciliation/release proofs remain pending."
+  ]
+}

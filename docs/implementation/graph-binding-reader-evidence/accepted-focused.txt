@@ -1,0 +1,12 @@
+$ vitest run src/graph-contained-recovery.test.ts --maxWorkers=1 --reporter=default --reporter=json --outputFile=/Volumes/AIMATE_WORK/tmp/g25-binding-read-final/focused.json
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-contained-recovery.test.ts (72 tests) 8411ms
+
+ Test Files  1 passed (1)
+      Tests  72 passed (72)
+   Start at  17:50:57
+   Duration  9.28s (transform 446ms, setup 7ms, collect 750ms, tests 8.41s, environment 0ms, prepare 28ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g25-binding-read-final/focused.json
