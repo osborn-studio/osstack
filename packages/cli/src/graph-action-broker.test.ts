@@ -100,7 +100,7 @@ it.each(["throw", "terminal-failure", "cancel"])("never blindly retries %s after
   let count = 0;
   const adapter = actor(async function* (task) { count++; if (kind === "throw") throw new Error("wrote then lost transport");
     if (kind === "cancel") { await new Promise(() => {}); } else yield done(task, "failed"); });
-  if (kind === "cancel") delete adapter.confirmStopped;
+  if (kind === "cancel") adapter.confirmStopped = async () => ({ stopped: false });
   const f = fixture(adapter); const controller = new AbortController();
   const pending = f.broker.handle(f.connection, f.request, { signal: controller.signal });
   if (kind === "cancel") { await expect.poll(() => count).toBe(1); controller.abort(); }
@@ -226,7 +226,7 @@ it("refuses unsupported freeze registration before acquiring capacity", () => {
 it("forwards cancellation to the actual adapter and retains an unconfirmed external producer", async () => {
   let received: AbortSignal | undefined; let count = 0;
   const adapter = actor(async function* (_task, signal) { count++; received = signal; await new Promise(() => {}); });
-  delete adapter.confirmStopped;
+  adapter.confirmStopped = async () => ({ stopped: false });
   const f = fixture(adapter); const controller = new AbortController();
   const pending = f.broker.handle(f.connection, f.request, { signal: controller.signal });
   await expect.poll(() => count).toBe(1); controller.abort();
@@ -251,4 +251,14 @@ it("retains reported overrun reservation after the adapter throws", async () => 
   const f = fixture(adapter);
   expect(await f.broker.handle(f.connection, f.request)).toMatchObject({ outcome: { state: "unknown" } });
   expect(f.db.prepare("SELECT observed_tokens FROM graph_actions").get()).toEqual({ observed_tokens: 150 });
+});
+
+it("rejects an adapter without stop confirmation before intent, capacity or invocation", () => {
+  let calls = 0; const adapter = actor(async function* (task) { calls++; yield done(task); });
+  const f = fixture(adapter); delete adapter.confirmStopped;
+  const broker = new GraphActionBroker(f.db, f.options);
+  expect(() => broker.register({}, f.registration)).toThrow("EXECUTOR_UNSUPPORTED");
+  expect(f.db.prepare("SELECT count(*) n FROM graph_actions").get()).toEqual({ n: 0 });
+  expect(f.db.prepare("SELECT count(*) n FROM graph_action_admissions").get()).toEqual({ n: 0 });
+  expect(f.writes.in_use).toBe(0); expect(calls).toBe(0);
 });

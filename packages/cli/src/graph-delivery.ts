@@ -13,7 +13,7 @@ import { compileGraphSpec, type CompiledGraphSpec } from '@osstack/graph/spec-co
 import { deliveryEpoch } from '@osstack/graph/templates/code-delivery-v1';
 import { type GraphResult, WorkerActionRequest, workerCanonical, StartGraphRequest, freezeWorkerData, type WorkerActionResponse, type GraphWorkerResume } from '@osstack/protocol';
 import type { RegisteredCandidateWorkspace } from '@osstack/loop';
-import { GraphActionBroker, type GraphRegisteredAction, type GraphActionEvidence } from './graph-action-broker.js';
+import { GraphActionBroker, assertGraphAdapterSupported, type GraphRegisteredAction, type GraphActionEvidence } from './graph-action-broker.js';
 import { GraphRuntime, type GraphRuntimeHandle, type GraphRuntimeStop } from './graph-runtime.js';
 import { GraphCheckpointService } from './graph-checkpoint-service.js';
 import { prepareGraphVerificationBranch, loadGraphVerificationEvidence, type GraphVerificationOptions } from './graph-verification.js';
@@ -39,6 +39,10 @@ export interface GraphDeliveryOptions {
 export interface GraphDeliveryInterrupt {
   interruptId: string; inputDigest: string; kind: 'quality';
   checkpointDigest: string; feedbackRef: string;
+}
+export function assertGraphDeliverySupported(options: Pick<GraphDeliveryOptions, 'writer' | 'reviewer'>): void {
+  assertGraphAdapterSupported(options.writer.adapter);
+  assertGraphAdapterSupported(options.reviewer.adapter);
 }
 export function graphDeliveryVersion(compiled: CompiledGraphSpec) {
   return { executionModel: 'langgraph-functional-v1' as const, durability: 'sync' as const,
@@ -73,6 +77,7 @@ export class GraphDelivery {
   private waiting: { proof: GraphDeliveryInterrupt; verify: () => void; resolve: () => void; reject: (error: Error) => void } | undefined;
   private readonly options: GraphDeliveryOptions;
   constructor(options: GraphDeliveryOptions) {
+    assertGraphDeliverySupported(options);
     const adapter = (a: AgentAdapter): AgentAdapter => {
       const capabilities = freezeWorkerData(structuredClone(a.capabilities()));
       return Object.freeze({ id: a.id, display_name: a.display_name, cost_tier: a.cost_tier,

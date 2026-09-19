@@ -8,7 +8,7 @@ import { GraphRunStore, type GraphRun } from '@osstack/core';
 import { readGraphActionState } from '@osstack/core/graph-verification';
 import { GraphErrorCode, GraphStatusRequest, GraphDelegationStatus, GraphScope, GraphRequest, type StartGraphRequest, GraphSpec, computeGraphInputDigest, workerCanonical, GraphContractError } from '@osstack/protocol';
 import { compileGraphSpec } from '@osstack/graph/spec-compiler';
-import { GraphDelivery, graphDeliveryVersion, type GraphDeliveryOptions, type GraphDeliveryInterrupt } from './graph-delivery.js';
+import { GraphDelivery, assertGraphDeliverySupported, graphDeliveryVersion, type GraphDeliveryOptions, type GraphDeliveryInterrupt } from './graph-delivery.js';
 
 export interface GraphHostRegistration {
   id: string;
@@ -20,6 +20,8 @@ export interface GraphHostRegistration {
   delivery: Pick<GraphDeliveryOptions, 'repositoryPath' | 'task' | 'writer' | 'reviewer' | 'verifyReviewer' | 'acceptanceRegistry'>;
   /** Current scope-specific grant, called on reads, mutations and each effect. */
   authorize: (operation?: 'read' | 'execute' | 'cancel' | 'resume') => void;
+  /** Synchronous admission switch. Only new reservations; existing work keeps its grants. */
+  admitNewRuns?: () => boolean;
 }
 export interface GraphRpcOptions {
   db: Database.Database;
@@ -179,6 +181,16 @@ export class GraphRpcService {
       synchronous(registration.authorize());
       const prior = this.options.db.prepare('SELECT graph_run_id FROM graph_requests WHERE scope_json=? AND idempotency_key=?')
         .get(workerCanonical(request.scope), request.idempotencyKey) as { graph_run_id: string } | undefined;
+      if (!prior) {
+        if (registration.admitNewRuns) {
+          const admitted: unknown = registration.admitNewRuns();
+          if (admitted !== true) {
+            void Promise.resolve(admitted).catch(() => {});
+            throw new GraphContractError('GRAPH_ADMISSION_DISABLED');
+          }
+        }
+        assertGraphDeliverySupported(registration.delivery);
+      }
       const run = this.runs.create(request, graphDeliveryVersion(compiled), Date.now());
       if (prior && !this.options.db.prepare('SELECT 1 FROM graph_public_delivery WHERE graph_run_id=?').get(run.graphRunId)) throw new GraphContractError('CHECKPOINT_INCOMPATIBLE');
       const descriptor: Descriptor = { registrationId: registration.id, request, root: join(this.options.root, run.graphRunId), launchOwner: this.owner };
@@ -253,7 +265,7 @@ export class GraphRpcService {
 // Explicit local owner trust: owner-only config plus a private Unix socket, never
 // a scope/principal taken from RPC JSON. Remote identities require resolveCaller.
 const ref = z.string().min(1).max(256);
-const hostConfig = z.object({ schemaVersion: z.literal(1), registration: z.object({ id: ref, scope: GraphScope,
+const hostConfig = z.object({ schemaVersion: z.literal(1), admissionEnabled: z.boolean().optional(), registration: z.object({ id: ref, scope: GraphScope,
   repositoryRef: ref, repositoryPath: z.string().min(1), taskRef: ref, task: z.string().min(1).max(65536), inputArtifactRef: ref,
   writer: z.object({ agentId: ref, capabilityId: ref }).strict(), reviewer: z.object({ agentId: ref, capabilityId: ref }).strict(),
   acceptanceRegistry: z.array(z.object({ ref, command: z.string().min(1), passExitCodes: z.array(z.number().int()), failExitCodes: z.array(z.number().int()) }).strict()).min(1),
@@ -283,7 +295,7 @@ export function loadLocalGraphRegistration(path: string, adapters: ReadonlyMap<s
   };
   authorize('read');
   return { id: config.id, scope: config.scope, product: 'osstack', repositoryRef: config.repositoryRef, taskRef: config.taskRef, inputArtifactRef: config.inputArtifactRef,
-    authorize, delivery: { repositoryPath: config.repositoryPath, task: config.task,
+    authorize, admitNewRuns: () => trustedConfig(path).admissionEnabled !== false, delivery: { repositoryPath: config.repositoryPath, task: config.task,
       writer: { identity: writer.id, adapter: writer, capabilityId: config.writer.capabilityId },
       reviewer: { identity: reviewer.id, adapter: reviewer, capabilityId: config.reviewer.capabilityId },
       verifyReviewer: async proof => { authorize('read'); if (proof.writerIdentity !== writer.id || proof.reviewerIdentity !== reviewer.id || writer.id === reviewer.id) throw Error('INDEPENDENT_REVIEWER_REQUIRED'); },

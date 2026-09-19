@@ -51,7 +51,8 @@ function options(args: string[], allowed: string[]): Map<string, string> {
 }
 function failure(code: unknown, message: string): GraphError {
   const nextAction = code === 'REVISION_CONFLICT' ? 'refresh' : code === 'UNAUTHENTICATED' || code === 'POLICY_DENIED' || code === 'GRANT_EXPIRED' ? 'reauthorize'
-    : code === 'ACTION_OUTCOME_UNKNOWN' || code === 'CANCEL_UNCONFIRMED' ? 'reconcile' : 'fix_input';
+    : code === 'ACTION_OUTCOME_UNKNOWN' || code === 'CANCEL_UNCONFIRMED' ? 'reconcile'
+    : code === 'EXECUTOR_UNSUPPORTED' || code === 'GRAPH_ADMISSION_DISABLED' ? 'stop' : 'fix_input';
   const parsed = GraphError.safeParse({ schemaVersion: 1, code, message: message.slice(0, 4096) || 'Graph request rejected', retryable: false, nextAction });
   return parsed.success ? parsed.data : { schemaVersion: 1, code: 'INTERNAL_ERROR', message: 'Graph request failed', retryable: false, nextAction: 'stop' };
 }

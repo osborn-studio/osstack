@@ -81,3 +81,10 @@ it('malformed and mismatched mutation acknowledgements preserve the original ret
     expect(f.output()).toMatchObject({ kind: 'delivery_unknown', idempotencyKey: f.request.idempotencyKey, inputDigest: computeGraphInputDigest(f.request) });
   }
 });
+
+it.each(['EXECUTOR_UNSUPPORTED', 'GRAPH_ADMISSION_DISABLED'])('surfaces %s as a definite nonretryable rejection', async code => {
+  const f = fixture(); f.deps.rpc.mockResolvedValue({ ok: false, error: { code, message: code } });
+  expect(await handleGraphCommand(['run', '--request', f.file, '--json'], f.deps)).toBe(1);
+  expect(f.output()).toMatchObject({ error: { code, retryable: false, nextAction: 'stop' } });
+  expect(f.deps.rpc).toHaveBeenCalledTimes(1);
+});

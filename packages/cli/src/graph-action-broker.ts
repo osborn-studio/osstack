@@ -6,7 +6,7 @@ import type Database from "better-sqlite3";
 import type { GraphArtifactStore, GraphFreezeInput, GraphFreezeAuthority } from "@osstack/core/graph-artifacts";
 import { CapabilitySchema, GraphActionStore, GraphRunStore, type GraphRunFence, type GraphProgramIdentity,
   type GraphAction } from "@osstack/core";
-import { GraphError as GraphErrorSchema, GraphJsonValue, GraphResult, GraphScope, WorkerActionRequest, WorkerActionResponse,
+import { GraphContractError, GraphError as GraphErrorSchema, GraphJsonValue, GraphResult, GraphScope, WorkerActionRequest, WorkerActionResponse,
   type GraphError, type GraphErrorCode } from "@osstack/protocol";
 import { ExecutionPlan, executeCandidateImplementation, runShellCommand,
   type CandidateExecutionResult, type CommandResult, type RegisteredCandidateWorkspace } from "@osstack/loop";
@@ -14,6 +14,10 @@ import type { AgentAdapter } from "@osstack/agents";
 import type { AdmissionInput, ExecutionLease } from "./governed-execution.js";
 
 type Action = WorkerActionRequest["action"];
+/** Necessary admission capability; actual stop evidence is still checked per invocation. */
+export function assertGraphAdapterSupported(adapter: AgentAdapter): void {
+  if (typeof adapter.confirmStopped !== "function") throw new GraphContractError("EXECUTOR_UNSUPPORTED");
+}
 export interface GraphActionEvidence {
   status: "completed" | "failed";
   /** Set only after independent executor-stop verification. */
@@ -175,6 +179,7 @@ export class GraphActionBroker {
           selected = Object.freeze({ kind: "command", plan, command: execution.command });
         } else if (execution.kind === "adapter") {
           const adapter = execution.adapter;
+          assertGraphAdapterSupported(adapter);
           const capabilities = snapshot(adapter.capabilities().map(cap => CapabilitySchema.parse(cap)));
           const matches = capabilities.filter(cap => cap.id === execution.capabilityId);
           const cap = matches[0];
@@ -535,7 +540,7 @@ export class GraphActionBroker {
       },
       confirmStopped: async runId => {
         if (execution.kind === "contained") return execution.confirmStopped(runId);
-        if (original?.confirmStopped) return original.confirmStopped(runId);
+        if (original) return original.confirmStopped ? original.confirmStopped(runId) : { stopped: false };
         // Command cancellation can request confirmation before termination settles.
         // G04 bounds this wait; only the shell's process-group proof can confirm it.
         const stoppedCommand = command ?? await commandPending;

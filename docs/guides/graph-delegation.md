@@ -61,9 +61,12 @@ Status includes run ID, original source/scope, input/spec digests, revision, gen
 
 Before starting `osstack serve`, create `$OSSTACK_HOME/graph-host.json` with mode `0600`, owned by the serving user. The server also checks its Unix socket is owner-only. A development checkout must use an explicit isolated home. The registration below is an example; choose installed, authenticated agents with the required capabilities and independent reviewer identity. No live provider run is implied by this example.
 
+Both writer and reviewer must implement `AgentAdapter.confirmStopped`. The current builtin Claude Code, Codex CLI and Kimi Code adapters do not implement this contract: new graph runs using them return `EXECUTOR_UNSUPPORTED` before reservation or invocation. The example agent IDs below illustrate configuration only, and do not constitute a runnable provider pairing. Existing Loop/session uses of these agents are unaffected. A callback's presence only permits admission; every actual invocation must still provide trusted stop evidence. A terminal model event alone is insufficient.
+
 ```json
 {
   "schemaVersion": 1,
+  "admissionEnabled": false,
   "registration": {
     "id": "project-owner",
     "scope": { "schemaVersion": 1, "tenantId": "local", "principalId": "owner", "workspaceId": "project" },
@@ -87,6 +90,10 @@ Before starting `osstack serve`, create `$OSSTACK_HOME/graph-host.json` with mod
 `expiresAt` is Unix time in milliseconds. The example intentionally uses an expired timestamp; the owner sets an appropriate future deadline when authorizing execution. The registered source repository remains the policy authority after cloning, and daemon health checks still apply. A candidate clone cannot replace the current source policy; its own restrictions may only add checks. The daemon resolves commands only from this configuration. A caller cannot replace these bindings through a request.
 
 The owner may renew the grant's deadline and allowed operations while retaining the original scope and immutable registration. Changing the repository, task, command registry or adapter binding invalidates an existing registration. Execute/resume expiry does not remove separately retained read/cancel permissions. Status reports `needs_authorization` in the original scope when execute permission is unavailable. Editing an input field or returning `approved` from a model never changes the grant.
+
+Set top-level `admissionEnabled` to `false` to reject new reservations with `GRAPH_ADMISSION_DISABLED`. The owner-only file is reread at admission; changing this boolean does not require a daemon restart or alter the registered bindings. Omission preserves the earlier enabled default. The example starts disabled. Write configuration updates atomically, retaining mode `0600` and ownership.
+
+The cutoff is durable reservation: already admitted queued/running work continues, and live quality resume remains available under its existing grant. To stop that work, use `graph cancel`. Reads, results, cancellation and exact start-request replay remain available under their required grants while admission is disabled, including from a fresh host whose adapters no longer support new graphs. Conflicting replay input is still rejected. This switch neither releases unknown effects nor provides missing post-crash reconciliation; the public reconcile entrypoint remains unfinished in G25. The CLI returns exit 1 and `nextAction: stop` for either admission error; retrying with a new key does not fix the host configuration.
 
 The current CLI host pauses at a negative quality join that needs another repair epoch. Resume requires the same live supervisor and an unexpired worker lease (currently bounded to five minutes at the quality boundary) as well as the original overall deadline. Expired leases are refused before acknowledgement; this version does not silently refresh them or adopt another owner. Longer human approval waits and reconstruction after daemon loss require the recovery work in G25. Positive quality joins finish without an extra resume.
 
