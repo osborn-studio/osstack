@@ -1,6 +1,6 @@
 # G25 接续：从单动作容器重建进入整图停止与 G15 对账
 
-**G00–G24 完成，25/30；G25 in_progress，G26–G29 未开始。** 第五阶段报告：[按账本重建容器执行身份](../reports/graph-contained-reopen-validation.md)。
+**G00–G24 完成，25/30；G25 in_progress，G26–G29 未开始。** 第五阶段报告：[按账本重建容器执行身份](../../reports/graph-contained-reopen-validation.md)。
 
 ## 工作区与约束
 

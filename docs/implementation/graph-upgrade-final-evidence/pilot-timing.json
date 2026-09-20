@@ -1,0 +1,102 @@
+[
+  {
+    "name": "internal-pilot",
+    "root": "/Volumes/AIMATE_WORK/tmp/g30-final/pilot/pilot-C1MB7Q",
+    "runId": "9202a9ba-eaa9-45c2-8efc-a8dfe342a112",
+    "passed": false,
+    "actions": [
+      {
+        "node_id": "e0.workspace",
+        "state": "confirmed",
+        "created_at": 1789921007369,
+        "updated_at": 1789921018307,
+        "durationMs": 10938
+      },
+      {
+        "node_id": "e0.implement",
+        "state": "confirmed",
+        "created_at": 1789921018332,
+        "updated_at": 1789921034966,
+        "durationMs": 16634
+      },
+      {
+        "node_id": "e0.freeze",
+        "state": "confirmed",
+        "created_at": 1789921035022,
+        "updated_at": 1789921214161,
+        "durationMs": 179139
+      },
+      {
+        "node_id": "e0.prepare_review",
+        "state": "confirmed",
+        "created_at": 1789921214187,
+        "updated_at": 1789921459361,
+        "durationMs": 245174
+      },
+      {
+        "node_id": "e0.prepare_tests",
+        "state": "failed",
+        "created_at": 1789921214191,
+        "updated_at": 1789921459333,
+        "durationMs": 245142
+      }
+    ]
+  },
+  {
+    "name": "internal-pilot-batch",
+    "root": "/Volumes/AIMATE_WORK/tmp/g30-final/pilot-batch/pilot-l3u7di",
+    "runId": "a9775889-c8f7-4344-9e41-83ffadec6deb",
+    "passed": true,
+    "actions": [
+      {
+        "node_id": "e0.workspace",
+        "state": "confirmed",
+        "created_at": 1789921656719,
+        "updated_at": 1789921664840,
+        "durationMs": 8121
+      },
+      {
+        "node_id": "e0.implement",
+        "state": "confirmed",
+        "created_at": 1789921664859,
+        "updated_at": 1789921679976,
+        "durationMs": 15117
+      },
+      {
+        "node_id": "e0.freeze",
+        "state": "confirmed",
+        "created_at": 1789921680037,
+        "updated_at": 1789921693250,
+        "durationMs": 13213
+      },
+      {
+        "node_id": "e0.prepare_review",
+        "state": "confirmed",
+        "created_at": 1789921693274,
+        "updated_at": 1789921715656,
+        "durationMs": 22382
+      },
+      {
+        "node_id": "e0.prepare_tests",
+        "state": "confirmed",
+        "created_at": 1789921693278,
+        "updated_at": 1789921734012,
+        "durationMs": 40734
+      },
+      {
+        "node_id": "e0.review",
+        "state": "confirmed",
+        "created_at": 1789921734029,
+        "updated_at": 1789921752536,
+        "durationMs": 18507
+      },
+      {
+        "node_id": "e0.tests",
+        "state": "confirmed",
+        "created_at": 1789921734032,
+        "updated_at": 1789921763814,
+        "durationMs": 29782
+      }
+    ]
+  }
+]

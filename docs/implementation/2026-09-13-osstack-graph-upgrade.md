@@ -1,8 +1,8 @@
 # OSStack 升级改造实施计划：Loop 强化与可执行 Graph v1
 
-日期：2026-09-13；更新：2026-09-20。**状态：G00–G24 已完成，25/30；G25 与 G26 实施中。已新增支持检查、准入开关、公开 no-child 对账和受控 Messages writer/reviewer 后端；G25-B 已通过受控 DeepSeek 真实 API 小仓库验收，凭据阻塞已解除；C2 首轮受控 writer 跨 host 对账已接通，突然崩溃无退出日志等更广恢复及完整故障/兼容验收仍待完成。** G26 独立实现可提前推进，最终验收仍依赖 G25。
+日期：2026-09-13；更新：2026-09-20。**状态：25/30 已正式验收；G25–G29 的主要实现和真实内部试点已完成，最终故障、Linux/发行、压力性能及 main 集成尚待关闭。现按用户要求先提交 Draft PR，进入独立审批流程，不将未通过项标为完成。**
 
-实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`。本轮源码提交 `42a5f93e8e67163016cd15f8f6cf0f21ac60927c`；见 [跨 host 对账验收报告](../reports/graph-bounded-recovery-validation.md)和[最新接续上下文](2026-09-20-graph-bounded-recovery-next-context.md)。
+实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`。最新实现 `9011913`：锁保留、升级保护、平台边界和批量 artifact。全仓 22 包 3,727 测试通过；当前完成度、五类技术债和合并/部署门槛以[最新进展报告](../reports/graph-upgrade-completion.md)为准。
 
 本计划将 [架构设计](../design/2026-09-13-executable-graph-plan.md) 转成可逐项执行的任务，产品边界遵循 [三产品定义](../design/2026-09-13-os-products-definition.md)。OSBot 功能在 [独立 handoff](../handoffs/osbot/handoff.md) 交接；本计划只改造 OSStack，不部署 Rakazo，不修改 OStag 产品。
 

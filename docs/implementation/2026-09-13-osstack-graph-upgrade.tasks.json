@@ -1180,7 +1180,7 @@
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "G25-A/C1/B 已交付；C2 已贯通首轮受控 writer 停止后丢失账本/释放 ACK 的真实跨 host 公开对账。原 host 死亡、worker退出日志、候选与原锁证据均必需，模型不重发。C2 更广突然崩溃/执行器窗口与D原故障矩阵仍在推进，父卡不提前完成。",
+      "progressNote": "受控恢复与持久锁保护实现完成；最终 seed 矩阵正在运行，unknown 与残留锁保留是明确边界。",
       "evidence": [
         "docs/reports/graph-runtime-fault-validation.md",
         "docs/implementation/2026-09-15-graph-fault-next-context.md",
@@ -1224,7 +1224,8 @@
         "docs/implementation/2026-09-20-graph-deepseek-next-context.md",
         "docs/reports/graph-bounded-recovery-validation.md",
         "docs/implementation/2026-09-20-graph-bounded-recovery-next-context.md",
-        "docs/implementation/graph-bounded-recovery-evidence/admission.json"
+        "docs/implementation/graph-bounded-recovery-evidence/admission.json",
+        "docs/reports/graph-upgrade-completion.md"
       ],
       "remainingSlices": [
         "G25-C2",
@@ -1272,10 +1273,11 @@
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "新图准入开关、关闭后查询/结果/原请求重试/取消/live quality resume 已实现；本轮补 no-child 取消对账仍可用。一般外部动作对账、备份恢复与完整旧模式共存仍待验收。",
+      "progressNote": "SQLite backup/reopen、禁用准入保留旧操作、真实 foreground Loop 锁、drain 与 upgrade guard 通过回归；待联合验收和最新 main 回归。",
       "evidence": [
         "docs/reports/graph-admission-unblock-validation.md",
-        "docs/reports/graph-public-reconcile-validation.md"
+        "docs/reports/graph-public-reconcile-validation.md",
+        "docs/reports/graph-upgrade-completion.md"
       ]
     },
     {
@@ -1299,9 +1301,13 @@
       ],
       "verify": "RELEASE",
       "size": "M",
-      "status": "pending",
+      "status": "in_progress",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "progressNote": "Node20.6 294项及最终25项通过；实际 Linux366项中363通过3超时，待复核；明确 Bun graph 不支持。",
+      "evidence": [
+        "docs/reports/graph-upgrade-completion.md"
       ]
     },
     {
@@ -1325,9 +1331,13 @@
       ],
       "verify": "PERF",
       "size": "M",
-      "status": "pending",
+      "status": "in_progress",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "progressNote": "真实仓库 freeze 179秒降至13秒；首轮预算与重引擎隔离通过，最终31MiB fingerprint压力测量待收口。",
+      "evidence": [
+        "docs/reports/graph-upgrade-completion.md"
       ]
     },
     {
@@ -1350,9 +1360,13 @@
       ],
       "verify": "PILOT",
       "size": "M",
-      "status": "pending",
+      "status": "in_progress",
       "requiresDecisionGates": [
         "C2"
+      ],
+      "progressNote": "DeepSeek实际OSStack代码任务ready、负对照拒绝、取消保留unknown/预算，手册已写；等待依赖门槛后宣布beta。",
+      "evidence": [
+        "docs/reports/graph-upgrade-completion.md"
       ]
     }
   ],
@@ -1360,14 +1374,17 @@
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "42a5f93e8e67163016cd15f8f6cf0f21ac60927c",
+    "acceptedCodeCommit": "90119134c06a84a6e83bf0670c3c3142c81c8c29",
     "completedTaskCount": 25,
     "totalTaskCount": 30,
     "nextTasks": [
       "G25",
-      "G26"
+      "G26",
+      "G27",
+      "G28",
+      "G29"
     ],
-    "report": "docs/reports/graph-bounded-recovery-validation.md",
+    "report": "docs/reports/graph-upgrade-completion.md",
     "nextGate": null,
     "milestoneStatus": {
       "M0": "completed",
@@ -1375,8 +1392,8 @@
       "M2": "completed",
       "M3": "in_progress"
     },
-    "reviewNote": "G25-C2 首轮受控 writer 跨 host 公开对账切片已交付：持久停止/内容回执、候选指纹、原锁与 G15 applied/释放/取消。Loop 434 测试通过；版本固定后恢复套件16项通过，计435个不同测试。Fable复审accept。突然崩溃无worker退出日志及更广C2/D仍未验收，父卡25/30。",
-    "slicePlan": "docs/implementation/2026-09-20-graph-bounded-recovery-next-context.md"
+    "reviewNote": "真实内部试点通过；22 包 3727 测试与四项 verifier 通过；Fable 独立复审 accept。剩余为最终故障矩阵、Linux 3 超时排查、最终压力性能、main 集成/CI与人工审批，先提交 Draft PR，未宣告30/30。",
+    "slicePlan": "docs/reports/graph-upgrade-completion.md"
   },
   "decisionGates": [
     {

@@ -1,4 +1,30 @@
-# G25 故障验收：进程观察与并发基础
+# G25 故障验收：最终映射与历史基础
+
+
+## 2026-09-20 最终验收映射
+
+本轮以原任务卡的安全行为收口：证据充分的受控动作可恢复；未知 executor、缺失退出证明、残留 artifact 锁继续 held。不会把 PID 消失、租约过期或“没有看到效果”转换成 `not_applied`。Fable 5.1 已复核这个范围，拒绝为消除 held 而增加无证据的人工释放入口。当前总门槛状态见[最终报告](graph-upgrade-completion.md)；下方 9 月 15 日内容是历史证据。
+
+| 故障窗口 | 最终回归证据（packages 下） | 必须保持的行为 |
+|---|---|---|
+| F01 终态/迟到输出 | loop/src/executor.test.ts | 无 done、冲突、abort 后成功不产生候选 |
+| F02 intent 后执行不明 | graph-action-broker、graph-recovery-crash、graph-contained-recovery | 独立 host 重开账本，unknown 不重发 |
+| F03 效果后 ledger 前 | graph-chain.integration、graph-bounded-recovery | 持久停止/内容证据与原锁核对，不宣称物理恰好一次 |
+| F04 confirmed 后 checkpoint 前 | graph-chain.integration | 函数可重入查询已确认结果，物理动作不重复 |
+| F05 pending writes / RETURN / barrier | graph/functional-runtime、remote-saver；core/state/graph-checkpoints；graph-chain.integration | 已持久 RETURN 不重入；效果确认和函数重入计数分开，逻辑 join 一次 |
+| F06 旧 generation | graph-checkpoint-service、graph-action-broker-boundary | put、putWrites、action 及缓存返回全部受 fence 约束 |
+| F07 迟到旧 writer | core/graph/artifact-store | 真实 SIGKILL 和迟到写入不能污染冻结候选/恢复目录；残留锁不自动删除 |
+| F08 撤权/过期/scope | graph-review-findings、graph-concurrency.integration | 下一动作不启动，resume 必须符合当前权限 |
+| F09 并发与换 attempt | graph-concurrency.integration、graph-unstarted-recovery、graph-recovery-crash | SQLite 多连接/多进程准入；相同 key 去重，不同输入冲突，unknown 不绕过 |
+| F10 汇合与旧 epoch | graph-verification、graph-verification-join | 同候选、同 epoch、join 一次；格式失败和业务失败分路 |
+| F11 cancel/timeout/后代 | graph-worker-exit-proof、graph-contained-recovery、agents/contained-command、graph-chain、graph-concurrency | 真实 PID/PGID/启动身份与独立执行器证明；worker 退出不等于所有副作用停止 |
+| F12 旧格式/禁用/备份 | graph-compatibility.integration、graph-admission、graph-reconcile-rpc、graph-rpc、autonomy/repo-lock | 禁用后仍可读/取消/核对；恢复未知动作不重发；旧 writer 不偷保留锁 |
+
+表内 CLI 简称对应 `packages/cli/src/<name>.test.ts`。脚本 `scripts/verify-graph-runtime.mjs` 保存固定 seed、逐测试输出、源码及 dist 哈希；它本身仍只是诊断运行器。准入结论还依赖真实平台、独立审查、性能与内部试点，不能只根据 coverage 文件列表推出。
+
+额外修复：`recovery_policy:reconcile` 持久锁阻止默认/显式 stale recovery；真实已发布 0.17.0 获取入口也不能夺锁。升级/回滚在停止和备份前检查未终结图与保留准入，drain 期间拒绝新图。旧 checkpoint 格式拒绝，真实 SQLite 备份重开保持未知动作和原账本。具体结果见[兼容矩阵](../implementation/graph-runtime-compatibility.md)。
+
+## 2026-09-15 阶段报告
 
 日期：2026-09-15。**本批是 G25 的第一阶段，G25 尚未完成；任务总进度仍为 25/30。** 本批源码 `4590fcb494e1fff991138f77c687b47fa7544c5f` 已通过本地限定验收。
 
@@ -57,7 +83,7 @@ node scripts/verify-graph-runtime.mjs \
 
 该脚本运行关联 F01–F12 的既有及新增测试，保存逐测试 JSON、日志、seed、源码与构建产物哈希；第一次运行完整关联集合，后续轮次重复并发测试。测试文件遗漏、零测试、失败、跳过或运行中源码变化都不能得到通过结果。**coverage 表示关联回归集合，不表示每个故障子窗口及所有平台已获得准入。**
 
-## G25 仍须完成
+## 2026-09-15 当时的剩余项（历史记录）
 
 - 新 supervisor 独立证明实际 executor 停止，并经 G15 完成受管恢复；opaque adapter 与脱离进程组的后代仍无法由本批观察接口证明停止。
 - 更强的 macOS 进程身份与实际 Linux 平台验证。本机测试中的 Linux 身份比较不能代替 Linux 真机运行。
@@ -65,4 +91,4 @@ node scripts/verify-graph-runtime.mjs \
 - 残留 artifact 锁的受管、可审计释放路径；本批仅证明不会自动删除残留锁。
 - F01–F12 每个子窗口的完整映射，以及同一恢复场景下函数重入、确认效果、逻辑 join 三种计数。
 
-这些缺口阻止把 G25 标记为完成。C7 原有本地限定准入仍有效，任意崩溃恢复和生产发布尚未获得准入。
+以上是 2026-09-15 的阶段性判断。后续受控恢复、进程证明、真实试点与本轮最终验收见收口报告。任意崩溃自动恢复和生产发布仍不在已准入范围。
