@@ -1,5 +1,7 @@
 # G25-B：受控 writer/reviewer 已实现，真实 API 试点待接凭据
 
+后续 DeepSeek 真实试跑已通过，凭据阻塞已解除；见[最新接续上下文](2026-09-20-graph-deepseek-next-context.md)。以下保留 B1 交接时状态。
+
 日期：2026-09-20。继续使用工作区 `/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`、分支 `codex/graph-runtime-foundation`。原 checkout 仅同步本任务文档，不修改或提交其用户工作。
 
 本轮主线已经从 recovery helper 转到真实执行后端。新增 `createBoundedMessagesAdapter`，直接使用 Anthropic Messages API，不通过 Claude CLI/SDK 子进程，不授予模型工具。writer 输出一个结构化替换提议，宿主校验后写入一个预登记文件；reviewer 是独立身份和独立无历史请求，只读冻结候选。复用原 AgentAdapter、Loop 单次实现、Graph broker、权限和工作区租约。

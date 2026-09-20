@@ -1159,7 +1159,9 @@
         "packages/agents/src/adapters/bounded-messages.test.ts",
         "packages/agents/src/bounded-messages.ts",
         "packages/cli/src/graph-bounded-messages.test.ts",
-        "packages/cli/src/graph-host-config.test.ts"
+        "packages/cli/src/graph-host-config.test.ts",
+        "packages/agents/src/adapters/bounded-messages-provider.ts",
+        "scripts/verify-bounded-deepseek.mjs"
       ],
       "acceptance": [
         "逐项覆盖 F01–F12 确定性窗口，再做固定 seed 的重复运行。",
@@ -1174,7 +1176,7 @@
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "G25-A/C1 已交付；新增 G25-B1 固定无工具 API writer/reviewer，宿主受控单文件原子替换、独立候选审查及停止证据，接入实际 daemon/CLI/Graph 并通过 fixture provider 验收。B2 真实 API 待显式凭据；C2 外部效果/工作区对账及 D 原故障矩阵仍未完成。",
+      "progressNote": "G25-A/C1 已交付；G25-B 受控后端与真实 DeepSeek API 小仓库验收通过。支持 DeepSeek owner 配置，真实7节点交付至ready；独立缺陷审查和取消未知锁保留通过。原外部效果/工作区恢复 C2 与故障矩阵 D 尚未完成；父卡不提前标完成。",
       "evidence": [
         "docs/reports/graph-runtime-fault-validation.md",
         "docs/implementation/2026-09-15-graph-fault-next-context.md",
@@ -1212,21 +1214,26 @@
         "docs/implementation/2026-09-19-graph-reconcile-next-context.md",
         "docs/reports/graph-bounded-messages-validation.md",
         "docs/implementation/graph-bounded-messages-evidence/admission.json",
-        "docs/implementation/2026-09-20-graph-bounded-backend-next-context.md"
+        "docs/implementation/2026-09-20-graph-bounded-backend-next-context.md",
+        "docs/reports/graph-deepseek-live-validation.md",
+        "docs/implementation/graph-deepseek-live-evidence/admission.json",
+        "docs/implementation/2026-09-20-graph-deepseek-next-context.md"
       ],
       "remainingSlices": [
-        "G25-B",
         "G25-C2",
         "G25-D"
       ],
       "completedSlices": [
         "G25-A",
         "G25-C1",
-        "G25-B1"
+        "G25-B1",
+        "G25-B2",
+        "G25-B"
       ],
       "sliceStatus": {
         "G25-B1": "completed",
-        "G25-B2": "pending_live_api_credential"
+        "G25-B2": "completed_bounded_live_pilot",
+        "G25-B": "completed_bounded_scope"
       }
     },
     {
@@ -1344,14 +1351,14 @@
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "d443eeb1125e1bb0d5814fda3a065f1c81ac2868",
+    "acceptedCodeCommit": "e1aa11722182c2bfbf12ead60356c1b83749aba5",
     "completedTaskCount": 25,
     "totalTaskCount": 30,
     "nextTasks": [
       "G25",
       "G26"
     ],
-    "report": "docs/reports/graph-bounded-messages-validation.md",
+    "report": "docs/reports/graph-deepseek-live-validation.md",
     "nextGate": null,
     "milestoneStatus": {
       "M0": "completed",
@@ -1359,8 +1366,8 @@
       "M2": "completed",
       "M3": "in_progress"
     },
-    "reviewNote": "Claude CLI Fable 5.1 实际初审 7 点已修复，复审 accept；真实 Loop 276 项相关测试及 build/typecheck/schema/startup 通过。G25-B1 受控 Messages writer/reviewer 和 owner config 已实现，真实 API 试点缺显式凭据，尚未完成 G25-B；父卡 25/30 不变。",
-    "slicePlan": "docs/implementation/2026-09-20-graph-bounded-backend-next-context.md"
+    "reviewNote": "DeepSeek-v4-pro 真实 daemon/Graph 小仓库试跑通过：7 个 confirmed 动作、独立 review、严格 join、缺陷拒绝与取消未知 hold 保留。真实 Loop 317 测试及 build/typecheck/schema/startup 通过；Fable 最终 accept。G25-B 已完成窄范围验收，API 凭据不再阻塞；父卡仍25/30，剩C2/D与G26等。",
+    "slicePlan": "docs/implementation/2026-09-20-graph-deepseek-next-context.md"
   },
   "decisionGates": [
     {

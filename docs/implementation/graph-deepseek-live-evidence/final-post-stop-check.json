@@ -1,0 +1,10 @@
+{
+  "graphRunId": "9fd72c5c-6438-4236-bef7-ba924f45d07e",
+  "effectKey": "c4d1d680d78ea27d59b0939dfff1c439bd95c1e6d7e9795c6dcc532c5d0073ef",
+  "writerState": "unknown",
+  "admission": {
+    "released_at": null
+  },
+  "unchangedCandidate": true,
+  "verifiedAfterDaemonExit": true
+}

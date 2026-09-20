@@ -1,0 +1,111 @@
+{
+  "duration_api_ms": 92203,
+  "stop_reason": "end_turn",
+  "session_id": "9e36e505-b2a7-4a1d-9a18-64acb9c8d926",
+  "total_cost_usd": 0.9853205000000002,
+  "usage": {
+    "input_tokens": 322,
+    "cache_creation_input_tokens": 30338,
+    "cache_read_input_tokens": 226358,
+    "output_tokens": 6348,
+    "output_tokens_details": {
+      "thinking_tokens": 2686
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 30338,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 32,
+        "output_tokens": 2006,
+        "cache_read_input_tokens": 32505,
+        "cache_creation_input_tokens": 3429,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 3429
+        },
+        "type": "message",
+        "model": null
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 1256,
+      "outputTokens": 19,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.001351,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "thinkingTokens": 0,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    },
+    "claude-fable-5-1": {
+      "inputTokens": 322,
+      "outputTokens": 6348,
+      "cacheReadInputTokens": 226358,
+      "cacheCreationInputTokens": 30338,
+      "webSearchRequests": 0,
+      "costUSD": 0.9839695,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 2686,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 14,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "**Verdict: accept.** No concrete correctness or assertion-honesty blockers in `scripts/verify-bounded-deepseek.mjs`.\n\n**What I verified against the code it exercises**\n\n- Endpoint validation via the adapter factory runs before the report is first written, and the report is only ever written through the redacting save. The key is never placed in the report or config.\n- Health gating is the real `autonomy.health` RPC with the `can_run_local` assertion before any `graph.start`. Power policy none and dashboard port 0 are passed by env, not mocked.\n- Ready path assertions match the schema. All seven ledger nodes must be `confirmed`, and the outcome shapes match the protocol's result kinds (`implementation_complete`, `candidate_ready`, review `verdict`, tests `passed`). The join row is read from the immutable `graph_verification_joins` table and its `receipt_ref` is compared to the status `resultRef`, which the RPC status spreads from the stored result.\n- Negative review saves events and the parsed review before asserting the verdict, so a wrong verdict still leaves evidence on disk. Event types and the `confirmStopped` shape match the adapter.\n- Cancellation is honest. The CLI broker only ever marks actions `unknown`, never `cancel_pending`, so the wait for a non-intent, non-running state resolves only to `unknown`, `confirmed`, or `failed`. The unknown branch checks the exact effect key's unreleased admission, no `cancelled` status, unchanged writer candidate, and zero freeze rows. The settled branch requires the outcome JSON state to agree with the ledger state.\n- Cancel retry is limited to one attempt, only on `PILOT_RPC_REVISION_CONFLICT`, with a fresh revision and a distinct idempotency key. A timeout or any other code throws immediately.\n- Timing defaults are consistent. The 540 second poll ceiling sits under the run's 600 second deadline, so the harness cannot outwait the daemon and misreport.\n\n**Non-blocking notes**\n\n- The RPC maps `TERMINAL_RUN` to `REVISION_CONFLICT`, so a run that finished before the cancel would trigger one retry and then fail honestly. This produces a true failure, not a false pass.\n- In the settled writer branch, the check name still says \"no forced release of unknown inference.\" The report records the actual writer state, so a reader can tell which branch ran, but a branch-specific name would be clearer.\n- Log redaction operates per stdout chunk, so a key split across two chunks would not be masked. The daemon should never log the key, so this is theoretical.\n- If a live model returned inside the 200 ms window before cancel, freeze could start and the zero-freeze assertion would fail. Again an honest failure, not a false positive.\n\nNothing here changes the prior acceptance of the adapter, profile, or RPC. The harness is suitable as the live pilot gate for this slice.",
+  "ttft_ms": 2332,
+  "type": "result",
+  "duration_ms": 91699,
+  "uuid": "a075be4d-0408-4a18-98ef-a6b36c7909c4",
+  "ttft_stream_ms": 2191,
+  "time_to_request_ms": 651,
+  "first_content_frame_ms": 2192,
+  "queued_turn_count": 0
+}

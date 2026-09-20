@@ -1,0 +1,19 @@
+{
+  "graphRunId": "f350c1d1-bbd1-4bf2-bc18-8e1ca3488d96",
+  "writerState": "unknown",
+  "admissions": [
+    {
+      "effect_key": "a09e75f0ae04cbaf2f33056e0b07b6699afc2763a8edd720cbbb017e18a5bf9f",
+      "held_at": 1789917809478,
+      "released_at": 1789917809792
+    },
+    {
+      "effect_key": "53fb260f2e055772b905afc186672ffc9429dcc6ec1a9a5db02db827abc12708",
+      "held_at": 1789917816423,
+      "released_at": null
+    }
+  ],
+  "sourceUnchanged": true,
+  "noFreeze": true,
+  "verifiedAfterDaemonExit": true
+}

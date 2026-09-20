@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "scope": "Live DeepSeek bounded backend pilot; not full G25 fault matrix or G29 internal rollout",
+  "root": "/Volumes/AIMATE_WORK/tmp/g25-deepseek/live-home/pilot-jLzOeS",
+  "home": "/Volumes/AIMATE_WORK/tmp/g25-deepseek/live-home/pilot-jLzOeS/home",
+  "model": "deepseek-v4-pro",
+  "baseUrl": "https://api.deepseek.com",
+  "startedAt": "2026-09-20T15:20:03.742Z",
+  "checks": [],
+  "passed": false,
+  "error": "PILOT_TIMEOUT",
+  "daemonExit": {
+    "code": 1,
+    "signal": null
+  },
+  "completedAt": "2026-09-20T15:20:33.934Z"
+}

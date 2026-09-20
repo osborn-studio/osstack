@@ -121,7 +121,7 @@ The current CLI host pauses at a negative quality join that needs another repair
 
 ## Bounded Messages writer/reviewer (G25-B1)
 
-An opt-in backend now implements the stop contract for a deliberately small effect scope: a single direct Anthropic Messages request with no tools, followed by at most one synchronous atomic replacement of a registered existing file. It does not wrap Claude Code, launch subprocesses, execute model-generated commands or provide a general OS sandbox. A fresh reviewer invocation sees only the registered candidate files, its review task and the same concrete acceptance criteria; writer conversation history is not reused.
+An opt-in backend now implements the stop contract for a deliberately small effect scope: a single direct request to the selected Anthropic or DeepSeek API with no tools, followed by at most one synchronous atomic replacement of a registered existing file. It does not wrap Claude Code, launch subprocesses, execute model-generated commands or provide a general OS sandbox. A fresh reviewer invocation sees only the registered candidate files, its review task and the same concrete acceptance criteria; writer conversation history is not reused.
 
 In the owner registration above, replace the two role entries and add:
 
@@ -143,9 +143,42 @@ The first writer scope is 1–16 explicitly named existing UTF-8 files, each at 
 
 Stop evidence is specific to this profile: no request dispatched, a complete documented request-rejection response, or a complete matching text-only provider message followed by settled local file operations. Receipt digests bind run ID, workspace, request and response. The trusted provider response attests this one inference completed; this is not proof about arbitrary CLI children or remote tools. 5xx errors, network disconnects, timeouts, mismatched identities, tool activity and truncated/untrusted envelopes remain unconfirmed. Cancel during inference aborts HTTP and forbids a later write, but does not infer that remote inference stopped. Such runs retain admission and require independent recovery; the public no-child reconcile branch cannot resolve them.
 
-Receipts are in-memory and never recycled. Duplicate invocation IDs are refused; after 4096 invocations the adapter refuses more until its host is restarted. Restart does not recreate proof for earlier unknown runs. The bounded backend and real graph/daemon path are tested using fixture provider responses; **live API pilot acceptance is still pending**. This does not complete G25 or G29. See [validation and remaining work](../reports/graph-bounded-messages-validation.md).
+Receipts are in-memory and never recycled. Duplicate invocation IDs are refused; after 4096 invocations the adapter refuses more until its host is restarted. Restart does not recreate proof for earlier unknown runs. The original Anthropic path remains fixture-verified. **The DeepSeek variant has now passed a live API pilot through the actual built daemon and Graph runtime**, including independent negative review and cancellation with an unknown inference hold retained. This bounded pilot does not complete the full G25 fault matrix or G29 internal rollout. See [live DeepSeek validation](../reports/graph-deepseek-live-validation.md) and [original fixture validation](../reports/graph-bounded-messages-validation.md).
 
 Provider contracts: [Messages API](https://platform.claude.com/docs/en/api/messages/create), [stop reasons](https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons), and [error status/type pairs](https://platform.claude.com/docs/en/api/errors). Supporting this narrow boundary does not change the unsupported status of existing generic CLI adapters.
+
+## DeepSeek configuration and live pilot
+
+The same bounded file and lifecycle rules apply to DeepSeek. Inside the owner-controlled `registration`, select:
+
+```json
+{
+  "writer": { "agentId": "deepseek-bounded-writer", "capabilityId": "deepseek-bounded-writer.writer" },
+  "reviewer": { "agentId": "deepseek-bounded-reviewer", "capabilityId": "deepseek-bounded-reviewer.reviewer" },
+  "boundedMessages": {
+    "provider": "deepseek",
+    "baseUrl": "https://api.deepseek.com",
+    "model": "deepseek-v4-pro",
+    "files": ["answer.mjs"],
+    "acceptance": "State the concrete acceptance criteria for these files."
+  }
+}
+```
+
+The daemon needs `DEEPSEEK_API_KEY`, independently of Anthropic credentials. `provider` defaults to `anthropic` for compatibility. The DeepSeek `baseUrl` defaults to the official origin; `/v1` or an explicitly trusted proxy prefix may be configured. No credential-bearing URL, query (including bare `?`), fragment (including bare `#`) or non-HTTPS remote endpoint is accepted. HTTP is permitted only for explicit localhost/127.0.0.1/IPv6-loopback endpoints. Redirects remain disabled. Changing provider/base URL invalidates the live owner binding. These are host settings, never RPC input.
+
+`DEEPSEEK_BASE_URL` is a convenience for the live-pilot script, which copies it into the generated owner config. The daemon uses `boundedMessages.baseUrl`; it does not silently retarget an existing registration from a changed environment variable. A custom endpoint must implement ordinary no-tools Chat Completions semantics. An agent gateway that launches its own tools or background tasks is outside this stop guarantee.
+
+The adapter requests non-streaming JSON with thinking disabled and no tools. It accepts exactly one choice, index 0, matching model identity and valid usage; nonempty tool/function calls or unknown finish reasons cannot prove stop. Known interrupted/truncated/filtered finishes produce stopped failure with observed token usage. DeepSeek cache and reasoning usage are already part of prompt/completion totals and are not added again. Documented request-rejection statuses with a structured error body can prove rejection; 5xx/transport failures stay unknown. Contracts were checked against [Chat Completions](https://api-docs.deepseek.com/api/create-chat-completion/) and [error codes](https://api-docs.deepseek.com/quick_start/error_codes/).
+
+After building, the explicit live pilot can be run with a fresh isolated home and credentials already injected into its environment:
+
+```sh
+OSSTACK_HOME=/absolute/private/pilot-home \
+  node scripts/verify-bounded-deepseek.mjs /absolute/private/pilot-report.json deepseek-v4-pro
+```
+
+The report parent directory must exist. This is a paid, opt-in API run, not part of ordinary tests. It creates a fresh toy repository and daemon home, calls real health checks, submits Graph work through the public socket, and checks every confirmed ledger node and join. The acceptance command validates a closed source form rather than executing arbitrary model output. It separately asks a real reviewer to reject the original bug, then cancels another admitted writer and checks its exact admission hold if the inference outcome is unknown. No merge, push or deploy is performed. Retained unknown evidence stays in the isolated pilot home for inspection. The script must receive no secrets in its command-line arguments.
 
 ## Trust boundary and external callers
 
