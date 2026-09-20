@@ -119,6 +119,34 @@ The cutoff is durable reservation: already admitted queued/running work continue
 
 The current CLI host pauses at a negative quality join that needs another repair epoch. Resume requires the same live supervisor and an unexpired worker lease (currently bounded to five minutes at the quality boundary) as well as the original overall deadline. Expired leases are refused before acknowledgement; this version does not silently refresh them or adopt another owner. Longer human approval waits and reconstruction after daemon loss require the recovery work in G25. Positive quality joins finish without an extra resume.
 
+## Bounded Messages writer/reviewer (G25-B1)
+
+An opt-in backend now implements the stop contract for a deliberately small effect scope: a single direct Anthropic Messages request with no tools, followed by at most one synchronous atomic replacement of a registered existing file. It does not wrap Claude Code, launch subprocesses, execute model-generated commands or provide a general OS sandbox. A fresh reviewer invocation sees only the registered candidate files, its review task and the same concrete acceptance criteria; writer conversation history is not reused.
+
+In the owner registration above, replace the two role entries and add:
+
+```json
+{
+  "writer": { "agentId": "anthropic-bounded-writer", "capabilityId": "anthropic-bounded-writer.writer" },
+  "reviewer": { "agentId": "anthropic-bounded-reviewer", "capabilityId": "anthropic-bounded-reviewer.reviewer" },
+  "boundedMessages": {
+    "model": "EXACT_PROVIDER_MODEL_ID",
+    "files": ["answer"],
+    "acceptance": "The answer file must contain 1 followed by one newline."
+  }
+}
+```
+
+This fragment belongs **inside `registration`**, not in an RPC request. Set the surrounding registered task, acceptance command and spec to the same business goal. The daemon process must receive `ANTHROPIC_API_KEY` through its environment. Do not put credentials in JSON or source control. Existing Claude CLI subscription login is not consumed by this backend. Use an exact API model ID whose returned identity matches and which supports the writer's 32768 maximum output tokens; a CLI model alias is not sufficient. The new role IDs are enrolled only for this graph registration, not the default agent router. Programmatic hosts can use the lazy `createBoundedMessagesAdapter` factory from `@osstack/agents` under their existing Graph authority and exclusive workspace lease.
+
+The first writer scope is 1–16 explicitly named existing UTF-8 files, each at most **4096 bytes**, with **one file replacement per invocation**, at most 4096 output bytes. No new/deleted files, dotfile paths, symlinks, hardlinks, binary files, path traversal or recursive file discovery. The model must return an exact registered path and before-content SHA-256. Before replacement, the host rechecks live execution authority, cancellation, canonical path, content, inode, device and mode; it writes a temporary file, fsyncs it, preserves permissions, atomically renames it and fsyncs the directory. The candidate workspace is exclusively leased and assumes no hostile same-UID process changing its directory tree. The reviewer supports up to 64 KiB per file/256 KiB total, but the paired writer imposes the smaller bound. Review JSON is capped at 8192 serialized UTF-8 bytes.
+
+Stop evidence is specific to this profile: no request dispatched, a complete documented request-rejection response, or a complete matching text-only provider message followed by settled local file operations. Receipt digests bind run ID, workspace, request and response. The trusted provider response attests this one inference completed; this is not proof about arbitrary CLI children or remote tools. 5xx errors, network disconnects, timeouts, mismatched identities, tool activity and truncated/untrusted envelopes remain unconfirmed. Cancel during inference aborts HTTP and forbids a later write, but does not infer that remote inference stopped. Such runs retain admission and require independent recovery; the public no-child reconcile branch cannot resolve them.
+
+Receipts are in-memory and never recycled. Duplicate invocation IDs are refused; after 4096 invocations the adapter refuses more until its host is restarted. Restart does not recreate proof for earlier unknown runs. The bounded backend and real graph/daemon path are tested using fixture provider responses; **live API pilot acceptance is still pending**. This does not complete G25 or G29. See [validation and remaining work](../reports/graph-bounded-messages-validation.md).
+
+Provider contracts: [Messages API](https://platform.claude.com/docs/en/api/messages/create), [stop reasons](https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons), and [error status/type pairs](https://platform.claude.com/docs/en/api/errors). Supporting this narrow boundary does not change the unsupported status of existing generic CLI adapters.
+
 ## Trust boundary and external callers
 
 The local server uses an explicit host registration and owner-controlled grant configuration. The Unix socket and host configuration are local owner capabilities. Merely claiming a `principalId`, scope or `source.product` in JSON does not authenticate a caller.

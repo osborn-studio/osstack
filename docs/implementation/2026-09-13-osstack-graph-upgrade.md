@@ -1,8 +1,8 @@
 # OSStack 升级改造实施计划：Loop 强化与可执行 Graph v1
 
-日期：2026-09-13；更新：2026-09-19。**状态：G00–G24 已完成，25/30；G25 与 G26 实施中。已新增执行前支持检查、动态准入开关和公开 no-child 取消对账；真实后端、已产生外部动作的对账与完整故障/兼容验收仍待完成。** G26 独立实现可提前推进，最终验收仍依赖 G25。
+日期：2026-09-13；更新：2026-09-20。**状态：G00–G24 已完成，25/30；G25 与 G26 实施中。已新增支持检查、准入开关、公开 no-child 对账和受控 Messages writer/reviewer 后端；G25-B1 已实现并通过完整 fixture 链路，真实 API 试点待显式凭据；外部效果对账及完整故障/兼容验收仍待完成。** G26 独立实现可提前推进，最终验收仍依赖 G25。
 
-实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`。本轮源码提交 `1893d09a845c0e2abdbd3eb392a184b0c89ee0e0`；见 [公开取消对账报告](../reports/graph-public-reconcile-validation.md)和[最新接续上下文](2026-09-19-graph-reconcile-next-context.md)。
+实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`。本轮源码提交 `d443eeb1125e1bb0d5814fda3a065f1c81ac2868`；见 [受控后端验收报告](../reports/graph-bounded-messages-validation.md)和[最新接续上下文](2026-09-20-graph-bounded-backend-next-context.md)。
 
 本计划将 [架构设计](../design/2026-09-13-executable-graph-plan.md) 转成可逐项执行的任务，产品边界遵循 [三产品定义](../design/2026-09-13-os-products-definition.md)。OSBot 功能在 [独立 handoff](../handoffs/osbot/handoff.md) 交接；本计划只改造 OSStack，不部署 Rakazo，不修改 OStag 产品。
 

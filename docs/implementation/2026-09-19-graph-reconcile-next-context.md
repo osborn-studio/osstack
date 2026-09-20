@@ -1,5 +1,7 @@
 # G25 公开取消对账与下一步
 
+后续已实现 G25-B1 受控后端，最新状态见 [2026-09-20 接续上下文](2026-09-20-graph-bounded-backend-next-context.md)。以下保留当时 C1 交接记录。
+
 日期：2026-09-19。实施分支 `codex/graph-runtime-foundation`，工作区 `/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`。
 
 本轮 G25-C1 将已有 G15 no-child 证明接到真实 `graph.reconcile` RPC 与 `osstack graph reconcile --request cancel.json`，并验证 daemon/CLI 路由。使用现有 CancelGraphRequest，操作含义限定为取消对账；没有把客户端 outcome、PID 或证据字符串作为权限。新图准入关闭、执行期限已过、内置 agent 不支持新图，都不妨碍具备 cancel grant 的旧 run 对账。

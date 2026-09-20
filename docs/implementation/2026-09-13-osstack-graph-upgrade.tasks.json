@@ -1154,7 +1154,12 @@
         "packages/cli/src/graph-reconcile-rpc.test.ts",
         "packages/cli/src/graph-execution-command.ts",
         "packages/cli/src/graph-command.ts",
-        "packages/cli/src/daemon.ts"
+        "packages/cli/src/daemon.ts",
+        "packages/agents/src/adapters/bounded-messages.ts",
+        "packages/agents/src/adapters/bounded-messages.test.ts",
+        "packages/agents/src/bounded-messages.ts",
+        "packages/cli/src/graph-bounded-messages.test.ts",
+        "packages/cli/src/graph-host-config.test.ts"
       ],
       "acceptance": [
         "逐项覆盖 F01–F12 确定性窗口，再做固定 seed 的重复运行。",
@@ -1169,7 +1174,7 @@
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "G25-A 支持检查已落地；本轮 G25-C1 增加真实公开 RPC/CLI 取消对账，复用全历史 no-child 证明与 G15；未知外部效果保持 pending/holds。下一轮 G25-B 真实后端，随后 C2 外部效果/工作区对账及 D 原故障矩阵。",
+      "progressNote": "G25-A/C1 已交付；新增 G25-B1 固定无工具 API writer/reviewer，宿主受控单文件原子替换、独立候选审查及停止证据，接入实际 daemon/CLI/Graph 并通过 fixture provider 验收。B2 真实 API 待显式凭据；C2 外部效果/工作区对账及 D 原故障矩阵仍未完成。",
       "evidence": [
         "docs/reports/graph-runtime-fault-validation.md",
         "docs/implementation/2026-09-15-graph-fault-next-context.md",
@@ -1204,7 +1209,10 @@
         "docs/reports/graph-admission-unblock-validation.md",
         "docs/implementation/2026-09-18-graph-unblock-next-context.md",
         "docs/reports/graph-public-reconcile-validation.md",
-        "docs/implementation/2026-09-19-graph-reconcile-next-context.md"
+        "docs/implementation/2026-09-19-graph-reconcile-next-context.md",
+        "docs/reports/graph-bounded-messages-validation.md",
+        "docs/implementation/graph-bounded-messages-evidence/admission.json",
+        "docs/implementation/2026-09-20-graph-bounded-backend-next-context.md"
       ],
       "remainingSlices": [
         "G25-B",
@@ -1213,8 +1221,13 @@
       ],
       "completedSlices": [
         "G25-A",
-        "G25-C1"
-      ]
+        "G25-C1",
+        "G25-B1"
+      ],
+      "sliceStatus": {
+        "G25-B1": "completed",
+        "G25-B2": "pending_live_api_credential"
+      }
     },
     {
       "id": "G26",
@@ -1331,14 +1344,14 @@
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "1893d09a845c0e2abdbd3eb392a184b0c89ee0e0",
+    "acceptedCodeCommit": "d443eeb1125e1bb0d5814fda3a065f1c81ac2868",
     "completedTaskCount": 25,
     "totalTaskCount": 30,
     "nextTasks": [
       "G25",
       "G26"
     ],
-    "report": "docs/reports/graph-public-reconcile-validation.md",
+    "report": "docs/reports/graph-bounded-messages-validation.md",
     "nextGate": null,
     "milestoneStatus": {
       "M0": "completed",
@@ -1346,8 +1359,8 @@
       "M2": "completed",
       "M3": "in_progress"
     },
-    "reviewNote": "Claude CLI Fable 5.1 初审竞态意见已修复，复审 accept；最终实际 Loop 109 项相关测试及类型/schema/startup 通过。G25-C1 公开 no-child 取消对账已交付；下一主任务 G25-B 真实后端。父卡保持 25/30。",
-    "slicePlan": "docs/implementation/2026-09-19-graph-reconcile-next-context.md"
+    "reviewNote": "Claude CLI Fable 5.1 实际初审 7 点已修复，复审 accept；真实 Loop 276 项相关测试及 build/typecheck/schema/startup 通过。G25-B1 受控 Messages writer/reviewer 和 owner config 已实现，真实 API 试点缺显式凭据，尚未完成 G25-B；父卡 25/30 不变。",
+    "slicePlan": "docs/implementation/2026-09-20-graph-bounded-backend-next-context.md"
   },
   "decisionGates": [
     {
