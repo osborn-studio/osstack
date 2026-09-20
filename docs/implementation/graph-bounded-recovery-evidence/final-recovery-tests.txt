@@ -1,0 +1,31 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+
+  ../../../../../tmp/g25-c2/tmp/g25-bounded-build-d9qWbS/host.mjs  232.1kb
+
+⚡ Done in 17ms
+ ✓ src/graph-bounded-recovery.test.ts (16 tests) 39259ms
+   ✓ public cancellation recovers a bounded writer before-commit across a real host exit without invoking again  2815ms
+   ✓ public cancellation recovers a bounded writer after-commit across a real host exit without invoking again  2658ms
+   ✓ retains admission when alive prevents recovery  2384ms
+   ✓ retains admission when disconnect prevents recovery  2325ms
+   ✓ retains admission when no-worker-exit prevents recovery  2414ms
+   ✓ retains admission when future-template prevents recovery  2432ms
+   ✓ retains admission when workspace-tampered prevents recovery  2415ms
+   ✓ retains admission when journal-tampered prevents recovery  2388ms
+   ✓ retains admission when missing-journal prevents recovery  2378ms
+   ✓ retains admission when receipt-tampered prevents recovery  2414ms
+   ✓ retains admission when ignored-file prevents recovery  1953ms
+   ✓ retains admission when symlink prevents recovery  2634ms
+   ✓ retains admission when revoked prevents recovery  2169ms
+   ✓ replays a lost release ACK after another service restart without unlinking a replacement owner  2986ms
+   ✓ rechecks cancellation authority inside the final recovery transaction  2327ms
+   ✓ concurrent reconciliation cannot duplicate a settlement or free another action  2565ms
+
+ Test Files  1 passed (1)
+      Tests  16 passed (16)
+   Start at  08:56:55
+   Duration  41.36s (transform 1.06s, setup 18ms, collect 1.81s, tests 39.26s, environment 0ms, prepare 46ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g25-c2/final-recovery-tests.json

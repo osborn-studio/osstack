@@ -180,6 +180,16 @@ OSSTACK_HOME=/absolute/private/pilot-home \
 
 The report parent directory must exist. This is a paid, opt-in API run, not part of ordinary tests. It creates a fresh toy repository and daemon home, calls real health checks, submits Graph work through the public socket, and checks every confirmed ledger node and join. The acceptance command validates a closed source form rather than executing arbitrary model output. It separately asks a real reviewer to reject the original bug, then cancels another admitted writer and checks its exact admission hold if the inference outcome is unknown. No merge, push or deploy is performed. Retained unknown evidence stays in the isolated pilot home for inspection. The script must receive no secrets in its command-line arguments.
 
+## Recovery after a stopped bounded writer loses its ledger acknowledgement
+
+`graph reconcile` now also supports a narrow admitted-action recovery path: generation 1 / epoch 0 of the v4 delivery program, exactly the confirmed workspace action followed by one completed bounded writer. The host must have durably recorded both the stopped inference/output receipt and the worker's actual exit before the original host exits. A fresh host verifies those records, the original canonical writer-lock token, current cancellation permission, and an independent fingerprint of the preserved candidate, then uses G15 to settle the original action and finish cancellation. It never invokes the model again or advances the graph to ready.
+
+Adapter stop receipts remain in-memory; the new `bounded-recovery/<effectKey>.json` is a separate host-owned persistent attestation published from a verified completed invocation before ledger confirmation. It cannot reconstruct proof for an earlier unknown HTTP request. Recovery coverage requires a private detached clone with at most 32 MiB / 10000 raw filesystem entries, including Git metadata and ignored/untracked files, and no symlinks, shared hardlinks or special files. Only host writer-lock metadata is excluded from the fingerprint. Unsupported workspace shapes do not gain this recovery coverage.
+
+A live/suspended original host, missing worker-exit journal, changed workspace, invalid program version, missing/corrupt receipt, or revoked grant keeps the action held. A different current lock token is never unlinked. After a lost release acknowledgement, an absent original lock can be acknowledged only following verification of the durable decision and stopped producer. If partial reconciliation advanced the run revision, obtain a fresh status and explicitly retry with its revision and a new idempotency key; an old request only returns current status.
+
+The candidate remains in the private writer directory after cancellation; it is not a published or approved artifact. Earlier unknown remote inference remains unresolved. See [recovery validation and boundaries](../reports/graph-bounded-recovery-validation.md).
+
 ## Trust boundary and external callers
 
 The local server uses an explicit host registration and owner-controlled grant configuration. The Unix socket and host configuration are local owner capabilities. Merely claiming a `principalId`, scope or `source.product` in JSON does not authenticate a caller.

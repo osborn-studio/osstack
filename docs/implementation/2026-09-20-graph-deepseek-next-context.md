@@ -1,5 +1,7 @@
 # DeepSeek 真实试跑通过后的接续上下文
 
+后续首轮受控 writer 跨 host 对账已交付，见[最新接续上下文](2026-09-20-graph-bounded-recovery-next-context.md)。以下保留 DeepSeek 试跑结束时的上下文。
+
 日期：2026-09-20。实施工作区 `/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`，分支 `codex/graph-runtime-foundation`，已验收代码提交 `e1aa11722182c2bfbf12ead60356c1b83749aba5`。原 checkout 仅同步本任务文档，不修改或提交用户的其他工作。
 
 **G25-B 已在受控范围完成真实 DeepSeek API 验收，凭据不再阻塞。下一轮直接推进 G25-C2 外部动作恢复，再完成 G25-D 原始故障矩阵；G26-B 兼容验收可独立推进。** 不要重新回到 API 配置、重复模型探测或泛化 recovery helper。

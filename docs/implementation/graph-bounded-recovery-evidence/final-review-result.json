@@ -1,0 +1,111 @@
+{
+  "duration_api_ms": 104340,
+  "stop_reason": "end_turn",
+  "session_id": "d8150447-98f9-4cf2-9c4c-954ef23f4a85",
+  "total_cost_usd": 1.51409,
+  "usage": {
+    "input_tokens": 194,
+    "cache_creation_input_tokens": 53439,
+    "cache_read_input_tokens": 224236,
+    "output_tokens": 7721,
+    "output_tokens_details": {
+      "thinking_tokens": 3399
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 53439,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 32,
+        "output_tokens": 1346,
+        "cache_read_input_tokens": 55915,
+        "cache_creation_input_tokens": 3120,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 3120
+        },
+        "type": "message",
+        "model": null
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 1176,
+      "outputTokens": 17,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.001261,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "thinkingTokens": 0,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    },
+    "claude-fable-5-1": {
+      "inputTokens": 194,
+      "outputTokens": 7721,
+      "cacheReadInputTokens": 224236,
+      "cacheCreationInputTokens": 53439,
+      "webSearchRequests": 0,
+      "costUSD": 1.512829,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 3399,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 21,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "**Verdict: accept.**\n\nThe version-pin fix is correct and the changed files contain no new concrete blocker.\n\n**Version pin.** The literal set in `graph-bounded-recovery.ts:35` matches the current delivery version exactly, field for field, including the engine, checkpoint, and template values. All nine program fields are compared against the stored run identity, and the compiler-derived fields are recomputed from the stored spec rather than trusted from the ledger. A future template bump changes only the delivery constant, so recovery refuses with a program error and the RPC catch path returns cancel_pending without settling or releasing. Not importing the delivery version constant is the right call for this boundary. The specHash and inputDigest fields are not compared, but they are bound through the fence and the compiled digest, so that omission is safe.\n\n**Future-template fixture.** The prototype patch on the run store's create is reachable. The RPC service creates the run once and hands it to delivery as a reserved run, so no second create with a conflicting version occurs. The worker manager and worker runtime check only engine and checkpoint versions, so the run proceeds to reconciliation_required normally. The test then expects cancel_pending, retained admission, zero recovery decisions, and one invocation, which is consistent with the recovery code and the RPC catch path. That test is unexecuted per your report, so this acceptance is conditional on it passing as written.\n\n**Stop evidence.** The broker attaches the stop evidence reference only for implement and repair, sourced from the adapter's independent confirmStopped result, never from model text. The receipt validator accepts extra evidence fields, so verification receipts without the field remain loadable. Both the journal publisher and the recovery path require the provider-prefixed evidence format, which fails closed for non-bounded adapters.\n\n**Scope.** Unchanged from the accepted narrow scope. Journaled worker exit is still required through the reconciler's verify hook, the host PID must be provably dead, and there is no host_lost or unknown-state inference.\n\n**Non-blocking observations.**\n- Reconstructed actual tokens use the sum of the receipt's in and out counts, while the live broker takes a maximum over observed and persisted values. For a single finite response these coincide, and this was already part of the accepted design.\n- The recovery version literals will need a coordinated edit whenever the delivery constant moves. That is the intended fail-closed cost, but worth a comment pointing at the delivery function so the coupling is discoverable.\n- The fixture's prototype override is bundled by esbuild without type checking. Fine for a fixture, but it will not be caught if the create signature changes.\n\nRemaining before merge: run the future-template test and the broader Loop suite you noted as pending.",
+  "ttft_ms": 2220,
+  "type": "result",
+  "duration_ms": 103544,
+  "uuid": "e78a2c77-e1d7-465b-aeb2-61e1a397706e",
+  "ttft_stream_ms": 1915,
+  "time_to_request_ms": 425,
+  "first_content_frame_ms": 1915,
+  "queued_turn_count": 0
+}
