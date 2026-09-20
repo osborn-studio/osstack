@@ -1,3 +1,4 @@
+import { assertGraphPlatform } from './graph-platform.js';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
@@ -97,6 +98,7 @@ export class GraphWorkerManager {
   private readonly runs = new Map<string, { binding: GraphWorkerBinding; input: string; programId: string; active: boolean }>();
   private readonly options: Readonly<GraphWorkerManagerOptions>;
   constructor(options: GraphWorkerManagerOptions) {
+    assertGraphPlatform();
     this.options = Object.freeze({ ...options });
     for (const item of options.programs) {
       if (!item.id || item.id.length > 256 || this.programs.has(item.id) || !/^[a-f0-9]{64}$/.test(item.digest)) throw new Error('WORKER_PROGRAM_INVALID');

@@ -35,6 +35,7 @@ const review = z.object({ schemaVersion: z.literal(1), verdict: z.enum(['accept'
 const proposal = z.object({ edit: z.object({ path: z.string(), beforeSha256: z.string().regex(/^[a-f0-9]{64}$/), content: z.string().max(MAX_EDIT) }).strict().nullable() }).strict();
 
 function pathAllowed(path: string): boolean {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: reject control bytes at this untrusted input boundary.
   return path.length > 0 && path.length <= 256 && !isAbsolute(path) && !/[\\\x00-\x1f\x7f]/.test(path)
     && path.split('/').every(part => part !== '' && part !== '.' && part !== '..' && !part.startsWith('.'));
 }

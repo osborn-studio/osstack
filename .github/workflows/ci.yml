@@ -227,3 +227,34 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           OSSTACK_NEAT_DEEPSEEK_MODEL: ${{ vars.OSSTACK_NEAT_DEEPSEEK_MODEL }}
         run: node scripts/smoke-neat-semantic-live.mjs --provider deepseek-no-tools
+
+  graph-runtime-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20.6.0', '22.23.1']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22.23.1'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      # pnpm 11 is a build tool requiring recent Node; exercise the runtime
+      # directly under the declared minimum with its matching SQLite ABI.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm install --prefix "$RUNNER_TEMP/graph-gyp" node-gyp@11.5.0
+      - name: Build SQLite for runtime ABI
+        run: |
+          cd "$(node -p 'require("node:path").dirname(require.resolve("better-sqlite3/package.json", {paths:["./packages/core"]}))')"
+          node "$RUNNER_TEMP/graph-gyp/node_modules/node-gyp/bin/node-gyp.js" rebuild --release
+      - name: Graph worker and durable SQLite runtime
+        env:
+          OSSTACK_HOME: ${{ runner.temp }}/graph-runtime-home
+          TMPDIR: /tmp
+        run: node node_modules/vitest/vitest.mjs run packages/graph/src packages/core/src/state/graph-checkpoints.test.ts packages/cli/src/graph-worker-manager.test.ts packages/cli/src/graph-rpc.test.ts packages/cli/src/graph-compatibility.integration.test.ts --maxWorkers=1

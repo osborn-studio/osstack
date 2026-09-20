@@ -34,8 +34,7 @@ describe('static graph compiler', () => {
   it.each([0, 33, Infinity, 1.5])('rejects invalid branch attempts %s', attempts => {
     expect(() => compileGraphSpec(spec(1, attempts))).toThrow();
   });
-  it.each([1, 2, 3])('reserves every possible action and trusted token cost for %s epochs', epochs => {
-    for (let attempts = 1; attempts <= 32; attempts++) {
+  it.each([1, 2, 3].flatMap(epochs => Array.from({ length: 32 }, (_, index) => [epochs, index + 1] as const)))('reserves every possible action and trusted token cost for %s epochs / %s attempts', (epochs, attempts) => {
       const input = spec(epochs, attempts);
       const compiled = compileGraphSpec(input);
       expect(compiled.budget.maxActionStarts).toBe(epochs * (3 + 4 * attempts));
@@ -47,7 +46,6 @@ describe('static graph compiler', () => {
       expect(() => compileGraphSpec(input)).not.toThrow();
       expect(() => compileGraphSpec({ ...input, limits: { ...input.limits, maxActionStarts: input.limits.maxActionStarts - 1 } })).toThrow(/BUDGET/);
       expect(() => compileGraphSpec({ ...input, limits: { ...input.limits, tokenReservationLimit: input.limits.tokenReservationLimit - 1 } })).toThrow(/BUDGET/);
-    }
   });
   it.each(['code', 'nodes', 'edges', 'tools', 'registry'])('rejects arbitrary %s in a spec', field => {
     expect(() => compileGraphSpec({ ...spec(), [field]: 'evil()' })).toThrow();

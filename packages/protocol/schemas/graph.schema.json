@@ -302,7 +302,9 @@
                 "EPOCH_MISMATCH",
                 "RESPONSE_MISMATCH",
                 "EXECUTOR_UNSUPPORTED",
-                "GRAPH_ADMISSION_DISABLED"
+                "GRAPH_ADMISSION_DISABLED",
+                "GRAPH_DISTRIBUTION_UNSUPPORTED",
+                "GRAPH_NODE_VERSION_UNSUPPORTED"
               ]
             },
             "retryable": {

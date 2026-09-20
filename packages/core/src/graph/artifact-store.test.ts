@@ -1,7 +1,7 @@
 import { execFileSync, fork, spawn } from "node:child_process";
 import { once } from "node:events";
 import { fileURLToPath } from "node:url";
-import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, readlink, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, readlink, realpath, rm, symlink, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -199,3 +199,10 @@ it('F07: a late real process writing the old directory cannot mutate the exporte
     if (child.exitCode === null && child.signalCode === null) { child.kill('SIGKILL'); await exited; }
   }
 }, 10000);
+
+it('rejects an oversized full-history bundle before reading it into memory', async () => {
+  const f = await fixture(); const result = await f.store.freeze(f.input, f.authority);
+  const bundle = join(f.root, 'artifacts', 'artifacts', result.artifactDigest, 'candidate.bundle');
+  await truncate(bundle, 256 * 1024 * 1024 + 1);
+  await expect(f.store.verify(result.artifactDigest)).rejects.toThrow('maximum 256 MiB');
+});

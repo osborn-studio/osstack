@@ -406,3 +406,17 @@ it('never treats a live daemon PID as a post-restart recovery target', async () 
   await expect(releaseReconciledRepoWriteLock({ root_dir: directory, repo_id: 'live', expectedOwner: lock.owner, verifyQuiescent: async () => {} })).rejects.toThrow('alive');
   await lock.release();
 });
+
+// A persisted policy protects against unrelated callers using the legacy default.
+it('never stale-reaps a managed graph lock through legacy or explicit recovery, even after expiry', async () => {
+  const lock = await acquireRepoWriteLock({ root_dir: directory, repo_id: 'retained', autonomy_run_id: 'graph:unknown',
+    recover_stale: false, pid: 123, now: () => '2000-01-01T00:00:00.000Z' });
+  const before = await readFile(lock.path, 'utf8');
+  expect(JSON.parse(before).recovery_policy).toBe('reconcile');
+  for (const recover_stale of [undefined, true, false]) {
+    await expect(acquireRepoWriteLock({ root_dir: directory, repo_id: 'retained', autonomy_run_id: 'legacy-loop',
+      ...(recover_stale === undefined ? {} : { recover_stale }), is_process_alive: () => false })).rejects.toBeInstanceOf(RepoLockBusyError);
+    expect(await readFile(lock.path, 'utf8')).toBe(before);
+  }
+  await lock.release();
+});

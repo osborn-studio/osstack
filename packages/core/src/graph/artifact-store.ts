@@ -3,7 +3,7 @@ import { chmod, lstat, mkdir, mkdtemp, open, readFile, realpath, rename, rm, sym
 import { dirname, isAbsolute, join } from "node:path";
 import type { GraphResult, GraphScope } from "@osstack/protocol";
 import { resolveRepositoryScope } from "./repository-scope.js";
-import { artifactGit, artifactPath, captureArtifactTree, gitText, initArtifactRepo, linkSourceObjects } from "./artifact-git.js";
+import { artifactBlobs, artifactGit, artifactPath, captureArtifactTree, gitText, initArtifactRepo, linkSourceObjects } from "./artifact-git.js";
 
 export interface GraphFreezeInput {
   artifactId: string;
@@ -42,6 +42,15 @@ function canonical(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
   return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(",")}}`;
+}
+// Full-history bundles are deliberately bounded before any whole-file read.
+const MAX_BUNDLE_BYTES = 256 * 1024 * 1024;
+async function bundleBytes(path: string): Promise<Buffer> {
+  const info = await lstat(path);
+  if (!info.isFile() || info.isSymbolicLink() || info.size > MAX_BUNDLE_BYTES) throw new Error("unsupported artifact bundle size or type (maximum 256 MiB)");
+  const bytes = await readFile(path);
+  if (bytes.length !== info.size || bytes.length > MAX_BUNDLE_BYTES) throw new Error("artifact bundle changed during read");
+  return bytes;
 }
 function snapshot<T>(value: T): T {
   const result = structuredClone(value);
@@ -122,7 +131,7 @@ export class GraphArtifactStore {
       const staging = join(scratch, "artifact"); await mkdir(staging);
       const bundlePath = join(staging, "candidate.bundle");
       await artifactGit(objectRepo, ["bundle", "create", bundlePath, "refs/heads/candidate"]);
-      const manifest: GraphArtifactManifest = { version: 1, input, tree, candidateRevision, bundleDigest: sha(await readFile(bundlePath)) };
+      const manifest: GraphArtifactManifest = { version: 1, input, tree, candidateRevision, bundleDigest: sha(await bundleBytes(bundlePath)) };
       const manifestBytes = canonical(manifest); const digest = sha(manifestBytes);
       // Validate from a fresh object database with no alternates or prerequisites.
       await this.validateBundle(bundlePath, manifest, join(scratch, "verify.git"));
@@ -168,7 +177,7 @@ export class GraphArtifactStore {
     if (manifest.version !== 1 || !/^[a-f0-9]{40}$/.test(manifest.tree) || !/^[a-f0-9]{40}$/.test(manifest.candidateRevision)) throw new Error("invalid artifact manifest");
     validateInput(manifest.input);
     const bundle = join(directory, "candidate.bundle");
-    if (sha(await readFile(bundle)) !== manifest.bundleDigest) throw new Error("corrupt artifact bundle digest");
+    if (sha(await bundleBytes(bundle)) !== manifest.bundleDigest) throw new Error("corrupt artifact bundle digest");
     const scratch = await mkdtemp(join(root, "scratch", "verify-"));
     try { await this.validateBundle(bundle, manifest, join(scratch, "repo.git")); } finally { await rm(scratch, { recursive: true, force: true }); }
     return snapshot(manifest);
@@ -194,13 +203,16 @@ export class GraphArtifactStore {
     await artifactGit(target, ["update-ref", "HEAD", manifest.candidateRevision]);
     await artifactGit(target, ["read-tree", manifest.candidateRevision]);
     const entries = (await artifactGit(target, ["ls-tree", "-rz", "--full-tree", manifest.candidateRevision])).toString("utf8").split("\0").filter(Boolean);
-    for (const entry of entries) {
+    const parsed = entries.map(entry => {
       const match = /^(100644|100755|120000) blob ([a-f0-9]{40})\t([\s\S]+)$/.exec(entry);
-      if (!match) throw new Error("unsupported artifact tree entry");
+      if (!match) throw new Error("unsupported artifact tree entry"); return match;
+    });
+    const blobs = await artifactBlobs(target, parsed.map(match => match[2]!));
+    for (const [index, match] of parsed.entries()) {
       const path = artifactPath(target, match[3]!);
       await mkdir(dirname(path), { recursive: true });
       if (await realpath(dirname(path)) !== dirname(path) || await exists(path)) throw new Error("restore path collision or symlink ancestor");
-      const bytes = await artifactGit(target, ["cat-file", "blob", match[2]!]);
+      const bytes = blobs[index]!;
       if (match[1] === "120000") await symlink(bytes, path);
       else { await durableFile(path, bytes); await chmod(path, match[1] === "100755" ? 0o755 : 0o644); }
     }

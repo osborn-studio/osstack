@@ -27,10 +27,12 @@ if (!isAbsolute(output)) throw Error('ABSOLUTE_OUTPUT_REQUIRED');
 mkdirSync(dirname(output), { recursive: true });
 const evidence = `${output}.evidence`; mkdirSync(evidence, { recursive: true });
 const groups = [
+  { package: 'autonomy', files: ['src/repo-lock.test.ts'] },
+  { package: 'graph', files: ['src/functional-entry.test.ts', 'src/remote-checkpointer.test.ts'] },
   { package: 'loop', files: ['src/executor.test.ts'] },
   { package: 'agents', files: ['src/contained-command.test.ts', 'src/contained-image.test.ts'] },
-  { package: 'core', files: ['src/state/graph-checkpoints.test.ts', 'src/state/graph-recovery.test.ts', 'src/graph/artifact-store.test.ts'] },
-  { package: 'cli', files: ['src/graph-worker-exit-proof.test.ts', 'src/graph-contained-recovery.test.ts', 'src/graph-process-identity.test.ts', 'src/graph-process-journal.test.ts',
+  { package: 'core', files: ['src/state/graph-checkpoints.test.ts', 'src/state/graph-recovery.test.ts', 'src/graph/artifact-store.test.ts', 'src/graph/artifact-git.test.ts'] },
+  { package: 'cli', files: ['src/graph-bounded-recovery.test.ts', 'src/graph-compatibility.integration.test.ts', 'src/graph-admission.test.ts', 'src/graph-reconcile-rpc.test.ts', 'src/graph-platform.test.ts', 'src/graph-worker-exit-proof.test.ts', 'src/graph-contained-recovery.test.ts', 'src/graph-process-identity.test.ts', 'src/graph-process-journal.test.ts',
     'src/graph-faults.integration.test.ts', 'src/graph-chain.integration.test.ts', 'src/graph-worker-manager.test.ts',
     'src/graph-checkpoint-service.test.ts', 'src/graph-action-broker.test.ts', 'src/graph-action-broker-boundary.test.ts',
     'src/graph-verification.test.ts', 'src/graph-verification-join.test.ts', 'src/graph-rpc.test.ts',
@@ -40,7 +42,7 @@ const groups = [
 const coverage = {
   F01: ['loop/src/executor.test.ts'],
   F02: ['cli/src/graph-contained-recovery.test.ts', 'cli/src/graph-action-broker.test.ts', 'cli/src/graph-chain.integration.test.ts', 'cli/src/graph-recovery-crash.integration.test.ts'],
-  F03: ['cli/src/graph-chain.integration.test.ts'],
+  F03: ['cli/src/graph-chain.integration.test.ts', 'cli/src/graph-bounded-recovery.test.ts'],
   F04: ['cli/src/graph-chain.integration.test.ts'],
   F05: ['core/src/state/graph-checkpoints.test.ts', 'cli/src/graph-chain.integration.test.ts'],
   F06: ['cli/src/graph-checkpoint-service.test.ts', 'cli/src/graph-action-broker-boundary.test.ts'],
@@ -49,7 +51,7 @@ const coverage = {
   F09: ['cli/src/graph-concurrency.integration.test.ts', 'cli/src/graph-unstarted-recovery.test.ts', 'cli/src/graph-recovery-crash.integration.test.ts'],
   F10: ['cli/src/graph-verification.test.ts', 'cli/src/graph-verification-join.test.ts'],
   F11: ['cli/src/graph-worker-exit-proof.test.ts', 'cli/src/graph-contained-recovery.test.ts', 'agents/src/contained-command.test.ts', 'loop/src/executor.test.ts', 'cli/src/graph-chain.integration.test.ts', 'cli/src/graph-concurrency.integration.test.ts'],
-  F12: ['cli/src/graph-faults.integration.test.ts', 'cli/src/graph-rpc.test.ts', 'core/src/graph/artifact-store.test.ts'],
+  F12: ['cli/src/graph-compatibility.integration.test.ts', 'cli/src/graph-admission.test.ts', 'cli/src/graph-reconcile-rpc.test.ts', 'autonomy/src/repo-lock.test.ts', 'cli/src/graph-faults.integration.test.ts', 'cli/src/graph-rpc.test.ts', 'core/src/graph/artifact-store.test.ts'],
 };
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const listSources = () => execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'packages', 'scripts', 'pnpm-lock.yaml', 'package.json'], { cwd: root, encoding: 'utf8' }).split('\0').filter(Boolean).sort();
@@ -59,7 +61,7 @@ const report = { schemaVersion: 1, scope: 'G25 fault regression diagnostics; no 
   platform: process.platform, node: process.version, seed: options.seed, repeat: options.repeat,
   startedAt: new Date().toISOString(), coverage, sourceHashes, runs: [], passed: false,
   limitations: ['Coverage lists regression suites, not proof that every F01–F12 subcase or production platform is admitted.',
-    'First-generation no-child recovery is covered; previously running opaque executor quiescence remains unproved.',
+    'No-child and journaled stopped bounded-writer recovery are covered. Opaque or unjournaled executor outcomes remain held, never automatically replayed.',
     'A stale artifact lock is retained, not automatically removed.'] };
 const save = () => writeFileSync(output, JSON.stringify(report, null, 2) + '\n');
 save();

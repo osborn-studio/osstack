@@ -1,3 +1,4 @@
+import { graphUpgradeHolds } from './graph-upgrade-guard.js';
 import type { GraphRpcService, GraphRpcOptions } from './graph-rpc.js';
 import type { GraphRuntime, GraphRuntimeConfiguration } from "./graph-runtime.js";
 import type { GraphCheckpointResponse } from "@osstack/protocol";
@@ -1082,12 +1083,13 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       ctx.draining = true;
       ctx.drainingFromHealth = false;
       const deadline = Date.now() + timeoutMs;
-      while (ctx.activeRuns.size > 0 && Date.now() < deadline) {
+      while ((ctx.activeRuns.size > 0 || graphUpgradeHolds(ctx.db) > 0) && Date.now() < deadline) {
         await new Promise((r) => setTimeout(r, 200));
       }
       return singleOk(req.id, {
         draining: true,
-        drained: ctx.activeRuns.size === 0,
+        drained: ctx.activeRuns.size === 0 && graphUpgradeHolds(ctx.db) === 0,
+        graph_holds: graphUpgradeHolds(ctx.db),
         active_runs: ctx.activeRuns.size,
       });
     }
@@ -3837,7 +3839,9 @@ export async function startDaemon(
       const configured = opts.graphRpc;
       const local = configured ? undefined : await loadLocalGraphRegistration(join(osstackHome(), 'graph-host.json'), ctx.adapters);
       const service = new GraphRpcService({ db: ctx.db, root: join(osstackHome(), 'graph-delivery'),
-        registrations: configured?.registrations ?? [local!],
+        registrations: (configured?.registrations ?? [local!]).map(registration => ({ ...registration,
+          admitNewRuns: () => !ctx.draining && (registration.admitNewRuns ? registration.admitNewRuns() : true),
+        })),
         resolveCaller: connection => {
           if (!graphSockets.has(connection)) return null;
           if (configured) return configured.resolveCaller(connection);

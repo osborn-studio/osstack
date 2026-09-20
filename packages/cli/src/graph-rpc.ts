@@ -1,3 +1,4 @@
+import { assertGraphPlatform } from './graph-platform.js';
 import { randomUUID, createHash } from 'node:crypto';
 import { constants, openSync, closeSync, fstatSync, readSync } from 'node:fs';
 import { join } from 'node:path';
@@ -72,6 +73,7 @@ export class GraphRpcService {
   private closing: Promise<void> | undefined;
   private readonly options: GraphRpcOptions;
   constructor(options: GraphRpcOptions) {
+    assertGraphPlatform();
     this.options = Object.freeze({ ...options, resolveCaller: options.resolveCaller, acquire: options.acquire });
     const snapshotAdapter = (a: AgentAdapter): AgentAdapter => {
       const capabilities = structuredClone(a.capabilities());

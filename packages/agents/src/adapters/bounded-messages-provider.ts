@@ -41,6 +41,7 @@ export function createBoundedProvider(provider: BoundedMessagesProvider = 'anthr
       const base = new URL(baseUrl ?? 'https://api.deepseek.com');
       const local = base.hostname === 'localhost' || base.hostname === '127.0.0.1' || base.hostname === '[::1]';
       if ((base.protocol !== 'https:' && !(base.protocol === 'http:' && local)) || base.username || base.password || base.search || base.hash
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: reject control bytes at this untrusted input boundary.
         || (baseUrl !== undefined && (baseUrl.length > 2048 || /[?#\s\x00-\x1f\x7f]/.test(baseUrl)))) throw Error();
       endpoint = `${base.href.replace(/\/+$/, '')}/chat/completions`;
     } catch { throw Error('BOUNDED_BASE_URL_INVALID'); }

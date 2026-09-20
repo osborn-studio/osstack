@@ -1,3 +1,4 @@
+import { assertGraphPlatform } from './graph-platform.js';
 import { closeSync, constants, fstatSync, openSync, readSync } from 'node:fs';
 import {
   GRAPH_JSON_LIMITS, GraphContractError, GraphDelegationStatus, GraphDeliveryUnknown, GraphError,
@@ -71,6 +72,7 @@ export async function handleGraphExecutionCommand(args: string[], deps: GraphCom
   };
   try {
     const command = args[0];
+    if (command !== "validate") assertGraphPlatform();
     if (command === 'validate') {
       const opts = options(args.slice(1), ['--spec']);
       const { compileGraphSpec } = await import('@osstack/graph/spec-compiler');

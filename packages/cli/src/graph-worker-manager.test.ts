@@ -232,3 +232,14 @@ it('surfaces failed exit journaling even after the successful program result has
   expect(await h.result).toEqual({ task: 'task' });
   expect(await h.finalExit).toMatchObject({ kind: 'exited', journalError: expect.stringContaining('disk write failed') });
 });
+
+it('host event-loop stalls can request conservative stop but never invent physical exit', async () => {
+  const f = fixture('export async function run() { await new Promise(()=>{}); }', { programs: [], heartbeatTimeoutMs: 100 });
+  const h = f.launch(); await h.ready;
+  const until = performance.now() + 200;
+  while (performance.now() < until) { /* intentionally block the host, not the worker */ }
+  const stopped = await h.stop('host stall');
+  expect(stopped.kind).toBe('exited');
+  expect(await h.finalExit).toMatchObject({ kind: 'exited' });
+  await expect(h.result).rejects.toThrow();
+});

@@ -20,6 +20,7 @@ const RepoLockOwner = z
     acquired_at: z.string().datetime(),
     token: z.string().uuid().optional(),
     expires_at: z.string().datetime().optional(),
+    recovery_policy: z.literal("reconcile").optional(),
   })
   .strict();
 export type RepoLockOwner = z.infer<typeof RepoLockOwner>;
@@ -203,7 +204,8 @@ function sameOwner(left: RepoLockOwner, right: RepoLockOwner): boolean {
     && left.pid === right.pid
     && left.autonomy_run_id === right.autonomy_run_id
     && left.repo_id === right.repo_id
-    && left.acquired_at === right.acquired_at;
+    && left.acquired_at === right.acquired_at
+    && left.recovery_policy === right.recovery_policy;
 }
 
 function lockHandle(
@@ -281,6 +283,7 @@ export async function acquireRepoWriteLock(
     repo_id: options.repo_id,
     acquired_at: acquiredAt,
     token: randomUUID(),
+    ...(options.recover_stale === false ? { recovery_policy: "reconcile" } : {}),
     expires_at: new Date(Date.parse(acquiredAt) + leaseMs).toISOString(),
   });
   await mkdir(options.root_dir, { recursive: true, mode: 0o700 });
@@ -298,7 +301,7 @@ export async function acquireRepoWriteLock(
       if (current.repo_id !== options.repo_id) throw new RepoLockOwnershipError(path);
       let alive = true;
       try { alive = isProcessAlive(current.pid) !== false; } catch { /* unknown is live */ }
-      if (alive || options.recover_stale === false) throw new RepoLockBusyError(path, current);
+      if (alive || options.recover_stale === false || current.recovery_policy === "reconcile") throw new RepoLockBusyError(path, current);
       // Detect out-of-protocol replacement (including legacy/malicious writers).
       // Cooperating writers cannot replace anything while we hold the guard.
       if (!sameOwner(await readOwner(path), current)) throw new RepoLockOwnershipError(path);

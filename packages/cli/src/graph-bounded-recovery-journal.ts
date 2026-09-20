@@ -10,7 +10,7 @@ import type { GraphActionEvidence } from './graph-action-broker.js';
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const path = z.string().min(1).refine(s => isAbsolute(s) && !s.includes('\0'));
 const owner = z.object({ pid: z.number().int().positive(), autonomy_run_id: z.string().min(1), repo_id: z.string().min(1),
-  acquired_at: z.string().datetime(), token: z.string().uuid(), expires_at: z.string().datetime().optional() }).strict();
+  acquired_at: z.string().datetime(), token: z.string().uuid(), expires_at: z.string().datetime().optional(), recovery_policy: z.literal("reconcile").optional() }).strict();
 const schema = z.object({ version: z.literal(1), effectKey: digest, actionDigest: digest,
   executionRef: z.string().min(1), generation: z.literal(1), owner: z.string().min(1),
   workspacePath: path, commonDir: path, repoId: z.string().min(1), fingerprint: digest,

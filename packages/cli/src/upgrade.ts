@@ -1,3 +1,4 @@
+import { assertGraphUpgradeSafe } from './graph-upgrade-guard.js';
 // `osstack upgrade` — self-update with a safety net.
 //
 // Flow:
@@ -163,7 +164,12 @@ export function backupStateDb(fromVersion: string): string | null {
 
 async function stopDaemon(rpc: UpgradeOptions["rpc"], viaLaunchd = false): Promise<boolean> {
   log("draining daemon (waiting for active runs, max 60s)…");
-  try { await rpc("daemon.drain", { timeout_ms: 60_000 }, 70_000); } catch { /* daemon may be gone */ }
+  try {
+    const response = await rpc("daemon.drain", { timeout_ms: 60_000 }, 70_000) as { ok?: boolean; result?: { drained?: boolean } };
+    if (response.ok === false || response.result?.drained === false) { log("ABORT: daemon still has active runs or graph recovery holds"); return false; }
+  } catch { /* daemon may be gone; durable graph inventory is checked below */ }
+  try { await assertGraphUpgradeSafe(join(osstackHome(), "state.db")); }
+  catch (error) { log(`ABORT: ${String(error)}`); return false; }
   if (viaLaunchd) {
     // KeepAlive quiescence (Phase 2.1-D/F2): a plain shutdown would be
     // RESPAWNED by launchd mid-swap — boot the job OUT for the upgrade window.
@@ -271,6 +277,8 @@ export async function handleUpgradeCommand(args: string[], rpcFn: UpgradeOptions
     if (!stopped) { log("ABORT: could not quiesce the daemon — nothing was swapped."); return 1; }
   }
 
+  try { await assertGraphUpgradeSafe(join(osstackHome(), "state.db")); }
+  catch (error) { log(`ABORT: ${String(error)}`); return 1; }
   const backup = backupStateDb(VERSION);
   log(backup ? `state.db backed up → ${backup}` : "no state.db yet; skipping backup");
 

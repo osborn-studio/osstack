@@ -30,6 +30,7 @@ export function snapshotContainedCandidate(input: readonly ContainedCandidateFil
   const files = input.map(file => ({ ...file, bytes: Buffer.from(file.bytes) })).sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   const seen = new Set<string>(); let size = 0;
   for (const file of files) {
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: reject control bytes at this untrusted input boundary.
     if (!file.path || /[\x00-\x1f\x7f\\]/.test(file.path) || file.path.split('/').some(p => !p || p === '.' || p === '..' || p === '.git')
       || !['100644', '100755'].includes(file.mode) || seen.has(file.path)) throw Error('CONTAINED_CANDIDATE_ENTRY_INVALID');
     for (let at = file.path.indexOf('/'); at >= 0; at = file.path.indexOf('/', at + 1)) if (seen.has(file.path.slice(0, at))) throw Error('CONTAINED_CANDIDATE_PATH_CONFLICT');
