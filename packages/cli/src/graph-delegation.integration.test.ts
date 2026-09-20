@@ -16,7 +16,7 @@ import { handleGraphCommand } from './graph-command.js';
 import { healthyAutonomyHealth } from './test-healthy-autonomy.js';
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 type Reply = { ok: boolean; result?: unknown; error?: { code: string; message: string } };
-async function fixture(external = false) {
+async function fixture(external = false, bounded = false) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'graph-delegation-'))); const repo = join(root, 'repo'); const home = join(root, 'home');
   await mkdir(repo); await mkdir(home); await mkdir(join(repo, '.osstack'));
   await writeFile(join(repo, '.osstack', 'policy.yaml'), 'schema_version: 1\nmode: execute\n');
@@ -41,7 +41,9 @@ async function fixture(external = false) {
     delivery: { repositoryPath: repo, task: 'Set answer to 1', writer: { identity: 'writer', adapter: writer, capabilityId: 'write' }, reviewer: { identity: 'reviewer', adapter: reviewer, capabilityId: 'review' },
       verifyReviewer: async () => {}, acceptanceRegistry } };
   await writeFile(join(home, 'graph-host.json'), JSON.stringify({ schemaVersion: 1, registration: { id: 'local', scope, repositoryRef: 'repo', repositoryPath: repo, taskRef: 'task', task: 'Set answer to 1', inputArtifactRef: 'input',
-    writer: { agentId: 'writer', capabilityId: 'write' }, reviewer: { agentId: 'reviewer', capabilityId: 'review' }, acceptanceRegistry,
+    writer: bounded ? { agentId: 'anthropic-bounded-writer', capabilityId: 'anthropic-bounded-writer.writer' } : { agentId: 'writer', capabilityId: 'write' },
+    reviewer: bounded ? { agentId: 'anthropic-bounded-reviewer', capabilityId: 'anthropic-bounded-reviewer.reviewer' } : { agentId: 'reviewer', capabilityId: 'review' }, acceptanceRegistry,
+    ...(bounded ? { boundedMessages: { model: 'fixture-model', files: ['answer'], acceptance: 'The answer file must contain 1 followed by a newline.' } } : {}),
     grant: { scope, expiresAt: Date.now() + 60000, operations: ['read', 'execute', 'cancel', 'resume'] } } }), { mode: 0o600 });
   let caller: string | null = 'bot';
   const previousHome = process.env['OSSTACK_HOME']; process.env['OSSTACK_HOME'] = home;
@@ -117,4 +119,27 @@ it('actual daemon and CLI reconcile a registered no-child failure while new admi
     expect(await f.rpc('graph.reconcile', request)).toMatchObject({ ok: true, result: { status: 'cancelled' } });
     expect(f.calls()).toBe(0);
   } finally { failure.mockRestore(); await f.close(); }
+}, 30000);
+
+it('actual daemon lazily enrolls bounded owner config and CLI reaches ready with fixture provider responses', async () => {
+  const snapshots: string[] = [];
+  vi.stubEnv('ANTHROPIC_API_KEY', 'test-only');
+  vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
+    const request = JSON.parse(String(init.body)); const file = JSON.parse(request.messages[0].content).files[0];
+    snapshots.push(file.content);
+    const output = snapshots.length === 1 ? { edit: { path: 'answer', beforeSha256: file.sha256, content: '1\n' } }
+      : { schemaVersion: 1, verdict: 'accept', summary: 'Checked supplied candidate', findings: [] };
+    return new Response(JSON.stringify({ id: `msg-${snapshots.length}`, type: 'message', role: 'assistant', model: request.model, stop_reason: 'end_turn',
+      content: [{ type: 'text', text: JSON.stringify(output) }], usage: { input_tokens: 10, output_tokens: 10 } }));
+  });
+  let f: Awaited<ReturnType<typeof fixture>> | undefined;
+  try {
+    f = await fixture(false, true);
+    const path = join(f.root, 'start.json'); await writeFile(path, JSON.stringify(f.request));
+    let output = '';
+    expect(await handleGraphCommand(['run', '--request', path, '--json'], { rpc: f.rpc, stdout: text => { output = text; } })).toBe(0);
+    const run = GraphDelegationStatus.parse(JSON.parse(output)); await f.ready(run.graphRunId);
+    expect(snapshots).toEqual(['0\n', '1\n']); expect(f.calls()).toBe(0);
+    expect(await readFile(join(f.repo, 'answer'), 'utf8')).toBe('0\n');
+  } finally { await f?.close(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); }
 }, 30000);

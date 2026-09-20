@@ -108,7 +108,7 @@ it('trusted local configuration renews only grants while preserving immutable ho
       writer: { agentId: 'writer', capabilityId: 'write' }, reviewer: { agentId: 'reviewer', capabilityId: 'review' }, acceptanceRegistry: f.registration.delivery.acceptanceRegistry,
       grant: { scope: f.request.scope, expiresAt: Date.now() + 60000, operations: ['read', 'execute', 'cancel', 'resume'] } };
     const save = () => writeFile(path, JSON.stringify({ schemaVersion: 1, registration }), { mode: 0o600 }); await save();
-    const trusted = loadLocalGraphRegistration(path, new Map([['writer', f.writer], ['reviewer', f.reviewer]]));
+    const trusted = await loadLocalGraphRegistration(path, new Map([['writer', f.writer], ['reviewer', f.reviewer]]));
     registration.grant.expiresAt = 1; await save(); expect(() => trusted.authorize()).toThrow('GRANT_EXPIRED'); expect(() => trusted.authorize('read')).not.toThrow();
     registration.grant.expiresAt = Date.now() + 60000; await save(); expect(() => trusted.authorize()).not.toThrow();
     registration.task = 'different host task'; await save(); expect(() => trusted.authorize()).toThrow('GRANT_EXPIRED');

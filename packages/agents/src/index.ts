@@ -99,3 +99,5 @@ export type { ContainedCommandOptions, ContainedStopReceipt, ContainedCommandExe
 
 export { prepareContainedImage } from "./contained.js";
 export type { ContainedImageOptions, ContainedImageReceipt, ContainedCandidateFile, ContainedCommandResult } from "./contained.js";
+
+export { createBoundedMessagesAdapter, type BoundedMessagesOptions } from "./bounded-messages.js";

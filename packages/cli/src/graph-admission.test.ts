@@ -94,7 +94,7 @@ it('reloads the owner-only admission switch without changing immutable bindings 
       acceptanceRegistry: f.registration.delivery.acceptanceRegistry,
       grant: { scope: f.request.scope, expiresAt: Date.now() + 60000, operations: ['read', 'execute', 'cancel', 'resume'] } } };
     const save = () => writeFile(path, JSON.stringify(config), { mode: 0o600 }); await save();
-    const registration = loadLocalGraphRegistration(path, new Map([['writer', f.writer], ['reviewer', f.reviewer]]));
+    const registration = await loadLocalGraphRegistration(path, new Map([['writer', f.writer], ['reviewer', f.reviewer]]));
     const { admissionEnabled: _disabled, ...legacy } = config;
     await writeFile(path, JSON.stringify(legacy), { mode: 0o600 }); expect(registration.admitNewRuns!()).toBe(true);
     await save();

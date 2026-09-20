@@ -3833,9 +3833,9 @@ export async function startDaemon(
   const graphSockets = new WeakSet<object>();
   const getGraphRpc = (): Promise<GraphRpcService> => {
     if (checkpointClosed) return Promise.reject(new Error('GRAPH_SERVICE_CLOSED'));
-    graphRpc ??= import('./graph-rpc.js').then(({ GraphRpcService, loadLocalGraphRegistration }) => {
+    graphRpc ??= import('./graph-rpc.js').then(async ({ GraphRpcService, loadLocalGraphRegistration }) => {
       const configured = opts.graphRpc;
-      const local = configured ? undefined : loadLocalGraphRegistration(join(osstackHome(), 'graph-host.json'), ctx.adapters);
+      const local = configured ? undefined : await loadLocalGraphRegistration(join(osstackHome(), 'graph-host.json'), ctx.adapters);
       const service = new GraphRpcService({ db: ctx.db, root: join(osstackHome(), 'graph-delivery'),
         registrations: configured?.registrations ?? [local!],
         resolveCaller: connection => {

@@ -296,6 +296,7 @@ const ref = z.string().min(1).max(256);
 const hostConfig = z.object({ schemaVersion: z.literal(1), admissionEnabled: z.boolean().optional(), registration: z.object({ id: ref, scope: GraphScope,
   repositoryRef: ref, repositoryPath: z.string().min(1), taskRef: ref, task: z.string().min(1).max(65536), inputArtifactRef: ref,
   writer: z.object({ agentId: ref, capabilityId: ref }).strict(), reviewer: z.object({ agentId: ref, capabilityId: ref }).strict(),
+  boundedMessages: z.object({ model: ref, files: z.array(ref).min(1).max(16), acceptance: z.string().min(1).max(16000) }).strict().optional(),
   acceptanceRegistry: z.array(z.object({ ref, command: z.string().min(1), passExitCodes: z.array(z.number().int()), failExitCodes: z.array(z.number().int()) }).strict()).min(1),
   grant: z.object({ scope: GraphScope, expiresAt: z.number().int().positive(), operations: z.array(z.enum(['read', 'execute', 'cancel', 'resume'])).min(1) }).strict(),
 }).strict() }).strict();
@@ -309,12 +310,10 @@ function trustedConfig(path: string) {
     return hostConfig.parse(JSON.parse(bytes.subarray(0, offset).toString('utf8')));
   } finally { closeSync(fd); }
 }
-export function loadLocalGraphRegistration(path: string, adapters: ReadonlyMap<string, AgentAdapter>): GraphHostRegistration {
+export async function loadLocalGraphRegistration(path: string, adapters: ReadonlyMap<string, AgentAdapter>): Promise<GraphHostRegistration> {
   const config = trustedConfig(path).registration;
   const bindingDigest = (value: typeof config) => { const { grant: _grant, ...binding } = value; return createHash('sha256').update(workerCanonical(binding)).digest('hex'); };
   const digest = bindingDigest(config);
-  const writer = adapters.get(config.writer.agentId); const reviewer = adapters.get(config.reviewer.agentId);
-  if (!writer || !reviewer || writer.id === reviewer.id) throw Error('GRAPH_REGISTERED_AGENTS_REQUIRED');
   const authorize = (operation: 'read' | 'execute' | 'cancel' | 'resume' = 'execute') => {
     const fresh = trustedConfig(path).registration;
     if (bindingDigest(fresh) !== digest || !same(fresh.grant.scope, config.scope)
@@ -322,10 +321,23 @@ export function loadLocalGraphRegistration(path: string, adapters: ReadonlyMap<s
       throw new GraphContractError('GRANT_EXPIRED');
   };
   authorize('read');
+  let writer = adapters.get(config.writer.agentId); let reviewer = adapters.get(config.reviewer.agentId);
+  if (config.boundedMessages) {
+    if (config.writer.agentId !== 'anthropic-bounded-writer' || config.writer.capabilityId !== 'anthropic-bounded-writer.writer'
+      || config.reviewer.agentId !== 'anthropic-bounded-reviewer' || config.reviewer.capabilityId !== 'anthropic-bounded-reviewer.reviewer') throw Error('GRAPH_BOUNDED_IDENTITIES_REQUIRED');
+    const { createBoundedMessagesAdapter } = await import('@osstack/agents');
+    const common = { ...config.boundedMessages, ...(process.env['ANTHROPIC_API_KEY'] ? { apiKey: process.env['ANTHROPIC_API_KEY'] } : {}),
+      authorize: () => authorize('execute') };
+    writer = await createBoundedMessagesAdapter({ ...common, role: 'writer' });
+    reviewer = await createBoundedMessagesAdapter({ ...common, role: 'reviewer' });
+    authorize('read');
+  }
+  if (!writer || !reviewer || writer.id === reviewer.id) throw Error('GRAPH_REGISTERED_AGENTS_REQUIRED');
+  const writerId = writer.id; const reviewerId = reviewer.id;
   return { id: config.id, scope: config.scope, product: 'osstack', repositoryRef: config.repositoryRef, taskRef: config.taskRef, inputArtifactRef: config.inputArtifactRef,
     authorize, admitNewRuns: () => trustedConfig(path).admissionEnabled !== false, delivery: { repositoryPath: config.repositoryPath, task: config.task,
       writer: { identity: writer.id, adapter: writer, capabilityId: config.writer.capabilityId },
       reviewer: { identity: reviewer.id, adapter: reviewer, capabilityId: config.reviewer.capabilityId },
-      verifyReviewer: async proof => { authorize('read'); if (proof.writerIdentity !== writer.id || proof.reviewerIdentity !== reviewer.id || writer.id === reviewer.id) throw Error('INDEPENDENT_REVIEWER_REQUIRED'); },
+      verifyReviewer: async proof => { authorize('read'); if (proof.writerIdentity !== writerId || proof.reviewerIdentity !== reviewerId || writerId === reviewerId) throw Error('INDEPENDENT_REVIEWER_REQUIRED'); },
       acceptanceRegistry: config.acceptanceRegistry } };
 }
