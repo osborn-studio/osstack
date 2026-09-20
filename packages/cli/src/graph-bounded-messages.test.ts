@@ -9,18 +9,20 @@ import { graphRpcFixture } from './graph-test-fixture.js';
 // The provider response is a fixture, not a live model pilot. Everything after
 // that boundary is real: source clone, edit, graph worker, ledger, freeze, review,
 // registered acceptance command, parallel join, and public cancellation RPC.
-async function fixture(mode: 'success' | 'review-fails' | 'disconnect') {
+async function fixture(mode: 'success' | 'review-fails' | 'disconnect', provider: 'anthropic' | 'deepseek' = 'anthropic') {
   const f = await graphRpcFixture(); const calls: { role: string; source: string }[] = [];
-  const adapter = async (role: 'writer' | 'reviewer') => createBoundedMessagesAdapter({ role, model: 'fixture-model', files: ['answer'],
+  const adapter = async (role: 'writer' | 'reviewer') => createBoundedMessagesAdapter({ role, provider, model: 'fixture-model', files: ['answer'],
     apiKey: 'test-only', acceptance: 'The answer file must contain 1 followed by a newline.', authorize: () => f.registration.authorize('execute'),
     fetch: async (_url, init) => {
-      const request = JSON.parse(String(init!.body)); const input = JSON.parse(request.messages[0].content);
+      const request = JSON.parse(String(init!.body)); const input = JSON.parse(request.messages.at(-1).content);
       const file = input.files[0]; calls.push({ role, source: file.content });
       if (mode === 'disconnect' && role === 'writer') throw Error('connection lost after sending request');
       const output = role === 'writer' ? { edit: { path: file.path, beforeSha256: file.sha256, content: '1\n' } }
         : { schemaVersion: 1, verdict: mode === 'review-fails' ? 'changes_requested' : 'accept', summary: 'Review frozen input', findings: mode === 'review-fails' ? ['fixture review objection'] : [] };
-      return new Response(JSON.stringify({ id: `msg-${role}`, model: request.model, type: 'message', role: 'assistant', stop_reason: 'end_turn',
-        content: [{ type: 'text', text: JSON.stringify(output) }], usage: { input_tokens: 20, output_tokens: 10 } }));
+      return new Response(JSON.stringify(provider === 'deepseek'
+        ? { id: `msg-${role}`, model: request.model, object: 'chat.completion', choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify(output) } }], usage: { prompt_tokens: 20, completion_tokens: 10 } }
+        : { id: `msg-${role}`, model: request.model, type: 'message', role: 'assistant', stop_reason: 'end_turn',
+          content: [{ type: 'text', text: JSON.stringify(output) }], usage: { input_tokens: 20, output_tokens: 10 } }));
     } });
   const writer = await adapter('writer'); const reviewer = await adapter('reviewer');
   const registration = { ...f.registration, delivery: { ...f.registration.delivery,
@@ -37,8 +39,8 @@ async function fixture(mode: 'success' | 'review-fails' | 'disconnect') {
   };
   return { ...f, service, calls, until, close: async () => { await service.close(); await f.close(); } };
 }
-it('runs the bounded writer and independent reviewer through the public graph to ready', async () => {
-  const f = await fixture('success');
+it.each(['anthropic', 'deepseek'] as const)('%s writer and independent reviewer run through public graph to ready', async provider => {
+  const f = await fixture('success', provider);
   try {
     const first = GraphDelegationStatus.parse(await f.service.handle(f.connection, 'graph.start', f.request));
     const ready = await f.until(first.graphRunId, 'ready'); expect(ready.candidate).toBeDefined(); expect(ready.resultRef).toMatch(/^graph-join:/);
@@ -59,8 +61,8 @@ it('routes a stopped negative review to a quality interrupt rather than ready', 
     await f.until(first.graphRunId, 'cancelled');
   } finally { await f.close(); }
 }, 30000);
-it('keeps a dispatched disconnected inference unresolved through public reconcile', async () => {
-  const f = await fixture('disconnect');
+it.each(['anthropic', 'deepseek'] as const)('%s dispatched disconnected inference stays unresolved through public reconcile', async provider => {
+  const f = await fixture('disconnect', provider);
   try {
     const first = GraphDelegationStatus.parse(await f.service.handle(f.connection, 'graph.start', f.request));
     const unknown = await f.until(first.graphRunId, 'reconciliation_required');

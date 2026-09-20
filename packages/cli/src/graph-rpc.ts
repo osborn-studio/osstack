@@ -296,7 +296,8 @@ const ref = z.string().min(1).max(256);
 const hostConfig = z.object({ schemaVersion: z.literal(1), admissionEnabled: z.boolean().optional(), registration: z.object({ id: ref, scope: GraphScope,
   repositoryRef: ref, repositoryPath: z.string().min(1), taskRef: ref, task: z.string().min(1).max(65536), inputArtifactRef: ref,
   writer: z.object({ agentId: ref, capabilityId: ref }).strict(), reviewer: z.object({ agentId: ref, capabilityId: ref }).strict(),
-  boundedMessages: z.object({ model: ref, files: z.array(ref).min(1).max(16), acceptance: z.string().min(1).max(16000) }).strict().optional(),
+  boundedMessages: z.object({ provider: z.enum(['anthropic', 'deepseek']).optional(), baseUrl: z.string().min(1).max(2048).optional(),
+    model: ref, files: z.array(ref).min(1).max(16), acceptance: z.string().min(1).max(16000) }).strict().optional(),
   acceptanceRegistry: z.array(z.object({ ref, command: z.string().min(1), passExitCodes: z.array(z.number().int()), failExitCodes: z.array(z.number().int()) }).strict()).min(1),
   grant: z.object({ scope: GraphScope, expiresAt: z.number().int().positive(), operations: z.array(z.enum(['read', 'execute', 'cancel', 'resume'])).min(1) }).strict(),
 }).strict() }).strict();
@@ -323,10 +324,13 @@ export async function loadLocalGraphRegistration(path: string, adapters: Readonl
   authorize('read');
   let writer = adapters.get(config.writer.agentId); let reviewer = adapters.get(config.reviewer.agentId);
   if (config.boundedMessages) {
-    if (config.writer.agentId !== 'anthropic-bounded-writer' || config.writer.capabilityId !== 'anthropic-bounded-writer.writer'
-      || config.reviewer.agentId !== 'anthropic-bounded-reviewer' || config.reviewer.capabilityId !== 'anthropic-bounded-reviewer.reviewer') throw Error('GRAPH_BOUNDED_IDENTITIES_REQUIRED');
+    const provider = config.boundedMessages.provider ?? 'anthropic';
+    if (config.writer.agentId !== `${provider}-bounded-writer` || config.writer.capabilityId !== `${provider}-bounded-writer.writer`
+      || config.reviewer.agentId !== `${provider}-bounded-reviewer` || config.reviewer.capabilityId !== `${provider}-bounded-reviewer.reviewer`) throw Error('GRAPH_BOUNDED_IDENTITIES_REQUIRED');
     const { createBoundedMessagesAdapter } = await import('@osstack/agents');
-    const common = { ...config.boundedMessages, ...(process.env['ANTHROPIC_API_KEY'] ? { apiKey: process.env['ANTHROPIC_API_KEY'] } : {}),
+    const apiKey = process.env[provider === 'deepseek' ? 'DEEPSEEK_API_KEY' : 'ANTHROPIC_API_KEY'];
+    const { model, files, acceptance, baseUrl } = config.boundedMessages;
+    const common = { provider, model, files, acceptance, ...(baseUrl === undefined ? {} : { baseUrl }), ...(apiKey ? { apiKey } : {}),
       authorize: () => authorize('execute') };
     writer = await createBoundedMessagesAdapter({ ...common, role: 'writer' });
     reviewer = await createBoundedMessagesAdapter({ ...common, role: 'reviewer' });

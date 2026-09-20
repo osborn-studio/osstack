@@ -15,6 +15,11 @@ function response(output: unknown = edit, overrides: Record<string, unknown> = {
   return new Response(JSON.stringify({ id: 'msg-test', type: 'message', role: 'assistant', model: 'test-model', stop_reason: 'end_turn',
     content: [{ type: 'text', text: JSON.stringify(output) }], usage: { input_tokens: 10, output_tokens: 5 }, ...overrides }));
 }
+function deepseekResponse(output: unknown = edit, choice: Record<string, unknown> = {}, overrides: Record<string, unknown> = {}) {
+  return new Response(JSON.stringify({ id: 'chat-test', object: 'chat.completion', model: 'test-model',
+    choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify(output) }, ...choice }],
+    usage: { prompt_tokens: 10, completion_tokens: 5, prompt_cache_hit_tokens: 8, completion_tokens_details: { reasoning_tokens: 2 } }, ...overrides }));
+}
 function fixture(options: Partial<BoundedMessagesOptions> = {}) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'bounded-messages-'))); roots.push(root);
   writeFileSync(join(root, 'answer.txt'), '41\n');
@@ -144,4 +149,58 @@ it('timeout aborts pending transport without granting stopped status', async () 
   const f = fixture({ timeoutMs: 5, fetch: async (_url, init) => new Promise<Response>((_resolve, reject) => init!.signal!.addEventListener('abort', () => reject(Error('timeout')), { once: true })) });
   expect((await f.run()).at(-1)).toMatchObject({ payload: { status: 'failed' } });
   expect(await f.adapter.confirmStopped('run-1')).toEqual({ stopped: false });
+});
+it.each(['writer', 'reviewer'] as const)('DeepSeek %s uses owner endpoint, Bearer auth, JSON-only fresh input and correct usage', async role => {
+  const f = fixture({ provider: 'deepseek', role, baseUrl: 'https://api.deepseek.com/v1/' });
+  f.fetch.mockImplementationOnce(async () => deepseekResponse(role === 'writer' ? edit : review));
+  const events = await f.run();
+  expect(f.adapter.id).toBe(`deepseek-bounded-${role}`); expect(f.text()).toBe(role === 'writer' ? '42\n' : '41\n');
+  const [url, init] = f.fetch.mock.calls[0]!; expect(url).toBe('https://api.deepseek.com/v1/chat/completions');
+  expect(init).toMatchObject({ redirect: 'error', headers: { authorization: 'Bearer test-only' } });
+  expect(init!.headers).not.toHaveProperty('x-api-key');
+  const body = JSON.parse(String(init!.body)); expect(body).toMatchObject({ stream: false, thinking: { type: 'disabled' }, response_format: { type: 'json_object' } });
+  expect(body.tools).toBeUndefined(); expect(body.messages.map((m: {role: string}) => m.role)).toEqual(['system','user']);
+  expect(events.find(e => e.type === 'usage.final')).toMatchObject({ payload: { tokens_in: 10, tokens_out: 5 } });
+  expect(events.at(-1)).toMatchObject({ payload: { status: 'completed' } });
+  expect(await f.adapter.confirmStopped('run-1')).toMatchObject({ stopped: true, evidence: expect.stringContaining('deepseek-bounded-v1:chat-test:req=') });
+  for (const event of events) expect(HermesEventSchema.safeParse(event).success).toBe(true);
+});
+it.each(['length', 'content_filter', 'insufficient_system_resource', 'aborted'])('DeepSeek %s means stopped failure with paid usage', async finish_reason => {
+  const f = fixture({ provider: 'deepseek', fetch: async () => deepseekResponse(edit, { finish_reason }) });
+  const events = await f.run(); expect(events.at(-1)).toMatchObject({ payload: { status: 'failed' } });
+  expect(events.some(e => e.type === 'usage.final')).toBe(true); expect(f.text()).toBe('41\n');
+  expect(await f.adapter.confirmStopped('run-1')).toMatchObject({ stopped: true });
+});
+it.each([
+  { finish_reason: 'tool_calls' }, { finish_reason: null }, { finish_reason: 'unknown' },
+  { index: 1 }, { message: { role: 'assistant', content: '{}', tool_calls: [{ id: 'tool' }] } },
+  { message: { role: 'assistant', content: '{}', function_call: { name: 'execute' } } },
+])('DeepSeek untrusted completion never proves stop', async choice => {
+  const f = fixture({ provider: 'deepseek', fetch: async () => deepseekResponse(edit, choice) }); await f.run();
+  expect(await f.adapter.confirmStopped('run-1')).toEqual({ stopped: false }); expect(f.text()).toBe('41\n');
+});
+it.each([{ model: 'different' }, { object: 'chat.completion.chunk' }, { choices: [] }, { usage: { prompt_tokens: -1, completion_tokens: 1 } }])('DeepSeek validates full response identity/usage', async overrides => {
+  const f = fixture({ provider: 'deepseek', fetch: async () => deepseekResponse(edit, {}, overrides) }); await f.run();
+  expect(await f.adapter.confirmStopped('run-1')).toEqual({ stopped: false });
+});
+it.each([400,401,402,422,429,500,503,504,529])('DeepSeek HTTP %i is classified without printing provider errors', async status => {
+  const f = fixture({ provider: 'deepseek', fetch: async () => new Response(JSON.stringify({ error: { type: 'provider_error', message: 'SECRET' } }), { status }) });
+  const events = await f.run(); expect(JSON.stringify(events)).not.toContain('SECRET');
+  expect((await f.adapter.confirmStopped('run-1')).stopped).toBe(status < 500);
+});
+it.each(['http://example.com', 'https://user:password@example.com', 'https://example.com?a=b', 'https://example.com#key', 'https://example.com?', 'https://example.com#', 'ftp://example.com', ' https://example.com', 'not a url'])('rejects unsafe DeepSeek base URL %s before admission', baseUrl => {
+  expect(() => fixture({ provider: 'deepseek', baseUrl })).toThrow('BOUNDED_BASE_URL_INVALID');
+});
+it('does not widen Anthropic fixed-origin behavior', () => {
+  expect(() => fixture({ baseUrl: 'https://api.example.com' })).toThrow('BOUNDED_BASE_URL_UNSUPPORTED');
+});
+it('DeepSeek abort after dispatch never assumes provider completion', async () => {
+  const c = new AbortController();
+  const f = fixture({ provider: 'deepseek', fetch: async () => { c.abort(); throw Error('disconnected'); } });
+  await f.run(c.signal); expect(f.text()).toBe('41\n'); expect(await f.adapter.confirmStopped('run-1')).toEqual({ stopped: false });
+});
+it('DeepSeek explicit null tool_calls means no calls, while nonempty calls stay rejected', async () => {
+  const f = fixture({ provider: 'deepseek', fetch: async () => deepseekResponse(edit, { message: { role: 'assistant', content: JSON.stringify(edit), tool_calls: null } }) });
+  expect((await f.run()).at(-1)).toMatchObject({ payload: { status: 'completed' } });
+  expect(f.text()).toBe('42\n'); expect(await f.adapter.confirmStopped('run-1')).toMatchObject({ stopped: true });
 });

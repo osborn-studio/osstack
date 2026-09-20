@@ -75,3 +75,18 @@ it.each(['apiKey', 'fetch', 'endpoint', 'command'])('never accepts %s as backend
   const f = boundedFixture(); Object.assign(f.config.registration.boundedMessages, { [field]: 'untrusted' }); f.save();
   await expect(loadLocalGraphRegistration(f.path, new Map())).rejects.toThrow();
 });
+it('enrolls DeepSeek roles with their own credential and immutable provider/base URL', async () => {
+  vi.stubEnv('ANTHROPIC_API_KEY', 'unrelated-test-key'); vi.stubEnv('DEEPSEEK_API_KEY', '');
+  const f = boundedFixture();
+  f.config.registration.writer = { agentId: 'deepseek-bounded-writer', capabilityId: 'deepseek-bounded-writer.writer' };
+  f.config.registration.reviewer = { agentId: 'deepseek-bounded-reviewer', capabilityId: 'deepseek-bounded-reviewer.reviewer' };
+  Object.assign(f.config.registration.boundedMessages, { provider: 'deepseek', baseUrl: 'https://api.deepseek.com/v1' }); f.save();
+  const first = await loadLocalGraphRegistration(f.path, new Map());
+  expect(await first.delivery.writer.adapter.isAvailable()).toMatchObject({ available: false, reason: expect.stringContaining('DEEPSEEK_API_KEY') });
+  vi.stubEnv('DEEPSEEK_API_KEY', 'test-only');
+  const second = await loadLocalGraphRegistration(f.path, new Map());
+  expect(await second.delivery.writer.adapter.isAvailable()).toMatchObject({ available: true });
+  expect(second.delivery.writer.adapter.id).toBe('deepseek-bounded-writer');
+  Object.assign(f.config.registration.boundedMessages, { baseUrl: 'https://different.invalid' }); f.save();
+  expect(() => second.authorize('execute')).toThrow('GRANT_EXPIRED');
+});
