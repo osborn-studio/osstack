@@ -19,6 +19,7 @@ import { GraphCheckpointService } from './graph-checkpoint-service.js';
 import { prepareGraphVerificationBranch, loadGraphVerificationEvidence, type GraphVerificationOptions } from './graph-verification.js';
 import { GraphVerificationJoinService, type GraphVerificationDecision } from './graph-verification-join.js';
 import { publishDeliveryReceipt, loadDeliveryReceipt } from './graph-delivery-receipts.js';
+import { publishBoundedRecoveryJournal } from './graph-bounded-recovery-journal.js';
 import type { AdmissionInput, ExecutionLease } from './governed-execution.js';
 
 export interface GraphDeliveryOptions {
@@ -150,7 +151,10 @@ export class GraphDelivery {
   }
   private async persist(nodeId: string, workspacePath: string, evidence: GraphActionEvidence, effectSlot = 'main'): Promise<string> {
     if (this.latest(nodeId, effectSlot)?.state !== 'running') throw Error('RUNNING_EFFECT_REQUIRED');
-    return publishDeliveryReceipt(this.options.root, this.receiptBinding(nodeId, workspacePath, effectSlot), evidence, () => this.checkSettlement());
+    const ref = await publishDeliveryReceipt(this.options.root, this.receiptBinding(nodeId, workspacePath, effectSlot), evidence, () => this.checkSettlement());
+    const action = this.latest(nodeId, effectSlot)!;
+    await publishBoundedRecoveryJournal(this.options.root, action, this.current().leaseOwner!, workspacePath, ref, evidence, () => this.checkSettlement());
+    return ref;
   }
   private async restoreWorkspaceMappings(): Promise<void> {
     // Functional replay may skip cached workspace callbacks. Recover mappings

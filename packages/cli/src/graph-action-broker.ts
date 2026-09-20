@@ -22,6 +22,8 @@ export interface GraphActionEvidence {
   status: "completed" | "failed";
   /** Set only after independent executor-stop verification. */
   stopped?: true;
+  /** Independent adapter stop receipt, retained separately from model output. */
+  stopEvidenceRef?: string;
   candidate?: CandidateExecutionResult;
   command?: CommandResult;
   contained?: GraphContainedTestEvidence;
@@ -473,7 +475,7 @@ export class GraphActionBroker {
       beforeEffect(`workspace:${randomUUID()}`);
       const result = await execution.handler({ workspace: action.workspace, signal, lease: lease! });
       if (result?.stopped !== true || !["completed", "failed"].includes(result.status)) throw new Error("workspace outcome unconfirmed");
-      return { status: result.status, workspace: result.evidence };
+      return { status: result.status, stopped: true, workspace: result.evidence };
     }
     const commandTerminationGraceMs = 1000; const commandKillGraceMs = 1000;
     let contained: GraphContainedTestEvidence | undefined;
@@ -562,6 +564,6 @@ export class GraphActionBroker {
     if (stopped.stopped !== true || !stopped.evidence?.trim()) throw new Error("external stop unconfirmed");
     const usage = candidate.execution;
     if ([usage?.tokens_in, usage?.tokens_out].some(value => value !== undefined && (!Number.isSafeInteger(value) || value < 0))) throw new Error("invalid adapter usage");
-    return { status: candidate.status === "implementation_complete" ? "completed" : "failed", stopped: true, candidate, ...(command ? { command } : {}), ...(contained ? { contained } : {}) };
+    return { status: candidate.status === "implementation_complete" ? "completed" : "failed", stopped: true, ...(["implement", "repair"].includes(action.action.kind) ? { stopEvidenceRef: stopped.evidence } : {}), candidate, ...(command ? { command } : {}), ...(contained ? { contained } : {}) };
   }
 }

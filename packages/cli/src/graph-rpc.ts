@@ -11,6 +11,7 @@ import { compileGraphSpec } from '@osstack/graph/spec-compiler';
 import { GraphDelivery, assertGraphDeliverySupported, graphDeliveryVersion, type GraphDeliveryOptions, type GraphDeliveryInterrupt } from './graph-delivery.js';
 import { GraphReconciler } from './graph-reconciler.js';
 import { cancelUnstartedGraphWorker } from './graph-unstarted-recovery.js';
+import { cancelJournaledBoundedWriter } from './graph-bounded-recovery.js';
 
 export interface GraphHostRegistration {
   id: string;
@@ -178,6 +179,16 @@ export class GraphRpcService {
         } catch (error) {
           if (authorizationFailed) throw error;
           synchronous(registration.authorize('cancel'));
+          // A finite bounded writer may have durable stopped/output evidence even
+          // when the ledger ACK was lost. Recovery never dispatches it again.
+          try {
+            const descriptor = JSON.parse(this.row(run.graphRunId).descriptor_json) as Descriptor;
+            await cancelJournaledBoundedWriter(this.options.db, descriptor.root, registration.delivery.repositoryPath,
+              { fence: fence(pending), receiptId }, () => {
+                try { synchronous(registration.authorize('cancel')); }
+                catch (failure) { authorizationFailed = true; throw failure; }
+              });
+          } catch (failure) { if (authorizationFailed) throw failure; }
           // Intent is already durable. Missing/conflicting evidence cannot undo
           // its acknowledgement; return current state without settling or releasing.
         }

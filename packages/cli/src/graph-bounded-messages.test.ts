@@ -5,6 +5,7 @@ import { createBoundedMessagesAdapter } from '@osstack/agents';
 import { GraphDelegationStatus } from '@osstack/protocol';
 import { GraphRpcService } from './graph-rpc.js';
 import { graphRpcFixture } from './graph-test-fixture.js';
+import { loadBoundedRecoveryJournal } from './graph-bounded-recovery-journal.js';
 
 // The provider response is a fixture, not a live model pilot. Everything after
 // that boundary is real: source clone, edit, graph worker, ledger, freeze, review,
@@ -49,6 +50,11 @@ it.each(['anthropic', 'deepseek'] as const)('%s writer and independent reviewer 
     expect(f.db.prepare("SELECT count(*) n FROM graph_actions WHERE state='uncertain'").get()).toEqual({ n: 0 });
     expect(await f.service.handle(f.connection, 'graph.submit', f.request)).toMatchObject({ graphRunId: first.graphRunId, status: 'ready' });
     expect(f.calls).toHaveLength(2);
+    const action = f.db.prepare("SELECT effect_key FROM graph_actions WHERE graph_run_id=? AND node_id='e0.implement'").get(first.graphRunId) as { effect_key: string };
+    expect(loadBoundedRecoveryJournal(join(f.root, 'delivery', first.graphRunId), action.effect_key)).toMatchObject({
+      effectKey: action.effect_key, generation: 1, lockOwner: { pid: process.pid, autonomy_run_id: `graph-action:${action.effect_key}` },
+      evidenceRef: expect.stringMatching(/^graph-delivery:/), fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
   } finally { await f.close(); }
 }, 30000);
 it('routes a stopped negative review to a quality interrupt rather than ready', async () => {
