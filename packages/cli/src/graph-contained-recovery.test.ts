@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { spawn, execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, realpathSync, mkdirSync, readFileSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -27,7 +27,7 @@ const cleanup: Array<() => Promise<void>> = [];
 afterEach(async () => { vi.mocked(openSync).mockReset(); vi.mocked(fstatSync).mockReset(); vi.mocked(readSync).mockReset(); for (const fn of cleanup.splice(0).reverse()) await fn(); });
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 async function fixture() {
-  const root = mkdtempSync(join(tmpdir(), 'g25-reopen-')); const f = processFixture(root); let db = f.db; let run = f.run;
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'g25-reopen-'))); const f = processFixture(root); let db = f.db; let run = f.run;
   cleanup.push(async () => { await f.runtime.close(); await f.runtime.drainDatabaseUsers(); if (db.open) db.close(); rmSync(root, { recursive: true, force: true }); });
   const fence = () => ({ scope: run.scope, graphRunId: run.graphRunId, identity: run.identity, expectedGeneration: run.generation,
     expectedOwner: run.leaseOwner, expectedRevision: run.revision, now: Date.now() });

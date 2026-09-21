@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolveRepositoryScope } from "./repository-scope.js";
+import { readRepositoryGit } from "./repository-git.js";
 
 const exec = promisify(execFile);
 let root: string;
@@ -89,6 +90,14 @@ describe("trusted filesystem repository identity", () => {
 });
 
 
+it("retains completed Git output after the host stalls beyond the subprocess deadline", async () => {
+  const pending = readRepositoryGit(repo, 'topLevel');
+  // The OS can finish Git while JS cannot process its streams or exit event.
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 6_000);
+  expect((await pending).trimEnd()).toBe(await realpath(repo));
+  expect(await readRepositoryGit(repo, 'worktrees')).toContain('worktree ');
+}, 15_000);
+
 it("bounds Git subprocess output and terminates a hung Git process", async () => {
   const bin = join(root, "fake-bin");
   await mkdir(bin);
@@ -107,5 +116,22 @@ it("bounds Git subprocess output and terminates a hung Git process", async () =>
     expect(() => process.kill(pid, 0)).toThrow();
   } finally {
     if (originalPath === undefined) delete process.env.PATH; else process.env.PATH = originalPath;
+  }
+}, 10_000);
+
+it("bounds output drain when an exited Git leader leaves an inherited pipe open", async () => {
+  const bin = join(root, 'pipe-bin'); await mkdir(bin);
+  const marker = join(root, 'pipe-holder-pid');
+  const originalPath = process.env.PATH;
+  try {
+    await writeFile(join(bin, 'git'), `#!${process.execPath}\nconst child = require('node:child_process').spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: ['ignore', 'inherit', 'inherit'] }); require('node:fs').writeFileSync(${JSON.stringify(marker)}, String(child.pid)); child.unref();`, { mode: 0o700 });
+    process.env.PATH = `${bin}:${originalPath ?? ''}`;
+    const started = performance.now();
+    await expect(readRepositoryGit(repo, 'topLevel')).rejects.toThrow(/deadline|timed out/);
+    expect(performance.now() - started).toBeLessThan(8_000);
+  } finally {
+    if (originalPath === undefined) delete process.env.PATH; else process.env.PATH = originalPath;
+    const pid = Number(await readFile(marker, 'utf8').catch(() => '0'));
+    if (pid > 0) { try { process.kill(pid, 'SIGKILL'); } catch { /* Already exited. */ } }
   }
 }, 10_000);
