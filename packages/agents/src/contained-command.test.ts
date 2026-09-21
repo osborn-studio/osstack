@@ -1,5 +1,5 @@
 import { createServer, type RequestListener, type Server } from 'node:http';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -48,7 +48,7 @@ async function fixture(mode = 'normal', authorize: (op: 'start' | 'stop' | 'read
     res.end(JSON.stringify({ Id: 'a'.repeat(64), Image: 'sha256:' + 'b'.repeat(64), Config: config!, HostConfig: host, Mounts: [],
       State: { Status: inspections > 1 ? 'exited' : 'created', Running: false, ExitCode: 0 } }));
   });
-  const journalRoot = mkdtempSync(join(tmpdir(), 'contained-journal-'));
+  const journalRoot = realpathSync(mkdtempSync(join(tmpdir(), 'contained-journal-')));
   close.push(async () => rmSync(journalRoot, { recursive: true, force: true }));
   const options = { socketPath: api.socketPath, journalRoot, daemonId: 'daemon', imageId: 'sha256:' + 'b'.repeat(64), bindingRef: 'c'.repeat(64), command: 'echo ok', authorize };
   return { options, calls, executor: new ContainedCommandExecutor(options), receipt: () => join(journalRoot, readdirSync(journalRoot)[0]!, 'stopped.json') };
