@@ -1,0 +1,267 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "15564acfee737aa945cc5bf561b7a5a0d8645ac1",
+  "cases": [
+    {
+      "spec": {
+        "schemaVersion": 1,
+        "template": "code-delivery-v1",
+        "publication": "artifact_only",
+        "input": {
+          "taskRef": "task",
+          "repositoryRef": "repo",
+          "baseRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "acceptanceRef": "acceptance"
+        },
+        "limits": {
+          "maxEpochs": 1,
+          "maxBranchAttempts": 1,
+          "maxConcurrentReaders": 2,
+          "maxConcurrentWritersPerRepo": 1,
+          "maxActionStarts": 100000,
+          "deadlineSeconds": 600,
+          "tokenReservationLimit": 1000000000
+        }
+      },
+      "sourceDigest": "2724ace2d52c42c406d147fec30e906e7e4b9ada77d27edc3718aa549303da06",
+      "specHash": "eb3544d8bd3df39dcd1a69ff7544014e650da6881768ae7e8b083d6a6bc1446c",
+      "planDigest": "4b9b13fc1234996bfcfe5a79614890230eb99692e92aa977688785749a2f1e9e",
+      "budget": {
+        "maxActionStarts": 7,
+        "tokenReservationLimit": 49152
+      }
+    },
+    {
+      "spec": {
+        "schemaVersion": 1,
+        "template": "code-delivery-v1",
+        "publication": "artifact_only",
+        "input": {
+          "taskRef": "task",
+          "repositoryRef": "repo",
+          "baseRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "acceptanceRef": "acceptance"
+        },
+        "limits": {
+          "maxEpochs": 1,
+          "maxBranchAttempts": 2,
+          "maxConcurrentReaders": 2,
+          "maxConcurrentWritersPerRepo": 1,
+          "maxActionStarts": 100000,
+          "deadlineSeconds": 600,
+          "tokenReservationLimit": 1000000000
+        }
+      },
+      "sourceDigest": "388ec594f4c8fa6fed46317d9b890310b38c8efffd3350b400d22fc7b48ad59b",
+      "specHash": "1884f806fc2a4a70e7c5df9035cc22f4badb1ce88e0375550e48a2893ddb7ffd",
+      "planDigest": "dd5cb400d0fe4e4351e5c163d97e9c81706336adf82e6032ae501c0d7b683008",
+      "budget": {
+        "maxActionStarts": 11,
+        "tokenReservationLimit": 65536
+      }
+    },
+    {
+      "spec": {
+        "schemaVersion": 1,
+        "template": "code-delivery-v1",
+        "publication": "artifact_only",
+        "input": {
+          "taskRef": "task",
+          "repositoryRef": "repo",
+          "baseRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "acceptanceRef": "acceptance"
+        },
+        "limits": {
+          "maxEpochs": 1,
+          "maxBranchAttempts": 32,
+          "maxConcurrentReaders": 2,
+          "maxConcurrentWritersPerRepo": 1,
+          "maxActionStarts": 100000,
+          "deadlineSeconds": 600,
+          "tokenReservationLimit": 1000000000
+        }
+      },
+      "sourceDigest": "ed050ae7c541a97756f519c87261de9a565c1f0983072ae3a5bd8edd6c28d2f4",
+      "specHash": "8758bf2953d4f9e415545a16fc737bb89627b58fe908aa0b0390506e0694aabd",
+      "planDigest": "d111d592175499bf0921eca418d8d262a1de13dc3162eae56dbfc77296cc3570",
+      "budget": {
+        "maxActionStarts": 131,
+        "tokenReservationLimit": 557056
+      }
+    },
+    {
+      "spec": {
+        "schemaVersion": 1,
+        "template": "code-delivery-v1",
+        "publication": "artifact_only",
+        "input": {
+          "taskRef": "task",
+          "repositoryRef": "repo",
+          "baseRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "acceptanceRef": "acceptance"
+        },
+        "limits": {
+          "maxEpochs": 2,
+          "maxBranchAttempts": 1,
+          "maxConcurrentReaders": 2,
+          "maxConcurrentWritersPerRepo": 1,
+          "maxActionStarts": 100000,
+          "deadlineSeconds": 600,
+          "tokenReservationLimit": 1000000000
+        }
+      },
+      "sourceDigest": "b54b07d5421d4334410ff549cf04933f4801bf1760a741a4004c3cbe73057388",
+      "specHash": "e6771639bd52a7ddeaa1b826ccd6e44fef2eb203ec83e528d0563b23ecfd1929",
+      "planDigest": "a5615763c9d7d5b730a1a5fae8c09eb3fe455b052b0a17583ae32a11b3edf7d0",
+      "budget": {
+        "maxActionStarts": 14,
+        "tokenReservationLimit": 98304
+      }
+    },
+    {
+      "spec": {
+        "schemaVersion": 1,
+        "template": "code-delivery-v1",
+        "publication": "artifact_only",
+        "input": {
+          "taskRef": "task",
+          "repositoryRef": "repo",
+          "baseRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "acceptanceRef": "acceptance"
+        },
+        "limits": {
+          "maxEpochs": 2,
+          "maxBranchAttempts": 2,
+          "maxConcurrentReaders": 2,
+          "maxConcurrentWritersPerRepo": 1,
+          "maxActionStarts": 100000,
+          "deadlineSeconds": 600,
+          "tokenReservationLimit": 1000000000
+        }
+      },
+      "sourceDigest": "08196b7886656cb69d8342b970f86de001afc49e14f23904e5fc5e80283b3b36",
+      "specHash": "e9e62eb1d6f8f473c3a003cce8524c569b80f7d10ea4bea0c950138785183ee6",
+      "planDigest": "b0ecd9157f15345735e841d1c7393946667b2e38ddf924c9e6b769d2fc4bd9a3",
+      "budget": {
+        "maxActionStarts": 22,
+        "tokenReservationLimit": 131072
+      }
+    },
+    {
+      "spec": {
+        "schemaVersion": 1,
+        "template": "code-delivery-v1",
+        "publication": "artifact_only",
+        "input": {
+          "taskRef": "task",
+          "repositoryRef": "repo",
+          "baseRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "acceptanceRef": "acceptance"
+        },
+        "limits": {
+          "maxEpochs": 2,
+          "maxBranchAttempts": 32,
+          "maxConcurrentReaders": 2,
+          "maxConcurrentWritersPerRepo": 1,
+          "maxActionStarts": 100000,
+          "deadlineSeconds": 600,
+          "tokenReservationLimit": 1000000000
+        }
+      },
+      "sourceDigest": "95b5068f27ee2ac1bf9410918e44241ba5865b05c42f8c95666787ff874a5fd4",
+      "specHash": "3ed4d59c494183f996d526416e4a6f833428620e480b263d58e4064885ab2692",
+      "planDigest": "53bab11a62c8b80a8813311004d3963bd0904a44cff3a666e8e711ca57074db9",
+      "budget": {
+        "maxActionStarts": 262,
+        "tokenReservationLimit": 1114112
+      }
+    },
+    {
+      "spec": {
+        "schemaVersion": 1,
+        "template": "code-delivery-v1",
+        "publication": "artifact_only",
+        "input": {
+          "taskRef": "task",
+          "repositoryRef": "repo",
+          "baseRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "acceptanceRef": "acceptance"
+        },
+        "limits": {
+          "maxEpochs": 3,
+          "maxBranchAttempts": 1,
+          "maxConcurrentReaders": 2,
+          "maxConcurrentWritersPerRepo": 1,
+          "maxActionStarts": 100000,
+          "deadlineSeconds": 600,
+          "tokenReservationLimit": 1000000000
+        }
+      },
+      "sourceDigest": "2f68000d6358f5698a4711f3a8429ab4984710150bab720f864ef5306b76ee2f",
+      "specHash": "0834fbfe913e31cb4c2e14b2c22f32f5f46e83e7a16f2c9a00db3fc6616defcd",
+      "planDigest": "0df83d76adfa69eba172df3002b6862ab89ba5752e0c60cfe8ba51c45047cdd5",
+      "budget": {
+        "maxActionStarts": 21,
+        "tokenReservationLimit": 147456
+      }
+    },
+    {
+      "spec": {
+        "schemaVersion": 1,
+        "template": "code-delivery-v1",
+        "publication": "artifact_only",
+        "input": {
+          "taskRef": "task",
+          "repositoryRef": "repo",
+          "baseRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "acceptanceRef": "acceptance"
+        },
+        "limits": {
+          "maxEpochs": 3,
+          "maxBranchAttempts": 2,
+          "maxConcurrentReaders": 2,
+          "maxConcurrentWritersPerRepo": 1,
+          "maxActionStarts": 100000,
+          "deadlineSeconds": 600,
+          "tokenReservationLimit": 1000000000
+        }
+      },
+      "sourceDigest": "e637f2d2301b444199a213c3d543bc5f8ebf65505578e960afa34f8fbb5f890c",
+      "specHash": "41074f22da00a0f4b58b8521b37b3e841551ffe729c52d0f2d22f8355de89669",
+      "planDigest": "d50b808faf4ffffcaff29f19a5d671c178d6583f123e259528dbe3264d9b78aa",
+      "budget": {
+        "maxActionStarts": 33,
+        "tokenReservationLimit": 196608
+      }
+    },
+    {
+      "spec": {
+        "schemaVersion": 1,
+        "template": "code-delivery-v1",
+        "publication": "artifact_only",
+        "input": {
+          "taskRef": "task",
+          "repositoryRef": "repo",
+          "baseRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "acceptanceRef": "acceptance"
+        },
+        "limits": {
+          "maxEpochs": 3,
+          "maxBranchAttempts": 32,
+          "maxConcurrentReaders": 2,
+          "maxConcurrentWritersPerRepo": 1,
+          "maxActionStarts": 100000,
+          "deadlineSeconds": 600,
+          "tokenReservationLimit": 1000000000
+        }
+      },
+      "sourceDigest": "206caf092c379ac27d2ec0bdabed4fe919260d29d892f3eab634bc759d9a9e6c",
+      "specHash": "d085aba28d50c9fc4856caefc60b84cca24ade617748b0edf8ad7ec1797c9d04",
+      "planDigest": "edce24e87e144be960bb08636a70ef274d067199f3d977cf49838ec785059f8a",
+      "budget": {
+        "maxActionStarts": 393,
+        "tokenReservationLimit": 1671168
+      }
+    }
+  ]
+}

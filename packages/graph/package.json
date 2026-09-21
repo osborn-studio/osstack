@@ -54,6 +54,10 @@
     "./templates/code-delivery-v1": {
       "types": "./dist/templates/code-delivery-v1.d.ts",
       "import": "./dist/templates/code-delivery-v1.js"
+    },
+    "./program-resolver": {
+      "types": "./dist/program-resolver.d.ts",
+      "import": "./dist/program-resolver.js"
     }
   },
   "files": [
