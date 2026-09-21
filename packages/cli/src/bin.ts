@@ -224,6 +224,7 @@ function renderChineseMainHelp(): string {
 
 项目命令：
   graph               图执行 validate/run/status/cancel/resume；explain 只读关系诊断
+  decision            Jev 实验建议：失败分类/技能推荐，默认离线校验
   doctor              检查 workspace、loop、agent 与下一步建议
   examples            输出可直接运行的工作流示例
   guide               输出或写入 5 分钟 Quickstart
@@ -426,6 +427,7 @@ Self-update:
 
 Project commands:
   graph               Executable delivery graphs and read-only explain (graph --help)
+  decision            Experimental Jev advice (default: offline validation)
   doctor [--workspace P] [--daemon] [--json]
                       Product readiness check: loop + agents + next steps
   examples [--json]   Print runnable workflow examples
@@ -787,6 +789,11 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       submit: streamTaskSubmit,
       observe: streamTaskObserve,
     });
+  }
+
+  if (cmd === "decision") {
+    const { handleDecisionCommand } = await import("./decision-command.js");
+    return await handleDecisionCommand(args.slice(1));
   }
 
   if (cmd === "graph") {

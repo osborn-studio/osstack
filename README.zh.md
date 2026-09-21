@@ -20,6 +20,7 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 
 ## 从这里开始
 
+- [Jev 决策建议（源码预览）](docs/guides/decision-advisor.md)：默认离线校验，显式开启有预算的建议请求。
 - [Graph Engineering 怎么用](#graph-engineering)：执行流程、支持范围和命令。
 - [完整 Graph 上手与参数手册](docs/guides/graph-quickstart.md)：准备配置、验证、运行、结果、取消和恢复。
 - [当前能力范围](#当前能力范围) · [安装](#安装) · [主要命令](#主要命令)。
@@ -29,15 +30,15 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 
 | 领域 | 状态 |
 |---|---|
-| npm 包 | 本次发行目标：`@osstack/cli@0.20.0`；实际可用版本用 `npm view @osstack/cli version` 核实 |
-| GitHub Release | npm 发行目标：`@osstack/cli@0.20.0`；最新单文件二进制：[`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
+| npm 包 | 2026-09-21 已核验 npm：`@osstack/cli@0.20.0` 与 `@osstack/graph@0.20.0` 已发布 |
+| GitHub Release | [CLI 0.20.0](https://github.com/osborn-studio/osstack/releases/tag/%40osstack/cli%400.20.0) 和 [Graph 0.20.0](https://github.com/osborn-studio/osstack/releases/tag/%40osstack/graph%400.20.0)；单文件二进制单独分发 |
 | macOS 单文件二进制 | 已发布 `darwin-arm64` 的显式 `public-ad-hoc` archive |
 | Knowledge Cloud | 已部署到 EdgeOne：`https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | Probe | CLI 生命周期已随 CLI 0.19.0 发布；report-only 是 gate 行为，不是后台任务。两周真实使用 checkpoint 仍未完成。 |
 | License | MIT |
 | Monorepo | 22 个 workspace package |
 
-**版本边界：** 当前源码目标为 0.20.0。2026-09-21 发布前核验时，npm latest 仍为 CLI 0.19.0，Graph 包尚未发布。版本提交不等于发布成功，须核对 npm 与 GitHub Release 后再使用公共 0.20.0。即使 npm 发布完成，Graph 仍保留下文的内部 beta 执行范围。
+**版本边界：** 2026-09-21 重新核验，npm 上 CLI 和 Graph 均为 0.20.0；GitHub 使用 [`@osstack/cli@0.20.0`](https://github.com/osborn-studio/osstack/releases/tag/%40osstack/cli%400.20.0) 和 [`@osstack/graph@0.20.0`](https://github.com/osborn-studio/osstack/releases/tag/%40osstack/graph%400.20.0) 包名标签发布。npm 包与单文件二进制的发布是两件事。Graph 仍保留下文的内部 beta 执行范围。新增 `decision` 命令属于源码预览，须构建当前 checkout，不能仅凭 0.20.0 版本号推断已包含。
 
 ## 当前能力范围
 
@@ -47,6 +48,7 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 |---|---|---|
 | 产品入口 | 一条命令把目标变成带验证、report、scorecard、proof pack 和可选 worktree 隔离的交付流程。 | `osstack deliver`, `@osstack/cli` |
 | Graph Engineering（内部 beta） | 固定工程图：隔离实现、冻结候选、并行 review/tests、按候选汇合、有界修复、检查点与动作账本。只交付 artifact。 | `osstack graph ...`、`@osstack/graph` |
+| 决策建议（源码预览） | 失败分类、有限技能候选推荐；默认离线，显式开启有预算的请求，不拥有执行权限。 | `osstack decision ...` |
 | 知识卫生 | 确定性文档/指令检查，以及显式启用的语义审计与审阅后修复。 | `osstack neat ...` |
 | Loop Engineering | 任务发现、执行、验证、迭代、预算、停止原因、报告、分数卡、lesson draft、daemon 托管 loop session。 | `osstack loop ...`, `@osstack/loop` |
 | 多 repo 监督 | repo registry、成熟度扫描、portfolio report、feedback assets、改进 proposal、evaluator epoch、结构化 recommendation。 | `osstack supervise`, `feedback`, `improve`, `evaluator`, `daily`; `@osstack/supervisor` |

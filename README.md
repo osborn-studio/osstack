@@ -22,6 +22,7 @@ surface that makes AI coding work visible and auditable.
 
 ## Start Here
 
+- [Jev decision advisor (source preview)](docs/guides/decision-advisor.md): offline validation and explicit, budgeted advice.
 - [Graph Engineering](#graph-engineering): execution flow, supported scope and commands.
 - [Graph walkthrough and parameters](docs/guides/graph-quickstart.en.md): configuration, validation, execution, results and recovery.
 - [Capability map](#current-capability-map) · [Install](#install) · [Main commands](#main-commands).
@@ -31,15 +32,15 @@ surface that makes AI coding work visible and auditable.
 
 | Area | Status |
 |---|---|
-| npm package | Release target: `@osstack/cli@0.20.0`; verify availability with `npm view @osstack/cli version` |
-| GitHub release | npm release target: `@osstack/cli@0.20.0`; latest single binary: [`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
+| npm package | `@osstack/cli@0.20.0` and `@osstack/graph@0.20.0` verified on npm, 2026-09-21 |
+| GitHub release | [CLI 0.20.0](https://github.com/osborn-studio/osstack/releases/tag/%40osstack/cli%400.20.0) and [Graph 0.20.0](https://github.com/osborn-studio/osstack/releases/tag/%40osstack/graph%400.20.0); single-binary distribution is separate |
 | macOS single binary | Published as explicit `public-ad-hoc` archive for `darwin-arm64` |
 | Knowledge Cloud | Live on EdgeOne: `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | Probe | CLI lifecycle shipped in CLI 0.19.0; report-only is gate behavior, not a background job. The two-week real-use checkpoint remains open. |
 | License | MIT |
 | Monorepo | 22 workspace packages |
 
-**Release boundary:** This tree targets 0.20.0. At the 2026-09-21 pre-publication check, npm latest was CLI 0.19.0 and the graph package was absent. A version commit is not publication: verify the registry and GitHub release before treating 0.20.0 as available. Graph remains an internal beta with the execution limits below, even after npm publication.
+**Release boundary:** On 2026-09-21, the npm registry lists both `@osstack/cli` and `@osstack/graph` at 0.20.0; GitHub package releases are tagged [`@osstack/cli@0.20.0`](https://github.com/osborn-studio/osstack/releases/tag/%40osstack/cli%400.20.0) and [`@osstack/graph@0.20.0`](https://github.com/osborn-studio/osstack/releases/tag/%40osstack/graph%400.20.0). npm availability and single-binary publication are separate. Graph remains an internal beta with the limits below. The new `decision` command is a source preview: build this checkout; do not infer its presence from a 0.20.0 version label.
 
 ## Current Capability Map
 
@@ -51,6 +52,7 @@ control plane with these implemented surfaces (distribution limits noted below):
 | Product entry | One command can turn an intent into a verified local delivery run with reports, scorecards, proof packs, and optional worktree isolation. | `osstack deliver`, `@osstack/cli` |
 | Guarded Git autonomy | Classifies R0-R4 before and after the diff, requires external signed approval for R3, permanently blocks R4, and automatically delivers eligible R1/R2 changes through PR, CI, merge, and two-stage proof. | `osstack deliver --autonomy guarded-git`, `osstack autonomy ...`, `@osstack/autonomy` |
 | Graph Engineering (internal beta) | Fixed engineering graph: isolated implementation, candidate freeze, parallel review/tests, candidate-bound join, bounded repair, checkpoints and action ledger. Artifact-only delivery. | `osstack graph ...`, `@osstack/graph` |
+| Decision advice (source preview) | Explicit failure classification and supplied-skill recommendation; offline by default, bounded live requests, no execution authority. | `osstack decision ...` |
 | Knowledge hygiene | Deterministic document/instruction checks, opt-in semantic audits and reviewed remediation. | `osstack neat ...` |
 | Loop Engineering | Task discovery, execution, verification, iteration, budgets, stop reasons, reports, scorecards, lesson drafts, and daemon-managed loop sessions. | `osstack loop ...`, `@osstack/loop` |
 | Portfolio supervision | Repo registry, maturity scan, portfolio report, feedback assets, improvement proposals, evaluator epochs, and machine-actionable recommendations. | `osstack supervise`, `feedback`, `improve`, `evaluator`, `daily`; `@osstack/supervisor` |

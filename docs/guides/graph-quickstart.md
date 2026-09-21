@@ -2,7 +2,7 @@
 
 [English](graph-quickstart.en.md) · [返回中文 README](../../README.zh.md#graph-engineering) · [English overview](../../README.md#graph-engineering) · [运维与恢复](../runbooks/graph-runtime.md)
 
-本手册对应 main 的内部 beta。2026-09-21 查询 npm：CLI latest 为 0.19.0，Graph 包尚未公开发布。先使用从当前源码构建的 Node CLI，或已核验提交的内部 Node 安装。不要根据相同的 `--version` 推断内部构建一致。
+本手册对应 main 的内部 beta。2026-09-21 重新核验 npm：CLI 与 Graph 均已发布 0.20.0；GitHub 使用 [CLI 0.20.0](https://github.com/osborn-studio/osstack/releases/tag/%40osstack/cli%400.20.0) 与 [Graph 0.20.0](https://github.com/osborn-studio/osstack/releases/tag/%40osstack/graph%400.20.0) 包名标签发布。先使用从当前源码构建的 Node CLI，或已核验提交的内部 Node 安装。不要根据相同的 `--version` 推断内部构建一致。
 
 ## 1. 选择适合的任务
 

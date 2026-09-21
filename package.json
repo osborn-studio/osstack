@@ -37,6 +37,7 @@
     "smoke:npm-deprecation": "node scripts/smoke-npm-broken-deprecation.mjs",
     "smoke:npm-publish-order": "node scripts/smoke-npm-publish-order.mjs",
     "smoke:clean-typecheck": "node scripts/smoke-clean-typecheck-contract.mjs",
+    "smoke:decision-advice": "pnpm --filter @osstack/cli... build && node scripts/smoke-decision-advice.mjs",
     "smoke:cli-startup": "pnpm --filter @osstack/cli build && node scripts/bench-cli-startup.mjs",
     "smoke:version-packages": "node scripts/version-packages.mjs --self-test",
     "demo:loop": "pnpm build && node scripts/demo-loop.mjs",

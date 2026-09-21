@@ -2,7 +2,7 @@
 
 [README](../../README.md#graph-engineering) · [中文](graph-quickstart.md) · [Operator runbook (中文)](../runbooks/graph-runtime.md)
 
-This walkthrough describes the main-branch internal beta. On 2026-09-21, npm latest was CLI 0.19.0 and the graph package was not publicly published. Use the current source build or a verified internal Node installation. Identical version labels do not establish identical internal builds.
+This walkthrough describes the main-branch internal beta. On 2026-09-21, both `@osstack/cli@0.20.0` and `@osstack/graph@0.20.0` were verified on npm; GitHub releases use the package tags [CLI 0.20.0](https://github.com/osborn-studio/osstack/releases/tag/%40osstack/cli%400.20.0) and [Graph 0.20.0](https://github.com/osborn-studio/osstack/releases/tag/%40osstack/graph%400.20.0). Use the current source build or a verified internal Node installation. Identical version labels do not establish identical internal builds.
 
 ## 1. Choose a bounded task
 
