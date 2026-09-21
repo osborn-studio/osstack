@@ -124,7 +124,7 @@ it("bounds output drain when an exited Git leader leaves an inherited pipe open"
   const marker = join(root, 'pipe-holder-pid');
   const originalPath = process.env.PATH;
   try {
-    await writeFile(join(bin, 'git'), `#!${process.execPath}\nconst child = require('node:child_process').spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: ['ignore', 'inherit', 'inherit'] }); require('node:fs').writeFileSync(${JSON.stringify(marker)}, String(child.pid)); child.unref();`, { mode: 0o700 });
+    await writeFile(join(bin, 'git'), `#!${process.execPath}\nprocess.stdout.write('/plausible-but-incomplete-repository\\n'); const child = require('node:child_process').spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: ['ignore', 'inherit', 'inherit'] }); require('node:fs').writeFileSync(${JSON.stringify(marker)}, String(child.pid)); child.unref();`, { mode: 0o700 });
     process.env.PATH = `${bin}:${originalPath ?? ''}`;
     const started = performance.now();
     await expect(readRepositoryGit(repo, 'topLevel')).rejects.toThrow(/deadline|timed out/);

@@ -40,8 +40,8 @@ export function readRepositoryGit(cwd: string, query: keyof typeof queries): Pro
         // Allow pending close/data events to drain, then fail closed, never use
         // partial output. This does not give a live Git process more run time.
         timeout = setTimeout(() => {
-          child.stdout?.destroy(); child.stderr?.destroy();
           finish(new Error('repository Git output did not close after deadline'));
+          child.stdout?.destroy(); child.stderr?.destroy();
         }, 250);
       });
     }, 5_000);
