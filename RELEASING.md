@@ -139,7 +139,8 @@ GitHub Actions from creating pull requests. A repository-level attempt to enable
 `can_approve_pull_request_reviews` can return HTTP 409 under that policy.
 Keep the organization policy intact and use an authorized maintainer's `gh`
 session to create the version PR from an isolated, clean checkout of current
-`main`: run `pnpm install --frozen-lockfile`, then `pnpm version:packages`,
+`main`: run `pnpm install --frozen-lockfile`, `pnpm build`, then
+`pnpm version:packages` (the inventory generator requires the built CLI),
 inspect the generated manifests, lockfile and changelogs, and commit/push the
 version branch. Create its PR with `gh pr create --base main` and require the
 same independent review and CI as any other release PR. Do not put a personal

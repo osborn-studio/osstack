@@ -3,6 +3,8 @@ import { expect, it } from 'vitest';
 import { entrypoint, task } from './worker-entry.js';
 
 it('does not treat settled task promises as proof that a failed sibling stopped physical work', async () => {
+  // Characterize the pinned LangGraph 1.4.15 behavior. Revisit this stop/replay
+  // contract explicitly when upgrading the kernel rather than weakening it.
   let started!: () => void; let release!: () => void; let finished!: () => void;
   const slowStarted = new Promise<void>(resolve => { started = resolve; });
   const allowFinish = new Promise<void>(resolve => { release = resolve; });
