@@ -7,7 +7,8 @@ import { FifoSemaphore } from "@osstack/autonomy";
 import { GovernedExecution } from "./governed-execution.js";
 vi.mock("@osstack/autonomy", async importOriginal => ({
   ...await importOriginal<typeof import("@osstack/autonomy")>(),
-  acquireRepoWriteLock: async () => ({ renew: async () => { throw new Error("lost lease"); }, release: async () => {} }),
+  // Active at admission; the injected renewal failure occurs on the first tick.
+  acquireRepoWriteLock: async () => ({ assertActive: async () => {}, renew: async () => { throw new Error("lost lease"); }, release: async () => {} }),
 }));
 it("quarantines a renewal failure without disabling unrelated reads or unused write capacity", async () => {
   const root = await mkdtemp(join(tmpdir(), "lease-fault-"));

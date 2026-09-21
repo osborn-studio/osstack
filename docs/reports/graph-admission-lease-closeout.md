@@ -1,6 +1,6 @@
 # Graph retained verification closeout — 2026-09-21
 
-Status: proposed repair; G29 remains incomplete (29/30). This report does not authorize installation or claim the production canary passed.
+Status: PR #228 proposed repair; G29 remains incomplete (29/30). This report does not authorize installation or claim the production canary passed.
 
 ## Observed failure
 
@@ -22,16 +22,24 @@ The actual Claude CLI model `claude-fable-5-1` reviewed the design and implement
 
 Read-only preflight opens the control-plane database read-only and does not alter actions, decisions or locks. Existing artifact verification temporarily unbundles into its scratch directory and cleans up afterwards. The production evidence envelopes are 10,733 and 9,216 bytes, below the 65,536-byte receipt bound.
 
-The second Fable implementation audit returned **APPROVE**. Its optional canonical-root and lock-reappearance guards were added and are receiving a final delta audit. Independent GitHub approval is still required.
+The second Fable implementation audit returned **APPROVE**; the final delta audit found no remaining blockers after canonical-root and lock-reappearance guards were added. Independent GitHub approval is still required.
 
 Local validation:
 
 - Full workspace build, CLI typecheck, lint and inventory freshness passed.
 - Governed execution: 13 passed; broker: 35 passed; existing preparation recovery: 16 passed.
-- New stopped-verification recovery: all 15 scenarios passed across the full negative matrix and focused reruns after fixing fixture defects. Positive cancellation and installed maintenance preserve original actions; lost ACK, replacement UUID, changed expiry, disappearance and reappearance are explicitly covered.
+- New stopped-verification recovery: all 15 scenarios passed together on the final runtime source; the same 15 also passed in CI. Positive cancellation and installed maintenance preserve original actions; lost ACK, replacement UUID, changed expiry, disappearance and reappearance are explicitly covered.
 - Acceptance fixture: the old command rejects the valid candidate in a serving-home workspace; the corrected command passes it and still rejects the original root-guard defect. Production configuration was not modified.
 - The local full run did **not** pass: 3 core tests hit their existing 5-second limits. A focused lower-concurrency run passed 35/36, with one remaining timeout. The broader CLI verification run also hit 22 existing 15-second limits under high host load. These are retained as failed results; per-test deadlines and production budgets were not increased. Final CI must pass on the exact pushed commit before approval/deployment.
 - Local startup timing also exceeded budgets under host load; the clean-runner startup gate remains mandatory. No eager command-surface imports were added.
+
+## Final runtime evidence
+
+A real isolated DeepSeek v4-pro pilot of runtime `603ba36` passed: run `bac61d50-a1b9-45b4-a2aa-95a1e9bd1944` reached ready/revision37, with all seven actions confirmed, review accepted, actual tests passed and a complete join. It charged 2,942 tokens, retained zero reservations or admissions, preserved the source clone and replayed the original request without another execution. The isolated daemon exited normally with code0. This does not replace the production G29 gate.
+
+The 19 public tarballs were staged privately: 1,096 package files match byte-for-byte, all 257 external dependency entries match the existing installation, and both maintenance exports load. No serving role, binary or LaunchAgent was changed.
+
+CI run 35584829012 passed 4,026 tests across all 22 packages, including the complete new recovery suite; its only failure was an old renewal-fault mock missing the real lock's `assertActive` method. The mock now supplies that method while still failing renewal on its first tick. The 49 governed-execution, renewal-fault and broker tests pass together. This follow-up changes only the mock and this report; runtime code and the successful live-pilot evidence remain unchanged. Final-head CI is still required.
 
 ## Deployment gate
 
