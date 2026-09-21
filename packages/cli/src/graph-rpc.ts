@@ -13,6 +13,7 @@ import { GraphDelivery, assertGraphDeliverySupported, graphDeliveryVersion, type
 import { GraphReconciler } from './graph-reconciler.js';
 import { cancelUnstartedGraphWorker } from './graph-unstarted-recovery.js';
 import { cancelJournaledBoundedWriter } from './graph-bounded-recovery.js';
+import { cancelUnstartedGraphPreparation } from './graph-preparation-recovery.js';
 
 export interface GraphHostRegistration {
   id: string;
@@ -190,7 +191,17 @@ export class GraphRpcService {
                 try { synchronous(registration.authorize('cancel')); }
                 catch (failure) { authorizationFailed = true; throw failure; }
               });
-          } catch (failure) { if (authorizationFailed) throw failure; }
+          } catch (failure) {
+            if (authorizationFailed) throw failure;
+            try {
+              const descriptor = JSON.parse(this.row(run.graphRunId).descriptor_json) as Descriptor;
+              await cancelUnstartedGraphPreparation(this.options.db, descriptor.root, registration.delivery.repositoryPath,
+                { fence: fence(pending), receiptId }, () => {
+                  try { synchronous(registration.authorize('cancel')); }
+                  catch (denied) { authorizationFailed = true; throw denied; }
+                });
+            } catch (denied) { if (authorizationFailed) throw denied; }
+          }
           // Intent is already durable. Missing/conflicting evidence cannot undo
           // its acknowledgement; return current state without settling or releasing.
         }
