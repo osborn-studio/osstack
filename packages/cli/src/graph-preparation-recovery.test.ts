@@ -1,5 +1,6 @@
 import { join } from 'node:path';
-import { renameSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, renameSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import Database from 'better-sqlite3';
 import { afterEach, expect, it, vi } from 'vitest';
 import { acquireRepoWriteLock, inspectRepoWriteLock, repoLockPath } from '@osstack/autonomy';
 import { resolveRepositoryScope } from '@osstack/core';
@@ -7,11 +8,13 @@ import { GraphRecoveryStore } from '@osstack/core/graph-recovery';
 import { GraphDelegationStatus } from '@osstack/protocol';
 import { GraphRpcService } from './graph-rpc.js';
 import { graphRpcFixture } from './graph-test-fixture.js';
+import { reconcileUnstartedPreparation } from './graph-maintenance.js';
 
 const cleanup: Array<() => Promise<void>> = [];
 afterEach(async () => { vi.restoreAllMocks(); for (const close of cleanup.splice(0).reverse()) await close(); });
 async function fixture() {
   const f = await graphRpcFixture(); let allowed = true;
+  f.options.root = join(f.root, 'graph-delivery');
   const options = { ...f.options, registrations: [{ ...f.registration, authorize: () => { if (!allowed) throw Error('GRANT_EXPIRED'); } }],
     acquire: async (input: Parameters<typeof f.options.acquire>[0]) => {
       const action = f.db.prepare('SELECT node_id FROM graph_actions WHERE effect_key=?').get(input.runId.slice('graph-action:'.length)) as { node_id: string } | undefined;
@@ -54,8 +57,59 @@ it('reconciles the legacy missing admission through public RPC without changing 
   expect(f.db.prepare('SELECT count(*) n FROM graph_recovery_decisions').get()).toEqual({ n: 2 });
   await f.restart(); expect(await f.reconcile(request)).toMatchObject({ status: 'cancelled' }); expect(f.writes()).toBe(1);
 }, 40000);
+it('runs guarded maintenance with a consistent backup, unchanged actions and no schema migration', async () => {
+  const f = await fixture();
+  const path = join(f.root, 'state.db'); await f.db.backup(path); chmodSync(path, 0o600);
+  const scope = f.registration.scope;
+  const config = { schemaVersion: 1, admissionEnabled: false, registration: {
+    id: 'local', scope, repositoryRef: 'repo', repositoryPath: join(f.root, 'source'),
+    taskRef: 'task', task: 'Set answer to 1', inputArtifactRef: 'input',
+    writer: { agentId: 'deepseek-bounded-writer', capabilityId: 'deepseek-bounded-writer.writer' },
+    reviewer: { agentId: 'deepseek-bounded-reviewer', capabilityId: 'deepseek-bounded-reviewer.reviewer' },
+    boundedMessages: { provider: 'deepseek', model: 'unused', files: ['answer'], acceptance: 'Answer must be 1' },
+    acceptanceRegistry: f.registration.delivery.acceptanceRegistry,
+    grant: { scope, expiresAt: 1, operations: ['read', 'cancel'] },
+  } };
+  // Maintenance uses normal owner cancellation authority, including its explicit
+  // right to stop after execute expires. No API key or execute grant is needed.
+  const save = () => writeFileSync(join(f.root, 'graph-host.json'), JSON.stringify(config), { mode: 0o600 }); save();
+  const input = { home: f.root, graphRunId: f.id, expectedRevision: (await f.status()).revision };
+  writeFileSync(join(f.root, 'control-plane-reserved.json'), '{}');
+  await expect(reconcileUnstartedPreparation(input)).rejects.toThrow(/RESERVED/);
+  unlinkSync(join(f.root, 'control-plane-reserved.json'));
+  expect(await reconcileUnstartedPreparation(input)).toMatchObject({ mode: 'read_only', status: 'cancel_pending', upgradeHolds: 1 });
+  const snapshot = new Database(path);
+  const before = snapshot.prepare('SELECT * FROM graph_actions ORDER BY effect_key').all();
+  const version = snapshot.pragma('user_version', { simple: true }) as number;
+  try {
+    snapshot.pragma(`user_version = ${version + 1}`);
+    await expect(reconcileUnstartedPreparation(input)).rejects.toThrow('MAINTENANCE_SCHEMA_MISMATCH');
+    snapshot.pragma(`user_version = ${version}`);
+    config.admissionEnabled = true; save();
+    await expect(reconcileUnstartedPreparation(input)).rejects.toThrow('MAINTENANCE_ADMISSION_MUST_BE_CLOSED');
+    config.admissionEnabled = false; save();
+    config.registration.grant.operations = ['read']; save();
+    await expect(reconcileUnstartedPreparation(input)).rejects.toThrow('GRANT_EXPIRED');
+    config.registration.grant.operations = ['read', 'cancel']; save();
+    await expect(reconcileUnstartedPreparation({ ...input, expectedRevision: input.expectedRevision - 1 })).rejects.toThrow('MAINTENANCE_RUN_CHANGED');
+    await expect(reconcileUnstartedPreparation({ ...input, apply: true })).rejects.toThrow('MAINTENANCE_BACKUP_REQUIRED');
+    const result = await reconcileUnstartedPreparation({ ...input, apply: true, backupDirectory: f.root });
+    expect(result).toMatchObject({ mode: 'applied', status: 'cancelled', actionsUnchanged: true, upgradeHolds: 0 });
+    expect(snapshot.prepare('SELECT * FROM graph_actions ORDER BY effect_key').all()).toEqual(before);
+    expect(snapshot.pragma('user_version', { simple: true })).toBe(version);
+    expect(result).toHaveProperty('backupPath');
+    if (!('backupPath' in result)) throw Error('missing backup');
+    const backup = new Database(result.backupPath, { readonly: true });
+    try {
+      expect(backup.pragma('integrity_check', { simple: true })).toBe('ok');
+      expect(backup.prepare('SELECT status FROM graph_runs WHERE graph_run_id=?').get(f.id)).toEqual({ status: 'cancel_pending' });
+    } finally { backup.close(); }
+    expect(f.writes()).toBe(1);
+  } finally { snapshot.close(); }
+}, 40000);
 it.each(['lock', 'execution-ref', 'unknown', 'held-predecessor', 'missing-exit', 'wrong-message', 'extra-action', 'wrong-usage', 'revoked'])('preserves the obligation when %s blocks independent proof', async mode => {
   const f = await fixture(); let lock: Awaited<ReturnType<typeof acquireRepoWriteLock>> | undefined;
+  const diagnostics = vi.spyOn(console, 'error').mockImplementation(() => {});
   // Fault injection only in this disposable fixture: bypass normal immutable
   // storage guards to verify recovery independently refuses corrupted evidence.
   if (!['lock', 'revoked'].includes(mode)) {
@@ -77,6 +131,8 @@ it.each(['lock', 'execution-ref', 'unknown', 'held-predecessor', 'missing-exit',
     expect(f.db.prepare('SELECT count(*) n FROM graph_recovery_decisions').get()).toEqual({ n: 0 });
     expect(f.db.prepare('SELECT 1 FROM graph_action_admissions WHERE effect_key=?').get(f.key)).toBeUndefined();
     if (lock) expect((await inspectRepoWriteLock(join(f.scope.commonDir, 'osstack', 'writer-locks'), f.scope.repoId))?.token).toBe(lock.owner.token);
+    if (mode === 'lock') expect(diagnostics).toHaveBeenCalledWith(JSON.stringify({ event: 'graph_recovery_blocked',
+      graphRunId: f.id, stage: 'unstarted_preparation', code: 'PREPARATION_RECOVERY_LOCK_PRESENT' }));
   } finally { await lock?.release(); }
 }, 40000);
 it('retries a lost release acknowledgement after restart while refusing a replacement lock', async () => {

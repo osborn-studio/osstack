@@ -157,17 +157,27 @@ it('releases preparation lease if authority is revoked while acquiring it', asyn
   f.options.acquire = async () => { revoked = true; return { release, retain: () => {}, assertActive: async () => {} }; };
   await expect(prepareGraphVerification(f.options)).rejects.toThrow('revoked'); expect(release).toHaveBeenCalledOnce();
 }, 15000);
-it('uses exact allowlisted exits, refusing model pass claims and unregistered commands', async () => {
+it.each([7, 1, 2])('uses exact allowlisted exit %s instead of model pass claims', async exitCode => {
+  const f = await fixture();
+  f.options.acceptanceRegistry = [{ ref: 'acceptance', command: 'exit 7', passExitCodes: [7], failExitCodes: [1] }];
+  const p = await prepareGraphVerification(f.options);
+  const saved = await p.actions[1]!.persist({ status: 'failed', stopped: true, command: { command: 'exit 7', exitCode,
+    stdout: 'MODEL CLAIMS PASS', stderr: '', durationMs: 1, termination: { scope: 'posix_process_group', trigger: 'exit',
+      leader_exit_code: exitCode, stop_confirmed: true, signals: [], evidence: 'group stopped' } } });
+  if (exitCode === 2) { expect(saved.verificationFailure?.code).toBe('INTERNAL_ERROR'); expect(saved.result).toBeUndefined(); }
+  else expect(saved.result).toMatchObject({ passed: exitCode === 7 });
+}, 15000);
+it('refuses surviving descendants, unregistered commands and cross-attempt replay', async () => {
   const f = await fixture();
   f.options.acceptanceRegistry = [{ ref: 'acceptance', command: 'exit 7', passExitCodes: [7], failExitCodes: [1] }];
   const p = await prepareGraphVerification(f.options); const tests = p.actions[1]!;
-  const evidence = (exitCode: number) => ({ status: 'failed' as const, stopped: true as const, command: { command: 'exit 7', exitCode, stdout: 'MODEL CLAIMS PASS', stderr: '', durationMs: 1, termination: { scope: 'posix_process_group' as const, trigger: 'exit' as const, leader_exit_code: exitCode, stop_confirmed: true, signals: [], evidence: 'group stopped' } } });
-  expect((await tests.persist(evidence(7))).result).toMatchObject({ passed: true });
-  await expect(tests.persist({ ...evidence(7), command: { ...evidence(7).command, failure_code: 'surviving_descendants' } })).rejects.toThrow(/stop unconfirmed/);
-  expect((await tests.persist(evidence(1))).result).toMatchObject({ passed: false });
-  const invalid = await tests.persist(evidence(2)); expect(invalid.verificationFailure?.code).toBe('INTERNAL_ERROR'); expect(invalid.result).toBeUndefined();
-  await expect(tests.persist({ ...evidence(7), command: { ...evidence(7).command, command: 'unregistered' } })).rejects.toThrow();
-  const saved = await tests.persist(evidence(7)); const effect = f.options.effectIdentity('tests'); effect.effect.logicalAttempt = 2; effect.effectKey = computeGraphEffectKey(effect.effect);
+  const evidence = { status: 'failed' as const, stopped: true as const, command: { command: 'exit 7', exitCode: 7,
+    stdout: '', stderr: '', durationMs: 1, termination: { scope: 'posix_process_group' as const, trigger: 'exit' as const,
+      leader_exit_code: 7, stop_confirmed: true, signals: [], evidence: 'group stopped' } } };
+  await expect(tests.persist({ ...evidence, command: { ...evidence.command, failure_code: 'surviving_descendants' } })).rejects.toThrow(/stop unconfirmed/);
+  await expect(tests.persist({ ...evidence, command: { ...evidence.command, command: 'unregistered' } })).rejects.toThrow();
+  const saved = await tests.persist(evidence); const effect = f.options.effectIdentity('tests');
+  effect.effect.logicalAttempt = 2; effect.effectKey = computeGraphEffectKey(effect.effect);
   await expect(loadGraphVerificationEvidence(f.options.root, saved.evidenceRef, f.binding, effect)).rejects.toThrow(/replay/);
 }, 15000);
 it('does not accept review done as executor stop proof through the actual broker', async () => {
@@ -180,18 +190,16 @@ it('does not accept review done as executor stop proof through the actual broker
   expect(result).toMatchObject({ outcome: { state: 'unknown' } });
   expect(f.db.prepare('SELECT state FROM graph_actions WHERE node_id = ?').get('review')).toEqual({ state: 'unknown' });
 }, 15000);
-it('classifies stopped malformed output and reviewer filesystem mutation without a code-failure result', async () => {
-  const f = await fixture(); let mutate = false;
+it.each([false, true])('classifies stopped malformed output with reviewer mutation=%s without a code-failure result', async mutate => {
+  const f = await fixture();
   f.options.reviewer.adapter.invoke = async function* (task) {
     if (mutate) await writeFile(join(String(task.context?.repo_path), 'ignored-or-untracked'), 'mutation');
     yield { event_id: 'done', run_id: task.run_id, session_id: task.session_id, seq: 1, created_at: Date.now() / 1000, terminal: true, type: 'done', payload: { status: 'completed', last_seq: 0, result_summary: 'not JSON' } };
   };
   const b = await brokerFixture(f); const result = await b.invoke('review');
-  expect(result).toMatchObject({ outcome: { state: 'failed', error: { code: 'OUTPUT_CONTRACT_INVALID', retryable: true } } });
-  mutate = true;
-  const g = await fixture(); g.options.reviewer.adapter.invoke = f.options.reviewer.adapter.invoke;
-  const c = await brokerFixture(g);
-  expect(await c.invoke('review')).toMatchObject({ outcome: { state: 'failed', error: { code: 'INTERNAL_ERROR', retryable: false } } });
+  expect(result).toMatchObject({ outcome: { state: 'failed', error: mutate
+    ? { code: 'INTERNAL_ERROR', retryable: false }
+    : { code: 'OUTPUT_CONTRACT_INVALID', retryable: true } } });
 }, 15000);
 it('rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation', async () => {
   const f = await fixture(); const invoked = vi.fn(); f.options.reviewer.adapter.invoke = async function* () { invoked(); yield* []; };

@@ -60,6 +60,18 @@ OSSTACK_HOME=/absolute/private/new-pilot TMPDIR=/tmp \
 
 如果 daemon 在观察 worker 退出前被杀，或者 HTTP 请求结果不明、workspace 被修改、授权失效、锁身份改变，则继续保留。重新取得同 scope 的权限只能授权检查，不能创造停止证据。不要使用 kill/PID 缺失、过期时间、模型回答或手动 SQL 把它改成 `not_applied`。
 
+### 旧 v4 准备动作的受限维护入口
+
+仅用于旧 host 在首个 epoch 的 tests preparation 尚未调用时取消、留下缺失 admission 的精确五动作模式。当前 daemon 无法使用新恢复器且升级保护仍阻止停机时，可以先将独立审批并合并的版本安装到新的 release prefix；保持 serving shim 和旧 daemon 不变。
+
+新包包含 `dist/graph-maintenance.js`，导出 `reconcileUnstartedPreparation({home, graphRunId, expectedRevision, apply?, backupDirectory?})`。这是显式运维入口，不自动运行。须先由正式安装流程为该安装目录声明 serving role；入口自行验证真实模块目录的现有角色，不创建角色、不绕过 reserved-home 保护。
+
+1. 关闭新准入，确认没有另一个客户端同时核对此 run，保留原 workspace、artifact、日志和凭据。
+2. 从新安装目录调用入口，不带 `apply`。必须通过正常角色、owner-only 配置、scope/product/registration、精确 revision 和 schema 版本检查。拒绝意味着停止；不能改用开发 checkout 访问生产 DB。
+3. 使用同一参数加 `apply:true` 和工作盘上的私有 `backupDirectory`。入口先用 SQLite online backup 创建 0700 子目录中的 0600 DB，检查完整性与 schema；不运行迁移。随后只调用精确 v4 恢复器，反复验证取消授权、准入关闭、worker exit、工作区和锁缺失证明；不启动 worker、不调用模型、不删除锁。
+4. 正常取消权限按现有合同可以晚于 execute 过期；它仍须来自当前配置并在 G15 提交内复查。配置变化、schema/revision 冲突、锁出现或证据不足均停止，禁止自动重试。stderr 的 `graph_recovery_blocked` 只记录固定错误码，不泄露原始路径或模型输出。
+5. 只有结果为 `cancelled`、动作记录不变且 `upgradeHolds:0` 才继续正常升级保护流程。该保护直接读取 durable DB。保留新备份；不要用它回滚已发生的外部动作。随后执行完整停机备份、关闭准入部署及单仓库 canary。
+
 ## 回收与回滚
 
 当前没有面向未知执行器的强制解锁/自动 GC。保留旧目录、锁、预留成本和证据，记录 run/action/executor identity，交由可独立确认结果的执行器对账。必要时暂停该试点；不能复制旧任务换 key 重发。开始无关新任务也必须重新授权，并避开隔离中的目录和外部副作用。

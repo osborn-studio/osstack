@@ -59,16 +59,18 @@ it('fresh hosts retain queued run replay and cancellation even when the adapter 
 });
 
 it('admission disabled still permits an authorized live quality resume of the existing run', async () => {
+  // Two real Git preparation pipelines: use the fixture's standard 20s
+  // observation bound. This does not change worker/lease/deadline limits.
   const f = await fixture('repair'); let enabled = true;
   const service = new GraphRpcService({ ...f.options, registrations: [{ ...f.registration, admitNewRuns: () => enabled }] });
   try {
     const run = GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.start', f.request)); enabled = false;
-    await expect.poll(async () => (await f.status(run.graphRunId, service)).status, { timeout: 15000 }).toBe('waiting_input');
+    await expect.poll(async () => (await f.status(run.graphRunId, service)).status, { timeout: 20000 }).toBe('waiting_input');
     const waiting = await f.status(run.graphRunId, service);
     await service.handle(f.connection, 'graph.resume', { schemaVersion: 1, kind: 'resume', scope: f.request.scope, graphRunId: run.graphRunId,
       expectedRevision: waiting.revision, idempotencyKey: 'resume', interruptId: waiting.interrupt!.interruptId,
       input: { kind: 'data', value: { inputDigest: waiting.inputDigest } } });
-    await expect.poll(async () => (await f.status(run.graphRunId, service)).status, { timeout: 15000 }).toBe('ready');
+    await expect.poll(async () => (await f.status(run.graphRunId, service)).status, { timeout: 20000 }).toBe('ready');
     expect(f.writes()).toBe(2); expect(f.db.prepare('SELECT count(*) n FROM graph_runs').get()).toEqual({ n: 1 });
   } finally { await service.close(); await f.close(); }
 }, 45000);
