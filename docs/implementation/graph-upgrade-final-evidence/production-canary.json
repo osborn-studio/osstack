@@ -1,0 +1,69 @@
+{
+  "observedAt": "2026-09-21T10:58:44.342Z",
+  "sourceCommit": "e28927daa1010313c28085a8237dbb0ef8f7d781",
+  "sourceTree": "8943f52e8f12d604401a53ffcbcf6a114a2c0bcf",
+  "graphRunId": "98bdc953-01a3-48e0-8320-c91e243eb420",
+  "status": "ready",
+  "confirmedActions": 7,
+  "review": "accept",
+  "testsPassed": true,
+  "join": "complete",
+  "candidateRevision": "7ee7e5ecaa1c5d2cdae4ab8501eee297f66f30b5",
+  "artifactDigest": "df19d6821800eda8705b37d4777bc6c60831db70642c90486682a7ff05fdaf41",
+  "tokens": 2965,
+  "remainingReservedTokens": "0",
+  "sourcePreserved": true,
+  "idempotentReplay": true,
+  "historicalActionsPreserved": true,
+  "heldAdmissions": 0,
+  "schema": 37,
+  "integrity": "ok",
+  "foreignKeyViolations": 0,
+  "admissionEnabled": true,
+  "autonomyReady": true,
+  "schemaVersion": 1,
+  "scope": "authorized single OSStack independent clone; artifact_only; internal beta",
+  "approval": {
+    "pullRequest": 228,
+    "reviewer": "gilberthello",
+    "approvedHead": "38be28f7a1990d5995ecfc6518adebb73632de47",
+    "mergeCommit": "e28927daa1010313c28085a8237dbb0ef8f7d781"
+  },
+  "ci": {
+    "pullRequestRun": 35586967593,
+    "mainRun": 35589920681,
+    "result": "success",
+    "prTestsPassed": 4027,
+    "explicitOptInSkips": 3
+  },
+  "stoppedVerificationRecovery": {
+    "graphRunId": "bef01154-cecd-4cc6-ac44-c2fdffdc531a",
+    "status": "cancelled",
+    "actionsUnchanged": true,
+    "upgradeHolds": 0,
+    "oldTestsPassed": false,
+    "oldChargedTokens": 3100
+  },
+  "backup": {
+    "tables": 69,
+    "schema": 37,
+    "integrity": "ok",
+    "foreignKeyViolations": 0,
+    "normalShutdown": true
+  },
+  "disabledDeployment": {
+    "passed": true,
+    "historicalRuns": 5,
+    "legacyRpcPassed": true,
+    "admissionCode": "GRAPH_ADMISSION_DISABLED"
+  },
+  "npmPublished": false,
+  "publicReleaseBlock": {
+    "run": 35589920758,
+    "platform": "macOS14 / Node24",
+    "test": "graph-delivery-adversarial.test.ts:109",
+    "result": "failed",
+    "localFocusedRecheck": "failed: existing 30-second timeout under host load",
+    "priorVersionPrPermissionBlockUnresolved": true
+  }
+}

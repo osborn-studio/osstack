@@ -1,6 +1,6 @@
 # OSStack Graph 升级：集成验收与分阶段发布
 
-2026-09-21 更新：**29/30。PR #227 已审批、合并并部署；Git 权限查询输出丢失已修复。正式 canary 暴露验收夹具与锁续租问题，Graph 新准入关闭，G29 仍待受控恢复和复验。** 见[实际部署记录](graph-upgrade-deployment.md)和[续租与收尾修复](graph-admission-lease-closeout.md)。下文较早验证记录不替代本次生产验收。
+2026-09-21 更新：**30/30，G00–G29 已完成内部 beta 验收。PR #228 已独立审批、合并并部署为 `e28927d`；正式单仓库 canary `98bdc953-01a3-48e0-8320-c91e243eb420` 达到 ready，7 个动作 confirmed、独立 review accept、实际测试通过、join complete，2965 tokens、零预留、零遗留准入。** 见[实际部署记录](graph-upgrade-deployment.md)和[生产验收证据](../implementation/graph-upgrade-final-evidence/production-canary.json)。内部 beta 完成不代表公共 npm 发行已完成，也不代表技术债清零。下文较早失败保留为历史证据。
 
 ## 已实现的能力
 
@@ -30,9 +30,11 @@ Loop 同时保留 main 的显式环境参数、`inheritEnv` 语义与 Graph 的�
 
 整合证据见[集成验收目录](../implementation/graph-integration-evidence/README.md)，既有故障/性能/真实试点见[最终验收目录](../implementation/graph-upgrade-final-evidence/README.md)。本机单独复验为 95 通过、8 失败，仍不计为通过；同源码 GitHub 全仓结果独立列出。不同平台、重叠增量和历史测试数不相加冒充不同测试总数。
 
-## 剩余发布工作
+## 发布结果与公共发行边界
 
-G29 剩余：修正 canary 允许目录断言、修复慢权限检查期间的续租窗口，经独立审批使用精确停止证明收尾旧 tests 锁，再完成正式试点。当前 run 为 cancel_pending，不能标 beta 验收成功。PR227 的 main/PR CI 已通过，公共 npm Release 因版本 PR 权限失败；内部源码安装不等于 npm 发布。
+G29 已完成：旧运行只取消、原失败与费用保留；正式服务先关闭准入部署，再对授权副本通过真实实现、冻结、并行验证和汇合。PR #228 最终 CI 4027 项通过，main CI 35589920681 通过。
+
+公共 npm 发行仍未完成。[Release 35589920758](https://github.com/osborn-studio/osstack/actions/runs/35589920758) 在 macOS14/Node24 的 `graph-delivery-adversarial.test.ts:109` 失败：并发场景未得到测试分支 confirmed；前面的 reconciliation/零 holds/无 join 断言通过。本机定向复跑触及原有 30 秒期限，也不记为通过。还需诊断并发夹具与平台负载；不能仅重跑取绿或放宽断言。此前版本 PR 创建权限问题也未处理。内部安装没有冒充 npm 发布。
 
 ## 尚存技术债
 
@@ -41,7 +43,7 @@ G29 剩余：修正 canary 允许目录断言、修复慢权限检查期间的�
 3. **大产物内存，中优先级**：批量 Git 避免逐文件创建进程，但 buffer/bundle 峰值仍随大小增长。当前限制为 256 MiB、100000 文件；扩容前需流式实现和 RSS 基准。
 4. **验收运行成本，中优先级**：全仓测试与历史证据较重，本机竞争负载可触发短测试期限。后续可拆分 CI 作业并改善诊断；不能忽略失败或盲目扩大单测超时。
 
-5. **生产试点锁收尾，高优先级**：Git 权限查询输出保全和 macOS fixture 已修复并部署；新发现慢权限检查推迟续租启动，导致已停止 tests 锁保留。验收夹具也需修正允许目录。安全恢复及最终生产复验尚未完成。公共发行另受 GitHub Actions 创建 PR 权限限制。
+5. **公共发行自动化，中优先级（阻塞公共发布）**：上述 macOS 完整测试断言与版本 PR 权限问题尚未关闭。正式内部 canary 和保留锁收尾已经通过，此项独立跟踪，不回写历史失败为成功。
 
 迁移编号冲突已关闭。以上是本次确认的债务，不代表全仓没有其他问题。
 

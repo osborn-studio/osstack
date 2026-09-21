@@ -1,6 +1,19 @@
 # OSStack Graph 部署记录 — 2026-09-21
 
-**当前仍为 29/30：PR #227 已独立审批合并并部署；新准入关闭，G29 尚未完成。**
+**30/30，G00–G29 已完成内部 beta 验收。PR #228 已独立审批、合并并部署为 `e28927d`；正式单仓库 canary `98bdc953-01a3-48e0-8320-c91e243eb420` 达到 ready，7 个动作 confirmed、独立 review accept、实际测试通过、join complete，2965 tokens、零预留、零遗留准入。**
+
+## PR #228 正式部署与生产验收
+
+- 独立审批：`gilberthello` 于 2026-09-21T10:39:30Z 审批最终 head `38be28f7a1990d5995ecfc6518adebb73632de47`，10:39:37Z 合并为 `e28927daa1010313c28085a8237dbb0ef8f7d781`；merge tree 与审批版本一致。19 个安装包的 1096 个文件逐字节匹配，原第三方依赖保留。
+- [最终 PR CI](https://github.com/osborn-studio/osstack/actions/runs/35586967593) 全仓 4027 项通过、3 项 opt-in 跳过；[main CI](https://github.com/osborn-studio/osstack/actions/runs/35589920681) 通过。实际 runtime 与已通过隔离 DeepSeek pilot 的 603ba36 相同。
+- 新 release prefix `/Users/osborn/.local/share/osstack/releases/e28927d` 使用正常安装角色声明。只读核对旧 tests 停止证据、精确原 owner、revision 和无其他任务后，正常停止旧 LaunchAgent；完整备份 `/Volumes/AIMATE_WORK/Backups/osstack/20260921-e28927d` 的 69 表、schema37、完整性/外键及 DB 哈希均通过。
+- 正式安装的维护入口将旧 `bef01154-cecd-4cc6-ac44-c2fdffdc531a` 投影为 cancelled，actionsUnchanged=true、upgradeHolds=0。原 tests=false、3100 tokens 和所有原动作保留；未重发模型、手工改 SQL 或删除不明锁。另有 G15 一致性备份 `graph-maintenance-ffVu6z/state.db`。
+- 然后更新新 canary 的允许目录正例，保留原注册副本。关闭准入部署通过：旧 session/Loop/stats RPC、五个历史 run、所有原动作、schema37 与 autonomy readiness 均验证；新准入返回 GRAPH_ADMISSION_DISABLED，零新增 run。
+- 仅对授权的 OSStack 独立副本启用，正式 run `98bdc953-01a3-48e0-8320-c91e243eb420` 达到 ready：7 confirmed、review accept、实际 tests pass、join complete，2965 tokens、零剩余预留、零保留准入、无未终结生产图。候选 `7ee7e5ecaa1c5d2cdae4ab8501eee297f66f30b5`，artifact `df19d6821800eda8705b37d4777bc6c60831db70642c90486682a7ff05fdaf41`。重复同 key 返回原 run，原仓库字节及 Git 状态不变。
+- 正式 shim 与 Interactive/caffeinate LaunchAgent 已指向 e28927d；凭据继续从 owner-only 文件加载。当前仅一个受限注册，仍为 artifact_only，600 秒/196608 tokens；没有自动合并候选或扩展其他仓库。
+- 公共 npm 未发布。[公共 Release](https://github.com/osborn-studio/osstack/actions/runs/35589920758) 的 macOS14/Node24 完整套件存在一项并发测试断言失败，本机定向复跑超时；这与已通过的 PR/main CI、正式 canary 分开记录，详情见[技术债](graph-upgrade-completion.md#尚存技术债)。
+
+私有原始证据：`/Volumes/AIMATE_WORK/tmp/g228-deploy`。可提交的脱敏摘要为 [production-canary.json](../implementation/graph-upgrade-final-evidence/production-canary.json)。以下均为历史时点，当前状态以上述记录为准。
 
 ## PR #227 部署及新的收尾问题
 

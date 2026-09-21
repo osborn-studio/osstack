@@ -72,7 +72,7 @@ OSSTACK_HOME=/absolute/private/new-pilot TMPDIR=/tmp \
 4. 正常取消权限按现有合同可以晚于 execute 过期；它仍须来自当前配置并在 G15 提交内复查。配置变化、schema/revision 冲突、锁出现或证据不足均停止，禁止自动重试。stderr 的 `graph_recovery_blocked` 只记录固定错误码，不泄露原始路径或模型输出。
 5. 只有结果为 `cancelled`、动作记录不变且 `upgradeHolds:0` 才继续正常升级保护流程。该保护直接读取 durable DB。保留新备份；不要用它回滚已发生的外部动作。随后执行完整停机备份、关闭准入部署及单仓库 canary。
 
-### 已停止验证动作的保留锁维护（待本次修复审批）
+### 已停止验证动作的保留锁维护（PR #228 已审批部署）
 
 `reconcileStoppedVerification` 仅支持 v4、epoch 0、generation 1 的精确七动作 confirmed 模式；唯一待释放项必须是带原始 POSIX 进程组停止证据的 tests。任何 unknown、额外动作/准入、证据变化、候选修改或替换 token 都拒绝。它不将测试失败改为成功，也不生成 join 或 ready。
 
