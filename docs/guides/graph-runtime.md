@@ -16,6 +16,9 @@ OSStack 在现有 agent、Loop 和权限之上执行固定 `code-delivery-v1` �
 
 ## 使用
 
+首次运行请先阅读[完整上手与参数手册](graph-quickstart.md)，包括可复制的隔离练习、host 配置、预算和状态处理。
+
+
 先按[操作手册](../runbooks/graph-runtime.md)配置独立 `OSSTACK_HOME` 和 owner-only `graph-host.json`。没有注册就不能运行。`admissionEnabled:false` 只关闭新准入；已有任务的查询、取消和对账保留。
 
 ```sh

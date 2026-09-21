@@ -18,32 +18,26 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 
 **English: [README.md](README.md)**
 
+## 从这里开始
+
+- [Graph Engineering 怎么用](#graph-engineering)：执行流程、支持范围和命令。
+- [完整 Graph 上手与参数手册](docs/guides/graph-quickstart.md)：准备配置、验证、运行、结果、取消和恢复。
+- [当前能力范围](#当前能力范围) · [安装](#安装) · [主要命令](#主要命令)。
+- [按任务选命令及常用参数](docs/guides/command-reference.md) · [完整顶层命令清单](docs/inventory/CLI_COMMANDS.md)。
+
 ## 当前状态
 
 | 领域 | 状态 |
 |---|---|
 | npm 包 | 已发布：`@osstack/cli@0.19.0` |
-| GitHub Release | npm 包：`@osstack/cli@0.19.0`；最新单文件二进制：[`v0.8.1`](https://github.com/gilosbornhello/osstack/releases/tag/v0.8.1) |
+| GitHub Release | npm 包：`@osstack/cli@0.19.0`；最新单文件二进制：[`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
 | macOS 单文件二进制 | 已发布 `darwin-arm64` 的显式 `public-ad-hoc` archive |
 | Knowledge Cloud | 已部署到 EdgeOne：`https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | Probe | CLI 生命周期已随 `@osstack/cli@0.19.0` 发布；report-only 是 gate 行为，不是后台任务。两周真实使用 checkpoint 仍未完成。 |
 | License | MIT |
-| Monorepo | 21 个 workspace package |
+| Monorepo | 22 个 workspace package |
 
-当前主发布验收状态：
-
-```json
-{
-  "ready": true,
-  "completion": {
-    "code_verified": true,
-    "npm_publish": true,
-    "knowledge_cloud_deploy": true,
-    "single_binary_release": true
-  },
-  "external_blockers": []
-}
-```
+**版本边界（2026-09-21 核验）：** npm 的 `@osstack/cli` 最新版仍为 `0.19.0`，`@osstack/graph` 尚未公开发布。下文 Graph 执行能力属于 main 源码及内部 Node 安装，不能把旧版发布验收当作本次 Graph 公共发行完成。使用前先检查 `osstack graph --help`；源码安装方法见下文。
 
 ## 当前能力范围
 
@@ -52,6 +46,8 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 | 能力 | 当前实现 | 主要命令 / package |
 |---|---|---|
 | 产品入口 | 一条命令把目标变成带验证、report、scorecard、proof pack 和可选 worktree 隔离的交付流程。 | `osstack deliver`, `@osstack/cli` |
+| Graph Engineering（内部 beta） | 固定工程图：隔离实现、冻结候选、并行 review/tests、按候选汇合、有界修复、检查点与动作账本。只交付 artifact。 | `osstack graph ...`、`@osstack/graph` |
+| 知识卫生 | 确定性文档/指令检查，以及显式启用的语义审计与审阅后修复。 | `osstack neat ...` |
 | Loop Engineering | 任务发现、执行、验证、迭代、预算、停止原因、报告、分数卡、lesson draft、daemon 托管 loop session。 | `osstack loop ...`, `@osstack/loop` |
 | 多 repo 监督 | repo registry、成熟度扫描、portfolio report、feedback assets、改进 proposal、evaluator epoch、结构化 recommendation。 | `osstack supervise`, `feedback`, `improve`, `evaluator`, `daily`; `@osstack/supervisor` |
 | 每日运营简报 | 读取 repo registry，总结 CI/PR/maturity 变化，生成 owner decisions，并可由 daemon 每 24h 定时运行。 | `osstack daily`, `osstack daily schedule` |
@@ -134,7 +130,7 @@ osstack 0.19.0
 单文件二进制通道独立发布，可能落后于 npm 版本；当前最新二进制 release 为
 `v0.8.1`。从 GitHub Releases 下载：
 
-- [`osstack-0.8.1-darwin-arm64.tar.gz`](https://github.com/gilosbornhello/osstack/releases/tag/v0.8.1)
+- [`osstack-0.8.1-darwin-arm64.tar.gz`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1)
 - `osstack-0.8.1-darwin-arm64.archive.json`
 - `osstack-0.8.1-darwin-arm64.sbom.spdx.json`
 - `sha256sums.txt`
@@ -154,12 +150,15 @@ SBOM 和 archive manifest，可作为便携 release candidate 使用。Apple Dev
 ### 从源码安装
 
 ```bash
-git clone https://github.com/gilosbornhello/osstack.git
+git clone https://github.com/osborn-studio/osstack.git
 cd osstack
 corepack enable pnpm
 pnpm install
 pnpm build
 pnpm test
+# 为当前源码 checkout 创建私有 home，不使用生产 home。
+export OSSTACK_HOME="$(mktemp -d /tmp/osstack-dev-XXXXXX)"
+chmod 700 "$OSSTACK_HOME"
 node packages/cli/dist/bin.js --version
 ```
 
@@ -216,6 +215,36 @@ osstack deliver "Make a small verified change" \
 | Probe（探询） | 持久化的四象限探询会话，把未知项转成可审阅的决策、目标文档和 readiness 证据。 |
 | Proof pack（证据包） | 带 SHA-256 checksum 的证据集合，包含 report、state、events、verify、governance、diff、manifest 等。 |
 | Knowledge pack（知识包） | osstack 原生知识资产，包含 version、license、source provenance、quality metadata、chunks 和 retrieval eval。 |
+
+## Graph Engineering
+
+Graph 将一个工程任务组织成明确的节点、输入输出和停止规则；Loop 负责发现任务和循环推进，agent 负责具体实现或评审。`graph explain` 只诊断已有关系，`graph run` 才会执行。
+
+```text
+注册任务 + 精确 baseRevision + 验收命令 + 权限/预算
+  → 隔离 writer 工作区 → implement / repair → 确认停止 → 冻结 candidate
+  → 独立 review 工作区 ──评审──┐
+  → 独立 tests 工作区  ──验收──┴→ join（必须是同一 candidate）
+  → ready + artifact / 有界修复 / 失败或保留未知状态
+```
+
+**目前能做：** 固定 `code-delivery-v1` 图，并行评审与测试、条件修复、持久检查点、取消与可信对账。当前 bounded writer/reviewer 支持 Anthropic、DeepSeek；writer 每次替换一个登记的 UTF-8 文件，最大 4 KiB。
+
+**当前边界：** 不是任意 DAG 编辑器；不自动把所有 Loop adapter 变成 Graph 执行器；`artifact_only` 不会自动推送、开 PR、合并或部署。`ready` 意味着候选通过指定的评审/验收，不意味着已上线。Bun 单文件不支持 Graph 执行。
+
+先按[完整上手手册](docs/guides/graph-quickstart.md)生成配置与请求，并启动具有授权的独立 daemon，再使用：
+
+```sh
+osstack graph validate --spec /absolute/spec.json --json
+osstack graph run --request /absolute/start.json --json
+osstack graph status --run RUN_ID --scope /absolute/scope.json --json
+osstack graph result --run RUN_ID --scope /absolute/scope.json --json
+osstack graph cancel --request /absolute/cancel.json --json
+osstack graph reconcile --request /absolute/cancel.json --json
+osstack graph resume --request /absolute/resume.json --json
+```
+
+这些 JSON 文件不是任意 prompt；需要严格 v1 schema、显式 scope、幂等键以及当前 host 授权。`run` 返回不代表完成；继续查询 `status`，再读 `result`。退出码 `2` 表示提交结果未知，只能重试同一个请求。完整字段、预算、状态与错误处理见[参数手册](docs/guides/graph-quickstart.md)。
 
 ## 主要命令
 
@@ -365,6 +394,15 @@ enforcement: report
 [Probe v2 设计与 checkpoint 记录](docs/2026-07-17-probe-four-quadrant-elicitation-design.md#13-checkpoints发布与回滚)。
 
 ### 知识卫生（neat）
+
+**任务完成后可以用它做文档收尾检查。** `osstack neat` 等价于只读的 `neat check`：检查指令、文档引用、知识合同和上下文预算。它不会自动总结全部代码改动、重写 README、格式化源代码、提交 Git 或发布 GitHub。代码是否正确仍需测试与 review。
+
+- 未提交改动：`osstack neat check --repo . --json --fail-on none`。
+- 当前分支相对主线：`osstack neat check --base origin/main --head HEAD --json --fail-on warning`。
+- 全仓文档健康：`osstack neat check --all --json --fail-on none`；不检查 Git 变更合同。
+- Loop 成功后附带检查：`osstack loop run ... --neat-finalize`，结果作为非阻断证据，不自动应用修复。
+
+[任务结束后的完整收尾流程](docs/guides/task-closeout.md)包含 Git diff、neat、README 更新、验证和提交的顺序；[neat 完整指南](docs/guides/neat.md)解释 semantic、review、fix、history 与事务权限。
 
 ```bash
 # 检查当前工作树；完整展示 finding，但不因 finding 改变退出码。

@@ -20,42 +20,38 @@ surface that makes AI coding work visible and auditable.
 
 **中文说明：[README.zh.md](README.zh.md)**
 
+## Start Here
+
+- [Graph Engineering](#graph-engineering): execution flow, supported scope and commands.
+- [Graph walkthrough and parameters (中文)](docs/guides/graph-quickstart.md): configuration, validation, execution, results and recovery.
+- [Capability map](#current-capability-map) · [Install](#install) · [Main commands](#main-commands).
+- [Task-oriented command reference (中文)](docs/guides/command-reference.md) · [Top-level command inventory](docs/inventory/CLI_COMMANDS.md).
+
 ## Current Status
 
 | Area | Status |
 |---|---|
 | npm package | Published: `@osstack/cli@0.19.0` |
-| GitHub release | npm packages: `@osstack/cli@0.19.0`; latest single binary: [`v0.8.1`](https://github.com/gilosbornhello/osstack/releases/tag/v0.8.1) |
+| GitHub release | npm packages: `@osstack/cli@0.19.0`; latest single binary: [`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
 | macOS single binary | Published as explicit `public-ad-hoc` archive for `darwin-arm64` |
 | Knowledge Cloud | Live on EdgeOne: `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | Probe | CLI lifecycle shipped in `@osstack/cli@0.19.0`; report-only is gate behavior, not a background job. The two-week real-use checkpoint remains open. |
 | License | MIT |
-| Monorepo | 21 workspace packages |
+| Monorepo | 22 workspace packages |
 
-The main release gate currently reports:
-
-```json
-{
-  "ready": true,
-  "completion": {
-    "code_verified": true,
-    "npm_publish": true,
-    "knowledge_cloud_deploy": true,
-    "single_binary_release": true
-  },
-  "external_blockers": []
-}
-```
+**Release boundary (verified 2026-09-21):** npm latest is still `@osstack/cli@0.19.0`; `@osstack/graph` is not yet publicly published. Executable Graph below refers to main/source and internal Node installations, not a completed public Graph release. Check `osstack graph --help` before use. See the source installation below.
 
 ## Current Capability Map
 
 The current `main` branch is no longer just a loop runner. It is a local-first
-control plane with these shipped surfaces:
+control plane with these implemented surfaces (distribution limits noted below):
 
 | Capability | Current implementation | Main commands / package |
 |---|---|---|
 | Product entry | One command can turn an intent into a verified local delivery run with reports, scorecards, proof packs, and optional worktree isolation. | `osstack deliver`, `@osstack/cli` |
 | Guarded Git autonomy | Classifies R0-R4 before and after the diff, requires external signed approval for R3, permanently blocks R4, and automatically delivers eligible R1/R2 changes through PR, CI, merge, and two-stage proof. | `osstack deliver --autonomy guarded-git`, `osstack autonomy ...`, `@osstack/autonomy` |
+| Graph Engineering (internal beta) | Fixed engineering graph: isolated implementation, candidate freeze, parallel review/tests, candidate-bound join, bounded repair, checkpoints and action ledger. Artifact-only delivery. | `osstack graph ...`, `@osstack/graph` |
+| Knowledge hygiene | Deterministic document/instruction checks, opt-in semantic audits and reviewed remediation. | `osstack neat ...` |
 | Loop Engineering | Task discovery, execution, verification, iteration, budgets, stop reasons, reports, scorecards, lesson drafts, and daemon-managed loop sessions. | `osstack loop ...`, `@osstack/loop` |
 | Portfolio supervision | Repo registry, maturity scan, portfolio report, feedback assets, improvement proposals, evaluator epochs, and machine-actionable recommendations. | `osstack supervise`, `feedback`, `improve`, `evaluator`, `daily`; `@osstack/supervisor` |
 | Daily operating brief | Reads the repo registry, summarizes CI/PR/maturity deltas, emits owner decisions, and can run on a 24h daemon schedule. | `osstack daily`, `osstack daily schedule` |
@@ -158,7 +154,7 @@ osstack 0.19.0
 The single-binary channel is cut separately and may lag the npm version; the
 latest binary release is `v0.8.1`. Download from GitHub Releases:
 
-- [`osstack-0.8.1-darwin-arm64.tar.gz`](https://github.com/gilosbornhello/osstack/releases/tag/v0.8.1)
+- [`osstack-0.8.1-darwin-arm64.tar.gz`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1)
 - `osstack-0.8.1-darwin-arm64.archive.json`
 - `osstack-0.8.1-darwin-arm64.sbom.spdx.json`
 - `sha256sums.txt`
@@ -179,12 +175,15 @@ workflow via `notarize=true`, but is not required for the default npm path.
 ### From Source
 
 ```bash
-git clone https://github.com/gilosbornhello/osstack.git
+git clone https://github.com/osborn-studio/osstack.git
 cd osstack
 corepack enable pnpm
 pnpm install
 pnpm build
 pnpm test
+# Use a fresh, private home for this checkout, never the production home.
+export OSSTACK_HOME="$(mktemp -d /tmp/osstack-dev-XXXXXX)"
+chmod 700 "$OSSTACK_HOME"
 node packages/cli/dist/bin.js --version
 ```
 
@@ -256,6 +255,36 @@ executes the loop, verifies the result, and produces evidence artifacts such as:
 | Probe | A persistent four-quadrant elicitation session that turns unknowns into reviewable decisions, destinations, and readiness evidence. |
 | Proof pack | A checksumed evidence bundle containing reports, state, events, verification results, governance findings, diffs, and manifests. |
 | Knowledge pack | An osstack-native knowledge artifact with version, license, source provenance, quality metadata, chunks, and retrieval evaluation. |
+
+## Graph Engineering
+
+Graph gives one engineering task explicit nodes, typed inputs/outputs, parallel branches and stop rules. Loop discovers and iterates work; agents implement or review it. `graph explain` diagnoses stored relationships; `graph run` submits executable work.
+
+```text
+registered task + exact base revision + acceptance command + authority/budget
+  -> isolated writer -> implement / repair -> confirmed stop -> frozen candidate
+  -> separate review clone -- review --+
+  -> separate tests clone  -- tests ---+-> join on the SAME candidate
+  -> ready + artifact / bounded repair / failure or unresolved outcome
+```
+
+The current internal beta supports the fixed `code-delivery-v1` template, parallel review/tests, conditional repair, durable checkpoints, cancellation and evidence-based reconciliation. Anthropic and DeepSeek bounded writers/reviewers are supported; a writer replaces one registered UTF-8 file per invocation, at most 4 KiB.
+
+This is not yet an arbitrary DAG editor. Existing Loop adapters do not automatically qualify as Graph executors. `artifact_only` does not push, create PRs, merge or deploy; `ready` means candidate acceptance, not production deployment. Bun single binaries cannot execute Graph.
+
+Configure an isolated authorized daemon using the [complete walkthrough (中文)](docs/guides/graph-quickstart.md), then use:
+
+```sh
+osstack graph validate --spec /absolute/spec.json --json
+osstack graph run --request /absolute/start.json --json
+osstack graph status --run RUN_ID --scope /absolute/scope.json --json
+osstack graph result --run RUN_ID --scope /absolute/scope.json --json
+osstack graph cancel --request /absolute/cancel.json --json
+osstack graph reconcile --request /absolute/cancel.json --json
+osstack graph resume --request /absolute/resume.json --json
+```
+
+Request files use strict v1 schemas, explicit scope and idempotency keys. Submission is not completion: inspect `status`, then `result`. Exit code `2` means delivery is unknown; retry the identical request. See the [runtime guide](docs/guides/graph-runtime.md), [walkthrough and parameter reference](docs/guides/graph-quickstart.md), and [operator runbook](docs/runbooks/graph-runtime.md).
 
 ## Main Commands
 
@@ -475,6 +504,15 @@ includes working-tree, staged, untracked, and commits created since the run
 started, including isolated-worktree merges.
 
 ### Knowledge Hygiene
+
+Use neat at task completion to check references, instruction surfaces, knowledge contracts and context budgets. `osstack neat` aliases read-only `neat check`; it does not automatically summarize all code changes, rewrite README, format source, commit or publish to GitHub.
+
+- Worktree: `osstack neat check --repo . --json --fail-on none`.
+- Branch: `osstack neat check --base origin/main --head HEAD --json --fail-on warning`.
+- Whole repository: `osstack neat check --all --json --fail-on none` (no change-contract evaluation).
+- Successful Loop: add `--neat-finalize` for non-gating audit evidence, not automatic remediation.
+
+See the [task closeout workflow (中文)](docs/guides/task-closeout.md) and [complete neat guide](docs/guides/neat.md).
 
 ```bash
 # Current worktree; report findings without changing the exit status.

@@ -6,6 +6,8 @@ obligations, event history, and improvement proposals. Mechanical checks never
 use a model to invent findings or rewrite prose. Semantic calls, state writes,
 and repository edits require their own explicit command and safety gate.
 
+For a practical end-of-task workflow, see [任务收尾：检查、文档更新与提交](task-closeout.md).
+
 ## Quick start
 
 Installed CLI:
@@ -29,7 +31,8 @@ From this source repository:
 
 ```bash
 pnpm --filter @osstack/cli build
-node packages/cli/dist/bin.js neat check --all --fail-on none
+OSSTACK_HOME="$(mktemp -d /tmp/osstack-neat-XXXXXX)" \
+  node packages/cli/dist/bin.js neat check --all --fail-on none
 ```
 
 `osstack neat` is an alias of `osstack neat check`.
