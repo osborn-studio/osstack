@@ -1,6 +1,7 @@
 import { join } from 'node:path';
+import { renameSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { afterEach, expect, it, vi } from 'vitest';
-import { acquireRepoWriteLock, inspectRepoWriteLock } from '@osstack/autonomy';
+import { acquireRepoWriteLock, inspectRepoWriteLock, repoLockPath } from '@osstack/autonomy';
 import { resolveRepositoryScope } from '@osstack/core';
 import { GraphRecoveryStore } from '@osstack/core/graph-recovery';
 import { GraphDelegationStatus } from '@osstack/protocol';
@@ -95,4 +96,38 @@ it('rechecks cancellation authority at the final G15 commit', async () => {
   });
   await expect(f.reconcile()).rejects.toThrow('GRANT_EXPIRED');
   expect(f.db.prepare('SELECT count(*) n FROM graph_recovery_decisions').get()).toEqual({ n: 0 });
-});
+}, 40000);
+
+it('refuses a lock appearing between proof capture and the G15 transaction', async () => {
+  const f = await fixture(); const commit = GraphRecoveryStore.prototype.commit;
+  const path = repoLockPath(join(f.scope.commonDir, 'osstack', 'writer-locks'), f.scope.repoId);
+  let created = false;
+  vi.spyOn(GraphRecoveryStore.prototype, 'commit').mockImplementation(function (this: GraphRecoveryStore, ...args) {
+    if (!created) { writeFileSync(path, '{}', { flag: 'wx' }); created = true; }
+    return commit.apply(this, args);
+  });
+  try {
+    expect(await f.reconcile()).toMatchObject({ status: 'cancel_pending' });
+    expect(f.db.prepare('SELECT count(*) n FROM graph_recovery_decisions').get()).toEqual({ n: 0 });
+  } finally { if (created) unlinkSync(path); }
+}, 40000);
+it('refuses a symlink-substituted lock directory without changing the ledger', async () => {
+  const f = await fixture(); const path = join(f.scope.commonDir, 'osstack', 'writer-locks');
+  const backup = path + '-fixture-original'; renameSync(path, backup); symlinkSync(backup, path);
+  try {
+    expect(await f.reconcile()).toMatchObject({ status: 'cancel_pending' });
+    expect(f.db.prepare('SELECT count(*) n FROM graph_recovery_decisions').get()).toEqual({ n: 0 });
+  } finally { unlinkSync(path); renameSync(backup, path); }
+}, 40000);
+it('replays a lost project acknowledgement without another decision or action', async () => {
+  const f = await fixture(); const commit = GraphRecoveryStore.prototype.commit;
+  vi.spyOn(GraphRecoveryStore.prototype, 'commit').mockImplementation(function (this: GraphRecoveryStore, ...args) {
+    const result = commit.apply(this, args);
+    if (args[1].kind === 'project') throw Error('lost project ACK');
+    return result;
+  });
+  const request = await f.request();
+  expect(await f.reconcile(request)).toMatchObject({ status: 'cancelled' }); vi.restoreAllMocks();
+  await f.restart(); expect(await f.reconcile(request)).toMatchObject({ status: 'cancelled' });
+  expect(f.db.prepare('SELECT count(*) n FROM graph_recovery_decisions').get()).toEqual({ n: 2 }); expect(f.writes()).toBe(1);
+}, 40000);

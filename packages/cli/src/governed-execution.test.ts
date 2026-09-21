@@ -94,6 +94,10 @@ it('attests rejected acquisition cleanup but never attests an existing run is ab
   const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'one', workspacePath: f.repo });
   let proof = false;
   await expect(f.admission.acquire({ kind: 'write', runId: 'one', workspacePath: f.repo, onNotAcquired: () => { proof = true; } })).rejects.toThrow('already admitted');
+  expect(proof).toBe(false);
+  const abort = new AbortController(); abort.abort();
+  await expect(f.admission.acquire({ kind: 'write', runId: 'one', workspacePath: f.repo, signal: abort.signal,
+    onNotAcquired: () => { proof = true; } })).rejects.toThrow();
   expect(proof).toBe(false); await lease.release();
   f.revoke();
   await expect(f.admission.acquire({ kind: 'write', runId: 'two', workspacePath: f.repo, onNotAcquired: () => { proof = true; } })).rejects.toThrow('health revoked');

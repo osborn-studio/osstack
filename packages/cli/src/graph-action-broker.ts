@@ -75,6 +75,8 @@ export interface GraphRetainedAction {
   owner: string; workspacePath: string;
 }
 export interface GraphActionBrokerOptions {
+  /** One canonical acquisition attempt; retry wrappers must not reuse a positive
+   * onNotAcquired callback to attest a later uncertain attempt. */
   acquire: (input: AdmissionInput) => Promise<ExecutionLease>;
   authorizePolicy?: (workspacePath: string) => Promise<void>;
   now?: () => number;

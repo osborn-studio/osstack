@@ -58,6 +58,7 @@ export async function cancelUnstartedGraphPreparation(db: Database.Database, roo
   const effectReceiptId = `unstarted-preparation:${target.action.effectKey}`;
   const verdict: GraphRecoveryVerdict = { outcome: 'not_applied', evidenceRef: outcome.evidenceRef, actualTokens: 0, error: outcome.error };
   const validate = (inventory: GraphExecutorInventory) => {
+    if (inventory.snapshot.run.status !== 'cancel_pending') throw Error('PREPARATION_RECOVERY_NOT_CANCELLING');
     if (!same(inventory.workers, initial.workers) || inventory.entries.length !== 5
       || predecessors.some(e => !same(inventory.entries.find(f => f.action.effectKey === e.action.effectKey), e))) throw Error('PREPARATION_RECOVERY_CHANGED');
     const current = inventory.entries.find(e => e.action.effectKey === target.action.effectKey);
@@ -75,6 +76,10 @@ export async function cancelUnstartedGraphPreparation(db: Database.Database, roo
   const workspaceOutcome = workspace.action.outcome;
   if (workspaceOutcome?.state !== 'confirmed' || workspaceOutcome.result.kind !== 'workspace'
     || workspaceOutcome.result.workspaceLeaseRef !== 'e0.writer') throw Error('PREPARATION_RECOVERY_WORKSPACE');
+  // In pinned v4, preparation() registers this.workspace() for admission.
+  // That e0.writer mapping is created only by the bound workspace receipt below;
+  // workspace_create's action JSON intentionally contains no physical path.
+  if (writer.action.action.workspaceLeaseRef !== 'e0.writer' || freeze.action.action.workspaceLeaseRef !== 'e0.writer') throw Error('PREPARATION_RECOVERY_WORKSPACE');
   const writerPath = join(root, 'writer-0');
   const receipt = await loadDeliveryReceipt(root, workspaceOutcome.evidenceRef, { effect: workspace.action.effect,
     effectKey: workspace.action.effectKey, generation: 1, owner: workspace.owner, workspacePath: sourcePath }); check();

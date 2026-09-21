@@ -42,7 +42,7 @@ export class GovernedExecution {
     const cleanup = { confirmed: true };
     try { return await this.acquireOwned(input, cleanup); }
     catch (error) {
-      if (cleanup.confirmed) input.onNotAcquired?.();
+      if (cleanup.confirmed && !this.activeRuns.has(input.runId)) input.onNotAcquired?.();
       throw error;
     }
   }
