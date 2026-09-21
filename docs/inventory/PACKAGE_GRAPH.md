@@ -8,7 +8,7 @@ Workspace packages, publish status, and internal (workspace) dependencies.
 |---|---|---|---|
 | `@osstack/agents` | 0.19.0 | public | `core`, `governance`, `hermes-adapter`, `protocol` |
 | `@osstack/autonomy` | 0.17.0 | public | `core`, `github`, `protocol` |
-| `@osstack/cli` | 0.19.0 | public | `agents`, `autonomy`, `compliance`, `config`, `contracts`, `core`, `github`, `governance`, `hermes-adapter`, `knowledge`, `loop`, `protocol`, `skill-registry`, `skills`, `supervisor` |
+| `@osstack/cli` | 0.19.0 | public | `agents`, `autonomy`, `compliance`, `config`, `contracts`, `core`, `github`, `governance`, `graph`, `hermes-adapter`, `knowledge`, `loop`, `protocol`, `skill-registry`, `skills`, `supervisor` |
 | `@osstack/compliance` | 0.15.0 | public | — |
 | `@osstack/config` | 0.19.0 | public | `agents`, `core` |
 | `@osstack/conformance` | 0.19.0 | **private** | `agents`, `core`, `governance`, `hermes-adapter`, `loop` |
@@ -16,6 +16,7 @@ Workspace packages, publish status, and internal (workspace) dependencies.
 | `@osstack/core` | 0.17.0 | public | `protocol` |
 | `@osstack/github` | 0.15.0 | public | — |
 | `@osstack/governance` | 0.18.0 | public | — |
+| `@osstack/graph` | 0.1.0 | public | `protocol` |
 | `@osstack/hermes-adapter` | 0.17.0 | public | `core` |
 | `@osstack/knowledge` | 0.15.0 | public | — |
 | `@osstack/knowledge-cloud` | 0.15.0 | public | `knowledge` |
@@ -33,10 +34,11 @@ Workspace packages, publish status, and internal (workspace) dependencies.
 ```text
 agents -> core, governance, hermes-adapter, protocol
 autonomy -> core, github, protocol
-cli -> agents, autonomy, compliance, config, contracts, core, github, governance, hermes-adapter, knowledge, loop, protocol, skill-registry, skills, supervisor
+cli -> agents, autonomy, compliance, config, contracts, core, github, governance, graph, hermes-adapter, knowledge, loop, protocol, skill-registry, skills, supervisor
 config -> agents, core
 conformance -> agents, core, governance, hermes-adapter, loop
 core -> protocol
+graph -> protocol
 hermes-adapter -> core
 knowledge-cloud -> knowledge
 loop -> agents, autonomy, core, github, governance, hermes-adapter, protocol

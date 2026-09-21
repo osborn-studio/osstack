@@ -1,0 +1,14 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph
+      Running tests with seed "250920"
+
+ ✓ src/remote-checkpointer.test.ts (18 tests) 3416ms
+   ✓ preserves parent, versions, namespaces, before/filter and complete pagination through real asynchronous SQLite IPC  363ms
+ ✓ src/functional-entry.test.ts (3 tests) 50ms
+
+ Test Files  2 passed (2)
+      Tests  21 passed (21)
+   Start at  16:33:07
+   Duration  4.60s (transform 127ms, setup 0ms, collect 790ms, tests 3.47s, environment 0ms, prepare 94ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g30-final/faults.json.evidence/0-graph.json

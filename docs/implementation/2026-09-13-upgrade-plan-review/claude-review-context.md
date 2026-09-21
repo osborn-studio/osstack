@@ -784,4 +784,3 @@ graph worker 启动、冷/热执行、checkpoint/IPC 和并行工作区准备成
 > 阅读本计划与架构设计，核对当前 Git/用户改动，建立隔离工作区和 OSSTACK_HOME。按 G00–G04 实现 Loop 基础改造，遵循项目 TDD、接口和 Git 约定。每张卡完成后记录实际测试证据并更新任务状态；不得接默认 DB，不得自动 merge/push/deploy，不得把后续 Graph 或 OSBot 功能提前标完成。遇到设计未知项先做最小验证，明确失败证据后再调整方案。
 
 本轮的交付是本计划与 OSBot handoff；不会仅因写出这段起始指令而自动开始生产代码改造。
-

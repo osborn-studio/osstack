@@ -369,6 +369,14 @@ Feedback proposals and recurring lesson observations are not proof of improvemen
 pass. See the [collaborator implementation record](docs/reports/2026-09-08-collaborator-foundation-implementation.md)
 for waiting diagnostics, proposal history, and observation-count migration.
 
+Approved low-risk docs/test/eval proposals can now produce a verified candidate
+through `improve inspect`, `improve approve`, `improve execute`, and `improve status`.
+Execution requires the inspected proposal digest and the previewed request digest.
+It uses an external worktree, Codex CLI Builder and Kimi structured reviewer, and
+retains the patch and verification evidence without merging or marking it applied.
+See the [candidate execution workflow](docs/reports/2026-09-08-improvement-candidate-execution.md)
+for commands and the explicit local-operator trust boundary.
+
 Finite automatic phase continuation is available for the no-tools
 `claude-controlled-session` planning/review runtime. `osstack collaborator`
 provides inspect, draft, sign, install, status, and revoke commands. A signed

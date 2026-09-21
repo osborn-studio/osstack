@@ -17,7 +17,7 @@
 //   item.* (type=agent_reasoning|reasoning)                          → reasoning.delta/done
 //   item.started (type=command_execution|tool_use|exec_command)      → tool.started
 //   item.completed (same types)                                      → tool.done
-//   turn.completed                                                   → usage.final + done(completed)
+//   turn.completed                                                   → usage.final (done follows process exit)
 //   error                                                            → error + done(failed)
 //
 // Cancellation: AbortSignal kills the codex subprocess with SIGTERM, then
@@ -249,6 +249,10 @@ interface CodexOptions {
   cwd?: string;
   /** Probe timeout for availability dry-runs. */
   probeTimeoutMs?: number;
+  /** Replace the inherited child environment. Omit for legacy behavior. */
+  env?: NodeJS.ProcessEnv;
+  /** Require native turn.completed as well as exit 0 before reporting success. */
+  strictCompletion?: boolean;
 }
 
 export class CodexCliAdapter extends BaseAgentAdapter {
@@ -260,6 +264,8 @@ export class CodexCliAdapter extends BaseAgentAdapter {
   private readonly sandbox: NonNullable<CodexOptions["sandbox"]>;
   private readonly cwd: string;
   private readonly probeTimeoutMs: number;
+  private readonly env: NodeJS.ProcessEnv | undefined;
+  private readonly strictCompletion: boolean;
 
   constructor(opts: CodexOptions = {}) {
     super();
@@ -267,6 +273,8 @@ export class CodexCliAdapter extends BaseAgentAdapter {
     this.sandbox = opts.sandbox ?? "read-only";
     this.cwd = opts.cwd ?? process.env["HOME"] ?? process.cwd();
     this.probeTimeoutMs = opts.probeTimeoutMs ?? Number(process.env["OSSTACK_CODEX_PROBE_TIMEOUT_MS"] ?? 15_000);
+    this.env = opts.env === undefined ? undefined : { ...opts.env };
+    this.strictCompletion = opts.strictCompletion ?? false;
   }
 
   capabilities(): readonly Capability[] {
@@ -311,7 +319,8 @@ export class CodexCliAdapter extends BaseAgentAdapter {
     reason?: string;
   }> {
     return new Promise((resolve) => {
-      const codexDir = join(process.env["HOME"] ?? "", ".codex");
+      const env = this.env ?? process.env;
+      const codexDir = env["CODEX_HOME"] ?? join(env["HOME"] ?? "", ".codex");
       const hasConfig = existsSync(codexDir);
       if (!hasConfig) {
         resolve({
@@ -323,6 +332,7 @@ export class CodexCliAdapter extends BaseAgentAdapter {
       }
       const p = spawn(this.bin, ["exec", "resume", "--help"], {
         stdio: ["ignore", "ignore", "pipe"],
+        env: { ...env },
       });
       let stderr = "";
       let settled = false;
@@ -400,8 +410,9 @@ export class CodexCliAdapter extends BaseAgentAdapter {
 
     const proc = spawn(this.bin, args, {
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env },
+      env: { ...(this.env ?? process.env) },
     });
+    const closed = new Promise<number | null>((resolve) => { proc.once("close", resolve); });
     const stderr: string[] = [];
     let spawnError: Error | undefined;
     proc.stderr.on("data", (chunk) => stderr.push(String(chunk)));
@@ -410,6 +421,7 @@ export class CodexCliAdapter extends BaseAgentAdapter {
     signal.addEventListener("abort", onAbort);
 
     let nativeSessionId: string | undefined;
+    let turnCompleted = false;
     let terminalEmitted = false;
     try {
       const lines = createInterface({ input: proc.stdout, crlfDelay: Number.POSITIVE_INFINITY });
@@ -421,6 +433,7 @@ export class CodexCliAdapter extends BaseAgentAdapter {
           continue;
         }
         const type = String(event["type"] ?? "");
+        if (type === "turn.completed") turnCompleted = true;
         if (type === "thread.started") {
           const candidate = event["thread_id"];
           if (typeof candidate !== "string" || candidate.length === 0) continue;
@@ -467,10 +480,7 @@ export class CodexCliAdapter extends BaseAgentAdapter {
         }
       }
 
-      const exitCode = await new Promise<number | null>((resolve) => {
-        if (proc.exitCode !== null) resolve(proc.exitCode);
-        else proc.once("exit", resolve);
-      });
+      const exitCode = await closed;
       if (signal.aborted) {
         terminalEmitted = true;
         yield { type: "session.terminal", state: "cancelled" };
@@ -482,13 +492,13 @@ export class CodexCliAdapter extends BaseAgentAdapter {
           error_code: "codex_nonzero_exit",
           summary: sanitizeSummary(spawnError?.message ?? (stderr.join("") || `exit ${exitCode}`)),
         };
-      } else if (nativeSessionId === undefined) {
+      } else if (nativeSessionId === undefined || (this.strictCompletion && !turnCompleted)) {
         terminalEmitted = true;
         yield {
           type: "session.terminal",
           state: "failed",
-          error_code: "native_session_missing",
-          summary: "Codex completed without a thread id",
+            error_code: nativeSessionId === undefined ? "native_session_missing" : "codex_completion_missing",
+            summary: "Codex exited without the required native session completion",
         };
       } else {
         terminalEmitted = true;
@@ -523,7 +533,7 @@ export class CodexCliAdapter extends BaseAgentAdapter {
     const proc = spawn(this.bin, args, {
       cwd: taskCwd,
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env },
+      env: { ...(this.env ?? process.env) },
     });
 
     // Honor AbortSignal — SIGTERM, then SIGKILL after 2s.
@@ -543,6 +553,7 @@ export class CodexCliAdapter extends BaseAgentAdapter {
     const pending: HermesEvent[] = [];
     let exited = false;
     let exitCode: number | null = null;
+    let turnCompleted = false;
     let resolveNext: (() => void) | null = null;
 
     const wake = (): void => {
@@ -561,6 +572,7 @@ export class CodexCliAdapter extends BaseAgentAdapter {
         if (line.length === 0) continue;
         try {
           const codexEvent = JSON.parse(line) as Record<string, unknown>;
+          if (codexEvent["type"] === "turn.completed") turnCompleted = true;
           for (const ev of mapEvent(task, seqRef, codexEvent, tools)) pending.push(ev);
         } catch {
           pending.push(progress(task, seqRef.v++, "codex.unparseable", line.slice(0, 200)));
@@ -569,13 +581,15 @@ export class CodexCliAdapter extends BaseAgentAdapter {
       wake();
     });
     proc.stderr.on("data", (c) => { stderrChunks.push(String(c)); });
-    proc.on("exit", (code) => {
+    proc.on("error", (error) => { stderrChunks.push(error.message); });
+    proc.on("close", (code) => {
       exited = true;
       exitCode = code;
       // Flush any trailing buffered partial line.
       if (buf.trim().length > 0) {
         try {
           const codexEvent = JSON.parse(buf.trim()) as Record<string, unknown>;
+          if (codexEvent["type"] === "turn.completed") turnCompleted = true;
           for (const ev of mapEvent(task, seqRef, codexEvent, tools)) pending.push(ev);
         } catch { /* swallow trailing garbage */ }
         buf = "";
@@ -598,8 +612,11 @@ export class CodexCliAdapter extends BaseAgentAdapter {
         yield doneEvent(task, seqRef.v, "cancelled", seqRef.v - 1, "cancel requested");
         return;
       }
-      if (exitCode === 0) {
+      if (exitCode === 0 && (!this.strictCompletion || turnCompleted)) {
         yield doneEvent(task, seqRef.v, "completed", seqRef.v - 1, "codex exited 0");
+      } else if (exitCode === 0) {
+        yield errorEvent(task, seqRef.v++, "codex_completion_missing", "Codex exited without native turn.completed");
+        yield doneEvent(task, seqRef.v, "failed", seqRef.v - 1);
       } else {
         const stderr = stderrChunks.join("").slice(-500);
         yield errorEvent(task, seqRef.v++, "codex_nonzero_exit", `codex exited ${exitCode}. stderr: ${stderr}`);
@@ -607,6 +624,7 @@ export class CodexCliAdapter extends BaseAgentAdapter {
       }
     } finally {
       signal.removeEventListener("abort", onAbort);
+      if (this.strictCompletion && !exited) onAbort();
     }
   }
 }

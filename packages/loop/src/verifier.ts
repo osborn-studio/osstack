@@ -18,6 +18,7 @@ import {
   collectReviewBoundary,
   type CollectedReviewBoundary,
   type ReviewBoundaryPolicy,
+  type ReviewCandidateInput,
 } from "./review-boundary.js";
 import {
   reviewerWorkspaceMutated,
@@ -44,7 +45,13 @@ export interface LocalVerifierOptions {
   sessionId?: string;
   timeoutMs?: number;
   outputLimit?: number;
+  /** Explicit per-run overrides; never mutate the host process environment. */
+  commandEnv?: NodeJS.ProcessEnv;
+  /** False replaces the ambient environment; default preserves existing callers. */
+  inheritCommandEnv?: boolean;
   reviewBoundary?: Partial<ReviewBoundaryPolicy>;
+  /** Captured patch and complete paths to review, still subject to the boundary policy. */
+  reviewCandidate?: ReviewCandidateInput;
 }
 
 export interface ArtifactVerificationOptions {
@@ -198,6 +205,8 @@ async function runSpecCommand(spec: EvaluationSpec, options: LocalVerifierOption
     cwd: options.workspacePath,
     timeoutMs: options.timeoutMs ?? 120_000,
     outputLimit: options.outputLimit ?? 16_000,
+    ...(options.commandEnv !== undefined ? { env: options.commandEnv } : {}),
+    ...(options.inheritCommandEnv === undefined ? {} : { inheritEnv: options.inheritCommandEnv }),
   });
 }
 
@@ -610,6 +619,7 @@ async function invokeVerifierAdapter(
       boundary = await collectReviewBoundary(
         options.workspacePath,
         options.reviewBoundary ?? {},
+        options.reviewCandidate,
       );
     } catch (error) {
       return {

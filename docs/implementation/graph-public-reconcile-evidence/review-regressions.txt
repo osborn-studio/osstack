@@ -15,4 +15,3 @@ HEAD is now at 40dfad7 base
       Tests  20 passed (20)
    Start at  01:03:22
    Duration  4.58s (transform 523ms, setup 7ms, collect 855ms, tests 3.61s, environment 0ms, prepare 27ms)
-

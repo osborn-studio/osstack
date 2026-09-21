@@ -65,7 +65,7 @@ Feishu/Lark/Slack/DingTalk thread @OS Tag ──┐            ┌── ostag r
                               AutoBase workflow ────────┤
                               (governed writes → receipts → approve/apply
                                via connector executors)  │
-                              Backend (mock/Codex/Claude/OpenAI) 
+                              Backend (mock/Codex/Claude/OpenAI)
                                                         ▼
                                         reply in source thread + audit
 ```

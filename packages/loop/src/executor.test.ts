@@ -1032,3 +1032,34 @@ describe("reviewed lifecycle compatibility", () => {
     });
   });
 });
+
+it('preserves clean environment execution with the integrated executor API', async () => {
+  vi.stubEnv('OSSTACK_TEST_PARENT_ONLY', 'must-not-inherit');
+  try {
+    const command = `${JSON.stringify(process.execPath)} -e 'process.stdout.write(JSON.stringify({parent:process.env.OSSTACK_TEST_PARENT_ONLY,allowed:process.env.OSSTACK_TEST_ALLOWED}))'`;
+    const result = await runShellCommand(command, { cwd: workspace, timeoutMs: 5000, outputLimit: 1000,
+      inheritEnv: false, env: { OSSTACK_TEST_ALLOWED: 'yes' }, signal: new AbortController().signal });
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({ allowed: 'yes' });
+  } finally { vi.unstubAllEnvs(); }
+});
+
+it.each([false, true])('honors explicit inheritEnv=%s', async inheritEnv => {
+  vi.stubEnv('OSSTACK_TEST_PARENT_ONLY', 'parent');
+  try {
+    const result = await runShellCommand(`${JSON.stringify(process.execPath)} -e 'process.stdout.write(process.env.OSSTACK_TEST_PARENT_ONLY || "absent")'`,
+      { cwd: workspace, timeoutMs: 5000, outputLimit: 1000, inheritEnv });
+    expect(result.exitCode).toBe(0); expect(result.stdout).toBe(inheritEnv ? 'parent' : 'absent');
+  } finally { vi.unstubAllEnvs(); }
+});
+it('confirms process-group exit when cancelling a clean environment command', async () => {
+  await withProcessFixture(`fs.writeFileSync('ready', 'yes'); setInterval(() => {}, 1000);`, async fixture => {
+    const controller = new AbortController();
+    const pending = runShellCommand(fixture.command, { cwd: workspace, timeoutMs: 5000, outputLimit: 1000,
+      inheritEnv: false, signal: controller.signal, terminationGraceMs: 40, killGraceMs: 500 });
+    await fixture.waitFor('ready'); controller.abort();
+    expect(await pending).toMatchObject({ exitCode: 130, cancellation: { source: 'external', stop_confirmed: true },
+      termination: { stop_confirmed: true, scope: 'posix_process_group' } });
+    fixture.assertStopped();
+  });
+});

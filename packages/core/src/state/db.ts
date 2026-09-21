@@ -82,8 +82,9 @@ export function openDb(opts: OpenDbOptions): Database.Database {
     // Refuse an unsupported schema before changing journal mode or running DDL,
     // including read-only inspection. A failed open never escapes with a live handle.
     assertSupportedVersion(db.pragma("user_version", { simple: true }) as number);
+    assertMigrationLineage(db);
     // Pragmas are applied per-connection in SQLite. Apply on every open.
-    db.pragma("journal_mode = WAL");
+    if (readwrite) db.pragma("journal_mode = WAL");
     db.pragma("synchronous = NORMAL");
     db.pragma(`cache_size = ${PAGE_CACHE_KIB}`);
     db.pragma("foreign_keys = ON");
@@ -97,6 +98,27 @@ export function openDb(opts: OpenDbOptions): Database.Database {
   }
 }
 
+// This schema is table-additive. Derive expected table introductions once;
+// a future DROP/RENAME migration must also update this lineage contract.
+const tableIntroductions = MIGRATIONS.flatMap(migration =>
+  [...migration.sql.matchAll(/^\s*CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+([a-zA-Z_]\w*)\s*\(/gm)]
+    .map(match => ({ name: match[1]!, version: migration.id })));
+
+/** Reject pure or mixed unreleased Graph schemas before application pragmas or
+ * DDL. SQLite may itself checkpoint an abandoned WAL on close; logical ledger
+ * content and user_version must remain intact for the original binary. */
+function assertMigrationLineage(db: Database.Database): void {
+  const current = db.pragma("user_version", { simple: true }) as number;
+  const actual = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[]).map(row => row.name));
+  // Earlier main versions are unaffected unless an experimental Graph touched them.
+  if (current < 25 && ![...actual].some(name => name.startsWith("graph_"))) return;
+  const expected = new Set(tableIntroductions.filter(table => table.version <= current).map(table => table.name));
+  if ([...expected].some(name => !actual.has(name))
+    || [...actual].some(name => name.startsWith("graph_") && !expected.has(name))) {
+    throw new Error("GRAPH_EXPERIMENTAL_SCHEMA_CONFLICT: preserve this home and reconcile with its original build; do not reset user_version or reuse it for the integrated runtime");
+  }
+}
+
 function assertSupportedVersion(current: number): void {
   if (current > CURRENT_SCHEMA_VERSION) {
     throw new Error(`Migration state inconsistent: user_version=${current}, expected=${CURRENT_SCHEMA_VERSION}`);
@@ -105,13 +127,14 @@ function assertSupportedVersion(current: number): void {
 
 /**
  * Apply pending migrations idempotently. `user_version` PRAGMA tracks progress.
- * The migrations themselves are CREATE IF NOT EXISTS-safe, but the version
- * pragma is what guarantees we only apply forward.
+ * The version pragma guarantees forward-only application. Many migrations
+ * contain non-idempotent CREATE/ALTER statements; never reset user_version.
  */
 export function runMigrations(db: Database.Database): void {
   const currentRow = db.pragma("user_version", { simple: true }) as number;
   let current = Number(currentRow);
   assertSupportedVersion(current);
+  assertMigrationLineage(db);
   for (const m of MIGRATIONS) {
     if (m.id <= current) continue;
     db.exec("BEGIN");

@@ -249,15 +249,15 @@ describe("graph action ledger", () => {
     expect(again.run.revision).toBe(run.revision);
   });
 
-  it("fails closed for real populated migration-25 runs with no original budget", () => {
+  it("fails closed for real populated migration-28 runs with no original budget", () => {
     const path = join(dir, "legacy.db");
     const Sqlite = createRequire(import.meta.url)("better-sqlite3") as typeof import("better-sqlite3");
     const old = new Sqlite(path);
-    for (const migration of MIGRATIONS.filter((m) => m.id <= 25)) old.exec(migration.sql);
+    for (const migration of MIGRATIONS.filter((m) => m.id <= 28)) old.exec(migration.sql);
     const row = db.prepare("SELECT * FROM graph_runs WHERE graph_run_id = ?").get(run.graphRunId) as Record<string, unknown>;
     const columns = Object.keys(row).filter((key) => key !== "spec_json");
     old.prepare(`INSERT INTO graph_runs (${columns.join(",")}) VALUES (${columns.map(() => "?").join(",")})`).run(...columns.map((key) => row[key]));
-    old.pragma("user_version = 25"); old.close();
+    old.pragma("user_version = 28"); old.close();
     const upgraded = openDb({ path });
     try {
       const legacy = new GraphRunStore(upgraded).get(scope, run.graphRunId)!;

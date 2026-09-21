@@ -64,7 +64,7 @@ Error: Test timed out in 5000ms.
 If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
  ❯ src/adapter-conformance.test.ts:47:3
      45|   });
-     46| 
+     46|
      47|   it("emits schema-valid terminal failure streams for subprocess adapt…
        |   ^
      48|     const claudeBin = await fakeCommand("claude", `

@@ -388,7 +388,7 @@ describe("schema incident hardening (G1.4, incident 2026-07-18)", () => {
     const raw = new Database(p);
     raw.pragma("user_version = 8");
     raw.close();
-    expect(() => openDb({ path: p })).toThrowError(/duplicate column|already exists/);
+    expect(() => openDb({ path: p })).toThrowError(/duplicate column|already exists|GRAPH_EXPERIMENTAL_SCHEMA_CONFLICT/);
     rmSync(dir, { recursive: true, force: true });
   });
 
@@ -454,9 +454,9 @@ describe("failed-open cleanup", () => {
   it("closes a connection after a real SQL migration failure and rolls back the failed migration", () => {
     const path = join(tmp, "broken-baseline.db");
     const raw = new Database(path);
-    for (const migration of MIGRATIONS.filter((m) => m.id <= 24)) raw.exec(migration.sql);
-    raw.pragma("user_version = 24");
-    raw.exec("CREATE TABLE graph_worker_leases (collision TEXT)");
+    for (const migration of MIGRATIONS.filter((m) => m.id <= 27)) raw.exec(migration.sql);
+    raw.pragma("user_version = 27");
+    raw.exec("CREATE INDEX idx_graph_runs_scope_status ON tasks(status)");
     raw.close();
     const close = vi.spyOn(Database.prototype, "close");
     try {
@@ -465,22 +465,22 @@ describe("failed-open cleanup", () => {
     } finally { close.mockRestore(); }
     const check = new Database(path);
     try {
-      expect(check.pragma("user_version", { simple: true })).toBe(24);
+      expect(check.pragma("user_version", { simple: true })).toBe(27);
       expect(check.prepare("SELECT name FROM sqlite_master WHERE name='graph_runs'").get()).toBeUndefined();
     } finally { check.close(); }
   });
 });
 
 
-describe("graph ledger migration 26", () => {
-  it("upgrades populated v25 graph history, leaves missing original specs explicit, and reserves v27 for checkpoints", () => {
+describe("graph ledger migration 29", () => {
+  it("upgrades populated v28 graph history, leaves missing original specs explicit, and reserves v30 for checkpoints", () => {
     const path = join(tmp, "graph-v25.db");
     const old = new Database(path);
-    for (const migration of MIGRATIONS.filter((m) => m.id <= 25)) old.exec(migration.sql);
+    for (const migration of MIGRATIONS.filter((m) => m.id <= 28)) old.exec(migration.sql);
     old.prepare(`INSERT INTO graph_runs (graph_run_id, scope_json, source_json, input_artifact_ref,
       template, identity_json, status, generation, revision, created_at, updated_at)
       VALUES ('legacy', '{}', '{}', 'input', 'code-delivery-v1', '{}', 'queued', 0, 0, 1, 1)`).run();
-    old.pragma("user_version = 25"); old.close();
+    old.pragma("user_version = 28"); old.close();
     for (let i = 0; i < 2; i++) {
       const db = openDb({ path });
       try {
@@ -491,19 +491,19 @@ describe("graph ledger migration 26", () => {
         expect(db.pragma("integrity_check", { simple: true })).toBe("ok");
       } finally { db.close(); }
     }
-    expect(MIGRATIONS.find((m) => m.id === 26)?.name).toBe("graph_action_ledger_and_original_budget");
+    expect(MIGRATIONS.find((m) => m.id === 29)?.name).toBe("graph_action_ledger_and_original_budget");
   });
 
-  it("rolls back ALTER and all ledger DDL when migration 26 fails", () => {
+  it("rolls back ALTER and all ledger DDL when migration 29 fails", () => {
     const path = join(tmp, "graph-v26-failure.db");
     const old = new Database(path);
-    for (const migration of MIGRATIONS.filter((m) => m.id <= 25)) old.exec(migration.sql);
-    old.pragma("user_version = 25");
-    old.exec("CREATE TABLE graph_actions (collision TEXT)"); old.close();
+    for (const migration of MIGRATIONS.filter((m) => m.id <= 28)) old.exec(migration.sql);
+    old.pragma("user_version = 28");
+    old.exec("CREATE INDEX idx_graph_actions_run_state ON graph_runs(status)"); old.close();
     expect(() => openDb({ path })).toThrow(/already exists/);
     const check = new Database(path);
     try {
-      expect(check.pragma("user_version", { simple: true })).toBe(25);
+      expect(check.pragma("user_version", { simple: true })).toBe(28);
       expect((check.prepare("PRAGMA table_info(graph_runs)").all() as { name: string }[]).map((r) => r.name)).not.toContain("spec_json");
       expect(check.prepare("SELECT name FROM sqlite_master WHERE name='graph_runs_spec_immutable'").get()).toBeUndefined();
     } finally { check.close(); }

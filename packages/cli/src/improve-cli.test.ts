@@ -2,7 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { listImprovementProposals, openDb, upsertFeedbackAsset, upsertImprovementProposal } from "@osstack/core";
+import { ImprovementExecutionRepository, improvementProposalDigest, listImprovementProposals, openDb, upsertFeedbackAsset, upsertImprovementProposal } from "@osstack/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { main } from "./bin.js";
 
@@ -55,6 +55,46 @@ function seedProposal(risk: "low" | "medium", gates: string[], proposedPath = "e
 }
 
 describe("improve CLI", () => {
+  it("inspects the definition, previews approval, then approves only its exact digest", async () => {
+    const proposal = await seedProposal("low", ["true"]);
+    const digest = improvementProposalDigest(proposal);
+    expect(await main(["improve", "inspect", "--proposal", proposal.proposal_id])).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({ proposal_digest: digest, proposal: { status: "draft" }, executions: [] });
+    logs.length = 0;
+    const args = ["improve", "approve", "--proposal", proposal.proposal_id, "--digest", digest];
+    expect(await main(args)).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({ dry_run: true, digest_matches: true });
+    expect((await withDb((db) => listImprovementProposals(db)))[0]?.status).toBe("draft");
+    logs.length = 0;
+    expect(await main([...args, "--yes"])).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({ authorization: "local_operator_candidate_only", proposal: { status: "approved" } });
+  });
+
+  it("rejects stale approval digests without changing the proposal", async () => {
+    const original = await seedProposal("low", ["true"]);
+    expect(await main(["improve", "approve", "--proposal", original.proposal_id, "--digest", "0".repeat(64), "--yes"])).toBe(1);
+    expect(await withDb((db) => listImprovementProposals(db))).toEqual([original]);
+  });
+
+  it("does not substitute cwd when the execution repository is unregistered", async () => {
+    const original = await seedProposal("low", ["true"]);
+    const args = ["--proposal", original.proposal_id, "--digest", improvementProposalDigest(original)];
+    expect(await main(["improve", "approve", ...args, "--yes"])).toBe(0);
+    expect(await main(["improve", "execute", ...args, "--execution", "missing-registry", "--registry", join(tmp, "missing.json"), "--yes"])).toBe(1);
+    expect(errors.join("\n")).toContain("enabled registry entry");
+    expect(await withDb((db, path) => new ImprovementExecutionRepository(db, path).list({}))).toEqual([]);
+  });
+
+  it("shows persisted uncertain work without restarting it", async () => {
+    const original = await seedProposal("low", ["true"]);
+    const digest = improvementProposalDigest(original);
+    expect(await main(["improve", "approve", "--proposal", original.proposal_id, "--digest", digest, "--yes"])).toBe(0);
+    await withDb((db, path) => new ImprovementExecutionRepository(db, path).claim({ execution_id: "unfinished", proposal_id: original.proposal_id, request: { proposal_digest: digest }, now: 1 }));
+    logs.length = 0;
+    expect(await main(["improve", "status", "--execution", "unfinished"])).toBe(0);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({ applied: false, execution: { state: "claimed" } });
+  });
+
   it("proposes low-risk eval proposals from stored assets", async () => {
     await withDb((db, path) => upsertFeedbackAsset(db, path, {
       asset_id: "asset_1",

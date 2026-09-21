@@ -1354,6 +1354,64 @@ export const MIGRATIONS: readonly Migration[] = [
   },
   {
     id: 25,
+    name: "improvement_candidate_executions",
+    // Candidate results never rewrite proposal approval or historical applied records.
+    sql: `
+      CREATE TABLE improvement_executions (
+        execution_id TEXT PRIMARY KEY,
+        proposal_id TEXT NOT NULL REFERENCES improvement_proposals(proposal_id),
+        request_json TEXT NOT NULL,
+        request_sha256 TEXT NOT NULL,
+        state TEXT NOT NULL CHECK (state IN ('claimed','running','candidate_verified','candidate_failed')),
+        worktree_json TEXT,
+        result_json TEXT,
+        created_at REAL NOT NULL,
+        updated_at REAL NOT NULL,
+        CHECK (state NOT IN ('running','candidate_verified') OR worktree_json IS NOT NULL),
+        CHECK (state NOT IN ('candidate_verified','candidate_failed') OR result_json IS NOT NULL)
+      );
+      CREATE UNIQUE INDEX idx_improvement_execution_one_active
+        ON improvement_executions(proposal_id) WHERE state IN ('claimed','running');
+      CREATE INDEX idx_improvement_execution_proposal
+        ON improvement_executions(proposal_id, created_at DESC, execution_id);
+    `,
+  },
+  {
+    id: 26,
+    name: "improvement_execution_worker_stop",
+    sql: `
+      ALTER TABLE improvement_executions ADD COLUMN worker_id TEXT;
+      ALTER TABLE improvement_executions ADD COLUMN worker_generation INTEGER NOT NULL DEFAULT 1 CHECK (worker_generation > 0);
+      ALTER TABLE improvement_executions ADD COLUMN stop_json TEXT;
+      CREATE TRIGGER improvement_execution_stopped_write
+      BEFORE UPDATE OF state, worktree_json, result_json ON improvement_executions
+      WHEN OLD.stop_json IS NOT NULL
+      BEGIN
+        SELECT RAISE(ABORT, 'improvement execution stop requested');
+      END;
+    `,
+  },
+  {
+    id: 27,
+    name: "improvement_pr_delivery_intents",
+    sql: `
+      CREATE TABLE improvement_pr_deliveries (
+        execution_id TEXT PRIMARY KEY REFERENCES improvement_executions(execution_id),
+        target_json TEXT NOT NULL,
+        workspace_path TEXT,
+        state TEXT NOT NULL CHECK (state IN ('authorized','preparing','prepared','push_dispatched','pushed','pr_dispatched','delivered','blocked')),
+        commit_json TEXT,
+        pr_json TEXT,
+        stop_json TEXT,
+        error TEXT,
+        created_at REAL NOT NULL,
+        updated_at REAL NOT NULL,
+        CHECK (state NOT IN ('prepared','push_dispatched','pushed','pr_dispatched','delivered') OR commit_json IS NOT NULL),
+        CHECK (state != 'delivered' OR pr_json IS NOT NULL)
+      );
+    `,
+  },  {
+    id: 28,
     name: "graph_run_identity_and_worker_leases",
     sql: `
       CREATE TABLE graph_runs (
@@ -1416,7 +1474,7 @@ export const MIGRATIONS: readonly Migration[] = [
     `,
   },
   {
-    id: 26,
+    id: 29,
     name: "graph_action_ledger_and_original_budget",
     sql: `
       ALTER TABLE graph_runs ADD COLUMN spec_json TEXT;
@@ -1461,7 +1519,7 @@ export const MIGRATIONS: readonly Migration[] = [
     `,
   },
   {
-    id: 27,
+    id: 30,
     name: "graph_checkpoints",
     sql: `
       CREATE TABLE graph_checkpoints (
@@ -1497,7 +1555,7 @@ export const MIGRATIONS: readonly Migration[] = [
     `,
   },
   {
-    id: 28,
+    id: 31,
     name: "graph_recovery_decisions",
     sql: `
       CREATE TABLE graph_recovery_decisions (
@@ -1518,7 +1576,7 @@ export const MIGRATIONS: readonly Migration[] = [
     `,
   },
   {
-    id: 29,
+    id: 32,
     name: "graph_worker_launches",
     sql: `
       CREATE TABLE graph_worker_launches (
@@ -1537,7 +1595,7 @@ export const MIGRATIONS: readonly Migration[] = [
     `,
   },
   {
-    id: 30,
+    id: 33,
     name: "graph_action_admissions",
     sql: `
       CREATE TABLE graph_action_admissions (
@@ -1560,7 +1618,7 @@ export const MIGRATIONS: readonly Migration[] = [
     `,
   },
   {
-    id: 31,
+    id: 34,
     name: "graph_verification_joins",
     sql: `
       CREATE TABLE graph_verification_joins (
@@ -1582,7 +1640,7 @@ export const MIGRATIONS: readonly Migration[] = [
     `,
   },
   {
-    id: 32,
+    id: 35,
     name: "graph_delivery_epochs",
     sql: `
       CREATE TABLE graph_delivery_epochs (
@@ -1600,7 +1658,7 @@ export const MIGRATIONS: readonly Migration[] = [
     `,
   },
   {
-    id: 33,
+    id: 36,
     name: "graph_public_delivery",
     sql: `
       CREATE TABLE graph_public_delivery (
@@ -1614,7 +1672,7 @@ export const MIGRATIONS: readonly Migration[] = [
     `,
   },
   {
-    id: 34,
+    id: 37,
     name: "graph_worker_process_events",
     sql: `
       CREATE TABLE graph_worker_process_events (

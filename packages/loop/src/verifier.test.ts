@@ -22,6 +22,17 @@ afterEach(async () => {
 });
 
 describe("verifyRun", () => {
+  it("passes per-run command environment without changing the host environment", async () => {
+    const original = process.env["OSSTACK_HOME"];
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace,
+      commands: [`node -e "process.exit(process.env.OSSTACK_HOME === 'candidate-only-home' && process.env.OSSTACK_AUTOAPPROVE === '0' ? 0 : 1)"`],
+      commandEnv: { OSSTACK_HOME: "candidate-only-home", OSSTACK_AUTOAPPROVE: "0" },
+    });
+    expect(verdict.pass).toBe(true);
+    expect(process.env["OSSTACK_HOME"]).toBe(original);
+  });
+
   it.each(["failed", "cancelled"] as const)(
     "fails closed when Builder execution is %s even if verification has no other issue",
     async (outcome) => {
@@ -305,6 +316,58 @@ describe("verifyRun", () => {
       severity: "error",
       message: expect.stringContaining("bonus-check"),
     });
+  });
+
+  it.each(["ignored", "assume-unchanged"])("passes the supplied %s candidate patch and paths to Kimi", async (mode) => {
+    await initGitWorkspace();
+    const path = mode === "ignored" ? "src/ignored.ts" : "src/app.ts";
+    await writeFile(join(workspace, path), "export const candidate = true;\n");
+    if (mode === "ignored") {
+      await writeFile(join(workspace, ".git/info/exclude"), `${path}\n`);
+      execFileSync("git", ["add", "-f", "--", path], { cwd: workspace });
+    }
+    const diff = execFileSync("git", ["diff", "--binary", "HEAD", "--", path], {
+      cwd: workspace, encoding: "utf8",
+    });
+    if (mode === "ignored") {
+      execFileSync("git", ["reset", "HEAD", "--", path], { cwd: workspace });
+    } else {
+      execFileSync("git", ["update-index", "--assume-unchanged", path], { cwd: workspace });
+    }
+    expect(execFileSync("git", ["diff", "HEAD", "--"], { cwd: workspace, encoding: "utf8" })).toBe("");
+    expect(diff).toContain("+export const candidate = true;");
+    let captured: AgentTask | undefined;
+    const adapter = kimiAdapter(async function* (agentTask) {
+      captured = agentTask;
+      yield structuredReviewDoneEvent(agentTask, "approved", [structuredJudgment("correctness", true)]);
+    });
+
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace, verifierAgentIds: [adapter.id], adapters: [adapter],
+      task: reviewTask("correctness"), reviewCandidate: { changed_paths: [path], diff },
+    });
+
+    expect(verdict.pass).toBe(true);
+    expect(captured?.context?.["kimi_review_input"]).toMatchObject({ changed_paths: [path], diff });
+  });
+
+  it("blocks a secret in a supplied ignored candidate before invoking Kimi", async () => {
+    await initGitWorkspace();
+    await writeFile(join(workspace, ".git/info/exclude"), "src/ignored.ts\n");
+    await writeFile(join(workspace, "src/ignored.ts"), 'api_key = "ignored-candidate-secret"\n');
+    let invoked = false;
+    const adapter = kimiAdapter(async function* (agentTask) {
+      invoked = true;
+      yield structuredReviewDoneEvent(agentTask, "approved", [structuredJudgment("correctness", true)]);
+    });
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace, verifierAgentIds: [adapter.id], adapters: [adapter],
+      task: reviewTask("correctness"),
+      reviewCandidate: { changed_paths: ["src/ignored.ts"], diff: "candidate patch\n" },
+    });
+    expect(invoked).toBe(false);
+    expect(verdict.pass).toBe(false);
+    expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "review.secret_detected" }));
   });
 
   it("blocks at the pre-review boundary without invoking Kimi", async () => {

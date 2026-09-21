@@ -257,4 +257,4 @@ jobs:
         env:
           OSSTACK_HOME: ${{ runner.temp }}/graph-runtime-home
           TMPDIR: /tmp
-        run: node node_modules/vitest/vitest.mjs run packages/graph/src packages/core/src/state/graph-checkpoints.test.ts packages/cli/src/graph-worker-manager.test.ts packages/cli/src/graph-rpc.test.ts packages/cli/src/graph-compatibility.integration.test.ts --maxWorkers=1
+        run: node node_modules/vitest/vitest.mjs run packages/graph/src packages/core/src/state/graph-migration-lineage.test.ts packages/core/src/state/graph-checkpoints.test.ts packages/cli/src/graph-worker-manager.test.ts packages/cli/src/graph-rpc.test.ts packages/cli/src/graph-compatibility.integration.test.ts --maxWorkers=1

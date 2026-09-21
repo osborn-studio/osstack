@@ -2,7 +2,7 @@
 
 # CLI Commands
 
-Top-level `osstack` commands parsed from `--help` (46 total).
+Top-level `osstack` commands parsed from `--help` (47 total).
 
 - `agent`
 - `autonomy`
@@ -20,6 +20,7 @@ Top-level `osstack` commands parsed from `--help` (46 total).
 - `examples`
 - `govern`
 - `governance`
+- `graph`
 - `guide`
 - `health`
 - `help`

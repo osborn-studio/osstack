@@ -1,0 +1,10 @@
+$ vitest run --passWithNoTests src/executor.test.ts --maxWorkers=1 -t 'clean environment|explicit inheritEnv|process-group exit when'
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/loop
+
+ ✓ src/executor.test.ts (116 tests | 112 skipped) 347ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed | 112 skipped (116)
+   Start at  18:00:12
+   Duration  819ms (transform 153ms, setup 0ms, collect 189ms, tests 347ms, environment 0ms, prepare 84ms)

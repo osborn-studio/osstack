@@ -490,7 +490,9 @@ export interface ShellCommandOptions {
   /** Invalid durations use a 120s timeout or 1s grace; zero requests immediate expiry. */
   timeoutMs: number;
   outputLimit: number;
-  env?: Record<string, string>;
+  env?: NodeJS.ProcessEnv;
+  /** False creates a clean environment for approved isolated execution. */
+  inheritEnv?: boolean;
   signal?: AbortSignal;
   terminationGraceMs?: number;
   killGraceMs?: number;
@@ -566,7 +568,8 @@ export async function runShellCommand(command: string, options: ShellCommandOpti
       shell: true,
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],
-      ...(options.env !== undefined ? { env: { ...process.env, ...options.env } } : {}),
+      ...((options.env !== undefined || options.inheritEnv === false)
+        ? { env: { ...(options.inheritEnv === false ? {} : process.env), ...options.env } } : {}),
     });
     const pgid = child.pid;
     let stdout = "";

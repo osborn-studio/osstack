@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type Database from "better-sqlite3";
 import { withWrite } from "./db.js";
 import { ImprovementProposalRow } from "./schema.js";
@@ -37,6 +38,34 @@ export interface ImprovementProposalView {
   status: ImprovementStatus;
   created_at: number;
   updated_at: number;
+}
+
+/** Digest of the reviewed definition; source evidence is an unordered set. */
+export function improvementProposalDigest(proposal: NewImprovementProposal | ImprovementProposalView): string {
+  return createHash("sha256").update(proposalDefinition(proposal)).digest("hex");
+}
+
+/** Records local operator confirmation, not GitHub or remote execution authority. */
+export function approveImprovementProposal(
+  db: Database.Database,
+  dbPath: string,
+  input: { proposal_id: string; expected_digest: string; now: number },
+): ImprovementProposalView {
+  if (!/^[a-f0-9]{64}$/.test(input.expected_digest)) throw new Error("Invalid proposal digest");
+  if (!Number.isFinite(input.now) || input.now < 0) throw new Error("Invalid approval timestamp");
+  return withWrite(db, dbPath, (d) => {
+    const raw = d.prepare("SELECT * FROM improvement_proposals WHERE proposal_id = ?").get(input.proposal_id);
+    if (raw === undefined) throw new Error(`Improvement proposal not found: ${input.proposal_id}`);
+    const proposal = parseImprovementProposal(raw);
+    if (improvementProposalDigest(proposal) !== input.expected_digest) throw new Error("Improvement proposal digest conflict");
+    if (proposal.status === "applied" || proposal.status === "rejected") throw new Error("Cannot approve a terminal improvement proposal");
+    if (proposal.status === "approved") return proposal;
+    const changed = d.prepare(`UPDATE improvement_proposals SET status = 'approved', updated_at = ?
+      WHERE proposal_id = ? AND status = ? AND updated_at = ?`)
+      .run(input.now, input.proposal_id, proposal.status, proposal.updated_at);
+    if (changed.changes !== 1) throw new Error("Improvement proposal approval CAS conflict");
+    return { ...proposal, status: "approved", updated_at: input.now };
+  });
 }
 
 export function upsertImprovementProposal(
