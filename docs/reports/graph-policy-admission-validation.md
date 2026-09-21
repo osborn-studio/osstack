@@ -21,6 +21,10 @@ Fable CLI `claude-fable-5-1` 首轮要求补齐继承管道上限；最终复审
 
 本机繁忙时启动预算失败：version 中位数 772ms，help 3229ms；这是未通过记录，不能引用此前空闲验收数字来覆盖。PR #227 的 macOS 73 项定向回归已通过，最终 head 的完整 CI 待记录。
 
-隔离真实试点第一轮在克隆阶段触发观察器 15 秒 RPC timeout；已确认没有模型调用，正常关闭 daemon 后为 cancelled。第二轮仅将私有观察器等待上限改为生产验收使用的 90 秒；原 600 秒图期限、最大动作数和 token 预算不变。最终结果待记录。
+隔离真实试点第一轮在克隆阶段触发观察器 15 秒 RPC timeout；已确认没有模型调用，正常关闭 daemon 后为 cancelled。第二轮仅将私有观察器等待上限改为生产验收使用的 90 秒；原 600 秒图期限、最大动作数和 token 预算不变。第二轮真实图 `2dad66af-3028-463d-bd88-8b1e67d59b34` 已达到 **ready**：7 个动作全部 confirmed，独立 review accept、tests passed、双分支 join complete，无剩余 admission，源码不变，消耗 2963 tokens。candidate `9e3a8b0e7bc444ab729529848bb97d57cea11138`，artifact `f6e9460ceee1622b1cc5e2befcc163f74622fa86cd9c8e78c20ab615cfeeb1b8`。该运行使用首次修复构建；后续先拒绝再关闭管道的两行收尾改进由最终 8 项 core 回归覆盖。
+
+观察脚本在 public ready / 源码与候选字节 / 幂等重放检查之后，因临时拷贝中未重写的 `createRequire` 相对路径而中止。保留原失败 JSON；daemon 正常退出后，使用正确的工作区 SQLite 模块只读核验全部动作、join、candidate 字节、源码 Git clean、完整性和零剩余 admission，记录 `policy-live-graph-verified.json`。后续独立负面对照与运行中取消未在本轮重跑，不宣称原批处理脚本 3/3 成功；早先完整试点的负对照证据保持独立。
+
+PR CI 首次在 inventory freshness 发现新增 `readRepositoryGit` 导出未进入生成清单；现已重新生成并通过 freshness 检查。最终完整 CI 以 PR #227 对应 head 的检查为准。
 
 私有证据在 `/Volumes/AIMATE_WORK/tmp/g226-deploy`；不上传数据库、凭据或完整主机运行记录。G29 最终关闭仍需要审批合并后的生产试点，不能由单测或隔离试点代替。
