@@ -7465,6 +7465,8 @@ ${args.map((arg) => `    <string>${xmlEscape(arg)}</string>`).join("\n")}
   </dict>
   <key>ThrottleInterval</key>
   <integer>10</integer>
+  <key>ProcessType</key>
+  <string>Interactive</string>
   <key>StandardOutPath</key>
   <string>${xmlEscape(options.stdoutPath)}</string>
   <key>StandardErrorPath</key>
