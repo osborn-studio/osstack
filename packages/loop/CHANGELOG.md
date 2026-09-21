@@ -1,5 +1,44 @@
 # @osstack/loop
 
+## 0.20.0
+
+### Minor Changes
+
+- 071c1ff: Add versioned session continuation requests and durable waiting diagnostics.
+  Parsing an agent-reported request does not authorize automatic continuation.
+  Track resumed sessions during daemon drain and
+  cancellation, and preserve uncertain delivery receipts in status output.
+
+  Keep improvement proposal identities and reviewed history stable. Gate-only checks
+  no longer claim that a candidate was applied. Migration 23 preserves legacy lesson
+  counters and records explicit failure observations without claiming effectiveness.
+
+- de4a3bb: Require valid adapter terminal events, propagate bounded cancellation with explicit stop evidence, and confirm owned command process-group exits. Add an authorized single-implementation entry point for future executable graph orchestration while retaining legacy Loop delivery behavior and preventing retries of unconfirmed executions.
+
+### Patch Changes
+
+- a1c0471: Align npm package repository metadata and Trusted Publisher tooling with the transferred osborn-studio/osstack repository. Existing mismatched trust mappings still require explicit operator review.
+- 1263519: Add trusted local `improve deliver`: one preview confirmation approves a draft proposal, builds and reviews a candidate, replays the saved patch in a clean checkout, verifies it again, and creates a draft GitHub PR. Persist delivery intents, exact commit bindings, cooperative stops and read-only reconciliation in schema 27. PR verification replaces ambient environment inheritance; existing verifier callers keep their defaults. Uncertain writes are never retried automatically. This does not enable daemon delegation, merge, release or hostile-worker isolation.
+- 29a3a17: Execute digest-approved low-risk improvement proposals in a retained candidate worktree with independent structured review, exact file boundaries, replay-safe execution records, and hashed evidence. Candidate verification does not mark a proposal applied or prove effectiveness. Add strict Codex completion and per-run execution environment support.
+- Updated dependencies [071c1ff]
+- Updated dependencies [a1c0471]
+- Updated dependencies [1263519]
+- Updated dependencies [de4a3bb]
+- Updated dependencies [c1f4619]
+- Updated dependencies [9f17623]
+- Updated dependencies [9011913]
+- Updated dependencies [29a3a17]
+- Updated dependencies [5a82b1c]
+- Updated dependencies [f4de18d]
+- Updated dependencies [4a2646c]
+  - @osstack/protocol@0.20.0
+  - @osstack/agents@0.20.0
+  - @osstack/core@0.20.0
+  - @osstack/autonomy@0.20.0
+  - @osstack/github@0.20.0
+  - @osstack/governance@0.20.0
+  - @osstack/hermes-adapter@0.20.0
+
 ## 0.19.0
 
 ### Patch Changes
