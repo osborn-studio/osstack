@@ -28,3 +28,5 @@ Fable CLI `claude-fable-5-1` 首轮要求补齐继承管道上限；最终复审
 PR CI 首次在 inventory freshness 发现新增 `readRepositoryGit` 导出未进入生成清单；现已重新生成并通过 freshness 检查。最终完整 CI 以 PR #227 对应 head 的检查为准。
 
 私有证据在 `/Volumes/AIMATE_WORK/tmp/g226-deploy`；不上传数据库、凭据或完整主机运行记录。G29 最终关闭仍需要审批合并后的生产试点，不能由单测或隔离试点代替。
+
+全量 CI 随后发现 `repo-lock.test.ts` 的独立子进程只转译旧 scope 文件，没有包含它新增的查询模块依赖。fixture 已补齐实际 helper 的转译与唯一文件引用；20 项真实跨进程锁测试全部通过，未修改锁实现或断言。19 个安装包演练已通过启动、schema 37、旧 RPC、排空与正常退出；最初暂存树遗漏包内嵌套依赖的问题仅发生在私有安装准备脚本，已恢复并核对全部 276 个包版本条目，未触及生产。
