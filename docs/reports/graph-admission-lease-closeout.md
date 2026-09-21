@@ -22,7 +22,16 @@ The actual Claude CLI model `claude-fable-5-1` reviewed the design and implement
 
 Read-only preflight opens the control-plane database read-only and does not alter actions, decisions or locks. Existing artifact verification temporarily unbundles into its scratch directory and cleans up afterwards. The production evidence envelopes are 10,733 and 9,216 bytes, below the 65,536-byte receipt bound.
 
-Final test and review results will be recorded before submitting the repair for independent GitHub approval.
+The second Fable implementation audit returned **APPROVE**. Its optional canonical-root and lock-reappearance guards were added and are receiving a final delta audit. Independent GitHub approval is still required.
+
+Local validation:
+
+- Full workspace build, CLI typecheck, lint and inventory freshness passed.
+- Governed execution: 13 passed; broker: 35 passed; existing preparation recovery: 16 passed.
+- New stopped-verification recovery: all 15 scenarios passed across the full negative matrix and focused reruns after fixing fixture defects. Positive cancellation and installed maintenance preserve original actions; lost ACK, replacement UUID, changed expiry, disappearance and reappearance are explicitly covered.
+- Acceptance fixture: the old command rejects the valid candidate in a serving-home workspace; the corrected command passes it and still rejects the original root-guard defect. Production configuration was not modified.
+- The local full run did **not** pass: 3 core tests hit their existing 5-second limits. A focused lower-concurrency run passed 35/36, with one remaining timeout. The broader CLI verification run also hit 22 existing 15-second limits under high host load. These are retained as failed results; per-test deadlines and production budgets were not increased. Final CI must pass on the exact pushed commit before approval/deployment.
+- Local startup timing also exceeded budgets under host load; the clean-runner startup gate remains mandatory. No eager command-surface imports were added.
 
 ## Deployment gate
 

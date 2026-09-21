@@ -78,6 +78,7 @@ function workspaceFingerprint(path: string): string {
   visit(path, ''); return hash.digest('hex');
 }
 export function assertExactCandidateFiles(path: string, revision: string): void {
+  if (resolve(path) !== path || realpathSync(path) !== path) throw new Error('candidate root must be canonical');
   const expected = new Set<string>();
   for (const entry of gitRaw(path, 'ls-tree', '-rz', '--full-tree', revision).split('\0').filter(Boolean)) {
     const match = /^(100644|100755|120000) blob ([a-f0-9]{40})\t([\s\S]+)$/.exec(entry);

@@ -158,6 +158,7 @@ export async function cancelStoppedGraphVerification(db: Database.Database, root
     }, release: async (_result, reverify) => {
       recheck(); const current = await inspectRepoWriteLock(lockRoot, scope.repoId); check();
       if (current) {
+        if (!owner || _result.record.decision.kind === 'project') throw Error('VERIFICATION_RECOVERY_CHANGED');
         if (!same(current, expectedOwner)) throw Error('VERIFICATION_RECOVERY_LOCK_OWNER');
         await releaseReconciledRepoWriteLock({ root_dir: lockRoot, repo_id: scope.repoId, expectedOwner,
           verifyQuiescent: async () => { await reverify(); recheck(); } });

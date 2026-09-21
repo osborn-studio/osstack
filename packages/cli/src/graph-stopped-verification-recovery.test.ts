@@ -77,7 +77,7 @@ it.each(['live-owner','wrong-token','changed-expiry','dirty-workspace','tampered
     if (mode === 'tampered-receipt') { chmodSync(f.evidencePath, 0o600); writeFileSync(f.evidencePath, '{}'); }
     if (mode === 'missing-exit') f.db.prepare("DELETE FROM graph_worker_process_events WHERE kind='exited'").run();
     if (mode === 'other-hold') f.db.prepare("UPDATE graph_action_admissions SET released_at=NULL WHERE effect_key != ?").run(f.target.effect_key);
-    if (mode === 'unknown-action') f.db.prepare("UPDATE graph_actions SET state='unknown',outcome_json=NULL WHERE effect_key=?").run(f.target.effect_key);
+    if (mode === 'unknown-action') f.db.prepare("UPDATE graph_actions SET state='unknown',outcome_json=NULL,actual_tokens=NULL WHERE effect_key=?").run(f.target.effect_key);
     if (mode === 'wrong-program') f.db.prepare("UPDATE graph_runs SET identity_json=replace(identity_json,'code-delivery-functional-v4','code-delivery-functional-v9')").run();
     if (mode === 'revoked') f.revoke();
     if (mode === 'symlink-root') { renameSync(f.lockRoot, f.lockRoot + '-old'); symlinkSync(f.lockRoot + '-old', f.lockRoot); }
@@ -108,6 +108,12 @@ it('retries a lost release ACK only for the same inspected token', async () => {
   writeFileSync(f.path, JSON.stringify({ ...f.lockOwner, token: randomUUID() }));
   await expect(f.recover()).rejects.toThrow('LOCK_OWNER'); unlinkSync(f.path);
   expect(await f.inspect()).toMatchObject({ mode: 'read_only', owner: f.lockOwner });
+  const verify = GraphRecoveryStore.prototype.verifyRelease;
+  vi.spyOn(GraphRecoveryStore.prototype, 'verifyRelease').mockImplementationOnce(function (this: GraphRecoveryStore, ...args) {
+    const result = verify.apply(this, args); writeFileSync(f.path, JSON.stringify(f.lockOwner)); return result;
+  });
+  expect(await f.recover()).toMatchObject({ exit: 'release_pending', releaseError: expect.stringContaining('CHANGED') });
+  vi.restoreAllMocks(); unlinkSync(f.path);
   expect(await f.recover()).toMatchObject({ result: { run: { status: 'cancelled' } } }); expect(f.writes()).toBe(1);
 }, 120000);
 

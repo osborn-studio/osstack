@@ -1,6 +1,6 @@
 # OSStack Graph 升级：集成验收与分阶段发布
 
-2026-09-21 更新：**29/30。PR #227 已审批、合并并部署；Git 权限查询输出丢失已修复。正式 canary 暴露验收夹具与锁续租问题，Graph 新准入关闭，G29 仍待受控恢复和复验。** 见[实际部署记录](graph-upgrade-deployment.md)。下文较早验证记录不替代本次生产验收。
+2026-09-21 更新：**29/30。PR #227 已审批、合并并部署；Git 权限查询输出丢失已修复。正式 canary 暴露验收夹具与锁续租问题，Graph 新准入关闭，G29 仍待受控恢复和复验。** 见[实际部署记录](graph-upgrade-deployment.md)和[续租与收尾修复](graph-admission-lease-closeout.md)。下文较早验证记录不替代本次生产验收。
 
 ## 已实现的能力
 
