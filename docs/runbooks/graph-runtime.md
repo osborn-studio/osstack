@@ -50,7 +50,7 @@ OSSTACK_HOME=/absolute/private/new-pilot TMPDIR=/tmp \
 4. 首个内部仓库使用 OSStack 的独立工作副本和 `artifact_only` 模板，精确绑定 task、baseRevision、验证命令、scope 和有限授权期限。密钥只由现有私有凭据载入，不放入 Git、报告或 LaunchAgent 明文参数。
 5. 等 `autonomy.health` 返回 `can_run_local:true`、初次健康检查完成后，只改该注册的 `admissionEnabled:true`。普通 `health` 表示 RPC 可用，不能代替写入准入健康检查。执行一个有界内部任务并保留 candidate、独立评审、测试、join、费用与源仓库不变证据。其他仓库不获授权。遇到 unknown，关闭新准入并保留证据，不清账重试。
 
-当前已按上述步骤完成关闭新准入的部署，schema 37 与旧 RPC 已验证；内部试点未通过，核对后为 cancel_pending，Graph 准入保持关闭。见[实际部署记录](../reports/graph-upgrade-deployment.md)。本机 launchd 使用 ProcessType=Interactive；服务代码在系统盘标准安装目录，缓存/备份在工作盘。后续安装器重写 plist 时需保留该配置，不能放宽 worker 安全期限替代实际验证。
+当前已完成 PR #227 的关闭准入部署，schema 37 与旧 RPC 已验证；最新内部试点 tests 因验收夹具错误返回失败，随后遇到锁续租窗口，正常 reconcile 后为 cancel_pending。Graph 准入保持关闭。见[实际部署记录](../reports/graph-upgrade-deployment.md)。本机 launchd 使用 ProcessType=Interactive；服务代码在系统盘标准安装目录，缓存/备份在工作盘。
 
 ## 取消、对账、重试
 
@@ -71,6 +71,17 @@ OSSTACK_HOME=/absolute/private/new-pilot TMPDIR=/tmp \
 3. 使用同一参数加 `apply:true` 和工作盘上的私有 `backupDirectory`。入口先用 SQLite online backup 创建 0700 子目录中的 0600 DB，检查完整性与 schema；不运行迁移。随后只调用精确 v4 恢复器，反复验证取消授权、准入关闭、worker exit、工作区和锁缺失证明；不启动 worker、不调用模型、不删除锁。
 4. 正常取消权限按现有合同可以晚于 execute 过期；它仍须来自当前配置并在 G15 提交内复查。配置变化、schema/revision 冲突、锁出现或证据不足均停止，禁止自动重试。stderr 的 `graph_recovery_blocked` 只记录固定错误码，不泄露原始路径或模型输出。
 5. 只有结果为 `cancelled`、动作记录不变且 `upgradeHolds:0` 才继续正常升级保护流程。该保护直接读取 durable DB。保留新备份；不要用它回滚已发生的外部动作。随后执行完整停机备份、关闭准入部署及单仓库 canary。
+
+### 已停止验证动作的保留锁维护（待本次修复审批）
+
+`reconcileStoppedVerification` 仅支持 v4、epoch 0、generation 1 的精确七动作 confirmed 模式；唯一待释放项必须是带原始 POSIX 进程组停止证据的 tests。任何 unknown、额外动作/准入、证据变化、候选修改或替换 token 都拒绝。它不将测试失败改为成功，也不生成 join 或 ready。
+
+1. 从已独立审批、已合并并正式安装的新维护模块调用只读模式。Graph 新准入必须关闭；提供精确 run/revision 和当前 daemon PID。保存返回的原 lock owner、候选、worker 退出证明、动作摘要。角色/schema/owner-only 注册与 cancel 权限均使用原机制。
+2. 同时核对正式 daemon 的健康状态：没有普通任务/Loop 或排队任务，写占用恰好等于已证明的保留项，其他 graph 无非终态或未释放准入。只读证明不是一般性的升级豁免。
+3. 证明全部通过后正常卸载旧 LaunchAgent，等待进程正常退出与 socket 消失；失败则停止，不使用 SIGKILL。保留 DB、工作区、回执、原锁与完整备份。旧版本只是不支持该特定收尾，新维护模块不会终止进程。
+4. 用同一原 owner token、PID、revision 调用 `apply:true`，指定工作盘备份目录。入口拒绝仍存在的 daemon socket，检查旧 PID 不再存活，创建一致性备份；G15 先落与原 confirmed outcome 完全相同的决定，再在 mutation guard 内核验原 token/PID 与证据并释放，最后投影为 cancelled。原 action 字节保持不变。
+5. 若确认回执丢失，保留原 preflight owner 并先读当前状态。仅同一确定性决定允许精确释放重试；缺少原 owner、出现替换锁或新的 daemon，均不得继续。不能生成新 token 冒充旧锁。确认所有升级 holds 清零后，恢复普通升级流程，仍先关闭准入部署。
+6. 修正 canary 的正例目录时保留原注册与失败回执。完成旧运行核对后，在新服务注册中使用独立临时目录验证允许行为，继续验证根目录/默认 serving-home 拒绝行为；不要修改已运行动作的命令、结果或证据。
 
 ## 回收与回滚
 

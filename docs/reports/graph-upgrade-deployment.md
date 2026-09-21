@@ -1,8 +1,22 @@
 # OSStack Graph 部署记录 — 2026-09-21
 
-**当前仍为 29/30：PR #226 已独立审批、合并并部署；新准入关闭。历史运行安全恢复完成，但新生产试点在测试启动前被权限检查拒绝，G29 尚未完成。**
+**当前仍为 29/30：PR #227 已独立审批合并并部署；新准入关闭，G29 尚未完成。**
 
-## 2026-09-21 实际操作
+## PR #227 部署及新的收尾问题
+
+- 最终 head `de20b51f0fb00aeee45f743693364a65dde75445` 经 `gilberthello` 独立审批，合并为 `45bac9abdb0841c4372d29a85904faae7642f285`，源码 tree 与已验收安装包相同。
+- [PR CI 35577744887](https://github.com/osborn-studio/osstack/actions/runs/35577744887) 和 [main CI 35580081839](https://github.com/osborn-studio/osstack/actions/runs/35580081839) 全部通过。PR 全仓 22 包、4006 项通过、3 项显式跳过；Node 20.6/22.23.1、macOS fixtures 和安装检查通过。version 38ms、help 216ms。
+- 停机完整备份到 `/Volumes/AIMATE_WORK/Backups/osstack/20260921-45bac9a`，69 表、schema 37、完整性/外键检查通过。正式 daemon 与全局 shim 指向 `/Users/osborn/.local/share/osstack/releases/45bac9a`。关闭准入验收通过，旧 RPC、4 个历史 run 和所有历史动作保留。
+- 正式 canary `bef01154-cecd-4cc6-ac44-c2fdffdc531a` 七个动作全部 confirmed；review accept，实际测试 exit 1，stderr `Refusing default serving home`。私有验收代码把 `~/.osstack` 内的 cwd 当作允许目录，违反被测函数本来的保护。候选一行修改正确，但本次 tests=false 不能记为通过。
+- 另有真实续租窗口：tests 锁在 09:00:09Z 取得、09:01:09Z 到期，约 41 秒的权限检查结束后才启动 20 秒续租，第一轮已晚于期限。tests 结果已确认，但释放被拒；没有 join，图进入 reconciliation_required。正常公开 reconcile 已记录取消意图，当前 cancel_pending/revision37。
+- 本次费用 3100 tokens（writer 1832、review 1268），零剩余预留；tests 的一项 admission/锁保留。准入自动关闭，原仓库未应用候选。普通 daemon 健康，两个写并发槽有一个保留。没有手动改账或删锁。
+- 续租修复从锁取得时启动，并在交付准入前检查续租、活性和取消。新的受控维护仅处理精确七动作已停止模式，先只读证明，再正常停止旧 daemon，离线按原 token 经 G15 取消收尾。修复尚未审批或部署，不能直接运行开发 checkout 访问正式 DB。
+- 公共 [Release 35580081891](https://github.com/osborn-studio/osstack/actions/runs/35580081891) 的 macOS 测试已通过，创建版本 PR 时因 GitHub Actions 仓库权限不足而失败，未发布新 npm 包。
+
+本轮私有证据在 `/Volumes/AIMATE_WORK/tmp/g227-deploy`。以下保留旧部署时点的历史记录，不代表当前服务状态。
+
+## PR #226 历史部署
+
 
 - PR #226 最终 head `ecb290a5ffe12d3095f01ead7098696add380402` 获 `gilberthello` 审批，合并 SHA `e6f0658efeef3074e8524ee24b1157ae9e17e3c7`；两个提交的源码 tree 均为 `60bdf4eb742ea653640691583956ecab244f6070`。已验收的 19 个 tarball 安装到 `/Users/osborn/.local/share/osstack/releases/e6f0658`，实际 daemon 进程路径与全局 shim 均核实。
 - 新安装声明 `stable-serving`、允许实际 home、schema 37。维护入口先只读检查，再建立 SQLite 一致性备份并通过既有权限恢复旧运行 `0b20f90b-1174-44ca-b237-15a0972ab3f5`。结果为 `cancelled`，所有动作记录不变、原费用 1832 tokens 保留、`upgradeHolds=0`。没有 SQL 强制改账、删除锁或重复模型调用。

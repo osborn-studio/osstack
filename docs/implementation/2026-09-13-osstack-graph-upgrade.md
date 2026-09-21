@@ -1,6 +1,6 @@
 # OSStack 升级改造实施计划：Loop 强化与可执行 Graph v1
 
-日期：2026-09-13；更新：2026-09-21。**状态：29/30；PR226 已审批、合并 e6f0658 并关闭新准入部署。历史 cancel_pending 已安全取消；新生产试点在测试启动前失败，G29 仍须修复及复验。见 [实际部署记录](../reports/graph-upgrade-deployment.md)。**
+日期：2026-09-13；更新：2026-09-21。**状态：29/30；PR227 已审批合并并部署。新生产试点实际执行了全部节点，验收夹具与锁续租问题仍需修复及安全核对；Graph 准入关闭。见 [实际部署记录](../reports/graph-upgrade-deployment.md)。**
 
 实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`。最新实现 `9011913`：锁保留、升级保护、平台边界和批量 artifact。全仓 22 包 3,727 测试通过；当前完成度、五类技术债和合并/部署门槛以[最新进展报告](../reports/graph-upgrade-completion.md)为准。
 
