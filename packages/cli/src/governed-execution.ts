@@ -19,6 +19,8 @@ export interface AdmissionInput {
   repoId?: string;
   signal?: AbortSignal;
   authorize?: () => Promise<void>;
+  /** Host-only synchronous proof: acquisition rejected with no lease or cleanup obligation. */
+  onNotAcquired?: () => void;
 }
 export class GovernedExecution {
   private readonly activeRuns = new Set<string>();
@@ -37,6 +39,15 @@ export class GovernedExecution {
   get hasWriters(): boolean { return this.options.writes.in_use > 0; }
 
   async acquire(input: AdmissionInput): Promise<ExecutionLease> {
+    const cleanup = { confirmed: true };
+    try { return await this.acquireOwned(input, cleanup); }
+    catch (error) {
+      if (cleanup.confirmed && !this.activeRuns.has(input.runId)) input.onNotAcquired?.();
+      throw error;
+    }
+  }
+
+  private async acquireOwned(input: AdmissionInput, cleanup: { confirmed: boolean }): Promise<ExecutionLease> {
     const check = async (): Promise<void> => {
       if (input.signal?.aborted) throw new SemaphoreAcquireAbortedError();
       if (input.kind === 'write') await this.options.checkHealth();
@@ -47,7 +58,10 @@ export class GovernedExecution {
       : await resolveRepositoryScope(input.workspacePath, input.repoId === undefined ? {} : { repoId: input.repoId });
     if (input.kind === 'write' && !scope) throw new Error('trusted repository scope required for writes');
     if (input.kind === "write" && scope && this.quarantinedRepositories.has(scope.repoId)) throw new Error("repository external stop unconfirmed; reconciliation required");
-    if (this.activeRuns.has(input.runId)) throw new Error("run already admitted or queued");
+    if (this.activeRuns.has(input.runId)) {
+      cleanup.confirmed = false;
+      throw new Error("run already admitted or queued");
+    }
     this.activeRuns.add(input.runId);
     let local: SemaphoreLease | undefined;
     let global: SemaphoreLease | undefined;
@@ -66,12 +80,17 @@ export class GovernedExecution {
       }
       global = await (input.kind === 'read' ? this.options.reads : this.options.writes).acquire(input.signal);
       if (input.kind === 'write' && scope) {
+        // A failed filesystem acquisition may have left an ownership obligation.
+        cleanup.confirmed = false;
         lock = await acquireRepoWriteLock({ root_dir: join(scope.commonDir, "osstack", "writer-locks"), recover_stale: false, repo_id: scope.repoId, autonomy_run_id: input.runId });
       }
       if (input.kind === "write" && scope && this.quarantinedRepositories.has(scope.repoId)) throw new Error("repository external stop unconfirmed; reconciliation required");
       await check();
     } catch (error) {
-      try { await lock?.release(); } finally { releasePermits(); }
+      try {
+        await lock?.release();
+        if (lock) cleanup.confirmed = true;
+      } finally { releasePermits(); }
       throw error;
     }
     let released = false;

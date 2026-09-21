@@ -262,3 +262,23 @@ it("rejects an adapter without stop confirmation before intent, capacity or invo
   expect(f.db.prepare("SELECT count(*) n FROM graph_action_admissions").get()).toEqual({ n: 0 });
   expect(f.writes.in_use).toBe(0); expect(calls).toBe(0);
 });
+
+it("discharges an unstarted action only after canonical queued acquisition confirms cleanup", async () => {
+  let count = 0; const f = fixture(actor(async function* (task) { count++; yield done(task); }));
+  const blocker = await f.admission.acquire({ kind: 'write', runId: 'blocker', workspacePath: f.repo });
+  const controller = new AbortController();
+  const pending = f.broker.handle(f.connection, f.request, { signal: controller.signal });
+  await expect.poll(() => (f.db.prepare('SELECT count(*) n FROM graph_actions').get() as { n: number }).n).toBe(1);
+  controller.abort(); await pending;
+  expect(count).toBe(0);
+  expect(f.db.prepare('SELECT state,execution_ref,actual_tokens FROM graph_actions').get()).toEqual({ state: 'failed', execution_ref: null, actual_tokens: 0 });
+  expect(f.db.prepare('SELECT held_at = released_at AS discharged FROM graph_action_admissions').get()).toEqual({ discharged: 1 });
+  expect(f.writes.in_use).toBe(1); await blocker.release();
+});
+it("does not discharge an arbitrary acquisition rejection without canonical cleanup evidence", async () => {
+  const f = fixture();
+  const broker = new GraphActionBroker(f.db, { acquire: async () => { throw Error('cleanup unconfirmed'); } });
+  broker.register(f.connection, f.registration);
+  await broker.handle(f.connection, f.request);
+  expect(f.db.prepare('SELECT count(*) n FROM graph_action_admissions').get()).toEqual({ n: 0 });
+});

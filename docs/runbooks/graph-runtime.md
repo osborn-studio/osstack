@@ -50,7 +50,7 @@ OSSTACK_HOME=/absolute/private/new-pilot TMPDIR=/tmp \
 4. 首个内部仓库使用 OSStack 的独立工作副本和 `artifact_only` 模板，精确绑定 task、baseRevision、验证命令、scope 和有限授权期限。密钥只由现有私有凭据载入，不放入 Git、报告或 LaunchAgent 明文参数。
 5. 等 `autonomy.health` 返回 `can_run_local:true`、初次健康检查完成后，只改该注册的 `admissionEnabled:true`。普通 `health` 表示 RPC 可用，不能代替写入准入健康检查。执行一个有界内部任务并保留 candidate、独立评审、测试、join、费用与源仓库不变证据。其他仓库不获授权。遇到 unknown，关闭新准入并保留证据，不清账重试。
 
-以上是部署步骤，不是已部署声明。实际执行状态以 PR 和部署证据为准。
+当前已按上述步骤完成关闭新准入的部署，schema 37 与旧 RPC 已验证；内部试点未通过，核对后为 cancel_pending，Graph 准入保持关闭。见[实际部署记录](../reports/graph-upgrade-deployment.md)。本机 launchd 使用 ProcessType=Interactive；服务代码在系统盘标准安装目录，缓存/备份在工作盘。后续安装器重写 plist 时需保留该配置，不能放宽 worker 安全期限替代实际验证。
 
 ## 取消、对账、重试
 
@@ -59,6 +59,18 @@ OSSTACK_HOME=/absolute/private/new-pilot TMPDIR=/tmp \
 自动公开对账仅支持有可信 no-child 证据，或第一个 bounded writer 已有真实停止、原始内容回执、worker exit 日志及未变化的私有 workspace。结算先落 durable recovery decision，再按精确 token 释放原锁；释放 ACK 丢失可重试，替换锁不会被误删。
 
 如果 daemon 在观察 worker 退出前被杀，或者 HTTP 请求结果不明、workspace 被修改、授权失效、锁身份改变，则继续保留。重新取得同 scope 的权限只能授权检查，不能创造停止证据。不要使用 kill/PID 缺失、过期时间、模型回答或手动 SQL 把它改成 `not_applied`。
+
+### 旧 v4 准备动作的受限维护入口
+
+仅用于旧 host 在首个 epoch 的 tests preparation 尚未调用时取消、留下缺失 admission 的精确五动作模式。当前 daemon 无法使用新恢复器且升级保护仍阻止停机时，可以先将独立审批并合并的版本安装到新的 release prefix；保持 serving shim 和旧 daemon 不变。
+
+新包包含 `dist/graph-maintenance.js`，导出 `reconcileUnstartedPreparation({home, graphRunId, expectedRevision, apply?, backupDirectory?})`。这是显式运维入口，不自动运行。须先由正式安装流程为该安装目录声明 serving role；入口自行验证真实模块目录的现有角色，不创建角色、不绕过 reserved-home 保护。
+
+1. 关闭新准入，确认没有另一个客户端同时核对此 run，保留原 workspace、artifact、日志和凭据。
+2. 从新安装目录调用入口，不带 `apply`。必须通过正常角色、owner-only 配置、scope/product/registration、精确 revision 和 schema 版本检查。拒绝意味着停止；不能改用开发 checkout 访问生产 DB。
+3. 使用同一参数加 `apply:true` 和工作盘上的私有 `backupDirectory`。入口先用 SQLite online backup 创建 0700 子目录中的 0600 DB，检查完整性与 schema；不运行迁移。随后只调用精确 v4 恢复器，反复验证取消授权、准入关闭、worker exit、工作区和锁缺失证明；不启动 worker、不调用模型、不删除锁。
+4. 正常取消权限按现有合同可以晚于 execute 过期；它仍须来自当前配置并在 G15 提交内复查。配置变化、schema/revision 冲突、锁出现或证据不足均停止，禁止自动重试。stderr 的 `graph_recovery_blocked` 只记录固定错误码，不泄露原始路径或模型输出。
+5. 只有结果为 `cancelled`、动作记录不变且 `upgradeHolds:0` 才继续正常升级保护流程。该保护直接读取 durable DB。保留新备份；不要用它回滚已发生的外部动作。随后执行完整停机备份、关闭准入部署及单仓库 canary。
 
 ## 回收与回滚
 

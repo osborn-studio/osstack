@@ -13,6 +13,7 @@ import { GraphDelivery, assertGraphDeliverySupported, graphDeliveryVersion, type
 import { GraphReconciler } from './graph-reconciler.js';
 import { cancelUnstartedGraphWorker } from './graph-unstarted-recovery.js';
 import { cancelJournaledBoundedWriter } from './graph-bounded-recovery.js';
+import { cancelUnstartedGraphPreparation } from './graph-preparation-recovery.js';
 
 export interface GraphHostRegistration {
   id: string;
@@ -190,7 +191,26 @@ export class GraphRpcService {
                 try { synchronous(registration.authorize('cancel')); }
                 catch (failure) { authorizationFailed = true; throw failure; }
               });
-          } catch (failure) { if (authorizationFailed) throw failure; }
+          } catch (failure) {
+            if (authorizationFailed) throw failure;
+            try {
+              const descriptor = JSON.parse(this.row(run.graphRunId).descriptor_json) as Descriptor;
+              await cancelUnstartedGraphPreparation(this.options.db, descriptor.root, registration.delivery.repositoryPath,
+                { fence: fence(pending), receiptId }, () => {
+                  try { synchronous(registration.authorize('cancel')); }
+                  catch (denied) { authorizationFailed = true; throw denied; }
+                });
+            } catch (denied) {
+              if (authorizationFailed) throw denied;
+              // Operator diagnostics remain local. Never print raw filesystem,
+              // adapter or SQLite error text into either RPC or daemon logs.
+              const reasons = new Set(['SCOPE', 'PROGRAM', 'PREDECESSORS', 'NOT_STARTED', 'CANDIDATE',
+                'NOT_CANCELLING', 'CHANGED', 'ADMISSION', 'WORKSPACE', 'LOCK_PRESENT', 'DECISION']);
+              const reason = denied instanceof Error ? denied.message.replace(/^PREPARATION_RECOVERY_/, '') : '';
+              console.error(JSON.stringify({ event: 'graph_recovery_blocked', graphRunId: run.graphRunId,
+                stage: 'unstarted_preparation', code: reasons.has(reason) ? `PREPARATION_RECOVERY_${reason}` : graphRpcError(denied).code }));
+            }
+          }
           // Intent is already durable. Missing/conflicting evidence cannot undo
           // its acknowledgement; return current state without settling or releasing.
         }

@@ -173,7 +173,8 @@ export class GraphWorkerManager {
     let lastHeartbeat = startedAt; let lastRequest = 0;
     const pending = new Set<string>(); const timers: ReturnType<typeof setTimeout>[] = [];
     let monitor: ReturnType<typeof setInterval> | undefined;
-    const clear = () => { timers.forEach(clearTimeout); if (monitor) clearInterval(monitor); };
+    let heartbeatCheck: ReturnType<typeof setImmediate> | undefined;
+    const clear = () => { timers.forEach(clearTimeout); if (monitor) clearInterval(monitor); if (heartbeatCheck) clearImmediate(heartbeatCheck); };
     const append = (prior: Buffer, chunk: Buffer): Buffer => chunk.length >= maxLogBytes
       ? Buffer.from(chunk.subarray(chunk.length - maxLogBytes))
       : Buffer.concat([prior.subarray(Math.max(0, prior.length + chunk.length - maxLogBytes)), chunk]);
@@ -289,7 +290,19 @@ export class GraphWorkerManager {
         try {
           assertActive();
           if (!didReady && Date.now() - startedAt > startupMs) cancel('WORKER_STARTUP_TIMEOUT');
-          else if (didReady && Date.now() - lastHeartbeat > heartbeatMs) cancel('WORKER_HEARTBEAT_EXPIRED');
+          else if (didReady && Date.now() - lastHeartbeat > heartbeatMs && !heartbeatCheck) {
+            // Synchronous host work can delay both timers and IPC receipt. Let
+            // the poll phase drain buffered heartbeats before deciding the child
+            // is unresponsive; authority and absolute deadlines remain enforced.
+            heartbeatCheck = setImmediate(() => {
+              heartbeatCheck = undefined;
+              if (stopping || observedExit) return;
+              try {
+                assertActive();
+                if (Date.now() - lastHeartbeat > heartbeatMs) cancel('WORKER_HEARTBEAT_EXPIRED');
+              } catch (error) { cancel(String(error)); }
+            });
+          }
         }
         catch (error) { cancel(String(error)); }
       }, Math.max(10, Math.min(100, Math.floor(heartbeatMs / 3))));

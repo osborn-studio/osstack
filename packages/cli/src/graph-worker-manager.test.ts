@@ -243,3 +243,18 @@ it('host event-loop stalls can request conservative stop but never invent physic
   expect(await h.finalExit).toMatchObject({ kind: 'exited' });
   await expect(h.result).rejects.toThrow();
 });
+
+it('drains buffered worker heartbeats after a host event-loop stall before declaring expiry', async () => {
+  const f = fixture(undefined, { programs: [], heartbeatTimeoutMs: 150, startupTimeoutMs: 5000,
+    workerEntry: rawWorker("send({kind:'ready',binding:init.binding});setInterval(()=>send({kind:'heartbeat',binding:init.binding}),20);send(request(1));") });
+  let began!: () => void; const started = new Promise<void>(resolve => { began = resolve; });
+  const h = f.launch({ ...f.start, checkpoint: async () => {
+    // The child keeps sending heartbeats while synchronous host I/O blocks receipt.
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 400);
+    began(); return { kind: 'get', tuple: null };
+  } });
+  let failed: unknown; void h.result.catch(error => { failed = error; });
+  await started; await new Promise(resolve => setTimeout(resolve, 80));
+  expect(failed).toBeUndefined();
+  expect((await h.stop()).kind).toBe('exited');
+});

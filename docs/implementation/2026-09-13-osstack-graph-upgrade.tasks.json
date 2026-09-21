@@ -1367,17 +1367,18 @@
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "真实DeepSeek试点、负对照、取消unknown和手册已完成；等待最终发布检查、最新推送独立审批、合并及分阶段部署收口。",
+      "progressNote": "PR225已独立审批、main CI通过并合并d2483d1；关闭Graph新准入的实际部署/schema37/旧RPC验收通过。真实生产试点完成实现与冻结后在验证准备阶段失败，支持的核对请求后为cancel_pending；准入已关闭，候选/账本/1832 tokens保留。G29等待修复、核对及内部启用验收，仍29/30。",
       "evidence": [
-        "docs/reports/graph-upgrade-completion.md"
+        "docs/reports/graph-upgrade-completion.md",
+        "docs/reports/graph-upgrade-deployment.md"
       ]
     }
   ],
-  "updatedAt": "2026-09-19",
+  "updatedAt": "2026-09-20",
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "fec0b1826abfcc6cf1b625f01f0881f9f7caf089",
+    "acceptedCodeCommit": "d2483d19d3a1bfd740be9412010aab2c93a44889",
     "completedTaskCount": 29,
     "totalTaskCount": 30,
     "nextTasks": [
@@ -1391,8 +1392,9 @@
       "M2": "completed",
       "M3": "in_progress"
     },
-    "reviewNote": "main整合已推送，Fable独立审查accept。最终故障/性能/平台及GitHub全仓测试通过；整条CI发布smoke、最终GitHub审批与分阶段部署待收口。",
-    "slicePlan": "docs/reports/graph-upgrade-completion.md"
+    "reviewNote": "PR225已独立审批、main CI通过并合并d2483d1；关闭Graph新准入的实际部署/schema37/旧RPC验收通过。真实生产试点完成实现与冻结后在验证准备阶段失败，支持的核对请求后为cancel_pending；准入已关闭，候选/账本/1832 tokens保留。G29等待修复、核对及内部启用验收，仍29/30。",
+    "slicePlan": "docs/reports/graph-upgrade-completion.md",
+    "deploymentReport": "docs/reports/graph-upgrade-deployment.md"
   },
   "decisionGates": [
     {
